@@ -1,0 +1,9 @@
+<rdf:RDF
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:j.0="http://made.up.property.org/2013/cmwtest#" > 
+  <rdf:Description rdf:about="http://clearforest.com/ce/GH">
+    <j.0:ide>IntelliJ IDEA</j.0:ide>
+    <j.0:lang>Scala</j.0:lang>
+    <j.0:browser>FireFox</j.0:browser>
+  </rdf:Description>
+</rdf:RDF>

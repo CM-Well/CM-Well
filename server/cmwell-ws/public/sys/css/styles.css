@@ -1,0 +1,356 @@
+BODY, TABLE, TR, TD, DIV, SPAN, P, OL, UL, LI, FORM, A {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: small;
+    color: #666;
+    /*background: #fff;*/
+}
+
+/*body {*/
+/*cursor: url(../img/ajax-loader.gif),default;*/
+/*}*/
+IMG {
+    border: none;
+}
+
+TD {
+    text-align: left;
+}
+
+BODY {
+    background: #fff url(/sys/img/bg_site.png) repeat-x top;
+    text-align: center;
+    color: #000;
+    padding: 0;
+    margin: 0;
+}
+
+A {
+    color: #0083bf;
+    font-weight: bold;
+    text-decoration: none;
+    cursor: hand;
+}
+
+A:hover {
+    color: #66b4d8;
+}
+
+HR {
+    width: 770px;
+    border-top: none;
+    border-bottom: dashed 1px #ccc;
+    text-align: center;
+    margin: 0 auto;
+}
+
+H1 {
+    text-align: left;
+    color: #837a71;
+    font-size: medium;
+    font-weight: normal;
+    margin: 0 0 8px 0;
+    border-bottom: solid 3px #bab5b0;
+}
+
+P, UL {
+    text-align: left;
+    line-height: 24px;
+}
+
+.versioned-logo {
+    width: 192px;
+    height: 70px;
+    margin-left:20px;
+    float:left;
+    display: inline-block;
+    background: url('/sys/img/logo.png');
+    position: relative;
+}
+
+.tr-logo {
+    width: 167px;
+    height: 68px;
+    float:right;
+    display: inline-block;
+    background: url('/sys/img/tr-logo.png');
+    position: relative;
+}
+
+.version-text {
+    z-index: 100;
+    position: absolute;
+    bottom: 5px;
+    width: 192px;
+    max-height: 70px;
+    overflow: hidden;
+    background-color: transparent;
+    text-align: right;
+    top: 37px;
+    color: #aaaaaa;
+    font-family: monospace;
+    font-size: small;
+}
+
+/* containers */
+.container {
+    width: 950px;
+    height: 100%;
+    min-height: 640px;
+    display: block;
+    background-color: #fff;
+    margin: 0 auto;
+    border: 1px solid #b0b0b0;
+    margin-bottom: 10px;
+}
+
+.header {
+    width: 950px;
+    height: 69px;
+    margin: 0;
+    background: url(/sys/img/bg_header.png) repeat-x top;
+    text-align: left;
+    border-bottom: solid 2px #ffc880;
+}
+
+.footer {
+    background: #f5f5f5;
+    width: 940px;
+    min-height: 24px;
+    padding: 5px;
+    /*text-align: right;*/
+    color: #a8a099;
+    display: block;
+    clear: both;
+    border-bottom: solid 1px #eee;
+}
+
+.footer A {
+    background-color: transparent;
+    color: #ffb01c;
+}
+
+.footer A:hover {
+    color: #999;
+}
+.url-link {
+    padding: 3px 5px;
+    text-align: left;
+}
+.url-link A {
+    color: #ffb01c;
+}
+
+.content {
+    margin: 30px 30px 0 30px;
+    background: #fff;
+    overflow: visible;
+    width: 900px
+}
+
+.contentLeft {
+    float: left;
+    width: 420px;
+    margin: 0 0 20px 20px;
+    height: 350px;
+}
+
+.contentRight {
+    float: right;
+    width: 420px;
+    margin-right: 20px;
+    margin-bottom: 20px;
+    padding: 0px;
+}
+
+.contentLeft A {
+    padding: 5px 0px 0px;
+    border-bottom: 1px dotted #C7C7C7;
+    width: 99%;
+    text-align: left;
+
+}
+
+.contentLeft span {
+    /*display: block;*/
+    text-align: left;
+    height: 20px;
+    padding: 5px 0 0 0;
+    border-bottom: dotted 1px #c7c7c7;
+    width: 99%
+}
+
+/* table */
+TABLE {
+    border-collapse: collapse;
+    border-top: solid 3px #d5d2cf;
+    border-bottom: solid 3px #d5d2cf;
+    margin: 0 auto;
+    float: right;
+    table-layout: fixed;
+    word-wrap: break-word
+}
+
+TD {
+    border: solid 1px #d5d2cf;
+    padding: 5px 10px 5px 6px;
+}
+
+TH {
+    border: solid 1px #d5d2cf;
+    padding: 5px 10px 5px 6px;
+    border-bottom: solid 3px #d5d2cf;
+    background: #f1f1f1;
+    color: #ff8000;
+    text-align: left;
+}
+
+a[mime*='pdf'] {
+    display: inline-block;
+    line-height: 16px;
+    padding-left: 5%;
+    width: 91%;
+    background: transparent url(/sys/img/pdf.png) center left no-repeat;
+}
+
+a[mime*='text'] {
+    display: inline-block;
+    line-height: 16px;
+    padding-left: 5%;
+    width: 91%;
+    background: transparent url(/sys/img/text.file.png) center left no-repeat;
+}
+
+a[mime*='xml'] {
+    display: inline-block;
+    line-height: 16px;
+    padding-left: 5%;
+    width: 91%;
+    background: transparent url(/sys/img/xml.file.png) center left no-repeat;
+}
+
+a[mime*='javascript'] {
+    display: inline-block;
+    line-height: 16px;
+    padding-left: 5%;
+    width: 91%;
+    background: transparent url(/sys/img/javascript.png) center left no-repeat;
+}
+
+a[mime='folder'] {
+    display: inline-block;
+    line-height: 16px;
+    padding-left: 5%;
+    width: 91%;
+    background: transparent url(/sys/img/folder.png) center left no-repeat;
+}
+
+a[mime='active'] {
+    display: inline-block;
+    line-height: 16px;
+    padding-left: 5%;
+    width: 91%;
+    background: transparent url(/sys/img/computed.svg) center left no-repeat;
+}
+
+a[mime='link'] {
+    display: inline-block;
+    line-height: 16px;
+    padding-left: 5%;
+    width: 91%;
+    background: transparent url(/sys/img/link.png) center left no-repeat;
+}
+
+a[mime*='word'] {
+    display: inline-block;
+    line-height: 16px;
+    padding-left: 5%;
+    width: 91%;
+    background: transparent url(/sys/img/word.png) center left no-repeat;
+}
+a[mime*='spreadsheet'] {
+    display: inline-block;
+    line-height: 16px;
+    padding-left: 5%;
+    width: 91%;
+    background: transparent url(/sys/img/excel.png) center left no-repeat;
+}
+
+a[mime*='excel'] {
+    display: inline-block;
+    line-height: 16px;
+    padding-left: 5%;
+    width: 91%;
+    background: transparent url(/sys/img/excel.png) center left no-repeat;
+}
+
+a[mime*='powerpoint'] {
+    display: inline-block;
+    line-height: 16px;
+    padding-left: 5%;
+    width: 91%;
+    background: transparent url(/sys/img/powerpoint.png) center left no-repeat;
+}
+
+a[mime*='presentation'] {
+    display: inline-block;
+    line-height: 16px;
+    padding-left: 5%;
+    width: 91%;
+    background: transparent url(/sys/img/powerpoint.png) center left no-repeat;
+}
+
+a[mime*='unknownToCmwell'] {
+    display: inline-block;
+    line-height: 16px;
+    padding-left: 5%;
+    width: 91%;
+    background: transparent url(/sys/img/file.unknown.png) center left no-repeat;
+}
+
+a[mime*='image'] {
+    display: inline-block;
+    line-height: 16px;
+    padding-left: 5%;
+    width: 91%;
+    background: transparent url(/sys/img/image.file.png) center left no-repeat;
+}
+
+a[mime='file'] {
+    display: inline-block;
+    line-height: 16px;
+    padding-left: 5%;
+    width: 91%;
+    background: transparent url(/sys/img/excel.png) center left no-repeat;
+}
+
+.flushLeft{
+    border: medium none !important;
+    float: left;
+    width: 50% !important;
+}
+
+.flushRight{
+    border: medium none !important;
+    float: right;
+    height: 16px;
+    padding-top: 10px !important;
+    text-align: right !important;
+    width: 4% !important;
+}
+
+#markdownPopup {
+    background: #f3f3f3;
+    position:center;
+    z-index:1001;
+    padding: 5px;
+    display: none;
+    border: 1px solid #ffb01c;
+}
+
+.linksCont {
+    border-bottom: 1px dotted #ccc;
+    clear: both;
+    height: 25px;
+    line-height: 28px;
+    width: 100%;
+}

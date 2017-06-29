@@ -1,0 +1,8 @@
+<div class="pager">
+    <a class="button prev {{pager.prevClass}}" href="{{pager.prevLink}}">&#9664;</a>
+                    <span class="page-link" ng-repeat="page in pager.slidingWindowPages">
+                        <a ng-if="page.num != pager.currentPage" ng-href="{{page.href}}">{{page.num}}</a>
+                        <span ng-if="page.num == pager.currentPage" class="current">{{page.num}}</span>
+                    </span>
+    <a class="button next {{pager.nextClass}}" href="{{pager.nextLink}}">&#9654;</a>
+</div>

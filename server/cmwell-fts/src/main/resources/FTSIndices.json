@@ -1,0 +1,14 @@
+{
+    "index": {
+        "number_of_shards": 12,
+        "number_of_replicas": 2,
+        "analysis": {
+            "analyzer": {
+                "parent_hierarchy_analyzer": {
+                    "tokenizer": "path_hierarchy",
+                    "type": "custom"
+                }
+            }
+        }
+    }
+}

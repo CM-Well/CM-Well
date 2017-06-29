@@ -1,0 +1,37 @@
+@prefix cc:    <http://creativecommons.org/ns#> .
+@prefix geonames: <http://www.geonames.org/ontology#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix wgs84_pos: <http://www.w3.org/2003/01/geo/wgs84_pos#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+
+<http://sws.geonames.org/294640/about.rdf>
+        a                   foaf:Document ;
+        cc:attributionName  "GeoNames" ;
+        cc:attributionURL   <http://sws.geonames.org/294640/> ;
+        cc:license          <http://creativecommons.org/licenses/by/3.0/> ;
+        dcterms:created     "2006-01-15"^^xsd:date ;
+        dcterms:modified    "2015-06-08"^^xsd:date ;
+        foaf:primaryTopic   <http://sws.geonames.org/294640/> .
+
+<http://sws.geonames.org/294640>
+        a                              geonames:Feature ;
+        rdfs:isDefinedBy               <http://sws.geonames.org/294640/about.rdf> ;
+        rdfs:seeAlso                   <http://dbpedia.org/resource/Israel> ;
+        geonames:alternateName         "Israèl"@oc , "Izrael"@pl , "Izrael"@hbs , "Izrael"@hr , "Izrael"@sq , "Izrael"@cs , "Izrael"@hu , "Izrael"@sl , "Izrael"@sk , "Izrael"@bs , "Dawlat Isrā’īl" , "ཨིཛ་རཱེལ"@dz , "Ізраїль"@uk , "Izraeli"@sq , "ისრაელი"@ka , "እስራኤል"@am , "Ισραήλ"@el , "Ізраіль"@be , "Iżrael"@mt , "イスラエル"@ja , "Medinat Yisrael"@lad , "I-xra-en"@vi , "Izraelis"@lt , "Israel"@io , "Israel"@qu , "Israel"@ro , "Israel"@yo , "Israel"@ast , "Israel"@fy , "Israel"@nb , "Israel"@la , "Israel"@tl , "Israel"@sv , "Israel"@da , "Israel"@an , "Israel"@nn , "Israel"@ca , "Israel"@nds , "Israel"@ilo , "Israel"@id , "Israel"@pam , "Israel"@no , "Iisrael"@et , "Israel"@cy , "Israel"@na , "Israel"@br , "Israel"@ia , "Israel"@lb , "Israel"@gd , "Israel"@eu , "Isroil"@uz , "Israel"@tpi , "Israel"@hsb , "Israel"@pt , "Israel"@vi , "Israel" , "Ysrael"@kw , "Israel"@de , "Israel"@ms , "Israel"@af , "Israel"@fi , "इस्रायल"@mr , "Medinat Yisra’el"@he , "Israel - ישראל"@gl , "இசுரேல்"@ta , "ישראל"@yi , "State of Israel"@en , "Ereẕ Yisra’el"@he , "इसराइल"@hi , "Ereẕ Yisra’el" , "Yisra’el" , "Իսրայել"@hy , "Israaʼiil"@so , "Израиль"@ru , "Израиль"@os , "Israelo"@eo , "Izraēla"@lv , "อิสราเอล"@th , "إسرائيل"@ar , "Израел"@bg , "Израел"@sr , "Израел"@mk , "اسرائیل"@ur , "اسرائیل"@fa , "دولة إسرائيل"@ar , "Їздраил҄ь"@cu , "Isireli"@fj , "អ៊ីស្រាអែល"@km , "اسرائيل"@ar , "Israhēl"@ang , "Իզրաել"@hy , "İsrail"@tr , "اسرايل"@ps , "ئىسرائىلىيە"@ug , "Iosrael"@ga , "מדינת ישראל"@he , "מדינת ישראל"@yi , "இஸ்ரேல்"@ta , "이스라엘"@ko , "Izrayèl"@ht , "Ísrael"@fo , "Ísrael"@is , "Israeli"@scn , "Israël"@fr , "Israël"@nl , "Israël"@li , "ประเทศอิสราเอล"@th , "Eretz Yisrael" , "Israele"@it , "以色列"@zh , "Îsraîl"@ku , "ইস্রায়েল"@bn , "Isrā’īl" , "ອິສລະເອວ"@lo ;
+        geonames:childrenFeatures      <http://sws.geonames.org/294640/contains.rdf> ;
+        geonames:countryCode           "IL" ;
+        geonames:featureClass          geonames:A ;
+        geonames:featureCode           geonames:A.PCLI ;
+        geonames:locationMap           <http://www.geonames.org/294640/state-of-israel.html> ;
+        geonames:name                  "Israel" ;
+        geonames:neighbouringFeatures  <http://sws.geonames.org/294640/neighbours.rdf> ;
+        geonames:officialName          "ישראל"@he , "Yisirayeri"@lg , "Israely"@mg , "ඊශ්‍රායලය"@si , "ઇઝરાઇલ"@gu , "Izuraeri"@sn , "အစ္စရေး"@my , "Israeli"@ki , "Israeli"@sw , "Israëli"@sg , "इस्त्राइल"@mr , "Israel nutome"@ee , "እስራኤል"@ti , "Israel (Do Thái)"@vi , "Israel"@ak , "Israel"@se , "Israel"@rm , "Israel"@gl , "Israel"@kl , "Israel"@es , "Isirayeli"@bm , "ఇస్రాయేల్"@te , "इजराइल"@hi , "ئیسرائیل"@ku , "Isirayele"@lu , "i-Israel"@zu , "Izira'ila"@ha , "Isiraheli"@rn , "Israa'iila"@ff , "ಇಸ್ರೇಲ್"@kn , "Orílẹ́ède Iserẹli"@yo , "इज्रायल"@ne , "ʻIsileli"@to , "اسراییل"@fa , "Isuraeli"@nd , "İzrail"@az , "Isirayelɛ"@ln , "ཨི་ཛ྄་རེལ།"@bo , "ইসরায়েল"@bn , "ଇସ୍ରାଏଲ୍"@or , "イスラエル国"@ja , "ഇസ്രായേല്‍"@ml ;
+        geonames:parentFeature         <http://sws.geonames.org/6255147/> ;
+        geonames:population            "7353985"^^xsd:integer ;
+        geonames:shortName             "Israel"@en ;
+        geonames:wikipediaArticle      <http://ru.wikipedia.org/wiki/%D0%98%D0%B7%D1%80%D0%B0%D0%B8%D0%BB%D1%8C> , <http://en.wikipedia.org/wiki/Israel> ;
+        wgs84_pos:lat                  "31.5"^^xsd:float ;
+        wgs84_pos:long                 "34.75"^^xsd:float .

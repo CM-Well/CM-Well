@@ -1,0 +1,2 @@
+<http://example.org/JaneSmith> <cmwell://meta/sys#markReplace> <http://www.w3.org/2006/vcard/ns#FN> .
+<http://example.org/JaneSmith> <http://www.w3.org/2006/vcard/ns#FN> "Jennifer Smith" .

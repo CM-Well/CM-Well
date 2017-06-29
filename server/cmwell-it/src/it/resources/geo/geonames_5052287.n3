@@ -1,0 +1,33 @@
+@prefix cc:    <http://creativecommons.org/ns#> .
+@prefix geonames: <http://www.geonames.org/ontology#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix wgs84_pos: <http://www.w3.org/2003/01/geo/wgs84_pos#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+
+<http://sws.geonames.org/5052287/about.rdf>
+        a                   foaf:Document ;
+        cc:attributionName  "GeoNames" ;
+        cc:attributionURL   <http://sws.geonames.org/5052287/> ;
+        cc:license          <http://creativecommons.org/licenses/by/3.0/> ;
+        dcterms:created     "2006-01-15"^^xsd:date ;
+        foaf:primaryTopic   <http://sws.geonames.org/5052287/> .
+
+<http://sws.geonames.org/5052287>
+        a                        geonames:Feature ;
+        rdfs:isDefinedBy         <http://sws.geonames.org/5052287/about.rdf> ;
+        geonames:countryCode     "US" ;
+        geonames:featureClass    geonames:L ;
+        geonames:featureCode     geonames:L.PRK ;
+        geonames:locationMap     <http://www.geonames.org/5052287/wescott-station-park.html> ;
+        geonames:name            "Wescott Station Park" ;
+        geonames:nearbyFeatures  <http://sws.geonames.org/5052287/nearby.rdf> ;
+        geonames:parentADM1      <http://sws.geonames.org/5037779/> ;
+        geonames:parentADM2      <http://sws.geonames.org/5023752/> ;
+        geonames:parentCountry   <http://sws.geonames.org/6252001/> ;
+        geonames:parentFeature   <http://sws.geonames.org/5023752/> ;
+        wgs84_pos:alt            "270"^^xsd:float ;
+        wgs84_pos:lat            "44.82469"^^xsd:float ;
+        wgs84_pos:long           "-93.11883"^^xsd:float .

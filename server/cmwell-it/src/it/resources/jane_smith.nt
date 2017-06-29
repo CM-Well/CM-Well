@@ -1,0 +1,3 @@
+<http://example.org/JaneSmith> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2006/vcard/ns#Individual> .
+<http://example.org/JaneSmith> <http://www.w3.org/2006/vcard/ns#GENDER> "Female" .
+<http://example.org/JaneSmith> <http://www.w3.org/2006/vcard/ns#FN> "Jane Smith" .

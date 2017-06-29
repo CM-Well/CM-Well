@@ -1,0 +1,8 @@
+<rdf:RDF
+  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  xmlns:J.0="http://zzz.me/2014/ZzZzz/2014-06-24#" >
+  <J.0:Individual rdf:about="http://example.org/hochgi">
+    <J.0:FN>G H</J.0:FN>
+    <J.0:GENDER>Male</J.0:GENDER>
+  </J.0:Individual>
+</rdf:RDF>

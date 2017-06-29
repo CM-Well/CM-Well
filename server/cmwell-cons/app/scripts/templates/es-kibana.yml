@@ -1,0 +1,36 @@
+###################################################
+# THIS IS NOT RELATED TO CMWELL DO NOT TOUCH THIS #
+###################################################
+
+cluster.name: {{clustername}}
+node.name: {{nodename}}
+
+http.cors.enabled: true
+
+path:
+    data: {{root_dir}}/data/{{dir}}
+    logs: {{root_dir}}/log/{{dir}}
+
+gateway:
+    recover_after_nodes: 0
+    recover_after_time: 5m
+    expected_nodes: 1
+
+index.compound_format : true
+index.refresh_interval : 10s
+index.term_index_interval: 128
+
+index.merge.policy.merge_factor: 30
+
+index.merge.policy.min_merge_size: 16m
+index.translog.flush_threshold_ops: 20000
+
+discovery.zen.ping.multicast:
+  enabled: false
+discovery.zen.ping.timeout: 20s
+
+action.auto_create_index: {{auto_create_index}}
+
+http.port: 9210
+
+transport.tcp.port: 9310

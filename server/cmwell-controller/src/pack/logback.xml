@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configuration>
+    <jmxConfigurator />
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/application.log</file>
+        <append>true</append>
+        <encoder>
+            <pattern>%date{ISO8601} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+            <fileNamePattern>logs/application.log.%i</fileNamePattern>
+            <maxIndex>21</maxIndex>
+        </rollingPolicy>
+        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+            <maxFileSize>100MB</maxFileSize>
+        </triggeringPolicy>
+    </appender>
+
+    <appender name="AkkaFILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/akka.log</file>
+        <append>true</append>
+        <encoder>
+            <pattern>%date{ISO8601} [%thread %X{sourceThread}] %-5level %logger{36} %X{sourceActorSystem} %X{akkaSource} - %msg%n</pattern>
+        </encoder>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+            <fileNamePattern>logs/akka.log.%i</fileNamePattern>
+            <maxIndex>21</maxIndex>
+        </rollingPolicy>
+        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+            <maxFileSize>100MB</maxFileSize>
+        </triggeringPolicy>
+    </appender>
+
+    <appender name="DC_RED_LOG" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/red.log</file>
+        <append>true</append>
+        <encoder>
+            <pattern>%date{ISO8601} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+            <fileNamePattern>logs/red.log.%i</fileNamePattern>
+            <maxIndex>21</maxIndex>
+        </rollingPolicy>
+        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+            <maxFileSize>10MB</maxFileSize>
+        </triggeringPolicy>
+    </appender>
+
+    <appender name="DC_YELLOW_LOG" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/yellow.log</file>
+        <append>true</append>
+        <encoder>
+            <pattern>%date{ISO8601} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+            <fileNamePattern>logs/yellow.log.%i</fileNamePattern>
+            <maxIndex>21</maxIndex>
+        </rollingPolicy>
+        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+            <maxFileSize>10MB</maxFileSize>
+        </triggeringPolicy>
+    </appender>
+
+    <appender name="CLUSTER_STATE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/cluster_state.log</file>
+        <append>true</append>
+        <encoder>
+            <pattern>%d TKD [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+            <fileNamePattern>logs/cluster_state.log.%i</fileNamePattern>
+            <maxIndex>21</maxIndex>
+        </rollingPolicy>
+        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+            <maxFileSize>10000000</maxFileSize>
+        </triggeringPolicy>
+    </appender>
+
+    <appender name="ALERTS" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/alerts.log</file>
+        <append>true</append>
+        <encoder>
+            <pattern>%msg%n</pattern>
+        </encoder>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+            <fileNamePattern>logs/alerts.log.%i</fileNamePattern>
+            <maxIndex>21</maxIndex>
+        </rollingPolicy>
+        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+            <maxFileSize>10000000</maxFileSize>
+        </triggeringPolicy>
+    </appender>
+
+    <logger name="alerts" level="INFO" additivity="false">
+        <appender-ref ref="ALERTS" />
+    </logger>
+
+    <logger name="cluster_state" level="INFO" additivity="false">
+        <appender-ref ref="CLUSTER_STATE" />
+    </logger>
+
+    <logger name="dc_red_log" level="DEBUG" additivity="false">
+        <appender-ref ref="DC_RED_LOG" />
+    </logger>
+
+    <logger name="dc_yellow_log" level="DEBUG" additivity="false">
+        <appender-ref ref="DC_YELLOW_LOG" />
+    </logger>
+
+    <!-- setting akka logger special properties. e.g. set it to debug regardless of the other components-->
+    <logger name="akka" level="INFO" additivity="false">
+        <appender-ref ref="FILE" />
+        <appender-ref ref="AkkaFILE" />
+    </logger>
+
+    <root level="${log.level:-DEBUG}">
+        <appender-ref ref="FILE" />
+    </root>
+</configuration>

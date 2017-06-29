@@ -1,0 +1,34 @@
+@prefix cc:    <http://creativecommons.org/ns#> .
+@prefix geonames: <http://www.geonames.org/ontology#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix wgs84_pos: <http://www.w3.org/2003/01/geo/wgs84_pos#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+
+<http://sws.geonames.org/6468007/about.rdf>
+        a                   foaf:Document ;
+        cc:attributionName  "GeoNames" ;
+        cc:attributionURL   <http://sws.geonames.org/6468007/> ;
+        cc:license          <http://creativecommons.org/licenses/by/3.0/> ;
+        dcterms:created     "2007-04-25"^^xsd:date ;
+        dcterms:modified    "2010-05-24"^^xsd:date ;
+        foaf:primaryTopic   <http://sws.geonames.org/6468007/> .
+
+<http://sws.geonames.org/6468007>
+        a                        geonames:Feature ;
+        rdfs:isDefinedBy         <http://sws.geonames.org/6468007/about.rdf> ;
+        geonames:countryCode     "GB" ;
+        geonames:featureClass    geonames:S ;
+        geonames:featureCode     geonames:S.HTL ;
+        geonames:locationMap     <http://www.geonames.org/6468007/hoxton.html> ;
+        geonames:name            "Hoxton" ;
+        geonames:nearbyFeatures  <http://sws.geonames.org/6468007/nearby.rdf> ;
+        geonames:parentADM1      <http://sws.geonames.org/6269131/> ;
+        geonames:parentADM2      <http://sws.geonames.org/2648110/> ;
+        geonames:parentADM3      <http://sws.geonames.org/3333148/> ;
+        geonames:parentCountry   <http://sws.geonames.org/2635167/> ;
+        geonames:parentFeature   <http://sws.geonames.org/3333148/> ;
+        wgs84_pos:lat            "51.5254"^^xsd:float ;
+        wgs84_pos:long           "-0.0827"^^xsd:float .

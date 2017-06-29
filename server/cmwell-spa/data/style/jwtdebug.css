@@ -1,0 +1,26 @@
+.jwt-debug {
+    margin: 20px;
+}
+
+.jwt-debug input {
+    margin: 40px 0 70px 0;
+    font-family: monospace;
+    font-size: small;
+    width: 980px;
+}
+
+.jwt-debug pre {
+    width: 500px;
+    min-height: 32px;
+}
+
+.jwt-debug .watermark-title {
+    position: relative;
+    top: -32px;
+    font-style: italic;
+    color: #AFAFAF;
+    width: 20px;
+    text-align: right;
+    left: 444px;
+    width: 70px;
+}

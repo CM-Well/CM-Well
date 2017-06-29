@@ -1,0 +1,25 @@
+import scala.language.postfixOps
+
+val locParam = System.getProperties.getProperty("location")
+val location = if(locParam == null || locParam == "") s"""${System.getenv("HOME")}/app""" else locParam
+val useAuthorization = false
+val dataDirs = DataDirs(
+                            casDataDirs = List(s"$location/cm-well-data/cas"),
+                            casCommitLogDirs = List(s"$location/cm-well-data/ccl") ,
+                            esDataDirs = List(s"$location/cm-well-data/es"),
+                            tlogDataDirs = List(s"$location/cm-well-data/tlog"),
+                            kafkaDataDir = s"$location/cm-well-data/kafka",
+                            zookeeperDataDir = s"$location/cm-well-data/zookeeper" ,
+                            logsDataDir = s"$location/cm-well-data/log"
+                        )
+
+val pe = LocalHost(dataCenter = "lh",
+                   dataDirs = dataDirs,
+                   instDirs = InstDirs(s"$location/cm-well", s"$location"),
+                   useAuthorization = useAuthorization,
+                   withElk = false,
+		   newBg = true,
+		   oldBg = false,
+		   nbg = true)
+
+pe.mappingFile = "mapping-pe.json";

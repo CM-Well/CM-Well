@@ -1,0 +1,36 @@
+@prefix geonames: <http://www.geonames.org/ontology#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix wgs84_pos: <http://www.w3.org/2003/01/geo/wgs84_pos#> .
+@prefix o:     <http://sws.geonames.org/293918/> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+@prefix cc:    <http://creativecommons.org/ns#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+o:      a                          geonames:Feature ;
+        rdfs:isDefinedBy           <http://sws.geonames.org/293918/about.rdf> ;
+        rdfs:seeAlso               <http://dbpedia.org/resource/Petah_Tikva> ;
+        geonames:alternateName     "Petach Tikva"@en , "Petah Tikwah"@en , "Pethah Tiqvā" , "Petaẖ Tikva" , "פתח תקוה"@he , "Petaẖ Tiqwa" , "Tigrah" , "Petah Tikva"@en , "Mulebbis" ;
+        geonames:countryCode       "IL" ;
+        geonames:featureClass      geonames:P ;
+        geonames:featureCode       geonames:P.PPL ;
+        geonames:locationMap       <http://www.geonames.org/293918/petah-tiqwa.html> ;
+        geonames:name              "Petah Tikva" ;
+        geonames:nearbyFeatures    <http://sws.geonames.org/293918/nearby.rdf> ;
+        geonames:parentADM1        <http://sws.geonames.org/294904/> ;
+        geonames:parentCountry     <http://sws.geonames.org/294640/> ;
+        geonames:parentFeature     <http://sws.geonames.org/294904/> ;
+        geonames:population        "200000"^^xsd:integer ;
+        geonames:wikipediaArticle  <http://en.wikipedia.org/wiki/Petah_Tikva> ;
+        wgs84_pos:lat              "32.08707"^^xsd:float ;
+        wgs84_pos:long             "34.88747"^^xsd:float .
+
+
+o:about.rdf  a              foaf:Document ;
+        cc:attributionName  "GeoNames" ;
+        cc:attributionURL   o: ;
+        cc:license          <http://creativecommons.org/licenses/by/3.0/> ;
+        dcterms:created     "2006-01-15"^^xsd:date ;
+        dcterms:modified    "2014-03-02"^^xsd:date ;
+        foaf:primaryTopic   o: .

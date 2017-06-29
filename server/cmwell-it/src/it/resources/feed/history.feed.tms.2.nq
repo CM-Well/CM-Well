@@ -1,0 +1,30 @@
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/DATE> "2015-10-15"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/MetaCodes.rcscode> "G:K" .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://vgilad:9000/meta/sys#mimeType> "text/plain; utf-8" .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/MetaCodes.rcscode> "G:1" .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/Codes> "CNRA" .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://vgilad:9000/meta/sys#lastModified> "2015-10-15T13:58:06.350Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/Codes> "BSE" .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/MetaCodes.rcscode> "BL:11" .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/Codes> "CNR" .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/MetaCodes.rcscode> "G:5B" .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://vgilad:9000/meta/sys#type> "FileInfoton" .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/Urgency> "3"^^<http://www.w3.org/2001/XMLSchema#int> .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/MetaCodes.rcscode> "B:183" .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/MetaCodes.rcscode> "R:JAPR.BO" .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://vgilad:9000/meta/sys#data> " Shareholder Category/Shareholder Name                                        No of Shares  ShareHoldings % Date         \n == Promoters and Promoter Group ==                                                                                         \n Jaiprakash Associates Ltd                                                      1783000600            60.69 30 Sep 2015  \n Jaypee Infra Ventures (A Private Limited Company with Unlimited Liability)       85647637             2.92              \n Total                                                                          1868648237            63.60              \n == Pesons holding more than 1% ==                                                                                          \n HDFC Trustee Company Ltd - HDFC Equity Fund                                      55540347             1.89 30 Sep 2015  \n Baytree Investments (Mauritius PTE Ltd)                                          33593800             1.14              \n BNP Paribas Arbitrage                                                            47258060             1.61              \n Naresh Chander Talwar Ravinder Mohan Chadha (IVPL Trust)                        344076923            11.71              \n Jaypee Development Corporation Ltd                                               40000000             1.36              \n Total                                                                           520469130            17.72              \n\n\n" .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/MetaCodes.rcscode> "M:Z" .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/MetaCodes.rcscode> "R:JAPR.NS" .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/MetaCodes.rcscode> "B:181" .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://vgilad:9000/meta/sys#dataCenter> "vg" .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://vgilad:9000/meta/sys#indexTime> "1444917487266"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/MetaCodes.rcscode> "P:5000062099" .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://vgilad:9000/meta/sys#length> "1472"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/MetaCodes.product> "BSE" .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/PNAC> "nBSE9yjfBZ" .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/Feed> "UCDP" .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/MetaCodes.product> "CNR" .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/MetaCodes.product> "CNRA" .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/Source> "BSE" .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/Title> "Jaiprakash Hydro-Power Ltd Jul15-Sep15 Shareholding Pattern&lt;JAPR.BO&gt;" .
+<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/MetaCodes.rcscode> "B:2" .

@@ -1,0 +1,38 @@
+#!/bin/bash
+
+function formattedDate() {
+  echo \#$(date +"%Y-%m-%d %H:%M:%S,%3N" -u)
+}
+
+COMMAND_LINE=$@
+COUNTER=0
+
+echo $(formattedDate) starting cmwell process
+
+while [ $COUNTER -lt 50 ]; do
+    T0=`date +%s`
+    $COMMAND_LINE
+    RET=$?
+    T1=`date +%s`
+
+
+
+    if [ $RET -eq 0 ] || [ $RET -eq 143 ] || [ $RET -eq 137 ] ; then
+        echo $(formattedDate) legit exit $RET the process won\'t be restarted automatically >&2
+        exit $RET
+    fi
+
+    let T3=($T1-$T0)
+
+
+
+    if [ $T3 -gt 60 ] ; then
+        echo $(formattedDate) going to restart the process >&2
+        COUNTER=0
+    else
+        echo $(formattedDate) failed to stable start restart $COUNTER >&2
+        let COUNTER=($COUNTER+1)
+    fi
+    sleep 5
+    echo $(formattedDate) restarting the process \(the previous exit code was $RET\) >&2
+done

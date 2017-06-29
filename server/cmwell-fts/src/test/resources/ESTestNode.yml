@@ -1,0 +1,8 @@
+cluster:
+   name: fts_test_node
+node:
+   local: true
+   data: true
+path:
+   logs: ./target/test-node/log
+   data: ./target/test-node/data

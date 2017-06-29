@@ -1,0 +1,144 @@
+/**
+  * Copyright 2015 Thomson Reuters
+  *
+  * Licensed under the Apache License, Version 2.0 (the “License”); you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  *
+  *   http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+  * an “AS IS” BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  *
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+
+
+package cmwell.common
+
+import cmwell.common.formats.JsonSerializer
+import cmwell.domain.{FieldValue, Infoton}
+import org.joda.time.DateTime
+
+
+/**
+ * Created with IntelliJ IDEA.
+ * User: markz
+ * Date: 12/17/12
+ * Time: 5:58 PM
+ *
+ */
+
+sealed abstract class Command
+
+case object HeartbitCommand extends Command
+
+sealed abstract class SingleCommand extends Command {
+  def path: String
+  def trackingID: Option[String]
+  def prevUUID: Option[String]
+  def lastModified: DateTime
+}
+
+case class CommandRef(ref:String) extends Command
+
+case class WriteCommand(infoton: Infoton,
+                        trackingID: Option[String] = None,
+                        prevUUID: Option[String] = None) extends SingleCommand {
+  override def path = infoton.path
+
+  override def lastModified: DateTime = infoton.lastModified
+}
+case class DeleteAttributesCommand(path: String,
+                                   fields: Map[String, Set[FieldValue]],
+                                   lastModified: DateTime,
+                                   trackingID: Option[String] = None,
+                        prevUUID: Option[String] = None) extends SingleCommand
+case class DeletePathCommand(path: String,
+                             lastModified: DateTime = new DateTime(),
+                             trackingID: Option[String] = None,
+                        prevUUID: Option[String] = None) extends SingleCommand
+// ( Option[Set[FieldValue]] , Set[FieldValue] )
+// 1 .when getting None delete all values of specific field
+// 2. when getting a empty Set we just add the new fields without delete
+case class UpdatePathCommand(path: String,
+                             deleteFields: Map[String,Set[FieldValue]],
+                             updateFields: Map[ String,Set[FieldValue]],
+                             lastModified: DateTime,
+                             trackingID: Option[String] = None,
+                        prevUUID: Option[String] = None) extends SingleCommand
+
+case class OverwriteCommand(infoton: Infoton,
+                            trackingID: Option[String] = None) extends SingleCommand {
+//  require(infoton.indexTime.isDefined && infoton.dc != SettingsHelper.dataCenter,
+//    s"OverwriteCommands must be used only for infotons from other data centers [${infoton.indexTime}] && ${infoton.dc} != ${SettingsHelper.dataCenter}.\ninfoton: ${new String(JsonSerializer.encodeInfoton(infoton),"UTF-8")}")
+
+  override def prevUUID: Option[String] = None
+  override def path = infoton.path
+
+  override def lastModified: DateTime = infoton.lastModified
+}
+
+sealed trait IndexerCommand extends Command  {
+  def previousInfoton : Option[(String,Long)]
+}
+
+case class StatusTracking(tid:String, numOfParts:Int)
+
+sealed trait IndexCommand extends Command {
+  def path: String
+  def trackingIDs: Seq[StatusTracking]
+  def uuid:String
+  def indexName:String
+}
+
+/**
+  * A command for the Indexer to index a new infoton
+  * @param uuid of the new infoton
+  * @param path infoton's path (used for kafka partitioning)
+  * @param isCurrent whether this is the latest
+  */
+case class IndexNewInfotonCommand(uuid: String,
+                                  isCurrent: Boolean,
+                                  path: String,
+                                  infotonOpt: Option[Infoton] = None,
+                                  indexName:String,
+                                  trackingIDs: Seq[StatusTracking] = Nil) extends IndexCommand
+
+/**
+  * A commnad for the Indexer to update existing infoton
+  * @param uuid of the existing infoton
+  * @param weight infoton's weight
+  * @param path infoton's path (used for kafka partitioning
+  */
+case class IndexExistingInfotonCommand(uuid: String,
+                                       weight: Long,
+                                       path: String,
+                                       indexName: String,
+                                       trackingIDs: Seq[StatusTracking] = Nil) extends IndexCommand
+
+case class BulkCommand(commands: List[Command]) extends Command
+
+case class MergedInfotonCommand(previousInfoton: Option[(String,Long)],
+                                currentInfoton: (String,Long),
+                                skipIndexTime:Boolean = false) extends IndexerCommand
+//1. no previous, since no need for merge, so no need for IMP to read previous
+//2. currentInfoton is option, since it can be DeletedInfoton, which in that case we won't add it to current, and it would be a part of historicInfotons
+case class OverwrittenInfotonsCommand(previousInfoton: Option[(String,Long)],
+                                      currentInfoton: Option[(String,Long,Long)],
+                                      historicInfotons: Vector[(String,Long,Long)]) extends IndexerCommand
+
+
+object CommandSerializer {
+
+  def encode(cmd : Command) : Array[Byte] = {
+    JsonSerializer.encodeCommand(cmd)
+  }
+
+  def decode(payload : Array[Byte]) : Command = {
+    JsonSerializer.decodeCommand(payload)
+  }
+
+}
+
+

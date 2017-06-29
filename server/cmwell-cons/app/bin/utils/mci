@@ -1,0 +1,19 @@
+function win {
+beep -f 1000 -l 150
+beep -f 1400 -l 150
+beep -f 1800 -l 150
+beep -f 2200 -l 300
+beep -f 1800 -l 150
+beep -f 2200 -l 500
+}
+
+function lose {
+beep -f 300 -l 400
+beep -f 280 -l 450
+beep -f 260 -l 400
+beep -f 240 -l 450
+beep -f 220 -l 800
+}
+
+mvn clean install && win || lose
+

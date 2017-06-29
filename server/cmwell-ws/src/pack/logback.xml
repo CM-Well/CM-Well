@@ -1,0 +1,87 @@
+<configuration debug="false" scan="true" scanPeriod="30 seconds">
+    <jmxConfigurator />
+    <conversionRule conversionWord="coloredLevel" converterClass="play.api.libs.logback.ColoredLevel" />
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${application.home:-.}/logs/application.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- daily rollover with compression -->
+            <fileNamePattern>${application.home:-.}/logs/application-log-%d{yyyy-MM-dd, UTC}.gz</fileNamePattern>
+            <!-- keep 1 week worth of history -->
+            <maxHistory>7</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date - [%level] - from %logger in %thread %n%message%n%xException%n</pattern>
+            <!--<pattern>%date{ISO8601} [%thread] %-5level %logger{36} - %msg%n</pattern>-->
+        </encoder>
+    </appender>
+
+    <appender name="AsyncFILE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="FILE" />
+    </appender>
+
+
+    <appender name="ACCESS_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${application.home:-.}/logs/access.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- daily rollover with compression -->
+            <fileNamePattern>${application.home:-.}/logs/access-log-%d{yyyy-MM-dd}.gz</fileNamePattern>
+            <!-- keep 1 week worth of history -->
+            <maxHistory>7</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date{yyyy-MM-dd HH:mm:ss ZZZZ} %message%n</pattern>
+            <!-- this quadruples logging throughput -->
+            <immediateFlush>true</immediateFlush>
+        </encoder>
+    </appender>
+
+    <appender name="x-fix" class="ch.qos.logback.core.FileAppender">
+        <file>${application.home:-.}/logs/x-fix.log</file>
+        <append>true</append>
+        <layout class="ch.qos.logback.classic.PatternLayout">
+            <pattern>%d{yyyy-MM-dd HH:mm:ss}, %p, %c, %t, %L, %C{1}, %M %m%n</pattern>
+        </layout>
+    </appender>
+
+    <appender name="CW_APP" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/cw-application.log</file>
+        <append>true</append>
+        <layout class="ch.qos.logback.classic.PatternLayout">
+            <pattern>%d{yyyy-MM-dd HH:mm:ss}, %p, %c, %t, %L, %C{1}, %M %m%n</pattern>
+        </layout>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+            <fileNamePattern>logs/cw-application.log.%i</fileNamePattern>
+            <maxIndex>21</maxIndex>
+        </rollingPolicy>
+        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+            <maxFileSize>10000000</maxFileSize>
+        </triggeringPolicy>
+    </appender>
+
+    <logger name="cmwell.xfix" level="INFO" additivity="true">
+        <appender-ref ref="x-fix"/>
+    </logger>
+
+    <logger name="access" level="INFO" additivity="false">
+        <appender-ref ref="ACCESS_FILE" />
+    </logger>
+
+    <logger name="play" level="${log.level:-INFO}" />
+
+    <logger name="application" level="${log.level:-INFO}">
+        <appender-ref ref="FILE" />
+    </logger>
+
+    <logger name="cmwell.cw.app" level="${log.level:-DEBUG}" additivity="true">
+    <appender-ref ref="CW_APP" />
+    </logger>
+
+    <root level="${log.level:-INFO}">
+        <level value="${log.level:-INFO}"/>
+        <appender-ref ref="STDOUT" />
+        <appender-ref ref="FILE" />
+    </root>
+
+</configuration>

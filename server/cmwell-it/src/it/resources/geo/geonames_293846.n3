@@ -1,0 +1,33 @@
+@prefix cc:    <http://creativecommons.org/ns#> .
+@prefix geonames: <http://www.geonames.org/ontology#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix wgs84_pos: <http://www.w3.org/2003/01/geo/wgs84_pos#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+
+<http://sws.geonames.org/293846>
+        a                        geonames:Feature ;
+        rdfs:isDefinedBy         <http://sws.geonames.org/293846/about.rdf> ;
+        geonames:alternateName   "Qiryat Arye" , "קרית אריה"@he , "Kiryat Arye" , "Kiriat Arieh" ;
+        geonames:countryCode     "IL" ;
+        geonames:featureClass    geonames:P ;
+        geonames:featureCode     geonames:P.PPLX ;
+        geonames:locationMap     <http://www.geonames.org/293846/qiryat-arye.html> ;
+        geonames:name            "Qiryat Arye" ;
+        geonames:nearbyFeatures  <http://sws.geonames.org/293846/nearby.rdf> ;
+        geonames:parentADM1      <http://sws.geonames.org/294904/> ;
+        geonames:parentCountry   <http://sws.geonames.org/294640/> ;
+        geonames:parentFeature   <http://sws.geonames.org/293918/> ;
+        wgs84_pos:lat            "32.09405"^^xsd:float ;
+        wgs84_pos:long           "34.85948"^^xsd:float .
+
+<http://sws.geonames.org/293846/about.rdf>
+        a                   foaf:Document ;
+        cc:attributionName  "GeoNames" ;
+        cc:attributionURL   <http://sws.geonames.org/293846/> ;
+        cc:license          <http://creativecommons.org/licenses/by/3.0/> ;
+        dcterms:created     "2006-01-15"^^xsd:date ;
+        dcterms:modified    "2012-12-05"^^xsd:date ;
+        foaf:primaryTopic   <http://sws.geonames.org/293846/> .

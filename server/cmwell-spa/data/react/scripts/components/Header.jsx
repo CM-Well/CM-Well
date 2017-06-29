@@ -1,0 +1,132 @@
+var { Link, browserHistory } = ReactRouter
+
+class Header extends React.Component {
+    constructor(props) {
+        super(props)
+        this.state = { versionName: '' }
+    }
+
+    componentWillMount() {
+        $.get('/proc/node?format=json').then(procNode => {
+            let data = AppUtils.simpleFieldsProxy(procNode)
+            this.setState({
+                versionName: data['cm-well_version'],
+                releaseName: data['cm-well_release'],
+                versionInfo: `Build Release: ${data['cm-well_release']}\n`+
+                             `Build Version: ${data['cm-well_version']}\n`+ 
+                             `Build Machine: ${data['build_machine']}\n`+
+                             `Build Time: ${data['build_time']}`
+            })
+        })
+    }
+    
+    handleOldUiClick(e) {
+        if(e.shiftKey) localStorage.setItem('old-ui', 1)
+        return true
+    }
+    
+    render() {
+        AppUtils.debug('Header.render')
+        
+        return (
+            <div id="header" className="panel">
+                <Link to="/"><img className="logo" src="/meta/app/react/images/logo-flat-inverted.svg"/></Link>
+                <span className="version-info">{this.state.releaseName}</span>
+                <a href={`${location.pathname}?old-ui`} className="old-ui-link" onClick={this.handleOldUiClick.bind(this)}>Use old UI</a>
+                <a target="_blank" href="/meta/docs/CM-Well.RootTOC.md" className="help-link"><img src="/meta/app/react/images/help-icon.png"/>HELP</a>
+            </div>
+        )
+    }
+}
+
+class SearchBar extends React.Component {
+    constructor(props) {
+        super(props)
+        this.state = {
+            rootFolders: [],
+            term: '',
+            path: location.pathname.substr(1)
+        }
+    }
+    
+    componentWillMount() { //todo change to /?op=stream
+        $.get("/?length=613&format=json").then(resp => 
+           this.setState({rootFolders: resp.children.map(c => c.system.path.substr(1)).filter(p => p!="proc" && p!="meta" && p!="docs").sort()})
+        )
+    }
+    
+    componentWillReceiveProps() {
+        this.setState({path: location.pathname.substr(1)})
+    }
+
+    basicSearch(e) {
+        e.preventDefault()
+        var path = this.state.path
+        var url = `/${path}?op=search&recursive&qp=_all:${this.state.term}`
+        browserHistory.push(url)
+        return false
+    }
+    
+    render() {
+        AppUtils.debug('SearchBar.render')
+        
+        let currentPath = this.props.currentHasChildren && location.pathname.substr(1)
+
+        return (
+            <div className="search-bar panel">
+                <div className="container">
+                    <form className="search-form">
+                        <input type="text" className="search-box" placeholder="Search" onChange={e=>this.setState({term:e.target.value})}/>
+                        <select className="search-where-dropdown" onChange={e=>this.setState({path:e.target.value})} value={this.state.path}>
+                            <option value="" key="/">Search all folders</option>
+                            { currentPath ? <option value={currentPath} key={currentPath}>{currentPath}</option> : null }
+                            { this.state.rootFolders.filter(rf=> rf!=currentPath).map(rf => <option value={rf} key={rf}>{rf}</option>) }
+                        </select>
+                        <button type="submit" className="search-button" onClick={this.basicSearch.bind(this)}>SEARCH</button>
+                    </form>
+                </div>
+            </div>
+        )
+    }
+}
+
+class Breadcrumbs extends React.Component {
+    constructor(props) {
+        super(props)
+    }
+    
+    render() {
+        AppUtils.debug('Breadcrumbs.render')
+
+        let parts = location.pathname === '/' ? [] : location.pathname.substr(1).split('/')
+        
+        let qp = /[\?|&]qp=(.*)/.exec(location.search) || ''
+        if(qp) qp=(qp[1]||'').replace(/_all:/, '') // todo in future when Advanced Search is implemented, replace _all with "All fields", not an empty string. Moreover, split`:` etc.
+        
+        let acc = '', breadcrumbs = []
+        for(var part of parts) {
+            acc = `${acc}/${part}`
+            breadcrumbs.push({ title: part.replace('%23','#'), href: acc })
+        }
+
+        if(qp)
+            breadcrumbs.push({ title: `Search results for "${qp}"` })
+        
+        let sep = <img src='/meta/app/react/images/gt.svg' width="24" height="24" />
+        let rootLevelIcon = <img src='/meta/app/react/images/folder-box.png' width="24" height="24" />
+        let otherLevelsIcon = <img src='/meta/app/react/images/infoton-icon.jpg' width="24" height="24" />
+        let searchIcon = <img className="search-icon" src='/meta/app/react/images/search-icon.svg' width="24" height="24" />
+            
+        return <div className="breadcrumbs">
+                    <Link className="breadcrumb" to="/"><img width="17" height="17" src="/meta/app/react/images/home-button.svg"/></Link>
+                    { breadcrumbs.length ? sep : null }
+                    { AppUtils.addSep(breadcrumbs.map((bc,i) => bc.href ?
+                            <Link className="breadcrumb" to={bc.href}>{ i ? otherLevelsIcon : rootLevelIcon }{bc.title}</Link> :
+                            <span className="breadcrumb">{searchIcon}{bc.title}</span>
+                        ), sep) }
+                </div>
+    }
+}
+
+let exports = { Header, SearchBar, Breadcrumbs }
+define([], () => exports)

@@ -1,0 +1,36 @@
+@prefix cc:    <http://creativecommons.org/ns#> .
+@prefix geonames: <http://www.geonames.org/ontology#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix wgs84_pos: <http://www.w3.org/2003/01/geo/wgs84_pos#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+
+<http://sws.geonames.org/294904/about.rdf>
+        a                   foaf:Document ;
+        cc:attributionName  "GeoNames" ;
+        cc:attributionURL   <http://sws.geonames.org/294904/> ;
+        cc:license          <http://creativecommons.org/licenses/by/3.0/> ;
+        dcterms:created     "2006-01-15"^^xsd:date ;
+        dcterms:modified    "2015-04-26"^^xsd:date ;
+        foaf:primaryTopic   <http://sws.geonames.org/294904/> .
+
+<http://sws.geonames.org/294904>
+        a                          geonames:Feature ;
+        rdfs:isDefinedBy           <http://sws.geonames.org/294904/about.rdf> ;
+        rdfs:seeAlso               <http://dbpedia.org/resource/Central_District_%28Israel%29> ;
+        geonames:alternateName     "Central Region" , "מחוז המרכז"@he , "Meẖoz HaMerkaz"@he , "Central" , "המרכז"@he , "Central District"@en , "Sentral-Israel"@nb , "Sentral-Israel"@no , "Sentral-Israel"@nn ;
+        geonames:childrenFeatures  <http://sws.geonames.org/294904/contains.rdf> ;
+        geonames:countryCode       "IL" ;
+        geonames:featureClass      geonames:A ;
+        geonames:featureCode       geonames:A.ADM1 ;
+        geonames:locationMap       <http://www.geonames.org/294904/central-district.html> ;
+        geonames:name              "Central District" ;
+        geonames:officialName      "HaMerkaz" ;
+        geonames:parentCountry     <http://sws.geonames.org/294640/> ;
+        geonames:parentFeature     <http://sws.geonames.org/294640/> ;
+        geonames:population        "1854900"^^xsd:integer ;
+        geonames:wikipediaArticle  <http://en.wikipedia.org/wiki/Central_District_(Israel)> ;
+        wgs84_pos:lat              "32.08333"^^xsd:float ;
+        wgs84_pos:long             "34.91667"^^xsd:float .

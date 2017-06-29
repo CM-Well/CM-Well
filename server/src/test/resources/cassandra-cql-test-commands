@@ -1,0 +1,2 @@
+CREATE KEYSPACE IF NOT EXISTS data WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor' : 1};CREATE TABLE IF NOT EXISTS data.TLog (PRIMARY KEY (agent , tlog , partition) , agent text,tlog  text,partition text);CREATE TABLE IF NOT EXISTS data.Path (PRIMARY KEY (path),path text,history map <timestamp,text>, last text);CREATE TABLE IF NOT EXISTS data.Infoton (PRIMARY KEY (uuid) , uuid text,fields map <text,text>);
+

@@ -1,0 +1,13 @@
+cluster:
+   name: fts_test_cluster
+
+discovery.zen.ping.multicast:
+   enabled: false
+
+node:
+   local: true
+   data: true
+path:
+   logs: ./target/ftsservice-client-node/log
+   data: ./target/ftsservice-client-node/data
+

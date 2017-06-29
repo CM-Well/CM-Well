@@ -1,0 +1,124 @@
+@prefix tr-person:    <http://www.thomsonreuters.com/person/> .
+@prefix ont:          <http://ont.thomsonreuters.com/> .
+@prefix rdf:          <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix vcard:        <http://www.w3.org/2006/vcard/ns#> .
+@prefix trbc:         <http://permid.org/ontology/trbc/> .
+@prefix skos:         <http://www.w3.org/2004/02/skos/core#> .
+@prefix rdfs:         <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:          <http://www.w3.org/2001/XMLSchema#> .
+@prefix peoplemaster: <http://peoplemaster.schemas.financial.thomsonreuters.com/2010-11-01/> .
+@prefix lbd:          <http://www.thomsonreuters.com/ontologies/lbd/> .
+@prefix Common:       <http://data.schemas.financial.thomsonreuters.com/Common/2009-09-01/> .
+@prefix common:       <http://permid.org/ontology/common/> .
+@prefix owl:          <http://www.w3.org/2002/07/owl#> .
+@prefix mdaas:        <http://ont.thomsonreuters.com/mdaas/> .
+@prefix o:            <http://example.org/data.thomsonreuters.com/> .
+
+o:2-ffffeeeeddddccccbbbbaaaa9999888877776666555544443333222211110000
+        a                   peoplemaster:Email ;
+        rdf:value           "jack_d@some.made.up.domain.com" ;
+        ont:effectiveFrom   "1753-01-01T00:00:00Z"^^xsd:dateTime ;
+        ont:effectiveTo     "9999-12-31T00:00:00Z"^^xsd:dateTime ;
+        peoplemaster:order  "1"^^xsd:int .
+    
+o:4-3141592653589793238462643383279502884197169399375105820974944592
+        a                 lbd:Admittance ;
+        lbd:licenseName   "Lynchburg, Tennessee, 1875" .
+
+o:5-XYZ0123456789  a          tr-person:Person ;
+        lbd:admittedIn        o:4-3141592653589793238462643383279502884197169399375105820974944592 ;
+        lbd:areaOfPractice    "Jack of all trades, Master of none." ;
+        lbd:expertise         "Alcohol" ;
+        lbd:firstName         "Jack" ;
+        lbd:lastName          "Daniels" ;
+        tr-person:fullName    "Jack Daniels" ;
+        mdaas:CommonName      "Jack Daniel's Tennessee Whiskey" ;
+        vcard:hasAddress      o:4-1111111111111111111111111111111111111111111111111111111111111111 .
+        
+o:4-1111111111111111111111111111111111111111111111111111111111111111
+        a                      vcard:Address ;
+        common:hasEmail        "jack_d@some.made.up.domain.com" ;
+        common:hasPhoneNumber  "+1 931-759-7394" ;
+        vcard:country-name     "USA" ;
+        vcard:hasURL           "http://www.jackdaniels.com"^^xsd:anyURI ;
+        vcard:street-address   "295 Main St, Lynchburg, TN 37352, United States" .        
+        
+o:1-12345678910
+        a                                                       peoplemaster:PersonLegalProfessional ;
+        Common:effectiveFrom                                    "1984-01-01T00:00:00.000Z"^^xsd:dateTime ;
+        Common:effectiveTo                                      "2084-01-01T00:00:00.000Z"^^xsd:dateTime ;
+        ont:effectiveFrom                                       "1984-01-01T00:00:00.000Z"^^xsd:dateTime ;
+        ont:effectiveTo                                         "2084-01-01T00:00:00.000Z"^^xsd:dateTime ;
+        peoplemaster:email                                      o:2-ffffeeeeddddccccbbbbaaaa9999888877776666555544443333222211110000 ;
+        peoplemaster:nil                                        "true" ;
+        peoplemaster:personAddress                              o:2-8888888888888888888888888888888888888888888888888888888888888888 ;
+        peoplemaster:url                                        o:2-2222222222222222222222222222222222222222222222222222222222222222 .
+
+
+o:2-8888888888888888888888888888888888888888888888888888888888888888
+        a                               peoplemaster:PersonAddress ;
+        Common:languageId               "505062" ;
+        ont:effectiveFrom               "1753-01-01T00:00:00Z"^^xsd:dateTime ;
+        ont:effectiveTo                 "9999-12-31T00:00:00Z"^^xsd:dateTime ;
+        peoplemaster:order              "1"^^xsd:int ;
+        peoplemaster:personAddressLine1 "295 Main St" ;
+        peoplemaster:personCity         "Lynchburg" ;
+        peoplemaster:personCountry      "USA" ;
+        owl:sameAs                      o:4-1111111111111111111111111111111111111111111111111111111111111111 .
+        
+o:2-2222222222222222222222222222222222222222222222222222222222222222
+        a                   peoplemaster:Url ;
+        rdf:value           "http://www.jackdaniels.com"^^xsd:anyURI ;
+        ont:effectiveFrom   "1753-01-01T00:00:00Z"^^xsd:dateTime ;
+        ont:effectiveTo     "9999-12-31T00:00:00Z"^^xsd:dateTime ;
+        peoplemaster:order  "1"^^xsd:int .
+
+o:1-4294951472  a                       trbc:Activity ;
+        rdfs:comment                    "The Distilleries activity consists of companies engaged in manufacturing distilled alcoholic beverages such as vodka, brandy, whisky, gin, and sake."@en ;
+        rdfs:label                      "Distilleries"@en ;
+        trbc:BusinessClassificationCode "5410102012" ;
+        skos:broader                    o:1-4294952891 .
+
+o:1-4294952891  a                       trbc:Industry ;
+        rdfs:comment                    "Manufacturers of wine, champagne and sparkling wine, as well as distilled alcoholic beverages such as vodka, brandy, whisky, gin, sake and other malt and blended alcoholic beverages."@en ;
+        rdfs:label                      "Distillers & Wineries"@en ;
+        trbc:BusinessClassificationCode "54101020" ;
+        skos:broader                    o:1-4294952893 .
+
+
+o:1-4294952893  a                       trbc:IndustryGroup ;
+        rdfs:comment                    "Brewers, distillers, producers and distributors of beer and malt liquor, wine and distilled liquors, as well as non-alcoholic beverages including water, fruit drinks, sodas and other flavored beverages."@en ;
+        rdfs:label                      "Beverages"@en ;
+        trbc:BusinessClassificationCode "541010" ;
+        skos:broader                    o:1-4294952894 .
+
+o:1-4294952894  a                       trbc:BusinessSector ;
+        rdfs:comment                    "Producers and processors of food, beverages and tobacco. Includes operators of farms and fisheries, as well as brewers, distillers and distributors, and packagers of Food & Beverages."@en ;
+        rdfs:label                      "Food & Beverages"@en ;
+        trbc:BusinessClassificationCode "5410" ;
+        skos:broader                    o:1-4294952895 .
+        
+
+o:1-4294952895  a                       trbc:EconomicSector ;
+        rdfs:comment                    "Producers, processors and retailers of food, tobacco and beverages, and manufacturers of household and personal products, as well as providers of personal services."@en ;
+        rdfs:label                      "Consumer Non-Cyclicals"@en ;
+        trbc:BusinessClassificationCode "54" .
+        
+o:1-4294951474  a                       trbc:Activity ;
+        rdfs:comment                    "The Other Distillers & Wineries activity consists of companies involved in at least two activities under the Distillers & Wineries Industry, none being dominant: manufacturing wine, champagne and sparkling wine, as well as distilled alcoholic beverages such as vodka, brandy, whisky, gin, sake and other malt and blended alcoholic beverages."@en ;
+        rdfs:label                      "Other Distillers & Wineries"@en ;
+        trbc:BusinessClassificationCode "5410102010" ;
+        skos:broader                    o:1-4294952891 .
+        
+o:1-4294951471  a                       trbc:Activity ;
+        rdfs:comment                    "The Malt Producers activity consists of companies engaged in manufacturing malts. Malt is mostly used as the basic raw material in beer and whisky. Grain malt is also used in food products, which include breakfast cereals, confectionary, baked goods, malt vinegar and malt extracts which are a primary ingredients many food and soft drink product."@en ;
+        rdfs:label                      "Malt Producers"@en ;
+        trbc:BusinessClassificationCode "5410102013" ;
+        skos:broader                    o:1-4294952891 .
+
+o:1-4294951473  a                       trbc:Activity ;
+        rdfs:comment                    "The Wineries activity consists of companies engaged in manufacturing, wine, champagne and sparkling wine."@en ;
+        rdfs:label                      "Wineries"@en ;
+        trbc:BusinessClassificationCode "5410102011" ;
+        skos:broader                    o:1-4294952891 .
+        

@@ -1,0 +1,17 @@
+cluster.name: {{clustername}}
+node.master: false
+node.data: false
+path:
+  data: {{root_dir}}/data/{{dir}}
+  logs: {{root_dir}}/log/{{dir}}
+
+discovery.zen.ping.multicast:
+  enabled: false
+
+discovery.zen.ping.unicast:
+  hosts: {{hosts}}
+
+discovery.zen.ping.timeout: 20s
+
+transport.tcp.connect_timeout: 10s
+

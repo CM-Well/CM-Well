@@ -1,0 +1,12 @@
+<rdf:RDF
+	xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+	xmlns:vcard="http://www.w3.org/2001/old-vcard-rdf/3.0#" >
+	<rdf:Description rdf:nodeID="A0">
+        <vcard:Family>P</vcard:Family>
+        <vcard:Given>V</vcard:Given>
+    </rdf:Description>
+    <rdf:Description rdf:about="http://clearforest.com/pe/VP">
+        <vcard:N rdf:nodeID="A0"/>
+        <vcard:FN>V P</vcard:FN>
+    </rdf:Description>
+</rdf:RDF>

@@ -1,0 +1,109 @@
+.sp {
+    margin-left: 15px;
+}
+
+.sp h1 {
+    color: rgb(223, 162, 51);
+    font-size: 24px;
+    border-bottom: 2px solid beige;
+    width: 613px;
+}
+
+.sp .pane {
+    margin-right: 14px;
+    width: 890px;
+    float: left;
+}
+
+.sp textarea {
+    width: 100%;
+    overflow: scroll;
+    height: 216px;
+    margin-bottom: 14px;
+}
+
+.sp .results textarea {
+    font-family: monospace;
+    background: white;
+    height: 446px;
+    width: 890px;
+}
+
+.sp button {
+    float: right;
+    font-weight: bold;
+}
+
+.sp button[disabled] {
+    color: grey;
+}
+
+.sp .error-msg {
+    box-shadow: 5px 5px 15px 0px #888;
+    top: 125px;
+    position: absolute;
+    text-align: center;
+    padding-top: 33px;
+    font-size: 32px;
+    color: maroon;
+    background: #ccc;
+    opacity: 0.75;
+    width: 420px;
+    height: 77px;
+    left: 55px;
+}
+
+#rdf-visual-graph {
+    clear: both;
+}
+
+.controls {
+    padding: 0 0 0 30px;
+}
+
+.quads-buttons button {
+    margin-right: 3px;
+    background: #FFB662;
+    border: 1px solid rgb(103, 103, 103);
+    box-shadow: 1px 1px 1px;
+}
+
+.node-data {
+    font-size: 12px;
+    font-family: Helvetica;
+}
+
+.node-data .name {
+    display: block;
+    font-size: 15px;
+    text-align: center;
+    padding: 0 12px;
+}
+
+.node-data .fields {
+    display: none;
+    padding: 5px;
+}
+
+#query {
+    height: auto;
+}
+
+.adddn {
+    margin-left: 20px;
+}
+
+.adddn #dns {
+    width: 417px;
+    height: 132px;
+    font-family: monospace;
+}
+
+.adddn button {
+    width: 64px;
+    font-weight: bold;
+}
+
+.adddn button[disabled="disabled"] {
+    color: grey;
+}
