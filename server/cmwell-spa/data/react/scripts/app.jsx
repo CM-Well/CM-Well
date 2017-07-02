@@ -6,10 +6,6 @@ let { Router, Route, Link, browserHistory } = ReactRouter
 let { Header, SearchBar, Breadcrumbs, HomePage, InfotonsList, Infoton, Footer } = Components
 
 class App extends React.Component {
-    
-    // TODO Common ajaxes should be in App.state, propageted to children by props.
-    // TODO e.g. /?op=stream should be <SearchBar rootFolders={this.state.rootFolders}/>
-    
     constructor(props) {
         super(props)
         this.state = {
@@ -23,6 +19,10 @@ class App extends React.Component {
     componentDidMount() {
         $('#content').show()
         $('.spinner-container, #loading-status').fadeOut(250)
+        
+        // fetching common meta-data
+        AppUtils.fetchDisplayNames(data => this.setState({ displayNames: data }))
+        AppUtils.cachedGet('/?op=stream').then(paths => this.setState({ rootFolders: paths.split`\n` }))
     }
     
     render() {
@@ -32,12 +32,32 @@ class App extends React.Component {
         
         return (
             <div id="app-container">
+                
                 <Header/>
-                <SearchBar currentHasChildren={this.state.currentHasChildren} />
+                
+                <SearchBar
+                    currentHasChildren={this.state.currentHasChildren}
+                    rootFolders={this.state.rootFolders}
+                />
+                
                 <Breadcrumbs/>
-                <InfotonsList location={this.props.location} isRoot={true} hasChildrenCb={this.toggleState.bind(this, 'currentHasChildren')} />
-                <Infoton location={this.props.location} infoton={injectedInfoton} />
+                
+                <InfotonsList
+                    location={this.props.location}
+                    isRoot={true}
+                    hasChildrenCb={this.toggleState.bind(this, 'currentHasChildren')}
+                    displayNames={this.state.displayNames}
+                />
+                
+                <Infoton
+                    location={this.props.location}
+                    infoton={injectedInfoton}
+                    rootFolders={this.state.rootFolders}
+                    displayNames={this.state.displayNames}
+                />
+                
                 <Footer/>
+                
             </div>
         )
     }

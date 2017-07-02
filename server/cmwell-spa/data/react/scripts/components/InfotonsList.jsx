@@ -64,7 +64,7 @@ class InfotonsList extends React.Component {
           }
           
           let jsonls = (jqXhr && jqXhr.status === 204) ? '' : (jqXhr ? jqXhr.responseText : resp.responseText).split`\n`
-          let newChunk = _(jsonls).compact().map(jsonl => new Infoton(JSON.fromJSONL(JSON.parse(jsonl)), this.state.displayNames))
+          let newChunk = _(jsonls).compact().map(jsonl => new Infoton(JSON.fromJSONL(JSON.parse(jsonl)), this.props.displayNames))
 
           let isEmpty = newChunk.length + this.state.infotons.length === 0
           this.props.hasChildrenCb && this.props.hasChildrenCb(isEmpty)
@@ -89,15 +89,6 @@ class InfotonsList extends React.Component {
       this.doFetch()
   }
 
-  componentWillMount() {
-    AppUtils.fetchDisplayNames(data => {
-        this.setState({
-            displayNames: data,
-            infotons: _(this.state.infotons).map(i => new Infoton(i, data))
-        })
-    })
-  }
-    
   handleScroll(node) {
     this.setState({ isOnTop: !node.scrollTop })
   }

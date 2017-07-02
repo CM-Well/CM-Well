@@ -54,15 +54,11 @@ class Infoton extends React.Component {
     constructor(props) {
         super(props)
         this.state = {
-            rootFolders: [],
             errMsg: null
         }
     }
 
     componentWillMount() {
-        AppUtils.fetchDisplayNames(data => this.setState({ displayNames: data }))
-        AppUtils.cachedGet('/?op=stream').then(paths => this.setState({ rootFolders: paths.split`\n` }))
-        
         if(this.props.infoton)
             this.updateStateWithInfoton(this.props.infoton)
             
@@ -87,7 +83,7 @@ class Infoton extends React.Component {
     updateStateWithInfoton(infoton) {
         let wasSelected = field => !!+localStorage.getItem(`FavStar$${field}`)
         let fields = _(infoton ? infoton.fields || {} : {}).chain().map((v,k) => [k,{values:v,metadata:{selected:wasSelected(k)}}]).object().value()
-        let displayName = new DInfoton(infoton, this.state.displayNames).displayName
+        let displayName = new DInfoton(infoton, this.props.displayNames).displayName
         infoton = { type: infoton.type, system: infoton.system }
         
         if(infoton && infoton.system && infoton.system['length.content'] > AppUtils.constants.fileInfotonInMemoryThreshold) {
@@ -118,15 +114,14 @@ class Infoton extends React.Component {
         
         let dataFields = this.state.fields
         
-        
-        let makeLink = (url, className, children) => _(this.state.rootFolders).some(rf => url.indexOf(rf)===6) ?
+        let makeLink = (url, className, children) => _(this.props.rootFolders).some(rf => url.indexOf(rf)===6) ?
                 <Link to={url.replace('http:/','').replace('#','%23')} className={className}>{children || url}</Link> :
                 <a href={url} className={className} target="_blank">{children || url}</a>
         
         let renderFieldValue = fv => {
             let isUri = fv.type === AppUtils.constants.anyURI
             let innerLink = isUri ? fv.value.replace('http:/','').replace('#','%23') : ''
-            let isInner = isUri && _(this.state.rootFolders).some(rf => innerLink.indexOf(rf)===0)
+            let isInner = isUri && _(this.props.rootFolders).some(rf => innerLink.indexOf(rf)===0)
             return <span>
                 { isUri ? makeLink(fv.value, 'value') : <span className="value">{fv.value}</span> }
                 { fv.quad ? makeLink(fv.quad, 'quad', <img src="/meta/app/react/images/quad.svg" title={fv.quad} />) : null }

@@ -43,16 +43,9 @@ class SearchBar extends React.Component {
     constructor(props) {
         super(props)
         this.state = {
-            rootFolders: [],
             term: '',
             path: location.pathname.substr(1)
         }
-    }
-    
-    componentWillMount() { //todo change to /?op=stream
-        $.get("/?length=613&format=json").then(resp => 
-           this.setState({rootFolders: resp.children.map(c => c.system.path.substr(1)).filter(p => p!="proc" && p!="meta" && p!="docs").sort()})
-        )
     }
     
     componentWillReceiveProps() {
@@ -80,7 +73,7 @@ class SearchBar extends React.Component {
                         <select className="search-where-dropdown" onChange={e=>this.setState({path:e.target.value})} value={this.state.path}>
                             <option value="" key="/">Search all folders</option>
                             { currentPath ? <option value={currentPath} key={currentPath}>{currentPath}</option> : null }
-                            { this.state.rootFolders.filter(rf=> rf!=currentPath).map(rf => <option value={rf} key={rf}>{rf}</option>) }
+                            { (this.props.rootFolders||[]).filter(rf=> rf!=currentPath).map(rf => <option value={rf} key={rf}>{rf}</option>) }
                         </select>
                         <button type="submit" className="search-button" onClick={this.basicSearch.bind(this)}>SEARCH</button>
                     </form>
