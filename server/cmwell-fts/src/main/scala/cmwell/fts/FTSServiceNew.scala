@@ -568,9 +568,11 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
     val fields = "system.kind" :: "system.path" :: "system.uuid" :: "system.lastModified" :: "content.length" ::
       "content.mimeType" :: "link.to" :: "link.kind" :: "system.dc" :: "system.indexTime" :: "system.quad" :: Nil
 
+    val indices = if(indexNames.nonEmpty) indexNames else Seq(s"${partition}_all")
+
     // since in ES scroll API, size is per shard, we need to convert our paginationParams.length parameter to be per shard
     // We need to find how many shards are relevant for this query. For that we'll issue a fake search request
-    val fakeRequest = client.prepareSearch(s"${partition}_all").setTypes("infoclone").addFields(fields:_*)
+    val fakeRequest = client.prepareSearch(indices:_*).setTypes("infoclone").addFields(fields:_*)
 
     if (pathFilter.isEmpty && fieldsFilter.isEmpty && datesFilter.isEmpty) {
       fakeRequest.setPostFilter(matchAllFilter())
@@ -585,7 +587,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
       // rounded to lowest multiplacations of shardsperindex or to mimimum of 1
       val infotonsPerShard = (paginationParams.length / relevantShards) max 1
 
-      val request = client.prepareSearch(s"${partition}_all")
+      val request = client.prepareSearch(indices:_*)
         .setTypes("infoclone")
         .addFields(fields: _*)
         .setSearchType(SearchType.SCAN)
@@ -650,14 +652,12 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
                        partition: String)
                       (implicit executionContext:ExecutionContext) : Seq[Future[FTSStartScrollResponse]] = {
 
-      logger.debug(s"StartMultiScroll request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $withHistory")
-    def indicesNames(indexName: String): Seq[String] = {
-      val currentAliasRes = client.admin.indices().prepareGetAliases(indexName).execute().actionGet()
-      val indices = currentAliasRes.getAliases.keysIt().asScala.toSeq
-      indices
-    }
+    logger.debug(s"StartMultiScroll request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $withHistory")
 
-    val indices = indicesNames(s"${partition}_all")
+    val indices = {
+      val currentAliasRes = client.admin.indices().prepareGetAliases(s"${partition}_all").execute().actionGet()
+      currentAliasRes.getAliases.keysIt().asScala.toSeq
+    }
 
     indices.map { indexName =>
       startScroll(pathFilter, fieldsFilter, datesFilter, paginationParams, scrollTTL, withHistory, withDeleted,
@@ -667,7 +667,8 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
 
   def scroll(scrollId: String, scrollTTL: Long, nodeId: Option[String])
             (implicit executionContext:ExecutionContext): Future[FTSScrollResponse] = {
-      logger.debug(s"Scroll request: $scrollId, $scrollTTL")
+
+    logger.debug(s"Scroll request: $scrollId, $scrollTTL")
 
     val clint = nodeId.map{clients(_)}.getOrElse(client)
     val scrollResponseFuture = injectFuture[SearchResponse](
