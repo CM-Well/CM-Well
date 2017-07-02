@@ -18,3 +18,4 @@ addSbtPlugin("org.xerial.sbt" % "sbt-pack" % "0.8.2")
 
 resolvers += "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/"
 
+resolvers += "JBoss" at "https://repository.jboss.org/"
