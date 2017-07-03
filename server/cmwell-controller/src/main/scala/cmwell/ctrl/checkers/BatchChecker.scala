@@ -64,7 +64,7 @@ object BatchChecker extends Checker with RestarterChecker with LazyLogging {
             BatchNotIndexing(updatesTlog.size , impState.position, uuidsTlog.size , indexerState.position)
         case None => BatchOk(updatesTlog.size , impState.position, uuidsTlog.size , indexerState.position)
         case _ =>
-          logger.error("Wrong ComponentStatus is in BatchStates!")
+          logger.error("Wrong ComponentStatus in BatchStates!")
           BatchOk(updatesTlog.size , impState.position, uuidsTlog.size , indexerState.position)
       }
 
