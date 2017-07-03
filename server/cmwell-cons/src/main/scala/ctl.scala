@@ -570,7 +570,9 @@ abstract class Host(user: String,
 
   def utilsPath = s"${instDirs.globalLocation}/cm-well/bin/utils"
 
-  def path: String = s"$javaPath:$utilsPath:$$PATH"
+  def homeBinPath = "~/bin"
+
+  def path: String = s"$javaPath:$utilsPath:$homeBinPath:$$PATH"
 
   private def ipsToSsh(u: String = user, ips: GenSeq[String]) = ips.map(ip => if (ip.indexOf("@") == -1) s"${u}@${ip}" else ip)
 
@@ -1105,8 +1107,10 @@ abstract class Host(user: String,
 
   private def copySshpass(hosts: GenSeq[String], sudoer: Credentials): Unit = {
     //only copy sshpass if it's an internal one
-    if (UtilCommands.linuxSshpass == "bin/utils/sshpass")
+    if (UtilCommands.linuxSshpass == "bin/utils/sshpass") {
+      command("mkdir -p ~/bin", hosts, false)
       hosts.foreach(host => Seq("rsync", "-z", "-e", "ssh -o StrictHostKeyChecking=no", UtilCommands.linuxSshpass, s"${sudoer.name}@$host:~/bin") !!)
+    }
   }
 
   private def deleteSshpass(hosts: GenSeq[String], sudoer: Credentials): Unit = {
