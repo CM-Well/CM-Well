@@ -92,7 +92,7 @@ object Runner extends App with LazyLogging{
   val akkaIndexer = new Indexer(uuidsTlog, updatesTlog, irwService, ftsService, indexerState)
 
   sys.addShutdownHook{
-    logger info ("stopping indexing service")
+//    logger info ("stopping indexing service")
 //    indexer.terminate
     logger info ("stopping imp service")
     impService.terminate
