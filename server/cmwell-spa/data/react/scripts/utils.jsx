@@ -84,7 +84,7 @@ window.AppUtils = {
     
     , addSep: (arr, sep) => _(arr).chain().map(i => [i,sep]).flatten().initial().value()
     
-    , heightOverhead: 312
+    , heightOverhead: 335
     
     , formats: [
          { value: 'json&pretty', displayName: 'json' }

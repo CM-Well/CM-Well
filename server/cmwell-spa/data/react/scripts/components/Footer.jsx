@@ -12,7 +12,7 @@ class Footer extends React.Component {
 
         return <div className="footer">
                     <a href="http://www.thomsonreuters.com" target="_blank">
-                        <img src="/meta/app/react/images/tr-white.png"/>
+                        <img src="/meta/app/react/images/TR-logo-hor-white.svg"/>
                     </a>
                     <span className="items-container">
                         { _(footerItems).map(item => <a href={item.href} className="footer-item">{item.title}</a>) }

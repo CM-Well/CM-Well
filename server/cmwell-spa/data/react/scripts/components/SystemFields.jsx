@@ -17,8 +17,8 @@ class SystemFields extends React.Component {
         let data = _(this.props.data).chain().pairs().filter(p=>_(this.visibleSystemFields).contains(p[0])).object().value()
         
         return <div className={className}>
-            <div className="system-fields-handle" onClick={this.toggleState.bind(this, 'expanded')}>
-                <img className="info" width="18" height="18" src="/meta/app/react/images/info-icon.png" />
+            <div className="system-fields-handle" onClick={this.toggleState.bind(this, 'expanded')} title={this.state.expanded?'':'System Information'}>
+                <img className="info" width="18" height="18" src="/meta/app/react/images/info.svg" />
                 <span className="title">SYSTEM INFORMATION</span>
                 <img className="gt" width="18" height="18" src="/meta/app/react/images/gt.svg"/>
             </div>

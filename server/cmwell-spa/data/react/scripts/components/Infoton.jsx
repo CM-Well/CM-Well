@@ -146,7 +146,7 @@ class Infoton extends React.Component {
             </td>
         </tr>)
         
-        let iconSrc = this.state.infoton && this.state.infoton.type === 'FileInfoton' ? '/meta/app/react/images/file-icon.svg' : '/meta/app/react/images/infoton-icon.jpg'
+        let iconSrc = `/meta/app/react/images/${this.state.infoton && this.state.infoton.type === 'FileInfoton' ? 'file' : 'infoton'}-icon.svg`
         let fieldsNum = _(dataFields).keys().length;
         let favFieldsNum = _(dataFields).filter((v,k) => v.metadata.selected).length
         let onlyFav = this.state.onlyFav

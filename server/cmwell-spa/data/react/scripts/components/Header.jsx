@@ -33,7 +33,7 @@ class Header extends React.Component {
                 <Link to="/"><img className="logo" src="/meta/app/react/images/logo-flat-inverted.svg"/></Link>
                 <span className="version-info">{this.state.releaseName}</span>
                 <a href={`${location.pathname}?old-ui`} className="old-ui-link" onClick={this.handleOldUiClick.bind(this)}>Use old UI</a>
-                <a target="_blank" href="/meta/docs/CM-Well.RootTOC.md" className="help-link"><img src="/meta/app/react/images/help-icon.png"/>HELP</a>
+                <a target="_blank" href="/meta/docs/CM-Well.RootTOC.md" className="help-link"><img src="/meta/app/react/images/help-icon.svg"/>HELP</a>
             </div>
         )
     }
@@ -113,8 +113,8 @@ class Breadcrumbs extends React.Component {
             breadcrumbs.push({ title: `Search results for "${qp}"` })
         
         let sep = <img src='/meta/app/react/images/gt.svg' width="24" height="24" />
-        let rootLevelIcon = <img src='/meta/app/react/images/folder-box.png' width="24" height="24" />
-        let otherLevelsIcon = <img src='/meta/app/react/images/infoton-icon.jpg' width="24" height="24" />
+        let rootLevelIcon = <img src='/meta/app/react/images/folder-box.svg' width="24" height="24" />
+        let otherLevelsIcon = <img src='/meta/app/react/images/infoton-icon.svg' width="24" height="24" />
         let searchIcon = <img className="search-icon" src='/meta/app/react/images/search-icon.svg' width="24" height="24" />
             
         return <div className="breadcrumbs">
