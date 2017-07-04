@@ -1,6 +1,9 @@
 class ActionsBar extends React.Component {
-    constructor(props) {
-        super(props)
+    formatsDropDown(cb, additionalFormats) {
+        return <select onChange={e=>cb(e.target.value, e.target)}>
+                <option value="" key="0">Select format</option>
+                {[...(additionalFormats||[]), ...AppUtils.formats].map(fmt => <option value={fmt.value} key={fmt.value}>{fmt.displayName}</option>)}
+            </select>
     }
     
     getFormat(fmt, selectBox) {
@@ -10,13 +13,21 @@ class ActionsBar extends React.Component {
         selectBox.blur()
     }
 
+    getHistory(fmt, selectBox) {
+        fmt && window.open(`${location.pathname}?with-history&format=${fmt}&override-mimetype=text/plain`)
+        selectBox.selectedIndex = 0
+        selectBox.blur()
+    }
+
     render() {
-        let formatDropDown = this.props.forInfoton ? <span>
+        let formatDropDown = this.props.forInfoton ? <span className="action">
                 View in format: 
-                <select onChange={e=>this.getFormat(e.target.value, e.target)}>
-                    <option value="" key="0">Select format</option>
-                    {AppUtils.formats.map(fmt => <option value={fmt.value} key={fmt.value}>{fmt.displayName}</option>)}
-                </select>        
+                {this.formatsDropDown(this.getFormat.bind(this))}
+            </span> : null
+        
+        let historyDropDown = this.props.forInfoton ? <span className="action">
+                View History as: 
+                {this.formatsDropDown(this.getHistory, [{ value: 'atom', displayName: 'Default (Atom)' }])}
             </span> : null
 
 
@@ -24,6 +35,7 @@ class ActionsBar extends React.Component {
         
         return <div className={className}>
             {formatDropDown}
+            {historyDropDown}
         </div>
     }
 

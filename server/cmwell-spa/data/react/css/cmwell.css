@@ -51,7 +51,7 @@ li {
 }
 
 .version-info {
-    color: #96c7d6;
+    color: #d5e4e8;
     font-size: 9px;
     line-height: 9px;
     padding-bottom: 27px;
@@ -168,11 +168,13 @@ input[type="checkbox"] {
 
 select {
     -webkit-appearance: none;
-    background: white url('/meta/app/react/images/combobox-arrow-grey.png') no-repeat right 8px center;
+    background: white url('/meta/app/react/images/combobox-arrow-grey.svg') no-repeat right 8px center;
+    background-size: 10px 10px;
 }
 
 select:hover {
-    background: white url('/meta/app/react/images/combobox-arrow-black.png') no-repeat right 8px center;
+    background: white url('/meta/app/react/images/combobox-arrow-black.svg') no-repeat right 8px center;
+    background-size: 10px 10px;
 }
 
 .search-form input[type="checkbox"] {
@@ -201,7 +203,7 @@ select:hover {
     padding: 0px 35px 5px 5px;
     width: 385px;
     height: 28px;
-    font-size: 13px;
+    font-size: 15px;
     border: 1px solid #ccc;
     display: inline;
     position: relative;
@@ -403,7 +405,7 @@ select:hover {
 }
 
 .infotons-list-title {
-    margin-left: 24px;
+    margin: 10px 0 12px 0;
     color: black;
     font-size: 20px;
     width: 60vw;
@@ -417,7 +419,7 @@ select:hover {
 }
 
 .infotons-list {
-    margin: 0 20px 0 40px;
+    margin: 0 20px 0 19px;
 }
 
 .infotons-list.active:not(.root) {
@@ -446,6 +448,11 @@ li.infoton-list-item {
     height: 36px;
     display: inline;
     margin-right: 5px;
+}
+
+.infoton-list-item.FileInfoton img.bullet {
+    width: 26px;
+    margin: 0 8px 0 5px;
 }
 
 .infoton-list-item .names {
@@ -525,7 +532,7 @@ li.infoton-list-item {
 
 .actions-bar.for-infoton {
     width: 59.5%;
-    padding: 0 0 7px 34px;
+    padding: 10px 0 10px 34px;
 }
 
 .actions-bar.for-infotons-list {
@@ -543,6 +550,10 @@ li.infoton-list-item {
 
 .actions-bar.for-infotons-list select {
     width: 128px;
+}
+
+.action {
+    margin-right: 35px;
 }
 
 .infoton-title {
@@ -592,7 +603,7 @@ li.infoton-list-item {
 }
 
 .field-name {
-    color: #aaa;
+    color: #8d8d8d;
     font-size: 11px;
     margin-top: -4px;
 }
@@ -619,24 +630,24 @@ li.infoton-list-item {
 }
 
 table.infoton-data th {
-    color: #8d8d8d;
+    color: #666;
     font-size: 13px;
     font-weight: normal;
     text-align: left;
 }
 
 .field-value {
-    color: #8d8d8d;
+    color: #666;
     font-size: 13px;
     word-break: break-all;
     width: 85vh;
 }
 
 table.infoton-data {
-    margin: 0 30px;
+    margin: 10px 30px;
     border-collapse: collapse;
     overflow-y: auto;
-    height: calc(100vh - 312px); /* AppUtils.heightOverhead === 312 */
+    height: calc(100vh - 335px); /* AppUtils.heightOverhead === 335 */
     display: block;
 }
 
@@ -694,7 +705,7 @@ table.infoton-data td ul {
 
 .triangle {
     position: relative;
-    top: -5px;
+    top: -6px;
     left: 4px;
     display: inline-block;
     transition-property: transform;
@@ -768,6 +779,7 @@ table.infoton-data td ul {
     height: 50px;
     float: left;
     margin-top: -5px;
+    margin-left: 7px;
 }
 
 .footer .items-container {

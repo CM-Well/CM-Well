@@ -12,7 +12,7 @@ class InfotonsList extends React.Component {
     this.onAirAjax = []
     
     this.loadingSpinnerItem = <li className="infoton-list-item" key="loading">
-                                  <img className="bullet" src="/meta/app/react/images/infoton-icon.jpg" />
+                                  <img className="bullet" src="/meta/app/react/images/infoton-icon.svg" />
                                   <span className="names">
                                       <span className="display-name loading">Loading more Infotons...</span>
                                   </span>
@@ -124,7 +124,7 @@ class InfotonsList extends React.Component {
 
     // todo once we will figure out how Infoton and InfotonsLists can live in peace side by side, perhaps that ugly guard won't be neccassery
     let title = this.props.location.pathname !== '/' && this.state.total && this.props.isRoot ? <div className="infotons-list-title">
-            <img src="/meta/app/react/images/folder-box.png"/>{AppUtils.lastPartOfUrl(this.props.location.pathname)} ({this.state.total.toLocaleString()} result{this.state.total==1?'':'s'})
+            <img src="/meta/app/react/images/folder-box.svg"/>{AppUtils.lastPartOfUrl(this.props.location.pathname)} ({this.state.total.toLocaleString()} result{this.state.total==1?'':'s'})
           </div> : null
     
     let errMsg = this.state.errMsg ? <ErrorMsg>{this.state.errMsg}</ErrorMsg> : null
@@ -176,7 +176,7 @@ class InfotonListItem extends React.Component {
         let children = this.state.expanded ? <InfotonsList location={locationObj} /> : null
         let childrenBulletClassName = `triangle${this.state.expanded?' down':''}`
         let hasData = !_.isEmpty(this.props.infoton.fields)
-        let bulletSrc = `/meta/app/react/images/${type === 'FileInfoton' ? 'file-icon.svg' : 'infoton-icon.jpg'}`
+        let bulletSrc = `/meta/app/react/images/${type === 'FileInfoton' ? 'file-icon.svg' : 'infoton-icon.svg'}`
         let linkClassName = hasData || type === 'FileInfoton' ? 'display-name' : 'display-name empty-data'
 
         // ReactRouter uses localStorage to transfer state between routes. let's not explode it...
