@@ -1,7 +1,7 @@
 # Function: *Get Multiple Infotons by URI* #
 
 ## Description ##
-You can retrieve multiple infotons, whose URIs you have, in the same query.
+Retrieve multiple infotons, by URI, in the same query.
 
 ## Syntax ##
 
@@ -56,7 +56,7 @@ JSON input:
     <http://example.org/Individuals/JohnSmith> <http://purl.org/vocab/relationship/parentOf> <http://example.org/Individuals/SaraSmith> .
 
 ## Notes ##
-You can use the PUT verb as well as the POST verb when directing a call to the _out endpoint.
+Use the PUT verb as well as the POST verb when directing a call to the _out endpoint.
 
 ## Related Topics ##
 [Retrieve Single Infoton by URI](API.Get.GetSingleInfotonByURI.md)

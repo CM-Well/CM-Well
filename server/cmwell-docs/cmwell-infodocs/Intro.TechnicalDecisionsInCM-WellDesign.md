@@ -73,7 +73,7 @@ CM-Well is not just a passive container. CM-Well provides an eco-sysytem for col
 
 <a name="hdr9"></a>
 ## Grid Architecture ##
-CM-Well consists of a set of machines, deployed in several TR data centers. CM-Well is built around the concept of a "grid" providing a service, where the individual machine can fail, but the system will realign to cope with the loss. 
+A CM-Well production deploy consists of a set of machines, deployed within a data centers with (optionally) additional sites for replication and read. CM-Well is built around the concept of a "grid" providing a service, where the individual machine can fail, but the system will realign to cope with the loss. 
 
 Inherent in the design of such a system is replication of data. Currently all data is kept in three copies. Any data update is eventually replicated throughout all copies.
 

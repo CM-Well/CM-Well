@@ -65,7 +65,7 @@ If you have an infoton's CM-Well URI (the path in CM-Well pointing to the infoto
 
 ## Notes ##
 
-* You can paste an infoton's URI in a browser's address bar to see an HTML presentation of the infoton's fields.
+* Paste an infoton's URI in a browser's address bar to see an HTML presentation of the infoton's fields.
 * Each time an infoton is updated, an additional "historical" version of the infoton is saved, and the infoton's URL will point to the newest version. 
 
 ## Related Topics ##

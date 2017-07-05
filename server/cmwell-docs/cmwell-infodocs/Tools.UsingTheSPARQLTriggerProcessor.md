@@ -172,14 +172,13 @@ Sensor | last-update | The time that the sensor made its latest update.
 ## DEPRECATED: Downloading and Compiling CM-Well Data Tools ##
 
 > **Notes:** 
-> * To access the CM-Well Git site, you will need a Git user. See [SAMI Git Registration](https://thehub.thomsonreuters.com/docs/DOC-1043167) to learn how to create a Git user account.
 > * To compile and run CM-Well data tools, you will need Java version 8.
 
 *To download and compile the CM-Well Data Tools source code:*
 
 1. Go to [http://www.scala-sbt.org/download.html](http://www.scala-sbt.org/download.html) and install the Scala Build Tool (SBT) version appropriate for your OS.
 2. Add the Scala sbt command to your PATH variable.
-3. Perform a Git clone of the CM-Well Data Tools source code from [https://git.sami.int.thomsonreuters.com/cm-well/cmwell-data-tools](https://git.sami.int.thomsonreuters.com/cm-well/cmwell-data-tools).
+3. Perform a Git clone of the CM-Well Data Tools source code from [Github](https://github.com/thomsonreuters/CM-Well).
 4. Navigate to the `cm-well/cmwell-data-tools/tree/master` folder. It contains a file called **build.sbt**.
 5. Run the following command: ```sbt app/pack```. The resulting script executables are created in the ```cmwell-data-tools-app/target/pack/bin``` folder.
 

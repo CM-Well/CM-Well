@@ -46,7 +46,7 @@ You can delete multiple infotons by applying the special #fullDelete indicator t
 ## Notes ##
 
 * CM-Well returns a "success" status code even if the infoton you requested to delete doesn't exist.
-* Deleting infotons this way actually just marks them as deleted, but leaves them in CM-Well storage. If you need to permanently remove infotons from CM-Well, please contact the CM-Well support team.
+* Deleting infotons this way actually just marks them as deleted, but leaves them in CM-Well storage. If you need to permanently remove infotons from CM-Well, see the purge operation.
 * Triples containing the #fullDelete indicator may be mixed with other triples for upload.
 
 ## Related Topics ##

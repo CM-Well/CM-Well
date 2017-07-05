@@ -4,7 +4,7 @@ This page briefly describes the conceptual and technical motivations that led to
 
 ## TMS - In the Beginning... ##
 
-CM-Well was developed as an initiative of TR's TMS (Text Management Services) division. TMS was once a startup company called ClearForest, which specialized in Natural Language Processing, text mining, data analysis and knowledge representation. Reuters (this preceded the merger with Thomson) acquired ClearForest in 2007, incorporating its highly relevant capabilities into its own products. 
+CM-Well was developed as an initiative of Thomson Reuters's TMS (Text Management Services) division. TMS was once a startup company called ClearForest, which specialized in Natural Language Processing, text mining, data analysis and knowledge representation. Reuters (this preceded the merger with Thomson) acquired ClearForest in 2007, incorporating its highly relevant capabilities into its own products. 
 
 TMS already had expertise in tagging entities, events and relationships in free-form text, and had implemented various methods for storage and analysis of the tagged data. To begin with, these methods did not conform to any widely-accepted standard. The data was stored in standard relational databases, although conceptually it behaved more like a connected graph.
 
@@ -39,7 +39,7 @@ The TMS team decided to develop a new platform, relying on off-the-shelf package
 ## The CM-Well Vision ##
 CM-Well's vision is to be an eco-system of Linked Data objects, whose primary purpose is to describe the real-world entities that interest TR's customers - those that are significant in the business and financial domains. These entities are both inter-linked among themselves, and linkable to any application or platform that supports the RDF standard.
 
-In addition to being a repository for TR's central financial information, CM-Well is a "technology stack" or general platform, which allows you to model any information domain you wish and create your own repository.
+In addition to being a repository for TR's central financial information, CM-Well is a "technology stack" or general platform, which allows you to model any information domain you wish and create your own repository. Our decision to Open Source CM-Well is a natural extension of this philosophy: we've found CM-Well to be exceptionally useful internally and hope it will be for you.
 
 
 

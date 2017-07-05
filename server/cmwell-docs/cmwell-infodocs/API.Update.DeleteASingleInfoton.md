@@ -40,7 +40,7 @@ recursive | If true, queries and delete command are recursive, i.e. will apply t
 ## Notes ##
 
 * CM-Well returns a "success" status code even if the infoton you requested to delete doesn't exist.
-* Applying the DELETE command to an infoton actually just marks the infoton as deleted, but leaves it in CM-Well storage. If you need to permanently remove infotons from CM-Well, please contact the CM-Well support team.
+* Applying the DELETE command to an infoton actually just marks the infoton as deleted, but leaves it in CM-Well storage. If you need to permanently remove infotons from CM-Well, see the purge operation.
 * When the **recursive** flag is used, the request may fail if there are too many descendants to delete in a reasonable amount of time.
 
 ## Related Topics ##
