@@ -27,6 +27,16 @@ li {
     list-style-type: none;
 }
 
+.temp-proc {
+    padding: 60px;
+    color: #888;
+}
+
+.temp-proc .link {
+    text-decoration: underline;
+    cursor: pointer;
+}
+
 .not-implemented {
     color: #bdbdbd;
     font-style: italic;
