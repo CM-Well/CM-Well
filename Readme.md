@@ -64,9 +64,9 @@ You can get started with CM-Well by running some basic write and read operations
     <http://example/Individuals/BabyBear3> <http://ont.thomsonreuters.com/bermuda/hasName> "Bert".
 
 **Response:**
-
-    {"success":true}
-
+~~~json
+{"success":true}
+~~~
 ### Read Infotons ###
 
 **Action:** Read the infotons you created in the previous step under example/Individuals, with their field data. 
