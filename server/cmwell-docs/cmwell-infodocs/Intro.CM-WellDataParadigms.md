@@ -3,7 +3,7 @@
 ## Introduction ##
 Since CM-Well is a sophisticated data repository, it stands to reason that many data structures and paradigms are involved. This section describes CM-Well's most central data paradigms, which should help you get a good conceptual understanding of the principles that guide CM-Well's design and functionality.
 
-CM-Well is part of Thomson Reuter's Big Open Linked Data initiative. For a breakdown of what that means, read on!
+CM-Well is part of Thomson Reuters' Big Open Linked Data initiative. For a breakdown of what that means, read on!
 
 ## Big Data ##
 

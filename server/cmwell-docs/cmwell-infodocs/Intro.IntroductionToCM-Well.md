@@ -2,8 +2,6 @@
 
 [What is CM-Well?](#hdr1)
 
-[What Content Does CM-Well Contain?](#hdr2)
-
 [CM-Well as a Platform for Data Modeling](#hdr3)
 
 [How Do I Access CM-Well?](#hdr4)
@@ -18,17 +16,11 @@
 ## What is CM-Well? ##
 CM-Well is a writable [Linked Data](https://en.wikipedia.org/wiki/Linked_data) repository, which can be used to model data from various datasets.
 
-CM-Well (Content Matrix Well) adheres to Open Data principles, meaning that its data is in a standard, machine-readable format, and is open to access by anyone in TR. (Currently access from outside TR is allowed only for TR products.)
+CM-Well (Content Matrix Well) adheres to Open Data principles, meaning that its data is in a standard, machine-readable format, and is open to access by anyone in Thomson Reuters. (Currently access from outside TR is allowed only for TR products.)
 
 CM-Well's data is represented as a graph database, which means that it contains both entities and relationships between pairs of entities. For instance, it  contains facts such as "CompanyA is a subsidiary of CompanyB", or "PersonX works at CompanyA". Conceptually, a graph database is a structure composed of nodes representing entities, and directed arrows representing relationships among them. See the image below for an example.
 
 <img src="./_Images/small-graph-database.png">
-
-<a name="hdr2"></a>
-## What Content Does CM-Well Contain? ##
-CM-Well is a general platform for creating Linked Data repositories. As such, specific content sets are not part of its inherent features.
-
-However, among other things, CM-Well currently contains certain entities from the Thomson Reuters Knowledge Graph, including Organizations, People, Quotes, and Instruments. These entities are kept current with their corresponding SDIs, such as the Organization Authority. The Thomson Reuters Open PermID service obtains its data from CM-Well.
 
 <a name="hdr3"></a>
 ## CM-Well as a Platform for Data Modeling ##
@@ -44,7 +36,7 @@ Entities and their related information can be accessed by a URI (Uniform Resourc
 Here is an example of a CM-Well URI: 
 [http://cm-well-host.com/permid.org/1-5035948006](http://cm-well-host.com/permid.org/1-5035948006)
 
-The "5035948006" identifier at the end is a company's TR PermID. If you access this URI in a browser, you will see this page:
+The "5035948006" identifier at the end is a company's TR PermID. If you access this URI in a browser within Thomson Reuters you will see this page:
 
 <img src="./_Images/CM-Well-Company-Page.png" width="650" height="500">
 

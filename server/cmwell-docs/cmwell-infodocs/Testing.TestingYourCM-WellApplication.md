@@ -28,13 +28,6 @@ Load | Simulate the expected load at peak times, for 12-24 hours. | PPE
 Latency | Run a client at your expected peak load, and verify that call latency (the time it takes to get a response) meets your operational needs. | PPE
 Long-term | Run your client for 3-7 days at operational load and make sure there is no degradation in CM-Well calls' success and latency, or increase in your application's CPU and memory usage. | PPE
 
->**Note:** Before beginning any kind of performance testing in a CM-Well environment, please notify the <a href="mailto:yaniv.yemini@thomsonreuters.com">TMS Deployment & Operations team</a>
-
-## Coordinating with the TMS Team ##
-
-Engaging with the TMS project, development and QA teams early and often will enable your project's successful and timely completion. See [TMS Engagement Milestones](ADDLINK) to learn more about the engagement milestones for a CM-Well project.
-
-Specifically, when you want to move to the PPE or Prod environments, this must be coordinated with the <a href="mailto:yaniv.yemini@thomsonreuters.com">TMS Deployment & Operations team</a>. It's also a good idea to discuss your testing plans with the TMS QA team, to ensure your success and avoid bad practices that may impact other CM-Well users.
 
 ## Tools for Long-Term Testing ##
 

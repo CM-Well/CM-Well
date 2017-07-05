@@ -1,20 +1,21 @@
 # Contacting the CM-Well Team #
 
+## External to Thomson Reuters ##
+
+Please use issues within Github to report bugs etc. We're creating a discussion group and will update this doc with details for that when available.
+
+## Internal Thomson Reuters users ##
+
 To get help with CM-Well questions or support issues during development or integration, please contact the <a href="mailto:clfhelpdesk@thomsonreuters.com">CM-Well Help Desk</a>.
 
-Here is a list of additional contact people in the CM-Well team:
+Additional contact people in the CM-Well team:
 
-Name&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| Role | Email Address
+Name&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| Role | Email Address (@tr.com)
 :-----|:------|:--------------
-Yoni Mataraso | Development Lead | yoni.mataraso@thomsonreuters.com
-Efrat Wexler | Project Manager | efrat.wexler@thomsonreuters.com
-Dudi Landau | System Architect | dudi.landau@thomsonreuters.com
-Liat Amram  | Director of QA and Deployment | liat.amram@thomsonreuters.com
-Yaniv Yemini | Dev Ops and Support | yaniv.yemini@thomsonreuters.com
-Anna Grebnev | QA Team Leader | anna.grebnev@thomsonreuters.com
+Yoni Mataraso | Development Lead | yoni.mataraso@
+Efrat Wexler | Project Manager | efrat.wexler@
+Dudi Landau | System Architect | dudi.landau@
+Liat Amram  | Director of QA and Deployment | liat.amram@
+Yaniv Yemini | Dev Ops and Support | yaniv.yemini@
+Anna Grebnev | QA Team Leader | anna.grebnev@
 
-
-> For critical failures in the **production** environment, please contact the PGO team at:
-> 
-> **Email**: fls-app-pgo@thomsonreuters.com
-> **Telephones**: +1-314-468-8298,   +91-733-82-75-926.

@@ -6,13 +6,8 @@ The following sections provide a high-level overview of CM-Well's technical prop
 
 [Development Languages](#hdr2)
 
-[CM-Well Environments](#hdr3)
+[CM-Well Data Paradigms and Formats](#hdr3)
 
-[Accessing CM-Well](#hdr4)
-
-[CM-Well Data Paradigms and Formats](#hdr5)
-
-[The CM-Well Platform](#hdr6)
 
 <a name="hdr1"></a>
 ## REST API and Other Tools ##
@@ -22,9 +17,7 @@ You can also perform some operations in a browser, such as reading a single Orga
 
 >**Note:** CM-Well browser operations are tested in Chrome. Most operations will also work in Firefox, Safari and Edge. 
 
-To see an example of accessing a CM-Well infoton through a browser, click on this link: [http://cm-well-ppe.int.thomsonreuters.com/permid.org/1-5035948006](http://cm-well-ppe.int.thomsonreuters.com/permid.org/1-5035948006)
-
-You will see the following page in your browser, containing the details for the Marriott Vacations Worldwide Corp organization:
+For example, within Thomson Reuters you might see [the following page](http://cm-well-ppe.int.thomsonreuters.com/permid.org/1-5035948006) in your browser, containing the details for the Marriott Vacations Worldwide Corp organization:
 
 <img src="./_Images/MarriottPage.png" height=500 width=950>
 
@@ -41,40 +34,12 @@ You can develop your application in any language and development environment tha
 If you are coding in Java or Scala, you can use the CM-Well utility libraries for these languages. See [CM-Well Git Repository](https://git.sami.int.thomsonreuters.com/groups/cm-well) to download and collaborate on CM-Well-related code and libraries.
 
 <a name="hdr3"></a>
-## CM-Well Environments ##
-CM-Well supports lab, pre-production and production environments running in TR data centers. (In addition, you can install a private version of the CM-Well Docker utility.)
-
-See [CM-Well Environments](CM-WellEnvironments.md) for more details.
-
->**Note:** To obtain user credentials to enable you to access CM-Well environments, please email TMS at <a href="mailto:clfhelpdesk@thomsonreuters.com">clfhelpdesk@thomsonreuters.com</a>.
-
-<a name="hdr4"></a>
-## Accessing CM-Well ##
-
-You can perform CM-Well read operations over HTTP on any of the CM-Well environments, with no special credentials.
-
-Only internal CM-Well modules can perform write operations to the CM-Well production environment. 
-
-Write operations to the lab and pre-production environments are currently permitted with no credentials, but this is subject to change. 
-
-If you want to perform updates to production or pre-production environments, please contact the CM-Well support team to obtain CM-Well user credentials.
-
-> **Note:** CM-Well is only accessible to internal TR applications, not to the general public.
-
-<a name="hdr5"></a>
 ## CM-Well Data Paradigms and Formats ##
 The underlying structure of CM-Well is a graph database, which means that the data is represented as nodes and connecting relationships rather than in tabular format. CM-Well conforms to the RDF (Resource Description Framework) Linked Data standard. RDF information can be formatted in several ways, and you can choose the format you prefer.
 
 For more information, see:
 * [CM-Well Data Paradigms](Intro.CM-WellDataParadigms.md)
 * [CM-Well Input and Output Formats](API.InputAndOutputFormats.md)
-
-<a name="hdr6"></a>
-## The CM-Well Platform ##
-As mentioned previously, CM-Well has lab, pre-production and production environments running in TR data centers. These are highly available, robust and fault-tolerant environments. As you access them via HTTP, all you need to know about them is their URL. You don't have to be aware of their physical location or failover mechanisms.
-
-In addition, CM-Well is designed to be highly scalable, so you don't have to worry about access latency increasing over time, although new data is continually being written to CM-Well.
-
 
 
 

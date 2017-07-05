@@ -15,3 +15,4 @@ These are the topics included in the CM-Well Developer Guide:
 1. [Dos and Don'ts](DevGuide.DosAndDonts.md)
 1. [Best Practices](DevGuide.BestPractices.TOC.md)
 
+Please note that we are refreshing the documentation to reflect CM-Well moving to open source. Some examples and URLs provided within may not be accessible outside of the Thomson Reuters network and these will be fixed as we go.
