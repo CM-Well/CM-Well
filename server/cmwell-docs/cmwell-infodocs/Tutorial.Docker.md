@@ -1,6 +1,6 @@
 # A Brief CM-Well Docker Tutorial #
 
-This pages describes how you can get started with CM-Well, by running some basic workflows over a private CM-Well Docker instance.
+This page describes how to get started with CM-Well, by running some basic workflows over a private CM-Well Docker instance.
 
 First, learn about [CM-Well Docker and how to install and run it](Tools.UsingCM-WellDocker.md). 
 
@@ -358,10 +358,10 @@ After installing and running CM-Well Docker, run the following workflows:
         relationship:childOf  <http://example/Individuals/MamaBear> , <http://example/Individuals/PapaBear> .
 
 ## API Reference ##
-[Add Infotons and Fields](API.Update.AddInfotonsAndFields.md)
-[Get Multiple Infotons by URI](API.Get.GetMultipleInfotonsByURI.md)
-[Query for Infotons Using Field Conditions](API.Query.QueryForInfotonsUsingFieldConditions.md)
-[Replace Field Values](API.Update.ReplaceFieldValues.md)
-[Delete Multiple Infotons](API.Update.DeleteMultipleInfotons.md)
-[Delete Fields](API.Update.DeleteFields.md)
+* [Add Infotons and Fields](API.Update.AddInfotonsAndFields.md)
+* [Delete Multiple Infotons](API.Update.DeleteMultipleInfotons.md)
+* [Delete Fields](API.Update.DeleteFields.md)
+* [Get Multiple Infotons by URI](API.Get.GetMultipleInfotonsByURI.md)
+* [Query for Infotons Using Field Conditions](API.Query.QueryForInfotonsUsingFieldConditions.md)
+* [Replace Field Values](API.Update.ReplaceFieldValues.md)
 
