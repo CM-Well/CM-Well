@@ -36,6 +36,7 @@ import scala.util.{Failure, Success, Try}
 
 class DataInitializer(h: Host, jwt: String, rootDigest: String, rootDigest2: String) {
 
+  //TODO: why is `sys` & `mat` needed? if it's just for http requests, we can drop it, and use util's defaults.
   private[this] lazy val sys = {
     val config = ConfigFactory.load()
     ActorSystem("SimpleHttpClient",config.getConfig("cmwell.util.http"))
@@ -65,7 +66,7 @@ class DataInitializer(h: Host, jwt: String, rootDigest: String, rootDigest2: Str
 
     val numRetries = (totalWaitPeriod / interval).toInt
     await(retryUntil[SimpleResponse[String]](_.status == 200, numRetries, interval)(
-      Http.get(s"http://${h.ips.head}:9000/proc/node", Seq("format" -> "json"))(UTF8StringHandler,implicitly[ExecutionContext],mat)
+      Http.get(s"http://${h.ips.head}:9000/proc/node", Seq("format" -> "json"))(UTF8StringHandler,implicitly[ExecutionContext],sys,mat)
     ).map(_ => ()))
   }
 
@@ -206,7 +207,7 @@ class DataInitializer(h: Host, jwt: String, rootDigest: String, rootDigest2: Str
       case knownPostType => Seq("X-CM-Well-Type" -> knownPostType.toString)
     })
 
-    retryUntil(isOk, 9, 250.millis)(Http.post(url, payload, Some(contentType.toString), queryParameters, headers)(UTF8StringHandler,implicitly[ExecutionContext],mat)).map {
+    retryUntil(isOk, 9, 250.millis)(Http.post(url, payload, Some(contentType.toString), queryParameters, headers)(UTF8StringHandler,implicitly[ExecutionContext],sys,mat)).map {
       case resp if isOk(resp) => resp.body._2
       case badResp => {println(s" Failed to upload eli1 $url and payload ${payload.mkString} with response $badResp"); Thread.dumpStack(); ""}
     }.recover { case err => println(s" Failed to upload eli2 $url"); Thread.dumpStack(); "" + cmwell.util.exceptions.stackTraceToString(err) }

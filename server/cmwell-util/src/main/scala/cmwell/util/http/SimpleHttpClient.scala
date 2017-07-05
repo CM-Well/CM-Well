@@ -123,7 +123,7 @@ object SimpleHttpClient extends LazyLogging {
     logger.warn("default materializer for SimpleHttpClient is initialized. you don't want this in production!")
     ActorMaterializer()(sys)
   }
-  private[http] val http = Http()(sys)
+  private[http] lazy val http = Http()(sys)
 
   //just in case we need a materializer in the tests...
   private[cmwell] def materializer = mat
@@ -337,7 +337,7 @@ object SimpleHttpClient extends LazyLogging {
                                    subprotocol: Option[String] = None,
                                    queryParams: Seq[(String,String)] = Nil,
                                    headers: Seq[(String,String)] = Nil)(react: T => Option[T])
-                                  (implicit ec: ExecutionContext, mat: Materializer = this.mat) = {
+                                  (implicit ec: ExecutionContext, as: ActorSystem = this.sys, mat: Materializer = this.mat) = {
 
     val simpleMessageHandler = implicitly[SimpleMessageHandler[T]]
     val h = mkHeaders(headers)
@@ -375,7 +375,7 @@ object SimpleHttpClient extends LazyLogging {
   def get[T : SimpleResponseHandler](uri: String,
           queryParams: Seq[(String,String)] = Nil,
           headers: Seq[(String,String)] = Nil)
-         (implicit ec: ExecutionContext, mat: Materializer = this.mat) =
+         (implicit ec: ExecutionContext, as: ActorSystem = this.sys, mat: Materializer = this.mat) =
     request[T](HttpMethods.GET,uri,queryParams,headers,HttpEntity.Empty)
 
   def put[T : SimpleResponseHandler](uri: String,
@@ -383,7 +383,7 @@ object SimpleHttpClient extends LazyLogging {
           contentType: Option[String] = None,
           queryParams: Seq[(String,String)] = Nil,
           headers: Seq[(String,String)] = Nil)
-         (implicit ec: ExecutionContext, mat: Materializer = this.mat) =
+         (implicit ec: ExecutionContext, as: ActorSystem = this.sys, mat: Materializer = this.mat) =
     request[T](HttpMethods.PUT,uri,queryParams,headers,body.entity(contentType))
 
   def post[T : SimpleResponseHandler](uri: String,
@@ -391,15 +391,14 @@ object SimpleHttpClient extends LazyLogging {
            contentType: Option[String] = None,
            queryParams: Seq[(String,String)] = Nil,
            headers: Seq[(String,String)] = Nil)
-          (implicit ec: ExecutionContext, mat: Materializer = this.mat) =
+          (implicit ec: ExecutionContext, as: ActorSystem = this.sys, mat: Materializer = this.mat) =
     request[T](HttpMethods.POST,uri,queryParams,headers,body.entity(contentType))
 
   def delete[T : SimpleResponseHandler](uri: String,
              queryParams: Seq[(String,String)] = Nil,
              headers: Seq[(String,String)] = Nil)
-            (implicit ec: ExecutionContext, mat: Materializer = this.mat) =
+            (implicit ec: ExecutionContext, as: ActorSystem = this.sys, mat: Materializer = this.mat) =
     request[T](HttpMethods.DELETE, uri,queryParams,headers,HttpEntity.Empty)
-
 }
 
 
