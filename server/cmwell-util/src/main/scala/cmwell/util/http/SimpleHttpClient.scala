@@ -384,7 +384,7 @@ object SimpleHttpClient extends LazyLogging {
           queryParams: Seq[(String,String)] = Nil,
           headers: Seq[(String,String)] = Nil)
          (implicit ec: ExecutionContext, as: ActorSystem = this.sys, mat: Materializer = this.mat) =
-    request[T](HttpMethods.PUT,uri,queryParams,headers,body.entity(contentType))
+    request[T](HttpMethods.PUT,uri,queryParams,headers,body.entity(contentType.orElse(headers.find(_._1.equalsIgnoreCase("content-type")).map(_._2))))
 
   def post[T : SimpleResponseHandler](uri: String,
            body: Body,
@@ -392,7 +392,7 @@ object SimpleHttpClient extends LazyLogging {
            queryParams: Seq[(String,String)] = Nil,
            headers: Seq[(String,String)] = Nil)
           (implicit ec: ExecutionContext, as: ActorSystem = this.sys, mat: Materializer = this.mat) =
-    request[T](HttpMethods.POST,uri,queryParams,headers,body.entity(contentType))
+    request[T](HttpMethods.POST,uri,queryParams,headers,body.entity(contentType.orElse(headers.find(_._1.equalsIgnoreCase("content-type")).map(_._2))))
 
   def delete[T : SimpleResponseHandler](uri: String,
              queryParams: Seq[(String,String)] = Nil,
