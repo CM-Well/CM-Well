@@ -5,9 +5,8 @@ pipeline {
       steps {
         ansiColor(colorMapName: 'xterm') {
           dir(path: 'server') {
-            sh '''rm -rf project/target
-                  java -Xmx2G -jar /opt/sbt/bin/sbt-launch.jar "reload plugins" update "reload return" clean reload compile
-            '''
+            sh 'rm -rf project/target'
+            sh 'java -Xmx2G -jar /opt/sbt/bin/sbt-launch.jar "reload plugins" update "reload return" clean reload compile'
           }
 
         }
@@ -26,4 +25,3 @@ pipeline {
     }
   }
 }
-
