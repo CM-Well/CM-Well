@@ -4,8 +4,6 @@ This page provides a high-level description of the CM-Well hardware, software an
 
 [Information Architecture](#hdr1)
 
-[CM-Well Environments](#hdr2)
-
 [The CM-Well Grid](#hdr3)
 
 [Machine-Level Architecture](#hdr4)
@@ -34,9 +32,7 @@ Several instances of the CM-Well platform are deployed in Thomson Reuters data c
 
 * Lab environments for the development phase
 * Pre-production environments for pre-production staging and testing
-* Production environments
-
-See [CM-Well Environments](CM-WellEnvironments.md) to learn more. 
+* Production environments 
 
 <a name="hdr3"></a>
 ## The CM-Well Grid ##

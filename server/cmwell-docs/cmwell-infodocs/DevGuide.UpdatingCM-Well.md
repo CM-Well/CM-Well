@@ -2,7 +2,7 @@
 
 CM-Well supports APIs for writing to it as well as reading from it. However, in order to protect production data, only internal CM-Well subsystems and authorized users can update the production instance of CM-Well.
 
-If you want to experiment with writing to CM-Well, you can use the lab or pre-production environments, or install the CM-Well Docker. (For more information, see [CM-Well Environments](CM-WellEnvironments.md)).
+If you want to experiment with writing to CM-Well, you can use the lab or pre-production environments, or install the CM-Well Docker.
 
 > **Note:** If you're creating a repository with new entities that will eventually be part of the TR Knowledge Graph, you will need to consult with the TR Information Architecture team to determine how to assign or create domain IDs and entity URIs. 
 

@@ -6,8 +6,6 @@ The following sections provide a high-level overview of CM-Well's technical prop
 
 [Development Languages](#hdr2)
 
-[CM-Well Environments](#hdr3)
-
 [Accessing CM-Well](#hdr4)
 
 [CM-Well Data Paradigms and Formats](#hdr5)
@@ -38,15 +36,8 @@ In addition to the central API, CM-Well offers several utilities to assist devel
 ## Development Languages ##
 You can develop your application in any language and development environment that allow you to make REST calls.
 
-If you are coding in Java or Scala, you can use the CM-Well utility libraries for these languages. See [CM-Well Git Repository](https://git.sami.int.thomsonreuters.com/groups/cm-well) to download and collaborate on CM-Well-related code and libraries.
+If you are coding in Java or Scala, you can use the CM-Well utility libraries for these languages. See [CM-Well Git Repository](https://github.com/thomsonreuters/CM-Well) to download and collaborate on CM-Well-related code and libraries.
 
-<a name="hdr3"></a>
-## CM-Well Environments ##
-CM-Well supports lab, pre-production and production environments running in TR data centers. (In addition, you can install a private version of the CM-Well Docker utility.)
-
-See [CM-Well Environments](CM-WellEnvironments.md) for more details.
-
->**Note:** To obtain user credentials to enable you to access CM-Well environments, please email TMS at <a href="mailto:clfhelpdesk@thomsonreuters.com">clfhelpdesk@thomsonreuters.com</a>.
 
 <a name="hdr4"></a>
 ## Accessing CM-Well ##

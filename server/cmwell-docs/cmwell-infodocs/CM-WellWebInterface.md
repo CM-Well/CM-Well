@@ -46,7 +46,7 @@ An infoton's URI is similar to an internet URI in that it refers to a specific i
 
 A path to an infoton contains the CM-Well host, the sub-folders and the infoton's unique ID. For example: `<cm-well-host>/data.com/1-34415653093`
 
-There are several lab, pre-production and production CM-Well environments, and each one has a different root URI. (See [CM-Well Environments](CM-WellEnvironments.md) to learn more.)
+There are several lab, pre-production and production CM-Well environments, and each one has a different root URI.
 
 ---------------------------------
 <a name="hdr3"></a>

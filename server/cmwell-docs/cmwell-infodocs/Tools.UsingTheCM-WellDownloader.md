@@ -8,7 +8,7 @@ CM-Well Downloader is written in Scala and is packaged as a jar file. You can ca
 ## Stream-Based and Consumer-Based Downloaders ##
 
 > **Notes:** 
-> * To access the CM-Well Git site, you will need a Git user. See [SAMI Git Registration](https://thehub.thomsonreuters.com/docs/DOC-1043167) to learn how to create a Git user account.
+> * To access the CM-Well Git site, you will need a GitHub user. See [CM-Well GitHub](https://github.com/thomsonreuters/CM-Well) to access a CM-Well Git repository.
 > * To compile and run CM-Well data tools, you will need Java version 8.
 
 There are two versions of CM-Well Downloader:
@@ -25,7 +25,7 @@ You can download and compile the Downloader source code, to build either the sta
 
 1. Go to [http://www.scala-sbt.org/download.html](http://www.scala-sbt.org/download.html) and install the Scala Build Tool (SBT) version appropriate for your OS.
 2. Add the Scala sbt command to your PATH variable.
-3. Download the CM-Well Downloader source code from [https://git.sami.int.thomsonreuters.com/cm-well/cmwell-data-tools](https://git.sami.int.thomsonreuters.com/cm-well/cmwell-data-tools).
+3. Download the CM-Well Downloader source code from [https://github.com/thomsonreuters/CM-Well](https://github.com/thomsonreuters/CM-Well).
 
 *To build all CM-Well utility executables:*
 
