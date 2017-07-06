@@ -53,14 +53,14 @@ object Streams extends LazyLogging {
     def infotonToByteString(formatter: Formatter): Flow[Infoton,ByteString,NotUsed] = Flow.fromFunction[Infoton,ByteString] { infoton =>
       val formatted = formatter.render(infoton)
       val trimmed = dropRightWhile(formatted)(_.isWhitespace)
-      ByteString(trimmed)
-    }.intersperse(endln)
+      ByteString(trimmed) ++ endln
+    }
 
     def searchThinResultToByteString(formatter: Formatter): Flow[SearchThinResult,ByteString,NotUsed] = Flow.fromFunction[SearchThinResult,ByteString] { str =>
       val formatted = formatter.render(str)
       val trimmed = dropRightWhile(formatted)(_.isWhitespace)
-      ByteString(trimmed)
-    }.intersperse(endln)
+      ByteString(trimmed) ++ endln
+    }
 
     def formattableToByteString(formatter: Formatter, length: Option[Long] = None): Flow[Formattable,ByteString,NotUsed] = {
       if(formatter.mimetype.contains("json")) {
@@ -89,7 +89,7 @@ object Streams extends LazyLogging {
         val f2bs: Formattable => ByteString = { formattable =>
           val formatted = formatter.render(formattable)
           val trimmed = dropRightWhile(formatted)(_.isWhitespace)
-          ByteString(trimmed)
+          ByteString(trimmed + cmwell.util.os.Props.endln)
         }
 
         length.fold(Flow.fromFunction(f2bs))(l => Flow.fromGraph(TakeWeighted[Formattable](l,true,{
@@ -97,7 +97,7 @@ object Streams extends LazyLogging {
           case InfotonHistoryVersions(iSeq) => iSeq.size.toLong
           case BagOfInfotons(iSeq) => iSeq.size.toLong
           case i: Infoton => 1L
-        })).map(f2bs)).intersperse(endln)
+        })).map(f2bs))
       }
     }
 
