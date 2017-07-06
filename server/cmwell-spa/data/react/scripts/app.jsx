@@ -67,9 +67,26 @@ class App extends React.Component {
         return injectedInfoton && new Domain.Infoton(JSON.fromJSONL(injectedInfoton))
     }
 }
+    
+class TempProc extends React.Component {
+    componentDidMount() {
+        $('#content').show()
+        $('.spinner-container, #loading-status').fadeOut(250)
+        
+    }
+
+    render() {
+        return <div className="temp-proc">
+            <b>/proc</b> is not yet implemented in new UI. Stay tuned for updates!<br/>
+            <span className="link" onClick={()=>location.href=location.href+'?old-ui'}>Click here to view {location.pathname} in old UI</span>
+        </div>
+    }
+}
 
 ReactDOM.render((
   <Router history={browserHistory}>
+    <Route path="/proc" component={TempProc}/>
+    <Route path="/proc/:page" component={TempProc}/>
     <Route path="*" component={App}/>
   </Router>
 ), document.getElementById('content'))
