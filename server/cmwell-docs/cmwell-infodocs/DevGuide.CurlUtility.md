@@ -6,6 +6,7 @@ However, PUT, POST and DELETE commands (which update CM-Well's data) cannot be s
 
 * From your own application, using a 3rd-party library that supports REST calls.
 * Using an online utility such as [REST Test](https://resttesttest.com).
+* Using a client application such as [Postman](https://www.getpostman.com).
 * Using a command-line utility such as Curl.
 
 Curl is a commonly-used utility for submitting REST requests. All the code examples that appear in CM-Well documentation use the Curl utility. 
@@ -19,7 +20,7 @@ You can learn more about Curl from online resources such as [Using curl to autom
 ## Downloading Curl ##
 
 You can download Curl from several sites, for example: [Curl Releases and Downloads](https://curl.haxx.se/download.html). 
-Choose the package for your operating system.
+Choose the package for your operating system (note that curl is already installed on Macs)
 
 ## Running Curl on Windows vs. Unix ##
 

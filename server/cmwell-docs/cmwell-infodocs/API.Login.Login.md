@@ -1,7 +1,7 @@
 # Function: *Login* #
 
 ## Description ##
-The `_login` API call allows you to log into CM-Well with the username and password you obtained from the CM-Well support team, and receive a corresponding authentication token. You pass the token to subsequent API calls as the value of the **X-CM-WELL-TOKEN** HTTP header. This enables the access permissions assigned to your user.
+The `_login` API call allows you to log into CM-Well and receive a corresponding authentication token. You pass the token to subsequent API calls as the value of the **X-CM-WELL-TOKEN** HTTP header. This enables the access permissions assigned to your user.
 
 >**Note:** If you are running a privately compiled version of CM-Well, the default root user name and password are "root" and "root".
 
@@ -75,9 +75,6 @@ Failure (the user does not exist or the given password doesn't match the user):
 
     401 - User/Pass don't match.
 
-## Notes ##
-
-Contact the CM-Well support team to get a CM-Well username and password.
 
 ## Related Topics ##
 [CM-Well Security Features](DevGuide.CM-WellSecurityFeatures.md)

@@ -127,10 +127,9 @@
   </tr>
 </table>
 
+_Please note that we are refreshing the documentation to reflect CM-Well moving to open source. Some examples and URLs provided within may not be accessible outside of the Thomson Reuters network and these will be fixed as we go._
 
-
-
-
+_Additionally, CM-Well currently supports both a legacy and new UI. Hence screenshots in this documentation may not match what you see_
 
 
 

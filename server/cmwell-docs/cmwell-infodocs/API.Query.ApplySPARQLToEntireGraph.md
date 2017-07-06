@@ -107,6 +107,7 @@ Here is an example of the output that is produced when you use the **explain-onl
 ## Notes ##
 
 * Queries to the `_sparql` endpoint will time out if not completed within 90 seconds.
+* This feature is currently in beta - not all queries will return
 * Queries on quads are not yet supported for the `_sparql` endpoint.
 * If only partial results are returned due to a timeout, a message stating this appears in the output.
 * Currently, the only SPARQL operations that CM-Well supports are SELECT and CONSTRUCT.

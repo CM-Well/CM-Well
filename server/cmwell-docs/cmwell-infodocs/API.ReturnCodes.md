@@ -1,6 +1,6 @@
 # CM-Well API Return Codes #
 
-The following table describes common return codes you may receive in response to API calls.
+The following table describes common HTTP return codes you may receive in response to REST API calls.
 
 
 Return Code | Description

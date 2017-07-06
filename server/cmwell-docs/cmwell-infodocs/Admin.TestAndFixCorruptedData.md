@@ -6,7 +6,7 @@ CM-Well supports a set of utility functions for testing and fixing such cases of
 
 >**Notes:** 
 >* CM-Well has since been improved to prevent these race conditions, and this should not happen going forward. However, in the older CM-Well data schema, you may still encounter infotons whose indexes have already been corrupted.
->* The data test and fix functions should be used with caution, and can be disruptive in terms of the system resources they use. They are intended to be run by CM-Well support personnel, or advanced users *after consulting with the CM-Well support team*. They are likely to be deprecated in the future, when they are no longer needed. 
+>* The data test and fix functions should be used with caution, and can be disruptive in terms of the system resources they use. Use with care! They are likely to be deprecated in the future, when they are no longer needed. 
 
 ## The x-verify Function ##
 
