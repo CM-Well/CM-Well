@@ -7,7 +7,7 @@ Iguana | July 12th, 2017 | July 17th, 2017 | July 19th, 2017
 ## Change Summary ##
 
 
- Title | Description
+ Title | Description 
 :------|:-----------
 Open Source | CM-Well has been published as an Open Source Platform at [https://github.com/thomsonreuters/CM-Well](https://github.com/thomsonreuters/CM-Well). Learn more at [CM-Well readme](https://github.com/thomsonreuters/CM-Well/blob/master/Readme.md).
 New UI | The CM-Well web UI has been updated. Lean more at [CM-Well web UI](https://github.com/thomsonreuters/CM-Well/blob/master/server/cmwell-docs/cmwell-infodocs/CM-WellWebInterface.md).
