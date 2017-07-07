@@ -25,15 +25,6 @@ To best serve CM-Well's use cases, information is not retrieved at the triple le
 
 <img src="./_Images/Infoton-Architecture.png">
 
-<a name="hdr2"></a>
-## CM-Well Environments  ##
-
-Several instances of the CM-Well platform are deployed in Thomson Reuters data centers, all functionally the same but serving different stages in the production lifecycle:
-
-* Lab environments for the development phase
-* Pre-production environments for pre-production staging and testing
-* Production environments 
-
 <a name="hdr3"></a>
 ## The CM-Well Grid ##
 

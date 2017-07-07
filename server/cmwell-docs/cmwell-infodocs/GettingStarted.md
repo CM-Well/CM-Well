@@ -15,8 +15,6 @@ To learn about the CM-Well API, read **at least** these chapters of the [CM-Well
 * [Basic Queries](DevGuide.BasicQueries.md) 
 * [Advanced Queries](DevGuide.AdvancedQueries.md)
 
-To start getting some hands-on experience with CM-Well, work through one of the [CM-Well Tutorials](Tutorial.TOC.md). You can install CM-Well in a private Docker environment.
+To start getting some hands-on experience with CM-Well, work through one of the [CM-Well Tutorials](Tutorial.TOC.md). You can install CM-Well on your laptop.
 
 >**Note:** Please complete all introductory material described above, including working through tutorials, before attempting a proof-of-concept project.
-
-If you have decided to use the CM-Well platform for a project, please see the **Engagement** section on the [CM-Well Hub Page](https://thehub.thomsonreuters.com/groups/cm-well) to find the relevant contact people.

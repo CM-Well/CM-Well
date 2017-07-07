@@ -44,13 +44,6 @@ If you are coding in Java or Scala, you can use the CM-Well utility libraries fo
 
 You can perform CM-Well read operations over HTTP on any of the CM-Well environments, with no special credentials.
 
-Only internal CM-Well modules can perform write operations to the CM-Well production environment. 
-
-Write operations to the lab and pre-production environments are currently permitted with no credentials, but this is subject to change. 
-
-If you want to perform updates to production or pre-production environments, please contact the CM-Well support team to obtain CM-Well user credentials.
-
-> **Note:** CM-Well is only accessible to internal TR applications, not to the general public.
 
 <a name="hdr5"></a>
 ## CM-Well Data Paradigms and Formats ##
