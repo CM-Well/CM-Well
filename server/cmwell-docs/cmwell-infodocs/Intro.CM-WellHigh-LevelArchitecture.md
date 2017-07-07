@@ -4,11 +4,11 @@ This page provides a high-level description of the CM-Well hardware, software an
 
 [Information Architecture](#hdr1)
 
-[The CM-Well Grid](#hdr2)
+[The CM-Well Grid](#hdr3)
 
-[Machine-Level Architecture](#hdr3)
+[Machine-Level Architecture](#hdr4)
 
-[The CM-Well API](#hdr4)
+[The CM-Well API](#hdr5)
 
 <a name="hdr1"></a>
 ## Information Architecture ##
@@ -25,8 +25,7 @@ To best serve CM-Well's use cases, information is not retrieved at the triple le
 
 <img src="./_Images/Infoton-Architecture.png">
 
-
-<a name="hdr2"></a>
+<a name="hdr3"></a>
 ## The CM-Well Grid ##
 
 Each CM-Well system is contained within a single data center, and has a grid architecture. This means that the system is composed of several identical machines (a.k.a. nodes), enabling parallel processing of multiple requests, distributed database management and redundancy in case of failure.  
@@ -37,7 +36,7 @@ Every data item has a replication factor of 3, that is, it is saved in 3 copies 
 
 > **Note:** There is no failover among data centers in case one center becomes inaccessible. The production environment at Eagan, MN performs an automatic copy of its data to the production environment at Plano, TX, providing a backup in case of critical failure.
 
-<a name="hdr3"></a>
+<a name="hdr4"></a>
 ## Machine-Level Architecture ##
 
 The following diagram and table describe the modules running on each CM-Well node.
@@ -61,7 +60,7 @@ Other Agents | Agents for ingesting data from additional sources, such as Organi
 
 >**Note:** The Calais Agent and other agents are not an integral part of CM-Well. They are given as examples of applications that write data to CM-Well.
 
-<a name="hdr4"></a>
+<a name="hdr5"></a>
 ## The CM-Well API ##
 
 CM-Well provides a RESTful API that supports the following functionality: 

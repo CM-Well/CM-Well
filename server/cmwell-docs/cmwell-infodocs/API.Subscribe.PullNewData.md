@@ -59,10 +59,7 @@ sub=\<token\> | The token you received in response to the **subscribe** call | s
         supplyChain:DATE               "2016-07-18"^^xsd:dateTime ;
         supplyChain:Feed               "UCDP" ;
         supplyChain:MetaCodes.product  "LSEN" ;
-        supplyChain:MetaCodes.rcscode  "M:1NN" , "B:201" , "R:DRTY.L" , "G:AL" , "G:3" , "M:Z" , "R:FNAC.PA" , "P:4295897654" , "B:100" , "G:7J" , "M:32" , "B:202" , "B:69" , "M:3H" , "G:5M" , "P:4295867209" , "B:104" , "G:A" , "B:98" ;
-        supplyChain:PNAC               "nRSR4409Ea" ;
         supplyChain:Source             "RNS" ;
-        supplyChain:Title              "REG - Morgan Stanley & Co. Darty PLC Groupe FNAC - Form 8.5 (EPT/RI)Groupe Fnac SA" ;
         supplyChain:Urgency            "3"^^xsd:int .
 
 ## Notes ##

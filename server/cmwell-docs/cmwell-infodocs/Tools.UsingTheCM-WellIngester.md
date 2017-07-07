@@ -9,13 +9,14 @@ The CM-Well Ingester is written in Scala and is packaged as a jar file (Java lib
 ## Downloading and Compiling CM-Well Source Code ##
 
 > **Notes:** 
+> * To access the CM-Well Git site, you will need a GitHub user. See [CM-Well GitHub Repository](https://github.com/thomsonreuters/CM-Well) to access CM-Well Git repository.
 > * To compile and run CM-Well data tools, you will need Java version 8.
 
 *To install the Scala Build Tool and download the CM-Well Ingester source code:*
 
 1. Go to [http://www.scala-sbt.org/download.html](http://www.scala-sbt.org/download.html) and install the Scala Build Tool (SBT) version appropriate for your OS.
 2. Add the Scala sbt command to your PATH variable.
-3. Download the CM-Well Downloader source code from [GitHub](https://github.com/thomsonreuters/CM-Well).
+3. Download the CM-Well Downloader source code from [https://github.com/thomsonreuters/CM-Well](https://github.com/thomsonreuters/CM-Well).
 
 *To build all CM-Well utility executables:*
 

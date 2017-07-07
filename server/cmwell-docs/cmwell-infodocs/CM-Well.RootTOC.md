@@ -34,10 +34,6 @@
     <th align=left>Getting Started</th>
     <td><a href="GettingStarted.md">Getting Started</a></td>
   </tr>
-  <tr>
-    <th align=left>CM-Well Environments</th>
-    <td><a href="CM-WellEnvironments.md">CM-Well Environments</a></td>
-  </tr>
 <tr>
     <th align=left>CM-Well Web Interface</th>
     <td><a href="CM-WellWebInterface.md">CM-Well Web Interface</a></td>

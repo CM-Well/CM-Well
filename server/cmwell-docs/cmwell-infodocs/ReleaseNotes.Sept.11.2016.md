@@ -52,9 +52,6 @@ Please note the following items regarding changes in CM-Well's behavior:
 1. Consume tokens created in previous versions are no longer valid. New tokens must be created.
 1. SPARQL on the whole graph still has bugs. Among others, duplicate results sometimes appear in SELECT responses; to work around, use SELECT DISTINCT.
 
-### Link to Demo ###
-See a recording of the demo that introduces some of the new features at:
-[https://thehub.thomsonreuters.com/docs/DOC-1789735](https://thehub.thomsonreuters.com/docs/DOC-1789735)
 
 ------------------------------
 
