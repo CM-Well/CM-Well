@@ -31,10 +31,6 @@ Feature/Link | Description
 
 None.
 
-### Link to Demo ###
-See a recording of the demo that introduces some of the new features at: [https://thehub.thomsonreuters.com/docs/DOC-1789735](https://thehub.thomsonreuters.com/docs/DOC-1789735).
-
-(Click on the link for the **Sept. 28th, 2016** demo.)
 
 ------------------------------
 
@@ -59,7 +55,6 @@ To access the CM-Well documentation root table-of-contents, click the HELP link 
 
 <img src="./_Images/cm-well-help-link.png"/>
 
-> **Notes:** Most of the CM-Well documentation can also be found [on The Hub](https://thehub.thomsonreuters.com/groups/tms-asset-cm-well).
 
 **Documentation:** N/A.
 

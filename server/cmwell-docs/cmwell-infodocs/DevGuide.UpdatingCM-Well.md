@@ -1,5 +1,11 @@
 # Updating CM-Well #
 
+CM-Well supports APIs for writing to it as well as reading from it. However, in order to protect production data, only internal CM-Well subsystems and authorized users can update the production instance of CM-Well.
+
+If you want to experiment with writing to CM-Well, you can use the lab or pre-production environments, or install the CM-Well Docker.
+
+> **Note:** If you're creating a repository with new entities that will eventually be part of the TR Knowledge Graph, you will need to consult with the TR Information Architecture team to determine how to assign or create domain IDs and entity URIs. 
+
 Updates to CM-Well use the standard HTTP POST or DELETE verbs. In our examples, we’ll mostly use the cURL utility to issue commands to CM-Well, but you can use any application that can issue POST and DELETE requests. (A convenient application with a Windows UI is Fiddler, which you can downloaded at: [http://www.telerik.com/fiddler](http://www.telerik.com/fiddler).)
 
 >**Note:** Calls that update CM-Well (calls that add, change or delete data) operate asynchronously. This means that when the call returns, the update is not necessarily complete. The call adds the update request to a queue, and the request is performed eventually. The client may have to wait some time before the change is evident on CM-Well. If you want the call to be synchronous, use the [blocking flag](API.UsingTheBlockingFlag.md).

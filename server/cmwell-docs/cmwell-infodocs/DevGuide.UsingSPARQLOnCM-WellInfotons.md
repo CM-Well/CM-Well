@@ -159,9 +159,9 @@ Here are some CM-Well paths (in a custom-made repository) to which we can apply 
 
 Path                                                                                              | Retrieves
 :--------------------------------------------------------------------------------------------------|:----------------------------------------
-http://cm-well-ppe.int.thomsonreuters.com/example.org/Individuals?op=search&length=1000&with-data | The first 1000 people under Individuals 
-http://cm-well-ppe.int.thomsonreuters.com/example.org/Individuals/RonaldKhun                      | A specific person's infoton             
-http://cm-well-ppe.int.thomsonreuters.com/example.org/Individuals/JohnSmith?xg=3                  | A specific person's outbound links     
+http://cm-well.com/example.org/Individuals?op=search&length=1000&with-data | The first 1000 people under Individuals 
+http://cm-well.com/example.org/Individuals/RonaldKhun                      | A specific person's infoton             
+http://cm-well.com/example.org/Individuals/JohnSmith?xg=3                  | A specific person's outbound links     
 
 Let's run a SPARQL query that retrieves each person's **name** and **active** fields, and sorts the results by the **active** value:
 
