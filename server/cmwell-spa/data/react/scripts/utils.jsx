@@ -108,6 +108,7 @@ window.AppUtils = {
     
     , ajaxErrorToString: r => {
         let errMsg = r.responseJSON ? r.responseJSON.error || r.responseJSON.message || 'Unknown error' : r.responseText
+        if(errMsg && errMsg.indexOf('<html')!=-1) errMsg = 'Unexpected error'
         return r.status ? `HTTP ${r.status}: ${errMsg}` : 'An HTTP call did not return'
     }
     

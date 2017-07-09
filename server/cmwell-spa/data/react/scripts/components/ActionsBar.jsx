@@ -21,12 +21,12 @@ class ActionsBar extends React.Component {
 
     render() {
         let formatDropDown = this.props.forInfoton ? <span className="action">
-                View in format: 
+                View: 
                 {this.formatsDropDown(this.getFormat.bind(this))}
             </span> : null
         
         let historyDropDown = this.props.forInfoton ? <span className="action">
-                View History as: 
+                History: 
                 {this.formatsDropDown(this.getHistory, [{ value: 'atom', displayName: 'Default (Atom)' }])}
             </span> : null
 
@@ -34,8 +34,8 @@ class ActionsBar extends React.Component {
         let className = `actions-bar${this.props.forInfoton ? " for-infoton" : (this.props.forInfotonsList ? " for-infotons-list" : "")}`
         
         return <div className={className}>
-            {formatDropDown}
             {historyDropDown}
+            {formatDropDown}
         </div>
     }
 
