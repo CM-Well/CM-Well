@@ -34,7 +34,7 @@ When you no longer need the real-time updates, terminate the subscription (by ca
 ## Special Parameters ##
 
 Parameter | Description&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Values | Example 
-:----------|:-------------|:--------|:---------|:----------
+:----------|:-------------|:--------|:---------
 method=pull | Indicates that the subscription is in pull mode | N/A | N/A
 bulk-size | The number of infotons you want to pull | Integer value >=1 | bulk-size=10 
 

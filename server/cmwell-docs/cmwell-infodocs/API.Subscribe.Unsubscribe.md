@@ -30,7 +30,7 @@ The call to unsubscribe is the same, regardless of whether you have requested pu
 ## Special Parameters ##
 
 Parameter | Description&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Example 
-:----------|:-------------|:--------|:---------|:----------
+:----------|:-------------|:--------
 sub | The token you received from the subscription call| sub=YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjczLjE2ODo1NjA2MS91c2VyLzNkMDZjZWE1
 
 ## Code Example ##
