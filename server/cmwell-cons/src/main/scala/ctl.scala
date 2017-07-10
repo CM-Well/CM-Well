@@ -954,6 +954,7 @@ abstract class Host(user: String,
     command(s"test -L ${instDirs.globalLocation}/cm-well/app/ctrl/logs || ln -s ${instDirs.globalLocation}/cm-well/log/ctrl/ ${instDirs.globalLocation}/cm-well/app/ctrl/logs", hosts, false)
     command(s"test -L ${instDirs.globalLocation}/cm-well/app/dc/logs || ln -s ${instDirs.globalLocation}/cm-well/log/dc/ ${instDirs.globalLocation}/cm-well/app/dc/logs", hosts, false)
 
+    command(s"mkdir -p ${instDirs.globalLocation}/cm-well/conf/batch/", hosts, false)
     command(s"test -L ${instDirs.globalLocation}/cm-well/app/batch/conf || ln -s ${instDirs.globalLocation}/cm-well/conf/batch/ ${instDirs.globalLocation}/cm-well/app/batch/conf", hosts, false)
     command(s"test -L ${instDirs.globalLocation}/cm-well/app/bg/conf || ln -s ${instDirs.globalLocation}/cm-well/conf/bg/ ${instDirs.globalLocation}/cm-well/app/bg/conf", hosts, false)
     command(s"test -L ${instDirs.globalLocation}/cm-well/app/ws/conf || ln -s ${instDirs.globalLocation}/cm-well/conf/ws/ ${instDirs.globalLocation}/cm-well/app/ws/conf", hosts, false)

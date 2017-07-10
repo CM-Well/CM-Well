@@ -1,87 +1,70 @@
-<configuration debug="false" scan="true" scanPeriod="30 seconds">
-    <jmxConfigurator />
-    <conversionRule conversionWord="coloredLevel" converterClass="play.api.libs.logback.ColoredLevel" />
+<configuration debug="false">
+    <!--
+    A shutdown hook to properly finalize the logger system.
+    In order to avoid race conditions between shutdown hooks (logs from another one won't be printed) there is
+    a delay of 5 seconds that allows other hooks to write logs.
+    This will cause the process shutdown to be delayed with 5 seconds.
+    -->
+    <shutdownHook class="ch.qos.logback.core.hook.DelayingShutdownHook">
+        <delay>5000</delay>
+    </shutdownHook>
 
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${application.home:-.}/cw-logs/application.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <!-- daily rollover with compression -->
-            <fileNamePattern>${application.home:-.}/cw-logs/application-log-%d{yyyy-MM-dd, UTC}.gz</fileNamePattern>
-            <!-- keep 1 week worth of history -->
+            <fileNamePattern>${application.home:-.}/cw-logs/application-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
+            <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
+            <maxFileSize>100MB</maxFileSize>
             <maxHistory>7</maxHistory>
+            <totalSizeCap>20GB</totalSizeCap>
+            <!-- in case of process terminating too early for rollover - do the rollover during start -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
         </rollingPolicy>
         <encoder>
-            <pattern>%date - [%level] - from %logger in %thread %n%message%n%xException%n</pattern>
-            <!--<pattern>%date{ISO8601} [%thread] %-5level %logger{36} - %msg%n</pattern>-->
+            <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
         </encoder>
+        <!-- this quadruples logging throughput -->
+        <immediateFlush>false</immediateFlush>
     </appender>
 
-    <appender name="AsyncFILE" class="ch.qos.logback.classic.AsyncAppender">
+    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
         <appender-ref ref="FILE" />
+        <maxFlushTime>0</maxFlushTime>
+        <discardingThreshold>0</discardingThreshold>
     </appender>
 
-
-    <appender name="ACCESS_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${application.home:-.}/cw-logs/access.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+    <appender name="AKKA_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${application.home:-.}/cw-logs/akka.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <!-- daily rollover with compression -->
-            <fileNamePattern>${application.home:-.}/cw-logs/access-log-%d{yyyy-MM-dd}.gz</fileNamePattern>
-            <!-- keep 1 week worth of history -->
+            <fileNamePattern>${application.home:-.}/cw-logs/akka-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
+            <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
+            <maxFileSize>100MB</maxFileSize>
             <maxHistory>7</maxHistory>
+            <totalSizeCap>20GB</totalSizeCap>
+            <!-- in case of process terminating too early for rollover - do the rollover during start -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
         </rollingPolicy>
         <encoder>
-            <pattern>%date{yyyy-MM-dd HH:mm:ss ZZZZ} %message%n</pattern>
-            <!-- this quadruples logging throughput -->
-            <immediateFlush>true</immediateFlush>
+            <pattern>%date{ISO8601} [%thread %X{sourceThread}] %-5level %logger{36} %X{sourceActorSystem} %X{akkaSource} - %msg%n</pattern>
         </encoder>
+        <!-- this quadruples logging throughput -->
+        <immediateFlush>false</immediateFlush>
     </appender>
 
-    <appender name="x-fix" class="ch.qos.logback.core.FileAppender">
-        <file>${application.home:-.}/cw-logs/x-fix.log</file>
-        <append>true</append>
-        <layout class="ch.qos.logback.classic.PatternLayout">
-            <pattern>%d{yyyy-MM-dd HH:mm:ss}, %p, %c, %t, %L, %C{1}, %M %m%n</pattern>
-        </layout>
+    <appender name="ASYNC_AKKA_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="AKKA_FILE" />
+        <maxFlushTime>0</maxFlushTime>
+        <discardingThreshold>0</discardingThreshold>
     </appender>
 
-    <appender name="CW_APP" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>cw-logs/cw-application.log</file>
-        <append>true</append>
-        <layout class="ch.qos.logback.classic.PatternLayout">
-            <pattern>%d{yyyy-MM-dd HH:mm:ss}, %p, %c, %t, %L, %C{1}, %M %m%n</pattern>
-        </layout>
-
-        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>cw-logs/cw-application.log.%i</fileNamePattern>
-            <maxIndex>21</maxIndex>
-        </rollingPolicy>
-        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <maxFileSize>10000000</maxFileSize>
-        </triggeringPolicy>
-    </appender>
-
-    <logger name="cmwell.xfix" level="INFO" additivity="true">
-        <appender-ref ref="x-fix"/>
-    </logger>
-
-    <logger name="access" level="INFO" additivity="false">
-        <appender-ref ref="ACCESS_FILE" />
-    </logger>
-
-    <logger name="play" level="${log.level:-INFO}" />
-
-    <logger name="application" level="${log.level:-INFO}">
-        <appender-ref ref="FILE" />
-    </logger>
-
-    <logger name="cmwell.cw.app" level="${log.level:-DEBUG}" additivity="true">
-        <appender-ref ref="CW_APP" />
+    <logger name="akka" additivity="true">
+        <appender-ref ref="ASYNC_AKKA_FILE" />
     </logger>
 
     <root level="${log.level:-INFO}">
-        <level value="${log.level:-INFO}"/>
-        <appender-ref ref="STDOUT" />
-        <appender-ref ref="FILE" />
+        <appender-ref ref="ASYNC_FILE" />
     </root>
-
+    <jmxConfigurator />
 </configuration>

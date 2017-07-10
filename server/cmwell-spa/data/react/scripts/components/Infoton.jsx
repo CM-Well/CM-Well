@@ -66,24 +66,24 @@ class Infoton extends React.Component {
     }
     
     componentWillReceiveProps(newProps) { // not using componentDidMount, because we want to ajax and re-render each time path changes
-        if(AppUtils.isSameLocation(this.props.location, newProps.location))
-          return // no need to reload current page
+        if(AppUtils.isSameLocation(this.props.location, newProps.location) && this.props.displayNames)
+          return // no need to reload current page, unless we still didn't get displayNames
 
         if(newProps.location.state)
-            this.updateStateWithInfoton(newProps.location.state)
+            this.updateStateWithInfoton(newProps.location.state, newProps.displayNames)
         else {
             this.setState({ loading: true })
             AppUtils.cachedGet(`${newProps.location.pathname}?format=jsonl`)
                 .always(t => this.setState({ loading: false }))
-                .then(i => this.updateStateWithInfoton(new DInfoton(JSON.fromJSONL(i))))
+                .then(i => this.updateStateWithInfoton(new DInfoton(JSON.fromJSONL(i))), newProps.displayNames)
                 .fail(r => this.setState({ errMsg: AppUtils.ajaxErrorToString(r) }))
         }
     }
     
-    updateStateWithInfoton(infoton) {
+    updateStateWithInfoton(infoton, displayNames) {
         let wasSelected = field => !!+localStorage.getItem(`FavStar$${field}`)
         let fields = _(infoton ? infoton.fields || {} : {}).chain().map((v,k) => [k,{values:v,metadata:{selected:wasSelected(k)}}]).object().value()
-        let displayName = new DInfoton(infoton, this.props.displayNames).displayName
+        let displayName = new DInfoton(infoton, this.props.displayNames||displayNames).displayName
         infoton = { type: infoton.type, system: infoton.system }
         
         if(infoton && infoton.system && infoton.system['length.content'] > AppUtils.constants.fileInfotonInMemoryThreshold) {
@@ -157,12 +157,15 @@ class Infoton extends React.Component {
         // todo refactor. it's not DRY having to keep asking !_.isEmpty(dataFields) 
         
         return _.isEmpty(dataFields) && !fileContents ? (this.state.infoton && this.state.infoton.system ? <SystemFields data={this.state.infoton.system} /> : null) : (<div>
-            <ActionsBar forInfoton isFiltering={onlyFav} fields={_(visibleFields).keys()} />
             <div className="infoton-title">
                 <img src={iconSrc} />
-                { this.state.displayName || name }
+                <div className="names">
+                    <div className="displayName">{ this.state.displayName || name }</div>
+                    { this.state.displayName && name != this.state.displayName ? <div className="name">{name}</div> : null }
+                </div>
                 <img src="/meta/app/react/images/alerts-icon.svg" className="alerts-icon" title="Get alerts" />
             </div>
+            <ActionsBar forInfoton isFiltering={onlyFav} fields={_(visibleFields).keys()} />
             {fileContents}
             { !_.isEmpty(dataFields) ? <div className="fav-toggle">Show All ({fieldsNum}) <SliderToggle id="infoton-fav-fields" callback={this.handleSilderToggleEvent.bind(this)}/> Only Favorites ({favFieldsNum})</div> : null }
             

@@ -67,7 +67,7 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
                 ) extends LazyLogging with DefaultInstrumented {
 
   lazy val redlog = LoggerFactory.getLogger("bg_red_log")
-  lazy val heartbitLogger = LoggerFactory.getLogger("heartbit_log")
+  lazy val heartbitLogger = LoggerFactory.getLogger("heartbeat_log")
   val parentsCache = CacheBuilder.newBuilder().maximumSize(4000 * 10).build[String, String]()
   val beforePersistedCache = CacheBuilder.newBuilder().expireAfterWrite((1.minute).toMillis, TimeUnit.MILLISECONDS).maximumSize(Long.MaxValue).build[String, Infoton]()
 

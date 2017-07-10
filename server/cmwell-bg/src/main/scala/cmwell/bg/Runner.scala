@@ -26,6 +26,8 @@ import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import k.grid.service.{ServiceInitInfo, ServiceTypes}
 import k.grid.{Grid, GridConnection}
+import uk.org.lidalia.sysoutslf4j.context.SysOutOverSLF4J
+
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -36,6 +38,10 @@ import scala.language.postfixOps
 object Runner extends LazyLogging {
 
   def main(args: Array[String]): Unit = {
+    logger.info("Starting BG process")
+    //SLF4J initialization is not thread safe, so it's "initialized" by writing some log and only then using sendSystemOutAndErrToSLF4J.
+    //Without it there will be en error in stderr and some log line at the beginning will be lost
+    SysOutOverSLF4J.sendSystemOutAndErrToSLF4J()
     val config = ConfigFactory.load()
     val irwServiceDaoClusterName = config.getString("irwServiceDao.clusterName")
     val irwServiceDaoKeySpace = config.getString("irwServiceDao.keySpace")
