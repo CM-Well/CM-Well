@@ -21,6 +21,7 @@ libraryDependencies ++= {
 		dm("io.spray", "spray-json"),
 		dm("joda-time", "joda-time"),
 		dm("net.logstash.logback", "logstash-logback-encoder"),
+		dm("uk.org.lidalia","sysout-over-slf4j"),
 		dm("org.apache.jena", "apache-jena-libs")
 			.exclude("commons-logging", "commons-logging")
 			.exclude("org.slf4j", "slf4j-log4j12")

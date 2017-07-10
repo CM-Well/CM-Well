@@ -19,19 +19,23 @@ package cmwell.batch.boot
 import cmwell.ctrl.config.Jvms
 import cmwell.indexer.Indexer
 import com.typesafe.config.ConfigFactory
-import cmwell.tlog.{TLogState, TLog}
+import cmwell.tlog.{TLog, TLogState}
 import cmwell.imp.IMPService
 import cmwell.fts.FTSServiceES
 import com.typesafe.scalalogging.LazyLogging
+
 import concurrent._
 import scala.compat.Platform._
 import scala.concurrent.ExecutionContext.Implicits.global
 import cmwell.driver.Dao
+
 import scala.util.Success
 import scala.util.Failure
 import cmwell.irw.IRWService
-import k.grid.{GridConnection, Grid}
+import k.grid.{Grid, GridConnection}
 import cmwell.rts.Publisher
+import uk.org.lidalia.sysoutslf4j.context.SysOutOverSLF4J
+
 import scala.util.Failure
 import scala.util.Success
 
@@ -48,6 +52,10 @@ object Runner extends App with LazyLogging{
 //  val isIndexer:Boolean =  java.lang.Boolean.valueOf(Option(System.getProperty("isIndexer")).getOrElse("false"))
 
   logger info ("Running batch")
+  //SLF4J initialization is not thread safe, so it's "initialized" by writing some log and only then using sendSystemOutAndErrToSLF4J.
+  //Without it there will be en error in stderr and some log line at the beginning will be lost
+  SysOutOverSLF4J.sendSystemOutAndErrToSLF4J()
+
   //logger info(s"Grid.join with clusterName [$clusterName] gridBindIP [$gridBindIP] gridSeeds [$gridSeeds] gridBindPort [$gridBindPort]")
 
   Grid.setGridConnection(GridConnection(memberName = "batch", labels = Set("publisher")))
