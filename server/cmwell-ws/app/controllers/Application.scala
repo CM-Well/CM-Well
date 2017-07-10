@@ -1787,27 +1787,27 @@ callback=< [URL] >
     }
   }
 
-  def handleAuthGET(action: String) = Action {
-    implicit req => action match {
+  def handleAuthGET(action: String) = Action.async { req =>
+    action match {
       case "generatepassword" => {
         val pw = AuthUtils.generateRandomPassword()
-        Ok(Json.obj(("password", JsString(pw._1)), ("encrypted", pw._2)))
+        Future.successful(Ok(Json.obj(("password", JsString(pw._1)), ("encrypted", pw._2))))
       }
       case "changepassword" => {
         val currentPassword = req.getQueryString("current")
         val newPassword = req.getQueryString("new")
         val token = AuthUtils.extractTokenFrom(req)
 
-        Seq(currentPassword, newPassword, token).forall(_.isDefined) match {
-          case true =>
-            if (AuthUtils.changePassword(token.get, currentPassword.get, newPassword.get))
-              Ok(Json.obj("success" -> "true"))
-            else
-              Forbidden(Json.obj("error" -> "Current password does not match given token"))
-          case false => BadRequest(Json.obj("error" -> "insufficient arguments"))
+        if (Seq(currentPassword, newPassword, token).forall(_.isDefined)) {
+          AuthUtils.changePassword(token.get, currentPassword.get, newPassword.get).map {
+            case true => Ok(Json.obj("success" -> true))
+            case _ => Forbidden(Json.obj("error" -> "Current password does not match given token"))
+          }
+        } else {
+          Future.successful(BadRequest(Json.obj("error" -> "insufficient arguments")))
         }
       }
-      case _ => BadRequest(Json.obj("error" -> "No such action"))
+      case _ => Future.successful(BadRequest(Json.obj("error" -> "No such action")))
     }
   }
 

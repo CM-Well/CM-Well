@@ -24,25 +24,25 @@ import play.api.libs.json.{JsObject, JsString}
 import play.api.mvc.Request
 import security.PermissionLevel.PermissionLevel
 
+import scala.concurrent.Future
 import scala.language.postfixOps
 import scala.util.Random
 
 object AuthUtils {
-  def changePassword(token: Token, currentPw: String, newPw: String): Boolean = {
-
-    if(!token.isValid)
-      return false
-
-        AuthCache.getUserInfoton(token.username) match {
-          case Some(user) if Authentication.passwordMatches(user, currentPw) => {
-            val digestValue = newPw.bcrypt(generateSalt)
-            val digest2Value = cmwell.util.string.Hash.md5(s"${token.username}:cmwell:$newPw")
-            val newUserInfoton = user.as[JsObject] ++ JsObject(Seq("digest"->JsString(digestValue),"digest2"->JsString(digest2Value)))
-            CRUDServiceFS.putInfoton(FileInfoton(s"/meta/auth/users/${token.username}", Settings.dataCenter, None, Map.empty[String,Set[FieldValue]], FileContent(newUserInfoton.toString.getBytes, "application/json")))
-            true
-          }
-          case _ => false
+  def changePassword(token: Token, currentPw: String, newPw: String): Future[Boolean] = {
+    if(!token.isValid) {
+      Future.successful(false)
+    } else {
+      AuthCache.getUserInfoton(token.username) match {
+        case Some(user) if Authentication.passwordMatches(user, currentPw) => {
+          val digestValue = newPw.bcrypt(generateSalt)
+          val digest2Value = cmwell.util.string.Hash.md5(s"${token.username}:cmwell:$newPw")
+          val newUserInfoton = user.as[JsObject] ++ JsObject(Seq("digest" -> JsString(digestValue), "digest2" -> JsString(digest2Value)))
+          CRUDServiceFS.putInfoton(FileInfoton(s"/meta/auth/users/${token.username}", Settings.dataCenter, None, Map.empty[String, Set[FieldValue]], FileContent(newUserInfoton.toString.getBytes, "application/json")))
         }
+        case _ => Future.successful(false)
+      }
+    }
   }
 
   val useAuthorizationParam: Boolean = java.lang.Boolean.getBoolean("use.authorization")

@@ -16,6 +16,7 @@
 package security
 
 import cmwell.domain.{Everything, FileInfoton}
+import cmwell.ws.Settings
 import cmwell.zcache.L1Cache
 import com.typesafe.scalalogging.LazyLogging
 import logic.CRUDServiceFS
@@ -53,6 +54,16 @@ object AuthCache extends LazyLogging {
   }
 
   // TODO @inject(ec), do not use Implicits.global
-  private val usersCache = L1Cache.memoize(task = getUserFromCas)(digest = identity, isCachable = _.isDefined)(128, 300)
-  private val rolesCache = L1Cache.memoize(task = getRoleFromCas)(digest = identity, isCachable = _.isDefined)(32,  300)
+
+  private val usersCache = L1Cache.memoize(task = getUserFromCas)(
+                                           digest = identity,
+                                           isCachable = _.isDefined)(
+                                           l1Size = Settings.zCacheSecondsTTL,
+                                           ttlSeconds = Settings.zCacheSecondsTTL)
+
+  private val rolesCache = L1Cache.memoize(task = getRoleFromCas)(
+                                           digest = identity,
+                                           isCachable = _.isDefined)(
+                                           l1Size = Settings.zCacheSecondsTTL,
+                                           ttlSeconds = Settings.zCacheSecondsTTL)
 }
