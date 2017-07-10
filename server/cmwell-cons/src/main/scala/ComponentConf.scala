@@ -501,6 +501,10 @@ case class BgConf(home : String, zookeeperServers : Seq[String], clusterName: St
         "-DftsService.scrollLength=100",
         "-DftsService.waitForGreen=true",
         "-DftsService.scrollTTL=3600",
+        "-Dakka.loggers.0=akka.event.slf4j.Slf4jLogger",
+        //akka is configured to log in DEBUG level. The actual level is determined by logback
+        "-Dakka.loglevel=DEBUG",
+        "-Dakka.logging-filter=akka.event.slf4j.Slf4jLoggingFilter",
 
         mXmx, mXms, mXmn, mXss) ++ jmx ++ JVMOptimizer.gcLoggingJVM(s"$home/log/bg/gc.log")
     }
@@ -530,9 +534,11 @@ case class BgConf(home : String, zookeeperServers : Seq[String], clusterName: St
       "root_dir" -> home
     )
 
+    val logbackConf = ResourceBuilder.getResource("conf/bg/logback.xml", Map[String, String]())
     val confContent = ResourceBuilder.getResource(s"scripts/templates/es.node.client.yml", m)
 
-    List(ConfFile("bg.es.yml", confContent, false))
+    List(ConfFile("logback.xml", logbackConf, false),
+         ConfFile("bg.es.yml", confContent, false))
   }
 }
 
@@ -587,7 +593,12 @@ case class BatchConf(home : String, clusterName: String, dataCenter :String ,hos
     ConfFile("start.sh",scriptString,true)
   }
 
-  override def mkConfig: List[ConfFile] = null
+  override def mkConfig: List[ConfFile] = {
+    val logbackConf = ResourceBuilder.getResource("conf/batch/logback.xml", Map[String, String]())
+    val applicationConfConf = ResourceBuilder.getResource("conf/batch/application.conf", Map[String, String]())
+    List(ConfFile("logback.xml", logbackConf, false),
+      ConfFile("application.conf", applicationConfConf, false))
+  }
 }
 
 
@@ -716,6 +727,7 @@ case class WebConf(home : String, zookeeperServers : Seq[String], clusterName:St
       s"-Dcmwell.ws.nbg=$nbg",
       s"-DdataCenter.id=$dataCenter",
       "-Dakka.loggers.0=akka.event.slf4j.Slf4jLogger",
+      //akka is configured to log in DEBUG level. The actual level is determined by logback
       "-Dakka.loglevel=DEBUG",
       "-Dakka.logging-filter=akka.event.slf4j.Slf4jLoggingFilter",
       s"-Dkafka.zkServers=${zookeeperServers.map(zkServer => s"$zkServer:2181").mkString(",")}",
@@ -835,8 +847,9 @@ case class DcConf(home : String, sName : String, clusterName : String, resourceM
       "-Dcom.sun.management.jmxremote.authenticate=false",
       "-Dcom.sun.management.jmxremote.ssl=false",
       "-Dakka.loggers.0=akka.event.slf4j.Slf4jLogger",
+      //akka is configured to log in DEBUG level. The actual level is determined by logback
       "-Dakka.loglevel=DEBUG",
-      "-Dlogging-filter=akka.event.slf4j.Slf4jLoggingFilter",
+      "-Dakka.logging-filter=akka.event.slf4j.Slf4jLoggingFilter",
       "-Dakka.http.host-connection-pool.max-connections=10",
       "-Dakka.http.host-connection-pool.max-open-requests=128",
       "-Dakka.http.host-connection-pool.client.parsing.max-content-length=360M",
@@ -858,8 +871,10 @@ case class DcConf(home : String, sName : String, clusterName : String, resourceM
   }
 
   override def mkConfig: List[ConfFile] = {
+    val logbackConf = ResourceBuilder.getResource("conf/dc/logback.xml", Map[String, String]())
     val applicationConfConf = ResourceBuilder.getResource("conf/dc/application.conf", Map[String, String]())
-    List(ConfFile("application.conf", applicationConfConf, false))
+    List(ConfFile("logback.xml", logbackConf, false),
+         ConfFile("application.conf", applicationConfConf, false))
   }
 
   override def getPsIdentifier: String = "log/dc"

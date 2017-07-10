@@ -107,7 +107,10 @@ object SbtZookeeperPlugin extends sbt.AutoPlugin{
 
     /** Settings **/
     zookeeperVersion := "3.4.7",
-    libraryDependencies += "org.apache.zookeeper" % "zookeeper" % zookeeperVersion.value,
+    //the %test below is to disable the zookeeper fetching when not in tests. This is to remove the jar hell between
+    //logback-classic and slf4j-log4j. The jar hell is still in tests...
+    //TODO: fix it properly also for tests
+    libraryDependencies += "org.apache.zookeeper" % "zookeeper" % zookeeperVersion.value % "test",
     zookeeperServerConfig := (resourceDirectory in Runtime).value / "zookeeper.server.cfg",
     zookeeperServerRunDir := {
       val f = target.value / "zookeeper-server"
