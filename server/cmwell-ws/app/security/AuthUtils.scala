@@ -39,7 +39,6 @@ object AuthUtils {
             val digest2Value = cmwell.util.string.Hash.md5(s"${token.username}:cmwell:$newPw")
             val newUserInfoton = user.as[JsObject] ++ JsObject(Seq("digest"->JsString(digestValue),"digest2"->JsString(digest2Value)))
             CRUDServiceFS.putInfoton(FileInfoton(s"/meta/auth/users/${token.username}", Settings.dataCenter, None, Map.empty[String,Set[FieldValue]], FileContent(newUserInfoton.toString.getBytes, "application/json")))
-            AuthCache.invalidateUserInfoton(token.username)
             true
           }
           case _ => false
