@@ -70,7 +70,7 @@ object ZookeeperChecker extends Checker with LazyLogging {
 
   private def singleTcp(host: String, port: Int, request: String): Future[String] = {
     val (killSwitch, futureByteString) = Source.single(ByteString(request))
-      .via(Tcp().outgoingConnection(new InetSocketAddress(host, port), None, Nil, false, 5.seconds, 5.seconds))
+      .via(Tcp().outgoingConnection(new InetSocketAddress(host, port), None, Nil, true, 5.seconds, 5.seconds))
       .viaMat(KillSwitches.single)(Keep.right)
       .toMat(Sink.head)(Keep.both)
       .run()
