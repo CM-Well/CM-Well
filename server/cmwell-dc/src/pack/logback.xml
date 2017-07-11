@@ -24,8 +24,8 @@
         <encoder>
             <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
         </encoder>
-        <!-- this quadruples logging throughput -->
-        <immediateFlush>false</immediateFlush>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
     </appender>
 
     <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
@@ -49,8 +49,8 @@
         <encoder>
             <pattern>%date{ISO8601} [%thread %X{sourceThread}] %-5level %logger{36} %X{sourceActorSystem} %X{akkaSource} - %msg%n</pattern>
         </encoder>
-        <!-- this quadruples logging throughput -->
-        <immediateFlush>false</immediateFlush>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
     </appender>
 
     <appender name="ASYNC_AKKA_FILE" class="ch.qos.logback.classic.AsyncAppender">
@@ -74,8 +74,8 @@
         <encoder>
             <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
         </encoder>
-        <!-- this quadruples logging throughput -->
-        <immediateFlush>false</immediateFlush>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
     </appender>
 
     <appender name="ASYNC_RED_LOG" class="ch.qos.logback.classic.AsyncAppender">
@@ -99,8 +99,8 @@
         <encoder>
             <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
         </encoder>
-        <!-- this quadruples logging throughput -->
-        <immediateFlush>false</immediateFlush>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
     </appender>
 
     <appender name="ASYNC_YELLOW_LOG" class="ch.qos.logback.classic.AsyncAppender">
@@ -124,8 +124,8 @@
         <encoder>
             <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
         </encoder>
-        <!-- this quadruples logging throughput -->
-        <immediateFlush>false</immediateFlush>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
     </appender>
 
     <!--Alerts log is used by the devOps team to monitor the cluster state, hence the special message pattern-->
@@ -160,8 +160,8 @@
         <encoder>
             <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
         </encoder>
-        <!-- this quadruples logging throughput -->
-        <immediateFlush>false</immediateFlush>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
     </appender>
 
     <appender name="ASYNC_AGENTS_FILE" class="ch.qos.logback.classic.AsyncAppender">
