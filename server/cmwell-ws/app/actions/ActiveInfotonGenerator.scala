@@ -112,7 +112,6 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
       case YellowStatus => Yellow
       case RedStatus => Red
     }
-    println(s"$c $r")
     r
   }
 

@@ -50,6 +50,7 @@ class APIFunctionalityTests extends AsyncFunSpec
   with Matchers
   with Inspectors
   with OptionValues
+  with EitherValues
   with Helpers
   with fixture.NSHashesAndPrefixes
   with LazyLogging {
@@ -692,8 +693,10 @@ class APIFunctionalityTests extends AsyncFunSpec
             withClue(body + "\n" + res.toString) {
               res.status should be >= 200
               res.status should be < 400 //status should be OK
-              compareRDF(expected, body, "N3", Array(
-                "lastModified", "uuid", "indexTime")) should be(true)
+              val errOrOk = compareRDF(expected, body, "N3", Array("lastModified", "uuid", "indexTime"))
+              withClue("\n" + errOrOk.left.getOrElse("") + "\n") {
+                errOrOk.right.value should be(())
+              }
             }
           }
         }
@@ -724,8 +727,11 @@ class APIFunctionalityTests extends AsyncFunSpec
             withClue(body + "\n" + res.toString) {
               res.status should be >= 200
               res.status should be < 400 //status should be OK
-              compareRDF(expected, body, "RDF/XML-ABBREV", Array(
-                "lastModified", "uuid", "indexTime")) should be(true)
+              val errOrOk = compareRDF(expected, body, "RDF/XML-ABBREV", Array(
+                "lastModified", "uuid", "indexTime"))
+              withClue("\n" + errOrOk.left.getOrElse("") + "\n") {
+                errOrOk.right.value should be(())
+              }
             }
           }
         }
@@ -795,8 +801,11 @@ class APIFunctionalityTests extends AsyncFunSpec
               withClue(body + "\n" + res.toString) {
                 res.status should be >= 200
                 res.status should be < 400 //status should be OK
-                compareRDF(expected, body, "N3", Array(
-                  "lastModified", "uuid", "indexTime")) should be(true)
+                val errOrOk = compareRDF(expected, body, "N3", Array(
+                  "lastModified", "uuid", "indexTime"))
+                withClue("\n" + errOrOk.left.getOrElse("") + "\n") {
+                  errOrOk.right.value should be(())
+                }
               }
             }
           }
@@ -833,7 +842,10 @@ class APIFunctionalityTests extends AsyncFunSpec
               withClue(body + "\n" + res.toString) {
                 res.status should be >= 200
                 res.status should be < 400 //status should be OK
-                compareRDF(expected, body, "RDF/XML", Array("lastModified", "uuid", "indexTime")) should be(true)
+                val errOrOk = compareRDF(expected, body, "RDF/XML", Array("lastModified", "uuid", "indexTime"))
+                withClue("\n" + errOrOk.left.getOrElse("") + "\n") {
+                  errOrOk.right.value should be(())
+                }
               }
             }
           }
@@ -880,7 +892,10 @@ class APIFunctionalityTests extends AsyncFunSpec
         }
 
         val res = Await.result(p.future, requestTimeout)
-        compareRDF(expected,  res, "RDF/XML-ABBREV" ,Array("lastModified", "uuid", "indexTime")) should be(true)
+        val errOrOk = compareRDF(expected,  res, "RDF/XML-ABBREV" ,Array("lastModified", "uuid", "indexTime"))
+        withClue("\n" + errOrOk.left.getOrElse("") + "\n") {
+          errOrOk.right.value should be(())
+        }
       }
 
       it("should retrieve inserted N3 docs as JSON") {

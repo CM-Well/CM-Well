@@ -400,7 +400,7 @@ callback=< [URL] >
     import cmwell.tracking.{InProgress, TrackingId, TrackingUtil}
 
     def getDataFromActor(trackingId: String) = trackingId match {
-      case TrackingId(tid) => println(s"Tracking: Trying to get data from $tid"); TrackingUtil().readStatus(tid)
+      case TrackingId(tid) => logger.debug(s"Tracking: Trying to get data from $tid"); TrackingUtil().readStatus(tid)
       case _ => Future.failed(new IllegalArgumentException(s"Invalid trackingID"))
     }
 
