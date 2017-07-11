@@ -13,59 +13,57 @@
   * limitations under the License.
   */
 
-
 package security
 
-import java.util.concurrent.TimeUnit
-
 import cmwell.domain.{Everything, FileInfoton}
-import com.google.common.cache.{CacheLoader, CacheBuilder, LoadingCache}
+import cmwell.ws.Settings
+import cmwell.zcache.L1Cache
+import com.typesafe.scalalogging.LazyLogging
 import logic.CRUDServiceFS
-import play.api.libs.json.{Json, JsValue}
+import play.api.libs.json.{JsValue, Json}
 
 import scala.concurrent.Await
-import scala.concurrent.duration.Duration
-import scala.util.{Success, Try}
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+import scala.util.Try
 
 /**
- * Created by yaakov on 1/20/15.
- */
-object AuthCache {
+  * Created by yaakov on 1/20/15.
+  */
+object AuthCache extends LazyLogging {
   private val usersFolder = "/meta/auth/users"
   private val rolesFolder = "/meta/auth/roles"
 
+  // TODO Do not Await.result... These should return Future[Option[JsValue]]]
+
   def getUserInfoton(username: String): Option[JsValue] =
-    Try(userInfotonsCache.get(username)).toOption
+    Try(Await.result(usersCache(username), 3.seconds)).toOption.flatten
 
-  def invalidateUserInfoton(username: String) = userInfotonsCache.invalidate(username)
+  def getRole(roleName: String): Option[JsValue] =
+    Try(Await.result(rolesCache(roleName), 3.seconds)).toOption.flatten
 
-  def getRole(roleName: String): Option[JsValue] = {
-    Try(rolesCache.get(roleName)) match {
-      case Success(value) => Some(value)
-      case _ => None
-    }
+  private def getUserFromCas(username: String) = getFromCrudAndExtractJson(s"$usersFolder/$username")
+  private def getRoleFromCas(rolename: String) = getFromCrudAndExtractJson(s"$rolesFolder/$rolename")
+
+  private def getFromCrudAndExtractJson(infotonPath: String) = CRUDServiceFS.getInfoton(infotonPath, None, None).map {
+    case Some(Everything(FileInfoton(_,_,_,_,_,Some(c),_))) =>
+      Some(Json.parse(new String(c.data.get, "UTF-8")))
+    case other =>
+      logger.warn(s"Trying to read $infotonPath but got from CAS $other")
+      None
   }
 
-  private def getFromCrudAndExtractJson(infotonPath: String) = Await.result(CRUDServiceFS.getInfoton(infotonPath, None, None).map(x => (x: @unchecked) match {
-    case Some(Everything(FileInfoton(_,_,_,_,_,Some(c),_))) => Json.parse(new String(c.data.get, "UTF-8"))
-  }), Duration.Inf)
+  // TODO @inject(ec), do not use Implicits.global
 
-  private val userInfotonsCache: LoadingCache[String, JsValue] =
-    CacheBuilder
-      .newBuilder()
-      .maximumSize(128)
-      .expireAfterWrite(5, TimeUnit.MINUTES)
-      .build(new CacheLoader[String, JsValue] {
-        override def load(key: String) = getFromCrudAndExtractJson(s"$usersFolder/$key")
-      })
+  private val usersCache = L1Cache.memoize(task = getUserFromCas)(
+                                           digest = identity,
+                                           isCachable = _.isDefined)(
+                                           l1Size = Settings.zCacheSecondsTTL,
+                                           ttlSeconds = Settings.zCacheSecondsTTL)
 
-  private val rolesCache: LoadingCache[String, JsValue] =
-    CacheBuilder
-      .newBuilder()
-      .maximumSize(32)
-      .expireAfterWrite(5, TimeUnit.MINUTES)
-      .build(new CacheLoader[String, JsValue] {
-        override def load(key: String) = getFromCrudAndExtractJson(s"$rolesFolder/$key")
-      })
+  private val rolesCache = L1Cache.memoize(task = getRoleFromCas)(
+                                           digest = identity,
+                                           isCachable = _.isDefined)(
+                                           l1Size = Settings.zCacheSecondsTTL,
+                                           ttlSeconds = Settings.zCacheSecondsTTL)
 }
