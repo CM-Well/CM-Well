@@ -24,7 +24,7 @@ Upload your JAR File to the `/meta/lib` CM-Well folder.
 **-OR-**
 Upload your Scala source file to the `/meta/lib/sources/scala` CM-Well folder.
 
->**Note:** Uploading a file to the `/meta/lib` folder requires a security token. If you don't have one, contact the CM-Well support team.
+>**Note:** Uploading a file to the `/meta/lib` folder requires a security token.
 
 ## Step 3: Call Your Function from SPARQL
 1. Under the `IMPORT` section in your SPARQL query, add your JAR name and path, relative to its mandatory location (`meta/lib` or `meta/lib/sources/scala`). Make sure it ends with the correct suffix (`".jar"` or `".scala"`).

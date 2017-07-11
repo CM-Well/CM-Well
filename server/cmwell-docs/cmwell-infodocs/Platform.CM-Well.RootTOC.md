@@ -91,8 +91,7 @@
     <td><a href="Tools.UsingTheCM-WellSparkConnector.md">Spark Connector</a></td>
   </tr>
 <tr>
-    <th rowspan="2" align=left><a href="Testing.TOC.md">Testing</a></th>
-    <td><a href="Testing.TestingYourCM-WellApplication.md">Testing Your CM-Well Application</a></td>
+    <th rowspan="2" align=left>Testing</a></th>
   </tr>
 <tr>
     <td><a href="Testing.TestingAndDebugging.md">Testing and Debugging Tips</a></td>
