@@ -58,12 +58,12 @@ object AuthCache extends LazyLogging {
   private val usersCache = L1Cache.memoize(task = getUserFromCas)(
                                            digest = identity,
                                            isCachable = _.isDefined)(
-                                           l1Size = Settings.zCacheSecondsTTL,
+                                           l1Size = Settings.zCacheL1Size,
                                            ttlSeconds = Settings.zCacheSecondsTTL)
 
   private val rolesCache = L1Cache.memoize(task = getRoleFromCas)(
                                            digest = identity,
                                            isCachable = _.isDefined)(
-                                           l1Size = Settings.zCacheSecondsTTL,
+                                           l1Size = Settings.zCacheL1Size,
                                            ttlSeconds = Settings.zCacheSecondsTTL)
 }
