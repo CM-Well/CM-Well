@@ -69,9 +69,9 @@ class Infoton extends React.Component {
         if(AppUtils.isSameLocation(this.props.location, newProps.location) && this.props.displayNames)
           return // no need to reload current page, unless we still didn't get displayNames
 
-        if(newProps.location.state)
+        if(newProps.location.state) {
             this.updateStateWithInfoton(newProps.location.state, newProps.displayNames)
-        else {
+        } else {
             this.setState({ loading: true })
             AppUtils.cachedGet(`${newProps.location.pathname}?format=jsonl`)
                 .always(t => this.setState({ loading: false }))
@@ -90,8 +90,10 @@ class Infoton extends React.Component {
             // removing too large payloads from memory
             infoton.system = _(infoton.system).omit('data.content','base64-data.content')
         }
-        
+
         this.setState({ infoton, fields, displayName, errMsg: null })
+        this.props.displayNameUpdateCb && this.props.displayNameUpdateCb(displayName)
+        
     }
     
     

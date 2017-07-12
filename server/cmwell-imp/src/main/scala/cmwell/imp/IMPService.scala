@@ -107,9 +107,7 @@ class IMPServiceImpl(payloadTLog : TLog , uuidTLog : TLog , irw : IRWService , i
         internalProcess
       } catch {
         case e: Exception =>
-          println("in process [%s]".format(e.getMessage))
           logger.info("in process" , e)
-
       }
   }
 

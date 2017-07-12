@@ -19,6 +19,7 @@ class InfotonsList extends React.Component {
                               </li>
         
     this.state = {
+      isEmpty: true,
       errMsg: null,
       infotons: [],
       isOnTop: true,
@@ -70,6 +71,7 @@ class InfotonsList extends React.Component {
           this.props.hasChildrenCb && this.props.hasChildrenCb(isEmpty)
 
           this.position = this._getHeader(jqXhr, resp, 'position')
+          
           this.setState({
               errMsg: null,
               isInfiniteLoading: false,
@@ -92,20 +94,29 @@ class InfotonsList extends React.Component {
   handleScroll(node) {
     this.setState({ isOnTop: !node.scrollTop })
   }
+  
+  componentDidMount() {
+      this._resetStateAndDoFetch(this.props)
+  }
     
-  componentWillReceiveProps(newProps) { // not using componentDidMount, because we want to ajax and re-render each time path changes
+  componentWillReceiveProps(newProps) {
     if(AppUtils.isSameLocation(this.props.location, newProps.location))
       return // no need to reload current page
   
+      this._resetStateAndDoFetch(newProps)
+  }
+    
+  _resetStateAndDoFetch(props) {
     this.position = null
     this.state = {
+      isEmpty: true,        
       errMsg: null,
       infotons: [],
       isOnTop: true,
       total: null,
       active: true
     }      
-    this.doFetch(newProps.location.pathname, newProps.location.query.qp || 'None')
+    this.doFetch(props.location.pathname, props.location.query.qp || 'None')      
   }
   
   backToTop(e) {
@@ -120,19 +131,21 @@ class InfotonsList extends React.Component {
     let containerClassName = 'infotons-list-container' + (this.props.isRoot ? ' root' : '')
     let className = 'infotons-list' + (this.props.isRoot ? ' root' : '') + (this.state.active && !this.state.isEmpty ? ' active' : '')
     let backToTopClassName = 'back-to-top' + (this.state.isOnTop ? '' : ' active')
-    let containerHeight = this.props.isRoot ? window.innerHeight-AppUtils.heightOverhead+58 : 330
+    let containerHeight = this.props.isRoot || !this.state.active ? window.innerHeight-AppUtils.heightOverhead+58 : 330
 
     // todo once we will figure out how Infoton and InfotonsLists can live in peace side by side, perhaps that ugly guard won't be neccassery
     let title = this.props.location.pathname !== '/' && this.state.total && this.props.isRoot ? <div className="infotons-list-title">
             <img src="/meta/app/react/images/folder-box.svg"/>{AppUtils.lastPartOfUrl(this.props.location.pathname)} ({this.state.total.toLocaleString()} result{this.state.total==1?'':'s'})
           </div> : null
     
+    let emptyDiv = <div className={containerClassName + ' empty'}></div>
+
     let errMsg = this.state.errMsg ? <ErrorMsg>{this.state.errMsg}</ErrorMsg> : null
     
     if(errMsg)
         return errMsg
     
-    return this.state.isEmpty && this.props.isRoot ? null : (
+    return this.state.isEmpty && this.props.isRoot ? emptyDiv : (
         <div className={containerClassName}>
           {title}
           { this.state.isEmpty ? <div className="no-children">no infotons under this path</div> : null }

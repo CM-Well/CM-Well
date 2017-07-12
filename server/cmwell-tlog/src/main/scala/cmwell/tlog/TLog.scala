@@ -216,7 +216,7 @@ class DataWriter(dataPath : String , fileName : String , bucketSize : Long) exte
       }
       catch {
         case ioe:IOException =>
-          println("IOException : " + ioe);
+          logger.error("IOException : ", ioe);
       }
       // first switch a file and make some padding to the new file
       val paddingSize : Long = offset - bucketSize
@@ -243,9 +243,9 @@ class DataWriter(dataPath : String , fileName : String , bucketSize : Long) exte
         }
         catch {
           case ex: FileNotFoundException =>
-            println("FileNotFoundException : " + ex);
+            logger.error("FileNotFoundException : ", ex);
           case ioe: IOException =>
-            println("IOException : " + ioe);
+            logger.error("IOException : ", ioe);
         }
       }
       offset = paddingSize
@@ -276,9 +276,9 @@ class DataWriter(dataPath : String , fileName : String , bucketSize : Long) exte
     }
     catch {
       case ex: FileNotFoundException =>
-        println("FileNotFoundException : " + ex);
+        logger.error("FileNotFoundException : ", ex);
       case ioe: IOException =>
-        println("IOException : " + ioe);
+        logger.error("IOException : ", ioe);
     }
     Some(offset)
   }

@@ -46,7 +46,7 @@ require(["react", "react-dom"], function() {
         ,'/meta/app/react/scripts/lib/underscore-min.js'
         ,'/meta/app/react/scripts/lib/md5.js'
     ], function(ReactRouter, FlipMove) {
-        status('Loading transpilar and base components');
+        status('Loading transpiler and base components');
         
         window.FlipMove = FlipMove;
         window.ReactRouter = ReactRouter;

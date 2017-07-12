@@ -2,22 +2,17 @@ let { Link } = ReactRouter
 
 class ErrorMsg extends React.Component {
     render() {
-        let className = `error-msg`
-        
-        let fullErrMsg = this.props.children
-        let onlyBody = fullErrMsg.indexOf(':')===-1 ? fullErrMsg : fullErrMsg.substr(fullErrMsg.indexOf(':')+2)
-        
-        return <div className="error-msg">
-            <div className="msg">
+        return <div className="error-msg-container">
+            <div className="error-sign-container">
                 <img id="error-sign" src="/meta/app/react/images/recoverable-error-sign.svg" />
-                <div>{onlyBody}</div>
+                <div className="error-sign-text">Error occurred</div>
                 <img id="cone1" src="/meta/app/react/images/cone-1.svg" />
                 <img id="cone2" src="/meta/app/react/images/cone-2.svg" />
             </div>
             <div className="details">
-                {fullErrMsg}.
-            <br/>
-                Go back to <Link to='/'>home page</Link> or search again.
+                {this.props.children}
+                <br/>
+                Try again, or go back to <Link to='/'>home page</Link>.
             </div>
         </div>
     }

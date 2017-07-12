@@ -137,7 +137,7 @@ trait Helpers { self: LazyLogging =>
   def encodeUrl(str: String): String = java.net.URLEncoder.encode(str,"UTF-8")
 
   // compare two rdf strings.
-  def compareRDF(s1 : String , s2 : String , format : String, excludes : Array[String]) : Boolean = {
+  def compareRDF(s1 : String , s2 : String , format : String, excludes : Array[String]) : Either[String, Unit] = {
     import scala.collection.JavaConversions._
     val model1: Model = ModelFactory.createDefaultModel
     val model2: Model = ModelFactory.createDefaultModel
@@ -159,7 +159,7 @@ trait Helpers { self: LazyLogging =>
       val strWriter2 = new StringWriter
       model1.write(strWriter1,format,null)
       model2.write(strWriter2,format,null)
-      println(s"${strWriter1.toString}\n\n" +
+      Left(s"${strWriter1.toString}\n\n" +
                "differs from:\n\n"          +
               s"${strWriter2.toString}\n\n" +
                "with difference: \n\n"      +
@@ -171,7 +171,7 @@ trait Helpers { self: LazyLogging =>
                 strWriter3.toString + "\n\n^\n\n" + strWriter4.toString
               }")
     }
-    rv
+    else Right(())
   }
 
   def compareRDFwithoutSys(s1 : String , s2 : String , format : String) : Boolean = {
