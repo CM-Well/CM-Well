@@ -396,7 +396,7 @@ select:hover {
 }
 
 .breadcrumbs img {
-    vertical-align: middle;
+    vertical-align: -7px;
     padding-right: 5px;
 }
 
@@ -424,6 +424,11 @@ select:hover {
     margin-left: 30px;
 }
 
+.infotons-list-container.root.empty {
+    width: 0px;
+    margin: 0;
+}
+
 .infotons-list-title {
     margin: 10px 0 12px 0;
     color: black;
@@ -447,8 +452,14 @@ select:hover {
     border-bottom: 1px solid #ccc;
 }
 
+
+.infotons-list:not(.active):not(.root) {
+    overflow-y: hidden;
+}
+
+
 .infotons-list.root {
-    height: -webkit-calc(100vh - 180px);
+    height: calc(100vh - 180px);
     margin-right: 40px;
     resize: horizontal;
     overflow-x: auto !important;
@@ -761,7 +772,7 @@ table.infoton-data td ul {
 
 
 
-.error-msg {
+.error-msg-container {
     position: absolute;
     left: 30px;
     top: 159px;
@@ -772,7 +783,7 @@ table.infoton-data td ul {
     background: white;
 }
 
-.error-msg .msg {
+.error-msg-container .error-sign-container {
     text-align: center;
     width: 75%;
     white-space: nowrap;
@@ -783,7 +794,7 @@ table.infoton-data td ul {
     margin-bottom: -200px;
 }
 
-.error-msg .msg > div {
+.error-msg-container .error-sign-container .error-sign-text {
     text-transform: uppercase;
     top: -337px;
     position: relative;
@@ -796,35 +807,35 @@ table.infoton-data td ul {
     text-overflow: ellipsis;
 }
 
-.error-msg #error-sign {
+.error-msg-container #error-sign {
     margin: 0 auto 0 51px;
     top: -94px;
     position: relative;
     width: 327px;    
 }
 
-.error-msg #cone1 {
+.error-msg-container #cone1 {
     position: relative;
     top: -257px;
     left: -112px;
     width: 85px;
 }
 
-.error-msg #cone2 {
+.error-msg-container #cone2 {
     position: relative;
     top: -200px;
     left: 209px;
     width: 130px;
 }
 
-.error-msg .details {
+.error-msg-container .details {
     text-align: center;
     font-size: 18px;
     color: #666;
-    margin-top: 30px;
+    margin-top: 5px;
 }
 
-.error-msg .details a {
+.error-msg-container .details a {
     color: #008fb7;
 }
 

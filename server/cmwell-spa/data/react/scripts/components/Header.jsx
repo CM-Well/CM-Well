@@ -102,8 +102,14 @@ class Breadcrumbs extends React.Component {
             breadcrumbs.push({ title: part.replace('%23','#'), href: acc })
         }
 
+        if(this.props.lastBreadcrumbDisplayName && breadcrumbs.length)
+            _(breadcrumbs).last().title = this.props.lastBreadcrumbDisplayName
+        
         if(qp)
-            breadcrumbs.push({ title: `Search results for "${qp}"` })
+            breadcrumbs.push({ title: `Search results for "${qp}"`, searchIcon: true })
+
+        if(location.pathname.length > AppUtils.constants.breadcrumbs.maxPathLength && breadcrumbs.length > AppUtils.constants.breadcrumbs.maxItems)
+            breadcrumbs = [..._(breadcrumbs).first(2), { title: '...' }, ..._(breadcrumbs).last(2)]
         
         let sep = <img src='/meta/app/react/images/gt.svg' width="24" height="24" />
         let rootLevelIcon = <img src='/meta/app/react/images/folder-box.svg' width="24" height="24" />
@@ -111,11 +117,11 @@ class Breadcrumbs extends React.Component {
         let searchIcon = <img className="search-icon" src='/meta/app/react/images/search-icon.svg' width="24" height="24" />
             
         return <div className="breadcrumbs">
-                    <Link className="breadcrumb" to="/"><img width="17" height="17" src="/meta/app/react/images/home-button.svg"/></Link>
+                    <Link className="breadcrumb" to="/"><img width="24" height="24" src="/meta/app/react/images/home-button.svg"/></Link>
                     { breadcrumbs.length ? sep : null }
                     { AppUtils.addSep(breadcrumbs.map((bc,i) => bc.href ?
                             <Link className="breadcrumb" to={bc.href}>{ i ? otherLevelsIcon : rootLevelIcon }{bc.title}</Link> :
-                            <span className="breadcrumb">{searchIcon}{bc.title}</span>
+                            <span className="breadcrumb">{bc.searchIcon ? searchIcon : null}{bc.title}</span>
                         ), sep) }
                 </div>
     }
