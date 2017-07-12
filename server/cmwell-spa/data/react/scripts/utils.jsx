@@ -104,6 +104,10 @@ window.AppUtils = {
     , constants: {
          anyURI: 'http://www.w3.org/2001/XMLSchema#anyURI'
         ,fileInfotonInMemoryThreshold: 4096000
+        ,breadcrumbs: {
+             maxItems: 10
+            ,maxPathLength: 64
+        }
     }
     
     , ajaxErrorToString: r => {
