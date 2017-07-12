@@ -2726,10 +2726,5 @@ abstract class Host(user: String,
     command(s"mkdir -p ${instDirs.globalLocation}/cm-well/app/ws/plugins/sg-engines/", hosts, false)
     rsync(s"plugins/", s"${instDirs.globalLocation}/cm-well/app/ws/plugins/sg-engines/", hosts)
   }
-
-
-  def testFunc: Unit = {
-    println("michael123")
-  }
 }
 

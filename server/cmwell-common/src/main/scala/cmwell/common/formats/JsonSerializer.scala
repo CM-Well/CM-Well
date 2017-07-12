@@ -118,7 +118,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
           case "4" => JsonSerializer4.decodeCommandWithParser(jsonParser)
           case "5" => JsonSerializer5.decodeCommandWithParser(jsonParser,tidOpt,prevUUIDOpt)
           case "6" => JsonSerializer6.decodeCommandWithParser(jsonParser, tidOpt,prevUUIDOpt)
-          case x => println(s"got: $x"); ???
+          case x => logger.error(s"got: $x"); ???
         }
       }
     }

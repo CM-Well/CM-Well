@@ -17,9 +17,9 @@
 package cmwell.kafka
 
 import com.typesafe.scalalogging.LazyLogging
-import org.scalatest.{FunSpec, Inspectors, Matchers}
+import org.scalatest.{EitherValues, FunSpec, Inspectors, Matchers}
 
-class KafkaTopicAssignerTest extends FunSpec with Matchers with Inspectors with LazyLogging {
+class KafkaTopicAssignerTest extends FunSpec with Matchers with Inspectors with EitherValues with LazyLogging {
 
   def verifyPartitionsAndBuildReplicaCounts(currentAssignment: Assignment,
                                             newAssignment: Assignment,
