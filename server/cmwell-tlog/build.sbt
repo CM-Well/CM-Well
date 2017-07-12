@@ -39,6 +39,7 @@ assemblyJarName in assembly := {
 
 assemblyMergeStrategy in assembly := {
   case PathList("META-INF", "cxf", "bus-extensions.txt") => MergeStrategy.concat
+  case PathList("META-INF", "io.netty.versions.properties") => MergeStrategy.first
   case x =>
     val oldStrategy = (assemblyMergeStrategy in assembly).value
     oldStrategy(x)
