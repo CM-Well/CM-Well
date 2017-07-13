@@ -19,18 +19,18 @@ package filters
 import javax.inject._
 
 import akka.stream.Materializer
-import logic.CRUDServiceFS
+import controllers.NbgToggler
 import play.api.mvc.{Filter, RequestHeader, Result}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class HeadersFilter @Inject() (implicit override val mat: Materializer,ec: ExecutionContext) extends Filter {
+class HeadersFilter @Inject()(nbgToggler: NbgToggler) (implicit override val mat: Materializer,ec: ExecutionContext) extends Filter {
 
   def apply(next: (RequestHeader) => Future[Result])(request: RequestHeader): Future[Result] = {
     val before = System.currentTimeMillis()
     next(request).map { result =>
       val after = System.currentTimeMillis()
-      val bgImpl = if(CRUDServiceFS.newBG) "N" else "O"
+      val bgImpl = if(request.getQueryString("nbg").exists(!_.equalsIgnoreCase("false")) || nbgToggler.get) "N" else "O"
       result.withHeaders(
         "X-CMWELL-Hostname" -> cmwell.util.os.Props.machineName,
         "X-CMWELL-Version" -> cmwell.util.build.BuildInfo.version,

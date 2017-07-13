@@ -94,6 +94,7 @@ object Settings {
 
 
   lazy val pushbackpressure: String = Try(config.getString("cmwell.ws.pushbackpressure.trigger")).getOrElse("old")
+  lazy val nbgToggler: Boolean = Try(config.getBoolean("cmwell.ws.nbg")).getOrElse(false)
   lazy val maximumQueueBuildupAllowedUTLog: Long = Try(config.getLong("cmwell.ws.tlog.updating.limit")).toOption.getOrElse(13200000L)
   lazy val maximumQueueBuildupAllowedITLog: Long = Try(config.getLong("cmwell.ws.tlog.indexing.limit")).toOption.getOrElse(3500000L)
   lazy val maximumQueueBuildupAllowed: Long = Try(config.getLong("cmwell.ws.klog.limit")).toOption.getOrElse(496351L)

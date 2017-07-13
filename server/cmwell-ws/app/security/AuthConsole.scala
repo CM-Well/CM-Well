@@ -16,14 +16,6 @@
 
 package security
 
-/**
- * Created by yaakov on 1/19/15.
-  *
-  *
-  * non reachable from production code
-  * only to be used via `sbt ws/console`
-  *
- */
 object AuthConsole {
   def help = {
     println("""
@@ -41,11 +33,13 @@ object AuthConsole {
     """.stripMargin)
   }
 
+  val unusedCache = null.asInstanceOf[AuthCache]
+
   def generateToken(username: String): String = {
-    Token.generate(username, None, Option(0), isAdmin = true)
+    Token.generate(unusedCache, username, None, Option(0), isAdmin = true)
   }
 
   def generateToken(username: String, expiry: String, rev: Int = 1): String = {
-    Token.generate(username, Some(org.joda.time.DateTime.parse(expiry)), Option(rev), isAdmin = true)
+    Token.generate(unusedCache, username, Some(org.joda.time.DateTime.parse(expiry)), Option(rev), isAdmin = true)
   }
 }

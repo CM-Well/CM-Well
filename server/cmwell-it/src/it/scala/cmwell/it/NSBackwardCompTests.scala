@@ -79,7 +79,9 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
           s"country-name.${ns.vcard}" -> Json.arr("U.S.A.")))
 
       Http.post(_in, Json.stringify(oldStyleInfoton), None, List("format" -> "jsonw"), tokenHeader).map { res =>
-        Json.parse(res.payload) should be(jsonSuccess)
+        withClue(res) {
+          Json.parse(res.payload) should be(jsonSuccess)
+        }
       }
     }
     val oldVcardOntologyDataIngest = {
@@ -379,29 +381,35 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
       //Assertions
       val jSmithExplicitXg = executeAfterIndexing {
         Http.get(jSmith, List("format" -> "json", "xg" -> s"ADR.$$${ns.vcard}")).map { res =>
-          Json
-            .parse(res.payload)
-            .transform(bagUuidDateEraserAndSorter)
-            .get shouldEqual Json.obj("type" -> "BagOfInfotons", "infotons" -> Json.arr(i1,i2)).transform(bagUuidDateEraserAndSorter).get
+          withClue(res) {
+            Json
+              .parse(res.payload)
+              .transform(bagUuidDateEraserAndSorter)
+              .get shouldEqual Json.obj("type" -> "BagOfInfotons", "infotons" -> Json.arr(i1, i2)).transform(bagUuidDateEraserAndSorter).get
+          }
         }
       }
       val jSmithFullNsURIXg = executeAfterIndexing {
         Http.get(jSmith, List("format" -> "json", "xg" -> "$http://www.w3.org/2006/vcard/ns#ADR$")).map { res =>
-          Json
-            .parse(res.payload)
-            .transform(bagUuidDateEraserAndSorter)
-            .get shouldEqual Json.obj("type" -> "BagOfInfotons", "infotons" -> Json.arr(i1,i2)).transform(bagUuidDateEraserAndSorter).get
+          withClue(res) {
+            Json
+              .parse(res.payload)
+              .transform(bagUuidDateEraserAndSorter)
+              .get shouldEqual Json.obj("type" -> "BagOfInfotons", "infotons" -> Json.arr(i1, i2)).transform(bagUuidDateEraserAndSorter).get
+          }
         }
       }
       val jSmithImplicitXg = executeAfterIndexing {
         Http.get(jSmith, List("format" -> "json", "xg" -> "ADR.vcard")).map(_.status shouldEqual 422)
       }
       val jSmithExplicitBulkXg = executeAfterIndexing {
-        Http.post(_out, "/www.example.net/Individuals/JohnSmith", Some("text/plain;charset=UTF-8"), List("format" -> "json", "xg" -> s"*.$$${ns.vcard}"), tokenHeader).map{res =>
-          Json
-            .parse(res.payload)
-            .transform(bagUuidDateEraserAndSorter)
-            .get shouldEqual Json.obj("type" -> "RetrievablePaths", "infotons" -> Json.arr(i1,i2), "irretrievablePaths" -> Json.arr()).transform(bagUuidDateEraserAndSorter).get
+        Http.post(_out, "/www.example.net/Individuals/JohnSmith", Some("text/plain;charset=UTF-8"), List("format" -> "json", "xg" -> s"*.$$${ns.vcard}"), tokenHeader).map { res =>
+          withClue(res) {
+            Json
+              .parse(res.payload)
+              .transform(bagUuidDateEraserAndSorter)
+              .get shouldEqual Json.obj("type" -> "RetrievablePaths", "infotons" -> Json.arr(i1, i2), "irretrievablePaths" -> Json.arr()).transform(bagUuidDateEraserAndSorter).get
+          }
         }
       }
       val jSmithImplicitBulkXg = executeAfterIndexing {

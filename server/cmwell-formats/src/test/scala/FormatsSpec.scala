@@ -465,11 +465,12 @@ class FormatsSpec extends FunSpec with Matchers with Helpers {
 
     it("check yaml") {
       val formatString = "yaml"
-      val formatter = formatString match {
-        case FormatExtractor(YamlType) => YamlFormatter
-      }
+      var formatter: YamlFormatter = null
       //TODO: test beyond thrown exceptions
-      noException should be thrownBy formatter.init(identity)
+      noException should be thrownBy (formatString match {
+        case FormatExtractor(YamlType) =>
+          formatter = new YamlFormatter(identity)
+      })
       noException should be thrownBy formatter.render(aggregationsResponse1)
     }
 
