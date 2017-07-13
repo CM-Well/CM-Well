@@ -37,7 +37,7 @@ This query returns the matched infotons, their outbound links, and the outbound 
 
 (**xg=1** is equivalent to **xg** with no operands.)
 
-> **Note:** The value of the **xg** parameter is limited to 9, but it is recommended to use smaller values (e.g. 1 or 2). The **xg** parameter should be used with caution, as larger numbers may result in very large data sets being returned. If you find you need a larger expansion level (e.g. 9 or above), this may indicate an inefficient data model or query. In this case, please consult with the CM-Well support team.
+> **Note:** The value of the **xg** parameter is limited to 9, but it is recommended to use smaller values (e.g. 1 or 2). The **xg** parameter should be used with caution, as larger numbers may result in very large data sets being returned. If you find you need a larger expansion level (e.g. 9 or above), this may indicate an inefficient data model or query.
 
 ### Expansion Field ###
 

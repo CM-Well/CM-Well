@@ -16,15 +16,39 @@
 
 package security
 
+import javax.inject._
+
 import com.typesafe.scalalogging.LazyLogging
-import play.api.libs.json.{JsUndefined, JsArray, JsValue, Json}
+import play.api.libs.json._
 import security.PermissionLevel.PermissionLevel
 
 object Authorization extends LazyLogging {
-  private val defaultAnonymousUser = Json.parse("""{"paths":[{"id":"/","recursive":true,"sign":"+","permissions":"r"},{"id":"/meta/ns","recursive":true,"sign":"-","permissions":"rw"},{"id":"/meta/auth","recursive":true,"sign":"-","permissions":"rw"}],"roles":[]}""")
   // todo we only need those for cases when CRUD is not yet initialized (for example during install). Can we have an onInitialized callback?
+  private val defaultAnonymousUser = Json.parse("""{"paths":[{"id":"/","recursive":true,"sign":"+","permissions":"r"},{"id":"/meta/ns","recursive":true,"sign":"-","permissions":"rw"},{"id":"/meta/auth","recursive":true,"sign":"-","permissions":"rw"}],"roles":[]}""")
 
-  private def anonymousUser = AuthCache.getUserInfoton("anonymous").getOrElse(defaultAnonymousUser)
+  implicit class StringExtensions(s: String) {
+    def appendSlash = if(s.endsWith("/")) s else s+"/"
+
+    // cannot use String.startsWith straightforward, because "/foobar/bar" is not subfolder of "/foo"
+    def isSubfolderOf(path: String) = {
+      val normalizedPath = path.appendSlash
+      s.appendSlash==normalizedPath || (path.length < s.length && s.startsWith(normalizedPath))
+    }
+
+    // cannot use ==  straightforward, because "/foo/" is same as "/foo"
+    def isSameAs(path: String) = s.appendSlash == path.appendSlash
+  }
+
+  implicit class JsValueExtensions(v: JsValue) {
+    def getArr(prop: String): Seq[JsValue] = (v \ prop).getOrElse(JsArray(Seq())) match { case JsArray(seq) => seq case _ => Seq() }
+  }
+}
+
+@Singleton
+class Authorization @Inject()(authCache: AuthCache) extends LazyLogging {
+  import Authorization._
+
+  private def anonymousUser = authCache.getUserInfoton("anonymous").getOrElse(defaultAnonymousUser)
 
   def isAllowedForAnonymousUser(request: (String, PermissionLevel)): Boolean = {
     isAllowedForUser(request, anonymousUser)
@@ -56,7 +80,7 @@ object Authorization extends LazyLogging {
       return allow.nonEmpty && deny.isEmpty
 
     def getRolesPaths(roleName: JsValue) = {
-      AuthCache.getRole(roleName.as[String]) match {
+      authCache.getRole(roleName.as[String]) match {
         case Some(role) => role getArr "paths"
         case None => logger error s"Role $roleName was not found"; Seq()
       }
@@ -85,25 +109,7 @@ object Authorization extends LazyLogging {
   }
 
   def inRoles(user: JsValue)(extractor: JsValue => Boolean) = {
-    val roles = (user getArr "roles").flatMap(r => AuthCache.getRole(r.as[String]))
+    val roles = (user getArr "roles").flatMap(r => authCache.getRole(r.as[String]))
     roles.exists(extractor)
-  }
-
-
-  implicit class StringExtensions(s: String) {
-    def appendSlash = if(s.endsWith("/")) s else s+"/"
-
-    // cannot use String.startsWith straightforward, because "/foobar/bar" is not subfolder of "/foo"
-    def isSubfolderOf(path: String) = {
-      val normalizedPath = path.appendSlash
-      s.appendSlash==normalizedPath || (path.length < s.length && s.startsWith(normalizedPath))
-    }
-
-    // cannot use ==  straightforward, because "/foo/" is same as "/foo"
-    def isSameAs(path: String) = s.appendSlash == path.appendSlash
-  }
-
-  implicit class JsValueExtensions(v: JsValue) {
-    def getArr(prop: String): Seq[JsValue] = (v \ prop).getOrElse(JsArray(Seq())) match { case JsArray(seq) => seq case _ => Seq() }
   }
 }

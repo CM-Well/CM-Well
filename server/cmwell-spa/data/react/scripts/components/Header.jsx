@@ -44,26 +44,24 @@ class SearchBar extends React.Component {
         super(props)
         this.state = {
             term: '',
-            path: location.pathname.substr(1)
+            path: location.pathname
         }
     }
     
     componentWillReceiveProps() {
-        this.setState({path: location.pathname.substr(1)})
+        this.setState({path: location.pathname})
     }
 
     basicSearch(e) {
         e.preventDefault()
-        var path = this.state.path
-        var url = `/${path}?op=search&recursive&qp=_all:${this.state.term}`
-        browserHistory.push(url)
+        browserHistory.push(`${this.state.path}?op=search&recursive&qp=_all:${this.state.term}`)
         return false
     }
     
     render() {
         AppUtils.debug('SearchBar.render')
         
-        let currentPath = this.props.currentHasChildren && location.pathname.substr(1)
+        let currentPath = this.props.currentHasChildren && location.pathname
 
         return (
             <div className="search-bar panel">
@@ -72,8 +70,8 @@ class SearchBar extends React.Component {
                         <input type="text" className="search-box" placeholder="Search" onChange={e=>this.setState({term:e.target.value})}/>
                         <select className="search-where-dropdown" onChange={e=>this.setState({path:e.target.value})} value={this.state.path}>
                             <option value="" key="/">Search all folders</option>
-                            { currentPath ? <option value={currentPath} key={currentPath}>{currentPath}</option> : null }
-                            { (this.props.rootFolders||[]).filter(rf=> rf!=currentPath).map(rf => <option value={rf} key={rf}>{rf}</option>) }
+                            { currentPath ? <option selected value={currentPath} key={currentPath}>{currentPath.substr(1)}</option> : null }
+                            {(this.props.rootFolders||[]).filter(rf => rf && rf!=currentPath).map(rf => <option value={rf} key={rf}>{rf.substr(1)}</option>)}
                         </select>
                         <button type="submit" className="search-button" onClick={this.basicSearch.bind(this)}>SEARCH</button>
                     </form>

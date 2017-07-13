@@ -91,6 +91,77 @@ class ConsumerSpec extends BaseWiremockSpec {
     result.flatMap { r => r should be (1)}
   }
 
+  it should "download all uuids while getting server error" in {
+
+    val tsvsBeforeError = List(
+      "path1\tlastModified1\tuuid1\tindexTime1\n",
+      "path2\tlastModified2\tuuid2\tindexTime2\n"
+    )
+    val tsvsAfterError  = List(
+      "path3\tlastModified3\tuuid3\tindexTime3\n",
+      "path4\tlastModified4\tuuid4\tindexTime4\n"
+    )
+    val expectedTsvs    = tsvsBeforeError ++ tsvsAfterError
+
+    val downloadSuccess1 = "download-success-1"
+    val downloadFail = "download-fail"
+    val downloadSuccess2 = "download-success-2"
+    val noContent = "no-content"
+
+    stubFor(get(urlPathMatching("/.*")).inScenario(scenario)
+      .whenScenarioStateIs(Scenario.STARTED)
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.OK.intValue)
+        .withHeader(CMWELL_POSITION, "3AAAMHwv"))
+      .willSetStateTo(downloadSuccess1)
+    )
+
+    stubFor(get(urlPathMatching("/_consume")).inScenario(scenario)
+      .whenScenarioStateIs(downloadSuccess1)
+      .willReturn(aResponse()
+        .withBody(tsvsBeforeError.mkString)
+        .withStatus(StatusCodes.OK.intValue)
+        .withHeader(CMWELL_N, (tsvsBeforeError.size).toString)
+        .withHeader(CMWELL_POSITION, "3AAAMHwv"))
+      .willSetStateTo(downloadFail)
+    )
+
+    stubFor(get(urlPathMatching("/_consume")).inScenario(scenario)
+      .whenScenarioStateIs(downloadFail)
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.ServiceUnavailable.intValue))
+      .willSetStateTo(downloadSuccess2)
+    )
+
+    stubFor(get(urlPathMatching("/_consume")).inScenario(scenario)
+      .whenScenarioStateIs(downloadSuccess2)
+      .willReturn(aResponse()
+        .withBody(tsvsAfterError.mkString)
+        .withStatus(StatusCodes.OK.intValue)
+        .withHeader(CMWELL_N, (tsvsAfterError.size).toString)
+        .withHeader(CMWELL_POSITION, "3AAAMHwv"))
+      .willSetStateTo(noContent)
+    )
+
+    stubFor(get(urlPathMatching("/.*")).inScenario(scenario)
+      .whenScenarioStateIs(noContent)
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.NoContent.intValue)
+        .withHeader(CMWELL_POSITION, "3AAAMHwv"))
+    )
+
+    val result = Downloader.createTsvSource(baseUrl = s"localhost:${wireMockServer.port}")
+      .map(_ => 1)
+      .runFold(0)(_ + _)
+
+    result
+      .flatMap { numDownloadedTsvs => numDownloadedTsvs should be (expectedTsvs.size ) }
+      .flatMap { _ =>
+        val numRequestsToConsume = wireMockServer.findAll(getRequestedFor(urlPathMatching("/_consume"))).size
+        numRequestsToConsume should be (4)
+      }
+  }
+
   ignore should "download all missing uuids" in {
     val expectedTsvs = List(
       "path1\tlastModified1\tuuid1\tindexTime1",

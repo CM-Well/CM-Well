@@ -27,10 +27,10 @@
       "type" : "SearchResponse",
       "pagination" : {
     	"type" : "PaginationInfo",
-    	"first" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A40%3A01.740Z&to=2016-07-08T15%3A40%3A01.979Z&qp=CommonName.mdaas%3AReuters&length=3&offset=0",
-    	"self" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A40%3A01.740Z&to=2016-07-08T15%3A40%3A01.979Z&qp=CommonName.mdaas%3AReuters&length=3&offset=0",
-    	"next" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A40%3A01.740Z&to=2016-07-08T15%3A40%3A01.979Z&qp=CommonName.mdaas%3AReuters&length=3&offset=3",
-    	"last" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A40%3A01.740Z&to=2016-07-08T15%3A40%3A01.979Z&qp=CommonName.mdaas%3AReuters&length=3&offset=70914"
+    	"first" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A40%3A01.740Z&to=2016-07-08T15%3A40%3A01.979Z&qp=CommonName.mdaas%3AReuters&length=3&offset=0",
+    	"self" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A40%3A01.740Z&to=2016-07-08T15%3A40%3A01.979Z&qp=CommonName.mdaas%3AReuters&length=3&offset=0",
+    	"next" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A40%3A01.740Z&to=2016-07-08T15%3A40%3A01.979Z&qp=CommonName.mdaas%3AReuters&length=3&offset=3",
+    	"last" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A40%3A01.740Z&to=2016-07-08T15%3A40%3A01.979Z&qp=CommonName.mdaas%3AReuters&length=3&offset=70914"
       },
       "results" : {
     	"type" : "SearchResults",
@@ -88,10 +88,10 @@
       "type" : "SearchResponse",
       "pagination" : {
     "type" : "PaginationInfo",
-    "first" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A40%3A01.740Z&to=2016-07-08T15%3A40%3A01.979Z&qp=CommonName.mdaas%3AReuters&length=3&offset=0",
-    "self" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A40%3A01.740Z&to=2016-07-08T15%3A40%3A01.979Z&qp=CommonName.mdaas%3AReuters&length=3&offset=0",
-    "next" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A40%3A01.740Z&to=2016-07-08T15%3A40%3A01.979Z&qp=CommonName.mdaas%3AReuters&length=3&offset=3",
-    "last" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A40%3A01.740Z&to=2016-07-08T15%3A40%3A01.979Z&qp=CommonName.mdaas%3AReuters&length=3&offset=70914"
+    "first" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A40%3A01.740Z&to=2016-07-08T15%3A40%3A01.979Z&qp=CommonName.mdaas%3AReuters&length=3&offset=0",
+    "self" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A40%3A01.740Z&to=2016-07-08T15%3A40%3A01.979Z&qp=CommonName.mdaas%3AReuters&length=3&offset=0",
+    "next" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A40%3A01.740Z&to=2016-07-08T15%3A40%3A01.979Z&qp=CommonName.mdaas%3AReuters&length=3&offset=3",
+    "last" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A40%3A01.740Z&to=2016-07-08T15%3A40%3A01.979Z&qp=CommonName.mdaas%3AReuters&length=3&offset=70914"
       },
       "results" : {
         "type" : "SearchResults",
@@ -181,10 +181,10 @@
       "type" : "SearchResponse",
       "pagination" : {
 	    "type" : "PaginationInfo",
-	    "first" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&qp=CommonName.mdaas%3Aqqqqq&length=0&offset=0",
-	    "previous" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&qp=CommonName.mdaas%3Aqqqqq&length=0&offset=0",
-	    "self" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&qp=CommonName.mdaas%3Aqqqqq&length=0&offset=0",
-	    "last" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&qp=CommonName.mdaas%3Aqqqqq&length=0&offset=0"
+	    "first" : "http://cm-well-host.com/permid.org?format=json?&op=search&qp=CommonName.mdaas%3Aqqqqq&length=0&offset=0",
+	    "previous" : "http://cm-well-host.com/permid.org?format=json?&op=search&qp=CommonName.mdaas%3Aqqqqq&length=0&offset=0",
+	    "self" : "http://cm-well-host.com/permid.org?format=json?&op=search&qp=CommonName.mdaas%3Aqqqqq&length=0&offset=0",
+	    "last" : "http://cm-well-host.com/permid.org?format=json?&op=search&qp=CommonName.mdaas%3Aqqqqq&length=0&offset=0"
       },
       "results" : {
 	    "type" : "SearchResults",
@@ -209,10 +209,10 @@
       "type" : "SearchResponse",
       "pagination" : {
     "type" : "PaginationInfo",
-    "first" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-01T03%3A10%3A07.160Z&to=2016-07-08T03%3A53%3A52.418Z&qp=CommonName.mdaas%7Eqqqqq&length=10&offset=0",
-    "self" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-01T03%3A10%3A07.160Z&to=2016-07-08T03%3A53%3A52.418Z&qp=CommonName.mdaas%7Eqqqqq&length=10&offset=0",
-    "next" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-01T03%3A10%3A07.160Z&to=2016-07-08T03%3A53%3A52.418Z&qp=CommonName.mdaas%7Eqqqqq&length=10&offset=10",
-    "last" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-01T03%3A10%3A07.160Z&to=2016-07-08T03%3A53%3A52.418Z&qp=CommonName.mdaas%7Eqqqqq&length=10&offset=350"
+    "first" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-01T03%3A10%3A07.160Z&to=2016-07-08T03%3A53%3A52.418Z&qp=CommonName.mdaas%7Eqqqqq&length=10&offset=0",
+    "self" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-01T03%3A10%3A07.160Z&to=2016-07-08T03%3A53%3A52.418Z&qp=CommonName.mdaas%7Eqqqqq&length=10&offset=0",
+    "next" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-01T03%3A10%3A07.160Z&to=2016-07-08T03%3A53%3A52.418Z&qp=CommonName.mdaas%7Eqqqqq&length=10&offset=10",
+    "last" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-01T03%3A10%3A07.160Z&to=2016-07-08T03%3A53%3A52.418Z&qp=CommonName.mdaas%7Eqqqqq&length=10&offset=350"
       },
       "results" : {
         "type" : "SearchResults",
@@ -448,10 +448,10 @@
       "type" : "SearchResponse",
       "pagination" : {
     "type" : "PaginationInfo",
-    "first" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T09%3A39%3A09.320Z&to=2016-07-08T11%3A54%3A49.121Z&qp=dsQuotationNumber.mdaas%3E950000&length=3&offset=0",
-    "self" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T09%3A39%3A09.320Z&to=2016-07-08T11%3A54%3A49.121Z&qp=dsQuotationNumber.mdaas%3E950000&length=3&offset=0",
-    "next" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T09%3A39%3A09.320Z&to=2016-07-08T11%3A54%3A49.121Z&qp=dsQuotationNumber.mdaas%3E950000&length=3&offset=3",
-    "last" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T09%3A39%3A09.320Z&to=2016-07-08T11%3A54%3A49.121Z&qp=dsQuotationNumber.mdaas%3E950000&length=3&offset=17736"
+    "first" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T09%3A39%3A09.320Z&to=2016-07-08T11%3A54%3A49.121Z&qp=dsQuotationNumber.mdaas%3E950000&length=3&offset=0",
+    "self" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T09%3A39%3A09.320Z&to=2016-07-08T11%3A54%3A49.121Z&qp=dsQuotationNumber.mdaas%3E950000&length=3&offset=0",
+    "next" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T09%3A39%3A09.320Z&to=2016-07-08T11%3A54%3A49.121Z&qp=dsQuotationNumber.mdaas%3E950000&length=3&offset=3",
+    "last" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T09%3A39%3A09.320Z&to=2016-07-08T11%3A54%3A49.121Z&qp=dsQuotationNumber.mdaas%3E950000&length=3&offset=17736"
       },
       "results" : {
     "type" : "SearchResults",
@@ -548,10 +548,10 @@
       "type" : "SearchResponse",
       "pagination" : {
         "type" : "PaginationInfo",
-    "first" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A40%3A01.740Z&to=2016-07-08T15%3A40%3A01.979Z&qp=CommonName.mdaas%3AReuters&length=3&offset=0",
-    "self" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A40%3A01.740Z&to=2016-07-08T15%3A40%3A01.979Z&qp=CommonName.mdaas%3AReuters&length=3&offset=0",
-    "next" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A40%3A01.740Z&to=2016-07-08T15%3A40%3A01.979Z&qp=CommonName.mdaas%3AReuters&length=3&offset=3",
-    "last" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A40%3A01.740Z&to=2016-07-08T15%3A40%3A01.979Z&qp=CommonName.mdaas%3AReuters&length=3&offset=70914"
+    "first" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A40%3A01.740Z&to=2016-07-08T15%3A40%3A01.979Z&qp=CommonName.mdaas%3AReuters&length=3&offset=0",
+    "self" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A40%3A01.740Z&to=2016-07-08T15%3A40%3A01.979Z&qp=CommonName.mdaas%3AReuters&length=3&offset=0",
+    "next" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A40%3A01.740Z&to=2016-07-08T15%3A40%3A01.979Z&qp=CommonName.mdaas%3AReuters&length=3&offset=3",
+    "last" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A40%3A01.740Z&to=2016-07-08T15%3A40%3A01.979Z&qp=CommonName.mdaas%3AReuters&length=3&offset=70914"
       },
       "results" : {
         "type" : "SearchResults",
@@ -623,10 +623,10 @@
       "type" : "SearchResponse",
       "pagination" : {
     "type" : "PaginationInfo",
-    "first" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A25%3A07.856Z&to=2016-07-08T15%3A25%3A07.856Z&qp=CommonName.mdaas%3AReuters%2CRCSAssetClass.mdaas%3ATRAD&length=3&offset=0",
-    "self" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A25%3A07.856Z&to=2016-07-08T15%3A25%3A07.856Z&qp=CommonName.mdaas%3AReuters%2CRCSAssetClass.mdaas%3ATRAD&length=3&offset=0",
-    "next" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A25%3A07.856Z&to=2016-07-08T15%3A25%3A07.856Z&qp=CommonName.mdaas%3AReuters%2CRCSAssetClass.mdaas%3ATRAD&length=3&offset=3",
-    "last" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A25%3A07.856Z&to=2016-07-08T15%3A25%3A07.856Z&qp=CommonName.mdaas%3AReuters%2CRCSAssetClass.mdaas%3ATRAD&length=3&offset=8592"
+    "first" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A25%3A07.856Z&to=2016-07-08T15%3A25%3A07.856Z&qp=CommonName.mdaas%3AReuters%2CRCSAssetClass.mdaas%3ATRAD&length=3&offset=0",
+    "self" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A25%3A07.856Z&to=2016-07-08T15%3A25%3A07.856Z&qp=CommonName.mdaas%3AReuters%2CRCSAssetClass.mdaas%3ATRAD&length=3&offset=0",
+    "next" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A25%3A07.856Z&to=2016-07-08T15%3A25%3A07.856Z&qp=CommonName.mdaas%3AReuters%2CRCSAssetClass.mdaas%3ATRAD&length=3&offset=3",
+    "last" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T15%3A25%3A07.856Z&to=2016-07-08T15%3A25%3A07.856Z&qp=CommonName.mdaas%3AReuters%2CRCSAssetClass.mdaas%3ATRAD&length=3&offset=8592"
       },
       "results" : {
     "type" : "SearchResults",
@@ -713,10 +713,10 @@
       "type" : "SearchResponse",
       "pagination" : {
     "type" : "PaginationInfo",
-    "first" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T12%3A55%3A25.659Z&to=2016-07-08T16%3A10%3A15.331Z&qp=*organizationStateProvince.mdaas%3ADelaware%2C*organizationStateProvince.mdaas%3AIdaho&length=5&offset=0",
-    "self" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T12%3A55%3A25.659Z&to=2016-07-08T16%3A10%3A15.331Z&qp=*organizationStateProvince.mdaas%3ADelaware%2C*organizationStateProvince.mdaas%3AIdaho&length=5&offset=0",
-    "next" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T12%3A55%3A25.659Z&to=2016-07-08T16%3A10%3A15.331Z&qp=*organizationStateProvince.mdaas%3ADelaware%2C*organizationStateProvince.mdaas%3AIdaho&length=5&offset=5",
-    "last" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T12%3A55%3A25.659Z&to=2016-07-08T16%3A10%3A15.331Z&qp=*organizationStateProvince.mdaas%3ADelaware%2C*organizationStateProvince.mdaas%3AIdaho&length=5&offset=129660"
+    "first" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T12%3A55%3A25.659Z&to=2016-07-08T16%3A10%3A15.331Z&qp=*organizationStateProvince.mdaas%3ADelaware%2C*organizationStateProvince.mdaas%3AIdaho&length=5&offset=0",
+    "self" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T12%3A55%3A25.659Z&to=2016-07-08T16%3A10%3A15.331Z&qp=*organizationStateProvince.mdaas%3ADelaware%2C*organizationStateProvince.mdaas%3AIdaho&length=5&offset=0",
+    "next" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T12%3A55%3A25.659Z&to=2016-07-08T16%3A10%3A15.331Z&qp=*organizationStateProvince.mdaas%3ADelaware%2C*organizationStateProvince.mdaas%3AIdaho&length=5&offset=5",
+    "last" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T12%3A55%3A25.659Z&to=2016-07-08T16%3A10%3A15.331Z&qp=*organizationStateProvince.mdaas%3ADelaware%2C*organizationStateProvince.mdaas%3AIdaho&length=5&offset=129660"
       },
       "results" : {
     "type" : "SearchResults",
@@ -814,10 +814,10 @@
       "type" : "SearchResponse",
       "pagination" : {
     "type" : "PaginationInfo",
-    "first" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T10%3A39%3A27.444Z&to=2016-07-08T15%3A25%3A13.470Z&qp=organizationStateProvince.mdaas%3ANew+York%2C-organizationCity.mdaas%3Anew+york&length=5&offset=0",
-    "self" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T10%3A39%3A27.444Z&to=2016-07-08T15%3A25%3A13.470Z&qp=organizationStateProvince.mdaas%3ANew+York%2C-organizationCity.mdaas%3Anew+york&length=5&offset=0",
-    "next" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T10%3A39%3A27.444Z&to=2016-07-08T15%3A25%3A13.470Z&qp=organizationStateProvince.mdaas%3ANew+York%2C-organizationCity.mdaas%3Anew+york&length=5&offset=5",
-    "last" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T10%3A39%3A27.444Z&to=2016-07-08T15%3A25%3A13.470Z&qp=organizationStateProvince.mdaas%3ANew+York%2C-organizationCity.mdaas%3Anew+york&length=5&offset=68905"
+    "first" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T10%3A39%3A27.444Z&to=2016-07-08T15%3A25%3A13.470Z&qp=organizationStateProvince.mdaas%3ANew+York%2C-organizationCity.mdaas%3Anew+york&length=5&offset=0",
+    "self" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T10%3A39%3A27.444Z&to=2016-07-08T15%3A25%3A13.470Z&qp=organizationStateProvince.mdaas%3ANew+York%2C-organizationCity.mdaas%3Anew+york&length=5&offset=0",
+    "next" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T10%3A39%3A27.444Z&to=2016-07-08T15%3A25%3A13.470Z&qp=organizationStateProvince.mdaas%3ANew+York%2C-organizationCity.mdaas%3Anew+york&length=5&offset=5",
+    "last" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T10%3A39%3A27.444Z&to=2016-07-08T15%3A25%3A13.470Z&qp=organizationStateProvince.mdaas%3ANew+York%2C-organizationCity.mdaas%3Anew+york&length=5&offset=68905"
       },
       "results" : {
     "type" : "SearchResults",
@@ -915,10 +915,10 @@
       "type" : "SearchResponse",
       "pagination" : {
     "type" : "PaginationInfo",
-    "first" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T14%3A10%3A04.439Z&to=2016-07-08T15%3A25%3A13.470Z&qp=organizationStateProvince.mdaas%3ANew+York&length=3&offset=0",
-    "self" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T14%3A10%3A04.439Z&to=2016-07-08T15%3A25%3A13.470Z&qp=organizationStateProvince.mdaas%3ANew+York&length=3&offset=0",
-    "next" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T14%3A10%3A04.439Z&to=2016-07-08T15%3A25%3A13.470Z&qp=organizationStateProvince.mdaas%3ANew+York&length=3&offset=3",
-    "last" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T14%3A10%3A04.439Z&to=2016-07-08T15%3A25%3A13.470Z&qp=organizationStateProvince.mdaas%3ANew+York&length=3&offset=123936"
+    "first" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T14%3A10%3A04.439Z&to=2016-07-08T15%3A25%3A13.470Z&qp=organizationStateProvince.mdaas%3ANew+York&length=3&offset=0",
+    "self" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T14%3A10%3A04.439Z&to=2016-07-08T15%3A25%3A13.470Z&qp=organizationStateProvince.mdaas%3ANew+York&length=3&offset=0",
+    "next" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T14%3A10%3A04.439Z&to=2016-07-08T15%3A25%3A13.470Z&qp=organizationStateProvince.mdaas%3ANew+York&length=3&offset=3",
+    "last" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T14%3A10%3A04.439Z&to=2016-07-08T15%3A25%3A13.470Z&qp=organizationStateProvince.mdaas%3ANew+York&length=3&offset=123936"
       },
       "results" : {
     "type" : "SearchResults",
@@ -985,11 +985,11 @@
       "type" : "SearchResponse",
       "pagination" : {
     "type" : "PaginationInfo",
-    "first" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T10%3A39%3A27.503Z&to=2016-07-08T14%3A10%3A04.319Z&qp=organizationStateProvince.mdaas%3ANew+York&length=3&offset=0",
-    "previous" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T10%3A39%3A27.503Z&to=2016-07-08T14%3A10%3A04.319Z&qp=organizationStateProvince.mdaas%3ANew+York&length=3&offset=0",
-    "self" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T10%3A39%3A27.503Z&to=2016-07-08T14%3A10%3A04.319Z&qp=organizationStateProvince.mdaas%3ANew+York&length=3&offset=3",
-    "next" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T10%3A39%3A27.503Z&to=2016-07-08T14%3A10%3A04.319Z&qp=organizationStateProvince.mdaas%3ANew+York&length=3&offset=6",
-    "last" : "http://cm-well-prod.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2016-07-08T10%3A39%3A27.503Z&to=2016-07-08T14%3A10%3A04.319Z&qp=organizationStateProvince.mdaas%3ANew+York&length=3&offset=123936"
+    "first" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T10%3A39%3A27.503Z&to=2016-07-08T14%3A10%3A04.319Z&qp=organizationStateProvince.mdaas%3ANew+York&length=3&offset=0",
+    "previous" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T10%3A39%3A27.503Z&to=2016-07-08T14%3A10%3A04.319Z&qp=organizationStateProvince.mdaas%3ANew+York&length=3&offset=0",
+    "self" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T10%3A39%3A27.503Z&to=2016-07-08T14%3A10%3A04.319Z&qp=organizationStateProvince.mdaas%3ANew+York&length=3&offset=3",
+    "next" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T10%3A39%3A27.503Z&to=2016-07-08T14%3A10%3A04.319Z&qp=organizationStateProvince.mdaas%3ANew+York&length=3&offset=6",
+    "last" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-08T10%3A39%3A27.503Z&to=2016-07-08T14%3A10%3A04.319Z&qp=organizationStateProvince.mdaas%3ANew+York&length=3&offset=123936"
       },
       "results" : {
     "type" : "SearchResults",
@@ -1066,9 +1066,9 @@ The steps in the query are:
       "type" : "SearchResponse",
       "pagination" : {
     "type" : "PaginationInfo",
-    "first" : "http://cm-well-ppe.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2015-03-24T11%3A39%3A46.462Z&to=2015-03-24T11%3A39%3A46.462Z&qp=RIC.mdaas%3A%3AVAC&length=3&offset=0",
-    "self" : "http://cm-well-ppe.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2015-03-24T11%3A39%3A46.462Z&to=2015-03-24T11%3A39%3A46.462Z&qp=RIC.mdaas%3A%3AVAC&length=3&offset=0",
-    "last" : "http://cm-well-ppe.int.thomsonreuters.com/permid.org?format=json?&op=search&from=2015-03-24T11%3A39%3A46.462Z&to=2015-03-24T11%3A39%3A46.462Z&qp=RIC.mdaas%3A%3AVAC&length=3&offset=0"
+    "first" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2015-03-24T11%3A39%3A46.462Z&to=2015-03-24T11%3A39%3A46.462Z&qp=RIC.mdaas%3A%3AVAC&length=3&offset=0",
+    "self" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2015-03-24T11%3A39%3A46.462Z&to=2015-03-24T11%3A39%3A46.462Z&qp=RIC.mdaas%3A%3AVAC&length=3&offset=0",
+    "last" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2015-03-24T11%3A39%3A46.462Z&to=2015-03-24T11%3A39%3A46.462Z&qp=RIC.mdaas%3A%3AVAC&length=3&offset=0"
       },
       "results" : {
     "type" : "SearchResults",

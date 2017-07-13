@@ -45,8 +45,9 @@ class App extends React.Component {
                 <InfotonsList
                     location={this.props.location}
                     isRoot={true}
-                    hasChildrenCb={this.toggleState.bind(this, 'currentHasChildren')}
+                    hasChildrenCb={hasChildren => this.setState({ currentHasChildren: hasChildren })}
                     displayNames={this.state.displayNames}
+                    infotonIsEmpty={this.state.infotonIsEmpty}
                 />
                 
                 <Infoton
@@ -55,6 +56,7 @@ class App extends React.Component {
                     rootFolders={this.state.rootFolders}
                     displayNames={this.state.displayNames}
                     displayNameUpdateCb={dn => dn && this.state.lastBreadcrumbDisplayName!=dn && this.setState({ lastBreadcrumbDisplayName: dn })}
+                    isEmptyCb={isEmpty => this.state.infotonIsEmpty!=isEmpty && this.setState({ infotonIsEmpty: isEmpty })}
                 />
                 
                 <Footer/>

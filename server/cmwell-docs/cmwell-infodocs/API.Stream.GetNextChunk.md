@@ -36,7 +36,7 @@ The process requires two different API calls:
 ## Special Parameters ##
 
 Parameter | Description&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Values&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Example
-:----------|:-------------|:--------|:---------|:----------
+:----------|:-------------|:--------|:---------
 session-ttl | The time, in milliseconds, until the iteration session expires. The iteration token is only valid for this length of time. The default value is 15 seconds; the maximal value is 60 seconds. | A positive integer up to 60000. | session-ttl=20000 (20 seconds)
 
 ## Code Example ##

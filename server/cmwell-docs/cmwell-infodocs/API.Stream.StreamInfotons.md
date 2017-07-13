@@ -55,7 +55,7 @@ If you want to perform a one-time retrieval of a large amount of CM-Well data, y
 
 * A common way to handle data streams is to use the Chunked-Response HTTP Encoding protocol. As the size of the response is unknown when streaming starts, chunks of data are sent, each preceded by its size. A chunk of zero length indicates the end of the stream.
 * If for any reason the streaming operation fails, you will have to retrieve all the data from the beginning. An alternative method is the [Consumer API](API.Stream.CreateConsumer.md), which is slower than streaming, but if interrupted allows you to resume from where you left off.
-* There are several different implementations of the streaming feature, with different operation names (stream, nstream, mstream, qstream, sstream). They have different approaches and may work better for different types of data (e.g. a small collection vs. a larger collection). If you find that performance is an issue for the type of data you're targeting, please consult with the CM-Well support team to discuss which option is best for you.
+* There are several different implementations of the streaming feature, with different operation names (stream, nstream, mstream, qstream, sstream). They have different approaches and may work better for different types of data (e.g. a small collection vs. a larger collection). 
 * If the format is supplied in the call, the resulting infotons' data is returned. If you omit the format parameter, only the infotons' URIs are returned.
 * Only the following formats are supported for the **stream** command:
 

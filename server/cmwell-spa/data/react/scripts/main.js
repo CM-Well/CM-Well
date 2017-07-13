@@ -9,7 +9,7 @@ if(localStorage.getItem('old-ui')) {
 }
 
 require.config({
-  waitSeconds: 20,
+  waitSeconds: 120,
   paths: { // Settings for requirejs-react-jsx plugin
      "babel": '/meta/app/react/scripts/lib/babel-5.8.34.min'
     ,"jsx":   '/meta/app/react/scripts/lib/jsx'

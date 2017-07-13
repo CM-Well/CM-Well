@@ -1,9 +1,5 @@
 # CM-Well Version Release Notes - Dec. 15 2016 #
 
-Version Number: |	Release Date:
-----------------|----------------
-20161215-124442	| Dec. 15, 2016
-
 ## Change Summary ##
 
 ### New Features ###
@@ -20,9 +16,6 @@ N/A
 ### Changes to API	 ###
 
 Alternative syntax for "create consumer" API (uses POST instead of GET to enable long query values).
-
-### Link to Demo ###
-N/A
 
 ------------------------------
 

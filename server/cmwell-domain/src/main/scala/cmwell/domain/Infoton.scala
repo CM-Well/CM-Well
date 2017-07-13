@@ -201,7 +201,7 @@ sealed trait Infoton extends Formattable { self =>
 }
 
 
-case class ObjectInfoton(path:String, dc :String, indexTime: Option[Long] = None,lastModified:DateTime = new DateTime,
+case class ObjectInfoton(path:String, dc :String, indexTime: Option[Long] = None,lastModified:DateTime = DateTime.now(DateTimeZone.UTC),
                          override val fields:Option[Map[String, Set[FieldValue]]] = None, indexName:String = "") extends Infoton {
   override def getMasked(fieldsMask: Set[String]): Infoton = {
     val originalUuid = uuid

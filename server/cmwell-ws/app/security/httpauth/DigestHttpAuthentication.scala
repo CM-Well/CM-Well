@@ -20,7 +20,7 @@ import k.grid.Grid
 import play.api.mvc.Request
 import security._
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Random
 import scala.concurrent.duration._
 
@@ -60,16 +60,15 @@ trait DigestHttpAuthentication {
   //
   // We keep HA1 per user inside its UserInfoton as "digest2"
   //
-  def digestAuthenticate(req: Request[_]): Future[DigestStatus] = {
+  def digestAuthenticate(authCache: AuthCache)(req: Request[_])(implicit ec: ExecutionContext): Future[DigestStatus] = {
     import akka.pattern.ask
-    import scala.concurrent.ExecutionContext.Implicits.global
 
     req.headers.get("Authorization") match {
       case None => Future.successful(DigestStatus(isAuthenticated = false, ""))
       case Some(authHeader) => {
         val header = DigestHeaderUtils.fromClientHeaderString(authHeader)
         (Grid.serviceRef(classOf[NoncesManager].getName) ? ConsumeNonce(header.nonce)).mapTo[NonceStatus].map {
-          case NonceConsumed if header.opaque == opaque => AuthCache.getUserInfoton(header.username) match {
+          case NonceConsumed if header.opaque == opaque => authCache.getUserInfoton(header.username) match {
             case None => DigestStatus(isAuthenticated = false, "")
             case Some(user) =>
               val ha1 = (user \ userInfotonPropName).asOpt[String].getOrElse("")

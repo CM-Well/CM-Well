@@ -255,7 +255,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
       }
     })
 
-    val recursiveSearch4 = executeAfterCompletion(recursiveSearch2)(recSearch(path,List("op" -> "search","format" -> "json","pretty" -> "","debug-info" -> "","recursive" -> "","with-history"->"","length" -> "21"),21).map { res =>
+    val recursiveSearch4 = executeAfterCompletion(recursiveSearch2)(recSearch(path,List("op" -> "search","format" -> "json","pretty" -> "","debug-info" -> "","recursive" -> "","with-history"->"","length" -> "42"),21).map { res =>
       withClue(res) {
         val results = Json.parse(res.payload) \ "results"
         val total = (results \ "total").as[Int]

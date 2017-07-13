@@ -16,8 +16,7 @@
 
 package actions
 
-import actions.DashBoard.Color._
-import actions.DashBoard._
+import Color._
 import actions.GridMonitoring.{Active, All, CsvPretty}
 import akka.pattern.ask
 import cmwell.ctrl.checkers._
@@ -50,19 +49,20 @@ object BgMonitoring {
 }
 
 @Singleton
-class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPressureToggler) extends LazyLogging {
+class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPressureToggler, crudServiceFS: CRUDServiceFS, dashBoard: DashBoard) extends LazyLogging {
 
   import BgMonitoring.{monitor => bgMonitor}
+  import dashBoard._
 
   /**
    * @return /proc/node infoton fields map
    */
   private[this] def nodeValFields: FieldsOpt = {
     val (uwh,urh,iwh,irh) = BatchStatus.tlogStatus
-    val esColor = Try(Await.result(DashBoard.getElasticsearchStatus(), esTimeout)._1.toString).getOrElse("grey")
+    val esColor = Try(Await.result(dashBoard.getElasticsearchStatus(), esTimeout)._1.toString).getOrElse("grey")
     Some(Map[String,Set[FieldValue]](
       "pbp" -> Set(FString(backPressureToggler.get)),
-      "nbg" -> Set(FBoolean(CRUDServiceFS.newBG)),
+      "nbg" -> Set(FBoolean(crudServiceFS.newBG)),
       "search_contexts_limit" -> Set(FLong(Settings.maxSearchContexts)),
       "cm-well_release" -> Set(FString(BuildInfo.release)),
       "cm-well_version" -> Set(FString(BuildInfo.version)),
@@ -106,7 +106,7 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
 
   def coloredHtmlString(color: String, status: String) = s"""<span style='color:$color'>$status</span>"""
 
-  private[this] def colorAdapter(c : StatusColor) : DashBoard.Color.Color = {
+  private[this] def colorAdapter(c : StatusColor) : Color.Color = {
     val r = c match {
       case GreenStatus => Green
       case YellowStatus => Yellow
@@ -208,7 +208,6 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
   }
 
   private[this] def getBatchDetailedHealth(t : BgType) = {
-    // try{
     val baseFut = t match {
       case Batch => CtrlClient.getBatchStatus
       case Bg => CtrlClient.getBgStatus
@@ -226,16 +225,10 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
             }
         }
     }
-    //    } catch {
-    //      case t :Throwable => Map.empty
-    //    }
-
   }
 
-  //private[this] def getCassandraDetailedHealth()
 
   private[this] def getClusterHealth : HealthTimedData = {
-    // (ws,bg,es,ca)
     val r = CtrlClient.getClusterStatus.map{
       cs =>
         val ws = getWsHealth(cs.wsStat._1.values, cs.wsStat._2)
@@ -345,7 +338,6 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
   }
 
   private[this] def generateHealthFields: FieldsOpt = {
-    //    val (ws,bg,es,ca) = DashBoardCache.cacheAndGetHealthData
     val (ws,bg,es,ca,zk,kaf,controlNode,masters) = getClusterHealth
     val (wClr,wMsg) = ws._1
     val (bClr,bMsg) = bg._1
@@ -382,7 +374,6 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
 
     logger.info("in generateHealthMarkdown")
 
-    //    val ((ws,wsTime),(bg,bgTime),(es,esTime),(ca,caTime)) = DashBoardCache.cacheAndGetHealthData
     val ((ws,wsTime),(bg,bgTime),(es,esTime),(ca,caTime),(zk, zkTime),(kf, kfTime),controlNode, masters) = getClusterHealth
 
     def determineCmwellColorBasedOnComponentsColor(components: Seq[Color]): Color = {
@@ -430,25 +421,6 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
     }.flatten.toMap)
   }
 
-  /**
-   * @return health-detailed markdown string
-   */
-  /*def generateDetailedHealthMarkdown: String = {
-    //val (xs, timeStamp) = DashBoardCache.cacheAndGetDetailedHealthData
-    val (xs, timeStamp) = getClusterDetailedHealth
-    val m: List[List[String]] = xs.toList.sortBy(_._1).map{
-      case (s,t) =>
-        s :: getColoredStatus(t._1) :: getColoredStatus(t._2) :: getColoredStatus(t._3) :: getColoredStatus(t._4) :: Nil
-    }
-    s"""
-##### Current time: ${fdf(new DateTime(System.currentTimeMillis()))}
-### Data was generated on: ${fdf(timeStamp)}
-| **Node** | **WS** | **BG** | **CAS** | **ES** |
-|----------|--------|--------|---------|--------|
-${m.map(_.mkString("|","|","|")).mkString("\n")}
-"""
-  }*/
-
 
   def generateDetailedHealthCsvPretty(): String = {
     val title = s"${Settings.clusterName} - Health Detailed"
@@ -473,7 +445,6 @@ ${csvToMarkdownTableRows(csvData)}
     def zkStatusString(zkTuple: (String, Color)): String = {
       if (zkTuple._1 == "ZooKeeper is not running" && zkTuple._2 == Green) "" else s"${getColoredStatus(zkTuple._2)}<br>${zkTuple._1}"
     }
-    //val (xs, timeStamp) = DashBoardCache.cacheAndGetDetailedHealthData
     val clusterHealth = getClusterDetailedHealthNew
     clusterHealth.map(r => s"${r._1},${getColoredStatus(r._2._1._2)}<br>${r._2._1._1},${getColoredStatus(r._2._2._2)}<br>${r._2._2._1},${getColoredStatus(r._2._3._2)}<br>${r._2._3._1},${getColoredStatus(r._2._4._2)}<br>${r._2._4._1},${zkStatusString(r._2._5)},${getColoredStatus(r._2._6._2)}<br>${r._2._6._1}").mkString("\n")
   }
@@ -490,7 +461,6 @@ ${csvToMarkdownTableRows(csvData)}
    * @return batch markdown string
    */
   def generateBatchMarkdown(t : BgType): String = {
-    //val resFut = DashBoard.BatchStatus.getAll.map{ set =>
 
     val resFut = getBatchDetailedHealth(t).map{ set =>
       val lines = set.toList.sortBy(_._1).map{
@@ -541,7 +511,6 @@ ${lines.mkString("\n")}
   }
 
   def generateBgMarkdown(t : BgType): String = {
-    //val resFut = DashBoard.BatchStatus.getAll.map{ set =>
 
     val offsetsInfo = ask(bgMonitor, GetOffsetInfo)(10.seconds).mapTo[OffsetsInfo].map{ offsetInfo =>
 
@@ -580,7 +549,7 @@ ${
 
 
   def generateIteratorMarkdown: String = {
-    val hostsToSessions = CRUDServiceFS.countSearchOpenContexts()
+    val hostsToSessions = crudServiceFS.countSearchOpenContexts()
     val lines = hostsToSessions.map{
       case (host,sessions) => s"|$host|$sessions|"
     } :+ s"| **Total** | ${(0L /: hostsToSessions){case (sum,(_,add)) => sum + add}} |"
@@ -597,11 +566,11 @@ ${lines.mkString("\n")}
   import scala.language.implicitConversions
 
 
-  def generateInfoton(host: String, path: String, md: DateTime = new DateTime(), length: Int = 0, offset: Int = 0, isRoot : Boolean = false): Future[Option[VirtualInfoton]] = {
+  def generateInfoton(host: String, path: String, md: DateTime = new DateTime(), length: Int = 0, offset: Int = 0, isRoot : Boolean = false, nbg: Boolean = false): Future[Option[VirtualInfoton]] = {
 
     implicit def iOptAsFuture(iOpt: Option[VirtualInfoton]): Future[Option[VirtualInfoton]] = Future.successful(iOpt)
 
-    def compoundDC = CRUDServiceFS.getListOfDC().map{
+    def compoundDC = crudServiceFS.getListOfDC().map{
       seq => {
         val dcKids: Seq[Infoton] = seq.map(dc => VirtualInfoton(ObjectInfoton(s"/proc/dc/$dc", dc, None, md, None)).getInfoton)
         Some(VirtualInfoton(CompoundInfoton("/proc/dc",dc,None,md,None,dcKids.slice(offset,offset+length),offset,length,dcKids.size)))
@@ -612,8 +581,8 @@ ${lines.mkString("\n")}
       case "/proc" => {val pk = procKids; Some(VirtualInfoton(CompoundInfoton(path, dc, None, md,None,pk.slice(offset,offset+length),offset,min(pk.drop(offset).size,length),pk.size)))}
       case "/proc/node" => Some(VirtualInfoton(ObjectInfoton(path, dc, None, md,nodeValFields)))
       case "/proc/dc" => compoundDC
-      case path if path.startsWith("/proc/dc/") => CRUDServiceFS.getLastIndexTimeFor(path.drop("/proc/dc/".length))
-      case "/proc/fields" => CRUDServiceFS.getESFieldsVInfoton.map(Some.apply)
+      case p if p.startsWith("/proc/dc/") => crudServiceFS.getLastIndexTimeFor(p.drop("/proc/dc/".length))
+      case "/proc/fields" => crudServiceFS.getESFieldsVInfoton(nbg).map(Some.apply)
       case "/proc/health" => Some(VirtualInfoton(ObjectInfoton(path, dc, None, md, generateHealthFields)))
       case "/proc/health.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateHealthMarkdown.getBytes, "text/x-markdown")))))
       case "/proc/health-detailed" => Some(VirtualInfoton(ObjectInfoton(path, dc, None, md, generateHealthDetailedFields)))
@@ -631,7 +600,7 @@ ${lines.mkString("\n")}
       case "/proc/actors-diff.md" => GridMonitoring.actorsDiff(path, dc)
       case "/proc/requests.md" => RequestMonitor.requestsInfoton(path, dc)
       case "/proc/dc-health.md" => DcMonitor.dcHealthInfotonMD(path, dc)
-      case "/proc/dc-distribution.md" => DcMonitor.dcDistribution(path, dc)
+      case "/proc/dc-distribution.md" => DcMonitor.dcDistribution(path, dc, crudServiceFS)
       case "/proc/stp.md" => SparqlTriggeredProcessorMonitor.generateTables(path, dc)
       case "/proc/traffic.md" => TrafficMonitoring.traffic(path, dc)
       case s if s.startsWith("/meta/ns/") => {

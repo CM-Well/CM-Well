@@ -40,7 +40,7 @@ To run the Spark Connector, you will need a **Linux environment** and **JVM 1.8*
 
 ## Downloading and Installing the Spark Connector ##
 
-To install the Spark Connector, download and unzip the following package within a Linux environment: http://<cm-well-host>/spark/spark-2.1.0-bin-cm-well.tgz.
+*Coming soon.*
 
 ## Running the CM-Well Connector in the Spark Client ##
 

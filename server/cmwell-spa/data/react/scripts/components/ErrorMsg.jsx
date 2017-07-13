@@ -12,7 +12,7 @@ class ErrorMsg extends React.Component {
             <div className="details">
                 {this.props.children}
                 <br/>
-                Try again, or go back to <Link to='/'>home page</Link>.
+                Try again, or go back to <a href='/' onClick={()=>location.href='/'}>home page</a>.
             </div>
         </div>
     }

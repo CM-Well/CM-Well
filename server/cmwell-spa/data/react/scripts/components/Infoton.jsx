@@ -86,6 +86,8 @@ class Infoton extends React.Component {
         let displayName = new DInfoton(infoton, this.props.displayNames||displayNames).displayName
         infoton = { type: infoton.type, system: infoton.system }
         
+        if(this.props.isEmptyCb) this.props.isEmptyCb(_.isEmpty(fields))
+        
         if(infoton && infoton.system && infoton.system['length.content'] > AppUtils.constants.fileInfotonInMemoryThreshold) {
             // removing too large payloads from memory
             infoton.system = _(infoton.system).omit('data.content','base64-data.content')
@@ -125,7 +127,7 @@ class Infoton extends React.Component {
             let innerLink = isUri ? fv.value.replace('http:/','').replace('#','%23') : ''
             let isInner = isUri && _(this.props.rootFolders).some(rf => innerLink.indexOf(rf)===0)
             return <span>
-                { isUri ? makeLink(fv.value, 'value') : <span className="value">{fv.value}</span> }
+                { isUri ? makeLink(fv.value, 'value') : <span className="value">{''+fv.value}</span> }
                 { fv.quad ? makeLink(fv.quad, 'quad', <img src="/meta/app/react/images/quad.svg" title={fv.quad} />) : null }
             </span>
         }

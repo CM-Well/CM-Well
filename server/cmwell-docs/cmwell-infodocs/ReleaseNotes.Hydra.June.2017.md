@@ -1,9 +1,5 @@
 # CM-Well Version Release Notes - Hydra (June 2017) #
 
-Version Name | PPE Release | Production Release (Eagan) | Production Release (Plano)
--------------|----------------|-------------------------|-------------------
-Hydra | June 21st, 2017 | June 26th, 2017 | June 28th, 2017
-
 ## Change Summary ##
 
 
@@ -17,6 +13,4 @@ Log message cleanup | CM-Well log messages were reviewed and edited for clarity,
 ### Changes to API ###
 New **yg-chunk-size** parameter may be added to **yg** (inbound link) queries.
 
-### Link to Demo ###
-N/A
 

@@ -16,7 +16,6 @@
 
 package controllers
 
-import actions.DashBoard.BatchStatus
 import akka.actor.Actor
 import cmwell.util.concurrent.{Combiner, SimpleScheduler, SingleElementLazyAsyncCache}
 import cmwell.ws._
@@ -24,15 +23,18 @@ import cmwell.ws.Settings._
 import com.typesafe.scalalogging.LazyLogging
 import k.grid.Grid
 import akka.pattern.ask
-import k.grid.dmap.api.SettingsString
+
 import k.grid.dmap.impl.persistent.PersistentDMap
 import play.api.mvc._
 import javax.inject._
+
+import actions.DashBoard
+
 import scala.concurrent.duration.DurationLong
-import scala.concurrent.{Future, duration}
+import scala.concurrent.Future
 
 @Singleton
-class IngestPushback @Inject() (backPressureToggler: BackPressureToggler) extends ActionBuilder[Request] with LazyLogging {
+class IngestPushback @Inject() (backPressureToggler: BackPressureToggler, dashBoard: DashBoard) extends ActionBuilder[Request] with LazyLogging {
 
   // TODO: execution context should be injected, not imported like this.
   import scala.concurrent.ExecutionContext.Implicits.global
@@ -76,7 +78,7 @@ class IngestPushback @Inject() (backPressureToggler: BackPressureToggler) extend
 
    private def filterByTLog(): Option[Result] = {//Future[Option[Result]] = {
 
-     val (uwh,urh,iwh,irh) = BatchStatus.get._2
+     val (uwh,urh,iwh,irh) = dashBoard.BatchStatus.get._2
 
      if(uwh - urh > maximumQueueBuildupAllowedUTLog) Some(Results.ServiceUnavailable("Updates tlog queue on this node is full. You may try again later or against a different node."))
      else if(iwh - irh > maximumQueueBuildupAllowedITLog) Some(Results.ServiceUnavailable("Indexer tlog queue on this node is full. You may try again later or against a different node."))

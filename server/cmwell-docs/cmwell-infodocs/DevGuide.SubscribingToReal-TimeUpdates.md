@@ -38,7 +38,7 @@ These are the elements of the request:
 
 Element | Description 
 :--------|:------------
-\<http://cmwell/path/to/data\> | The CM-Well path whose infotons you want to receive.
+\<cm-well-host\>/\<cm-well-path\> | The CM-Well path whose infotons you want to receive.
 op=subscribe | Indicates a "subscribe" operation.
 method=pull | Indicates the "pull" method of receiving data.
 format=\<outputFormat\> | Specifies the pull output format.

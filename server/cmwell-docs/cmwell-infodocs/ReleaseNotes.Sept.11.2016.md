@@ -1,9 +1,5 @@
 # CM-Well Version Release Notes - Sept. 11th 2016 #
 
-Version Number: |	Release Date:
-----------------|--------
-20160911-122544	| Sept. 11, 2016
-
 ## Change Summary ##
 
 ### Features ###
@@ -226,7 +222,7 @@ Adding **sort-by=system.score** to a query causes the results to be sorted in de
 
 **Description:**
 
-CM-Well data is automatically replicated between the Eagan and Plano production environments. This data synchronization process has been significantly improved in the latest version. 
+The data synchronization process has been significantly improved in the latest version. 
 
 **Notes:** None.
 

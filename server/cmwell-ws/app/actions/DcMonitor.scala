@@ -31,9 +31,6 @@ import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Try
 
-/**
- * Created by michael on 8/20/15.
- */
 object DcMonitor {
   private implicit val timeout = Timeout(5.seconds)
   lazy val dc = Grid.serviceRef("DataCenterSyncManager")
@@ -42,11 +39,11 @@ object DcMonitor {
     (dc ? WhoAreYou).mapTo[WhoIAm].map(_.address).recover{case err : Throwable => "NA"}
   }
   
-  def dcDistribution(path : String, dc : String) : Future[Option[VirtualInfoton]] = {
+  def dcDistribution(path : String, dc : String, crudServiceFS: CRUDServiceFS) : Future[Option[VirtualInfoton]] = {
 
     val fDcAddress = getDcAddress
 
-    val fAggRes = CRUDServiceFS.aggregate(None,
+    val fAggRes = crudServiceFS.aggregate(None,
                             None,
                             None,
                             PaginationParams(0, 20),
@@ -54,22 +51,16 @@ object DcMonitor {
                             List(TermAggregationFilter("TermAggregation",Field(AnalyzedField,"system.dc"))),
                             false)
 
-    for{
+    for {
       dcAddress <- fDcAddress
       aggRes <- fAggRes
     } yield {
       val tuples = aggRes.responses.flatMap {
-        res =>
-          res match {
-            case TermsAggregationResponse(filter, buckets) =>
-              buckets.map {
-                bucket =>
-
-                  MarkdownTuple(bucket.key.value.asInstanceOf[String], bucket.docCount.toString)
-              }
-
+        case TermsAggregationResponse(filter, buckets) => {
+          buckets.map { bucket =>
+            MarkdownTuple(bucket.key.value.asInstanceOf[String], bucket.docCount.toString)
           }
-
+        }
       }
       val markdownTable = MarkdownTable(MarkdownTuple("dc", "count"), tuples)
       val body =

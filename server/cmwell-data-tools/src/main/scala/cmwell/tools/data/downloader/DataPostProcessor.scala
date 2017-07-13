@@ -17,10 +17,12 @@
 package cmwell.tools.data.downloader
 
 import akka.stream.scaladsl._
-import akka.util.ByteString
+import akka.util.{ByteString, ByteStringBuilder}
 import cmwell.tools.data.utils.akka._
 import cmwell.tools.data.utils.chunkers.GroupChunker
 import cmwell.tools.data.utils.logging.DataToolsLogging
+
+import scala.collection.mutable
 
 object DataPostProcessor extends DataToolsLogging {
 
@@ -45,11 +47,15 @@ object DataPostProcessor extends DataToolsLogging {
           false
         case _ => true
       }
-      .groupBy(maxSubjects + 1, GroupChunker.extractSubject) // + 1: see implementation of groupBy ...
-      .fold(Seq.empty[ByteString]){(agg, b) => agg :+ b} // todo: check if endl is needed here
-      .map(concatByteStrings(_, endl))
-      .map(_ ++ endl)
-      .mergeSubstreams
+      .fold(mutable.Map.empty[ByteString, ByteStringBuilder]){ (agg, line) =>
+        // aggregate each line according to its subject (i.e., bucket)
+        val subject = GroupChunker.extractSubject(line)
+        val builder = agg.getOrElse(subject, new ByteStringBuilder)
+        builder ++= (line ++ endl)
+        agg + (subject -> builder)
+      }
+      .map(_.toMap)
+      .mapConcat(_.map{ case (_, ntupleBuilder) => ntupleBuilder.result})
   }
 }
 

@@ -5,22 +5,16 @@
 * [CM-Well UI Controls](#hdr3)
 	* [Address Bar](#hdr4)
 	* [Results Page](#hdr5)
+	* [Infoton View](#hdr21)   
+	    * [Sub-Graph Icon](#hdrSubGraph)
+	    * [Format Dropdown](#hdrFormat)
+	    * [System Information Fields](#hdrSysInfo)
+	    * [Favorite Field Controls](#hdrFF)
 	* [Home Button](#hdr6)
 	* [HELP Link](#hdr7)
-	* [Paging Controls](#hdr8)
-	* [Message Banner](#hdr9)
-	* [Atom Feed Buttons](#hdr10)
-	* [Format Dropdown](#hdr11)
-	* [History Dropdown](#hdr12)
-	* [History Button](#hdr13)
-	* [History Diff Button](#hdr14)
-	* [Type Navigation Button](#hdr15)
-	* [Field Dropdown](#hdr16)
-	* [Search Box](#hdr17)
-	* [Exact Term Checkbox](#hdr18)
-	* [Statistics Dropdown](#hdr19)
-	* [SPARQL Query Button](#hdr20)
-* [The Infoton View](#hdr21)
+	* [Use Old UI Link](#hdrOldUI)
+	* [Results List Scrollbar](#hdr8)
+	* [Search Controls](#hdr17)
 * [Running CM-Well Queries in the UI](#hdr22)
 * [Special CM-Well Folders and Files](#hdr23)
 * [Configuring Infoton Link Display by Type](#hdr24)
@@ -30,9 +24,11 @@
 
 The CM-Well web interface is a graphical user interface for accessing CM-Well through your browser. When you browse to the root URI of a CM-Well instance, you see this page:
 
-<img src="./_Images/cm-well-web-interface.png"/>
+<img src="./_Images/new-web-ui.png"/>
 
-Using the CM-Well web interface, you can browse among the CM-Well folders and infotons, run queries and get results, and examine the query results. Anyone in the Thomson Reuters network has read access to CM-Well; this requires no special permissions.
+Using the CM-Well web interface, you can browse among the CM-Well folders and infotons, run queries and get results, and examine the query results. Anyone with network access to CM-Well can browse to its web UI; this requires no special permissions.
+
+>**Note:** The CM-Well web UI is currently fully supported only in the Chrome browser.
 
 This page describes the features of the CM-Well web interface and how to use them.
 
@@ -46,8 +42,6 @@ An infoton's URI is similar to an internet URI in that it refers to a specific i
 
 A path to an infoton contains the CM-Well host, the sub-folders and the infoton's unique ID. For example: `<cm-well-host>/data.com/1-34415653093`
 
-There are several lab, pre-production and production CM-Well environments, and each one has a different root URI.
-
 ---------------------------------
 <a name="hdr3"></a>
 ## CM-Well UI Controls ##
@@ -57,25 +51,80 @@ There are several lab, pre-production and production CM-Well environments, and e
 
 You can browse to an infoton by entering its path in a browser address bar.
 
-<img src="./_Images/ui-address-bar.png"/>
+<img src="./_Images/new-ui-address-bar.png"/>
 
 ---------------------------------
 <a name="hdr5"></a>
-### Results Page ###
+### Search Results ###
 
-The central page area of the CM-Well web interface displays your query results, or in other words, the folders and/or infoton/s that reside under the CM-Well path in the address bar.
+The left-hand pane of the CM-Well web interface displays your query results, or in other words, the folders and/or infoton/s that reside under the CM-Well path in the address bar.
 
-If the URI refers to a single infoton, the results page shows that infoton's fields and values.
-
-<img src="./_Images/ui-infoton-field-values.png"/>
+If the URI refers to a single infoton, the results page shows that infoton's fields and values (see [Infoton View](#hdr21)).
 
 If there are sub-folders or infotons under the URI in the address bar, they are displayed as a list on the left of the results page.
 
-<img src="./_Images/ui-sub-folders.png"/>
+<img src="./_Images/new-ui-list-of-infotons.png"/>
 
 Clicking on the URI of a folder or infoton displays the page for the selected folder or infoton.
 
->**Note:** A CM-Well folder is also an infoton, which has system fields that are displayed when you browse to a folder's URI. (It can potentially also have object fields.)
+>**Note:** A CM-Well folder is also an infoton. It can potentially have data fields as well as child folders and infotons.
+
+---------------------------------
+<a name="hdr21"></a>
+### Infoton View ###
+
+When a single infoton's URI appears in the browser address bar, the CM-Well web interface shows that infoton's page.
+
+<img src="./_Images/new-ui-single-infoton.png"/>
+
+On this page, you can see the infoton's field names and values.
+
+---------------------------------
+<a name="hdrSubGraph"></a>
+#### Sub-Graph Icon ####
+
+For some infotons, you may notice that some fields have a blue graph icon. This indicates that these fields are part of a sub-graph, or in other words, have been given a label.  (See [Working with Named Sub-Graphs](DevGuide.WorkingWithNamedSub-Graphs.md) to learn more.) You can see the label value by hovering over this icon.
+
+<img src="./_Images/new-ui-sub-graph.png"/>
+
+---------------------------------
+<a name="hdrFormat"></a>
+#### Format Dropdown ####
+
+At the top of the infoton view, you can see the **View in format** dropdown menu. This allows you to see the infoton fields in the triples format of your choice.
+
+<img src="./_Images/new-ui-format-dropdown.png"/>
+
+To view the infoton in one of the triples formats:
+
+Select one of the values from the **View in format** dropdown menu. A new browser tab opens, displaying the infoton triples in the format you selected.
+
+<img src="./_Images/new-ui-ntriple-format.png"/>
+
+---------------------------------
+<a name="hdrSysInfo"></a>
+#### System Information Fields ####
+
+Infotons have two types of fields: user-defined data fields (also known as "object fields") which the user adds to the infoton, and system fields, which the CM-Well system creates. System fields include items such as the infoton's path, UUID and last modified time.
+
+By default, system field are hidden in the infoton view. You can show or hide these fields by clicking on the (i) button on the left of the page.
+
+<img src="./_Images/new-ui-system-info.png"/>
+
+---------------------------------
+<a name="hdrFF"></a>
+#### Favorite Field Controls ####
+
+Using the favorite field controls in the infoton view, you can choose to display only a subset of fields that interests you.
+
+To display only your favorite fields:
+
+1. Click the stars to the left of the fields you want to display. Selected stars are highlighted in yellow.
+   <img src="./_Images/new-ui-show-all.png"/>
+2. Move the slider over the fields to the **Only Favorites** position. Only the selected fields are displayed.
+   <img src="./_Images/new-ui-show-favorites.png"/>
+
+>**Note:** The favorite field settings apply to all infotons regardless of type, and are saved for your user and browser. They are retained for your user between browser sessions as long as you don't clear the browser data.
 
 ---------------------------------
 <a name="hdr6"></a>
@@ -83,7 +132,7 @@ Clicking on the URI of a folder or infoton displays the page for the selected fo
 
 Clicking on the Home button at the top left navigates to the CM-Well root URI.
 
-<img src="./_Images/ui-home-button.png"/>
+<img src="./_Images/new-ui-home-button.png"/>
 
 ---------------------------------
 <a name="hdr7"></a>
@@ -91,159 +140,44 @@ Clicking on the Home button at the top left navigates to the CM-Well root URI.
 
 Clicking on the HELP link at the top right displays the Table of Contents page for the CM-Well help documentation.
 
-<img src="./_Images/ui-help-link.png"/>
+<img src="./_Images/new-ui-help-button.png"/>
+
+---------------------------------
+<a name="hdrOldUI"></a>
+### Use Old UI Link ###
+
+If you prefer to use the previous version of the CM-Well web UI, you can click on the **Use old UI** link at the top right of the page.
+
+<img src="./_Images/new-ui-use-old-ui.png"/>
+
+>**Note:** See [Old CM-Well Web Interface](CM-Well.OldWebInterface.md) to learn more about how to use the old UI.
 
 ---------------------------------
 <a name="hdr8"></a>
-### Paging Controls ###
+### Results List Scrollbar ###
 
-When there is more than one sub-folder or infoton under the URI in the address bar, the results are displayed in a list on the left of the page. If there are many results, they are divided among several pages, through which you can navigate using the paging controls.
+When there is more than one sub-folder or infoton under the URI in the address bar, the results are displayed in a list on the left of the page. A message above the results list shows how many results are displayed on this page.
 
-A message above the results list shows how many results are displayed on this page and from which offset. You can page among subsets of results using the page number and arrow controls at the top left.
+<img src="./_Images/new-ui-nof-results.png"/>
 
-<img src="./_Images/ui-paging-controls.png"/>
+If there are many results, you can use the scrollbar to the right of the list to scroll down. The UI loads additional infotons for viewing as you scroll down the list.
 
----------------------------------
-<a name="hdr9"></a>
-### Message Banner ###
-
-Sometimes CM-Well may display a special message to its users, in the message banner at the bottom of the page.
-
-<img src="./_Images/ui-message-banner.png"/>
-
----------------------------------
-<a name="hdr10"></a>
-### Atom Feed Buttons ###
-
-You may want to examine an atom feed (a.k.a. RSS feed) of the latest infotons in a certain CM-Well path. There are two ways to do this:
-
-* Click the atom feed button at the top left to retrieve an atom feed of the infotons under the URI in the address bar.	
-
-<img src="./_Images/ui-main-atom-feed.png"/>	
-* Hover over a folder link on the left, then click the atom feed button that appears in the same line.	
-
-<img src="./_Images/ui-folder-atom-feed.png"/>
-
-After you click on an atom feed button, the first 50 results in the feed are displayed. 
-
->**Note:** To conveniently retrieve and handle an ongoing stream of infotons, use the [Consumer API](API.Stream.CreateConsumer.md).
-
----------------------------------
-<a name="hdr11"></a>
-### Format Dropdown ###
-
-You can choose the format of the infotons displayed by selecting a value from the **Format** dropdown menu.
-
-<img src="./_Images/ui-format-dropdown.png"/>
-
----------------------------------
-<a name="hdr12"></a>
-### History Dropdown ###
-
-You can view all historical versions of the infoton in the address bar, in the format of your choice, by selecting a value from the **History** dropdown menu.
-
-<img src="./_Images/ui-history-dropdown.png"/>
-
----------------------------------
-<a name="hdr13"></a>
-### History Button ###
-
-To view all historical versions of an infoton in the left-hand list, hover over the infoton link, then click the history button that appears in the same line.	
-
-<img src="./_Images/ui-infoton-history-button.png"/>
-
----------------------------------
-<a name="hdr14"></a>
-### History Diff Button ###
-
-To compare historical versions of an infoton in the left-hand list, hover over the infoton link, then click the **History (Diff View)** button that appears in the same line.	
-
-<img src="./_Images/ui-infoton-diff-button.png"/>
-
----------------------------------
-<a name="hdr15"></a>
-### Type Navigation Button ###
-
-Sometimes it is useful to retrieve infotons according to their RDF type. For instance, you may want to examine only the infotons whose RDF type is Person.
-
-To navigate by RDF type, click the **Type** button on the top left.
-
-<img src="./_Images/ui-type-button.png"/>
-
-CM-Well displays a partial list of the type values that are found under the current URI, and the counts of each type in parentheses after the type name.
-
-<img src="./_Images/ui-partial-type-list.png"/>
-
-You can click the **more** link on the right to see the complete type list.
-
-<img src="./_Images/ui-complete-type-list.png"/>
-
-When you click on a type name, only infotons with that type are displayed.
-
----------------------------------
-<a name="hdr16"></a>
-### Field Dropdown ###
-
-The Field dropdown menu shows all field names found in the first 100 infotons under the current URI. You can choose a field name in order to apply a search to that field (see next section).
-
-<img src="./_Images/ui-field-dropdown.png"/>
+<img src="./_Images/new-ui-scrollbar.png"/>
 
 ---------------------------------
 <a name="hdr17"></a>
-### Search Box ###
+### Search Controls ###
 
-To search for a value in all infoton fields, type a value in the **Search** box and click the search button.
+The CM-Well search controls appear at the top of the page.
 
-<img src="./_Images/ui-search-box.png"/>
+<img src="./_Images/new-ui-search-controls.png"/>
 
-To search for a value in a specific field, first select the field name in the **Field** dropdown menu, then type a value in the **Search** box and click the search button.
+To search for a value in all infoton fields:
 
-After you click the search button, the first 10 search results are displayed.
-
----------------------------------
-<a name="hdr18"></a>
-### Exact Term Checkbox ###
-
-If you check the Exact Term checkbox, the search will match the search term exactly, rather than performing a tokenized string search, which is the default behavior.
-
-<img src="./_Images/ui-exact-term.png"/>
-
----------------------------------
-<a name="hdr19"></a>
-### Statistics Dropdown ###
-
-You will see a dropdown entitled **Analytics** to the right of the **Search** button. This refers to a legacy feature for activating statistical functions. This feature is deprecated and will be replaced by an enhanced version of the feature.
-
----------------------------------
-<a name="hdr20"></a>
-### SPARQL Query Button ###
-
-You can activate a special page for submitting SPARQL queries, by clicking the (S) button in CM-Well's home page graphic. See [Using SPARQL on CM-Well Infotons](DevGuide.UsingSPARQLOnCM-WellInfotons.md) to learn more.
-
-<img src="./_Images/ui-sparql-button.png"/>
-
-When you click on the (S) button, the SPARQL query editor page is displayed:
-
-<img src="./_Images/ui-sparql-query-page.png"/>
-
-From this page, you can click on the **SPARQL on whole graph** link to display the page for submitting a SPARQL query that runs on the entire CM-Well graph. See [Apply SPARQL to the Entire Graph](API.Query.ApplySPARQLToEntireGraph.md) to learn more.
-
-<img src="./_Images/ui-sparql-on-whole-graph.png"/>
-
-
----------------------------------
-<a name="hdr21"></a>
-## The Infoton View ##
-
-When a single infoton's URI appears in the browser address bar, the CM-Well web interface shows that infoton's page.
-
-On this page, you can see the infoton's field names and values. These include:
-* **System fields** - fields added to the infoton by CM-Well itself. These include "administrative" details such as the infoton's path, UUID and the time it was last modified.
-* **Object fields** - fields added to the infoton by the a user, via the CM-Well API.
-
-You may notice that some fields have a small, orange graph icon. This indicates that these fields are part of a sub-graph, or in other words, have been given a label.  (See [Working with Named Sub-Graphs](DevGuide.WorkingWithNamedSub-Graphs.md) to learn more.) You can see the label value by hovering over this icon.
-
-<img src="./_Images/ui-infoton-page.png"/>
+1. Select a folder to search in from the dropdown menu. You can also choose **Search all folders**.
+   <img src="./_Images/new-ui-search-folder.png"/>
+1. Type the value you want to search for in the edit box on the left.
+2. Click the **Search** button. Search results are displayed in a list on the left.
 
 ---------------------------------
 <a name="hdr22"></a>
@@ -253,21 +187,17 @@ You can run simple CM-Well queries by entering them in your browser's address ba
 
 The simplest kind of query is one that retrieves a single infoton (which could also be a folder infoton). The infoton is retrieved by its URI.
 
-<img src="./_Images/ui-single-infoton-query.png"/>
+<img src="./_Images/new-ui-single-infoton.png"/>
 
 You can also add query parameters to the address line, to retrieve several results while applying filters to their field values. For example, the following query searches for infotons under the permid.org folder (these are mainly Organization entities), which are located in New York state: 
 
-`http://cm-well-prod.int.thomsonreuters.com/permid.org?op=search&qp=organizationStateProvince.mdaas:New%20York`
+`http://cm-well-host/permid.org?op=search&qp=organizationStateProvince.mdaas:New%20York`
 
 When you enter this query in the address bar, CM-Well displays a list of links to infotons that match the query. You can click on these links to see those infotons' pages.
 
-<img src="./_Images/ui-query-with-params.png"/>
+ADDIMAGE???
 
 See the [Developer Guide and API Reference topics](CM-Well.RootTOC.md) to learn more about CM-Well queries.
-
->**Note:** You can add the **with-data** flag to retrieve query results with their field values instead of links only.
-
-<img src="./_Images/ui-query-with-data.png"/>
 
 ---------------------------------
 <a name="hdr23"></a>
@@ -290,7 +220,7 @@ Authorized users can configure the display of infoton links according to RDF typ
 
 ### The Display Configuration Infoton ###
 
-The Display Name configuration infoton must be placed in **/meta/dn/<HASH>**, where HASH is the md5 encoding of a type.rdf value. The configuration infoton must have a **forType** field, containing the RDF type for which you want to configure display.
+The Display Name configuration infoton must be placed in **/meta/dn/\<HASH\>**, where HASH is the md5 encoding of a type.rdf value. The configuration infoton must have a **forType** field, containing the RDF type for which you want to configure display.
 In addition, it should have at least one field with the **displayName** prefix. The field values define the string that should be added to the displayed link for infotons of the given type. The values are either the name of a field that usually appears in the infoton, or a javascript snippet that defines a manipulation of such fields.
 
 For example:

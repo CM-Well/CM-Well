@@ -92,7 +92,7 @@ Let's break this command down to its components:
 
 Query Part  |  Value in Example
 :------------|:--------------------
-POST command to CM-Well's _sp endpoint | curl -X POST "http://cm-well-ppe.int.thomsonreuters.com/_sp" 
+POST command to CM-Well's _sp endpoint | curl -X POST "http://cm-well-host.com/_sp" 
 format parameter | ?format=ascii
 PATHS header | PATHS
 List of paths, one per line | /example.org/Individuals?op=search&length=1000&with-data<br>/example.org/Individuals/RonaldKhun<br>/example.org/Individuals/JohnSmith?xg=3
@@ -159,7 +159,7 @@ Here are some CM-Well paths (in a custom-made repository) to which we can apply 
 
 Path                                                                                              | Retrieves
 :--------------------------------------------------------------------------------------------------|:----------------------------------------
-http://cm-well.com/example.org/Individuals?op=search&length=1000&with-data | The first 1000 people under Individuals 
+http://cm-well-host.com/example.org/Individuals?op=search&length=1000&with-data | The first 1000 people under Individuals 
 http://cm-well.com/example.org/Individuals/RonaldKhun                      | A specific person's infoton             
 http://cm-well.com/example.org/Individuals/JohnSmith?xg=3                  | A specific person's outbound links     
 
