@@ -1,9 +1,5 @@
 # CM-Well Version Release Notes - Jan. 17 2017 #
 
-Version Number: |	Release Date:
-----------------|----------------
-20170117-173236	| Jan. 17, 2017
-
 ## Change Summary ##
 The changes in this release include bug fixes and infrastructure improvements only - see next section.
 
@@ -28,6 +24,4 @@ The changes in this release include bug fixes and infrastructure improvements on
 
 None.
 
-### Link to Demo ###
-N/A
 

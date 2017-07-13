@@ -1,9 +1,5 @@
 # CM-Well Version Release Notes - Oct. 6th 2016 #
 
-Version Number: |	Release Date:
-----------------|----------------
-20160929-093011	| Oct. 6th, 2016
-
 ## Change Summary ##
 
 -----------------------

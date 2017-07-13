@@ -1,9 +1,5 @@
 # CM-Well Version Release Notes - Dolphin (Mar. 2017) #
 
-Version Name | PPE Release | Production Release (Eagan) | Production Release (Plano)
--------------|----------------|-------------------------|-------------------
-Dolphin | Mar. 26, 2017 | Mar. 29, 2017 | Apr. 3, 2017
-
 ## Change Summary ##
 
 This version mostly addresses bug fixes, performance and stability.
@@ -15,7 +11,3 @@ GitLab Item # | Title | Description
 
 ### Changes to API ###
 N/A
-
-### Link to Demo ###
-N/A
-

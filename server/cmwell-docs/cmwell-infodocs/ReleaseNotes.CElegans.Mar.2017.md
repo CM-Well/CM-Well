@@ -1,9 +1,5 @@
 # CM-Well Version Release Notes - C.Elegans (Mar. 2017) #
 
-Version Name | Release Date PPE | Release Date Production 
--------------|----------------|---------------------------
-C.Elegans | Mar. 9, 2017 | Mar. 13, 2017
-
 ## Change Summary ##
 
 GitLab Item # | Title | Description
@@ -14,6 +10,4 @@ GitLab Item # | Title | Description
 ### Changes to API ###
 N/A
 
-### Link to Demo ###
-N/A
 

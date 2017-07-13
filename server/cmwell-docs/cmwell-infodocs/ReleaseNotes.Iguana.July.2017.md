@@ -1,9 +1,5 @@
 # CM-Well Version Release Notes - Iguana (July 2017) #
 
-Version Name | PPE Release | Production Release (Eagan) | Production Release (Plano)
--------------|----------------|-------------------------|-------------------
-Iguana | July 12th, 2017 | July 17th, 2017 | July 19th, 2017
-
 ## Change Summary ##
 
 
@@ -17,7 +13,4 @@ Log message cleanup | Continued efforts to edit CM-Well log messages for clarity
 
 ### Changes to API ###
 None.
-
-### Link to Demo ###
-[CM-Well Monthly Demo Recording - July 5th 2017](https://thehub.thomsonreuters.com/docs/DOC-1789735)
 
