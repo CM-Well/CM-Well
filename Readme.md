@@ -262,5 +262,9 @@ To run your compiled version of CM-Well:
 ## Reporting Issues ##
 You can report CM-Well issues at the [CM-Well GitHub Issues Page](https://github.com/thomsonreuters/CM-Well/issues).
 
+## Discuss ##
+
+We use [Gitter](https://gitter.im/thomsonreuters/CM-Well) to talk about CM-Well. Feel free to come join us!
+
 # License #
 CM-Well is Open Source and available under the Apache 2 License. See the [CM-Well License Page](https://github.com/thomsonreuters/CM-Well/blob/master/LICENSE) to learn more.
