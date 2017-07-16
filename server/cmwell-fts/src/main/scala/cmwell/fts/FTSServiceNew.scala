@@ -117,10 +117,6 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
 
   val nodesInfo = client.admin().cluster().prepareNodesInfo().execute().actionGet()
 
-  val localNodeId = client.admin().cluster().prepareNodesInfo().execute().actionGet().getNodesMap.asScala.collect{
-    case (id, n) if n.getHostname.equals(localHostName) && n.getNode.isDataNode => id
-  }.head
-
   lazy val clients:Map[String, Client] =
       nodesInfo.getNodes.filterNot( n => ! n.getNode.dataNode()).map{ node =>
         val nodeId = node.getNode.getId
@@ -594,10 +590,6 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
         .setScroll(TimeValue.timeValueSeconds(scrollTTL))
         .setSize(infotonsPerShard)
         .setFrom(paginationParams.offset)
-
-      if (onlyNode.isDefined) {
-        request.setPreference(s"_only_node_primary:${onlyNode.map { case "local" => localNodeId; case n => n }.get}")
-      }
 
       if (pathFilter.isEmpty && fieldsFilter.isEmpty && datesFilter.isEmpty) {
         request.setPostFilter(matchAllFilter())
