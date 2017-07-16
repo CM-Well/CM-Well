@@ -125,7 +125,7 @@ class Infoton extends React.Component {
             let innerLink = isUri ? fv.value.replace('http:/','').replace('#','%23') : ''
             let isInner = isUri && _(this.props.rootFolders).some(rf => innerLink.indexOf(rf)===0)
             return <span>
-                { isUri ? makeLink(fv.value, 'value') : <span className="value">{fv.value}</span> }
+                { isUri ? makeLink(fv.value, 'value') : <span className="value">{''+fv.value}</span> }
                 { fv.quad ? makeLink(fv.quad, 'quad', <img src="/meta/app/react/images/quad.svg" title={fv.quad} />) : null }
             </span>
         }

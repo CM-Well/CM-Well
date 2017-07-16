@@ -20,6 +20,7 @@ class InfotonsList extends React.Component {
         
     this.state = {
       isEmpty: true,
+      noData: false,
       errMsg: null,
       infotons: [],
       isOnTop: true,
@@ -65,10 +66,10 @@ class InfotonsList extends React.Component {
           }
           
           let jsonls = (jqXhr && jqXhr.status === 204) ? '' : (jqXhr ? jqXhr.responseText : resp.responseText).split`\n`
-          let newChunk = _(jsonls).compact().map(jsonl => new Infoton(JSON.fromJSONL(JSON.parse(jsonl)), this.props.displayNames))
+          let newChunk = _(jsonls).compact().map(jsonl => JSON.fromJSONL(JSON.parse(jsonl)))
 
           let isEmpty = newChunk.length + this.state.infotons.length === 0
-          this.props.hasChildrenCb && this.props.hasChildrenCb(isEmpty)
+          this.props.hasChildrenCb && this.props.hasChildrenCb(!isEmpty)
 
           this.position = this._getHeader(jqXhr, resp, 'position')
           
@@ -76,6 +77,7 @@ class InfotonsList extends React.Component {
               errMsg: null,
               isInfiniteLoading: false,
               isEmpty,
+              noData: isEmpty,
               total: this.state.total || newChunk.length + +this._getHeader(jqXhr, resp, 'n-left'),
               infotons: this.state.infotons.concat(newChunk)
           })
@@ -109,7 +111,8 @@ class InfotonsList extends React.Component {
   _resetStateAndDoFetch(props) {
     this.position = null
     this.state = {
-      isEmpty: true,        
+      isEmpty: true,
+      noData: false,
       errMsg: null,
       infotons: [],
       isOnTop: true,
@@ -145,10 +148,12 @@ class InfotonsList extends React.Component {
     if(errMsg)
         return errMsg
     
+    let infotons = this.state.infotons.map(i => new Infoton(i, this.props.displayNames))
+      
     return this.state.isEmpty && this.props.isRoot ? emptyDiv : (
         <div className={containerClassName}>
           {title}
-          { this.state.isEmpty ? <div className="no-children">no infotons under this path</div> : null }
+          { this.state.noData ? <div className="no-children">no infotons under this path</div> : null }
           <Infinite className={className}
                          elementHeight={43}
                          containerHeight={containerHeight}
@@ -158,7 +163,7 @@ class InfotonsList extends React.Component {
                          isInfiniteLoading={this.state.isInfiniteLoading}
                          handleScroll={this.handleScroll.bind(this)}
                          >
-            { this.state.infotons.map(i => <InfotonListItem key={i.uuid||i.path} infoton={i} toggleCollapseCb={this.toggleState.bind(this, 'active')} />) }
+            { infotons.map(i => <InfotonListItem key={i.uuid||i.path} infoton={i} toggleCollapseCb={this.toggleState.bind(this, 'active')} />) }
             </Infinite>
           <a href='#' className={backToTopClassName} onClick={this.backToTop.bind(this)}>
             <img className="back-to-top-arrow" src="/meta/app/react/images/back-to-top-arrow.svg" />
