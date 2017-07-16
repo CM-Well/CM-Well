@@ -1109,8 +1109,7 @@ abstract class Host(user: String,
   private def copySshpass(hosts: GenSeq[String], sudoer: Credentials): Unit = {
     //only copy sshpass if it's an internal one
     if (UtilCommands.linuxSshpass == "bin/utils/sshpass") {
-      command("mkdir -p ~/bin", hosts, false)
-      hosts.foreach(host => Seq("rsync", "-z", "-e", "ssh -o StrictHostKeyChecking=no", UtilCommands.linuxSshpass, s"${sudoer.name}@$host:~/bin") !!)
+      hosts.foreach(host => Seq("rsync", "-z", "-e", "ssh -o StrictHostKeyChecking=no", UtilCommands.linuxSshpass, s"${sudoer.name}@$host:~/bin/") !!)
     }
   }
 
