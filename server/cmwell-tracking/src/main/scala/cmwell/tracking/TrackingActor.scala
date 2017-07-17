@@ -35,9 +35,8 @@ class TrackingActor(paths: Set[String], restored: Boolean, createTime: Long) ext
   case object SelfCheck
   case object SelfDeadline
 
-  // todo get these values from config
   private val selfPersistInterval  = 10.seconds
-  private val selfCheckInterval    = 1.minute
+  private val selfCheckInterval    = 5.seconds
   private val selfDeadlineInterval = 15.minutes
 
   private def startSchedulers(): Unit = {
