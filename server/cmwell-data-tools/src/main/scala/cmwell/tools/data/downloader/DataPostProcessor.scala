@@ -22,6 +22,8 @@ import cmwell.tools.data.utils.akka._
 import cmwell.tools.data.utils.chunkers.GroupChunker
 import cmwell.tools.data.utils.logging.DataToolsLogging
 
+import scala.collection.mutable
+
 object DataPostProcessor extends DataToolsLogging {
 
   def postProcessByFormat(format: String, dataBytes: Source[ByteString, _]) = format match {
@@ -45,13 +47,14 @@ object DataPostProcessor extends DataToolsLogging {
           false
         case _ => true
       }
-      .fold(Map.empty[ByteString, ByteStringBuilder]){ (agg, line) =>
+      .fold(mutable.Map.empty[ByteString, ByteStringBuilder]){ (agg, line) =>
         // aggregate each line according to its subject (i.e., bucket)
         val subject = GroupChunker.extractSubject(line)
         val builder = agg.getOrElse(subject, new ByteStringBuilder)
         builder ++= (line ++ endl)
         agg + (subject -> builder)
       }
+      .map(_.toMap)
       .mapConcat(_.map{ case (_, ntupleBuilder) => ntupleBuilder.result})
   }
 }
