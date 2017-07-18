@@ -118,10 +118,11 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
   case class InfoAction(esAction:ActionRequest[ _ <: ActionRequest[_ <: AnyRef]], weight:Long, indexTime:Option[Long])
 
 
-  val commitOffsets = Flow[Option[Long]].groupedWithin(1000, 20.seconds).toMat{
-    Sink.foreach{ offsets =>
+  val commitOffsets = Flow[Seq[Long]].groupedWithin(6000, 3.seconds).toMat{
+    Sink.foreach{ offsetGroups =>
+      val offsets = offsetGroups.flatten
       if(offsets.length >0) {
-        val lastOffset = offsets.collect { case Some(offset) => offset }.last
+        val lastOffset = offsets.max
           logger debug s"committing offset: $lastOffset"
         offsetsService.write(s"${streamId}_offset", lastOffset + 1L)
       }
@@ -200,7 +201,7 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
             case BGMessage(_, (InfoAction(esAction, _, indexTime), _)) => ESIndexRequest(esAction, indexTime)
           }
             logger debug s"${esIndexRequests.length} actions to index: \n${esIndexRequests.map{ ir => if (ir.esAction.isInstanceOf[UpdateRequest]) ir.esAction.asInstanceOf[UpdateRequest].doc().toString else ir.esAction.toString}}"
-          val highestOffset = bgMessages.maxBy(_.offset.getOrElse(-1L)).offset
+          val highestOffset = bgMessages.map(_.offsets).flatten.max
           indexBulkSizeHist += esIndexRequests.size
           indexingTimer.timeFuture(ftsService.executeBulkIndexRequests(esIndexRequests)).map{ bulkIndexResult =>
             BGMessage(highestOffset, (bulkIndexResult, bgMessages.map{_.message._2}))
@@ -210,7 +211,7 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
 
       val updateIndexInfoInCas = builder.add(
         Flow[BGMessage[(SuccessfulBulkIndexResult, Seq[IndexCommand])]].mapAsync(math.max(numOfCassandraNodes/3, 2)){
-          case BGMessage(highestOffset, (bulkRes, indexCommands)) =>
+          case bgMessage@BGMessage(_, (bulkRes, indexCommands)) =>
               logger debug s"updating index time in cas for index commands: $indexCommands"
             val indexTimesToUpdate = bulkRes.successful.collect{case SuccessfulIndexResult(uuid, Some(indexTime)) =>
               (uuid, indexTime)
@@ -220,20 +221,20 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
               indexTimesToUpdate.map{ case (uuid, indexTime) =>
                 irwService.addIndexTimeToUuid(uuid, indexTime, QUORUM)
               }
-            }.map{_ => (highestOffset, indexCommands)}
+            }.map{_ => bgMessage.copy(message = indexCommands)}
         }
       )
 
       val reportProcessTracking = builder.add(
-        Flow[(Option[Long], Seq[IndexCommand])].mapAsync(3){
-          case (offset, indexCommands) =>
-              logger debug s"reporting process tracking for offset: $offset ,index commands: $indexCommands"
+        Flow[BGMessage[Seq[IndexCommand]]].mapAsync(3){
+          case BGMessage(offsets, indexCommands) =>
+              logger debug s"reporting process tracking for offsets: $offsets ,index commands: $indexCommands"
             Future.traverse(indexCommands){indexCommand =>
               TrackingUtilImpl.updateSeq(indexCommand.path, indexCommand.trackingIDs).recover{
                 case t: Throwable =>
                   logger.error(s"updateSeq for path [${indexCommand.path}] with trackingIDs [${indexCommand.trackingIDs.mkString(",")}] failed",t)
               }
-            }.map(_ => offset)
+            }.map(_ => offsets)
         }
       )
 

@@ -236,19 +236,19 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
     groupCommandsByPathTtl.milliseconds).mapConcat[BGMessage[(String, Seq[SingleCommand])]]{ messages =>
       logger debug s"grouping commands: ${messages.map{_.message}}"
     messages.groupBy{ _.message.path}.map{ case (path, bgMessages) =>
-      val lowestOffset = bgMessages.minBy(_.offset.getOrElse(Long.MaxValue)).offset
-      val commands = bgMessages.map{_.message}.sortBy{_.lastModified.getMillis}
-      BGMessage(lowestOffset, path -> commands)
-    }.asInstanceOf[collection.immutable.Seq[BGMessage[(String, Seq[SingleCommand])]]].sortBy(coo => coo.offset.fold(0L)(l => l))
+      val offsets = bgMessages.flatMap(_.offsets)
+      val commands = bgMessages.map(_.message)
+      BGMessage(offsets, path -> commands)
+    }.asInstanceOf[collection.immutable.Seq[BGMessage[(String, Seq[SingleCommand])]]]
   }
 
-  val addLatestInfotons = Flow[BGMessage[(String, Seq[SingleCommand])]].mapAsync(irwReadConcurrency){ case BGMessage(offset, (path, commands)) =>
+  val addLatestInfotons = Flow[BGMessage[(String, Seq[SingleCommand])]].mapAsync(irwReadConcurrency){ case bgMessage@BGMessage(_, (path, commands)) =>
        logger debug s"reading base infoton by path: $path"
     val start = System.currentTimeMillis()
     irwService.readPathAsync(path, ConsistencyLevel.QUORUM).map{
       case BoxedFailure(e) =>
         logger.error(s"readPathAsync failed for [$path]",e)
-        BGMessage(offset, Option.empty[Infoton] -> commands)
+        bgMessage.copy(message = Option.empty[Infoton] -> commands)
       case box =>
           logger debug s"got base infoton for path: $path from irw: ${box.toOption}"
         val end = System.currentTimeMillis()
@@ -256,7 +256,7 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
           casFullReadTimer.update((end-start).millis)
         else
           casEmptyReadTimer.update((end-start).millis)
-        BGMessage(offset, box.toOption -> commands)
+        bgMessage.copy(message = box.toOption -> commands)
     }
   }
 
@@ -336,7 +336,7 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
       }
   }
 
-  val breakOut = scala.collection.breakOut[Iterable[IndexCommand], Message[Array[Byte], Array[Byte], Option[Long]], collection.immutable.Seq[Message[Array[Byte], Array[Byte], Option[Long]]]]
+  val breakOut = scala.collection.breakOut[Iterable[IndexCommand], Message[Array[Byte], Array[Byte], Seq[Long]], collection.immutable.Seq[Message[Array[Byte], Array[Byte], Seq[Long]]]]
   val  mergedCommandToKafkaRecord = Flow[BGMessage[(BulkIndexResult, List[IndexCommand])]].mapConcat{
     case BGMessage(offset, (bulkIndexResults, commands)) =>
         logger debug s"failed indexcommands to kafka records. bulkResults: $bulkIndexResults \n commands: $commands"
@@ -380,13 +380,55 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
       }(breakOut)
   }
 
-  val publishIndexCommands = Producer.flow[Array[Byte], Array[Byte], Option[Long]](kafkaProducerSettings).map{_.message.passThrough}
+  val publishIndexCommands = Producer.flow[Array[Byte], Array[Byte], Seq[Long]](kafkaProducerSettings).map{_.message.passThrough}
 
-  val commitOffsets = Flow[Option[Long]].groupedWithin(6000, 10.seconds).toMat{
-    Sink.foreach{ offsets =>
-      if(offsets.length >0) {
-        val lastOffset = offsets.collect { case Some(offset) => offset }.last
-        offsetsService.write(s"${streamId}_offset", lastOffset + 1L)
+  var doneOffsets = collection.mutable.TreeSet.empty[Long]
+  var lastOffsetPersisted = startingOffset - 1
+
+  val commitOffsets = Flow[Seq[Long]].groupedWithin(6000, 3.seconds).toMat{
+    Sink.foreach{ offsetGroups =>
+      val offsets = offsetGroups.flatten.sorted
+        logger debug s"offsets: $offsets"
+      var prev = lastOffsetPersisted
+      if(doneOffsets.isEmpty){
+          logger debug "doneOffsets is empty"
+        val it = offsets.iterator
+        val stoppedIndex = it.indexWhere{ cur =>
+          val stop = cur - prev > 1
+          if(!stop)
+            prev = cur
+          stop
+        }
+          logger debug s"stoppedIndex: $stoppedIndex"
+        if(stoppedIndex < offsets.size-1){
+          if(stoppedIndex == 0)
+            doneOffsets ++= offsets
+          else
+            doneOffsets ++= offsets.view(stoppedIndex, offsets.size)
+            logger debug s"doneOffsets: $doneOffsets"
+        }
+      } else {
+          logger debug s"doneOffsets is not empty: $doneOffsets \nadding offsets to it"
+        doneOffsets ++= offsets
+          logger debug s"doneOffsets after adding: $doneOffsets"
+        val it = doneOffsets.iterator
+        val stoppedIndex = it.indexWhere{ cur =>
+          val stop = cur - prev > 1
+          if(!stop)
+            prev = cur
+          stop
+        }
+          logger debug s"stoppedIndex: $stoppedIndex"
+        if(stoppedIndex > 0) {
+          logger debug s"slicing doneOffsets from index: ${stoppedIndex+1} to index: ${doneOffsets.size}"
+          doneOffsets = doneOffsets.slice(stoppedIndex, doneOffsets.size)
+            logger debug s"doneOffsets after slicing: $doneOffsets"
+        }
+      }
+      if(prev>lastOffsetPersisted){
+          logger debug s"prev: $prev is greater than lastOffsetPersisted: $lastOffsetPersisted"
+        offsetsService.write(s"${streamId}_offset", prev + 1L)
+        lastOffsetPersisted = prev
       }
     }
   }(Keep.right)
@@ -496,7 +538,7 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
         PartitionWith[BGMessage[
           (String, Seq[(Infoton, Option[String])])],
           BGMessage[(String, Seq[(Infoton, Option[String])])],
-          Option[Long]]{
+          Seq[Long]]{
           case bgMessage@BGMessage(offset, (_, infotons)) =>
             if(infotons.size > 0)
               Left(bgMessage)
@@ -630,13 +672,13 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
           case bgMessages =>
             val actions = bgMessages.map{_.message._1.map{_._1}}.flatten
               logger debug s"sending ${actions.size} actions to elasticsearch: ${actions} from commands: ${bgMessages.map{_.message._2}.flatten}"
-            val highestOffset = bgMessages.maxBy(_.offset.getOrElse(-1L)).offset
+//            val highestOffset = bgMessages.maxBy(_.offset.getOrElse(-1L)).offset
             indexBulkSizeHist += actions.size
             indexingTimer.timeFuture(ftsService.executeIndexRequests(actions).recover{
               case _:TimeoutException =>
                 RejectedBulkIndexResult("Future Timedout")}
             ).map{ bulkIndexResult =>
-              BGMessage(highestOffset, (bulkIndexResult, bgMessages.map{_.message._2}.flatten.toList))
+              BGMessage(bgMessages.map(_.offsets).flatten, (bulkIndexResult, bgMessages.map{_.message._2}.flatten.toList))
             }
         }
       )
@@ -734,11 +776,11 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
         }
       )
 
-      val mergeCompletedOffsets = builder.add(Merge[Option[Long]](4))
+      val mergeCompletedOffsets = builder.add(Merge[Seq[Long]](4))
 
       val indexCommandsMerge = builder.add(Merge[BGMessage[List[IndexCommand]]](2))
 
-      val mergeKafkaRecords = builder.add(Merge[Message[Array[Byte], Array[Byte], Option[Long]]](2))
+      val mergeKafkaRecords = builder.add(Merge[Message[Array[Byte], Array[Byte], Seq[Long]]](2))
 
       val nonOverrideIndexCommandsBroadcast = builder.add(Broadcast[BGMessage[List[(IndexCommand, Option[DateTime])]]](2))
 
