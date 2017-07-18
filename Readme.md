@@ -49,19 +49,19 @@ You can get started with CM-Well by running some basic write and read operations
 **File contents:**
 
     <http://example/Individuals/MamaBear> <http://purl.org/vocab/relationship/spouseOf> <http://example/Individuals/PapaBear> .
-    <http://example/Individuals/MamaBear> <http://ont.thomsonreuters.com/bermuda/hasName> "Betty".
-    <http://example/Individuals/PapaBear> <http://ont.thomsonreuters.com/bermuda/hasName> "Barney".
+    <http://example/Individuals/MamaBear> <http://xmlns.com/foaf/0.1/givenName> "Betty".
+    <http://example/Individuals/PapaBear> <http://xmlns.com/foaf/0.1/givenName> "Barney".
     <http://example/Individuals/BabyBear1> <http://purl.org/vocab/relationship/childOf> <http://example/Individuals/MamaBear>.
     <http://example/Individuals/BabyBear1> <http://purl.org/vocab/relationship/childOf> <http://example/Individuals/PapaBear>.
-    <http://example/Individuals/BabyBear1> <http://ont.thomsonreuters.com/bermuda/hasName> "Barbara".
+    <http://example/Individuals/BabyBear1> <http://xmlns.com/foaf/0.1/givenName> "Barbara".
     <http://example/Individuals/BabyBear1> <http://purl.org/vocab/relationship/siblingOf> <http://example/Individuals/BabyBear2>.
     <http://example/Individuals/BabyBear1> <http://purl.org/vocab/relationship/siblingOf> <http://example/Individuals/BabyBear3>.
     <http://example/Individuals/BabyBear2> <http://purl.org/vocab/relationship/childOf> <http://example/Individuals/MamaBear>.
     <http://example/Individuals/BabyBear2> <http://purl.org/vocab/relationship/childOf> <http://example/Individuals/PapaBear>.
-    <http://example/Individuals/BabyBear2> <http://ont.thomsonreuters.com/bermuda/hasName> "Bobby".
+    <http://example/Individuals/BabyBear2> <http://xmlns.com/foaf/0.1/givenName> "Bobby".
     <http://example/Individuals/BabyBear3> <http://purl.org/vocab/relationship/childOf> <http://example/Individuals/MamaBear>.
     <http://example/Individuals/BabyBear3> <http://purl.org/vocab/relationship/childOf> <http://example/Individuals/PapaBear>.
-    <http://example/Individuals/BabyBear3> <http://ont.thomsonreuters.com/bermuda/hasName> "Bert".
+    <http://example/Individuals/BabyBear3> <http://xmlns.com/foaf/0.1/givenName> "Bert".
 
 **Response:**
 
@@ -77,8 +77,8 @@ You can get started with CM-Well by running some basic write and read operations
 
 **Response:**
 
-    @prefix nn:<http://localhost:8080/meta/nn#> .
-    @prefix bermuda: <http://ont.thomsonreuters.com/bermuda/> .
+    @prefix nn:    <http://localhost:8080/meta/nn#> .
+    @prefix foaf:  <http://xmlns.com/foaf/0.1/> .
     @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
     @prefix rel:   <http://purl.org/vocab/relationship/> .
     @prefix sys:   <http://localhost:8080/meta/sys#> .
@@ -91,7 +91,7 @@ You can get started with CM-Well by running some basic write and read operations
     sys:path  "/example/Individuals/MamaBear" ;
     sys:type  "ObjectInfoton" ;
     sys:uuid  "e6f36b01bec464f9e2a8d8b690590e31" ;
-    bermuda:hasName   "Betty" ;
+    foaf:givenName   "Betty" ;
     rel:spouseOf  <http://example/Individuals/PapaBear> .
     
     <http://localhost:8080/example/Individuals/BabyBear2>
@@ -102,7 +102,7 @@ You can get started with CM-Well by running some basic write and read operations
     sys:path          "/example/Individuals/BabyBear2" ;
     sys:type          "ObjectInfoton" ;
     sys:uuid          "284a5a2438db15b5f8d9ef87795c0945" ;
-    bermuda:hasName   "Bobby" ;
+    foaf:givenName   "Bobby" ;
     rel:childOf       <http://example/Individuals/PapaBear> , <http://example/Individuals/MamaBear> .
 
     <http://localhost:8080/example/Individuals/BabyBear3>
@@ -113,7 +113,7 @@ You can get started with CM-Well by running some basic write and read operations
     sys:path          "/example/Individuals/BabyBear3" ;
     sys:type          "ObjectInfoton" ;
     sys:uuid          "671d93482c72b51cef5afa18c71692a5" ;
-    bermuda:hasName   "Bert" ;
+    foaf:givenName   "Bert" ;
     rel:childOf       <http://example/Individuals/PapaBear> , <http://example/Individuals/MamaBear> .
 
     [ sys:pagination  [ sys:first  <http://localhost:8080/example/Individuals?format=ttl?&recursive=&op=search&from=2016-08-01T13%3A27%3A49.239Z&to=2016-08-01T13%3A27%3A49.242Z&length=5&offset=0> ;
@@ -141,7 +141,7 @@ You can get started with CM-Well by running some basic write and read operations
     sys:path          "/example/Individuals/BabyBear1" ;
     sys:type          "ObjectInfoton" ;
     sys:uuid          "1627fe787d44b5a4fff19f50181b585b" ;
-    bermuda:hasName   "Barbara" ;
+    foaf:givenName   "Barbara" ;
     rel:childOf       <http://example/Individuals/MamaBear> , <http://example/Individuals/PapaBear> ;
     rel:siblingOf     <http://example/Individuals/BabyBear2> , <http://example/Individuals/BabyBear3> .
 
@@ -153,7 +153,7 @@ You can get started with CM-Well by running some basic write and read operations
     sys:path          "/example/Individuals/PapaBear" ;
     sys:type          "ObjectInfoton" ;
     sys:uuid          "6513a8d6395af8db932f49afb97cbfd1" ;
-    bermuda:hasName   "Barney" .
+    foaf:givenName   "Barney" .
 
 ## CM-Well Tutorial ##
 
