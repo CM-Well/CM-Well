@@ -1,7 +1,26 @@
 # Introduction #
-CM-Well is a writable Linked Data repository, developed by Thomson Reuters and used as its central Knowledge Graph database. CM-Well (Content Matrix Well) adheres to Open Data principles, meaning that its data is in a standard, machine-readable format.
+CM-Well is a writable Linked Data repository, developed by Thomson Reuters and used as its central Knowledge Graph database. CM-Well (Content Matrix Well) adheres to RDF  principles, meaning that its data is in a [standard](https://www.w3.org/RDF/), machine-readable format.
 
 The Thomson Reuters Knowledge Graph contains information about organizations, instruments and people in the world of finance, but you can use CM-Well for any kind of linked data. Thomson Reuters is now offering CM-Well as an Open Source platform for the developer community to use and enrich.
+
+## Key features & technology ##
+CM-Well is based on a clustered architecture, with durable storage into [Apache Cassandra](http://cassandra.apache.org) and indexing via [Elastic Search](https://github.com/elastic/elasticsearch). Key features include:
+* Horizontal scaling to support billions of triples
+* Cross site replication
+* REST based APIs
+* All writes treated as immutable, storing previous versions
+* Named graph (quad) support
+* Fast (~10ms by subject, ~50ms for search) retrieval by subject and predicate query
+* Support for SPARQL on sub-graph and a beta of full graph SPARQL
+* Subscription by query for downstream consumers
+
+Other key technologies used under the covers include:
+* [Angular](https://angular.io) for the UI
+* [Akka](http://akka.io/) for cluster management
+* [Jena](https://jena.apache.org/) for Sparql and RDF conversions
+* [Netty](https://netty.io) for network comms
+* [Zookeeper](https://zookeeper.apache.org) for cluster configuration
+
 
 ## Linked Data Repositories ##
 You may be interested in exploring the following open-access linked data repositories and products:
