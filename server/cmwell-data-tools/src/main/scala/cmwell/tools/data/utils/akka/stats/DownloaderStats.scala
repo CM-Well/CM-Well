@@ -107,9 +107,9 @@ class DownloaderStatsSink(isStderr: Boolean,
         }
 
         override def onUpstreamFailure(ex: Throwable): Unit = {
-          failStage(ex)
           eventPoller.foreach(_.cancel())
           promise.failure(ex)
+          failStage(ex)
         }
 
         override def onUpstreamFinish(): Unit = {
@@ -125,9 +125,9 @@ class DownloaderStatsSink(isStderr: Boolean,
           System.err.println("")
           System.err.println(message)
 
-          completeStage()
           promise.success(Done)
           eventPoller.foreach(_.cancel())
+          completeStage()
         }
 
       })
