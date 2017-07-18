@@ -86,6 +86,8 @@ class Infoton extends React.Component {
         let displayName = new DInfoton(infoton, this.props.displayNames||displayNames).displayName
         infoton = { type: infoton.type, system: infoton.system }
         
+        if(this.props.isEmptyCb) this.props.isEmptyCb(_.isEmpty(fields))
+        
         if(infoton && infoton.system && infoton.system['length.content'] > AppUtils.constants.fileInfotonInMemoryThreshold) {
             // removing too large payloads from memory
             infoton.system = _(infoton.system).omit('data.content','base64-data.content')
