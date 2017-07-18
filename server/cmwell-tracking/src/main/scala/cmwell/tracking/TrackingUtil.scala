@@ -29,6 +29,7 @@ import cmwell.util.FullBox
 import cmwell.util.concurrent.{retry, travector}
 import cmwell.zcache.L1Cache
 import cmwell.zstore.ZStore
+import com.typesafe.scalalogging.LazyLogging
 import k.grid.{Grid, GridJvm}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -107,7 +108,7 @@ object TrackingUtil {
   def apply(): TrackingUtil = TrackingUtilImpl
 }
 
-object TrackingUtilImpl extends TrackingUtil {
+object TrackingUtilImpl extends TrackingUtil with LazyLogging {
 
   private lazy val dao: Dao = Dao(Settings.irwServiceDaoClusterName, Settings.irwServiceDaoKeySpace2, Settings.irwServiceDaoHostName)
   override lazy val zStore: ZStore = ZStore.apply(dao)
@@ -127,7 +128,7 @@ object TrackingUtilImpl extends TrackingUtil {
       }
     } match {
       case Success(x) => x
-      case Failure(e) => println(s"Tracking: failed to spawn because $e"); throw e
+      case Failure(e) => logger.error(s"Tracking: failed to spawn", e); throw e
     }
   }
 
@@ -138,7 +139,7 @@ object TrackingUtilImpl extends TrackingUtil {
 
   def readStatus(trackingId: TrackingId): Future[Seq[PathStatus]] =
     resolveActor(trackingId).flatMap { actor =>
-      println(s"Tracking: Going to Read from $actor...")
+      logger.debug(s"Tracking: Going to Read from $actor...")
       (actor ? Read).mapTo[Seq[PathStatus]]
     }
 
@@ -148,11 +149,10 @@ object TrackingUtilImpl extends TrackingUtil {
   private val resolveActor = {
     val task = (trackingId: TrackingId) => {
       val TrackingId(actorAddr, _) = trackingId
-      println(s"Resolving Actor: $actorAddr")
+      logger.debug(s"Resolving Actor: $actorAddr")
       Grid.selectActor(actorIdFromActorPath(actorAddr), GridJvm(Jvms.WS)).resolveOne().
         recoverWith { case t: Throwable =>
-          val st = cmwell.util.exceptions.stackTraceToString(t)
-          println(s"Tracking: Could not resolve TrackingActor($actorAddr), will try to resurrect. Message: ${t.getMessage}, Stacktrace: $st")
+          logger.warn(s"Tracking: Could not resolve TrackingActor($actorAddr), will try to resurrect.", t)
           ressurect(trackingId)
         }
     }
@@ -162,8 +162,7 @@ object TrackingUtilImpl extends TrackingUtil {
   private def ressurect(trackingId: TrackingId): Future[ActorRef] = {
     retry(3, 10.millis)((resurrector ? Resurrect(trackingId)).mapTo[Option[ActorRef]].andThen {
       case Failure(t) =>
-        val st = cmwell.util.exceptions.stackTraceToString(t)
-        println(s"Tracking: [ressurect.Failure] Could not resolve TrackingActor($trackingId), will try to resurrect. Message: ${t.getMessage}, Stacktrace: $st")
+        logger.warn(s"Tracking: [ressurect.Failure] Could not resolve TrackingActor($trackingId), will try to resurrect.", t)
     }).flatMap {
       case Some(ref) => Future.successful(ref)
       case None => Future.failed(new NoSuchElementException("could not resolve actor"))

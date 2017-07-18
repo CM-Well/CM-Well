@@ -40,12 +40,12 @@ class App extends React.Component {
                     rootFolders={this.state.rootFolders}
                 />
                 
-                <Breadcrumbs/>
+                <Breadcrumbs lastBreadcrumbDisplayName={this.state.lastBreadcrumbDisplayName} />
                 
                 <InfotonsList
                     location={this.props.location}
                     isRoot={true}
-                    hasChildrenCb={this.toggleState.bind(this, 'currentHasChildren')}
+                    hasChildrenCb={hasChildren => this.setState({ currentHasChildren: hasChildren })}
                     displayNames={this.state.displayNames}
                 />
                 
@@ -54,6 +54,7 @@ class App extends React.Component {
                     infoton={injectedInfoton}
                     rootFolders={this.state.rootFolders}
                     displayNames={this.state.displayNames}
+                    displayNameUpdateCb={dn => dn && this.state.lastBreadcrumbDisplayName!=dn && this.setState({ lastBreadcrumbDisplayName: dn })}
                 />
                 
                 <Footer/>

@@ -677,7 +677,7 @@ object SgEngines extends LazyLogging {
   }
 }
 
-trait Importer[A] {
+trait Importer[A] { this: LazyLogging =>
   type Fields = Map[String,Set[FieldValue]]
 
   case class FileInfotonContent(content: Array[Byte], fields: Fields)
@@ -689,7 +689,7 @@ trait Importer[A] {
   def readFileInfoton(path: String): Future[FileInfotonContent] = {
     CRUDServiceFS.getInfoton(path, None, None).map(res => (res: @unchecked) match {
       case Some(Everything(FileInfoton(_, _, _, _, fields, Some(content),_))) => FileInfotonContent(content.data.get, fields.getOrElse(Map()))
-      case x => println(s"Could not fetch $path, got $x"); throw new RuntimeException(s"Could not fetch $path")
+      case x => logger.debug(s"Could not fetch $path, got $x"); throw new RuntimeException(s"Could not fetch $path")
     })
   }
 
@@ -698,7 +698,7 @@ trait Importer[A] {
 
 object Importers { def all = Seq[Importer[_]](QueriesImporter, JarsImporter, SourcesImporter) }
 
-object QueriesImporter extends Importer[String] {
+object QueriesImporter extends Importer[String] with LazyLogging {
   import cmwell.util.collections.LoadingCacheExtensions
   import cmwell.util.concurrent.travector
 
@@ -797,7 +797,7 @@ object JarsImporter extends Importer[JenaFunction] with SpFileUtils {
 // Since we know the className in advance, we can use it aside with the implementation in order to register in Jena's FunctionRegistry.
 case class NamedAnonJenaFuncImpl(name: String, impl: JenaFunction)
 
-object SourcesImporter extends Importer[NamedAnonJenaFuncImpl]  {
+object SourcesImporter extends Importer[NamedAnonJenaFuncImpl] with LazyLogging {
   import cmwell.util.collections.LoadingCacheExtensions
   import cmwell.util.concurrent.travector
 

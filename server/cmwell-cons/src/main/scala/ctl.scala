@@ -954,6 +954,7 @@ abstract class Host(user: String,
     command(s"test -L ${instDirs.globalLocation}/cm-well/app/ctrl/logs || ln -s ${instDirs.globalLocation}/cm-well/log/ctrl/ ${instDirs.globalLocation}/cm-well/app/ctrl/logs", hosts, false)
     command(s"test -L ${instDirs.globalLocation}/cm-well/app/dc/logs || ln -s ${instDirs.globalLocation}/cm-well/log/dc/ ${instDirs.globalLocation}/cm-well/app/dc/logs", hosts, false)
 
+    command(s"mkdir -p ${instDirs.globalLocation}/cm-well/conf/batch/", hosts, false)
     command(s"test -L ${instDirs.globalLocation}/cm-well/app/batch/conf || ln -s ${instDirs.globalLocation}/cm-well/conf/batch/ ${instDirs.globalLocation}/cm-well/app/batch/conf", hosts, false)
     command(s"test -L ${instDirs.globalLocation}/cm-well/app/bg/conf || ln -s ${instDirs.globalLocation}/cm-well/conf/bg/ ${instDirs.globalLocation}/cm-well/app/bg/conf", hosts, false)
     command(s"test -L ${instDirs.globalLocation}/cm-well/app/ws/conf || ln -s ${instDirs.globalLocation}/cm-well/conf/ws/ ${instDirs.globalLocation}/cm-well/app/ws/conf", hosts, false)
@@ -1108,8 +1109,7 @@ abstract class Host(user: String,
   private def copySshpass(hosts: GenSeq[String], sudoer: Credentials): Unit = {
     //only copy sshpass if it's an internal one
     if (UtilCommands.linuxSshpass == "bin/utils/sshpass") {
-      command("mkdir -p ~/bin", hosts, false)
-      hosts.foreach(host => Seq("rsync", "-z", "-e", "ssh -o StrictHostKeyChecking=no", UtilCommands.linuxSshpass, s"${sudoer.name}@$host:~/bin") !!)
+      hosts.foreach(host => Seq("rsync", "-z", "-e", "ssh -o StrictHostKeyChecking=no", UtilCommands.linuxSshpass, s"${sudoer.name}@$host:~/bin/") !!)
     }
   }
 
@@ -2724,11 +2724,6 @@ abstract class Host(user: String,
   def rsyncPlugins(hosts: GenSeq[String] = ips) = {
     command(s"mkdir -p ${instDirs.globalLocation}/cm-well/app/ws/plugins/sg-engines/", hosts, false)
     rsync(s"plugins/", s"${instDirs.globalLocation}/cm-well/app/ws/plugins/sg-engines/", hosts)
-  }
-
-
-  def testFunc: Unit = {
-    println("michael123")
   }
 }
 

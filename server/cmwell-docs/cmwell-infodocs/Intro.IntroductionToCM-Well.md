@@ -78,7 +78,6 @@ Here are some more topics to help you get started with CM-Well:
 [CM-Well Data Paradigms](Intro.CM-WellDataParadigms.md)
 [CM-Well Input and Output Formats](API.InputAndOutputFormats.md)
 [Overview of the CM-Well API](Intro.OverviewOfTheCM-WellAPI.md)
-[CM-Well Environments](CM-WellEnvironments.md)
 [Basic Queries](DevGuide.BasicQueries.md)
 
 

@@ -24,6 +24,7 @@ import cmwell.tracking.ResurrectorActor
 import k.grid.service.ServiceTypes
 import k.grid.{Grid, GridConnection}
 import org.rogach.scallop.ScallopConf
+import uk.org.lidalia.sysoutslf4j.context.SysOutOverSLF4J
 
 /**
  * Created by gilad on 1/4/16.
@@ -31,6 +32,9 @@ import org.rogach.scallop.ScallopConf
 object Main extends App with LazyLogging {
   import Settings._
   logger.info("Starting Dc-Sync using stream")
+  //SLF4J initialization is not thread safe, so it's "initialized" by writing some log and only then using sendSystemOutAndErrToSLF4J.
+  //Without it there will be en error in stderr and some log line at the beginning will be lost
+  SysOutOverSLF4J.sendSystemOutAndErrToSLF4J()
 
   Grid.setGridConnection(GridConnection(memberName = "dc"))
   Grid.declareServices(ServiceTypes()

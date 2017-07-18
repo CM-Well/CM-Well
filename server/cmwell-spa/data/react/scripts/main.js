@@ -9,7 +9,7 @@ if(localStorage.getItem('old-ui')) {
 }
 
 require.config({
-  waitSeconds: 20,
+  waitSeconds: 120,
   paths: { // Settings for requirejs-react-jsx plugin
      "babel": '/meta/app/react/scripts/lib/babel-5.8.34.min'
     ,"jsx":   '/meta/app/react/scripts/lib/jsx'
@@ -46,7 +46,7 @@ require(["react", "react-dom"], function() {
         ,'/meta/app/react/scripts/lib/underscore-min.js'
         ,'/meta/app/react/scripts/lib/md5.js'
     ], function(ReactRouter, FlipMove) {
-        status('Loading transpilar and base components');
+        status('Loading transpiler and base components');
         
         window.FlipMove = FlipMove;
         window.ReactRouter = ReactRouter;

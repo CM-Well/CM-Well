@@ -57,7 +57,7 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
                     materializer: ActorMaterializer) extends LazyLogging with DefaultInstrumented{
 
   lazy val redlog = LoggerFactory.getLogger("bg_red_log")
-  lazy val heartbitLogger = LoggerFactory.getLogger("heartbit_log")
+  lazy val heartbitLogger = LoggerFactory.getLogger("heartbeat_log")
 
   val byteArrayDeserializer = new ByteArrayDeserializer()
   val bootStrapServers = config.getString("cmwell.bg.kafka.bootstrap.servers")

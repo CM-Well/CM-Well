@@ -24,19 +24,25 @@ import cmwell.ctrl.config.Jvms
 import cmwell.util.collections
 import cmwell.web.ld.query.JenaArqExtensionsUtils.BakedSparqlQuery
 import cmwell.web.ld.query.{Config, JenaArqExtensions, JenaArqExtensionsUtils}
-import com.typesafe.scalalogging.Logger
+import com.typesafe.scalalogging.{LazyLogging, Logger}
 import controllers._
 import k.grid.{Grid, GridConnection, GridJvm}
 import org.apache.jena.query.{QueryFactory, ResultSetFormatter}
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.slf4j.LoggerFactory
+import uk.org.lidalia.sysoutslf4j.context.SysOutOverSLF4J
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
-object WorkerMain extends App {
+object WorkerMain extends App with LazyLogging {
+  logger.info("Starting CW process")
+  //SLF4J initialization is not thread safe, so it's "initialized" by writing some log and only then using sendSystemOutAndErrToSLF4J.
+  //Without it there will be en error in stderr and some log line at the beginning will be lost
+  SysOutOverSLF4J.sendSystemOutAndErrToSLF4J()
+
   Grid.extraDataCollector = () => QueryEvaluatorActor.getExtraData
 
   Grid.setGridConnection(GridConnection(memberName = "cw"))

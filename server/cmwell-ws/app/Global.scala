@@ -51,6 +51,9 @@ class Global @Inject()(implicit ec: ExecutionContext) extends LazyLogging {
 
   def onStart {
 
+    //SLF4J initialization is not thread safe, so it's "initialized" by writing some log and only then using sendSystemOutAndErrToSLF4J.
+    //Without it there will be en error in stderr and some log line at the beginning will be lost.
+    //In this case some log lines are already printed and there is no need to write another one.
     SysOutOverSLF4J.sendSystemOutAndErrToSLF4J()
 
     Grid.setGridConnection(GridConnection(memberName = "ws", labels = Set("subscriber")))

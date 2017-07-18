@@ -44,26 +44,24 @@ class SearchBar extends React.Component {
         super(props)
         this.state = {
             term: '',
-            path: location.pathname.substr(1)
+            path: location.pathname
         }
     }
     
     componentWillReceiveProps() {
-        this.setState({path: location.pathname.substr(1)})
+        this.setState({path: location.pathname})
     }
 
     basicSearch(e) {
         e.preventDefault()
-        var path = this.state.path
-        var url = `/${path}?op=search&recursive&qp=_all:${this.state.term}`
-        browserHistory.push(url)
+        browserHistory.push(`${this.state.path}?op=search&recursive&qp=_all:${this.state.term}`)
         return false
     }
     
     render() {
         AppUtils.debug('SearchBar.render')
         
-        let currentPath = this.props.currentHasChildren && location.pathname.substr(1)
+        let currentPath = this.props.currentHasChildren && location.pathname
 
         return (
             <div className="search-bar panel">
@@ -72,8 +70,8 @@ class SearchBar extends React.Component {
                         <input type="text" className="search-box" placeholder="Search" onChange={e=>this.setState({term:e.target.value})}/>
                         <select className="search-where-dropdown" onChange={e=>this.setState({path:e.target.value})} value={this.state.path}>
                             <option value="" key="/">Search all folders</option>
-                            { currentPath ? <option value={currentPath} key={currentPath}>{currentPath}</option> : null }
-                            { (this.props.rootFolders||[]).filter(rf=> rf!=currentPath).map(rf => <option value={rf} key={rf}>{rf}</option>) }
+                            { currentPath ? <option selected value={currentPath} key={currentPath}>{currentPath.substr(1)}</option> : null }
+                            {(this.props.rootFolders||[]).filter(rf => rf && rf!=currentPath).map(rf => <option value={rf} key={rf}>{rf.substr(1)}</option>)}
                         </select>
                         <button type="submit" className="search-button" onClick={this.basicSearch.bind(this)}>SEARCH</button>
                     </form>
@@ -102,8 +100,14 @@ class Breadcrumbs extends React.Component {
             breadcrumbs.push({ title: part.replace('%23','#'), href: acc })
         }
 
+        if(this.props.lastBreadcrumbDisplayName && breadcrumbs.length)
+            _(breadcrumbs).last().title = this.props.lastBreadcrumbDisplayName
+        
         if(qp)
-            breadcrumbs.push({ title: `Search results for "${qp}"` })
+            breadcrumbs.push({ title: `Search results for "${qp}"`, searchIcon: true })
+
+        if(location.pathname.length > AppUtils.constants.breadcrumbs.maxPathLength && breadcrumbs.length > AppUtils.constants.breadcrumbs.maxItems)
+            breadcrumbs = [..._(breadcrumbs).first(2), { title: '...' }, ..._(breadcrumbs).last(2)]
         
         let sep = <img src='/meta/app/react/images/gt.svg' width="24" height="24" />
         let rootLevelIcon = <img src='/meta/app/react/images/folder-box.svg' width="24" height="24" />
@@ -111,11 +115,11 @@ class Breadcrumbs extends React.Component {
         let searchIcon = <img className="search-icon" src='/meta/app/react/images/search-icon.svg' width="24" height="24" />
             
         return <div className="breadcrumbs">
-                    <Link className="breadcrumb" to="/"><img width="17" height="17" src="/meta/app/react/images/home-button.svg"/></Link>
+                    <Link className="breadcrumb" to="/"><img width="24" height="24" src="/meta/app/react/images/home-button.svg"/></Link>
                     { breadcrumbs.length ? sep : null }
                     { AppUtils.addSep(breadcrumbs.map((bc,i) => bc.href ?
                             <Link className="breadcrumb" to={bc.href}>{ i ? otherLevelsIcon : rootLevelIcon }{bc.title}</Link> :
-                            <span className="breadcrumb">{searchIcon}{bc.title}</span>
+                            <span className="breadcrumb">{bc.searchIcon ? searchIcon : null}{bc.title}</span>
                         ), sep) }
                 </div>
     }

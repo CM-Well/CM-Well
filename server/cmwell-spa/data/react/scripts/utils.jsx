@@ -104,10 +104,15 @@ window.AppUtils = {
     , constants: {
          anyURI: 'http://www.w3.org/2001/XMLSchema#anyURI'
         ,fileInfotonInMemoryThreshold: 4096000
+        ,breadcrumbs: {
+             maxItems: 10
+            ,maxPathLength: 64
+        }
     }
     
     , ajaxErrorToString: r => {
         let errMsg = r.responseJSON ? r.responseJSON.error || r.responseJSON.message || 'Unknown error' : r.responseText
+        if(errMsg && errMsg.indexOf('<html')!=-1) errMsg = 'Unexpected error'
         return r.status ? `HTTP ${r.status}: ${errMsg}` : 'An HTTP call did not return'
     }
     

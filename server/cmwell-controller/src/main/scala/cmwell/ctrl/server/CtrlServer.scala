@@ -20,6 +20,7 @@ import akka.util.Timeout
 import cmwell.ctrl.config.Config._
 import com.typesafe.scalalogging.LazyLogging
 import k.grid._
+import uk.org.lidalia.sysoutslf4j.context.SysOutOverSLF4J
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -28,6 +29,11 @@ import scala.language.postfixOps
  */
 
 object CtrlServer extends App with LazyLogging{
+  logger.info("Starting CtrlServer process")
+  //SLF4J initialization is not thread safe, so it's "initialized" by writing some log and only then using sendSystemOutAndErrToSLF4J.
+  //Without it there will be en error in stderr and some log line at the beginning will be lost
+  SysOutOverSLF4J.sendSystemOutAndErrToSLF4J()
+
   implicit val timeout = Timeout(3 seconds)
   Grid.setGridConnection(GridConnection(memberName = "ctrl"))
   Grid.join

@@ -223,8 +223,16 @@ select:hover {
 
 .system-fields-container {
     position: absolute;
-    right: 75px;
+    right: 28px;
     top: 161px;
+}
+
+.system-fields-container.collapsed {
+    right: 12px;
+    width: 63px;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
 }
 
 .system-fields-container .system-fields-handle {
@@ -247,13 +255,13 @@ select:hover {
     box-shadow: none;
     background: transparent;
     width: 50px;    
+    margin-left: 0;
 }
 
 .system-fields-container .system-fields-handle .title {
     width: 140px;
     overflow: hidden;
     display: inline-block;
-    transition: width 500ms ease-in-out;
 }
 
 .system-fields-container.collapsed .system-fields-handle .title {
@@ -301,6 +309,7 @@ select:hover {
     background-color: transparent;
     box-shadow: none;
     overflow-x: hidden;
+    transition: none;
 }
 
 .system-fields-container .system-fields-data dl {
@@ -326,6 +335,7 @@ select:hover {
 .system-fields-container.collapsed .border-eraser {
     margin-top: 0;
     background-color: transparent;    
+    width: 0;
 }
 
 .system-fields-container .border-eraser {
@@ -386,7 +396,7 @@ select:hover {
 }
 
 .breadcrumbs img {
-    vertical-align: middle;
+    vertical-align: -7px;
     padding-right: 5px;
 }
 
@@ -414,6 +424,11 @@ select:hover {
     margin-left: 30px;
 }
 
+.infotons-list-container.root.empty {
+    width: 0px;
+    margin: 0;
+}
+
 .infotons-list-title {
     margin: 10px 0 12px 0;
     color: black;
@@ -437,8 +452,14 @@ select:hover {
     border-bottom: 1px solid #ccc;
 }
 
+
+.infotons-list:not(.active):not(.root) {
+    overflow-y: hidden;
+}
+
+
 .infotons-list.root {
-    height: -webkit-calc(100vh - 180px);
+    height: calc(100vh - 180px);
     margin-right: 40px;
     resize: horizontal;
     overflow-x: auto !important;
@@ -541,8 +562,7 @@ li.infoton-list-item {
 }
 
 .actions-bar.for-infoton {
-    width: 59.5%;
-    padding: 10px 0 10px 34px;
+    padding: 5px 30px 20px 34px;
 }
 
 .actions-bar.for-infotons-list {
@@ -552,7 +572,7 @@ li.infoton-list-item {
 }
 
 .actions-bar select {
-    margin-left: 10px;
+    margin-left: 5px;
     width: 116px;
     padding-left: 3px;
     color: #282828;
@@ -563,22 +583,42 @@ li.infoton-list-item {
 }
 
 .action {
-    margin-right: 35px;
+    margin-left: 35px;
+    float: right;
 }
 
 .infoton-title {
+    padding: 10px 0 0 30px;
+}
+
+.infoton-title .names .displayName {
     color: black;
     font-size: 20px;
     font-weight: bold;
-    padding: 0 0 10px 30px;
+}
+
+.infoton-title .names .displayName:only-child {
+    top: -13px;
+    position: relative;
 }
 
 .infoton-title img {
     width: 38px;
     height: 42px;
-    vertical-align: middle;
     padding: 0 5px;
 }
+
+.infoton-title .names {
+    display: inline-block;
+}
+
+.infoton-title .names .name {
+    font-size: 13px;
+    font-weight: normal;
+    color: #666;
+    margin-top: -5px;
+}
+
 
 .infoton-title img.alerts-icon {
     display: none; /* until implemented */
@@ -637,6 +677,7 @@ li.infoton-list-item {
     font-size: 11px;
     color: #8d8d8d;
     font-weight: bold;
+    margin-top: -18px;
 }
 
 table.infoton-data th {
@@ -654,7 +695,7 @@ table.infoton-data th {
 }
 
 table.infoton-data {
-    margin: 10px 30px;
+    margin: 3px 30px 10px 30px;
     border-collapse: collapse;
     overflow-y: auto;
     height: calc(100vh - 335px); /* AppUtils.heightOverhead === 335 */
@@ -731,41 +772,75 @@ table.infoton-data td ul {
 
 
 
-.error-msg {
+.error-msg-container {
     position: absolute;
     left: 30px;
-    top: 157px;
+    top: 159px;
     z-index: 1000;
     width: calc(100vw - 60px);
     height: calc(100vh - 347px);
-    padding-top: 150px;
-    color: white;
-    background: #777171;
+    padding-top: 15px;
+    background: white;
 }
 
-.error-msg .title {
-    font-size: 42px;
-    text-align: center;
-}
-
-.error-msg .msg {
-    font-size: 28px;
+.error-msg-container .error-sign-container {
     text-align: center;
     width: 75%;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    margin: 0 auto;  
+    margin: 0 auto;
+    padding-top: 108px;
+    margin-bottom: -200px;
 }
 
-.error-msg hr {
-    background: black;
-    height: 10px;
-    border: 0;
-    padding: 0;
-    margin-top: -7px;    
+.error-msg-container .error-sign-container .error-sign-text {
+    text-transform: uppercase;
+    top: -337px;
+    position: relative;
+    margin: 0 auto;
+    width: 245px;
+    color: #008fb7;
+    font-size: 22px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
+.error-msg-container #error-sign {
+    margin: 0 auto 0 51px;
+    top: -94px;
+    position: relative;
+    width: 327px;    
+}
+
+.error-msg-container #cone1 {
+    position: relative;
+    top: -257px;
+    left: -112px;
+    width: 85px;
+}
+
+.error-msg-container #cone2 {
+    position: relative;
+    top: -200px;
+    left: 209px;
+    width: 130px;
+}
+
+.error-msg-container .details {
+    text-align: center;
+    font-size: 18px;
+    color: #666;
+    margin-top: 5px;
+}
+
+.error-msg-container .details a {
+    color: #008fb7;
+}
+
+
+/*
 .glitch {
   color: white;
   font-size: 100px;
@@ -775,6 +850,10 @@ table.infoton-data td ul {
 
 @keyframes noise-anim{0%{clip:rect(69px,9999px,36px,0)}5%{clip:rect(61px,9999px,69px,0)}10%{clip:rect(68px,9999px,68px,0)}15%{clip:rect(73px,9999px,69px,0)}20%{clip:rect(37px,9999px,24px,0)}25%{clip:rect(11px,9999px,5px,0)}30%{clip:rect(99px,9999px,27px,0)}35%{clip:rect(34px,9999px,63px,0)}40%{clip:rect(2px,9999px,46px,0)}45%{clip:rect(50px,9999px,87px,0)}50%{clip:rect(63px,9999px,47px,0)}55%{clip:rect(56px,9999px,69px,0)}60%{clip:rect(36px,9999px,27px,0)}65%{clip:rect(44px,9999px,9px,0)}70%{clip:rect(20px,9999px,94px,0)}75%{clip:rect(67px,9999px,25px,0)}80%{clip:rect(85px,9999px,75px,0)}85%{clip:rect(64px,9999px,11px,0)}90%{clip:rect(69px,9999px,98px,0)}95%{clip:rect(45px,9999px,40px,0)}100%{clip:rect(10px,9999px,27px,0)}}
 .glitch:before{content:attr(data-text);position:absolute;margin-left:-2px;text-shadow:-1px 0 #c5c5c5;top:0;text-align:center;font-weight:100;color:#fff;background:#777171;overflow:hidden;clip:rect(0,900px,0,0);animation:noise-anim 2s infinite linear alternate-reverse}
+*/
+
+
+
 
 .footer {
     background: #555;

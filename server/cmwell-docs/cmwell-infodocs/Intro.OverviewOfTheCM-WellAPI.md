@@ -10,7 +10,6 @@ Before diving into the API, we recommend reading the following introductory topi
 * [Technical Aspects of CM-Well](Intro.TechnicalAspectsOfCM-Well.md)
 * [CM-Well Data Paradigms](Intro.CM-WellDataParadigms.md)
 * [CM-Well Input and Output Formats](API.InputAndOutputFormats.md)
-* [CM-Well Environments](CM-WellEnvironments.md)
 
 CM-Well is a Linked Data repository that contains information from the TR Knowledge Graph and more. It is a software platform running in TR data centers and accessible to all TR developers. It supports read, write and query operations via a **REST API**.
 
