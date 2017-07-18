@@ -40,7 +40,7 @@ You can get started with CM-Well by running some basic write and read operations
 
 ### Write Infotons and Fields ###
 
-**Action**: Create 5 new infotons under the path example/Individuals: MamaBear, PapaBear, BabyBear1, BabyBear2 and BabyBear3. Each bear has a hasName field with a name value.
+**Action**: Create 5 new infotons (an infoton is the basic unit of storage for RDF in CM-Well) under the path example/Individuals: MamaBear, PapaBear, BabyBear1, BabyBear2 and BabyBear3. Each bear has a hasName field with a name value.
 
 **Curl command:**
 
@@ -69,13 +69,16 @@ You can get started with CM-Well by running some basic write and read operations
 
 ### Read Infotons ###
 
-**Action:** Read the infotons you created in the previous step under example/Individuals, with their field data. 
+**Action:** Read the infotons you created in the previous step under example/individuals, with associated predicates. 
 
 **Curl command:**
 
     curl "http://localhost:8080/example/Individuals?op=search&format=ttl&recursive&with-data" 
 
-**Response:**
+**Response:** 
+
+>**Note:** the sys namespace and predicates in the response which are metadata from CM-Well, not the data you stored.
+
 
     @prefix nn:    <http://localhost:8080/meta/nn#> .
     @prefix foaf:  <http://xmlns.com/foaf/0.1/> .
