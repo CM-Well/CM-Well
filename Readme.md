@@ -1,7 +1,26 @@
 # Introduction #
-CM-Well is a writable Linked Data repository, developed by Thomson Reuters and used as its central Knowledge Graph database. CM-Well (Content Matrix Well) adheres to Open Data principles, meaning that its data is in a standard, machine-readable format.
+CM-Well is a writable Linked Data repository, developed by Thomson Reuters and used as its central Knowledge Graph database. CM-Well (Content Matrix Well) adheres to RDF principles, meaning that its data is in a [standard](https://www.w3.org/RDF/), machine-readable format.
 
 The Thomson Reuters Knowledge Graph contains information about organizations, instruments and people in the world of finance, but you can use CM-Well for any kind of linked data. Thomson Reuters is now offering CM-Well as an Open Source platform for the developer community to use and enrich.
+
+## Key features & technology ##
+CM-Well is based on a clustered architecture, with durable storage into [Apache Cassandra](http://cassandra.apache.org) and indexing via [Elastic Search](https://github.com/elastic/elasticsearch). Key features include:
+* Horizontal scaling to support billions of triples
+* Cross site replication
+* REST based APIs
+* All writes treated as immutable, storing previous versions
+* Named graph (quad) support
+* Fast (~10ms by subject, ~50ms for search) retrieval by subject and predicate query
+* Support for SPARQL on sub-graph and a beta of full graph SPARQL
+* Subscription by query for downstream consumers
+
+Other key technologies used under the covers include:
+* [Angular](https://angular.io) for the UI
+* [Akka](http://akka.io/) for cluster management
+* [Jena](https://jena.apache.org/) for Sparql and RDF conversions
+* [Netty](https://netty.io) for network comms
+* [Zookeeper](https://zookeeper.apache.org) for cluster configuration
+
 
 ## Linked Data Repositories ##
 You may be interested in exploring the following open-access linked data repositories and products:
@@ -40,7 +59,7 @@ You can get started with CM-Well by running some basic write and read operations
 
 ### Write Infotons and Fields ###
 
-**Action**: Create 5 new infotons under the path example/Individuals: MamaBear, PapaBear, BabyBear1, BabyBear2 and BabyBear3. Each bear has a hasName field with a name value.
+**Action**: Create 5 new infotons (an infoton is the basic unit of storage for RDF in CM-Well) under the path example/Individuals: MamaBear, PapaBear, BabyBear1, BabyBear2 and BabyBear3. Each bear has a hasName field with a name value.
 
 **Curl command:**
 
@@ -49,19 +68,19 @@ You can get started with CM-Well by running some basic write and read operations
 **File contents:**
 
     <http://example/Individuals/MamaBear> <http://purl.org/vocab/relationship/spouseOf> <http://example/Individuals/PapaBear> .
-    <http://example/Individuals/MamaBear> <http://ont.thomsonreuters.com/bermuda/hasName> "Betty".
-    <http://example/Individuals/PapaBear> <http://ont.thomsonreuters.com/bermuda/hasName> "Barney".
+    <http://example/Individuals/MamaBear> <http://xmlns.com/foaf/0.1/givenName> "Betty".
+    <http://example/Individuals/PapaBear> <http://xmlns.com/foaf/0.1/givenName> "Barney".
     <http://example/Individuals/BabyBear1> <http://purl.org/vocab/relationship/childOf> <http://example/Individuals/MamaBear>.
     <http://example/Individuals/BabyBear1> <http://purl.org/vocab/relationship/childOf> <http://example/Individuals/PapaBear>.
-    <http://example/Individuals/BabyBear1> <http://ont.thomsonreuters.com/bermuda/hasName> "Barbara".
+    <http://example/Individuals/BabyBear1> <http://xmlns.com/foaf/0.1/givenName> "Barbara".
     <http://example/Individuals/BabyBear1> <http://purl.org/vocab/relationship/siblingOf> <http://example/Individuals/BabyBear2>.
     <http://example/Individuals/BabyBear1> <http://purl.org/vocab/relationship/siblingOf> <http://example/Individuals/BabyBear3>.
     <http://example/Individuals/BabyBear2> <http://purl.org/vocab/relationship/childOf> <http://example/Individuals/MamaBear>.
     <http://example/Individuals/BabyBear2> <http://purl.org/vocab/relationship/childOf> <http://example/Individuals/PapaBear>.
-    <http://example/Individuals/BabyBear2> <http://ont.thomsonreuters.com/bermuda/hasName> "Bobby".
+    <http://example/Individuals/BabyBear2> <http://xmlns.com/foaf/0.1/givenName> "Bobby".
     <http://example/Individuals/BabyBear3> <http://purl.org/vocab/relationship/childOf> <http://example/Individuals/MamaBear>.
     <http://example/Individuals/BabyBear3> <http://purl.org/vocab/relationship/childOf> <http://example/Individuals/PapaBear>.
-    <http://example/Individuals/BabyBear3> <http://ont.thomsonreuters.com/bermuda/hasName> "Bert".
+    <http://example/Individuals/BabyBear3> <http://xmlns.com/foaf/0.1/givenName> "Bert".
 
 **Response:**
 
@@ -69,16 +88,19 @@ You can get started with CM-Well by running some basic write and read operations
 
 ### Read Infotons ###
 
-**Action:** Read the infotons you created in the previous step under example/Individuals, with their field data. 
+**Action:** Read the infotons you created in the previous step under example/individuals, with associated predicates. 
 
 **Curl command:**
 
     curl "http://localhost:8080/example/Individuals?op=search&format=ttl&recursive&with-data" 
 
-**Response:**
+**Response:** 
 
-    @prefix nn:<http://localhost:8080/meta/nn#> .
-    @prefix bermuda: <http://ont.thomsonreuters.com/bermuda/> .
+>**Note:** the sys namespace and predicates in the response which are metadata from CM-Well, not the data you stored.
+
+
+    @prefix nn:    <http://localhost:8080/meta/nn#> .
+    @prefix foaf:  <http://xmlns.com/foaf/0.1/> .
     @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
     @prefix rel:   <http://purl.org/vocab/relationship/> .
     @prefix sys:   <http://localhost:8080/meta/sys#> .
@@ -91,7 +113,7 @@ You can get started with CM-Well by running some basic write and read operations
     sys:path  "/example/Individuals/MamaBear" ;
     sys:type  "ObjectInfoton" ;
     sys:uuid  "e6f36b01bec464f9e2a8d8b690590e31" ;
-    bermuda:hasName   "Betty" ;
+    foaf:givenName   "Betty" ;
     rel:spouseOf  <http://example/Individuals/PapaBear> .
     
     <http://localhost:8080/example/Individuals/BabyBear2>
@@ -102,7 +124,7 @@ You can get started with CM-Well by running some basic write and read operations
     sys:path          "/example/Individuals/BabyBear2" ;
     sys:type          "ObjectInfoton" ;
     sys:uuid          "284a5a2438db15b5f8d9ef87795c0945" ;
-    bermuda:hasName   "Bobby" ;
+    foaf:givenName   "Bobby" ;
     rel:childOf       <http://example/Individuals/PapaBear> , <http://example/Individuals/MamaBear> .
 
     <http://localhost:8080/example/Individuals/BabyBear3>
@@ -113,7 +135,7 @@ You can get started with CM-Well by running some basic write and read operations
     sys:path          "/example/Individuals/BabyBear3" ;
     sys:type          "ObjectInfoton" ;
     sys:uuid          "671d93482c72b51cef5afa18c71692a5" ;
-    bermuda:hasName   "Bert" ;
+    foaf:givenName   "Bert" ;
     rel:childOf       <http://example/Individuals/PapaBear> , <http://example/Individuals/MamaBear> .
 
     [ sys:pagination  [ sys:first  <http://localhost:8080/example/Individuals?format=ttl?&recursive=&op=search&from=2016-08-01T13%3A27%3A49.239Z&to=2016-08-01T13%3A27%3A49.242Z&length=5&offset=0> ;
@@ -141,7 +163,7 @@ You can get started with CM-Well by running some basic write and read operations
     sys:path          "/example/Individuals/BabyBear1" ;
     sys:type          "ObjectInfoton" ;
     sys:uuid          "1627fe787d44b5a4fff19f50181b585b" ;
-    bermuda:hasName   "Barbara" ;
+    foaf:givenName   "Barbara" ;
     rel:childOf       <http://example/Individuals/MamaBear> , <http://example/Individuals/PapaBear> ;
     rel:siblingOf     <http://example/Individuals/BabyBear2> , <http://example/Individuals/BabyBear3> .
 
@@ -153,7 +175,7 @@ You can get started with CM-Well by running some basic write and read operations
     sys:path          "/example/Individuals/PapaBear" ;
     sys:type          "ObjectInfoton" ;
     sys:uuid          "6513a8d6395af8db932f49afb97cbfd1" ;
-    bermuda:hasName   "Barney" .
+    foaf:givenName   "Barney" .
 
 ## CM-Well Tutorial ##
 
