@@ -28,6 +28,8 @@ The CM-Well web interface is a graphical user interface for accessing CM-Well th
 
 Using the CM-Well web interface, you can browse among the CM-Well folders and infotons, run queries and get results, and examine the query results. Anyone with network access to CM-Well can browse to its web UI; this requires no special permissions.
 
+>**Note:** The CM-Well web UI is currently fully supported only in the Chrome browser.
+
 This page describes the features of the CM-Well web interface and how to use them.
 
 ---------------------------------
