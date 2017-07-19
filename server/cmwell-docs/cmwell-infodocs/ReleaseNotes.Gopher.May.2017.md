@@ -1,9 +1,5 @@
 # CM-Well Version Release Notes - Gopher (May 2017) #
 
-Version Name | PPE Release | Production Release (Eagan) | Production Release (Plano)
--------------|----------------|-------------------------|-------------------
-Gopher | May 24th, 2017 | May 28th, 2017 | May 29th, 2017
-
 ## Change Summary ##
 
 
@@ -16,6 +12,4 @@ Several | Expand testing infrastructure in preparation for platform features | C
 ### Changes to API ###
 N/A
 
-### Link to Demo ###
-N/A
 

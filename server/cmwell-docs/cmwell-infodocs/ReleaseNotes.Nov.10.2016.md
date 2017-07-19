@@ -1,11 +1,5 @@
 # CM-Well Version Release Notes - Nov. 10 2016 #
 
-Version Number: |	Release Date:
-----------------|----------------
-20161110-093846	| Nov. 10, 2016
-
-**GIT commit version:** d1c9570f8614d42dcec2faf520daa5fc14a934f9
-
 ## Change Summary ##
 
 ### New Features ###
@@ -31,11 +25,6 @@ Cassandra version upgrade | The Cassandra database component in CM-Well was upgr
 
 * The new parameter **slow-bulk** was added to the `_bulk-consume` API, to handle bulk streaming for slower network connections.
 * A new cmwell-import directive is now supported for SPARQL stored procedures.
-
-### Link to Demo ###
-See a recording of the demo that introduces some of the new features at: [https://thehub.thomsonreuters.com/docs/DOC-1789735](https://thehub.thomsonreuters.com/docs/DOC-1789735).
-
-(Click on the link for the **Nov. 10th, 2016** demo.)
 
 ------------------------------
 

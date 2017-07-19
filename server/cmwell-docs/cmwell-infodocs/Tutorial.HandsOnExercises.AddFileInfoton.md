@@ -2,7 +2,7 @@
 
 **Action:** Add an image file to CM-Well.
 
->**Note:** Before running the curl command, create the file: `c:\mypath\test.png`. After running the curl command, browse to http://cm-well-ppe.int.thomsonreuters.com/exercise/files/test.png and verify that the file was uploaded.
+>**Note:** Before running the curl command, create the file: `c:\mypath\test.png`. After running the curl command, browse to \<cm-well-host\>/exercise/files/test.png and verify that the file was uploaded.
 
 **Curl command:**
 

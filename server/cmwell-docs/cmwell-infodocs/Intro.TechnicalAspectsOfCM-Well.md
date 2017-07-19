@@ -10,8 +10,6 @@ The following sections provide a high-level overview of CM-Well's technical prop
 
 [CM-Well Data Paradigms and Formats](#hdr5)
 
-[The CM-Well Platform](#hdr6)
-
 <a name="hdr1"></a>
 ## REST API and Other Tools ##
 CM-Well's basic API is a REST interface. This is an HTTP interface that allows the caller to read and write information in CM-Well. You can call the CM-Well API from standard tools that support REST, such as the cURL utility.
@@ -19,12 +17,6 @@ CM-Well's basic API is a REST interface. This is an HTTP interface that allows t
 You can also perform some operations in a browser, such as reading a single Organization's details. 
 
 >**Note:** CM-Well browser operations are tested in Chrome. Most operations will also work in Firefox, Safari and Edge. 
-
-To see an example of accessing a CM-Well infoton through a browser, click on this link: [http://cm-well-ppe.int.thomsonreuters.com/permid.org/1-5035948006](http://cm-well-ppe.int.thomsonreuters.com/permid.org/1-5035948006)
-
-You will see the following page in your browser, containing the details for the Marriott Vacations Worldwide Corp organization:
-
-<img src="./_Images/MarriottPage.png" height=500 width=950>
 
 In addition to the central API, CM-Well offers several utilities to assist developers, such as:
 
@@ -42,8 +34,7 @@ If you are coding in Java or Scala, you can use the CM-Well utility libraries fo
 <a name="hdr4"></a>
 ## Accessing CM-Well ##
 
-You can perform CM-Well read operations over HTTP on any of the CM-Well environments, with no special credentials.
-
+You can perform CM-Well read operations over HTTP, with no special credentials.
 
 <a name="hdr5"></a>
 ## CM-Well Data Paradigms and Formats ##
@@ -52,12 +43,6 @@ The underlying structure of CM-Well is a graph database, which means that the da
 For more information, see:
 * [CM-Well Data Paradigms](Intro.CM-WellDataParadigms.md)
 * [CM-Well Input and Output Formats](API.InputAndOutputFormats.md)
-
-<a name="hdr6"></a>
-## The CM-Well Platform ##
-As mentioned previously, CM-Well has lab, pre-production and production environments running in TR data centers. These are highly available, robust and fault-tolerant environments. As you access them via HTTP, all you need to know about them is their URL. You don't have to be aware of their physical location or failover mechanisms.
-
-In addition, CM-Well is designed to be highly scalable, so you don't have to worry about access latency increasing over time, although new data is continually being written to CM-Well.
 
 
 

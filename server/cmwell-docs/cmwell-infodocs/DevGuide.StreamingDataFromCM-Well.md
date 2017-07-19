@@ -9,7 +9,7 @@ For example, the following command streams all Organization infotons from the CM
 > **Notes:** 
 >
 >* If for any reason the streaming operation fails, you will have to retrieve all the data from the beginning. An alternative method is the [Consumer API](API.Stream.CreateConsumer.md), which is slower than streaming, but if interrupted allows you to resume from where you left off.
->* There are several different implementations of the streaming feature, with different operation names (stream, mstream, qstream, sstream). They have different approaches and may work better for different types of data (e.g. a small collection vs. a larger collection). If you find that performance is an issue for the type of data you're targeting, please consult with the CM-Well support team to discuss which option is best for you.
+>* There are several different implementations of the streaming feature, with different operation names (stream, mstream, qstream, sstream). They have different approaches and may work better for different types of data (e.g. a small collection vs. a larger collection). 
 >* You can also use the [bulk consume](API.Stream.ConsumeNextBulk.md) operation to stream large numbers of infotons. This is a "hybrid" approach between streaming and iteration.
 
 ## Streaming Formats

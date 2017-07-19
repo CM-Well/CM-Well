@@ -1,9 +1,5 @@
 # CM-Well Version Release Notes - Firebird (May 2017) #
 
-Version Name |  Release Date PPE | Release Date Prod. Eagan | Release Date Prod. Plano
--------------|-------------------|--------------------------|----------------
-Firebird |  May 3, 2017 | May 15, 2017 | May 17, 2017
-
 ## Change Summary ##
 
 ### New Features ###
@@ -74,7 +70,6 @@ By adding the new **blocking** flag to an update request, you can cause the requ
 
 **Description:**
 Previously there was a bug that caused the "add node" admin script to fail; now fixed.
-This fix is relevant to Operations personnel.
 
 **Documentation:** 
 N/A
