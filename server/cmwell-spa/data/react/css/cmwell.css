@@ -408,6 +408,7 @@ select:hover {
 }
 
 
+/*
 @media screen
     and (min-device-width: 1200px)
 .infotons-list-container.root,
@@ -416,12 +417,17 @@ select:hover {
 .infotons-list-container.root {
     width: 50%;
 }
+*/
 
 .infotons-list-container.root {
     float: left;
     clear: left;
-    width: 30%;
+    width: calc(100vw - 68px);
     margin-left: 30px;
+}
+
+.infotons-list-container.root.autoWidth {
+    width: auto;
 }
 
 .infotons-list-container.root.empty {
@@ -461,7 +467,6 @@ select:hover {
 .infotons-list.root {
     height: calc(100vh - 180px);
     margin-right: 40px;
-    resize: horizontal;
     overflow-x: auto !important;
 }
 
