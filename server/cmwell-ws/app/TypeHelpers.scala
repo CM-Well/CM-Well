@@ -61,12 +61,11 @@ trait TypeHelpers {
     }
   }
 
-  def asBoolean(s:String):Option[Boolean] = {
-    if (null eq s)
-      None
+  def asBoolean(s: String): Option[Boolean] = {
+    if (null eq s) None
     else
       s.toLowerCase match {
-        case "t" | "true" | "yes" | "1" => Some(true)
+        case "" | "t" | "true" | "yes" | "1" => Some(true)
         case "f" | "false" | "no" | "0" => Some(false)
         case _ => None
       }

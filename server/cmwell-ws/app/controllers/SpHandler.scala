@@ -59,6 +59,8 @@ import cmwell.zcache.L1Cache
 import javax.inject._
 
 import akka.NotUsed
+import cmwell.ws.util.TypeHelpers
+import cmwell.ws.util.TypeHelpers.asBoolean
 import controllers.SpHandler.logger
 import wsutil.overrideMimetype
 
@@ -73,7 +75,10 @@ import scala.util.{Failure, Random, Success, Try}
 */
 
 @Singleton
-class SpHandlerController @Inject()(implicit ec: ExecutionContext) extends Controller with LazyLogging {
+class SpHandlerController @Inject()(crudServiceFS: CRUDServiceFS, nbgToggler: NbgToggler)(implicit ec: ExecutionContext) extends Controller with LazyLogging with TypeHelpers {
+
+  val parser = new SPParser
+
   def handleSparqlPost(formatByRest: String = "") = Action.async(parse.tolerantText) {
     implicit req =>
       handlePost(req, "") { req => (rp: RequestParameters) => /* no need to parse, returning the case class right away */ OverallSparqlQuery(req.body,req.host,rp) }
@@ -81,7 +86,7 @@ class SpHandlerController @Inject()(implicit ec: ExecutionContext) extends Contr
 
   def handleSpPost(formatByRest: String = "") = Action.async(parse.tolerantText) {
     implicit req =>
-      handlePost(req, formatByRest) { req => Parser.parseQuery(req.body.filterNot(_ == '\r')) }
+      handlePost(req, formatByRest) { req => parser.parseQuery(req.body.filterNot(_ == '\r')) }
   }
 
   private def handlePost[T](req: Request[String], formatByRest: String = "")(parse: Request[String]=>(RequestParameters=>T)) = {
@@ -100,8 +105,9 @@ class SpHandlerController @Inject()(implicit ec: ExecutionContext) extends Contr
 
             //TODO: consider using `guardHangingFutureByExpandingToSource` instead all the bloat below
             val singleEndln = Source.single(cmwell.ws.Streams.endln)
+            val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(false)
 
-            val futureThatMayHang = if(rp.bypassCache) task(paq) else viaCache(paq)
+            val futureThatMayHang = if(rp.bypassCache) task(nbg || nbgToggler.get)(paq) else viaCache(nbg || nbgToggler.get,crudServiceFS)(paq)
             val initialGraceTime = 7.seconds
             val injectInterval = 3.seconds
             val backOnTime: QueryResponse => Result = {
@@ -133,28 +139,37 @@ class SpHandlerController @Inject()(implicit ec: ExecutionContext) extends Contr
 }
 
 object SpHandler extends LazyLogging {
-  val actorSel = Grid.selectActor("QueryEvaluatorActor", GridJvm(Jvms.CW))
-  implicit val timeout = akka.util.Timeout(100.seconds)
-  val queryTimeout = 90.seconds
 
-  def task[T](paq: T) = (actorSel ? paq).mapTo[QueryResponse]
+  lazy val nActorSel = Grid.selectActor("NQueryEvaluatorActor", GridJvm(Jvms.CW))
+  lazy val oActorSel = Grid.selectActor("OQueryEvaluatorActor", GridJvm(Jvms.CW))
+  implicit lazy val timeout = akka.util.Timeout(100.seconds)
+  lazy val queryTimeout = 90.seconds
+
+  def task[T](nbg: Boolean)(paq: T) = {
+    val actorSel = {
+      if (nbg) nActorSel
+      else oActorSel
+    }
+    (actorSel ? paq).mapTo[QueryResponse].andThen {
+      case Failure(e) =>
+        logger.error(s"ask to ${if(nbg)"n"else "o"}ActorSel failed",e)
+    }
+  }
   def digest[T](input: T): String = cmwell.util.string.Hash.md5(input.toString)
   def deserializer(payload: Array[Byte]): QueryResponse = Plain(new String(payload, "UTF-8"))
   def serializer(qr: QueryResponse): Array[Byte] = qr match { case Plain(s) => s.getBytes("UTF-8") case _ => !!! }
   def isCachable(qr: QueryResponse): Boolean = qr match { case Plain(_) => true case _ => false }
 
-  val viaCache = cmwell.zcache.l1l2(task)(digest,deserializer,serializer,isCachable)(
+  def viaCache(nbg: Boolean, crudServiceFS: CRUDServiceFS) = cmwell.zcache.l1l2(task(nbg))(digest,deserializer,serializer,isCachable)(
     ttlSeconds = Settings.zCacheSecondsTTL,
     pollingMaxRetries = Settings.zCachePollingMaxRetries,
     pollingInterval = Settings.zCachePollingIntervalSeconds,
-    l1Size = Settings.zCacheL1Size)(CRUDServiceFS.zCache)
-
-
+    l1Size = Settings.zCacheL1Size)(crudServiceFS.zCache)
 }
 
 
 
-object Parser extends RegexParsers {
+class SPParser extends RegexParsers {
 
   val spacesOrTabs = "[\\t ]*".r
   val whiteSpaces = """\s*""".r
@@ -331,7 +346,7 @@ abstract class PopulateAndQuery {
   def sources: Seq[String]
   def queries: Seq[String]
   val rp: RequestParameters
-  def evaluate(): Future[String]
+  def evaluate(jarsImporter: JarsImporter,queriesImporter: QueriesImporter,sourcesImporter: SourcesImporter): Future[String]
 
   def isTiming = rp.verbose && rp.format == "ascii"
   def isDumping = rp.showGraph && rp.format == "ascii"
@@ -420,14 +435,18 @@ abstract class PopulateAndQuery {
   }
 }
 
-case class SparqlQuery(sources: Seq[String], imports: Seq[String], queries: Seq[String], rp: RequestParameters) extends PopulateAndQuery {
+case class SparqlQuery( sources: Seq[String],
+                        imports: Seq[String],
+                        queries: Seq[String],
+                        rp: RequestParameters) extends PopulateAndQuery {
+
   override type T = Either[String,Dataset]
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
   val concreteQueries = queries.map(populatePlaceHolders)
 
-  override def evaluate(): Future[String] = {
+  override def evaluate(jarsImporter: JarsImporter,queriesImporter: QueriesImporter,sourcesImporter: SourcesImporter): Future[String] = {
 
     //todo t._2 t._1.map m._1 + t._1 ... WAT? Please use case classes or something to make this fold more readable.
     //todo also - why there's the `first`? Can't we reduceLeft instead? This is not DRY.
@@ -459,9 +478,11 @@ case class SparqlQuery(sources: Seq[String], imports: Seq[String], queries: Seq[
       }
     }
 
-    if(rp.disableImportsCache) { Importers.all.foreach(_.invalidateCaches()) }
+    //TODO: FIXME! DON'T AFFECT GLOBALLY
+//    if(rp.disableImportsCache) { Importers.all.foreach(_.invalidateCaches()) }
 
     import cmwell.util.collections.partition3
+    import cmwell.util.collections.opfut
 
     val (jarImportsPaths, sprqlImportsPaths, sourceImportPaths) = partition3(imports) {
       case e if e.endsWith(".jar") => 0
@@ -470,9 +491,9 @@ case class SparqlQuery(sources: Seq[String], imports: Seq[String], queries: Seq[
     }
 
     val importsFut = for {
-      ij <- JarsImporter.fetch(jarImportsPaths)
-      iq <- QueriesImporter.fetch(sprqlImportsPaths).map(_.map(populatePlaceHolders))
-      is <- SourcesImporter.fetch(sourceImportPaths)
+      ij <- jarsImporter.fetch(jarImportsPaths)
+      iq <- queriesImporter.fetch(sprqlImportsPaths).map(_.map(populatePlaceHolders))
+      is <- sourcesImporter.fetch(sourceImportPaths)
     } yield (ij,iq,is)
 
     perfAndDatasetFuture.flatMap {
@@ -608,7 +629,7 @@ case class GremlinQuery(sources: Seq[String], imports: Seq[String], queries: Seq
   def engine = SgEngines.engines.getOrElse("Gremlin", throw new Exception("Could not load Gremlin engine!"))
 
   // todo. Stay DRY. Massage some of PopulateAndQuery code to have a basic String evaluate.
-  override def evaluate(): Future[String] = {
+  override def evaluate(jarsImporter: JarsImporter,queriesImporter: QueriesImporter,sourcesImporter: SourcesImporter): Future[String] = {
     val ntriplesFutures: Seq[Future[(Option[TimedRequest],Either[String,Dataset])]] = populate(extractBody)
 
     //todo finish implement verbodeMode for Gremlin as well
@@ -680,14 +701,16 @@ object SgEngines extends LazyLogging {
 trait Importer[A] { this: LazyLogging =>
   type Fields = Map[String,Set[FieldValue]]
 
+  def crudServiceFS: CRUDServiceFS
+
   case class FileInfotonContent(content: Array[Byte], fields: Fields)
 
   def fetch(paths: Seq[String]): Future[Vector[A]]
 
   def invalidateCaches(): Unit
 
-  def readFileInfoton(path: String): Future[FileInfotonContent] = {
-    CRUDServiceFS.getInfoton(path, None, None).map(res => (res: @unchecked) match {
+  def readFileInfoton(path: String, nbg: Boolean): Future[FileInfotonContent] = {
+    crudServiceFS.getInfoton(path, None, None, nbg).map(res => (res: @unchecked) match {
       case Some(Everything(FileInfoton(_, _, _, _, fields, Some(content),_))) => FileInfotonContent(content.data.get, fields.getOrElse(Map()))
       case x => logger.debug(s"Could not fetch $path, got $x"); throw new RuntimeException(s"Could not fetch $path")
     })
@@ -696,9 +719,10 @@ trait Importer[A] { this: LazyLogging =>
   protected def extractFileNameFromPath(path: String) = path.substring(path.lastIndexOf("/")+1)
 }
 
-object Importers { def all = Seq[Importer[_]](QueriesImporter, JarsImporter, SourcesImporter) }
+//TODO: if really needed, do it appropriately with injection
+//object Importers { def all = Seq[Importer[_]](QueriesImporter, JarsImporter, SourcesImporter) }
 
-object QueriesImporter extends Importer[String] with LazyLogging {
+class QueriesImporter(override val crudServiceFS: CRUDServiceFS, nbg: Boolean) extends Importer[String] with LazyLogging {
   import cmwell.util.collections.LoadingCacheExtensions
   import cmwell.util.concurrent.travector
 
@@ -749,12 +773,12 @@ object QueriesImporter extends Importer[String] with LazyLogging {
   private def toAbsolute(path: String) = if(path.startsWith("/")) path else s"$defaultBasePath/$path"
 
   private def listChildren(path: String) =
-    CRUDServiceFS.thinSearch(Some(PathFilter(path, descendants = false))).map(_.thinResults.map(_.path))
+    crudServiceFS.thinSearch(Some(PathFilter(path, descendants = false))).map(_.thinResults.map(_.path))
 
-  private def readTextualFileInfoton(path: String) = readFileInfoton(path).map{ case FileInfotonContent(data, _) => new String(data, "UTF-8")}
+  private def readTextualFileInfoton(path: String) = readFileInfoton(path, nbg).map{ case FileInfotonContent(data, _) => new String(data, "UTF-8")}
 }
 
-object JarsImporter extends Importer[JenaFunction] with SpFileUtils {
+class JarsImporter(override val crudServiceFS: CRUDServiceFS, nbg: Boolean) extends Importer[JenaFunction] with SpFileUtils { self =>
   import cmwell.util.collections.LoadingCacheExtensions
   import cmwell.util.concurrent.travector
   import cmwell.util.loading._
@@ -766,9 +790,8 @@ object JarsImporter extends Importer[JenaFunction] with SpFileUtils {
   private lazy val jarsCache: LoadingCache[String, LoadedJar] =
     CacheBuilder.newBuilder().maximumSize(200).expireAfterAccess(15, TimeUnit.MINUTES).removalListener(new RemovalListener[String, LoadedJar] {
       override def onRemoval(notification: RemovalNotification[String, LoadedJar]): Unit = { new File(notification.getValue.tempPhysicalPath).delete()
-      }}).
-      build(new CacheLoader[String, LoadedJar] {
-        override def load(key: String) = JarsImporter.load(Await.result(readFileInfoton(key), 15.seconds))
+      }}).build(new CacheLoader[String, LoadedJar] {
+        override def load(key: String) = self.load(Await.result(readFileInfoton(key, nbg), 15.seconds))
       })
 
   override def fetch(paths: Seq[String]): Future[Vector[JenaFunction]] =
@@ -797,7 +820,7 @@ object JarsImporter extends Importer[JenaFunction] with SpFileUtils {
 // Since we know the className in advance, we can use it aside with the implementation in order to register in Jena's FunctionRegistry.
 case class NamedAnonJenaFuncImpl(name: String, impl: JenaFunction)
 
-object SourcesImporter extends Importer[NamedAnonJenaFuncImpl] with LazyLogging {
+class SourcesImporter(override val crudServiceFS: CRUDServiceFS, nbg: Boolean) extends Importer[NamedAnonJenaFuncImpl] with LazyLogging {
   import cmwell.util.collections.LoadingCacheExtensions
   import cmwell.util.concurrent.travector
 
@@ -811,7 +834,7 @@ object SourcesImporter extends Importer[NamedAnonJenaFuncImpl] with LazyLogging 
   private lazy val functionsCache: LoadingCache[String, NamedAnonJenaFuncImpl] =
     CacheBuilder.newBuilder().maximumSize(200).expireAfterAccess(15, TimeUnit.MINUTES).
       build(new CacheLoader[String, NamedAnonJenaFuncImpl] {
-        override def load(key: String) = eval(new String(Await.result(readFileInfoton(key), 15.seconds).content,"UTF-8"), className = extractFileNameFromPath(key).replace(".scala",""))
+        override def load(key: String) = eval(new String(Await.result(readFileInfoton(key, nbg), 15.seconds).content,"UTF-8"), className = extractFileNameFromPath(key).replace(".scala",""))
       })
 
   def eval(source: String, className: String): NamedAnonJenaFuncImpl = { // WARNING: Black magic.

@@ -36,6 +36,9 @@ import javax.inject._
 
 import akka.stream.scaladsl.Flow
 import cmwell.util.FullBox
+import cmwell.web.ld.cmw.CMWellRDFHelper
+import cmwell.ws.util.TypeHelpers.asBoolean
+import ld.cmw.{NbgPassiveFieldTypesCache, ObgPassiveFieldTypesCache}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -49,8 +52,15 @@ import scala.util.{Failure, Success, Try}
  * To change this template use File | Settings | File Templates.
  */
 @Singleton
-class OutputHandler  @Inject() extends Controller with LazyLogging with TypeHelpers {
+class OutputHandler  @Inject()(crudServiceFS: CRUDServiceFS,
+                               authUtils: AuthUtils,
+                               tbg: NbgToggler,
+                               cmwellRDFHelper: CMWellRDFHelper,
+                               formatterManager: FormatterManager) extends Controller with LazyLogging with TypeHelpers {
+
   val fullDateFormatter = ISODateTimeFormat.dateTime().withZone(DateTimeZone.UTC)
+
+  def typesCache(nbg: Boolean) = if(nbg || tbg.get) crudServiceFS.nbgPassiveFieldTypesCache else crudServiceFS.obgPassiveFieldTypesCache
 
   def overrideMimetype(default: String, req: Request[AnyContent]): (String, String) = req.getQueryString("override-mimetype") match {
     case Some(mimetype) => (CONTENT_TYPE, mimetype)
@@ -105,20 +115,22 @@ class OutputHandler  @Inject() extends Controller with LazyLogging with TypeHelp
   }
 
   def handleWebSocket(format: String) = WebSocket.accept[String,String] { request =>
+    val nbg = request.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
     val formatter = format match {
       case FormatExtractor(formatType) =>
-        FormatterManager.getFormatter(
+        formatterManager.getFormatter(
           format = formatType,
           host = request.host,
           uri = request.uri,
           pretty = request.queryString.keySet("pretty"),
           callback = request.queryString.get("callback").flatMap(_.headOption),
-          withData = request.getQueryString("with-data"))
+          withData = request.getQueryString("with-data"),
+          nbg = nbg)
     }
     Flow[String].mapAsync(cmwell.ws.Streams.parallelism){ msg =>
       msg.take(4) match {
-        case "/ii/" => CRUDServiceFS.getInfotonByUuidAsync(msg.drop(4))
-        case _ => CRUDServiceFS.getInfotonByPathAsync(msg)
+        case "/ii/" => crudServiceFS.getInfotonByUuidAsync(msg.drop(4))
+        case _ => crudServiceFS.getInfotonByPathAsync(msg)
       }
     }.collect {
       case FullBox(i) =>formatter.render(i)
@@ -157,20 +169,22 @@ class OutputHandler  @Inject() extends Controller with LazyLogging with TypeHelp
     else
       RequestMonitor.add("out",req.path, req.rawQueryString, req.body.asText.getOrElse(""))
 
-    val fieldsMaskFut = extractFieldsMask(req)
+    val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+    val fieldsMaskFut = extractFieldsMask(req,typesCache(nbg),cmwellRDFHelper, nbg)
 
     val formatType = format match {
       case FormatExtractor(ft) => ft
       case _ => RdfType(N3Flavor)
     }
 
-    val formatter = FormatterManager.getFormatter(
+    val formatter = formatterManager.getFormatter(
       format = formatType,
       host = req.host,
       uri = req.uri,
       pretty = req.queryString.keySet("pretty"),
       callback = req.queryString.get("callback").flatMap(_.headOption),
-      withData = req.getQueryString("with-data"))
+      withData = req.getQueryString("with-data"),
+      nbg = nbg)
 
     val either: Either[SimpleResponse, Vector[String]] = req.body.asJson match {
       case Some(json) => {
@@ -203,15 +217,17 @@ class OutputHandler  @Inject() extends Controller with LazyLogging with TypeHelp
 
   def futureRetrievablePathsFromPathsAsLines(pathsVector: Vector[String], req: Request[AnyContent]) = {
 
+    val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+
     val (byUuid, byPath) = pathsVector.partition(_.startsWith("/ii/")) match {
       case (xs, ys) => (xs.map(_.drop(4)), ys) // "/ii/".length = 4
     }
 
-    CRUDServiceFS.getInfotonsByPathOrUuid(byPath, byUuid).flatMap {
+    crudServiceFS.getInfotonsByPathOrUuid(byPath, byUuid).flatMap {
       case BagOfInfotons(coreInfotons) => {
         val eInfotons = req.getQueryString("yg") match {
           case None => Future.successful(true -> coreInfotons)
-          case Some(ygp) => Try(wsutil.pathExpansionParser(ygp, coreInfotons, req.getQueryString("yg-chunk-size").flatMap(asInt).getOrElse(10))) match {
+          case Some(ygp) => Try(wsutil.pathExpansionParser(ygp, coreInfotons, req.getQueryString("yg-chunk-size").flatMap(asInt).getOrElse(10),cmwellRDFHelper,typesCache(nbg),nbg)) match {
             case Success(f) => f
             case Failure(e) => Future.failed(e)
           }
@@ -220,7 +236,7 @@ class OutputHandler  @Inject() extends Controller with LazyLogging with TypeHelp
         val fInfotons = eInfotons.flatMap {
           case (true,ygExpandedInfotons) => req.getQueryString("xg") match {
             case None => Future.successful(true -> ygExpandedInfotons)
-            case Some(xgp) => Try(wsutil.deepExpandGraph(xgp, ygExpandedInfotons)) match {
+            case Some(xgp) => Try(wsutil.deepExpandGraph(xgp, ygExpandedInfotons,cmwellRDFHelper,typesCache(nbg),nbg)) match {
               case Success(f) => f
               case Failure(e) => Future.failed(e)
             }
@@ -232,7 +248,7 @@ class OutputHandler  @Inject() extends Controller with LazyLogging with TypeHelp
           val irretrievableUuids = byUuid.filterNot(uuid => coreInfotons.exists(_.uuid == uuid)).map(uuid => s"/ii/$uuid")
           val irretrievablePaths = byPath.filterNot(path => coreInfotons.exists(_.path == path))
 
-          val notAllowedPaths = AuthUtils.filterNotAllowedPaths(infotons.map(_.path), PermissionLevel.Read, AuthUtils.extractTokenFrom(req)).toVector
+          val notAllowedPaths = authUtils.filterNotAllowedPaths(infotons.map(_.path), PermissionLevel.Read, authUtils.extractTokenFrom(req)).toVector
           val allowedInfotons = infotons.filterNot(i => notAllowedPaths.contains(i.path))
 
           ok -> RetrievablePaths(allowedInfotons, irretrievableUuids ++ irretrievablePaths ++ notAllowedPaths)

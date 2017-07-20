@@ -55,6 +55,13 @@ object SettingsValue {
     }
   }
 
+  implicit val booleanSettingsValueExtractor = new SettingsValueExtractor[Boolean] {
+    override def get(sv: SettingsValue): Option[Boolean] = sv match {
+      case SettingsBoolean(v) => Some(v)
+      case _ => None
+    }
+  }
+
   implicit val stringSetSettingsValueExtractor = new SettingsValueExtractor[Set[String]] {
     override def get(sv: SettingsValue): Option[Set[String]] = sv match {
       case SettingsSet(v) => Some(v)
@@ -74,6 +81,7 @@ sealed trait SettingsValue extends Serializable {
       implicitly[SettingsValue.SettingsValueExtractor[T]].get(this)
 }
 case class SettingsString(str : String) extends SettingsValue
+case class SettingsBoolean(str : Boolean) extends SettingsValue
 case class SettingsSet(set : Set[String]) extends SettingsValue
 case class SettingsLong(lng : Long) extends SettingsValue
 
@@ -249,6 +257,7 @@ trait DMapMaster extends DMapActor with LazyLogging {
               lastTimestamp = timestamp
             //}
             case SettingsString(str) => //
+            case SettingsBoolean(bool) => //
             case SettingsLong(lng) => //
           }
         case None =>
@@ -269,6 +278,7 @@ trait DMapMaster extends DMapActor with LazyLogging {
             //}
             case SettingsString(str) => //
             case SettingsLong(lng) => //
+            case SettingsBoolean(bool) => //
           }
         case None =>
       }
@@ -342,6 +352,8 @@ trait DMapSlave extends DMapActor with LazyLogging {
               lastTimestamp = timestamp
               onUpdate(old, facade.sm, timestamp)
             case SettingsString(str) => //
+            case SettingsBoolean(_) => //
+            case SettingsLong(_) => //
           }
         case None =>
       }
@@ -361,6 +373,7 @@ trait DMapSlave extends DMapActor with LazyLogging {
 
               }
             case SettingsString(str) => //
+            case SettingsBoolean(_) => //
             case SettingsLong(lng) => //
           }
         case None =>
