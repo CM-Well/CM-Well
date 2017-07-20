@@ -183,7 +183,7 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
           case bgMessage@BGMessage(_, ieic@IndexExistingInfotonCommand(uuid, weight, _, indexName, tids)) =>
             logger debug s"creating es actions for indexExistingInfotonCommand: $ieic"
             indexExistingCommandCounter += 1
-            val updateRequest = new UpdateRequest(indexName, "infoclone", uuid)
+            val updateRequest = new UpdateRequest(indexName, "infoclone", uuid).version(1)
               .doc(s"""{"system":{"current": false}}""").asInstanceOf[ActionRequest[_ <: ActionRequest[_ <: AnyRef]]]
             Success(bgMessage.copy(message = (InfoAction(updateRequest, weight, None), ieic.asInstanceOf[IndexCommand])))
         }.collect{

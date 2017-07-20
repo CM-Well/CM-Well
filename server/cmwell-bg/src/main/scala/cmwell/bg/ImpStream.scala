@@ -232,14 +232,16 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
     bgMessage.copy(message = bgMessage.message.asInstanceOf[SingleCommand])
   }
 
+  val breakOut2 = scala.collection.breakOut[Seq[BGMessage[SingleCommand]], SingleCommand, Seq[SingleCommand]]
+
   val groupCommandsByPath = Flow[BGMessage[SingleCommand]].groupedWithin(groupCommandsByPathSize,
     groupCommandsByPathTtl.milliseconds).mapConcat[BGMessage[(String, Seq[SingleCommand])]]{ messages =>
       logger debug s"grouping commands: ${messages.map{_.message}}"
     messages.groupBy{ _.message.path}.map{ case (path, bgMessages) =>
       val offsets = bgMessages.flatMap(_.offsets)
-      val commands = bgMessages.map(_.message)
+      val commands = bgMessages.map(_.message)(breakOut2)
       BGMessage(offsets, path -> commands)
-    }.asInstanceOf[collection.immutable.Seq[BGMessage[(String, Seq[SingleCommand])]]]
+    }
   }
 
   val addLatestInfotons = Flow[BGMessage[(String, Seq[SingleCommand])]].mapAsync(irwReadConcurrency){ case bgMessage@BGMessage(_, (path, commands)) =>
@@ -337,6 +339,7 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
   }
 
   val breakOut = scala.collection.breakOut[Iterable[IndexCommand], Message[Array[Byte], Array[Byte], Seq[Long]], collection.immutable.Seq[Message[Array[Byte], Array[Byte], Seq[Long]]]]
+
   val  mergedCommandToKafkaRecord = Flow[BGMessage[(BulkIndexResult, List[IndexCommand])]].mapConcat{
     case BGMessage(offset, (bulkIndexResults, commands)) =>
         logger debug s"failed indexcommands to kafka records. bulkResults: $bulkIndexResults \n commands: $commands"
@@ -401,9 +404,12 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
         }
           logger debug s"stoppedIndex: $stoppedIndex"
         if(stoppedIndex < offsets.size-1){
+          // If nothing 'taken' from given offsets
           if(stoppedIndex == 0)
-            doneOffsets ++= offsets
+            // merge them all
+            doneOffsets ++= offsets.view
           else
+            // take only those got 'left'
             doneOffsets ++= offsets.view(stoppedIndex, offsets.size)
             logger debug s"doneOffsets: $doneOffsets"
         }
@@ -656,7 +662,7 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
               //count it for metrics
               indexExistingCommandCounter += 1
               List((ESIndexRequest(
-                  new UpdateRequest(indexName, "infoclone", uuid).doc(s"""{"system":{"current": false}}"""),
+                  new UpdateRequest(indexName, "infoclone", uuid).doc(s"""{"system":{"current": false}}""").version(1),
                   None
                 ), weight))
             case _ => ???
@@ -672,13 +678,20 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
           case bgMessages =>
             val actions = bgMessages.map{_.message._1.map{_._1}}.flatten
               logger debug s"sending ${actions.size} actions to elasticsearch: ${actions} from commands: ${bgMessages.map{_.message._2}.flatten}"
-//            val highestOffset = bgMessages.maxBy(_.offset.getOrElse(-1L)).offset
             indexBulkSizeHist += actions.size
             indexingTimer.timeFuture(ftsService.executeIndexRequests(actions).recover{
               case _:TimeoutException =>
                 RejectedBulkIndexResult("Future Timedout")}
             ).map{ bulkIndexResult =>
-              BGMessage(bgMessages.map(_.offsets).flatten, (bulkIndexResult, bgMessages.map{_.message._2}.flatten.toList))
+              // filter out expected es failures (due to we're at least once and not exactly once)
+              val filteredResults = bulkIndexResult match {
+                case s@SuccessfulBulkIndexResult(_, failed) if failed.size > 0 =>
+                  s.copy(failed = failed.filterNot{ f =>
+                    (f.reason.startsWith("DocumentAlreadyExistsException") || f.reason.startsWith("VersionConflictEngineException"))
+                  })
+                case other => other
+              }
+              BGMessage(bgMessages.map(_.offsets).flatten, (filteredResults, bgMessages.map{_.message._2}.flatten.toList))
             }
         }
       )

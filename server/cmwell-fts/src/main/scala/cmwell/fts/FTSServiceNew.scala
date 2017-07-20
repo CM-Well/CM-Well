@@ -415,9 +415,9 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
             itemResponse.getFailureMessage.contains("EsRejectedExecutionException")
           }
 
-          // Currently DocumentMissingException is expected since update request are sent to all indices
+          // filter expected errors that can happen since since we're at least once and not exactly once
           val unexpectedErrors = nonRecoverableFailures.filterNot{case (bulkItemResponse, _) =>
-            bulkItemResponse.getFailureMessage.startsWith("DocumentMissingException") ||
+            bulkItemResponse.getFailureMessage.startsWith("VersionConflictEngineException") ||
               bulkItemResponse.getFailureMessage.startsWith("DocumentAlreadyExistsException")
           }
 
