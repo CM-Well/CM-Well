@@ -197,8 +197,8 @@ See the following resources to learn more about CM-Well workflows, APIs and arch
 Before building CM-Well, you will need to install the following software packages:
 
 * Java 8
-* Scala 2.11.11
-* SBT(Scala Build Tool) version 0.13 or later
+* [Scala](http://www.scala-lang.org/download/) 2.11.11
+* [SBT(Scala Build Tool)](http://www.scala-sbt.org/download.html) version 0.13 or later
 
 ## Run Requirements ##
 
@@ -215,6 +215,11 @@ To build CM-Well from its code:
 2.	On your machine, navigate to the `server` directory.
 3.	To compile CM-Well, run the following Scala command: `sbt packageCmwell`
 or preferably (for a complete rebuild and testing): `sbt ccft`
+
+>**Note** You may need to give sbt more heap to compile. A 2GB heap works, which you can set by saying
+```
+export SBT_OPTS="-Xmx2G -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -Xss2M"
+```
 
 ## Code Repository Structure ## 
 
