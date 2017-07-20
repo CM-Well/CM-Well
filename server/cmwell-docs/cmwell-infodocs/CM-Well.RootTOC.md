@@ -6,7 +6,7 @@
     <th align=left><h3><i>Topic</i></h3></th>
   </tr>
   <tr>
-    <th rowspan="8" align=left><a href="Intro.TOC.md">Introduction</a></th>
+    <th rowspan="7" align=left><a href="Intro.TOC.md">Introduction</a></th>
     <td><a href="Intro.IntroductionToCM-Well.md">Introduction to CM-Well</a></td>
   </tr>
 <tr>
@@ -27,24 +27,16 @@
 <tr>
     <td><a href="Intro.TechnicalDecisionsInCM-WellDesign.md">Technical Decisions in CM-Well's Design</a></td>
   </tr>
-<tr>
-    <td><a href="UseCase.TOC.md">CM-Well Use Cases</a></td>
-  </tr>
   <tr>
     <th align=left>Getting Started</th>
     <td><a href="GettingStarted.md">Getting Started</a></td>
   </tr>
 <tr>
-    <th align=left>CM-Well Web Interface</th>
+    <th rowspan="2" align=left>CM-Well Web Interface</th>
     <td><a href="CM-WellWebInterface.md">CM-Well Web Interface</a></td>
   </tr>
 <tr>
-    <th align=left>Support</th>
-    <td><a href="Support.ContactCM-WellTeam.md">Support</a></td>
-  </tr>
-<tr>
-    <th align=left>Engagement Process</th>
-    <td><i>TBD</i></td>
+    <td><a href="CM-WellOldWebInterface.md">Old CM-Well Web Interface</a></td>
   </tr>
 <tr>
     <th rowspan="12" align=left><a href="DevGuide.TOC.md">Developer Guide</a></th>
@@ -111,8 +103,7 @@
     <td><a href="Tools.UsingTheCM-WellSparkConnector.md">Spark Connector</a></td>
   </tr>
 <tr>
-    <th rowspan="2" align=left><a href="Testing.TOC.md">Testing</a></th>
-    <td><a href="Testing.TestingYourCM-WellApplication.md">Testing Your CM-Well Application</a></td>
+    <th rowspan="2" align=left>Testing</a></th>
   </tr>
 <tr>
     <td><a href="Testing.TestingAndDebugging.md">Testing and Debugging Tips</a></td>
@@ -129,7 +120,7 @@
 
 _Please note that we are refreshing the documentation to reflect CM-Well moving to open source. Some examples and URLs provided within may not be accessible outside of the Thomson Reuters network and these will be fixed as we go._
 
-_Additionally, CM-Well currently supports both a legacy and new UI. Hence screenshots in this documentation may not match what you see_
+_Additionally, CM-Well currently supports both a legacy and new UI. Hence screenshots in this documentation may not match what you see._
 
 
 

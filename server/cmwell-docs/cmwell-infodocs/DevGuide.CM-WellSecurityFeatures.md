@@ -10,7 +10,7 @@ The following sections describe how to obtain and use the CM-Well authentication
 
 ## Users, Passwords and Permissions ##
 
-A CM-Well user does not represent a person, but rather an application that calls CM-Well. Contact the CM-Well support team to get a username and password assigned to your application. You use these credentials when logging into CM-Well, and you receive a corresponding authentication token to pass to subsequent API calls.
+A CM-Well user does not represent a person, but rather an application that calls CM-Well. You use a username and password when logging into CM-Well, and you receive a corresponding authentication token to pass to subsequent API calls.
 
 Each user has specific read and write permissions. A user may have access to certain paths in CM-Well and not to others. You may want to define more than one user for your application, if end users with different profiles may be using it, who require different access permissions.
 

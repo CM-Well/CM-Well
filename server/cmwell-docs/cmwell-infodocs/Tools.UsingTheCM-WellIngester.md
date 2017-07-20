@@ -9,7 +9,7 @@ The CM-Well Ingester is written in Scala and is packaged as a jar file (Java lib
 ## Downloading and Compiling CM-Well Source Code ##
 
 > **Notes:** 
-> * To access the CM-Well Git site, you will need a GitHub user. See [CM-Well GitHub Repository](https://github.com/thomsonreuters/CM-Well) to access CM-Well Git repository.
+> * To access the CM-Well Git site, you will need a GitHub user. See the [CM-Well GitHub Repository](https://github.com/thomsonreuters/CM-Well).
 > * To compile and run CM-Well data tools, you will need Java version 8.
 
 *To install the Scala Build Tool and download the CM-Well Ingester source code:*
@@ -51,7 +51,7 @@ Parameter | Description
 
 >**Notes:**
 >* To display a description of the ingester parameters, run `ingester --help`. 
->* Usually you will not have to change the **backpressure** value. But this may become advisable if, for example, you're receiving "busy" messages from CM-Well. In this case, please consult with the CM-Well support team about how to adjust the **backpressure** value.
+>* Usually you will not have to change the **backpressure** value. But this may become advisable if, for example, you're receiving "busy" messages from CM-Well.
 >* See [Ingesting Each Infoton as an Atomic Operation](#hdrAtomic).
 
 Here is an example of how to run the CM-Well Ingester as a stand-alone executable, while taking the input data from a file:

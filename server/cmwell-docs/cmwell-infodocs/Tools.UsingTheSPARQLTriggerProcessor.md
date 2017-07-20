@@ -113,7 +113,7 @@ Here is a (truncated) example of the YAML configuration file:
 
 When you have created the YAML configuration file and are ready to apply it, you upload it to CM-Well at `meta/sys/agents/sparql/<configName>/config`, where the containing folder name **\<configName\>** is a unique name that describes your configuration, and the configuration file name is always named **"config"**.
 
->**Note:** You will need special permissions to upload a file to the ```meta/sys``` folder. Contact the CM-Well support team for more information.
+>**Note:** You will need special permissions to upload a file to the ```meta/sys``` folder.
 
 Here is an example of a command that uploads a SPARQL configuration file:
 
@@ -172,7 +172,7 @@ Sensor | last-update | The time that the sensor made its latest update.
 ## DEPRECATED: Downloading and Compiling CM-Well Data Tools ##
 
 > **Notes:** 
-> * To access the CM-Well Git site, you will need a GitHub user. See [CM-Well GitHub Repository](https://github.com/thomsonreuters/CM-Well) to access CM-Well Git repository.
+> * To access the CM-Well Git site, you will need a GitHub user. See the [CM-Well GitHub Repository](https://github.com/thomsonreuters/CM-Well).
 > * To compile and run CM-Well data tools, you will need Java version 8.
 
 *To download and compile the CM-Well Data Tools source code:*

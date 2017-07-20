@@ -1,4 +1,4 @@
-# Function: * Pull New Data* #
+# Function: *Pull New Data* #
 
 ## Description ##
 You may want to subscribe to real-time updates of CM-Well, so that your application always has the latest data available. For example, if your application shows Organization data, you may want to ensure that you have the latest information before displaying an organization's details.
@@ -44,7 +44,7 @@ sub=\<token\> | The token you received in response to the **subscribe** call | s
 
 ### Results ###
 
-    	o:nRSR4409Ea-2016-07-18
+        o:nRSR4409Ea-2016-07-18
         sys:data                       "<Document>\n<Source>RNS</Source>..." ;
         sys:dataCenter                 "dc1" ;
         sys:indexTime                  "1468833593106"^^xsd:long ;

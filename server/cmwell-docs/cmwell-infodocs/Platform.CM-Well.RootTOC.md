@@ -23,8 +23,11 @@
     <td><a href="Platform.Readme.md">Getting Started</a></td>
   </tr>
 <tr>
-    <th align=left>CM-Well Web Interface</th>
+    <th rowspan="2" align=left>CM-Well Web Interface</th>
     <td><a href="CM-WellWebInterface.md">CM-Well Web Interface</a></td>
+  </tr>
+<tr>
+    <td><a href="CM-WellOldWebInterface.md">Old CM-Well Web Interface</a></td>
   </tr>
 <tr>
     <th rowspan="12" align=left><a href="DevGuide.TOC.md">Developer Guide</a></th>
@@ -91,8 +94,7 @@
     <td><a href="Tools.UsingTheCM-WellSparkConnector.md">Spark Connector</a></td>
   </tr>
 <tr>
-    <th rowspan="2" align=left><a href="Testing.TOC.md">Testing</a></th>
-    <td><a href="Testing.TestingYourCM-WellApplication.md">Testing Your CM-Well Application</a></td>
+    <th rowspan="2" align=left>Testing</a></th>
   </tr>
 <tr>
     <td><a href="Testing.TestingAndDebugging.md">Testing and Debugging Tips</a></td>

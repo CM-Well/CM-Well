@@ -16,9 +16,6 @@ This page describes CM-Well's main technical features and design principles, the
 
 [Immutable Data and Deep History](#hdr7)
 
-[Collaboration among TR Modules](#hdr8)
-
-[Grid Architecture](#hdr9)
 
 <a name="hdr1"></a>
 ## Open, Linked Data and Web Oriented Architecture ##
@@ -56,7 +53,7 @@ Although the initial versions of CM-Well only supported direct URI access and tr
 ## "Information in Motion" ##
 Many Linked Data repositories are geared to be "static", i.e. to represent a data set that hardly changes over time, which mostly serves read requests.
 
-CM-Well is a dynamic data store, with capabilitiess for real-time updates and notifications. Internal agents are constantly updating CM-Well with new data derived from news metadata tagging or from TR SDIs. In addition, users can write to CM-Well to create their own repository, modeling any data they choose. Users can also subscribe to get real-time notifications about changes to items of interest.
+CM-Well is a dynamic data store, with capabilities for real-time updates and notifications. Users can create their own repository, modeling any data they choose. Users can also subscribe to get real-time notifications about changes to items of interest.
 
 To support these functions, CM-Well has write functions in its API, which allow users to add, delete and update triples and infotons. It also supports PuSH notifications (an extension of RSS feeds that provides real-time notifications over HTTP).
 
@@ -67,16 +64,6 @@ CM-Well supports an "immutable data" paradigm, meaning that even though infotons
 This way, you have the option of both obtaining the up-to-the-minute information, while still being able to access historical versions for analytical purposes. 
 Historical versions allow you to examine changes in attribute values over time.
 
-<a name="hdr8"></a>
-## Collaboration among TR Modules ##
-CM-Well is not just a passive container. CM-Well provides an eco-sysytem for collaboration among several TR modules. It has various active "agents" for pulling in news stories, tagging them with metadata using Open Calais and ingesting the resulting triples, and other agents for ingesting SDIs such as the Organization Authority.
 
-<a name="hdr9"></a>
-## Grid Architecture ##
-A CM-Well production deploy consists of a set of machines, deployed within a data centers with (optionally) additional sites for replication and read. CM-Well is built around the concept of a "grid" providing a service, where the individual machine can fail, but the system will realign to cope with the loss. 
-
-Inherent in the design of such a system is replication of data. Currently all data is kept in three copies. Any data update is eventually replicated throughout all copies.
-
-This design provides data redundancy and automatic failover, enabling a robust and highly-available platform.
 
 

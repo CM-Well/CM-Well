@@ -1,9 +1,5 @@
 # CM-Well Version Release Notes - Amoeba (Feb. 2017) #
 
-Version Name | Version Number | Release Date PPE | Release Date Production 
--------------|-----------------|----------------|---------------------------
-Amoeba | 1.5.414 | Feb. 7th 2017 | Feb. 13th 2017
-
 ## Change Summary ##
 
 ### New Features ###
@@ -13,12 +9,9 @@ Amoeba | 1.5.414 | Feb. 7th 2017 | Feb. 13th 2017
 * Version name added to CM-Well web UI.
 
 ### Notable Bug Fixes ###
-**GitLab Item No. 321:** Fix race condition in system restart, related to Legal Analytic's use of Oracle Linux 7.1.
+**GitLab Item No. 321:** Fix race condition in system restart.
 
 ### Changes to API	 ###
-N/A
-
-### Link to Demo ###
 N/A
 
 ------------------------------

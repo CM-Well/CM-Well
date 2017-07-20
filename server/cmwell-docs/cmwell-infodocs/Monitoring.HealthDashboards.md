@@ -5,7 +5,7 @@ CM-Well provides two views that display the health of its nodes (machines) and s
 * **Component view** - shows the health of each type of component pool.
 * **Node view** - shows the health of each machine in the environment.
 
->**Note:** There are also views that show the health of the [JVM processes](#hdr1) running on CM-Well nodes, for internal use by the CM-Well support team.
+>**Note:** There are also views that show the health of the [JVM processes](#hdr1) running on CM-Well nodes.
 
 These are the software component acronyms you will see in the health views:
 
@@ -28,7 +28,7 @@ Status | Description
 >**Notes:** 
 >
 >* A red status does not necessarily mean complete failure; requests may still be processed.
->* The health views may show additional information about the components. These are internal status/error messages for the CM-Well support team, which are not documented here. 
+>* The health views may show additional information about the components. These are internal status/error messages, which are not documented here. 
 
 ## Component View ##
 
@@ -74,7 +74,7 @@ The node view is displayed. It contains a table showing each node's IP address, 
 <a name="hdr1"></a>
 ## JVM Views (for internal TMS use) ##
 
-The following views show the health of the JVM processes running on CM-Well nodes. These are for internal use by the TMS CM-Well support team.
+The following views show the health of the JVM processes running on CM-Well nodes.
 
 *  All JVM processes: `<cm-well-host>/proc/members-all.md?pretty`
 *  Active JVM processes: `<cm-well-host>/proc/members-active.md?pretty`

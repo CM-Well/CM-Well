@@ -1,9 +1,5 @@
 # CM-Well Version Release Notes - Dec. 7 2016 #
 
-Version Number: |	Release Date:
-----------------|----------------
-20161207-142306	| Dec. 7, 2016
-
 ## Change Summary ##
 
 ### New Features ###
@@ -19,16 +15,11 @@ Feature/Link | Description
 ### Notable Bug Fixes ###
 
 * More bugs were fixed in the "SPARQL on whole graph" feature.
-* Fixes were made to bugs in the CM-Well Console, which were encountered in the  DCIS setup done for Legal Analytics (upgrading to Oracle Linux 7.1).  
+* Fixes were made to bugs in the CM-Well Console, which were encountered when upgrading to Oracle Linux 7.1.  
 
 ### Changes to API	 ###
 
 markReplace and markDelete now take quad values that allow you to delete only field values from specified named graph
-
-### Link to Demo ###
-See a recording of the demo that introduces some of the new features at: [https://thehub.thomsonreuters.com/docs/DOC-1789735](https://thehub.thomsonreuters.com/docs/DOC-1789735).
-
-(Click on the link for the **Nov. 30th, 2016** demo.)
 
 ------------------------------
 

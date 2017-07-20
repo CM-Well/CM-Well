@@ -39,13 +39,7 @@ To run CM-Well Docker, you must install the Docker utility itself and the relate
 >**Note:** Optimally, CM-Well Docker should have 6GB of RAM configured. If there is not enough available memory on your machine, CM-Well Docker will still run with 4.8GB of RAM, though not at production-level performance.
 
 ## Installing the CM-Well Image ##
-2. Download the CM-Well image tar file from coming soon.
-3. Load the image file into docker by running the following command (this may take a few minutes): 
-    `docker load -i cm-well-docker.tgz`
-1. Verify that the image is loaded by running the following command:
-    `docker images`. You should see an image named "cmwell-dev".
-
-<img src=./_Images/DockerImages.png>
+*Coming soon.*
 
 ## Operating CM-Well Docker ##
 

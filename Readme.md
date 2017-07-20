@@ -98,7 +98,6 @@ You can get started with CM-Well by running some basic write and read operations
 
 >**Note:** the sys namespace and predicates in the response which are metadata from CM-Well, not the data you stored.
 
-
     @prefix nn:    <http://localhost:8080/meta/nn#> .
     @prefix foaf:  <http://xmlns.com/foaf/0.1/> .
     @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
