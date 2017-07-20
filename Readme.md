@@ -199,6 +199,8 @@ Before building CM-Well, you will need to install the following software package
 * [Scala](http://www.scala-lang.org/download/) 2.11.11
 * [SBT(Scala Build Tool)](http://www.scala-sbt.org/download.html) version 0.13 or later
 
+>**Note** Currently, CM-Well only runs on Mac and Linux environments
+
 ## Run Requirements ##
 
 * Java 8
