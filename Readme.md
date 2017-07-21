@@ -222,7 +222,7 @@ or preferably (for a complete rebuild and testing): `sbt ccft`
 export SBT_OPTS="-Xmx2G -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -Xss2M"
 ```
 
-More detailed instructions can be found in the [Building CM-Well Tutorial ](Tutorial.Building.md).
+More detailed instructions can be found in the [Building CM-Well Tutorial ](server/cmwell-docs/cmwell-infodocs/Tutorial.Building.md).
 
 ## Code Repository Structure ## 
 
