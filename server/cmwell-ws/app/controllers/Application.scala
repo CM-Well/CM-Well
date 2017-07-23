@@ -60,7 +60,6 @@ import security._
 import wsutil.{asyncErrorHandler, errorHandler, _}
 
 import scala.collection.mutable.{HashMap, MultiMap}
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -74,7 +73,7 @@ object ApplicationUtils {
     * @param path
     * @return
     */
-  def infotonPathDeletionAllowed(path: String, recursive: Boolean): Future[Either[String, Seq[String]]] = {
+  def infotonPathDeletionAllowed(path: String, recursive: Boolean)(implicit ec: ExecutionContext): Future[Either[String, Seq[String]]] = {
     def numOfChildren(p: String): Future[SearchResults] = {
       val pathFilter = if (p.length > 1) Some(PathFilter(p, true)) else None
       CRUDServiceFS.search(pathFilter, None, Some(DatesFilter(None, None)), PaginationParams(0, 500), false, false, SortParam.empty)
@@ -100,7 +99,7 @@ object ApplicationUtils {
 }
 
 @Singleton
-class Application @Inject()(bulkScrollHandler: BulkScrollHandler, activeInfotonGenerator: ActiveInfotonGenerator, cachedSpa: CachedSpa) extends Controller with FileInfotonCaching with LazyLogging {
+class Application @Inject()(bulkScrollHandler: BulkScrollHandler, activeInfotonGenerator: ActiveInfotonGenerator, cachedSpa: CachedSpa)(implicit ec: ExecutionContext) extends Controller with FileInfotonCaching with LazyLogging {
 
   import ApplicationUtils._
 
@@ -597,7 +596,6 @@ callback=< [URL] >
             val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff).map(Some.apply))
             fieldsFiltersFut.flatMap { fieldFilter =>
               fieldsMaskFut.flatMap { fieldsMask =>
-                import scala.concurrent.ExecutionContext.Implicits.global
 
                 /* RDF types allowed in mstream are: ntriples, nquads, jsonld & jsonldq
                  * since, the jsons are not realy RDF, just flattened json of infoton per line,
@@ -824,15 +822,20 @@ callback=< [URL] >
     }
   }
 
-  private def transformFieldFiltersForConsumption(fieldFilters: Option[FieldFilter], timeStamp: Long): FieldFilter =
+  private def transformFieldFiltersForConsumption(fieldFilters: Option[FieldFilter], timeStamp: Long): FieldFilter = {
+    val fromOp =
+      if(timeStamp != 0L) GreaterThan
+      else GreaterThanOrEquals
+
     fieldFilters match {
       case None => MultiFieldFilter(Must, List(
-        FieldFilter(Must, GreaterThan, "system.indexTime", timeStamp.toString),
+        FieldFilter(Must, fromOp, "system.indexTime", timeStamp.toString),
         FieldFilter(Must, LessThan, "system.indexTime", (System.currentTimeMillis() - 10000).toString)))
       case Some(ff) => MultiFieldFilter(Must, List(ff,
-        FieldFilter(Must, GreaterThan, "system.indexTime", timeStamp.toString),
+        FieldFilter(Must, fromOp, "system.indexTime", timeStamp.toString),
         FieldFilter(Must, LessThan, "system.indexTime", (System.currentTimeMillis() - 10000).toString)))
     }
+  }
 
   private def handleQueueStream(request: Request[AnyContent]): Future[Result] = {
 
