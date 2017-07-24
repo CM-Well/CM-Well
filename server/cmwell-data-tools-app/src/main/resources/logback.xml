@@ -39,7 +39,7 @@
             <maxIndex>21</maxIndex>
         </rollingPolicy>
         <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <maxFileSize>10MB</maxFileSize>
+            <maxFileSize>200MB</maxFileSize>
         </triggeringPolicy>
     </appender>
 
@@ -55,7 +55,7 @@
             <maxIndex>21</maxIndex>
         </rollingPolicy>
         <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <maxFileSize>10MB</maxFileSize>
+            <maxFileSize>200MB</maxFileSize>
         </triggeringPolicy>
     </appender>
 
@@ -75,14 +75,14 @@
 
         <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
             <fileNamePattern>logs/bad-data.log.%i</fileNamePattern>
-            <maxIndex>100</maxIndex>
+            <maxIndex>21</maxIndex>
         </rollingPolicy>
         <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <maxFileSize>10000000</maxFileSize>
+            <maxFileSize>200MB</maxFileSize>
         </triggeringPolicy>
     </appender>
 
-    <logger name="akka" level="INFO" additivity="false">
+    <logger name="akka" level="DEBUG" additivity="false">
         <appender-ref ref="AkkaFile" />
     </logger>
 
