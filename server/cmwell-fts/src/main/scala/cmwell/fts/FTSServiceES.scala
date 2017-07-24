@@ -501,6 +501,41 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
     indices
   }
 
+  private def getValueAs[T](hit: SearchHit, fieldName: String): Try[T] = {
+    Try[T](hit.field(fieldName).getValue[T])
+  }
+
+  private def tryLongThenInt[V](hit: SearchHit, fieldName: String, f: Long => V, default: V, uuid: String, pathForLog: String): V = try {
+    getValueAs[Long](hit, fieldName) match {
+      case Success(l) => f(l)
+      case Failure(e) => {
+        e.setStackTrace(Array.empty) // no need to fill the logs with redundant stack trace
+        logger.trace(s"$fieldName not Long (outer), uuid = $uuid, path = $pathForLog", e)
+        tryInt(hit,fieldName,f,default,uuid)
+      }
+    }
+  } catch {
+    case e: Throwable => {
+      logger.trace(s"$fieldName not Long (inner), uuid = $uuid", e)
+      tryInt(hit,fieldName,f,default,uuid)
+    }
+  }
+
+  private def tryInt[V](hit: SearchHit, fieldName: String, f: Long => V, default: V, uuid: String): V = try {
+    getValueAs[Int](hit, fieldName) match {
+      case Success(i) => f(i.toLong)
+      case Failure(e) => {
+        logger.error(s"$fieldName not Int (outer), uuid = $uuid", e)
+        default
+      }
+    }
+  } catch {
+    case e: Throwable => {
+      logger.error(s"$fieldName not Int (inner), uuid = $uuid", e)
+      default
+    }
+  }
+
   private def esResponseToThinInfotons(esResponse: org.elasticsearch.action.search.SearchResponse, includeScore: Boolean)
                                       (implicit executionContext: ExecutionContext): Seq[FTSThinInfoton] = {
     if (esResponse.getHits().hits().nonEmpty) {
@@ -509,7 +544,7 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
         val path = hit.field("system.path").value.asInstanceOf[String]
         val uuid = hit.field("system.uuid").value.asInstanceOf[String]
         val lastModified = hit.field("system.lastModified").value.asInstanceOf[String]
-        val indexTime = hit.field("system.indexTime").value.asInstanceOf[Long]
+        val indexTime = tryLongThenInt[Long](hit,"system.indexTime",identity,-1L,uuid,path)
         val score = if(includeScore) Some(hit.score()) else None
         FTSThinInfoton(path, uuid, lastModified, indexTime, score)
       }.toSeq
@@ -519,43 +554,6 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
   }
 
   private def esResponseToInfotons(esResponse: org.elasticsearch.action.search.SearchResponse, includeScore: Boolean):Vector[Infoton] = {
-
-    def getValueAs[T](hit: SearchHit, fieldName: String): Try[T] = {
-      Try[T](hit.field(fieldName).getValue[T])
-    }
-
-    def tryLongThenInt[V](hit: SearchHit, fieldName: String, f: Long => V, default: V, uuid: String, pathForLog: String): V = try {
-      getValueAs[Long](hit, fieldName) match {
-        case Success(l) => f(l)
-        case Failure(e) => {
-          e.setStackTrace(Array.empty) // no need to fill the logs with redundant stack trace
-          logger.trace(s"$fieldName not Long (outer), uuid = $uuid, path = $pathForLog", e)
-          tryInt(hit,fieldName,f,default,uuid)
-        }
-      }
-    } catch {
-      case e: Throwable => {
-        logger.trace(s"$fieldName not Long (inner), uuid = $uuid", e)
-        tryInt(hit,fieldName,f,default,uuid)
-      }
-    }
-
-    def tryInt[V](hit: SearchHit, fieldName: String, f: Long => V, default: V, uuid: String): V = try {
-      getValueAs[Int](hit, fieldName) match {
-        case Success(i) => f(i.toLong)
-        case Failure(e) => {
-          logger.error(s"$fieldName not Int (outer), uuid = $uuid", e)
-          default
-        }
-      }
-    } catch {
-      case e: Throwable => {
-        logger.error(s"$fieldName not Int (inner), uuid = $uuid", e)
-        default
-      }
-    }
-
-
     if (esResponse.getHits().hits().nonEmpty) {
       val hits = esResponse.getHits().hits()
       hits.map{ hit =>
