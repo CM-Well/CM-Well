@@ -74,7 +74,16 @@ Next, we need to give SBT more memory to work with. There's a couple of ways to 
 export SBT_OPTS="-Xmx2G -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -Xss2M"
 ```
 
-Now kick off a build:
+Or you can configure sbt by issuing a -mem command from the server directory
+```
+$ sbt -mem 2048
+[info] Loading project definition from /Users/TRnonodename/Code/CM-Well/server/project/project
+[info] Loading project definition from /Users/TRnonodename/Code/CM-Well/server/project
+[info] Resolving key references (19979 settings) ...
+[info] Set current project to server (in build file:/Users/TRnonodename/Code/CM-Well/server/)
+server> exit
+```
+Now kick off a build by calling sbt with the packageCmwell command
 ```
 $ sbt packageCmwell
 Getting org.scala-sbt sbt 0.13.15  (this may take some time)...
@@ -144,10 +153,10 @@ scala> :load pe
 Loading pe...
 import scala.language.postfixOps
 locParam: String = null
-location: String = /Users/u0005220/app
+location: String = /Users/TRnonodename/app
 useAuthorization: Boolean = false
-dataDirs: DataDirs = DataDirs(List(/Users/u0005220/app/cm-well-data/cas),List(/Users/u0005220/app/cm-well-data/ccl),List(/Users/u0005220/app/cm-well-data/es),List(/Users/u0005220/app/cm-well-data/tlog),/Users/u0005220/app/cm-well-data/kafka,/Users/u0005220/app/cm-well-data/zookeeper,/Users/u0005220/app/cm-well-data/log)
-pe: LocalHost = LocalHost(lh,DataDirs(List(/Users/u0005220/app/cm-well-data/cas),List(/Users/u0005220/app/cm-well-data/ccl),List(/Users/u0005220/app/cm-well-data/es),List(/Users/u0005220/app/cm-well-data/tlog),/Users/u0005220/app/cm-well-data/kafka,/Users/u0005220/app/cm-well-data/zookeeper,/Users/u0005220/app/cm-well-data/log),InstDirs(/Users/u0005220/app/cm-well,/Users/u0005220/app),false,false,0,DevAllocations(),false,true,true,false,true,false)
+dataDirs: DataDirs = DataDirs(List(/Users/TRnonodename/app/cm-well-data/cas),List(/Users/TRnonodename/app/cm-well-data/ccl),List(/Users/TRnonodename/app/cm-well-data/es),List(/Users/TRnonodename/app/cm-well-data/tlog),/Users/TRnonodename/app/cm-well-data/kafka,/Users/TRnonodename/app/cm-well-data/zookeeper,/Users/TRnonodename/app/cm-well-data/log)
+pe: LocalHost = LocalHost(lh,DataDirs(List(/Users/TRnonodename/app/cm-well-data/cas),List(/Users/TRnonodename/app/cm-well-data/ccl),List(/Users/TRnonodename/app/cm-well-data/es),List(/Users/TRnonodename/app/cm-well-data/tlog),/Users/TRnonodename/app/cm-well-data/kafka,/Users/TRnonodename/app/cm-well-data/zookeeper,/Users/TRnonodename/app/cm-well-data/log),InstDirs(/Users/TRnonodename/app/cm-well,/Users/TRnonodename/app),false,false,0,DevAllocations(),false,true,true,false,true,false)
 pe.mappingFile: String = mapping-pe.json
 
 scala> pe.install
@@ -164,7 +173,14 @@ From here on in, you can use curl to load data per the other tutorials. Note tha
 
 ### Stopping CM-Well ###
 
-To shut CM-Well down, issue a :quit command in the console:
+To shut CM-Well down, first shutdown CM-Well with pe.stop
+
+``` 
+scala> pe.stop
+
+```
+
+Then issue a :quit command to exit the console:
 
 ```
 scala> :quit
