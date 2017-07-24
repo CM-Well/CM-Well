@@ -1,111 +1,130 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<configuration>
-    <!--<statusListener class="ch.qos.logback.core.status.NopStatusListener" />-->
-    <statusListener class="ch.qos.logback.core.status.OnErrorConsoleStatusListener" />
-    <jmxConfigurator />
+<configuration debug="false">
+    <!--<statusListener class="ch.qos.logback.core.status.OnErrorConsoleStatusListener" />-->
+    <!--
+    A shutdown hook to properly finalize the logger system.
+    In order to avoid race conditions between shutdown hooks (logs from another one won't be printed) there is
+    a delay of 5 seconds that allows other hooks to write logs.
+    This will cause the process shutdown to be delayed with 5 seconds.
+    -->
+    <shutdownHook class="ch.qos.logback.core.hook.DelayingShutdownHook">
+        <delay>5000</delay>
+    </shutdownHook>
 
-    <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
-        <target>System.err</target>
-        <encoder>
-            <pattern>%date [%thread] - 5level %logger{36} - %msg%n</pattern>
-        </encoder>
-    </appender>
-
-    <appender name="AkkaFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>logs/akka.log</file>
-        <append>true</append>
-        <encoder>
-            <pattern>%date{ISO8601} [%thread %X{sourceThread}] %-5level %logger{36} %X{sourceActorSystem} %X{akkaSource} - %msg%n</pattern>
-        </encoder>
-
-        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>logs/akka.log.%i</fileNamePattern>
-            <maxIndex>21</maxIndex>
-        </rollingPolicy>
-        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <maxFileSize>10MB</maxFileSize>
-        </triggeringPolicy>
-    </appender>
-
-    <appender name="red-logger-file" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>logs/red.log</file>
-        <append>true</append>
-        <encoder>
-            <pattern>%date{ISO8601} [%thread %X{sourceThread}] %-5level %logger{36} %X{sourceActorSystem} %X{akkaSource} - %msg%n</pattern>
-        </encoder>
-
-        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>logs/red.log.%i</fileNamePattern>
-            <maxIndex>21</maxIndex>
-        </rollingPolicy>
-        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <maxFileSize>200MB</maxFileSize>
-        </triggeringPolicy>
-    </appender>
-
-    <appender name="output" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>logs/output.log</file>
-        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- daily rollover with compression -->
+            <fileNamePattern>logs/output-log-%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
+            <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>20GB</totalSizeCap>
+            <!-- in case of process terminating too early for rollover - do the rollover during start -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
+        </encoder>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
+    </appender>
+
+    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="FILE" />
+        <maxFlushTime>0</maxFlushTime>
+        <discardingThreshold>0</discardingThreshold>
+    </appender>
+
+    <appender name="AKKA_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/akka.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- daily rollover with compression -->
+            <fileNamePattern>logs/akka-log-%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
+            <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>20GB</totalSizeCap>
+            <!-- in case of process terminating too early for rollover - do the rollover during start -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
         <encoder>
             <pattern>%date{ISO8601} [%thread %X{sourceThread}] %-5level %logger{36} %X{sourceActorSystem} %X{akkaSource} - %msg%n</pattern>
         </encoder>
-
-        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>logs/output.log.%i</fileNamePattern>
-            <maxIndex>21</maxIndex>
-        </rollingPolicy>
-        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <maxFileSize>200MB</maxFileSize>
-        </triggeringPolicy>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
     </appender>
 
-    <appender name="RootLoggerAppender" class="ch.qos.logback.core.ConsoleAppender">
-        <target>System.err</target>
-        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d{yyyy-MM-dd HH:mm:ss}, %p, %c, %t, %L, %C{1}, %M %m%n</pattern>
+    <appender name="ASYNC_AKKA_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="AKKA_FILE" />
+        <maxFlushTime>0</maxFlushTime>
+        <discardingThreshold>0</discardingThreshold>
+    </appender>
+
+    <appender name="RED_LOG" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/red.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- daily rollover with compression -->
+            <fileNamePattern>logs/red-log-%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
+            <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>20GB</totalSizeCap>
+            <!-- in case of process terminating too early for rollover - do the rollover during start -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
         </encoder>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
+    </appender>
+
+    <appender name="ASYNC_RED_LOG" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="RED_LOG" />
+        <maxFlushTime>0</maxFlushTime>
+        <discardingThreshold>0</discardingThreshold>
     </appender>
 
     <appender name="BAD_DATA" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>logs/bad-data.log</file>
-        <append>true</append>
-        <encoder>
-            <pattern>%d TKD [%thread] %-5level %logger{36} - %msg%n</pattern>
-        </encoder>
-
-        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>logs/bad-data.log.%i</fileNamePattern>
-            <maxIndex>21</maxIndex>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- daily rollover with compression -->
+            <fileNamePattern>logs/bad-data-%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
+            <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>20GB</totalSizeCap>
+            <!-- in case of process terminating too early for rollover - do the rollover during start -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
         </rollingPolicy>
-        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <maxFileSize>200MB</maxFileSize>
-        </triggeringPolicy>
+        <encoder>
+            <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
+        </encoder>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
     </appender>
 
-    <logger name="akka" level="DEBUG" additivity="false">
-        <appender-ref ref="AkkaFile" />
-    </logger>
-
-    <logger name="red-logger" level="DEBUG" additivity="false">
-        <appender-ref ref="red-logger-file" />
-        <appender-ref ref="RootLoggerAppender" />
-    </logger>
-
-    <logger name="bad-data" level="DEBUG" additivity="false">
+    <appender name="ASYNC_BAD_DATA" class="ch.qos.logback.classic.AsyncAppender">
         <appender-ref ref="BAD_DATA" />
+        <maxFlushTime>0</maxFlushTime>
+        <discardingThreshold>0</discardingThreshold>
+    </appender>
+
+    <logger name="red-logger" additivity="true">
+        <appender-ref ref="ASYNC_RED_LOG" />
     </logger>
 
-    <logger name="ch.qos" level="DEBUG" additivity="false">
-        <appender-ref ref="output"/>
+    <logger name="bad-data" additivity="false">
+        <appender-ref ref="ASYNC_BAD_DATA" />
     </logger>
 
-    <logger name="cmwell.tools.data" level="DEBUG" additivity="false">
-        <appender-ref ref="output"/>
+    <logger name="akka" additivity="false">
+        <appender-ref ref="ASYNC_AKKA_FILE" />
     </logger>
 
-    <root>
-        <level value="${log.level:-INFO}"/>
-        <!--<appender-ref ref="RootLoggerAppender"/>-->
-        <appender-ref ref="output"/>
+    <root level="${log.level:-INFO}">
+        <appender-ref ref="ASYNC_FILE" />
     </root>
+    <jmxConfigurator />
 </configuration>
