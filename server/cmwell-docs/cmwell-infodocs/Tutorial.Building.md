@@ -177,7 +177,6 @@ To shut CM-Well down, first shutdown CM-Well with pe.stop
 
 ``` 
 scala> pe.stop
-
 ```
 
 Then issue a :quit command to exit the console:
