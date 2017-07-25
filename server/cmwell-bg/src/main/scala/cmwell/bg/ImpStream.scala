@@ -16,7 +16,7 @@
 
 package cmwell.bg
 
-import java.util.concurrent.{TimeUnit, TimeoutException}
+import java.util.concurrent.{ConcurrentHashMap, TimeUnit, TimeoutException}
 
 import akka.actor.ActorSystem
 import akka.kafka.ProducerMessage.Message
@@ -69,7 +69,7 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
   lazy val redlog = LoggerFactory.getLogger("bg_red_log")
   lazy val heartbitLogger = LoggerFactory.getLogger("heartbeat_log")
   val parentsCache = CacheBuilder.newBuilder().maximumSize(4000 * 10).build[String, String]()
-  val beforePersistedCache = CacheBuilder.newBuilder().expireAfterWrite((1.minute).toMillis, TimeUnit.MILLISECONDS).maximumSize(Long.MaxValue).build[String, Infoton]()
+  val beforePersistedCache = new ConcurrentHashMap[String, Infoton]()
 
   val merger = Merger()
 
@@ -264,7 +264,8 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
 
   val addMerged = Flow[BGMessage[(Option[Infoton], Seq[SingleCommand])]].map {
     case bgMessage@BGMessage(_, (existingInfotonOpt, commands)) =>
-      val baseInfoton = Option(beforePersistedCache.getIfPresent(commands.head.path)) match {
+
+      val baseInfoton = Option(beforePersistedCache.get(commands.head.path)) match {
         case None =>
             logger debug s"baseInfoton for path: ${commands.head.path} not in cache"
           existingInfotonOpt
@@ -281,7 +282,6 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
                 logger debug "base infoton is newer then cached infoton"
                 existingInfotonOpt
               }
-
         }
       }
         logger debug s"merging existing infoton: $baseInfoton with commands: $commands"
@@ -291,7 +291,10 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
           mergeTimer.time(merger.merge(baseInfoton, commands))
         else
           merger.merge(baseInfoton, commands)
-      mergedInfoton.merged.foreach( i => beforePersistedCache.put(i.path, i.copyInfoton(indexName = currentIndexName)))
+      mergedInfoton.merged.foreach{ i =>
+        beforePersistedCache.put(i.path, i.copyInfoton(indexName = currentIndexName))
+        schedule(10.seconds){beforePersistedCache.remove(i.path)}
+      }
       bgMessage.copy(message = (baseInfoton -> mergedInfoton))
   }
 
@@ -386,55 +389,57 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
   val publishIndexCommands = Producer.flow[Array[Byte], Array[Byte], Seq[Long]](kafkaProducerSettings).map{_.message.passThrough}
 
   var doneOffsets = collection.mutable.TreeSet.empty[Long]
-  var lastOffsetPersisted = startingOffset - 1
+  @volatile var lastOffsetPersisted = startingOffset - 1
 
   val commitOffsets = Flow[Seq[Long]].groupedWithin(6000, 3.seconds).toMat{
-    Sink.foreach{ offsetGroups =>
-      val offsets = offsetGroups.flatten.sorted
+    Sink.foreach { offsetGroups =>
+      doneOffsets.synchronized{ // until a suitable concurrent collection is found
+        val offsets = offsetGroups.flatten.sorted
         logger debug s"offsets: $offsets"
-      var prev = lastOffsetPersisted
-      if(doneOffsets.isEmpty){
+        var prev = lastOffsetPersisted
+        if (doneOffsets.isEmpty) {
           logger debug "doneOffsets is empty"
-        val it = offsets.iterator
-        val stoppedIndex = it.indexWhere{ cur =>
-          val stop = cur - prev > 1
-          if(!stop)
-            prev = cur
-          stop
-        }
+          val it = offsets.iterator
+          val stoppedIndex = it.indexWhere { cur =>
+            val stop = cur - prev > 1
+            if (!stop)
+              prev = cur
+            stop
+          }
           logger debug s"stoppedIndex: $stoppedIndex"
-        if(stoppedIndex < offsets.size-1){
-          // If nothing 'taken' from given offsets
-          if(stoppedIndex == 0)
+          if (stoppedIndex < offsets.size - 1) {
+            // If nothing 'taken' from given offsets
+            if (stoppedIndex == 0)
             // merge them all
-            doneOffsets ++= offsets.view
-          else
+              doneOffsets ++= offsets.view
+            else
             // take only those got 'left'
-            doneOffsets ++= offsets.view(stoppedIndex, offsets.size)
+              doneOffsets ++= offsets.view(stoppedIndex, offsets.size)
             logger debug s"doneOffsets: $doneOffsets"
-        }
-      } else {
+          }
+        } else {
           logger debug s"doneOffsets is not empty: $doneOffsets \nadding offsets to it"
-        doneOffsets ++= offsets
+          doneOffsets ++= offsets
           logger debug s"doneOffsets after adding: $doneOffsets"
-        val it = doneOffsets.iterator
-        val stoppedIndex = it.indexWhere{ cur =>
-          val stop = cur - prev > 1
-          if(!stop)
-            prev = cur
-          stop
-        }
+          val it = doneOffsets.iterator
+          val stoppedIndex = it.indexWhere { cur =>
+            val stop = cur - prev > 1
+            if (!stop)
+              prev = cur
+            stop
+          }
           logger debug s"stoppedIndex: $stoppedIndex"
-        if(stoppedIndex > 0) {
-          logger debug s"slicing doneOffsets from index: ${stoppedIndex+1} to index: ${doneOffsets.size}"
-          doneOffsets = doneOffsets.slice(stoppedIndex, doneOffsets.size)
+          if (stoppedIndex > 0) {
+            logger debug s"slicing doneOffsets from index: ${stoppedIndex + 1} to index: ${doneOffsets.size}"
+            doneOffsets = doneOffsets.slice(stoppedIndex, doneOffsets.size)
             logger debug s"doneOffsets after slicing: $doneOffsets"
+          }
         }
-      }
-      if(prev>lastOffsetPersisted){
+        if (prev > lastOffsetPersisted) {
           logger debug s"prev: $prev is greater than lastOffsetPersisted: $lastOffsetPersisted"
-        offsetsService.write(s"${streamId}_offset", prev + 1L)
-        lastOffsetPersisted = prev
+          offsetsService.write(s"${streamId}_offset", prev + 1L)
+          lastOffsetPersisted = prev
+        }
       }
     }
   }(Keep.right)

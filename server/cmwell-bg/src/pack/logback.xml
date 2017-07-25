@@ -117,6 +117,10 @@
         <appender-ref ref="ASYNC_HEARTBEAT_LOG" />
     </logger>
 
+    <logger name="org.elasticsearch" level="WARN">
+        <appender-ref ref="ASYNC_FILE"/>
+    </logger>
+
     <logger name="akka" additivity="true">
         <appender-ref ref="ASYNC_AKKA_FILE" />
     </logger>
