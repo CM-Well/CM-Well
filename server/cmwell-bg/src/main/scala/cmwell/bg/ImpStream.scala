@@ -293,7 +293,7 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
           merger.merge(baseInfoton, commands)
       mergedInfoton.merged.foreach{ i =>
         beforePersistedCache.put(i.path, i.copyInfoton(indexName = currentIndexName))
-        schedule(10.seconds){beforePersistedCache.remove(i.path)}
+        schedule(60.seconds){beforePersistedCache.remove(i.path)}
       }
       bgMessage.copy(message = (baseInfoton -> mergedInfoton))
   }
@@ -389,7 +389,7 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
   val publishIndexCommands = Producer.flow[Array[Byte], Array[Byte], Seq[Long]](kafkaProducerSettings).map{_.message.passThrough}
 
   var doneOffsets = collection.mutable.TreeSet.empty[Long]
-  @volatile var lastOffsetPersisted = startingOffset - 1
+  var lastOffsetPersisted = startingOffset - 1
 
   val commitOffsets = Flow[Seq[Long]].groupedWithin(6000, 3.seconds).toMat{
     Sink.foreach { offsetGroups =>
@@ -411,7 +411,7 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
             // If nothing 'taken' from given offsets
             if (stoppedIndex == 0)
             // merge them all
-              doneOffsets ++= offsets.view
+              doneOffsets ++= offsets
             else
             // take only those got 'left'
               doneOffsets ++= offsets.view(stoppedIndex, offsets.size)

@@ -34,6 +34,31 @@
         <discardingThreshold>0</discardingThreshold>
     </appender>
 
+    <appender name="ES_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/es.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- daily rollover with compression -->
+            <fileNamePattern>logs/es-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
+            <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>20GB</totalSizeCap>
+            <!-- in case of process terminating too early for rollover - do the rollover during start -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
+        </encoder>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
+    </appender>
+
+    <appender name="ASYNC_ES_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="FILE" />
+        <maxFlushTime>0</maxFlushTime>
+        <discardingThreshold>0</discardingThreshold>
+    </appender>
+
     <appender name="AKKA_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>logs/akka.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
@@ -117,8 +142,8 @@
         <appender-ref ref="ASYNC_HEARTBEAT_LOG" />
     </logger>
 
-    <logger name="org.elasticsearch" level="WARN">
-        <appender-ref ref="ASYNC_FILE"/>
+    <logger name="org.elasticsearch" additivity="false">
+        <appender-ref ref="ASYNC_ES_FILE"/>
     </logger>
 
     <logger name="akka" additivity="true">
