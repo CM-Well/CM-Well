@@ -827,13 +827,14 @@ callback=< [URL] >
       if(timeStamp != 0L) GreaterThan
       else GreaterThanOrEquals
 
+    val fromFilter = FieldFilter(Must, fromOp, "system.indexTime", timeStamp.toString)
+    val uptoFilter = FieldFilter(Must, LessThan, "system.indexTime", (System.currentTimeMillis() - 10000).toString)
+    val rangeFilters = List(fromFilter,uptoFilter)
+
     fieldFilters match {
-      case None => MultiFieldFilter(Must, List(
-        FieldFilter(Must, fromOp, "system.indexTime", timeStamp.toString),
-        FieldFilter(Must, LessThan, "system.indexTime", (System.currentTimeMillis() - 10000).toString)))
-      case Some(ff) => MultiFieldFilter(Must, List(ff,
-        FieldFilter(Must, fromOp, "system.indexTime", timeStamp.toString),
-        FieldFilter(Must, LessThan, "system.indexTime", (System.currentTimeMillis() - 10000).toString)))
+      case None                                         => MultiFieldFilter(Must, rangeFilters)
+      case Some(should@SingleFieldFilter(Should,_,_,_)) => MultiFieldFilter(Must, should.copy(fieldOperator = Must) :: rangeFilters)
+      case Some(ff)                                     => MultiFieldFilter(Must, ff :: rangeFilters)
     }
   }
 
