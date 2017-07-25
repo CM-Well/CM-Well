@@ -51,13 +51,13 @@ $ PATH=$PATH:~/sbt/bin;export PATH
 Confirm SBT runs:
 ```
 $ sbt about
-WARN: No sbt.version set in project/build.properties, base directory: /Users/u0005220/Code
+WARN: No sbt.version set in project/build.properties, base directory: /Users/TRnonodename/Code
 [warn] Executing in batch mode.
 [warn]   For better performance, hit [ENTER] to switch to interactive mode, or
 [warn]   consider launching sbt without any commands, or explicitly passing 'shell'
-[info] Set current project to code (in build file:/Users/u0005220/Code/)
+[info] Set current project to code (in build file:/Users/TRnonodename/Code/)
 [info] This is sbt 0.13.15
-[info] The current project is {file:/Users/u0005220/Code/}code 0.1-SNAPSHOT
+[info] The current project is {file:/Users/TRnonodename/Code/}code 0.1-SNAPSHOT
 [info] The current project is built against Scala 2.10.6
 [info] Available Plugins: sbt.plugins.IvyPlugin, sbt.plugins.JvmPlugin, sbt.plugins.CorePlugin, sbt.plugins.JUnitXmlReportPlugin, sbt.plugins.Giter8TemplatePlugin
 [info] sbt, sbt plugins, and build definitions are using Scala 2.10.6
