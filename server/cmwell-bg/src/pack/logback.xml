@@ -54,7 +54,7 @@
     </appender>
 
     <appender name="ASYNC_ES_FILE" class="ch.qos.logback.classic.AsyncAppender">
-        <appender-ref ref="FILE" />
+        <appender-ref ref="ES_FILE" />
         <maxFlushTime>0</maxFlushTime>
         <discardingThreshold>0</discardingThreshold>
     </appender>
