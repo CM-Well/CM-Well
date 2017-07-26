@@ -43,7 +43,7 @@ import scala.math.min
 import wsutil._
 
 @Singleton
-class BulkScrollHandler  @Inject() extends play.api.mvc.Controller with LazyLogging {
+class BulkScrollHandler  @Inject()(implicit ec: ExecutionContext) extends play.api.mvc.Controller with LazyLogging {
 
   //consts
   val paginationParamsForSingleResult = PaginationParams(0, 1)
@@ -88,7 +88,6 @@ class BulkScrollHandler  @Inject() extends play.api.mvc.Controller with LazyLogg
 
   def findValidRange(thinSearchParams: ThinSearchParams,
                      from: Long,
-                     toOpt: Option[Long] = None,
                      threshold: Long,
                      timeoutMarker: Future[Unit])(implicit ec: ExecutionContext): Future[CurrRangeForConsumption] = {
 
@@ -165,9 +164,7 @@ class BulkScrollHandler  @Inject() extends play.api.mvc.Controller with LazyLogg
       }
     }
 
-    toOpt.fold(toSeed.flatMap { to =>
-      iterate(to,to-from)
-    }){ to =>
+    toSeed.flatMap { to =>
       iterate(to,to-from)
     }
   }
@@ -279,9 +276,6 @@ class BulkScrollHandler  @Inject() extends play.api.mvc.Controller with LazyLogg
   def handle(request: Request[AnyContent]): Future[Result] = {
 
     def wasSupplied(queryParamKey: String) = request.queryString.keySet(queryParamKey)
-
-    //FIXME: what execution context should be used here?
-    implicit val ec = scala.concurrent.ExecutionContext.Implicits.global
 
     val currStateEither = request.getQueryString("position").fold[Either[ErrorMessage, Future[(BulkConsumeState,Option[Long])]]] {
       Left("position param is mandatory")

@@ -60,6 +60,7 @@ class BufferFillerActor(threshold: Int,
   implicit val labelId = label.map(LabelId.apply)
 
   val receivedUuids = mutable.Set.empty[Uuid]
+  val uuidsFromCurrentToken = mutable.Set.empty[Uuid]
   private var currToken: Token = _
   private var currConsumeState: ConsumeState = SuccessState(0)
   private var currKillSwitch: Option[KillSwitch] = None
@@ -94,7 +95,8 @@ class BufferFillerActor(threshold: Int,
       self ! Status
     case FinishedToken(nextToken) =>
       logger.info(s"received $tsvCounter uuids from token $currToken")
-      receivedUuids.clear()
+
+      receivedUuids  --= uuidsFromCurrentToken
       tsvCounter = 0L
 
       nextToken match {
@@ -174,6 +176,8 @@ class BufferFillerActor(threshold: Int,
 
     //          consumerStatsActor ! NewToken(token)
 
+    uuidsFromCurrentToken.clear()
+
     val source: Source[Token, (Future[Option[Token]], UniqueKillSwitch)] = Source.single(token)
       .map(createRequestFromToken)
       .map(_ -> None)
@@ -224,10 +228,12 @@ class BufferFillerActor(threshold: Int,
       .map { case (token, tsv) =>
         // if uuid was not emitted before, write it to buffer
         if (receivedUuids.add(tsv.uuid)) {
-//          consumerStatsActor ! ConsumeEvent
           self ! NewData(Some((token, tsv)))
         }
-        token }
+
+        uuidsFromCurrentToken.add(tsv.uuid)
+        token
+      }
       .viaMat(KillSwitches.single)(Keep.both)
 
 

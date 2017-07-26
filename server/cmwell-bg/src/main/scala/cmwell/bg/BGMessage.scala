@@ -16,10 +16,9 @@
 
 package cmwell.bg
 
-case class BGMessage[T](offset:Option[Long], message:T)
+case class BGMessage[T](offsets:Seq[Long] = Seq.empty[Long], message:T)
 
 object BGMessage {
-  def apply[T](offset: Long, message: T): BGMessage[T] = new BGMessage(Some(offset), message)
-
-  def apply[T](message: T): BGMessage[T] = new BGMessage(None, message)
+  def apply[T](offset: Long, message: T): BGMessage[T] = new BGMessage(Seq(offset), message)
+  def apply[T](message:T) = new BGMessage(message = message)
 }
