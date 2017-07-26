@@ -625,7 +625,7 @@ angular.module('cmwellAngApp.controllers', [])
     }
 
     
-    if(location.href.indexOf('?old-ui')>-1)
+    if(location.href.indexOf('?old-ui') > -1)
         setTimeout(function(){ $('<a class="not-displayed" href="'+location.href.replace('?old-ui','')+'">').appendTo('.header').click(); }, 100);
 
 
