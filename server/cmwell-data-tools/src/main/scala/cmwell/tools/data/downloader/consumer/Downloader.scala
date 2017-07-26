@@ -703,9 +703,6 @@ class Downloader(baseUrl: String,
     import akka.pattern._
     val prefetchBufferSize = 3000000
 
-    // contains http response data of current chunk
-    val buffer = new java.util.concurrent.ArrayBlockingQueue[Option[TokenAndTsv]](prefetchBufferSize)
-
     val initTokenFuture = token match {
       case Some(t) => Future.successful(t)
       case None => Downloader.getToken(
