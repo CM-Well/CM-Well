@@ -70,7 +70,8 @@ object InfotonSerializer extends LazyLogging {
     private[this] var indexTime: Option[Long] = None
     private[this] var indexName: String = ""
     private[this] var fields: Option[MMap[String, Set[FieldValue]]] = None
-    private[this] var fileContentBuilder = Array.newBuilder[Byte]
+    private[this] var fileContentBuildPosition = 0
+    private[this] var fileContentBuilder = null.asInstanceOf[Array[Byte]]
     private[this] var fileContentCountVerifier: Int = 0
     private[this] var fileContentLength: Int = 0
     private[this] var mimeType: String = _
@@ -120,7 +121,7 @@ object InfotonSerializer extends LazyLogging {
     }
 
     def setContentLength(contentLength: Int): Unit = {
-      fileContentBuilder.sizeHint(contentLength)
+      fileContentBuilder = new Array[Byte](contentLength)
       this.fileContentLength = contentLength
     }
 
@@ -131,7 +132,13 @@ object InfotonSerializer extends LazyLogging {
 
     def setFileContent(fileContent: Array[Byte], contentIndex: Int): Unit = {
       require(contentIndex == fileContentCountVerifier,s"file content chunk must arrive in order! got chunk #$contentIndex but expected #$fileContentCountVerifier for uuid [$uuidHint]")
-      fileContentBuilder ++= fileContent
+      var j = 0
+      val srcUntil = fileContentBuildPosition + fileContent.length
+      while (fileContentBuildPosition < srcUntil) {
+        fileContentBuilder(fileContentBuildPosition) = fileContent(j)
+        fileContentBuildPosition += 1
+        j += 1
+      }
       fileContentCountVerifier += 1
     }
 
@@ -163,10 +170,10 @@ object InfotonSerializer extends LazyLogging {
             val content = {
               if (mimeType eq null) None
               else {
-                val content = fileContentBuilder.result()
+                val content = fileContentBuilder//.result()
 
-                if(content.length != fileContentLength)
-                  logger.warn(s"content has different length than expected. expected: [$fileContentLength], actual: [${content.length}] for uuid [$uuidHint]")
+                if(fileContentBuildPosition != fileContentLength)
+                  logger.warn(s"content has different length than expected. expected: [$fileContentLength], actual: [$fileContentBuildPosition/${content.length}] for uuid [$uuidHint]")
 
                 val contentRes = if((dataPointer ne null) && content.isEmpty) None else Option(content)
                 Some(FileContent(contentRes, mimeType, fileContentLength, Option(dataPointer)))
