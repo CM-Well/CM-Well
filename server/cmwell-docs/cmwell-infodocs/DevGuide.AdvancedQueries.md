@@ -69,6 +69,10 @@ For example, the following query returns all organizations that have an address 
 
     <cm-well-host>/permid.org?op=search&qp=organizationStateProvince.mdaas:New%20York,-[organizationCity.mdaas:Rochester]
 
+The - operator can be also used to test for the non existence of a field. For example, the following query returns all organizations that have a province of New York but no city defined:
+
+    <cm-well-host>/permid.org?op=search&qp=organizationStateProvince.mdaas:New%20York,-organizationCity.mdaas:
+ 
 <a name="hdr2"></a>
 ## String-Matching Logic ##
 
