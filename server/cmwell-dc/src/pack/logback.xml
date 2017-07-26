@@ -189,7 +189,7 @@
         <appender-ref ref="ASYNC_AKKA_FILE" />
     </logger>
 
-    <logger name="cmwell.tools.data.sparql" additivity="false">
+    <logger name="cmwell.tools.data" additivity="false">
         <appender-ref ref="ASYNC_AGENTS_FILE"/>
     </logger>
 
