@@ -271,7 +271,7 @@ class BufferFillerActor(threshold: Int,
 
   def getNumRecords(token: Token): Future[Long] = {
     val decodedToken = Tokens.decompress(token).split('|')
-    val indexTime = decodedToken(0).toLong
+    val indexTime = Tokens.getFromIndexTime(token)
     val path = decodedToken(1)
 
     // http query parameters which should be always present
