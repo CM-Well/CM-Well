@@ -170,7 +170,7 @@ object InfotonSerializer extends LazyLogging {
             val content = {
               if (mimeType eq null) None
               else {
-                val content = fileContentBuilder//.result()
+                val content = fileContentBuilder
 
                 if(fileContentBuildPosition != fileContentLength)
                   logger.warn(s"content has different length than expected. expected: [$fileContentLength], actual: [$fileContentBuildPosition/${content.length}] for uuid [$uuidHint]")
