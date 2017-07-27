@@ -33,6 +33,7 @@ import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesResponse
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse
 import org.elasticsearch.action.bulk.{BulkItemResponse, BulkResponse}
+import org.elasticsearch.action.get.GetResponse
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.search.{SearchRequestBuilder, SearchResponse, SearchType}
 import org.elasticsearch.action.update.UpdateRequest
@@ -1208,8 +1209,12 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
 
   override def close(): Unit = ???
 
-  override def extractSource(uuid: String, index: String)
-                            (implicit executionContext:ExecutionContext) : Future[String] = ???
+  override def extractSource[T : EsSourceExtractor](uuid: String, index: String)
+                            (implicit executionContext:ExecutionContext) : Future[(T,Long)] = {
+    injectFuture[GetResponse](client.prepareGet(index, "infoclone", uuid).execute(_)).map{ hit =>
+      implicitly[EsSourceExtractor[T]].extract(hit) -> hit.getVersion
+    }
+  }
 
   override def purgeHistory(path: String, isRecursive: Boolean, partition: String)
                            (implicit executionContext:ExecutionContext) : Future[Boolean] = ???

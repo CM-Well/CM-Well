@@ -27,7 +27,7 @@ import cmwell.driver.Dao
 import cmwell.formats.{NquadsFlavor, RdfType}
 import cmwell.fts.{FTSServiceNew, Settings => _, _}
 import cmwell.irw._
-import cmwell.stortill.Strotill.{CasInfo, EsInfo, ZStoreInfo}
+import cmwell.stortill.Strotill.{CasInfo, EsExtendedInfo, ZStoreInfo}
 import cmwell.stortill.{Operations, ProxyOperations}
 import cmwell.tlog.{TLog, TLogState}
 import cmwell.util.{Box, BoxedFailure, EmptyBox, FullBox}
@@ -740,7 +740,7 @@ object CRUDServiceFS extends LazyLogging {
     proxyOps.rFix(path, cmwell.ws.Settings.xFixNumRetries, parallelism)
   }
 
-  def info(path: String, limit: Int): Future[(CasInfo, EsInfo, ZStoreInfo)] = proxyOps.info(path,limit)
+  def info(path: String, limit: Int): Future[(CasInfo, EsExtendedInfo, ZStoreInfo)] = proxyOps.info(path,limit)
 
   def fixDc(path: String, actualDc: String): Future[Boolean] = {
     proxyOps.fixDc(path, actualDc, cmwell.ws.Settings.xFixNumRetries)

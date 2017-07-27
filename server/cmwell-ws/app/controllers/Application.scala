@@ -1860,7 +1860,20 @@ callback=< [URL] >
         val c = cas.map {
           case (u, io) => s"cas $u ${io.map(i => JsonFormatter().render(i)).getOrElse("none")}"
         }
-        val e = es.groupBy(_._1).map { case (uuid, indices) => s"es  $uuid: ${indices.map(_._2).mkString("[", ",", "]")}" }
+        val e = es.groupBy(_._1).map {
+          case (uuid, tuples) =>
+            val (indices,sources) = tuples.unzip {
+              case (_, index, version, source) =>
+                s"$index($version)" -> source
+            }
+            val start = s"es  $uuid ${indices.mkString("[", ",", "]")} "
+            val head = start + sources.head
+            if(sources.size == 1) head
+            else {
+              val spaces = " " * start.length
+              head + sources.mkString("\n" + spaces)
+            }
+        }
         val z = zs.map("zs  ".+)
         val body = (c ++ e ++ z).sortBy(_.drop(4)).mkString("\n")
         Ok(body).as(overrideMimetype("text/plain;charset=UTF8", req)._2)
