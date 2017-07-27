@@ -42,6 +42,7 @@ object Strotill {
 
   type CasInfo = Vector[(String,Option[Infoton])]
   type EsInfo = Vector[(String,String)]
+  type EsExtendedInfo = Vector[(String,String,Long,String)]
   type ZStoreInfo = Vector[String]
 
 //  def apply(clusterName : String , host : String ) : Strotill = {

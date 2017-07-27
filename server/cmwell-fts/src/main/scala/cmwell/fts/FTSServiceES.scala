@@ -233,7 +233,9 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
   val scheduler = Executors.newSingleThreadScheduledExecutor()
 
   def extractSource(uuid: String, index: String)(implicit executionContext: ExecutionContext) = {
-    injectFuture[GetResponse](client.prepareGet(index, "infoclone", uuid).execute(_)).map(_.getSourceAsString)
+    injectFuture[GetResponse](client.prepareGet(index, "infoclone", uuid).execute(_)).map{hit =>
+      hit.getSourceAsString -> hit.getVersion
+    }
   }
 
   def executeBulkActionRequests(actionRequests: Iterable[ActionRequest[_ <: ActionRequest[_ <: AnyRef]]])

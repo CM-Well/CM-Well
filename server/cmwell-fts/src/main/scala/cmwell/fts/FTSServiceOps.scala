@@ -39,7 +39,7 @@ trait FTSServiceOps {
            (implicit executionContext:ExecutionContext): Future[Unit]
 
   def extractSource(uuid: String, index: String)
-                   (implicit executionContext:ExecutionContext) : Future[String]
+                   (implicit executionContext:ExecutionContext) : Future[(String,Long)]
 
   def executeBulkActionRequests(actionRequests:Iterable[ActionRequest[_ <: ActionRequest[_ <: AnyRef]]])
                                (implicit executionContext:ExecutionContext): Future[BulkResponse]
