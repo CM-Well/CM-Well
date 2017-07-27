@@ -95,14 +95,30 @@ class ProxyOperations private(irw: IRWService, ftsService: FTSServiceOps) extend
   override def verify(path : String, limit: Int) = {
 
     val casInfoFut = s.extractHistoryCas(path, limit)
-    val esInfoFut = s.extractHistoryEs(path, limit).map(_.groupBy(_._1))
+    s.extractHistoryEs(path, limit).flatMap{ v =>
+      if(v.groupBy(_._1).exists(_._2.size != 1)) Future.successful(false)
+      else {
+        val esMapFut = cmwell.util.concurrent.travemp(v) {
+          case (uuid, index) => {
+            import cmwell.fts.EsSourceExtractor.Implicits.esMapSourceExtractor
+            ftsService.extractSource(uuid, index).map {
+              case (source, version) => {
+                val system = source.get("system").asInstanceOf[java.util.HashMap[String, Object]]
+                val current = system.get("current").asInstanceOf[Boolean]
+                uuid -> (index, current)
+              }
+            }
+          }
+        }
 
-    for {
-      casInfo <- casInfoFut
-      esInfo <- esInfoFut
-    } yield esInfo.size == casInfo.size &&
-      esInfo.forall(_._2.size == 1)     &&
-      casInfo.forall { case (uuid, _) => esInfo.contains(uuid) }
+        for {
+          casInfo <- casInfoFut
+          esInfo <- esMapFut
+        } yield esInfo.size == casInfo.size &&
+          esInfo.count(_._2._2) < 2         && //must be either 0 (latest is deleted) or 1. cannot have more than 1 current
+          casInfo.forall { case (uuid, _) => esInfo.contains(uuid) }
+      }
+    }
   }
 
   type Timestamp = Long
@@ -304,7 +320,6 @@ class ProxyOperations private(irw: IRWService, ftsService: FTSServiceOps) extend
                         retry(ftsService.executeBulkIndexRequests(actions)).map(_ => (true, ""))
                       }
                       else {
-                        //TODO: ask Israel if infoton.indexName is used in old data path as well
                         val actions = foundAndFixed.map {
                           case i if isContainsCurrent && (i eq cur) => createEsIndexAction(i, "cmwell_current_latest")
                           case i => createEsIndexAction(i, "cmwell_history_latest")

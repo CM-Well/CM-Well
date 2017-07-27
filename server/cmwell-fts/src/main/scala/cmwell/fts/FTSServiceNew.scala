@@ -1209,10 +1209,10 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
 
   override def close(): Unit = ???
 
-  override def extractSource(uuid: String, index: String)
-                            (implicit executionContext:ExecutionContext) : Future[(String,Long)] = {
-    injectFuture[GetResponse](client.prepareGet(index, "infoclone", uuid).execute(_)).map{hit =>
-      hit.getSourceAsString -> hit.getVersion
+  override def extractSource[T : EsSourceExtractor](uuid: String, index: String)
+                            (implicit executionContext:ExecutionContext) : Future[(T,Long)] = {
+    injectFuture[GetResponse](client.prepareGet(index, "infoclone", uuid).execute(_)).map{ hit =>
+      implicitly[EsSourceExtractor[T]].extract(hit) -> hit.getVersion
     }
   }
 
