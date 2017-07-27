@@ -154,7 +154,14 @@ class SparqlProcessorManager extends Actor with LazyLogging {
         getYamlConfigs().map(AnalyzeReceivedConfig.apply) pipeTo self
 
       case AnalyzeReceivedConfig(received) =>
-        handleSensors(received)
+        handleSensors {
+          received.map { case (path, config) =>
+            val configName = Paths.get(path.utf8String).getFileName
+            val sensors = config.sensors.map(sensor => sensor.copy(name = s"$configName-${sensor.name}"))
+            path -> config.copy(sensors = sensors)
+          }
+        }
+//        handleSensors(received)
 
       case StartJob(registered, path, config) if registered =>
         val job = startJob(path, config)
@@ -288,7 +295,6 @@ class SparqlProcessorManager extends Actor with LazyLogging {
     }
 
     def generateActiveTables() = activeJobs.map { case (path, job) =>
-      val sensorNames = job.config.sensors.map(_.name)
       val title = Seq(s"""<span style="color:green"> **Active** </span> ${path.utf8String}""")
       val header = Seq("sensor", "point-in-time", "received-infotons", "infoton-rate", "last-update")
 
@@ -302,6 +308,7 @@ class SparqlProcessorManager extends Actor with LazyLogging {
         stats <- statsFuture
         storedTokens <- storedTokensFuture
       } yield {
+        val sensorNames = job.config.sensors.map(_.name)
         val pathsWithoutSavedToken = sensorNames.toSet diff storedTokens.keySet
         val allSensorsWithTokens = storedTokens ++ pathsWithoutSavedToken.map(_ -> "")
 
@@ -321,7 +328,8 @@ class SparqlProcessorManager extends Actor with LazyLogging {
           row
         }
 
-        val sparqlMaterializerStats = stats.get(SparqlTriggeredProcessor.sparqlMaterializerLabel).map { s =>
+        val configName = Paths.get(path.utf8String).getFileName
+        val sparqlMaterializerStats = stats.get(s"$configName-${SparqlTriggeredProcessor.sparqlMaterializerLabel}").map { s =>
           val totalRunTime = DurationFormatUtils.formatDurationWords(s.runningTime, true, true)
           s"""Materialized <span style="color:green"> **${s.receivedInfotons}** </span> infotons [$totalRunTime]""".stripMargin
         }.getOrElse("")
