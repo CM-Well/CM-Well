@@ -105,7 +105,11 @@ class APIValidationTests extends FunSpec with Matchers with Inspectors with Help
       }
 
       it("should get the data when trying to get it") {
-        cmwell.util.string.Hash.sha1(Await.result(Http.get(path), requestTimeout).body._2) should be(checksum)
+        Http.get(path).map{ res =>
+          withClue(res) {
+            cmwell.util.string.Hash.sha1(res.payload) should be(checksum)
+          }
+        }
       }
     }
 
