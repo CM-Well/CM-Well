@@ -281,8 +281,8 @@ class SparqlProcessorManager extends Actor with LazyLogging {
 
         val body = allSensorsWithTokens.map { case (sensorName, token) =>
           val decodedToken = if (token.nonEmpty) {
-            val decodedToken = cmwell.tools.data.utils.text.Tokens.decompress(token)
-            new org.joda.time.DateTime(decodedToken.split('|')(0).toLong).toString
+            val from = cmwell.tools.data.utils.text.Tokens.getFromIndexTime(token)
+            new org.joda.time.DateTime(from).toString
           }
           else ""
 
@@ -314,8 +314,8 @@ class SparqlProcessorManager extends Actor with LazyLogging {
 
         val body = allSensorsWithTokens.map { case (sensorName, token) =>
           val decodedToken = if (token.nonEmpty) {
-            val decodedToken = cmwell.tools.data.utils.text.Tokens.decompress(token)
-            new org.joda.time.DateTime(decodedToken.split('|')(0).toLong).toString
+            val from = cmwell.tools.data.utils.text.Tokens.getFromIndexTime(token)
+            new org.joda.time.DateTime(from).toString
           }
           else ""
 
