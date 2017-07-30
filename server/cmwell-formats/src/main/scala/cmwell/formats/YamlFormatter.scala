@@ -29,27 +29,7 @@ import org.yaml.snakeyaml.{Yaml, DumperOptions}
 import scala.collection.JavaConverters._
 
 
-/**
- * Created by gilad on 12/4/14.
- */
-object YamlFormatter extends Formatter {
-
-  private[this] var instance: YamlFormatter = _
-
-  def init(fieldNameModifier: String => String): Unit = {
-    if(null == instance) instance = new YamlFormatter(fieldNameModifier)
-    else logger.error("already initialized")
-  }
-
-  override def format: FormatType = YamlType
-
-  override def render(formattable: Formattable): String = instance match {
-    case null => throw new NoSuchElementException("YamlFormatter isn't initialized yet. no formatter available")
-    case _ => instance.render(formattable)
-  }
-}
-
-private class YamlFormatter private(override val fieldNameModifier: String => String) extends TreeLikeFormatter {
+class YamlFormatter(override val fieldNameModifier: String => String) extends TreeLikeFormatter {
 
   private[this] val yaml = {
     val propUtils: PropertyUtils = new PropertyUtils

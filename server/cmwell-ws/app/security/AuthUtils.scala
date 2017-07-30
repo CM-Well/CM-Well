@@ -16,6 +16,8 @@
 
 package security
 
+import javax.inject.Inject
+
 import cmwell.domain.{FieldValue, FileContent, FileInfoton, Infoton}
 import cmwell.ws.Settings
 import com.github.t3hnar.bcrypt._
@@ -28,17 +30,17 @@ import scala.concurrent.Future
 import scala.language.postfixOps
 import scala.util.Random
 
-object AuthUtils {
+class AuthUtils @Inject()(authCache: AuthCache, authorization: Authorization, crudServiceFS: CRUDServiceFS) {
   def changePassword(token: Token, currentPw: String, newPw: String): Future[Boolean] = {
     if(!token.isValid) {
       Future.successful(false)
     } else {
-      AuthCache.getUserInfoton(token.username) match {
+      authCache.getUserInfoton(token.username) match {
         case Some(user) if Authentication.passwordMatches(user, currentPw) => {
           val digestValue = newPw.bcrypt(generateSalt)
           val digest2Value = cmwell.util.string.Hash.md5(s"${token.username}:cmwell:$newPw")
           val newUserInfoton = user.as[JsObject] ++ JsObject(Seq("digest" -> JsString(digestValue), "digest2" -> JsString(digest2Value)))
-          CRUDServiceFS.putInfoton(FileInfoton(s"/meta/auth/users/${token.username}", Settings.dataCenter, None, Map.empty[String, Set[FieldValue]], FileContent(newUserInfoton.toString.getBytes, "application/json")))
+          crudServiceFS.putInfoton(FileInfoton(s"/meta/auth/users/${token.username}", Settings.dataCenter, None, Map.empty[String, Set[FieldValue]], FileContent(newUserInfoton.toString.getBytes, "application/json")))
         }
         case _ => Future.successful(false)
       }
@@ -56,7 +58,7 @@ object AuthUtils {
       orElse(req.cookies.get(key).map(_.value)).
       orElse(req.cookies.get(oldKey).map(_.value))
 
-    jwtOpt.flatMap(Token.apply)
+    jwtOpt.flatMap(Token(_,authCache))
   }
 
   def isValidatedAs(tokenOpt: Option[Token], expectedUsername: String) = tokenOpt.exists(token => token.isValid && token.username == expectedUsername)
@@ -69,13 +71,13 @@ object AuthUtils {
 
     tokenOpt match {
       case Some(token) if token.isValid => {
-        AuthCache.getUserInfoton(token.username) match {
-          case Some(user) => paths.filterNot(path => Authorization.isAllowedForUser((path, level), user))
+        authCache.getUserInfoton(token.username) match {
+          case Some(user) => paths.filterNot(path => authorization.isAllowedForUser((path, level), user))
           case None if token.username == "root" || token.username == "pUser" => Seq() // special case only required for cases when CRUD is not yet ready
           case None => paths
         }
       }
-      case _ => paths.filterNot(Authorization.isAllowedForAnonymousUser(_, level))
+      case _ => paths.filterNot(authorization.isAllowedForAnonymousUser(_, level))
     }
   }
 
@@ -83,7 +85,7 @@ object AuthUtils {
     if(!useAuthorizationParam && !evenForNonProdEnv)
       true
     else
-      getUser(token).exists(Authorization.isOperationAllowedForUser(op, _))
+      getUser(token).exists(authorization.isOperationAllowedForUser(op, _))
   }
 
   // todo rather than boolean result, one can return (deep-)filtered Seq (multitanency)
@@ -92,7 +94,7 @@ object AuthUtils {
       true
     } else {
       val fields = infotons.flatMap(_.fields).map(_.keySet).reduceLeft(_ ++ _)
-      getUser(token).exists(Authorization.areFieldsAllowedForUser(fields, _))
+      getUser(token).exists(authorization.areFieldsAllowedForUser(fields, _))
     }
   }
 
@@ -108,6 +110,6 @@ object AuthUtils {
   }
 
   private def getUser(tokenOpt: Option[Token]) =
-    tokenOpt.collect{ case token if token.isValid => AuthCache.getUserInfoton(token.username) }.flatten
+    tokenOpt.collect{ case token if token.isValid => authCache.getUserInfoton(token.username) }.flatten
 
 }

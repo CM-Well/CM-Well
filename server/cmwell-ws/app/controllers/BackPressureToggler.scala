@@ -25,13 +25,13 @@ import security.AuthUtils
 import javax.inject._
 
 @Singleton
-class BackPressureToggler  @Inject() extends Controller with LazyLogging {
+class BackPressureToggler  @Inject()(authUtils: AuthUtils) extends Controller with LazyLogging {
 
   val BACKPRESSURE_TRIGGER = "cmwell.ws.pushbackpressure.trigger"
 
   def handleBackpressure = Action { implicit req =>
-    val tokenOpt = AuthUtils.extractTokenFrom(req)
-    if (AuthUtils.isOperationAllowedForUser(security.Admin, tokenOpt)) {
+    val tokenOpt = authUtils.extractTokenFrom(req)
+    if (authUtils.isOperationAllowedForUser(security.Admin, tokenOpt)) {
       val thresholdFactor = req.getQueryString("pbp")
       thresholdFactor.map(_.toLowerCase) match {
         case Some("old") =>

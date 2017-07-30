@@ -38,16 +38,12 @@ object PersistentDMap extends DMapFacade {
   override def slaveType: DMapActorInit = DMapActorInit(classOf[PersistentSlave], "PersistentSlave")
 }
 
-
 class PersistentMaster extends DMapMaster {
   override val facade: DMapFacade = PersistentDMap
   override def onStart: Unit = {
 
   }
 }
-
-
-
 
 class PersistentSlave extends DMapSlave with LazyLogging {
 
@@ -73,8 +69,6 @@ class PersistentSlave extends DMapSlave with LazyLogging {
   }
 
   var hasNewData : Boolean = false
-
-
 
   private val dataFile = new File(s"${Grid.persistentDmapDir}/${Config.clusterName}")
 
