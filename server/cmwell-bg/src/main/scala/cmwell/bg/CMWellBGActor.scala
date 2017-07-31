@@ -77,6 +77,7 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
   override def postStop(): Unit = {
       logger info s"CMWellBGActor-$partition stopping"
     esReporterOpt.foreach(_.close())
+    stopAll
     super.postStop()
   }
 
