@@ -86,7 +86,7 @@ class Global @Inject()(implicit ec: ExecutionContext) extends LazyLogging {
       }
     }
 
-    Try(CRUDServiceFS.getInfoton("/", None, None)).recover(recoverWithExitOnFail)
+    //Try(CRUDServiceFS.getInfoton("/", None, None)).recover(recoverWithExitOnFail)
 
     RequestMonitor.init
 
