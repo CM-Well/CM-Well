@@ -50,7 +50,7 @@ object TestConfig {
 
 class GridSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
-  implicit val timeout = Timeout(20 seconds)
+  implicit val timeout = Timeout(40 seconds)
   val expectedMembers = 4
   var serviceJvmName : String = _
   var serviceJvm : Option[GridJvm] = None
@@ -94,7 +94,7 @@ class GridSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     Grid.joinClient
 
-    Thread.sleep(20000)
+    Thread.sleep(40000)
   }
 
   override protected def afterAll() {
