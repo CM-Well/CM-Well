@@ -76,7 +76,6 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
   val bootStrapServers = config.getString("cmwell.bg.kafka.bootstrap.servers")
   val persistCommandsTopic = config.getString("cmwell.bg.persist.commands.topic")
   val indexCommandsTopic = config.getString("cmwell.bg.index.commands.topic")
-  val latestIndexAliasName = config.getString("cmwell.bg.latestIndexAliasName")
   val maxInfotonWeightToIncludeInCommand = config.getInt("cmwell.bg.maxInfotonWeightToIncludeInCommand")
   val defaultDC = config.getString("cmwell.dataCenter.id")
   val esActionsBulkSize = config.getInt("cmwell.bg.esActionsBulkSize") // in bytes
