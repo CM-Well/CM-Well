@@ -45,7 +45,7 @@ class ServiceCoordinator extends Actor with LazyLogging {
 
   @throws[Exception](classOf[Exception])
   override def preStart(): Unit = {
-    Grid.system.scheduler.schedule(0.seconds, 10.seconds, self, SendRegistrations)
+    Grid.system.scheduler.schedule(0.seconds, 30.seconds, self, SendRegistrations)
   }
 
   override def receive: Receive = {
