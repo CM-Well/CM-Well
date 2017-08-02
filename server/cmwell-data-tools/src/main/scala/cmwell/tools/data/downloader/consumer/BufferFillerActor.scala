@@ -25,7 +25,7 @@ import akka.stream._
 import cmwell.tools.data.downloader.consumer.Downloader._
 import cmwell.tools.data.utils.ArgsManipulations
 import cmwell.tools.data.utils.ArgsManipulations.{HttpAddress, formatHost}
-import cmwell.tools.data.utils.akka.HeaderOps.getPosition
+import cmwell.tools.data.utils.akka.HeaderOps.{getHostnameValue, getPosition}
 import cmwell.tools.data.utils.akka.{DataToolsConfig, HttpConnections, lineSeparatorFrame}
 import cmwell.tools.data.utils.logging._
 import cmwell.tools.data.utils.text.Tokens
@@ -203,6 +203,10 @@ class BufferFillerActor(threshold: Int,
             case Some(pos) => pos.value
             case None      => throw new RuntimeException("no position supplied")
           }
+
+          val responseFromHost = getHostnameValue(h)
+          logger.info(s"received consume answer from host=${getHostnameValue(h)}")
+
 
           // store expected num infotons from stream
 //          expectedNumInfotons = getNumInfotonsValue(h) match {

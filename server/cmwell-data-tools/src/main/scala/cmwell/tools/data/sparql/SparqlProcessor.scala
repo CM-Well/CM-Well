@@ -198,6 +198,7 @@ class SparqlProcessor[T](baseUrl: String,
       }
 
       implicit val labelToRetry = label.map(LabelId.apply)
+      import cmwell.tools.data.utils.akka.HeaderOps._
 
       Flow[(Seq[ByteString], Option[T])]
         .map { case (data, context) =>
@@ -207,16 +208,16 @@ class SparqlProcessor[T](baseUrl: String,
         .via(Retry.retryHttp(retryTimeout, parallelism, baseUrl)(createRequest, validateResponseBody))
         .map {
           case (Success(HttpResponse(s,h,e,p)), paths, contextAndStartTime) if s.isSuccess() =>
-            logger.debug("received sparql response for paths: {}", concatByteStrings(paths, ByteString(",")).utf8String)
+            logger.debug(s"host=${getHostnameValue(h)} received sparql response for paths: {}", concatByteStrings(paths, ByteString(",")).utf8String)
 
             val f = DataPostProcessor.postProcessByFormat(SparqlProcessor.format, e.withoutSizeLimit().dataBytes)
               .via(lineSeparatorFrame)
               .filter(_.nonEmpty)
 
             contextAndStartTime -> f
-          case (Success(HttpResponse(s,_,e,_)), paths, contextAndStartTime) =>
+          case (Success(HttpResponse(s,h,e,_)), paths, contextAndStartTime) =>
             e.discardBytes()
-            redLogger.error(s"error: status=$s entity=$e paths=${paths.map(_.utf8String).mkString(",")}")
+            redLogger.error(s"host=${getHostnameValue(h)} error: status=$s entity=$e paths=${paths.map(_.utf8String).mkString(",")}")
 
             contextAndStartTime -> Source.empty
           case (Failure(err), paths, contextAndStartTime) =>
