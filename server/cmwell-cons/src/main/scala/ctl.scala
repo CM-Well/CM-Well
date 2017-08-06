@@ -1658,7 +1658,7 @@ abstract class Host(user: String,
     dataInitializer.waitForWs()
     info("  inserting meta data")
     injectMetaData(host)
-    info("  uploading SPA to meta/app")
+    info("  uploading SPAs to meta/app")
     dataInitializer.uploadDirectory("data", s"http://$host:9000/meta/app/")
     info("  uploading sys")
     dataInitializer.uploadDirectory("sys", s"http://$host:9000/meta/sys/wb/")

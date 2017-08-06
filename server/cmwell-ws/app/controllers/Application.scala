@@ -2154,8 +2154,8 @@ class CachedSpa @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
   val oldObgCache = new SingleElementLazyAsyncCache[String](600000)(doFetchContent(true,false))(Combiner.replacer,ec)
   val newNbgCache = new SingleElementLazyAsyncCache[String](600000)(doFetchContent(false,true))(Combiner.replacer,ec)
 
-  private val contentPath = "/meta/app/index.html"
-  private val newContentPath = "/meta/app/react/index.html"
+  private val contentPath    = "/meta/app/old-ui/index.html"
+  private val newContentPath = "/meta/app/main/index.html"
 
   private def doFetchContent(isOldUi: Boolean, nbg: Boolean): Future[String] = {
     val path = if(isOldUi) contentPath else newContentPath
