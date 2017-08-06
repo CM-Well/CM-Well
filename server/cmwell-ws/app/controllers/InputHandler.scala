@@ -62,10 +62,14 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
    */
   def handlePost(format: String = "") = ingestPushback.async(parse.raw) { implicit req =>
     RequestMonitor.add("in", req.path, req.rawQueryString, req.body.asBytes().fold("")(_.utf8String))
-    val resp = if ("jsonw" == format.toLowerCase) handlePostWrapped(req) -> Future.successful(Seq.empty[(String,String)]) else handlePostRDF(req)
-    resp._2.flatMap { headers =>
-      keepAliveByDrippingNewlines(resp._1,headers)
-    }.recover(errorHandler)
+    if (req.getQueryString("priority").isDefined && !authUtils.isOperationAllowedForUser(security.PriorityWrite, authUtils.extractTokenFrom(req), evenForNonProdEnv = true)) {
+      Future.successful(Forbidden(Json.obj("success" -> false, "message" -> "User not authorized for priority write")))
+    } else {
+      val resp = if ("jsonw" == format.toLowerCase) handlePostWrapped(req) -> Future.successful(Seq.empty[(String, String)]) else handlePostRDF(req)
+      resp._2.flatMap { headers =>
+        keepAliveByDrippingNewlines(resp._1, headers)
+      }.recover(errorHandler)
+    }
   }
 
   /**
@@ -323,6 +327,8 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
               Future(Ok(Json.obj("success" -> true, "dry-run" -> true)))
             else {
 
+              val isPriorityWrite = req.getQueryString("priority").isDefined
+
               val tracking = req.getQueryString("tracking")
               val blocking = req.getQueryString("blocking")
 
@@ -355,12 +361,12 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
                 require(dontTrack.forall(!atomicUpdates.contains(_)),s"atomic updates cannot operate on multiple actions in a single ingest.")
 
                 val to = tidOpt.map(_.token)
-                val d1 = crudService.deleteInfotons(dontTrack.map(_ -> None))
-                val d2 = crudService.deleteInfotons(track.map(_ -> None),to,atomicUpdates)
+                val d1 = crudService.deleteInfotons(dontTrack.map(_ -> None), isPriorityWrite=isPriorityWrite)
+                val d2 = crudService.deleteInfotons(track.map(_ -> None),to,atomicUpdates, isPriorityWrite)
 
                 d1.zip(d2).flatMap { case (b01,b02) =>
-                  val f1 = crudService.upsertInfotons(infotonsToUpsert, deleteMap, to, atomicUpdates)
-                  val f2 = crudService.putInfotons(infotonsToPut, to, atomicUpdates)
+                  val f1 = crudService.upsertInfotons(infotonsToUpsert, deleteMap, to, atomicUpdates, isPriorityWrite)
+                  val f2 = crudService.putInfotons(infotonsToPut, to, atomicUpdates, isPriorityWrite)
                   f1.zip(f2).flatMap { case (b1, b2) =>
                     if (b01 && b02 && b1 && b2)
                       blocking.fold(Future.successful(Ok(Json.obj("success" -> true)).withHeaders(tidHeaderOpt.toSeq: _*))) { _ =>
@@ -432,6 +438,8 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
             case None => JsonEncoder.decodeInfoton(body).map(Vector(_))
           }
 
+          val isPriorityWrite = req.getQueryString("priority").isDefined
+
           vec match {
             case Some(v) => {
               if (skipValidation || v.forall(i => InfotonValidator.isInfotonNameValid(normalizePath(i.path)))) {
@@ -476,10 +484,10 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
                           case i: Infoton => i //to prevent compilation warnings...
                         } else v) ++ metaFields
                         if (req.getQueryString("replace-mode").isEmpty)
-                          crudService.putInfotons(infotonsToPut).map(b => Ok(Json.obj("success" -> b)))
+                          crudService.putInfotons(infotonsToPut, isPriorityWrite=isPriorityWrite).map(b => Ok(Json.obj("success" -> b)))
                         else {
                           val d: Map[String, Set[String]] = infotonsToPut collect { case i if i.fields.isDefined => prependSlash(i.path) -> i.fields.get.keySet} toMap;
-                          crudService.upsertInfotons(infotonsToPut.toList, d.mapValues(_.map(_ -> None).toMap)).map(b => Ok(Json.obj("success" -> b)))
+                          crudService.upsertInfotons(infotonsToPut.toList, d.mapValues(_.map(_ -> None).toMap), isPriorityWrite=isPriorityWrite).map(b => Ok(Json.obj("success" -> b)))
                         }
                       }
                     }
