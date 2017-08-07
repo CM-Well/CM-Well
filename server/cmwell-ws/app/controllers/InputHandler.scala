@@ -62,6 +62,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
    */
   def handlePost(format: String = "") = ingestPushback.async(parse.raw) { implicit req =>
     RequestMonitor.add("in", req.path, req.rawQueryString, req.body.asBytes().fold("")(_.utf8String))
+    // first checking "priority" query string. Only if it is present we will consult the UserInfoton which is more expensive (order of && below matters):
     if (req.getQueryString("priority").isDefined && !authUtils.isOperationAllowedForUser(security.PriorityWrite, authUtils.extractTokenFrom(req), evenForNonProdEnv = true)) {
       Future.successful(Forbidden(Json.obj("success" -> false, "message" -> "User not authorized for priority write")))
     } else {
