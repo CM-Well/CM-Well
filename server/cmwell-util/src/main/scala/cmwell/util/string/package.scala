@@ -217,7 +217,7 @@ package object string extends LazyLogging  {
   def splitAtNoSep(str: String, sep: Char): (String, String) = {
     if(!str.contains(sep)) (str,"")
     else {
-      val tuple = str.splitAt(str.indexOf(sep))
+      val tuple = str.span(sep.!=)
       (tuple._1,tuple._2.tail)
     }
   }

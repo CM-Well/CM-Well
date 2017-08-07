@@ -16,45 +16,46 @@
 
 package actions
 
+import javax.inject._
+
+import akka.actor.ActorSystem
+import akka.stream.Materializer
 import controllers.HealthUtils
 import logic.CRUDServiceFS
-import cmwell.domain._
-
+import cmwell.util.http.{SimpleHttpClient => Http, _}
+import cmwell.syntaxutils.!!!
+import cmwell.domain.{SimpleResponse => _, _}
+import cmwell.util.concurrent.SimpleScheduler
 import scala.util._
-import scala.concurrent.{Await,ExecutionContext, duration, Future, Promise},
-  ExecutionContext.Implicits.global,
-  duration._
-
+import scala.concurrent.{Await, ExecutionContext, Future, Promise, duration}
+import duration._
 import com.typesafe.scalalogging.LazyLogging
-
 import play.api.libs.ws._
 import play.api.libs.json._
 import play.api.Play.current
-
 import org.joda.time._
+
 import scala.language.postfixOps
 
-/**
- * Created by gilad on 10/20/14.
- */
-object DashBoard extends LazyLogging {
+object Color extends Enumeration {
+  type Color = Value
+  type ColorTuple4 = Tuple4[Color,Color,Color,Color]
+  val Green, Yellow, Red, Grey = Value
+
+  def apply(color: String): Color = color.toLowerCase match {
+    case "green" => Green
+    case "yellow" => Yellow
+    case "red" => Red
+    case _ => Grey
+  }
+}
+
+import Color._
+
+@Singleton
+class DashBoard @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionContext, sys: ActorSystem, mat: Materializer) extends LazyLogging { dashBoard =>
 
   val timeOut = cmwell.ws.Settings.cacheTimeout.seconds
-
-  object Color extends Enumeration {
-    type Color = Value
-    type ColorTuple4 = Tuple4[Color,Color,Color,Color]
-    val Green, Yellow, Red, Grey = Value
-
-    def apply(color: String): Color = color.toLowerCase match {
-      case "green" => Green
-      case "yellow" => Yellow
-      case "red" => Red
-      case _ => Grey
-    }
-  }
-
-  import Color._
 
   type FutureColorTuple4 = (Future[Color],Future[Color],Future[Color],Future[Color])
   type Ratio = (Int,Int)
@@ -83,11 +84,10 @@ object DashBoard extends LazyLogging {
     @volatile private[this] var hosts: Set[String] = Set.empty[String]
 
     private[this] val hostsDaemonCancellable = {
-      import play.api.libs.concurrent.Akka
       import scala.concurrent.duration.DurationInt
 
-      cmwell.util.concurrent.SimpleScheduler.scheduleAtFixedRate(0 seconds, 1 minutes) {
-        CRUDServiceFS.getInfoton("/meta/sys",None,None).map{
+      SimpleScheduler.scheduleAtFixedRate(0 seconds, 1 minutes) {
+        crudServiceFS.getInfoton("/meta/sys",None,None).map{
           case None => logger.error("could not retrieve data from local CRUDService")
           case Some(Everything(metaSys)) => metaSys.fields match {
             case None => logger.error("/meta/sys retrieved from local CRUDService, but does not contain fields")
@@ -97,7 +97,7 @@ object DashBoard extends LazyLogging {
               }
             }
           }
-          case Some(UnknownNestedContent(_)) => ??? //  not reachable! case written to silence compilation warnings
+          case Some(UnknownNestedContent(_)) => !!! //  not reachable! case written to silence compilation warnings
         }
       }
     }
@@ -112,7 +112,7 @@ object DashBoard extends LazyLogging {
     val p = Promise[Either[String,(Ratio,String)]]()
 
     val fsfes: Future[Set[Future[Either[String,(String,Int)]]]] = foreachHost{ host =>
-      WS.url(s"http://$host/?format=json").get().map{
+      Http.get(s"http://$host/?format=json").map{
         wsr => Right(host -> wsr.status)
       }.recover{
         case ex: Throwable => {
@@ -146,18 +146,18 @@ object DashBoard extends LazyLogging {
 
   def getStatusForAll = {
     val fSet = foreachHost{ host =>
-      val ws = WS.url(s"http://$host/?format=json").get().map(_.status)
+      val ws = Http.get(s"http://$host/?format=json").map(_.status)
       val (bg,es) = {
-        val ff = WS.url(s"http://$host/proc/node?format=json").get().map(_.json.\("fields").get).recover{
+        val ff = Http.get(s"http://$host/proc/node?format=json").map(r => Json.parse(r.payload).\("fields").get).recover{
           case ex: java.net.ConnectException => {
             logger.error(s"could not retrieve data from $host/proc/node",ex)
             val grey = JsArray(Seq(JsString("grey")))
             JsObject(Seq("batch_color" -> grey, "es_color" -> grey))
           }
         }
-        (ff.map(_.\("batch_color")(0).as[String]) -> ff.map(_.\("es_color")(0).as[String]))
+        ff.map(_.\("batch_color")(0).as[String]) -> ff.map(_.\("es_color")(0).as[String])
       }
-      val ca = WS.url(s"http://$host/health/cas").get().map(_.body.lines.collect{
+      val ca = Http.get(s"http://$host/health/cas")(SimpleResponse.Implicits.UTF8StringHandler,ec,sys,mat).map(_.payload.lines.collect{
         case CassandraStatus1(status,ip,load,owns,id,token,rack) => CassandraStatusExtracted(status,ip,load,owns,id,token,rack)
         case CassandraStatus2(status,ip,load,token,owns,id,rack) => CassandraStatusExtracted(status,ip,load,owns,id,token,rack)
         case CassandraStatus3(status,ip,load,token,id,rack) => CassandraStatusExtracted(status,ip,load,"NO DATA",id,token,rack)
@@ -184,42 +184,28 @@ object DashBoard extends LazyLogging {
     }
 
     def tlogStatus: TlogState = {
-      val updatesWriteHead = CRUDServiceFS.updatesTlog.size
-      val updatesReadHead = CRUDServiceFS.impState.position
-      val indexesWriteHead = CRUDServiceFS.uuidsTlog.size
-      val indexesReadHead = CRUDServiceFS.indexerState.position
+      val updatesWriteHead = crudServiceFS.updatesTlog.size
+      val updatesReadHead = crudServiceFS.impState.position
+      val indexesWriteHead = crudServiceFS.uuidsTlog.size
+      val indexesReadHead = crudServiceFS.indexerState.position
       (updatesWriteHead, updatesReadHead, indexesWriteHead, indexesReadHead)
     }
 
-    def get: Tuple2[TlogState,TlogState] = (previousState -> currentState)
+    def get: Tuple2[TlogState,TlogState] = previousState -> currentState
 
     def getAll: Future[Set[(String,Option[TlogState])]] = {
-//      val p = Promise[Set[(String,Option[TlogState])]]()
       val fsft = foreachHost { host =>
         host -> getBatchStatusForHost(host)
       }
-//val ffff =
       fsft.map(_.map{
         case (host, bgStts) => host -> Try(Await.result(bgStts, timeOut)).toOption
       })
-//
-//      ffff
-//
-//      val ffst = fsft.map(Future.sequence(_))
-//      ffst.onComplete{
-//        case Failure(err) => p.failure(err)
-//        case Success(fst) => fst.onComplete{
-//          case Failure(ex) => p.failure(ex)
-//          case Success(st) => p.success(st)
-//        }
-//      }
-//      p.future
     }
 
     def getAggregatedBatchColor: Future[(String,String)] = {
       val fsfs = foreachHost { host =>
-        host -> WS.url(s"http://$host/proc/node?format=json").get().map { wsr =>
-          val fields = wsr.json \ "fields"
+        host -> Http.get(s"http://$host/proc/node?format=json").map { wsr =>
+          val fields = Json.parse(wsr.payload) \ "fields"
           val batchColor = fields.\("batch_color")(0).as[String]
           val uw = fields.\("tlog_update_write_head")(0).as[Long]
           val ur = fields.\("tlog_update_read_head")(0).as[Long]
@@ -256,9 +242,9 @@ object DashBoard extends LazyLogging {
 
     //TODO: return cached values on failures, recover future with cached values etc'...
     def getBatchStatusForHost(host: String = "localhost:9000"): Future[TlogState] = {
-      WS.url(s"http://$host/proc/node?format=json").get().map{
-        case wsr: WSResponse if(wsr.status == 200) => {
-          val fields = wsr.json \ "fields"
+      Http.get(s"http://$host/proc/node?format=json").map{
+        case wsr if wsr.status == 200 => {
+          val fields = Json.parse(wsr.payload) \ "fields"
           val uwh: Long = (fields \ "tlog_update_write_head")(0).as[Long]
           val urh: Long = (fields \ "tlog_update_read_head")(0).as[Long]
           val iwh: Long = (fields \ "tlog_index_write_head")(0).as[Long]
@@ -294,23 +280,23 @@ object DashBoard extends LazyLogging {
       val updatesOk = isOk(prv._1,prv._2,cur._1,cur._2)
       val indexesOk = isOk(prv._3,prv._4,cur._3,cur._4)
       if(updatesOk && indexesOk) Green
-      else if(updatesOk) Yellow //, s"index TLog status: current write head - ${cur._3}, current read head - ${cur._4}, previous write head - ${prv._3}, previous read head - ${prv._4}")
-      else if(indexesOk) Yellow //, s"update TLog status: current write head - ${cur._1}, current read head - ${cur._2}, previous write head - ${prv._1}, previous read head - ${prv._2}")
-      else Red //, s"both index & update tlogs has issues: current state: update write/read - ${cur._1}/${cur._2}, index write/read - ${cur._3}/${cur._4}, previous state: update write/read - ${prv._1}/${prv._2}, index write/read - ${prv._3}/${prv._4}")
+      else if(updatesOk) Yellow
+      else if(indexesOk) Yellow
+      else Red
     }
   }
 
   def getElasticsearchStatus(host: String = HealthUtils.ip): Future[(String,String)] = {
-    cmwell.util.http.SimpleHttpClient.get(s"http://${host}:9200/_cluster/health").map { res =>
+    cmwell.util.http.SimpleHttpClient.get(s"http://$host:9200/_cluster/health").map { res =>
       val j: JsValue = Json.parse(res.payload)
       val color: String = j.\("status").as[String]
       val n: Int = j.\("number_of_nodes").as[Int]
       val d: Int = j.\("number_of_data_nodes").as[Int]
       val p: Int = j.\("active_primary_shards").as[Int]
       val s: Int = j.\("active_shards").as[Int]
-      (color -> s"n:$n,d:$d,p:$p,s:$s")
+      color -> s"n:$n,d:$d,p:$p,s:$s"
     }.recover {
-      case ex: Throwable => ("grey" -> ex.getMessage)
+      case ex: Throwable => "grey" -> ex.getMessage
     }
   }
 
@@ -326,7 +312,7 @@ object DashBoard extends LazyLogging {
   }
 
   def generateHealthData: ComponentHealthFutureTuple4 = {
-    val wsTuple = DashBoard.getCmwellWSRatio.map {
+    val wsTuple = dashBoard.getCmwellWSRatio.map {
       case Right(((n, d),msg)) => {
         val clr = if (n + 1 >= d) Green
         else {
@@ -343,9 +329,9 @@ object DashBoard extends LazyLogging {
       case (clr,msg) => Color(clr) -> msg
     }
 
-    val esTuple = DashBoard.getElasticsearchStatus().map(t => (Color(t._1) -> t._2))
+    val esTuple = dashBoard.getElasticsearchStatus().map(t => (Color(t._1) -> t._2))
 
-    val caTuple = DashBoard.getCassandraStatus.map { xs =>
+    val caTuple = dashBoard.getCassandraStatus.map { xs =>
       val upNormal = xs.filter(_.status.toUpperCase == "UN")
       val clr = cassandraStatusToColor(xs)
       (clr, s"${upNormal.size} Up / ${xs.size}")
@@ -378,7 +364,7 @@ object DashBoard extends LazyLogging {
    * @return health-detailed data
    */
   def generateDetailedHealthData: Future[List[(String,FutureColorTuple4)]] = {
-    val f = DashBoard.getStatusForAll.map {stf =>
+    val f = dashBoard.getStatusForAll.map { stf =>
       stf.map {
         case (host,(wsResponse, batchColor, cassStats, esColor)) => {
           val ws = wsResponse.map(r => if(r == 200) Green else Yellow).recover{case _ => Red}

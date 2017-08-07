@@ -19,13 +19,16 @@ package cmwell.web.ld.query
 import java.util
 import java.util.concurrent.TimeUnit
 import java.util.function.{Function, Predicate}
+import javax.inject.Inject
 
+import cmwell.crashableworker.WorkerMain
 import cmwell.domain._
 import cmwell.fts._
 import cmwell.syntaxutils._
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import com.typesafe.scalalogging.LazyLogging
-import controllers.{JenaUtils, SpHandler}
+import controllers.{JenaUtils, NbgToggler, SpHandler}
+import ld.query.{ArqCache, JenaArqExtensionsUtils}
 import logic.CRUDServiceFS
 import org.apache.jena.graph.impl.GraphBase
 import org.apache.jena.graph.{Graph, Node, NodeFactory, Triple}
@@ -43,18 +46,14 @@ import org.apache.jena.sparql.util.Context
 import org.apache.jena.util.iterator.ExtendedIterator
 import org.joda.time.DateTime
 import org.joda.time.format.{DateTimeFormatter, ISODateTimeFormat}
-import wsutil.{HashedFieldKey, RawFieldFilter, RawMultiFieldFilter, RawSingleFieldFilter}
+import org.apache.jena.sparql.engine.{ExecutionContext => JenaExecutionContext}
 
-import org.apache.jena.sparql.engine.{ ExecutionContext => JenaExecutionContext }
-
-import scala.annotation.switch
 import scala.collection.JavaConversions._
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}
-import cmwell.crashableworker.WorkerMain.{cwLogger => logger}
 
 //TODO     Don't mess with low level strings. Just like mangle and unmangle methods,
 //TODO     have more util methods such as isEngine or isInternal etc.
@@ -63,214 +62,32 @@ import cmwell.crashableworker.WorkerMain.{cwLogger => logger}
   * Created by yaakov on 11/30/15.
   */
 object JenaArqExtensions {
-  lazy val init = {
-    // init extension1
-    val globalArqContext = ARQ.getContext
-    val originalStageGenerator = globalArqContext.get(ARQ.stageGenerator).asInstanceOf[StageGenerator]
-    StageBuilder.setGenerator(globalArqContext, new SortingAndMappingStageGenerator(Option(originalStageGenerator)))
-
-    // init extension2
-    val factory = new EmbedLimitQueryEngineFactory()
-    QueryEngineRegistry.addFactory(factory)
-
-    logger.info("JenaArqExtensions were applied.")
-  }
+  def get(n: JenaArqExtensionsUtils,o: JenaArqExtensionsUtils) = new JenaArqExtensions(n,o)
 }
 
-object JenaArqExtensionsUtils {
-  case class BakedSparqlQuery(qe: QueryExecution, driver: DatasetGraphCmWell)
+class JenaArqExtensions private(nJenaArqExtensionsUtils: JenaArqExtensionsUtils,oJenaArqExtensionsUtils: JenaArqExtensionsUtils) extends LazyLogging {
+  // init extension1
+  val globalArqContext = ARQ.getContext
+  val originalStageGenerator = globalArqContext.get(ARQ.stageGenerator).asInstanceOf[StageGenerator]
+  StageBuilder.setGenerator(globalArqContext, new SortingAndMappingStageGenerator(nJenaArqExtensionsUtils, oJenaArqExtensionsUtils, Option(originalStageGenerator)))
 
-  val emptyLtrl = NodeFactory.createLiteral("")
+  // init extension2
+  val factory = new EmbedLimitQueryEngineFactory()
+  QueryEngineRegistry.addFactory(factory)
 
-  def buildCmWellQueryExecution(query: Query, host: String, config: Config = Config.defaultConfig) = {
-    val driver = new DatasetGraphCmWell(host, config)
-    val model = ModelFactory.createModelForGraph(driver.getDefaultGraph)
-    val qe = QueryExecutionFactory.create(query, model) // todo quads
-
-    BakedSparqlQuery(qe, driver)
-  }
-
-  def predicateToInnerRepr(predicate: Node): Node = {
-    if(!predicate.isURI) predicate else {
-      val nsIdentifier = ArqCache.namespaceToHash(predicate.getNameSpace)
-      val localNameDotHash = predicate.getLocalName + "." + nsIdentifier // no dollar sign!
-      NodeFactory.createURI(cmwellInternalUriPrefix + localNameDotHash)
-    }
-  }
-
-  def innerReprToPredicate(innerReprPred: Node): Node = {
-    if(innerReprPred.getURI.contains("/meta/sys") || innerReprPred.getURI.contains("msg://") || innerReprPred.getURI.contains(engineInternalUriPrefix+"FAKE")) innerReprPred else {
-      val (hash, localName) = {
-        val splt = innerReprPred.getURI.replace(cmwellInternalUriPrefix, "").split('#')
-        splt(0) -> splt(1)
-      }
-      val nsUri = ArqCache.hashToNamespace(hash)
-      NodeFactory.createURI(nsUri + localName)
-    }
-  }
-
-  def mangleSubjectVariableNameIntoPredicate(t: Triple): Triple =
-    new Triple(t.getSubject, mangleSubjectVariableNameIntoPredicate(t.getSubject, t.getPredicate), t.getObject)
-
-  def mangleSubjectVariableNameIntoPredicate(key: String, t: Triple): Triple =
-    new Triple(t.getSubject, mangleSubjectVariableNameIntoPredicate(NodeFactory.createLiteral(key), t.getPredicate), t.getObject)
-
-  def mangleSubjectVariableNameIntoPredicate(s: Node, p: Node): Node = {
-    val varName = if(s.isVariable) s.getName else ""
-    NodeFactory.createURI(varName + manglingSeparator + p.getURI)
-  }
-
-  def unmanglePredicate(p: Node): (String,Node) = {
-    if(!p.isURI || !p.getURI.contains(manglingSeparator)) "" -> p else {
-      val idxOfSep = p.getURI.indexOf(JenaArqExtensionsUtils.manglingSeparator)
-      val (subVarName, sepAndPred) = p.getURI.splitAt(idxOfSep)
-      subVarName -> NodeFactory.createURI(sepAndPred.substring(1))
-    }
-  }
-
-  def normalizeAsOutput(q: Quad): Quad =
-    new Quad(q.getGraph, q.getSubject, innerReprToPredicate(q.getPredicate), q.getObject)
-
-  def squashBySubject(triples: Seq[Triple]): Triple = {
-    (triples.length: @switch) match {
-      case 0 =>
-        throw new IllegalArgumentException("squash of empty list")
-      case 1 =>
-        triples.head // not squashing
-      case _ =>
-        val containerPredicate: Node = NodeFactory.createURI(engineInternalUriPrefix + triples.map { t =>
-          t.getPredicate.getURI.replace(cmwellInternalUriPrefix, "") + ":" + objectToQpValue(t.getObject).getOrElse("")
-        }.mkString("|"))
-
-        val emptyLiteral = NodeFactory.createLiteral("")
-        val mangledContainerPredicate = JenaArqExtensionsUtils.mangleSubjectVariableNameIntoPredicate(triples.head.getSubject, containerPredicate)
-
-        new Triple(emptyLiteral, mangledContainerPredicate, emptyLiteral)
-    }
-  }
-
-  def objectToQpValue(obj: Node) = {
-    if(obj.isURI)
-      Some(obj.getURI)
-    else if(obj.isLiteral)
-      Some(obj.getLiteral.getValue.toString)
-    else
-      None // making qp just `field:`
-  }
-
-  def explodeContainerPredicate(pred: Node): Seq[(String,String)] = {
-    pred.getURI.replace(engineInternalUriPrefix,"").split('|').map(cmwell.util.string.spanNoSepBy(_, ':'))
-  }
-
-  // todo add DocTest :)
-  def sortTriplePatternsByAmount(triplePatterns: Iterable[Triple], amountCounter: (Triple, Option[CmWellGraph]) => Long = defaultAmountCounter)
-                                (graph: CmWellGraph): Seq[Triple] = {
-    def isVar(t: Triple) =
-      t.getSubject.isVariable || (t.getSubject.isLiteral && t.getSubject.getLiteralValue == "")
-
-    def isEngine(t: Triple) = t.getPredicate.getURI.contains(engineInternalUriPrefix)
-
-    val allSorted = Vector.newBuilder[Triple]
-    val actualSubBuilder = Vector.newBuilder[Triple]
-    val engineSubBuilder = Vector.newBuilder[Triple]
-    allSorted.sizeHint(triplePatterns.size)
-
-    triplePatterns.foreach { triple =>
-      if(!isVar(triple)) allSorted += triple // const subjects come first.
-      else if(isEngine(triple)) engineSubBuilder += triple
-      else actualSubBuilder += triple
-    }
-
-    val engineTriples = engineSubBuilder.result()
-    val actualTriples = actualSubBuilder.result()
-
-    val squashedSubjects = engineTriples.map(t => unmanglePredicate(t.getPredicate)._1).toSet
-    def isSquashed(t: Triple): Boolean = squashedSubjects(t.getSubject.getName)
-
-    val (squashedActualTriples, nonSquashedActualTriples) = actualTriples.partition(isSquashed)
-    val groupedByEngine = squashedActualTriples.groupBy(_.getSubject.getName)
-
-    (engineTriples ++ nonSquashedActualTriples).sortBy(amountCounter(_,Option(graph))).foreach { triple =>
-      allSorted += triple
-      if(isEngine(triple)) {
-        val tripleSubName = unmanglePredicate(triple.getPredicate)._1
-        allSorted ++= groupedByEngine(tripleSubName)
-      }
-    }
-
-    allSorted.result()
-  }
-
-  private def defaultAmountCounter(t: Triple, graph: Option[CmWellGraph] = None) = {
-    val ff = JenaArqExtensionsUtils.predicateToFieldFilter(t.getPredicate)
-    val amount = DefaultDataFetcher.count(ff)
-
-    graph.collect { case g if g.dsg.config.explainOnly => g.dsg }.foreach { dsg =>
-      val pred = Try(unmanglePredicate(t.getPredicate)._2).toOption.getOrElse(t.getPredicate).getURI.replace(cmwellInternalUriPrefix, "")
-      dsg.logMsgOnce("Expl", s"Objects count for $pred: $amount")
-    }
-
-    amount
-  }
-
-  val cmwellInternalUriPrefix = "cmwell://meta/internal/"
-  val engineInternalUriPrefix = "engine://"
-
-  val manglingSeparator = "$"
-
-  val fakeQuad: Quad = {
-    // by having an empty subject and an empty object, this triple will never be visible to user as it won't be bind to anything. even for `select *` it's hidden
-    new Quad(emptyLtrl, emptyLtrl, NodeFactory.createURI(engineInternalUriPrefix + "FAKE"), emptyLtrl)
-  }
-
-  def isConst(node: Node) = node != Node.ANY
-
-  def predicateToFieldFilter(p: Node, obj: Node = emptyLtrl): FieldFilter = {
-    import scala.concurrent.ExecutionContext.Implicits.global
-
-    val pred = unmanglePredicate(p)._2
-
-    def toExplodedMangledFieldFilter(qp: String, value: Option[String]) = {
-      val (localName, hash) = { val splt = qp.split('.'); splt(0) -> splt(1) }
-      RawSingleFieldFilter(Must, Equals, HashedFieldKey(localName, hash), value)
-    }
-
-    def evalAndAwait(rff: RawFieldFilter) = {
-      //      def filterNot(ff: FieldFilter)(pred: SingleFieldFilter => Boolean): FieldFilter = ???
-      //
-      //      def isTypeIncompatible(sff: SingleFieldFilter) =
-      //        sff.name.startsWith("d$") && sff.value.fold(false)(FDate.isDate)
-
-      /*val evalRes =*/ Await.result(RawFieldFilter.eval(rff), 9.seconds)
-      //      filterNot(evalRes)(isTypeIncompatible)
-    }
-
-    def noneIfEmpty(s: String): Option[String] = if(s.isEmpty) None else Some(s)
-
-    if(pred.getURI.contains(JenaArqExtensionsUtils.engineInternalUriPrefix)) {
-      val fieldFilters = JenaArqExtensionsUtils.explodeContainerPredicate(pred).map { case (name,value) =>
-        toExplodedMangledFieldFilter(name, noneIfEmpty(value))
-      }
-      evalAndAwait(RawMultiFieldFilter(Must, fieldFilters))
-    } else {
-      val value = JenaArqExtensionsUtils.objectToQpValue(obj)
-      if (!isConst(pred)) {
-        SingleFieldFilter(Must, Contains, "_all", value)
-      } else {
-        val qp = pred.getURI.replace(JenaArqExtensionsUtils.cmwellInternalUriPrefix,"")
-        evalAndAwait(toExplodedMangledFieldFilter(qp, value.flatMap(noneIfEmpty)))
-      }
-    }
-  }
-
-  def queryToSseString(query: Query): String = Algebra.compile(query).toString(query.getPrefixMapping)
+  logger.info("JenaArqExtensions were applied.")
 }
 
 /**
   * Sorting the basicPattern (list of triples) and also convert all predicates to server-repr (i.e. localName.hash)
   */
-class SortingAndMappingStageGenerator(original: Option[StageGenerator] = None) extends StageGenerator with LazyLogging {
+class SortingAndMappingStageGenerator(nJenaArqExtensionsUtils: JenaArqExtensionsUtils, oJenaArqExtensionsUtils: JenaArqExtensionsUtils, original: Option[StageGenerator] = None) extends StageGenerator with LazyLogging {
   override def execute(basicPattern: BasicPattern, queryIterator: QueryIterator, ec: JenaExecutionContext): QueryIterator = {
+    val nbg = ec.getContext.get[Boolean](JenaArqExtensionsUtils.nbgSymbol)
+    val jenaArqExtensionsUtils = {
+      if (nbg) nJenaArqExtensionsUtils
+      else oJenaArqExtensionsUtils
+    }
     ec.getActiveGraph match {
       case graph: CmWellGraph =>
         logger.info(s"[arq][FLOW] execute was invoked with ${basicPattern.getList.length} triplePatterns")
@@ -281,7 +98,7 @@ class SortingAndMappingStageGenerator(original: Option[StageGenerator] = None) e
           graph.dsg.logVerboseMsg("Plan", s"Optimizing ${basicPattern.getList.length} statements...")
 
         val mappedTriplePatterns = Try(basicPattern.getList.map { trpl =>
-          val internalReprPredicate = JenaArqExtensionsUtils.predicateToInnerRepr(trpl.getPredicate)
+          val internalReprPredicate = jenaArqExtensionsUtils.predicateToInnerRepr(trpl.getPredicate)
           new Triple(trpl.getSubject, internalReprPredicate, trpl.getObject)
         }) match {
           case Success(triples) => triples
@@ -303,7 +120,7 @@ class SortingAndMappingStageGenerator(original: Option[StageGenerator] = None) e
           (squashed ++ markedConstSub ++ markedOriginal).toSeq
         } else mappedTriplePatterns
 
-        val sorted = if(needToOptimize) JenaArqExtensionsUtils.sortTriplePatternsByAmount(all)(graph) else all
+        val sorted = if(needToOptimize) jenaArqExtensionsUtils.sortTriplePatternsByAmount(all)(graph) else all
 
         if(graph.dsg.config.explainOnly)
           graph.dsg.logMsg("Expl", sorted.map { t =>
@@ -336,21 +153,38 @@ class SortingAndMappingStageGenerator(original: Option[StageGenerator] = None) e
   }
 }
 
-class DataFetcher(config: Config) {
 
-  val chunkSize = 100
-  val singleGetThreshold = 512 // must be under 1000 (because "even google...")
+object DataFetcher {
+  case class Chunk(scrollId: String, data: Seq[Infoton], state: State)
 
-  def count(ff: FieldFilter) =
-    Await.result(CRUDServiceFS.thinSearch(Some(PathFilter("/", descendants = true)), Some(ff), Some(DatesFilter(None, None)), PaginationParams(0, 1), withHistory = false), 9.seconds).total
+  case class State(intermediateLimit: Long, currentCount: Long, total: Long) {
+    def isExausted = currentCount >= Math.min(total, intermediateLimit)
+  }
+
+  case class ScrollResults(total: Long, results: Stream[Chunk])
+}
+
+trait DataFetcher {
+  def nbg: Boolean
+  def crudServiceFS: CRUDServiceFS
+  def config: Config
+  def chunkSize: Int
+  def singleGetThreshold: Int
+
+  import DataFetcher._
+
+  private def intermediateLimit = config.intermediateLimit
+
+  def count(ff: FieldFilter): Long =
+    Await.result(crudServiceFS.thinSearch(Some(PathFilter("/", descendants = true)), Some(ff), Some(DatesFilter(None, None)), PaginationParams(0, 1), withHistory = false), 9.seconds).total
 
   /**
     * fetch returns value is (Long,Seq[Infoton]) which is the amount of total results,
     * and a Sequence which might be a List or a lazy evaluated Stream
     */
-  def fetch(ff: FieldFilter) = {
+  def fetch(ff: FieldFilter): (Long,Seq[Infoton])  = {
     val amount = count(ff)
-    if(count(ff) < singleGetThreshold) {
+    if(amount < singleGetThreshold) {
       amount -> get(ff)
     } else {
       val scrl = scroll(ff)
@@ -358,113 +192,46 @@ class DataFetcher(config: Config) {
     }
   }
 
-  private def get(ff: FieldFilter) =
-    Await.result(CRUDServiceFS.search(Some(PathFilter("/", descendants = true)), Some(ff), Some(DatesFilter(None, None)), PaginationParams(0, singleGetThreshold), withHistory = false, withData = true), 9.seconds).infotons
+  private def get(ff: FieldFilter): Seq[Infoton] =
+    Await.result(crudServiceFS.search(Some(PathFilter("/", descendants = true)), Some(ff), Some(DatesFilter(None, None)), PaginationParams(0, singleGetThreshold), withHistory = false, withData = true), 9.seconds).infotons
 
   private def scroll(ff: FieldFilter) = {
-    val first = Await.result(CRUDServiceFS.startScroll(Some(PathFilter("/", descendants = true)), Some(ff), Some(DatesFilter(None, None)), PaginationParams(0, chunkSize), 60L, withHistory = false), 9.seconds)
+    val first = Await.result(crudServiceFS.startScroll(Some(PathFilter("/", descendants = true)), Some(ff), Some(DatesFilter(None, None)), PaginationParams(0, chunkSize), 60L, withHistory = false), 9.seconds)
     val firstData = first.infotons.getOrElse(Seq.empty[Infoton])
 
     ScrollResults(first.totalHits,
-      Stream.iterate(Chunk(first.iteratorId, firstData, State(first.infotons.getOrElse(Seq.empty[Infoton]).length, first.totalHits))) {
-        case Chunk(iid, data, State(c, t)) =>
-          val ir = Await.result(CRUDServiceFS.scroll(iid, 60, withData = true), 9.seconds)
+      Stream.iterate(Chunk(first.iteratorId, firstData, State(intermediateLimit, first.infotons.getOrElse(Seq.empty[Infoton]).length, first.totalHits))) {
+        case Chunk(iid, data, State(intermediateLimit, c, t)) =>
+          val ir = Await.result(crudServiceFS.scroll(iid, 60, withData = true), 9.seconds)
           val data = ir.infotons.getOrElse(Seq.empty[Infoton])
-          Chunk(ir.iteratorId, data, State(c + data.length, t))
+          Chunk(ir.iteratorId, data, State(config.intermediateLimit, c + data.length, t))
       }.
         takeWhile(!_.state.isExausted) // this line makes it finite
     )
   }
 
-  case class Chunk(scrollId: String, data: Seq[Infoton], state: State)
 
-  case class State(currentCount: Long, total: Long) {
-    def isExausted = currentCount >= Math.min(total, config.intermediateLimit)
-  }
-
-  case class ScrollResults(total: Long, results: Stream[Chunk])
 }
 
-object DefaultDataFetcher extends DataFetcher(Config.defaultConfig)
-
-// TODO find out a way to use Futures within ARQ
-object ArqCache { // one day this will be a distributed cache ... // todo zStore all the caches! Actually, think twice, because serialization. Thrift...?
-  def getInfoton(path: String): Option[Infoton] = infotonsCache.get(path)
-  def namespaceToHash(ns: String): String = identifiersCache.get(ns)
-  def hashToNamespace(hash: String): String = namespacesCache.get(hash).uri
-  def hashToPrefix(hash: String): String = namespacesCache.get(hash).prefix
-
-  def putSearchResults(key: String, value: Seq[Quad]): Unit = searchesCache.put(key, value)
-  def getSearchResults(key: String): Seq[Quad] = Try(searchesCache.get(key)).toOption.getOrElse(Seq())
-
-  private sealed trait Input
-  private case class Uri(value: String) extends Input
-  private case class Hash(value: String) extends Input
-  private case class NsResult(uri: String, hash: String, prefix: String)
-
-  private lazy val infotonsCache: LoadingCache[String, Option[Infoton]] =
-    CacheBuilder.newBuilder().maximumSize(100000).expireAfterAccess(5, TimeUnit.MINUTES).
-      build(new CacheLoader[String, Option[Infoton]] {
-        override def load(key: String) = Await.result(CRUDServiceFS.getInfoton(key, None, None), 9.seconds) match { case Some(Everything(i)) => Option(i) case _ => None }
-      })
-
-  private lazy val searchesCache: LoadingCache[String, Seq[Quad]] =
-    CacheBuilder.newBuilder().maximumSize(100000).expireAfterWrite(100, TimeUnit.SECONDS).
-      build(new CacheLoader[String, Seq[Quad]] { override def load(key: String) = !!! })
-
-  private lazy val identifiersCache: LoadingCache[String, String] =
-    CacheBuilder.newBuilder().maximumSize(1024).expireAfterAccess(5, TimeUnit.MINUTES).
-      build(new CacheLoader[String, String] { override def load(key: String) = translateAndFetch(Uri(key)).hash })
-
-  private lazy val namespacesCache: LoadingCache[String, NsResult] =
-    CacheBuilder.newBuilder().maximumSize(1024).expireAfterAccess(5, TimeUnit.MINUTES).
-      build(new CacheLoader[String, NsResult] { override def load(key: String) = translateAndFetch(Hash(key)) })
-
-  private def translateAndFetch(input: Input): NsResult = {
-    val (hash,knownUri) = input match {
-      case Uri(uri) => cmwell.util.string.Hash.crc32base64(uri) -> Some(uri)
-      case Hash(h) => h -> None
-    }
-
-    def extractFieldValue(i: Infoton, fieldName: String) = i.fields.getOrElse(Map()).getOrElse(fieldName,Set()).mkString(",")
-
-    // /meta/ns/{hash} if fields.url == pred.getURI return hash. else search over meta/ns?qp=url::pred.getURI -> get identifier from path of infoton
-    Await.result(CRUDServiceFS.getInfoton(s"/meta/ns/$hash", None, None), 9.seconds) match {
-      case Some(Everything(i)) if knownUri.isEmpty => {
-        NsResult(extractFieldValue(i, "url"), hash, extractFieldValue(i, "prefix"))
-      }
-      case Some(Everything(i)) if extractFieldValue(i, "url") == knownUri.get => {
-        logger.info(s"[arq] $hash was a good guess")
-        NsResult(knownUri.get, hash, extractFieldValue(i, "prefix"))
-      }
-      case _ if knownUri.isDefined => {
-        val infotonsWithThatUrl = Await.result(CRUDServiceFS.search(Some(PathFilter("/", descendants = true)), Some(SingleFieldFilter(Must, Equals, "url", knownUri)), Some(DatesFilter(None, None)), PaginationParams(0, 10)), 9.seconds).infotons
-        (infotonsWithThatUrl.length: @switch) match {
-          case 0 =>
-            logger.info(s"[arq] ns for $hash was not found")
-            throw new NamespaceException(s"Namespace ${knownUri.get} does not exist")
-          case 1 =>
-            logger.info(s"[arq] Fetched proper namespace for $hash")
-            val infoton = infotonsWithThatUrl.head
-            val path = infoton.path
-            val actualHash = path.substring(path.lastIndexOf('/') + 1)
-            val uri = knownUri.getOrElse(extractFieldValue(infoton, "url"))
-            NsResult(uri, actualHash, extractFieldValue(infoton, "prefix"))
-          case _ =>
-            logger.info("[arq] this should never happen: same URL cannot be more than once in meta/ns")
-            !!!
-        }
-      }
-      case _ =>
-        logger.info("[arq] this should never happen: given a hash, when the URI is unknown, and there's no meta/ns/hash - it means currupted data")
-        !!!
-    }
-  }
+class DataFetcherImpl(val config: Config, val crudServiceFS: CRUDServiceFS, val nbg: Boolean) extends DataFetcher {
+  val chunkSize = 100
+  val singleGetThreshold = 512 // must be under 1000 (because "even google...")
 }
+
+//object DefaultDataFetcher extends DataFetcher {
+//  def nbg: Boolean = WorkerMain.nbgToggler.get
+//  def crudServiceFS: CRUDServiceFS = Option(WorkerMain.crudServiceFS) match {
+//    case Some(crud) => crud
+//    case None => throw new IllegalStateException("CRUDServiceFS defined in main(App) was null (lazy init crap...)")
+//  }
+//  def config: Config =  Config.defaultConfig
+//  val chunkSize = 100
+//  val singleGetThreshold = 512 // must be under 1000 (because "even google...")
+//}
 
 class NamespaceException(msg: String) extends RuntimeException(msg: String) { override def toString = msg }
 
-class CmWellGraph(val dsg: DatasetGraphCmWell) extends GraphBase {
+class CmWellGraph(val dsg: DatasetGraphCmWell) extends GraphBase with LazyLogging {
 
   logger.info("[arq][FLOW] CmWellGraph was instansiated")
 
@@ -488,10 +255,27 @@ class CmWellGraph(val dsg: DatasetGraphCmWell) extends GraphBase {
   }
 }
 
-case class Config(doNotOptimize: Boolean, intermediateLimit: Long, resultsLimit: Long, verbose: Boolean, deadline: Deadline, explainOnly: Boolean)
-object Config { val defaultConfig = Config(doNotOptimize = false, 10000, 10000, verbose = false, deadline = SpHandler.queryTimeout.fromNow, explainOnly = false) }
+case class Config(doNotOptimize: Boolean, intermediateLimit: Long, resultsLimit: Long, verbose: Boolean, finiteDuarationForDeadLine: FiniteDuration, deadline: Option[Deadline], explainOnly: Boolean)
+object Config {
+  lazy val defaultConfig = new Config(
+    doNotOptimize = false,
+    intermediateLimit = 10000,
+    resultsLimit = 10000,
+    verbose = false,
+    finiteDuarationForDeadLine = SpHandler.queryTimeout,
+    deadline = None,
+    explainOnly = false)
+}
 
-class DatasetGraphCmWell(val host: String, val config: Config) extends DatasetGraphTriplesQuads {
+class DatasetGraphCmWell(val host: String,
+                         val config: Config,
+                         nbg: Boolean,
+                         crudServiceFS: CRUDServiceFS,
+                         arqCache: ArqCache,
+                         jenaArqExtensionsUtils: JenaArqExtensionsUtils,
+                         dataFetcher: DataFetcher)
+                        (implicit ec: scala.concurrent.ExecutionContext) extends DatasetGraphTriplesQuads with LazyLogging { self =>
+
   import JenaArqExtensionsUtils.isConst
 
   /**
@@ -500,8 +284,6 @@ class DatasetGraphCmWell(val host: String, val config: Config) extends DatasetGr
     * and is needed to distinguish between cached values of different queries.
     */
   val queryUuid = cmwell.util.numeric.Radix64.encodeUnsigned(this.##)
-
-  val dataFetcher = new DataFetcher(config)
 
   // todo keep DRY! reuse TimedRequest from SpHandler. need to refactor to combine _sp features into _sparql
   protected val relativeEpochTime = System.currentTimeMillis()
@@ -528,7 +310,7 @@ class DatasetGraphCmWell(val host: String, val config: Config) extends DatasetGr
     findInDftGraph(node, node1, node2) // todo quads
 
   override def findInDftGraph(s: Node, p: Node, o: Node): util.Iterator[Quad] = {
-    if(config.deadline.isOverdue) {
+    if(config.deadline.exists(_.isOverdue)) {
       logMsgOnce("Warning", "Query was timed out")
       Iterator[Quad]()
     } else {
@@ -568,7 +350,7 @@ class DatasetGraphCmWell(val host: String, val config: Config) extends DatasetGr
     }
 
     def getInfotonAndFilterFields: Iterator[Quad] = {
-      ArqCache.getInfoton(subject) match {
+      arqCache.getInfoton(subject) match {
         case Some(i) => {
           val allFieldsAsQuads: Iterator[Quad] = infotonToQuadIterator(i)
           allFieldsAsQuads.filter(q => if(p.isURI && p.getURI.startsWith(JenaArqExtensionsUtils.engineInternalUriPrefix)) containerPredicateMatches(p, q.getPredicate, q.getObject) else predicateMatches(p, q.getPredicate) && matches(o, q.getObject))
@@ -580,9 +362,9 @@ class DatasetGraphCmWell(val host: String, val config: Config) extends DatasetGr
     val quadFilter = (q: Quad) => if(p.getURI.startsWith(JenaArqExtensionsUtils.engineInternalUriPrefix)) containerPredicateMatches(p, q.getPredicate, q.getObject) else predicateMatches(p, q.getPredicate) && matches(o, q.getObject)
 
     def doSearchAndFilterFields: Iterator[Quad] = {
-      val fieldFilter = JenaArqExtensionsUtils.predicateToFieldFilter(p, o)
+      val fieldFilter = jenaArqExtensionsUtils.predicateToFieldFilter(p, o)
 
-      val cachedResults = ArqCache.getSearchResults(cacheKey)
+      val cachedResults = arqCache.getSearchResults(cacheKey)
 
       if(cachedResults.nonEmpty) {
         logger.info(s"Reusing caching results (amount = ${cachedResults.length}, key = $subVarName)")
@@ -600,12 +382,12 @@ class DatasetGraphCmWell(val host: String, val config: Config) extends DatasetGr
 
 //          logVerboseMsg("Fetch", fieldFilter)
 
-          val startScrollRes = Await.result(CRUDServiceFS.startScroll(Some(PathFilter("/", descendants = true)), Some(fieldFilter), Some(DatesFilter(None, None)), PaginationParams(0, 10), 60L, withHistory = false), 9.seconds)
+          val startScrollRes = Await.result(crudServiceFS.startScroll(Some(PathFilter("/", descendants = true)), Some(fieldFilter), Some(DatesFilter(None, None)), PaginationParams(0, 10), 60L, withHistory = false), 9.seconds)
           scroll(Some(startScrollRes.iteratorId))
         }
 
         def scroll(iteratorId: Option[String] = None) = {
-          val scrollRes = Await.result(CRUDServiceFS.scroll(iteratorId.getOrElse(currentChunk.iteratorId), 60, withData = true), 9.seconds)
+          val scrollRes = Await.result(crudServiceFS.scroll(iteratorId.getOrElse(currentChunk.iteratorId), 60, withData = true), 9.seconds)
           val quads = infotonsToQuadIterator(scrollRes.infotons.getOrElse(Seq.empty[Infoton]))
           val filteredQuads = quads.filter(quadFilter)
           Chunk(scrollRes.iteratorId, filteredQuads)
@@ -633,10 +415,10 @@ class DatasetGraphCmWell(val host: String, val config: Config) extends DatasetGr
 
     val results = if(p.isURI && p.getURI.startsWith(JenaArqExtensionsUtils.engineInternalUriPrefix)) {
 
-      val fieldFilter = JenaArqExtensionsUtils.predicateToFieldFilter(p, o)
+      val fieldFilter = jenaArqExtensionsUtils.predicateToFieldFilter(p, o)
       val infotonResults = dataFetcher.fetch(fieldFilter)._2
       val filteredQuads = infotonResults.flatMap(infotonToQuadIterator).filter(quadFilter)
-      ArqCache.putSearchResults(cacheKey, filteredQuads)
+      arqCache.putSearchResults(cacheKey, filteredQuads)
 
       Iterator(JenaArqExtensionsUtils.fakeQuad) // returning a Seq in length 1 that its content won't be visible to user.
                                                 // queryIterator will continue as if it's the cartesian product `1 × <rest of results>`
@@ -652,7 +434,7 @@ class DatasetGraphCmWell(val host: String, val config: Config) extends DatasetGr
       }
     }
 
-    results map JenaArqExtensionsUtils.normalizeAsOutput
+    results map jenaArqExtensionsUtils.normalizeAsOutput
   }
 
   override def listGraphNodes(): util.Iterator[Node] = Iterator[Node]() // this is a hack
@@ -670,7 +452,7 @@ class DatasetGraphCmWell(val host: String, val config: Config) extends DatasetGr
   override def isInTransaction: Boolean = false
   override def end(): Unit = { }
   override def commit(): Unit = { }
-  private val nullFormatter = new cmwell.formats.RDFFormatter(host, hash=>Some(JenaArqExtensionsUtils.cmwellInternalUriPrefix + hash + "#" -> ""), false, false, false) {
+  private val nullFormatter = new cmwell.formats.RDFFormatter(host, hash=>Some(JenaArqExtensionsUtils.cmwellInternalUriPrefix + hash + "#" -> None), false, false, false) {
     override def format: cmwell.formats.FormatType = ???
     override def render(formattable: Formattable): String = ???
   }

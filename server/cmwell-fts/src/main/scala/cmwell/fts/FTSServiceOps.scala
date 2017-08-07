@@ -21,9 +21,27 @@ import akka.stream.scaladsl.Source
 import cmwell.domain.{AggregationFilter, AggregationsResponse, Infoton, InfotonSerializer}
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.action.bulk.BulkResponse
+import org.elasticsearch.action.get.GetResponse
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.Duration
+
+trait EsSourceExtractor[T] {
+  def extract(hit: GetResponse): T
+}
+
+object EsSourceExtractor {
+  implicit val esStringSourceExtractor = new EsSourceExtractor[String] {
+    override def extract(hit: GetResponse): String = hit.getSourceAsString
+  }
+
+  object Implicits {
+
+    implicit val esMapSourceExtractor = new EsSourceExtractor[java.util.Map[String,AnyRef]] {
+      override def extract(hit: GetResponse): java.util.Map[String,AnyRef] = hit.getSourceAsMap
+    }
+  }
+}
 
 trait FTSServiceOps {
   // TODO: make sysQuad configurable & take from configurations
@@ -38,8 +56,8 @@ trait FTSServiceOps {
   def index(infoton:Infoton, previousInfoton:Option[Infoton], partition: String = defaultPartition)
            (implicit executionContext:ExecutionContext): Future[Unit]
 
-  def extractSource(uuid: String, index: String)
-                   (implicit executionContext:ExecutionContext) : Future[String]
+  def extractSource[T : EsSourceExtractor](uuid: String, index: String)
+                   (implicit executionContext:ExecutionContext) : Future[(T,Long)]
 
   def executeBulkActionRequests(actionRequests:Iterable[ActionRequest[_ <: ActionRequest[_ <: AnyRef]]])
                                (implicit executionContext:ExecutionContext): Future[BulkResponse]

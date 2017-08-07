@@ -52,7 +52,7 @@ abstract class Operations ( irw : IRWService , ftsService : FTSServiceOps ) {
   def verify(path: String, limit: Int): Future[Boolean]
   def fix(path: String, retries: Int, limit: Int): Future[(Boolean,String)]
   def rFix(path: String, retries: Int, parallelism: Int = 1): Future[Source[(Boolean,String),NotUsed]]
-  def info(path: String, limit: Int): Future[(CasInfo,EsInfo,ZStoreInfo)]
+  def info(path: String, limit: Int): Future[(CasInfo,EsExtendedInfo,ZStoreInfo)]
   def fixDc(path: String, dc: String, retries: Int = 1, indexTimeOpt: Option[Long] = None): Future[Boolean]
   def shutdown: Unit
 }
@@ -93,19 +93,32 @@ class ProxyOperations private(irw: IRWService, ftsService: FTSServiceOps) extend
   def retry[T](task: => Future[T]) = cmwell.util.concurrent.retry[T](maxRetries, retryWait)(task)(global)
 
   override def verify(path : String, limit: Int) = {
-    val casInfo = s.extractHistoryCas(path, limit)
-    val esInfo = s.extractHistoryEs(path,limit).map(_.toMap[String , String ])
-    // check that we all data in es
-    val r = casInfo.flatMap(x =>
-      Future.sequence(
-        x.map{
-          case (_,Some(infoton)) => esInfo.map(_.contains(infoton.uuid)) //checking if exists in esInfo data
-          case _ => Future.successful(false)
+
+    val casInfoFut = s.extractHistoryCas(path, limit)
+    s.extractHistoryEs(path, limit).flatMap{ v =>
+      if(v.groupBy(_._1).exists(_._2.size != 1)) Future.successful(false)
+      else {
+        val esMapFut = cmwell.util.concurrent.travemp(v) {
+          case (uuid, index) => {
+            import cmwell.fts.EsSourceExtractor.Implicits.esMapSourceExtractor
+            ftsService.extractSource(uuid, index).map {
+              case (source, version) => {
+                val system = source.get("system").asInstanceOf[java.util.HashMap[String, Object]]
+                val current = system.get("current").asInstanceOf[Boolean]
+                uuid -> (index, current)
+              }
+            }
+          }
         }
-      )
-    )
-    val sizeBool = casInfo.flatMap(v => esInfo.map(_.size == v.size))
-    r.flatMap(b => sizeBool.map(_ && b.forall(identity)))
+
+        for {
+          casInfo <- casInfoFut
+          esInfo <- esMapFut
+        } yield esInfo.size == casInfo.size &&
+          esInfo.count(_._2._2) < 2         && //must be either 0 (latest is deleted) or 1. cannot have more than 1 current
+          casInfo.forall { case (uuid, _) => esInfo.contains(uuid) }
+      }
+    }
   }
 
   type Timestamp = Long
@@ -302,7 +315,8 @@ class ProxyOperations private(irw: IRWService, ftsService: FTSServiceOps) extend
                     purgeFromEsFut.flatMap { _ =>
                       //lastly, write infocolones for the good infotons
                       if (isNewBg) {
-                        val actions = foundAndFixed.map(i => ESIndexRequest(createEsIndexActionForNewBG(i, "cm_well_latest", i eq cur), None))
+                        //TODO: if indexed in cm_well_latest, should we also take care of the update in cassandra for indexName?
+                        val actions = foundAndFixed.map(i => ESIndexRequest(createEsIndexActionForNewBG(i, if(i.indexName.isEmpty) "cm_well_latest" else i.indexName, i eq cur), None))
                         retry(ftsService.executeBulkIndexRequests(actions)).map(_ => (true, ""))
                       }
                       else {
@@ -336,17 +350,17 @@ class ProxyOperations private(irw: IRWService, ftsService: FTSServiceOps) extend
         val f = retry(ftsService.extractSource(uuidInEs, esIndex)).recover {
           case e: Throwable =>
             log.error(s"could not retrieve ES sources for uuid=[$uuidInEs] from index=[$esIndex]",e)
-            "NO SOURCES AVAILABLE"
+            "NO SOURCES AVAILABLE" -> -1L
         }
         f.map(uuidInEs -> _)
     }.map { uuidsToSourceTuplesVector =>
       val uuidsToSourceMap = uuidsToSourceTuplesVector.toMap
       both.foreach {
         case (uuid, (timestamp, esIndex)) =>
-          log.info(s"$uuid for $path was not found in cas.infoton, although it was found in cas.path[$timestamp] and also in ES${esIndex.mkString("[",",","]")} with source: ${uuidsToSourceMap(uuid)}")
+          log.info(s"$uuid for $path was not found in cas.infoton, although it was found in cas.path[$timestamp] and also in ES${esIndex.mkString("[",",","]")} with (source,version): ${uuidsToSourceMap(uuid)}")
       }
       onlyES.foreach { case (uuid, index) =>
-        log.info(s"$uuid for $path was not found in cas, although it was found in ES[$index] with source: ${uuidsToSourceMap(uuid)}")
+        log.info(s"$uuid for $path was not found in cas, although it was found in ES[$index] with (source,version): ${uuidsToSourceMap(uuid)}")
       }
     }
 
@@ -402,11 +416,19 @@ class ProxyOperations private(irw: IRWService, ftsService: FTSServiceOps) extend
           j
       })
 
-  override def info(path : String, limit: Int) : Future[(CasInfo,EsInfo,ZStoreInfo)] = {
-    s.extractHistoryCas(path,limit).flatMap{
-      v =>
-        val zsKeys = v.collect { case (_,Some(FileInfoton(_,_,_,_,_,Some(FileContent(_,_,_,Some(dp))),_))) => dp }.distinct
-        s.extractHistoryEs(path,limit).map((v,_,zsKeys))
+  override def info(path : String, limit: Int) : Future[(CasInfo,EsExtendedInfo,ZStoreInfo)] = {
+
+    val esinfo = s.extractHistoryEs(path,limit).flatMap{ uuidIndexVec =>
+      cmwell.util.concurrent.travector(uuidIndexVec){
+        case (uuid,index) => ftsService.extractSource(uuid,index).map{
+          case (source,version) => (uuid,index,version,source)
+        }
+      }
+    }
+
+    s.extractHistoryCas(path,limit).flatMap { v =>
+      val zsKeys = v.collect { case (_, Some(FileInfoton(_, _, _, _, _, Some(FileContent(_, _, _, Some(dp))), _))) => dp }.distinct
+      esinfo.map((v, _, zsKeys))
     }
   }
 

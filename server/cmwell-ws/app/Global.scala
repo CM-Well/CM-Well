@@ -32,9 +32,12 @@ import logic.CRUDServiceFS
 import play.api.{Logger, _}
 import security.NoncesManager
 import javax.inject._
+
+import cmwell.domain.SearchResults
+
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.FiniteDuration
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 import uk.org.lidalia.sysoutslf4j.context.SysOutOverSLF4J
 
 /**
@@ -45,7 +48,7 @@ import uk.org.lidalia.sysoutslf4j.context.SysOutOverSLF4J
  * To change this template use File | Settings | File Templates.
  */
 @Singleton
-class Global @Inject()(implicit ec: ExecutionContext) extends LazyLogging {
+class Global @Inject()(crudServiceFS: CRUDServiceFS, cmwellRDFHelper: CMWellRDFHelper)(implicit ec: ExecutionContext) extends LazyLogging {
 
   onStart
 
@@ -58,7 +61,7 @@ class Global @Inject()(implicit ec: ExecutionContext) extends LazyLogging {
 
     Grid.setGridConnection(GridConnection(memberName = "ws", labels = Set("subscriber")))
 
-    val offsetsService = new ZStoreOffsetsService(CRUDServiceFS.zStore)
+    val offsetsService = new ZStoreOffsetsService(crudServiceFS.zStore)
 
     Grid.declareServices(ServiceTypes().
       add(BGMonitorActor.serviceName, classOf[BGMonitorActor], zkServers, offsetsService, concurrent.ExecutionContext.Implicits.global).
@@ -66,7 +69,7 @@ class Global @Inject()(implicit ec: ExecutionContext) extends LazyLogging {
     )
 
     logger.info("The known jvms are: " + Grid.jvmIdentities)
-    //Grid.roles = Set("WEB", "subscriber", "HealthClient")
+
     Grid.joinClient
 
     CtrlClient.init
@@ -80,13 +83,15 @@ class Global @Inject()(implicit ec: ExecutionContext) extends LazyLogging {
       }
     }
 
-    val recoverWithLogOnFail: PartialFunction[Throwable,Unit] = {
-      case err : Throwable => {
-        Logger.error("Failed to connect with CRUDService. Will exit now.",err)
-      }
+    val recoverWithLogOnFail: Boolean => PartialFunction[Try[SearchResults],Unit] = nbg => {
+      case Success(sr) => updateCaches(sr, nbg)
+      case Failure(ex) => logger.error("Failed to connect with CRUDService. Will exit now.",ex)
     }
 
-    Try(CRUDServiceFS.getInfoton("/", None, None)).recover(recoverWithExitOnFail)
+    // Y do we need this? do we want to check both new & old data paths? should we?
+    // what if it's not enabled?
+    // should we also inject NbgToggler, and only query against nbg = tbg.get?
+    // Try(crudServiceFS.getInfoton("/", None, None)).recover(recoverWithExitOnFail)
 
     RequestMonitor.init
 
@@ -95,33 +100,50 @@ class Global @Inject()(implicit ec: ExecutionContext) extends LazyLogging {
 
     scheduleAfterStart(30.seconds){
       Try{
-        val f = cmwell.util.concurrent.retry(3) {
-          CRUDServiceFS.search(
+        val fn = cmwell.util.concurrent.retry(3) {
+          crudServiceFS.search(
             pathFilter = Some(PathFilter("/meta/ns", descendants = false)),
             fieldFilters = None,
             datesFilter = None,
             paginationParams = PaginationParams(0, initialMetaNsLoadingAmount),
             withHistory = false,
             withData = true,
-            fieldSortParams = SortParam.empty)
+            fieldSortParams = SortParam.empty,
+            nbg = true)
         }
 
-        f.recover(recoverWithLogOnFail)
-
-        f.foreach { sr =>
-
-          val groupedByUrls = sr.infotons.groupBy(_.fields.flatMap(_.get("url")))
-          val goodInfotons = groupedByUrls.collect { case (Some(k),v) if k.size==1 =>
-              val url = k.head.value.asInstanceOf[String]
-              CMWellRDFHelper.getTheNonGeneratedMetaNsInfoton(url, v)
-          }
-
-          CMWellRDFHelper.loadNsCachesWith(goodInfotons.toSeq)
+        val fo = cmwell.util.concurrent.retry(3) {
+          crudServiceFS.search(
+            pathFilter = Some(PathFilter("/meta/ns", descendants = false)),
+            fieldFilters = None,
+            datesFilter = None,
+            paginationParams = PaginationParams(0, initialMetaNsLoadingAmount),
+            withHistory = false,
+            withData = true,
+            fieldSortParams = SortParam.empty,
+            nbg = false)
         }
-      }.recover(recoverWithLogOnFail)
+
+        fn.andThen(recoverWithLogOnFail(true))
+        fo.andThen(recoverWithLogOnFail(false))
+
+      }.recover{
+        case err: Throwable => logger.error("unexpected error occured in Global initialization",err)
+      }
     }
 
     Logger.info("Application has started")
+  }
+
+  private def updateCaches(sr: SearchResults, nbg: Boolean) = {
+
+    val groupedByUrls = sr.infotons.groupBy(_.fields.flatMap(_.get("url")))
+    val goodInfotons = groupedByUrls.collect { case (Some(k),v) if k.size==1 =>
+      val url = k.head.value.asInstanceOf[String]
+      cmwellRDFHelper.getTheNonGeneratedMetaNsInfoton(url, v, nbg)
+    }
+
+    cmwellRDFHelper.loadNsCachesWith(goodInfotons.toSeq, nbg)
   }
 
   def onStop {

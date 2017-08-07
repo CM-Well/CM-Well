@@ -30,15 +30,15 @@ import scala.concurrent.{ExecutionContext, Future}
   * Created by michael on 8/4/16.
   */
 @Singleton
-class TrafficHandler @Inject()(implicit ec: ExecutionContext) extends Controller with LazyLogging {
+class TrafficHandler @Inject()(authUtils: AuthUtils)(implicit ec: ExecutionContext) extends Controller with LazyLogging {
   // todo: remove this.
   def handleTimeout = Action.async { implicit originalRequest =>
     cmwell.util.concurrent.delayedTask(5.seconds)(Future.successful(Ok)).flatMap(identity)
   }
 
   def handleThresholdFactor = Action { implicit req =>
-    val tokenOpt = AuthUtils.extractTokenFrom(req)
-    if (AuthUtils.isOperationAllowedForUser(security.Admin, tokenOpt)) {
+    val tokenOpt = authUtils.extractTokenFrom(req)
+    if (authUtils.isOperationAllowedForUser(security.Admin, tokenOpt)) {
       val thresholdFactor = req.getQueryString("tf").map(_.toLong)
       thresholdFactor match {
         case Some(l) =>

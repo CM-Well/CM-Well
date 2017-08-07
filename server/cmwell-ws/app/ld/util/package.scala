@@ -66,9 +66,9 @@ package object util {
     val path = removeCmwHostAndPrependSlash(cmwHostsSet, ipath)
     metaData match {
       case Some(MetaData(mdt, date, data, text, ctype, linktype, linkto, dataCenter, indexTime)) => {
-        val (_date,dc) =
+        lazy val (_date,dc) =
           if (path.startsWith("/meta/")) DateTime.now(DateTimeZone.UTC) -> Settings.dataCenter
-          else date.getOrElse(new DateTime) -> dataCenter.getOrElse(Settings.dataCenter)
+          else date.getOrElse(DateTime.now(DateTimeZone.UTC)) -> dataCenter.getOrElse(Settings.dataCenter)
         mdt match {
           case Some(ObjectMetaData) if path.startsWith("/meta/") => makeMetaWithZero(path, fields)
           case Some(ObjectMetaData) => {

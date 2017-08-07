@@ -25,6 +25,5 @@ class Filters @Inject() (gzip: GzipFilter,
                          afpa: AddFormatParameterIfOnlyAcceptHeaderProvidedFilter,
                          auth: AuthFilter,
                          hdrs: HeadersFilter,
-                         nbgf: NBGFilter,
-                         trsf: TrafficShapingFilter) extends DefaultHttpFilters(gzip,alog,acin,afpa,auth,hdrs,nbgf,trsf)
+                         trsf: TrafficShapingFilter) extends DefaultHttpFilters(gzip,alog,acin,afpa,auth,hdrs,trsf)
 

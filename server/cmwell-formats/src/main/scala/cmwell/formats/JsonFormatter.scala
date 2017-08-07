@@ -74,31 +74,9 @@ trait JsonP extends Formatter {
   }
 }
 
-object JsonFormatter extends LazyLogging {
-  private[this] var instance: JsonFormatter = _
-  def init(fieldNameModifier: String => String): Unit = {
-    if(null == instance) instance = new JsonFormatter(fieldNameModifier)
-    else logger.error("already initialized")
-  }
-  def apply(): Formatter =
-    if(null != instance) instance
-    else throw new NoSuchElementException("JsonFormatter is not yet initialized.")
-}
-
 class JsonFormatter(fieldNameModifier: String => String, override val callback: Option[String] = None) extends AbstractJsonFormatter(fieldNameModifier) with JsonP {
   override def makeFromValues(values: Seq[Inner]): Inner = JsArray(cleanDuplicatesPreserveOrder(values))
   override def mkString(inner: Inner) = Json.stringify(inner)
-}
-
-object PrettyJsonFormatter extends LazyLogging {
-  private[this] var instance: PrettyJsonFormatter = _
-  def init(fieldNameModifier: String => String): Unit = {
-    if(null == instance) instance = new PrettyJsonFormatter(fieldNameModifier)
-    else logger.error("already initialized")
-  }
-  def apply(): Formatter =
-    if(null != instance) instance
-    else throw new NoSuchElementException("JsonFormatter is not yet initialized.")
 }
 
 class PrettyJsonFormatter(fieldNameModifier: String => String, override val callback: Option[String] = None) extends AbstractJsonFormatter(fieldNameModifier) with JsonP {

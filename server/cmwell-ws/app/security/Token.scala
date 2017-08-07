@@ -23,10 +23,7 @@ import org.joda.time.DateTime
 
 import scala.util.Try
 
-/**
-  * Created by yaakov on 2/25/16.
-  */
-class Token(jwt: String) {
+class Token(jwt: String, authCache: AuthCache) {
   private val requiredClaims = Set("sub","exp")
 
   private val claimsSet = jwt match {
@@ -40,7 +37,7 @@ class Token(jwt: String) {
   def isValid = {
     JsonWebToken.validate(jwt, Token.secret) &&
       expiry.isAfterNow &&
-      (claimsSet.getClaimValue("rev").map(_.toInt).getOrElse(0) >= Token.getUserRevNum(username) || username=="root") // root has immunity to revision revoking
+      (claimsSet.getClaimValue("rev").map(_.toInt).getOrElse(0) >= Token.getUserRevNum(username, authCache) || username=="root") // root has immunity to revision revoking
   }
 
   implicit class JwtClaimsSetJValueExtensions(cs: JwtClaimsSetJValue) {
@@ -51,21 +48,21 @@ class Token(jwt: String) {
 }
 
 object Token {
-  def apply(jwt: String) = Try(new Token(jwt)).toOption
+  def apply(jwt: String, authCache: AuthCache) = Try(new Token(jwt, authCache)).toOption
 
   private lazy val secret = ConfigFactory.load().getString("play.crypto.secret") // not using ws.Settings, so it'd be available from `sbt ws/console`
   private val jwtHeader = JwtHeader("HS256")
 
-  private def getUserRevNum(username: String) = AuthCache.getUserInfoton(username).flatMap(u => (u\"rev").asOpt[Int]).getOrElse(0)
+  private def getUserRevNum(username: String, authCache: AuthCache) = authCache.getUserInfoton(username).flatMap(u => (u\"rev").asOpt[Int]).getOrElse(0)
 
-  def generate(username: String, expiry: Option[DateTime] = None, rev: Option[Int] = None, isAdmin: Boolean = false): String = {
+  def generate(authCache: AuthCache, username: String, expiry: Option[DateTime] = None, rev: Option[Int] = None, isAdmin: Boolean = false): String = {
     val maxDays = Settings.maxDaysToAllowGenerateTokenFor
     if(!isAdmin && expiry.isDefined && expiry.get.isAfter(DateTime.now.plusDays(maxDays)))
       throw new IllegalArgumentException(s"Token expiry must be less than $maxDays days")
     if(!isAdmin && rev.isDefined)
       throw new IllegalArgumentException(s"rev should only be supplied in Admin mode (i.e. manually via console)")
 
-    val claims = Map("sub" -> username, "exp" -> expiry.getOrElse(DateTime.now.plusDays(1)).getMillis, "rev" -> rev.getOrElse(getUserRevNum(username)))
+    val claims = Map("sub" -> username, "exp" -> expiry.getOrElse(DateTime.now.plusDays(1)).getMillis, "rev" -> rev.getOrElse(getUserRevNum(username,authCache)))
     JsonWebToken(jwtHeader, JwtClaimsSet(claims), secret)
   }
 }

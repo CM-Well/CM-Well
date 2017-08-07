@@ -76,7 +76,6 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
   val bootStrapServers = config.getString("cmwell.bg.kafka.bootstrap.servers")
   val persistCommandsTopic = config.getString("cmwell.bg.persist.commands.topic")
   val indexCommandsTopic = config.getString("cmwell.bg.index.commands.topic")
-  val latestIndexAliasName = config.getString("cmwell.bg.latestIndexAliasName")
   val maxInfotonWeightToIncludeInCommand = config.getInt("cmwell.bg.maxInfotonWeightToIncludeInCommand")
   val defaultDC = config.getString("cmwell.dataCenter.id")
   val esActionsBulkSize = config.getInt("cmwell.bg.esActionsBulkSize") // in bytes
@@ -264,38 +263,41 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
 
   val addMerged = Flow[BGMessage[(Option[Infoton], Seq[SingleCommand])]].map {
     case bgMessage@BGMessage(_, (existingInfotonOpt, commands)) =>
-
-      val baseInfoton = Option(beforePersistedCache.get(commands.head.path)) match {
-        case None =>
+      beforePersistedCache.synchronized {
+        val baseInfoton = Option(beforePersistedCache.get(commands.head.path)) match {
+          case None =>
             logger debug s"baseInfoton for path: ${commands.head.path} not in cache"
-          existingInfotonOpt
-        case cachedInfotonOpt@Some(cachedInfoton) =>
+            existingInfotonOpt
+          case cachedInfotonOpt@Some(cachedInfoton) =>
             logger debug s"base infoton for path: ${commands.head.path} in cache: $cachedInfoton"
-          existingInfotonOpt match {
-            case None => cachedInfotonOpt
-            case Some(existingInfoton) =>
-              if(cachedInfoton.lastModified.getMillis >= existingInfoton.lastModified.getMillis){
-                logger debug s"cached infoton is newer then base infoton"
-                cachedInfotonOpt
-              }
-              else{
-                logger debug "base infoton is newer then cached infoton"
-                existingInfotonOpt
-              }
+            existingInfotonOpt match {
+              case None => cachedInfotonOpt
+              case Some(existingInfoton) =>
+                if (cachedInfoton.lastModified.getMillis >= existingInfoton.lastModified.getMillis) {
+                  logger debug s"cached infoton is newer then base infoton"
+                  cachedInfotonOpt
+                }
+                else {
+                  logger debug "base infoton is newer then cached infoton"
+                  existingInfotonOpt
+                }
+            }
         }
-      }
         logger debug s"merging existing infoton: $baseInfoton with commands: $commands"
 
-      val mergedInfoton =
-        if(baseInfoton.isDefined || commands.size > 1)
-          mergeTimer.time(merger.merge(baseInfoton, commands))
-        else
-          merger.merge(baseInfoton, commands)
-      mergedInfoton.merged.foreach{ i =>
-        beforePersistedCache.put(i.path, i.copyInfoton(indexName = currentIndexName))
-        schedule(60.seconds){beforePersistedCache.remove(i.path)}
+        val mergedInfoton =
+          if (baseInfoton.isDefined || commands.size > 1)
+            mergeTimer.time(merger.merge(baseInfoton, commands))
+          else
+            merger.merge(baseInfoton, commands)
+        mergedInfoton.merged.foreach { i =>
+          beforePersistedCache.put(i.path, i.copyInfoton(indexName = currentIndexName))
+          schedule(60.seconds) {
+            beforePersistedCache.remove(i.path)
+          }
+        }
+        bgMessage.copy(message = (baseInfoton -> mergedInfoton))
       }
-      bgMessage.copy(message = (baseInfoton -> mergedInfoton))
   }
 
   val filterDups = Flow[BGMessage[(Option[Infoton], Infoton)]].filterNot{ bgMessage =>

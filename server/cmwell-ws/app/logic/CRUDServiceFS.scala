@@ -19,7 +19,7 @@ package logic
 import java.util.Properties
 
 import akka.NotUsed
-import akka.actor.Actor
+import akka.actor.{Actor, ActorSystem}
 import akka.actor.Actor.Receive
 import akka.stream.scaladsl.Source
 import cmwell.domain._
@@ -27,7 +27,7 @@ import cmwell.driver.Dao
 import cmwell.formats.{NquadsFlavor, RdfType}
 import cmwell.fts.{FTSServiceNew, Settings => _, _}
 import cmwell.irw._
-import cmwell.stortill.Strotill.{CasInfo, EsInfo, ZStoreInfo}
+import cmwell.stortill.Strotill.{CasInfo, EsExtendedInfo, ZStoreInfo}
 import cmwell.stortill.{Operations, ProxyOperations}
 import cmwell.tlog.{TLog, TLogState}
 import cmwell.util.{Box, BoxedFailure, EmptyBox, FullBox}
@@ -43,19 +43,23 @@ import org.elasticsearch.action.bulk.BulkResponse
 import org.joda.time.{DateTime, DateTimeZone}
 import wsutil.FormatterManager
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
+import javax.inject._
 
+import controllers.NbgToggler
+import ld.cmw.{NbgPassiveFieldTypesCache, ObgPassiveFieldTypesCache}
 
-
-object CRUDServiceFS extends LazyLogging {
+@Singleton
+class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sys: ActorSystem) extends LazyLogging {
 
   import cmwell.ws.Settings._
 
-  var newBG = cmwell.ws.Settings.startWithNewBackendEnabled
+  def newBG = tbg.get
 
+  lazy val nbgPassiveFieldTypesCache = new NbgPassiveFieldTypesCache(this,ec,sys)
+  lazy val obgPassiveFieldTypesCache = new ObgPassiveFieldTypesCache(this,ec,sys)
   val level: ConsistencyLevel = ONE
   // create state object in read only
   val impState = TLogState("imp", updatesTLogName, updatesTLogPartition, true)
@@ -73,15 +77,15 @@ object CRUDServiceFS extends LazyLogging {
 
   lazy val _irwService = IRWService(Dao(irwServiceDaoClusterName, irwServiceDaoKeySpace, irwServiceDaoHostName), disableReadCache = !Settings.irwReadCacheEnabled)
   lazy val _irwService2 = IRWService.newIRW(Dao(irwServiceDaoClusterName, irwServiceDaoKeySpace2, irwServiceDaoHostName), disableReadCache = !Settings.irwReadCacheEnabled)
-  def irwService: IRWService = {
-    if(newBG) _irwService2
+  def irwService(nbg: Boolean = newBG): IRWService = {
+    if(nbg || newBG) _irwService2
     else _irwService
   }
 
   lazy val ftsServiceOld = FTSServiceES.getOne("ws.es.yml", false)
   lazy val ftsServiceNew = FTSServiceNew("ws.es.yml")
-  def ftsService(forceNewImpl: Boolean = false): FTSServiceOps = {
-    if(forceNewImpl || newBG) ftsServiceNew
+  def ftsService(nbg: Boolean = newBG): FTSServiceOps = {
+    if(nbg || newBG) ftsServiceNew
     else ftsServiceOld
   }
 
@@ -96,27 +100,31 @@ object CRUDServiceFS extends LazyLogging {
 
   val proxyOpsOld: Operations = ProxyOperations(_irwService, ftsServiceOld)
   val proxyOpsNew: Operations = ProxyOperations(_irwService2, ftsServiceNew)
-  def proxyOps: Operations  = {
-    if(newBG) proxyOpsNew
+  def proxyOps(nbg: Boolean = newBG): Operations  = {
+    if(nbg || newBG) proxyOpsNew
     else proxyOpsOld
   }
 
-  val ESMappingsCacheOld = new SingleElementLazyAsyncCache[Set[String]](Settings.fieldsNamesCacheTimeout.toMillis,Set.empty)(ftsServiceOld.getMappings(withHistory = true))(implicitly,scala.concurrent.ExecutionContext.Implicits.global)
-  val ESMappingsCacheNew = new SingleElementLazyAsyncCache[Set[String]](Settings.fieldsNamesCacheTimeout.toMillis,Set.empty)(ftsServiceNew.getMappings(withHistory = true))(implicitly,scala.concurrent.ExecutionContext.Implicits.global)
-  def ESMappingsCache: SingleElementLazyAsyncCache[Set[String]] = {
-    if(newBG) ESMappingsCacheNew
+  val ESMappingsCacheOld = new SingleElementLazyAsyncCache[Set[String]](Settings.fieldsNamesCacheTimeout.toMillis,Set.empty)(ftsServiceOld.getMappings(withHistory = true))
+  val ESMappingsCacheNew = new SingleElementLazyAsyncCache[Set[String]](Settings.fieldsNamesCacheTimeout.toMillis,Set.empty)(ftsServiceNew.getMappings(withHistory = true))
+  def ESMappingsCache(nbg: Boolean = newBG): SingleElementLazyAsyncCache[Set[String]] = {
+    if(nbg || newBG) ESMappingsCacheNew
     else ESMappingsCacheOld
   }
 
-  val MetaNsCache =
-    new SingleElementLazyAsyncCache[Set[String]](Settings.fieldsNamesCacheTimeout.toMillis,Set.empty)(fetchEntireMetaNsAsPredicates)(implicitly,scala.concurrent.ExecutionContext.Implicits.global)
+  val MetaNsCacheOld =
+    new SingleElementLazyAsyncCache[Set[String]](Settings.fieldsNamesCacheTimeout.toMillis,Set.empty)(fetchEntireMetaNsAsPredicates(false))
+  val MetaNsCacheNew =
+    new SingleElementLazyAsyncCache[Set[String]](Settings.fieldsNamesCacheTimeout.toMillis,Set.empty)(fetchEntireMetaNsAsPredicates(true))
+
+  def metaNsCache(nbg: Boolean = newBG) = if(nbg || newBG) MetaNsCacheNew else MetaNsCacheOld
 
   private val fieldsSetBreakout = scala.collection.breakOut[Seq[Option[String]],String,Set[String]]
 
-  private def fetchEntireMetaNsAsPredicates = {
+  private def fetchEntireMetaNsAsPredicates(nbg: Boolean = newBG) = {
     val chunkSize = 512
     def fetchFields(offset: Int = 0): Future[Seq[Infoton]] = {
-      val fieldsFut = search(Some(PathFilter("/meta/ns", descendants = true)), paginationParams = PaginationParams(offset, chunkSize), withData = true)
+      val fieldsFut = search(Some(PathFilter("/meta/ns", descendants = true)), paginationParams = PaginationParams(offset, chunkSize), withData = true, nbg = nbg)
       fieldsFut.flatMap{ fields =>
         if(fields.length==chunkSize) fetchFields(offset+chunkSize).map(_ ++ fields.infotons) else Future.successful(fields.infotons)
       }
@@ -124,7 +132,6 @@ object CRUDServiceFS extends LazyLogging {
 
     fetchFields().map { f =>
       val (fieldsInfotons,namespacesInfotons) = f.partition(_.path.count('/'.==)>3)
-//      val prefixToUrl = namespacesInfotons.map(infoton => infoton.path.split('/').last -> infoton.fields.get("url").collect{ case fv: FString => fv }.head.value).toMap
       val prefixToUrl = (for {
         i <- namespacesInfotons
         f <- i.fields
@@ -144,14 +151,11 @@ object CRUDServiceFS extends LazyLogging {
   }
 
 
-  def countSearchOpenContexts(nbg: Boolean = this.newBG): Array[(String,Long)] = {
-    if(nbg) ftsServiceNew.countSearchOpenContexts()
-    else ftsService(nbg).countSearchOpenContexts()
-  }
+  def countSearchOpenContexts(nbg: Boolean = this.newBG): Array[(String,Long)] =
+    ftsService(nbg).countSearchOpenContexts()
 
-  def getInfotonByPathAsync(path: String): Future[Box[Infoton]] = {
-    irwService.readPathAsync(path, level)
-  }
+  def getInfotonByPathAsync(path: String,nbg: Boolean = this.newBG): Future[Box[Infoton]] =
+    irwService(nbg).readPathAsync(path, level)
 
   def getInfoton(path: String, offset: Option[Int], length: Option[Int], nbg: Boolean = this.newBG): Future[Option[ContentPortion]] = {
 
@@ -162,7 +166,7 @@ object CRUDServiceFS extends LazyLogging {
       cmwell.util.concurrent.timeoutOptionFuture(fut, dur)
     }
 
-    val infotonFuture = irwService.readPathAsync(path, level)
+    val infotonFuture = irwService(nbg).readPathAsync(path, level)
 
     val reply = if (length.getOrElse(0) > 0) {
       val searchResponseFuture = listChildrenBoundedTime(path, offset, length)
@@ -200,17 +204,17 @@ object CRUDServiceFS extends LazyLogging {
     reply
   }
 
-  def getInfotonHistory(path: String, limit: Int): Future[InfotonHistoryVersions] = {
-    val (_, uuidVec) = irwService.history(path,limit).sortBy(_._1).unzip
+  def getInfotonHistory(path: String, limit: Int, nbg: Boolean = newBG): Future[InfotonHistoryVersions] = {
+    val (_, uuidVec) = irwService(nbg).history(path,limit).sortBy(_._1).unzip
     if (uuidVec.isEmpty) Future.successful(InfotonHistoryVersions(Vector.empty[Infoton]))
-    else irwService.readUUIDSAsync(uuidVec, level).map(seq => InfotonHistoryVersions(seq.collect{case FullBox(i) => i}))
+    else irwService(nbg).readUUIDSAsync(uuidVec, level).map(seq => InfotonHistoryVersions(seq.collect{case FullBox(i) => i}))
   }
 
-  def getInfotonHistoryReactive(path: String): Source[Infoton,NotUsed] = {
-    irwService
+  def getInfotonHistoryReactive(path: String, nbg: Boolean = newBG): Source[Infoton,NotUsed] = {
+    irwService(nbg)
       .historyReactive(path)
       .mapAsync(defaultParallelism) {
-        case (_, uuid) => irwService.readUUIDAsync(uuid).andThen {
+        case (_, uuid) => irwService(nbg).readUUIDAsync(uuid).andThen {
           case Failure(fail) => logger.error(s"uuid [$uuid] could not be fetched from cassandra", fail)
           case Success(EmptyBox) => logger.error(s"uuid [$uuid] could not be fetched from cassandra: got EmptyBox")
           case Success(BoxedFailure(e)) => logger.error(s"uuid [$uuid] could not be fetched from cassandra: got BoxedFailure",e)
@@ -219,21 +223,21 @@ object CRUDServiceFS extends LazyLogging {
       .collect { case FullBox(i) => i }
   }
 
-  def getInfotons(paths: Seq[String]): Future[BagOfInfotons] = //Future(BagOfInfotons(irwService.readLast(paths, level).toList))
-  irwService.readPathsAsync(paths, level).map{ infopts =>
-    BagOfInfotons(infopts.collect{
-      case FullBox(infoton) => infoton
-    })
-  }
+  def getInfotons(paths: Seq[String], nbg: Boolean = newBG): Future[BagOfInfotons] =
+    irwService(nbg).readPathsAsync(paths, level).map{ infopts =>
+      BagOfInfotons(infopts.collect{
+        case FullBox(infoton) => infoton
+      })
+    }
 
-  def getInfotonsByPathOrUuid(paths: Vector[String] = Vector.empty[String], uuids: Vector[String] = Vector.empty[String]): Future[BagOfInfotons] = {
+  def getInfotonsByPathOrUuid(paths: Vector[String] = Vector.empty[String], uuids: Vector[String] = Vector.empty[String], nbg: Boolean = newBG): Future[BagOfInfotons] = {
     val futureInfotonsList: Future[List[Infoton]] = (paths, uuids) match {
       case (ps, us) if ps.isEmpty && us.isEmpty => Future.successful(Nil)
-      case (ps, us) if us.isEmpty => irwService.readPathsAsync(ps, level).map(_.collect { case FullBox(i) => i }.toList) //Future(irwService.readLast(ps, level).toList)
-      case (ps, us) if ps.isEmpty => irwService.readUUIDSAsync(us, level).map(_.collect { case FullBox(i) => i }.toList)
+      case (ps, us) if us.isEmpty => irwService(nbg).readPathsAsync(ps, level).map(_.collect { case FullBox(i) => i }.toList)
+      case (ps, us) if ps.isEmpty => irwService(nbg).readUUIDSAsync(us, level).map(_.collect { case FullBox(i) => i }.toList)
       case (ps, us) => {
-        val f1 = irwService.readPathsAsync(ps, level).map(_.collect { case FullBox(i) => i })
-        val f2 = irwService.readUUIDSAsync(us, level).map(_.collect { case FullBox(i) => i })
+        val f1 = irwService(nbg).readPathsAsync(ps, level).map(_.collect { case FullBox(i) => i })
+        val f2 = irwService(nbg).readUUIDSAsync(us, level).map(_.collect { case FullBox(i) => i })
         Future.sequence(List(f1, f2)).map(_.flatten.distinct)
       }
     }
@@ -241,12 +245,12 @@ object CRUDServiceFS extends LazyLogging {
     futureInfotonsList.map(BagOfInfotons.apply)
   }
 
-  def getInfotonByUuidAsync(uuid: String): Future[Box[Infoton]] = {
-    irwService.readUUIDAsync(uuid, level)
+  def getInfotonByUuidAsync(uuid: String, nbg: Boolean = newBG): Future[Box[Infoton]] = {
+    irwService(nbg).readUUIDAsync(uuid, level)
   }
 
-  def getInfotonsByUuidAsync(uuidVec: Seq[String]): Future[Seq[Infoton]] = {
-    irwService.readUUIDSAsync(uuidVec, level).map(_.collect{
+  def getInfotonsByUuidAsync(uuidVec: Seq[String], nbg: Boolean = newBG): Future[Seq[Infoton]] = {
+    irwService(nbg).readUUIDSAsync(uuidVec, level).map(_.collect{
       case FullBox(i) => i
     })
   }
@@ -258,7 +262,7 @@ object CRUDServiceFS extends LazyLogging {
     lazy val payload: Array[Byte] = CommandSerializer.encode(cmdWrite)
 
     if (infoton.fields.map(_.map(_._2.size).sum).getOrElse(0) > 10000) {
-      Future.successful(false)
+      Future.failed(new IllegalArgumentException("too many fields"))
     }
     else {
       // write payload to tlog
@@ -474,7 +478,7 @@ object CRUDServiceFS extends LazyLogging {
                 paginationParams: PaginationParams = DefaultPaginationParams,
                 withHistory: Boolean = false,
                 aggregationFilters: Seq[AggregationFilter],
-                debugInfo: Boolean = false, nbg: Boolean = false): Future[AggregationsResponse] = {
+                debugInfo: Boolean = false, nbg: Boolean = newBG): Future[AggregationsResponse] = {
       ftsService(nbg).aggregate(pathFilter, fieldsFilters, datesFilter, paginationParams, aggregationFilters, debugInfo = debugInfo)
   }
 
@@ -486,7 +490,7 @@ object CRUDServiceFS extends LazyLogging {
                  fieldSortParams: SortParam = SortParam.empty,
                  debugInfo: Boolean = false,
                  withDeleted: Boolean = false,
-                 nbg:Boolean = false)(implicit searchTimeout : Option[Duration] = None): Future[SearchThinResults] = {
+                 nbg:Boolean = newBG)(implicit searchTimeout : Option[Duration] = None): Future[SearchThinResults] = {
 
     val searchResultsFuture = {
       //withDeleted is only available in new FTS, and using it forces nbg
@@ -502,38 +506,38 @@ object CRUDServiceFS extends LazyLogging {
   }
 
 
-  object SearchCacheHelpers {
-
-    private val nquadsFormatter = FormatterManager.getFormatter(RdfType(NquadsFlavor))
-
-    case class SearchRequest(pathFilter: Option[PathFilter] = None,
-                             fieldFilters: Option[FieldFilter] = None,
-                             datesFilter: Option[DatesFilter] = None,
-                             paginationParams: PaginationParams = DefaultPaginationParams,
-                             withHistory: Boolean = false,
-                             withData: Boolean = false,
-                             fieldSortParams: SortParam = SortParam.empty,
-                             debugInfo: Boolean = false,
-                             withDeleted: Boolean = false) {
-      def getDigest = cmwell.util.string.Hash.md5(this.toString)
-    }
-
-
-    def wSearch(searchRequest: SearchRequest): Future[SearchResults] = {
-      search(searchRequest.pathFilter, searchRequest.fieldFilters, searchRequest.datesFilter,
-        searchRequest.paginationParams, searchRequest.withHistory, searchRequest.withData, searchRequest.fieldSortParams,
-        searchRequest.debugInfo, searchRequest.withDeleted)
-    }
-
-    def serializer(searchResults: SearchResults): Array[Byte] =
-      nquadsFormatter.render(searchResults).getBytes("UTF-8")
-
-    def deserializer(payload: Array[Byte]): SearchResults = {
-      ???
-    }
-
-    def searchViaCache = cmwell.zcache.l1l2(wSearch)(_.getDigest, deserializer, serializer)()(zCache)
-  }
+//  object SearchCacheHelpers {
+//
+//    private val nquadsFormatter = FormatterManager.getFormatter(RdfType(NquadsFlavor))
+//
+//    case class SearchRequest(pathFilter: Option[PathFilter] = None,
+//                             fieldFilters: Option[FieldFilter] = None,
+//                             datesFilter: Option[DatesFilter] = None,
+//                             paginationParams: PaginationParams = DefaultPaginationParams,
+//                             withHistory: Boolean = false,
+//                             withData: Boolean = false,
+//                             fieldSortParams: SortParam = SortParam.empty,
+//                             debugInfo: Boolean = false,
+//                             withDeleted: Boolean = false) {
+//      def getDigest = cmwell.util.string.Hash.md5(this.toString)
+//    }
+//
+//
+//    def wSearch(searchRequest: SearchRequest, nbg: Boolean = newBG): Future[SearchResults] = {
+//      search(searchRequest.pathFilter, searchRequest.fieldFilters, searchRequest.datesFilter,
+//        searchRequest.paginationParams, searchRequest.withHistory, searchRequest.withData, searchRequest.fieldSortParams,
+//        searchRequest.debugInfo, searchRequest.withDeleted,nbg)
+//    }
+//
+//    def serializer(searchResults: SearchResults): Array[Byte] =
+//      nquadsFormatter.render(searchResults).getBytes("UTF-8")
+//
+//    def deserializer(payload: Array[Byte]): SearchResults = {
+//      ???
+//    }
+//
+//    def searchViaCache(nbg: Boolean = newBG) = cmwell.zcache.l1l2[SearchRequest,SearchResults](wSearch(_,nbg))(_.getDigest, deserializer, serializer)()(zCache)
+//  }
 
   def search(pathFilter: Option[PathFilter] = None,
              fieldFilters: Option[FieldFilter] = None,
@@ -544,7 +548,7 @@ object CRUDServiceFS extends LazyLogging {
              fieldSortParams: SortParam = SortParam.empty,
              debugInfo: Boolean = false,
              withDeleted: Boolean = false,
-             nbg:Boolean = false)(implicit searchTimeout : Option[Duration] = None): Future[SearchResults] = {
+             nbg:Boolean = newBG)(implicit searchTimeout : Option[Duration] = None): Future[SearchResults] = {
 
     val searchResultsFuture = {
       //withDeleted is only available in new FTS, and using it forces nbg
@@ -563,7 +567,7 @@ object CRUDServiceFS extends LazyLogging {
       case true => searchResultsFuture.flatMap { ftsResults =>
         val (fromDate, toDate) = ftsResults2Dates(ftsResults)
         val xs = cmwell.util.concurrent.travector(ftsResults.infotons) { i =>
-          irwService.readUUIDAsync(i.uuid,level).map(_ -> i.fields)
+          irwService(nbg || withDeleted).readUUIDAsync(i.uuid,level).map(_ -> i.fields)
         }
 
         xs
@@ -619,13 +623,13 @@ object CRUDServiceFS extends LazyLogging {
     }
   }
 
-  def getListOfDC(nbg:Boolean = false): Future[Seq[String]] = {
+  def getListOfDC(nbg: Boolean = newBG): Future[Seq[String]] = {
     ftsService(nbg).listChildren("/meta/sys/dc",0,20).map { sr =>
       Settings.dataCenter +: sr.infotons.map(_.path.drop("/meta/sys/dc/".length))
     }
   }
 
-  def getLastIndexTimeFor(dc: String = Settings.dataCenter, nbg: Boolean = false): Future[Option[VirtualInfoton]] = {
+  def getLastIndexTimeFor(dc: String = Settings.dataCenter, nbg: Boolean = newBG): Future[Option[VirtualInfoton]] = {
 
     def mkVirtualInfoton(indexTime: Long): VirtualInfoton =
       VirtualInfoton(ObjectInfoton(s"/proc/dc/$dc", Settings.dataCenter, None,
@@ -634,11 +638,11 @@ object CRUDServiceFS extends LazyLogging {
     ftsService(nbg).getLastIndexTimeFor(dc).map(lOpt => Some(mkVirtualInfoton(lOpt.getOrElse(0L))))
   }
 
-  def getESFieldsVInfoton: Future[VirtualInfoton] = {
-    val fields = ESMappingsCache.getAndUpdateIfNeeded.map(toFieldValues)
+  def getESFieldsVInfoton(nbg: Boolean = newBG): Future[VirtualInfoton] = {
+    val fields = ESMappingsCache(nbg).getAndUpdateIfNeeded.map(toFieldValues)
 
     fields.flatMap { f =>
-      val predicates = MetaNsCache.getAndUpdateIfNeeded.map(toFieldValues)
+      val predicates = metaNsCache(nbg).getAndUpdateIfNeeded.map(toFieldValues)
       predicates.map { p =>
         VirtualInfoton(ObjectInfoton(s"/proc/fields", Settings.dataCenter, None, Map("fields" -> f, "predicates" -> p)))
       }
@@ -712,7 +716,7 @@ object CRUDServiceFS extends LazyLogging {
         IterationResults(ftsResults.scrollId, ftsResults.total, Some(ftsResults.infotons))
       }
       case true => searchResultFuture.flatMap { ftsResults =>
-        irwService.readUUIDSAsync(ftsResults.infotons.map {
+        irwService(nbg).readUUIDSAsync(ftsResults.infotons.map {
           _.uuid
         }.toVector, level).map { infotonsSeq =>
           if(infotonsSeq.exists(_.isEmpty)) {
@@ -728,26 +732,26 @@ object CRUDServiceFS extends LazyLogging {
     results
   }
 
-  def verify(path: String, limit: Int): Future[Boolean] = proxyOps.verify(path,limit)
+  def verify(path: String, limit: Int, nbg: Boolean = newBG): Future[Boolean] = proxyOps(nbg).verify(path,limit)
 
-  def fix(path: String, limit: Int): Future[(Boolean, String)] = {
+  def fix(path: String, limit: Int, nbg: Boolean = newBG): Future[(Boolean, String)] = {
     logger.debug(s"x-fix invoked for path $path")
-    proxyOps.fix(path, cmwell.ws.Settings.xFixNumRetries,limit)
+    proxyOps(nbg).fix(path, cmwell.ws.Settings.xFixNumRetries,limit)
   }
 
-  def rFix(path: String, parallelism: Int = 1): Future[Source[(Boolean,String),NotUsed]] = {
+  def rFix(path: String, parallelism: Int = 1, nbg: Boolean = newBG): Future[Source[(Boolean,String),NotUsed]] = {
     logger.debug(s"x-fix&reactive invoked for path $path")
-    proxyOps.rFix(path, cmwell.ws.Settings.xFixNumRetries, parallelism)
+    proxyOps(nbg).rFix(path, cmwell.ws.Settings.xFixNumRetries, parallelism)
   }
 
-  def info(path: String, limit: Int): Future[(CasInfo, EsInfo, ZStoreInfo)] = proxyOps.info(path,limit)
+  def info(path: String, limit: Int, nbg: Boolean = newBG): Future[(CasInfo, EsExtendedInfo, ZStoreInfo)] = proxyOps(nbg).info(path,limit)
 
-  def fixDc(path: String, actualDc: String): Future[Boolean] = {
-    proxyOps.fixDc(path, actualDc, cmwell.ws.Settings.xFixNumRetries)
+  def fixDc(path: String, actualDc: String, nbg: Boolean = newBG): Future[Boolean] = {
+    proxyOps(nbg).fixDc(path, actualDc, cmwell.ws.Settings.xFixNumRetries)
   }
 
-  def getRawCassandra(uuid: String): Future[(String,String)] = {
-    val (irw,mime) = irwService match {
+  def getRawCassandra(uuid: String, nbg: Boolean = newBG): Future[(String,String)] = {
+    val (irw,mime) = irwService(nbg) match {
       case irw@`_irwService2` => irw -> "text/csv;charset=UTF-8"
       case irw@`_irwService` => irw -> "application/json;charset=UTF-8"
     }
@@ -757,7 +761,7 @@ object CRUDServiceFS extends LazyLogging {
   def reactiveRawCassandra(uuid: String): Source[String,NotUsed] = _irwService2.getReactiveRawRow(uuid,QUORUM)
 
   // assuming not the only version of the infoton!
-  def purgeUuid(infoton: Infoton, nbg: Boolean = false): Future[Unit] = {
+  def purgeUuid(infoton: Infoton): Future[Unit] = {
     cmwell.util.concurrent.travector(Vector(oldServices,newServices)){ case (irwService, ftsService) =>
       irwService.purgeHistorical(infoton, isOnlyVersion = false, QUORUM).flatMap { _ =>
         ftsService.purge(infoton.uuid).map(_ => Unit)
@@ -765,11 +769,11 @@ object CRUDServiceFS extends LazyLogging {
     }.map(_=> Unit)
   }
 
-  def purgeUuidFromIndex(uuid: String, index: String): Future[Unit] = {
-    ftsServiceOld.purgeByUuidsAndIndexes(Vector(uuid->index)).map(_ => ()) //TODO also purge from ftsServiceNew
+  def purgeUuidFromIndex(uuid: String, index: String, nbg: Boolean = newBG): Future[Unit] = {
+    ftsService(nbg).purgeByUuidsAndIndexes(Vector(uuid->index)).map(_ => ()) //TODO also purge from ftsServiceNew
   }
 
-  def purgePath(path: String, includeLast: Boolean, limit: Int, nbg: Boolean = false): Future[Unit] = {
+  def purgePath(path: String, includeLast: Boolean, limit: Int, nbg: Boolean = newBG): Future[Unit] = {
 
     import scala.language.postfixOps
 
@@ -845,7 +849,7 @@ object CRUDServiceFS extends LazyLogging {
     * Rollback an Infoton means purging last version of it, and, if there exists one or more history versions, make the
     * one with largest lastModified the current version.
     */
-  def rollback(path: String, limit: Int, nbg: Boolean = false): Future[Unit] = {
+  def rollback(path: String, limit: Int, nbg: Boolean = newBG): Future[Unit] = {
     case class Version(lastModified: Long, uuid: String)
 
     cmwell.util.concurrent.travector(Vector(oldServices, newServices)) { case (irwService, ftsService) =>
@@ -880,13 +884,13 @@ object CRUDServiceFS extends LazyLogging {
     }.map(_ => ())
   }
 
-  def purgePath2(path: String, limit: Int, nbg: Boolean = false): Future[Unit] = {
+  def purgePath2(path: String, limit: Int, nbg: Boolean = newBG): Future[Unit] = {
 
     import cmwell.util.concurrent.retry
 
     import scala.language.postfixOps
 
-    irwService.historyAsync(path,limit).map { casHistory =>
+    irwService(nbg).historyAsync(path,limit).map { casHistory =>
 
       val uuids = casHistory.map(_._2)
 
@@ -896,8 +900,8 @@ object CRUDServiceFS extends LazyLogging {
           if (bulkResponse.hasFailures) {
             throw new Exception("purge from es by uuids from all Indexes failed: " + bulkResponse.buildFailureMessage())
           } else {
-            val purgeFromInfoton = Future.traverse(uuids)(irwService.purgeFromInfotonsOnly(_))
-            purgeFromInfoton.flatMap(_ => irwService.purgePathOnly(path))
+            val purgeFromInfoton = Future.traverse(uuids)(irwService(nbg).purgeFromInfotonsOnly(_))
+            purgeFromInfoton.flatMap(_ => irwService(nbg).purgePathOnly(path))
           }
         }
       }

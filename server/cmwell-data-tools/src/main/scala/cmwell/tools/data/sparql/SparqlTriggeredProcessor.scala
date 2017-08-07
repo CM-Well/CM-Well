@@ -84,7 +84,7 @@ class SparqlTriggeredProcessor(config: Config,
           .map { case (data, _) => data }
           .toMat(DownloaderStatsSink(
             format = "ntriples",
-            label = Some(label.map(l => s"$l-$id").getOrElse(id)),
+            label = Some(id),
             reporter = Some(tokenReporter)
           ))(Keep.right)
       )
@@ -167,7 +167,7 @@ class SparqlTriggeredProcessor(config: Config,
                 isBulk  = isBulk,
                 token   = token,
                 updateFreq  = Some(config.updateFreq),
-                label = Some(label.map(l => s"$l-${sensor.name}").getOrElse(sensor.name)))
+                label = Some(sensor.name))
                 .map {
                   case (token, tsv) =>
                     val path = tsv.path
@@ -190,7 +190,7 @@ class SparqlTriggeredProcessor(config: Config,
               sparqlQuery = sensor.sparqlToRoot.get,
               spQueryParamsBuilder = (p: Seq[String]) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
               format = Some("tsv"),
-              label = Some(label.map(l => s"$l-${sensor.name}").getOrElse(sensor.name)),
+              label = Some(sensor.name),
               source = source.map{ case (path, context) =>
                 context.foreach(c => logger.debug("sensor [{}] is trying to get root infoton of {}", c.name , path.utf8String))
                 path -> context}
@@ -251,7 +251,7 @@ class SparqlTriggeredProcessor(config: Config,
 
     // execute sparql queries on populated paths
     addStatsToSource (
-      id = SparqlTriggeredProcessor.sparqlMaterializerLabel,
+      id = label.map(_ + "-").getOrElse("") + SparqlTriggeredProcessor.sparqlMaterializerLabel,
       source = SparqlProcessor.createSparqlSourceFromPaths(
           baseUrl = baseUrl,
           sparqlQuery = processedConfig.sparqlMaterializer,

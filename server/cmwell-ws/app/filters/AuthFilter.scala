@@ -29,11 +29,7 @@ import cmwell.ws.Settings
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
 
-/**
- * Created by yaakov on 1/5/15.
- *
- */
-class AuthFilter @Inject() (implicit override val mat: Materializer, ec: ExecutionContext) extends Filter {
+class AuthFilter @Inject()(authCache: AuthCache, authUtils: AuthUtils, authorization: Authorization)(implicit override val mat: Materializer, ec: ExecutionContext) extends Filter {
 
   private val useAuthorizationParam = java.lang.Boolean.getBoolean("use.authorization")
   private val irrelevantPaths = Set("/ii/", "/_")
@@ -56,7 +52,7 @@ class AuthFilter @Inject() (implicit override val mat: Materializer, ec: Executi
   }
 
   private def isAuthenticatedAndAuthorized(requestHeader: RequestHeader): (Boolean, String) = {
-    def isRequestWriteToMeta = AuthUtils.isWriteToMeta(PermissionLevel(requestHeader.method), requestHeader.path)
+    def isRequestWriteToMeta = authUtils.isWriteToMeta(PermissionLevel(requestHeader.method), requestHeader.path)
 
     if((!useAuthorizationParam && !isRequestWriteToMeta) || irrelevantPaths.exists(requestHeader.path.startsWith))
       return (true, "")
@@ -70,18 +66,18 @@ class AuthFilter @Inject() (implicit override val mat: Materializer, ec: Executi
       orElse(requestHeader.getQueryString("token")).
       orElse(requestHeader.cookies.get("X-CM-WELL-TOKEN2").map(_.value)). // todo TOKEN2 is only supported for backward compatibility. one day we should stop supporting it
       orElse(requestHeader.cookies.get("X-CM-WELL-TOKEN").map(_.value)).
-      flatMap(Token.apply)
+      flatMap(Token(_,authCache))
 
     tokenOpt match {
       case Some(token) if token.isValid => {
-        AuthCache.getUserInfoton(token.username) match {
-          case Some(user) => withMsg(Authorization.isAllowedForUser(request, user, Some(token.username)), "Authenticated but not authorized")
+        authCache.getUserInfoton(token.username) match {
+          case Some(user) => withMsg(authorization.isAllowedForUser(request, user, Some(token.username)), "Authenticated but not authorized")
           case None if token.username == "root" || token.username == "pUser" => (true, "") // special case only required for cases when CRUD is not yet ready
           case None => (false, s"Username ${token.username} was not found in CM-Well")
         }
       }
       case Some(_) => (false, "given token is not valid (not signed or expired)")
-      case None => withMsg(Authorization.isAllowedForAnonymousUser(request), "Not authorized, please login first")
+      case None => withMsg(authorization.isAllowedForAnonymousUser(request), "Not authorized, please login first")
     }
   }
 }

@@ -21,10 +21,14 @@ import java.util
 import javax.inject.{Inject, Singleton}
 
 import cmwell.syntaxutils._
+import cmwell.web.ld.cmw.CMWellRDFHelper
+import cmwell.web.ld.query.{Config, DataFetcherImpl}
+import cmwell.ws.AggregateBothOldAndNewTypesCaches
 import com.typesafe.scalalogging.LazyLogging
 import info.aduna.iteration.{CloseableIteration, CloseableIteratorIteration, EmptyIteration}
 import ld.query.TripleStore.TriplePattern
 import ld.query.{SesameExtensions, TripleStore}
+import logic.CRUDServiceFS
 import org.openrdf.model.impl.SimpleValueFactory
 import org.openrdf.model.{IRI, Namespace, Resource, Statement, Value, ValueFactory}
 import org.openrdf.query._
@@ -53,13 +57,23 @@ import scala.util.{Failure, Success, Try}
 // TODO 2. Remove JenaArqExtensions :( But keep its DataFetcher. Should be closer to TripleStore
 // TODO 3. Propagate query parameters to the proper places. Implement Verbose and Explain.
 // TODO 4. Add optimizations, support Range Queries, add special functions, run on SPARK...
+// TODO 5. propagate nbg properly according to request, or leave as is, knowing it's kinda broken (as in inconsistent), but will be "fixed" when old data path is discontinued
 
 /**
   * Created by yaakov on 5/24/17.
   */
 
 @Singleton
-class OpenRdfSpHandler @Inject()(sailConn: CmWellSailRepositoryConnection)(implicit ec: ExecutionContext) extends Controller with LazyLogging {
+class OpenRdfSpHandler @Inject()(tbg: NbgToggler, crudServiceFS: CRUDServiceFS, cmwellRDFHelper: CMWellRDFHelper)(implicit ec: ExecutionContext) extends Controller with LazyLogging {
+
+  val config: Config = Config.defaultConfig
+  val typesCache = new AggregateBothOldAndNewTypesCaches(crudServiceFS,tbg)
+  val dataFetcher = new DataFetcherImpl(config,crudServiceFS,tbg.get)
+  val tripleStore = new TripleStore(dataFetcher, cmwellRDFHelper, tbg)
+  val cmWellTripleSource = new CmWellTripleSource(tripleStore)
+  val cmWellReadOnlySailConnection = new CmWellReadOnlySailConnection(cmWellTripleSource)
+  val cmWellReadOnlySail = new CmWellReadOnlySail(cmWellReadOnlySailConnection)
+  val sailConn = new CmWellSailRepositoryConnection(cmWellReadOnlySailConnection, cmWellReadOnlySail)
 
   def handleSsparqlPost(): Action[String] = Action.async(parse.tolerantText) {
     implicit request =>
@@ -139,11 +153,9 @@ class OpenRdfSpHandler @Inject()(sailConn: CmWellSailRepositoryConnection)(impli
 
 // todo refactor - find a proper place for the Driver
 
-@Singleton
-class CmWellSailRepositoryConnection @Inject()(cmWellReadOnlySailConnection: CmWellReadOnlySailConnection, cmWellReadOnlySail: CmWellReadOnlySail)(implicit ec: ExecutionContext) extends SailRepositoryConnection(new SailRepository(cmWellReadOnlySail), cmWellReadOnlySailConnection)
+class CmWellSailRepositoryConnection(cmWellReadOnlySailConnection: CmWellReadOnlySailConnection, cmWellReadOnlySail: CmWellReadOnlySail)(implicit ec: ExecutionContext) extends SailRepositoryConnection(new SailRepository(cmWellReadOnlySail), cmWellReadOnlySailConnection)
 
-@Singleton
-class CmWellReadOnlySail @Inject()(cmWellReadOnlySailConnection: CmWellReadOnlySailConnection) extends Sail {
+class CmWellReadOnlySail(cmWellReadOnlySailConnection: CmWellReadOnlySailConnection) extends Sail {
   import scala.collection.JavaConversions._
 
   override def isWritable: Boolean = false
@@ -167,8 +179,7 @@ class CmWellReadOnlySail @Inject()(cmWellReadOnlySailConnection: CmWellReadOnlyS
   override def setDataDir(dataDir: File): Unit = { }
 }
 
-@Singleton
-class CmWellReadOnlySailConnection @Inject()(cmWellTripleSource: CmWellTripleSource)(implicit ec: ExecutionContext) extends SailConnection {
+class CmWellReadOnlySailConnection(cmWellTripleSource: CmWellTripleSource)(implicit ec: ExecutionContext) extends SailConnection {
   override def prepare(): Unit = { /* Not supporting Transactions */ }
   override def commit(): Unit = { /* Not supporting Transactions */ }
   override def rollback(): Unit = { /* Not supporting Transactions */ }
@@ -225,8 +236,7 @@ class CmWellReadOnlySailConnection @Inject()(cmWellTripleSource: CmWellTripleSou
 }
 
 
-@Singleton
-class CmWellTripleSource @Inject()(implicit ec: ExecutionContext) extends TripleSource {
+class CmWellTripleSource(tripleStore: TripleStore)(implicit ec: ExecutionContext) extends TripleSource {
 
   private val factory = SimpleValueFactory.getInstance()
 
@@ -245,7 +255,7 @@ class CmWellTripleSource @Inject()(implicit ec: ExecutionContext) extends Triple
     //    }
 
     val tp = TriplePattern(Option(subj).map(_.stringValue), Option(pred).map(_.stringValue), Option(obj).map(SesameExtensions.sesameValueToValue))
-    val statementsIterator = TripleStore.findTriplesByPattern(tp).map(q => factory.createStatement(factory.createIRI(q.subject), factory.createIRI(q.predicate), SesameExtensions.valueToSesameValue(q.value)))
+    val statementsIterator = tripleStore.findTriplesByPattern(tp).map(q => factory.createStatement(factory.createIRI(q.subject), factory.createIRI(q.predicate), SesameExtensions.valueToSesameValue(q.value)))
 
     new CloseableIteratorIteration(statementsIterator)
   }

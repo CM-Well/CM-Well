@@ -25,14 +25,11 @@ import security.AuthUtils
 import javax.inject._
 import scala.util.Try
 
-/**
- * Created by michael on 11/4/15.
- */
 @Singleton
-class LogLevelHandler  @Inject() extends Controller with LazyLogging {
+class LogLevelHandler  @Inject()(authUtils: AuthUtils) extends Controller with LazyLogging {
   def handleSetLogLevel = Action { implicit req =>
-    val tokenOpt = AuthUtils.extractTokenFrom(req)
-    if (AuthUtils.isOperationAllowedForUser(security.Admin, tokenOpt))
+    val tokenOpt = authUtils.extractTokenFrom(req)
+    if (authUtils.isOperationAllowedForUser(security.Admin, tokenOpt))
       setLogLevel(req)
     else
       Forbidden("not authorized")

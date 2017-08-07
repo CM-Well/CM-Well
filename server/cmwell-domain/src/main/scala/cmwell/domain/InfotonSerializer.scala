@@ -70,7 +70,8 @@ object InfotonSerializer extends LazyLogging {
     private[this] var indexTime: Option[Long] = None
     private[this] var indexName: String = ""
     private[this] var fields: Option[MMap[String, Set[FieldValue]]] = None
-    private[this] var fileContentBuilder = Array.newBuilder[Byte]
+    private[this] var fileContentBuildPosition = 0
+    private[this] var fileContentBuilder = null.asInstanceOf[Array[Byte]]
     private[this] var fileContentCountVerifier: Int = 0
     private[this] var fileContentLength: Int = 0
     private[this] var mimeType: String = _
@@ -120,7 +121,6 @@ object InfotonSerializer extends LazyLogging {
     }
 
     def setContentLength(contentLength: Int): Unit = {
-      fileContentBuilder.sizeHint(contentLength)
       this.fileContentLength = contentLength
     }
 
@@ -131,7 +131,17 @@ object InfotonSerializer extends LazyLogging {
 
     def setFileContent(fileContent: Array[Byte], contentIndex: Int): Unit = {
       require(contentIndex == fileContentCountVerifier,s"file content chunk must arrive in order! got chunk #$contentIndex but expected #$fileContentCountVerifier for uuid [$uuidHint]")
-      fileContentBuilder ++= fileContent
+
+      if(fileContentBuilder eq null)
+        fileContentBuilder = new Array[Byte](this.fileContentLength)
+
+      var j = 0
+      val srcUntil = fileContentBuildPosition + fileContent.length
+      while (fileContentBuildPosition < srcUntil) {
+        fileContentBuilder(fileContentBuildPosition) = fileContent(j)
+        fileContentBuildPosition += 1
+        j += 1
+      }
       fileContentCountVerifier += 1
     }
 
@@ -160,19 +170,22 @@ object InfotonSerializer extends LazyLogging {
         infoton = kind match {
           case "o" => new ObjectInfoton(path,dc,indexTime,lastModified,fields.map(_.toMap), indexName)
           case "f" => {
-            val content = {
+            val fileContent = {
               if (mimeType eq null) None
               else {
-                val content = fileContentBuilder.result()
+                val dataPointerOpt = if (fileContentCountVerifier == 0) Option(dataPointer) else {
+                  if (fileContentBuildPosition != fileContentLength)
+                    logger.warn(s"content has different length than expected. expected: [$fileContentLength], actual: [$fileContentBuildPosition/${fileContentBuilder.length}] for uuid [$uuidHint]")
 
-                if(content.length != fileContentLength)
-                  logger.warn(s"content has different length than expected. expected: [$fileContentLength], actual: [${content.length}] for uuid [$uuidHint]")
+                  if (dataPointer ne null)
+                    logger.warn(s"both dataPointer and content are present! dataPointer: [$dataPointer], content length: [${fileContentBuilder.length}] for uuid [$uuidHint]")
 
-                val contentRes = if((dataPointer ne null) && content.isEmpty) None else Option(content)
-                Some(FileContent(contentRes, mimeType, fileContentLength, Option(dataPointer)))
+                  None
+                }
+                Some(FileContent(Option(fileContentBuilder), mimeType, fileContentLength, dataPointerOpt))
               }
             }
-            new FileInfoton(path,dc,indexTime,lastModified,fields.map(_.toMap),content, indexName)
+            new FileInfoton(path, dc, indexTime, lastModified, fields.map(_.toMap), fileContent, indexName)
           }
           case "l" => {
             if((linkTo eq null) || (linkType == -1)) throw new IllegalStateException(s"cannot create a LinkInfoton for uuid [$uuidHint] if linkTo [$linkTo] or linkType [$linkType] is not initialized.")
@@ -204,46 +217,46 @@ object InfotonSerializer extends LazyLogging {
     val infotonBuilder = new MutableInfotonBuilder(uuidHint)
 
     def applySystemChanges(field: CField, value: CValue): Unit = field match {
-      case "type"           => infotonBuilder.setKind(value._1)
-      case "path"           => infotonBuilder.setPath(value._1)
-      case "lastModified"   => infotonBuilder.setLastModified(value._1)
-      case "dc"             => infotonBuilder.setDc(value._1)
-      case "indexTime"      => infotonBuilder.setIndexTime(value._1.toLong)
-      case "indexName"      => infotonBuilder.setIndexName(value._1)
-      case "mimeType"       => infotonBuilder.setMimeType(value._1)
-      case "contentLength"  => infotonBuilder.setContentLength(value._1.toInt)
-      case "data"           => infotonBuilder.setFileContent(value._2,value._1.toInt)
+      case "type" => infotonBuilder.setKind(value._1)
+      case "path" => infotonBuilder.setPath(value._1)
+      case "lastModified" => infotonBuilder.setLastModified(value._1)
+      case "dc" => infotonBuilder.setDc(value._1)
+      case "indexTime" => infotonBuilder.setIndexTime(value._1.toLong)
+      case "indexName" => infotonBuilder.setIndexName(value._1)
+      case "mimeType" => infotonBuilder.setMimeType(value._1)
+      case "contentLength" => infotonBuilder.setContentLength(value._1.toInt)
+      case "data" => infotonBuilder.setFileContent(value._2, value._1.toInt)
       case "contentPointer" => infotonBuilder.setFileContentPointer(value._1)
-      case "linkTo"         => infotonBuilder.setLinkTo(value._1)
-      case "linkType"       => infotonBuilder.setLinkType(value._1.toInt)
+      case "linkTo" => infotonBuilder.setLinkTo(value._1)
+      case "linkType" => infotonBuilder.setLinkType(value._1.toInt)
       case f => logger.error(s"got a weird system field [$f] from cassandra for uuid [$uuidHint]")
     }
 
     def appendValues(field: CField, value: String, quad: Option[String]): Unit = field.head match {
       case 's' => field.indexOf('$') match {
-        case 1 => infotonBuilder.addFieldValue(field.drop(2),FString(value,None,quad))
-        case i => infotonBuilder.addFieldValue(field.drop(i+1),FString(value,Some(field.substring(1,i)),quad))
+        case 1 => infotonBuilder.addFieldValue(field.drop(2), FString(value, None, quad))
+        case i => infotonBuilder.addFieldValue(field.drop(i + 1), FString(value, Some(field.substring(1, i)), quad))
       }
-      case 'r' => infotonBuilder.addFieldValue(field.drop(2),FReference(value,quad))
-      case 'd' => infotonBuilder.addFieldValue(field.drop(2),FDate(value,quad))
-      case 'b' => infotonBuilder.addFieldValue(field.drop(2),FBoolean(value.toBoolean,quad))
-      case 'i' => infotonBuilder.addFieldValue(field.drop(2),FInt(value.toInt,quad))
-      case 'l' => infotonBuilder.addFieldValue(field.drop(2),FLong(value.toLong,quad))
-      case 'k' => infotonBuilder.addFieldValue(field.drop(2),FBigInt(BigInt(value).underlying(),quad))
-      case 'f' => infotonBuilder.addFieldValue(field.drop(2),FFloat(value.toFloat,quad))
-      case 'g' => infotonBuilder.addFieldValue(field.drop(2),FDouble(value.toDouble,quad))
-      case 'h' => infotonBuilder.addFieldValue(field.drop(2),FBigDecimal(BigDecimal(value).underlying(),quad))
+      case 'r' => infotonBuilder.addFieldValue(field.drop(2), FReference(value, quad))
+      case 'd' => infotonBuilder.addFieldValue(field.drop(2), FDate(value, quad))
+      case 'b' => infotonBuilder.addFieldValue(field.drop(2), FBoolean(value.toBoolean, quad))
+      case 'i' => infotonBuilder.addFieldValue(field.drop(2), FInt(value.toInt, quad))
+      case 'l' => infotonBuilder.addFieldValue(field.drop(2), FLong(value.toLong, quad))
+      case 'k' => infotonBuilder.addFieldValue(field.drop(2), FBigInt(BigInt(value).underlying(), quad))
+      case 'f' => infotonBuilder.addFieldValue(field.drop(2), FFloat(value.toFloat, quad))
+      case 'g' => infotonBuilder.addFieldValue(field.drop(2), FDouble(value.toDouble, quad))
+      case 'h' => infotonBuilder.addFieldValue(field.drop(2), FBigDecimal(BigDecimal(value).underlying(), quad))
       case 'x' => field.indexOf('$') match {
-        case i => infotonBuilder.addFieldValue(field.drop(i+1),FExternal(value,field.substring(1,i),quad))
+        case i => infotonBuilder.addFieldValue(field.drop(i + 1), FExternal(value, field.substring(1, i), quad))
       }
     }
 
     for {
-      (quad,field,vd@(value,_)) <- serializedInfoton
+      (quad, field, vd@(value, _)) <- serializedInfoton
     } quad match {
-      case `sysQuad` => applySystemChanges(field,vd)
-      case `default` => appendValues(field,value,None)
-      case otherQuad => appendValues(field,value,Some(otherQuad))
+      case `sysQuad` => applySystemChanges(field, vd)
+      case `default` => appendValues(field, value, None)
+      case otherQuad => appendValues(field, value, Some(otherQuad))
     }
 
     infotonBuilder.result()
