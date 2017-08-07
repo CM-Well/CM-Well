@@ -1586,7 +1586,7 @@ callback=< [URL] >
       val reply = {
         if (withHistory && (xg.isDefined || yg.isDefined))
           Future.successful(BadRequest(s"you can't mix `xg` nor `yg` with `with-history`: it makes no sense!"))
-        else if (request.queryString.keySet("with-history")) {
+        else if (withHistory) {
           if (isReactive(request)) {
             format.getOrElse("json") match {
               case f if !Set("text", "path", "tsv", "tab", "nt", "ntriples", "nq", "nquads")(f.toLowerCase) && !f.toLowerCase.startsWith("json") =>
@@ -1602,7 +1602,7 @@ callback=< [URL] >
                   forceUniqueness = true,
                   nbg = nbg)
 
-                val infotonsSource = crudServiceFS.getInfotonHistoryReactive(path)
+                val infotonsSource = crudServiceFS.getInfotonHistoryReactive(path,nbg)
 
                 val f: Formattable => ByteString = formattableToByteString(formatter)
                 val bytes = infotonsSource.map(f andThen {
@@ -1625,7 +1625,7 @@ callback=< [URL] >
                 nbg = nbg)
             }
 
-            crudServiceFS.getInfotonHistory(path, limit).map(ihv =>
+            crudServiceFS.getInfotonHistory(path, limit, nbg).map(ihv =>
               Ok(formatter.render(ihv)).as(overrideMimetype(formatter.mimetype, request)._2)
             )
           }
@@ -1910,7 +1910,7 @@ callback=< [URL] >
     val path = normalizePath(req.path)
     val limit = req.getQueryString("versions-limit").flatMap(asInt).getOrElse(Settings.defaultLimitForHistoryVersions)
     val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
-    crudServiceFS.info(path,limit).map {
+    crudServiceFS.info(path,limit,nbg).map {
       case (cas, es, zs) => {
         val c = cas.map {
           case (u, io) => s"cas $u ${io.map(i => formatterManager.jsonFormatter(nbg).render(i)).getOrElse("none")}"
