@@ -255,7 +255,7 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
     })
   }
 
-  def putInfoton(infoton: Infoton): Future[Boolean] = {
+  def putInfoton(infoton: Infoton, isPriorityWrite: Boolean = false): Future[Boolean] = {
     // build a command with infoton
     val cmdWrite = WriteCommand(infoton)
     // convert the command to Array[Byte] payload
@@ -284,7 +284,7 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
       }
       val tlogWriteRes = if (oldBGFlag) payloadForIndirectLargeInfoton.flatMap(t => updatesTlog.write(t._1)) else Future.successful(true)
       payloadForIndirectLargeInfoton.flatMap { payload =>
-        val kafkaWriteRes = if (newBGFlag || newBG) sendToKafka(infoton.path, payload._2).map(_ => true)
+        val kafkaWriteRes = if (newBGFlag || newBG) sendToKafka(infoton.path, payload._2, isPriorityWrite).map(_ => true)
                             else Future.successful(true)
         tlogWriteRes.zip(kafkaWriteRes).map(t => t._2 && t._2)
       }
@@ -306,14 +306,14 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
     } else Future.successful(true)
 
     val kafkaWritesRes = if(newBGFlag || newBG) {
-      Future.traverse(cmds)(sendToKafka).map{_ => true}
+      Future.traverse(cmds)(sendToKafka(_)).map{_ => true}
     } else Future.successful(true)
 
     tLogWrites.zip(kafkaWritesRes).map{_ => true}
 
   }
 
-  def putInfotons(infotons: Vector[Infoton], tid: Option[String] = None, atomicUpdates: Map[String,String] = Map.empty) = {
+  def putInfotons(infotons: Vector[Infoton], tid: Option[String] = None, atomicUpdates: Map[String,String] = Map.empty, isPriorityWrite: Boolean = false) = {
     val tLogWriteRes = if(oldBGFlag) {
       Future.sequence(
           infotons.map(WriteCommand(_)).grouped(maxBulkSize).map { vec =>
@@ -342,7 +342,7 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
     tLogWriteRes.zip(kafkaWritesRes).map{t => t._1 && t._2}
   }
 
-  def deleteInfotons(deletes: List[(String, Option[Map[String, Set[FieldValue]]])], tidOpt: Option[String] = None, atomicUpdates: Map[String,String] = Map.empty) = {
+  def deleteInfotons(deletes: List[(String, Option[Map[String, Set[FieldValue]]])], tidOpt: Option[String] = None, atomicUpdates: Map[String,String] = Map.empty, isPriorityWrite: Boolean = false) = {
     val dt = new DateTime()
     val commands: List[SingleCommand] = deletes.map {
       case (path, Some(fields)) => DeleteAttributesCommand(path, fields, dt, validTid(path,tidOpt), atomicUpdates.get(path))
@@ -358,14 +358,14 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
     } else Future.successful(true)
 
     val kafkaWritesRes = if(newBGFlag || newBG) {
-      Future.traverse(commands)(sendToKafka).map(_ => true)
+      Future.traverse(commands)(sendToKafka(_,isPriorityWrite)).map(_ => true)
     } else Future.successful(true)
 
     tLogWritesRes.zip(kafkaWritesRes).map(_ => true)
 
   }
 
-  def deleteInfoton(path: String, data: Option[Map[String, Set[FieldValue]]]) = {
+  def deleteInfoton(path: String, data: Option[Map[String, Set[FieldValue]]], isPriorityWrite: Boolean = false) = {
 
     val delCommand = data match {
       case None => DeletePathCommand(path, new DateTime())
@@ -375,7 +375,7 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
     val payload = CommandSerializer.encode(delCommand)
     val tLogWriteRes = if(oldBGFlag) updatesTlog.write(payload).map { _ => true } else Future.successful(true)
 
-    val kafkaWriteRes = if(newBGFlag || newBG) sendToKafka(delCommand.path, payload)
+    val kafkaWriteRes = if(newBGFlag || newBG) sendToKafka(delCommand.path, payload, isPriorityWrite)
                         else Future.successful(true)
 
     tLogWriteRes.zip(kafkaWriteRes).map{_ => true}
@@ -386,7 +386,7 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
    * will delete ALL (!!!) values for a given field!
    * to backup values to preserve, you must add it to the inserts vector!
    */
-  def upsertInfotons(inserts: List[Infoton], deletes: Map[String, Map[String, Option[Set[FieldValue]]]], tid: Option[String] = None, atomicUpdates: Map[String,String] = Map.empty): Future[Boolean] = {
+  def upsertInfotons(inserts: List[Infoton], deletes: Map[String, Map[String, Option[Set[FieldValue]]]], tid: Option[String] = None, atomicUpdates: Map[String,String] = Map.empty, isPriorityWrite: Boolean = false): Future[Boolean] = {
     //require(!inserts.isEmpty,"if you only have DELETEs, use delete. not upsert!")
     require(inserts.forall(i => deletes.keySet(i.path)),
       "you can't use upsert for entirely new infotons! split your request into upsertInfotons and putInfotons!\n" +
@@ -453,18 +453,20 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
     else tid
   }
 
-  private def sendToKafka(command: SingleCommand): Future[Unit] =
-    sendToKafka(command.path, CommandSerializer.encode(command))
+  private def sendToKafka(command: SingleCommand, isPriorityWrite: Boolean = false): Future[Unit] =
+    sendToKafka(command.path, CommandSerializer.encode(command), isPriorityWrite)
 
-  private def sendToKafka(path: String, payload: Array[Byte]): Future[Unit] = {
+  private def sendToKafka(path: String, payload: Array[Byte], isPriorityWrite: Boolean): Future[Unit] = {
     val payloadForKafkaFut = if (payload.length > thresholdToUseZStore) {
       val key = cmwell.util.string.Hash.md5(payload)
       zStore.put(key, payload, secondsToLive = 7.days.toSeconds.toInt, false).
         map(_ => CommandSerializer.encode(CommandRef(key)))
     } else Future.successful(payload)
 
+    val topicName = if(isPriorityWrite) s"$persistTopicName.priority" else persistTopicName
+
     payloadForKafkaFut.flatMap { payloadForKafka =>
-      val pRecord = new ProducerRecord[Array[Byte], Array[Byte]](persistTopicName, path.getBytes("UTF-8"), payloadForKafka)
+      val pRecord = new ProducerRecord[Array[Byte], Array[Byte]](topicName, path.getBytes("UTF-8"), payloadForKafka)
       injectFuture(kafkaProducer.send(pRecord, _))
     }
 
