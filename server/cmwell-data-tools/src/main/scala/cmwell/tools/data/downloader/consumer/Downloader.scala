@@ -124,10 +124,6 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
   def extractTsv(bytes: ByteString) = {
     val arr = bytes.split('\t')
 
-    if (arr.size < 4) {
-      logger.error(s"received bad tsv: '${bytes.utf8String}'")
-    }
-
     TsvData(path = arr(PATH_INDEX), uuid = arr(UUID_INDEX))
   }
 
