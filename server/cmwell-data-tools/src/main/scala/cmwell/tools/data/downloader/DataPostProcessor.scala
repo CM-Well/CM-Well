@@ -42,8 +42,7 @@ object DataPostProcessor extends DataToolsLogging {
       .via(lineSeparatorFrame)
       .filter {
         case line if line.startsWith("_") =>
-          redLogger.error("was filtered: {}", line.utf8String)
-          badDataLogger.error(line.utf8String)
+          badDataLogger.debug("was filtered: {}", line.utf8String)
           false
         case _ => true
       }

@@ -29,7 +29,7 @@ import cmwell.tools.data.utils.chunkers.GroupChunker
 import cmwell.tools.data.utils.logging.DataToolsLogging
 import cmwell.tools.data.utils.ops.getVersionFromManifest
 import cmwell.tools.data.utils.akka.Implicits._
-import cmwell.tools.data.utils.akka.stats.{DownloaderStatsSink, IngesterStatsSink}
+import cmwell.tools.data.utils.akka.stats.{DownloaderStats, IngesterStats}
 import net.jcazevedo.moultingyaml._
 import org.rogach.scallop.ScallopConf
 
@@ -78,7 +78,7 @@ object SparqlTriggeredProcessorMain extends App with DataToolsLogging{
       config = config,
       baseUrl = Opts.srcHost(),
       isBulk = Opts.bulk(),
-      tokenReporter = tokenFileReporter
+      tokenReporter = Some(tokenFileReporter)
     )
     .map { case (data, _) => data}
     .via(GroupChunker(GroupChunker.formatToGroupExtractor("ntriples")))
@@ -119,25 +119,14 @@ object SparqlTriggeredProcessorMain extends App with DataToolsLogging{
         source = processor,
         within = 3.seconds
       )
-      .runWith(IngesterStatsSink(isStderr = true))
-//      .run()
-
-//    val idleThreshold = 4.hours
-//    system.scheduler.schedule(idleThreshold, idleThreshold) {
-//      val now = System.currentTimeMillis()
-//
-//      if (now - idleThreshold.toMillis > lastTimeOfDataUpdate) {
-//        logger.info(s"[${Calendar.getInstance().getTime()}] no activity for $idleThreshold, shutting down stream")
-//        killswitch.shutdown()
-//        Thread.sleep(5000)
-//        System.exit(2)
-//      }
-//    }
-
+      .via(IngesterStats(isStderr = true))
+      .runWith(Sink.ignore)
   } else {
     processor
       .map { infoton =>println(infoton.utf8String); infoton} // print to stdout
-      .runWith(DownloaderStatsSink(format = "ntriples"))
+      .map(_ -> None)
+      .via(DownloaderStats(format = "ntriples"))
+      .runWith(Sink.ignore)
   }
 
   def getSensorsConfig(path: String): Config = {

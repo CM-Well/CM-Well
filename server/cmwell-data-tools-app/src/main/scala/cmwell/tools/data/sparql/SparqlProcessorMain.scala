@@ -23,7 +23,7 @@ import akka.stream.scaladsl.{Keep, Sink, Source}
 import cmwell.tools.data.ingester._
 import cmwell.tools.data.utils.akka.Implicits._
 import cmwell.tools.data.utils.akka._
-import cmwell.tools.data.utils.akka.stats.{DownloaderStatsSink, IngesterStatsSink}
+import cmwell.tools.data.utils.akka.stats.{DownloaderStats, IngesterStats}
 import cmwell.tools.data.utils.chunkers.GroupChunker
 import cmwell.tools.data.utils.ops._
 import com.typesafe.config.ConfigFactory
@@ -146,15 +146,18 @@ object SparqlProcessorMain extends App {
       baseUrl = Opts.dstHost(),
       format = SparqlProcessor.format,
       writeToken = Opts.writeToken.toOption,
-      source = infotonSource.alsoToMat(DownloaderStatsSink(format = "ntriples"))(Keep.right)
+      source = infotonSource.map(_ -> None).via(DownloaderStats(format = "ntriples")).map(_._1)
     )
       .async
-      .runWith(IngesterStatsSink(isStderr = true))
+      .via(IngesterStats(isStderr = true))
+      .runWith(Sink.ignore)
   } else {
     // display statistics of received infotons
     infotonSource
       .map { infoton => println(infoton.utf8String); infoton} // print to stdout
-      .runWith(DownloaderStatsSink(format = "ntriples", isStderr = true))
+      .map(_ -> None)
+      .via(DownloaderStats(format = "ntriples", isStderr = true))
+      .runWith(Sink.ignore)
   }
 
   result.onComplete { x =>

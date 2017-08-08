@@ -16,10 +16,9 @@
 
 package cmwell.tools.data.utils.akka.stats
 
-import akka.Done
 import akka.actor.Cancellable
-import akka.stream.stage.{AsyncCallback, GraphStageLogic, GraphStageWithMaterializedValue, InHandler}
-import akka.stream.{Attributes, Inlet, SinkShape}
+import akka.stream._
+import akka.stream.stage._
 import cmwell.tools.data.ingester.Ingester._
 import cmwell.tools.data.utils.logging.DataToolsLogging
 import cmwell.tools.data.utils.text.Files.toHumanReadable
@@ -27,26 +26,24 @@ import nl.grons.metrics.scala.InstrumentedBuilder
 import org.apache.commons.lang3.time.DurationFormatUtils
 
 import scala.concurrent.duration._
-import scala.concurrent.{Future, Promise}
 
-object IngesterStatsSink {
+object IngesterStats {
   def apply(isStderr: Boolean = false,
             initDelay: FiniteDuration = 1.second,
             interval: FiniteDuration = 1.second,
-            label: Option[String] = None) = new IngesterStatsSink(isStderr, initDelay, interval, label)
+            label: Option[String] = None) = new IngesterStats(isStderr, initDelay, interval, label)
 }
 
-class IngesterStatsSink(isStderr: Boolean,
-                        initDelay: FiniteDuration = 1.second,
-                        interval: FiniteDuration = 1.second,
-                        label: Option[String] = None) extends GraphStageWithMaterializedValue[SinkShape[IngestEvent], Future[Done]] with DataToolsLogging{
-  val in: Inlet[IngestEvent] = Inlet("ingest-stats-sink")
-  override val shape: SinkShape[IngestEvent] = SinkShape(in)
+class IngesterStats(isStderr: Boolean,
+                    initDelay: FiniteDuration = 1.second,
+                    interval: FiniteDuration = 1.second,
+                    label: Option[String] = None) extends GraphStage[FlowShape[IngestEvent, IngestEvent]] with DataToolsLogging{
+  val in = Inlet[IngestEvent]("ingest-stats.in")
+  val out = Outlet[IngestEvent]("ingest-stats.out")
+  override val shape = FlowShape.of(in, out)
 
-  override def createLogicAndMaterializedValue(inheritedAttributes: Attributes): (GraphStageLogic, Future[Done]) = {
-    val promise = Promise[Done]()
-
-    val logic = new GraphStageLogic(shape) with InstrumentedBuilder {
+  override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = {
+    new GraphStageLogic(shape) with InstrumentedBuilder {
       val start = System.currentTimeMillis()
       val metricRegistry = new com.codahale.metrics.MetricRegistry()
       var totalIngestedBytes = metrics.meter("total-ingested-bytes")
@@ -125,7 +122,6 @@ class IngesterStatsSink(isStderr: Boolean,
         override def onUpstreamFailure(ex: Throwable): Unit = {
           failStage(ex)
           eventPoller.foreach(_.cancel())
-          promise.failure(ex)
         }
 
         override def onUpstreamFinish(): Unit = {
@@ -142,12 +138,15 @@ class IngesterStatsSink(isStderr: Boolean,
           System.err.println(message)
 
           completeStage()
-          promise.success(Done)
           eventPoller.foreach(_.cancel())
         }
       })
-    }
 
-    (logic, promise.future)
+      setHandler(out, new OutHandler {
+        override def onPull(): Unit = {
+          if (!hasBeenPulled(in)) pull(in)
+        }
+      })
+    }
   }
 }
