@@ -46,11 +46,13 @@ class BGMonitorActor(zkServers:String, offsetService:OffsetsService, implicit va
     val endPoint = b.endPoints.head._2
     s"${endPoint.host}:${endPoint.port}"
   }.mkString(",")
-  val topics = Seq("persist_topic", "index_topic")
+  val topics = Seq("persist_topic", "persist_topic.priority", "index_topic", "index_topic.priority")
   val partitionsForTopics = zkUtils.getPartitionsForTopics(topics)
   val topicsPartitionsAndGroups = partitionsForTopics.flatMap{
     case ("persist_topic", partitions) => partitions.map{partition => (new TopicPartition("persist_topic", partition), s"imp.$partition")}
+    case ("persist_topic.priority", partitions) => partitions.map{partition => (new TopicPartition("persist_topic.priority", partition), s"imp.p.$partition")}
     case ("index_topic", partitions) => partitions.map{partition => (new TopicPartition("index_topic", partition), s"indexer.$partition")}
+    case ("index_topic.priority", partitions) => partitions.map{partition => (new TopicPartition("index_topic.priority", partition), s"indexer.p.$partition")}
   }
 
   val topicsPartitionsAndConsumers = topicsPartitionsAndGroups.map { case (topicPartition, groupId) =>
@@ -102,7 +104,9 @@ class BGMonitorActor(zkServers:String, offsetService:OffsetsService, implicit va
           val partitionsOffsetsInfo:Map[String, PartitionOffsetsInfo] = topicPartitionsWriteOffsets.asScala.map{ case (topicPartition, writeOffset) =>
             val streamId = topicPartition.topic() match {
               case "persist_topic" => s"imp.${topicPartition.partition()}_offset"
+              case "persist_topic.priority" => s"imp.p.${topicPartition.partition()}_offset"
               case "index_topic" => s"indexer.${topicPartition.partition()}_offset"
+              case "index_topic.priority" => s"indexer.p.${topicPartition.partition()}_offset"
             }
             val readOffset = offsetService.read(streamId).getOrElse(0L)
             ((topicPartition.topic() + topicPartition.partition()), PartitionOffsetsInfo(topicPartition.topic(), topicPartition.partition(), readOffset, writeOffset))

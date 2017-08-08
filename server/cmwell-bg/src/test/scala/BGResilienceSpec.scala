@@ -20,11 +20,9 @@ import java.nio.file.{Files, Paths}
 import java.util.Properties
 
 import akka.actor.{ActorRef, ActorSystem}
-import akka.pattern.ask
 
 import concurrent.duration._
 import cmwell.bg.test.FailingIRWServiceMockup
-import cmwell.bg._
 import cmwell.domain.{FieldValue, ObjectInfoton}
 import cmwell.driver.Dao
 import cmwell.fts.FTSServiceNew

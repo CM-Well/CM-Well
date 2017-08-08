@@ -522,23 +522,46 @@ ${lines.mkString("\n")}
 ${
     offsetInfo.partitionsOffsetInfo.values.groupBy(_.partition).toSeq.sortBy(_._1).map { case (partition, offsetsInfo) =>
       val persistOffsetInfo = offsetsInfo.find(_.topic == "persist_topic").get
-      val persistWriteOffset = persistOffsetInfo.writeOffset
-      val persistReadOffset = persistOffsetInfo.readOffset
-      val persistLag = persistWriteOffset - persistReadOffset
+      val persistWriteOffset = coloredHtmlString("green", s"${persistOffsetInfo.writeOffset}")
+      val persistReadOffset = coloredHtmlString("green", s"${persistOffsetInfo.readOffset}")
+      val persistLag = persistOffsetInfo.writeOffset - persistOffsetInfo.readOffset
+      val persistLagStr = coloredHtmlString("green", s"$persistLag")
       val persistStatus:String = {
         val color = persistOffsetInfo.partitionStatus.toString
         coloredHtmlString(color.toLowerCase,color)
       }
 
+      val persistOffsetInfoPriority = offsetsInfo.find(_.topic == "persist_topic.priority").get
+      val persistWriteOffsetPriority = coloredHtmlString("blue", s"${persistOffsetInfoPriority.writeOffset}")
+      val persistReadOffsetPriority = coloredHtmlString("blue", s"${persistOffsetInfoPriority.readOffset}")
+      val persistLagPriority = persistOffsetInfoPriority.writeOffset - persistOffsetInfoPriority.readOffset
+      val persistLagPriorityStr = coloredHtmlString("blue", s"${persistLagPriority}")
+      val persistStatusPriority:String = {
+        val color = persistOffsetInfoPriority.partitionStatus.toString
+        coloredHtmlString(color.toLowerCase,color)
+      }
+
       val indexOffsetInfo = offsetsInfo.find(_.topic == "index_topic").get
-      val indexWriteOffset = indexOffsetInfo.writeOffset
-      val indexReadOffset = indexOffsetInfo.readOffset
-      val indexLag = indexWriteOffset - indexReadOffset
+      val indexWriteOffset = coloredHtmlString("green", s"${indexOffsetInfo.writeOffset}")
+      val indexReadOffset = coloredHtmlString("green", s"${indexOffsetInfo.readOffset}")
+      val indexLag = indexOffsetInfo.writeOffset - indexOffsetInfo.readOffset
+      val indexLagStr = coloredHtmlString("green", s"${indexLag}")
       val indexStatus = {
         val color = indexOffsetInfo.partitionStatus.toString
         coloredHtmlString(color.toLowerCase,color)
       }
-      s"|$partition|$persistWriteOffset|$persistReadOffset|$persistLag|$persistStatus|$indexWriteOffset|$indexReadOffset|$indexLag|$indexStatus|"
+
+      val indexOffsetInfoPriority = offsetsInfo.find(_.topic == "index_topic.priority").get
+      val indexWriteOffsetPriority = coloredHtmlString("blue", s"${indexOffsetInfoPriority.writeOffset}")
+      val indexReadOffsetPriority = coloredHtmlString("blue", s"${indexOffsetInfoPriority.readOffset}")
+      val indexLagPriority = indexOffsetInfoPriority.writeOffset - indexOffsetInfoPriority.readOffset
+      val indexLagPriorityStr = coloredHtmlString("blue", s"${indexLagPriority}")
+      val indexStatusPriority = {
+        val color = indexOffsetInfoPriority.partitionStatus.toString
+        coloredHtmlString(color.toLowerCase,color)
+      }
+
+      s"|$partition|${persistWriteOffset}/${persistWriteOffsetPriority}|${persistReadOffset}/${persistReadOffsetPriority}|${persistLagStr}/${persistLagPriorityStr}|${persistStatus}/${persistStatusPriority}|${indexWriteOffset}/${indexWriteOffsetPriority}|${indexReadOffset}/${indexReadOffsetPriority}|${indexLagStr}/${indexLagPriorityStr}|${indexStatus}/${indexStatusPriority}|"
     }.mkString("\n")
  }
 """
