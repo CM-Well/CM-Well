@@ -18,11 +18,12 @@ package cmwell.tools.data.downloader
 
 import java.nio.file.{Files, Paths}
 
+import akka.stream.scaladsl.Sink
 import cmwell.tools.data.downloader.consumer.Downloader
 import cmwell.tools.data.utils.ArgsManipulations._
 import cmwell.tools.data.utils.akka.Implicits._
 import cmwell.tools.data.utils.akka._
-import cmwell.tools.data.utils.akka.stats.DownloaderStatsSink
+import cmwell.tools.data.utils.akka.stats.DownloaderStats
 import cmwell.tools.data.utils.chunkers.GroupChunker
 import cmwell.tools.data.utils.ops._
 import nl.grons.metrics.scala.InstrumentedBuilder
@@ -121,7 +122,9 @@ object ConsumerMain extends App with InstrumentedBuilder{
     .via(GroupChunker(GroupChunker.formatToGroupExtractor(Opts.format())))
     .map(concatByteStrings(_, endl))
     .map { infoton => println(infoton.utf8String); infoton} // print to stdout
-    .runWith(DownloaderStatsSink(format = Opts.format(), isStderr = true))
+    .map(_ -> None)
+    .via (DownloaderStats(format = Opts.format(), isStderr = true))
+    .runWith(Sink.ignore)
 
   result.onComplete { x =>
     System.err.println(s"finished: $x")
