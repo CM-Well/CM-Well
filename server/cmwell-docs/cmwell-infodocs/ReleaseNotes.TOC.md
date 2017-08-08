@@ -4,10 +4,11 @@ Click on a version to see its release notes.
 
 **Latest version:**
 
-* [Version Hydra - June 2017](ReleaseNotes.Hydra.June.2017.md)
+* [Version Iguana - July 2017](ReleaseNotes.Iguana.July.2017.md)
 
 **Older versions:**
 
+* [Version Hydra - June 2017](ReleaseNotes.Hydra.June.2017.md)
 * [Version Gopher - May 2017](ReleaseNotes.Gopher.May.2017.md)
 * [Version Firebird - May 2017](ReleaseNotes.Firebird.May.2017.md)
 * [Version Dolphin - Mar. 2017](ReleaseNotes.Dolphin.Mar.2017.md)
