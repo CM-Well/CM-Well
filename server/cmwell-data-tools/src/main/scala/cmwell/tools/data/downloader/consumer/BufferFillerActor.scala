@@ -174,8 +174,6 @@ class BufferFillerActor(threshold: Int,
       HttpRequest(uri = uri)
     }
 
-    //          consumerStatsActor ! NewToken(token)
-
     uuidsFromCurrentToken.clear()
 
     val source: Source[Token, (Future[Option[Token]], UniqueKillSwitch)] = Source.single(token)
@@ -191,9 +189,6 @@ class BufferFillerActor(threshold: Int,
 
         case (Success(HttpResponse(s, h , e, _)), _) if s == StatusCodes.NoContent =>
           e.discardBytes()
-
-//          consumerStatsActor ! EndStreamEvent // also kills the previous actor
-//          consumerStatsActor = system.actorOf(Props(new ConsumerStatsActor(baseUrl, initToken, params)))
 
           if (updateFreq.isEmpty) self ! NewData(None)
 
