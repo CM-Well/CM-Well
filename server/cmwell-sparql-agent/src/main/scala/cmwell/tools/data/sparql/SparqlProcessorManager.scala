@@ -172,7 +172,7 @@ class SparqlProcessorManager extends Actor with LazyLogging {
         jobs.foreach {
           case (path, job) =>
             // stop jobs and store it in non-active job list
-            job.killSwitch.abort(new Exception("job interrupted"))
+            job.killSwitch.shutdown()
             job.reporter! PoisonPill
             activeJobs -= path
 
@@ -186,10 +186,9 @@ class SparqlProcessorManager extends Actor with LazyLogging {
         nonActiveConfigs --= configs.keySet
 
       case StopJob(registered, path, job) if registered =>
-        job.killSwitch.abort(new Exception("job interrupted"))
+        job.killSwitch.shutdown()
 
         activeJobs -= path
-        job.killSwitch.shutdown()
         job.reporter ! PoisonPill
 
       case RequestStats =>
@@ -358,7 +357,7 @@ class SparqlProcessorManager extends Actor with LazyLogging {
       name = s"$configName-${Hash.crc32(config.toString)}"
     )
 
-    val agent = SparqlTriggeredProcessor.listen(config, hostUpdatesSource, true, tokenReporter, Some(configName.toString))
+    val agent = SparqlTriggeredProcessor.listen(config, hostUpdatesSource, true, Some(tokenReporter), Some(configName.toString))
       .map { case (data, _) => data }
       .via(GroupChunker(formatToGroupExtractor(materializedViewFormat)))
       .map(concatByteStrings(_, endl))

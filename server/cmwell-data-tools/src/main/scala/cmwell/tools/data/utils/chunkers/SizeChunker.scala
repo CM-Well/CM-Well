@@ -16,14 +16,13 @@
 
 package cmwell.tools.data.utils.chunkers
 
-import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import akka.stream.stage._
+import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import akka.util.ByteString
 
 import scala.collection.immutable
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration._
-import scala.concurrent.duration.{Duration, FiniteDuration}
 
 /**
   * Chunk up this stream into groups of elements received within a time window,

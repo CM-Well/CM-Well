@@ -16,17 +16,15 @@
 
 package cmwell.tools.data.sparql
 
-import akka.pattern._
 import akka.actor.{ActorRef, ActorSystem}
-import akka.stream.scaladsl.{Flow, GraphDSL, Keep, Merge, Sink, Source}
-import akka.stream.{Materializer, SharedKillSwitch, SourceShape}
+import akka.pattern._
+import akka.stream.scaladsl.{GraphDSL, Merge, Source}
+import akka.stream.{Materializer, SourceShape}
 import akka.util.ByteString
+import cmwell.tools.data.downloader.consumer.Downloader.Token
 import cmwell.tools.data.downloader.consumer.{Downloader => Consumer}
-import cmwell.tools.data.utils.akka.lineSeparatorFrame
-import cmwell.tools.data.utils.akka.stats.DownloaderStatsSink
-import cmwell.tools.data.utils.chunkers.GroupChunker
+import cmwell.tools.data.utils.akka.stats.DownloaderStats
 import cmwell.tools.data.utils.logging.DataToolsLogging
-import cmwell.tools.data.utils.ops.VersionChecker
 import cmwell.tools.data.utils.text.Tokens
 
 import scala.concurrent.duration._
@@ -55,8 +53,9 @@ object SparqlTriggeredProcessor {
   def listen(config: Config,
              baseUrl: String,
              isBulk: Boolean = false,
-             tokenReporter: ActorRef,
-             label: Option[String] = None)
+             tokenReporter: Option[ActorRef] = None,
+             label: Option[String] = None,
+             distinctWindowSize: FiniteDuration = 10.seconds)
             (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
 
     new SparqlTriggeredProcessor(
@@ -64,70 +63,69 @@ object SparqlTriggeredProcessor {
       baseUrl = baseUrl,
       isBulk = isBulk,
       tokenReporter = tokenReporter,
-      label = label
-    ).listen()
+      label = label,
+      distinctWindowSize = distinctWindowSize)
+      .listen()
   }
 }
 
 class SparqlTriggeredProcessor(config: Config,
                                baseUrl: String,
                                isBulk: Boolean = false,
-                               tokenReporter: ActorRef,
-                               override val label: Option[String] = None) extends DataToolsLogging {
+                               tokenReporter: Option[ActorRef] = None,
+                               override val label: Option[String] = None,
+                               distinctWindowSize: FiniteDuration) extends DataToolsLogging {
 
   def listen()(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
     case class SensorContext(name: String, token: String)
 
     def addStatsToSource(id: String, source: Source[(ByteString, Option[SensorContext]), _]) = {
-      val statsSink = Sink.fromGraph(
-        Flow[(ByteString, Option[SensorContext])]
-          .map { case (data, _) => data }
-          .toMat(DownloaderStatsSink(
-            format = "ntriples",
-            label = Some(id),
-            reporter = Some(tokenReporter)
-          ))(Keep.right)
-      )
-
-      source.alsoTo(statsSink)
+      source.via(DownloaderStats(format = "ntriples", label = Some(id), reporter = tokenReporter))
     }
 
-    def getSavedTokens(): Map[String, String] = {
-      import akka.pattern._
-      implicit val t = akka.util.Timeout(1.minute)
-      val result = (tokenReporter ? RequestPreviousTokens).mapTo[ResponseWithPreviousTokens]
-        .map {
-          case ResponseWithPreviousTokens(tokens) => tokens
-          case x => logger.error(s"did not receive previous tokens: $x"); Map.empty[String, String]
-        }
+    def getSavedTokens(): Map[String, Token] = tokenReporter match {
+      case None => Map.empty[String, Token]
+      case Some(reporter) =>
+        import akka.pattern._
+        implicit val t = akka.util.Timeout(1.minute)
+        val result = (reporter ? RequestPreviousTokens).mapTo[ResponseWithPreviousTokens]
+          .map {
+            case ResponseWithPreviousTokens(tokens) => tokens
+            case x => logger.error(s"did not receive previous tokens: $x"); Map.empty[String, Token]
+          }
 
-      Await.result(result, 1.minute)
+        Await.result(result, 1.minute)
     }
 
     var savedTokens = getSavedTokens()
 
-    def getReferencedData(path: String) = {
-      implicit val timeout = akka.util.Timeout(30.seconds)
-      (tokenReporter ? RequestReference(path.tail)).mapTo[ResponseReference]
-        .map{ case ResponseReference(data) => data }
+    def getReferencedData(path: String) = tokenReporter match {
+      case None => Future.successful("")
+      case Some(reporter) =>
+        implicit val timeout = akka.util.Timeout(30.seconds)
+        (reporter ? RequestReference(path.tail)).mapTo[ResponseReference]
+          .map{ case ResponseReference(data) => data }
     }
 
     def preProcessConfig(config: Config) = {
-        val (needsProcessing, noProcessingNeeded) = config.sensors.partition(_.sparqlToRoot.getOrElse("").startsWith("@"))
-        Future.traverse(needsProcessing) { sensor =>
-          getReferencedData(sensor.sparqlToRoot.get).map(data => sensor.copy(sparqlToRoot = Some(data)))
-        }
-          .map(_ ++ noProcessingNeeded)
-          .map( updatedSensors => config.copy(sensors = updatedSensors) )
-          .flatMap { config  => // handle sparql-materializer
-            if (config.sparqlMaterializer.startsWith("@")) {
-              getReferencedData(config.sparqlMaterializer)
-                .map(data => config.copy(sparqlMaterializer = data))
-            } else {
-              Future.successful(config)
-            }
-          }
+      val configWithProcessedMaterializer = if (config.sparqlMaterializer.startsWith("@")) {
+        getReferencedData(config.sparqlMaterializer)
+          .map(data => config.copy(sparqlMaterializer = data))
+      } else {
+        Future.successful(config)
+      }
 
+      configWithProcessedMaterializer.flatMap { c =>
+        val processedSensors = c.sensors.map {
+          case sensor@Sensor(_, _, _, _, _, Some(sparqlToRoot)) if sparqlToRoot.startsWith("@") =>
+            getReferencedData(sparqlToRoot).map(data => sensor.copy(sparqlToRoot = Some(data)))
+          case sensor =>
+            Future.successful(sensor)
+        }
+
+        Future.sequence(processedSensors)
+          .map(updatedSensors => c.copy(sensors = updatedSensors))
+      }
     }
 
     def createSensorSource(config: Config) = {
@@ -219,7 +217,7 @@ class SparqlTriggeredProcessor(config: Config,
     val processedConfig = Await.result(preProcessConfig(config), 3.minutes)
 
     val sensorSource = createSensorSource(processedConfig)
-      .groupedWithin(10000, 10.seconds)
+      .groupedWithin(10000, distinctWindowSize)
       .statefulMapConcat{ () =>
         // stores last received tokens from sensors
         sensorData => {
@@ -227,7 +225,7 @@ class SparqlTriggeredProcessor(config: Config,
             case (data, Some(SensorContext(name, newToken))) if newToken != savedTokens.getOrElse(name, "") =>
               // received new token from sensor, write it to state file
               logger.debug("sensor '{}' received new token: {} {}", name, Tokens.decompress(newToken), newToken)
-              tokenReporter ! ReportNewToken(name, newToken)
+              tokenReporter.foreach(_ ! ReportNewToken(name, newToken) )
 
               //            stateFilePath.foreach { path => Files.write(path, savedTokens.mkString("\n").getBytes("UTF-8")) }
               savedTokens = savedTokens + (name -> newToken)

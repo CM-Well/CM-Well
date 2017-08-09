@@ -121,7 +121,8 @@ class IngestPushback @Inject() (backPressureToggler: BackPressureToggler, dashBo
       else SimpleScheduler.schedule(ingestPushbackByServer - requestTime)(result)
     }
 
-    PersistentDMap.get(backPressureToggler.BACKPRESSURE_TRIGGER).flatMap(_.as[String]).getOrElse(Settings.pushbackpressure) match {
+    if(request.getQueryString("priority").isDefined) block(request) // Authorization of Priority usage is handled in InputHandler. Existence of the query parameter is sufficient to do nothing here.
+    else PersistentDMap.get(backPressureToggler.BACKPRESSURE_TRIGGER).flatMap(_.as[String]).getOrElse(Settings.pushbackpressure) match {
       case "new" => filterByKLog().flatMap(resOptToFilterBy)
       case "old" => resOptToFilterBy(filterByTLog())
       case "off" => block(request)

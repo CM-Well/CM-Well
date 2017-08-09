@@ -442,10 +442,11 @@ callback=< [URL] >
       case Failure(e) => asyncErrorHandler(e)
       case Success(request) => {
         val normalizedPath = normalizePath(request.path)
+        val isPriorityWrite = originalRequest.getQueryString("priority").isDefined
         if (!InfotonValidator.isInfotonNameValid(normalizedPath))
           Future.successful(BadRequest(Json.obj("success" -> false, "message" -> """you can't delete from "proc" / "ii" / or any path starting with "_" (service paths...)""")))
-        //    else if(Settings.authSystemVersion==1 && !security.RSAAuthorizationService.authorize(normalizedPath,request.headers.get("X-CM-WELL-TOKEN")))
-        //      Future.successful(Forbidden(Json.obj("success" -> false, "message" -> """authorization failed!""")))
+        else if(isPriorityWrite && !authUtils.isOperationAllowedForUser(security.PriorityWrite, authUtils.extractTokenFrom(originalRequest), evenForNonProdEnv = true))
+          Future.successful(Forbidden(Json.obj("success" -> false, "message" -> "User not authorized for priority write")))
         else {
           val nbg = originalRequest.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
           //deleting values based on json
@@ -453,7 +454,7 @@ callback=< [URL] >
             case Some(jsonStr) =>
               jsonToFields(jsonStr.getBytes("UTF-8")) match {
                 case Success(fields) =>
-                  crudServiceFS.deleteInfoton(normalizedPath, Some(fields)).map { _ => Ok(Json.obj("success" -> true)) }
+                  crudServiceFS.deleteInfoton(normalizedPath, Some(fields), isPriorityWrite).map { _ => Ok(Json.obj("success" -> true)) }
                 case Failure(exception) => asyncErrorHandler(exception)
               }
             case None => {
@@ -472,12 +473,12 @@ callback=< [URL] >
                 either <- infotonPathDeletionAllowed(normalizedPath, request.getQueryString("recursive").getOrElse("true").toBoolean,crudServiceFS,nbg)
               } {
                 (fields.isDefined, either) match {
-                  case (true, _) => crudServiceFS.deleteInfoton(normalizedPath, fields)
+                  case (true, _) => crudServiceFS.deleteInfoton(normalizedPath, fields, isPriorityWrite)
                     .onComplete {
                       case Success(b) => p.success(Ok(Json.obj("success" -> b)))
                       case Failure(e) => p.success(InternalServerError(Json.obj("success" -> false, "message" -> e.getMessage)))
                     }
-                  case (false, Right(paths)) => crudServiceFS.deleteInfotons(paths.map(_ -> None).toList)
+                  case (false, Right(paths)) => crudServiceFS.deleteInfotons(paths.map(_ -> None).toList, isPriorityWrite=isPriorityWrite)
                     .onComplete {
                       case Success(b) => p.success(Ok(Json.obj("success" -> b)))
                       case Failure(e) => p.success(InternalServerError(Json.obj("success" -> false, "message" -> e.getMessage)))
@@ -1769,20 +1770,21 @@ callback=< [URL] >
 
   def handlePutInfoton(path:String): Request[RawBuffer] => Future[Result] = { implicit originalRequest =>
 
-    requestSlashValidator(originalRequest).map {request =>
+    requestSlashValidator(originalRequest).map { request =>
       val normalizedPath = normalizePath(request.path)
+      val isPriorityWrite = originalRequest.getQueryString("priority").isDefined
 
-      if (!InfotonValidator.isInfotonNameValid(normalizedPath))
+      if (!InfotonValidator.isInfotonNameValid(normalizedPath)) {
         Future.successful(BadRequest(Json.obj("success" -> false, "message" -> """you can't write to "meta" / "proc" / "ii" / or any path starting with "_" (service paths...)""")))
-      //      else if (Settings.authSystemVersion == 1 && !security.RSAAuthorizationService.authorize(normalizedPath, request.headers.get("X-CM-WELL-TOKEN")))
-      //        Future.successful(Forbidden(Json.obj("success" -> false, "message" -> """authorization failed!""")))
-      else request match {
+      } else if(isPriorityWrite && !authUtils.isOperationAllowedForUser(security.PriorityWrite, authUtils.extractTokenFrom(originalRequest), evenForNonProdEnv = true)) {
+        Future.successful(Forbidden(Json.obj("success" -> false, "message" -> "User not authorized for priority write")))
+      } else request match {
         case XCmWellType.Object() => {
           val bodyBytes = request.body.asBytes().fold(Array.emptyByteArray)(_.toArray[Byte])
           jsonToFields(bodyBytes) match {
             case Success(fields) =>
               InfotonValidator.validateValueSize(fields)
-              boolFutureToRespones(crudServiceFS.putInfoton(ObjectInfoton(normalizedPath, Settings.dataCenter, None, fields)))
+              boolFutureToRespones(crudServiceFS.putInfoton(ObjectInfoton(normalizedPath, Settings.dataCenter, None, fields), isPriorityWrite))
             // TODO handle validation
             case Failure(exception) => asyncErrorHandler(exception)
           }
@@ -1792,7 +1794,7 @@ callback=< [URL] >
           if (content.isEmpty) Future.successful(BadRequest(Json.obj("success" -> false, "cause" -> "empty content")))
           else {
             val contentType = request.headers.get("Content-Type").orElse(MimeTypeIdentifier.identify(content, normalizedPath.slice(normalizedPath.lastIndexOf("/"), normalizedPath.length))).getOrElse("text/plain")
-            boolFutureToRespones(crudServiceFS.putInfoton(FileInfoton(path = normalizedPath, dc = Settings.dataCenter, content = Some(FileContent(content, contentType)))))
+            boolFutureToRespones(crudServiceFS.putInfoton(FileInfoton(path = normalizedPath, dc = Settings.dataCenter, content = Some(FileContent(content, contentType))), isPriorityWrite))
           }
         }
         case XCmWellType.FileMD() => {
@@ -1800,7 +1802,7 @@ callback=< [URL] >
           jsonToFields(bodyBytes) match {
             case Success(fields) =>
               InfotonValidator.validateValueSize(fields)
-              boolFutureToRespones(crudServiceFS.putInfoton(FileInfoton(path = normalizedPath, dc = Settings.dataCenter, fields = Some(fields))))
+              boolFutureToRespones(crudServiceFS.putInfoton(FileInfoton(path = normalizedPath, dc = Settings.dataCenter, fields = Some(fields)), isPriorityWrite))
             case Failure(exception) => Future.successful(BadRequest(Json.obj("success" -> false, "cause" -> exception.getMessage)))
           }
         }
@@ -1812,7 +1814,7 @@ callback=< [URL] >
             case "1" => LinkType.Temporary
             case "2" => LinkType.Forward
           }
-          boolFutureToRespones(crudServiceFS.putInfoton(LinkInfoton(path = normalizedPath, dc = Settings.dataCenter, fields = Some(Map[String, Set[FieldValue]]()), linkTo = linkTo, linkType = linkType)))
+          boolFutureToRespones(crudServiceFS.putInfoton(LinkInfoton(path = normalizedPath, dc = Settings.dataCenter, fields = Some(Map[String, Set[FieldValue]]()), linkTo = linkTo, linkType = linkType), isPriorityWrite))
         }
         case _ => Future.successful(BadRequest(Json.obj("success" -> false, "cause" -> "unrecognized type")))
       }
