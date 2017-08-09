@@ -54,7 +54,7 @@ trait FileInfotonCaching {
 
       Assets.assetInfoForRequest(request, path).map(_.map{case (ai,gr) => (ai.gzipUrl.isDefined, gr)}.getOrElse(false -> false)).map {
         case (gzipAvailable, gzipRequested) => {
-          maybeNotModified(etag, lastModified, request, false, dontCache = dontCache).getOrElse {
+          maybeNotModified(etag, lastModified, request, aggressiveCaching = false, dontCache = dontCache).getOrElse {
             cacheableResult(
               etag,
               lastModified,
@@ -74,17 +74,8 @@ trait FileInfotonCaching {
              gzipAvailable: Boolean): Result = {
 
     //TODO: `HttpEntity.Streamed` or `HttpEntity.Strict` ?
-    val entity = HttpEntity.Streamed(resourceData,Some(length),Some(mimeType))
-    val response = Result(
-      ResponseHeader(
-        OK,
-        Map(
-          CONTENT_LENGTH -> length.toString,
-          CONTENT_TYPE -> mimeType,
-          DATE -> currentTimeFormatted
-        )
-      ),
-      entity)
+    val entity = HttpEntity.Streamed(resourceData, Some(length), Some(mimeType))
+    val response = Result(ResponseHeader(OK, Map(DATE -> currentTimeFormatted)), entity).as(mimeType)
     if (gzipRequested && gzipAvailable) {
       response.withHeaders(VARY -> ACCEPT_ENCODING, CONTENT_ENCODING -> "gzip")
     } else if (gzipAvailable) {
