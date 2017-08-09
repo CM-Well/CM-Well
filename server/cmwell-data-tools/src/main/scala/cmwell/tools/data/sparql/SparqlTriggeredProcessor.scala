@@ -64,7 +64,7 @@ object SparqlTriggeredProcessor {
       isBulk = isBulk,
       tokenReporter = tokenReporter,
       label = label,
-      distinctWindowSize = 10.seconds)
+      distinctWindowSize = distinctWindowSize)
       .listen()
   }
 }
