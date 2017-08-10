@@ -20,12 +20,14 @@ import cmwell.bg.Merger
 import cmwell.domain.{FieldValue, ObjectInfoton}
 import cmwell.common.{DeletePathCommand, WriteCommand}
 import org.joda.time.DateTime
-import org.scalatest.{FlatSpec, Matchers, OptionValues}
+import org.scalatest.{DoNotDiscover, FlatSpec, Matchers, OptionValues}
 
 /**
   * Created by israel on 29/11/2016.
   */
+@DoNotDiscover
 class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
+
 
   val merger = Merger()
 
