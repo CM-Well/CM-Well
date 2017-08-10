@@ -37,9 +37,6 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
   var actorSystem:ActorSystem = _
 
   override def beforeAll = {
-
-    println("running BGSequentialSpec")
-
     val producerProperties = new Properties
     producerProperties.put("bootstrap.servers", "localhost:9092")
     producerProperties.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")

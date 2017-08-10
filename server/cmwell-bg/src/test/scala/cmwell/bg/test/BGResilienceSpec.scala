@@ -59,8 +59,6 @@ class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers wi
 
   override def beforeAll = {
 
-    println("running BGResilienceSpec")
-
     val producerProperties = new Properties
     producerProperties.put("bootstrap.servers", "localhost:9092")
     producerProperties.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")

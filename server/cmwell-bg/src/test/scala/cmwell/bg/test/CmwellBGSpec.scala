@@ -83,8 +83,6 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
   }
 
   override def beforeAll = {
-    println("running CmwellBGSpec")
-
     val producerProperties = new Properties
     producerProperties.put("bootstrap.servers", "localhost:9092")
     producerProperties.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")

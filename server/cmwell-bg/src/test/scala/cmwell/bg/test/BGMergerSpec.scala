@@ -32,7 +32,6 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
   val merger = Merger()
 
   "Merger" should "merge WriteCommand with no previous version correctly" in {
-    println("Running BGMergerSpec")
     val infoton = ObjectInfoton(
       "/bg-test-merge/objinfo1",
       "dc1",
