@@ -16,13 +16,14 @@ import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
 import org.elasticsearch.common.unit.TimeValue
-import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
+import org.scalatest.{BeforeAndAfterAll, DoNotDiscover, FlatSpec, Matchers}
 
 import concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.io.Source
 import concurrent.ExecutionContext.Implicits.global
 
+@DoNotDiscover
 class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers with LazyLogging {
 
   var kafkaProducer:KafkaProducer[Array[Byte], Array[Byte]] = _
@@ -36,6 +37,8 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
   var actorSystem:ActorSystem = _
 
   override def beforeAll = {
+
+    println("running BGSequentialSpec")
 
     val producerProperties = new Properties
     producerProperties.put("bootstrap.servers", "localhost:9092")
@@ -81,7 +84,7 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
 
   "BG" should "process priority commands" in {
     // prepare sequence of priority writeCommands
-    val pWriteCommands = Seq.tabulate(5000) { n =>
+    val pWriteCommands = Seq.tabulate(2000) { n =>
       val infoton = ObjectInfoton(
         path = s"/cmt/cm/bg-test-priority-before-batch/prio/info$n",
         dc = "dc",
@@ -97,7 +100,7 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
     }
 
     // prepare sequence of priority writeCommands
-    val writeCommands = Seq.tabulate(150000) { n =>
+    val writeCommands = Seq.tabulate(15000) { n =>
       val infoton = ObjectInfoton(
         path = s"/cmt/cm/bg-test-priority-before-batch/batch/info$n",
         dc = "dc",
@@ -117,7 +120,7 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
         kafkaProducer.send(r)
       }
     }
-    val f2 = scheduleFuture(2000.millisecond){
+    val f2 = scheduleFuture(1000.millisecond){
       Future{
         pRecords.foreach{ r =>
           kafkaProducer.send(r)
@@ -132,14 +135,14 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
           pathFilter = Some(PathFilter("/cmt/cm/bg-test-priority-before-batch/prio", true)),
           fieldsFilter = None,
           datesFilter = None,
-          paginationParams = PaginationParams(0, 10000),
+          paginationParams = PaginationParams(0, 3000),
           sortParams = SortParam(("system.indexTime", Desc)),
           withHistory = false,
           withDeleted = false
         )
 
         withClue(res){
-          res.map{ _.infotons.size should equal(5000)}
+          res.map{ _.infotons.size should equal(2000)}
         }
       }
     }
@@ -149,7 +152,7 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
 
     override def afterAll() = {
       cmwellBGActor ! ShutDown
-      Thread.sleep(7000)
+      Thread.sleep(2000)
       ftsServiceES.shutdown()
       irwService = null
     }
