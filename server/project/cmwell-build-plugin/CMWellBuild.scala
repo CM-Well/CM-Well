@@ -20,6 +20,9 @@ import net.virtualvoid.sbt.graph.DependencyGraphPlugin
 import sbt.Keys._
 import sbt._
 
+import scala.concurrent._
+import scala.util.{Failure, Success}
+
 object CMWellBuild extends AutoPlugin {
 
 	type PartialFunction2[-T1,-T2,+R] = PartialFunction[Tuple2[T1,T2],R]
@@ -50,6 +53,65 @@ object CMWellBuild extends AutoPlugin {
 	import autoImport._
 	import DoctestPlugin.autoImport._
 	import CoursierPlugin.autoImport._
+
+  lazy val apacheMirror = {
+    val zoneID = java.util.TimeZone
+      .getDefault()
+      .getID
+    if(zoneID.startsWith("America") || zoneID.startsWith("Pacific") || zoneID.startsWith("Etc")) "us"
+    else "eu"
+  }
+
+	def fetchZookeeper(version: String) = {
+		val ext = "tar.gz"
+		val url = s"http://www-$apacheMirror.apache.org/dist/zookeeper/zookeeper-$version/zookeeper-$version.$ext"
+		fetchArtifact(url, ext)
+	}
+
+  def fetchKafka(version: String) = {
+		val ext = "tgz"
+    val url = s"http://www-$apacheMirror.apache.org/dist/kafka/$version/kafka_2.11-$version.$ext"
+		fetchArtifact(url, ext)
+  }
+
+	def fetchArtifact(url: String, ext: String) = {
+		import coursier.core.{Artifact, Attributes}
+		val sig = Artifact(
+
+			url + ".asc",
+			Map.empty,
+			Map.empty,
+			Attributes("asc", ""),
+			changing = false,
+			authentication = None
+		)
+
+		val art = Artifact(
+			url,
+			Map(
+				"MD5" -> (url + ".md5"),
+				"SHA-1" -> (url + ".sha1")),
+			Map("sig" -> sig),
+			Attributes(ext, ""),
+			changing = false,
+			None)
+
+		val task = coursier.Cache.file(art).fold({ err =>
+			Failure[java.io.File](new Exception(err.message + ": " + err.describe))
+		},Success.apply)
+
+		val p = Promise[java.io.File]()
+		scala.concurrent.ExecutionContext.global.execute(new Runnable {
+			override def run(): Unit = blocking {
+        try {
+          p.complete(task.unsafePerformSync)
+        } catch {
+          case err: Throwable => p.failure(err)
+        }
+			}
+		})
+		p.future
+	}
 
 	override def requires = CoursierPlugin && DoctestPlugin && DependencyGraphPlugin
 
