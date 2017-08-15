@@ -14,22 +14,18 @@
   */
 
 
-package cmwell.bg
+package cmwell.bg.test
 
 import java.nio.file.{Files, Paths}
 import java.util.Properties
 
 import akka.actor.{ActorRef, ActorSystem}
-import akka.pattern.ask
-
-import concurrent.duration._
-import cmwell.bg.test.FailingIRWServiceMockup
-import cmwell.bg._
+import cmwell.bg.{CMWellBGActor, ShutDown}
+import cmwell.common.{CommandSerializer, OffsetsService, WriteCommand, ZStoreOffsetsService}
 import cmwell.domain.{FieldValue, ObjectInfoton}
 import cmwell.driver.Dao
 import cmwell.fts.FTSServiceNew
 import cmwell.irw.IRWService
-import cmwell.common.{CommandSerializer, OffsetsService, WriteCommand, ZStoreOffsetsService}
 import cmwell.zstore.ZStore
 import com.datastax.driver.core.ConsistencyLevel
 import com.typesafe.config.{Config, ConfigFactory}
@@ -37,14 +33,16 @@ import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
 import org.elasticsearch.common.unit.TimeValue
-import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
+import org.scalatest.{BeforeAndAfterAll, DoNotDiscover, FlatSpec, Matchers}
 
 import scala.concurrent.Await
+import scala.concurrent.duration._
 import scala.io.Source
 
 /**
   * Created by israel on 13/09/2016.
   */
+@DoNotDiscover
 class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers with LazyLogging {
 
   var kafkaProducer:KafkaProducer[Array[Byte], Array[Byte]] = _
@@ -58,7 +56,6 @@ class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers wi
   var bgConfig:Config = _
   var actorSystem:ActorSystem = _
   import concurrent.ExecutionContext.Implicits.global
-
 
   override def beforeAll = {
 

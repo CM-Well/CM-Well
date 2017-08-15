@@ -16,12 +16,12 @@
 
 package cmwell.bg
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorRef, ActorSystem}
 import akka.kafka.scaladsl.Consumer
-import akka.kafka.{ConsumerSettings, Subscriptions}
+import akka.kafka.Subscriptions
 import akka.stream.ActorAttributes.supervisionStrategy
 import akka.stream.Supervision.Decider
-import akka.stream.scaladsl.{Flow, GraphDSL, Keep, Merge, Partition, RunnableGraph, Sink}
+import akka.stream.scaladsl.{Flow, GraphDSL, Keep, MergePreferred, RunnableGraph, Sink}
 import akka.stream.{ActorMaterializer, ClosedShape, KillSwitches}
 import cmwell.common.formats.JsonSerializerForES
 import cmwell.fts._
@@ -33,14 +33,13 @@ import cmwell.tracking._
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 import nl.grons.metrics.scala.{Counter, DefaultInstrumented, Histogram, Timer}
-import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.action.update.UpdateRequest
 import org.elasticsearch.client.Requests
 import org.slf4j.LoggerFactory
-import com.codahale.metrics.{Counter => DropwizardCounter, Histogram => DropwizardHistogram, Meter => DropwizardMeter, Timer => DropwizardTimer}
+import com.codahale.metrics.{Counter => DropwizardCounter, Histogram => DropwizardHistogram, Timer => DropwizardTimer}
 
 import collection.JavaConverters._
 import scala.concurrent.duration._
@@ -51,7 +50,7 @@ import scala.util.{Failure, Success, Try}
   * Created by israel on 14/06/2016.
   */
 class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsService: FTSServiceNew,
-                    offsetsService: OffsetsService, decider:Decider)
+                    offsetsService: OffsetsService, decider:Decider, kafkaConsumer:ActorRef)
                    (implicit actorSystem:ActorSystem,
                     executionContext:ExecutionContext,
                     materializer: ActorMaterializer) extends LazyLogging with DefaultInstrumented{
@@ -62,6 +61,7 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
   val byteArrayDeserializer = new ByteArrayDeserializer()
   val bootStrapServers = config.getString("cmwell.bg.kafka.bootstrap.servers")
   val indexCommandsTopic = config.getString("cmwell.bg.index.commands.topic")
+  val priorityIndexCommandsTopic = indexCommandsTopic + ".priority"
   val offsetFilesDir = config.getString("cmwell.bg.offset.files.dir")
   val latestIndexAliasName = config.getString("cmwell.bg.latestIndexAliasName")
   val allIndicesAliasName = config.getString("cmwell.bg.allIndicesAliasName")
@@ -88,23 +88,30 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
 
   val streamId = s"indexer.${partition}"
 
-  val indexCommandsConsumerSettings =
-    ConsumerSettings(actorSystem, byteArrayDeserializer, byteArrayDeserializer)
-      .withBootstrapServers(bootStrapServers)
-      .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
-    .withGroupId(streamId)
-
   val startingOffset = offsetsService.read(s"${streamId}_offset").getOrElse(0L)
+  val priorityStartingOffset = offsetsService.read(s"${streamId}.p_offset").getOrElse(0L)
 
   val subscription = Subscriptions.assignmentWithOffset(
     new TopicPartition(indexCommandsTopic, partition) -> startingOffset)
 
-  val indexCommandsSource = Consumer.plainSource(indexCommandsConsumerSettings, subscription).map { msg =>
+  val prioritySubscription = Subscriptions.assignmentWithOffset(
+    new TopicPartition(priorityIndexCommandsTopic, partition) -> priorityStartingOffset)
+
+  val sharedKillSwitch = KillSwitches.shared("indexer-sources-kill-switch")
+
+  val indexCommandsSource = Consumer.plainExternalSource[Array[Byte], Array[Byte]](kafkaConsumer, subscription).map { msg =>
       logger debug s"consuming next payload from index commands topic @ offset: ${msg.offset()}"
     val indexCommand = CommandSerializer.decode(msg.value()).asInstanceOf[IndexCommand]
       logger debug s"converted payload to an IndexCommand:\n$indexCommand"
     BGMessage[IndexCommand](msg.offset(), indexCommand)
-  }.viaMat(KillSwitches.single)(Keep.both)
+  }.via(sharedKillSwitch.flow)
+
+  val priorityIndexCommandsSource = Consumer.plainExternalSource[Array[Byte], Array[Byte]](kafkaConsumer, prioritySubscription).map { msg =>
+    logger debug s"consuming next payload from priority index commands topic @ offset: ${msg.offset()}"
+    val indexCommand = CommandSerializer.decode(msg.value()).asInstanceOf[IndexCommand]
+    logger debug s"converted priority payload to an IndexCommand:\n$indexCommand"
+    BGMessage[IndexCommand](msg.offset(), indexCommand)
+  }.via(sharedKillSwitch.flow)
 
   val heartBitLog = Flow[BGMessage[IndexCommand]].keepAlive(60.seconds, () => BGMessage(HeartbitCommand.asInstanceOf[Command])).filterNot{
     case BGMessage(_, HeartbitCommand) =>
@@ -130,8 +137,8 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
   }(Keep.right)
 
 
-  val indexerGraph = RunnableGraph.fromGraph(GraphDSL.create(indexCommandsSource, commitOffsets)(Keep.both) { implicit builder =>
-    (source, sink) =>
+  val indexerGraph = RunnableGraph.fromGraph(GraphDSL.create(indexCommandsSource, priorityIndexCommandsSource, commitOffsets)((_,_,M) => M ) { implicit builder =>
+    (batchSource, prioritySource, sink) =>
       import GraphDSL.Implicits._
 
       def newIndexCommandToEsAction(infoton:Infoton, isCurrent:Boolean, indexName:String):Try[InfoAction] = {
@@ -154,6 +161,10 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
             Failure(t)
         }
       }
+
+      val mergePrefferedSources = builder.add(
+        MergePreferred[BGMessage[IndexCommand]](1, true)
+      )
 
       val getInfotonIfNeeded = builder.add(
         Flow[BGMessage[IndexCommand]].mapAsync(math.max(numOfCassandraNodes/2, 2)){
@@ -238,7 +249,9 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
         }
       )
 
-      source ~> heartBitLog ~> getInfotonIfNeeded ~> indexCommandToEsActions ~> groupEsActions ~> indexInfoActionsFlow ~> updateIndexInfoInCas ~> reportProcessTracking ~> sink
+      prioritySource ~> mergePrefferedSources.preferred
+      batchSource ~> mergePrefferedSources.in(0)
+      mergePrefferedSources ~> heartBitLog ~> getInfotonIfNeeded ~> indexCommandToEsActions ~> groupEsActions ~> indexInfoActionsFlow ~> updateIndexInfoInCas ~> reportProcessTracking ~> sink
 
 
 
@@ -247,14 +260,13 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
 
   val indexerControl = indexerGraph.withAttributes(supervisionStrategy(decider)).run()
 
-  indexerControl._2.onComplete{
+  indexerControl.onComplete{
     case Failure(t) => logger error ("indexer stream stopped abnormally", t)
     case Success(x) => logger info ("indexer stream stopped normally", x)
   }
 
   def shutdown = {
-    indexerControl._1._2.shutdown()
-    Await.ready(indexerControl._1._1.shutdown().flatMap(_ => indexerControl._1._1.isShutdown), 60.seconds)
+    sharedKillSwitch.shutdown()
   }
 
 }

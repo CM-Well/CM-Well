@@ -14,41 +14,40 @@
   */
 
 
-package cmwell.bg
+package cmwell.bg.test
 
 import java.nio.file.{Files, Paths}
 import java.util.Properties
 
 import akka.actor.{ActorRef, ActorSystem}
+import cmwell.bg.{CMWellBGActor, ShutDown}
+import cmwell.common._
 import cmwell.domain._
 import cmwell.driver.Dao
 import cmwell.fts._
 import cmwell.irw.IRWService
 import cmwell.util.FullBox
 import cmwell.util.concurrent.SimpleScheduler.{schedule, scheduleFuture}
-import cmwell.common._
+import cmwell.zstore.ZStore
+import com.datastax.driver.core.ConsistencyLevel
 import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
 import org.elasticsearch.common.unit.TimeValue
-import org.scalatest._
 import org.scalatest.OptionValues._
+import org.scalatest._
 
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, duration, _}
-import duration._
-import ExecutionContext.Implicits.global
 import scala.io.Source
 import scala.util.Random
-import akka.pattern.ask
-import cmwell.bg.test.FailingFTSServiceMockup
-import cmwell.zstore.ZStore
-import com.datastax.driver.core.ConsistencyLevel
-import com.typesafe.scalalogging.LazyLogging
-import org.elasticsearch.search.aggregations.support.format.ValueFormatter.DateTime
 
 /**
   * Created by israel on 15/02/2016.
   */
+@DoNotDiscover
 class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers with Inspectors with LazyLogging {
 
   var kafkaProducer: KafkaProducer[Array[Byte], Array[Byte]] = _
@@ -61,6 +60,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
   var bgConfig: Config = _
   var actorSystem: ActorSystem = _
   val okToStartPromise = Promise[Unit]()
+
 
   def sendToKafkaProducer(pRecord: ProducerRecord[Array[Byte], Array[Byte]]): Future[RecordMetadata] = {
     val p = Promise[RecordMetadata]()
