@@ -50,7 +50,7 @@ explain-only | You can use this flag to see CM-Well's query optimization and exe
     SELECT DISTINCT
     ?name ?active
     WHERE {
-    ?name <http://www.lbd.com/bold#active> ?active .
+    ?name <http://www.tr-lbd.com/bold#active> ?active .
     } ORDER BY DESC(?active)
 
 
