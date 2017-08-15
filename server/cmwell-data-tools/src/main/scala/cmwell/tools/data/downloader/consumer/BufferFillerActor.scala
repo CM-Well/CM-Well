@@ -17,7 +17,7 @@
 package cmwell.tools.data.downloader.consumer
 
 import akka.actor.{Actor, ActorSystem}
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
+import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse, StatusCodes}
 import akka.pattern._
 import akka.stream._
 import akka.stream.scaladsl._
@@ -210,6 +210,17 @@ class BufferFillerActor(threshold: Int,
             .map(token -> _)
 
           Some(nextToken) -> dataSource
+
+        case (Success(HttpResponse(s, h, e, _)), _) =>
+          e.toStrict(1.minute).onComplete {
+            case Success(res:HttpEntity.Strict) =>
+              logger.info(s"received consume answer from host=${getHostnameValue(h)} status=$s token=$token entity=${res.data.utf8String}")
+            case Failure(err) =>
+              logger.error(s"received consume answer from host=${getHostnameValue(h)} status=$s token=$token cannot extract entity", err)
+          }
+
+          Some(token) -> Source.failed(new Exception(s"Status is $s"))
+
         case x =>
           logger.error(s"unexpected message: $x")
           Some(token) -> Source.failed(new UnsupportedOperationException(x.toString))
