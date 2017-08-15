@@ -22,6 +22,7 @@ object HeaderOps {
   val CMWELL_HOSTNAME = "X-CMWELL-Hostname"
   val CMWELL_POSITION = "X-CM-WELL-POSITION"
   val CMWELL_N        = "X-CM-WELL-N"
+  val CMWELL_RT       = "X-CMWELL-RT"
 
   def getHeader(name: String)(headers: Seq[HttpHeader]) = headers.find(_.name == name)
 
@@ -33,8 +34,10 @@ object HeaderOps {
   val getHostname    = getHeader(CMWELL_HOSTNAME) _
   val getPosition    = getHeader(CMWELL_POSITION) _
   val getNumInfotons = getHeader(CMWELL_N) _
+  val getResponseTime = getHeader(CMWELL_RT) _
 
   val getHostnameValue    = getHostname andThen getHeaderValue
   val getPositionValue    = getPosition andThen getHeaderValue
   val getNumInfotonsValue = getNumInfotons andThen getHeaderValue
+  val getResponseTimeValue = getResponseTime andThen getHeaderValue
 }

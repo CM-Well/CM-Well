@@ -99,6 +99,7 @@ class BufferFillerActor(threshold: Int,
 
       nextToken match {
         case Some(token) =>
+          logger.info(s"next token=${token}")
           currToken = token
           self ! Status
 
@@ -111,9 +112,11 @@ class BufferFillerActor(threshold: Int,
       }
 
     case Status if buf.size < threshold =>
-        sendNextChunkRequest(currToken).map(FinishedToken.apply) pipeTo self
+      logger.debug(s"status message: buffer-size=${buf.size}, will request for more data")
+      sendNextChunkRequest(currToken).map(FinishedToken.apply) pipeTo self
 
     case Status =>
+      logger.debug(s"status message: buffer-size=${buf.size}")
       context.system.scheduler.scheduleOnce(1.seconds, self, Status)
 
     case NewData(data) =>
@@ -135,7 +138,7 @@ class BufferFillerActor(threshold: Int,
     case HttpResponseFailure(t, err) =>
       currConsumeState = ConsumeStateHandler.nextFailure(currConsumeState)
       logger.info(s"error: ${err.getMessage} consumer will perform retry in $retryTimeout, token=$t", err)
-      after(retryTimeout, context.system.scheduler)(sendNextChunkRequest(t))
+      after(retryTimeout, context.system.scheduler)(sendNextChunkRequest(t).map(FinishedToken.apply) pipeTo self)
 
     case x =>
       logger.error(s"unexpected message: $x")
