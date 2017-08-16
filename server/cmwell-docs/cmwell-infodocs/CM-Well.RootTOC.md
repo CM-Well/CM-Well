@@ -52,7 +52,7 @@
     <td><a href="DevGuide.UpdatingCM-Well.md">Updating CM-Well</a></td>
   </tr>
 <tr>
-    <td><a href="DevGuide.StreamingDataFromCM-Well.md">Streaming Data from CM-Wells</a></td>
+    <td><a href="DevGuide.StreamingDataFromCM-Well.md">Streaming Data from CM-Well</a></td>
   </tr>
 <tr>
     <td><a href="DevGuide.SubscribingToReal-TimeUpdates.md">Subscribing to Real-Time Updates</a></td>
