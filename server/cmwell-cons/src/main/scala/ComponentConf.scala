@@ -494,7 +494,7 @@ case class BgConf(home : String, zookeeperServers : Seq[String], clusterName: St
         s"-DftsService.transportAddress=$hostName",
         s"-Dcmwell.kafka.zkServers=${zookeeperServers.map(zkServer => s"$zkServer:2181").mkString(",")}",
         s"-DirwServiceDao.hostName=$hostName",
-        "-DftsService.isTransportClient=false",
+        "-DftsService.isTransportClient=true",
         "-DftsService.transportPort=9301",
         "-DftsService.defaultPartition=cmwell",
         "-DftsService.defaultPartitionNew=cm_well",
@@ -641,7 +641,7 @@ case class CwConf(home : String, clusterName : String, dataCenter :String , host
           s"-Dcrashableworker.results.baseFileName=tmpSpResults",
           s"-DdataCenter.id=$dataCenter",
           s"-Dcmwell.ws.nbg=$nbg",
-          "-DftsService.isTransportClient=false",
+          "-DftsService.isTransportClient=true",
           "-Duser.timezone=GMT0") ++ JVMOptimizer.gcLoggingJVM(s"$home/log/ws/gc.log") ++
         Seq("-cp",
           s""" "cw-conf:$home/app/ws/lib/*" """,

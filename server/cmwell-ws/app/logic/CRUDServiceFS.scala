@@ -82,8 +82,8 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
     else _irwService
   }
 
-  lazy val ftsServiceOld = FTSServiceES.getOne("ws.es.yml", false)
-  lazy val ftsServiceNew = FTSServiceNew("ws.es.yml")
+  val ftsServiceOld = FTSServiceES.getOne("ws.es.yml", false)
+  val ftsServiceNew = FTSServiceNew("ws.es.yml")
   def ftsService(nbg: Boolean = newBG): FTSServiceOps = {
     if(nbg || newBG) ftsServiceNew
     else ftsServiceOld
