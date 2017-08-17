@@ -65,7 +65,6 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
     * @param params params in cm-well URI
     * @param qp query params in cm-well
     * @param recursive is query recursive
-    * @param length cm-well length-hint paramter
     * @param system actor system
     * @param mat materializer
     * @param ec execution context
@@ -76,7 +75,6 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
                params: String = "",
                qp: String = "",
                recursive: Boolean = false,
-               length: Option[Int] = None,
                indexTime: Long = 0L,
                isBulk: Boolean)
               (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext): Future[Token] = {
@@ -84,12 +82,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
     val paramsValue = if (params.isEmpty) "" else s"&$params"
     val recursiveValue = if (recursive) "&recursive" else ""
 
-    val lengthValue = if (length.isEmpty || isBulk) "" else s"&length=${length.get}"
-    if (length.nonEmpty && isBulk) {
-      logger.warn("length-hint and bulk mode cannot be both enabled: length was set to default value")
-    }
-
-    val uri = s"${formatHost(baseUrl)}$path?op=create-consumer$qpValue$paramsValue$recursiveValue$lengthValue&index-time=$indexTime"
+    val uri = s"${formatHost(baseUrl)}$path?op=create-consumer$qpValue$paramsValue$recursiveValue&index-time=$indexTime"
     logger.debug("send HTTP request: {}", uri)
 
     val tokenFuture = Source.single(Seq(blank) -> None)
@@ -101,7 +94,8 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
         case (Success(res), _, _) =>
           res.discardEntityBytes()
           None
-        case _ =>
+        case x =>
+          logger.error(s"cannot get initial token: $x")
           None
       }
       .map {
@@ -308,6 +302,9 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
                        recursive: Boolean = false,
                        isBulk: Boolean = false,
                        token: Option[String] = None,
+                       updateFreq: Option[FiniteDuration] = None,
+                       indexTime: Long = 0L,
+                       label: Option[String] = None,
                        usePaths: Boolean = false)
                       (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
 
@@ -318,10 +315,13 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
       format = format,
       qp = qp,
       isBulk = isBulk,
-      recursive = recursive)
+      recursive = recursive,
+      indexTime = indexTime,
+      label = label
+    )
 
 
-    val tsvSource = downloader.createTsvSource(token).async
+    val tsvSource = downloader.createTsvSource(token, updateFreq).async
 
     if (usePaths) {
       tsvSource
@@ -344,7 +344,6 @@ class Downloader(baseUrl: String,
                  params: String = "",
                  qp: String = "",
                  format: String = "trig",
-                 length: Option[Int] = None,
                  recursive: Boolean = false,
                  isBulk: Boolean = false,
                  indexTime: Long = 0L,
@@ -439,42 +438,47 @@ class Downloader(baseUrl: String,
         .via(Retry.retryHttp(timeout, parallelism, baseUrl)(createRequest)) // fetch data from paths
         .mapAsyncUnordered(parallelism){
         case (Success(res@HttpResponse(s,h,e,p)), sentPaths, Some(state)) if s.isSuccess() =>
-          DataPostProcessor.postProcessByFormat(format, e.withoutSizeLimit().dataBytes)
-            .runFold(blank)(_ ++ _)
-            .map{ receivedData => // accumulate received data
-              val totalReceivedData = state.retrievedData :+ receivedData
+          logger.debug(s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}")
 
+          e.toStrict(1.minute).flatMap { strict =>
+            DataPostProcessor.postProcessByFormat(format, Source.single(strict.data))
+              .runFold(blank)(_ ++ _)
+              .map { receivedData => // accumulate received data
+                val totalReceivedData = state.retrievedData :+ receivedData
 
-              getMissingPaths(receivedData, sentPaths.map(_.utf8String)) match {
-                case Seq() =>
-                  // no missing data, success!
-                  Success(totalReceivedData) -> state.copy(pathsToRequest = Seq(), retrievedData = totalReceivedData)
-                case missingPaths if state.retriesLeft > 0 =>
-                  logger.debug(s"received data length=${receivedData.size} $h")
-                  logger.debug(s"sent ${sentPaths.size} paths but received ${sentPaths.size - missingPaths.size}")
-                  logger.debug(s"sent ${sentPaths.map(_.utf8String).mkString("\n")}")
+                getMissingPaths(receivedData, sentPaths.map(_.utf8String)) match {
+                  case Seq() =>
+                    // no missing data, success!
+                    Success(totalReceivedData) -> state.copy(pathsToRequest = Seq(), retrievedData = totalReceivedData)
+                  case missingPaths if state.retriesLeft > 0 =>
+                    logger.debug(s"sent ${sentPaths.size} paths but received ${sentPaths.size - missingPaths.size}, total received data length=${receivedData.size}")
+                    logger.debug(s"sent ${sentPaths.map(_.utf8String).mkString("\n")}")
 
-                  // retry retrieving data from missing uuids
-                  val newState = state.copy(
-                    pathsToRequest = missingPaths.map(ByteString.apply),
-                    retrievedData = totalReceivedData,
-                    retriesLeft = state.retriesLeft - 1)
+                    // retry retrieving data from missing uuids
+                    val newState = state.copy(
+                      pathsToRequest = missingPaths.map(ByteString.apply),
+                      retrievedData = totalReceivedData,
+                      retriesLeft = state.retriesLeft - 1)
 
-                  logger.error(s"detected missing paths size=${missingPaths.size} retries left=${state.retriesLeft}")
-                  Failure(new Exception("missing data from paths")) -> newState
-                case missingPaths =>
-                  // do not retrieve data from missing paths
-                  val newState = state.copy(
-                    pathsToRequest = missingPaths.map(ByteString.apply),
-                    retrievedData = totalReceivedData)
+                    logger.error(s"detected missing paths size=${missingPaths.size} retries left=${state.retriesLeft}")
+                    Failure(new Exception("missing data from paths")) -> newState
+                  case missingPaths =>
+                    // do not retrieve data from missing paths
+                    val newState = state.copy(
+                      pathsToRequest = missingPaths.map(ByteString.apply),
+                      retrievedData = totalReceivedData)
 
-                  logger.error(s"got ${missingPaths.size} missing paths")
-                  badDataLogger.error(missingPaths.mkString("\n"))
-                  Success(totalReceivedData) -> newState
+                    logger.error(s"got ${missingPaths.size} missing paths")
+                    badDataLogger.error(missingPaths.mkString("\n"))
+                    Success(totalReceivedData) -> newState
+                }
               }
-            }
+          }
         case (Success(HttpResponse(s,h,e,p)), sentPaths, Some(state)) =>
           e.discardBytes()
+
+          logger.debug(s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}")
+
           Future.successful(Failure(new Exception("cannot send request to send paths")) -> state)
         case (Failure(err), sendPaths, Some(state)) =>
           logger.error(s"error: token=${state.token} $err")
@@ -573,7 +577,9 @@ class Downloader(baseUrl: String,
         .via(Retry.retryHttp(timeout, parallelism, baseUrl)(createRequest)) // fetch data from uuids
         .mapAsyncUnordered(parallelism){
           case (Success(res@HttpResponse(s,h,e,p)), sentUuids, Some(state)) if s.isSuccess() =>
-            DataPostProcessor.postProcessByFormat(format, e.withoutSizeLimit().dataBytes)
+            logger.debug(s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}")
+
+            e.toStrict(1.minute).flatMap { strict => DataPostProcessor.postProcessByFormat(format, Source.single(strict.data))
               .runFold(blank)(_ ++ _)
               .map{ receivedData => // accumulate received data
                 val totalReceivedData = state.retrievedData :+ receivedData
@@ -583,8 +589,7 @@ class Downloader(baseUrl: String,
                     // no missing data, success!
                     Success(totalReceivedData) -> state.copy(uuidsToRequest = Seq(), retrievedData = totalReceivedData)
                   case missingUuids if state.retriesLeft > 0 =>
-                    logger.debug(s"received data length=${receivedData.size} $h")
-                    logger.debug(s"sent ${sentUuids.size} uuids but receieved ${sentUuids.size - missingUuids.size}")
+                    logger.debug(s"sent ${sentUuids.size} paths but received ${sentUuids.size - missingUuids.size}, total received data length=${receivedData.size}")
                     logger.debug(s"sent ${sentUuids.map(_.utf8String).mkString("/ii/", "\n/ii/", "\n")}")
 
                     // retry retrieving data from missing uuids
@@ -606,9 +611,14 @@ class Downloader(baseUrl: String,
                     Success(totalReceivedData) -> newState
                 }
               }
+            }
+
           case (Success(HttpResponse(s,h,e,p)), sentUuids, Some(state)) =>
             e.discardBytes()
+
+            logger.debug(s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}")
             Future.successful(Failure(new Exception("cannot send request to send uuids")) -> state)
+
           case (Failure(err), sendUuids, Some(state)) =>
             logger.error(s"error: token=${state.token} $err")
             Future.successful(Failure(new Exception("cannot send request to send uuids")) -> state)
@@ -712,7 +722,6 @@ class Downloader(baseUrl: String,
         qp = qp,
         recursive = recursive,
         indexTime = indexTime,
-        length = length,
         isBulk = isBulk)
     }
 
