@@ -96,7 +96,8 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
   producerProperties.put("bootstrap.servers", kafkaURL)
   producerProperties.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
   producerProperties.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
-  val kafkaProducer = new KafkaProducer[Array[Byte], Array[Byte]](producerProperties)
+  //With CW there is no kafka writes and no kafka configuration thus the producer is created lazily
+  lazy val kafkaProducer = new KafkaProducer[Array[Byte], Array[Byte]](producerProperties)
 
   val proxyOpsOld: Operations = ProxyOperations(_irwService, ftsServiceOld)
   val proxyOpsNew: Operations = ProxyOperations(_irwService2, ftsServiceNew)

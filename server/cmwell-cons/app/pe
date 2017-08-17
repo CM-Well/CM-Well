@@ -19,7 +19,7 @@ val pe = LocalHost(dataCenter = "lh",
                    useAuthorization = useAuthorization,
                    withElk = false,
 		   newBg = true,
-		   oldBg = false,
-		   nbg = true)
+		   oldBg = true,
+		   nbg = false)
 
 pe.mappingFile = "mapping-pe.json";

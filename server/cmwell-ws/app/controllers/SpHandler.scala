@@ -372,7 +372,7 @@ abstract class PopulateAndQuery {
   lazy val populateFormat = if(rp.quads) "nquads" else "ntriples"
 //  lazy val populateLanguage = if(rp.quads) Lang.NQUADS else Lang.NTRIPLES
 
-  def populate(handler: ((Option[TimedRequest],Either[String,Dataset])) => (Option[TimedRequest],T), host: String = System.getProperty("cmwell.base")): Seq[Future[(Option[TimedRequest],T)]] = {
+  def populate(handler: ((Option[TimedRequest],Either[String,Dataset])) => (Option[TimedRequest],T)): Seq[Future[(Option[TimedRequest],T)]] = {
 
     def addFormat(url: String) ={
       url + (if (url.contains('?')) "&" else "?") + s"format=$populateFormat"

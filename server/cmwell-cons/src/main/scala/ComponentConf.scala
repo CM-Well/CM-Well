@@ -461,50 +461,6 @@ case class BgConf(home : String, zookeeperServers : Seq[String], clusterName: St
         aspectj,
         "-Dfile.encoding=UTF-8",
         s"-Dlog.level=$logLevel",
-        s"-Dcmwell.grid.dmap.persistence.data-dir=$home/log/bg/dmap/",
-        s"-Dcmwell.grid.bind.host=$hostIp",
-        s"-Dcmwell.grid.bind.port=${Jvms.BG.systemPort}",
-        s"-Dcmwell.grid.seeds=$hostIp:7777",
-        s"-Dcmwell.grid.monitor.port=${PortManagers.bg.monitorPortManager.getPort(1)}",
-        s"-Dcmwell.grid.min-members=$minMembers",
-        s"-Dcmwell.clusterName=$clusterName",
-        s"-DdataCenter.id=$dataCenter",
-        s"""-Dcmwell.bg.kafka.bootstrap.servers="localhost:9092" """,
-        "-Dcmwell.bg.persist.commands.topic=persist_topic",
-        s"-Dcmwell.bg.persist.commands.partition=$partition",
-        "-Dcmwell.bg.index.commands.topic=index_topic",
-        s"-Dcmwell.bg.index.commands.partition=$partition",
-        "-Dcmwell.bg.num.of.cassandra.nodes=1",
-        "-Dcmwell.bg.allIndicesAliasName=cm_well_all",
-        "-Dcmwell.bg.latestIndexAliasName=cm_well_latest",
-        """-Dcmwell.bg.indexNamePrefix=cm_well_""",
-        "-Dcmwell.bg.maxDocsPerShard=10000000",
-        "-Dcmwell.bg.maintainIndicesInterval=2",
-        s"-Dcmwell.kafka.numOfPartitions=$numOfPartitions",
-        s"-Dcmwell.dataCenter.id=$dataCenter",
-        s"-DirwServiceDao.clusterName=$clusterName",
-        s"-DirwServiceDao.keySpace=data2",
-        s"-DirwServiceDao.hostName=$hostName",
-        s"-Dmetrics.reportMetricsJMX=false",
-        s"-Dmetrics.reportMetricsGraphite=false",
-        s"-Dmetrics.reportMetricsSlf4j=false",
-        s"-Dmetrics.graphite.host=vstat.clearforest.com",
-        "-Dcmwell.bg.offset.files.dir=./",
-        s"-DftsService.clusterName=$clusterName",
-        s"-DftsService.transportAddress=$hostName",
-        s"-Dcmwell.kafka.zkServers=${zookeeperServers.map(zkServer => s"$zkServer:2181").mkString(",")}",
-        s"-DirwServiceDao.hostName=$hostName",
-        "-DftsService.isTransportClient=true",
-        "-DftsService.transportPort=9301",
-        "-DftsService.defaultPartition=cmwell",
-        "-DftsService.defaultPartitionNew=cm_well",
-        "-DftsService.scrollLength=100",
-        "-DftsService.waitForGreen=true",
-        "-DftsService.scrollTTL=3600",
-        "-Dakka.loggers.0=akka.event.slf4j.Slf4jLogger",
-        //akka is configured to log in DEBUG level. The actual level is determined by logback
-        "-Dakka.loglevel=DEBUG",
-        "-Dakka.logging-filter=akka.event.slf4j.Slf4jLoggingFilter",
 
         mXmx, mXms, mXmn, mXss) ++ jmx ++ JVMOptimizer.gcLoggingJVM(s"$home/log/bg/gc.log")
     }
@@ -526,19 +482,38 @@ case class BgConf(home : String, zookeeperServers : Seq[String], clusterName: St
   override def getPsIdentifier: String = "/log/bg/"
 
   override def mkConfig: List[ConfFile] = {
-
+    val applicationConfMap = Map[String, String](
+      "cmwell.grid.dmap.persistence.data-dir" -> s"$home/log/bg/dmap/",
+      "cmwell.grid.bind.host" -> s"$hostIp",
+      "cmwell.grid.bind.port" -> s"${Jvms.BG.systemPort}",
+      "cmwell.grid.seeds" -> s"$hostIp:7777",
+      "cmwell.grid.min-members" -> s"$minMembers",
+      "cmwell.grid.monitor.port" -> s"${PortManagers.bg.monitorPortManager.getPort(1)}",
+      "cmwell.clusterName" -> s"$clusterName",
+      "dataCenter.id" -> s"$dataCenter",
+      "cmwell.dataCenter.id" -> s"$dataCenter",
+      "cmwell.kafka.numOfPartitions" -> s"$numOfPartitions",
+      "cmwell.kafka.zkServers" -> s"${zookeeperServers.map(zkServer => s"$zkServer:2181").mkString(",")}",
+      "cmwell.bg.persist.commands.partition" -> s"$partition",
+      "cmwell.bg.index.commands.partition" -> s"$partition",
+      "irwServiceDao.clusterName" -> s"$clusterName",
+      "irwServiceDao.hostName" -> s"$hostName",
+      "ftsService.clusterName" -> s"$clusterName",
+      "ftsService.transportAddress" -> s"$hostName"
+    )
     val m = Map[String, String](
       "clustername" -> clusterName,
       "hosts" -> seeds.split(',').mkString("", s":$seedPort,", s":$seedPort"),
       "dir" -> dir,
       "root_dir" -> home
     )
-
     val logbackConf = ResourceBuilder.getResource("conf/bg/logback.xml", Map[String, String]())
     val confContent = ResourceBuilder.getResource(s"scripts/templates/es.node.client.yml", m)
+    val applicationConfConf = ResourceBuilder.getResource("conf/bg/application.conf", applicationConfMap)
 
     List(ConfFile("logback.xml", logbackConf, false),
-         ConfFile("bg.es.yml", confContent, false))
+         ConfFile("bg.es.yml", confContent, false),
+         ConfFile("application.conf", applicationConfConf, false))
   }
 }
 
@@ -563,19 +538,7 @@ case class BatchConf(home : String, clusterName: String, dataCenter :String ,hos
         "-XX:+HeapDumpOnOutOfMemoryError",
         aspectj,
         "-Dfile.encoding=UTF-8",
-        s"-DftsService.clusterName=$clusterName",
-        s"-DftsService.transportAddress=$hostName",
-        s"-DirwServiceDao.hostName=$hostName",
         s"-Dlog.level=$logLevel",
-        s"-Dindexer.isMaster=$isMaster",
-        s"-Dcmwell.grid.dmap.persistence.data-dir=$home/log/batch/dmap/",
-        s"-Dcmwell.grid.bind.host=$hostIp",
-        s"-Dcmwell.grid.bind.port=${Jvms.BATCH.systemPort}",
-        s"-Dcmwell.grid.seeds=$hostIp:7777",
-        s"-Dcmwell.grid.monitor.port=${PortManagers.batch.monitorPortManager.getPort(1)}",
-        s"-Dcmwell.grid.min-members=$minMembers",
-        s"-Dcmwell.clusterName=$clusterName",
-        s"-DdataCenter.id=$dataCenter",
         mXmx, mXms, mXmn, mXss) ++ jmx ++ JVMOptimizer.gcLoggingJVM(s"$home/log/batch/gc.log")
     }
 
@@ -594,10 +557,24 @@ case class BatchConf(home : String, clusterName: String, dataCenter :String ,hos
   }
 
   override def mkConfig: List[ConfFile] = {
+    val applicationConfMap = Map[String, String](
+      "cmwell.grid.dmap.persistence.data-dir" -> s"$home/log/batch/dmap/",
+      "cmwell.grid.bind.host" -> s"$hostIp",
+      "cmwell.grid.bind.port" -> s"${Jvms.BATCH.systemPort}",
+      "cmwell.grid.seeds" -> s"$hostIp:7777",
+      "cmwell.grid.min-members" -> s"$minMembers",
+      "cmwell.grid.monitor.port" -> s"${PortManagers.batch.monitorPortManager.getPort(1)}",
+      "cmwell.clusterName" -> s"$clusterName",
+      "ftsService.clusterName" -> s"$clusterName",
+      "ftsService.transportAddress" -> s"$hostName",
+      "irwServiceDao.hostName" -> s"$hostName",
+      "indexer.isMaster" -> s"$isMaster",
+      "dataCenter.id" -> s"$dataCenter"
+    )
     val logbackConf = ResourceBuilder.getResource("conf/batch/logback.xml", Map[String, String]())
-    val applicationConfConf = ResourceBuilder.getResource("conf/batch/application.conf", Map[String, String]())
+    val applicationConfConf = ResourceBuilder.getResource("conf/batch/application.conf", applicationConfMap)
     List(ConfFile("logback.xml", logbackConf, false),
-      ConfFile("application.conf", applicationConfConf, false))
+         ConfFile("application.conf", applicationConfConf, false))
   }
 }
 
@@ -605,49 +582,23 @@ case class BatchConf(home : String, clusterName: String, dataCenter :String ,hos
 case class CwConf(home : String, clusterName : String, dataCenter :String , hostName : String, resourceManager : JvmMemoryAllocations, sName : String,minMembers : Int = 1,  logLevel : String,  debug : Boolean, hostIp : String, nbg: Boolean, seeds : String, seedPort : Int) extends ComponentConf(hostIp, s"$home/app/ws",sName, s"$home/conf/cw","ws.yml", 1) {
   override def mkScript: ConfFile = {
     {
-
       val mXmx = resourceManager.getMxmx
       val mXms = resourceManager.getMxms
       val mXmn = resourceManager.getMxmn
       val mXss = resourceManager.getMxss
       val args = Seq("starter", "java","$DEBUG_STR", mXmx, mXms, mXmn, mXss) ++
         Seq("-XX:+UseG1GC",
-          s"-DftsService.clusterName=$clusterName",
           s"-Dcmwell.home=$home",
+          s"-Dlog.level=$logLevel",
           "-XX:ReservedCodeCacheSize=128m",
           "-Dfile.encoding=UTF-8",
           s"-Dcom.sun.management.jmxremote.port=${PortManagers.ws.jmxPortManager.getPort(2)}",
-          "-Dpidfile.path=/dev/null",
           "-Dcom.sun.management.jmxremote.ssl=false",
           "-Dcom.sun.management.jmxremote.authenticate=false",
-          s"-DirwServiceDao.hostName=$hostName",
-          s"-DftsService.transportAddress=$hostName",
-          "-DftsService.defaultPartitionNew=cm_well",
-          s"-Dlog.level=$logLevel",
-          s"-Duser.dir=$home/app/ws",
-          s"-Dcmwell.grid.dmap.persistence.data-dir=$home/log/ws/dmap-cw",
-          s"-Dcmwell.grid.bind.host=$hostIp",
-          s"-Dcmwell.grid.bind.port=${Jvms.CW.systemPort}",
-          s"-Dcmwell.grid.seeds=$hostIp:7777",
-          s"-Dcmwell.grid.monitor.port=${PortManagers.cw.monitorPortManager.getPort(1)}",
-          s"-Dcmwell.grid.min-members=$minMembers",
-          s"-Dcmwell.clusterName=$clusterName",
-          s"-Dakka.remote.netty.tcp.hostname=$hostName",
-          s"-Dakka.remote.netty.tcp.port=${Jvms.CW.systemPort}", // WHY?
-          s"-Dquads.cache.size=1000",
-          s"-Dquads.globalOperations.results.maxLength=10000", // todo why does not CW see the default value of this key?
-          s"-Dcrashableworker.results.maxLength=1400000",      // todo why does not CW see the default value of this key?
-          s"-Darq.extensions.embedLimit=10000",                // todo why does not CW see the default value of this key?
-          s"-Dcrashableworker.results.baseFileName=tmpSpResults",
-          s"-DdataCenter.id=$dataCenter",
-          s"-Dcmwell.ws.nbg=$nbg",
-          "-DftsService.isTransportClient=true",
           "-Duser.timezone=GMT0") ++ JVMOptimizer.gcLoggingJVM(s"$home/log/ws/gc.log") ++
         Seq("-cp",
           s""" "cw-conf:$home/app/ws/lib/*" """,
           "cmwell.crashableworker.WorkerMain")
-
-      //new java.io.File(s"$home/log/ws").mkdirs
 
       val scriptString =
         s"""export PATH=$home/app/java/bin:$home/bin/utils:$PATH
@@ -663,6 +614,28 @@ case class CwConf(home : String, clusterName : String, dataCenter :String , host
   override def getPsIdentifier: String = s"crashableworker"
 
   override def mkConfig: List[ConfFile] = {
+    val applicationConfMap = Map[String, String](
+      "cmwell.grid.dmap.persistence.data-dir" -> s"$home/log/ws/dmap-cw",
+      "cmwell.grid.bind.host" -> s"$hostIp",
+      "cmwell.grid.bind.port" -> s"${Jvms.CW.systemPort}",
+      "cmwell.grid.seeds" -> s"$hostIp:7777",
+      "cmwell.grid.min-members" -> s"$minMembers",
+      "cmwell.grid.monitor.port" -> s"${PortManagers.cw.monitorPortManager.getPort(1)}",
+      "cmwell.clusterName" -> s"$clusterName",
+      "cmwell.ws.nbg" -> s"$nbg",
+      "dataCenter.id" -> s"$dataCenter",
+      "ftsService.clusterName" -> s"$clusterName",
+      "cmwell.home" -> s"$home",
+      "irwServiceDao.hostName" -> s"$hostName",
+      "ftsService.transportAddress" -> s"$hostName",
+      "ftsService.defaultPartitionNew" -> s"cm_well",
+      "quads.cache.size" -> s"1000",
+      "quads.globalOperations.results.maxLength" -> s"10000",
+      "crashableworker.results.maxLength" -> s"1400000",
+      "arq.extensions.embedLimit" -> s"10000",
+      "crashableworker.results.baseFileName" -> s"tmpSpResults"
+    )
+
     val m = Map[String, String](
       "clustername" -> clusterName,
       "hosts" -> seeds.split(',').mkString("", s":$seedPort,", s":$seedPort"),
@@ -672,7 +645,7 @@ case class CwConf(home : String, clusterName : String, dataCenter :String , host
 
     val confContent = ResourceBuilder.getResource(s"scripts/templates/es.node.client.yml", m)
     val logbackConf = ResourceBuilder.getResource("conf/ws/cw-logback.xml", Map[String, String]())
-    val applicationConfConf = ResourceBuilder.getResource("conf/ws/application.conf", Map[String, String]())
+    val applicationConfConf = ResourceBuilder.getResource("conf/ws/cw-application.conf", applicationConfMap)
 
     List(ConfFile("ws.es.yml", confContent, false),
          ConfFile("logback.xml", logbackConf, false),
@@ -685,7 +658,6 @@ case class WebConf(home : String, zookeeperServers : Seq[String], clusterName:St
     if(!mem.isEmpty) s"-J$mem" else mem
   }
 
-  val agentLibArgs = Seq.empty //Seq(s"-javaagent:$home/app/ctrl/cur", s"-Dctrl.listenAddress=$hostIp", s"-Dctrl.seedNodes=${host}", s"-Dctrl.clusterName=$clusterName", s"-Dctrl.roles=Metrics,WebserverNode")
   override def getPsIdentifier = s"Webserver"
   override def mkScript: ConfFile = {
     val auth = if(useAuthorization) "-Duse.authorization=true" else ""
@@ -694,46 +666,19 @@ case class WebConf(home : String, zookeeperServers : Seq[String], clusterName:St
     val mXmn = resourceManager.getMxmn
     val mXss = resourceManager.getMxss
 
-
     // todo: fix debug string.
     val args = Seq("starter" , "java", "$DEBUG_STR", mXmx, mXms, mXmn, mXss) ++
-      agentLibArgs ++
       Seq(s"-DpsId=$getPsIdentifier", "-XX:+UseG1GC",
-      s"-DftsService.clusterName=$clusterName",
-      s"-Dcmwell.home=$home",
       "-XX:ReservedCodeCacheSize=128m",
       auth,
-      "-Dfile.encoding=UTF-8",
       s"-Dcom.sun.management.jmxremote.port=${PortManagers.ws.jmxPortManager.getPort(1)}",
-      "-Dpidfile.path=/dev/null",
       "-Dcom.sun.management.jmxremote.ssl=false",
       "-Dcom.sun.management.jmxremote.authenticate=false",
-      s"-DirwServiceDao.hostName=$hostName",
-      s"-DftsService.transportAddress=$hostName",
-      "-DftsService.defaultPartitionNew=cm_well",
+      s"-Dcmwell.home=$home",
       s"-Dlog.level=$logLevel",
-      s"-Duser.dir=$home/app/ws",
-      s"-Dhttp.port=${PortManagers.ws.playHttpPortManager.getPort(1)}",
-      s"-Dkafka.numOfPartitions=$numOfPartitions",
-      s"-Dcmwell.grid.dmap.persistence.data-dir=$home/log/ws/dmap-ws",
-      s"-Dcmwell.grid.bind.host=$hostIp",
-      s"-Dcmwell.grid.bind.port=${Jvms.WS.systemPort}",
-      s"-Dcmwell.grid.seeds=$hostIp:7777",
-      s"-Dcmwell.grid.min-members=$minMembers",
-      s"-Dcmwell.grid.monitor.port=${PortManagers.ws.monitorPortManager.getPort(1)}",
-      s"-Dcmwell.clusterName=$clusterName",
-      s"-Dcmwell.flag.newBG=$newBg",
-      s"-Dcmwell.flag.oldBG=$oldBg",
-      s"-Dcmwell.ws.nbg=$nbg",
-      s"-DdataCenter.id=$dataCenter",
-      "-Dakka.loggers.0=akka.event.slf4j.Slf4jLogger",
-      //akka is configured to log in DEBUG level. The actual level is determined by logback
-      "-Dakka.loglevel=DEBUG",
-      "-Dakka.logging-filter=akka.event.slf4j.Slf4jLoggingFilter",
-      s"-Dkafka.zkServers=${zookeeperServers.map(zkServer => s"$zkServer:2181").mkString(",")}",
-      s"-Dkafka.url=localhost:9092,${zookeeperServers.map(kafkaNode => s"$kafkaNode:9092").mkString(",")}",
-      "-Duser.timezone=GMT0") ++ JVMOptimizer.gcLoggingJVM(s"$home/log/ws/gc.log", true) ++ Seq("-cp", s""" "conf:$home/app/ws/lib/*" """, "play.core.server.ProdServerStart")
-    //new java.io.File(s"$home/log/ws").mkdirs
+      "-Dfile.encoding=UTF-8",
+      "-Duser.timezone=GMT0") ++
+      JVMOptimizer.gcLoggingJVM(s"$home/log/ws/gc.log", true) ++ Seq("-cp", s""" "conf:$home/app/ws/lib/*" """, "play.core.server.ProdServerStart")
 
     val scriptString =
       s"""export PATH=$home/app/java/bin:$home/bin/utils:$PATH
@@ -748,6 +693,28 @@ case class WebConf(home : String, zookeeperServers : Seq[String], clusterName:St
 
   override def mkConfig: List[ConfFile] = {
 
+    val applicationConfMap = Map[String, String](
+      "http.port" -> s"${PortManagers.ws.playHttpPortManager.getPort(1)}",
+      "kafka.numOfPartitions" -> s"$numOfPartitions",
+      "cmwell.grid.dmap.persistence.data-dir" -> s"$home/log/ws/dmap-ws",
+      "cmwell.grid.bind.host" -> s"$hostIp",
+      "cmwell.grid.bind.port" -> s"${Jvms.WS.systemPort}",
+      "cmwell.grid.seeds" -> s"$hostIp:7777",
+      "cmwell.grid.min-members" -> s"$minMembers",
+      "cmwell.grid.monitor.port" -> s"${PortManagers.ws.monitorPortManager.getPort(1)}",
+      "cmwell.clusterName" -> s"$clusterName",
+      "cmwell.flag.newBG" -> s"$newBg",
+      "cmwell.flag.oldBG" -> s"$oldBg",
+      "cmwell.ws.nbg" -> s"$nbg",
+      "dataCenter.id" -> s"$dataCenter",
+      "kafka.zkServers" -> s"${zookeeperServers.map(zkServer => s"$zkServer:2181").mkString(",")}",
+      "kafka.url" -> s"localhost:9092,${zookeeperServers.map(kafkaNode => s"$kafkaNode:9092").mkString(",")}",
+      "ftsService.clusterName" -> s"$clusterName",
+      "cmwell.home" -> s"$home",
+      "irwServiceDao.hostName" -> s"$hostName",
+      "ftsService.transportAddress" -> s"$hostName"
+    )
+
     val m = Map[String, String](
       "clustername" -> clusterName,
       "hosts" -> seeds.split(',').mkString("", s":$seedPort,", s":$seedPort"),
@@ -757,7 +724,7 @@ case class WebConf(home : String, zookeeperServers : Seq[String], clusterName:St
 
     val confContent = ResourceBuilder.getResource(s"scripts/templates/es.node.client.yml", m)
     val logbackConf = ResourceBuilder.getResource("conf/ws/logback.xml", Map[String, String]())
-    val applicationConfConf = ResourceBuilder.getResource("conf/ws/application.conf", Map[String, String]())
+    val applicationConfConf = ResourceBuilder.getResource("conf/ws/application.conf", applicationConfMap)
 
     List(ConfFile("ws.es.yml", confContent, false),
          ConfFile("logback.xml", logbackConf, false),
@@ -778,17 +745,6 @@ case class CtrlConf(home : String, sName : String, seeds : String, clusterName :
                   "-Dfile.encoding=UTF-8",
                   s"-Dcom.sun.management.jmxremote.port=${PortManagers.ctrl.jmxPortManager.getPort(1)}",
                   s"-Dcmwell.home=$home",
-                  s"-Dctrl.home=$home",
-                  s"-Dctrl.externalHostName=$hostIp",
-                  s"-Dctrl.singletonStarter=$singletonStarter",
-                  s"-Dctrl.pingIp=$pingIp",
-                  s"-Dcmwell.grid.dmap.persistence.data-dir=$home/log/ctrl/dmap",
-                  s"-Dcmwell.grid.monitor.port=${PortManagers.ctrl.monitorPortManager.getPort(1)}",
-                  s"-Dcmwell.grid.min-members=$minMembers",
-                  s"-Dcmwell.grid.bind.host=$hostIp",
-                  s"-Dcmwell.grid.bind.port=$port",
-                  s"-Dcmwell.grid.seeds=${seeds.split(',').mkString("", s":$port,", s":$port")}",
-                  s"-Dcmwell.clusterName=$clusterName",
                   s"-Dlog.level=$logLevel",
                   "-Duser.timezone=GMT0",
                   "-Dcom.sun.management.jmxremote.authenticate=false",
@@ -808,9 +764,22 @@ case class CtrlConf(home : String, sName : String, seeds : String, clusterName :
   override def mkConfig: List[ConfFile] = {
     val m = Map[String, String]("user" -> user)
     val confContent = ResourceBuilder.getResource(s"scripts/templates/ctrl", m)
+    val applicationConfMap = Map[String, String](
+      "cmwell.grid.dmap.persistence.data-dir" -> s"$home/log/ctrl/dmap",
+      "cmwell.grid.bind.host" -> s"$hostIp",
+      "cmwell.grid.bind.port" -> s"$port",
+      "cmwell.grid.seeds" -> s"${seeds.split(',').mkString("", s":$port,", s":$port")}",
+      "cmwell.grid.min-members" -> s"$minMembers",
+      "cmwell.grid.monitor.port" -> s"${PortManagers.ctrl.monitorPortManager.getPort(1)}",
+      "cmwell.clusterName" -> s"$clusterName",
+      "ctrl.home" -> s"$home",
+      "ctrl.pingIp" -> s"$pingIp",
+      "ctrl.externalHostName" -> s"$hostIp",
+      "ctrl.singletonStarter" -> s"$singletonStarter"
+    )
 
     val logbackConf = ResourceBuilder.getResource("conf/ctrl/logback.xml", Map[String, String]())
-    val applicationConfConf = ResourceBuilder.getResource("conf/ctrl/application.conf", Map[String, String]())
+    val applicationConfConf = ResourceBuilder.getResource("conf/ctrl/application.conf", applicationConfMap)
 
     List(ConfFile("ctrl", confContent, true),
          ConfFile("logback.xml", logbackConf, false),
@@ -829,33 +798,12 @@ case class DcConf(home : String, sName : String, clusterName : String, resourceM
     val args = Seq("-XX:+UseG1GC",
       "-Dfile.encoding=UTF-8",
       s"-Dcom.sun.management.jmxremote.port=${PortManagers.dc.jmxPortManager.getPort(1)}",
-      s"-Dctrl.home=$home",
-      s"-Dcmwell.home=$home",
-      s"-Dctrl.pingIp=$pingIp",
-      s"-Dctrl.externalHostName=$hostIp",
-      s"-Dcmwell.grid.dmap.persistence.data-dir=$home/log/dc/dmap/",
-      s"-Dcmwell.clusterName=$clusterName",
-      s"-Dcmwell.grid.bind.host=$hostIp",
-      s"-Dcmwell.grid.seeds=$hostIp:7777",
-      s"-Dcmwell.grid.bind.port=${Jvms.DC.systemPort}",
-      s"-Dcmwell.dc.target=$target",
-      s"-Dcmwell.grid.monitor.port=${PortManagers.dc.monitorPortManager.getPort(1)}",
-      s"-Dcmwell.grid.min-members=$minMembers",
       "-Duser.timezone=GMT0",
-      s"-Dlog.level=$logLevel",
       /*"-Dcom.sun.management.jmxremote.port=6789",*/
       "-Dcom.sun.management.jmxremote.authenticate=false",
       "-Dcom.sun.management.jmxremote.ssl=false",
-      "-Dakka.loggers.0=akka.event.slf4j.Slf4jLogger",
-      //akka is configured to log in DEBUG level. The actual level is determined by logback
-      "-Dakka.loglevel=DEBUG",
-      "-Dakka.logging-filter=akka.event.slf4j.Slf4jLoggingFilter",
-      "-Dakka.http.host-connection-pool.max-connections=10",
-      "-Dakka.http.host-connection-pool.max-open-requests=128",
-      "-Dakka.http.host-connection-pool.client.parsing.max-content-length=360M",
-      s"-DirwServiceDao.clusterName=$clusterName",
-      s"-DirwServiceDao.keySpace=data2",
-      s"-DirwServiceDao.hostName=$pingIp"
+      s"-Dcmwell.home=$home",
+      s"-Dlog.level=$logLevel"
     ) ++ JVMOptimizer.gcLoggingJVM(s"$home/log/dc/gc.log")
 
     val scriptString =
@@ -871,8 +819,26 @@ case class DcConf(home : String, sName : String, clusterName : String, resourceM
   }
 
   override def mkConfig: List[ConfFile] = {
+
+    val applicationConfMap = Map[String, String](
+      "cmwell.grid.dmap.persistence.data-dir" -> s"$home/log/dc/dmap/",
+      "cmwell.grid.bind.host" -> s"$hostIp",
+      "cmwell.grid.bind.port" -> s"${Jvms.DC.systemPort}",
+      "cmwell.grid.seeds" -> s"$hostIp:7777",
+      "cmwell.grid.min-members" -> s"$minMembers",
+      "cmwell.grid.monitor.port" -> s"${PortManagers.dc.monitorPortManager.getPort(1)}",
+      "cmwell.clusterName" -> s"$clusterName",
+      "irwServiceDao.clusterName" -> s"$clusterName",
+      "irwServiceDao.hostName" -> s"$pingIp",
+      "ctrl.home" -> s"$home",
+      "ctrl.pingIp" -> s"$pingIp",
+      "ctrl.externalHostName" -> s"$hostIp",
+      "cmwell.dc.target" -> s"$target"
+    )
+
+
     val logbackConf = ResourceBuilder.getResource("conf/dc/logback.xml", Map[String, String]())
-    val applicationConfConf = ResourceBuilder.getResource("conf/dc/application.conf", Map[String, String]())
+    val applicationConfConf = ResourceBuilder.getResource("conf/dc/application.conf", applicationConfMap)
     List(ConfFile("logback.xml", logbackConf, false),
          ConfFile("application.conf", applicationConfConf, false))
   }

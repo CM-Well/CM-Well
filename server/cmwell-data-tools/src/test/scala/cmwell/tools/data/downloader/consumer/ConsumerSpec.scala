@@ -41,7 +41,7 @@ class ConsumerSpec extends BaseWiremockSpec {
     super.afterAll()
   }
 
-  ignore  should "be resilient against HTTP 429" in {
+  ignore /*"Consumer"*/ should "be resilient against HTTP 429" in {
     val tooManyRequests = "too-many-requests"
     val ok = "ok"
     val noContent = "no-content"
