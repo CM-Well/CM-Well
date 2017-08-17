@@ -181,14 +181,14 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
       logger debug s"consuming next payload from persist commands topic @ ${msg.offset()}"
     val command = CommandSerializer.decode(msg.value())
       logger debug s"consumed command: $command"
-    BGMessage[Command](msg.offset(), command)
+    BGMessage[Command](CompleteOffset(msg.topic(), msg.offset()), command)
   }.via(sharedKillSwitch.flow)
 
   val priorityPersistCommandsSource = Consumer.plainExternalSource[Array[Byte], Array[Byte]](kafkaConsumer, prioritySubscription).map{ msg =>
     logger debug s"consuming next payload from priority persist commands topic @ ${msg.offset()}"
     val command = CommandSerializer.decode(msg.value())
     logger debug s"consumed priority command: $command"
-    BGMessage[Command](msg.offset(), command)
+    BGMessage[Command](CompleteOffset(msg.topic(), msg.offset()), command)
   }.via(sharedKillSwitch.flow)
 
   val heartBitLog = Flow[BGMessage[Command]].keepAlive(60.seconds, () => BGMessage(HeartbitCommand.asInstanceOf[Command])).filterNot{

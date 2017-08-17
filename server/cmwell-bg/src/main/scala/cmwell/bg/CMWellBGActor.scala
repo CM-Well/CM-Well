@@ -61,8 +61,8 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
   jmxReporter.start()
   val reportMetricsToES = config.getBoolean("cmwell.common.reportMetricsToES")
     logger debug (s"report to es set to $reportMetricsToES")
-    logger debug (s"available ES nodes: ${ftsService.nodesHttpAddresses().mkString(",")}")
   val esReporterOpt:Option[ElasticsearchReporter] = if(reportMetricsToES) {
+      logger debug (s"available ES nodes: ${ftsService.nodesHttpAddresses().mkString(",")}")
     Some(ElasticsearchReporter.forRegistry(metricRegistry).hosts(ftsService.nodesHttpAddresses() :_*).build())
   } else None
 

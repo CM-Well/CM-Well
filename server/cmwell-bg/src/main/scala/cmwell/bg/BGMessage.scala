@@ -16,9 +16,15 @@
 
 package cmwell.bg
 
-case class BGMessage[T](offsets:Seq[Long] = Seq.empty[Long], message:T)
+abstract class Offset(topic:String, offset:Long, part:Int, ofParts:Int)
+
+case class CompleteOffset(topic:String, offset:Long) extends Offset(topic, offset, 1 ,1)
+case class PartialOffset(topic:String, offset:Long, part:Int, ofParts:Int)
+
+
+case class BGMessage[T](offsets:Seq[Offset] = Seq.empty[Offset], message:T)
 
 object BGMessage {
-  def apply[T](offset: Long, message: T): BGMessage[T] = new BGMessage(Seq(offset), message)
+  def apply[T](offset: Offset, message: T): BGMessage[T] = new BGMessage(Seq(offset), message)
   def apply[T](message:T) = new BGMessage(message = message)
 }
