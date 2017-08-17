@@ -39,7 +39,11 @@ class Infoton {
             }
         }
 
-        return _(dnFuncsAndVals).chain().map(apply).find(_.identity).value().value
+        let result = _(dnFuncsAndVals).chain().map(apply).find(_.identity).value()
+        if(result)
+            return result.value
+        else
+            console.warn(`[DisplayName] Infoton ${this.path} of type ${typerdf.value} has none of the fields [${dnFuncsAndVals.join`,`}]`)
     }
 }
 
