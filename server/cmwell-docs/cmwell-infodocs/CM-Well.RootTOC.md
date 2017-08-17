@@ -87,6 +87,12 @@
     <td><a href="Tutorial.HandsOnExercisesTOC.md">General Tutorial</a></td>
   </tr>
 <tr>
+    <th rowspan="2" align=left>Cookbook</a></th>
+  </tr>
+<tr>
+    <td><a href="Cookbook.CM-WellWithPermIDData.md">Populating CM-Well with PermID.org Data</a></td>
+  </tr>
+<tr>
     <th rowspan="5" align=left><a href="Tools.TOC.md">Tools</a></th>
     <td><a href="Tools.UsingCM-WellDocker.md">CM-Well Docker</a></td>
   </tr>
