@@ -45,14 +45,12 @@ object ConsumerMain extends App with InstrumentedBuilder{
     val params = opt[String]("params", descr = "params string in cm-well", default = Some(""))
     val qp = opt[String]("qp", descr = "query params in cm-well", default = Some(""))
     val recursive = opt[Boolean]("recursive", short = 'r', descr = "flag to get download data recursively", default = Some(false))
-    val length = opt[Int]("length", short = 'l', descr = "max number of records to download (i.e., 1, 100)", default = None)
     val format = opt[String]("format", descr = "desired record format (i.e., json, jsonld, jsonldq, n3, ntriples, nquads, trig, rdfxml)", default = Some("trig"))
     val state   = opt[String]("state", short = 's',  descr = "position state file")
     val follow = opt[String]("follow", short = 'f', descr = "continue consumption data after given update frequency (i.e., 5.seconds, 10.minutes etc.)")
     val bulk = opt[Boolean]("bulk", default = Some(false), descr = "use bulk consumer mode in download")
     val numConnections = opt[Int]("num-connections", descr = "number of http connections to open")
-
-    mutuallyExclusive(bulk, length)
+    val indexTime = opt[Long]("index-time", descr = "index-time lower bound", default = Some(0))
 
     verify()
   }
@@ -83,7 +81,7 @@ object ConsumerMain extends App with InstrumentedBuilder{
     recursive = Opts.recursive(),
     format = Opts.format(),
     isBulk = Opts.bulk(),
-    length = Opts.length.toOption
+    indexTime = Opts.indexTime()
   )
 
   // check if input contains a valid state file which contains initial token
@@ -108,7 +106,7 @@ object ConsumerMain extends App with InstrumentedBuilder{
     FiniteDuration(d.length, d.unit)
   }
 
-  val result = downloader.createTsvSource(tokenToQuery, updateFreq)
+  val result = downloader.createTsvSource(tokenToQuery, updateFreq).async
     .map { case (token, tsv) => token -> tsv.uuid }
     .via(downloader.downloadDataFromUuids())
     .map {case (token, data) =>

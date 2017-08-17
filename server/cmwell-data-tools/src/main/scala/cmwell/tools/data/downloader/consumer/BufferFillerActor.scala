@@ -17,7 +17,7 @@
 package cmwell.tools.data.downloader.consumer
 
 import akka.actor.{Actor, ActorSystem}
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
+import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse, StatusCodes}
 import akka.pattern._
 import akka.stream._
 import akka.stream.scaladsl._
@@ -99,6 +99,7 @@ class BufferFillerActor(threshold: Int,
 
       nextToken match {
         case Some(token) =>
+          logger.info(s"next token=${token}")
           currToken = token
           self ! Status
 
@@ -111,9 +112,11 @@ class BufferFillerActor(threshold: Int,
       }
 
     case Status if buf.size < threshold =>
-        sendNextChunkRequest(currToken).map(FinishedToken.apply) pipeTo self
+      logger.debug(s"status message: buffer-size=${buf.size}, will request for more data")
+      sendNextChunkRequest(currToken).map(FinishedToken.apply) pipeTo self
 
     case Status =>
+      logger.debug(s"status message: buffer-size=${buf.size}")
       context.system.scheduler.scheduleOnce(1.seconds, self, Status)
 
     case NewData(data) =>
@@ -135,7 +138,7 @@ class BufferFillerActor(threshold: Int,
     case HttpResponseFailure(t, err) =>
       currConsumeState = ConsumeStateHandler.nextFailure(currConsumeState)
       logger.info(s"error: ${err.getMessage} consumer will perform retry in $retryTimeout, token=$t", err)
-      after(retryTimeout, context.system.scheduler)(sendNextChunkRequest(t))
+      after(retryTimeout, context.system.scheduler)(sendNextChunkRequest(t).map(FinishedToken.apply) pipeTo self)
 
     case x =>
       logger.error(s"unexpected message: $x")
@@ -207,6 +210,17 @@ class BufferFillerActor(threshold: Int,
             .map(token -> _)
 
           Some(nextToken) -> dataSource
+
+        case (Success(HttpResponse(s, h, e, _)), _) =>
+          e.toStrict(1.minute).onComplete {
+            case Success(res:HttpEntity.Strict) =>
+              logger.info(s"received consume answer from host=${getHostnameValue(h)} status=$s token=$token entity=${res.data.utf8String}")
+            case Failure(err) =>
+              logger.error(s"received consume answer from host=${getHostnameValue(h)} status=$s token=$token cannot extract entity", err)
+          }
+
+          Some(token) -> Source.failed(new Exception(s"Status is $s"))
+
         case x =>
           logger.error(s"unexpected message: $x")
           Some(token) -> Source.failed(new UnsupportedOperationException(x.toString))
