@@ -291,8 +291,8 @@ To run your compiled version of CM-Well:
 
 If you want to make a contribution to CM-Well's code, either as an individual or as a company or other legal entity, please read, sign and send us the appropriate form (see further instructions inside the forms).
 
-[CM-Well Individual Contributor License Agreement](server/cmwell-docs/cmwell-infodocs/CM-Well-Individual-Contributor-License-Agreement-v1.pdf)
-[CM-Well Entity Contributor License Agreement](server/cmwell-docs/cmwell-infodocs/CM-Well-Entity-Contributor-License-Agreement-v1.pdf) 
+* [CM-Well Individual Contributor License Agreement](server/cmwell-docs/cmwell-infodocs/CM-Well-Individual-Contributor-License-Agreement-v1.pdf)
+* [CM-Well Entity Contributor License Agreement](server/cmwell-docs/cmwell-infodocs/CM-Well-Entity-Contributor-License-Agreement-v1.pdf) 
 
 # Support #
 
