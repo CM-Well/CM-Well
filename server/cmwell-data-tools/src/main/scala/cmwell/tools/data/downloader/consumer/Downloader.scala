@@ -29,6 +29,7 @@ import cmwell.tools.data.utils.ArgsManipulations.{HttpAddress, _}
 import cmwell.tools.data.utils.akka.HeaderOps._
 import cmwell.tools.data.utils.akka.{concatByteStrings, _}
 import cmwell.tools.data.utils.logging._
+import cmwell.tools.data.utils.akka._
 import cmwell.tools.data.utils.ops.VersionChecker
 import cmwell.tools.data.utils.text.Tokens
 import play.api.libs.json.{JsArray, Json}
@@ -51,11 +52,19 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
   type Uuid  = ByteString
   type Path  = ByteString
 
-  sealed class Tsv
-  case class TsvData(path: Path, uuid: Uuid) extends Tsv
-  case object TsvEmpty extends Tsv
+  sealed abstract class Tsv {
+    def toByteString: ByteString
+  }
 
-  type TokenAndTsv = (Token, TsvData)
+  case class TsvData(path: Path,
+                     uuid: Uuid,
+                     lastModified: ByteString,
+                     indexTime: ByteString = ByteString.empty) extends Tsv {
+    override def toByteString: ByteString = concatByteStrings(
+      Seq(path,lastModified,uuid,indexTime),"", "\t", "")
+  }
+
+  case object TsvEmpty extends Tsv { override def toByteString: ByteString = ByteString.empty }
 
   /**
     * Creates token (position) from given query
@@ -115,10 +124,16 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
     * @param bytes input ByteString
     * @return extracted tsv data
     */
-  def extractTsv(bytes: ByteString) = {
-    val arr = bytes.split('\t')
+  def extractTsv(bytes: ByteString): Tsv = bytes.split('\t') match {
+    case path :: lastModified :: uuid :: indexTime :: Nil =>
+      TsvData(path = path, uuid = uuid, lastModified = lastModified, indexTime = indexTime)
 
-    TsvData(path = arr(PATH_INDEX), uuid = arr(UUID_INDEX))
+    case path :: lastModified :: uuid :: Nil =>
+      TsvData(path = path, uuid = uuid, lastModified = lastModified)
+
+    case _ =>
+      logger.error(s"received unexpected tsv: ${bytes.utf8String}")
+      TsvEmpty
   }
 
   /**
@@ -222,7 +237,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
           Future.successful(nextToken -> Seq.empty[String])
         } else {
           src
-            .map { tsv => nextToken -> tsv.path }
+            .collect { case tsv:TsvData => nextToken -> tsv.path }
             .fold("" -> Seq.empty[ByteString]) { case ((oldToken, paths), (newToken, path)) =>
               newToken -> (paths :+ path)
             }
@@ -690,7 +705,7 @@ class Downloader(baseUrl: String,
         Future.successful(nextToken -> "")
       } else {
         src
-          .map ( tsv => tsv.uuid )
+          .collect { case tsv: TsvData => tsv.uuid }
           .map (nextToken -> _)
           .via (downloadDataFromUuids )
           .fold("" -> Seq.empty[ByteString]) {

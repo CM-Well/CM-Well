@@ -17,14 +17,14 @@
 package cmwell.tools.data.downloader.consumer
 
 import akka.actor.{Actor, ActorSystem}
-import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse, StatusCodes}
+import akka.http.scaladsl.model._
 import akka.pattern._
 import akka.stream._
 import akka.stream.scaladsl._
 import cmwell.tools.data.downloader.consumer.Downloader._
 import cmwell.tools.data.utils.ArgsManipulations
 import cmwell.tools.data.utils.ArgsManipulations.{HttpAddress, formatHost}
-import cmwell.tools.data.utils.akka.HeaderOps.{getHostnameValue, getPosition}
+import cmwell.tools.data.utils.akka.HeaderOps._
 import cmwell.tools.data.utils.akka.{DataToolsConfig, HttpConnections, lineSeparatorFrame}
 import cmwell.tools.data.utils.logging._
 import cmwell.tools.data.utils.text.Tokens
@@ -65,6 +65,7 @@ class BufferFillerActor(threshold: Int,
   private var currKillSwitch: Option[KillSwitch] = None
   private val buf: mutable.Queue[Option[(Token, TsvData)]] = mutable.Queue()
   private var tsvCounter = 0L
+  private var lastBulkConsumeToHeader: Option[String] = None
 
   val retryTimeout: FiniteDuration = {
     val timeoutDuration = Duration(config.getString("cmwell.downloader.consumer.http-retry-timeout")).toCoarsest
@@ -96,6 +97,7 @@ class BufferFillerActor(threshold: Int,
 
       receivedUuids  --= uuidsFromCurrentToken
       tsvCounter = 0L
+      lastBulkConsumeToHeader = None
 
       nextToken match {
         case Some(token) =>
@@ -171,9 +173,10 @@ class BufferFillerActor(threshold: Int,
           ("_consume", "&slow-bulk")
       }
 
-      val uri = s"${formatHost(baseUrl)}/$consumeHandler?position=$token&format=tsv$paramsValue$slowBulk"
-      logger.debug("send HTTP request: {}", uri)
+      val to = lastBulkConsumeToHeader.map("&to-hint=" + _).getOrElse("")
 
+      val uri = s"${formatHost(baseUrl)}/$consumeHandler?position=$token&format=tsv$paramsValue$slowBulk$to"
+      logger.debug("send HTTP request: {}", uri)
       HttpRequest(uri = uri)
     }
 
@@ -198,13 +201,18 @@ class BufferFillerActor(threshold: Int,
           None -> Source.empty
         case (Success(HttpResponse(s, h, e, _)), _) if s == StatusCodes.OK || s == StatusCodes.PartialContent =>
           val nextToken = getPosition(h) match {
-            case Some(pos) => pos.value
+            case Some(HttpHeader(_, pos)) => pos
             case None      => throw new RuntimeException("no position supplied")
+          }
+
+          lastBulkConsumeToHeader = getTo(h) match {
+            case Some(HttpHeader(_, to)) => Some(to)
+            case None                    => None
           }
 
           logger.info(s"received consume answer from host=${getHostnameValue(h)}")
 
-          val dataSource: Source[(Token, TsvData), Any] = e.withoutSizeLimit().dataBytes
+          val dataSource: Source[(Token, Tsv), Any] = e.withoutSizeLimit().dataBytes
             .via(lineSeparatorFrame)
             .map(extractTsv)
             .map(token -> _)
@@ -228,7 +236,7 @@ class BufferFillerActor(threshold: Int,
       .alsoToMat(Sink.last)((_,element) => element.map { case (nextToken, _) => nextToken})
       .map { case (_, dataSource) => dataSource}
       .flatMapConcat(identity)
-      .map { case (token, tsv) =>
+      .collect { case (token, tsv: TsvData) =>
         // if uuid was not emitted before, write it to buffer
         if (receivedUuids.add(tsv.uuid)) {
           self ! NewData(Some((token, tsv)))

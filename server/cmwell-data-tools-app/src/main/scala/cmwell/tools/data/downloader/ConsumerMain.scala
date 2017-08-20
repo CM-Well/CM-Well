@@ -106,9 +106,20 @@ object ConsumerMain extends App with InstrumentedBuilder{
     FiniteDuration(d.length, d.unit)
   }
 
-  val result = downloader.createTsvSource(tokenToQuery, updateFreq).async
-    .map { case (token, tsv) => token -> tsv.uuid }
-    .via(downloader.downloadDataFromUuids())
+  val graph = Opts.format() match {
+    case "tsv" =>
+      downloader.createTsvSource(tokenToQuery, updateFreq).async
+        .map { case (token, tsv) => token -> (tsv.toByteString ++ endl) }
+    case "text" =>
+      downloader.createTsvSource(tokenToQuery, updateFreq).async
+        .map { case (token, tsv) => token -> (tsv.path ++ endl) }
+    case _ =>
+      downloader.createTsvSource(tokenToQuery, updateFreq).async
+        .map { case (token, tsv) => token -> tsv.uuid }
+        .via(downloader.downloadDataFromUuids())
+  }
+
+  val result = graph
     .map {case (token, data) =>
       if (Some(token) != lastToken) {
         // save new token in state file
