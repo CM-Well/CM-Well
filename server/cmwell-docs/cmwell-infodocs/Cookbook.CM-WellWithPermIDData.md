@@ -41,9 +41,10 @@ We'll use one of our data tools for this task: the CM-Well Ingester.
 
 To build the CM-Well data tools:
 
-1. Download the CM-Well source code from [https://github.com/thomsonreuters/CM-Well](https://github.com/thomsonreuters/CM-Well). 
-2. Navigate to the ```server/cmwell-data-tools-app``` folder.
-3. Run ```sbt```. *(Yaakov, please clarify what this is: ```server> dataToolsApp/pack```)*
+1. Clone the CM-Well source from [https://github.com/thomsonreuters/CM-Well](https://github.com/thomsonreuters/CM-Well). 
+1. Navigate to the ```server``` directory.
+1. Run ```sbt```.
+1. At the ```sbt``` prompt, type ```dataToolsApp/pack```. This will pack the Data Tools App into the ```server/cmwell-data-tools-app/target/pack/bin``` directory.
 
 To run the Ingester:
 
