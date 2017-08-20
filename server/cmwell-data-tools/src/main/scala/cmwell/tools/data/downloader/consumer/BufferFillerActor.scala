@@ -42,6 +42,7 @@ object BufferFillerActor {
   case object GetData
   case class HttpResponseSuccess(token: Token)
   case class HttpResponseFailure(token: Token, err: Throwable)
+  case class NewToHeader(to: Option[String])
 }
 
 class BufferFillerActor(threshold: Int,
@@ -115,7 +116,7 @@ class BufferFillerActor(threshold: Int,
 
     case Status if buf.size < threshold =>
       logger.debug(s"status message: buffer-size=${buf.size}, will request for more data")
-      sendNextChunkRequest(currToken).map(FinishedToken.apply) pipeTo self
+      sendNextChunkRequest(currToken, lastBulkConsumeToHeader).map(FinishedToken.apply) pipeTo self
 
     case Status =>
       logger.debug(s"status message: buffer-size=${buf.size}")
@@ -140,7 +141,10 @@ class BufferFillerActor(threshold: Int,
     case HttpResponseFailure(t, err) =>
       currConsumeState = ConsumeStateHandler.nextFailure(currConsumeState)
       logger.info(s"error: ${err.getMessage} consumer will perform retry in $retryTimeout, token=$t", err)
-      after(retryTimeout, context.system.scheduler)(sendNextChunkRequest(t).map(FinishedToken.apply) pipeTo self)
+      after(retryTimeout, context.system.scheduler)(sendNextChunkRequest(t, lastBulkConsumeToHeader).map(FinishedToken.apply) pipeTo self)
+
+    case NewToHeader(to) =>
+      lastBulkConsumeToHeader = to
 
     case x =>
       logger.error(s"unexpected message: $x")
@@ -151,7 +155,7 @@ class BufferFillerActor(threshold: Int,
     * @param token cm-well position token to consume its data
     * @return optional next token value, otherwise None when there is no data left to be consumed
     */
-  def sendNextChunkRequest(token: String): Future[Option[String]] = {
+  def sendNextChunkRequest(token: String, prevToHeader: Option[String] = None): Future[Option[String]] = {
 
     /**
       * Creates http request for consuming data
@@ -173,7 +177,7 @@ class BufferFillerActor(threshold: Int,
           ("_consume", "&slow-bulk")
       }
 
-      val to = lastBulkConsumeToHeader.map("&to-hint=" + _).getOrElse("")
+      val to = prevToHeader.map("&to-hint=" + _).getOrElse("")
 
       val uri = s"${formatHost(baseUrl)}/$consumeHandler?position=$token&format=tsv$paramsValue$slowBulk$to"
       logger.debug("send HTTP request: {}", uri)
@@ -205,9 +209,9 @@ class BufferFillerActor(threshold: Int,
             case None      => throw new RuntimeException("no position supplied")
           }
 
-          lastBulkConsumeToHeader = getTo(h) match {
-            case Some(HttpHeader(_, to)) => Some(to)
-            case None                    => None
+          getTo(h) match {
+            case Some(HttpHeader(_, to)) => self ! NewToHeader(Some(to))
+            case None                    => self ! NewToHeader(None)
           }
 
           logger.info(s"received consume answer from host=${getHostnameValue(h)}")
