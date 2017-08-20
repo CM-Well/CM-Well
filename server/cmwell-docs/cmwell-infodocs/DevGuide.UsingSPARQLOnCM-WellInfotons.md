@@ -23,7 +23,7 @@
 
 SPARQL (SPARQL Protocol and RDF Query Language - pronounced "sparkle") is an industry-standard query language designed to work with graph databases. It is similar in syntax to SQL.
 
-You can use SPARQL queries on CM-Well in order to apply database operations to infotons, which are the type of "database records" that CM-Well supports. 
+You can use SPARQL queries on CM-Well in order to apply database operations to infotons, which are the type of "database records" that CM-Well supports. The supported SPARQL version in CM-Well is SPARQL 1.1.
 
 > **Note:** Currently, the only SPARQL operations that CM-Well supports are SELECT and CONSTRUCT.
 
