@@ -29,15 +29,14 @@ import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.matching._
 import com.github.tomakehurst.wiremock.matching.EqualToPattern
 import com.github.tomakehurst.wiremock.stubbing.Scenario
-import org.scalatest.Matchers
+import org.scalatest.{Ignore, Matchers}
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
-
 import collection.JavaConverters._
 
-class SparqlTriggeredProcessorSpec extends BaseWiremockSpec {
+@Ignore class SparqlTriggeredProcessorSpec extends BaseWiremockSpec {
   val scenario = "scenario"
   val `no-content` = "no-content"
   val `new-data-update` = "new-data-update"

@@ -29,6 +29,7 @@ import cmwell.tools.data.helpers.BaseWiremockSpec
 import cmwell.tools.data.utils.akka.HeaderOps
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.stubbing.Scenario
+import org.scalatest.Ignore
 
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -41,6 +42,7 @@ import scala.concurrent.duration._
 class IngesterSpec extends BaseWiremockSpec  {
   implicit val system: ActorSystem = ActorSystem("reactive-tools-system")
   implicit val mat: Materializer = ActorMaterializer()
+  val path = "example.org"
 
   val SCENARIO = "test retry"
   val SUCCESS_STATE = "success-state"

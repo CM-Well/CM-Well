@@ -41,7 +41,7 @@ class ConsumerSpec extends BaseWiremockSpec {
     super.afterAll()
   }
 
-  ignore  should "be resilient against HTTP 429" in {
+  "Consumer" should "be resilient against HTTP 429" in {
     val tooManyRequests = "too-many-requests"
     val ok = "ok"
     val noContent = "no-content"
@@ -91,7 +91,7 @@ class ConsumerSpec extends BaseWiremockSpec {
     result.flatMap { r => r should be (1)}
   }
 
-  ignore should "download all uuids while getting server error" in {
+  it should "download all uuids while getting server error" in {
 
     val tsvsBeforeError = List(
       "path1\tlastModified1\tuuid1\tindexTime1\n",
@@ -159,60 +159,6 @@ class ConsumerSpec extends BaseWiremockSpec {
       .flatMap { _ =>
         val numRequestsToConsume = wireMockServer.findAll(getRequestedFor(urlPathMatching("/_consume"))).size
         numRequestsToConsume should be (4)
-      }
-  }
-
-  ignore should "download all missing uuids" in {
-    val expectedTsvs = List(
-      "path1\tlastModified1\tuuid1\tindexTime1",
-      "path2\tlastModified2\tuuid2\tindexTime2")
-    val downloadFail = "download-fail"
-    val downloadSuccess = "download-success"
-    val noContent = "no-content"
-
-    stubFor(get(urlPathMatching("/.*")).inScenario(scenario)
-      .whenScenarioStateIs(Scenario.STARTED)
-      .willReturn(aResponse()
-        .withStatus(StatusCodes.OK.intValue)
-        .withHeader(CMWELL_POSITION, "dummy-token-value"))
-      .willSetStateTo(downloadFail)
-    )
-
-    stubFor(get(urlPathMatching("/_consume")).inScenario(scenario)
-      .whenScenarioStateIs(downloadFail)
-      .willReturn(aResponse()
-        .withBody(expectedTsvs.mkString("\n"))
-        .withStatus(StatusCodes.OK.intValue)
-        .withHeader(CMWELL_N, (expectedTsvs.size + 1).toString) // missing uuid
-        .withHeader(CMWELL_POSITION, "dummy-position"))
-      .willSetStateTo(downloadSuccess)
-    )
-
-    stubFor(get(urlPathMatching("/_consume")).inScenario(scenario)
-      .whenScenarioStateIs(downloadSuccess)
-      .willReturn(aResponse()
-        .withBody(expectedTsvs.mkString("\n"))
-        .withStatus(StatusCodes.OK.intValue)
-        .withHeader(CMWELL_N, expectedTsvs.size.toString)
-        .withHeader(CMWELL_POSITION, "dummy-position"))
-      .willSetStateTo(noContent)
-    )
-
-    stubFor(get(urlPathMatching("/.*")).inScenario(scenario)
-      .whenScenarioStateIs(noContent)
-      .willReturn(aResponse()
-        .withStatus(StatusCodes.NoContent.intValue)
-        .withHeader(CMWELL_POSITION, "dummy-token-value"))
-    )
-
-    val result = Downloader.createTsvSource(baseUrl = s"localhost:${wireMockServer.port}")
-      .map(_ => 1)
-      .runFold(0)(_ + _)
-
-    result.flatMap { numDownloadedTsvs => numDownloadedTsvs should be (expectedTsvs.size ) }
-      .flatMap { _ =>
-        val numRequestsToConsume = wireMockServer.findAll(getRequestedFor(urlPathMatching("/_consume"))).size
-        numRequestsToConsume should be (expectedTsvs.size + 1)
       }
   }
 

@@ -43,6 +43,7 @@ object BufferFillerActor {
   case class HttpResponseSuccess(token: Token)
   case class HttpResponseFailure(token: Token, err: Throwable)
   case class NewToHeader(to: Option[String])
+  case object GetToHeader
 }
 
 class BufferFillerActor(threshold: Int,
@@ -116,7 +117,7 @@ class BufferFillerActor(threshold: Int,
 
     case Status if buf.size < threshold =>
       logger.debug(s"status message: buffer-size=${buf.size}, will request for more data")
-      sendNextChunkRequest(currToken, lastBulkConsumeToHeader).map(FinishedToken.apply) pipeTo self
+      sendNextChunkRequest(currToken).map(FinishedToken.apply) pipeTo self
 
     case Status =>
       logger.debug(s"status message: buffer-size=${buf.size}")
@@ -141,10 +142,13 @@ class BufferFillerActor(threshold: Int,
     case HttpResponseFailure(t, err) =>
       currConsumeState = ConsumeStateHandler.nextFailure(currConsumeState)
       logger.info(s"error: ${err.getMessage} consumer will perform retry in $retryTimeout, token=$t", err)
-      after(retryTimeout, context.system.scheduler)(sendNextChunkRequest(t, lastBulkConsumeToHeader).map(FinishedToken.apply) pipeTo self)
+      after(retryTimeout, context.system.scheduler)(sendNextChunkRequest(t).map(FinishedToken.apply) pipeTo self)
 
     case NewToHeader(to) =>
       lastBulkConsumeToHeader = to
+
+    case GetToHeader =>
+      sender ! lastBulkConsumeToHeader
 
     case x =>
       logger.error(s"unexpected message: $x")
@@ -155,14 +159,15 @@ class BufferFillerActor(threshold: Int,
     * @param token cm-well position token to consume its data
     * @return optional next token value, otherwise None when there is no data left to be consumed
     */
-  def sendNextChunkRequest(token: String, prevToHeader: Option[String] = None): Future[Option[String]] = {
+  def sendNextChunkRequest(token: String): Future[Option[String]] = {
 
     /**
       * Creates http request for consuming data
       * @param token position token to be consumed
+      * @param toHint to-hint field of cm-well consumer API
       * @return HTTP request for consuming data
       */
-    def createRequestFromToken(token: String) = {
+    def createRequestFromToken(token: String, toHint: Option[String] = None) = {
       // create HTTP request from token
       val paramsValue = if (params.isEmpty) "" else s"&$params"
 
@@ -177,7 +182,7 @@ class BufferFillerActor(threshold: Int,
           ("_consume", "&slow-bulk")
       }
 
-      val to = prevToHeader.map("&to-hint=" + _).getOrElse("")
+      val to = toHint.map("&to-hint=" + _).getOrElse("")
 
       val uri = s"${formatHost(baseUrl)}/$consumeHandler?position=$token&format=tsv$paramsValue$slowBulk$to"
       logger.debug("send HTTP request: {}", uri)
@@ -186,8 +191,11 @@ class BufferFillerActor(threshold: Int,
 
     uuidsFromCurrentToken.clear()
 
-    val source: Source[Token, (Future[Option[Token]], UniqueKillSwitch)] = Source.single(token)
-      .map(createRequestFromToken)
+    implicit val timeout = akka.util.Timeout(30.seconds)
+    val prevToHeader = (self ? GetToHeader).mapTo[Option[String]]
+
+    val source: Source[Token, (Future[Option[Token]], UniqueKillSwitch)] = Source.fromFuture(prevToHeader)
+      .map(to => createRequestFromToken(token, to))
       .map(_ -> None)
       .via(conn)
       .map {
