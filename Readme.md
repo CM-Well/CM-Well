@@ -3,7 +3,7 @@ CM-Well is a writable Linked Data repository, developed by Thomson Reuters and u
 
 The Thomson Reuters Knowledge Graph contains information about organizations, instruments and people in the world of finance, but you can use CM-Well for any kind of linked data. Thomson Reuters is now offering CM-Well as an Open Source platform for the developer community to use and enrich.
 
-## Key features & technology ##
+## Key Features and Technology ##
 CM-Well is based on a clustered architecture, with durable storage into [Apache Cassandra](http://cassandra.apache.org) and indexing via [Elastic Search](https://github.com/elastic/elasticsearch). Key features include:
 * Horizontal scaling to support billions of triples
 * Cross site replication
@@ -286,6 +286,13 @@ To run your compiled version of CM-Well:
     ```
 
 >**Note**: Once CM-Well is installed, the CM-Well web UI is available at http://localhost:9000. See [CM-Well Web Interface](server/cmwell-docs/cmwell-infodocs/CM-WellWebInterface.md) to learn more.
+
+# Code Contributions #
+
+If you want to make a contribution to CM-Well's code, either as an individual or as a company or other legal entity, please read, sign and send us the appropriate form (see further instructions inside the forms).
+
+* [CM-Well Individual Contributor License Agreement](server/cmwell-docs/cmwell-infodocs/CM-Well-Individual-Contributor-License-Agreement-v1.pdf)
+* [CM-Well Entity Contributor License Agreement](server/cmwell-docs/cmwell-infodocs/CM-Well-Entity-Contributor-License-Agreement-v1.pdf) 
 
 # Support #
 
