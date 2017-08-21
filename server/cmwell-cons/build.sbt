@@ -54,7 +54,7 @@ getData := {
   val logger = streams.value
   val baseDir = baseDirectory.value
   val spaDir = (dataFolder in LocalProject("spa") in Compile).value
-  val docsDir = (dataFolder in LocalProject("docs") in Compile).value
+  val docsDir = baseDir / ".." / ".." / "docs"
   val sysDir = (sourceDirectory in LocalProject("ws") in Compile).value / ".." / "public" / "sys"
 
   logger.log.info(sysDir.absolutePath)

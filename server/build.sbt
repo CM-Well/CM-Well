@@ -250,7 +250,6 @@ lazy val ctrl          = (project in file("cmwell-controller")).enablePlugins(CM
 lazy val dc            = (project in file("cmwell-dc")).enablePlugins(CMWellBuild) settings(oneJarSettings:_*)      dependsOn(tracking, ctrl, sparqlAgent)
 lazy val cons          = (project in file("cmwell-cons")).enablePlugins(CMWellBuild)                                dependsOn(util, ctrl) aggregate(batch, ws, ctrl, dc)
 lazy val pluginGremlin = (project in file("cmwell-plugin-gremlin")).enablePlugins(CMWellBuild)
-lazy val docs          = (project in file("cmwell-docs")).enablePlugins(CMWellBuild)
 lazy val spa           = (project in file("cmwell-spa")) .enablePlugins(CMWellBuild)
 lazy val dataTools     = (project in file("cmwell-data-tools")).enablePlugins(CMWellBuild)
 lazy val dataToolsApp  = (project in file("cmwell-data-tools-app")).enablePlugins(CMWellBuild)                      dependsOn(dataTools)
@@ -281,7 +280,6 @@ fullTest := {
   (fullTest in LocalProject("dc")).value
   (fullTest in LocalProject("cons")).value
   (fullTest in LocalProject("pluginGremlin")).value
-  (fullTest in LocalProject("docs")).value
   (fullTest in LocalProject("spa")).value
   (fullTest in LocalProject("dataTools")).value
   (fullTest in LocalProject("dataToolsApp")).value

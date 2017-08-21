@@ -42,8 +42,8 @@ Here are some more resources to help you learn about linked data and CM-Well:
 
 * [Linked Data](https://en.wikipedia.org/wiki/Linked_data)
 * [The future is graph shaped](https://blogs.thomsonreuters.com/answerson/future-graph-shaped)
-* [Introduction to CM-Well](server/cmwell-docs/cmwell-infodocs/Intro.IntroductionToCM-Well.md)
-* [Overview of the CM-Well API](server/cmwell-docs/cmwell-infodocs/Intro.OverviewOfTheCM-WellAPI.md)
+* [Introduction to CM-Well](docs/Intro.IntroductionToCM-Well.md)
+* [Overview of the CM-Well API](docs/Intro.OverviewOfTheCM-WellAPI.md)
 
 # Getting Started #
 
@@ -178,16 +178,16 @@ You can get started with CM-Well by running some basic write and read operations
 
 ## CM-Well Tutorial ##
 
-See [CM-Well Tutorials](server/cmwell-docs/cmwell-infodocs/Tutorial.HandsOnExercisesTOC.md) to learn how perform more CM-Well operations.
+See [CM-Well Tutorials](docs/Tutorial.HandsOnExercisesTOC.md) to learn how perform more CM-Well operations.
 
 ## Developer Resources ##
 
 See the following resources to learn more about CM-Well workflows, APIs and architecture:
 
-* [CM-Well API Reference](server/cmwell-docs/cmwell-infodocs/API.TOC.md)
-* [CM-Well Developer Guide](server/cmwell-docs/cmwell-infodocs/DevGuide.TOC.md)
-* [CM-Well Data Paradigms](server/cmwell-docs/cmwell-infodocs/Intro.CM-WellDataParadigms.md)
-* [CM-Well High-Level Architecture](server/cmwell-docs/cmwell-infodocs/Intro.CM-WellHigh-LevelArchitecture.md)
+* [CM-Well API Reference](docs/API.TOC.md)
+* [CM-Well Developer Guide](docs/DevGuide.TOC.md)
+* [CM-Well Data Paradigms](docs/Intro.CM-WellDataParadigms.md)
+* [CM-Well High-Level Architecture](docs/Intro.CM-WellHigh-LevelArchitecture.md)
 
 # System Requirements #
 
@@ -222,7 +222,7 @@ or preferably (for a complete rebuild and testing): `sbt ccft`
 export SBT_OPTS="-Xmx2G -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -Xss2M"
 ```
 
-More detailed instructions can be found in the [Building CM-Well Tutorial ](server/cmwell-docs/cmwell-infodocs/Tutorial.Building.md).
+More detailed instructions can be found in the [Building CM-Well Tutorial ](docs/Tutorial.Building.md).
 
 ## Code Repository Structure ## 
 
@@ -285,14 +285,14 @@ To run your compiled version of CM-Well:
     pe.install
     ```
 
->**Note**: Once CM-Well is installed, the CM-Well web UI is available at http://localhost:9000. See [CM-Well Web Interface](server/cmwell-docs/cmwell-infodocs/CM-WellWebInterface.md) to learn more.
+>**Note**: Once CM-Well is installed, the CM-Well web UI is available at http://localhost:9000. See [CM-Well Web Interface](docs/CM-WellWebInterface.md) to learn more.
 
 # Code Contributions #
 
 If you want to make a contribution to CM-Well's code, either as an individual or as a company or other legal entity, please read, sign and send us the appropriate form (see further instructions inside the forms).
 
-* [CM-Well Individual Contributor License Agreement](server/cmwell-docs/cmwell-infodocs/CM-Well-Individual-Contributor-License-Agreement-v1.pdf)
-* [CM-Well Entity Contributor License Agreement](server/cmwell-docs/cmwell-infodocs/CM-Well-Entity-Contributor-License-Agreement-v1.pdf) 
+* [CM-Well Individual Contributor License Agreement](docs/CM-Well-Individual-Contributor-License-Agreement-v1.pdf)
+* [CM-Well Entity Contributor License Agreement](docs/CM-Well-Entity-Contributor-License-Agreement-v1.pdf) 
 
 # Support #
 
