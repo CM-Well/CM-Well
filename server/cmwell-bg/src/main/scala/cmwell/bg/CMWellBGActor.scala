@@ -18,7 +18,8 @@ package cmwell.bg
 
 import java.util.concurrent.TimeUnit
 
-import akka.actor.{Actor, OneForOneStrategy, PoisonPill, Props}
+import akka.actor.{Actor, ActorRef, OneForOneStrategy, PoisonPill, Props}
+import akka.kafka.{ConsumerSettings, KafkaConsumerActor}
 import akka.stream.{ActorMaterializer, Supervision}
 import cmwell.fts.FTSServiceNew
 import cmwell.irw.IRWService
@@ -29,6 +30,8 @@ import com.codahale.metrics.JmxReporter
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 import nl.grons.metrics.scala.DefaultInstrumented
+import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.elasticsearch.metrics.ElasticsearchReporter
 
 import scala.concurrent.duration._
@@ -62,10 +65,21 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
   val esReporterOpt:Option[ElasticsearchReporter] = if(reportMetricsToES) {
     Some(ElasticsearchReporter.forRegistry(metricRegistry).hosts(ftsService.nodesHttpAddresses() :_*).build())
   } else None
+
   esReporterOpt.foreach{ esReporter =>
     logger info "starting metrics ES Reporter"
     esReporter.start(10, TimeUnit.SECONDS)
   }
+
+  val bootStrapServers = config.getString("cmwell.bg.kafka.bootstrap.servers")
+
+  val byteArrayDeserializer = new ByteArrayDeserializer()
+  val persistCommandsConsumerSettings =
+    ConsumerSettings(context.system, byteArrayDeserializer, byteArrayDeserializer)
+      .withBootstrapServers(bootStrapServers)
+      .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
+
+  val kafkaConsumer: ActorRef = context.actorOf(KafkaConsumerActor.props(persistCommandsConsumerSettings))
 
   override def preStart(): Unit = {
       logger info s"CMwellBGActor-$partition starting"
@@ -77,6 +91,7 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
   override def postStop(): Unit = {
       logger info s"CMWellBGActor-$partition stopping"
     esReporterOpt.foreach(_.close())
+    stopAll
     super.postStop()
   }
 
@@ -197,7 +212,7 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
 
   private def startImp = {
     if(impStream == null) {
-      impStream = new ImpStream(partition, config, irwService, zStore, ftsService, offsetsService, decider)
+      impStream = new ImpStream(partition, config, irwService, zStore, ftsService, offsetsService, decider, kafkaConsumer)
       logger info "Imp Stream started"
     } else
       logger warn "requested to start Imp Stream but it is already running. doing nothing."
@@ -205,7 +220,7 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
 
   private def startIndexer = {
     if(indexerStream == null) {
-      indexerStream = new IndexerStream(partition, config, irwService, ftsService, offsetsService, decider)
+      indexerStream = new IndexerStream(partition, config, irwService, ftsService, offsetsService, decider, kafkaConsumer)
       logger info "Indexer Stream started"
     } else
       logger warn "requested to start Indexer Stream but it is already running. doing nothing."

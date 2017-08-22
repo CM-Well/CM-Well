@@ -19,7 +19,8 @@ package cmwell.tools.data.ingester
 import java.io.FileInputStream
 import java.util.zip.GZIPInputStream
 
-import cmwell.tools.data.utils.akka.stats.IngesterStatsSink
+import akka.stream.scaladsl.Sink
+import cmwell.tools.data.utils.akka.stats.IngesterStats
 //import cmwell.tools.data.sparql.SparqlProcessorMain.Opts.opt
 import cmwell.tools.data.utils.ArgsManipulations._
 import cmwell.tools.data.utils.akka.Implicits._
@@ -87,7 +88,9 @@ object IngesterMain extends App with LazyLogging {
     replaceMode = Opts.replaceMode(),
     force = Opts.force(),
     in = inputStream
-  ).runWith(IngesterStatsSink(isStderr = true))
+  )
+    .via(IngesterStats(isStderr = true))
+    .runWith(Sink.ignore)
 
 
   // actor system is still alive, will be destroyed when finished

@@ -16,17 +16,19 @@
 
 package ld.query
 
+import javax.inject.Inject
 import javax.xml.datatype.XMLGregorianCalendar
 
 import cmwell.domain.{Everything, Formattable, Infoton}
 import cmwell.fts._
 import cmwell.web.ld.cmw.CMWellRDFHelper
-import cmwell.web.ld.query.{Config, DataFetcher}
+import cmwell.web.ld.query.DataFetcherImpl
+import cmwell.ws.AggregateBothOldAndNewTypesCaches
 import com.sun.org.apache.xerces.internal.jaxp.datatype.XMLGregorianCalendarImpl
-import controllers.JenaUtils
+import controllers.{JenaUtils, NbgToggler}
 import info.aduna.iteration.CloseableIteration
+import ld.cmw.PassiveFieldTypesCache
 import ld.query.TripleStore._
-import logic.CRUDServiceFS
 import org.apache.jena.datatypes.xsd.XSDDateTime
 import org.apache.jena.rdf.model.{RDFNode, Statement}
 import org.joda.time.DateTime
@@ -38,14 +40,87 @@ import org.openrdf.query.algebra.evaluation.{QueryOptimizer, TripleSource}
 import org.openrdf.query.algebra.helpers.AbstractQueryModelVisitor
 import org.openrdf.query.algebra._
 import org.openrdf.query.{BindingSet, Dataset, QueryEvaluationException}
-import wsutil.{RawFieldFilter, RawSingleFieldFilter, URIFieldKey}
+import wsutil.{FormatterManager, RawFieldFilter, RawSingleFieldFilter, UnresolvedURIFieldKey}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext}
 
-/**
-  * Created by yaakov on 5/28/17.
-  */
+class TripleStore(dataFetcher: DataFetcherImpl, cmwellRDFHelper: CMWellRDFHelper, tbg: NbgToggler) {
+
+  //  private val dataFetcher = new DataFetcher(Config.defaultConfig.copy(intermediateLimit = 100000, resultsLimit = 100000))
+
+  val crudServiceFS = cmwellRDFHelper.crudServiceFS
+  val typesCache = new AggregateBothOldAndNewTypesCaches(crudServiceFS,tbg)
+
+  // todo only use Await.result in findTriplesByPattern. All private methods should return Future[_]
+
+  /**
+    * Find statements by triple pattern. Can be used as the data layer of any SPARQL Engine
+    */
+  def findTriplesByPattern(triplePattern: TriplePattern)(implicit ec: ExecutionContext): Iterator[Quad] = {
+    val infotons: Seq[Infoton] = triplePattern.subject match {
+      case Some(s) =>
+        fetchInfoton(uriToCmWellPath(s)).toList // Option.toList - zero or one Infotons
+      case None =>
+        val ff = predicateAndObjectToFieldFilter(triplePattern.predicate, triplePattern.value)
+        dataFetcher.fetch(ff)._2
+    }
+
+    val quads = infotons.flatMap(infotonToQuads).toIterator
+    filter(quads, triplePattern.predicate, triplePattern.value)
+  }
+
+  private def fetchInfoton(path: String): Option[Infoton] =
+    Await.result(crudServiceFS.getInfoton(path, None, None), 10.seconds).collect { case Everything(i) => i }
+
+  private def infotonToQuads(i: Infoton): Iterator[Quad] = {
+    import scala.collection.JavaConversions._
+
+    val ds = nullFormatter.formattableToDataset(i)
+
+    def stmtToQuad(stmt: Statement, quad: Option[TripleStore.IRI]): Quad =
+      Quad(stmt.getSubject.getURI, stmt.getPredicate.getURI, jenaNodeToValue(stmt.getObject), quad)
+
+    val defaultModelQuads = {
+      val it = ds.getDefaultModel.listStatements().map(stmtToQuad(_, None))
+      if(it.hasNext) List(it) else Nil
+    }
+
+    val namedModelsQuadsIterators = JenaUtils.getNamedModels(ds).foldLeft(defaultModelQuads) {
+      case (itList,(quad, model)) =>
+        val it = model.listStatements().map(stmtToQuad(_, Some(quad)))
+        if(it.hasNext) it :: itList else itList
+    }
+
+    new Iterator[Quad] {
+      private[this] var iterators = namedModelsQuadsIterators
+      override def hasNext: Boolean = iterators.headOption.exists(_.hasNext)
+      override def next(): Quad = {
+        val rv = iterators.head.next()
+        if(!iterators.head.hasNext) iterators = iterators.tail
+        rv
+      }
+    }
+  }
+
+
+  private def predicateAndObjectToFieldFilter(p: Option[TripleStore.IRI], o: Option[TripleStore.Value])(implicit ec: ExecutionContext): FieldFilter = {
+    val value = o.map(_.asString)
+    p match {
+      case None => SingleFieldFilter(Must, Contains, "_all", value)
+      case Some(pred) => Await.result(RawFieldFilter.eval(RawSingleFieldFilter(Must, Equals, Left(UnresolvedURIFieldKey(pred)), value),typesCache,cmwellRDFHelper,tbg.get), 10.seconds)
+    }
+  }
+
+  // todo propagate withoutMeta boolean from request to here. If withoutMeta is set to false, we need to make sure it won't fail in URIFieldKey(...)
+  val f: String => Option[(String,Option[String])] = {(o: Option[String]) => o.map(u => u -> Option.empty[String])} compose {s => cmwellRDFHelper.hashToUrl(s,tbg.get)}
+  private val nullFormatter = new cmwell.formats.RDFFormatter("cmwell", f, withoutMeta = true, filterOutBlanks = false, forceUniqueness = false) {
+    override def format: cmwell.formats.FormatType = ???
+    override def render(formattable: Formattable): String = ???
+  }
+
+}
+
 object TripleStore {
 
   type IRI = String // todo - this can be better than type. e.g. case class IRI(iri: String, ... )
@@ -72,58 +147,7 @@ object TripleStore {
   case object DateLtrl extends LitaralType
   case object UnknownLtrlType extends LitaralType
 
-  // todo only use Await.result in findTriplesByPattern. All private methods should return Future[_]
-
-  /**
-    * Find statements by triple pattern. Can be used as the data layer of any SPARQL Engine
-    */
-  def findTriplesByPattern(triplePattern: TriplePattern)(implicit ec: ExecutionContext): Iterator[Quad] = {
-    val infotons: Seq[Infoton] = triplePattern.subject match {
-      case Some(s) =>
-        fetchInfoton(uriToCmWellPath(s)).toList // Option.toList - zero or one Infotons
-      case None =>
-        val ff = predicateAndObjectToFieldFilter(triplePattern.predicate, triplePattern.value)
-        dataFetcher.fetch(ff)._2
-    }
-
-    val quads = infotons.flatMap(infotonToQuads).toIterator
-    filter(quads, triplePattern.predicate, triplePattern.value)
-  }
-
   private def uriToCmWellPath(uri: IRI) = uri.replace("https://", "/https.").replace("http:/", "").replace("cmwell:/", "")
-
-  private def fetchInfoton(path: String): Option[Infoton] =
-    Await.result(CRUDServiceFS.getInfoton(path, None, None), 10.seconds).collect { case Everything(i) => i }
-
-  private def infotonToQuads(i: Infoton): Iterator[Quad] = {
-    import scala.collection.JavaConversions._
-
-    val ds = nullFormatter.formattableToDataset(i)
-
-    def stmtToQuad(stmt: Statement, quad: Option[IRI]): Quad =
-      Quad(stmt.getSubject.getURI, stmt.getPredicate.getURI, jenaNodeToValue(stmt.getObject), quad)
-
-    val defaultModelQuads = {
-      val it = ds.getDefaultModel.listStatements().map(stmtToQuad(_, None))
-      if(it.hasNext) List(it) else Nil
-    }
-
-    val namedModelsQuadsIterators = JenaUtils.getNamedModels(ds).foldLeft(defaultModelQuads) {
-      case (itList,(quad, model)) =>
-        val it = model.listStatements().map(stmtToQuad(_, Some(quad)))
-        if(it.hasNext) it :: itList else itList
-    }
-
-    new Iterator[Quad] {
-      private[this] var iterators = namedModelsQuadsIterators
-      override def hasNext: Boolean = iterators.headOption.exists(_.hasNext)
-      override def next(): Quad = {
-        val rv = iterators.head.next()
-        if(!iterators.head.hasNext) iterators = iterators.tail
-        rv
-      }
-    }
-  }
 
   private def jenaNodeToValue(jNode: RDFNode): Value = {
     if (jNode.isAnon)
@@ -157,25 +181,9 @@ object TripleStore {
     val double = classOf[java.lang.Double]
   }
 
-  private def predicateAndObjectToFieldFilter(p: Option[IRI], o: Option[Value])(implicit ec: ExecutionContext): FieldFilter = {
-    val value = o.map(_.asString)
-    p match {
-      case None => SingleFieldFilter(Must, Contains, "_all", value)
-      case Some(pred) => Await.result(RawFieldFilter.eval(RawSingleFieldFilter(Must, Equals, URIFieldKey(pred), value)), 10.seconds)
-    }
-  }
-
   // todo in future, it doesn't have to be ==, if filter is propagated as fieldOperator to support Range Queries
   private def filter(quads: Iterator[Quad], pred: Option[IRI], obj: Option[Value]): Iterator[Quad] =
     quads.filter(q => pred.fold(true)(_ == q.predicate) && obj.fold(true)(_ == q.value))
-
-  // todo propagate withoutMeta boolean from request to here. If withoutMeta is set to false, we need to make sure it won't fail in URIFieldKey(...)
-  private val nullFormatter = new cmwell.formats.RDFFormatter("cmwell", CMWellRDFHelper.hashToUrlAndPrefix, withoutMeta = true, filterOutBlanks = false, forceUniqueness = false) {
-    override def format: cmwell.formats.FormatType = ???
-    override def render(formattable: Formattable): String = ???
-  }
-
-  private val dataFetcher = new DataFetcher(Config.defaultConfig.copy(intermediateLimit = 100000, resultsLimit = 100000))
 }
 
 object SesameExtensions {

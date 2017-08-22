@@ -27,17 +27,16 @@ import cmwell.web.ld.cmw.CMWellRDFHelper
 import cmwell.web.ld.exceptions.UnretrievableIdentifierException
 import cmwell.web.ld.util.LDFormatParser.ParsingResponse
 import cmwell.web.ld.util._
-import cmwell.ws.Settings
-import cmwell.ws.util.FieldKeyParser
+import cmwell.ws.{AggregateBothOldAndNewTypesCaches, Settings}
+import cmwell.ws.util.{FieldKeyParser, TypeHelpers}
 import com.typesafe.scalalogging.LazyLogging
 import logic.{CRUDServiceFS, InfotonValidator}
 import play.api.libs.json._
 import play.api.mvc._
 import security.{AuthUtils, PermissionLevel}
 import wsutil._
-import ld.cmw.PassiveFieldTypesCache
-import org.joda.time.{DateTime, DateTimeZone}
 import javax.inject._
+
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
@@ -45,8 +44,14 @@ import scala.language.postfixOps
 import scala.util._
 
 @Singleton
-class InputHandler  @Inject() (ingestPushback: IngestPushback) extends Controller with LazyLogging {
+class InputHandler @Inject() (ingestPushback: IngestPushback,
+                              crudService: CRUDServiceFS,
+                              tbg: NbgToggler,
+                              authUtils: AuthUtils,
+                              cmwellRDFHelper: CMWellRDFHelper,
+                              formatterManager: FormatterManager) extends Controller with LazyLogging with TypeHelpers { self =>
 
+  val aggregateBothOldAndNewTypesCaches = new AggregateBothOldAndNewTypesCaches(crudService,tbg)
   val bo1 = collection.breakOut[List[Infoton],String,Set[String]]
   val bo2 = collection.breakOut[Vector[Infoton],String,Set[String]]
 
@@ -57,10 +62,15 @@ class InputHandler  @Inject() (ingestPushback: IngestPushback) extends Controlle
    */
   def handlePost(format: String = "") = ingestPushback.async(parse.raw) { implicit req =>
     RequestMonitor.add("in", req.path, req.rawQueryString, req.body.asBytes().fold("")(_.utf8String))
-    val resp = if ("jsonw" == format.toLowerCase) handlePostWrapped(req) -> Future.successful(Seq.empty[(String,String)]) else handlePostRDF(req)
-    resp._2.flatMap { headers =>
-      keepAliveByDrippingNewlines(resp._1,headers)
-    }.recover(errorHandler)
+    // first checking "priority" query string. Only if it is present we will consult the UserInfoton which is more expensive (order of && below matters):
+    if (req.getQueryString("priority").isDefined && !authUtils.isOperationAllowedForUser(security.PriorityWrite, authUtils.extractTokenFrom(req), evenForNonProdEnv = true)) {
+      Future.successful(Forbidden(Json.obj("success" -> false, "message" -> "User not authorized for priority write")))
+    } else {
+      val resp = if ("jsonw" == format.toLowerCase) handlePostWrapped(req) -> Future.successful(Seq.empty[(String, String)]) else handlePostRDF(req)
+      resp._2.flatMap { headers =>
+        keepAliveByDrippingNewlines(resp._1, headers)
+      }.recover(errorHandler)
+    }
   }
 
   /**
@@ -73,8 +83,8 @@ class InputHandler  @Inject() (ingestPushback: IngestPushback) extends Controlle
   }
 
   def handlePostForDCOverwrites =  ingestPushback.async(parse.raw) { implicit req =>
-    val tokenOpt = AuthUtils.extractTokenFrom(req)
-    if (!AuthUtils.isOperationAllowedForUser(security.Overwrite, tokenOpt, evenForNonProdEnv = true))
+    val tokenOpt = authUtils.extractTokenFrom(req)
+    if (!authUtils.isOperationAllowedForUser(security.Overwrite, tokenOpt, evenForNonProdEnv = true))
       Future.successful(Forbidden("not authorized"))
     else {
       Try {
@@ -103,7 +113,7 @@ class InputHandler  @Inject() (ingestPushback: IngestPushback) extends Controlle
                   val escapedPath = escapePath(path)
                   InfotonValidator.validateValueSize(fields)
                   val fs = fields.map {
-                    case (fk, vs) => fk.internal -> vs
+                    case (fk, vs) => fk.internalKey -> vs
                   }
                   infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath))
                 }
@@ -113,8 +123,8 @@ class InputHandler  @Inject() (ingestPushback: IngestPushback) extends Controlle
 
               val (metaInfotons, infotonsToPut) = allInfotons.partition(_.path.startsWith("/meta/"))
 
-              val f = CRUDServiceFS.putInfotons(metaInfotons)
-              CRUDServiceFS.putOverwrites(infotonsToPut).flatMap { b =>
+              val f = crudService.putInfotons(metaInfotons)
+              crudService.putOverwrites(infotonsToPut).flatMap { b =>
                 f.map {
                   case true if b => Ok(Json.obj("success" -> true))
                   case _ => BadRequest(Json.obj("success" -> false))
@@ -153,9 +163,12 @@ class InputHandler  @Inject() (ingestPushback: IngestPushback) extends Controlle
       case _ => throw new RuntimeException("cant find valid content in body of request")
     }
 
+    val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+
+
     req.getQueryString("format") match {
-      case Some(f) => handleFormatByFormatParameter(bais, Some(List[String](f)), req.contentType, AuthUtils.extractTokenFrom(req), skipValidation, isOverwrite)
-      case None => handleFormatByContentType(bais, req.contentType, AuthUtils.extractTokenFrom(req), skipValidation, isOverwrite)
+      case Some(f) => handleFormatByFormatParameter(cmwellRDFHelper,crudService,authUtils,nbg,bais, Some(List[String](f)), req.contentType, authUtils.extractTokenFrom(req), skipValidation, isOverwrite)
+      case None => handleFormatByContentType(cmwellRDFHelper,crudService,authUtils,nbg,bais, req.contentType, authUtils.extractTokenFrom(req), skipValidation, isOverwrite)
     }
   }
 
@@ -166,7 +179,7 @@ class InputHandler  @Inject() (ingestPushback: IngestPushback) extends Controlle
     def getMetaFields(fields: Map[DirectFieldKey, Set[FieldValue]]) = collector(fields) {
       case (fk, fvs) => {
         val newTypes = fvs.map(FieldValue.prefixByType)
-        PassiveFieldTypesCache.get(fk,Some(newTypes)).flatMap { types =>
+        aggregateBothOldAndNewTypesCaches.get(fk,Some(newTypes)).flatMap { types =>
           val chars = newTypes diff types
           if (chars.isEmpty) Future.successful(None)
           else {
@@ -176,7 +189,7 @@ class InputHandler  @Inject() (ingestPushback: IngestPushback) extends Controlle
                 "though you should be aware this may result in permanent system-wide performance downgrade " +
                 "related to all the enhanced fields you supply when using `force`. " +
                 s"(failed for field: ${fk.externalKey} and type/s: [${chars.mkString(",")}] out of infotons: [${allInfotons.keySet.mkString(",")}])")
-            PassiveFieldTypesCache.update(fk, chars).map { _ =>
+            aggregateBothOldAndNewTypesCaches.update(fk, chars).map { _ =>
               Some(infotonFromMaps(
                 Set.empty,
                 fk.infoPath,
@@ -210,6 +223,7 @@ class InputHandler  @Inject() (ingestPushback: IngestPushback) extends Controlle
 
     val now = System.currentTimeMillis()
     val p = Promise[Seq[(String,String)]]()
+    lazy val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
 
     Try {
       parseRDF(req,skipValidation).flatMap {
@@ -245,7 +259,7 @@ class InputHandler  @Inject() (ingestPushback: IngestPushback) extends Controlle
                       case (iPath, fMap) => prependSlash(iPath) -> fMap.map {
                         case (fk, vs) =>
                           val deleteValues: Option[Set[FieldValue]] = Some(vs.map(fv => FNull(fv.quad)))
-                          fk.internal -> deleteValues
+                          fk.internalKey -> deleteValues
                       }
                     }
                   }
@@ -254,16 +268,29 @@ class InputHandler  @Inject() (ingestPushback: IngestPushback) extends Controlle
                       x match {
                         case "default" => FNull(None)
                         case "*" => FNull(Some("*"))
-                        case alias if !FReference.isUriRef(alias) => CMWellRDFHelper.getQuadUrlForAlias(alias) match {
-                          //TODO: future optimization: check replace-mode's alias before invoking jena and parsing RDF document
-                          case None => throw new UnretrievableIdentifierException(s"The alias '$alias' provided for quad as replace-mode's argument does not exist. Use explicit quad URL, or register a new alias using `graphAlias` meta operation.")
-                          case someURI => FNull(someURI)
+                        case alias if !FReference.isUriRef(alias) => {
+
+                          def optionToFNull(o: Option[String]): FNull = o match {
+                            //TODO: future optimization: check replace-mode's alias before invoking jena and parsing RDF document
+                            case None => throw new UnretrievableIdentifierException(s"The alias '$alias' provided for quad as replace-mode's argument does not exist. Use explicit quad URL, or register a new alias using `graphAlias` meta operation.")
+                            case someURI => FNull(someURI)
+                          }
+
+                          if(Settings.newBGFlag && Settings.oldBGFlag) {
+                            val x = cmwellRDFHelper.getQuadUrlForAlias(alias,true)
+                            val y = cmwellRDFHelper.getQuadUrlForAlias(alias,false)
+                            require(x == y,s"inconsistency between new[$x] & old[$y] data path. don't use quad aliasing")
+                            optionToFNull(x)
+                          }
+                          else if(Settings.newBGFlag) optionToFNull(cmwellRDFHelper.getQuadUrlForAlias(alias,true))
+                          else if(Settings.oldBGFlag) optionToFNull(cmwellRDFHelper.getQuadUrlForAlias(alias,false))
+                          else throw new IllegalStateException("Neither old or new bg are enabled!")
                         }
                         case uri => FNull(Some(uri))
                       }
                     }
 
-                    deleteMap = infotonsMap map { case (iPath, fMap) => prependSlash(iPath) -> fMap.map { case (fk, _) => fk.internal -> Some(Set(quadForReplacement)) } }
+                    deleteMap = infotonsMap map { case (iPath, fMap) => prependSlash(iPath) -> fMap.map { case (fk, _) => fk.internalKey -> Some(Set(quadForReplacement)) } }
                   }
                   _ => true //in case of "replace-mode", we want to update every field provided
                 }
@@ -279,7 +306,7 @@ class InputHandler  @Inject() (ingestPushback: IngestPushback) extends Controlle
                 val escapedPath = escapePath(path)
                 InfotonValidator.validateValueSize(fields)
                 val fs = fields.map {
-                  case (fk, vs) => fk.internal -> vs
+                  case (fk, vs) => fk.internalKey -> vs
                 }
                 infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath))
               }
@@ -291,7 +318,7 @@ class InputHandler  @Inject() (ingestPushback: IngestPushback) extends Controlle
                 val escapedPath = escapePath(path)
                 InfotonValidator.validateValueSize(fields)
                 val fs = fields.map {
-                  case (fk, vs) => fk.internal -> vs
+                  case (fk, vs) => fk.internalKey -> vs
                 }
                 infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath))
               }
@@ -300,6 +327,8 @@ class InputHandler  @Inject() (ingestPushback: IngestPushback) extends Controlle
             if (req.getQueryString("dry-run").isDefined)
               Future(Ok(Json.obj("success" -> true, "dry-run" -> true)))
             else {
+
+              val isPriorityWrite = req.getQueryString("priority").isDefined
 
               val tracking = req.getQueryString("tracking")
               val blocking = req.getQueryString("blocking")
@@ -333,12 +362,12 @@ class InputHandler  @Inject() (ingestPushback: IngestPushback) extends Controlle
                 require(dontTrack.forall(!atomicUpdates.contains(_)),s"atomic updates cannot operate on multiple actions in a single ingest.")
 
                 val to = tidOpt.map(_.token)
-                val d1 = CRUDServiceFS.deleteInfotons(dontTrack.map(_ -> None))
-                val d2 = CRUDServiceFS.deleteInfotons(track.map(_ -> None),to,atomicUpdates)
+                val d1 = crudService.deleteInfotons(dontTrack.map(_ -> None), isPriorityWrite=isPriorityWrite)
+                val d2 = crudService.deleteInfotons(track.map(_ -> None),to,atomicUpdates, isPriorityWrite)
 
                 d1.zip(d2).flatMap { case (b01,b02) =>
-                  val f1 = CRUDServiceFS.upsertInfotons(infotonsToUpsert, deleteMap, to, atomicUpdates)
-                  val f2 = CRUDServiceFS.putInfotons(infotonsToPut, to, atomicUpdates)
+                  val f1 = crudService.upsertInfotons(infotonsToUpsert, deleteMap, to, atomicUpdates, isPriorityWrite)
+                  val f2 = crudService.putInfotons(infotonsToPut, to, atomicUpdates, isPriorityWrite)
                   f1.zip(f2).flatMap { case (b1, b2) =>
                     if (b01 && b02 && b1 && b2)
                       blocking.fold(Future.successful(Ok(Json.obj("success" -> true)).withHeaders(tidHeaderOpt.toSeq: _*))) { _ =>
@@ -346,7 +375,7 @@ class InputHandler  @Inject() (ingestPushback: IngestPushback) extends Controlle
                         val blockingFut = arOpt.get.?(SubscribeToDone)(timeout = 5.minutes).mapTo[Seq[PathStatus]]
                         blockingFut.map { data =>
                           val payload = {
-                            val formatter = getFormatter(req, defaultFormat = "ntriples", withoutMeta = true)
+                            val formatter = getFormatter(req, formatterManager, defaultFormat = "ntriples", nbg = nbg, withoutMeta = true)
                             val payload = BagOfInfotons(data map pathStatusAsInfoton)
                             formatter render payload
                           }
@@ -393,6 +422,7 @@ class InputHandler  @Inject() (ingestPushback: IngestPushback) extends Controlle
 
     if (req.getQueryString("dry-run").isDefined)  Future.successful(BadRequest(Json.obj("success" -> false, "error" -> "dry-run is not implemented for wrapped requests.")))
     else {
+      val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
       val charset = req.contentType match {
         case Some(contentType) => contentType.lastIndexOf("charset=") match {
           case i if i != -1 => contentType.substring(i + 8).trim
@@ -409,10 +439,12 @@ class InputHandler  @Inject() (ingestPushback: IngestPushback) extends Controlle
             case None => JsonEncoder.decodeInfoton(body).map(Vector(_))
           }
 
+          val isPriorityWrite = req.getQueryString("priority").isDefined
+
           vec match {
             case Some(v) => {
               if (skipValidation || v.forall(i => InfotonValidator.isInfotonNameValid(normalizePath(i.path)))) {
-                val unauthorizedPaths = AuthUtils.filterNotAllowedPaths(v.map(_.path), PermissionLevel.Write, AuthUtils.extractTokenFrom(req))
+                val unauthorizedPaths = authUtils.filterNotAllowedPaths(v.map(_.path), PermissionLevel.Write, authUtils.extractTokenFrom(req))
                 if(unauthorizedPaths.isEmpty) {
                   Try(v.foreach{ i => if(i.fields.isDefined) InfotonValidator.validateValueSize(i.fields.get)}) match {
                     case Success(_) => {
@@ -421,13 +453,19 @@ class InputHandler  @Inject() (ingestPushback: IngestPushback) extends Controlle
                       val infotonsMap = v.collect {
                         case i if i.fields.isDefined => i.path -> i.fields.get.map{
                           case (fieldName,valueSet) => (FieldKeyParser.fieldKey(fieldName) match {
-                            case Success(d: DirectFieldKey) => d
-                            case Success(r: ResolvedFieldKey) => {
-                              Try[DirectFieldKey]{
-                                val (f, l) = Await.result(r.firstLast, 10.seconds)
-                                HashedFieldKey(f,l)
+                            case Success(Right(d)) => d
+                            case Success(Left(fk)) => {
+                              Try[DirectFieldKey] {
+                                val (f, l) = Await.result(FieldKey.resolve(fk, cmwellRDFHelper,nbg).map {
+                                  case PrefixFieldKey(first, last, _) => first -> last
+                                  case URIFieldKey(first, last, _) => first -> last
+                                  case unknown => {
+                                    throw new IllegalStateException(s"unknown field key [$unknown]")
+                                  }
+                                }, 10.seconds)
+                                HashedFieldKey(f, l)
                               }.recover{
-                                case _ if r.isInstanceOf[PrefixFieldKey] => NnFieldKey(r.externalKey)
+                                case _ if fk.isInstanceOf[UnresolvedPrefixFieldKey] => NnFieldKey(fk.externalKey)
                               }.get
                             }
                             case Failure(e) => throw e
@@ -447,10 +485,10 @@ class InputHandler  @Inject() (ingestPushback: IngestPushback) extends Controlle
                           case i: Infoton => i //to prevent compilation warnings...
                         } else v) ++ metaFields
                         if (req.getQueryString("replace-mode").isEmpty)
-                          CRUDServiceFS.putInfotons(infotonsToPut).map(b => Ok(Json.obj("success" -> b)))
+                          crudService.putInfotons(infotonsToPut, isPriorityWrite=isPriorityWrite).map(b => Ok(Json.obj("success" -> b)))
                         else {
                           val d: Map[String, Set[String]] = infotonsToPut collect { case i if i.fields.isDefined => prependSlash(i.path) -> i.fields.get.keySet} toMap;
-                          CRUDServiceFS.upsertInfotons(infotonsToPut.toList, d.mapValues(_.map(_ -> None).toMap)).map(b => Ok(Json.obj("success" -> b)))
+                          crudService.upsertInfotons(infotonsToPut.toList, d.mapValues(_.map(_ -> None).toMap), isPriorityWrite=isPriorityWrite).map(b => Ok(Json.obj("success" -> b)))
                         }
                       }
                     }

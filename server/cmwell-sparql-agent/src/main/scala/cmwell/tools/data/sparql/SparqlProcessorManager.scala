@@ -154,7 +154,14 @@ class SparqlProcessorManager extends Actor with LazyLogging {
         getYamlConfigs().map(AnalyzeReceivedConfig.apply) pipeTo self
 
       case AnalyzeReceivedConfig(received) =>
-        handleSensors(received)
+        handleSensors {
+          received.map { case (path, config) =>
+            val configName = Paths.get(path.utf8String).getFileName
+            val sensors = config.sensors.map(sensor => sensor.copy(name = s"$configName-${sensor.name}"))
+            path -> config.copy(sensors = sensors)
+          }
+        }
+//        handleSensors(received)
 
       case StartJob(registered, path, config) if registered =>
         val job = startJob(path, config)
@@ -165,7 +172,7 @@ class SparqlProcessorManager extends Actor with LazyLogging {
         jobs.foreach {
           case (path, job) =>
             // stop jobs and store it in non-active job list
-            job.killSwitch.abort(new Exception("job interrupted"))
+            job.killSwitch.shutdown()
             job.reporter! PoisonPill
             activeJobs -= path
 
@@ -179,10 +186,9 @@ class SparqlProcessorManager extends Actor with LazyLogging {
         nonActiveConfigs --= configs.keySet
 
       case StopJob(registered, path, job) if registered =>
-        job.killSwitch.abort(new Exception("job interrupted"))
+        job.killSwitch.shutdown()
 
         activeJobs -= path
-        job.killSwitch.shutdown()
         job.reporter ! PoisonPill
 
       case RequestStats =>
@@ -274,8 +280,8 @@ class SparqlProcessorManager extends Actor with LazyLogging {
 
         val body = allSensorsWithTokens.map { case (sensorName, token) =>
           val decodedToken = if (token.nonEmpty) {
-            val decodedToken = cmwell.tools.data.utils.text.Tokens.decompress(token)
-            new org.joda.time.DateTime(decodedToken.split('|')(0).toLong).toString
+            val from = cmwell.tools.data.utils.text.Tokens.getFromIndexTime(token)
+            new org.joda.time.DateTime(from).toString
           }
           else ""
 
@@ -288,7 +294,6 @@ class SparqlProcessorManager extends Actor with LazyLogging {
     }
 
     def generateActiveTables() = activeJobs.map { case (path, job) =>
-      val sensorNames = job.config.sensors.map(_.name)
       val title = Seq(s"""<span style="color:green"> **Active** </span> ${path.utf8String}""")
       val header = Seq("sensor", "point-in-time", "received-infotons", "infoton-rate", "last-update")
 
@@ -302,13 +307,14 @@ class SparqlProcessorManager extends Actor with LazyLogging {
         stats <- statsFuture
         storedTokens <- storedTokensFuture
       } yield {
+        val sensorNames = job.config.sensors.map(_.name)
         val pathsWithoutSavedToken = sensorNames.toSet diff storedTokens.keySet
         val allSensorsWithTokens = storedTokens ++ pathsWithoutSavedToken.map(_ -> "")
 
         val body = allSensorsWithTokens.map { case (sensorName, token) =>
           val decodedToken = if (token.nonEmpty) {
-            val decodedToken = cmwell.tools.data.utils.text.Tokens.decompress(token)
-            new org.joda.time.DateTime(decodedToken.split('|')(0).toLong).toString
+            val from = cmwell.tools.data.utils.text.Tokens.getFromIndexTime(token)
+            new org.joda.time.DateTime(from).toString
           }
           else ""
 
@@ -321,7 +327,8 @@ class SparqlProcessorManager extends Actor with LazyLogging {
           row
         }
 
-        val sparqlMaterializerStats = stats.get(SparqlTriggeredProcessor.sparqlMaterializerLabel).map { s =>
+        val configName = Paths.get(path.utf8String).getFileName
+        val sparqlMaterializerStats = stats.get(s"$configName-${SparqlTriggeredProcessor.sparqlMaterializerLabel}").map { s =>
           val totalRunTime = DurationFormatUtils.formatDurationWords(s.runningTime, true, true)
           s"""Materialized <span style="color:green"> **${s.receivedInfotons}** </span> infotons [$totalRunTime]""".stripMargin
         }.getOrElse("")
@@ -350,7 +357,7 @@ class SparqlProcessorManager extends Actor with LazyLogging {
       name = s"$configName-${Hash.crc32(config.toString)}"
     )
 
-    val agent = SparqlTriggeredProcessor.listen(config, hostUpdatesSource, true, tokenReporter, Some(configName.toString))
+    val agent = SparqlTriggeredProcessor.listen(config, hostUpdatesSource, true, Some(tokenReporter), Some(configName.toString))
       .map { case (data, _) => data }
       .via(GroupChunker(formatToGroupExtractor(materializedViewFormat)))
       .map(concatByteStrings(_, endl))

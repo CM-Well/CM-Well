@@ -16,25 +16,20 @@
 
 package cmwell.tools.data.utils.akka.stats
 
-import akka.Done
-import akka.actor.ActorRef
-import akka.stream.stage.{AsyncCallback, GraphStageLogic, GraphStageWithMaterializedValue, InHandler}
-import akka.stream.{Attributes, Inlet, SinkShape}
+import akka.actor.{ActorRef, _}
+import akka.stream._
+import akka.stream.stage._
 import akka.util.ByteString
-import cmwell.tools.data.utils.akka.stats.DownloaderStatsSink.DownloadStats
+import cmwell.tools.data.utils.akka.stats.DownloaderStats.DownloadStats
 import cmwell.tools.data.utils.logging.DataToolsLogging
 import cmwell.tools.data.utils.text.Files.toHumanReadable
 import nl.grons.metrics.scala.InstrumentedBuilder
 import org.apache.commons.lang3.time.DurationFormatUtils
 import play.api.libs.json.{JsArray, Json}
-import akka.actor._
-import akka.pattern._
 
 import scala.concurrent.duration._
-import scala.concurrent.{Future, Promise}
-import scala.util.Try
 
-object DownloaderStatsSink {
+object DownloaderStats {
   case class DownloadStats(label: Option[String] = None,
                            receivedBytes: Long,
                            receivedInfotons: Long,
@@ -43,31 +38,30 @@ object DownloaderStatsSink {
                            runningTime: Long,
                            statsTime: Long)
 
-  def apply(isStderr: Boolean = false,
+  def apply[T](isStderr: Boolean = false,
             format: String,
             label: Option[String] = None,
             reporter: Option[ActorRef] = None,
             initDelay: FiniteDuration = 1.second,
             interval: FiniteDuration = 1.second) = {
 
-    new DownloaderStatsSink(isStderr, format, label, reporter, initDelay, interval)
+    new DownloaderStats[T](isStderr, format, label, reporter, initDelay, interval)
   }
 }
 
-class DownloaderStatsSink(isStderr: Boolean,
-                          format: String,
-                          label: Option[String] = None,
-                          reporter: Option[ActorRef] = None,
-                          initDelay: FiniteDuration = 1.second,
-                          interval: FiniteDuration = 1.second) extends GraphStageWithMaterializedValue[SinkShape[ByteString], Future[Done]] with DataToolsLogging {
+class DownloaderStats[T](isStderr: Boolean,
+                      format: String,
+                      label: Option[String] = None,
+                      reporter: Option[ActorRef] = None,
+                      initDelay: FiniteDuration = 1.second,
+                      interval: FiniteDuration = 1.second) extends GraphStage[FlowShape[(ByteString, T), (ByteString, T)]] with DataToolsLogging {
 
-  val in: Inlet[ByteString] = Inlet("download-stats-sink")
-  override val shape: SinkShape[ByteString] = SinkShape(in)
+  val in = Inlet[(ByteString, T)]("download-stats.in")
+  val out = Outlet[(ByteString, T)]("download-stats.out")
+  override val shape = FlowShape.of(in, out)
 
-  override def createLogicAndMaterializedValue(inheritedAttributes: Attributes): (GraphStageLogic, Future[Done]) = {
-    val promise = Promise[Done]()
-
-    val logic = new GraphStageLogic(shape) with InstrumentedBuilder{
+  override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = {
+    new GraphStageLogic(shape) with InstrumentedBuilder{
       val metricRegistry = new com.codahale.metrics.MetricRegistry()
       val totalDownloadedBytes = metrics.counter("received-bytes")
       val totalReceivedInfotons = metrics.meter("received-infotons")
@@ -102,13 +96,12 @@ class DownloaderStatsSink(isStderr: Boolean,
       setHandler(in, new InHandler {
         override def onPush(): Unit = {
           val element = grab(in)
-          aggregateStats(element)
-          pull(in)
+          aggregateStats(element._1)
+          push(out, element)
         }
 
         override def onUpstreamFailure(ex: Throwable): Unit = {
           eventPoller.foreach(_.cancel())
-          promise.failure(ex)
           failStage(ex)
         }
 
@@ -125,11 +118,16 @@ class DownloaderStatsSink(isStderr: Boolean,
           System.err.println("")
           System.err.println(message)
 
-          promise.success(Done)
           eventPoller.foreach(_.cancel())
           completeStage()
         }
 
+      })
+
+      setHandler(out, new OutHandler {
+        override def onPull(): Unit = {
+          if (!hasBeenPulled(in)) pull(in)
+        }
       })
 
       def resetStatsInWindow() = {
@@ -198,7 +196,5 @@ class DownloaderStatsSink(isStderr: Boolean,
         }
       }
     }
-
-    (logic, promise.future)
   }
 }

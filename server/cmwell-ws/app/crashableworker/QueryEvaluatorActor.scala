@@ -19,14 +19,18 @@ package cmwell.crashableworker
 import java.io.ByteArrayOutputStream
 
 import actions.RequestMonitor
-import akka.actor.{Actor, ActorRef}
+import akka.actor.{Actor, ActorRef, Props}
 import cmwell.ctrl.config.Jvms
-import cmwell.util.collections
-import cmwell.web.ld.query.JenaArqExtensionsUtils.BakedSparqlQuery
-import cmwell.web.ld.query.{Config, JenaArqExtensions, JenaArqExtensionsUtils}
-import com.typesafe.scalalogging.{LazyLogging, Logger}
+import cmwell.util.collections._
+import cmwell.web.ld.cmw.CMWellRDFHelper
+import cmwell.web.ld.query.{Config, DataFetcher, DataFetcherImpl, JenaArqExtensions}
+import com.google.inject.{AbstractModule, Guice}
+import com.typesafe.scalalogging.LazyLogging
 import controllers._
-import k.grid.{Grid, GridConnection, GridJvm}
+import k.grid.{Grid, GridConnection}
+import ld.query.{ArqCache, JenaArqExtensionsUtils}
+import ld.query.JenaArqExtensionsUtils.BakedSparqlQuery
+import logic.CRUDServiceFS
 import org.apache.jena.query.{QueryFactory, ResultSetFormatter}
 import org.apache.jena.riot.{RDFDataMgr, RDFFormat}
 import org.slf4j.LoggerFactory
@@ -36,6 +40,13 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
+
+class CWModule extends AbstractModule {
+  override def configure() {
+    bind(classOf[NbgToggler]).asEagerSingleton()
+  }
+}
+
 
 object WorkerMain extends App with LazyLogging {
   logger.info("Starting CW process")
@@ -50,13 +61,32 @@ object WorkerMain extends App with LazyLogging {
   Thread.sleep(5000)
   RequestMonitor.init
 
-  Grid.create(classOf[QueryEvaluatorActor], "QueryEvaluatorActor")
-  Grid.create(classOf[QueryEvaluatorActorWatcher], "QueryEvaluatorActorWatcher")
+  val injector = Guice.createInjector(new CWModule())
+  val nbgToggler = injector.getInstance(classOf[NbgToggler])
+  val crudServiceFS = new CRUDServiceFS(nbgToggler)(implicitly,Grid.system)
+  val cmwellRDFHelper = new CMWellRDFHelper(crudServiceFS,implicitly)
+  val nArqCache = new ArqCache(crudServiceFS,true)
+  val oArqCache = new ArqCache(crudServiceFS,false)
+  val nDataFetcher = new DataFetcherImpl(Config.defaultConfig,crudServiceFS,true)
+  val oDataFetcher = new DataFetcherImpl(Config.defaultConfig,crudServiceFS,false)
+  val nJenaArqExtensionsUtils = new JenaArqExtensionsUtils(nArqCache, true, crudServiceFS.nbgPassiveFieldTypesCache, cmwellRDFHelper, nDataFetcher)
+  val oJenaArqExtensionsUtils = new JenaArqExtensionsUtils(oArqCache, false, crudServiceFS.obgPassiveFieldTypesCache, cmwellRDFHelper, oDataFetcher)
 
-  lazy val cwLogger: Logger = Logger(LoggerFactory.getLogger("cmwell.cw.app"))
+  val nJarsImporter = new JarsImporter(crudServiceFS,true)
+  val oJarsImporter = new JarsImporter(crudServiceFS,false)
+  val nQueriesImporter = new QueriesImporter(crudServiceFS,true)
+  val oQueriesImporter = new QueriesImporter(crudServiceFS,false)
+  val nSourcesImporter = new SourcesImporter(crudServiceFS,true)
+  val oSourcesImporter = new SourcesImporter(crudServiceFS,false)
+
+  val nRef = Grid.create(classOf[QueryEvaluatorActor], "NQueryEvaluatorActor",true,crudServiceFS,nArqCache,nJenaArqExtensionsUtils, nDataFetcher, nJarsImporter, nQueriesImporter, nSourcesImporter)
+  val oRef = Grid.create(classOf[QueryEvaluatorActor], "OQueryEvaluatorActor",false,crudServiceFS,oArqCache,oJenaArqExtensionsUtils, oDataFetcher, oJarsImporter, oQueriesImporter, oSourcesImporter)
+
+  Grid.create(Props(classOf[QueryEvaluatorActorWatcher], nRef), "NQueryEvaluatorActorWatcher")
+  Grid.create(Props(classOf[QueryEvaluatorActorWatcher], oRef), "OQueryEvaluatorActorWatcher")
+
+  val jenaArqExtensions = JenaArqExtensions.get(nJenaArqExtensionsUtils,oJenaArqExtensionsUtils)
 }
-
-import WorkerMain.{cwLogger => logger}
 
 sealed trait QueryResponse {def content: String}
 case class Plain(content: String) extends QueryResponse
@@ -87,7 +117,16 @@ object QueryEvaluatorActor {
     }.mkString("\n")
   }
 }
-class QueryEvaluatorActor extends Actor with SpFileUtils {
+
+class QueryEvaluatorActor(nbg: Boolean,
+                          crudServiceFS: CRUDServiceFS,
+                          arqCache: ArqCache,
+                          jenaArqExtensionsUtils: JenaArqExtensionsUtils,
+                          dataFetcher: DataFetcher,
+                          jarsImporter: JarsImporter,
+                          queriesImporter: QueriesImporter,
+                          sourcesImporter: SourcesImporter) extends Actor with SpFileUtils {
+
   import QueryEvaluatorActor._
   private case class SpResponse(sender: ActorRef, queryResponse: QueryResponse)
   private case class SpFailure(sender: ActorRef, ex: Throwable)
@@ -101,8 +140,6 @@ class QueryEvaluatorActor extends Actor with SpFileUtils {
   val CIRCUIT_BREAKER = Runtime.getRuntime.availableProcessors * 4
 //  var numActiveQueries = 0
 
-  val watcherActorFut = Grid.getRefFromSelection(Grid.selectActor("QueryEvaluatorActorWatcher", GridJvm(Jvms.CW)))
-
   @scala.throws[Exception](classOf[Exception])
   override def preStart(): Unit = {
     logger.info("Creating actor QueryEvaluatorActor")
@@ -111,18 +148,23 @@ class QueryEvaluatorActor extends Actor with SpFileUtils {
 
   private def isNeedToDelay = numActiveQueries > ACTIVE_REQUESTS_DELAY_THRESHOLD
 
-  override def receive: Receive = {
+  override def receive = watchedReceive()
+
+  def watchedReceive(watcher: Option[ActorRef] = None): Receive = {
+    case /*Luke,*/ IAmYourWatcher => {
+      context.become(watchedReceive(Some(sender())))
+    }
     case StatusRequest => sender ! Status(numActiveQueries) // for debugging purposes
 
     case paq: PopulateAndQuery if numActiveQueries > CIRCUIT_BREAKER =>
-      watcherActorFut.map(_ ! Activate)
-      sender ! ShortCircuitOverloaded(numActiveQueries)
+      watcher.foreach(_ ! Activate)
+      sender() ! ShortCircuitOverloaded(numActiveQueries)
 
     case paq: PopulateAndQuery => {
       updateActiveQueries(+1)
 
 
-      Try(paq.evaluate()) match {
+      Try(paq.evaluate(jarsImporter,queriesImporter,sourcesImporter)) match {
         case Success(queryResults) => {
           val results = queryResults.flatMap(rawDataToResponseMsg(_, paq.rp.forceUsingFile))
           val originalSender = sender
@@ -134,26 +176,25 @@ class QueryEvaluatorActor extends Actor with SpFileUtils {
         }
         case Failure(err) => {
           updateActiveQueries(-1)
-          watcherActorFut.map(_ ! Reset)
-          sender ! RemoteFailure(err)
+          watcher.foreach(_ ! Reset)
+          sender() ! RemoteFailure(err)
         }
       }
     }
 
-    case OverallSparqlQuery(_,_,_) if numActiveQueries > CIRCUIT_BREAKER => sender ! ShortCircuitOverloaded(numActiveQueries)
+    case OverallSparqlQuery(_,_,_) if numActiveQueries > CIRCUIT_BREAKER => sender() ! ShortCircuitOverloaded(numActiveQueries)
     case OverallSparqlQuery(query,host,rp) => {
       updateActiveQueries(+1)
 
-      JenaArqExtensions.init
-
       Try(QueryFactory.create(query)) match {
-        case Failure(e) => sender ! RemoteFailure(e)
+        case Failure(e) => sender() ! RemoteFailure(e)
         case Success(sprqlQuery) => {
-          val config = Config(rp.doNotOptimize, rp.intermediateLimit, rp.resultsLimit, rp.verbose, SpHandler.queryTimeout.fromNow, rp.explainOnly)
-          val BakedSparqlQuery(queryExecution, driver) = JenaArqExtensionsUtils.buildCmWellQueryExecution(sprqlQuery, host, config)
+          val config = Config(rp.doNotOptimize, rp.intermediateLimit, rp.resultsLimit, rp.verbose, SpHandler.queryTimeout, Some(SpHandler.queryTimeout.fromNow), rp.explainOnly)
+          val JenaArqExtensionsUtils.BakedSparqlQuery(queryExecution,driver) =
+            JenaArqExtensionsUtils.buildCmWellQueryExecution(sprqlQuery, host, config, nbg, crudServiceFS, arqCache, jenaArqExtensionsUtils, dataFetcher)
 
           if (!sprqlQuery.isConstructType && !sprqlQuery.isSelectType) {
-            sender ! RemoteFailure(new IllegalArgumentException("Query Type must be either SELECT or CONSTRUCT"))
+            sender() ! RemoteFailure(new IllegalArgumentException("Query Type must be either SELECT or CONSTRUCT"))
           } else {
             val os = new ByteArrayOutputStream()
 
@@ -188,7 +229,7 @@ class QueryEvaluatorActor extends Actor with SpFileUtils {
 
     case SpFailure(originalSender, err) => {
       updateActiveQueries(-1)
-      watcherActorFut.map(_ ! Reset)
+      watcher.foreach(_ ! Reset)
 
       if (isNeedToDelay) {
         context.system.scheduler.scheduleOnce(3.seconds, originalSender, RemoteFailure(err))
@@ -199,7 +240,7 @@ class QueryEvaluatorActor extends Actor with SpFileUtils {
 
     case SpResponse(originalSender, queryResponse) => {
       updateActiveQueries(-1)
-      watcherActorFut.map(_ ! Reset)
+      watcher.foreach(_ ! Reset)
 
       if (isNeedToDelay) {
         context.system.scheduler.scheduleOnce(3.seconds, originalSender, queryResponse)
@@ -225,11 +266,12 @@ class QueryEvaluatorActor extends Actor with SpFileUtils {
 }
 
 // will HCN its CW once 66 seconds were passed from Activate without any Reset received
-class QueryEvaluatorActorWatcher extends Actor {
+class QueryEvaluatorActorWatcher(qeaRef: ActorRef) extends Actor with LazyLogging {
 
   @scala.throws[Exception](classOf[Exception])
   override def preStart(): Unit = {
-    logger.info("Creating actor QueryEvaluatorActorWatcher")
+    logger.info("Creating actor QueryEvaluatorActorWatcher for " + qeaRef.path.name)
+    qeaRef ! IAmYourWatcher
   }
 
   private val interval =  11.seconds
@@ -249,7 +291,7 @@ class QueryEvaluatorActorWatcher extends Actor {
     case Tick =>
       counter += 1
       if (counter >= threshold) {
-        logger.info("Watcher detected QueryEvaluatorActor is hung. Goodbye!")
+        logger.info(s"Watcher detected QueryEvaluatorActor[${qeaRef.path.name}] is hung. Goodbye!")
         System.exit(1)
       }
       context.system.scheduler.scheduleOnce(interval, self, Tick)
@@ -260,6 +302,7 @@ class QueryEvaluatorActorWatcher extends Actor {
   }
 }
 
+case object IAmYourWatcher
 case object Activate
 case object Tick
 case object Reset

@@ -31,6 +31,7 @@ import cmwell.util.jmx._
 import cmwell.util.{Box, BoxedFailure, EmptyBox, FullBox}
 import cmwell.zstore.ZStore
 import com.datastax.driver.core._
+import com.datastax.driver.core.querybuilder.Truncate
 import com.datastax.driver.core.utils.Bytes
 import com.google.common.cache.{Cache, CacheBuilder}
 import com.typesafe.scalalogging.LazyLogging
@@ -504,6 +505,9 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
     executeAsync(stmt).map(rs => if (!rs.wasApplied()) ???)
   }
 
+  override def purgeAll(): Future[Unit] = {
+    Future.sequence(Seq("path", "infoton", "zstore").map{ table => executeAsync(new SimpleStatement(s"TRUNCATE TABLE data2.$table"))}).map{ _ => Unit}
+  }
 
   def fixPath(path: String, last: (DateTime, String), history: Seq[(DateTime, String)], level: ConsistencyLevel = QUORUM): Future[Seq[Infoton]] = ???
 

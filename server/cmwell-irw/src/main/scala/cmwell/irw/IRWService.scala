@@ -204,6 +204,9 @@ trait IRWService {
 
   def purgePathOnly(path: String, level: ConsistencyLevel = QUORUM): Future[Unit]
 
+  // Used by tests only!!! will delete everything
+  def purgeAll():Future[Unit]
+
   // adds missing row in `path` column-family, in case all uuids are present in `infoton` column-family.
   @deprecated("wrong usage in irw2, and seems unused anyway...","1.5.x")
   def fixPath(path: String, last: (DateTime, String), history: Seq[(DateTime, String)], level: ConsistencyLevel = QUORUM): Future[Seq[Infoton]]
@@ -704,6 +707,8 @@ class IRWServiceNativeImpl(storageDao: Dao, maxReadSize: Int = 25, disableReadCa
     bs.bind(new java.util.Date(lastModified), path)
     executeAsync(bs).map(rs => if(!rs.wasApplied()) ???)
   }
+
+  override def purgeAll(): Future[Unit] = ???
 
   def purgePathOnly(path: String, level: ConsistencyLevel = QUORUM): Future[Unit] = {
     val bs = new BoundStatement(purgeAllHistory)

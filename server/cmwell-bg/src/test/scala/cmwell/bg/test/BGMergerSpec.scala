@@ -20,12 +20,14 @@ import cmwell.bg.Merger
 import cmwell.domain.{FieldValue, ObjectInfoton}
 import cmwell.common.{DeletePathCommand, WriteCommand}
 import org.joda.time.DateTime
-import org.scalatest.{FlatSpec, Matchers, OptionValues}
+import org.scalatest.{DoNotDiscover, FlatSpec, Matchers, OptionValues}
 
 /**
   * Created by israel on 29/11/2016.
   */
+@DoNotDiscover
 class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
+
 
   val merger = Merger()
 
@@ -223,4 +225,60 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
 
     merged shouldBe empty
   }
+
+  it should "merge null update commands with no base correctly" in {
+    val now = DateTime.now
+    val infoton1 = ObjectInfoton(
+      "/bg-test-merge/infonull1",
+      "dc1",
+      None,
+      now,
+      None
+    )
+    val infoton2 = ObjectInfoton(
+      "/bg-test-merge/infonull1",
+      "dc1",
+      None,
+      now.plusMillis(20),
+      None
+    )
+    val writeCommand1 = WriteCommand(infoton1)
+    val writeCommand2 = WriteCommand(infoton2)
+    val merged = merger.merge(None, Seq(writeCommand1, writeCommand2))
+
+    merged.merged shouldEqual(Some(infoton2))
+
+  }
+
+  it should "merge null update commands with different base correctly" in {
+    val now = DateTime.now
+    val baseInfoton = ObjectInfoton(
+      "/bg-test-merge/infonull1",
+      "dc1",
+      None,
+      now,
+      None
+    )
+    val infoton1 = ObjectInfoton(
+      "/bg-test-merge/infonull1",
+      "dc1",
+      None,
+      now.minusMillis(161),
+      None
+    )
+    val infoton2 = ObjectInfoton(
+      "/bg-test-merge/infonull1",
+      "dc1",
+      None,
+      now.plusMillis(53),
+      None
+    )
+    val writeCommand1 = WriteCommand(infoton1)
+    val writeCommand2 = WriteCommand(infoton2)
+    val merged = merger.merge(Some(baseInfoton), Seq(writeCommand2, writeCommand1))
+
+    merged.merged shouldBe empty
+
+  }
+
 }

@@ -97,22 +97,25 @@ package util {
       case "nn" ~ _ ~ localName => localName
     }
 
-    val uri: Parser[FieldKey] = cmwellUri ^^ NnFieldKey.apply | namespaceUri ^^ URIFieldKey.apply
+    val uri: Parser[Either[UnresolvedFieldKey,DirectFieldKey]] = cmwellUri ^^ { s => Right(NnFieldKey(s))
+    } | namespaceUri ^^ { u =>
+      Left(UnresolvedURIFieldKey(u))
+    }
 
-    val fullPredicateURI: Parser[FieldKey] = "$" ~> uri <~ "$"
+    val fullPredicateURI: Parser[Either[UnresolvedFieldKey,DirectFieldKey]] = "$" ~> uri <~ "$"
 
-    val fieldParser: Parser[FieldKey] = fullPredicateURI | (fieldRegex ^^ { s =>
+    val fieldParser: Parser[Either[UnresolvedFieldKey,DirectFieldKey]] = fullPredicateURI | (fieldRegex ^^ { s =>
       s.lastIndexOf('.') match {
-        case -1 => NnFieldKey(s)
+        case -1 => Right(NnFieldKey(s))
         case i => s.splitAt(i) match {
-          case (first, _) if first == "system" || first.startsWith("system.") => NnFieldKey(s)
+          case (first, _) if first == "system" || first.startsWith("system.") => Right(NnFieldKey(s))
           case (first, dotLast) => dotLast.tail match {
             case t if t.isEmpty => {
               logger.warn(s"field ending with '.' : $s")
-              NnFieldKey(s)
+              Right(NnFieldKey(s))
             }
-            case t if t.head == '$' => HashedFieldKey(first, t.tail)
-            case t => PrefixFieldKey(first, t)
+            case t if t.head == '$' => Right(HashedFieldKey(first, t.tail))
+            case t => Left(UnresolvedPrefixFieldKey(first, t))
           }
         }
       }
@@ -130,7 +133,7 @@ package util {
   }
 
   object FieldNameConverter extends RegexAndFieldNameParser {
-    def convertAPINotationToActualFieldNames(displayNames: String): Try[Seq[FieldKey]] = {
+    def convertAPINotationToActualFieldNames(displayNames: String): Try[Seq[Either[UnresolvedFieldKey,DirectFieldKey]]] = {
       parseAll(fieldsParser, displayNames) match {
         case Success(result, _) => USuccess(result)
         case NoSuccess(msg, _) => UFailure(new IllegalArgumentException(msg))
@@ -144,9 +147,7 @@ package util {
 
     lazy val sLiteral = """(?:[\p{L}\p{Sc}0-9/.@ &_\-]+)""".r
     lazy val positiveInteger = """\d+""".r
-    //  lazy val name = """(?<=name:)(?:[\p{L}\p{Sc}0-9]+)(?=,)""".r
-    lazy val pNumber =
-      """\d+""".r
+    lazy val pNumber = """\d+""".r
 
     def aggregationsParser: Parser[List[RawAggregationFilter]] = repsep(aggregationParser, "~")
 
@@ -158,9 +159,6 @@ package util {
       case None => Seq.empty
     }
 
-    //  def subAggregationParser: Parser[AggregationFilter] = "<" ~ aggregationParser ^^ {
-    //    case _ ~ aggFilter => aggFilter
-    //  }
 
     def nameParser: Parser[String] = ",name:" ~ sLiteral ^^ {
       case _ ~ n => n
@@ -566,10 +564,8 @@ package util {
       def mapQuads(fieldFilter: RawFieldFilter): RawFieldFilter = {
         fieldFilter match {
           case RawMultiFieldFilter(fo, filters) => RawMultiFieldFilter(fo, filters.map(mapQuads))
-          case RawSingleFieldFilter(fo, vo, NnFieldKey("system.quad"), Some(quad)) if !FReference.isUriRef(quad) => {
-            val fieldFilterWithExplicitUrlOpt = CMWellRDFHelper.getQuadUrlForAlias(quad).map(v => RawSingleFieldFilter(fo, vo, NnFieldKey("system.quad"), Some(v)))
-            prefixRequirement(fieldFilterWithExplicitUrlOpt.nonEmpty, s"The alias '$quad' provided for quad in search does not exist. Use explicit quad URL, or register a new alias using `graphAlias` meta operation.")
-            fieldFilterWithExplicitUrlOpt.get
+          case RawSingleFieldFilter(fo, vo, Right(NnFieldKey("system.quad")), Some(quad)) if !FReference.isUriRef(quad) => {
+            UnevaluatedQuadFilter(fo,vo,quad)
           }
           case rff => rff
         }
@@ -628,8 +624,11 @@ package util {
 
     def extractRawKeyAsFieldName(rff: RawFieldFilter): Try[FieldFilter] = rff match {
       case RawMultiFieldFilter(fo, rffs) => Try.traverse(rffs)(extractRawKeyAsFieldName).map(MultiFieldFilter(fo, _))
-      case RawSingleFieldFilter(fo, vo, dfk: DirectFieldKey, v) => USuccess(SingleFieldFilter(fo, vo, dfk.internal, v))
-      case RawSingleFieldFilter(fo, vo, rfk: ResolvedFieldKey, v) => UFailure {
+      case RawSingleFieldFilter(fo, vo, Right(dfk), v) => USuccess(SingleFieldFilter(fo, vo, dfk.internalKey, v))
+      case UnevaluatedQuadFilter(_,_,alias) => UFailure {
+         new IllegalArgumentException(s"supplied fields must be direct. system.quad with alias[$alias] is not direct and needs to be resolved (use fully qualified URI instead).")
+      }
+      case RawSingleFieldFilter(fo, vo, Left(rfk), v) => UFailure {
         new IllegalArgumentException(s"supplied fields must be direct. ${rfk.externalKey} needs to be resolved.")
       }
     }

@@ -16,17 +16,17 @@
 
 package cmwell.bg
 
-import java.util.concurrent.{ConcurrentHashMap, TimeUnit, TimeoutException}
+import java.util.concurrent.{ConcurrentHashMap, TimeoutException}
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorRef, ActorSystem}
 import akka.kafka.ProducerMessage.Message
 import akka.kafka.scaladsl.{Consumer, Producer}
-import akka.kafka.{ConsumerSettings, ProducerSettings, Subscriptions}
+import akka.kafka.{ProducerSettings, Subscriptions}
 import akka.stream.ActorAttributes.supervisionStrategy
 import akka.stream.Supervision.Decider
 import akka.stream.contrib.PartitionWith
-import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, Merge, Partition, RunnableGraph, Sink}
-import akka.stream.{ActorMaterializer, ClosedShape, KillSwitches}
+import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, Merge, MergePreferred, Partition, RunnableGraph, Sink, Source}
+import akka.stream.{ActorMaterializer, ClosedShape, KillSwitches, SourceShape}
 import cmwell.common.{Command, _}
 import cmwell.common.formats.JsonSerializerForES
 import cmwell.domain.{Infoton, ObjectInfoton}
@@ -43,10 +43,9 @@ import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 import nl.grons.metrics.scala._
 import com.codahale.metrics.{Counter => DropwizardCounter, Histogram => DropwizardHistogram, Meter => DropwizardMeter, Timer => DropwizardTimer}
-import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.serialization.{ByteArrayDeserializer, ByteArraySerializer}
+import org.apache.kafka.common.serialization.{ByteArraySerializer}
 import org.elasticsearch.action.update.UpdateRequest
 import org.elasticsearch.client.Requests
 import org.joda.time.DateTime
@@ -61,7 +60,7 @@ import scala.util.{Failure, Success, Try}
   * Created by israel on 14/06/2016.
   */
 class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZStore, ftsService:FTSServiceNew,
-                offsetsService:OffsetsService, decider:Decider )
+                offsetsService:OffsetsService, decider:Decider, kafkaConsumer:ActorRef)
                (implicit actorSystem:ActorSystem, executionContext:ExecutionContext,
                 materializer: ActorMaterializer
                 ) extends LazyLogging with DefaultInstrumented {
@@ -75,8 +74,8 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
 
   val bootStrapServers = config.getString("cmwell.bg.kafka.bootstrap.servers")
   val persistCommandsTopic = config.getString("cmwell.bg.persist.commands.topic")
+  val priorityPersistCommandsTopic = persistCommandsTopic + ".priority"
   val indexCommandsTopic = config.getString("cmwell.bg.index.commands.topic")
-  val latestIndexAliasName = config.getString("cmwell.bg.latestIndexAliasName")
   val maxInfotonWeightToIncludeInCommand = config.getInt("cmwell.bg.maxInfotonWeightToIncludeInCommand")
   val defaultDC = config.getString("cmwell.dataCenter.id")
   val esActionsBulkSize = config.getInt("cmwell.bg.esActionsBulkSize") // in bytes
@@ -133,14 +132,8 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
 
   val streamId = s"imp.${partition}"
 
-  val byteArrayDeserializer = new ByteArrayDeserializer()
-  val persistCommandsConsumerSettings =
-    ConsumerSettings(actorSystem, byteArrayDeserializer, byteArrayDeserializer)
-      .withBootstrapServers(bootStrapServers)
-      .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
-        .withGroupId(streamId)
-
   val startingOffset = offsetsService.read(s"${streamId}_offset").getOrElse(0L)
+  val priorityStartingOffset = offsetsService.read(s"${streamId}.p_offset").getOrElse(0L)
 
   var (startingIndexName, indexCount) = ftsService.latestIndexNameAndCount(s"cm_well_p${partition}_*") match {
     case Some((name, count)) => (name -> count)
@@ -178,12 +171,25 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
     new TopicPartition(persistCommandsTopic, partition) -> startingOffset
   )
 
-  val persistCommandsSource = Consumer.plainSource(persistCommandsConsumerSettings, subscription).map{ msg =>
+  val prioritySubscription = Subscriptions.assignmentWithOffset(
+    new TopicPartition(priorityPersistCommandsTopic, partition) -> priorityStartingOffset
+  )
+
+  val sharedKillSwitch = KillSwitches.shared("persist-sources-kill-switch")
+
+  val persistCommandsSource = Consumer.plainExternalSource[Array[Byte], Array[Byte]](kafkaConsumer, subscription).map{ msg =>
       logger debug s"consuming next payload from persist commands topic @ ${msg.offset()}"
     val command = CommandSerializer.decode(msg.value())
       logger debug s"consumed command: $command"
     BGMessage[Command](msg.offset(), command)
-  }.viaMat(KillSwitches.single)(Keep.both)
+  }.via(sharedKillSwitch.flow)
+
+  val priorityPersistCommandsSource = Consumer.plainExternalSource[Array[Byte], Array[Byte]](kafkaConsumer, prioritySubscription).map{ msg =>
+    logger debug s"consuming next payload from priority persist commands topic @ ${msg.offset()}"
+    val command = CommandSerializer.decode(msg.value())
+    logger debug s"consumed priority command: $command"
+    BGMessage[Command](msg.offset(), command)
+  }.via(sharedKillSwitch.flow)
 
   val heartBitLog = Flow[BGMessage[Command]].keepAlive(60.seconds, () => BGMessage(HeartbitCommand.asInstanceOf[Command])).filterNot{
     case BGMessage(_, HeartbitCommand) =>
@@ -264,38 +270,41 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
 
   val addMerged = Flow[BGMessage[(Option[Infoton], Seq[SingleCommand])]].map {
     case bgMessage@BGMessage(_, (existingInfotonOpt, commands)) =>
-
-      val baseInfoton = Option(beforePersistedCache.get(commands.head.path)) match {
-        case None =>
+      beforePersistedCache.synchronized {
+        val baseInfoton = Option(beforePersistedCache.get(commands.head.path)) match {
+          case None =>
             logger debug s"baseInfoton for path: ${commands.head.path} not in cache"
-          existingInfotonOpt
-        case cachedInfotonOpt@Some(cachedInfoton) =>
+            existingInfotonOpt
+          case cachedInfotonOpt@Some(cachedInfoton) =>
             logger debug s"base infoton for path: ${commands.head.path} in cache: $cachedInfoton"
-          existingInfotonOpt match {
-            case None => cachedInfotonOpt
-            case Some(existingInfoton) =>
-              if(cachedInfoton.lastModified.getMillis >= existingInfoton.lastModified.getMillis){
-                logger debug s"cached infoton is newer then base infoton"
-                cachedInfotonOpt
-              }
-              else{
-                logger debug "base infoton is newer then cached infoton"
-                existingInfotonOpt
-              }
+            existingInfotonOpt match {
+              case None => cachedInfotonOpt
+              case Some(existingInfoton) =>
+                if (cachedInfoton.lastModified.getMillis < existingInfoton.lastModified.getMillis) {
+                  logger debug s"cached infoton is newer then base infoton"
+                  cachedInfotonOpt.map{_.copyInfoton(lastModified = existingInfoton.lastModified)}
+                }
+                else {
+                  logger debug "base infoton is newer then cached infoton"
+                  cachedInfotonOpt
+                }
+            }
         }
-      }
         logger debug s"merging existing infoton: $baseInfoton with commands: $commands"
 
-      val mergedInfoton =
-        if(baseInfoton.isDefined || commands.size > 1)
-          mergeTimer.time(merger.merge(baseInfoton, commands))
-        else
-          merger.merge(baseInfoton, commands)
-      mergedInfoton.merged.foreach{ i =>
-        beforePersistedCache.put(i.path, i.copyInfoton(indexName = currentIndexName))
-        schedule(60.seconds){beforePersistedCache.remove(i.path)}
+        val mergedInfoton =
+          if (baseInfoton.isDefined || commands.size > 1)
+            mergeTimer.time(merger.merge(baseInfoton, commands))
+          else
+            merger.merge(baseInfoton, commands)
+        mergedInfoton.merged.foreach { i =>
+          beforePersistedCache.put(i.path, i.copyInfoton(indexName = currentIndexName))
+          schedule(60.seconds) {
+            beforePersistedCache.remove(i.path)
+          }
+        }
+        bgMessage.copy(message = (baseInfoton -> mergedInfoton))
       }
-      bgMessage.copy(message = (baseInfoton -> mergedInfoton))
   }
 
   val filterDups = Flow[BGMessage[(Option[Infoton], Infoton)]].filterNot{ bgMessage =>
@@ -444,9 +453,14 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
     }
   }(Keep.right)
 
-  val impGraph = RunnableGraph.fromGraph(GraphDSL.create(persistCommandsSource, commitOffsets)(Keep.both) { implicit builder =>
-    (source, sink) =>
+  val impGraph = RunnableGraph.fromGraph(GraphDSL.create(priorityPersistCommandsSource, persistCommandsSource, commitOffsets)((_,_, d) => d) { implicit builder =>
+    (prioritySource, batchSource, sink) =>
       import GraphDSL.Implicits._
+
+      val mergePrefferedSources = builder.add(
+        MergePreferred[BGMessage[Command]](1, true)
+      )
+
 
       // partition incoming persist commands. override commands goes to outport 0, all the rest goes to 1
       val singleCommandsPartitioner = builder.add(
@@ -461,6 +475,8 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
           }
         )
       )
+
+
 
       // CommandRef goes left, all rest go right
       // update metrics for each type of command
@@ -807,7 +823,11 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
         msg.copy(message = msg.message.map(_._1))
       })
 
-      source.out ~> heartBitLog ~> commandsPartitioner.in
+      prioritySource ~> mergePrefferedSources.preferred
+
+      batchSource ~> mergePrefferedSources.in(0)
+
+      mergePrefferedSources.out ~> heartBitLog ~> commandsPartitioner.in
 
       commandsPartitioner.out(0) ~> commandRefsFetcher ~> singleCommandsMerge.in(0)
 
@@ -859,15 +879,14 @@ class ImpStream(partition:Int, config:Config, irwService:IRWService, zStore: ZSt
 
   val impControl = impGraph.withAttributes(supervisionStrategy(decider)).run()
 
-  impControl._2.onComplete{
+  impControl.onComplete{
     case Failure(t) =>
       logger error ("imp stream stopped abnormally", t)
     case Success(_) => logger info "imp stream stopped normally"
   }
 
   def shutdown = {
-    impControl._1._2.shutdown()
-    Await.ready(impControl._1._1.shutdown().flatMap(_ => impControl._1._1.isShutdown), 60.seconds)
+    sharedKillSwitch.shutdown()
   }
 
   lazy val elementAlreadyExistException = new ElementAlreadyExistException("parent is already ingested")

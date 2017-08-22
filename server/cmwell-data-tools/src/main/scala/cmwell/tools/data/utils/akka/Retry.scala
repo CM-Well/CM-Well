@@ -149,8 +149,6 @@ object Retry extends DataToolsLogging with DataToolsConfig{
         }
 
       case State(data, _, None, count) =>
-        logger.warn(s"$labelValue error: could not send http request, data=${stringifyData(data)}")
-
         count match {
           case Some(c) if c > 0 =>
             logger.warn(s"$labelValue error: could not send http request, counter=$c will retry again in $delay data=${stringifyData(data)}")

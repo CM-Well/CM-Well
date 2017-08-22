@@ -41,7 +41,7 @@ class ConsumerSpec extends BaseWiremockSpec {
     super.afterAll()
   }
 
-  "Consumer" should "be resilient against HTTP 429" in {
+  ignore  should "be resilient against HTTP 429" in {
     val tooManyRequests = "too-many-requests"
     val ok = "ok"
     val noContent = "no-content"
@@ -91,7 +91,7 @@ class ConsumerSpec extends BaseWiremockSpec {
     result.flatMap { r => r should be (1)}
   }
 
-  it should "download all uuids while getting server error" in {
+  ignore should "download all uuids while getting server error" in {
 
     val tsvsBeforeError = List(
       "path1\tlastModified1\tuuid1\tindexTime1\n",

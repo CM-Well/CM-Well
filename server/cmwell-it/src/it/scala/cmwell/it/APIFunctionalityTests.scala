@@ -1423,7 +1423,7 @@ class APIFunctionalityTests extends AsyncFunSpec
       }
     }
 
-    it("should ingest large Infoton through Kafka via zStore") {
+    it("should ingest large ObjectInfoton through Kafka via zStore") {
       import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
       val length = 55000
       val triples = (0 until length).map(i => s"""<http://example.org/1-90210> <http://ont.thomsonreuters.com/mdaas/largeField${i/(length/5)}> "$i" .""").sorted
@@ -1433,6 +1433,20 @@ class APIFunctionalityTests extends AsyncFunSpec
       val writtenData = Await.result(Http.get(cmw / "example.org" / "1-90210", List("format" -> "ntriples")), requestTimeout).payload.split('\n').filter(_.contains("largeField")).sorted
       withClue(s"Written data (${writtenData.length} triples) was not same NTriples as ingested data (${triples.length})\nFirst 5 written triples are: ${writtenData.take(5).mkString(" ")}") {
         (writtenData sameElements triples) should be(true)
+      }
+    }
+
+    it("should ingest large FileInfoton through Kafka via zStore") {
+      import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+      val path = cmw / "example.org" / "LargeFile.txt"
+      val length = 513*1024 // > 512KB
+      val data = scala.util.Random.alphanumeric.take(length).mkString
+      val uploadReq = Http.post(path, data, Some("text/plain"), headers = tokenHeader :+ "X-CM-WELL-Type"->"File")
+      Await.result(uploadReq.map(res => Json.parse(res.payload)), requestTimeout) should be(jsonSuccess)
+      indexingDuration.fromNow.block ;
+      val writtenData = Await.result(Http.get(path), requestTimeout).payload
+      withClue(s"Written data (${writtenData.length}) was not same content as ingested data ($length)\nFirst 16 chars are: ${writtenData.take(16)}") {
+        writtenData shouldBe data
       }
     }
   }

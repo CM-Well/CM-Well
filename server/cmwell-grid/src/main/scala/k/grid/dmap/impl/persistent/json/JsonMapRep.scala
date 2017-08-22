@@ -35,6 +35,7 @@ object MapDataJsonProtocol {
     override def write(obj: SettingsValue): JsValue = {
       obj match {
         case SettingsString(str) => JsString(str)
+        case SettingsBoolean(bool) => JsBoolean(bool)
         case SettingsLong(lng) => JsNumber(lng)
         case SettingsSet(set) => JsArray(set.toVector.map(s => JsString(s)))
       }
@@ -42,6 +43,7 @@ object MapDataJsonProtocol {
 
     override def read(json: JsValue): SettingsValue = json match {
       case JsString(s) => SettingsString(s)
+      case JsBoolean(b) => SettingsBoolean(b)
       case JsNumber(n) => SettingsLong(n.toLong)
       case JsArray(arr) => SettingsSet(arr.collect{case JsString(s) => s}.toSet)
       case _ => throw PersistentDMapDataFileParsingException

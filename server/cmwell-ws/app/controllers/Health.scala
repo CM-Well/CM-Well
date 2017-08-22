@@ -23,6 +23,7 @@ import com.typesafe.config.ConfigFactory
 import logic.CRUDServiceFS
 import play.api.mvc._
 import javax.inject._
+
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -81,7 +82,7 @@ object HealthUtils {
 }
 
 @Singleton
-class Health @Inject() extends Controller {
+class Health @Inject()(crudServiceFS: CRUDServiceFS) extends Controller {
 
   import HealthUtils._
 
@@ -182,7 +183,7 @@ class Health @Inject() extends Controller {
   }
 
   def getWsHealth = Action { implicit req =>
-    Ok(s"Old IRW ReadCache Size: ${CRUDServiceFS._irwService.dataCahce.size()}\n" +
-      s"New IRW ReadCache Size: ${CRUDServiceFS._irwService2.dataCahce.size()}\n")
+    Ok(s"Old IRW ReadCache Size: ${crudServiceFS._irwService.dataCahce.size()}\n" +
+      s"New IRW ReadCache Size: ${crudServiceFS._irwService2.dataCahce.size()}\n")
   }
 }

@@ -16,11 +16,10 @@
 
 package controllers
 
-import akka.util.ByteString
 import cmwell.domain._
 import cmwell.formats._
 import cmwell.fts._
-import cmwell.ws.Streams.{Flows, scrollSource, superScrollSource}
+import cmwell.ws.Streams
 import cmwell.ws.adt.{BulkConsumeState, ConsumeState}
 import cmwell.ws.util._
 import logic.CRUDServiceFS
@@ -32,18 +31,25 @@ import akka.NotUsed
 import akka.stream.scaladsl.Source
 
 import scala.concurrent._
-import duration.DurationInt
 import scala.util.{Failure, Success}
 import com.typesafe.scalalogging.LazyLogging
 import cmwell.syntaxutils._
-import cmwell.ws.util.TypeHelpers.asLong
+import cmwell.web.ld.cmw.CMWellRDFHelper
+import cmwell.ws.Streams.Flows
+import cmwell.ws.util.TypeHelpers.asBoolean
+import ld.cmw.{NbgPassiveFieldTypesCache, ObgPassiveFieldTypesCache}
 import play.api.http.Writeable
 
 import scala.math.min
-import wsutil._
 
 @Singleton
-class BulkScrollHandler  @Inject()(implicit ec: ExecutionContext) extends play.api.mvc.Controller with LazyLogging {
+class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
+                                  tbg: NbgToggler,
+                                  streams: Streams,
+                                  cmwellRDFHelper: CMWellRDFHelper,
+                                  formatterManager: FormatterManager)(implicit ec: ExecutionContext) extends play.api.mvc.Controller with LazyLogging with TypeHelpers {
+
+  def cache(nbg: Boolean) = if(nbg || tbg.get) crudServiceFS.nbgPassiveFieldTypesCache else crudServiceFS.obgPassiveFieldTypesCache
 
   //consts
   val paginationParamsForSingleResult = PaginationParams(0, 1)
@@ -96,7 +102,7 @@ class BulkScrollHandler  @Inject()(implicit ec: ExecutionContext) extends play.a
 
     def toSeed: Future[Long] = {
       val ffs = fieldsFiltersforSortedSearchFromTimeAndOptionalFilters(from,ffsOpt)
-      CRUDServiceFS.thinSearch(
+      crudServiceFS.thinSearch(
           pathFilter = pf,
           fieldFilters = Option(ffs),
           paginationParams = paginationParamsForSingleResultWithOffset,
@@ -117,7 +123,7 @@ class BulkScrollHandler  @Inject()(implicit ec: ExecutionContext) extends play.a
         val ffs = fieldsFiltersFromTimeframeAndOptionalFilters(from, to, ffsOpt)
 
         // find number of infotons in given range
-        CRUDServiceFS.thinSearch(
+        crudServiceFS.thinSearch(
           pathFilter = pf,
           fieldFilters = Option(ffs),
           paginationParams = paginationParamsForSingleResult,
@@ -185,7 +191,7 @@ class BulkScrollHandler  @Inject()(implicit ec: ExecutionContext) extends play.a
     val futureMarksTheTimeOut = cmwell.util.concurrent.SimpleScheduler.schedule(cmwell.ws.Settings.consumeBulkBinarySearchTimeout)(())
     val pf = createPathFilter(path, recursive)
     if(from == 0) {
-      CRUDServiceFS.thinSearch(
+      crudServiceFS.thinSearch(
           pathFilter = pf,
           fieldFilters = ff,
           paginationParams = paginationParamsForSingleResult,
@@ -227,7 +233,7 @@ class BulkScrollHandler  @Inject()(implicit ec: ExecutionContext) extends play.a
     }
   }
 
-  def getFormatter(request: Request[AnyContent], withHistory: Boolean) = {
+  def getFormatter(request: Request[AnyContent], withHistory: Boolean, nbg: Boolean) = {
 
     (extractInferredFormatWithData(request) match {
       case (fmt,b) if Set("text", "path", "tsv", "tab", "nt", "ntriples", "nq", "nquads")(fmt.toLowerCase) || fmt.toLowerCase.startsWith("json") => Success(fmt -> b)
@@ -254,7 +260,7 @@ class BulkScrollHandler  @Inject()(implicit ec: ExecutionContext) extends play.a
             case _ => false
           })
           //cleanSystemBlanks set to true, so we won't output all the meta information we usually output. it get's messy with streaming. we don't want each chunk to show the "document context"
-          FormatterManager.getFormatter(
+          formatterManager.getFormatter(
             format = formatType,
             host = request.host,
             uri = request.uri,
@@ -266,7 +272,8 @@ class BulkScrollHandler  @Inject()(implicit ec: ExecutionContext) extends play.a
             withData = withData,
             withoutMeta = !withMeta,
             filterOutBlanks = true,
-            forceUniqueness = forceUniqueness
+            forceUniqueness = forceUniqueness,
+            nbg = nbg
           ) -> withData.isDefined
         }
       }
@@ -304,31 +311,32 @@ class BulkScrollHandler  @Inject()(implicit ec: ExecutionContext) extends play.a
       }
     }
 
+    val nbg = request.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+
     currStateEither match {
       case Left(err) => Future.successful(BadRequest(err))
       case Right(stateFuture) => stateFuture.flatMap {
-        case (state@BulkConsumeState(from, Some(to), path, h, d, r, threshold, ffOpt), nextTo) => getFormatter(request, h) match {
+        case (state@BulkConsumeState(from, Some(to), path, h, d, r, threshold, ffOpt), nextTo) => getFormatter(request, h, nbg) match {
           case Failure(exception) => Future.successful(BadRequest(exception.getMessage))
           case Success((formatter, withData)) => {
 
             // Gets a scroll source according to received HTTP request parameters
             def getScrollSource() = {
               (if (wasSupplied("slow-bulk")) {
-                scrollSource(
+                streams.scrollSource(nbg,
                   pathFilter = createPathFilter(path, r),
                   fieldFilters = Option(fieldsFiltersFromTimeframeAndOptionalFilters(from, to, ffOpt)),
                   withHistory = h,
                   withDeleted = d)
               } else {
-                superScrollSource(
+                streams.superScrollSource(nbg,
                   pathFilter = createPathFilter(path, r),
                   fieldFilter = Option(fieldsFiltersFromTimeframeAndOptionalFilters(from, to, ffOpt)),
                   withHistory = h,
-                  withDeleted = d
-                )
+                  withDeleted = d)
               }).map { case (src,hits) =>
                 val s: Source[Infoton,NotUsed] = {
-                  if (withData) src.via(Flows.iterationResultsToFatInfotons)
+                  if (withData) src.via(Flows.iterationResultsToFatInfotons(nbg,crudServiceFS))
                   else src.via(Flows.iterationResultsToInfotons)
                 }
                 hits -> s
@@ -354,10 +362,10 @@ class BulkScrollHandler  @Inject()(implicit ec: ExecutionContext) extends play.a
     }
   }
 
-  def parseQpFromRequest(qp: String)(implicit ec: ExecutionContext): Future[Option[FieldFilter]] = {
+  def parseQpFromRequest(qp: String, nbg: Boolean)(implicit ec: ExecutionContext): Future[Option[FieldFilter]] = {
     FieldFilterParser.parseQueryParams(qp) match {
       case Failure(err) => Future.failed(err)
-      case Success(rff) => RawFieldFilter.eval(rff).map(Option.apply)
+      case Success(rff) => RawFieldFilter.eval(rff,cache(nbg),cmwellRDFHelper,nbg).map(Option.apply)
     }
   }
 

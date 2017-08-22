@@ -27,7 +27,7 @@ import cmwell.tools.data.downloader.consumer.Downloader.Token
 import cmwell.tools.data.sparql.InfotonReporter.{RequestDownloadStats, ResponseDownloadStats}
 import cmwell.tools.data.utils.ArgsManipulations
 import cmwell.tools.data.utils.ArgsManipulations.HttpAddress
-import cmwell.tools.data.utils.akka.stats.DownloaderStatsSink.DownloadStats
+import cmwell.tools.data.utils.akka.stats.DownloaderStats.DownloadStats
 import cmwell.tools.data.utils.logging.DataToolsLogging
 import com.typesafe.config.ConfigFactory
 

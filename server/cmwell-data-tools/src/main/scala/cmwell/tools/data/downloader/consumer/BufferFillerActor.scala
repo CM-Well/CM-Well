@@ -17,15 +17,14 @@
 package cmwell.tools.data.downloader.consumer
 
 import akka.actor.{Actor, ActorSystem}
-import akka.http.scaladsl.model.Uri.Query
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes, Uri}
+import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse, StatusCodes}
 import akka.pattern._
-import akka.stream.scaladsl._
 import akka.stream._
+import akka.stream.scaladsl._
 import cmwell.tools.data.downloader.consumer.Downloader._
 import cmwell.tools.data.utils.ArgsManipulations
 import cmwell.tools.data.utils.ArgsManipulations.{HttpAddress, formatHost}
-import cmwell.tools.data.utils.akka.HeaderOps.getPosition
+import cmwell.tools.data.utils.akka.HeaderOps.{getHostnameValue, getPosition}
 import cmwell.tools.data.utils.akka.{DataToolsConfig, HttpConnections, lineSeparatorFrame}
 import cmwell.tools.data.utils.logging._
 import cmwell.tools.data.utils.text.Tokens
@@ -33,7 +32,7 @@ import cmwell.tools.data.utils.text.Tokens
 import scala.collection.mutable
 import scala.concurrent.duration.{FiniteDuration, _}
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Success, Try}
+import scala.util.{Failure, Success, Try}
 
 object BufferFillerActor {
   case object Status
@@ -41,8 +40,8 @@ object BufferFillerActor {
   case class NewData(data: Option[(Token,TsvData)])
   case class InitToken(token: Token)
   case object GetData
-  case object RequestExpectedNumInfotons
-  case class ResponseExpectedNumInfotons(num: Long, token: Token)
+  case class HttpResponseSuccess(token: Token)
+  case class HttpResponseFailure(token: Token, err: Throwable)
 }
 
 class BufferFillerActor(threshold: Int,
@@ -91,7 +90,6 @@ class BufferFillerActor(threshold: Int,
   override def receive: Receive = {
     case InitToken(token) =>
       currToken = token
-      self ! RequestExpectedNumInfotons
       self ! Status
     case FinishedToken(nextToken) =>
       logger.info(s"received $tsvCounter uuids from token $currToken")
@@ -101,8 +99,8 @@ class BufferFillerActor(threshold: Int,
 
       nextToken match {
         case Some(token) =>
+          logger.info(s"next token=${token}")
           currToken = token
-          self ! RequestExpectedNumInfotons
           self ! Status
 
         case None if updateFreq.nonEmpty =>
@@ -114,9 +112,11 @@ class BufferFillerActor(threshold: Int,
       }
 
     case Status if buf.size < threshold =>
-        sendNextChunkRequest(currToken).map(FinishedToken.apply) pipeTo self
+      logger.debug(s"status message: buffer-size=${buf.size}, will request for more data")
+      sendNextChunkRequest(currToken).map(FinishedToken.apply) pipeTo self
 
     case Status =>
+      logger.debug(s"status message: buffer-size=${buf.size}")
       context.system.scheduler.scheduleOnce(1.seconds, self, Status)
 
     case NewData(data) =>
@@ -128,14 +128,17 @@ class BufferFillerActor(threshold: Int,
 
     case GetData =>
       // do nothing since there are no elements in buffer
-//      context.system.scheduler.scheduleOnce(1.second, self, GetData)(implicitly[ExecutionContext], sender = sender())
 
-    case RequestExpectedNumInfotons =>
-      val token = currToken
-      getNumRecords(token).map(numRecords => ResponseExpectedNumInfotons(numRecords, token)) pipeTo self
+    case HttpResponseSuccess(t) =>
+      // get point in time of token
+      val decoded = Try(new org.joda.time.LocalDateTime(Tokens.decompress(t).takeWhile(_ != '|').toLong))
+      logger.debug(s"successfully consumed token: $t point in time: ${decoded.getOrElse("")} buffer-size: ${buf.size}")
+      currConsumeState = ConsumeStateHandler.nextSuccess(currConsumeState)
 
-    case ResponseExpectedNumInfotons(expected, token) =>
-      logger.info("expect {} infotons from token {}", expected.toString, token)
+    case HttpResponseFailure(t, err) =>
+      currConsumeState = ConsumeStateHandler.nextFailure(currConsumeState)
+      logger.info(s"error: ${err.getMessage} consumer will perform retry in $retryTimeout, token=$t", err)
+      after(retryTimeout, context.system.scheduler)(sendNextChunkRequest(t).map(FinishedToken.apply) pipeTo self)
 
     case x =>
       logger.error(s"unexpected message: $x")
@@ -174,8 +177,6 @@ class BufferFillerActor(threshold: Int,
       HttpRequest(uri = uri)
     }
 
-    //          consumerStatsActor ! NewToken(token)
-
     uuidsFromCurrentToken.clear()
 
     val source: Source[Token, (Future[Option[Token]], UniqueKillSwitch)] = Source.single(token)
@@ -192,9 +193,6 @@ class BufferFillerActor(threshold: Int,
         case (Success(HttpResponse(s, h , e, _)), _) if s == StatusCodes.NoContent =>
           e.discardBytes()
 
-//          consumerStatsActor ! EndStreamEvent // also kills the previous actor
-//          consumerStatsActor = system.actorOf(Props(new ConsumerStatsActor(baseUrl, initToken, params)))
-
           if (updateFreq.isEmpty) self ! NewData(None)
 
           None -> Source.empty
@@ -204,13 +202,7 @@ class BufferFillerActor(threshold: Int,
             case None      => throw new RuntimeException("no position supplied")
           }
 
-          // store expected num infotons from stream
-//          expectedNumInfotons = getNumInfotonsValue(h) match {
-//            case "NA" => None
-//            case x => Some(x.toLong)
-//          }
-
-//          logger.info(s"expected num uuids = ${expectedNumInfotons.getOrElse("None")} token=$token")
+          logger.info(s"received consume answer from host=${getHostnameValue(h)}")
 
           val dataSource: Source[(Token, TsvData), Any] = e.withoutSizeLimit().dataBytes
             .via(lineSeparatorFrame)
@@ -218,9 +210,20 @@ class BufferFillerActor(threshold: Int,
             .map(token -> _)
 
           Some(nextToken) -> dataSource
+
+        case (Success(HttpResponse(s, h, e, _)), _) =>
+          e.toStrict(1.minute).onComplete {
+            case Success(res:HttpEntity.Strict) =>
+              logger.info(s"received consume answer from host=${getHostnameValue(h)} status=$s token=$token entity=${res.data.utf8String}")
+            case Failure(err) =>
+              logger.error(s"received consume answer from host=${getHostnameValue(h)} status=$s token=$token cannot extract entity", err)
+          }
+
+          Some(token) -> Source.failed(new Exception(s"Status is $s"))
+
         case x =>
           logger.error(s"unexpected message: $x")
-          ???
+          Some(token) -> Source.failed(new UnsupportedOperationException(x.toString))
       }
       .alsoToMat(Sink.last)((_,element) => element.map { case (nextToken, _) => nextToken})
       .map { case (_, dataSource) => dataSource}
@@ -244,68 +247,11 @@ class BufferFillerActor(threshold: Int,
 
     currKillSwitch = Some(killSwitch)
 
-//    result
-//      .map { case nextToken =>
-//        // validate that all uuids were received, if not - fail the future
-////        if (expectedNumInfotons.isDefined && receivedUuids.size != expectedNumInfotons.getOrElse(0)) {
-////          logger.error(s"not all infotons were consumed (${receivedUuids.size}/${expectedNumInfotons.get}) from token $token")
-////        }
-////        expectedNumInfotons = None
-//        nextToken
-//      }
-
-    result.onSuccess{ case _ =>
-      // get point in time of token
-      val decoded = Try(new org.joda.time.LocalDateTime(Tokens.decompress(token).takeWhile(_ != '|').toLong))
-      logger.debug(s"successfully consumed token: $token point in time: ${decoded.getOrElse("")} buffer-size: ${buf.size}")
-      currConsumeState = ConsumeStateHandler.nextSuccess(currConsumeState)
+    result.onComplete {
+      case Success(_)   => self ! HttpResponseSuccess(token)
+      case Failure(err) => self ! HttpResponseFailure(token, err)
     }
 
-    // resilience to failures
-    result.recoverWith{ case err =>
-//      consumerStatsActor ! Reset
-      currConsumeState = ConsumeStateHandler.nextFailure(currConsumeState)
-      logger.info(s"error: ${err.getMessage} consumer will perform retry in $retryTimeout, token=$token", err)
-      after(retryTimeout, context.system.scheduler)(sendNextChunkRequest(token)) }
-  }
-
-  def getNumRecords(token: Token): Future[Long] = {
-    val decodedToken = Tokens.decompress(token).split('|')
-    val indexTime = decodedToken(0).toLong
-    val path = decodedToken(1)
-
-    // http query parameters which should be always present
-    val httpParams = Map(
-      "op" -> "search",
-      "qp" -> decodedToken.last,
-      "indexTime" -> indexTime.toString,
-      "format" -> "json",
-      "length" -> "1",
-      "pretty" -> "")
-
-    // http query parameters which are optional (i.e., API Garden)
-    val paramsMap = params.split("&")
-      .map(_.split("="))
-      .collect {
-        case Array(k, v) => (k, v)
-        case Array(k) if k.nonEmpty => (k, "")
-      }.toMap
-
-    val req = HttpRequest(uri = Uri(s"${formatHost(baseUrl)}$path").withQuery(Query(httpParams ++ paramsMap)))
-
-    logger.info(s"send stats request: ${req.uri}")
-
-    Source.single(req -> None)
-      .via(conn)
-      .mapAsync(1) {
-        case (Success(HttpResponse(s, _, e, _)), _) =>
-          e.withoutSizeLimit().dataBytes
-            .via(lineSeparatorFrame)
-            .filter(_.utf8String.trim contains "\"total\" : ")
-            .map(_.utf8String)
-            .map(_.split(":")(1).init.tail.toLong)
-            .runWith(Sink.head)
-      }
-      .runWith(Sink.head)
+    result
   }
 }

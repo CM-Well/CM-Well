@@ -1658,7 +1658,7 @@ abstract class Host(user: String,
     dataInitializer.waitForWs()
     info("  inserting meta data")
     injectMetaData(host)
-    info("  uploading SPA to meta/app")
+    info("  uploading SPAs to meta/app")
     dataInitializer.uploadDirectory("data", s"http://$host:9000/meta/app/")
     info("  uploading sys")
     dataInitializer.uploadDirectory("sys", s"http://$host:9000/meta/sys/wb/")
@@ -1712,11 +1712,25 @@ abstract class Host(user: String,
         ret = command(s"$createTopicCommandPrefix persist_topic", hosts(0), false)
       }
 
+      ret = command(s"$createTopicCommandPrefix persist_topic.priority", hosts(0), false)
+      while(ret.isFailure || !ret.get.contains("Created topic") && tryNum < 6 ){
+        tryNum += 1
+        Thread.sleep(5000)
+        ret = command(s"$createTopicCommandPrefix persist_topic.priority", hosts(0), false)
+      }
+
       ret = command(s"$createTopicCommandPrefix index_topic", hosts(0), false)
       while(ret.isFailure || !ret.get.contains("Created topic") && tryNum < 6 ){
         tryNum += 1
         Thread.sleep(5000)
         ret = command(s"$createTopicCommandPrefix index_topic", hosts(0), false)
+      }
+
+      ret = command(s"$createTopicCommandPrefix index_topic.priority", hosts(0), false)
+      while(ret.isFailure || !ret.get.contains("Created topic") && tryNum < 6 ){
+        tryNum += 1
+        Thread.sleep(5000)
+        ret = command(s"$createTopicCommandPrefix index_topic.priority", hosts(0), false)
       }
 
     }

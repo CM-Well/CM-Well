@@ -41,17 +41,10 @@ import scala.concurrent.Future
 object Strotill {
 
   type CasInfo = Vector[(String,Option[Infoton])]
-  type EsInfo = Vector[(String,String)]
+  type EsInfo = Vector[(String,String)] //uuid,indexName
+  type EsExtendedInfo = Vector[(String,String,Long,String)] //uuid,indexName,version,esSource
   type ZStoreInfo = Vector[String]
 
-//  def apply(clusterName : String , host : String ) : Strotill = {
-//    System.setProperty("ftsService.transportAddress" , host)
-//    System.setProperty("ftsService.clusterName" , clusterName)
-//    val dao = Dao("operation" , "data" , host ,10 )
-//    val irw = IRWService(dao)
-//    val fts = FTSServiceES.getOne("ftsService.yml")
-//    new Strotill(irw,fts)
-//  }
   def apply(irw: IRWService, ftsService: FTSServiceOps): Strotill = new Strotill(irw,ftsService)
 }
 

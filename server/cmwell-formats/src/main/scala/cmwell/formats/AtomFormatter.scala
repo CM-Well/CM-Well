@@ -45,7 +45,7 @@ class AtomFormatter private(reqHost: String, uri: String,
     if(reqHost.startsWith("http")) reqHost
     else s"http://$reqHost"
 
-  val xsltRef = """<?xml version="1.0" encoding="UTF-8"?><?xml-stylesheet type="text/xsl" href="/meta/app/style/atom.xsl"?>"""
+  val xsltRef = """<?xml version="1.0" encoding="UTF-8"?><?xml-stylesheet type="text/xsl" href="/meta/app/old-ui/style/atom.xsl"?>"""
 
   private[this] val fillInfotonEntry: (Entry, Infoton) => Entry = withDataFormatter match {
     case Some(formatter) => { (entry, i) =>

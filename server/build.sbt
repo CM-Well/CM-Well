@@ -44,7 +44,7 @@ dependenciesManager in Global := {
   case ("com.ecyrd.speed4j","speed4j")                             => "com.ecyrd.speed4j" % "speed4j" % "0.18"
   case ("com.fasterxml.jackson.core", art)                         => "com.fasterxml.jackson.core" % art % "2.8.3"
   case ("com.github.andrewoma.dexx","collection")                  => "com.github.andrewoma.dexx" % "collection" % "0.7"
-  case ("com.github.tomakehurst", "wiremock")                      => "com.github.tomakehurst" % "wiremock" % "2.6.0"
+  case ("com.github.tomakehurst", "wiremock")                      => "com.github.tomakehurst" % "wiremock" % "2.7.1"
   case ("com.github.t3hnar", "scala-bcrypt")                       => "com.github.t3hnar" %% "scala-bcrypt" % "2.6"
   case ("com.google.code.findbugs","jsr305")                       => "com.google.code.findbugs" % "jsr305" % "1.3.9" //newest is 3.0.0
   case ("com.google.guava","guava")                                => "com.google.guava" % "guava" % "22.0"
@@ -159,7 +159,7 @@ dependenciesManager in Global := {
   case ("org.rogach","scallop")                                    => "org.rogach" %% "scallop" % "2.0.5"
   case ("org.scala-lang",art)                                      => "org.scala-lang" % art % scalaVersion.value
   case ("org.scalacheck","scalacheck")                             => "org.scalacheck" %% "scalacheck" % "1.13.2" // version "1.13.0" collides with scalaTest (IncompatibleClassChangeError)
-  case ("org.scalatest","scalatest")                               => "org.scalatest" %% "scalatest" % "3.0.0"
+  case ("org.scalatest","scalatest")                               => "org.scalatest" %% "scalatest" % "3.0.1"
   case ("org.scala-lang.modules", "scala-parser-combinators")      => "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4"
   case ("org.scala-lang.modules", "scala-xml")                     => "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
   case ("org.slf4j",art)                                           => "org.slf4j" % art % "1.7.21"
@@ -250,7 +250,6 @@ lazy val ctrl          = (project in file("cmwell-controller")).enablePlugins(CM
 lazy val dc            = (project in file("cmwell-dc")).enablePlugins(CMWellBuild) settings(oneJarSettings:_*)      dependsOn(tracking, ctrl, sparqlAgent)
 lazy val cons          = (project in file("cmwell-cons")).enablePlugins(CMWellBuild)                                dependsOn(util, ctrl) aggregate(batch, ws, ctrl, dc)
 lazy val pluginGremlin = (project in file("cmwell-plugin-gremlin")).enablePlugins(CMWellBuild)
-lazy val docs          = (project in file("cmwell-docs")).enablePlugins(CMWellBuild)
 lazy val spa           = (project in file("cmwell-spa")) .enablePlugins(CMWellBuild)
 lazy val dataTools     = (project in file("cmwell-data-tools")).enablePlugins(CMWellBuild)
 lazy val dataToolsApp  = (project in file("cmwell-data-tools-app")).enablePlugins(CMWellBuild)                      dependsOn(dataTools)
@@ -281,7 +280,6 @@ fullTest := {
   (fullTest in LocalProject("dc")).value
   (fullTest in LocalProject("cons")).value
   (fullTest in LocalProject("pluginGremlin")).value
-  (fullTest in LocalProject("docs")).value
   (fullTest in LocalProject("spa")).value
   (fullTest in LocalProject("dataTools")).value
   (fullTest in LocalProject("dataToolsApp")).value

@@ -31,9 +31,9 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
 
   def serialize2Anddeserialize2(i: Infoton): Infoton = {
     val (uuid,rows) = InfotonSerializer.serialize2(i)
-    val it = rows.view.flatMap{
-      case (q,fields) => fields.flatMap{
-        case (fieldName,values) =>  values.map(value => (q,fieldName,value))
+    val it = rows.view.flatMap {
+      case (q,fields) => fields.view.sortBy(_._1).flatMap{
+        case (fieldName,values) =>  values.view.sortBy(_._1).map(value => (q,fieldName,value))
       }
     }.iterator
     InfotonSerializer.deserialize2(uuid,it)
@@ -167,6 +167,88 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     }
   }
 
+  // TODO: make this configurable
+  val chunkSize = 65536
+
+  "big file infoton with % chunkSize != 0" should "be successful" in {
+    val bArr = Array.tabulate[Byte](chunkSize + chunkSize + 12345)(_.&(0xff).toByte)
+    val data : FileContent = FileContent(bArr, "application/octet-stream")
+    val fInf = FileInfoton("/command-test/fileinfo1","dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), data)
+    val dataInfoCmp = InfotonSerializer.deserialize(InfotonSerializer.serialize(fInf))
+    val dataInfoCmp2 = serialize2Anddeserialize2(fInf)
+
+    // check system
+    fInf.path should equal (dataInfoCmp.path)
+    fInf.uuid should equal (dataInfoCmp.uuid)
+    fInf.lastModified should equal (dataInfoCmp.lastModified)
+    fInf.path should equal (dataInfoCmp2.path)
+    fInf.uuid should equal (dataInfoCmp2.uuid)
+    fInf.lastModified should equal (dataInfoCmp2.lastModified)
+
+    // check fields
+    fInf.fields.get("name").size should equal (dataInfoCmp.fields.get("name").size)
+    fInf.fields.get("name").size should equal (dataInfoCmp2.fields.get("name").size)
+
+    (dataInfoCmp: @unchecked) match {
+      case FileInfoton(_,_,_,_,_,content,_) =>
+        content.get match {
+          case FileContent(binData,mimeType,_,_) =>
+            val d = binData.get
+            d should equal (bArr)
+            "application/octet-stream" should equal (mimeType)
+      }
+    }
+
+    (dataInfoCmp2: @unchecked) match {
+      case FileInfoton(_,_,_,_,_,content,_) =>
+        content.get match {
+          case FileContent(binData,mimeType,_,_) =>
+            val d = binData.get
+            d should equal (bArr)
+            "application/octet-stream" should equal (mimeType)
+      }
+    }
+  }
+
+  "big file infoton with % chunkSize == 0" should "be successful" in {
+    val bArr = Array.tabulate[Byte](2*chunkSize)(_.&(0xff).toByte)
+    val data : FileContent = FileContent(bArr, "application/octet-stream")
+    val fInf = FileInfoton("/command-test/fileinfo1","dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), data)
+    val dataInfoCmp = InfotonSerializer.deserialize(InfotonSerializer.serialize(fInf))
+    val dataInfoCmp2 = serialize2Anddeserialize2(fInf)
+
+    // check system
+    fInf.path should equal (dataInfoCmp.path)
+    fInf.uuid should equal (dataInfoCmp.uuid)
+    fInf.lastModified should equal (dataInfoCmp.lastModified)
+    fInf.path should equal (dataInfoCmp2.path)
+    fInf.uuid should equal (dataInfoCmp2.uuid)
+    fInf.lastModified should equal (dataInfoCmp2.lastModified)
+
+    // check fields
+    fInf.fields.get("name").size should equal (dataInfoCmp.fields.get("name").size)
+    fInf.fields.get("name").size should equal (dataInfoCmp2.fields.get("name").size)
+
+    (dataInfoCmp: @unchecked) match {
+      case FileInfoton(_,_,_,_,_,content,_) =>
+        content.get match {
+          case FileContent(binData,mimeType,_,_) =>
+            val d = binData.get
+            d should equal (bArr)
+            "application/octet-stream" should equal (mimeType)
+        }
+    }
+
+    (dataInfoCmp2: @unchecked) match {
+      case FileInfoton(_,_,_,_,_,content,_) =>
+        content.get match {
+          case FileContent(binData,mimeType,_,_) =>
+            val d = binData.get
+            d should equal (bArr)
+            "application/octet-stream" should equal (mimeType)
+        }
+    }
+  }
 
   "link infoton serializer" should "be successful" in {
     val forward = LinkInfoton("/command-test/objinfo1","dc_test" , Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))) , "/mark" , LinkType.Forward )

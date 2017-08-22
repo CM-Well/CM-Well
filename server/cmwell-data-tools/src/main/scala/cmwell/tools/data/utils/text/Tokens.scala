@@ -47,4 +47,20 @@ object Tokens {
       new String(output, 0, uncompressedDataLength, encoding)
     }
   }
+
+  /**
+    * Extract indexTime field from a given token
+    * @param token input token
+    * @return indexTime field encoded in given token
+    */
+  def getFromIndexTime(token: String): Long = {
+    val arr = decompress(token).split('|')
+
+    val indexTime = arr(0)
+
+    indexTime.split(",") match {
+      case Array(from, to) => from.toLong
+      case Array(from)     => from.toLong
+    }
+  }
 }
