@@ -4,7 +4,9 @@ Example CM-Well search builder/hosted application.
 
 Publish to a cm-well instance using the something similar to:
 
-curl -X POST http://<env>/exercise/files/index.html -H "X-CM-WELL-TYPE: FILE" -H "Content-Type: text/html" --data-binary @"search_builder.html"
+curl -X POST http://<env>/exercise/files/index.html -H "X-CM-WELL-TYPE: FILE" -H "Content-Type: text/html" - -data-binary @"search_builder.html"
+
+(Note that there is no space between the two - characters before data-binary but that's not valid in an HTML comment)
 -->
 <html>
 <head>
