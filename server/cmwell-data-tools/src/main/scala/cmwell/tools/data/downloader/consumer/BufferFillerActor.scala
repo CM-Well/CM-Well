@@ -18,6 +18,7 @@ package cmwell.tools.data.downloader.consumer
 
 import akka.actor.{Actor, ActorSystem}
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers.RawHeader
 import akka.pattern._
 import akka.stream._
 import akka.stream.scaladsl._
@@ -186,7 +187,7 @@ class BufferFillerActor(threshold: Int,
 
       val uri = s"${formatHost(baseUrl)}/$consumeHandler?position=$token&format=tsv$paramsValue$slowBulk$to"
       logger.debug("send HTTP request: {}", uri)
-      HttpRequest(uri = uri)
+      HttpRequest(uri = uri).addHeader(RawHeader("Accept-Encoding", "gzip"))
     }
 
     uuidsFromCurrentToken.clear()
@@ -225,6 +226,7 @@ class BufferFillerActor(threshold: Int,
           logger.info(s"received consume answer from host=${getHostnameValue(h)}")
 
           val dataSource: Source[(Token, Tsv), Any] = e.withoutSizeLimit().dataBytes
+            .via(Compression.gunzip())
             .via(lineSeparatorFrame)
             .map(extractTsv)
             .map(token -> _)

@@ -20,6 +20,7 @@ package cmwell.tools.data.downloader.consumer
 import akka.NotUsed
 import akka.actor.{ActorSystem, Props}
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers.RawHeader
 import akka.stream._
 import akka.stream.scaladsl._
 import akka.util.ByteString
@@ -335,17 +336,35 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
       label = label
     )
 
+    val tsvSource = createTsvSource(
+      baseUrl = baseUrl,
+      path = path,
+      params = params,
+      qp = qp,
+      isBulk = isBulk,
+      recursive = recursive,
+      indexTime = indexTime,
+      updateFreq = updateFreq,
+      token = token,
+      label = label
+    ).async
 
-    val tsvSource = downloader.createTsvSource(token, updateFreq).async
+    format match {
+      case "tsv" =>
+        tsvSource.map { case (token, tsv) => token -> tsv.toByteString }
+      case "text" =>
+        tsvSource.map { case (token, tsv) => token -> tsv.path }
+      case _ =>
+        if (usePaths) {
+          tsvSource
+            .map {case (token, tsv) => token -> tsv.path }
+            .via(downloader.downloadDataFromPaths).async
+        } else {
+          tsvSource
+            .map {case (token, tsv) => token -> tsv.uuid }
+            .via(downloader.downloadDataFromUuids).async
+        }
 
-    if (usePaths) {
-      tsvSource
-        .map {case (token, tsv) => token -> tsv.path }
-        .via(downloader.downloadDataFromPaths).async
-    } else {
-      tsvSource
-        .map {case (token, tsv) => token -> tsv.uuid }
-        .via(downloader.downloadDataFromUuids).async
     }
   }
 }
@@ -391,7 +410,7 @@ class Downloader(baseUrl: String,
         method = HttpMethods.POST,
         entity = HttpEntity(concatByteStrings(paths, ByteString(",\n")).utf8String)
           .withContentType(ContentTypes.`text/plain(UTF-8)`)
-      )
+      ).addHeader(RawHeader("Accept-Encoding", "gzip"))
     }
 
     def getMissingPaths(receivedData: ByteString, paths: Seq[String]) = {
@@ -456,39 +475,41 @@ class Downloader(baseUrl: String,
           logger.debug(s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}")
 
           e.toStrict(1.minute).flatMap { strict =>
-            DataPostProcessor.postProcessByFormat(format, Source.single(strict.data))
-              .runFold(blank)(_ ++ _)
-              .map { receivedData => // accumulate received data
-                val totalReceivedData = state.retrievedData :+ receivedData
+            val unzippedData = Source.single(strict.data).via(Compression.gunzip())
 
-                getMissingPaths(receivedData, sentPaths.map(_.utf8String)) match {
-                  case Seq() =>
-                    // no missing data, success!
-                    Success(totalReceivedData) -> state.copy(pathsToRequest = Seq(), retrievedData = totalReceivedData)
-                  case missingPaths if state.retriesLeft > 0 =>
-                    logger.debug(s"sent ${sentPaths.size} paths but received ${sentPaths.size - missingPaths.size}, total received data length=${receivedData.size}")
-                    logger.debug(s"sent ${sentPaths.map(_.utf8String).mkString("\n")}")
+            DataPostProcessor.postProcessByFormat(format, unzippedData).runFold(blank)(_ ++ _).map { receivedData =>
+              // accumulate received data
+              val totalReceivedData = state.retrievedData :+ receivedData
 
-                    // retry retrieving data from missing uuids
-                    val newState = state.copy(
-                      pathsToRequest = missingPaths.map(ByteString.apply),
-                      retrievedData = totalReceivedData,
-                      retriesLeft = state.retriesLeft - 1)
+              getMissingPaths(receivedData, sentPaths.map(_.utf8String)) match {
+                case Seq() =>
+                  // no missing data, success!
+                  Success(totalReceivedData) -> state.copy(pathsToRequest = Seq(), retrievedData = totalReceivedData)
+                case missingPaths if state.retriesLeft > 0 =>
+                  logger.debug(s"sent ${sentPaths.size} paths but received ${sentPaths.size - missingPaths.size}, total received data length=${receivedData.size}")
+                  logger.debug(s"sent ${sentPaths.map(_.utf8String).mkString("\n")}")
 
-                    logger.error(s"detected missing paths size=${missingPaths.size} retries left=${state.retriesLeft}")
-                    Failure(new Exception("missing data from paths")) -> newState
-                  case missingPaths =>
-                    // do not retrieve data from missing paths
-                    val newState = state.copy(
-                      pathsToRequest = missingPaths.map(ByteString.apply),
-                      retrievedData = totalReceivedData)
+                  // retry retrieving data from missing uuids
+                  val newState = state.copy(
+                    pathsToRequest = missingPaths.map(ByteString.apply),
+                    retrievedData = totalReceivedData,
+                    retriesLeft = state.retriesLeft - 1)
 
-                    logger.error(s"got ${missingPaths.size} missing paths")
-                    badDataLogger.error(missingPaths.mkString("\n"))
-                    Success(totalReceivedData) -> newState
-                }
+                  logger.error(s"detected missing paths size=${missingPaths.size} retries left=${state.retriesLeft}")
+                  Failure(new Exception("missing data from paths")) -> newState
+                case missingPaths =>
+                  // do not retrieve data from missing paths
+                  val newState = state.copy(
+                    pathsToRequest = missingPaths.map(ByteString.apply),
+                    retrievedData = totalReceivedData)
+
+                  logger.error(s"got ${missingPaths.size} missing paths")
+                  badDataLogger.error(missingPaths.mkString("\n"))
+                  Success(totalReceivedData) -> newState
               }
+            }
           }
+
         case (Success(HttpResponse(s,h,e,p)), sentPaths, Some(state)) =>
           e.discardBytes()
 
@@ -532,7 +553,7 @@ class Downloader(baseUrl: String,
         method = HttpMethods.POST,
         entity = HttpEntity(concatByteStrings(uuids, "/ii/", "\n/ii/", "").utf8String)
           .withContentType(ContentTypes.`text/plain(UTF-8)`)
-      )
+      ).addHeader(RawHeader("Accept-Encoding", "gzip"))
     }
 
     def getMissingUuids(receivedData: ByteString, uuids: Seq[String]) = {
@@ -594,9 +615,11 @@ class Downloader(baseUrl: String,
           case (Success(res@HttpResponse(s,h,e,p)), sentUuids, Some(state)) if s.isSuccess() =>
             logger.debug(s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}")
 
-            e.toStrict(1.minute).flatMap { strict => DataPostProcessor.postProcessByFormat(format, Source.single(strict.data))
-              .runFold(blank)(_ ++ _)
-              .map{ receivedData => // accumulate received data
+            e.toStrict(1.minute).flatMap { strict =>
+              val unzippedData = Source.single(strict.data).via(Compression.gunzip())
+
+              DataPostProcessor.postProcessByFormat(format, unzippedData).runFold(blank)(_ ++ _).map { receivedData =>
+                // accumulate received data
                 val totalReceivedData = state.retrievedData :+ receivedData
 
                 getMissingUuids(receivedData, sentUuids.map(_.utf8String)) match {
