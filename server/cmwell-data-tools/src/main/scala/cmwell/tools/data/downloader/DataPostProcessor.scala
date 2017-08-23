@@ -27,7 +27,7 @@ import scala.collection.mutable
 object DataPostProcessor extends DataToolsLogging {
 
   def postProcessByFormat(format: String, dataBytes: Source[ByteString, _]) = format match {
-    case "ntriples" | "nquads" => sortBySubjectOfNTuple(dataBytes, 255)
+    case "ntriples" | "nquads" => sortBySubjectOfNTuple(dataBytes)
     case _                     => splitByLines(dataBytes)
   }
 
@@ -37,7 +37,7 @@ object DataPostProcessor extends DataToolsLogging {
       .map(_ ++ endl)
   }
 
-  private def sortBySubjectOfNTuple(dataBytes: Source[ByteString, _], maxSubjects: Int): Source[ByteString, _] = {
+  private def sortBySubjectOfNTuple(dataBytes: Source[ByteString, _]): Source[ByteString, _] = {
     dataBytes
       .via(lineSeparatorFrame)
       .filter {
