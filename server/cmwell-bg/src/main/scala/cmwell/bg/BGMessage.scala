@@ -16,10 +16,21 @@
 
 package cmwell.bg
 
-abstract class Offset(topic:String, offset:Long, part:Int, ofParts:Int)
+abstract class Offset(val topic:String, val offset:Long, val part:Int, val ofParts:Int) extends Comparable[Offset] {
+  override def compareTo(o: Offset) =
+    if(o == null)
+      throw new NullPointerException("Comparing null values is not supported!")
+    else
+      offset.compareTo(o.offset)
 
-case class CompleteOffset(topic:String, offset:Long) extends Offset(topic, offset, 1 ,1)
-case class PartialOffset(topic:String, offset:Long, part:Int, ofParts:Int)
+  // These are not "globally" true but rather suitable for our use when handling done offsets
+  override def equals(obj: scala.Any) = obj != null && obj.isInstanceOf[Offset] && obj.asInstanceOf[Offset].offset.equals(offset)
+
+  override def hashCode() = offset.hashCode()
+}
+
+case class CompleteOffset(override val topic:String, override val offset:Long) extends Offset(topic, offset, 1 ,1)
+case class PartialOffset(override val topic:String, override val offset:Long, override val part:Int, override val ofParts:Int) extends Offset(topic, offset, part, ofParts)
 
 
 case class BGMessage[T](offsets:Seq[Offset] = Seq.empty[Offset], message:T)

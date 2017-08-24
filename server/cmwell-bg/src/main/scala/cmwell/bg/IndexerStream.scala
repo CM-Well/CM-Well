@@ -103,14 +103,14 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
       logger debug s"consuming next payload from index commands topic @ offset: ${msg.offset()}"
     val indexCommand = CommandSerializer.decode(msg.value()).asInstanceOf[IndexCommand]
       logger debug s"converted payload to an IndexCommand:\n$indexCommand"
-    BGMessage[IndexCommand](msg.offset(), indexCommand)
+    BGMessage[IndexCommand](CompleteOffset(msg.topic(), msg.offset()), indexCommand)
   }.via(sharedKillSwitch.flow)
 
   val priorityIndexCommandsSource = Consumer.plainExternalSource[Array[Byte], Array[Byte]](kafkaConsumer, prioritySubscription).map { msg =>
     logger debug s"consuming next payload from priority index commands topic @ offset: ${msg.offset()}"
     val indexCommand = CommandSerializer.decode(msg.value()).asInstanceOf[IndexCommand]
     logger debug s"converted priority payload to an IndexCommand:\n$indexCommand"
-    BGMessage[IndexCommand](msg.offset(), indexCommand)
+    BGMessage[IndexCommand](CompleteOffset(msg.topic(), msg.offset()), indexCommand)
   }.via(sharedKillSwitch.flow)
 
   val heartBitLog = Flow[BGMessage[IndexCommand]].keepAlive(60.seconds, () => BGMessage(HeartbitCommand.asInstanceOf[Command])).filterNot{
@@ -125,9 +125,9 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
   case class InfoAction(esAction:ActionRequest[ _ <: ActionRequest[_ <: AnyRef]], weight:Long, indexTime:Option[Long])
 
 
-  val commitOffsets = Flow[Seq[Long]].groupedWithin(6000, 3.seconds).toMat{
+  val commitOffsets = Flow[Seq[Offset]].groupedWithin(6000, 3.seconds).toMat{
     Sink.foreach{ offsetGroups =>
-      val offsets = offsetGroups.flatten
+      val offsets = offsetGroups.flatten.map{_.offset}
       if(offsets.length >0) {
         val lastOffset = offsets.max
           logger debug s"committing offset: $lastOffset"
