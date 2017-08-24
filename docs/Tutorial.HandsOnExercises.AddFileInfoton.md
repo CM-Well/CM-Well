@@ -29,7 +29,7 @@ The most basic HTML file is, of course, hello world. Create a new file on your f
 
 Publish to CM-Well
 
-    curl -X POST <cm-well-host>/exercise/files/hello.html -H "X-CM-WELL-TYPE: FILE" -H "Content-Type: image/png" --data-binary @"hello.html"
+    curl -X POST <cm-well-host>/exercise/files/hello.html -H "X-CM-WELL-TYPE: FILE" -H "Content-Type: text/html" --data-binary @"hello.html"
 
 Now navigate to the page in your browser:
 
