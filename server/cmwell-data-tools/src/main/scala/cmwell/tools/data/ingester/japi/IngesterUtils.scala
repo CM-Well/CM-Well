@@ -39,7 +39,6 @@ object IngesterUtils {
     * @param host address of destination CM-Well
     * @param format format of data to be pushed
     * @param writeToken CM-Well write token permission (if needed)
-    * @param parallelism number of live requests on stream
     * @param pipe pipe of data
     * @param onFinish code to run when completion event is fired
     * @return future of [[akka.Done Done]] which signals when data ingestion is completed
@@ -47,7 +46,6 @@ object IngesterUtils {
   def fromPipe(host: String,
                format: String,
                writeToken: String,
-               parallelism: Int,
                pipe: PipedOutputStream,
                onFinish: Runnable): Future[Done] = {
 
@@ -55,7 +53,6 @@ object IngesterUtils {
       host = host,
       format = format,
       writeToken = writeToken,
-      parallelism = parallelism,
       in = new PipedInputStream(pipe),
       onFinish = onFinish
     )
@@ -67,14 +64,12 @@ object IngesterUtils {
     * @param host address of destination CM-Well
     * @param format format of data to be pushed
     * @param writeToken CM-Well write token permission (if needed)
-    * @param parallelism number of live requests on stream
     * @param in source of data
     * @param onFinish code to run when completion event is fired
     */
   def fromInputStream(host: String,
                       format: String,
                       writeToken: String,
-                      parallelism: Int,
                       in: InputStream,
                       onFinish: Runnable): Future[Done] = {
 
@@ -85,7 +80,6 @@ object IngesterUtils {
       baseUrl = host,
       format = format,
       writeToken = Option(writeToken),
-      parallelism = parallelism,
       in = in
     ).runWith(Sink.ignore)
      .andThen { case _ => cleanup()      }

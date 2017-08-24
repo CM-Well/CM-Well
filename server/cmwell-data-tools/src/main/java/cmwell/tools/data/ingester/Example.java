@@ -27,7 +27,6 @@ public class Example {
         IngesterUtils.fromInputStream("localhost:9000",
                 "ntriples",
                 null,
-                100,
                 new ByteArrayInputStream(data.getBytes("utf-8")),
                 () -> { System.out.println("done!"); }
         );
