@@ -42,8 +42,7 @@ object IngesterMain extends App with LazyLogging {
     val token = opt[String]("token",    descr = "cm-well write permission token", default = None)
     val replaceMode = opt[Boolean]("with-replace-mode", descr = "replace-mode parameter in cm-well", default = Some(false))
     val force = opt[Boolean]("force", descr = "force parameter in cm-well", default = Some(false))
-    val backpressure = opt[Int]("backpressure", descr = "max number of requests to be send (backpressure)", default = Some(100))
-    val parallelism = opt[Int]("parallelism", descr = "number of workers sending parallel requests", default = Some(4))
+    val priority = opt[Boolean]("priority", default = Some(false), descr = "ingest data in priority mode")
     val numConnections = opt[Int]("num-connections", descr = "number of http connections to open")
 
     dependsOnAll(gzip, List(file))
@@ -83,10 +82,10 @@ object IngesterMain extends App with LazyLogging {
   val result = Ingester.fromInputStream(
     baseUrl = formatHost( Opts.host() ),
     format = Opts.format(),
-    parallelism = Opts.parallelism(),
     writeToken = Opts.token.toOption,
     replaceMode = Opts.replaceMode(),
     force = Opts.force(),
+    isPriority = Opts.priority(),
     in = inputStream
   )
     .via(IngesterStats(isStderr = true))
