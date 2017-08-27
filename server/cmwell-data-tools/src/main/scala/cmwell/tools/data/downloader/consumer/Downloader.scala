@@ -20,6 +20,7 @@ package cmwell.tools.data.downloader.consumer
 import akka.NotUsed
 import akka.actor.{ActorSystem, Props}
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers.RawHeader
 import akka.stream._
 import akka.stream.scaladsl._
 import akka.util.ByteString
@@ -29,6 +30,7 @@ import cmwell.tools.data.utils.ArgsManipulations.{HttpAddress, _}
 import cmwell.tools.data.utils.akka.HeaderOps._
 import cmwell.tools.data.utils.akka.{concatByteStrings, _}
 import cmwell.tools.data.utils.logging._
+import cmwell.tools.data.utils.akka._
 import cmwell.tools.data.utils.ops.VersionChecker
 import cmwell.tools.data.utils.text.Tokens
 import play.api.libs.json.{JsArray, Json}
@@ -51,11 +53,19 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
   type Uuid  = ByteString
   type Path  = ByteString
 
-  sealed class Tsv
-  case class TsvData(path: Path, uuid: Uuid) extends Tsv
-  case object TsvEmpty extends Tsv
+  sealed abstract class Tsv {
+    def toByteString: ByteString
+  }
 
-  type TokenAndTsv = (Token, TsvData)
+  case class TsvData(path: Path,
+                     uuid: Uuid,
+                     lastModified: ByteString,
+                     indexTime: ByteString = ByteString.empty) extends Tsv {
+    override def toByteString: ByteString = concatByteStrings(
+      Seq(path,lastModified,uuid,indexTime),"", "\t", "")
+  }
+
+  case object TsvEmpty extends Tsv { override def toByteString: ByteString = ByteString.empty }
 
   /**
     * Creates token (position) from given query
@@ -115,10 +125,16 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
     * @param bytes input ByteString
     * @return extracted tsv data
     */
-  def extractTsv(bytes: ByteString) = {
-    val arr = bytes.split('\t')
+  def extractTsv(bytes: ByteString): Tsv = bytes.split('\t') match {
+    case path :: lastModified :: uuid :: indexTime :: Nil =>
+      TsvData(path = path, uuid = uuid, lastModified = lastModified, indexTime = indexTime)
 
-    TsvData(path = arr(PATH_INDEX), uuid = arr(UUID_INDEX))
+    case path :: lastModified :: uuid :: Nil =>
+      TsvData(path = path, uuid = uuid, lastModified = lastModified)
+
+    case _ =>
+      logger.error(s"received unexpected tsv: ${bytes.utf8String}")
+      TsvEmpty
   }
 
   /**
@@ -222,7 +238,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
           Future.successful(nextToken -> Seq.empty[String])
         } else {
           src
-            .map { tsv => nextToken -> tsv.path }
+            .collect { case tsv:TsvData => nextToken -> tsv.path }
             .fold("" -> Seq.empty[ByteString]) { case ((oldToken, paths), (newToken, path)) =>
               newToken -> (paths :+ path)
             }
@@ -320,17 +336,35 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
       label = label
     )
 
+    val tsvSource = createTsvSource(
+      baseUrl = baseUrl,
+      path = path,
+      params = params,
+      qp = qp,
+      isBulk = isBulk,
+      recursive = recursive,
+      indexTime = indexTime,
+      updateFreq = updateFreq,
+      token = token,
+      label = label
+    ).async
 
-    val tsvSource = downloader.createTsvSource(token, updateFreq).async
+    format match {
+      case "tsv" =>
+        tsvSource.map { case (token, tsv) => token -> tsv.toByteString }
+      case "text" =>
+        tsvSource.map { case (token, tsv) => token -> tsv.path }
+      case _ =>
+        if (usePaths) {
+          tsvSource
+            .map {case (token, tsv) => token -> tsv.path }
+            .via(downloader.downloadDataFromPaths).async
+        } else {
+          tsvSource
+            .map {case (token, tsv) => token -> tsv.uuid }
+            .via(downloader.downloadDataFromUuids).async
+        }
 
-    if (usePaths) {
-      tsvSource
-        .map {case (token, tsv) => token -> tsv.path }
-        .via(downloader.downloadDataFromPaths).async
-    } else {
-      tsvSource
-        .map {case (token, tsv) => token -> tsv.uuid }
-        .via(downloader.downloadDataFromUuids).async
     }
   }
 }
@@ -376,7 +410,7 @@ class Downloader(baseUrl: String,
         method = HttpMethods.POST,
         entity = HttpEntity(concatByteStrings(paths, ByteString(",\n")).utf8String)
           .withContentType(ContentTypes.`text/plain(UTF-8)`)
-      )
+      ).addHeader(RawHeader("Accept-Encoding", "gzip"))
     }
 
     def getMissingPaths(receivedData: ByteString, paths: Seq[String]) = {
@@ -441,39 +475,41 @@ class Downloader(baseUrl: String,
           logger.debug(s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}")
 
           e.toStrict(1.minute).flatMap { strict =>
-            DataPostProcessor.postProcessByFormat(format, Source.single(strict.data))
-              .runFold(blank)(_ ++ _)
-              .map { receivedData => // accumulate received data
-                val totalReceivedData = state.retrievedData :+ receivedData
+            val unzippedData = Source.single(strict.data).via(Compression.gunzip())
 
-                getMissingPaths(receivedData, sentPaths.map(_.utf8String)) match {
-                  case Seq() =>
-                    // no missing data, success!
-                    Success(totalReceivedData) -> state.copy(pathsToRequest = Seq(), retrievedData = totalReceivedData)
-                  case missingPaths if state.retriesLeft > 0 =>
-                    logger.debug(s"sent ${sentPaths.size} paths but received ${sentPaths.size - missingPaths.size}, total received data length=${receivedData.size}")
-                    logger.debug(s"sent ${sentPaths.map(_.utf8String).mkString("\n")}")
+            DataPostProcessor.postProcessByFormat(format, unzippedData).runFold(blank)(_ ++ _).map { receivedData =>
+              // accumulate received data
+              val totalReceivedData = state.retrievedData :+ receivedData
 
-                    // retry retrieving data from missing uuids
-                    val newState = state.copy(
-                      pathsToRequest = missingPaths.map(ByteString.apply),
-                      retrievedData = totalReceivedData,
-                      retriesLeft = state.retriesLeft - 1)
+              getMissingPaths(receivedData, sentPaths.map(_.utf8String)) match {
+                case Seq() =>
+                  // no missing data, success!
+                  Success(totalReceivedData) -> state.copy(pathsToRequest = Seq(), retrievedData = totalReceivedData)
+                case missingPaths if state.retriesLeft > 0 =>
+                  logger.debug(s"sent ${sentPaths.size} paths but received ${sentPaths.size - missingPaths.size}, total received data length=${receivedData.size}")
+                  logger.debug(s"sent ${sentPaths.map(_.utf8String).mkString("\n")}")
 
-                    logger.error(s"detected missing paths size=${missingPaths.size} retries left=${state.retriesLeft}")
-                    Failure(new Exception("missing data from paths")) -> newState
-                  case missingPaths =>
-                    // do not retrieve data from missing paths
-                    val newState = state.copy(
-                      pathsToRequest = missingPaths.map(ByteString.apply),
-                      retrievedData = totalReceivedData)
+                  // retry retrieving data from missing uuids
+                  val newState = state.copy(
+                    pathsToRequest = missingPaths.map(ByteString.apply),
+                    retrievedData = totalReceivedData,
+                    retriesLeft = state.retriesLeft - 1)
 
-                    logger.error(s"got ${missingPaths.size} missing paths")
-                    badDataLogger.error(missingPaths.mkString("\n"))
-                    Success(totalReceivedData) -> newState
-                }
+                  logger.error(s"detected missing paths size=${missingPaths.size} retries left=${state.retriesLeft}")
+                  Failure(new Exception("missing data from paths")) -> newState
+                case missingPaths =>
+                  // do not retrieve data from missing paths
+                  val newState = state.copy(
+                    pathsToRequest = missingPaths.map(ByteString.apply),
+                    retrievedData = totalReceivedData)
+
+                  logger.error(s"got ${missingPaths.size} missing paths")
+                  badDataLogger.error(missingPaths.mkString("\n"))
+                  Success(totalReceivedData) -> newState
               }
+            }
           }
+
         case (Success(HttpResponse(s,h,e,p)), sentPaths, Some(state)) =>
           e.discardBytes()
 
@@ -517,7 +553,7 @@ class Downloader(baseUrl: String,
         method = HttpMethods.POST,
         entity = HttpEntity(concatByteStrings(uuids, "/ii/", "\n/ii/", "").utf8String)
           .withContentType(ContentTypes.`text/plain(UTF-8)`)
-      )
+      ).addHeader(RawHeader("Accept-Encoding", "gzip"))
     }
 
     def getMissingUuids(receivedData: ByteString, uuids: Seq[String]) = {
@@ -579,9 +615,11 @@ class Downloader(baseUrl: String,
           case (Success(res@HttpResponse(s,h,e,p)), sentUuids, Some(state)) if s.isSuccess() =>
             logger.debug(s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}")
 
-            e.toStrict(1.minute).flatMap { strict => DataPostProcessor.postProcessByFormat(format, Source.single(strict.data))
-              .runFold(blank)(_ ++ _)
-              .map{ receivedData => // accumulate received data
+            e.toStrict(1.minute).flatMap { strict =>
+              val unzippedData = Source.single(strict.data).via(Compression.gunzip())
+
+              DataPostProcessor.postProcessByFormat(format, unzippedData).runFold(blank)(_ ++ _).map { receivedData =>
+                // accumulate received data
                 val totalReceivedData = state.retrievedData :+ receivedData
 
                 getMissingUuids(receivedData, sentUuids.map(_.utf8String)) match {
@@ -690,7 +728,7 @@ class Downloader(baseUrl: String,
         Future.successful(nextToken -> "")
       } else {
         src
-          .map ( tsv => tsv.uuid )
+          .collect { case tsv: TsvData => tsv.uuid }
           .map (nextToken -> _)
           .via (downloadDataFromUuids )
           .fold("" -> Seq.empty[ByteString]) {

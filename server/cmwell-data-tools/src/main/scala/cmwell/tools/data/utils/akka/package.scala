@@ -125,8 +125,8 @@ package object akka extends DataToolsConfig{
       @tailrec
       def splitByteString(bytes: ByteString, delimiter: Byte, acc: Seq[ByteString]): Seq[ByteString] = {
         bytes.splitAt(bytes.indexOf(delimiter)) match {
-          case (split, rest) if rest.isEmpty => acc ++ Seq(split)
-          case (split, rest)                 => splitByteString(rest.tail, delimiter, acc :+ split)
+          case (split, rest) if split.isEmpty => acc :+ rest
+          case (split, rest)                  => splitByteString(rest.tail, delimiter, acc :+ split)
         }
       }
 

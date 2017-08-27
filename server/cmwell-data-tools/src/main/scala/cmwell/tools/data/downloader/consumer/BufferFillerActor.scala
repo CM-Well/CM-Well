@@ -17,14 +17,15 @@
 package cmwell.tools.data.downloader.consumer
 
 import akka.actor.{Actor, ActorSystem}
-import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse, StatusCodes}
+import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers.RawHeader
 import akka.pattern._
 import akka.stream._
 import akka.stream.scaladsl._
 import cmwell.tools.data.downloader.consumer.Downloader._
 import cmwell.tools.data.utils.ArgsManipulations
 import cmwell.tools.data.utils.ArgsManipulations.{HttpAddress, formatHost}
-import cmwell.tools.data.utils.akka.HeaderOps.{getHostnameValue, getPosition}
+import cmwell.tools.data.utils.akka.HeaderOps._
 import cmwell.tools.data.utils.akka.{DataToolsConfig, HttpConnections, lineSeparatorFrame}
 import cmwell.tools.data.utils.logging._
 import cmwell.tools.data.utils.text.Tokens
@@ -42,6 +43,8 @@ object BufferFillerActor {
   case object GetData
   case class HttpResponseSuccess(token: Token)
   case class HttpResponseFailure(token: Token, err: Throwable)
+  case class NewToHeader(to: Option[String])
+  case object GetToHeader
 }
 
 class BufferFillerActor(threshold: Int,
@@ -65,6 +68,7 @@ class BufferFillerActor(threshold: Int,
   private var currKillSwitch: Option[KillSwitch] = None
   private val buf: mutable.Queue[Option[(Token, TsvData)]] = mutable.Queue()
   private var tsvCounter = 0L
+  private var lastBulkConsumeToHeader: Option[String] = None
 
   val retryTimeout: FiniteDuration = {
     val timeoutDuration = Duration(config.getString("cmwell.downloader.consumer.http-retry-timeout")).toCoarsest
@@ -96,6 +100,7 @@ class BufferFillerActor(threshold: Int,
 
       receivedUuids  --= uuidsFromCurrentToken
       tsvCounter = 0L
+      lastBulkConsumeToHeader = None
 
       nextToken match {
         case Some(token) =>
@@ -140,6 +145,12 @@ class BufferFillerActor(threshold: Int,
       logger.info(s"error: ${err.getMessage} consumer will perform retry in $retryTimeout, token=$t", err)
       after(retryTimeout, context.system.scheduler)(sendNextChunkRequest(t).map(FinishedToken.apply) pipeTo self)
 
+    case NewToHeader(to) =>
+      lastBulkConsumeToHeader = to
+
+    case GetToHeader =>
+      sender ! lastBulkConsumeToHeader
+
     case x =>
       logger.error(s"unexpected message: $x")
   }
@@ -154,9 +165,10 @@ class BufferFillerActor(threshold: Int,
     /**
       * Creates http request for consuming data
       * @param token position token to be consumed
+      * @param toHint to-hint field of cm-well consumer API
       * @return HTTP request for consuming data
       */
-    def createRequestFromToken(token: String) = {
+    def createRequestFromToken(token: String, toHint: Option[String] = None) = {
       // create HTTP request from token
       val paramsValue = if (params.isEmpty) "" else s"&$params"
 
@@ -171,16 +183,20 @@ class BufferFillerActor(threshold: Int,
           ("_consume", "&slow-bulk")
       }
 
-      val uri = s"${formatHost(baseUrl)}/$consumeHandler?position=$token&format=tsv$paramsValue$slowBulk"
-      logger.debug("send HTTP request: {}", uri)
+      val to = toHint.map("&to-hint=" + _).getOrElse("")
 
-      HttpRequest(uri = uri)
+      val uri = s"${formatHost(baseUrl)}/$consumeHandler?position=$token&format=tsv$paramsValue$slowBulk$to"
+      logger.debug("send HTTP request: {}", uri)
+      HttpRequest(uri = uri).addHeader(RawHeader("Accept-Encoding", "gzip"))
     }
 
     uuidsFromCurrentToken.clear()
 
-    val source: Source[Token, (Future[Option[Token]], UniqueKillSwitch)] = Source.single(token)
-      .map(createRequestFromToken)
+    implicit val timeout = akka.util.Timeout(30.seconds)
+    val prevToHeader = (self ? GetToHeader).mapTo[Option[String]]
+
+    val source: Source[Token, (Future[Option[Token]], UniqueKillSwitch)] = Source.fromFuture(prevToHeader)
+      .map(to => createRequestFromToken(token, to))
       .map(_ -> None)
       .via(conn)
       .map {
@@ -198,13 +214,19 @@ class BufferFillerActor(threshold: Int,
           None -> Source.empty
         case (Success(HttpResponse(s, h, e, _)), _) if s == StatusCodes.OK || s == StatusCodes.PartialContent =>
           val nextToken = getPosition(h) match {
-            case Some(pos) => pos.value
+            case Some(HttpHeader(_, pos)) => pos
             case None      => throw new RuntimeException("no position supplied")
+          }
+
+          getTo(h) match {
+            case Some(HttpHeader(_, to)) => self ! NewToHeader(Some(to))
+            case None                    => self ! NewToHeader(None)
           }
 
           logger.info(s"received consume answer from host=${getHostnameValue(h)}")
 
-          val dataSource: Source[(Token, TsvData), Any] = e.withoutSizeLimit().dataBytes
+          val dataSource: Source[(Token, Tsv), Any] = e.withoutSizeLimit().dataBytes
+            .via(Compression.gunzip())
             .via(lineSeparatorFrame)
             .map(extractTsv)
             .map(token -> _)
@@ -228,7 +250,7 @@ class BufferFillerActor(threshold: Int,
       .alsoToMat(Sink.last)((_,element) => element.map { case (nextToken, _) => nextToken})
       .map { case (_, dataSource) => dataSource}
       .flatMapConcat(identity)
-      .map { case (token, tsv) =>
+      .collect { case (token, tsv: TsvData) =>
         // if uuid was not emitted before, write it to buffer
         if (receivedUuids.add(tsv.uuid)) {
           self ! NewData(Some((token, tsv)))

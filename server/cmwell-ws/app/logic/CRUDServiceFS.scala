@@ -334,8 +334,8 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
             WriteCommand(
               infoton.copyInfoton(lastModified = DateTime.now(DateTimeZone.UTC)),
               validTid(infoton.path,tid),
-              prevUUID = atomicUpdates.get(infoton.path)))
-        case infoton => sendToKafka(WriteCommand(infoton,validTid(infoton.path,tid),atomicUpdates.get(infoton.path)))
+              prevUUID = atomicUpdates.get(infoton.path)), isPriorityWrite)
+        case infoton => sendToKafka(WriteCommand(infoton,validTid(infoton.path,tid),atomicUpdates.get(infoton.path)), isPriorityWrite)
       }.map(_ => true)
     } else Future.successful(true)
 
@@ -435,8 +435,8 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
 
       val kafkaWritesRes = if(newBGFlag || newBG) {
         Future.traverse(commands){
-          case cmd@UpdatePathCommand(_, _, _, lastModified, _, _) if lastModified.getMillis == 0L => sendToKafka(cmd.copy(lastModified = DateTime.now(DateTimeZone.UTC)))
-          case cmd => sendToKafka(cmd)
+          case cmd@UpdatePathCommand(_, _, _, lastModified, _, _) if lastModified.getMillis == 0L => sendToKafka(cmd.copy(lastModified = DateTime.now(DateTimeZone.UTC)), isPriorityWrite)
+          case cmd => sendToKafka(cmd, isPriorityWrite)
         }.map{_ => true}
       } else Future.successful(true)
 
