@@ -45,8 +45,51 @@ Request:
 
 Response:
 
-	es  445ec58994f5be1b61b0bfb65395d751 [cmwell_current_1(1)] {"type":"ObjectInfoton","system":{"path":"/data.thomsonreuters.com/11-123RT12","lastModified":"2015-08-13T14:31:43.411Z","uuid":"445ec58994f5be1b61b0bfb65395d751","parent":"/data.thomsonreuters.com","dc":"dc1","indexTime":1439476304965,"quad":[]},"fields":{"LEI.1ZNHcw":["549300BGA2FRV4OQQV27"],"DunsNumber.1ZNHcw":["888888"],"createdByFirstName.1ZNHcw":["Testy"],"organizationTier.1ZNHcw":["4"],"NDAID.1ZNHcw":["107970379"],"organizationSubtypeCode.1ZNHcw":["21"],"TmtCompanyId.1ZNHcw":["C902973043"],"createdByGroupCode.1ZNHcw":["Super Administrator"],"InvestextId.1ZNHcw":["YYASEN"],"isPublic.1ZNHcw":["0"],"organizationNameLocalLng.1ZNHcw":["xxx"],"organizationNameLocalDba.1ZNHcw":["abc company - RT"],"isIncorporatedIn.1ZNHcw":["US"],"modifiedByAnalystId.1ZNHcw":["2110"],"TaxID.1ZNHcw":["200656482"],"RegulatoryID.1ZNHcw":["NA01"],"PI.1ZNHcw":["17763959"],"modifiedByGroupCode.1ZNHcw":["Super Administrator"],"MXID.1ZNHcw":["108983157"],"organizationNameNormalizedLng.1ZNHcw":["xxx"],"CIDGEN.1ZNHcw":["749872001"],"RegistrationNumber.1ZNHcw":["20001079167"],"SDCCUSIP.1ZNHcw":["04576N"],"GemAlphaNumericId.1ZNHcw":["CT01Z1992H"],"providerId.1ZNHcw":["101"],"organizationTypeCode.1ZNHcw":["8"],"modifiedByLastName.1ZNHcw":["Zoomerson"],"organizationNameLocalShtEnglish.1ZNHcw":["xxx"],"type.lzN1FA":["http://ontology.thomsonreuters.com/fedapioa/Organization"],"createdByLastName.1ZNHcw":["Testerson"],"isParentOf.1ZNHcw":["2"],"isDomiciledIn.1ZNHcw":["US"],"adminStatus.1ZNHcw":["0"],"organizationStatusCode.1ZNHcw":["1"],"organizationNameTransliteratedLng.1ZNHcw":["xxx"],"modifiedByFirstName.1ZNHcw":["Zoomy"],"createdByAnalystId.1ZNHcw":["123"],"organizationId.1ZNHcw":[12300012],"isUltimateParentOf.1ZNHcw":["2"],"RCPIDx.1ZNHcw":["600147232"],"EFXId.1ZNHcw":["11613527"]}}
-    cas 445ec58994f5be1b61b0bfb65395d751 {"type":"ObjectInfoton","system":{"uuid":"445ec58994f5be1b61b0bfb65395d751","lastModified":"2015-08-13T14:31:43.411Z","path":"/data.thomsonreuters.com/11-123RT12","dataCenter":"dc1","indexTime":1460409303057,"parent":"/data.thomsonreuters.com"},"fields":{"LEI.fedapioa":["549300BGA2FRV4OQQV27"],"DunsNumber.fedapioa":["888888"],"createdByFirstName.fedapioa":["Testy"],"organizationTier.fedapioa":["4"],"NDAID.fedapioa":["107970379"],"organizationSubtypeCode.fedapioa":["21"],"TmtCompanyId.fedapioa":["C902973043"],"createdByGroupCode.fedapioa":["Super Administrator"],"InvestextId.fedapioa":["YYASEN"],"isPublic.fedapioa":["0"],"organizationNameLocalLng.fedapioa":["xxx"],"entityCreatedDate.fedapioa":["2009-07-26 03:37:16"],"organizationNameLocalDba.fedapioa":["abc company - RT"],"isIncorporatedIn.fedapioa":["US"],"modifiedByAnalystId.fedapioa":["2110"],"TaxID.fedapioa":["200656482"],"RegulatoryID.fedapioa":["NA01"],"PI.fedapioa":["17763959"],"modifiedByGroupCode.fedapioa":["Super Administrator"],"MXID.fedapioa":["108983157"],"organizationNameNormalizedLng.fedapioa":["xxx"],"CIDGEN.fedapioa":["749872001"],"RegistrationNumber.fedapioa":["20001079167"],"SDCCUSIP.fedapioa":["04576N"],"GemAlphaNumericId.fedapioa":["CT01Z1992H"],"providerId.fedapioa":["101"],"organizationTypeCode.fedapioa":["8"],"modifiedByLastName.fedapioa":["Zoomerson"],"organizationNameLocalShtEnglish.fedapioa":["xxx"],"type.rdf":["http://ontology.thomsonreuters.com/fedapioa/Organization"],"createdByLastName.fedapioa":["Testerson"],"entityLastReviewedDate.fedapioa":["2013-06-21 00:00:00"],"isParentOf.fedapioa":["2"],"isDomiciledIn.fedapioa":["US"],"adminStatus.fedapioa":["0"],"organizationStatusCode.fedapioa":["1"],"organizationNameTransliteratedLng.fedapioa":["xxx"],"modifiedByFirstName.fedapioa":["Zoomy"],"createdByAnalystId.fedapioa":["123"],"organizationId.fedapioa":[12300012],"entityModifiedDate.fedapioa":["2014-09-15 02:24:42"],"isUltimateParentOf.fedapioa":["2"],"RCPIDx.fedapioa":["600147232"],"EFXId.fedapioa":["11613527"]}}
+	es  445ec58994f5be1b61b0bfb65395d751 [cmwell_current_1(1)] 
+    {
+      "type": "ObjectInfoton",
+      "system": {
+    "path": "\/data.thomsonreuters.com\/11-123RT12",
+    "lastModified": "2015-08-13T14:31:43.411Z",
+    "uuid": "445ec58994f5be1b61b0bfb65395d751",
+    "parent": "\/data.thomsonreuters.com",
+    "dc": "dc1",
+    "indexTime": 1439476304965,
+    "quad": [
+      
+    ]
+      },
+      "fields": {
+    "type.lzN1FA": [
+      "http:\/\/ontology.thomsonreuters.com\/fedapioa\/Organization"
+    ],
+    "organizationNameLocalLng.1ZNHcw": [
+      "xxx"
+    ],
+    	... (truncated)
+      }
+    }
+    cas 445ec58994f5be1b61b0bfb65395d751 
+    {
+      "type": "ObjectInfoton",
+      "system": {
+    "uuid": "445ec58994f5be1b61b0bfb65395d751",
+    "lastModified": "2015-08-13T14:31:43.411Z",
+    "path": "\/data.thomsonreuters.com\/11-123RT12",
+    "dataCenter": "dc1",
+    "indexTime": 1460409303057,
+    "parent": "\/data.thomsonreuters.com"
+      },
+      "fields": {
+     "type.rdf": [
+      "http:\/\/ontology.thomsonreuters.com\/fedapioa\/Organization"
+    ],
+    	"organizationNameLocalLng.fedapioa": [
+      "xxx"
+    ],
+    	... (truncated)
+      }
+    }
     
 ## The x-fix Function ##
 
