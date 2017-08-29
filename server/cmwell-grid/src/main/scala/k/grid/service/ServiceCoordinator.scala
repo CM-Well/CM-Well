@@ -115,10 +115,8 @@ class ServiceCoordinator extends Actor with LazyLogging {
               // if runner is not preferred and preferred jvm is available
               if(runner._1.preferredJVM.isEmpty && candidatesMap(serviceName).exists(_._1.preferredJVM.isDefined)){
                 val preferredJvm = candidatesMap(serviceName).collect{case (ServiceStatus(_, _, Some(preferred)), _) => preferred}.head
-                  logger warn s"we've found that service: ${runner._1.name} is not running on its preferred JVM. " +
-                    s"stopping it and starting on its preferred JVM: $preferredJvm"
+                  logger warn s"we've found that service: ${runner._1.name} is not running on its preferred JVM stopping it. "
                 Grid.selectActor(LocalServiceManager.name, runner._2) ! StopService(serviceName)
-                Grid.selectActor(LocalServiceManager.name, preferredJvm) ! RunService(serviceName)
                 // We will update that currently no one is running the service, we will know if it runs only in the next sample.
                 self ! UpdateServiceMapping(serviceName, None)
               } else {
