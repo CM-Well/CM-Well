@@ -127,11 +127,16 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
 
   val commitOffsets = Flow[Seq[Offset]].groupedWithin(6000, 3.seconds).toMat{
     Sink.foreach{ offsetGroups =>
-      val offsets = offsetGroups.flatten.map{_.offset}
+      val (offsets, offsetsPriority) = offsetGroups.flatten.partition(_.topic == indexCommandsTopic)
       if(offsets.length >0) {
-        val lastOffset = offsets.max
-          logger debug s"committing offset: $lastOffset"
+        val lastOffset = offsets.map(_.offset).max
+          logger debug s"committing last offset: $lastOffset"
         offsetsService.write(s"${streamId}_offset", lastOffset + 1L)
+      }
+      if(offsetsPriority.length >0) {
+        val lastOffset = offsetsPriority.map(_.offset).max
+          logger debug s"committing last offset priority: $lastOffset"
+        offsetsService.write(s"${streamId}.p_offset", lastOffset + 1L)
       }
     }
   }(Keep.right)
