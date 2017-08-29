@@ -1,3 +1,5 @@
+[![Gitter chat](https://badges.gitter.im/thomsonreuters/CM-Well.svg)](https://gitter.im/thomsonreuters/CM-Well)
+
 # Introduction #
 CM-Well is a writable Linked Data repository, developed by Thomson Reuters and used as its central Knowledge Graph database. CM-Well (Content Matrix Well) adheres to RDF principles, meaning that its data is in a [standard](https://www.w3.org/RDF/), machine-readable format.
 
