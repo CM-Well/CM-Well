@@ -73,16 +73,6 @@ object ConsumerMain extends App with InstrumentedBuilder{
   var lastTime = 0L
   var lastMessageSize = 0
 
-  val downloader = new Downloader(
-    baseUrl = formatHost( Opts.host() ),
-    path = formatPath( Opts.path() ),
-    params = Opts.params(),
-    qp = Opts.qp(),
-    recursive = Opts.recursive(),
-    format = Opts.format(),
-    isBulk = Opts.bulk(),
-    indexTime = Opts.indexTime()
-  )
 
   // check if input contains a valid state file which contains initial token
   val initToken = if (stateFilePath.isEmpty || !stateFilePath.get.toFile.exists()) {
@@ -106,9 +96,22 @@ object ConsumerMain extends App with InstrumentedBuilder{
     FiniteDuration(d.length, d.unit)
   }
 
-  val result = downloader.createTsvSource(tokenToQuery, updateFreq).async
-    .map { case (token, tsv) => token -> tsv.uuid }
-    .via(downloader.downloadDataFromUuids())
+  val graph = Downloader.createDataSource(
+    baseUrl    = formatHost( Opts.host() ),
+    path       = formatPath( Opts.path() ),
+    params     = Opts.params(),
+    qp         = Opts.qp(),
+    recursive  = Opts.recursive(),
+    format     = Opts.format(),
+    isBulk     = Opts.bulk(),
+    token      = tokenToQuery,
+    updateFreq = updateFreq,
+    indexTime  = Opts.indexTime()
+  )
+
+
+
+  val result = graph
     .map {case (token, data) =>
       if (Some(token) != lastToken) {
         // save new token in state file
@@ -116,7 +119,6 @@ object ConsumerMain extends App with InstrumentedBuilder{
         lastToken = Some(token)
       }
       data}
-    .via(cmwell.tools.data.utils.akka.lineSeparatorFrame)
     .via(GroupChunker(GroupChunker.formatToGroupExtractor(Opts.format())))
     .map(concatByteStrings(_, endl))
     .map { infoton => println(infoton.utf8String); infoton} // print to stdout

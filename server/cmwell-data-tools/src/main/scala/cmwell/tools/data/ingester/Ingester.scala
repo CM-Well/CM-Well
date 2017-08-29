@@ -24,6 +24,7 @@ import akka.http.scaladsl.model.headers.RawHeader
 import akka.stream._
 import akka.stream.scaladsl._
 import akka.util.ByteString
+import cmwell.tools.data.downloader.consumer.Downloader.config
 import cmwell.tools.data.utils.chunkers.{GroupChunker, SizeChunker}
 import cmwell.tools.data.utils.logging.{DataToolsLogging, LabelId}
 import cmwell.tools.data.utils.akka._
@@ -70,9 +71,9 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
     * @param baseUrl address of destination CM-Well
     * @param format format of data to be pushed
     * @param writeToken CM-Well write token permission (if needed)
-    * @param parallelism number of live requests on stream
     * @param replaceMode replace-mode parameter in cm-well
     * @param force force parameter in cm-well
+    * @param isPriority use priority mode in cm-well
     * @param pipe pipe of data
     * @param within group infotons to bulks within given duration
     * @param system actor system
@@ -86,6 +87,7 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
                parallelism: Int = 100,
                replaceMode: Boolean = false,
                force: Boolean = false,
+               isPriority: Boolean = false,
                pipe: PipedOutputStream,
                within: FiniteDuration = 10.seconds)
               (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext): Source[IngestEvent, _] = {
@@ -94,7 +96,6 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
       baseUrl = baseUrl,
       format = format,
       writeToken = writeToken,
-      parallelism = parallelism,
       replaceMode = replaceMode,
       force = force,
       within = within,
@@ -109,9 +110,9 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
     * @param baseUrl address of destination CM-Well
     * @param format format of data to be pushed
     * @param writeToken CM-Well write token permission (if needed)
-    * @param parallelism number of live requests on stream
     * @param replaceMode replace-mode parameter in cm-well
     * @param force force parameter in cm-well
+    * @param isPriority use priority mode in cm-well
     * @param in source of data
     * @param within group infotons to bulks within given duration
     * @param system actor system
@@ -122,9 +123,9 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
   def fromInputStream(baseUrl: String,
                       format: String,
                       writeToken: Option[String] = None,
-                      parallelism: Int = 4,
                       replaceMode: Boolean = false,
                       force: Boolean = false,
+                      isPriority: Boolean = false,
                       in: InputStream,
                       within: FiniteDuration = 10.seconds)
                      (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext): Source[IngestEvent, _] = {
@@ -140,8 +141,8 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
       baseUrl = baseUrl,
       format = format,
       writeToken = writeToken,
-      parallelism = parallelism,
       replaceMode = replaceMode,
+      isPriority = isPriority,
       force = force,
       source = source,
       within = within)
@@ -153,9 +154,9 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
     * @param baseUrl address of destination CM-Well
     * @param format format of data to be pushed
     * @param writeToken CM-Well write token permission (if needed)
-    * @param parallelism number of live requests on stream
     * @param replaceMode replace-mode parameter in cm-well
     * @param force force parameter in cm-well
+    * @param isPriority use priority mode in cm-well
     * @param source [[akka.stream.scaladsl.Source Source]] of data which
     * @param within group infotons to bulks within given duration
     * @param system actor system
@@ -167,8 +168,8 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
              format: String,
              writeToken: Option[String] = None,
              method: String = "_in",
-             parallelism: Int = 4,
              replaceMode: Boolean = false,
+             isPriority: Boolean = false,
              force: Boolean = false,
              source: Source[ByteString, _],
              within: FiniteDuration = 10.seconds,
@@ -190,8 +191,9 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
 
       val replaceModeValue = if (replaceMode) "&replace-mode" else ""
       val forceValue = if (force) "&force" else ""
+      val priorityValue = if (isPriority) "&priority" else ""
 
-      val uri = s"${formatHost(baseUrl)}/$method?format=$format$replaceModeValue$forceValue"
+      val uri = s"${formatHost(baseUrl)}/$method?format=$format$replaceModeValue$forceValue$priorityValue"
       val req = HttpRequest(uri = uri, method = HttpMethods.POST, entity = entity)
 
       writeToken match {
@@ -201,6 +203,8 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
     }
 
     implicit val labelId = label.map(LabelId.apply)
+
+    val parallelism = config.getInt("akka.http.host-connection-pool.max-connections")
 
     val ingestFlow = Flow[Seq[ByteString]]
       .map( data => data -> None)

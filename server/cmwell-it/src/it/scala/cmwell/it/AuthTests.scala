@@ -34,13 +34,20 @@ class AuthTests extends FunSpec with Matchers with Helpers with LazyLogging {
   val _login = cmw / "_login"
   val exampleObj = Json.obj("header" -> "TestHeader", "title" -> "TestTitle").toString
 
-  def waitAndExtractBody(req: Future[SimpleResponse[Array[Byte]]]) = new String(Await.result(req, requestTimeout).payload, "UTF-8")
-  def waitAndExtractStatus[T](req: Future[SimpleResponse[T]]) = Await.result(req, requestTimeout).status
+  def waitAndExtractBody(req: Future[SimpleResponse[Array[Byte]]]) = waitAndExtractStatusAndBody(req)._2
+  def waitAndExtractStatus(req: Future[SimpleResponse[Array[Byte]]]) = waitAndExtractStatusAndBody(req)._1
+
+  def waitAndExtractStatusAndBody(req: Future[SimpleResponse[Array[Byte]]]) = {
+    val res = Await.result(req, requestTimeout)
+    res.status -> new String(res.payload, "UTF-8")
+  }
+
 
   describe("CM-Well Auth") {
 
     var tokenForCustomUser = "" -> ""
     var tokenForOverwriter = "" -> ""
+    var tokenForPriorityWriter = "" -> ""
 
     describe("Preparing data...") {
       def buildPathObj(path: String, recursive: Boolean, allow: Boolean, permissions: String) = {
@@ -74,6 +81,16 @@ class AuthTests extends FunSpec with Matchers with Helpers with LazyLogging {
         val userInfoton = Json.toJson(Map("digest" -> Json.toJson(saltedPassword), "paths" -> Json.toJson(Seq(
             buildPathObj("/", recursive = true, allow = true, "rw")
           )), "operations" -> Json.toJson(Seq("Overwrite")))).toString
+        val res = waitAndExtractBody(Http.post(path, userInfoton, Some("application/json"), headers = ("X-CM-Well-Type" -> "File") :: tokenHeader))
+        Json.parse(res) should be(jsonSuccess)
+      }
+
+      it("should add a user with PriorityWrite permission") {
+        val path = cmw / "meta" / "auth" / "users" / "PriorityWriter"
+        val saltedPassword = "$2a$10$hrLLP9IUUJyUHP5skFtpC.LG.WFvcKHkbrcymcg0yPWXxg08z2mhW" // bcrypt("myPassword"+salt)
+        val userInfoton = Json.toJson(Map("digest" -> Json.toJson(saltedPassword), "paths" -> Json.toJson(Seq(
+            buildPathObj("/", recursive = true, allow = true, "rw")
+          )), "operations" -> Json.toJson(Seq("PriorityWrite")))).toString
         val res = waitAndExtractBody(Http.post(path, userInfoton, Some("application/json"), headers = ("X-CM-Well-Type" -> "File") :: tokenHeader))
         Json.parse(res) should be(jsonSuccess)
       }
@@ -134,6 +151,12 @@ class AuthTests extends FunSpec with Matchers with Helpers with LazyLogging {
         val res = waitAndExtractBody(Http.get(_login, headers = basicAuthHeader("Overwriter", "myPassword")))
         val jwt = (Json.parse(res) \ "token").as[String]
         tokenForOverwriter = "X-CM-WELL-TOKEN" -> jwt
+      }
+
+      it("should be able to login with the PriorityWriter user and receive a token") {
+        val res = waitAndExtractBody(Http.get(_login, headers = basicAuthHeader("PriorityWriter", "myPassword")))
+        val jwt = (Json.parse(res) \ "token").as[String]
+        tokenForPriorityWriter = "X-CM-WELL-TOKEN" -> jwt
       }
     }
 
@@ -450,5 +473,20 @@ class AuthTests extends FunSpec with Matchers with Helpers with LazyLogging {
       }
     }
 
+    describe("priority write") {
+      val priorityQueryParam = "priority" -> ""
+      val priorityData = """<http://example.org/Individuals/DaisyDuck1> <http://www.tr-lbd.com/bold#active> "false" ."""
+
+      it("should not allow priority write without a valid token supplied") {
+        val (status, body) = waitAndExtractStatusAndBody(Http.post(_in, priorityData, None, Seq("format" -> "ntriples", priorityQueryParam), Seq(tokenForCustomUser)))
+        status should be(403)
+        Json.parse(body) should be(Json.parse("""{"success":false,"message":"User not authorized for priority write"}"""))
+      }
+
+      it("should allow priority write with a valid token supplied") {
+        val resp = Json.parse(waitAndExtractBody(Http.post(_in, priorityData, None, Seq("format" -> "ntriples", priorityQueryParam), Seq(tokenForPriorityWriter))))
+        resp should be(jsonSuccess)
+      }
+    }
   }
 }
