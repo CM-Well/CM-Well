@@ -446,9 +446,6 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
     _.message.passThrough
   }
 
-  //  var doneOffsets = collection.mutable.TreeSet.empty[Offset]
-  //  var doneOffsetsPriority = collection.mutable.TreeSet.empty[Offset]
-
   var lastOffsetPersisted = startingOffset - 1
   var lastOffsetPersistedPriority = startingOffsetPriority - 1
 
@@ -456,61 +453,76 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
   val doneOffsetsPriority = new java.util.TreeSet[Offset]()
 
   def mergeOffsets(doneOffsets: java.util.TreeSet[Offset], newOffsets: Seq[Offset]) = {
+      logger debug s"merging doneOffsets:\n $doneOffsets \n with newOffsets:\n $newOffsets"
     val (completedOffsets, partialOffsets) = newOffsets.partition(_.isInstanceOf[CompleteOffset])
+      logger debug s"completedOffsests:\n $completedOffsets \n partialOffsets:\n$partialOffsets"
     doneOffsets.addAll(completedOffsets.asJava)
+      logger debug s"doneOffsets after adding all completed new offsets:\n$doneOffsets"
     partialOffsets.groupBy(_.offset).foreach { case (_, o) =>
-      if (o.size == 2)
+        logger debug s"handling new partial offset: $o"
+      if (o.size == 2) {
+          logger debug s"two new partial offsets become one completed, adding to doneOffsets"
         doneOffsets.add(CompleteOffset(o.head.topic, o.head.offset))
+      }
       else if(doneOffsets.contains(o.head)) {
+          logger debug s"doneOffsets already contained 1 partial offset for ${o.head} removing it and adding completed instead"
         doneOffsets.remove(o.head)
         doneOffsets.add(CompleteOffset(o.head.topic, o.head.offset))
-      } else
+      } else {
+          logger debug s"adding new partial ${o.head} to doneOffsets"
         doneOffsets.add(o.head)
-
+      }
     }
+      logger debug s"doneOffsets after adding partial new offsets:\n $doneOffsets"
   }
 
   val commitOffsets = Flow[Seq[Offset]].groupedWithin(6000, 3.seconds).toMat {
     Sink.foreach { offsetGroups =>
       doneOffsets.synchronized { // until a suitable concurrent collection is found
-        val (offsets, offsetsPriority) = offsetGroups.flatten.partition(_.topic eq persistCommandsTopic)
+        val (offsets, offsetsPriority) = offsetGroups.flatten.partition(_.topic == persistCommandsTopic)
         logger debug s"offsets: $offsets"
         logger debug s"priority offsets: $offsetsPriority"
 
-        var prev = lastOffsetPersisted
-        mergeOffsets(doneOffsets, offsets)
-        val it = doneOffsets.iterator()
-        while ( {
-          val next = if (it.hasNext) Some(it.next) else None
-          val continue = next.fold(false)(o => o.isInstanceOf[CompleteOffset] && o.offset - prev == 1)
-          if (continue) prev = next.get.offset
-          continue
-        }) {
-          it.remove()
+        if(offsets.size > 0) {
+          var prev = lastOffsetPersisted
+          mergeOffsets(doneOffsets, offsets)
+          val it = doneOffsets.iterator()
+          while ( {
+            val next = if (it.hasNext) Some(it.next) else None
+            val continue = next.fold(false)(o => o.isInstanceOf[CompleteOffset] && o.offset - prev == 1)
+            if (continue)
+              prev = next.get.offset
+            continue
+          }) {
+            it.remove()
+          }
+
+          if (prev > lastOffsetPersisted) {
+            logger debug s"prev: $prev is greater than lastOffsetPersisted: $lastOffsetPersisted"
+            offsetsService.write(s"${streamId}_offset", prev + 1L)
+            lastOffsetPersisted = prev
+          }
         }
 
-        if (prev > lastOffsetPersisted) {
-          logger debug s"prev: $prev is greater than lastOffsetPersisted: $lastOffsetPersisted"
-          offsetsService.write(s"${streamId}_offset", prev + 1L)
-          lastOffsetPersisted = prev
-        }
+        if(offsetsPriority.size > 0) {
+          var prevPriority = lastOffsetPersistedPriority
+          mergeOffsets(doneOffsetsPriority, offsetsPriority)
+          val itPriority = doneOffsetsPriority.iterator()
+          while ( {
+            val next = if (itPriority.hasNext) Some(itPriority.next) else None
+            val continue = next.fold(false)(o => o.isInstanceOf[CompleteOffset] && o.offset - prevPriority == 1)
+            if (continue)
+              prevPriority = next.get.offset
+            continue
+          }) {
+            itPriority.remove()
+          }
 
-        var prevPriority = lastOffsetPersistedPriority
-        mergeOffsets(doneOffsetsPriority, offsetsPriority)
-        val itPriority = doneOffsetsPriority.iterator()
-        while ( {
-          val next = if (itPriority.hasNext) Some(itPriority.next) else None
-          val continue = next.fold(false)(o => o.isInstanceOf[CompleteOffset] && o.offset - prevPriority == 1)
-          if (continue) prevPriority = next.get.offset
-          continue
-        }) {
-          itPriority.remove()
-        }
-
-        if (prevPriority > lastOffsetPersistedPriority) {
-          logger debug s"prevPriority: $prevPriority is greater than lastOffsetPersistedPriority: $lastOffsetPersistedPriority"
-          offsetsService.write(s"${streamId}.p_offset", prevPriority + 1L)
-          lastOffsetPersistedPriority = prevPriority
+          if (prevPriority > lastOffsetPersistedPriority) {
+            logger debug s"prevPriority: $prevPriority is greater than lastOffsetPersistedPriority: $lastOffsetPersistedPriority"
+            offsetsService.write(s"${streamId}.p_offset", prevPriority + 1L)
+            lastOffsetPersistedPriority = prevPriority
+          }
         }
 
       }
