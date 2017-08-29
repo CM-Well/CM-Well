@@ -355,9 +355,9 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
         val payload = CommandSerializer.encode(writeCommand)
         val topic =
           if(offsets.exists(_.topic.endsWith("priority")))
-            indexCommandsTopicPriority
+            persistCommandsTopicPriority
           else
-            indexCommandsTopic
+            persistCommandsTopic
         new ProducerRecord[Array[Byte], Array[Byte]](topic, infoton.path.getBytes, payload)
       }(breakOut3)
       )
