@@ -279,7 +279,7 @@ trait Helpers { self: LazyLogging =>
   object Successfulness {
     implicit def intToSuccessfulness: Int => Successfulness = {
       case 200 => Successful
-      case 404 | 503 => Recoverable
+      case 404 | 422 | 503 => Recoverable
       case _ => UnRecoverable
     }
 

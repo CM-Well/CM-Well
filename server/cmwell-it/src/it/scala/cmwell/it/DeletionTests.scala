@@ -118,7 +118,11 @@ class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Help
 
     val getWithoutArrayValue = deleteFromArray.flatMap(_ => scheduleFuture(indexingDuration) {
       val expected = Json.parse(s"""{"type":"ObjectInfoton","system":{"path":"/cmt/cm/test/InfoObjForDelete","parent":"/cmt/cm/test","dataCenter":"$dcName"},"fields":{"company":["clearforest","ibm","microsoft"],"phrase":["four eyes commit","quality is a mindset"]}}""")
-      Http.get(iofd, List("format" -> "json")).map { res =>
+      spinCheck(1.second,true)(Http.get(iofd, List("format" -> "json"))) { res =>
+        res.status == 200 && {
+          (Json.parse(res.payload) \ "fields" \ "phrase").as[JsArray].length < 3
+        }
+      }.map { res =>
         withClue(res) {
           res.status should be(200)
           Json.parse(res.payload).transform(uuidDateEraser andThen fieldsSorter).get shouldEqual expected
@@ -136,7 +140,9 @@ class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Help
 
     val verifyAllAttributesDeleted = deleteAllAttributes.flatMap(_ => scheduleFuture(indexingDuration) {
       val expected = Json.parse(s"""{"type": "ObjectInfoton","system": {"path": "/cmt/cm/test/InfoObjForDelete","parent":"/cmt/cm/test","dataCenter":"$dcName"}}""")
-      Http.get(iofd, List("format" -> "json")).map { res =>
+      spinCheck(1.second,true)(Http.get(iofd, List("format" -> "json"))) { res =>
+        res.status == 200 && (Json.parse(res.payload) \ "fields").isInstanceOf[JsUndefined]
+      }.map { res =>
         withClue(res) {
           res.status should be(200)
           Json.parse(res.payload).transform(uuidDateEraser).get shouldEqual expected
@@ -153,7 +159,7 @@ class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Help
     })
 
     val verify404 = deleteInfotonPath.flatMap(_ => scheduleFuture(indexingDuration) {
-       Http.get(ioffd).map { res =>
+      spinCheck(1.second,true,5.minutes)(Http.get(ioffd, List("format" -> "json")))(_.status == 404).map { res =>
          withClue(res) {
            res.status should be(404)
          }
@@ -169,7 +175,7 @@ class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Help
     })
 
     val getRewrittenInfoton = rewriteDeletedInfoton.flatMap(_ => scheduleFuture(indexingDuration) {
-      Http.get(ioffd, List("format" -> "json")).map { res =>
+      spinCheck(1.second,true,5.minutes)(Http.get(ioffd, List("format" -> "json")))(_.status).map { res =>
         withClue(res) {
           Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get  shouldEqual jsonObjForDelete
         }
