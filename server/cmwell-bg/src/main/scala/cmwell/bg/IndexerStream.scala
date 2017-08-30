@@ -70,6 +70,8 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
   val esActionsBulkSize = config.getInt("cmwell.bg.esActionsBulkSize") // in bytes
   val esActionsGroupingTtl = config.getInt("cmwell.bg.esActionsGroupingTtl") // ttl for bulk es actions grouping in ms
 
+  logger info s"IndexerStream starting with config:\n ${config.entrySet().asScala.collect{case entry if entry.getKey.startsWith("cmwell") => s"${entry.getKey} -> ${entry.getValue.render()}"}.mkString("\n")}"
+
   /***** Metrics *****/
   val existingMetrics = metricRegistry.getMetrics.asScala
   val indexNewInfotonCommandCounter:Counter = existingMetrics.get("IndexNewCommand Counter").
@@ -89,13 +91,15 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
   val streamId = s"indexer.${partition}"
 
   val startingOffset = offsetsService.read(s"${streamId}_offset").getOrElse(0L)
-  val priorityStartingOffset = offsetsService.read(s"${streamId}.p_offset").getOrElse(0L)
+  val startingOffsetPriority = offsetsService.read(s"${streamId}.p_offset").getOrElse(0L)
+
+    logger info s"IndexerStream($streamId), startingOffset: $startingOffset, startingOffsetPriority: $startingOffsetPriority"
 
   val subscription = Subscriptions.assignmentWithOffset(
     new TopicPartition(indexCommandsTopic, partition) -> startingOffset)
 
   val prioritySubscription = Subscriptions.assignmentWithOffset(
-    new TopicPartition(priorityIndexCommandsTopic, partition) -> priorityStartingOffset)
+    new TopicPartition(priorityIndexCommandsTopic, partition) -> startingOffsetPriority)
 
   val sharedKillSwitch = KillSwitches.shared("indexer-sources-kill-switch")
 
