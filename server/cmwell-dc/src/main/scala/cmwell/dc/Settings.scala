@@ -91,8 +91,4 @@ object Settings {
   val maxRetries = config.getInt("cmwell.dc.retries.max")
   val maxPullRequests = config.getInt("cmwell.dc.requests.maxPull")
   val maxPushRequests = config.getInt("cmwell.dc.requests.maxPush")
-
-  lazy val irwServiceDaoHostName = config.getString("irwServiceDao.hostName")
-  lazy val irwServiceDaoClusterName = config.getString("irwServiceDao.clusterName")
-  lazy val irwServiceDaoKeySpace2 = config.getString("irwServiceDao.keySpace2")
 }
