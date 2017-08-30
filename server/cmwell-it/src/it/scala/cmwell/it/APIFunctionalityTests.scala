@@ -125,12 +125,13 @@ class APIFunctionalityTests extends AsyncFunSpec
           "fields" -> JsObject(
             Seq("title" -> JsArray(Seq(JsString("TestTitle"))),
               "header" -> JsArray(Seq(JsString("TestHeader")))))))
-      indexingDuration.fromNow.block ;
-      val f0 = Http.get(cmt / "InfoObj2", List("format" -> "json"))
-      val f = f0.map(res => Json.parse(res.payload)).map { jv =>
-        jv.transform(uuidDateEraser).get
+      scheduleFuture(indexingDuration) {
+        spinCheck(1.second, true)(Http.get(cmt / "InfoObj2", List("format" -> "json")))(_.status).map{ res =>
+          Json.parse(res.payload)
+            .transform(uuidDateEraser)
+            .get shouldEqual expected
+        }
       }
-      Await.result(f, requestTimeout) shouldEqual expected
     }
 
     describe("get object infoton in rdf formats") {
@@ -633,7 +634,7 @@ class APIFunctionalityTests extends AsyncFunSpec
           val fileNTriple = Source.fromURL(this.getClass.getResource("/file_ntriple")).mkString
           Http.post(_in, fileNTriple, Some("text/plain;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader)
         }
-        val f0 = fp.flatMap(_ => delayedTask(indexingDuration)(()))
+        val f0 = fp.flatMap(_ => scheduleFuture(indexingDuration)(spinCheck(1.second)(Http.get(icon, List("format" -> "text")))(_.status)))
         val f1 = f0.flatMap(_ => Http.get(icon, List("format" -> "json")))
         val f2 = f0.flatMap(_ => Http.get(icon, List("format" -> "n3")))
         val f3 = f0.flatMap(_ => Http.get(icon, List("format" -> "rdfxml")))
