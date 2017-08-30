@@ -829,7 +829,7 @@ callback=< [URL] >
                         onUpstreamFailureInspection =  error => logger.error(s"[$id] onUpstreamFailure",error),
                         onDownstreamFinishInspection = () => logger.info(s"[$id] onDownstreamFinish"),
                         onPushInspection =             bytes => logger.info(s"[$id] onPush(${bytes.utf8String})"),
-                        onPullInspection =             () => logger.info(s"[$id] onUpstreamFinish"))
+                        onPullInspection =             () => logger.info(s"[$id] onPull"))
                     }
                     else scrollSourceToByteString
                   }

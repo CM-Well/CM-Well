@@ -25,8 +25,8 @@ class StreamEventInspector[Elem](onUpstreamFinishInspection:   ()        => Unit
                                  onPushInspection:             Elem      => Unit = (_: Elem)  => {},
                                  onPullInspection:             ()        => Unit = () => {}) extends GraphStage[FlowShape[Elem, Elem]] {
 
-  private val in = Inlet[Elem]("DetectCompletion.in")
-  private val out = Outlet[Elem]("DetectCompletion.out")
+  private val in = Inlet[Elem]("StreamEventInspector.in")
+  private val out = Outlet[Elem]("StreamEventInspector.out")
 
   override val shape = FlowShape(in, out)
 
