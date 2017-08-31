@@ -96,7 +96,7 @@ class BufferFillerActor(threshold: Int,
       currToken = token
       self ! Status
     case FinishedToken(nextToken) =>
-      logger.info(s"received $tsvCounter uuids from token $currToken")
+      logger.debug(s"received $tsvCounter uuids from token $currToken")
 
       receivedUuids  --= uuidsFromCurrentToken
       tsvCounter = 0L
@@ -104,7 +104,7 @@ class BufferFillerActor(threshold: Int,
 
       nextToken match {
         case Some(token) =>
-          logger.info(s"next token=${token}")
+          logger.debug(s"next token=${token}")
           currToken = token
           self ! Status
 
@@ -223,7 +223,7 @@ class BufferFillerActor(threshold: Int,
             case None                    => self ! NewToHeader(None)
           }
 
-          logger.info(s"received consume answer from host=${getHostnameValue(h)}")
+          logger.debug(s"received consume answer from host=${getHostnameValue(h)}")
 
           val dataSource: Source[(Token, Tsv), Any] = e.withoutSizeLimit().dataBytes
             .via(Compression.gunzip())
