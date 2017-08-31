@@ -828,8 +828,15 @@ callback=< [URL] >
                         onUpstreamFinishInspection =   () => logger.info(s"[$id] onUpstreamFinish"),
                         onUpstreamFailureInspection =  error => logger.error(s"[$id] onUpstreamFailure",error),
                         onDownstreamFinishInspection = () => logger.info(s"[$id] onDownstreamFinish"),
-                        onPushInspection =             bytes => logger.info(s"[$id] onPush(${bytes.utf8String})"),
-                        onPullInspection =             () => logger.info(s"[$id] onPull"))
+                        onPullInspection =             () => logger.info(s"[$id] onPull"),
+                        onPushInspection =             bytes => {
+                          val all = bytes.utf8String
+                          val elem = {
+                            if (bytes.isEmpty) ""
+                            else all.lines.next()
+                          }
+                          logger.info(s"""[$id] onPush(first line: "$elem", num of lines: ${all.lines.size}, num of chars: ${all.size})""")
+                        })
                     }
                     else scrollSourceToByteString
                   }
