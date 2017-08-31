@@ -9,9 +9,6 @@ API is defined and implemented in `cmwell.util.http` package:
 ```scala
 object SimpleHttpClient {
 
-  // web sockets API is more complex, and out of the scope for this post,
-  // but is shown here for completeness, as it is part of the API.
-  // You are more than welcome to check out the source code.
   def ws[T : SimpleMessageHandler](uri: String,
          initiationMessage: T,
          subprotocol: Option[String] = None,
