@@ -111,7 +111,9 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
           withDeleted = d
         ).map {
         case SearchThinResults(_, _, _, results, _) =>
-          results.headOption.fold(now)(_.indexTime)
+          //In case that there are more than the initial seed infotons (=1000) with the same index time the "from" will be equal to the "to"
+          //This will fail the FieldFilter requirements (see getFieldFilterSeq) and thus approx. 1 second is added to the "from" as the new "to"
+          results.headOption.fold(now)(i => math.max(i.indexTime,from+1729L)) //https://en.wikipedia.org/wiki/1729_(number)
       }
     }
 

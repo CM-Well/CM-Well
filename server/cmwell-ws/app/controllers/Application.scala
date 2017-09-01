@@ -1137,7 +1137,6 @@ callback=< [URL] >
             case SearchThinResults(total, _, _, results, _) if results.nonEmpty => {
 
               val idxT = results.maxBy(_.indexTime).indexTime //infotons.maxBy(_.indexTime.getOrElse(0L)).indexTime.getOrElse(0L)
-              require(idxT > 0, "all infotons in iteration must have a valid indexTime defined")
 
               // last chunk
               if (results.length >= total)
