@@ -139,7 +139,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
 
     logger info s"ImpStream($streamId), startingOffset: $startingOffset, startingOffsetPriority: $startingOffsetPriority"
 
-  var (startingIndexName, startingIndexCount) = ftsService.latestIndexNameAndCount(s"cm_well_p${partition}_*") match {
+  @volatile var (startingIndexName, startingIndexCount) = ftsService.latestIndexNameAndCount(s"cm_well_p${partition}_*") match {
     case Some((name, count)) => (name -> count)
     case None =>
       logger info s"no indexes found for partition $partition, creating first one"
@@ -835,21 +835,22 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
       )
 
       val manageIndices = builder.add(
-        Flow[BGMessage[(BulkIndexResult, Seq[IndexCommand])]].map {
+        Flow[BGMessage[(BulkIndexResult, Seq[IndexCommand])]].mapAsync(1) {
           case bgMessage@BGMessage(_, (bulkRes, commands)) =>
             startingIndexCount += bulkRes.successful.size
             if (startingIndexCount / numOfShardPerIndex >= maxDocsPerShard) {
               val (pref, suf) = currentIndexName.splitAt(currentIndexName.lastIndexOf('_') + 1)
               val nextCount = suf.toInt + 1
               val nextIndexName = pref + nextCount
-              ftsService.createIndex(nextIndexName).flatMap { _ =>
+              cmwell.util.concurrent.retry(3)(ftsService.createIndex(nextIndexName)).flatMap { _ =>
                 scheduleFuture(10.seconds)(ftsService.updateAllAlias)
-              }.andThen { case _ =>
+              }.map { case _ =>
                 currentIndexName = nextIndexName
                 startingIndexCount = 0
+                bgMessage
               }
-            }
-            bgMessage
+            } else
+              Future.successful(bgMessage)
         }
       )
 
