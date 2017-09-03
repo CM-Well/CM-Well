@@ -19,50 +19,22 @@ package cmwell.dc
 import com.typesafe.config.ConfigFactory
 import scala.concurrent.duration._
 
-
-/*
- * Created by michael on 6/23/15.
- */
 object Settings {
-
   val config = ConfigFactory.load()
-
   val clusterName = config.getString("cmwell.clusterName")
   val hostName = config.getString("cmwell.grid.bind.host")
   val seeds = config.getString("cmwell.grid.seeds").split(",").toSet
   val port = config.getInt("cmwell.grid.bind.port")
-
   val target = config.getString("cmwell.dc.target").split(",").toVector
-
   private[this] val hostPort = """([^:/]+)(:\d+)?""".r
   val destinationHostsAndPorts = target.map{
     case hostPort(h,p) => h -> Option(p).map(_.tail.toInt)
   }
-
-  val minInfotonsPerSync = config.getInt("cmwell.dc.infotonsPerSync.min")
-  val maxInfotonsPerSync = config.getInt("cmwell.dc.infotonsPerSync.max")
-  require(minInfotonsPerSync < maxInfotonsPerSync)
-
-  val minInfotonsPerBufferingSync = config.getInt("cmwell.dc.infotonsPerBufferingSync.min")
-  val maxInfotonsPerBufferingSync = config.getInt("cmwell.dc.infotonsPerBufferingSync.max")
-  require(minInfotonsPerBufferingSync < maxInfotonsPerBufferingSync)
-
   val maxStatementLength = {
     val l = config.getBytes("cmwell.dc.maxStatementLength")
     require(l < Int.MaxValue)
     l.toInt
   }
-  val indexTimeThreshold = config.getLong("cmwell.dc.indexTimeThreshold") //in milliseconds
-  val maxRemotes = config.getInt("cmwell.dc.maxRemotes")
-  val maxBuffers = config.getInt("cmwell.dc.maxBuffers")
-  val _outBulkSize = config.getInt("cmwell.dc.bulkSize")
-  val _owBulkSize = config.getInt("cmwell.dc.bulkPushSize")
-  val altSyncMethod = config.getBoolean("cmwell.dc.altSyncMethod")
-
-  val streamOp = config.getString("cmwell.dc.stream.op")
-
-  val uuidsCacheSize = config.getInt("cmwell.dc.cacheSize") //soft requirement. may be more
-  val overlap = config.getLong("cmwell.dc.overlap") //in milliseconds
   val maxRetrieveInfotonCount = config.getInt("cmwell.dc.pull.maxRetrieveInfotonCount")
   val maxRetrieveByteSize = config.getBytes("cmwell.dc.pull.maxRetrieveByteSize")
   val maxTotalInfotonCountAggregatedForRetrieve = config.getInt("cmwell.dc.pull.maxTotalInfotonCountAggregatedForRetrieve")
@@ -85,10 +57,5 @@ object Settings {
   val ingestServiceUnavailableDelay = config.getDuration("cmwell.dc.push.ingestServiceUnavailableDelay").toMillis millis
   val ingestParallelism = config.getInt("cmwell.dc.push.ingestParallelism")
   val ingestRetryQueueSize = config.getInt("cmwell.dc.push.ingestRetryQueueSize")
-
   val dcaUserToken = config.getString("dcaUser.token")
-
-  val maxRetries = config.getInt("cmwell.dc.retries.max")
-  val maxPullRequests = config.getInt("cmwell.dc.requests.maxPull")
-  val maxPushRequests = config.getInt("cmwell.dc.requests.maxPush")
 }

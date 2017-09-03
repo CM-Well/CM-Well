@@ -18,7 +18,7 @@ package cmwell.dc.stream.akkautils
 
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
-import cmwell.dc.LazyLogging
+import com.typesafe.scalalogging.LazyLogging
 
 /**
   * Created by eli on 01/08/16.
