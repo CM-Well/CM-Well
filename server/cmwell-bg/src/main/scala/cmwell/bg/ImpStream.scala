@@ -25,8 +25,8 @@ import akka.kafka.{ProducerSettings, Subscriptions}
 import akka.stream.ActorAttributes.supervisionStrategy
 import akka.stream.Supervision.Decider
 import akka.stream.contrib.PartitionWith
-import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, Merge, MergePreferred, Partition, RunnableGraph, Sink, Source}
-import akka.stream.{ActorMaterializer, ClosedShape, KillSwitches, SourceShape}
+import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, Merge, MergePreferred, Partition, RunnableGraph, Sink}
+import akka.stream.{ActorMaterializer, ClosedShape, KillSwitches}
 import cmwell.common.{Command, _}
 import cmwell.common.formats.JsonSerializerForES
 import cmwell.domain.{Infoton, ObjectInfoton}
@@ -85,6 +85,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
   val groupCommandsByPathTtl = config.getInt("cmwell.bg.groupCommandsByPathTtl") // timeout for the above grouping
   val maxDocsPerShard = config.getLong("cmwell.bg.maxDocsPerShard")
 
+    logger info s"ImpStream starting with config:\n ${config.entrySet().asScala.collect{case entry if entry.getKey.startsWith("cmwell") => s"${entry.getKey} -> ${entry.getValue.render()}"}.mkString("\n")}"
 
   /** *** Metrics *****/
   val existingMetrics = metricRegistry.getMetrics.asScala
@@ -136,7 +137,9 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
   val startingOffset = offsetsService.read(s"${streamId}_offset").getOrElse(0L)
   val startingOffsetPriority = offsetsService.read(s"${streamId}.p_offset").getOrElse(0L)
 
-  var (startingIndexName, indexCount) = ftsService.latestIndexNameAndCount(s"cm_well_p${partition}_*") match {
+    logger info s"ImpStream($streamId), startingOffset: $startingOffset, startingOffsetPriority: $startingOffsetPriority"
+
+  var (startingIndexName, startingIndexCount) = ftsService.latestIndexNameAndCount(s"cm_well_p${partition}_*") match {
     case Some((name, count)) => (name -> count)
     case None =>
       logger info s"no indexes found for partition $partition, creating first one"
@@ -163,6 +166,8 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
       (s"cm_well_p${partition}_0" -> 0L)
   }
 
+    logger info s"ImpStream($streamId), startingIndexName: $startingIndexName, startingIndexCount: $startingIndexCount"
+
   @volatile var currentIndexName = startingIndexName
   @volatile var fuseOn = true
 
@@ -179,16 +184,16 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
   val sharedKillSwitch = KillSwitches.shared("persist-sources-kill-switch")
 
   val persistCommandsSource = Consumer.plainExternalSource[Array[Byte], Array[Byte]](kafkaConsumer, subscription).map { msg =>
-    logger debug s"consuming next payload from persist commands topic @ ${msg.offset()}"
+      logger debug s"consuming next payload from persist commands topic @ ${msg.offset()}"
     val command = CommandSerializer.decode(msg.value())
-    logger debug s"consumed command: $command"
+      logger debug s"consumed command: $command"
     BGMessage[Command](CompleteOffset(msg.topic(), msg.offset()), command)
   }.via(sharedKillSwitch.flow)
 
   val priorityPersistCommandsSource = Consumer.plainExternalSource[Array[Byte], Array[Byte]](kafkaConsumer, prioritySubscription).map { msg =>
-    logger debug s"consuming next payload from priority persist commands topic @ ${msg.offset()}"
+      logger debug s"consuming next payload from priority persist commands topic @ ${msg.offset()}"
     val command = CommandSerializer.decode(msg.value())
-    logger debug s"consumed priority command: $command"
+      logger debug s"consumed priority command: $command"
     BGMessage[Command](CompleteOffset(msg.topic(), msg.offset()), command)
   }.via(sharedKillSwitch.flow)
 
@@ -383,11 +388,12 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
             i.indexName, statusTracking) -> Some(i.lastModified)
           val indexExistingInfoton: (IndexCommand, Option[DateTime]) = IndexExistingInfotonCommand(previous.get.uuid,
             previous.get.weight, previous.get.path, previous.get.indexName, statusTracking) -> None
-          val updatedOffsets = offsets.map { o => PartialOffset(o.topic, o.offset, 1, 2) }
-          List(BGMessage(updatedOffsets, Seq(indexNewInfoton, indexExistingInfoton)))
+          val updatedOffsetsForNew = offsets.map{ o => PartialOffset(o.topic, o.offset, 1, 2) }
+          val updatedOffsetsForExisting = offsets.map{ o => PartialOffset(o.topic, o.offset, 2, 2) }
+          List(BGMessage(updatedOffsetsForNew, Seq(indexNewInfoton)),BGMessage(updatedOffsetsForExisting, Seq(indexExistingInfoton)))
         }
       }
-  }.mapConcat(identity(_))
+  }.mapConcat(identity)
 
   val breakOut = scala.collection.breakOut[Iterable[IndexCommand], Message[Array[Byte], Array[Byte], Seq[Offset]], collection.immutable.Seq[Message[Array[Byte], Array[Byte], Seq[Offset]]]]
 
@@ -667,12 +673,12 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
                 bgMessage.copy(message = (sortedInfotons, infoOpt))
             }
         }.mapAsync(irwWriteConcurrency) {
-          case bgMessage@BGMessage(_, (newInfotons, existingInfotonOpt)) =>
+          case BGMessage(offsets, (newInfotons, existingInfotonOpt)) =>
             val newInfotonsWithIndexName = newInfotons.map { case (i, tid) => (i.copyInfoton(indexName = currentIndexName) -> tid) }
             irwService.writeSeqAsync(newInfotonsWithIndexName.map {
               _._1
             }, ConsistencyLevel.QUORUM).map { writtenInfotons =>
-              val indexCommands: Seq[IndexCommand] = newInfotonsWithIndexName.toList match {
+              val bgMessages: List[BGMessage[Seq[IndexCommand]]] = newInfotonsWithIndexName.toList match {
                 case ((headInfoton, headTrackingId) :: tail) =>
                   val isHeadCurrent = existingInfotonOpt.isEmpty || {
                     if (headInfoton.lastModified.getMillis != existingInfotonOpt.get.lastModified.getMillis)
@@ -681,7 +687,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
                       headInfoton.uuid < existingInfotonOpt.get.uuid
                   }
                   val numOfParts = if (existingInfotonOpt.isDefined) 2 else 1
-                  val indexNewInfotonCommands: List[IndexCommand] = IndexNewInfotonCommand(headInfoton.uuid,
+                  val indexNewInfotonCommands: Seq[IndexCommand] = IndexNewInfotonCommand(headInfoton.uuid,
                     isHeadCurrent, headInfoton.path, Some(headInfoton), headInfoton.indexName,
                     Seq(headTrackingId).flatten.map {
                       StatusTracking(_, numOfParts)
@@ -691,26 +697,37 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
                         StatusTracking(_, numOfParts)
                       })
                   }
-                  existingInfotonOpt.fold(indexNewInfotonCommands) { existingInfoton =>
+                  existingInfotonOpt.fold{
+                    List(BGMessage(offsets, indexNewInfotonCommands))
+                  } { existingInfoton =>
                     val statusTracking = newInfotonsWithIndexName.map {
                       _._2
                     }.flatten.map {
                       StatusTracking(_, 2)
                     }
-                    lazy val existing = IndexExistingInfotonCommand(existingInfoton.uuid, existingInfoton.weight,
-                      existingInfoton.path, existingInfoton.indexName, statusTracking)
 
-                    if (isHeadCurrent) existing :: indexNewInfotonCommands
-                    else indexNewInfotonCommands
+                    if (isHeadCurrent) {
+                      val updatedOffsetsForNew = offsets.map{ o => PartialOffset(o.topic, o.offset, 1, 2) }
+                      val updatedOffsetsForExisting = offsets.map{ o => PartialOffset(o.topic, o.offset, 2, 2) }
+                      val indexNew = BGMessage(updatedOffsetsForNew, indexNewInfotonCommands)
+                      val indexExisting:BGMessage[Seq[IndexCommand]] = BGMessage(
+                        updatedOffsetsForExisting,
+                        Seq(IndexExistingInfotonCommand(existingInfoton.uuid, existingInfoton.weight,
+                              existingInfoton.path, existingInfoton.indexName, statusTracking))
+                      )
+                      List(indexExisting, indexNew)
+                    } else {
+                      List(BGMessage(offsets, indexNewInfotonCommands))
+                    }
                   }
                 case _ => ???
               }
 
-              logger debug s"override flow produced IndexCommands:\n$indexCommands"
+              logger debug s"override flow produced IndexCommands:\n$bgMessages"
 
-              bgMessage.copy(message = indexCommands)
+              bgMessages
             }
-        }
+        }.mapConcat(identity)
       )
 
       val groupEsActions = builder.add(
@@ -820,8 +837,8 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
       val manageIndices = builder.add(
         Flow[BGMessage[(BulkIndexResult, Seq[IndexCommand])]].map {
           case bgMessage@BGMessage(_, (bulkRes, commands)) =>
-            indexCount += bulkRes.successful.size
-            if (indexCount / numOfShardPerIndex >= maxDocsPerShard) {
+            startingIndexCount += bulkRes.successful.size
+            if (startingIndexCount / numOfShardPerIndex >= maxDocsPerShard) {
               val (pref, suf) = currentIndexName.splitAt(currentIndexName.lastIndexOf('_') + 1)
               val nextCount = suf.toInt + 1
               val nextIndexName = pref + nextCount
@@ -829,7 +846,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
                 scheduleFuture(10.seconds)(ftsService.updateAllAlias)
               }.andThen { case _ =>
                 currentIndexName = nextIndexName
-                indexCount = 0
+                startingIndexCount = 0
               }
             }
             bgMessage
