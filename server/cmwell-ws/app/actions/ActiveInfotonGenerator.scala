@@ -34,8 +34,10 @@ import logic.CRUDServiceFS
 import org.joda.time._
 import trafficshaping.TrafficMonitoring
 import wsutil._
-
 import javax.inject._
+
+import cmwell.fts.FieldFilter
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
@@ -589,7 +591,7 @@ ${lines.mkString("\n")}
   import scala.language.implicitConversions
 
 
-  def generateInfoton(host: String, path: String, md: DateTime = new DateTime(), length: Int = 0, offset: Int = 0, isRoot : Boolean = false, nbg: Boolean = false): Future[Option[VirtualInfoton]] = {
+  def generateInfoton(host: String, path: String, md: DateTime = new DateTime(), length: Int = 0, offset: Int = 0, isRoot : Boolean = false, nbg: Boolean = false, fieldFilters: Option[FieldFilter]): Future[Option[VirtualInfoton]] = {
 
     implicit def iOptAsFuture(iOpt: Option[VirtualInfoton]): Future[Option[VirtualInfoton]] = Future.successful(iOpt)
 
@@ -604,7 +606,7 @@ ${lines.mkString("\n")}
       case "/proc" => {val pk = procKids; Some(VirtualInfoton(CompoundInfoton(path, dc, None, md,None,pk.slice(offset,offset+length),offset,min(pk.drop(offset).size,length),pk.size)))}
       case "/proc/node" => Some(VirtualInfoton(ObjectInfoton(path, dc, None, md,nodeValFields)))
       case "/proc/dc" => compoundDC
-      case p if p.startsWith("/proc/dc/") => crudServiceFS.getLastIndexTimeFor(p.drop("/proc/dc/".length))
+      case p if p.startsWith("/proc/dc/") => crudServiceFS.getLastIndexTimeFor(p.drop("/proc/dc/".length), nbg, fieldFilters)
       case "/proc/fields" => crudServiceFS.getESFieldsVInfoton(nbg).map(Some.apply)
       case "/proc/health" => Some(VirtualInfoton(ObjectInfoton(path, dc, None, md, generateHealthFields)))
       case "/proc/health.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateHealthMarkdown.getBytes, "text/x-markdown")))))

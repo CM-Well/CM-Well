@@ -991,7 +991,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
     }
   }
 
-  def getLastIndexTimeFor(dc: String, partition: String)
+  def getLastIndexTimeFor(dc: String, partition: String, fieldFilters: Option[FieldFilter])
                          (implicit executionContext:ExecutionContext): Future[Option[Long]] = {
 
     val request = client
@@ -1006,9 +1006,9 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
       None,
       Some(MultiFieldFilter(Must, Seq(
         SingleFieldFilter(Must, Equals, "system.dc", Some(dc)),                                 //ONLY DC
-        SingleFieldFilter(MustNot, Contains, "system.parent.parent_hierarchy", Some("/meta/")), //NO META
-        SingleFieldFilter(Must, GreaterThan, "system.lastModified", Some("1970"))
-      ))),
+        SingleFieldFilter(MustNot, Contains, "system.parent.parent_hierarchy", Some("/meta/")) //NO META
+      ) ++ fieldFilters
+      )),
       None
     )
 
