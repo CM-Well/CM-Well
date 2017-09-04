@@ -7,9 +7,9 @@
 :------|:-----------
 Priority Queue | Introducing [Priority Queue](../blps/blp-700-priority-queue.md) feature.
 Bugfixes and improvements | Bugfixes in: Consumer Tool, UI, Consume and Bulk-Consume, bg process. Consumer Tool optimizations.
-Documentation | Additions and improvements
-Configuration Refactoring | Using as less `-D`s as possible
-
+Documentation | Additions and improvements.
+Configuration Refactoring | Using as less `-D`s as possible.
+DC-Sync qp support | DataCenter Synchronization mechanism was enhanced with the ability to use `qp` parameter (for cases when only a subset of the data should be synchronized).
 
 ### Changes to API ###
 None.
