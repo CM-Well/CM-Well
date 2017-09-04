@@ -200,7 +200,6 @@ object DownloaderUtils {
       params    = if (params == null) "" else params,
       qp        = if (qp == null) "" else qp,
       format    = if (format == null) "trig" else format,
-      length    = Option(lengthHint),
       recursive = recursive
     )
 

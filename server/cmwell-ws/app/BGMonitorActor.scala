@@ -104,9 +104,9 @@ class BGMonitorActor(zkServers:String, offsetService:OffsetsService, implicit va
           val partitionsOffsetsInfo:Map[String, PartitionOffsetsInfo] = topicPartitionsWriteOffsets.asScala.map{ case (topicPartition, writeOffset) =>
             val streamId = topicPartition.topic() match {
               case "persist_topic" => s"imp.${topicPartition.partition()}_offset"
-              case "persist_topic.priority" => s"imp.p.${topicPartition.partition()}_offset"
+              case "persist_topic.priority" => s"imp.${topicPartition.partition()}.p_offset"
               case "index_topic" => s"indexer.${topicPartition.partition()}_offset"
-              case "index_topic.priority" => s"indexer.p.${topicPartition.partition()}_offset"
+              case "index_topic.priority" => s"indexer.${topicPartition.partition()}.p_offset"
             }
             val readOffset = offsetService.read(streamId).getOrElse(0L)
             ((topicPartition.topic() + topicPartition.partition()), PartitionOffsetsInfo(topicPartition.topic(), topicPartition.partition(), readOffset, writeOffset))

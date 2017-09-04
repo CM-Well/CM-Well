@@ -1,9 +1,11 @@
+[![Gitter chat](https://badges.gitter.im/thomsonreuters/CM-Well.svg)](https://gitter.im/thomsonreuters/CM-Well)
+
 # Introduction #
 CM-Well is a writable Linked Data repository, developed by Thomson Reuters and used as its central Knowledge Graph database. CM-Well (Content Matrix Well) adheres to RDF principles, meaning that its data is in a [standard](https://www.w3.org/RDF/), machine-readable format.
 
 The Thomson Reuters Knowledge Graph contains information about organizations, instruments and people in the world of finance, but you can use CM-Well for any kind of linked data. Thomson Reuters is now offering CM-Well as an Open Source platform for the developer community to use and enrich.
 
-## Key features & technology ##
+## Key Features and Technology ##
 CM-Well is based on a clustered architecture, with durable storage into [Apache Cassandra](http://cassandra.apache.org) and indexing via [Elastic Search](https://github.com/elastic/elasticsearch). Key features include:
 * Horizontal scaling to support billions of triples
 * Cross site replication
@@ -15,7 +17,7 @@ CM-Well is based on a clustered architecture, with durable storage into [Apache 
 * Subscription by query for downstream consumers
 
 Other key technologies used under the covers include:
-* [Angular](https://angular.io) for the UI
+* [Angular](https://angular.io) and [React](https://facebook.github.io/react/) for the UIs
 * [Akka](http://akka.io/) for cluster management
 * [Jena](https://jena.apache.org/) for Sparql and RDF conversions
 * [Netty](https://netty.io) for network comms
@@ -42,8 +44,8 @@ Here are some more resources to help you learn about linked data and CM-Well:
 
 * [Linked Data](https://en.wikipedia.org/wiki/Linked_data)
 * [The future is graph shaped](https://blogs.thomsonreuters.com/answerson/future-graph-shaped)
-* [Introduction to CM-Well](server/cmwell-docs/cmwell-infodocs/Intro.IntroductionToCM-Well.md)
-* [Overview of the CM-Well API](server/cmwell-docs/cmwell-infodocs/Intro.OverviewOfTheCM-WellAPI.md)
+* [Introduction to CM-Well](docs/Intro.IntroductionToCM-Well.md)
+* [Overview of the CM-Well API](docs/Intro.OverviewOfTheCM-WellAPI.md)
 
 # Getting Started #
 
@@ -178,16 +180,16 @@ You can get started with CM-Well by running some basic write and read operations
 
 ## CM-Well Tutorial ##
 
-See [CM-Well Tutorials](server/cmwell-docs/cmwell-infodocs/Tutorial.HandsOnExercisesTOC.md) to learn how perform more CM-Well operations.
+See [CM-Well Tutorials](docs/Tutorial.HandsOnExercisesTOC.md) to learn how perform more CM-Well operations.
 
 ## Developer Resources ##
 
 See the following resources to learn more about CM-Well workflows, APIs and architecture:
 
-* [CM-Well API Reference](server/cmwell-docs/cmwell-infodocs/API.TOC.md)
-* [CM-Well Developer Guide](server/cmwell-docs/cmwell-infodocs/DevGuide.TOC.md)
-* [CM-Well Data Paradigms](server/cmwell-docs/cmwell-infodocs/Intro.CM-WellDataParadigms.md)
-* [CM-Well High-Level Architecture](server/cmwell-docs/cmwell-infodocs/Intro.CM-WellHigh-LevelArchitecture.md)
+* [CM-Well API Reference](docs/API.TOC.md)
+* [CM-Well Developer Guide](docs/DevGuide.TOC.md)
+* [CM-Well Data Paradigms](docs/Intro.CM-WellDataParadigms.md)
+* [CM-Well High-Level Architecture](docs/Intro.CM-WellHigh-LevelArchitecture.md)
 
 # System Requirements #
 
@@ -222,7 +224,7 @@ or preferably (for a complete rebuild and testing): `sbt ccft`
 export SBT_OPTS="-Xmx2G -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled -Xss2M"
 ```
 
-More detailed instructions can be found in the [Building CM-Well Tutorial ](server/cmwell-docs/cmwell-infodocs/Tutorial.Building.md).
+More detailed instructions can be found in the [Building CM-Well Tutorial ](docs/Tutorial.Building.md).
 
 ## Code Repository Structure ## 
 
@@ -285,7 +287,14 @@ To run your compiled version of CM-Well:
     pe.install
     ```
 
->**Note**: Once CM-Well is installed, the CM-Well web UI is available at http://localhost:9000. See [CM-Well Web Interface](server/cmwell-docs/cmwell-infodocs/CM-WellWebInterface.md) to learn more.
+>**Note**: Once CM-Well is installed, the CM-Well web UI is available at http://localhost:9000. See [CM-Well Web Interface](docs/CM-WellWebInterface.md) to learn more.
+
+# Code Contributions #
+
+If you want to make a contribution to CM-Well's code, either as an individual or as a company or other legal entity, please read, sign and send us the appropriate form (see further instructions inside the forms).
+
+* [CM-Well Individual Contributor License Agreement](docs/CM-Well-Individual-Contributor-License-Agreement-v1.pdf)
+* [CM-Well Entity Contributor License Agreement](docs/CM-Well-Entity-Contributor-License-Agreement-v1.pdf) 
 
 # Support #
 

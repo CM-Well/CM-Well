@@ -53,7 +53,6 @@ trait Checker {
 
   def getLastStates(num : Int) = states.getLastStates(num)
   def resetStates = states.reset
-  //lazy val cmwellHome =  Grid.sett.get("cmwell.home").getOrElse("/opt/cm-well")
 }
 
 

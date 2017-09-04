@@ -57,10 +57,10 @@ dependenciesManager in Global := {
   case ("com.thaiopensource","jing")                               => "com.thaiopensource" % "jing" % "20091111"
   case ("com.typesafe","config")                                   => "com.typesafe" % "config" % "1.3.1"
   case ("com.typesafe.scala-logging","scala-logging")              => "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0"
-  case ("com.typesafe.akka", "akka-stream-kafka")                  => "com.typesafe.akka" %% "akka-stream-kafka" % "0.16"
+  case ("com.typesafe.akka", "akka-stream-kafka")                  => "com.typesafe.akka" %% "akka-stream-kafka" % "0.17"
   case ("com.typesafe.akka", "akka-stream-contrib")                => "com.typesafe.akka" %% "akka-stream-contrib" % "0.8"
   case ("com.typesafe.akka", "akka-http-core")                     => "com.typesafe.akka" %% "akka-http-core" % "10.0.9"
-  case ("com.typesafe.akka",art)                                   => "com.typesafe.akka" %% art % "2.5.3"
+  case ("com.typesafe.akka",art)                                   => "com.typesafe.akka" %% art % "2.5.4"
   case ("com.typesafe.play", "twirl-api")                          => "com.typesafe.play" %% s"twirl-api" % "1.3.0"
   case ("com.typesafe.play", art)                                  => "com.typesafe.play" %% art % Versions.play
   case ("com.twitter","chill-akka")                                => "com.twitter" %% "chill-akka" % "0.5.2"
@@ -250,7 +250,6 @@ lazy val ctrl          = (project in file("cmwell-controller")).enablePlugins(CM
 lazy val dc            = (project in file("cmwell-dc")).enablePlugins(CMWellBuild) settings(oneJarSettings:_*)      dependsOn(tracking, ctrl, sparqlAgent)
 lazy val cons          = (project in file("cmwell-cons")).enablePlugins(CMWellBuild)                                dependsOn(util, ctrl) aggregate(batch, ws, ctrl, dc)
 lazy val pluginGremlin = (project in file("cmwell-plugin-gremlin")).enablePlugins(CMWellBuild)
-lazy val docs          = (project in file("cmwell-docs")).enablePlugins(CMWellBuild)
 lazy val spa           = (project in file("cmwell-spa")) .enablePlugins(CMWellBuild)
 lazy val dataTools     = (project in file("cmwell-data-tools")).enablePlugins(CMWellBuild)
 lazy val dataToolsApp  = (project in file("cmwell-data-tools-app")).enablePlugins(CMWellBuild)                      dependsOn(dataTools)
@@ -281,7 +280,6 @@ fullTest := {
   (fullTest in LocalProject("dc")).value
   (fullTest in LocalProject("cons")).value
   (fullTest in LocalProject("pluginGremlin")).value
-  (fullTest in LocalProject("docs")).value
   (fullTest in LocalProject("spa")).value
   (fullTest in LocalProject("dataTools")).value
   (fullTest in LocalProject("dataToolsApp")).value

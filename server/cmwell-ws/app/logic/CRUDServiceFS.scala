@@ -82,8 +82,8 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
     else _irwService
   }
 
-  lazy val ftsServiceOld = FTSServiceES.getOne("ws.es.yml", false)
-  lazy val ftsServiceNew = FTSServiceNew("ws.es.yml")
+  val ftsServiceOld = FTSServiceES.getOne("ws.es.yml", false)
+  val ftsServiceNew = FTSServiceNew("ws.es.yml")
   def ftsService(nbg: Boolean = newBG): FTSServiceOps = {
     if(nbg || newBG) ftsServiceNew
     else ftsServiceOld
@@ -96,7 +96,8 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
   producerProperties.put("bootstrap.servers", kafkaURL)
   producerProperties.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
   producerProperties.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
-  val kafkaProducer = new KafkaProducer[Array[Byte], Array[Byte]](producerProperties)
+  //With CW there is no kafka writes and no kafka configuration thus the producer is created lazily
+  lazy val kafkaProducer = new KafkaProducer[Array[Byte], Array[Byte]](producerProperties)
 
   val proxyOpsOld: Operations = ProxyOperations(_irwService, ftsServiceOld)
   val proxyOpsNew: Operations = ProxyOperations(_irwService2, ftsServiceNew)
@@ -334,8 +335,8 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
             WriteCommand(
               infoton.copyInfoton(lastModified = DateTime.now(DateTimeZone.UTC)),
               validTid(infoton.path,tid),
-              prevUUID = atomicUpdates.get(infoton.path)))
-        case infoton => sendToKafka(WriteCommand(infoton,validTid(infoton.path,tid),atomicUpdates.get(infoton.path)))
+              prevUUID = atomicUpdates.get(infoton.path)), isPriorityWrite)
+        case infoton => sendToKafka(WriteCommand(infoton,validTid(infoton.path,tid),atomicUpdates.get(infoton.path)), isPriorityWrite)
       }.map(_ => true)
     } else Future.successful(true)
 
@@ -435,8 +436,8 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
 
       val kafkaWritesRes = if(newBGFlag || newBG) {
         Future.traverse(commands){
-          case cmd@UpdatePathCommand(_, _, _, lastModified, _, _) if lastModified.getMillis == 0L => sendToKafka(cmd.copy(lastModified = DateTime.now(DateTimeZone.UTC)))
-          case cmd => sendToKafka(cmd)
+          case cmd@UpdatePathCommand(_, _, _, lastModified, _, _) if lastModified.getMillis == 0L => sendToKafka(cmd.copy(lastModified = DateTime.now(DateTimeZone.UTC)), isPriorityWrite)
+          case cmd => sendToKafka(cmd, isPriorityWrite)
         }.map{_ => true}
       } else Future.successful(true)
 

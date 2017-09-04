@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<!--
+Example CM-Well search builder/hosted application.
+
+Publish to a cm-well instance using the something similar to:
+
+curl -X POST http://<env>/exercise/files/index.html -H "X-CM-WELL-TYPE: FILE" -H "Content-Type: text/html" - -data-binary @"search_builder.html"
+
+(Note that there is no space between the two - characters before data-binary but that's not valid in an HTML comment)
+-->
+<html>
+<head>
+	<title>CM-Well hosting test</title>
+	<style>
+		p,label,li,i {
+			font-family:verdana, arial;
+			font-size:10pt;
+		}
+		h3,h2,legend{
+			font-family:Knowledge-Light, arial;
+		}
+		legend {
+			padding:5px;
+			background-color:white;
+			border:1px solid black;
+		}
+		fieldset {
+			margin-top:20pt;
+			background-color:#eeeeee;
+		}
+		.term {
+			margin:5px;
+		}
+		.output {
+			border:1px solid black;
+			background-color:#eeeeee;
+			padding:10px;
+			font-size:12pt;
+		}
+		
+		button {
+			border-radius:50%;
+			width:25px;
+			height:25px;
+			background-color:white;
+			border-width:1px;
+			border-color:black;
+			font-size:12pt;
+		}
+	</style>
+	<script>
+		    function chg(){
+	            var queryURL = window.location.protocol+"//"+window.location.hostname+"/"+document.getElementById('subject').value
+	                +"?op=search"+terms();
+	                
+	            queryURL+=fields();
+	            queryURL+=sort();
+	            if(document.getElementById('with-data').checked)
+	                queryURL+="&with-data";
+	            
+	            if(document.getElementById('recursive').checked)
+	                queryURL+="&recurse";
+	            
+	            if(document.getElementById('with-history').checked){
+	                queryURL+="&with-history";
+	                if(document.getElementById('with-deleted').checked)
+	                	queryURL+="&with-deleted";
+	            }
+	            if(document.querySelector('input[name=type]:checked')!=null)
+	                queryURL+="&format="+document.querySelector('input[name=type]:checked').value;
+	            if(document.getElementById('mime-override').value.length > 0){
+	            	queryURL+="&override-mimetype="+
+	            		document.getElementById('mime-override').value;
+	            }
+	            document.getElementById('queryURL').innerHTML = "<a target='_blank' href='"+queryURL+"'>"+queryURL+"<\/a>";
+
+	         }
+	         
+			 function numberOfElementsofType(type){
+			 	var selectorCount = 1;
+	            while(document.getElementById(type+selectorCount)!=null){
+	         		selectorCount++;
+	         	}
+	         	return selectorCount-1;
+			 }
+			
+			 function createText(name,size){
+			  	var input = document.createElement('input');
+			  	input.type='text';
+			  	input.id=name;
+			 	input.name=name;
+			 	input.addEventListener('input',chg);
+			 	input.size=40;
+			 	return input;
+			 }
+			 function createRadio(name,id,value){
+			    var input = document.createElement('input');
+			 	input.type='radio';
+			 	input.id=id;
+			 	input.name=name;
+			 	input.addEventListener('change',chg);
+			 	input.value=value;
+			 	return input;
+			 }
+			 
+			 function createLabel(forWhat,text){
+			 	var label=document.createElement('label');
+			 	label.setAttribute('for',forWhat);
+			 	label.innerText=text;
+			 	return label;
+			 }
+			 
+			 function addField(){
+			 	var sI = numberOfElementsofType('f')+1;
+			 	var newField = document.createElement('div');
+			 	newField.id='field'+sI;
+			 	newField.class='field';
+ 				newField.appendChild(createLabel('f'+sI,'Field'));
+			 	newField.appendChild(document.createTextNode(" "));
+				newField.appendChild(createText('f'+sI,40));
+			 	newField.appendChild(document.createTextNode(" "));
+				document.getElementById('fields').appendChild(newField);
+			 }
+			 
+			 function addSort(){
+			 	var sI = numberOfElementsofType('s')+1;
+			 	var newSort = document.createElement('div');
+			 	newSort.id='sort'+sI;
+			 	newSort.class='sort';
+ 				newSort.appendChild(createLabel('s'+sI,'Field'));
+			 	newSort.appendChild(document.createTextNode(" "));
+				newSort.appendChild(createText('s'+sI,40));
+			 	newSort.appendChild(document.createTextNode(" "));
+			 	
+			 	newSort.appendChild(createRadio('s'+sI+'order','s'+sI+'a','*'));
+			 	newSort.appendChild(document.createTextNode(" "));
+			 	newSort.appendChild(createLabel('s'+sI+'a','Ascending'));
+			 	newSort.appendChild(document.createTextNode(" "));
+			 	
+			 	newSort.appendChild(createRadio('s'+sI+'order','s'+sI+'d','-'));	
+ 				newSort.appendChild(document.createTextNode(" "));
+			 	newSort.appendChild(createLabel('s'+sI+'d','Descending'));
+			 	newSort.appendChild(document.createTextNode(" "));
+			 	
+				document.getElementById('sorts').appendChild(newSort);
+			 }
+					
+			 function addTerm(){
+			 	var sI = numberOfElementsofType('p')+1;
+			 	var newTerm = document.createElement('div');
+			 	newTerm.id='term'+sI;
+			 	newTerm.setAttribute('class','term');
+
+			 	newTerm.appendChild(createLabel('p'+sI,'Predicate'));
+			 	newTerm.appendChild(document.createTextNode(" "));
+			 	newTerm.appendChild(createText('p'+sI,40));
+			 	newTerm.appendChild(document.createTextNode(" "));
+			 	
+			 	newTerm.appendChild(createLabel('o'+sI,'Object'));
+			 	newTerm.appendChild(document.createTextNode(" "));
+			 	newTerm.appendChild(createText('o'+sI,40));
+			 	newTerm.appendChild(document.createTextNode(" "));
+			 	
+			 	newTerm.appendChild(createRadio('t'+sI,'t'+sI+'f',':~'));
+			 	newTerm.appendChild(document.createTextNode(" "));
+			 	newTerm.appendChild(createLabel('t'+sI+'f','Fuzzy match'));
+			 	newTerm.appendChild(document.createTextNode(" "));
+			 	
+			 	newTerm.appendChild(createRadio('t'+sI,'t'+sI+'e','::'));	
+ 				newTerm.appendChild(document.createTextNode(" "));
+			 	newTerm.appendChild(createLabel('t'+sI+'e','Exact match'));
+			 	newTerm.appendChild(document.createTextNode(" "));
+			 	
+			 	input = createRadio('t'+sI,'t'+sI+'s',':');
+			 	input.checked=true;
+			 	newTerm.appendChild(input);
+			 	newTerm.appendChild(document.createTextNode(" "));
+			 	newTerm.appendChild(createLabel('t'+sI+'s','Substring match'));
+				newTerm.appendChild(document.createTextNode(" "));
+			 	
+			 	input = document.createElement('input');
+			 	input.type='checkbox';
+			 	input.id='n'+sI;
+			 	input.name='n'+sI;
+			 	input.onchange=chg();
+			 	newTerm.appendChild(input);
+			 	newTerm.appendChild(document.createTextNode(" "));
+			 	newTerm.appendChild(createLabel('n'+sI,"Negative match?"));
+			 	
+			 	document.getElementById('terms').appendChild(newTerm);
+			 }
+			 
+	         function terms(){
+	            var terms="";
+	            var selectorCount = 1;
+	            
+	            while(document.getElementById('p'+selectorCount)!=null){
+	           		if(selectorCount>1)
+	           			terms+=',';
+	           		else 
+	           			terms="&qp=";
+	           		if(document.getElementById('n'+selectorCount).checked)
+	                	terms+="-";
+	            	terms+=document.getElementById('p'+selectorCount).value.trim();
+	          terms+=document.querySelector('input[name=t'+selectorCount+']:checked').value;
+	            	terms+=encodeURI(document.getElementById('o'+selectorCount).value);
+	            	selectorCount++;
+	            	
+	            }
+	            return terms;
+	         }
+
+	         function fields(){
+	            var fields = "";
+	            var selectorCount = 1;
+	            
+	            while(document.getElementById('f'+selectorCount)!=null && document.getElementById('f'+selectorCount).value.length>0){
+	           		if(selectorCount>1)
+	           			fields+=',';
+	           		else 
+	           			fields="&fields=";
+	           	    fields+=document.getElementById('f'+selectorCount).value.trim();
+	            	selectorCount++;
+	            }
+	            return fields;
+	         }
+	         
+	         function sort(){
+	        	var sort = "";
+	            var selectorCount = 1;
+	            
+	            while(document.getElementById('s'+selectorCount)!=null && document.getElementById('s'+selectorCount).value.length>0){
+	           		if(selectorCount>1)
+	           			sort+=',';
+	           		else 
+	           			sort="&sort-by=";
+	           		if(document.querySelector('input[name=s'+selectorCount+'order]:checked'))
+	                	sort+=document.querySelector('input[name=s'+selectorCount+'order]:checked').value;
+	           	    sort+=document.getElementById('s'+selectorCount).value.trim();
+	            	selectorCount++;
+	            }
+	            return sort;
+	         }
+	         
+
+	</script>
+</head>
+<body>
+	<h2>CM-Well Search Builder</h2>
+	<div>
+		<form>
+			<fieldset>
+				<legend>Query parameters</legend>
+				<p>
+					<label for='subject'>Base subject</label>
+					<input id='subject' name='subject' oninput='chg()' size='40' type='text'>
+				</p>
+				<fieldset id='terms'>
+					<legend>Terms</legend>
+					<div id='term1' class='term'>
+						<label for='p1'>Predicate</label>
+						<input id='p1' name='p1' placeholder="Use '_all' to wildcard" oninput='chg()' size='40' type='text'>
+						<label for='o1'>Object</label>
+						<input id='o1' name='o1' oninput='chg()' placeholder='Will be URI encoded' size='40' type='text'>
+						<input id='t1f' name='t1' onchange='chg()' type='radio' value=':~'> 
+						<label for='t1f'>Fuzzy match</label>
+						<input id='t1e' name='t1' onchange='chg()' type='radio' value='::'> 	
+						<label for='t1e'>Exact match</label>
+						<input checked id='t1s' name='t1' onchange='chg()' type='radio' value=':'>
+						<label for='t1s'>Substring match</label>
+						<input id='n1' name='n1' onchange='chg()' type='checkbox'>
+						<label for='n1'>Negative match?</label>
+						<button name='addPredicate' type='button' onclick="addTerm()">+</button>
+					</div>
+				</fieldset>
+			</fieldset>
+			<fieldset id='fields'>
+				<legend>Fields to return</legend>
+				<div id='field1' class='field'>
+					<label for='f1'>Field</label>
+					<input id='f1' placeholder='Leave blank for all' name='f1' oninput='chg()' size='40' type='text'>
+					<button name='addReturnField' onclick='addField()' type='button'>+</button>
+				</div>
+			</fieldset>
+			<fieldset>
+				<legend>Search behavior</legend>
+				<input id='with-data' name='with-data' onchange='chg()' type='checkbox'> 
+				<label for='with-data'>Return data as well as URLs?</label>
+				<input id='recursive' name='recursive' onchange='chg()' type='checkbox'> 
+				<label for='with-data'>Recurse over sub URIs?</label>
+				<input id='with-history' name='with-history' onchange='chg()' type='checkbox'> 
+				<label for='with-history'>Include history?</label>
+				<input id='with-deleted' name='with-deleted' onchange='chg()' type='checkbox'> 
+				<label for='with-deleted'>Include deleted? (only makes sense with history)</label>
+			</fieldset>
+			<fieldset id='sorts'>
+				<legend>Sorting (leave blank for default behavior)</legend>
+				<div id='sort1' class='sorts'>
+					<label for='s1'>Field</label>
+					<input id='s1' name='s1' oninput='chg()' size='40' type='text'>
+					<input id='s1a' name='s1order' onchange='chg()' type='radio' value='*'>
+					<label for='s1a'>Ascending</label>
+					<input id='s1d' name='s1order' onchange='chg()' type='radio' value='-'>
+					<label for='s1d'>Descending</label>
+					<button name='addSortField' onclick='addSort()' type='button'>+</button>
+				</div>
+			</fieldset>
+			<fieldset>
+				<legend>Result Type</legend>
+				<input id='atom' name='type' onchange='chg()' type='radio' value='atom'> 
+				<label for='atom'><a href='https://en.wikipedia.org/wiki/Atom_(standard)'>ATOM</a></label> 
+				
+				<input id='csv' name='type' onchange='chg()' type='radio' value='csv'> 
+				<label for='csv'><a href='https://en.wikipedia.org/wiki/Comma-separated_values'>CSV</a></label>
+				
+				<input id='json' name='type' onchange='chg()' type='radio' value='json'> 
+				<label for='json'><a href='https://en.wikipedia.org/wiki/JSON'>JSON</a></label> 
+				
+				<input id='jsonl' name='type' onchange='chg()' type='radio' value='jsonl'> 
+				<label for='jsonl'><a href='https://en.wikipedia.org/wiki/JSON_Streaming#Line_delimited_JSON'>JSONL</a></label> 
+				
+				<input id='jsonld' name='type' onchange='chg()' type='radio' value='jsonld'> <label for='jsonld'><a href='https://en.wikipedia.org/wiki/JSON-LD'>JSONLD</a></label>
+				
+				<input id='jsonldq' name='type' onchange='chg()' type='radio' value='jsonldq'> <label for='jsonldq'>JSONLDQ</label>
+				
+				<input id='n3' name='type' onchange='chg()' type='radio' value='n3'> 
+				<label for='n3'><a href='https://en.wikipedia.org/wiki/Notation3'>N3</a></label> 
+
+				<input id='ntriples' name='type' onchange='chg()' type='radio' value='ntriples'>
+				<label for='ntriples'><a href='https://en.wikipedia.org/wiki/N-Triples'>nTriples</a></label>
+				
+				<input id='nquads' name='type' onchange='chg()' type='radio' value='nquads'>
+				<label for='nquads'><a href='https://en.wikipedia.org/wiki/N-Triples#N-Quads'>nQuads</a></label>
+				
+				<input id='rdfxml' name='type' onchange='chg()' type='radio' value='rdfxml'>
+				<label for='rdfxml'><a href='https://en.wikipedia.org/wiki/RDF/XML'>RDF/XML</a></label>
+				
+				<input id='text/path' name='type' onchange='chg()' type='radio' value='text/path'>
+				<label for='text/path'>text/path</label>
+				
+				<input id='trig' name='type' onchange='chg()' type='radio' value='trig'>
+				<label for='trig'><a href='https://en.wikipedia.org/wiki/TriG_(syntax)'>Trig</a></label>
+				
+				<input id='trix' name='type' onchange='chg()' type='radio' value='trix'>
+				<label for='trix'><a href='https://en.wikipedia.org/wiki/TriX_(serialization_format)'>trix</a></label>
+				
+				<input id='tsv' name='type' onchange='chg()' type='radio' value='tsv'>
+				<label for='tsv'><a href='https://en.wikipedia.org/wiki/Tab-separated_values'>tsv</a></label>
+				
+				<input id='ttl' name='type' onchange='chg()' type='radio' value='ttl'> 
+				<label for='ttl'><a href='https://en.wikipedia.org/wiki/Turtle_(syntax)'>Turtle</a></label>
+				
+				<input id='yaml' name='type' onchange='chg()' type='radio' value='yaml'> 
+				<label for='yaml'><a href='https://en.wikipedia.org/wiki/YAML'>Yaml</a></label>
+				
+				<p>
+					<label for='mime-override'>Override mime-type?</label>
+					<input name='mime-override' oninput='chg()' type='text' id='mime-override' size='40' placeholder='e.g text/plain. Leave blank for none'>
+				</p>
+			</fieldset>
+		</form>
+		<h3>Resulting URL (opens in a new window/tab)</h3>
+		<p class='output'><span id='queryURL'></span></p>
+		<h3>What is this???</h3>
+		<p>CM-Well queries, while powerful, can be complex to build. <br>The goal of this form is to make them easier to build by handling all the syntax for you. Not every combination of options is valid (or even makes sense) so your mileage will vary.</p>
+	
+		<h3>Known limitations</h3>
+		<p>
+			<ul>
+				<li>Doesn't support booleans <a href='/meta/docs/API.Query.QueryForInfotonsUsingFieldConditions.md'>(mandatory/optional groups)</a></li>
+				<li>Only tested in chrome</li>
+				<li>No support for xg/yg</li>
+			</ul>
+		</p>
+	</div>
+	<script>chg();</script>
+</body>
+</html>

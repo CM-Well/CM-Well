@@ -60,16 +60,78 @@ package object numeric {
 
   object Radix64 {
     val encodeTable = Array(
-      '-','0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+      '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
       'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
       'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
       '_',
       'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
       'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
     )
-    def encodeUnsigned(i: Int, padToLength: Int = 1): String = {
-      require(padToLength > 0, "must be padded with a positive value (1 means no padding)")
-      val num = {
+
+    trait SixBitCharHandler[N] {
+      def numToArr(n: N): Array[Char]
+    }
+
+    implicit object LongSixBitsCharHandler extends SixBitCharHandler[Long] {
+      override def numToArr(l: Long): Array[Char] = {
+        var v = l
+        val c0 = encodeTable(v & 0x3f toInt)
+        if (v < 0x40) Array(c0)
+        else {
+          v >>= 6
+          val c1 = encodeTable(v & 0x3f toInt)
+          if (v < 0x40) Array(c1,c0)
+          else {
+            v >>= 6
+            val c2 = encodeTable(v & 0x3f toInt)
+            if (v < 0x40) Array(c2, c1, c0)
+            else {
+              v >>= 6
+              val c3 = encodeTable(v & 0x3f toInt)
+              if (v < 0x40) Array(c3, c2, c1, c0)
+              else {
+                v >>= 6
+                val c4 = encodeTable(v & 0x3f toInt)
+                if (v < 0x40) Array(c4, c3, c2, c1, c0)
+                else {
+                  v >>= 6
+                  val c5 = encodeTable(v & 0x3f toInt)
+                  if (v < 0x40) Array(c5, c4, c3, c2, c1, c0)
+                  else {
+                    v >>= 6
+                    val c6 = encodeTable(v & 0x3f toInt)
+                    if (v < 0x40) Array(c6, c5, c4, c3, c2, c1, c0)
+                    else {
+                      v >>= 6
+                      val c7 = encodeTable(v & 0x3f toInt)
+                      if (v < 0x40) Array(c7, c6, c5, c4, c3, c2, c1, c0)
+                      else {
+                        v >>= 6
+                        val c8 = encodeTable(v & 0x3f toInt)
+                        if (v < 0x40) Array(c8, c7, c6, c5, c4, c3, c2, c1, c0)
+                        else {
+                          v >>= 6
+                          val c9 = encodeTable(v & 0x3f toInt)
+                          if (v < 0x40) Array(c9, c8, c7, c6, c5, c4, c3, c2, c1, c0)
+                          else {
+                            v >>= 6
+                            val c10 = encodeTable(v & 0x3f toInt)
+                            Array(c10, c9, c8, c7, c6, c5, c4, c3, c2, c1, c0)
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    implicit object IntSixBitsCharHandler extends SixBitCharHandler[Int] {
+      override def numToArr(i: Int): Array[Char] = {
         var v = i
         val c0 = encodeTable(v & 0x3f)
         if (v < 0x40) Array(c0)
@@ -92,20 +154,20 @@ package object numeric {
                 else {
                   v >>= 6
                   val c5 = encodeTable(v & 0x3f)
-                  if (v < 0x40) Array(c5, c4, c3, c2, c1, c0)
-                  else {
-                    v >>= 6
-                    val c6 = encodeTable(v & 0x3f)
-                    Array(c6, c5, c4, c3, c2, c1, c0)
-                  }
+                  Array(c5, c4, c3, c2, c1, c0)
                 }
               }
             }
           }
         }
       }
+    }
+
+    def encodeUnsigned[N : SixBitCharHandler](n: N, padToLength: Int = 1): String = {
+      require(padToLength > 0, "must be padded with a positive value (1 means no padding)")
+      val num = implicitly[SixBitCharHandler[N]].numToArr(n)
       if(num.length >= padToLength) new String(num)
-      else String.join(Array.fill(padToLength-num.length)('-'),num)
+      else new java.lang.StringBuilder(Array.fill(padToLength-num.length)('-')).append(num).toString()
     }
   }
 }

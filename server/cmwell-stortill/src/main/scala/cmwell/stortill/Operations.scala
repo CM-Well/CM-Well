@@ -38,7 +38,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise}
 import cmwell.syntaxutils._
 import cmwell.util.BoxedFailure
-import cmwell.util.stream.{DetectCompletion, MapInitAndLast, SortedStreamsMergeBy}
+import cmwell.util.stream.{MapInitAndLast, SortedStreamsMergeBy}
 import org.elasticsearch.action.ActionRequest
 import org.joda.time.DateTime
 

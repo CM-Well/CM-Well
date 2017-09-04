@@ -29,7 +29,7 @@ import akka.util.ByteString
 import cmwell.dc.{LazyLogging, Settings}
 import cmwell.dc.Settings._
 import cmwell.dc.stream.MessagesTypesAndExceptions._
-import cmwell.dc.stream.akkautils.{DebugStage, StreamUtils}
+import cmwell.dc.stream.akkautils.DebugStage
 
 import scala.collection.parallel.immutable
 import scala.util.{Failure, Success, Try}

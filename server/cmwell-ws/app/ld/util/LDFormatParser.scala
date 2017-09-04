@@ -229,7 +229,7 @@ object LDFormatParser extends LazyLogging {
    * isGlobalMetaOp(s)
    * res2: Boolean = true
    * }}}
- *
+   *
    * @param stmt
    * @return
    */

@@ -21,6 +21,7 @@ import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.enablers.{Emptiness, Size}
 import play.api.libs.json._
 import org.scalatest.{AsyncFunSpec, Matchers}
+import scala.concurrent.duration.DurationInt
 
 class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixture.NSHashesAndPrefixes with LazyLogging {
 
@@ -46,7 +47,7 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
     val waitForIngest = ingestData.flatMap(_ => schedule(indexingDuration)(()))
 
     val makeSureSteveHarrisIs404Ghost = waitForIngest.flatMap { _ =>
-      Http.get(cmw / "dbpedia.org" / "resource" / "Steve_Harris_(musician)", List("format" -> "json")).map {
+      spinCheck(1.second,true)(Http.get(cmw / "dbpedia.org" / "resource" / "Steve_Harris_(musician)", List("format" -> "json")))(_.status).map {
         res => withClue(res) {
           res.status should be(404)
         }
@@ -62,7 +63,7 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
     }
 
     val skipSteveHarrisGhostToGetBand = waitForIngest.flatMap { _ =>
-      Http.get(cmw / "identi.ca" / "user" / "13766", List("yg" -> ">sameAs.owl<bandMember.ontology","format" -> "json")).map {
+      spinCheck(1.second,true)(Http.get(cmw / "identi.ca" / "user" / "13766", List("yg" -> ">sameAs.owl<bandMember.ontology","format" -> "json")))(_.status).map {
         res => withClue(res) {
           res.status should be(200)
           Json.parse(res.payload) \ "infotons" match {
@@ -74,7 +75,7 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
     }
 
     val skipSteveHarrisGhostToGetIdentity = waitForIngest.flatMap { _ =>
-      Http.get(cmw / "dbpedia.org" / "resource" / "Iron_Maiden",List("yg" -> ">bandMember.ontology<sameAs.owl","format" -> "json")).map {
+      spinCheck(1.second,true)(Http.get(cmw / "dbpedia.org" / "resource" / "Iron_Maiden",List("yg" -> ">bandMember.ontology<sameAs.owl","format" -> "json")))(_.status).map {
         res => withClue(res) {
           res.status should be(200)
           Json.parse(res.payload) \ "infotons" match {
@@ -86,7 +87,7 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
     }
 
     val getInfotonsPointingToGhostOfSteveHarrisFrom404Path = waitForIngest.flatMap { _ =>
-      Http.get(cmw / "dbpedia.org" / "resource" / "Steve_Harris_(musician)", List("yg" -> "<bandMember.ontology,sameAs.owl","format" -> "json")).map {
+      spinCheck(1.second,true)(Http.get(cmw / "dbpedia.org" / "resource" / "Steve_Harris_(musician)", List("yg" -> "<bandMember.ontology,sameAs.owl","format" -> "json")))(_.status).map {
         res => withClue(res) {
           res.status should be(200)
           Json.parse(res.payload) \ "infotons" match {
@@ -98,7 +99,7 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
     }
 
     val filterOutInfotonsPointingToGhostOfSteveHarrisFrom404Path = waitForIngest.flatMap { _ =>
-      Http.get(cmw / "dbpedia.org" / "resource" / "Steve_Harris_(musician)", List("yg" -> "<bandMember.ontology[type.rdf::http://www.w3.org/ns/prov#NotRealPersonType]","format" -> "json")).map {
+      spinCheck(1.second,true)(Http.get(cmw / "dbpedia.org" / "resource" / "Steve_Harris_(musician)", List("yg" -> "<bandMember.ontology[type.rdf::http://www.w3.org/ns/prov#NotRealPersonType]","format" -> "json")))(_.status).map {
         res => withClue(res) {
           res.status should be(200)
           Json.parse(res.payload) \ "infotons" match {
@@ -110,7 +111,7 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
     }
 
     val tryToSkipSteveHarrisGhostToGetIdentityButGetGhostFilttered = waitForIngest.flatMap { _ =>
-      Http.get(cmw / "dbpedia.org" / "resource" / "Iron_Maiden",List("yg" -> ">bandMember.ontology[type.rdf::http://www.w3.org/ns/prov#NotRealPersonType]<sameAs.owl","format" -> "json")).map {
+      spinCheck(1.second,true)(Http.get(cmw / "dbpedia.org" / "resource" / "Iron_Maiden",List("yg" -> ">bandMember.ontology[type.rdf::http://www.w3.org/ns/prov#NotRealPersonType]<sameAs.owl","format" -> "json")))(_.status).map {
         res => withClue(res) {
           res.status should be(200)
           Json.parse(res.payload) \ "infotons" match {

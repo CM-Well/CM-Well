@@ -23,7 +23,6 @@ import org.scalatest._
 
 trait BaseWiremockSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterAll with BeforeAndAfterEach{
   val host = "localhost"
-  val path = "example.org"
   val wireMockServer = new WireMockServer(wireMockConfig().dynamicPort())
 
   override def beforeAll(): Unit = {

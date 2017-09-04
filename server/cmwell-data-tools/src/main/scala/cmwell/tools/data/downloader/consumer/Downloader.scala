@@ -20,6 +20,7 @@ package cmwell.tools.data.downloader.consumer
 import akka.NotUsed
 import akka.actor.{ActorSystem, Props}
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers.RawHeader
 import akka.stream._
 import akka.stream.scaladsl._
 import akka.util.ByteString
@@ -29,6 +30,7 @@ import cmwell.tools.data.utils.ArgsManipulations.{HttpAddress, _}
 import cmwell.tools.data.utils.akka.HeaderOps._
 import cmwell.tools.data.utils.akka.{concatByteStrings, _}
 import cmwell.tools.data.utils.logging._
+import cmwell.tools.data.utils.akka._
 import cmwell.tools.data.utils.ops.VersionChecker
 import cmwell.tools.data.utils.text.Tokens
 import play.api.libs.json.{JsArray, Json}
@@ -51,11 +53,19 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
   type Uuid  = ByteString
   type Path  = ByteString
 
-  sealed class Tsv
-  case class TsvData(path: Path, uuid: Uuid) extends Tsv
-  case object TsvEmpty extends Tsv
+  sealed abstract class Tsv {
+    def toByteString: ByteString
+  }
 
-  type TokenAndTsv = (Token, TsvData)
+  case class TsvData(path: Path,
+                     uuid: Uuid,
+                     lastModified: ByteString,
+                     indexTime: ByteString = ByteString.empty) extends Tsv {
+    override def toByteString: ByteString = concatByteStrings(
+      Seq(path,lastModified,uuid,indexTime),"", "\t", "")
+  }
+
+  case object TsvEmpty extends Tsv { override def toByteString: ByteString = ByteString.empty }
 
   /**
     * Creates token (position) from given query
@@ -65,7 +75,6 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
     * @param params params in cm-well URI
     * @param qp query params in cm-well
     * @param recursive is query recursive
-    * @param length cm-well length-hint paramter
     * @param system actor system
     * @param mat materializer
     * @param ec execution context
@@ -76,7 +85,6 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
                params: String = "",
                qp: String = "",
                recursive: Boolean = false,
-               length: Option[Int] = None,
                indexTime: Long = 0L,
                isBulk: Boolean)
               (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext): Future[Token] = {
@@ -84,12 +92,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
     val paramsValue = if (params.isEmpty) "" else s"&$params"
     val recursiveValue = if (recursive) "&recursive" else ""
 
-    val lengthValue = if (length.isEmpty || isBulk) "" else s"&length=${length.get}"
-    if (length.nonEmpty && isBulk) {
-      logger.warn("length-hint and bulk mode cannot be both enabled: length was set to default value")
-    }
-
-    val uri = s"${formatHost(baseUrl)}$path?op=create-consumer$qpValue$paramsValue$recursiveValue$lengthValue&index-time=$indexTime"
+    val uri = s"${formatHost(baseUrl)}$path?op=create-consumer$qpValue$paramsValue$recursiveValue&index-time=$indexTime"
     logger.debug("send HTTP request: {}", uri)
 
     val tokenFuture = Source.single(Seq(blank) -> None)
@@ -101,7 +104,8 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
         case (Success(res), _, _) =>
           res.discardEntityBytes()
           None
-        case _ =>
+        case x =>
+          logger.error(s"cannot get initial token: $x")
           None
       }
       .map {
@@ -121,10 +125,16 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
     * @param bytes input ByteString
     * @return extracted tsv data
     */
-  def extractTsv(bytes: ByteString) = {
-    val arr = bytes.split('\t')
+  def extractTsv(bytes: ByteString): Tsv = bytes.split('\t') match {
+    case path :: lastModified :: uuid :: indexTime :: Nil =>
+      TsvData(path = path, uuid = uuid, lastModified = lastModified, indexTime = indexTime)
 
-    TsvData(path = arr(PATH_INDEX), uuid = arr(UUID_INDEX))
+    case path :: lastModified :: uuid :: Nil =>
+      TsvData(path = path, uuid = uuid, lastModified = lastModified)
+
+    case _ =>
+      logger.error(s"received unexpected tsv: ${bytes.utf8String}")
+      TsvEmpty
   }
 
   /**
@@ -228,7 +238,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
           Future.successful(nextToken -> Seq.empty[String])
         } else {
           src
-            .map { tsv => nextToken -> tsv.path }
+            .collect { case tsv:TsvData => nextToken -> tsv.path }
             .fold("" -> Seq.empty[ByteString]) { case ((oldToken, paths), (newToken, path)) =>
               newToken -> (paths :+ path)
             }
@@ -308,6 +318,9 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
                        recursive: Boolean = false,
                        isBulk: Boolean = false,
                        token: Option[String] = None,
+                       updateFreq: Option[FiniteDuration] = None,
+                       indexTime: Long = 0L,
+                       label: Option[String] = None,
                        usePaths: Boolean = false)
                       (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
 
@@ -318,19 +331,40 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
       format = format,
       qp = qp,
       isBulk = isBulk,
-      recursive = recursive)
+      recursive = recursive,
+      indexTime = indexTime,
+      label = label
+    )
 
+    val tsvSource = createTsvSource(
+      baseUrl = baseUrl,
+      path = path,
+      params = params,
+      qp = qp,
+      isBulk = isBulk,
+      recursive = recursive,
+      indexTime = indexTime,
+      updateFreq = updateFreq,
+      token = token,
+      label = label
+    ).async
 
-    val tsvSource = downloader.createTsvSource(token).async
+    format match {
+      case "tsv" =>
+        tsvSource.map { case (token, tsv) => token -> tsv.toByteString }
+      case "text" =>
+        tsvSource.map { case (token, tsv) => token -> tsv.path }
+      case _ =>
+        if (usePaths) {
+          tsvSource
+            .map {case (token, tsv) => token -> tsv.path }
+            .via(downloader.downloadDataFromPaths).async
+        } else {
+          tsvSource
+            .map {case (token, tsv) => token -> tsv.uuid }
+            .via(downloader.downloadDataFromUuids).async
+        }
 
-    if (usePaths) {
-      tsvSource
-        .map {case (token, tsv) => token -> tsv.path }
-        .via(downloader.downloadDataFromPaths).async
-    } else {
-      tsvSource
-        .map {case (token, tsv) => token -> tsv.uuid }
-        .via(downloader.downloadDataFromUuids).async
     }
   }
 }
@@ -344,7 +378,6 @@ class Downloader(baseUrl: String,
                  params: String = "",
                  qp: String = "",
                  format: String = "trig",
-                 length: Option[Int] = None,
                  recursive: Boolean = false,
                  isBulk: Boolean = false,
                  indexTime: Long = 0L,
@@ -377,7 +410,7 @@ class Downloader(baseUrl: String,
         method = HttpMethods.POST,
         entity = HttpEntity(concatByteStrings(paths, ByteString(",\n")).utf8String)
           .withContentType(ContentTypes.`text/plain(UTF-8)`)
-      )
+      ).addHeader(RawHeader("Accept-Encoding", "gzip"))
     }
 
     def getMissingPaths(receivedData: ByteString, paths: Seq[String]) = {
@@ -439,19 +472,21 @@ class Downloader(baseUrl: String,
         .via(Retry.retryHttp(timeout, parallelism, baseUrl)(createRequest)) // fetch data from paths
         .mapAsyncUnordered(parallelism){
         case (Success(res@HttpResponse(s,h,e,p)), sentPaths, Some(state)) if s.isSuccess() =>
-          DataPostProcessor.postProcessByFormat(format, e.withoutSizeLimit().dataBytes)
-            .runFold(blank)(_ ++ _)
-            .map{ receivedData => // accumulate received data
-              val totalReceivedData = state.retrievedData :+ receivedData
+          logger.debug(s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}")
 
+          e.toStrict(1.minute).flatMap { strict =>
+            val unzippedData = Source.single(strict.data).via(Compression.gunzip())
+
+            DataPostProcessor.postProcessByFormat(format, unzippedData).runFold(blank)(_ ++ _).map { receivedData =>
+              // accumulate received data
+              val totalReceivedData = state.retrievedData :+ receivedData
 
               getMissingPaths(receivedData, sentPaths.map(_.utf8String)) match {
                 case Seq() =>
                   // no missing data, success!
                   Success(totalReceivedData) -> state.copy(pathsToRequest = Seq(), retrievedData = totalReceivedData)
                 case missingPaths if state.retriesLeft > 0 =>
-                  logger.debug(s"received data length=${receivedData.size} $h")
-                  logger.debug(s"sent ${sentPaths.size} paths but received ${sentPaths.size - missingPaths.size}")
+                  logger.debug(s"sent ${sentPaths.size} paths but received ${sentPaths.size - missingPaths.size}, total received data length=${receivedData.size}")
                   logger.debug(s"sent ${sentPaths.map(_.utf8String).mkString("\n")}")
 
                   // retry retrieving data from missing uuids
@@ -473,8 +508,13 @@ class Downloader(baseUrl: String,
                   Success(totalReceivedData) -> newState
               }
             }
+          }
+
         case (Success(HttpResponse(s,h,e,p)), sentPaths, Some(state)) =>
           e.discardBytes()
+
+          logger.debug(s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}")
+
           Future.successful(Failure(new Exception("cannot send request to send paths")) -> state)
         case (Failure(err), sendPaths, Some(state)) =>
           logger.error(s"error: token=${state.token} $err")
@@ -513,7 +553,7 @@ class Downloader(baseUrl: String,
         method = HttpMethods.POST,
         entity = HttpEntity(concatByteStrings(uuids, "/ii/", "\n/ii/", "").utf8String)
           .withContentType(ContentTypes.`text/plain(UTF-8)`)
-      )
+      ).addHeader(RawHeader("Accept-Encoding", "gzip"))
     }
 
     def getMissingUuids(receivedData: ByteString, uuids: Seq[String]) = {
@@ -573,9 +613,13 @@ class Downloader(baseUrl: String,
         .via(Retry.retryHttp(timeout, parallelism, baseUrl)(createRequest)) // fetch data from uuids
         .mapAsyncUnordered(parallelism){
           case (Success(res@HttpResponse(s,h,e,p)), sentUuids, Some(state)) if s.isSuccess() =>
-            DataPostProcessor.postProcessByFormat(format, e.withoutSizeLimit().dataBytes)
-              .runFold(blank)(_ ++ _)
-              .map{ receivedData => // accumulate received data
+            logger.debug(s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}")
+
+            e.toStrict(1.minute).flatMap { strict =>
+              val unzippedData = Source.single(strict.data).via(Compression.gunzip())
+
+              DataPostProcessor.postProcessByFormat(format, unzippedData).runFold(blank)(_ ++ _).map { receivedData =>
+                // accumulate received data
                 val totalReceivedData = state.retrievedData :+ receivedData
 
                 getMissingUuids(receivedData, sentUuids.map(_.utf8String)) match {
@@ -583,8 +627,7 @@ class Downloader(baseUrl: String,
                     // no missing data, success!
                     Success(totalReceivedData) -> state.copy(uuidsToRequest = Seq(), retrievedData = totalReceivedData)
                   case missingUuids if state.retriesLeft > 0 =>
-                    logger.debug(s"received data length=${receivedData.size} $h")
-                    logger.debug(s"sent ${sentUuids.size} uuids but receieved ${sentUuids.size - missingUuids.size}")
+                    logger.debug(s"sent ${sentUuids.size} paths but received ${sentUuids.size - missingUuids.size}, total received data length=${receivedData.size}")
                     logger.debug(s"sent ${sentUuids.map(_.utf8String).mkString("/ii/", "\n/ii/", "\n")}")
 
                     // retry retrieving data from missing uuids
@@ -606,9 +649,14 @@ class Downloader(baseUrl: String,
                     Success(totalReceivedData) -> newState
                 }
               }
+            }
+
           case (Success(HttpResponse(s,h,e,p)), sentUuids, Some(state)) =>
             e.discardBytes()
+
+            logger.debug(s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}")
             Future.successful(Failure(new Exception("cannot send request to send uuids")) -> state)
+
           case (Failure(err), sendUuids, Some(state)) =>
             logger.error(s"error: token=${state.token} $err")
             Future.successful(Failure(new Exception("cannot send request to send uuids")) -> state)
@@ -680,7 +728,7 @@ class Downloader(baseUrl: String,
         Future.successful(nextToken -> "")
       } else {
         src
-          .map ( tsv => tsv.uuid )
+          .collect { case tsv: TsvData => tsv.uuid }
           .map (nextToken -> _)
           .via (downloadDataFromUuids )
           .fold("" -> Seq.empty[ByteString]) {
@@ -712,7 +760,6 @@ class Downloader(baseUrl: String,
         qp = qp,
         recursive = recursive,
         indexTime = indexTime,
-        length = length,
         isBulk = isBulk)
     }
 

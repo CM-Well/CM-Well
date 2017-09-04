@@ -70,6 +70,8 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
   val esActionsBulkSize = config.getInt("cmwell.bg.esActionsBulkSize") // in bytes
   val esActionsGroupingTtl = config.getInt("cmwell.bg.esActionsGroupingTtl") // ttl for bulk es actions grouping in ms
 
+  logger info s"IndexerStream starting with config:\n ${config.entrySet().asScala.collect{case entry if entry.getKey.startsWith("cmwell") => s"${entry.getKey} -> ${entry.getValue.render()}"}.mkString("\n")}"
+
   /***** Metrics *****/
   val existingMetrics = metricRegistry.getMetrics.asScala
   val indexNewInfotonCommandCounter:Counter = existingMetrics.get("IndexNewCommand Counter").
@@ -89,13 +91,15 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
   val streamId = s"indexer.${partition}"
 
   val startingOffset = offsetsService.read(s"${streamId}_offset").getOrElse(0L)
-  val priorityStartingOffset = offsetsService.read(s"${streamId}.p_offset").getOrElse(0L)
+  val startingOffsetPriority = offsetsService.read(s"${streamId}.p_offset").getOrElse(0L)
+
+    logger info s"IndexerStream($streamId), startingOffset: $startingOffset, startingOffsetPriority: $startingOffsetPriority"
 
   val subscription = Subscriptions.assignmentWithOffset(
     new TopicPartition(indexCommandsTopic, partition) -> startingOffset)
 
   val prioritySubscription = Subscriptions.assignmentWithOffset(
-    new TopicPartition(priorityIndexCommandsTopic, partition) -> priorityStartingOffset)
+    new TopicPartition(priorityIndexCommandsTopic, partition) -> startingOffsetPriority)
 
   val sharedKillSwitch = KillSwitches.shared("indexer-sources-kill-switch")
 
@@ -103,14 +107,14 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
       logger debug s"consuming next payload from index commands topic @ offset: ${msg.offset()}"
     val indexCommand = CommandSerializer.decode(msg.value()).asInstanceOf[IndexCommand]
       logger debug s"converted payload to an IndexCommand:\n$indexCommand"
-    BGMessage[IndexCommand](msg.offset(), indexCommand)
+    BGMessage[IndexCommand](CompleteOffset(msg.topic(), msg.offset()), indexCommand)
   }.via(sharedKillSwitch.flow)
 
   val priorityIndexCommandsSource = Consumer.plainExternalSource[Array[Byte], Array[Byte]](kafkaConsumer, prioritySubscription).map { msg =>
     logger debug s"consuming next payload from priority index commands topic @ offset: ${msg.offset()}"
     val indexCommand = CommandSerializer.decode(msg.value()).asInstanceOf[IndexCommand]
     logger debug s"converted priority payload to an IndexCommand:\n$indexCommand"
-    BGMessage[IndexCommand](msg.offset(), indexCommand)
+    BGMessage[IndexCommand](CompleteOffset(msg.topic(), msg.offset()), indexCommand)
   }.via(sharedKillSwitch.flow)
 
   val heartBitLog = Flow[BGMessage[IndexCommand]].keepAlive(60.seconds, () => BGMessage(HeartbitCommand.asInstanceOf[Command])).filterNot{
@@ -125,13 +129,18 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
   case class InfoAction(esAction:ActionRequest[ _ <: ActionRequest[_ <: AnyRef]], weight:Long, indexTime:Option[Long])
 
 
-  val commitOffsets = Flow[Seq[Long]].groupedWithin(6000, 3.seconds).toMat{
+  val commitOffsets = Flow[Seq[Offset]].groupedWithin(6000, 3.seconds).toMat{
     Sink.foreach{ offsetGroups =>
-      val offsets = offsetGroups.flatten
+      val (offsets, offsetsPriority) = offsetGroups.flatten.partition(_.topic == indexCommandsTopic)
       if(offsets.length >0) {
-        val lastOffset = offsets.max
-          logger debug s"committing offset: $lastOffset"
+        val lastOffset = offsets.map(_.offset).max
+          logger debug s"committing last offset: $lastOffset"
         offsetsService.write(s"${streamId}_offset", lastOffset + 1L)
+      }
+      if(offsetsPriority.length >0) {
+        val lastOffset = offsetsPriority.map(_.offset).max
+          logger debug s"committing last offset priority: $lastOffset"
+        offsetsService.write(s"${streamId}.p_offset", lastOffset + 1L)
       }
     }
   }(Keep.right)

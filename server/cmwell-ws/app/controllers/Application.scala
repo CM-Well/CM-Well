@@ -59,6 +59,7 @@ import security.PermissionLevel.PermissionLevel
 import security._
 import wsutil.{asyncErrorHandler, errorHandler, _}
 import cmwell.syntaxutils.!!!
+import cmwell.util.stream.StreamEventInspector
 import cmwell.web.ld.cmw.CMWellRDFHelper
 
 import scala.collection.mutable.{HashMap, MultiMap}
@@ -764,6 +765,7 @@ callback=< [URL] >
         val withHistory = request.queryString.keySet("with-history")
         val withDeleted = request.queryString.keySet("with-deleted")
         val withMeta = request.queryString.keySet("with-meta")
+        val debugLog = request.queryString.keySet("debug-log")
         val length = request.getQueryString("length").flatMap(asLong)
         val pathFilter = Some(PathFilter(normalizedPath, withDescendants))
         val nbg = request.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
@@ -818,8 +820,31 @@ callback=< [URL] >
                   withHistory = withHistory,
                   withDeleted = withDeleted).map { case (src, hits) =>
 
-                  val s = streams.scrollSourceToByteString(src, formatter, withData.isDefined, withHistory, length, fieldsMask,nbg)
-                  Ok.chunked(s).as(overrideMimetype(formatter.mimetype, request)._2).withHeaders("X-CM-WELL-N" -> hits.toString)
+                  lazy val id = cmwell.util.numeric.Radix64.encodeUnsigned(request.id)
+                  val s: Source[ByteString, NotUsed] = {
+                    val scrollSourceToByteString = streams.scrollSourceToByteString(src, formatter, withData.isDefined, withHistory, length, fieldsMask, nbg)
+                    if(debugLog) scrollSourceToByteString.via {
+                      new StreamEventInspector(
+                        onUpstreamFinishInspection =   () => logger.info(s"[$id] onUpstreamFinish"),
+                        onUpstreamFailureInspection =  error => logger.error(s"[$id] onUpstreamFailure",error),
+                        onDownstreamFinishInspection = () => logger.info(s"[$id] onDownstreamFinish"),
+                        onPullInspection =             () => logger.info(s"[$id] onPull"),
+                        onPushInspection =             bytes => {
+                          val all = bytes.utf8String
+                          val elem = {
+                            if (bytes.isEmpty) ""
+                            else all.lines.next()
+                          }
+                          logger.info(s"""[$id] onPush(first line: "$elem", num of lines: ${all.lines.size}, num of chars: ${all.size})""")
+                        })
+                    }
+                    else scrollSourceToByteString
+                  }
+                  val headers = {
+                    if(debugLog) List("X-CM-WELL-N" -> hits.toString, "X-CM-WELL-LOG-ID" -> id)
+                    else List("X-CM-WELL-N" -> hits.toString)
+                  }
+                  Ok.chunked(s).as(overrideMimetype(formatter.mimetype, request)._2).withHeaders(headers:_*)
                 }
               }
             }
@@ -1112,7 +1137,6 @@ callback=< [URL] >
             case SearchThinResults(total, _, _, results, _) if results.nonEmpty => {
 
               val idxT = results.maxBy(_.indexTime).indexTime //infotons.maxBy(_.indexTime.getOrElse(0L)).indexTime.getOrElse(0L)
-              require(idxT > 0, "all infotons in iteration must have a valid indexTime defined")
 
               // last chunk
               if (results.length >= total)

@@ -66,7 +66,7 @@ class IterationsTests extends AsyncFunSpec with Matchers with Inspectors with He
 
     val path = cmw / "scroll"
 
-    val allIngestedSuccessfully = spinCheck[Array[Byte]](250.millis)(Http.get(path, List("op" -> "search", "length" -> "1", "format" -> "json"))){ r =>
+    val allIngestedSuccessfully = spinCheck[Array[Byte]](1.second)(Http.get(path, List("op" -> "search", "length" -> "1", "format" -> "json"))){ r =>
       r.status == 200 && {
         val j = Json.parse(r.payload)
         (j \ "results" \ "total" : @unchecked) match {
@@ -93,7 +93,7 @@ class IterationsTests extends AsyncFunSpec with Matchers with Inspectors with He
       }
     }
 
-    val allDeletedSuccessfully = executeAfterCompletion(deleteSomeValues)(spinCheck[Array[Byte]](250.millis)(Http.get(path, List("op" -> "search", "length" -> "1", "format" -> "json"))){ r =>
+    val allDeletedSuccessfully = executeAfterCompletion(deleteSomeValues)(spinCheck[Array[Byte]](1.second)(Http.get(path, List("op" -> "search", "length" -> "1", "format" -> "json"))){ r =>
       r.status == 200 && {
         val j = Json.parse(r.payload)
         (j \ "results" \ "total" : @unchecked) match {
@@ -108,7 +108,7 @@ class IterationsTests extends AsyncFunSpec with Matchers with Inspectors with He
 
     val ldPath = cmw / "ld-scroll.com"
 
-    val allLdIngestedSuccessfully = spinCheck[Array[Byte]](250.millis)(Http.get(ldPath, List("op" -> "search", "qp" -> "identifier.dc<<50", "length" -> "1", "format" -> "json"))){ r =>
+    val allLdIngestedSuccessfully = spinCheck[Array[Byte]](1.second)(Http.get(ldPath, List("op" -> "search", "qp" -> "identifier.dc<<50", "length" -> "1", "format" -> "json"))){ r =>
       r.status == 200 && {
         val j = Json.parse(r.payload)
         (j \ "results" \ "total" : @unchecked) match {
@@ -121,7 +121,7 @@ class IterationsTests extends AsyncFunSpec with Matchers with Inspectors with He
       case _: Throwable => body
     }
 
-    val g1 = executeAfterIndexing2(spinCheck[Array[Byte]](250.millis,true)(Http.get(ldPath, List("op" -> "create-iterator", "session-ttl" -> "60", "length" -> "20", "format" -> "json", "qp" -> "identifier.dc<<50", "debug-info" -> ""))){ r =>
+    val g1 = executeAfterIndexing2(spinCheck[Array[Byte]](1.second,true)(Http.get(ldPath, List("op" -> "create-iterator", "session-ttl" -> "60", "length" -> "20", "format" -> "json", "qp" -> "identifier.dc<<50", "debug-info" -> ""))){ r =>
       r.status == 200 && {
         val j = Json.parse(r.payload)
 
@@ -146,7 +146,7 @@ class IterationsTests extends AsyncFunSpec with Matchers with Inspectors with He
     val g3 = g2.flatMap(t => Http.get(ldPath, List("op" -> "next-chunk", "iterator-id" -> t._2.get, "session-ttl" -> "60", "format" -> "json")).map(requestHandler))
     val g4 = g3.flatMap(t => Http.get(ldPath, List("op" -> "next-chunk", "iterator-id" -> t._2.get, "session-ttl" -> "60", "format" -> "json")).map(requestHandler))
 
-    val h0 = executeAfterIndexing2(spinCheck[Array[Byte]](250.millis,true)(Http.get(ldPath, List("op" -> "create-iterator", "session-ttl" -> "60", "length" -> "20", "format" -> "json", "qp" -> s"identifier.$$${ns.dc}<50", "debug-info" -> ""))){ r =>
+    val h0 = executeAfterIndexing2(spinCheck[Array[Byte]](1.second,true)(Http.get(ldPath, List("op" -> "create-iterator", "session-ttl" -> "60", "length" -> "20", "format" -> "json", "qp" -> s"identifier.$$${ns.dc}<50", "debug-info" -> ""))){ r =>
       r.status == 200 && {
         val j = Json.parse(r.payload)
         val b1 = (j \ "totalHits" : @unchecked) match {
