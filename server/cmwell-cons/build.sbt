@@ -28,7 +28,6 @@ getExternalComponents := {
 
   val mx4jM = dm("mx4j", "mx4j-tools")
   val mx4jF: scala.concurrent.Future[Seq[java.io.File]] = {
-    mx4jM.explicitArtifacts
     CMWellBuild.fetchMvnArtifact(mx4jM,scalaVersion.value,scalaBinaryVersion.value)
   }
 
