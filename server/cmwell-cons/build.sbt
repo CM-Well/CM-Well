@@ -1,53 +1,74 @@
 import java.nio.file.FileAlreadyExistsException
 
 import sbt.LocalProject
+
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
+import scala.concurrent.ExecutionContext.Implicits.global
+
+
 packAutoSettings
 name := "cmwell-cons"
 
 unmanagedResources := Seq()
 
-/*
-FIXME: if coursier issue is resolved ( https://gitter.im/coursier/coursier?at=59533c41ceb5bef82ebaf760 ) use regular dependnecies, and ditch `getExternalComponents` task
-resolvers ++= Seq(
-  Resolver.url("apache-zk") artifacts "http://www-eu.apache.org/dist/[organisation]/[module]-[revision]/[artifact].[ext]",
-  Resolver.url("apache-kafka") artifacts "http://www-eu.apache.org/dist/[organisation]/[revision]/[artifact].[ext]"
-)
-*/
-
-libraryDependencies ++= {
-  val dm = dependenciesManager.value
-  Seq(
-    dm("org.apache.cassandra", "apache-cassandra") artifacts (Artifact("apache-cassandra", "tar.gz", "tar.gz", "bin")) intransitive(),
-    dm("org.elasticsearch", "elasticsearch") artifacts (Artifact("elasticsearch", "tar.gz", "tar.gz")) intransitive(),
-    dm("mx4j", "mx4j-tools")/*,
-    "zookeeper" % "zookeeper" % Versions.zookeeper artifacts (Artifact("zookeeper", "tar.gz", "tar.gz")) intransitive(),
-    "kafka" %% "kafka" % Versions.zookeeper artifacts (Artifact("kafka", "tgz", "tgz")) intransitive()
-    */
-  )
-}
-
-classpathTypes ~=  (_ + "tar.gz" + "tgz")
-
 getExternalComponents := {
   val logger = streams.value
-  val list = Map(
-    s"kafka-dist-${Versions.kafka}.tgz" -> s"http://www-eu.apache.org/dist/kafka/${Versions.kafka}/kafka_2.11-${Versions.kafka}.tgz",
-    s"zookeeper-${Versions.zookeeper}.tar.gz" -> s"http://www-eu.apache.org/dist/zookeeper/zookeeper-3.4.6/zookeeper-${Versions.zookeeper}.tar.gz"
-  )
+  val dm = dependenciesManager.value
+
+  val casM = dm("org.apache.cassandra", "apache-cassandra") artifacts (Artifact("apache-cassandra", "tar.gz", "tar.gz", "bin")) intransitive()
+  val casF: scala.concurrent.Future[Seq[java.io.File]] = {
+    CMWellBuild.fetchMvnArtifact(casM,scalaVersion.value,scalaBinaryVersion.value)
+  }
+
+  val esM = dm("org.elasticsearch", "elasticsearch") artifacts (Artifact("elasticsearch", "tar.gz", "tar.gz")) intransitive()
+  val esF: scala.concurrent.Future[Seq[java.io.File]] = {
+    CMWellBuild.fetchMvnArtifact(esM,scalaVersion.value,scalaBinaryVersion.value)
+  }
+
+  val mx4jM = dm("mx4j", "mx4j-tools")
+  val mx4jF: scala.concurrent.Future[Seq[java.io.File]] = {
+    mx4jM.explicitArtifacts
+    CMWellBuild.fetchMvnArtifact(mx4jM,scalaVersion.value,scalaBinaryVersion.value)
+  }
+
+  val kafkaF = CMWellBuild.fetchKafka(Versions.kafka)
+
+  val zkF = CMWellBuild.fetchZookeeper(Versions.zookeeper)
+
   val bd = baseDirectory.value
 
-  for ((component, url) <- list) {
-    val binaryFile = bd / "app" / "components" / component
+  val vecF: scala.concurrent.Future[Vector[(String,java.io.File)]] = for {
+    cas   <- casF
+    es    <- esF
+    mx4j  <- mx4jF
+    kafka <- kafkaF
+    zk    <- zkF
+  } yield {
+    val b = Vector.newBuilder[(String,File)]
+    b ++= cas.map(file  => file.name -> file)
+    b ++= es.map(file   => file.name -> file)
+    b ++= mx4j.collect{ case file if file.getName.endsWith(".jar") => file.name -> file}
+    b +=  s"kafka-dist-${Versions.kafka}.tgz"       -> kafka
+    b +=  s"zookeeper-${Versions.zookeeper}.tar.gz" -> zk
+    b.result()
+  }
 
+  val files = Await.result(vecF,Duration.Inf)
+
+  val filesBuilder = List.newBuilder[File]
+  for ((component,file) <- files) {
+    val binaryFile = bd / "app" / "components" / component
+    filesBuilder += binaryFile
     if ( binaryFile.exists ) {
       logger.log.info(s"file $component already exists in machine")
     } else {
-      logger.log.info(s"downloading $url")
-      sbt.IO.download(new java.net.URL(url), binaryFile)
+      logger.log.info(s"copying $file")
+      sbt.IO.copyFile(file,binaryFile,true)
     }
   }
 
-  list.map{ case (name, _) => bd / "app" / "components" / name }
+  filesBuilder.result()
 }
 
 getData := {

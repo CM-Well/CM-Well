@@ -10,7 +10,7 @@ libraryDependencies ++= {
 			.exclude("com.google.guava", "guava")
 			.exclude("org.apache.lucene", "lucene-queryparser")
 			.exclude("org.apache.lucene", "lucene-analyzers-common")
-			.exclude("org.apache.lucene", "lucene-core"),
+			.exclude("org.apache.lucene", "lucene-core") jar(),
 		dm("org.apache.lucene", "lucene-queryparser"),
 		dm("org.apache.lucene", "lucene-analyzers-common"),
 		dm("org.apache.lucene", "lucene-core"),
