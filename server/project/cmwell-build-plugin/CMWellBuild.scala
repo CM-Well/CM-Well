@@ -20,6 +20,9 @@ import net.virtualvoid.sbt.graph.DependencyGraphPlugin
 import sbt.Keys._
 import sbt._
 
+import scala.concurrent._
+import scala.util.{Failure, Success}
+
 object CMWellBuild extends AutoPlugin {
 
 	type PartialFunction2[-T1,-T2,+R] = PartialFunction[Tuple2[T1,T2],R]
@@ -50,6 +53,93 @@ object CMWellBuild extends AutoPlugin {
 	import autoImport._
 	import DoctestPlugin.autoImport._
 	import CoursierPlugin.autoImport._
+
+  lazy val apacheMirror = {
+    val zoneID = java.util.TimeZone
+      .getDefault()
+      .getID
+    if(zoneID.startsWith("America") || zoneID.startsWith("Pacific") || zoneID.startsWith("Etc")) "us"
+    else "eu"
+  }
+
+	def fetchZookeeper(version: String) = {
+		val ext = "tar.gz"
+		val url = s"http://www-$apacheMirror.apache.org/dist/zookeeper/zookeeper-$version/zookeeper-$version.$ext"
+		fetchArtifact(url, ext)
+	}
+
+  def fetchKafka(version: String) = {
+		val ext = "tgz"
+    val url = s"http://www-$apacheMirror.apache.org/dist/kafka/$version/kafka_2.11-$version.$ext"
+		fetchArtifact(url, ext)
+  }
+
+	def fetchMvnArtifact(moduleID: ModuleID, scalaVersion: String, scalaBinaryVersion: String): Future[Seq[java.io.File]] = {
+		import coursier._
+		import java.io.File
+		import scala.concurrent.Future
+		import scala.concurrent.ExecutionContext.Implicits.global
+		import scalaz.EitherT
+		import scalaz.concurrent.Task
+
+		val (module, version) = FromSbt.moduleVersion(moduleID, scalaVersion, scalaBinaryVersion)
+		val repositories: Seq[coursier.Repository] = Seq(MavenRepository("https://repo1.maven.org/maven2"))
+		val fetch = Cache.fetch()
+
+		val tasks = FromSbt.dependencies(moduleID, scalaVersion, scalaBinaryVersion).map {
+			case (_, dep) =>
+				coursier.Fetch.find(repositories, module, version, fetch)
+					.fold[Seq[Artifact]](
+					{ _ => Seq.empty[Artifact] }, { case (src, p) => src.artifacts(dep, p, None) })
+		}
+
+		val farts: Future[Seq[List[File]]] = Future.traverse(tasks) { task =>
+			CMWellCommon.scalazTaskAsScalaFuture(task.flatMap { arts =>
+				val x = arts.map { art =>
+					Cache.file(art).bimap(e => List(e), f => List(f))
+				}
+				val y = x.reduce[EitherT[Task, List[FileError], List[File]]] {
+					case (a, b) =>
+						a.flatMap(files => b.map(_ ::: files).orElse(a)).orElse(b)
+				}
+
+				y.fold({ errs =>
+					Failure[List[File]](new Exception(errs.map(err => err.message + ": " + err.describe).mkString("[\n\t", ",\n\t", "\n]")))
+				}, Success.apply)
+			})
+		}
+
+		farts.map(_.flatten)
+	}
+
+	def fetchArtifact(url: String, ext: String) = {
+		import coursier.core.{Artifact, Attributes}
+		val sig = Artifact(
+
+			url + ".asc",
+			Map.empty,
+			Map.empty,
+			Attributes("asc", ""),
+			changing = false,
+			authentication = None
+		)
+
+		val art = Artifact(
+			url,
+			Map(
+				"MD5" -> (url + ".md5"),
+				"SHA-1" -> (url + ".sha1")),
+			Map("sig" -> sig),
+			Attributes(ext, ""),
+			changing = false,
+			None)
+
+		val task = coursier.Cache.file(art).fold({ err =>
+			Failure[java.io.File](new Exception(err.message + ": " + err.describe))
+		},Success.apply)
+
+		CMWellCommon.scalazTaskAsScalaFuture(task)
+	}
 
 	override def requires = CoursierPlugin && DoctestPlugin && DependencyGraphPlugin
 

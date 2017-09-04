@@ -83,4 +83,21 @@ object CMWellCommon {
     sbt.IO.write(xmlFile, xml)
     xmlFile.getAbsolutePath
   }
+
+  //TODO: should use delorean? ( https://github.com/Verizon/delorean )
+  def scalazTaskAsScalaFuture[T](task: scalaz.concurrent.Task[scala.util.Try[T]]): scala.concurrent.Future[T] = {
+    import scala.concurrent._
+
+    val p = Promise[T]()
+    scala.concurrent.ExecutionContext.global.execute(new Runnable {
+      override def run(): Unit = blocking {
+        try {
+          p.complete(task.unsafePerformSync)
+        } catch {
+          case err: Throwable => p.failure(err)
+        }
+      }
+    })
+    p.future
+  }
 }
