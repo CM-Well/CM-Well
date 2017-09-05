@@ -34,6 +34,7 @@ import k.grid.{GridReceives, JvmIdentity}
 import scala.concurrent._
 import ExecutionContext.Implicits.global
 import scala.concurrent.duration._
+import scala.util.matching.Regex
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -64,6 +65,10 @@ object DataCenterSyncManager extends LazyLogging {
     val tabs = 3
     slashHttpsDotPossiblePrefix + maxUrlLength + dateLength + uuidLength + indexTimeLength + indexTimeLength + 1
   }
+
+  val qpRegex: Regex = """(.*)\?qp=(.*)""".r
+
+  def extractIdAndQpFromDataCenterId(dataCenterId: String): (String, String) = dataCenterId match {case qpRegex(id, qp) => (id, s",[$qp]"); case _ => (dataCenterId, "")}
 
   def parseTSVAndCreateInfotonDataFromIt(tsv: ByteString) = {
     val tabAfterPath = tsv.indexOfSlice(tab)
@@ -344,13 +349,17 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])], manual
           val dataCenterId = f.asJsObject.fields("id") match {
             case JsArray(Vector(JsString(id))) => id
           }
+          val userQp = f.asJsObject.fields.get("qp").map {
+            case JsArray(Vector(JsString(qp))) => qp
+          }
           val fromIndexTime = f.asJsObject.fields.get("fromIndexTime").map {
             case JsArray(Vector(JsNumber(idxTime))) => idxTime.toLong
           }
           val tsvFile = f.asJsObject.fields.get("tsvFile").map {
             case JsArray(Vector(JsString(file))) => file
           }
-          DcInfo(dataCenterId, location, fromIndexTime, tsvFile = tsvFile)
+          val qpStr = userQp.fold("")(qp => s"?qp=$qp")
+          DcInfo(s"$dataCenterId$qpStr", location, fromIndexTime, tsvFile = tsvFile)
         }
         case _ => Seq.empty
       }
@@ -364,7 +373,8 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])], manual
 
   def indexTimeToPositionKey(dataCenterId: String, remoteLocation: String, idxTime: Option[Long]): Future[String] = {
     logger.info(s"Getting position key ${idxTime.fold("without using index time")("using last index time " + _)} for data center id: $dataCenterId and location $remoteLocation")
-    val requestUri = s"http://$remoteLocation/?op=create-consumer&qp=-system.parent.parent_hierarchy:/meta/,-system.parent.parent_hierarchy:/docs/,system.dc::$dataCenterId&with-descendants&with-history${idxTime.fold("")("&index-time=" + _)}"
+    val (dcId, userQp) = extractIdAndQpFromDataCenterId(dataCenterId)
+    val requestUri = s"http://$remoteLocation/?op=create-consumer&qp=-system.parent.parent_hierarchy:/meta/,-system.parent.parent_hierarchy:/docs/,system.dc::$dcId$userQp&with-descendants&with-history${idxTime.fold("")("&index-time=" + _)}"
     logger.info(s"The get position key request for data center ID $dataCenterId is: $requestUri")
     val req = HttpRequest(uri = requestUri)
     Source.single(req -> CreateConsumer).via(Http().superPool[ReqType]()).runWith(Sink.head).flatMap {
@@ -389,10 +399,11 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])], manual
   }
 
   def retrieveLocalLastIndexTimeForDataCenterId(dataCenterId: String): Future[Option[Long]] = {
-    logger.info(s"Getting last synced index time from dada for data center id: $dataCenterId")
+    logger.info(s"Getting last synced index time from data for data center id: $dataCenterId")
     val (h, p) = randomFrom(dstServersVec)
     val dst = p.fold(h)(h + ":" + _)
-    val requestUri = s"http://$dst/proc/dc/$dataCenterId?format=json"
+    //The below request supports qp also (the qp it the last part of the ID and will be sent to the local server)
+    val requestUri = s"http://$dst/proc/dc/$dataCenterId${if (dataCenterId.contains("?")) "&" else "?"}format=json"
     logger.info(s"The get last index time request for data center ID $dataCenterId is: $requestUri")
     val request = HttpRequest(uri = requestUri) -> ProcDcViewer
     val flow = {
@@ -442,7 +453,8 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])], manual
 
   def retrieveTsvListUntilIndexTime(dataCenterId: String, location: String, indexTime: Long, infotonsToGoBack: Int): Future[List[InfotonData]] = {
     logger.info(s"Getting list of $infotonsToGoBack infotons from location $location before index time $indexTime from the local data. for data center id: $dataCenterId")
-    val requestUri = s"http://$location/?op=search&recursive&with-history&sort-by=-system.indexTime&qp=system.indexTime<<$indexTime,-system.parent.parent_hierarchy:/meta/,-system.parent.parent_hierarchy:/docs/,system.dc::$dataCenterId,system.lastModified>1970&length=$infotonsToGoBack&format=tsv"
+    val (dcId, userQp) = extractIdAndQpFromDataCenterId(dataCenterId)
+    val requestUri = s"http://$location/?op=search&recursive&with-history&sort-by=-system.indexTime&qp=system.indexTime<<$indexTime,-system.parent.parent_hierarchy:/meta/,-system.parent.parent_hierarchy:/docs/,system.dc::$dcId$userQp&length=$infotonsToGoBack&format=tsv"
     logger.info(s"The get list request for data center ID $dataCenterId is: $requestUri")
     val request = HttpRequest(uri = requestUri) -> SearchIndexTime
     val flow = {
@@ -469,7 +481,8 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])], manual
 
   def retrieveTsvListFromIndexTime(dataCenterId: String, location: String, indexTime: Long, infotonsToGoBack: Int): Future[Set[InfotonData]] = {
     logger.info(s"Getting list of $infotonsToGoBack infotons from location $location after index time $indexTime. for data center id: $dataCenterId")
-    val requestUri = s"http://$location/?op=stream&recursive&with-history&qp=system.indexTime>>$indexTime,-system.parent.parent_hierarchy:/meta/,-system.parent.parent_hierarchy:/docs/,system.dc::$dataCenterId,system.lastModified>1970&format=tsv"
+    val (dcId, userQp) = extractIdAndQpFromDataCenterId(dataCenterId)
+    val requestUri = s"http://$location/?op=stream&recursive&with-history&qp=system.indexTime>>$indexTime,-system.parent.parent_hierarchy:/meta/,-system.parent.parent_hierarchy:/docs/,system.dc::$dcId$userQp&format=tsv"
     logger.info(s"The get list request for data center ID $dataCenterId is: $requestUri")
     val request = HttpRequest(uri = requestUri) -> SearchIndexTime
     val flow = {
