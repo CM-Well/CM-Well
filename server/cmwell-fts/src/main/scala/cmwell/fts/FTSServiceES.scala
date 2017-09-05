@@ -1045,14 +1045,14 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
       .setSize(1)
       .addSort("system.indexTime", SortOrder.DESC)
 
+    val filtersSeq:List[FieldFilter] = List(
+      SingleFieldFilter(Must, Equals, "system.dc", Some(dc)),                                 //ONLY DC
+      SingleFieldFilter(MustNot, Contains, "system.parent.parent_hierarchy", Some("/meta/")) //NO META
+    )
     applyFiltersToRequest(
       request,
       None,
-      Some(MultiFieldFilter(Must, Seq(
-        SingleFieldFilter(Must, Equals, "system.dc", Some(dc)),                                 //ONLY DC
-        SingleFieldFilter(MustNot, Contains, "system.parent.parent_hierarchy", Some("/meta/")) //NO META
-      ) ++ fieldFilters
-      )),
+      Some(MultiFieldFilter(Must, fieldFilters.fold(filtersSeq)(filtersSeq.::))),
       None
     )
 
