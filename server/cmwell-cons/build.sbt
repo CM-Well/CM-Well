@@ -5,7 +5,7 @@ import sbt.LocalProject
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.concurrent.ExecutionContext.Implicits.global
-
+import cmwell.build.CMWellBuild
 
 packAutoSettings
 name := "cmwell-cons"
@@ -31,7 +31,7 @@ getExternalComponents := {
     CMWellBuild.fetchMvnArtifact(mx4jM,scalaVersion.value,scalaBinaryVersion.value)
   }
 
-  val kafkaF = CMWellBuild.fetchKafka(Versions.kafka)
+  val kafkaF = CMWellBuild.fetchKafka(scalaVersion.value,Versions.kafka)
 
   val zkF = CMWellBuild.fetchZookeeper(Versions.zookeeper)
 

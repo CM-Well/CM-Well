@@ -13,6 +13,7 @@
   * limitations under the License.
   */
 
+package cmwell.build
 
 import sbt._
 

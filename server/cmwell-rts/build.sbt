@@ -17,6 +17,6 @@ mappings in oneJar += {
   pb -> s"main/${pb.getName}"
 }
 
-test in Test := Def.task((test in Test).value).tag(CMWellCommon.Tags.Grid).value
+test in Test := Def.task((test in Test).value).tag(cmwell.build.CMWellCommon.Tags.Grid).value
 
 fullTest := (test in Test).value

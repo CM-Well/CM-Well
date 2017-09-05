@@ -13,6 +13,7 @@
   * limitations under the License.
   */
 
+package cmwell.build
 
 import com.github.tkawachi.doctest.DoctestPlugin
 import coursier.CoursierPlugin
@@ -68,9 +69,9 @@ object CMWellBuild extends AutoPlugin {
 		fetchArtifact(url, ext)
 	}
 
-  def fetchKafka(version: String) = {
+  def fetchKafka(scalaVersion: String, version: String) = {
 		val ext = "tgz"
-    val url = s"http://www-$apacheMirror.apache.org/dist/kafka/$version/kafka_2.11-$version.$ext"
+    val url = s"http://www-$apacheMirror.apache.org/dist/kafka/$version/kafka_$scalaVersion-$version.$ext"
 		fetchArtifact(url, ext)
   }
 
