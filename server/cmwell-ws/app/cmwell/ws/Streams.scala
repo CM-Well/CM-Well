@@ -217,6 +217,7 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
                    fieldFilters: Option[FieldFilter] = None,
                    datesFilter: Option[DatesFilter] = None,
                    paginationParams: PaginationParams = DefaultPaginationParams,
+                   scrollTTL: Long = 120L,
                    withHistory: Boolean = false,
                    withDeleted: Boolean = false
                   )(implicit ec: ExecutionContext): Future[(Source[IterationResults,NotUsed],Long)]  = {
@@ -226,7 +227,7 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
       fieldsFilters = fieldFilters,
       datesFilter = datesFilter,
       paginationParams = paginationParams,
-      scrollTTL = 120,
+      scrollTTL = scrollTTL,
       withHistory = withHistory,
       withDeleted = withDeleted,
       nbg = nbg || withDeleted
