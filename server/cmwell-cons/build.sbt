@@ -31,7 +31,7 @@ getExternalComponents := {
     CMWellBuild.fetchMvnArtifact(mx4jM,scalaVersion.value,scalaBinaryVersion.value)
   }
 
-  val kafkaF = CMWellBuild.fetchKafka(scalaVersion.value,Versions.kafka)
+  val kafkaF = CMWellBuild.fetchKafka(scalaBinaryVersion.value,Versions.kafka)
 
   val zkF = CMWellBuild.fetchZookeeper(Versions.zookeeper)
 
