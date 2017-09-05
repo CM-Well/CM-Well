@@ -60,8 +60,8 @@ class GlobalVarStateHandlerTests extends StreamSpec {
 
             val gvsh = b.add(new GlobalVarStateHandler[Int](1,1)(() => p.future)(scala.concurrent.ExecutionContext.Implicits.global))
 
-            s1 ~> gvsh.inlets.head.asInstanceOf[Inlet[Int]]
-            gvsh.outlets.head.asInstanceOf[Outlet[Int]] ~> s2
+            s1 ~> gvsh.inlets.head
+            gvsh.outlets.head ~> s2
 
             ClosedShape
           }

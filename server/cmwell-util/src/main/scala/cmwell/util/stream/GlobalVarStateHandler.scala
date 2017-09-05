@@ -14,11 +14,11 @@ import scala.util._
   * Date: 9/4/17
   * Time: 1:20 PM
   */
-class GlobalVarStateHandler[State](setters: Int, getters: Int)(initialAsync: () ⇒ Future[State])(implicit ec: ExecutionContext) extends GraphStage[AmorphousShape] {
+class GlobalVarStateHandler[State](setters: Int, getters: Int)(initialAsync: () ⇒ Future[State])(implicit ec: ExecutionContext) extends GraphStage[SingleTypeAmorphousShape[State,State]] {
   val inlets: List[Inlet[State]] = List.tabulate(setters)(i => Inlet[State]("GlobalVarStateHandler.in" + i))
   val outlets: List[Outlet[State]] = List.tabulate(getters)(i => Outlet[State]("GlobalVarStateHandler.in" + i))
 
-  override val shape: AmorphousShape = AmorphousShape(inlets,outlets)
+  override val shape: SingleTypeAmorphousShape[State,State] = SingleTypeAmorphousShape(inlets,outlets)
 
   override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
 
