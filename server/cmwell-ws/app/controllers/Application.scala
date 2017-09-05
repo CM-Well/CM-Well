@@ -766,6 +766,7 @@ callback=< [URL] >
         val withDeleted = request.queryString.keySet("with-deleted")
         val withMeta = request.queryString.keySet("with-meta")
         val debugLog = request.queryString.keySet("debug-log")
+        val scrollTtl = request.getQueryString("session-ttl").flatMap(asLong).getOrElse(3600L).min(3600L)
         val length = request.getQueryString("length").flatMap(asLong)
         val pathFilter = Some(PathFilter(normalizedPath, withDescendants))
         val nbg = request.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
@@ -817,6 +818,7 @@ callback=< [URL] >
                   fieldFilters = fieldFilter,
                   datesFilter = Some(DatesFilter(from, to)),
                   paginationParams = PaginationParams(0, 500),
+                  scrollTTL = scrollTtl,
                   withHistory = withHistory,
                   withDeleted = withDeleted).map { case (src, hits) =>
 

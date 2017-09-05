@@ -13,12 +13,13 @@
   * limitations under the License.
   */
 
+package cmwell.build
 
 import sbt._
 
 object CMWellCommon {
 
-  val release = "Jaguar"
+  val release = "Kingbird"
 
   object Tags {
     val ES = sbt.Tags.Tag("elasticsearch")
