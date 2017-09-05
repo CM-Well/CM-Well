@@ -25,7 +25,7 @@ import akka.kafka.{ProducerSettings, Subscriptions}
 import akka.stream.ActorAttributes.supervisionStrategy
 import akka.stream.Supervision.Decider
 import akka.stream.contrib.PartitionWith
-import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, Merge, MergePreferred, Partition, RunnableGraph, Sink}
+import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, Merge, MergePreferred, Partition, RunnableGraph, Sink, Unzip, Zip}
 import akka.stream.{ActorMaterializer, ClosedShape, KillSwitches}
 import cmwell.common.{Command, _}
 import cmwell.common.formats.JsonSerializerForES
@@ -36,6 +36,7 @@ import cmwell.tracking._
 import cmwell.util.exceptions.ElementAlreadyExistException
 import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
 import cmwell.util.concurrent.SimpleScheduler._
+import cmwell.util.stream.GlobalVarStateHandler
 import cmwell.zstore.ZStore
 import com.datastax.driver.core.ConsistencyLevel
 import com.google.common.cache.CacheBuilder
@@ -169,6 +170,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
     logger info s"ImpStream($streamId), startingIndexName: $startingIndexName, startingIndexCount: $startingIndexCount"
 
   @volatile var currentIndexName = startingIndexName
+
   @volatile var fuseOn = true
 
   val numOfShardPerIndex = ftsService.numOfShardsForIndex(currentIndexName)
@@ -182,6 +184,35 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
   )
 
   val sharedKillSwitch = KillSwitches.shared("persist-sources-kill-switch")
+
+  val indexNameAndCountStateHandler = new GlobalVarStateHandler[(String,Long)](1,6)(() => {
+    ftsService.latestIndexNameAndCountAsync(s"cm_well_p${partition}_*").flatMap {
+      case Some((name, count)) => Future.successful(name -> count)
+      case None => {
+        logger info s"no indexes found for partition $partition, creating first one"
+        ftsService.createIndex(s"cm_well_p${partition}_0").flatMap { createResponse =>
+          if (createResponse.isAcknowledged) {
+            logger info s"successfully created first index for partition $partition"
+            scheduleFuture(5.seconds) {
+              logger info "updating all aliases"
+              ftsService.updateAllAlias().map { indicesAliasesResponse =>
+                if (!indicesAliasesResponse.isAcknowledged) {
+                  logger.warn(s"updateAllAlias was not acknowledged [$indicesAliasesResponse]")
+                }
+                s"cm_well_p${partition}_0" -> 0L
+              }
+            }
+          }
+          else
+            Future.failed(new RuntimeException(s"failed to create first index for partition: $partition"))
+        }.andThen {
+          case Failure(error) => logger.error("failed to init ES index/alias, aborting !!!", error)
+          case Success((n,c)) => logger.info(s"ImpStream($streamId), startingIndexName: $n, startingIndexCount: $c")
+        }
+      }
+    }
+  })
+
 
   val persistCommandsSource = Consumer.plainExternalSource[Array[Byte], Array[Byte]](kafkaConsumer, subscription).map { msg =>
       logger debug s"consuming next payload from persist commands topic @ ${msg.offset()}"
@@ -284,8 +315,8 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
     }
   }
 
-  val addMerged = Flow[BGMessage[(Option[Infoton], Seq[SingleCommand])]].map {
-    case bgMessage@BGMessage(_, (existingInfotonOpt, commands)) =>
+  val addMerged = Flow[((String,Long),BGMessage[(Option[Infoton], Seq[SingleCommand])])].map {
+    case ((currentIndexName,_),bgMessage@BGMessage(_, (existingInfotonOpt, commands))) =>
       beforePersistedCache.synchronized {
         val baseInfoton = Option(beforePersistedCache.get(commands.head.path)) match {
           case None =>
@@ -342,8 +373,8 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
   val breakOut3 = scala.collection.breakOut[Seq[(Boolean, (String, DateTime))],
     ProducerRecord[Array[Byte],Array[Byte]], collection.immutable.Iterable[ProducerRecord[Array[Byte],Array[Byte]]]]
 
-  val createVirtualParents = Flow[BGMessage[Seq[(IndexCommand, Option[DateTime])]]].mapAsync(1) {
-    case BGMessage(offsets, indexCommands) =>
+  val createVirtualParents = Flow[((String,Long),BGMessage[Seq[(IndexCommand, Option[DateTime])]])].mapAsync(1) {
+    case ((currentIndexName,_),BGMessage(offsets, indexCommands)) =>
       logger debug s"checking missing parents for index commands: $indexCommands"
 
       val parentsWithChildDate = cmwell.util.collections.distinctBy {
@@ -368,8 +399,8 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
       )
   }.mapConcat(identity)
 
-  val persistInCas = Flow[BGMessage[(Option[Infoton], (Infoton, Seq[String]))]].mapAsync(irwWriteConcurrency) {
-    case BGMessage(offsets, (previous, (latest, trackingIds))) =>
+  val persistInCas = Flow[((String,Long),BGMessage[(Option[Infoton], (Infoton, Seq[String]))])].mapAsync(irwWriteConcurrency) {
+    case ((currentIndexName,_),BGMessage(offsets, (previous, (latest, trackingIds)))) =>
       val latestWithIndexName = latest.copyInfoton(indexName = currentIndexName)
       logger debug s"writing lastest infoton: $latestWithIndexName"
       irwService.writeAsync(latestWithIndexName, ConsistencyLevel.QUORUM).map { i =>
@@ -539,6 +570,20 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
     (prioritySource, batchSource, sink) =>
       import GraphDSL.Implicits._
 
+      val globalIndexNameCountState = builder.add(indexNameAndCountStateHandler)
+
+      val preAddMergedZip = builder.add(Zip[(String,Long),BGMessage[(Option[Infoton], Seq[SingleCommand])]]())
+
+      val preCreateVirtualParentsZip = builder.add(Zip[(String,Long),BGMessage[Seq[(IndexCommand, Option[DateTime])]]]())
+
+      val prePersistInCasZip = builder.add(Zip[(String,Long),BGMessage[(Option[Infoton], (Infoton, Seq[String]))]]())
+
+      val preProcessOverrideInfotonsWithStateZip = builder.add(Zip[(String,Long),BGMessage[(Seq[(Infoton,Option[String])],Option[Infoton])]]())
+
+      val preIndexCommandsToESActionsZip = builder.add(Zip[(String,Long),BGMessage[Seq[IndexCommand]]]())
+
+      val preManageIndicesZip = builder.add(Zip[(String,Long),BGMessage[(BulkIndexResult, Seq[IndexCommand])]]())
+
       val mergePrefferedSources = builder.add(
         MergePreferred[BGMessage[Command]](1, true)
       )
@@ -655,7 +700,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
       )
 
       val processOverrideInfotons = builder.add(
-        Flow[BGMessage[(String, Seq[(Infoton, Option[String])])]].mapAsync(irwReadConcurrency) {
+        Flow[BGMessage[(String, Seq[(Infoton, Option[String])])]].mapAsync[BGMessage[(Seq[(Infoton,Option[String])],Option[Infoton])]](irwReadConcurrency) {
           case bgMessage@BGMessage(_, (path, infotons)) =>
             val sortedInfotons = infotons.sortWith { (l, r) =>
               if (l._1.lastModified.getMillis != r._1.lastModified.getMillis)
@@ -672,8 +717,11 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
                 logger debug s"readPathAsync for path:$path returned: ${b.toOption}"
                 bgMessage.copy(message = (sortedInfotons, infoOpt))
             }
-        }.mapAsync(irwWriteConcurrency) {
-          case BGMessage(offsets, (newInfotons, existingInfotonOpt)) =>
+        })
+
+      val processOverrideInfotonsWithState = builder.add(
+        Flow[((String,Long),BGMessage[(Seq[(Infoton,Option[String])],Option[Infoton])])].mapAsync(irwWriteConcurrency) {
+          case ((currentIndexName,_),BGMessage(offsets, (newInfotons, existingInfotonOpt))) =>
             val newInfotonsWithIndexName = newInfotons.map { case (i, tid) => (i.copyInfoton(indexName = currentIndexName) -> tid) }
             irwService.writeSeqAsync(newInfotonsWithIndexName.map {
               _._1
@@ -741,7 +789,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
       })
 
       val indexCommandsToESActions = builder.add(
-        Flow[BGMessage[Seq[IndexCommand]]].map { case bgMessage@BGMessage(_, indexCommands) =>
+        Flow[((String,Long),BGMessage[Seq[IndexCommand]])].map { case ((currentIndexName,_),bgMessage@BGMessage(_, indexCommands)) =>
           //TODO: remove after all envs were upgraded
           val fixedIndexCommands = indexCommands.map { indexCommand =>
             if (indexCommand.indexName != "")
@@ -835,9 +883,9 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
       )
 
       val manageIndices = builder.add(
-        Flow[BGMessage[(BulkIndexResult, Seq[IndexCommand])]].mapAsync(1) {
-          case bgMessage@BGMessage(_, (bulkRes, commands)) =>
-            startingIndexCount += bulkRes.successful.size
+        Flow[((String,Long),BGMessage[(BulkIndexResult, Seq[IndexCommand])])].mapAsync(1) {
+          case (unchangedState@(currentIndexName,indexCount),bgMessage@BGMessage(_, (bulkRes, commands))) =>
+            var startingIndexCount = indexCount + bulkRes.successful.size
             if (startingIndexCount / numOfShardPerIndex >= maxDocsPerShard) {
               val (pref, suf) = currentIndexName.splitAt(currentIndexName.lastIndexOf('_') + 1)
               val nextCount = suf.toInt + 1
@@ -845,14 +893,14 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
               cmwell.util.concurrent.retry(3)(ftsService.createIndex(nextIndexName)).flatMap { _ =>
                 scheduleFuture(10.seconds)(ftsService.updateAllAlias)
               }.map { case _ =>
-                currentIndexName = nextIndexName
-                startingIndexCount = 0
-                bgMessage
+                ((nextIndexName,0L),bgMessage)
               }
             } else
-              Future.successful(bgMessage)
+              Future.successful(unchangedState -> bgMessage)
         }
       )
+
+      val unzipManageIndices = builder.add(Unzip[(String,Long),BGMessage[(BulkIndexResult,Seq[IndexCommand])]]())
 
       val updateIndexInfoInCas = builder.add(
         Flow[BGMessage[(BulkIndexResult, Seq[IndexCommand])]].mapAsync(math.max(numOfCassandraNodes / 3, 2)) {
@@ -955,27 +1003,55 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
 
       singleCommandsPartitioner.out(0) ~> groupCommandsByPath ~> overrideCommandsToInfotons ~> partitionOverrideInfotons.in
 
-      partitionOverrideInfotons.out0 ~> processOverrideInfotons ~> indexCommandsMerge.in(0)
+      globalIndexNameCountState.outlets(3) ~> preProcessOverrideInfotonsWithStateZip.in0
+
+      partitionOverrideInfotons.out0 ~> processOverrideInfotons ~> preProcessOverrideInfotonsWithStateZip.in1
+
+      preProcessOverrideInfotonsWithStateZip.out ~> processOverrideInfotonsWithState ~> indexCommandsMerge.in(0)
 
       partitionOverrideInfotons.out1 ~> mergeCompletedOffsets.in(0)
 
-      singleCommandsPartitioner.out(1) ~> groupCommandsByPath ~> addLatestInfotons ~> addMerged ~> partitionMerged.in
+      globalIndexNameCountState.outlets(0) ~> preAddMergedZip.in0
+
+      singleCommandsPartitioner.out(1) ~> groupCommandsByPath ~> addLatestInfotons ~> preAddMergedZip.in1
+
+      preAddMergedZip.out ~> addMerged ~> partitionMerged.in
 
       partitionMerged.out(0) ~> partitionNonNullMerged.in
 
-      partitionNonNullMerged.out0 ~> persistInCas ~> nonOverrideIndexCommandsBroadcast.in
+      globalIndexNameCountState.outlets(2) ~> prePersistInCasZip.in0
+
+      partitionNonNullMerged.out0 ~> prePersistInCasZip.in1
+
+      prePersistInCasZip.out ~> persistInCas ~> nonOverrideIndexCommandsBroadcast.in
 
       partitionNonNullMerged.out1 ~> logOrReportEvicted ~> Sink.ignore
 
       partitionMerged.out(1) ~> reportNullUpdates ~> mergeCompletedOffsets.in(1)
 
-      nonOverrideIndexCommandsBroadcast.out(0) ~> createVirtualParents ~> commitVirtualParents
+      globalIndexNameCountState.outlets(1) ~> preCreateVirtualParentsZip.in0
+
+      nonOverrideIndexCommandsBroadcast.out(0) ~> preCreateVirtualParentsZip.in1
+
+      preCreateVirtualParentsZip.out ~> createVirtualParents ~> commitVirtualParents
 
       nonOverrideIndexCommandsBroadcast.out(1) ~> removeLastModified ~> indexCommandsMerge.in(1)
 
       indexCommandsMerge.out ~> fusePartition
 
-      fusePartition.out(0) ~> indexCommandsToESActions ~> groupEsActions ~> filterNonEmpty ~> sendActionsToES ~> manageIndices ~> updateIndexInfoInCas ~> partitionIndexResult.in
+      globalIndexNameCountState.outlets(4) ~> preIndexCommandsToESActionsZip.in0
+
+      fusePartition.out(0) ~> preIndexCommandsToESActionsZip.in1
+
+      globalIndexNameCountState.outlets(5) ~> preManageIndicesZip.in0
+
+      preIndexCommandsToESActionsZip.out ~> indexCommandsToESActions ~> groupEsActions ~> filterNonEmpty ~> sendActionsToES ~> preManageIndicesZip.in1
+
+      preManageIndicesZip.out ~> manageIndices ~> unzipManageIndices.in
+
+      unzipManageIndices.out0 ~> globalIndexNameCountState.inlets(0)
+
+      unzipManageIndices.out1 ~> updateIndexInfoInCas ~> partitionIndexResult.in
 
       fusePartition.out(1) ~> indexCommandsToKafkaRecords ~> mergeKafkaRecords.in(0)
 
