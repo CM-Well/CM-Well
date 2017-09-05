@@ -41,7 +41,7 @@ import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
 import org.elasticsearch.action.bulk.BulkResponse
 import org.joda.time.{DateTime, DateTimeZone}
-import wsutil.FormatterManager
+import wsutil.{FormatterManager, RawFieldFilter}
 
 import scala.concurrent._
 import scala.concurrent.duration._
@@ -632,13 +632,13 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
     }
   }
 
-  def getLastIndexTimeFor(dc: String = Settings.dataCenter, nbg: Boolean = newBG): Future[Option[VirtualInfoton]] = {
+  def getLastIndexTimeFor(dc: String = Settings.dataCenter, nbg: Boolean, fieldFilters: Option[FieldFilter]): Future[Option[VirtualInfoton]] = {
 
     def mkVirtualInfoton(indexTime: Long): VirtualInfoton =
       VirtualInfoton(ObjectInfoton(s"/proc/dc/$dc", Settings.dataCenter, None,
         Map("lastIdxT" -> Set[FieldValue](FLong(indexTime)),
           "dc" -> Set[FieldValue](FString(dc)))))
-    ftsService(nbg).getLastIndexTimeFor(dc).map(lOpt => Some(mkVirtualInfoton(lOpt.getOrElse(0L))))
+    ftsService(nbg).getLastIndexTimeFor(dc, fieldFilters =  fieldFilters).map(lOpt => Some(mkVirtualInfoton(lOpt.getOrElse(0L))))
   }
 
   def getESFieldsVInfoton(nbg: Boolean = newBG): Future[VirtualInfoton] = {

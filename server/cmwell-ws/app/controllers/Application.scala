@@ -311,20 +311,23 @@ callback=< [URL] >
     }
   }
 
-  private def handleGetForActiveInfoton(req: Request[AnyContent], path: String) = Try {
-    // todo: fix this.. should check that the token is valid...
-    val tokenOpt = authUtils.extractTokenFrom(req)
-    val isRoot = authUtils.isValidatedAs(tokenOpt, "root")
-    val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
-
-    val length = req.getQueryString("length").flatMap(asInt).getOrElse(if (req.getQueryString("format").isEmpty) 13 else 0) // default is 0 unless 1st request for the ajax app
-    val offset = req.getQueryString("offset").flatMap(asInt).getOrElse(0)
-    //    infotonOptionToReply(req,ActiveInfotonGenerator.generateInfoton(req.host, path, new DateTime(),length,offset))
-
-    activeInfotonGenerator
-      .generateInfoton(req.host, path, new DateTime(), length, offset, isRoot, nbg)
-      .flatMap(iOpt => infotonOptionToReply(req, iOpt.map(VirtualInfoton.v2i)))
-  }.recover(asyncErrorHandler).get
+  private def handleGetForActiveInfoton(req: Request[AnyContent], path: String) =
+    getQueryString("qp")(req.queryString)
+      .fold(Success(None): Try[Option[RawFieldFilter]])(FieldFilterParser.parseQueryParams(_).map(Some.apply))
+      .map { qpOpt =>
+        // todo: fix this.. should check that the token is valid...
+        val tokenOpt = authUtils.extractTokenFrom(req)
+        val isRoot = authUtils.isValidatedAs(tokenOpt, "root")
+        val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+        val length = req.getQueryString("length").flatMap(asInt).getOrElse(if (req.getQueryString("format").isEmpty) 13 else 0) // default is 0 unless 1st request for the ajax app
+        val offset = req.getQueryString("offset").flatMap(asInt).getOrElse(0)
+        val fieldsFiltersFut = qpOpt.fold[Future[Option[FieldFilter]]](Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff, typesCache(nbg), cmwellRDFHelper, nbg).map(Some.apply))
+        fieldsFiltersFut.flatMap { fieldFilters =>
+          activeInfotonGenerator
+            .generateInfoton(req.host, path, new DateTime(), length, offset, isRoot, nbg, fieldFilters)
+            .flatMap(iOpt => infotonOptionToReply(req, iOpt.map(VirtualInfoton.v2i)))
+        }
+      }.recover(asyncErrorHandler).get
 
   def handleZzGET(key: String) = Action.async {
     implicit req => {
