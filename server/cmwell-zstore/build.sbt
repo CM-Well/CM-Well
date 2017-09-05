@@ -16,6 +16,6 @@ test in Test := Def.taskDyn {
   Def.task {
     ((a doFinally b) doFinally c).value
   }
-}.tag(CMWellCommon.Tags.Cassandra).value
+}.tag(cmwell.build.CMWellCommon.Tags.Cassandra).value
 
 fullTest := (test in Test).dependsOn(fullTest in LocalProject("irw")).value

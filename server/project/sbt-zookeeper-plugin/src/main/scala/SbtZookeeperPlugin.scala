@@ -48,6 +48,12 @@ object SbtZookeeperPlugin extends sbt.AutoPlugin{
     lazy val cleanZookeeperFunc = taskKey[()=>Unit]("return a function that clean zookeeper's run dir")
   }
 
+  override def requires = cmwell.build.CMWellBuild
+
+  lazy val Zookeeper = config("zk") extend(Compile) describedAs("Dependencies for using Zookeeper.")
+
+  override def projectConfigurations = Seq(Zookeeper)
+
   import autoImport._
 
   var zookeeperProcess:java.lang.Process = null
@@ -107,10 +113,7 @@ object SbtZookeeperPlugin extends sbt.AutoPlugin{
 
     /** Settings **/
     zookeeperVersion := "3.4.7",
-    //the %test below is to disable the zookeeper fetching when not in tests. This is to remove the jar hell between
-    //logback-classic and slf4j-log4j. The jar hell is still in tests...
-    //TODO: fix it properly also for tests
-    libraryDependencies += "org.apache.zookeeper" % "zookeeper" % zookeeperVersion.value % "test",
+    libraryDependencies += "org.apache.zookeeper" % "zookeeper" % zookeeperVersion.value % Zookeeper,
     zookeeperServerConfig := (resourceDirectory in Runtime).value / "zookeeper.server.cfg",
     zookeeperServerRunDir := {
       val f = target.value / "zookeeper-server"
@@ -123,6 +126,8 @@ object SbtZookeeperPlugin extends sbt.AutoPlugin{
     cleanBeforeTests := true,
 
     /** Tasks **/
+
+    externalDependencyClasspath in Zookeeper := (externalDependencyClasspath or (externalDependencyClasspath in Runtime)).value,
     startZookeeper := {
       val logger = streams.value.log
         logger.info("preparing to start ZooKeeper")
@@ -132,7 +137,7 @@ object SbtZookeeperPlugin extends sbt.AutoPlugin{
         val baseDir = zookeeperServerRunDir.value
         if (!baseDir.isDirectory)
           baseDir.mkdir()
-        val depClasspath = (dependencyClasspath in Runtime).value
+        val depClasspath = (externalDependencyClasspath in Zookeeper).value
         val classpath = Attributed.data(depClasspath)
         val serverConfigFile = zookeeperServerConfig.value
         if (!serverConfigFile.exists()) {
