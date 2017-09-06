@@ -34,6 +34,12 @@ To add more than one triple at a time (for instance, to add an infoton while at 
     <http://data.com/1-12345678> a <http://data.com/Person>; 
     <http://ont.com/bermuda/hasName> "Fred Fredson" .
 
+## Special Parameters ##
+
+Parameter | Description&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Values&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Example
+:----------|:-------------|:--------|:---------
+priority | If this flag appears in an update call, that call receives priority relative to non-priority calls. To use this flag, you must also pass the X-CM-WELL-TOKEN request header, with a token that grants access to the priority feature. This feature should be used with discretion so as not to flood the priority queue. | None | \<cm-well-host\>/_in?format=ttl&priority...
+
 ## Code Example ##
 
 ### Call ###

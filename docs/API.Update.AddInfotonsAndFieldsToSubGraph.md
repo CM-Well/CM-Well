@@ -38,6 +38,12 @@ To create a field that belongs to a named sub-graph, create the field using a qu
     <http://example.org/movies/TheAvenger> <http://MyOntology/Score> "7.2" <http://MyOntology/RottenTomatoes>.
     <http://example.org/movies/TheAvenger> <http://MyOntology/Score> "7.7" <http://MyOntology/MovieGoers>.
 
+## Special Parameters ##
+
+Parameter | Description&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Values&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Example
+:----------|:-------------|:--------|:---------
+priority | If this flag appears in an update call, that call receives priority relative to non-priority calls. To use this flag, you must also pass the X-CM-WELL-TOKEN request header, with a token that grants access to the priority feature. This feature should be used with discretion so as not to flood the priority queue. | None | \<cm-well-host\>/_in?format=ttl&priority...
+
 ## Code Example ##
 
 ### Call ###
