@@ -79,6 +79,6 @@ object TypeHelpers extends TypeHelpers
 object RequestHelpers {
 
   def cmWellBase(implicit req:RequestHeader): String = {
-    System.getProperty("cmwell.base", "http://" + req.headers.get(HeaderNames.HOST).getOrElse(InetAddress.getLocalHost().getHostName() + Option(System.getProperty("application.port")).map(":" + _).getOrElse("")))
+    "http://" + req.headers.get(HeaderNames.HOST).getOrElse(InetAddress.getLocalHost().getHostName() + Option(System.getProperty("application.port")).map(":" + _).getOrElse(""))
   }
 }

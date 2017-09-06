@@ -11,7 +11,7 @@ val s = Seq(
 lazy val pluginsUtil       = (project in file("plugins-util"))        .settings(s:_*)
 lazy val cmwellBuildPlugin = (project in file("cmwell-build-plugin")) .settings(s:_*).dependsOn(pluginsUtil)
 lazy val cassandraPlugin   = (project in file("sbt-cassandra-plugin")).settings(s:_*).dependsOn(pluginsUtil)
-lazy val zookeeperPlugin   = (project in file("sbt-zookeeper-plugin")).settings(s:_*).dependsOn(pluginsUtil)
+lazy val zookeeperPlugin   = (project in file("sbt-zookeeper-plugin")).settings(s:_*).dependsOn(pluginsUtil,cmwellBuildPlugin)
 lazy val kafkaPlugin       = (project in file("sbt-kafka-plugin"))    .settings(s:_*).dependsOn(pluginsUtil,zookeeperPlugin)
 
 val root = Project("plugins", file(".")).dependsOn(cmwellBuildPlugin,cassandraPlugin,kafkaPlugin)

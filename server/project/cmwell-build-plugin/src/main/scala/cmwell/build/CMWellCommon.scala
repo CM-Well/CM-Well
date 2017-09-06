@@ -13,12 +13,13 @@
   * limitations under the License.
   */
 
+package cmwell.build
 
 import sbt._
 
 object CMWellCommon {
 
-  val release = "Jaguar"
+  val release = "Kingbird"
 
   object Tags {
     val ES = sbt.Tags.Tag("elasticsearch")
@@ -82,5 +83,22 @@ object CMWellCommon {
     val xmlFile = file(pwd) / filename / "logback.xml"
     sbt.IO.write(xmlFile, xml)
     xmlFile.getAbsolutePath
+  }
+
+  //TODO: should use delorean? ( https://github.com/Verizon/delorean )
+  def scalazTaskAsScalaFuture[T](task: scalaz.concurrent.Task[scala.util.Try[T]]): scala.concurrent.Future[T] = {
+    import scala.concurrent._
+
+    val p = Promise[T]()
+    scala.concurrent.ExecutionContext.global.execute(new Runnable {
+      override def run(): Unit = blocking {
+        try {
+          p.complete(task.unsafePerformSync)
+        } catch {
+          case err: Throwable => p.failure(err)
+        }
+      }
+    })
+    p.future
   }
 }

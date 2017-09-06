@@ -59,6 +59,7 @@ import security.PermissionLevel.PermissionLevel
 import security._
 import wsutil.{asyncErrorHandler, errorHandler, _}
 import cmwell.syntaxutils.!!!
+import cmwell.util.stream.StreamEventInspector
 import cmwell.web.ld.cmw.CMWellRDFHelper
 
 import scala.collection.mutable.{HashMap, MultiMap}
@@ -310,20 +311,23 @@ callback=< [URL] >
     }
   }
 
-  private def handleGetForActiveInfoton(req: Request[AnyContent], path: String) = Try {
-    // todo: fix this.. should check that the token is valid...
-    val tokenOpt = authUtils.extractTokenFrom(req)
-    val isRoot = authUtils.isValidatedAs(tokenOpt, "root")
-    val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
-
-    val length = req.getQueryString("length").flatMap(asInt).getOrElse(if (req.getQueryString("format").isEmpty) 13 else 0) // default is 0 unless 1st request for the ajax app
-    val offset = req.getQueryString("offset").flatMap(asInt).getOrElse(0)
-    //    infotonOptionToReply(req,ActiveInfotonGenerator.generateInfoton(req.host, path, new DateTime(),length,offset))
-
-    activeInfotonGenerator
-      .generateInfoton(req.host, path, new DateTime(), length, offset, isRoot, nbg)
-      .flatMap(iOpt => infotonOptionToReply(req, iOpt.map(VirtualInfoton.v2i)))
-  }.recover(asyncErrorHandler).get
+  private def handleGetForActiveInfoton(req: Request[AnyContent], path: String) =
+    getQueryString("qp")(req.queryString)
+      .fold(Success(None): Try[Option[RawFieldFilter]])(FieldFilterParser.parseQueryParams(_).map(Some.apply))
+      .map { qpOpt =>
+        // todo: fix this.. should check that the token is valid...
+        val tokenOpt = authUtils.extractTokenFrom(req)
+        val isRoot = authUtils.isValidatedAs(tokenOpt, "root")
+        val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+        val length = req.getQueryString("length").flatMap(asInt).getOrElse(if (req.getQueryString("format").isEmpty) 13 else 0) // default is 0 unless 1st request for the ajax app
+        val offset = req.getQueryString("offset").flatMap(asInt).getOrElse(0)
+        val fieldsFiltersFut = qpOpt.fold[Future[Option[FieldFilter]]](Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff, typesCache(nbg), cmwellRDFHelper, nbg).map(Some.apply))
+        fieldsFiltersFut.flatMap { fieldFilters =>
+          activeInfotonGenerator
+            .generateInfoton(req.host, path, new DateTime(), length, offset, isRoot, nbg, fieldFilters)
+            .flatMap(iOpt => infotonOptionToReply(req, iOpt.map(VirtualInfoton.v2i)))
+        }
+      }.recover(asyncErrorHandler).get
 
   def handleZzGET(key: String) = Action.async {
     implicit req => {
@@ -764,6 +768,8 @@ callback=< [URL] >
         val withHistory = request.queryString.keySet("with-history")
         val withDeleted = request.queryString.keySet("with-deleted")
         val withMeta = request.queryString.keySet("with-meta")
+        val debugLog = request.queryString.keySet("debug-log")
+        val scrollTtl = request.getQueryString("session-ttl").flatMap(asLong).getOrElse(3600L).min(3600L)
         val length = request.getQueryString("length").flatMap(asLong)
         val pathFilter = Some(PathFilter(normalizedPath, withDescendants))
         val nbg = request.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
@@ -815,11 +821,35 @@ callback=< [URL] >
                   fieldFilters = fieldFilter,
                   datesFilter = Some(DatesFilter(from, to)),
                   paginationParams = PaginationParams(0, 500),
+                  scrollTTL = scrollTtl,
                   withHistory = withHistory,
                   withDeleted = withDeleted).map { case (src, hits) =>
 
-                  val s = streams.scrollSourceToByteString(src, formatter, withData.isDefined, withHistory, length, fieldsMask,nbg)
-                  Ok.chunked(s).as(overrideMimetype(formatter.mimetype, request)._2).withHeaders("X-CM-WELL-N" -> hits.toString)
+                  lazy val id = cmwell.util.numeric.Radix64.encodeUnsigned(request.id)
+                  val s: Source[ByteString, NotUsed] = {
+                    val scrollSourceToByteString = streams.scrollSourceToByteString(src, formatter, withData.isDefined, withHistory, length, fieldsMask, nbg)
+                    if(debugLog) scrollSourceToByteString.via {
+                      new StreamEventInspector(
+                        onUpstreamFinishInspection =   () => logger.info(s"[$id] onUpstreamFinish"),
+                        onUpstreamFailureInspection =  error => logger.error(s"[$id] onUpstreamFailure",error),
+                        onDownstreamFinishInspection = () => logger.info(s"[$id] onDownstreamFinish"),
+                        onPullInspection =             () => logger.info(s"[$id] onPull"),
+                        onPushInspection =             bytes => {
+                          val all = bytes.utf8String
+                          val elem = {
+                            if (bytes.isEmpty) ""
+                            else all.lines.next()
+                          }
+                          logger.info(s"""[$id] onPush(first line: "$elem", num of lines: ${all.lines.size}, num of chars: ${all.size})""")
+                        })
+                    }
+                    else scrollSourceToByteString
+                  }
+                  val headers = {
+                    if(debugLog) List("X-CM-WELL-N" -> hits.toString, "X-CM-WELL-LOG-ID" -> id)
+                    else List("X-CM-WELL-N" -> hits.toString)
+                  }
+                  Ok.chunked(s).as(overrideMimetype(formatter.mimetype, request)._2).withHeaders(headers:_*)
                 }
               }
             }
@@ -1112,7 +1142,6 @@ callback=< [URL] >
             case SearchThinResults(total, _, _, results, _) if results.nonEmpty => {
 
               val idxT = results.maxBy(_.indexTime).indexTime //infotons.maxBy(_.indexTime.getOrElse(0L)).indexTime.getOrElse(0L)
-              require(idxT > 0, "all infotons in iteration must have a valid indexTime defined")
 
               // last chunk
               if (results.length >= total)
