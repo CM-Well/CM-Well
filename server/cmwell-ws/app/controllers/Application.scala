@@ -830,7 +830,8 @@ callback=< [URL] >
                   debugLogID = debugLogID).map { case (src, hits) =>
 
                   val s: Source[ByteString, NotUsed] = {
-                    if(debugLog) streams.scrollSourceToByteString(src, formatter, withData.isDefined, withHistory, length, fieldsMask, nbg).via {
+                    val scrollSourceToByteString = streams.scrollSourceToByteString(src, formatter, withData.isDefined, withHistory, length, fieldsMask, nbg)
+                    if(debugLog) scrollSourceToByteString.via {
                       new StreamEventInspector(
                         onUpstreamFinishInspection =   () => logger.info(s"[$id] onUpstreamFinish"),
                         onUpstreamFailureInspection =  error => logger.error(s"[$id] onUpstreamFailure",error),
@@ -845,7 +846,7 @@ callback=< [URL] >
                           logger.info(s"""[$id] onPush(first line: "$elem", num of lines: ${all.lines.size}, num of chars: ${all.size})""")
                         })
                     }
-                    else streams.scrollSourceToByteString(src, formatter, withData.isDefined, withHistory, length, fieldsMask, nbg)
+                    else scrollSourceToByteString
                   }
                   val headers = {
                     if(debugLog) List("X-CM-WELL-N" -> hits.toString, "X-CM-WELL-LOG-ID" -> id)
