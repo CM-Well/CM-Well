@@ -219,7 +219,8 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
                    paginationParams: PaginationParams = DefaultPaginationParams,
                    scrollTTL: Long = 120L,
                    withHistory: Boolean = false,
-                   withDeleted: Boolean = false
+                   withDeleted: Boolean = false,
+                   debugLogID: Option[String] = None
                   )(implicit ec: ExecutionContext): Future[(Source[IterationResults,NotUsed],Long)]  = {
 
     val firstHitsTuple = crudServiceFS.startScroll(
@@ -230,14 +231,17 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
       scrollTTL = scrollTTL,
       withHistory = withHistory,
       withDeleted = withDeleted,
-      nbg = nbg || withDeleted
+      nbg = nbg || withDeleted,
+      debugInfo = debugLogID.isDefined
     ).flatMap { startScrollResult =>
-      crudServiceFS.scroll(startScrollResult.iteratorId, 120, withData = false).map { firstScrollResult =>
+      debugLogID.foreach(id => logger.info(s"[$id] startScrollResult: $startScrollResult"))
+      crudServiceFS.scroll(startScrollResult.iteratorId, scrollTTL, withData = false).map { firstScrollResult =>
+        debugLogID.foreach(id => logger.info(s"[$id] scroll response: ${firstScrollResult.infotons.fold("empty")(i => s"$i results")}"))
         startScrollResult.totalHits -> firstScrollResult
       }
     }
 
-    //converting the inner IterationResults into a Source which will fold on itself asynchronously
+    //converting the inner IterationResults into a Source which will unfold itself asynchronously
     firstHitsTuple.map {
       case (hits, first) => {
         val source = Source.unfoldAsync(first) {
@@ -245,7 +249,8 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
             infotonsOpt
               .filter(_.nonEmpty)
               .fold(Future.successful(Option.empty[(IterationResults, IterationResults)])) { _ =>
-                crudServiceFS.scroll(iteratorId, 120, withData = false, nbg = nbg || withDeleted).map(iir => Some(iir -> ir))
+                debugLogID.foreach(id => logger.info(s"[$id] scroll request: $iteratorId"))
+                crudServiceFS.scroll(iteratorId, scrollTTL, withData = false, nbg = nbg || withDeleted).map(iir => Some(iir -> ir))
               }
           }
         }
