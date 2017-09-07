@@ -37,7 +37,7 @@ import org.joda.time.DateTime
 
 import scala.concurrent.{ExecutionContext, Future, duration}
 import duration.DurationInt
-import scala.util.{Success, Try}
+import scala.util.{Failure, Success, Try}
 
 object Streams extends LazyLogging {
   //CONSTS
@@ -236,7 +236,7 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
     ).flatMap { startScrollResult =>
       debugLogID.foreach(id => logger.info(s"[$id] startScrollResult: $startScrollResult"))
       crudServiceFS.scroll(startScrollResult.iteratorId, scrollTTL, withData = false).map { firstScrollResult =>
-        debugLogID.foreach(id => logger.info(s"[$id] scroll response: ${firstScrollResult.infotons.fold("empty")(i => s"$i results")}"))
+        debugLogID.foreach(id => logger.info(s"[$id] scroll response: ${firstScrollResult.infotons.fold("empty")(i => s"${i.size} results")}"))
         startScrollResult.totalHits -> firstScrollResult
       }
     }
@@ -250,7 +250,10 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
               .filter(_.nonEmpty)
               .fold(Future.successful(Option.empty[(IterationResults, IterationResults)])) { _ =>
                 debugLogID.foreach(id => logger.info(s"[$id] scroll request: $iteratorId"))
-                crudServiceFS.scroll(iteratorId, scrollTTL, withData = false, nbg = nbg || withDeleted).map(iir => Some(iir -> ir))
+                crudServiceFS.scroll(iteratorId, scrollTTL, withData = false, nbg = nbg || withDeleted).andThen{
+                  case Success(res) => debugLogID.foreach(id => logger.info(s"[$id] scroll response: ${res.infotons.fold("empty")(i => s"${i.size} results")}"))
+                  case Failure(err) => debugLogID.foreach(id => logger.error(s"[$id] scroll source failed",err))
+                }.map(iir => Some(iir -> ir))
               }
           }
         }
