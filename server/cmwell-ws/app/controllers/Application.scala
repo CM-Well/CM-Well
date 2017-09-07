@@ -1499,7 +1499,7 @@ callback=< [URL] >
           fieldsFiltersFut.flatMap { fieldFilters =>
             fieldSortParamsFut.flatMap { fieldSortParams =>
               crudServiceFS.search(pathFilter, fieldFilters, Some(DatesFilter(from, to)),
-                PaginationParams(offset, length), withHistory, withData, fieldSortParams, debugInfo, withDeleted).flatMap { unmodifiedSearchResult =>
+                PaginationParams(offset, length), withHistory, withData, fieldSortParams, debugInfo, withDeleted, nbg).flatMap { unmodifiedSearchResult =>
 
                 val ygModified = getQueryString("yg") match {
                   case Some(ygp) => {
