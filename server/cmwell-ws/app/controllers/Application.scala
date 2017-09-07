@@ -815,6 +815,9 @@ callback=< [URL] >
                   forceUniqueness = forceUniqueness,
                   nbg = nbg)
 
+                lazy val id = cmwell.util.numeric.Radix64.encodeUnsigned(request.id)
+
+                val debugLogID = if(debugLog) Some(id) else None
 
                 streams.scrollSource(nbg,
                   pathFilter = pathFilter,
@@ -823,9 +826,9 @@ callback=< [URL] >
                   paginationParams = PaginationParams(0, 500),
                   scrollTTL = scrollTtl,
                   withHistory = withHistory,
-                  withDeleted = withDeleted).map { case (src, hits) =>
+                  withDeleted = withDeleted,
+                  debugLogID = debugLogID).map { case (src, hits) =>
 
-                  lazy val id = cmwell.util.numeric.Radix64.encodeUnsigned(request.id)
                   val s: Source[ByteString, NotUsed] = {
                     val scrollSourceToByteString = streams.scrollSourceToByteString(src, formatter, withData.isDefined, withHistory, length, fieldsMask, nbg)
                     if(debugLog) scrollSourceToByteString.via {
@@ -1345,7 +1348,7 @@ callback=< [URL] >
                 forceUniqueness = withHistory,
                 nbg = nbg)
 
-              val futureThatMayHang: Future[String] = crudServiceFS.scroll(scrollId, scrollTtl + 5, withData).flatMap { tmpIterationResults =>
+              val futureThatMayHang: Future[String] = crudServiceFS.scroll(scrollId, scrollTtl + 5, withData, nbg).flatMap { tmpIterationResults =>
                 fieldsMaskFut.flatMap { fieldsMask =>
                   val rv = createScrollIdDispatcherActorFromIteratorId(tmpIterationResults.iteratorId, withHistory, scrollTtl.seconds)
                   val iterationResults = tmpIterationResults.copy(iteratorId = rv).masked(fieldsMask)
@@ -1427,7 +1430,7 @@ callback=< [URL] >
           val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff,typesCache(nbg),cmwellRDFHelper,nbg).map(Some.apply))
           fieldsFiltersFut.flatMap { fieldFilters =>
             apfut.flatMap { af =>
-              crudServiceFS.aggregate(pathFilter, fieldFilters, Some(DatesFilter(from, to)), PaginationParams(offset, length), withHistory, af.flatten, debugInfo).map { aggResult =>
+              crudServiceFS.aggregate(pathFilter, fieldFilters, Some(DatesFilter(from, to)), PaginationParams(offset, length), withHistory, af.flatten, debugInfo, nbg).map { aggResult =>
                 request.getQueryString("format").getOrElse("json") match {
                   case FormatExtractor(formatType) => {
                     val formatter = formatterManager.getFormatter(
@@ -2008,7 +2011,7 @@ callback=< [URL] >
         val limit = req.getQueryString("versions-limit").flatMap(asInt).getOrElse(Settings.defaultLimitForHistoryVersions)
         val res = if (onlyLast)
           notImplemented // CRUDServiceFS.rollback(path,limit)
-        else if (includeLast) crudServiceFS.purgePath(path, includeLast, limit) else notImplemented // CRUDServiceFS.purgePath(path, includeLast, limit)
+        else if (includeLast) crudServiceFS.purgePath(path, includeLast, limit, nbg) else notImplemented // CRUDServiceFS.purgePath(path, includeLast, limit)
 
         res.onComplete {
           case Success(_) =>
@@ -2031,7 +2034,7 @@ callback=< [URL] >
       val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
       val formatter = getFormatter(req, formatterManager,"json", nbg)
       val limit = req.getQueryString("versions-limit").flatMap(asInt).getOrElse(Settings.defaultLimitForHistoryVersions)
-      crudServiceFS.purgePath2(path,limit).map{
+      crudServiceFS.purgePath2(path,limit,nbg).map{
         b => Ok(formatter.render(SimpleResponse(true,None))).as(overrideMimetype(formatter.mimetype,req)._2)
       }
     }

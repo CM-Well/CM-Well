@@ -711,7 +711,7 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
     })
   }
 
-  def scroll(scrollId: String, scrollTTL: Int, withData: Boolean, nbg: Boolean = false): Future[IterationResults] = {
+  def scroll(scrollId: String, scrollTTL: Long, withData: Boolean, nbg: Boolean = false): Future[IterationResults] = {
 
     val searchResultFuture = ftsService(nbg).scroll(scrollId, scrollTTL)
     val results = withData match {
