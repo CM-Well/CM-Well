@@ -1,7 +1,7 @@
 # Priority Queue - Design and API
 
 ## Abstract
-CM-Well ingest is "eventually consisted". Today, any payload that was ingested successfully, is pushed to a queue (Kafka) and the bg process handles each chunk of it in First Come First Served manner (as much as it can, given its distributed nature). Introducing a Priority Queue means some (more "urgent") HTTP Posts will have a special treatment, and a ticket to pass all chunks currently in line.
+CM-Well ingest is "eventually consistent". Today, any payload that was ingested successfully, is pushed to a queue (Kafka) and the bg process handles each chunk of it in first-in first-out (FIFO) manner (as much as it can, given its distributed nature). Introducing a Priority Queue means some (more "urgent") HTTP Posts will have a special treatment, and a ticket to pass all chunks currently in line.
 
 ## API
 * Write endpoints to CM-Well (`_in`, and low-level JSON POST) will accept a new query parameter: `priority` (with no value).
