@@ -3,7 +3,7 @@
 The following list shows general topics relating to many CM-Well API calls:
 
 * [Input and Output Formats](API.InputAndOutputFormats.md)
-* [Call Parameters](API.QueryParameters.md)
+* [Query Parameters](API.QueryParameters.md)
 * [Field Condition Syntax](API.FieldConditionSyntax.md)
 * [Field Name Formats](API.FieldNameFormats.md)
 * [From and To Datetime Formatting](API.FromAndToDatetimeFormatting.md)
