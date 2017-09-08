@@ -137,20 +137,20 @@ class BGMonitorActor(zkServers:String, offsetService:OffsetsService, implicit va
                   Red
                 }
               }
-            if(partitionStatus == Red) {
-              val currentTime = System.currentTimeMillis()
-              redSince.get(partitionInfo.partition) match {
-                case None =>
-                    logger warn s"BG status for partition ${partitionInfo.partition} turned RED"
-                  redSince.putIfAbsent(partitionInfo.partition, currentTime)
-                case Some(since) if ((currentTime - since) > 6 * 60 * 1000) =>
-                  logger error s"BG status for partition ${partitionInfo.partition} is RED for more than 6 minutes. sending it an exit message"
-                  Grid.serviceRef(s"BGActor${partitionInfo.partition}") ! ExitWithError
-                  redSince.replace(partitionInfo.partition, currentTime)
-                case Some(since) =>
-                  logger warn s"BG for partition ${partitionInfo.partition} is RED since ${(currentTime - since)/1000} seconds ago"
-              }
-            }
+//            if(partitionStatus == Red) {
+//              val currentTime = System.currentTimeMillis()
+//              redSince.get(partitionInfo.partition) match {
+//                case None =>
+//                    logger warn s"BG status for partition ${partitionInfo.partition} turned RED"
+//                  redSince.putIfAbsent(partitionInfo.partition, currentTime)
+//                case Some(since) if ((currentTime - since) > 6 * 60 * 1000) =>
+//                  logger error s"BG status for partition ${partitionInfo.partition} is RED for more than 6 minutes. sending it an exit message"
+//                  Grid.serviceRef(s"BGActor${partitionInfo.partition}") ! ExitWithError
+//                  redSince.replace(partitionInfo.partition, currentTime)
+//                case Some(since) =>
+//                  logger warn s"BG for partition ${partitionInfo.partition} is RED since ${(currentTime - since)/1000} seconds ago"
+//              }
+//            }
             key -> partitionInfo.copy(partitionStatus = partitionStatus)
           }
 
