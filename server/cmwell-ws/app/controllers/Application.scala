@@ -843,7 +843,7 @@ callback=< [URL] >
                             if (bytes.isEmpty) ""
                             else all.lines.next()
                           }
-                          logger.info(s"""[$id] onPush(first line: "$elem", num of lines: ${all.lines.size}, num of chars: ${all.size})""")
+                          logger.info(s"""[$id] onPush(first line: "$elem", num of lines: ${all.lines.size}, num of chars: ${all.length})""")
                         })
                     }
                     else scrollSourceToByteString
