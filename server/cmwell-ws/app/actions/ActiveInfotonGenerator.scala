@@ -37,13 +37,18 @@ import wsutil._
 import javax.inject._
 
 import cmwell.fts.FieldFilter
+import cmwell.util.FullBox
+import cmwell.web.ld.cmw.CMWellRDFHelper
+import cmwell.ws.util.FieldFilterParser
+import controllers.NbgToggler
+import ld.cmw.{NbgPassiveFieldTypesCache, ObgPassiveFieldTypesCache}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
 import scala.math.min
-import scala.util.Try
+import scala.util.{Success, Try}
 
 
 object BgMonitoring {
@@ -51,10 +56,17 @@ object BgMonitoring {
 }
 
 @Singleton
-class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPressureToggler, crudServiceFS: CRUDServiceFS, dashBoard: DashBoard) extends LazyLogging {
+class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPressureToggler,
+                                        crudServiceFS: CRUDServiceFS,
+                                        dashBoard: DashBoard,
+                                        cmwellRDFHelper: CMWellRDFHelper,
+                                        tbg: NbgToggler) extends LazyLogging {
 
   import BgMonitoring.{monitor => bgMonitor}
   import dashBoard._
+  lazy val nCache: NbgPassiveFieldTypesCache = crudServiceFS.nbgPassiveFieldTypesCache
+  lazy val oCache: ObgPassiveFieldTypesCache = crudServiceFS.obgPassiveFieldTypesCache
+  def typesCache(nbg: Boolean) = if(nbg || tbg.get) nCache else oCache
 
   /**
    * @return /proc/node infoton fields map
@@ -595,31 +607,54 @@ ${lines.mkString("\n")}
 
     implicit def iOptAsFuture(iOpt: Option[VirtualInfoton]): Future[Option[VirtualInfoton]] = Future.successful(iOpt)
 
-    def compoundDC = crudServiceFS.getListOfDC().map{
+    def compoundDC = crudServiceFS.getListOfDC().map {
       seq => {
         val dcKids: Seq[Infoton] = seq.map(dc => VirtualInfoton(ObjectInfoton(s"/proc/dc/$dc", dc, None, md, None)).getInfoton)
-        Some(VirtualInfoton(CompoundInfoton("/proc/dc",dc,None,md,None,dcKids.slice(offset,offset+length),offset,length,dcKids.size)))
+        Some(VirtualInfoton(CompoundInfoton("/proc/dc", dc, None, md, None, dcKids.slice(offset, offset + length), offset, length, dcKids.size)))
       }
     }
 
+    def getDcInfo(path: String) = {
+      val dcId = path.drop("/proc/dc/".length)
+      crudServiceFS.getInfotonByPathAsync(s"/meta/sys/dc/$dcId").flatMap {
+        case FullBox(ObjectInfoton(_, _, _, _, Some(fields), _)) =>
+          val id = fields("id").headOption.collect { case FString(x, _, _) => x }.get
+          val qp = fields.get("qp").flatMap(_.headOption.collect { case FString(x, _, _) => x })
+          qp
+            .fold(Success(None): Try[Option[RawFieldFilter]])(FieldFilterParser.parseQueryParams(_).map(Some.apply))
+            .map { qpOpt =>
+              val fieldsFiltersFut = qpOpt.fold[Future[Option[FieldFilter]]](Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff, typesCache(nbg), cmwellRDFHelper, nbg).map(Some.apply))
+              fieldsFiltersFut
+            }
+            .get
+            .map(fieldFilter => (id, fieldFilter))
+        case _ =>
+          Future.successful((dcId, fieldFilters))
+      }
+        .flatMap { case (id, fieldFilter) => crudServiceFS.getLastIndexTimeFor(id, nbg, fieldFilter) }
+    }
+
     path.dropTrailingChars('/') match {
-      case "/proc" => {val pk = procKids; Some(VirtualInfoton(CompoundInfoton(path, dc, None, md,None,pk.slice(offset,offset+length),offset,min(pk.drop(offset).size,length),pk.size)))}
-      case "/proc/node" => Some(VirtualInfoton(ObjectInfoton(path, dc, None, md,nodeValFields)))
+      case "/proc" => {
+        val pk = procKids
+        Some(VirtualInfoton(CompoundInfoton(path, dc, None, md, None, pk.slice(offset, offset + length), offset, min(pk.drop(offset).size, length), pk.size)))
+      }
+      case "/proc/node" => Some(VirtualInfoton(ObjectInfoton(path, dc, None, md, nodeValFields)))
       case "/proc/dc" => compoundDC
-      case p if p.startsWith("/proc/dc/") => crudServiceFS.getLastIndexTimeFor(p.drop("/proc/dc/".length), nbg, fieldFilters)
+      case p if p.startsWith("/proc/dc/") => getDcInfo(p)
       case "/proc/fields" => crudServiceFS.getESFieldsVInfoton(nbg).map(Some.apply)
       case "/proc/health" => Some(VirtualInfoton(ObjectInfoton(path, dc, None, md, generateHealthFields)))
       case "/proc/health.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateHealthMarkdown.getBytes, "text/x-markdown")))))
       case "/proc/health-detailed" => Some(VirtualInfoton(ObjectInfoton(path, dc, None, md, generateHealthDetailedFields)))
       case "/proc/health-detailed.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateDetailedHealthMarkdown.getBytes, "text/x-markdown")))))
       case "/proc/health-detailed.csv" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateDetailedHealthCsvPretty().getBytes, "text/html")))))
-      case "/proc/batch.md" =>  Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateBatchMarkdown(Batch).getBytes, "text/x-markdown")))))
-      case "/proc/bg.md" =>  Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateBgMarkdown(Bg).getBytes, "text/x-markdown")))))
-      case "/proc/bg" =>  generateBgData.map(fields => Some(VirtualInfoton(ObjectInfoton(path, dc, None, md, fields))))
-      case "/proc/search-contexts.md" =>  Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateIteratorMarkdown.getBytes, "text/x-markdown")))))
+      case "/proc/batch.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateBatchMarkdown(Batch).getBytes, "text/x-markdown")))))
+      case "/proc/bg.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateBgMarkdown(Bg).getBytes, "text/x-markdown")))))
+      case "/proc/bg" => generateBgData.map(fields => Some(VirtualInfoton(ObjectInfoton(path, dc, None, md, fields))))
+      case "/proc/search-contexts.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateIteratorMarkdown.getBytes, "text/x-markdown")))))
       case "/proc/members-active.md" => GridMonitoring.members(path, dc, Active, isRoot)
       case "/proc/members-all.md" => GridMonitoring.members(path, dc, All, isRoot)
-      case "/proc/members-all.csv" => GridMonitoring.members(path, dc, All, isRoot, format = CsvPretty, contentTranformator = payload => views.html.csvPretty(s"${Settings.clusterName} - Members-All", payload.replace("\n","\\n")).body)
+      case "/proc/members-all.csv" => GridMonitoring.members(path, dc, All, isRoot, format = CsvPretty, contentTranformator = payload => views.html.csvPretty(s"${Settings.clusterName} - Members-All", payload.replace("\n", "\\n")).body)
       case "/proc/singletons.md" => GridMonitoring.singletons(path, dc)
       case "/proc/actors.md" => GridMonitoring.actors(path, dc)
       case "/proc/actors-diff.md" => GridMonitoring.actorsDiff(path, dc)
@@ -631,7 +666,7 @@ ${lines.mkString("\n")}
       case s if s.startsWith("/meta/ns/") => {
         val sysOrNn = s.drop("/meta/ns/".length)
         val url = s"http://$host/meta/$sysOrNn#"
-        Some(VirtualInfoton(ObjectInfoton("/meta/ns/sys", dc, None, new DateTime(), Some(Map("url"->Set[FieldValue](FString(url)),"url_hash"->Set[FieldValue](FString(crc32(url))))))))
+        Some(VirtualInfoton(ObjectInfoton("/meta/ns/sys", dc, None, new DateTime(), Some(Map("url" -> Set[FieldValue](FString(url)), "url_hash" -> Set[FieldValue](FString(crc32(url))))))))
       }
       case _ => None
     }

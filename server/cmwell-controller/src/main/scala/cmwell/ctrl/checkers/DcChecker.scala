@@ -36,7 +36,7 @@ import scala.util.Try
  * Created by michael on 8/19/15.
  */
 
-case class ActiveDcSync(id : String, host : String)
+case class ActiveDcSync(id : String, qp : Option[String], host : String)
 case class InfotonDiff(me : Long, remote : Long) {
   def isEqual = me == remote
 }
@@ -69,30 +69,32 @@ object DcChecker  extends Checker with RestarterChecker with LazyLogging {
           dcNode =>
             val fields = dcNode.get("fields")
             val id = fields.get("id").iterator().next.asText()
+            val qp = if (fields.has("qp")) Some(fields.get("qp").iterator().next.asText()) else None
             val location = fields.get("location").iterator().next.asText()
-            ActiveDcSync(id, location)
+            ActiveDcSync(id, qp, location)
         }
     }
   }
 
-  private def getLastIndexTime(host : String, dc : String): Future[Long] = {
-    HttpUtil.httpGet(s"http://$host/proc/dc/$dc/?format=json&with-data").map {
+  private def getLastIndexTime(host : String, dc : String, qp: Option[String]): Future[Long] = {
+    val qpPart = qp.fold("?")(qp => s"?qp=$qp&")
+    HttpUtil.httpGet(s"http://$host/proc/dc/$dc${qpPart}format=json&with-data").map {
       r =>
         val json: JsonNode = Json.parse(r.content)
         json.get("fields").get("lastIdxT").iterator().next().asLong()
     }
   }
 
+/*
   def getNumberOfInfotons(host : String, dc : String): Future[Long] = {
       val path = s"http://$host/?op=search&qp=system.dc::$dc&format=json&with-data&length=0&recursive"
     HttpUtil.httpGet(path).map {
       r =>
         val json: JsonNode = Json.parse(r.content)
         json.get("results").get("total").asLong()
-
     }
-    //http://qa4haproxy/?op=search&format=json&with-data&pretty&length=0&recursive
   }
+*/
 
 
 
@@ -111,21 +113,14 @@ object DcChecker  extends Checker with RestarterChecker with LazyLogging {
       activeDcSync =>
         val futures = activeDcSync.map {
           dc =>
-            val id = dc.id
+            val id = s"${dc.id}${dc.qp.fold("")(qp => s"?qp=$qp")}"
             val remoteHost = dc.host
-
-            val remoteLastIndexTimeF = getLastIndexTime(remoteHost, id).recover{case err : Throwable => -1L}
-//            val remoteNumberOfInfotonsF = getNumberOfInfotons(remoteHost, id)
-
-            val localLastIndexTimeF = getLastIndexTime(host, id).recover{case err : Throwable => -1L}
-//            val localNumberOfInfotonsF = getNumberOfInfotons(host, id)
-
+            val remoteLastIndexTimeF = getLastIndexTime(remoteHost, dc.id, dc.qp).recover{case err : Throwable => -1L}
+            val localLastIndexTimeF = getLastIndexTime(host, dc.id, dc.qp).recover{case err : Throwable => -1L}
             val aggregated = for {
               remoteLastIndexTime <- remoteLastIndexTimeF
-//              remoteNumberOfInfotons <- remoteNumberOfInfotonsF
               localLastIndexTime <- localLastIndexTimeF
-//              localNumberOfInfotons <- localNumberOfInfotonsF
-            } yield (DcDiff(InfotonDiff(0L/*localNumberOfInfotons*/, 0L/*remoteNumberOfInfotons*/), (IndextimeDiff(localLastIndexTime, remoteLastIndexTime)), remoteHost, id))
+            } yield DcDiff(InfotonDiff(0L /*localNumberOfInfotons*/ , 0L /*remoteNumberOfInfotons*/), IndextimeDiff(localLastIndexTime, remoteLastIndexTime), remoteHost, id)
             aggregated.map {
               dcDiff =>
                 if(dcDiff.indextimeDiff.remote != -1L)
