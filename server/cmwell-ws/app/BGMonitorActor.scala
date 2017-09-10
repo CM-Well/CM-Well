@@ -90,6 +90,7 @@ class BGMonitorActor(zkServers:String, offsetService:OffsetsService, implicit va
       generateOffsetsInfo
   }
 
+  @volatile var statusesCheckedTime:Long = System.currentTimeMillis()
 
   private def generateOffsetsInfo = {
 
@@ -120,46 +121,54 @@ class BGMonitorActor(zkServers:String, offsetService:OffsetsService, implicit va
     calculateOffsetInfo().onComplete {
       case Success((info, duration)) =>
         logger debug s"calculate offset info successful: \nInfo:$info\nDuration:$duration"
-        previousOffsetInfo = currentOffsetInfo
-        try {
-          val partitionsOffsetInfoUpdated = info.partitionsOffsetInfo.map { case (key, partitionInfo) =>
-            val readDiff = partitionInfo.readOffset - previousOffsetInfo.partitionsOffsetInfo.get(key).map {
-              _.readOffset
-            }.getOrElse(0L)
-              val partitionStatus = {
-                if(readDiff > 0)
-                  Green
-                else if (partitionInfo.readOffset - partitionInfo.writeOffset == 0) {
-                  Green
-                } else if ((previousOffsetInfo).partitionsOffsetInfo.get(key).map{_.partitionStatus}.getOrElse(Green) == Green) {
-                  Yellow
-                } else {
-                  Red
+        val now = System.currentTimeMillis()
+        if(now - statusesCheckedTime > 1 * 60 * 1000){
+            logger debug s"more than 6 minutes has past since last checked statuses, let's check"
+          statusesCheckedTime = now
+          previousOffsetInfo = currentOffsetInfo
+          try {
+            val partitionsOffsetInfoUpdated = info.partitionsOffsetInfo.map { case (key, partitionInfo) =>
+              val readDiff = partitionInfo.readOffset - previousOffsetInfo.partitionsOffsetInfo.get(key).map {
+                _.readOffset
+              }.getOrElse(0L)
+                val partitionStatus = {
+                  if(readDiff > 0)
+                    Green
+                  else if (partitionInfo.readOffset - partitionInfo.writeOffset == 0) {
+                    Green
+                  } else if ((previousOffsetInfo).partitionsOffsetInfo.get(key).map{_.partitionStatus}.getOrElse(Green) == Green) {
+                    Yellow
+                  } else {
+                    Red
+                  }
+                }
+              if(partitionStatus == Red) {
+                val currentTime = System.currentTimeMillis()
+                redSince.get(partitionInfo.partition) match {
+                  case None =>
+                      logger warn s"BG status for partition ${partitionInfo.partition} turned RED"
+                    redSince.putIfAbsent(partitionInfo.partition, currentTime)
+                  case Some(since) if ((currentTime - since) > 15 * 60 * 1000) =>
+                    logger error s"BG status for partition ${partitionInfo.partition} is RED for more than 6 minutes. sending it an exit message"
+                    Grid.serviceRef(s"BGActor${partitionInfo.partition}") ! ExitWithError
+                    redSince.replace(partitionInfo.partition, currentTime)
+                  case Some(since) =>
+                    logger warn s"BG for partition ${partitionInfo.partition} is RED since ${(currentTime - since)/1000} seconds ago"
                 }
               }
-//            if(partitionStatus == Red) {
-//              val currentTime = System.currentTimeMillis()
-//              redSince.get(partitionInfo.partition) match {
-//                case None =>
-//                    logger warn s"BG status for partition ${partitionInfo.partition} turned RED"
-//                  redSince.putIfAbsent(partitionInfo.partition, currentTime)
-//                case Some(since) if ((currentTime - since) > 6 * 60 * 1000) =>
-//                  logger error s"BG status for partition ${partitionInfo.partition} is RED for more than 6 minutes. sending it an exit message"
-//                  Grid.serviceRef(s"BGActor${partitionInfo.partition}") ! ExitWithError
-//                  redSince.replace(partitionInfo.partition, currentTime)
-//                case Some(since) =>
-//                  logger warn s"BG for partition ${partitionInfo.partition} is RED since ${(currentTime - since)/1000} seconds ago"
-//              }
-//            }
-            key -> partitionInfo.copy(partitionStatus = partitionStatus)
-          }
+              key -> partitionInfo.copy(partitionStatus = partitionStatus)
+            }
 
-          currentOffsetInfo = info.copy(partitionsOffsetInfo = partitionsOffsetInfoUpdated)
-          lastFetchDuration = duration
-          context.system.scheduler.scheduleOnce(math.max(10000, lastFetchDuration).milliseconds, self, CalculateOffsetInfo)
-        } catch {
-          case t:Throwable => logger error ("exception ingesting offset info", t)
+            currentOffsetInfo = info.copy(partitionsOffsetInfo = partitionsOffsetInfoUpdated)
+          } catch {
+            case t:Throwable => logger error ("exception ingesting offset info", t)
+          }
+        } else {
+          currentOffsetInfo = info
         }
+        lastFetchDuration = duration
+          logger debug s"updated currentOffsetInfo: $currentOffsetInfo"
+        context.system.scheduler.scheduleOnce(math.max(10000, lastFetchDuration).milliseconds, self, CalculateOffsetInfo)
       case Failure(exception) =>
         logger error("failed to calculate offset info", exception)
         context.system.scheduler.scheduleOnce(math.max(10000, lastFetchDuration).milliseconds, self, CalculateOffsetInfo)
