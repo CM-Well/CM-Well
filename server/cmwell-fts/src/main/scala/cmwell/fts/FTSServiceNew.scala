@@ -668,7 +668,17 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
       clint.prepareSearchScroll(scrollId).setScroll(TimeValue.timeValueSeconds(scrollTTL)).execute(_)
     )
 
-    scrollResponseFuture.map{ scrollResponse => FTSScrollResponse(scrollResponse.getHits.getTotalHits, scrollResponse.getScrollId, esResponseToInfotons(scrollResponse,false))}
+    val p = Promise[FTSScrollResponse]()
+    scrollResponseFuture.onComplete {
+      case Failure(exception) => p.failure(exception)
+      case Success(scrollResponse) => {
+        if (scrollResponse.status().getStatus != 200) p.failure(new Exception(s"bad scroll response: $scrollResponse"))
+        else p.complete(Try(esResponseToInfotons(scrollResponse, false)).map { infotons =>
+          FTSScrollResponse(scrollResponse.getHits.getTotalHits, scrollResponse.getScrollId, infotons)
+        })
+      }
+    }
+    p.future
   }
 
   implicit def sortOrder2SortOrder(fieldSortOrder:FieldSortOrder):SortOrder = {
