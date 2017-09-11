@@ -23,6 +23,7 @@ libraryDependencies ++= {
     dm("com.typesafe.akka", "akka-stream-testkit") % "test",
     dm("commons-io", "commons-io"),
     dm("io.netty", "netty"),
+    dm("org.lz4","lz4-java"),
     dm("org.apache.commons", "commons-compress"),
     dm("org.apache.jena", "jena-arq")
       .exclude("commons-logging", "commons-logging"),

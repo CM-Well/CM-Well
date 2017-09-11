@@ -16,7 +16,10 @@
 
 package cmwell.util.string
 
+import java.nio.charset.StandardCharsets
+import cmwell.util.numeric._
 import scala.annotation.tailrec
+import net.jpountz.xxhash._
 
 object Hash {
 
@@ -38,17 +41,17 @@ object Hash {
   object Decimal     extends Radix {def getRadix = 10}
   object Hexadecimal extends Radix {def getRadix = 16}
 
-  def crc32(s: String): String = crc32(s.getBytes("UTF-8"))(Hexadecimal)
+  def crc32(s: String): String = crc32(s.getBytes(StandardCharsets.UTF_8))(Hexadecimal)
 
   def crc32long(s: String): Long = {
-    val bytes = s.getBytes("UTF-8")
+    val bytes = s.getBytes(StandardCharsets.UTF_8)
     val checksum = new java.util.zip.CRC32
     checksum.update(bytes, 0, bytes.length)
     checksum.getValue
   }
 
   def adler32long(s: String): Long = {
-    val bytes = s.getBytes("UTF-8")
+    val bytes = s.getBytes(StandardCharsets.UTF_8)
     adler32long(bytes)
   }
 
@@ -60,14 +63,16 @@ object Hash {
 
   def adler32int(a: Array[Byte]): Int = adler32long(a).toInt
 
-  def crc32base64(s: String): String = {
-    import cmwell.util.numeric.toIntegerBytes
+  def crc32base64(s: String): String =
+    hashToBase64(s)(crc32long)(toIntegerBytes)
 
+  def hashToBase64(s: String)(hash: String => Long)(bytes: Long => Array[Byte]): String = {
     // following 2 lines are equivalent to:
     //   Base64.encodeIntegerString(checksum.getValue)
     // but more efficient, since it avoids the un-necessary wrapping of `BigInt(java.util.BigInteger))`
-    // with implicits involved, and also, simplify the algorithm, since we know that exactly 4 bytes are in play here...
-    val checksumAsBytes = toIntegerBytes(crc32long(s))
+    // with implicits involved, and also, simplify the algorithm when passed `bytes` only takes 4 bytes,
+    // since we know that exactly 4 bytes are in play for some hash functions (e.g. crc32,xxhash32)...
+    val checksumAsBytes = bytes(hash(s))
     Base64.encodeBase64URLSafeString(checksumAsBytes)
   }
 
@@ -102,12 +107,28 @@ object Hash {
     }
   }
 
-  def md5(s: String): String = md5(s.getBytes("UTF-8"))
+  def xxhash32base64(s: String): String =
+    hashToBase64(s)(xxhash32)(toIntegerBytes)
+
+  def xxhash64base64(s: String): String =
+    hashToBase64(s)(xxhash64)(toLongBytes)
+
+  def md5(s: String): String = md5(s.getBytes(StandardCharsets.UTF_8))
   def md5(d: Array[Byte]): String = md5Func(d)
 
-  def sha1(s: String): String = sha1(s.getBytes("UTF-8"))
+  def sha1(s: String): String = sha1(s.getBytes(StandardCharsets.UTF_8))
   def sha1(d: Array[Byte]): String = sha1Func(d)
 
+  def xxhash32(str: String): Long = xxhash32(str.getBytes(StandardCharsets.UTF_8))
+  def xxhash32(arr: Array[Byte]): Long = {
+    val i = xxhashFactory.hash32().hash(arr,0,arr.length,786)
+    4294967295L & i // 4294967295L == -1L >>> 32, which will result in a long with 32 MSBits zeroed
+  }
+
+  def xxhash64(str: String): Long = xxhash64(str.getBytes(StandardCharsets.UTF_8))
+  def xxhash64(arr: Array[Byte]): Long = xxhashFactory.hash64().hash(arr,0,arr.length,786)
+
+  private lazy val xxhashFactory = XXHashFactory.fastestJavaInstance()
   private val md5Func = msgDigester("md5")
   private val sha1Func = msgDigester("sha1")
 
