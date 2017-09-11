@@ -123,7 +123,7 @@ class BGMonitorActor(zkServers:String, offsetService:OffsetsService, implicit va
         logger debug s"calculate offset info successful: \nInfo:$info\nDuration:$duration"
         val now = System.currentTimeMillis()
         if(now - statusesCheckedTime > 1 * 60 * 1000){
-            logger debug s"more than 6 minutes has past since last checked statuses, let's check"
+            logger debug s"more than 1 minute has past since last checked statuses, let's check"
           statusesCheckedTime = now
           previousOffsetInfo = currentOffsetInfo
           try {
@@ -149,7 +149,7 @@ class BGMonitorActor(zkServers:String, offsetService:OffsetsService, implicit va
                       logger warn s"BG status for partition ${partitionInfo.partition} turned RED"
                     redSince.putIfAbsent(partitionInfo.partition, currentTime)
                   case Some(since) if ((currentTime - since) > 15 * 60 * 1000) =>
-                    logger error s"BG status for partition ${partitionInfo.partition} is RED for more than 6 minutes. sending it an exit message"
+                    logger error s"BG status for partition ${partitionInfo.partition} is RED for more than 15 minutes. sending it an exit message"
                     Grid.serviceRef(s"BGActor${partitionInfo.partition}") ! ExitWithError
                     redSince.replace(partitionInfo.partition, currentTime)
                   case Some(since) =>
@@ -163,6 +163,10 @@ class BGMonitorActor(zkServers:String, offsetService:OffsetsService, implicit va
           } catch {
             case t:Throwable => logger error ("exception ingesting offset info", t)
           }
+        } else if(currentOffsetInfo.partitionsOffsetInfo.nonEmpty){
+          currentOffsetInfo = info.copy(partitionsOffsetInfo = info.partitionsOffsetInfo.map{
+            case (topic, info) => (topic, info.copy(partitionStatus = currentOffsetInfo.partitionsOffsetInfo(topic).partitionStatus))
+          })
         } else {
           currentOffsetInfo = info
         }
