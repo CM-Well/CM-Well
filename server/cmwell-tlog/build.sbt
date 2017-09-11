@@ -6,7 +6,7 @@ libraryDependencies ++= {
     dm("joda-time", "joda-time"),
     dm("org.joda", "joda-convert"),
     dm("com.typesafe", "config"),
-    dm("net.jpountz.lz4", "lz4"),
+    dm("org.lz4", "lz4-java"),
     dm("com.google.guava", "guava"),
     dm("com.google.code.findbugs", "jsr305"),
     dm("org.rogach", "scallop"),

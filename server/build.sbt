@@ -42,15 +42,15 @@ dependenciesManager in Global := {
   case ("com.avast","bytecompressor-zlib")                         => "com.avast" %% "bytecompressor-zlib"    % "1.2.2"
   case ("com.datastax.cassandra","cassandra-driver-core")          => "com.datastax.cassandra" % "cassandra-driver-core" % "3.2.0"
   case ("com.ecyrd.speed4j","speed4j")                             => "com.ecyrd.speed4j" % "speed4j" % "0.18"
-  case ("com.fasterxml.jackson.core", art)                         => "com.fasterxml.jackson.core" % art % "2.8.3"
+  case ("com.fasterxml.jackson.core", art)                         => "com.fasterxml.jackson.core" % art % "2.9.1"
   case ("com.github.andrewoma.dexx","collection")                  => "com.github.andrewoma.dexx" % "collection" % "0.7"
   case ("com.github.tomakehurst", "wiremock")                      => "com.github.tomakehurst" % "wiremock" % "2.7.1"
   case ("com.github.t3hnar", "scala-bcrypt")                       => "com.github.t3hnar" %% "scala-bcrypt" % "2.6"
   case ("com.google.code.findbugs","jsr305")                       => "com.google.code.findbugs" % "jsr305" % "1.3.9" //newest is 3.0.0
-  case ("com.google.guava","guava")                                => "com.google.guava" % "guava" % "22.0"
+  case ("com.google.guava","guava")                                => "com.google.guava" % "guava" % "23.0"
   case ("com.jason-goodwin", "authentikat-jwt")                    => "com.jason-goodwin" %% "authentikat-jwt" % "0.4.1"
-  case ("com.lightbend.akka", "akka-stream-alpakka-cassandra")     => "com.lightbend.akka" %% "akka-stream-alpakka-cassandra" % "0.9"
-  case ("com.ning","async-http-client")                            => "com.ning" % "async-http-client" % "1.9.39"
+  case ("com.lightbend.akka", "akka-stream-alpakka-cassandra")     => "com.lightbend.akka" %% "akka-stream-alpakka-cassandra" % "0.11"
+  case ("com.ning","async-http-client")                            => "com.ning" % "async-http-client" % "1.9.40"
   case ("com.spatial4j","spatial4j")                               => "com.spatial4j" % "spatial4j" % "0.5"
   case ("com.tinkerpop.blueprints","blueprints-core")              => "com.tinkerpop.blueprints" % "blueprints-core" % "2.6.0"
   case ("com.tinkerpop.gremlin","gremlin-groovy")                  => "com.tinkerpop.gremlin" % "gremlin-groovy" % "2.6.0"
@@ -59,7 +59,7 @@ dependenciesManager in Global := {
   case ("com.typesafe.scala-logging","scala-logging")              => "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0"
   case ("com.typesafe.akka", "akka-stream-kafka")                  => "com.typesafe.akka" %% "akka-stream-kafka" % "0.17"
   case ("com.typesafe.akka", "akka-stream-contrib")                => "com.typesafe.akka" %% "akka-stream-contrib" % "0.8"
-  case ("com.typesafe.akka", "akka-http-core")                     => "com.typesafe.akka" %% "akka-http-core" % "10.0.9"
+  case ("com.typesafe.akka", "akka-http-core")                     => "com.typesafe.akka" %% "akka-http-core" % "10.0.10"
   case ("com.typesafe.akka",art)                                   => "com.typesafe.akka" %% art % "2.5.4"
   case ("com.typesafe.play", "twirl-api")                          => "com.typesafe.play" %% s"twirl-api" % "1.3.0"
   case ("com.typesafe.play", art)                                  => "com.typesafe.play" %% art % Versions.play
@@ -75,7 +75,7 @@ dependenciesManager in Global := {
   case ("junit","junit")                                           => "junit" % "junit" % "4.12"
   case ("mx4j","mx4j-tools")                                       => "mx4j" % "mx4j-tools" % "3.0.1"
   case ("net.jcazevedo", "moultingyaml")                           => "net.jcazevedo" %% "moultingyaml" % "0.4.0"
-  case ("net.jpountz.lz4","lz4")                                   => "net.jpountz.lz4" % "lz4" % "1.3.0"
+  case ("org.lz4","lz4-java")                                      => "org.lz4" % "lz4-java" % "1.4.0"
   case ("net.logstash.logback", "logstash-logback-encoder")        => "net.logstash.logback" % "logstash-logback-encoder" % "4.7"
   case ("net.sf.ehcache","ehcache")                                => "net.sf.ehcache" % "ehcache" % "2.10.2"
   case ("nl.grons", "metrics-scala")                               => "nl.grons" %% "metrics-scala" % "3.5.7"
@@ -137,21 +137,7 @@ dependenciesManager in Global := {
   case ("org.jfarcand","wcs")                                      => "org.jfarcand" % "wcs" % "1.3"
   case ("org.jdom","jdom2")                                        => "org.jdom" % "jdom2" % "2.0.6"
   case ("org.joda","joda-convert")                                 => "org.joda" % "joda-convert" % "1.8.1"
-
-
-  case("org.openrdf.sesame", "sesame-model")                       => "org.openrdf.sesame" % "sesame-model" % "4.1.2"
-  case("org.openrdf.sesame", "sesame-queryalgebra-evaluation")     => "org.openrdf.sesame" % "sesame-queryalgebra-evaluation" % "4.1.2"
-  case("org.openrdf.sesame", "sesame-repository-api")              => "org.openrdf.sesame" % "sesame-repository-api" % "4.1.2"
-  case("org.openrdf.sesame", "sesame-repository-manager")          => "org.openrdf.sesame" % "sesame-repository-manager" % "4.1.2"
-  case("org.openrdf.sesame", "sesame-repository-http")             => "org.openrdf.sesame" % "sesame-repository-http" % "4.1.2"
-  case("org.openrdf.sesame", "sesame-repository-sparql")           => "org.openrdf.sesame" % "sesame-repository-sparql" % "4.1.2"
-  case("org.openrdf.sesame", "sesame-repository-sail")             => "org.openrdf.sesame" % "sesame-repository-sail" % "4.1.2"
-  case("org.openrdf.sesame", "sesame-sail-api")                    => "org.openrdf.sesame" % "sesame-sail-api" % "4.1.2"
-  case("org.openrdf.sesame", "sesame-sail-base")                   => "org.openrdf.sesame" % "sesame-sail-base" % "4.1.2"
-  case("org.openrdf.sesame", "sesame-sail-memory")                 => "org.openrdf.sesame" % "sesame-sail-memory" % "4.1.2"
-  case("org.openrdf.sesame", "sesame-queryresultio-text")          => "org.openrdf.sesame" % "sesame-queryresultio-text" % "4.1.2"
-  case("org.openrdf.sesame", "sesame-queryresultio-sparqljson")    => "org.openrdf.sesame" % "sesame-queryresultio-sparqljson" % "4.1.2"
-
+  case("org.openrdf.sesame", art)                                  => "org.openrdf.sesame" % art % "4.1.2"
   case ("org.pac4j", "play-pac4j")                                 => "org.pac4j" % "play-pac4j_scala2.11" % "1.3.0" // % "play-pac4j-scala" % "2.0.1"
   case ("org.pac4j", "pac4j-saml")                                 => "org.pac4j" % "pac4j-saml" % "1.7.0"           // "1.8.7"
   case ("org.pac4j", "pac4j-oauth")                                => "org.pac4j" % "pac4j-oauth" % "1.7.0"          // "1.8.7"
@@ -162,34 +148,13 @@ dependenciesManager in Global := {
   case ("org.scalatest","scalatest")                               => "org.scalatest" %% "scalatest" % "3.0.1"
   case ("org.scala-lang.modules", "scala-parser-combinators")      => "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4"
   case ("org.scala-lang.modules", "scala-xml")                     => "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
-  case ("org.slf4j",art)                                           => "org.slf4j" % art % "1.7.21"
+  case ("org.slf4j",art)                                           => "org.slf4j" % art % "1.7.25"
   case ("org.xerial.snappy","snappy-java")                         => "org.xerial.snappy" % "snappy-java" % "1.1.2.4"
   case ("org.yaml","snakeyaml")                                    => "org.yaml" % "snakeyaml" % "1.17"
   case ("xerces","xercesImpl")                                     => "xerces" % "xercesImpl" % "2.11.0"
   case ("xml-apis","xml-apis")                                     => "xml-apis" % "xml-apis" % "1.4.01"
   case ("uk.org.lidalia","sysout-over-slf4j")                      => "uk.org.lidalia" % "sysout-over-slf4j" % "1.0.2"
 }
-
-//dependencyOverrides in Global ++= Set(,,,,
-//  "com.github.hochgi" %% "scardf" % "0.8.2",
-//  "org.xerial.snappy" % "snappy-java" % "1.1.1.6",
-//  "org.yaml" % "snakeyaml" % "1.14",
-//  "sun.jdk" % "tools" % "1.6.0",
-//  "xerces" % "xercesImpl" % "2.11.0",
-//  "xml-apis" % "xml-apis" % "1.4.01"
-//) ++ Set(
-//  "jcl-over-slf4j",
-//  "jul-to-slf4j",
-//  "log4j-over-slf4j",
-//  "osgi-over-slf4j",
-//  "slf4j-android",
-//  "slf4j-api",
-//  "slf4j-ext",
-//  "slf4j-jcl",
-//  "slf4j-jdk14",
-//  "slf4j-log4j12",
-//  "slf4j-nop",
-//  "slf4j-simple").map(art => "org.slf4j" % art % "1.7.7")
 
 dependencyOverrides in Global ++= {
   val dm = dependenciesManager.value

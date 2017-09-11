@@ -18,6 +18,19 @@ package cmwell.util
 
 package object numeric {
 
+  trait NumericBytes[N] {
+    def bytes(n: N): Array[Byte]
+  }
+
+  object NumericBytes {
+    implicit val intBytes = new NumericBytes[Int] {
+      def bytes(n: Int) = toIntegerBytes(n.toLong)
+    }
+    implicit val longBytes = new NumericBytes[Long] {
+      def bytes(n: Long) = toLongBytes(n)
+    }
+  }
+
   /**
    * implementing:
    *   org.apache.commons.codec.binary.Base64.toIntegerBytes
