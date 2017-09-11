@@ -140,40 +140,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
 
     logger info s"ImpStream($streamId), startingOffset: $startingOffset, startingOffsetPriority: $startingOffsetPriority"
 
-  @volatile var (startingIndexName, startingIndexCount) = ftsService.latestIndexNameAndCount(s"cm_well_p${partition}_*") match {
-    case Some((name, count)) => (name -> count)
-    case None =>
-      logger info s"no indexes found for partition $partition, creating first one"
-      Try {
-        Await.result(
-          ftsService.createIndex(s"cm_well_p${partition}_0").flatMap { createResponse =>
-            if (createResponse.isAcknowledged) {
-              logger info s"successfully created first index for partition $partition"
-              scheduleFuture(5.seconds) {
-                logger info "updating all aliases"
-                ftsService.updateAllAlias()
-              }
-            }
-            else
-              Future.failed(new RuntimeException(s"failed to create first index for partition: $partition"))
-          }, 10.seconds
-        )
-      }.recover {
-        case t: Throwable =>
-          logger error("failed to init ES index/alias, aborting !!!", t)
-          throw t
-      }
-
-      (s"cm_well_p${partition}_0" -> 0L)
-  }
-
-    logger info s"ImpStream($streamId), startingIndexName: $startingIndexName, startingIndexCount: $startingIndexCount"
-
-  @volatile var currentIndexName = startingIndexName
-
   @volatile var fuseOn = true
-
-  val numOfShardPerIndex = ftsService.numOfShardsForIndex(currentIndexName)
 
   val subscription = Subscriptions.assignmentWithOffset(
     new TopicPartition(persistCommandsTopic, partition) -> startingOffset
@@ -692,10 +659,8 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
           BGMessage[(String, Seq[(Infoton, Option[String])])],
           Seq[Offset]] {
           case bgMessage@BGMessage(offset, (_, infotons)) =>
-            if (infotons.size > 0)
-              Left(bgMessage)
-            else
-              Right(offset)
+            if (infotons.nonEmpty) Left(bgMessage)
+            else Right(offset)
         }
       )
 
@@ -722,10 +687,11 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
       val processOverrideInfotonsWithState = builder.add(
         Flow[((String,Long),BGMessage[(Seq[(Infoton,Option[String])],Option[Infoton])])].mapAsync(irwWriteConcurrency) {
           case ((currentIndexName,_),BGMessage(offsets, (newInfotons, existingInfotonOpt))) =>
-            val newInfotonsWithIndexName = newInfotons.map { case (i, tid) => (i.copyInfoton(indexName = currentIndexName) -> tid) }
-            irwService.writeSeqAsync(newInfotonsWithIndexName.map {
-              _._1
-            }, ConsistencyLevel.QUORUM).map { writtenInfotons =>
+            val newInfotonsWithIndexName = newInfotons.map {
+              case (i, tid) =>
+                i.copyInfoton(indexName = currentIndexName) -> tid
+            }
+            irwService.writeSeqAsync(newInfotonsWithIndexName.map(_._1), ConsistencyLevel.QUORUM).map { writtenInfotons =>
               val bgMessages: List[BGMessage[Seq[IndexCommand]]] = newInfotonsWithIndexName.toList match {
                 case ((headInfoton, headTrackingId) :: tail) =>
                   val isHeadCurrent = existingInfotonOpt.isEmpty || {
@@ -748,10 +714,8 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
                   existingInfotonOpt.fold{
                     List(BGMessage(offsets, indexNewInfotonCommands))
                   } { existingInfoton =>
-                    val statusTracking = newInfotonsWithIndexName.map {
-                      _._2
-                    }.flatten.map {
-                      StatusTracking(_, 2)
+                    val statusTracking = newInfotonsWithIndexName.collect {
+                      case (_,Some(s)) => StatusTracking(s, 2)
                     }
 
                     if (isHeadCurrent) {
@@ -851,16 +815,8 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
       val sendActionsToES = builder.add(
         Flow[Seq[BGMessage[(Seq[(ESIndexRequest, Long)], Seq[IndexCommand])]]].mapAsync(1) {
           case bgMessages =>
-            val actions = bgMessages.map {
-              _.message._1.map {
-                _._1
-              }
-            }.flatten
-            logger debug s"sending ${actions.size} actions to elasticsearch: ${actions} from commands: ${
-              bgMessages.map {
-                _.message._2
-              }.flatten
-            }"
+            val actions = bgMessages.flatMap(_.message._1.map(_._1))
+            logger debug s"sending ${actions.size} actions to elasticsearch: ${actions} from commands: ${bgMessages.flatMap(_.message._2)}"
             indexBulkSizeHist += actions.size
             indexingTimer.timeFuture(ftsService.executeIndexRequests(actions).recover {
               case _: TimeoutException =>
@@ -869,15 +825,14 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
             ).map { bulkIndexResult =>
               // filter out expected es failures (due to we're at least once and not exactly once)
               val filteredResults = bulkIndexResult match {
-                case s@SuccessfulBulkIndexResult(_, failed) if failed.size > 0 =>
+                case s@SuccessfulBulkIndexResult(_, failed) if failed.nonEmpty =>
                   s.copy(failed = failed.filterNot { f =>
-                    (f.reason.startsWith("DocumentAlreadyExistsException") || f.reason.startsWith("VersionConflictEngineException"))
+                    f.reason.startsWith("DocumentAlreadyExistsException") ||
+                    f.reason.startsWith("VersionConflictEngineException")
                   })
                 case other => other
               }
-              BGMessage(bgMessages.map(_.offsets).flatten, (filteredResults, bgMessages.map {
-                _.message._2
-              }.flatten))
+              BGMessage(bgMessages.flatMap(_.offsets), (filteredResults, bgMessages.flatMap(_.message._2)))
             }
         }
       )
@@ -885,6 +840,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
       val manageIndices = builder.add(
         Flow[((String,Long),BGMessage[(BulkIndexResult, Seq[IndexCommand])])].mapAsync(1) {
           case (unchangedState@(currentIndexName,indexCount),bgMessage@BGMessage(_, (bulkRes, commands))) =>
+            val numOfShardPerIndex = ftsService.numOfShardsForIndex(currentIndexName)
             var startingIndexCount = indexCount + bulkRes.successful.size
             if (startingIndexCount / numOfShardPerIndex >= maxDocsPerShard) {
               val (pref, suf) = currentIndexName.splitAt(currentIndexName.lastIndexOf('_') + 1)
@@ -1055,7 +1011,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
 
       fusePartition.out(1) ~> indexCommandsToKafkaRecords ~> mergeKafkaRecords.in(0)
 
-      // In case of partitial success of indexing, failed goes to index_topic and successful offset are not reported
+      // In case of partial success of indexing, failed goes to index_topic and successful offset are not reported
       // Since we have one offset (lowest) per group of commands. When the failed will succeed in Indexer it will be
       // reported
       partitionIndexResult.out(0) ~> reportProcessTracking ~> mergeCompletedOffsets.in(2)
@@ -1106,7 +1062,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
       }
 
       p.future
-    } else
-      Future.successful(false -> parentWithChildDate)
+    }
+    else Future.successful(false -> parentWithChildDate)
   }
 }
