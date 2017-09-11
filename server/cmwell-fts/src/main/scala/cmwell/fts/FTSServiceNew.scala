@@ -678,7 +678,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
           if(status != 200)
             logger.warn(s"scroll($scrollId, $scrollTTL, $nodeId) resulted with status[$status] != 200: $scrollResponse")
 
-          p.complete(Try(esResponseToInfotons(scrollResponse, false)).map { infotons =>
+          p.complete(Try(esResponseToInfotons(scrollResponse, includeScore = false)).map { infotons =>
             FTSScrollResponse(scrollResponse.getHits.getTotalHits, scrollResponse.getScrollId, infotons)
           })
         }
