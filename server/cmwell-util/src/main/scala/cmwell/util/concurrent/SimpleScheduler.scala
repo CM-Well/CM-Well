@@ -19,7 +19,7 @@ package cmwell.util.concurrent
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.util.Try
 
 /**
@@ -73,7 +73,7 @@ object SimpleScheduler extends LazyLogging {
     p.future
   }
 
-  def scheduleFuture[T](duration: FiniteDuration)(body: => Future[T]): Future[T] = {
+  def scheduleFuture[T](duration: Duration)(body: => Future[T]): Future[T] = {
     val p = Promise[T]()
     timer.schedule(new Runnable {
       override def run(): Unit = p.completeWith(body)

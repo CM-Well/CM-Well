@@ -22,12 +22,13 @@ import akka.kafka.Subscriptions
 import akka.stream.ActorAttributes.supervisionStrategy
 import akka.stream.Supervision.Decider
 import akka.stream.scaladsl.{Flow, GraphDSL, Keep, MergePreferred, RunnableGraph, Sink}
-import akka.stream.{ActorMaterializer, ClosedShape, KillSwitches}
+import akka.stream.{ActorMaterializer, ClosedShape, KillSwitches, Supervision}
 import cmwell.common.formats.JsonSerializerForES
 import cmwell.fts._
 import cmwell.irw.{IRWService, QUORUM}
 import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
 import cmwell.common._
+import cmwell.common.exception.getStackTrace
 import cmwell.domain.Infoton
 import cmwell.tracking._
 import com.typesafe.config.Config
@@ -50,7 +51,7 @@ import scala.util.{Failure, Success, Try}
   * Created by israel on 14/06/2016.
   */
 class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsService: FTSServiceNew,
-                    offsetsService: OffsetsService, decider:Decider, kafkaConsumer:ActorRef)
+                    offsetsService: OffsetsService, kafkaConsumer:ActorRef, bgActor:ActorRef)
                    (implicit actorSystem:ActorSystem,
                     executionContext:ExecutionContext,
                     materializer: ActorMaterializer) extends LazyLogging with DefaultInstrumented{
@@ -223,7 +224,7 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
             logger debug s"${esIndexRequests.length} actions to index: \n${esIndexRequests.map{ ir => if (ir.esAction.isInstanceOf[UpdateRequest]) ir.esAction.asInstanceOf[UpdateRequest].doc().toString else ir.esAction.toString}}"
           val highestOffset = bgMessages.map(_.offsets).flatten.max
           indexBulkSizeHist += esIndexRequests.size
-          indexingTimer.timeFuture(ftsService.executeBulkIndexRequests(esIndexRequests)).map{ bulkIndexResult =>
+          indexingTimer.timeFuture(cmwell.util.concurrent.retry(10, 10.seconds, 1.15)(ftsService.executeBulkIndexRequests(esIndexRequests))).map{ bulkIndexResult =>
             BGMessage(highestOffset, (bulkIndexResult, bgMessages.map{_.message._2}))
           }
         }
@@ -266,6 +267,14 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
 
     ClosedShape
   })
+
+  val decider: Supervision.Decider = {
+
+    case t:Throwable =>
+      logger error s"Unexpected Exception during BG processing, restarting streams\n ${getStackTrace(t)}"
+      bgActor ! Indexer503
+      Supervision.Stop
+  }
 
   val indexerControl = indexerGraph.withAttributes(supervisionStrategy(decider)).run()
 
