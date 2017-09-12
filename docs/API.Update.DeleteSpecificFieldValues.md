@@ -36,6 +36,7 @@ Both methods are described in the following sections.
 Parameter | Description  | Example
 :----------|:------------|:-------
 data | The field name and values to delete, in JSON format. Values are comma-separated. | {"name":["John","Johnnie"]} 
+priority | If this flag appears in an update call, that call receives priority relative to non-priority calls. To use this flag, you must also pass the X-CM-WELL-TOKEN request header, with a token that grants access to the priority feature. This feature should be used with discretion so as not to flood the priority queue. | \<cm-well-host\>/_in?format=ttl&priority...
 
 ## Code Example 1 ##
 
@@ -77,6 +78,7 @@ data | The field name and values to delete, in JSON format. Values are comma-sep
 Parameter | Description | Values | Example | Reference
 :----------|:-------------|:--------|:---------|:----------
 format | The format in which the triples are provided | n3, rdfxml, ntriples, nquads, turtle/ttl, trig, trix | format=n3 | [CM-Well Input and Output Formats](API.InputAndOutputFormats.md)
+priority | If this flag appears in an update call, that call receives priority relative to non-priority calls. To use this flag, you must also pass the X-CM-WELL-TOKEN request header, with a token that grants access to the priority feature. This feature should be used with discretion so as not to flood the priority queue. | None | \<cm-well-host\>/_in?format=ttl&priority... | [Query Parameters](API.QueryParameters.md)
 
 ## Code Example 2 ##
 
