@@ -169,7 +169,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
     logger info s"ImpStream($streamId), startingIndexName: $startingIndexName, startingIndexCount: $startingIndexCount"
 
   @volatile var currentIndexName = startingIndexName
-  @volatile var fuseOn = true
+  @volatile var fuseOn = config.getBoolean("cmwell.bg.fuseOn")
 
   val numOfShardPerIndex = ftsService.numOfShardsForIndex(currentIndexName)
 
