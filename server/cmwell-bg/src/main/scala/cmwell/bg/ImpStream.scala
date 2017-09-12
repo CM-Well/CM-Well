@@ -852,7 +852,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
                 ((nextIndexName,0L),bgMessage)
               }
             } else
-              Future.successful(unchangedState -> bgMessage)
+              Future.successful((currentIndexName,startingIndexCount) -> bgMessage)
         }
       )
 

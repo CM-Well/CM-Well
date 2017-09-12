@@ -688,5 +688,161 @@ class GlobalVarStateHandlerTests extends StreamSpec {
         d2Stream.requestNext(12345)
       }
     }
+
+    describe("should handle completion properly") {
+      it("when all upstreams finishes after initialization complete") {
+        val src1 = TestSource.probe[Int]
+        val src2 = TestSource.probe[Int]
+        val snk1 = TestSink.probe[Int]
+        val snk2 = TestSink.probe[Int]
+        val p = Promise[Int]()
+
+        val (u1Stream, u2Stream, d1Stream, d2Stream) = RunnableGraph.fromGraph(GraphDSL.create(src1, src2, snk1, snk2)((a, b, c, d) => (a, b, c, d)) {
+          implicit b => {
+            (s1, s2, s3, s4) => {
+              import akka.stream.scaladsl.GraphDSL.Implicits._
+
+              val gvsh = b.add(new GlobalVarStateHandler[Int](2, 2)(() => p.future)(scala.concurrent.ExecutionContext.Implicits.global))
+
+              s1 ~> gvsh.inlets.head
+              s2 ~> gvsh.inlets.last
+              gvsh.outlets.head ~> s3
+              gvsh.outlets.last ~> s4
+
+              ClosedShape
+            }
+          }
+        }).run()
+
+        u1Stream.ensureSubscription()
+        u2Stream.ensureSubscription()
+        d1Stream.ensureSubscription()
+        d2Stream.ensureSubscription()
+
+        u1Stream.expectRequest()
+        u2Stream.expectRequest()
+        d1Stream.request(1)
+        d2Stream.request(1)
+        p.success(42)
+        d1Stream.expectNext(42)
+        d2Stream.expectNext(42)
+
+        u1Stream.sendComplete()
+        d1Stream.expectNoMsg(100.millis)
+        d2Stream.expectNoMsg(100.millis)
+
+        u2Stream.sendComplete()
+        d1Stream.expectNoMsg(100.millis)
+        d2Stream.expectNoMsg(100.millis)
+
+        d1Stream.requestNext(42)
+        d2Stream.requestNext(42)
+
+        d1Stream.cancel()
+        d2Stream.requestNext(42)
+      }
+
+      it("when all upstream finishes before initialization complete") {
+        val src1 = TestSource.probe[Int]
+        val src2 = TestSource.probe[Int]
+        val snk1 = TestSink.probe[Int]
+        val snk2 = TestSink.probe[Int]
+        val p = Promise[Int]()
+
+        val (u1Stream, u2Stream, d1Stream, d2Stream) = RunnableGraph.fromGraph(GraphDSL.create(src1, src2, snk1, snk2)((a, b, c, d) => (a, b, c, d)) {
+          implicit b => {
+            (s1, s2, s3, s4) => {
+              import akka.stream.scaladsl.GraphDSL.Implicits._
+
+              val gvsh = b.add(new GlobalVarStateHandler[Int](2, 2)(() => p.future)(scala.concurrent.ExecutionContext.Implicits.global))
+
+              s1 ~> gvsh.inlets.head
+              s2 ~> gvsh.inlets.last
+              gvsh.outlets.head ~> s3
+              gvsh.outlets.last ~> s4
+
+              ClosedShape
+            }
+          }
+        }).run()
+
+        u1Stream.ensureSubscription()
+        u2Stream.ensureSubscription()
+        d1Stream.ensureSubscription()
+        d2Stream.ensureSubscription()
+
+        u1Stream.expectRequest()
+        u2Stream.expectRequest()
+        d1Stream.request(1)
+        d2Stream.request(1)
+        d1Stream.expectNoMsg(100.millis)
+        d2Stream.expectNoMsg(100.millis)
+
+        u1Stream.sendComplete()
+        d1Stream.expectNoMsg(100.millis)
+        d2Stream.expectNoMsg(100.millis)
+
+        u2Stream.sendComplete()
+        d1Stream.expectNoMsg(100.millis)
+        d2Stream.expectNoMsg(100.millis)
+
+        p.success(42)
+        d1Stream.expectNext(42)
+        d2Stream.expectNext(42)
+
+        d1Stream.cancel()
+        d2Stream.requestNext(42)
+      }
+
+      it("when all upstream finishes before initialization fails") {
+        val src1 = TestSource.probe[Int]
+        val src2 = TestSource.probe[Int]
+        val snk1 = TestSink.probe[Int]
+        val snk2 = TestSink.probe[Int]
+        val p = Promise[Int]()
+
+        val (u1Stream, u2Stream, d1Stream, d2Stream) = RunnableGraph.fromGraph(GraphDSL.create(src1, src2, snk1, snk2)((a, b, c, d) => (a, b, c, d)) {
+          implicit b => {
+            (s1, s2, s3, s4) => {
+              import akka.stream.scaladsl.GraphDSL.Implicits._
+
+              val gvsh = b.add(new GlobalVarStateHandler[Int](2, 2)(() => p.future)(scala.concurrent.ExecutionContext.Implicits.global))
+
+              s1 ~> gvsh.inlets.head
+              s2 ~> gvsh.inlets.last
+              gvsh.outlets.head ~> s3
+              gvsh.outlets.last ~> s4
+
+              ClosedShape
+            }
+          }
+        }).run()
+
+        u1Stream.ensureSubscription()
+        u2Stream.ensureSubscription()
+        d1Stream.ensureSubscription()
+        d2Stream.ensureSubscription()
+
+        u1Stream.expectRequest()
+        u2Stream.expectRequest()
+        d1Stream.request(1)
+        d2Stream.request(1)
+        d1Stream.expectNoMsg(100.millis)
+        d2Stream.expectNoMsg(100.millis)
+
+        u1Stream.sendComplete()
+        d1Stream.expectNoMsg(100.millis)
+        d2Stream.expectNoMsg(100.millis)
+
+        u2Stream.sendComplete()
+        d1Stream.expectNoMsg(100.millis)
+        d2Stream.expectNoMsg(100.millis)
+
+        val ex = new Exception("pre initialization failure!")
+        p.failure(ex)
+        d1Stream.expectError(ex)
+        d2Stream.expectError(ex)
+      }
+    }
   }
 }
