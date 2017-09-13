@@ -221,6 +221,22 @@ select:hover {
     border-radius: 4px;
 }
 
+.types-container {
+    padding: 6px 0;
+    border-bottom: 1px solid #ccc;
+    margin: 0 30px;
+    margin-top: -10px;
+    font-size: 13px;
+}
+
+.types-container .type {
+    margin: 0 10px;
+}
+
+.types-container .type a {
+    color: #0e7bad;
+}
+
 .system-fields-container {
     position: absolute;
     right: 28px;

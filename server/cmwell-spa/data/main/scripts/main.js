@@ -35,6 +35,21 @@ define('react-dom', ['/meta/app/main/scripts/lib/react-dom.min.js'], function(Re
     window.ReactDOM = ReactDOM;
     return ReactDOM;
 });
+    
+    
+    
+if(localStorage.getItem('debug')) {
+    
+    /* Using in-browser transpilation */
+    
+require.config({
+  waitSeconds: 120,
+  paths: { // Settings for requirejs-react-jsx plugin
+     "babel": '/meta/app/main/scripts/lib/babel-5.8.34.min'
+    ,"jsx":   '/meta/app/main/scripts/lib/jsx'
+    ,"text":  '/meta/app/main/scripts/lib/text'
+  }
+});
 
 require(["react", "react-dom"], function() {
     status('Loading libraries');
@@ -73,17 +88,19 @@ require(["react", "react-dom"], function() {
             
             require([ // app componets
                  'jsx!./components/Header.jsx'
+                ,'jsx!./components/Types.jsx'
                 ,'jsx!./components/HomePage.jsx'
                 ,'jsx!./components/InfotonsList.jsx'
                 ,'jsx!./components/Infoton.jsx'
                 ,'jsx!./components/Footer.jsx'
                 ,'jsx!./utils'
-            ], function(header, homePage, infotonsList, infoton, footer) {
+            ], function(header, types, homePage, infotonsList, infoton, footer) {
                 status(empty);
                 setTimeout(function(){
                     status('Starting App', true);
 
                     var components = header;
+                    components.Types = types;
                     components.HomePage = homePage;
                     components.InfotonsList = infotonsList;
                     components.Infoton = infoton;
