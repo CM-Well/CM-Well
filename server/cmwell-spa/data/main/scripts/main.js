@@ -35,21 +35,6 @@ define('react-dom', ['/meta/app/main/scripts/lib/react-dom.min.js'], function(Re
     window.ReactDOM = ReactDOM;
     return ReactDOM;
 });
-    
-    
-    
-if(localStorage.getItem('debug')) {
-    
-    /* Using in-browser transpilation */
-    
-require.config({
-  waitSeconds: 120,
-  paths: { // Settings for requirejs-react-jsx plugin
-     "babel": '/meta/app/main/scripts/lib/babel-5.8.34.min'
-    ,"jsx":   '/meta/app/main/scripts/lib/jsx'
-    ,"text":  '/meta/app/main/scripts/lib/text'
-  }
-});
 
 require(["react", "react-dom"], function() {
     status('Loading libraries');
