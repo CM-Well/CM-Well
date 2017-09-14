@@ -2197,7 +2197,7 @@ class CachedSpa @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
       case FullBox(FileInfoton(_, _, _, _, _, Some(c),_)) => new String(c.data.get, "UTF-8")
       case somethingElse => {
         logger.error("got something else: " + somethingElse)
-        ???
+        throw new SpaMissingException("SPA Content is currently unreachable")
       }
     }
   }
@@ -2212,3 +2212,5 @@ class CachedSpa @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
       else newObgCache.getAndUpdateIfNeeded
     }
 }
+
+class SpaMissingException(msg :String) extends Exception(msg)
