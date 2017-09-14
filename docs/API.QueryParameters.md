@@ -1,4 +1,4 @@
-# CM-Well Call Parameters #
+# CM-Well Query Parameters #
 
 The following table describes parameters that you can add to most CM-Well calls. Some parameters take values and some serve as Boolean flags (see details in table). If multiple parameters appear in the call, they must be separated by the & character.
 
