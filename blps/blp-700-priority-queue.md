@@ -33,4 +33,4 @@ $ curl "localhost:9000/_in?format=ntriples&priority" --data-binary '<http://exam
 ```
 
 ## Future Work
-* One or a few more (up to a fixed small number) priorites can be introduced. For example "idle queue" which is intended for Admin operations, which will be prioritzed higher than normal but lower than the Priority priority.
+* One or a few more (up to a fixed small number) priorites can be introduced. For example "idle queue" which is intended for Admin operations, which will be prioritzed higher than normal but lower than the high priority.
