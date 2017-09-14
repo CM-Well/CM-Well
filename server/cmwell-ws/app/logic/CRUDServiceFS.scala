@@ -48,6 +48,7 @@ import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 import javax.inject._
 
+import cmwell.ws.qp.Encoder
 import controllers.NbgToggler
 import ld.cmw.{NbgPassiveFieldTypesCache, ObgPassiveFieldTypesCache}
 
@@ -634,11 +635,14 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
 
   def getLastIndexTimeFor(dc: String = Settings.dataCenter, nbg: Boolean, fieldFilters: Option[FieldFilter]): Future[Option[VirtualInfoton]] = {
 
-    def mkVirtualInfoton(indexTime: Long): VirtualInfoton =
-      VirtualInfoton(ObjectInfoton(s"/proc/dc/$dc", Settings.dataCenter, None,
-        Map("lastIdxT" -> Set[FieldValue](FLong(indexTime)),
-          "dc" -> Set[FieldValue](FString(dc)))))
-    ftsService(nbg).getLastIndexTimeFor(dc, fieldFilters =  fieldFilters).map(lOpt => Some(mkVirtualInfoton(lOpt.getOrElse(0L))))
+    def mkVirtualInfoton(indexTime: Long): VirtualInfoton = {
+      val fields = Map("lastIdxT" -> Set[FieldValue](FLong(indexTime)),
+        "dc" -> Set[FieldValue](FString(dc)))
+      val fieldsWithFilter = fieldFilters.fold(fields)(ff => fields + ("qp" -> Set[FieldValue](FString(Encoder.encodeFieldFilter(ff)))))
+      VirtualInfoton(ObjectInfoton(s"/proc/dc/$dc", Settings.dataCenter, None, fieldsWithFilter))
+    }
+
+    ftsService(nbg).getLastIndexTimeFor(dc, fieldFilters = fieldFilters).map(lOpt => Some(mkVirtualInfoton(lOpt.getOrElse(0L))))
   }
 
   def getESFieldsVInfoton(nbg: Boolean = newBG): Future[VirtualInfoton] = {
@@ -711,7 +715,7 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
     })
   }
 
-  def scroll(scrollId: String, scrollTTL: Int, withData: Boolean, nbg: Boolean = false): Future[IterationResults] = {
+  def scroll(scrollId: String, scrollTTL: Long, withData: Boolean, nbg: Boolean = false): Future[IterationResults] = {
 
     val searchResultFuture = ftsService(nbg).scroll(scrollId, scrollTTL)
     val results = withData match {

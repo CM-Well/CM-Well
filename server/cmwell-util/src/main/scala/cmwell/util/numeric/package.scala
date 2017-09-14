@@ -18,10 +18,23 @@ package cmwell.util
 
 package object numeric {
 
+  trait BytesConverter[N] {
+    def bytes(n: N): Array[Byte]
+  }
+
+  object BytesConverter {
+    implicit val intBytes = new BytesConverter[Int] {
+      def bytes(n: Int) = toIntegerBytes(n.toLong)
+    }
+    implicit val longBytes = new BytesConverter[Long] {
+      def bytes(n: Long) = toLongBytes(n)
+    }
+  }
+
   /**
-   * implementing:
+   * toIntegerBytes can be used for implementing, e.g:
    *   org.apache.commons.codec.binary.Base64.toIntegerBytes
-   * specialized for long values (which we know only use 1st 4 bytes, since crc32 uses only 32 bytes)
+   * specialized for long values (which we know only use 1st 4 bytes, since e.g. crc32 uses only 32 bytes)
    *
    * @param long
    * @return byte array representing the long value
