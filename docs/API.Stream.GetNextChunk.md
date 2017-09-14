@@ -39,7 +39,7 @@ Parameter | Description&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Values&nbsp;&nbsp;
 :----------|:-------------|:--------|:---------
 session-ttl | The time, in milliseconds, until the iteration session expires. The iteration token is only valid for this length of time. The default value is 15 seconds; the maximal value is 60 seconds. | A positive integer up to 60. | session-ttl=20
 
-format | The output format of the streamed chunks. The default value is **ntriples**. | See [Call Parameters](API.QueryParameters.md). | format=ttl
+format | The output format of the streamed chunks. The default value is **ntriples**. | See [Query Parameters](API.QueryParameters.md). | format=ttl
 
 ## Code Example ##
 
