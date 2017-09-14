@@ -12,4 +12,5 @@ Configuration refactoring | Many configuration parameters were moved from `-D` i
 The **qp** parameter is now supported for DC-Sync | The Data Center synchronization mechanism allows you to automatically synchronize data among multiple CM-Well instances. Previously the synchronization could only be performed on the entire data repository. This feature has now been enhanced with the option to use `qp` parameter, thus controlling the subset of data that is synchronized. This can be useful, for example, when you want to provide access to "edge" instances with a limited dataset.
 
 ### Changes to API ###
+
 The ```priority``` flag was added to **POST** calls and calls to the **_in** endpoint. See [Query Parameters](API.QueryParameters.md) to learn more.
