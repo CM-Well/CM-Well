@@ -34,6 +34,7 @@ import uk.org.lidalia.sysoutslf4j.context.SysOutOverSLF4J
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import collection.JavaConverters._
 
 /**
   * Created by israel on 11/23/15.
@@ -48,6 +49,7 @@ object Runner extends LazyLogging {
       //Without it there will be en error in stderr and some log line at the beginning will be lost
       SysOutOverSLF4J.sendSystemOutAndErrToSLF4J()
       val config = ConfigFactory.load()
+        logger info s"Loaded Configuration:\n ${config.entrySet().asScala.collect{case entry if entry.getKey.startsWith("cmwell") => s"${entry.getKey} -> ${entry.getValue.render()}"}.mkString("\n")}"
       val irwServiceDaoClusterName = config.getString("irwServiceDao.clusterName")
       val irwServiceDaoKeySpace = config.getString("irwServiceDao.keySpace")
       val irwServiceDaoHostName = config.getString("irwServiceDao.hostName")
@@ -107,6 +109,7 @@ object Runner extends LazyLogging {
       }
       // Since logger is async, this is to ensure we don't miss any lines
       LoggerFactory.getILoggerFactory.asInstanceOf[LoggerContext].stop()
+      println("existing BG Runner")
     }
 
   }

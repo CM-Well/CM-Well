@@ -18,9 +18,8 @@ package cmwell.bg
 
 import akka.actor.{ActorRef, ActorSystem}
 import akka.kafka.scaladsl.Consumer
-import akka.kafka.Subscriptions
+import akka.kafka.{ConsumerSettings, Subscriptions}
 import akka.stream.ActorAttributes.supervisionStrategy
-import akka.stream.Supervision.Decider
 import akka.stream.scaladsl.{Flow, GraphDSL, Keep, MergePreferred, RunnableGraph, Sink}
 import akka.stream.{ActorMaterializer, ClosedShape, KillSwitches, Supervision}
 import cmwell.common.formats.JsonSerializerForES
@@ -41,6 +40,7 @@ import org.elasticsearch.action.update.UpdateRequest
 import org.elasticsearch.client.Requests
 import org.slf4j.LoggerFactory
 import com.codahale.metrics.{Counter => DropwizardCounter, Histogram => DropwizardHistogram, Timer => DropwizardTimer}
+import org.apache.kafka.clients.consumer.ConsumerConfig
 
 import collection.JavaConverters._
 import scala.concurrent.duration._
@@ -51,7 +51,7 @@ import scala.util.{Failure, Success, Try}
   * Created by israel on 14/06/2016.
   */
 class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsService: FTSServiceNew,
-                    offsetsService: OffsetsService, kafkaConsumer:ActorRef, bgActor:ActorRef)
+                    offsetsService: OffsetsService, bgActor:ActorRef)
                    (implicit actorSystem:ActorSystem,
                     executionContext:ExecutionContext,
                     materializer: ActorMaterializer) extends LazyLogging with DefaultInstrumented{
@@ -70,8 +70,6 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
   val maxAggregatedWeight = config.getInt("cmwell.bg.maxAggWeight")
   val esActionsBulkSize = config.getInt("cmwell.bg.esActionsBulkSize") // in bytes
   val esActionsGroupingTtl = config.getInt("cmwell.bg.esActionsGroupingTtl") // ttl for bulk es actions grouping in ms
-
-  logger info s"IndexerStream starting with config:\n ${config.entrySet().asScala.collect{case entry if entry.getKey.startsWith("cmwell") => s"${entry.getKey} -> ${entry.getValue.render()}"}.mkString("\n")}"
 
   /***** Metrics *****/
   val existingMetrics = metricRegistry.getMetrics.asScala
@@ -102,16 +100,21 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
   val prioritySubscription = Subscriptions.assignmentWithOffset(
     new TopicPartition(priorityIndexCommandsTopic, partition) -> startingOffsetPriority)
 
+  val indexCommandsConsumerSettings =
+    ConsumerSettings(actorSystem, byteArrayDeserializer, byteArrayDeserializer)
+      .withBootstrapServers(bootStrapServers)
+      .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
+
   val sharedKillSwitch = KillSwitches.shared("indexer-sources-kill-switch")
 
-  val indexCommandsSource = Consumer.plainExternalSource[Array[Byte], Array[Byte]](kafkaConsumer, subscription).map { msg =>
+  val indexCommandsSource = Consumer.plainSource[Array[Byte], Array[Byte]](indexCommandsConsumerSettings, subscription).map { msg =>
       logger debug s"consuming next payload from index commands topic @ offset: ${msg.offset()}"
     val indexCommand = CommandSerializer.decode(msg.value()).asInstanceOf[IndexCommand]
       logger debug s"converted payload to an IndexCommand:\n$indexCommand"
     BGMessage[IndexCommand](CompleteOffset(msg.topic(), msg.offset()), indexCommand)
   }.via(sharedKillSwitch.flow)
 
-  val priorityIndexCommandsSource = Consumer.plainExternalSource[Array[Byte], Array[Byte]](kafkaConsumer, prioritySubscription).map { msg =>
+  val priorityIndexCommandsSource = Consumer.plainSource[Array[Byte], Array[Byte]](indexCommandsConsumerSettings, prioritySubscription).map { msg =>
     logger debug s"consuming next payload from priority index commands topic @ offset: ${msg.offset()}"
     val indexCommand = CommandSerializer.decode(msg.value()).asInstanceOf[IndexCommand]
     logger debug s"converted priority payload to an IndexCommand:\n$indexCommand"
@@ -271,7 +274,7 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
   val decider: Supervision.Decider = {
 
     case t:Throwable =>
-      logger error s"Unexpected Exception during BG processing, restarting streams\n ${getStackTrace(t)}"
+      logger error ("Unexpected Exception during Indexer stream, sending 503 to BGActor and stopping stream", t)
       bgActor ! Indexer503
       Supervision.Stop
   }
@@ -279,12 +282,20 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
   val indexerControl = indexerGraph.withAttributes(supervisionStrategy(decider)).run()
 
   indexerControl.onComplete{
-    case Failure(t) => logger error ("indexer stream stopped abnormally", t)
-    case Success(x) => logger info ("indexer stream stopped normally", x)
+    case Failure(t) =>
+      logger error ("indexer stream stopped abnormally", t)
+    case Success(x) =>
+      logger info ("indexer stream stopped normally", x)
   }
 
   def shutdown = {
-    sharedKillSwitch.shutdown()
+      logger warn "IndexerStream requested to shutdown"
+    if(!indexerControl.isCompleted)
+      sharedKillSwitch.shutdown()
+    Try{Await.ready(indexerControl, 10.seconds)}.recover{ case t:Throwable =>
+      logger error s"Indexer stream failed to shutdown after waiting for 10 seconds."
+    }
+      logger warn "IndexerStream is down"
   }
 
 }

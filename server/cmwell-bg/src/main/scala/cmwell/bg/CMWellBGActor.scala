@@ -71,16 +71,6 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
     esReporter.start(10, TimeUnit.SECONDS)
   }
 
-  val bootStrapServers = config.getString("cmwell.bg.kafka.bootstrap.servers")
-
-  val byteArrayDeserializer = new ByteArrayDeserializer()
-  val persistCommandsConsumerSettings =
-    ConsumerSettings(context.system, byteArrayDeserializer, byteArrayDeserializer)
-      .withBootstrapServers(bootStrapServers)
-      .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
-
-  val kafkaConsumer: ActorRef = context.actorOf(KafkaConsumerActor.props(persistCommandsConsumerSettings))
-
   override def preStart(): Unit = {
       logger info s"CMwellBGActor-$partition starting"
     super.preStart()
@@ -101,40 +91,11 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
       akka.actor.SupervisorStrategy.Resume
   }
 
-//  object ExceptionOrigin {
-//    val CassandraException = ExceptionOrigin("com.datastax.driver.core.exceptions")
-//    val ElasticSearchException = ExceptionOrigin("java.lang.IllegalArgumentException")
-//  }
-//  case class ExceptionOrigin(exceptionPrefix:String) {
-//    def unapply(t:Throwable): Boolean = t.getClass.getName.startsWith(exceptionPrefix)
-//  }
-
-
-
-//  val decider: Supervision.Decider = {
-//    case ExceptionOrigin.CassandraException() =>
-//      self ! All503
-//      Supervision.Stop
-//    case ExceptionOrigin.ElasticSearchException() =>
-//      self ! All503
-//      Supervision.Stop
-//    case t: Throwable =>
-//      if(Option(t.getMessage).getOrElse("").contains("""Sender[null] sent the message of type "akka.kafka.KafkaConsumerActor$Internal$Commit"""")){
-//        logger error s"got the weired exception from reactive kafka !!! restarting stream"
-//        Supervision.Restart
-//      } else {
-//        logger error ("Got exception from stream. suspending all sending All503 to myself", t)
-//        self ! All503
-//        Supervision.Stop
-//      }
-//  }
-
   implicit val system = context.system
 
   implicit val ec = context.dispatcher
 
   implicit val materializer = ActorMaterializer()
-
 
   override def receive: Receive = {
     case Start =>
@@ -217,16 +178,16 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
 
   private def startImp = {
     if(impStream == null) {
-      impStream = new ImpStream(partition, config, irwService, zStore, ftsService, offsetsService, kafkaConsumer, self)
-      logger info "Imp Stream started"
+      logger info "starting ImpStream"
+      impStream = new ImpStream(partition, config, irwService, zStore, ftsService, offsetsService, self)
     } else
       logger warn "requested to start Imp Stream but it is already running. doing nothing."
   }
 
   private def startIndexer = {
     if(indexerStream == null) {
-      indexerStream = new IndexerStream(partition, config, irwService, ftsService, offsetsService, kafkaConsumer, self)
-      logger info "Indexer Stream started"
+      logger info "starting IndexerStream"
+      indexerStream = new IndexerStream(partition, config, irwService, ftsService, offsetsService, self)
     } else
       logger warn "requested to start Indexer Stream but it is already running. doing nothing."
   }
