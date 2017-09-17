@@ -87,6 +87,9 @@ getData := {
   sbt.IO.copyDirectory(docsDir , docs, true)
   sbt.IO.copyDirectory(sysDir , sys, true)
   sbt.IO.delete(data / ".idea")
+
+  refreshAppCacheManifest(baseDir / "app" / "data" / "main" / "cmwell.appcache")
+
   Seq(data,docs)
 }
 
@@ -224,6 +227,16 @@ def packProject(projName : String, proj : File, bd : File, confDir: File, logger
     else {
       sbt.IO.copyFile(file, confDir / file.getName())
     }
+  }
+}
+
+def refreshAppCacheManifest(appCacheManifestFile: File) = {
+  if(appCacheManifestFile.exists()) {
+    val newFileContent = sbt.IO.read(appCacheManifestFile).linesIterator.map { line =>
+      if (line.startsWith("#")) s"# ${Process("git rev-parse HEAD").lines.head}-${System.currentTimeMillis}"
+      else line
+    }.mkString("\n")
+    sbt.IO.write(appCacheManifestFile, newFileContent)
   }
 }
 
