@@ -41,13 +41,14 @@ import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
 import org.elasticsearch.action.bulk.BulkResponse
 import org.joda.time.{DateTime, DateTimeZone}
-import wsutil.FormatterManager
+import wsutil.{FormatterManager, RawFieldFilter}
 
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 import javax.inject._
 
+import cmwell.ws.qp.Encoder
 import controllers.NbgToggler
 import ld.cmw.{NbgPassiveFieldTypesCache, ObgPassiveFieldTypesCache}
 
@@ -96,7 +97,8 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
   producerProperties.put("bootstrap.servers", kafkaURL)
   producerProperties.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
   producerProperties.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
-  val kafkaProducer = new KafkaProducer[Array[Byte], Array[Byte]](producerProperties)
+  //With CW there is no kafka writes and no kafka configuration thus the producer is created lazily
+  lazy val kafkaProducer = new KafkaProducer[Array[Byte], Array[Byte]](producerProperties)
 
   val proxyOpsOld: Operations = ProxyOperations(_irwService, ftsServiceOld)
   val proxyOpsNew: Operations = ProxyOperations(_irwService2, ftsServiceNew)
@@ -334,8 +336,8 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
             WriteCommand(
               infoton.copyInfoton(lastModified = DateTime.now(DateTimeZone.UTC)),
               validTid(infoton.path,tid),
-              prevUUID = atomicUpdates.get(infoton.path)))
-        case infoton => sendToKafka(WriteCommand(infoton,validTid(infoton.path,tid),atomicUpdates.get(infoton.path)))
+              prevUUID = atomicUpdates.get(infoton.path)), isPriorityWrite)
+        case infoton => sendToKafka(WriteCommand(infoton,validTid(infoton.path,tid),atomicUpdates.get(infoton.path)), isPriorityWrite)
       }.map(_ => true)
     } else Future.successful(true)
 
@@ -435,8 +437,8 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
 
       val kafkaWritesRes = if(newBGFlag || newBG) {
         Future.traverse(commands){
-          case cmd@UpdatePathCommand(_, _, _, lastModified, _, _) if lastModified.getMillis == 0L => sendToKafka(cmd.copy(lastModified = DateTime.now(DateTimeZone.UTC)))
-          case cmd => sendToKafka(cmd)
+          case cmd@UpdatePathCommand(_, _, _, lastModified, _, _) if lastModified.getMillis == 0L => sendToKafka(cmd.copy(lastModified = DateTime.now(DateTimeZone.UTC)), isPriorityWrite)
+          case cmd => sendToKafka(cmd, isPriorityWrite)
         }.map{_ => true}
       } else Future.successful(true)
 
@@ -631,13 +633,16 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
     }
   }
 
-  def getLastIndexTimeFor(dc: String = Settings.dataCenter, nbg: Boolean = newBG): Future[Option[VirtualInfoton]] = {
+  def getLastIndexTimeFor(dc: String = Settings.dataCenter, nbg: Boolean, fieldFilters: Option[FieldFilter]): Future[Option[VirtualInfoton]] = {
 
-    def mkVirtualInfoton(indexTime: Long): VirtualInfoton =
-      VirtualInfoton(ObjectInfoton(s"/proc/dc/$dc", Settings.dataCenter, None,
-        Map("lastIdxT" -> Set[FieldValue](FLong(indexTime)),
-          "dc" -> Set[FieldValue](FString(dc)))))
-    ftsService(nbg).getLastIndexTimeFor(dc).map(lOpt => Some(mkVirtualInfoton(lOpt.getOrElse(0L))))
+    def mkVirtualInfoton(indexTime: Long): VirtualInfoton = {
+      val fields = Map("lastIdxT" -> Set[FieldValue](FLong(indexTime)),
+        "dc" -> Set[FieldValue](FString(dc)))
+      val fieldsWithFilter = fieldFilters.fold(fields)(ff => fields + ("qp" -> Set[FieldValue](FString(Encoder.encodeFieldFilter(ff)))))
+      VirtualInfoton(ObjectInfoton(s"/proc/dc/$dc", Settings.dataCenter, None, fieldsWithFilter))
+    }
+
+    ftsService(nbg).getLastIndexTimeFor(dc, fieldFilters = fieldFilters).map(lOpt => Some(mkVirtualInfoton(lOpt.getOrElse(0L))))
   }
 
   def getESFieldsVInfoton(nbg: Boolean = newBG): Future[VirtualInfoton] = {
@@ -710,7 +715,7 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
     })
   }
 
-  def scroll(scrollId: String, scrollTTL: Int, withData: Boolean, nbg: Boolean = false): Future[IterationResults] = {
+  def scroll(scrollId: String, scrollTTL: Long, withData: Boolean, nbg: Boolean = false): Future[IterationResults] = {
 
     val searchResultFuture = ftsService(nbg).scroll(scrollId, scrollTTL)
     val results = withData match {

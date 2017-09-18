@@ -52,6 +52,12 @@ And you can delete all fields by supplying the <*> wildcard as the 4th value in 
     curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary '<http://data.com/1-12345678> 
     <cmwell://meta/sys#markReplace> <http://ont.com/bermuda/hasName> <*>.'
 
+## Special Parameters ##
+
+Parameter | Description&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Values&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Example
+:----------|:-------------|:--------|:---------
+priority | If this flag appears in an update call, that call receives priority relative to non-priority calls. To use this flag, you must also pass the X-CM-WELL-TOKEN request header, with a token that grants access to the priority feature. This feature should be used with discretion so as not to flood the priority queue. | None | \<cm-well-host\>/_in?format=ttl&priority...
+
 ## Code Example ##
 
 ### Call ###

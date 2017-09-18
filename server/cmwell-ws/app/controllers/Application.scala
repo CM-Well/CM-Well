@@ -59,6 +59,7 @@ import security.PermissionLevel.PermissionLevel
 import security._
 import wsutil.{asyncErrorHandler, errorHandler, _}
 import cmwell.syntaxutils.!!!
+import cmwell.util.stream.StreamEventInspector
 import cmwell.web.ld.cmw.CMWellRDFHelper
 
 import scala.collection.mutable.{HashMap, MultiMap}
@@ -310,20 +311,23 @@ callback=< [URL] >
     }
   }
 
-  private def handleGetForActiveInfoton(req: Request[AnyContent], path: String) = Try {
-    // todo: fix this.. should check that the token is valid...
-    val tokenOpt = authUtils.extractTokenFrom(req)
-    val isRoot = authUtils.isValidatedAs(tokenOpt, "root")
-    val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
-
-    val length = req.getQueryString("length").flatMap(asInt).getOrElse(if (req.getQueryString("format").isEmpty) 13 else 0) // default is 0 unless 1st request for the ajax app
-    val offset = req.getQueryString("offset").flatMap(asInt).getOrElse(0)
-    //    infotonOptionToReply(req,ActiveInfotonGenerator.generateInfoton(req.host, path, new DateTime(),length,offset))
-
-    activeInfotonGenerator
-      .generateInfoton(req.host, path, new DateTime(), length, offset, isRoot, nbg)
-      .flatMap(iOpt => infotonOptionToReply(req, iOpt.map(VirtualInfoton.v2i)))
-  }.recover(asyncErrorHandler).get
+  private def handleGetForActiveInfoton(req: Request[AnyContent], path: String) =
+    getQueryString("qp")(req.queryString)
+      .fold(Success(None): Try[Option[RawFieldFilter]])(FieldFilterParser.parseQueryParams(_).map(Some.apply))
+      .map { qpOpt =>
+        // todo: fix this.. should check that the token is valid...
+        val tokenOpt = authUtils.extractTokenFrom(req)
+        val isRoot = authUtils.isValidatedAs(tokenOpt, "root")
+        val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+        val length = req.getQueryString("length").flatMap(asInt).getOrElse(if (req.getQueryString("format").isEmpty) 13 else 0) // default is 0 unless 1st request for the ajax app
+        val offset = req.getQueryString("offset").flatMap(asInt).getOrElse(0)
+        val fieldsFiltersFut = qpOpt.fold[Future[Option[FieldFilter]]](Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff, typesCache(nbg), cmwellRDFHelper, nbg).map(Some.apply))
+        fieldsFiltersFut.flatMap { fieldFilters =>
+          activeInfotonGenerator
+            .generateInfoton(req.host, path, new DateTime(), length, offset, isRoot, nbg, fieldFilters)
+            .flatMap(iOpt => infotonOptionToReply(req, iOpt.map(VirtualInfoton.v2i)))
+        }
+      }.recover(asyncErrorHandler).get
 
   def handleZzGET(key: String) = Action.async {
     implicit req => {
@@ -764,6 +768,8 @@ callback=< [URL] >
         val withHistory = request.queryString.keySet("with-history")
         val withDeleted = request.queryString.keySet("with-deleted")
         val withMeta = request.queryString.keySet("with-meta")
+        val debugLog = request.queryString.keySet("debug-log")
+        val scrollTtl = request.getQueryString("session-ttl").flatMap(asLong).getOrElse(3600L).min(3600L)
         val length = request.getQueryString("length").flatMap(asLong)
         val pathFilter = Some(PathFilter(normalizedPath, withDescendants))
         val nbg = request.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
@@ -809,17 +815,44 @@ callback=< [URL] >
                   forceUniqueness = forceUniqueness,
                   nbg = nbg)
 
+                lazy val id = cmwell.util.numeric.Radix64.encodeUnsigned(request.id)
+
+                val debugLogID = if(debugLog) Some(id) else None
 
                 streams.scrollSource(nbg,
                   pathFilter = pathFilter,
                   fieldFilters = fieldFilter,
                   datesFilter = Some(DatesFilter(from, to)),
                   paginationParams = PaginationParams(0, 500),
+                  scrollTTL = scrollTtl,
                   withHistory = withHistory,
-                  withDeleted = withDeleted).map { case (src, hits) =>
+                  withDeleted = withDeleted,
+                  debugLogID = debugLogID).map { case (src, hits) =>
 
-                  val s = streams.scrollSourceToByteString(src, formatter, withData.isDefined, withHistory, length, fieldsMask,nbg)
-                  Ok.chunked(s).as(overrideMimetype(formatter.mimetype, request)._2).withHeaders("X-CM-WELL-N" -> hits.toString)
+                  val s: Source[ByteString, NotUsed] = {
+                    val scrollSourceToByteString = streams.scrollSourceToByteString(src, formatter, withData.isDefined, withHistory, length, fieldsMask, nbg)
+                    if(debugLog) scrollSourceToByteString.via {
+                      new StreamEventInspector(
+                        onUpstreamFinishInspection =   () => logger.info(s"[$id] onUpstreamFinish"),
+                        onUpstreamFailureInspection =  error => logger.error(s"[$id] onUpstreamFailure",error),
+                        onDownstreamFinishInspection = () => logger.info(s"[$id] onDownstreamFinish"),
+                        onPullInspection =             () => logger.info(s"[$id] onPull"),
+                        onPushInspection =             bytes => {
+                          val all = bytes.utf8String
+                          val elem = {
+                            if (bytes.isEmpty) ""
+                            else all.lines.next()
+                          }
+                          logger.info(s"""[$id] onPush(first line: "$elem", num of lines: ${all.lines.size}, num of chars: ${all.length})""")
+                        })
+                    }
+                    else scrollSourceToByteString
+                  }
+                  val headers = {
+                    if(debugLog) List("X-CM-WELL-N" -> hits.toString, "X-CM-WELL-LOG-ID" -> id)
+                    else List("X-CM-WELL-N" -> hits.toString)
+                  }
+                  Ok.chunked(s).as(overrideMimetype(formatter.mimetype, request)._2).withHeaders(headers:_*)
                 }
               }
             }
@@ -1112,7 +1145,6 @@ callback=< [URL] >
             case SearchThinResults(total, _, _, results, _) if results.nonEmpty => {
 
               val idxT = results.maxBy(_.indexTime).indexTime //infotons.maxBy(_.indexTime.getOrElse(0L)).indexTime.getOrElse(0L)
-              require(idxT > 0, "all infotons in iteration must have a valid indexTime defined")
 
               // last chunk
               if (results.length >= total)
@@ -1316,7 +1348,7 @@ callback=< [URL] >
                 forceUniqueness = withHistory,
                 nbg = nbg)
 
-              val futureThatMayHang: Future[String] = crudServiceFS.scroll(scrollId, scrollTtl + 5, withData).flatMap { tmpIterationResults =>
+              val futureThatMayHang: Future[String] = crudServiceFS.scroll(scrollId, scrollTtl + 5, withData, nbg).flatMap { tmpIterationResults =>
                 fieldsMaskFut.flatMap { fieldsMask =>
                   val rv = createScrollIdDispatcherActorFromIteratorId(tmpIterationResults.iteratorId, withHistory, scrollTtl.seconds)
                   val iterationResults = tmpIterationResults.copy(iteratorId = rv).masked(fieldsMask)
@@ -1398,7 +1430,7 @@ callback=< [URL] >
           val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff,typesCache(nbg),cmwellRDFHelper,nbg).map(Some.apply))
           fieldsFiltersFut.flatMap { fieldFilters =>
             apfut.flatMap { af =>
-              crudServiceFS.aggregate(pathFilter, fieldFilters, Some(DatesFilter(from, to)), PaginationParams(offset, length), withHistory, af.flatten, debugInfo).map { aggResult =>
+              crudServiceFS.aggregate(pathFilter, fieldFilters, Some(DatesFilter(from, to)), PaginationParams(offset, length), withHistory, af.flatten, debugInfo, nbg).map { aggResult =>
                 request.getQueryString("format").getOrElse("json") match {
                   case FormatExtractor(formatType) => {
                     val formatter = formatterManager.getFormatter(
@@ -1470,7 +1502,7 @@ callback=< [URL] >
           fieldsFiltersFut.flatMap { fieldFilters =>
             fieldSortParamsFut.flatMap { fieldSortParams =>
               crudServiceFS.search(pathFilter, fieldFilters, Some(DatesFilter(from, to)),
-                PaginationParams(offset, length), withHistory, withData, fieldSortParams, debugInfo, withDeleted).flatMap { unmodifiedSearchResult =>
+                PaginationParams(offset, length), withHistory, withData, fieldSortParams, debugInfo, withDeleted, nbg).flatMap { unmodifiedSearchResult =>
 
                 val ygModified = getQueryString("yg") match {
                   case Some(ygp) => {
@@ -1979,7 +2011,7 @@ callback=< [URL] >
         val limit = req.getQueryString("versions-limit").flatMap(asInt).getOrElse(Settings.defaultLimitForHistoryVersions)
         val res = if (onlyLast)
           notImplemented // CRUDServiceFS.rollback(path,limit)
-        else if (includeLast) crudServiceFS.purgePath(path, includeLast, limit) else notImplemented // CRUDServiceFS.purgePath(path, includeLast, limit)
+        else if (includeLast) crudServiceFS.purgePath(path, includeLast, limit, nbg) else notImplemented // CRUDServiceFS.purgePath(path, includeLast, limit)
 
         res.onComplete {
           case Success(_) =>
@@ -2002,7 +2034,7 @@ callback=< [URL] >
       val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
       val formatter = getFormatter(req, formatterManager,"json", nbg)
       val limit = req.getQueryString("versions-limit").flatMap(asInt).getOrElse(Settings.defaultLimitForHistoryVersions)
-      crudServiceFS.purgePath2(path,limit).map{
+      crudServiceFS.purgePath2(path,limit,nbg).map{
         b => Ok(formatter.render(SimpleResponse(true,None))).as(overrideMimetype(formatter.mimetype,req)._2)
       }
     }
@@ -2165,7 +2197,7 @@ class CachedSpa @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
       case FullBox(FileInfoton(_, _, _, _, _, Some(c),_)) => new String(c.data.get, "UTF-8")
       case somethingElse => {
         logger.error("got something else: " + somethingElse)
-        ???
+        throw new SpaMissingException("SPA Content is currently unreachable")
       }
     }
   }
@@ -2180,3 +2212,5 @@ class CachedSpa @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
       else newObgCache.getAndUpdateIfNeeded
     }
 }
+
+class SpaMissingException(msg :String) extends Exception(msg)

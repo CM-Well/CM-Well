@@ -17,8 +17,8 @@
 package cmwell.util.concurrent
 
 import java.util.concurrent.atomic.AtomicBoolean
-
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import SimpleScheduler.scheduleFuture
+import scala.concurrent.{ExecutionContext, Future, Promise, duration}, duration.DurationInt
 import scala.util.{Failure, Success}
 
 trait Combiner[T]{
@@ -38,6 +38,14 @@ class SingleElementLazyAsyncCache[T: Combiner](refreshThresholdInMillis: Long, i
   private[this] var cachedElement: Either[Future[T],(T,Long)] = Right(initial -> 0L)
   private[this] val isBeingUpdated = new AtomicBoolean(false)
   private[this] val combiner = implicitly[Combiner[T]]
+  private[this] val rightHandlingFunctionOnUpdatingRaceCondition: ((T,Long)) => Future[T] = {
+    if(initial != null) { case (t,_) => Future.successful(t) }
+    else {
+      // avoid emitting nulls on start up race of concurrent updates
+      case (null,_) => scheduleFuture(1.second)(getAndUpdateIfNeeded)
+      case (oldE,_) => Future.successful(oldE)
+    }
+  }
 
   def getAndUpdateIfNeeded: Future[T] = {
     cachedElement match {
@@ -47,7 +55,7 @@ class SingleElementLazyAsyncCache[T: Combiner](refreshThresholdInMillis: Long, i
           Future.successful(elem)
         } else {
           if(!isBeingUpdated.compareAndSet(false, true))
-            cachedElement.fold(identity, t => Future.successful(t._1))
+            cachedElement.fold(identity, rightHandlingFunctionOnUpdatingRaceCondition)
           else {
             val p = Promise[T]()
             val rv = p.future

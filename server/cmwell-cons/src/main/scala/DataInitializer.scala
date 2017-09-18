@@ -129,8 +129,8 @@ class DataInitializer(h: Host, jwt: String, rootDigest: String, rootDigest2: Str
     // WARNING: modifying any hard-coded UserInfoton won't affect any environment even on upgrade. You will have to upload them manually!
     val userInfotons = Map(
       "anonymous" -> s"""{"paths":[${allowRoot("r")},$denyForAnon],"roles":[]}""",
-      "root" -> s"""{"digest":"$rootDigest","digest2":"$rootDigest2","paths":[${allowRoot("rw")}],"operations":["Admin","Overwrite"],"roles":[]}""",
-      "pUser" -> s"""{"paths":[${allowRoot("rw")}],"operations":["Admin","Overwrite"],"roles":[]}""",
+      "root" -> s"""{"digest":"$rootDigest","digest2":"$rootDigest2","paths":[${allowRoot("rw")}],"operations":["Admin","Overwrite","PriorityWrite"],"roles":[]}""",
+      "pUser" -> s"""{"paths":[${allowRoot("rw")}],"operations":["Admin","Overwrite","PriorityWrite"],"roles":[]}""",
       "dca" -> s"""{"paths":[${allowRoot("rw")}],"operations":["Overwrite"],"roles":[]}""",
       "docu" -> """{"paths":[{"id":"/","recursive":true,"sign":"+","permissions":"r"},{"id":"/meta/docs","recursive":true,"sign":"+","permissions":"rw"}],"rev":0}"""
     )
@@ -176,7 +176,8 @@ class DataInitializer(h: Host, jwt: String, rootDigest: String, rootDigest2: Str
       "png"->"image/png",
       "svg"->"image/svg+xml",
       "md"->"text/x-markdown",
-      "woff2"->"font/woff2"
+      "woff2"->"font/woff2",
+      "appcache"->"text/cache-manifest"
     )
     val extension = path takeRightWhile(_!='.') toLowerCase
     val default = "text/plain"

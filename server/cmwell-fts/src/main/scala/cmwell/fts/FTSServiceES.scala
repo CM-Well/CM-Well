@@ -1035,7 +1035,7 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
     }
   }
 
-  def getLastIndexTimeFor(dc: String, partition: String = defaultPartition)
+  def getLastIndexTimeFor(dc: String, partition: String = defaultPartition, fieldFilters: Option[FieldFilter])
                          (implicit executionContext: ExecutionContext) : Future[Option[Long]] = {
 
     val request = client
@@ -1045,14 +1045,14 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
       .setSize(1)
       .addSort("system.indexTime", SortOrder.DESC)
 
+    val filtersSeq:List[FieldFilter] = List(
+      SingleFieldFilter(Must, Equals, "system.dc", Some(dc)),                                 //ONLY DC
+      SingleFieldFilter(MustNot, Contains, "system.parent.parent_hierarchy", Some("/meta/")) //NO META
+    )
     applyFiltersToRequest(
       request,
       None,
-      Some(MultiFieldFilter(Must, Seq(
-        SingleFieldFilter(Must, Equals, "system.dc", Some(dc)),                                 //ONLY DC
-        SingleFieldFilter(MustNot, Contains, "system.parent.parent_hierarchy", Some("/meta/")), //NO META
-        SingleFieldFilter(Must, GreaterThan, "system.lastModified", Some("1970"))
-      ))),
+      Some(MultiFieldFilter(Must, fieldFilters.fold(filtersSeq)(filtersSeq.::))),
       None
     )
 
@@ -1252,8 +1252,9 @@ def startSuperScroll(pathFilter: Option[PathFilter] = None, fieldsFilter: Option
     }
   }
 
-  def scroll(scrollId: String, scrollTTL: Long= scrollTTL, nodeId: Option[String]=None)
-            (implicit executionContext: ExecutionContext): Future[FTSScrollResponse] = {
+    def scroll(scrollId: String, scrollTTL: Long, nodeId: Option[String])
+            (implicit executionContext:ExecutionContext): Future[FTSScrollResponse] = {
+
     logger.debug(s"Scroll request: $scrollId, $scrollTTL")
 
     val clint = nodeId.map{clients(_)}.getOrElse(client)
@@ -1261,7 +1262,23 @@ def startSuperScroll(pathFilter: Option[PathFilter] = None, fieldsFilter: Option
       clint.prepareSearchScroll(scrollId).setScroll(TimeValue.timeValueSeconds(scrollTTL)).execute(_)
     )
 
-    scrollResponseFuture.map{ scrollResponse => FTSScrollResponse(scrollResponse.getHits.getTotalHits, scrollResponse.getScrollId, esResponseToInfotons(scrollResponse,includeScore = false))}
+    val p = Promise[FTSScrollResponse]()
+    scrollResponseFuture.onComplete {
+      case Failure(exception) => p.failure(exception)
+      case Success(scrollResponse) => {
+        val status = scrollResponse.status().getStatus
+        if (status >= 400) p.failure(new Exception(s"bad scroll response: $scrollResponse"))
+        else {
+          if(status != 200)
+            logger.warn(s"scroll($scrollId, $scrollTTL, $nodeId) resulted with status[$status] != 200: $scrollResponse")
+
+          p.complete(Try(esResponseToInfotons(scrollResponse, includeScore = false)).map { infotons =>
+            FTSScrollResponse(scrollResponse.getHits.getTotalHits, scrollResponse.getScrollId, infotons)
+          })
+        }
+      }
+    }
+    p.future
   }
 
   def rInfo(path: String, scrollTTL: Long= scrollTTL, paginationParams: PaginationParams = DefaultPaginationParams, withHistory: Boolean = false, partition: String = defaultPartition)

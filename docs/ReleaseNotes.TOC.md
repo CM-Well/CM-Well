@@ -4,10 +4,11 @@ Click on a version to see its release notes.
 
 **Latest version:**
 
-* [Version Jaguar - August 2017](ReleaseNotes.Jaguar.August.2017.md)
+* [Version Kingbird - September 2017](ReleaseNotes.Kingbird.September.2017.md)
 
 **Older versions:**
 
+* [Version Jaguar - August 2017](ReleaseNotes.Jaguar.August.2017.md)
 * [Version Iguana - July 2017](ReleaseNotes.Iguana.July.2017.md)
 * [Version Hydra - June 2017](ReleaseNotes.Hydra.June.2017.md)
 * [Version Gopher - May 2017](ReleaseNotes.Gopher.May.2017.md)

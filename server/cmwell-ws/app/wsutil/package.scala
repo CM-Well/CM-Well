@@ -32,6 +32,7 @@ import com.typesafe.scalalogging.LazyLogging
 import ld.exceptions.BadFieldTypeException
 import logic.CRUDServiceFS
 import cmwell.util.concurrent.SimpleScheduler
+import controllers.SpaMissingException
 import ld.cmw.PassiveFieldTypesCache
 import play.api.libs.json.Json
 import play.api.mvc.Results._
@@ -663,6 +664,7 @@ package object wsutil extends LazyLogging {
   def exceptionToResponse(throwable: Throwable): Result = {
     val (status,eHandler): (Status,Throwable => String) = throwable match {
       case _: TimeoutException => ServiceUnavailable -> {_.getMessage}
+      case _: SpaMissingException => ServiceUnavailable -> {_.getMessage}
       case _: UnretrievableIdentifierException => UnprocessableEntity -> {_.getMessage}
       case _: PrefixAmbiguityException => UnprocessableEntity -> {_.getMessage}
       case _: security.UnauthorizedException => Forbidden -> {_.getMessage}

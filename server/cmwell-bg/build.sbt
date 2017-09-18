@@ -1,4 +1,4 @@
-import CMWellCommon.Tags
+import cmwell.build.CMWellCommon.Tags
 
 packAutoSettings
 
@@ -16,7 +16,7 @@ libraryDependencies ++= {
     dm("com.typesafe.akka", "akka-stream-kafka").exclude("org.apache.kafka", "kafka-clients"),
     dm("com.typesafe.akka", "akka-agent"),
     dm("com.typesafe.akka", "akka-slf4j"),
-    dm("net.jpountz.lz4", "lz4"),
+    dm("org.lz4", "lz4-java"),
     dm("org.elasticsearch", "elasticsearch"),
     dm("nl.grons", "metrics-scala"),
     dm("org.elasticsearch", "metrics-elasticsearch-reporter"),

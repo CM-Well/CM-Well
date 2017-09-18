@@ -668,7 +668,23 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
       clint.prepareSearchScroll(scrollId).setScroll(TimeValue.timeValueSeconds(scrollTTL)).execute(_)
     )
 
-    scrollResponseFuture.map{ scrollResponse => FTSScrollResponse(scrollResponse.getHits.getTotalHits, scrollResponse.getScrollId, esResponseToInfotons(scrollResponse,false))}
+    val p = Promise[FTSScrollResponse]()
+    scrollResponseFuture.onComplete {
+      case Failure(exception) => p.failure(exception)
+      case Success(scrollResponse) => {
+        val status = scrollResponse.status().getStatus
+        if (status >= 400) p.failure(new Exception(s"bad scroll response: $scrollResponse"))
+        else {
+          if(status != 200)
+            logger.warn(s"scroll($scrollId, $scrollTTL, $nodeId) resulted with status[$status] != 200: $scrollResponse")
+
+          p.complete(Try(esResponseToInfotons(scrollResponse, includeScore = false)).map { infotons =>
+            FTSScrollResponse(scrollResponse.getHits.getTotalHits, scrollResponse.getScrollId, infotons)
+          })
+        }
+      }
+    }
+    p.future
   }
 
   implicit def sortOrder2SortOrder(fieldSortOrder:FieldSortOrder):SortOrder = {
@@ -991,7 +1007,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
     }
   }
 
-  def getLastIndexTimeFor(dc: String, partition: String)
+  def getLastIndexTimeFor(dc: String, partition: String, fieldFilters: Option[FieldFilter])
                          (implicit executionContext:ExecutionContext): Future[Option[Long]] = {
 
     val request = client
@@ -1001,14 +1017,14 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
       .setSize(1)
       .addSort("system.indexTime", SortOrder.DESC)
 
+    val filtersSeq:List[FieldFilter] = List(
+      SingleFieldFilter(Must, Equals, "system.dc", Some(dc)),                                 //ONLY DC
+      SingleFieldFilter(MustNot, Contains, "system.parent.parent_hierarchy", Some("/meta/")) //NO META
+    )
     applyFiltersToRequest(
       request,
       None,
-      Some(MultiFieldFilter(Must, Seq(
-        SingleFieldFilter(Must, Equals, "system.dc", Some(dc)),                                 //ONLY DC
-        SingleFieldFilter(MustNot, Contains, "system.parent.parent_hierarchy", Some("/meta/")), //NO META
-        SingleFieldFilter(Must, GreaterThan, "system.lastModified", Some("1970"))
-      ))),
+      Some(MultiFieldFilter(Must, fieldFilters.fold(filtersSeq)(filtersSeq.::))),
       None
     )
 

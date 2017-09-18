@@ -20,6 +20,9 @@ import java.lang
 import sbt.Keys._
 import sbt._
 
+import scala.concurrent.Await
+import scala.concurrent.duration.DurationInt
+
 import com.github.israel.sbt.zookeeper.SbtZookeeperPlugin
 
 /**
@@ -64,9 +67,12 @@ object SbtKafkaPlugin extends sbt.AutoPlugin {
 
       // If not created yet, extract kafka binaries and copy config files
       if(!baseDir.isDirectory) {
-        val depClasspath = (dependencyClasspath in Runtime).value
-        val classpath = Attributed.data(depClasspath)
-        val kafkaBinary = classpath.find(_.getName == s"kafka_${kafkaScalaVersion.value}-${kafkaVersion.value}.tgz").get
+        val kafkaBinary = Await.result(cmwell.build.CMWellBuild.fetchKafka(kafkaScalaVersion.value,kafkaVersion.value),15.minutes)
+
+//        val depClasspath = (dependencyClasspath in Runtime).value
+//        val classpath = Attributed.data(depClasspath)
+//        val kafkaBinary = classpath.find(_.getName == s"kafka_${kafkaScalaVersion.value}-${kafkaVersion.value}.tgz").get
+
         // extract kafka tgz
         val pid = Process(Seq("tar","-xzf",kafkaBinary.getAbsolutePath), target.value).!
         kafkaConfigFile.value match {
@@ -112,10 +118,10 @@ object SbtKafkaPlugin extends sbt.AutoPlugin {
     /** Settings **/
     kafkaVersion := "0.10.1.0",
     kafkaScalaVersion := scalaBinaryVersion.value,
-    libraryDependencies +=
-      ("kafka" % s"kafka_${kafkaScalaVersion.value}" % kafkaVersion.value)
-        .from(s"http://www-us.apache.org/dist/kafka/${kafkaVersion.value}/kafka_${kafkaScalaVersion.value}-${kafkaVersion.value}.tgz"),
-    classpathTypes ~= (_ + "tgz"),
+//    libraryDependencies +=
+//      ("kafka" % s"kafka_${kafkaScalaVersion.value}" % kafkaVersion.value)
+//        .from(s"http://www-us.apache.org/dist/kafka/${kafkaVersion.value}/kafka_${kafkaScalaVersion.value}-${kafkaVersion.value}.tgz"),
+//    classpathTypes ~= (_ + "tgz"),
     kafkaConfigFile := None,
     zookeeperConfigFile := Some(zookeeperServerConfig.value),
     kafkaServerRunDir := target.value / s"kafka_${scalaBinaryVersion.value}-${kafkaVersion.value}",

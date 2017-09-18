@@ -28,6 +28,12 @@ You can delete multiple infotons by applying the special #fullDelete indicator t
 
 >**Note:** The "false" value in the triples indicates that the deletion should not be recursive. If a value of "true" is supplied, in addition to the infotons in the request, if there are infotons under the paths supplied in the request, they will be deleted too. Recursive delete may fail if there are too many infoton descendants.
 
+## Special Parameters ##
+
+Parameter | Description&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Values&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Example
+:----------|:-------------|:--------|:---------
+priority | If this flag appears in an update call, that call receives priority relative to non-priority calls. To use this flag, you must also pass the X-CM-WELL-TOKEN request header, with a token that grants access to the priority feature. This feature should be used with discretion so as not to flood the priority queue. | None | \<cm-well-host\>/_in?format=ttl&priority...
+
 ## Code Example ##
 
 ### Call ###

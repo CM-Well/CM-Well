@@ -41,14 +41,55 @@ You can examine this information to detect indexing and storage problems.
 
 Request:
 
-    <cm-well-host>/example.com/2-9B50FC1DEBB771CABB59ADEA33CBA034F82435BA3D1FD6A6CFA97F2273172E54?op=x-info
+    <cm-well-host>/11-123RT12?op=x-info
 
 Response:
 
-	cas c4f0ed81b2d414edbbb855127bc8aafc {"type":"ObjectInfoton","system":{"uuid":"c4f0ed81b2d414edbbb855127bc8aafc","lastModified":"2016-04-07T15:33:35.394Z","path":"/demo.elite.thomsonreuters.com/2-9B50FC1DEBB771CABB59ADEA33CBA034F82435BA3D1FD6A6CFA97F2273172E54","dataCenter":"dc1","indexTime":1460043219439,"parent":"/demo.elite.thomsonreuters.com"},"fields":{"oDOfficerIsDirector.OfficersDirectors":["1"],"oDOfficerIsOfficer.OfficersDirectors":["0"],"oDPersonId.OfficersDirectors":["http://demo.elite.thomsonreuters.com/1-34413157710"],"type.rdf":["http://OfficersDirectors.schemas.financial.thomsonreuters.com/OfficersDirectors/2014-10-10/OfficerInformation"],"oDOrganizationId.OfficersDirectors":["http://permid.org/1-4295989904"]}}
-    es  c4f0ed81b2d414edbbb855127bc8aafc: [cmwell_history_8]
-    cas cf0b7db11a067cda779d1341cc911638 {"type":"ObjectInfoton","system":{"uuid":"cf0b7db11a067cda779d1341cc911638","lastModified":"2017-01-17T07:03:33.505Z","path":"/demo.elite.thomsonreuters.com/2-9B50FC1DEBB771CABB59ADEA33CBA034F82435BA3D1FD6A6CFA97F2273172E54","dataCenter":"dc1","indexTime":1484636614911,"parent":"/demo.elite.thomsonreuters.com"},"fields":{"oDOfficerIsDirector.OfficersDirectors":["1"],"oDOfficerIsOfficer.OfficersDirectors":["0"],"oDPersonId.OfficersDirectors":["http://demo.elite.thomsonreuters.com/1-34413157710"],"randomTestField.OfficersDirectors":[3.1415927],"type.rdf":["http://OfficersDirectors.schemas.financial.thomsonreuters.com/OfficersDirectors/2014-10-10/OfficerInformation"],"oDOrganizationId.OfficersDirectors":["http://permid.org/1-4295989904"]}}
-    es  cf0b7db11a067cda779d1341cc911638: [cmwell_current_9]
+	es  445ec58994f5be1b61b0bfb65395d751 [cmwell_current_1(1)] 
+    {
+      "type": "ObjectInfoton",
+      "system": {
+    "path": "\/data.thomsonreuters.com\/11-123RT12",
+    "lastModified": "2015-08-13T14:31:43.411Z",
+    "uuid": "445ec58994f5be1b61b0bfb65395d751",
+    "parent": "\/data.thomsonreuters.com",
+    "dc": "dc1",
+    "indexTime": 1439476304965,
+    "quad": [
+      
+    ]
+      },
+      "fields": {
+    "type.lzN1FA": [
+      "http:\/\/ontology.thomsonreuters.com\/fedapioa\/Organization"
+    ],
+    "organizationNameLocalLng.1ZNHcw": [
+      "xxx"
+    ],
+    	... (truncated)
+      }
+    }
+    cas 445ec58994f5be1b61b0bfb65395d751 
+    {
+      "type": "ObjectInfoton",
+      "system": {
+    "uuid": "445ec58994f5be1b61b0bfb65395d751",
+    "lastModified": "2015-08-13T14:31:43.411Z",
+    "path": "\/data.thomsonreuters.com\/11-123RT12",
+    "dataCenter": "dc1",
+    "indexTime": 1460409303057,
+    "parent": "\/data.thomsonreuters.com"
+      },
+      "fields": {
+     "type.rdf": [
+      "http:\/\/ontology.thomsonreuters.com\/fedapioa\/Organization"
+    ],
+    	"organizationNameLocalLng.fedapioa": [
+      "xxx"
+    ],
+    	... (truncated)
+      }
+    }
     
 ## The x-fix Function ##
 

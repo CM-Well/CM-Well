@@ -15,9 +15,9 @@
 
 
 object Versions {
-  val cassandra = "2.1.16"
-  val elasticsearch = "1.7.4"
+  val cassandra = "2.1.18"
+  val elasticsearch = "1.7.6"
   val kafka = "0.10.1.0"
-  val play = "2.5.15"
+  val play = "2.5.16"
   val zookeeper = "3.4.6"
 }

@@ -1,7 +1,7 @@
 # Priority Queue - Design and API
 
 ## Abstract
-CM-Well ingest is "eventually consisted". Today, any payload that was ingested successfully, is pushed to a queue (Kafka) and the bg process handles each chunk of it in First Come First Served manner (as much as it can, given its distributed nature). Introducing a Priority Queue means some (more "urgent") HTTP Posts will have a special treatment, and a ticket to pass all chunks currently in line.
+CM-Well ingest is "eventually consistent". Today, any payload that was ingested successfully, is pushed to a queue (Kafka) and the bg process handles each chunk of it in first-in first-out (FIFO) manner (as much as it can, given its distributed nature). Introducing a Priority Queue means some (more "urgent") HTTP Posts will have a special treatment, and a ticket to pass all chunks currently in line.
 
 ## API
 * Write endpoints to CM-Well (`_in`, and low-level JSON POST) will accept a new query parameter: `priority` (with no value).
@@ -33,5 +33,4 @@ $ curl "localhost:9000/_in?format=ntriples&priority" --data-binary '<http://exam
 ```
 
 ## Future Work
-* More levels of priority can be introduced. Theoretically, the `priority` query parameter can accept an Integer value from 0 (which is equivalent to not providing the query parameter at all) to MAX_INT. But we will merely add one more, i.e. the values of 1 or 2 can be used. 1 means medium priority and 2 means high priority.
-* The change above can be reflected in Authorization as well, i.e. the Priority Role will accept a value of max priority allowed for user. This part is optional, we can decide any user with the Priority role can use any value of priority query parameter.
+* One or a few more (up to a fixed small number) priorites can be introduced. For example "idle queue" which is intended for Admin operations, which will be prioritzed higher than normal but lower than the high priority.

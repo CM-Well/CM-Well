@@ -1,0 +1,104 @@
+{
+    "cmwell_log" : {
+        "title" : "CM-Well Log",
+        "description" : "The default log format for the core CM-Well processes.",
+        "url" : "https://github.com/thomsonreuters/CM-Well",
+        "multiline" : true,
+        "regex" : {
+            "std" : {
+                "pattern" : "^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}(?:[\\.,]\\d{3})?) (?<thread>\\[?[^\\]]{1,44}\\](?: +)?) (?<level>.{5}) (?<module>[^ ]+(?: +)?) - (?<body>.*)"
+            },
+            "akka-line" : {
+                "pattern" : "^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}(?:[\\.,]\\d{3})?) \\[(?<loggingThread>[^ ]+) (?<thread>[^\\]]+)\\] (?<level>.{5}) (?<module>[^ ]+(?: +)?) (?<actorSystem>[^ ]+) (?<akkaSource>[^ ]+)? ?- (?<body>.*)"
+            }
+        },
+        "level-field" : "level",
+        "body-field" : "body",
+        "timestamp-field" : "timestamp",
+        "level" : {
+            "error" : "ERROR",
+            "debug" : "DEBUG",
+            "info" : "INFO",
+            "warning" : "WARN",
+            "trace": "TRACE"
+        },
+        "opid-field" : "NOT USED. This can be used in the future for correlation field of the same logical operation",
+        "value" : {
+            "threadGroup" : {
+                "kind" : "string",
+                "identifier" : false,
+                "hidden" : true,
+                "description" : "The group of the thread and the logging thread - IT'S DISABLED DUE TO A BUG/FEATURE WITH LNAV THAT IGNORES GROUPS"
+            },
+            "loggingThread" : {
+                "kind" : "string",
+                "identifier" : false,
+                "hidden" : true,
+                "description" : "The thread id of the logging system (the async logging thread)"
+            },
+            "thread" : {
+                "kind" : "string",
+                "identifier" : false,
+                "hidden" : true,
+                "description" : "The thread id"
+            },
+            "module" : {
+                "kind" : "string",
+                "identifier" : false,
+                "description" : "The name of the module that generated the message"
+            },
+            "actorSystem" : {
+                "kind" : "string",
+                "identifier" : false,
+                "description" : "The actor system in which the logging was performed"
+            },
+            "akkaSource" : {
+                "kind" : "string",
+                "identifier" : false,
+                "description" : "The actor’s address when instantiating a logger within it"
+            }            
+        },
+        "sample" : [
+            {
+                "line" : "2017-09-06 12:46:21,489 [main]                                       INFO  cmwell.dc.stream.Main$               - Starting Dc-Sync using stream",
+                "level" : "info"
+            },
+            {
+                "line" : "2017-09-06 15:02:27,486 [ForkJoinPool-1-worker-7]                    WARN  cmwell.dc.stream.Util$               - Error ![-835799341]. Cm-Well returned bad response: status: 503 reason: Service Unavailable body: Kafka queue monitor can't accept monitoring requests at the moment. You may try again later",
+                "level" : "warning"
+            },
+            {
+                "line" : "2017-09-06 15:00:55,285 [cm-well-p-akka.actor.default-dispatcher-26] ERROR akka.remote.EndpointWriter           - AssociationError [akka.tcp://cm-well-p@127.0.0.1:33741] -> [akka.tcp://cm-well-p@127.0.0.1:7777]: Error [Shut down address: akka.tcp://cm-well-p@127.0.0.1:7777] [",
+                "level" : "error"
+            },
+            {
+                "line" : "2017-09-12 05:51:14,901 [ForkJoinPool-1-worker-7]                    WARN  c.dc.stream.DataCenterSyncManager    - Getting index time or position key failed. Cancelling the sync start. It will be started again on the next schedule check",
+                "level" : "warning"
+            },
+            {
+                "line" : "2017-09-18 11:04:38,755 ream-dc-akka.actor.default-dispatcher-18631] INFO  cmwell.dc.stream.TsvRetriever$       - Data Center ID dc3?qp=*system.parent.parent_hierarchy:/example.org/,*system.path::/trit.tms3: Got TSVs stream source. The next position key to consume is AQCpeJwzqMmoKaqJ1i2uLC5JzdUrSCxKzSuBUvEZmalFiUXJGZVW-rmpJYn6OgSVpeQnF-vrQFWlJFuoooooRGsR0lVSlFmiV5JbbKyvg1BbkoEkERsLAGoMP6U. Got 0 TSVs using BulkConsume. Total TSVs got 0. Read rate: 0.00 TSVs/second",
+                "level" : "info"
+            },
+            {
+                "line" : "2017-09-11 06:44:24,714 [cm-well-p-akka.actor.default-dispatcher-7 main] INFO  akka.remote.Remoting cm-well-p akka.remote.Remoting - Remoting started; listening on addresses :[akka.tcp://cm-well-p@127.0.0.1:44293]",
+                "level" : "info"
+            },
+            {
+                "line" : "2017-09-11 06:42:09,148 [cm-well-p-akka.actor.default-dispatcher-19 cm-well-p-akka.remote.default-remote-dispatcher-4] WARN  a.s.Serialization(akka://cm-well-p) cm-well-p akka.serialization.Serialization(akka://cm-well-p) - Using the default Java serializer for class [cmwell.ctrl.commands.RestartWebserver$] which is not recommended because of performance implications. Use another serializer or disable this warning using the setting 'akka.actor.warn-about-java-serializer-usage'",
+                "level" : "warning"
+            },
+            {
+                "line" : "2017-09-12 05:51:25,804 [cm-well-p-akka.actor.default-dispatcher-2 cm-well-p-akka.actor.default-dispatcher-4] ERROR akka.actor.OneForOneStrategy cm-well-p akka://cm-well-p/user/LocalServiceManager/HealthActor - cmwell.ctrl.checkers.ReportTimeout cannot be cast to cmwell.ctrl.checkers.ElasticsearchState",
+                "level" : "error"
+            },
+            {
+                "line" : "2017-09-11 20:52:09,439 [cm-well-p-akka.actor.default-dispatcher-17 cm-well-p-akka.actor.default-dispatcher-2] INFO  a.r.RemoteActorRefProvider$RemoteDeadLetterActorRef cm-well-p akka://cm-well-p/deadLetters - Message [akka.io.Tcp$Bound] from Actor[akka://cm-well-p/user/IO-HTTP/listener-0#1416172797] to Actor[akka://cm-well-p/deadLetters] was not delivered. [1] dead letters encountered. This logging can be turned off or adjusted with configuration settings 'akka.log-dead-letters' and 'akka.log-dead-letters-during-shutdown'.",
+                "level" : "info"
+            },
+            {
+                "line" : "2017-09-12 20:46:44,453 [cm-well-p-akka.actor.default-dispatcher-24 New I/O boss #3] WARN  a.r.transport.netty.NettyTransport cm-well-p NettyTransport(akka://cm-well-p) - Remote connection to [null] failed with java.net.ConnectException: Connection refused: /127.0.0.1:42405",
+                "level" : "warning"
+            }            
+        ]
+    }
+}
