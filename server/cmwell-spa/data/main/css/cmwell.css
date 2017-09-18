@@ -224,13 +224,39 @@ select:hover {
 .types-container {
     padding: 6px 0;
     border-bottom: 1px solid #ccc;
-    margin: 0 30px;
+    margin: 0 30px 5px 30px;
     margin-top: -10px;
     font-size: 13px;
 }
 
+.types-container img.expand-button {
+    vertical-align: bottom;
+    cursor: pointer;
+}
+
+.types-container img.expand-button.expanded {
+    transform: rotate(180deg);
+}
+
+.types-container .types {
+    display: inline-block;
+    width: calc(100% - 25px);
+    max-height: 19px;
+    overflow-y: hidden;
+    transition: max-height 400ms ease-out;
+}
+
+.types-container.expanded .types {
+    max-height: 666px;
+}
+
+.types-container.expanded {
+    box-shadow: 0 17px 10px -15px #656565;
+}
+
 .types-container .type {
     margin: 0 10px;
+    display: inline-block;
 }
 
 .types-container .type a {
@@ -240,7 +266,7 @@ select:hover {
 .system-fields-container {
     position: absolute;
     right: 28px;
-    top: 161px;
+    top: 198px;
 }
 
 .system-fields-container.collapsed {
