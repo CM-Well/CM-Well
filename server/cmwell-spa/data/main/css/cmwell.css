@@ -225,8 +225,13 @@ select:hover {
     padding: 6px 0;
     border-bottom: 1px solid #ccc;
     margin: 0 30px 5px 30px;
-    margin-top: -10px;
+    margin-top: -7px;
     font-size: 13px;
+    
+    position: fixed;
+    background: white;
+    width: calc(100% - 60px);
+    z-index: 999;    
 }
 
 .types-container img.expand-button {
@@ -266,7 +271,11 @@ select:hover {
 .system-fields-container {
     position: absolute;
     right: 28px;
-    top: 198px;
+    top: 195px;
+}
+
+.system-fields-container.higher {
+    top: 167px;
 }
 
 .system-fields-container.collapsed {
@@ -461,6 +470,10 @@ select:hover {
 }
 */
 
+.infotons-list-container {
+    margin-top: 37px;
+}
+
 .infotons-list-container.root {
     float: left;
     clear: left;
@@ -574,6 +587,7 @@ li.infoton-list-item {
     color: #8d8d8d;
     font-size: 13px;
     margin-left: 60px;
+    margin-top: 0;
 }
 
 .infotons-list-container .warning {

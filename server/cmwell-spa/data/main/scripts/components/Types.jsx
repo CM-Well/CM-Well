@@ -6,13 +6,14 @@ class Type extends React.Component {
         
         this.state = { }
     }
-    
+
     render() {
         AppUtils.debug('Type.render')
-        let href = this.props.uri || location.pathname // todo combine with qp
+        let href = this.props.uri ? `${location.pathname}?op=search&recursive&qp=type.rdf::${this.props.uri}` : location.pathname
         let count = this.props.count ? ` (${this.props.count.toLocaleString()})` : ''
         let label = (this.props.label || AppUtils.lastPartOfUrl(this.props.uri)) + count
-        return <span className="type">{ this.props.selected ? label : <Link to={href}>{label}</Link> }</span>
+        let isSelected = location.pathname + location.search === href
+        return <span className="type" title={this.props.uri}>{ isSelected ? label : <Link to={href}>{label}</Link> }</span>
     }
 }
 
@@ -25,7 +26,6 @@ class ExpandButton extends React.Component {
 
     clickCb() {
         this.props.clickCb && this.props.clickCb()
-//        this.toggleState('expanded')
     }
     
     render() {
@@ -38,28 +38,31 @@ class Types extends React.Component {
     constructor(props) {
         super(props)
         
-        this.state = {
-            types: []
-        }
-        
+        this.state = { types: [] }
         this.separator = <span className="separator">|</span>
-        this.all = <Type label="All" selected={true} />
+            
+        this.fetchDataAndResetState()
     }
         
     componentWillReceiveProps() {
+        this.fetchDataAndResetState()
+    }
+    
+    // fetchDataAndResetState is invoked both from componentWillReceiveProps and CTOR to address all senarios of navigation 
+    fetchDataAndResetState() {
         AppUtils.cachedGet(`${this.props.location.pathname}?op=aggregate&recursive&ap=type:term,field::type.rdf,size:1024&format=json`).then(resp => {
             resp.AggregationResponse && this.setState({ types: resp.AggregationResponse[0].buckets.map(bckt => { return { uri: bckt.key, count: bckt.objects } }) })
         })
         this.setState({ expanded: false })
     }
-    
+
     render() {
         AppUtils.debug('Types.render')
         let className = `types-container ${this.state.expanded ? 'expanded' : ''}`
-        let types = [this.all, ...this.state.types.map(t => <Type uri={t.uri} count={t.count} />)]
+        let types = [{ label: "All" }, ...this.state.types].map(t => <Type label={t.label} uri={t.uri} count={t.count} />)
                                                        
-        let isExpandButtonNeeded = this.state.types.length > 5 // todo is hard-coding 5 is the best we can do here?
-                                                       
+        let isExpandButtonNeeded = this.state.types.length > 5 // todo is hard-coding 5 the best we can do here?
+
         return <div className={className}>
             <div className="types">View by: { AppUtils.addSep(types, this.separator) }</div>
            { isExpandButtonNeeded ? <ExpandButton isExpanded={this.state.expanded} clickCb={this.toggleState.bind(this, 'expanded')}/> : null }
