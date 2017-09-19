@@ -132,14 +132,14 @@ object JsonEncoder{
       Json.toJson(scrollResults)
   }
 
-  /**
-   * Transforms the object SearchResponse into its json representation.
-   * @param searchResponse
-   * @return
-   */
-  def encodeSearchResponse(searchResponse: SearchResponse): JsValue = {
-    Json.toJson(searchResponse)
-  }
+//  /**
+//   * Transforms the object SearchResponse into its json representation.
+//   * @param searchResponse
+//   * @return
+//   */
+//  def encodeSearchResponse(searchResponse: SearchResponse): JsValue = {
+//    Json.toJson(searchResponse)
+//  }
 
   def encodeAggregationResponse(aggregationsResponse: AggregationsResponse) : JsValue = {
     Json.toJson(aggregationsResponse)

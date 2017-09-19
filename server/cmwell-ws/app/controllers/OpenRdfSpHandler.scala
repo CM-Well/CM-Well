@@ -48,7 +48,7 @@ import org.openrdf.rio.turtle.TurtleWriter
 import org.openrdf.sail.memory.model._
 import org.openrdf.sail.{Sail, SailConnection, SailException, UpdateContext}
 import org.openrdf.{IsolationLevel, IsolationLevels, OpenRDFException}
-import play.api.mvc.{Action, Controller, Result}
+import play.api.mvc.{Action, Controller, InjectedController, Result}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
@@ -64,7 +64,7 @@ import scala.util.{Failure, Success, Try}
   */
 
 @Singleton
-class OpenRdfSpHandler @Inject()(tbg: NbgToggler, crudServiceFS: CRUDServiceFS, cmwellRDFHelper: CMWellRDFHelper)(implicit ec: ExecutionContext) extends Controller with LazyLogging {
+class OpenRdfSpHandler @Inject()(tbg: NbgToggler, crudServiceFS: CRUDServiceFS, cmwellRDFHelper: CMWellRDFHelper)(implicit ec: ExecutionContext) extends InjectedController with LazyLogging {
 
   val config: Config = Config.defaultConfig
   val typesCache = new AggregateBothOldAndNewTypesCaches(crudServiceFS,tbg)

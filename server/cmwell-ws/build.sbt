@@ -7,6 +7,8 @@ packAutoSettings
 libraryDependencies ++= {
   val dm = dependenciesManager.value
   Seq(
+    guice,
+    dm("com.typesafe.play","play-json"),
     dm("com.typesafe.akka","akka-http-core")
       .exclude("com.typesafe.akka","akka-slf4j"),
     dm("com.typesafe.akka","akka-slf4j"),

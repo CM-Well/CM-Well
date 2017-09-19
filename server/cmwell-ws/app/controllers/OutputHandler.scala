@@ -56,7 +56,7 @@ class OutputHandler  @Inject()(crudServiceFS: CRUDServiceFS,
                                authUtils: AuthUtils,
                                tbg: NbgToggler,
                                cmwellRDFHelper: CMWellRDFHelper,
-                               formatterManager: FormatterManager) extends Controller with LazyLogging with TypeHelpers {
+                               formatterManager: FormatterManager) extends InjectedController with LazyLogging with TypeHelpers {
 
   val fullDateFormatter = ISODateTimeFormat.dateTime().withZone(DateTimeZone.UTC)
 

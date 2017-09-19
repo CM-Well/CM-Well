@@ -432,21 +432,21 @@ object Encoders {
     }
   }
 
-  implicit object SearchResultsEncoder extends Format[SearchResults] {
-    def reads(json: JsValue): JsResult[SearchResults] = ???
-
-    def writes(o: SearchResults): JsValue = {
-      val structure = new FieldAggregator
-      structure += "type" -> Json.toJson("SearchResults")
-      structure += "fromDate" -> Json.toJson(o.fromDate)
-      structure += "toDate" -> Json.toJson(o.toDate)
-      structure += "total" -> Json.toJson(o.total)
-      structure += "offset" -> Json.toJson(o.offset)
-      structure += "length" -> Json.toJson(o.length)
-      structure += "infotons" -> Json.toJson(o.infotons.map(Json.toJson(_)))
-      structure.get()
-    }
-  }
+//  implicit object SearchResultsEncoder extends Format[SearchResults] {
+//    def reads(json: JsValue): JsResult[SearchResults] = ???
+//
+//    def writes(o: SearchResults): JsValue = {
+//      val structure = new FieldAggregator
+//      structure += "type" -> Json.toJson("SearchResults")
+//      structure += "fromDate" -> Json.toJson(o.fromDate)
+//      structure += "toDate" -> Json.toJson(o.toDate)
+//      structure += "total" -> Json.toJson(o.total)
+//      structure += "offset" -> Json.toJson(o.offset)
+//      structure += "length" -> Json.toJson(o.length)
+//      structure += "infotons" -> Json.toJson(o.infotons.map(Json.toJson(_)))
+//      structure.get()
+//    }
+//  }
 
   implicit object PaginationInfoEncoder extends Format[PaginationInfo] {
     def reads(json: JsValue): JsResult[PaginationInfo] = ???
@@ -587,17 +587,17 @@ object Encoders {
     }
   }
 
-  implicit object SearchResponseEncoder extends Format[SearchResponse] {
-    def reads(json: JsValue): JsResult[SearchResponse] = ???
-
-    def writes(o: SearchResponse): JsValue = {
-      val structure = new FieldAggregator
-      structure += "type" -> Json.toJson("SearchResponse")
-      structure += "pagination" -> Json.toJson(o.pagination)
-      structure += "results" -> Json.toJson(o.results)
-      structure.get()
-    }
-  }
+//  implicit object SearchResponseEncoder extends Format[SearchResponse] {
+//    def reads(json: JsValue): JsResult[SearchResponse] = ???
+//
+//    def writes(o: SearchResponse): JsValue = {
+//      val structure = new FieldAggregator
+//      structure += "type" -> Json.toJson("SearchResponse")
+//      structure += "pagination" -> Json.toJson(o.pagination)
+//      structure += "results" -> Json.toJson(o.results)
+//      structure.get()
+//    }
+//  }
 
   implicit object InfotonPathsEncoder extends Format[InfotonPaths] {
     def reads(json: JsValue): JsResult[InfotonPaths] = {

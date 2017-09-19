@@ -30,7 +30,7 @@ import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
 @Singleton
-class LoginHandler  @Inject()(authCache: AuthCache)(implicit ec: ExecutionContext) extends Controller with BasicHttpAuthentication with DigestHttpAuthentication {
+class LoginHandler  @Inject()(authCache: AuthCache)(implicit ec: ExecutionContext) extends InjectedController with BasicHttpAuthentication with DigestHttpAuthentication {
   private val notAuthenticated = Unauthorized("Not authenticated.\n")
 
   def login: Action[AnyContent] = Action.async { implicit req =>
