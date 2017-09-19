@@ -16,6 +16,8 @@
 
 package controllers
 
+import java.time.{Instant, LocalDateTime, ZoneId}
+
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import org.joda.time.DateTime
@@ -117,7 +119,9 @@ abstract class FileInfotonCaching(defaultAssetsMetadata: DefaultAssetsMetadata, 
     }
 
     val r1 = addHeaderIfValue(ETAG, Some(etag), r)
-    val r2 = addHeaderIfValue(LAST_MODIFIED, Some(java.time.LocalDate.ofEpochDay(lastModified.getMillis).format(ResponseHeader.httpDateFormat)), r1)
+    val d = LocalDateTime.ofInstant(Instant.ofEpochMilli(lastModified.getMillis), ZoneId.systemDefault())
+                         .format(ResponseHeader.httpDateFormat)
+    val r2 = addHeaderIfValue(LAST_MODIFIED, Some(d), r1)
 
     r2.withHeaders(CACHE_CONTROL -> {
       if (aggressiveCaching) assetsConfiguration.aggressiveCacheControl
