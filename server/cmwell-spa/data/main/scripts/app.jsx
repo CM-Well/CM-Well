@@ -3,7 +3,7 @@ define((require, exports, module) => {
 let Components = module.config().components
     
 let { Router, Route, Link, browserHistory } = ReactRouter
-let { Header, SearchBar, Breadcrumbs, HomePage, InfotonsList, Infoton, Footer } = Components
+let { Header, Types, SearchBar, Breadcrumbs, HomePage, InfotonsList, Infoton, Footer } = Components
 
 class App extends React.Component {
     constructor(props) {
@@ -41,6 +41,8 @@ class App extends React.Component {
                 />
                 
                 <Breadcrumbs lastBreadcrumbDisplayName={this.state.lastBreadcrumbDisplayName} />
+                
+                { this.state.currentHasChildren ? <Types location={this.props.location} /> : null }
                 
                 <InfotonsList
                     location={this.props.location}

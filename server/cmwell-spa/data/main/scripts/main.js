@@ -73,17 +73,19 @@ require(["react", "react-dom"], function() {
             
             require([ // app componets
                  'jsx!./components/Header.jsx'
+                ,'jsx!./components/Types.jsx'
                 ,'jsx!./components/HomePage.jsx'
                 ,'jsx!./components/InfotonsList.jsx'
                 ,'jsx!./components/Infoton.jsx'
                 ,'jsx!./components/Footer.jsx'
                 ,'jsx!./utils'
-            ], function(header, homePage, infotonsList, infoton, footer) {
+            ], function(header, types, homePage, infotonsList, infoton, footer) {
                 status(empty);
                 setTimeout(function(){
                     status('Starting App', true);
 
                     var components = header;
+                    components.Types = types;
                     components.HomePage = homePage;
                     components.InfotonsList = infotonsList;
                     components.Infoton = infoton;

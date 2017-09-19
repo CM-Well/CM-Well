@@ -160,7 +160,7 @@ class Infoton extends React.Component {
         
         // todo refactor. it's not DRY having to keep asking !_.isEmpty(dataFields) 
         
-        return _.isEmpty(dataFields) && !fileContents ? (this.state.infoton && this.state.infoton.system ? <SystemFields data={this.state.infoton.system} /> : null) : (<div>
+        return _.isEmpty(dataFields) && !fileContents ? (this.state.infoton && this.state.infoton.system ? <SystemFields data={this.state.infoton.system} hasNoDataFields={true} /> : null) : (<div>
             <div className="infoton-title">
                 <img src={iconSrc} />
                 <div className="names">

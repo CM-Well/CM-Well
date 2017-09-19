@@ -12,7 +12,7 @@ class SystemFields extends React.Component {
     render() {
         AppUtils.debug('SystemFields.render')
         
-        let className = this.state.expanded ? "system-fields-container" : "system-fields-container collapsed"
+        let className = (this.state.expanded ? "system-fields-container" : "system-fields-container collapsed") + (this.props.hasNoDataFields ? '' : ' higher')
         let secrets = k => k === 'lastModified' && this.props.data.indexTime ? `indexTime: ${new Date(this.props.data.indexTime).toISOString()}` : ''
         let data = _(this.props.data).chain().pairs().filter(p=>_(this.visibleSystemFields).contains(p[0])).object().value()
         
