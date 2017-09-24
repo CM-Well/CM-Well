@@ -263,11 +263,11 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
     }
 
     groupedByPath.map[(Int, BGMessage[(String, Seq[SingleCommand])]), collection.immutable.Seq[(Int, BGMessage[(String, Seq[SingleCommand])])]]{ case (path, bgMessages) =>
-      val offsets = bgMessages.flatMap(_._1.offsets)
-      val commands = bgMessages.map{_._1.message}
-      val minIndex = bgMessages.minBy(_._2)._2
+      val offsets = bgMessages.flatMap{ case ( BGMessage(offsets,_), _) => offsets}
+      val commands = bgMessages.map{ case (BGMessage(_, messages), _) => messages}
+      val minIndex = bgMessages.minBy{case (_, index) => index}._2
       (minIndex, BGMessage(offsets, path -> commands))
-    }(breakOut2).sortBy(_._1).map{_._2}
+    }(breakOut2).sortBy{ case (index, _) => index }.map{case (_, bgMessage) => bgMessage}
   }
 
   val addLatestInfotons = Flow[BGMessage[(String, Seq[SingleCommand])]].mapAsync(irwReadConcurrency) { case bgMessage@BGMessage(_, (path, commands)) =>
@@ -377,6 +377,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
       val latestWithIndexName = latest.copyInfoton(indexName = currentIndexName)
       logger debug s"writing lastest infoton: $latestWithIndexName"
       irwService.writeAsync(latestWithIndexName, ConsistencyLevel.QUORUM).map { i =>
+        // this case is when we're replaying persist command which was not indexed at all (due to error of some kind)
         if (previous.isEmpty || previous.get.isSameAs(latest)) {
           val statusTracking = trackingIds.map {
             StatusTracking(_, 1)

@@ -66,7 +66,7 @@ class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers wi
     dao = Dao("Test","data2")
     testIRWMockupService = FailingIRWServiceMockup(dao, 13)
     zStore = ZStore(dao)
-    irwService = IRWService.newIRW(dao), 25 , true, 0.seconds)
+    irwService = IRWService.newIRW(dao, 25 , true, 0.seconds)
     offsetsService = new ZStoreOffsetsService(zStore)
     ftsServiceES = FailingFTSServiceMockup("es.test.yml", 5)
 
