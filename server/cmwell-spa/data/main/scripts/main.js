@@ -1,4 +1,7 @@
 (function(){
+
+    
+if(location.pathname.indexOf('/proc')>-1) location.href+='?old-ui';
     
 var status = function(msg, noellip) { document.getElementById('loading-status').innerHTML = msg?msg+(noellip?'':'...'):''; }
     , token = 'S2lsbGluZyB6b21iaWVz;RmVlZGluZyBjYXRz;RWF0aW5nIGJ1cmdlcnM=;QnV5aW5nIGEgYm9hdA==;Q29tcG9zaW5nIGEgcHJlbHVkZQ==;UmlkaW5nIGEgdW5pY29ybg==;V2VhcmluZyBzdW5nbGFzc2Vz;UGxheWluZyBjaGVzcw==;Q2FsY3VsYXRpbmcgdGhlIG1lYW5pbmcgb2YgdW5pdmVyc2U=;V2Fsa2luZyBvbiB3YXRlcg==;U2tpaW5n;RGV2ZWxvcGluZyBjb25zY2lvdXNuZXNz;TGVhcm5pbmcgUGVybA==;SW52ZXN0aWdhdGluZyBvdXRlciBzcGFjZQ==;VHJhdmVsbGluZyB0byBub3J0aCBwb2xl;QmFraW5nIGEgY2FrZQ=='.split(';'), empty = atob(token[(Math.random()*token.length)|0]);
