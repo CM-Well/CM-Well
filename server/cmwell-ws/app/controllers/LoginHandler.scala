@@ -43,14 +43,14 @@ class LoginHandler  @Inject()(authCache: AuthCache)(implicit ec: ExecutionContex
     def loginDigest = digestAuthenticate(authCache)(req).map(status => if (status.isAuthenticated) grantToken(status.username, exp) else notAuthenticated)
 
     def loginBasic = {
-      decodeBasicAuth(req.headers("authorization")) match {
-        case (username, pass) => {
+        decodeBasicAuth(req.headers("authorization")) match {
+        case Success((username,pass)) => {
           authCache.getUserInfoton(username) match {
             case Some(user) if Authentication.passwordMatches(user, pass) => grantToken(username, exp)
             case _ => notAuthenticated
           }
         }
-        case _ => notAuthenticated
+        case Failure(err) => notAuthenticated
       }
     }
 
