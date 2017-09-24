@@ -75,8 +75,7 @@ package cmwell.util {
     def delayedTask[A](delay : FiniteDuration)(task : => A)(implicit ec :ExecutionContext) : Future[A] = {
       val p = Promise[A]()
       SimpleScheduler.schedule(delay) {
-        val res = task
-        p.success(res)
+        p.complete(Try(task))
       }
       p.future
     }
