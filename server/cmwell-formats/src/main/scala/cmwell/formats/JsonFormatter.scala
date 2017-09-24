@@ -38,25 +38,19 @@ abstract class AbstractJsonFormatter(override val fieldNameModifier: String => S
   override def makeFromValues(values: Seq[Inner]): Inner = JsArray(values)
   override def empty: Inner = JsNull
   override def single[T](value: T): Inner = value match {
-    case i: Int =>         JsNumber(new BigDecimal(i.toString))
-    case i: Long =>        JsNumber(new BigDecimal(i.toString))
-    case i: BigInteger =>  JsNumber(new BigDecimal(i.toString))
-    case i: Float =>       JsNumber(new BigDecimal(i.toString))
+    case i: Int         => JsNumber(new BigDecimal(i.toString))
+    case i: Long        => JsNumber(new BigDecimal(i.toString))
+    case i: BigInteger  => JsNumber(new BigDecimal(i.toString))
+    case i: Float       => JsNumber(new BigDecimal(i.toString))
     case i: Double if i == Double.PositiveInfinity => JsString("Infinity") //JsNumber(BigDecimal.valueOf(Double.MaxValue))
     case i: Double if i == Double.NegativeInfinity => JsString("-Infinity") //JsNumber(BigDecimal.valueOf(Double.MinValue))
     case i: Double if i.toString == "NaN" => JsString("NaN")
-    case i: Double =>      JsNumber(new BigDecimal(i.toString))
-    case i: BigDecimal =>  JsNumber(i)
-    case b: Boolean =>     try {
-      JsBoolean(b)
-    } catch {
-      case ex: Throwable =>
-        logger.error(s"got [b=]$b from [value=]$value",ex)
-        throw ex
-    }
+    case i: Double      => JsNumber(new BigDecimal(i.toString))
+    case i: BigDecimal  => JsNumber(i)
+    case b: Boolean     => JsBoolean(b)
     case d: Array[Byte] => JsString(new Base64(0).encodeToString(d))
-    case d: DateTime =>    JsString(dateStringify(d))
-    case _ =>              JsString(value.toString)
+    case d: DateTime    => JsString(dateStringify(d))
+    case _              => JsString(value.toString)
   }
 }
 
