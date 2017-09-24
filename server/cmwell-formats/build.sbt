@@ -4,8 +4,8 @@ libraryDependencies ++= {
   val dm = dependenciesManager.value
   Seq(
     dm("com.github.andrewoma.dexx", "collection"),
-    dm("com.typesafe.play", "play-json"),
     dm("commons-codec", "commons-codec"),
+    dm("com.typesafe.play", "play-json"),
     dm("joda-time", "joda-time"),
     dm("org.apache.abdera", "abdera-parser")
       .exclude("commons-logging", "commons-logging"),

@@ -47,7 +47,13 @@ abstract class AbstractJsonFormatter(override val fieldNameModifier: String => S
     case i: Double if i.toString == "NaN" => JsString("NaN")
     case i: Double =>      JsNumber(new BigDecimal(i.toString))
     case i: BigDecimal =>  JsNumber(i)
-    case b: Boolean =>     JsBoolean(b)
+    case b: Boolean =>     try {
+      JsBoolean(b)
+    } catch {
+      case ex: Throwable =>
+        logger.error(s"got [b=]$b from [value=]$value",ex)
+        throw ex
+    }
     case d: Array[Byte] => JsString(new Base64(0).encodeToString(d))
     case d: DateTime =>    JsString(dateStringify(d))
     case _ =>              JsString(value.toString)
