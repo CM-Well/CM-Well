@@ -32,6 +32,7 @@ import com.typesafe.scalalogging.LazyLogging
 import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesResponse
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse
+import org.elasticsearch.action.admin.indices.stats.IndicesStatsResponse
 import org.elasticsearch.action.bulk.{BulkItemResponse, BulkResponse}
 import org.elasticsearch.action.get.GetResponse
 import org.elasticsearch.action.index.IndexRequest
@@ -191,21 +192,39 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
     }
   }
 
-  def numOfShardsForIndex(indexName:String):Int = {
-    val recoveries = client.admin().indices().prepareRecoveries(indexName).get()
-    recoveries.shardResponses().get(indexName).asScala.filter(_.recoveryState().getPrimary).size
+  def latestIndexNameAndCountAsync(prefix:String)(implicit ec: ExecutionContext): Future[Option[(String, Long)]] = {
+    injectFuture[IndicesStatsResponse](client.admin().indices().prepareStats(prefix).clear().setDocs(true).execute(_)).map { indicesStatsResponse =>
+      val indices = indicesStatsResponse.getIndices
+      if (indices.isEmpty) None
+      else {
+        val lastIndexName = indices.keySet().asScala.maxBy { k => k.substring(k.lastIndexOf('_') + 1).toInt }
+        val lastIndexCount = indices.get(lastIndexName).getTotal.docs.getCount
+        Some(lastIndexName -> lastIndexCount)
+      }
+    }
   }
 
-  def createIndex(indexName:String)(implicit executionContext:ExecutionContext):Future[CreateIndexResponse] =
+  private[this] var numOfShardsForIndexMemoization: Map[String,Int] = Map.empty
+  def numOfShardsForIndex(indexName: String): Int = numOfShardsForIndexMemoization.get(indexName) match {
+    case Some(i) => i
+    case None => {
+      val recoveries = client.admin().indices().prepareRecoveries(indexName).get()
+      val rv = recoveries.shardResponses().get(indexName).asScala.count(_.recoveryState().getPrimary)
+      numOfShardsForIndexMemoization = numOfShardsForIndexMemoization.updated(indexName,rv)
+      rv
+    }
+  }
+
+  def createIndex(indexName: String)(implicit executionContext:ExecutionContext): Future[CreateIndexResponse] =
     injectFuture[CreateIndexResponse](client.admin.indices().prepareCreate(indexName).execute(_))
 
-  def updateAllAlias()(implicit executionContext:ExecutionContext):Future[IndicesAliasesResponse] =
+  def updateAllAlias()(implicit executionContext: ExecutionContext): Future[IndicesAliasesResponse] =
     injectFuture[IndicesAliasesResponse](client.admin().indices().prepareAliases()
     .addAlias("cm_well_*", "cm_well_all")
     .execute(_))
 
   def listChildren(path: String, offset: Int, length: Int, descendants: Boolean, partition: String)
-                  (implicit executionContext:ExecutionContext) : Future[FTSSearchResponse] = {
+                  (implicit executionContext:ExecutionContext): Future[FTSSearchResponse] = {
     search(
       pathFilter = Some(PathFilter(path, descendants)),
       fieldsFilter = None,
