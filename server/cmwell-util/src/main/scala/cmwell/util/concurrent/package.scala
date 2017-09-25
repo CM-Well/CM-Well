@@ -205,7 +205,7 @@ package cmwell.util {
     * @param delay "cool-down" wait period
     * @param task the task to run
     */
-    def retry[T](maxRetries: Int, delay: FiniteDuration = Duration.Zero, delayFactor: Long = 0)(task: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
+    def retry[T](maxRetries: Int, delay: Duration = Duration.Zero, delayFactor: Double = 0)(task: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
       require(maxRetries > 0, "maxRetries must be positive")
       require(delay >= Duration.Zero, "delay must be non-negative")
       if (maxRetries == 1) task

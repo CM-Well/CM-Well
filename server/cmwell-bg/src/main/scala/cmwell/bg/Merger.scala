@@ -277,7 +277,6 @@ class Merger(config:Config) extends LazyLogging {
 
     val (evictions, trackingIds) = cmwell.util.collections.partitionWith(evictionsAndTIDs)(identity)
 
-
     merged match {
       case Some(i) if !baseInfoton.exists(_.isSameAs(i)) =>
         val infoton = baseInfoton.fold(i) { j =>
@@ -285,6 +284,8 @@ class Merger(config:Config) extends LazyLogging {
           else i.copyInfoton(lastModified = new DateTime(j.lastModified.getMillis + 1L))
         }
         RealUpdate(infoton,trackingIds, evictions)
+      case Some(i) if baseInfoton.exists{ bi => bi.isSameAs(i) && bi.indexTime.isEmpty} =>
+        RealUpdate(i.copyInfoton(lastModified = baseInfoton.get.lastModified),trackingIds, evictions)
       case _ => NullUpdate(baseInfoton.fold(cmds.head.path)(_.path), trackingIds, evictions)
     }
   }

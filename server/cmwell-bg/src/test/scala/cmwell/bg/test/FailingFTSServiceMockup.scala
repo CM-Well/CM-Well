@@ -16,9 +16,13 @@
 
 package cmwell.bg.test
 
+import java.util.concurrent.TimeoutException
+
 import cmwell.fts._
+import cmwell.util.concurrent.SimpleScheduler
 import com.typesafe.config.{Config, ConfigFactory}
 
+import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -39,7 +43,33 @@ class FailingFTSServiceMockup(config: Config, esClasspathYaml: String, errorModu
     errorModuloDividend += 1
     if(errorModuloDividend % errorModuloDivisor == 0)
       Future.successful(new RejectedBulkIndexResult("fake"))
+    else if(errorModuloDividend % errorModuloDivisor == 2 && errorCount <=2)
+      SimpleScheduler.scheduleFuture(15.seconds)(super.executeIndexRequests(indexRequests))
     else
       super.executeIndexRequests(indexRequests)
+  }
+
+  /**
+    * execute bulk index requests
+    *
+    * @param indexRequests
+    * @param numOfRetries
+    * @param waitBetweenRetries
+    * @param executionContext
+    * @return
+    */
+  override def executeBulkIndexRequests(indexRequests: Iterable[ESIndexRequest], numOfRetries: Int, waitBetweenRetries: Long)(implicit executionContext: ExecutionContext) = {
+
+    errorModuloDividend += 1
+    logger error s"executeBulkIndexRequests: errorModuloDividend=$errorModuloDividend"
+    if(errorModuloDividend % errorModuloDivisor == 2 && errorCount <=2 ) {
+      errorCount += 1
+      logger error s"delaying response"
+      throw new TimeoutException("fake")
+    }
+    else {
+        logger error "farwarding to real ftsservice"
+      super.executeBulkIndexRequests(indexRequests, numOfRetries, waitBetweenRetries)
+    }
   }
 }

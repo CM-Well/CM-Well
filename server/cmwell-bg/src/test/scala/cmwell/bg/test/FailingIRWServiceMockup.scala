@@ -34,9 +34,9 @@ case class FailingIRWServiceMockup(storageDao:Dao, errorModuloDivisor:Int) exten
 
   override def readUUIDAsync(uuid: String, level: ConsistencyLevel, dontFetchPayload: Boolean = false)
                             (implicit ec: ExecutionContext): Future[Box[Infoton]] = {
-    logger debug s"readUUIDAsync for uuid:$uuid"
     errorModuloDividend += 1
-    if(errorCount < 2 && errorModuloDividend % errorModuloDivisor == 0) {
+      logger debug s"readUUIDAsync for uuid:$uuid. errorModuloDividend=$errorModuloDividend"
+    if(errorCount < 3 && errorModuloDividend % errorModuloDivisor == 0) {
       errorCount += 1
       logger debug s"throwing DriverException in readUUIDAsync for uuid:$uuid"
       throw new DriverException("test exception")
@@ -48,9 +48,9 @@ case class FailingIRWServiceMockup(storageDao:Dao, errorModuloDivisor:Int) exten
   override def readPathAsync(path: String, level: ConsistencyLevel)
                             (implicit ec: ExecutionContext): Future[Box[Infoton]] = {
 
-
     errorModuloDividend += 1
-    if(errorCount < 2 && errorModuloDividend % errorModuloDivisor == 0){
+    logger debug s"readPathAsync for path:$path. errorModuloDividend=$errorModuloDividend"
+    if(errorCount < 3 && errorModuloDividend % errorModuloDivisor == 0){
       errorCount += 1
       logger debug s"throwing DriverException in readPathAsync for infoton path:${path}"
       throw new DriverException("test exception")
@@ -63,10 +63,11 @@ case class FailingIRWServiceMockup(storageDao:Dao, errorModuloDivisor:Int) exten
 
   override def writeAsync(infoton: Infoton, level: ConsistencyLevel, skipSetPathLast: Boolean)
                          (implicit ec: ExecutionContext): Future[Infoton] = {
-    logger debug s"writeAsync for infoton path:${infoton.path}"
 
     errorModuloDividend += 1
-    if(errorCount < 2 && errorModuloDividend % errorModuloDivisor == 0){
+    logger debug s"writeAsync for path:${infoton.path}. errorModuloDividend=$errorModuloDividend"
+    if(errorCount < 3 && errorModuloDividend % errorModuloDivisor == 0){
+      logger debug s"errorModuloDividend:$errorModuloDividend % errorModuloDivisor:$errorModuloDivisor = ${errorModuloDividend % errorModuloDivisor}"
       errorCount += 1
       logger debug s"throwing DriverException in writeAsync for infoton path:${infoton.path}, uuid:${infoton.uuid}"
       throw new DriverException("test exception")

@@ -21,19 +21,18 @@ import java.util.concurrent.{ConcurrentHashMap, TimeoutException}
 import akka.actor.{ActorRef, ActorSystem}
 import akka.kafka.ProducerMessage.Message
 import akka.kafka.scaladsl.{Consumer, Producer}
-import akka.kafka.{ProducerSettings, Subscriptions}
+import akka.kafka.{ConsumerSettings, ProducerSettings, Subscriptions}
 import akka.stream.ActorAttributes.supervisionStrategy
-import akka.stream.Supervision.Decider
 import akka.stream.contrib.PartitionWith
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, Merge, MergePreferred, Partition, RunnableGraph, Sink}
-import akka.stream.{ActorMaterializer, ClosedShape, KillSwitches}
+import akka.stream.{ActorMaterializer, ClosedShape, KillSwitches, Supervision}
+import cmwell.common.exception.getStackTrace
 import cmwell.common.{Command, _}
 import cmwell.common.formats.JsonSerializerForES
 import cmwell.domain.{Infoton, ObjectInfoton}
 import cmwell.fts._
 import cmwell.irw.IRWService
 import cmwell.tracking._
-import cmwell.util.exceptions.ElementAlreadyExistException
 import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
 import cmwell.util.concurrent.SimpleScheduler._
 import cmwell.zstore.ZStore
@@ -43,9 +42,10 @@ import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 import nl.grons.metrics.scala._
 import com.codahale.metrics.{Counter => DropwizardCounter, Histogram => DropwizardHistogram, Meter => DropwizardMeter, Timer => DropwizardTimer}
+import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.serialization.ByteArraySerializer
+import org.apache.kafka.common.serialization.{ByteArrayDeserializer, ByteArraySerializer}
 import org.elasticsearch.action.update.UpdateRequest
 import org.elasticsearch.client.Requests
 import org.joda.time.DateTime
@@ -60,7 +60,7 @@ import scala.util.{Failure, Success, Try}
   * Created by israel on 14/06/2016.
   */
 class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: ZStore, ftsService: FTSServiceNew,
-                offsetsService: OffsetsService, decider: Decider, kafkaConsumer: ActorRef)
+                offsetsService: OffsetsService, bgActor:ActorRef)
                (implicit actorSystem: ActorSystem, executionContext: ExecutionContext,
                 materializer: ActorMaterializer
                ) extends LazyLogging with DefaultInstrumented {
@@ -72,6 +72,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
 
   val merger = Merger()
 
+  val byteArrayDeserializer = new ByteArrayDeserializer()
   val bootStrapServers = config.getString("cmwell.bg.kafka.bootstrap.servers")
   val persistCommandsTopic = config.getString("cmwell.bg.persist.commands.topic")
   val persistCommandsTopicPriority = persistCommandsTopic + ".priority"
@@ -84,8 +85,6 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
   val groupCommandsByPathSize = config.getInt("cmwell.bg.groupCommandsByPathSize") // # of commands to group by path
   val groupCommandsByPathTtl = config.getInt("cmwell.bg.groupCommandsByPathTtl") // timeout for the above grouping
   val maxDocsPerShard = config.getLong("cmwell.bg.maxDocsPerShard")
-
-    logger info s"ImpStream starting with config:\n ${config.entrySet().asScala.collect{case entry if entry.getKey.startsWith("cmwell") => s"${entry.getKey} -> ${entry.getValue.render()}"}.mkString("\n")}"
 
   /** *** Metrics *****/
   val existingMetrics = metricRegistry.getMetrics.asScala
@@ -169,7 +168,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
     logger info s"ImpStream($streamId), startingIndexName: $startingIndexName, startingIndexCount: $startingIndexCount"
 
   @volatile var currentIndexName = startingIndexName
-  @volatile var fuseOn = true
+  @volatile var fuseOn = config.getBoolean("cmwell.bg.fuseOn")
 
   val numOfShardPerIndex = ftsService.numOfShardsForIndex(currentIndexName)
 
@@ -177,20 +176,25 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
     new TopicPartition(persistCommandsTopic, partition) -> startingOffset
   )
 
+  val persistCommandsConsumerSettings =
+    ConsumerSettings(actorSystem, byteArrayDeserializer, byteArrayDeserializer)
+      .withBootstrapServers(bootStrapServers)
+      .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
+
   val prioritySubscription = Subscriptions.assignmentWithOffset(
     new TopicPartition(persistCommandsTopicPriority, partition) -> startingOffsetPriority
   )
 
   val sharedKillSwitch = KillSwitches.shared("persist-sources-kill-switch")
 
-  val persistCommandsSource = Consumer.plainExternalSource[Array[Byte], Array[Byte]](kafkaConsumer, subscription).map { msg =>
+  val persistCommandsSource = Consumer.plainSource[Array[Byte], Array[Byte]](persistCommandsConsumerSettings, subscription).map { msg =>
       logger debug s"consuming next payload from persist commands topic @ ${msg.offset()}"
     val command = CommandSerializer.decode(msg.value())
       logger debug s"consumed command: $command"
     BGMessage[Command](CompleteOffset(msg.topic(), msg.offset()), command)
   }.via(sharedKillSwitch.flow)
 
-  val priorityPersistCommandsSource = Consumer.plainExternalSource[Array[Byte], Array[Byte]](kafkaConsumer, prioritySubscription).map { msg =>
+  val priorityPersistCommandsSource = Consumer.plainSource[Array[Byte], Array[Byte]](persistCommandsConsumerSettings, prioritySubscription).map { msg =>
       logger debug s"consuming next payload from priority persist commands topic @ ${msg.offset()}"
     val command = CommandSerializer.decode(msg.value())
       logger debug s"consumed priority command: $command"
@@ -248,22 +252,22 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
     bgMessage.copy(message = bgMessage.message.asInstanceOf[SingleCommand])
   }
 
-  val breakOut2 = scala.collection.breakOut[Seq[BGMessage[SingleCommand]], SingleCommand, Seq[SingleCommand]]
+  val breakOut2 = scala.collection.breakOut[Map[String, Seq[(BGMessage[SingleCommand], Int)]], (Int, BGMessage[(String, Seq[SingleCommand])]), collection.immutable.Seq[(Int, BGMessage[(String, Seq[SingleCommand])])]]
 
   val groupCommandsByPath = Flow[BGMessage[SingleCommand]].groupedWithin(groupCommandsByPathSize,
     groupCommandsByPathTtl.milliseconds).mapConcat[BGMessage[(String, Seq[SingleCommand])]] { messages =>
-    logger debug s"grouping commands: ${
-      messages.map {
-        _.message
-      }
-    }"
-    messages.groupBy {
-      _.message.path
-    }.map { case (path, bgMessages) =>
-      val offsets = bgMessages.flatMap(_.offsets)
-      val commands = bgMessages.map(_.message)(breakOut2)
-      BGMessage(offsets, path -> commands)
+      logger debug s"grouping commands: ${ messages.map {_.message}}"
+
+    val groupedByPath =messages.zipWithIndex.groupBy {
+      _._1.message.path
     }
+
+    groupedByPath.map[(Int, BGMessage[(String, Seq[SingleCommand])]), collection.immutable.Seq[(Int, BGMessage[(String, Seq[SingleCommand])])]]{ case (path, bgMessages) =>
+      val offsets = bgMessages.flatMap{ case ( BGMessage(offsets,_), _) => offsets}
+      val commands = bgMessages.map{ case (BGMessage(_, messages), _) => messages}
+      val minIndex = bgMessages.minBy{case (_, index) => index}._2
+      (minIndex, BGMessage(offsets, path -> commands))
+    }(breakOut2).sortBy{ case (index, _) => index }.map{case (_, bgMessage) => bgMessage}
   }
 
   val addLatestInfotons = Flow[BGMessage[(String, Seq[SingleCommand])]].mapAsync(irwReadConcurrency) { case bgMessage@BGMessage(_, (path, commands)) =>
@@ -337,7 +341,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
     isDup
   }
 
-  val commitVirtualParents = Producer.plainSink[Array[Byte], Array[Byte]](kafkaProducerSettings)
+  val publishVirtualParentsSink = Producer.plainSink[Array[Byte], Array[Byte]](kafkaProducerSettings)
 
   val breakOut3 = scala.collection.breakOut[Seq[(Boolean, (String, DateTime))],
     ProducerRecord[Array[Byte],Array[Byte]], collection.immutable.Iterable[ProducerRecord[Array[Byte],Array[Byte]]]]
@@ -373,7 +377,8 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
       val latestWithIndexName = latest.copyInfoton(indexName = currentIndexName)
       logger debug s"writing lastest infoton: $latestWithIndexName"
       irwService.writeAsync(latestWithIndexName, ConsistencyLevel.QUORUM).map { i =>
-        if (previous.isEmpty) {
+        // this case is when we're replaying persist command which was not indexed at all (due to error of some kind)
+        if (previous.isEmpty || previous.get.isSameAs(latest)) {
           val statusTracking = trackingIds.map {
             StatusTracking(_, 1)
           }
@@ -433,6 +438,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
 
   val indexCommandsToKafkaRecords = Flow[BGMessage[Seq[IndexCommand]]].mapConcat {
     case BGMessage(offset, commands) =>
+        logger debug s"converting indexcommands to kafka records:\n$commands"
       commands.map { command =>
         val commandToSerialize =
           if (command.isInstanceOf[IndexNewInfotonCommand] &&
@@ -448,7 +454,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
       }(breakOut)
   }
 
-  val publishIndexCommands = Producer.flow[Array[Byte], Array[Byte], Seq[Offset]](kafkaProducerSettings).map {
+  val publishIndexCommandsFlow = Producer.flow[Array[Byte], Array[Byte], Seq[Offset]](kafkaProducerSettings).map {
     _.message.passThrough
   }
 
@@ -482,7 +488,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
       logger debug s"doneOffsets after adding partial new offsets:\n $doneOffsets"
   }
 
-  val commitOffsets = Flow[Seq[Offset]].groupedWithin(6000, 3.seconds).toMat {
+  val commitOffsetsFlow = Flow[Seq[Offset]].groupedWithin(6000, 3.seconds).toMat {
     Sink.foreach { offsetGroups =>
       doneOffsets.synchronized { // until a suitable concurrent collection is found
         val (offsets, offsetsPriority) = offsetGroups.flatten.partition(_.topic == persistCommandsTopic)
@@ -535,11 +541,16 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
     }
   }(Keep.right)
 
-  val impGraph = RunnableGraph.fromGraph(GraphDSL.create(priorityPersistCommandsSource, persistCommandsSource, commitOffsets)((_, _, d) => d) { implicit builder =>
-    (prioritySource, batchSource, sink) =>
+  val impGraph = RunnableGraph.fromGraph(
+    GraphDSL.create(
+      priorityPersistCommandsSource,
+      persistCommandsSource,
+      commitOffsetsFlow,
+      publishVirtualParentsSink) ((_, _, a, b) => (a, b) ){ implicit builder =>
+    (prioritySource, source, commitOffsets, publishVirtualParents) =>
       import GraphDSL.Implicits._
 
-      val mergePrefferedSources = builder.add(
+      val mergePreferedSources = builder.add(
         MergePreferred[BGMessage[Command]](1, true)
       )
 
@@ -626,18 +637,9 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
       val singleCommandsMerge = builder.add(Merge[BGMessage[Command]](2))
 
       val overrideCommandsToInfotons = builder.add(
-        Flow[BGMessage[(String, Seq[SingleCommand])]].mapAsync(irwReadConcurrency) {
+        Flow[BGMessage[(String, Seq[SingleCommand])]].map{
           case bgMessage@BGMessage(_, (path, commands)) =>
-            logger debug s"in override flow: going to read history for path: $path"
-            irwService.historyAsync(path, 10000).map { v =>
-              val existingUuids: Set[String] = v.map {
-                _._2
-              }(collection.breakOut)
-              val filteredInfotons = commands.collect { case overwrite: OverwriteCommand if
-              !existingUuids.contains(overwrite.infoton.uuid) => (overwrite.infoton, overwrite.trackingID)
-              }
-              bgMessage.copy(message = (path, filteredInfotons))
-            }
+            bgMessage.copy(message = (path, commands.map{case OverwriteCommand(infoton, trackingID) => (infoton, trackingID)}))
         }
       )
 
@@ -742,19 +744,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
 
       val indexCommandsToESActions = builder.add(
         Flow[BGMessage[Seq[IndexCommand]]].map { case bgMessage@BGMessage(_, indexCommands) =>
-          //TODO: remove after all envs were upgraded
-          val fixedIndexCommands = indexCommands.map { indexCommand =>
-            if (indexCommand.indexName != "")
-              indexCommand
-            else {
-              indexCommand match {
-                case inic: IndexNewInfotonCommand => inic.copy(indexName = currentIndexName)
-                case ieic: IndexExistingInfotonCommand => ieic.copy(indexName = currentIndexName)
-              }
-            }
-
-          }
-          val actionRequests = fixedIndexCommands.flatMap {
+          val actionRequests = indexCommands.flatMap {
             case IndexNewInfotonCommand(_, isCurrent, _, Some(infoton), indexName, trackingIDs) =>
               // count it for metrics
               indexNewInfotonCommandCounter += 1
@@ -792,8 +782,8 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
               ), weight))
             case _ => ???
           }
-          logger debug s"creating esactions: $actionRequests from index commands"
-          bgMessage.copy(message = (actionRequests, fixedIndexCommands))
+          logger debug s"creating esactions:\n $actionRequests from index commands:\n $indexCommands"
+          bgMessage.copy(message = (actionRequests, indexCommands))
         }.filter {
           _.message._1.nonEmpty
         }
@@ -941,11 +931,11 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
           msg.copy(message = msg.message.map(_._1))
         })
 
-      prioritySource ~> mergePrefferedSources.preferred
+      prioritySource ~> mergePreferedSources.preferred
 
-      batchSource ~> mergePrefferedSources.in(0)
+      source ~> mergePreferedSources.in(0)
 
-      mergePrefferedSources.out ~> heartBitLog ~> commandsPartitioner.in
+      mergePreferedSources.out ~> heartBitLog ~> commandsPartitioner.in
 
       commandsPartitioner.out(0) ~> commandRefsFetcher ~> singleCommandsMerge.in(0)
 
@@ -969,7 +959,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
 
       partitionMerged.out(1) ~> reportNullUpdates ~> mergeCompletedOffsets.in(1)
 
-      nonOverrideIndexCommandsBroadcast.out(0) ~> createVirtualParents ~> commitVirtualParents
+      nonOverrideIndexCommandsBroadcast.out(0) ~> createVirtualParents ~> publishVirtualParents
 
       nonOverrideIndexCommandsBroadcast.out(1) ~> removeLastModified ~> indexCommandsMerge.in(1)
 
@@ -986,28 +976,51 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
 
       partitionIndexResult.out(1) ~> mergedCommandToKafkaRecord ~> mergeKafkaRecords.in(1)
 
-      mergeKafkaRecords.out ~> publishIndexCommands ~> mergeCompletedOffsets.in(3)
+      mergeKafkaRecords.out ~> publishIndexCommandsFlow ~> mergeCompletedOffsets.in(3)
 
-      mergeCompletedOffsets.out ~> sink
+      mergeCompletedOffsets.out ~> commitOffsets
 
       ClosedShape
 
   }
   )
 
+  val decider: Supervision.Decider = {
+
+    case t:Throwable =>
+      logger error ("Unexpected Exception during Imp stream, sending 503 to BGActor and stopping stream", t)
+      bgActor ! Imp503
+      Supervision.Stop
+  }
+
   val impControl = impGraph.withAttributes(supervisionStrategy(decider)).run()
 
-  impControl.onComplete {
+  impControl._1.onComplete{
     case Failure(t) =>
-      logger error("imp stream stopped abnormally", t)
-    case Success(_) => logger info "imp stream stopped normally"
+      logger error("ImpStream: CommitOffsetsSink done with error", t)
+    case _ =>
+      logger info("ImpStream: CommitOffstesSink done without error")
+  }
+
+  impControl._2.onComplete{
+    case Failure(t) =>
+      logger error("ImpStream: PublishParentsSink done with error", t)
+    case _ =>
+      logger info("ImpStream: PublishParentsSink done without error")
   }
 
   def shutdown = {
-    sharedKillSwitch.shutdown()
-  }
+      logger warn s"ImpSream requested to shutdown"
+    val allDone = Future.sequence(List(impControl._1, impControl._2))
 
-  lazy val elementAlreadyExistException = new ElementAlreadyExistException("parent is already ingested")
+    if(!allDone.isCompleted)
+      sharedKillSwitch.shutdown()
+
+    Try{Await.ready(allDone, 10.seconds)}.recover{ case t:Throwable =>
+      logger error s"Imp stream failed to shutdown after waiting for 10 seconds."
+    }
+      logger warn "ImpStream is down"
+  }
 
   private def checkParent(parentWithChildDate: (String, DateTime)): Future[(Boolean, (String, DateTime))] = {
     if ((parentWithChildDate._1.trim != "$root") && (parentsCache.getIfPresent(parentWithChildDate._1) eq null)) {
