@@ -17,12 +17,13 @@
 package cmwell.fts
 
 import cmwell.domain._
-import com.typesafe.scalalogging.LazyLogging
+import com.typesafe.scalalogging.{LazyLogging, Logger}
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
 import org.elasticsearch.common.unit.TimeValue
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 import org.scalatest._
+import org.slf4j.LoggerFactory
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -34,7 +35,7 @@ import scala.io.Source
  * Time: 6:15 PM
  */
 
-sealed trait FTSMixin extends BeforeAndAfterAll with LazyLogging { this: Suite =>
+sealed trait FTSMixin extends BeforeAndAfterAll { this: Suite =>
   def ftsService: FTSServiceOps
   def refreshAll(): Unit
   def getUUID(uuid: String, isCurrent: Boolean = true) = ftsService match {
@@ -46,6 +47,7 @@ sealed trait FTSMixin extends BeforeAndAfterAll with LazyLogging { this: Suite =
   }
   val isoDateFormatter = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
   implicit val executionContext =  scala.concurrent.ExecutionContext.global
+  implicit val logger = Logger(LoggerFactory.getLogger(getClass.getName))
 }
 
 trait FTSServiceESTest extends FTSMixin { this: Suite =>

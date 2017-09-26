@@ -39,7 +39,7 @@ import cmwell.zstore.ZStore
 import com.datastax.driver.core.ConsistencyLevel
 import com.google.common.cache.CacheBuilder
 import com.typesafe.config.Config
-import com.typesafe.scalalogging.LazyLogging
+import com.typesafe.scalalogging.{LazyLogging, Logger}
 import nl.grons.metrics.scala._
 import com.codahale.metrics.{Counter => DropwizardCounter, Histogram => DropwizardHistogram, Meter => DropwizardMeter, Timer => DropwizardTimer}
 import org.apache.kafka.clients.consumer.ConsumerConfig
@@ -63,7 +63,9 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
                 offsetsService: OffsetsService, bgActor:ActorRef)
                (implicit actorSystem: ActorSystem, executionContext: ExecutionContext,
                 materializer: ActorMaterializer
-               ) extends LazyLogging with DefaultInstrumented {
+               ) extends DefaultInstrumented {
+
+  implicit val logger = Logger("ImpStream")
 
   lazy val redlog = LoggerFactory.getLogger("bg_red_log")
   lazy val heartbitLogger = LoggerFactory.getLogger("heartbeat_log")
