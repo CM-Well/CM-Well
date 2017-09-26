@@ -20,6 +20,7 @@ import javax.inject._
 import cmwell.domain.{Everything, FileInfoton}
 import cmwell.ws.Settings
 import cmwell.zcache.L1Cache
+import cmwell.util.concurrent.retryUntil
 import com.typesafe.scalalogging.LazyLogging
 import logic.CRUDServiceFS
 import play.api.libs.json.{JsValue, Json}
@@ -44,12 +45,14 @@ class AuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
   private def getUserFromCas(username: String) = getFromCrudAndExtractJson(s"$usersFolder/$username")
   private def getRoleFromCas(rolename: String) = getFromCrudAndExtractJson(s"$rolesFolder/$rolename")
 
-  private def getFromCrudAndExtractJson(infotonPath: String) = crudServiceFS.getInfoton(infotonPath, None, None).map {
-    case Some(Everything(FileInfoton(_,_,_,_,_,Some(c),_))) =>
-      Some(Json.parse(new String(c.data.get, "UTF-8")))
-    case other =>
-      logger.warn(s"Trying to read $infotonPath but got from CAS $other")
-      None
+  private def getFromCrudAndExtractJson(infotonPath: String) = retryUntil[Option[JsValue]](_.isDefined, 3, 100.millis) {
+    crudServiceFS.getInfoton(infotonPath, None, None).map {
+      case Some(Everything(FileInfoton(_, _, _, _, _, Some(c), _))) =>
+        Some(Json.parse(new String(c.data.get, "UTF-8")))
+      case other =>
+        logger.warn(s"Trying to read $infotonPath but got from CAS $other")
+        None
+    }
   }
 
   private val usersCache = L1Cache.memoize(task = getUserFromCas)(
