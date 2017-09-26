@@ -21,6 +21,7 @@ import java.util.concurrent.TimeoutException
 import cmwell.fts._
 import cmwell.util.concurrent.SimpleScheduler
 import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.scalalogging.Logger
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
@@ -39,7 +40,7 @@ class FailingFTSServiceMockup(config: Config, esClasspathYaml: String, errorModu
   var errorCount = 0
 
   override def executeIndexRequests(indexRequests: Iterable[ESIndexRequest])
-                                   (implicit executionContext: ExecutionContext): Future[BulkIndexResult] = {
+                                   (implicit executionContext: ExecutionContext, logger:Logger = loger): Future[BulkIndexResult] = {
     errorModuloDividend += 1
     if(errorModuloDividend % errorModuloDivisor == 0)
       Future.successful(new RejectedBulkIndexResult("fake"))
@@ -58,7 +59,9 @@ class FailingFTSServiceMockup(config: Config, esClasspathYaml: String, errorModu
     * @param executionContext
     * @return
     */
-  override def executeBulkIndexRequests(indexRequests: Iterable[ESIndexRequest], numOfRetries: Int, waitBetweenRetries: Long)(implicit executionContext: ExecutionContext) = {
+  override def executeBulkIndexRequests(indexRequests: Iterable[ESIndexRequest], numOfRetries: Int,
+                                        waitBetweenRetries: Long)
+                                       (implicit executionContext: ExecutionContext, logger:Logger = loger) = {
 
     errorModuloDividend += 1
     logger error s"executeBulkIndexRequests: errorModuloDividend=$errorModuloDividend"

@@ -84,6 +84,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
   val scrollLength = config.getInt("ftsService.scrollLength")
   val dataCenter = config.getString("dataCenter.id")
   val waitForGreen = config.getBoolean("ftsService.waitForGreen")
+  val transportSniff = config.getBoolean("ftsService.sniff")
   override val defaultScrollTTL = config.getLong("ftsService.scrollTTL")
   override val defaultPartition = config.getString("ftsService.defaultPartitionNew")
 
@@ -104,7 +105,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
   /*****************/
 
   if(isTransportClient) {
-    val esSettings = ImmutableSettings.settingsBuilder().put("cluster.name", clusterName).build()
+    val esSettings = ImmutableSettings.settingsBuilder().put("cluster.name", clusterName).put("client.transport.sniff", transportSniff).build()
     val actualTransportAddress = transportAddress
     client = new TransportClient(esSettings).addTransportAddress(new InetSocketTransportAddress(actualTransportAddress, transportPort))
     loger.info(s"starting es transport client [/$actualTransportAddress:$transportPort]")
