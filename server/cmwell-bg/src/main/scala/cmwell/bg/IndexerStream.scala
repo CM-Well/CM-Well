@@ -56,7 +56,7 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
                     executionContext:ExecutionContext,
                     materializer: ActorMaterializer) extends DefaultInstrumented{
 
-  implicit val logger = Logger("IndexerStream")
+  implicit val logger = Logger[IndexerStream]
 
   lazy val redlog = LoggerFactory.getLogger("bg_red_log")
   lazy val heartbitLogger = LoggerFactory.getLogger("heartbeat_log")

@@ -65,7 +65,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
                 materializer: ActorMaterializer
                ) extends DefaultInstrumented {
 
-  implicit val logger = Logger("ImpStream")
+  implicit val logger = Logger[ImpStream]
 
   lazy val redlog = LoggerFactory.getLogger("bg_red_log")
   lazy val heartbitLogger = LoggerFactory.getLogger("heartbeat_log")

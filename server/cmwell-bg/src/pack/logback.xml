@@ -174,11 +174,11 @@
         <discardingThreshold>0</discardingThreshold>
     </appender>
 
-    <logger name="ImpStream" additivity="false">
+    <logger name="cmwell.bg.ImpStream" additivity="false">
         <appender-ref ref="ASYNC_IMP_FILE"/>
     </logger>
 
-    <logger name="IndexerStream" additivity="false">
+    <logger name="cmwell.bg.IndexerStream" additivity="false">
         <appender-ref ref="ASYNC_INDEXER_FILE"/>
     </logger>
 
