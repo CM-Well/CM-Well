@@ -791,6 +791,7 @@ object LDFormatParser extends LazyLogging {
       case "linkType" => md.copy(mdType = Some(LinkMetaData), linkType = Some(Try(value.asInstanceOf[FInt].value).getOrElse(md.linkType.getOrElse(1))))
       case "dataCenter" => md.copy(dataCenter = Some(value.toString))
       case "indexTime" => md.copy(indexTime = Try(value.asInstanceOf[FLong].value).toOption)
+      case "uuid" | "parent" | "path" => md // these have no affect. better ignore without polluting the logs
       case _ => logger.warn("attribute: " + predicate + ", is not treated in cmwell RDF imports."); md
     }
   }
