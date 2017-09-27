@@ -1,3 +1,0 @@
-#! /bin/sh
-[ $# -ge 2 -a -f "$2" ] && input="$2" || input=""
-pygmentize -l $1 -f terminal256 -O full,style=monokai $input | less -R

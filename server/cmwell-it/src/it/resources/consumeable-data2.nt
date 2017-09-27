@@ -1,7 +1,0 @@
-<http://example.net/Consumeable/MZ> <http://purl.org/vocab/relationship/colleagueOf> <http://example.net/Consumeable/IK> .
-<http://example.net/Consumeable/NH> <http://purl.org/vocab/relationship/childOf> <http://example.net/Consumeable/GH> .
-<http://example.net/Consumeable/RB> <http://purl.org/vocab/relationship/siblingOf> <http://example.net/Consumeable/TB> .
-<http://example.net/Consumeable/RK> <http://purl.org/vocab/relationship/collaboratesWith> <http://example.net/Consumeable/MO> .
-<http://example.net/Consumeable/TB> <http://purl.org/vocab/relationship/siblingOf> <http://example.net/Consumeable/RB> .
-<http://example.net/Consumeable/YB> <http://purl.org/vocab/relationship/parentOf> <http://example.net/Consumeable/TB> .
-<http://example.net/Consumeable/YB> <http://purl.org/vocab/relationship/friendOf> <http://example.net/Consumeable/MI> .

@@ -37,7 +37,7 @@ The process requires two different API calls:
 
 Parameter | Description&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Values&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Example
 :----------|:-------------|:--------|:---------
-session-ttl | The time, in milliseconds, until the iteration session expires. The iteration token is only valid for this length of time. The default value is 15 seconds; the maximal value is 60 seconds. | A positive integer up to 60. | session-ttl=20
+session-ttl | The time, in milliseconds, until the iteration session expires. The iteration token is only valid for this length of time. The default value is 15 seconds; the maximal value is 60 seconds. | A positive integer up to 60000. | session-ttl=20000 (20 seconds)
 format | The output format of the streamed chunks. The default value is **ntriples**. | See [Query Parameters](API.QueryParameters.md). | format=ttl
 
 ## Code Example ##
@@ -91,4 +91,4 @@ format | The output format of the streamed chunks. The default value is **ntripl
 * An alternative is to use the **consumer** API, which allows you to save the iteration state and restart from the same point after a failure. See [Create Consumer](API.Stream.CreateConsumer.md) to learn more.
 
 ## Related Topics ##
-[Create Iterator](API.Stream.CreateIterator.md)
+[Create Consumer](API.Stream.CreateConsumer.md)

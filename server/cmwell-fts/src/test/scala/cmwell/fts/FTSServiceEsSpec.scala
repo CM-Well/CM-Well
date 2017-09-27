@@ -34,10 +34,24 @@ import scala.io.Source
  * Time: 6:15 PM
  */
 
-trait FTSServiceESTest extends BeforeAndAfterAll with LazyLogging{ this:Suite =>
+sealed trait FTSMixin extends BeforeAndAfterAll with LazyLogging { this: Suite =>
+  def ftsService: FTSServiceOps
+  def refreshAll(): Unit
+  def getUUID(uuid: String, isCurrent: Boolean = true) = ftsService match {
+    case es: FTSServiceNew => es.client.prepareGet("cm_well_p0_0","infoclone", uuid).execute().actionGet()
+    case es: FTSServiceES => {
+      val index = if(isCurrent) "cmwell_current" else "cmwell_history"
+      es.client.prepareGet(index, "infoclone", uuid).execute().actionGet()
+    }
+  }
+  val isoDateFormatter = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
+  implicit val executionContext =  scala.concurrent.ExecutionContext.global
+}
+
+trait FTSServiceESTest extends FTSMixin { this: Suite =>
   var ftsServiceES:FTSServiceES = _
 
-  implicit val executionContext =  scala.concurrent.ExecutionContext.global
+  override def ftsService: FTSServiceOps = ftsServiceES
 
   override protected def beforeAll() {
     ftsServiceES = FTSServiceES.getOne("FTSServiceESTest.yml")
@@ -78,13 +92,55 @@ trait FTSServiceESTest extends BeforeAndAfterAll with LazyLogging{ this:Suite =>
     logger debug s"FTSSpec is over"
   }
 
-  def refreshAll() = ftsServiceES.client.admin().indices().prepareRefresh("*").execute().actionGet()
-
-  val isoDateFormatter = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
+  override def refreshAll() = ftsServiceES.client.admin().indices().prepareRefresh("*").execute().actionGet()
 }
 
+trait FTSServiceNewTest extends FTSMixin { this: Suite =>
+  var ftsServiceNew: FTSServiceNew = _
 
-class FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNode*/ with FTSServiceESTest{
+  override def ftsService: FTSServiceOps = ftsServiceNew
+
+  override protected def beforeAll() {
+    ftsServiceNew = FTSServiceNew("FTSServiceESTest.yml")
+
+    // wait for green status
+    ftsServiceNew.client.admin().cluster()
+      .prepareHealth()
+      .setWaitForGreenStatus()
+      .setTimeout(TimeValue.timeValueMinutes(5))
+      .execute()
+      .actionGet()
+
+//
+//    // delete all existing indices
+//    ftsServiceNew.client.admin().indices().delete(new DeleteIndexRequest("_all"))
+
+    // load indices template
+    val indicesTemplate = Source.fromURL(this.getClass.getResource("/indices_template_new.json")).getLines.reduceLeft(_ + _)
+    ftsServiceNew.client.admin().indices().preparePutTemplate("indices_template_new").setSource(indicesTemplate).execute().actionGet()
+
+    // override with test-only settings
+    val testOnlyTemplate = Source.fromURL(this.getClass.getResource("/test_indices_template_override.json")).getLines.reduceLeft(_ + _)
+    ftsServiceNew.client.admin().indices().preparePutTemplate("test_indices_template").setSource(testOnlyTemplate).execute().actionGet()
+
+    // create index
+    Await.ready(ftsServiceNew.createIndex("cm_well_p0_0"),5.minutes)
+
+    super.beforeAll()
+  }
+
+  override protected def afterAll() {
+    ftsServiceNew.close()
+    super.afterAll()
+    Thread.sleep(10000)
+    logger debug s"FTSSpec is over"
+  }
+
+  def refreshAll() = ftsServiceNew.client.admin().indices().prepareRefresh("*").execute().actionGet()
+
+}
+
+trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNode with FTSServiceESTest */ { this: FTSMixin =>
 
   System.setProperty("dataCenter.id" , "dc_test")
   val timeout =  FiniteDuration(10, SECONDS)
@@ -92,94 +148,95 @@ class FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
   val m : Map[String, Set[FieldValue]] = Map("name" -> Set(FString("yehuda"), FString("moshe")))
   val infotonToIndex = ObjectInfoton("/fts-test/objinfo1/a/b/c","dc_test", Some(System.currentTimeMillis()), m)
   "indexing new infoton" should "store it in current index" in {
-    Await.result(ftsServiceES.index(infotonToIndex), timeout)
+    Await.result(ftsService.index(infotonToIndex, None, ftsService.defaultPartition), timeout)
     refreshAll()
-    val result = ftsServiceES.client.prepareGet("cmwell_current", "infoclone", infotonToIndex.uuid).execute().actionGet()
+    val result = getUUID(infotonToIndex.uuid)
     // result: ftsServiceES.search(Some(PathFilter("/fts-test/objinfo1/a/b", false)),FieldFilter(Must, Contains, "name", "moshe") :: Nil, None, DefaultPaginationParams,false, "cmwell")
-    result.isExists() should equal (true)
+    result.isExists should equal (true)
   }
 
   "indexing existing infoton" should "store it in current index" in {
     val lastModified = new DateTime()
     val m : Map[String, Set[FieldValue]] = Map("name" -> Set(FString("yehuda"), FString("moshe")), "family" -> Set(FString("smith")))
     val updatedInfotonToIndex = ObjectInfoton("/fts-test/objinfo1/a/b/c", "dc_test", Some(System.currentTimeMillis()),lastModified, m)
-    Await.result(ftsServiceES.index(updatedInfotonToIndex,Some(infotonToIndex)), timeout)
+    Await.result(ftsService.index(updatedInfotonToIndex,Some(infotonToIndex)), timeout)
     refreshAll()
-    val result = Await.result(ftsServiceES.search(None, Some(FieldFilter(Must, Equals, "system.path","/fts-test/objinfo1/a/b/c")), None), timeout)
+    val result = Await.result(ftsService.search(None, Some(FieldFilter(Must, Equals, "system.path","/fts-test/objinfo1/a/b/c")), None, DefaultPaginationParams), timeout)
     result.infotons.size should equal (1)
     result.infotons(0).lastModified should equal (lastModified)
   }
 
   it should "store its previous version in the history index" in {
-    val result = Await.result(ftsServiceES.search(None, Some(FieldFilter(Must, Equals, "system.path","/fts-test/objinfo1/a/b/c")), None,DefaultPaginationParams, SortParam.empty, true), timeout)
+    val result = Await.result(ftsService.search(None, Some(FieldFilter(Must, Equals, "system.path","/fts-test/objinfo1/a/b/c")), None,DefaultPaginationParams, SortParam.empty, true), timeout)
     result.infotons.size should equal (2)
-    val res = ftsServiceES.client.prepareGet("cmwell_history", "infoclone", infotonToIndex.uuid).execute().actionGet()
-    res.isExists() should equal (true)
-
+    val res = getUUID(infotonToIndex.uuid,false)
+    withClue(s"${res.getIndex}, ${res.getSource}, ${res.getType}, ${res.getVersion}, ${res.isSourceEmpty}") {
+      res.isExists should equal(true)
+    }
   }
 
   val bulkInfotons = Vector.empty ++ (for(i <- 1 to 500) yield ObjectInfoton("/fts-test/bulk/info" + i, "dc_test", Some(System.currentTimeMillis()), Map("name" + i -> Set[FieldValue](FString("value" + i), FString("another value" + i)))))
 
   "bulk indexing infotons" should "store them in current index" in {
 
-    Await.result(ftsServiceES.bulkIndex(bulkInfotons), timeout)
+    Await.result(ftsService.bulkIndex(bulkInfotons,Nil,ftsService.defaultPartition), timeout)
     refreshAll()
-    val result = Await.result(ftsServiceES.search(Some(PathFilter("/fts-test/bulk", true))), timeout)
+    val result = Await.result(ftsService.search(Some(PathFilter("/fts-test/bulk", true)),None,None,DefaultPaginationParams), timeout)
     result.total should equal (500)
   }
 
   "bulk indexing existing infotons" should "store their previous version in history index and current version in current index" in {
     val updatedBulkInfotons = Vector.empty ++ (for(i <- 1 to 500) yield ObjectInfoton("/fts-test/bulk/info" + i,"dc_test", Some(System.currentTimeMillis()), Map("name" + i -> Set[FieldValue](FString("moshe" + i), FString("shirat" + i)))))
-    Await.result(ftsServiceES.bulkIndex(updatedBulkInfotons, bulkInfotons), timeout)
+    Await.result(ftsService.bulkIndex(updatedBulkInfotons, bulkInfotons), timeout)
     refreshAll()
 
-    Await.result(ftsServiceES.search(Some(PathFilter("/fts-test/bulk", true))), timeout).total should equal (500)
-    Await.result(ftsServiceES.search(pathFilter = Some(PathFilter("/fts-test/bulk", true)), withHistory = true), timeout).total should equal (1000)
+    Await.result(ftsService.search(Some(PathFilter("/fts-test/bulk", true)),None,None,DefaultPaginationParams), timeout).total should equal (500)
+    Await.result(ftsService.search(pathFilter = Some(PathFilter("/fts-test/bulk", true)),None,None,DefaultPaginationParams, withHistory = true), timeout).total should equal (1000)
   }
 
   "deleting infoton" should "remove it from current index" in {
     val infotonToDelete = ObjectInfoton("/fts-test/infoToDel","dc_test", Some(System.currentTimeMillis()), Map("country" -> Set[FieldValue](FString("israel"), FString("spain"))))
-    Await.result(ftsServiceES.index(infotonToDelete), timeout)
+    Await.result(ftsService.index(infotonToDelete,None), timeout)
     refreshAll()
-    val resultBeforeDelete = Await.result(ftsServiceES.search(None, Some(FieldFilter(Must, Equals, "system.path","/fts-test/infoToDel")), None), timeout)
+    val resultBeforeDelete = Await.result(ftsService.search(None, Some(FieldFilter(Must, Equals, "system.path","/fts-test/infoToDel")), None, DefaultPaginationParams), timeout)
     resultBeforeDelete.total should equal (1)
     val deletedInfoton = DeletedInfoton("/fts-test/infoToDel","dc_test",Some(System.currentTimeMillis()))
-    Await.result(ftsServiceES.delete(deletedInfoton, infotonToDelete), timeout)
+    Await.result(ftsService.delete(deletedInfoton, infotonToDelete), timeout)
     refreshAll()
-    val resultAfterDelete = Await.result(ftsServiceES.search(None, Some(FieldFilter(Must, Equals, "system.path","/fts-test/infoToDel")), None), timeout)
+    val resultAfterDelete = Await.result(ftsService.search(None, Some(FieldFilter(Must, Equals, "system.path","/fts-test/infoToDel")), None, DefaultPaginationParams), timeout)
     resultAfterDelete.total should equal (0)
 
   }
 
   it should "move it to history index and add tombstone" in {
-    val resultWithHistory = Await.result(ftsServiceES.search(None, Some(FieldFilter(Must, Equals, "system.path","/fts-test/infoToDel")), None,DefaultPaginationParams, SortParam.empty, true), timeout)
+    val resultWithHistory = Await.result(ftsService.search(None, Some(FieldFilter(Must, Equals, "system.path","/fts-test/infoToDel")), None,DefaultPaginationParams, SortParam.empty, true), timeout)
     resultWithHistory.total should  equal (2)
     resultWithHistory.infotons.exists(_.isInstanceOf[DeletedInfoton])  should equal (true)
   }
 
   "purging infoton" should "permanently delete infoton with given UUID from history index" in {
     val infotonToPurge = ObjectInfoton("/fts-test/infoToPurge","dc_test",Some(System.currentTimeMillis()))
-    Await.result(ftsServiceES.index(infotonToPurge), timeout)
+    Await.result(ftsService.index(infotonToPurge, None), timeout)
     val updatedInfotonToPurge = ObjectInfoton("/fts-test/infoToPurge","dc_test",Some(System.currentTimeMillis()))
-    Await.result(ftsServiceES.index(updatedInfotonToPurge, Some(infotonToPurge)), timeout)
+    Await.result(ftsService.index(updatedInfotonToPurge, Some(infotonToPurge)), timeout)
     refreshAll()
-    val result = Await.result(ftsServiceES.search(None, Some(FieldFilter(Must, Equals, "system.uuid",infotonToPurge.uuid)), None, DefaultPaginationParams, SortParam.empty, true), timeout)
+    val result = Await.result(ftsService.search(None, Some(FieldFilter(Must, Equals, "system.uuid",infotonToPurge.uuid)), None, DefaultPaginationParams, SortParam.empty, true), timeout)
     result.length should equal(1)
-    Await.result(ftsServiceES.purge(infotonToPurge.uuid), timeout)
+    Await.result(ftsService.purge(infotonToPurge.uuid), timeout)
     refreshAll()
-    Await.result(ftsServiceES.search(None, Some(FieldFilter(Must, Equals, "system.uuid",infotonToPurge.uuid)), None, DefaultPaginationParams, SortParam.empty, true), timeout).length should equal(0)
+    Await.result(ftsService.search(None, Some(FieldFilter(Must, Equals, "system.uuid",infotonToPurge.uuid)), None, DefaultPaginationParams, SortParam.empty, true), timeout).length should equal(0)
   }
 
   "purgeAll infoton" should "permanently delete all infoton's versions with given path from all indices" in {
     val infotonToPurgeAll = ObjectInfoton("/fts-test/infoToPurgeAll","dc_test")
-    Await.result(ftsServiceES.index(infotonToPurgeAll), timeout)
+    Await.result(ftsService.index(infotonToPurgeAll, None), timeout)
     val updatedInfotonToPurgeAll = ObjectInfoton("/fts-test/infoToPurgeAll","dc_test")
-    Await.result(ftsServiceES.index(updatedInfotonToPurgeAll, Some(infotonToPurgeAll)), timeout)
+    Await.result(ftsService.index(updatedInfotonToPurgeAll, Some(infotonToPurgeAll)), timeout)
     refreshAll()
-    Await.result(ftsServiceES.search(None, Some(FieldFilter(Must, Equals, "system.path", infotonToPurgeAll.path)), None, DefaultPaginationParams, SortParam.empty, true), timeout).length should equal (2)
-    Await.result(ftsServiceES.purgeAll(infotonToPurgeAll.path), timeout)
+    Await.result(ftsService.search(None, Some(FieldFilter(Must, Equals, "system.path", infotonToPurgeAll.path)), None, DefaultPaginationParams, SortParam.empty, true), timeout).length should equal (2)
+    Await.result(ftsService.purgeAll(infotonToPurgeAll.path,true,ftsService.defaultPartition), timeout)
     refreshAll()
-    val f = ftsServiceES.search(None, Some(FieldFilter(Must, Equals, "system.path", infotonToPurgeAll.path)), None, DefaultPaginationParams, SortParam.empty, true)
+    val f = ftsService.search(None, Some(FieldFilter(Must, Equals, "system.path", infotonToPurgeAll.path)), None, DefaultPaginationParams, SortParam.empty, true)
     f.onSuccess{
       case FTSSearchResponse(total, offset, length, infotons, None) =>
         logger.debug(s"before failing: total: $total, offset: $offset, length: $length and infotons:\n${infotons.map(_.path).mkString("\t","\n\t","\n")} ")
@@ -191,11 +248,11 @@ class FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
     val infotonToList1 = ObjectInfoton("/fts-test/infotons/infotonToList1","dc_test",Some(System.currentTimeMillis()))
     val infotonToList2 = ObjectInfoton("/fts-test/infotons/infotonToList2","dc_test", Some(System.currentTimeMillis()), Map("city" -> Set[FieldValue](FString("Or-Yehuda"), FString("Modiin"))))
     val infotonToList3 = LinkInfoton(path= "/fts-test/infotons/infotonToList3" ,dc = "dc_test",linkTo = "/fts-test/infotons/infotonToList2", linkType = LinkType.Temporary).copy(indexTime = Some(System.currentTimeMillis()))
-    Await.result(ftsServiceES.index(infotonToList1), timeout)
-    Await.result(ftsServiceES.index(infotonToList2), timeout)
-    Await.result(ftsServiceES.index(infotonToList3), timeout)
+    Await.result(ftsService.index(infotonToList1,None), timeout)
+    Await.result(ftsService.index(infotonToList2,None), timeout)
+    Await.result(ftsService.index(infotonToList3,None), timeout)
     refreshAll()
-    Await.result(ftsServiceES.listChildren("/fts-test/infotons"), timeout).infotons.length should equal (3)
+    Await.result(ftsService.listChildren("/fts-test/infotons",0,20,false,ftsService.defaultPartition), timeout).infotons.length should equal (3)
   }
 
 
@@ -217,15 +274,15 @@ class FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
     val linkInfotonToSearch = LinkInfoton("/fts-test/search/linkInfotonToSearch","dc_test", isoDateFormatter.parseDateTime("2013-01-05T10:04:00Z"), Map("since" -> Set[FieldValue](FString("2009"))), "/fts-test/search/objectInfotonToSearch/fileInfotonToSearch", LinkType.Temporary).copy(indexTime = Some(System.currentTimeMillis()))
 
     // index them
-    Await.result(ftsServiceES.index(objectInfotonToSearch), timeout)
-    Await.result(ftsServiceES.index(objectInfotonToSearch2), timeout)
-    Await.result(ftsServiceES.index(updatedObjectInfotonToSearch, Some(objectInfotonToSearch)), timeout)
-    Await.result(ftsServiceES.index(fileInfotonToSearch), timeout)
-    Await.result(ftsServiceES.index(linkInfotonToSearch), timeout)
+    Await.result(ftsService.index(objectInfotonToSearch,None), timeout)
+    Await.result(ftsService.index(objectInfotonToSearch2,None), timeout)
+    Await.result(ftsService.index(updatedObjectInfotonToSearch, Some(objectInfotonToSearch)), timeout)
+    Await.result(ftsService.index(fileInfotonToSearch,None), timeout)
+    Await.result(ftsService.index(linkInfotonToSearch,None), timeout)
 
     refreshAll()
 
-    val response = Await.result(ftsServiceES.search(Some(PathFilter("/fts-test/search", true))), timeout)
+    val response = Await.result(ftsService.search(Some(PathFilter("/fts-test/search", true)),None,None,DefaultPaginationParams), timeout)
     response.infotons.length should equal (4)
     response.infotons.head.path should equal ("/fts-test/search/linkInfotonToSearch")
     response.infotons.last.path should equal ("/fts-test/search/objectInfotonToSearch2")
@@ -234,43 +291,43 @@ class FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
   }
 
   it should "find infotons using path filter with descendants sorted by infoton's type" in {
-    val response = Await.result(ftsServiceES.search(pathFilter = Some(PathFilter("/fts-test/search", true)), sortParams = FieldSortParams(List("type" -> Asc))), timeout)
+    val response = Await.result(ftsService.search(pathFilter = Some(PathFilter("/fts-test/search", true)), fieldsFilter = None, datesFilter = None, paginationParams = DefaultPaginationParams, sortParams = FieldSortParams(List("type" -> Asc))), timeout)
     response.infotons.head.path should equal ("/fts-test/search/objectInfotonToSearch/fileInfotonToSearch")
     response.infotons.last.path should equal ("/fts-test/search/objectInfotonToSearch")
   }
 
   it should "find infotons using PathFilter without descendants" in {
-    Await.result(ftsServiceES.search(Some(PathFilter("/fts-test/search", false))), timeout).infotons.length should equal(3)
+    Await.result(ftsService.search(Some(PathFilter("/fts-test/search", false)),None,None,DefaultPaginationParams), timeout).infotons.length should equal(3)
   }
 
   it should "find infotons using FieldFilter" in {
-    Await.result(ftsServiceES.search(fieldsFilter = Some(FieldFilter(Must, Contains, "car", "mazda"))), timeout).infotons.length should equal (1)
-    Await.result(ftsServiceES.search(Some(PathFilter("/fts-test/search", true)) ,Some(FieldFilter(MustNot, Contains, "copyright", "team"))), timeout).infotons.length should equal (1)
+    Await.result(ftsService.search(None,Some(FieldFilter(Must, Contains, "car", "mazda")),None,DefaultPaginationParams), timeout).infotons.length should equal (1)
+    Await.result(ftsService.search(Some(PathFilter("/fts-test/search", true)) ,Some(FieldFilter(MustNot, Contains, "copyright", "team")),None,DefaultPaginationParams), timeout).infotons.length should equal (1)
     // in case of only one "should" supplied it acts as a "must"
-    Await.result(ftsServiceES.search(Some(PathFilter("/fts-test/search", true)) ,Some(FieldFilter(Should, Contains, "copyright", "well"))), timeout).infotons.length should equal (3)
-    Await.result(ftsServiceES.search(Some(PathFilter("/fts-test/search", true)), Some(MultiFieldFilter(Must, Seq(FieldFilter(Must, Contains, "copyright", "well"), FieldFilter(Should, Equals, "since", "2009"))))) , timeout).infotons.length should equal (3)
+    Await.result(ftsService.search(Some(PathFilter("/fts-test/search", true)) ,Some(FieldFilter(Should, Contains, "copyright", "well")),None,DefaultPaginationParams), timeout).infotons.length should equal (3)
+    Await.result(ftsService.search(Some(PathFilter("/fts-test/search", true)), Some(MultiFieldFilter(Must, Seq(FieldFilter(Must, Contains, "copyright", "well"), FieldFilter(Should, Equals, "since", "2009")))),None,DefaultPaginationParams) , timeout).infotons.length should equal (3)
   }
 
   it should "find infotons using FieldFilters using 'Should Exist'" in {
-    Await.result(ftsServiceES.search(fieldsFilter = Some(MultiFieldFilter(Must, Seq(SingleFieldFilter(Should,Contains, "car", None), SingleFieldFilter(Should,Contains, "ver", None))))), timeout).infotons.length should equal (2)
+    Await.result(ftsService.search(None,Some(MultiFieldFilter(Must, Seq(SingleFieldFilter(Should,Contains, "car", None), SingleFieldFilter(Should,Contains, "ver", None)))),None,DefaultPaginationParams), timeout).infotons.length should equal (2)
   }
 
   it should "find infotons using DateFilter " in {
-    Await.result(ftsServiceES.search(datesFilter = Some(DatesFilter(Some(isoDateFormatter.parseDateTime("2013-01-01T10:00:00Z")),
-      Some(isoDateFormatter.parseDateTime("2013-01-03T10:00:00Z"))))), timeout).infotons.length should equal (3)
+    Await.result(ftsService.search(None,None, Some(DatesFilter(Some(isoDateFormatter.parseDateTime("2013-01-01T10:00:00Z")),
+      Some(isoDateFormatter.parseDateTime("2013-01-03T10:00:00Z")))),DefaultPaginationParams), timeout).infotons.length should equal (3)
   }
 
   it should "find infotons using DateFilter limited with pagination params" in {
-   Await.result(ftsServiceES.search(datesFilter = Some(DatesFilter(Some(isoDateFormatter.parseDateTime("2013-01-01T10:00:00Z")),
-      Some(isoDateFormatter.parseDateTime("2013-01-06T10:00:00Z"))))), timeout).infotons.length should equal (4)
-   Await.result(ftsServiceES.search(datesFilter = Some(DatesFilter(Some(isoDateFormatter.parseDateTime("2013-01-01T10:00:00Z")),
+   Await.result(ftsService.search(None,None,datesFilter = Some(DatesFilter(Some(isoDateFormatter.parseDateTime("2013-01-01T10:00:00Z")),
+      Some(isoDateFormatter.parseDateTime("2013-01-06T10:00:00Z")))),DefaultPaginationParams), timeout).infotons.length should equal (4)
+   Await.result(ftsService.search(None,None,datesFilter = Some(DatesFilter(Some(isoDateFormatter.parseDateTime("2013-01-01T10:00:00Z")),
       Some(isoDateFormatter.parseDateTime("2013-01-06T10:00:00Z")))), paginationParams = PaginationParams(0, 2)), timeout).infotons.length should equal (2)
-   Await.result(ftsServiceES.search(datesFilter = Some(DatesFilter(Some(isoDateFormatter.parseDateTime("2013-01-01T10:00:00Z")),
+   Await.result(ftsService.search(None,None,datesFilter = Some(DatesFilter(Some(isoDateFormatter.parseDateTime("2013-01-01T10:00:00Z")),
       Some(isoDateFormatter.parseDateTime("2013-01-06T10:00:00Z")))), paginationParams = PaginationParams(2, 1)), timeout).infotons.length should equal (1)
   }
 
   it should "include history versions when turning on the 'withHistory' flag" in {
-   Await.result(ftsServiceES.search(fieldsFilter = Some(FieldFilter(Must, Contains, "car", "mazda")), withHistory = true), timeout).infotons.length should equal (2)
+   Await.result(ftsService.search(None,fieldsFilter = Some(FieldFilter(Must, Contains, "car", "mazda")),None,DefaultPaginationParams, withHistory = true), timeout).infotons.length should equal (2)
   }
 
   it should "use exact value when sorting on string field" in {
@@ -281,12 +338,12 @@ class FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
     val i2 = ObjectInfoton(path = "/fts-test2/sort-by/2", indexTime = None, dc = "dc_test",
       fields = Map("car" -> Set[FieldValue](FString("Subaru Impreza"))))
 
-    Await.result(ftsServiceES.index(i1), timeout)
-    Await.result(ftsServiceES.index(i2), timeout)
+    Await.result(ftsService.index(i1,None), timeout)
+    Await.result(ftsService.index(i2,None), timeout)
     refreshAll()
 
-    val response = Await.result(ftsServiceES.search(pathFilter = Some(PathFilter("/fts-test2/sort-by", true)),
-      fieldsFilter = Some(SingleFieldFilter(Must, Equals, "car", None)),
+    val response = Await.result(ftsService.search(pathFilter = Some(PathFilter("/fts-test2/sort-by", true)),
+      fieldsFilter = Some(SingleFieldFilter(Must, Equals, "car", None)),None,DefaultPaginationParams,
       sortParams = FieldSortParams(List(("car" -> Desc))), debugInfo = true), timeout)
 
     withClue(response) {
@@ -306,16 +363,16 @@ class FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
       )
     }
 //    val infotons = Vector.empty ++ (for(i <- 1 to 500) yield (ObjectInfoton("/fts-test/scroll/info" + i,"dc_test", None, Map("name" + i -> Set[FieldValue](FString("value" + i), FString("another value" + i)))), None))
-   Await.result(ftsServiceES.bulkIndex(infotons), timeout)
+   Await.result(ftsService.bulkIndex(infotons,Nil), timeout)
     refreshAll()
-    val startScrollResult =Await.result(ftsServiceES.startScroll(pathFilter=Some(PathFilter("/fts-test/scroll", false)), paginationParams = PaginationParams(0, 60)), timeout)
+    val startScrollResult =Await.result(ftsService.startScroll(pathFilter=Some(PathFilter("/fts-test/scroll", false)),None,None, paginationParams = PaginationParams(0, 60)), timeout)
     startScrollResult.total should equal (500)
 
     var count = 0
-    var scrollResult =Await.result(ftsServiceES.scroll(startScrollResult.scrollId), timeout)
+    var scrollResult =Await.result(ftsService.scroll(startScrollResult.scrollId), timeout)
     while(scrollResult.infotons.nonEmpty) {
       count += scrollResult.infotons.length
-      scrollResult =Await.result(ftsServiceES.scroll(scrollResult.scrollId), timeout)
+      scrollResult =Await.result(ftsService.scroll(scrollResult.scrollId), timeout)
     }
 
     count should equal (500)
@@ -323,3 +380,7 @@ class FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
   }
 
 }
+
+class FTSoldTests extends FTSServiceEsSpec with FTSServiceESTest with FTSMixin
+//TODO: uncomment, and make fts tests to run on new FTS as well
+//class FTSnewTests extends FTSServiceEsSpec with FTSServiceNewTest with FTSMixin

@@ -1,8 +1,0 @@
-cluster:
-   name: fts_test
-node:
-   local: true
-   data: true
-path:
-   logs: ./target/ftsservice-client-node/log
-   data: ./target/ftsservice-client-node/data

@@ -1,5 +1,0 @@
-_:A2d52417aX3aX140dd78b67dX3aXX2dX7fff <http://www.w3.org/2006/vcard/ns#Given> "I" .
-_:A2d52417aX3aX140dd78b67dX3aXX2dX7fff <http://www.w3.org/2006/vcard/ns#Family> "K" .
-<http://clearforest.com/ce/IK> <http://www.w3.org/2006/vcard/ns#FN> "I K" .
-<http://clearforest.com/ce/IK> <http://www.w3.org/2006/vcard/ns#NOTE> "I Hate SBT!"@en .
-<http://clearforest.com/ce/IK> <http://www.w3.org/2006/vcard/ns#N> _:A2d52417aX3aX140dd78b67dX3aXX2dX7fff .

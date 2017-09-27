@@ -1,9 +1,0 @@
-<http://example.org/comics/characters/superman> <http://purl.org/vocab/relationship/enemyOf> <http://example.org/comics/characters/lex-luthor> <http://example.org/graphs/superman> .
-<http://example.org/comics/characters/superman> <http://purl.org/vocab/relationship/enemyOf> <http://example.org/comics/characters/general-zod> <http://example.org/graphs/superman> .
-<http://example.org/comics/characters/superman> <http://www.w3.org/2002/07/owl#sameAs> <http://example.org/comics/characters/clark-kent> .
-<http://example.org/comics/characters/clark-kent> <http://purl.org/vocab/relationship/spouseOf> <http://example.org/comics/characters/luis-lane> <http://example.org/graphs/superman> .
-<http://example.org/comics/characters/clark-kent> <http://purl.org/vocab/relationship/worksWith> <http://example.org/comics/characters/luis-lane> <http://example.org/graphs/superman> .
-<http://example.org/comics/characters/clark-kent> <http://purl.org/vocab/relationship/childOf> <http://example.org/comics/characters/martha-kent> <http://example.org/graphs/superman> .
-<http://example.org/comics/characters/clark-kent> <http://purl.org/vocab/relationship/childOf> <http://example.org/comics/characters/john-kent> <http://example.org/graphs/superman> .
-<http://example.org/comics/characters/john-kent> <http://purl.org/vocab/relationship/spouseOf> <http://example.org/comics/characters/martha-kent> <http://example.org/graphs/superman> .
-<http://example.org/comics/characters/martha-kent> <http://purl.org/vocab/relationship/spouseOf> <http://example.org/comics/characters/john-kent> <http://example.org/graphs/superman> .

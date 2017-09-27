@@ -1,8 +1,0 @@
-@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-@prefix vcard:   <http://www.w3.org/2006/vcard/ns#> .
-
-<http://clearforest.com/ce/MZ>
-      vcard:FN "M Z" ;
-      vcard:N [ vcard:Family "Z" ;
-                vcard:Given "M"
-              ] .

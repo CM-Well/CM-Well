@@ -1,2 +1,0 @@
-name := "plugins-util"
-

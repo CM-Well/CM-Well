@@ -1,3 +1,0 @@
-<http://example.org/comics/characters/spiderman> <http://purl.org/vocab/relationship/enemyOf> <http://example.org/comics/characters/green-goblin> <http://example.org/graphs/spiderman> .
-<http://example.org/comics/characters/spiderman> <http://purl.org/vocab/relationship/enemyOf> <http://example.org/comics/characters/dr-octopus> <http://example.org/graphs/spiderman> .
-<http://example.org/comics/characters/spiderman> <http://purl.org/vocab/relationship/enemyOf> <http://example.org/comics/characters/venom> <http://example.org/graphs/spiderman> .

@@ -30,6 +30,7 @@ import cmwell.dc.{LazyLogging, Settings}
 import cmwell.dc.Settings._
 import cmwell.dc.stream.MessagesTypesAndExceptions._
 import cmwell.dc.stream.akkautils.DebugStage
+import com.typesafe.config.ConfigFactory
 
 import scala.collection.parallel.immutable
 import scala.util.{Failure, Success, Try}
@@ -153,7 +154,8 @@ object TsvRetriever extends LazyLogging {
     val startTime = System.currentTimeMillis
     val hostPort = dcInfo.location.split(":")
     val (host, port) = hostPort.head -> hostPort.tail.headOption.getOrElse("80").toInt
-    val tsvConnPool = Http().newHostConnectionPool[TsvRetrieveState](host, port, ConnectionPoolSettings("akka.http.host-connection-pool.max-connections=1"))
+    val tsvPoolConfig = ConfigFactory.parseString("akka.http.host-connection-pool.max-connections=1").withFallback(config)
+    val tsvConnPool = Http().newHostConnectionPool[TsvRetrieveState](host, port, ConnectionPoolSettings(tsvPoolConfig))
     Flow[(Future[TsvRetrieveInput], TsvRetrieveState)]
       .mapAsync(1) { case (input, state) => input.map(_ -> state) }
       .statefulMapConcat { () =>
