@@ -96,6 +96,8 @@ require(["react", "react-dom"], function() {
                     requirejs.config({ config: { app: { components: components } } });
 
                     require(['jsx!./app']);
+                    
+                    console.info('We know ApplicationCache is going to be deprecated. We are waiting for https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers to be stable.');
                 }, 500);
             });
         });
