@@ -22,7 +22,7 @@ import cmwell.domain._
 import cmwell.common.file.MimeTypeIdentifier.identify
 import cmwell.ws.Settings
 import org.joda.time.{DateTime, DateTimeZone}
-import org.joda.time.format.ISODateTimeFormat
+import wsutil.{dtf,zeroTime}
 
 import scala.util.Try
 
@@ -36,8 +36,6 @@ import scala.util.Try
 package object util {
 
   val uriSeparator: Set[Char] = Set('#','/',';') //TODO: does these possibilities cover every use case?
-  val zeroTime = new DateTime(0L)
-  lazy val dtf = ISODateTimeFormat.dateTime()
 
   def dt(date: String) = dtf.parseDateTime(date)
 
