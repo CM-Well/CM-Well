@@ -9,9 +9,9 @@ class Type extends React.Component {
 
     render() {
         AppUtils.debug('Type.render')
-        let href = this.props.uri ? `${location.pathname}?op=search&recursive&qp=type.rdf::${this.props.uri}` : location.pathname
+        let href = this.props.uri ? `${location.pathname}?op=search&recursive&qp=type.rdf::${this.props.uri.replace('#','%23')}` : location.pathname
         let count = this.props.count ? ` (${this.props.count.toLocaleString()})` : ''
-        let label = (this.props.label || AppUtils.lastPartOfUrl(this.props.uri)) + count
+        let label = (this.props.label || AppUtils.lastPartOfUriPath(this.props.uri)) + count
         let isSelected = location.pathname + location.search === href
         return <span className="type" title={this.props.uri}>{ isSelected ? label : <Link to={href}>{label}</Link> }</span>
     }
