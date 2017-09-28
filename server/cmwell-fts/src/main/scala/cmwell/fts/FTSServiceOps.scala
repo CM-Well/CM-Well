@@ -19,9 +19,11 @@ package cmwell.fts
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import cmwell.domain.{AggregationFilter, AggregationsResponse, Infoton, InfotonSerializer}
+import com.typesafe.scalalogging.Logger
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.action.bulk.BulkResponse
 import org.elasticsearch.action.get.GetResponse
+import org.slf4j.LoggerFactory
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.Duration
@@ -44,6 +46,7 @@ object EsSourceExtractor {
 }
 
 trait FTSServiceOps {
+  val loger = Logger(LoggerFactory.getLogger(getClass.getName))
   // TODO: make sysQuad configurable & take from configurations
   val sysQuad: Option[String] = Some(InfotonSerializer.sysQuad)
   val defaultPartition: String
@@ -60,11 +63,11 @@ trait FTSServiceOps {
                    (implicit executionContext:ExecutionContext) : Future[(T,Long)]
 
   def executeBulkActionRequests(actionRequests:Iterable[ActionRequest[_ <: ActionRequest[_ <: AnyRef]]])
-                               (implicit executionContext:ExecutionContext): Future[BulkResponse]
+                               (implicit executionContext:ExecutionContext, logger:Logger = loger): Future[BulkResponse]
 
   def executeBulkIndexRequests(indexRequests:Iterable[ESIndexRequest], numOfRetries: Int = 15,
                                waitBetweenRetries:Long = 3000)
-                              (implicit executionContext:ExecutionContext) : Future[SuccessfulBulkIndexResult]
+                              (implicit executionContext:ExecutionContext, logger:Logger = loger) : Future[SuccessfulBulkIndexResult]
 
   def getMappings(withHistory: Boolean, partition: String = defaultPartition)
                  (implicit executionContext:ExecutionContext): Future[Set[String]]
@@ -108,13 +111,13 @@ trait FTSServiceOps {
   def search(pathFilter: Option[PathFilter], fieldsFilter: Option[FieldFilter], datesFilter: Option[DatesFilter],
              paginationParams: PaginationParams, sortParams: SortParam = SortParam.empty, withHistory: Boolean = false,
              withDeleted: Boolean = false, partition: String = defaultPartition, debugInfo: Boolean = false,
-             timeout : Option[Duration] = None) (implicit executionContext:ExecutionContext): Future[FTSSearchResponse]
+             timeout : Option[Duration] = None) (implicit executionContext:ExecutionContext, logger:Logger = loger): Future[FTSSearchResponse]
 
   def thinSearch(pathFilter: Option[PathFilter], fieldsFilter: Option[FieldFilter], datesFilter: Option[DatesFilter],
                  paginationParams: PaginationParams, sortParams: SortParam = SortParam.empty,
                  withHistory: Boolean = false, withDeleted: Boolean = false, partition: String = defaultPartition,
                  debugInfo: Boolean = false, timeout : Option[Duration] = None)
-                (implicit executionContext:ExecutionContext): Future[FTSThinSearchResponse]
+                (implicit executionContext:ExecutionContext, logger:Logger = loger): Future[FTSThinSearchResponse]
 
   def getLastIndexTimeFor(dc: String, partition: String = defaultPartition, fieldFilters: Option[FieldFilter])
                          (implicit executionContext:ExecutionContext): Future[Option[Long]]
@@ -129,21 +132,21 @@ trait FTSServiceOps {
                   scrollTTL: Long = defaultScrollTTL, withHistory: Boolean = false, withDeleted: Boolean = false,
                   indexNames:Seq[String] = Seq.empty, onlyNode:Option[String] = None,
                   partition: String = defaultPartition, debugInfo: Boolean = false)
-                 (implicit executionContext:ExecutionContext) : Future[FTSStartScrollResponse]
+                 (implicit executionContext:ExecutionContext, logger:Logger = loger) : Future[FTSStartScrollResponse]
 
   def startSuperMultiScroll(pathFilter: Option[PathFilter], fieldsFilter: Option[FieldFilter],
                             datesFilter: Option[DatesFilter], paginationParams: PaginationParams,
                             scrollTTL: Long = defaultScrollTTL, withHistory: Boolean = false,
                             withDeleted:Boolean = false, partition: String = defaultPartition)
-                           (implicit executionContext:ExecutionContext) : Seq[Future[FTSStartScrollResponse]]
+                           (implicit executionContext:ExecutionContext, logger:Logger = loger) : Seq[Future[FTSStartScrollResponse]]
 
   def startMultiScroll(pathFilter: Option[PathFilter], fieldsFilter: Option[FieldFilter], datesFilter: Option[DatesFilter],
                        paginationParams: PaginationParams, scrollTTL: Long = defaultScrollTTL,
                        withHistory: Boolean = false, withDeleted: Boolean = false, partition: String = defaultPartition)
-                      (implicit executionContext:ExecutionContext): Seq[Future[FTSStartScrollResponse]]
+                      (implicit executionContext:ExecutionContext, logger:Logger = loger): Seq[Future[FTSStartScrollResponse]]
 
   def scroll(scrollId: String, scrollTTL: Long = defaultScrollTTL, nodeId: Option[String] = None)
-            (implicit executionContext:ExecutionContext): Future[FTSScrollResponse]
+            (implicit executionContext:ExecutionContext, logger:Logger = loger): Future[FTSScrollResponse]
 
   def info(path: String, paginationParams: PaginationParams, withHistory: Boolean,
            partition: String = defaultPartition)

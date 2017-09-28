@@ -31,7 +31,7 @@ import cmwell.common.exception.getStackTrace
 import cmwell.domain.Infoton
 import cmwell.tracking._
 import com.typesafe.config.Config
-import com.typesafe.scalalogging.LazyLogging
+import com.typesafe.scalalogging.{LazyLogging, Logger}
 import nl.grons.metrics.scala.{Counter, DefaultInstrumented, Histogram, Timer}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
@@ -54,7 +54,9 @@ class IndexerStream(partition: Int, config: Config, irwService: IRWService, ftsS
                     offsetsService: OffsetsService, bgActor:ActorRef)
                    (implicit actorSystem:ActorSystem,
                     executionContext:ExecutionContext,
-                    materializer: ActorMaterializer) extends LazyLogging with DefaultInstrumented{
+                    materializer: ActorMaterializer) extends DefaultInstrumented{
+
+  implicit val logger = Logger[IndexerStream]
 
   lazy val redlog = LoggerFactory.getLogger("bg_red_log")
   lazy val heartbitLogger = LoggerFactory.getLogger("heartbeat_log")

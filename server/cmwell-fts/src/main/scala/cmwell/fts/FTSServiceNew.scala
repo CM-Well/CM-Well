@@ -17,7 +17,6 @@
 package cmwell.fts
 
 import java.net.InetAddress
-import java.util
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.{TimeUnit, TimeoutException}
 
@@ -28,7 +27,7 @@ import cmwell.domain._
 import cmwell.util.concurrent.SimpleScheduler
 import cmwell.util.jmx._
 import com.typesafe.config.{Config, ConfigFactory}
-import com.typesafe.scalalogging.LazyLogging
+import com.typesafe.scalalogging.Logger
 import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesResponse
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse
@@ -60,6 +59,7 @@ import org.elasticsearch.search.aggregations.metrics.stats.InternalStats
 import org.elasticsearch.search.sort.SortBuilders._
 import org.elasticsearch.search.sort.SortOrder
 import org.joda.time.DateTime
+import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -75,7 +75,7 @@ object FTSServiceNew {
   def apply(esClasspathYaml:String) = new FTSServiceNew(ConfigFactory.load(), esClasspathYaml)
 }
 
-class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceOps with NsSplitter with LazyLogging with FTSServiceNewMBean {
+class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceOps with NsSplitter with FTSServiceNewMBean {
 
   val clusterName = config.getString("ftsService.clusterName")
   val isTransportClient = config.getBoolean("ftsService.isTransportClient")
@@ -84,6 +84,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
   val scrollLength = config.getInt("ftsService.scrollLength")
   val dataCenter = config.getString("dataCenter.id")
   val waitForGreen = config.getBoolean("ftsService.waitForGreen")
+  val transportSniff = config.getBoolean("ftsService.sniff")
   override val defaultScrollTTL = config.getLong("ftsService.scrollTTL")
   override val defaultPartition = config.getString("ftsService.defaultPartitionNew")
 
@@ -104,10 +105,10 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
   /*****************/
 
   if(isTransportClient) {
-    val esSettings = ImmutableSettings.settingsBuilder().put("cluster.name", clusterName).build()
+    val esSettings = ImmutableSettings.settingsBuilder().put("cluster.name", clusterName).put("client.transport.sniff", transportSniff).build()
     val actualTransportAddress = transportAddress
     client = new TransportClient(esSettings).addTransportAddress(new InetSocketTransportAddress(actualTransportAddress, transportPort))
-    logger.info(s"starting es transport client [/$actualTransportAddress:$transportPort]")
+    loger.info(s"starting es transport client [/$actualTransportAddress:$transportPort]")
   } else {
     val esSettings = ImmutableSettings.settingsBuilder().loadFromClasspath(esClasspathYaml).build()
     node = nodeBuilder().settings(esSettings).node()
@@ -142,7 +143,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
 
 
   if(waitForGreen) {
-    logger.info("waiting for ES green status")
+    loger.info("waiting for ES green status")
     // wait for green status
     client.admin().cluster()
       .prepareHealth()
@@ -151,9 +152,9 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
       .execute()
       .actionGet()
 
-    logger.info("got green light from ES")
+    loger.info("got green light from ES")
   } else {
-    logger.info("waiting for ES yellow status")
+    loger.info("waiting for ES yellow status")
     // wait for yellow status
     client.admin().cluster()
       .prepareHealth()
@@ -162,7 +163,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
       .execute()
       .actionGet()
 
-    logger.info("got yellow light from ES")
+    loger.info("got yellow light from ES")
   }
 
   def shutdown() {
@@ -217,7 +218,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
              paginationParams: PaginationParams, sortParams: SortParam,
              withHistory: Boolean, withDeleted: Boolean, partition:String ,
              debugInfo:Boolean, timeout : Option[Duration])
-            (implicit executionContext:ExecutionContext): Future[FTSSearchResponse] = {
+            (implicit executionContext:ExecutionContext, logger:Logger = loger): Future[FTSSearchResponse] = {
 
       logger.debug(s"Search request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $sortParams, $withHistory, $partition, $debugInfo")
 
@@ -235,7 +236,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
     applyFiltersToRequest(request, pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted)
 
     val searchQueryStr = if(debugInfo) Some(request.toString) else None
-    logger.debug(s"^^^^^^^(**********************\n\n request: ${request.toString}\n\n")
+    logger.trace(s"^^^^^^^(**********************\n\n request: ${request.toString}\n\n")
     val resFuture = timeout match {
       case Some(t) => injectFuture[SearchResponse](request.execute, t)
       case None => injectFuture[SearchResponse](request.execute)
@@ -310,7 +311,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
                  sortParams: SortParam, withHistory: Boolean, withDeleted: Boolean = false,
                  partition:String, debugInfo:Boolean,
                  timeout : Option[Duration])
-                (implicit executionContext:ExecutionContext) : Future[FTSThinSearchResponse] = {
+                (implicit executionContext:ExecutionContext, logger:Logger = loger) : Future[FTSThinSearchResponse] = {
 
     logger.debug(s"Search request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $sortParams, $withHistory, $partition, $debugInfo")
 
@@ -349,12 +350,12 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
   }
 
   override def executeBulkActionRequests(actionRequests: Iterable[ActionRequest[_ <: ActionRequest[_ <: AnyRef]]])
-                                        (implicit executionContext:ExecutionContext) : Future[BulkResponse] = ???
+                                        (implicit executionContext:ExecutionContext, logger:Logger = loger) : Future[BulkResponse] = ???
 
 
 
   def executeIndexRequests(indexRequests:Iterable[ESIndexRequest])
-                          (implicit executionContext:ExecutionContext):Future[BulkIndexResult] = {
+                          (implicit executionContext:ExecutionContext, logger:Logger = loger):Future[BulkIndexResult] = {
 
       logger debug s"executing index requests: $indexRequests"
     val promise = Promise[BulkIndexResult]
@@ -390,7 +391,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
     * @return
     */
   def executeBulkIndexRequests(indexRequests:Iterable[ESIndexRequest], numOfRetries: Int, waitBetweenRetries:Long)
-                              (implicit executionContext:ExecutionContext) : Future[SuccessfulBulkIndexResult] = {
+                              (implicit executionContext:ExecutionContext, logger:Logger = loger) : Future[SuccessfulBulkIndexResult] = {
 
     logger debug s"indexRequests:$indexRequests"
 
@@ -559,7 +560,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
                   onlyNode: Option[String],
                   partition: String,
                   debugInfo: Boolean)
-                 (implicit executionContext:ExecutionContext) : Future[FTSStartScrollResponse] = {
+                 (implicit executionContext:ExecutionContext, logger:Logger = loger) : Future[FTSStartScrollResponse] = {
     logger.debug(s"StartScroll request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $withHistory")
 
     val fields = "system.kind" :: "system.path" :: "system.uuid" :: "system.lastModified" :: "content.length" ::
@@ -611,7 +612,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
                             datesFilter: Option[DatesFilter],
                             paginationParams: PaginationParams, scrollTTL: Long,
                             withHistory: Boolean, withDeleted:Boolean, partition: String)
-                           (implicit executionContext:ExecutionContext): Seq[Future[FTSStartScrollResponse]] = {
+                           (implicit executionContext:ExecutionContext, logger:Logger = loger): Seq[Future[FTSStartScrollResponse]] = {
 
     logger.debug(s"StartMultiScroll request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $withHistory")
     def indicesNames(indexName: String): Seq[String] = {
@@ -643,7 +644,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
                        withHistory: Boolean,
                        withDeleted: Boolean,
                        partition: String)
-                      (implicit executionContext:ExecutionContext) : Seq[Future[FTSStartScrollResponse]] = {
+                      (implicit executionContext:ExecutionContext, logger:Logger = loger) : Seq[Future[FTSStartScrollResponse]] = {
 
     logger.debug(s"StartMultiScroll request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $withHistory")
 
@@ -659,7 +660,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
   }
 
   def scroll(scrollId: String, scrollTTL: Long, nodeId: Option[String])
-            (implicit executionContext:ExecutionContext): Future[FTSScrollResponse] = {
+            (implicit executionContext:ExecutionContext, logger:Logger = loger): Future[FTSScrollResponse] = {
 
     logger.debug(s"Scroll request: $scrollId, $scrollTTL")
 
@@ -1041,7 +1042,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
     Try[T](hit.field(fieldName).getValue[T])
   }
 
-  private def tryLongThenInt[V](hit: SearchHit, fieldName: String, f: Long => V, default: V, uuid: String, pathForLog: String): V = try {
+  private def tryLongThenInt[V](hit: SearchHit, fieldName: String, f: Long => V, default: V, uuid: String, pathForLog: String)(implicit logger:Logger = loger): V = try {
     getValueAs[Long](hit, fieldName) match {
       case Success(l) => f(l)
       case Failure(e) => {
@@ -1057,7 +1058,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
     }
   }
 
-  private def tryInt[V](hit: SearchHit, fieldName: String, f: Long => V, default: V, uuid: String): V = try {
+  private def tryInt[V](hit: SearchHit, fieldName: String, f: Long => V, default: V, uuid: String)(implicit logger:Logger = loger): V = try {
     getValueAs[Int](hit, fieldName) match {
       case Success(i) => f(i.toLong)
       case Failure(e) => {
@@ -1156,7 +1157,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
     }
   }
 
-  private def infotonPathFromActionRequest(actionRequest:ActionRequest[_]) = {
+  private def infotonPathFromActionRequest(actionRequest:ActionRequest[_])(implicit logger:Logger = loger) = {
     if(!actionRequest.isInstanceOf[IndexRequest] && !actionRequest.isInstanceOf[UpdateRequest]) {
       logger error s"got an actionRequest:$actionRequest which is non of the supported: IndexRequest or UpdateRequest"
       "Couldn't resolve infoton's path from ActionRequest"
@@ -1171,7 +1172,8 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
     }
   }
 
-  private def injectFuture[A](f: ActionListener[A] => Unit, timeout : Duration = FiniteDuration(10, SECONDS))(implicit executionContext:ExecutionContext) = {
+  private def injectFuture[A](f: ActionListener[A] => Unit, timeout : Duration = FiniteDuration(10, SECONDS))
+                             (implicit executionContext:ExecutionContext, logger:Logger = loger) = {
     val p = Promise[A]()
     f(new ActionListener[A] {
       def onFailure(t: Throwable): Unit = {
@@ -1208,7 +1210,8 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
   }
 
   object TimeoutFuture {
-    def withTimeout[T](fut:Future[T], after:Duration)(implicit executionContext: ExecutionContext) = {
+    def withTimeout[T](fut:Future[T], after:Duration)
+                      (implicit executionContext: ExecutionContext, logger:Logger = loger) = {
       val prom = Promise[T]()
       val timeout = TimeoutScheduler.scheduleTimeout(prom, after)
       val combinedFut = Future.firstCompletedOf(List(fut, prom.future))
