@@ -2040,13 +2040,63 @@ callback=< [URL] >
     }
   }
 
-  def handleRawRow(uuid: String) = Action.async { req =>
-    if(isReactive(req)) {
-      val src = crudServiceFS.reactiveRawCassandra(uuid).intersperse("\n").map(ByteString(_,StandardCharsets.UTF_8))
-      Future.successful(Ok.chunked(src).as(overrideMimetype("text/csv;charset=UTF-8", req)._2))
+  def handleRawRow(path: String) = Action.async { req =>
+    val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+    val limit = req.getQueryString("versions-limit").flatMap(asInt).getOrElse(Settings.defaultLimitForHistoryVersions)
+    path match {
+      case Uuid(uuid) => handleRawUUID(uuid, isReactive(req), limit, nbg) { defaultMimetype =>
+        overrideMimetype(defaultMimetype, req)._2
+      }
+      case _ => {
+        handleRawPath("/" + path, isReactive(req), limit, nbg) { defaultMimetype =>
+          overrideMimetype(defaultMimetype, req)._2
+        }
+      }
     }
-    else crudServiceFS.getRawCassandra(uuid).map {
-      case (payload,mimetype) => Ok(payload).as(overrideMimetype(mimetype, req)._2)
+  }
+
+  def handleRawUUID(uuid: String, isReactive: Boolean, limit: Int, nbg: Boolean)(defaultMimetypeToReturnedMimetype: String => String) = {
+    if(isReactive) {
+      val src = crudServiceFS.reactiveRawCassandra(uuid).intersperse("\n").map(ByteString(_,StandardCharsets.UTF_8))
+      Future.successful(Ok.chunked(src).as(defaultMimetypeToReturnedMimetype("text/csv;charset=UTF-8")))
+    }
+    else crudServiceFS.getRawCassandra(uuid,nbg).flatMap {
+      case (payload,_) if payload.lines.size < 2 => handleRawPath("/" + uuid, isReactive, limit, nbg)(defaultMimetypeToReturnedMimetype)
+      case (payload,mimetype) => Future.successful(Ok(payload).as(defaultMimetypeToReturnedMimetype(mimetype)))
+    }
+  }
+
+  val commaByteString = ByteString(",",StandardCharsets.UTF_8)
+  val pathHeader = ByteString("path,last_modified,uuid")
+  val pathHeaderSource: Source[ByteString,NotUsed] = Source.single(pathHeader)
+
+  def handleRawPath(path: String, isReactive: Boolean, limit: Int, nbg: Boolean)(defaultMimetypeToReturnedMimetype: String => String) = {
+    val pathByteString = ByteString(path,StandardCharsets.UTF_8)
+    if(isReactive) {
+      val src = crudServiceFS
+        .getRawPathHistoryReactive(path, nbg)
+        .map { case (time, uuid) =>
+          endln ++
+            pathByteString ++
+            commaByteString ++
+            ByteString(dtf.print(time), StandardCharsets.UTF_8) ++
+            commaByteString ++
+            ByteString(uuid, StandardCharsets.UTF_8)
+        }
+      Future.successful(Ok.chunked(pathHeaderSource.concat(src)).as(defaultMimetypeToReturnedMimetype("text/csv;charset=UTF-8")))
+    }
+    else crudServiceFS.getRawPathHistory(path,limit,nbg).map { vec =>
+      val payload = vec.foldLeft(pathHeader){
+        case (bytes,(time,uuid)) =>
+          bytes ++
+            endln ++
+            pathByteString ++
+            commaByteString ++
+            ByteString(dtf.print(time), StandardCharsets.UTF_8) ++
+            commaByteString ++
+            ByteString(uuid, StandardCharsets.UTF_8)
+      }
+      Ok(payload).as(defaultMimetypeToReturnedMimetype("text/csv;charset=UTF-8"))
     }
   }
 
