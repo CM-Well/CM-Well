@@ -994,6 +994,23 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
     resFuture.map { response => extractInfo(response) }
   }
 
+  val bo = collection.breakOut[Array[SearchHit],(String,Long,String),Vector[(String,Long,String)]]
+
+  def uinfo(uuid: String, partition: String)
+           (implicit executionContext:ExecutionContext) : Future[Vector[(String, Long, String)]] = {
+
+    val request = client.prepareSearch(s"${partition}_all").setTypes("infoclone").setFetchSource(true).setVersion(true)
+    val qb : QueryBuilder = QueryBuilders.matchQuery("uuid", uuid)
+    request.setQuery(qb)
+
+    injectFuture[SearchResponse](request.execute).map { response =>
+      val hits = response.getHits.hits()
+      hits.map { hit =>
+        (hit.getIndex, hit.getVersion, hit.getSourceAsString)
+      }(bo)
+    }
+  }
+
   private def extractInfo(esResponse: org.elasticsearch.action.search.SearchResponse) : Vector[(String , String )] = {
     if (esResponse.getHits.hits().nonEmpty) {
       val hits = esResponse.getHits.hits()

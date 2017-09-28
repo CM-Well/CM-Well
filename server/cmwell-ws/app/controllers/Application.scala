@@ -2040,17 +2040,64 @@ callback=< [URL] >
     }
   }
 
+  def handleRawDoc(uuid: String) = Action.async { req =>
+    val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+    crudServiceFS.getInfotonByUuidAsync(uuid, nbg).flatMap {
+      case FullBox(i) => {
+        val index = i.indexName
+        val a = handleRawDocWithIndex(index, uuid)
+        a(req)
+      }
+    }.recoverWith {
+      case err: Throwable => {
+        logger.error(s"could not retrive uuid[$uuid] from cassandra",err)
+        crudServiceFS.ftsService(nbg).uinfo(uuid).map { vec =>
+
+          val jArr = vec.map {
+            case (index, version, source) =>
+              Json.obj("_index" -> index, "_version" -> JsNumber(version), "_source" -> Json.parse(source))
+          }
+
+          val j = {
+            if (jArr.length < 2) jArr.headOption.getOrElse(JsNull)
+            else Json.arr(jArr)
+          }
+          val pretty = req.queryString.keySet("pretty")
+          val payload = {
+            if (pretty) Json.prettyPrint(j)
+            else Json.stringify(j)
+          }
+          Ok(payload).as(overrideMimetype("application/json;charset=UTF-8", req)._2)
+        }
+      }
+    }.recoverWith(asyncErrorHandler)
+  }
+
+  def handleRawDocWithIndex(index: String, uuid: String) = Action.async { req =>
+    val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+    crudServiceFS.ftsService(nbg).extractSource(uuid,index).map {
+      case (source,version) =>
+        val j = Json.obj("_index" -> index, "_version" -> JsNumber(version), "_source" -> Json.parse(source))
+        val pretty = req.queryString.keySet("pretty")
+        val payload = {
+          if (pretty) Json.prettyPrint(j)
+          else Json.stringify(j)
+        }
+        Ok(payload).as(overrideMimetype("application/json;charset=UTF-8",req)._2)
+    }.recoverWith(asyncErrorHandler)
+  }
+
   def handleRawRow(path: String) = Action.async { req =>
     val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
     val limit = req.getQueryString("versions-limit").flatMap(asInt).getOrElse(Settings.defaultLimitForHistoryVersions)
     path match {
       case Uuid(uuid) => handleRawUUID(uuid, isReactive(req), limit, nbg) { defaultMimetype =>
         overrideMimetype(defaultMimetype, req)._2
-      }
+      }.recoverWith(asyncErrorHandler)
       case _ => {
         handleRawPath("/" + path, isReactive(req), limit, nbg) { defaultMimetype =>
           overrideMimetype(defaultMimetype, req)._2
-        }
+        }.recoverWith(asyncErrorHandler)
       }
     }
   }

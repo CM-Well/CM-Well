@@ -16,6 +16,8 @@ GET         /_auth/*action    controllers.Application.handleAuthGET(action)
 GET         /_hcn             controllers.Application.handlePoisonPill
 GET         /_tbg             controllers.NbgController.handleToggle
 GET         /_cas/*path       controllers.Application.handleRawRow(path)
+GET         /_es/:uuid        controllers.Application.handleRawDoc(uuid: String)
+GET         /_es/:index/:uuid controllers.Application.handleRawDocWithIndex(index: String, uuid: String)
 GET         /_ll              controllers.LogLevelHandler.handleSetLogLevel
 GET         /_consume         controllers.Application.handleConsumeRoute
 GET         /_bulk-consume         controllers.Application.handleBulkConsumeRoute
