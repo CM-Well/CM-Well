@@ -117,7 +117,7 @@ object SimpleHttpClient extends LazyLogging {
   private[http] lazy val sys = {
     logger.warn("default actor system for SimpleHttpClient is initialized. you don't want this in production!")
     val config = ConfigFactory.load()
-    ActorSystem("SimpleHttpClient",config.getConfig("cmwell.util.http"))
+    ActorSystem("SimpleHttpClient",config.getConfig("cmwell.util.http").withFallback(config))
   }
   private[http] lazy val mat = {
     logger.warn("default materializer for SimpleHttpClient is initialized. you don't want this in production!")

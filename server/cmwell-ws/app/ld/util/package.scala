@@ -136,6 +136,19 @@ package util {
     dataCenter: Option[String],
     indexTime: Option [Long]
   ) {
+
+    def isEmpty: Boolean = {
+      mdType.isEmpty     &&
+      date.isEmpty       &&
+      data.isEmpty       &&
+      text.isEmpty       &&
+      mimeType.isEmpty   &&
+      linkType.isEmpty   &&
+      linkTo.isEmpty     &&
+      dataCenter.isEmpty &&
+      indexTime.isEmpty
+    }
+
     def merge(that: MetaData): MetaData = {
       val mdType = Try(this.mdType.getOrElse(that.mdType.get)).toOption
       val date = Try(this.date.getOrElse(that.date.get)).toOption
