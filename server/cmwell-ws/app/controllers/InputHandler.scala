@@ -238,7 +238,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
             logger.warn(s"[$id] bad user ingest resulted in parsed response: ${pRes.toString}")
             if(debugLog) p.success(Seq("X-CM-WELL-LOG-ID" -> id))
             else p.success(Nil)
-            SimpleScheduler.schedule(2.seconds)(addDebugHeader(UnprocessableEntity(s"ingested data was well formed, but is benign and has no affect. error logged with id [$id].")))
+            Future.successful(addDebugHeader(UnprocessableEntity(s"ingested data was well formed, but is meaningless and has no affect. error logged with id [$id].")))
           }
           else {
             if(debugLog) logger.info(s"[$id] ParsingResponse: ${pRes.toString}")
