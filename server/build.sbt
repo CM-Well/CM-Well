@@ -1,6 +1,7 @@
 import play.twirl.sbt.SbtTwirl
 import play.sbt.PlayScala
 import com.github.retronym.SbtOneJar.oneJarSettings
+import cmwell.build.Versions
 
 name := "server"
 description := "CM-Well Project"
@@ -60,7 +61,7 @@ dependenciesManager in Global := {
   case ("com.typesafe.akka", "akka-stream-kafka")                  => "com.typesafe.akka" %% "akka-stream-kafka" % "0.17"
   case ("com.typesafe.akka", "akka-stream-contrib")                => "com.typesafe.akka" %% "akka-stream-contrib" % "0.8"
   case ("com.typesafe.akka", "akka-http-core")                     => "com.typesafe.akka" %% "akka-http-core" % "10.0.10"
-  case ("com.typesafe.akka",art)                                   => "com.typesafe.akka" %% art % "2.5.4"
+  case ("com.typesafe.akka",art)                                   => "com.typesafe.akka" %% art % "2.5.6"
   case ("com.typesafe.play", "twirl-api")                          => "com.typesafe.play" %% s"twirl-api" % "1.3.0"
   case ("com.typesafe.play", art)                                  => "com.typesafe.play" %% art % Versions.play
   case ("com.twitter","chill-akka")                                => "com.twitter" %% "chill-akka" % "0.5.2"
