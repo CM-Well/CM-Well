@@ -28,7 +28,7 @@ import cmwell.domain._
 import cmwell.util.jmx._
 import cmwell.common.exception._
 import com.typesafe.config.ConfigFactory
-import com.typesafe.scalalogging.LazyLogging
+import com.typesafe.scalalogging.{LazyLogging, Logger}
 import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
 import org.elasticsearch.action.bulk.{BulkItemResponse, BulkResponse}
 import org.elasticsearch.action.delete.DeleteResponse
@@ -60,6 +60,7 @@ import org.elasticsearch.search.aggregations.metrics.stats.InternalStats
 import org.elasticsearch.search.sort.SortBuilders._
 import org.elasticsearch.search.sort.SortOrder
 import org.joda.time.DateTime
+import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
 import scala.compat.Platform._
@@ -91,7 +92,7 @@ object Settings {
 }
 
 class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
-  extends FTSServiceOps with LazyLogging with FTSServiceESMBean {
+  extends FTSServiceOps with FTSServiceESMBean {
 
   import cmwell.fts.Settings._
 
@@ -112,7 +113,7 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
     // if(transportAddress=="localhost") InetAddress.getLocalHost.getHostName else
     val actualTransportAddress = transportAddress
     client = new TransportClient(esSettings).addTransportAddress(new InetSocketTransportAddress(actualTransportAddress, transportPort))
-    logger.info(s"starting es transport client [/$actualTransportAddress:$transportPort]")
+    loger.info(s"starting es transport client [/$actualTransportAddress:$transportPort]")
   } else {
     val esSettings = ImmutableSettings.settingsBuilder().loadFromClasspath(classPathConfigFile)
     node = nodeBuilder().settings(esSettings).node()
@@ -120,11 +121,11 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
   }
 
   val localHostName = InetAddress.getLocalHost.getHostName
-  logger.info(s"localhostname: $localHostName")
+  loger.info(s"localhostname: $localHostName")
 
   val nodesInfo = client.admin().cluster().prepareNodesInfo().execute().actionGet()
 
-  logger.info (s"nodesInfo: $nodesInfo")
+  loger.info (s"nodesInfo: $nodesInfo")
 
   val localNodeId = client.admin().cluster().prepareNodesInfo().execute().actionGet().getNodesMap.asScala.filter{case (id, node) =>
     node.getHostname.equals(localHostName) && node.getNode.isDataNode
@@ -158,7 +159,7 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
   }
 
   if(waitForGreen) {
-      logger info "waiting for ES green status"
+      loger info "waiting for ES green status"
     // wait for green status
     client.admin().cluster()
       .prepareHealth()
@@ -167,9 +168,9 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
       .execute()
       .actionGet()
 
-    logger info "got green light from ES"
+    loger info "got green light from ES"
   } else {
-      logger info "waiting for ES yellow status"
+      loger info "waiting for ES yellow status"
     // wait for yellow status
     client.admin().cluster()
       .prepareHealth()
@@ -178,7 +179,7 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
       .execute()
       .actionGet()
 
-    logger info "got yellow light from ES"
+    loger info "got yellow light from ES"
   }
 
   def getTotalRequestedToIndex(): Long = totalRequestedToIndex
@@ -207,7 +208,7 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
    */
   def index(infoton: Infoton, previousInfoton: Option[Infoton] = None, partition: String = defaultPartition)
            (implicit executionContext: ExecutionContext): Future[Unit] = {
-    logger debug ("indexing current: " + infoton.uuid)
+    loger debug ("indexing current: " + infoton.uuid)
 
     totalRequestedToIndex += 1
 
@@ -215,14 +216,14 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
     val currentFuture = injectFuture[IndexResponse](client.prepareIndex(partition + "_current", "infoclone", infoton.uuid).setSource(JsonSerializer.encodeInfoton(infoton, toEs = true)).setConsistencyLevel(WriteConsistencyLevel.ALL).execute(_)).map{_ => }
 
     currentFuture.andThen {
-      case Failure(t) => logger debug ("failed to index infoton uuid: " + infoton.uuid + "\n" + t.getLocalizedMessage + "\n" + t.getStackTrace().mkString("", EOL, EOL))
-      case Success(v) => logger debug ("successfully indexed infoton uuid: " + infoton.uuid); totalIndexed.addAndGet(1)
+      case Failure(t) => loger debug ("failed to index infoton uuid: " + infoton.uuid + "\n" + t.getLocalizedMessage + "\n" + t.getStackTrace().mkString("", EOL, EOL))
+      case Success(v) => loger debug ("successfully indexed infoton uuid: " + infoton.uuid); totalIndexed.addAndGet(1)
     }
 
     if(previousInfoton.isDefined) {
       totalRequestedToIndex += 1
       val previousWriteFuture = injectFuture[IndexResponse](client.prepareIndex(partition + "_history", "infoclone", previousInfoton.get.uuid).setSource(JsonSerializer.encodeInfoton(previousInfoton.get, toEs = true)).setConsistencyLevel(WriteConsistencyLevel.ALL).execute(_)).map{_ => }
-      val previousDeleteFuture = injectFuture[DeleteResponse](client.prepareDelete(partition + "_current", "infoclone", previousInfoton.get.uuid).setConsistencyLevel(WriteConsistencyLevel.ALL).execute(_)).map{ _.isFound }.andThen{case Failure(t) => logger debug ("failed to delete infoton uuid: " + infoton.uuid + "\n" + t.getLocalizedMessage + "\n" + t.getStackTrace().mkString("", EOL, EOL)); case Success(v) => logger debug ("successfully deleted infoton uuid: " + infoton.uuid)}.map{ _ => }
+      val previousDeleteFuture = injectFuture[DeleteResponse](client.prepareDelete(partition + "_current", "infoclone", previousInfoton.get.uuid).setConsistencyLevel(WriteConsistencyLevel.ALL).execute(_)).map{ _.isFound }.andThen{case Failure(t) => loger debug ("failed to delete infoton uuid: " + infoton.uuid + "\n" + t.getLocalizedMessage + "\n" + t.getStackTrace().mkString("", EOL, EOL)); case Success(v) => loger debug ("successfully deleted infoton uuid: " + infoton.uuid)}.map{ _ => }
       currentFuture.flatMap( _ => previousWriteFuture).flatMap(_ => previousDeleteFuture)
     } else {
       currentFuture.map{ _ => }
@@ -239,7 +240,7 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
   }
 
   def executeBulkActionRequests(actionRequests: Iterable[ActionRequest[_ <: ActionRequest[_ <: AnyRef]]])
-                               (implicit executionContext: ExecutionContext) = {
+                               (implicit executionContext: ExecutionContext, logger:Logger = loger) = {
     val requestedToIndexSize = actionRequests.size
     totalRequestedToIndex += actionRequests.size
     val bulkRequest = client.prepareBulk()
@@ -286,7 +287,7 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
 
   def executeBulkIndexRequests(indexRequests:Iterable[ESIndexRequest], numOfRetries: Int = 15,
                                waitBetweenRetries:Long = 3000)
-                              (implicit executionContext:ExecutionContext) : Future[SuccessfulBulkIndexResult] = ???
+                              (implicit executionContext:ExecutionContext, logger:Logger = loger) : Future[SuccessfulBulkIndexResult] = ???
 
 
 
@@ -512,13 +513,13 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
       case Success(l) => f(l)
       case Failure(e) => {
         e.setStackTrace(Array.empty) // no need to fill the logs with redundant stack trace
-        logger.trace(s"$fieldName not Long (outer), uuid = $uuid, path = $pathForLog", e)
+        loger.trace(s"$fieldName not Long (outer), uuid = $uuid, path = $pathForLog", e)
         tryInt(hit,fieldName,f,default,uuid)
       }
     }
   } catch {
     case e: Throwable => {
-      logger.trace(s"$fieldName not Long (inner), uuid = $uuid", e)
+      loger.trace(s"$fieldName not Long (inner), uuid = $uuid", e)
       tryInt(hit,fieldName,f,default,uuid)
     }
   }
@@ -527,13 +528,13 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
     getValueAs[Int](hit, fieldName) match {
       case Success(i) => f(i.toLong)
       case Failure(e) => {
-        logger.error(s"$fieldName not Int (outer), uuid = $uuid", e)
+        loger.error(s"$fieldName not Int (outer), uuid = $uuid", e)
         default
       }
     }
   } catch {
     case e: Throwable => {
-      logger.error(s"$fieldName not Int (inner), uuid = $uuid", e)
+      loger.error(s"$fieldName not Int (inner), uuid = $uuid", e)
       default
     }
   }
@@ -900,7 +901,7 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
              datesFilter: Option[DatesFilter] = None, paginationParams: PaginationParams = DefaultPaginationParams,
              sortParams: SortParam = SortParam.empty, withHistory: Boolean = false, withDeleted: Boolean = false,
              partition: String = defaultPartition, debugInfo: Boolean = false, timeout: Option[Duration] = None)
-            (implicit executionContext: ExecutionContext): Future[FTSSearchResponse] = {
+            (implicit executionContext: ExecutionContext, logger:Logger = loger): Future[FTSSearchResponse] = {
 
     logger.debug(s"Search request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $sortParams, $withHistory, $partition, $debugInfo")
 
@@ -966,7 +967,7 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
                  sortParams: SortParam = SortParam.empty, withHistory: Boolean = false, withDeleted: Boolean,
                  partition: String = defaultPartition, debugInfo:Boolean = false,
                  timeout: Option[Duration] = None)
-                (implicit executionContext: ExecutionContext) : Future[FTSThinSearchResponse] = {
+                (implicit executionContext: ExecutionContext, logger:Logger = loger) : Future[FTSThinSearchResponse] = {
 
     logger.debug(s"Search request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $sortParams, $withHistory, $partition, $debugInfo")
 
@@ -1137,7 +1138,7 @@ def startSuperScroll(pathFilter: Option[PathFilter] = None, fieldsFilter: Option
                   datesFilter: Option[DatesFilter] = None, paginationParams: PaginationParams = DefaultPaginationParams,
                   scrollTTL: Long = scrollTTL, withHistory: Boolean = false, withDeleted: Boolean, indexNames: Seq[String] = Seq.empty,
                   onlyNode: Option[String] = None, partition: String, debugInfo: Boolean)
-                 (implicit executionContext: ExecutionContext) : Future[FTSStartScrollResponse] = {
+                 (implicit executionContext: ExecutionContext, logger:Logger = loger) : Future[FTSStartScrollResponse] = {
     logger.debug(s"StartScroll request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $withHistory")
     if(partition != defaultPartition) {
       logger.warn("old implementation ignores partition parameter")
@@ -1201,7 +1202,7 @@ def startSuperScroll(pathFilter: Option[PathFilter] = None, fieldsFilter: Option
                             datesFilter: Option[DatesFilter] = None,
                             paginationParams: PaginationParams = DefaultPaginationParams, scrollTTL:Long = scrollTTL,
                             withHistory: Boolean = false, withDeleted:Boolean, partition: String)
-                           (implicit executionContext:ExecutionContext) : Seq[Future[FTSStartScrollResponse]] = {
+                           (implicit executionContext:ExecutionContext, logger:Logger) : Seq[Future[FTSStartScrollResponse]] = {
 
     logger.debug(s"StartMultiScroll request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $withHistory")
     if(partition != defaultPartition) {
@@ -1233,7 +1234,7 @@ def startSuperScroll(pathFilter: Option[PathFilter] = None, fieldsFilter: Option
                        datesFilter: Option[DatesFilter] = None,
                        paginationParams: PaginationParams = DefaultPaginationParams,
                        scrollTTL: Long = scrollTTL, withHistory: Boolean = false, withDeleted: Boolean, partition: String)
-                      (implicit executionContext:ExecutionContext): Seq[Future[FTSStartScrollResponse]] = {
+                      (implicit executionContext:ExecutionContext, logger:Logger = loger): Seq[Future[FTSStartScrollResponse]] = {
     logger.debug(s"StartMultiScroll request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $withHistory")
     if(partition != defaultPartition) {
       logger.warn("old implementation ignores partition parameter")
@@ -1253,7 +1254,7 @@ def startSuperScroll(pathFilter: Option[PathFilter] = None, fieldsFilter: Option
   }
 
     def scroll(scrollId: String, scrollTTL: Long, nodeId: Option[String])
-            (implicit executionContext:ExecutionContext): Future[FTSScrollResponse] = {
+            (implicit executionContext:ExecutionContext, logger:Logger = loger): Future[FTSScrollResponse] = {
 
     logger.debug(s"Scroll request: $scrollId, $scrollTTL")
 
@@ -1366,6 +1367,24 @@ def startSuperScroll(pathFilter: Option[PathFilter] = None, fieldsFilter: Option
     resFuture.map { response => extractInfo(response) }
   }
 
+  val bo = collection.breakOut[Array[SearchHit],(String,Long,String),Vector[(String,Long,String)]]
+
+  def uinfo(uuid: String, partition: String)
+           (implicit executionContext:ExecutionContext) : Future[Vector[(String, Long, String)]] = {
+
+    val indices = (partition + "_current") :: (partition + "_history") :: Nil
+    val request = client.prepareSearch(indices:_*).setTypes("infoclone").setFetchSource(true).setVersion(true)
+    val qb : QueryBuilder = QueryBuilders.matchQuery("uuid", uuid)
+    request.setQuery(qb)
+
+    injectFuture[SearchResponse](request.execute).map { response =>
+      val hits = response.getHits.hits()
+      hits.map { hit =>
+        (hit.getIndex, hit.getVersion, hit.getSourceAsString)
+      }(bo)
+    }
+  }
+
   private def extractInfo(esResponse: org.elasticsearch.action.search.SearchResponse) : Vector[(String , String )] = {
     if (esResponse.getHits.hits().nonEmpty) {
       val hits = esResponse.getHits.hits()
@@ -1383,7 +1402,7 @@ def startSuperScroll(pathFilter: Option[PathFilter] = None, fieldsFilter: Option
     val p = Promise[A]()
     f(new ActionListener[A] {
       def onFailure(t: Throwable): Unit = {
-        logger error ("Exception from ElasticSearch. %s\n%s".format(t.getLocalizedMessage, t.getStackTrace().mkString("", EOL, EOL)))
+        loger error ("Exception from ElasticSearch. %s\n%s".format(t.getLocalizedMessage, t.getStackTrace().mkString("", EOL, EOL)))
 
         if(!p.isCompleted) {
           p.failure(t)
@@ -1391,7 +1410,7 @@ def startSuperScroll(pathFilter: Option[PathFilter] = None, fieldsFilter: Option
 
       }
       def onResponse(res: A): Unit =  {
-        logger debug ("Response from ElasticSearch:\n%s".format(res.toString))
+        loger debug ("Response from ElasticSearch:\n%s".format(res.toString))
         p.success(res)
       }
     })

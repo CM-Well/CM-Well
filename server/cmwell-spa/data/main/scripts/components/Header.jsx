@@ -103,8 +103,15 @@ class Breadcrumbs extends React.Component {
         if(this.props.lastBreadcrumbDisplayName && breadcrumbs.length)
             _(breadcrumbs).last().title = this.props.lastBreadcrumbDisplayName
         
-        if(qp)
-            breadcrumbs.push({ title: `Search results for "${qp}"`, searchIcon: true })
+        if(qp) {
+            var displayedQp = `"${qp}"`
+
+            // type.rdf deserves a special treatment:
+            if(qp.indexOf('type.rdf')===0)
+                try { displayedQp = `type ${AppUtils.lastPartOfUrl(qp.split('::')[1])}` } catch(e) { }
+                
+            breadcrumbs.push({ title: `Search results for ${displayedQp}`, searchIcon: true })
+        }
 
         if(location.pathname.length > AppUtils.constants.breadcrumbs.maxPathLength && breadcrumbs.length > AppUtils.constants.breadcrumbs.maxItems)
             breadcrumbs = [..._(breadcrumbs).first(2), { title: '...' }, ..._(breadcrumbs).last(2)]

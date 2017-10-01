@@ -193,7 +193,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
     val infoton = ObjectInfoton(
       s"/bg-test-merge/virtualparentodd1",
       "dc1",
-      None,
+      Some(1L),
       new DateTime(0L),
       None
     )
@@ -212,7 +212,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
     val infoton = ObjectInfoton(
       s"/bg-test-merge/virtualparenteven1",
       "dc1",
-      None,
+      Some(2L),
       new DateTime(0L),
       None
     )
@@ -250,12 +250,27 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
 
   }
 
+  it should "merge not-indexed base infoton with identical command correctly" in {
+    val baseInfoton = ObjectInfoton(
+      "/bg-test-merge/infonotindexed1",
+      "dc1",
+      None,
+      DateTime.now(),
+      None
+    )
+    val writeCommand = WriteCommand(baseInfoton.copyInfoton(lastModified = baseInfoton.lastModified.minus(1)))
+    val merged = merger.merge(Some(baseInfoton), Seq(writeCommand))
+    withClue(merged){
+      merged.merged shouldBe defined
+    }
+  }
+
   it should "merge null update commands with different base correctly" in {
     val now = DateTime.now
     val baseInfoton = ObjectInfoton(
       "/bg-test-merge/infonull1",
       "dc1",
-      None,
+      Some(1L),
       now,
       None
     )

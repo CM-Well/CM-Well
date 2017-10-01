@@ -1,7 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" version="1.1" preserveAspectRatio="none" viewBox="0 0 26 26">
-            <g>
-                <title></title>
-                <rect x="0" y="0" width="26" height="26" stroke="transparent" stroke-width="0" fill="transparent"></rect>
-                <path stroke-width="0" d="M 15 6 L 15 7 L 21 7 L 21 24 L 4 24 L 4 7 L 10 7 L 10 6 L 3 6 L 3 25 L 22 25 L 22 6 L 15 6 ZM 7.9009 14.1548 L 12.5869 18.9705 L 17.0123 14.1445 L 16.0822 13.4219 L 13 16.8438 L 13 1 L 12 1 L 12 16.8291 L 8.6281 13.4572 L 7.9009 14.1548 Z" style="opacity: 1;"></path>
-            </g>
-        </svg>
+<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" viewBox="0 0 26 26"><rect width="26" height="26" fill="transparent"/><path d="M15 6L15 7 21 7 21 24 4 24 4 7 10 7 10 6 3 6 3 25 22 25 22 6 15 6ZM7.9 14.2L12.6 19 17 14.1 16.1 13.4 13 16.8 13 1 12 1 12 16.8 8.6 13.5 7.9 14.2Z"/></svg>

@@ -25,7 +25,9 @@ import security.httpauth._
 import security.{AuthCache, Authentication}
 import javax.inject._
 
-import scala.concurrent.ExecutionContext
+import wsutil.{asyncErrorHandler, exceptionToResponse}
+
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
@@ -37,21 +39,17 @@ class LoginHandler  @Inject()(authCache: AuthCache)(implicit ec: ExecutionContex
     val exp: Option[DateTime] = req.getQueryString("exp").map(parseShortFormatDuration)
 
     def whichAuthType: Option[HttpAuthType] = {
-      req.headers.get("authorization").map { h => if(h.contains("Digest")) Digest else Basic }
+      req.headers.get("authorization").map { h => if (h.contains("Digest")) Digest else Basic }
     }
 
     def loginDigest = digestAuthenticate(authCache)(req).map(status => if (status.isAuthenticated) grantToken(status.username, exp) else notAuthenticated)
 
     def loginBasic = {
-      decodeBasicAuth(req.headers("authorization")) match {
-        case (username, pass) => {
-          authCache.getUserInfoton(username) match {
-            case Some(user) if Authentication.passwordMatches(user, pass) => grantToken(username, exp)
-            case _ => notAuthenticated
-          }
+      val (username, pass) = decodeBasicAuth(req.headers("authorization"))
+        authCache.getUserInfoton(username) match {
+          case Some(user) if Authentication.passwordMatches(user, pass) => grantToken(username, exp)
+          case _ => notAuthenticated
         }
-        case _ => notAuthenticated
-      }
     }
 
     // default (`case None` below) is Digest, s.t. client can be provided with the challenge.
@@ -71,11 +69,11 @@ class LoginHandler  @Inject()(authCache: AuthCache)(implicit ec: ExecutionContex
 
     val penalty = Settings.loginPenalty.seconds
 
-    whichAuthType match {
-      case Some(Basic) => cmwell.util.concurrent.delayedTask(penalty)(loginBasic)
-      case Some(Digest) => cmwell.util.concurrent.delayedTask(penalty/2)(loginDigest).flatMap(identity)
-      case None => cmwell.util.concurrent.delayedTask(penalty)(Unauthorized("Please provide your credentials.\n").withHeaders("WWW-Authenticate" -> initialDigestHeader.toString))
-    }
+    (whichAuthType match {
+        case Some(Basic) => cmwell.util.concurrent.delayedTask(penalty)(loginBasic)
+        case Some(Digest) => cmwell.util.concurrent.delayedTask(penalty / 2)(loginDigest).flatMap(identity)
+        case None => cmwell.util.concurrent.delayedTask(penalty)(Unauthorized("Please provide your credentials.\n").withHeaders("WWW-Authenticate" -> initialDigestHeader.toString))
+    }).recover { case t => exceptionToResponse(t) }
   }
 
   // SAML2 POC

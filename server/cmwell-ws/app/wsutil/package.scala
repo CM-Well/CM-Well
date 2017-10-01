@@ -34,6 +34,8 @@ import logic.CRUDServiceFS
 import cmwell.util.concurrent.SimpleScheduler
 import controllers.SpaMissingException
 import ld.cmw.PassiveFieldTypesCache
+import org.joda.time.DateTime
+import org.joda.time.format.ISODateTimeFormat
 import play.api.libs.json.Json
 import play.api.mvc.Results._
 import play.api.mvc.{Request, Result}
@@ -45,6 +47,10 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
 
 package object wsutil extends LazyLogging {
+
+  val Uuid = "([a-f0-9]{32})".r
+  val zeroTime = new DateTime(0L)
+  lazy val dtf = ISODateTimeFormat.dateTime()
 
   /**
    * Normalize Path.

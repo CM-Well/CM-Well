@@ -33,6 +33,7 @@ CACHE:
 /meta/app/main/images/recoverable-error-sign.svg
 /meta/app/main/images/search-icon.svg
 /meta/app/main/images/slider-toggle-handle.svg
+/meta/app/main/images/blue-down-arrow.svg
 /meta/app/main/scripts/components/ActionsBar.jsx
 /meta/app/main/scripts/components/ErrorMsg.jsx
 /meta/app/main/scripts/components/Footer.jsx
@@ -43,6 +44,7 @@ CACHE:
 /meta/app/main/scripts/components/Spinner.jsx
 /meta/app/main/scripts/components/SystemFields.jsx
 /meta/app/main/scripts/components/InfotonsList.jsx
+/meta/app/main/scripts/components/Types.jsx
 /meta/app/main/scripts/lib/ReactRouter.min.js
 /meta/app/main/scripts/lib/babel-5.8.34.min.js
 /meta/app/main/scripts/lib/jquery.min.js

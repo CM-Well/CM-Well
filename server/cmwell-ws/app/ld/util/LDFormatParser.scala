@@ -149,6 +149,14 @@ object LDFormatParser extends LazyLogging {
                              deletePaths: List[String],
                              atomicUpdates: Map[String,String]) {
 
+    def isEmpty: Boolean = {
+      metaData.valuesIterator.forall(_.isEmpty) &&
+      infotons.isEmpty &&
+      deleteMap.isEmpty &&
+      deleteVal.isEmpty &&
+      deletePaths.isEmpty
+    }
+
     private def merge[K](im1: Map[String, Map[K,Set[FieldValue]]], im2: Map[String, Map[K,Set[FieldValue]]]) = {
       val keys = im1.keySet ++ im2.keySet
       keys.map(k => {
@@ -791,6 +799,7 @@ object LDFormatParser extends LazyLogging {
       case "linkType" => md.copy(mdType = Some(LinkMetaData), linkType = Some(Try(value.asInstanceOf[FInt].value).getOrElse(md.linkType.getOrElse(1))))
       case "dataCenter" => md.copy(dataCenter = Some(value.toString))
       case "indexTime" => md.copy(indexTime = Try(value.asInstanceOf[FLong].value).toOption)
+      case "uuid" | "parent" | "path" => md // these have no affect. better ignore without polluting the logs
       case _ => logger.warn("attribute: " + predicate + ", is not treated in cmwell RDF imports."); md
     }
   }
