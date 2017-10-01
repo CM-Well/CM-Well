@@ -1,4 +1,4 @@
-import cmwell.build.CMWellCommon.Tags
+import cmwell.build.{Versions,CMWellCommon}, CMWellCommon.Tags
 
 name := "cmwell-imp"
 
