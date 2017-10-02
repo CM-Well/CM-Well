@@ -688,7 +688,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
                     if (headInfoton.lastModified.getMillis != existingInfotonOpt.get.lastModified.getMillis)
                       headInfoton.lastModified.getMillis > existingInfotonOpt.get.lastModified.getMillis
                     else
-                      headInfoton.uuid < existingInfotonOpt.get.uuid
+                      headInfoton.uuid <= existingInfotonOpt.get.uuid
                   }
                   val numOfParts = if (existingInfotonOpt.isDefined) 2 else 1
                   val indexNewInfotonCommands: Seq[IndexCommand] = IndexNewInfotonCommand(headInfoton.uuid,
@@ -710,7 +710,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
                       StatusTracking(_, 2)
                     }
 
-                    if (isHeadCurrent) {
+                    if (isHeadCurrent && !existingInfotonOpt.exists(_.uuid == headInfoton.uuid)) {
                       val updatedOffsetsForNew = offsets.map{ o => PartialOffset(o.topic, o.offset, 1, 2) }
                       val updatedOffsetsForExisting = offsets.map{ o => PartialOffset(o.topic, o.offset, 2, 2) }
                       val indexNew = BGMessage(updatedOffsetsForNew, indexNewInfotonCommands)

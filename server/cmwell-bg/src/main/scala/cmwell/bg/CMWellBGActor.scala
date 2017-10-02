@@ -55,6 +55,8 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
   var impStream:ImpStream = null
   var indexerStream:IndexerStream = null
   val waitAfter503 = config.getInt("cmwell.bg.waitAfter503")
+  val impOn = config.getBoolean("cmwell.bg.ImpOn")
+  val indexerOn = config.getBoolean("cmwell.bg.IndexerOn")
 
   // Metrics
   val jmxReporter = JmxReporter.forRegistry(metricRegistry).build()
@@ -177,19 +179,23 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
   }
 
   private def startImp = {
-    if(impStream == null) {
-      logger info "starting ImpStream"
-      impStream = new ImpStream(partition, config, irwService, zStore, ftsService, offsetsService, self)
-    } else
-      logger warn "requested to start Imp Stream but it is already running. doing nothing."
+    if(impOn) {
+      if (impStream == null) {
+        logger info "starting ImpStream"
+        impStream = new ImpStream(partition, config, irwService, zStore, ftsService, offsetsService, self)
+      } else
+        logger warn "requested to start Imp Stream but it is already running. doing nothing."
+    }
   }
 
   private def startIndexer = {
-    if(indexerStream == null) {
-      logger info "starting IndexerStream"
-      indexerStream = new IndexerStream(partition, config, irwService, ftsService, offsetsService, self)
-    } else
-      logger warn "requested to start Indexer Stream but it is already running. doing nothing."
+    if(indexerOn) {
+      if (indexerStream == null) {
+        logger info "starting IndexerStream"
+        indexerStream = new IndexerStream(partition, config, irwService, ftsService, offsetsService, self)
+      } else
+        logger warn "requested to start Indexer Stream but it is already running. doing nothing."
+    }
   }
 
   private def startAll = {
