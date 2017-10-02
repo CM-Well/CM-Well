@@ -35,12 +35,13 @@ import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
 import org.elasticsearch.common.unit.TimeValue
+import org.joda.time.DateTime
 import org.scalatest.OptionValues._
 import org.scalatest._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, duration, _}
+import scala.concurrent.{ExecutionContext, _}
 import scala.io.Source
 import scala.util.Random
 
@@ -466,6 +467,58 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
       }
     }
 
+    val reProcessNotIndexedOWCommands = afterFirst{
+      val currentTime = System.currentTimeMillis()
+      val infotons = Seq.tabulate(5) {n =>
+          ObjectInfoton(
+            path = s"/cmt/cm/bg-test/re_process_ow/info_override",
+            dc = "dc",
+            indexTime = Some(currentTime + n*3),
+            lastModified = new DateTime(currentTime +n),
+            indexName = "cm_well_p0_0",
+            fields = Some(Map(s"a$n" -> Set(FieldValue(s"b$n"), FieldValue(s"c${n % 2}"))))
+          )
+      }
+      val owCommands = infotons.map{ i => OverwriteCommand(i)}
+
+      // make kafka records out of the commands
+      val pRecords = owCommands.map { writeCommand =>
+        val commandBytes = CommandSerializer.encode(writeCommand)
+        new ProducerRecord[Array[Byte], Array[Byte]]("persist_topic", commandBytes)
+      }
+
+      // send them all
+      val sendEm = Future.traverse(pRecords)(sendToKafkaProducer)
+
+      sendEm.flatMap { _ =>
+        scheduleFuture(5.seconds) {
+          ftsServiceES.deleteInfotons(infotons).flatMap { _ =>
+            scheduleFuture(5.seconds) {
+              val sendAgain = Future.traverse(pRecords)(sendToKafkaProducer)
+              scheduleFuture(5.seconds) {
+                sendAgain.flatMap { _ =>
+                  ftsServiceES.search(
+                    pathFilter = Some(PathFilter("/cmt/cm/bg-test/re_process_ow", true)),
+                    fieldsFilter = None,
+                    datesFilter = None,
+                    paginationParams = DefaultPaginationParams,
+                    sortParams = FieldSortParams(List(("system.indexTime" -> Desc))),
+                    withHistory = false,
+                    debugInfo = true
+                  ).map { res =>
+                    withClue(res, res.infotons.head.lastModified.getMillis, currentTime) {
+                      res.infotons.size should equal(1)
+                      res.infotons.head.lastModified.getMillis should equal(currentTime + 4)
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
     val notGroupingOverrideCommands = afterFirst{
       val numOfInfotons = 15
       val overrideCommands = Seq.tabulate(numOfInfotons) { n =>
@@ -838,7 +891,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
 //      ), 5.seconds).total should equal(numOfInfotons)
 //
 //    }
-
+    it("re process OW commands even if were not indexed at first")(reProcessNotIndexedOWCommands)
     it("process OverrideCommands correctly by keeping its original indexTime and not generating a new one")(processOverrideCommands)
     it("process group of writecommands in short time while keeping all fields (in case of the data being splitted to several versions, last version must contain all data)")(groupedWriteCommands)
     it("process OverrideCommands correctly by not grouping same path commands together for merge")(notGroupingOverrideCommands)

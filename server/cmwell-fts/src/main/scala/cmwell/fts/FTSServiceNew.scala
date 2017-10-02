@@ -1326,6 +1326,17 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
     }
   }
 
+  def deleteInfotons(infotons:Seq[Infoton])(implicit executionContext: ExecutionContext):Future[Boolean] = {
+    assert(infotons.size > 0, "infotons to delete must not be empty")
+    val bulkRequest = client.prepareBulk()
+    infotons.foreach{ infoton =>
+      bulkRequest.add(
+        client.prepareDelete(infoton.indexName, "infoclone", infoton.uuid)
+      )
+    }
+    injectFuture[BulkResponse](bulkRequest.execute(_)).map(_ => true)
+  }
+
   // todo no need for partition argument. once Old FTS is deleted, we can delete this argument from the argument list
   override def purge(uuid: String, partition: String)(implicit executionContext: ExecutionContext): Future[Boolean] = {
 
