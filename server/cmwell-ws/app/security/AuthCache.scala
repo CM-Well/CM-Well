@@ -21,13 +21,15 @@ import cmwell.domain.{Everything, FileInfoton}
 import cmwell.ws.Settings
 import cmwell.zcache.L1Cache
 import cmwell.util.concurrent.retryUntil
+import cmwell.util.numeric.Radix64.encodeUnsigned
 import com.typesafe.scalalogging.LazyLogging
 import logic.CRUDServiceFS
+import org.joda.time.DateTime
 import play.api.libs.json.{JsValue, Json}
 
 import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration._
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 @Singleton
 class AuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionContext) extends LazyLogging {
@@ -35,12 +37,37 @@ class AuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
   private val rolesFolder = "/meta/auth/roles"
 
   // TODO Do not Await.result... These should return Future[Option[JsValue]]]
+  def getUserInfoton(username: String): Option[JsValue] = {
+    val timestamp = DateTime.now()
+    val logID = encodeUnsigned(Thread.currentThread().getId) + "~" + encodeUnsigned(timestamp.getMillis)
+    Try {
+      val f = usersCache(username)
+      val timestamp = DateTime.now()
+      Await.result(f.andThen {
+        case Failure(err) => logger.error(s"[$logID] failed to get user", err)
+        case Success(ojv) if DateTime.now().compareTo(timestamp.plus(3000L)) > 0 => logger.error(s"[$logID] succeeded, but took more than 3s. value is: $ojv")
+      }, 3.seconds)
+    }.transform(Success.apply, err => {
+      logger.error(s"[$logID] failed to get user with thrown exception",err)
+      Success(Option.empty[JsValue])
+    }).get
+  }
 
-  def getUserInfoton(username: String): Option[JsValue] =
-    Try(Await.result(usersCache(username), 3.seconds)).toOption.flatten
-
-  def getRole(roleName: String): Option[JsValue] =
-    Try(Await.result(rolesCache(roleName), 3.seconds)).toOption.flatten
+  def getRole(roleName: String): Option[JsValue] = {
+    val timestamp = DateTime.now()
+    val logID = encodeUnsigned(Thread.currentThread().getId) + "~" + encodeUnsigned(timestamp.getMillis)
+    Try {
+      val f = rolesCache(roleName)
+      val timestamp = DateTime.now()
+      Await.result(f.andThen {
+        case Failure(err) => logger.error(s"[$logID] failed to get user", err)
+        case Success(ojv) if DateTime.now().compareTo(timestamp.plus(3000L)) > 0 => logger.error(s"[$logID] succeeded, but took more than 3s. value is: $ojv")
+      }, 3.seconds)
+    }.transform(Success.apply, err => {
+      logger.error(s"[$logID] failed to get user with thrown exception",err)
+      Success(Option.empty[JsValue])
+    }).get
+  }
 
   private def getUserFromCas(username: String) = getFromCrudAndExtractJson(s"$usersFolder/$username")
   private def getRoleFromCas(rolename: String) = getFromCrudAndExtractJson(s"$rolesFolder/$rolename")
