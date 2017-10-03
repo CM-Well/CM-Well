@@ -20,6 +20,8 @@ import java.time.{Instant, LocalDateTime, ZoneId}
 
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
+import cmwell.util.string.Hash.xxhash32
+import cmwell.util.numeric.Radix64.encodeUnsigned
 import org.joda.time.DateTime
 import play.api.http.HeaderNames._
 import play.api.http.HttpEntity
@@ -48,7 +50,7 @@ abstract class FileInfotonCaching(defaultAssetsMetadata: DefaultAssetsMetadata, 
    */
   def treatContentAsAsset(request: Request[_], content: Array[Byte], mime: String, path: String, uuid: String, lastModified: DateTime, aggressiveCaching: Boolean = false): Future[Result] = {
     val etag =
-      if (uuid == "0") "\"" + cmwell.util.string.Hash.crc32(content) + "\""
+      if (uuid == "0") "\"" + encodeUnsigned(xxhash32(content)) + "\""
       else "\"" + uuid + "\""
 
     // cmwell's system file infotons (e.g. SPA), should only use Last-Modified mechanism, and must not be cached in routers or browser.
