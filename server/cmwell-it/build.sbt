@@ -1,6 +1,6 @@
 import scala.concurrent.Promise
 import scala.util.Try
-import cmwell.build.CMWellCommon.Tags
+import cmwell.build.{Versions,CMWellCommon}, CMWellCommon.Tags
 
 name := "cmwell-it"
 

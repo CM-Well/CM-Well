@@ -212,9 +212,13 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
     else irwService(nbg).readUUIDSAsync(uuidVec, level).map(seq => InfotonHistoryVersions(seq.collect{case FullBox(i) => i}))
   }
 
+  def getRawPathHistory(path: String, limit: Int, nbg: Boolean): Future[Vector[(Long,String)]] = irwService(nbg) match {
+    case irw@`_irwService2` => irw.historyAsync(path, limit)
+    case irw@`_irwService` => irw.historyAsync(path, limit).map(_.sortBy(_._1))
+  }
+
   def getInfotonHistoryReactive(path: String, nbg: Boolean = newBG): Source[Infoton,NotUsed] = {
-    irwService(nbg)
-      .historyReactive(path)
+    getRawPathHistoryReactive(path,nbg)
       .mapAsync(defaultParallelism) {
         case (_, uuid) => irwService(nbg).readUUIDAsync(uuid).andThen {
           case Failure(fail) => logger.error(s"uuid [$uuid] could not be fetched from cassandra", fail)
@@ -224,6 +228,15 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
       }
       .collect { case FullBox(i) => i }
   }
+
+  /**
+    * WARNING!!!
+    * if used against old IRW, results are unbounded, but NOT(!!!) streamable.
+    * all the versions are returned as a single in-memory vector, and thus,
+    * may result in OOM error in the case of heavily updated paths.
+    */
+  def getRawPathHistoryReactive(path: String, nbg: Boolean = newBG): Source[(Long,String),NotUsed] =
+    irwService(nbg).historyReactive(path)
 
   def getInfotons(paths: Seq[String], nbg: Boolean = newBG): Future[BagOfInfotons] =
     irwService(nbg).readPathsAsync(paths, level).map{ infopts =>

@@ -16,19 +16,17 @@
 
 package security.httpauth
 
-import org.apache.commons.codec.binary.Base64
-
-import scala.util.{Failure, Success, Try}
+import cmwell.util.string.Base64.decodeBase64String
 
 trait BasicHttpAuthentication {
   private val authTypePrefix = "Basic "
 
   def decodeBasicAuth(auth: String): (String, String) = {
-    Try(new String(new Base64().decode(auth.drop(authTypePrefix.length)), "UTF-8")) match {
-      case Success(userColonPass) =>
-        val split = userColonPass.split(":", 2)
-        split(0)->split(1)
-      case Failure(_) => throw new IllegalArgumentException(s"$auth is not a valid Basic header")
-    }
+    val userColonPass = decodeBase64String(auth.drop(authTypePrefix.length), "UTF-8")
+    val split = userColonPass.split(":", 2)
+    if (split.length != 2)
+      throw new IllegalArgumentException(s"`$auth` is not a valid Basic header")
+    else
+      split(0) -> split(1)
   }
 }

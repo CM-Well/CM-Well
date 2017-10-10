@@ -16,7 +16,6 @@
 
 package cmwell.bg.test
 
-import java.nio.file.{Files, Paths}
 import java.util.Properties
 
 import akka.actor.{ActorRef, ActorSystem}
@@ -24,11 +23,10 @@ import cmwell.bg.{CMWellBGActor, ShutDown}
 import cmwell.common.{CommandSerializer, OffsetsService, WriteCommand, ZStoreOffsetsService}
 import cmwell.domain.{FieldValue, ObjectInfoton}
 import cmwell.driver.Dao
-import cmwell.fts.FTSServiceNew
+import cmwell.fts._
 import cmwell.irw.IRWService
 import cmwell.zstore.ZStore
-import com.datastax.driver.core.ConsistencyLevel
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
@@ -65,15 +63,12 @@ class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers wi
     producerProperties.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
     kafkaProducer = new KafkaProducer[Array[Byte], Array[Byte]](producerProperties)
 
-    Files.deleteIfExists(Paths.get("./target", "persist_topic-0.offset"))
-    Files.deleteIfExists(Paths.get("./target", "index_topic-0.offset"))
-
     dao = Dao("Test","data2")
-    testIRWMockupService = FailingIRWServiceMockup(dao, 10)
-    irwService = IRWService.newIRW(dao, 25 , true, 120.seconds)
+    testIRWMockupService = FailingIRWServiceMockup(dao, 13)
     zStore = ZStore(dao)
+    irwService = IRWService.newIRW(dao, 25 , true, 0.seconds)
     offsetsService = new ZStoreOffsetsService(zStore)
-    ftsServiceES = FTSServiceNew("es.test.yml")
+    ftsServiceES = FailingFTSServiceMockup("es.test.yml", 5)
 
 
     // wait for green status
@@ -102,6 +97,7 @@ class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers wi
 
 
     bgConfig = ConfigFactory.load
+    bgConfig.withValue("cmwell.bg.esActionsBulkSize", ConfigValueFactory.fromAnyRef(100))
 
     actorSystem = ActorSystem("cmwell-bg-test-system")
 
@@ -114,16 +110,11 @@ class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers wi
 
   "Resilient BG" should "process commands as usual on circumvented BGActor (periodically failing IRWService) after suspending and resuming" in {
 
-//    val testIRWService = FailingIRWServiceMockup(dao, 5)
-//    val bgActor = actorSystem.actorOf(CMWellBGActor.props(bgConfig, testIRWService, ftsServiceES))
-
-//    Await.result(ask(bgActor, Start)(10.seconds).mapTo[Started.type], 10.seconds)
-
     logger info "waiting 10 seconds for circumvented BGActor to start"
 
     Thread.sleep(10000)
 
-    val numOfCommands = 15
+    val numOfCommands = 1500
     // prepare sequence of writeCommands
     val writeCommands = Seq.tabulate(numOfCommands){ n =>
       val infoton = ObjectInfoton(
@@ -143,16 +134,30 @@ class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers wi
     // send them all
     pRecords.foreach { kafkaProducer.send(_)}
 
-    println("waiting for 20 seconds")
-    Thread.sleep(20000)
+    println("waiting for 10 seconds")
+    Thread.sleep(10000)
 
     for( i <- 0 to numOfCommands-1) {
-      val nextResult = Await.result(irwService.readPathAsync(s"/cmt/cm/bg-test/circumvented_bg/info$i", ConsistencyLevel.QUORUM), 5.seconds)
+      val nextResult = Await.result(irwService.readPathAsync(s"/cmt/cm/bg-test/circumvented_bg/info$i"), 5.seconds)
       withClue(nextResult, s"/cmt/cm/bg-test/circumvented_bg/info$i"){
         nextResult should not be empty
       }
     }
 
+    for( i <- 0 to numOfCommands-1) {
+      val searchResponse = Await.result(
+        ftsServiceES.search(
+          pathFilter = None,
+          fieldsFilter = Some(SingleFieldFilter(Must, Equals, "system.path", Some(s"/cmt/cm/bg-test/circumvented_bg/info$i"))),
+          datesFilter = None,
+          paginationParams = PaginationParams(0, 200)
+        ),
+        10.seconds
+      )
+      withClue(s"/cmt/cm/bg-test/circumvented_bg/info$i"){
+        searchResponse.infotons.size should equal(1)
+      }
+    }
   }
 
   override def afterAll() = {
@@ -161,6 +166,7 @@ class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers wi
     Thread.sleep(10000)
     ftsServiceES.shutdown()
     testIRWMockupService = null
+    irwService = null
   }
 
 }

@@ -6,7 +6,7 @@
         "multiline" : true,
         "regex" : {
             "std" : {
-                "pattern" : "^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}(?:[\\.,]\\d{3})?) (?<thread>\\[?[^\\]]{1,44}\\](?: +)?) (?<level>.{5}) (?<module>[^ ]+(?: +)?) - (?<body>.*)"
+                "pattern" : "^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}(?:[\\.,]\\d{3})?) (?<thread>\\[?[^\\]]{1,44}\\](?: +)?) (?<level>.{5}) (?<module>.{36}) - (?<body>.*)"
             },
             "akka-line" : {
                 "pattern" : "^(?<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}(?:[\\.,]\\d{3})?) \\[(?<loggingThread>[^ ]+) (?<thread>[^\\]]+)\\] (?<level>.{5}) (?<module>[^ ]+(?: +)?) (?<actorSystem>[^ ]+) (?<akkaSource>[^ ]+)? ?- (?<body>.*)"
@@ -74,6 +74,10 @@
             {
                 "line" : "2017-09-12 05:51:14,901 [ForkJoinPool-1-worker-7]                    WARN  c.dc.stream.DataCenterSyncManager    - Getting index time or position key failed. Cancelling the sync start. It will be started again on the next schedule check",
                 "level" : "warning"
+            },
+            {
+                "line" : "2017-09-19 11:11:03,875 ols-system-akka.actor.default-dispatcher-23] INFO  .d.d.c.BufferFillerActor [your-name] - no more data is available, will check again in 1 minute",
+                "level" : "info"
             },
             {
                 "line" : "2017-09-18 11:04:38,755 ream-dc-akka.actor.default-dispatcher-18631] INFO  cmwell.dc.stream.TsvRetriever$       - Data Center ID dc3?qp=*system.parent.parent_hierarchy:/example.org/,*system.path::/trit.tms3: Got TSVs stream source. The next position key to consume is AQCpeJwzqMmoKaqJ1i2uLC5JzdUrSCxKzSuBUvEZmalFiUXJGZVW-rmpJYn6OgSVpeQnF-vrQFWlJFuoooooRGsR0lVSlFmiV5JbbKyvg1BbkoEkERsLAGoMP6U. Got 0 TSVs using BulkConsume. Total TSVs got 0. Read rate: 0.00 TSVs/second",

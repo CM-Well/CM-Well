@@ -33,7 +33,7 @@ import nl.grons.metrics.scala.DefaultInstrumented
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.elasticsearch.metrics.ElasticsearchReporter
-
+import cmwell.common.exception._
 import scala.concurrent.duration._
 
 
@@ -55,6 +55,8 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
   var impStream:ImpStream = null
   var indexerStream:IndexerStream = null
   val waitAfter503 = config.getInt("cmwell.bg.waitAfter503")
+  val impOn = config.getBoolean("cmwell.bg.ImpOn")
+  val indexerOn = config.getBoolean("cmwell.bg.IndexerOn")
 
   // Metrics
   val jmxReporter = JmxReporter.forRegistry(metricRegistry).build()
@@ -70,16 +72,6 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
     logger info "starting metrics ES Reporter"
     esReporter.start(10, TimeUnit.SECONDS)
   }
-
-  val bootStrapServers = config.getString("cmwell.bg.kafka.bootstrap.servers")
-
-  val byteArrayDeserializer = new ByteArrayDeserializer()
-  val persistCommandsConsumerSettings =
-    ConsumerSettings(context.system, byteArrayDeserializer, byteArrayDeserializer)
-      .withBootstrapServers(bootStrapServers)
-      .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
-
-  val kafkaConsumer: ActorRef = context.actorOf(KafkaConsumerActor.props(persistCommandsConsumerSettings))
 
   override def preStart(): Unit = {
       logger info s"CMwellBGActor-$partition starting"
@@ -101,38 +93,11 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
       akka.actor.SupervisorStrategy.Resume
   }
 
-  object ExceptionOrigin {
-    val CassandraException = ExceptionOrigin("com.datastax.driver.core.exceptions")
-    val ElasticSearchException = ExceptionOrigin("java.lang.IllegalArgumentException")
-  }
-  case class ExceptionOrigin(exceptionPrefix:String) {
-    def unapply(t:Throwable): Boolean = t.getClass.getName.startsWith(exceptionPrefix)
-  }
-
-  val decider: Supervision.Decider = {
-    case ExceptionOrigin.CassandraException() =>
-      self ! All503
-      Supervision.Stop
-    case ExceptionOrigin.ElasticSearchException() =>
-      self ! All503
-      Supervision.Stop
-    case t: Throwable =>
-      if(Option(t.getMessage).getOrElse("").contains("""Sender[null] sent the message of type "akka.kafka.KafkaConsumerActor$Internal$Commit"""")){
-        logger error s"got the weired exception from reactive kafka !!! restarting stream"
-        Supervision.Restart
-      } else {
-        logger error ("Got exception from stream. suspending all sending All503 to myself", t)
-        self ! All503
-        Supervision.Stop
-      }
-  }
-
   implicit val system = context.system
 
   implicit val ec = context.dispatcher
 
   implicit val materializer = ActorMaterializer()
-
 
   override def receive: Receive = {
     case Start =>
@@ -172,10 +137,13 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
         logger debug s"became state503. scheduling resume in [waitAfter503] seconds"
       context.system.scheduler.scheduleOnce(waitAfter503.seconds, self, Resume)
     case Indexer503 =>
-        logger info "Indexer went offline temporarily, will try to start it again in 30 seconds"
+        logger error "Indexer Stopped with Exception. Restarting it."
       stopIndexer
-      context become state503
-      context.system.scheduler.scheduleOnce(5.seconds, self, ResumeIndexer)
+      startIndexer
+    case Imp503 =>
+        logger error "Imp stopped with exception. Restarting it."
+      stopImp
+      startImp
     case ExitWithError =>
       logger error s"Requested to exit with error by ${sender()}"
       System.exit(1)
@@ -211,19 +179,23 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
   }
 
   private def startImp = {
-    if(impStream == null) {
-      impStream = new ImpStream(partition, config, irwService, zStore, ftsService, offsetsService, decider, kafkaConsumer)
-      logger info "Imp Stream started"
-    } else
-      logger warn "requested to start Imp Stream but it is already running. doing nothing."
+    if(impOn) {
+      if (impStream == null) {
+        logger info "starting ImpStream"
+        impStream = new ImpStream(partition, config, irwService, zStore, ftsService, offsetsService, self)
+      } else
+        logger warn "requested to start Imp Stream but it is already running. doing nothing."
+    }
   }
 
   private def startIndexer = {
-    if(indexerStream == null) {
-      indexerStream = new IndexerStream(partition, config, irwService, ftsService, offsetsService, decider, kafkaConsumer)
-      logger info "Indexer Stream started"
-    } else
-      logger warn "requested to start Indexer Stream but it is already running. doing nothing."
+    if(indexerOn) {
+      if (indexerStream == null) {
+        logger info "starting IndexerStream"
+        indexerStream = new IndexerStream(partition, config, irwService, ftsService, offsetsService, self)
+      } else
+        logger warn "requested to start Indexer Stream but it is already running. doing nothing."
+    }
   }
 
   private def startAll = {
@@ -274,6 +246,7 @@ case object IndexerStopped
 case object ShutDown
 case object All503
 case object Indexer503
+case object Imp503
 case object State503
 case object Resume
 case object ResumeIndexer

@@ -1,4 +1,7 @@
 (function(){
+
+    
+if(/^\/proc$|^\/proc\//.test(location.pathname)) location.href+='?old-ui';
     
 var status = function(msg, noellip) { document.getElementById('loading-status').innerHTML = msg?msg+(noellip?'':'...'):''; }
     , token = 'S2lsbGluZyB6b21iaWVz;RmVlZGluZyBjYXRz;RWF0aW5nIGJ1cmdlcnM=;QnV5aW5nIGEgYm9hdA==;Q29tcG9zaW5nIGEgcHJlbHVkZQ==;UmlkaW5nIGEgdW5pY29ybg==;V2VhcmluZyBzdW5nbGFzc2Vz;UGxheWluZyBjaGVzcw==;Q2FsY3VsYXRpbmcgdGhlIG1lYW5pbmcgb2YgdW5pdmVyc2U=;V2Fsa2luZyBvbiB3YXRlcg==;U2tpaW5n;RGV2ZWxvcGluZyBjb25zY2lvdXNuZXNz;TGVhcm5pbmcgUGVybA==;SW52ZXN0aWdhdGluZyBvdXRlciBzcGFjZQ==;VHJhdmVsbGluZyB0byBub3J0aCBwb2xl;QmFraW5nIGEgY2FrZQ=='.split(';'), empty = atob(token[(Math.random()*token.length)|0]);
@@ -73,17 +76,19 @@ require(["react", "react-dom"], function() {
             
             require([ // app componets
                  'jsx!./components/Header.jsx'
+                ,'jsx!./components/Types.jsx'
                 ,'jsx!./components/HomePage.jsx'
                 ,'jsx!./components/InfotonsList.jsx'
                 ,'jsx!./components/Infoton.jsx'
                 ,'jsx!./components/Footer.jsx'
                 ,'jsx!./utils'
-            ], function(header, homePage, infotonsList, infoton, footer) {
+            ], function(header, types, homePage, infotonsList, infoton, footer) {
                 status(empty);
                 setTimeout(function(){
                     status('Starting App', true);
 
                     var components = header;
+                    components.Types = types;
                     components.HomePage = homePage;
                     components.InfotonsList = infotonsList;
                     components.Infoton = infoton;
@@ -91,6 +96,8 @@ require(["react", "react-dom"], function() {
                     requirejs.config({ config: { app: { components: components } } });
 
                     require(['jsx!./app']);
+                    
+                    console.info('We know ApplicationCache is going to be deprecated. We are waiting for https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API/Using_Service_Workers to be stable.');
                 }, 500);
             });
         });

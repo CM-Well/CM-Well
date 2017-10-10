@@ -45,6 +45,14 @@ class APIValidationTests extends FunSpec with Matchers with Inspectors with Help
   def bodyAsString(resp: SimpleResponse[Array[Byte]]): String = new String(resp.body._2, "UTF-8")
 
   describe("CM-Well REST API") {
+    it("should fail with 422 on well formed but benign _in updates") {
+      val onlyPathIsBenign = """<http://test.permid.org/testsortby> <http://cm-well-uk-lab.int.thomsonreuters.com/meta/sys#path> "/test.permid.org/testsortby" ."""
+      val res = Await.result(Http.post(_in, onlyPathIsBenign, textPlain, queryParams = List("format" -> "ntriples", "debug-log" -> ""), headers = tokenHeader),requestTimeout)
+      withClue(res) {
+        res.status should be(422)
+      }
+    }
+
     it("should fail to put infoton without token with 403 error code") {
       val path = cmt / "PutInfotonWithoutToken"
       val req = Http.post(path, "Text content for File Infoton", textPlain, headers = List("X-CM-WELL-TYPE" -> "FILE"))
