@@ -1534,13 +1534,13 @@ callback=< [URL] >
                 fSearchResult.flatMap { case (ok, searchResult) =>
                   extractFieldsMask(getQueryString("fields"),typesCache(nbg),cmwellRDFHelper, nbg).map { fieldsMask =>
                     // Prepare pagination info
-                    val linkBase = cmWellBase + normalizedPath + getQueryString("format").map {
-                      "?format=" + _
-                    }.getOrElse("?") + getQueryString("with-descendants").map {
+                    val linkBase = cmWellBase + normalizedPath + "?op=search" + getQueryString("format").map {
+                      "&format=" + _
+                    }.getOrElse("") + getQueryString("with-descendants").map {
                       "&with-descendants=" + _
-                    }.getOrElse("?") + getQueryString("recursive").map {
+                    }.getOrElse("") + getQueryString("recursive").map {
                       "&recursive=" + _
-                    }.getOrElse("") + "&op=search" + searchResult.fromDate.map {
+                    }.getOrElse("") + searchResult.fromDate.map {
                       f => "&from=" + URLEncoder.encode(fullDateFormatter.print(f), "UTF-8")
                     }.getOrElse("") +
                       searchResult.toDate.map {
