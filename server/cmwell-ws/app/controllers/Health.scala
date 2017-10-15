@@ -82,7 +82,7 @@ object HealthUtils {
 }
 
 @Singleton
-class Health @Inject()(crudServiceFS: CRUDServiceFS) extends Controller {
+class Health @Inject()(crudServiceFS: CRUDServiceFS) extends InjectedController {
 
   import HealthUtils._
 

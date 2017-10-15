@@ -4,14 +4,14 @@ import cmwell.ws.Settings
 import com.typesafe.scalalogging.LazyLogging
 import k.grid.dmap.api.SettingsBoolean
 import k.grid.dmap.impl.persistent.PersistentDMap
-import play.api.mvc.{Action, Controller}
+import play.api.mvc.{Action, Controller, InjectedController}
 import security.AuthUtils
 import javax.inject._
 
 import cmwell.ws.util.TypeHelpers
 
 @Singleton
-class NbgController  @Inject()(nbgToggler: NbgToggler, authUtils: AuthUtils) extends Controller with LazyLogging with TypeHelpers {
+class NbgController  @Inject()(nbgToggler: NbgToggler, authUtils: AuthUtils) extends InjectedController with LazyLogging with TypeHelpers {
 
   def handleToggle = Action { implicit req =>
     val tokenOpt = authUtils.extractTokenFrom(req)

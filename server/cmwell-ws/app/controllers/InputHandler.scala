@@ -49,7 +49,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
                               tbg: NbgToggler,
                               authUtils: AuthUtils,
                               cmwellRDFHelper: CMWellRDFHelper,
-                              formatterManager: FormatterManager) extends Controller with LazyLogging with TypeHelpers { self =>
+                              formatterManager: FormatterManager) extends InjectedController with LazyLogging with TypeHelpers { self =>
 
   val aggregateBothOldAndNewTypesCaches = new AggregateBothOldAndNewTypesCaches(crudService,tbg)
   val bo1 = collection.breakOut[List[Infoton],String,Set[String]]

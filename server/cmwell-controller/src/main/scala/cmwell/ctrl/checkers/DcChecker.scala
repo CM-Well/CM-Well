@@ -23,9 +23,9 @@ import cmwell.ctrl.utils.{HttpUtil, ProcUtil}
 import cmwell.stats.Stats.Settings
 import com.fasterxml.jackson.databind.JsonNode
 import com.typesafe.scalalogging.LazyLogging
-import k.grid.{ClientActor, RestartJvm, Grid}
+import k.grid.{ClientActor, Grid, RestartJvm}
 import k.grid.service.{KillService, LocalServiceManager}
-import play.libs.Json
+import play.api.libs.json._
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -55,11 +55,11 @@ object DcChecker  extends Checker with RestarterChecker with LazyLogging {
 
      HttpUtil.httpGet(s"http://$host/meta/sys/dc/?op=search&qp=type::remote&format=json&with-data").map {
       r =>
-        val json: JsonNode = Json.parse(r.content)
-        val infotons = json.get("results").get("infotons")
+        val json: JsValue = Json.parse(r.content)
+        val JsDefined(JsArray(infotons)) = json.\("results").\("infotons")
         val iterator = infotons.iterator
 
-        var dcNodes = Set.empty[JsonNode]
+        var dcNodes = Set.empty[JsValue]
         while(iterator.hasNext) {
           val jsonNode = iterator.next
           dcNodes = dcNodes + jsonNode
@@ -67,10 +67,10 @@ object DcChecker  extends Checker with RestarterChecker with LazyLogging {
 
         dcNodes.map{
           dcNode =>
-            val fields = dcNode.get("fields")
-            val id = fields.get("id").iterator().next.asText()
-            val qp = if (fields.has("qp")) Some(fields.get("qp").iterator().next.asText()) else None
-            val location = fields.get("location").iterator().next.asText()
+            val fields = dcNode.\("fields")
+            val id = fields.\("id").\(0).as[String]
+            val qp = fields.\("qp").\(0).toOption.flatMap(_.asOpt[String])
+            val location = fields.\("location").\(0).as[String]
             ActiveDcSync(id, qp, location)
         }
     }
@@ -80,8 +80,8 @@ object DcChecker  extends Checker with RestarterChecker with LazyLogging {
     val qpPart = qp.fold("?")(qp => s"?qp=$qp&")
     HttpUtil.httpGet(s"http://$host/proc/dc/$dc${qpPart}format=json&with-data").map {
       r =>
-        val json: JsonNode = Json.parse(r.content)
-        json.get("fields").get("lastIdxT").iterator().next().asLong()
+        val json: JsValue = Json.parse(r.content)
+        json.\("fields").\("lastIdxT").\(0).as[Long]
     }
   }
 

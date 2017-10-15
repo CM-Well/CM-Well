@@ -18,7 +18,7 @@ package trafficshaping
 
 import com.typesafe.scalalogging.LazyLogging
 import k.grid.dmap.impl.persistent.PersistentDMap
-import play.api.mvc.{Action, Controller}
+import play.api.mvc.{Action, Controller, InjectedController}
 import DMapKeys._
 import k.grid.dmap.api.SettingsLong
 import security.AuthUtils
@@ -30,7 +30,7 @@ import scala.concurrent.{ExecutionContext, Future}
   * Created by michael on 8/4/16.
   */
 @Singleton
-class TrafficHandler @Inject()(authUtils: AuthUtils)(implicit ec: ExecutionContext) extends Controller with LazyLogging {
+class TrafficHandler @Inject()(authUtils: AuthUtils)(implicit ec: ExecutionContext) extends InjectedController with LazyLogging {
   // todo: remove this.
   def handleTimeout = Action.async { implicit originalRequest =>
     cmwell.util.concurrent.delayedTask(5.seconds)(Future.successful(Ok)).flatMap(identity)

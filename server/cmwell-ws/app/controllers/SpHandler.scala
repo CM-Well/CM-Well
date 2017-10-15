@@ -60,9 +60,7 @@ import javax.inject._
 
 import akka.NotUsed
 import cmwell.ws.util.TypeHelpers
-import cmwell.ws.util.TypeHelpers.asBoolean
-import controllers.SpHandler.logger
-import wsutil.overrideMimetype
+import play.api.http.FileMimeTypes
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -75,7 +73,9 @@ import scala.util.{Failure, Random, Success, Try}
 */
 
 @Singleton
-class SpHandlerController @Inject()(crudServiceFS: CRUDServiceFS, nbgToggler: NbgToggler)(implicit ec: ExecutionContext) extends Controller with LazyLogging with TypeHelpers {
+class SpHandlerController @Inject()(crudServiceFS: CRUDServiceFS,
+                                    nbgToggler: NbgToggler)
+                                   (implicit ec: ExecutionContext, fmt: FileMimeTypes) extends InjectedController with LazyLogging with TypeHelpers {
 
   val parser = new SPParser
 

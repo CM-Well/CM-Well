@@ -22,7 +22,7 @@ import scala.language.postfixOps
 
 //TODO: this must be refactored...!
 @Singleton
-class CommandHandler  @Inject() (inputHandler: InputHandler) {
+class CommandHandler  @Inject() (inputHandler: InputHandler) extends InjectedController {
   def handlePost(op: String) =  Action.async(parse.raw) {
     implicit req => {
       op.toLowerCase match {
