@@ -27,7 +27,7 @@ import logic.CRUDServiceFS
 import org.joda.time.DateTime
 import play.api.libs.json.{JsValue, Json}
 
-import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
@@ -36,35 +36,22 @@ class AuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
   private val usersFolder = "/meta/auth/users"
   private val rolesFolder = "/meta/auth/roles"
 
-  // TODO Do not Await.result... These should return Future[Option[JsValue]]]
-  def getUserInfoton(username: String): Option[JsValue] = {
-    val timestamp = DateTime.now()
-    val logID = encodeUnsigned(Thread.currentThread().getId) + "~" + encodeUnsigned(timestamp.getMillis)
-    Try {
-      val f = usersCache(username)
-      val timestamp = DateTime.now()
-      Await.result(f.andThen {
-        case Failure(err) => logger.error(s"[$logID] failed to get user", err)
-        case Success(ojv) if DateTime.now().compareTo(timestamp.plus(3000L)) > 0 => logger.error(s"[$logID] succeeded, but took more than 3s. value is: $ojv")
-      }, 3.seconds)
-    }.transform(Success.apply, err => {
-      logger.error(s"[$logID] failed to get user with thrown exception",err)
-      Success(Option.empty[JsValue])
-    }).get
-  }
+  def getRole(roleName: String): Option[JsValue] = safelyGetEntity(roleName)(rolesCache)
+  def getUserInfoton(userName: String): Option[JsValue] = safelyGetEntity(userName)(usersCache)
 
-  def getRole(roleName: String): Option[JsValue] = {
+  // TODO Do not Await.result... These should return Future[Option[JsValue]]]
+  private def safelyGetEntity(entityName: String)(source: String => Future[Option[JsValue]]): Option[JsValue] = {
     val timestamp = DateTime.now()
     val logID = encodeUnsigned(Thread.currentThread().getId) + "~" + encodeUnsigned(timestamp.getMillis)
     Try {
-      val f = rolesCache(roleName)
+      val entityFut = source(entityName)
       val timestamp = DateTime.now()
-      Await.result(f.andThen {
-        case Failure(err) => logger.error(s"[$logID] failed to get user", err)
+      Await.result(entityFut.andThen {
+        case Failure(err) => logger.error(s"[$logID] failed to get entity[$entityName]", err)
         case Success(ojv) if DateTime.now().compareTo(timestamp.plus(3000L)) > 0 => logger.error(s"[$logID] succeeded, but took more than 3s. value is: $ojv")
       }, 3.seconds)
     }.transform(Success.apply, err => {
-      logger.error(s"[$logID] failed to get user with thrown exception",err)
+      logger.error(s"[$logID] failed to get entity[$entityName] with thrown exception",err)
       Success(Option.empty[JsValue])
     }).get
   }
