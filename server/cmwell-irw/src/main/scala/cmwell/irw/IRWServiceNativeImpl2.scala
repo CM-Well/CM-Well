@@ -161,7 +161,7 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
         }
       }.flatMap {
         case b: Box[Infoton] if b.isEmpty =>
-          if (isARetry) Future.successful(EmptyBox)
+          if (isARetry) Future.successful(b)
           else cmwell.util.concurrent.SimpleScheduler.scheduleFuture(delayOnError)(getFromCas(QUORUM, true))
         case io@FullBox(i) =>
           if (isARetry) {
