@@ -2423,11 +2423,12 @@ abstract class Host(user: String,
   }
 
   //def createNetwork : Unit = createNetwork(ips.par,topology, persistentAliases)
-  def createNetwork(topology: NetTopology, persistent: Boolean, sudoer: Credentials) {
+  def createNetwork(topology: NetTopology, persistent: Boolean, hosts : GenSeq[String], sudoer: Credentials) {
+    val ipMappingsOfPreparedOnly = ipMappings.remove(ipMappings.getIps.filterNot(hosts.seq.contains))
     topology match {
       case n: VLanTopology =>
         val tag = n.tag
-        val m = topology.getTopologyMap(ipMappings)
+        val m = topology.getTopologyMap(ipMappingsOfPreparedOnly)
         m.foreach {
           tuple =>
             var index = 0
@@ -2466,7 +2467,7 @@ abstract class Host(user: String,
             }
         }
       case _ =>
-        val m = topology.getTopologyMap(ipMappings)
+        val m = topology.getTopologyMap(ipMappingsOfPreparedOnly)
         m.foreach {
           tuple =>
             var index = 0
