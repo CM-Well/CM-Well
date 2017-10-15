@@ -66,6 +66,9 @@ let getCache = new LoadingCache({ loadingFunc: retryGet, rejectItemFunc: v => v.
     
 window.AppUtils = {
       lastPartOfUrl: (url) => url.substr(url.lastIndexOf('/')+1)
+    
+    , lastPartOfUriPath: (uri) => uri.substr(Math.max(uri.lastIndexOf('/'),uri.lastIndexOf('#'))+1)
+    
     , simpleFieldsProxy: (infoton) => new Proxy(infoton, {
         get (receiver, name) { return receiver.fields[name][0] }
     })
