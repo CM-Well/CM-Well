@@ -152,6 +152,9 @@ trait FTSServiceOps {
            partition: String = defaultPartition)
           (implicit executionContext:ExecutionContext): Future[Vector[(String,String)]]
 
+  def uinfo(uuid: String, partition: String = defaultPartition)
+           (implicit executionContext:ExecutionContext) : Future[Vector[(String, Long, String)]]
+
   def rInfo(path: String, scrollTTL: Long = defaultScrollTTL, paginationParams: PaginationParams = DefaultPaginationParams,
             withHistory: Boolean = false, partition: String = defaultPartition)
            (implicit executionContext:ExecutionContext): Future[Source[Vector[(Long, String,String)],NotUsed]]

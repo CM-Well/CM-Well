@@ -1,3 +1,5 @@
+import cmwell.build.Versions
+
 name := "cmwell-zstore"
 
 cassandraVersion := Versions.cassandra

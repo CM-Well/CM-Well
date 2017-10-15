@@ -61,6 +61,7 @@ import wsutil.{asyncErrorHandler, errorHandler, _}
 import cmwell.syntaxutils.!!!
 import cmwell.util.stream.StreamEventInspector
 import cmwell.web.ld.cmw.CMWellRDFHelper
+import play.api.mvc.request.RequestTarget
 
 import scala.collection.mutable.{HashMap, MultiMap}
 import scala.concurrent._
@@ -93,7 +94,7 @@ object ApplicationUtils {
   }
 
   def getNoCacheHeaders(): List[(String, String)] = {
-    val d = ResponseHeader.httpDateFormat.print(System.currentTimeMillis())
+    val d = java.time.LocalDateTime.now().format(ResponseHeader.httpDateFormat)
     List("Expires"       -> d,
          "Date"          -> d,
          "Cache-Control" -> "no-cache, private, no-store",
@@ -110,7 +111,12 @@ class Application @Inject()(bulkScrollHandler: BulkScrollHandler,
                             streams: Streams,
                             authUtils: AuthUtils,
                             cmwellRDFHelper: CMWellRDFHelper,
-                            formatterManager: FormatterManager)(implicit ec: ExecutionContext) extends Controller with FileInfotonCaching with LazyLogging {
+                            formatterManager: FormatterManager,
+                            assetsMetadataProvider: AssetsMetadataProvider,
+                            assetsConfigurationProvider: AssetsConfigurationProvider)
+                           (implicit ec: ExecutionContext) extends FileInfotonCaching(assetsMetadataProvider.get,assetsConfigurationProvider.get)
+                                                              with InjectedController
+                                                              with LazyLogging {
 
   import ApplicationUtils._
 
@@ -129,7 +135,9 @@ class Application @Inject()(bulkScrollHandler: BulkScrollHandler,
       throw new UnsupportedURIException("%2F is illegal in the path part of the URI!")
     else {
       val decodedPath = UriEncoding.decodePath(request.path, "UTF-8")
-      val requestHeader = request.copy(path = decodedPath, uri = decodedPath + request.uri.drop(request.path.length))
+      val requestHeader = request.withTarget(RequestTarget(uriString = decodedPath + request.uri.drop(request.path.length),
+                                                            path = decodedPath,
+                                                            queryString = request.queryString))
       Request(requestHeader, request.body)
     }
   }
@@ -1009,10 +1017,12 @@ callback=< [URL] >
     }.get
 
     lazy val parser = parse.using(rh => rh.mediaType match {
-      case Some(MediaType("application", "x-www-form-urlencoded", _)) if rh.getQueryString("op").contains("create-consumer") => parse.urlFormEncoded.map(m => Left(CreateConsumer(rh,m)))
-      case Some(MediaType("application", "x-www-form-urlencoded", _)) if rh.getQueryString("op").contains("search") => parse.urlFormEncoded.map(m => Left(Search(rh,m)))
+      case Some(MediaType("application", "x-www-form-urlencoded", _)) if rh.getQueryString("op").contains("create-consumer") => parse.formUrlEncoded.map(m => Left(CreateConsumer(rh,m)))
+      case Some(MediaType("application", "x-www-form-urlencoded", _)) if rh.getQueryString("op").contains("search") => parse.formUrlEncoded.map(m => Left(Search(rh,m)))
       case _ => parse.raw.map(Right.apply)
     })
+
+    override def executionContext: ExecutionContext = ec
   }
 
   def handlePost(path: String) = ExtractURLFormEnc(path)
@@ -1723,7 +1733,9 @@ callback=< [URL] >
       case Some(LinkInfoton(_, _, _, _, _, to, lType,_)) => lType match {
         case LinkType.Permanent => Future.successful(Redirect(to, request.queryString, MOVED_PERMANENTLY))
         case LinkType.Temporary => Future.successful(Redirect(to, request.queryString, TEMPORARY_REDIRECT))
-        case LinkType.Forward if recursiveCalls > 0 => handleRead(Request(request.copy(path = to, uri = to + request.uri.drop(request.path.length)), request.body), recursiveCalls - 1)
+        case LinkType.Forward if recursiveCalls > 0 => handleRead(request
+          .withTarget(RequestTarget(uriString = to + request.uri.drop(request.path.length),path = to, queryString = request.queryString))
+          .withBody(request.body), recursiveCalls - 1)
         case LinkType.Forward => Future.successful(BadRequest("too deep forward link chain detected!"))
       }
       case Some(i) =>
@@ -1877,8 +1889,8 @@ callback=< [URL] >
     }
   }
 
-  def handleAuthGET(action: String) = Action.async { req =>
-    action match {
+  def handleAuthGET(actionStr: String) = Action.async { req =>
+    actionStr match {
       case "generatepassword" => {
         val pw = authUtils.generateRandomPassword()
         Future.successful(Ok(Json.obj(("password", JsString(pw._1)), ("encrypted", pw._2))))
@@ -2042,13 +2054,110 @@ callback=< [URL] >
     }
   }
 
-  def handleRawRow(uuid: String) = Action.async { req =>
-    if(isReactive(req)) {
-      val src = crudServiceFS.reactiveRawCassandra(uuid).intersperse("\n").map(ByteString(_,StandardCharsets.UTF_8))
-      Future.successful(Ok.chunked(src).as(overrideMimetype("text/csv;charset=UTF-8", req)._2))
+  def handleRawDoc(uuid: String) = Action.async { req =>
+    val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+    crudServiceFS.getInfotonByUuidAsync(uuid, nbg).flatMap {
+      case FullBox(i) => {
+        val index = i.indexName
+        val a = handleRawDocWithIndex(index, uuid)
+        a(req)
+      }
+    }.recoverWith {
+      case err: Throwable => {
+        logger.error(s"could not retrive uuid[$uuid] from cassandra",err)
+        crudServiceFS.ftsService(nbg).uinfo(uuid).map { vec =>
+
+          val jArr = vec.map {
+            case (index, version, source) =>
+              Json.obj("_index" -> index, "_version" -> JsNumber(version), "_source" -> Json.parse(source))
+          }
+
+          val j = {
+            if (jArr.length < 2) jArr.headOption.getOrElse(JsNull)
+            else Json.arr(jArr)
+          }
+          val pretty = req.queryString.keySet("pretty")
+          val payload = {
+            if (pretty) Json.prettyPrint(j)
+            else Json.stringify(j)
+          }
+          Ok(payload).as(overrideMimetype("application/json;charset=UTF-8", req)._2)
+        }
+      }
+    }.recoverWith(asyncErrorHandler)
+  }
+
+  def handleRawDocWithIndex(index: String, uuid: String) = Action.async { req =>
+    val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+    crudServiceFS.ftsService(nbg).extractSource(uuid,index).map {
+      case (source,version) =>
+        val j = Json.obj("_index" -> index, "_version" -> JsNumber(version), "_source" -> Json.parse(source))
+        val pretty = req.queryString.keySet("pretty")
+        val payload = {
+          if (pretty) Json.prettyPrint(j)
+          else Json.stringify(j)
+        }
+        Ok(payload).as(overrideMimetype("application/json;charset=UTF-8",req)._2)
+    }.recoverWith(asyncErrorHandler)
+  }
+
+  def handleRawRow(path: String) = Action.async { req =>
+    val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+    val limit = req.getQueryString("versions-limit").flatMap(asInt).getOrElse(Settings.defaultLimitForHistoryVersions)
+    path match {
+      case Uuid(uuid) => handleRawUUID(uuid, isReactive(req), limit, nbg) { defaultMimetype =>
+        overrideMimetype(defaultMimetype, req)._2
+      }.recoverWith(asyncErrorHandler)
+      case _ => {
+        handleRawPath("/" + path, isReactive(req), limit, nbg) { defaultMimetype =>
+          overrideMimetype(defaultMimetype, req)._2
+        }.recoverWith(asyncErrorHandler)
+      }
     }
-    else crudServiceFS.getRawCassandra(uuid).map {
-      case (payload,mimetype) => Ok(payload).as(overrideMimetype(mimetype, req)._2)
+  }
+
+  def handleRawUUID(uuid: String, isReactive: Boolean, limit: Int, nbg: Boolean)(defaultMimetypeToReturnedMimetype: String => String) = {
+    if(isReactive) {
+      val src = crudServiceFS.reactiveRawCassandra(uuid).intersperse("\n").map(ByteString(_,StandardCharsets.UTF_8))
+      Future.successful(Ok.chunked(src).as(defaultMimetypeToReturnedMimetype("text/csv;charset=UTF-8")))
+    }
+    else crudServiceFS.getRawCassandra(uuid,nbg).flatMap {
+      case (payload,_) if payload.lines.size < 2 => handleRawPath("/" + uuid, isReactive, limit, nbg)(defaultMimetypeToReturnedMimetype)
+      case (payload,mimetype) => Future.successful(Ok(payload).as(defaultMimetypeToReturnedMimetype(mimetype)))
+    }
+  }
+
+  val commaByteString = ByteString(",",StandardCharsets.UTF_8)
+  val pathHeader = ByteString("path,last_modified,uuid")
+  val pathHeaderSource: Source[ByteString,NotUsed] = Source.single(pathHeader)
+
+  def handleRawPath(path: String, isReactive: Boolean, limit: Int, nbg: Boolean)(defaultMimetypeToReturnedMimetype: String => String) = {
+    val pathByteString = ByteString(path,StandardCharsets.UTF_8)
+    if(isReactive) {
+      val src = crudServiceFS
+        .getRawPathHistoryReactive(path, nbg)
+        .map { case (time, uuid) =>
+          endln ++
+            pathByteString ++
+            commaByteString ++
+            ByteString(dtf.print(time), StandardCharsets.UTF_8) ++
+            commaByteString ++
+            ByteString(uuid, StandardCharsets.UTF_8)
+        }
+      Future.successful(Ok.chunked(pathHeaderSource.concat(src)).as(defaultMimetypeToReturnedMimetype("text/csv;charset=UTF-8")))
+    }
+    else crudServiceFS.getRawPathHistory(path,limit,nbg).map { vec =>
+      val payload = vec.foldLeft(pathHeader){
+        case (bytes,(time,uuid)) =>
+          bytes ++
+            endln ++
+            pathByteString ++
+            commaByteString ++
+            ByteString(dtf.print(time), StandardCharsets.UTF_8) ++
+            commaByteString ++
+            ByteString(uuid, StandardCharsets.UTF_8)
+      }
+      Ok(payload).as(defaultMimetypeToReturnedMimetype("text/csv;charset=UTF-8"))
     }
   }
 

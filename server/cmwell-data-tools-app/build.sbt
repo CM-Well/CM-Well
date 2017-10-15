@@ -6,7 +6,7 @@ packJvmOpts := Map(
   "downloader"                 -> Seq("-Xmx1500m", "-XX:+UseG1GC"),
   "sparql-processor"           -> Seq("-Xmx1500m", "-XX:+UseG1GC"),
   "ingester"                   -> Seq("-Xmx1500m", "-XX:+UseG1GC"),
-  "sparql-triggered-processor" -> Seq("-Xmx1500m", "-XX:+UseG1GC")
+  "sparql-triggered-processor" -> Seq("-Xmx1500m", "-XX:+UseG1GC", "-XX:+HeapDumpOnOutOfMemoryError", "-XX:HeapDumpPath=${PROG_HOME}/logs")
 )
 
 packMain := Map(

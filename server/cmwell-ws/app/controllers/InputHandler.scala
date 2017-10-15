@@ -49,7 +49,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
                               tbg: NbgToggler,
                               authUtils: AuthUtils,
                               cmwellRDFHelper: CMWellRDFHelper,
-                              formatterManager: FormatterManager) extends Controller with LazyLogging with TypeHelpers { self =>
+                              formatterManager: FormatterManager) extends InjectedController with LazyLogging with TypeHelpers { self =>
 
   val aggregateBothOldAndNewTypesCaches = new AggregateBothOldAndNewTypesCaches(crudService,tbg)
   val bo1 = collection.breakOut[List[Infoton],String,Set[String]]
@@ -224,173 +224,186 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
     val now = System.currentTimeMillis()
     val p = Promise[Seq[(String,String)]]()
     lazy val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+    lazy val id = cmwell.util.numeric.Radix64.encodeUnsigned(req.id)
+    val debugLog = req.queryString.keySet("debug-log")
+    val addDebugHeader: Result => Result = { res =>
+      if(debugLog) res.withHeaders("X-CM-WELL-LOG-ID" -> id)
+      else res
+    }
 
     Try {
       parseRDF(req,skipValidation).flatMap {
         case pRes@ParsingResponse (infotonsMap, metaDataMap, cmwHostsSet, tmpDeleteMap, deleteValsMap, deletePaths, atomicUpdates) => {
-          logger.trace("ParsingResponse: " + pRes.toString)
+          if(pRes.isEmpty) {
+            logger.warn(s"[$id] bad user ingest resulted in parsed response: ${pRes.toString}")
+            if(debugLog) p.success(Seq("X-CM-WELL-LOG-ID" -> id))
+            else p.success(Nil)
+            Future.successful(addDebugHeader(UnprocessableEntity(s"ingested data was well formed, but is meaningless and has no affect. error logged with id [$id].")))
+          }
+          else {
+            if(debugLog) logger.info(s"[$id] ParsingResponse: ${pRes.toString}")
+            enforceForceIfNeededAndReturnMetaFieldsInfotons(infotonsMap, req.getQueryString("force").isDefined).flatMap { metaFields =>
 
-          enforceForceIfNeededAndReturnMetaFieldsInfotons(infotonsMap,req.getQueryString("force").isDefined).flatMap { metaFields =>
+              //we divide the infotons to write into 2 lists: regular writes and updates
+              val (deleteMap, (upserts, regular)) = {
+                var deleteMap: Map[String, Map[String, Option[Set[FieldValue]]]] = {
+                  val t1 = tmpDeleteMap.map {
+                    case (path, attSetQuadTuple) => {
 
-            //we divide the infotons to write into 2 lists: regular writes and updates
-            val (deleteMap, (upserts, regular)) = {
-              var deleteMap: Map[String, Map[String, Option[Set[FieldValue]]]] = {
-                val t1 = tmpDeleteMap.map {
-                  case (path, attSetQuadTuple) => {
-
-                    val valueSets = attSetQuadTuple.groupBy(_._1).map {
-                      case (field, set) => field -> Some(set.map(z => FNull(z._2).asInstanceOf[FieldValue]))
-                    }
-
-                    prependSlash(path) -> valueSets
-                  }
-                }
-                val t2 = deleteValsMap.map { case (path, fields) => prependSlash(path) -> fields.mapValues[Option[Set[FieldValue]]](Some.apply) }
-                t1 ++ t2
-              }
-              //path to needToReplace (boolean)
-              val s: String => Boolean = {
-                if (req.getQueryString("replace-mode").isEmpty) deleteMap.keySet ++ deleteValsMap.keySet
-                else {
-                  val x = req.getQueryString("replace-mode").get
-
-                  if(x.isEmpty) {
-                    deleteMap = infotonsMap.map {
-                      case (iPath, fMap) => prependSlash(iPath) -> fMap.map {
-                        case (fk, vs) =>
-                          val deleteValues: Option[Set[FieldValue]] = Some(vs.map(fv => FNull(fv.quad)))
-                          fk.internalKey -> deleteValues
+                      val valueSets = attSetQuadTuple.groupBy(_._1).map {
+                        case (field, set) => field -> Some(set.map(z => FNull(z._2).asInstanceOf[FieldValue]))
                       }
+
+                      prependSlash(path) -> valueSets
                     }
                   }
+                  val t2 = deleteValsMap.map { case (path, fields) => prependSlash(path) -> fields.mapValues[Option[Set[FieldValue]]](Some.apply) }
+                  t1 ++ t2
+                }
+                //path to needToReplace (boolean)
+                val s: String => Boolean = {
+                  if (req.getQueryString("replace-mode").isEmpty) deleteMap.keySet ++ deleteValsMap.keySet
                   else {
-                    val quadForReplacement: FieldValue = {
-                      x match {
-                        case "default" => FNull(None)
-                        case "*" => FNull(Some("*"))
-                        case alias if !FReference.isUriRef(alias) => {
+                    val x = req.getQueryString("replace-mode").get
 
-                          def optionToFNull(o: Option[String]): FNull = o match {
-                            //TODO: future optimization: check replace-mode's alias before invoking jena and parsing RDF document
-                            case None => throw new UnretrievableIdentifierException(s"The alias '$alias' provided for quad as replace-mode's argument does not exist. Use explicit quad URL, or register a new alias using `graphAlias` meta operation.")
-                            case someURI => FNull(someURI)
-                          }
-
-                          if(Settings.newBGFlag && Settings.oldBGFlag) {
-                            val x = cmwellRDFHelper.getQuadUrlForAlias(alias,true)
-                            val y = cmwellRDFHelper.getQuadUrlForAlias(alias,false)
-                            require(x == y,s"inconsistency between new[$x] & old[$y] data path. don't use quad aliasing")
-                            optionToFNull(x)
-                          }
-                          else if(Settings.newBGFlag) optionToFNull(cmwellRDFHelper.getQuadUrlForAlias(alias,true))
-                          else if(Settings.oldBGFlag) optionToFNull(cmwellRDFHelper.getQuadUrlForAlias(alias,false))
-                          else throw new IllegalStateException("Neither old or new bg are enabled!")
+                    if (x.isEmpty) {
+                      deleteMap = infotonsMap.map {
+                        case (iPath, fMap) => prependSlash(iPath) -> fMap.map {
+                          case (fk, vs) =>
+                            val deleteValues: Option[Set[FieldValue]] = Some(vs.map(fv => FNull(fv.quad)))
+                            fk.internalKey -> deleteValues
                         }
-                        case uri => FNull(Some(uri))
                       }
                     }
+                    else {
+                      val quadForReplacement: FieldValue = {
+                        x match {
+                          case "default" => FNull(None)
+                          case "*" => FNull(Some("*"))
+                          case alias if !FReference.isUriRef(alias) => {
 
-                    deleteMap = infotonsMap map { case (iPath, fMap) => prependSlash(iPath) -> fMap.map { case (fk, _) => fk.internalKey -> Some(Set(quadForReplacement)) } }
-                  }
-                  _ => true //in case of "replace-mode", we want to update every field provided
-                }
-              }
-              (deleteMap, infotonsMap.partition { case (k, _) => s(prependSlash(k)) }) //always use the "/*" notations
-            }
+                            def optionToFNull(o: Option[String]): FNull = o match {
+                              //TODO: future optimization: check replace-mode's alias before invoking jena and parsing RDF document
+                              case None => throw new UnretrievableIdentifierException(s"The alias '$alias' provided for quad as replace-mode's argument does not exist. Use explicit quad URL, or register a new alias using `graphAlias` meta operation.")
+                              case someURI => FNull(someURI)
+                            }
 
-            val infotonsWithoutFields = metaDataMap.keySet.filterNot(infotonsMap.keySet(_)) //meaning FileInfotons without extra data...
-
-            val infotonsToPut = (regular.toVector map {
-              case (path, fields) => {
-                require(path.nonEmpty, "path cannot be empty!")
-                val escapedPath = escapePath(path)
-                InfotonValidator.validateValueSize(fields)
-                val fs = fields.map {
-                  case (fk, vs) => fk.internalKey -> vs
-                }
-                infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath))
-              }
-            }) ++ infotonsWithoutFields.map(p => infotonFromMaps(cmwHostsSet, p, None, metaDataMap.get(p))) ++ metaFields
-
-            val infotonsToUpsert = upserts.toList map {
-              case (path, fields) => {
-                require(path.nonEmpty, "path cannot be empty!")
-                val escapedPath = escapePath(path)
-                InfotonValidator.validateValueSize(fields)
-                val fs = fields.map {
-                  case (fk, vs) => fk.internalKey -> vs
-                }
-                infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath))
-              }
-            }
-
-            if (req.getQueryString("dry-run").isDefined) {
-              p.success(Seq.empty)
-              Future.successful(Ok(Json.obj("success" -> true, "dry-run" -> true)))
-            } else if(deletePaths.contains("/") || deleteMap.keySet("/")) {
-              p.success(Seq.empty)
-              Future.successful(BadRequest(Json.obj("success" -> false, "message" -> "Deleting Root Infoton does not make sense!")))
-            } else {
-
-              val isPriorityWrite = req.getQueryString("priority").isDefined
-
-              val tracking = req.getQueryString("tracking")
-              val blocking = req.getQueryString("blocking")
-
-              // Process Tracking / Blocking
-              val tidOptFut = opfut(
-                if(tracking.isDefined || blocking.isDefined) Some({
-                  val allPaths = {
-                    val b = Set.newBuilder[String]
-                    b ++= deleteMap.keySet
-                    b ++= upserts.keySet
-                    b ++= regular.keySet
-                    b.result()
-                  }.filterNot(_.contains("/meta/ns"))
-
-                  val actorId = cmwell.util.string.Hash.crc32(cmwell.util.numeric.toIntegerBytes(pRes.##))
-                  TrackingUtil().spawn(actorId, allPaths, now)
-                }) else None
-              )
-
-              tidOptFut.flatMap { arAndTidOpt =>
-                val (arOpt, tidOpt) = arAndTidOpt.map(_._1) -> arAndTidOpt.map(_._2)
-
-                val tidHeaderOpt = tidOpt.map("X-CM-WELL-TID" -> _.token)
-                p.success(tidHeaderOpt.toSeq)
-
-                require(!infotonsToUpsert.exists(i => infotonsToPut.exists(_.path == i.path)),s"write commands & upserts from same document cannot operate on the same path")
-                val secondStagePaths: Set[String] = infotonsToUpsert.map(_.path)(bo1) union infotonsToPut.map(_.path)(bo2)
-
-                val (dontTrack,track) = deletePaths.partition(secondStagePaths.apply)
-                require(dontTrack.forall(!atomicUpdates.contains(_)),s"atomic updates cannot operate on multiple actions in a single ingest.")
-
-                val to = tidOpt.map(_.token)
-                val d1 = crudService.deleteInfotons(dontTrack.map(_ -> None), isPriorityWrite=isPriorityWrite)
-                val d2 = crudService.deleteInfotons(track.map(_ -> None),to,atomicUpdates, isPriorityWrite)
-
-                d1.zip(d2).flatMap { case (b01,b02) =>
-                  val f1 = crudService.upsertInfotons(infotonsToUpsert, deleteMap, to, atomicUpdates, isPriorityWrite)
-                  val f2 = crudService.putInfotons(infotonsToPut, to, atomicUpdates, isPriorityWrite)
-                  f1.zip(f2).flatMap { case (b1, b2) =>
-                    if (b01 && b02 && b1 && b2)
-                      blocking.fold(Future.successful(Ok(Json.obj("success" -> true)).withHeaders(tidHeaderOpt.toSeq: _*))) { _ =>
-                        import akka.pattern.ask
-                        val blockingFut = arOpt.get.?(SubscribeToDone)(timeout = 5.minutes).mapTo[Seq[PathStatus]]
-                        blockingFut.map { data =>
-                          val payload = {
-                            val formatter = getFormatter(req, formatterManager, defaultFormat = "ntriples", nbg = nbg, withoutMeta = true)
-                            val payload = BagOfInfotons(data map pathStatusAsInfoton)
-                            formatter render payload
+                            if (Settings.newBGFlag && Settings.oldBGFlag) {
+                              val x = cmwellRDFHelper.getQuadUrlForAlias(alias, true)
+                              val y = cmwellRDFHelper.getQuadUrlForAlias(alias, false)
+                              require(x == y, s"inconsistency between new[$x] & old[$y] data path. don't use quad aliasing")
+                              optionToFNull(x)
+                            }
+                            else if (Settings.newBGFlag) optionToFNull(cmwellRDFHelper.getQuadUrlForAlias(alias, true))
+                            else if (Settings.oldBGFlag) optionToFNull(cmwellRDFHelper.getQuadUrlForAlias(alias, false))
+                            else throw new IllegalStateException("Neither old or new bg are enabled!")
                           }
-                          Ok(payload).withHeaders(tidHeaderOpt.toSeq: _*)
-                        }.recover {
-                          case t: Throwable =>
-                            logger.error("Failed to use _in with Blocking, because", t)
-                            ServiceUnavailable(Json.obj("success" -> false, "message" -> "Blocking is currently unavailable"))
+                          case uri => FNull(Some(uri))
                         }
                       }
-                    else Future.successful(InternalServerError(Json.obj("success" -> false)))
+
+                      deleteMap = infotonsMap map { case (iPath, fMap) => prependSlash(iPath) -> fMap.map { case (fk, _) => fk.internalKey -> Some(Set(quadForReplacement)) } }
+                    }
+                    _ => true //in case of "replace-mode", we want to update every field provided
+                  }
+                }
+                (deleteMap, infotonsMap.partition { case (k, _) => s(prependSlash(k)) }) //always use the "/*" notations
+              }
+
+              val infotonsWithoutFields = metaDataMap.keySet.filterNot(infotonsMap.keySet(_)) //meaning FileInfotons without extra data...
+
+              val infotonsToPut = (regular.toVector map {
+                case (path, fields) => {
+                  require(path.nonEmpty, "path cannot be empty!")
+                  val escapedPath = escapePath(path)
+                  InfotonValidator.validateValueSize(fields)
+                  val fs = fields.map {
+                    case (fk, vs) => fk.internalKey -> vs
+                  }
+                  infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath))
+                }
+              }) ++ infotonsWithoutFields.map(p => infotonFromMaps(cmwHostsSet, p, None, metaDataMap.get(p))) ++ metaFields
+
+              val infotonsToUpsert = upserts.toList map {
+                case (path, fields) => {
+                  require(path.nonEmpty, "path cannot be empty!")
+                  val escapedPath = escapePath(path)
+                  InfotonValidator.validateValueSize(fields)
+                  val fs = fields.map {
+                    case (fk, vs) => fk.internalKey -> vs
+                  }
+                  infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath))
+                }
+              }
+
+              if (req.getQueryString("dry-run").isDefined) {
+                p.success(Seq.empty)
+                Future(addDebugHeader(Ok(Json.obj("success" -> true, "dry-run" -> true))))
+              } else if(deletePaths.contains("/") || deleteMap.keySet("/")) {
+                p.success(Seq.empty)
+                Future.successful(addDebugHeader(BadRequest(Json.obj("success" -> false, "message" -> "Deleting Root Infoton does not make sense!"))))
+              } else {
+
+                val isPriorityWrite = req.getQueryString("priority").isDefined
+
+                val tracking = req.getQueryString("tracking")
+                val blocking = req.getQueryString("blocking")
+
+                // Process Tracking / Blocking
+                val tidOptFut = opfut(
+                  if (tracking.isDefined || blocking.isDefined) Some({
+                    val allPaths = {
+                      val b = Set.newBuilder[String]
+                      b ++= deleteMap.keySet
+                      b ++= upserts.keySet
+                      b ++= regular.keySet
+                      b.result()
+                    }.filterNot(_.contains("/meta/ns"))
+
+                    val actorId = cmwell.util.string.Hash.crc32(cmwell.util.numeric.toIntegerBytes(pRes.##))
+                    TrackingUtil().spawn(actorId, allPaths, now)
+                  }) else None
+                )
+
+                tidOptFut.flatMap { arAndTidOpt =>
+                  val (arOpt, tidOpt) = arAndTidOpt.map(_._1) -> arAndTidOpt.map(_._2)
+
+                  val tidHeaderOpt = tidOpt.map("X-CM-WELL-TID" -> _.token)
+                  p.success(tidHeaderOpt.toSeq)
+
+                  require(!infotonsToUpsert.exists(i => infotonsToPut.exists(_.path == i.path)), s"write commands & upserts from same document cannot operate on the same path")
+                  val secondStagePaths: Set[String] = infotonsToUpsert.map(_.path)(bo1) union infotonsToPut.map(_.path)(bo2)
+
+                  val (dontTrack, track) = deletePaths.partition(secondStagePaths.apply)
+                  require(dontTrack.forall(!atomicUpdates.contains(_)), s"atomic updates cannot operate on multiple actions in a single ingest.")
+
+                  val to = tidOpt.map(_.token)
+                  val d1 = crudService.deleteInfotons(dontTrack.map(_ -> None), isPriorityWrite = isPriorityWrite)
+                  val d2 = crudService.deleteInfotons(track.map(_ -> None), to, atomicUpdates, isPriorityWrite)
+
+                  d1.zip(d2).flatMap { case (b01, b02) =>
+                    val f1 = crudService.upsertInfotons(infotonsToUpsert, deleteMap, to, atomicUpdates, isPriorityWrite)
+                    val f2 = crudService.putInfotons(infotonsToPut, to, atomicUpdates, isPriorityWrite)
+                    f1.zip(f2).flatMap { case (b1, b2) =>
+                      if (b01 && b02 && b1 && b2)
+                        blocking.fold(Future.successful(addDebugHeader(Ok(Json.obj("success" -> true)).withHeaders(tidHeaderOpt.toSeq: _*)))) { _ =>
+                          import akka.pattern.ask
+                          val blockingFut = arOpt.get.?(SubscribeToDone)(timeout = 5.minutes).mapTo[Seq[PathStatus]]
+                          blockingFut.map { data =>
+                            val payload = {
+                              val formatter = getFormatter(req, formatterManager, defaultFormat = "ntriples", nbg = nbg, withoutMeta = true)
+                              val payload = BagOfInfotons(data map pathStatusAsInfoton)
+                              formatter render payload
+                            }
+                            addDebugHeader(Ok(payload).withHeaders(tidHeaderOpt.toSeq: _*))
+                          }.recover {
+                            case t: Throwable =>
+                              logger.error("Failed to use _in with Blocking, because", t)
+                              addDebugHeader(ServiceUnavailable(Json.obj("success" -> false, "message" -> "Blocking is currently unavailable")))
+                          }
+                        }
+                      else Future.successful(addDebugHeader(InternalServerError(Json.obj("success" -> false))))
+                    }
                   }
                 }
               }
@@ -401,14 +414,14 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
         case err: Throwable => {
           logger.error(s"bad data received: ${req.body.asBytes().fold("NOTHING")(_.utf8String)}")
           p.tryFailure(err)
-          wsutil.exceptionToResponse(err)
+          addDebugHeader(wsutil.exceptionToResponse(err))
         }
       }
     }.recover {
       case ex: Throwable => {
         logger.error("handlePostRDF failed",ex)
         p.tryFailure(ex)
-        Future.successful(exceptionToResponse(ex))
+        Future.successful(addDebugHeader(exceptionToResponse(ex)))
       }
     }.get -> p.future
   }

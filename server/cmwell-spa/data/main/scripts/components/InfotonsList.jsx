@@ -31,7 +31,7 @@ class InfotonsList extends React.Component {
   }
 
   doFetch(path = this.props.location.pathname, qp = this.props.location.query.qp) {
-      qp = qp && qp!='None' ? `&recursive&qp=${qp}` : ''
+      qp = qp && qp!='None' ? `&recursive&qp=${qp.replace('#','%23')}` : ''
       let createConsumerUrl = `${path}?op=create-consumer${qp}`
       
       if(_(this.onAirAjax).contains(createConsumerUrl))

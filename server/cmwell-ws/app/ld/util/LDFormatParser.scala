@@ -149,6 +149,14 @@ object LDFormatParser extends LazyLogging {
                              deletePaths: List[String],
                              atomicUpdates: Map[String,String]) {
 
+    def isEmpty: Boolean = {
+      metaData.valuesIterator.forall(_.isEmpty) &&
+      infotons.isEmpty &&
+      deleteMap.isEmpty &&
+      deleteVal.isEmpty &&
+      deletePaths.isEmpty
+    }
+
     private def merge[K](im1: Map[String, Map[K,Set[FieldValue]]], im2: Map[String, Map[K,Set[FieldValue]]]) = {
       val keys = im1.keySet ++ im2.keySet
       keys.map(k => {

@@ -16,7 +16,7 @@
 
 package controllers
 
-import play.api.mvc.{Action, Controller}
+import play.api.mvc.{Action, Controller, InjectedController}
 import javax.inject._
 
 /**
@@ -27,7 +27,7 @@ import javax.inject._
  * To change this template use File | Settings | File Templates.
  */
 @Singleton
-class Help  @Inject() extends Controller {
+class Help  @Inject() extends InjectedController {
 
   def handleHelp(page:String) = Action{ request =>
     page match {

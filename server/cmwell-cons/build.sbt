@@ -5,7 +5,7 @@ import sbt.LocalProject
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.concurrent.ExecutionContext.Implicits.global
-import cmwell.build.CMWellBuild
+import cmwell.build.{Versions,CMWellBuild}
 
 packAutoSettings
 name := "cmwell-cons"

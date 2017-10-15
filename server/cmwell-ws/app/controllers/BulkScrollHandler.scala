@@ -23,7 +23,7 @@ import cmwell.ws.Streams
 import cmwell.ws.adt.{BulkConsumeState, ConsumeState}
 import cmwell.ws.util._
 import logic.CRUDServiceFS
-import play.api.mvc.{AnyContent, Request, Result}
+import play.api.mvc._
 import wsutil._
 import javax.inject._
 
@@ -36,8 +36,6 @@ import com.typesafe.scalalogging.LazyLogging
 import cmwell.syntaxutils._
 import cmwell.web.ld.cmw.CMWellRDFHelper
 import cmwell.ws.Streams.Flows
-import cmwell.ws.util.TypeHelpers.asBoolean
-import ld.cmw.{NbgPassiveFieldTypesCache, ObgPassiveFieldTypesCache}
 import play.api.http.Writeable
 
 import scala.math.min
@@ -47,7 +45,9 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
                                   tbg: NbgToggler,
                                   streams: Streams,
                                   cmwellRDFHelper: CMWellRDFHelper,
-                                  formatterManager: FormatterManager)(implicit ec: ExecutionContext) extends play.api.mvc.Controller with LazyLogging with TypeHelpers {
+                                  formatterManager: FormatterManager,
+                                  action: DefaultActionBuilder,
+                                  components: ControllerComponents)(implicit ec: ExecutionContext) extends AbstractController(components) with LazyLogging with TypeHelpers {
 
   def cache(nbg: Boolean) = if(nbg || tbg.get) crudServiceFS.nbgPassiveFieldTypesCache else crudServiceFS.obgPassiveFieldTypesCache
 

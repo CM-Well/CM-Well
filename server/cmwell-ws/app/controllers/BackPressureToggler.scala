@@ -20,12 +20,12 @@ import cmwell.ws.Settings
 import com.typesafe.scalalogging.LazyLogging
 import k.grid.dmap.api.SettingsString
 import k.grid.dmap.impl.persistent.PersistentDMap
-import play.api.mvc.{Action, Controller}
+import play.api.mvc.{Action, Controller, InjectedController}
 import security.AuthUtils
 import javax.inject._
 
 @Singleton
-class BackPressureToggler  @Inject()(authUtils: AuthUtils) extends Controller with LazyLogging {
+class BackPressureToggler  @Inject()(authUtils: AuthUtils) extends InjectedController with LazyLogging {
 
   val BACKPRESSURE_TRIGGER = "cmwell.ws.pushbackpressure.trigger"
 
