@@ -2005,6 +2005,8 @@ callback=< [URL] >
       val allowed = authUtils.filterNotAllowedPaths(Seq(path), PermissionLevel.Write, authUtils.extractTokenFrom(req)).isEmpty
       if (!allowed) {
         p.completeWith(Future.successful(Forbidden("Not authorized")))
+      } else if(path=="/") {
+        p.completeWith(Future.successful(BadRequest("Purging Root Infoton does not make sense!")))
       } else {
         val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
         val formatter = getFormatter(req, formatterManager, "json", nbg)
