@@ -336,9 +336,13 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
                 }
               }
 
-              if (req.getQueryString("dry-run").isDefined)
+              if (req.getQueryString("dry-run").isDefined) {
+                p.success(Seq.empty)
                 Future(addDebugHeader(Ok(Json.obj("success" -> true, "dry-run" -> true))))
-              else {
+              } else if(deletePaths.contains("/") || deleteMap.keySet("/")) {
+                p.success(Seq.empty)
+                Future.successful(addDebugHeader(BadRequest(Json.obj("success" -> false, "message" -> "Deleting Root Infoton does not make sense!"))))
+              } else {
 
                 val isPriorityWrite = req.getQueryString("priority").isDefined
 

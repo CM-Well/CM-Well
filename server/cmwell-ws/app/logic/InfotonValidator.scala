@@ -23,9 +23,8 @@ import com.typesafe.scalalogging.LazyLogging
  */
 object InfotonValidator extends LazyLogging {
   def isInfotonNameValid(path: String): Boolean = {
-    //regex would return false for ii,ii/*, or any path starting with '_'
     val noSlash = if(path.startsWith("/")) path.dropWhile(_ == '/') else path
-    (!(noSlash.matches("_(.)*|(ii|proc)(/(.)*)?"))) match {
+    (!(noSlash.matches("_(.)*|(ii|zz|proc)(/(.)*)?"))) match {
       case true => true
       case false => logger.warn(s"validation failed for infoton path: $path"); false
     }
