@@ -1066,6 +1066,7 @@ callback=< [URL] >
     //properties that needs to be re-sent every iteration
     val xg = request.getQueryString("xg")
     val (yg,ygChunkSize) = request.getQueryString("yg").fold(Option.empty[String] -> 0)(Some(_) -> request.getQueryString("yg-chunk-size").flatMap(asInt).getOrElse(10))
+    val (gqp,gqpChunkSize) = request.getQueryString("gqp").fold(Option.empty[String] -> 0)(Some(_) -> request.getQueryString("gqp-chunk-size").flatMap(asInt).getOrElse(10))
     val (requestedFormat,withData) = {
       val (f,b) = extractInferredFormatWithData(request,"json")
       f -> (b || yg.isDefined || xg.isDefined) //infer `with-data` implicitly, and don't fail the request
@@ -1158,13 +1159,13 @@ callback=< [URL] >
 
               // last chunk
               if (results.length >= total)
-                expandSearchResultsForSortedIteration(results, sortedConsumeState.copy(from = idxT), total, formatter, contentType, xg, yg, ygChunkSize, nbg)
+                expandSearchResultsForSortedIteration(results, sortedConsumeState.copy(from = idxT), total, formatter, contentType, xg, yg, gqp, ygChunkSize, gqpChunkSize, nbg)
               //regular chunk with more than 1 indexTime
               else if (results.exists(_.indexTime != idxT)) {
                 val newResults = results.filter(_.indexTime < idxT)
                 val id = sortedConsumeState.copy(from = idxT - 1)
                 //expand the infotons with yg/xg, but only after filtering out the infotons with the max indexTime
-                expandSearchResultsForSortedIteration(newResults, id, total, formatter, contentType, xg, yg, ygChunkSize, nbg)
+                expandSearchResultsForSortedIteration(newResults, id, total, formatter, contentType, xg, yg, gqp, ygChunkSize, gqpChunkSize, nbg)
               }
               //all the infotons in current chunk have the same indexTime
               else {
@@ -1186,7 +1187,7 @@ callback=< [URL] >
                 scrollFuture.flatMap {
                   //if by pure luck, the chunk length is exactly equal to the number of infotons in cm-well containing this same indexTime
                   case (_,hits) if hits <= results.size =>
-                    expandSearchResultsForSortedIteration(results, sortedConsumeState.copy(from = idxT), total, formatter, contentType, xg, yg, ygChunkSize, nbg)
+                    expandSearchResultsForSortedIteration(results, sortedConsumeState.copy(from = idxT), total, formatter, contentType, xg, yg, gqp, ygChunkSize, gqpChunkSize, nbg)
                   //if we were asked to expand chunk, but need to respond with a chunked response (workaround: try increasing length or search directly with adding `system.indexTime::${idxT}`)
                   case _ if xg.isDefined || yg.isDefined =>
                     Future.successful(UnprocessableEntity(s"encountered a large chunk which cannot be expanded using xg/yg. (indexTime=$idxT)"))
@@ -1218,13 +1219,15 @@ callback=< [URL] >
                                             contentType: String,
                                             xg: Option[String],
                                             yg: Option[String],
+                                            gqp: Option[String],
                                             ygChunkSize: Int,
+                                            gqpChunkSize: Int,
                                             nbg: Boolean): Future[Result] = {
 
     val id = ConsumeState.encode(sortedIteratorState)
 
     if (formatter.format.isThin) {
-      require(xg.isEmpty && yg.isEmpty, "Thin formats does not carry data, and thus cannot be expanded! (xg/yg supplied together with a thin format)")
+      require(xg.isEmpty && yg.isEmpty, "Thin formats does not carry data, and thus cannot be expanded! (xg/yg/gqp supplied together with a thin format)")
       val body = FormatterManager.formatFormattableSeq(newResults, formatter)
       Future.successful(Ok(body)
         .as(contentType)
@@ -1248,47 +1251,50 @@ callback=< [URL] >
           }
         }
 
-        //TODO: xg/yg handling should be factor out (DRY principle)
-        val ygModified = yg match {
-          case Some(ygp) if newInfotons.nonEmpty => {
-            pathExpansionParser(ygp, newInfotons, ygChunkSize, cmwellRDFHelper, typesCache(nbg), nbg).map {
-              case (ok, infotonsAfterYg) => ok -> infotonsAfterYg
+        val gqpModified = gqp.fold(Future.successful(newInfotons))(gqpFilter(_,newInfotons,cmwellRDFHelper,typesCache(nbg),gqpChunkSize,nbg))
+        gqpModified.flatMap { infotonsAfterGQP =>
+          //TODO: xg/yg handling should be factor out (DRY principle)
+          val ygModified = yg match {
+            case Some(ygp) if infotonsAfterGQP.nonEmpty => {
+              pathExpansionParser(ygp, infotonsAfterGQP, ygChunkSize, cmwellRDFHelper, typesCache(nbg), nbg).map {
+                case (ok, infotonsAfterYg) => ok -> infotonsAfterYg
+              }
             }
+            case _ => Future.successful(true -> infotonsAfterGQP)
           }
-          case _ => Future.successful(true -> newInfotons)
-        }
 
-        ygModified.flatMap {
-          case (false, infotonsAfterYg) => {
-            val body = FormatterManager.formatFormattableSeq(infotonsAfterYg, formatter)
-            val result = InsufficientStorage(body)
-              .as(contentType)
-              .withHeaders("X-CM-WELL-POSITION" -> id, "X-CM-WELL-N-LEFT" -> (total - newInfotons.length).toString)
-            Future.successful(result)
-          }
-          case (true, infotonsAfterYg) if infotonsAfterYg.isEmpty || xg.isEmpty => {
-            val body = FormatterManager.formatFormattableSeq(infotonsAfterYg, formatter)
-            val result = {
-              if (newInfotonsBoxes.exists(_._1.isEmpty)) PartialContent(body)
-              else Ok(body)
+          ygModified.flatMap {
+            case (false, infotonsAfterYg) => {
+              val body = FormatterManager.formatFormattableSeq(infotonsAfterYg, formatter)
+              val result = InsufficientStorage(body)
+                .as(contentType)
+                .withHeaders("X-CM-WELL-POSITION" -> id, "X-CM-WELL-N-LEFT" -> (total - infotonsAfterGQP.length).toString)
+              Future.successful(result)
             }
+            case (true, infotonsAfterYg) if infotonsAfterYg.isEmpty || xg.isEmpty => {
+              val body = FormatterManager.formatFormattableSeq(infotonsAfterYg, formatter)
+              val result = {
+                if (newInfotonsBoxes.exists(_._1.isEmpty)) PartialContent(body)
+                else Ok(body)
+              }
 
-            Future.successful(result
-              .as(contentType)
-              .withHeaders("X-CM-WELL-POSITION" -> id, "X-CM-WELL-N-LEFT" -> (total - newInfotonsBoxes.length).toString))
-          }
-          case (true, infotonsAfterYg) => {
-            deepExpandGraph(xg.get, infotonsAfterYg,cmwellRDFHelper,typesCache(nbg),nbg).map {
-              case (_, infotonsAfterXg) =>
-                val body = FormatterManager.formatFormattableSeq(infotonsAfterXg, formatter)
-                val result = {
-                  if (newInfotonsBoxes.exists(_._1.isEmpty)) PartialContent(body)
-                  else Ok(body)
-                }
+              Future.successful(result
+                .as(contentType)
+                .withHeaders("X-CM-WELL-POSITION" -> id, "X-CM-WELL-N-LEFT" -> (total - newInfotonsBoxes.length).toString))
+            }
+            case (true, infotonsAfterYg) => {
+              deepExpandGraph(xg.get, infotonsAfterYg, cmwellRDFHelper, typesCache(nbg), nbg).map {
+                case (_, infotonsAfterXg) =>
+                  val body = FormatterManager.formatFormattableSeq(infotonsAfterXg, formatter)
+                  val result = {
+                    if (newInfotonsBoxes.exists(_._1.isEmpty)) PartialContent(body)
+                    else Ok(body)
+                  }
 
-                result
-                  .as(contentType)
-                  .withHeaders("X-CM-WELL-POSITION" -> id, "X-CM-WELL-N-LEFT" -> (total - newInfotonsBoxes.length).toString)
+                  result
+                    .as(contentType)
+                    .withHeaders("X-CM-WELL-POSITION" -> id, "X-CM-WELL-N-LEFT" -> (total - newInfotonsBoxes.length).toString)
+              }
             }
           }
         }
