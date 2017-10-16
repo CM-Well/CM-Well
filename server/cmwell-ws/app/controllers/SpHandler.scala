@@ -288,26 +288,26 @@ object PopulateAndQuery extends LazyLogging {
     }
 
     cmwell.util.concurrent.retry(3, 500.millis) {
-      def isEmpty(ds: Dataset): Boolean = {
+      def isCorrupted(ds: Dataset): Boolean = {
         val statements = JenaUtils.discardQuadsAndFlattenAsTriples(ds).listStatements.toVector
 
         def getLongValueOfSystemField(field: String): Option[Long] =
           statements.find(_.getPredicate.getURI.contains(s"/meta/sys#$field")).map(_.getObject.asLiteral().getLong)
 
-        val (total, length) = (getLongValueOfSystemField("total"), getLongValueOfSystemField("length"))
-        val min = List(Option(1L),total,length).flatten.min
-        val dataPredicates = statements.map(_.getPredicate.getURI).filterNot(_.contains("/meta/sys"))
+        val actualRetrievedInfotonsAmount = statements.
+                                              filterNot(_.getPredicate.getURI.contains("/meta/sys")).
+                                              map(_.getSubject).toSet.size
 
-        // if we have total or length and not having that amount of data OR in case total and length aren't present,
-        // we expect to at least one data statement
-        dataPredicates.length < min
+        // if length sysField exists && it is larger than actual Infotons count - it's a data issue and we should return true
+        val lengthOpt = getLongValueOfSystemField("length")
+        lengthOpt.fold(false)(_ > actualRetrievedInfotonsAmount)
       }
 
       httpRequest2(path).flatMap {
         case Left(s) => Future.successful(Left(s)) // not retrying when status code > 200
         case Right(is) => {
           val ds = loadRdfToDataset(is)
-          if(isEmpty(ds)) Future.failed(new Exception(errMsg)) // to retry
+          if(isCorrupted(ds)) Future.failed(new Exception(errMsg)) // to retry
           else Future.successful(Right(ds))
         }
         case _ => !!!
