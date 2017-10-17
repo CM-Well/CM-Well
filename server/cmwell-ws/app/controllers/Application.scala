@@ -1500,6 +1500,7 @@ callback=< [URL] >
         val withHistory = queryString.keySet("with-history")
         val debugInfo = queryString.keySet("debug-info")
         val nbg = queryString.get("nbg").flatMap(_.headOption.flatMap(asBoolean)).getOrElse(tbg.get)
+        val gqp = queryString.keySet("gqp")
         val xg = queryString.keySet("xg")
         val yg = queryString.keySet("yg")
 
@@ -1508,10 +1509,10 @@ callback=< [URL] >
         } else if (length > Settings.maxLength) {
           Future.successful(BadRequest(s"Length is larger than ${Settings.maxLength}!"))
         }
-        else if (withHistory && (xg || yg))
+        else if (withHistory && (xg || yg || gqp))
           Future.successful(BadRequest(s"you can't mix `xg` nor `yg` with `with-history`: it makes no sense!"))
-        else if (!withData && (xg || (yg && getQueryString("yg").get.split('|').exists(_.trim.startsWith(">")))))
-          Future.successful(BadRequest(s"you can't mix `xg` nor '>' prefixed `yg` expressions without also specifying `with-data`: it makes no sense!"))
+        else if (!withData && (xg || (yg && getQueryString("yg").get.trim.startsWith(">")) || (gqp && getQueryString("gqp").get.trim.startsWith(">"))))
+          Future.successful(BadRequest(s"you can't mix `xg` nor '>' prefixed `yg`/`gqp` expressions without also specifying `with-data`: it makes no sense!"))
         else {
           val fieldSortParamsFut = RawSortParam.eval(rawSortParams,crudServiceFS,typesCache(nbg),cmwellRDFHelper,nbg)
           val fieldsFiltersFut = qpOpt.fold[Future[Option[FieldFilter]]](Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff,typesCache(nbg),cmwellRDFHelper,nbg).map(Some.apply))
@@ -1520,16 +1521,32 @@ callback=< [URL] >
               crudServiceFS.search(pathFilter, fieldFilters, Some(DatesFilter(from, to)),
                 PaginationParams(offset, length), withHistory, withData, fieldSortParams, debugInfo, withDeleted, nbg).flatMap { unmodifiedSearchResult =>
 
+                val gqpModified = getQueryString("gqp").fold(Future.successful(unmodifiedSearchResult.infotons)){ gqpPattern =>
+                  gqpFilter(
+                    gqpPattern,
+                    unmodifiedSearchResult.infotons,
+                    cmwellRDFHelper,
+                    typesCache(nbg),
+                    getQueryString("gqp-chunk-size").flatMap(asInt).getOrElse(10),
+                    nbg)
+                }
+
                 val ygModified = getQueryString("yg") match {
-                  case Some(ygp) => {
-                    pathExpansionParser(ygp, unmodifiedSearchResult.infotons, getQueryString("yg-chunk-size").flatMap(asInt).getOrElse(10),cmwellRDFHelper,typesCache(nbg),nbg).map { case (ok, infotons) =>
+                  case Some(ygp) => gqpModified.flatMap { gqpFilteredInfotons =>
+                    pathExpansionParser(ygp, gqpFilteredInfotons, getQueryString("yg-chunk-size").flatMap(asInt).getOrElse(10),cmwellRDFHelper,typesCache(nbg),nbg).map { case (ok, infotons) =>
                       ok -> unmodifiedSearchResult.copy(
                         length = infotons.size,
                         infotons = infotons
                       )
                     }
                   }
-                  case None => Future.successful(true -> unmodifiedSearchResult)
+                  case None => gqpModified.map { gqpFilteredInfotons =>
+                    if(gqp) true -> unmodifiedSearchResult
+                    else true -> unmodifiedSearchResult.copy(
+                      length = gqpFilteredInfotons.size,
+                      infotons = gqpFilteredInfotons
+                    )
+                  }
                 }
 
                 val fSearchResult = ygModified.flatMap {
