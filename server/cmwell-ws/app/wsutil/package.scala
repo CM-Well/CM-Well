@@ -664,14 +664,13 @@ package object wsutil extends LazyLogging {
     }
 
     def nextFilteringHop(dexp: DirectedExpansion, dexps: List[DirectedExpansion], survivors: Vector[(Infoton, Vector[Infoton])]): Future[Vector[Infoton]] = {
-      val newSurvivors = Future.traverse(survivors)(filterByDirectedExpansion(dexp)).map(_.filter(_._2.nonEmpty))
-
-      dexps match {
-        case Nil => newSurvivors.map(_.map(_._1)).andThen {
-          case Success(is) => logger.trace(s"nextFilteringHop: finished with survivors[${is.map(_.path).mkString(", ")}]")
-          case Failure(ex) => logger.error(s"nextFilteringHop($dexp,$dexps,$survivors)")
-        }
-        case de :: des => newSurvivors.flatMap(nextFilteringHop(de, des, _))
+      Future.traverse(survivors)(filterByDirectedExpansion(dexp)).flatMap { s =>
+        val newSurvivors = s.filter(_._2.nonEmpty)
+        if(newSurvivors.isEmpty || dexps.isEmpty) Future.successful(newSurvivors.map(_._1))
+        else nextFilteringHop(dexps.head, dexps.tail, newSurvivors)
+      }.andThen {
+        case Success(is) => logger.trace(s"nextFilteringHop: finished with survivors[${is.map(_.path).mkString(", ")}]")
+        case Failure(ex) => logger.error(s"nextFilteringHop($dexp,$dexps,$survivors)")
       }
     }
 
@@ -684,7 +683,7 @@ package object wsutil extends LazyLogging {
             case i if !vec.contains(i) =>
               i -> Vector(i)
           }(breakOut[Seq[Infoton],(Infoton,Vector[Infoton]),Vector[(Infoton,Vector[Infoton])]])
-          logger.trace(s"appending: [${segments.mkString(", ")}] to vec[${vec.map(_.path).mkString(", ")}] with candidates[${candidates.map(_._1.path).mkString(", ")}]") //vec[${cmwell.util.numeric.Radix64.encodeUnsigned(vec.##)}]")
+          logger.trace(s"appending: [${segments.mkString(", ")}] to vec[${vec.map(_.path).mkString(", ")}] with candidates[${candidates.map(_._1.path).mkString(", ")}]")
           nextFilteringHop(
             segments.head,
             segments.tail,
