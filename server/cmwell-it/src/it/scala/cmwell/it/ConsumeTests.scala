@@ -78,6 +78,12 @@ class ConsumeTests extends AsyncFunSpec with Inspectors with Matchers with Helpe
       case (_,Some(p),_) => Http.get(cmw / "_bulk-consume", List("format" -> "tsv", "position" -> p)).map(requestHandler)
       case (_, None, _) => Future.failed[(Int,Option[String],String)](new IllegalStateException("No Position supplied from previous session"))
     }
+
+    val i1 = f1.flatMap ( t => Http.get(_consume, List("position" -> t._2.get, "length-hint" -> "613", "format" -> "json", "with-data" -> "", "gqp" -> "<parentOf.rel")))
+    val i2 = f1.flatMap ( t => Http.get(_consume, List("position" -> t._2.get, "length-hint" -> "613", "format" -> "json", "with-data" -> "", "gqp" -> "<parentOf.rel[friendOf.rel:]")))
+    val i3 = f1.flatMap ( t => Http.get(_consume, List("position" -> t._2.get, "length-hint" -> "613", "format" -> "json", "with-data" -> "", "gqp" -> ">parentOf.rel")))
+    val i4 = f1.flatMap ( t => Http.get(_consume, List("position" -> t._2.get, "length-hint" -> "613", "format" -> "json", "with-data" -> "", "gqp" -> ">parentOf.rel[childOf.rel:]")))
+
     it("should ingest data to consume later") {
 
       firstConsumableChunk.zip(secondConsumableChunk).map {
@@ -176,6 +182,44 @@ class ConsumeTests extends AsyncFunSpec with Inspectors with Matchers with Helpe
             sta should be(200)
             pos.isDefined should be(true)
             bod.trim.lines.count(_.trim.nonEmpty) should be(1)
+          }
+        }
+      }
+    }
+
+    describe("with gqp") {
+      it("should filter only infotons which is pointed by parentOf.rel attributes") {
+        i1.map { r =>
+          withClue(r) {
+            r.status should be(200)
+            r.payload.trim.lines.size should be(2)
+          }
+        }
+      }
+
+      it("should filter only infotons which is pointed by parentOf.rel attributes and has childOf.rel attributes") {
+        i2.map { r =>
+          withClue(r) {
+            r.status should be(200)
+            r.payload.trim.lines.size should be(1)
+          }
+        }
+      }
+
+      it("should filter only infotons which points to parentOf.rel attributes") {
+        i3.map { r =>
+          withClue(r) {
+            r.status should be(200)
+            r.payload.trim.lines.size should be(2)
+          }
+        }
+      }
+
+      it("should filter only infotons which points to parentOf.rel attributes and has childOf.rel attributes") {
+        i4.map { r =>
+          withClue(r) {
+            r.status should be(200)
+            r.payload.trim.lines.size should be(1)
           }
         }
       }
