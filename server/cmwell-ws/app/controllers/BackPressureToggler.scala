@@ -43,6 +43,12 @@ class BackPressureToggler  @Inject()(authUtils: AuthUtils) extends InjectedContr
         case Some("off") =>
           PersistentDMap.set(BACKPRESSURE_TRIGGER, SettingsString("off"))
           Ok(s"Changed backpressure trigger to off")
+        case Some("all") =>
+          PersistentDMap.set(BACKPRESSURE_TRIGGER, SettingsString("all"))
+          Ok(s"Changed backpressure trigger to all")
+        case Some("bar") =>
+          PersistentDMap.set(BACKPRESSURE_TRIGGER, SettingsString("bar"))
+          Ok(s"Changed backpressure trigger to bar")
         case None =>
           val curValOpt = PersistentDMap.get(BACKPRESSURE_TRIGGER).flatMap(_.as[String])
           curValOpt match {

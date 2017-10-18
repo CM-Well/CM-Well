@@ -125,6 +125,8 @@ class IngestPushback @Inject() (backPressureToggler: BackPressureToggler, dashBo
       case "new" => filterByKLog().flatMap(resOptToFilterBy)
       case "old" => resOptToFilterBy(filterByTLog())
       case "off" => block(request)
+      case "all" => filterByTLog().fold(filterByKLog().flatMap(resOptToFilterBy))(Future.successful)
+      case "bar" => Future.successful(Results.ServiceUnavailable(s"Ingests has been barred by an admin. Please try again later."))
       case unknown => Future.successful(Results.InternalServerError(s"unknown state for 'BACKPRESSURE_TRIGGER' [$unknown]"))
     }
   }
