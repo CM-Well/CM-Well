@@ -627,26 +627,39 @@ package object wsutil extends LazyLogging {
                 nbg: Boolean)
                (implicit ec: ExecutionContext): Future[Seq[Infoton]] = {
 
-    def filterByDirectedExpansion(dexp: DirectedExpansion)(iv: (Infoton, Vector[Infoton])): Future[(Infoton, Vector[Infoton])] = dexp match {
-      case ExpandIn(filteredFields) => expandIn(
-        filteredFields,
-        iv._2,
-        iv._2.map(i => i.path -> i)(scala.collection.breakOut[Vector[Infoton], (String, Infoton), Map[String, Infoton]]),
-        cmwellRDFHelper,
-        typesCache,
-        nbg).map {
-        case (l, r) => iv._1 -> (l.toVector ++ r)
-      }
-      case ExpandUp(filteredFields) => expandUp(
-        filteredFields,
-        iv._2,
-        cmwellRDFHelper, iv._2.map(i => i.path -> i)(scala.collection.breakOut[Vector[Infoton], (String, Infoton), Map[String, Infoton]]),
-        typesCache,
-        infotons.take(3),
-        gqpPattern,
-        chunkSize,
-        nbg).map {
-        case (l, r) => iv._1 -> (l.toVector ++ r)
+    logger.trace(s"gqpFilter with infotons: [${infotons.map(_.path).mkString(", ")}]")
+
+    def filterByDirectedExpansion(dexp: DirectedExpansion)(iv: (Infoton, Vector[Infoton])): Future[(Infoton, Vector[Infoton])] = {
+      logger.trace(s"filterByDirectedExpansion($dexp): with original[${iv._1.path}] and current-pop[${iv._2.map(_.path).mkString(", ")}]")
+      dexp match {
+        case ExpandIn(filteredFields) => expandIn(
+          filteredFields,
+          iv._2,
+          iv._2.map(i => i.path -> i)(scala.collection.breakOut[Vector[Infoton], (String, Infoton), Map[String, Infoton]]),
+          cmwellRDFHelper,
+          typesCache,
+          nbg).map {
+          case (l, r) => iv._1 -> {
+            val rv = l.toVector ++ r
+            logger.trace(s"filterByDirectedExpansion($dexp): after expandIn($filteredFields), finished with result[${rv.map(_.path).mkString(", ")}]")
+            rv
+          }
+        }
+        case ExpandUp(filteredFields) => expandUp(
+          filteredFields,
+          iv._2,
+          cmwellRDFHelper, iv._2.map(i => i.path -> i)(scala.collection.breakOut[Vector[Infoton], (String, Infoton), Map[String, Infoton]]),
+          typesCache,
+          infotons.take(3),
+          gqpPattern,
+          chunkSize,
+          nbg).map {
+          case (l, r) => iv._1 -> {
+            val rv = l.toVector ++ r
+            logger.trace(s"filterByDirectedExpansion($dexp): after expandIn($filteredFields), finished with result[${rv.map(_.path).mkString(", ")}]")
+            rv
+          }
+        }
       }
     }
 
@@ -654,7 +667,10 @@ package object wsutil extends LazyLogging {
       val newSurvivors = Future.traverse(survivors)(filterByDirectedExpansion(dexp)).map(_.filter(_._2.nonEmpty))
 
       dexps match {
-        case Nil => newSurvivors.map(_.map(_._1))
+        case Nil => newSurvivors.map(_.map(_._1)).andThen {
+          case Success(is) => logger.trace(s"nextFilteringHop: finished with survivors[${is.map(_.path).mkString(", ")}]")
+          case Failure(ex) => logger.error(s"nextFilteringHop($dexp,$dexps,$survivors)")
+        }
         case de :: des => newSurvivors.flatMap(nextFilteringHop(de, des, _))
       }
     }
@@ -663,10 +679,17 @@ package object wsutil extends LazyLogging {
     else PathGraphExpansionParser.getGQPs(gqpPattern).map {
       case PathsExpansion(paths) => paths.foldLeft(Future.successful(Vector.empty[Infoton])) {
         case (vecFut, PathExpansion(segments)) if segments.isEmpty => vecFut
-        case (vecFut, PathExpansion(segments)) => vecFut.flatMap(vec => nextFilteringHop(
-          segments.head,
-          segments.tail,
-          infotons.map(i => i -> Vector(i))(breakOut)).map(_ ++: vec))
+        case (vecFut, PathExpansion(segments)) => vecFut.flatMap { vec =>
+          val candidates: Vector[(Infoton,Vector[Infoton])] = infotons.collect{
+            case i if !vec.contains(i) =>
+              i -> Vector(i)
+          }(breakOut[Seq[Infoton],(Infoton,Vector[Infoton]),Vector[(Infoton,Vector[Infoton])]])
+          logger.trace(s"appending: [${segments.mkString(", ")}] to vec[${vec.map(_.path).mkString(", ")}] with candidates[${candidates.map(_._1.path).mkString(", ")}]") //vec[${cmwell.util.numeric.Radix64.encodeUnsigned(vec.##)}]")
+          nextFilteringHop(
+            segments.head,
+            segments.tail,
+            candidates).map(_ ++: vec)
+        }
       }
     } match {
       case Success(future) => future

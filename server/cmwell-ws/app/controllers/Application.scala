@@ -1541,9 +1541,9 @@ callback=< [URL] >
                     }
                   }
                   case None => gqpModified.map { gqpFilteredInfotons =>
-                    if(gqp) true -> unmodifiedSearchResult
+                    if(!gqp) true -> unmodifiedSearchResult
                     else true -> unmodifiedSearchResult.copy(
-                      length = gqpFilteredInfotons.size,
+                      length = gqpFilteredInfotons.length,
                       infotons = gqpFilteredInfotons
                     )
                   }

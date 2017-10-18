@@ -47,6 +47,8 @@ trait Helpers { self: LazyLogging =>
   val _out = cmw / "_out"
   val _in = cmw / "_in"
   val _ow = cmw / "_ow"
+  val _consume = cmw / "_consume"
+  val _bulkconsume = cmw / "_bulk-consume"
   val cmt = cmw / "cmt" / "cm" / "test"
   val metaNs = cmw / "meta" / "ns"
   val textPlain = Some("text/plain;charset=UTF-8")
