@@ -38,7 +38,7 @@ import cmwell.web.ld.cmw.CMWellRDFHelper
 import cmwell.ws.Streams.Flows
 import play.api.http.Writeable
 
-import scala.math.min
+import scala.math.{max, min}
 
 @Singleton
 class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
@@ -97,10 +97,12 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
                      threshold: Long,
                      timeoutMarker: Future[Unit])(implicit ec: ExecutionContext): Future[CurrRangeForConsumption] = {
 
+    logger.debug(s"findValidRange: from[$from], threshold[$threshold], tsp[$thinSearchParams]")
+
     val ThinSearchParams(pf, ffsOpt, h, d) = thinSearchParams
     val now = org.joda.time.DateTime.now().minusSeconds(30).getMillis
 
-    def toSeed: Future[Long] = {
+    lazy val toSeed: Future[Long] = {
       val ffs = fieldsFiltersforSortedSearchFromTimeAndOptionalFilters(from,ffsOpt)
       crudServiceFS.thinSearch(
           pathFilter = pf,
@@ -117,9 +119,23 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
       }
     }
 
-    def iterate(to: Long, step: Long, expanding: Boolean = true, nextTo: Option[Long] = None, earlyCutOffResult: Option[CurrRangeForConsumption] = None): Future[CurrRangeForConsumption] = {
+    def iterate(to: Long, step: Long, earlyCutOffResult: CurrRangeForConsumption, expanding: Boolean = true, nextTo: Option[Long] = None): Future[CurrRangeForConsumption] = {
+      logger.debug(s"iterate: from[$from], to[$to], step[$step], expanding[$expanding], nextTo[${nextTo.getOrElse("N/A")}], ecor[$earlyCutOffResult]")
+
+      //Take the maximum between the current "to" and the previous toSeed that is guaranteed to be at least 1000 infotons. The current "to" might be too early in time and thus will return 0 results.
+      def safeUpperLimit(unsafeToLimit: Long) = {
+        toSeed.value.flatMap(_.toOption).fold(unsafeToLimit)(max(_, unsafeToLimit))
+      }
+
+      def takeTheBetterEarlyCutOff: CurrRangeForConsumption = {
+        val x = safeUpperLimit(to)
+        if (earlyCutOffResult.to >= x) earlyCutOffResult
+        else CurrRangeForConsumption(from, x, None) // nextTo should be none even if exist, because we are not done yet, and next chunk might be too big
+      }
+
       if(!expanding && step < 10)
-         Future.successful(CurrRangeForConsumption(from, to, nextTo))
+        //Stop condition: in case the expanding is false (the step is getting SMALLER each time) and the step small return the current values
+        Future.successful(CurrRangeForConsumption(from, to, nextTo))
       else {
         // clipping date boundaries
         val ffs = fieldsFiltersFromTimeframeAndOptionalFilters(from, to, ffsOpt)
@@ -134,13 +150,22 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
         ).flatMap {
           case SearchThinResults(total, _, _, _, _) => {
 
+            logger.debug(s"iterate after search: total[$total]")
+
             if (total < threshold * 0.5) {
               // don't check above current time
-              if (now <= to) Future.successful(CurrRangeForConsumption(from, now, nextTo))
-              else if(timeoutMarker.isCompleted) Future.successful(CurrRangeForConsumption(from, to, nextTo))
+              if (now <= to) Future.successful(CurrRangeForConsumption(from, now, None))
+              else if(timeoutMarker.isCompleted) Future.successful(takeTheBetterEarlyCutOff) //CurrRangeForConsumption(from, safeUpperLimit(to), nextTo))
               else {
                 val op: Long => Long = if(expanding) {l => l*2} else {l => l/2}
-                iterate(min(now,to + step), op(step), expanding, nextTo, earlyCutOffResult)
+                val (nTo,nStep,nExpanding) = {
+                  // if (to + step > now) we are expanding for sure because the next step passes now and wasn't stopped in if (now <= to) condition below
+                  // the actual step in this case is until now and the next step should be half of it. Also from now on the step should be less thus expanding = false
+                  if (to + step > now)
+                    (now, (now - to)/2, false)
+                  else (to + step, op(step), expanding)
+                }
+                iterate(nTo, nStep, takeTheBetterEarlyCutOff, nExpanding, nextTo)
               }
             }
             else if (total > threshold * 1.5) {
@@ -148,20 +173,23 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
                 if (total > threshold * 3) None
                 else Some(to)
               }
-              if(timeoutMarker.isCompleted) {
-                if(expanding) Future.successful(CurrRangeForConsumption(from, to - (step/2), newNext))
-                else if(earlyCutOffResult.isDefined) Future.successful(earlyCutOffResult.get)
-                else !!! //if we are not expanding, earlyCutOffResult should have been defined!
-              }
+              if(timeoutMarker.isCompleted) Future.successful(earlyCutOffResult) // we might change it in the future to .copy(nextTo = newNext) for optimization but we must make sure the range is not too big by adding also the count until the nextTo
               else {
-                // early result assigned with the last valid range before contracting
-                val newEarlyCutOffResult = if(expanding) {
-                  Some(CurrRangeForConsumption(from, to - (step / 2), newNext))
-                } else earlyCutOffResult
-
-                val divider = if (expanding) 4 else 2
-                val halfDivider = divider / 2
-                iterate(min(now,to - (step / halfDivider)), step / divider, expanding = false, newNext, newEarlyCutOffResult)
+                val (newTo, newStep) = if (expanding) {
+                  //1. If it was expanding before the step should be less now (it was too big)
+                  //   Thus, the newTo should be half the step that got us to this trouble
+                  //   The previous iteration called this one with double step that got to the current to.
+                  //   i.e. the new to should go 1/4 of the provided step
+                  //2. The new step should be half of the step to the next to
+                  (to - step / 4, step / 8)
+                }
+                else {
+                  //The previous iteration was not expanding (but it could be too big or too small)
+                  //The new to should be the current one minus the step (the provided step is actually half of the step got us here).
+                  //The new step should be half of the step to the next to
+                  (to - step, step / 2)
+                }
+                iterate(newTo, newStep, earlyCutOffResult, expanding = false, newNext)
               }
             }
             else {
@@ -173,7 +201,8 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
     }
 
     toSeed.flatMap { to =>
-      iterate(to,to-from)
+      logger.debug(s"findValidRange: toSeed[$to], from[$from], tsp[$thinSearchParams]")
+      iterate(to, to-from, CurrRangeForConsumption(from, to, None))
     }
   }
 
@@ -318,46 +347,60 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
     currStateEither match {
       case Left(err) => Future.successful(BadRequest(err))
       case Right(stateFuture) => stateFuture.flatMap {
-        case (state@BulkConsumeState(from, Some(to), path, h, d, r, threshold, ffOpt), nextTo) => getFormatter(request, h, nbg) match {
-          case Failure(exception) => Future.successful(BadRequest(exception.getMessage))
-          case Success((formatter, withData)) => {
+        case (state@BulkConsumeState(from, Some(to), path, h, d, r, threshold, ffOpt), nextTo) => {
+          if(request.queryString.keySet("debug-info")) {
+            logger.info(s"""The search params:
+                           |path             = $path,
+                           |from             = $from,
+                           |to               = $to,
+                           |nextTo           = $nextTo,
+                           |fieldFilters     = $ffOpt,
+                           |withHistory      = $h,
+                           |withDeleted      = $d,
+                           |withRecursive    = $r """.stripMargin)
+          }
 
-            // Gets a scroll source according to received HTTP request parameters
-            def getScrollSource() = {
-              (if (wasSupplied("slow-bulk")) {
-                streams.scrollSource(nbg,
-                  pathFilter = createPathFilter(path, r),
-                  fieldFilters = Option(fieldsFiltersFromTimeframeAndOptionalFilters(from, to, ffOpt)),
-                  withHistory = h,
-                  withDeleted = d)
-              } else {
-                streams.superScrollSource(nbg,
-                  pathFilter = createPathFilter(path, r),
-                  fieldFilter = Option(fieldsFiltersFromTimeframeAndOptionalFilters(from, to, ffOpt)),
-                  withHistory = h,
-                  withDeleted = d)
-              }).map { case (src,hits) =>
-                val s: Source[Infoton,NotUsed] = {
-                  if (withData) src.via(Flows.iterationResultsToFatInfotons(nbg,crudServiceFS))
-                  else src.via(Flows.iterationResultsToInfotons)
+          getFormatter(request, h, nbg) match {
+            case Failure(exception) => Future.successful(BadRequest(exception.getMessage))
+            case Success((formatter, withData)) => {
+
+              // Gets a scroll source according to received HTTP request parameters
+              def getScrollSource() = {
+                (if (wasSupplied("slow-bulk")) {
+                  streams.scrollSource(nbg,
+                    pathFilter = createPathFilter(path, r),
+                    fieldFilters = Option(fieldsFiltersFromTimeframeAndOptionalFilters(from, to, ffOpt)),
+                    withHistory = h,
+                    withDeleted = d)
+                } else {
+                  streams.superScrollSource(nbg,
+                    pathFilter = createPathFilter(path, r),
+                    fieldFilter = Option(fieldsFiltersFromTimeframeAndOptionalFilters(from, to, ffOpt)),
+                    withHistory = h,
+                    withDeleted = d)
+                }).map { case (src, hits) =>
+                  val s: Source[Infoton, NotUsed] = {
+                    if (withData) src.via(Flows.iterationResultsToFatInfotons(nbg, crudServiceFS))
+                    else src.via(Flows.iterationResultsToInfotons)
+                  }
+                  hits -> s
                 }
-                hits -> s
               }
+
+              getScrollSource().map {
+                case (0L, _) => NoContent.withHeaders("X-CM-WELL-N" -> "0", "X-CM-WELL-POSITION" -> request.getQueryString("position").get)
+                case (hits, source) => {
+                  val positionEncoded = ConsumeState.encode(state.copy(from = to, to = nextTo))
+
+                  Ok.chunked(source)(infotonWriteable(formatter))
+                    .withHeaders(
+                      "X-CM-WELL-N" -> hits.toString,
+                      "X-CM-WELL-POSITION" -> positionEncoded,
+                      "X-CM-WELL-TO" -> to.toString
+                    )
+                }
+              }.recover(errorHandler)
             }
-
-            getScrollSource().map {
-              case (0L, _) => NoContent.withHeaders("X-CM-WELL-N" -> "0", "X-CM-WELL-POSITION" -> request.getQueryString("position").get)
-              case (hits, source) => {
-                val positionEncoded = ConsumeState.encode(state.copy(from = to, to = nextTo))
-
-                Ok.chunked(source)(infotonWriteable(formatter))
-                  .withHeaders(
-                    "X-CM-WELL-N" -> hits.toString,
-                    "X-CM-WELL-POSITION" -> positionEncoded,
-                    "X-CM-WELL-TO" -> to.toString
-                  )
-              }
-            }.recover(errorHandler)
           }
         }
       }.recover(errorHandler)
