@@ -526,8 +526,9 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
         require(i.fields.get.contains("url"), s"must have url defined ($i)")
         val valSet = i.fields.get("url")
         require(valSet.size == 1, s"must have only 1 url ($i)")
+        val actualHash = i.path.drop("/meta/ns/".length)
         valSet.head match {
-          case fv if fv.value.isInstanceOf[String] && fv.value.asInstanceOf[String] == url => hash -> Exists
+          case fv if fv.value.isInstanceOf[String] && fv.value.asInstanceOf[String] == url => actualHash -> Exists
           case fv if fv.value.isInstanceOf[String] && fv.value.asInstanceOf[String] != url => inner(crc32base64(hash))
           case fv => throw new RuntimeException(s"got weird value: $fv")
         }
