@@ -35,6 +35,7 @@ import org.rogach.scallop.ScallopConf
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
+import scala.util.{Failure, Success}
 
 object SparqlTriggeredProcessorMain extends App with DataToolsLogging{
   object Opts extends ScallopConf(args) {
@@ -111,7 +112,7 @@ object SparqlTriggeredProcessorMain extends App with DataToolsLogging{
     .map { s => logger.info(s"lines ${s.utf8String} are valid!"); s}
 
   // check if need to ingest result infotons
-  if (Opts.ingest()) {
+  val processResult = if (Opts.ingest()) {
       Ingester.ingest(
         baseUrl = Opts.dstHost(),
         format = "ntriples",
@@ -127,6 +128,11 @@ object SparqlTriggeredProcessorMain extends App with DataToolsLogging{
       .map(_ -> None)
       .via(DownloaderStats(format = "ntriples"))
       .runWith(Sink.ignore)
+  }
+
+  processResult.onComplete {
+    case Success(_) => logger.info("SparqlTriggeredProcessor finished with success")
+    case Failure(e) => logger.error("SparqlTriggeredProcessor failed with an exception: ", e)
   }
 
   def getSensorsConfig(path: String): Config = {
