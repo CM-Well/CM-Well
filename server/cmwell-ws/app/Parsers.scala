@@ -325,6 +325,7 @@ package util {
     protected val filter: Parser[RawFieldFilter] = "[" ~> fieldFilters <~ "]" ^? ({
       case sffs if sffs.size > 1 => RawMultiFieldFilter(Must, sffs)
       case List(sff) => sff
+//      case Nil => RawEmptyFieldFilter // TODO: empty can mean infoton existence (no ghost skips).
     }, xs => xs.headOption.fold("expansion filters must not be empty")(_ => s"unknown error for $xs"))
 
     protected val uriPattern: Parser[NsPattern] = "$" ~> namespaceUri <~ "$" ^? {

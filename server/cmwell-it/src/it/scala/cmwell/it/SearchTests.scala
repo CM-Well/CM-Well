@@ -229,6 +229,122 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
       }
     }
 
+    val ingestGOT = {
+      val gotN3 = scala.io.Source.fromURL(this.getClass.getResource("/got/data.n3")).mkString
+      Http.post(_in, gotN3, Some("text/n3;charset=UTF-8"), List("format" -> "n3"), tokenHeader).map { res =>
+        withClue(res) {
+          res.status should be(200)
+          Json.parse(res.payload) shouldEqual jsonSuccess
+        }
+      }
+    }
+
+    val awoiaf = cmw / "awoiaf.westeros.org"
+
+    val awoiafSearch = executeAfterCompletion(ingestGOT){
+      spinCheck(1.second,true)(Http.get(
+        awoiaf,
+        List("op" -> "search", "format" -> "json", "length" -> "1")
+      )) { r =>
+        (Json.parse(r.payload) \ "results" \ "total": @unchecked) match {
+          case JsDefined(JsNumber(n)) => n.intValue() == 11
+        }
+      }.map { r =>
+        withClue(r) {
+          r.status should be (200)
+          val j = Json.parse(r.payload)
+          val total = (j \ "results" \ "total").as[Int]
+          total should be(11)
+        }
+      }
+    }
+
+    val searchPersons = executeAfterCompletion(awoiafSearch) {
+      Http.get(awoiaf, List(
+        "op" -> "search",
+        "format" -> "json",
+        "qp" -> "type.rdf::http://xmlns.com/foaf/0.1/Person")).map { r =>
+        withClue(r) {
+          r.status should be(200)
+          val j = Json.parse(r.payload)
+          val total = (j \ "results" \ "total").as[Int]
+          total should be(4)
+        }
+      }
+    }
+
+    val gqpFilterByHomeType = executeAfterCompletion(awoiafSearch) {
+      Http.get(awoiaf, List(
+        "op" -> "search",
+        "format" -> "json",
+        "qp" -> "type.rdf::http://xmlns.com/foaf/0.1/Person",
+        "gqp" -> "<hasTenant.gotns>homeLocation.schema[homeType.gotns::Castle]")).map { r =>
+        withClue(r) {
+          r.status should be(200)
+          val j = Json.parse(r.payload) \ "results"
+          val total = (j \ "total").as[Int]
+          total should be(4)
+          val length = (j \ "length").as[Int]
+          length should be(3)
+        }
+      }
+    }
+
+    val gqpFilterBySkippingGhostNed = executeAfterCompletion(awoiafSearch) {
+      Http.get(awoiaf, List(
+        "op" -> "search",
+        "format" -> "json",
+        "with-data" -> "",
+        "qp" -> "type.rdf::http://xmlns.com/foaf/0.1/Person",
+        "gqp" -> ">childOf.rel<childOf.rel")).map { r =>
+        withClue(r) {
+          r.status should be(200)
+          val j = Json.parse(r.payload) \ "results"
+          val total = (j \ "total").as[Int]
+          total should be(4)
+          val length = (j \ "length").as[Int]
+          length should be(2)
+        }
+      }
+    }
+
+    val gqpFilterAllAlthoughSkippingGhostNed = executeAfterCompletion(awoiafSearch) {
+      Http.get(awoiaf, List(
+        "op" -> "search",
+        "format" -> "json",
+        "with-data" -> "",
+        "qp" -> "type.rdf::http://xmlns.com/foaf/0.1/Person",
+        "gqp" -> ">childOf.rel[type.rdf::http://xmlns.com/foaf/0.1/Person]<childOf.rel")).map { r =>
+        withClue(r) {
+          r.status should be(200)
+          val j = Json.parse(r.payload) \ "results"
+          val total = (j \ "total").as[Int]
+          total should be(4)
+          val length = (j \ "length").as[Int]
+          length should be(0)
+        }
+      }
+    }
+
+//    TODO: empty filter can mean existence -> i.e: no ghost skips w/o explicit filter. not yet implemented though...
+//    val gqpFilterAllAlthoughSkippingGhostNedWithEmptyFilter = executeAfterCompletion(awoiafSearch) {
+//      Http.get(awoiaf, List(
+//        "op" -> "search",
+//        "format" -> "json",
+//        "with-data" -> "",
+//        "qp" -> "type.rdf::http://xmlns.com/foaf/0.1/Person",
+//        "gqp" -> ">childOf.rel[]<childOf.rel")).map { r =>
+//        withClue(r) {
+//          r.status should be(200)
+//          val j = Json.parse(r.payload) \ "results"
+//          val total = (j \ "total").as[Int]
+//          total should be(4)
+//          val length = (j \ "length").as[Int]
+//          length should be(0)
+//        }
+//      }
+//    }
+
     val ex2unitPF: PartialFunction[Throwable,Unit] = {
       case _: Throwable => ()
     }
@@ -314,6 +430,14 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
     it("get sorted by system.score (filtered by qp)")(sortByScoreFilterByIL)
     it("get nested object using recursive query param")(recursiveSearch)
     it("filter results with gqp indirect properties")(gqpFiltering)
+    it("ingest GOT data successfully")(ingestGOT)
+    it("verify all GOT data is searcheable")(awoiafSearch)
+    it("retrieve only infotons of type person from GOT")(searchPersons)
+    it("filter person results by 'homeType' indirect property")(gqpFilterByHomeType)
+    it("filter person results with 'ghost skipping' an intermediate missing infoton")(gqpFilterBySkippingGhostNed)
+    it("filter all person results with 'ghost skipping' an intermediate missing infoton if it also contains a filter")(gqpFilterAllAlthoughSkippingGhostNed)
+// TODO: uncomment when implemented:
+//  it("filter all person results with 'ghost skipping' an intermediate missing infoton if it also contains an empty filter")(gqpFilterAllAlthoughSkippingGhostNedWithEmptyFilter)
     describe("delete infotons and search for in") {
       it("succeed deleting nested objects")(deleteAbouts)
       it("not get nested objects using recursive query param after deletes")(recursiveSearch2)
