@@ -2727,7 +2727,7 @@ abstract class Host(user: String,
 
     hosts.foreach {
       host =>
-        command(s"cat ${instDirs.globalLocation}/cm-well/dependencies/$component | xargs -I DEP ln -s ${instDirs.globalLocation}/cm-well/lib/DEP ${instDirs.globalLocation}/cm-well/app/$target/lib/DEP", host, false)
+        command(s"cat ${instDirs.globalLocation}/cm-well/dependencies/$component | xargs -I zzz ln -s ${instDirs.globalLocation}/cm-well/lib/zzz ${instDirs.globalLocation}/cm-well/app/$target/lib/zzz", host, false)
     }
   }
 
