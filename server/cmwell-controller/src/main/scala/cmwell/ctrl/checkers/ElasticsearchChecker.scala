@@ -40,10 +40,10 @@ object ElasticsearchChecker extends Checker {
         if(r.code == 200) {
           val json: JsValue = Json.parse(r.content)
           val status = json.\("status").as[String]
-          val n = json.\("number_of_nodes").\(0).as[Int]
-          val d = json.\("number_of_data_nodes").\(0).as[Int]
-          val p = json.\("active_primary_shards").\(0).as[Int]
-          val s = json.\("active_shards").\(0).as[Int]
+          val n = (json \ "number_of_nodes").as[Int]
+          val d = (json \ "number_of_data_nodes").as[Int]
+          val p = (json \ "active_primary_shards").as[Int]
+          val s = json \ "active_shards" as[Int] implicitly
           status match {
             case "green" => ElasticsearchGreen(n,d,p,s,hasMaster)
             case "yellow" => ElasticsearchYellow(n,d,p,s,hasMaster)

@@ -1,0 +1,52 @@
+@prefix awoiaf:   <http://awoiaf.westeros.org/> .
+@prefix gotns:    <http://awoiaf.westeros.org/ns/pred#> .
+@prefix vcard:    <http://www.w3.org/2006/vcard/ns#> .
+@prefix foaf:     <http://xmlns.com/foaf/0.1/> .
+@prefix rel:      <http://purl.org/vocab/relationship/> .
+@prefix schema:   <http://schema.org/> .
+
+awoiaf:PetyrBaelish a               foaf:Person ;
+                    foaf:firstName  "Petyr" ;
+                    foaf:familyName "Baelish" .
+
+awoiaf:d4b02a1d1a9bb547fec5498d50026a27 a                   gotns:LivesInRelation ;
+                                        gotns:hasTenant     awoiaf:PetyrBaelish ;
+                                        schema:homeLocation awoiaf:TheEyrie .
+
+awoiaf:TheEyrie a                  vcard:Home ;
+                vcard:country-name "Vale of Arryn" ;
+                gotns:homeType     "Castle" .
+
+awoiaf:DaenerysTargaryen a               foaf:Person ;
+                         foaf:firstName  "Daenerys" ;
+                         foaf:familyName "Targaryen" .
+
+awoiaf:8bd9002ee69380ac1328f9d79e018c11 a                   gotns:LivesInRelation ;
+                                        gotns:hasTenant     awoiaf:DaenerysTargaryen ;
+                                        schema:homeLocation awoiaf:DothrakiSea .
+
+awoiaf:DothrakiSea a                  schema:Place ;
+                   vcard:country-name "Dothrak" ;
+                   gotns:homeType     "Desert" .
+
+awoiaf:AryaStark a               foaf:Person ;
+                 foaf:firstName  "Arya" ;
+                 foaf:familyName "Stark" ;
+                 rel:childOf     awoiaf:EddardStark .
+
+awoiaf:SansaStark a               foaf:Person ;
+                  foaf:firstName  "Sansa" ;
+                  foaf:familyName "Stark" ;
+                  rel:childOf     awoiaf:EddardStark .
+
+awoiaf:780bf2a6c8ec278fdec8efb05db6b150 a                   gotns:LivesInRelation ;
+                                        gotns:hasTenant     awoiaf:AryaStark ;
+                                        schema:homeLocation awoiaf:Winterfell .
+
+awoiaf:91cf5c3113049bf5a618896ae6e85836 a                   gotns:LivesInRelation ;
+                                        gotns:hasTenant     awoiaf:SansaStark ;
+                                        schema:homeLocation awoiaf:Winterfell .
+
+awoiaf:Winterfell a                  vcard:Home ;
+                  vcard:country-name "The North" ;
+                  gotns:homeType     "Castle" .

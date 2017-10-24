@@ -103,7 +103,8 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
         override def load(hash: String): Infoton = {
           val f = getMetaNsInfotonForHash(hash, false)(injectedExecutionContext)
           f.onComplete {
-            case Success(Some(infoton)) => {
+                                           // only optimization-update if no CQL hacks has been made
+            case Success(Some(infoton)) => if(infoton.path.drop("/meta/ns/".length) == hash) {
               infoton.fields.foreach { fields =>
                 fields.get("prefix").foreach {
                   vSet => {
@@ -525,8 +526,9 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
         require(i.fields.get.contains("url"), s"must have url defined ($i)")
         val valSet = i.fields.get("url")
         require(valSet.size == 1, s"must have only 1 url ($i)")
+        val actualHash = i.path.drop("/meta/ns/".length)
         valSet.head match {
-          case fv if fv.value.isInstanceOf[String] && fv.value.asInstanceOf[String] == url => hash -> Exists
+          case fv if fv.value.isInstanceOf[String] && fv.value.asInstanceOf[String] == url => actualHash -> Exists
           case fv if fv.value.isInstanceOf[String] && fv.value.asInstanceOf[String] != url => inner(crc32base64(hash))
           case fv => throw new RuntimeException(s"got weird value: $fv")
         }
@@ -687,7 +689,7 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
   }
 
   private[this] def getMetaNsInfotonForHash(hash: String, nbg: Boolean)(implicit ec: ExecutionContext): Future[Option[Infoton]] =
-    crudServiceFS.getInfoton("/meta/ns/" + hash, None, None, nbg).map(_.map(_infoton))
+    crudServiceFS.getInfoton("/meta/ns/" + hash, None, None, nbg).map(_.map(_.infoton))
 
   private[this] def getMetaNsInfotonForUrl(url: String, nbg: Boolean)(implicit ec: ExecutionContext): Future[Option[Infoton]] =
     crudServiceFS.search(
@@ -703,13 +705,6 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
         }
       }
     }
-
-  // todo there must be a better way to achieve this. making ContentPortion abstract case class or such.
-  private[this] def _infoton(content: ContentPortion) = content match {
-    case Everything(i) => i
-    case UnknownNestedContent(i) => i
-    case _ => ???
-  }
 
   private[this] def getAliasForQuadUrlAsyncActual(graphName: String, nbg: Boolean)(implicit ec: ExecutionContext): Future[Option[String]] = {
     getAliasForQuadUrlAsync(graphName,nbg,ByBase64).flatMap{

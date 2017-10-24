@@ -28,6 +28,7 @@ import play.api.mvc._
 import javax.inject._
 
 import actions.DashBoard
+import filters.Attrs
 
 import scala.concurrent.duration.DurationLong
 import scala.concurrent.{ExecutionContext, Future}
@@ -107,9 +108,7 @@ class IngestPushback @Inject() (backPressureToggler: BackPressureToggler, dashBo
    }
 
   override def invokeBlock[A](request: Request[A], block: Request[A] => Future[Result]): Future[Result] = {
-    // TODO: we should compose Request, and use a "TimedRequest" instead of measuring time in more than one place.
-    // TODO: (filter adding RT header, access.log filter and here)
-    val startTime = System.currentTimeMillis()
+    val startTime = request.attrs(Attrs.RequestReceivedTimestamp)
 
     def resOptToFilterBy(resOpt: Option[Result]) = resOpt.fold(block(request)) { result =>
       val requestTime = {
@@ -125,6 +124,8 @@ class IngestPushback @Inject() (backPressureToggler: BackPressureToggler, dashBo
       case "new" => filterByKLog().flatMap(resOptToFilterBy)
       case "old" => resOptToFilterBy(filterByTLog())
       case "off" => block(request)
+      case "all" => filterByTLog().fold(filterByKLog().flatMap(resOptToFilterBy))(Future.successful)
+      case "bar" => Future.successful(Results.ServiceUnavailable(s"Ingests has been barred by an admin. Please try again later."))
       case unknown => Future.successful(Results.InternalServerError(s"unknown state for 'BACKPRESSURE_TRIGGER' [$unknown]"))
     }
   }
