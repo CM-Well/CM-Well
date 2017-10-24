@@ -60,6 +60,7 @@ import javax.inject._
 
 import akka.NotUsed
 import cmwell.ws.util.TypeHelpers
+import filters.Attrs
 import play.api.http.FileMimeTypes
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -73,8 +74,7 @@ import scala.util.{Failure, Random, Success, Try}
 */
 
 @Singleton
-class SpHandlerController @Inject()(crudServiceFS: CRUDServiceFS,
-                                    nbgToggler: NbgToggler)
+class SpHandlerController @Inject()(crudServiceFS: CRUDServiceFS)
                                    (implicit ec: ExecutionContext, fmt: FileMimeTypes) extends InjectedController with LazyLogging with TypeHelpers {
 
   val parser = new SPParser
@@ -105,9 +105,9 @@ class SpHandlerController @Inject()(crudServiceFS: CRUDServiceFS,
 
             //TODO: consider using `guardHangingFutureByExpandingToSource` instead all the bloat below
             val singleEndln = Source.single(cmwell.ws.Streams.endln)
-            val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(false)
+            val nbg = req.attrs(Attrs.Nbg)
 
-            val futureThatMayHang = if(rp.bypassCache) task(nbg || nbgToggler.get)(paq) else viaCache(nbg || nbgToggler.get,crudServiceFS)(paq)
+            val futureThatMayHang = if(rp.bypassCache) task(nbg)(paq) else viaCache(nbg,crudServiceFS)(paq)
             val initialGraceTime = 7.seconds
             val injectInterval = 3.seconds
             val backOnTime: QueryResponse => Result = {

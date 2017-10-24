@@ -27,13 +27,13 @@ class AccessLoggingFilter @Inject() (implicit val mat: Materializer, ec: Executi
   val accessLogger = Logger("access")
 
   def apply(next: (RequestHeader) => Future[Result])(request: RequestHeader): Future[Result] = {
-    val startTime = System.currentTimeMillis
+    val startTime = request.attrs(Attrs.RequestReceivedTimestamp)
     next(request).map { result =>
       val endTime = System.currentTimeMillis
       val reqTime = endTime - startTime
       val ip = request.headers.get("X-Forwarded-For").getOrElse("N/A")
-      val msg = s"method=${request.method} uri=${request.uri} remote-address=${request.remoteAddress}" +
-                s" status=${result.header.status} process-time=$reqTime x-forwarded-for=${ip}";
+      val msg = s"method=${request.method} uri=${request.uri} remote-address=${request.remoteAddress} " +
+                s"status=${result.header.status} process-time=$reqTime x-forwarded-for=${ip}";
       lazy val headers = request.headers.headers.map(h => h._1 + ":" + h._2).mkString(" headers=[",",","]")
 
       if(result.header.status < 400) accessLogger.info(msg)

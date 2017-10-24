@@ -37,6 +37,8 @@ import security.{AuthUtils, PermissionLevel}
 import wsutil._
 import javax.inject._
 
+import filters.Attrs
+
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
@@ -61,7 +63,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
    * @return
    */
   def handlePost(format: String = "") = ingestPushback.async(parse.raw) { implicit req =>
-    RequestMonitor.add("in", req.path, req.rawQueryString, req.body.asBytes().fold("")(_.utf8String))
+    RequestMonitor.add("in", req.path, req.rawQueryString, req.body.asBytes().fold("")(_.utf8String),req.attrs(Attrs.RequestReceivedTimestamp))
     // first checking "priority" query string. Only if it is present we will consult the UserInfoton which is more expensive (order of && below matters):
     if (req.getQueryString("priority").isDefined && !authUtils.isOperationAllowedForUser(security.PriorityWrite, authUtils.extractTokenFrom(req), evenForNonProdEnv = true)) {
       Future.successful(Forbidden(Json.obj("success" -> false, "message" -> "User not authorized for priority write")))
@@ -163,7 +165,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
       case _ => throw new RuntimeException("cant find valid content in body of request")
     }
 
-    val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+    val nbg = req.attrs(Attrs.Nbg)
 
 
     req.getQueryString("format") match {
@@ -221,9 +223,9 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
    */
   def handlePostRDF(req: Request[RawBuffer], skipValidation: Boolean = false): (Future[Result],Future[Seq[(String,String)]]) = {
 
-    val now = System.currentTimeMillis()
+    val now = req.attrs(Attrs.RequestReceivedTimestamp)
     val p = Promise[Seq[(String,String)]]()
-    lazy val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+    lazy val nbg = req.attrs(Attrs.Nbg)
     lazy val id = cmwell.util.numeric.Radix64.encodeUnsigned(req.id)
     val debugLog = req.queryString.keySet("debug-log")
     val addDebugHeader: Result => Result = { res =>
@@ -439,7 +441,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
 
     if (req.getQueryString("dry-run").isDefined)  Future.successful(BadRequest(Json.obj("success" -> false, "error" -> "dry-run is not implemented for wrapped requests.")))
     else {
-      val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+      val nbg = req.attrs(Attrs.Nbg)
       val charset = req.contentType match {
         case Some(contentType) => contentType.lastIndexOf("charset=") match {
           case i if i != -1 => contentType.substring(i + 8).trim
