@@ -737,7 +737,9 @@ object LDFormatParser extends LazyLogging {
                             nbg: Boolean): Unit = {
     pvl.foreach{
       case (p,v) => {
-        val cmwAttribute = getCmwellFieldNameForUrl(cmwellRDFHelper, p.getNameSpace, nbg, Some(p.getLocalName)).get //TODO: protect against empty Option
+        val predicateUrl = p.getNameSpace
+        require(!predicateUrl.matches(metaOpRegex("(sys|ns)")), s"sys fields not allowed for markDelete failed for: [$predicateUrl${p.getLocalName}]")
+        val cmwAttribute = getCmwellFieldNameForUrl(cmwellRDFHelper, predicateUrl, nbg, Some(p.getLocalName)).get //TODO: protect against empty Option
         val validValue: FieldValue = fieldValueFromObject(v,quad)
         deleteValuesMap.get(infotonPath) match {
           case None =>  deleteValuesMap.update(infotonPath, Map(cmwAttribute -> Set(validValue)))
@@ -756,7 +758,7 @@ object LDFormatParser extends LazyLogging {
   def getCmwellFieldNameForUrl(cmwellRDFHelper: CMWellRDFHelper, predicateUrl: String, nbg: Boolean, localName: Option[String] = None): Option[String] = predicateUrl match {
     case "*" => Some("*")
     case _ => {
-      require(urlValidate(predicateUrl), s"the url: ${predicateUrl} is not a valid url.")
+      require(urlValidate(predicateUrl), s"the url: ${predicateUrl} is not a valid predicate url for ingest.")
       val (url, firstName) = localName match {
         case None => {
           val fName = predicateUrl.reverse.takeWhile(!uriSeparator(_)).reverse
