@@ -74,9 +74,9 @@ class TrafficShapingFilter @Inject() (implicit override val mat: Materializer,ec
   override def apply(next: (RequestHeader) => Future[Result])(request: RequestHeader): Future[Result] = {
     import Math._
 
-    val ip = request.headers.get("X-Forwarded-For").getOrElse(request.remoteAddress)
+    val ip = request.attrs(Attrs.UserIP)
     lazy val resultFuture = next(request)
-    val startTime = System.currentTimeMillis()
+    val startTime = request.attrs(Attrs.RequestReceivedTimestamp)
     val maxDurationMillis = maxRequestTimeSec*1000
     val penalty = TrafficShaper.penalty(ip)
     val requestType = reqType(request)

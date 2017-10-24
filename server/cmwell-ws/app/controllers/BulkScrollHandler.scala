@@ -36,20 +36,20 @@ import com.typesafe.scalalogging.LazyLogging
 import cmwell.syntaxutils._
 import cmwell.web.ld.cmw.CMWellRDFHelper
 import cmwell.ws.Streams.Flows
+import filters.Attrs
 import play.api.http.Writeable
 
 import scala.math.min
 
 @Singleton
 class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
-                                  tbg: NbgToggler,
                                   streams: Streams,
                                   cmwellRDFHelper: CMWellRDFHelper,
                                   formatterManager: FormatterManager,
                                   action: DefaultActionBuilder,
                                   components: ControllerComponents)(implicit ec: ExecutionContext) extends AbstractController(components) with LazyLogging with TypeHelpers {
 
-  def cache(nbg: Boolean) = if(nbg || tbg.get) crudServiceFS.nbgPassiveFieldTypesCache else crudServiceFS.obgPassiveFieldTypesCache
+//  def cache(nbg: Boolean) = if(nbg) crudServiceFS.nbgPassiveFieldTypesCache else crudServiceFS.obgPassiveFieldTypesCache
 
   //consts
   val paginationParamsForSingleResult = PaginationParams(0, 1)
@@ -313,7 +313,7 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
       }
     }
 
-    val nbg = request.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+    val nbg = request.attrs(Attrs.Nbg)
 
     currStateEither match {
       case Left(err) => Future.successful(BadRequest(err))
@@ -364,12 +364,12 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
     }
   }
 
-  def parseQpFromRequest(qp: String, nbg: Boolean)(implicit ec: ExecutionContext): Future[Option[FieldFilter]] = {
-    FieldFilterParser.parseQueryParams(qp) match {
-      case Failure(err) => Future.failed(err)
-      case Success(rff) => RawFieldFilter.eval(rff,cache(nbg),cmwellRDFHelper,nbg).map(Option.apply)
-    }
-  }
+//  def parseQpFromRequest(qp: String, nbg: Boolean)(implicit ec: ExecutionContext): Future[Option[FieldFilter]] = {
+//    FieldFilterParser.parseQueryParams(qp) match {
+//      case Failure(err) => Future.failed(err)
+//      case Success(rff) => RawFieldFilter.eval(rff,cache(nbg),cmwellRDFHelper,nbg).map(Option.apply)
+//    }
+//  }
 
   private def addIndexTime(fromCassandra: Seq[Infoton], uuidToindexTime: Map[String, Long]): Seq[Infoton] = fromCassandra.map {
     case i: ObjectInfoton if i.indexTime.isEmpty => i.copy(indexTime = uuidToindexTime.get(i.uuid))
