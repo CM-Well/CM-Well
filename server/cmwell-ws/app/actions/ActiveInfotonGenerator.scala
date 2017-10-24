@@ -605,14 +605,14 @@ ${lines.mkString("\n")}
 
   def generateInfoton(host: String, path: String, now: Long, length: Int = 0, offset: Int = 0, isRoot : Boolean = false, nbg: Boolean = false, fieldFilters: Option[FieldFilter]): Future[Option[VirtualInfoton]] = {
 
-    val md: DateTime = new DateTime(now)
+    val d: DateTime = new DateTime(now)
 
     implicit def iOptAsFuture(iOpt: Option[VirtualInfoton]): Future[Option[VirtualInfoton]] = Future.successful(iOpt)
 
     def compoundDC = crudServiceFS.getListOfDC().map {
       seq => {
-        val dcKids: Seq[Infoton] = seq.map(dc => VirtualInfoton(ObjectInfoton(s"/proc/dc/$dc", dc, None, md, None)).getInfoton)
-        Some(VirtualInfoton(CompoundInfoton("/proc/dc", dc, None, md, None, dcKids.slice(offset, offset + length), offset, length, dcKids.size)))
+        val dcKids: Seq[Infoton] = seq.map(dc => VirtualInfoton(ObjectInfoton(s"/proc/dc/$dc", dc, None, d, None)).getInfoton)
+        Some(VirtualInfoton(CompoundInfoton("/proc/dc", dc, None, d, None, dcKids.slice(offset, offset + length), offset, length, dcKids.size)))
       }
     }
 
@@ -639,20 +639,20 @@ ${lines.mkString("\n")}
     path.dropTrailingChars('/') match {
       case "/proc" => {
         val pk = procKids
-        Some(VirtualInfoton(CompoundInfoton(path, dc, None, md, None, pk.slice(offset, offset + length), offset, min(pk.drop(offset).size, length), pk.size)))
+        Some(VirtualInfoton(CompoundInfoton(path, dc, None, d, None, pk.slice(offset, offset + length), offset, min(pk.drop(offset).size, length), pk.size)))
       }
-      case "/proc/node" => Some(VirtualInfoton(ObjectInfoton(path, dc, None, md, nodeValFields)))
+      case "/proc/node" => Some(VirtualInfoton(ObjectInfoton(path, dc, None, d, nodeValFields)))
       case "/proc/dc" => compoundDC
       case p if p.startsWith("/proc/dc/") => getDcInfo(p)
       case "/proc/fields" => crudServiceFS.getESFieldsVInfoton(nbg).map(Some.apply)
-      case "/proc/health" => Some(VirtualInfoton(ObjectInfoton(path, dc, None, md, generateHealthFields)))
-      case "/proc/health.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateHealthMarkdown(md).getBytes, "text/x-markdown")))))
-      case "/proc/health-detailed" => Some(VirtualInfoton(ObjectInfoton(path, dc, None, md, generateHealthDetailedFields)))
-      case "/proc/health-detailed.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateDetailedHealthMarkdown(md).getBytes, "text/x-markdown")))))
+      case "/proc/health" => Some(VirtualInfoton(ObjectInfoton(path, dc, None, d, generateHealthFields)))
+      case "/proc/health.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateHealthMarkdown(d).getBytes, "text/x-markdown")))))
+      case "/proc/health-detailed" => Some(VirtualInfoton(ObjectInfoton(path, dc, None, d, generateHealthDetailedFields)))
+      case "/proc/health-detailed.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateDetailedHealthMarkdown(d).getBytes, "text/x-markdown")))))
       case "/proc/health-detailed.csv" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateDetailedHealthCsvPretty().getBytes, "text/html")))))
-      case "/proc/batch.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateBatchMarkdown(Batch,md).getBytes, "text/x-markdown")))))
+      case "/proc/batch.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateBatchMarkdown(Batch,d).getBytes, "text/x-markdown")))))
       case "/proc/bg.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateBgMarkdown(Bg).getBytes, "text/x-markdown")))))
-      case "/proc/bg" => generateBgData.map(fields => Some(VirtualInfoton(ObjectInfoton(path, dc, None, md, fields))))
+      case "/proc/bg" => generateBgData.map(fields => Some(VirtualInfoton(ObjectInfoton(path, dc, None, d, fields))))
       case "/proc/search-contexts.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateIteratorMarkdown.getBytes, "text/x-markdown")))))
       case "/proc/members-active.md" => GridMonitoring.members(path, dc, Active, isRoot)
       case "/proc/members-all.md" => GridMonitoring.members(path, dc, All, isRoot)
