@@ -1891,6 +1891,11 @@ callback=< [URL] >
 
   def handleAuthGET(actionStr: String) = Action.async { req =>
     actionStr match {
+
+      case "debug" => {
+        authUtils.debugAuthCache().map(data => Ok(data.users.mkString(",")))
+      }
+
       case "generatepassword" => {
         val pw = authUtils.generateRandomPassword()
         Future.successful(Ok(Json.obj(("password", JsString(pw._1)), ("encrypted", pw._2))))
@@ -1908,6 +1913,13 @@ callback=< [URL] >
         } else {
           Future.successful(BadRequest(Json.obj("error" -> "insufficient arguments")))
         }
+      }
+      case "invalidate-cache" => {
+        if(authUtils.isOperationAllowedForUser(Admin, authUtils.extractTokenFrom(req), evenForNonProdEnv = true)) {
+          val success = authUtils.invalidateAuthCache()
+          Future.successful(Ok(Json.obj("success" -> success)))
+        }
+        else Future.successful(Unauthorized("Not authorized"))
       }
       case _ => Future.successful(BadRequest(Json.obj("error" -> "No such action")))
     }
@@ -2294,10 +2306,10 @@ case class CMWellPostType(xCmWellType: String) {
 class CachedSpa @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionContext) extends LazyLogging {
 
 
-  val oldNbgCache = new SingleElementLazyAsyncCache[String](600000)(doFetchContent(true,true))(Combiner.replacer,ec)
-  val newObgCache = new SingleElementLazyAsyncCache[String](600000)(doFetchContent(false,false))(Combiner.replacer,ec)
-  val oldObgCache = new SingleElementLazyAsyncCache[String](600000)(doFetchContent(true,false))(Combiner.replacer,ec)
-  val newNbgCache = new SingleElementLazyAsyncCache[String](600000)(doFetchContent(false,true))(Combiner.replacer,ec)
+  val oldNbgCache = new SingleElementLazyAsyncCache[String](600000)(doFetchContent(true,true))
+  val newObgCache = new SingleElementLazyAsyncCache[String](600000)(doFetchContent(false,false))
+  val oldObgCache = new SingleElementLazyAsyncCache[String](600000)(doFetchContent(true,false))
+  val newNbgCache = new SingleElementLazyAsyncCache[String](600000)(doFetchContent(false,true))
 
   private val contentPath    = "/meta/app/old-ui/index.html"
   private val newContentPath = "/meta/app/main/index.html"

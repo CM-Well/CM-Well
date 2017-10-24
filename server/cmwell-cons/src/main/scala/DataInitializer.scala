@@ -137,6 +137,7 @@ class DataInitializer(h: Host, jwt: String, rootDigest: String, rootDigest2: Str
 
     val p = Progress(userInfotons.size)
     val results = awaitSeq(userInfotons.map{ case (user, payload) => uploadUserInfotonIfNotExist(user, payload, p) }.toSeq)
+    await(Http.get(s"http://$host:9000/_auth/invalidate-cache", headers = Seq("X-CM-WELL-TOKEN"->jwt)))
     p.complete()
     results
   }

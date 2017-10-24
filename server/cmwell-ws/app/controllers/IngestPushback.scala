@@ -40,7 +40,7 @@ class IngestPushback @Inject() (backPressureToggler: BackPressureToggler, dashBo
 
   lazy val bGMonitorProxy = new SingleElementLazyAsyncCache[OffsetsInfo](10000L,null)({
     Grid.serviceRef(BGMonitorActor.serviceName).ask(GetOffsetInfo)(akka.util.Timeout(bgMonitorAskTimeout), Actor.noSender).mapTo[OffsetsInfo]
-  })(Combiner.replacer[OffsetsInfo],implicitly)
+  })(Combiner.replacer[OffsetsInfo],implicitly,implicitly)
 
   // we use our own custom filter instead of mixing in ActionFilter,
   // to enable pushback by hanging the request,

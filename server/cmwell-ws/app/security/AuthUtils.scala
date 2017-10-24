@@ -109,6 +109,10 @@ class AuthUtils @Inject()(authCache: AuthCache, authorization: Authorization, cr
     level == PermissionLevel.Write && path.matches("/meta/.*") && !path.matches("/meta/sys/dc/.*")
   }
 
+  def invalidateAuthCache(): Boolean = authCache.invalidate()
+
+  def debugAuthCache(): Future[AuthData] = authCache.debug()
+
   private def getUser(tokenOpt: Option[Token]) =
     tokenOpt.collect{ case token if token.isValid => authCache.getUserInfoton(token.username) }.flatten
 

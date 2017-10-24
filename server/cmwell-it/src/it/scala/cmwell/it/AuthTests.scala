@@ -54,6 +54,8 @@ class AuthTests extends FunSpec with Matchers with Helpers with LazyLogging {
         Json.toJson(Map("id" -> Json.toJson(path), "recursive" -> Json.toJson(recursive), "sign" -> Json.toJson(if (allow) "+" else "-"), "permissions" -> Json.toJson(permissions)))
       }
 
+      Thread.sleep(50*1000)
+
       it("should add a custom user") {
         val path = cmw / "meta" / "auth" / "users" / "TestUser"
         val saltedPassword = "$2a$10$hrLLP9IUUJyUHP5skFtpC.LG.WFvcKHkbrcymcg0yPWXxg08z2mhW" // bcrypt("myPassword"+salt)
@@ -139,6 +141,11 @@ class AuthTests extends FunSpec with Matchers with Helpers with LazyLogging {
           Json.parse(res) should be(jsonSuccess)
         }
         indexingDuration.fromNow.block
+      }
+
+      it("should reset AuthCache once all user/role data was ingested") {
+        val res = waitAndExtractBody(Http.get(cmw / "_auth" / "invalidate-cache", headers = tokenHeader))
+        Json.parse(res) should be(jsonSuccess)
       }
 
       it("should be able to login with the CustomUser and receive a token") {

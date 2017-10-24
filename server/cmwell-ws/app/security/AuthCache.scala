@@ -17,67 +17,82 @@ package security
 
 import javax.inject._
 
-import cmwell.domain.{Everything, FileInfoton}
-import cmwell.ws.Settings
-import cmwell.zcache.L1Cache
-import cmwell.util.concurrent.retryUntil
-import cmwell.util.numeric.Radix64.encodeUnsigned
+import cmwell.domain.{Everything, FileInfoton, Infoton}
+import cmwell.fts.PathFilter
+import cmwell.util.concurrent.{Combiner, SingleElementLazyAsyncCache, Validator}
 import com.typesafe.scalalogging.LazyLogging
 import logic.CRUDServiceFS
-import org.joda.time.DateTime
 import play.api.libs.json.{JsValue, Json}
 
-import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
-import scala.util.{Success, Failure, Try}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 @Singleton
 class AuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionContext) extends LazyLogging {
-  private val usersFolder = "/meta/auth/users"
-  private val rolesFolder = "/meta/auth/roles"
-
-  def getRole(roleName: String): Option[JsValue] = safelyGetEntity(roleName)(rolesCache)
-  def getUserInfoton(userName: String): Option[JsValue] = safelyGetEntity(userName)(usersCache)
-
   // TODO Do not Await.result... These should return Future[Option[JsValue]]]
-  private def safelyGetEntity(entityName: String)(source: String => Future[Option[JsValue]]): Option[JsValue] = {
-    val timestamp = DateTime.now()
-    val logID = encodeUnsigned(Thread.currentThread().getId) + "~" + encodeUnsigned(timestamp.getMillis)
-    Try {
-      val entityFut = source(entityName)
-      val timestamp = DateTime.now()
-      Await.result(entityFut.andThen {
-        case Failure(err) => logger.error(s"[$logID] failed to get entity[$entityName]", err)
-        case Success(ojv) if DateTime.now().compareTo(timestamp.plus(3000L)) > 0 => logger.error(s"[$logID] succeeded, but took more than 3s. value is: $ojv")
-      }, 3.seconds)
-    }.transform(Success.apply, err => {
-      logger.error(s"[$logID] failed to get entity[$entityName] with thrown exception",err)
-      Success(Option.empty[JsValue])
-    }).get
+  def getRole(roleName: String): Option[JsValue] = Await.result(data.getAndUpdateIfNeeded.map(_.roles.get(roleName)).recoverWith { case _ =>
+    //
+    logger.warn(s"AuthCache Graceful Degradation: Search failed! Trying direct read for Role($roleName):")
+    getFromCrudAndExtractJson(s"/meta/auth/roles/$roleName")
+  }, 5.seconds)
+
+  def getUserInfoton(userName: String): Option[JsValue] = Await.result(data.getAndUpdateIfNeeded.map(_.users.get(userName)).recoverWith { case _ =>
+    logger.warn(s"AuthCache Graceful Degradation: Search failed! Trying direct read for User($userName):")
+    getFromCrudAndExtractJson(s"/meta/auth/users/$userName")
+  }, 5.seconds)
+
+  def invalidate(): Boolean = data.reset().isSuccess
+
+  def debug(): Future[AuthData] = data.getAndUpdateIfNeeded
+
+  private def getFromCrudAndExtractJson(infotonPath: String) = crudServiceFS.getInfoton(infotonPath, None, None).map {
+    case Some(Everything(i)) =>
+      extractPayload(i)
+    case other =>
+      logger.warn(s"Trying to read $infotonPath but got from CAS $other")
+      None
   }
 
-  private def getUserFromCas(username: String) = getFromCrudAndExtractJson(s"$usersFolder/$username")
-  private def getRoleFromCas(rolename: String) = getFromCrudAndExtractJson(s"$rolesFolder/$rolename")
+  private implicit val authDataValidator: Validator[AuthData] = new Validator[AuthData] {
+    override def isValid(authData: AuthData) = !authData.isEmpty
+  }
+  private val data = new SingleElementLazyAsyncCache[AuthData](5*60000, initial = AuthData.empty)(load())
 
-  private def getFromCrudAndExtractJson(infotonPath: String) = retryUntil[Option[JsValue]](_.isDefined, 3, 100.millis) {
-    crudServiceFS.getInfoton(infotonPath, None, None).map {
-      case Some(Everything(FileInfoton(_, _, _, _, _, Some(c), _))) =>
-        Some(Json.parse(new String(c.data.get, "UTF-8")))
-      case other =>
-        logger.warn(s"Trying to read $infotonPath but got from CAS $other")
-        None
+  private def load(): Future[AuthData] = {
+    logger.info("AuthCache Loading...")
+
+    // one level under /meta/auth is a parent (e.g. "users", "roles")
+    def isParent(infoton: Infoton) = infoton.path.count(_ == '/') < 4
+
+    crudServiceFS.search(Some(PathFilter("/meta/auth", descendants = true)), withData = true).map { searchResult =>
+      val data = searchResult.infotons.filterNot(isParent).map(i => i.path -> extractPayload(i)).collect { case (p, Some(jsv)) => p -> jsv }.toMap
+      val (usersData, rolesData) = cmwell.util.collections.partitionWith(data) { t =>
+        val (path, payload) = t
+        val isUser = path.startsWith("/meta/auth/users")
+        val key = path.substring(path.lastIndexOf("/") + 1)
+        if (isUser) Left(key -> payload)
+        else Right(key -> payload)
+      }
+      logger.info(s"AuthCache Loaded with ${usersData.size} users and ${rolesData.size} roles.")
+      AuthData(usersData.toMap, rolesData.toMap)
+    }.recover { case t: Throwable =>
+      logger.info(s"AuthCache failed to load because ${t.getMessage}")
+      AuthData.empty
     }
   }
 
-  private val usersCache = L1Cache.memoize(task = getUserFromCas)(
-                                           digest = identity,
-                                           isCachable = _.isDefined)(
-                                           l1Size = Settings.zCacheL1Size,
-                                           ttlSeconds = Settings.zCacheSecondsTTL)
+  private def extractPayload(infoton: Infoton): Option[JsValue] = infoton match {
+    case FileInfoton(_, _, _, _, _, Some(c), _) =>
+      Some(Json.parse(new String(c.data.get, "UTF-8")))
+    case _ =>
+      logger.warn(s"AuthInfoton(${infoton.path}) does not exist, or is not a FileInfoton with valid JSON content.")
+      None
+  }
+}
 
-  private val rolesCache = L1Cache.memoize(task = getRoleFromCas)(
-                                           digest = identity,
-                                           isCachable = _.isDefined)(
-                                           l1Size = Settings.zCacheL1Size,
-                                           ttlSeconds = Settings.zCacheSecondsTTL)
+case class AuthData(users: Map[String,JsValue], roles: Map[String,JsValue]) {
+  def isEmpty: Boolean = users.isEmpty && roles.isEmpty
+}
+object AuthData {
+  val empty = AuthData(Map.empty,Map.empty)
 }
