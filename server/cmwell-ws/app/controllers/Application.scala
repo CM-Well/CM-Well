@@ -1915,11 +1915,6 @@ callback=< [URL] >
 
   def handleAuthGET(actionStr: String) = Action.async { req =>
     actionStr match {
-
-      case "debug" => {
-        authUtils.debugAuthCache().map(data => Ok(data.users.mkString(",")))
-      }
-
       case "generatepassword" => {
         val pw = authUtils.generateRandomPassword()
         Future.successful(Ok(Json.obj(("password", JsString(pw._1)), ("encrypted", pw._2))))

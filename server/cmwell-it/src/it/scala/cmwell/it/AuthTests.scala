@@ -54,8 +54,6 @@ class AuthTests extends FunSpec with Matchers with Helpers with LazyLogging {
         Json.toJson(Map("id" -> Json.toJson(path), "recursive" -> Json.toJson(recursive), "sign" -> Json.toJson(if (allow) "+" else "-"), "permissions" -> Json.toJson(permissions)))
       }
 
-      Thread.sleep(50*1000)
-
       it("should add a custom user") {
         val path = cmw / "meta" / "auth" / "users" / "TestUser"
         val saltedPassword = "$2a$10$hrLLP9IUUJyUHP5skFtpC.LG.WFvcKHkbrcymcg0yPWXxg08z2mhW" // bcrypt("myPassword"+salt)

@@ -31,7 +31,6 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 class AuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionContext) extends LazyLogging {
   // TODO Do not Await.result... These should return Future[Option[JsValue]]]
   def getRole(roleName: String): Option[JsValue] = Await.result(data.getAndUpdateIfNeeded.map(_.roles.get(roleName)).recoverWith { case _ =>
-    //
     logger.warn(s"AuthCache Graceful Degradation: Search failed! Trying direct read for Role($roleName):")
     getFromCrudAndExtractJson(s"/meta/auth/roles/$roleName")
   }, 5.seconds)
@@ -42,8 +41,6 @@ class AuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
   }, 5.seconds)
 
   def invalidate(): Boolean = data.reset().isSuccess
-
-  def debug(): Future[AuthData] = data.getAndUpdateIfNeeded
 
   private def getFromCrudAndExtractJson(infotonPath: String) = crudServiceFS.getInfoton(infotonPath, None, None).map {
     case Some(Everything(i)) =>
@@ -56,7 +53,7 @@ class AuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
   private implicit val authDataValidator: Validator[AuthData] = new Validator[AuthData] {
     override def isValid(authData: AuthData) = !authData.isEmpty
   }
-  private val data = new SingleElementLazyAsyncCache[AuthData](5*60000, initial = AuthData.empty)(load())
+  private val data = new SingleElementLazyAsyncCache[AuthData](5 * 60000, initial = AuthData.empty)(load())
 
   private def load(): Future[AuthData] = {
     logger.info("AuthCache Loading...")
@@ -88,11 +85,11 @@ class AuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
       logger.warn(s"AuthInfoton(${infoton.path}) does not exist, or is not a FileInfoton with valid JSON content.")
       None
   }
-}
 
-case class AuthData(users: Map[String,JsValue], roles: Map[String,JsValue]) {
-  def isEmpty: Boolean = users.isEmpty && roles.isEmpty
-}
-object AuthData {
-  val empty = AuthData(Map.empty,Map.empty)
+  case class AuthData(users: Map[String, JsValue], roles: Map[String, JsValue]) {
+    def isEmpty: Boolean = users.isEmpty && roles.isEmpty
+  }
+  object AuthData {
+    val empty = AuthData(Map.empty, Map.empty)
+  }
 }
