@@ -119,82 +119,67 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
       }
     }
 
-    def iterate(to: Long, step: Long, earlyCutOffResult: CurrRangeForConsumption, expanding: Boolean = true, nextTo: Option[Long] = None): Future[CurrRangeForConsumption] = {
-      logger.debug(s"iterate: from[$from], to[$to], step[$step], expanding[$expanding], nextTo[${nextTo.getOrElse("N/A")}], ecor[$earlyCutOffResult]")
-
-      //Take the maximum between the current "to" and the previous toSeed that is guaranteed to be at least 1000 infotons. The current "to" might be too early in time and thus will return 0 results.
-      def safeUpperLimit(unsafeToLimit: Long) = {
-        toSeed.value.flatMap(_.toOption).fold(unsafeToLimit)(max(_, unsafeToLimit))
-      }
-
-      def takeTheBetterEarlyCutOff: CurrRangeForConsumption = {
-        val x = safeUpperLimit(to)
-        if (earlyCutOffResult.to >= x) earlyCutOffResult
-        else CurrRangeForConsumption(from, x, None) // nextTo should be none even if exist, because we are not done yet, and next chunk might be too big
-      }
-
-      if(!expanding && step < 10)
-        //Stop condition: in case the expanding is false (the step is getting SMALLER each time) and the step small return the current values
-        Future.successful(CurrRangeForConsumption(from, to, nextTo))
+    def expandTimeRange(to: Long, nextToForOptimization: Option[Long] = None)
+                       (searchFunction: Long => Future[SearchThinResults]): Future[Either[(Long, Long, Option[Long]) , CurrRangeForConsumption]] = {
+      //stop conditions: 1. in range. 2. out of range 3. next to > now 4. early cut off (return the last known position to be "not enough" - the previous to)
+      logger.debug(s"expandTimeRange: from[$from], to[$to], nextToForOptimization[$nextToForOptimization]")
+      if (timeoutMarker.isCompleted) Future.successful(Right(CurrRangeForConsumption(from, to - (to - from)/2, None)))
+      //if to>=now then 1. the binary search should be between the previous position and now or 2. the now position itself. Both cases will be check in the below function
+      else if (to >= now) checkRangeUpToNow(to - (to - from)/2)(searchFunction)
       else {
-        // clipping date boundaries
-        val ffs = fieldsFiltersFromTimeframeAndOptionalFilters(from, to, ffsOpt)
-
-        // find number of infotons in given range
-        crudServiceFS.thinSearch(
-          pathFilter = pf,
-          fieldFilters = Option(ffs),
-          paginationParams = paginationParamsForSingleResult,
-          withHistory = h,
-          withDeleted = d
-        ).flatMap {
+        searchFunction(to).flatMap {
+          //not enough results - keep expanding
+          case SearchThinResults(total, _, _, _, _) if total < threshold * 0.5 => expandTimeRange(to + to - from)(searchFunction)
+          //in range - return final result
+          case SearchThinResults(total, _, _, _, _) if total < threshold * 1.5 => Future.successful(Right(CurrRangeForConsumption(from, to, None)))
+          //too many resutls - return the position to start the binary search from
           case SearchThinResults(total, _, _, _, _) => {
+            val nextToOptimizedForTheNextToken = if (total < threshold * 3) Some(to) else None
+            //The last step got us to this position
+            val lastStep = (to - from) / 2
+            val toToStartSearchFrom = to - lastStep / 2
+            Future.successful(Left(toToStartSearchFrom, lastStep / 4, nextToOptimizedForTheNextToken))
+          }
+        }
+      }
+    }
 
-            logger.debug(s"iterate after search: total[$total]")
+    def checkRangeUpToNow(rangeStart: Long)(searchFunction: Long => Future[SearchThinResults]): Future[Either[(Long, Long, Option[Long]) , CurrRangeForConsumption]] = {
+      logger.debug(s"checkRangeUpToNow: from[$from], rangeStart[$rangeStart]")
+      //This function will be called ONLY when the previous step didn't have enough results
+      searchFunction(now).map { sr =>
+        if (sr.total <= threshold * 1.5) Right(CurrRangeForConsumption(from, now , None))
+        else {
+          val nextToOptimizedForTheNextToken = if (sr.total < threshold * 3) Some(now) else None
+          //rangeStart is the last known position to be with not enough results. This is the lower bound for the binary search
+          //range is the range of the binary search. The whole search will be between rangeStart and now
+          val range = now - rangeStart
+          //The next position to be checked using the binary search
+          val middle = rangeStart + range / 2
+          //In case the next iteration won't finish, this is the step to be taken. The step is half of the step that was taken to get to the middle point
+          val step = range / 4
+          Left(middle, step, nextToOptimizedForTheNextToken)
+        }
+      }
+    }
 
-            if (total < threshold * 0.5) {
-              // don't check above current time
-              if (now <= to) Future.successful(CurrRangeForConsumption(from, now, None))
-              else if(timeoutMarker.isCompleted) Future.successful(takeTheBetterEarlyCutOff) //CurrRangeForConsumption(from, safeUpperLimit(to), nextTo))
-              else {
-                val op: Long => Long = if(expanding) {l => l*2} else {l => l/2}
-                val (nTo,nStep,nExpanding) = {
-                  // if (to + step > now) we are expanding for sure because the next step passes now and wasn't stopped in if (now <= to) condition below
-                  // the actual step in this case is until now and the next step should be half of it. Also from now on the step should be less thus expanding = false
-                  if (to + step > now)
-                    (now, (now - to)/2, false)
-                  else (to + step, op(step), expanding)
-                }
-                iterate(nTo, nStep, takeTheBetterEarlyCutOff, nExpanding, nextTo)
-              }
-            }
-            else if (total > threshold * 1.5) {
-              val newNext = nextTo orElse {
-                if (total > threshold * 3) None
-                else Some(to)
-              }
-              if(timeoutMarker.isCompleted) Future.successful(earlyCutOffResult) // we might change it in the future to .copy(nextTo = newNext) for optimization but we must make sure the range is not too big by adding also the count until the nextTo
-              else {
-                val (newTo, newStep) = if (expanding) {
-                  //1. If it was expanding before the step should be less now (it was too big)
-                  //   Thus, the newTo should be half the step that got us to this trouble
-                  //   The previous iteration called this one with double step that got to the current to.
-                  //   i.e. the new to should go 1/4 of the provided step
-                  //2. The new step should be half of the step to the next to
-                  (to - step / 4, step / 8)
-                }
-                else {
-                  //The previous iteration was not expanding (but it could be too big or too small)
-                  //The new to should be the current one minus the step (the provided step is actually half of the step got us here).
-                  //The new step should be half of the step to the next to
-                  (to - step, step / 2)
-                }
-                iterate(newTo, newStep, earlyCutOffResult, expanding = false, newNext)
-              }
-            }
-            else {
-              Future.successful(CurrRangeForConsumption(from, to, nextTo))
-            }
+    def shrinkingStepBinarySearch(timePosition: Long, step: Long, nextTo: Option[Long])(searchFunction: Long => Future[SearchThinResults]): Future[CurrRangeForConsumption] = {
+      logger.debug(s"shrinkingStepBinarySearch: from[$from], timePosition[$timePosition], step[$step], nextTo[$nextTo]")
+      //stop conditions: 1. in range. 2. early cut off
+      //In case of an early cut off we have 2 options:
+      //1. the previous didn't have enough results - we can use it
+      //2. the previous had too many results - we cannot use it but we can use the position before it which is our position minus twice the given step
+      if (timeoutMarker.isCompleted) Future.successful(CurrRangeForConsumption(from, timePosition - (step * 2), nextTo))
+      else {
+        searchFunction(timePosition).flatMap {
+          //not enough results - keep the search up in the time line
+          case SearchThinResults(total, _, _, _, _) if total < threshold * 0.5 => shrinkingStepBinarySearch(timePosition + step, step / 2, nextTo)(searchFunction)
+          //in range - return final result
+          case SearchThinResults(total, _, _, _, _) if total < threshold * 1.5 => Future.successful(CurrRangeForConsumption(from, timePosition, nextTo))
+          //too many resutls - keep the search down in the time line
+          case SearchThinResults(total, _, _, _, _) => {
+            val nextToOptimizedForTheNextToken = nextTo orElse (if (total < threshold * 3) Some(timePosition) else None)
+            shrinkingStepBinarySearch(timePosition - step, step / 2, nextToOptimizedForTheNextToken)(searchFunction)
           }
         }
       }
@@ -202,7 +187,20 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
 
     toSeed.flatMap { to =>
       logger.debug(s"findValidRange: toSeed[$to], from[$from], tsp[$thinSearchParams]")
-      iterate(to, to-from, CurrRangeForConsumption(from, to, None))
+      val searchFunction = (to: Long) => {
+        val ffs = fieldsFiltersFromTimeframeAndOptionalFilters(from, to, ffsOpt)
+        crudServiceFS.thinSearch(
+          pathFilter = pf,
+          fieldFilters = Option(ffs),
+          paginationParams = paginationParamsForSingleResult,
+          withHistory = h,
+          withDeleted = d
+        )
+      }
+      expandTimeRange(to,None)(searchFunction).flatMap {
+        case Left((timePosition, step, nextToOptimization)) => shrinkingStepBinarySearch(timePosition, step, nextToOptimization)(searchFunction)
+        case Right(result) => Future.successful(result)
+      }
     }
   }
 
