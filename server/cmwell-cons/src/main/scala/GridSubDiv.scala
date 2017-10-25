@@ -155,7 +155,7 @@ case class GridSubDiv(user : String ,
 
   override def prepareMachines(hosts : GenSeq[String] = ips.par, sudoerName: String, sudoerPass : String, userPass : String) {
     super.prepareMachines(hosts, sudoerName, sudoerPass, userPass)
-    createNetwork(topology, topology.persistent, sudoerCredentials.get)
+    createNetwork(topology, topology.persistent, hosts, sudoerCredentials.get)
     super.finishPrepareMachines(hosts, sudoerCredentials.get)
   }
 
