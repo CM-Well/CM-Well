@@ -45,6 +45,20 @@ class APIValidationTests extends FunSpec with Matchers with Inspectors with Help
   def bodyAsString(resp: SimpleResponse[Array[Byte]]): String = new String(resp.body._2, "UTF-8")
 
   describe("CM-Well REST API") {
+    it("should fail with 400 on markDelete of sys fields") {
+      val data = """
+        |@prefix sys:   <http://cm-well.com/meta/sys#> .
+        |<http://irrelevant.path.com> <cmwell://meta/sys#markDelete> [
+        |    sys:path    "/" ;
+        |    sys:type    "ObjectInfoton" ;
+        |]
+      """.stripMargin
+      val res = Await.result(Http.post(_in, data, queryParams = List("format" -> "n3", "debug-log" -> ""), headers = tokenHeader),requestTimeout)
+      withClue(res) {
+        res.status should be(400)
+      }
+    }
+
     it("should fail with 422 on well formed but benign _in updates") {
       val onlyPathIsBenign = """<http://test.permid.org/testsortby> <http://cm-well-uk-lab.int.thomsonreuters.com/meta/sys#path> "/test.permid.org/testsortby" ."""
       val res = Await.result(Http.post(_in, onlyPathIsBenign, textPlain, queryParams = List("format" -> "ntriples", "debug-log" -> ""), headers = tokenHeader),requestTimeout)
