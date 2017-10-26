@@ -55,7 +55,7 @@ class ManglingTests extends AsyncFunSpec with Matchers with Helpers with LazyLog
       val startTime = System.currentTimeMillis()
 
       def wait(): Future[SimpleResponse[String]] = {
-        val f = Http.get(cmw / "meta" / "ns" / "EsRgCg" / "someInt", List("format" -> "json"))(SimpleResponse.Implicits.UTF8StringHandler, ExecutionContext.Implicits.global)
+        val f = Http.get(cmw / "meta" / "ns" / "EsRgCg" / "someInt", List("format" -> "json"))(SimpleResponse.Implicits.UTF8StringHandler)
         f.flatMap { res =>
           val timeSpent = System.currentTimeMillis() - startTime
 
