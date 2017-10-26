@@ -174,7 +174,7 @@ angular.module('cmwellAngApp.controllers', [])
                     , pwObj
                     , fetchPassword = function() {
                         form.find('#password').html('<img src="/meta/app/old-ui/images/loading2.gif"/>');
-                        $.getJSON('/_auth/generatepassword').then(function(pwObjRes){
+                        $.getJSON('/_auth?op=generate-password').then(function(pwObjRes){
                             pwObj = pwObjRes;
                             form.find('#password').text(pwObj.password);
                         });
@@ -1146,7 +1146,7 @@ angular.module('cmwellAngApp.controllers', [])
         var ajaxDone = function() { $scope.$apply(function(){ $scope.whenLoading = false; }); };
 
         $scope.whenLoading = true;
-        $.get('/_auth/changepassword?current='+$scope.current+'&new='+$scope.new1).then(function() {
+        $.get('/_auth?op=change-password&current='+$scope.current+'&new='+$scope.new1).then(function() {
             ajaxDone();
             cmwell.utils.showStatus('Password was changed successfully.', 3000, 'green');
         }).fail(function() {
