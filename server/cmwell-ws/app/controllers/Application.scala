@@ -1201,10 +1201,10 @@ callback=< [URL] >
                     val result = Ok.chunked(src).as(contentType).withHeaders("X-CM-WELL-POSITION" -> id, "X-CM-WELL-N-LEFT" -> (total - hits).toString)
                     Future.successful(result)
                   }
-                }
+                }.recover(errorHandler)
               }
             }
-          }
+          }.recover(errorHandler)
         }
       }.recover(asyncErrorHandler).get
     }
