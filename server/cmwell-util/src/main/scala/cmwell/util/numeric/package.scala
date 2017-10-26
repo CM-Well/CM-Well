@@ -18,6 +18,8 @@ package cmwell.util
 
 package object numeric {
 
+  import scala.language.postfixOps
+
   trait BytesConverter[N] {
     def bytes(n: N): Array[Byte]
   }

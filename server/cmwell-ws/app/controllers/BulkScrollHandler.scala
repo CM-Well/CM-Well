@@ -38,6 +38,7 @@ import cmwell.web.ld.cmw.CMWellRDFHelper
 import cmwell.ws.Streams.Flows
 import play.api.http.Writeable
 
+import scala.concurrent.duration.FiniteDuration
 import scala.math.{max, min}
 
 @Singleton
@@ -95,93 +96,27 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
   def findValidRange(thinSearchParams: ThinSearchParams,
                      from: Long,
                      threshold: Long,
-                     timeoutMarker: Future[Unit])(implicit ec: ExecutionContext): Future[CurrRangeForConsumption] = {
+                     timeout: FiniteDuration)(implicit ec: ExecutionContext): Future[CurrRangeForConsumption] = {
 
     logger.debug(s"findValidRange: from[$from], threshold[$threshold], tsp[$thinSearchParams]")
 
     val ThinSearchParams(pf, ffsOpt, h, d) = thinSearchParams
     val now = org.joda.time.DateTime.now().minusSeconds(30).getMillis
 
-    lazy val toSeed: Future[Long] = {
-      val ffs = fieldsFiltersforSortedSearchFromTimeAndOptionalFilters(from,ffsOpt)
+    def toSeed: Future[Long] = {
+      val ffs = fieldsFiltersFromTimeframeAndOptionalFilters(from,now,ffsOpt)
       crudServiceFS.thinSearch(
-          pathFilter = pf,
-          fieldFilters = Option(ffs),
-          paginationParams = paginationParamsForSingleResultWithOffset,
-          withHistory = h,
-          fieldSortParams = SortParam("system.indexTime" -> Asc),
-          withDeleted = d
-        ).map {
+        pathFilter = pf,
+        fieldFilters = Option(ffs),
+        paginationParams = paginationParamsForSingleResultWithOffset,
+        withHistory = h,
+        fieldSortParams = SortParam("system.indexTime" -> Asc),
+        withDeleted = d
+      ).map {
         case SearchThinResults(_, _, _, results, _) =>
           //In case that there are more than the initial seed infotons (=1000) with the same index time the "from" will be equal to the "to"
           //This will fail the FieldFilter requirements (see getFieldFilterSeq) and thus approx. 1 second is added to the "from" as the new "to"
-          results.headOption.fold(now)(i => math.max(i.indexTime,from+1729L)) //https://en.wikipedia.org/wiki/1729_(number)
-      }
-    }
-
-    def expandTimeRange(to: Long, nextToForOptimization: Option[Long] = None)
-                       (searchFunction: Long => Future[SearchThinResults]): Future[Either[(Long, Long, Option[Long]) , CurrRangeForConsumption]] = {
-      //stop conditions: 1. in range. 2. out of range 3. next to > now 4. early cut off (return the last known position to be "not enough" - the previous to)
-      logger.debug(s"expandTimeRange: from[$from], to[$to], nextToForOptimization[$nextToForOptimization]")
-      if (timeoutMarker.isCompleted) Future.successful(Right(CurrRangeForConsumption(from, to - (to - from)/2, None)))
-      //if to>=now then 1. the binary search should be between the previous position and now or 2. the now position itself. Both cases will be check in the below function
-      else if (to >= now) checkRangeUpToNow(to - (to - from)/2)(searchFunction)
-      else {
-        searchFunction(to).flatMap {
-          //not enough results - keep expanding
-          case SearchThinResults(total, _, _, _, _) if total < threshold * 0.5 => expandTimeRange(to + to - from)(searchFunction)
-          //in range - return final result
-          case SearchThinResults(total, _, _, _, _) if total < threshold * 1.5 => Future.successful(Right(CurrRangeForConsumption(from, to, None)))
-          //too many resutls - return the position to start the binary search from
-          case SearchThinResults(total, _, _, _, _) => {
-            val nextToOptimizedForTheNextToken = if (total < threshold * 3) Some(to) else None
-            //The last step got us to this position
-            val lastStep = (to - from) / 2
-            val toToStartSearchFrom = to - lastStep / 2
-            Future.successful(Left(toToStartSearchFrom, lastStep / 4, nextToOptimizedForTheNextToken))
-          }
-        }
-      }
-    }
-
-    def checkRangeUpToNow(rangeStart: Long)(searchFunction: Long => Future[SearchThinResults]): Future[Either[(Long, Long, Option[Long]) , CurrRangeForConsumption]] = {
-      logger.debug(s"checkRangeUpToNow: from[$from], rangeStart[$rangeStart]")
-      //This function will be called ONLY when the previous step didn't have enough results
-      searchFunction(now).map { sr =>
-        if (sr.total <= threshold * 1.5) Right(CurrRangeForConsumption(from, now , None))
-        else {
-          val nextToOptimizedForTheNextToken = if (sr.total < threshold * 3) Some(now) else None
-          //rangeStart is the last known position to be with not enough results. This is the lower bound for the binary search
-          //range is the range of the binary search. The whole search will be between rangeStart and now
-          val range = now - rangeStart
-          //The next position to be checked using the binary search
-          val middle = rangeStart + range / 2
-          //In case the next iteration won't finish, this is the step to be taken. The step is half of the step that was taken to get to the middle point
-          val step = range / 4
-          Left(middle, step, nextToOptimizedForTheNextToken)
-        }
-      }
-    }
-
-    def shrinkingStepBinarySearch(timePosition: Long, step: Long, nextTo: Option[Long])(searchFunction: Long => Future[SearchThinResults]): Future[CurrRangeForConsumption] = {
-      logger.debug(s"shrinkingStepBinarySearch: from[$from], timePosition[$timePosition], step[$step], nextTo[$nextTo]")
-      //stop conditions: 1. in range. 2. early cut off
-      //In case of an early cut off we have 2 options:
-      //1. the previous didn't have enough results - we can use it
-      //2. the previous had too many results - we cannot use it but we can use the position before it which is our position minus twice the given step
-      if (timeoutMarker.isCompleted) Future.successful(CurrRangeForConsumption(from, timePosition - (step * 2), nextTo))
-      else {
-        searchFunction(timePosition).flatMap {
-          //not enough results - keep the search up in the time line
-          case SearchThinResults(total, _, _, _, _) if total < threshold * 0.5 => shrinkingStepBinarySearch(timePosition + step, step / 2, nextTo)(searchFunction)
-          //in range - return final result
-          case SearchThinResults(total, _, _, _, _) if total < threshold * 1.5 => Future.successful(CurrRangeForConsumption(from, timePosition, nextTo))
-          //too many resutls - keep the search down in the time line
-          case SearchThinResults(total, _, _, _, _) => {
-            val nextToOptimizedForTheNextToken = nextTo orElse (if (total < threshold * 3) Some(timePosition) else None)
-            shrinkingStepBinarySearch(timePosition - step, step / 2, nextToOptimizedForTheNextToken)(searchFunction)
-          }
-        }
+          results.headOption.fold(now)(i => math.max(i.indexTime, math.min(now,from + 1729L))) //https://en.wikipedia.org/wiki/1729_(number)
       }
     }
 
@@ -195,11 +130,10 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
           paginationParams = paginationParamsForSingleResult,
           withHistory = h,
           withDeleted = d
-        )
+        ).map(_.total)
       }
-      expandTimeRange(to,None)(searchFunction).flatMap {
-        case Left((timePosition, step, nextToOptimization)) => shrinkingStepBinarySearch(timePosition, step, nextToOptimization)(searchFunction)
-        case Right(result) => Future.successful(result)
+      cmwell.util.algorithms.binRangeSearch(from, to, now, threshold, 0.5, timeout)(searchFunction).map {
+        case (f, t, nextTo) => CurrRangeForConsumption(f, t, nextTo)
       }
     }
   }
@@ -217,7 +151,6 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
                         path: Option[String],
                         chunkSizeHint: Long)(implicit ec: ExecutionContext): Future[(BulkConsumeState,Option[Long])] = {
 
-    val futureMarksTheTimeOut = cmwell.util.concurrent.SimpleScheduler.schedule(cmwell.ws.Settings.consumeBulkBinarySearchTimeout)(())
     val pf = createPathFilter(path, recursive)
     if(from == 0) {
       crudServiceFS.thinSearch(
@@ -237,7 +170,7 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
           results.headOption.fold(consumeEverythingWithoutNarrowingSearch) { i =>
             // first infoton found, gets to be the new from instead of 0, and we are going to find a real valid range
             val thinSearchParams = ThinSearchParams(pf, ff, withHistory, withDeleted)
-            findValidRange(thinSearchParams, i.indexTime, threshold = chunkSizeHint,timeoutMarker = futureMarksTheTimeOut).map {
+            findValidRange(thinSearchParams, i.indexTime, threshold = chunkSizeHint,timeout = cmwell.ws.Settings.consumeBulkBinarySearchTimeout).map {
               case CurrRangeForConsumption(f, t, tOpt) =>
                 BulkConsumeState(f, Some(t), path, withHistory, withDeleted, recursive, chunkSizeHint, ff) -> tOpt
             }
@@ -251,7 +184,7 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
       }
     } else {
       val thinSearchParams = ThinSearchParams(pf, ff, withHistory, withDeleted)
-      findValidRange(thinSearchParams, from, threshold = chunkSizeHint,timeoutMarker = futureMarksTheTimeOut).map { case CurrRangeForConsumption(f, t, tOpt) =>
+      findValidRange(thinSearchParams, from, threshold = chunkSizeHint,timeout = cmwell.ws.Settings.consumeBulkBinarySearchTimeout).map { case CurrRangeForConsumption(f, t, tOpt) =>
         BulkConsumeState(f, Some(t), path, withHistory, withDeleted, recursive, chunkSizeHint, ff) -> tOpt
       }.recoverWith {
         case e: Throwable =>{
