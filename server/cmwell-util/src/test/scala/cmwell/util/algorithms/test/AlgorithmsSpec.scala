@@ -14,9 +14,9 @@
   */
 
 
-package cmwell.util.collections.test
+package cmwell.util.algorithms.test
 
-import cmwell.util.collections.Algorithms.{UFNode, UnionFind}
+import cmwell.util.algorithms.{UFNode, UnionFind}
 import org.scalatest.prop.PropertyChecks
 import org.scalatest.{Matchers, PropSpec}
 
