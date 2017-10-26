@@ -18,7 +18,7 @@ package security
 import javax.inject._
 
 import cmwell.domain.{Everything, FileInfoton, Infoton}
-import cmwell.fts.PathFilter
+import cmwell.fts.{PaginationParams, PathFilter}
 import cmwell.util.concurrent.{Combiner, SingleElementLazyAsyncCache, Validator}
 import com.typesafe.scalalogging.LazyLogging
 import logic.CRUDServiceFS
@@ -30,19 +30,19 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 @Singleton
 class AuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionContext) extends LazyLogging {
   // TODO Do not Await.result... These should return Future[Option[JsValue]]]
-  def getRole(roleName: String): Option[JsValue] = Await.result(data.getAndUpdateIfNeeded.map(_.roles.get(roleName)).recoverWith { case _ =>
+  def getRole(roleName: String, nbg: Boolean): Option[JsValue] = Await.result(data(nbg).getAndUpdateIfNeeded.map(_.roles.get(roleName)).recoverWith { case _ =>
     logger.warn(s"AuthCache Graceful Degradation: Search failed! Trying direct read for Role($roleName):")
-    getFromCrudAndExtractJson(s"/meta/auth/roles/$roleName")
+    getFromCrudAndExtractJson(s"/meta/auth/roles/$roleName", nbg)
   }, 5.seconds)
 
-  def getUserInfoton(userName: String): Option[JsValue] = Await.result(data.getAndUpdateIfNeeded.map(_.users.get(userName)).recoverWith { case _ =>
+  def getUserInfoton(userName: String, nbg: Boolean): Option[JsValue] = Await.result(data(nbg).getAndUpdateIfNeeded.map(_.users.get(userName)).recoverWith { case _ =>
     logger.warn(s"AuthCache Graceful Degradation: Search failed! Trying direct read for User($userName):")
-    getFromCrudAndExtractJson(s"/meta/auth/users/$userName")
+    getFromCrudAndExtractJson(s"/meta/auth/users/$userName", nbg)
   }, 5.seconds)
 
-  def invalidate(): Boolean = data.reset().isSuccess
+  def invalidate(nbg: Boolean): Boolean = data(nbg).reset().isSuccess
 
-  private def getFromCrudAndExtractJson(infotonPath: String) = crudServiceFS.getInfoton(infotonPath, None, None).map {
+  private def getFromCrudAndExtractJson(infotonPath: String, nbg: Boolean) = crudServiceFS.getInfoton(infotonPath, None, None, nbg = nbg).map {
     case Some(Everything(i)) =>
       extractPayload(i)
     case other =>
@@ -53,15 +53,18 @@ class AuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
   private implicit val authDataValidator: Validator[AuthData] = new Validator[AuthData] {
     override def isValid(authData: AuthData) = !authData.isEmpty
   }
-  private val data = new SingleElementLazyAsyncCache[AuthData](5 * 60000, initial = AuthData.empty)(load())
 
-  private def load(): Future[AuthData] = {
-    logger.info("AuthCache Loading...")
+
+  private def data(nbg: Boolean) = if(nbg) nData else oData
+  private val nData = new SingleElementLazyAsyncCache[AuthData](5 * 60000, initial = AuthData.empty)(load(nbg = true))
+  private val oData = new SingleElementLazyAsyncCache[AuthData](5 * 60000, initial = AuthData.empty)(load(nbg = false))
+
+  private def load(nbg: Boolean): Future[AuthData] = {
 
     // one level under /meta/auth is a parent (e.g. "users", "roles")
     def isParent(infoton: Infoton) = infoton.path.count(_ == '/') < 4
 
-    crudServiceFS.search(Some(PathFilter("/meta/auth", descendants = true)), withData = true).map { searchResult =>
+    crudServiceFS.search(Some(PathFilter("/meta/auth", descendants = true)), withData = true, paginationParams = PaginationParams(0, 2048), nbg = nbg).map { searchResult =>
       val data = searchResult.infotons.filterNot(isParent).map(i => i.path -> extractPayload(i)).collect { case (p, Some(jsv)) => p -> jsv }.toMap
       val (usersData, rolesData) = cmwell.util.collections.partitionWith(data) { t =>
         val (path, payload) = t
@@ -86,6 +89,7 @@ class AuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
       None
   }
 
+  // todo - Leave JsValue for parsing only. Use case classes for User and Role !
   case class AuthData(users: Map[String, JsValue], roles: Map[String, JsValue]) {
     def isEmpty: Boolean = users.isEmpty && roles.isEmpty
   }

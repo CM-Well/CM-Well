@@ -65,7 +65,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
   def handlePost(format: String = "") = ingestPushback.async(parse.raw) { implicit req =>
     RequestMonitor.add("in", req.path, req.rawQueryString, req.body.asBytes().fold("")(_.utf8String),req.attrs(Attrs.RequestReceivedTimestamp))
     // first checking "priority" query string. Only if it is present we will consult the UserInfoton which is more expensive (order of && below matters):
-    if (req.getQueryString("priority").isDefined && !authUtils.isOperationAllowedForUser(security.PriorityWrite, authUtils.extractTokenFrom(req), evenForNonProdEnv = true)) {
+    if (req.getQueryString("priority").isDefined && !authUtils.isOperationAllowedForUser(security.PriorityWrite, authUtils.extractTokenFrom(req), req.attrs(Attrs.Nbg), evenForNonProdEnv = true)) {
       Future.successful(Forbidden(Json.obj("success" -> false, "message" -> "User not authorized for priority write")))
     } else {
       val resp = if ("jsonw" == format.toLowerCase) handlePostWrapped(req) -> Future.successful(Seq.empty[(String, String)]) else handlePostRDF(req)
@@ -86,7 +86,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
 
   def handlePostForDCOverwrites =  ingestPushback.async(parse.raw) { implicit req =>
     val tokenOpt = authUtils.extractTokenFrom(req)
-    if (!authUtils.isOperationAllowedForUser(security.Overwrite, tokenOpt, evenForNonProdEnv = true))
+    if (!authUtils.isOperationAllowedForUser(security.Overwrite, tokenOpt, req.attrs(Attrs.Nbg), evenForNonProdEnv = true))
       Future.successful(Forbidden("not authorized"))
     else {
       Try {
@@ -463,7 +463,8 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
           vec match {
             case Some(v) => {
               if (skipValidation || v.forall(i => InfotonValidator.isInfotonNameValid(normalizePath(i.path)))) {
-                val unauthorizedPaths = authUtils.filterNotAllowedPaths(v.map(_.path), PermissionLevel.Write, authUtils.extractTokenFrom(req))
+                val nbg = req.attrs(Attrs.Nbg)
+                val unauthorizedPaths = authUtils.filterNotAllowedPaths(v.map(_.path), PermissionLevel.Write, authUtils.extractTokenFrom(req), nbg)
                 if(unauthorizedPaths.isEmpty) {
                   Try(v.foreach{ i => if(i.fields.isDefined) InfotonValidator.validateValueSize(i.fields.get)}) match {
                     case Success(_) => {

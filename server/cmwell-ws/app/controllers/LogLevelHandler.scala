@@ -24,13 +24,15 @@ import play.api.mvc._
 import security.AuthUtils
 import javax.inject._
 
+import filters.Attrs
+
 import scala.util.Try
 
 @Singleton
 class LogLevelHandler  @Inject()(authUtils: AuthUtils) extends InjectedController with LazyLogging {
   def handleSetLogLevel = Action { implicit req =>
     val tokenOpt = authUtils.extractTokenFrom(req)
-    if (authUtils.isOperationAllowedForUser(security.Admin, tokenOpt))
+    if (authUtils.isOperationAllowedForUser(security.Admin, tokenOpt, req.attrs(Attrs.Nbg)))
       setLogLevel(req)
     else
       Forbidden("not authorized")

@@ -9,13 +9,14 @@ import security.AuthUtils
 import javax.inject._
 
 import cmwell.ws.util.TypeHelpers
+import filters.Attrs
 
 @Singleton
 class NbgController  @Inject()(nbgToggler: NbgToggler, authUtils: AuthUtils) extends InjectedController with LazyLogging with TypeHelpers {
 
   def handleToggle = Action { implicit req =>
     val tokenOpt = authUtils.extractTokenFrom(req)
-    if (authUtils.isOperationAllowedForUser(security.Admin, tokenOpt)) {
+    if (authUtils.isOperationAllowedForUser(security.Admin, tokenOpt, req.attrs(Attrs.Nbg))) {
       val nbg = !nbgToggler.get
       nbgToggler.set(nbg)
       Ok(s"Changed nbg flag to[$nbg]")

@@ -325,7 +325,7 @@ callback=< [URL] >
       .map { qpOpt =>
         // todo: fix this.. should check that the token is valid...
         val tokenOpt = authUtils.extractTokenFrom(req)
-        val isRoot = authUtils.isValidatedAs(tokenOpt, "root")
+        val isRoot = authUtils.isValidatedAs(tokenOpt, "root", req.attrs(Attrs.Nbg))
         val nbg = req.attrs(Attrs.Nbg)
         val length = req.getQueryString("length").flatMap(asInt).getOrElse(if (req.getQueryString("format").isEmpty) 13 else 0) // default is 0 unless 1st request for the ajax app
         val offset = req.getQueryString("offset").flatMap(asInt).getOrElse(0)
@@ -339,7 +339,7 @@ callback=< [URL] >
 
   def handleZzGET(key: String) = Action.async {
     implicit req => {
-      val allowed = authUtils.isOperationAllowedForUser(security.Admin, authUtils.extractTokenFrom(req), evenForNonProdEnv = true)
+      val allowed = authUtils.isOperationAllowedForUser(security.Admin, authUtils.extractTokenFrom(req), req.attrs(Attrs.Nbg), evenForNonProdEnv = true)
 
       def mapToResp(task: Future[_]): Future[Result] = {
         val p = Promise[Result]
@@ -384,10 +384,10 @@ callback=< [URL] >
 
   def handleUuidGET(uuid: String) = Action.async {
     implicit req => {
-      def allowed(infoton: Infoton, level: PermissionLevel = PermissionLevel.Read) = authUtils.filterNotAllowedPaths(Seq(infoton.path), level, authUtils.extractTokenFrom(req)).isEmpty
+      val nbg = req.attrs(Attrs.Nbg)
+      def allowed(infoton: Infoton, level: PermissionLevel = PermissionLevel.Read) = authUtils.filterNotAllowedPaths(Seq(infoton.path), level, authUtils.extractTokenFrom(req), nbg).isEmpty
       val isPurgeOp = req.getQueryString("op").contains("purge")
       def fields = req.getQueryString("fields").map(FieldNameConverter.toActualFieldNames)
-      val nbg = req.attrs(Attrs.Nbg)
 
       if (!uuid.matches("^[a-f0-9]{32}$"))
         Future.successful(BadRequest("not a valid uuid format"))
@@ -450,6 +450,7 @@ callback=< [URL] >
   }
 
   def handleDELETE(path:String) = Action.async(parse.raw) { implicit originalRequest =>
+    val nbg = originalRequest.attrs(Attrs.Nbg)
     requestSlashValidator(originalRequest) match {
       case Failure(e) => asyncErrorHandler(e)
       case Success(request) => {
@@ -457,7 +458,7 @@ callback=< [URL] >
         val isPriorityWrite = originalRequest.getQueryString("priority").isDefined
         if (!InfotonValidator.isInfotonNameValid(normalizedPath))
           Future.successful(BadRequest(Json.obj("success" -> false, "message" -> """you can't delete from "proc" / "ii" / or any path starting with "_" (service paths...)""")))
-        else if(isPriorityWrite && !authUtils.isOperationAllowedForUser(security.PriorityWrite, authUtils.extractTokenFrom(originalRequest), evenForNonProdEnv = true))
+        else if(isPriorityWrite && !authUtils.isOperationAllowedForUser(security.PriorityWrite, authUtils.extractTokenFrom(originalRequest), nbg, evenForNonProdEnv = true))
           Future.successful(Forbidden(Json.obj("success" -> false, "message" -> "User not authorized for priority write")))
         else {
           val nbg = originalRequest.attrs(Attrs.Nbg)
@@ -1844,7 +1845,7 @@ callback=< [URL] >
 
       if (!InfotonValidator.isInfotonNameValid(normalizedPath)) {
         Future.successful(BadRequest(Json.obj("success" -> false, "message" -> """you can't write to "meta" / "proc" / "ii" / or any path starting with "_" (service paths...)""")))
-      } else if(isPriorityWrite && !authUtils.isOperationAllowedForUser(security.PriorityWrite, authUtils.extractTokenFrom(originalRequest), evenForNonProdEnv = true)) {
+      } else if(isPriorityWrite && !authUtils.isOperationAllowedForUser(security.PriorityWrite, authUtils.extractTokenFrom(originalRequest), originalRequest.attrs(Attrs.Nbg), evenForNonProdEnv = true)) {
         Future.successful(Forbidden(Json.obj("success" -> false, "message" -> "User not authorized for priority write")))
       } else request match {
         case XCmWellType.Object() => {
@@ -1925,7 +1926,7 @@ callback=< [URL] >
         val token = authUtils.extractTokenFrom(req)
 
         if (Seq(currentPassword, newPassword, token).forall(_.isDefined)) {
-          authUtils.changePassword(token.get, currentPassword.get, newPassword.get).map {
+          authUtils.changePassword(token.get, currentPassword.get, newPassword.get, req.attrs(Attrs.Nbg)).map {
             case true => Ok(Json.obj("success" -> true))
             case _ => Forbidden(Json.obj("success" -> false, "message" -> "Current password does not match given token"))
           }
@@ -1934,8 +1935,8 @@ callback=< [URL] >
         }
       }
       case Some("invalidate-cache") => {
-        if(authUtils.isOperationAllowedForUser(Admin, authUtils.extractTokenFrom(req), evenForNonProdEnv = true)) {
-          val success = authUtils.invalidateAuthCache()
+        if(authUtils.isOperationAllowedForUser(Admin, authUtils.extractTokenFrom(req), req.attrs(Attrs.Nbg), evenForNonProdEnv = true)) {
+          val success = authUtils.invalidateAuthCache(req.attrs(Attrs.Nbg))
           Future.successful(Ok(Json.obj("success" -> success)))
         }
         else Future.successful(Unauthorized("Not authorized"))
@@ -1952,7 +1953,7 @@ callback=< [URL] >
 
   def handleFix(req: Request[AnyContent]): Future[Result] = {
     val nbg = req.attrs(Attrs.Nbg)
-    if (!authUtils.isOperationAllowedForUser(security.Overwrite, authUtils.extractTokenFrom(req)))
+    if (!authUtils.isOperationAllowedForUser(security.Overwrite, authUtils.extractTokenFrom(req), nbg))
       Future.successful(Forbidden("not authorized to overwrite"))
     else if(isReactive(req)){
       val formatter = getFormatter(req, formatterManager, "json", nbg)
@@ -2023,7 +2024,7 @@ callback=< [URL] >
 
   def handleFixDc(req: Request[AnyContent]): Future[Result] = {
     val nbg = req.attrs(Attrs.Nbg)
-    if (!authUtils.isOperationAllowedForUser(security.Overwrite, authUtils.extractTokenFrom(req)))
+    if (!authUtils.isOperationAllowedForUser(security.Overwrite, authUtils.extractTokenFrom(req), nbg))
       Future.successful(Forbidden("not authorized to overwrite"))
     else {
       val f = crudServiceFS.fixDc(normalizePath(req.path), Settings.dataCenter)
@@ -2048,7 +2049,7 @@ callback=< [URL] >
       val p = Promise[Result]()
 
       val path = normalizePath(req.path)
-      val allowed = authUtils.filterNotAllowedPaths(Seq(path), PermissionLevel.Write, authUtils.extractTokenFrom(req)).isEmpty
+      val allowed = authUtils.filterNotAllowedPaths(Seq(path), PermissionLevel.Write, authUtils.extractTokenFrom(req), req.attrs(Attrs.Nbg)).isEmpty
       if (!allowed) {
         p.completeWith(Future.successful(Forbidden("Not authorized")))
       } else if(path=="/") {
@@ -2075,7 +2076,7 @@ callback=< [URL] >
 
   private def handlePurge2(req: Request[AnyContent]): Future[Result] = {
     val path = normalizePath(req.path)
-    val allowed = authUtils.filterNotAllowedPaths(Seq(path), PermissionLevel.Write, authUtils.extractTokenFrom(req)).isEmpty
+    val allowed = authUtils.filterNotAllowedPaths(Seq(path), PermissionLevel.Write, authUtils.extractTokenFrom(req), req.attrs(Attrs.Nbg)).isEmpty
     if(!allowed) {
       Future.successful(Forbidden("Not authorized"))
     } else {
@@ -2197,7 +2198,7 @@ callback=< [URL] >
 
   def handlePoisonPill() = Action { implicit req =>
 
-    if (!authUtils.isOperationAllowedForUser(security.Admin, authUtils.extractTokenFrom(req), evenForNonProdEnv = true)) {
+    if (!authUtils.isOperationAllowedForUser(security.Admin, authUtils.extractTokenFrom(req), req.attrs(Attrs.Nbg), evenForNonProdEnv = true)) {
       Forbidden("Not authorized")
     } else {
       val hostOpt = req.getQueryString("host")
@@ -2222,7 +2223,7 @@ callback=< [URL] >
   }
 
   def handleZzPost(uzid: String) = Action.async(parse.raw) { implicit req =>
-    val allowed = authUtils.isOperationAllowedForUser(security.Admin, authUtils.extractTokenFrom(req), evenForNonProdEnv = true)
+    val allowed = authUtils.isOperationAllowedForUser(security.Admin, authUtils.extractTokenFrom(req), req.attrs(Attrs.Nbg), evenForNonProdEnv = true)
     req.body.asBytes() match {
       case Some(payload) if allowed =>
         val ttl = req.getQueryString("ttl").fold(0)(_.toInt)

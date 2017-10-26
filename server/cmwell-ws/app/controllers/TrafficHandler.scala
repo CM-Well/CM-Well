@@ -24,6 +24,8 @@ import k.grid.dmap.api.SettingsLong
 import security.AuthUtils
 import javax.inject._
 
+import filters.Attrs
+
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 /**
@@ -38,7 +40,7 @@ class TrafficHandler @Inject()(authUtils: AuthUtils)(implicit ec: ExecutionConte
 
   def handleThresholdFactor = Action { implicit req =>
     val tokenOpt = authUtils.extractTokenFrom(req)
-    if (authUtils.isOperationAllowedForUser(security.Admin, tokenOpt)) {
+    if (authUtils.isOperationAllowedForUser(security.Admin, tokenOpt, req.attrs(Attrs.Nbg))) {
       val thresholdFactor = req.getQueryString("tf").map(_.toLong)
       thresholdFactor match {
         case Some(l) =>
