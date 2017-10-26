@@ -12,7 +12,7 @@ GET         /_login           controllers.LoginHandler.login
 # SAML POC
 #GET         /_sso             controllers.LoginHandler.sso
 
-GET         /_auth/*action    controllers.Application.handleAuthGET(action)
+GET         /_auth            controllers.Application.handleAuthGet
 GET         /_hcn             controllers.Application.handlePoisonPill
 GET         /_tbg             controllers.NbgController.handleToggle
 GET         /_cas/*path       controllers.Application.handleRawRow(path)

@@ -113,20 +113,22 @@ class SpHandlerController @Inject()(crudServiceFS: CRUDServiceFS)
             val backOnTime: QueryResponse => Result = {
               case Plain(v) => Ok(v)
               case Filename(path) => Ok.sendPath(Paths.get(path),onClose = () => files.deleteFile(path))
-              case ThroughPipe(pipe) => ???
+              case ThroughPipe(_) => ???
               case RemoteFailure(e) => wsutil.exceptionToResponse(e)
               case ShortCircuitOverloaded(activeRequests) => ServiceUnavailable("Busy, try again later").withHeaders("Retry-After" -> "10", "X-CM-WELL-N-ACT" -> activeRequests.toString)
+              case Status(_) => !!!
             }
             val prependInjections = () => singleEndln
             val injectOriginalFutureWith: QueryResponse => Source[ByteString,_] = {
               case Plain(v) => Source.single(ByteString(v,StandardCharsets.UTF_8))
               case Filename(path) => FileIO.fromPath(Paths.get(path)).mapMaterializedValue(_.onComplete(_ => files.deleteFile(path)))
-              case ThroughPipe(pipe) => ???
+              case ThroughPipe(_) => ???
               case RemoteFailure(e) => {
                 logger.error("_sp failure",e)
                 Source.single(ByteString("Could not process request",StandardCharsets.UTF_8))
               }
-              case ShortCircuitOverloaded(activeRequests) => Source.single(ByteString("Busy, try again later",StandardCharsets.UTF_8))
+              case ShortCircuitOverloaded(_) => Source.single(ByteString("Busy, try again later",StandardCharsets.UTF_8))
+              case Status(_) => !!!
             }
             val continueWithSource: Source[Source[ByteString, _],NotUsed] => Result = s => Ok.chunked(s.flatMapConcat(x => x))
 

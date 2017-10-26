@@ -142,7 +142,7 @@ class AuthTests extends FunSpec with Matchers with Helpers with LazyLogging {
       }
 
       it("should reset AuthCache once all user/role data was ingested") {
-        val res = waitAndExtractBody(Http.get(cmw / "_auth" / "invalidate-cache", headers = tokenHeader))
+        val res = waitAndExtractBody(Http.get(cmw / "_auth", List("op" -> "invalidate-cache"), tokenHeader))
         Json.parse(res) should be(jsonSuccess)
       }
 
