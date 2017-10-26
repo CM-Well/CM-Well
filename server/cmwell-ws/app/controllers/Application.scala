@@ -1913,13 +1913,13 @@ callback=< [URL] >
     }
   }
 
-  def handleAuthGET(actionStr: String) = Action.async { req =>
-    actionStr match {
-      case "generatepassword" => {
+  def handleAuthGet() = Action.async { req =>
+    req.getQueryString("op") match {
+      case Some("generate-password") => {
         val pw = authUtils.generateRandomPassword()
         Future.successful(Ok(Json.obj(("password", JsString(pw._1)), ("encrypted", pw._2))))
       }
-      case "changepassword" => {
+      case Some("change-password") => {
         val currentPassword = req.getQueryString("current")
         val newPassword = req.getQueryString("new")
         val token = authUtils.extractTokenFrom(req)
@@ -1927,13 +1927,16 @@ callback=< [URL] >
         if (Seq(currentPassword, newPassword, token).forall(_.isDefined)) {
           authUtils.changePassword(token.get, currentPassword.get, newPassword.get).map {
             case true => Ok(Json.obj("success" -> true))
-            case _ => Forbidden(Json.obj("error" -> "Current password does not match given token"))
+            case _ => Forbidden(Json.obj("success" -> false, "message" -> "Current password does not match given token"))
           }
         } else {
-          Future.successful(BadRequest(Json.obj("error" -> "insufficient arguments")))
+          Future.successful(BadRequest(Json.obj("success" -> false, "message" -> "insufficient arguments")))
         }
       }
-      case _ => Future.successful(BadRequest(Json.obj("error" -> "No such action")))
+      case Some(unknownOp) =>
+        Future.successful(BadRequest(Json.obj("success" -> false, "message" -> s"`$unknownOp` is not a valid operation")))
+      case None =>
+        Future.successful(BadRequest(Json.obj("success" -> false, "message" -> "`op` query parameter was expected")))
     }
   }
 
