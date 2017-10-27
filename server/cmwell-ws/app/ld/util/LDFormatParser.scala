@@ -34,6 +34,7 @@ import org.apache.jena.graph.BlankNodeId
 import org.apache.jena.query.DatasetFactory
 import org.apache.jena.rdf.model.{Seq => _, _}
 import com.typesafe.scalalogging.LazyLogging
+import filters.Attrs
 import logic.{CRUDServiceFS, InfotonValidator}
 import org.apache.jena.riot.{Lang, RDFDataMgr}
 import org.apache.xerces.util.XMLChar
@@ -393,7 +394,7 @@ object LDFormatParser extends LazyLogging {
     }
   }
 
-  def validateAuth(authUtils: AuthUtils)(model: Model, dels: Resource => Boolean, token: Option[Token]): Unit = {
+  def validateAuth(authUtils: AuthUtils)(model: Model, dels: Resource => Boolean, token: Option[Token], nbg: Boolean): Unit = {
     val paths = ListBuffer[String]()
     val it = model.listStatements()
     it.foreach { stmt =>
@@ -411,7 +412,7 @@ object LDFormatParser extends LazyLogging {
         }.get
       }
     }
-    val unauthorizedPaths = authUtils.filterNotAllowedPaths(paths, PermissionLevel.Write, token)
+    val unauthorizedPaths = authUtils.filterNotAllowedPaths(paths, PermissionLevel.Write, token, nbg)
     if (unauthorizedPaths.nonEmpty) throw new security.UnauthorizedException(unauthorizedPaths.mkString("unauthorized paths:\n\t", "\n\t", "\n\n"))
   }
 
@@ -529,7 +530,7 @@ object LDFormatParser extends LazyLogging {
         delSubs.toSet -> filteredRegular
       }
 
-      validateAuth(authUtils)(model,dels,token)
+      validateAuth(authUtils)(model,dels,token,nbg)
 
       if(isOverwrite) {
 
@@ -602,7 +603,7 @@ object LDFormatParser extends LazyLogging {
           }
 
           val allowWriteSysFields = (fieldName: String) => fieldName match {
-            case "uuid"|"path"|"parent"|"lastModified"|"modifiedDate"|"indexTime"|"dataCenter" => authUtils.isOperationAllowedForUser(security.Overwrite, token, evenForNonProdEnv = true)
+            case "uuid"|"path"|"parent"|"lastModified"|"modifiedDate"|"indexTime"|"dataCenter" => authUtils.isOperationAllowedForUser(security.Overwrite, token, nbg, evenForNonProdEnv = true)
             case _ => true
           }
 

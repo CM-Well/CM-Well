@@ -16,6 +16,7 @@
 
 package security.httpauth
 
+import filters.Attrs
 import k.grid.Grid
 import play.api.mvc.Request
 import security._
@@ -68,7 +69,7 @@ trait DigestHttpAuthentication {
       case Some(authHeader) => {
         val header = DigestHeaderUtils.fromClientHeaderString(authHeader)
         (Grid.serviceRef(classOf[NoncesManager].getName) ? ConsumeNonce(header.nonce)).mapTo[NonceStatus].map {
-          case NonceConsumed if header.opaque == opaque => authCache.getUserInfoton(header.username) match {
+          case NonceConsumed if header.opaque == opaque => authCache.getUserInfoton(header.username, req.attrs(Attrs.Nbg)) match {
             case None => DigestStatus(isAuthenticated = false, "")
             case Some(user) =>
               val ha1 = (user \ userInfotonPropName).asOpt[String].getOrElse("")

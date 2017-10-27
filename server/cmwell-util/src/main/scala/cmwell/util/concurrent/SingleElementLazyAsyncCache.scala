@@ -17,9 +17,12 @@
 package cmwell.util.concurrent
 
 import java.util.concurrent.atomic.AtomicBoolean
+
 import SimpleScheduler.scheduleFuture
-import scala.concurrent.{ExecutionContext, Future, Promise, duration}, duration.DurationInt
-import scala.util.{Failure, Success}
+
+import scala.concurrent._
+import duration.DurationInt
+import scala.util.{Failure, Success, Try}
 
 trait Combiner[T]{
   def combine(t1: T, t2: T): T
@@ -28,16 +31,28 @@ object Combiner {
   implicit val setStringCombiner = new Combiner[Set[String]] {
     override def combine(t1: Set[String], t2: Set[String]): Set[String] = t1 union t2
   }
-  def replacer[T]: Combiner[T] = new Combiner[T] {
+  implicit def replacer[T]: Combiner[T] = new Combiner[T] {
     override def combine(t1: T, t2: T) = t2
   }
 }
-class SingleElementLazyAsyncCache[T: Combiner](refreshThresholdInMillis: Long, initial: T = null.asInstanceOf[T])(getAsync: => Future[T])(implicit ec: ExecutionContext) {
+trait Validator[T]{
+  def isValid(t: T): Boolean
+}
+object Validator {
+  implicit val setStringIsEmptyValidator: Validator[Set[String]] = new Validator[Set[String]] {
+    override def isValid(t: Set[String]): Boolean = t.nonEmpty
+  }
+  implicit def nullValidator[T] = new Validator[T] {
+    override def isValid(t: T) = true
+  }
+}
+class SingleElementLazyAsyncCache[T : Combiner : Validator](refreshThresholdInMillis: Long, initial: T = null.asInstanceOf[T])(getAsync: => Future[T])(implicit ec: ExecutionContext) {
 
   // element with timestamp (last update time)
   private[this] var cachedElement: Either[Future[T],(T,Long)] = Right(initial -> 0L)
   private[this] val isBeingUpdated = new AtomicBoolean(false)
   private[this] val combiner = implicitly[Combiner[T]]
+  private[this] val validator = implicitly[Validator[T]]
   private[this] val rightHandlingFunctionOnUpdatingRaceCondition: ((T,Long)) => Future[T] = {
     if(initial != null) { case (t,_) => Future.successful(t) }
     else {
@@ -64,9 +79,9 @@ class SingleElementLazyAsyncCache[T: Combiner](refreshThresholdInMillis: Long, i
               val f = getAsync
               p.completeWith {
                 f.andThen {
-                  case Success(newValue) =>
+                  case Success(newValue) if validator.isValid(newValue) =>
                     cachedElement = Right(combiner.combine(elem,newValue) -> System.currentTimeMillis())
-                  case Failure(e) =>
+                  case _ =>
                     cachedElement = right
                 }.andThen {
                   case _ =>
@@ -88,4 +103,15 @@ class SingleElementLazyAsyncCache[T: Combiner](refreshThresholdInMillis: Long, i
   }
 
   def getLastUpdateTime: Option[Long] = cachedElement.right.toOption.map(_._2) // todo this is a bad use of Option (None here does not mean none). Use a specific defined ADT!
+
+  def reset(): Try[T] = resetWith(initial)
+
+  def resetWith(value: T): Try[T] = {
+    if(isBeingUpdated.compareAndSet(false, true)) {
+      cachedElement = Right(value -> 0L)
+      isBeingUpdated.set(false)
+      // this is safe because we are in the case when is not being updated, so it is guaranteed to be Right
+      Success(cachedElement.right.get._1)
+    } else Failure(new RuntimeException("SELAC cannot be reset while being updated"))
+  }
 }

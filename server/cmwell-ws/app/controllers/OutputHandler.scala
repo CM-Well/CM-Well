@@ -254,7 +254,7 @@ class OutputHandler  @Inject()(crudServiceFS: CRUDServiceFS,
           val irretrievableUuids = byUuid.filterNot(uuid => coreInfotons.exists(_.uuid == uuid)).map(uuid => s"/ii/$uuid")
           val irretrievablePaths = byPath.filterNot(path => coreInfotons.exists(_.path == path))
 
-          val notAllowedPaths = authUtils.filterNotAllowedPaths(infotons.map(_.path), PermissionLevel.Read, authUtils.extractTokenFrom(req)).toVector
+          val notAllowedPaths = authUtils.filterNotAllowedPaths(infotons.map(_.path), PermissionLevel.Read, authUtils.extractTokenFrom(req), req.attrs(Attrs.Nbg)).toVector
           val allowedInfotons = infotons.filterNot(i => notAllowedPaths.contains(i.path))
 
           ok -> RetrievablePaths(allowedInfotons, irretrievableUuids ++ irretrievablePaths ++ notAllowedPaths)
