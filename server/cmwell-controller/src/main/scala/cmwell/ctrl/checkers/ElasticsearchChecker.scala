@@ -19,6 +19,7 @@ package cmwell.ctrl.checkers
 import cmwell.ctrl.config.Config
 import cmwell.ctrl.utils.{HttpUtil, ProcUtil}
 import com.fasterxml.jackson.databind.JsonNode
+import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.Future
 import play.api.libs.json.{JsValue, Json}
@@ -29,7 +30,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
  */
 
 
-object ElasticsearchChecker extends Checker {
+object ElasticsearchChecker extends Checker with LazyLogging {
   override val storedStates: Int = 10
   override def check: Future[ComponentState] = {
     val url = s"http://${Config.pingIp}:9201/_cluster/health"
@@ -54,7 +55,10 @@ object ElasticsearchChecker extends Checker {
         else
           ElasticsearchBadCode(r.code,hasMaster)
     }.recover {
-      case _ : Throwable => ElasticsearchDown(hasMaster)
+      case e: Throwable => {
+        logger.error("ElasticsearchChecker check failed with an exception: ", e)
+        ElasticsearchDown(hasMaster)
+      }
     }
   }
 }
