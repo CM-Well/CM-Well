@@ -78,10 +78,16 @@ package object algorithms extends LazyLogging  {
 
   case class UFNode[T](data: T, parent: Option[Int] = None)
 
-  class IntegralConsts[N : Integral] {
-    val tc = implicitly[Integral[N]]
-    val two = tc.plus(tc.one,tc.one)
-    val four = tc.plus(two,two)
+  trait IntegralConsts[N] {
+    val tc: Integral[N]
+    lazy val two = tc.plus(tc.one,tc.one)
+    lazy val four = tc.plus(two,two)
+  }
+
+  object IntegralConsts {
+    implicit def consts[N : Integral] = new IntegralConsts[N] {
+      override val tc = implicitly[Integral[N]]
+    }
   }
 
   /**
@@ -89,10 +95,10 @@ package object algorithms extends LazyLogging  {
     * with optimizations for consecutive searches.
     *
     */
-  def binRangeSearch[N : Integral](from: N, toSeed: N, upperBound: N, threshold: Long, thresholdFactor: Double, timeout: FiniteDuration)
+  def binRangeSearch[N : IntegralConsts](from: N, toSeed: N, upperBound: N, threshold: Long, thresholdFactor: Double, timeout: FiniteDuration)
                                  (searchFunction: N => Future[Long])
                                  (implicit ec: ExecutionContext): Future[(N,N,Option[N])] = {
-    val consts = new IntegralConsts[N]
+    val consts = implicitly[IntegralConsts[N]]
     val math = consts.tc
     require(math.compare(from,math.zero) >= 0,"from must be positive or zero")
     require(math.compare(from,toSeed) < 0,"from must be smaller than toSeed")
@@ -101,9 +107,11 @@ package object algorithms extends LazyLogging  {
     val notEnough = (threshold * (1-thresholdFactor)).toLong
     val tooMany = (threshold * (1+thresholdFactor)).toLong
     val timeoutMarker = schedule(timeout)(())
-    expandRange(from, toSeed,upperBound,notEnough,tooMany,timeoutMarker,consts)(searchFunction).flatMap{
+    logger.trace(s"expandRange($from, $toSeed, $upperBound, $notEnough, $tooMany, timeoutMarker)")
+    expandRange(from, toSeed,upperBound,notEnough,tooMany,timeoutMarker)(searchFunction).flatMap{
       case Right(result) => Future.successful(result)
-      case Left((timePosition, step, nextToOptimization)) =>
+      case r@Left((timePosition, step, nextToOptimization)) =>
+        logger.trace(s"expandRange returned $r")
         shrinkingStepBinarySearch(
           from,
           timePosition,
@@ -111,28 +119,32 @@ package object algorithms extends LazyLogging  {
           nextToOptimization,
           notEnough,
           tooMany,
-          timeoutMarker,
-          consts)(searchFunction)
+          timeoutMarker)(searchFunction)
     }
   }
 
-  def expandRange[N : Integral](from: N,
+  def expandRange[N : IntegralConsts](from: N,
                                 toSeed: N,
                                 upperBound: N,
                                 notEnough: Long,
                                 tooMany: Long,
-                                timeoutMarker: Future[Unit],
-                                consts: IntegralConsts[N])
+                                timeoutMarker: Future[Unit])
                                (searchFunction: N => Future[Long])
                                (implicit ec: ExecutionContext): Future[Either[(N, N, Option[N]),(N, N, Option[N])]] = {
+    val consts = implicitly[IntegralConsts[N]]
     val math, ord = consts.tc
 
     def inner(to: N): Future[Either[(N, N, Option[N]), (N, N, Option[N])]] = {
       //stop conditions: 1. in range. 2. out of range 3. next to > now 4. early cut off (return the last known position to be "not enough" - the previous to)
-      logger.debug(s"expandTimeRange: from[$from], to[$to]")
-      if (timeoutMarker.isCompleted) Future.successful(Right((from, math.minus(to, math.quot(math.minus(to, from), consts.two)), None)))
+      logger.trace(s"expandTimeRange: from[$from], to[$to]")
+      if (timeoutMarker.isCompleted) {
+        val resultingTo =
+          if(ord.compare(to,toSeed) == 0) toSeed
+          else math.minus(to, math.quot(math.minus(to, from), consts.two))
+        Future.successful(Right((from, resultingTo, None)))
+      }
       //if to>=now then 1. the binary search should be between the previous position and now or 2. the now position itself. Both cases will be check in the below function
-      else if (ord.compare(to, upperBound) >= 0) checkRangeUpToUpperBound(from, math.minus(to, math.quot(math.minus(to, from), consts.two)), upperBound, notEnough, tooMany, consts)(searchFunction)
+      else if (ord.compare(to, upperBound) >= 0) checkRangeUpToUpperBound(from, math.minus(to, math.quot(math.minus(to, from), consts.two)), upperBound, notEnough, tooMany)(searchFunction)
       else searchFunction(to).flatMap { total =>
         //not enough results - keep expanding
         if (total < notEnough) inner(math.plus(to, math.minus(to, from)))
@@ -152,15 +164,15 @@ package object algorithms extends LazyLogging  {
     inner(toSeed)
   }
 
-  def checkRangeUpToUpperBound[N : Integral](from: N,
+  def checkRangeUpToUpperBound[N : IntegralConsts](from: N,
                                              rangeStart: N,
                                              upperBound: N,
                                              notEnough: Long,
-                                             tooMany: Long,
-                                             consts: IntegralConsts[N])
+                                             tooMany: Long)
                                             (searchFunction: N => Future[Long])
                                             (implicit ec: ExecutionContext): Future[Either[(N, N, Option[N]),(N, N, Option[N])]] = {
-    logger.debug(s"checkRangeUpToNow: from[$from], rangeStart[$rangeStart]")
+    logger.trace(s"checkRangeUpToNow: from[$from], rangeStart[$rangeStart]")
+    val consts = implicitly[IntegralConsts[N]]
     val math = consts.tc
     //This function will be called ONLY when the previous step didn't have enough results
     searchFunction(upperBound).map { total =>
@@ -179,17 +191,17 @@ package object algorithms extends LazyLogging  {
     }
   }
 
-  def shrinkingStepBinarySearch[N : Integral](from: N,
+  def shrinkingStepBinarySearch[N : IntegralConsts](from: N,
                                               timePosition: N,
                                               step: N,
                                               nextTo: Option[N],
                                               notEnough: Long,
                                               tooMany: Long,
-                                              timeoutMarker: Future[Unit],
-                                              consts: IntegralConsts[N])
+                                              timeoutMarker: Future[Unit])
                                              (searchFunction: N => Future[Long])
                                              (implicit ec: ExecutionContext): Future[(N,N,Option[N])] = {
-    logger.debug(s"shrinkingStepBinarySearch: from[$from], timePosition[$timePosition], step[$step], nextTo[$nextTo]")
+    logger.trace(s"shrinkingStepBinarySearch: from[$from], timePosition[$timePosition], step[$step], nextTo[$nextTo]")
+    val consts = implicitly[IntegralConsts[N]]
     val math = consts.tc
     //stop conditions: 1. in range. 2. early cut off
     //In case of an early cut off we have 2 options:
@@ -205,8 +217,7 @@ package object algorithms extends LazyLogging  {
         nextTo,
         notEnough,
         tooMany,
-        timeoutMarker,
-        consts)(searchFunction)
+        timeoutMarker)(searchFunction)
       //in range - return final result
       else if (total < tooMany) Future.successful((from, timePosition, nextTo))
       //too many resutls - keep the search down in the time line
@@ -217,8 +228,7 @@ package object algorithms extends LazyLogging  {
         nextTo orElse (if (total < tooMany * 2) Some(timePosition) else None),
         notEnough,
         tooMany,
-        timeoutMarker,
-        consts)(searchFunction)
+        timeoutMarker)(searchFunction)
     }
   }
 }

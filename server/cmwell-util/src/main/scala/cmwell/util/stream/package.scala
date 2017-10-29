@@ -17,7 +17,6 @@
 package cmwell.util
 
 import akka.stream.scaladsl.Source
-
 import scala.collection.SeqLike
 import scala.collection.generic.CanBuildFrom
 
