@@ -92,8 +92,17 @@ package object algorithms extends LazyLogging  {
 
   /**
     * Binary search for a range on a timeline
-    * with optimizations for consecutive searches.
-    *
+    * with optimizations for consecutive searches (the nextTo in the response).
+    * @param from
+    * @param toSeed
+    * @param upperBound
+    * @param threshold
+    * @param thresholdFactor
+    * @param timeout
+    * @param searchFunction
+    * @param ec
+    * @tparam N
+    * @return (from, to , nextTo)
     */
   def binRangeSearch[N : IntegralConsts](from: N, toSeed: N, upperBound: N, threshold: Long, thresholdFactor: Double, timeout: FiniteDuration)
                                  (searchFunction: N => Future[Long])
@@ -102,16 +111,16 @@ package object algorithms extends LazyLogging  {
     val math = consts.tc
     require(math.compare(from,math.zero) >= 0,"from must be positive or zero")
     require(math.compare(from,toSeed) < 0,"from must be smaller than toSeed")
-    require(math.compare(toSeed,upperBound) <= 0,"toSeed must be smaller than upperBound")
+    require(math.compare(toSeed,upperBound) <= 0,"toSeed must be smaller or equal to upperBound")
     require(thresholdFactor < 1.0 && thresholdFactor > 0.0,"thresholdFactor must be greater than 0, but less than 1")
     val notEnough = (threshold * (1-thresholdFactor)).toLong
     val tooMany = (threshold * (1+thresholdFactor)).toLong
     val timeoutMarker = schedule(timeout)(())
-    logger.trace(s"expandRange($from, $toSeed, $upperBound, $notEnough, $tooMany, timeoutMarker)")
+    logger.trace(s"expandRange($from, $toSeed, $upperBound, $notEnough, $tooMany, ...)")
     expandRange(from, toSeed,upperBound,notEnough,tooMany,timeoutMarker)(searchFunction).flatMap{
       case Right(result) => Future.successful(result)
       case r@Left((timePosition, step, nextToOptimization)) =>
-        logger.trace(s"expandRange returned $r")
+        logger.trace(s"expandRange returned $r moving on to the shrinking binary search")
         shrinkingStepBinarySearch(
           from,
           timePosition,
@@ -123,6 +132,23 @@ package object algorithms extends LazyLogging  {
     }
   }
 
+  /**
+    *
+    * @param from
+    * @param toSeed
+    * @param upperBound
+    * @param notEnough
+    * @param tooMany
+    * @param timeoutMarker
+    * @param searchFunction
+    * @param ec
+    * @tparam N
+    * Options to "Right" (don't proceed to shrinking step):
+    *   1. timeout during expand.
+    *   2. not enough until upperBound.
+    *   3. found suitable range during the expand phase
+    * @return either Right(from, to, nextTo) or Left(position, step, nextTo)
+    */
   def expandRange[N : IntegralConsts](from: N,
                                 toSeed: N,
                                 upperBound: N,
@@ -139,6 +165,7 @@ package object algorithms extends LazyLogging  {
       logger.trace(s"expandTimeRange: from[$from], to[$to]")
       if (timeoutMarker.isCompleted) {
         val resultingTo =
+          //in case that the time was finished before doing any inner iteration - return the toSeed we started with. If not it will return the middle between from and toSeed to potentially don't have any data in it.
           if(ord.compare(to,toSeed) == 0) toSeed
           else math.minus(to, math.quot(math.minus(to, from), consts.two))
         Future.successful(Right((from, resultingTo, None)))
@@ -150,7 +177,7 @@ package object algorithms extends LazyLogging  {
         if (total < notEnough) inner(math.plus(to, math.minus(to, from)))
         //in range - return final result
         else if (total < tooMany) Future.successful(Right(from, to, None))
-        //too many resutls - return the position to start the binary search from
+        //too many results - return the position to start the binary search from
         else {
           val nextToOptimizedForTheNextToken = if (total < tooMany * 2) Some(to) else None
           //The last step got us to this position
@@ -207,9 +234,10 @@ package object algorithms extends LazyLogging  {
     //In case of an early cut off we have 2 options:
     //1. the previous didn't have enough results - we can use it
     //2. the previous had too many results - we cannot use it but we can use the position before it which is our position minus twice the given step
+    //Also note: even with the case we moved back several times the logic is correct. The next step to reach the last position that we jump ahead from is exactly the previous step done which is twice the step we would do in case that we had continue the search
     if (timeoutMarker.isCompleted) Future.successful((from, math.minus(timePosition, math.times(step, consts.two)), nextTo))
     else searchFunction(timePosition).flatMap { total =>
-      //not enough results - keep the search up in the time line
+      //not enough results - keep the search up in the timeline
       if (total < notEnough) shrinkingStepBinarySearch(
         from,
         math.plus(timePosition, step),
@@ -220,7 +248,7 @@ package object algorithms extends LazyLogging  {
         timeoutMarker)(searchFunction)
       //in range - return final result
       else if (total < tooMany) Future.successful((from, timePosition, nextTo))
-      //too many resutls - keep the search down in the time line
+      //too many results - keep the search down in the timeline
       else shrinkingStepBinarySearch(
         from,
         math.minus(timePosition, step),

@@ -72,7 +72,6 @@ class BinRangeSearchTests extends AsyncFunSpec with Matchers with OptionValues w
       val pf = basePF("earlyCutOff")
       val timeout = Promise[Unit]
       val searchFunction: Long => Future[Long] = { l =>
-        logger.info(s"earlyCutOff with [$l]")
         if (l == 1431013116211L) {
           timeout.success(())
           r(s"earlyCutOff($l)", 3999900L)
