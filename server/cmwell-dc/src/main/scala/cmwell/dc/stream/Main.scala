@@ -38,7 +38,7 @@ object Main extends App with LazyLogging {
 
   Grid.setGridConnection(GridConnection(memberName = "dc"))
   Grid.declareServices(ServiceTypes()
-    .add("DataCenterSyncManager", classOf[DataCenterSyncManager], destinationHostsAndPorts, None)
+    .add("DataCenterSyncManager", classOf[DataCenterSyncManager], destinationHostsAndPorts(rawTarget), None)
     .add(HealthControl.services)
     .add(SparqlProcessorManager.name, classOf[SparqlProcessorManager])
     .add("Resurrector", classOf[ResurrectorActor])
@@ -55,11 +55,12 @@ object MainStandAlone extends App with LazyLogging {
 
   val conf = new Conf(args)
 
-  val ar = sys.actorOf(DataCenterSyncManager.props(destinationHostsAndPorts, Some(conf.syncJson())))
+  val ar = sys.actorOf(DataCenterSyncManager.props(destinationHostsAndPorts(conf.destinationHosts()), Some(conf.syncJson())))
 }
 
 class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
 //  val syncJson = opt[String](required = true)
   val syncJson = trailArg[String]()
+  val destinationHosts = trailArg[String]()
   verify()
 }

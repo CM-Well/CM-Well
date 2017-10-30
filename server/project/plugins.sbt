@@ -14,7 +14,7 @@ addSbtPlugin("com.typesafe.sbt" % "sbt-twirl" % "1.2.0")
 
 addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.3.2")
 
-addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.1.0-M3")
+addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.2.2")
 
 addSbtPlugin("org.xerial.sbt" % "sbt-pack" % "0.8.2")
 
