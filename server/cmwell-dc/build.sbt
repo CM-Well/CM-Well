@@ -1,5 +1,33 @@
 name := "cmwell-dc"
-packAutoSettings
+
+packSettings
+packMain := Map("dc-standalone" -> "cmwell.dc.stream.MainStandAlone")
+packGenerateWindowsBatFile := false
+packExtraClasspath := Map("dc-standalone" -> Seq("${PROG_HOME}"))
+val jvmOptsForDcStandAloneUsingPack = Seq(
+  "-Xmx1024M",
+  "-XX:+UseG1GC",
+  "-Dfile.encoding=UTF-8",
+  "-Dcom.sun.management.jmxremote.port=7293",
+  "-Dcmwell.dc.target=$2",
+  "-Duser.timezone=GMT0",
+  "-Dcom.sun.management.jmxremote.authenticate=false",
+  "-Dcom.sun.management.jmxremote.ssl=false",
+  "-verbose:gc",
+  "-XX:+PrintGCDetails",
+  "-XX:+PrintGCDateStamps",
+  "-XX:+PrintHeapAtGC",
+  "-XX:+PrintTenuringDistribution",
+  "-XX:+PrintGCApplicationConcurrentTime",
+  "-XX:+PrintGCApplicationStoppedTime",
+  "-XX:+PrintPromotionFailure",
+  "-XX:PrintFLSStatistics=1",
+  "-Xloggc:logs/gc.log",
+  "-XX:+UseGCLogFileRotation",
+  "-XX:NumberOfGCLogFiles=9",
+  "-XX:GCLogFileSize=10M"
+)
+packJvmOpts := Map("dc-standalone" -> jvmOptsForDcStandAloneUsingPack)
 
 libraryDependencies ++= {
 	val dm = dependenciesManager.value
@@ -36,6 +64,35 @@ mappings in oneJar ++= {
 	}
 }
 
+//sbt native packager configuration
+mappings in Universal += (packResourceDir.value.keys.head / "logback.xml") -> "conf/logback.xml"
+scriptClasspath in bashScriptDefines ~= (cp => "../conf" +: cp)
+mainClass in Compile := Some("cmwell.dc.stream.MainStandAlone")
+val jvmOptsForDcStandAloneUsingNativePackager = Seq(
+	"-J-Xmx1024M",
+	"-J-XX:+UseG1GC",
+	"-Dfile.encoding=UTF-8",
+	"-Dcom.sun.management.jmxremote.port=7293",
+	"-Duser.timezone=GMT0",
+	"-Dcom.sun.management.jmxremote.authenticate=false",
+	"-Dcom.sun.management.jmxremote.ssl=false",
+	"-J-verbose:gc",
+	"-J-XX:+PrintGCDetails",
+	"-J-XX:+PrintGCDateStamps",
+	"-J-XX:+PrintHeapAtGC",
+	"-J-XX:+PrintTenuringDistribution",
+	"-J-XX:+PrintGCApplicationConcurrentTime",
+	"-J-XX:+PrintGCApplicationStoppedTime",
+	"-J-XX:+PrintPromotionFailure",
+	"-J-XX:PrintFLSStatistics=1",
+	"-J-Xloggc:logs/gc.log",
+	"-J-XX:+UseGCLogFileRotation",
+	"-J-XX:NumberOfGCLogFiles=9",
+	"-J-XX:GCLogFileSize=10M"
+)
+javaOptions in Universal ++= jvmOptsForDcStandAloneUsingNativePackager
+
+
 mainClass in oneJar := Some("cmwell.dc.stream.MainStandAlone")
 
 artifact in oneJar := Artifact(moduleName.value, "selfexec")
@@ -43,3 +100,7 @@ artifact in oneJar := Artifact(moduleName.value, "selfexec")
 fullTest := (test in Test).value
 
 unmanagedResources in Test += packResourceDir.value.keys.head / "application.conf"
+
+//mappings in oneJar += (packResourceDir.value.keys.head / "standalone-application.conf") -> "/application.conf"
+
+//unmanagedResources in (Compile, oneJar) += packResourceDir.value.keys.head / "application.conf"

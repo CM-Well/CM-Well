@@ -25,9 +25,9 @@ object Settings {
   val hostName = config.getString("cmwell.grid.bind.host")
   val seeds = config.getString("cmwell.grid.seeds").split(",").toSet
   val port = config.getInt("cmwell.grid.bind.port")
-  val target = config.getString("cmwell.dc.target").split(",").toVector
+  val rawTarget = config.getString("cmwell.dc.target")
   private[this] val hostPort = """([^:/]+)(:\d+)?""".r
-  val destinationHostsAndPorts = target.map{
+  def destinationHostsAndPorts(target: String) = target.split(",").toVector.map{
     case hostPort(h,p) => h -> Option(p).map(_.tail.toInt)
   }
   val maxStatementLength = {
