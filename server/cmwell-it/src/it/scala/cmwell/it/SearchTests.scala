@@ -21,7 +21,7 @@ import cmwell.util.http.SimpleResponse
 import com.typesafe.scalalogging.LazyLogging
 import play.api.libs.json._
 
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration._
 import org.scalatest.{AsyncFunSpec, Inspectors, Matchers}
 
@@ -125,17 +125,24 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
       }
     }
 
-    val sortByLatitude = executeAfterCompletion(f1){
+
+    import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+    def getTypesCache = Http.get[String](cmw / "_types-cache").map(_.payload)
+
+    val typesCache = executeAfterCompletion(f1)(getTypesCache)
+
+    val sortByLatitude = executeAfterCompletion(typesCache){
+
       spinCheck(1.second,true)(Http.get(
         uri = path,
         queryParams = List("op" -> "search","sort-by" -> "-lat.wgs84_pos","format" -> "json","with-data" -> "","pretty" -> "","debug-info" -> "")
       )){ r =>
         val j = Json.parse(r.payload) \ "results"
         (j \ "total": @unchecked) match {
-          case JsDefined(JsNumber(n)) => n.intValue() >= 2
+          case JsDefined(JsNumber(n)) => n.intValue() >= 7
         }
       }.map { res =>
-        withClue(res) {
+        withClue(res + s"\ntypes cache before: ${typesCache.value}\ntypes cache after: " + Try(Await.result(getTypesCache,60.seconds)).getOrElse("getTypesCache failed!!!")) {
           val jInfotonsArr = (Json.parse(res.payload) \ "results" \ "infotons").get.asInstanceOf[JsArray].value
           implicit val ord = orderingForField[Float]("lat.wgs84_pos", ascending = false)
           jInfotonsArr shouldBe sorted
