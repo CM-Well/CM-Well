@@ -210,10 +210,9 @@ lazy val indexer       = (project in file("cmwell-indexer")).enablePlugins(CMWel
 lazy val stortill      = (project in file("cmwell-stortill")).enablePlugins(CMWellBuild)                            dependsOn(domain, irw, fts , imp)
 lazy val batch         = (project in file("cmwell-batch")).enablePlugins(CMWellBuild) settings(oneJarSettings:_*)   dependsOn(imp, indexer, ctrl)
 lazy val bg            = (project in file("cmwell-bg")).enablePlugins(CMWellBuild, SbtKafkaPlugin, CassandraPlugin) dependsOn(kafkaAssigner, irw, domain, fts, grid, zstore, tracking)
-lazy val ws            = (project in file("cmwell-ws")).enablePlugins(CMWellBuild, PlayScala, SbtTwirl)             dependsOn(domain, common, formats, tlog, fts, irw, rts, ctrl, stortill, zstore, tracking)
 lazy val consIt        = (project in file("cmwell-it")).enablePlugins(CMWellBuild)                                  dependsOn(domain, common % "compile->compile;it->test", tlog, ws) configs(IntegrationTest)
 lazy val ctrl          = (project in file("cmwell-controller")).enablePlugins(CMWellBuild)                          dependsOn(tlog,grid)
-lazy val dc            = (project in file("cmwell-dc")).enablePlugins(CMWellBuild) settings(oneJarSettings:_*)      dependsOn(tracking, ctrl, sparqlAgent)
+lazy val dc            = (project in file("cmwell-dc")).enablePlugins(CMWellBuild, JavaAppPackaging) settings(oneJarSettings:_*)      dependsOn(tracking, ctrl, sparqlAgent)
 lazy val cons          = (project in file("cmwell-cons")).enablePlugins(CMWellBuild)                                dependsOn(util, ctrl) aggregate(batch, ws, ctrl, dc)
 lazy val pluginGremlin = (project in file("cmwell-plugin-gremlin")).enablePlugins(CMWellBuild)
 lazy val spa           = (project in file("cmwell-spa")) .enablePlugins(CMWellBuild)
@@ -221,6 +220,8 @@ lazy val dataTools     = (project in file("cmwell-data-tools")).enablePlugins(CM
 lazy val dataToolsApp  = (project in file("cmwell-data-tools-app")).enablePlugins(CMWellBuild)                      dependsOn(dataTools)
 lazy val sparqlAgent   = (project in file("cmwell-sparql-agent")).enablePlugins(CMWellBuild)                        dependsOn(dataTools, grid, util, ctrl)
 lazy val tracking      = (project in file("cmwell-tracking")).enablePlugins(CMWellBuild)                            dependsOn(util, zstore, grid, irw, ctrl)
+lazy val ws            = (project in file("cmwell-ws")).enablePlugins(CMWellBuild, PlayScala, SbtTwirl, PlayNettyServer)
+                                                       .disablePlugins(PlayAkkaHttpServer)                          dependsOn(domain, common, formats, tlog, fts, irw, rts, ctrl, stortill, zstore, tracking)
 
 fullTest := {
   (fullTest in LocalProject("util")).value

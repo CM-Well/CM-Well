@@ -47,6 +47,8 @@ trait Helpers { self: LazyLogging =>
   val _out = cmw / "_out"
   val _in = cmw / "_in"
   val _ow = cmw / "_ow"
+  val _consume = cmw / "_consume"
+  val _bulkconsume = cmw / "_bulk-consume"
   val cmt = cmw / "cmt" / "cm" / "test"
   val metaNs = cmw / "meta" / "ns"
   val textPlain = Some("text/plain;charset=UTF-8")
@@ -232,22 +234,21 @@ trait Helpers { self: LazyLogging =>
 
     import cmwell.util.concurrent.retryUntil
     import cmwell.util.http.{SimpleResponse, SimpleResponseHandler, SimpleHttpClient}, SimpleHttpClient.{Body, SimpleMessageHandler}
+    val ec = scala.concurrent.ExecutionContext.global
 
-    private def retryOn503Ingests[T](request: => Future[SimpleResponse[T]])(implicit ec: ExecutionContext): Future[SimpleResponse[T]] =
+    private def retryOn503Ingests[T](request: => Future[SimpleResponse[T]]): Future[SimpleResponse[T]] =
       retryUntil[SimpleResponse[T]](_.status != 503, 23, 42.millis, 2)(request)(ec)
 
     def ws[T: SimpleMessageHandler](uri: String,
                                     initiationMessage: T,
                                     subprotocol: Option[String] = None,
                                     queryParams: Seq[(String, String)] = Nil,
-                                    headers: Seq[(String, String)] = Nil)(react: T => Option[T])
-                                   (implicit ec: ExecutionContext) =
+                                    headers: Seq[(String, String)] = Nil)(react: T => Option[T]) =
       SimpleHttpClient.ws(uri, initiationMessage, subprotocol, queryParams, headers)(react)(implicitly[SimpleMessageHandler[T]], ec)
 
     def get[T: SimpleResponseHandler](uri: String,
                                       queryParams: Seq[(String, String)] = Nil,
-                                      headers: Seq[(String, String)] = Nil)
-                                     (implicit ec: ExecutionContext) = retryOn503Ingests {
+                                      headers: Seq[(String, String)] = Nil) = retryOn503Ingests {
       SimpleHttpClient.get(uri, queryParams, headers)(implicitly[SimpleResponseHandler[T]], ec)
     }
 
@@ -255,8 +256,7 @@ trait Helpers { self: LazyLogging =>
                                       body: Body,
                                       contentType: Option[String] = None,
                                       queryParams: Seq[(String, String)] = Nil,
-                                      headers: Seq[(String, String)] = Nil)
-                                     (implicit ec: ExecutionContext) = retryOn503Ingests {
+                                      headers: Seq[(String, String)] = Nil) = retryOn503Ingests {
       SimpleHttpClient.put(uri, body, contentType, queryParams, headers)(implicitly[SimpleResponseHandler[T]], ec)
     }
 
@@ -264,15 +264,13 @@ trait Helpers { self: LazyLogging =>
                                        body: Body,
                                        contentType: Option[String] = None,
                                        queryParams: Seq[(String, String)] = Nil,
-                                       headers: Seq[(String, String)] = Nil)
-                                      (implicit ec: ExecutionContext) = retryOn503Ingests {
+                                       headers: Seq[(String, String)] = Nil) = retryOn503Ingests {
       SimpleHttpClient.post(uri, body, contentType, queryParams, headers)(implicitly[SimpleResponseHandler[T]], ec)
     }
 
     def delete[T: SimpleResponseHandler](uri: String,
                                          queryParams: Seq[(String, String)] = Nil,
-                                         headers: Seq[(String, String)] = Nil)
-                                        (implicit ec: ExecutionContext) =
+                                         headers: Seq[(String, String)] = Nil) =
       SimpleHttpClient.delete(uri, queryParams, headers)(implicitly[SimpleResponseHandler[T]], ec)
   }
 

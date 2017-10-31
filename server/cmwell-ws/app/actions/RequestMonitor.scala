@@ -75,8 +75,8 @@ object RequestMonitor extends LazyLogging {
     requestContainer = Grid.create(classOf[RequestsContainer], "RequestsContainer")
   }
 
-  def add(requestType : String, path : String, queryString : String, requestBody : String): Unit = {
-    requestContainer ! CmwellRequest(requestType, path,  queryString, System.currentTimeMillis(), requestBody)
+  def add(requestType : String, path : String, queryString : String, requestBody : String, now: Long): Unit = {
+    requestContainer ! CmwellRequest(requestType, path,  queryString, now, requestBody)
   }
 
   def getAllRequestPaths : Future[Map[String, Iterable[(String, CmwellRequest)]]] = {

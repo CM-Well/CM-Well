@@ -75,7 +75,7 @@ object ZookeeperChecker extends Checker with LazyLogging {
       .toMat(Sink.head)(Keep.both)
       .run()
     val p = Promise[Unit]()
-    akka.pattern.after(7.seconds, system.scheduler)(Future.successful(p.trySuccess()))
+    akka.pattern.after(7.seconds, system.scheduler)(Future.successful(p.trySuccess(())))
     val scheduleFuture = p.future.map(Left.apply)
     val responseFuture = futureByteString.map(Right.apply)
     Future.firstCompletedOf[Either[Unit, ByteString]](List(scheduleFuture, responseFuture)).onSuccess {

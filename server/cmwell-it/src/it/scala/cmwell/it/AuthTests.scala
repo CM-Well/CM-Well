@@ -141,6 +141,11 @@ class AuthTests extends FunSpec with Matchers with Helpers with LazyLogging {
         indexingDuration.fromNow.block
       }
 
+      it("should reset AuthCache once all user/role data was ingested") {
+        val res = waitAndExtractBody(Http.get(cmw / "_auth", List("op" -> "invalidate-cache"), tokenHeader))
+        Json.parse(res) should be(jsonSuccess)
+      }
+
       it("should be able to login with the CustomUser and receive a token") {
         val res = waitAndExtractBody(Http.get(_login, headers = basicAuthHeader("TestUser", "myPassword")))
         val jwt = (Json.parse(res) \ "token").as[String]

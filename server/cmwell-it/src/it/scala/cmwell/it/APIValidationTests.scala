@@ -45,6 +45,20 @@ class APIValidationTests extends FunSpec with Matchers with Inspectors with Help
   def bodyAsString(resp: SimpleResponse[Array[Byte]]): String = new String(resp.body._2, "UTF-8")
 
   describe("CM-Well REST API") {
+    it("should fail with 400 on markDelete of sys fields") {
+      val data = """
+        |@prefix sys:   <http://cm-well.com/meta/sys#> .
+        |<http://irrelevant.path.com> <cmwell://meta/sys#markDelete> [
+        |    sys:path    "/" ;
+        |    sys:type    "ObjectInfoton" ;
+        |]
+      """.stripMargin
+      val res = Await.result(Http.post(_in, data, queryParams = List("format" -> "n3", "debug-log" -> ""), headers = tokenHeader),requestTimeout)
+      withClue(res) {
+        res.status should be(400)
+      }
+    }
+
     it("should fail with 422 on well formed but benign _in updates") {
       val onlyPathIsBenign = """<http://test.permid.org/testsortby> <http://cm-well-uk-lab.int.thomsonreuters.com/meta/sys#path> "/test.permid.org/testsortby" ."""
       val res = Await.result(Http.post(_in, onlyPathIsBenign, textPlain, queryParams = List("format" -> "ntriples", "debug-log" -> ""), headers = tokenHeader),requestTimeout)
@@ -317,7 +331,15 @@ class APIValidationTests extends FunSpec with Matchers with Inspectors with Help
         }
       }
 
-      describe("should fblock documents with illegal subject") {
+      it("should return successfully from a dry-run") {
+        val triple = s"""<http://example.org/some-path> <cmwell:meta/nn#messageOfTheDay> "Hello, World!" ."""
+        val req = Http.post(_in, triple, textPlain, List("format" -> "ntriples", "dry-run" -> ""), tokenHeader)
+        val resp = Await.result(req, requestTimeout)
+        resp.status should be(200)
+        Json.parse(bodyAsString(resp)) should be(Json.parse("""{"success":true,"dry-run":true}"""))
+      }
+
+      describe("should block documents with illegal subject") {
         it("should fail with 400 error code when inserting it") {
           val triple = s"""<http://example.org/some$$illegal-path> <cmwell:meta/nn#messageOfTheDay> "Hello, World!" ."""
           val req = Http.post(_in, triple, textPlain, List("format" -> "ntriples"), tokenHeader)

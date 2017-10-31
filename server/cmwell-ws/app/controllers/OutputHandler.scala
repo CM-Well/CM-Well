@@ -29,7 +29,7 @@ import com.typesafe.scalalogging.LazyLogging
 import logic.CRUDServiceFS
 import org.joda.time.DateTimeZone
 import org.joda.time.format.ISODateTimeFormat
-import play.api.mvc._
+import play.api.mvc.{Filters => _, _}
 import security.{AuthUtils, PermissionLevel}
 import wsutil._
 import javax.inject._
@@ -38,7 +38,9 @@ import akka.stream.scaladsl.Flow
 import cmwell.util.FullBox
 import cmwell.web.ld.cmw.CMWellRDFHelper
 import cmwell.ws.util.TypeHelpers.asBoolean
+import filters.Attrs
 import ld.cmw.{NbgPassiveFieldTypesCache, ObgPassiveFieldTypesCache}
+import play.api.http.DefaultHttpFilters
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -54,13 +56,12 @@ import scala.util.{Failure, Success, Try}
 @Singleton
 class OutputHandler  @Inject()(crudServiceFS: CRUDServiceFS,
                                authUtils: AuthUtils,
-                               tbg: NbgToggler,
                                cmwellRDFHelper: CMWellRDFHelper,
-                               formatterManager: FormatterManager) extends Controller with LazyLogging with TypeHelpers {
+                               formatterManager: FormatterManager) extends InjectedController with LazyLogging with TypeHelpers {
 
   val fullDateFormatter = ISODateTimeFormat.dateTime().withZone(DateTimeZone.UTC)
 
-  def typesCache(nbg: Boolean) = if(nbg || tbg.get) crudServiceFS.nbgPassiveFieldTypesCache else crudServiceFS.obgPassiveFieldTypesCache
+  def typesCache(nbg: Boolean) = if(nbg) crudServiceFS.nbgPassiveFieldTypesCache else crudServiceFS.obgPassiveFieldTypesCache
 
   def overrideMimetype(default: String, req: Request[AnyContent]): (String, String) = req.getQueryString("override-mimetype") match {
     case Some(mimetype) => (CONTENT_TYPE, mimetype)
@@ -73,8 +74,8 @@ class OutputHandler  @Inject()(crudServiceFS: CRUDServiceFS,
     ret
   }
 
-  def getNoCacheHeaders(): List[(String, String)] = {
-    val d = internetDateFormatter.format(new Date(System.currentTimeMillis()))
+  def getNoCacheHeaders(now: Long): List[(String, String)] = {
+    val d = internetDateFormatter.format(new Date(now))
     List("Expires" -> d,
       "Date" -> d,
       "Cache-Control" ->
@@ -115,7 +116,12 @@ class OutputHandler  @Inject()(crudServiceFS: CRUDServiceFS,
   }
 
   def handleWebSocket(format: String) = WebSocket.accept[String,String] { request =>
-    val nbg = request.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+    // FIXME: nbg should be: `request.attrs(Attrs.Nbg)`, but filters not applied
+    // FIXME: on WebSocket, only on Actions. Also, default should be NbgToggler.get
+    // FIXME: but it's an abuse to inject it to the handler only for websockets.
+    // FIXME: As a temporary hack, and as long as new & old data paths stay separate,
+    // FIXME: We'll live with default value of new.
+    val nbg = request.getQueryString("nbg").flatMap(asBoolean).getOrElse(true)
     val formatter = format match {
       case FormatExtractor(formatType) =>
         formatterManager.getFormatter(
@@ -165,11 +171,11 @@ class OutputHandler  @Inject()(crudServiceFS: CRUDServiceFS,
 
   def handlePost(format: String = "") = Action.async { implicit req =>
     if(req.contentType.getOrElse("").contains("json"))
-      RequestMonitor.add("out",req.path, req.rawQueryString, req.body.asJson.getOrElse("").toString)
+      RequestMonitor.add("out",req.path, req.rawQueryString, req.body.asJson.getOrElse("").toString,req.attrs(Attrs.RequestReceivedTimestamp))
     else
-      RequestMonitor.add("out",req.path, req.rawQueryString, req.body.asText.getOrElse(""))
+      RequestMonitor.add("out",req.path, req.rawQueryString, req.body.asText.getOrElse(""),req.attrs(Attrs.RequestReceivedTimestamp))
 
-    val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+    val nbg = req.attrs(Attrs.Nbg)
     val fieldsMaskFut = extractFieldsMask(req,typesCache(nbg),cmwellRDFHelper, nbg)
 
     val formatType = format match {
@@ -217,7 +223,7 @@ class OutputHandler  @Inject()(crudServiceFS: CRUDServiceFS,
 
   def futureRetrievablePathsFromPathsAsLines(pathsVector: Vector[String], req: Request[AnyContent]) = {
 
-    val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+    val nbg = req.attrs(Attrs.Nbg)
 
     val (byUuid, byPath) = pathsVector.partition(_.startsWith("/ii/")) match {
       case (xs, ys) => (xs.map(_.drop(4)), ys) // "/ii/".length = 4
@@ -248,7 +254,7 @@ class OutputHandler  @Inject()(crudServiceFS: CRUDServiceFS,
           val irretrievableUuids = byUuid.filterNot(uuid => coreInfotons.exists(_.uuid == uuid)).map(uuid => s"/ii/$uuid")
           val irretrievablePaths = byPath.filterNot(path => coreInfotons.exists(_.path == path))
 
-          val notAllowedPaths = authUtils.filterNotAllowedPaths(infotons.map(_.path), PermissionLevel.Read, authUtils.extractTokenFrom(req)).toVector
+          val notAllowedPaths = authUtils.filterNotAllowedPaths(infotons.map(_.path), PermissionLevel.Read, authUtils.extractTokenFrom(req), req.attrs(Attrs.Nbg)).toVector
           val allowedInfotons = infotons.filterNot(i => notAllowedPaths.contains(i.path))
 
           ok -> RetrievablePaths(allowedInfotons, irretrievableUuids ++ irretrievablePaths ++ notAllowedPaths)

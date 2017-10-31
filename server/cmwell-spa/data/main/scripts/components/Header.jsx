@@ -108,7 +108,7 @@ class Breadcrumbs extends React.Component {
 
             // type.rdf deserves a special treatment:
             if(qp.indexOf('type.rdf')===0)
-                try { displayedQp = `type ${AppUtils.lastPartOfUrl(qp.split('::')[1])}` } catch(e) { }
+                try { displayedQp = `type ${AppUtils.lastPartOfUriPath(qp.replace('%23','#').split('::')[1])}` } catch(e) { }
                 
             breadcrumbs.push({ title: `Search results for ${displayedQp}`, searchIcon: true })
         }

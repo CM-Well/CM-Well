@@ -37,6 +37,8 @@ import security.{AuthUtils, PermissionLevel}
 import wsutil._
 import javax.inject._
 
+import filters.Attrs
+
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
@@ -49,7 +51,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
                               tbg: NbgToggler,
                               authUtils: AuthUtils,
                               cmwellRDFHelper: CMWellRDFHelper,
-                              formatterManager: FormatterManager) extends Controller with LazyLogging with TypeHelpers { self =>
+                              formatterManager: FormatterManager) extends InjectedController with LazyLogging with TypeHelpers { self =>
 
   val aggregateBothOldAndNewTypesCaches = new AggregateBothOldAndNewTypesCaches(crudService,tbg)
   val bo1 = collection.breakOut[List[Infoton],String,Set[String]]
@@ -61,9 +63,9 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
    * @return
    */
   def handlePost(format: String = "") = ingestPushback.async(parse.raw) { implicit req =>
-    RequestMonitor.add("in", req.path, req.rawQueryString, req.body.asBytes().fold("")(_.utf8String))
+    RequestMonitor.add("in", req.path, req.rawQueryString, req.body.asBytes().fold("")(_.utf8String),req.attrs(Attrs.RequestReceivedTimestamp))
     // first checking "priority" query string. Only if it is present we will consult the UserInfoton which is more expensive (order of && below matters):
-    if (req.getQueryString("priority").isDefined && !authUtils.isOperationAllowedForUser(security.PriorityWrite, authUtils.extractTokenFrom(req), evenForNonProdEnv = true)) {
+    if (req.getQueryString("priority").isDefined && !authUtils.isOperationAllowedForUser(security.PriorityWrite, authUtils.extractTokenFrom(req), req.attrs(Attrs.Nbg), evenForNonProdEnv = true)) {
       Future.successful(Forbidden(Json.obj("success" -> false, "message" -> "User not authorized for priority write")))
     } else {
       val resp = if ("jsonw" == format.toLowerCase) handlePostWrapped(req) -> Future.successful(Seq.empty[(String, String)]) else handlePostRDF(req)
@@ -84,7 +86,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
 
   def handlePostForDCOverwrites =  ingestPushback.async(parse.raw) { implicit req =>
     val tokenOpt = authUtils.extractTokenFrom(req)
-    if (!authUtils.isOperationAllowedForUser(security.Overwrite, tokenOpt, evenForNonProdEnv = true))
+    if (!authUtils.isOperationAllowedForUser(security.Overwrite, tokenOpt, req.attrs(Attrs.Nbg), evenForNonProdEnv = true))
       Future.successful(Forbidden("not authorized"))
     else {
       Try {
@@ -163,7 +165,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
       case _ => throw new RuntimeException("cant find valid content in body of request")
     }
 
-    val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+    val nbg = req.attrs(Attrs.Nbg)
 
 
     req.getQueryString("format") match {
@@ -221,9 +223,9 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
    */
   def handlePostRDF(req: Request[RawBuffer], skipValidation: Boolean = false): (Future[Result],Future[Seq[(String,String)]]) = {
 
-    val now = System.currentTimeMillis()
+    val now = req.attrs(Attrs.RequestReceivedTimestamp)
     val p = Promise[Seq[(String,String)]]()
-    lazy val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+    lazy val nbg = req.attrs(Attrs.Nbg)
     lazy val id = cmwell.util.numeric.Radix64.encodeUnsigned(req.id)
     val debugLog = req.queryString.keySet("debug-log")
     val addDebugHeader: Result => Result = { res =>
@@ -336,9 +338,13 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
                 }
               }
 
-              if (req.getQueryString("dry-run").isDefined)
+              if (req.getQueryString("dry-run").isDefined) {
+                p.success(Seq.empty)
                 Future(addDebugHeader(Ok(Json.obj("success" -> true, "dry-run" -> true))))
-              else {
+              } else if(deletePaths.contains("/") || deleteMap.keySet("/")) {
+                p.success(Seq.empty)
+                Future.successful(addDebugHeader(BadRequest(Json.obj("success" -> false, "message" -> "Deleting Root Infoton does not make sense!"))))
+              } else {
 
                 val isPriorityWrite = req.getQueryString("priority").isDefined
 
@@ -435,7 +441,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
 
     if (req.getQueryString("dry-run").isDefined)  Future.successful(BadRequest(Json.obj("success" -> false, "error" -> "dry-run is not implemented for wrapped requests.")))
     else {
-      val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+      val nbg = req.attrs(Attrs.Nbg)
       val charset = req.contentType match {
         case Some(contentType) => contentType.lastIndexOf("charset=") match {
           case i if i != -1 => contentType.substring(i + 8).trim
@@ -457,7 +463,8 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
           vec match {
             case Some(v) => {
               if (skipValidation || v.forall(i => InfotonValidator.isInfotonNameValid(normalizePath(i.path)))) {
-                val unauthorizedPaths = authUtils.filterNotAllowedPaths(v.map(_.path), PermissionLevel.Write, authUtils.extractTokenFrom(req))
+                val nbg = req.attrs(Attrs.Nbg)
+                val unauthorizedPaths = authUtils.filterNotAllowedPaths(v.map(_.path), PermissionLevel.Write, authUtils.extractTokenFrom(req), nbg)
                 if(unauthorizedPaths.isEmpty) {
                   Try(v.foreach{ i => if(i.fields.isDefined) InfotonValidator.validateValueSize(i.fields.get)}) match {
                     case Success(_) => {

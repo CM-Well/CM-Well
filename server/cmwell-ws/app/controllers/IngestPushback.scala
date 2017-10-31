@@ -23,25 +23,25 @@ import cmwell.ws.Settings._
 import com.typesafe.scalalogging.LazyLogging
 import k.grid.Grid
 import akka.pattern.ask
-
 import k.grid.dmap.impl.persistent.PersistentDMap
 import play.api.mvc._
 import javax.inject._
 
 import actions.DashBoard
+import filters.Attrs
 
 import scala.concurrent.duration.DurationLong
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class IngestPushback @Inject() (backPressureToggler: BackPressureToggler, dashBoard: DashBoard) extends ActionBuilder[Request] with LazyLogging {
+class IngestPushback @Inject() (backPressureToggler: BackPressureToggler, dashBoard: DashBoard, pbp: PlayBodyParsers)
+                               (implicit override val executionContext: ExecutionContext) extends ActionBuilder[Request,AnyContent] with LazyLogging {
 
-  // TODO: execution context should be injected, not imported like this.
-  import scala.concurrent.ExecutionContext.Implicits.global
+  override val parser = pbp.defaultBodyParser
 
   lazy val bGMonitorProxy = new SingleElementLazyAsyncCache[OffsetsInfo](10000L,null)({
     Grid.serviceRef(BGMonitorActor.serviceName).ask(GetOffsetInfo)(akka.util.Timeout(bgMonitorAskTimeout), Actor.noSender).mapTo[OffsetsInfo]
-  })(Combiner.replacer[OffsetsInfo],implicitly)
+  })
 
   // we use our own custom filter instead of mixing in ActionFilter,
   // to enable pushback by hanging the request,
@@ -108,9 +108,7 @@ class IngestPushback @Inject() (backPressureToggler: BackPressureToggler, dashBo
    }
 
   override def invokeBlock[A](request: Request[A], block: Request[A] => Future[Result]): Future[Result] = {
-    // TODO: we should compose Request, and use a "TimedRequest" instead of measuring time in more than one place.
-    // TODO: (filter adding RT header, access.log filter and here)
-    val startTime = System.currentTimeMillis()
+    val startTime = request.attrs(Attrs.RequestReceivedTimestamp)
 
     def resOptToFilterBy(resOpt: Option[Result]) = resOpt.fold(block(request)) { result =>
       val requestTime = {
@@ -126,6 +124,8 @@ class IngestPushback @Inject() (backPressureToggler: BackPressureToggler, dashBo
       case "new" => filterByKLog().flatMap(resOptToFilterBy)
       case "old" => resOptToFilterBy(filterByTLog())
       case "off" => block(request)
+      case "all" => filterByTLog().fold(filterByKLog().flatMap(resOptToFilterBy))(Future.successful)
+      case "bar" => Future.successful(Results.ServiceUnavailable(s"Ingests has been barred by an admin. Please try again later."))
       case unknown => Future.successful(Results.InternalServerError(s"unknown state for 'BACKPRESSURE_TRIGGER' [$unknown]"))
     }
   }

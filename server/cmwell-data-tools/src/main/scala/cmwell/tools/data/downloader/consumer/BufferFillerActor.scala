@@ -16,6 +16,7 @@
 
 package cmwell.tools.data.downloader.consumer
 
+import akka.NotUsed
 import akka.actor.{Actor, ActorSystem}
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.RawHeader
@@ -195,71 +196,87 @@ class BufferFillerActor(threshold: Int,
     implicit val timeout = akka.util.Timeout(30.seconds)
     val prevToHeader = (self ? GetToHeader).mapTo[Option[String]]
 
-    val source: Source[Token, (Future[Option[Token]], UniqueKillSwitch)] = Source.fromFuture(prevToHeader)
-      .map(to => createRequestFromToken(token, to))
-      .map(_ -> None)
-      .via(conn)
-      .map {
-        case (Success(HttpResponse(s, h , e, _)), _) if s == StatusCodes.TooManyRequests =>
-          e.discardBytes()
+    val source: Source[Token, (Future[Option[Token]], UniqueKillSwitch)] = {
+      val src: Source[(Option[String], Source[(Token, Tsv), Any]), NotUsed] = Source.fromFuture(prevToHeader)
+        .map(to => createRequestFromToken(token, to))
+        .map(_ -> None)
+        .via(conn)
+        .map {
+          case (Success(HttpResponse(s, h , e, _)), _) if s == StatusCodes.TooManyRequests =>
+            e.discardBytes()
 
-          logger.error(s"HTTP 429: too many requests token=$token")
-          None -> Source.failed(new Exception("too many requests"))
+            logger.error(s"HTTP 429: too many requests token=$token")
+            None -> Source.failed(new Exception("too many requests"))
 
-        case (Success(HttpResponse(s, h , e, _)), _) if s == StatusCodes.NoContent =>
-          e.discardBytes()
+          case (Success(HttpResponse(s, h , e, _)), _) if s == StatusCodes.NoContent =>
+            e.discardBytes()
 
-          if (updateFreq.isEmpty) self ! NewData(None)
+            if (updateFreq.isEmpty) self ! NewData(None)
 
-          None -> Source.empty
-        case (Success(HttpResponse(s, h, e, _)), _) if s == StatusCodes.OK || s == StatusCodes.PartialContent =>
-          val nextToken = getPosition(h) match {
-            case Some(HttpHeader(_, pos)) => pos
-            case None      => throw new RuntimeException("no position supplied")
-          }
+            None -> Source.empty
+          case (Success(HttpResponse(s, h, e, _)), _) if s == StatusCodes.OK || s == StatusCodes.PartialContent =>
+            val nextToken = getPosition(h) match {
+              case Some(HttpHeader(_, pos)) => pos
+              case None      => throw new RuntimeException("no position supplied")
+            }
 
-          getTo(h) match {
-            case Some(HttpHeader(_, to)) => self ! NewToHeader(Some(to))
-            case None                    => self ! NewToHeader(None)
-          }
+            getTo(h) match {
+              case Some(HttpHeader(_, to)) => self ! NewToHeader(Some(to))
+              case None                    => self ! NewToHeader(None)
+            }
 
-          logger.debug(s"received consume answer from host=${getHostnameValue(h)}")
+            logger.debug(s"received consume answer from host=${getHostnameValue(h)}")
 
-          val dataSource: Source[(Token, Tsv), Any] = e.withoutSizeLimit().dataBytes
-            .via(Compression.gunzip())
-            .via(lineSeparatorFrame)
-            .map(extractTsv)
-            .map(token -> _)
+            val dataSource: Source[(Token, Tsv), Any] = e.withoutSizeLimit().dataBytes
+              .via(Compression.gunzip())
+              .via(lineSeparatorFrame)
+              .map(extractTsv)
+              .map(token -> _)
 
-          Some(nextToken) -> dataSource
+            Some(nextToken) -> dataSource
 
-        case (Success(HttpResponse(s, h, e, _)), _) =>
-          e.toStrict(1.minute).onComplete {
-            case Success(res:HttpEntity.Strict) =>
-              logger.info(s"received consume answer from host=${getHostnameValue(h)} status=$s token=$token entity=${res.data.utf8String}")
-            case Failure(err) =>
-              logger.error(s"received consume answer from host=${getHostnameValue(h)} status=$s token=$token cannot extract entity", err)
-          }
+          case (Success(HttpResponse(s, h, e, _)), _) =>
+            e.toStrict(1.minute).onComplete {
+              case Success(res:HttpEntity.Strict) =>
+                logger.info(s"received consume answer from host=${getHostnameValue(h)} status=$s token=$token entity=${res.data.utf8String}")
+              case Failure(err) =>
+                logger.error(s"received consume answer from host=${getHostnameValue(h)} status=$s token=$token cannot extract entity", err)
+            }
 
-          Some(token) -> Source.failed(new Exception(s"Status is $s"))
+            Some(token) -> Source.failed(new Exception(s"Status is $s"))
 
-        case x =>
-          logger.error(s"unexpected message: $x")
-          Some(token) -> Source.failed(new UnsupportedOperationException(x.toString))
-      }
-      .alsoToMat(Sink.last)((_,element) => element.map { case (nextToken, _) => nextToken})
-      .map { case (_, dataSource) => dataSource}
-      .flatMapConcat(identity)
-      .collect { case (token, tsv: TsvData) =>
-        // if uuid was not emitted before, write it to buffer
-        if (receivedUuids.add(tsv.uuid)) {
-          self ! NewData(Some((token, tsv)))
+          case x =>
+            logger.error(s"unexpected message: $x")
+            Some(token) -> Source.failed(new UnsupportedOperationException(x.toString))
         }
 
-        uuidsFromCurrentToken.add(tsv.uuid)
-        token
-      }
-      .viaMat(KillSwitches.single)(Keep.both)
+
+      val tokenSink = Sink.last[(Option[String], Source[(Token, Tsv), Any])]
+      //The below is actually alsoToMat but with eagerCancel = true
+      val srcWithSink = Source.fromGraph(GraphDSL.create(tokenSink) { implicit builder =>
+        sink =>
+          import GraphDSL.Implicits._
+          val tokenSource = builder.add(src)
+          val bcast = builder.add(Broadcast[(Option[String], Source[(Token, Tsv), Any])](2, eagerCancel = true))
+          tokenSource ~> bcast.in
+          bcast.out(1) ~> sink
+          SourceShape(bcast.out(0))
+      })
+        .mapMaterializedValue(_.map { case (nextToken, _) => nextToken})
+      srcWithSink
+        .map { case (_, dataSource) => dataSource}
+        .flatMapConcat(identity)
+        .collect { case (token, tsv: TsvData) =>
+          // if uuid was not emitted before, write it to buffer
+          if (receivedUuids.add(tsv.uuid)) {
+            self ! NewData(Some((token, tsv)))
+          }
+
+          uuidsFromCurrentToken.add(tsv.uuid)
+          token
+        }
+        .viaMat(KillSwitches.single)(Keep.both)
+    }
 
 
 

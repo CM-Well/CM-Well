@@ -325,6 +325,7 @@ package util {
     protected val filter: Parser[RawFieldFilter] = "[" ~> fieldFilters <~ "]" ^? ({
       case sffs if sffs.size > 1 => RawMultiFieldFilter(Must, sffs)
       case List(sff) => sff
+//      case Nil => RawEmptyFieldFilter // TODO: empty can mean infoton existence (no ghost skips).
     }, xs => xs.headOption.fold("expansion filters must not be empty")(_ => s"unknown error for $xs"))
 
     protected val uriPattern: Parser[NsPattern] = "$" ~> namespaceUri <~ "$" ^? {
@@ -453,12 +454,16 @@ package util {
 
     private def paths: Parser[PathsExpansion] = repsep(path, "|") ^^ PathsExpansion.apply
 
-    def getPathsExpansionFunctions(ygInput: String): Try[PathsExpansion] = {
-      if (ygInput.isEmpty) scala.util.Failure(new IllegalArgumentException("yg empty input"))
+    def getPathsExpansionFunctions(ygInput: String): Try[PathsExpansion] = getPathExpansions(ygInput,"yg")
+
+    def getGQPs(gqpInput: String): Try[PathsExpansion] = getPathExpansions(gqpInput,"gqp")
+
+    def getPathExpansions(input: String, api: String): Try[PathsExpansion] = {
+      if (input.isEmpty) scala.util.Failure(new IllegalArgumentException(s"$api empty input"))
       else {
-        parseAll(paths, ygInput) match {
+        parseAll(paths, input) match {
           case Success(functions, _) => USuccess(functions)
-          case NoSuccess(msg, _) => scala.util.Failure(new IllegalArgumentException(s"error: $msg, accured while parsing: $ygInput"))
+          case NoSuccess(msg, _) => scala.util.Failure(new IllegalArgumentException(s"error: $msg, accured while parsing: $input"))
         }
       }
     }

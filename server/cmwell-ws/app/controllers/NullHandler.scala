@@ -26,7 +26,7 @@ import play.api.mvc._
   * Replies with HTTP 200 OK
   */
 @Singleton
-class NullHandler @Inject() extends play.api.mvc.Controller with LazyLogging{
+class NullHandler @Inject() extends InjectedController with LazyLogging{
   def handle() = Action.async { implicit req =>
     Future.successful(Ok("greetings from null handler"))
   }

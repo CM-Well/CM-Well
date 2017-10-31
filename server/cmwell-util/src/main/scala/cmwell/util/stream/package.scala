@@ -17,11 +17,13 @@
 package cmwell.util
 
 import akka.stream.scaladsl.Source
-
 import scala.collection.SeqLike
 import scala.collection.generic.CanBuildFrom
 
 package object stream {
+
+  import scala.language.higherKinds
+
   def mergeSourcesMat[T,M,Coll[_]](sources: Coll[Source[T,M]])
                                   (implicit ev: Coll[T] <:< SeqLike[T,Coll[T]],
                                            cbf: CanBuildFrom[Coll[T], T, Coll[T]]): Source[T,Coll[M]] = {

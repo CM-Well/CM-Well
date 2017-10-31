@@ -23,7 +23,7 @@ import cmwell.ws.Streams
 import cmwell.ws.adt.{BulkConsumeState, ConsumeState}
 import cmwell.ws.util._
 import logic.CRUDServiceFS
-import play.api.mvc.{AnyContent, Request, Result}
+import play.api.mvc._
 import wsutil._
 import javax.inject._
 
@@ -36,20 +36,21 @@ import com.typesafe.scalalogging.LazyLogging
 import cmwell.syntaxutils._
 import cmwell.web.ld.cmw.CMWellRDFHelper
 import cmwell.ws.Streams.Flows
-import cmwell.ws.util.TypeHelpers.asBoolean
-import ld.cmw.{NbgPassiveFieldTypesCache, ObgPassiveFieldTypesCache}
+import filters.Attrs
 import play.api.http.Writeable
 
-import scala.math.min
+import scala.concurrent.duration.FiniteDuration
+import scala.math.{max, min}
 
 @Singleton
 class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
-                                  tbg: NbgToggler,
                                   streams: Streams,
                                   cmwellRDFHelper: CMWellRDFHelper,
-                                  formatterManager: FormatterManager)(implicit ec: ExecutionContext) extends play.api.mvc.Controller with LazyLogging with TypeHelpers {
+                                  formatterManager: FormatterManager,
+                                  action: DefaultActionBuilder,
+                                  components: ControllerComponents)(implicit ec: ExecutionContext) extends AbstractController(components) with LazyLogging with TypeHelpers {
 
-  def cache(nbg: Boolean) = if(nbg || tbg.get) crudServiceFS.nbgPassiveFieldTypesCache else crudServiceFS.obgPassiveFieldTypesCache
+//  def cache(nbg: Boolean) = if(nbg) crudServiceFS.nbgPassiveFieldTypesCache else crudServiceFS.obgPassiveFieldTypesCache
 
   //consts
   val paginationParamsForSingleResult = PaginationParams(0, 1)
@@ -95,85 +96,45 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
   def findValidRange(thinSearchParams: ThinSearchParams,
                      from: Long,
                      threshold: Long,
-                     timeoutMarker: Future[Unit])(implicit ec: ExecutionContext): Future[CurrRangeForConsumption] = {
+                     timeout: FiniteDuration)(implicit ec: ExecutionContext): Future[CurrRangeForConsumption] = {
+
+    logger.debug(s"findValidRange: from[$from], threshold[$threshold], tsp[$thinSearchParams]")
 
     val ThinSearchParams(pf, ffsOpt, h, d) = thinSearchParams
     val now = org.joda.time.DateTime.now().minusSeconds(30).getMillis
 
     def toSeed: Future[Long] = {
-      val ffs = fieldsFiltersforSortedSearchFromTimeAndOptionalFilters(from,ffsOpt)
+      val ffs = fieldsFiltersFromTimeframeAndOptionalFilters(from,now,ffsOpt)
       crudServiceFS.thinSearch(
-          pathFilter = pf,
-          fieldFilters = Option(ffs),
-          paginationParams = paginationParamsForSingleResultWithOffset,
-          withHistory = h,
-          fieldSortParams = SortParam("system.indexTime" -> Asc),
-          withDeleted = d
-        ).map {
+        pathFilter = pf,
+        fieldFilters = Option(ffs),
+        paginationParams = paginationParamsForSingleResultWithOffset,
+        withHistory = h,
+        fieldSortParams = SortParam("system.indexTime" -> Asc),
+        withDeleted = d
+      ).map {
         case SearchThinResults(_, _, _, results, _) =>
           //In case that there are more than the initial seed infotons (=1000) with the same index time the "from" will be equal to the "to"
           //This will fail the FieldFilter requirements (see getFieldFilterSeq) and thus approx. 1 second is added to the "from" as the new "to"
-          results.headOption.fold(now)(i => math.max(i.indexTime,from+1729L)) //https://en.wikipedia.org/wiki/1729_(number)
+          results.headOption.fold(now)(i => math.max(i.indexTime, math.min(now,from + 1729L))) //https://en.wikipedia.org/wiki/1729_(number)
       }
     }
 
-    def iterate(to: Long, step: Long, expanding: Boolean = true, nextTo: Option[Long] = None, earlyCutOffResult: Option[CurrRangeForConsumption] = None): Future[CurrRangeForConsumption] = {
-      if(!expanding && step < 10)
-         Future.successful(CurrRangeForConsumption(from, to, nextTo))
-      else {
-        // clipping date boundaries
+    toSeed.flatMap { to =>
+      logger.debug(s"findValidRange: toSeed[$to], from[$from], tsp[$thinSearchParams]")
+      val searchFunction = (to: Long) => {
         val ffs = fieldsFiltersFromTimeframeAndOptionalFilters(from, to, ffsOpt)
-
-        // find number of infotons in given range
         crudServiceFS.thinSearch(
           pathFilter = pf,
           fieldFilters = Option(ffs),
           paginationParams = paginationParamsForSingleResult,
           withHistory = h,
           withDeleted = d
-        ).flatMap {
-          case SearchThinResults(total, _, _, _, _) => {
-
-            if (total < threshold * 0.5) {
-              // don't check above current time
-              if (now <= to) Future.successful(CurrRangeForConsumption(from, now, nextTo))
-              else if(timeoutMarker.isCompleted) Future.successful(CurrRangeForConsumption(from, to, nextTo))
-              else {
-                val op: Long => Long = if(expanding) {l => l*2} else {l => l/2}
-                iterate(min(now,to + step), op(step), expanding, nextTo, earlyCutOffResult)
-              }
-            }
-            else if (total > threshold * 1.5) {
-              val newNext = nextTo orElse {
-                if (total > threshold * 3) None
-                else Some(to)
-              }
-              if(timeoutMarker.isCompleted) {
-                if(expanding) Future.successful(CurrRangeForConsumption(from, to - (step/2), newNext))
-                else if(earlyCutOffResult.isDefined) Future.successful(earlyCutOffResult.get)
-                else !!! //if we are not expanding, earlyCutOffResult should have been defined!
-              }
-              else {
-                // early result assigned with the last valid range before contracting
-                val newEarlyCutOffResult = if(expanding) {
-                  Some(CurrRangeForConsumption(from, to - (step / 2), newNext))
-                } else earlyCutOffResult
-
-                val divider = if (expanding) 4 else 2
-                val halfDivider = divider / 2
-                iterate(min(now,to - (step / halfDivider)), step / divider, expanding = false, newNext, newEarlyCutOffResult)
-              }
-            }
-            else {
-              Future.successful(CurrRangeForConsumption(from, to, nextTo))
-            }
-          }
-        }
+        ).map(_.total)
       }
-    }
-
-    toSeed.flatMap { to =>
-      iterate(to,to-from)
+      cmwell.util.algorithms.binRangeSearch(from, to, now, threshold, 0.5, timeout)(searchFunction).map {
+        case (f, t, nextTo) => CurrRangeForConsumption(f, t, nextTo)
+      }
     }
   }
 
@@ -190,7 +151,6 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
                         path: Option[String],
                         chunkSizeHint: Long)(implicit ec: ExecutionContext): Future[(BulkConsumeState,Option[Long])] = {
 
-    val futureMarksTheTimeOut = cmwell.util.concurrent.SimpleScheduler.schedule(cmwell.ws.Settings.consumeBulkBinarySearchTimeout)(())
     val pf = createPathFilter(path, recursive)
     if(from == 0) {
       crudServiceFS.thinSearch(
@@ -210,7 +170,7 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
           results.headOption.fold(consumeEverythingWithoutNarrowingSearch) { i =>
             // first infoton found, gets to be the new from instead of 0, and we are going to find a real valid range
             val thinSearchParams = ThinSearchParams(pf, ff, withHistory, withDeleted)
-            findValidRange(thinSearchParams, i.indexTime, threshold = chunkSizeHint,timeoutMarker = futureMarksTheTimeOut).map {
+            findValidRange(thinSearchParams, i.indexTime, threshold = chunkSizeHint,timeout = cmwell.ws.Settings.consumeBulkBinarySearchTimeout).map {
               case CurrRangeForConsumption(f, t, tOpt) =>
                 BulkConsumeState(f, Some(t), path, withHistory, withDeleted, recursive, chunkSizeHint, ff) -> tOpt
             }
@@ -224,7 +184,7 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
       }
     } else {
       val thinSearchParams = ThinSearchParams(pf, ff, withHistory, withDeleted)
-      findValidRange(thinSearchParams, from, threshold = chunkSizeHint,timeoutMarker = futureMarksTheTimeOut).map { case CurrRangeForConsumption(f, t, tOpt) =>
+      findValidRange(thinSearchParams, from, threshold = chunkSizeHint,timeout = cmwell.ws.Settings.consumeBulkBinarySearchTimeout).map { case CurrRangeForConsumption(f, t, tOpt) =>
         BulkConsumeState(f, Some(t), path, withHistory, withDeleted, recursive, chunkSizeHint, ff) -> tOpt
       }.recoverWith {
         case e: Throwable =>{
@@ -313,63 +273,77 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
       }
     }
 
-    val nbg = request.getQueryString("nbg").flatMap(asBoolean).getOrElse(tbg.get)
+    val nbg = request.attrs(Attrs.Nbg)
 
     currStateEither match {
       case Left(err) => Future.successful(BadRequest(err))
       case Right(stateFuture) => stateFuture.flatMap {
-        case (state@BulkConsumeState(from, Some(to), path, h, d, r, threshold, ffOpt), nextTo) => getFormatter(request, h, nbg) match {
-          case Failure(exception) => Future.successful(BadRequest(exception.getMessage))
-          case Success((formatter, withData)) => {
+        case (state@BulkConsumeState(from, Some(to), path, h, d, r, threshold, ffOpt), nextTo) => {
+          if(request.queryString.keySet("debug-info")) {
+            logger.info(s"""The search params:
+                           |path             = $path,
+                           |from             = $from,
+                           |to               = $to,
+                           |nextTo           = $nextTo,
+                           |fieldFilters     = $ffOpt,
+                           |withHistory      = $h,
+                           |withDeleted      = $d,
+                           |withRecursive    = $r """.stripMargin)
+          }
 
-            // Gets a scroll source according to received HTTP request parameters
-            def getScrollSource() = {
-              (if (wasSupplied("slow-bulk")) {
-                streams.scrollSource(nbg,
-                  pathFilter = createPathFilter(path, r),
-                  fieldFilters = Option(fieldsFiltersFromTimeframeAndOptionalFilters(from, to, ffOpt)),
-                  withHistory = h,
-                  withDeleted = d)
-              } else {
-                streams.superScrollSource(nbg,
-                  pathFilter = createPathFilter(path, r),
-                  fieldFilter = Option(fieldsFiltersFromTimeframeAndOptionalFilters(from, to, ffOpt)),
-                  withHistory = h,
-                  withDeleted = d)
-              }).map { case (src,hits) =>
-                val s: Source[Infoton,NotUsed] = {
-                  if (withData) src.via(Flows.iterationResultsToFatInfotons(nbg,crudServiceFS))
-                  else src.via(Flows.iterationResultsToInfotons)
+          getFormatter(request, h, nbg) match {
+            case Failure(exception) => Future.successful(BadRequest(exception.getMessage))
+            case Success((formatter, withData)) => {
+
+              // Gets a scroll source according to received HTTP request parameters
+              def getScrollSource() = {
+                (if (wasSupplied("slow-bulk")) {
+                  streams.scrollSource(nbg,
+                    pathFilter = createPathFilter(path, r),
+                    fieldFilters = Option(fieldsFiltersFromTimeframeAndOptionalFilters(from, to, ffOpt)),
+                    withHistory = h,
+                    withDeleted = d)
+                } else {
+                  streams.superScrollSource(nbg,
+                    pathFilter = createPathFilter(path, r),
+                    fieldFilter = Option(fieldsFiltersFromTimeframeAndOptionalFilters(from, to, ffOpt)),
+                    withHistory = h,
+                    withDeleted = d)
+                }).map { case (src, hits) =>
+                  val s: Source[Infoton, NotUsed] = {
+                    if (withData) src.via(Flows.iterationResultsToFatInfotons(nbg, crudServiceFS))
+                    else src.via(Flows.iterationResultsToInfotons)
+                  }
+                  hits -> s
                 }
-                hits -> s
               }
+
+              getScrollSource().map {
+                case (0L, _) => NoContent.withHeaders("X-CM-WELL-N" -> "0", "X-CM-WELL-POSITION" -> request.getQueryString("position").get)
+                case (hits, source) => {
+                  val positionEncoded = ConsumeState.encode(state.copy(from = to, to = nextTo))
+
+                  Ok.chunked(source)(infotonWriteable(formatter))
+                    .withHeaders(
+                      "X-CM-WELL-N" -> hits.toString,
+                      "X-CM-WELL-POSITION" -> positionEncoded,
+                      "X-CM-WELL-TO" -> to.toString
+                    )
+                }
+              }.recover(errorHandler)
             }
-
-            getScrollSource().map {
-              case (0L, _) => NoContent.withHeaders("X-CM-WELL-N" -> "0", "X-CM-WELL-POSITION" -> request.getQueryString("position").get)
-              case (hits, source) => {
-                val positionEncoded = ConsumeState.encode(state.copy(from = to, to = nextTo))
-
-                Ok.chunked(source)(infotonWriteable(formatter))
-                  .withHeaders(
-                    "X-CM-WELL-N" -> hits.toString,
-                    "X-CM-WELL-POSITION" -> positionEncoded,
-                    "X-CM-WELL-TO" -> to.toString
-                  )
-              }
-            }.recover(errorHandler)
           }
         }
       }.recover(errorHandler)
     }
   }
 
-  def parseQpFromRequest(qp: String, nbg: Boolean)(implicit ec: ExecutionContext): Future[Option[FieldFilter]] = {
-    FieldFilterParser.parseQueryParams(qp) match {
-      case Failure(err) => Future.failed(err)
-      case Success(rff) => RawFieldFilter.eval(rff,cache(nbg),cmwellRDFHelper,nbg).map(Option.apply)
-    }
-  }
+//  def parseQpFromRequest(qp: String, nbg: Boolean)(implicit ec: ExecutionContext): Future[Option[FieldFilter]] = {
+//    FieldFilterParser.parseQueryParams(qp) match {
+//      case Failure(err) => Future.failed(err)
+//      case Success(rff) => RawFieldFilter.eval(rff,cache(nbg),cmwellRDFHelper,nbg).map(Option.apply)
+//    }
+//  }
 
   private def addIndexTime(fromCassandra: Seq[Infoton], uuidToindexTime: Map[String, Long]): Seq[Infoton] = fromCassandra.map {
     case i: ObjectInfoton if i.indexTime.isEmpty => i.copy(indexTime = uuidToindexTime.get(i.uuid))

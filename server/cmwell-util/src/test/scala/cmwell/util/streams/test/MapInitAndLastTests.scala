@@ -22,6 +22,7 @@ import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.stream.testkit.TestPublisher.{Probe => SrcProbe}
 import akka.stream.testkit.TestSubscriber.{Probe => SnkProbe}
 import cmwell.util.stream.MapInitAndLast
+import scala.concurrent.duration.DurationInt
 
 class MapInitAndLastTests extends StreamSpec {
 
@@ -48,7 +49,7 @@ class MapInitAndLastTests extends StreamSpec {
       val (src,snk) = generateGraph[Int]()
       snk.request(99)
       src.sendNext(1)
-      snk.expectNoMsg()
+      snk.expectNoMessage(300.millis)
       src.sendComplete()
       snk.expectNext((1,true))
       snk.expectComplete()
@@ -58,7 +59,7 @@ class MapInitAndLastTests extends StreamSpec {
       val (src,snk) = generateGraph[Int]()
       snk.request(99)
       src.sendNext(1)
-      snk.expectNoMsg()
+      snk.expectNoMessage(300.millis)
       src.sendNext(2)
       snk.expectNext((1,false))
       src.sendNext(3)
@@ -72,11 +73,11 @@ class MapInitAndLastTests extends StreamSpec {
       val (src,snk) = generateGraph[Int]()
       snk.ensureSubscription()
       src.sendNext(1)
-      snk.expectNoMsg()
+      snk.expectNoMessage(300.millis)
       src.sendNext(1)
-      snk.expectNoMsg()
+      snk.expectNoMessage(300.millis)
       src.sendComplete()
-      snk.expectNoMsg()
+      snk.expectNoMessage(300.millis)
       snk.request(1)
       snk.expectNext((1,false))
       snk.request(1)

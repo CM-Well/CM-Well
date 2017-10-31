@@ -34,6 +34,7 @@ import org.apache.jena.graph.BlankNodeId
 import org.apache.jena.query.DatasetFactory
 import org.apache.jena.rdf.model.{Seq => _, _}
 import com.typesafe.scalalogging.LazyLogging
+import filters.Attrs
 import logic.{CRUDServiceFS, InfotonValidator}
 import org.apache.jena.riot.{Lang, RDFDataMgr}
 import org.apache.xerces.util.XMLChar
@@ -393,7 +394,7 @@ object LDFormatParser extends LazyLogging {
     }
   }
 
-  def validateAuth(authUtils: AuthUtils)(model: Model, dels: Resource => Boolean, token: Option[Token]): Unit = {
+  def validateAuth(authUtils: AuthUtils)(model: Model, dels: Resource => Boolean, token: Option[Token], nbg: Boolean): Unit = {
     val paths = ListBuffer[String]()
     val it = model.listStatements()
     it.foreach { stmt =>
@@ -411,7 +412,7 @@ object LDFormatParser extends LazyLogging {
         }.get
       }
     }
-    val unauthorizedPaths = authUtils.filterNotAllowedPaths(paths, PermissionLevel.Write, token)
+    val unauthorizedPaths = authUtils.filterNotAllowedPaths(paths, PermissionLevel.Write, token, nbg)
     if (unauthorizedPaths.nonEmpty) throw new security.UnauthorizedException(unauthorizedPaths.mkString("unauthorized paths:\n\t", "\n\t", "\n\n"))
   }
 
@@ -529,7 +530,7 @@ object LDFormatParser extends LazyLogging {
         delSubs.toSet -> filteredRegular
       }
 
-      validateAuth(authUtils)(model,dels,token)
+      validateAuth(authUtils)(model,dels,token,nbg)
 
       if(isOverwrite) {
 
@@ -602,7 +603,7 @@ object LDFormatParser extends LazyLogging {
           }
 
           val allowWriteSysFields = (fieldName: String) => fieldName match {
-            case "uuid"|"path"|"parent"|"lastModified"|"modifiedDate"|"indexTime"|"dataCenter" => authUtils.isOperationAllowedForUser(security.Overwrite, token, evenForNonProdEnv = true)
+            case "uuid"|"path"|"parent"|"lastModified"|"modifiedDate"|"indexTime"|"dataCenter" => authUtils.isOperationAllowedForUser(security.Overwrite, token, nbg, evenForNonProdEnv = true)
             case _ => true
           }
 
@@ -737,7 +738,9 @@ object LDFormatParser extends LazyLogging {
                             nbg: Boolean): Unit = {
     pvl.foreach{
       case (p,v) => {
-        val cmwAttribute = getCmwellFieldNameForUrl(cmwellRDFHelper, p.getNameSpace, nbg, Some(p.getLocalName)).get //TODO: protect against empty Option
+        val predicateUrl = p.getNameSpace
+        require(!predicateUrl.matches(metaOpRegex("(sys|ns)")), s"sys fields not allowed for markDelete failed for: [$predicateUrl${p.getLocalName}]")
+        val cmwAttribute = getCmwellFieldNameForUrl(cmwellRDFHelper, predicateUrl, nbg, Some(p.getLocalName)).get //TODO: protect against empty Option
         val validValue: FieldValue = fieldValueFromObject(v,quad)
         deleteValuesMap.get(infotonPath) match {
           case None =>  deleteValuesMap.update(infotonPath, Map(cmwAttribute -> Set(validValue)))
@@ -756,7 +759,7 @@ object LDFormatParser extends LazyLogging {
   def getCmwellFieldNameForUrl(cmwellRDFHelper: CMWellRDFHelper, predicateUrl: String, nbg: Boolean, localName: Option[String] = None): Option[String] = predicateUrl match {
     case "*" => Some("*")
     case _ => {
-      require(urlValidate(predicateUrl), s"the url: ${predicateUrl} is not a valid url.")
+      require(urlValidate(predicateUrl), s"the url: ${predicateUrl} is not a valid predicate url for ingest.")
       val (url, firstName) = localName match {
         case None => {
           val fName = predicateUrl.reverse.takeWhile(!uriSeparator(_)).reverse

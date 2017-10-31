@@ -43,15 +43,6 @@ object Encoders {
 
   //TODO: instead of using a "can parse" + "parse" methods, why not just using one that returns a Try[DateTime] or Option[DateTime] ???
   private def canParseDate(str : String) : Boolean = FDate.isDate(str)
-  //  {
-  //    try{
-  //      if(str.contains(".")) withDotdateParser.parseDateTime(str) else withoutDotdateParser.parseDateTime(str)
-  //      true
-  //    } catch {
-  //      case t : Throwable => false
-  //    }
-  //
-  //  }
 
   private def parseDate(str : String)  = {
     if(str.contains(".")) withDotdateParser.parseDateTime(str) else withoutDotdateParser.parseDateTime(str)
@@ -144,12 +135,6 @@ object Encoders {
       }
     }
 
-    //  private def processField(node : JsValue) : Set[String] = {
-    //
-    //    val it : Iterable[JsonNode] = node.asScala
-    //    it.toSet[JsonNode].map(x => x.asText())
-    //  }
-
     private def processFields(node : JsValue) : Map[String, Set[FieldValue]] = {
       val mapOpt = node.asOpt[Map[String, Set[FieldValue]]]
 
@@ -177,7 +162,6 @@ object Encoders {
           FileContent(mimeType, length.toLong)
         case (Some(mt), _ , Some(d), None) =>
           val mimeType = mt
-          //val len = l.asText()
           val textData = d
 
           val charset = mimeType.lastIndexOf("charset=") match {
@@ -211,34 +195,8 @@ object Encoders {
     }
 
 
-    private def processCompoundInfoton(node : JsValue) : ObjectInfoton = {
-      /*      val systemFieldOpt = (node \ "system").asOpt[JsValue]
-            val fieldsOpt = (node \ "fields").asOpt[JsValue]
-            val childrenOpt = (node \ "children").asOpt[Vector[Infoton]]
+    private def processCompoundInfoton(node : JsValue) : ObjectInfoton = processObjectInfoton(node)
 
-            val offsetOpt = (node \ "offset").asOpt[Long]
-            val lengthOpt = (node \ "length").asOpt[Long]
-            val totalOpt = (node \ "total").asOpt[Long]
-
-            (systemFieldOpt, fieldsOpt, childrenOpt, offsetOpt, lengthOpt, totalOpt) match {
-              case (None, _, _, _, _, _) => throw InfotonParsingException("System field is not present")
-              case (_, _, None, _, _, _) => throw InfotonParsingException("Children field is not present")
-              case (_, _, _, None, _, _) => throw InfotonParsingException("Offset field is not present")
-              case (_, _, _, _, None, _) => throw InfotonParsingException("Length field is not present")
-              case (_, _, _, _, _, None) => throw InfotonParsingException("Total field is not present")
-              case (Some(sf), Some(f), Some(children), Some(offset), Some(length), Some(total)) =>
-                val systemField = processSystem(sf)
-                val fields = processFields(f)
-
-
-                //CompoundInfoton(system:SystemFields, fields:Option[Map[String, Set[String]]], children:Vector[Infoton], offset:Long=0, length:Long=0, total:Long=0)
-                CompoundInfoton(systemField, Some(fields), children, offset, length, total)
-              case (Some(sf), None, Some(children), Some(offset), Some(length), Some(total)) =>
-                val systemField = processSystem(sf)
-                CompoundInfoton(systemField, None, children, offset, length, total)
-            }*/
-      processObjectInfoton(node)
-    }
 
 
     private def processFileInfoton(node : JsValue) : FileInfoton = {
@@ -249,7 +207,7 @@ object Encoders {
       (systemFieldOpt, fieldsOpt, fileContentsOpt) match {
         case (Some(sf), None, None) =>
           val (path , md , dc )  = processSystem(sf)
-          FileInfoton(path, dc, None, md)//throw InfotonParsingException("No enough parameters")
+          FileInfoton(path, dc, None, md)
         case (None, _ , _) => throw InfotonParsingException("System field is not present")
         case (Some(sf) , Some(f), Some(fc)) =>
           val (path , md , dc ) = processSystem(sf)
@@ -397,14 +355,11 @@ object Encoders {
       val itOpt = (node \ "infotons").asOpt[ListBuffer[JsValue]]
       itOpt match {
         case None => JsError()
-        case Some(it) =>
-          //if(it.toList.map(x => x.asOpt[Infoton]).contains(None)) JsError() else
-          try {
+        case Some(it) => try {
             JsSuccess(BagOfInfotons(it.toList.map(i => i.as[Infoton])))
-          }catch {
-            case t : JsResultException => JsError()
-          }
-
+        } catch {
+          case t : JsResultException => JsError()
+        }
       }
     }
 
@@ -432,22 +387,6 @@ object Encoders {
     }
   }
 
-  implicit object SearchResultsEncoder extends Format[SearchResults] {
-    def reads(json: JsValue): JsResult[SearchResults] = ???
-
-    def writes(o: SearchResults): JsValue = {
-      val structure = new FieldAggregator
-      structure += "type" -> Json.toJson("SearchResults")
-      structure += "fromDate" -> Json.toJson(o.fromDate)
-      structure += "toDate" -> Json.toJson(o.toDate)
-      structure += "total" -> Json.toJson(o.total)
-      structure += "offset" -> Json.toJson(o.offset)
-      structure += "length" -> Json.toJson(o.length)
-      structure += "infotons" -> Json.toJson(o.infotons.map(Json.toJson(_)))
-      structure.get()
-    }
-  }
-
   implicit object PaginationInfoEncoder extends Format[PaginationInfo] {
     def reads(json: JsValue): JsResult[PaginationInfo] = ???
 
@@ -462,16 +401,6 @@ object Encoders {
       structure.get()
     }
   }
-
-//  implicit object BucketsEncoder extends Format[Seq[Bucket]] {
-//
-//    def reads(json:JsValue) : JsResult[Seq[Bucket]] = ???
-//
-//    def writes(buckets:Seq[Bucket]) : JsValue = {
-//      buckets(0).isInstanceOf[SignificantTermsBucket]
-//      JsArray(buckets.map{ b=> JsObject(Seq("key" -> Json.toJson(b.key), "docCount" -> JsNumber(b.docCount)))}.toSeq)
-//    }
-//  }
 
   implicit object BucketEncoder extends Format[Bucket] {
     override def reads(json: JsValue): JsResult[Bucket] = ???
@@ -522,13 +451,6 @@ object Encoders {
             structure += "precision threshold" -> JsNumber(pt)
           }
       }
-
-//      if(af.isInstanceOf[BucketAggregationFilter]) {
-//        val subFilters = af.asInstanceOf[BucketAggregationFilter].subFilters
-//        if(subFilters.size > 0) {
-//          structure += "AggregationsResponse" -> aggre
-//        }
-//      }
 
       structure.get()
     }
@@ -584,18 +506,6 @@ object Encoders {
       }
 
       structure.get
-    }
-  }
-
-  implicit object SearchResponseEncoder extends Format[SearchResponse] {
-    def reads(json: JsValue): JsResult[SearchResponse] = ???
-
-    def writes(o: SearchResponse): JsValue = {
-      val structure = new FieldAggregator
-      structure += "type" -> Json.toJson("SearchResponse")
-      structure += "pagination" -> Json.toJson(o.pagination)
-      structure += "results" -> Json.toJson(o.results)
-      structure.get()
     }
   }
 

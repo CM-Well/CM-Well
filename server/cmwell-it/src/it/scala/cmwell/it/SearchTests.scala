@@ -21,7 +21,7 @@ import cmwell.util.http.SimpleResponse
 import com.typesafe.scalalogging.LazyLogging
 import play.api.libs.json._
 
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration._
 import org.scalatest.{AsyncFunSpec, Inspectors, Matchers}
 
@@ -125,17 +125,24 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
       }
     }
 
-    val sortByLatitude = executeAfterCompletion(f1){
+
+    import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+    def getTypesCache = Http.get[String](cmw / "_types-cache").map(_.payload)
+
+    val typesCache = executeAfterCompletion(f1)(getTypesCache)
+
+    val sortByLatitude = executeAfterCompletion(typesCache){
+
       spinCheck(1.second,true)(Http.get(
         uri = path,
         queryParams = List("op" -> "search","sort-by" -> "-lat.wgs84_pos","format" -> "json","with-data" -> "","pretty" -> "","debug-info" -> "")
       )){ r =>
         val j = Json.parse(r.payload) \ "results"
         (j \ "total": @unchecked) match {
-          case JsDefined(JsNumber(n)) => n.intValue() >= 2
+          case JsDefined(JsNumber(n)) => n.intValue() >= 7
         }
       }.map { res =>
-        withClue(res) {
+        withClue(res + s"\ntypes cache before: ${typesCache.value}\ntypes cache after: " + Try(Await.result(getTypesCache,60.seconds)).getOrElse("getTypesCache failed!!!")) {
           val jInfotonsArr = (Json.parse(res.payload) \ "results" \ "infotons").get.asInstanceOf[JsArray].value
           implicit val ord = orderingForField[Float]("lat.wgs84_pos", ascending = false)
           jInfotonsArr shouldBe sorted
@@ -199,6 +206,152 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
       }
     }
 
+    ///sws.geonames.org/?op=search&recursive&qp=type.rdf::http://xmlns.com/foaf/0.1/Document&gqp=<isDefinedBy.rdfs[countryCode.geonames::US]
+    val gqpFiltering = executeAfterCompletion(f1){
+      spinCheck(1.second,true)(Http.get(
+        uri = path,
+        queryParams = List(
+          "op" -> "search",
+          "format" -> "json",
+          "pretty" -> "",
+          "debug-info" -> "",
+          "recursive" -> "",
+          "qp" -> "type.rdf::http://xmlns.com/foaf/0.1/Document",
+          "gqp" -> "<isDefinedBy.rdfs[countryCode.geonames::US]"))){ r =>
+        (Json.parse(r.payload) \ "results" \ "total": @unchecked) match {
+          case JsDefined(JsNumber(n)) => n.intValue() == 2
+        }
+      }.map { res =>
+        withClue(res) {
+          val j = Json.parse(res.payload)
+          val total = (j \ "results" \ "total").as[Int]
+          total should be(7)
+          val length = (j \ "results" \ "length").as[Int]
+          length should be(2)
+          (j \ "results" \ "infotons").toOption.fold(fail("son.results.infotons was not found")) {
+            case JsArray(infotons) => infotons should have size(2)
+            case notArray => fail(s"json.results.infotons was not an array[$notArray]")
+          }
+        }
+      }
+    }
+
+    val ingestGOT = {
+      val gotN3 = scala.io.Source.fromURL(this.getClass.getResource("/got/data.n3")).mkString
+      Http.post(_in, gotN3, Some("text/n3;charset=UTF-8"), List("format" -> "n3"), tokenHeader).map { res =>
+        withClue(res) {
+          res.status should be(200)
+          Json.parse(res.payload) shouldEqual jsonSuccess
+        }
+      }
+    }
+
+    val awoiaf = cmw / "awoiaf.westeros.org"
+
+    val awoiafSearch = executeAfterCompletion(ingestGOT){
+      spinCheck(1.second,true)(Http.get(
+        awoiaf,
+        List("op" -> "search", "format" -> "json", "length" -> "1")
+      )) { r =>
+        (Json.parse(r.payload) \ "results" \ "total": @unchecked) match {
+          case JsDefined(JsNumber(n)) => n.intValue() == 11
+        }
+      }.map { r =>
+        withClue(r) {
+          r.status should be (200)
+          val j = Json.parse(r.payload)
+          val total = (j \ "results" \ "total").as[Int]
+          total should be(11)
+        }
+      }
+    }
+
+    val searchPersons = executeAfterCompletion(awoiafSearch) {
+      Http.get(awoiaf, List(
+        "op" -> "search",
+        "format" -> "json",
+        "qp" -> "type.rdf::http://xmlns.com/foaf/0.1/Person")).map { r =>
+        withClue(r) {
+          r.status should be(200)
+          val j = Json.parse(r.payload)
+          val total = (j \ "results" \ "total").as[Int]
+          total should be(4)
+        }
+      }
+    }
+
+    val gqpFilterByHomeType = executeAfterCompletion(awoiafSearch) {
+      Http.get(awoiaf, List(
+        "op" -> "search",
+        "format" -> "json",
+        "qp" -> "type.rdf::http://xmlns.com/foaf/0.1/Person",
+        "gqp" -> "<hasTenant.gotns>homeLocation.schema[homeType.gotns::Castle]")).map { r =>
+        withClue(r) {
+          r.status should be(200)
+          val j = Json.parse(r.payload) \ "results"
+          val total = (j \ "total").as[Int]
+          total should be(4)
+          val length = (j \ "length").as[Int]
+          length should be(3)
+        }
+      }
+    }
+
+    val gqpFilterBySkippingGhostNed = executeAfterCompletion(awoiafSearch) {
+      Http.get(awoiaf, List(
+        "op" -> "search",
+        "format" -> "json",
+        "with-data" -> "",
+        "qp" -> "type.rdf::http://xmlns.com/foaf/0.1/Person",
+        "gqp" -> ">childOf.rel<childOf.rel")).map { r =>
+        withClue(r) {
+          r.status should be(200)
+          val j = Json.parse(r.payload) \ "results"
+          val total = (j \ "total").as[Int]
+          total should be(4)
+          val length = (j \ "length").as[Int]
+          length should be(2)
+        }
+      }
+    }
+
+    val gqpFilterAllAlthoughSkippingGhostNed = executeAfterCompletion(awoiafSearch) {
+      Http.get(awoiaf, List(
+        "op" -> "search",
+        "format" -> "json",
+        "with-data" -> "",
+        "qp" -> "type.rdf::http://xmlns.com/foaf/0.1/Person",
+        "gqp" -> ">childOf.rel[type.rdf::http://xmlns.com/foaf/0.1/Person]<childOf.rel")).map { r =>
+        withClue(r) {
+          r.status should be(200)
+          val j = Json.parse(r.payload) \ "results"
+          val total = (j \ "total").as[Int]
+          total should be(4)
+          val length = (j \ "length").as[Int]
+          length should be(0)
+        }
+      }
+    }
+
+//    TODO: empty filter can mean existence -> i.e: no ghost skips w/o explicit filter. not yet implemented though...
+//    val gqpFilterAllAlthoughSkippingGhostNedWithEmptyFilter = executeAfterCompletion(awoiafSearch) {
+//      Http.get(awoiaf, List(
+//        "op" -> "search",
+//        "format" -> "json",
+//        "with-data" -> "",
+//        "qp" -> "type.rdf::http://xmlns.com/foaf/0.1/Person",
+//        "gqp" -> ">childOf.rel[]<childOf.rel")).map { r =>
+//        withClue(r) {
+//          r.status should be(200)
+//          val j = Json.parse(r.payload) \ "results"
+//          val total = (j \ "total").as[Int]
+//          total should be(4)
+//          val length = (j \ "length").as[Int]
+//          length should be(0)
+//        }
+//      }
+//    }
+
     val ex2unitPF: PartialFunction[Throwable,Unit] = {
       case _: Throwable => ()
     }
@@ -210,6 +363,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
       _ <- sortByAltitude.recover(ex2unitPF)
       _ <- sortByScoreFilterByIL.recover(ex2unitPF)
       _ <- recursiveSearch.recover(ex2unitPF)
+      _ <- gqpFiltering.recover(ex2unitPF)
     } yield Seq(293846, 293918, 294640, 294904, 5052287, 6342919, 6468007)).flatMap { seq =>
       Future.traverse(seq){ n =>
         val aboutPath =  path / n.toString / "about.rdf"
@@ -282,13 +436,21 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
     it("get sorted by altitude (some share property)")(sortByAltitude)
     it("get sorted by system.score (filtered by qp)")(sortByScoreFilterByIL)
     it("get nested object using recursive query param")(recursiveSearch)
+    it("filter results with gqp indirect properties")(gqpFiltering)
+    it("ingest GOT data successfully")(ingestGOT)
+    it("verify all GOT data is searcheable")(awoiafSearch)
+    it("retrieve only infotons of type person from GOT")(searchPersons)
+    it("filter person results by 'homeType' indirect property")(gqpFilterByHomeType)
+    it("filter person results with 'ghost skipping' an intermediate missing infoton")(gqpFilterBySkippingGhostNed)
+    it("filter all person results with 'ghost skipping' an intermediate missing infoton if it also contains a filter")(gqpFilterAllAlthoughSkippingGhostNed)
+// TODO: uncomment when implemented:
+//  it("filter all person results with 'ghost skipping' an intermediate missing infoton if it also contains an empty filter")(gqpFilterAllAlthoughSkippingGhostNedWithEmptyFilter)
     describe("delete infotons and search for in") {
       it("succeed deleting nested objects")(deleteAbouts)
       it("not get nested objects using recursive query param after deletes")(recursiveSearch2)
       it("get nested deleted objects using recursive and with-deleted after deletes")(recursiveSearch3)
       it("get nested deleted & historic objects using recursive and with-history after deletes")(recursiveSearch4)
     }
-    //TODO: replicate sort-by tests to old it?
     //TODO: dcSync style search
   }
 }

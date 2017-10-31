@@ -20,18 +20,20 @@ import cmwell.ws.Settings
 import com.typesafe.scalalogging.LazyLogging
 import k.grid.dmap.api.SettingsString
 import k.grid.dmap.impl.persistent.PersistentDMap
-import play.api.mvc.{Action, Controller}
+import play.api.mvc.{Action, Controller, InjectedController}
 import security.AuthUtils
 import javax.inject._
 
+import filters.Attrs
+
 @Singleton
-class BackPressureToggler  @Inject()(authUtils: AuthUtils) extends Controller with LazyLogging {
+class BackPressureToggler  @Inject()(authUtils: AuthUtils) extends InjectedController with LazyLogging {
 
   val BACKPRESSURE_TRIGGER = "cmwell.ws.pushbackpressure.trigger"
 
   def handleBackpressure = Action { implicit req =>
     val tokenOpt = authUtils.extractTokenFrom(req)
-    if (authUtils.isOperationAllowedForUser(security.Admin, tokenOpt)) {
+    if (authUtils.isOperationAllowedForUser(security.Admin, tokenOpt, req.attrs(Attrs.Nbg))) {
       val thresholdFactor = req.getQueryString("pbp")
       thresholdFactor.map(_.toLowerCase) match {
         case Some("old") =>
@@ -43,6 +45,12 @@ class BackPressureToggler  @Inject()(authUtils: AuthUtils) extends Controller wi
         case Some("off") =>
           PersistentDMap.set(BACKPRESSURE_TRIGGER, SettingsString("off"))
           Ok(s"Changed backpressure trigger to off")
+        case Some("all") =>
+          PersistentDMap.set(BACKPRESSURE_TRIGGER, SettingsString("all"))
+          Ok(s"Changed backpressure trigger to all")
+        case Some("bar") =>
+          PersistentDMap.set(BACKPRESSURE_TRIGGER, SettingsString("bar"))
+          Ok(s"Changed backpressure trigger to bar")
         case None =>
           val curValOpt = PersistentDMap.get(BACKPRESSURE_TRIGGER).flatMap(_.as[String])
           curValOpt match {

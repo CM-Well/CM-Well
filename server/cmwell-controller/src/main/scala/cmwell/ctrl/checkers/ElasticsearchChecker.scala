@@ -17,19 +17,20 @@
 package cmwell.ctrl.checkers
 
 import cmwell.ctrl.config.Config
-import cmwell.ctrl.utils.{ProcUtil, HttpUtil}
+import cmwell.ctrl.utils.{HttpUtil, ProcUtil}
 import com.fasterxml.jackson.databind.JsonNode
-
+import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.Future
-import play.libs.Json
+import play.api.libs.json.{JsValue, Json}
+
 import scala.concurrent.ExecutionContext.Implicits.global
 /**
  * Created by michael on 12/3/14.
  */
 
 
-object ElasticsearchChecker extends Checker {
+object ElasticsearchChecker extends Checker with LazyLogging {
   override val storedStates: Int = 10
   override def check: Future[ComponentState] = {
     val url = s"http://${Config.pingIp}:9201/_cluster/health"
@@ -38,12 +39,12 @@ object ElasticsearchChecker extends Checker {
     res.map{
       r =>
         if(r.code == 200) {
-          val json: JsonNode = Json.parse(r.content)
-          val status = json.get("status").asText()
-          val n = json.get("number_of_nodes").asInt(0)
-          val d = json.get("number_of_data_nodes").asInt(0)
-          val p = json.get("active_primary_shards").asInt(0)
-          val s = json.get("active_shards").asInt(0)
+          val json: JsValue = Json.parse(r.content)
+          val status = json.\("status").as[String]
+          val n = (json \ "number_of_nodes").as[Int]
+          val d = (json \ "number_of_data_nodes").as[Int]
+          val p = (json \ "active_primary_shards").as[Int]
+          val s = json \ "active_shards" as[Int] implicitly
           status match {
             case "green" => ElasticsearchGreen(n,d,p,s,hasMaster)
             case "yellow" => ElasticsearchYellow(n,d,p,s,hasMaster)
@@ -54,7 +55,10 @@ object ElasticsearchChecker extends Checker {
         else
           ElasticsearchBadCode(r.code,hasMaster)
     }.recover {
-      case _ : Throwable => ElasticsearchDown(hasMaster)
+      case e: Throwable => {
+        logger.error("ElasticsearchChecker check failed with an exception: ", e)
+        ElasticsearchDown(hasMaster)
+      }
     }
   }
 }

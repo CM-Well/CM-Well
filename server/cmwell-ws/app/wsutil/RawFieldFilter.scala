@@ -87,7 +87,10 @@ case class UnevaluatedQuadFilter(override val fieldOperator: FieldOperator = Mus
                                  valueOperator: ValueOperator,
                                  quadAlias: String) extends RawFieldFilter
 
-
+// TODO: EmptyFieldFilter can mean no ghost skips in yg/gqp
+//case object RawEmptyFieldFilter extends RawFieldFilter {
+//  override def fieldOperator = Must
+//}
 case class RawSingleFieldFilter(override val fieldOperator: FieldOperator = Must,
                                 valueOperator: ValueOperator,
                                 key: Either[UnresolvedFieldKey,DirectFieldKey],

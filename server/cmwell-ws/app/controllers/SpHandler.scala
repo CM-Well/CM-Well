@@ -60,9 +60,8 @@ import javax.inject._
 
 import akka.NotUsed
 import cmwell.ws.util.TypeHelpers
-import cmwell.ws.util.TypeHelpers.asBoolean
-import controllers.SpHandler.logger
-import wsutil.overrideMimetype
+import filters.Attrs
+import play.api.http.FileMimeTypes
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -75,7 +74,8 @@ import scala.util.{Failure, Random, Success, Try}
 */
 
 @Singleton
-class SpHandlerController @Inject()(crudServiceFS: CRUDServiceFS, nbgToggler: NbgToggler)(implicit ec: ExecutionContext) extends Controller with LazyLogging with TypeHelpers {
+class SpHandlerController @Inject()(crudServiceFS: CRUDServiceFS)
+                                   (implicit ec: ExecutionContext, fmt: FileMimeTypes) extends InjectedController with LazyLogging with TypeHelpers {
 
   val parser = new SPParser
 
@@ -105,28 +105,30 @@ class SpHandlerController @Inject()(crudServiceFS: CRUDServiceFS, nbgToggler: Nb
 
             //TODO: consider using `guardHangingFutureByExpandingToSource` instead all the bloat below
             val singleEndln = Source.single(cmwell.ws.Streams.endln)
-            val nbg = req.getQueryString("nbg").flatMap(asBoolean).getOrElse(false)
+            val nbg = req.attrs(Attrs.Nbg)
 
-            val futureThatMayHang = if(rp.bypassCache) task(nbg || nbgToggler.get)(paq) else viaCache(nbg || nbgToggler.get,crudServiceFS)(paq)
+            val futureThatMayHang = if(rp.bypassCache) task(nbg)(paq) else viaCache(nbg,crudServiceFS)(paq)
             val initialGraceTime = 7.seconds
             val injectInterval = 3.seconds
             val backOnTime: QueryResponse => Result = {
               case Plain(v) => Ok(v)
               case Filename(path) => Ok.sendPath(Paths.get(path),onClose = () => files.deleteFile(path))
-              case ThroughPipe(pipe) => ???
+              case ThroughPipe(_) => ???
               case RemoteFailure(e) => wsutil.exceptionToResponse(e)
               case ShortCircuitOverloaded(activeRequests) => ServiceUnavailable("Busy, try again later").withHeaders("Retry-After" -> "10", "X-CM-WELL-N-ACT" -> activeRequests.toString)
+              case Status(_) => !!!
             }
             val prependInjections = () => singleEndln
             val injectOriginalFutureWith: QueryResponse => Source[ByteString,_] = {
               case Plain(v) => Source.single(ByteString(v,StandardCharsets.UTF_8))
               case Filename(path) => FileIO.fromPath(Paths.get(path)).mapMaterializedValue(_.onComplete(_ => files.deleteFile(path)))
-              case ThroughPipe(pipe) => ???
+              case ThroughPipe(_) => ???
               case RemoteFailure(e) => {
                 logger.error("_sp failure",e)
                 Source.single(ByteString("Could not process request",StandardCharsets.UTF_8))
               }
-              case ShortCircuitOverloaded(activeRequests) => Source.single(ByteString("Busy, try again later",StandardCharsets.UTF_8))
+              case ShortCircuitOverloaded(_) => Source.single(ByteString("Busy, try again later",StandardCharsets.UTF_8))
+              case Status(_) => !!!
             }
             val continueWithSource: Source[Source[ByteString, _],NotUsed] => Result = s => Ok.chunked(s.flatMapConcat(x => x))
 
@@ -288,26 +290,26 @@ object PopulateAndQuery extends LazyLogging {
     }
 
     cmwell.util.concurrent.retry(3, 500.millis) {
-      def isEmpty(ds: Dataset): Boolean = {
+      def isCorrupted(ds: Dataset): Boolean = {
         val statements = JenaUtils.discardQuadsAndFlattenAsTriples(ds).listStatements.toVector
 
         def getLongValueOfSystemField(field: String): Option[Long] =
           statements.find(_.getPredicate.getURI.contains(s"/meta/sys#$field")).map(_.getObject.asLiteral().getLong)
 
-        val (total, length) = (getLongValueOfSystemField("total"), getLongValueOfSystemField("length"))
-        val min = List(Option(1L),total,length).flatten.min
-        val dataPredicates = statements.map(_.getPredicate.getURI).filterNot(_.contains("/meta/sys"))
+        val actualRetrievedInfotonsAmount = statements.
+                                              filterNot(_.getPredicate.getURI.contains("/meta/sys")).
+                                              map(_.getSubject).toSet.size
 
-        // if we have total or length and not having that amount of data OR in case total and length aren't present,
-        // we expect to at least one data statement
-        dataPredicates.length < min
+        // if length sysField exists && it is larger than actual Infotons count - it's a data issue and we should return true
+        val lengthOpt = getLongValueOfSystemField("length")
+        lengthOpt.fold(false)(_ > actualRetrievedInfotonsAmount)
       }
 
       httpRequest2(path).flatMap {
         case Left(s) => Future.successful(Left(s)) // not retrying when status code > 200
         case Right(is) => {
           val ds = loadRdfToDataset(is)
-          if(isEmpty(ds)) Future.failed(new Exception(errMsg)) // to retry
+          if(isCorrupted(ds)) Future.failed(new Exception(errMsg)) // to retry
           else Future.successful(Right(ds))
         }
         case _ => !!!

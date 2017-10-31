@@ -48,7 +48,8 @@ libraryDependencies ++= {
     dm("org.yaml", "snakeyaml"),
     dm("org.scala-lang.modules", "scala-xml"),
     dm("com.typesafe.scala-logging", "scala-logging")
-      .exclude("org.slf4j", "slf4j-api")
+      .exclude("org.slf4j", "slf4j-api"),
+    dm("org.codehaus.groovy", "groovy-all") % "test"
   )
 }
 

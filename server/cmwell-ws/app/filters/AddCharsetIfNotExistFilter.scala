@@ -33,7 +33,7 @@ class AddCharsetIfNotExistFilter @Inject() (implicit override val mat: Materiali
       val contentType = request.contentType.getOrElse("text/plain")
 
       val headers = request.headers.headers.filterNot(_._1 == HeaderNames.CONTENT_TYPE) ++ Seq(HeaderNames.CONTENT_TYPE -> s"$contentType;charset=$charset")
-      val modifiedRequestHeader = request.copy(headers = Headers(headers: _*))
+      val modifiedRequestHeader = request.withHeaders(Headers(headers: _*))
 
       next(modifiedRequestHeader)
     }
