@@ -41,6 +41,7 @@ Here are more dataset reference lists:
 
 * [https://en.wikipedia.org/wiki/Linked_data#Datasets](https://en.wikipedia.org/wiki/Linked_data#Datasets)
 * [https://www.w3.org/wiki/DataSetRDFDumps](https://www.w3.org/wiki/DataSetRDFDumps)
+* [Linked Open Data Laundromat](http://lodlaundromat.org)
 
 ## Further Reading ##
 
