@@ -9,7 +9,7 @@
 -->
 
 <head>
-    <title>Stick and ball</title>
+    <title>D3 Based Visualizer</title>
     <script src="d3.min.js"></script>
     <style>
         table {
@@ -176,10 +176,7 @@
             Don't render system infotons
         **/
         function isSystemInfoton(uri) {
-            if (String(uri).endsWith(".sys"))
-                return true;
-            else
-                return false;
+            return String(uri).endsWith(".sys");
         }
 
         /**
