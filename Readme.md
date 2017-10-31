@@ -1,7 +1,11 @@
 [![Gitter chat](https://badges.gitter.im/thomsonreuters/CM-Well.svg)](https://gitter.im/thomsonreuters/CM-Well)
 
 # Introduction #
-CM-Well is a writable Linked Data repository, developed by Thomson Reuters and used as its central Knowledge Graph database. CM-Well (Content Matrix Well) adheres to RDF principles, meaning that its data is in a [standard](https://www.w3.org/RDF/), machine-readable format.
+CM-Well is a writable Linked Data repository, developed by Thomson Reuters and used as its central Knowledge Graph database. CM-Well (Content Matrix Well) adheres to RDF principles, meaning that data is in a [standard](https://www.w3.org/RDF/), machine-readable format.
+
+CM-Well is _not_ a triple store! Our focus is on high scale, immutability of changes and downstream distribution of content. In BI terminology, CM-Well is a [data warehouse](https://en.wikipedia.org/wiki/Data_warehouse),  you might use a triple store downstream as a [data mart](https://en.wikipedia.org/wiki/Data_mart).
+
+You can read more about the key differentiating features of CM-Well in our [paper](https://iswc2017.semanticweb.org/paper-518/) accepted to [2017 International Semantic Web Conference](https://iswc2017.semanticweb.org).
 
 The Thomson Reuters Knowledge Graph contains information about organizations, instruments and people in the world of finance, but you can use CM-Well for any kind of linked data. Thomson Reuters is now offering CM-Well as an Open Source platform for the developer community to use and enrich.
 
@@ -37,6 +41,7 @@ Here are more dataset reference lists:
 
 * [https://en.wikipedia.org/wiki/Linked_data#Datasets](https://en.wikipedia.org/wiki/Linked_data#Datasets)
 * [https://www.w3.org/wiki/DataSetRDFDumps](https://www.w3.org/wiki/DataSetRDFDumps)
+* [Linked Open Data Laundromat](http://lodlaundromat.org)
 
 ## Further Reading ##
 
@@ -48,10 +53,6 @@ Here are some more resources to help you learn about linked data and CM-Well:
 * [Overview of the CM-Well API](docs/Intro.OverviewOfTheCM-WellAPI.md)
 
 # Getting Started #
-
-## Installing and Running CM-Well over Docker ##
-
-*Coming soon.*
 
 ## Basic Write and Read Operations ##
 
