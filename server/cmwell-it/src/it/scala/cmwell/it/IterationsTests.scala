@@ -135,6 +135,7 @@ class IterationsTests extends AsyncFunSpec with Matchers with Inspectors with He
           case JsDefined(JsString(sQuery)) => (Json.parse(sQuery) \\ "range" : @unchecked) match {
             case xs => xs.exists {
               case JsObject(m) => m.keysIterator.exists(_.contains('$'))
+              case _ => false
             }
           }
         }).getOrElse(false)
@@ -159,6 +160,7 @@ class IterationsTests extends AsyncFunSpec with Matchers with Inspectors with He
           case JsDefined(JsString(sQuery)) => (Json.parse(sQuery) \\ "range" : @unchecked) match {
             case xs => xs.exists {
               case JsObject(m) => m.keysIterator.exists(_.contains('$'))
+              case _ => false
             }
           }
         }).getOrElse(false)
