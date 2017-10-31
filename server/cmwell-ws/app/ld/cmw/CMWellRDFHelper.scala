@@ -471,7 +471,7 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
         urlToHashPermanentCache(nbg).put(url, last)
         logger.info(s"search for prefix $prefix succeeded but resulted with infoton: $infoton")
       }
-      case Failure(nf: NoFallbackException) => logger.warn(s"getHashForPrefixAsync for $prefix failed (without fallback)")
+      case Failure(nf: NoFallbackException) => logger.debug(s"getHashForPrefixAsync for $prefix failed (without fallback)")
       case Failure(e) => logger.error(s"getHashForPrefixAsync for $prefix failed",e)
     }
     f.map(t => t._1 -> t._2)
