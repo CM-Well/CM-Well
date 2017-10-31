@@ -106,7 +106,7 @@
 <body>
     <p class='start'>
         <h4>CM-Well graph explorer</h4>
-        <label for="starting">Starting point:</label><input id="starting" type="text" size="50" value='/permid.org/1-4295905573'><button onclick="reset(document.getElementById('starting').value)">Get Data</button><br/>
+        <label for="starting">Starting point:</label><input id="starting" type="text" size="30" value='/permid.org/1-4295905573'><button onclick="reset(document.getElementById('starting').value)">Get Data</button><br/>
     </p>
     <div id="details_popup">
         <table>
@@ -152,9 +152,9 @@
     </div>
     <script>
         /**
-                                                                                    Convert a URI to a full URL request (using an anchor tag to do the parsing)
-                                                                                    The function supports hosting out of localhost (e.g without CM-Well and just static JSON)
-                                                                                **/
+            Convert a URI to a full URL request (using an anchor tag to do the parsing)
+            The function supports hosting out of localhost (e.g without CM-Well and just static JSON)
+        **/
         function formatRequestURL(requested_uri) {
             parser = document.getElementById('url_parser');
             parser.href = requested_uri;
