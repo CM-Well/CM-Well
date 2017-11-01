@@ -35,7 +35,7 @@ Now navigate to the page in your browser:
 
 <img src="./_Images/hello_world.png"/>
 
-A more complex [example](./examples/search_builder.html), a query builder, can be found in the examples directory.
+Two more complex examples, a [query builder](./examples/search_builder.html), and a [D3 integration](./examples/visualizer/index.html), can be found in the examples directory.
 
 ## API Reference ##
 [Add File Infoton](API.Update.AddFileInfoton.md)

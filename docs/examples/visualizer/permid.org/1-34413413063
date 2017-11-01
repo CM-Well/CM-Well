@@ -1,0 +1,211 @@
+{
+  "@id.sys" : [ {
+    "value" : "/permid.org/1-34413413063"
+  } ],
+  "type.sys" : [ {
+    "value" : "ObjectInfoton"
+  } ],
+  "uuid.sys" : [ {
+    "value" : "05584dfb6b03483d6eebc5d95fff8478"
+  } ],
+  "lastModified.sys" : [ {
+    "value" : "2017-07-17T23:52:50.295Z"
+  } ],
+  "path.sys" : [ {
+    "value" : "/permid.org/1-34413413063"
+  } ],
+  "dataCenter.sys" : [ {
+    "value" : "dc1"
+  } ],
+  "indexTime.sys" : [ {
+    "value" : 1500335571715
+  } ],
+  "parent.sys" : [ {
+    "value" : "/permid.org"
+  } ],
+  "type.rdf" : [ {
+    "value" : "http://permid.org/ontology/person/Person",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  } ],
+  "family-name.vcard" : [ {
+    "value" : "Schmidt",
+    "type" : "http://www.w3.org/2001/XMLSchema#string"
+  } ],
+  "ODOfficerID.person" : [ {
+    "value" : "42309",
+    "type" : "http://www.w3.org/2001/XMLSchema#string"
+  }, {
+    "value" : "69088",
+    "type" : "http://www.w3.org/2001/XMLSchema#string"
+  }, {
+    "value" : "48659",
+    "type" : "http://www.w3.org/2001/XMLSchema#string"
+  }, {
+    "value" : "847773",
+    "type" : "http://www.w3.org/2001/XMLSchema#string"
+  }, {
+    "value" : "2788651",
+    "type" : "http://www.w3.org/2001/XMLSchema#string"
+  }, {
+    "value" : "480644",
+    "type" : "http://www.w3.org/2001/XMLSchema#string"
+  } ],
+  "given-name.vcard" : [ {
+    "value" : "Eric",
+    "type" : "http://www.w3.org/2001/XMLSchema#string"
+  } ],
+  "ODPersonID.person" : [ {
+    "value" : "480644",
+    "type" : "http://www.w3.org/2001/XMLSchema#string"
+  } ],
+  "hasGender.vcard" : [ {
+    "value" : "http://www.w3.org/2006/vcard/ns#Male",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  } ],
+  "additional-name.vcard" : [ {
+    "value" : "E.",
+    "type" : "http://www.w3.org/2001/XMLSchema#string"
+  } ],
+  "honorific-prefix.vcard" : [ {
+    "value" : "Dr.",
+    "type" : "http://www.w3.org/2001/XMLSchema#string"
+  } ],
+  "hasTenureInOrganization.person" : [ {
+    "value" : "http://permid.org/1-36436960599",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/1-36433588787",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/1-36437186813",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/1-36433588786",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/1-36433588790",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/1-36433588791",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/1-36433588785",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/1-36436960600",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  } ],
+  "qualifiesForPermid.person" : [ {
+    "value" : true,
+    "type" : "http://www.w3.org/2001/XMLSchema#boolean"
+  } ],
+  "holdsPosition.person" : [ {
+    "value" : "http://permid.org/2-70846c583018f979107e2ec2b624d3d280fd9ec1378ba9d8e317e8e4a2f312bb",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-3fc173cf3bb66fae995b47b0cd02eba8b29401ca2aa4847997fb57626c9023fb",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-b367e58edd0363a86736dad1385b47365b895d5734c5c3d68f003b9792c27698",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-f560953a0c7e311224c10f5e87c2c5d7980fc3ea2c21414dba8aa35ee977a6cf",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-7bc8c059060caf465a6e786e9b20770b76b0ac775682ffc25ae59e64efd36b1d",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-8eec3f3a93caaef28ec73e0683072d4042a5a1c89e3fc4f8dc739da040ce49c9",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-bf93b75440b609f0291689877e77071528fb80dd7f5402265cef2d72ae9b92f5",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-4b0d374de123b48fa3a6f7f5e67e61d61f8729c1cd3cd4231a20b84f55e7cb4c",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-fe3b6fcfc281b4ccf6279fef776261c99b3ddbaa8b534054794db73c2462faf4",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-e2e0cdf77d06ea29b0d4425bc8ff9c45863dd3acf1653854cf922d2fbc7cdfce",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-4466a1011158972a206b3a72978bfdade640e5dbe3225fcb3dbeaac14eae4b0d",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-994a57473f65197fb74a86d19a0faf864507a6e498a5791ba05b4c2de503a9c9",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-5664433eb60a091914a1e21c70282017ab90941f7fb6cc774f8614baa4489eb6",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-1546a4c446d0b36f95cc07d5df30e1bdb3fe767722b0b5a325ac9bad8e6688df",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-c91c676622d0704a5c05447e8f1b621804b28918a4b74aa3030db1967cfc53a3",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-42e25190ada9ba047db119bda6a4d587652c51edf34fe5697fd14682d906c32f",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-9162a80a0d7196421ce3ba4d64dff0b06a8a84271c9c2534cdc584e60f3573ca",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-12f298e1e759b5a88e454625c539745cabf8975eb118163586ab081f7bd6c765",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-3650961603f8c3cbbc5601d49c671c27db3c89ac489171fbcc58be2c4d11caec",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-588b68ca18e97cd284d4ebd788579f77167187b19f81fa69d6ea27d8f145b4b5",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-ffd12941d9b084b379a8bffe4bd6df49cf5c31c7f42f5d15cf54d06e92b0951c",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-d3064f618c1a0abbbd82cbabc5d7c781882992df0c12bc90ec774d5cb5044a22",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-f819a3e8a1f4848fdffeb89f79450a858f0336863f9cac3dfe96b9978fa663b6",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-201c947fd189b8fb9be848868bde0439127ea74c7f0bb42ad68ee11663af906d",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-3329cd4ca4a6f8016323b6d203238f706ae8ee9f8d4bac819026c1b17e05e425",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-aebe998d6bfedea057aeaf68e2ed93a0449f6a30b224ce427b34c73cb0654b34",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-786a51e23fd8a47ca0e71c4a1487202d6ac6b674d4cd20a9ee8aef7c954d9885",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-0eb0e26dfa720b5a1acc66d19ee32b5bc80c123f7c6c99f50999ba140b2c8bb9",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-e313acc6e1473f678ca3619768e6397c36124da70add401bba7841700a1cda74",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/2-51240addd71a41aa7886b3164c3012c96e2e9dcbbf98899788166724aa48c80d",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  } ],
+  "honorific-suffix.vcard" : [ {
+    "value" : "Ph.D.",
+    "type" : "http://www.w3.org/2001/XMLSchema#string"
+  } ],
+  "hasPublicationStatus.tr-common" : [ {
+    "value" : "http://permid.org/ontology/common/publicationStatusPublished",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  } ],
+  "hasQualification.person" : [ {
+    "value" : "http://permid.org/1-37633225287",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/1-37636148136",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  }, {
+    "value" : "http://permid.org/1-37633569950",
+    "type" : "http://www.w3.org/2001/XMLSchema#anyURI"
+  } ]
+}
