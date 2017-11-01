@@ -42,4 +42,6 @@ object StringPath {
 
 class StringPath private(val url: String) {
   def /(pathPart: String) = new StringPath(url + s"/${encode(pathPart,"UTF-8")}")
+  def h(fragment: String) = new StringPath(url + s"#${encode(fragment,"UTF-8")}")
+  @inline def ⋕(fragment: String) = h(fragment) // other hash unicode look-alikes: '⌗','♯' ('#' - %23, is illegal as a method name in scala...)
 }
