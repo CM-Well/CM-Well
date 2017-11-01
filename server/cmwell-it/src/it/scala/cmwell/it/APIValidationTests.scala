@@ -19,7 +19,6 @@ package cmwell.it
 import com.typesafe.config.ConfigFactory
 import org.scalatest._
 import cmwell.util.concurrent.travector
-import cmwell.util.http.SimpleResponse
 import cmwell.util.concurrent.SimpleScheduler.scheduleFuture
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.jena.graph.NodeFactory
@@ -28,12 +27,11 @@ import org.yaml.snakeyaml.Yaml
 import play.api.libs.json.Json
 
 import scala.xml._
-import scala.concurrent.{Await, Future, Promise}
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.language.{implicitConversions, reflectiveCalls}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.io.Source
-import scala.util.{Failure, Success}
 
 class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with OptionValues with Helpers with LazyLogging {
 
@@ -41,7 +39,7 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
 
   val wsConfig = ConfigFactory.load("ws/application.conf")
 
-  val meta = cmw / "meta"
+  val metaSys = cmw / "meta" / "sys"
 
   describe("CM-Well REST API") {
 
@@ -85,7 +83,7 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
       import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
       val path = cmt / "SmallFile"
       val f = Http.post(path, "this is a small file", textPlain, headers = ("X-CM-WELL-TYPE" -> "FILE") :: tokenHeader)
-      f -> executeAfterCompletion(f)(scheduleFuture(indexingDuration)(Http.get(path)))
+      f -> executeAfterCompletion(f)(scheduleFuture(indexingDuration)(spinCheck(100.millis,true)(Http.get(path))(_.status)))
     }
     val (f10,f11) = {
       val path = cmt / "LargeFile"
@@ -310,7 +308,9 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
 
     describe("uuid consistency") {
 
-      it("should be able to post a new Infoton")(f33.map(_.status should be(200)))
+      it("should be able to post a new Infoton")(f33.map { res =>
+        withClue(res)(res.status should be(200))
+      })
 
       it("should be same uuid for json, yaml, and n3")(f34.map {
         case (jr,(yr,nr)) =>
@@ -318,11 +318,14 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
           val uuidFromYaml = new Yaml().load(yr.payload) ⚡ "system" ⚡ "uuid"
           val model: Model = ModelFactory.createDefaultModel
           model.read(nr.payload, null, "N3")
-          val it = model.getGraph.find(NodeFactory.createURI(cmt / "YetAnotherObjectInfoton"), NodeFactory.createURI(meta.url + "/sys#uuid"), null)
-          val uuidFromN3 = it.next().getObject.getLiteral.getLexicalForm
-
-          uuidFromJson.value should be(uuidFromYaml)
-          uuidFromJson.value should be(uuidFromN3)
+          val it = model.getGraph.find(NodeFactory.createURI(cmt / "YetAnotherObjectInfoton"), NodeFactory.createURI(metaSys ⋕ "uuid"), null)
+          val uuidFromN3 = {
+            if (it.hasNext) Some(it.next().getObject.getLiteral.getLexicalForm)
+            else None
+          }
+          withClue(jr)(uuidFromJson should not be empty)
+          withClue(yr)(uuidFromJson.value should be(uuidFromYaml))
+          withClue(nr)(uuidFromJson.value should be(uuidFromN3.value))
       })
     }
 
