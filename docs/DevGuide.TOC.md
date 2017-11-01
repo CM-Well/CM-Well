@@ -4,11 +4,14 @@ The CM-Well Developer Guide provides a detailed description of CM-Well workflows
 
 These are the topics included in the CM-Well Developer Guide:
 
-1. [Basic Queries](DevGuide.BasicQueries.md)
+1. [Using the Curl Utility to Call CM-Well](DevGuide.CurlUtility.md)
+2. [Basic Queries](DevGuide.BasicQueries.md)
 1. [Advanced Queries](DevGuide.AdvancedQueries.md)
+2. [Updating CM-Well](DevGuide.UpdatingCM-Well.md)
 1. [Streaming Data from CM-Well](DevGuide.StreamingDataFromCM-Well.md)
 1. [Subscribing to Real-Time Updates](DevGuide.SubscribingToReal-TimeUpdates.md)
 1. [Using SPARQL Queries on Infotons](DevGuide.UsingSPARQLOnCM-WellInfotons.md)
+2. [Calling Custom Java/Scala Functions from SPARQL Queries](DevGuide.CallingJavaScalaFunctionsFromSPARQLQueries.md)
 1. [Using Elastic Search Statistics](DevGuide.UsingElasticSearchStatistics.md)
 1. [Working with Named Sub-Graphs](DevGuide.WorkingWithNamedSub-Graphs.md)
 1. [Security Features](DevGuide.CM-WellSecurityFeatures.md)
