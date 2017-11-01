@@ -32,6 +32,7 @@ import scala.concurrent.duration._
 import scala.language.{implicitConversions, reflectiveCalls}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.io.Source
+import scala.util.Try
 
 class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with OptionValues with Helpers with LazyLogging {
 
@@ -179,9 +180,9 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
       val path = cmt / "YetAnotherObjectInfoton"
       val data = """{"foo":["bar1","bar2"],"consumer":"cmwell:a/fake/internal/path"}"""
       val f = Http.post(path, data, Some("application/json;charset=utf-8"), headers = ("X-CM-WELL-TYPE" -> "OBJ") :: tokenHeader)
-      val g = executeAfterCompletion(f)(scheduleFuture(indexingDuration)(Http.get(path, List("format" -> "json"))))
-      val h = executeAfterCompletion(f)(scheduleFuture(indexingDuration)(Http.get(path, List("format" -> "yaml"))))
-      val i = executeAfterCompletion(f)(scheduleFuture(indexingDuration)(Http.get(path, List("format" -> "n3"))))
+      val g = executeAfterCompletion(f)(scheduleFuture(indexingDuration)(spinCheck(100.millis,true)(Http.get(path, List("format" -> "json")))(_.status)))
+      val h = executeAfterCompletion(f)(scheduleFuture(indexingDuration)(spinCheck(100.millis,true)(Http.get(path, List("format" -> "yaml")))(_.status)))
+      val i = executeAfterCompletion(f)(scheduleFuture(indexingDuration)(spinCheck(100.millis,true)(Http.get(path, List("format" -> "n3")))(_.status)))
       f -> g.zip(h.zip(i))
     }
 
@@ -314,7 +315,7 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
 
       it("should be same uuid for json, yaml, and n3")(f34.map {
         case (jr,(yr,nr)) =>
-          val uuidFromJson = (Json.parse(jr.payload) \ "system" \ "uuid").asOpt[String]
+          val uuidFromJson = Try(Json.parse(jr.payload) \ "system" \ "uuid").toOption.flatMap(_.asOpt[String])
           val uuidFromYaml = new Yaml().load(yr.payload) ⚡ "system" ⚡ "uuid"
           val model: Model = ModelFactory.createDefaultModel
           model.read(nr.payload, null, "N3")
