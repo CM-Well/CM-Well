@@ -1,18 +1,19 @@
 # Traversing Outbound and Inbound Links with *xg* and *yg* #
 
-* [Traversing Outbound Links with the xg Flag](#hdr1)
-	* [Example: Using xg to Retrieve Parent Organizations](#hdr2)
-	* [Operands of the xg Flag](#hdr3)
-		* [xg with No Operands](#hdr4)
+* [Traversing Outbound Links with the **xg** Flag](#hdr1)
+	* [Example: Using **xg** to Retrieve Parent Organizations](#hdr2)
+	* [Operands of the **xg** Flag](#hdr3)
+		* [**xg** with No Operands](#hdr4)
 		* [Expansion Level](#hdr5)
 		* [Expansion Field](#hdr6)
 		* [The Outbound Link Operator '>'](#hdr7)
 		* [The Field Wildcard](#hdr8)
 		* [Field Filters](#hdr9)
-* [Traversing Outbound and Inbound Links with the yg Flag](#hdr10)
-* [Using the **yg-chunk-size*Parameter](#hdr11)
-* [Using xg and yg Together](#hdr12)
-* [Usage Scenario Using Outbound and Inbound Links](#hdr13)
+* [Traversing Outbound and Inbound Links with the **yg** Flag](#hdr10)
+* [Using the **yg-chunk-size** Parameter](#hdr11)
+* [Using **xg** and **yg** Together](#hdr12)
+	* [Ghost Skips](#hdr13)
+* [Usage Scenario Using Outbound and Inbound Links](#hdr14)
 
 Infoton field values sometimes refer to other CM-Well entities, and are themselves links to infotons. Thus, infotons "point to" each other via fields with infoton URI values. If infoton A has a field value that is the URI of infoton B, then A is said to have an outbound link to B, and B has an inbound link from A.
 
@@ -25,10 +26,10 @@ You do this by using the **xg** and **yg** parameters described in the following
 >**Note:** You cannot use the **xg** and **yg** parameters together with the **with-history** flag. This is because the inbound and outbound links are not well-defined when including multiple historical versions of each infoton. An attempt to combine graph traversal (use of **xg** and **yg**) with historical versions will result in an error. 
 
 <a name="hdr1"></a>
-## Traversing Outbound Links with the xg Flag ##
+## Traversing Outbound Links with the *xg* Flag ##
 
 <a name="hdr2"></a>
-### Example: Using xg to Retrieve Parent Organizations ###
+### Example: Using *xg* to Retrieve Parent Organizations ###
 
 The following query searches for Organization infotons whose name contains "Marriott Ownership" and whose city contains "Orlando":
 
@@ -170,12 +171,12 @@ If we're interested both in Marriott Ownership Resorts' immediate parent and its
 Now that you've seen an example of what you can achieve with the **xg** flag, read on to learn about more **xg** options and about the **yg** flag.
 
 <a name="hdr3"></a>
-### Operands of the xg Flag ###
+### Operands of the *xg* Flag ###
 
 The **xg** flag can appear with or without other operands. The following sections describe these options.
 
 <a name="hdr4"></a>
-#### xg with No Operands ####
+#### *xg* with No Operands ####
 
 When the **xg** flag appears with no operands, the query results will contain (in addition to the infotons that match the query) all infotons that are outbound links of the matched infotons. These outbound links may be infotons of any type.
 
@@ -256,7 +257,7 @@ For example:
 This query retrieves the outbound links in the **hasImmediateParent** fields of the matched infotons, but only those whose city field value is "New York".
 
 <a name="hdr10"></a>
-## Traversing Outbound and Inbound Links with the yg Flag ##
+## Traversing Outbound and Inbound Links with the *yg* Flag ##
 You may want to define an expansion clause that refers to inbound links instead of (or as well as) outbound links. To do this, you use the **yg** flag.
 
 Much of the syntax for the **yg** flag is the same as for the **xg** flag, so please read the sections above describing **xg** operands.
@@ -274,7 +275,7 @@ For example:
 This query retrieves all infotons that point to the matched infotons through their immediate parents field, and also all infotons that point to the level 1 inbound links through their immediate parents field. In other words, it retrieves the child companies of the child companies of the matched infotons. 
 
 <a name="hdr11"></a>
-### Using the **yg-chunk-size** Parameter ###
+### Using the *yg-chunk-size* Parameter ###
 
 You can add the **yg-chunk-size** parameter to a  **yg** query.The **yg-chunk-size** value determines how many infoton paths (that resulted from the query preceding the **yg** query) will be processed at a time in a single **yg** query. This prevents heavy **yg** queries from "starving" other operations. 
 The **yg** query is processed in chunks of **yg-chunk-size** until all input paths are processed.
@@ -289,6 +290,27 @@ You can use the **xg** and **yg** flags together in the same search. In this cas
 This can be useful in cases where you want to collect a certain group of infotons using **yg**, and then expand them along a certain link using **xg**. This feature is often used in conjunction with SPARQL queries, the generate the input for the SPARQL query.
 
 <a name="hdr13"></a>
+### Ghost Skips ###
+
+In some cases, when using **xg** and **yg** to filter infotons according to their indirect relationships with other infotons, you may be interested in filtering by the relationship itself, while the intermediate infoton within the relationship is not important.
+
+Here is an example:
+
+<img src="./_Images/yg-ghost-skips.png"> 
+
+Suppose we want to find PersonB, who is the grandparent of PersonA. We can determine this relationship by finding that the PersonA and PersonB infotons both point to PersonC, with the respective relationships of isChildOf and isParentOf. However, we can do this even if the PersonC infoton doesn't exist, that is, only its URI exists and appears in the fields of PersonA and PersonB.
+
+CM-Well tolerates this situation when applying **xg/yg** filters. That is, it skips over such "ghost" infotons as long as their URIs satisfy the relationship defined in the filter.
+
+If, on the other hand, if you want to constrain your query to return only results for which the intermediate infoton *does* exist, you can do this by adding a filter on the intermediate infoton's fields. For example:
+
+    \>aField[system.uuid:]<bField
+
+This filter requires only that the intermediate infoton have a ```system.uuid``` field with any value, and it works because every infoton has a ```system.uuid``` field. Alternatively, for our example searching for Person infotons, we could add this filter:
+
+    \>childOf[type.rdf:Person]<parentOf
+
+<a name="hdr14"></a>
 ## Usage Scenario Using Outbound and Inbound Links ##
 
 Now that we understand how to work with outbound and inbound links, let's examine a scenario for which this feature is useful.

@@ -57,7 +57,7 @@ to-hint | Optional; to be used in retries. A timestamp which is the upper limit 
     < X-CMWELL-RT: 5986ms
     < X-CM-WELL-TO: 1425817923290
     < X-CMWELL-Version: 1.5.51
-    < X-CMWELL-Hostname: c114jwwcsnd02.int.thomsonreuters.com
+    < X-CMWELL-Hostname: cmwellhost.com
     < X-CM-WELL-POSITION: 5gAAMTQyNTgxNzkyMzI5MCwxNDI1ODE4MDcwNDU4fC9wZXJtaWQub3JnfDEwMDAwMDA
     < Content-Type: application/json;charset=UTF8
     < Date: Wed, 01 Nov 2017 15:09:16 GMT

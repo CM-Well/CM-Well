@@ -43,7 +43,7 @@ position | Defines the position of the chunk in the stream |  Position ID return
 
 ### Call ###
 
-    curl -vX GET <cm-well-host>/example/Geography/_consume?position=eQA5eJwzNDE1sDQ3NDI0tjQ2rjGoMTE0MDI1NjS0BIEa_dSKxNyCnFS9_KJ0fc-8lMyyzJTSxJzimpoa&format=json
+    curl -vX GET <cm-well-host>/_consume?position=eQA5eJwzNDE1sDQ3NDI0tjQ2rjGoMTE0MDI1NjS0BIEa_dSKxNyCnFS9_KJ0fc-8lMyyzJTSxJzimpoa&format=json
 
 ### Results ###
 
@@ -54,7 +54,7 @@ The following results are truncated.
     < X-CMWELL-RT: 546ms
     < X-CM-WELL-N-LEFT: 162130
     < X-CMWELL-Version: 1.5.51
-    < X-CMWELL-Hostname: c649taycsnd19.int.data.com
+    < X-CMWELL-Hostname: 127.0.0.1.int.data.com
     < X-CM-WELL-POSITION: UACDeJwzNDEzMrYwMjc1NzS3qNFPSSxJ1CvJyM8tzs8rSi0tSS0q1kvOz60pqSxI1VPJqfIzdHO0ssooKSmw0ocoLk7OSM1NLNZLy8xLzEvOTMzBol0_N7UkEaRa38jAwFIXhAz13VPz04sSCzIqAYuQLXc
     < Content-Length: 149580
     < Content-Type: application/json-seq;charset=UTF8
