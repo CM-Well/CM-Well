@@ -670,7 +670,7 @@ package object wsutil extends LazyLogging {
         else nextFilteringHop(dexps.head, dexps.tail, newSurvivors)
       }.andThen {
         case Success(is) => logger.trace(s"nextFilteringHop: finished with survivors[${is.map(_.path).mkString(", ")}]")
-        case Failure(ex) => logger.error(s"nextFilteringHop($dexp,$dexps,$survivors)")
+        case Failure(ex) => logger.error(s"nextFilteringHop($dexp,$dexps,$survivors)",ex)
       }
     }
 
