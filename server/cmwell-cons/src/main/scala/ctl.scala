@@ -686,7 +686,7 @@ abstract class Host(user: String,
     def name: String = "Elasticsearch boot"
 
     def com(host: String): Try[String] = {
-      val r = command("curl -s GET http://" + checkHost + esHealthAddress, host, false)
+      val r = command("curl -sX GET http://" + checkHost + esHealthAddress, host, false)
       r match {
         case Success(v) =>
           Try(JSON.parseFull(v.trim).get.asInstanceOf[Map[String, Any]]("number_of_nodes").toString.trim.split('.')(0))
@@ -713,10 +713,10 @@ abstract class Host(user: String,
 
     override def continueCondition(v: String, waitForModuleFor: Int): Boolean = v.contains("known-cmwell-hosts")
 
-    override def com(host: String): Try[String] = command("curl -s GET http://" + host + ":9000/meta/sys?format=ntriples")
+    override def com(host: String): Try[String] = command("curl -sX GET http://" + host + ":9000/meta/sys?format=ntriples")
   }
 
-  def webServerStatus(host: String) = command("curl -Is GET http://" + host + ":9000/ | head -1")
+  def webServerStatus(host: String) = command("curl -Is http://" + host + ":9000/ | head -1")
 
   case class WebServiceLock() extends ModuleLock {
     def name: String = "Web Service boot"
@@ -753,7 +753,7 @@ abstract class Host(user: String,
   def sudoComm(com: String) = s"""sudo bash -c \"\"\"${com}\"\"\""""
 
   def elasticsearchStatus(host: String) = {
-    val r = command("curl -s GET http://" + ips(0) + esHealthAddress, host, false)
+    val r = command("curl -sX GET http://" + ips(0) + esHealthAddress, host, false)
     r match {
       case Success(v) =>
         Try(JSON.parseFull(v.trim).get.asInstanceOf[Map[String, Any]]("status").toString.trim.split('.')(0))
@@ -1401,7 +1401,7 @@ abstract class Host(user: String,
   }
 
   def esHealth: Try[String] = {
-    command("curl -s GET http://" + pingAddress + esHealthAddress, ips(0), false)
+    command("curl -sX GET http://" + pingAddress + esHealthAddress, ips(0), false)
   }
 
 
