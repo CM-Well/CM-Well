@@ -39,7 +39,7 @@
     <td><a href="CM-WellOldWebInterface.md">Old CM-Well Web Interface</a></td>
   </tr>
 <tr>
-    <th rowspan="12" align=left><a href="DevGuide.TOC.md">Developer Guide</a></th>
+    <th rowspan="13" align=left><a href="DevGuide.TOC.md">Developer Guide</a></th>
     <td><a href="DevGuide.CurlUtility.md">Using the Curl Utility to Call CM-Well</a></td>
   </tr>
 <tr>
@@ -74,6 +74,9 @@
   </tr>
 <tr>
     <td><a href="DevGuide.DosAndDonts.md">Dos and Don'ts</a></td>
+  </tr>
+<tr>
+    <td><a href="DevGuide.BestPractices.TOC.md">Best Practices</a></td>
   </tr>
 <tr>
     <th align=left>API Reference</th>

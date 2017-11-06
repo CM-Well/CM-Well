@@ -15,6 +15,7 @@
 	* [Use Old UI Link](#hdrOldUI)
 	* [Results List Scrollbar](#hdr8)
 	* [Search Controls](#hdr17)
+	* [Navigating by Type](#hdr18)
 * [Running CM-Well Queries in the UI](#hdr22)
 * [Special CM-Well Folders and Files](#hdr23)
 * [Configuring Infoton Link Display by Type](#hdr24)
@@ -178,6 +179,34 @@ To search for a value in all infoton fields:
    <img src="./_Images/new-ui-search-folder.png"/>
 1. Type the value you want to search for in the edit box on the left.
 2. Click the **Search** button. Search results are displayed in a list on the left.
+
+---------------------------------
+<a name="hdr18"></a>
+### Navigating by Type ###
+
+Sometimes you may want to retrieve infotons according to their RDF type. For instance, you may want to examine only the infotons whose RDF type is Person.
+
+At the top of the page in the CM-Well web interface, you can see the type section. This displays all the RDF types of all the infotons retrieved by the current URL (which may or may not include query parameters). After each type, the number of infotons of that type is displayed in parentheses.
+
+<img src="./_Images/new-ui-type-section.png"/>
+
+To show only a specific type, click on the type name in the type section.
+
+<img src="./_Images/new-ui-type-click-on-person.png"/>
+
+The list of infotons is filtered to show only the selected type.
+
+To expand the type section to display all types, click the down arrow at the right-hand side of the type section.
+
+<img src="./_Images/new-ui-type-down-arrow.png"/>
+
+The type section expands to show all available types.
+
+<img src="./_Images/new-ui-type-expanded.png"/>
+
+You can click the up-arrow on the right to hide all type lines but the first.
+
+
 
 ---------------------------------
 <a name="hdr22"></a>
