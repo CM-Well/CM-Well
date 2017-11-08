@@ -17,9 +17,9 @@ package security
 
 import javax.inject._
 
-import cmwell.domain.{Everything, FileInfoton, Infoton}
+import cmwell.domain.{Everything, FileContent, FileInfoton, Infoton}
 import cmwell.fts.{PaginationParams, PathFilter}
-import cmwell.util.concurrent.{Combiner, SingleElementLazyAsyncCache, Validator}
+import cmwell.util.concurrent.{SingleElementLazyAsyncCache, Validator}
 import com.typesafe.scalalogging.LazyLogging
 import logic.CRUDServiceFS
 import play.api.libs.json.{JsValue, Json}
@@ -32,32 +32,28 @@ import scala.util.Try
 class AuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionContext) extends LazyLogging {
   // TODO Do not Await.result... These should return Future[Option[JsValue]]]
   def getRole(roleName: String, nbg: Boolean): Option[JsValue] = {
-    val esDependingFut = data(nbg).getAndUpdateIfNeeded.map(_.roles.get(roleName))
-    Await.result(
-      cmwell.util.concurrent.timeoutOptionFuture(esDependingFut, 3.seconds).flatMap {
-        case Some(roleInfotonOpt) => Future.successful(roleInfotonOpt)
-        case None =>
-          logger.warn(s"AuthCache Graceful Degradation: Search failed! Trying direct read for Role($roleName):")
-          getFromCasAndExtractJson(s"/meta/auth/roles/$roleName", nbg)
-      }
-      , 6.seconds
-    )
+    val f = getAuthInfoton(_.roles.get(roleName), s"/meta/auth/roles/$roleName", nbg)
+    Await.result(f, 6.seconds)
   }
 
   def getUserInfoton(userName: String, nbg: Boolean): Option[JsValue] = {
-    val esDependingFut = data(nbg).getAndUpdateIfNeeded.map(_.users.get(userName))
-    Await.result(
-      cmwell.util.concurrent.timeoutOptionFuture(esDependingFut, 3.seconds).flatMap {
-        case Some(userInfotonOpt) => Future.successful(userInfotonOpt)
-        case None =>
-          logger.warn(s"AuthCache Graceful Degradation: Search failed! Trying direct read for User($userName):")
-          getFromCasAndExtractJson(s"/meta/auth/users/$userName", nbg)
-      }
-      , 6.seconds
-    )
+    val f = getAuthInfoton(_.users.get(userName), s"/meta/auth/users/$userName", nbg)
+    Await.result(f, 6.seconds)
   }
 
   def invalidate(nbg: Boolean): Boolean = data(nbg).reset().isSuccess
+
+  private def getAuthInfoton(picker: AuthData => Option[JsValue], infotonPath: String, nbg: Boolean): Future[Option[JsValue]] = {
+    val esDependingFut = data(nbg).getAndUpdateIfNeeded map picker
+    // TODO Once FTS supports timeout param, there won't be any need to invoke timeoutFuture.
+    cmwell.util.concurrent.timeoutOptionFuture(esDependingFut, 3.seconds).flatMap {
+      case Some(authInfotonOpt) =>
+        Future.successful(authInfotonOpt)
+      case None =>
+        logger.warn(s"AuthCache Graceful Degradation: Search failed! Trying direct read for $infotonPath...")
+        getFromCasAndExtractJson(infotonPath, nbg)
+    }
+  }
 
   private def getFromCasAndExtractJson(infotonPath: String, nbg: Boolean) = crudServiceFS.getInfoton(infotonPath, None, None, nbg = nbg).map {
     case Some(Everything(i)) =>
@@ -99,13 +95,13 @@ class AuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
   }
 
   private def extractPayload(infoton: Infoton): Option[JsValue] = infoton match {
-    case FileInfoton(_, _, _, _, _, Some(c), _) =>
-      val jsValOpt = Try(Json.parse(new String(c.data.get, "UTF-8"))).toOption
+    case FileInfoton(_, _, _, _, _, Some(FileContent(Some(payload), _, _, _)), _) =>
+      val jsValOpt = Try(Json.parse(payload)).toOption
       if(jsValOpt.isEmpty)
         logger.warn(s"AuthInfoton(${infoton.path}) has invalid JSON content.")
       jsValOpt
     case _ =>
-      logger.warn(s"AuthInfoton(${infoton.path}) does not exist, or is not a FileInfoton.")
+      logger.warn(s"AuthInfoton(${infoton.path}) does not exist, or is not a FileInfoton with valid content.")
       None
   }
 
