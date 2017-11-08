@@ -1,4 +1,8 @@
-# Traversing Outbound and Inbound Links with *xg* and *yg* #
+# Traversing Outbound and Inbound Links (*xg*, *yg* and *gqp*) #
+
+----------
+
+**Page contents:**
 
 * [Traversing Outbound Links with the **xg** Flag](#hdr1)
 	* [Example: Using **xg** to Retrieve Parent Organizations](#hdr2)
@@ -14,6 +18,9 @@
 * [Using **xg** and **yg** Together](#hdr12)
 	* [Ghost Skips](#hdr13)
 * [Usage Scenario Using Outbound and Inbound Links](#hdr14)
+* [Using **gqp** to Filter by Inbound/Outbound Relationships](#hdr15)
+
+----------
 
 Infoton field values sometimes refer to other CM-Well entities, and are themselves links to infotons. Thus, infotons "point to" each other via fields with infoton URI values. If infoton A has a field value that is the URI of infoton B, then A is said to have an outbound link to B, and B has an inbound link from A.
 
@@ -248,7 +255,9 @@ You can add field filters to constrain the additional infotons retrieved by the 
 
     xg=<outboundExpansion>[field filter]
 
-The syntax of the field filter is the same as for the [qp parameter](API.FieldConditionSyntax.md), except that only the partial match and exact match operators (: and ::) are supported for the **xg** flag. (The fuzzy match operator ~ is not supported for **xg**, because this would produce a prohibitively expensive query.)
+The syntax of the field filter is the same as for the [qp parameter](API.FieldConditionSyntax.md), except for the following differences:
+* Only the partial match and exact match operators (: and ::) are supported for the **xg** flag. (The fuzzy match operator ~ is not supported for **xg**.)
+* Range queries (<,>,<<,>>) are not supported for **xg**.
 
 For example:
 
@@ -292,7 +301,7 @@ This can be useful in cases where you want to collect a certain group of infoton
 <a name="hdr13"></a>
 ### Ghost Skips ###
 
-In some cases, when using **xg** and **yg** to filter infotons according to their indirect relationships with other infotons, you may be interested in filtering by the relationship itself, while the intermediate infoton within the relationship is not important.
+In some cases, when using **yg** to filter infotons according to their indirect relationships with other infotons, you may be interested in filtering by the relationship itself, while the intermediate infoton within the relationship is not important.
 
 Here is an example:
 
@@ -300,7 +309,7 @@ Here is an example:
 
 Suppose we want to find PersonB, who is the grandparent of PersonA. We can determine this relationship by finding that the PersonA and PersonB infotons both point to PersonC, with the respective relationships of isChildOf and isParentOf. However, we can do this even if the PersonC infoton doesn't exist, that is, only its URI exists and appears in the fields of PersonA and PersonB.
 
-CM-Well tolerates this situation when applying **xg/yg** filters. That is, it skips over such "ghost" infotons as long as their URIs satisfy the relationship defined in the filter.
+CM-Well tolerates this situation when applying **yg** filters. That is, it skips over such "ghost" infotons as long as their URIs satisfy the relationship defined in the filter.
 
 If, on the other hand, if you want to constrain your query to return only results for which the intermediate infoton *does* exist, you can do this by adding a filter on the intermediate infoton's fields. For example:
 
@@ -324,3 +333,28 @@ You can see that in order to retrieve the organization that issued the quote, we
     <cm-well-host>/permid.org?op=search&qp=RIC.mdaas::VAC&with-data&yg=>IsQuoteOf.mdaas<primaryInstrument.mdaas
     
 When we retrieve the desired organization's infoton, we can obtain its address value.
+
+<a name="hdr15"></a>
+# Using *gqp* to Filter by Inbound/Outbound Relationships #
+
+In some cases you may want to filter a group of infotons according to their inbound/outbound links, without actually retrieving those links.
+
+For example, suppose you want to retrieve all persons of an age greater than 32, who live in New York. This condition must be applied to the following linked infotons:
+
+<img src="./_Images/gqp-example-relation.png">
+
+We would like to retrieve only the Person infotons, while applying filters on the linked AddressRelation and Address infotons, but without retrieving those linked infotons.
+
+There are ways to address this using **yg** and SPARQL queries, but they have limitations. For instance, a SPARQL query might terminate before finding results, due to the limit on the number of interim results that it can examine (10,000). Alternatively you could create a materialized view to address this scenario, but you'd have to update it every time a person changes their address.
+
+The **gqp** flag is intended to handle this requirement. Here is an example of a search clause that uses **gqp** for the scenario described above:
+
+    <cm-well-host>/?op=search&qp=type.rdf:Person,age>32&gqp=<addressOfPerson>physicalAddress[city::NY]
+
+The **gqp** flag's syntax is identical to the **yg** flag's syntax, but it operates differently. As **yg** traverses the links defined in its value expression, it adds all the infotons in the link paths to its results. **gqp** does not add infotons to the results in the set returned by the search query. Rather it attempts to evaluate its expression for each "root" infoton, and if it fails at some stage in the evaluation or the expression evaluates as **false**, then the root infoton from which the path originated is *removed* from the result set.
+
+The **gqp** flag can be used together with **xg** and **yg**. In this case, **gqp** takes precedence, meaning that first results are filtered by the **gqp** expression, and then expanded by **xg** and **yg**.
+
+>**Notes:** 
+>* The **gqp** flag can be applied to both **consume** and **search** operations. Note that when using **gqp** with consume, it is possible to filter out the entire chunk and therefore to receive no results for some iterations. If in this case you receive a 204 error, but the position token in the header is different than the one sent, you still need to keep consuming.
+>* The [ghost skips](#hdr13) behavior applies to **qgp** as well as **yg**.
