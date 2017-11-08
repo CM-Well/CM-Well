@@ -30,19 +30,35 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 @Singleton
 class AuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionContext) extends LazyLogging {
   // TODO Do not Await.result... These should return Future[Option[JsValue]]]
-  def getRole(roleName: String, nbg: Boolean): Option[JsValue] = Await.result(data(nbg).getAndUpdateIfNeeded.map(_.roles.get(roleName)).recoverWith { case _ =>
-    logger.warn(s"AuthCache Graceful Degradation: Search failed! Trying direct read for Role($roleName):")
-    getFromCrudAndExtractJson(s"/meta/auth/roles/$roleName", nbg)
-  }, 5.seconds)
+  def getRole(roleName: String, nbg: Boolean): Option[JsValue] = {
+    val esDependingFut = data(nbg).getAndUpdateIfNeeded.map(_.roles.get(roleName))
+    Await.result(
+      cmwell.util.concurrent.timeoutOptionFuture(esDependingFut, 3.seconds).flatMap {
+        case Some(roleInfotonOpt) => Future.successful(roleInfotonOpt)
+        case None =>
+          logger.warn(s"AuthCache Graceful Degradation: Search failed! Trying direct read for Role($roleName):")
+          getFromCasAndExtractJson(s"/meta/auth/roles/$roleName", nbg)
+      }
+      , 6.seconds
+    )
+  }
 
-  def getUserInfoton(userName: String, nbg: Boolean): Option[JsValue] = Await.result(data(nbg).getAndUpdateIfNeeded.map(_.users.get(userName)).recoverWith { case _ =>
-    logger.warn(s"AuthCache Graceful Degradation: Search failed! Trying direct read for User($userName):")
-    getFromCrudAndExtractJson(s"/meta/auth/users/$userName", nbg)
-  }, 5.seconds)
+  def getUserInfoton(userName: String, nbg: Boolean): Option[JsValue] = {
+    val esDependingFut = data(nbg).getAndUpdateIfNeeded.map(_.users.get(userName))
+    Await.result(
+      cmwell.util.concurrent.timeoutOptionFuture(esDependingFut, 3.seconds).flatMap {
+        case Some(userInfotonOpt) => Future.successful(userInfotonOpt)
+        case None =>
+          logger.warn(s"AuthCache Graceful Degradation: Search failed! Trying direct read for User($userName):")
+          getFromCasAndExtractJson(s"/meta/auth/users/$userName", nbg)
+      }
+      , 6.seconds
+    )
+  }
 
   def invalidate(nbg: Boolean): Boolean = data(nbg).reset().isSuccess
 
-  private def getFromCrudAndExtractJson(infotonPath: String, nbg: Boolean) = crudServiceFS.getInfoton(infotonPath, None, None, nbg = nbg).map {
+  private def getFromCasAndExtractJson(infotonPath: String, nbg: Boolean) = crudServiceFS.getInfoton(infotonPath, None, None, nbg = nbg).map {
     case Some(Everything(i)) =>
       extractPayload(i)
     case other =>
