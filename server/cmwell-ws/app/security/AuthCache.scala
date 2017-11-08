@@ -26,6 +26,7 @@ import play.api.libs.json.{JsValue, Json}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.util.Try
 
 @Singleton
 class AuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionContext) extends LazyLogging {
@@ -99,9 +100,12 @@ class AuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
 
   private def extractPayload(infoton: Infoton): Option[JsValue] = infoton match {
     case FileInfoton(_, _, _, _, _, Some(c), _) =>
-      Some(Json.parse(new String(c.data.get, "UTF-8")))
+      val jsValOpt = Try(Json.parse(new String(c.data.get, "UTF-8"))).toOption
+      if(jsValOpt.isEmpty)
+        logger.warn(s"AuthInfoton(${infoton.path}) has invalid JSON content.")
+      jsValOpt
     case _ =>
-      logger.warn(s"AuthInfoton(${infoton.path}) does not exist, or is not a FileInfoton with valid JSON content.")
+      logger.warn(s"AuthInfoton(${infoton.path}) does not exist, or is not a FileInfoton.")
       None
   }
 
