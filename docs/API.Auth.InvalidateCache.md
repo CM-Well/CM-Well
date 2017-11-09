@@ -1,0 +1,30 @@
+# Function: *Invalidate Cache* #
+
+## Description ##
+
+CM-Well manages a cache with authentication information for better performance. If you've made a change to authentication information such as creating a new user, creating a new role or changing a password, and you want the change to take immediate effect, you will need to refresh this cache. You do this by calling the **invalidate-cache** API.
+
+>**Note:** You will need an access token with admin permissions to call this API.
+
+## Syntax ##
+
+**URL:** \<CMWellHost\>/_auth?op=invalidate-cache -H "X-CM-Well-Token:\<AdminToken\>"
+**REST verb:** GET
+**Mandatory parameters:** Admin-permissions token in the **X-CM-Well-Token** header
+
+## Code Example ##
+
+### Call ###
+
+    <CMWellHost>/_auth?op=invalidate-cache -H "X-CM-Well-Token:<AdminToken>"
+
+### Results ###
+
+    {"sucess":true}
+
+## Related Topics ##
+[CM-Well Security Features](DevGuide.CM-WellSecurityFeatures.md)
+[Login API](API.Login.Login.md)
+[Managing CM-Well Users](DevGuide.ManagingUsers.md)
+[Generate Password API](API.Auth.GeneratePassword.md)
+[Change Password API](API.Auth.ChangePassword.md)
