@@ -24,7 +24,7 @@ import javax.inject._
 import actions._
 import akka.NotUsed
 import akka.pattern.AskTimeoutException
-import akka.stream.scaladsl.Source
+import akka.stream.scaladsl.{GraphDSL, Source}
 import akka.util.{ByteString, Timeout}
 import cmwell.common.file.MimeTypeIdentifier
 import cmwell.domain.{BagOfInfotons, CompoundInfoton, DeletedInfoton, FString, PaginationInfo, SearchResponse, SearchResults, _}
@@ -912,8 +912,7 @@ callback=< [URL] >
 
     val indexTime: Long = request.getQueryString("index-time").flatMap(asLong).getOrElse(0L)
     val withMeta = request.queryString.keySet("with-meta")
-    //TODO: length should determine the overall length (cutoff iteratee)
-    //val length = request.getQueryString("length").flatMap(asLong)
+    val length = request.getQueryString("length").flatMap(asLong)
     val lengthHint = request.getQueryString("length-hint").flatMap(asInt).getOrElse(100)
     val normalizedPath = normalizePath(request.path)
     val qpOpt = request.getQueryString("qp")
@@ -976,17 +975,20 @@ callback=< [URL] >
 
             val src = streams.qStream(firstTimeStamp,path,history,deleted,descendants,lengthHint,fieldFilters,nbg)
 
-//            if (!withData) source.flatMapConcat(identity)
-//            //we already retry internally in IRW, but apparently, sometimes it's not enough: http://gitlab:8082/cm-well/cm-well/issues/136
-//            else source.flatMapConcat(_.mapAsync(getAvailableProcessors)(thinfoton => retry(8,50.millis,2)(CRUDServiceFS.getInfotonByUuidAsync(thinfoton.uuid).map {
-//              case FullBox(i) => i.indexTime.fold(cmwell.domain.addIndexTime(i, Some(thinfoton.indexTime)))(_ => i)
-//              case EmptyBox => throw new NoSuchElementException(s"could not retrieve uuid [${thinfoton.uuid}] from cassandra.")
-//              case BoxedFailure(e) => throw new Exception(s"could not retrieve uuid [${thinfoton.uuid}] from cassandra.",e)
-//            })))
-
-            val ss: Source[ByteString,NotUsed] = {
-              if (withData.isEmpty) src.via(Flows.searchThinResultToByteString(formatter))
-              else src.via(Flows.searchThinResultToFatInfoton(nbg,crudServiceFS)).via(Flows.infotonToByteString(formatter))
+            val ss: Source[ByteString,NotUsed] = length.fold{
+              if (withData.isEmpty)
+                src.via(Flows.searchThinResultToByteString(formatter))
+              else src
+                .via(Flows.searchThinResultToFatInfoton(nbg,crudServiceFS))
+                .via(Flows.infotonToByteString(formatter))
+            }{ l =>
+              if (withData.isEmpty) src
+                .take(l)
+                .via(Flows.searchThinResultToByteString(formatter))
+              else src
+                .via(Flows.searchThinResultToFatInfoton(nbg,crudServiceFS))
+                .take(l)
+                .via(Flows.infotonToByteString(formatter))
             }
 
             val contentType = {
@@ -996,7 +998,7 @@ callback=< [URL] >
                 overrideMimetype(formatType.mimetype, request)._2
             }
 
-            Ok.chunked(ss).as(contentType) //TODO: `.withHeaders("X-CM-WELL-N" -> total.toString)`
+            Ok.chunked(ss.batch(128,identity)(_ ++ _)).as(contentType) //TODO: `.withHeaders("X-CM-WELL-N" -> total.toString)`
           }
         }.recover(errorHandler)
       }

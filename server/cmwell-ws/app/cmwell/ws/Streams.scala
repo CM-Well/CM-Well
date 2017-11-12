@@ -106,9 +106,11 @@ object Streams extends LazyLogging {
       .mapAsyncUnordered(parallelism)(str => crudServiceFS.getInfotonByUuidAsync(str.uuid, nbg))
       .collect{ case FullBox(i) => i}
 
-    def searchThinResultsToFatInfotons(nbg: Boolean, crudServiceFS: CRUDServiceFS): Flow[SearchThinResults,Infoton,NotUsed] = Flow[SearchThinResults]
+    def searchThinResultsFlattened: Flow[SearchThinResults,SearchThinResult,NotUsed] = Flow[SearchThinResults]
       .mapConcat { case SearchThinResults(_, _, _, str, _) => str.toList }
-      .via(searchThinResultToFatInfoton(nbg,crudServiceFS))
+
+    def searchThinResultsToFatInfotons(nbg: Boolean, crudServiceFS: CRUDServiceFS): Flow[SearchThinResults,Infoton,NotUsed] =
+      searchThinResultsFlattened.via(searchThinResultToFatInfoton(nbg,crudServiceFS))
 
     def iterationResultsToFatInfotons(nbg: Boolean, crudServiceFS: CRUDServiceFS): Flow[IterationResults,Infoton,NotUsed] = Flow[IterationResults]
       .collect { case IterationResults(_, _, Some(iSeq), _, _) => iSeq}
