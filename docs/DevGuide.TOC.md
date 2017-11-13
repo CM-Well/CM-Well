@@ -15,6 +15,7 @@ These are the topics included in the CM-Well Developer Guide:
 1. [Using Elastic Search Statistics](DevGuide.UsingElasticSearchStatistics.md)
 1. [Working with Named Sub-Graphs](DevGuide.WorkingWithNamedSub-Graphs.md)
 1. [Security Features](DevGuide.CM-WellSecurityFeatures.md)
+2. [User Management](DevGuide.ManagingUsers.md)
 1. [Dos and Don'ts](DevGuide.DosAndDonts.md)
 1. [Best Practices](DevGuide.BestPractices.TOC.md)
 
