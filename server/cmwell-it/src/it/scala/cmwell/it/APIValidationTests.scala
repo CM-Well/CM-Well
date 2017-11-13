@@ -91,7 +91,7 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
       val data: Array[Byte] = Array.fill(8*1000*1024)(1.toByte)
       val checksum = cmwell.util.string.Hash.sha1(data)
       val f = Http.post(path, data, Some("application/octet-stream"), headers = ("X-CM-WELL-TYPE" -> "FILE") :: tokenHeader)
-      f -> executeAfterCompletion(f)(scheduleFuture(indexingDuration)(Http.get(path).map(_ -> checksum)))
+      f -> executeAfterCompletion(f)(scheduleFuture(indexingDuration)(spinCheck(100.millis,true)(Http.get(path))(_.status).map(_ -> checksum)))
     }
     val (f12,f13) = {
       val path = cmt / "ObjectInfotonWithoutContent"
@@ -128,12 +128,10 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
         body =  "Text content for File Infoton",
         contentType = textPlain,
         headers = ("X-CM-WELL-TYPE" -> "FILE") :: tokenHeader)
-      val fs = Future.sequence((0 to 30).foldLeft(List(f)) {
-        case (fl, i) =>
-          val nf = Http.post(cmt / s"fw-link-${i + 1}", s"/cmt/cm/test/fw-link-$i", textPlain, headers = ("X-CM-WELL-LINK-TYPE" -> "2") :: ("X-CM-WELL-TYPE" -> "LN") :: tokenHeader)
-          nf :: fl
-      })
-      fs -> executeAfterCompletion(fs)(scheduleFuture(indexingDuration)(Http.get(cmt / "fw-link-31")))
+      val fs = travector(0 to 30){ i =>
+        Http.post(cmt / s"fw-link-${i + 1}", s"/cmt/cm/test/fw-link-$i", textPlain, headers = ("X-CM-WELL-LINK-TYPE" -> "2") :: ("X-CM-WELL-TYPE" -> "LN") :: tokenHeader)
+      }
+      fs -> executeAfterCompletion(fs)(scheduleFuture(indexingDuration)(spinCheck(100.millis,true)(Http.get(cmt / "fw-link-31"))(_.status)))
     }
     val (f24,f25,f26,f27) = {
       val jsonObj = Json.obj("name" -> "TestObject", "title" -> "title1")
