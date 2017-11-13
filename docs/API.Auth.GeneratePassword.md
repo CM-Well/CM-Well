@@ -2,7 +2,7 @@
 
 ## Description ##
 
-When creating a new CM-Well user, you can use the **generate-password** API to generate a random password and its encoded digest value. This password can be changed later if required (see [Change Password API](API.Auth.ChangePassword.md)).
+When creating a new CM-Well user, you can use the **generate-password** API to generate a random password and its basic-encoded value. This password can be changed later if required (see [Change Password API](API.Auth.ChangePassword.md)).
 
 >**Note:** You will need an access token with admin permissions to call this API.
 

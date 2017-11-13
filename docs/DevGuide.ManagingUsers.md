@@ -1,6 +1,6 @@
 # Managing CM-Well Users #
 
-In order to access CM-Well, API clients need a user entity to be defined in CM-Well. Users have a unique username, a password, read and write permissions for accessing CM-Well folders, and optionally one or more roles that confer additional read and write permissions.
+In order to perform write operations on CM-Well, API clients need a user entity to be defined in CM-Well. Users have a unique username, a password, read and write permissions for accessing CM-Well folders, and optionally one or more roles that confer additional read and write permissions.
 
 When a user logs into CM-Well successfully with valid username and password values, the user receives an access token that's valid for 24 hours after its creation. This token must be passed in the **X-CM-WELL-TOKEN** HTTP header for any API call that requires permissions (e.g. any call that updates CM-Well).
 
@@ -45,7 +45,9 @@ digest | String | Optional. The user's password, encrypted using **bcrypt** and 
 digest2 | String | Optional. The MD5 encryption of "\<username\>:cmwell:\<password\>". This value is checked when a user logs in with HTTP Digest Authentication. See [Generating User Passwords](#hdrGenPassword).
 roles | Array of strings | Optional. An array of roles belonging to the user. See [Managing User Roles](#hdrRoles) for more details.
 
->**Note**: The JSON body does not include the username, as the username is "stored" as the FileInfoton's name.
+>**Notes**: 
+>* The JSON body does not include the username, as the username is "stored" as the FileInfoton's name.
+>* To call the **_login** API, the user will need either a **digest** or a **digest2** value defined.
 
 Here is an example of a user FileInfoton's JSON body:
 
@@ -78,7 +80,7 @@ You can use the old CM-Well UI to create a user with a convenient GUI.
 1. Browse to \<cm-well-host\>/_login.
 2. Enter your admin user and password.
 1. Click on the **Use old UI** link at the top-right corner.
-2. Enter Edit Mode.
+2. Enter Edit Mode by clicking on the pencil icon (under the well image to the right).
 3. Navigate to ```/meta/auth/users```.
 4. Click on the **+** sign at the end if the users list. The **Add User** dialog is displayed and a password is generated for the user.
    <img src="./_Images/old-ui-add-user.png">
@@ -104,7 +106,7 @@ You can use the [change-password API](API.Auth.GeneratePassword.md) to change an
 
 ## Deleting Users ##
 
-To delete a user, simply delete the FileInfoton with the user's details.
+To delete a user, simply delete the FileInfoton with the user's details, then call the [Invalidate Cache API](API.Auth.InvalidateCache.md) to make the deletion effective immediately.
 
 <a name="hdrRoles"></a>
 ## Managing User Roles ##

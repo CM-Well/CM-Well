@@ -4,7 +4,9 @@
 
 CM-Well manages a cache with authentication information for better performance. If you've made a change to authentication information such as creating a new user, creating a new role or changing a password, and you want the change to take immediate effect, you will need to refresh this cache. You do this by calling the **invalidate-cache** API.
 
->**Note:** You will need an access token with admin permissions to call this API.
+>**Notes:** 
+>* You will need an access token with admin permissions to call this API.
+>* If you have several CM-Well nodes, then in order to refresh the caches on all nodes, you'll need to send a separate **invalidate-cache** command to each node in your cluster.
 
 ## Syntax ##
 
