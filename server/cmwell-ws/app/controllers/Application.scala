@@ -1544,9 +1544,9 @@ callback=< [URL] >
 
                     val qp = getQueryString("qp").fold("") ("&qp=" + URLEncoder.encode(_, "UTF-8"))
 
-                    val length = "&length=" + searchResult.length
+                    val lengthParam = "&length=" + searchResult.length
 
-                    val linkBase = searchUrl + format + descendants + recursive + from + to + qp + length
+                    val linkBase = searchUrl + format + descendants + recursive + from + to + qp + lengthParam
                     val self = linkBase + "&offset=" + searchResult.offset
                     val first = linkBase + "&offset=0"
                     val last = searchResult.length match {
