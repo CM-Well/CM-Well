@@ -1571,21 +1571,19 @@ callback=< [URL] >
                 fSearchResult.flatMap { case (ok, searchResult) =>
                   extractFieldsMask(getQueryString("fields"),typesCache(nbg),cmwellRDFHelper, nbg).map { fieldsMask =>
                     // Prepare pagination info
-                    val linkBase = cmWellBase + normalizedPath + getQueryString("format").map {
-                      "?format=" + _
-                    }.getOrElse("?") + getQueryString("with-descendants").map {
-                      "&with-descendants=" + _
-                    }.getOrElse("?") + getQueryString("recursive").map {
-                      "&recursive=" + _
-                    }.getOrElse("") + "&op=search" + searchResult.fromDate.map {
-                      f => "&from=" + URLEncoder.encode(fullDateFormatter.print(f), "UTF-8")
-                    }.getOrElse("") +
-                      searchResult.toDate.map {
-                        t => "&to=" + URLEncoder.encode(fullDateFormatter.print(t), "UTF-8")
-                      }.getOrElse("") + getQueryString("qp").map {
-                      "&qp=" + URLEncoder.encode(_, "UTF-8")
-                    }.getOrElse("") + "&length=" + searchResult.length
+                    val searchUrl = cmWellBase + normalizedPath + "?op=search"
+                    val format = getQueryString("format").fold("")("&format=" .+)
+                    val descendants = getQueryString("with-descendants").fold("") ("&with-descendants=" .+)
+                    val recursive = getQueryString("recursive").fold("") ("&recursive=" .+)
 
+                    val from = searchResult.fromDate.fold("") (f => "&from=" + URLEncoder.encode(fullDateFormatter.print(f), "UTF-8"))
+                    val to = searchResult.toDate.fold("") (t => "&to=" + URLEncoder.encode(fullDateFormatter.print(t), "UTF-8"))
+
+                    val qp = getQueryString("qp").fold("") ("&qp=" + URLEncoder.encode(_, "UTF-8"))
+
+                    val lengthParam = "&length=" + searchResult.length
+
+                    val linkBase = searchUrl + format + descendants + recursive + from + to + qp + lengthParam
                     val self = linkBase + "&offset=" + searchResult.offset
                     val first = linkBase + "&offset=0"
                     val last = searchResult.length match {
