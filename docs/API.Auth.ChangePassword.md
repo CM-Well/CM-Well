@@ -8,7 +8,7 @@ Usually new users are assigned random passwords. After creating a CM-Well user, 
 
 ## Syntax ##
 
-**URL:** \<CMWellHost\>/_auth?op=change-password&current=$2a$10$7AnXsjks.IZXTbpRiAGN4OQItwiz4sgxM49lvTiCjWgOhbbOQkg2m&new=12345678 -H "X-CM-Well-Token:\<AdminToken\>"
+**URL:** \<CMWellHost\>/_auth?op=change-password&current=87654321&new=12345678 -H "X-CM-Well-Token:\<AdminToken\>"
 **REST verb:** GET
 **Mandatory parameters:** Admin-permissions token in the **X-CM-Well-Token** header
 

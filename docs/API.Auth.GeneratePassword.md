@@ -2,21 +2,19 @@
 
 ## Description ##
 
-When creating a new CM-Well user, you can use the **generate-password** API to generate a random password and its basic-encoded value. This password can be changed later if required (see [Change Password API](API.Auth.ChangePassword.md)).
-
->**Note:** You will need an access token with admin permissions to call this API.
+When creating a new CM-Well user, you can use the **generate-password** API to generate a random password and its encrypted value. This password can be changed later if required (see [Change Password API](API.Auth.ChangePassword.md)).
 
 ## Syntax ##
 
-**URL:** \<CMWellHost\>/_auth?op=generate-password -H "X-CM-Well-Token:\<AdminToken\>"
+**URL:** \<CMWellHost\>/_auth?op=generate-password
 **REST verb:** GET
-**Mandatory parameters:** Admin-permissions token in the **X-CM-Well-Token** header
+**Mandatory parameters:** None.
 
 ## Code Example ##
 
 ### Call ###
 
-    curl <cm-well-host>/_auth?op=generate-password -H "X-CM-Well-Token:<AdminToken>"
+    curl <cm-well-host>/_auth?op=generate-password
 
 ### Results ###
 

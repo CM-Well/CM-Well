@@ -54,13 +54,13 @@ Here is an example of a user FileInfoton's JSON body:
     {
       "paths": [
 	      {
-		      "id": "\/",
+		      "id": "/",
 		      "sign": "+",
 		      "recursive": true,
 		      "permissions": "r"
 	      },
 	      {
-		      "id": "\/test.example.org",
+		      "id": "/test.example.org",
 		      "sign": "+",
 		      "recursive": true,
 		      "permissions": "rw"
@@ -127,7 +127,7 @@ If a user's FileInfoton has the **roles** field, then the user takes on the perm
 
 1. In order for the new role information to take effect, refresh the CM-Well authentication cache using the following command:
 
-    ```\<cm-well-host\>/_auth?op=invalidate-cache -H "X-CM-Well-Token:<AdminToken>"```
+    ```<cm-well-host>/_auth?op=invalidate-cache -H "X-CM-Well-Token:<AdminToken>"```
 
 ## Related Topics ##
 [CM-Well Security Features](DevGuide.CM-WellSecurityFeatures.md)

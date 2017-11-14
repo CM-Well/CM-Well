@@ -2,7 +2,7 @@
 
 ## Description ##
 
-CM-Well manages a cache with authentication information for better performance. If you've made a change to authentication information such as creating a new user, creating a new role or changing a password, and you want the change to take immediate effect, you will need to refresh this cache. You do this by calling the **invalidate-cache** API.
+CM-Well manages a cache with authorization information for better performance. If you've made a change to authorization information such as creating a new user, creating a new role or changing a password, and you want the change to take immediate effect, you will need to refresh this cache. You do this by calling the **invalidate-cache** API.
 
 >**Notes:** 
 >* You will need an access token with admin permissions to call this API.
@@ -22,7 +22,9 @@ CM-Well manages a cache with authentication information for better performance. 
 
 ### Results ###
 
-    {"sucess":true}
+    {"success":true}
+
+>**Note:** Occasionally you may get a failure response when attempting to refresh the cache. This might be because a cache update is in progress when you make your request. If this happens, please retry the **invalidate-cache** request. 
 
 ## Related Topics ##
 [CM-Well Security Features](DevGuide.CM-WellSecurityFeatures.md)
