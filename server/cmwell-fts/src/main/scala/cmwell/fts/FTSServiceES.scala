@@ -1497,6 +1497,7 @@ case object GreaterThanOrEquals extends ValueOperator
 case object LessThan extends ValueOperator
 case object LessThanOrEquals extends ValueOperator
 case object Like extends ValueOperator
+
 case class PathFilter(path: String, descendants: Boolean)
 
 sealed trait FieldFilter {
@@ -1507,18 +1508,22 @@ sealed trait FieldFilter {
 case class SingleFieldFilter(override val fieldOperator: FieldOperator = Must, valueOperator: ValueOperator,
                              name: String, value: Option[String]) extends FieldFilter {
   def filter(i: Infoton): SoftBoolean = {
-    require(valueOperator == Contains || valueOperator == Equals,s"unsupported ValueOperator: $valueOperator")
+    require(valueOperator != Like,s"unsupported ValueOperator: $valueOperator")
 
-    val valOp: (String,String) => Boolean = valueOperator match {
-      case Contains => (infotonValue,inputValue) => infotonValue.contains(inputValue)
-      case Equals => (infotonValue,inputValue) => infotonValue == inputValue
-      case _ => ???
+    val valOp: (FieldValue,String) => Boolean = valueOperator match {
+      case Contains => (infotonValue,inputValue) => infotonValue.value.toString.contains(inputValue)
+      case Equals => (infotonValue,inputValue) => infotonValue.compareToString(inputValue).map(0.==).getOrElse(false)
+      case GreaterThan => (infotonValue,inputValue) => infotonValue.compareToString(inputValue).map(0.<).getOrElse(false)
+      case GreaterThanOrEquals => (infotonValue,inputValue) => infotonValue.compareToString(inputValue).map(0.<=).getOrElse(false)
+      case LessThan => (infotonValue,inputValue) => infotonValue.compareToString(inputValue).map(0.>).getOrElse(false)
+      case LessThanOrEquals => (infotonValue,inputValue) => infotonValue.compareToString(inputValue).map(0.>=).getOrElse(false)
+      case Like => ???
     }
 
     fieldOperator match {
-      case Must => i.fields.flatMap(_.get(name).map(_.exists(fv => value.forall(v => valOp(fv.value.toString,v))))).fold[SoftBoolean](False)(SoftBoolean.hard)
-      case Should => i.fields.flatMap(_.get(name).map(_.exists(fv => value.forall(v => valOp(fv.value.toString,v))))).fold[SoftBoolean](SoftFalse)(SoftBoolean.soft)
-      case MustNot => i.fields.flatMap(_.get(name).map(_.forall(fv => !value.exists(v => valOp(fv.value.toString,v))))).fold[SoftBoolean](True)(SoftBoolean.hard)
+      case Must => i.fields.flatMap(_.get(name).map(_.exists(fv => value.forall(v => valOp(fv,v))))).fold[SoftBoolean](False)(SoftBoolean.hard)
+      case Should => i.fields.flatMap(_.get(name).map(_.exists(fv => value.forall(v => valOp(fv,v))))).fold[SoftBoolean](SoftFalse)(SoftBoolean.soft)
+      case MustNot => i.fields.flatMap(_.get(name).map(_.forall(fv => !value.exists(v => valOp(fv,v))))).fold[SoftBoolean](True)(SoftBoolean.hard)
     }
   }
 }
