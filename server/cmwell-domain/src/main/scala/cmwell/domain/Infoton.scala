@@ -28,7 +28,7 @@ import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat}
 import scala.language.implicitConversions
 import scala.collection.immutable.SortedSet
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Try}
+import scala.util.{Failure, Success, Try}
 
 /**
  * User: israel
@@ -402,21 +402,31 @@ sealed trait ContentPortion { def infoton: Infoton }
 case class UnknownNestedContent(infoton: Infoton) extends ContentPortion
 case class Everything(infoton: Infoton) extends ContentPortion
 
+final class ComparisonImpossible private(val valueType: String, val input: String, cause: Throwable) extends Exception(s"can't compare [$input] with values of type [$valueType]",cause)
+object ComparisonImpossible{
+  def apply(valueType: String, input: String): ComparisonImpossible = new ComparisonImpossible(valueType, input, null)
+  def apply(valueType: String, input: String, cause: Throwable): ComparisonImpossible = new ComparisonImpossible(valueType, input, cause)
+  def unapply(ex: ComparisonImpossible): Option[(String, String, Option[Throwable])] = Some((ex.valueType,ex.input,Option(ex.getCause)))
+}
+
 sealed trait FieldValue {
   def value: Any
   def size: Long
   def quad: Option[String]
   def sType: String = this.getClass.getSimpleName.substring(1)
+  def compareToString(unparsedValue: String): Try[Int]
 }
 
 case class FNull(quad: Option[String]) extends FieldValue {
   def value = null
   def size = 0
+  override def compareToString(unparsedValue: String): Try[Int] = Failure(ComparisonImpossible("FNull",unparsedValue))
 }
 
 case class FExtra[T](value: T, quad: Option[String]) extends FieldValue {
   def size = 0
   override def toString() : String = value.toString
+  override def compareToString(unparsedValue: String): Try[Int] = Failure(ComparisonImpossible("FExtra",unparsedValue))
 }
 
 object FieldValue {
@@ -462,6 +472,11 @@ object FieldValue {
 case class FInt(value : Int, quad: Option[String]) extends FieldValue {
   override def toString() : String = value.toString
   override def size: Long = 4
+  override def compareToString(unparsedValue: String): Try[Int] =
+    Try(Integer.parseInt(unparsedValue))
+      .transform(
+        parsedValue => Try(value.compare(parsedValue)),
+        cause => Failure(ComparisonImpossible("FInt",unparsedValue,cause)))
 }
 
 object FInt {
@@ -471,6 +486,11 @@ object FInt {
 case class FLong(value : Long, quad: Option[String]) extends FieldValue {
   override def toString() : String = value.toString
   override def size: Long = 8
+  override def compareToString(unparsedValue: String): Try[Int] =
+    Try(java.lang.Long.parseLong(unparsedValue))
+      .transform(
+        parsedValue => Try(value.compare(parsedValue)),
+        cause => Failure(ComparisonImpossible("FLong",unparsedValue,cause)))
 }
 
 object FLong {
@@ -480,6 +500,11 @@ object FLong {
 case class FBigInt(value : java.math.BigInteger, quad: Option[String]) extends FieldValue {
   override def toString() : String = value.toString
   override def size: Long = value.bitLength()
+  override def compareToString(unparsedValue: String): Try[Int] =
+    Try(BigInt(unparsedValue).underlying())
+      .transform(
+        parsedValue => Try(value.compareTo(parsedValue)),
+        cause => Failure(ComparisonImpossible("FBigInt",unparsedValue,cause)))
 }
 
 object FBigInt {
@@ -489,6 +514,11 @@ object FBigInt {
 case class FFloat(value : Float, quad: Option[String]) extends FieldValue {
   override def toString() : String = value.toString
   override def size: Long = 4
+  override def compareToString(unparsedValue: String): Try[Int] =
+    Try(java.lang.Float.parseFloat(unparsedValue))
+      .transform(
+        parsedValue => Try(value.compare(parsedValue)),
+        cause => Failure(ComparisonImpossible("FFloat",unparsedValue,cause)))
 }
 
 object FFloat {
@@ -498,6 +528,11 @@ object FFloat {
 case class FDouble(value : Double, quad: Option[String]) extends FieldValue {
   override def toString() : String = value.toString
   override def size: Long = 8
+  override def compareToString(unparsedValue: String): Try[Int] =
+    Try(java.lang.Double.parseDouble(unparsedValue))
+      .transform(
+        parsedValue => Try(value.compare(parsedValue)),
+        cause => Failure(ComparisonImpossible("FDouble",unparsedValue,cause)))
 }
 
 object FDouble {
@@ -507,6 +542,11 @@ object FDouble {
 case class FBigDecimal(value : java.math.BigDecimal, quad: Option[String]) extends FieldValue {
   override def toString() : String = value.toString
   override def size: Long = value.precision
+  override def compareToString(unparsedValue: String): Try[Int] =
+    Try(BigDecimal(unparsedValue).underlying())
+      .transform(
+        parsedValue => Try(value.compareTo(parsedValue)),
+        cause => Failure(ComparisonImpossible("FBigDecimal",unparsedValue,cause)))
 }
 
 object FBigDecimal {
@@ -516,11 +556,14 @@ object FBigDecimal {
 case class FExternal(value : String, dataTypeURI: String, quad: Option[String]) extends FieldValue {
   require(dataTypeURI.forall(_ != '$'))
   override def toString() : String = value
-  override def size: Long = value.getBytes("UTF-8").size + dataTypeURI.getBytes("UTF-8").size
-  def getDataTypeURI: String = if (dataTypeURI.take(4) == "xsd#")
-    "http://www.w3.org/2001/XMLSchema" + dataTypeURI.drop(3)
-  else
-    dataTypeURI
+  override def size: Long = value.getBytes("UTF-8").length + dataTypeURI.getBytes("UTF-8").length
+  def getDataTypeURI: String =
+    if (dataTypeURI.take(4) == "xsd#")
+      "http://www.w3.org/2001/XMLSchema" + dataTypeURI.drop(3)
+    else dataTypeURI
+
+  override def compareToString(unparsedValue: String): Try[Int] =
+    Try(Ordering.String.compare(value,unparsedValue))
 }
 
 object FExternal {
@@ -530,6 +573,9 @@ object FExternal {
 case class FString(value : String, lang: Option[String], quad: Option[String]) extends FieldValue {
   override def toString() : String = value
   override def size: Long = value.getBytes("UTF-8").size
+
+  override def compareToString(unparsedValue: String): Try[Int] =
+    Try(Ordering.String.compare(value,unparsedValue))
 }
 
 object FString {
@@ -547,6 +593,9 @@ case class FReference(value : String, quad: Option[String]) extends FieldValue w
       logger.warn(s"value [$value] has bad prefix, and is not a CM-Well reference (though it is a field value of type FReference).")
       value
     }
+
+  override def compareToString(unparsedValue: String): Try[Int] =
+    Try(Ordering.String.compare(value,unparsedValue))
 }
 
 object FReference {
@@ -557,6 +606,12 @@ object FReference {
 case class FBoolean(value : Boolean, quad: Option[String]) extends FieldValue {
   override def toString() : String = value.toString
   override def size: Long = 4
+
+  override def compareToString(unparsedValue: String): Try[Int] =
+    Try(java.lang.Boolean.parseBoolean(unparsedValue))
+      .transform(
+        parsedValue => Try(value.compare(parsedValue)),
+        cause => Failure(ComparisonImpossible("FBoolean",unparsedValue,cause)))
 }
 
 object FBoolean {
@@ -589,6 +644,18 @@ final class FDate(private val temp : String, val quad: Option[String]) extends F
   override def toString() : String = value
   def getDate: DateTime = inner
   override def size: Long = value.getBytes("UTF-8").size
+
+  override def compareToString(unparsedValue: String): Try[Int] = {
+    FDate.stringToDate(unparsedValue)
+      .recoverWith {
+        case e: Throwable => {
+          val v = FDate.fixFormattingIfNeeded(temp)
+          FDate.stringToDate(v).recoverWith { case _ => Failure(e) }
+        }
+      }.transform(
+      parsedValue => Try(inner.compareTo(parsedValue)),
+      cause => Failure(ComparisonImpossible("FDate", unparsedValue, cause)))
+  }
 }
 
 object FDate extends LazyLogging {
