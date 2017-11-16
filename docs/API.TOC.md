@@ -13,7 +13,9 @@ The following list shows general topics relating to many CM-Well API calls:
 * [Using the with-data Flag](API.UsingTheWith-dataFlag.md)
 * [Using the with-history Flag](API.UsingTheWith-historyFlag.md)
 * [Using the with-deleted Flag](API.UsingTheWith-deletedFlag.md)
-* [Traversing Outbound and Inbound Links with xg and yg](API.TraversingOutboundAndInboundLinksWithXgAndYg.md)
+* [Using the blocking Flag](API.UsingTheBlockingFlag.md)
+* [Using Conditional Updates](API.UsingConditionalUpdates.md)
+* [Traversing Outbound and Inbound Links (*xg*, *yg* and *gqp*)](API.TraversingOutboundAndInboundLinksWithXgAndYg.md)
 * [Return Codes](API.ReturnCodes.md)
 
 The following table shows all the CM-Well API calls:
@@ -125,6 +127,16 @@ The following table shows all the CM-Well API calls:
   </tr>
 <tr>
     <td><a href="API.Update.TrackUpdates.md">Track Updates</a></td>
+  </tr>
+<tr>
+    <th rowspan="3"><i>Authorization</i></th>
+    <td><a href="API.Auth.GeneratePassword.md">Generate Password</a></td>
+  </tr>
+  <tr>
+    <td><a href="API.Auth.ChangePassword.md">Change Password</a></td>
+  </tr>
+<tr>
+    <td><a href="API.Auth.InvalidateCache.md">Invalidate Cache</a></td>
   </tr>
 </table>
 

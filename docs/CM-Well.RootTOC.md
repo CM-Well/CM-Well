@@ -39,7 +39,7 @@
     <td><a href="CM-WellOldWebInterface.md">Old CM-Well Web Interface</a></td>
   </tr>
 <tr>
-    <th rowspan="13" align=left><a href="DevGuide.TOC.md">Developer Guide</a></th>
+    <th rowspan="14" align=left><a href="DevGuide.TOC.md">Developer Guide</a></th>
     <td><a href="DevGuide.CurlUtility.md">Using the Curl Utility to Call CM-Well</a></td>
   </tr>
 <tr>
@@ -71,6 +71,9 @@
   </tr>
 <tr>
     <td><a href="DevGuide.CM-WellSecurityFeatures.md">Security Features</a></td>
+  </tr>
+<tr>
+    <td><a href="DevGuide.ManagingUsers.md">User Management</a></td>
   </tr>
 <tr>
     <td><a href="DevGuide.DosAndDonts.md">Dos and Don'ts</a></td>
@@ -110,6 +113,10 @@
   </tr>
 <tr>
     <td><a href="Tools.UsingTheCM-WellSparkConnector.md">Spark Connector</a></td>
+  </tr>
+<tr>
+    <th align=left>Admin</th>
+    <td><a href="Admin.TestAndFixCorruptedData.md">Testing and Fixing Corrupted Data</a></td>
   </tr>
 <tr>
     <th rowspan="2" align=left>Testing</a></th>
