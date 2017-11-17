@@ -14,11 +14,13 @@
 		* [The Field Wildcard](#hdr8)
 		* [Field Filters](#hdr9)
 * [Traversing Outbound and Inbound Links with the **yg** Flag](#hdr10)
-* [Using the **yg-chunk-size** Parameter](#hdr11)
+    * [Implementing Multiple Expansion Paths with the Pipe Operator](hdrYgPipe)
+    * [Using the **yg-chunk-size** Parameter](#hdr11)
 * [Using **xg** and **yg** Together](#hdr12)
 	* [Ghost Skips](#hdr13)
-* [Usage Scenario Using Outbound and Inbound Links](#hdr14)
+* [Usage Scenario with Outbound and Inbound Links](#hdr14)
 * [Using **gqp** to Filter by Inbound/Outbound Relationships](#hdr15)
+    * [Implementing Multiple Filter Expressions with the Pipe Operator](#hdr16)
 
 ----------
 
@@ -255,9 +257,7 @@ You can add field filters to constrain the additional infotons retrieved by the 
 
     xg=<outboundExpansion>[field filter]
 
-The syntax of the field filter is the same as for the [qp parameter](API.FieldConditionSyntax.md), except for the following differences:
-* Only the partial match and exact match operators (: and ::) are supported for the **xg** flag. (The fuzzy match operator ~ is not supported for **xg**.)
-* Range queries (<,>,<<,>>) are not supported for **xg**.
+>**Note:** The syntax of the field filter is the same as for the [qp parameter](API.FieldConditionSyntax.md), except that the fuzzy match operator ~ is not supported for **xg** queries.
 
 For example:
 
@@ -274,14 +274,24 @@ Much of the syntax for the **yg** flag is the same as for the **xg** flag, so pl
 The main differences between the **xg** flag and the **yg** flag are:
 
 * With the **yg** flag, you can also use the `<` operator to indicate inbound links.
-* You cannot use the _ wildcard with **yg** (as this would create a prohibitively expensive query).
-* On inbound expansions (indicated by the `<` operator), you can use all comparison operators in field filters (instead of just `:` and `::` for outbound expansions).
+* You cannot use the '_' wildcard with **yg** (as this would create a prohibitively expensive query).
 
 For example:
 
     <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&format=ttl&with-data&yg=<hasImmediateParent.mdaas<hasImmediateParent.mdaas
 
 This query retrieves all infotons that point to the matched infotons through their immediate parents field, and also all infotons that point to the level 1 inbound links through their immediate parents field. In other words, it retrieves the child companies of the child companies of the matched infotons. 
+
+<a name="hdrYgPipe"></a>
+### Implementing Multiple Expansion Paths with the Pipe Operator ###
+
+If you want to expand along several paths using a single query, you can add several expansion expressions separated by the pipe ('|') operator.
+
+For example, the following query searches for organizations whose name contains "Marriott", and also retrieves Quote and Instrument infotons that are issues by those organizations. Note the use of the '|' operator to expand along two different inbound links.
+
+    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott&yg=<isQuoteOf.mdaas|<isIssuedBy.mdaas
+
+You can add as many pipe-separated expansion expressions to one query as you want. The results are the equivalent of running each expansion query separately and pooling all their results.
 
 <a name="hdr11"></a>
 ### Using the *yg-chunk-size* Parameter ###
@@ -320,7 +330,7 @@ This filter requires only that the intermediate infoton have a ```system.uuid```
     \>childOf[type.rdf:Person]<parentOf
 
 <a name="hdr14"></a>
-## Usage Scenario Using Outbound and Inbound Links ##
+## Usage Scenario with Outbound and Inbound Links ##
 
 Now that we understand how to work with outbound and inbound links, let's examine a scenario for which this feature is useful.
 
@@ -349,7 +359,7 @@ There are ways to address this using **yg** and SPARQL queries, but they have li
 
 The **gqp** flag is intended to handle this requirement. Here is an example of a search clause that uses **gqp** for the scenario described above:
 
-    <cm-well-host>/?op=search&qp=type.rdf:Person,age>32&gqp=<addressOfPerson>physicalAddress[city::NY]
+    <cm-well-host>/?op=search&qp=type.rdf:Person,age>32&gqp=<addressOfPerson>physicalAddress[city::New%20York]
 
 The **gqp** flag's syntax is identical to the **yg** flag's syntax, but it operates differently. As **yg** traverses the links defined in its value expression, it adds all the infotons in the link paths to its results. **gqp** does not add infotons to the results in the set returned by the search query. Rather it attempts to evaluate its expression for each "root" infoton, and if it fails at some stage in the evaluation or the expression evaluates as **false**, then the root infoton from which the path originated is *removed* from the result set.
 
@@ -358,3 +368,12 @@ The **gqp** flag can be used together with **xg** and **yg**. In this case, **gq
 >**Notes:** 
 >* The **gqp** flag can be applied to both **consume** and **search** operations. Note that when using **gqp** with consume, it is possible to filter out the entire chunk and therefore to receive no results for some iterations. If in this case you receive a 204 error, but the position token in the header is different than the one sent, you still need to keep consuming.
 >* The [ghost skips](#hdr13) behavior applies to **qgp** as well as **yg**.
+
+<a name="hdr16"></a>
+## Implementing Multiple Filter Expressions with the Pipe Operator ##
+
+As for the **yg** query, you can add several filter expressions to a single **gqp** query, separated by the pipe ('|') operator. However, the behavior of the complex expression is different than for **yg**. When piped expressions are used with **gqp**, CM-Well applies "or" logic among them. This means that in order to match the filter, an infoton only needs to match *one* of the piped expressions.
+
+For example, the following query retrieves infotons of people who live *either* in New York *or* in Chicago.
+
+    <cm-well-host>/?op=search&qp=type.rdf:Person&gqp=<addressOfPerson>physicalAddress[city::New%20York]|<addressOfPerson>physicalAddress[city::Chicago]

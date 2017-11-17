@@ -9,5 +9,6 @@ Return Code | Description
 204 | No more results
 404 | Infoton not found
 401 | Unauthorized user, or password does not match user name
+422 | The sub-graph you requested to delete does not exist
 503 | Server is busy
 5xx | Access problem
