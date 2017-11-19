@@ -29,7 +29,7 @@ import play.api.libs.json.JsValue
 
 object Authentication {
 
-//  private lazy val secret = ConfigFactory.load().getString("play.crypto.secret") // not using ws.Settings, so it'd be available from `sbt ws/console`
+//  private lazy val secret = ConfigFactory.load().getString("play.http.secret.key") // not using ws.Settings, so it'd be available from `sbt ws/console`
 //  private val jwtHeader = JwtHeader("HS256")
 
   def passwordMatches(user: JsValue, password:String): Boolean = {
