@@ -40,7 +40,10 @@ class App extends React.Component {
                     rootFolders={this.state.rootFolders}
                 />
                 
-                <Breadcrumbs lastBreadcrumbDisplayName={this.state.lastBreadcrumbDisplayName} />
+                <Breadcrumbs
+                    lastBreadcrumbDisplayName={this.state.lastBreadcrumbDisplayName}
+                    parts={this.state.overrideBcParts}
+                />
                 
                 { this.state.currentHasChildren ? <Types location={this.props.location} /> : null }
                 
@@ -49,6 +52,7 @@ class App extends React.Component {
                     isRoot={true}
                     hasChildrenCb={hasChildren => this.setState({ currentHasChildren: hasChildren })}
                     displayNames={this.state.displayNames}
+                    updateBreadcrumbsParts={parts => parts!=this.state.overrideBcParts && this.setState({ overrideBcParts: parts })}
                     infotonIsEmpty={this.state.infotonIsEmpty}
                 />
                 
@@ -58,6 +62,8 @@ class App extends React.Component {
                     rootFolders={this.state.rootFolders}
                     displayNames={this.state.displayNames}
                     displayNameUpdateCb={dn => dn && this.state.lastBreadcrumbDisplayName!=dn && this.setState({ lastBreadcrumbDisplayName: dn })}
+                    updateBreadcrumbsParts={parts => this.setState(prev => parts!=prev.overrideBcParts && { overrideBcParts: parts })}
+                    u11111111pdateBreadcrumbsParts={parts => parts!=this.state.overrideBcParts && this.setState({ overrideBcParts: parts })}
                     isEmptyCb={isEmpty => this.state.infotonIsEmpty!=isEmpty && this.setState({ infotonIsEmpty: isEmpty })}
                 />
                 

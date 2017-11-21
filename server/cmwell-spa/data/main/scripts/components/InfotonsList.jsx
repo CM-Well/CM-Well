@@ -31,6 +31,13 @@ class InfotonsList extends React.Component {
   }
 
   doFetch(path = this.props.location.pathname, qp = this.props.location.query.qp) {
+      if(path.indexOf("/ii/")===0) {
+          this.props.hasChildrenCb && this.props.hasChildrenCb(false)
+          return
+      } else {
+          this.props.updateBreadcrumbsParts(null)
+      }
+      
       qp = qp && qp!='None' ? `&recursive&qp=${qp.replace('#','%23')}` : ''
       let createConsumerUrl = `${path}?op=create-consumer${qp}`
       
