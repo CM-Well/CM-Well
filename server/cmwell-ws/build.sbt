@@ -95,5 +95,5 @@ mappings in Universal += {
 fullTest := (test in Test).value
 
 fullClasspath in (Compile,console) := {
-  (fullClasspath in (Compile,console)).value :+ Attributed.blank(packResourceDir.value.keys.head)
+  (fullClasspath in (Compile,console)).value :+ Attributed.blank(sourceDirectory.value / "cws" / "resources")
 }
