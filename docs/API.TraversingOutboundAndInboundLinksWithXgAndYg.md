@@ -42,7 +42,7 @@ You do this by using the **xg** and **yg** parameters described in the following
 
 The following query searches for Organization infotons whose name contains "Marriott Ownership" and whose city contains "Orlando":
 
-    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&with-data&format=ttl&length=1
+    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlapipndo&with-data&format=ttl&length=1
 
 Running the query produces the following single infoton result (truncated for readability):
 
@@ -287,9 +287,9 @@ This query retrieves all infotons that point to the matched infotons through the
 
 If you want to expand along several paths using a single query, you can add several expansion expressions separated by the pipe ('|') operator.
 
-For example, the following query searches for organizations whose name contains "Marriott", and also retrieves Quote and Instrument infotons that are issues by those organizations. Note the use of the '|' operator to expand along two different inbound links.
+For example, in a single query the following call retrieves both the place that John Smith was born (via an outbound link), and all the places where John Smith lived (via a combination of inbound and outbound links):
 
-    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott&yg=<isQuoteOf.mdaas|<isIssuedBy.mdaas
+    <cm-well-host>/example.org/Individuals/John_Smith?yg=<hasTenant.xmpl>location.locn|>birthPlace.madsrdf
 
 You can add as many pipe-separated expansion expressions to one query as you want. The results are the equivalent of running each expansion query separately and pooling all their results.
 
