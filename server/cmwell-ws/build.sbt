@@ -94,6 +94,4 @@ mappings in Universal += {
 
 fullTest := (test in Test).value
 
-fullClasspath in (Compile,console) := {
-  (fullClasspath in (Compile,console)).value :+ Attributed.blank(sourceDirectory.value / "cws" / "resources")
-}
+fullClasspath in (Compile,console) += Attributed.blank(sourceDirectory.value / "cws" / "resources")
