@@ -42,7 +42,7 @@ You do this by using the **xg** and **yg** parameters described in the following
 
 The following query searches for Organization infotons whose name contains "Marriott Ownership" and whose city contains "Orlando":
 
-    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlapipndo&with-data&format=ttl&length=1
+    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&with-data&format=ttl&length=1
 
 Running the query produces the following single infoton result (truncated for readability):
 
@@ -287,9 +287,84 @@ This query retrieves all infotons that point to the matched infotons through the
 
 If you want to expand along several paths using a single query, you can add several expansion expressions separated by the pipe ('|') operator.
 
-For example, in a single query the following call retrieves both the place that John Smith was born (via an outbound link), and all the places where John Smith lived (via a combination of inbound and outbound links):
+For example, supposed we've uploaded the following information to CM-Well, which refers to the individual ```MrPresident```:
 
-    <cm-well-host>/example.org/Individuals/John_Smith?yg=<hasTenant.xmpl>location.locn|>birthPlace.madsrdf
+    @prefix foaf: <http://xmlns.com/foaf/0.1/> .
+    @prefix dc:   <http://purl.org/dc/terms/> .
+    @prefix locn: <http://www.w3.org/ns/locn#> .
+    @prefix madsrdf:  <http://www.loc.gov/mads/rdf/v1#> .
+    @prefix geonames: <http://www.geonames.org/ontology#> .
+    @prefix geo:  <http://www.w3.org/2003/01/geo/wgs84_pos#> .
+    @prefix xmpl: <http://ont.example.org/2017/v1.0#> .
+    @prefix time: <http://www.w3.org/2006/time#> .
+    @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+    @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+    @prefix cc:   <http://creativecommons.org/ns#> .
+    
+    <http://example.org/Individuals/MrPresident> a foaf:Person ;
+      madsrdf:birthPlace <http://sws.geonames.org/5122525/> .
+    
+    <http://example.org/Residence/fedcba98-7654-3210-1234-56789abcdef0> a xmpl:Residence ;
+      locn:location <http://sws.geonames.org/5122525/> ;
+      xmpl:hasTenant <http://example.org/Individuals/MrPresident> ;
+      time:hasBeginning "2017-01-20"^^xsd:date ;
+      time:hasEnd "TBD" .
+    
+    <http://sws.geonames.org/5122525/> a geonames:Feature ;
+      rdfs:isDefinedBy <http://sws.geonames.org/5122525/about.rdf> ;
+      geonames:name "Jamaica Hospital Medical Center" ;
+      geonames:alternateName "Jamaica Hospital" ;
+      geonames:officialName "Jamaica Hospital Medical Center"@en ;
+      geonames:featureClass geonames:S ;
+      geonames:featureCode geonames:S\.HSP ;
+      geonames:countryCode "US" ;
+      geo:lat "40.70078"^^xsd:decimal ;
+      geo:long "-73.81635"^^xsd:decimal ;
+      geo:alt "18"^^xsd:decimal ;
+      geonames:parentFeature <http://sws.geonames.org/5133268/> ;
+      geonames:parentCountry <http://sws.geonames.org/6252001/> ;
+      geonames:parentADM1 <http://sws.geonames.org/5128638/> ;
+      geonames:parentADM2 <http://sws.geonames.org/5133268/> ;
+      geonames:nearbyFeatures <http://sws.geonames.org/5122525/nearby.rdf> ;
+      geonames:locationMap <http://www.geonames.org/5122525/jamaica-hospital-medical-center.html> .
+    
+    <http://sws.geonames.org/5122525/about.rdf> a foaf:Document ;
+      foaf:primaryTopic <http://sws.geonames.org/5122525/> ;
+      cc:license <http://creativecommons.org/licenses/by/3.0/> ;
+      cc:attributionURL <http://sws.geonames.org/5122525/> ;
+      cc:attributionName "GeoNames"^^xsd:string ;
+      dc:created "2006-01-15"^^xsd:date ;
+      dc:modified "2016-12-06"^^xsd:date .
+    
+    <http://sws.geonames.org/4140704/> a <http://www.geonames.org/ontology#Feature> ;
+      rdfs:isDefinedBy <http://sws.geonames.org/4140704/about.rdf> ;
+      geonames:name "The White House" ;
+      geonames:alternateName "Executive Mansion", "Presidents House", "Presidents Palace", "White House"@en ;
+      geonames:officialName "Maison Blanche"@fr, "The White House"@en, "Weißes Haus"@de ;
+      geonames:featureClass geonames:S ;
+      geonames:featureCode geonames:S\.BLDG ;
+      geonames:countryCode "US" ;
+      geo:lat "38.89761"^^xsd:decimal ;
+      geo:long "-77.03637"^^xsd:decimal ;
+      geo:alt "17"^^xsd:decimal ;
+      geonames:parentFeature <http://sws.geonames.org/4140987/> ;
+      geonames:parentCountry <http://sws.geonames.org/6252001/> ;
+      geonames:parentADM1 <http://sws.geonames.org/4138106/> ;
+      geonames:parentADM2 <http://sws.geonames.org/4140987/> ;
+      geonames:nearbyFeatures <http://sws.geonames.org/4140704/nearby.rdf> ;
+      geonames:locationMap <http://www.geonames.org/4140704/the-white-house.html> .
+    
+    <http://sws.geonames.org/4140704/about.rdf> a foaf:Document ;
+      foaf:primaryTopic <http://sws.geonames.org/4140704/> ;
+      cc:license <http://creativecommons.org/licenses/by/3.0/> ;
+      cc:attributionURL <http://sws.geonames.org/4140704/> ;
+      cc:attributionName "GeoNames"^^xsd:string ;
+      dc:created "2006-01-15"^^xsd:date ;
+      dc:modified "2014-08-04"^^xsd:date .
+    
+In a single query, the following call retrieves both the place that ```MrPresident``` was born (via an outbound link), and all the places where ```MrPresident``` lived (via a combination of inbound and outbound links):
+
+    <cm-well-host>/example.org/Individuals/MrPresident?yg=<hasTenant.xmpl>location.locn|>birthPlace.madsrdf
 
 You can add as many pipe-separated expansion expressions to one query as you want. The results are the equivalent of running each expansion query separately and pooling all their results.
 
