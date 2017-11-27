@@ -1,5 +1,11 @@
 # A Brief History of CM-Well #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Intro.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Intro.CM-WellHigh-LevelArchitecture.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Intro.TechnicalDecisionsInCM-WellDesign.md)  
+
+----
+
 This page briefly describes the conceptual and technical motivations that led to the development of the CM-Well platform.
 
 ## TMS - In the Beginning... ##
@@ -41,6 +47,8 @@ CM-Well's vision is to be an eco-system of Linked Data objects, whose primary pu
 
 In addition to being a repository for TR's central financial information, CM-Well is a "technology stack" or general platform, which allows you to model any information domain you wish and create your own repository. Our decision to Open Source CM-Well is a natural extension of this philosophy: we've found CM-Well to be exceptionally useful internally and hope it will be for you.
 
+----
 
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Intro.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Intro.CM-WellHigh-LevelArchitecture.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Intro.TechnicalDecisionsInCM-WellDesign.md)  
 
-
+----

@@ -1,5 +1,11 @@
 # CM-Well Version Release Notes - Sept. 11th 2016 #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](ReleaseNotes.Oct.6.2016.md)  
+
+----
+
 ## Change Summary ##
 
 ### Features ###
@@ -290,3 +296,9 @@ The CM-Well upgrade time has been reduced from 30 minutes to under 5 minutes.
 
 
 
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](ReleaseNotes.Oct.6.2016.md)  
+
+----

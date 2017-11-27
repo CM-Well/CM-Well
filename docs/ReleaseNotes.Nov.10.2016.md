@@ -1,5 +1,11 @@
 # CM-Well Version Release Notes - Nov. 10 2016 #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](ReleaseNotes.Oct.6.2016.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](ReleaseNotes.Dec.7.2016.md)  
+
+----
+
 ## Change Summary ##
 
 ### New Features ###
@@ -88,3 +94,8 @@ Example:
 
 **Documentation:** [Using SPARQL on CM-Well Infotons > Using the IMPORT Directive to Apply Uploaded CONSTRUCTs](DevGuide.UsingSPARQLOnCM-WellInfotons.md#hdr8)
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](ReleaseNotes.Oct.6.2016.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](ReleaseNotes.Dec.7.2016.md)  
+
+----

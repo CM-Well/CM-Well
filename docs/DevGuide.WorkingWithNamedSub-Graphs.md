@@ -1,5 +1,11 @@
 # Working with Named Sub-Graphs #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.UsingElasticSearchStatistics.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.CM-WellSecurityFeatures.md)  
+
+----
+
 Sometimes you may want to mark certain field values with a label. The CM-Well feature that supports this is called a "named sub-graph", where the label is the name, and the sub-graph are the items in the Linked Data graph that have the specific label. In this case, relationships in the graph are represented not by triples but by quads, which include the subject, predicate, object and label (sub-graph name).
 
 The named sub-graph feature allows you to manipulate data within the sub-graph. For example, you can search for or delete fields by sub-graph name.
@@ -111,5 +117,8 @@ For example, using the example label created above, this command:
 
 >**Note:** You can only add one alias per named sub-graph. Creating an alias when one already exists will overwrite the existing alias.
 
+----
 
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.UsingElasticSearchStatistics.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.CM-WellSecurityFeatures.md)  
 
+----

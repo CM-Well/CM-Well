@@ -1,5 +1,11 @@
 # Managing CM-Well Users #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.CM-WellSecurityFeatures.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.DosAndDonts.md)  
+
+----
+
 In order to perform write operations on CM-Well, API clients need a user entity to be defined in CM-Well. Users have a unique username, a password, read and write permissions for accessing CM-Well folders, and optionally one or more roles that confer additional read and write permissions.
 
 When a user logs into CM-Well successfully with valid username and password values, the user receives an access token that's valid for 24 hours after its creation. This token must be passed in the **X-CM-WELL-TOKEN** HTTP header for any API call that requires permissions (e.g. any call that updates CM-Well).
@@ -135,3 +141,9 @@ If a user's FileInfoton has the **roles** field, then the user takes on the perm
 [Change Password API](API.Auth.ChangePassword.md)
 [Generate Password API](API.Auth.GeneratePassword.md)
 [Invalidate Cache API](API.Auth.InvalidateCache.md)
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.CM-WellSecurityFeatures.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.DosAndDonts.md)  
+
+----

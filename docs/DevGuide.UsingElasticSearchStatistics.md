@@ -1,5 +1,11 @@
 # Using Elastic Search Statistics #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.CallingJavaScalaFunctionsFromSPARQLQueries.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.WorkingWithNamedSub-Graphs.md)  
+
+----
+
 ## What Are Elastic Search Statistics? ##
 
 Elastic Search is the underlying search engine that CM-Well uses when performing a query (which involves a full-text search on infoton field values). Elastic Search supports several types of statistical analyses of field values within a given group of infotons.  For example, using statistics, you can discover how many distinct values there are for a certain field in a certain group of infotons. (The Elastic Search statistical feature is called "aggregations", and you may see some references to this term in the search syntax and results.) 
@@ -149,3 +155,8 @@ This query runs on the **permid.org** path in CM-Well, obtains the infotons with
     }
 
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.CallingJavaScalaFunctionsFromSPARQLQueries.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.WorkingWithNamedSub-Graphs.md)  
+
+----

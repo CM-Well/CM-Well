@@ -1,5 +1,11 @@
 # Function: *Add Infotons and Fields* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Subscribe.Unsubscribe.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Update.ReplaceFieldValues.md)  
+
+----
+
 ## Description ##
 CM-Well allows you to create your own infotons and triples as well as read existing ones. You can create new infotons in CM-Well, and add their field values by adding triples with the new infoton as their subject. To do this, you send a POST command to the _in endpoint.entity
 
@@ -83,3 +89,9 @@ The result of the call above will simply be a success code. We can see the new i
 ## Related Topics ##
 [Replace Field Values](API.Update.ReplaceFieldValues.md)
 
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Subscribe.Unsubscribe.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Update.ReplaceFieldValues.md)  
+
+----

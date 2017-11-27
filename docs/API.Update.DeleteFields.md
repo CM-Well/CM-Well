@@ -1,5 +1,11 @@
 # Function: *Delete Fields* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Update.DeleteMultipleInfotons.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Update.DeleteSpecificFieldValues.md)  
+
+----
+
 ## Description ##
 You can delete one or more infoton fields by applying the special #markReplace indicator to them, using the _in endpoint.
 
@@ -80,3 +86,9 @@ priority | If this flag appears in an update call, that call receives priority r
 [Delete Specific Field Values](API.Update.DeleteSpecificFieldValues.md)
 [Replace Field Values](API.Update.ReplaceFieldValues.md)
 
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Update.DeleteMultipleInfotons.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Update.DeleteSpecificFieldValues.md)  
+
+----

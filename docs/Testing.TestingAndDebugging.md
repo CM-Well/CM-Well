@@ -1,5 +1,13 @@
 # Tips for Testing and Debugging #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) 
+
+----
+
+**On this page:**
+
 Here are some tips for facilitating testing and debugging of your CM-Well client application:
 
 [Using the debug-info Flag in Search Operations](#hdr1)
@@ -244,3 +252,9 @@ For example, this call:
       sys:type"SearchResponse"
     ] .
     < Connection #0 to host cm-well-host.com left intact
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) 
+
+----

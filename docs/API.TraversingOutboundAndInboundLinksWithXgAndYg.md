@@ -1,8 +1,13 @@
 # Traversing Outbound and Inbound Links (*xg*, *yg* and *gqp*) #
 
-----------
+----
 
-**Page contents:**
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.UsingConditionalUpdates.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.ReturnCodes.md)  
+
+----
+
+
+**On this page:**
 
 * [Traversing Outbound Links with the **xg** Flag](#hdr1)
 	* [Example: Using **xg** to Retrieve Parent Organizations](#hdr2)
@@ -358,3 +363,9 @@ The **gqp** flag can be used together with **xg** and **yg**. In this case, **gq
 >**Notes:** 
 >* The **gqp** flag can be applied to both **consume** and **search** operations. Note that when using **gqp** with consume, it is possible to filter out the entire chunk and therefore to receive no results for some iterations. If in this case you receive a 204 error, but the position token in the header is different than the one sent, you still need to keep consuming.
 >* The [ghost skips](#hdr13) behavior applies to **qgp** as well as **yg**.
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.UsingConditionalUpdates.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.ReturnCodes.md)  
+
+----

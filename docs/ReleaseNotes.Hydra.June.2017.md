@@ -1,5 +1,12 @@
 # CM-Well Version Release Notes - Hydra (June 2017) #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](ReleaseNotes.Gopher.May.2017.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](ReleaseNotes.Iguana.July.2017.md)  
+
+----
+
+
 ## Change Summary ##
 
 
@@ -14,3 +21,9 @@ Log message cleanup | CM-Well log messages were reviewed and edited for clarity,
 New **yg-chunk-size** parameter may be added to **yg** (inbound link) queries.
 
 
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](ReleaseNotes.Gopher.May.2017.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](ReleaseNotes.Iguana.July.2017.md)  
+
+----

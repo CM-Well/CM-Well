@@ -1,5 +1,11 @@
 # Release Notes: Table of Contents #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) 
+
+----
+
 Click on a version to see its release notes.
 
 **Latest version:**
@@ -26,3 +32,10 @@ Click on a version to see its release notes.
 * [Version Sept. 11 2016](ReleaseNotes.Sept.11.2016.md)
 * [Version Oct. 6 2016](ReleaseNotes.Oct.6.2016.md)
 * [Version Nov. 10 2016](ReleaseNotes.Nov.10.2016.md)
+
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) 
+
+----

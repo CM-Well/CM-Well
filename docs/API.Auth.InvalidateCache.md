@@ -1,5 +1,11 @@
 # Function: *Invalidate Cache* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Auth.ChangePassword.md)
+
+----
+
 ## Description ##
 
 CM-Well manages a cache with authorization information for better performance. If you've made a change to authorization information such as creating a new user, creating a new role or changing a password, and you want the change to take immediate effect, you will need to refresh this cache. You do this by calling the **invalidate-cache** API.
@@ -32,3 +38,9 @@ CM-Well manages a cache with authorization information for better performance. I
 [Managing CM-Well Users](DevGuide.ManagingUsers.md)
 [Generate Password API](API.Auth.GeneratePassword.md)
 [Change Password API](API.Auth.ChangePassword.md)
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Auth.ChangePassword.md)
+
+----

@@ -1,5 +1,11 @@
 # Apply Gremlin to Query Results #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Query.ApplySPARQLToEntireGraph.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Query.DataStatistics.md)  
+
+----
+
 ## Description ##
 
 Gremlin is a graph traversal language that provides a convenient, compact syntax for performing queries on graphs. It is a DSL (Domain Specific Language) on top of the Groovy programming language (thus it uses the Groovy syntax). CM-Well supports a plugin that allows you to apply Gremlin queries to infotons.
@@ -107,3 +113,8 @@ The query example refers to this input data:
 ## Related Topics ##
 [Apply SPARQL to Query Results](API.Query.ApplySPARQLToQueryResults.md)
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Query.ApplySPARQLToEntireGraph.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Query.DataStatistics.md)  
+
+----

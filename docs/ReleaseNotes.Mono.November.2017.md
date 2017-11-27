@@ -1,5 +1,11 @@
 # CM-Well Version Release Notes - Mono (November 2017) #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](ReleaseNotes.Lynx.September.2017.md)
+
+----
+
 ## Change Summary ##
 
 
@@ -15,3 +21,9 @@ Bug Fix | [245](https://github.com/thomsonreuters/CM-Well/issues/245) | After in
 
 ### Changes to API ###
 New **gqp** flag. See [Traversing Outbound and Inbound Links (*xg*, *yg* and *gqp*)](API.TraversingOutboundAndInboundLinksWithXgAndYg.md) to learn more.
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](ReleaseNotes.Lynx.September.2017.md)
+
+----

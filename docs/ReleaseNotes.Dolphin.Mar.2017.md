@@ -1,5 +1,11 @@
 # CM-Well Version Release Notes - Dolphin (Mar. 2017) #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](ReleaseNotes.CElegans.Mar.2017.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](ReleaseNotes.Firebird.May.2017.md)  
+
+----
+
 ## Change Summary ##
 
 This version mostly addresses bug fixes, performance and stability.
@@ -11,3 +17,9 @@ GitLab Item # | Title | Description
 
 ### Changes to API ###
 N/A
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](ReleaseNotes.CElegans.Mar.2017.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](ReleaseNotes.Firebird.May.2017.md)  
+
+----

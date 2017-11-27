@@ -1,5 +1,11 @@
 # CM-Well API: Table of Contents #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) 
+
+----
+
 The following list shows general topics relating to many CM-Well API calls:
 
 * [Input and Output Formats](API.InputAndOutputFormats.md)
@@ -139,6 +145,12 @@ The following table shows all the CM-Well API calls:
     <td><a href="API.Auth.InvalidateCache.md">Invalidate Cache</a></td>
   </tr>
 </table>
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) 
+
+----
 
 
 
