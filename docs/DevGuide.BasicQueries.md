@@ -2,7 +2,10 @@
 
 ----
 
-**Navigation:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**]() &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**]() &nbsp;&nbsp;&nbsp;&nbsp; [**Next**]() &nbsp;&nbsp;&nbsp;&nbsp; [**Previous**]()
+**Navigation:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md
+) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous**](DevGuide.CurlUtility.md
+)&nbsp;&nbsp;&nbsp;&nbsp; [**Next**](DevGuide.AdvancedQueries.md
+)  
 
 ----
 
@@ -113,7 +116,10 @@ When you add the with-data flag to your query, in the results you receive the en
 
 ----
 
-**Navigation:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**]() &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**]() &nbsp;&nbsp;&nbsp;&nbsp; [**Next**]() &nbsp;&nbsp;&nbsp;&nbsp; [**Previous**]()
+**Navigation:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md
+) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous**](DevGuide.CurlUtility.md
+)&nbsp;&nbsp;&nbsp;&nbsp; [**Next**](DevGuide.AdvancedQueries.md
+)  
 
 ----
 
