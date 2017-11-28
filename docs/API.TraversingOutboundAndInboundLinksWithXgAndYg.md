@@ -289,6 +289,8 @@ If you want to expand along several paths using a single query, you can add seve
 
 For example, supposed we've uploaded the following information to CM-Well, which refers to the individual ```MrPresident```:
 
+<a name="hdrRdfData"></a>
+
     @prefix foaf: <http://xmlns.com/foaf/0.1/> .
     @prefix dc:   <http://purl.org/dc/terms/> .
     @prefix locn: <http://www.w3.org/ns/locn#> .
@@ -449,6 +451,7 @@ The **gqp** flag can be used together with **xg** and **yg**. In this case, **gq
 
 As for the **yg** query, you can add several filter expressions to a single **gqp** query, separated by the pipe ('|') operator. However, the behavior of the complex expression is different than for **yg**. When piped expressions are used with **gqp**, CM-Well applies "or" logic among them. This means that in order to match the filter, an infoton only needs to match *one* of the piped expressions.
 
-For example, the following query retrieves infotons of people who live *either* in New York *or* in Chicago.
+For example, if applied to the [RDF data above](#hdrRdfData), the following query retrieves all the US presidents that either were born outside the US,
+or were living in the White House before 2000:
 
-    <cm-well-host>/?op=search&qp=type.rdf:Person&gqp=<addressOfPerson>physicalAddress[city::New%20York]|<addressOfPerson>physicalAddress[city::Chicago]
+    <cm-well-host>/?op=search&qp=type.rdf:Person&gqp=<hasTenant.xmpl[hasBeginning.time<2000-01-01]>location.locn[name.geonames::The White House]|>birthPlace.madsrdf[-countryCode::US]
