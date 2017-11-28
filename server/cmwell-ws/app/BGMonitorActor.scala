@@ -43,7 +43,7 @@ class BGMonitorActor(zkServers:String, offsetService:OffsetsService, implicit va
   val zkClient = new ZkClient(zkServers, 10000, 10000, ZKLikeStringSerializer)
   val zkUtils = ZkUtils(zkClient,false)
   val allBrokers = zkUtils.getAllBrokersInCluster().map{ b =>
-    val endPoint = b.endPoints.head._2
+    val endPoint = b.endPoints.head
     s"${endPoint.host}:${endPoint.port}"
   }.mkString(",")
   val topics = Seq("persist_topic", "persist_topic.priority", "index_topic", "index_topic.priority")
