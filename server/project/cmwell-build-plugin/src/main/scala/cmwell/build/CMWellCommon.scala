@@ -19,7 +19,7 @@ import sbt._
 
 object CMWellCommon {
 
-  val release = "Nautilus"
+  val release = "Octopus"
 
   object Tags {
     val ES = sbt.Tags.Tag("elasticsearch")
