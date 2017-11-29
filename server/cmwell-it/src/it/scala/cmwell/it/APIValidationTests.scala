@@ -30,7 +30,6 @@ import scala.xml._
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.language.{implicitConversions, reflectiveCalls}
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.io.Source
 import scala.util.Try
 

@@ -26,7 +26,6 @@ import play.api.libs.json.{JsArray, JsValue, Json}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.io.Source
 
 /**
@@ -84,7 +83,10 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
       "/JohnSmith?xg=3").map("/example.org/Individuals2"+_)
     describe("should run SPARQL queries") {
       def testErr(something: String) = s"should run a SPARQL query with $something and get an error"
-      def assertJsonFailure(req: Future[SimpleResponse[Array[Byte]]]) = (Await.result(req.map(r=>Json.parse(r.payload)), requestTimeout) \ "success").asOpt[Boolean] should be(Some(false))
+      def assertJsonFailure(req: Future[SimpleResponse[Array[Byte]]]) = {
+        import scala.concurrent.ExecutionContext.Implicits.global
+        (Await.result(req.map(r => Json.parse(r.payload)), requestTimeout) \ "success").asOpt[Boolean] should be(Some(false))
+      }
 
       it("should run a SPARQL query and render ascii format") {
         val sparql = "SELECT DISTINCT ?name ?active WHERE { ?name <http://www.tr-lbd.com/bold#active> ?active . } ORDER BY DESC(?active) ?name"
@@ -200,21 +202,24 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
         }
 
         it("should import recursively") {
+          import scala.concurrent.ExecutionContext.Implicits.global
+          
           val firstFolder = "queries1"
           val secondFolder = "queries2"
           val firstPath = cmw / firstFolder
           val secondPath = cmw / secondFolder
 
           val leaves = for {
-            i <- 1 to 2
-            j <- 1 to 2
-            a <- Seq("a", "b")
+                   i <- 1 to 2
+                     j <- 1 to 2
+                     a <- Seq("a", "b")
           } yield s"$a$i$j"
 
 
           def prepareQueries() = {
+
             def makeQueryBody(resultObj: String, imports: Seq[String]) =
-              s"""${if (imports.isEmpty) "" else "#cmwell-import"} ${imports.map(i => s"/$secondFolder/$i").mkString(",")}
+            s"""${if (imports.isEmpty) "" else "#cmwell-import"} ${imports.map(i => s"/$secondFolder/$i").mkString(",")}
                  |CONSTRUCT { ?s ?p "$resultObj" .} WHERE { ?s ?p ?o }
                """.stripMargin
 

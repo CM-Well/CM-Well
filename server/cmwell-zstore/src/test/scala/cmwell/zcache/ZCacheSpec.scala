@@ -22,7 +22,6 @@ import cmwell.util.concurrent.delayedTask
 import cmwell.zstore.ZStoreMem
 import org.scalatest.{AsyncFunSpec, Matchers}
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 /**

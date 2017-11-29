@@ -24,7 +24,6 @@ import cmwell.util.{Box, FullBox, EmptyBox, BoxedFailure}
 import cmwell.util.concurrent.SimpleScheduler.scheduleFuture
 import org.apache.commons.codec.binary.Base64
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Try
@@ -263,7 +262,6 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
 
   "object write and update indexTime" should "be successful" in {
     import scala.concurrent.duration._
-    import scala.concurrent.ExecutionContext.Implicits.global
     val objInfo = ObjectInfoton("/irw/command-test/JohnSmith","dc_test", None, Map("status" -> Set[FieldValue](FString("R.I.P"))))
     val idxT = 1234567891011L
     val f = irw.writeAsync(objInfo).flatMap{_ =>

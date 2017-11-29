@@ -32,7 +32,6 @@ import org.apache.jena.query.DatasetFactory
 import org.apache.jena.rdf.model.{ModelFactory, ResourceFactory}
 import org.apache.jena.riot.{Lang, RDFDataMgr}
 import play.api.libs.json._
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.io.Source
