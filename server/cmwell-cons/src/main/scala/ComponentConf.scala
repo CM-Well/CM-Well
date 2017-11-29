@@ -410,7 +410,7 @@ case class ZookeeperConf(home : String, clusterName : String, servers : Seq[Stri
 
   override def mkScript: ConfFile = {
     val exports = s"export PATH=$home/app/java/bin:$home/bin/utils:$PATH"
-    val cp = s"cur/lib/slf4j-log4j12-1.6.1.jar:cur/lib/slf4j-api-1.6.1.jar:cur/lib/netty-3.7.0.Final.jar:cur/lib/log4j-1.2.16.jar:cur/lib/jline-0.9.94.jar:cur/zookeeper-3.4.6.jar:$home/conf/$dir"
+    val cp = s"cur/lib/slf4j-log4j12-1.6.1.jar:cur/lib/slf4j-api-1.6.1.jar:cur/lib/netty-3.7.0.Final.jar:cur/lib/log4j-1.2.16.jar:cur/lib/jline-0.9.94.jar:cur/zookeeper-${cmwell.util.build.BuildInfo.zookeeperVersion}.jar:$home/conf/$dir"
     val scriptString =
       s"""
          |$exports
