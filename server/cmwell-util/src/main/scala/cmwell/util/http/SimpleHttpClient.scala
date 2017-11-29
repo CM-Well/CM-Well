@@ -137,7 +137,7 @@ object SimpleHttpClient extends LazyLogging {
 
   private def mkURI(uri: String, queryParams: Seq[(String,String)]) = {
 
-    val noSchemeWithPort = uri.matches("[^:]+:\\d+")
+    val noSchemeWithPort = uri.matches("[^:/]+:\\d+")
     if (queryParams.isEmpty && !noSchemeWithPort) uri
     else {
       val sb = new StringBuilder
