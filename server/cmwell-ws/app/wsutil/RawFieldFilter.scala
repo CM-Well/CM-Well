@@ -30,7 +30,6 @@ import ld.cmw.{PassiveFieldTypesCache, PassiveFieldTypesCacheTrait}
 import logic.CRUDServiceFS
 
 import scala.concurrent.{ExecutionContext, Future, Promise, duration}
-import ExecutionContext.Implicits.global
 import duration.DurationInt
 import scala.util.{Failure, Success, Try}
 
@@ -109,7 +108,7 @@ object RawFieldFilter extends PrefixRequirement {
       Future.successful(fieldFilterWithExplicitUrlOpt.get)
     }
     case RawMultiFieldFilter(fo,rs) => Future.traverse(rs)(eval(_,cache,cmwellRDFHelper,nbg))(bo1,ec).map(MultiFieldFilter(fo, _))
-    case RawSingleFieldFilter(fo,vo,fk,v) => FieldKey.eval(fk,cache,cmwellRDFHelper,nbg).map{
+    case RawSingleFieldFilter(fo,vo,fk,v) => FieldKey.eval(fk,cache,cmwellRDFHelper,nbg)(ec).map{
       case s if s.isEmpty => !!!
       case s if s.size == 1 => mkSingleFieldFilter(fo,vo,s.head,v)
       case s => MultiFieldFilter(fo,s.map(mkSingleFieldFilter(Should,vo,_,v))(bo2))
@@ -187,18 +186,22 @@ object FieldKey extends LazyLogging with PrefixRequirement  {
   }
 
   def enrichWithTypes(fk: FieldKey, cache: PassiveFieldTypesCacheTrait): Future[Set[String]] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     cache.get(fk).map(_.collect {
       case c if c != 's' => s"$c$$${fk.internalKey}"
     } + fk.internalKey )
   }
 
-  def resolve(ufk: UnresolvedFieldKey, cmwellRDFHelper: CMWellRDFHelper,nbg: Boolean): Future[FieldKey] = ufk match {
-    case UnresolvedPrefixFieldKey(first,prefix) => resolvePrefix(cmwellRDFHelper,first,prefix,nbg).map{
-      case (first,hash) => PrefixFieldKey(first,hash,prefix)
+  def resolve(ufk: UnresolvedFieldKey, cmwellRDFHelper: CMWellRDFHelper,nbg: Boolean): Future[FieldKey] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
+    ufk match {
+      case UnresolvedPrefixFieldKey(first, prefix) => resolvePrefix(cmwellRDFHelper, first, prefix, nbg).map {
+        case (first, hash) => PrefixFieldKey(first, hash, prefix)
+      }
+      case UnresolvedURIFieldKey(uri) => Future.fromTry(namespaceUri(cmwellRDFHelper, uri, nbg).map {
+        case (first, hash) => URIFieldKey(uri, first, hash)
+      })
     }
-    case UnresolvedURIFieldKey(uri) => Future.fromTry(namespaceUri(cmwellRDFHelper,uri,nbg).map{
-      case (first,hash) => URIFieldKey(uri,first,hash)
-    })
   }
 
   def namespaceUri(cmwellRDFHelper: CMWellRDFHelper,u: String,nbg: Boolean): Try[(String,String)] = {

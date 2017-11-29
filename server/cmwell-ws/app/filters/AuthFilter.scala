@@ -26,7 +26,6 @@ import javax.inject._
 
 import cmwell.ws.Settings
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
 
 class AuthFilter @Inject()(authCache: AuthCache, authUtils: AuthUtils, authorization: Authorization)(implicit override val mat: Materializer, ec: ExecutionContext) extends Filter {

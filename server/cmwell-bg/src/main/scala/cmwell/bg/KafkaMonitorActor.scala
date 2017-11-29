@@ -29,7 +29,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable.{Map => MMap}
 import scala.collection.{Map, Seq}
 import scala.concurrent.ExecutionContext
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration._
 
 /**

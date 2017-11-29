@@ -40,7 +40,6 @@ import javax.inject._
 import filters.Attrs
 
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.language.postfixOps
 import scala.util._
@@ -63,6 +62,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
    * @return
    */
   def handlePost(format: String = "") = ingestPushback.async(parse.raw) { implicit req =>
+    import scala.concurrent.ExecutionContext.Implicits.global
     RequestMonitor.add("in", req.path, req.rawQueryString, req.body.asBytes().fold("")(_.utf8String),req.attrs(Attrs.RequestReceivedTimestamp))
     // first checking "priority" query string. Only if it is present we will consult the UserInfoton which is more expensive (order of && below matters):
     if (req.getQueryString("priority").isDefined && !authUtils.isOperationAllowedForUser(security.PriorityWrite, authUtils.extractTokenFrom(req), req.attrs(Attrs.Nbg), evenForNonProdEnv = true)) {
@@ -85,6 +85,8 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
   }
 
   def handlePostForDCOverwrites =  ingestPushback.async(parse.raw) { implicit req =>
+    import scala.concurrent.ExecutionContext.Implicits.global
+
     val tokenOpt = authUtils.extractTokenFrom(req)
     if (!authUtils.isOperationAllowedForUser(security.Overwrite, tokenOpt, req.attrs(Attrs.Nbg), evenForNonProdEnv = true))
       Future.successful(Forbidden("not authorized"))
@@ -222,6 +224,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
    * @return
    */
   def handlePostRDF(req: Request[RawBuffer], skipValidation: Boolean = false): (Future[Result],Future[Seq[(String,String)]]) = {
+    import scala.concurrent.ExecutionContext.Implicits.global
 
     val now = req.attrs(Attrs.RequestReceivedTimestamp)
     val p = Promise[Seq[(String,String)]]()
@@ -438,6 +441,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
    * @return
    */
   def handlePostWrapped(req: Request[RawBuffer], skipValidation: Boolean = false, setZeroTime: Boolean = false): Future[Result] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
 
     if (req.getQueryString("dry-run").isDefined)  Future.successful(BadRequest(Json.obj("success" -> false, "error" -> "dry-run is not implemented for wrapped requests.")))
     else {
