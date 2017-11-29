@@ -23,8 +23,8 @@ import com.ning.http.client.Response
 import com.typesafe.scalalogging.LazyLogging
 
 import k.grid.Grid
-import spray.can.Http
-import spray.http._
+//import spray.can.Http
+//import spray.http._
 import scala.concurrent.duration._
 
 import scala.concurrent.Future
@@ -38,31 +38,31 @@ import akka.pattern.ask
 case class UtilHttpResponse(code : Int, content : String)
 
 object HttpUtil extends LazyLogging {
-  implicit val timeout = Timeout(15.seconds)
-
-  private def sendRequest(rq : HttpRequest) : Future[UtilHttpResponse] = {
-    (io ? rq).mapTo[HttpResponse].map {
-      res =>
-        UtilHttpResponse(res.status.intValue, res.entity.asString(HttpCharsets.`UTF-8`))
-    }
-  }
-
-  val io = IO(Http)(Grid.system)
-
-  def httpGet(dest : String) : Future[UtilHttpResponse] = {
-    val rq = HttpRequest(HttpMethods.GET, uri = dest )
-    sendRequest(rq)
-  }
-
-  def httpPost(dest : String, body : String ) : Future[UtilHttpResponse] = {
-    val entity = HttpEntity(ContentTypes.`text/plain(UTF-8)` ,body)
-    val rq = HttpRequest(HttpMethods.POST, uri = dest, entity = entity)
-    sendRequest(rq)
-  }
-
-  def httpPut(dest : String, body : String ) : Future[UtilHttpResponse] = {
-    val entity = HttpEntity(ContentTypes.`text/plain(UTF-8)` ,body)
-    val rq = HttpRequest(HttpMethods.PUT, uri = dest, entity = entity)
-    sendRequest(rq)
-  }
+//  implicit val timeout = Timeout(15.seconds)
+//
+//  private def sendRequest(rq : HttpRequest) : Future[UtilHttpResponse] = {
+//    (io ? rq).mapTo[HttpResponse].map {
+//      res =>
+//        UtilHttpResponse(res.status.intValue, res.entity.asString(HttpCharsets.`UTF-8`))
+//    }
+//  }
+//
+//  val io = IO(Http)(Grid.system)
+//
+//  def httpGet(dest : String) : Future[UtilHttpResponse] = {
+//    val rq = HttpRequest(HttpMethods.GET, uri = dest )
+//    sendRequest(rq)
+//  }
+//
+//  def httpPost(dest : String, body : String ) : Future[UtilHttpResponse] = {
+//    val entity = HttpEntity(ContentTypes.`text/plain(UTF-8)` ,body)
+//    val rq = HttpRequest(HttpMethods.POST, uri = dest, entity = entity)
+//    sendRequest(rq)
+//  }
+//
+//  def httpPut(dest : String, body : String ) : Future[UtilHttpResponse] = {
+//    val entity = HttpEntity(ContentTypes.`text/plain(UTF-8)` ,body)
+//    val rq = HttpRequest(HttpMethods.PUT, uri = dest, entity = entity)
+//    sendRequest(rq)
+//  }
 }

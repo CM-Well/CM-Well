@@ -19,7 +19,7 @@ package cmwell.ctrl.checkers
 import akka.actor.Cancellable
 import cmwell.ctrl.checkers.BatchChecker._
 import cmwell.ctrl.config.Config
-import cmwell.ctrl.utils.{HttpUtil, ProcUtil}
+//import cmwell.ctrl.utils.{HttpUtil, ProcUtil}
 import cmwell.stats.Stats.Settings
 import com.fasterxml.jackson.databind.JsonNode
 import com.typesafe.scalalogging.LazyLogging
@@ -30,11 +30,7 @@ import play.api.libs.json._
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.Try
-
-/**
- * Created by michael on 8/19/15.
- */
+import cmwell.util.http.{SimpleHttpClient => Http}
 
 case class ActiveDcSync(id : String, qp : Option[String], host : String)
 case class InfotonDiff(me : Long, remote : Long) {
@@ -53,9 +49,9 @@ object DcChecker  extends Checker with RestarterChecker with LazyLogging {
 
   private def getActiveDcSyncs(host : String) : Future[Set[ActiveDcSync]] = {
 
-     HttpUtil.httpGet(s"http://$host/meta/sys/dc/?op=search&qp=type::remote&format=json&with-data").map {
+     Http.get(s"http://$host/meta/sys/dc/?op=search&qp=type::remote&format=json&with-data").map {
       r =>
-        val json: JsValue = Json.parse(r.content)
+        val json: JsValue = Json.parse(r.payload)
         val JsDefined(JsArray(infotons)) = json.\("results").\("infotons")
         val iterator = infotons.iterator
 
@@ -78,9 +74,9 @@ object DcChecker  extends Checker with RestarterChecker with LazyLogging {
 
   private def getLastIndexTime(host : String, dc : String, qp: Option[String]): Future[Long] = {
     val qpPart = qp.fold("?")(qp => s"?qp=$qp&")
-    HttpUtil.httpGet(s"http://$host/proc/dc/$dc${qpPart}format=json&with-data").map {
+    Http.get(s"http://$host/proc/dc/$dc${qpPart}format=json&with-data").map {
       r =>
-        val json: JsValue = Json.parse(r.content)
+        val json: JsValue = Json.parse(r.payload)
         json.\("fields").\("lastIdxT").\(0).as[Long]
     }
   }

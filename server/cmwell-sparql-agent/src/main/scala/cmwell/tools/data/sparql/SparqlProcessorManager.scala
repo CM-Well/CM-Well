@@ -43,6 +43,7 @@ import com.typesafe.scalalogging.LazyLogging
 import k.grid.GridReceives
 import net.jcazevedo.moultingyaml._
 import org.apache.commons.lang3.time.DurationFormatUtils
+import play.api.libs.json._
 
 import scala.concurrent.Future
 import scala.concurrent.duration.{FiniteDuration, _}
@@ -390,13 +391,10 @@ class SparqlProcessorManager extends Actor with LazyLogging {
       * @return config string extracted from infoton json bytes
       */
     def extractConfigStringFromInfotonData(json: ByteString): String = {
-      import spray.json._
-      JsonParser(ParserInput(json.toArray))
-        .asJsObject.fields("content")
-        .asJsObject.fields("data") match {
-          case JsString(config) => config
-          case _ => ""
-        }
+      Json.parse(json.toArray) \ "content" \ "data" match {
+        case JsDefined(JsString(config)) => config
+        case _ => ""
+      }
     }
 
     /**
@@ -495,26 +493,16 @@ class SparqlProcessorManager extends Actor with LazyLogging {
     }
 
     def extractActiveStringFromInfoton(json: ByteString) = {
-      import spray.json._
+      val parsed = Json.parse(json.toArray)
 
-      val parsed = JsonParser(ParserInput(json.toArray)).asJsObject
-
-      if (!parsed.fields.contains("fields")) ""
+      if (!parsed.\("fields").isDefined) ""
       else {
-        val result = JsonParser(ParserInput(json.toArray))
-          .asJsObject.fields("fields")
-          .asJsObject.fields("active") match {
-          case JsArray(data) => data.map {
-            _ match {
-              //        if (!x.asJsObject.fields.contains("active")) ""
-              //        else x.asJsObject.fields("active").toString()
-
+        val result = parsed \ "fields" \ "active" match {
+          case JsDefined(JsArray(data)) => data.map {
               case JsTrue => "true"
               case JsFalse => "false"
               case _ => ""
-            }
           }
-
           case x => Seq.empty[String]
         }
 

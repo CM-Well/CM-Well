@@ -17,8 +17,8 @@
 package cmwell.ctrl.checkers
 
 import cmwell.ctrl.config.Config
-import cmwell.ctrl.utils.{HttpUtil, ProcUtil}
-import com.fasterxml.jackson.databind.JsonNode
+import cmwell.ctrl.utils.ProcUtil
+import cmwell.util.http.{SimpleHttpClient => Http}
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.Future
@@ -34,12 +34,12 @@ object ElasticsearchChecker extends Checker with LazyLogging {
   override val storedStates: Int = 10
   override def check: Future[ComponentState] = {
     val url = s"http://${Config.pingIp}:9201/_cluster/health"
-    val res = HttpUtil.httpGet(url)
+    val res = Http.get(url)
     val hasMaster = ProcUtil.checkIfProcessRun("es-master") > 0
     res.map{
       r =>
-        if(r.code == 200) {
-          val json: JsValue = Json.parse(r.content)
+        if(r.status == 200) {
+          val json: JsValue = Json.parse(r.payload)
           val status = json.\("status").as[String]
           val n = (json \ "number_of_nodes").as[Int]
           val d = (json \ "number_of_data_nodes").as[Int]
@@ -53,7 +53,7 @@ object ElasticsearchChecker extends Checker with LazyLogging {
           }
         }
         else
-          ElasticsearchBadCode(r.code,hasMaster)
+          ElasticsearchBadCode(r.status,hasMaster)
     }.recover {
       case e: Throwable => {
         logger.error("ElasticsearchChecker check failed with an exception: ", e)

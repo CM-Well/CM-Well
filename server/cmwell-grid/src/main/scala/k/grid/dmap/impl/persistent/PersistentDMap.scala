@@ -17,15 +17,16 @@
 package k.grid.dmap.impl.persistent
 
 
-import java.io.{FileNotFoundException, PrintWriter, File}
+import java.io.{File, FileNotFoundException, PrintWriter}
 
 import com.typesafe.scalalogging.LazyLogging
 import k.grid.dmap.impl.persistent.json.PersistentDMapDataFileParsingException
-import k.grid.{Grid, Config}
+import k.grid.{Config, Grid}
 import k.grid.dmap.api._
+import play.api.libs.json.Json
 
 import scala.util.{Failure, Success, Try}
-import spray.json._
+//import spray.json._
 import scala.concurrent.duration._
 import json.MapDataJsonProtocol._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -73,7 +74,11 @@ class PersistentSlave extends DMapSlave with LazyLogging {
   private val dataFile = new File(s"${Grid.persistentDmapDir}/${Config.clusterName}")
 
   def readMap : Option[MapData] = {
-    val content = Try(scala.io.Source.fromFile(dataFile).getLines().mkString("\n").parseJson.convertTo[MapData]) match {
+    val content = Try {
+      val x = scala.io.Source.fromFile(dataFile).getLines().mkString("\n")
+//      parseJson.convertTo[MapData]
+      Json.parse(x).as[MapData]
+    } match {
       case Success(c) => Some(c)
       case Failure(e) if e.isInstanceOf[FileNotFoundException] => None
       case Failure(e) => {
@@ -85,7 +90,7 @@ class PersistentSlave extends DMapSlave with LazyLogging {
   }
 
   def writeMap(md : MapData) = {
-    val content = md.toJson.toString
+    val content =  Json.stringify(Json.toJson(md))
     new PrintWriter(dataFile) { write(content); close }
   }
 

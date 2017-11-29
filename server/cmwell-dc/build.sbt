@@ -45,8 +45,8 @@ libraryDependencies ++= {
 			.exclude("org.slf4j", "slf4j-log4j12")
 			.exclude("log4j", "log4j"),
 		dm("com.typesafe.scala-logging", "scala-logging"),
-		dm("io.spray", "spray-client"),
-		dm("io.spray", "spray-json"),
+//		dm("io.spray", "spray-client"),
+//		dm("io.spray", "spray-json"),
 		dm("joda-time", "joda-time"),
 		dm("net.logstash.logback", "logstash-logback-encoder"),
 		dm("uk.org.lidalia","sysout-over-slf4j"),

@@ -19,9 +19,9 @@ libraryDependencies ++= {
     dm("com.typesafe", "config"),
     dm("com.typesafe.play", "play-json"),
     dm("org.hdrhistogram", "HdrHistogram"),
-    dm("io.spray", "spray-can"),
-    dm("io.spray", "spray-routing"),
-    dm("io.spray", "spray-json"),
+//    dm("io.spray", "spray-can"),
+//    dm("io.spray", "spray-routing"),
+//    dm("io.spray", "spray-json"),
     dm("uk.org.lidalia","sysout-over-slf4j"))
 }
 

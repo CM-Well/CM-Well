@@ -35,7 +35,7 @@ import k.grid.dmap.impl.inmem.InMemDMap
 import k.grid.registration.{RegistrationCoordinator, LocalRegistrationManager}
 import k.grid.monitoring._
 import k.grid.service.{ServiceCoordinator, ServiceTypes, LocalServiceManager}
-import spray.can.Http
+//import spray.can.Http
 import com.typesafe.config.ConfigFactory
 import scala.concurrent.duration._
 import akka.cluster.ClusterEvent.{MemberUp, LeaderChanged, ClusterDomainEvent}
@@ -567,7 +567,7 @@ class GridImp extends Grid with LazyLogging {
 
 
     val monitorActor = system.actorOf(Props[MonitorActor], name = MonitorActor.name)
-    IO(Http)(Grid.system) ! Http.Bind(monitorActor, interface = hostname, port = monitorPort)
+//    IO(Http)(Grid.system) ! Http.Bind(monitorActor, interface = hostname, port = monitorPort)
 
 
     Grid.create(classOf[ClientActor], ClientActor.name)
@@ -608,7 +608,7 @@ class GridImp extends Grid with LazyLogging {
     Grid.create(classOf[ClientActor], ClientActor.name)
     Grid.create(classOf[LocalRegistrationManager], LocalRegistrationManager.name)
     val monitorActor = system.actorOf(Props[MonitorActor], name = MonitorActor.name)
-    IO(Http)(Grid.system) ! Http.Bind(monitorActor, interface = hostname, port = monitorPort)
+//    IO(Http)(Grid.system) ! Http.Bind(monitorActor, interface = hostname, port = monitorPort)
     // ----------------------------------------------------------------------
 
     DMaps.get.foreach(_.initMaster)
