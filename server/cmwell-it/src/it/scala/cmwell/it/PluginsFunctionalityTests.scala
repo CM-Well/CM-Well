@@ -203,7 +203,7 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
 
         it("should import recursively") {
           import scala.concurrent.ExecutionContext.Implicits.global
-          
+
           val firstFolder = "queries1"
           val secondFolder = "queries2"
           val firstPath = cmw / firstFolder

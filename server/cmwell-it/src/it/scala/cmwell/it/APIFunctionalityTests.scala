@@ -61,28 +61,40 @@ class APIFunctionalityTests extends AsyncFunSpec
 
         it("should post with new VCARD onthology") {
           val vcardRdf = Source.fromURL(this.getClass.getResource("/vcard_new_ns.xml")).mkString
-          val f = Http.post(_in, vcardRdf, Some("application/rdf+xml;charset=UTF-8"), List("format" -> "rdfxml"), tokenHeader)
-          Await.result(f.map(res => Json.parse(res.payload)), requestTimeout) should be(jsonSuccess)
+          Http.post(_in, vcardRdf, Some("application/rdf+xml;charset=UTF-8"), List("format" -> "rdfxml"), tokenHeader).map { res =>
+            withClue(res) {
+              Json.parse(res.payload) should be(jsonSuccess)
+            }
+          }
         }
 
         it("should post with anti jena new onthology"){
           val vcardRdf = Source.fromURL(this.getClass.getResource("/anti_jena_ns.xml")).mkString
-          val f = Http.post(_in, vcardRdf, Some("application/rdf+xml;charset=UTF-8"), List("format" -> "rdfxml"), tokenHeader)
-          Await.result(f.map(res => Json.parse(res.payload)), requestTimeout) should be(jsonSuccess)
+          Http.post(_in, vcardRdf, Some("application/rdf+xml;charset=UTF-8"), List("format" -> "rdfxml"), tokenHeader).map { res =>
+            withClue(res) {
+              Json.parse(res.payload) should be(jsonSuccess)
+            }
+          }
         }
 
         it("should post with complicated inference logic"){
           val zzz = Source.fromURL(this.getClass.getResource("/zzz.rdf")).mkString
-          val f = Http.post(_in, zzz, Some("application/rdf+xml;charset=UTF-8"), List("format" -> "rdfxml"), tokenHeader)
-          Await.result(f.map(res => Json.parse(res.payload)), requestTimeout) should be(jsonSuccess)
+          Http.post(_in, zzz, Some("application/rdf+xml;charset=UTF-8"), List("format" -> "rdfxml"), tokenHeader).map { res =>
+            withClue(res) {
+              Json.parse(res.payload) should be(jsonSuccess)
+            }
+          }
         }
       }
 
       describe("with N-Triple format"){
-        it("should post with new VCARD onthology"){
+        it("should post with new VCARD onthology") {
           val vcardNTriple = Source.fromURL(this.getClass.getResource("/vcard_new_ns.nt")).mkString
-          val f = Http.post(_in, vcardNTriple, Some("text/plain;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader)
-          Await.result(f.map(res => Json.parse(res.payload)), requestTimeout) should be(jsonSuccess)
+          Http.post(_in, vcardNTriple, Some("text/plain;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader).map { res =>
+            withClue(res) {
+              Json.parse(res.payload) should be(jsonSuccess)
+            }
+          }
         }
 
         it("should insert JaneSmith triples"){
@@ -91,16 +103,22 @@ class APIFunctionalityTests extends AsyncFunSpec
                             |<http://example.org/JaneSmith> <http://www.w3.org/2006/vcard/ns#GENDER> "Female" .
                             |<http://example.org/JaneSmith> <http://www.w3.org/2006/vcard/ns#FN> "Jane Smith" .
                           """.stripMargin
-          val f = Http.post(_in, janeSmith, Some("text/plain;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader)
-          Await.result(f.map(res => Json.parse(res.payload)), requestTimeout) should be(jsonSuccess)
+          Http.post(_in, janeSmith, Some("text/plain;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader).map { res =>
+            withClue(res) {
+              Json.parse(res.payload) should be(jsonSuccess)
+            }
+          }
         }
       }
 
       describe("with N3 format"){
         it("should post with new VCARD onthology") {
           val vcardN3 = Source.fromURL(this.getClass.getResource("/vcard_new_ns.n3")).mkString
-          val f = Http.post(_in, vcardN3, Some("text/n3;charset=UTF-8"), List("format" -> "n3"), tokenHeader)
-          Await.result(f.map(res => Json.parse(res.payload)), requestTimeout) should be(jsonSuccess)
+          Http.post(_in, vcardN3, Some("text/n3;charset=UTF-8"), List("format" -> "n3"), tokenHeader).map { res =>
+            withClue(res) {
+              Json.parse(res.payload) should be(jsonSuccess)
+            }
+          }
         }
       }
 
@@ -110,8 +128,11 @@ class APIFunctionalityTests extends AsyncFunSpec
     it("should put object infoton"){
       val jsonObjIn = Json.obj("header" -> "TestHeader","title" -> "TestTitle")
       val path = cmt / "InfoObj2"
-      val f = Http.post(path, Json.stringify(jsonObjIn), Some("application/json;charset=UTF-8"), Nil, ("X-CM-WELL-TYPE" -> "OBJ") :: tokenHeader)
-      Await.result(f.map(res => Json.parse(res.payload)), requestTimeout) should be(jsonSuccess)
+      Http.post(path, Json.stringify(jsonObjIn), Some("application/json;charset=UTF-8"), Nil, ("X-CM-WELL-TYPE" -> "OBJ") :: tokenHeader).map { res =>
+        withClue(res) {
+          Json.parse(res.payload) should be(jsonSuccess)
+        }
+      }
     }
 
     it("get object infoton in json format") {
@@ -139,7 +160,9 @@ class APIFunctionalityTests extends AsyncFunSpec
       it("should put object infoton for RDF GET") {
         val jsonObjIn = Json.obj("company" -> "microsoft", "head" -> "seatle", s"type.${ns.rdf}" -> "http://ont.example.org/types#someType")
         Http.post(path, Json.stringify(jsonObjIn), Some("application/json;charset=UTF-8"), Nil, ("X-CM-WELL-TYPE" -> "OBJ") :: tokenHeader).map{res =>
-          Json.parse(res.payload) should be(jsonSuccess)
+          withClue(res) {
+            Json.parse(res.payload) should be(jsonSuccess)
+          }
         }
       }
 
@@ -148,43 +171,38 @@ class APIFunctionalityTests extends AsyncFunSpec
       val predComp = ResourceFactory.createProperty("http://localhost:9000/meta/nn#", "company")
 
       it("in RDF N3 format") {
-        indexingDuration.fromNow.block ;
-        val f = Http.get(path, List("format" -> "n3")).map { body =>
-          body.status should be >=200
-          body.status should be <400 //status should be OK
-          val m = ModelFactory.createDefaultModel()
-          RDFDataMgr.read(m, new java.io.ByteArrayInputStream(body.payload), Lang.N3)
-          m
+        scheduleFuture(indexingDuration) {
+          Http.get(path, List("format" -> "n3")).map { body =>
+            body.status should be >= 200
+            body.status should be < 400 //status should be OK
+            val graphResult = ModelFactory.createDefaultModel()
+            RDFDataMgr.read(graphResult, new java.io.ByteArrayInputStream(body.payload), Lang.N3)
+            graphResult.getProperty(subject, predHead).getLiteral.getLexicalForm should be("seatle")
+            graphResult.getProperty(subject, predComp).getLiteral.getLexicalForm should be("microsoft")
+          }
         }
-        val graphResult = Await.result(f, requestTimeout)
-        graphResult.getProperty(subject,predHead).getLiteral.getLexicalForm should be("seatle")
-        graphResult.getProperty(subject,predComp).getLiteral.getLexicalForm should be("microsoft")
       }
 
       it("in RDF NTriple format") {
-        val f = Http.get(path, List("format" -> "ntriples")).map{ body =>
+        Http.get(path, List("format" -> "ntriples")).map{ body =>
           body.status should be >=200
           body.status should be <400 //status should be OK
-          val m = ModelFactory.createDefaultModel()
-          RDFDataMgr.read(m, new java.io.ByteArrayInputStream(body.payload), Lang.NTRIPLES)
-          m
+          val graphResult = ModelFactory.createDefaultModel()
+          RDFDataMgr.read(graphResult, new java.io.ByteArrayInputStream(body.payload), Lang.NTRIPLES)
+          graphResult.getProperty(subject,predHead).getLiteral.getLexicalForm should be("seatle")
+          graphResult.getProperty(subject,predComp).getLiteral.getLexicalForm should be("microsoft")
         }
-        val graphResult = Await.result(f, requestTimeout)
-        graphResult.getProperty(subject,predHead).getLiteral.getLexicalForm should be("seatle")
-        graphResult.getProperty(subject,predComp).getLiteral.getLexicalForm should be("microsoft")
       }
 
       it("in RDF XML format"){
-        val f = Http.get(path, List("format" -> "rdfxml")).map{ body =>
+        Http.get(path, List("format" -> "rdfxml")).map{ body =>
           body.status should be >=200
           body.status should be <400 //status should be OK
-          val m = ModelFactory.createDefaultModel()
-          RDFDataMgr.read(m, new java.io.ByteArrayInputStream(body.payload), Lang.RDFXML)
-          m
+          val graphResult = ModelFactory.createDefaultModel()
+          RDFDataMgr.read(graphResult, new java.io.ByteArrayInputStream(body.payload), Lang.RDFXML)
+          graphResult.getProperty(subject,predHead).getLiteral.getLexicalForm should be("seatle")
+          graphResult.getProperty(subject,predComp).getLiteral.getLexicalForm should be("microsoft")
         }
-        val graphResult = Await.result(f, requestTimeout)
-        graphResult.getProperty(subject,predHead).getLiteral.getLexicalForm should be("seatle")
-        graphResult.getProperty(subject,predComp).getLiteral.getLexicalForm should be("microsoft")
       }
     }
 
@@ -492,15 +510,17 @@ class APIFunctionalityTests extends AsyncFunSpec
       describe("JSONL meta/ns bookeeping") {
         it("should add .nn for lastName not in meta/ns") {
           val path = cmt / "InfoObjForRdfGet"
-          val f = Http.get(path, List("format" -> "jsonl")).map(res => Json.parse(res.payload))
-          val resp = Await.result(f, requestTimeout)
-          Try((resp \ "company.nn").as[List[Map[String,String]]].head("value")).getOrElse("") should be("microsoft")
+          Http.get(path, List("format" -> "jsonl")).map{res =>
+            val resp = Json.parse(res.payload)
+            Try((resp \ "company.nn").as[List[Map[String,String]]].head("value")).getOrElse("") should be("microsoft")
+          }
         }
         it("should not add .nn for lastName in meta/ns") {
           val path = cmt / "InfoObjForRdfGet"
-          val f = Http.get(path, List("format" -> "jsonl")).map(res => Json.parse(res.payload))
-          val resp = Await.result(f, requestTimeout)
-          Try((resp \ "type.rdf").as[List[Map[String,String]]].head("value")).getOrElse("") should be("http://ont.example.org/types#someType")
+          Http.get(path, List("format" -> "jsonl")).map { res =>
+            val resp = Json.parse(res.payload)
+            Try((resp \ "type.rdf").as[List[Map[String,String]]].head("value")).getOrElse("") should be("http://ont.example.org/types#someType")
+          }
         }
       }
 
@@ -511,14 +531,19 @@ class APIFunctionalityTests extends AsyncFunSpec
             |<http://example.org/JaneSmith> <cmwell://meta/sys#markReplace> <http://www.w3.org/2006/vcard/ns#FN> .
             |<http://example.org/JaneSmith> <http://www.w3.org/2006/vcard/ns#FN> "Jennifer Smith" .
           """.stripMargin
-          val f = Http.post(_in, jenniferSmith, None, List("format" -> "nquads"), tokenHeader).map(res => Json.parse(res.payload))
-          Await.result(f, requestTimeout) should be(jsonSuccess)
+          Http.post(_in, jenniferSmith, None, List("format" -> "nquads"), tokenHeader).map { res =>
+            withClue(res) {
+              Json.parse(res.payload) should be(jsonSuccess)
+            }
+          }
         }
 
         it("should verify that the name was changed") {
           indexingDuration.fromNow.block
-          val f = Http.get(exampleOrg./("JaneSmith"), List("format" -> "json")).map(res => Json.parse(res.payload)).map(_.transform((__ \ 'fields \ "FN.vcard").json.pick).get)
-          Await.result(f, requestTimeout) shouldEqual JsArray(Seq(JsString("Jennifer Smith")))
+          Http.get(exampleOrg./("JaneSmith"), List("format" -> "json")).map { res =>
+            val jv = Json.parse(res.payload).transform((__ \ 'fields \ "FN.vcard").json.pick).get
+            jv shouldEqual JsArray(Seq(JsString("Jennifer Smith")))
+          }
         }
       }
 
@@ -540,8 +565,12 @@ class APIFunctionalityTests extends AsyncFunSpec
           |}
         """.stripMargin)
         val g = clf / "ce" / "GH"
-        val f = Http.get(g, List("format" -> "json")).map(res => Json.parse(res.payload)).map(_.transform(uuidDateEraser).get)
-        Await.result(f, requestTimeout) shouldEqual expected
+        Http.get(g, List("format" -> "json")).map { res =>
+          withClue(res) {
+            val jv = Json.parse(res.payload).transform(uuidDateEraser).get
+            jv shouldEqual expected
+          }
+        }
       }
 
       it("should deal with complicated prefix inference logic") {
@@ -554,14 +583,13 @@ class APIFunctionalityTests extends AsyncFunSpec
             """<http://example.org/hochgi> <http://localhost:9000/meta/sys#path> "/example.org/hochgi" ."""
         )
 
-        val f = Http.get(exampleOrg./("hochgi"), List("format" -> "ntriples")).map{ body =>
+        Http.get(exampleOrg./("hochgi"), List("format" -> "ntriples")).map{ body =>
           body.status should be >=200
           body.status should be <400 //status should be OK
           def mSys(s: String) = s"/meta/sys#$s"
           val res = (new String(body.payload, "UTF-8")).split('\n').filterNot(t => t.contains(mSys("lastModified")) || t.contains(mSys("uuid")) || t.contains(mSys("indexTime")))
-          res.toSet
+          res.toSet shouldEqual expectedNt
         }
-        Await.result(f, requestTimeout) shouldEqual expectedNt
       }
 
       it("should verify ZzZzz meta creation") {
@@ -582,8 +610,11 @@ class APIFunctionalityTests extends AsyncFunSpec
             |}
           """.stripMargin)
         val zzz = metaNs / hash
-        val f = Http.get(zzz, List("format" -> "json")).map(res => Json.parse(res.payload)).map(_.transform(uuidDateEraser).get)
-        Await.result(f, requestTimeout) shouldEqual expected
+        Http.get(zzz, List("format" -> "json")).map { res =>
+          withClue(res) {
+            Json.parse(res.payload).transform(uuidDateEraser).get shouldEqual expected
+          }
+        }
       }
 
       describe("with inserted N-Triple docs") {
@@ -604,12 +635,16 @@ class APIFunctionalityTests extends AsyncFunSpec
             |  }
             |}
           """.stripMargin)
-          val f = Http.get(ik, List("format" -> "json")).map(res => Json.parse(res.payload)).map(_.transform(uuidDateEraser andThen (__ \ 'fields \ "N.vcard").json.prune).get)
-          Await.result(f, requestTimeout) shouldEqual expected
+          Http.get(ik, List("format" -> "json")).map { res =>
+            withClue(res) {
+              val jv = Json.parse(res.payload).transform(uuidDateEraser andThen (__ \ 'fields \ "N.vcard").json.prune).get
+              jv shouldEqual expected
+            }
+          }
         }
 
         it("should verify language tag support") {
-          val f = Http.get(ik, List("format" -> "ntriples")).map{ res =>
+          Http.get(ik, List("format" -> "ntriples")).map{ res =>
             res.status should be >=200
             res.status should be <400 //status should be OK
             import scala.collection.JavaConversions._
@@ -620,9 +655,8 @@ class APIFunctionalityTests extends AsyncFunSpec
               case stmt if stmt.getPredicate.getLocalName.toUpperCase == "NOTE" => {
                 stmt.getObject.asLiteral.getLanguage
               }
-            }.next
+            }.next shouldEqual "en"
           }
-          Await.result(f,requestTimeout) shouldEqual "en"
         }
       }
 
@@ -891,10 +925,11 @@ class APIFunctionalityTests extends AsyncFunSpec
           None
         }
 
-        val res = Await.result(p.future, requestTimeout)
-        val errOrOk = compareRDF(expected,  res, "RDF/XML-ABBREV" ,Array("lastModified", "uuid", "indexTime"))
-        withClue("\n" + errOrOk.left.getOrElse("") + "\n") {
-          errOrOk.right.value should be(())
+        p.future.map { res =>
+          val errOrOk = compareRDF(expected, res, "RDF/XML-ABBREV", Array("lastModified", "uuid", "indexTime"))
+          withClue("\n" + errOrOk.left.getOrElse("") + "\n") {
+            errOrOk.right.value should be(())
+          }
         }
       }
 
@@ -915,9 +950,12 @@ class APIFunctionalityTests extends AsyncFunSpec
           """.stripMargin)
 
         val path = clf / "ce" / "MZ"
-        val f = Http.get(path, List("format" -> "json")).map(res=>Json.parse(res.payload))
-          .map(_.transform(uuidDateEraser andThen (__ \ 'fields \ "N.vcard").json.prune).get)
-        Await.result(f, requestTimeout) shouldEqual expected
+        Http.get(path, List("format" -> "json")).map { res =>
+          withClue(res) {
+            val jv = Json.parse(res.payload).transform(uuidDateEraser andThen (__ \ 'fields \ "N.vcard").json.prune).get
+            jv shouldEqual expected
+          }
+        }
       }
 
       describe("checking /meta/ns data") {
@@ -940,8 +978,12 @@ class APIFunctionalityTests extends AsyncFunSpec
               |}
             """.stripMargin)
           val path = metaNs / hash
-          val f = Http.get(path, List("format" -> "json")).map(res=>Json.parse(res.payload)).map(_.transform(uuidDateEraser).get)
-          Await.result(f, requestTimeout) shouldEqual expected
+          Http.get(path, List("format" -> "json")).map { res =>
+            withClue(res) {
+              val jv = Json.parse(res.payload).transform(uuidDateEraser).get
+              jv shouldEqual expected
+            }
+          }
         }
       }
     }
@@ -1110,8 +1152,7 @@ class APIFunctionalityTests extends AsyncFunSpec
 
     it("should return 400 Bad Request for /ii/* with an invalid uuid format") {
       val path = cmw / "ii" / "not-a-valid-uuid"
-      val f = Http.get(path).map(_.status)
-      Await.result(f, requestTimeout) should be(400)
+      Http.get(path).map(_.status should be(400))
     }
 
     describe("should render non-english characters in various formats") {
@@ -1143,14 +1184,20 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       it("should upload an Infoton with UTF-8 in subject using _in") {
         val triples = s"""<http://cmt/cm/test/Araújo> <http://ont.thomsonreuters.com/wiki#title> "Rock and Roll Over"^^<http://www.w3.org/2001/XMLSchema#string> ."""
-        val f = Http.post(_in, triples, Some("text/plain;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader)
-        Await.result(f.map(res => Json.parse(res.payload)), requestTimeout) should be(jsonSuccess)
+        Http.post(_in, triples, Some("text/plain;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader).map { res =>
+          withClue(res) {
+            Json.parse(res.payload) should be(jsonSuccess)
+          }
+        }
       }
 
       val infotonUTF8 = Json.obj("title" -> "Rock and Roll Over")
       it("should upload an Infoton with escaped UTF-8 in subject using post") {
-        val f = Http.post(cmt / "Araújo3", infotonUTF8.toString(), Some("application/json;charset=UTF-8"), List("format" -> "json"), ("X-CM-WELL-TYPE" -> "OBJ") :: tokenHeader)
-        Await.result(f.map(res => Json.parse(res.payload)), requestTimeout) should be(jsonSuccess)
+        Http.post(cmt / "Araújo3", infotonUTF8.toString(), Some("application/json;charset=UTF-8"), List("format" -> "json"), ("X-CM-WELL-TYPE" -> "OBJ") :: tokenHeader).map { res =>
+          withClue(res) {
+            Json.parse(res.payload) should be(jsonSuccess)
+          }
+        }
       }
 
       it("should get an Infoton with UTF-8 in subject using get") {
@@ -1171,40 +1218,47 @@ class APIFunctionalityTests extends AsyncFunSpec
             |}
           """.stripMargin)
         indexingDuration.fromNow.block
-        val f = Http.get(cmt / "Araújo3", List("format" -> "json"))
-        Await.result(f.map(res => Json.parse(res.payload).transform(uuidDateEraser).get), requestTimeout) should be(expected)
+        Http.get(cmt / "Araújo3", List("format" -> "json")).map { res =>
+          withClue(res) {
+            Json.parse(res.payload).transform(uuidDateEraser).get should be(expected)
+          }
+        }
       }
 
       it("should get an Infoton with UTF-8 in subject using get without parameters") {
-        val f = Http.get(cmt / "Araújo3")
-        val res = Await.result(f.map(res => new String(res.payload, "UTF-8")), requestTimeout)
-        res.contains("Rock and Roll Over") should be(true)
+        import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+        Http.get(cmt / "Araújo3").map { res =>
+          res.payload should include("Rock and Roll Over")
+        }
       }
 
       it("should get an Infoton with UTF-8 in subject using _out") {
-        val f = Http.post(_out, "/cmt/cm/test/Araújo", Some("text/plain;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader)
-        val res = Await.result(f.map(res => new String(res.payload, "UTF-8")), requestTimeout)
-        res.contains("Rock and Roll Over") should be(true)
+        import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+        Http.post(_out, "/cmt/cm/test/Araújo", Some("text/plain;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader).map { res =>
+          res.payload should include("Rock and Roll Over")
+        }
       }
 
       it("should delete an Infoton with UTF-8 in subject using delete") {
-        val f = Http.delete(cmt / "Araújo3", headers = tokenHeader)
-        Await.result(f.map(res => Json.parse(res.payload)), requestTimeout) should be(jsonSuccess)
+        Http.delete(cmt / "Araújo3", headers = tokenHeader).map(res => Json.parse(res.payload) should be(jsonSuccess))
       }
 
       it("should verify an Infoton with UTF-8 in subject actually was deleted") {
-        indexingDuration.fromNow.block
-        val f = Http.get(cmt / "Araújo3")
-        Await.result(f.map(res => new String(res.payload, "UTF-8")), requestTimeout).contains("Infoton was deleted") should be(true)
+        import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+        scheduleFuture(indexingDuration) {
+          Http.get(cmt / "Araújo3").map { res =>
+            res.payload should include("Infoton was deleted")
+          }
+        }
       }
 
       it("should verify an Infoton with %2F in subject is rejected") {
         val errorJson = Json.parse("""{"success":false,"error":"%2F is illegal in the path part of the URI!"}""")
         val stringCmt: String = cmt
-        val f = Http.get(s"$stringCmt/moshe%2fdavid")
-        val res = Await.result(f, requestTimeout)
-        res.status should be(400)
-        Json.parse(res.payload) should be(errorJson)
+        Http.get(s"$stringCmt/moshe%2fdavid").map { res =>
+          res.status should be(400)
+          Json.parse(res.payload) should be(errorJson)
+        }
       }
     }
 
@@ -1261,97 +1315,108 @@ class APIFunctionalityTests extends AsyncFunSpec
       it("should purge one historical version by uuid") {
         // get some uuid
         val path = cmw / "example.org" / "Individuals" / "DaisyDuck"
-        val f = Http.get(path, Seq("with-history" -> "", "format" -> "json"))
-          .map(res => Json.parse(res.payload))
-        val body = Await.result(f, requestTimeout)
-        val versions = (body getArr "versions")
-          .sortBy(jsVal => Instant.parse((jsVal \ "system" \ "lastModified").as[String]).toEpochMilli)
-        val midVersion = versions(1)
-        val uuid = (midVersion \ "system" \ "uuid").as[String]
+        Http.get(path, Seq("with-history" -> "", "format" -> "json")).flatMap { res =>
 
-        // purge it
-        val uuidPath = cmw / "ii" / uuid
-        val f1 = Http.get(uuidPath, Seq("op" -> "purge"), tokenHeader)
-          .map(res => Json.parse(res.payload))
-        val body1 = Await.result(f1, requestTimeout)
-        body1 should be(jsonSimpleResponseSuccess)
+          val body = Json.parse(res.payload)
 
-        indexingDuration.fromNow.block
+          val versions = (body getArr "versions")
+            .sortBy(jsVal => Instant.parse((jsVal \ "system" \ "lastModified").as[String]).toEpochMilli)
+          val midVersion = versions(1)
+          val uuid = (midVersion \ "system" \ "uuid").as[String]
 
-        // verify it does not exist in direct access
-        Await.result(Http.get(uuidPath).map(_.status), requestTimeout) should be(404)
+          // purge it
+          val uuidPath = cmw / "ii" / uuid
+          Http.get(uuidPath, Seq("op" -> "purge"), tokenHeader).flatMap { res =>
 
-        // verify it does not exist in search
-        val body2 = Await.result(Http.get(path, Seq("with-history" -> "", "format" -> "json")).map(res => Json.parse(res.payload)), requestTimeout)
-        val versions2 = body2 getArr "versions"
-        versions2.length should be (2)
+            val body1 = Json.parse(res.payload)
+            body1 should be(jsonSimpleResponseSuccess)
+
+            scheduleFuture(indexingDuration) {
+
+              // verify it does not exist in direct access
+              for {
+                r1 <- Http.get(uuidPath)
+                r2 <- Http.get(path, Seq("with-history" -> "", "format" -> "json"))
+              } yield {
+                r1.status should be(404)
+                // verify it does not exist in search
+                val body2 = Json.parse(r2.payload)
+                val versions2 = body2 getArr "versions"
+                versions2.length should be(2)
+              }
+            }
+          }
+        }
       }
 
-      // temporary not supported
-      ignore("should purge all historical version by path, but keep the last (current) one") {
-        val path = cmw / "example.org" / "Individuals" / "PeterParker"
-
-        // purge history
-        val f = Http.get(path, Seq("op"->"purge-history"), tokenHeader)
-          .map(res => Json.parse(res.payload))
-        val body = Await.result(f, requestTimeout)
-        body should be(jsonSimpleResponseSuccess)
-
-        indexingDuration.fromNow.block
-
-        // verify Infoton is still out there
-        val body1 = Await.result(Http.get(path).map(_.status), requestTimeout)
-        body1 should be(200)
-
-        // verify there's only 1 (last) version of it
-        val body2 = Await.result(Http.get(path, Seq("with-history" -> "", "format" -> "json"))
-          .map(res => Json.parse(res.payload)), requestTimeout)
-        val versions = body2 getArr "versions"
-        versions.length should be (1)
-      }
+      //FIXME: temporary not supported
+//      ignore("should purge all historical version by path, but keep the last (current) one") {
+//        val path = cmw / "example.org" / "Individuals" / "PeterParker"
+//
+//        // purge history
+//        val f = Http.get(path, Seq("op"->"purge-history"), tokenHeader)
+//          .map(res => Json.parse(res.payload))
+//        val body = Await.result(f, requestTimeout)
+//        body should be(jsonSimpleResponseSuccess)
+//
+//        indexingDuration.fromNow.block
+//
+//        // verify Infoton is still out there
+//        val body1 = Await.result(Http.get(path).map(_.status), requestTimeout)
+//        body1 should be(200)
+//
+//        // verify there's only 1 (last) version of it
+//        val body2 = Await.result(Http.get(path, Seq("with-history" -> "", "format" -> "json"))
+//          .map(res => Json.parse(res.payload)), requestTimeout)
+//        val versions = body2 getArr "versions"
+//        versions.length should be (1)
+//      }
 
       it("should purge current and all historical versions by path") {
         val path = cmw / "example.org" / "Individuals" / "DonaldDuck"
 
         // purge all the versions!
-        val f = Http.get(path, Seq("op"->"purge-all"), tokenHeader)
-          .map(res => Json.parse(res.payload))
-        val body = Await.result(f, requestTimeout)
-        body should be(jsonSimpleResponseSuccess)
+        Http.get(path, Seq("op" -> "purge-all"), tokenHeader).flatMap { res =>
+          val body = Json.parse(res.payload)
+          body should be(jsonSimpleResponseSuccess)
 
-        indexingDuration.fromNow.block
+          scheduleFuture(indexingDuration) {
 
-        // verify Infoton does not exist
-        val body1 = Await.result(Http.get(path).map(_.status), requestTimeout)
-        body1 should be(404)
+            // verify Infoton does not exist
+            Http.get(path).flatMap { r =>
+              r.status should be(404)
 
-        // verify there's no memory of it
-        val body2 = Await.result(Http.get(path, Seq("with-history" -> "", "format" -> "json"))
-          .map(res => Json.parse(res.payload)), requestTimeout)
-        val versions = body2 getArr "versions"
-        versions.length should be (0)
+              // verify there's no memory of it
+              Http.get(path, Seq("with-history" -> "", "format" -> "json")).map { res =>
+                val body2 = Json.parse(res.payload)
+                val versions = body2 getArr "versions"
+                versions.length should be(0)
+              }
+            }
+          }
+        }
       }
 
-      // temporary not supported
-      ignore("should rollback last version of an Infoton") {
-        val path = cmw / "example.org" / "Individuals" / "RollMeBack"
-
-        def rollback() = {
-          Await.result(Http.get(path, Seq("op" -> "purge-last"), tokenHeader).map(res => Json.parse(res.payload)), requestTimeout) should be(jsonSimpleResponseSuccess)
-          indexingDuration.fromNow.block
-        }
-
-        def assertVersions(amount: Int) = {
-          val versions = Await.result(Http.get(path, Seq("with-history" -> "", "format" -> "json")).map(res => Json.parse(res.payload)), requestTimeout) getArr "versions"
-          versions.length should be(amount)
-        }
-
-        // starting from 3 versions, rolling back last one, 3 times:
-        (0 to 2).reverse.foreach { i => rollback(); assertVersions(i) }
-
-        // verify Infoton does not exist:
-        Await.result(Http.get(path).map(_.status), requestTimeout) should be(404)
-      }
+      //FIXME: temporary not supported
+//      ignore("should rollback last version of an Infoton") {
+//        val path = cmw / "example.org" / "Individuals" / "RollMeBack"
+//
+//        def rollback() = {
+//          Await.result(Http.get(path, Seq("op" -> "purge-last"), tokenHeader).map(res => Json.parse(res.payload)), requestTimeout) should be(jsonSimpleResponseSuccess)
+//          indexingDuration.fromNow.block
+//        }
+//
+//        def assertVersions(amount: Int) = {
+//          val versions = Await.result(Http.get(path, Seq("with-history" -> "", "format" -> "json")).map(res => Json.parse(res.payload)), requestTimeout) getArr "versions"
+//          versions.length should be(amount)
+//        }
+//
+//        // starting from 3 versions, rolling back last one, 3 times:
+//        (0 to 2).reverse.foreach { i => rollback(); assertVersions(i) }
+//
+//        // verify Infoton does not exist:
+//        Await.result(Http.get(path).map(_.status), requestTimeout) should be(404)
+//      }
     }
 
     describe("fields masking") {
@@ -1360,20 +1425,19 @@ class APIFunctionalityTests extends AsyncFunSpec
       it("should mask fields, reading a single Infoton") {
         val fieldsMask = Seq("worksWith.rel","active.bold")
         val f = Http.get(cmw / "example.org" / "Individuals" / "PeterParker", Seq("fields"->fieldsMask.mkString(","), "format"->"json"))
-        val res = Await.result(f.map(res => Json.parse(res.payload)), requestTimeout)
-        (res \ "fields" \ "neighborOf.rel").asOpt[String] should be (None)
+        f.map { res =>
+          (Json.parse(res.payload) \ "fields" \ "neighborOf.rel").asOpt[String] should be(None)
+        }
       }
 
       it("should mask fields, for _out") {
-
-        val f = Http.post(_out, "/example.org/Individuals/PeterParker\n", Some("text/plain;charset=UTF-8"), List("format" -> "ntriples", justWorksWith), tokenHeader).map{ body =>
+        import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+        Http.post(_out, "/example.org/Individuals/PeterParker\n", Some("text/plain;charset=UTF-8"), List("format" -> "ntriples", justWorksWith), tokenHeader).map{ body =>
           body.status should be >=200
           body.status should be <400 //status should be OK
-          new String(body.payload, "UTF-8")
+          body.payload should include("worksWith")
+          body.payload should not include("active")
         }
-        val res = Await.result(f, requestTimeout)
-        res should include("worksWith")
-        res should not include("active")
       }
 
       ignore("should mask fields, for search") {
@@ -1381,7 +1445,7 @@ class APIFunctionalityTests extends AsyncFunSpec
 //        val res = Await.result(HWR(req OK as.String), requestTimeout)
 //        res should include("worksWith")
 //        res should not include("active")
-        Future.successful(Succeeded)
+        Future.successful(succeed)
       }
 
       ignore("should mask fields, for *stream") { // todo - this works for me but retunrs 500 on bingo. why?
@@ -1391,7 +1455,7 @@ class APIFunctionalityTests extends AsyncFunSpec
 //          res should include("worksWith")
 //          res should not include("active")
 //        }
-        Future.successful(Succeeded)
+        Future.successful(succeed)
       }
     }
 
@@ -1400,26 +1464,33 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       it("should upload an Infoton with a DateTime field") {
         val data = s"""<http://example.org/1-429589421> <http://ont.thomsonreuters.com/mdaas/ipoDate> "$goodDateValue"^^<http://www.w3.org/2001/XMLSchema#dateTime> ."""
-        val req = Http.post(_in, data, Some("text/rdf+ntriples;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader)
-        Await.result(req.map(res => Json.parse(res.payload)), requestTimeout) should be(jsonSuccess)
+        Http.post(_in, data, Some("text/rdf+ntriples;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader).map { res =>
+          Json.parse(res.payload) should be(jsonSuccess)
+        }
       }
 
       ignore("should partially index an Infoton with bad field value") {
         val goodTriple = "<http://example.org/1--926126> <http://ont.thomsonreuters.com/mdaas/ipoName> \"Not 4295893421\" ."
         val data = s"""<http://example.org/1--926126> <http://ont.thomsonreuters.com/mdaas/ipoDate> "$badDateValue"^^<http://www.w3.org/2001/XMLSchema#dateTime> .\n$goodTriple"""
 
-        val uploadReq = Http.post(_in, data, Some("text/rdf+ntriples;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader)
-        Await.result(uploadReq.map(res => Json.parse(res.payload)), requestTimeout) should be(jsonSuccess)
-        indexingDuration.fromNow.block ;
+        Http.post(_in, data, Some("text/rdf+ntriples;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader).flatMap { res =>
+          Json.parse(res.payload) should be(jsonSuccess)
+          scheduleFuture(indexingDuration) {
 
-        // asserting indexing was successful (i.e. there's a cas version and a es version)
-        val verifyReq = Http.get(cmw / "example.org" / "1--926126", Seq("op"->"x-verify"))
-        Await.result(verifyReq.map(res => Json.parse(res.payload)), requestTimeout) should be(jsonSimpleResponseSuccess)
+            // asserting other field is readable
+            val infotonReq = Http.get(cmw / "example.org" / "1--926126", Seq("format" -> "ntriples"))(cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler)
 
-        // asserting other field is readable
-        val infotonReq = Http.get(cmw / "example.org" / "1--926126", Seq("format"->"ntriples"))
-        val actualTripleIfExist = Await.result(infotonReq.map(res => new String(res.payload, "UTF-8")), requestTimeout).lines.filter(_.contains("ipoName")).toSeq.headOption.getOrElse("")
-        actualTripleIfExist should be(goodTriple)
+            // asserting indexing was successful (i.e. there's a cas version and a es version)
+            Http.get(cmw / "example.org" / "1--926126", Seq("op" -> "x-verify")).map { res =>
+              Json.parse(res.payload) should be(jsonSimpleResponseSuccess)
+            }
+
+            infotonReq.map { res =>
+              val actualTripleIfExist = res.payload.lines.filter(_.contains("ipoName")).toSeq.headOption.getOrElse("")
+              actualTripleIfExist should be(goodTriple)
+            }
+          }
+        }
       }
     }
 
@@ -1427,12 +1498,16 @@ class APIFunctionalityTests extends AsyncFunSpec
       import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
       val length = 55000
       val triples = (0 until length).map(i => s"""<http://example.org/1-90210> <http://ont.thomsonreuters.com/mdaas/largeField${i/(length/5)}> "$i" .""").sorted
-      val uploadReq = Http.post(_in, triples.mkString("\n"), Some("text/rdf+ntriples;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader)
-      Await.result(uploadReq.map(res => Json.parse(res.payload)), requestTimeout) should be(jsonSuccess)
-      indexingDuration.fromNow.block ;
-      val writtenData = Await.result(Http.get(cmw / "example.org" / "1-90210", List("format" -> "ntriples")), requestTimeout).payload.split('\n').filter(_.contains("largeField")).sorted
-      withClue(s"Written data (${writtenData.length} triples) was not same NTriples as ingested data (${triples.length})\nFirst 5 written triples are: ${writtenData.take(5).mkString(" ")}") {
-        (writtenData sameElements triples) should be(true)
+      Http.post(_in, triples.mkString("\n"), Some("text/rdf+ntriples;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader).flatMap { res =>
+        Json.parse(res.payload) should be(jsonSuccess)
+        scheduleFuture(indexingDuration){
+          Http.get(cmw / "example.org" / "1-90210", List("format" -> "ntriples")).map { res =>
+            val writtenData = res.payload.split('\n').filter(_.contains("largeField")).sorted
+            withClue(s"Written data (${writtenData.length} triples) was not same NTriples as ingested data (${triples.length})\nFirst 5 written triples are: ${writtenData.take(5).mkString(" ")}") {
+              (writtenData sameElements triples) should be(true)
+            }
+          }
+        }
       }
     }
 
@@ -1441,12 +1516,16 @@ class APIFunctionalityTests extends AsyncFunSpec
       val path = cmw / "example.org" / "LargeFile.txt"
       val length = 513*1024 // > 512KB
       val data = scala.util.Random.alphanumeric.take(length).mkString
-      val uploadReq = Http.post(path, data, Some("text/plain"), headers = tokenHeader :+ "X-CM-WELL-Type"->"File")
-      Await.result(uploadReq.map(res => Json.parse(res.payload)), requestTimeout) should be(jsonSuccess)
-      indexingDuration.fromNow.block ;
-      val writtenData = Await.result(Http.get(path), requestTimeout).payload
-      withClue(s"Written data (${writtenData.length}) was not same content as ingested data ($length)\nFirst 16 chars are: ${writtenData.take(16)}") {
-        writtenData shouldBe data
+      Http.post(path, data, Some("text/plain"), headers = tokenHeader :+ "X-CM-WELL-Type"->"File").flatMap { res =>
+        Json.parse(res.payload) should be(jsonSuccess)
+        scheduleFuture(indexingDuration){
+          Http.get(path).map { res =>
+            val writtenData = res.payload
+            withClue(s"Written data (${writtenData.length}) was not same content as ingested data ($length)\nFirst 16 chars are: ${writtenData.take(16)}") {
+              writtenData shouldBe data
+            }
+          }
+        }
       }
     }
   }
