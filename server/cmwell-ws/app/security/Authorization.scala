@@ -45,7 +45,7 @@ object Authorization extends LazyLogging {
 }
 
 @Singleton
-class Authorization @Inject()(authCache: AuthCache) extends LazyLogging {
+class Authorization @Inject()(authCache: EagerAuthCache) extends LazyLogging {
   import Authorization._
 
   private def anonymousUser(nbg: Boolean) = authCache.getUserInfoton("anonymous", nbg).getOrElse(defaultAnonymousUser)

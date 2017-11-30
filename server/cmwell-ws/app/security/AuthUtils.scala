@@ -26,11 +26,11 @@ import play.api.libs.json.{JsObject, JsString}
 import play.api.mvc.Request
 import security.PermissionLevel.PermissionLevel
 
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
-import scala.util.Random
+import scala.util.{Random, Try}
 
-class AuthUtils @Inject()(authCache: AuthCache, authorization: Authorization, crudServiceFS: CRUDServiceFS) {
+class AuthUtils @Inject()(authCache: EagerAuthCache, authorization: Authorization, crudServiceFS: CRUDServiceFS) {
   def changePassword(token: Token, currentPw: String, newPw: String, nbg: Boolean): Future[Boolean] = {
     if(!token.isValid(nbg)) {
       Future.successful(false)
@@ -109,7 +109,11 @@ class AuthUtils @Inject()(authCache: AuthCache, authorization: Authorization, cr
     level == PermissionLevel.Write && path.matches("/meta/.*") && !path.matches("/meta/sys/dc/.*")
   }
 
-  def invalidateAuthCache(nbg: Boolean): Boolean = authCache.invalidate(nbg)
+  def invalidateAuthCache(nbg: Boolean): Boolean = {
+    authCache.invalidate(nbg)
+    // TODO don't surprise the user, find a way to confirm invalidation actually took place.
+    true
+  }
 
   private def getUser(tokenOpt: Option[Token], nbg: Boolean) =
     tokenOpt.collect{ case token if token.isValid(nbg) => authCache.getUserInfoton(token.username, nbg) }.flatten
