@@ -1036,11 +1036,13 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
     }
   }
 
-  def getLastIndexTimeFor(dc: String, partition: String = defaultPartition, fieldFilters: Option[FieldFilter])
+  override def getLastIndexTimeFor(dc: String, withHistory: Boolean, partition: String = defaultPartition, fieldFilters: Option[FieldFilter])
                          (implicit executionContext: ExecutionContext) : Future[Option[Long]] = {
-
+    val partitionsToSearch =
+      if (withHistory) List(partition + "_current", partition + "_history")
+      else List(partition + "_current")
     val request = client
-      .prepareSearch(partition + "_current", partition + "_history")
+      .prepareSearch(partitionsToSearch:_*)
       .setTypes("infoclone")
       .addFields("system.indexTime")
       .setSize(1)
@@ -1054,7 +1056,8 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
       request,
       None,
       Some(MultiFieldFilter(Must, fieldFilters.fold(filtersSeq)(filtersSeq.::))),
-      None
+      None,
+      withHistory = withHistory
     )
 
     injectFuture[SearchResponse](request.execute).map{ sr =>

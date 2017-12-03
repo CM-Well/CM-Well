@@ -646,7 +646,7 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
     }
   }
 
-  def getLastIndexTimeFor(dc: String = Settings.dataCenter, nbg: Boolean, fieldFilters: Option[FieldFilter]): Future[Option[VirtualInfoton]] = {
+  def getLastIndexTimeFor(dc: String = Settings.dataCenter, withHistory: Boolean, nbg: Boolean, fieldFilters: Option[FieldFilter]): Future[Option[VirtualInfoton]] = {
 
     def mkVirtualInfoton(indexTime: Long): VirtualInfoton = {
       val fields = Map("lastIdxT" -> Set[FieldValue](FLong(indexTime)),
@@ -655,7 +655,7 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
       VirtualInfoton(ObjectInfoton(s"/proc/dc/$dc", Settings.dataCenter, None, fieldsWithFilter))
     }
 
-    ftsService(nbg).getLastIndexTimeFor(dc, fieldFilters = fieldFilters).map(lOpt => Some(mkVirtualInfoton(lOpt.getOrElse(0L))))
+    ftsService(nbg).getLastIndexTimeFor(dc, withHistory = withHistory, fieldFilters = fieldFilters).map(lOpt => Some(mkVirtualInfoton(lOpt.getOrElse(0L))))
   }
 
   def getESFieldsVInfoton(nbg: Boolean = newBG): Future[VirtualInfoton] = {
