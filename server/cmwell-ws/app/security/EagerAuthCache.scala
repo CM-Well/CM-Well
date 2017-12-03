@@ -17,22 +17,23 @@ package security
 
 import javax.inject.{Inject, Singleton}
 
+import cmwell.domain.{Everything, FileContent, FileInfoton, Infoton}
+import cmwell.fts.{PaginationParams, PathFilter}
+import cmwell.util.concurrent._
 import com.typesafe.scalalogging.LazyLogging
 import logic.CRUDServiceFS
 import play.api.libs.json.{JsValue, Json}
 
 import scala.concurrent.duration.DurationInt
-import scala.concurrent.{Await, ExecutionContext, Future, Promise}
-import scala.util.{Failure, Success, Try}
-import cmwell.domain.{Everything, FileContent, FileInfoton, Infoton}
-import cmwell.fts.{PaginationParams, PathFilter}
-import cmwell.util.concurrent._
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.util.Try
 
 @Singleton
 class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionContext) extends LazyLogging {
   private[this] var oData: AuthData = AuthData.empty
   private[this] var nData: AuthData = AuthData.empty
 
+  //TODO use AtomicBoolean!
   private[this] var isLoadingSemaphore: Boolean = false
 
   private def data(nbg: Boolean) = if(nbg) nData else oData
@@ -70,6 +71,7 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
 
   def invalidate(nbg: Boolean): Future[Boolean] = if(isLoadingSemaphore) Future.successful(false) else load(nbg)
 
+  // TODO use testAndSet in both cases, manual invalidate as well as scheduled load.
   private def load(nbg: Boolean): Future[Boolean] = {
     isLoadingSemaphore = true
 
