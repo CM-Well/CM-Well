@@ -119,7 +119,7 @@ trait FTSServiceOps {
                  debugInfo: Boolean = false, timeout : Option[Duration] = None)
                 (implicit executionContext:ExecutionContext, logger:Logger = loger): Future[FTSThinSearchResponse]
 
-  def getLastIndexTimeFor(dc: String, partition: String = defaultPartition, fieldFilters: Option[FieldFilter])
+  def getLastIndexTimeFor(dc: String, withHistory: Boolean, partition: String = defaultPartition, fieldFilters: Option[FieldFilter])
                          (implicit executionContext:ExecutionContext): Future[Option[Long]]
 
   def startSuperScroll(pathFilter: Option[PathFilter], fieldsFilter: Option[FieldFilter], datesFilter: Option[DatesFilter],

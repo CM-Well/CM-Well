@@ -35,7 +35,9 @@ import scala.concurrent._
 import ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.util.matching.Regex
+import scala.util.parsing.combinator.JavaTokenParsers
 import scala.util.{Failure, Success, Try}
+import scala.language.reflectiveCalls
 
 /**
   * Created by gilad on 1/4/16.
@@ -66,9 +68,31 @@ object DataCenterSyncManager extends LazyLogging {
     slashHttpsDotPossiblePrefix + maxUrlLength + dateLength + uuidLength + indexTimeLength + indexTimeLength + 1
   }
 
-  val qpRegex: Regex = """(.*)\?qp=(.*)""".r
+  case class DataCenterToken(id: String, qp: String, withHistory: Boolean) {
+    def formatWith(f: (String,String,String) => String) =
+      f(id, if (qp.isEmpty) "" else s",[$qp]", if (withHistory) "&with-history" else "")
+  }
 
-  def extractIdAndQpFromDataCenterId(dataCenterId: String): (String, String) = dataCenterId match {case qpRegex(id, qp) => (id, s",[$qp]"); case _ => (dataCenterId, "")}
+  val dataCenterIdTokenParser = new JavaTokenParsers {
+    val id: Parser[String] = "[^?]+".r
+    val qp: Parser[String] = "qp=" ~> "[^&]+".r
+    val wh: Parser[String] = "with-history"
+    val startsWithQp: Parser[(String, Boolean)] = (qp ~ ("&" ~ wh).?) ^^ {
+      case q ~ Some(_ ~ w) => q -> true
+      case q ~ _ => q -> false
+    }
+    val optionalPart: Parser[(String, Boolean)] = ("?" ~> (startsWithQp | wh ^^ (_ => "" -> true))).? ^^ (_.getOrElse("" -> false))
+    val tokenParser: Parser[DataCenterToken] = (id ~ optionalPart) ^^ {
+      case i ~ ((q, w)) => DataCenterToken(i, q, w)
+    }
+
+    def parse(dataCenterId: String): Try[DataCenterToken] = {
+      parseAll[DataCenterToken](tokenParser, dataCenterId) match {
+        case Success(dcToken, _) => scala.util.Success(dcToken)
+        case NoSuccess(err, _) => scala.util.Failure(new Exception(err))
+      }
+    }
+  }
 
   def parseTSVAndCreateInfotonDataFromIt(tsv: ByteString) = {
     val tabAfterPath = tsv.indexOfSlice(tab)
@@ -352,14 +376,20 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])], manual
           val userQp = f.asJsObject.fields.get("qp").map {
             case JsArray(Vector(JsString(qp))) => qp
           }
+          val userWh = f.asJsObject.fields.get("with-history").map {
+            case JsArray(Vector(JsString(wh))) => wh
+          }
           val fromIndexTime = f.asJsObject.fields.get("fromIndexTime").map {
             case JsArray(Vector(JsNumber(idxTime))) => idxTime.toLong
           }
           val tsvFile = f.asJsObject.fields.get("tsvFile").map {
             case JsArray(Vector(JsString(file))) => file
           }
-          val qpStr = userQp.fold("")(qp => s"?qp=$qp")
-          DcInfo(s"$dataCenterId$qpStr", location, fromIndexTime, tsvFile = tsvFile)
+          val qpStr = userQp.fold("")(qp => s"qp=$qp")
+          val whStr = userWh.fold("with-history")(wh => if (wh == "true") "with-history" else "")
+          val qpAndWhStr = (for (str <- List(qpStr, whStr) if str.nonEmpty) yield str).mkString("&")
+          val qpAndWhStrFinal = if (qpAndWhStr.length == 0) "" else "?" + qpAndWhStr
+          DcInfo(s"$dataCenterId$qpAndWhStrFinal", location, fromIndexTime, tsvFile = tsvFile)
         }
         case _ => Seq.empty
       }
@@ -373,31 +403,36 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])], manual
 
   def indexTimeToPositionKey(dataCenterId: String, remoteLocation: String, idxTime: Option[Long]): Future[String] = {
     logger.info(s"Getting position key ${idxTime.fold("without using index time")("using last index time " + _)} for data center id: $dataCenterId and location $remoteLocation")
-    val (dcId, userQp) = extractIdAndQpFromDataCenterId(dataCenterId)
-    val requestUri = s"http://$remoteLocation/?op=create-consumer&qp=-system.parent.parent_hierarchy:/meta/,-system.parent.parent_hierarchy:/docs/,system.dc::$dcId$userQp&with-descendants&with-history${idxTime.fold("")("&index-time=" + _)}"
-    logger.info(s"The get position key request for data center ID $dataCenterId is: $requestUri")
-    val req = HttpRequest(uri = requestUri)
-    Source.single(req -> CreateConsumer).via(Http().superPool[ReqType]()).runWith(Sink.head).flatMap {
-      case (Success(res), CreateConsumer) if res.status.isSuccess() && res.headers.exists(_.name == "X-CM-WELL-POSITION") => {
-        // while both of the following issues are still open:
-        // https://github.com/akka/akka/issues/18540
-        // https://github.com/akka/akka/issues/18716
-        // we must consume the empty entity body
-        res.entity.dataBytes.runWith(Sink.ignore)
-        Future(res.getHeader("X-CM-WELL-POSITION").get.value())
+    dataCenterIdTokenParser.parse(dataCenterId).map { dataCenterToken =>
+      val requestUri = dataCenterToken.formatWith { (id, qp, wh) =>
+        s"http://$remoteLocation/?op=create-consumer&qp=-system.parent.parent_hierarchy:/meta/,-system.parent.parent_hierarchy:/docs/,system.dc::$id$qp$wh&with-descendants${idxTime.fold("")("&index-time=" + _)}"
       }
-      case (Success(HttpResponse(s, _, entity, _)), _) => {
-        val e = new Exception(s"Cm-Well returned bad response: status: ${s.intValue} reason: ${s.reason} body: ${Await.result(entity.dataBytes.runFold(empty)(_ ++ _), Duration.Inf).utf8String}")
-        val ex = CreateConsumeException(s"Create consume failed. Data center ID $dataCenterId, using remote location $remoteLocation", e)
-        Future.failed[String](ex)
+      logger.info(s"The get position key request for data center ID $dataCenterId is: $requestUri")
+      val req = HttpRequest(uri = requestUri)
+      Source.single(req -> CreateConsumer).via(Http().superPool[ReqType]()).runWith(Sink.head).flatMap {
+        case (Success(res), CreateConsumer) if res.status.isSuccess() && res.headers.exists(_.name == "X-CM-WELL-POSITION") => {
+          // while both of the following issues are still open:
+          // https://github.com/akka/akka/issues/18540
+          // https://github.com/akka/akka/issues/18716
+          // we must consume the empty entity body
+          res.entity.dataBytes.runWith(Sink.ignore)
+          Future(res.getHeader("X-CM-WELL-POSITION").get.value())
+        }
+        case (Success(HttpResponse(s, _, entity, _)), _) => {
+          val e = new Exception(s"Cm-Well returned bad response: status: ${s.intValue} reason: ${s.reason} body: ${Await.result(entity.dataBytes.runFold(empty)(_ ++ _), Duration.Inf).utf8String}")
+          val ex = CreateConsumeException(s"Create consume failed. Data center ID $dataCenterId, using remote location $remoteLocation", e)
+          Future.failed[String](ex)
+        }
+        case (Failure(e), _) => {
+          val ex = CreateConsumeException(s"Create consume failed. Data center ID $dataCenterId, using remote location $remoteLocation", e)
+          Future.failed[String](ex)
+        }
       }
-      case (Failure(e), _) => {
-        val ex = CreateConsumeException(s"Create consume failed. Data center ID $dataCenterId, using remote location $remoteLocation", e)
-        Future.failed[String](ex)
-      }
+    }.recover {
+      case err: Throwable => Future.failed(err)
     }
+      .get
   }
-
   def retrieveLocalLastIndexTimeForDataCenterId(dataCenterId: String): Future[Option[Long]] = {
     logger.info(s"Getting last synced index time from data for data center id: $dataCenterId")
     val (h, p) = randomFrom(dstServersVec)
@@ -453,60 +488,72 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])], manual
 
   def retrieveTsvListUntilIndexTime(dataCenterId: String, location: String, indexTime: Long, infotonsToGoBack: Int): Future[List[InfotonData]] = {
     logger.info(s"Getting list of $infotonsToGoBack infotons from location $location before index time $indexTime from the local data. for data center id: $dataCenterId")
-    val (dcId, userQp) = extractIdAndQpFromDataCenterId(dataCenterId)
-    val requestUri = s"http://$location/?op=search&recursive&with-history&sort-by=-system.indexTime&qp=system.indexTime<<$indexTime,-system.parent.parent_hierarchy:/meta/,-system.parent.parent_hierarchy:/docs/,system.dc::$dcId$userQp&length=$infotonsToGoBack&format=tsv"
-    logger.info(s"The get list request for data center ID $dataCenterId is: $requestUri")
-    val request = HttpRequest(uri = requestUri) -> SearchIndexTime
-    val flow = {
-      Http().superPool[ReqType]().map {
-        case (Success(res@HttpResponse(s, _, entity, _)), SearchIndexTime) if s.isSuccess() => {
-          entity
-            .dataBytes
-            .via(Framing.delimiter(endln, maximumFrameLength = maxTsvLineLength * 2))
-            .runFold(List[InfotonData]())((total, bs) => parseTSVAndCreateInfotonDataFromIt(bs) :: total)
-        }
-        case (Success(HttpResponse(s, _, entity, _)), _) => {
-          val e = new Exception(s"Cm-Well returned bad response: status: ${s.intValue} reason: ${s.reason} body: ${Await.result(entity.dataBytes.runFold(empty)(_ ++ _), 20.seconds).utf8String}")
-          val ex = GetInfotonListException(s"Get list of infotons. Data center ID $dataCenterId, using machine $location", e)
-          Future.failed[List[InfotonData]](ex)
-        }
-        case (Failure(e), _) => {
-          val ex = GetInfotonListException(s"Get list of infotons. Data center ID $dataCenterId, using machine $location", e)
-          Future.failed[List[InfotonData]](ex)
+    //    val (dcId, userQp) = extractIdAndQpFromDataCenterId(dataCenterId)
+    dataCenterIdTokenParser.parse(dataCenterId).map { dataCenterToken =>
+      val requestUri = dataCenterToken.formatWith { (id, qp, wh) =>
+        s"http://$location/?op=search&recursive&sort-by=-system.indexTime&qp=system.indexTime<<$indexTime,-system.parent.parent_hierarchy:/meta/,-system.parent.parent_hierarchy:/docs/,system.dc::$id$qp$wh&length=$infotonsToGoBack&format=tsv"
+      }
+      logger.info(s"The get list request for data center ID $dataCenterId is: $requestUri")
+      val request = HttpRequest(uri = requestUri) -> SearchIndexTime
+      val flow = {
+        Http().superPool[ReqType]().map {
+          case (Success(HttpResponse(s, _, entity, _)), SearchIndexTime) if s.isSuccess() => {
+            entity
+              .dataBytes
+              .via(Framing.delimiter(endln, maximumFrameLength = maxTsvLineLength * 2))
+              .runFold(List[InfotonData]())((total, bs) => parseTSVAndCreateInfotonDataFromIt(bs) :: total)
+          }
+          case (Success(HttpResponse(s, _, entity, _)), _) => {
+            val e = new Exception(s"Cm-Well returned bad response: status: ${s.intValue} reason: ${s.reason} body: ${Await.result(entity.dataBytes.runFold(empty)(_ ++ _), 20.seconds).utf8String}")
+            val ex = GetInfotonListException(s"Get list of infotons. Data center ID $dataCenterId, using machine $location", e)
+            Future.failed[List[InfotonData]](ex)
+          }
+          case (Failure(e), _) => {
+            val ex = GetInfotonListException(s"Get list of infotons. Data center ID $dataCenterId, using machine $location", e)
+            Future.failed[List[InfotonData]](ex)
+          }
         }
       }
+      Source.single(request).via(flow).toMat(Sink.head)(Keep.right).run().flatMap(identity)
+    }.recover {
+      case err: Throwable => Future.failed(err)
     }
-    Source.single(request).via(flow).toMat(Sink.head)(Keep.right).run().flatMap(identity)
+      .get
   }
 
   def retrieveTsvListFromIndexTime(dataCenterId: String, location: String, indexTime: Long, infotonsToGoBack: Int): Future[Set[InfotonData]] = {
     logger.info(s"Getting list of $infotonsToGoBack infotons from location $location after index time $indexTime. for data center id: $dataCenterId")
-    val (dcId, userQp) = extractIdAndQpFromDataCenterId(dataCenterId)
-    val requestUri = s"http://$location/?op=stream&recursive&with-history&qp=system.indexTime>>$indexTime,-system.parent.parent_hierarchy:/meta/,-system.parent.parent_hierarchy:/docs/,system.dc::$dcId$userQp&format=tsv"
-    logger.info(s"The get list request for data center ID $dataCenterId is: $requestUri")
-    val request = HttpRequest(uri = requestUri) -> SearchIndexTime
-    val flow = {
-      Http().superPool[ReqType]().map {
-        case (Success(res@HttpResponse(s, _, entity, _)), SearchIndexTime) if s.isSuccess() => {
-          entity
-            .dataBytes
-            .via(Framing.delimiter(endln, maximumFrameLength = maxTsvLineLength * 2))
-            .runFold(Set.empty[InfotonData])((total, bs) => total + parseTSVAndCreateInfotonDataFromIt(bs))
-        }
-        case (Success(HttpResponse(s, _, entity, _)), _) => {
-          val e = new Exception(s"Cm-Well returned bad response: status: ${s.intValue} reason: ${s.reason} body: ${Await.result(entity.dataBytes.runFold(empty)(_ ++ _), 20.seconds).utf8String}")
-          val ex = GetInfotonListException(s"Get list of infotons. Data center ID $dataCenterId, using machine $location", e)
-          Future.failed[Set[InfotonData]](ex)
-        }
-        case (Failure(e), _) => {
-          val ex = GetInfotonListException(s"Get list of infotons. Data center ID $dataCenterId, using machine $location", e)
-          Future.failed[Set[InfotonData]](ex)
+    dataCenterIdTokenParser.parse(dataCenterId).map { dataCenterToken =>
+      val requestUri = dataCenterToken.formatWith { (id, qp, wh) =>
+        s"http://$location/?op=stream&recursive&qp=system.indexTime>>$indexTime,-system.parent.parent_hierarchy:/meta/,-system.parent.parent_hierarchy:/docs/,system.dc::$id$qp$wh&format=tsv"
+      }
+      logger.info(s"The get list request for data center ID $dataCenterId is: $requestUri")
+      val request = HttpRequest(uri = requestUri) -> SearchIndexTime
+      val flow = {
+        Http().superPool[ReqType]().map {
+          case (Success(res@HttpResponse(s, _, entity, _)), SearchIndexTime) if s.isSuccess() => {
+            entity
+              .dataBytes
+              .via(Framing.delimiter(endln, maximumFrameLength = maxTsvLineLength * 2))
+              .runFold(Set.empty[InfotonData])((total, bs) => total + parseTSVAndCreateInfotonDataFromIt(bs))
+          }
+          case (Success(HttpResponse(s, _, entity, _)), _) => {
+            val e = new Exception(s"Cm-Well returned bad response: status: ${s.intValue} reason: ${s.reason} body: ${Await.result(entity.dataBytes.runFold(empty)(_ ++ _), 20.seconds).utf8String}")
+            val ex = GetInfotonListException(s"Get list of infotons. Data center ID $dataCenterId, using machine $location", e)
+            Future.failed[Set[InfotonData]](ex)
+          }
+          case (Failure(e), _) => {
+            val ex = GetInfotonListException(s"Get list of infotons. Data center ID $dataCenterId, using machine $location", e)
+            Future.failed[Set[InfotonData]](ex)
+          }
         }
       }
+      Source.single(request).via(flow).toMat(Sink.head)(Keep.right).run().flatMap(identity)
+    }.recover {
+      case err: Throwable => Future.failed(err)
     }
-    Source.single(request).via(flow).toMat(Sink.head)(Keep.right).run().flatMap(identity)
+      .get
   }
-
   def runSyncingEngine(dcInfo: DcInfo): SyncerMaterialization = {
     logger.info(s"Starting sync engine for data center id ${dcInfo.id} from location ${dcInfo.location}${dcInfo.positionKey.fold("")(key => s" using position key $key")}${dcInfo.tsvFile.fold("")(f => " and file " + f)}")
     val syncerMaterialization@SyncerMaterialization(cancelSyncing, nextUnSyncedPositionFuture) = createSyncingEngine(dcInfo).run()

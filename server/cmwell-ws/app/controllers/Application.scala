@@ -329,10 +329,11 @@ callback=< [URL] >
         val nbg = req.attrs(Attrs.Nbg)
         val length = req.getQueryString("length").flatMap(asInt).getOrElse(if (req.getQueryString("format").isEmpty) 13 else 0) // default is 0 unless 1st request for the ajax app
         val offset = req.getQueryString("offset").flatMap(asInt).getOrElse(0)
+        val withHistory = req.getQueryString("with-history").flatMap(asBoolean).getOrElse(false)
         val fieldsFiltersFut = qpOpt.fold[Future[Option[FieldFilter]]](Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff, typesCache(nbg), cmwellRDFHelper, nbg).map(Some.apply))
         fieldsFiltersFut.flatMap { fieldFilters =>
           activeInfotonGenerator
-            .generateInfoton(req.host, path, req.attrs(Attrs.RequestReceivedTimestamp), length, offset, isRoot, nbg, fieldFilters)
+            .generateInfoton(req.host, path, req.attrs(Attrs.RequestReceivedTimestamp), length, offset, isRoot, nbg, withHistory, fieldFilters)
             .flatMap(iOpt => infotonOptionToReply(req, iOpt.map(VirtualInfoton.v2i)))
         }
       }.recover(asyncErrorHandler).get

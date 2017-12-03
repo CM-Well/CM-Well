@@ -1025,7 +1025,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
     }
   }
 
-  def getLastIndexTimeFor(dc: String, partition: String, fieldFilters: Option[FieldFilter])
+  override def getLastIndexTimeFor(dc: String, withHistory: Boolean, partition: String, fieldFilters: Option[FieldFilter])
                          (implicit executionContext:ExecutionContext): Future[Option[Long]] = {
 
     val request = client
@@ -1043,7 +1043,8 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
       request,
       None,
       Some(MultiFieldFilter(Must, fieldFilters.fold(filtersSeq)(filtersSeq.::))),
-      None
+      None,
+      withHistory = withHistory
     )
 
     injectFuture[SearchResponse](request.execute).map{ sr =>
