@@ -1935,11 +1935,10 @@ callback=< [URL] >
         }
       }
       case Some("invalidate-cache") => {
-        if(authUtils.isOperationAllowedForUser(Admin, authUtils.extractTokenFrom(req), req.attrs(Attrs.Nbg), evenForNonProdEnv = true)) {
-          val success = authUtils.invalidateAuthCache(req.attrs(Attrs.Nbg))
-          Future.successful(Ok(Json.obj("success" -> success)))
-        }
-        else Future.successful(Unauthorized("Not authorized"))
+        if(authUtils.isOperationAllowedForUser(Admin, authUtils.extractTokenFrom(req), req.attrs(Attrs.Nbg), evenForNonProdEnv = true))
+          authUtils.invalidateAuthCache(req.attrs(Attrs.Nbg)).map(isSuccess => Ok(Json.obj("success" -> isSuccess)))
+        else
+          Future.successful(Unauthorized("Not authorized"))
       }
       case Some(unknownOp) =>
         Future.successful(BadRequest(Json.obj("success" -> false, "message" -> s"`$unknownOp` is not a valid operation")))

@@ -109,11 +109,7 @@ class AuthUtils @Inject()(authCache: EagerAuthCache, authorization: Authorizatio
     level == PermissionLevel.Write && path.matches("/meta/.*") && !path.matches("/meta/sys/dc/.*")
   }
 
-  def invalidateAuthCache(nbg: Boolean): Boolean = {
-    authCache.invalidate(nbg)
-    // TODO don't surprise the user, find a way to confirm invalidation actually took place.
-    true
-  }
+  def invalidateAuthCache(nbg: Boolean): Future[Boolean] = authCache.invalidate(nbg)
 
   private def getUser(tokenOpt: Option[Token], nbg: Boolean) =
     tokenOpt.collect{ case token if token.isValid(nbg) => authCache.getUserInfoton(token.username, nbg) }.flatten

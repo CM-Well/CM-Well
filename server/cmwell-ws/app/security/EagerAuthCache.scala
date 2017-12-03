@@ -22,8 +22,8 @@ import logic.CRUDServiceFS
 import play.api.libs.json.{JsValue, Json}
 
 import scala.concurrent.duration.DurationInt
-import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.util.Try
+import scala.concurrent.{Await, ExecutionContext, Future, Promise}
+import scala.util.{Failure, Success, Try}
 import cmwell.domain.{Everything, FileContent, FileInfoton, Infoton}
 import cmwell.fts.{PaginationParams, PathFilter}
 import cmwell.util.concurrent._
@@ -33,9 +33,12 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
   private[this] var oData: AuthData = AuthData.empty
   private[this] var nData: AuthData = AuthData.empty
 
+  private[this] var isLoadingSemaphore: Boolean = false
+
   private def data(nbg: Boolean) = if(nbg) nData else oData
 
-  SimpleScheduler.scheduleAtFixedRate(0.seconds, 10.minutes)(load())
+  SimpleScheduler.scheduleAtFixedRate(1.minute, 15.minutes)(load(true))
+  SimpleScheduler.scheduleAtFixedRate(2.minutes, 15.minutes)(load(false))
 
   // TODO Do not Await.result... These should return Future[Option[JsValue]]]
   def getRole(roleName: String, nbg: Boolean): Option[JsValue] = {
@@ -51,10 +54,11 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
     }
   }
 
+  // TODO Do not Await.result... These should return Future[Option[JsValue]]]
   def getUserInfoton(userName: String, nbg: Boolean): Option[JsValue] = {
     data(nbg).roles.get(userName).orElse {
       Await.result(directReadFallback(s"/meta/auth/users/$userName", nbg), 6.seconds).map { user =>
-        logger.info(s"AuthCache(nbg=$nbg) user $userName was not in memory, but added to Map")
+        logger.debug(s"AuthCache(nbg=$nbg) user $userName was not in memory, but added to Map")
         if(nbg)
           nData = nData.copy(users = nData.users + (userName -> user))
         else
@@ -64,13 +68,20 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
     }
   }
 
-  def invalidate(nbg: Boolean): Unit = load()
+  def invalidate(nbg: Boolean): Future[Boolean] = if(isLoadingSemaphore) Future.successful(false) else load(nbg)
 
-  private def load(): Unit = {
-    retryUntil[AuthData](isSuccessful = !_.isEmpty, maxRetries = 30, delay = 10.seconds)(loadOnce(false)).map { data => oData = combiner(oData, data) }
-    delayedTask(5.seconds)(
-      retryUntil[AuthData](isSuccessful = !_.isEmpty, maxRetries = 30, delay = 10.seconds)(loadOnce(true)).map { data => nData = combiner(nData, data) }
-    )
+  private def load(nbg: Boolean): Future[Boolean] = {
+    isLoadingSemaphore = true
+
+    retryUntil[AuthData](isSuccessful = !_.isEmpty, maxRetries = 10, delay = 5.seconds)(loadOnce(false)).map { data =>
+      if(nbg) nData = combiner(nData, data)
+      else oData = combiner(oData, data)
+      isLoadingSemaphore = false
+      true
+    }.recover { case _ =>
+      isLoadingSemaphore = false
+      false
+    }
   }
 
   private def loadOnce(nbg: Boolean): Future[AuthData] = {
@@ -89,7 +100,7 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
       logger.info(s"AuthCache(nbg=$nbg) Loaded with ${usersData.size} users and ${rolesData.size} roles.")
       AuthData(usersData.toMap, rolesData.toMap)
     }.recover { case t: Throwable =>
-      logger.info(s"AuthCache(nbg=$nbg) failed to load because ${t.getMessage}")
+      logger.error(s"AuthCache(nbg=$nbg) failed to load", t)
       AuthData.empty
     }
   }
