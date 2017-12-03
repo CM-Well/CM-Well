@@ -12,10 +12,11 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+/*
 package cmwell.bg
 
 import akka.actor.{Actor, Props}
-import cmwell.fts.FTSServiceNew
+import cmwell.fts.FTSService
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 import org.elasticsearch.action.admin.indices.alias.Alias
@@ -26,10 +27,10 @@ import concurrent.duration._
   * Created by israel on 25/07/2016.
   */
 object IndicesManager {
-  def props(ftsService: FTSServiceNew, config: Config) = Props(new IndicesManager(ftsService, config))
+  def props(ftsService: FTSService, config: Config) = Props(new IndicesManager(ftsService, config))
 }
 
-class IndicesManager(ftsService: FTSServiceNew, config: Config) extends Actor with LazyLogging {
+class IndicesManager(ftsService: FTSService, config: Config) extends Actor with LazyLogging {
 
   import context._
 
@@ -126,3 +127,4 @@ class IndicesManager(ftsService: FTSServiceNew, config: Config) extends Actor wi
   case object CheckIndices
   case class UpdateCurrentAlias(previousIndex: String, newIndex: String)
 }
+*/

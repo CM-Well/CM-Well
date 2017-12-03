@@ -84,7 +84,7 @@
                 "level" : "info"
             },
             {
-                "line" : "2017-10-19 13:49:37,976 rt_client_worker][T#12]{New I/O worker #97}] DEBUG cmwell.fts.FTSServiceNew             - Response from ElasticSearch:",
+                "line" : "2017-10-19 13:49:37,976 rt_client_worker][T#12]{New I/O worker #97}] DEBUG cmwell.fts.FTSService             - Response from ElasticSearch:",
                 "level" : "debug"
             },
             {

@@ -45,6 +45,7 @@ initialize := {
     sys.error("Java 8 or higher is required for CM-Well!")
 }
 //resolvers in Global += "CM-WELL public" at "http://builder.clearforest.com:8081/nexus/content/groups/public"
+resolvers in ThisBuild += "Local Maven" at Path.userHome.asFile.toURI.toURL + ".m2/repository"
 updateOptions in Global := updateOptions.in(Global).value.withCachedResolution(true).withCircularDependencyLevel(CircularDependencyLevel.Error)
 //updateOptions := updateOptions.value.withCachedResolution(true)
 //updateOptions := updateOptions.value.withCircularDependencyLevel(CircularDependencyLevel.Error)
@@ -152,6 +153,9 @@ dependenciesManager in Global := {
   case ("org.codehaus.plexus","plexus-utils")                      => "org.codehaus.plexus" % "plexus-utils" % "3.1.0"
   case ("org.codehaus.woodstox","woodstox-asl")                    => "org.codehaus.woodstox" % "woodstox-asl" % "3.2.7"
   case ("org.elasticsearch","elasticsearch")                       => "org.elasticsearch" % "elasticsearch" % Versions.elasticsearch
+  case ("org.elasticsearch.client", "transport")                   => "org.elasticsearch.client" % "transport" % Versions.elasticsearch
+  case ("org.elasticsearch.distribution.zip", "elasticsearch")     => "org.elasticsearch.distribution.zip" % "elasticsearch" % Versions.elasticsearch
+  case ("pl.allegro.tech", "embedded-elasticsearch")               => "pl.allegro.tech" % "embedded-elasticsearch" % "2.4.3"
   case ("org.elasticsearch", "metrics-elasticsearch-reporter")     => "org.elasticsearch" % "metrics-elasticsearch-reporter" % "2.0"
   case ("org.hdrhistogram","HdrHistogram")                         => "org.hdrhistogram" % "HdrHistogram" % "2.1.9"
   case ("org.jfarcand","wcs")                                      => "org.jfarcand" % "wcs" % "1.3"

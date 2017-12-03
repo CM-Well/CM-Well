@@ -48,7 +48,7 @@ class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers wi
   var irwService:IRWService = _
   var zStore:ZStore = _
   var offsetsService:OffsetsService = _
-  var ftsServiceES:FTSServiceNew = _
+  var ftsServiceES:FTSService = _
   var bgConfig:Config = _
   var actorSystem:ActorSystem = _
   import concurrent.ExecutionContext.Implicits.global
@@ -66,33 +66,13 @@ class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers wi
     zStore = ZStore(dao)
     irwService = IRWService.newIRW(dao, 25 , true, 0.seconds)
     offsetsService = new ZStoreOffsetsService(zStore)
-    ftsServiceES = FailingFTSServiceMockup("es.test.yml", 5)
-
-
-    // wait for green status
-    ftsServiceES.client.admin().cluster()
-      .prepareHealth()
-      .setWaitForGreenStatus()
-      .setTimeout(TimeValue.timeValueMinutes(5))
-      .execute()
-      .actionGet()
+    ftsServiceES = FailingFTSServiceMockup(5)
 
     // delete all existing indices
     ftsServiceES.client.admin().indices().delete(new DeleteIndexRequest("_all"))
 
-    // load indices template
-    val indicesTemplate = Source.fromURL(this.getClass.getResource("/indices_template_new.json")).getLines.reduceLeft(_ + _)
-    ftsServiceES.client.admin().indices().preparePutTemplate("indices_template").setSource(indicesTemplate).execute().actionGet()
-
     // create current index
-    ftsServiceES.client.admin().indices().prepareCreate("cm_well_0").execute().actionGet()
-
-    ftsServiceES.client.admin().indices().prepareAliases()
-      .addAlias("cm_well_0", "cm_well_all")
-      .addAlias("cm_well_0", "cm_well_latest")
-      .execute().actionGet()
-
-
+    ftsServiceES.client.admin().indices().prepareCreate("cm_well_p0_0").execute().actionGet()
 
     bgConfig = ConfigFactory.load
     bgConfig.withValue("cmwell.bg.esActionsBulkSize", ConfigValueFactory.fromAnyRef(100))
@@ -109,10 +89,6 @@ class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers wi
   }
 
   "Resilient BG" should "process commands as usual on circumvented BGActor (periodically failing IRWService) after suspending and resuming" in {
-
-    logger info "waiting 10 seconds for circumvented BGActor to start"
-
-    Thread.sleep(10000)
 
     val numOfCommands = 1500
     // prepare sequence of writeCommands

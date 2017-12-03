@@ -11,13 +11,8 @@ gateway:
   recover_after_time: 5m
   expected_nodes: {{expectednodes}}
 
-discovery.zen.ping.multicast:
-  enabled: false
-
 discovery.zen.ping.unicast:
   hosts: {{hosts}}
-
-discovery.zen.ping.timeout: 20s
 
 transport.tcp.connect_timeout: 10s
 
@@ -30,14 +25,10 @@ network:
 
 http.cors.enabled: true
 
-node.rack_id: {{rack_id}} #put here something unique to this rack like the ip address.
+node.attr.rack_id: {{rack_id}} #put here something unique to this rack like the ip address.
 
 cluster.routing.allocation.awareness.attributes: rack_id
 
 http.port: {{http_port}}
 
 transport.tcp.port: {{transport_port}}
-
-index.number_of_replicas: {{num_of_replicas}}
-
-index.number_of_shards: {{num_of_shards}}

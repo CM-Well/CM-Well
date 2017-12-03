@@ -102,7 +102,7 @@ case class LocalHost(dataCenter: String = "lh",
 
   override def command(com: String, sudo: Boolean = false): Try[String] = {
     // scalastyle:off
-    if (verbose) println(s"localhost: ${com}")
+    if (verbose) println(s"localhost: ${com}. ${Thread.currentThread().getStackTrace().mkString("\n")}")
     // scalastyle:on
     Try(Seq("bash", "-c", s"$com").!!)
   }
@@ -118,6 +118,8 @@ case class LocalHost(dataCenter: String = "lh",
 
   override def startElasticsearch(hosts: GenSeq[String]): Unit = {
     //command(s"cp ${instDirs.globalLocation}/cm-well/app/scripts/pe/elasticsearch.yml ${instDirs.globalLocation}/cm-well/conf/es/es.yml", hosts(0), false)
+    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start-master.sh")}", hosts(0), false)
+    Try(ElasticsearchLock().waitForModule(ips(0), 1))
     command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start.sh")}", hosts(0), false)
   }
 
@@ -205,16 +207,16 @@ case class LocalHost(dataCenter: String = "lh",
     val es = ElasticsearchConf(
       clusterName = cn,
       nodeName = ip,
-      masterNode = true,
+      masterNode = false,
       dataNode = true,
       expectedNodes = ips.size,
       numberOfReplicas = 0,
       seeds = getSeedNodes.mkString(","),
-      seedPort = 9301,
+      seedPort = 9300,
       home = homeDir,
       resourceManager = esAllocations,
       dir = "es",
-      template = "es.yml",
+      template = "elasticsearch.yml",
       listenAddress = ip,
       masterNodes = 1,
       sName = "start.sh",
@@ -236,7 +238,7 @@ case class LocalHost(dataCenter: String = "lh",
       home = homeDir,
       resourceManager = esMasterAllocations,
       dir = "es-master",
-      template = "es.yml",
+      template = "elasticsearch.yml",
       listenAddress = ip,
       masterNodes = 1,
       sName = "start-master.sh",
@@ -278,7 +280,7 @@ case class LocalHost(dataCenter: String = "lh",
       debug = deb,
       hostIp = ip,
       minMembers = getMinMembers,
-      seedPort = 9301,
+      seedPort = 9300,
       seeds = getSeedNodes.mkString(","),
       defaultRdfProtocol = defaultRdfProtocol
     )
@@ -295,7 +297,7 @@ case class LocalHost(dataCenter: String = "lh",
       hostIp = ip,
       minMembers = getMinMembers,
       seeds = getSeedNodes.mkString(","),
-      seedPort = 9301,
+      seedPort = 9300,
       subjectsInSpAreHttps = subjectsInSpAreHttps
     )
 

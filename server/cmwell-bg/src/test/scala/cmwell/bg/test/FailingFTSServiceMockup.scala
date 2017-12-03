@@ -31,15 +31,15 @@ import scala.concurrent.{ExecutionContext, Future}
   */
 
 object FailingFTSServiceMockup {
-  def apply(esClasspathYml:String, errorModuloDivisor:Int) = new FailingFTSServiceMockup(ConfigFactory.load(), esClasspathYml, errorModuloDivisor)
+  def apply(errorModuloDivisor:Int) = new FailingFTSServiceMockup(ConfigFactory.load(), errorModuloDivisor)
 }
 
-class FailingFTSServiceMockup(config: Config, esClasspathYaml: String, errorModuloDivisor:Int) extends FTSServiceNew(config, esClasspathYaml) {
+class FailingFTSServiceMockup(config: Config, errorModuloDivisor:Int) extends FTSService(config) {
 
   var errorModuloDividend = 0
   var errorCount = 0
 
-  override def executeIndexRequests(indexRequests: Iterable[ESIndexRequest])
+  override def executeIndexRequests(indexRequests: Iterable[ESIndexRequest], forceRefresh:Boolean)
                                    (implicit executionContext: ExecutionContext, logger:Logger = loger): Future[BulkIndexResult] = {
     errorModuloDividend += 1
     if(errorModuloDividend % errorModuloDivisor == 0)

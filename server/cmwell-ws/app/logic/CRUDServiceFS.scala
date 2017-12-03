@@ -25,7 +25,7 @@ import akka.stream.scaladsl.Source
 import cmwell.common.{DeleteAttributesCommand, DeletePathCommand, WriteCommand, _}
 import cmwell.domain._
 import cmwell.driver.Dao
-import cmwell.fts.{FTSServiceNew, Settings => _, _}
+import cmwell.fts._
 import cmwell.irw._
 import cmwell.stortill.Strotill.{CasInfo, EsExtendedInfo, ZStoreInfo}
 import cmwell.stortill.{Operations, ProxyOperations}
@@ -66,9 +66,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
   lazy val irwService = IRWService.newIRW(Dao(irwServiceDaoClusterName, irwServiceDaoKeySpace2, irwServiceDaoHostName),
                                           disableReadCache = !Settings.irwReadCacheEnabled)
 
-  val ftsService = FTSServiceNew("ws.es.yml")
-
-  lazy val newServices: (IRWService, FTSServiceOps) = irwService -> ftsService
+  val ftsService = FTSService("ws.es.yml")
 
   val producerProperties = new Properties
   producerProperties.put("bootstrap.servers", kafkaURL)
@@ -82,7 +80,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
 
   val ESMappingsCache =
     new SingleElementLazyAsyncCache[Set[String]](Settings.fieldsNamesCacheTimeout.toMillis, Set.empty)(
-      ftsService.getMappings(withHistory = true)
+      ftsService.getMappings(withHistory = true, partition = "blahblah")
     )
 
   val metaNsCache =
@@ -783,7 +781,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
     }
 
     ftsService
-      .getLastIndexTimeFor(dc, withHistory = withHistory, fieldFilters = fieldFilters)
+      .getLastIndexTimeFor(dc, withHistory = withHistory, fieldFilters = fieldFilters, partition = "blahblah")
       .map(lOpt => Some(mkVirtualInfoton(lOpt.getOrElse(0L))))
   }
 
@@ -925,12 +923,13 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
   // assuming not the only version of the infoton!
   def purgeUuid(infoton: Infoton): Future[Unit] = {
     irwService.purgeHistorical(infoton, isOnlyVersion = false, QUORUM).flatMap { _ =>
-      ftsService.purge(infoton.uuid).map(_ => Unit)
+//      ftsService.purge(infoton.uuid).map(_ => Unit)
+      ???
     }
   }
 
   def purgeUuidFromIndex(uuid: String, index: String): Future[Unit] = {
-    ftsService.purgeByUuidsAndIndexes(Vector(uuid -> index)).map(_ => ()) //TODO also purge from ftsServiceNew
+    ftsService.purgeByUuidsAndIndexes(Vector(uuid -> index), partition = "blahblah").map(_ => ()) //TODO also purge from ftsServiceNew
   }
 
   def purgePath(path: String, includeLast: Boolean, limit: Int): Future[Unit] = {
@@ -958,7 +957,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
 
             val purgeJustByUuids = {
               if (justUuids.nonEmpty)
-                ftsService.purgeByUuidsFromAllIndexes(justUuids.toVector)
+                ftsService.purgeByUuidsFromAllIndexes(justUuids.toVector, partition = "blahblah")
               else
                 Future.successful(new BulkResponse(Array(), 0))
             }
@@ -970,7 +969,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                 )
               } else {
                 if (uuidsWithIndexes.nonEmpty)
-                  ftsService.purgeByUuidsAndIndexes(uuidsWithIndexes.toVector)
+                  ftsService.purgeByUuidsAndIndexes(uuidsWithIndexes.toVector, partition = "blahblah")
                 else
                   Future.successful(new BulkResponse(Array(), 0))
               }.flatMap { bulkResponse =>
@@ -1022,6 +1021,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
     * Rollback an Infoton means purging last version of it, and, if there exists one or more history versions, make the
     * one with largest lastModified the current version.
     */
+/*
   def rollback(path: String, limit: Int): Future[Unit] = {
     case class Version(lastModified: Long, uuid: String)
 
@@ -1054,7 +1054,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                   val prevInfoton = infpot.getOrElse(
                     throw new RuntimeException(s"Previous infoton for path $path was not found under uuid ${pv.uuid}")
                   )
-                  ftsService.purgeByUuidsFromAllIndexes(Vector(pv.uuid)).flatMap { _ =>
+                  ftsService.purgeByUuidsFromAllIndexes(Vector(pv.uuid), partition = "blahblah").flatMap { _ =>
                     ftsService.index(prevInfoton, None)
                   }
                 }
@@ -1068,6 +1068,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       }
       .map(_ => ())
   }
+*/
 
   def purgePath2(path: String, limit: Int): Future[Unit] = {
 
@@ -1079,7 +1080,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       val uuids = casHistory.map(_._2)
 
       retry(3, 1.seconds) {
-        val purgeEsByUuids = ftsService.purgeByUuidsFromAllIndexes(uuids)
+        val purgeEsByUuids = ftsService.purgeByUuidsFromAllIndexes(uuids, partition = "blahblah")
         purgeEsByUuids.flatMap { bulkResponse =>
           if (bulkResponse.hasFailures) {
             throw new Exception("purge from es by uuids from all Indexes failed: " + bulkResponse.buildFailureMessage())

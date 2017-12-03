@@ -37,7 +37,7 @@ import scala.concurrent.{Future, Promise}
 import cmwell.syntaxutils._
 import cmwell.util.BoxedFailure
 import cmwell.util.stream.{MapInitAndLast, SortedStreamsMergeBy}
-import org.elasticsearch.action.ActionRequest
+import org.elasticsearch.action.{ActionRequest, DocWriteRequest}
 import org.joda.time.DateTime
 
 import scala.concurrent.duration._
@@ -46,7 +46,7 @@ import scala.util.Try
 /**
   * Created by markz on 3/4/15.
   */
-abstract class Operations(irw: IRWService, ftsService: FTSServiceOps) {
+abstract class Operations(irw: IRWService, ftsService: FTSService) {
   def verify(path: String, limit: Int): Future[Boolean]
   def fix(path: String, retries: Int, limit: Int): Future[(Boolean, String)]
   def rFix(path: String, retries: Int, parallelism: Int = 1): Future[Source[(Boolean, String), NotUsed]]
@@ -60,34 +60,17 @@ object ProxyOperations {
   lazy val specialInconsistenciesLogger: Logger = Logger(LoggerFactory.getLogger("cmwell.xfix"))
   lazy val jsonFormatter = new JsonFormatter(identity)
 
-  def apply(irw: IRWService, ftsService: FTSServiceOps): ProxyOperations = {
+  def apply(irw: IRWService, ftsService: FTSService): ProxyOperations = {
     new ProxyOperations(irw, ftsService)
   }
 
-  //used when working with the REPL
-  def apply(clusterName: String, hostname: String): ProxyOperations = {
-    System.setProperty("ftsService.transportAddress", hostname)
-    System.setProperty("ftsService.clusterName", clusterName)
-    val dao = Dao("operation", "data", hostname, 10)
-    val irw = IRWService(dao)
-    val fts = FTSServiceES.getOne("ftsService.yml")
-    new ProxyOperations(irw, fts)
-  }
 }
 
-class ProxyOperations private (irw: IRWService, ftsService: FTSServiceOps)
+class ProxyOperations private (irw: IRWService, ftsService: FTSService)
     extends Operations(irw, ftsService)
     with LazyLogging {
 
-  val isNewBg = {
-    val nFts = ftsService.isInstanceOf[FTSServiceNew]
-    val nIrw = irw.isInstanceOf[IRWServiceNativeImpl2]
-    if ((nFts && !nIrw) || (!nFts && nIrw))
-      throw new IllegalStateException(
-        s"ProxyOperations must have IRW & FTS conforoming in terms of `nbg`, got: ($nFts,$nIrw)"
-      )
-    else nFts && nIrw
-  }
+  val isNewBg = true
   val s = Strotill(irw, ftsService)
   import ProxyOperations.{specialInconsistenciesLogger => log}
 
@@ -139,7 +122,7 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSServiceOps)
     type MergedByTimestamp = (Timestamp, Vector[(Timestamp, Uuid)], Vector[(Timestamp, Uuid, EsIndex)])
 
     val cassandraPathsSource: Source[(Timestamp, Uuid), NotUsed] = irw.historyReactive(path)
-    ftsService.rInfo(path, paginationParams = DefaultPaginationParams, withHistory = true).map { rEsInfo =>
+    ftsService.rInfo(path, scrollTTL = 300 , paginationParams = DefaultPaginationParams, withHistory = true).map { rEsInfo =>
       //TODO: we can have a sorted stream from ES, a la consume style.
       val elasticsearchPathInfo: Source[(Timestamp, Uuid, EsIndex), NotUsed] = {
         rEsInfo
@@ -200,7 +183,7 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSServiceOps)
           case (uuid, Vector(uuidInSingleIndex)) => Future.successful(uuidInSingleIndex)
           case (uuid, vec) => {
             val oldestIngest = vec.minBy(_._2)
-            ftsService.purgeByUuidsAndIndexes(vec.filterNot(oldestIngest.eq)).map { bulkRes =>
+            ftsService.purgeByUuidsAndIndexes(vec.filterNot(oldestIngest.eq), partition = "blahblah").map { bulkRes =>
               if (bulkRes.hasFailures) {
                 log.error(bulkRes.toString)
               }
@@ -248,7 +231,7 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSServiceOps)
                 infopt
                   .map {
                     case i if i.uuid != uuid => i.overrideUuid(uuid)
-                    case i                   => i
+                    case i => i
                   }
                   .toEither(uuid)
             )
@@ -261,15 +244,15 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSServiceOps)
 
             val uuidFromEsButNotFound = usFromES.filter { case (u, _) => nFound(u) }
             val uuidFromCasButNotFound = usFromC.filter { case (_, u) => nFound(u) }
-            val filteredOnlyES = onlyES.filter { case (u, _)          => nFound(u) }
-            val filteredOnlyC = onlyC.filter { case (u, _)            => nFound(u) }
-            val filteredBoth = both.filter { case (u, _)              => nFound(u) }
+            val filteredOnlyES = onlyES.filter { case (u, _) => nFound(u) }
+            val filteredOnlyC = onlyC.filter { case (u, _) => nFound(u) }
+            val filteredBoth = both.filter { case (u, _) => nFound(u) }
             purgeAndLog(path,
-                        uuidFromEsButNotFound,
-                        uuidFromCasButNotFound,
-                        filteredBoth,
-                        filteredOnlyES,
-                        filteredOnlyC)
+              uuidFromEsButNotFound,
+              uuidFromCasButNotFound,
+              filteredBoth,
+              filteredOnlyES,
+              filteredOnlyC)
           }
 
           val fixFoundFut: Future[(Boolean, String)] = {
@@ -297,10 +280,10 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSServiceOps)
                           )
                           // we are purging an infoton only because lastModified collision,
                           // but we should log the lost data (JsonFormatter which preserves the "last name" hash + quads data?)
-                          val f1 = retry(ftsService.purgeByUuidsAndIndexes(onlyES(i.uuid).map(i.uuid -> _)))
+                          val f1 = retry(ftsService.purgeByUuidsAndIndexes(onlyES(i.uuid).map(i.uuid -> _), partition = "blahblah"))
                             .map[Infoton] { br =>
-                              if (br.hasFailures) logEsBulkResponseFailures(br); i
-                            }
+                            if (br.hasFailures) logEsBulkResponseFailures(br); i
+                          }
                             .recover {
                               case e: Throwable =>
                                 log.info(s"purge from es failed for uuid=${i.uuid} of path=${i.path}", e); i
@@ -338,7 +321,7 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSServiceOps)
                                       e
                                     )
                                     onlyEsInfoton
-                              }
+                                }
                             )
                           } else f
                       }
@@ -351,7 +334,7 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSServiceOps)
                       val purgeFromEsFut = Future.traverse(uFromEsThatAreFound) {
                         // todo .recover + check .hasFailures
                         case (uuid, index) =>
-                          retry(ftsService.purgeByUuidsAndIndexes(Vector(uuid -> index)))
+                          retry(ftsService.purgeByUuidsAndIndexes(Vector(uuid -> index), partition = "blahblah"))
                       }
 
                       purgeFromEsFut.flatMap { _ =>
@@ -361,19 +344,19 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSServiceOps)
                           val actions = foundAndFixed.map(
                             i =>
                               ESIndexRequest(createEsIndexActionForNewBG(i,
-                                                                         if (i.indexName.isEmpty) "cm_well_latest"
-                                                                         else i.indexName,
-                                                                         i eq cur),
-                                             None)
+                                if (i.indexName.isEmpty) "cm_well_latest"
+                                else i.indexName,
+                                i eq cur),
+                                None)
                           )
                           retry(ftsService.executeBulkIndexRequests(actions)).map(_ => (true, ""))
                         } else {
                           val actions = foundAndFixed.map {
                             case i if isContainsCurrent && (i eq cur) => createEsIndexAction(i, "cmwell_current_latest")
-                            case i                                    => createEsIndexAction(i, "cmwell_history_latest")
+                            case i => createEsIndexAction(i, "cmwell_history_latest")
                           }
                           // todo .recover + check .hasFailures
-                          retry(ftsService.executeBulkActionRequests(actions)).map(_ => (true, ""))
+                          retry(ftsService.executeBulkIndexRequests(actions)).map(_ => (true, ""))
                         }
                       }
                     }
@@ -438,7 +421,7 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSServiceOps)
         val f1 = {
           if (uuidsFromEs.isEmpty) Future.successful(())
           else
-            retry(ftsService.purgeByUuidsAndIndexes(uuidsFromEs)).recover {
+            retry(ftsService.purgeByUuidsAndIndexes(uuidsFromEs, partition = "blahblah")).recover {
               case e: Throwable =>
                 log.error(
                   s"error occured while purging=${uuidsFromEs.mkString("[", ",", "]")} for path=[$path] from ES",
@@ -463,7 +446,7 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSServiceOps)
 
   private def createEsIndexActionForNewBG(infoton: Infoton,
                                           index: String,
-                                          isCurrent: Boolean): ActionRequest[_ <: ActionRequest[_ <: AnyRef]] = {
+                                          isCurrent: Boolean): DocWriteRequest[_] = {
     val infotonWithUpdatedIndexTime = infoton.indexTime.fold {
       infoton.replaceIndexTime(infoton.lastModified.getMillis)
     }(_ => infoton)
@@ -472,19 +455,19 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSServiceOps)
   }
 
   private def createEsIndexAction(infoton: Infoton, index: String) =
-    Requests
+    ESIndexRequest(Requests
       .indexRequest(index)
       .`type`("infoclone")
       .id(infoton.uuid)
       .create(true)
-      .source(JsonSerializer.encodeInfoton(infoton, omitBinaryData = true, toEs = true))
+      .source(JsonSerializer.encodeInfoton(infoton, omitBinaryData = true, toEs = true)), None)
 
   private def purgeFromCas(path: String, uuid: String, timestamp: Long) =
     irw.purgeUuid(path, uuid, timestamp, isOnlyVersion = false, cmwell.irw.QUORUM)
 
   // filling up `dc` and `indexTime`, since some old data do not have these fields
   private def fixAndUpdateInfotonInCas(i: Infoton): Future[Infoton] =
-    autoFixDcAndIndexTime(i, Settings.dataCenter)
+    autoFixDcAndIndexTime(i, ftsService.dataCenter)
       .fold(Future.successful(i))(
         j =>
           irw.writeAsyncDataOnly(j, cmwell.irw.QUORUM).recover {
@@ -521,7 +504,8 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSServiceOps)
 
     require(dc != "na", "fix-dc with \"na\"?")
     require(!isNewBg, "fixDc not implemented for nbg path")
-
+    ???
+/*
     val task = cmwell.util.concurrent.retry(retries, 1.seconds) {
       s.extractLastCas(path).flatMap { infoton =>
         val dummyFut = Future.successful(())
@@ -574,10 +558,11 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSServiceOps)
     task.flatMap { t =>
       cmwell.util.concurrent.retry(retries, 1.seconds)(t())
     }
+*/
   }
 
   override def shutdown: Unit = {
     this.s.irwProxy.daoProxy.shutdown()
-    this.s.ftsProxy.close()
+    this.s.ftsProxy.shutdown()
   }
 }

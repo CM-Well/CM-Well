@@ -367,15 +367,15 @@ case class ElasticsearchProps(h: Host)
   override val componentName: String = "elasticsearch"
   override val componentDataDirs: Map[String, GenSeq[String]] = Map(
     "es" -> h.getDataDirs.esDataDirs,
-    "es-master" -> List(s"${h.getInstDirs.intallationDir}/data")
+    "es-master" -> List(s"${h.getDataDirs.esDataDirs.head.substring(0, h.getDataDirs.esDataDirs.head.lastIndexOf('/'))}/es-master")
   )
   override val componentMappings: Map[String, Int] = Map("es" -> h.getDataDirs.esDataDirs.size, "es-master" -> 1)
 
   override def upgradeMethod: UpgradeMethod = PreUpgrade
 
   def targetLocation = "app/es"
-  def unpackCommand: Option[String] = Some("tar -xf")
-  def symLinkName: Option[String] = Some("cur")
+  def unpackCommand : Option[String] = Some("unzip")
+  def symLinkName : Option[String] = Some("cur")
 
   def start(hosts: GenSeq[String]): Unit = {
     h.startElasticsearch(hosts)
@@ -684,7 +684,8 @@ class Deployment(h: Host) {
     val writer = new PrintWriter(f)
     writer.write(content)
     writer.close
-    h.rsync(tmpName, s"$location/$fileName", hosts)
+    h.command(s"mkdir -p $location")
+    h.rsync(tmpName, s"$location/$fileName" , hosts)
     f.delete()
   }
 

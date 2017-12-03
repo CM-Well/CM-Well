@@ -522,7 +522,7 @@ class TimeBasedAccumulatedNsCache private (private[this] var mainCache: Map[NsID
           fieldFilters = Some(SingleFieldFilter(Must, GreaterThan, "system.indexTime", Some(indexTime.toString))),
           fields = fieldsForIndexTimeSearch,
           paginationParams = paginationParamsForIndexTimeSearch,
-          fieldSortParams = SortParam.indexTimeAscending
+          fieldSortParams = SortParam("system.indexTime" -> Asc)
         ) { (sr, _) =>
           val hits = sr.getHits.getHits
 
@@ -564,7 +564,7 @@ class TimeBasedAccumulatedNsCache private (private[this] var mainCache: Map[NsID
             case (_, tryQuadruple) => tryQuadruple.toOption
           }
 
-          val shouldContinue = sr.getHits.totalHits() > hits.length && ko.isEmpty
+          val shouldContinue = sr.getHits.totalHits > hits.length && ko.isEmpty
           val err: Throwable = {
             if (ko.nonEmpty) {
               val errors = ko.collect {

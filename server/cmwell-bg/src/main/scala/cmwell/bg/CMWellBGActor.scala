@@ -21,7 +21,7 @@ import akka.kafka.{ConsumerSettings, KafkaConsumerActor}
 import akka.stream.{ActorMaterializer, Supervision}
 import ch.qos.logback.classic.LoggerContext
 import cmwell.bg.Runner.logger
-import cmwell.fts.FTSServiceNew
+import cmwell.fts.FTSService
 import cmwell.irw.IRWService
 import cmwell.common.OffsetsService
 import cmwell.common.ExitWithError
@@ -45,11 +45,7 @@ import scala.util.{Failure, Success}
 
 object CMWellBGActor {
   val name = "CMWellBGActor"
-  def props(partition: Int,
-            config: Config,
-            irwService: IRWService,
-            ftsService: FTSServiceNew,
-            zStore: ZStore,
+  def props(partition:Int, config:Config, irwService:IRWService, ftsService:FTSService, zStore: ZStore,
             offsetsService: OffsetsService) =
     Props(new CMWellBGActor(partition, config, irwService, ftsService, zStore, offsetsService))
 }
@@ -57,15 +53,8 @@ object CMWellBGActor {
 /**
   * Created by israel on 15/06/2016.
   */
-class CMWellBGActor(partition: Int,
-                    config: Config,
-                    irwService: IRWService,
-                    ftsService: FTSServiceNew,
-                    zStore: ZStore,
-                    offsetsService: OffsetsService)
-    extends Actor
-    with LazyLogging
-    with DefaultInstrumented {
+class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsService:FTSService, zStore: ZStore,
+                    offsetsService: OffsetsService) extends Actor with LazyLogging with DefaultInstrumented {
 
   var impStream: ImpStream = null
   var indexerStream: IndexerStream = null

@@ -275,7 +275,7 @@ case class GridSubDiv(user: String,
             home = homeDir,
             resourceManager = esAllocations,
             dir = ResourceBuilder.getIndexedName("es", i),
-            template = "es.yml",
+            template = "elasticsearch.yml",
             listenAddress = aliases(i - 1),
             masterNodes = esMasters,
             sName = s"${ResourceBuilder.getIndexedName("start", i)}.sh",
@@ -287,27 +287,27 @@ case class GridSubDiv(user: String,
           )
         }
 
-      val esMaster = ElasticsearchConf(
-        clusterName = clusterName,
-        nodeName = s"${aliases(0)}-master",
-        masterNode = true,
-        dataNode = false,
-        expectedNodes = getSize,
-        numberOfReplicas = 2,
-        seeds = getSeedNodes.mkString(","),
-        home = homeDir,
-        resourceManager = esAllocations,
-        dir = "es-master",
-        template = "es.yml",
-        listenAddress = aliases(0),
-        masterNodes = esMasters,
-        sName = "start-master.sh",
-        index = dataDirs.esDataDirs.size + 1,
-        rs = IpRackSelector(),
-        g1 = true,
-        hostIp = host,
-        autoCreateIndex = withElk
-      )
+        val esMaster = ElasticsearchConf(
+          clusterName = clusterName,
+          nodeName = s"${aliases(0)}-master",
+          masterNode = true,
+          dataNode = false,
+          expectedNodes = getSize ,
+          numberOfReplicas = 2,
+          seeds = getSeedNodes.mkString(","),
+          home = homeDir,
+          resourceManager = esAllocations,
+          dir = "es-master",
+          template = "elasticsearch.yml",
+          listenAddress = aliases(0),
+          masterNodes = esMasters,
+          sName = "start-master.sh",
+          index = dataDirs.esDataDirs.size + 1,
+          rs = IpRackSelector(),
+          g1 = true,
+          hostIp = host,
+          autoCreateIndex = withElk
+        )
 
       val bg = BgConf(
         home = homeDir,
@@ -343,7 +343,7 @@ case class GridSubDiv(user: String,
         hostIp = host,
         minMembers = getMinMembers,
         seeds = getSeedNodes.mkString(","),
-        seedPort = 9301,
+        seedPort = 9300,
         defaultRdfProtocol = defaultRdfProtocol
       )
 
@@ -359,7 +359,7 @@ case class GridSubDiv(user: String,
         hostIp = host,
         minMembers = getMinMembers,
         seeds = getSeedNodes.mkString(","),
-        seedPort = 9301,
+        seedPort = 9300,
         subjectsInSpAreHttps = subjectsInSpAreHttps
       )
 

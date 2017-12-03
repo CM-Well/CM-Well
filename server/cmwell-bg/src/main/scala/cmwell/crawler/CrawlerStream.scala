@@ -22,7 +22,7 @@ import akka.stream.scaladsl.{GraphDSL, Sink, Source}
 import akka.stream.{ActorMaterializer, SourceShape}
 import akka.{Done, NotUsed}
 import cmwell.common._
-import cmwell.fts.{ESIndexRequest, FTSServiceOps, FTSThinInfoton, SuccessfulBulkIndexResult}
+import cmwell.fts._
 import cmwell.irw.IRWService
 import cmwell.util.concurrent.travector
 import cmwell.zstore.ZStore
@@ -32,7 +32,7 @@ import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
-import org.elasticsearch.action.ActionRequest
+import org.elasticsearch.action.{ActionRequest, DocWriteRequest}
 import org.elasticsearch.action.update.UpdateRequest
 import org.joda.time.{DateTime, DateTimeZone}
 
@@ -87,7 +87,7 @@ object CrawlerStream extends LazyLogging {
   // However, in case it has more than one value, Crawler will detect it and report accordingly.
 
   def createAndRunCrawlerStream(config: Config, topic: String, partition: Int)
-                               (irwService: IRWService, ftsService: FTSServiceOps, zStore: ZStore, offsetsService: OffsetsService)
+                               (irwService: IRWService, ftsService: FTSService, zStore: ZStore, offsetsService: OffsetsService)
                                (sys: ActorSystem, mat: ActorMaterializer, ec: ExecutionContext): CrawlerMaterialization = {
 
     //todo: check priority scenario - what will be the current version?
@@ -280,7 +280,7 @@ object CrawlerStream extends LazyLogging {
 
     def setCurrentFalse(uuid: String, indexName: String, lclzdCmd: LocalizedCommand, details: String): Future[Unit] = {
       val updateRequest = ESIndexRequest(new UpdateRequest(indexName, "infoclone", uuid).
-        doc(s"""{"system":{"current": false}}""").asInstanceOf[ActionRequest[_ <: ActionRequest[_ <: AnyRef]]], None)
+        doc(s"""{"system":{"current": false}}""").asInstanceOf[DocWriteRequest[_]], None)
 
       val isOk = (bulkIndexResult: SuccessfulBulkIndexResult) => bulkIndexResult.failed.isEmpty && bulkIndexResult.successful.nonEmpty
 

@@ -118,7 +118,7 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
           fieldFilters = Option(ffs),
           paginationParams = paginationParamsForSingleResultWithOffset,
           withHistory = h,
-          fieldSortParams = SortParam.indexTimeAscending,
+          fieldSortParams = SortParam("system.indexTime" -> Asc),
           withDeleted = d,
           debugInfo = debugInfo
         )
@@ -175,7 +175,7 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
           fieldFilters = ff,
           paginationParams = paginationParamsForSingleResult,
           withHistory = withHistory,
-          fieldSortParams = SortParam.indexTimeAscending,
+          fieldSortParams = SortParam("system.indexTime" -> Asc),
           withDeleted = withDeleted,
           debugInfo = debugInfo
         )

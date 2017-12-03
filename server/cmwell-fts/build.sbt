@@ -13,6 +13,8 @@ libraryDependencies ++= {
 			.exclude("org.apache.lucene", "lucene-queryparser")
 			.exclude("org.apache.lucene", "lucene-analyzers-common")
 			.exclude("org.apache.lucene", "lucene-core") jar(),
+		dm("org.elasticsearch.client", "transport"),
+    dm("pl.allegro.tech","embedded-elasticsearch") % Test,
 		dm("org.slf4j", "log4j-over-slf4j"),
 		dm("org.apache.lucene", "lucene-queryparser"),
 		dm("org.apache.lucene", "lucene-analyzers-common"),

@@ -45,11 +45,12 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
   var irwService:IRWService = _
   var zStore:ZStore = _
   var offsetsService:OffsetsService = _
-  var ftsServiceES:FTSServiceNew = _
+  var ftsServiceES:FTSService = _
   var bgConfig:Config = _
   var actorSystem:ActorSystem = _
 
   override def beforeAll = {
+
     val producerProperties = new Properties
     producerProperties.put("bootstrap.servers", "localhost:9092")
     producerProperties.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
@@ -63,22 +64,10 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
 
     zStore = ZStore(dao)
     offsetsService = new ZStoreOffsetsService(zStore)
-    ftsServiceES = FTSServiceNew("es.test.yml")
-
-    // wait for green status
-    ftsServiceES.client.admin().cluster()
-      .prepareHealth()
-      .setWaitForGreenStatus()
-      .setTimeout(TimeValue.timeValueMinutes(5))
-      .execute()
-      .actionGet()
+    ftsServiceES = FTSService()
 
     // delete all existing indices
     ftsServiceES.client.admin().indices().delete(new DeleteIndexRequest("_all"))
-
-    // load indices template
-    val indicesTemplate = Source.fromURL(this.getClass.getResource("/indices_template_new.json")).getLines.reduceLeft(_ + _)
-    ftsServiceES.client.admin().indices().preparePutTemplate("indices_template").setSource(indicesTemplate).execute().actionGet()
 
     bgConfig = ConfigFactory.load
 

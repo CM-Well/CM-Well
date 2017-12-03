@@ -281,8 +281,8 @@ package object wsutil extends LazyLogging {
                                            field: RawField[FieldValeOperator],
                                            interval: Int,
                                            minDocCount: Int,
-                                           extMin: Option[Long],
-                                           extMax: Option[Long],
+                                           extMin: Option[Double],
+                                           extMax: Option[Double],
                                            subFilters: Seq[RawAggregationFilter] = Seq.empty)
       extends RawAggregationFilter
 

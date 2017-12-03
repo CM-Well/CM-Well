@@ -62,9 +62,8 @@ trait FTSServiceOps {
     implicit executionContext: ExecutionContext
   ): Future[(T, Long)]
 
-  def executeBulkActionRequests(
-    actionRequests: Iterable[ActionRequest[_ <: ActionRequest[_ <: AnyRef]]]
-  )(implicit executionContext: ExecutionContext, logger: Logger = loger): Future[BulkResponse]
+  def executeBulkActionRequests(actionRequests: Iterable[ActionRequest])
+                               (implicit executionContext: ExecutionContext, logger: Logger = loger): Future[BulkResponse]
 
   def executeBulkIndexRequests(
     indexRequests: Iterable[ESIndexRequest],
@@ -244,4 +243,4 @@ trait ESMBean {
 
 trait FTSServiceESMBean extends ESMBean
 
-trait FTSServiceNewMBean extends ESMBean
+trait FTSServiceMBean extends ESMBean

@@ -6,7 +6,7 @@ val useAuthorization = false
 val dataDirs = DataDirs(
                             casDataDirs = List(s"$location/cm-well-data/cas"),
                             casCommitLogDirs = List(s"$location/cm-well-data/ccl") ,
-                            esDataDirs = List(s"$location/cm-well-data/es"),
+                            esDataDirs = List(s"$location/cm-well-data/es", s"$location/cm-well-data/es-master"),
                             kafkaDataDirs = List(s"$location/cm-well-data/kafka"),
                             zookeeperDataDir = s"$location/cm-well-data/zookeeper" ,
                             logsDataDir = s"$location/cm-well-data/log")
@@ -17,4 +17,3 @@ val pe = LocalHost(dataCenter = "lh",
                    useAuthorization = useAuthorization,
                    withElk = false)
 
-pe.mappingFile = "mapping-pe.json";

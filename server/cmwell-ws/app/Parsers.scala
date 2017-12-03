@@ -15,7 +15,7 @@
 package cmwell.ws
 
 import cmwell.domain._
-import cmwell.fts.{Settings => _, _}
+import cmwell.fts._
 import cmwell.util.collections._
 import cmwell.util.exceptions.trySequence
 import cmwell.web.ld.cmw.CMWellRDFHelper
@@ -44,10 +44,6 @@ package object util {
 }
 
 package util {
-
-  import cmwell.web.ld.exceptions.ParsingException
-
-  import scala.annotation.tailrec
 
   trait PrefixRequirement {
     @inline final protected[this] def prefixRequirement(requirement: Boolean, message: => String): Unit = {
@@ -163,6 +159,7 @@ package util {
     lazy val sLiteral = """(?:[\p{L}\p{Sc}0-9/.@ &_\-]+)""".r
     lazy val positiveInteger = """\d+""".r
     lazy val pNumber = """\d+""".r
+    lazy val pDouble = """[0-9]*\.?[0-9]+"""
 
     def aggregationsParser: Parser[List[RawAggregationFilter]] = repsep(aggregationParser, "~")
 
@@ -196,12 +193,12 @@ package util {
       case _ ~ mdc => Integer.parseInt(mdc)
     }
 
-    def extMinParser: Parser[Long] = ",extMin:" ~ pNumber ^^ {
-      case _ ~ em => em.toLong
+    def extMinParser: Parser[Double] = ",extMin:" ~ pDouble ^^ {
+      case _ ~ em => em.toDouble
     }
 
-    def extMaxParser: Parser[Long] = ",extMax:" ~ pNumber ^^ {
-      case _ ~ em => em.toLong
+    def extMaxParser: Parser[Double] = ",extMax:" ~ pDouble ^^ {
+      case _ ~ em => em.toDouble
     }
 
     def backgroundTermParser: Parser[(String, String)] = ",backgroundTerm:" ~ sLiteral ~ "*" ~ sLiteral ^^ {
@@ -302,7 +299,7 @@ package util {
     */
   object RTSQueryPredicate extends RegexParsers {
 
-    import cmwell.rts.{MatchFilter, MatchMap, NoFilter, PMFilter, Path, PathFilter, Rule}
+    import cmwell.rts._
 
     /* regex explanation:
      * value cannot contain the characters: ',' , '[' , ']' (used as separators)

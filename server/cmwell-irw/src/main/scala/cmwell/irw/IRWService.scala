@@ -44,11 +44,13 @@ import duration._
   */
 object IRWService {
 
+/*
   def apply(storageDao: Dao) = new IRWServiceNativeImpl(storageDao)
   def apply(storageDao: Dao, disableReadCache: Boolean) =
     new IRWServiceNativeImpl(storageDao, disableReadCache = disableReadCache)
   def apply(storageDao: Dao, maxReadSize: Int, disableReadCache: Boolean, readCacheDuration: FiniteDuration) =
     new IRWServiceNativeImpl(storageDao, maxReadSize, disableReadCache, readCacheDuration)
+*/
 
   def newIRW(storageDao: Dao) = new IRWServiceNativeImpl2(storageDao)
   def newIRW(storageDao: Dao, disableReadCache: Boolean) =
@@ -247,6 +249,7 @@ trait IRWService {
   val futureEmptyBox: Future[Box[Infoton]] = Future.successful(Box.empty[Infoton])
 }
 
+/*
 class IRWServiceNativeImpl(storageDao: Dao,
                            maxReadSize: Int = 25,
                            disableReadCache: Boolean = false,
@@ -864,3 +867,4 @@ class IRWServiceNativeImpl(storageDao: Dao,
     }
   }
 }
+*/

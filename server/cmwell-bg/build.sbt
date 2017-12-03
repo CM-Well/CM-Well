@@ -25,7 +25,8 @@ libraryDependencies ++= {
     dm("org.apache.kafka", "kafka")
       .exclude("org.slf4j", "slf4j-log4j12")
       .exclude("log4j", "log4j"),
-    dm("uk.org.lidalia","sysout-over-slf4j")
+    dm("uk.org.lidalia","sysout-over-slf4j"),
+    dm("pl.allegro.tech","embedded-elasticsearch") % Test
   )
 }
 

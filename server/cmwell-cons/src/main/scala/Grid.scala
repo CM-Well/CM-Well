@@ -108,49 +108,49 @@ case class Grid(user: String,
         hostIp = host
       )
 
-      val es = ElasticsearchConf(
-        clusterName = clusterName,
-        nodeName = host,
-        masterNode = false,
-        dataNode = true,
-        expectedNodes = ips.size,
-        numberOfReplicas = 2,
-        seeds = getSeedNodes.mkString(","),
-        home = homeDir,
-        resourceManager = esAllocations,
-        dir = "es",
-        template = "es.yml",
-        listenAddress = host,
-        masterNodes = esMasters,
-        sName = "start.sh",
-        index = 1,
-        rs = IpRackSelector(),
-        g1 = g1,
-        hostIp = host,
-        autoCreateIndex = withElk
-      )
+        val es = ElasticsearchConf(
+          clusterName = clusterName,
+          nodeName = host,
+          masterNode = false,
+          dataNode = true,
+          expectedNodes = ips.size,
+          numberOfReplicas = 2,
+          seeds = getSeedNodes.mkString(","),
+          home = homeDir,
+          resourceManager = esAllocations,
+          dir = "es",
+          template = "elasticsearch.yml",
+          listenAddress = host,
+          masterNodes = esMasters,
+          sName = "start.sh",
+          index = 1,
+          rs = IpRackSelector(),
+          g1 = g1,
+          hostIp = host,
+          autoCreateIndex = withElk
+        )
 
-      val esMaster = ElasticsearchConf(
-        clusterName = clusterName,
-        nodeName = s"$host-master",
-        masterNode = true,
-        dataNode = false,
-        expectedNodes = ips.size,
-        numberOfReplicas = 2,
-        seeds = getSeedNodes.mkString(","),
-        home = homeDir,
-        resourceManager = esAllocations,
-        dir = "es-master",
-        template = "es.yml",
-        listenAddress = host,
-        masterNodes = esMasters,
-        sName = "start-master.sh",
-        index = 2,
-        rs = IpRackSelector(),
-        g1 = true,
-        hostIp = host,
-        autoCreateIndex = withElk
-      )
+        val esMaster = ElasticsearchConf(
+          clusterName = clusterName,
+          nodeName = s"$host-master",
+          masterNode = true,
+          dataNode = false,
+          expectedNodes = ips.size,
+          numberOfReplicas = 2,
+          seeds = getSeedNodes.mkString(","),
+          home = homeDir,
+          resourceManager = esAllocations,
+          dir = "es-master",
+          template = "elasticsearch.yml",
+          listenAddress = host,
+          masterNodes = esMasters,
+          sName = "start-master.sh",
+          index = 2,
+          rs = IpRackSelector(),
+          g1 = true,
+          hostIp = host,
+          autoCreateIndex = withElk
+        )
 
       val bg = BgConf(
         home = homeDir,
@@ -186,7 +186,7 @@ case class Grid(user: String,
         hostIp = host,
         minMembers = getMinMembers,
         seeds = getSeedNodes.mkString(","),
-        seedPort = 9301,
+        seedPort = 9300,
         defaultRdfProtocol = defaultRdfProtocol
       )
 
@@ -202,7 +202,7 @@ case class Grid(user: String,
         hostIp = host,
         minMembers = getMinMembers,
         seeds = getSeedNodes.mkString(","),
-        seedPort = 9301,
+        seedPort = 9300,
         subjectsInSpAreHttps = subjectsInSpAreHttps
       )
 

@@ -594,8 +594,6 @@ abstract class Host(user: String,
 
   def esHealthAddress = ":9200/_cluster/health?pretty=true"
 
-  var mappingFile = "mapping.json"
-
   def cassandraStatus(host: String): Try[String] = {
     command(
       s"JAVA_HOME=${instDirs.globalLocation}/cm-well/app/java/bin $nodeToolPath status 2> /dev/null | grep UN | wc -l",
@@ -798,7 +796,7 @@ abstract class Host(user: String,
   }
 
   def _rsync(from: String, to: String, host: String, tries: Int = 10, sudo: Boolean): Try[String] = {
-    val seq = Seq("rsync", "-e", "ssh -o LogLevel=ERROR", "-Paz", "--delete", from, host + ":" + to)
+    val seq = Seq("rsync", s"""–-rsync-path=”mkdir -p $to && rsync”""", "-Paz", "--delete", from, host + ":" + to)
 
     // scalastyle:off
     if (verbose) println("command: " + seq.mkString(" "))
@@ -1598,26 +1596,11 @@ abstract class Host(user: String,
   def initSchemes: Unit = initSchemes()
 
   def initSchemes(hosts: GenSeq[String] = ips.par) {
-    val aliases =
-      """{
-                     "actions" : [
-                            { "add" : { "index" : "cmwell_current_0", "alias" : "cmwell_current" } },
-                            { "add" : { "index" : "cmwell_history_0", "alias" : "cmwell_history" } },
-                            { "add" : { "index" : "cmwell_current_0", "alias" : "cmwell_current_latest" } },
-                            { "add" : { "index" : "cmwell_history_0", "alias" : "cmwell_history_latest" } },
-                            { "add" : { "index" : "cm_well_p0_0", "alias" : "cm_well_all" } }
-                        ]
-                    }""".replace("\n", "")
     // scalastyle:off
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/cassandra-cql-init-cluster-new", hosts(0), false)
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/zstore-cql-init-cluster", hosts(0), false)
-    command(s"""curl -s -X POST http://${pingAddress}:$esRegPort/_template/cmwell_indices_template -H "Content-Type: application/json" --data-ascii @${instDirs.globalLocation}/cm-well/conf/es/mapping.json""", hosts(0), false)
     command(s"""curl -s -X POST http://${pingAddress}:$esRegPort/_template/cmwell_index_template -H "Content-Type: application/json" --data-ascii @${instDirs.globalLocation}/cm-well/conf/es/indices_template_new.json""", hosts(0), false)
-    command(s"curl -s -X POST http://${pingAddress}:$esRegPort/cmwell_current_0/;curl -s -X POST http://${pingAddress}:$esRegPort/cmwell_history_0/", hosts(0), false)
-    // scalastyle:on
-    command(s"curl -s -X POST http://${pingAddress}:$esRegPort/cm_well_p0_0/", hosts(0), false)
-    //    command(s"curl -s -X POST http://${pingAddress}:$esRegPort/cm_well_0/", hosts(0), false)
-    command(s"""curl -s -X POST http://${pingAddress}:$esRegPort/_aliases -H "Content-Type: application/json" --data-ascii '${aliases}'""", hosts(0), false)
+//    command(s"curl -s -X POST http://${pingAddress}:$esRegPort/cm_well_p0_0/", hosts(0), false)
     // create kafka topics
     val replicationFactor = math.min(hosts.size, 3)
 

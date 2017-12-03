@@ -1,9 +1,9 @@
 {
-  "template": "cm_well_*",
+  "index_patterns": "cm_well_*",
   "order": 0,
   "settings": {
     "number_of_shards": {{number_of_shards}},
-    "number_of_replicas":{{number_of_replicas}},
+    "number_of_replicas": {{number_of_replicas}},
     "analysis": {
       "analyzer": {
         "parent_hierarchy_analyzer": {
@@ -12,7 +12,11 @@
         }
       }
     },
-    "index.unassigned.node_left.delayed_timeout": "15m"
+    "index.unassigned.node_left.delayed_timeout": "15m",
+    "index.mapping.total_fields.limit": 25000
+  },
+  "aliases":{
+    "cm_well_all":{}
   },
   "mappings": {
     "infoclone": {
@@ -25,10 +29,9 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "date",
-              "index": "not_analyzed",
               "store": "false",
               "include_in_all": "true",
-              "omit_norms": true
+              "norms": false
             }
           }
         },
@@ -38,10 +41,8 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "integer",
-              "index": "not_analyzed",
               "store": "false",
-              "include_in_all": "true",
-              "omit_norms": true
+              "include_in_all": "true"
             }
           }
         },
@@ -51,10 +52,8 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "long",
-              "index": "not_analyzed",
               "store": "false",
-              "include_in_all": "true",
-              "omit_norms": true
+              "include_in_all": "true"
             }
           }
         },
@@ -64,10 +63,8 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "float",
-              "index": "not_analyzed",
               "store": "false",
-              "include_in_all": "true",
-              "omit_norms": true
+              "include_in_all": "true"
             }
           }
         },
@@ -77,10 +74,8 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "double",
-              "index": "not_analyzed",
               "store": "false",
-              "include_in_all": "true",
-              "omit_norms": true
+              "include_in_all": "true"
             }
           }
         },
@@ -90,10 +85,8 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "boolean",
-              "index": "not_analyzed",
               "store": "false",
-              "include_in_all": "true",
-              "omit_norms": true
+              "include_in_all": "true"
             }
           }
         },
@@ -102,64 +95,46 @@
             "path_match": "*.*",
             "match_mapping_type": "string",
             "mapping": {
-              "type": "multi_field",
+              "type": "text",
               "fields": {
-                "{name}": {
-                  "type": "string",
-                  "index": "analyzed",
-                  "analyzer": "default",
+                "{name}%exact": {
+                  "type": "keyword",
                   "store": "false",
-                  "include_in_all": "true",
-                  "omit_norms": true
-                },
-                "%exact": {
-                  "type": "string",
-                  "index": "not_analyzed",
-                  "store": "false",
-                  "path": "just_name",
-                  "include_in_all": "false",
-                  "omit_norms": true
+                  "include_in_all": "false"
                 }
               }
             }
           }
         }
       ],
-      "_id": {
-        "path": "system.uuid"
-      },
       "properties": {
         "content": {
           "properties": {
             "data": {
-              "type": "string",
-              "omit_norms": true
+              "type": "text",
+              "norms": false
             },
             "length": {
               "type": "long",
               "store": "true"
             },
             "mimeType": {
-              "type": "string",
-              "index": "not_analyzed",
+              "type": "keyword",
               "store": "true",
-              "omit_norms": true
+              "norms": false
             }
           }
         },
         "link":{
           "properties": {
             "to" : {
-              "type": "string",
-              "index": "not_analyzed",
+              "type": "keyword",
               "store": true,
-              "omit_norms": true
+              "norms": false
             },
             "kind": {
               "type": "integer",
-              "index": "not_analyzed",
-              "store": true,
-              "omit_norms": true
+              "store": true
             }
           }
         },
@@ -167,64 +142,50 @@
           "properties": {
             "lastModified": {
               "type": "date",
-              "store": "false",
+              "store": "true",
               "format": "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
             },
             "parent":{
-              "type":"multi_field",
+              "type":"keyword",
               "fields": {
-                "parent":{
-                  "type": "string",
-                  "index": "not_analyzed",
-                  "store": "false",
-                  "omit_norms": true
-                },
                 "parent_hierarchy": {
-                  "type":"string",
-                  "path":"just_name",
+                  "type":"text",
                   "store": "false",
                   "index_options" : "docs",
-                  "omit_norms": true,
+                  "norms": false,
                   "term_vector": "no",
-                  "analyzer": "parent_hierarchy_analyzer",
-                  "index": "analyzed"
+                  "analyzer": "parent_hierarchy_analyzer"
                 }
               }
             },
             "kind": {
-              "type": "string",
-              "index": "not_analyzed",
+              "type": "keyword",
               "store": true,
-              "omit_norms": true
+              "norms": false
             },
             "path": {
-              "type": "string",
-              "index": "not_analyzed",
+              "type": "keyword",
               "store": true,
-              "omit_norms": true
+              "norms": false
             },
             "uuid": {
-              "type": "string",
-              "index": "not_analyzed",
+              "type": "keyword",
               "store": true,
-              "omit_norms": true
+              "norms": false
             },
             "dc": {
-              "type": "string",
-              "index": "not_analyzed",
+              "type": "keyword",
               "store": true,
-              "omit_norms": true
+              "norms": false
             },
             "indexTime": {
               "type": "long",
-              "store": true,
-              "omit_norms": true
+              "store": true
             },
             "quad" : {
-              "type": "string",
-              "index": "not_analyzed",
+              "type": "keyword",
               "store": false,
-              "omit_norms": true
+              "norms": false
             },
             "current": {
               "type": "boolean",
