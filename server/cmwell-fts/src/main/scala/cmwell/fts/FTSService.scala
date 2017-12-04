@@ -1569,6 +1569,29 @@ class FTSService(config: Config) extends NsSplitter{
     }.toSet}
   }
 
+    def getMappings(withHistory: Boolean = false, partition: String = defaultPartition)
+                   (implicit executionContext: ExecutionContext): Future[Set[String]] = {
+      import org.elasticsearch.cluster.ClusterState
+
+      implicit class AsLinkedHashMap[K](lhm: Option[AnyRef]) {
+        def extract(k: K) = lhm match {
+          case Some(m) => Option(m.asInstanceOf[java.util.LinkedHashMap[K,AnyRef]].get(k))
+          case None => None
+        }
+        def extractKeys: Set[K] = lhm.map(_.asInstanceOf[java.util.LinkedHashMap[K,Any]].keySet().asScala.toSet).getOrElse(Set.empty[K])
+        def extractOneValueBy[V](selector: K): Map[K,V] = lhm.map(_.asInstanceOf[java.util.LinkedHashMap[K,Any]].asScala.map{ case (k,vs) => k -> vs.asInstanceOf[java.util.LinkedHashMap[K,V]].get(selector) }.toMap).getOrElse(Map[K,V]())
+      }
+
+      val req = client.admin().cluster().prepareState()
+      val f = injectFuture[ClusterStateResponse](req.execute)
+      val csf: Future[ClusterState] = f.map(_.getState)
+      csf.map{ _.getMetaData.asScala.filter( _.getIndex().getName.startsWith("cm")).flatMap{imd =>
+        val nested = Some(imd.mapping("infoclone").getSourceAsMap.get("properties"))
+        val flds = nested.extract("fields").extract("properties")
+        flds.extractOneValueBy[String]("type").map { case (k,v) => s"$k:$v" }
+      }.toSet}
+    }
+
   def purgeByUuidsAndIndexes(uuidsAtIndexes: Vector[(String, String)], partition: String)
                                      (implicit executionContext: ExecutionContext): Future[BulkResponse] = {
 

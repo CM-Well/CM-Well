@@ -67,7 +67,7 @@
 -Dio.netty.noUnsafe=true
 -Dio.netty.noKeySetOptimization=true
 -Dio.netty.recycler.maxCapacityPerThread=0
--Des.set.netty.runtime.available.processors=8
+-Des.set.netty.runtime.available.processors=false
 
 # log4j 2
 -Dlog4j.shutdownHookEnabled=false

@@ -61,7 +61,7 @@ object Runner extends LazyLogging {
       // casTimeout = Duration.Inf means not to use timeoutFuture in IRW.
       val irwService = IRWService.newIRW(casDao, disableReadCache = false, casTimeout = Duration.Inf)
       val zStore = ZStore(casDao)
-      val ftsService = FTSService("bg.es.yml")
+      val ftsService = FTSService(config)
       val offsetsService = new ZStoreOffsetsService(zStore)
 
       val serviceTypes = {

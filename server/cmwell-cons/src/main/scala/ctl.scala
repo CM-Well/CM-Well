@@ -1599,7 +1599,7 @@ abstract class Host(user: String,
     // scalastyle:off
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/cassandra-cql-init-cluster-new", hosts(0), false)
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/zstore-cql-init-cluster", hosts(0), false)
-    command(s"""curl -s -X POST http://${pingAddress}:$esRegPort/_template/cmwell_index_template -H "Content-Type: application/json" --data-ascii @${instDirs.globalLocation}/cm-well/conf/es/indices_template_new.json""", hosts(0), false)
+    command(s"""curl -s -X POST http://${pingAddress}:$esMasterPort/_template/cmwell_index_template -H "Content-Type: application/json" --data-ascii @${instDirs.globalLocation}/cm-well/conf/es/indices_template_new.json""", hosts(0), false)
 //    command(s"curl -s -X POST http://${pingAddress}:$esRegPort/cm_well_p0_0/", hosts(0), false)
     // create kafka topics
     val replicationFactor = math.min(hosts.size, 3)
@@ -2201,13 +2201,7 @@ abstract class Host(user: String,
   def reloadEsMappings(createNewIndices: Boolean = true) {
 
     info("reloading Elasticsearch mappings")
-    command(
-      s"""curl -s -X POST http://${pingAddress}:$esRegPort/_template/cmwell_index_template -H "Content-Type: application/json" --data-ascii @${absPath(
-        instDirs.globalLocation
-      )}/cm-well/conf/es/indices_template_new.json""",
-      ips(0),
-      false
-    )
+    command(s"""curl -s -X POST http://${pingAddress}:$esMasterPort/_template/cmwell_index_template -H "Content-Type: application/json" --data-ascii @${absPath(instDirs.globalLocation)}/cm-well/conf/es/indices_template_new.json""", ips(0), false)
 
     if (createNewIndices) {
       Thread.sleep(5000)

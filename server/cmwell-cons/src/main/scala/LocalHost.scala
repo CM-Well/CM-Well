@@ -63,7 +63,7 @@ case class LocalHost(dataCenter: String = "lh",
     super.install(hosts)
   }
 
-  override def esHealthAddress = ":9201/_cluster/health?pretty=true"
+  override def esHealthAddress = ":9200/_cluster/health?pretty=true"
 
   override def getElasticsearchMasters: Int = 0
 
@@ -78,7 +78,7 @@ case class LocalHost(dataCenter: String = "lh",
   }
 
   override def getSeedNodes: List[String] = ips
-  override val esMasterPort = 9201
+  override val esMasterPort = 9200
 
   override def getMode: String = "local"
 
