@@ -34,6 +34,7 @@ object ArgsManipulations {
 
 
   def extractBaseUrl(baseUrl: String): HttpAddress = {
+    // TODO: every untrivial regex should either be explained (LDFormatter style) or constructed using e.g: verbal expressions (https://github.com/VerbalExpressions)
     val pattern = """(http[s]?:\/\/)?([^\?\:\/#]+)(\:([0-9]+))?(\/[^\?\#]*)?(\?([^#]*))?(#.*)?""".r
 
     baseUrl match {

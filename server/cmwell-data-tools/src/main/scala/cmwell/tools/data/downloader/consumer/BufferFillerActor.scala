@@ -80,15 +80,27 @@ class BufferFillerActor(threshold: Int,
   private val conn = HttpConnections.newHostConnectionPool[Option[_]](host, port, protocol)
 
   override def preStart(): Unit = {
+    logger.info("starting BufferFillerActor")
     initToken.map(InitToken.apply) pipeTo self
   }
 
+
+  override def unhandled(message: Any): Unit = {
+    logger.error(s"BufferFillerActor unhandled message $message")
+    super.unhandled(message)
+  }
+
+  override def preRestart(reason: Throwable, message: Option[Any]): Unit = {
+    logger.error(s"BufferFillerActor died during processing of $message. The exception was: ", reason)
+    super.preRestart(reason, message)
+  }
+
   override def postRestart(reason: Throwable): Unit = {
-    logger.error("I'm in restart", reason)
+    logger.error("BufferFillerActor I'm in restart", reason)
   }
 
   override def postStop(): Unit = {
-    logger.info("I'm in post stop")
+    logger.info("BufferFillerActor I'm in post stop")
     currKillSwitch.foreach(_.shutdown())
   }
 
@@ -132,8 +144,11 @@ class BufferFillerActor(threshold: Int,
     case GetData if buf.nonEmpty =>
       sender ! buf.dequeue()
 
-    case GetData =>
-      // do nothing since there are no elements in buffer
+    // do nothing since there are no elements in buffer
+    case GetData => {
+      logger.debug("Got GetData message but there is no data")
+      sender ! Some[(Token, TsvData)]((null, null))
+    }
 
     case HttpResponseSuccess(t) =>
       // get point in time of token
