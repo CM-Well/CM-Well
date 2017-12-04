@@ -189,6 +189,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])], manual
 
   override def postStop(): Unit = {
     logger.warn("DcSyncManager died. Cancelling all the running syncs. They will actually stop after all already got infotons will be written")
+    cancelDcInfotonChangeCheck.cancel()
     cancelAllRunningSyncs()
   }
 

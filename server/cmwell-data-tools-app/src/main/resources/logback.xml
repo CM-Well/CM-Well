@@ -111,7 +111,7 @@
         <discardingThreshold>0</discardingThreshold>
     </appender>
 
-    <logger name="red-logger" additivity="true">
+    <logger name="tools-red-logger" additivity="true">
         <appender-ref ref="ASYNC_RED_LOG" />
     </logger>
 

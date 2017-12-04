@@ -232,12 +232,12 @@ trait Helpers { self: LazyLogging =>
 
   object Http {
 
-    import cmwell.util.concurrent.retryUntil
+    import cmwell.util.concurrent.unsafeRetryUntil
     import cmwell.util.http.{SimpleResponse, SimpleResponseHandler, SimpleHttpClient}, SimpleHttpClient.{Body, SimpleMessageHandler}
     val ec = scala.concurrent.ExecutionContext.global
 
     private def retryOn503Ingests[T](request: => Future[SimpleResponse[T]]): Future[SimpleResponse[T]] =
-      retryUntil[SimpleResponse[T]](_.status != 503, 23, 42.millis, 2)(request)(ec)
+      unsafeRetryUntil[SimpleResponse[T]](_.status != 503, 23, 42.millis, 2)(request)(ec)
 
     def ws[T: SimpleMessageHandler](uri: String,
                                     initiationMessage: T,

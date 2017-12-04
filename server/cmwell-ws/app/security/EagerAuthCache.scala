@@ -75,7 +75,7 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
   private def load(nbg: Boolean): Future[Boolean] = {
     isLoadingSemaphore = true
 
-    retryUntil[AuthData](isSuccessful = !_.isEmpty, maxRetries = 10, delay = 5.seconds)(loadOnce(false)).map { data =>
+    unsafeRetryUntil[AuthData](isSuccessful = !_.isEmpty, maxRetries = 10, delay = 5.seconds)(loadOnce(false)).map { data =>
       if(nbg) nData = combiner(nData, data)
       else oData = combiner(oData, data)
       isLoadingSemaphore = false
