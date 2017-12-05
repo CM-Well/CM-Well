@@ -291,18 +291,19 @@ object PopulateAndQuery extends LazyLogging {
 
     cmwell.util.concurrent.retry(3, 500.millis) {
       def isCorrupted(ds: Dataset): Boolean = {
-        val statements = JenaUtils.discardQuadsAndFlattenAsTriples(ds).listStatements.toVector
-
-        def getLongValueOfSystemField(field: String): Option[Long] =
-          statements.find(_.getPredicate.getURI.contains(s"/meta/sys#$field")).map(_.getObject.asLiteral().getLong)
-
-        val actualRetrievedInfotonsAmount = statements.
-                                              filterNot(_.getPredicate.getURI.contains("/meta/sys")).
-                                              map(_.getSubject).toSet.size
-
-        // if length sysField exists && it is larger than actual Infotons count - it's a data issue and we should return true
-        val lengthOpt = getLongValueOfSystemField("length")
-        lengthOpt.fold(false)(_ > actualRetrievedInfotonsAmount)
+        false // TODO Once duplicates are eliminated, revive that commented out code:
+//        val statements = JenaUtils.discardQuadsAndFlattenAsTriples(ds).listStatements.toVector
+//
+//        def getLongValueOfSystemField(field: String): Option[Long] =
+//          statements.find(_.getPredicate.getURI.contains(s"/meta/sys#$field")).map(_.getObject.asLiteral().getLong)
+//
+//        val actualRetrievedInfotonsAmount = statements.
+//                                              filterNot(_.getPredicate.getURI.contains("/meta/sys")).
+//                                              map(_.getSubject).toSet.size
+//
+//        // if length sysField exists && it is larger than actual Infotons count - it's a data issue and we should return true
+//        val lengthOpt = getLongValueOfSystemField("length")
+//        lengthOpt.fold(false)(_ > actualRetrievedInfotonsAmount)
       }
 
       httpRequest2(path).flatMap {

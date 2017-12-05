@@ -9,16 +9,15 @@
 CM-Well protects write-access to production environments by requiring an authentication token for write operations. (Write operations to non-production environments and read operations from any environment currently do not require a token, but this is subject to change.)
 
 > **Notes:**
-> * CM-Well currently does not support internal encryption of its data. If necessary, you can encrypt field values in your application, before uploading them to CM-Well.
-
+> * CM-Well currently does not support internal encryption of its data. If necessary, you can encrypt field values in your application before uploading them to CM-Well.
 
 The following sections describe how to obtain and use the CM-Well authentication token.
 
 ## Users, Passwords and Permissions ##
 
-A CM-Well user does not represent a person, but rather an application that calls CM-Well. You use a username and password when logging into CM-Well, and you receive a corresponding authentication token to pass to subsequent API calls.
+A CM-Well user does not represent a person, but rather an application that calls CM-Well. You provide a username and password when logging into CM-Well, and you receive a corresponding authentication token to pass to subsequent API calls.
 
-Each user has specific read and write permissions. A user may have access to certain paths in CM-Well and not to others. You may want to define more than one user for your application, if end users with different profiles may be using it, who require different access permissions.
+Each user has specific read and write permissions. A user may have access to certain paths in CM-Well and not to others. You may want to define more than one user for your application, if end users with different profiles may be using it who require different access permissions.
 
 >**Note:** If you are running a privately compiled version of CM-Well, the default root user name and password are "root" and "root".
 

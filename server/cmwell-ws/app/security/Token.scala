@@ -35,7 +35,7 @@ class Token(jwt: String, authCache: AuthCache) {
   val expiry = new DateTime(claimsSet.getClaimValue("exp").map(_.toLong).get)
 
   def isValid(nbg: Boolean) = {
-    JsonWebToken.validate(jwt, Token.secret) &&
+    (JsonWebToken.validate(jwt, Token.secret) || JsonWebToken.validate(jwt, Token.secret2)) &&
       expiry.isAfterNow &&
       (claimsSet.getClaimValue("rev").map(_.toInt).getOrElse(0) >= Token.getUserRevNum(username, authCache, nbg) || username=="root") // root has immunity to revision revoking
   }
@@ -50,7 +50,8 @@ class Token(jwt: String, authCache: AuthCache) {
 object Token {
   def apply(jwt: String, authCache: AuthCache) = Try(new Token(jwt, authCache)).toOption
 
-  private lazy val secret = ConfigFactory.load().getString("play.crypto.secret") // not using ws.Settings, so it'd be available from `sbt ws/console`
+  private lazy val secret = ConfigFactory.load().getString("play.http.secret.key") // not using ws.Settings, so it'd be available from `sbt ws/console`
+  private lazy val secret2 = ConfigFactory.load().getString("cmwell.ws.additionalSecret.key") // not using ws.Settings, so it'd be available from `sbt ws/console`
   private val jwtHeader = JwtHeader("HS256")
 
   private def getUserRevNum(username: String, authCache: AuthCache, nbg: Boolean) = authCache.getUserInfoton(username, nbg).flatMap(u => (u\"rev").asOpt[Int]).getOrElse(0)

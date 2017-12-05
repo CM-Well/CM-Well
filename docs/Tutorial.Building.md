@@ -28,9 +28,9 @@ Next, set your SCALA_HOME variable:
 $ export SCALA_HOME=~/scala-2.11.11
 ```
 
-Add the scala binary directory to your path
+Add the Scala binary directory to your path
 ```
-$ PATH=$PATH:$SCALA_HOME/bin;export $PATH
+$ PATH=$PATH:$SCALA_HOME/bin;export PATH
 ```
 
 Verify that scala is available and running:

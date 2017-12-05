@@ -10,10 +10,11 @@ Click on a version to see its release notes.
 
 **Latest version:**
 
-* [Version Mono - November 2017](ReleaseNotes.Mono.November.2017.md)
+* [Version Nautilus - November 2017](ReleaseNotes.Nautilus.November.2017.md)
 
 **Older versions:**
 
+* [Version Mono - November 2017](ReleaseNotes.Mono.November.2017.md)
 * [Version Lynx - September 2017](ReleaseNotes.Lynx.September.2017.md)
 * [Version Kingbird - September 2017](ReleaseNotes.Kingbird.September.2017.md)
 * [Version Jaguar - August 2017](ReleaseNotes.Jaguar.August.2017.md)

@@ -64,7 +64,8 @@ priority | If this flag appears in an update call, that call receives priority r
 
 ## Notes ##
 
-If you want to replace values in a sub-graph, the best practice is to delete the old values and add the new values, all in the same call. This is because for every change made to an infoton, CM-Well retains a historical infoton version. If you split the operation into two calls, one to delete and one to add, the version after the delete is saved. This version is not interesting when tracing the infoton's history, and just takes up storage needlessly. 
+* If you want to replace values in a sub-graph, the best practice is to delete the old values and add the new values, all in the same call. This is because for every change made to an infoton, CM-Well retains a historical infoton version. If you split the operation into two calls, one to delete and one to add, the version after the delete is saved. This version is not interesting when tracing the infoton's history, and just takes up storage needlessly. 
+* If the sub-graph you requested to delete did not exist, you will receive a 422 ("Unprocessable Entity") return code.
 
 ## Related Topics ##
 [Working with Named Sub-Graphs](DevGuide.WorkingWithNamedSub-Graphs.md)
