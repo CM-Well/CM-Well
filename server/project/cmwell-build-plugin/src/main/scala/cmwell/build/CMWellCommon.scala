@@ -17,6 +17,8 @@ package cmwell.build
 
 import sbt._
 
+import scala.concurrent.Future
+
 object CMWellCommon {
 
   val release = "Octopus"
@@ -101,4 +103,14 @@ object CMWellCommon {
     })
     p.future
   }
+
+  def combineThrowablesAsCause(t1: Throwable, t2: Throwable)(f: Throwable => Throwable): Throwable =
+    f(Option(t1.getCause).fold(t1.initCause(t2)){ _ =>
+      Option(t2.getCause).fold(t2.initCause(t1)){ _ =>
+        t2
+      }
+    })
+
+  def combineThrowablesAsCauseAsync[T](t1: Throwable, t2: Throwable)(f: Throwable => Throwable): Future[T] =
+    Future.failed[T](combineThrowablesAsCause(t1,t2)(f))
 }
