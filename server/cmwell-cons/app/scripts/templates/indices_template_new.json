@@ -30,7 +30,6 @@
             "mapping": {
               "type": "date",
               "store": "false",
-              "include_in_all": "true",
               "norms": false
             }
           }
@@ -41,8 +40,7 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "integer",
-              "store": "false",
-              "include_in_all": "true"
+              "store": "false"
             }
           }
         },
@@ -52,8 +50,7 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "long",
-              "store": "false",
-              "include_in_all": "true"
+              "store": "false"
             }
           }
         },
@@ -63,8 +60,7 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "float",
-              "store": "false",
-              "include_in_all": "true"
+              "store": "false"
             }
           }
         },
@@ -74,8 +70,7 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "double",
-              "store": "false",
-              "include_in_all": "true"
+              "store": "false"
             }
           }
         },
@@ -85,8 +80,7 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "boolean",
-              "store": "false",
-              "include_in_all": "true"
+              "store": "false"
             }
           }
         },
@@ -99,8 +93,7 @@
               "fields": {
                 "{name}%exact": {
                   "type": "keyword",
-                  "store": "false",
-                  "include_in_all": "false"
+                  "store": "false"
                 }
               }
             }

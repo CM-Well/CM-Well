@@ -1,5 +1,5 @@
 {
-  "template": "cm_well_*",
+  "index_patterns": "cm_well_*",
   "order": 0,
   "settings": {
     "number_of_shards": 1,
@@ -15,8 +15,9 @@
     "index.unassigned.node_left.delayed_timeout": "15m",
     "index.mapping.total_fields.limit": 25000
   },
-  "aliases":{
-    "cm_well_all":{}
+  "aliases": {
+    "cm_well_all": {
+    }
   },
   "mappings": {
     "infoclone": {
@@ -30,7 +31,6 @@
             "mapping": {
               "type": "date",
               "store": "false",
-              "include_in_all": "true",
               "norms": false
             }
           }
@@ -41,8 +41,7 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "integer",
-              "store": "false",
-              "include_in_all": "true"
+              "store": "false"
             }
           }
         },
@@ -52,8 +51,7 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "long",
-              "store": "false",
-              "include_in_all": "true"
+              "store": "false"
             }
           }
         },
@@ -63,8 +61,7 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "float",
-              "store": "false",
-              "include_in_all": "true"
+              "store": "false"
             }
           }
         },
@@ -74,8 +71,7 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "double",
-              "store": "false",
-              "include_in_all": "true"
+              "store": "false"
             }
           }
         },
@@ -85,22 +81,20 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "boolean",
-              "store": "false",
-              "include_in_all": "true"
+              "store": "false"
             }
           }
         },
         {
           "string_template": {
             "path_match": "*.*",
-            "match_mapping_type": "text",
+            "match_mapping_type": "string",
             "mapping": {
               "type": "text",
               "fields": {
                 "{name}%exact": {
                   "type": "keyword",
-                  "store": "false",
-                  "include_in_all": "false"
+                  "store": "false"
                 }
               }
             }
@@ -125,9 +119,9 @@
             }
           }
         },
-        "link":{
+        "link": {
           "properties": {
-            "to" : {
+            "to": {
               "type": "keyword",
               "store": true,
               "norms": false
@@ -145,13 +139,13 @@
               "store": "true",
               "format": "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
             },
-            "parent":{
-              "type":"keyword",
+            "parent": {
+              "type": "keyword",
               "fields": {
                 "parent_hierarchy": {
-                  "type":"text",
+                  "type": "text",
                   "store": "false",
-                  "index_options" : "docs",
+                  "index_options": "docs",
                   "norms": false,
                   "term_vector": "no",
                   "analyzer": "parent_hierarchy_analyzer"
@@ -182,7 +176,7 @@
               "type": "long",
               "store": true
             },
-            "quad" : {
+            "quad": {
               "type": "keyword",
               "store": false,
               "norms": false

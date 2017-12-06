@@ -155,7 +155,6 @@ dependenciesManager in Global := {
   case ("org.elasticsearch","elasticsearch")                       => "org.elasticsearch" % "elasticsearch" % Versions.elasticsearch
   case ("org.elasticsearch.client", "transport")                   => "org.elasticsearch.client" % "transport" % Versions.elasticsearch
   case ("org.elasticsearch.distribution.zip", "elasticsearch")     => "org.elasticsearch.distribution.zip" % "elasticsearch" % Versions.elasticsearch
-  case ("pl.allegro.tech", "embedded-elasticsearch")               => "pl.allegro.tech" % "embedded-elasticsearch" % "2.4.3"
   case ("org.elasticsearch", "metrics-elasticsearch-reporter")     => "org.elasticsearch" % "metrics-elasticsearch-reporter" % "2.0"
   case ("org.hdrhistogram","HdrHistogram")                         => "org.hdrhistogram" % "HdrHistogram" % "2.1.9"
   case ("org.jfarcand","wcs")                                      => "org.jfarcand" % "wcs" % "1.3"
