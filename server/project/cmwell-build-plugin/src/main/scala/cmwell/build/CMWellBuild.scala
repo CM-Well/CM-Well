@@ -63,16 +63,30 @@ object CMWellBuild extends AutoPlugin {
     else "eu"
   }
 
-	def fetchZookeeper(version: String) = {
+	def fetchZookeeper(version: String, buildFromSources: Option[File => Future[File]] = None) = {
+		import scala.concurrent.ExecutionContext.Implicits.global
 		val ext = "tar.gz"
 		val url = s"http://www-$apacheMirror.apache.org/dist/zookeeper/zookeeper-$version/zookeeper-$version.$ext"
-		fetchArtifact(url, ext)
+		fetchArtifact(url, ext).recoverWith {
+			case err: Throwable => {
+				buildFromSources.fold(scala.concurrent.Future.failed[File](new Exception("was unable to fetch zookeeper binaries, and build from sources function isn't supplied", err))) { build =>
+					alternateUnvalidatedFetchArtifact(s"https://github.com/apache/zookeeper/archive/release-$version.$ext", ext).flatMap(build)
+				}
+			}
+		}
 	}
 
-  def fetchKafka(scalaVersion: String, version: String) = {
+  def fetchKafka(scalaVersion: String, version: String, buildFromSources: Option[File => Future[File]] = None) = {
+		import scala.concurrent.ExecutionContext.Implicits.global
 		val ext = "tgz"
     val url = s"http://www-$apacheMirror.apache.org/dist/kafka/$version/kafka_$scalaVersion-$version.$ext"
-		fetchArtifact(url, ext)
+		fetchArtifact(url, ext).recoverWith {
+			case err: Throwable => {
+				buildFromSources.fold(scala.concurrent.Future.failed[File](new Exception("was unable to fetch kafka binaries, and build from sources function isn't supplied", err))) { build =>
+					alternateUnvalidatedFetchArtifact(s"https://github.com/apache/kafka/archive/$version.tar.gz", "tar.gz").flatMap(build)
+				}
+			}
+		}
   }
 
 	def fetchMvnArtifact(moduleID: ModuleID, scalaVersion: String, scalaBinaryVersion: String): Future[Seq[java.io.File]] = {
@@ -131,6 +145,24 @@ object CMWellBuild extends AutoPlugin {
 				"MD5" -> (url + ".md5"),
 				"SHA-1" -> (url + ".sha1")),
 			Map("sig" -> sig),
+			Attributes(ext, ""),
+			changing = false,
+			None)
+
+		val task = coursier.Cache.file(art).fold({ err =>
+			Failure[java.io.File](new Exception(err.message + ": " + err.describe))
+		},Success.apply)
+
+		CMWellCommon.scalazTaskAsScalaFuture(task)
+	}
+
+	def alternateUnvalidatedFetchArtifact(url: String, ext: String) = {
+		import coursier.core.{Artifact, Attributes}
+
+		val art = Artifact(
+			url,
+			Map.empty,
+			Map.empty,
 			Attributes(ext, ""),
 			changing = false,
 			None)
