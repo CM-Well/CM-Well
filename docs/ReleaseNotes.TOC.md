@@ -4,10 +4,11 @@ Click on a version to see its release notes.
 
 **Latest version:**
 
-* [Version Nautilus - November 2017](ReleaseNotes.Nautilus.November.2017.md)
+* [Version Octopus - December 2017](ReleaseNotes.Octopus.December.2017.md)
 
 **Older versions:**
 
+* [Version Nautilus - November 2017](ReleaseNotes.Nautilus.November.2017.md)
 * [Version Mono - November 2017](ReleaseNotes.Mono.November.2017.md)
 * [Version Lynx - September 2017](ReleaseNotes.Lynx.September.2017.md)
 * [Version Kingbird - September 2017](ReleaseNotes.Kingbird.September.2017.md)

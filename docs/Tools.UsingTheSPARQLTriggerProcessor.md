@@ -1,5 +1,11 @@
 # Using the SPARQL Triggered Processor #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tools.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tools.UsingTheCM-WellIngester.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tools.UsingTheCM-WellSparkConnector.md)  
+
+----
+
 ## What is the SPARQL Triggered Processor? ##
 
 The SPARQL Triggered Processor is a CM-Well agent for running SPARQL queries and constructs periodically, for the purposes of creating materialized views of CM-Well infotons. A materialized view is a "flattened" version of data whose original source included high levels of pointer redirection before arriving at data. (The materialized view may also be enriched with data from other infotons.) 
@@ -111,13 +117,13 @@ Here is a (truncated) example of the YAML configuration file:
 
 ### Activating and Deactivating the Job ###
 
-When you have created the YAML configuration file and are ready to apply it, you upload it to CM-Well at `meta/sys/agents/sparql/<configName>/config`, where the containing folder name **\<configName\>** is a unique name that describes your configuration, and the configuration file name is always named **"config"**.
+When you have created the YAML configuration file and are ready to apply it, you upload it to CM-Well at `meta/sys/agents/sparql/<configName>`, where the containing folder name ```\<configName\>``` is a unique name that describes your configuration.
 
 >**Note:** You will need special permissions to upload a file to the ```meta/sys``` folder.
 
 Here is an example of a command that uploads a SPARQL configuration file:
 
-    curl -X POST "<cm-well-host>/meta/sys/agents/sparql/MyCompanyMaterializedView/config" -H "X-CM-WELL-TYPE: FILE" -H "Content-Type: text/yaml" --data-binary @my-config.yaml -H X-CM-WELL-TOKEN2:<accessToken>
+    curl -X POST "<cm-well-host>/meta/sys/agents/sparql/MyCompanyMaterializedView" -H "X-CM-WELL-TYPE: FILE" -H "Content-Type: text/yaml" --data-binary @my-config.yaml -H X-CM-WELL-TOKEN:<accessToken>
 
 Uploading the configuration file causes CM-Well to read the file and run the SPARQL Triggered Processor agent on it. CM-Well polls periodically for changes to this file and applies the changes when they're detected.
 
@@ -129,13 +135,13 @@ If you want to stop the job and delete its configuration permanently, delete the
 
 ### Pausing and Restarting the Job ###
 
-When you create the the file infoton that contains the YAML configuration, CM-Well automatically creates a Boolean activation flag for the corresponding job, with a value of "true". The flag is created at the same location as the configuration file.
+You can pause and restart the SPARQL job by changing a Boolean value under your configuration folder. If this flag doesn't exist, its default value is **true**.
 
 To temporarily pause and restart the SPARQL job, you can toggle the value of this flag as follows.
 
 **Pause the job:**
 
-    curl "<cm-well-host>/_in?format=ntriples&replace-mode" -H X-CM-WELL-TOKEN2:<accessToken> --data-binary "
+    curl "<cm-well-host>/_in?format=ntriples&replace-mode" -H X-CM-WELL-TOKEN:<accessToken> --data-binary "
     <cm-well-host/meta/sys/agents/sparql/MyCompanyMaterializedView> <http://localhost:9000/meta/nn#active> \"false\"^^<http://www.w3.org/2001/XMLSchema#boolean> .
     "
 
@@ -143,7 +149,7 @@ To temporarily pause and restart the SPARQL job, you can toggle the value of thi
 
 **Restart the job:**
 
-    curl "<cm-well-host>/_in?format=ntriples&replace-mode" -H X-CM-WELL-TOKEN2:<accessToken> --data-binary "
+    curl "<cm-well-host>/_in?format=ntriples&replace-mode" -H X-CM-WELL-TOKEN:<accessToken> --data-binary "
     <cm-well-host/meta/sys/agents/sparql/MyCompanyMaterializedView> <http://localhost:9000/meta/nn#active> \"true\"^^<http://www.w3.org/2001/XMLSchema#boolean> .
     "
 
@@ -218,7 +224,8 @@ Parameter | Description
 >     * The **sensors/fromIndexTime** parameter in the YAML configuration file.
 
 
+----
 
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tools.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tools.UsingTheCM-WellIngester.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tools.UsingTheCM-WellSparkConnector.md)  
 
-
-
+----
