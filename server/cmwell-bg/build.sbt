@@ -26,7 +26,7 @@ libraryDependencies ++= {
       .exclude("org.slf4j", "slf4j-log4j12")
       .exclude("log4j", "log4j"),
     dm("uk.org.lidalia","sysout-over-slf4j"),
-    dm("io.netty", "netty-transport"),
+    dm("io.netty", "netty-transport")
   ).map{_.exclude("io.netty", "netty")}
 }
 
