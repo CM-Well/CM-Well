@@ -1,5 +1,11 @@
 # Function: *Change Password* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Auth.GeneratePassword.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Auth.InvalidateCache.md)  
+
+----
+
 ## Description ##
 
 Usually new users are assigned random passwords. After creating a CM-Well user, you may want to change the user's password to a customized value. You can do this with the **change-password**.
@@ -35,3 +41,9 @@ new       | The user's new password
 [Managing CM-Well Users](DevGuide.ManagingUsers.md)
 [Generate Password API](API.Auth.GeneratePassword.md)
 [Invalidate Cache API](API.Auth.InvalidateCache.md)
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Auth.GeneratePassword.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Auth.InvalidateCache.md)  
+
+----

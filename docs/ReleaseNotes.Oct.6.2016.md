@@ -1,5 +1,11 @@
 # CM-Well Version Release Notes - Oct. 6th 2016 #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](ReleaseNotes.Sept.11.2016.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](ReleaseNotes.Nov.10.2016.md)  
+
+----
+
 ## Change Summary ##
 
 -----------------------
@@ -88,3 +94,10 @@ Some customers need to upload large files to CM-Well, for instance when packagin
 Previously, CM-Well could fail to upload large files, and its storage of such files was less efficient. Both these problems have been solved in this version.
 
 **Documentation:** N/A.
+
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](ReleaseNotes.Sept.11.2016.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](ReleaseNotes.Nov.10.2016.md)  
+
+----

@@ -1,5 +1,11 @@
 # Function: *Consume Next Bulk* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Stream.GetNextChunk.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Stream.CreateConsumer.md)  
+
+----
+
 ## Description ##
 If you wish to retrieve a large number of infotons, but you want to quickly iterate over "chunks" of data in a controlled fashion, you can use the **create-consumer** API and the `_bulk-consume` endpoint. 
 
@@ -89,4 +95,10 @@ Tab-Separated Values | tsv | text/plain
 [Create Consumer](API.Stream.CreateConsumer.md)
 [Consume Next Chunk](API.Stream.ConsumeNextChunk.md)
 
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Stream.GetNextChunk.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Stream.CreateConsumer.md)  
+
+----
 

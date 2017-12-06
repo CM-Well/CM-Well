@@ -1,5 +1,11 @@
 # CM-Well Health Dashboards #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) 
+
+----
+
 CM-Well provides two views that display the health of its nodes (machines) and software components:
 
 * **Component view** - shows the health of each type of component pool.
@@ -78,3 +84,10 @@ The following views show the health of the JVM processes running on CM-Well node
 
 *  All JVM processes: `<cm-well-host>/proc/members-all.md?pretty`
 *  Active JVM processes: `<cm-well-host>/proc/members-active.md?pretty`
+
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) 
+
+----

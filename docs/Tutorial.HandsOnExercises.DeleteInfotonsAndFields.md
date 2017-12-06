@@ -1,5 +1,11 @@
 # Hands-On Exercise: Delete Infotons and Fields #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.HandsOnExercisesTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercises.UpdateFields.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tutorial.HandsOnExercises.QueryForInfotons.md)  
+
+----
+
 ## Step Outline ##
 
 1. [Add Infotons and Fields](#hdr1).
@@ -60,7 +66,10 @@
 [Add Infotons and Fields](API.Update.AddInfotonsAndFields.md)
 [Delete Multiple Infotons](API.Update.DeleteMultipleInfotons.md)
 [Delete Fields](API.Update.DeleteFields.md)
-
-    
-
     	
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.HandsOnExercisesTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercises.UpdateFields.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tutorial.HandsOnExercises.QueryForInfotons.md)  
+
+----

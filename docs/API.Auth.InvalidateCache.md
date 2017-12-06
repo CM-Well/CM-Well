@@ -1,4 +1,9 @@
 # Function: *Invalidate Cache* #
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Auth.ChangePassword.md)
+
+----
 
 ## Description ##
 
@@ -32,3 +37,9 @@ CM-Well manages a cache with authorization information for better performance. I
 [Managing CM-Well Users](DevGuide.ManagingUsers.md)
 [Generate Password API](API.Auth.GeneratePassword.md)
 [Change Password API](API.Auth.ChangePassword.md)
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Auth.ChangePassword.md)
+
+----

@@ -1,5 +1,11 @@
 # Using the SPARQL Triggered Processor #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tools.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tools.UsingTheCM-WellIngester.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tools.UsingTheCM-WellSparkConnector.md)  
+
+----
+
 ## What is the SPARQL Triggered Processor? ##
 
 The SPARQL Triggered Processor is a CM-Well agent for running SPARQL queries and constructs periodically, for the purposes of creating materialized views of CM-Well infotons. A materialized view is a "flattened" version of data whose original source included high levels of pointer redirection before arriving at data. (The materialized view may also be enriched with data from other infotons.) 
@@ -218,7 +224,8 @@ Parameter | Description
 >     * The **sensors/fromIndexTime** parameter in the YAML configuration file.
 
 
+----
 
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tools.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tools.UsingTheCM-WellIngester.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tools.UsingTheCM-WellSparkConnector.md)  
 
-
-
+----

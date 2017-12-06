@@ -1,5 +1,11 @@
 # CM-Well Dos and Don'ts #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.ManagingUsers.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.BestPractices.TOC.md)  
+
+----
+
 ## Don'ts ##
 
 ### Don't Use Queues to Store Requests to CM-Well ###
@@ -75,3 +81,9 @@ This is better for CM-Well performance because:
 When using a CM-Well node in an operational or near-operational scenario, make sure that about %50-%60 of free disk space is maintained. This is because storage maintenance operations that CM-Well performs may temporarily use large amounts of disk space. 
 
 This recommendation is also relevant for installations of CM-Well Docker that are run in near-operational conditions.  
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.ManagingUsers.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.BestPractices.TOC.md)  
+
+----

@@ -1,5 +1,11 @@
 # Function: *Query for Infotons Using Field Conditions* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Get.GetSingleInfotonByUUID.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Query.ApplySPARQLToQueryResults.md)  
+
+----
+
 ## Description ##
 This function enables you to search for infotons whose field values meet specific conditions. You can define one or more conditions on field values, and you can specify different types of comparison operators (e.g. exact or partial string match, numeric inequality...). The search returns only those infotons that reside under the path you specify, which meet the field value conditions.
 
@@ -89,3 +95,8 @@ For example, you can search for all organizations under the permid.org branch of
 [Advanced Queries](DevGuide.AdvancedQueries.md)
 [Applying SPARQL to Query Results](API.Query.ApplySPARQLToQueryResults.md)
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Get.GetSingleInfotonByUUID.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Query.ApplySPARQLToQueryResults.md)  
+
+----

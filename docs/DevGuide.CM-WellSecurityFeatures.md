@@ -1,6 +1,12 @@
 # CM-Well Security Features #
 
-CM-Well protects write-access to production environments by requiring an authentication token for write operations. (Read operations currently do not require a token, but this is subject to change.)
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.WorkingWithNamedSub-Graphs.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.ManagingUsers.md)  
+
+----
+
+CM-Well protects write-access to production environments by requiring an authentication token for write operations. (Write operations to non-production environments and read operations from any environment currently do not require a token, but this is subject to change.)
 
 > **Notes:**
 > * CM-Well currently does not support internal encryption of its data. If necessary, you can encrypt field values in your application before uploading them to CM-Well.
@@ -34,7 +40,11 @@ CM-Well provides a **login** API call, which allows you to log into CM-Well with
 
 See [Login API](API.Login.Login.md) to learn more.
 
+----
 
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.WorkingWithNamedSub-Graphs.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.ManagingUsers.md)  
+
+----
 
 
 

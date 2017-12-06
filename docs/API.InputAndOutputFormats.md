@@ -1,4 +1,11 @@
 # CM-Well Input and Output Formats	 #
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.QueryParameters.md)  
+
+----
+
 There are several formats for encoding RDF triples (see [CM-Well Data Paradigms](Intro.CM-WellDataParadigms.md) to learn more about RDF triples). When querying CM-Well, you can specify the format in which you want to receive query results (the output format). When updating CM-Well, you can specify the encoding type in which you are providing the new information (the input format).
 
 [The format Parameter](#hdr1)
@@ -163,3 +170,10 @@ Here are some examples of RDF in different encoding formats:
     	"@id": "http://www.w3.org/2000/10/swap/test/demo1/biology#Human"
       }
     ]
+
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.QueryParameters.md)  
+
+----

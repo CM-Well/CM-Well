@@ -1,5 +1,11 @@
 # CM-Well Query Parameters #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.InputAndOutputFormats.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.FieldConditionSyntax.md)  
+
+----
+
 The following table describes parameters that you can add to most CM-Well calls. Some parameters take values and some serve as Boolean flags (see details in table). If multiple parameters appear in the call, they must be separated by the & character.
 
 Parameter | Description&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Values&nbsp;&nbsp; | Example | Reference
@@ -22,3 +28,10 @@ with-deleted | If this flag is used, all deleted versions of infotons are retrie
 with-history | If this flag is used, all historical versions of infotons are retrieved, instead of just the latest. | None; the flag either appears or doesn't | Query example: <cm-well-host>/permid.org/1-5046625212?with-history | [Using the with-history Flag](API.UsingTheWith-historyFlag.md)
 xg | Requests outbound links of the matched infotons | See reference | See reference | [Traversing Outbound and Inbound Links with xg and yg](API.TraversingOutboundAndInboundLinksWithXgAndYg.md)
 yg | Requests outbound and/or inbound links of the matched infotons | See reference | See reference | [Traversing Outbound and Inbound Links with xg and yg](API.TraversingOutboundAndInboundLinksWithXgAndYg.md)
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.InputAndOutputFormats.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.FieldConditionSyntax.md)  
+
+----
+

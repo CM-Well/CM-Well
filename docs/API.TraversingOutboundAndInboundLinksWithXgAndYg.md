@@ -1,8 +1,13 @@
 # Traversing Outbound and Inbound Links (*xg*, *yg* and *gqp*) #
 
-----------
+----
 
-**Page contents:**
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.UsingConditionalUpdates.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.ReturnCodes.md)  
+
+----
+
+
+**On this page:**
 
 * [Traversing Outbound Links with the **xg** Flag](#hdr1)
 	* [Example: Using **xg** to Retrieve Parent Organizations](#hdr2)
@@ -455,3 +460,9 @@ For example, if applied to the [RDF data above](#hdrRdfData), the following quer
 or were living in the White House before 2000:
 
     <cm-well-host>/?op=search&qp=type.rdf:Person&gqp=<hasTenant.xmpl[hasBeginning.time<2000-01-01]>location.locn[name.geonames::The White House]|>birthPlace.madsrdf[-countryCode::US]
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.UsingConditionalUpdates.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.ReturnCodes.md)  
+
+----

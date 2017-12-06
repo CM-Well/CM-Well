@@ -1,5 +1,11 @@
 # Using the with-data Flag #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.UsingTheRecursiveFlag.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.UsingTheWith-historyFlag.md)  
+
+----
+
 CM-Well infotons have two types of fields:
 
 * System metadata fields that contain internal administrative details filled in by CM-Well.
@@ -123,3 +129,9 @@ And here are the same results (truncated) with data:
     mdaas:isIncorporatedIn  "United States"@en ;
     mdaas:isPublicFlag  "true" ;
     ...
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.UsingTheRecursiveFlag.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.UsingTheWith-historyFlag.md)  
+
+----

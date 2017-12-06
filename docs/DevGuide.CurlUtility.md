@@ -1,5 +1,13 @@
 # Using the Curl Utility to Call CM-Well #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md
+) &nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.BasicQueries.md
+)  
+
+----
+
 The CM-Well API uses the REST protocol, which runs over HTTP. When running a REST GET command (one that retrieves or searches for infotons), you can simply paste the query into a browser address bar, press enter and see the query results in the browser window. 
 
 However, PUT, POST and DELETE commands (which update CM-Well's data) cannot be submitted in a browser. There are several ways that you can submit such calls:
@@ -32,3 +40,11 @@ If you're running Curl in a command-line window, you should be aware of some syn
 >**Note:** You can avoid many syntax errors arising from these differences by providing the data for the Curl command in a **file** rather than on the command line. Many code examples in this documentation use files as input.
 
 You can learn more at [Using cURL in Windows](https://help.zendesk.com/hc/en-us/articles/229136847-Installing-and-using-cURL#curl_win).
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md
+) &nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.BasicQueries.md
+)  
+
+----

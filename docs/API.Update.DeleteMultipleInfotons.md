@@ -1,5 +1,12 @@
 # Function: *Delete Multiple Infotons* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Update.DeleteASingleInfoton.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Update.DeleteFields.md)  
+
+----
+
+
 ## Description ##
 You can delete multiple infotons by applying the special #fullDelete indicator to them, using the _in endpoint.
 
@@ -59,3 +66,9 @@ priority | If this flag appears in an update call, that call receives priority r
 [Delete a Single Infoton](API.Update.DeleteASingleInfoton.md)
 [Purge a Single Infoton](API.Update.Purge.md)
 
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Update.DeleteASingleInfoton.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Update.DeleteFields.md)  
+
+----

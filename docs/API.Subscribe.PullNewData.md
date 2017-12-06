@@ -1,5 +1,11 @@
 # Function: *Pull New Data* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Subscribe.SubscribeForPulledData.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Subscribe.Unsubscribe.md)  
+
+----
+
 ## Description ##
 You may want to subscribe to real-time updates of CM-Well, so that your application always has the latest data available. For example, if your application shows Organization data, you may want to ensure that you have the latest information before displaying an organization's details.
 
@@ -71,3 +77,8 @@ Remember to unsubscribe if you no longer need real-time updates.
 [Subscribe for Pushed Data](API.Subscribe.SubscribeForPushedData.md)
 [Unsubscribe](API.Subscribe.Unsubscribe.md)
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Subscribe.SubscribeForPulledData.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Subscribe.Unsubscribe.md)  
+
+----

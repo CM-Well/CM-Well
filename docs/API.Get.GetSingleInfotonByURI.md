@@ -1,5 +1,11 @@
 # Function: *Get Single Infoton by URI* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Login.Login.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Get.GetMultipleInfotonsByURI.md)  
+
+----
+
 ## Description ##
 If you have an infoton's CM-Well URI (the path in CM-Well pointing to the infoton), you can perform a simple GET command to retrieve all of the infoton's field names and values.
 
@@ -72,3 +78,8 @@ If you have an infoton's CM-Well URI (the path in CM-Well pointing to the infoto
 [Basic Queries](DevGuide.BasicQueries.md)
 [Get Multiple Infotons by URI](API.Get.GetMultipleInfotonsByURI.md)
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Login.Login.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Get.GetMultipleInfotonsByURI.md)  
+
+----

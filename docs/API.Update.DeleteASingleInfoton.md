@@ -1,5 +1,11 @@
 # Function: *Delete a Single Infoton* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Update.ReplaceFieldValues.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Update.DeleteMultipleInfotons.md)  
+
+----
+
 ## Description ##
 You can delete a single infoton by applying the REST DELETE command to the infoton's URI.
 
@@ -47,3 +53,9 @@ recursive | If true, queries and delete command are recursive, i.e. will apply t
 [Delete Multiple Infotons](API.Update.DeleteMultipleInfotons.md)
 [Purge a Single Infoton](API.Update.Purge.md) 
 
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Update.ReplaceFieldValues.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Update.DeleteMultipleInfotons.md)  
+
+----

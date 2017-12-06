@@ -1,5 +1,13 @@
 # The Previous CM-Well Web Interface #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](CM-WellWebInterface.md)
+
+----
+
+**On this page:**
+
 * [Introduction](#hdr1)
 * [CM-Well Paths](#hdr2)
 * [CM-Well UI Controls](#hdr3)
@@ -313,3 +321,8 @@ This is what the configured Person links look like:
 <img src="./_Images/configured-person-links.png"/>
 
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](CM-WellWebInterface.md)
+
+----

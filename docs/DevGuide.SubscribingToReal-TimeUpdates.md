@@ -1,5 +1,11 @@
 # Subscribing to Real-Time Updates #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.StreamingDataFromCM-Well.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.UsingSPARQLOnCM-WellInfotons.md)  
+
+----
+
 You may want to subscribe to real-time updates of CM-Well, so that your application always has the latest data available. For example, if your application shows Organization data, you may want to ensure that you have the latest information before displaying an organization's details.
 
 CM-Well supports two types of real-time subscriptions:
@@ -58,3 +64,8 @@ When you no longer want to receive real-time updates, unsubscribe from updates u
 The call to **unsubscribe** is the same for both push and pull subscriptions.
 
     
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.StreamingDataFromCM-Well.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.UsingSPARQLOnCM-WellInfotons.md)  
+
+----

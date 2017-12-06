@@ -1,5 +1,11 @@
 # CM-Well Version Release Notes - Jaguar (August 2017) #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](ReleaseNotes.Iguana.July.2017.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](ReleaseNotes.Kingbird.September.2017.md)  
+
+----
+
 ## Change Summary ##
 
  Title | Description 
@@ -11,4 +17,10 @@ General enhancement and improvements | General enhancement and improvements
 
 ### Changes to API ###
 **x-info** response format. See [Testing and Fixing Corrupted Data](Admin.TestAndFixCorruptedData.md) for details.
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](ReleaseNotes.Iguana.July.2017.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](ReleaseNotes.Kingbird.September.2017.md)  
+
+----
 

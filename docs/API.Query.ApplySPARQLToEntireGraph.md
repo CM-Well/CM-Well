@@ -1,5 +1,11 @@
 # Apply SPARQL to the Entire Graph #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Query.ApplySPARQLToQueryResults.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Query.ApplyGremlinToQueryResults.md)  
+
+----
+
 ## Description ##
 
 SPARQL (SPARQL Protocol and RDF Query Language - pronounced "sparkle") is an industry-standard query language designed to work with graph databases. It is similar in syntax to SQL.
@@ -119,3 +125,9 @@ Here is an example of the output that is produced when you use the **explain-onl
 ## Related Topics ##
 [Using SPARQL on CM-Well Infotons](DevGuide.UsingSPARQLOnCM-WellInfotons.md)
 [Apply SPARQL to Query Results](API.Query.ApplySPARQLToQueryResults.md)
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Query.ApplySPARQLToQueryResults.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Query.ApplyGremlinToQueryResults.md)  
+
+----

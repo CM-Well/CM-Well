@@ -1,5 +1,11 @@
 # Function: *Get Next Chunk* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Stream.CreateIterator.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Stream.ConsumeNextBulk.md)  
+
+----
+
 ## Description ##
 
 If you wish to retrieve a large number of infotons, but you want to iterate over small "chunks" of data in a controlled fashion, you can use the **create-iterator** and **next-chunk** APIs. This allows you to request the number of infotons you want to process, and receive only that number during each iteration.
@@ -93,3 +99,9 @@ format | The output format of the streamed chunks. The default value is **ntripl
 
 ## Related Topics ##
 [Create Iterator](API.Stream.CreateIterator.md)
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Stream.CreateIterator.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Stream.ConsumeNextBulk.md)  
+
+----
