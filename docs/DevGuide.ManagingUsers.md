@@ -108,11 +108,11 @@ You can use the [generate-password API](API.Auth.GeneratePassword.md) to generat
 
 ## Changing User Passwords ##
 
-You can use the [change-password API](API.Auth.GeneratePassword.md) to change an existing password.
+You can use the [change-password API](API.Auth.ChangePassword.md) to change an existing password.
 
 ## Deleting Users ##
 
-To delete a user, simply delete the FileInfoton with the user's details, then call the [Invalidate Cache API](API.Auth.InvalidateCache.md) to make the deletion effective immediately.
+To delete a user, simply delete the FileInfoton with the user's details, then call the [invalidate-cache API](API.Auth.InvalidateCache.md) to make the deletion effective immediately.
 
 <a name="hdrRoles"></a>
 ## Managing User Roles ##
