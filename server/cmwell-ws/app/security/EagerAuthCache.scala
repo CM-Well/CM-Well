@@ -57,7 +57,7 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
 
   // TODO Do not Await.result... These should return Future[Option[JsValue]]]
   def getUserInfoton(userName: String, nbg: Boolean): Option[JsValue] = {
-    data(nbg).roles.get(userName).orElse {
+    data(nbg).users.get(userName).orElse {
       Await.result(directReadFallback(s"/meta/auth/users/$userName", nbg), 6.seconds).map { user =>
         logger.debug(s"AuthCache(nbg=$nbg) user $userName was not in memory, but added to Map")
         if(nbg)
