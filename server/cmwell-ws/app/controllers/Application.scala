@@ -699,6 +699,7 @@ callback=< [URL] >
         val withDeleted = request.queryString.keySet("with-deleted")
         val withMeta = request.queryString.keySet("with-meta")
         val length = request.getQueryString("length").flatMap(asLong)
+        val parallelism = request.getQueryString("parallelism").flatMap(asInt).getOrElse(Settings.sstreamParallelism)
         val pathFilter = Some(PathFilter(normalizedPath, withDescendants))
         val nbg = request.attrs(Attrs.Nbg)
         val fieldsMaskFut = extractFieldsMask(request,typesCache(nbg),cmwellRDFHelper, nbg)
@@ -751,7 +752,8 @@ callback=< [URL] >
                   datesFilter = Some(DatesFilter(from, to)),
                   paginationParams = PaginationParams(offset, 500),
                   withHistory = withHistory,
-                  withDeleted = withDeleted).map { case (src, hits) =>
+                  withDeleted = withDeleted,
+                  parallelism = parallelism).map { case (src, hits) =>
 
                   val s = streams.scrollSourceToByteString(src, formatter, withData.isDefined, withHistory, length, fieldsMask,nbg)
                   Ok.chunked(s).as(overrideMimetype(formatter.mimetype, request)._2).withHeaders("X-CM-WELL-N" -> hits.toString)

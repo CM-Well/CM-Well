@@ -19,7 +19,7 @@ package controllers
 import cmwell.domain._
 import cmwell.formats._
 import cmwell.fts._
-import cmwell.ws.Streams
+import cmwell.ws.{Settings, Streams}
 import cmwell.ws.adt.{BulkConsumeState, ConsumeState}
 import cmwell.ws.util._
 import logic.CRUDServiceFS
@@ -36,6 +36,7 @@ import com.typesafe.scalalogging.LazyLogging
 import cmwell.syntaxutils._
 import cmwell.web.ld.cmw.CMWellRDFHelper
 import cmwell.ws.Streams.Flows
+import cmwell.ws.util.TypeHelpers.asInt
 import filters.Attrs
 import play.api.http.Writeable
 
@@ -308,7 +309,8 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
                     pathFilter = createPathFilter(path, r),
                     fieldFilter = Option(fieldsFiltersFromTimeframeAndOptionalFilters(from, to, ffOpt)),
                     withHistory = h,
-                    withDeleted = d)
+                    withDeleted = d,
+                    parallelism = request.getQueryString("parallelism").flatMap(asInt).getOrElse(Settings.sstreamParallelism))
                 }).map { case (src, hits) =>
                   val s: Source[Infoton, NotUsed] = {
                     if (withData) src.via(Flows.iterationResultsToFatInfotons(nbg, crudServiceFS))
