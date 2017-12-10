@@ -693,26 +693,28 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
                        scrollTTL: Long,
                        withHistory: Boolean = false,
                        withDeleted: Boolean = false,
-                       nbg: Boolean = false): Seq[Future[IterationResults]] = {
+                       nbg: Boolean = false): Seq[() => Future[IterationResults]] = {
     //withDeleted is only available in new FTS, and using it forces nbg
-    ftsService(nbg || withDeleted).startSuperScroll(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTTL, withHistory, withDeleted).map(_.map { ftsResults =>
-      IterationResults(ftsResults.scrollId, ftsResults.total)
-    })
+    ftsService(nbg || withDeleted).startSuperScroll(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTTL, withHistory, withDeleted).map { fun =>
+      () => fun().map { ftsResults =>
+        IterationResults(ftsResults.scrollId, ftsResults.total)
+      }
+    }
   }
 
-  def startSuperMultiScroll(pathFilter: Option[PathFilter] = None,
-                            fieldFilters: Option[FieldFilter] = None,
-                            datesFilter: Option[DatesFilter] = None,
-                            paginationParams: PaginationParams = DefaultPaginationParams,
-                            scrollTTL: Long,
-                            withHistory: Boolean = false,
-                            withDeleted: Boolean = false,
-                            nbg: Boolean = false): Seq[Future[IterationResults]] = {
-    //withDeleted is only available in new FTS, and using it forces nbg
-    ftsService(nbg || withDeleted).startSuperMultiScroll(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTTL, withHistory, withDeleted).map(_.map { ftsResults =>
-      IterationResults(ftsResults.scrollId, ftsResults.total)
-    })
-  }
+//  def startSuperMultiScroll(pathFilter: Option[PathFilter] = None,
+//                            fieldFilters: Option[FieldFilter] = None,
+//                            datesFilter: Option[DatesFilter] = None,
+//                            paginationParams: PaginationParams = DefaultPaginationParams,
+//                            scrollTTL: Long,
+//                            withHistory: Boolean = false,
+//                            withDeleted: Boolean = false,
+//                            nbg: Boolean = false): Seq[Future[IterationResults]] = {
+//    //withDeleted is only available in new FTS, and using it forces nbg
+//    ftsService(nbg || withDeleted).startSuperMultiScroll(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTTL, withHistory, withDeleted).map(_.map { ftsResults =>
+//      IterationResults(ftsResults.scrollId, ftsResults.total)
+//    })
+//  }
 
   def startMultiScroll(pathFilter: Option[PathFilter] = None,
                        fieldFilters: Option[FieldFilter] = None,

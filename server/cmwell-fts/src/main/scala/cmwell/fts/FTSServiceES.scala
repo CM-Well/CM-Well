@@ -1108,7 +1108,7 @@ def startSuperScroll(pathFilter: Option[PathFilter] = None, fieldsFilter: Option
                      datesFilter: Option[DatesFilter] = None,
                      paginationParams: PaginationParams = DefaultPaginationParams, scrollTTL:Long = scrollTTL,
                      withHistory: Boolean, withDeleted: Boolean)
-                    (implicit executionContext: ExecutionContext) : Seq[Future[FTSStartScrollResponse]] = {
+                    (implicit executionContext: ExecutionContext) : Seq[() => Future[FTSStartScrollResponse]] = {
 
     val aliases = if(withHistory) List("cmwell_current", "cmwell_history") else List("cmwell_current")
     val ssr = client.admin().cluster().prepareSearchShards(aliases :_*).setTypes("infoclone").execute().actionGet()
@@ -1120,7 +1120,7 @@ def startSuperScroll(pathFilter: Option[PathFilter] = None, fieldsFilter: Option
     }
 
     targetedShards.map{ case (index, node, shard) =>
-      startShardScroll(pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted, paginationParams.offset,
+      () => startShardScroll(pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted, paginationParams.offset,
         paginationParams.length, scrollTTL, index, node, shard)
     }
   }

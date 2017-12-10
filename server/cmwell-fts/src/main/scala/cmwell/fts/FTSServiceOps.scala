@@ -125,7 +125,7 @@ trait FTSServiceOps {
   def startSuperScroll(pathFilter: Option[PathFilter], fieldsFilter: Option[FieldFilter], datesFilter: Option[DatesFilter],
                        paginationParams: PaginationParams, scrollTTL: Long = defaultScrollTTL,
                        withHistory: Boolean = false, withDeleted: Boolean = false)
-                      (implicit executionContext:ExecutionContext): Seq[Future[FTSStartScrollResponse]]
+                      (implicit executionContext:ExecutionContext): Seq[() => Future[FTSStartScrollResponse]]
 
   def startScroll(pathFilter: Option[PathFilter], fieldsFilter: Option[FieldFilter],
                   datesFilter: Option[DatesFilter], paginationParams: PaginationParams,
