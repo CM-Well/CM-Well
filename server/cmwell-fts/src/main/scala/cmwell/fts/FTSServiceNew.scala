@@ -522,7 +522,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
                        datesFilter: Option[DatesFilter],
                        paginationParams: PaginationParams, scrollTTL: Long,
                        withHistory: Boolean, withDeleted: Boolean)
-                      (implicit executionContext:ExecutionContext): Seq[Future[FTSStartScrollResponse]] = {
+                      (implicit executionContext:ExecutionContext): Seq[() => Future[FTSStartScrollResponse]] = {
 
     val ssr = client.admin().cluster().prepareSearchShards(s"${defaultPartition}_all").setTypes("infoclone").execute().actionGet()
 
@@ -532,7 +532,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
     })
 
     targetedShards.map{ case (index, node, shard) =>
-      startShardScroll(pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted, paginationParams.offset,
+      () => startShardScroll(pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted, paginationParams.offset,
         paginationParams.length, scrollTTL, index, node, shard)
     }
   }
