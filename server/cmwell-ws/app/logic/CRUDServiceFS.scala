@@ -652,7 +652,8 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
       val fields = Map("lastIdxT" -> Set[FieldValue](FLong(indexTime)),
         "dc" -> Set[FieldValue](FString(dc)))
       val fieldsWithFilter = fieldFilters.fold(fields)(ff => fields + ("qp" -> Set[FieldValue](FString(Encoder.encodeFieldFilter(ff)))))
-      VirtualInfoton(ObjectInfoton(s"/proc/dc/$dc", Settings.dataCenter, None, fieldsWithFilter))
+      val fieldsWithFilterAndWh = fieldsWithFilter + ("with-history" -> Set[FieldValue](FBoolean(withHistory)))
+      VirtualInfoton(ObjectInfoton(s"/proc/dc/$dc", Settings.dataCenter, None, fieldsWithFilterAndWh))
     }
 
     ftsService(nbg).getLastIndexTimeFor(dc, withHistory = withHistory, fieldFilters = fieldFilters).map(lOpt => Some(mkVirtualInfoton(lOpt.getOrElse(0L))))
