@@ -70,7 +70,6 @@ dependenciesManager in Global := {
   case ("commons-lang","commons-lang")                             => "commons-lang" % "commons-lang" % "2.6"
   case ("eu.piotrbuda","scalawebsocket")                           => "eu.piotrbuda" %% "scalawebsocket" % "0.1.1"
   case ("io.netty","netty")                                        => "io.netty" % "netty" % "3.10.6.Final"
-  case ("io.spray", art)                                           => "io.spray" %% art % "1.3.4"
   case ("io.circe", art)                                           => "io.circe" %% art % "0.8.0"
   case ("com.jcraft","jsch")                                       => "com.jcraft" % "jsch" % "0.1.54"
   case ("joda-time","joda-time")                                   => "joda-time" % "joda-time" % "2.9.4"
