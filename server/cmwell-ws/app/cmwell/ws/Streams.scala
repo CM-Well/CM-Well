@@ -205,6 +205,7 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
 
   private def singleScrollSourceHandler(nbg: Boolean, withDeleted: Boolean, ec: ExecutionContext)
                                        (firstHit: IterationResults): Source[IterationResults,NotUsed] = Source.unfoldAsync(firstHit) {
+    case ir@`firstHit` => crudServiceFS.scroll(ir.iteratorId, 60, withData = false, nbg || withDeleted).map(iir => Some(iir -> ir))(ec)
     case ir@IterationResults(iteratorId, _, infotonsOpt, _, _) => {
       infotonsOpt
         .collect { case xs if xs.nonEmpty => ir }
