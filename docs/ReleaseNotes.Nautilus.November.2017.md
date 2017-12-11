@@ -1,5 +1,11 @@
 # CM-Well Version Release Notes - Nautilus (November 2017) #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](ReleaseNotes.Mono.September.2017.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](ReleaseNotes.Octopus.December.2017.md)
+
+----
+
 ## Change Summary ##
 
 
@@ -14,9 +20,13 @@ Range filters now supported for **xg**/**yg**/**gqp** | [297](https://github.com
 **Bug fix**: Broken pagination links in Atom format | [222](https://github.com/thomsonreuters/CM-Well/pull/222) | Pagination links in Atom-formatted results were broken because of redundant question marks.
  
 
-
-
 ### Changes to API ###
 
 * **qstream** now takes the **length** parameter.
 * Range filters now supported for **xg**/**yg**/**gqp**.
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](ReleaseNotes.Mono.September.2017.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](ReleaseNotes.Octopus.December.2017.md)
+
+----

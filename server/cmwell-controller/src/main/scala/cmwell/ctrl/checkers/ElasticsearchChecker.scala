@@ -44,7 +44,7 @@ object ElasticsearchChecker extends Checker with LazyLogging {
           val n = (json \ "number_of_nodes").as[Int]
           val d = (json \ "number_of_data_nodes").as[Int]
           val p = (json \ "active_primary_shards").as[Int]
-          val s = json \ "active_shards" as[Int] implicitly
+          val s = (json \ "active_shards").as[Int](implicitly)
           status match {
             case "green" => ElasticsearchGreen(n,d,p,s,hasMaster)
             case "yellow" => ElasticsearchYellow(n,d,p,s,hasMaster)

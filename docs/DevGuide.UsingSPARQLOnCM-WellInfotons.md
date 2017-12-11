@@ -1,5 +1,13 @@
 # Using SPARQL on CM-Well Infotons #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.SubscribingToReal-TimeUpdates.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.CallingJavaScalaFunctionsFromSPARQLQueries.md)  
+
+----
+
+**On this page:**
+
 [What is SPARQL?](#hdr1)
 
 [Using the CM-Well UI to Submit SPARQL Queries](#hdrUI)
@@ -610,3 +618,9 @@ Note that both construct **a** and construct **b** are applied.
 ## Using the SPARQL Trigger Processor Agent ##
 
 You may want to create a materialized view of certain infotons in an ongoing fashion, by running SPARQL queries and uploading their results. To do this, you can create a custom configuration file that is read and processed by the CM-Well SPARQL Trigger Processor Agent. See [Using the SPARQL Trigger Processor](Tools.UsingTheSPARQLTriggerProcessor.md) to learn more.
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.SubscribingToReal-TimeUpdates.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.CallingJavaScalaFunctionsFromSPARQLQueries.md)  
+
+----

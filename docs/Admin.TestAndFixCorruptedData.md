@@ -1,5 +1,11 @@
 # Testing and Fixing Corrupted Data #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) 
+
+----
+
 Occasionally we have found errors in how infotons are stored and indexed. These used to arise from race conditions that happened when several requests to update the same infoton were submitted nearly simultaneously. In these cases, there could be discrepancies between infotons stored in Cassandra (CM-Well's 3rd-party storage module) and how they're indexed in Elastic Search (CM-Well's 3rd-party indexing  and search module). For instance, the same infoton could have more than one index entry, or the current (latest) infoton could point to more than one UUID. These errors can cause different types of problems, such as duplicate, missing or inconsistent search results.
 
 CM-Well supports a set of utility functions for testing and fixing such cases of index corruption on a single infoton. The functions are described in the following sections.
@@ -123,3 +129,9 @@ Response:
 
 >**Note:** Each line in the response represents a chunk of data (several infotons). The date/time is the last-modified time of the infotons in the relevant chunk. If there is an error in a chunk, its **success** value is **false**, and the **message** field contains an informative message describing the error.
 
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) 
+
+----

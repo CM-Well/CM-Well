@@ -35,6 +35,7 @@ import scala.language.implicitConversions
  * To change this template use File | Settings | File Templates.
  */
 package cmwell.util {
+
   
   package object concurrent extends LazyLogging {
     //TODO: return "Thread++" instead of thread..
@@ -280,20 +281,64 @@ package cmwell.util {
       *
       * this retry flavor works with a predicate instead of a failed future
       */
-    def retryUntil[T](isSuccessful: T=>Boolean, maxRetries: Int, delay: FiniteDuration = Duration.Zero, delayFactor: Long = 0)(task: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
+    def unsafeRetryUntil[T](isSuccessful: T=>Boolean, maxRetries: Int, delay: FiniteDuration = Duration.Zero, delayFactor: Long = 0)(task: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
       require(maxRetries > 0, "maxRetries must be positive")
       require(delay >= Duration.Zero, "delay must be non-negative")
       if (maxRetries == 1) task
       else task.flatMap {
         case t if isSuccessful(t) => Future.successful(t)
-        case t if delay == Duration.Zero => retryUntil(isSuccessful, maxRetries - 1)(task)
+        case t if delay == Duration.Zero => unsafeRetryUntil(isSuccessful, maxRetries - 1)(task)
         case t =>
           val nextDelay = if (delayFactor > 0) delay * delayFactor else delay
-          SimpleScheduler.scheduleFuture(delay)(retryUntil(isSuccessful, maxRetries - 1, nextDelay, delayFactor)(task))
+          SimpleScheduler.scheduleFuture(delay)(unsafeRetryUntil(isSuccessful, maxRetries - 1, nextDelay, delayFactor)(task))
       }
     }
 
+//    def retryUntil2[T, S](z: S)(shouldRetry: (Try[T], S) => ShouldRetry[S])(task: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
+//      def scheduleRetry(delay: FiniteDuration, newState: S): Future[T] = {
+//        if (delay == Duration.Zero) retryUntil2(newState)(shouldRetry)(task)
+//        else SimpleScheduler.scheduleFuture(delay)(retryUntil2(newState)(shouldRetry)(task))
+//      }
+//
+//      val p = Promise[T]()
+//      task.onComplete { t =>
+//        shouldRetry(t, z) match {
+//          case DoNotRetry => p.complete(t)
+//          case RetryWith(delay, newState) => p.completeWith(scheduleRetry(delay, newState))
+//        }
+//      }
+//      p.future
+//    }
 
+    def retryUntil[T, S : StateHandler](z: S)(shouldRetry: (Try[T], S) => ShouldRetry[S])(task: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
+      val p = Promise[T]()
+      task.onComplete { taskResult =>
+        shouldRetry(taskResult, z) match {
+          case DoNotRetry => {
+            p.complete(taskResult)
+          }
+          case RetryWith(newState) => p.completeWith(retryUntil(newState)(shouldRetry)(implicitly[StateHandler[S]].handle[T](newState)(task)))
+        }
+      }
+      p.future
+    }
+
+//    def retryUntil[T](shouldRetry: Try[T] => Boolean, maxRetries: Int, delay: FiniteDuration = Duration.Zero, delayFactor: Long = 1)(task: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
+//      require(maxRetries > 0, "maxRetries must be positive")
+//      require(delay >= Duration.Zero, "delay must be non-negative")
+//      def scheduleRetry: Future[T] = {
+//        if (delay == Duration.Zero) retryUntil(shouldRetry, maxRetries - 1)(task)
+//        else SimpleScheduler.scheduleFuture(delay)(retryUntil(shouldRetry, maxRetries - 1, delay * delayFactor, delayFactor)(task))
+//      }
+//      if (maxRetries == 1) task
+//      else task.flatMap { t =>
+//        if (shouldRetry(Success(t))) scheduleRetry else Future.successful(t)
+//      }.recoverWith {
+//        case err if shouldRetry(Failure[T](err)) => scheduleRetry
+//        case err => Future.failed(err)
+//      }
+//    }
+//
     /**
      * Does what Future.sequence does but it won't fail if one of the futures fails.
      * Instead, the failed element won't be included in the produced collection.
@@ -443,6 +488,32 @@ package cmwell.util {
 
   package concurrent {
     case class FutureTimeout[T](future: scala.concurrent.Future[T]) extends Exception
+
+    trait StateHandler[S] {
+      def handle[T](state: S)(task: => Future[T]): Future[T]
+    }
+
+    object StateHandler {
+      implicit val durationHandler = new StateHandler[FiniteDuration] {
+        override def handle[T](delay: FiniteDuration)(task: => Future[T]): Future[T] = {
+          if (delay == Duration.Zero) task
+          else SimpleScheduler.scheduleFuture(delay)(task)
+        }
+      }
+
+      implicit val retryParamsHandler = new StateHandler[RetryParams] {
+        override def handle[T](state: RetryParams)(task: => Future[T]) = {
+          if (state.delay == Duration.Zero) task
+          else SimpleScheduler.scheduleFuture(state.delay)(task)
+        }
+      }
+    }
+
+    case class RetryParams(retriesLeft: Int, delay: FiniteDuration, delayFactor: Double)
+
+    sealed trait ShouldRetry[+S]
+    case object DoNotRetry extends ShouldRetry[Nothing]
+    final case class RetryWith[S](state: S) extends ShouldRetry[S]
   }
 
 }

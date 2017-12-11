@@ -22,7 +22,7 @@ import org.joda.time.DateTime
 import play.api.libs.json.Json
 import play.api.mvc._
 import security.httpauth._
-import security.{AuthCache, Authentication}
+import security.{EagerAuthCache, Authentication}
 import javax.inject._
 
 import filters.Attrs
@@ -33,7 +33,7 @@ import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
 @Singleton
-class LoginHandler  @Inject()(authCache: AuthCache)(implicit ec: ExecutionContext) extends InjectedController with BasicHttpAuthentication with DigestHttpAuthentication {
+class LoginHandler  @Inject()(authCache: EagerAuthCache)(implicit ec: ExecutionContext) extends InjectedController with BasicHttpAuthentication with DigestHttpAuthentication {
   private val notAuthenticated = Unauthorized("Not authenticated.\n")
 
   def login: Action[AnyContent] = Action.async { implicit req =>

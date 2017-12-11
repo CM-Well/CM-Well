@@ -329,10 +329,11 @@ callback=< [URL] >
         val nbg = req.attrs(Attrs.Nbg)
         val length = req.getQueryString("length").flatMap(asInt).getOrElse(if (req.getQueryString("format").isEmpty) 13 else 0) // default is 0 unless 1st request for the ajax app
         val offset = req.getQueryString("offset").flatMap(asInt).getOrElse(0)
+        val withHistory = req.getQueryString("with-history").flatMap(asBoolean).getOrElse(false)
         val fieldsFiltersFut = qpOpt.fold[Future[Option[FieldFilter]]](Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff, typesCache(nbg), cmwellRDFHelper, nbg).map(Some.apply))
         fieldsFiltersFut.flatMap { fieldFilters =>
           activeInfotonGenerator
-            .generateInfoton(req.host, path, req.attrs(Attrs.RequestReceivedTimestamp), length, offset, isRoot, nbg, fieldFilters)
+            .generateInfoton(req.host, path, req.attrs(Attrs.RequestReceivedTimestamp), length, offset, isRoot, nbg, withHistory, fieldFilters)
             .flatMap(iOpt => infotonOptionToReply(req, iOpt.map(VirtualInfoton.v2i)))
         }
       }.recover(asyncErrorHandler).get
@@ -698,6 +699,7 @@ callback=< [URL] >
         val withDeleted = request.queryString.keySet("with-deleted")
         val withMeta = request.queryString.keySet("with-meta")
         val length = request.getQueryString("length").flatMap(asLong)
+        val parallelism = request.getQueryString("parallelism").flatMap(asInt).getOrElse(Settings.sstreamParallelism)
         val pathFilter = Some(PathFilter(normalizedPath, withDescendants))
         val nbg = request.attrs(Attrs.Nbg)
         val fieldsMaskFut = extractFieldsMask(request,typesCache(nbg),cmwellRDFHelper, nbg)
@@ -750,7 +752,8 @@ callback=< [URL] >
                   datesFilter = Some(DatesFilter(from, to)),
                   paginationParams = PaginationParams(offset, 500),
                   withHistory = withHistory,
-                  withDeleted = withDeleted).map { case (src, hits) =>
+                  withDeleted = withDeleted,
+                  parallelism = parallelism).map { case (src, hits) =>
 
                   val s = streams.scrollSourceToByteString(src, formatter, withData.isDefined, withHistory, length, fieldsMask,nbg)
                   Ok.chunked(s).as(overrideMimetype(formatter.mimetype, request)._2).withHeaders("X-CM-WELL-N" -> hits.toString)
@@ -1935,11 +1938,10 @@ callback=< [URL] >
         }
       }
       case Some("invalidate-cache") => {
-        if(authUtils.isOperationAllowedForUser(Admin, authUtils.extractTokenFrom(req), req.attrs(Attrs.Nbg), evenForNonProdEnv = true)) {
-          val success = authUtils.invalidateAuthCache(req.attrs(Attrs.Nbg))
-          Future.successful(Ok(Json.obj("success" -> success)))
-        }
-        else Future.successful(Unauthorized("Not authorized"))
+        if(authUtils.isOperationAllowedForUser(Admin, authUtils.extractTokenFrom(req), req.attrs(Attrs.Nbg), evenForNonProdEnv = true))
+          authUtils.invalidateAuthCache(req.attrs(Attrs.Nbg)).map(isSuccess => Ok(Json.obj("success" -> isSuccess)))
+        else
+          Future.successful(Unauthorized("Not authorized"))
       }
       case Some(unknownOp) =>
         Future.successful(BadRequest(Json.obj("success" -> false, "message" -> s"`$unknownOp` is not a valid operation")))

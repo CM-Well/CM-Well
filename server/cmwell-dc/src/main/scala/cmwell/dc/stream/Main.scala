@@ -19,7 +19,7 @@ package cmwell.dc.stream
 import akka.actor.ActorSystem
 import cmwell.ctrl.hc.HealthControl
 import cmwell.dc.{LazyLogging, Settings}
-import cmwell.tools.data.sparql.SparqlProcessorManager
+import cmwell.tools.data.sparql.{SparqlProcessorManager, SparqlProcessorManagerSettings}
 import cmwell.tracking.ResurrectorActor
 import k.grid.service.ServiceTypes
 import k.grid.{Grid, GridConnection}
@@ -40,7 +40,7 @@ object Main extends App with LazyLogging {
   Grid.declareServices(ServiceTypes()
     .add("DataCenterSyncManager", classOf[DataCenterSyncManager], destinationHostsAndPorts(rawTarget), None)
     .add(HealthControl.services)
-    .add(SparqlProcessorManager.name, classOf[SparqlProcessorManager])
+    .add(SparqlProcessorManager.name, classOf[SparqlProcessorManager], new SparqlProcessorManagerSettings)
     .add("Resurrector", classOf[ResurrectorActor])
    )
   Grid.joinClient

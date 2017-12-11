@@ -1,5 +1,11 @@
 # Function: *Login* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.ReturnCodes.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Get.GetSingleInfotonByURI.md)  
+
+----
+
 ## Description ##
 The `_login` API call allows you to log into CM-Well and receive a corresponding authentication token. You pass the token to subsequent API calls as the value of the **X-CM-WELL-TOKEN** HTTP header. This enables the access permissions assigned to your user.
 
@@ -80,3 +86,8 @@ Failure (the user does not exist or the given password doesn't match the user):
 [CM-Well Security Features](DevGuide.CM-WellSecurityFeatures.md)
 
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.ReturnCodes.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Get.GetSingleInfotonByURI.md)  
+
+----

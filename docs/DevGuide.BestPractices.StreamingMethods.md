@@ -1,5 +1,11 @@
 # Streaming Methods #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.BestPractices.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.BestPractices.ManagingRetries.md)
+
+----
+
 There are various methods for streaming large numbers of infotons from CM-Well. The following table describes the three main methods and their pros and cons:
 
 Method | Description | Reference
@@ -14,3 +20,9 @@ By default, all streaming methods retrieve only the relevant infoton URIs. To do
 
 * Add the **with-data** flag to the streaming request. The results stream then contains infoton fields as well as URIs.
 * Stream URIs only (the faster option), then retrieve each infoton's fields by dereferencing its URI. The advantage of this option is that you can run threads in parallel to retrieve the data.
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.BestPractices.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.BestPractices.ManagingRetries.md)
+
+----

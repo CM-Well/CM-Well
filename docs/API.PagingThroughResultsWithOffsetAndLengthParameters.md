@@ -1,5 +1,12 @@
 # Paging through Results with Offset and Length Parameters #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.FromAndToDatetimeFormatting.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.SortingResultsWithTheSort-byFlag.md)  
+
+----
+
+
 Query results may often be long lists of infotons. Rather than receive all the results at once, you may want to "page through" the results, that is, iteratively receive subsets of the results.
 
 To do this, you use two parameters: the **offset** parameter and the **length** parameter. 
@@ -17,3 +24,9 @@ And so on. To retrieve the results of page N, you define the **offset** value as
 > **Notes:** 
 > * If **length** is supplied without an **offset** value, an offset of 0 is assumed.
 > * CM-Well allows a maximum **offset** of 1000 and a maximum **length** of 10,000. For queries with very large result sets, rather than use a **search** query, it is recommended to use the [Iterator](API.Stream.CreateIterator.md) or [Consumer](API.Stream.CreateConsumer.md) APIs. 
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.FromAndToDatetimeFormatting.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.SortingResultsWithTheSort-byFlag.md)  
+
+----

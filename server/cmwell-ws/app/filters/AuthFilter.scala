@@ -28,7 +28,7 @@ import cmwell.ws.Settings
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class AuthFilter @Inject()(authCache: AuthCache, authUtils: AuthUtils, authorization: Authorization)(implicit override val mat: Materializer, ec: ExecutionContext) extends Filter {
+class AuthFilter @Inject()(authCache: EagerAuthCache, authUtils: AuthUtils, authorization: Authorization)(implicit override val mat: Materializer, ec: ExecutionContext) extends Filter {
 
   private val useAuthorizationParam = java.lang.Boolean.getBoolean("use.authorization")
   private val irrelevantPaths = Set("/ii/", "/_")

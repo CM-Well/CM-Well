@@ -1,5 +1,11 @@
 # Streaming Data from CM-Well
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.UpdatingCM-Well.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.SubscribingToReal-TimeUpdates.md)  
+
+----
+
 If you want to perform a one-time retrieval of a large amount of CM-Well data, you can do this by using the **stream** operation. You can define the data you want by its path in CM-Well, and optionally add a query filter and query parameters. The data returned is the list of infotons under the path you specified that match your query filter. 
 
 For example, the following command streams all Organization infotons from the CM-Well pre-production environment:
@@ -23,3 +29,9 @@ Only the following formats are supported for the **stream** command:
 
 
 > **Note:** If the format is supplied in the call, the resulting infotons' data is returned. If you omit the format parameter, only the infotons' URIs are returned.
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.UpdatingCM-Well.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.SubscribingToReal-TimeUpdates.md)  
+
+----

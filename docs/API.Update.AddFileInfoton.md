@@ -1,5 +1,11 @@
 # Function: *Add a File Infoton* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Update.Purge.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Update.AddLinkInfoton.md)  
+
+----
+
 ## Description ##
 In addition to infotons used for data modeling, CM-Well allows you to add files as infotons. The file can be of any type, and it can have field values just like any other infoton. The file contents are stored on CM-Well in addition to the field values.
 
@@ -99,3 +105,9 @@ format | The format in which the triples are provided | json, jsonl, jsonld, n3,
 
 ## Related Topics ##
 None.
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Update.Purge.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Update.AddLinkInfoton.md)  
+
+----

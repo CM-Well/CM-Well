@@ -1,5 +1,11 @@
 # Hands-On Exercise: Get Infotons by URI #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.HandsOnExercisesTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercisesTOC.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tutorial.HandsOnExercises.AddInfotonsAndFields.md)  
+
+----
+
 ## Step Outline ##
 
 1. [Upload infotons](#hdr1).
@@ -128,3 +134,9 @@
 [Add Infotons and Fields](API.Update.AddInfotonsAndFields.md)
 [Get a Single Infoton by URI](API.Get.GetSingleInfotonByURI.md)
 [Get Multiple Infotons by URI](API.Get.GetMultipleInfotonsByURI.md)
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.HandsOnExercisesTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercisesTOC.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tutorial.HandsOnExercises.AddInfotonsAndFields.md)  
+
+----

@@ -1,5 +1,11 @@
 # Field Condition Syntax #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.QueryParameters.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.FieldNameFormats.md)  
+
+----
+
 The following sections describe how to create simple and complex conditions on infoton field values. The conditions appear in the value of the **qp** parameter, as follows:
 
     <cmwellhost>/<path>?op=search&qp=<field conditions>
@@ -149,3 +155,8 @@ CM-Well also maintains its own internal administrative details about each infoto
 When you query for infotons, both data fields and system metadata fields are returned in the results. You can apply conditions to the metadata fields as well as the data fields (see [Field Identifiers](#hdr8)). 
 
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.QueryParameters.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.FieldNameFormats.md)  
+
+----

@@ -16,11 +16,11 @@
 
 package cmwell.tools.data.sparql
 
-import akka.actor.{Actor, ActorRef}
+import akka.actor.{Actor, ActorRef, Props}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.RawHeader
-import akka.stream.ActorMaterializer
+import akka.stream.{ActorMaterializer, Materializer}
 import akka.pattern._
 import akka.stream.scaladsl.{Sink, Source}
 import cmwell.tools.data.downloader.consumer.Downloader.Token
@@ -31,30 +31,28 @@ import cmwell.tools.data.utils.akka.stats.DownloaderStats.DownloadStats
 import cmwell.tools.data.utils.logging.DataToolsLogging
 import com.typesafe.config.ConfigFactory
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 object InfotonReporter {
   case object RequestDownloadStats
   case class ResponseDownloadStats(stats: Map[String, DownloadStats])
+  def apply(baseUrl: String, path: String)(implicit mat: Materializer, ec: ExecutionContext) = Props(new InfotonReporter(baseUrl, path))
 }
 
-class InfotonReporter(baseUrl: String, path: String) extends Actor with SparqlTriggerProcessorReporter with DataToolsLogging {
+class InfotonReporter private(baseUrl: String, path: String)(implicit mat: Materializer, ec: ExecutionContext) extends Actor with SparqlTriggerProcessorReporter with DataToolsLogging {
+  if(mat.isInstanceOf[ActorMaterializer]) {
+    require(mat.asInstanceOf[ActorMaterializer].system eq context.system, "ActorSystem of materializer MUST be the same as the one used to create current actor")
+  }
   val HttpAddress(protocol, host, port, _) = ArgsManipulations.extractBaseUrl(baseUrl)
   val format = "ntriples"
   val writeToken = ConfigFactory.load().getString("cmwell.agents.sparql-triggered-processor.write-token")
   var downloadStats: Map[String, DownloadStats] = Map()
 
-  implicit val system = context.system
-  implicit val mat = ActorMaterializer()
-  implicit val ec = context.dispatcher
-
   def extractLastPart(path: String) = {
     val p = if (path.endsWith("/")) path.init
     else path
-
     val (_, name) = p.splitAt(p.lastIndexOf("/"))
-
     name.tail.init
   }
 
@@ -143,7 +141,7 @@ class InfotonReporter(baseUrl: String, path: String) extends Actor with SparqlTr
 
     Source.single(tokens)
       .map(createRequest)
-      .via(Http().outgoingConnection(host, port))
+      .via(Http(context.system).outgoingConnection(host, port))
       .map {
         case HttpResponse(s, h, e, _) if s.isSuccess() =>
           logger.debug(s"successfully written tokens infoton to $path")

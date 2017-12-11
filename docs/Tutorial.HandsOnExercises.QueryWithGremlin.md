@@ -1,5 +1,11 @@
 # Hands-On Exercise: Query with Gremlin #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.HandsOnExercisesTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercises.QueryWithSPARQL.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tutorial.HandsOnExercises.StreamWithTheStreamOperation.md)  
+
+----
+
 ## Step Outline ##
 
 1. [Upload Data](#hdr1)
@@ -73,3 +79,9 @@
                 
 ## API Reference ##
 [Apply Gremlin to Query Results](API.Query.ApplyGremlinToQueryResults.md)
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.HandsOnExercisesTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercises.QueryWithSPARQL.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tutorial.HandsOnExercises.StreamWithTheStreamOperation.md)  
+
+----

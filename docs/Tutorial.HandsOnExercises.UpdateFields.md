@@ -1,5 +1,11 @@
 # Hands-On Exercise: Update Fields #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.HandsOnExercisesTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercises.AddInfotonsAndFields.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tutorial.HandsOnExercises.DeleteInfotonsAndFields.md)  
+
+----
+
 ## Step Outline ##
 
 1. [Add Infotons and Fields](#hdr1).
@@ -63,3 +69,9 @@
 [Add Infotons and Fields](API.Update.AddInfotonsAndFields.md)
 [Replace Field Values](API.Update.ReplaceFieldValues.md)
     	
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.HandsOnExercisesTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercises.AddInfotonsAndFields.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tutorial.HandsOnExercises.DeleteInfotonsAndFields.md)  
+
+----

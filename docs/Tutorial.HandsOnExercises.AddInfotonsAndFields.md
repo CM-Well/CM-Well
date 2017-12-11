@@ -1,5 +1,11 @@
 # Hands-On Exercise: Add Infotons and Fields #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.HandsOnExercisesTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercises.GetInfotonsByURI.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tutorial.HandsOnExercises.UpdateFields.md)  
+
+----
+
 **Action:** Add several infotons and field values. After adding them, you can browse to their URIs and examine their fields.
 
 **Curl command:**
@@ -30,3 +36,9 @@
 ## API Reference ##
 [Add Infotons and Fields](API.Update.AddInfotonsAndFields.md)
     
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.HandsOnExercisesTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercises.GetInfotonsByURI.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tutorial.HandsOnExercises.UpdateFields.md)  
+
+----

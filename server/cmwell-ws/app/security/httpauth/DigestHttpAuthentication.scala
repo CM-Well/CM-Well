@@ -61,7 +61,7 @@ trait DigestHttpAuthentication {
   //
   // We keep HA1 per user inside its UserInfoton as "digest2"
   //
-  def digestAuthenticate(authCache: AuthCache)(req: Request[_])(implicit ec: ExecutionContext): Future[DigestStatus] = {
+  def digestAuthenticate(authCache: EagerAuthCache)(req: Request[_])(implicit ec: ExecutionContext): Future[DigestStatus] = {
     import akka.pattern.ask
 
     req.headers.get("Authorization") match {

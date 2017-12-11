@@ -1,8 +1,13 @@
 # Traversing Outbound and Inbound Links (*xg*, *yg* and *gqp*) #
 
-----------
+----
 
-**Page contents:**
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.UsingConditionalUpdates.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.ReturnCodes.md)  
+
+----
+
+
+**On this page:**
 
 * [Traversing Outbound Links with the **xg** Flag](#hdr1)
 	* [Example: Using **xg** to Retrieve Parent Organizations](#hdr2)
@@ -14,11 +19,13 @@
 		* [The Field Wildcard](#hdr8)
 		* [Field Filters](#hdr9)
 * [Traversing Outbound and Inbound Links with the **yg** Flag](#hdr10)
-* [Using the **yg-chunk-size** Parameter](#hdr11)
+    * [Implementing Multiple Expansion Paths with the Pipe Operator](hdrYgPipe)
+    * [Using the **yg-chunk-size** Parameter](#hdr11)
 * [Using **xg** and **yg** Together](#hdr12)
 	* [Ghost Skips](#hdr13)
-* [Usage Scenario Using Outbound and Inbound Links](#hdr14)
+* [Usage Scenario with Outbound and Inbound Links](#hdr14)
 * [Using **gqp** to Filter by Inbound/Outbound Relationships](#hdr15)
+    * [Implementing Multiple Filter Expressions with the Pipe Operator](#hdr16)
 
 ----------
 
@@ -255,9 +262,7 @@ You can add field filters to constrain the additional infotons retrieved by the 
 
     xg=<outboundExpansion>[field filter]
 
-The syntax of the field filter is the same as for the [qp parameter](API.FieldConditionSyntax.md), except for the following differences:
-* Only the partial match and exact match operators (: and ::) are supported for the **xg** flag. (The fuzzy match operator ~ is not supported for **xg**.)
-* Range queries (<,>,<<,>>) are not supported for **xg**.
+>**Note:** The syntax of the field filter is the same as for the [qp parameter](API.FieldConditionSyntax.md), except that the fuzzy match operator ~ is not supported for **xg** queries.
 
 For example:
 
@@ -274,14 +279,101 @@ Much of the syntax for the **yg** flag is the same as for the **xg** flag, so pl
 The main differences between the **xg** flag and the **yg** flag are:
 
 * With the **yg** flag, you can also use the `<` operator to indicate inbound links.
-* You cannot use the _ wildcard with **yg** (as this would create a prohibitively expensive query).
-* On inbound expansions (indicated by the `<` operator), you can use all comparison operators in field filters (instead of just `:` and `::` for outbound expansions).
+* You cannot use the '_' wildcard with **yg** (as this would create a prohibitively expensive query).
 
 For example:
 
     <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&format=ttl&with-data&yg=<hasImmediateParent.mdaas<hasImmediateParent.mdaas
 
 This query retrieves all infotons that point to the matched infotons through their immediate parents field, and also all infotons that point to the level 1 inbound links through their immediate parents field. In other words, it retrieves the child companies of the child companies of the matched infotons. 
+
+<a name="hdrYgPipe"></a>
+### Implementing Multiple Expansion Paths with the Pipe Operator ###
+
+If you want to expand along several paths using a single query, you can add several expansion expressions separated by the pipe ('|') operator.
+
+For example, supposed we've uploaded the following information to CM-Well, which refers to the individual ```MrPresident```:
+
+<a name="hdrRdfData"></a>
+
+    @prefix foaf: <http://xmlns.com/foaf/0.1/> .
+    @prefix dc:   <http://purl.org/dc/terms/> .
+    @prefix locn: <http://www.w3.org/ns/locn#> .
+    @prefix madsrdf:  <http://www.loc.gov/mads/rdf/v1#> .
+    @prefix geonames: <http://www.geonames.org/ontology#> .
+    @prefix geo:  <http://www.w3.org/2003/01/geo/wgs84_pos#> .
+    @prefix xmpl: <http://ont.example.org/2017/v1.0#> .
+    @prefix time: <http://www.w3.org/2006/time#> .
+    @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+    @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+    @prefix cc:   <http://creativecommons.org/ns#> .
+    
+    <http://example.org/Individuals/MrPresident> a foaf:Person ;
+      madsrdf:birthPlace <http://sws.geonames.org/5122525/> .
+    
+    <http://example.org/Residence/fedcba98-7654-3210-1234-56789abcdef0> a xmpl:Residence ;
+      locn:location <http://sws.geonames.org/5122525/> ;
+      xmpl:hasTenant <http://example.org/Individuals/MrPresident> ;
+      time:hasBeginning "2017-01-20"^^xsd:date ;
+      time:hasEnd "TBD" .
+    
+    <http://sws.geonames.org/5122525/> a geonames:Feature ;
+      rdfs:isDefinedBy <http://sws.geonames.org/5122525/about.rdf> ;
+      geonames:name "Jamaica Hospital Medical Center" ;
+      geonames:alternateName "Jamaica Hospital" ;
+      geonames:officialName "Jamaica Hospital Medical Center"@en ;
+      geonames:featureClass geonames:S ;
+      geonames:featureCode geonames:S\.HSP ;
+      geonames:countryCode "US" ;
+      geo:lat "40.70078"^^xsd:decimal ;
+      geo:long "-73.81635"^^xsd:decimal ;
+      geo:alt "18"^^xsd:decimal ;
+      geonames:parentFeature <http://sws.geonames.org/5133268/> ;
+      geonames:parentCountry <http://sws.geonames.org/6252001/> ;
+      geonames:parentADM1 <http://sws.geonames.org/5128638/> ;
+      geonames:parentADM2 <http://sws.geonames.org/5133268/> ;
+      geonames:nearbyFeatures <http://sws.geonames.org/5122525/nearby.rdf> ;
+      geonames:locationMap <http://www.geonames.org/5122525/jamaica-hospital-medical-center.html> .
+    
+    <http://sws.geonames.org/5122525/about.rdf> a foaf:Document ;
+      foaf:primaryTopic <http://sws.geonames.org/5122525/> ;
+      cc:license <http://creativecommons.org/licenses/by/3.0/> ;
+      cc:attributionURL <http://sws.geonames.org/5122525/> ;
+      cc:attributionName "GeoNames"^^xsd:string ;
+      dc:created "2006-01-15"^^xsd:date ;
+      dc:modified "2016-12-06"^^xsd:date .
+    
+    <http://sws.geonames.org/4140704/> a <http://www.geonames.org/ontology#Feature> ;
+      rdfs:isDefinedBy <http://sws.geonames.org/4140704/about.rdf> ;
+      geonames:name "The White House" ;
+      geonames:alternateName "Executive Mansion", "Presidents House", "Presidents Palace", "White House"@en ;
+      geonames:officialName "Maison Blanche"@fr, "The White House"@en, "Weißes Haus"@de ;
+      geonames:featureClass geonames:S ;
+      geonames:featureCode geonames:S\.BLDG ;
+      geonames:countryCode "US" ;
+      geo:lat "38.89761"^^xsd:decimal ;
+      geo:long "-77.03637"^^xsd:decimal ;
+      geo:alt "17"^^xsd:decimal ;
+      geonames:parentFeature <http://sws.geonames.org/4140987/> ;
+      geonames:parentCountry <http://sws.geonames.org/6252001/> ;
+      geonames:parentADM1 <http://sws.geonames.org/4138106/> ;
+      geonames:parentADM2 <http://sws.geonames.org/4140987/> ;
+      geonames:nearbyFeatures <http://sws.geonames.org/4140704/nearby.rdf> ;
+      geonames:locationMap <http://www.geonames.org/4140704/the-white-house.html> .
+    
+    <http://sws.geonames.org/4140704/about.rdf> a foaf:Document ;
+      foaf:primaryTopic <http://sws.geonames.org/4140704/> ;
+      cc:license <http://creativecommons.org/licenses/by/3.0/> ;
+      cc:attributionURL <http://sws.geonames.org/4140704/> ;
+      cc:attributionName "GeoNames"^^xsd:string ;
+      dc:created "2006-01-15"^^xsd:date ;
+      dc:modified "2014-08-04"^^xsd:date .
+    
+In a single query, the following call retrieves both the place that ```MrPresident``` was born (via an outbound link), and all the places where ```MrPresident``` lived (via a combination of inbound and outbound links):
+
+    <cm-well-host>/example.org/Individuals/MrPresident?yg=<hasTenant.xmpl>location.locn|>birthPlace.madsrdf
+
+You can add as many pipe-separated expansion expressions to one query as you want. The results are the equivalent of running each expansion query separately and pooling all their results.
 
 <a name="hdr11"></a>
 ### Using the *yg-chunk-size* Parameter ###
@@ -320,7 +412,7 @@ This filter requires only that the intermediate infoton have a ```system.uuid```
     \>childOf[type.rdf:Person]<parentOf
 
 <a name="hdr14"></a>
-## Usage Scenario Using Outbound and Inbound Links ##
+## Usage Scenario with Outbound and Inbound Links ##
 
 Now that we understand how to work with outbound and inbound links, let's examine a scenario for which this feature is useful.
 
@@ -349,7 +441,7 @@ There are ways to address this using **yg** and SPARQL queries, but they have li
 
 The **gqp** flag is intended to handle this requirement. Here is an example of a search clause that uses **gqp** for the scenario described above:
 
-    <cm-well-host>/?op=search&qp=type.rdf:Person,age>32&gqp=<addressOfPerson>physicalAddress[city::NY]
+    <cm-well-host>/?op=search&qp=type.rdf:Person,age>32&gqp=<addressOfPerson>physicalAddress[city::New%20York]
 
 The **gqp** flag's syntax is identical to the **yg** flag's syntax, but it operates differently. As **yg** traverses the links defined in its value expression, it adds all the infotons in the link paths to its results. **gqp** does not add infotons to the results in the set returned by the search query. Rather it attempts to evaluate its expression for each "root" infoton, and if it fails at some stage in the evaluation or the expression evaluates as **false**, then the root infoton from which the path originated is *removed* from the result set.
 
@@ -358,3 +450,19 @@ The **gqp** flag can be used together with **xg** and **yg**. In this case, **gq
 >**Notes:** 
 >* The **gqp** flag can be applied to both **consume** and **search** operations. Note that when using **gqp** with consume, it is possible to filter out the entire chunk and therefore to receive no results for some iterations. If in this case you receive a 204 error, but the position token in the header is different than the one sent, you still need to keep consuming.
 >* The [ghost skips](#hdr13) behavior applies to **qgp** as well as **yg**.
+
+<a name="hdr16"></a>
+## Implementing Multiple Filter Expressions with the Pipe Operator ##
+
+As for the **yg** query, you can add several filter expressions to a single **gqp** query, separated by the pipe ('|') operator. However, the behavior of the complex expression is different than for **yg**. When piped expressions are used with **gqp**, CM-Well applies "or" logic among them. This means that in order to match the filter, an infoton only needs to match *one* of the piped expressions.
+
+For example, if applied to the [RDF data above](#hdrRdfData), the following query retrieves all the US presidents that either were born outside the US,
+or were living in the White House before 2000:
+
+    <cm-well-host>/?op=search&qp=type.rdf:Person&gqp=<hasTenant.xmpl[hasBeginning.time<2000-01-01]>location.locn[name.geonames::The White House]|>birthPlace.madsrdf[-countryCode::US]
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.UsingConditionalUpdates.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.ReturnCodes.md)  
+
+----

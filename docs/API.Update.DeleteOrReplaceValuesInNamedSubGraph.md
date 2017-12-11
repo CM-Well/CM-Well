@@ -1,5 +1,11 @@
 # Function: *Delete or Replace Values in a Named Sub-Graph* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Update.AddInfotonsAndFieldsToSubGraph.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Update.Purge.md)  
+
+----
+
 ## Description ##
 
 If you have created a named sub-graph, you can replace the entire sub-graph with a single API call, using the special **#replaceGraph** predicate. You can choose to just delete the sub-graph, or to delete the existing values and add new values in the same call.
@@ -58,8 +64,15 @@ priority | If this flag appears in an update call, that call receives priority r
 
 ## Notes ##
 
-If you want to replace values in a sub-graph, the best practice is to delete the old values and add the new values, all in the same call. This is because for every change made to an infoton, CM-Well retains a historical infoton version. If you split the operation into two calls, one to delete and one to add, the version after the delete is saved. This version is not interesting when tracing the infoton's history, and just takes up storage needlessly. 
+* If you want to replace values in a sub-graph, the best practice is to delete the old values and add the new values, all in the same call. This is because for every change made to an infoton, CM-Well retains a historical infoton version. If you split the operation into two calls, one to delete and one to add, the version after the delete is saved. This version is not interesting when tracing the infoton's history, and just takes up storage needlessly. 
+* If the sub-graph you requested to delete did not exist, you will receive a 422 ("Unprocessable Entity") return code.
 
 ## Related Topics ##
 [Working with Named Sub-Graphs](DevGuide.WorkingWithNamedSub-Graphs.md)
 [Add Infotons and Fields to a Sub-Graph](API.Update.AddInfotonsAndFieldsToSubGraph.md)
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Update.AddInfotonsAndFieldsToSubGraph.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Update.Purge.md)  
+
+----
