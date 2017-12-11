@@ -573,7 +573,8 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])], manual
 
   def createSyncingEngine(dcInfo: DcInfo): RunnableGraph[SyncerMaterialization] = {
     val localDecider: Supervision.Decider = { e: Throwable =>
-      logger.error(s"The stream of data center id ${dcInfo.id} from location ${dcInfo.location} got an exception caught in local decider. It will be stopped. The exception is:", e)
+      //The decider is not used anymore the restart is done by watching the Future[Done] of the stream - no need for the log print (It's left for completeness until the decider is totally removed.
+      logger.debug(s"The stream of data center id ${dcInfo.id} from location ${dcInfo.location} got an exception caught in local decider. It inner stream will be stopped (the whole one may continue). The exception is:", e)
       Supervision.Stop
     }
     val tsvSource = dcInfo.tsvFile.fold(TsvRetriever(dcInfo, localDecider).mapConcat(identity))(_ => TsvRetrieverFromFile(dcInfo))
