@@ -27,7 +27,7 @@ Value | Description
 InProgress | The request is still being processed.
 Done | The request was completed successfully.
 Failed | The request failed.
-Evicted(*\<previous and current UUIDs\>*) | You requested a [conditional update](ADDLINK), which was denied due to a conflict.
+Evicted(*\<previous and current UUIDs\>*) | You requested a [conditional update](API.UsingConditionalUpdates.md), which was denied due to a conflict.
 
 ## Syntax ##
 
