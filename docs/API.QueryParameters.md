@@ -15,6 +15,7 @@ fields | The subset of fields you want to get in results. If fields are not spec
 format | The format to apply to the results. The default value is **ntriples**. | json, jsonl, jsonld, n3, rdfxml, ntriples, nquads, turtle/ttl, yaml, trig, trix | format=n3 | [CM-Well Input and Output Formats](API.InputAndOutputFormats.md)
 from | A lower limit on the date and time the infoton was last updated. | ISO 8601 datetime value | from=2015-04-15T09:24:09.284Z | [From/To Datetime Formatting](API.FromAndToDatetimeFormatting.md)
 length | The number of query results (infotons) you want to receive | Any positive integer | length=20 | [Paging through Results with offset and length Parameters](API.PagingThroughResultsWithOffsetAndLengthParameters.md)
+gqp | Filters results by outbound and/or inbound links of the matched infotons | See reference | See reference | [Traversing Outbound and Inbound Links](API.Traversal.TOC.md)
 offset | The offset of the first result you want to retrieve, relative to the complete list of results. | 0 or any positive integer | offset=40 | [Paging through Results with offset and length Parameters](API.PagingThroughResultsWithOffsetAndLengthParameters.md)
 pretty | If this flag appears, formats of the JSON family are tabulated and arranged in a visually friendly style. | None | N/A | N/A
 priority | If this flag appears in an update call, that call receives priority relative to non-priority calls. You can add this flag to any call to the **_in** endpoint or POST command. To use this flag, you must also pass the X-CM-WELL-TOKEN request header, with a token that grants access to the priority feature. This feature should be used with discretion so as not to flood the priority queue. | None | \<cm-well-host\>/_in?format=ttl&priority...
@@ -26,8 +27,8 @@ tracking | Using this flag returns a tracking ID that you can use to poll for an
 with-data | If this flag is used, all infoton fields are returned in the query results. Otherwise, only the infotons' URLs and system metadata fields are returned. | Either any format value that CM-Well supports, or no value, in which case the default format is N3 | Query example: <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Coca%20Cola&format=n3&with-data=json | [Using the with-data Flag](API.UsingTheWith-dataFlag.md)
 with-deleted | If this flag is used, all deleted versions of infotons are retrieved, instead of only "live" versions. | None; the flag either appears or doesn't | Query example: <cm-well-host>/permid.org/1-5046625212?with-deleted | [Using the with-deleted Flag](API.UsingTheWith-deletedFlag.md)
 with-history | If this flag is used, all historical versions of infotons are retrieved, instead of just the latest. | None; the flag either appears or doesn't | Query example: <cm-well-host>/permid.org/1-5046625212?with-history | [Using the with-history Flag](API.UsingTheWith-historyFlag.md)
-xg | Requests outbound links of the matched infotons | See reference | See reference | [Traversing Outbound and Inbound Links with xg and yg](API.TraversingOutboundAndInboundLinksWithXgAndYg.md)
-yg | Requests outbound and/or inbound links of the matched infotons | See reference | See reference | [Traversing Outbound and Inbound Links with xg and yg](API.TraversingOutboundAndInboundLinksWithXgAndYg.md)
+xg | Requests outbound links of the matched infotons | See reference | See reference | [Traversing Outbound and Inbound Links](API.Traversal.TOC.md)
+yg | Requests outbound and/or inbound links of the matched infotons | See reference | See reference | [Traversing Outbound and Inbound Links](API.Traversal.TOC.md)
 
 ----
 

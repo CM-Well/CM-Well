@@ -1,4 +1,4 @@
-# *yg*: Traversing Inbound and Outbound Links
+# *yg*: Traversing Inbound and Outbound Links #
 
 ----
 
@@ -57,6 +57,7 @@ The **yg** query is processed in chunks of **yg-chunk-size** until all input pat
 
 The default value for **yg-chunk-size** is 10. For best results, you may need to adjust the value according to the specific query you're running.
 
+<a name="hdrGhostSkips"></a>
 ## Ghost Skips ##
 
 In some cases, when using **yg** to filter infotons according to their indirect relationships with other infotons, you may be interested in filtering by the relationship itself, while the intermediate infoton within the relationship is not important.
