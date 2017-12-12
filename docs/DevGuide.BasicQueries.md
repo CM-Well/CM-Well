@@ -1,5 +1,13 @@
 # Basic Queries #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.CurlUtility.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.AdvancedQueries.md)  
+
+----
+
+**On this page:**
+
 [Getting an Infoton by Subject ID](#hdr1)
 
 [Specifying the Output Format](#hdr2)
@@ -102,4 +110,10 @@ Sometimes a list of links may be useful, but sometimes you want to see the actua
 When you add the with-data flag to your query, in the results you receive the entire object for each infoton, rather than its link, as follows:
 
 <img src="./_Images/new-ui-results-with-data.png">
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.CurlUtility.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.AdvancedQueries.md)  
+
+----
 

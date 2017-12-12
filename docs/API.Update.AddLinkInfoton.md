@@ -1,5 +1,11 @@
 # Function: *Add a Link Infoton* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Update.AddFileInfoton.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Update.TrackUpdates.md)  
+
+----
+
 ## Description ##
 
 A link infoton is a special type of infoton, which behaves similarly to a redirected URL. It points to another infoton (the target infoton). Querying a link infoton returns the same results as querying the target infoton.
@@ -111,3 +117,9 @@ None.
 
 ## Related Topics ##
 None.
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Update.AddFileInfoton.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Update.TrackUpdates.md)  
+
+----

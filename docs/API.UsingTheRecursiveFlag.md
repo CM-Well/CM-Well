@@ -15,3 +15,9 @@ For example, if the Person infoton `<cm-well-host>/example/Individuals/JohnSmith
 When you perform a search on a certain path using the recursive flag , all child paths are searched as well, and their child paths, and so on recursively.
 
 >**Note:** If you're not getting the query results you expect, you may need to add the **recursive** flag to the query.
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.SortingResultsWithTheSort-byFlag.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.UsingTheWith-dataFlag.md)  
+
+----

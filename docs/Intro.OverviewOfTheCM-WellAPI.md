@@ -1,5 +1,11 @@
 # Overview of the CM-Well API #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Intro.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Intro.CM-WellDataParadigms.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Intro.TechnicalAspectsOfCM-Well.md)  
+
+----
+
 This page provides a brief, high-level overview of the CM-Well API's functionality.
 
 For the detailed API documentation, please see [CM-Well API Reference](API.TOC.md).
@@ -36,3 +42,8 @@ Create a new infoton | [Updating CM-Well](DevGuide.UpdatingCM-Well.md)
 Add/update infoton fields | [Updating CM-Well](DevGuide.UpdatingCM-Well.md)
 Delete infotons and fields | [Updating CM-Well](DevGuide.UpdatingCM-Well.md)
  
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Intro.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Intro.CM-WellDataParadigms.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Intro.TechnicalAspectsOfCM-Well.md)  
+
+----

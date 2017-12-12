@@ -1,5 +1,12 @@
 # Function: *Stream Infotons* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Query.QueryForQuadsByTheirLabel.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Stream.CreateIterator.md)  
+
+----
+
+
 ## Description ##
 If you want to perform a one-time retrieval of a large amount of CM-Well data, you can do this by using the **stream** operation. You can define the data you want by its path in CM-Well, and optionally add a query filter and query parameters. The data returned is the list of infotons under the path you specified that match your query filter.
 
@@ -70,3 +77,8 @@ Tab-Separated Values | tsv | text/plain
 [Subscribing to Real-Time Updates](DevGuide.SubscribingToReal-TimeUpdates.md)
 
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Query.QueryForQuadsByTheirLabel.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Stream.CreateIterator.md)  
+
+----

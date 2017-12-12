@@ -22,7 +22,7 @@ import sbt.Keys._
 import sbt._
 
 import scala.concurrent._
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 object CMWellBuild extends AutoPlugin {
 
@@ -63,17 +63,73 @@ object CMWellBuild extends AutoPlugin {
     else "eu"
   }
 
-	def fetchZookeeper(version: String) = {
+	def fetchZookeeperApacheMirror(version: String): Future[File] = {
 		val ext = "tar.gz"
 		val url = s"http://www-$apacheMirror.apache.org/dist/zookeeper/zookeeper-$version/zookeeper-$version.$ext"
 		fetchArtifact(url, ext)
 	}
 
-  def fetchKafka(scalaVersion: String, version: String) = {
+	def fetchZookeeperApacheArchive(version: String): Future[File] = {
+		val ext = "tar.gz"
+		val url = s"https://archive.apache.org/dist/zookeeper/zookeeper-$version/zookeeper-$version.$ext"
+		fetchArtifact(url, ext)
+	}
+
+	def fetchZookeeperSourcesFromGithub(version: String, ext: String): Future[File] = {
+		require(ext == "zip" || ext == "tar.gz", s"invalid sources extension [$ext]")
+		alternateUnvalidatedFetchArtifact(s"https://github.com/apache/zookeeper/archive/release-$version.$ext", ext)
+	}
+
+	def fetchZookeeper(version: String, buildFromSources: Option[(String,File => Future[File])] = None) = {
+		import scala.concurrent.ExecutionContext.Implicits.global
+		import CMWellCommon.combineThrowablesAsCauseAsync
+
+		fetchZookeeperApacheMirror(version).recoverWith {
+			case err1: Throwable => fetchZookeeperApacheArchive(version).recoverWith {
+				case err2: Throwable => {
+					buildFromSources.fold(combineThrowablesAsCauseAsync[File](err1, err2){ cause =>
+						new Exception("was unable to fetch zookeeper binaries, and build from sources function isn't supplied", cause)
+					}) {
+						case (ext, build) => fetchZookeeperSourcesFromGithub(version, ext).flatMap(build)
+					}
+				}
+			}
+		}
+	}
+
+	def fetchKafkaApacheMirror(scalaVersion: String, version: String): Future[File] = {
 		val ext = "tgz"
     val url = s"http://www-$apacheMirror.apache.org/dist/kafka/$version/kafka_$scalaVersion-$version.$ext"
 		fetchArtifact(url, ext)
-  }
+	}
+
+	def fetchKafkaApacheArchive(scalaVersion: String, version: String): Future[File] = {
+		val ext = "tgz"
+    val url = s"https://archive.apache.org/dist/kafka/$version/kafka_$scalaVersion-$version.$ext"
+		fetchArtifact(url, ext)
+	}
+
+	def fetchKafkaSourcesFromGithub(version: String, ext: String): Future[File] = {
+		require(ext == "zip" || ext == "tar.gz", s"invalid sources extension [$ext]")
+		alternateUnvalidatedFetchArtifact(s"https://github.com/apache/kafka/archive/$version.$ext", ext)
+	}
+
+  def fetchKafka(scalaVersion: String, version: String, buildFromSources: Option[(String,File => Future[File])] = None) = {
+		import scala.concurrent.ExecutionContext.Implicits.global
+		import CMWellCommon.combineThrowablesAsCauseAsync
+
+		fetchKafkaApacheMirror(scalaVersion, version).recoverWith {
+			case err1: Throwable => fetchKafkaApacheArchive(scalaVersion, version).recoverWith {
+				case err2: Throwable => {
+					buildFromSources.fold(combineThrowablesAsCauseAsync[File](err1, err2) { cause =>
+						new Exception("was unable to fetch kafka binaries, and build from sources function isn't supplied", cause)
+					}) {
+						case (ext, build) => fetchKafkaSourcesFromGithub(version, ext).flatMap(build)
+					}
+				}
+			}
+		}
+	}
 
 	def fetchMvnArtifact(moduleID: ModuleID, scalaVersion: String, scalaBinaryVersion: String): Future[Seq[java.io.File]] = {
 		import coursier._
@@ -131,6 +187,24 @@ object CMWellBuild extends AutoPlugin {
 				"MD5" -> (url + ".md5"),
 				"SHA-1" -> (url + ".sha1")),
 			Map("sig" -> sig),
+			Attributes(ext, ""),
+			changing = false,
+			None)
+
+		val task = coursier.Cache.file(art).fold({ err =>
+			Failure[java.io.File](new Exception(err.message + ": " + err.describe))
+		},Success.apply)
+
+		CMWellCommon.scalazTaskAsScalaFuture(task)
+	}
+
+	def alternateUnvalidatedFetchArtifact(url: String, ext: String) = {
+		import coursier.core.{Artifact, Attributes}
+
+		val art = Artifact(
+			url,
+			Map.empty,
+			Map.empty,
 			Attributes(ext, ""),
 			changing = false,
 			None)

@@ -318,7 +318,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
         }.toMap
 
         logger.info(s"waiting for 5 seconds for $recordMetaDataSeq")
-        cmwell.util.concurrent.retryUntil[cmwell.util.Box[Infoton]]({ bi =>
+        cmwell.util.concurrent.unsafeRetryUntil[cmwell.util.Box[Infoton]]({ bi =>
           bi.isDefined && bi.get.fields.fold(false)(_.size == 20)
         }, 30, 1.second) {
           irwService.readPathAsync(infotonPath, ConsistencyLevel.QUORUM)

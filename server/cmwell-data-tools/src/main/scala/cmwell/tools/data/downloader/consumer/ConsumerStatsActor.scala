@@ -37,6 +37,7 @@ import scala.util.Success
 /**
   * Created by matan on 20/3/17.
   */
+/*
 class ConsumerStatsActor(baseUrl: String,
                          initToken: String,
                          params: String = "",
@@ -187,6 +188,7 @@ class ConsumerStatsActor(baseUrl: String,
 //    }
   }
 }
+*/
 
 case object ConsumeEvent
 case object EndStreamEvent

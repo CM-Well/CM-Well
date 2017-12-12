@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory
 case class LabelId(id: String)
 
 trait DataToolsLogging {
-  private[data] lazy val redLogger = LoggerFactory.getLogger("red-logger")
+  private[data] lazy val redLogger = LoggerFactory.getLogger("tools-red-logger")
   private[data] lazy val badDataLogger = LoggerFactory.getLogger("bad-data")
 
   val label: Option[String] = None

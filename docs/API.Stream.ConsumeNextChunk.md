@@ -1,5 +1,11 @@
 # Function: *Consume Next Chunk* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Stream.CreateConsumer.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Subscribe.SubscribeForPushedData.md)  
+
+----
+
 ## Description ##
 If you wish to retrieve a large number of infotons, but you want to iterate over small "chunks" of data in a controlled fashion, you can use the **create-consumer** API and the `_consume` endpoint. 
 
@@ -220,3 +226,8 @@ For a faster implementation of recoverable streaming, see [bulk consume](API.Str
 [Consume Next Bulk](API.Stream.ConsumeNextBulk.md)
 
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Stream.CreateConsumer.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Subscribe.SubscribeForPushedData.md)  
+
+----

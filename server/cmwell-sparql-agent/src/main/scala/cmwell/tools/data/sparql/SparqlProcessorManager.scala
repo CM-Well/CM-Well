@@ -4,7 +4,7 @@
   * Licensed under the Apache License, Version 2.0 (the “License”); you may not use this file except in compliance with the License.
   * You may obtain a copy of the License at
   *
-  *   http://www.apache.org/licenses/LICENSE-2.0
+  * http://www.apache.org/licenses/LICENSE-2.0
   *
   * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
   * an “AS IS” BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,12 +13,12 @@
   * limitations under the License.
   */
 
-
 package cmwell.tools.data.sparql
 
 import java.nio.file.Paths
 
-import akka.actor.{Actor, ActorRef, Cancellable, PoisonPill, Props}
+import akka.Done
+import akka.actor.{Actor, ActorRef, ActorSystem, Cancellable, PoisonPill, Props, Status}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpMethods._
 import akka.http.scaladsl.model._
@@ -37,6 +37,7 @@ import cmwell.tools.data.utils.ArgsManipulations.HttpAddress
 import cmwell.tools.data.utils.akka._
 import cmwell.tools.data.utils.chunkers.GroupChunker
 import cmwell.tools.data.utils.chunkers.GroupChunker._
+import cmwell.util.http.SimpleResponse
 import cmwell.util.string.Hash
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
@@ -44,216 +45,196 @@ import k.grid.GridReceives
 import net.jcazevedo.moultingyaml._
 import org.apache.commons.lang3.time.DurationFormatUtils
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.{FiniteDuration, _}
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
+import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+import cmwell.util.concurrent._
+import ExecutionContext.Implicits.global
+
+case class Job(name: String, config: Config) {
+  val jobString =  {
+    val sensors = config.sensors.map(_.name).mkString(", ")
+    s"[job: $name, config name:${config.name}, sensors: $sensors]"
+  }
+  override def toString: String = jobString
+}
+case class JobRead(job: Job, active: Boolean)
+case class StartJob(job: JobRead)
+case class JobHasFailed(job: Job, ex: Throwable)
+case class JobHasFinished(job: Job)
+case class PauseJob(job: Job)
+case class StopAndRemoveJob(job: Job)
+
+case object CheckConfig
+case class AnalyzeReceivedJobs(jobsRead: Vector[JobRead])
+
+sealed trait JobStatus {
+  val canBeRestarted: Boolean = false
+}
+case class JobRunning(job: Job, killSwitch: KillSwitch, reporter: ActorRef) extends JobStatus
+case class JobPausing(job: Job, killSwitch: KillSwitch, reporter: ActorRef) extends JobStatus
+case class JobStopping(job: Job, killSwitch: KillSwitch, reporter: ActorRef) extends JobStatus
+case class JobFailed(job: Job, ex: Throwable) extends JobStatus {
+  override val canBeRestarted = true
+}
+case class JobPaused(job: Job) extends JobStatus {
+  override val canBeRestarted = true
+}
 
 object SparqlProcessorManager {
   val name = "sparql-triggered-processor-manager"
+  private val formatter = java.text.NumberFormat.getNumberInstance
 
-  val formatter = java.text.NumberFormat.getNumberInstance
-
-  case class Job(config: Config,
-                 path: Path,
-                 killSwitch: KillSwitch,
-                 reporter: ActorRef) {
-
-    override def toString: String = {
-      val sensors = config.sensors.map(_.name).mkString(", ")
-      s"[job: ${path.utf8String}, name:${config.name}, sensors: $sensors]"
-    }
-  }
-
-  type Path = ByteString
-  type PathAndConfig = (Path, Config)
-  type PathAndJob = (Path, Job)
-  type Configs = Map[Path, Config]
-  type Jobs = Map[Path, Job]
-
-  case object CheckConfig
-  case class AnalyzeReceivedConfig(received: Map[Path, Config])
-  case class StartJob(registered: Boolean, path: Path, config: Config)
-  case class StopJob(registered: Boolean, path: Path, job: Job)
-  case class JobsToDisable(jobs: Jobs)
-  case class NonActiveJobsToRemove(configs: Configs)
-  case class AddToNonActive(configs: Configs)
+  val client = cmwell.util.http.SimpleHttpClient
 }
 
+class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends Actor with LazyLogging {
+  //todo: should we use injected ec??? implicit val ec = context.dispatcher
+  implicit val system: ActorSystem = context.system
+  implicit val mat = ActorMaterializer()
+  if (mat.isInstanceOf[ActorMaterializer]) {
+    require(mat.asInstanceOf[ActorMaterializer].system eq context.system, "ActorSystem of materializer MUST be the same as the one used to create current actor")
+  }
 
-class SparqlProcessorManager extends Actor with LazyLogging {
-  /** properties and settings*/
-  val config = ConfigFactory.load()
-  val hostConfigFile         = config.getString("cmwell.agents.sparql-triggered-processor.host-config-file")
-  val hostUpdatesSource      = config.getString("cmwell.agents.sparql-triggered-processor.host-updates-source")
-  val hostWriteOutput        = config.getString("cmwell.agents.sparql-triggered-processor.host-write-output")
-  val materializedViewFormat = config.getString("cmwell.agents.sparql-triggered-processor.format")
-  val pathAgentConfigs       = config.getString("cmwell.agents.sparql-triggered-processor.path-agent-configs")
-  val writeToken             = config.getString("cmwell.agents.sparql-triggered-processor.write-token")
-  val initDelay = {
-    val Duration(length, timeUnit) = Duration(config.getString("cmwell.agents.sparql-triggered-processor.init-delay"))
-    FiniteDuration(length, timeUnit)
-  }
-  val interval = {
-    val Duration(length, timeUnit) = Duration(config.getString("cmwell.agents.sparql-triggered-processor.config-polling-interval"))
-    FiniteDuration(length, timeUnit)
-  }
+  //job name -> job status
+  var currentJobs: Map[String, JobStatus] = Map.empty
 
   var configMonitor: Cancellable = _
-  var activeJobs: Jobs = Map()
-  var nonActiveConfigs: Configs = Map()
-
-  val HttpAddress(protocol, host, port, _) = ArgsManipulations.extractBaseUrl(hostConfigFile)
-
-  implicit val system = context.system
-  implicit val mat = ActorMaterializer()
-  implicit val ec = context.dispatcher
-
-  val httpPoolConfig = {
-    val HttpAddress(protocol, host, port, _) = ArgsManipulations.extractBaseUrl(hostConfigFile)
-    Http().cachedHostConnectionPool[ByteString](host, port)
-  }
-
 
   override def preStart(): Unit = {
-    configMonitor = context.system.scheduler.schedule(initDelay, interval, self, CheckConfig)
     logger.info("starting sparql-processor manager instance on this machine")
+    configMonitor = context.system.scheduler.schedule(settings.initDelay, settings.interval, self, CheckConfig)
   }
 
-  def yamlToConfig(yaml: String) = {
-    // parse sensor configuration
-    object SensorYamlProtocol extends DefaultYamlProtocol {
-      implicit object DurationYamlFormat extends YamlFormat[FiniteDuration] {
-        override def write(obj: FiniteDuration): YamlValue = YamlObject(
-          YamlString("updateFreq") -> YamlString(obj.toString)
-        )
-
-        override def read(yaml: YamlValue): FiniteDuration = {
-          val d = Duration(yaml.asInstanceOf[YamlString].value)
-          FiniteDuration(d.length, d.unit)
-        }
-      }
-
-      implicit val sensorFormat = yamlFormat6(Sensor)
-      implicit val sequenceFormat = seqFormat[Sensor](sensorFormat)
-      implicit val configFormat = yamlFormat4(Config)
-    }
-
-    import SensorYamlProtocol._
-    import net.jcazevedo.moultingyaml._
-
-    val yamlConfig = yaml.parseYaml
-
-    yamlConfig.convertTo[Config]
-  }
-
-  def receive = {
+  override def receive: Receive = {
     import akka.pattern._
-
     GridReceives.monitoring(sender).orElse {
-      case CheckConfig =>
-        getYamlConfigs().map(AnalyzeReceivedConfig.apply) pipeTo self
-
-      case AnalyzeReceivedConfig(received) =>
-        handleSensors {
-          received.map { case (path, config) =>
-            val configName = Paths.get(path.utf8String).getFileName
-            val sensors = config.sensors.map(sensor => sensor.copy(name = s"$configName-${sensor.name}"))
-            path -> config.copy(sensors = sensors)
-          }
-        }
-//        handleSensors(received)
-
-      case StartJob(registered, path, config) if registered =>
-        val job = startJob(path, config)
-        activeJobs += (path -> job)
-        nonActiveConfigs -= path
-
-      case JobsToDisable(jobs) =>
-        jobs.foreach {
-          case (path, job) =>
-            // stop jobs and store it in non-active job list
-            job.killSwitch.shutdown()
-            job.reporter! PoisonPill
-            activeJobs -= path
-
-            nonActiveConfigs += (path -> job.config)
-        }
-
-      case AddToNonActive(configs) =>
-        nonActiveConfigs ++= configs
-
-      case NonActiveJobsToRemove(configs) =>
-        nonActiveConfigs --= configs.keySet
-
-      case StopJob(registered, path, job) if registered =>
-        job.killSwitch.shutdown()
-
-        activeJobs -= path
-        job.reporter ! PoisonPill
-
-      case RequestStats =>
-        stringifyActiveJobs().map(ResponseStats.apply) pipeTo sender()
+      case CheckConfig => getJobConfigsFromTheUser.map(AnalyzeReceivedJobs.apply) pipeTo self
+      case AnalyzeReceivedJobs(jobsReceived) => handleReceivedJobs(jobsReceived, currentJobs)
+      case Status.Failure(e) => logger.warn("Received Status failure ", e)
+      case StartJob(job) => handleStartJob(job)
+      case JobHasFinished(job: Job) => handleJobHasFinished(job)
+      case JobHasFailed(job: Job, ex: Throwable) => handleJobHasFailed(job, ex)
+      case PauseJob(job: Job) => handlePauseJob(job)
+      case StopAndRemoveJob(job: Job) => handleStopAndRemoveJob(job)
+//      case RequestStats => stringifyActiveJobs(activeJobs, nonActiveConfigs).map(ResponseStats.apply) pipeTo sender()
+       case other => logger.error(s"received unexpected message: $other")
     }
   }
 
   /**
-    * Analyse configuration read from infotons
-    * @param received configuration read from infotons
+    * This method MUST be run from the actor's thread (it changes the actor state)!
+    * @param job
     */
-  def handleSensors(received: Configs) = {
-    // get stored 'active' status of jobs
-    val storedJobPathsWithStatus = getActiveStatusOfStoredJobs()
-
-    // disable previous non-active jobs (on load time of the actor)
-    storedJobPathsWithStatus.map { storedJobs =>
-      val nonActiveStoredJobs = storedJobs.filter { case (_, isActive) => !isActive }
-      val pathsToDisable = nonActiveStoredJobs.keySet intersect received.keySet.diff (activeJobs.keySet ++ nonActiveConfigs.keySet)
-      received.filterKeys(pathsToDisable contains _)
-    }.map (AddToNonActive.apply) pipeTo self
-
-    // disable jobs which have new active=false status
-    storedJobPathsWithStatus
-      .map {_.filter { case (_, isActive) => !isActive } }
-      .map (nonActiveStoredJobs => activeJobs filterKeys nonActiveStoredJobs.keySet )
-      .map (JobsToDisable.apply) pipeTo self
-
-    // start jobs which have a new 'active' status
-    storedJobPathsWithStatus
-      .map {_.filter { case (_, isActive) => isActive } }
-      .map (newActiveStoredJobs => nonActiveConfigs filterKeys newActiveStoredJobs.keySet)
-      .map (registerToStart)
-
-    // stop and remove jobs which no longer exist
-    val jobsToStopAndRemove = activeJobs.filterKeys(activeJobs.keySet diff received.keySet)
-    registerJobsToStop(jobsToStopAndRemove)
-
-    // remove non active jobs which are no longer exist
-    self ! NonActiveJobsToRemove(nonActiveConfigs.filterKeys(nonActiveConfigs.keySet diff received.keySet))
-
-    // find new configs (did not appear before) and register them to start
-    storedJobPathsWithStatus.map { storedJobs =>
-      val nonActiveStoredJobs = storedJobs.filter { case (_, isActive) => !isActive }
-      val pathsToStart = received.keySet diff (activeJobs.keySet ++ nonActiveConfigs.keySet ++ nonActiveStoredJobs.keySet)
-      received.filterKeys(pathsToStart contains _)
-    }.map (registerToStart)
+  def handleJobHasFinished(job: Job): Unit = {
+    currentJobs.get(job.name).fold {
+      logger.error(s"Got finished signal for job $job that doesn't exist in the job map. Not reasonable! Current job in map are: ${currentJobs.keys.mkString(",")}")
+    } {
+      case JobPausing(runningJob, _, _) =>
+        logger.info(s"Job $runningJob has finished. Saving the job state.")
+        currentJobs = currentJobs + (job.name -> JobPaused(runningJob))
+      case JobStopping(runningJob, _, _) =>
+        logger.info(s"Job $runningJob has finished. Removing the job from the job list.")
+        currentJobs = currentJobs - runningJob.name
+      case other =>
+        logger.error(s"Got finished signal for jog $job but the actual state in current jobs is $other. Not reasonable!")
+        currentJobs = currentJobs - job.name
+    }
   }
 
+  /**
+    * This method MUST be run from the actor's thread (it changes the actor state)!
+    * @param job
+    * @param ex
+    */
+  def handleJobHasFailed(job: Job, ex: Throwable): Unit = {
+    currentJobs.get(job.name).fold {
+      logger.error(s"Got failed signal for job $job that doesn't exist in the job map. Not reasonable! Current job in map are: ${currentJobs.keys.mkString(",")}")
+    } {
+      case _: JobRunning | _: JobPausing | _:JobStopping =>
+        logger.info(s"Job $job has failed. Saving the job failure in current jobs.")
+        currentJobs = currentJobs + (job.name -> JobFailed(job, ex))
+      case other =>
+        logger.error(s"Got failed signal for jog $job but the actual state in current jobs is $other. Not reasonable!")
+        currentJobs = currentJobs - job.name
+    }
+  }
+
+  /**
+    * This method MUST be run from the actor's thread (it changes the actor state)!
+    * @param job
+    */
+  def handlePauseJob(job: Job): Unit = {
+    currentJobs.get(job.name).fold {
+      logger.error(s"Got pause request for job $job that doesn't exist in the job map. Not reasonable! Current job in map are: ${currentJobs.keys.mkString(",")}")
+    } {
+      case JobRunning(runningJob, killSwitch, reporter) =>
+        logger.info(s"Pausing job $runningJob. The job will actually pause only after it will finish all its current operations")
+        currentJobs = currentJobs + (job.name -> JobPausing(job, killSwitch, reporter))
+        killSwitch.shutdown()
+      case other =>
+        logger.error(s"Got pause request for jog $job but the actual state in current jobs is $other. Not reasonable!")
+    }
+  }
+
+  /**
+    * This method MUST be run from the actor's thread (it changes the actor state)!
+    * @param job
+    */
+  def handleStopAndRemoveJob(job: Job): Unit = {
+    currentJobs.get(job.name).fold {
+      logger.error(s"Got stop and remove request for job $job that doesn't exist in the job map. Not reasonable! Current job in map are: ${currentJobs.keys.mkString(",")}")
+    } {
+      case JobRunning(runningJob, killSwitch, reporter) =>
+        logger.info(s"Stopping job $runningJob. The job will actually stopped only after it will finish all its current operations")
+        currentJobs = currentJobs + (job.name -> JobStopping(job, killSwitch, reporter))
+        killSwitch.shutdown()
+      case other =>
+        logger.error(s"Got stop and remove request for jog $job but the actual state in current jobs is $other. Not reasonable!")
+    }
+  }
+
+  def shouldStartJob(currentJobs: Map[String, JobStatus])(jobRead: JobRead): Boolean = {
+    jobRead.active && currentJobs.get(jobRead.job.name).fold(true)(_.canBeRestarted)
+  }
+
+  def handleReceivedJobs(jobsRead: Vector[JobRead], currentJobs: Map[String, JobStatus]): Unit = {
+    //jobs to start
+    val jobsToStart = jobsRead.filter(shouldStartJob(currentJobs))
+    jobsToStart.foreach { jobRead =>
+      logger.info(s"Got start request for job ${jobRead.job} from the user")
+      self ! StartJob(jobRead)
+    }
+    //jobs to pause or to totally remove
+    currentJobs.foreach{
+      case (currentJobName, jobRunning: JobRunning) if !jobsRead.exists(_.job.name == currentJobName) =>
+        logger.info(s"Got stop and remove request for job ${jobRunning.job} from the user")
+        self ! StopAndRemoveJob(jobRunning.job)
+      case (currentJobName, jobRunning: JobRunning) if !jobsRead.find(_.job.name == currentJobName).get.active =>
+        logger.info(s"Got pause request for job ${jobRunning.job} from the user")
+        self ! PauseJob(jobRunning.job)
+      case _ => //nothing to do on other cases
+    }
+  }
+
+/*
   /**
     * Generates data for tables in cm-well monitor page
     */
-  def stringifyActiveJobs(): Future[Iterable[Table]] = {
+  def stringifyActiveJobs(activeJobs: Map[String, JobStatus], currentNonActiveConfigs: Configs): Future[Iterable[Table]] = {
     implicit val timeout = Timeout(1.minute)
 
-    def generateNonActiveTables() = nonActiveConfigs.map { case (path, config) =>
+    def generateNonActiveTables(currentNonActiveConfigs: Configs) = currentNonActiveConfigs.map { case (path, config) =>
       val sensorNames = config.sensors.map(_.name)
       val title = Seq(s"""<span style="color:red"> **Non-Active** </span> ${path.utf8String}""")
       val header = Seq("sensor", "point-in-time")
 
-      val req = HttpRequest(uri = s"http://$hostConfigFile${path.utf8String}/tokens?op=stream&recursive&format=ntriples&fields=token")
+      val req = HttpRequest(uri = s"http://${settings.hostConfigFile}${path.utf8String}/tokens?op=stream&recursive&format=ntriples&fields=token")
 
       // get stored tokens
       val storedTokensFuture: Future[Map[String, Token]] = Source.single(req -> blank)
-        .via(httpPoolConfig)
+        .via(httpPool)
         .mapAsync(1) {
           case (Success(HttpResponse(s, _, e, _)), _) if s.isSuccess() =>
             e.withoutSizeLimit().dataBytes.runFold(blank)(_ ++ _)
@@ -277,7 +258,6 @@ class SparqlProcessorManager extends Actor with LazyLogging {
       storedTokensFuture.map { storedTokens =>
         val pathsWithoutSavedToken = sensorNames.toSet diff storedTokens.keySet
         val allSensorsWithTokens = storedTokens ++ pathsWithoutSavedToken.map(_ -> "")
-
         val body = allSensorsWithTokens.map { case (sensorName, token) =>
           val decodedToken = if (token.nonEmpty) {
             val from = cmwell.tools.data.utils.text.Tokens.getFromIndexTime(token)
@@ -288,24 +268,20 @@ class SparqlProcessorManager extends Actor with LazyLogging {
           val row: Row = Seq(sensorName, decodedToken)
           row
         }
-
         Table(title = title, header = header, body = body)
       }
     }
 
-    def generateActiveTables() = activeJobs.map { case (path, job) =>
+    def generateActiveTables(jobs: Jobs) = jobs.map { case (path, job) =>
       val title = Seq(s"""<span style="color:green"> **Active** </span> ${path.utf8String}""")
       val header = Seq("sensor", "point-in-time", "received-infotons", "infoton-rate", "last-update")
-
       val statsFuture = (job.reporter ? RequestDownloadStats).mapTo[ResponseDownloadStats]
-        .map { case ResponseDownloadStats(stats) => stats }
-
       val storedTokensFuture = (job.reporter ? RequestPreviousTokens).mapTo[ResponseWithPreviousTokens]
-        .map { case ResponseWithPreviousTokens(storedTokens) => storedTokens }
-
       for {
-        stats <- statsFuture
-        storedTokens <- storedTokensFuture
+        statsRD <- statsFuture
+        stats = statsRD.stats
+        storedTokensRWPT <- storedTokensFuture
+        storedTokens = storedTokensRWPT.tokens
       } yield {
         val sensorNames = job.config.sensors.map(_.name)
         val pathsWithoutSavedToken = sensorNames.toSet diff storedTokens.keySet
@@ -326,215 +302,180 @@ class SparqlProcessorManager extends Actor with LazyLogging {
           val row: Row = Seq(sensorName, decodedToken) ++ sensorStats
           row
         }
-
         val configName = Paths.get(path.utf8String).getFileName
         val sparqlMaterializerStats = stats.get(s"$configName-${SparqlTriggeredProcessor.sparqlMaterializerLabel}").map { s =>
           val totalRunTime = DurationFormatUtils.formatDurationWords(s.runningTime, true, true)
           s"""Materialized <span style="color:green"> **${s.receivedInfotons}** </span> infotons [$totalRunTime]""".stripMargin
         }.getOrElse("")
-
         Table(title = title :+ sparqlMaterializerStats, header = header, body = body)
       }
     }
 
     // generate data for both active and non-active jobs
     Future.sequence {
-      generateNonActiveTables() ++ generateActiveTables()
+      generateNonActiveTables(currentNonActiveConfigs) ++ generateActiveTables(activeJobs)
     }
   }
+*/
 
   /**
-    * Execute a new job from a given config
-    * @param path the path of the config
-    * @param config
-    * @return
+    * This method MUST be run from the actor's thread (it changes the actor state)!
+    * @param jobRead
     */
-  def startJob(path: Path, config: Config): Job = {
-    val configName = Paths.get(path.utf8String).getFileName
-
+  def handleStartJob(jobRead: JobRead): Unit = {
+    val job = jobRead.job
+    //this method MUST BE RUN from the actor's thread and changing the state is allowed. the below will replace any existing state.
+    //The state is changed instantly and every change that follows (even from another thread/Future) will be later.
     val tokenReporter = context.actorOf(
-      props = Props(new InfotonReporter(baseUrl = hostConfigFile, path = path.utf8String)),
-      name = s"$configName-${Hash.crc32(config.toString)}"
+        props = InfotonReporter(baseUrl = settings.hostConfigFile, path = settings.pathAgentConfigs + job.name),
+        name = s"${job.name}-${Hash.crc32(job.config.toString)}"
     )
-
-    val agent = SparqlTriggeredProcessor.listen(config, hostUpdatesSource, true, Some(tokenReporter), Some(configName.toString))
+    val agent = SparqlTriggeredProcessor.listen(job.config, settings.hostUpdatesSource, true, Some(tokenReporter), Some(job.name))
       .map { case (data, _) => data }
-      .via(GroupChunker(formatToGroupExtractor(materializedViewFormat)))
+      .via(GroupChunker(formatToGroupExtractor(settings.materializedViewFormat)))
       .map(concatByteStrings(_, endl))
-
-    val killSwitch = Ingester.ingest(baseUrl = hostWriteOutput,
-      format = materializedViewFormat,
-      source = agent,
-      label = Some(s"ingester-${configName.toString}")
-    )
+    val (killSwitch, jobDone) = Ingester.ingest(baseUrl = settings.hostWriteOutput,
+        format = settings.materializedViewFormat,
+        source = agent,
+        label = Some(s"ingester-${job.name}"))
       .viaMat(KillSwitches.single)(Keep.right)
-      .toMat(Sink.ignore)(Keep.left)
+      .toMat(Sink.ignore)(Keep.both)
       .run()
-
-    logger.info(s"created job: ${config.sensors.map(_.name).mkString(", ")}")
-
-    Job (
-      path = path,
-      config = config,
-      killSwitch = killSwitch,
-      reporter = tokenReporter
-    )
-  }
-
-  def getYamlConfigs() = {
-    logger.info("Checking the current status of the config infotons")
-
-    /**
-      * Gets config string read from json infoton
-      * @param json raw json bytes read from infoton
-      * @return config string extracted from infoton json bytes
-      */
-    def extractConfigStringFromInfotonData(json: ByteString): String = {
-      import spray.json._
-      JsonParser(ParserInput(json.toArray))
-        .asJsObject.fields("content")
-        .asJsObject.fields("data") match {
-          case JsString(config) => config
-          case _ => ""
-        }
-    }
-
-    /**
-      * Gets YAML config from a given configuration path
-      * @return path and its YAML configuration
-      */
-    def getInfotonDataFromPath() = {
-      akka.stream.scaladsl.Flow[Path]
-        .map(p => HttpRequest(uri = s"http://$hostConfigFile${p.utf8String}/config?with-data&format=json") -> p)
-        .via(httpPoolConfig)
-        .mapAsyncUnordered(1){
-          case (Success(HttpResponse(status, _, entity, _)), path) if status.isSuccess() =>
-            val infotonData = entity.dataBytes.runFold(blank)(_ ++ _)
-            infotonData.map(d => Some(path -> d))
-          case _ =>
-            logger.error("cannot get config for sparql-triggered-processor")
-            Future.successful(None)
+    currentJobs = currentJobs + (job.name -> JobRunning(job, killSwitch, tokenReporter))
+    logger.info(s"starting job $job")
+    jobDone.onComplete {
+      case Success(_) => {
+        logger.info(s"job: $job finished successfully")
+        //The stream has already finished - kill the token actor
+        tokenReporter ! PoisonPill
+        self ! JobHasFinished(job)
+      }
+      case Failure(ex) => {
+        logger.error(s"job: $job finished with error (In case this job should be running it will be restarted on the next periodic check):", ex)
+        //The stream has already finished - kill the token actor
+        tokenReporter ! PoisonPill
+        self ! JobHasFailed(job, ex)
       }
     }
-
-    getPathsOfConfigInfotons()
-      .via(getInfotonDataFromPath())
-      .map { case Some((path, data)) => path -> extractConfigStringFromInfotonData(data) }
-      .collect { case (path, configString) if configString.nonEmpty =>
-        path -> yamlToConfig(configString)
-      }
-      .runFold(Map.empty[Path, Config])(_ + _)
   }
 
-  /**
-    * Gets all paths of configuration infotons
-    */
-  def getPathsOfConfigInfotons(): Source[Path, _] = {
-    val request = HttpRequest(uri = s"http://$hostConfigFile$pathAgentConfigs/?op=search&with-data&format=text")
-    Source.single(request -> blank)
-      .via(httpPoolConfig)
-      .flatMapConcat {
-        case (Success(HttpResponse(status, _, entity, _)), _) if status.isSuccess() =>
-          entity.dataBytes
-            .via(lineSeparatorFrame)
-            .filter(_.nonEmpty)
+  def getJobConfigsFromTheUser: Future[Vector[JobRead]] = {
+    logger.info("Checking the current status of the Sparql Triggered Processor manager config infotons")
+    //val initialRetryState = RetryParams(2, 2.seconds, 1)
+    //retryUntil(initialRetryState)(shouldRetry("Getting config information from local cm-well")) {
+    safeFuture(
+      client.get(s"http://${settings.hostConfigFile}${settings.pathAgentConfigs}",
+        queryParams = List("op" -> "search", "with-data" -> "", "format" -> "json"))).
+      map(response => parseJobsJson(response.payload)).
+      andThen {
+        case Failure(ex) => logger.warn("Reading the config infotons failed. It will be checked on the next schedule check. The exception was: ", ex)
       }
   }
 
-  def writeActiveStatus(infotonPath: Path, active: Boolean): Future[Boolean] = {
-    val triple =
-      s"""<http://$hostConfigFile${infotonPath.utf8String}> <http://$hostConfigFile/meta/nn#active> "$active"^^<http://www.w3.org/2001/XMLSchema#boolean> ."""
-    val req = HttpRequest(method = POST, uri = "/_in?format=ntriples&replace-mode", entity = triple)
-      .addHeader(RawHeader("X-CM-WELL-TOKEN", writeToken))
-
-    Source.single(Seq(blank) -> None)
-      .via(Retry.retryHttp(2.seconds, 1, hostConfigFile)(_ => req))
-      .mapAsync(1) {
-        case (Success(HttpResponse(s, _, e, _)), _, _) if s.isSuccess() =>
-          e.discardBytes().future().map(_ => true)
-        case (Success(HttpResponse(s, _, e, _)), _, _) =>
-          logger.error(s"cannot update 'active' triple in ${infotonPath.utf8String}")
-          e.discardBytes().future().map(_ => false)
-        case x =>
-          logger.error(s"unexpected data: $x")
-          Future.successful(false)
-      }
-      .runWith(Sink.head)
-  }
-
-  def registerJobsToStop(jobs: Jobs): Unit = jobs.foreach { case (path, job) =>
-    logger.info(s"stopping sensors: ${job.config.sensors.map(_.name).mkString(", ")}")
-
-    writeActiveStatus(path, false).map(StopJob(_, path, job)) pipeTo self
-  }
-
-  def registerToStart(configs: Configs): Unit = configs.map { case (path, config) =>
-    logger.info(s"register job: ${config.sensors.map(_.name).mkString(", ")}")
-
-    val jobFuture = writeActiveStatus(path, true)
-      .map(registered => StartJob(registered = registered, config = config, path = path))
-
-    jobFuture pipeTo self
-  }
-
-  def getActiveStatusOfStoredJobs(): Future[Map[Path, Boolean]] = {
-
-    def getActiveStatusOfStoredConfig(): Flow[Path, (Path, ByteString), _] = {
-      akka.stream.scaladsl.Flow[Path]
-        .map(p => HttpRequest(uri = s"http://$hostConfigFile${p.utf8String}?&with-data&format=json&fields=active") -> p)
-        .via(httpPoolConfig)
-        .mapAsyncUnordered(1){
-          case (Success(HttpResponse(status, _, entity, _)), path) if status.isSuccess() =>
-            val infotonData = entity.dataBytes.runFold(blank)(_ ++ _)
-            infotonData.map(d => Some(path -> d))
-          case (_, path) =>
-            logger.error(s"cannot get config for sparql-triggered-processor for path=${path.utf8String}")
-            Future.successful(None)
-        }
-        .collect { case Some((path, infotonData)) => path -> infotonData}
-    }
-
-    def extractActiveStringFromInfoton(json: ByteString) = {
-      import spray.json._
-
-      val parsed = JsonParser(ParserInput(json.toArray)).asJsObject
-
-      if (!parsed.fields.contains("fields")) ""
-      else {
-        val result = JsonParser(ParserInput(json.toArray))
-          .asJsObject.fields("fields")
-          .asJsObject.fields("active") match {
-          case JsArray(data) => data.map {
-            _ match {
-              //        if (!x.asJsObject.fields.contains("active")) ""
-              //        else x.asJsObject.fields("active").toString()
-
-              case JsTrue => "true"
-              case JsFalse => "false"
-              case _ => ""
-            }
+  def parseJobsJson(configJson: String): Vector[JobRead] = {
+    import cats.syntax.either._
+    import io.circe._, io.circe.parser._
+    //This method is run from map of a future - no need for try/catch (=can throw exceptions here). Each exception will be mapped to a failed future.
+    val parsedJson = parse(configJson)
+    parsedJson match {
+      case Left(parseFailure@ParsingFailure(message, ex)) =>
+        logger.error(s"Parsing the agent config files failed with message: $message. Cancelling this configs check. It will be checked on the next iteration. The exception was: ", ex)
+        throw parseFailure
+      case Right(json) => {
+        try {
+          val infotons = json.hcursor.downField("results").downField("infotons").values.get
+          infotons.map { infotonJson =>
+            val name = infotonJson.hcursor.downField("system").get[String]("path").toOption.get.drop(settings.pathAgentConfigs.length + 1)
+            val configStr = infotonJson.hcursor.downField("content").get[String]("data").toOption.get
+            val configRead = yamlToConfig(configStr)
+            val modifiedSensors = configRead.sensors.map(sensor => sensor.copy(name = s"$name${sensor.name}"))
+            //The active field enables the user to disable the job. In case it isn't there, it's active.
+            val active = infotonJson.hcursor.downField("fields").downField("active").downArray.as[Boolean].toOption.getOrElse(true)
+            JobRead(Job(name, configRead.copy(sensors = modifiedSensors)), active)
           }
-
-          case x => Seq.empty[String]
+        }
+        catch {
+          case ex: Throwable =>
+            logger.warn(s"The manager failed to parse the json of the config infotons failed with exception! The json was: $json")
+            throw ex
         }
 
-        result.mkString("\n")
       }
     }
+  }
 
-    getPathsOfConfigInfotons()
-      .via(getActiveStatusOfStoredConfig())
-      .map{ case (path, infotonData) => path -> extractActiveStringFromInfoton(infotonData) }
-      .runFold(Map.empty[Path, String])(_ + _)
-      .map(_.filter{case (path, activeStatus) => path.nonEmpty && activeStatus.nonEmpty})
-      .map(_.mapValues(_.toBoolean))
+  def yamlToConfig(yaml: String): Config = {
+    // parse sensor configuration
+    object SensorYamlProtocol extends DefaultYamlProtocol {
+      implicit object DurationYamlFormat extends YamlFormat[FiniteDuration] {
+        override def write(obj: FiniteDuration): YamlValue = YamlObject(
+          YamlString("updateFreq") -> YamlString(obj.toString)
+        )
+        override def read(yaml: YamlValue): FiniteDuration = {
+          val d = Duration(yaml.asInstanceOf[YamlString].value)
+          FiniteDuration(d.length, d.unit)
+        }
+      }
+      implicit val sensorFormat = yamlFormat6(Sensor)
+      implicit val sequenceFormat = seqFormat[Sensor](sensorFormat)
+      implicit val configFormat = yamlFormat4(Config)
+    }
+    import SensorYamlProtocol._
+    import net.jcazevedo.moultingyaml._
+    val yamlConfig = yaml.parseYaml
+    yamlConfig.convertTo[Config]
   }
 
   override def postStop(): Unit = {
-    logger.info(s"${this.getClass.getSimpleName} is about to die, stopping all active jobs")
-    registerJobsToStop(activeJobs)
-
+    logger.warn(s"${this.getClass.getSimpleName} died, stopping all running jobs")
     configMonitor.cancel()
+    currentJobs.collect {
+      case (_, job: JobRunning) => job
+    }.foreach { jobRunning =>
+      logger.info(s"Stopping job ${jobRunning.job} due to STP manager actor's death")
+      jobRunning.killSwitch.shutdown()
+    }
+  }
+
+  override def preRestart(reason: Throwable, message: Option[Any]): Unit = {
+    logger.error(s"Sparql triggered processor manager died during processing of $message. The exception was: ", reason)
+    super.preRestart(reason, message)
+  }
+
+
+  def shouldRetry(action: String): (Try[SimpleResponse[String]], RetryParams) => ShouldRetry[RetryParams] = {
+    import scala.language.implicitConversions
+    implicit def asFiniteDuration(d: Duration) = scala.concurrent.duration.Duration.fromNanos(d.toNanos);
+    {
+      //a successful post - don't retry
+      case (Success(simpleResponse), _) if simpleResponse.status == 200 => DoNotRetry
+      /*
+          //Currently, the shouldRetry function is used only to check the config - no need for special 503 treatment is will be retried anyway (and it can cause a bug the a current config check
+          //is still running while a new one will be started and a new one and so on...)
+          //The "contract" is that with 503 keep retrying indefinitely, but don't spam the server - increase the delay (cap it with a maxDelay)
+          case (Success(SimpleResponse(status, headers, body)), state) if status == 503 => {
+            logger.warn(s"$action failed. Cm-Well returned bad response: status: $status headers: ${StpUtil.headersString(headers)} body: $body. Will retry indefinitely on this error.")
+            RetryWith(state.copy(delay = (state.delay * state.delayFactor).min(settings.maxDelay)))
+          }
+      */
+      case (Success(SimpleResponse(status, headers, body)), state) if state.retriesLeft == 0 => {
+        logger.error(s"$action failed. Cm-Well returned bad response: status: $status headers: ${StpUtil.headersString(headers)} body: $body. No more retries left, will fail the request!")
+        DoNotRetry
+      }
+      case (Success(SimpleResponse(status, headers, body)), state@RetryParams(retriesLeft, delay, delayFactor)) => {
+        val newDelay = delay * delayFactor
+        logger.warn(s"$action failed. Cm-Well returned bad response: status: $status headers: ${StpUtil.headersString(headers)} body: $body. $retriesLeft retries left. Will retry in $newDelay")
+        RetryWith(state.copy(delay = newDelay, retriesLeft = retriesLeft - 1))
+      }
+      case (Failure(ex), state) if state.retriesLeft == 0 => {
+        logger.error(s"$action failed. The HTTP request failed with an exception. No more retries left, will fail the request! The exception was: ", ex)
+        DoNotRetry
+      }
+      case (Failure(ex), state@RetryParams(retriesLeft, delay, delayFactor)) => {
+        val newDelay = delay * delayFactor
+        logger.warn(s"$action failed. The HTTP request failed with an exception. $retriesLeft retries left. Will retry in $newDelay. The exception was: ", ex)
+        RetryWith(state.copy(delay = newDelay, retriesLeft = retriesLeft - 1))
+      }
+    }
   }
 }
-

@@ -1,5 +1,13 @@
 # Advanced Queries #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.BasicQueries.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.UpdatingCM-Well.md)  
+
+----
+
+**On this page:**
+
 [Implementing AND, OR and NOT Functionality](#hdr1)
 
 [String-Matching Logic](#hdr2)
@@ -176,3 +184,10 @@ For example:
 This query returns at least two versions of the entity's infoton. 
 
 > **Note:** The order in which historical versions are returned is unpredictable, so you’ll likely want to rank the results yourself in your application, using the sys:lastModified attribute.
+
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.BasicQueries.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.UpdatingCM-Well.md)  
+
+----

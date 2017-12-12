@@ -1,5 +1,12 @@
 # Building CM-Well #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercisesTOC.md)  
+
+----
+
+
 This tutorial describes how to build CM-Well from scratch. It assumes you don't have the source, scala or SBT installed but are comfortable with UNIX command line.
 
 >**Note:** All commands/output shown were tested on a Mac running 10.12.5. Your mileage may vary.
@@ -21,9 +28,9 @@ Next, set your SCALA_HOME variable:
 $ export SCALA_HOME=~/scala-2.11.11
 ```
 
-Add the scala binary directory to your path
+Add the Scala binary directory to your path
 ```
-$ PATH=$PATH:$SCALA_HOME/bin;export $PATH
+$ PATH=$PATH:$SCALA_HOME/bin;export PATH
 ```
 
 Verify that scala is available and running:
@@ -184,3 +191,10 @@ Then issue a :quit command to exit the console:
 ```
 scala> :quit
 ```
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercisesTOC.md)  
+
+----
+

@@ -105,7 +105,8 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
       "tlog_index_write_head" -> Set(FLong(iwh)),
       "tlog_index_read_head" -> Set(FLong(irh)),
       "batch_color" -> Set(FString(BatchStatus.batchColor.toString)),
-      "es_color" -> Set(FString(esColor))
+      "es_color" -> Set(FString(esColor)),
+      "use_auth" -> Set(FBoolean(java.lang.Boolean.getBoolean("use.authorization")))
     ))
   }
 
@@ -603,7 +604,7 @@ ${lines.mkString("\n")}
   import scala.language.implicitConversions
 
 
-  def generateInfoton(host: String, path: String, now: Long, length: Int = 0, offset: Int = 0, isRoot : Boolean = false, nbg: Boolean = false, fieldFilters: Option[FieldFilter]): Future[Option[VirtualInfoton]] = {
+  def generateInfoton(host: String, path: String, now: Long, length: Int = 0, offset: Int = 0, isRoot : Boolean = false, nbg: Boolean = false, withHistory: Boolean, fieldFilters: Option[FieldFilter]): Future[Option[VirtualInfoton]] = {
 
     val d: DateTime = new DateTime(now)
 
@@ -620,7 +621,9 @@ ${lines.mkString("\n")}
       val dcId = path.drop("/proc/dc/".length)
       crudServiceFS.getInfotonByPathAsync(s"/meta/sys/dc/$dcId").flatMap {
         case FullBox(ObjectInfoton(_, _, _, _, Some(fields), _)) =>
+          //the user just gave the id (e.g. from the ui) and there should be an active sync of it. Give the information according to the sync currently running.
           val id = fields("id").headOption.collect { case FString(x, _, _) => x }.get
+          val wh = fields.get("with-history").flatMap(_.headOption.collect { case FString(x, _, _) => x }).getOrElse("true") == "true"
           val qp = fields.get("qp").flatMap(_.headOption.collect { case FString(x, _, _) => x })
           qp
             .fold(Success(None): Try[Option[RawFieldFilter]])(FieldFilterParser.parseQueryParams(_).map(Some.apply))
@@ -629,11 +632,12 @@ ${lines.mkString("\n")}
               fieldsFiltersFut
             }
             .get
-            .map(fieldFilter => (id, fieldFilter))
+            .map(fieldFilter => (id, wh, fieldFilter))
         case _ =>
-          Future.successful((dcId, fieldFilters))
+          //There is no matching dc infoton in the list - use the parameters got from the user
+          Future.successful((dcId, withHistory, fieldFilters))
       }
-        .flatMap { case (id, fieldFilter) => crudServiceFS.getLastIndexTimeFor(id, nbg, fieldFilter) }
+        .flatMap { case (id, wh, fieldFilter) => crudServiceFS.getLastIndexTimeFor(id, wh, nbg, fieldFilter) }
     }
 
     path.dropTrailingChars('/') match {

@@ -1,5 +1,11 @@
 # Function: *Purge a Single Infoton's Versions* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Update.DeleteOrReplaceValuesInNamedSubGraph.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Update.AddFileInfoton.md)  
+
+----
+
 ## Description ##
 When you [delete](API.Update.DeleteASingleInfoton.md) an infoton, the operation in fact leaves the infoton in the CM-Well repository, but marks it as deleted. A query on a deleted infoton returns the **DeletedInfoton** status.
 
@@ -65,3 +71,9 @@ None.
 [Delete a Single Infoton](API.Update.DeleteASingleInfoton.md)
 [Delete Multiple Infotons](API.Update.DeleteMultipleInfotons.md)
 
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Update.DeleteOrReplaceValuesInNamedSubGraph.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Update.AddFileInfoton.md)  
+
+----

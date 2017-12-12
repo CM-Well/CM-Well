@@ -1,5 +1,11 @@
 # Using the CM-Well Spark Connector #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tools.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tools.UsingTheSPARQLTriggerProcessor.md)  
+
+----
+
 ## Introduction ##
 
 Apache Spark is a tool for processing and analyzing big data quickly, efficiently and easily. The two main Spark data structures that the Spark Connector uses are:
@@ -101,8 +107,8 @@ You can also call the Spark Connector from your own code, then create a jar that
 >**Note:** You will need to include the Spark Connector jar in your project, either by including to it in jar dependencies when submitting the Spark job, or by packaging it in an assembly that you submit to Spark.
 
 
+----
 
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tools.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tools.UsingTheSPARQLTriggerProcessor.md)  
 
-
-
-
+----

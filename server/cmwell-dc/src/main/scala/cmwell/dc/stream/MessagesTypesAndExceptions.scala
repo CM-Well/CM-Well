@@ -49,6 +49,8 @@ object MessagesTypesAndExceptions {
   case class CreateConsumeException(message: String, ex: Throwable = null) extends Exception(message, ex)
   case class WrongPathGotException(message: String) extends Exception(message)
   case class RetrieveException(message: String, ex: Throwable = null) extends Exception(message, ex)
+  case class RetrieveMissingUuidException(message: String, ex: Throwable = null) extends Exception(message, ex)
+  case class RetrieveBadIndexTimeException(message: String, ex: Throwable = null) extends Exception(message, ex)
   case class RetrieveTsvException(message: String, ex: Throwable = null) extends Exception(message, ex)
   case class IngestException(message: String, ex: Throwable = null) extends Exception(message, ex)
 
