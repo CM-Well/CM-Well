@@ -105,7 +105,8 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
       "tlog_index_write_head" -> Set(FLong(iwh)),
       "tlog_index_read_head" -> Set(FLong(irh)),
       "batch_color" -> Set(FString(BatchStatus.batchColor.toString)),
-      "es_color" -> Set(FString(esColor))
+      "es_color" -> Set(FString(esColor)),
+      "use_auth" -> Set(FBoolean(java.lang.Boolean.getBoolean("use.authorization")))
     ))
   }
 
