@@ -17,7 +17,7 @@ The **gqp** flag can be used together with **xg** and **yg**. In this case, **gq
 >**Notes:** 
 >* See [Traversal Operands](API.Traversal.Operands.md) to learn about **gqp** operands.
 >* The [ghost skips](API.Traversal.yg.md#hdrGhostSkips) behavior applies to **qgp** as well as **yg**.
->* The **gqp** flag can be applied to both **consume** and **search** operations. Note that when using **gqp** with consume, it's possible to filter out the entire chunk and therefore to receive no results for some iterations. If in this case you receive a 204 error, but the position token in the header is different than the one sent, you still need to keep consuming.
+>* The **gqp** flag can be applied to both **consume** and **search** operations. Note that when using **gqp** with consume, it's possible to filter out the entire chunk and therefore to receive no results for some iterations. If in this case you receive a 204 return code, but the position token in the header is different than the one sent, you still need to keep consuming.
 
 
 ## Example: Filtering Person Infotons by Address Values ##
@@ -33,6 +33,14 @@ We would like to retrieve only the Person infotons, while applying filters on th
     <cm-well-host>/?op=search&qp=type.rdf:Person,age>32&gqp=<addressOfPerson>physicalAddress[city::New%20York]
 
 This query only returns Person infotons for which the path defined in the **gqp** clause exists. It doesn't return the Address and AddressRelation infotons that were traversed during evaluation.
+
+## Using the *gqp-chunk-size* Parameter ##
+
+You can add the **gqp-chunk-size** parameter to a  **gqp** query.The **gqp-chunk-size** value determines how many infoton paths (that resulted from the query preceding the **gqp** query) will be processed at a time in a single **gqp** query. This prevents heavy **gqp** queries from "starving" other operations. 
+The **gqp** query is processed in chunks of **gqp-chunk-size** until all input paths are processed.
+
+The default value for **gqp-chunk-size** is 10. For best results, you may need to adjust the value according to the specific query you're running.
+
 
 ----
 

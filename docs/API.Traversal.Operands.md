@@ -107,11 +107,15 @@ This query retrieves the outbound links in the **hasImmediateParent** fields of 
 <a name="hdrFieldValue"></a>
 ### Field Value Filter ###
 
-You can add field filters to constrain the additional infotons retrieved by the **xg** flag. You do this by adding the field filters in [ ] brackets after the expansion definition.
+You can add field filters to constrain the additional infotons retrieved by the traversal flag. You do this by adding the field filters in [ ] brackets after the expansion definition.
 
-    xg=<outboundExpansion>[field filter]
+    xg=<traversalClause>[field filter]
+    yg=<traversalClause>[field filter]
+    gqp=<traversalClause>[field filter]
 
->**Note:** The syntax of the field filter is the same as for the [qp parameter](API.FieldConditionSyntax.md), except that the fuzzy match operator ~ is not supported for **xg** queries.
+>**Notes:** 
+>* The syntax of the field filter is the same as for the [qp parameter](API.FieldConditionSyntax.md).
+>* The fuzzy match operator ~ is not supported for outbound links.
 
 For example:
 
