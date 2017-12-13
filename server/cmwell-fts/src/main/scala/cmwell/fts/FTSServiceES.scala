@@ -1027,12 +1027,15 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
 
     val searchQueryStr = if(debugInfo) Some(request.toString) else None
 
-    resFuture.map{ response =>
+    resFuture.map { response =>
 
       if(debugInfo) logger.debug(s"thinSearch debugInfo response: ($oldTimestamp - ${System.currentTimeMillis()}): ${response.toString}")
 
       FTSThinSearchResponse(response.getHits.getTotalHits, paginationParams.offset, response.getHits.getHits.size,
         esResponseToThinInfotons(response, sortParams eq NullSortParam), searchQueryStr = searchQueryStr)
+    }.andThen {
+      case Failure(err) =>
+        logger.error(s"thinSearch failed, time took: [$oldTimestamp - ${System.currentTimeMillis()}], request:\n${request.toString}")
     }
   }
 
