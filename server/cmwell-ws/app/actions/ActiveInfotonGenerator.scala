@@ -387,7 +387,6 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
    */
   private[this] def generateHealthMarkdown(now: DateTime): String = {
 
-    logger.info("in generateHealthMarkdown")
 
     val ((ws,wsTime),(bg,bgTime),(es,esTime),(ca,caTime),(zk, zkTime),(kf, kfTime),controlNode, masters) = getClusterHealth
 
