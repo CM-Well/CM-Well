@@ -130,7 +130,7 @@ You can also add several SPARQL queries to the same command, by separating them 
 
 ### Example 1: Retrieving One Field ###
 
-In our [example of how to use the yg parameter](API.TraversingOutboundAndInboundLinksWithXgAndYg.md), we were looking for the corporate address for a given RIC code. What we actually got in response to our regular CM-Well query was the infotons that were related to the RIC code. We still had to retrieve the corporate address information ourselves from the relevant field. By using SPARQL, we can cause CM-Well to handle that step. 
+In our [example of how to use the yg flag](API.Traversal.yg), we were looking for the corporate address for a given RIC code. What we actually got in response to our regular CM-Well query was the infotons that were related to the RIC code. We still had to retrieve the corporate address information ourselves from the relevant field. By using SPARQL, we can cause CM-Well to handle that step. 
 
 To retrieve the mdaas:headquartersCommonAddress value, we can use this SPARQL query:
 

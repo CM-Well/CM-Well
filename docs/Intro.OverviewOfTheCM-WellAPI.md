@@ -33,7 +33,7 @@ Feature  | Reference
 Get infoton | [Basic Queries](DevGuide.BasicQueries.md)
 Search by field value | [Advanced Queries](DevGuide.AdvancedQueries.md)
 Advanced search using SPARQL | [Using SPARQL on CM-Well Infotons](DevGuide.UsingSPARQLOnCM-WellInfotons.md)
-Get inbound/outbound links | [Traversing Outbound and Inbound Links with xg and yg](API.TraversingOutboundAndInboundLinksWithXgAndYg.md)
+Traverse inbound/outbound links | [Traversing Outbound and Inbound Links](API.Traversal.TOC.md)
 Stream data | [Streaming Data from CM-Well](DevGuide.StreamingDataFromCM-Well.md)
 Subscribe to real-time updates | [Subscribing to Real-Time Updates](DevGuide.SubscribingToReal-TimeUpdates.md)
 CM-Well Downloader | [Using the CM-Well Downloader](Tools.UsingTheCM-WellDownloader.md)
