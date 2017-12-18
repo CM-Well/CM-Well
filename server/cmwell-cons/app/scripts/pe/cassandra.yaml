@@ -213,6 +213,12 @@ commitlog_sync_period_in_ms: 10000
 # is reasonable.
 commitlog_segment_size_in_mb: 32
 
+# Suppress spurious log warnings about buffer size for un-logged batches.
+# This message is only relevant for multi-partition un-logged batches, which
+# are not done. This is changed in Cassandra 3.6 (CASSANDRA-10872) to suppress
+# the message for single-partition un-logged batches.
+batch_size_warn_threshold_in_kb: 100000
+
 # any class that implements the SeedProvider interface and has a
 # constructor that takes a Map<String, String> of parameters will do.
 seed_provider:

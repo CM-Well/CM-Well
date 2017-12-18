@@ -216,9 +216,10 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
   def writeAsyncDataOnly(infoton: Infoton, level: ConsistencyLevel = QUORUM)(implicit ec: ExecutionContext): Future[Infoton] = {
 
     val p = Promise[Infoton]()
-    val batchStatement = new BatchStatement(BatchStatement.Type.UNLOGGED)
 
     val (uuid, rows) = InfotonSerializer.serialize2(infoton)
+
+    // Write the changes for one infoton as an un-logged batch so that the changes are written atomically.
 
     val statements = rows.flatMap{ case (quad, fields) =>
       fields.flatMap{ case (field, values) =>
@@ -230,6 +231,10 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
         }
       }
     }
+
+    // This un-logged batch runs against a single partition, so it does not have the performance issue that
+    // multi-partition unlogged batches do.
+    // Cassandra limits the number of statements in a batch to 0xFFFF.
 
     val futureResults = statements.grouped(0xFFFF).map{ stmts =>
       executeAsync(new BatchStatement(BatchStatement.Type.UNLOGGED).addAll(stmts))
