@@ -26,6 +26,8 @@ import cmwell.util.http.{SimpleHttpClient => Http, _}
 import cmwell.syntaxutils.!!!
 import cmwell.domain.{SimpleResponse => _, _}
 import cmwell.util.concurrent.SimpleScheduler
+import cmwell.ws.Settings
+
 import scala.util._
 import scala.concurrent.{Await, ExecutionContext, Future, Promise, duration}
 import duration._
@@ -184,11 +186,13 @@ class DashBoard @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
     }
 
     def tlogStatus: TlogState = {
-      val updatesWriteHead = crudServiceFS.updatesTlog.size
-      val updatesReadHead = crudServiceFS.impState.position
-      val indexesWriteHead = crudServiceFS.uuidsTlog.size
-      val indexesReadHead = crudServiceFS.indexerState.position
-      (updatesWriteHead, updatesReadHead, indexesWriteHead, indexesReadHead)
+      if(Settings.oldBGFlag) {
+        val updatesWriteHead = crudServiceFS.updatesTlog.size
+        val updatesReadHead = crudServiceFS.impState.position
+        val indexesWriteHead = crudServiceFS.uuidsTlog.size
+        val indexesReadHead = crudServiceFS.indexerState.position
+        (updatesWriteHead, updatesReadHead, indexesWriteHead, indexesReadHead)
+      } else (-1L,-1L,-1L,-1L)
     }
 
     def get: Tuple2[TlogState,TlogState] = previousState -> currentState
