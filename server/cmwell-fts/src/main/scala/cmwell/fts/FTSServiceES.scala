@@ -127,9 +127,9 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
 
   loger.info (s"nodesInfo: $nodesInfo")
 
-  val localNodeId = client.admin().cluster().prepareNodesInfo().execute().actionGet().getNodesMap.asScala.filter{case (id, node) =>
+  lazy val localNodeId = client.admin().cluster().prepareNodesInfo().execute().actionGet().getNodesMap.asScala.filter{case (id, node) =>
     node.getHostname.equals(localHostName) && node.getNode.isDataNode
-  }.map{_._1}.head
+  }.map(_._1).head
   
   val clients:Map[String, Client] = isTransportClient match {
     case true =>
