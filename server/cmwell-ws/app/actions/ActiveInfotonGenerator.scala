@@ -77,6 +77,12 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
     Some(Map[String,Set[FieldValue]](
       "pbp" -> Set(FString(backPressureToggler.get)),
       "nbg" -> Set(FBoolean(crudServiceFS.newBG)),
+      "new_bg_writes" -> Set(FBoolean(Settings.newBGFlag)),
+      "old_bg_writes" -> Set(FBoolean(Settings.oldBGFlag)),
+      "tlog_update_write_head" -> Set(FLong(uwh)),
+      "tlog_update_read_head" -> Set(FLong(urh)),
+      "tlog_index_write_head" -> Set(FLong(iwh)),
+      "tlog_index_read_head" -> Set(FLong(irh)),
       "search_contexts_limit" -> Set(FLong(Settings.maxSearchContexts)),
       "cm-well_release" -> Set(FString(BuildInfo.release)),
       "cm-well_version" -> Set(FString(BuildInfo.version)),
@@ -100,10 +106,6 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
       "os_version" ->  Set(FString(System.getProperty("os.version"))),
       "user_timezone" ->  Set(FString(System.getProperty("user.timezone"))),
       "machine_name" ->  Set(FString(Props.machineName)),
-      "tlog_update_write_head" -> Set(FLong(uwh)),
-      "tlog_update_read_head" -> Set(FLong(urh)),
-      "tlog_index_write_head" -> Set(FLong(iwh)),
-      "tlog_index_read_head" -> Set(FLong(irh)),
       "batch_color" -> Set(FString(BatchStatus.batchColor.toString)),
       "es_color" -> Set(FString(esColor)),
       "use_auth" -> Set(FBoolean(java.lang.Boolean.getBoolean("use.authorization")))
