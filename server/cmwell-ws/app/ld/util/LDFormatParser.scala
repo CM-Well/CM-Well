@@ -20,6 +20,7 @@ import java.io.InputStream
 
 import cmwell.domain._
 import cmwell.fts._
+import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
 import cmwell.util.string.Hash._
 import cmwell.util.string._
 import cmwell.web.ld.cmw.CMWellRDFHelper.{Create, Update}
@@ -598,7 +599,15 @@ object LDFormatParser extends LazyLogging {
               else Left(SysField(firstName))
             }
             else {
-              Right(HashedFieldKey(firstName,urlToLast(url)))
+              val nsIdentidier = urlToLast(url)
+              if(firstName.contains('.')) {
+                Await.result(crudServiceFS.irwService(nbg).readPathAsync(s"/meta/ns/$nsIdentidier/$firstName", crudServiceFS.level),Duration.Inf) match {
+                  case EmptyBox => throw new IllegalArgumentException(s"new fields [$firstName] must not contain the dot character!")
+                  case BoxedFailure(err) => throw new UnretrievableIdentifierException(s"was unable to verify field with dot [$firstName] already exist due to [${err.getMessage}]",err)
+                  case _ => Right(HashedFieldKey(firstName,nsIdentidier))
+                }
+              }
+              else Right(HashedFieldKey(firstName,nsIdentidier))
             }
           }
 

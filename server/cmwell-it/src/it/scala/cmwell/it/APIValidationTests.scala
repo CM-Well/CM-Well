@@ -174,6 +174,11 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
       f -> executeAfterCompletion(f)(scheduleFuture(indexingDuration)(Http.get(cmw / "example.org" / "some$illegal-path")))
     }
     val (f33,f34) = {
+      val triple = s"""<http://example.org/some-dot-path> <http://some.ont/with#dot.inName> "Hello, World!" ."""
+      val f = Http.post(_in, triple, textPlain, List("format" -> "ntriples"), tokenHeader)
+      f -> executeAfterCompletion(f)(scheduleFuture(indexingDuration)(Http.get(cmw / "example.org" / "some-dot-path")))
+    }
+    val (f35,f36) = {
       import cmwell.util.http.SimpleResponse.Implicits.InputStreamHandler
       val path = cmt / "YetAnotherObjectInfoton"
       val data = """{"foo":["bar1","bar2"],"consumer":"cmwell:a/fake/internal/path"}"""
@@ -303,15 +308,19 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
         it("should fail with 400 error code when inserting it")(f31.map(_.status should be(400)))
         it("should return 404 not found when trying to get it")(f32.map(_.status should be(404)))
       }
+      describe("should block documents with illegal (dot containing) predicate") {
+        it("should fail with 400 error code when inserting it")(f33.map(_.status should be(400)))
+        it("should return 404 not found when trying to get it")(f34.map(_.status should be(404)))
+      }
     }
 
     describe("uuid consistency") {
 
-      it("should be able to post a new Infoton")(f33.map { res =>
+      it("should be able to post a new Infoton")(f35.map { res =>
         withClue(res)(res.status should be(200))
       })
 
-      it("should be same uuid for json, yaml, and n3")(f34.map {
+      it("should be same uuid for json, yaml, and n3")(f36.map {
         case (jr,(yr,nr)) =>
           val uuidFromJson = Try(Json.parse(jr.payload) \ "system" \ "uuid").toOption.flatMap(_.asOpt[String])
           val uuidFromYaml = new Yaml().load(yr.payload) ⚡ "system" ⚡ "uuid"
