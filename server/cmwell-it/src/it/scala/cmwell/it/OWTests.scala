@@ -30,12 +30,33 @@ import org.scalatest.{AsyncFunSpec, Inspectors, Matchers}
 class OWTests extends AsyncFunSpec with Matchers with Inspectors with Helpers with fixture.NSHashesAndPrefixes with LazyLogging {
 
   //Assertions
+  val makeDotFieldsPossible = {
+    val _cmd = cmw / "_cmd"
+    val data = """
+                |<cmwell://meta/ns/mpDmyA> <cmwell://meta/nn#prefix> "ucdp" .
+                |<cmwell://meta/ns/mpDmyA> <cmwell://meta/nn#url> <http://feed.tms/ont/1.0/> .
+                |<cmwell://meta/ns/mpDmyA/MetaCodes.product> <cmwell://meta/nn#mang> "s" .
+                |<cmwell://meta/ns/mpDmyA/MetaCodes.rcscode> <cmwell://meta/nn#mang> "s" .
+                |""".stripMargin
+    Http.post(_cmd,
+              data,
+              Some("text/plain;charset=UTF-8"),
+              List("op" -> "init", "format" -> "ntriples"),
+              tokenHeader).map { res =>
+        Json.parse(res.payload) should be(jsonSuccess)
+      }
+  }
+
   val firstIngest = {
     val h1 = scala.io.Source.fromURL(this.getClass.getResource(s"/feed/history.feed.tms.1.nq")).mkString
-    Http.post(_ow, h1, Some("text/nquads;charset=UTF-8"), List("format" -> "nquads"), tokenHeader).map { res =>
-      withClue(res){
-        res.status should be(200)
-        Json.parse(res.payload) should be(jsonSuccess)
+    executeAfterCompletion(makeDotFieldsPossible) {
+      scheduleFuture(indexingDuration) {
+        Http.post(_ow, h1, Some("text/nquads;charset=UTF-8"), List("format" -> "nquads"), tokenHeader).map { res =>
+          withClue(res) {
+            res.status should be(200)
+            Json.parse(res.payload) should be(jsonSuccess)
+          }
+        }
       }
     }
   }
@@ -139,6 +160,7 @@ class OWTests extends AsyncFunSpec with Matchers with Inspectors with Helpers wi
 
   describe("_ow API should") {
     it("reject empty file infoton")(emptyFile)
+    it("ingest _cmd to allow old style fields with dot")(makeDotFieldsPossible)
     it("ingest first version correctly")(firstIngest)
     it("make sure all children were indexed in ES")(childrenIndexed)
     it("make sure parent was NOT created with all children")(makeSureParentDirsWereNotCreated)
