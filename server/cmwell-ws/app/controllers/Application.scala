@@ -271,7 +271,7 @@ callback=< [URL] >
 
       uuids.foreach {
         uuid =>
-          logger.info(s"Sending $uuid to $url.")
+          logger.debug(s"Sending $uuid to $url.")
       }
       val infotonsFut = crudServiceFS.getInfotonsByPathOrUuid(uuids = uuids.toVector)
       //TODO: probably not the best host to provide a formatter. is there a way to get the original host the subscription was asked from?
@@ -567,7 +567,7 @@ callback=< [URL] >
   private def createScrollIdDispatcherActorFromIteratorId(id: String, withHistory: Boolean, ttl: FiniteDuration): String = {
     val ar = Grid.createAnon(classOf[IteratorIdDispatcher], id, withHistory, ttl)
     val rv = Key.encode(ar.path.toSerializationFormatWithAddress(Grid.me))
-    logger.info(s"created actor with id = $rv")
+    logger.debug(s"created actor with id = $rv")
     rv
   }
 
