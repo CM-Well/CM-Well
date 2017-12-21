@@ -111,12 +111,9 @@ case class GridSubDiv(user: String,
             ips.par.take(esMasters).intersect(hosts),
             false)
     command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start.sh")}", hosts, false)
-    (2 to dataDirs.esDataDirs.size).foreach { index =>
-      command(
-        s"bash -c 'sleep $index ; cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript(s"./start$index.sh")}' > /dev/null 2> /dev/null &",
-        hosts,
-        false
-      )
+    (2 to (dataDirs.esDataDirs.size - 1)).foreach{
+      index =>
+        command(s"bash -c 'sleep $index ; cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript(s"./start$index.sh")}' > /dev/null 2> /dev/null &", hosts, false)
     }
   }
 
@@ -178,12 +175,9 @@ case class GridSubDiv(user: String,
     //    ElasticsearchLock().waitForModule(ips(0), 2)
     //    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ./start-master.sh", hosts.drop(2).take(esMasters - 2), false)
     command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start.sh")}", hosts, false)
-    (2 to dataDirs.esDataDirs.size).foreach { index =>
-      command(
-        s"bash -c 'sleep $index ; cd ${instDirs.globalLocation}/cm-well/app/es/cur ; ${startScript(s"./start$index.sh")}'&",
-        hosts,
-        false
-      )
+    (2 to (dataDirs.esDataDirs.size-1)).foreach{
+      index =>
+        command(s"bash -c 'sleep $index ; cd ${instDirs.globalLocation}/cm-well/app/es/cur ; ${startScript(s"./start$index.sh")}'&", hosts, false)
     }
   }
 
@@ -302,7 +296,7 @@ case class GridSubDiv(user: String,
           listenAddress = aliases(0),
           masterNodes = esMasters,
           sName = "start-master.sh",
-          index = dataDirs.esDataDirs.size + 1,
+          index = dataDirs.esDataDirs.size,
           rs = IpRackSelector(),
           g1 = true,
           hostIp = host,

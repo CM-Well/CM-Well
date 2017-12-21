@@ -554,7 +554,7 @@ abstract class Host(user: String,
       // scalastyle:off
       if (verbose) println("command: " + cmd.mkString(" "))
       // scalastyle:on
-      (s"echo -e -n $pass\\n" #| cmd).!!
+      (Seq("bash", "-c", s"echo -e -n $pass\\\\n") #| cmd).!!
     }
   }
 
@@ -745,7 +745,7 @@ abstract class Host(user: String,
       throw new Exception(s"The host $host is not part of this cluster")
     val (readVarsLine, varValues) = variables.fold(("", "")) {
       case ((readVarsStr, varValuesForEcho), (varName, value)) =>
-        (s"$readVarsStr read $varName;", s"$varValuesForEcho$value\\n")
+        (s"$readVarsStr read $varName;", s"$varValuesForEcho$value\\\\n")
     }
     val (commandLine, process) = if (sudo && isSu) {
 
@@ -753,14 +753,14 @@ abstract class Host(user: String,
       //old version that get stuck sometimes - val command = s"""ssh -o StrictHostKeyChecking=no ${sudoer.get.name}@$host bash -c $$'{ export PATH=$path; read PASS; ./sshpass -p $$PASS bash -c "${escapedCommand(com)}"; }'"""
       val cmd = s"""ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR ${sudoer.get.name}@$host export PATH=$path;$readVarsLine read PASS; sshpass -p $$PASS bash -c "${escapedCommand(com)}""""
       // scalastyle:on
-      (cmd, s"echo -e -n $varValues${sudoer.get.pass}\\n" #| cmd)
+      (cmd, Seq("bash", "-c", s"echo -e $varValues${sudoer.get.pass}") #| cmd)
     } else {
       if (variables.nonEmpty) {
         val cmd =
           s"""ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR $user@$host export PATH=$path;$readVarsLine bash -c "${escapedCommand(
             com
           )}""""
-        (cmd, s"echo -e -n $varValues" #| cmd)
+        (cmd, Seq("bash", "-c", s"echo -e ${varValues.dropRight(1)}") #| cmd)
       } else {
         val cmd =
           Seq("ssh", "-o", "StrictHostKeyChecking=no", "-o", "LogLevel=ERROR", s"$user@$host", s"PATH=$path $com")
