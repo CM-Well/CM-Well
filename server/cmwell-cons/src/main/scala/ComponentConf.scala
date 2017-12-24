@@ -315,28 +315,6 @@ case class ElasticsearchConf(clusterName: String,
       s"/log/es${getIndexTxt}/"
   }
   override def mkScript: ConfFile = {
-    /*def jvmArgs = {
-      import scala.math._
-      val mXmx = resourceManager.getMxmx
-      val mXms = resourceManager.getMxms
-      val mXmn = resourceManager.getMxmn
-      val mXss = resourceManager.getMxss
-      Seq("-XX:+UseCondCardMark",
-        "-Duser.timezone=GMT0",
-        mXmx,
-        mXms,
-        mXmn,
-        mXss,
-        "-Djava.awt.headless=true",
-        "-XX:+UseG1GC",
-        "-XX:+HeapDumpOnOutOfMemoryError",
-        s"-Dcom.sun.management.jmxremote.port=${jmxremotePort}",
-        "-Dcom.sun.management.jmxremote.ssl=false",
-        "-Dcom.sun.management.jmxremote.authenticate=false",
-        "-Delasticsearch",
-        s"-Des.path.home=$home/app/es/cur",
-        s"-Des.config=$home/conf/${dir}/es.yml")
-    }*/
     // Seq(s"-javaagent:$home/app/ctrl/cur", s"-Dctrl.listenAddress=$listenAddress", s"-Dctrl.seedNodes=${host}",
     // s"-Dctrl.clusterName=$clusterName", s"-Dctrl.roles=Metrics,ElasticsearchNode")
     val agentLibArgs = Seq.empty
@@ -484,7 +462,7 @@ case class ZookeeperConf(home: String, clusterName: String, servers: Seq[String]
   }
 
   override def mkScript: ConfFile = {
-    val exports = s"export PATH=$home/app/java/bin:$home/bin/utils:$PATH"
+    val exports = s"""export PATH=$home/app/java/bin:$home/bin/utils:$PATH\nexport ZOO_LOG_DIR=$home/log/zookeeper\nexport JVMFLAGS="-Xmx500m -Xms500m""""
     // scalastyle:off
     val cp = s"cur/lib/slf4j-log4j12-1.6.1.jar:cur/lib/slf4j-api-1.6.1.jar:cur/lib/netty-3.7.0.Final.jar:cur/lib/log4j-1.2.16.jar:cur/lib/jline-0.9.94.jar:cur/zookeeper-${cmwell.util.build.BuildInfo.zookeeperVersion}.jar:$home/conf/$dir"
     val scriptString =
@@ -492,7 +470,7 @@ case class ZookeeperConf(home: String, clusterName: String, servers: Seq[String]
          |$exports
           |$CHKSTRT
           |$BMSG
-          |starter java -Xmx300m -Xms300m -XX:+UseG1GC -cp $cp -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.local.only=false org.apache.zookeeper.server.quorum.QuorumPeerMain $home/conf/$dir/zoo.cfg > $home/log/$dir/stdout.log 2>  $home/log/$dir/stderr.log &
+          |starter $home/app/zookeeper/cur/bin/zkServer.sh start $home/conf/$dir/zoo.cfg > $home/log/$dir/stdout.log 2>  $home/log/$dir/stderr.log &
       """.stripMargin
     // scalastyle:on
     ConfFile("start.sh", scriptString, true)
@@ -514,7 +492,7 @@ case class ZookeeperConf(home: String, clusterName: String, servers: Seq[String]
     val loggerConf = ResourceBuilder.getResource("scripts/templates/log4j-zookeeper.properties", loggerMap)
 
     List(ConfFile("zoo.cfg", confContent, false),
-         ConfFile("log4j.properties", loggerConf, false),
+         ConfFile("log4j.properties", loggerConf, false, Some(s"$home/app/zookeeper/cur/conf")),
          ConfFile("myid", myId, false, Some(s"$home/data/$dir")))
   }
 }
