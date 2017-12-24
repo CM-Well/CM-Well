@@ -267,7 +267,7 @@ class ProxyOperations private(irw: IRWService, ftsService: FTSServiceOps) extend
                   case (_, is) => {
                     val maxiton = is.maxBy(_.indexTime.getOrElse(0L))
                     Future.traverse(is.filterNot(_ == maxiton)) { i =>
-                      log.info(s"purging  an infoton only because lastModified collision: ${ProxyOperations.jsonFormatter.render(i)}")
+                      log.debug(s"purging  an infoton only because lastModified collision: ${ProxyOperations.jsonFormatter.render(i)}")
                       // we are purging an infoton only because lastModified collision,
                       // but we should log the lost data (JsonFormatter which preserves the "last name" hash + quads data?)
                       val f1 = retry(ftsService.purgeByUuidsAndIndexes( onlyES(i.uuid).map(i.uuid -> _))).map[Infoton] { br =>

@@ -63,14 +63,20 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
   lazy val obgPassiveFieldTypesCache = new ObgPassiveFieldTypesCache(this,ec,sys)
   val level: ConsistencyLevel = ONE
   // create state object in read only
-  val impState = TLogState("imp", updatesTLogName, updatesTLogPartition, true)
-  val indexerState = TLogState("indexer", uuidsTLogName, updatesTLogPartition, true)
+  lazy val impState = TLogState("imp", updatesTLogName, updatesTLogPartition, true)
+  lazy val indexerState = TLogState("indexer", uuidsTLogName, updatesTLogPartition, true)
 
-  val updatesTlog = TLog(updatesTLogName, updatesTLogPartition)
-  updatesTlog.init()
+  lazy val updatesTlog = {
+    val tlog = TLog(updatesTLogName, updatesTLogPartition)
+    tlog.init()
+    tlog
+  }
 
-  val uuidsTlog = TLog(uuidsTLogName, uuidsTLogPartition, readOnly = true)
-  uuidsTlog.init()
+  lazy val uuidsTlog = {
+    val tlog = TLog(uuidsTLogName, uuidsTLogPartition, readOnly = true)
+    tlog.init()
+    tlog
+  }
 
   lazy val defaultParallelism = cmwell.util.os.Props.os.getAvailableProcessors
   lazy val zStore = ZStore(Dao(irwServiceDaoClusterName, irwServiceDaoKeySpace2, irwServiceDaoHostName))

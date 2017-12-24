@@ -45,7 +45,7 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
   def getRole(roleName: String, nbg: Boolean): Option[JsValue] = {
     data(nbg).roles.get(roleName).orElse {
       Await.result(directReadFallback(s"/meta/auth/roles/$roleName", nbg), 6.seconds).map { role =>
-          logger.info(s"AuthCache(nbg=$nbg) role $roleName was not in memory, but added to Map")
+          logger.debug(s"AuthCache(nbg=$nbg) role $roleName was not in memory, but added to Map")
           if(nbg)
             nData = nData.copy(roles = nData.roles + (roleName -> role))
           else
@@ -89,7 +89,7 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
   private def loadOnce(nbg: Boolean): Future[AuthData] = {
     // one level under /meta/auth is a parent (e.g. "users", "roles")
     def isParent(infoton: Infoton) = infoton.path.count(_ == '/') < 4
-    logger.info(s"AuthCache(nbg=$nbg) is now loading...")
+    logger.debug(s"AuthCache(nbg=$nbg) is now loading...")
     crudServiceFS.search(Some(PathFilter("/meta/auth", descendants = true)), withData = true, paginationParams = PaginationParams(0, 2048), nbg = nbg).map { searchResult =>
       val data = searchResult.infotons.filterNot(isParent).map(i => i.path -> extractPayload(i)).collect { case (p, Some(jsv)) => p -> jsv }.toMap
       val (usersData, rolesData) = cmwell.util.collections.partitionWith(data) { t =>
@@ -99,7 +99,7 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
         if (isUser) Left(key -> payload)
         else Right(key -> payload)
       }
-      logger.info(s"AuthCache(nbg=$nbg) Loaded with ${usersData.size} users and ${rolesData.size} roles.")
+      logger.debug(s"AuthCache(nbg=$nbg) Loaded with ${usersData.size} users and ${rolesData.size} roles.")
       AuthData(usersData.toMap, rolesData.toMap)
     }.recover { case t: Throwable =>
       logger.error(s"AuthCache(nbg=$nbg) failed to load", t)

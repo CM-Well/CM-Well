@@ -346,6 +346,9 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
       }
       FTSThinSearchResponse(response.getHits.getTotalHits, paginationParams.offset, response.getHits.getHits.size,
         esResponseToThinInfotons(response, sortParams eq NullSortParam), searchQueryStr = searchQueryStr)
+    }.andThen {
+      case Failure(err) =>
+        logger.error(s"thinSearch failed, time took: [$oldTimestamp - ${System.currentTimeMillis()}], request:\n${request.toString}")
     }
   }
 

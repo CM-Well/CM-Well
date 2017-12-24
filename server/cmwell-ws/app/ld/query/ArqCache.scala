@@ -68,7 +68,7 @@ class ArqCache(crudServiceFS: CRUDServiceFS, nbg: Boolean) extends LazyLogging {
         NsResult(extractFieldValue(i, "url"), hash, extractFieldValue(i, "prefix"))
       }
       case Some(Everything(i)) if extractFieldValue(i, "url") == knownUri.get => {
-        logger.info(s"[arq] $hash was a good guess")
+        logger.debug(s"[arq] $hash was a good guess")
         NsResult(knownUri.get, hash, extractFieldValue(i, "prefix"))
       }
       case _ if knownUri.isDefined => {
@@ -80,22 +80,22 @@ class ArqCache(crudServiceFS: CRUDServiceFS, nbg: Boolean) extends LazyLogging {
         val infotonsWithThatUrl = Await.result(searchFutureRes, 9.seconds).infotons
         (infotonsWithThatUrl.length: @switch) match {
           case 0 =>
-            logger.info(s"[arq] ns for $hash was not found")
+            logger.debug(s"[arq] ns for $hash was not found")
             throw new NamespaceException(s"Namespace ${knownUri.get} does not exist")
           case 1 =>
-            logger.info(s"[arq] Fetched proper namespace for $hash")
+            logger.debug(s"[arq] Fetched proper namespace for $hash")
             val infoton = infotonsWithThatUrl.head
             val path = infoton.path
             val actualHash = path.substring(path.lastIndexOf('/') + 1)
             val uri = knownUri.getOrElse(extractFieldValue(infoton, "url"))
             NsResult(uri, actualHash, extractFieldValue(infoton, "prefix"))
           case _ =>
-            logger.info(s"[arq] this should never happen: same URL [${knownUri.get}] cannot be more than once in meta/ns [${infotonsWithThatUrl.map(i => i.path + "[" + i.uuid + "]").mkString(",")}]")
+            logger.debug(s"[arq] this should never happen: same URL [${knownUri.get}] cannot be more than once in meta/ns [${infotonsWithThatUrl.map(i => i.path + "[" + i.uuid + "]").mkString(",")}]")
             !!!
         }
       }
       case _ =>
-        logger.info(s"[arq] this should never happen: given a hash [$hash], when the URI is unknown, and there's no infoton under meta/ns/ - it means corrupted data")
+        logger.debug(s"[arq] this should never happen: given a hash [$hash], when the URI is unknown, and there's no infoton under meta/ns/ - it means corrupted data")
         !!!
     }
   }
