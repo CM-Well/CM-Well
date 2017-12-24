@@ -123,8 +123,7 @@ class Merger(config:Config) extends LazyLogging {
         l.copy(indexTime = None, lastModified = lastModified, fields = delete_f( current_fields,fields ))
       case i: DeletedInfoton => i // if we got a delete on delete we need ignore the create of delete
       case j =>
-        logger.warn(s"kind [${j.kind}] uuid [${prev_infoton.uuid}] info [$j]")
-        ???
+        throw new NotImplementedError(s"kind [${j.kind}] uuid [${prev_infoton.uuid}] info [$j]")
     }
   }
 
@@ -163,7 +162,7 @@ class Merger(config:Config) extends LazyLogging {
           case DeletedInfoton(_, _, _, _,_) =>
             current_infoton
           case _ =>
-            ???
+            throw new NotImplementedError(s"was trying to write_merge o[ $current_infoton ] on top of[ $prev_infoton ]")
         }
       case FileInfoton(path, dc, _, lastModified, current_fields , c_fc,_) =>
         prev_infoton match {
@@ -176,7 +175,7 @@ class Merger(config:Config) extends LazyLogging {
           case _: LinkInfoton | _: DeletedInfoton =>
             current_infoton
           case _ =>
-            ???
+            throw new NotImplementedError(s"was trying to write_merge f[ $current_infoton ] on top of[ $prev_infoton ]")
 
         }
       case LinkInfoton(path, dc, _, lastModified, current_fields, c_to, c_linkType,_) =>
@@ -190,10 +189,10 @@ class Merger(config:Config) extends LazyLogging {
           case _ : DeletedInfoton | _: FileInfoton =>
             current_infoton
           case _ =>
-            ???
+            throw new NotImplementedError(s"was trying to write_merge l[ $current_infoton ] on top of[ $prev_infoton ]")
         }
       case _ =>
-        ???
+            throw new NotImplementedError(s"was trying to write_merge [ $current_infoton ] on top of[ $prev_infoton ]")
     }
   }
 
@@ -240,7 +239,7 @@ class Merger(config:Config) extends LazyLogging {
             case Some(infoton) => ensurePrevUUID(infoton,prevUUID)(_ => Some(DeletedInfoton(path, defaultDC, None, lastModified)))
             case None => ensurePrevNone(prevUUID)(None)
           }
-        case _ => ??? //UnimplementedException is better than unexhaustive match
+        case _ => throw new NotImplementedError(s"no impl for [ $cmd ]")
       }
     }
 
