@@ -1,5 +1,11 @@
 # Function: *Query with Data Statistics* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Query.ApplyGremlinToQueryResults.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Query.QueryForQuadsByTheirLabel.md)  
+
+----
+
 ## Description ##
 
 Elastic Search is the underlying search engine that CM-Well uses when performing a query (which involves a full-text search on infoton field values). Elastic Search supports several types of statistical metrics of field values within a given group of infotons. For example, using statistical features, you can discover how many distinct values there are for a certain field in a certain group of infotons. (The Elastic Search statistical feature is called "aggregations", and you may see some references to this term in the search syntax and results.) 
@@ -78,3 +84,8 @@ stats | type:stats[,name:MyName],field(:\|::)MyFieldName |
 [Using Elastic Search Statistics](DevGuide.UsingElasticSearchStatistics.md)
 
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Query.ApplyGremlinToQueryResults.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Query.QueryForQuadsByTheirLabel.md)  
+
+----

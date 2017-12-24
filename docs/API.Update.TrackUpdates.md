@@ -1,5 +1,11 @@
 # Function: *Track Updates* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Update.AddLinkInfoton.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Auth.GeneratePassword.md)  
+
+----
+
 ## Description ##
 
 By default, when you send an update request to CM-Well, it queues the request for processing and returns immediately, providing a response code that indicates the validity of the request. There are two ways to determine the processing status of the request:
@@ -21,7 +27,7 @@ Value | Description
 InProgress | The request is still being processed.
 Done | The request was completed successfully.
 Failed | The request failed.
-Evicted(*\<previous and current UUIDs\>*) | You requested a [conditional update](ADDLINK), which was denied due to a conflict.
+Evicted(*\<previous and current UUIDs\>*) | You requested a [conditional update](API.UsingConditionalUpdates.md), which was denied due to a conflict.
 
 ## Syntax ##
 
@@ -63,3 +69,9 @@ Evicted(*\<previous and current UUIDs\>*) | You requested a [conditional update]
 ## Related Topics ##
 [Using the blocking Flag](API.UsingTheBlockingFlag.md)
 
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Update.AddLinkInfoton.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Auth.GeneratePassword.md)  
+
+----

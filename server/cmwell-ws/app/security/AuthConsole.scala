@@ -33,7 +33,7 @@ object AuthConsole {
     """.stripMargin)
   }
 
-  val unusedCache = null.asInstanceOf[AuthCache]
+  val unusedCache = null.asInstanceOf[EagerAuthCache]
 
   def generateToken(username: String, nbg: Boolean): String = {
     Token.generate(unusedCache, nbg, username, None, Option(0), isAdmin = true)

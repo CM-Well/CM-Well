@@ -1,5 +1,12 @@
 # Hands-On Exercise: Work with Sub-Graphs #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.HandsOnExercisesTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercises.SubscribeForPulledData.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tutorial.HandsOnExercises.AddFileInfoton.md)  
+
+----
+
+
 ## Step Outline ##
 
 1. [Add Quad Values](#hdr1).
@@ -73,3 +80,9 @@
 ## API Reference ##
 [Add Infotons and Fields to Sub-Graph](API.Update.AddInfotonsAndFieldsToSubGraph.md)
 [Delete or Replace Values in Named Sub-Graph](API.Update.DeleteOrReplaceValuesInNamedSubGraph.md)
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.HandsOnExercisesTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercises.SubscribeForPulledData.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tutorial.HandsOnExercises.AddFileInfoton.md)  
+
+----

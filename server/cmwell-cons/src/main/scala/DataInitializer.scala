@@ -21,7 +21,7 @@ import akka.actor.{ActorSystem, Terminated}
 import akka.stream.ActorMaterializer
 import cmwell.util.build.BuildInfo
 import cmwell.util.http.{SimpleResponse, SimpleHttpClient => Http}
-import cmwell.util.concurrent.retryUntil
+import cmwell.util.concurrent.unsafeRetryUntil
 import com.typesafe.config.ConfigFactory
 
 import scala.concurrent.duration._
@@ -65,7 +65,7 @@ class DataInitializer(h: Host, jwt: String, rootDigest: String, rootDigest2: Str
     val interval = 250.millis
 
     val numRetries = (totalWaitPeriod / interval).toInt
-    await(retryUntil[SimpleResponse[String]](_.status == 200, numRetries, interval)(
+    await(unsafeRetryUntil[SimpleResponse[String]](_.status == 200, numRetries, interval)(
       Http.get(s"http://${h.ips.head}:9000/proc/node", Seq("format" -> "json"))(UTF8StringHandler,implicitly[ExecutionContext],sys,mat)
     ).map(_ => ()))
   }
@@ -209,7 +209,7 @@ class DataInitializer(h: Host, jwt: String, rootDigest: String, rootDigest2: Str
       case knownPostType => Seq("X-CM-Well-Type" -> knownPostType.toString)
     })
 
-    retryUntil(isOk, 9, 250.millis)(Http.post(url, payload, Some(contentType.toString), queryParameters, headers)(UTF8StringHandler,implicitly[ExecutionContext],sys,mat)).map {
+    unsafeRetryUntil(isOk, 9, 250.millis)(Http.post(url, payload, Some(contentType.toString), queryParameters, headers)(UTF8StringHandler,implicitly[ExecutionContext],sys,mat)).map {
       case resp if isOk(resp) => resp.body._2
       case badResp => {println(s" Failed to upload eli1 $url and payload ${payload.mkString} with response $badResp"); Thread.dumpStack(); ""}
     }.recover { case err => println(s" Failed to upload eli2 $url"); Thread.dumpStack(); "" + cmwell.util.exceptions.stackTraceToString(err) }

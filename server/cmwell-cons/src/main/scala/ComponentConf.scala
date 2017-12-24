@@ -684,6 +684,7 @@ case class WebConf(home : String, zookeeperServers : Seq[String], clusterName:St
       s"""export PATH=$home/app/java/bin:$home/bin/utils:$PATH
        |export HOST_NAME=${cmwell.util.os.Props.machineName}
        |${createExportEnvStr("PLAY_CRYPTO_SECRET").getOrElse("")}
+       |${createExportEnvStr("PLAY_CRYPTO_SECRET2").getOrElse("")}
        |$CHKSTRT
        |$BMSG
        |${genDebugStr(5010)}

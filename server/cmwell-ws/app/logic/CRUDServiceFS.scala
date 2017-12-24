@@ -63,14 +63,20 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
   lazy val obgPassiveFieldTypesCache = new ObgPassiveFieldTypesCache(this,ec,sys)
   val level: ConsistencyLevel = ONE
   // create state object in read only
-  val impState = TLogState("imp", updatesTLogName, updatesTLogPartition, true)
-  val indexerState = TLogState("indexer", uuidsTLogName, updatesTLogPartition, true)
+  lazy val impState = TLogState("imp", updatesTLogName, updatesTLogPartition, true)
+  lazy val indexerState = TLogState("indexer", uuidsTLogName, updatesTLogPartition, true)
 
-  val updatesTlog = TLog(updatesTLogName, updatesTLogPartition)
-  updatesTlog.init()
+  lazy val updatesTlog = {
+    val tlog = TLog(updatesTLogName, updatesTLogPartition)
+    tlog.init()
+    tlog
+  }
 
-  val uuidsTlog = TLog(uuidsTLogName, uuidsTLogPartition, readOnly = true)
-  uuidsTlog.init()
+  lazy val uuidsTlog = {
+    val tlog = TLog(uuidsTLogName, uuidsTLogPartition, readOnly = true)
+    tlog.init()
+    tlog
+  }
 
   lazy val defaultParallelism = cmwell.util.os.Props.os.getAvailableProcessors
   lazy val zStore = ZStore(Dao(irwServiceDaoClusterName, irwServiceDaoKeySpace2, irwServiceDaoHostName))
@@ -646,16 +652,17 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
     }
   }
 
-  def getLastIndexTimeFor(dc: String = Settings.dataCenter, nbg: Boolean, fieldFilters: Option[FieldFilter]): Future[Option[VirtualInfoton]] = {
+  def getLastIndexTimeFor(dc: String = Settings.dataCenter, withHistory: Boolean, nbg: Boolean, fieldFilters: Option[FieldFilter]): Future[Option[VirtualInfoton]] = {
 
     def mkVirtualInfoton(indexTime: Long): VirtualInfoton = {
       val fields = Map("lastIdxT" -> Set[FieldValue](FLong(indexTime)),
         "dc" -> Set[FieldValue](FString(dc)))
       val fieldsWithFilter = fieldFilters.fold(fields)(ff => fields + ("qp" -> Set[FieldValue](FString(Encoder.encodeFieldFilter(ff)))))
-      VirtualInfoton(ObjectInfoton(s"/proc/dc/$dc", Settings.dataCenter, None, fieldsWithFilter))
+      val fieldsWithFilterAndWh = fieldsWithFilter + ("with-history" -> Set[FieldValue](FBoolean(withHistory)))
+      VirtualInfoton(ObjectInfoton(s"/proc/dc/$dc", Settings.dataCenter, None, fieldsWithFilterAndWh))
     }
 
-    ftsService(nbg).getLastIndexTimeFor(dc, fieldFilters = fieldFilters).map(lOpt => Some(mkVirtualInfoton(lOpt.getOrElse(0L))))
+    ftsService(nbg).getLastIndexTimeFor(dc, withHistory = withHistory, fieldFilters = fieldFilters).map(lOpt => Some(mkVirtualInfoton(lOpt.getOrElse(0L))))
   }
 
   def getESFieldsVInfoton(nbg: Boolean = newBG): Future[VirtualInfoton] = {
@@ -693,26 +700,28 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
                        scrollTTL: Long,
                        withHistory: Boolean = false,
                        withDeleted: Boolean = false,
-                       nbg: Boolean = false): Seq[Future[IterationResults]] = {
+                       nbg: Boolean = false): Seq[() => Future[IterationResults]] = {
     //withDeleted is only available in new FTS, and using it forces nbg
-    ftsService(nbg || withDeleted).startSuperScroll(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTTL, withHistory, withDeleted).map(_.map { ftsResults =>
-      IterationResults(ftsResults.scrollId, ftsResults.total)
-    })
+    ftsService(nbg || withDeleted).startSuperScroll(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTTL, withHistory, withDeleted).map { fun =>
+      () => fun().map { ftsResults =>
+        IterationResults(ftsResults.scrollId, ftsResults.total)
+      }
+    }
   }
 
-  def startSuperMultiScroll(pathFilter: Option[PathFilter] = None,
-                            fieldFilters: Option[FieldFilter] = None,
-                            datesFilter: Option[DatesFilter] = None,
-                            paginationParams: PaginationParams = DefaultPaginationParams,
-                            scrollTTL: Long,
-                            withHistory: Boolean = false,
-                            withDeleted: Boolean = false,
-                            nbg: Boolean = false): Seq[Future[IterationResults]] = {
-    //withDeleted is only available in new FTS, and using it forces nbg
-    ftsService(nbg || withDeleted).startSuperMultiScroll(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTTL, withHistory, withDeleted).map(_.map { ftsResults =>
-      IterationResults(ftsResults.scrollId, ftsResults.total)
-    })
-  }
+//  def startSuperMultiScroll(pathFilter: Option[PathFilter] = None,
+//                            fieldFilters: Option[FieldFilter] = None,
+//                            datesFilter: Option[DatesFilter] = None,
+//                            paginationParams: PaginationParams = DefaultPaginationParams,
+//                            scrollTTL: Long,
+//                            withHistory: Boolean = false,
+//                            withDeleted: Boolean = false,
+//                            nbg: Boolean = false): Seq[Future[IterationResults]] = {
+//    //withDeleted is only available in new FTS, and using it forces nbg
+//    ftsService(nbg || withDeleted).startSuperMultiScroll(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTTL, withHistory, withDeleted).map(_.map { ftsResults =>
+//      IterationResults(ftsResults.scrollId, ftsResults.total)
+//    })
+//  }
 
   def startMultiScroll(pathFilter: Option[PathFilter] = None,
                        fieldFilters: Option[FieldFilter] = None,

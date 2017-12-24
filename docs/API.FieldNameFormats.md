@@ -1,5 +1,11 @@
 # Field Name Formats #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.FieldConditionSyntax.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.FromAndToDatetimeFormatting.md)  
+
+----
+
 As we have learned, an RDF repository is a graph structure. RDF field names are also defined in a hierarchical graph structure, called an "ontology". This could be an internal Thomson Reuters ontology or a 3rd-party ontology.
 
 Thus, the "CommonName" field belonging to organizations is actually identified by its full path within the Thomson Reuters ontology:
@@ -59,3 +65,9 @@ The query returns the following namespace infoton:
     <cm-well-host>/meta/ns/bE5hMw
 
 In your code, you can look up all the required hash values during initialization, and use them for querying at run-time.
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.FieldConditionSyntax.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.FromAndToDatetimeFormatting.md)  
+
+----

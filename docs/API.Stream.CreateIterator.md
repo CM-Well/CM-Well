@@ -1,5 +1,11 @@
 # Function: *Create Iterator* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Stream.StreamInfotons.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Stream.GetNextChunk.md)  
+
+----
+
 ## Description ##
 If you wish to retrieve a large number of infotons, but you want to iterate over small "chunks" of data in a controlled fashion, you can use the **create-iterator** and **next-chunk** APIs. This allows you to request the number of infotons you want to process, and receive only that number during each iteration.
 
@@ -52,3 +58,9 @@ session-ttl | The time, in seconds, until the iteration session expires. The ite
 [Consume Next Chunk](API.Stream.ConsumeNextChunk.md)
 
 
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Stream.StreamInfotons.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Stream.GetNextChunk.md)  
+
+----

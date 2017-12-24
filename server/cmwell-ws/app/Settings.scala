@@ -92,6 +92,7 @@ object Settings {
     Duration.fromNanos(d.toNanos)
   }
 
+  lazy val sstreamParallelism: Int = config.getInt("cmwell.ws.sstream-parallelism")
 
   lazy val pushbackpressure: String = Try(config.getString("cmwell.ws.pushbackpressure.trigger")).getOrElse("old")
   lazy val nbgToggler: Boolean = Try(config.getBoolean("cmwell.ws.nbg")).getOrElse(false)

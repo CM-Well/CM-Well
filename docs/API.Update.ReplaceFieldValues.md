@@ -1,5 +1,11 @@
 # Function: *Replace Field Values* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Update.AddInfotonsAndFields.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Update.DeleteASingleInfoton.md)  
+
+----
+
 ## Description ##
 You can replace existing field values with new values, using a POST command to the _in endpoint.
 
@@ -151,3 +157,9 @@ format | The format in which the triples are provided | n3, rdfxml, ntriples, nq
 [Delete Fields](API.Update.DeleteFields.md)
 [Replace a Named Sub-Graph](API.Update.DeleteOrReplaceValuesInNamedSubGraph.md)
 
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Update.AddInfotonsAndFields.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Update.DeleteASingleInfoton.md)  
+
+----

@@ -1,5 +1,11 @@
 # Updating CM-Well #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.AdvancedQueries.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.StreamingDataFromCM-Well.md)  
+
+----
+
 CM-Well supports APIs for writing to it as well as reading from it. However, in order to protect production data, only internal CM-Well subsystems and authorized users can update the production instance of CM-Well.
 
 If you want to experiment with writing to CM-Well, you can use the lab or pre-production environments, or install the CM-Well Docker.
@@ -142,8 +148,10 @@ Standard infotons are collections of triples, usually representing an entity and
 
 * **File infotons** - any file may be uploaded to CM-Well. This can be useful for storing documentation files, configuration files, images and so on. See the [Add File API](API.Update.AddFileInfoton.md) for more details. 
 * **Link infotons** - a link infoton is a reference to another infoton. Performing a GET action on a link infoton retrieves the target ("pointed-to") infoton. You can define a link infoton as permanent, temporary or forward. See [Add Link Infoton API](API.Update.AddLinkInfoton.md) for more details. 
-    
+          
 
+----
 
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.AdvancedQueries.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.StreamingDataFromCM-Well.md)  
 
-        
+----

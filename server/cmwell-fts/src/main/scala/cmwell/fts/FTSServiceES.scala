@@ -127,9 +127,9 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
 
   loger.info (s"nodesInfo: $nodesInfo")
 
-  val localNodeId = client.admin().cluster().prepareNodesInfo().execute().actionGet().getNodesMap.asScala.filter{case (id, node) =>
+  lazy val localNodeId = client.admin().cluster().prepareNodesInfo().execute().actionGet().getNodesMap.asScala.filter{case (id, node) =>
     node.getHostname.equals(localHostName) && node.getNode.isDataNode
-  }.map{_._1}.head
+  }.map(_._1).head
   
   val clients:Map[String, Client] = isTransportClient match {
     case true =>
@@ -1027,20 +1027,25 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
 
     val searchQueryStr = if(debugInfo) Some(request.toString) else None
 
-    resFuture.map{ response =>
+    resFuture.map { response =>
 
       if(debugInfo) logger.debug(s"thinSearch debugInfo response: ($oldTimestamp - ${System.currentTimeMillis()}): ${response.toString}")
 
       FTSThinSearchResponse(response.getHits.getTotalHits, paginationParams.offset, response.getHits.getHits.size,
         esResponseToThinInfotons(response, sortParams eq NullSortParam), searchQueryStr = searchQueryStr)
+    }.andThen {
+      case Failure(err) =>
+        logger.error(s"thinSearch failed, time took: [$oldTimestamp - ${System.currentTimeMillis()}], request:\n${request.toString}")
     }
   }
 
-  def getLastIndexTimeFor(dc: String, partition: String = defaultPartition, fieldFilters: Option[FieldFilter])
+  override def getLastIndexTimeFor(dc: String, withHistory: Boolean, partition: String = defaultPartition, fieldFilters: Option[FieldFilter])
                          (implicit executionContext: ExecutionContext) : Future[Option[Long]] = {
-
+    val partitionsToSearch =
+      if (withHistory) List(partition + "_current", partition + "_history")
+      else List(partition + "_current")
     val request = client
-      .prepareSearch(partition + "_current", partition + "_history")
+      .prepareSearch(partitionsToSearch:_*)
       .setTypes("infoclone")
       .addFields("system.indexTime")
       .setSize(1)
@@ -1054,7 +1059,8 @@ class FTSServiceES private(classPathConfigFile: String, waitForGreen: Boolean)
       request,
       None,
       Some(MultiFieldFilter(Must, fieldFilters.fold(filtersSeq)(filtersSeq.::))),
-      None
+      None,
+      withHistory = withHistory
     )
 
     injectFuture[SearchResponse](request.execute).map{ sr =>
@@ -1105,7 +1111,7 @@ def startSuperScroll(pathFilter: Option[PathFilter] = None, fieldsFilter: Option
                      datesFilter: Option[DatesFilter] = None,
                      paginationParams: PaginationParams = DefaultPaginationParams, scrollTTL:Long = scrollTTL,
                      withHistory: Boolean, withDeleted: Boolean)
-                    (implicit executionContext: ExecutionContext) : Seq[Future[FTSStartScrollResponse]] = {
+                    (implicit executionContext: ExecutionContext) : Seq[() => Future[FTSStartScrollResponse]] = {
 
     val aliases = if(withHistory) List("cmwell_current", "cmwell_history") else List("cmwell_current")
     val ssr = client.admin().cluster().prepareSearchShards(aliases :_*).setTypes("infoclone").execute().actionGet()
@@ -1117,7 +1123,7 @@ def startSuperScroll(pathFilter: Option[PathFilter] = None, fieldsFilter: Option
     }
 
     targetedShards.map{ case (index, node, shard) =>
-      startShardScroll(pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted, paginationParams.offset,
+      () => startShardScroll(pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted, paginationParams.offset,
         paginationParams.length, scrollTTL, index, node, shard)
     }
   }
@@ -1400,21 +1406,20 @@ def startSuperScroll(pathFilter: Option[PathFilter] = None, fieldsFilter: Option
   private def injectFuture[A](f: ActionListener[A] => Unit, timeout : Duration = FiniteDuration(10, SECONDS))
                              (implicit executionContext: ExecutionContext)= {
     val p = Promise[A]()
+    val timeoutTask = TimeoutScheduler.tryScheduleTimeout(p,timeout)
     f(new ActionListener[A] {
       def onFailure(t: Throwable): Unit = {
+        timeoutTask.cancel()
         loger error ("Exception from ElasticSearch. %s\n%s".format(t.getLocalizedMessage, t.getStackTrace().mkString("", EOL, EOL)))
-
-        if(!p.isCompleted) {
-          p.failure(t)
-        }
-
+        p.tryFailure(t)
       }
       def onResponse(res: A): Unit =  {
+        timeoutTask.cancel()
         loger debug ("Response from ElasticSearch:\n%s".format(res.toString))
-        p.success(res)
+        p.trySuccess(res)
       }
     })
-    TimeoutFuture.withTimeout(p.future, timeout)
+    p.future
   }
 
   def countSearchOpenContexts(): Array[(String,Long)] = {
@@ -1426,12 +1431,19 @@ def startSuperScroll(pathFilter: Option[PathFilter] = None, fieldsFilter: Option
   }
 }
 
-object TimeoutScheduler{
+object TimeoutScheduler {
   val timer = new HashedWheelTimer(10, TimeUnit.MILLISECONDS)
   def scheduleTimeout(promise: Promise[_], after: Duration) = {
     timer.newTimeout(new TimerTask {
       override def run(timeout:Timeout) = {
         promise.failure(new TimeoutException("Operation timed out after " + after.toMillis + " millis"))
+      }
+    }, after.toNanos, TimeUnit.NANOSECONDS)
+  }
+  def tryScheduleTimeout[T](promise: Promise[T], after: Duration) = {
+    timer.newTimeout(new TimerTask {
+      override def run(timeout:Timeout) = {
+        promise.tryFailure(new TimeoutException("Operation timed out after " + after.toMillis + " millis"))
       }
     }, after.toNanos, TimeUnit.NANOSECONDS)
   }

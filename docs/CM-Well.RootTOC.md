@@ -115,6 +115,10 @@
     <td><a href="Tools.UsingTheCM-WellSparkConnector.md">Spark Connector</a></td>
   </tr>
 <tr>
+    <th align=left>Admin</th>
+    <td><a href="Admin.TestAndFixCorruptedData.md">Testing and Fixing Corrupted Data</a></td>
+  </tr>
+<tr>
     <th rowspan="2" align=left>Testing</a></th>
   </tr>
 <tr>
