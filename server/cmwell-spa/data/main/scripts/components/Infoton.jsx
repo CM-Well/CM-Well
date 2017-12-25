@@ -81,6 +81,12 @@ class Infoton extends React.Component {
     }
     
     updateStateWithInfoton(infoton, displayNames) {
+        if(location.pathname.indexOf('/ii/')===0) { 
+          infoton.path && this.props.updateBreadcrumbsParts(infoton.path.substr(1).split`/`)
+        } else {
+            this.props.updateBreadcrumbsParts(null)
+        }
+        
         let wasSelected = field => !!+localStorage.getItem(`FavStar$${field}`)
         let fields = _(infoton ? infoton.fields || {} : {}).chain().map((v,k) => [k,{values:v,metadata:{selected:wasSelected(k)}}]).object().value()
         let displayName = new DInfoton(infoton, this.props.displayNames||displayNames).displayName
