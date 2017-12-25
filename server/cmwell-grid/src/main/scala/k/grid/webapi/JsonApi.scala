@@ -16,8 +16,10 @@
 
 package k.grid.webapi
 
-import k.grid.webapi.jsobj.{MachineMemoryInfo, GridMemoryInfo}
-import k.grid.{GridJvm, Grid}
+import k.grid.webapi.jsobj.{GridMemoryInfo, MachineMemoryInfo}
+import k.grid.{Grid, GridJvm}
+import play.api.libs.json.Json
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -71,7 +73,7 @@ object JsonApi {
             MachineMemoryInfo(tup._1.host , tup._1.identity.map(_.name).getOrElse("") , tup._2.memInfo.map(mi => mi.name -> mi.usedPercent.toLong).toMap)
         }.toSet
 
-        GridMemoryInfo(clusterName, sampleTime, machinesUsages).toJson.prettyPrint
+        Json.prettyPrint(GridMemoryInfo(clusterName, sampleTime, machinesUsages).toJson)
     }
   }
 }

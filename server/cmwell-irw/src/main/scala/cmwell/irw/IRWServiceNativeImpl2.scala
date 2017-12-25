@@ -42,9 +42,6 @@ import scala.concurrent._
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
-//TODO: remove global ExecutionContext import. all accessor methods should receive an ExecutionContext implicitly
-//already done so for `readAsync` & `readOneAsync`, we should do it for all the other methods as well.
-import scala.concurrent.ExecutionContext.Implicits.global
 
 class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableReadCache : Boolean = false,
                             readCacheDuration: FiniteDuration = 120.seconds)
@@ -201,12 +198,13 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
 
   @deprecated("No need in IRW2, use `setPathLast` instead", "1.5.x")
   def setPathHistory(infoton: Infoton, level: ConsistencyLevel = QUORUM): Future[Infoton] =
-    setPathLast(infoton, level).map(_ => infoton)
+    setPathLast(infoton, level).map(_ => infoton)(scala.concurrent.ExecutionContext.Implicits.global)
 
   def setPathLast(infoton: Infoton, level: ConsistencyLevel = QUORUM): Future[Unit] =
     setPathLast(infoton.path, infoton.lastModified.toDate, infoton.uuid, level)
 
   def setPathLast(path: String, lastModified: java.util.Date, uuid: String, level: ConsistencyLevel): Future[Unit] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     val stmt = setPathLast.bind(path, lastModified, uuid).setConsistencyLevel(level)
     executeAsync(stmt).map { rs =>
       logger.trace(s"resultSet from setPathLast: $rs")
@@ -259,6 +257,7 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
   }
 
   def addIndexTimeToUuid(uuid: String, indexTime: Long, level: ConsistencyLevel = QUORUM): Future[Unit] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     if (!disableReadCache) {
       Option(dataCahce.getIfPresent(uuid)).foreach { i =>
         dataCahce.put(uuid, addIndexTime(i, Some(indexTime)))
@@ -281,16 +280,19 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
   }
 
   private def deleteIndexTimeFromUuid(uuid: String, level: ConsistencyLevel = QUORUM): Future[Unit] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     val stmt = delIndexTime.bind(uuid).setConsistencyLevel(level)
     executeAsync(stmt).map(rs => if (!rs.wasApplied()) ???)
   }
 
   private def writeIndexTimeToUuid(uuid: String, indexTime: Long, level: ConsistencyLevel = QUORUM): Future[Unit] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     val stmt = setIndexTime.bind(uuid, indexTime.toString).setConsistencyLevel(level)
     executeAsync(stmt).map(rs => if (!rs.wasApplied()) ???)
   }
 
   def readIndexTimeRowsForUuid(uuid: String, level: ConsistencyLevel = QUORUM): Future[Seq[Long]] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     import scala.collection.JavaConverters._
     val stmt = getIndexTime.bind(uuid).setConsistencyLevel(level)
     executeAsync(stmt).map { rs =>
@@ -302,6 +304,7 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
   }
 
   def addDcToUuid(uuid: String, dc: String, level: ConsistencyLevel = QUORUM): Future[Unit] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     if (!disableReadCache) {
       Option(dataCahce.getIfPresent(uuid)).foreach { i =>
         dataCahce.put(uuid, addDc(i, dc))
@@ -414,6 +417,7 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
   }
 
   def historyAsync(path: String, limit: Int): Future[Vector[(Long, String)]] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     val stmt = getHistory.bind(path.replaceAll("'", "''"), Int.box(limit)).setConsistencyLevel(ConsistencyLevel.QUORUM)
     executeAsync(stmt).map { res =>
       val it = res.iterator()
@@ -432,6 +436,7 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
   }
 
   def exists(paths: Set[String], level: ConsistencyLevel = ONE): Map[String, Option[String]] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     if (paths.isEmpty)
       Map.empty
     else {
@@ -452,6 +457,7 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
   }
 
   def purgeHistorical(path: String, uuid: String, lastModified: Long, isOnlyVersion: Boolean, level: ConsistencyLevel): Future[Unit] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     val pHistoryEntry = {
       val stmt = purgeHistoryEntry.bind(path, new java.util.Date(lastModified)).setConsistencyLevel(level)
       executeAsync(stmt).map(rs => if (!rs.wasApplied()) ???)
@@ -474,6 +480,7 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
   }
 
   def purgeUuid(path: String, uuid: String, lastModified: Long, isOnlyVersion: Boolean, level: ConsistencyLevel = QUORUM): Future[Unit] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     def pAllHistory = {
       val stmt = purgeAllHistory.bind(path).setConsistencyLevel(level)
       executeAsync(stmt).map(rs => if (!rs.wasApplied()) ???)
@@ -488,6 +495,7 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
   }
 
   def purgeFromInfotonsOnly(uuid: String, level: ConsistencyLevel = QUORUM) = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     val stmt = purgeInfotonByUuid.bind(uuid).setConsistencyLevel(level)
     executeAsync(stmt).map { rs =>
       dataCahce.invalidate(uuid)
@@ -496,16 +504,19 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
   }
 
   def purgeFromPathOnly(path: String, lastModified: Long, level: ConsistencyLevel = QUORUM): Future[Unit] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     val stmt = purgeHistoryEntry.bind(new java.util.Date(lastModified), path).setConsistencyLevel(level)
     executeAsync(stmt).map(rs => if (!rs.wasApplied()) ???)
   }
 
   def purgePathOnly(path: String, level: ConsistencyLevel = QUORUM): Future[Unit] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     val stmt = purgeAllHistory.bind(path).setConsistencyLevel(level)
     executeAsync(stmt).map(rs => if (!rs.wasApplied()) ???)
   }
 
   override def purgeAll(): Future[Unit] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     Future.sequence(Seq("path", "infoton", "zstore").map{ table => executeAsync(new SimpleStatement(s"TRUNCATE TABLE data2.$table"))}).map{ _ => Unit}
   }
 

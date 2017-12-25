@@ -17,9 +17,9 @@ sourceGenerators in Compile += Def.task {
      |object Versions {
      |  val cassandra = "2.1.18"
      |  val elasticsearch = "1.7.6"
-     |  val kafka = "0.10.1.0"
+     |  val kafka = "0.10.2.1"
      |  val play = "${PluginVersions.play}"
-     |  val zookeeper = "3.4.6"
+     |  val zookeeper = "3.4.11"
      |}
      """.stripMargin)
   Seq(file

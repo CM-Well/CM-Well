@@ -121,9 +121,9 @@ object DownloaderUtils {
       isBulk = isBulk,
       recursive = recursive)
 
-    downloader.createTsvSource(token).async
+    downloader.createTsvSource(token)(ec).async
       .map {case (token, tsv) => token -> tsv.uuid }
-      .via(downloader.downloadDataFromUuids)
+      .via(downloader.downloadDataFromUuids()(ec))
       .map{ case (token, data) => data }
       .via(cmwell.tools.data.utils.akka.lineSeparatorFrame)
       .via(GroupChunker(GroupChunker.formatToGroupExtractor(format)))

@@ -63,7 +63,6 @@ import cmwell.ws.util.TypeHelpers
 import filters.Attrs
 import play.api.http.FileMimeTypes
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.util.parsing.combinator.RegexParsers
@@ -141,6 +140,7 @@ class SpHandlerController @Inject()(crudServiceFS: CRUDServiceFS)
 }
 
 object SpHandler extends LazyLogging {
+  import scala.concurrent.ExecutionContext.Implicits.global
 
   lazy val nActorSel = Grid.selectActor("NQueryEvaluatorActor", GridJvm(Jvms.CW))
   lazy val oActorSel = Grid.selectActor("OQueryEvaluatorActor", GridJvm(Jvms.CW))
@@ -148,6 +148,7 @@ object SpHandler extends LazyLogging {
   lazy val queryTimeout = 90.seconds
 
   def task[T](nbg: Boolean)(paq: T) = {
+
     val actorSel = {
       if (nbg) nActorSel
       else oActorSel
@@ -256,6 +257,8 @@ object PopulateAndQuery extends LazyLogging {
   implicit val materializer = ActorMaterializer()
 
   def httpRequest2(path: String): Future[Either[String,InputStream]] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
+
     def nonError(httpCode: Int) = httpCode < 300
     val textPlainUtf8 = Seq("Content-Type"->"text/plain;charset=UTF-8")
 
@@ -288,6 +291,7 @@ object PopulateAndQuery extends LazyLogging {
       val reason = if(path.toLowerCase.contains("with-data")) "this might be a data issue" else "try adding `with-data`"
       s"Fetching $path had no results, $reason"
     }
+    import scala.concurrent.ExecutionContext.Implicits.global
 
     cmwell.util.concurrent.retry(3, 500.millis) {
       def isCorrupted(ds: Dataset): Boolean = {
@@ -713,6 +717,7 @@ trait Importer[A] { this: LazyLogging =>
   def invalidateCaches(): Unit
 
   def readFileInfoton(path: String, nbg: Boolean): Future[FileInfotonContent] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     crudServiceFS.getInfoton(path, None, None, nbg).map(res => (res: @unchecked) match {
       case Some(Everything(FileInfoton(_, _, _, _, fields, Some(content),_))) => FileInfotonContent(content.data.get, fields.getOrElse(Map()))
       case x => logger.debug(s"Could not fetch $path, got $x"); throw new RuntimeException(s"Could not fetch $path")
@@ -726,6 +731,7 @@ trait Importer[A] { this: LazyLogging =>
 //object Importers { def all = Seq[Importer[_]](QueriesImporter, JarsImporter, SourcesImporter) }
 
 class QueriesImporter(override val crudServiceFS: CRUDServiceFS, nbg: Boolean) extends Importer[String] with LazyLogging {
+
   import cmwell.util.collections.LoadingCacheExtensions
   import cmwell.util.concurrent.travector
 
@@ -735,16 +741,24 @@ class QueriesImporter(override val crudServiceFS: CRUDServiceFS, nbg: Boolean) e
 
   private lazy val dataCache: LoadingCache[String, String] =
     CacheBuilder.newBuilder().maximumSize(200).expireAfterWrite(15, TimeUnit.MINUTES).
-      build(new CacheLoader[String, String] { override def load(key: String) = Await.result(readTextualFileInfoton(key), 5.seconds) })
+      build(new CacheLoader[String, String] {
+        override def load(key: String) = Await.result(readTextualFileInfoton(key), 5.seconds)
+      })
 
   private lazy val directoriesCache: LoadingCache[String, Seq[String]] =
     CacheBuilder.newBuilder().maximumSize(20).expireAfterWrite(15, TimeUnit.MINUTES).
-      build(new CacheLoader[String, Seq[String]] { override def load(key: String) = Await.result(listChildren(key), 5.seconds) })
+      build(new CacheLoader[String, Seq[String]] {
+        override def load(key: String) = Await.result(listChildren(key), 5.seconds)
+      })
 
-  def fetch(importsPaths: Seq[String]) = explodeWildcardImports(importsPaths).flatMap(actualImports => fetchRec(actualImports.toSet))
+  def fetch(importsPaths: Seq[String]) = {
+    import scala.concurrent.ExecutionContext.Implicits.global
+    explodeWildcardImports(importsPaths).flatMap(actualImports => fetchRec(actualImports.toSet))
+  }
 
   def fetchRec(importsPaths: Set[String], alreadyFetched: Set[String] = Set.empty[String]): Future[Vector[String]] = {
-    if(importsPaths.isEmpty) Future.successful(Vector.empty[String])
+    import scala.concurrent.ExecutionContext.Implicits.global
+    if (importsPaths.isEmpty) Future.successful(Vector.empty[String])
     else {
       doFetch(importsPaths).flatMap { queries =>
         val nextAlreadyFetched = alreadyFetched ++ importsPaths
@@ -754,11 +768,14 @@ class QueriesImporter(override val crudServiceFS: CRUDServiceFS, nbg: Boolean) e
     }
   }
 
-  private def doFetch(paths: Set[String]) = travector(paths)(dataCache.getAsync)
+  private def doFetch(paths: Set[String]) = {
+    import scala.concurrent.ExecutionContext.Implicits.global
+    travector(paths)(dataCache.getAsync)
+  }
 
   private def extractInlineImportsFrom(query: String): Set[String] = {
     query.lines.filter(_.startsWith(importDirective)).
-      flatMap(_.replace(importDirective+" ","").split(",")).
+      flatMap(_.replace(importDirective + " ", "").split(",")).
       toSet
   }
 
@@ -768,23 +785,29 @@ class QueriesImporter(override val crudServiceFS: CRUDServiceFS, nbg: Boolean) e
   }
 
   private def explodeWildcardImports(importsPaths: Seq[String]) = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     val (wildcardImports, plainImports) = importsPaths.map(toAbsolute).partition(imprt => wildcards.exists(imprt.endsWith))
     val normalizedWildcardImports = wildcardImports.map(_.dropRight(2)) // get rid of `/<wildcard>`
     Future.traverse(normalizedWildcardImports)(directoriesCache.getAsync).map(_.flatten ++ plainImports).map(_.distinct)
   }
 
-  private def toAbsolute(path: String) = if(path.startsWith("/")) path else s"$defaultBasePath/$path"
+  private def toAbsolute(path: String) = if (path.startsWith("/")) path else s"$defaultBasePath/$path"
 
-  private def listChildren(path: String) =
+  private def listChildren(path: String) = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     crudServiceFS.thinSearch(Some(PathFilter(path, descendants = false))).map(_.thinResults.map(_.path))
+  }
 
-  private def readTextualFileInfoton(path: String) = readFileInfoton(path, nbg).map{ case FileInfotonContent(data, _) => new String(data, "UTF-8")}
+  private def readTextualFileInfoton(path: String) = {
+    import scala.concurrent.ExecutionContext.Implicits.global
+    readFileInfoton(path, nbg).map { case FileInfotonContent(data, _) => new String(data, "UTF-8") }
+  }
 }
-
 class JarsImporter(override val crudServiceFS: CRUDServiceFS, nbg: Boolean) extends Importer[JenaFunction] with SpFileUtils { self =>
   import cmwell.util.collections.LoadingCacheExtensions
   import cmwell.util.concurrent.travector
   import cmwell.util.loading._
+  import scala.concurrent.ExecutionContext.Implicits.global
 
   private val mandatoryBaseJarsPath = "/meta/lib/"
 
@@ -829,8 +852,10 @@ class SourcesImporter(override val crudServiceFS: CRUDServiceFS, nbg: Boolean) e
 
   private val mandatoryBaseSourcesPath = "/meta/lib/sources/"
 
-  override def fetch(paths: Seq[String]): Future[Vector[NamedAnonJenaFuncImpl]] =
+  override def fetch(paths: Seq[String]): Future[Vector[NamedAnonJenaFuncImpl]] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     travector(paths) { path => functionsCache.getAsync(s"$mandatoryBaseSourcesPath$path") }
+  }
 
   override def invalidateCaches(): Unit = functionsCache.invalidateAll()
 

@@ -18,7 +18,7 @@ package cmwell.ctrl.checkers
 
 import cmwell.ctrl.config.Config
 import cmwell.ctrl.controllers.WebserverController
-import cmwell.ctrl.utils.HttpUtil
+import cmwell.util.http.{SimpleHttpClient => Http}
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.Future
@@ -43,14 +43,14 @@ object WebChecker extends Checker with RestarterChecker with LazyLogging {
   private val req = s"http://${Config.webAddress}:${Config.webPort}"
 
   override def check: Future[ComponentState] = {
-    val res = HttpUtil.httpGet(req)
+    val res = Http.get(req)
     val startTime = System.currentTimeMillis()
     res.map{ x =>
       val now = System.currentTimeMillis()
-      if(x.code < 400 || x.code == 503) WebOk((now - startTime).toInt)
+      if(x.status < 400 || x.status == 503) WebOk((now - startTime).toInt)
       else {
         logger.warn(s"WebChecker.check: got a bad response when GET $req. response = $x")
-        WebBadCode(x.code, (now - startTime).toInt)
+        WebBadCode(x.status, (now - startTime).toInt)
       }
     }.recover{
       case _ : Throwable =>

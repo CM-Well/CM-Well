@@ -21,7 +21,7 @@ import scala.annotation.tailrec
 import scala.collection.{TraversableLike, IterableLike}
 import scala.collection.generic.CanBuildFrom
 import scala.language.higherKinds
-import scala.concurrent._ ,ExecutionContext.Implicits.global
+import scala.concurrent._ //,ExecutionContext.Implicits.global
 import scala.concurrent.duration.{TimeUnit, Duration, Deadline, FiniteDuration}
 import scala.util.{Failure, Success, Try}
 import scala.language.postfixOps

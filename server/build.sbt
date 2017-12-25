@@ -21,7 +21,7 @@ sys.env.get("BUILD_NUMBER") match {
   )
 }
 
-scalaVersion in Global := "2.11.12"
+scalaVersion in Global := "2.12.4"
 //javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint")
 initialize := {
   val _ = initialize.value
@@ -46,10 +46,10 @@ dependenciesManager in Global := {
   case ("com.fasterxml.jackson.core", art)                         => "com.fasterxml.jackson.core" % art % "2.9.1"
   case ("com.github.andrewoma.dexx","collection")                  => "com.github.andrewoma.dexx" % "collection" % "0.7"
   case ("com.github.tomakehurst", "wiremock")                      => "com.github.tomakehurst" % "wiremock" % "2.7.1"
-  case ("com.github.t3hnar", "scala-bcrypt")                       => "com.github.t3hnar" %% "scala-bcrypt" % "2.6"
+  case ("com.github.t3hnar", "scala-bcrypt")                       => "com.github.t3hnar" %% "scala-bcrypt" % "3.1"
   case ("com.google.code.findbugs","jsr305")                       => "com.google.code.findbugs" % "jsr305" % "1.3.9" //newest is 3.0.0
   case ("com.google.guava","guava")                                => "com.google.guava" % "guava" % "23.0"
-  case ("com.jason-goodwin", "authentikat-jwt")                    => "com.jason-goodwin" %% "authentikat-jwt" % "0.4.1"
+  case ("com.jason-goodwin", "authentikat-jwt")                    => "com.jason-goodwin" %% "authentikat-jwt" % "0.4.5"
   case ("com.lightbend.akka", "akka-stream-alpakka-cassandra")     => "com.lightbend.akka" %% "akka-stream-alpakka-cassandra" % "0.15"
   case ("com.ning","async-http-client")                            => "com.ning" % "async-http-client" % "1.9.40"
   case ("com.spatial4j","spatial4j")                               => "com.spatial4j" % "spatial4j" % "0.5"
@@ -70,7 +70,6 @@ dependenciesManager in Global := {
   case ("commons-lang","commons-lang")                             => "commons-lang" % "commons-lang" % "2.6"
   case ("eu.piotrbuda","scalawebsocket")                           => "eu.piotrbuda" %% "scalawebsocket" % "0.1.1"
   case ("io.netty","netty")                                        => "io.netty" % "netty" % "3.10.6.Final"
-  case ("io.spray", art)                                           => "io.spray" %% art % "1.3.2"
   case ("io.circe", art)                                           => "io.circe" %% art % "0.8.0"
   case ("com.jcraft","jsch")                                       => "com.jcraft" % "jsch" % "0.1.54"
   case ("joda-time","joda-time")                                   => "joda-time" % "joda-time" % "2.9.4"
@@ -126,7 +125,7 @@ dependenciesManager in Global := {
   case ("org.apache.thrift","libthrift")                           => "org.apache.thrift" % "libthrift" % "0.9.3"
   case ("org.apache.kafka", "kafka")                               => "org.apache.kafka" %% "kafka" % Versions.kafka
   case ("org.apache.kafka", "kafka-clients")                       => "org.apache.kafka" % "kafka-clients" % Versions.kafka
-  case ("org.apache.zookeeper", "zookeeper")                       => "org.apache.zookeeper" % "zookeeper" % "3.4.6"
+  case ("org.apache.zookeeper", "zookeeper")                       => "org.apache.zookeeper" % "zookeeper" % Versions.zookeeper
   case ("org.aspectj","aspectjweaver")                             => "org.aspectj" % "aspectjweaver" % "1.8.9"
   case ("org.codehaus.groovy",art)                                 => "org.codehaus.groovy" % art % "2.4.7"
   case ("org.codehaus.plexus","plexus-archiver")                   => "org.codehaus.plexus" % "plexus-archiver" % "3.4" //3.2
@@ -146,7 +145,7 @@ dependenciesManager in Global := {
   case ("org.pac4j", "pac4j-openid")                               => "org.pac4j" % "pac4j-openid" % "1.7.0"         // "1.8.7"
   case ("org.rogach","scallop")                                    => "org.rogach" %% "scallop" % "2.0.5"
   case ("org.scala-lang",art)                                      => "org.scala-lang" % art % scalaVersion.value
-  case ("org.scalacheck","scalacheck")                             => "org.scalacheck" %% "scalacheck" % "1.13.2" // version "1.13.0" collides with scalaTest (IncompatibleClassChangeError)
+  case ("org.scalacheck","scalacheck")                             => "org.scalacheck" %% "scalacheck" % "1.13.4"
   case ("org.scalatest","scalatest")                               => "org.scalatest" %% "scalatest" % "3.0.1"
   case ("org.scala-lang.modules", "scala-parser-combinators")      => "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4"
   case ("org.scala-lang.modules", "scala-xml")                     => "org.scala-lang.modules" %% "scala-xml" % "1.0.6"

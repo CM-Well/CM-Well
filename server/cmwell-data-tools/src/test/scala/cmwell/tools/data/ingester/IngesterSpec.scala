@@ -32,7 +32,6 @@ import com.github.tomakehurst.wiremock.stubbing.Scenario
 import org.scalatest.Ignore
 
 import scala.concurrent.Await
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 

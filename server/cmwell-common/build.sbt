@@ -61,6 +61,8 @@ buildInfoKeys := Seq[BuildInfoKey](
   "encodingVersion" -> encodingVersion.value,
   "cassandraVersion" -> Versions.cassandra,
   "elasticsearchVersion" -> Versions.elasticsearch,
+  "kafkaVersion" -> Versions.kafka,
+  "zookeeperVersion" -> Versions.zookeeper,
   "buildMachine" -> {
     val pidAtName = java.lang.management.ManagementFactory.getRuntimeMXBean.getName
     pidAtName.dropWhile(_.isDigit).tail

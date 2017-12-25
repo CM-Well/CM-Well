@@ -21,8 +21,7 @@ import cmwell.ctrl.config.Config
 import cmwell.ctrl.hc._
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
-import spray.json._
-import DefaultJsonProtocol._
+import play.api.libs.json.{JsString, Json}
 /**
 * Created by michael on 2/24/15.
 */
@@ -87,11 +86,11 @@ trait AlertReporter extends LazyLogging {
         "node" -> node.getOrElse("")
       ).filter(_._2.nonEmpty)
 
-      JsObject(
+      Json.obj(
         "event" -> JsString("trams.alert"),
         "environment" -> JsString(Config.clusterName),
-        "trams" -> JsObject(
-          "alert" -> fields.toJson
+        "trams" -> Json.obj(
+          "alert" -> Json.toJson(fields)
         )
       ).toString
     }
