@@ -63,7 +63,6 @@ class App extends React.Component {
                     displayNames={this.state.displayNames}
                     displayNameUpdateCb={dn => dn && this.state.lastBreadcrumbDisplayName!=dn && this.setState({ lastBreadcrumbDisplayName: dn })}
                     updateBreadcrumbsParts={parts => this.setState(prev => parts!=prev.overrideBcParts && { overrideBcParts: parts })}
-                    u11111111pdateBreadcrumbsParts={parts => parts!=this.state.overrideBcParts && this.setState({ overrideBcParts: parts })}
                     isEmptyCb={isEmpty => this.state.infotonIsEmpty!=isEmpty && this.setState({ infotonIsEmpty: isEmpty })}
                 />
                 

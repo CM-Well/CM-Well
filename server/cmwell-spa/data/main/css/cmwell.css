@@ -759,7 +759,7 @@ table.infoton-data {
     margin: 3px 30px 10px 30px;
     border-collapse: collapse;
     overflow-y: auto;
-    height: calc(100vh - 335px); /* AppUtils.heightOverhead === 335 */
+    height: calc(100vh - 370px); /* AppUtils.heightOverhead === 370 */
     display: block;
 }
 
