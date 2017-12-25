@@ -277,6 +277,7 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
   }
 
   def putInfoton(infoton: Infoton, isPriorityWrite: Boolean = false): Future[Boolean] = {
+    require(infoton.kind != "DeletedInfoton", "Writing a DeletedInfoton does not make sense. use proper delete API instead.")
     // build a command with infoton
     val cmdWrite = WriteCommand(infoton)
     // convert the command to Array[Byte] payload
@@ -335,6 +336,9 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
   }
 
   def putInfotons(infotons: Vector[Infoton], tid: Option[String] = None, atomicUpdates: Map[String,String] = Map.empty, isPriorityWrite: Boolean = false) = {
+    require(infotons.forall(_.kind != "DeletedInfoton"), s"Writing a DeletedInfoton does not make sense. use proper delete API instead. malformed paths: ${infotons.collect{
+      case DeletedInfoton(path,_,_,_,_) => path
+    }.mkString("[",",","]")}")
     val tLogWriteRes = if(oldBGFlag) {
       Future.sequence(
           infotons.map(WriteCommand(_)).grouped(maxBulkSize).map { vec =>
@@ -408,6 +412,9 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
    * to backup values to preserve, you must add it to the inserts vector!
    */
   def upsertInfotons(inserts: List[Infoton], deletes: Map[String, Map[String, Option[Set[FieldValue]]]], tid: Option[String] = None, atomicUpdates: Map[String,String] = Map.empty, isPriorityWrite: Boolean = false): Future[Boolean] = {
+    require(inserts.forall(_.kind != "DeletedInfoton"), s"Writing a DeletedInfoton does not make sense. use proper delete API instead. malformed paths: ${inserts.collect{
+      case DeletedInfoton(path,_,_,_,_) => path
+    }.mkString("[",",","]")}")
     //require(!inserts.isEmpty,"if you only have DELETEs, use delete. not upsert!")
     require(inserts.forall(i => deletes.keySet(i.path)),
       "you can't use upsert for entirely new infotons! split your request into upsertInfotons and putInfotons!\n" +
