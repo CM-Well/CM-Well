@@ -20,19 +20,15 @@ package k.grid.dmap.impl.persistent
 import java.io.{File, FileNotFoundException, PrintWriter}
 
 import com.typesafe.scalalogging.LazyLogging
-import k.grid.dmap.impl.persistent.json.PersistentDMapDataFileParsingException
 import k.grid.{Config, Grid}
 import k.grid.dmap.api._
 import play.api.libs.json.Json
 
 import scala.util.{Failure, Success, Try}
-//import spray.json._
 import scala.concurrent.duration._
 import json.MapDataJsonProtocol._
 import scala.concurrent.ExecutionContext.Implicits.global
-/**
- * Created by michael on 5/29/16.
- */
+
 object PersistentDMap extends DMapFacade {
   override def masterType: DMapActorInit = DMapActorInit(classOf[PersistentMaster], "PersistentMaster")
 
@@ -75,9 +71,10 @@ class PersistentSlave extends DMapSlave with LazyLogging {
 
   def readMap : Option[MapData] = {
     val content = Try {
-      val x = scala.io.Source.fromFile(dataFile).getLines().mkString("\n")
-//      parseJson.convertTo[MapData]
-      Json.parse(x).as[MapData]
+      val src = scala.io.Source.fromFile(dataFile)
+      val mData =  Json.parse(src.getLines().mkString("\n")).as[MapData]
+      src.close()
+      mData
     } match {
       case Success(c) => Some(c)
       case Failure(e) if e.isInstanceOf[FileNotFoundException] => None

@@ -6,9 +6,6 @@ libraryDependencies ++= {
     dm("com.typesafe.akka", "akka-cluster"),
     dm("com.typesafe.akka", "akka-cluster-metrics"),
     dm("com.typesafe.akka", "akka-cluster-tools"),
-//    dm("io.spray", "spray-can"),
-//    dm("io.spray", "spray-routing"),
-//    dm("io.spray", "spray-json"),
 		dm("ch.qos.logback", "logback-classic") % "test",
     dm("com.typesafe.akka", "akka-slf4j") % "test",
 		dm("org.codehaus.groovy", "groovy-all") % "test"

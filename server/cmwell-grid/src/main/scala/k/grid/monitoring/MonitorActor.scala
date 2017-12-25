@@ -16,43 +16,18 @@
 
 package k.grid.monitoring
 
-import java.io.{File, FileInputStream, InputStream}
 
 import akka.actor.{Actor, Cancellable}
-import akka.actor.Actor.Receive
 import ch.qos.logback.classic.{Level, Logger}
 import com.typesafe.scalalogging.LazyLogging
-import k.grid.dmap.impl.inmem.InMemDMap
-import k.grid.webapi.JsonApi
-import k.grid.{Formatters, Grid}
 import org.slf4j.LoggerFactory
-//import spray.can.Http
-//import spray.http.HttpHeaders.`Content-Type`
-//import spray.http.HttpHeaders._
-//import spray.http.ContentTypes._
-//import spray.http.HttpMethods._
-//import spray.http._
 import akka.pattern.pipe
-
-import scala.collection.mutable
 import scala.concurrent.duration._
-import scala.concurrent.duration
-import scala.util.Success
 import scala.concurrent.ExecutionContext.Implicits.global
-/**
- * Created by michael on 7/6/15.
- */
 
 object MonitorActor {
   val name = "MonitorActor"
 }
-
-
-
-/*
-  LoggerFactory.getLogger("ROOT").asInstanceOf[ch.qos.logback.classic.Logger].setLevel(Level.DEBUG)
-  LoggerFactory.getLogger("ROOT").asInstanceOf[ch.qos.logback.classic.Logger].getLevel
- */
 
 object SetNodeLogLevel {
   val lvlMappings = Map(
@@ -91,79 +66,6 @@ class MonitorActor extends Actor with LazyLogging {
   }
 
   override def receive: Receive = {
-//    case _: Http.Connected => sender ! Http.Register(self)
-//
-//    case r@HttpRequest(GET, Uri.Path("/monitor/settings"), _, _, _) =>
-//      val s = InMemDMap.sm.map(tpl => s"${tpl._1} -> ${tpl._2}").mkString("\n")
-//      sender ! HttpResponse(entity = s)
-//
-//    case r@HttpRequest(GET, Uri.Path("/monitor/members"), _, _, _) =>
-//      Grid.getRunningJvmsInfo.foreach {
-//        jvmsInfo => sender ! HttpResponse(entity = Formatters.membersFormatter(jvmsInfo))
-//      }
-//
-//    case r@HttpRequest(GET, Uri.Path("/monitor/singletons"), _, _, _) =>
-//      sender ! HttpResponse(entity = Formatters.singletonsFormatter(Grid.getSingletonsInfo))
-//
-//    case GetSingletons => sender ! Grid.getSingletons
-//
-//    case r@HttpRequest(GET, Uri.Path("/monitor/actors"), _, _, _) =>
-//      val senderVal = sender
-//      val response = Grid.allActors
-//      response.map{x => senderVal ! HttpResponse(entity = Formatters.activeActorsFormatter(x))}
-//
-//    case r@HttpRequest(GET, Uri.Path("/test/perm"), _, _, _) =>
-//      ProcKiller.add
-//      sender ! HttpResponse(entity = "Done!")
-//
-//    case r@HttpRequest(GET, Uri.Path("/test/temp"), _, _, _) =>
-//      ProcKiller.genString
-//      sender ! HttpResponse(entity = "Done!")
-//
-//    case r@HttpRequest(GET, Uri.Path("/api/json/jvms"), _, _, _) =>
-//      sender ! HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`application/json`), JsonApi.getJvmsJson ))
-//
-//
-//    case r@HttpRequest(GET, Uri.Path("/api/json/mem"), _, _, _) =>
-//      val senderVal = sender
-//      JsonApi.getMemJson.foreach {
-//        mj =>
-//          senderVal ! HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`application/json`), mj ))
-//      }
-//
-//
-//    case r@HttpRequest(GET, Uri.Path("/api/js/d3.min.js"), _, _, _) =>
-//      val stream : InputStream = getClass.getResourceAsStream("/js/d3.min.js")
-//      val lines = scala.io.Source.fromInputStream( stream ).getLines.mkString("\n")
-//      sender ! HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`application/javascript`), lines ))
-//
-//    case r@HttpRequest(GET, Uri.Path("/api/js/underscore-min.js"), _, _, _) =>
-//      val stream : InputStream = getClass.getResourceAsStream("/js/underscore-min.js")
-//      val lines = scala.io.Source.fromInputStream( stream ).getLines.mkString("\n")
-//      sender ! HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`application/javascript`), lines ))
-//
-//
-//    case r@HttpRequest(GET, Uri.Path("/api/js/Chart.js"), _, _, _) =>
-//      val stream : InputStream = getClass.getResourceAsStream("/js/Chart.js")
-//      val lines = scala.io.Source.fromInputStream( stream ).getLines.mkString("\n")
-//      sender ! HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`application/javascript`), lines ))
-//      //Chart.min.js
-//
-//    case r@HttpRequest(GET, Uri.Path("/api/html/jvms"), _, _, _) =>
-//      val stream : InputStream = getClass.getResourceAsStream("/html/jvms.html")
-//      val lines = scala.io.Source.fromInputStream( stream ).getLines.mkString("\n")
-//      sender ! HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`text/html`), lines ))
-//
-//    case r@HttpRequest(GET, Uri.Path("/api/html/mem"), _, _, _) =>
-//      val stream : InputStream = getClass.getResourceAsStream("/html/mem.html")
-//
-////      val fileName = "/home/michael/cmwell/cmwell-grid/src/main/resources/html/mem.html"
-////
-////      val stream : InputStream = new FileInputStream(new File(fileName))
-//      val lines = scala.io.Source.fromInputStream( stream ).getLines.mkString("\n")
-//      sender ! HttpResponse(entity = HttpEntity(ContentType(MediaTypes.`text/html`), lines ))
-//
-
     case PingChildren =>
       MonitorUtil.pingChildren.pipeTo(sender)
 
@@ -189,7 +91,6 @@ class MonitorActor extends Actor with LazyLogging {
             akkaLogger.setLevel(lvl)
         case _ =>
       }
-    //Grid.getSingletonRef("DcController", Some("DcClient"))
     case GetNodeLogLevel =>
       val lvl = LoggerFactory.getLogger(editableLogger).asInstanceOf[ch.qos.logback.classic.Logger].getLevel
       sender ! NodeLogLevel(lvl.toString)

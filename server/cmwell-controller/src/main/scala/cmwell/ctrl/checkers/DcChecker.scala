@@ -19,7 +19,6 @@ package cmwell.ctrl.checkers
 import akka.actor.Cancellable
 import cmwell.ctrl.checkers.BatchChecker._
 import cmwell.ctrl.config.Config
-//import cmwell.ctrl.utils.{HttpUtil, ProcUtil}
 import cmwell.stats.Stats.Settings
 import com.fasterxml.jackson.databind.JsonNode
 import com.typesafe.scalalogging.LazyLogging

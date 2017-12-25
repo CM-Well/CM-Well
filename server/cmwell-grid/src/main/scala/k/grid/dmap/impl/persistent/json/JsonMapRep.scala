@@ -19,13 +19,6 @@ package k.grid.dmap.impl.persistent.json
 import k.grid.dmap.api._
 import play.api.libs.json._
 
-//import spray.json.JsValue
-//import spray.json._
-
-/**
- * Created by michael on 5/29/16.
- */
-
 case object PersistentDMapDataFileParsingException extends Exception{
   override def getMessage: String = "Couldn't parse persistent data file"
 }

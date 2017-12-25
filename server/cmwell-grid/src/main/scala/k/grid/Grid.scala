@@ -18,7 +18,6 @@ package k.grid
 
 
 import java.io.File
-
 import cmwell.util.concurrent._
 import akka.actor.Actor.Receive
 import akka.io.IO
@@ -35,7 +34,6 @@ import k.grid.dmap.impl.inmem.InMemDMap
 import k.grid.registration.{RegistrationCoordinator, LocalRegistrationManager}
 import k.grid.monitoring._
 import k.grid.service.{ServiceCoordinator, ServiceTypes, LocalServiceManager}
-//import spray.can.Http
 import com.typesafe.config.ConfigFactory
 import scala.concurrent.duration._
 import akka.cluster.ClusterEvent.{MemberUp, LeaderChanged, ClusterDomainEvent}
@@ -43,9 +41,6 @@ import scala.concurrent.{Future, Await}
 import scala.language.postfixOps
 import scala.util.{Try, Failure, Success}
 import scala.concurrent.ExecutionContext.Implicits.global
-/**
- * Created by markz on 5/14/14.
- */
 
 case class WhoIAm(address : String)
 case object WhoAreYou
