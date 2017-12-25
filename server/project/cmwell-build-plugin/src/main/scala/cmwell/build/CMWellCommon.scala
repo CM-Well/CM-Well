@@ -21,7 +21,7 @@ import scala.concurrent.Future
 
 object CMWellCommon {
 
-  val release = "Octopus"
+  val release = "Piranha"
 
   object Tags {
     val ES = sbt.Tags.Tag("elasticsearch")
