@@ -33,6 +33,8 @@ commitlog_sync_period_in_ms: 10000
 
 commitlog_segment_size_in_mb: 32
 
+batch_size_warn_threshold_in_kb: 100000
+
 seed_provider:
     - class_name: org.apache.cassandra.locator.SimpleSeedProvider
       parameters:
