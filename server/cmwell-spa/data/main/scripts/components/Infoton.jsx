@@ -144,7 +144,7 @@ class Infoton extends React.Component {
             </td>
             <td className="field-name-container">
                 <div className="human-readable field-name">{AppUtils.toHumanReadableFieldName(key)}</div>
-                <div className="field-name">{key}</div>
+                <div className="field-name">{key.replace(/\.nn$/,'')}</div>
             </td>
             <td className="field-value">
                 <ul>{data.values.map(v => <li>{renderFieldValue(v)}</li>)}</ul>
