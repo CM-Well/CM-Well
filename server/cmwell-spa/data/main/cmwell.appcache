@@ -45,6 +45,7 @@ CACHE:
 /meta/app/main/scripts/components/SystemFields.jsx
 /meta/app/main/scripts/components/InfotonsList.jsx
 /meta/app/main/scripts/components/Types.jsx
+/meta/app/main/scripts/components/Qotd.jsx
 /meta/app/main/scripts/lib/ReactRouter.min.js
 /meta/app/main/scripts/lib/babel-5.8.34.min.js
 /meta/app/main/scripts/lib/jquery.min.js
@@ -57,6 +58,7 @@ CACHE:
 /meta/app/main/scripts/lib/require.js
 /meta/app/main/scripts/lib/text.js
 /meta/app/main/scripts/lib/underscore-min.js
+/meta/app/main/scripts/lib/mousetrap.min.js
 /meta/app/main/scripts/domain.jsx
 /meta/app/main/scripts/utils.jsx
 /meta/app/main/scripts/app.jsx
