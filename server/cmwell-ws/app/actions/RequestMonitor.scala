@@ -22,19 +22,19 @@ import akka.actor._
 import akka.actor.Actor.Receive
 import akka.util.Timeout
 import cmwell.ctrl.config.Jvms
-import cmwell.domain.{FileInfoton, FileContent, VirtualInfoton}
+import cmwell.domain.{FileContent, FileInfoton, VirtualInfoton}
 import com.typesafe.scalalogging.LazyLogging
 import k.grid.Grid
 import akka.pattern.{ask, pipe}
-import org.joda.time.{DateTimeZone, DateTime}
-import org.joda.time.format.{ISODateTimeFormat, DateTimeFormat, DateTimeFormatter}
-import play.api.mvc.{Result, AnyContent, Request}
+import org.joda.time.{DateTime, DateTimeZone}
+import org.joda.time.format.{DateTimeFormat, DateTimeFormatter, ISODateTimeFormat}
+import play.api.mvc.{AnyContent, Request, Result}
 
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import cmwell.util.concurrent.successes
-import cmwell.rts.Key
-import cmwell.util.string.dateStringify
+import cmwell.util.string.{Base64, dateStringify}
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.postfixOps
 /**
@@ -160,7 +160,7 @@ class RequestsContainer extends Actor with LazyLogging {
       val x = context.children.map{c =>
 
         logger.debug(s"path: ${c.path.toSerializationFormatWithAddress(Grid.me)}")
-        val pathB64 = Key.encode(c.path.toSerializationFormatWithAddress(Grid.me))
+        val pathB64 = Base64.encodeBase64String(c.path.toSerializationFormatWithAddress(Grid.me))
         //logger.info(s"pathB64: $pathB64")
         (c ? GetRequestShort).mapTo[CmwellRequest].map {
           f =>
