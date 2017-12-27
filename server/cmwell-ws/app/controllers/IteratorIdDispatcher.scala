@@ -16,7 +16,8 @@
 
 package controllers
 
-import akka.actor.{PoisonPill, Actor}
+import akka.actor.{Actor, ActorRef, PoisonPill}
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.FiniteDuration
 
@@ -26,17 +27,22 @@ import scala.concurrent.duration.FiniteDuration
 
 case object GetID
 case object GotIt
-case class IterationState(actualEsScrollId: String, withHistory: Boolean)
+case class IterationState(actualEsScrollId: String, withHistory: Boolean, iteratorIdDispatcher: ActorRef)
 
 class IteratorIdDispatcher(actualEsScrollId: String, withHistory: Boolean, ttl: FiniteDuration) extends Actor {
 
-  val cancelable = context.system.scheduler.scheduleOnce(ttl,self,PoisonPill)
+  var cancelable = context.system.scheduler.scheduleOnce(ttl,self,PoisonPill)
 
   override def receive: Receive = {
-    case GetID => sender ! IterationState(actualEsScrollId,withHistory)
-    case GotIt => {
+    case GetID => {
+      sender() ! IterationState(actualEsScrollId, withHistory, self)
       cancelable.cancel()
-      context.stop(self)
+    }
+    case GotIt => {
+      if(!cancelable.isCancelled) {
+        cancelable.cancel()
+      }
+      cancelable = context.system.scheduler.scheduleOnce(ttl, self, PoisonPill)
     }
   }
 }

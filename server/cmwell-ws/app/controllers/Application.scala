@@ -24,18 +24,18 @@ import javax.inject._
 import actions._
 import akka.NotUsed
 import akka.pattern.AskTimeoutException
-import akka.stream.scaladsl.{GraphDSL, Source}
+import akka.stream.scaladsl.Source
 import akka.util.{ByteString, Timeout}
 import cmwell.common.file.MimeTypeIdentifier
 import cmwell.domain.{BagOfInfotons, CompoundInfoton, DeletedInfoton, FString, PaginationInfo, SearchResponse, SearchResults, _}
 import cmwell.formats._
 import cmwell.fts._
-import cmwell.rts.{Key, Pull, Push, Subscriber}
-import cmwell.util.concurrent.{Combiner, SingleElementLazyAsyncCache}
+import cmwell.rts.{Pull, Push, Subscriber}
+import cmwell.util.concurrent.SingleElementLazyAsyncCache
 import cmwell.util.formats.Encoders
 import cmwell.util.http.SimpleHttpClient
 import cmwell.util.loading.ScalaJsRuntimeCompiler
-import cmwell.util.{Box, BoxedFailure, EmptyBox, FullBox}
+import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
 import cmwell.web.ld.exceptions.UnsupportedURIException
 import cmwell.ws.adt.request.{CMWellRequest, CreateConsumer, Search}
 import cmwell.ws.adt.{BulkConsumeState, ConsumeState, SortedConsumeState}
@@ -50,7 +50,7 @@ import ld.exceptions.BadFieldTypeException
 import logic.{CRUDServiceFS, InfotonValidator}
 import markdown.MarkdownFormatter
 import org.joda.time.format.ISODateTimeFormat
-import org.joda.time.{DateTime, DateTimeZone}
+import org.joda.time.DateTimeZone
 import play.api.http.MediaType
 import play.api.libs.json.{JsArray, JsBoolean, JsNumber, JsObject, JsString, _}
 import play.api.mvc.{ResponseHeader, Result, _}
@@ -60,6 +60,7 @@ import security._
 import wsutil.{asyncErrorHandler, errorHandler, _}
 import cmwell.syntaxutils.!!!
 import cmwell.util.stream.StreamEventInspector
+import cmwell.util.string.Base64
 import cmwell.web.ld.cmw.CMWellRDFHelper
 import filters.Attrs
 import play.api.mvc.request.RequestTarget
@@ -566,7 +567,7 @@ callback=< [URL] >
 
   private def createScrollIdDispatcherActorFromIteratorId(id: String, withHistory: Boolean, ttl: FiniteDuration): String = {
     val ar = Grid.createAnon(classOf[IteratorIdDispatcher], id, withHistory, ttl)
-    val rv = Key.encode(ar.path.toSerializationFormatWithAddress(Grid.me))
+    val rv = Base64.encodeBase64URLSafeString(ar.path.toSerializationFormatWithAddress(Grid.me))
     logger.debug(s"created actor with id = $rv")
     rv
   }
@@ -1316,7 +1317,7 @@ callback=< [URL] >
   /**
    * WARNING: using xg with iterator, is at the user own risk!
    * results may be cut off if expansion limit is exceeded,
-   * but no warning can be emmited, since we use a chunked response,
+   * but no warning can be emitted, since we use a chunked response,
    * and it is impossible to change status code or headers.
    *
    * @param request
@@ -1342,24 +1343,20 @@ callback=< [URL] >
       else {
         val deadLine = Deadline(Duration(request.attrs(Attrs.RequestReceivedTimestamp) + 7000, MILLISECONDS))
         val itStateEitherFuture: Future[Either[String, IterationState]] = {
-          val as = Grid.selectByPath(Key.decode(encodedActorAddress))
+          val as = Grid.selectByPath(Base64.decodeBase64String(encodedActorAddress, "UTF-8"))
           Grid.getRefFromSelection(as, 10, 1.second).flatMap { ar =>
             (ar ? GetID)(akka.util.Timeout(10.seconds)).mapTo[IterationState].map {
-              case IterationState(id, wh) if wh && (yg.isDefined || xg.isDefined) => {
+              case IterationState(id, wh, _) if wh && (yg.isDefined || xg.isDefined) => {
                 Left("iterator is defined to contain history. you can't use `xg` or `yg` operations on histories.")
               }
-              case msg@IterationState(id, wh) => {
-                as ! GotIt
-                Right(msg)
-
-              }
+              case msg => Right(msg)
             }
           }
         }
         request.getQueryString("format").getOrElse("atom") match {
           case FormatExtractor(formatType) => itStateEitherFuture.flatMap {
             case Left(errMsg) => Future.successful(BadRequest(errMsg))
-            case Right(IterationState(scrollId, withHistory)) => {
+            case Right(IterationState(scrollId, withHistory, ar)) => {
               val formatter = formatterManager.getFormatter(
                 format = formatType,
                 host = request.host,
@@ -1400,7 +1397,10 @@ callback=< [URL] >
 
               val initialGraceTime = deadLine.timeLeft
               val injectInterval = 3.seconds
-              val backOnTime: String => Result = Ok(_).as(overrideMimetype(formatter.mimetype, request)._2)
+              val backOnTime: String => Result = { str =>
+                ar ! GotIt
+                Ok(str).as(overrideMimetype(formatter.mimetype, request)._2)
+              }
               val prependInjections: () => ByteString = formatter match {
                 case a: AtomFormatter => {
                   val it = Iterator.single(ByteString(a.xsltRef)) ++ Iterator.continually(cmwell.ws.Streams.endln)
@@ -1409,13 +1409,16 @@ callback=< [URL] >
                 case _ => () => cmwell.ws.Streams.endln
               }
               val injectOriginalFutureWith: String => ByteString = ByteString(_, StandardCharsets.UTF_8)
-              val continueWithSource: Source[ByteString, NotUsed] => Result = Ok.chunked(_).as(overrideMimetype(formatter.mimetype, request)._2)
+              val continueWithSource: Source[ByteString, NotUsed] => Result = { src =>
+                ar ! GotIt
+                Ok.chunked(src).as(overrideMimetype(formatter.mimetype, request)._2)
+              }
 
               guardHangingFutureByExpandingToSource[String,ByteString,Result](futureThatMayHang,initialGraceTime,injectInterval)(backOnTime,prependInjections,injectOriginalFutureWith,continueWithSource)
             }
           }.recover {
             case err: Throwable => {
-              val actorAddress = Key.decode(encodedActorAddress)
+              val actorAddress = Base64.decodeBase64String(encodedActorAddress, "UTF-8")
               val id = actorAddress.split('/').last
               logger.error(s"[ID: $id] actor holding actual ES ID could not be found ($actorAddress)", err)
               ExpectationFailed("it seems like the iterator-id provided is invalid. " +
@@ -2241,8 +2244,7 @@ callback=< [URL] >
     implicit req => {
       implicit val timeout = Timeout(2.seconds)
       import akka.pattern.ask
-      import cmwell.rts.Key
-      val actorPath = Key.decode(path)
+      val actorPath = Base64.decodeBase64String(path, "UTF-8")
       val f = (Grid.selectByPath(actorPath) ? GetRequest).mapTo[CmwellRequest]
       f.map { cmwReq =>
         Ok(
