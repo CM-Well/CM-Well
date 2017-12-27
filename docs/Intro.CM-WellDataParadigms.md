@@ -2,9 +2,7 @@
 
 ----
 
-**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Intro.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Intro.IntroductionToCM-Well.md
-)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Intro.OverviewOfTheCM-WellAPI.md
-)  
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Intro.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Intro.IntroductionToCM-Well.md)&nbsp;&nbsp;&nbsp;&nbsp;[**Next Topic**](Intro.OverviewOfTheCM-WellAPI.md)  
 
 ----
 
@@ -96,8 +94,6 @@ The results of your queries to CM-Well will generally be one or more whole infot
 
 ----
 
-**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Intro.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Intro.IntroductionToCM-Well.md
-)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Intro.OverviewOfTheCM-WellAPI.md
-)  
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Intro.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Intro.IntroductionToCM-Well.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Intro.OverviewOfTheCM-WellAPI.md)  
 
 ----
