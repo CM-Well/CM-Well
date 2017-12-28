@@ -10,7 +10,7 @@ libraryDependencies ++= {
   val dm = dependenciesManager.value
   Seq(
     dm("com.github.andrewoma.dexx", "collection") % "it,test",
-    dm("com.typesafe.akka", "akka-http-core") % "it,test",
+    dm("com.typesafe.akka", "akka-http") % "it,test",
     dm("com.typesafe.akka", "akka-stream") % "it,test",
     dm("ch.qos.logback", "logback-classic") % "it,test",
     (dm("com.thaiopensource", "jing") % "it,test")

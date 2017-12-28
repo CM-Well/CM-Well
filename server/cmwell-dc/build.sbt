@@ -36,7 +36,7 @@ libraryDependencies ++= {
 		dm("com.github.andrewoma.dexx", "collection"),
 		dm("com.typesafe", "config"),
 		dm("com.typesafe.akka", "akka-stream"),
-		dm("com.typesafe.akka", "akka-http-core"),
+		dm("com.typesafe.akka", "akka-http"),
 		dm("com.typesafe.akka", "akka-cluster"),
 		dm("com.typesafe.akka", "akka-actor"),
 		dm("com.typesafe.akka", "akka-cluster-tools"),

@@ -19,7 +19,8 @@ package cmwell.dc.stream
 import akka.{Done, NotUsed}
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.headers.RawHeader
+import akka.http.scaladsl.coding.Gzip
+import akka.http.scaladsl.model.headers.{HttpEncodings, RawHeader, `Accept-Encoding`, `Content-Encoding`}
 import akka.http.scaladsl.model.{HttpEntity, _}
 import akka.stream.Supervision._
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
@@ -59,17 +60,27 @@ object SingleMachineInfotonIngester extends LazyLogging {
           // no need for end line because each line in already suffixed with it
           infotonSeq.foreach(payloadBuilder ++= _.data)
           val payload = payloadBuilder.result
-          val entity = HttpEntity(ContentTypes.`text/plain(UTF-8)`, payload)
-          (entityToRequest(location, entity), state)
+          (createRequest(location, payload), state)
         }
       }
       .via(Http().superPool[IngestState]())
       .map(checkResponse)
   }
 
-  private[this] def entityToRequest(location: String, entity: RequestEntity) = {
-    val tokenHeader: HttpHeader = RawHeader("X-CM-WELL-TOKEN", dcaToken)
+  private[this] val createRequest = if (Settings.gzippedIngest) createRequestWithGzip _ else createRequestNoGzip _
+  private val tokenHeader: HttpHeader = RawHeader("X-CM-WELL-TOKEN", dcaToken)
+
+  private[this] def createRequestNoGzip(location: String, payload: ByteString) = {
+    val entity = HttpEntity(ContentTypes.`text/plain(UTF-8)`, payload)
     HttpRequest(method = HttpMethods.POST, uri = s"http://$location/_ow?format=nquads", entity = entity, headers = scala.collection.immutable.Seq(tokenHeader))
+  }
+
+  val gzipContentEncoding = `Content-Encoding`(HttpEncodings.gzip)
+  private[this] def createRequestWithGzip(location: String, payload: ByteString) = {
+    val entity = HttpEntity(ContentTypes.`text/plain(UTF-8)`, Gzip.encode(payload))
+    HttpRequest(method = HttpMethods.POST, uri = s"http://$location/_ow?format=nquads",
+      entity = entity,
+      headers = scala.collection.immutable.Seq(tokenHeader, gzipContentEncoding))
   }
 
   def checkResponseCreator(dataCenterId: String, location: String, decider: Decider)(response: (Try[HttpResponse], IngestState))(implicit sys: ActorSystem, mat: Materializer): (Try[HttpResponse], IngestState) =

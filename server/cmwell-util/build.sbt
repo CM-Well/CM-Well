@@ -17,7 +17,7 @@ libraryDependencies ++= {
       .exclude("org.slf4j", "slf4j-api"),
     dm("com.typesafe", "config"),
     dm("com.typesafe.akka", "akka-actor"),
-    dm("com.typesafe.akka", "akka-http-core"),
+    dm("com.typesafe.akka", "akka-http"),
     dm("com.typesafe.akka", "akka-stream"),
     dm("com.typesafe.akka", "akka-testkit") % "test",
     dm("com.typesafe.akka", "akka-stream-testkit") % "test",

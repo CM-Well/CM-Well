@@ -55,6 +55,7 @@ object Settings {
   val initialSingleIngestRetryCount = config.getInt("cmwell.dc.push.initialSingleIngestRetryCount")
   val ingestRetryDelay = config.getDuration("cmwell.dc.push.ingestRetryDelay").toMillis millis
   val ingestServiceUnavailableDelay = config.getDuration("cmwell.dc.push.ingestServiceUnavailableDelay").toMillis millis
+  val gzippedIngest = config.getBoolean("cmwell.dc.push.gzippedIngest")
   val ingestParallelism = config.getInt("cmwell.dc.push.ingestParallelism")
   val ingestRetryQueueSize = config.getInt("cmwell.dc.push.ingestRetryQueueSize")
   val dcaUserToken = config.getString("dcaUser.token")

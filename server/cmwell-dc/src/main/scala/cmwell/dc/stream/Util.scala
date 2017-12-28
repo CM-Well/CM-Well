@@ -16,7 +16,9 @@
 
 package cmwell.dc.stream
 
-import akka.http.scaladsl.model.HttpHeader
+import akka.http.scaladsl.model.{HttpHeader, HttpResponse}
+import akka.http.scaladsl.coding.{Deflate, Gzip, NoCoding}
+import akka.http.scaladsl.model.headers.HttpEncodings
 import cmwell.dc.LazyLogging
 import cmwell.dc.stream.MessagesTypesAndExceptions.FuturedBodyException
 
@@ -74,4 +76,16 @@ object Util extends LazyLogging {
   def headerString(header: HttpHeader): String = header.name + ":" + header.value
 
   def headersString(headers: Seq[HttpHeader]): String = headers.map(headerString).mkString("[", ",", "]")
+
+  def decodeResponse(response: HttpResponse): HttpResponse = {
+    val decoder = response.encoding match {
+      case HttpEncodings.gzip ⇒
+        Gzip
+      case HttpEncodings.deflate ⇒
+        Deflate
+      case HttpEncodings.identity ⇒
+        NoCoding
+    }
+    decoder.decodeMessage(response)
+  }
 }
