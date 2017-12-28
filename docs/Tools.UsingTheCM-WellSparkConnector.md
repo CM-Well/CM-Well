@@ -40,7 +40,7 @@ To run the Spark Connector, you will need a **Linux environment** and **JVM 1.8*
 > 
 > * Depending on the Spark query you're running and the amount of data, the query may require large amounts of memory. Make sure to configure the JVM correctly to accommodate for the required memory size. 
 > 
-> * The Spark Connector package contains Scala 2.11.8 and Spark 2.1.
+> * The Spark Connector package contains Scala 2.12.4 and Spark 2.1.
 
 <div style="page-break-after: always;"></div>
 
@@ -96,7 +96,7 @@ infotonDF(cmWellUrl:String, qp:String=null, infotonLimit:Int=INFOTON_SAFETY_LIMI
 You can also call the Spark Connector from your own code, then create a jar that you submit and run as a Spark job. To do this:
 
 1. Import the Spark package in your code. (**Note:** this must be Spark 2.1 or higher.)
-2. Add the **cm-well-spark-conn_2.11-2.1.jar** (contained in the Spark Connector zip download) to your project.
+2. Add the **cm-well-spark-conn_2.12-2.1.jar** (contained in the Spark Connector zip download) to your project.
 3. Import the **CMWell** class.
 3. Initialize the Spark session.
 4. Call CMWell.wireInSpark(spark:SparkSession).
