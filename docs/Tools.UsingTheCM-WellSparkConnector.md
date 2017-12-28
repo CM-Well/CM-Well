@@ -40,7 +40,7 @@ To run the Spark Connector, you will need a **Linux environment** and **JVM 1.8*
 > 
 > * Depending on the Spark query you're running and the amount of data, the query may require large amounts of memory. Make sure to configure the JVM correctly to accommodate for the required memory size. 
 > 
-> * The Spark Connector package contains Scala 2.11.8 and Spark 2.1.
+> * The Spark Connector package contains Scala 2.12 and Spark 2.1.
 
 <div style="page-break-after: always;"></div>
 
