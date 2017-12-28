@@ -381,6 +381,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])], manual
           }
           val tsvFile = f \ "tsvFile" match {
             case JsDefined(JsArray(seq)) if seq.length == 1 && seq.head.isInstanceOf[JsString] => Option(seq.head.as[String])
+            case _ => None
           }
           val qpStr = userQp.fold("")(qp => s"qp=$qp")
           val whStr = userWh.fold("with-history")(wh => if (wh == "true") "with-history" else "")

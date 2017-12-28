@@ -4,7 +4,7 @@ libraryDependencies ++= {
   val dm = dependenciesManager.value
   Seq(
     dm("com.typesafe.akka", "akka-stream"),
-    dm("com.typesafe.akka", "akka-http-core"),
+    dm("com.typesafe.akka", "akka-http"),
     dm("com.typesafe.akka", "akka-slf4j"),
     dm("net.jcazevedo", "moultingyaml"),
     dm("nl.grons", "metrics-scala"),
