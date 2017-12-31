@@ -50,6 +50,8 @@ import scala.concurrent.duration.{FiniteDuration, _}
 import scala.util.{Failure, Success, Try}
 import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
 import cmwell.util.concurrent._
+import io.circe.Json
+
 import ExecutionContext.Implicits.global
 
 case class Job(name: String, config: Config) {
@@ -67,9 +69,10 @@ case class PauseJob(job: Job)
 case class StopAndRemoveJob(job: Job)
 
 case object CheckConfig
-case class AnalyzeReceivedJobs(jobsRead: Vector[JobRead])
+case class AnalyzeReceivedJobs(jobsRead: Set[JobRead])
 
 sealed trait JobStatus {
+  val job: Job
   val canBeRestarted: Boolean = false
 }
 case class JobRunning(job: Job, killSwitch: KillSwitch, reporter: ActorRef) extends JobStatus
@@ -190,6 +193,12 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
         logger.info(s"Stopping job $runningJob. The job will actually stopped only after it will finish all its current operations")
         currentJobs = currentJobs + (job.name -> JobStopping(job, killSwitch, reporter))
         killSwitch.shutdown()
+      case JobFailed(failedJob, _) =>
+        logger.info(s"Stopping job $failedJob. The job has already failed. Removing it from the job list.")
+        currentJobs = currentJobs - job.name
+      case JobPaused(pausedJob) =>
+        logger.info(s"Stopping job $pausedJob. The job is currently paused. Removing it from the job list.")
+        currentJobs = currentJobs - job.name
       case other =>
         logger.error(s"Got stop and remove request for jog $job but the actual state in current jobs is $other. Not reasonable!")
     }
@@ -199,7 +208,7 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
     jobRead.active && currentJobs.get(jobRead.job.name).fold(true)(_.canBeRestarted)
   }
 
-  def handleReceivedJobs(jobsRead: Vector[JobRead], currentJobs: Map[String, JobStatus]): Unit = {
+  def handleReceivedJobs(jobsRead: Set[JobRead], currentJobs: Map[String, JobStatus]): Unit = {
     //jobs to start
     val jobsToStart = jobsRead.filter(shouldStartJob(currentJobs))
     jobsToStart.foreach { jobRead =>
@@ -208,9 +217,9 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
     }
     //jobs to pause or to totally remove
     currentJobs.foreach{
-      case (currentJobName, jobRunning: JobRunning) if !jobsRead.exists(_.job.name == currentJobName) =>
-        logger.info(s"Got stop and remove request for job ${jobRunning.job} from the user")
-        self ! StopAndRemoveJob(jobRunning.job)
+      case (currentJobName, currentJob@(_: JobRunning | _: JobFailed | _: JobPaused)) if !jobsRead.exists(_.job.name == currentJobName) =>
+        logger.info(s"Got stop and remove request for job ${currentJob.job} from the user")
+        self ! StopAndRemoveJob(currentJob.job)
       case (currentJobName, jobRunning: JobRunning) if !jobsRead.find(_.job.name == currentJobName).get.active =>
         logger.info(s"Got pause request for job ${jobRunning.job} from the user")
         self ! PauseJob(jobRunning.job)
@@ -359,7 +368,7 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
     }
   }
 
-  def getJobConfigsFromTheUser: Future[Vector[JobRead]] = {
+  def getJobConfigsFromTheUser: Future[Set[JobRead]] = {
     logger.info("Checking the current status of the Sparql Triggered Processor manager config infotons")
     //val initialRetryState = RetryParams(2, 2.seconds, 1)
     //retryUntil(initialRetryState)(shouldRetry("Getting config information from local cm-well")) {
@@ -372,7 +381,8 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
       }
   }
 
-  def parseJobsJson(configJson: String): Vector[JobRead] = {
+  private[this] val parsedJsonsBreakOut = scala.collection.breakOut[Vector[Json], JobRead, Set[JobRead]]
+  def parseJobsJson(configJson: String): Set[JobRead] = {
     import cats.syntax.either._
     import io.circe._, io.circe.parser._
     //This method is run from map of a future - no need for try/catch (=can throw exceptions here). Each exception will be mapped to a failed future.
@@ -392,7 +402,7 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
             //The active field enables the user to disable the job. In case it isn't there, it's active.
             val active = infotonJson.hcursor.downField("fields").downField("active").downArray.as[Boolean].toOption.getOrElse(true)
             JobRead(Job(name, configRead.copy(sensors = modifiedSensors)), active)
-          }
+          }(parsedJsonsBreakOut)
         }
         catch {
           case ex: Throwable =>
