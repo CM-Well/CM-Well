@@ -1,6 +1,6 @@
 name := "cmwell-dc"
 
-packSettings
+
 packMain := Map("dc-standalone" -> "cmwell.dc.stream.MainStandAlone")
 packGenerateWindowsBatFile := false
 packExtraClasspath := Map("dc-standalone" -> Seq("${PROG_HOME}"))
@@ -55,13 +55,6 @@ libraryDependencies ++= {
 	)
 }
 
-mappings in oneJar ++= {
-	(unmanagedResources in Compile).value.find(_.getName == "logback.xml") match {
-		case Some(f) => Seq((f,"logback.xml"))
-		case None => Nil
-	}
-}
-
 //sbt native packager configuration
 mappings in Universal += (packResourceDir.value.keys.head / "logback.xml") -> "conf/logback.xml"
 scriptClasspath in bashScriptDefines ~= (cp => "../conf" +: cp)
@@ -89,11 +82,6 @@ val jvmOptsForDcStandAloneUsingNativePackager = Seq(
 	"-J-XX:GCLogFileSize=10M"
 )
 javaOptions in Universal ++= jvmOptsForDcStandAloneUsingNativePackager
-
-
-mainClass in oneJar := Some("cmwell.dc.stream.MainStandAlone")
-
-artifact in oneJar := Artifact(moduleName.value, "selfexec")
 
 fullTest := (test in Test).value
 

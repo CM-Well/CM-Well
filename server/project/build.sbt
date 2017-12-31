@@ -6,7 +6,7 @@ libraryDependencies ++=  Seq(
 
 val s = Seq(
   shellPrompt := { s => Project.extract(s).currentProject.id + " > " },
-  scalaVersion := "2.10.7"
+  scalaVersion := "2.12.4"
 )
 
 sourceGenerators in Compile += Def.task {

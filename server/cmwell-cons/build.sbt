@@ -5,9 +5,9 @@ import sbt.LocalProject
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.sys.process._
 import cmwell.build.{Versions,CMWellBuild}
 
-packAutoSettings
 name := "cmwell-cons"
 
 unmanagedResources := Seq()
@@ -135,44 +135,44 @@ getWs := {
   destination
 }
 
-getBg := {
-  val str = streams.value
-  val bd = baseDirectory.value
-  val batch = (oneJar in LocalProject("batch") in oneJar).value
+//getBg := {
+//  val str = streams.value
+//  val bd = baseDirectory.value
+////  val batch = (oneJar in LocalProject("batch") in oneJar).value
+//
+//  str.log.info(s"bg file to copy is: ${batch.getAbsolutePath}")
+//  val destination = bd / "app" / "components" / batch.getName
+//  val filesToDelete = sbt.IO.listFiles(bd / "app" / "components").filter(_.getAbsolutePath.contains("cmwell-batch_"))
+//  filesToDelete.foreach(sbt.IO.delete)
+//  sbt.IO.copyFile(batch,destination,preserveLastModified = true)
+//  destination
+//}
 
-  str.log.info(s"bg file to copy is: ${batch.getAbsolutePath}")
-  val destination = bd / "app" / "components" / batch.getName
-  val filesToDelete = sbt.IO.listFiles(bd / "app" / "components").filter(_.getAbsolutePath.contains("cmwell-batch_"))
-  filesToDelete.foreach(sbt.IO.delete)
-  sbt.IO.copyFile(batch,destination,preserveLastModified = true)
-  destination
-}
+//getDc := {
+//  val str = streams.value
+//  val bd = baseDirectory.value
+//  val dc = (oneJar in LocalProject("dc") in oneJar).value
+//
+//  str.log.info(s"dc file to copy is: ${dc.getAbsolutePath}")
+//  val destination = bd / "app" / "components" / dc.getName
+//  val filesToDelete = sbt.IO.listFiles(bd / "app" / "components").filter(_.getAbsolutePath.contains("cmwell-dc"))
+//  filesToDelete.foreach(sbt.IO.delete)
+//  sbt.IO.copyFile(dc,destination,preserveLastModified = true)
+//  destination
+//}
 
-getDc := {
-  val str = streams.value
-  val bd = baseDirectory.value
-  val dc = (oneJar in LocalProject("dc") in oneJar).value
-
-  str.log.info(s"dc file to copy is: ${dc.getAbsolutePath}")
-  val destination = bd / "app" / "components" / dc.getName
-  val filesToDelete = sbt.IO.listFiles(bd / "app" / "components").filter(_.getAbsolutePath.contains("cmwell-dc"))
-  filesToDelete.foreach(sbt.IO.delete)
-  sbt.IO.copyFile(dc,destination,preserveLastModified = true)
-  destination
-}
-
-getCtrl := {
-  val str = streams.value
-  val bd = baseDirectory.value
-  val ctrl = (assembly in LocalProject("ctrl") in Compile).value
-
-  str.log.info(s"crtl file to copy is: ${ctrl.getAbsolutePath}")
-  val destination = bd / "app" / "components" / ctrl.getName
-  val filesToDelete = sbt.IO.listFiles(bd / "app" / "components").filter(_.getAbsolutePath.contains("cmwell-ctrl"))
-  filesToDelete.foreach(sbt.IO.delete)
-  sbt.IO.copyFile(ctrl,destination,preserveLastModified = true)
-  destination
-}
+//getCtrl := {
+//  val str = streams.value
+//  val bd = baseDirectory.value
+//  val ctrl = (assembly in LocalProject("ctrl") in Compile).value
+//
+//  str.log.info(s"crtl file to copy is: ${ctrl.getAbsolutePath}")
+//  val destination = bd / "app" / "components" / ctrl.getName
+//  val filesToDelete = sbt.IO.listFiles(bd / "app" / "components").filter(_.getAbsolutePath.contains("cmwell-ctrl"))
+//  filesToDelete.foreach(sbt.IO.delete)
+//  sbt.IO.copyFile(ctrl,destination,preserveLastModified = true)
+//  destination
+//}
 
 
 def packCons(ctrl : File, cons : File , bd : File) = {
