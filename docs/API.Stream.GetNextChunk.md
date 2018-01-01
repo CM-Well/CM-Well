@@ -94,7 +94,7 @@ format | The output format of the streamed chunks. The default value is **ntripl
 
 ## Notes ##
 
-* **If the iteration process fails in the middle for any reason, you will have to restart the process from the beginning (that is, iterate again over all infotons that match the query).**
+* **If the iteration process fails in the middle for any reason, you can retry the same request, as long as `session-ttl` has not passed.**
 * An alternative is to use the **consumer** API, which allows you to save the iteration state and restart from the same point after a failure. See [Create Consumer](API.Stream.CreateConsumer.md) to learn more.
 
 ## Related Topics ##
