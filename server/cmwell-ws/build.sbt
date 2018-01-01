@@ -3,7 +3,7 @@
 //import NativePackagerKeys._
 
 name := "cmwell-ws"
-packAutoSettings
+
 libraryDependencies ++= {
   val dm = dependenciesManager.value
   Seq(

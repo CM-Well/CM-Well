@@ -1,7 +1,5 @@
 import cmwell.build.{Versions,CMWellCommon}, CMWellCommon.Tags
 
-packAutoSettings
-
 name := "cmwell-bg"
 
 libraryDependencies ++= {

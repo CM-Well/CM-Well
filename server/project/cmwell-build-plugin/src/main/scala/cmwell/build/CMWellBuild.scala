@@ -221,14 +221,14 @@ object CMWellBuild extends AutoPlugin {
 	override def projectSettings = Seq(
 		coursierMaxIterations := 200,
 		Keys.fork in Test := true,
-		doctestWithDependencies := false,
+//		doctestWithDependencies := false,
 		libraryDependencies ++= {
 			val dm = dependenciesManager.value
 			Seq(
 				dm("org.scalatest","scalatest") % "test",
 				dm("org.scalacheck","scalacheck") % "test")
 		},
-		testListeners := Seq(new eu.henkelmann.sbt.JUnitXmlTestsListener(target.value.getAbsolutePath)),
+		testListeners := Seq(new sbt.JUnitXmlTestsListener(target.value.getAbsolutePath)),
 		doctestTestFramework := DoctestTestFramework.ScalaTest,
 		exportJars := true,
 		shellPrompt := { s => Project.extract(s).currentProject.id + " > " },

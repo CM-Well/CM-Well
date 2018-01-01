@@ -1,7 +1,5 @@
 import sbt.Package.ManifestAttributes
 
-packAutoSettings
-
 name := "cmwell-controller"
 
 packageOptions := Seq(ManifestAttributes(

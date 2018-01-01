@@ -1,6 +1,7 @@
 import scala.concurrent.Promise
 import scala.util.Try
 import cmwell.build.{Versions,CMWellCommon}, CMWellCommon.Tags
+import scala.sys.process._
 
 name := "cmwell-it"
 
@@ -92,11 +93,12 @@ parallelExecution in Test := true
 testOptions in IntegrationTest ++= {
 
   val log = streams.value.log
+  val pescript = (peScript in LocalProject("cons")).value
+
   var oldJps: Array[(String,String)] = Array.empty
 
   Seq(Tests.Setup(() => {
-//    oldJps = installCmwell.value
-    oldJps = launchCmwell((target in IntegrationTest).value,streams.value.log,(peScript in LocalProject("cons")).value)
+    oldJps = launchCmwell((target in IntegrationTest).value,log,pescript)
     log.info("starting tests")
   }),
   Tests.Cleanup(() => {

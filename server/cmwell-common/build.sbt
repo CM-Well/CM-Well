@@ -1,4 +1,5 @@
 import cmwell.build.Versions
+import scala.sys.process._
 
 name := "cmwell-common"
 
@@ -46,9 +47,7 @@ libraryDependencies ++= {
   )
 }
 
-buildInfoSettings
-
-sourceGenerators in Compile += buildInfo.taskValue
+//sourceGenerators in Compile += buildInfo.taskValue
 
 val encodingVersion = settingKey[String]("sets encodingVersion number")
 

@@ -1,5 +1,7 @@
+import scala.sys.process._
+
 name := "cmwell-tlog-ng"
-packAutoSettings
+
 libraryDependencies ++= {
   val dm = dependenciesManager.value
   Seq(
@@ -16,9 +18,9 @@ libraryDependencies ++= {
   )
 }
 							
-mainClass in assembly := Some("cmwell.util.TLogTool")
-
-test in assembly := {}
+//mainClass in assembly := Some("cmwell.util.TLogTool")
+//
+//test in assembly := {}
 
 javaOptions in test +=  "-Dcmwell.home=target/tlog-test"
 
@@ -30,36 +32,37 @@ testOptions in Test += {
   })
 }
 
-assemblyJarName in assembly := {
-  val n = name.value
-  val s = scalaBinaryVersion.value
-  val v = version.value
-  s"${n}_$s-$v-selfexec.jar"
-}
-
-assemblyMergeStrategy in assembly := {
-  case PathList("META-INF", "cxf", "bus-extensions.txt") => MergeStrategy.concat
-  case PathList("META-INF", "io.netty.versions.properties") => MergeStrategy.first
-  case x =>
-    val oldStrategy = (assemblyMergeStrategy in assembly).value
-    oldStrategy(x)
-}
-
-lazy val publishAssembly = TaskKey[sbt.File]("publish-assembly", "publish the assembly artifact")
-
-publish := {
-  assembly.value
-  publish.value
-}
-
-publishLocal := {
-  assembly.value
-  publishLocal.value
-}
-
-artifact in (Compile, assembly) := {
-  val art = (artifact in (Compile, assembly)).value
-  art.copy(`classifier` = Some("selfexec"))
-}
+//
+//assemblyJarName in assembly := {
+//  val n = name.value
+//  val s = scalaBinaryVersion.value
+//  val v = version.value
+//  s"${n}_$s-$v-selfexec.jar"
+//}
+//
+//assemblyMergeStrategy in assembly := {
+//  case PathList("META-INF", "cxf", "bus-extensions.txt") => MergeStrategy.concat
+//  case PathList("META-INF", "io.netty.versions.properties") => MergeStrategy.first
+//  case x =>
+//    val oldStrategy = (assemblyMergeStrategy in assembly).value
+//    oldStrategy(x)
+//}
+//
+//lazy val publishAssembly = TaskKey[sbt.File]("publish-assembly", "publish the assembly artifact")
+//
+//publish := {
+//  assembly.value
+//  publish.value
+//}
+//
+//publishLocal := {
+//  assembly.value
+//  publishLocal.value
+//}
+//
+//artifact in (Compile, assembly) := {
+//  val art = (artifact in (Compile, assembly)).value
+//  art.copy(`classifier` = Some("selfexec"))
+//}
 
 fullTest := (test in Test).value
