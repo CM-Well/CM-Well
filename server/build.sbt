@@ -23,9 +23,10 @@ sys.env.get("BUILD_NUMBER") match {
 scalaVersion in Global := "2.12.4"
 //javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint")
 initialize := {
+  import semverfi._
   val _ = initialize.value
-  if (sys.props("java.specification.version") != "1.8")
-    sys.error("Java 8 is required for CM-Well!")
+  if (Version(sys.props("java.specification.version")) < Version("1.8"))
+    sys.error("Java 8 or higher is required for CM-Well!")
 }
 //resolvers in Global += "CM-WELL public" at "http://builder.clearforest.com:8081/nexus/content/groups/public"
 updateOptions in Global := updateOptions.in(Global).value.withCachedResolution(true).withCircularDependencyLevel(CircularDependencyLevel.Error)
