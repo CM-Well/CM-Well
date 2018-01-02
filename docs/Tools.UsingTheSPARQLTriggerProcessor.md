@@ -142,7 +142,7 @@ To temporarily pause and restart the SPARQL job, you can toggle the value of thi
 **Pause the job:**
 
     curl "<cm-well-host>/_in?format=ntriples&replace-mode" -H X-CM-WELL-TOKEN:<accessToken> --data-binary "
-    <cm-well-host/meta/sys/agents/sparql/MyCompanyMaterializedView> <http://localhost:9000/meta/nn#active> \"false\"^^<http://www.w3.org/2001/XMLSchema#boolean> .
+    <cmwell://meta/sys/agents/sparql/MyCompanyMaterializedView> <cmwell://meta/nn#active> \"false\"^^<http://www.w3.org/2001/XMLSchema#boolean> .
     "
 
 >**Note:** When you pause the SPARQL job, the last processed position is saved, and when you restart the job it resumes from the same position.
@@ -150,7 +150,7 @@ To temporarily pause and restart the SPARQL job, you can toggle the value of thi
 **Restart the job:**
 
     curl "<cm-well-host>/_in?format=ntriples&replace-mode" -H X-CM-WELL-TOKEN:<accessToken> --data-binary "
-    <cm-well-host/meta/sys/agents/sparql/MyCompanyMaterializedView> <http://localhost:9000/meta/nn#active> \"true\"^^<http://www.w3.org/2001/XMLSchema#boolean> .
+    <cmwell://meta/sys/agents/sparql/MyCompanyMaterializedView> <cmwell://meta/nn#active> \"true\"^^<http://www.w3.org/2001/XMLSchema#boolean> .
     "
 
 ## The SPARQL Triggered Processor Monitoring Page ##

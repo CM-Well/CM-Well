@@ -42,6 +42,7 @@ To run the Spark Connector, you will need a **Linux environment** and **JVM 1.8*
 > 
 > * The Spark Connector package contains Scala 2.12.4 and Spark 2.1.
 
+
 <div style="page-break-after: always;"></div>
 
 ## Downloading and Installing the Spark Connector ##
