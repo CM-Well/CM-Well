@@ -381,6 +381,9 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
 
                   val (dontTrack, track) = deletePaths.partition(secondStagePaths.apply)
                   require(dontTrack.forall(!atomicUpdates.contains(_)), s"atomic updates cannot operate on multiple actions in a single ingest.")
+                  require(infotonsToUpsert.union(infotonsToPut).forall(_.kind != "DeletedInfoton"),s"Writing a DeletedInfoton does not make sense. use proper delete API instead. malformed paths: ${infotonsToUpsert.union(infotonsToPut).collect{
+                    case DeletedInfoton(path,_,_,_,_) => path
+                  }.mkString("[",",","]")}")
 
                   val to = tidOpt.map(_.token)
                   val d1 = crudService.deleteInfotons(dontTrack.map(_ -> None), isPriorityWrite = isPriorityWrite)
