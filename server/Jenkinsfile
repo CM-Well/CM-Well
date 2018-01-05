@@ -17,7 +17,7 @@ pipeline {
       steps {
         ansiColor(colorMapName: 'xterm') {
           dir(path: 'server') {
-            sh 'java -Xmx2G -jar /opt/sbt/bin/sbt-launch.jar fullTest print-date'
+            sh 'java -Xmx2G -jar /opt/sbt/bin/sbt-launch.jar fullTest printDate'
             junit(testResults: '**/target/test-reports/*.xml', allowEmptyResults: true)
           }
         }

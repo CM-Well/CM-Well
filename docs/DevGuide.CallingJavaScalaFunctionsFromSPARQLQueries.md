@@ -70,7 +70,7 @@ class Add42 extends org.apache.jena.sparql.function.Function {
 
 Let's assume we have compiled this code using the following build configuration, and packaged it as `Add42.jar`.
 ```
-scalaVersion := "2.11.7"
+scalaVersion := "2.12"
 
 libraryDependencies ++= Seq(
 	"org.apache.jena" % "jena-arq" % "3.0.1"

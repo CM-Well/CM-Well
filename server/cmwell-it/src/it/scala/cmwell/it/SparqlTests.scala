@@ -25,7 +25,6 @@ import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.duration._
 import scala.io.Source
-import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * Created by yaakov on 7/10/16.

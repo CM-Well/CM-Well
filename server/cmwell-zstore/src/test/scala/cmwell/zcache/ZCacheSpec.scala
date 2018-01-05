@@ -22,7 +22,6 @@ import cmwell.util.concurrent.delayedTask
 import cmwell.zstore.ZStoreMem
 import org.scalatest.{AsyncFunSpec, Matchers}
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 /**
@@ -71,7 +70,7 @@ class ZCacheSpec extends AsyncFunSpec with Matchers {
     s"Data[$dataId]"
   }
 
-  val fetchViaZCache = zCacheMem.memoize(fetchData)(identity, btos, stob)(ttl, pollingMaxRetries, pollingInterval)
+  val fetchViaZCache = zCacheMem.memoize(fetchData)(digest = identity, deserializer = btos, serializer = stob)(ttl, pollingMaxRetries, pollingInterval)(scala.concurrent.ExecutionContext.global)
   val fetchViaL1L2 = l1l2(fetchData)(identity, btos, stob)(ttl, pollingMaxRetries, pollingInterval)(zCacheMem)
 
   it("should wrap data fetching (CORE FUNC. STEP 1/2)") {
@@ -92,9 +91,9 @@ class ZCacheSpec extends AsyncFunSpec with Matchers {
 
   it("should test the PENDING logic (slashdot)") {
     val amount = 613
-    Future.sequence(Seq.fill(amount)(fetchViaZCache("2"))).map { res =>
+    Future.traverse(Seq.fill(amount)("2"))(fetchViaZCache).map { res =>
       val c = c2.get
-      if(c >= amount) throw new TooManyFetchesException(c.toString)
+      c should be < amount //) succeed // fail(new TooManyFetchesException(c.toString))
       res should be(Seq.fill(amount)("Data[2]"))
     }
   }

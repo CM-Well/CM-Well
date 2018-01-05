@@ -40,14 +40,14 @@ class AbstractJsonSerializer {
 trait NsSplitter {
   def splitNamespaceField(field: String) = field.lastIndexOf(".") match {
     case -1 => "nn" -> field
-    case i => field.substring(i+1) -> field.substring(0,i)
+    case i => field.substring(i+1) -> field.substring(0,i).replace('.','_')
   }
 
   def reverseNsTypedField(field: String) = {
     if(field.startsWith("system.") || field.startsWith("content.") || field.startsWith("link.")) field
     else {
       val (ns, typedField) = splitNamespaceField(field)
-      "fields." + ns + "." + typedField
+      "fields." + ns + "." + typedField.replace('.','_')
     }
   }
 }

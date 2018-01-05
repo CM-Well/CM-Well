@@ -23,7 +23,7 @@ import org.scalatest.{AsyncFunSpec, Inspectors, Matchers}
 import play.api.libs.json._
 
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 import scala.util.Try
 
 class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Helpers with LazyLogging {

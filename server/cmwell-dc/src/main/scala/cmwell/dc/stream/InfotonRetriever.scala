@@ -19,6 +19,8 @@ package cmwell.dc.stream
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.coding.Gzip
+import akka.http.scaladsl.model.headers.{HttpEncodings, `Accept-Encoding`, `Content-Encoding`}
 import akka.http.scaladsl.model.{ContentTypes, _}
 import akka.stream.Supervision.Decider
 import akka.stream.contrib.Retry
@@ -30,6 +32,7 @@ import cmwell.dc.Settings._
 import cmwell.dc.stream.MessagesTypesAndExceptions._
 
 import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success, Try}
@@ -68,10 +71,10 @@ object InfotonRetriever extends LazyLogging {
         .map {
           case (infotonData, state) =>
             val payload = infotonData.foldLeft(ByteString(""))(_ ++ endln ++ ii ++ _.meta.uuid)
-            val entity = HttpEntity(ContentTypes.`text/plain(UTF-8)`, payload)
-            entityToRequest(remoteUri, entity) -> state
+            createRequest(remoteUri, payload) -> state
         }
         .via(Http().superPool[RetrieveState]())
+        .map{ case (tryResponse, state) => tryResponse.map(Util.decodeResponse) -> state }
         .flatMapConcat {
           case (Success(response), state) if response.status.isSuccess() => {
             response.entity.dataBytes
@@ -159,8 +162,12 @@ object InfotonRetriever extends LazyLogging {
     else None
   }
 
-  def entityToRequest(dst: String, entity: RequestEntity) =
-    HttpRequest(method = HttpMethods.POST, uri = s"$dst/_out?format=nquads", entity = entity)
+  val gzipAcceptEncoding = `Accept-Encoding`(HttpEncodings.gzip)
+  val gzipContentEncoding = `Content-Encoding`(HttpEncodings.gzip)
+  def createRequest(dst: String, payload: ByteString) = {
+    val entity = HttpEntity(ContentTypes.`text/plain(UTF-8)`, Gzip.encode(payload))
+    HttpRequest(method = HttpMethods.POST, uri = s"$dst/_out?format=nquads", entity = entity, headers = scala.collection.immutable.Seq(gzipAcceptEncoding, gzipContentEncoding))
+  }
 
   def checkResponseCreator(dataCenterId: String, location: String, decider: Decider)(response: (Try[RetrieveOutput], RetrieveState, Option[ByteString])): (Try[RetrieveOutput], RetrieveState) =
     response match {

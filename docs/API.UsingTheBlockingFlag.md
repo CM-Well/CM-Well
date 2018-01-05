@@ -29,11 +29,11 @@ Response body:
     <http://permid.org/1-54296574112> <cmwell://meta/nn#trackingStatus> "Done" .
 
 The response body contains the status values for every infoton the request tried to update.
-This is similar to the response that CM-Well returns when you use the [tracking API](ADDLINK). 
+This is similar to the response that CM-Well returns when you use the [tracking API](API.Update.TrackUpdates.md). 
 
 >**Note:** You may configure your HTTP client to time out after a certain period.
 >In this case, a blocking update request may time out before it's completed, 
->and therefore we recommend using the [tracking API](ADDLINK) to test the request's status.
+>and therefore we recommend using the [tracking API](API.Update.TrackUpdates.md) to test the request's status.
 >In this case, if you want the update to behave synchronously, you'll have to manage 
 >tracking and verifying completion in your own code.
 

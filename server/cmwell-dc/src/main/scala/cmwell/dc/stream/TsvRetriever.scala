@@ -19,6 +19,7 @@ package cmwell.dc.stream
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.model.headers.{HttpEncodings, `Accept-Encoding`}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.stream.{ActorAttributes, KillSwitch, KillSwitches, Materializer}
@@ -42,6 +43,7 @@ import scala.concurrent.duration._
   * Created by eli on 19/07/16.
   */
 object TsvRetriever extends LazyLogging {
+  val gzipAcceptEncoding = `Accept-Encoding`(HttpEncodings.gzip)
   val maxTsvLineLength = {
     val slashHttpsDotPossiblePrefix = "/https.".length
     val maxUrlLength = 2083
@@ -164,11 +166,12 @@ object TsvRetriever extends LazyLogging {
         case (positionKey, state) =>
           currentState = getNewState(state, currentState)
           val (bulk, slowBulk) = extractPrefixes(currentState)
-          val request = HttpRequest(uri = s"http://${dcInfo.location}/?op=${bulk}consume$slowBulk&format=tsv&position=$positionKey")
+          val request = HttpRequest(uri = s"http://${dcInfo.location}/?op=${bulk}consume$slowBulk&format=tsv&position=$positionKey", headers = scala.collection.immutable.Seq(gzipAcceptEncoding))
           scala.collection.immutable.Seq(request -> state.copy(consumeState = currentState))
       }
       }
       .via(tsvConnPool)
+      .map{ case (tryResponse, state) => tryResponse.map(Util.decodeResponse) -> state }
       .flatMapConcat {
         case (Success(res@HttpResponse(s, h, entity, _)), state) if s.isSuccess() && h.exists(_.name == "X-CM-WELL-POSITION") => {
           val nextPositionKey = res.getHeader("X-CM-WELL-POSITION").get.value()

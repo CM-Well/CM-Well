@@ -17,13 +17,7 @@
 package k.grid.dmap.impl.persistent.json
 
 import k.grid.dmap.api._
-
-import spray.json.JsValue
-import spray.json._
-
-/**
- * Created by michael on 5/29/16.
- */
+import play.api.libs.json._
 
 case object PersistentDMapDataFileParsingException extends Exception{
   override def getMessage: String = "Couldn't parse persistent data file"
@@ -31,8 +25,8 @@ case object PersistentDMapDataFileParsingException extends Exception{
 
 object MapDataJsonProtocol {
 
-  implicit object SettingsValue extends JsonFormat[SettingsValue] {
-    override def write(obj: SettingsValue): JsValue = {
+  implicit object SettingsValueF extends Format[SettingsValue] {
+    override def writes(obj: SettingsValue): JsValue = {
       obj match {
         case SettingsString(str) => JsString(str)
         case SettingsBoolean(bool) => JsBoolean(bool)
@@ -41,47 +35,48 @@ object MapDataJsonProtocol {
       }
     }
 
-    override def read(json: JsValue): SettingsValue = json match {
-      case JsString(s) => SettingsString(s)
-      case JsBoolean(b) => SettingsBoolean(b)
-      case JsNumber(n) => SettingsLong(n.toLong)
-      case JsArray(arr) => SettingsSet(arr.collect{case JsString(s) => s}.toSet)
-      case _ => throw PersistentDMapDataFileParsingException
+    override def reads(json: JsValue): JsResult[SettingsValue] = json match {
+      case JsString(s) => JsSuccess(SettingsString(s))
+      case JsBoolean(b) => JsSuccess(SettingsBoolean(b))
+      case JsNumber(n) => JsSuccess(SettingsLong(n.toLong))
+      case JsArray(arr) => JsSuccess(SettingsSet(arr.collect{case JsString(s) => s}.toSet))
+      case _ => JsError(PersistentDMapDataFileParsingException.getMessage)
     }
   }
 
-  implicit object MapJsonFormat extends JsonFormat[Map[String, SettingsValue]] {
-    override def write(obj: Map[String, SettingsValue]): JsValue = {
+  implicit object MapJsonFormat extends Format[Map[String, SettingsValue]] {
+    override def writes(obj: Map[String, SettingsValue]): JsValue = {
       val j = obj.map {
         tup =>
-          tup._1 -> tup._2.toJson
+          tup._1 -> SettingsValueF.writes(tup._2)
       }
       JsObject(j)
     }
 
-    override def read(json: JsValue): Map[String, SettingsValue] = json match {
-      case JsObject(obj) => obj.map {
-        o =>
-          o._1 -> o._2.convertTo[SettingsValue]
+    override def reads(json: JsValue): JsResult[Map[String, SettingsValue]] = json match {
+      case JsObject(obj) => obj.mapValues(SettingsValueF.reads).foldLeft[JsResult[Map[String,SettingsValue]]](JsSuccess(Map.empty[String,SettingsValue])) {
+        case (JsSuccess(m,_),(s,JsSuccess(v,_))) => JsSuccess(m + (s -> v))
+        case (e: JsError, _) => e
+        case (_, (_, e: JsError)) => e
       }
-      case _ => throw PersistentDMapDataFileParsingException
+      case _ => JsError(PersistentDMapDataFileParsingException.getMessage)
     }
   }
 
-  implicit object MapDataJsonFormat extends JsonFormat[MapData] {
-    override def write(obj: MapData): JsValue = {
-      JsObject("timestamp" -> JsNumber(obj.timestamp), "data" -> obj.m.toJson)
+  implicit object MapDataJsonFormat extends Format[MapData] {
+    override def writes(obj: MapData): JsValue = {
+      Json.obj("timestamp" -> JsNumber(obj.timestamp), "data" -> MapJsonFormat.writes(obj.m))
     }
 
-    override def read(json: JsValue): MapData = (json: @unchecked) match {
+    override def reads(json: JsValue): JsResult[MapData] = (json: @unchecked) match {
       case JsObject(obj) => {
         val timestamp = (obj("timestamp"): @unchecked) match {
           case JsNumber(n) => n.toLong
         }
 
-        val data = obj("data").convertTo[Map[String,SettingsValue]]
+        val data = obj("data").as[Map[String,SettingsValue]]
 
-        MapData(data, timestamp)
+        JsSuccess(MapData(data, timestamp))
       }
     }
   }

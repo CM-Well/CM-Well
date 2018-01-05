@@ -17,8 +17,9 @@
 package cmwell.ctrl.controllers
 
 import cmwell.ctrl.config.Config
-import cmwell.ctrl.utils.{ProcUtil, HttpUtil}
-
+import cmwell.ctrl.utils.ProcUtil
+import cmwell.util.http.{SimpleHttpClient => Http}
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
  * Created by michael on 2/16/15.
@@ -26,12 +27,12 @@ import cmwell.ctrl.utils.{ProcUtil, HttpUtil}
 object ElasticsearchController extends ComponentController(s"${Config.cmwellHome}/app/es/cur", "/log/es[0-9]*", Set("es")) {
   def stopElasticsearchRebalancing {
     //logger.info("[Elasticsearch controller] stopping ES rebalance")
-    HttpUtil.httpPut(s"http://${Config.pingIp}:9201/_cluster/settings",  """{"transient" : {"cluster.routing.allocation.enable" : "none"}}""")
+    Http.put(s"http://${Config.pingIp}:9201/_cluster/settings",  """{"transient" : {"cluster.routing.allocation.enable" : "none"}}""")
   }
 
   def startElasticsearchRebalancing {
     //logger.info("[Elasticsearch controller] resuming ES rebalance")
-    HttpUtil.httpPut(s"http://${Config.pingIp}:9201/_cluster/settings",  """{"transient" : {"cluster.routing.allocation.enable" : "all"}}""")
+    Http.put(s"http://${Config.pingIp}:9201/_cluster/settings",  """{"transient" : {"cluster.routing.allocation.enable" : "all"}}""")
   }
 
   def startMaster {

@@ -21,7 +21,6 @@ import org.scalatest.{BeforeAndAfterAll, DoNotDiscover, FlatSpec, Matchers}
 import concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.io.Source
-import concurrent.ExecutionContext.Implicits.global
 
 @DoNotDiscover
 class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers with LazyLogging {
@@ -116,13 +115,13 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
       records.foreach{ r =>
         kafkaProducer.send(r)
       }
-    }
+    }(scala.concurrent.ExecutionContext.Implicits.global)
     val f2 = scheduleFuture(1000.millisecond){
       Future{
         pRecords.foreach{ r =>
           kafkaProducer.send(r)
         }
-      }
+      }(scala.concurrent.ExecutionContext.Implicits.global)
     }
 
     val assertFut = scheduleFuture(25.seconds) {
@@ -136,12 +135,12 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
           sortParams = SortParam(("system.indexTime", Desc)),
           withHistory = false,
           withDeleted = false
-        )
+        )(scala.concurrent.ExecutionContext.Implicits.global,logger)
 
         withClue(res){
-          res.map{ _.infotons.size should equal(2000)}
+          res.map{ _.infotons.size should equal(2000)}(scala.concurrent.ExecutionContext.Implicits.global)
         }
-      }
+      }(scala.concurrent.ExecutionContext.Implicits.global)
     }
 
     Await.result(assertFut, 30.seconds)

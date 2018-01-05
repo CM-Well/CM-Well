@@ -109,7 +109,7 @@ object SparqlTriggeredProcessorMain extends App with DataToolsLogging{
       }
     }
     .map(concatByteStrings(_, endl))
-    .map { s => logger.info(s"lines ${s.utf8String} are valid!"); s}
+//    .map { s => logger.info(s"lines ${s.utf8String} are valid!"); s}
 
   // check if need to ingest result infotons
   val processResult = if (Opts.ingest()) {

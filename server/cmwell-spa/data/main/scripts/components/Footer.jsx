@@ -1,3 +1,5 @@
+var { Qotd } = CommonComponents
+
 class Footer extends React.Component {
     render() {
         AppUtils.debug('Footer.render')
@@ -17,6 +19,9 @@ class Footer extends React.Component {
                     <span className="items-container">
                         { _(footerItems).map(item => <a href={item.href} className="footer-item">{item.title}</a>) }
                     </span>
+                    
+                    <Qotd/>
+            
                 </div>
     }
 

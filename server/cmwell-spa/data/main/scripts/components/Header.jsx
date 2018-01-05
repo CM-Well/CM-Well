@@ -89,7 +89,7 @@ class Breadcrumbs extends React.Component {
     render() {
         AppUtils.debug('Breadcrumbs.render')
 
-        let parts = location.pathname === '/' ? [] : location.pathname.substr(1).split('/')
+        let parts = this.props.parts || (location.pathname === '/' ? [] : location.pathname.substr(1).split('/'))
         
         let qp = /[\?|&]qp=(.*)/.exec(location.search) || ''
         if(qp) qp=(qp[1]||'').replace(/_all:/, '') // todo in future when Advanced Search is implemented, replace _all with "All fields", not an empty string. Moreover, split`:` etc.

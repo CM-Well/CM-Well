@@ -21,7 +21,7 @@ The following list shows general topics relating to many CM-Well API calls:
 * [Using the with-deleted Flag](API.UsingTheWith-deletedFlag.md)
 * [Using the blocking Flag](API.UsingTheBlockingFlag.md)
 * [Using Conditional Updates](API.UsingConditionalUpdates.md)
-* [Traversing Outbound and Inbound Links (*xg*, *yg* and *gqp*)](API.TraversingOutboundAndInboundLinksWithXgAndYg.md)
+* [Traversing Outbound and Inbound Links (*xg*, *yg* and *gqp*)](API.Traversal.TOC.md)
 * [Return Codes](API.ReturnCodes.md)
 
 The following table shows all the CM-Well API calls:

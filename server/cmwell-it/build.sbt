@@ -1,6 +1,7 @@
 import scala.concurrent.Promise
 import scala.util.Try
 import cmwell.build.{Versions,CMWellCommon}, CMWellCommon.Tags
+import scala.sys.process._
 
 name := "cmwell-it"
 
@@ -10,7 +11,7 @@ libraryDependencies ++= {
   val dm = dependenciesManager.value
   Seq(
     dm("com.github.andrewoma.dexx", "collection") % "it,test",
-    dm("com.typesafe.akka", "akka-http-core") % "it,test",
+    dm("com.typesafe.akka", "akka-http") % "it,test",
     dm("com.typesafe.akka", "akka-stream") % "it,test",
     dm("ch.qos.logback", "logback-classic") % "it,test",
     (dm("com.thaiopensource", "jing") % "it,test")
@@ -92,11 +93,12 @@ parallelExecution in Test := true
 testOptions in IntegrationTest ++= {
 
   val log = streams.value.log
+  val pescript = (peScript in LocalProject("cons")).value
+
   var oldJps: Array[(String,String)] = Array.empty
 
   Seq(Tests.Setup(() => {
-//    oldJps = installCmwell.value
-    oldJps = launchCmwell((target in IntegrationTest).value,streams.value.log,(peScript in LocalProject("cons")).value)
+    oldJps = launchCmwell((target in IntegrationTest).value,log,pescript)
     log.info("starting tests")
   }),
   Tests.Cleanup(() => {

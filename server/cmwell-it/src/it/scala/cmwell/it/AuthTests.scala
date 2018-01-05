@@ -23,7 +23,6 @@ import cmwell.util.http.SimpleResponse
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.{Await, Future}
-import scala.concurrent.ExecutionContext.Implicits.global
 
 
 /**

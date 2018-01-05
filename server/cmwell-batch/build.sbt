@@ -1,6 +1,5 @@
 name := "cmwell-batch"
 
-packAutoSettings
 
 libraryDependencies ++= {
 	val dm = dependenciesManager.value
@@ -13,16 +12,5 @@ libraryDependencies ++= {
 		dm("uk.org.lidalia","sysout-over-slf4j")
 	)
 }
-
-mappings in oneJar ++= {
-	(unmanagedResources in Compile).value.find(_.getName == "logback.xml") match {
-		case Some(f) => Seq((f,"logback.xml"))
-		case None => Nil
-	}
-}
-
-mainClass in oneJar := Some("cmwell.batch.boot.Runner")
-
-artifact in oneJar := Artifact(moduleName.value, "selfexec")
 
 fullTest := (test in Test).value

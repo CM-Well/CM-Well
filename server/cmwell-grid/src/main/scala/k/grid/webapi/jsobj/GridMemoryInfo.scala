@@ -17,17 +17,18 @@
 package k.grid.webapi.jsobj
 
 import k.grid.MemoryInfo
-import spray.json._
+import play.api.libs.json._
+
 /**
  * Created by michael on 4/14/16.
  */
 case class GridMemoryInfo(clusterName : String, sampleTime : Long, machinesUsages : Set[MachineMemoryInfo]) {
   val toJson : JsObject = {
-    JsObject("clusterName" -> JsString(clusterName), "sampleTime" -> JsNumber(sampleTime), "machinesUsages" -> JsArray(machinesUsages.toVector.map(_.toJson)))
+    Json.obj("clusterName" -> JsString(clusterName), "sampleTime" -> JsNumber(sampleTime), "machinesUsages" -> JsArray(machinesUsages.toVector.map(_.toJson)))
   }
 }
 case class MachineMemoryInfo(machineName : String, jvmName : String, mempools : Map[String, Long]) {
   val toJson : JsObject = {
-    JsObject("machineName" -> JsString(machineName), "jvmName" -> JsString(jvmName), "memoryPools" -> JsArray(mempools.map(mp => JsObject(mp._1 -> JsNumber(mp._2))).toVector))
+    Json.obj("machineName" -> JsString(machineName), "jvmName" -> JsString(jvmName), "memoryPools" -> JsArray(mempools.map(mp => Json.obj(mp._1 -> JsNumber(mp._2))).toVector))
   }
 }

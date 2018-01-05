@@ -30,6 +30,7 @@ import cmwell.dc.stream.MessagesTypesAndExceptions._
 import cmwell.dc.stream.akkautils.{ConcurrentFlow, DebugStage}
 import cmwell.util.collections._
 import k.grid.{GridReceives, JvmIdentity}
+import play.api.libs.json._
 
 import scala.concurrent._
 import ExecutionContext.Implicits.global
@@ -307,15 +308,10 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])], manual
   }
 
   def parseProcDcJsonAndGetLastIndexTime(body: ByteString): Option[Long] = {
-    import spray.json._
 
     try {
-      (JsonParser(ParserInput(body.toArray))
-        .asJsObject
-        .fields("fields")
-        .asJsObject
-        .fields("lastIdxT"): @unchecked) match {
-        case JsArray(data) => data.headOption.flatMap {
+      (Json.parse(body.toArray) \ "fields" \ "lastIdxT": @unchecked) match {
+        case JsDefined(JsArray(data)) => data.headOption.flatMap {
           case num: JsNumber if num.value.longValue() == 0 => None
           case num: JsNumber => Some(num.value.longValue())
           case _ => throw new RuntimeException("must be a JsNumber!")
@@ -359,32 +355,33 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])], manual
   }
 
   def parseMetaDcJsonAndGetDcInfoSeq(body: ByteString): Seq[DcInfo] = {
-    import spray.json._
     try {
-      JsonParser(ParserInput(body.toArray))
-        .asJsObject
-        .fields("results")
-        .asJsObject
-        .fields("infotons") match {
-        case JsArray(data) => data.map { d =>
-          val f = d.asJsObject.fields("fields")
-          val location = f.asJsObject.fields("location") match {
-            case JsArray(Vector(JsString(loc))) => loc
+      Json.parse(body.toArray) \ "results" \ "infotons" match {
+        case JsDefined(JsArray(data)) => data.map { d =>
+          val f = d \ "fields"
+          val location = f \ "location" match {
+            case JsDefined(JsArray(seq)) if seq.length == 1 && seq.head.isInstanceOf[JsString] => seq.head.as[String]
           }
-          val dataCenterId = f.asJsObject.fields("id") match {
-            case JsArray(Vector(JsString(id))) => id
+          val dataCenterId = f \ "id" match {
+            case JsDefined(JsArray(seq)) if seq.length == 1 && seq.head.isInstanceOf[JsString] => seq.head.as[String]
           }
-          val userQp = f.asJsObject.fields.get("qp").map {
-            case JsArray(Vector(JsString(qp))) => qp
+          val userQp = f \ "qp" match {
+            case JsDefined(JsArray(seq)) if seq.length == 1 && seq.head.isInstanceOf[JsString] => Option(seq.head.as[String])
+            case _ => None
           }
-          val userWh = f.asJsObject.fields.get("with-history").map {
-            case JsArray(Vector(JsString(wh))) => wh
+          val userWh = f \ "with-history" match {
+            case JsDefined(JsArray(seq)) => seq.headOption.collect {
+              case JsString(wh) => wh
+            }
+            case _ => None
           }
-          val fromIndexTime = f.asJsObject.fields.get("fromIndexTime").map {
-            case JsArray(Vector(JsNumber(idxTime))) => idxTime.toLong
+          val fromIndexTime = f \ "fromIndexTime" match {
+            case JsDefined(JsArray(seq)) if seq.length == 1 && seq.head.isInstanceOf[JsNumber] => Option(seq.head.as[Long])
+            case _ => None
           }
-          val tsvFile = f.asJsObject.fields.get("tsvFile").map {
-            case JsArray(Vector(JsString(file))) => file
+          val tsvFile = f \ "tsvFile" match {
+            case JsDefined(JsArray(seq)) if seq.length == 1 && seq.head.isInstanceOf[JsString] => Option(seq.head.as[String])
+            case _ => None
           }
           val qpStr = userQp.fold("")(qp => s"qp=$qp")
           val whStr = userWh.fold("with-history")(wh => if (wh == "true") "with-history" else "")
@@ -555,6 +552,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])], manual
     }
       .get
   }
+
   def runSyncingEngine(dcInfo: DcInfo): SyncerMaterialization = {
     logger.info(s"Starting sync engine for data center id ${dcInfo.id} from location ${dcInfo.location}${dcInfo.positionKey.fold("")(key => s" using position key $key")}${dcInfo.tsvFile.fold("")(f => " and file " + f)}")
     val syncerMaterialization@SyncerMaterialization(cancelSyncing, nextUnSyncedPositionFuture) = createSyncingEngine(dcInfo).run()

@@ -48,6 +48,7 @@ require(["react", "react-dom"], function() {
         ,'/meta/app/main/scripts/lib/jquery.min.js'
         ,'/meta/app/main/scripts/lib/underscore-min.js'
         ,'/meta/app/main/scripts/lib/md5.js'
+        ,'/meta/app/main/scripts/lib/mousetrap.min.js'
     ], function(ReactRouter, FlipMove) {
         status('Loading transpiler and base components');
         
@@ -60,8 +61,9 @@ require(["react", "react-dom"], function() {
            ,'jsx!./components/ActionsBar.jsx'
            ,'jsx!./components/ErrorMsg.jsx'
            ,'jsx!./components/Spinner.jsx'
+           ,'jsx!./components/Qotd.jsx'
            ,'jsx!./domain.jsx'
-        ], function(sliderToggle, sysFields, actionsBar, errMsg, loadingSpinner, domain) {
+        ], function(sliderToggle, sysFields, actionsBar, errMsg, loadingSpinner, qotd, domain) {
             status('Loading app components');
 
             window.CommonComponents = {
@@ -69,7 +71,8 @@ require(["react", "react-dom"], function() {
                 SystemFields: sysFields,
                 ActionsBar: actionsBar,
                 ErrorMsg: errMsg,
-                LoadingSpinner: loadingSpinner
+                LoadingSpinner: loadingSpinner,
+                Qotd: qotd
             }
             
             window.Domain = domain

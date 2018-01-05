@@ -24,8 +24,6 @@ import cmwell.util.formats.JsonEncoder
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.{AsyncFunSpec, Matchers}
 
-import scala.concurrent.ExecutionContext.Implicits.global
-
 class MetaNsTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAndPrefixes with LazyLogging {
   describe("CM-Well /meta/ns") {
 

@@ -2,7 +2,7 @@
 
 ----
 
-**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.UsingTheBlockingFlag.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.TraversingOutboundAndInboundLinksWithXgAndYg.md)  
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.UsingTheBlockingFlag.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Traversal.TOC.md)  
 
 ----
 
@@ -31,6 +31,6 @@ To find out whether the update succeeded, you'll have to use the [blocking flag]
 
 ----
 
-**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.UsingTheBlockingFlag.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.TraversingOutboundAndInboundLinksWithXgAndYg.md)  
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.UsingTheBlockingFlag.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Traversal.TOC.md)  
 
 ----

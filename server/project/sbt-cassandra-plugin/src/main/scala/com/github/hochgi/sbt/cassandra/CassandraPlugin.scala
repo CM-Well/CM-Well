@@ -24,6 +24,7 @@ import sbt.Keys._
 import sbt._
 import semverfi._
 
+import scala.sys.process._
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.util.Try
@@ -63,21 +64,23 @@ object CassandraPlugin extends AutoPlugin {
     cassandraHost := "localhost",
     cassandraPort := "9160",
 		configMappings := Seq(),
-		configMappings <++= (cassandraPort,target){
-			case (port, targetDir) => {
-				val data = targetDir / "data"
-				def d(s: String): String = (data / s).getAbsolutePath
-				Seq(
-					"rpc_port" -> port,
-					"data_file_directories" -> {
-						val l = new java.util.LinkedList[String]()
-						l.add(d("data"))
-						l
-					},
-					"commitlog_directory" -> d("commitlog"),
-					"saved_caches_directory" -> d("saved_caches")
-				)
-			}
+		configMappings ++= {
+			val port = cassandraPort.value
+			val targetDir = target.value
+			val data = targetDir / "data"
+
+			def d(s: String): String = (data / s).getAbsolutePath
+
+			Seq(
+				"rpc_port" -> port,
+				"data_file_directories" -> {
+					val l = new java.util.LinkedList[String]()
+					l.add(d("data"))
+					l
+				},
+				"commitlog_directory" -> d("commitlog"),
+				"saved_caches_directory" -> d("saved_caches")
+			)
 		},
 	  cassandraJavaArgs := Nil,
 	  cassandraApplicationArgs := Nil,
@@ -128,6 +131,8 @@ object CassandraPlugin extends AutoPlugin {
 			cassHome
 		},
 		startCassandra := {
+			//if compilation of test classes fails, cassandra should not be invoked. (moreover, Test.Cleanup won't execute to stop it...)
+			(compile in Test).value
 			val javaArgs = cassandraJavaArgs.value
 			val appArgs = cassandraApplicationArgs.value
 			val targetDir = target.value
@@ -167,8 +172,6 @@ object CassandraPlugin extends AutoPlugin {
 			cassandraPid := pid
 			pid
 		},
-		//if compilation of test classes fails, cassandra should not be invoked. (moreover, Test.Cleanup won't execute to stop it...)
-		startCassandra <<= startCassandra.dependsOn(compile in Test),
 		cassandraPid := {
 			val cassPid = target.value / "cass.pid"
 			if(cassPid.exists) sbt.IO.read(cassPid).filterNot(_.isWhitespace)
@@ -181,8 +184,12 @@ object CassandraPlugin extends AutoPlugin {
       stopCassandraMethod(clean, targetDir/ "data", pid)
     },
 		//make sure to Stop cassandra when tests are done.
-		testOptions in Test <+= (cassandraPid, stopCassandraAfterTests, cleanCassandraAfterStop, target) map {
-			case (pid, stop, clean, targetDir) => Tests.Cleanup(() => {
+		testOptions in Test += {
+			val pid = cassandraPid.value
+			val stop = stopCassandraAfterTests.value
+			val clean = cleanCassandraAfterStop.value
+			val targetDir = target.value
+			Tests.Cleanup(() => {
 				if(stop) stopCassandraMethod(clean, targetDir / "data", pid)
 			})
 		}
