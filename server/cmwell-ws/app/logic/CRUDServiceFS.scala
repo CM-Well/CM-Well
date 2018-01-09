@@ -964,8 +964,7 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
           p.success(metadata)
         }
       }
-    }
-    )
+    })
     TimeoutFuture.withTimeout(p.future, timeout)
   }
 }
