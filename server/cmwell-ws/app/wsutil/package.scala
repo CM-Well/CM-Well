@@ -906,6 +906,26 @@ package object wsutil extends LazyLogging {
       case unknownFormat => throw new IllegalArgumentException(s"Format $unknownFormat is not supported")
     }
 
+  def isSystemProperty(firstDotLast: (String,String)): Boolean = firstDotLast match {
+    case ("system.parent","parent_hierarchy") => true
+    case ("system.parent","parent") => true
+    case ("system","lastModified") => true
+    case ("system","kind") => true
+    case ("system","path") => true
+    case ("system","uuid") => true
+    case ("system","quad") => true
+    case ("system","dc") => true
+    case ("system","indexTime") => true
+    case ("system","current") => true
+    case ("system","parent") => true
+    case ("link","to") => true
+    case ("link","kind") => true
+    case ("content","data") => true
+    case ("content","mimeType") => true
+    case ("content","length") => true
+    case _ => false
+  }
+
   val errorHandler = {
     val err2res: Throwable => Result = exceptionToResponse
     PartialFunction(err2res)
