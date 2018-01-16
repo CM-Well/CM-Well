@@ -108,7 +108,7 @@ package util {
       s.lastIndexOf('.') match {
         case -1 => Right(NnFieldKey(s))
         case i => s.splitAt(i) match {
-          case (first, _) if first == "system" || first.startsWith("system.") => Right(NnFieldKey(s))
+          case (first, _) if first == "system" || first.startsWith("system.") || first == "content" || first == "link" => Right(NnFieldKey(s))
           case (first, dotLast) => dotLast.tail match {
             case t if t.isEmpty => {
               logger.warn(s"field ending with '.' : $s")
