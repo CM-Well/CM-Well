@@ -143,6 +143,9 @@ object Settings {
 
   lazy val loginPenalty = config.getInt("webservice.login.penaltysec")
 
+  lazy val consumeSimpleChunkSize = config.getInt("cmwell.ws.consume.simple-chunk-size")
+  lazy val consumeExpandableChunkSize = config.getInt("cmwell.ws.consume.expandable-chunk-size")
+
   lazy val requestsPenaltyThreshold = config.getInt("cmwell.ws.trafficshaping.requests-penalty-threshold")
   lazy val checkFrequency = config.getInt("cmwell.ws.trafficshaping.check-frequency-sec")
   lazy val defaultLimitForHistoryVersions = config.getInt("cmwell.ws.cassandra-driver.history-versions-limit")
