@@ -108,7 +108,7 @@ package util {
       s.lastIndexOf('.') match {
         case -1 => Right(NnFieldKey(s))
         case i => s.splitAt(i) match {
-          case (first, dotLast) if isSystemProperty(first -> dotLast.tail) => Right(NnFieldKey(s))
+          case (first, dotLast) if dotLast.nonEmpty && isSystemProperty(first -> dotLast.tail) => Right(NnFieldKey(s))
           case (first, dotLast) if dotLast.nonEmpty && isSystemProperty(dotLast.tail -> first) => Right(NnFieldKey(s"${dotLast.tail}.$first"))
           case (first, dotLast) => dotLast.tail match {
             case t if t.isEmpty => {
