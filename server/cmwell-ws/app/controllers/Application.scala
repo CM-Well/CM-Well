@@ -66,6 +66,7 @@ import filters.Attrs
 import play.api.mvc.request.RequestTarget
 
 import scala.collection.mutable.{HashMap, MultiMap}
+import scala.collection.immutable
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -1078,6 +1079,7 @@ callback=< [URL] >
       val (f,b) = extractInferredFormatWithData(request,"json")
       f -> (b || yg.isDefined || xg.isDefined) //infer `with-data` implicitly, and don't fail the request
     }
+    val isSimpleConsume = !(xg.isDefined || yg.isDefined || gqp.isDefined)
 
     def wasSupplied(queryParamKey: String) = request.queryString.keySet(queryParamKey)
 
@@ -1100,11 +1102,12 @@ callback=< [URL] >
       val lengthHint = request
         .getQueryString("length-hint")
         .flatMap(asInt)
-        .orElse(ConsumeState.decode[BulkConsumeState](sortedIteratorID).toOption.flatMap {
-          case b if b.threshold <= Settings.maxLength => Some(b.threshold.toInt)
-          case _ => None
+        .getOrElse(ConsumeState.decode[BulkConsumeState](sortedIteratorID).toOption.collect {
+          case b if b.threshold <= Settings.maxLength => b.threshold.toInt
+        }.getOrElse {
+            if (isSimpleConsume) Settings.consumeSimpleChunkSize
+            else Settings.consumeExpandableChunkSize
         })
-        .getOrElse(100)
 
       val debugInfo = request.queryString.keySet("debug-info")
 
@@ -1219,7 +1222,7 @@ callback=< [URL] >
 
 
 
-  def expandSearchResultsForSortedIteration(newResults: Seq[SearchThinResult],
+  def expandSearchResultsForSortedIteration(newResults: immutable.Seq[SearchThinResult],
                                             sortedIteratorState: SortedConsumeState,
                                             total: Long,
                                             formatter: Formatter,
@@ -1240,9 +1243,18 @@ callback=< [URL] >
         .as(contentType)
         .withHeaders("X-CM-WELL-POSITION" -> id, "X-CM-WELL-N-LEFT" -> (total - newResults.length).toString))
     }
+    else if(xg.isEmpty && yg.isEmpty && gqp.isEmpty) Future.successful(
+      Ok.chunked(
+        Source(newResults)
+          .via(Streams.Flows.searchThinResultToFatInfoton(nbg,crudServiceFS))
+          .via(Streams.Flows.infotonToByteString(formatter)))
+        .as(contentType)
+        .withHeaders("X-CM-WELL-POSITION" -> id, "X-CM-WELL-N-LEFT" -> (total - newResults.length).toString))
     else {
 
-      Future.traverse(newResults)(str => crudServiceFS.getInfotonByUuidAsync(str.uuid).map(_ -> str.uuid)).flatMap { newInfotonsBoxes =>
+      import cmwell.util.concurrent.travector
+
+      travector(newResults)(str => crudServiceFS.getInfotonByUuidAsync(str.uuid).map(_ -> str.uuid)).flatMap { newInfotonsBoxes =>
 
         val newInfotons = newInfotonsBoxes.collect { case (FullBox(i), _) => i }
 
@@ -1258,7 +1270,7 @@ callback=< [URL] >
           }
         }
 
-        val gqpModified = gqp.fold(Future.successful(newInfotons))(gqpFilter(_,newInfotons,cmwellRDFHelper,typesCache(nbg),gqpChunkSize,nbg))
+        val gqpModified = gqp.fold(Future.successful(newInfotons))(gqpFilter(_,newInfotons,cmwellRDFHelper,typesCache(nbg),gqpChunkSize,nbg).map(_.toVector))
         gqpModified.flatMap { infotonsAfterGQP =>
           //TODO: xg/yg handling should be factor out (DRY principle)
           val ygModified = yg match {
