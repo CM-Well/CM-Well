@@ -45,7 +45,7 @@ The resulting shell script executables are created in the ```cmwell-data-tools-a
 1. Navigate to the the **cmwell-downloader** directory under the data tools root directory. It contains a file called **build.sbt**.
 2. Run the following command: ```sbt downloader/package```.
 
-The resulting `cmwell-downloader_2.11-1.0.LOCAL.jar` file is created in `cmwell-data-tools/cmwell-downloader/target/scala-2.11/`.
+The resulting `cmwell-downloader_2.12-1.0.LOCAL.jar` file is created in `cmwell-data-tools/cmwell-downloader/target/scala-2.12/`.
 
 ## Running the CM-Well Downloader Executable ##
 
