@@ -18,6 +18,8 @@ package cmwell.domain
 
 import org.joda.time.DateTime
 
+import scala.collection.immutable
+
 /**
  * Created by:
  * User: Israel
@@ -26,7 +28,7 @@ import org.joda.time.DateTime
  */
 case class SearchThinResult(path: String, uuid: String, lastModified: String, indexTime: Long, score: Option[Float] = None) extends Formattable
 
-case class SearchThinResults(total: Long, offset: Long, length: Long, thinResults: Seq[SearchThinResult], debugInfo: Option[String] = None)
+case class SearchThinResults(total: Long, offset: Long, length: Long, thinResults: immutable.Seq[SearchThinResult], debugInfo: Option[String] = None)
 
 case class SearchResults(fromDate:Option[DateTime], toDate:Option[DateTime], total:Long, offset:Long, length:Long,
                          infotons:Seq[Infoton], debugInfo:Option[String] = None) extends Jsonable with Formattable {

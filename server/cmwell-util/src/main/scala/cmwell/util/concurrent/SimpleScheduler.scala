@@ -37,7 +37,7 @@ object SimpleScheduler extends LazyLogging {
         // body must not be expensive to compute since it will be run in our only timer thread expense.
         p.tryComplete(Try(body))
       }
-    },duration.toMillis,java.util.concurrent.TimeUnit.MILLISECONDS)
+    }, duration.toMillis,java.util.concurrent.TimeUnit.MILLISECONDS)
     p.future
   }
 

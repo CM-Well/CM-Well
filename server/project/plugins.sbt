@@ -12,7 +12,7 @@ addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.7.0")
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.3.2")
 
-addSbtPlugin("org.xerial.sbt" % "sbt-pack" % "0.9.3")
+addSbtPlugin("org.xerial.sbt" % "sbt-pack" % "0.10.1")
 
 resolvers += "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/"
 

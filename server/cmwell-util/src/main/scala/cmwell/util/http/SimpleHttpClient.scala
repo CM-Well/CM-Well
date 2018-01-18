@@ -252,6 +252,7 @@ object SimpleHttpClient extends LazyLogging {
     implicit def apply(body: String): Body = new BodyFromString(body)
     implicit def apply(body: Array[Byte]): Body = new BodyFromBytes(body)
     implicit def apply(body: ByteString): Body = new BodyFromByteString(body)
+    implicit def apply(body: () => InputStream): Body = new BodyFromInputStreamFactory(body: () => InputStream)
 
     private class BodyFromString(body: String) extends Body {
       override def entity(ct: Option[String]) = ct match {
@@ -276,6 +277,13 @@ object SimpleHttpClient extends LazyLogging {
       override def entity(ct: Option[String]) = ct match {
         case None => HttpEntity(body)
         case Some(c) => HttpEntity(contentType(c), body)
+      }
+    }
+
+    private class BodyFromInputStreamFactory(body: () => InputStream) extends Body {
+      override def entity(ct: Option[String]) = ct match {
+        case None => HttpEntity(ContentTypes.`application/octet-stream`, StreamConverters.fromInputStream(body))
+        case Some(c) => HttpEntity(contentType(c), StreamConverters.fromInputStream(body))
       }
     }
   }
