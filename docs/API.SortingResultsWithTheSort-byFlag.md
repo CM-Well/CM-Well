@@ -30,7 +30,7 @@ Descending: `sort-by=-CommonName.mdaas`
 
 >**Notes:** 
 >* Sort order is only guaranteed when using text/list output formats (as opposed to RDF output formats): tsv, text, json, or yaml.
->* Adding `sort-by=system.score` to the query causes the results to be sorted in descending order of the matching score. The matching score is produced by Elastic Search, as a TFIDF (Term Frequency Inverse Document Frequency) score on the search terms. This means that the score is higher if the search terms appear more frequently in a specific infoton than in other infotons on average. Note that this feature does not work when the **with-data** flag is included in the query.
+>* Adding `sort-by=score.system` to the query causes the results to be sorted in descending order of the matching score. The matching score is produced by Elastic Search, as a TFIDF (Term Frequency Inverse Document Frequency) score on the search terms. This means that the score is higher if the search terms appear more frequently in a specific infoton than in other infotons on average. Note that this feature does not work when the **with-data** flag is included in the query.
 
 ----
 
