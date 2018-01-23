@@ -4,7 +4,7 @@ In addition to user-defined fields, infotons have fields that are created automa
 
 Metadata Type | Infoton Type | Metadata Fields
 :-------------|:-------------|:----------------
-system | All infotons | **parent** - the immediate parent infoton of the given infoton<br>**parent_hierarchy** - the entire "ancestor" hierarchy of the given infoton<br>**lastModified** - the time the infoton was last modified<br>**path** - the infoton's path in CM-Well<br>**uuid** - the infoton's unique ID<br>**quad** - all labels of the named graphs with which the infoton has an associated statement <br>**dataCenter** - the data center where the original version of the infoton was first written<br>**indexTime** - the time the infoton was indexed<br>**current** - whether the infoton is the current version or a historic version
+system | All infotons | **parent.parent** - the immediate parent infoton of the given infoton<br>**parent.parent_hierarchy** - the entire "ancestor" hierarchy of the given infoton, in ascending order of hierarchy<br>**lastModified** - the time the infoton was last modified<br>**path** - the infoton's path in CM-Well<br>**uuid** - the infoton's unique ID<br>**quad** - all labels of the named graphs with which the infoton has an associated statement <br>**dataCenter** - the data center where the original version of the infoton was first written<br>**indexTime** - the time the infoton was indexed<br>**current** - whether the infoton is the current version or a historic version
 content | File infotons | **data** - the file's textual data<br>**length** - the data size in bytes<br>**mimeType** - the file's Mime type
 link | Link infotons   | **to** - the target infoton linked to<br>**kind** - kind of link (0=Permanent, 1=Temporary, 2=Forward)
 
