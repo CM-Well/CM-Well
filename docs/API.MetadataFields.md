@@ -1,22 +1,12 @@
 # Metadata Fields #
 
-In addition to user-defined fields, infotons have fields created automatically by CM-Well. The following table summarizes these fields:
+In addition to user-defined fields, infotons have fields that are created automatically by CM-Well. The following table summarizes these fields and their types:
 
 Metadata Type | Infoton Type | Metadata Fields
 :-------------|:-------------|:----------------
-system | All infotons |
+system | All infotons | **parent** - the immediate parent infoton of the given infoton<br>**parent_hierarchy** - the entire "ancestor" hierarchy of the given infoton<br>**lastModified** - the time the infoton was last modified<br>**path** - the infoton's path in CM-Well<br>**uuid** - the infoton's unique ID<br>**quad** - all labels of the named graphs with which the infoton has an associated statement <br>**dataCenter** - the data center where the original version of the infoton was first written<br>**indexTime** - the time the infoton was indexed<br>**current** - whether the infoton is the current version or a historic version
 content | File infotons | **data** - the file's textual data<br>**length** - the data size in bytes<br>**mimeType** - the file's Mime type
 link | Link infotons   | **to** - the target infoton linked to<br>**kind** - kind of link (0=Permanent, 1=Temporary, 2=Forward)
-
-parent
-lastModified
-path
-uuid
-quad
-dataCenter
-indexTime
-current
-
 
 Here is an example of an infoton with its **system** fields:
 
@@ -43,7 +33,7 @@ Here is an example of an infoton with its **system** fields:
       }
     }
 
-Using the **qp** operator, you can perform search queries in metadata fields as well as in user-defined fields. For example, the following query searches for file infotons that contain the string "configuration":
+Using the **qp** operator, you can perform search queries in metadata fields as well as in user-defined fields. For example, the following query searches for file infotons whose text body contains the string "configuration":
     
     <cm-well-host>/meta?qp=content.data:configuration
 
