@@ -64,7 +64,7 @@ object Runner extends LazyLogging {
         val irwServiceDaoHostName = config.getString("irwServiceDao.hostName")
         val irwServiceDao = Dao(irwServiceDaoClusterName, irwServiceDaoKeySpace, irwServiceDaoHostName)
 
-        IRWService.newIRW(irwServiceDao, false)
+        IRWService.newIRW(irwServiceDao, false, 120.seconds)
       }
 
       val ftsService = FTSServiceNew("bg.es.yml")

@@ -51,9 +51,10 @@ object IRWService {
   def apply(storageDao : Dao, disableReadCache: Boolean) = new  IRWServiceNativeImpl(storageDao, disableReadCache = disableReadCache)
   def apply(storageDao : Dao, maxReadSize : Int,disableReadCache : Boolean, readCacheDuration: FiniteDuration) = new IRWServiceNativeImpl(storageDao, maxReadSize , disableReadCache, readCacheDuration)
 
-  def newIRW(storageDao : Dao) = new IRWServiceNativeImpl2(storageDao)
-  def newIRW(storageDao : Dao, disableReadCache: Boolean) = new  IRWServiceNativeImpl2(storageDao, disableReadCache = disableReadCache)
-  def newIRW(storageDao : Dao, maxReadSize : Int,disableReadCache : Boolean, readCacheDuration: FiniteDuration) = new IRWServiceNativeImpl2(storageDao, maxReadSize , disableReadCache, readCacheDuration)
+  def newIRW(storageDao: Dao) = new IRWServiceNativeImpl2(storageDao)
+  def newIRW(storageDao: Dao, disableReadCache: Boolean) = new  IRWServiceNativeImpl2(storageDao, disableReadCache = disableReadCache)
+  def newIRW(storageDao: Dao, disableReadCache: Boolean, casTimeout: FiniteDuration) = new  IRWServiceNativeImpl2(storageDao, disableReadCache = disableReadCache)(casTimeout)
+  def newIRW(storageDao: Dao, maxReadSize: Int, disableReadCache: Boolean, readCacheDuration: FiniteDuration) = new IRWServiceNativeImpl2(storageDao, maxReadSize , disableReadCache, readCacheDuration)
 }
 
 trait IRWService {

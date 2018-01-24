@@ -39,13 +39,13 @@ import org.joda.time.DateTime
 
 import scala.collection.JavaConversions._
 import scala.concurrent._
-import scala.concurrent.duration._
+import scala.concurrent.duration.{Duration => SDuration, _}
 import scala.util.{Failure, Success}
 
 
 class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableReadCache : Boolean = false,
                             readCacheDuration: FiniteDuration = 120.seconds)
-                           (implicit val defaultCasTimeout:FiniteDuration = 10.seconds) extends IRWService
+                           (implicit val defaultCasTimeout: SDuration = 10.seconds) extends IRWService
   with LazyLogging with WithMetrics with DaoExecution {
 
   val delayOnError = 40.millis
@@ -191,9 +191,12 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
   }
 
   def executeAsync(statmentToExec: Statement, retries: Int = 5, delay: FiniteDuration = delayOnError,
-                   casTimeout:FiniteDuration = defaultCasTimeout)(implicit ec: ExecutionContext): Future[ResultSet] =
+                   casTimeout: SDuration = defaultCasTimeout)(implicit ec: ExecutionContext): Future[ResultSet] =
     cmwell.util.concurrent.retryWithDelays(Vector.iterate(delayOnError, retries)(_ * 2): _*) {
-      cmwell.util.concurrent.timeoutFuture(executeAsyncInternal(statmentToExec), casTimeout)
+      if(casTimeout.isFinite())
+        cmwell.util.concurrent.timeoutFuture(executeAsyncInternal(statmentToExec), casTimeout.asInstanceOf[FiniteDuration])
+      else
+        executeAsyncInternal(statmentToExec)
     }(ec)
 
   @deprecated("No need in IRW2, use `setPathLast` instead", "1.5.x")
