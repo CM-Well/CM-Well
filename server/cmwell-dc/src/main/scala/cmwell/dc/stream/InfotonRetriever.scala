@@ -30,6 +30,7 @@ import akka.util.{ByteString, ByteStringBuilder}
 import cmwell.dc.{LazyLogging, Settings}
 import cmwell.dc.Settings._
 import cmwell.dc.stream.MessagesTypesAndExceptions._
+import cmwell.util.http.HttpZipDecoder
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration._
@@ -74,7 +75,7 @@ object InfotonRetriever extends LazyLogging {
             createRequest(remoteUri, payload) -> state
         }
         .via(Http().superPool[RetrieveState]())
-        .map{ case (tryResponse, state) => tryResponse.map(Util.decodeResponse) -> state }
+        .map{ case (tryResponse, state) => tryResponse.map(HttpZipDecoder.decodeResponse) -> state }
         .flatMapConcat {
           case (Success(response), state) if response.status.isSuccess() => {
             response.entity.dataBytes

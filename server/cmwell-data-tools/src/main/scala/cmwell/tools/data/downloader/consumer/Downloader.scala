@@ -20,7 +20,7 @@ package cmwell.tools.data.downloader.consumer
 import akka.NotUsed
 import akka.actor.{ActorSystem, Props}
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.RawHeader
+import akka.http.scaladsl.model.headers.{HttpEncodings, RawHeader, `Content-Encoding`}
 import akka.stream._
 import akka.stream.scaladsl._
 import akka.util.ByteString
@@ -405,12 +405,15 @@ class Downloader(baseUrl: String,
     def createDataRequest(paths: Seq[ByteString]) = {
       val paramsValue = if (params.isEmpty) "" else s"&$params"
 
+      val gzipContentEncoding = `Content-Encoding`(HttpEncodings.gzip)
+
       HttpRequest (
         uri = s"${formatHost(baseUrl)}/_out?format=$format$paramsValue",
         method = HttpMethods.POST,
         entity = HttpEntity(concatByteStrings(paths, ByteString(",\n")).utf8String)
-          .withContentType(ContentTypes.`text/plain(UTF-8)`)
-      ).addHeader(RawHeader("Accept-Encoding", "gzip"))
+          .withContentType(ContentTypes.`text/plain(UTF-8)`),
+        headers = scala.collection.immutable.Seq(gzipContentEncoding)
+      )
     }
 
     def getMissingPaths(receivedData: ByteString, paths: Seq[String]) = {

@@ -30,10 +30,11 @@ import akka.util.ByteString
 import cmwell.dc.{LazyLogging, Settings}
 import cmwell.dc.Settings._
 import cmwell.dc.stream.MessagesTypesAndExceptions._
-import cmwell.dc.stream.akkautils.DebugStage
+
+import cmwell.util.http.HttpZipDecoder
 import com.typesafe.config.ConfigFactory
 
-import scala.collection.parallel.immutable
+
 import scala.util.{Failure, Success, Try}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -171,7 +172,7 @@ object TsvRetriever extends LazyLogging {
       }
       }
       .via(tsvConnPool)
-      .map{ case (tryResponse, state) => tryResponse.map(Util.decodeResponse) -> state }
+      .map{ case (tryResponse, state) => tryResponse.map(HttpZipDecoder.decodeResponse) -> state }
       .flatMapConcat {
         case (Success(res@HttpResponse(s, h, entity, _)), state) if s.isSuccess() && h.exists(_.name == "X-CM-WELL-POSITION") => {
           val nextPositionKey = res.getHeader("X-CM-WELL-POSITION").get.value()
