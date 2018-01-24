@@ -339,7 +339,7 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
         props = InfotonReporter(baseUrl = settings.hostConfigFile, path = settings.pathAgentConfigs + job.name),
         name = s"${job.name}-${Hash.crc32(job.config.toString)}"
     )
-    val agent = SparqlTriggeredProcessor.listen(job.config, settings.hostUpdatesSource, true, Some(tokenReporter), Some(job.name))
+    val agent = SparqlTriggeredProcessor.listen(job.config, settings.hostUpdatesSource, false, Some(tokenReporter), Some(job.name))
       .map { case (data, _) => data }
       .via(GroupChunker(formatToGroupExtractor(settings.materializedViewFormat)))
       .map(concatByteStrings(_, endl))
