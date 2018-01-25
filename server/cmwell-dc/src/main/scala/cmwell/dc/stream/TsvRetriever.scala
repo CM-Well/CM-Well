@@ -73,10 +73,6 @@ object TsvRetriever extends LazyLogging {
     override def toString = "BulkConsume"
   }
 
-  object SlowBulkConsume extends ConsumeType {
-    override def toString = "SlowBulkConsume"
-  }
-
   object Consume extends ConsumeType {
     override def toString = "Consume"
   }
@@ -138,9 +134,8 @@ object TsvRetriever extends LazyLogging {
   private def stayInThisState(stateStartTime: Long): Boolean = System.currentTimeMillis - stateStartTime < Settings.consumeFallbackDuration
 
   private def extractPrefixes(state: ConsumeState) = state match {
-    case ConsumeState(BulkConsume, _) => ("bulk-", "")
-    case ConsumeState(SlowBulkConsume, _) => ("bulk-", "&slow-bulk")
-    case ConsumeState(Consume, _) => ("", "")
+    case ConsumeState(BulkConsume, _) => "bulk-"
+    case ConsumeState(Consume, _) => ""
   }
 
   private def getNewState(elementState: TsvRetrieveState, lastUsedState: ConsumeState) =
@@ -148,8 +143,7 @@ object TsvRetriever extends LazyLogging {
     if (elementState.lastException.isDefined) elementState.consumeState
     else lastUsedState match {
       case state@ConsumeState(BulkConsume, _) => state
-      case state@ConsumeState(SlowBulkConsume, start) => if (stayInThisState(start)) state else ConsumeState(BulkConsume, System.currentTimeMillis)
-      case state@ConsumeState(Consume, start) => if (stayInThisState(start)) state else ConsumeState(SlowBulkConsume, System.currentTimeMillis)
+      case state@ConsumeState(Consume, start) => if (stayInThisState(start)) state else ConsumeState(BulkConsume, System.currentTimeMillis)
     }
 
   def retrieveTsvFlow(dcInfo: DcInfo, decider: Decider)(implicit mat: Materializer, system: ActorSystem): Flow[(Future[TsvRetrieveInput], TsvRetrieveState), (Try[TsvRetrieveOutput], TsvRetrieveState), NotUsed] = {
@@ -165,8 +159,8 @@ object TsvRetriever extends LazyLogging {
       {
         case (positionKey, state) =>
           currentState = getNewState(state, currentState)
-          val (bulk, slowBulk) = extractPrefixes(currentState)
-          val request = HttpRequest(uri = s"http://${dcInfo.location}/?op=${bulk}consume$slowBulk&format=tsv&position=$positionKey", headers = scala.collection.immutable.Seq(gzipAcceptEncoding))
+          val bulkPrefix = extractPrefixes(currentState)
+          val request = HttpRequest(uri = s"http://${dcInfo.location}/?op=${bulkPrefix}consume&format=tsv&position=$positionKey", headers = scala.collection.immutable.Seq(gzipAcceptEncoding))
           scala.collection.immutable.Seq(request -> state.copy(consumeState = currentState))
       }
       }
@@ -234,9 +228,8 @@ object TsvRetriever extends LazyLogging {
         case None => ??? // Shouldn't get here. The retry decider is called only when there is an exception and the ex should be in the state
       }
       val newConsumeOp = consumeState.op match {
-        case BulkConsume => SlowBulkConsume
-        case SlowBulkConsume => Consume
-        case Consume => Consume
+        case BulkConsume if Settings.initialTsvRetryCount - retriesLeft < Settings.bulkTsvRetryCount => BulkConsume
+        case _ => Consume
       }
       logger.warn(s"Data Center ID $dataCenterId: Retrieve of TSVs from $location failed. Retries left $retriesLeft. Will try again in $waitSeconds seconds.")
       Some(akka.pattern.after(waitSeconds.seconds, system.scheduler)(Future.successful(positionKey)) -> TsvFlowState(positionKey, retriesLeft - 1, ex, ConsumeState(newConsumeOp, System.currentTimeMillis)))

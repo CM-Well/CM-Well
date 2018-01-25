@@ -40,6 +40,7 @@ object Settings {
   val maxTotalInfotonCountAggregatedForRetrieve = config.getInt("cmwell.dc.pull.maxTotalInfotonCountAggregatedForRetrieve")
 //  val tsvBufferSize = config.getInt("cmwell.dc.pull.tsvBufferSize")
   val initialTsvRetryCount = config.getInt("cmwell.dc.pull.initialTsvRetryCount")
+  val bulkTsvRetryCount = config.getInt("cmwell.dc.pull.bulkTsvRetryCount")
   val consumeFallbackDuration = config.getDuration("cmwell.dc.pull.consumeFallbackDuration").toMillis
 //  val delayInSecondsBetweenNoContentRetries = config.getInt("cmwell.dc.pull.delayInSecondsBetweenNoContentRetries")
   val retrieveParallelism = config.getInt("cmwell.dc.pull.retrieveParallelism")
