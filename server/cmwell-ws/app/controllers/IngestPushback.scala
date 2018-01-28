@@ -76,37 +76,6 @@ class IngestPushback @Inject() (backPressureToggler: BackPressureToggler, dashBo
     }
   }
 
-   private def filterByTLog(): Option[Result] = {//Future[Option[Result]] = {
-
-     val (uwh,urh,iwh,irh) = dashBoard.BatchStatus.get._2
-
-     if(uwh - urh > maximumQueueBuildupAllowedUTLog) Some(Results.ServiceUnavailable("Updates tlog queue on this node is full. You may try again later or against a different node."))
-     else if(iwh - irh > maximumQueueBuildupAllowedITLog) Some(Results.ServiceUnavailable("Indexer tlog queue on this node is full. You may try again later or against a different node."))
-     else None
-
-     //following commented out code backpressures against old TLog, but cluster-wise, and not per node.
-//     CtrlClient.getBatchStatus.map{
-//       case (m,_) => mapFirst(m.values) {
-//         case _: BatchNotIndexing => Some(Results.ServiceUnavailable("Batch worker cannot index more commands at the moment"))
-//         case _: BatchDown => Some(Results.ServiceUnavailable("Batch worker is currently down"))
-//         case BatchOk(impSize, impLocation, indexerSize, indexerLocation, impRate, indexerRate, genTime) => {
-//           if(impSize-impLocation > maximumQueueBuildupAllowed) Some(Results.ServiceUnavailable("Updates tlog queue is full. You may try again later"))
-//           else if(indexerSize-indexerLocation > maximumQueueBuildupAllowed) Some(Results.ServiceUnavailable("Indexer tlog queue is full. You may try again later"))
-//           else None
-//         }
-//       }
-//     }.recover {
-//      //FIXME: hack to disable backpressure in the first 5 minutes (because Michael's HealthActor can't be initialized - catch 22)
-//      case _: akka.pattern.AskTimeoutException if cmwell.util.os.Props.getProcessUptime < 300000 => None
-//      case _: akka.pattern.AskTimeoutException =>
-//        Some(Results.ServiceUnavailable("TLog queue monitor can't accept monitoring requests at the moment. You may try again later"))
-//      case e: Throwable => {
-//        logger.error("unexpected error occurred in IngestPushback.filterByTLog()",e)
-//        Some(Results.InternalServerError("Unexpected error occurred in IngestPushback.filterByTLog()"))
-//      }
-//    }
-   }
-
   override def invokeBlock[A](request: Request[A], block: Request[A] => Future[Result]): Future[Result] = {
     val startTime = request.attrs(Attrs.RequestReceivedTimestamp)
 
@@ -121,10 +90,8 @@ class IngestPushback @Inject() (backPressureToggler: BackPressureToggler, dashBo
 
     if(request.getQueryString("priority").isDefined) block(request) // Authorization of Priority usage is handled in InputHandler. Existence of the query parameter is sufficient to do nothing here.
     else PersistentDMap.get(backPressureToggler.BACKPRESSURE_TRIGGER).flatMap(_.as[String]).getOrElse(Settings.pushbackpressure) match {
-      case "new" => filterByKLog().flatMap(resOptToFilterBy)
-      case "old" => resOptToFilterBy(filterByTLog())
+      case "new" | "all" => filterByKLog().flatMap(resOptToFilterBy)
       case "off" => block(request)
-      case "all" => filterByTLog().fold(filterByKLog().flatMap(resOptToFilterBy))(Future.successful)
       case "bar" => Future.successful(Results.ServiceUnavailable(s"Ingests has been barred by an admin. Please try again later."))
       case unknown => Future.successful(Results.InternalServerError(s"unknown state for 'BACKPRESSURE_TRIGGER' [$unknown]"))
     }

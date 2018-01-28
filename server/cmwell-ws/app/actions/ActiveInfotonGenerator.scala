@@ -40,8 +40,7 @@ import cmwell.fts.FieldFilter
 import cmwell.util.FullBox
 import cmwell.web.ld.cmw.CMWellRDFHelper
 import cmwell.ws.util.FieldFilterParser
-import controllers.NbgToggler
-import ld.cmw.{NbgPassiveFieldTypesCache, ObgPassiveFieldTypesCache}
+import ld.cmw.passiveFieldTypesCacheImpl
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -59,30 +58,19 @@ object BgMonitoring {
 class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPressureToggler,
                                         crudServiceFS: CRUDServiceFS,
                                         dashBoard: DashBoard,
-                                        cmwellRDFHelper: CMWellRDFHelper,
-                                        tbg: NbgToggler) extends LazyLogging {
+                                        cmwellRDFHelper: CMWellRDFHelper) extends LazyLogging {
 
   import BgMonitoring.{monitor => bgMonitor}
   import dashBoard._
-  lazy val nCache: NbgPassiveFieldTypesCache = crudServiceFS.nbgPassiveFieldTypesCache
-  lazy val oCache: ObgPassiveFieldTypesCache = crudServiceFS.obgPassiveFieldTypesCache
-  def typesCache(nbg: Boolean) = if(nbg || tbg.get) nCache else oCache
+  lazy val typesCache = crudServiceFS.passiveFieldTypesCache
 
   /**
    * @return /proc/node infoton fields map
    */
   private[this] def nodeValFields: FieldsOpt = {
-    val (uwh,urh,iwh,irh) = BatchStatus.tlogStatus
     val esColor = Try(Await.result(dashBoard.getElasticsearchStatus(), esTimeout)._1.toString).getOrElse("grey")
     Some(Map[String,Set[FieldValue]](
       "pbp" -> Set(FString(backPressureToggler.get)),
-      "nbg" -> Set(FBoolean(crudServiceFS.newBG)),
-      "new_bg_writes" -> Set(FBoolean(Settings.newBGFlag)),
-      "old_bg_writes" -> Set(FBoolean(Settings.oldBGFlag)),
-      "tlog_update_write_head" -> Set(FLong(uwh)),
-      "tlog_update_read_head" -> Set(FLong(urh)),
-      "tlog_index_write_head" -> Set(FLong(iwh)),
-      "tlog_index_read_head" -> Set(FLong(irh)),
       "search_contexts_limit" -> Set(FLong(Settings.maxSearchContexts)),
       "cm-well_release" -> Set(FString(BuildInfo.release)),
       "cm-well_version" -> Set(FString(BuildInfo.version)),
@@ -106,7 +94,6 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
       "os_version" ->  Set(FString(System.getProperty("os.version"))),
       "user_timezone" ->  Set(FString(System.getProperty("user.timezone"))),
       "machine_name" ->  Set(FString(Props.machineName)),
-      "batch_color" -> Set(FString(BatchStatus.batchColor.toString)),
       "es_color" -> Set(FString(esColor)),
       "use_auth" -> Set(FBoolean(java.lang.Boolean.getBoolean("use.authorization")))
     ))
@@ -139,35 +126,6 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
     val d = new DateTime(it.head.genTime * 1000L)
     val ws = ((wsColor, wsTxt), d)
     ws
-  }
-
-  private[this] def getBatchHealth(it : Iterable[ComponentState], c : StatusColor) = {
-    val bgColor = colorAdapter(c)
-    val impSum = it.map{
-      case b : BatchState => b.getImpDiff
-      case _ => 0L
-    }.fold(0L)(_ + _)
-
-    val indexerSum = it.map{
-      case b : BatchState => b.getIndexerDiff
-      case _ => 0L
-    }.fold(0L)(_ + _)
-
-    val notIndexing = it.map{
-      case BatchNotIndexing(v1,v2,v3,v4,_,_,_) => 1
-      case _ => 0
-    }.fold(0)(_ + _)
-
-    val down = it.map{
-      case b : BatchDown => 1
-      case b : ReportTimeout => 1 // todo: deside what should happen here.
-      case _ => 0
-    }.fold(0)(_ + _)
-
-    val bgTxt = s"imp diff: $impSum, idx diff: $indexerSum (down: $down, not indexing: $notIndexing)"
-    val d = new DateTime(it.head.genTime * 1000L)
-    val bg = ((bgColor, bgTxt),d)
-    bg
   }
 
   private[this] def getElasticsearchHealth(cr : ComponentState) = {
@@ -224,43 +182,22 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
     ((color, s"$stats"), new DateTime(genTime * 1000L))
   }
 
-  private[this] def getBatchDetailedHealth(t : BgType) = {
-    val baseFut = t match {
-      case Batch => CtrlClient.getBatchStatus
-      case Bg => CtrlClient.getBgStatus
-    }
-
-    baseFut.map {
-      bs =>
-        bs._1.map {
-          m =>
-            m._2 match {
-              case BatchOk(impSize, impLocation, indexerSize, indexerLocation, _,_,_) => m._1 -> Some((impSize, impLocation, indexerSize, indexerLocation))
-              case BatchNotIndexing(impSize, impLocation, indexerSize, indexerLocation, _,_,_) => m._1 -> Some((impSize, impLocation, indexerSize, indexerLocation))
-              case b : BatchDown => m._1 -> None
-              case _ => m._1 -> None
-            }
-        }
-    }
-  }
-
 
   private[this] def getClusterHealth : HealthTimedData = {
     val r = CtrlClient.getClusterStatus.map{
       cs =>
         val ws = getWsHealth(cs.wsStat._1.values, cs.wsStat._2)
-        val bg = getBatchHealth(cs.batchStat._1.values, cs.batchStat._2)
         val es = getElasticsearchHealth(cs.esStat)
         val cas = getCassandraHealth(cs.casStat)
         val zk = getZookeeperHealth(cs.zookeeperStat._1.values, cs.zookeeperStat._2)
         val kaf = getKafkaHealth(cs.kafkaStat._1.values, cs.kafkaStat._2)
-        (ws,bg,es,cas,zk,kaf,cs.controlNode,cs.esMasters)
+        (ws,es,cas,zk,kaf,cs.controlNode,cs.esMasters)
     }
     try {
       Await.result(r,timeOut)
     } catch {
       case t : Throwable =>
-        (((Red, "NA"), new DateTime(0L)),((Red, "NA"), new DateTime(0L)),((Red, "NA"), new DateTime(0L)),((Red, "NA"), new DateTime(0L)),((Red, "NA"), new DateTime(0L)),((Red, "NA"), new DateTime(0L)),"",Set.empty[String])
+        (((Red, "NA"), new DateTime(0L)),((Red, "NA"), new DateTime(0L)),((Red, "NA"), new DateTime(0L)),((Red, "NA"), new DateTime(0L)),((Red, "NA"), new DateTime(0L)),"",Set.empty[String])
     }
   }
 
@@ -272,7 +209,6 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
         val m = keys.map{
           k =>
             (if(k == cs.healthHost) s"${k}*" else k) -> (colorAdapter(cs.wsStat.getOrElse(k, WebDown()).getColor),
-              colorAdapter(cs.batchStat.getOrElse(k,BatchDown(0,0,0,0)).getColor),
               colorAdapter(cs.casStat.getOrElse(k,CassandraDown()).getColor),
               colorAdapter(cs.esStat.getOrElse(k,ElasticsearchDown()).getColor))
         }.toMap
@@ -285,7 +221,7 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
     }
   }
 
-  private[this] def getClusterDetailedHealthNew : Map[String, ((String, Color),(String, Color),(String, Color),(String, Color),(String, Color),(String, Color))] = {
+  private[this] def getClusterDetailedHealthNew : Map[String, ((String, Color),(String, Color),(String, Color),(String, Color),(String, Color))] = {
     val r = CtrlClient.getClusterDetailedStatus.map{
       cs =>
         val keys = cs.wsStat.keySet ++ cs.batchStat.keySet ++ cs.esStat.keySet ++ cs.casStat.keySet ++ cs.zkStat.keySet ++ cs.kafkaStat.keySet
@@ -296,13 +232,6 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
               case wr : WebBadCode => (s"Web is returning code: ${wr.code}<br>Response time: ${wr.responseTime} ms", colorAdapter(wr.getColor))
               case wr : WebDown => (s"Web is down", colorAdapter(wr.getColor))
               case wr : ReportTimeout => ("Can't retrieve Web status", colorAdapter(wr.getColor))
-            }
-
-            val batchMessage = cs.batchStat.getOrElse(k,BatchDown(0,0,0,0)) match {
-              case br : BatchOk => (s"Ok<br>imp rate: ${br.impRate} b/s <br>idx rate: ${br.indexerRate} b/s", colorAdapter(br.getColor))
-              case br : BatchNotIndexing => ("Batch isn't indexing", colorAdapter(br.getColor))
-              case br : BatchDown => ("Batch is down", colorAdapter(br.getColor))
-              case br : ReportTimeout => ("Can't retrieve Batch status", colorAdapter(br.getColor))
             }
 
             val casMessage = cs.casStat.getOrElse(k,CassandraDown()) match {
@@ -344,7 +273,7 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
                 (s"${txt}<br>Elasticsearch is returning code: ${er.code}", colorAdapter(er.getColor))
               case er : ReportTimeout => ("Can't retrieve Elasticsearch status", colorAdapter(er.getColor))
             }
-            (if(k == cs.healthHost) s"${k}*" else k) -> (wsMessage, batchMessage, casMessage, esMessage, zkMessage, kafMessage)
+            (if(k == cs.healthHost) s"${k}*" else k) -> (wsMessage, casMessage, esMessage, zkMessage, kafMessage)
         }.toMap
     }
     try{
@@ -355,9 +284,8 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
   }
 
   private[this] def generateHealthFields: FieldsOpt = {
-    val (ws,bg,es,ca,zk,kaf,controlNode,masters) = getClusterHealth
+    val (ws,es,ca,zk,kaf,controlNode,masters) = getClusterHealth
     val (wClr,wMsg) = ws._1
-    val (bClr,bMsg) = bg._1
     val (eClr,eMsg) = es._1
     val (cClr,cMsg) = ca._1
     val (zkClr,zkMsg) = zk._1
@@ -366,9 +294,6 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
       "ws_color" -> Set(FString(wClr.toString)),
       "ws_message" -> Set(FString(wMsg)),
       "ws_generation_time" -> Set(FDate(fdf(ws._2))),
-      "batch_color" -> Set(FString(bClr.toString)),
-      "batch_message" -> Set(FString(bMsg)),
-      "batch_generation_time" -> Set(FDate(fdf(bg._2))),
       "es_color" -> Set(FString(eClr.toString)),
       "es_message" -> Set(FString(eMsg)),
       "es_generation_time" -> Set(FDate(fdf(es._2))),
@@ -390,7 +315,7 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
   private[this] def generateHealthMarkdown(now: DateTime): String = {
 
 
-    val ((ws,wsTime),(bg,bgTime),(es,esTime),(ca,caTime),(zk, zkTime),(kf, kfTime),controlNode, masters) = getClusterHealth
+    val ((ws,wsTime),(es,esTime),(ca,caTime),(zk, zkTime),(kf, kfTime),controlNode, masters) = getClusterHealth
 
     def determineCmwellColorBasedOnComponentsColor(components: Seq[Color]): Color = {
       val all = components.filter(_ != Grey)
@@ -399,10 +324,9 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
       else Yellow
     }
 
-    val colorWithoutKafka = determineCmwellColorBasedOnComponentsColor(Seq(ws._1,bg._1,ca._1,es._1,zk._1))
+    val colorWithoutKafka = determineCmwellColorBasedOnComponentsColor(Seq(ws._1,ca._1,es._1,zk._1))
     val color = getColoredStatus(if (colorWithoutKafka == Green && kf._1 != Green) Yellow else colorWithoutKafka)
     val wsClr = getColoredStatus(ws._1)
-    val bgClr = getColoredStatus(bg._1)
     val esClr = getColoredStatus(es._1)
     val caClr = getColoredStatus(ca._1)
     val zkClr = getColoredStatus(zk._1)
@@ -415,7 +339,6 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
 | **Component** | **Status** | **Message** |  **Timestamp**  |
 |---------------|------------|-------------|-----------------|
 | WS            | $wsClr     | ${ws._2}    | ${fdf(wsTime)}  |
-| BATCH         | $bgClr     | ${bg._2}    | ${fdf(bgTime)}  |
 | ES            | $esClr     | ${es._2}    | ${fdf(esTime)}  |
 | CAS           | $caClr     | ${ca._2}    | ${fdf(caTime)}  |
 | ZK            | $zkClr     | ${zk._2}    | ${fdf(zkTime)}  |
@@ -423,14 +346,13 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
 """
   }
 
-  private[this] val ghdfBreakout = scala.collection.breakOut[Seq[(String, ((String, Color.Color), (String, Color.Color), (String, Color.Color), (String, Color.Color), (String, Color.Color), (String, Color.Color)))],(String,Set[FieldValue]),Map[String,Set[FieldValue]]]
+  private[this] val ghdfBreakout = scala.collection.breakOut[Seq[(String, ((String, Color.Color), (String, Color.Color), (String, Color.Color), (String, Color.Color), (String, Color.Color)))],(String,Set[FieldValue]),Map[String,Set[FieldValue]]]
   private[this] def generateHealthDetailedFields: FieldsOpt = {
     //val (xs, timeStamp) = DashBoardCache.cacheAndGetDetailedHealthData
     val res = getClusterDetailedHealthNew
     Some(res.toSeq.sortBy(_._1).flatMap {
-      case (host,(ws,bg,ca,es,zk,kf)) => List(
+      case (host,(ws,ca,es,zk,kf)) => List(
         s"ws@$host"     -> Set[FieldValue](FString(ws._2.toString)),
-        s"batch@$host"  -> Set[FieldValue](FString(bg._2.toString)),
         s"cas@$host"    -> Set[FieldValue](FString(ca._2.toString)),
         s"es@$host"     -> Set[FieldValue](FString(es._2.toString)),
         s"zk@$host"     -> Set[FieldValue](FString(zk._2.toString)),
@@ -440,7 +362,7 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
 
   def generateDetailedHealthCsvPretty(): String = {
     val title = s"${Settings.clusterName} - Health Detailed"
-    val csvTitle =  "Node,WS,BG,CAS,ES,ZK,KF"
+    val csvTitle =  "Node,WS,CAS,ES,ZK,KF"
     val csvData = generateDetailedHealthCsvData()
     views.html.csvPretty(title, s"$csvTitle\\n${csvData.replace("\n","\\n")}").body
   }
@@ -451,8 +373,8 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
 ##### Current time: ${fdf(now)}
 #### Cluster name: ${Settings.clusterName}
 ### Data was generated on:
-| **Node** | **WS** | **BATCH** | **CAS** | **ES** | **ZK** | **KAFKA** |
-|----------|--------|-----------|---------|--------|--------|-----------|
+| **Node** | **WS** | **CAS** | **ES** | **ZK** | **KAFKA** |
+|----------|--------|---------|--------|--------|-----------|
 ${csvToMarkdownTableRows(csvData)}
 """
   }
@@ -462,7 +384,7 @@ ${csvToMarkdownTableRows(csvData)}
       if (zkTuple._1 == "ZooKeeper is not running" && zkTuple._2 == Green) "" else s"${getColoredStatus(zkTuple._2)}<br>${zkTuple._1}"
     }
     val clusterHealth = getClusterDetailedHealthNew
-    clusterHealth.map(r => s"${r._1},${getColoredStatus(r._2._1._2)}<br>${r._2._1._1},${getColoredStatus(r._2._2._2)}<br>${r._2._2._1},${getColoredStatus(r._2._3._2)}<br>${r._2._3._1},${getColoredStatus(r._2._4._2)}<br>${r._2._4._1},${zkStatusString(r._2._5)},${getColoredStatus(r._2._6._2)}<br>${r._2._6._1}").mkString("\n")
+    clusterHealth.map(r => s"${r._1},${getColoredStatus(r._2._1._2)}<br>${r._2._1._1},${getColoredStatus(r._2._2._2)}<br>${r._2._2._1},${getColoredStatus(r._2._3._2)}<br>${r._2._3._1},${zkStatusString(r._2._4)},${getColoredStatus(r._2._5._2)}<br>${r._2._5._1}").mkString("\n")
   }
 
   private def csvToMarkdownTableRows(csvData: String): String =
@@ -472,28 +394,6 @@ ${csvToMarkdownTableRows(csvData)}
   case object Bg extends BgType
   case object Batch extends BgType
 
-
-  /**
-   * @return batch markdown string
-   */
-  def generateBatchMarkdown(t : BgType, now: DateTime): String = {
-
-    val resFut = getBatchDetailedHealth(t).map{ set =>
-      val lines = set.toList.sortBy(_._1).map{
-        case (host,Some((uw,ur,iw,ir))) => s"|$host|$uw|$ur|${uw-ur}|$iw|$ir|${iw-ir}|"
-        case (host, None) => s"|$host| &#x20E0; | &#x20E0; | &#x20E0; | &#x20E0; | &#x20E0; | &#x20E0; |"
-      }
-
-      s"""
-##### Current time: ${fdf(now)}
-# Batch Status in cluster ${Settings.clusterName}
-| **Node** | UpdateTlog write pos | UpdateTlog read pos | **UpdateTlog diff**| IndexTlog write pos | IndexTlog read pos | **IndexTlog diff** |
-|----------|----------------------|---------------------|--------------------|---------------------|--------------------|--------------------|
-${lines.mkString("\n")}
-"""
-    }
-    Await.result(resFut, 30 seconds) //TODO: Be Async...
-  }
 
   def generateBgData: Future[Map[String,Set[FieldValue]]] = {
     ask(bgMonitor, GetOffsetInfo)(10.seconds).mapTo[OffsetsInfo].map { offsetInfo =>
@@ -588,7 +488,7 @@ ${
 
 
   def generateIteratorMarkdown: String = {
-    val hostsToSessions = crudServiceFS.countSearchOpenContexts()
+    val hostsToSessions = crudServiceFS.countSearchOpenContexts
     val lines = hostsToSessions.map{
       case (host,sessions) => s"|$host|$sessions|"
     } :+ s"| **Total** | ${(0L /: hostsToSessions){case (sum,(_,add)) => sum + add}} |"
@@ -605,13 +505,13 @@ ${lines.mkString("\n")}
   import scala.language.implicitConversions
 
 
-  def generateInfoton(host: String, path: String, now: Long, length: Int = 0, offset: Int = 0, isRoot : Boolean = false, nbg: Boolean = false, withHistory: Boolean, fieldFilters: Option[FieldFilter]): Future[Option[VirtualInfoton]] = {
+  def generateInfoton(host: String, path: String, now: Long, length: Int = 0, offset: Int = 0, isRoot : Boolean = false, withHistory: Boolean, fieldFilters: Option[FieldFilter]): Future[Option[VirtualInfoton]] = {
 
     val d: DateTime = new DateTime(now)
 
     implicit def iOptAsFuture(iOpt: Option[VirtualInfoton]): Future[Option[VirtualInfoton]] = Future.successful(iOpt)
 
-    def compoundDC = crudServiceFS.getListOfDC().map {
+    def compoundDC = crudServiceFS.getListOfDC.map {
       seq => {
         val dcKids: Seq[Infoton] = seq.map(dc => VirtualInfoton(ObjectInfoton(s"/proc/dc/$dc", dc, None, d, None)).getInfoton)
         Some(VirtualInfoton(CompoundInfoton("/proc/dc", dc, None, d, None, dcKids.slice(offset, offset + length), offset, length, dcKids.size)))
@@ -629,7 +529,7 @@ ${lines.mkString("\n")}
           qp
             .fold(Success(None): Try[Option[RawFieldFilter]])(FieldFilterParser.parseQueryParams(_).map(Some.apply))
             .map { qpOpt =>
-              val fieldsFiltersFut = qpOpt.fold[Future[Option[FieldFilter]]](Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff, typesCache(nbg), cmwellRDFHelper, nbg).map(Some.apply))
+              val fieldsFiltersFut = qpOpt.fold[Future[Option[FieldFilter]]](Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff, typesCache, cmwellRDFHelper).map(Some.apply))
               fieldsFiltersFut
             }
             .get
@@ -638,7 +538,7 @@ ${lines.mkString("\n")}
           //There is no matching dc infoton in the list - use the parameters got from the user
           Future.successful((dcId, withHistory, fieldFilters))
       }
-        .flatMap { case (id, wh, fieldFilter) => crudServiceFS.getLastIndexTimeFor(id, wh, nbg, fieldFilter) }
+        .flatMap { case (id, wh, fieldFilter) => crudServiceFS.getLastIndexTimeFor(id, wh, fieldFilter) }
     }
 
     path.dropTrailingChars('/') match {
@@ -649,13 +549,12 @@ ${lines.mkString("\n")}
       case "/proc/node" => Some(VirtualInfoton(ObjectInfoton(path, dc, None, d, nodeValFields)))
       case "/proc/dc" => compoundDC
       case p if p.startsWith("/proc/dc/") => getDcInfo(p)
-      case "/proc/fields" => crudServiceFS.getESFieldsVInfoton(nbg).map(Some.apply)
+      case "/proc/fields" => crudServiceFS.getESFieldsVInfoton.map(Some.apply)
       case "/proc/health" => Some(VirtualInfoton(ObjectInfoton(path, dc, None, d, generateHealthFields)))
       case "/proc/health.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateHealthMarkdown(d).getBytes, "text/x-markdown")))))
       case "/proc/health-detailed" => Some(VirtualInfoton(ObjectInfoton(path, dc, None, d, generateHealthDetailedFields)))
       case "/proc/health-detailed.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateDetailedHealthMarkdown(d).getBytes, "text/x-markdown")))))
       case "/proc/health-detailed.csv" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateDetailedHealthCsvPretty().getBytes, "text/html")))))
-      case "/proc/batch.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateBatchMarkdown(Batch,d).getBytes, "text/x-markdown")))))
       case "/proc/bg.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateBgMarkdown(Bg).getBytes, "text/x-markdown")))))
       case "/proc/bg" => generateBgData.map(fields => Some(VirtualInfoton(ObjectInfoton(path, dc, None, d, fields))))
       case "/proc/search-contexts.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateIteratorMarkdown.getBytes, "text/x-markdown")))))
@@ -685,7 +584,6 @@ ${lines.mkString("\n")}
            VirtualInfoton(ObjectInfoton("/proc/dc", dc, None,md) ),
            VirtualInfoton(ObjectInfoton("/proc/bg", dc, None,md) ),
            VirtualInfoton(FileInfoton("/proc/bg.md", dc, None,md,None , Some(FileContent("text/x-markdown",-1L)))),
-           VirtualInfoton(FileInfoton("/proc/batch.md", dc, None,md,None , Some(FileContent("text/x-markdown",-1L)))),
            VirtualInfoton(ObjectInfoton("/proc/fields", dc, None,md) ),
            VirtualInfoton(ObjectInfoton("/proc/health", dc, None,md) ),
            VirtualInfoton(FileInfoton("/proc/health.md", dc, None,md,None , Some(FileContent("text/x-markdown",-1L))) ),

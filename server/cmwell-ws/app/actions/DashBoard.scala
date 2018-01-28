@@ -41,7 +41,7 @@ import scala.language.postfixOps
 
 object Color extends Enumeration {
   type Color = Value
-  type ColorTuple4 = Tuple4[Color,Color,Color,Color]
+  type ColorTuple3 = Tuple3[Color,Color,Color]
   val Green, Yellow, Red, Grey = Value
 
   def apply(color: String): Color = color.toLowerCase match {
@@ -59,7 +59,7 @@ class DashBoard @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
 
   val timeOut = cmwell.ws.Settings.cacheTimeout.seconds
 
-  type FutureColorTuple4 = (Future[Color],Future[Color],Future[Color],Future[Color])
+  type FutureColorTuple3 = (Future[Color],Future[Color],Future[Color])
   type Ratio = (Int,Int)
   type TlogDiffOnHost = Set[(String, Long,Long)]
   type TlogState = (Long,Long,Long,Long)
@@ -68,10 +68,10 @@ class DashBoard @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
   type Fields = Map[String,Set[FieldValue]]
   type FieldsOpt = Option[Fields]
   type ComponentHealth = (Color,String)
-  type ComponentHealthFutureTuple4 = (Future[ComponentHealth],Future[ComponentHealth],Future[ComponentHealth],Future[ComponentHealth])
+  type ComponentHealthFutureTuple3 = (Future[ComponentHealth],Future[ComponentHealth],Future[ComponentHealth])
   type TimedHealth = (ComponentHealth,DateTime)
-  type HealthTimedData = (TimedHealth,TimedHealth,TimedHealth,TimedHealth,TimedHealth,TimedHealth,String,Set[String])
-  type DetailedHealthData = Map[String,ColorTuple4]
+  type HealthTimedData = (TimedHealth,TimedHealth,TimedHealth,TimedHealth,TimedHealth,String,Set[String])
+  type DetailedHealthData = Map[String,ColorTuple3]
   type DetailedHealthTimedData = (DetailedHealthData, DateTime)
 
   object HostWithPort extends scala.util.matching.Regex("""(.+):(\d+)""")
@@ -165,129 +165,9 @@ class DashBoard @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
         case CassandraStatus3(status,ip,load,token,id,rack) => CassandraStatusExtracted(status,ip,load,"NO DATA",id,token,rack)
         case CassandraStatus4(status,ip,load,token,id,rack) => CassandraStatusExtracted(status,ip,load,"NO DATA",id,token,rack)
       }.toList)
-      host -> (ws,bg,ca,es)
+      host -> (ws,ca,es)
     }
     fSet
-  }
-
-  object BatchStatus {
-
-    @volatile private[this] var currentState: TlogState = (-1L,-1L,-1L,-1L)
-    @volatile private[this] var previousState: TlogState = (-1L,-1L,-1L,-1L)
-
-    private[this] val tlogStateDaemonCancellable = {
-      import scala.concurrent.duration.DurationInt
-      cmwell.util.concurrent.SimpleScheduler.scheduleAtFixedRate(0 seconds, 30 seconds){
-        Try(tlogStatus).foreach { ts: TlogState =>
-          previousState = currentState
-          currentState = ts
-        }
-      }
-    }
-
-    def tlogStatus: TlogState = {
-      if(Settings.oldBGFlag) {
-        val updatesWriteHead = crudServiceFS.updatesTlog.size
-        val updatesReadHead = crudServiceFS.impState.position
-        val indexesWriteHead = crudServiceFS.uuidsTlog.size
-        val indexesReadHead = crudServiceFS.indexerState.position
-        (updatesWriteHead, updatesReadHead, indexesWriteHead, indexesReadHead)
-      } else (-1L,-1L,-1L,-1L)
-    }
-
-    def get: Tuple2[TlogState,TlogState] = previousState -> currentState
-
-    def getAll: Future[Set[(String,Option[TlogState])]] = {
-      val fsft = foreachHost { host =>
-        host -> getBatchStatusForHost(host)
-      }
-      fsft.map(_.map{
-        case (host, bgStts) => host -> Try(Await.result(bgStts, timeOut)).toOption
-      })
-    }
-
-    def getAggregatedBatchColor: Future[(String,String)] = {
-      val fsfs = foreachHost { host =>
-        host -> Http.get(s"http://$host/proc/node?format=json").map { wsr =>
-          val fields = Json.parse(wsr.payload) \ "fields"
-          val batchColor = fields.\("batch_color")(0).as[String]
-          val uw = fields.\("tlog_update_write_head")(0).as[Long]
-          val ur = fields.\("tlog_update_read_head")(0).as[Long]
-          val iw = fields.\("tlog_index_write_head")(0).as[Long]
-          val ir = fields.\("tlog_index_read_head")(0).as[Long]
-          (batchColor, (uw - ur, iw - ir))
-        }
-      }
-
-      val fss = fsfs.map(sfs => {
-        sfs.map {
-          case (h, fs) => h -> Try(Await.result(fs, timeOut)).toOption
-        }
-      })
-
-      fss.map(ss => {
-        val delta = ss.foldLeft(0L -> 0L) {
-          case ((ud, id), (_, Some((_, (cud, cid))))) => (ud + cud, id + cid)
-          case ((ud, id), (_, None)) => (ud, id)
-        }
-        val diff = s"imp diff: ${delta._1}, idx diff: ${delta._2}"
-        val (grey, notGrey) = ss.partition(_._2.isEmpty)
-        val gs = grey.size
-        def msg(m: String, b: Boolean) = if (gs > 0 && b) s" ($m, $gs bg instances are N/A)"
-        else if (b) s" ($m)"
-        else if (gs > 0) s" ($gs bg instances are N/A)"
-        else ""
-        if (notGrey.isEmpty) "Grey" -> "all bg are N/A"
-        else if (notGrey.forall(_._2.get._1.toLowerCase == "green")) "Green" -> s"$diff${msg("idle", delta ==(0L, 0L))}"
-        else if (notGrey.exists(_._2.get._1.toLowerCase == "red")) "Red" -> ss.filter(_._2.get._1.toLowerCase == "red").map(_._1).mkString("The following nodes:", ", ", s" are red!${msg(diff, true)}")
-        else "Yellow" -> notGrey.filter(_._2.get._1.toLowerCase == "yellow").map(_._1).mkString("The following nodes:", ", ", s" are yellow.${msg(diff, true)}")
-      })
-    }
-
-    //TODO: return cached values on failures, recover future with cached values etc'...
-    def getBatchStatusForHost(host: String = "localhost:9000"): Future[TlogState] = {
-      Http.get(s"http://$host/proc/node?format=json").map{
-        case wsr if wsr.status == 200 => {
-          val fields = Json.parse(wsr.payload) \ "fields"
-          val uwh: Long = (fields \ "tlog_update_write_head")(0).as[Long]
-          val urh: Long = (fields \ "tlog_update_read_head")(0).as[Long]
-          val iwh: Long = (fields \ "tlog_index_write_head")(0).as[Long]
-          val irh: Long = (fields \ "tlog_index_read_head")(0).as[Long]
-          (uwh,urh,iwh,irh)
-        }
-        case _ => (-1L,-1L,-1L,-1L)
-      }
-    }
-
-    private[this] def getBatchStatus: Future[TlogDiffOnHost] = {
-      val p = Promise[TlogDiffOnHost]()
-      val fsfw = foreachHost { host =>
-        getBatchStatusForHost(host).map{
-          case (uwh,urh,iwh,irh) => (host,uwh-urh,iwh-irh)
-        }
-      }
-
-      val ffs = fsfw.map(Future.sequence(_))
-      ffs.onComplete{
-        case Failure(err) => p.failure(err)
-        case Success(fs) => fs.onComplete{
-          case Success(st) => p.success(st)
-          case Failure(ex) => p.failure(ex)
-        }
-      }
-      p.future
-    }
-
-    def batchColor = {
-      val (prv,cur) = get
-      def isOk(pw: Long, pr: Long, cw: Long, cr: Long) = cw == cr || cr > pr
-      val updatesOk = isOk(prv._1,prv._2,cur._1,cur._2)
-      val indexesOk = isOk(prv._3,prv._4,cur._3,cur._4)
-      if(updatesOk && indexesOk) Green
-      else if(updatesOk) Yellow
-      else if(indexesOk) Yellow
-      else Red
-    }
   }
 
   def getElasticsearchStatus(host: String = HealthUtils.ip): Future[(String,String)] = {
@@ -315,7 +195,7 @@ class DashBoard @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
     }
   }
 
-  def generateHealthData: ComponentHealthFutureTuple4 = {
+  def generateHealthData: ComponentHealthFutureTuple3 = {
     val wsTuple = dashBoard.getCmwellWSRatio.map {
       case Right(((n, d),msg)) => {
         val clr = if (n + 1 >= d) Green
@@ -329,10 +209,6 @@ class DashBoard @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
       case Left(err) => (Red -> err)
     }
 
-    val bgTuple = BatchStatus.getAggregatedBatchColor.map {
-      case (clr,msg) => Color(clr) -> msg
-    }
-
     val esTuple = dashBoard.getElasticsearchStatus().map(t => (Color(t._1) -> t._2))
 
     val caTuple = dashBoard.getCassandraStatus.map { xs =>
@@ -344,9 +220,6 @@ class DashBoard @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
     wsTuple.onFailure{
       case ex: Throwable => logger.error("data could not be retrieved for ws.", ex)
     }
-    bgTuple.onFailure{
-      case ex: Throwable => logger.error("data could not be retrieved for bg.", ex)
-    }
     esTuple.onFailure{
       case ex: Throwable => logger.error("data could not be retrieved for es.", ex)
     }
@@ -354,7 +227,7 @@ class DashBoard @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
       case ex: Throwable => logger.error("data could not be retrieved for ca.", ex)
     }
 
-    (wsTuple,bgTuple,esTuple,caTuple)
+    (wsTuple,esTuple,caTuple)
   }
 
   def cassandraStatusToColor(lcse: List[CassandraStatusExtracted]): Color = {
@@ -367,12 +240,11 @@ class DashBoard @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
   /**
    * @return health-detailed data
    */
-  def generateDetailedHealthData: Future[List[(String,FutureColorTuple4)]] = {
+  def generateDetailedHealthData: Future[List[(String,FutureColorTuple3)]] = {
     val f = dashBoard.getStatusForAll.map { stf =>
       stf.map {
-        case (host,(wsResponse, batchColor, cassStats, esColor)) => {
+        case (host,(wsResponse, cassStats, esColor)) => {
           val ws = wsResponse.map(r => if(r == 200) Green else Yellow).recover{case _ => Red}
-          val bg = batchColor.map(Color(_))
           val ca = cassStats.map(cassandraStatusToColor(_)).recover{
             case ex: java.net.ConnectException => {
               logger.error(s"could not retrieve data from $host/health/cas",ex)
@@ -380,7 +252,7 @@ class DashBoard @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
             }
           }
           val es = esColor.map(Color(_))
-          host -> (ws, bg, ca, es)
+          host -> (ws, ca, es)
         }
       }.toList.sortBy(_._1)
     }
@@ -397,30 +269,27 @@ class DashBoard @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
     @volatile private[this] var esTime = new DateTime(0L)
     @volatile private[this] var caData = (Grey, "Undefined")
     @volatile private[this] var caTime = new DateTime(0L)
-    @volatile private[this] var detail: DetailedHealthData = Map.empty[String,ColorTuple4]
+    @volatile private[this] var detail: DetailedHealthData = Map.empty[String,ColorTuple3]
     @volatile private[this] var detailTime = new DateTime(0L)
-    @volatile private[this] var batch: Map[String,TlogState] = Map.empty[String,TlogState]
-    @volatile private[this] var batchTime = new DateTime(0L)
 
     def init: Future[(DetailedHealthData,TlogStatus)] = {
       val f = foreachHost{host =>
-        val detailedHealth: (String,ColorTuple4) = host -> (Grey,Grey,Grey,Grey)
+        val detailedHealth: (String,ColorTuple3) = host -> (Grey,Grey,Grey)
         val batchStatus: (String,TlogState) = host -> (0L,0L,0L,0L)
         detailedHealth -> batchStatus
         }.map(_.toList.sortBy(_._1).unzip)
         f.onComplete{
-        case Success(v) => detail = v._1.toMap ; batch = v._2.toMap
+        case Success(v) => detail = v._1.toMap
         case Failure(e) => logger.error("init DashBoardCache failed.", e)
       }
       f.map(t => t._1.toMap -> t._2.toMap)
     }
 
     def cacheAndGetHealthData: HealthTimedData = {
-      val (ws,bg,es,ca) = generateHealthData
+      val (ws,es,ca) = generateHealthData
 
       //make promises that will eventually hold valid data if successful
       val wsp = Promise[TimedHealth]()
-      val bgp = Promise[TimedHealth]()
       val esp = Promise[TimedHealth]()
       val cap = Promise[TimedHealth]()
 
@@ -428,10 +297,6 @@ class DashBoard @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
       ws.onComplete{
         case Success(v) => {wsData = v; wsTime = new DateTime(); wsp.success(v -> wsTime)}
         case Failure(e) => wsp.failure(e)
-      }
-      bg.onComplete{
-        case Success(v) => {bgData = v; bgTime = new DateTime(); bgp.success(v -> bgTime)}
-        case Failure(e) => bgp.failure(e)
       }
       es.onComplete{
         case Success(v) => {esData = v; esTime = new DateTime(); esp.success(v -> esTime)}
@@ -444,72 +309,59 @@ class DashBoard @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
 
       //always have a successful future with valid data
       val wsr: Future[TimedHealth] = wsp.future.recover{case _ => wsData -> wsTime}
-      val bgr: Future[TimedHealth] = bgp.future.recover{case _ => bgData -> bgTime}
       val esr: Future[TimedHealth] = esp.future.recover{case _ => esData -> esTime}
       val car: Future[TimedHealth] = cap.future.recover{case _ => caData -> caTime}
 
       //make sure to complete successfully within the specified timeout
       val deadline = timeOut.fromNow
       val wsth = Try(Await.result(wsr,deadline.timeLeft)).getOrElse(wsData -> wsTime)
-      val bgth = Try(Await.result(bgr,deadline.timeLeft)).getOrElse(bgData -> bgTime)
       val esth = Try(Await.result(esr,deadline.timeLeft)).getOrElse(esData -> esTime)
       val cath = Try(Await.result(car,deadline.timeLeft)).getOrElse(caData -> caTime)
 
-      (wsth,bgth,esth,cath,null,null,"", Set.empty[String])
+      (wsth,esth,cath,null,null,"", Set.empty[String])
     }
 
     def cacheAndGetDetailedHealthData: DetailedHealthTimedData = {
 
-      def updateColor(opt: Option[ColorTuple4], c1: Option[Color], c2: Option[Color], c3: Option[Color], c4: Option[Color]) = opt match {
-        case Some((o1,o2,o3,o4)) =>  (c1.getOrElse(o1),c2.getOrElse(o2),c3.getOrElse(o3),c4.getOrElse(o4))
-        case None => (c1.getOrElse(Grey),c2.getOrElse(Grey),c3.getOrElse(Grey),c4.getOrElse(Grey))
+      def updateColor(opt: Option[ColorTuple3], c1: Option[Color], c2: Option[Color], c3: Option[Color]) = opt match {
+        case Some((o1,o2,o3)) =>  (c1.getOrElse(o1),c2.getOrElse(o2),c3.getOrElse(o3))
+        case None => (c1.getOrElse(Grey),c2.getOrElse(Grey),c3.getOrElse(Grey))
       }
 
       val deadline = timeOut.fromNow
       val f = generateDetailedHealthData.map(_.toMap)
-      val xs: Map[String,FutureColorTuple4] = Try(Await.result(f,timeOut)).getOrElse[Map[String,FutureColorTuple4]](Hosts.getCachedHostsSet.map(
+      val xs: Map[String,FutureColorTuple3] = Try(Await.result(f,timeOut)).getOrElse[Map[String,FutureColorTuple3]](Hosts.getCachedHostsSet.map(
         h => {
           val fGrey = Future.successful(Grey)
-          val tOpt: Option[FutureColorTuple4] = detail.get(h).map(c => (Future.successful(c._1),Future.successful(c._2),Future.successful(c._3),Future.successful(c._4)))
-          val t: FutureColorTuple4 = tOpt.getOrElse((fGrey,fGrey,fGrey,fGrey))
+          val tOpt: Option[FutureColorTuple3] = detail.get(h).map(c => (Future.successful(c._1),Future.successful(c._2),Future.successful(c._3)))
+          val t: FutureColorTuple3 = tOpt.getOrElse((fGrey,fGrey,fGrey))
           h -> t
         }).toMap)
       xs.foreach {
-        case (h, (c1, c2, c3, c4)) => {
+        case (h, (c1, c2, c3)) => {
           c1.onSuccess { case c: Color => {
-            val clrTup = updateColor(detail.get(h), Some(c), None, None, None)
+            val clrTup = updateColor(detail.get(h), Some(c), None, None)
             detail = detail.updated(h, clrTup)
             detailTime = new DateTime()
           }}
           c2.onSuccess { case c: Color => {
-            val clrTup = updateColor(detail.get(h), None, Some(c), None, None)
+            val clrTup = updateColor(detail.get(h), None, Some(c), None)
             detail = detail.updated(h, clrTup)
             detailTime = new DateTime()
           }}
           c3.onSuccess { case c: Color => {
-            val clrTup = updateColor(detail.get(h), None, None, Some(c), None)
-            detail = detail.updated(h, clrTup)
-            detailTime = new DateTime()
-          }}
-          c4.onSuccess { case c: Color => {
-            val clrTup = updateColor(detail.get(h), None, None, None, Some(c))
+            val clrTup = updateColor(detail.get(h), None, None, Some(c))
             detail = detail.updated(h, clrTup)
             detailTime = new DateTime()
           }}
         }
       }
 
-      val ys = xs.toList.flatMap{case (_,(f1,f2,f3,f4)) => Seq(f1,f2,f3,f4)}
+      val ys = xs.toList.flatMap{case (_,(f1,f2,f3)) => Seq(f1,f2,f3)}
       val fSeq = Future.sequence(ys)
       Try(Await.ready(fSeq, deadline.timeLeft)).toOption match {
         case _ => detail -> detailTime
       }
-    }
-
-    def cacheAndGetBatchStatus: (TlogStatus,DateTime) = {
-      val f = BatchStatus.getAll.map(_.collect{case (h,Some(ts)) => h -> ts})
-      f.onSuccess{case s => batch = s.toMap; batchTime = new DateTime()}
-      Try(Await.result(f,timeOut).toMap -> new DateTime()).getOrElse(batch -> batchTime)
     }
   }
 }

@@ -48,14 +48,14 @@ object Authorization extends LazyLogging {
 class Authorization @Inject()(authCache: EagerAuthCache) extends LazyLogging {
   import Authorization._
 
-  private def anonymousUser(nbg: Boolean) = authCache.getUserInfoton("anonymous", nbg).getOrElse(defaultAnonymousUser)
+  private def anonymousUser = authCache.getUserInfoton("anonymous").getOrElse(defaultAnonymousUser)
 
-  def isAllowedForAnonymousUser(request: (String, PermissionLevel), nbg: Boolean): Boolean = {
-    isAllowedForUser(request, anonymousUser(nbg), nbg)
+  def isAllowedForAnonymousUser(request: (String, PermissionLevel)): Boolean = {
+    isAllowedForUser(request, anonymousUser)
   }
 
   // todo - is it a good idea to have the username as a prop within UserInfoton Json?, if so, we won't need that extra username parameter
-  def isAllowedForUser(request: (String, PermissionLevel), user: JsValue, nbg: Boolean, username: Option[String] = None): Boolean = {
+  def isAllowedForUser(request: (String, PermissionLevel), user: JsValue, username: Option[String] = None): Boolean = {
     def relevant(path: JsValue): Boolean = {
       val levels = (path \ "permissions").as[String].map{ case 'r' => PermissionLevel.Read; case 'w' => PermissionLevel.Write }.toSet
 
@@ -80,7 +80,7 @@ class Authorization @Inject()(authCache: EagerAuthCache) extends LazyLogging {
       return allow.nonEmpty && deny.isEmpty
 
     def getRolesPaths(roleName: JsValue) = {
-      authCache.getRole(roleName.as[String], nbg) match {
+      authCache.getRole(roleName.as[String]) match {
         case Some(role) => role getArr "paths"
         case None => logger error s"Role $roleName was not found"; Seq()
       }
@@ -92,10 +92,10 @@ class Authorization @Inject()(authCache: EagerAuthCache) extends LazyLogging {
     allowByRole.nonEmpty && denyByRole.isEmpty
   }
 
-  def isOperationAllowedForUser(op: Operation, user: JsValue, nbg: Boolean): Boolean = {
+  def isOperationAllowedForUser(op: Operation, user: JsValue): Boolean = {
     def extractOperationsFrom(userOrRole: JsValue) = (userOrRole getArr "operations").map(_.as[String]).collect{ case Operation(op) => op }.toSet
     val specifiecOps = extractOperationsFrom(user)
-    specifiecOps(op) || inRoles(user, nbg)(extractOperationsFrom(_)(op))
+    specifiecOps(op) || inRoles(user)(extractOperationsFrom(_)(op))
   }
 
   def areFieldsAllowedForUser(fields: Set[String], user: JsValue): Boolean = {
@@ -105,8 +105,8 @@ class Authorization @Inject()(authCache: EagerAuthCache) extends LazyLogging {
     ???
   }
 
-  def inRoles(user: JsValue, nbg: Boolean)(extractor: JsValue => Boolean) = {
-    val roles = (user getArr "roles").flatMap(r => authCache.getRole(r.as[String], nbg))
+  def inRoles(user: JsValue)(extractor: JsValue => Boolean) = {
+    val roles = (user getArr "roles").flatMap(r => authCache.getRole(r.as[String]))
     roles.exists(extractor)
   }
 }

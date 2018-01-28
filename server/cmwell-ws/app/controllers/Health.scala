@@ -119,12 +119,6 @@ class Health @Inject()(crudServiceFS: CRUDServiceFS) extends InjectedController 
     Future(Ok(res))
   }
 
-
-
-  def getBatchHealth {
-
-  }
-
   def getKafkaStatus = Action.async {implicit req =>
 
     val res = Seq(s"$path/../kafka/cur/bin/kafka-topics.sh","--zookeeper", s"$ip:2181", "--describe") !!
@@ -183,7 +177,6 @@ class Health @Inject()(crudServiceFS: CRUDServiceFS) extends InjectedController 
   }
 
   def getWsHealth = Action { implicit req =>
-    Ok(s"Old IRW ReadCache Size: ${crudServiceFS._irwService.dataCahce.size()}\n" +
-      s"New IRW ReadCache Size: ${crudServiceFS._irwService2.dataCahce.size()}\n")
+    Ok(s"IRW ReadCache Size: ${crudServiceFS.irwService.dataCahce.size()}")
   }
 }

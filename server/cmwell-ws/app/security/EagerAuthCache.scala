@@ -30,54 +30,43 @@ import scala.util.Try
 
 @Singleton
 class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionContext) extends LazyLogging {
-  private[this] var oData: AuthData = AuthData.empty
-  private[this] var nData: AuthData = AuthData.empty
+  private[this] var data: AuthData = AuthData.empty
 
   //TODO use AtomicBoolean!
   private[this] var isLoadingSemaphore: Boolean = false
 
-  private def data(nbg: Boolean) = if(nbg) nData else oData
-
-  SimpleScheduler.scheduleAtFixedRate(1.minute, 15.minutes)(load(true))
-  SimpleScheduler.scheduleAtFixedRate(2.minutes, 15.minutes)(load(false))
+  SimpleScheduler.scheduleAtFixedRate(2.minutes, 15.minutes)(load())
 
   // TODO Do not Await.result... These should return Future[Option[JsValue]]]
-  def getRole(roleName: String, nbg: Boolean): Option[JsValue] = {
-    data(nbg).roles.get(roleName).orElse {
-      Await.result(directReadFallback(s"/meta/auth/roles/$roleName", nbg), 6.seconds).map { role =>
-          logger.debug(s"AuthCache(nbg=$nbg) role $roleName was not in memory, but added to Map")
-          if(nbg)
-            nData = nData.copy(roles = nData.roles + (roleName -> role))
-          else
-            oData = oData.copy(roles = oData.roles + (roleName -> role))
+  def getRole(roleName: String): Option[JsValue] = {
+    data.roles.get(roleName).orElse {
+      Await.result(directReadFallback(s"/meta/auth/roles/$roleName"), 6.seconds).map { role =>
+          logger.debug(s"AuthCache role $roleName was not in memory, but added to Map")
+          data = data.copy(roles = data.roles + (roleName -> role))
         role
       }
     }
   }
 
   // TODO Do not Await.result... These should return Future[Option[JsValue]]]
-  def getUserInfoton(userName: String, nbg: Boolean): Option[JsValue] = {
-    data(nbg).users.get(userName).orElse {
-      Await.result(directReadFallback(s"/meta/auth/users/$userName", nbg), 6.seconds).map { user =>
-        logger.debug(s"AuthCache(nbg=$nbg) user $userName was not in memory, but added to Map")
-        if(nbg)
-          nData = nData.copy(users = nData.users + (userName -> user))
-        else
-          oData = oData.copy(users = oData.users + (userName -> user))
+  def getUserInfoton(userName: String): Option[JsValue] = {
+    data.users.get(userName).orElse {
+      Await.result(directReadFallback(s"/meta/auth/users/$userName"), 6.seconds).map { user =>
+        logger.debug(s"AuthCache user $userName was not in memory, but added to Map")
+        data = data.copy(users = data.users + (userName -> user))
         user
       }
     }
   }
 
-  def invalidate(nbg: Boolean): Future[Boolean] = if(isLoadingSemaphore) Future.successful(false) else load(nbg)
+  def invalidate(): Future[Boolean] = if(isLoadingSemaphore) Future.successful(false) else load()
 
   // TODO use testAndSet in both cases, manual invalidate as well as scheduled load.
-  private def load(nbg: Boolean): Future[Boolean] = {
+  private def load(): Future[Boolean] = {
     isLoadingSemaphore = true
 
-    unsafeRetryUntil[AuthData](isSuccessful = !_.isEmpty, maxRetries = 10, delay = 5.seconds)(loadOnce(false)).map { data =>
-      if(nbg) nData = combiner(nData, data)
-      else oData = combiner(oData, data)
+    unsafeRetryUntil[AuthData](isSuccessful = !_.isEmpty, maxRetries = 10, delay = 5.seconds)(loadOnce()).map { d =>
+      data = combiner(data, d)
       isLoadingSemaphore = false
       true
     }.recover { case _ =>
@@ -86,11 +75,11 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
     }
   }
 
-  private def loadOnce(nbg: Boolean): Future[AuthData] = {
+  private def loadOnce(): Future[AuthData] = {
     // one level under /meta/auth is a parent (e.g. "users", "roles")
     def isParent(infoton: Infoton) = infoton.path.count(_ == '/') < 4
-    logger.debug(s"AuthCache(nbg=$nbg) is now loading...")
-    crudServiceFS.search(Some(PathFilter("/meta/auth", descendants = true)), withData = true, paginationParams = PaginationParams(0, 2048), nbg = nbg).map { searchResult =>
+    logger.debug(s"AuthCache is now loading...")
+    crudServiceFS.search(Some(PathFilter("/meta/auth", descendants = true)), withData = true, paginationParams = PaginationParams(0, 2048)).map { searchResult =>
       val data = searchResult.infotons.filterNot(isParent).map(i => i.path -> extractPayload(i)).collect { case (p, Some(jsv)) => p -> jsv }.toMap
       val (usersData, rolesData) = cmwell.util.collections.partitionWith(data) { t =>
         val (path, payload) = t
@@ -99,19 +88,19 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
         if (isUser) Left(key -> payload)
         else Right(key -> payload)
       }
-      logger.debug(s"AuthCache(nbg=$nbg) Loaded with ${usersData.size} users and ${rolesData.size} roles.")
+      logger.debug(s"AuthCache Loaded with ${usersData.size} users and ${rolesData.size} roles.")
       AuthData(usersData.toMap, rolesData.toMap)
     }.recover { case t: Throwable =>
-      logger.error(s"AuthCache(nbg=$nbg) failed to load", t)
+      logger.error(s"AuthCache failed to load", t)
       AuthData.empty
     }
   }
 
-  private def directReadFallback(infotonPath: String, nbg: Boolean) = crudServiceFS.getInfoton(infotonPath, None, None, nbg = nbg).map {
+  private def directReadFallback(infotonPath: String) = crudServiceFS.getInfoton(infotonPath, None, None).map {
     case Some(Everything(i)) =>
       extractPayload(i)
     case other =>
-      logger.warn(s"AuthCache(nbg=$nbg) Trying to read $infotonPath but got from CAS $other")
+      logger.warn(s"AuthCache Trying to read $infotonPath but got from CAS $other")
       None
   }
 

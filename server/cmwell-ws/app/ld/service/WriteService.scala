@@ -38,7 +38,6 @@ object WriteService {
   def handleFormatByFormatParameter(cmwellRDFHelper: CMWellRDFHelper,
                                     crudServiceFS: CRUDServiceFS,
                                     authUtils: AuthUtils,
-                                    nbg: Boolean,
                                     body : InputStream,
                                     formats : Option[List[String]],
                                     contentType : Option[String],
@@ -48,36 +47,35 @@ object WriteService {
     formats match {
       case Some(list : List[String]) =>
         list(0).toLowerCase match {
-          case "rdfxml" => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "RDF/XML", token, skipValidation, isOverwrite,nbg)
-          case "n3" => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "N3", token, skipValidation, isOverwrite,nbg)
-          case "ntriples" => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "N-TRIPLE", token, skipValidation, isOverwrite,nbg)
-          case "turtle" | "ttl" => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "TURTLE", token, skipValidation, isOverwrite,nbg)
-          case "jsonld" => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "JSON-LD", token, skipValidation, isOverwrite,nbg)
-          case q @ ("nq" | "nquads") => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, q.toUpperCase, token, skipValidation, isOverwrite,nbg)
-          case "trig" => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "TRIG", token, skipValidation, isOverwrite,nbg)
-          case _ => handleFormatByContentType(cmwellRDFHelper,crudServiceFS,authUtils,nbg,body, contentType, token, skipValidation, isOverwrite) //try by mimetype
+          case "rdfxml" => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "RDF/XML", token, skipValidation, isOverwrite)
+          case "n3" => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "N3", token, skipValidation, isOverwrite)
+          case "ntriples" => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "N-TRIPLE", token, skipValidation, isOverwrite)
+          case "turtle" | "ttl" => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "TURTLE", token, skipValidation, isOverwrite)
+          case "jsonld" => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "JSON-LD", token, skipValidation, isOverwrite)
+          case q @ ("nq" | "nquads") => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, q.toUpperCase, token, skipValidation, isOverwrite)
+          case "trig" => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "TRIG", token, skipValidation, isOverwrite)
+          case _ => handleFormatByContentType(cmwellRDFHelper,crudServiceFS,authUtils,body, contentType, token, skipValidation, isOverwrite) //try by mimetype
         }
-      case None => handleFormatByContentType(cmwellRDFHelper,crudServiceFS,authUtils,nbg,body, contentType, token, skipValidation, isOverwrite) //try by mimetype
+      case None => handleFormatByContentType(cmwellRDFHelper,crudServiceFS,authUtils,body, contentType, token, skipValidation, isOverwrite) //try by mimetype
     }
   }
 
   def handleFormatByContentType(cmwellRDFHelper: CMWellRDFHelper,
                                 crudServiceFS: CRUDServiceFS,
                                 authUtils: AuthUtils,
-                                nbg: Boolean,
                                 body : InputStream,
                                 contentType : Option[String],
                                 token: Option[Token],
                                 skipValidation: Boolean,
                                 isOverwrite: Boolean): Future[ParsingResponse] = {
     contentType match {
-      case Some("application/rdf+xml") => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "RDF/XML", token, skipValidation, isOverwrite,nbg)
-      case Some("text/n3") => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "N3", token, skipValidation, isOverwrite,nbg)
-      case Some("text/plain") => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "N-TRIPLE", token, skipValidation, isOverwrite,nbg)
-      case Some("text/turtle") => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "TURTLE", token, skipValidation, isOverwrite,nbg)
-      case Some("application/ld+json") | Some("application/json") => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "JSON-LD", token, skipValidation, isOverwrite,nbg)
-      case Some("application/n-quads") | Some("text/x-nquads") => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "NQUADS", token, skipValidation, isOverwrite,nbg)
-      case Some("application/trig") => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "TRIG", token, skipValidation, isOverwrite,nbg)
+      case Some("application/rdf+xml") => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "RDF/XML", token, skipValidation, isOverwrite)
+      case Some("text/n3") => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "N3", token, skipValidation, isOverwrite)
+      case Some("text/plain") => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "N-TRIPLE", token, skipValidation, isOverwrite)
+      case Some("text/turtle") => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "TURTLE", token, skipValidation, isOverwrite)
+      case Some("application/ld+json") | Some("application/json") => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "JSON-LD", token, skipValidation, isOverwrite)
+      case Some("application/n-quads") | Some("text/x-nquads") => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "NQUADS", token, skipValidation, isOverwrite)
+      case Some("application/trig") => LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,body, "TRIG", token, skipValidation, isOverwrite)
       case Some(ctype : String) => throw new RuntimeException(invalidFormatMessage)
       case None => throw new RuntimeException(invalidFormatMessage)
     }
