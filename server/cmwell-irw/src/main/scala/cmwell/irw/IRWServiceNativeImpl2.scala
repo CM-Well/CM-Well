@@ -251,9 +251,21 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
     val futureResults = statements.grouped(0xFFFF).map{ zipped =>
       val (stmts, ids) = zipped.unzip(identity)
       val failStringFunc = () => {
-        val h = ids.head
-        val t = ids.last
-        h() + "\n…\n" + t()
+        if(ids.length <= 10) ids.foldLeft(new StringBuilder){
+          case (sb,f) =>
+            sb += '\n'
+            sb ++= f()
+        }.result()
+        else {
+          val h = ids.take(8).foldLeft(new StringBuilder) {
+            case (sb, f) =>
+              sb += '\n'
+              sb ++= f()
+          }
+          h ++= "\n…\n"
+          h ++= ids.last()
+          h.result
+        }
       }
       executeAsync(new BatchStatement(BatchStatement.Type.UNLOGGED).addAll(stmts),failStringFunc())
     }
