@@ -16,32 +16,32 @@
 
 package actions
 
-import Color._
+import javax.inject._
+
+import actions.Color._
 import actions.GridMonitoring.{Active, All, CsvPretty}
 import akka.pattern.ask
 import cmwell.ctrl.checkers._
 import cmwell.ctrl.client.CtrlClient
 import cmwell.domain._
+import cmwell.fts.FieldFilter
+import cmwell.util.FullBox
 import cmwell.util.build.BuildInfo
 import cmwell.util.os.Props
 import cmwell.util.string.Hash.crc32
-import cmwell.ws.{BGMonitorActor, GetOffsetInfo, OffsetsInfo, Settings}
+import cmwell.web.ld.cmw.CMWellRDFHelper
 import cmwell.ws.Settings.esTimeout
 import cmwell.ws.util.DateParser._
+import cmwell.ws.util.FieldFilterParser
+import cmwell.ws.{Green => _, Red => _, Yellow => _, _}
 import com.typesafe.scalalogging.LazyLogging
+import controllers.NbgToggler
 import k.grid.Grid
+import ld.cmw.{NbgPassiveFieldTypesCache, ObgPassiveFieldTypesCache}
 import logic.CRUDServiceFS
 import org.joda.time._
 import trafficshaping.TrafficMonitoring
 import wsutil._
-import javax.inject._
-
-import cmwell.fts.FieldFilter
-import cmwell.util.FullBox
-import cmwell.web.ld.cmw.CMWellRDFHelper
-import cmwell.ws.util.FieldFilterParser
-import controllers.NbgToggler
-import ld.cmw.{NbgPassiveFieldTypesCache, ObgPassiveFieldTypesCache}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -141,34 +141,6 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
     ws
   }
 
-  private[this] def getBatchHealth(it : Iterable[ComponentState], c : StatusColor) = {
-    val bgColor = colorAdapter(c)
-    val impSum = it.map{
-      case b : BatchState => b.getImpDiff
-      case _ => 0L
-    }.fold(0L)(_ + _)
-
-    val indexerSum = it.map{
-      case b : BatchState => b.getIndexerDiff
-      case _ => 0L
-    }.fold(0L)(_ + _)
-
-    val notIndexing = it.map{
-      case BatchNotIndexing(v1,v2,v3,v4,_,_,_) => 1
-      case _ => 0
-    }.fold(0)(_ + _)
-
-    val down = it.map{
-      case b : BatchDown => 1
-      case b : ReportTimeout => 1 // todo: deside what should happen here.
-      case _ => 0
-    }.fold(0)(_ + _)
-
-    val bgTxt = s"imp diff: $impSum, idx diff: $indexerSum (down: $down, not indexing: $notIndexing)"
-    val d = new DateTime(it.head.genTime * 1000L)
-    val bg = ((bgColor, bgTxt),d)
-    bg
-  }
 
   private[this] def getElasticsearchHealth(cr : ComponentState) = {
     val dt = new DateTime(cr.genTime * 1000L)
@@ -249,7 +221,15 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
     val r = CtrlClient.getClusterStatus.map{
       cs =>
         val ws = getWsHealth(cs.wsStat._1.values, cs.wsStat._2)
-        val bg = getBatchHealth(cs.batchStat._1.values, cs.batchStat._2)
+        val bg = {
+          val data = Await.result(getDetailedBgStatus(), timeOut).values.flatMap(_.flatMap(_._2))
+          val pss = data.map(_.partitionStatus).toSeq
+          val msg = {
+            val lags = data.map(i => i.writeOffset - i.readOffset).toSeq
+            s"Avg. Lag: ${if(lags.isEmpty) 0 else lags.sum / lags.length}"
+          }
+          (aggrPartitionColorToColor(pss) -> msg) -> DateTime.now()
+        }
         val es = getElasticsearchHealth(cs.esStat)
         val cas = getCassandraHealth(cs.casStat)
         val zk = getZookeeperHealth(cs.zookeeperStat._1.values, cs.zookeeperStat._2)
@@ -286,66 +266,70 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
   }
 
   private[this] def getClusterDetailedHealthNew : Map[String, ((String, Color),(String, Color),(String, Color),(String, Color),(String, Color),(String, Color))] = {
-    val r = CtrlClient.getClusterDetailedStatus.map{
+    val bgStatsFut = getDetailedBgStatus()
+
+    val r = CtrlClient.getClusterDetailedStatus.flatMap {
       cs =>
-        val keys = cs.wsStat.keySet ++ cs.batchStat.keySet ++ cs.esStat.keySet ++ cs.casStat.keySet ++ cs.zkStat.keySet ++ cs.kafkaStat.keySet
-        keys.map{
-          k =>
-            val wsMessage = cs.wsStat.getOrElse(k, WebDown()) match {
-              case wr : WebOk => (s"Ok<br>Response time: ${wr.responseTime} ms", colorAdapter(wr.getColor))
-              case wr : WebBadCode => (s"Web is returning code: ${wr.code}<br>Response time: ${wr.responseTime} ms", colorAdapter(wr.getColor))
-              case wr : WebDown => (s"Web is down", colorAdapter(wr.getColor))
-              case wr : ReportTimeout => ("Can't retrieve Web status", colorAdapter(wr.getColor))
-            }
+        bgStatsFut.map { bgStat =>
+          val keys = cs.wsStat.keySet ++ bgStat.keySet ++ cs.esStat.keySet ++ cs.casStat.keySet ++ cs.zkStat.keySet ++ cs.kafkaStat.keySet
+          keys.map {
+            k =>
+              val wsMessage = cs.wsStat.getOrElse(k, WebDown()) match {
+                case wr: WebOk => (s"Ok<br>Response time: ${wr.responseTime} ms", colorAdapter(wr.getColor))
+                case wr: WebBadCode => (s"Web is returning code: ${wr.code}<br>Response time: ${wr.responseTime} ms", colorAdapter(wr.getColor))
+                case wr: WebDown => (s"Web is down", colorAdapter(wr.getColor))
+                case wr: ReportTimeout => ("Can't retrieve Web status", colorAdapter(wr.getColor))
+              }
 
-            val batchMessage = cs.batchStat.getOrElse(k,BatchDown(0,0,0,0)) match {
-              case br : BatchOk => (s"Ok<br>imp rate: ${br.impRate} b/s <br>idx rate: ${br.indexerRate} b/s", colorAdapter(br.getColor))
-              case br : BatchNotIndexing => ("Batch isn't indexing", colorAdapter(br.getColor))
-              case br : BatchDown => ("Batch is down", colorAdapter(br.getColor))
-              case br : ReportTimeout => ("Can't retrieve Batch status", colorAdapter(br.getColor))
-            }
+              val bgMessage = {
+                val data = bgStat.getOrElse(k, Set.empty)
+                data.map { case (par, infos) =>
+                  s"Par$par: ${infos.map(_.toShortInfoString).toSeq.sorted.mkString(" ")}"
+                }.mkString("<br>") -> aggrPartitionColorToColor(data.flatMap(_._2).map(_.partitionStatus).toSeq)
+              }
 
-            val casMessage = cs.casStat.getOrElse(k,CassandraDown()) match {
-              case cr : CassandraOk => (cr.m.map(r => s"${r._1} -> ${r._2}").mkString("<br>"), colorAdapter(cr.getColor))
-              case cr : CassandraDown => ("Cassandra is down", colorAdapter(cr.getColor))
-              case cr : ReportTimeout => ("Can't retrieve Cassandra status", colorAdapter(cr.getColor))
-            }
+              val casMessage = cs.casStat.getOrElse(k, CassandraDown()) match {
+                case cr: CassandraOk => (cr.m.map(r => s"${r._1} -> ${r._2}").mkString("<br>"), colorAdapter(cr.getColor))
+                case cr: CassandraDown => ("Cassandra is down", colorAdapter(cr.getColor))
+                case cr: ReportTimeout => ("Can't retraggrPartitionStatusieve Cassandra status", colorAdapter(cr.getColor))
+              }
 
-            val zkMessage = cs.zkStat.getOrElse(k, ZookeeperNotOk()) match {
-              case zr : ZookeeperOk => ("", colorAdapter(zr.getColor))
-              case zr : ZookeeperReadOnly => ("ZooKeeper is in read-only mode", colorAdapter(zr.getColor))
-              case zr : ZookeeperNotOk => ("ZooKeeper is not ok", colorAdapter(zr.getColor))
-              case zr : ZookeeperNotRunning => ("ZooKeeper is not running", colorAdapter(zr.getColor))
-              case zr : ZookeeperSeedNotRunning => ("ZooKeeper is not running", colorAdapter(zr.getColor))
-              case zr : ReportTimeout => ("Can't retrieve ZooKeeper status", colorAdapter(zr.getColor))
-            }
+              val zkMessage = cs.zkStat.getOrElse(k, ZookeeperNotOk()) match {
+                case zr: ZookeeperOk => ("", colorAdapter(zr.getColor))
+                case zr: ZookeeperReadOnly => ("ZooKeeper is in read-only mode", colorAdapter(zr.getColor))
+                case zr: ZookeeperNotOk => ("ZooKeeper is not ok", colorAdapter(zr.getColor))
+                case zr: ZookeeperNotRunning => ("ZooKeeper is not running", colorAdapter(zr.getColor))
+                case zr: ZookeeperSeedNotRunning => ("ZooKeeper is not running", colorAdapter(zr.getColor))
+                case zr: ReportTimeout => ("Can't retrieve ZooKeeper status", colorAdapter(zr.getColor))
+              }
 
-            val kafMessage = cs.kafkaStat.getOrElse(k, KafkaNotOk()) match {
-              case kafr : KafkaOk => ("", colorAdapter(kafr.getColor))
-              case kafr : KafkaNotOk => ("Kafka is not running", colorAdapter(kafr.getColor))
-              case kafr : ReportTimeout => ("Can't retrieve Kafka status", colorAdapter(kafr.getColor))
-            }
+              val kafMessage = cs.kafkaStat.getOrElse(k, KafkaNotOk()) match {
+                case kafr: KafkaOk => ("", colorAdapter(kafr.getColor))
+                case kafr: KafkaNotOk => ("Kafka is not running", colorAdapter(kafr.getColor))
+                case kafr: ReportTimeout => ("Can't retrieve Kafka status", colorAdapter(kafr.getColor))
+              }
 
-            val esMessage = cs.esStat.getOrElse(k,ElasticsearchDown()) match {
-              case er : ElasticsearchGreen =>
-                val txt = if(er.hasMaster) "*" else ""
-                (txt,colorAdapter(er.getColor))
-              case er : ElasticsearchYellow =>
-                val txt = if(er.hasMaster) "*" else ""
-                (txt,colorAdapter(er.getColor))
-              case er : ElasticsearchRed =>
-                val txt = if(er.hasMaster) "*" else ""
-                (txt,colorAdapter(er.getColor))
-              case er : ElasticsearchDown =>
-                val txt = if(er.hasMaster) "*" else ""
-                (s"${txt}<br>Elasticsearch is down", colorAdapter(er.getColor))
-              case er : ElasticsearchBadCode =>
-                val txt = if(er.hasMaster) "*" else ""
-                (s"${txt}<br>Elasticsearch is returning code: ${er.code}", colorAdapter(er.getColor))
-              case er : ReportTimeout => ("Can't retrieve Elasticsearch status", colorAdapter(er.getColor))
-            }
-            (if(k == cs.healthHost) s"${k}*" else k) -> (wsMessage, batchMessage, casMessage, esMessage, zkMessage, kafMessage)
-        }.toMap
+              val esMessage = cs.esStat.getOrElse(k, ElasticsearchDown()) match {
+                case er: ElasticsearchGreen =>
+                  val txt = if (er.hasMaster) "*" else ""
+                  (txt, colorAdapter(er.getColor))
+                case er: ElasticsearchYellow =>
+                  val txt = if (er.hasMaster) "*" else ""
+                  (txt, colorAdapter(er.getColor))
+                case er: ElasticsearchRed =>
+                  val txt = if (er.hasMaster) "*" else ""
+                  (txt, colorAdapter(er.getColor))
+                case er: ElasticsearchDown =>
+                  val txt = if (er.hasMaster) "*" else ""
+                  (s"${txt}<br>Elasticsearch is down", colorAdapter(er.getColor))
+                case er: ElasticsearchBadCode =>
+                  val txt = if (er.hasMaster) "*" else ""
+                  (s"${txt}<br>Elasticsearch is returning code: ${er.code}", colorAdapter(er.getColor))
+                case er: ReportTimeout => ("Can't retrieve Elasticsearch status", colorAdapter(er.getColor))
+              }
+              (if (k == cs.healthHost) s"${k}*" else k) -> (wsMessage, bgMessage, casMessage, esMessage, zkMessage, kafMessage)
+          }.toMap
+        }
     }
     try{
       Await.result(r,timeOut)
@@ -353,6 +337,29 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
       case t : Throwable => Map.empty
     }
   }
+
+  private[this] def getDetailedBgStatus(): Future[Map[String, Set[(String, Iterable[PartitionOffsetsInfo])]]] = {
+    val offsetInfoFut = ask(bgMonitor, GetOffsetInfo)(10.seconds).mapTo[OffsetsInfo]
+    val partitionsByLocations = Grid.getSingletonsInfo.
+      filter(sd => sd.name.startsWith("BGActor") && sd.location.contains(":")).
+      groupBy(sd => sd.location.substring(0, sd.location.indexOf(':'))).
+      map { case (loc, sd) => loc -> sd.map(_.name.replace("BGActor", "")) }
+    offsetInfoFut.map { offsetInfo =>
+      val partitionsInfos = offsetInfo.partitionsOffsetInfo.values.groupBy(_.partition).map { case (partition, infos) =>
+        partition.toString -> infos
+      }
+      partitionsByLocations.map { case (location, partitions) =>
+        location -> partitions.map(p => p -> partitionsInfos.get(p)).collect { case (partition, Some(poi)) => partition -> poi }
+      }
+    }
+  }
+
+  private[this] def aggrPartitionColorToColor(ps: Seq[PartitionStatus]): Color = {
+    if (ps.forall(_ == cmwell.ws.Green)) Green
+    else if (ps.forall(_ == cmwell.ws.Red)) Red
+    else Yellow
+  }
+
 
   private[this] def generateHealthFields: FieldsOpt = {
     val (ws,bg,es,ca,zk,kaf,controlNode,masters) = getClusterHealth
@@ -415,11 +422,11 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
 | **Component** | **Status** | **Message** |  **Timestamp**  |
 |---------------|------------|-------------|-----------------|
 | WS            | $wsClr     | ${ws._2}    | ${fdf(wsTime)}  |
-| BATCH         | $bgClr     | ${bg._2}    | ${fdf(bgTime)}  |
+| BG            | $bgClr     | ${bg._2}    | ${fdf(bgTime)}  |
 | ES            | $esClr     | ${es._2}    | ${fdf(esTime)}  |
 | CAS           | $caClr     | ${ca._2}    | ${fdf(caTime)}  |
 | ZK            | $zkClr     | ${zk._2}    | ${fdf(zkTime)}  |
-| KAFKA         | $kfClr     | ${kf._2}    | ${fdf(kfTime)}  |
+| KF            | $kfClr     | ${kf._2}    | ${fdf(kfTime)}  |
 """
   }
 
@@ -451,8 +458,8 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
 ##### Current time: ${fdf(now)}
 #### Cluster name: ${Settings.clusterName}
 ### Data was generated on:
-| **Node** | **WS** | **BATCH** | **CAS** | **ES** | **ZK** | **KAFKA** |
-|----------|--------|-----------|---------|--------|--------|-----------|
+| **Node** | **WS** | **BG** | **CAS** | **ES** | **ZK** | **KF** |
+|----------|--------|--------|---------|--------|--------|--------|
 ${csvToMarkdownTableRows(csvData)}
 """
   }
