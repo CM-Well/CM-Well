@@ -16,42 +16,33 @@
 package cmwell.tools.data.sparql
 
 import java.nio.file.Paths
+import java.time.{Instant, LocalDateTime, ZoneId}
 
-import akka.Done
-import akka.actor.{Actor, ActorRef, ActorSystem, Cancellable, PoisonPill, Props, Status}
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.HttpMethods._
-import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.RawHeader
+import akka.actor.{Actor, ActorRef, ActorSystem, Cancellable, PoisonPill, Status}
 import akka.pattern._
 import akka.stream._
 import akka.stream.scaladsl._
-import akka.util.{ByteString, Timeout}
+import akka.util.Timeout
 import cmwell.ctrl.checkers.StpChecker.{RequestStats, ResponseStats, Row, Table}
-import cmwell.tools.data.downloader.consumer.Downloader.Token
 import cmwell.tools.data.ingester._
 import cmwell.tools.data.sparql.InfotonReporter.{RequestDownloadStats, ResponseDownloadStats}
 import cmwell.tools.data.sparql.SparqlProcessorManager._
-import cmwell.tools.data.utils.ArgsManipulations
-import cmwell.tools.data.utils.ArgsManipulations.HttpAddress
 import cmwell.tools.data.utils.akka._
 import cmwell.tools.data.utils.chunkers.GroupChunker
 import cmwell.tools.data.utils.chunkers.GroupChunker._
 import cmwell.util.http.SimpleResponse
 import cmwell.util.string.Hash
-import com.typesafe.config.ConfigFactory
+import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+import cmwell.util.concurrent._
 import com.typesafe.scalalogging.LazyLogging
 import k.grid.GridReceives
 import net.jcazevedo.moultingyaml._
 import org.apache.commons.lang3.time.DurationFormatUtils
+import io.circe.Json
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.{FiniteDuration, _}
 import scala.util.{Failure, Success, Try}
-import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
-import cmwell.util.concurrent._
-import io.circe.Json
-
 import ExecutionContext.Implicits.global
 
 case class Job(name: String, config: Config) {
@@ -61,6 +52,7 @@ case class Job(name: String, config: Config) {
   }
   override def toString: String = jobString
 }
+
 case class JobRead(job: Job, active: Boolean)
 case class StartJob(job: JobRead)
 case class JobHasFailed(job: Job, ex: Throwable)
@@ -74,15 +66,25 @@ case class AnalyzeReceivedJobs(jobsRead: Set[JobRead])
 sealed trait JobStatus {
   val job: Job
   val canBeRestarted: Boolean = false
+  def statusString : String
 }
-case class JobRunning(job: Job, killSwitch: KillSwitch, reporter: ActorRef) extends JobStatus
-case class JobPausing(job: Job, killSwitch: KillSwitch, reporter: ActorRef) extends JobStatus
-case class JobStopping(job: Job, killSwitch: KillSwitch, reporter: ActorRef) extends JobStatus
+
+sealed trait JobActive extends JobStatus {
+  override def statusString = " Active"
+  val reporter: ActorRef
+}
+
+case class JobRunning(job: Job, killSwitch: KillSwitch, reporter: ActorRef) extends JobActive
+case class JobPausing(job: Job, killSwitch: KillSwitch, reporter: ActorRef) extends JobActive
+case class JobStopping(job: Job, killSwitch: KillSwitch, reporter: ActorRef) extends JobActive
+
 case class JobFailed(job: Job, ex: Throwable) extends JobStatus {
+  override def statusString = "Failed"
   override val canBeRestarted = true
 }
 case class JobPaused(job: Job) extends JobStatus {
   override val canBeRestarted = true
+  override def statusString = "Paused"
 }
 
 object SparqlProcessorManager {
@@ -93,15 +95,18 @@ object SparqlProcessorManager {
 }
 
 class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends Actor with LazyLogging {
+
+  type Jobs = Map[String, JobStatus]
+
   //todo: should we use injected ec??? implicit val ec = context.dispatcher
   implicit val system: ActorSystem = context.system
   implicit val mat = ActorMaterializer()
+
   if (mat.isInstanceOf[ActorMaterializer]) {
     require(mat.asInstanceOf[ActorMaterializer].system eq context.system, "ActorSystem of materializer MUST be the same as the one used to create current actor")
   }
 
-  //job name -> job status
-  var currentJobs: Map[String, JobStatus] = Map.empty
+  var currentJobs: Jobs = Map.empty
 
   var configMonitor: Cancellable = _
 
@@ -113,6 +118,7 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
   override def receive: Receive = {
     import akka.pattern._
     GridReceives.monitoring(sender).orElse {
+      case RequestStats => stringifyActiveJobs(currentJobs).map(ResponseStats.apply) pipeTo sender()
       case CheckConfig => getJobConfigsFromTheUser.map(AnalyzeReceivedJobs.apply) pipeTo self
       case AnalyzeReceivedJobs(jobsReceived) => handleReceivedJobs(jobsReceived, currentJobs)
       case Status.Failure(e) => logger.warn("Received Status failure ", e)
@@ -121,8 +127,8 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
       case JobHasFailed(job: Job, ex: Throwable) => handleJobHasFailed(job, ex)
       case PauseJob(job: Job) => handlePauseJob(job)
       case StopAndRemoveJob(job: Job) => handleStopAndRemoveJob(job)
-//      case RequestStats => stringifyActiveJobs(activeJobs, nonActiveConfigs).map(ResponseStats.apply) pipeTo sender()
-       case other => logger.error(s"received unexpected message: $other")
+
+      case other => logger.error(s"received unexpected message: $other")
     }
   }
 
@@ -227,105 +233,85 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
     }
   }
 
-/*
+
   /**
     * Generates data for tables in cm-well monitor page
     */
-  def stringifyActiveJobs(activeJobs: Map[String, JobStatus], currentNonActiveConfigs: Configs): Future[Iterable[Table]] = {
+  def stringifyActiveJobs(jobs: Jobs): Future[Iterable[Table]] = {
     implicit val timeout = Timeout(1.minute)
 
-    def generateNonActiveTables(currentNonActiveConfigs: Configs) = currentNonActiveConfigs.map { case (path, config) =>
-      val sensorNames = config.sensors.map(_.name)
-      val title = Seq(s"""<span style="color:red"> **Non-Active** </span> ${path.utf8String}""")
+    def generateNonActiveTables(jobs: Jobs) = jobs.collect { case (path, jobStatus@(_: JobPaused | _:JobFailed)) =>
+
+      val sensorNames = jobStatus.job.config.sensors.map(_.name)
+      val colour = jobStatus match { case _: JobPaused => "green" case _ => "red" }
+      val title = Seq(s"""<span style="color:${colour}"> **Non-Active - ${jobStatus.statusString} ** </span> ${path}""")
       val header = Seq("sensor", "point-in-time")
 
-      val req = HttpRequest(uri = s"http://${settings.hostConfigFile}${path.utf8String}/tokens?op=stream&recursive&format=ntriples&fields=token")
-
-      // get stored tokens
-      val storedTokensFuture: Future[Map[String, Token]] = Source.single(req -> blank)
-        .via(httpPool)
-        .mapAsync(1) {
-          case (Success(HttpResponse(s, _, e, _)), _) if s.isSuccess() =>
-            e.withoutSizeLimit().dataBytes.runFold(blank)(_ ++ _)
-          case (Success(HttpResponse(s, _, e, _)), _) =>
-            logger.error(s"cannot get stored tokens for non-active jobs: status=$s, entity=$e")
-            e.discardBytes()
-            Future.successful(blank)
-          case (Failure(err), _) =>
-            logger.error(s"cannot get stored tokens for non-active jobs: err=$err")
-            Future.successful(blank)
-        }.runWith(Sink.head)
-        .map { rawData =>
-          rawData.utf8String.split("\n").map(_.split(" "))
-            .collect { case Array(s, p, o, _) =>
-              val token = if (o.startsWith("\"")) o.init.tail else o
-              val sensorName = Paths.get(s).getFileName.toString.init
-              sensorName -> token
-            }.toMap
-        }
-
-      storedTokensFuture.map { storedTokens =>
+      StpUtil.readPreviousTokens(settings.hostConfigFile, settings.pathAgentConfigs + "/" + path, "ntriples").map { storedTokens =>
         val pathsWithoutSavedToken = sensorNames.toSet diff storedTokens.keySet
         val allSensorsWithTokens = storedTokens ++ pathsWithoutSavedToken.map(_ -> "")
-        val body = allSensorsWithTokens.map { case (sensorName, token) =>
+        val body : Iterable[Row] = allSensorsWithTokens.map { case (sensorName, token) =>
           val decodedToken = if (token.nonEmpty) {
             val from = cmwell.tools.data.utils.text.Tokens.getFromIndexTime(token)
-            new org.joda.time.DateTime(from).toString
+            LocalDateTime.ofInstant(Instant.ofEpochMilli(from), ZoneId.systemDefault()).toString
           }
           else ""
 
-          val row: Row = Seq(sensorName, decodedToken)
-          row
+          Seq(sensorName, decodedToken)
         }
         Table(title = title, header = header, body = body)
       }
     }
 
-    def generateActiveTables(jobs: Jobs) = jobs.map { case (path, job) =>
-      val title = Seq(s"""<span style="color:green"> **Active** </span> ${path.utf8String}""")
+    def generateActiveTables(jobs: Jobs) = jobs.collect { case (path, jobStatus@(_: JobActive)) =>
+
+      val jobConfig = jobStatus.job.config
+
+      val title = Seq(s"""<span style="color:green"> **Active** </span> ${path}""")
       val header = Seq("sensor", "point-in-time", "received-infotons", "infoton-rate", "last-update")
-      val statsFuture = (job.reporter ? RequestDownloadStats).mapTo[ResponseDownloadStats]
-      val storedTokensFuture = (job.reporter ? RequestPreviousTokens).mapTo[ResponseWithPreviousTokens]
+      val statsFuture = (jobStatus.reporter ? RequestDownloadStats).mapTo[ResponseDownloadStats]
+      val storedTokensFuture = (jobStatus.reporter ? RequestPreviousTokens).mapTo[ResponseWithPreviousTokens]
+
       for {
         statsRD <- statsFuture
         stats = statsRD.stats
         storedTokensRWPT <- storedTokensFuture
         storedTokens = storedTokensRWPT.tokens
       } yield {
-        val sensorNames = job.config.sensors.map(_.name)
+        val sensorNames = jobConfig.sensors.map(_.name)
         val pathsWithoutSavedToken = sensorNames.toSet diff storedTokens.keySet
         val allSensorsWithTokens = storedTokens ++ pathsWithoutSavedToken.map(_ -> "")
 
-        val body = allSensorsWithTokens.map { case (sensorName, token) =>
+        val body : Iterable[Row] = allSensorsWithTokens.map { case (sensorName, token) =>
           val decodedToken = if (token.nonEmpty) {
             val from = cmwell.tools.data.utils.text.Tokens.getFromIndexTime(token)
-            new org.joda.time.DateTime(from).toString
+            LocalDateTime.ofInstant(Instant.ofEpochMilli(from), ZoneId.systemDefault()).toString
           }
           else ""
 
           val sensorStats = stats.get(sensorName).map { s =>
-            val statsTime = new org.joda.time.DateTime(s.statsTime).toString
+            val statsTime =  LocalDateTime.ofInstant(Instant.ofEpochMilli(s.statsTime), ZoneId.systemDefault()).toString
             Seq(s.receivedInfotons.toString, s"${formatter.format(s.infotonRate)}/sec", statsTime)
           }.getOrElse(Seq.empty[String])
 
-          val row: Row = Seq(sensorName, decodedToken) ++ sensorStats
-          row
+          Seq(sensorName, decodedToken) ++ sensorStats
         }
-        val configName = Paths.get(path.utf8String).getFileName
+        val configName = Paths.get(path).getFileName
         val sparqlMaterializerStats = stats.get(s"$configName-${SparqlTriggeredProcessor.sparqlMaterializerLabel}").map { s =>
           val totalRunTime = DurationFormatUtils.formatDurationWords(s.runningTime, true, true)
           s"""Materialized <span style="color:green"> **${s.receivedInfotons}** </span> infotons [$totalRunTime]""".stripMargin
         }.getOrElse("")
+
         Table(title = title :+ sparqlMaterializerStats, header = header, body = body)
       }
     }
 
-    // generate data for both active and non-active jobs
-    Future.sequence {
-      generateNonActiveTables(currentNonActiveConfigs) ++ generateActiveTables(activeJobs)
+    Future.sequence{
+      generateActiveTables(jobs) ++ generateNonActiveTables(jobs)
     }
+
   }
-*/
+
 
   /**
     * This method MUST be run from the actor's thread (it changes the actor state)!
@@ -336,7 +322,7 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
     //this method MUST BE RUN from the actor's thread and changing the state is allowed. the below will replace any existing state.
     //The state is changed instantly and every change that follows (even from another thread/Future) will be later.
     val tokenReporter = context.actorOf(
-        props = InfotonReporter(baseUrl = settings.hostConfigFile, path = settings.pathAgentConfigs + job.name),
+        props = InfotonReporter(baseUrl = settings.hostConfigFile, path = settings.pathAgentConfigs + "/" + job.name),
         name = s"${job.name}-${Hash.crc32(job.config.toString)}"
     )
     val agent = SparqlTriggeredProcessor.listen(job.config, settings.hostUpdatesSource, false, Some(tokenReporter), Some(job.name))

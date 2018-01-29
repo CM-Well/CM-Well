@@ -24,8 +24,8 @@ class SparqlProcessorManagerSettings {
   val initDelay: FiniteDuration = stpSettings.getDuration("cmwell.agents.sparql-triggered-processor.init-delay").toMillis.millis
   val maxDelay: FiniteDuration = stpSettings.getDuration("cmwell.agents.sparql-triggered-processor.max-delay").toMillis.millis
   val interval: FiniteDuration = stpSettings.getDuration("cmwell.agents.sparql-triggered-processor.config-polling-interval").toMillis.millis
-//  val httpPool: Flow[(HttpRequest, ByteString), (Try[HttpResponse], ByteString), Http.HostConnectionPool] = {
-//    val HttpAddress(_, host, port, _) = ArgsManipulations.extractBaseUrl(hostConfigFile)
-//    Http().cachedHostConnectionPool[ByteString](host, port)
-//  }
+  //val httpPool: Flow[(HttpRequest, ByteString), (Try[HttpResponse], ByteString), Http.HostConnectionPool] = {
+    //val HttpAddress(_, host, port, _) = ArgsManipulations.extractBaseUrl(hostConfigFile)
+    //Http().cachedHostConnectionPool[ByteString](host, port)
+  //}
 }
