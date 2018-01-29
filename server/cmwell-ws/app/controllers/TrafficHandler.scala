@@ -40,7 +40,7 @@ class TrafficHandler @Inject()(authUtils: AuthUtils)(implicit ec: ExecutionConte
 
   def handleThresholdFactor = Action { implicit req =>
     val tokenOpt = authUtils.extractTokenFrom(req)
-    if (authUtils.isOperationAllowedForUser(security.Admin, tokenOpt, req.attrs(Attrs.Nbg))) {
+    if (authUtils.isOperationAllowedForUser(security.Admin, tokenOpt)) {
       val thresholdFactor = req.getQueryString("tf").map(_.toLong)
       thresholdFactor match {
         case Some(l) =>

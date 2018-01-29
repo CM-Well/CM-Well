@@ -44,7 +44,7 @@ object PassiveFieldTypesCache {
   private[cmw] case class UpdateAndGet(field: FieldKey)
   private[cmw] case class Put(field: String, types: Set[Char], reportWhenDone: Boolean = false, reportTo: Option[ActorRef] = None)
 
-  private[cmw] class PassiveFieldTypesCacheActor(crudService: CRUDServiceFS, nbg: Boolean, cache: Cache[String,Either[Future[Set[Char]],(Long, Set[Char])]], updatingExecutionContext: ExecutionContext) extends Actor with LazyLogging {
+  private[cmw] class PassiveFieldTypesCacheActor(crudService: CRUDServiceFS, cache: Cache[String,Either[Future[Set[Char]],(Long, Set[Char])]], updatingExecutionContext: ExecutionContext) extends Actor with LazyLogging {
 
     var requestedCacheUpdates: MSet[FieldKey] = _
     var cancellable: Cancellable = _
@@ -139,13 +139,19 @@ object PassiveFieldTypesCache {
 
     private def infoptToChars(infopt: Option[Infoton]) = {
       val typesOpt = infopt.flatMap(_.fields.flatMap(_.get("mang")))
-      typesOpt.fold(Set.empty[Char])(_.collect{
+      val rv = typesOpt.fold(Set.empty[Char])(_.collect{
         case FString(t, _, _) if t.length == 1 => t.head
       })
+      if(rv.isEmpty) {
+        logger.warn(s"got empty type set for $infopt")
+      }
+      rv
     }
 
     private def getMetaFieldInfoton(field: FieldKey): Future[Option[Infoton]] =
-      crudService.getInfoton(field.metaPath, None, None, nbg).map(_.map(_.infoton))(updatingExecutionContext)
+      crudService.getInfoton(field.metaPath, None, None).map(_.map(_.infoton))(updatingExecutionContext).andThen {
+        case Success(None) => logger.warn(s"got empty type infoton for $field")
+      }(updatingExecutionContext)
   }
 }
 
@@ -227,28 +233,12 @@ abstract class PassiveFieldTypesCache(val cache: Cache[String,Either[Future[Set[
   private[this] lazy val actor: ActorRef = createActor
 }
 
-/** !!!!!!!!!!!!!!!
-  * !!! WARNING !!!
-  * !!!!!!!!!!!!!!!
-  *
-  * Following 2 implementation classes of cache define an actor using a const name (per machine).
-  * This means each of these classes may only be instantiated ONCE per [[ActorSystem]]!
-  */
-class NbgPassiveFieldTypesCache(crud: CRUDServiceFS, ec: ExecutionContext, sys: ActorSystem) extends
+class passiveFieldTypesCacheImpl(crud: CRUDServiceFS, ec: ExecutionContext, sys: ActorSystem) extends
   // cache's concurrencyLevel set to 1, so we should avoid useless updates,
   // nevertheless, it's okay to risk blocking on the cache's write lock here,
   // because writes are rare (once every 2 minutes, and on first-time asked fields)
   PassiveFieldTypesCache(CacheBuilder.newBuilder().concurrencyLevel(1).build()) with LazyLogging {
 
-  private val props = Props(classOf[PassiveFieldTypesCache.PassiveFieldTypesCacheActor], crud, true, cache, ec)
-  override def createActor: ActorRef = sys.actorOf(props,"NbgPassiveFieldTypesCache_" + PassiveFieldTypesCache.uniqueIdentifierForActorName)
-}
-class ObgPassiveFieldTypesCache(crud: CRUDServiceFS, ec: ExecutionContext, sys: ActorSystem) extends
-  // cache's concurrencyLevel set to 1, so we should avoid useless updates,
-  // nevertheless, it's okay to risk blocking on the cache's write lock here,
-  // because writes are rare (once every 2 minutes, and on first-time asked fields)
-  PassiveFieldTypesCache(CacheBuilder.newBuilder().concurrencyLevel(1).build())  with LazyLogging {
-
-  private val props = Props(classOf[PassiveFieldTypesCache.PassiveFieldTypesCacheActor], crud, false, cache, ec)
-  override def createActor: ActorRef = sys.actorOf(props,"ObgPassiveFieldTypesCache_" + PassiveFieldTypesCache.uniqueIdentifierForActorName)
+  private val props = Props(classOf[PassiveFieldTypesCache.PassiveFieldTypesCacheActor], crud, cache, ec)
+  override def createActor: ActorRef = sys.actorOf(props,"passiveFieldTypesCacheImpl_" + PassiveFieldTypesCache.uniqueIdentifierForActorName)
 }

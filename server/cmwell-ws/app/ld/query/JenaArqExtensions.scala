@@ -27,7 +27,7 @@ import cmwell.fts._
 import cmwell.syntaxutils._
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import com.typesafe.scalalogging.LazyLogging
-import controllers.{JenaUtils, NbgToggler, SpHandler}
+import controllers.{JenaUtils, SpHandler}
 import ld.query.{ArqCache, JenaArqExtensionsUtils}
 import logic.CRUDServiceFS
 import org.apache.jena.graph.impl.GraphBase
@@ -62,14 +62,14 @@ import scala.util.{Failure, Success, Try}
   * Created by yaakov on 11/30/15.
   */
 object JenaArqExtensions {
-  def get(n: JenaArqExtensionsUtils,o: JenaArqExtensionsUtils) = new JenaArqExtensions(n,o)
+  def get(jenaArqExtensionsUtils: JenaArqExtensionsUtils) = new JenaArqExtensions(jenaArqExtensionsUtils)
 }
 
-class JenaArqExtensions private(nJenaArqExtensionsUtils: JenaArqExtensionsUtils,oJenaArqExtensionsUtils: JenaArqExtensionsUtils) extends LazyLogging {
+class JenaArqExtensions private(jenaArqExtensionsUtils: JenaArqExtensionsUtils) extends LazyLogging {
   // init extension1
   val globalArqContext = ARQ.getContext
   val originalStageGenerator = globalArqContext.get(ARQ.stageGenerator).asInstanceOf[StageGenerator]
-  StageBuilder.setGenerator(globalArqContext, new SortingAndMappingStageGenerator(nJenaArqExtensionsUtils, oJenaArqExtensionsUtils, Option(originalStageGenerator)))
+  StageBuilder.setGenerator(globalArqContext, new SortingAndMappingStageGenerator(jenaArqExtensionsUtils, Option(originalStageGenerator)))
 
   // init extension2
   val factory = new EmbedLimitQueryEngineFactory()
@@ -81,13 +81,9 @@ class JenaArqExtensions private(nJenaArqExtensionsUtils: JenaArqExtensionsUtils,
 /**
   * Sorting the basicPattern (list of triples) and also convert all predicates to server-repr (i.e. localName.hash)
   */
-class SortingAndMappingStageGenerator(nJenaArqExtensionsUtils: JenaArqExtensionsUtils, oJenaArqExtensionsUtils: JenaArqExtensionsUtils, original: Option[StageGenerator] = None) extends StageGenerator with LazyLogging {
+class SortingAndMappingStageGenerator(jenaArqExtensionsUtils: JenaArqExtensionsUtils, original: Option[StageGenerator] = None) extends StageGenerator with LazyLogging {
   override def execute(basicPattern: BasicPattern, queryIterator: QueryIterator, ec: JenaExecutionContext): QueryIterator = {
-    val nbg = ec.getContext.get[Boolean](JenaArqExtensionsUtils.nbgSymbol)
-    val jenaArqExtensionsUtils = {
-      if (nbg) nJenaArqExtensionsUtils
-      else oJenaArqExtensionsUtils
-    }
+
     ec.getActiveGraph match {
       case graph: CmWellGraph =>
         logger.debug(s"[arq][FLOW] execute was invoked with ${basicPattern.getList.length} triplePatterns")
@@ -165,7 +161,6 @@ object DataFetcher {
 }
 
 trait DataFetcher {
-  def nbg: Boolean
   def crudServiceFS: CRUDServiceFS
   def config: Config
   def chunkSize: Int
@@ -213,13 +208,12 @@ trait DataFetcher {
 
 }
 
-class DataFetcherImpl(val config: Config, val crudServiceFS: CRUDServiceFS, val nbg: Boolean) extends DataFetcher {
+class DataFetcherImpl(val config: Config, val crudServiceFS: CRUDServiceFS) extends DataFetcher {
   val chunkSize = 100
   val singleGetThreshold = 512 // must be under 1000 (because "even google...")
 }
 
 //object DefaultDataFetcher extends DataFetcher {
-//  def nbg: Boolean = WorkerMain.nbgToggler.get
 //  def crudServiceFS: CRUDServiceFS = Option(WorkerMain.crudServiceFS) match {
 //    case Some(crud) => crud
 //    case None => throw new IllegalStateException("CRUDServiceFS defined in main(App) was null (lazy init crap...)")
@@ -269,7 +263,6 @@ object Config {
 
 class DatasetGraphCmWell(val host: String,
                          val config: Config,
-                         nbg: Boolean,
                          crudServiceFS: CRUDServiceFS,
                          arqCache: ArqCache,
                          jenaArqExtensionsUtils: JenaArqExtensionsUtils,

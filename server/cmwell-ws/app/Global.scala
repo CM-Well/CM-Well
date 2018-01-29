@@ -83,15 +83,10 @@ class Global @Inject()(crudServiceFS: CRUDServiceFS, cmwellRDFHelper: CMWellRDFH
       }
     }
 
-    val recoverWithLogOnFail: Boolean => PartialFunction[Try[SearchResults],Unit] = nbg => {
-      case Success(sr) => updateCaches(sr, nbg)
+    val recoverWithLogOnFail: PartialFunction[Try[SearchResults],Unit] = {
+      case Success(sr) => updateCaches(sr)
       case Failure(ex) => logger.error("Failed to connect with CRUDService. Will exit now.",ex)
     }
-
-    // Y do we need this? do we want to check both new & old data paths? should we?
-    // what if it's not enabled?
-    // should we also inject NbgToggler, and only query against nbg = tbg.get?
-    // Try(crudServiceFS.getInfoton("/", None, None)).recover(recoverWithExitOnFail)
 
     RequestMonitor.init
 
@@ -108,8 +103,7 @@ class Global @Inject()(crudServiceFS: CRUDServiceFS, cmwellRDFHelper: CMWellRDFH
             paginationParams = PaginationParams(0, initialMetaNsLoadingAmount),
             withHistory = false,
             withData = true,
-            fieldSortParams = SortParam.empty,
-            nbg = true)
+            fieldSortParams = SortParam.empty)
         }
 
         val fo = cmwell.util.concurrent.retry(3) {
@@ -120,12 +114,11 @@ class Global @Inject()(crudServiceFS: CRUDServiceFS, cmwellRDFHelper: CMWellRDFH
             paginationParams = PaginationParams(0, initialMetaNsLoadingAmount),
             withHistory = false,
             withData = true,
-            fieldSortParams = SortParam.empty,
-            nbg = false)
+            fieldSortParams = SortParam.empty)
         }
 
-        fn.andThen(recoverWithLogOnFail(true))
-        fo.andThen(recoverWithLogOnFail(false))
+        fn.andThen(recoverWithLogOnFail)
+        fo.andThen(recoverWithLogOnFail)
 
       }.recover{
         case err: Throwable => logger.error("unexpected error occured in Global initialization",err)
@@ -135,15 +128,15 @@ class Global @Inject()(crudServiceFS: CRUDServiceFS, cmwellRDFHelper: CMWellRDFH
     Logger.info("Application has started")
   }
 
-  private def updateCaches(sr: SearchResults, nbg: Boolean) = {
+  private def updateCaches(sr: SearchResults) = {
 
     val groupedByUrls = sr.infotons.groupBy(_.fields.flatMap(_.get("url")))
     val goodInfotons = groupedByUrls.collect { case (Some(k),v) if k.size==1 =>
       val url = k.head.value.asInstanceOf[String]
-      cmwellRDFHelper.getTheNonGeneratedMetaNsInfoton(url, v, nbg)
+      cmwellRDFHelper.getTheNonGeneratedMetaNsInfoton(url, v)
     }
 
-    cmwellRDFHelper.loadNsCachesWith(goodInfotons.toSeq, nbg)
+    cmwellRDFHelper.loadNsCachesWith(goodInfotons.toSeq)
   }
 
   def onStop {

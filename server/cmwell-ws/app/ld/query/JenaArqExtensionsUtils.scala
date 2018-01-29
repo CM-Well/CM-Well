@@ -24,23 +24,19 @@ object JenaArqExtensionsUtils {
 
   case class BakedSparqlQuery(qe: QueryExecution, driver: DatasetGraphCmWell)
 
-
-  val nbgSymbol = org.apache.jena.sparql.util.Symbol.create("nbg")
   val emptyLtrl = NodeFactory.createLiteral("")
 
   def buildCmWellQueryExecution(query: Query,
                                 host: String,
                                 config: Config = Config.defaultConfig,
-                                nbg: Boolean,
                                 crudServiceFS: CRUDServiceFS,
                                 arqCache: ArqCache,
                                 jenaArqExtensionsUtils: JenaArqExtensionsUtils,
                                 dataFetcher: DataFetcher)(implicit ec: ExecutionContext) = {
-    val driver = new DatasetGraphCmWell(host, config.copy(deadline = Some(config.finiteDuarationForDeadLine.fromNow)), nbg, crudServiceFS, arqCache, jenaArqExtensionsUtils, dataFetcher)
+    val driver = new DatasetGraphCmWell(host, config.copy(deadline = Some(config.finiteDuarationForDeadLine.fromNow)), crudServiceFS, arqCache, jenaArqExtensionsUtils, dataFetcher)
     val model = ModelFactory.createModelForGraph(driver.getDefaultGraph)
     val qe = QueryExecutionFactory.create(query, model) // todo quads
 
-    qe.getContext.set(nbgSymbol,nbg)
     BakedSparqlQuery(qe, driver)
   }
 
@@ -112,7 +108,7 @@ object JenaArqExtensionsUtils {
   def queryToSseString(query: Query): String = Algebra.compile(query).toString(query.getPrefixMapping)
 }
 
-class JenaArqExtensionsUtils(arqCache: ArqCache, nbg: Boolean, typesCache: PassiveFieldTypesCache, cmwellRDFHelper: CMWellRDFHelper, dataFetcher: DataFetcher) extends LazyLogging {
+class JenaArqExtensionsUtils(arqCache: ArqCache, typesCache: PassiveFieldTypesCache, cmwellRDFHelper: CMWellRDFHelper, dataFetcher: DataFetcher) extends LazyLogging {
 
   def predicateToInnerRepr(predicate: Node): Node = {
     if(!predicate.isURI) predicate else {
@@ -205,7 +201,7 @@ class JenaArqExtensionsUtils(arqCache: ArqCache, nbg: Boolean, typesCache: Passi
       //      def isTypeIncompatible(sff: SingleFieldFilter) =
       //        sff.name.startsWith("d$") && sff.value.fold(false)(FDate.isDate)
 
-      /*val evalRes =*/ Await.result(RawFieldFilter.eval(rff,typesCache,cmwellRDFHelper,nbg), 9.seconds)
+      /*val evalRes =*/ Await.result(RawFieldFilter.eval(rff,typesCache,cmwellRDFHelper), 9.seconds)
       //      filterNot(evalRes)(isTypeIncompatible)
     }
 

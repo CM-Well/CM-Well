@@ -16,8 +16,6 @@
 
 package actions
 
-import javax.inject._
-
 import actions.Color._
 import actions.GridMonitoring.{Active, All, CsvPretty}
 import akka.pattern.ask
@@ -25,23 +23,23 @@ import cmwell.ctrl.checkers._
 import cmwell.ctrl.client.CtrlClient
 import cmwell.domain._
 import cmwell.fts.FieldFilter
-import cmwell.util.FullBox
 import cmwell.util.build.BuildInfo
 import cmwell.util.os.Props
 import cmwell.util.string.Hash.crc32
+import cmwell.util.FullBox
 import cmwell.web.ld.cmw.CMWellRDFHelper
+import ld.cmw.passiveFieldTypesCacheImpl
+import cmwell.ws.{BGMonitorActor, GetOffsetInfo, OffsetsInfo, PartitionOffsetsInfo, PartitionStatus, Settings, Green => _, Red => _, Yellow => _}
 import cmwell.ws.Settings.esTimeout
-import cmwell.ws.util.DateParser._
-import cmwell.ws.util.FieldFilterParser
-import cmwell.ws.{Green => _, Red => _, Yellow => _, _}
+import cmwell.ws.util.{DateParser, FieldFilterParser}
+import DateParser._
 import com.typesafe.scalalogging.LazyLogging
-import controllers.NbgToggler
 import k.grid.Grid
-import ld.cmw.{NbgPassiveFieldTypesCache, ObgPassiveFieldTypesCache}
 import logic.CRUDServiceFS
 import org.joda.time._
 import trafficshaping.TrafficMonitoring
 import wsutil._
+import javax.inject._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -59,30 +57,19 @@ object BgMonitoring {
 class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPressureToggler,
                                         crudServiceFS: CRUDServiceFS,
                                         dashBoard: DashBoard,
-                                        cmwellRDFHelper: CMWellRDFHelper,
-                                        tbg: NbgToggler) extends LazyLogging {
+                                        cmwellRDFHelper: CMWellRDFHelper) extends LazyLogging {
 
   import BgMonitoring.{monitor => bgMonitor}
   import dashBoard._
-  lazy val nCache: NbgPassiveFieldTypesCache = crudServiceFS.nbgPassiveFieldTypesCache
-  lazy val oCache: ObgPassiveFieldTypesCache = crudServiceFS.obgPassiveFieldTypesCache
-  def typesCache(nbg: Boolean) = if(nbg || tbg.get) nCache else oCache
+  lazy val typesCache = crudServiceFS.passiveFieldTypesCache
 
   /**
    * @return /proc/node infoton fields map
    */
   private[this] def nodeValFields: FieldsOpt = {
-    val (uwh,urh,iwh,irh) = BatchStatus.tlogStatus
     val esColor = Try(Await.result(dashBoard.getElasticsearchStatus(), esTimeout)._1.toString).getOrElse("grey")
     Some(Map[String,Set[FieldValue]](
       "pbp" -> Set(FString(backPressureToggler.get)),
-      "nbg" -> Set(FBoolean(crudServiceFS.newBG)),
-      "new_bg_writes" -> Set(FBoolean(Settings.newBGFlag)),
-      "old_bg_writes" -> Set(FBoolean(Settings.oldBGFlag)),
-      "tlog_update_write_head" -> Set(FLong(uwh)),
-      "tlog_update_read_head" -> Set(FLong(urh)),
-      "tlog_index_write_head" -> Set(FLong(iwh)),
-      "tlog_index_read_head" -> Set(FLong(irh)),
       "search_contexts_limit" -> Set(FLong(Settings.maxSearchContexts)),
       "cm-well_release" -> Set(FString(BuildInfo.release)),
       "cm-well_version" -> Set(FString(BuildInfo.version)),
@@ -106,7 +93,6 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
       "os_version" ->  Set(FString(System.getProperty("os.version"))),
       "user_timezone" ->  Set(FString(System.getProperty("user.timezone"))),
       "machine_name" ->  Set(FString(Props.machineName)),
-      "batch_color" -> Set(FString(BatchStatus.batchColor.toString)),
       "es_color" -> Set(FString(esColor)),
       "use_auth" -> Set(FBoolean(java.lang.Boolean.getBoolean("use.authorization")))
     ))
@@ -140,7 +126,6 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
     val ws = ((wsColor, wsTxt), d)
     ws
   }
-
 
   private[this] def getElasticsearchHealth(cr : ComponentState) = {
     val dt = new DateTime(cr.genTime * 1000L)
@@ -196,28 +181,8 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
     ((color, s"$stats"), new DateTime(genTime * 1000L))
   }
 
-  private[this] def getBatchDetailedHealth(t : BgType) = {
-    val baseFut = t match {
-      case Batch => CtrlClient.getBatchStatus
-      case Bg => CtrlClient.getBgStatus
-    }
 
-    baseFut.map {
-      bs =>
-        bs._1.map {
-          m =>
-            m._2 match {
-              case BatchOk(impSize, impLocation, indexerSize, indexerLocation, _,_,_) => m._1 -> Some((impSize, impLocation, indexerSize, indexerLocation))
-              case BatchNotIndexing(impSize, impLocation, indexerSize, indexerLocation, _,_,_) => m._1 -> Some((impSize, impLocation, indexerSize, indexerLocation))
-              case b : BatchDown => m._1 -> None
-              case _ => m._1 -> None
-            }
-        }
-    }
-  }
-
-
-  private[this] def getClusterHealth : HealthTimedData = {
+  private[this] def getClusterHealth : HealthTimedDataWithBG = {
     val r = CtrlClient.getClusterStatus.map{
       cs =>
         val ws = getWsHealth(cs.wsStat._1.values, cs.wsStat._2)
@@ -373,9 +338,9 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
       "ws_color" -> Set(FString(wClr.toString)),
       "ws_message" -> Set(FString(wMsg)),
       "ws_generation_time" -> Set(FDate(fdf(ws._2))),
-      "batch_color" -> Set(FString(bClr.toString)),
-      "batch_message" -> Set(FString(bMsg)),
-      "batch_generation_time" -> Set(FDate(fdf(bg._2))),
+      "bg_color" -> Set(FString(bClr.toString)),
+      "bg_message" -> Set(FString(bMsg)),
+      "bg_generation_time" -> Set(FDate(fdf(bg._2))),
       "es_color" -> Set(FString(eClr.toString)),
       "es_message" -> Set(FString(eMsg)),
       "es_generation_time" -> Set(FDate(fdf(es._2))),
@@ -402,7 +367,7 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
     def determineCmwellColorBasedOnComponentsColor(components: Seq[Color]): Color = {
       val all = components.filter(_ != Grey)
       if(all.forall(_ == Green)) Green
-      else if(all.exists(_ == Red)) Red
+      else if(all.contains(Red)) Red
       else Yellow
     }
 
@@ -426,7 +391,7 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
 | ES            | $esClr     | ${es._2}    | ${fdf(esTime)}  |
 | CAS           | $caClr     | ${ca._2}    | ${fdf(caTime)}  |
 | ZK            | $zkClr     | ${zk._2}    | ${fdf(zkTime)}  |
-| KF            | $kfClr     | ${kf._2}    | ${fdf(kfTime)}  |
+| KAFKA         | $kfClr     | ${kf._2}    | ${fdf(kfTime)}  |
 """
   }
 
@@ -437,7 +402,7 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
     Some(res.toSeq.sortBy(_._1).flatMap {
       case (host,(ws,bg,ca,es,zk,kf)) => List(
         s"ws@$host"     -> Set[FieldValue](FString(ws._2.toString)),
-        s"batch@$host"  -> Set[FieldValue](FString(bg._2.toString)),
+        s"bg@$host"  -> Set[FieldValue](FString(bg._2.toString)),
         s"cas@$host"    -> Set[FieldValue](FString(ca._2.toString)),
         s"es@$host"     -> Set[FieldValue](FString(es._2.toString)),
         s"zk@$host"     -> Set[FieldValue](FString(zk._2.toString)),
@@ -479,28 +444,6 @@ ${csvToMarkdownTableRows(csvData)}
   case object Bg extends BgType
   case object Batch extends BgType
 
-
-  /**
-   * @return batch markdown string
-   */
-  def generateBatchMarkdown(t : BgType, now: DateTime): String = {
-
-    val resFut = getBatchDetailedHealth(t).map{ set =>
-      val lines = set.toList.sortBy(_._1).map{
-        case (host,Some((uw,ur,iw,ir))) => s"|$host|$uw|$ur|${uw-ur}|$iw|$ir|${iw-ir}|"
-        case (host, None) => s"|$host| &#x20E0; | &#x20E0; | &#x20E0; | &#x20E0; | &#x20E0; | &#x20E0; |"
-      }
-
-      s"""
-##### Current time: ${fdf(now)}
-# Batch Status in cluster ${Settings.clusterName}
-| **Node** | UpdateTlog write pos | UpdateTlog read pos | **UpdateTlog diff**| IndexTlog write pos | IndexTlog read pos | **IndexTlog diff** |
-|----------|----------------------|---------------------|--------------------|---------------------|--------------------|--------------------|
-${lines.mkString("\n")}
-"""
-    }
-    Await.result(resFut, 30 seconds) //TODO: Be Async...
-  }
 
   def generateBgData: Future[Map[String,Set[FieldValue]]] = {
     ask(bgMonitor, GetOffsetInfo)(10.seconds).mapTo[OffsetsInfo].map { offsetInfo =>
@@ -595,7 +538,7 @@ ${
 
 
   def generateIteratorMarkdown: String = {
-    val hostsToSessions = crudServiceFS.countSearchOpenContexts()
+    val hostsToSessions = crudServiceFS.countSearchOpenContexts
     val lines = hostsToSessions.map{
       case (host,sessions) => s"|$host|$sessions|"
     } :+ s"| **Total** | ${(0L /: hostsToSessions){case (sum,(_,add)) => sum + add}} |"
@@ -612,13 +555,13 @@ ${lines.mkString("\n")}
   import scala.language.implicitConversions
 
 
-  def generateInfoton(host: String, path: String, now: Long, length: Int = 0, offset: Int = 0, isRoot : Boolean = false, nbg: Boolean = false, withHistory: Boolean, fieldFilters: Option[FieldFilter]): Future[Option[VirtualInfoton]] = {
+  def generateInfoton(host: String, path: String, now: Long, length: Int = 0, offset: Int = 0, isRoot : Boolean = false, withHistory: Boolean, fieldFilters: Option[FieldFilter]): Future[Option[VirtualInfoton]] = {
 
     val d: DateTime = new DateTime(now)
 
     implicit def iOptAsFuture(iOpt: Option[VirtualInfoton]): Future[Option[VirtualInfoton]] = Future.successful(iOpt)
 
-    def compoundDC = crudServiceFS.getListOfDC().map {
+    def compoundDC = crudServiceFS.getListOfDC.map {
       seq => {
         val dcKids: Seq[Infoton] = seq.map(dc => VirtualInfoton(ObjectInfoton(s"/proc/dc/$dc", dc, None, d, None)).getInfoton)
         Some(VirtualInfoton(CompoundInfoton("/proc/dc", dc, None, d, None, dcKids.slice(offset, offset + length), offset, length, dcKids.size)))
@@ -636,7 +579,7 @@ ${lines.mkString("\n")}
           qp
             .fold(Success(None): Try[Option[RawFieldFilter]])(FieldFilterParser.parseQueryParams(_).map(Some.apply))
             .map { qpOpt =>
-              val fieldsFiltersFut = qpOpt.fold[Future[Option[FieldFilter]]](Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff, typesCache(nbg), cmwellRDFHelper, nbg).map(Some.apply))
+              val fieldsFiltersFut = qpOpt.fold[Future[Option[FieldFilter]]](Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff, typesCache, cmwellRDFHelper).map(Some.apply))
               fieldsFiltersFut
             }
             .get
@@ -645,7 +588,7 @@ ${lines.mkString("\n")}
           //There is no matching dc infoton in the list - use the parameters got from the user
           Future.successful((dcId, withHistory, fieldFilters))
       }
-        .flatMap { case (id, wh, fieldFilter) => crudServiceFS.getLastIndexTimeFor(id, wh, nbg, fieldFilter) }
+        .flatMap { case (id, wh, fieldFilter) => crudServiceFS.getLastIndexTimeFor(id, wh, fieldFilter) }
     }
 
     path.dropTrailingChars('/') match {
@@ -656,13 +599,12 @@ ${lines.mkString("\n")}
       case "/proc/node" => Some(VirtualInfoton(ObjectInfoton(path, dc, None, d, nodeValFields)))
       case "/proc/dc" => compoundDC
       case p if p.startsWith("/proc/dc/") => getDcInfo(p)
-      case "/proc/fields" => crudServiceFS.getESFieldsVInfoton(nbg).map(Some.apply)
+      case "/proc/fields" => crudServiceFS.getESFieldsVInfoton.map(Some.apply)
       case "/proc/health" => Some(VirtualInfoton(ObjectInfoton(path, dc, None, d, generateHealthFields)))
       case "/proc/health.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateHealthMarkdown(d).getBytes, "text/x-markdown")))))
       case "/proc/health-detailed" => Some(VirtualInfoton(ObjectInfoton(path, dc, None, d, generateHealthDetailedFields)))
       case "/proc/health-detailed.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateDetailedHealthMarkdown(d).getBytes, "text/x-markdown")))))
       case "/proc/health-detailed.csv" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateDetailedHealthCsvPretty().getBytes, "text/html")))))
-      case "/proc/batch.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateBatchMarkdown(Batch,d).getBytes, "text/x-markdown")))))
       case "/proc/bg.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateBgMarkdown(Bg).getBytes, "text/x-markdown")))))
       case "/proc/bg" => generateBgData.map(fields => Some(VirtualInfoton(ObjectInfoton(path, dc, None, d, fields))))
       case "/proc/search-contexts.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateIteratorMarkdown.getBytes, "text/x-markdown")))))
@@ -692,7 +634,6 @@ ${lines.mkString("\n")}
            VirtualInfoton(ObjectInfoton("/proc/dc", dc, None,md) ),
            VirtualInfoton(ObjectInfoton("/proc/bg", dc, None,md) ),
            VirtualInfoton(FileInfoton("/proc/bg.md", dc, None,md,None , Some(FileContent("text/x-markdown",-1L)))),
-           VirtualInfoton(FileInfoton("/proc/batch.md", dc, None,md,None , Some(FileContent("text/x-markdown",-1L)))),
            VirtualInfoton(ObjectInfoton("/proc/fields", dc, None,md) ),
            VirtualInfoton(ObjectInfoton("/proc/health", dc, None,md) ),
            VirtualInfoton(FileInfoton("/proc/health.md", dc, None,md,None , Some(FileContent("text/x-markdown",-1L))) ),

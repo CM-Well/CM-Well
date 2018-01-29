@@ -101,14 +101,14 @@ case class RawMultiFieldFilter(override val fieldOperator: FieldOperator = Must,
 object RawFieldFilter extends PrefixRequirement {
   private[this] val bo1 = scala.collection.breakOut[Seq[RawFieldFilter],FieldFilter,Vector[FieldFilter]]
   private[this] val bo2 = scala.collection.breakOut[Set[String],FieldFilter,Vector[FieldFilter]]
-  def eval(rff: RawFieldFilter, cache: PassiveFieldTypesCacheTrait, cmwellRDFHelper: CMWellRDFHelper,nbg: Boolean)(implicit ec: ExecutionContext): Future[FieldFilter] = rff match {
+  def eval(rff: RawFieldFilter, cache: PassiveFieldTypesCacheTrait, cmwellRDFHelper: CMWellRDFHelper)(implicit ec: ExecutionContext): Future[FieldFilter] = rff match {
     case UnevaluatedQuadFilter(fo,vo,alias) => {
-      val fieldFilterWithExplicitUrlOpt = cmwellRDFHelper.getQuadUrlForAlias(alias,nbg).map(v => SingleFieldFilter(fo, vo, "system.quad", Some(v)))
+      val fieldFilterWithExplicitUrlOpt = cmwellRDFHelper.getQuadUrlForAlias(alias).map(v => SingleFieldFilter(fo, vo, "system.quad", Some(v)))
       prefixRequirement(fieldFilterWithExplicitUrlOpt.nonEmpty, s"The alias '$alias' provided for quad in search does not exist. Use explicit quad URL, or register a new alias using `graphAlias` meta operation.")
       Future.successful(fieldFilterWithExplicitUrlOpt.get)
     }
-    case RawMultiFieldFilter(fo,rs) => Future.traverse(rs)(eval(_,cache,cmwellRDFHelper,nbg))(bo1,ec).map(MultiFieldFilter(fo, _))
-    case RawSingleFieldFilter(fo,vo,fk,v) => FieldKey.eval(fk,cache,cmwellRDFHelper,nbg)(ec).map{
+    case RawMultiFieldFilter(fo,rs) => Future.traverse(rs)(eval(_,cache,cmwellRDFHelper))(bo1,ec).map(MultiFieldFilter(fo, _))
+    case RawSingleFieldFilter(fo,vo,fk,v) => FieldKey.eval(fk,cache,cmwellRDFHelper)(ec).map{
       case s if s.isEmpty => !!!
       case s if s.size == 1 => mkSingleFieldFilter(fo,vo,s.head,v)
       case s => MultiFieldFilter(fo,s.map(mkSingleFieldFilter(Should,vo,_,v))(bo2))
@@ -136,14 +136,14 @@ object RawSortParam extends LazyLogging {
 //  private[this] val indexedFieldsNamesCache =
 //    new SingleElementLazyAsyncCache[Set[String]](Settings.fieldsNamesCacheTimeout.toMillis,Set.empty)(CRUDServiceFS.ftsService.getMappings(withHistory = true))(scala.concurrent.ExecutionContext.Implicits.global)
 
-  def eval(rsps: RawSortParam, crudServiceFS: CRUDServiceFS, cache: PassiveFieldTypesCache, cmwellRDFHelper: CMWellRDFHelper, nbg: Boolean)(implicit ec: ExecutionContext): Future[SortParam] = rsps match {
+  def eval(rsps: RawSortParam, crudServiceFS: CRUDServiceFS, cache: PassiveFieldTypesCache, cmwellRDFHelper: CMWellRDFHelper)(implicit ec: ExecutionContext): Future[SortParam] = rsps match {
     case RawNullSortParam => Future.successful(NullSortParam)
     case RawFieldSortParam(rfsp) => {
 
-      val indexedFieldsNamesFut = crudServiceFS.ESMappingsCache(nbg).getAndUpdateIfNeeded
+      val indexedFieldsNamesFut = crudServiceFS.ESMappingsCache.getAndUpdateIfNeeded
 
       Future.traverse(rfsp) {
-        case (fk, ord) => FieldKey.eval(fk,cache,cmwellRDFHelper,nbg).map(_.map(_ -> ord)(bo))
+        case (fk, ord) => FieldKey.eval(fk,cache,cmwellRDFHelper).map(_.map(_ -> ord)(bo))
         // following code could gives precedence to mangled fields over unmangled ones
       }.flatMap(pairs => indexedFieldsNamesFut.map {
         indexedFieldsNamesWithTypeConcatenation => {
@@ -179,42 +179,46 @@ object RawSortParam extends LazyLogging {
 
 object FieldKey extends LazyLogging with PrefixRequirement  {
   
-  def eval(fieldKey: Either[UnresolvedFieldKey,DirectFieldKey], cache: PassiveFieldTypesCacheTrait, cmwellRDFHelper: CMWellRDFHelper,nbg:Boolean)(implicit ec: ExecutionContext): Future[Set[String]] = fieldKey match {
+  def eval(fieldKey: Either[UnresolvedFieldKey,DirectFieldKey], cache: PassiveFieldTypesCacheTrait, cmwellRDFHelper: CMWellRDFHelper)(implicit ec: ExecutionContext): Future[Set[String]] = fieldKey match {
     case Right(NnFieldKey(key)) if key.startsWith("system.") || key.startsWith("content.") || key.startsWith("link.")  => Future.successful(Set(key))
     case Right(dFieldKey) => enrichWithTypes(dFieldKey, cache)
-    case Left(uFieldKey) => resolve(uFieldKey, cmwellRDFHelper,nbg).flatMap(enrichWithTypes(_,cache))
+    case Left(uFieldKey) => resolve(uFieldKey, cmwellRDFHelper).flatMap(enrichWithTypes(_,cache))
   }
 
   def enrichWithTypes(fk: FieldKey, cache: PassiveFieldTypesCacheTrait): Future[Set[String]] = {
     import scala.concurrent.ExecutionContext.Implicits.global
-    cache.get(fk).map(_.collect {
-      case c if c != 's' => s"$c$$${fk.internalKey}"
-    } + fk.internalKey )
+    cache.get(fk).map {
+      case s if s.isEmpty => throw new NoSuchElementException(s"No field types bookkeeping was found for $fk")
+      case s => s.map {
+        case 's' => fk.internalKey
+        case c => s"$c$$${fk.internalKey}"
+      }
+    }
   }
 
-  def resolve(ufk: UnresolvedFieldKey, cmwellRDFHelper: CMWellRDFHelper,nbg: Boolean): Future[FieldKey] = {
+  def resolve(ufk: UnresolvedFieldKey, cmwellRDFHelper: CMWellRDFHelper): Future[FieldKey] = {
     import scala.concurrent.ExecutionContext.Implicits.global
     ufk match {
-      case UnresolvedPrefixFieldKey(first, prefix) => resolvePrefix(cmwellRDFHelper, first, prefix, nbg).map {
+      case UnresolvedPrefixFieldKey(first, prefix) => resolvePrefix(cmwellRDFHelper, first, prefix).map {
         case (first, hash) => PrefixFieldKey(first, hash, prefix)
       }
-      case UnresolvedURIFieldKey(uri) => Future.fromTry(namespaceUri(cmwellRDFHelper, uri, nbg).map {
+      case UnresolvedURIFieldKey(uri) => Future.fromTry(namespaceUri(cmwellRDFHelper, uri).map {
         case (first, hash) => URIFieldKey(uri, first, hash)
       })
     }
   }
 
-  def namespaceUri(cmwellRDFHelper: CMWellRDFHelper,u: String,nbg: Boolean): Try[(String,String)] = {
+  def namespaceUri(cmwellRDFHelper: CMWellRDFHelper,u: String): Try[(String,String)] = {
     val p = org.apache.jena.rdf.model.ResourceFactory.createProperty(u)
     val first = p.getLocalName
     val ns = p.getNameSpace
-    cmwellRDFHelper.urlToHash(ns,nbg) match {
+    cmwellRDFHelper.urlToHash(ns) match {
       case None => Failure(new UnretrievableIdentifierException(s"could not find namespace URI: $ns"))
       case Some(internalIdentifier) => Success(first -> internalIdentifier)
     }
   }
 
-  def resolvePrefix(cmwellRDFHelper: CMWellRDFHelper, first: String, requestedPrefix: String,nbg: Boolean)(implicit ec: ExecutionContext): Future[(String,String)] = {
+  def resolvePrefix(cmwellRDFHelper: CMWellRDFHelper, first: String, requestedPrefix: String)(implicit ec: ExecutionContext): Future[(String,String)] = {
     val p = Promise[String]()
 
     // easier, but we want better error messages returned
@@ -222,13 +226,13 @@ object FieldKey extends LazyLogging with PrefixRequirement  {
     // or:
     //            CMWellRDFHelper.prefixToHash(s)
 
-    val f = Try(cmwellRDFHelper.getUrlAndLastForPrefixAsync(requestedPrefix, nbg, withFallBack = false)).recover {
+    val f = Try(cmwellRDFHelper.getUrlAndLastForPrefixAsync(requestedPrefix, withFallBack = false)).recover {
       case t: Throwable =>
         Future.failed[(String,String)](t)
     }.get
 
     //first, try old API, assuming prefix == hash
-    cmwellRDFHelper.hashToInfoton(requestedPrefix,nbg) match {
+    cmwellRDFHelper.hashToInfoton(requestedPrefix) match {
       case None => f.onComplete {
         case scala.util.Success((_, last)) => p.success(last)
         case scala.util.Failure(e: UnretrievableIdentifierException) => p.failure(e)
