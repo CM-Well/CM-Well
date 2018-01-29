@@ -92,10 +92,8 @@ class Global @Inject()(crudServiceFS: CRUDServiceFS, cmwellRDFHelper: CMWellRDFH
 
     import scala.concurrent.duration._
 
-
     scheduleAfterStart(30.seconds){
-      Try{
-        val fn = cmwell.util.concurrent.retry(3) {
+      Try(cmwell.util.concurrent.retry(3) {
           crudServiceFS.search(
             pathFilter = Some(PathFilter("/meta/ns", descendants = false)),
             fieldFilters = None,
@@ -104,27 +102,10 @@ class Global @Inject()(crudServiceFS: CRUDServiceFS, cmwellRDFHelper: CMWellRDFH
             withHistory = false,
             withData = true,
             fieldSortParams = SortParam.empty)
-        }
-
-        val fo = cmwell.util.concurrent.retry(3) {
-          crudServiceFS.search(
-            pathFilter = Some(PathFilter("/meta/ns", descendants = false)),
-            fieldFilters = None,
-            datesFilter = None,
-            paginationParams = PaginationParams(0, initialMetaNsLoadingAmount),
-            withHistory = false,
-            withData = true,
-            fieldSortParams = SortParam.empty)
-        }
-
-        fn.andThen(recoverWithLogOnFail)
-        fo.andThen(recoverWithLogOnFail)
-
-      }.recover{
+        }.andThen(recoverWithLogOnFail)).recover{
         case err: Throwable => logger.error("unexpected error occured in Global initialization",err)
       }
     }
-
     Logger.info("Application has started")
   }
 
@@ -133,7 +114,7 @@ class Global @Inject()(crudServiceFS: CRUDServiceFS, cmwellRDFHelper: CMWellRDFH
     val groupedByUrls = sr.infotons.groupBy(_.fields.flatMap(_.get("url")))
     val goodInfotons = groupedByUrls.collect { case (Some(k),v) if k.size==1 =>
       val url = k.head.value.asInstanceOf[String]
-      cmwellRDFHelper.getTheNonGeneratedMetaNsInfoton(url, v)
+      cmwellRDFHelper.getTheFirstGeneratedMetaNsInfoton(url, v)
     }
 
     cmwellRDFHelper.loadNsCachesWith(goodInfotons.toSeq)

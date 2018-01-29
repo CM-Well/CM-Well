@@ -36,6 +36,7 @@ import logic.CRUDServiceFS
 import wsutil.DirectFieldKey
 
 import scala.concurrent._
+import scala.concurrent.ExecutionContext.{global => globalExecutionContext}
 import scala.concurrent.duration._
 import scala.util.parsing.json.JSON.{parseFull => parseJson}
 import scala.util.{Failure, Success, Try}
@@ -258,6 +259,8 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
 
   def hashToUrl(hash: String): Option[String] = Try(hashToUrlPermanentCache.getBlocking(hash)).toOption
 
+  def hashToUrlAsync(hash: String)(implicit ec: ExecutionContext): Future[String] = hashToUrlPermanentCache.getAsync(hash)(ec)
+
   def urlToHash(url: String): Option[String] = Try(urlToHashPermanentCache.getBlocking(url)).toOption
 
   def urlToHashAsync(url: String)(implicit ec: ExecutionContext): Future[String] = urlToHashPermanentCache.getAsync(url)(ec)
@@ -286,6 +289,8 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
   }
 
   def hashToInfoton(hash: String): Option[Infoton] = Try(hashToMetaNsInfotonCache.getBlocking(hash)).toOption
+
+  def hashToInfotonAsync(hash: String)(ec: ExecutionContext): Future[Infoton] = hashToMetaNsInfotonCache.getAsync(hash)(ec)
 
   def urlToInfoton(url: String): Option[Infoton] = Try(urlToMetaNsInfotonCache.getBlocking(url)).toOption
 
@@ -420,12 +425,81 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
       }
     }
   }
-  
+
+  @inline def hashIterator(url: String) =
+    Iterator.iterate(cmwell.util.string.Hash.crc32base64(url))(cmwell.util.string.Hash.crc32base64)
+
+  val seqInfotonToSetString = scala.collection.breakOut[Seq[Infoton],String,Set[String]]
+
   // in case of ambiguity between meta/ns infotons with same url, this will return the one that was not auto-generated
-  def getTheNonGeneratedMetaNsInfoton(url: String, infotons: Seq[Infoton]): Infoton = {
+  def getTheFirstGeneratedMetaNsInfoton(url: String, infotons: Seq[Infoton]): Infoton = {
     require(infotons.nonEmpty)
-    val it = Iterator.iterate(cmwell.util.string.Hash.crc32base64(url))(cmwell.util.string.Hash.crc32base64)
-    it.take(infotons.length+1).foldLeft(infotons) { case (z,h) => if(z.size == 1) z else infotons.filterNot(_.name==h) }.head
+
+    val hashSet = infotons.map(_.name)(seqInfotonToSetString)
+    val hashChain = hashIterator(url).take(infotons.length + 5).toStream
+
+    // find will return the first (shortest compute chain) hash
+    hashChain.find(hashSet) match {
+      case Some(h) => infotons.find(_.name == h).get //get is safe here because `hashSet` was built from infotons names
+      case None =>
+        /* if we were not able to find a suitable hash
+         * that back a /meta/ns infoton from the given
+         * Seq, it means one of two things:
+         * Either we have so many collisions in /meta/ns
+         * that all the hashes computed points to other
+         * namespaces,
+         * or that we have old style unhashed identifiers
+         * in /meta/ns.
+         * Giving precedence to hashed versions, since from
+         * now on (Jan 2018) old style isn't supported,
+         * and should have been migrated to hashed identifiers.
+         * Only if we fail to find such, we will arbitrarily
+         * choose the first in lexicographic order from the Seq
+         */
+        logger.warn(s"hashChain ${hashChain.mkString("[",", ","]")} did not contain a valid identifier for ${hashSet.mkString("[",", ","]")}")
+        val f = getFirstHashForNsURL(url,infotons).transform {
+          case Success(Right(i)) => Success(i)
+          case Success(Left(hash)) => Failure(new IllegalStateException(s"Theres an unoccupied hash [$hash] that can fit [$url]. Manual data repair is required. please also consider ns ambiguities [$infotons]"))
+          case Failure(err) =>
+            val first = infotons.minBy(_.name)
+            logger.warn(s"Was unable to validate any of the given infotons [$infotons], choosing the first in lexicographic order [${first.path}]")
+            Success(first)
+        }(globalExecutionContext)
+        // In the very very very unlikely case we get here, yes. wait forever.
+        // And let devs know about it.
+        Await.result(f,Duration.Inf)
+    }
+  }
+
+  def getFirstHashForNsURL(url: String, infotons: Seq[Infoton]): Future[Either[String,Infoton]] = {
+    val it = hashIterator(url)
+    def foldWhile(usedHashes: Set[String]): Future[Either[String,Infoton]] = {
+      val hash = it.next()
+      if(usedHashes(hash)) Future.failed(new IllegalStateException(s"found a hash cycle starting with [$hash] without getting a proper infoton for [$url]"))
+      else hashToUrlAsync(hash)(globalExecutionContext).transformWith {
+        case Success(`url`) => infotons.find(_.name == hash).fold[Future[Either[String,Infoton]]]{
+          logger.error(s"hash [$hash] returned the right url [$url], but was not found in original seq?!?!?")
+          // getting the correct infoton anyway:
+          hashToInfotonAsync(hash)(globalExecutionContext).map(Right.apply)(globalExecutionContext)
+        }(Future.successful[Either[String,Infoton]] _ compose Right.apply)
+        case Success(someOtherUrl) =>
+          // Yes. I am aware the log will be printed in every iteration of the recursion. That's the point.
+          logger.warn(s"ns collision detected. Hash [$hash] points to [$someOtherUrl] but can be computed from [$url]. " +
+            s"This might be the result of abusing the namespace mechanism, which is not supposed to be used with too many namespaces. " +
+            s"Since current implementation uses a hash with 32 bits of entropy, it means that if you have more than 64K namespaces, " +
+            s"you'll have over 50% chance of collision. This is way above what should be necessary, and unless you are very unlucky, " +
+            s"which in this case you'll have a single namespace causing this log to be printed once in a while for the same namespace, " +
+            s"but can probably ignore it, it is likely that you are abusing CM-Well in ways this humble developer didn't thought reasonable. " +
+            s"In this case, either refactor using a hash function with more bits of entropy is needed (may I recommend `xxhash64`, " +
+            s"which you'll probably find at `cmwell.util.string.Hash.xxhash64`, assuming 64 bits of entropy will suffice), or, " +
+            s"reconsider your use-case as it is probably wrong, or buggy. Please inspect the ns bookkeeping infotons under /meta/ns.")
+          foldWhile(usedHashes + hash)
+        case Failure(err) =>
+          logger.warn(s"could not load hash [$hash] for [$infotons]",err)
+          Future.successful(Left(hash))
+      }(globalExecutionContext)
+    }
+    foldWhile(Set.empty)
   }
 
   // private[this] section:
@@ -506,7 +580,8 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
       searchResults => {
         searchResults.infotons match {
           case Nil => None
-          case infotons => Some(getTheNonGeneratedMetaNsInfoton(url, infotons))
+          case Seq(singleResult) => Some(singleResult)
+          case infotons => Some(getTheFirstGeneratedMetaNsInfoton(url, infotons))
         }
       }
     }
