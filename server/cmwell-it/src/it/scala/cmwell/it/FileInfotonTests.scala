@@ -18,16 +18,17 @@ package cmwell.it
 
 import cmwell.util.concurrent.SimpleScheduler._
 import com.typesafe.scalalogging.LazyLogging
-import org.scalatest.{AsyncFunSpec, Matchers}
+import org.scalatest.{AsyncFunSpec, Matchers, TryValues}
 import play.api.libs.json._
 
 import scala.io.Source
+import scala.concurrent.duration.DurationInt
 
-class FileInfotonTests extends AsyncFunSpec with Matchers with Helpers with LazyLogging {
+class FileInfotonTests extends AsyncFunSpec with Matchers with TryValues with Helpers with LazyLogging {
   describe("file infoton") {
     val path = cmt / "InfoFile4"
     val fileStr = Source.fromURL(this.getClass.getResource("/article.txt")).mkString
-    val j = Json.obj(("Offcourse" -> Seq("I can do it")),("I'm" -> Seq("a spellbinder")))
+    val j = Json.obj("Offcourse" -> Seq("I can do it"),"I'm" -> Seq("a spellbinder"))
 
     val f0 = Http.post(path, fileStr, Some("text/plain;charset=UTF-8"), Nil, ("X-CM-WELL-TYPE" -> "FILE") :: tokenHeader).map { res =>
       withClue(res){
@@ -60,11 +61,46 @@ class FileInfotonTests extends AsyncFunSpec with Matchers with Helpers with Lazy
          Json.parse(res.payload) should be(jsonSuccess)
        }
     })
+    val lenna = cmt / "lenna"
+    val f5 = {
+      val lennaInputStream = this.getClass.getResource("/Lenna.png").openStream()
+      Http.post(lenna / "Lenna.png", () => lennaInputStream, Some("image/png"), Nil, ("X-CM-WELL-TYPE" -> "FILE") :: tokenHeader).transform { res =>
+        // first, close the stream
+        lennaInputStream.close()
+        withClue(res)(res.map { r =>
+          Json.parse(r.payload) should be(jsonSuccess)
+        })
+      }
+    }
+    val f6 = spinCheck(100.millis,true,1.minute)(Http.get(lenna,List("op" -> "search","qp" -> "content.mimeType:image/png", "format" -> "json"))){ res =>
+        res.status match {
+          case 503 => Recoverable
+          case 200 => {
+            val j = Json.parse(res.payload) \ "results"
+            (j \ "total": @unchecked) match {
+              case JsDefined(JsNumber(n)) => n.intValue() == 1
+            }
+          }
+          case _ => UnRecoverable
+        }
+      }.map { res =>
+      withClue(res) {
+        val j = Json.parse(res.payload) \ "results"
+        (j \ "infotons": @unchecked) match {
+          case JsDefined(JsArray(arr)) => (arr.head \ "system" \ "path": @unchecked) match {
+            case JsDefined(JsString(lennaPath)) =>
+              lennaPath shouldEqual "/cmt/cm/test/lenna/Lenna.png"
+          }
+        }
+      }
+    }
 
     it("should put File infoton")(f0)
     it("should get previously inserted file with text/plain mimetype")(f1)
     it("should put file infoton metadata")(f2)
     it("should get file infoton metadata")(f3)
     it("should delete file infoton")(f4)
+    it("should upload Lenna.png image")(f5)
+    it("should search by content.mimeType")(f6)
   }
 }

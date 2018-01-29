@@ -512,6 +512,7 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
       ftsService(nbg).aggregate(pathFilter, fieldsFilters, datesFilter, paginationParams, aggregationFilters, debugInfo = debugInfo)
   }
 
+  val thinSearchResultsBreakout = scala.collection.breakOut[Seq[FTSThinInfoton],SearchThinResult,Vector[SearchThinResult]]
   def thinSearch(pathFilter: Option[PathFilter] = None,
                  fieldFilters: Option[FieldFilter] = None,
                  datesFilter: Option[DatesFilter] = None,
@@ -531,7 +532,7 @@ class CRUDServiceFS @Inject()(tbg: NbgToggler)(implicit ec: ExecutionContext, sy
     searchResultsFuture.map { ftr =>
       SearchThinResults(ftr.total, ftr.offset, ftr.length, ftr.thinInfotons.map{ ti =>
         SearchThinResult(ti.path, ti.uuid, ti.lastModified, ti.indexTime, ti.score)
-      }, debugInfo = ftr.searchQueryStr)
+      }(thinSearchResultsBreakout), debugInfo = ftr.searchQueryStr)
     }
   }
 

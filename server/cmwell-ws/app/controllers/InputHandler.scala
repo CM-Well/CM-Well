@@ -96,18 +96,46 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
           case ParsingResponse(infotonsMap, metaDataMap, cmwHostsSet, tmpDeleteMap, deleteValsMap, deletePaths, atomicUpdates) => {
 
             require(tmpDeleteMap.isEmpty && deleteValsMap.isEmpty && deletePaths.isEmpty && atomicUpdates.isEmpty, "can't use meta operations here! this API is used internaly, and only for overwrites!")
-            require(metaDataMap.forall {
-              case (path, MetaData(mdType, date, data, text, mimeType, linkType, linkTo, dataCenter, indexTime)) => {
-                indexTime.isDefined &&
-                  dataCenter.isDefined &&
-                  dataCenter.get != Settings.dataCenter &&
-                  mdType.isDefined &&
-                  ((mdType.get == LinkMetaData && linkType.isDefined && linkTo.isDefined) ||
-                    (mdType.get == FileMetaData && mimeType.isDefined && (data.isDefined || text.isDefined)) ||
-                    (mdType.get == ObjectMetaData) ||
-                    (mdType.get == DeletedMetaData))
-              }
-            }, "in overwrites API all meta data must be present! no implicit inference is allowed. (every infoton must have all relevant system fields added)")
+            val (errs,_) = cmwell.util.collections.partitionWith(metaDataMap){
+              case (path, MetaData(mdType, date, data, text, mimeType, linkType, linkTo, dataCenter, indexTime)) =>
+                var errors = List.empty[String]
+                if(indexTime.isEmpty) {
+                  errors = "indexTime should be defined" :: errors
+                }
+                if(dataCenter.isEmpty) {
+                  errors = "dataCenter should be defined" :: errors
+                }
+                else if(dataCenter.get == Settings.dataCenter) {
+                  errors = "dataCenter cannot be equal to current ID" :: errors
+                }
+                if(mdType.isEmpty) {
+                  errors = "infoton's kind (type) must be defined" :: errors
+                }
+                else if(mdType.get == LinkMetaData){
+                  if(linkType.isEmpty) {
+                    errors = "link kind (type) must be defined" :: errors
+                  }
+                  if(linkTo.isEmpty) {
+                    errors = "link destination (to) must be defined" :: errors
+                  }
+                }
+                else if(mdType.get == FileMetaData){
+                  if(mimeType.isEmpty) {
+                    errors = "file's media type (mimeType) must be defined" :: errors
+                  }
+                  if(data.isEmpty && text.isEmpty) {
+                    errors = "file's content must be defined" :: errors
+                  }
+                }
+                else if(mdType.get != ObjectMetaData && mdType.get != DeletedMetaData){
+                  errors = s"infoton's kind (type) isn't recognized" :: errors
+                }
+
+                if(errors.isEmpty) Right(())
+                else Left(errors.mkString(s"path [$path] failed due to:\n\t","\n\t",""))
+            }
+            require(errs.isEmpty,errs.mkString("overwrites API failed to validate the request.\n\n","\n",""))
+
             enforceForceIfNeededAndReturnMetaFieldsInfotons(infotonsMap, true).flatMap { metaFields =>
               val infotonsWithoutFields = metaDataMap.keySet.filterNot(infotonsMap.keySet.apply) //meaning FileInfotons without extra data...
 

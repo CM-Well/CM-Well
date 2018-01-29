@@ -1193,22 +1193,44 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
     }
   }
 
-  private def injectFuture[A](f: ActionListener[A] => Unit, timeout : Duration = FiniteDuration(10, SECONDS))
+  private def injectFuture[A](f: ActionListener[A] => Unit, timeout: Duration = Duration.Inf)
                              (implicit executionContext:ExecutionContext, logger:Logger = loger) = {
     val p = Promise[A]()
-    val timeoutTask = TimeoutScheduler.tryScheduleTimeout(p,timeout)
-    f(new ActionListener[A] {
-      def onFailure(t: Throwable): Unit = {
-        timeoutTask.cancel()
-        logger.error("Exception from ElasticSearch.",t)
-        p.tryFailure(t)
+    val timestamp = System.currentTimeMillis()
+
+    val actionListener: ActionListener[A] = {
+      if (timeout.isFinite()) {
+        val task = TimeoutScheduler.tryScheduleTimeout(p, timeout)
+        new ActionListener[A] {
+          def onFailure(t: Throwable): Unit = {
+            task.cancel()
+            if(!p.tryFailure(t))
+              logger.error(s"Exception from ElasticSearch (future timed out externally, response returned in [${System.currentTimeMillis() - timestamp}ms])", t)
+          }
+
+          def onResponse(res: A): Unit = {
+            task.cancel()
+            if(p.trySuccess(res))
+              logger.trace(s"Response from ElasticSearch [took ${System.currentTimeMillis() - timestamp}ms]:\n${res.toString}")
+            else
+              logger.error(s"Response from ElasticSearch (future timed out externally, response returned in [${System.currentTimeMillis() - timestamp}ms])\n${res.toString}")
+          }
+        }
       }
-      def onResponse(res: A): Unit =  {
-        timeoutTask.cancel()
-        logger.debug("Response from ElasticSearch:\n%s".format(res.toString))
-        p.trySuccess(res)
+      else new ActionListener[A] {
+        def onFailure(t: Throwable): Unit = {
+          logger.error(s"Exception from ElasticSearch (no timeout, response returned in [${System.currentTimeMillis() - timestamp}ms])", t)
+          p.failure(t)
+        }
+
+        def onResponse(res: A): Unit = {
+          logger.trace(s"Response from ElasticSearch [took ${System.currentTimeMillis() - timestamp}ms]:\n${res.toString}")
+          p.success(res)
+        }
       }
-    })
+    }
+
+    f(actionListener)
     p.future
   }
 
