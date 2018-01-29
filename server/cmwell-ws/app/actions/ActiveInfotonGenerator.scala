@@ -366,9 +366,9 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
       "ws_color" -> Set(FString(wClr.toString)),
       "ws_message" -> Set(FString(wMsg)),
       "ws_generation_time" -> Set(FDate(fdf(ws._2))),
-      "bg_color" -> Set(FString(bClr.toString)),
-      "bg_message" -> Set(FString(bMsg)),
-      "bg_generation_time" -> Set(FDate(fdf(bg._2))),
+      "batch_color" -> Set(FString(bClr.toString)),
+      "batch_message" -> Set(FString(bMsg)),
+      "batch_generation_time" -> Set(FDate(fdf(bg._2))),
       "es_color" -> Set(FString(eClr.toString)),
       "es_message" -> Set(FString(eMsg)),
       "es_generation_time" -> Set(FDate(fdf(es._2))),
@@ -414,29 +414,29 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
 #### Cluster name: ${Settings.clusterName}
 | **Component** | **Status** | **Message** |  **Timestamp**  |
 |---------------|------------|-------------|-----------------|
-| WS            | ${wsClr}   | ${ws._2}    | ${fdf(wsTime)}  |
-| BG            | ${bgClr}   | ${bg._2}    | ${fdf(bgTime)}  |
-| ES            | ${esClr}   | ${es._2}    | ${fdf(esTime)}  |
-| CAS           | ${caClr}   | ${ca._2}    | ${fdf(caTime)}  |
+| WS            | $wsClr     | ${ws._2}    | ${fdf(wsTime)}  |
+| BATCH         | $bgClr     | ${bg._2}    | ${fdf(bgTime)}  |
+| ES            | $esClr     | ${es._2}    | ${fdf(esTime)}  |
+| CAS           | $caClr     | ${ca._2}    | ${fdf(caTime)}  |
 | ZK            | $zkClr     | ${zk._2}    | ${fdf(zkTime)}  |
-| KF            | $kfClr     | ${kf._2}    | ${fdf(kfTime)}  |
+| KAFKA         | $kfClr     | ${kf._2}    | ${fdf(kfTime)}  |
 """
   }
 
+  private[this] val ghdfBreakout = scala.collection.breakOut[Seq[(String, ((String, Color.Color), (String, Color.Color), (String, Color.Color), (String, Color.Color), (String, Color.Color), (String, Color.Color)))],(String,Set[FieldValue]),Map[String,Set[FieldValue]]]
   private[this] def generateHealthDetailedFields: FieldsOpt = {
     //val (xs, timeStamp) = DashBoardCache.cacheAndGetDetailedHealthData
     val res = getClusterDetailedHealthNew
-    Some(res.toSeq.sortBy(_._1).map {
+    Some(res.toSeq.sortBy(_._1).flatMap {
       case (host,(ws,bg,ca,es,zk,kf)) => List(
-        (s"ws@$host"  -> Set[FieldValue](FString(ws._2.toString))),
-        (s"bg@$host"  -> Set[FieldValue](FString(bg._2.toString))),
-        (s"cas@$host" -> Set[FieldValue](FString(ca._2.toString))),
-        (s"es@$host"  -> Set[FieldValue](FString(es._2.toString))),
-        (s"zk@$host"  -> Set[FieldValue](FString(zk._2.toString))),
-        (s"kf@$host"  -> Set[FieldValue](FString(kf._2.toString))))
-    }.flatten.toMap)
+        s"ws@$host"     -> Set[FieldValue](FString(ws._2.toString)),
+        s"batch@$host"  -> Set[FieldValue](FString(bg._2.toString)),
+        s"cas@$host"    -> Set[FieldValue](FString(ca._2.toString)),
+        s"es@$host"     -> Set[FieldValue](FString(es._2.toString)),
+        s"zk@$host"     -> Set[FieldValue](FString(zk._2.toString)),
+        s"kafka@$host"  -> Set[FieldValue](FString(kf._2.toString)))
+    }(ghdfBreakout))
   }
-
 
   def generateDetailedHealthCsvPretty(): String = {
     val title = s"${Settings.clusterName} - Health Detailed"
@@ -451,8 +451,8 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
 ##### Current time: ${fdf(now)}
 #### Cluster name: ${Settings.clusterName}
 ### Data was generated on:
-| **Node** | **WS** | **BG** | **CAS** | **ES** | **ZK** | **KF** |
-|----------|--------|--------|---------|--------|--------|--------|
+| **Node** | **WS** | **BATCH** | **CAS** | **ES** | **ZK** | **KAFKA** |
+|----------|--------|-----------|---------|--------|--------|-----------|
 ${csvToMarkdownTableRows(csvData)}
 """
   }

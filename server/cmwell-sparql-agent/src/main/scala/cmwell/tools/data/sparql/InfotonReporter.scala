@@ -49,19 +49,11 @@ class InfotonReporter private(baseUrl: String, path: String)(implicit mat: Mater
   val writeToken = ConfigFactory.load().getString("cmwell.agents.sparql-triggered-processor.write-token")
   var downloadStats: Map[String, DownloadStats] = Map()
 
-  def extractLastPart(path: String) = {
-    val p = if (path.endsWith("/")) path.init
-    else path
-    val (_, name) = p.splitAt(p.lastIndexOf("/"))
-    name.tail.init
-  }
+  val name = StpUtil.extractLastPart(path)
 
-  val name = extractLastPart(path)
-
-  override def preStart(): Unit = readPreviousTokens().onComplete(self ! _)
+  override def preStart(): Unit = StpUtil.readPreviousTokens(baseUrl,path, format).onComplete(self ! _)
 
   override val receive: Receive = receiveBeforeInitializes(Nil) //receiveWithMap(Map.empty)
-
 
   def receiveBeforeInitializes(recipients: List[ActorRef]) : Receive= {
     case RequestPreviousTokens =>
@@ -104,21 +96,6 @@ class InfotonReporter private(baseUrl: String, path: String)(implicit mat: Mater
     case RequestReference(path) =>
       val data = getReferencedData(path)
       data.map(ResponseReference.apply) pipeTo sender()
-  }
-
-  def readPreviousTokens() = {
-    import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
-
-    cmwell.util.http.SimpleHttpClient.get(s"http://$baseUrl$path/tokens?op=stream&recursive&format=$format")
-      .map(
-        _.payload.split("\n")
-        .map(_.split(" "))
-        .collect { case Array(s, p, o, _) =>
-          val token = if (o.startsWith("\"")) o.init.tail else o
-          extractLastPart(s) -> token
-        }
-        .foldLeft(Map.empty[String, Token])(_ + _)
-      )
   }
 
   override def getReferencedData(path: String): Future[String] = {
