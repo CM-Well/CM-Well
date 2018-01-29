@@ -70,8 +70,7 @@ sealed trait JobStatus {
 }
 
 sealed trait JobActive extends JobStatus {
-  override def statusString = "Active"
-  val killSwitch : KillSwitch
+  override def statusString = " Active"
   val reporter: ActorRef
 }
 
@@ -244,7 +243,8 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
     def generateNonActiveTables(jobs: Jobs) = jobs.collect { case (path, jobStatus@(_: JobPaused | _:JobFailed)) =>
 
       val sensorNames = jobStatus.job.config.sensors.map(_.name)
-      val title = Seq(s"""<span style="color:red"> **Non-Active - ${jobStatus.statusString} ** </span> ${path}""")
+      val colour = jobStatus match { case _: JobPaused => "green" case _ => "red" }
+      val title = Seq(s"""<span style="color:${colour}"> **Non-Active - ${jobStatus.statusString} ** </span> ${path}""")
       val header = Seq("sensor", "point-in-time")
 
       StpUtil.readPreviousTokens(settings.hostConfigFile, settings.pathAgentConfigs + "/" + path, "ntriples").map { storedTokens =>
