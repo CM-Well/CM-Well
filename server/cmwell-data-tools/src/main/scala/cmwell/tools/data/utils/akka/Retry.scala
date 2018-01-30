@@ -27,7 +27,6 @@ import cmwell.tools.data.utils.ArgsManipulations
 import cmwell.tools.data.utils.ArgsManipulations.HttpAddress
 import cmwell.tools.data.utils.akka.HeaderOps._
 import cmwell.tools.data.utils.logging.{DataToolsLogging, LabelId}
-import cmwell.util.http.HttpZipDecoder
 
 import scala.collection.immutable
 import scala.concurrent.duration._
@@ -181,7 +180,6 @@ object Retry extends DataToolsLogging with DataToolsConfig{
       .mapAsyncUnordered(httpParallelism){ case (data, state) => data.map(_ -> state) } // used for delay between executions
       .map{ case (data, state) => createRequest(data) -> state }
       .via(conn)
-      .map{ case (tryResponse, state) => tryResponse.map(HttpZipDecoder.decodeResponse) -> state }
       .mapAsyncUnordered(httpParallelism) {
         case (response@Success(HttpResponse(s, _, e, _)), state) if !s.isSuccess() =>
           // consume HTTP response bytes
