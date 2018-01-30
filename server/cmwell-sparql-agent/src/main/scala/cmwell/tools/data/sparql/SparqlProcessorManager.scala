@@ -242,9 +242,15 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
 
     def generateNonActiveTables(jobs: Jobs) = jobs.collect { case (path, jobStatus@(_: JobPaused | _:JobFailed)) =>
 
+      val (colour, status) = jobStatus match {
+        case jobFailed@(_:JobFailed) =>
+          ("red","Exception : " + jobFailed.ex.getMessage)
+        case _: JobPaused =>
+          ("green", "No exceptions reported")
+      }
+
       val sensorNames = jobStatus.job.config.sensors.map(_.name)
-      val colour = jobStatus match { case _: JobPaused => "green" case _ => "red" }
-      val title = Seq(s"""<span style="color:${colour}"> **Non-Active - ${jobStatus.statusString} ** </span> ${path}""")
+      val title = Seq(s"""<span style="color:${colour}"> **Non-Active - ${jobStatus.statusString} ** </span> ${path} <br/><span style="color:${colour}">${status}</span>""")
       val header = Seq("Sensor", "Token Time")
 
       StpUtil.readPreviousTokens(settings.hostConfigFile, settings.pathAgentConfigs + "/" + path, "ntriples").map { storedTokens =>
