@@ -245,7 +245,7 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
       val sensorNames = jobStatus.job.config.sensors.map(_.name)
       val colour = jobStatus match { case _: JobPaused => "green" case _ => "red" }
       val title = Seq(s"""<span style="color:${colour}"> **Non-Active - ${jobStatus.statusString} ** </span> ${path}""")
-      val header = Seq("sensor", "point-in-time")
+      val header = Seq("Sensor", "Token Time")
 
       StpUtil.readPreviousTokens(settings.hostConfigFile, settings.pathAgentConfigs + "/" + path, "ntriples").map { storedTokens =>
         val pathsWithoutSavedToken = sensorNames.toSet diff storedTokens.keySet
@@ -268,7 +268,7 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
       val jobConfig = jobStatus.job.config
 
       val title = Seq(s"""<span style="color:green"> **Active** </span> ${path}""")
-      val header = Seq("sensor", "point-in-time", "received-infotons", "infoton-rate", "last-update")
+      val header = Seq("Sensor", "Token Time", "Received Infotons", "Infoton Rate", "Statistics Updated")
       val statsFuture = (jobStatus.reporter ? RequestDownloadStats).mapTo[ResponseDownloadStats]
       val storedTokensFuture = (jobStatus.reporter ? RequestPreviousTokens).mapTo[ResponseWithPreviousTokens]
 
@@ -290,7 +290,12 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
           else ""
 
           val sensorStats = stats.get(sensorName).map { s =>
-            val statsTime =  LocalDateTime.ofInstant(Instant.ofEpochMilli(s.statsTime), ZoneId.systemDefault()).toString
+
+            val statsTime = s.statsTime match {
+              case 0 => "Not Yet Updated"
+              case _ => LocalDateTime.ofInstant(Instant.ofEpochMilli(s.statsTime), ZoneId.systemDefault()).toString
+            }
+
             Seq(s.receivedInfotons.toString, s"${formatter.format(s.infotonRate)}/sec", statsTime)
           }.getOrElse(Seq.empty[String])
 
