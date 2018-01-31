@@ -64,27 +64,32 @@ case object CheckConfig
 case class AnalyzeReceivedJobs(jobsRead: Set[JobRead])
 
 sealed trait JobStatus {
+  val statusString : String
   val job: Job
   val canBeRestarted: Boolean = false
-  def statusString : String
 }
 
 sealed trait JobActive extends JobStatus {
-  override def statusString = " Active"
   val reporter: ActorRef
 }
 
-case class JobRunning(job: Job, killSwitch: KillSwitch, reporter: ActorRef) extends JobActive
-case class JobPausing(job: Job, killSwitch: KillSwitch, reporter: ActorRef) extends JobActive
-case class JobStopping(job: Job, killSwitch: KillSwitch, reporter: ActorRef) extends JobActive
+case class JobRunning(job: Job, killSwitch: KillSwitch, reporter: ActorRef) extends JobActive {
+  override val statusString = "Running"
+}
+case class JobPausing(job: Job, killSwitch: KillSwitch, reporter: ActorRef) extends JobActive {
+  override val statusString = "Pausing"
+}
+case class JobStopping(job: Job, killSwitch: KillSwitch, reporter: ActorRef) extends JobActive {
+  override val statusString: String = "Stopping"
+}
 
 case class JobFailed(job: Job, ex: Throwable) extends JobStatus {
-  override def statusString = "Failed"
+  override val statusString = "Failed"
   override val canBeRestarted = true
 }
 case class JobPaused(job: Job) extends JobStatus {
   override val canBeRestarted = true
-  override def statusString = "Paused"
+  override val statusString = "Paused"
 }
 
 object SparqlProcessorManager {
@@ -242,10 +247,16 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
 
     def generateNonActiveTables(jobs: Jobs) = jobs.collect { case (path, jobStatus@(_: JobPaused | _:JobFailed)) =>
 
+      val (colour, status) = jobStatus match {
+        case jobFailed@(_:JobFailed) =>
+          ("red","Exception : " + jobFailed.ex.getMessage)
+        case _: JobPaused =>
+          ("green", "No exceptions reported")
+      }
+
       val sensorNames = jobStatus.job.config.sensors.map(_.name)
-      val colour = jobStatus match { case _: JobPaused => "green" case _ => "red" }
-      val title = Seq(s"""<span style="color:${colour}"> **Non-Active - ${jobStatus.statusString} ** </span> ${path}""")
-      val header = Seq("sensor", "point-in-time")
+      val title = Seq(s"""<span style="color:${colour}"> **Non-Active - ${jobStatus.statusString} ** </span> ${path} <br/><span style="color:${colour}">${status}</span>""")
+      val header = Seq("Sensor", "Token Time")
 
       StpUtil.readPreviousTokens(settings.hostConfigFile, settings.pathAgentConfigs + "/" + path, "ntriples").map { storedTokens =>
         val pathsWithoutSavedToken = sensorNames.toSet diff storedTokens.keySet
@@ -267,8 +278,8 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
 
       val jobConfig = jobStatus.job.config
 
-      val title = Seq(s"""<span style="color:green"> **Active** </span> ${path}""")
-      val header = Seq("sensor", "point-in-time", "received-infotons", "infoton-rate", "last-update")
+      val title = Seq(s"""<span style="color:green"> **${jobStatus.statusString}** </span> ${path}""")
+      val header = Seq("Sensor", "Token Time", "Received Infotons", "Infoton Rate", "Statistics Updated")
       val statsFuture = (jobStatus.reporter ? RequestDownloadStats).mapTo[ResponseDownloadStats]
       val storedTokensFuture = (jobStatus.reporter ? RequestPreviousTokens).mapTo[ResponseWithPreviousTokens]
 
@@ -290,7 +301,12 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
           else ""
 
           val sensorStats = stats.get(sensorName).map { s =>
-            val statsTime =  LocalDateTime.ofInstant(Instant.ofEpochMilli(s.statsTime), ZoneId.systemDefault()).toString
+
+            val statsTime = s.statsTime match {
+              case 0 => "Not Yet Updated"
+              case _ => LocalDateTime.ofInstant(Instant.ofEpochMilli(s.statsTime), ZoneId.systemDefault()).toString
+            }
+
             Seq(s.receivedInfotons.toString, s"${formatter.format(s.infotonRate)}/sec", statsTime)
           }.getOrElse(Seq.empty[String])
 
