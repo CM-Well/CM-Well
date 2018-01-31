@@ -181,7 +181,7 @@ class DownloaderStats[T](isStderr: Boolean,
                 label = label,
                 receivedBytes = totalDownloadedBytes.count,
                 receivedInfotons = totalReceivedInfotons.count,
-                infotonRate = totalReceivedInfotons.oneMinuteRate,
+                infotonRate = totalReceivedInfotons.meanRate,
                 bytesRate = metricRateBytes.oneMinuteRate,
                 runningTime = executionTime,
                 statsTime = timeOfLastStatistics
