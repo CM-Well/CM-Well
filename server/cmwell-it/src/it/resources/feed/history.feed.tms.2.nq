@@ -19,7 +19,6 @@
 <http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://vgilad:9000/meta/sys#dataCenter> "vg" .
 <http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://vgilad:9000/meta/sys#indexTime> "1444917487266"^^<http://www.w3.org/2001/XMLSchema#long> .
 <http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/MetaCodes.rcscode> "P:5000062099" .
-<http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://vgilad:9000/meta/sys#length> "1472"^^<http://www.w3.org/2001/XMLSchema#long> .
 <http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/MetaCodes.product> "BSE" .
 <http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/PNAC> "nBSE9yjfBZ" .
 <http://feed.tms/1.0/nBSE9yjfBZ-2015_10_15T16_58_05> <http://feed.tms/ont/1.0/Feed> "UCDP" .
