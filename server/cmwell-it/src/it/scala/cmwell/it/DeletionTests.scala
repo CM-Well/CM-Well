@@ -189,7 +189,7 @@ class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Help
     })
 
     val failToDelete501InfotonsThroughUnderscoreIn = spinCheckUntilWritesAreIndexed.flatMap { _ =>
-      val data = """"<cmwell://cmt/cm/test/bulkDeletes/d501> <cmwell://meta/sys#fullDelete> "true"^^<http://www.w3.org/2001/XMLSchema#boolean> .""""
+      val data = """<cmwell://cmt/cm/test/bulkDeletes/d501> <cmwell://meta/sys#fullDelete> "true"^^<http://www.w3.org/2001/XMLSchema#boolean> ."""
       Http.post(_in, data, None, List("format" -> "ntriples"), tokenHeader).map { res =>
         withClue(res) {
           res.status should be(400)
