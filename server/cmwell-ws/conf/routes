@@ -14,7 +14,6 @@ GET         /_login           controllers.LoginHandler.login
 
 GET         /_auth            controllers.Application.handleAuthGet
 GET         /_hcn             controllers.Application.handlePoisonPill
-GET         /_tbg             controllers.NbgController.handleToggle
 GET         /_cas/*path       controllers.Application.handleRawRow(path)
 GET         /_es/:uuid        controllers.Application.handleRawDoc(uuid: String)
 GET         /_es/:index/:uuid controllers.Application.handleRawDocWithIndex(index: String, uuid: String)

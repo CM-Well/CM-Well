@@ -236,7 +236,9 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
           "with-data" -> "true",
           "format" -> "n3")))(_.status)
 
-        f.map(res => compareRDFwithoutSys(expectedN3BeforeRel2, new String(res.payload,"UTF-8"), "N3") should be(true)).recoverWith {
+        f.map(res => withClue(res){
+          compareRDFwithoutSys(expectedN3BeforeRel2, new String(res.payload,"UTF-8"), "N3") should be(true)
+        }).recoverWith {
           case t: Throwable => f.map(res => new String(res.payload,"UTF-8")).map { s =>
             fail(s)
           }

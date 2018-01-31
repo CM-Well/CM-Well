@@ -35,10 +35,6 @@ object Settings {
 
   val config = ConfigFactory.load()
 
-  // Feature Flags
-  lazy val newBGFlag = config.getBoolean("cmwell.flag.newBG")
-  lazy val oldBGFlag = config.getBoolean("cmwell.flag.oldBG")
-
   // tLogs DAO
   lazy val tLogsDaoHostName = config.getString("tLogs.hostName")
   lazy val tLogsDaoClusterName = config.getString("tLogs.cluster.name")
@@ -95,7 +91,6 @@ object Settings {
   lazy val sstreamParallelism: Int = config.getInt("cmwell.ws.sstream-parallelism")
 
   lazy val pushbackpressure: String = Try(config.getString("cmwell.ws.pushbackpressure.trigger")).getOrElse("old")
-  lazy val nbgToggler: Boolean = Try(config.getBoolean("cmwell.ws.nbg")).getOrElse(false)
   lazy val maximumQueueBuildupAllowedUTLog: Long = Try(config.getLong("cmwell.ws.tlog.updating.limit")).toOption.getOrElse(13200000L)
   lazy val maximumQueueBuildupAllowedITLog: Long = Try(config.getLong("cmwell.ws.tlog.indexing.limit")).toOption.getOrElse(3500000L)
   lazy val maximumQueueBuildupAllowed: Long = Try(config.getLong("cmwell.ws.klog.limit")).toOption.getOrElse(496351L)
@@ -149,7 +144,6 @@ object Settings {
   lazy val requestsPenaltyThreshold = config.getInt("cmwell.ws.trafficshaping.requests-penalty-threshold")
   lazy val checkFrequency = config.getInt("cmwell.ws.trafficshaping.check-frequency-sec")
   lazy val defaultLimitForHistoryVersions = config.getInt("cmwell.ws.cassandra-driver.history-versions-limit")
-  lazy val startWithNewBackendEnabled = config.getBoolean("cmwell.ws.nbg")
   lazy val maxRequestTimeSec = config.getInt("cmwell.ws.trafficshaping.max-request-time-sec")
   lazy val stressThreshold = config.getLong("cmwell.ws.trafficshaping.stress-threshold")
   lazy val thresholdToUseZStore = config.getBytes("cmwell.ws.switch-over-to-zstore.file-size")

@@ -23,9 +23,8 @@ import cmwell.domain.{Everything, Formattable, Infoton}
 import cmwell.fts._
 import cmwell.web.ld.cmw.CMWellRDFHelper
 import cmwell.web.ld.query.DataFetcherImpl
-import cmwell.ws.AggregateBothOldAndNewTypesCaches
 import com.sun.org.apache.xerces.internal.jaxp.datatype.XMLGregorianCalendarImpl
-import controllers.{JenaUtils, NbgToggler}
+import controllers.JenaUtils
 import info.aduna.iteration.CloseableIteration
 import ld.cmw.PassiveFieldTypesCache
 import ld.query.TripleStore._
@@ -45,12 +44,12 @@ import wsutil.{FormatterManager, RawFieldFilter, RawSingleFieldFilter, Unresolve
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext}
 
-class TripleStore(dataFetcher: DataFetcherImpl, cmwellRDFHelper: CMWellRDFHelper, tbg: NbgToggler) {
+class TripleStore(dataFetcher: DataFetcherImpl, cmwellRDFHelper: CMWellRDFHelper) {
 
   //  private val dataFetcher = new DataFetcher(Config.defaultConfig.copy(intermediateLimit = 100000, resultsLimit = 100000))
 
   val crudServiceFS = cmwellRDFHelper.crudServiceFS
-  val typesCache = new AggregateBothOldAndNewTypesCaches(crudServiceFS,tbg)
+  val typesCache = crudServiceFS.passiveFieldTypesCache
 
   // todo only use Await.result in findTriplesByPattern. All private methods should return Future[_]
 
@@ -108,12 +107,12 @@ class TripleStore(dataFetcher: DataFetcherImpl, cmwellRDFHelper: CMWellRDFHelper
     val value = o.map(_.asString)
     p match {
       case None => SingleFieldFilter(Must, Contains, "_all", value)
-      case Some(pred) => Await.result(RawFieldFilter.eval(RawSingleFieldFilter(Must, Equals, Left(UnresolvedURIFieldKey(pred)), value),typesCache,cmwellRDFHelper,tbg.get), 10.seconds)
+      case Some(pred) => Await.result(RawFieldFilter.eval(RawSingleFieldFilter(Must, Equals, Left(UnresolvedURIFieldKey(pred)), value),typesCache,cmwellRDFHelper), 10.seconds)
     }
   }
 
   // todo propagate withoutMeta boolean from request to here. If withoutMeta is set to false, we need to make sure it won't fail in URIFieldKey(...)
-  val f: String => Option[(String,Option[String])] = {(o: Option[String]) => o.map(u => u -> Option.empty[String])} compose {s => cmwellRDFHelper.hashToUrl(s,tbg.get)}
+  val f: String => Option[(String,Option[String])] = {(o: Option[String]) => o.map(u => u -> Option.empty[String])} compose {s => cmwellRDFHelper.hashToUrl(s)}
   private val nullFormatter = new cmwell.formats.RDFFormatter("cmwell", f, withoutMeta = true, filterOutBlanks = false, forceUniqueness = false) {
     override def format: cmwell.formats.FormatType = ???
     override def render(formattable: Formattable): String = ???

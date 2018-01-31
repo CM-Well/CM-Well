@@ -19,20 +19,17 @@ package filters
 import javax.inject._
 
 import akka.stream.Materializer
-import controllers.NbgToggler
 import play.api.mvc.{Filter, RequestHeader, Result}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class HeadersFilter @Inject()(nbgToggler: NbgToggler) (implicit override val mat: Materializer,ec: ExecutionContext) extends Filter {
+class HeadersFilter @Inject()(implicit override val mat: Materializer,ec: ExecutionContext) extends Filter {
 
   def apply(next: (RequestHeader) => Future[Result])(request: RequestHeader): Future[Result] = {
     next(request).map { result =>
-      val bgImpl = if(request.attrs(Attrs.Nbg)) "N" else "O"
       result.withHeaders(
         "X-CMWELL-Hostname" -> cmwell.util.os.Props.machineName,
-        "X-CMWELL-Version" -> cmwell.util.build.BuildInfo.version,
-        "X-CMWELL-BG" -> bgImpl)
+        "X-CMWELL-Version" -> cmwell.util.build.BuildInfo.version)
     }
   }
 }
