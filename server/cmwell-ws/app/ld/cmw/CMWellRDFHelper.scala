@@ -459,10 +459,10 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
         logger.warn(s"hashChain ${hashChain.mkString("[",", ","]")} did not contain a valid identifier for ${hashSet.mkString("[",", ","]")}")
         val f = getFirstHashForNsURL(url,infotons).transform {
           case Success(Right(i)) => Success(i)
-          case Success(Left(hash)) => Failure(new IllegalStateException(s"Theres an unoccupied hash [$hash] that can fit [$url]. Manual data repair is required. please also consider ns ambiguities [$infotons]"))
+          case Success(Left(hash)) => Failure(new IllegalStateException(s"There's an unoccupied hash [$hash] that can fit [$url]. Manual data repair is required. please also consider ns ambiguities [$infotons]"))
           case Failure(err) =>
             val first = infotons.minBy(_.name)
-            logger.warn(s"Was unable to validate any of the given infotons [$infotons], choosing the first in lexicographic order [${first.path}]")
+            logger.warn(s"Was unable to validate any of the given infotons [$infotons], choosing the first in lexicographic order [${first.path}]",err)
             Success(first)
         }(globalExecutionContext)
         // In the very very very unlikely case we get here, yes. wait forever.
