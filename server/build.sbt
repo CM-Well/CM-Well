@@ -1,6 +1,5 @@
 import play.twirl.sbt.SbtTwirl
 import play.sbt.PlayScala
-import com.github.retronym.SbtOneJar.oneJarSettings
 import cmwell.build.Versions
 
 name := "server"
@@ -21,12 +20,13 @@ sys.env.get("BUILD_NUMBER") match {
   )
 }
 
-scalaVersion in Global := "2.11.11"
+scalaVersion in Global := "2.12.4"
 //javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint")
 initialize := {
+  import semverfi._
   val _ = initialize.value
-  if (sys.props("java.specification.version") != "1.8")
-    sys.error("Java 8 is required for CM-Well!")
+  if (Version(sys.props("java.specification.version")) < Version("1.8"))
+    sys.error("Java 8 or higher is required for CM-Well!")
 }
 //resolvers in Global += "CM-WELL public" at "http://builder.clearforest.com:8081/nexus/content/groups/public"
 updateOptions in Global := updateOptions.in(Global).value.withCachedResolution(true).withCircularDependencyLevel(CircularDependencyLevel.Error)
@@ -46,11 +46,11 @@ dependenciesManager in Global := {
   case ("com.fasterxml.jackson.core", art)                         => "com.fasterxml.jackson.core" % art % "2.9.1"
   case ("com.github.andrewoma.dexx","collection")                  => "com.github.andrewoma.dexx" % "collection" % "0.7"
   case ("com.github.tomakehurst", "wiremock")                      => "com.github.tomakehurst" % "wiremock" % "2.7.1"
-  case ("com.github.t3hnar", "scala-bcrypt")                       => "com.github.t3hnar" %% "scala-bcrypt" % "2.6"
+  case ("com.github.t3hnar", "scala-bcrypt")                       => "com.github.t3hnar" %% "scala-bcrypt" % "3.1"
   case ("com.google.code.findbugs","jsr305")                       => "com.google.code.findbugs" % "jsr305" % "1.3.9" //newest is 3.0.0
   case ("com.google.guava","guava")                                => "com.google.guava" % "guava" % "23.0"
-  case ("com.jason-goodwin", "authentikat-jwt")                    => "com.jason-goodwin" %% "authentikat-jwt" % "0.4.1"
-  case ("com.lightbend.akka", "akka-stream-alpakka-cassandra")     => "com.lightbend.akka" %% "akka-stream-alpakka-cassandra" % "0.11"
+  case ("com.jason-goodwin", "authentikat-jwt")                    => "com.jason-goodwin" %% "authentikat-jwt" % "0.4.5"
+  case ("com.lightbend.akka", "akka-stream-alpakka-cassandra")     => "com.lightbend.akka" %% "akka-stream-alpakka-cassandra" % "0.15"
   case ("com.ning","async-http-client")                            => "com.ning" % "async-http-client" % "1.9.40"
   case ("com.spatial4j","spatial4j")                               => "com.spatial4j" % "spatial4j" % "0.5"
   case ("com.tinkerpop.blueprints","blueprints-core")              => "com.tinkerpop.blueprints" % "blueprints-core" % "2.6.0"
@@ -58,11 +58,12 @@ dependenciesManager in Global := {
   case ("com.thaiopensource","jing")                               => "com.thaiopensource" % "jing" % "20091111"
   case ("com.typesafe","config")                                   => "com.typesafe" % "config" % "1.3.1"
   case ("com.typesafe.scala-logging","scala-logging")              => "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0"
-  case ("com.typesafe.akka", "akka-stream-kafka")                  => "com.typesafe.akka" %% "akka-stream-kafka" % "0.17"
+  case ("com.typesafe.akka", "akka-stream-kafka")                  => "com.typesafe.akka" %% "akka-stream-kafka" % "0.18"
   case ("com.typesafe.akka", "akka-stream-contrib")                => "com.typesafe.akka" %% "akka-stream-contrib" % "0.8"
-  case ("com.typesafe.akka", "akka-http-core")                     => "com.typesafe.akka" %% "akka-http-core" % "10.0.10"
-  case ("com.typesafe.akka",art)                                   => "com.typesafe.akka" %% art % "2.5.6"
-  case ("com.typesafe.play", "twirl-api")                          => "com.typesafe.play" %% s"twirl-api" % "1.3.0"
+  case ("com.typesafe.akka", "akka-http")                          => "com.typesafe.akka" %% "akka-http" % "10.0.11"
+  case ("com.typesafe.akka",art)                                   => "com.typesafe.akka" %% art % "2.5.9"
+  case ("com.typesafe.play", "twirl-api")                          => "com.typesafe.play" %% "twirl-api" % "1.3.13"
+  case ("com.typesafe.play", "play-json")                          => "com.typesafe.play" %% "play-json" % "2.6.8"
   case ("com.typesafe.play", art)                                  => "com.typesafe.play" %% art % Versions.play
   case ("com.twitter","chill-akka")                                => "com.twitter" %% "chill-akka" % "0.5.2"
   case ("commons-io","commons-io")                                 => "commons-io" % "commons-io" % "2.5"
@@ -70,7 +71,7 @@ dependenciesManager in Global := {
   case ("commons-lang","commons-lang")                             => "commons-lang" % "commons-lang" % "2.6"
   case ("eu.piotrbuda","scalawebsocket")                           => "eu.piotrbuda" %% "scalawebsocket" % "0.1.1"
   case ("io.netty","netty")                                        => "io.netty" % "netty" % "3.10.6.Final"
-  case ("io.spray", art)                                           => "io.spray" %% art % "1.3.2"
+  case ("io.circe", art)                                           => "io.circe" %% art % "0.8.0"
   case ("com.jcraft","jsch")                                       => "com.jcraft" % "jsch" % "0.1.54"
   case ("joda-time","joda-time")                                   => "joda-time" % "joda-time" % "2.9.4"
   case ("junit","junit")                                           => "junit" % "junit" % "4.12"
@@ -125,7 +126,7 @@ dependenciesManager in Global := {
   case ("org.apache.thrift","libthrift")                           => "org.apache.thrift" % "libthrift" % "0.9.3"
   case ("org.apache.kafka", "kafka")                               => "org.apache.kafka" %% "kafka" % Versions.kafka
   case ("org.apache.kafka", "kafka-clients")                       => "org.apache.kafka" % "kafka-clients" % Versions.kafka
-  case ("org.apache.zookeeper", "zookeeper")                       => "org.apache.zookeeper" % "zookeeper" % "3.4.6"
+  case ("org.apache.zookeeper", "zookeeper")                       => "org.apache.zookeeper" % "zookeeper" % Versions.zookeeper
   case ("org.aspectj","aspectjweaver")                             => "org.aspectj" % "aspectjweaver" % "1.8.9"
   case ("org.codehaus.groovy",art)                                 => "org.codehaus.groovy" % art % "2.4.7"
   case ("org.codehaus.plexus","plexus-archiver")                   => "org.codehaus.plexus" % "plexus-archiver" % "3.4" //3.2
@@ -145,7 +146,7 @@ dependenciesManager in Global := {
   case ("org.pac4j", "pac4j-openid")                               => "org.pac4j" % "pac4j-openid" % "1.7.0"         // "1.8.7"
   case ("org.rogach","scallop")                                    => "org.rogach" %% "scallop" % "2.0.5"
   case ("org.scala-lang",art)                                      => "org.scala-lang" % art % scalaVersion.value
-  case ("org.scalacheck","scalacheck")                             => "org.scalacheck" %% "scalacheck" % "1.13.2" // version "1.13.0" collides with scalaTest (IncompatibleClassChangeError)
+  case ("org.scalacheck","scalacheck")                             => "org.scalacheck" %% "scalacheck" % "1.13.4"
   case ("org.scalatest","scalatest")                               => "org.scalatest" %% "scalatest" % "3.0.1"
   case ("org.scala-lang.modules", "scala-parser-combinators")      => "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4"
   case ("org.scala-lang.modules", "scala-xml")                     => "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
@@ -157,50 +158,47 @@ dependenciesManager in Global := {
   case ("uk.org.lidalia","sysout-over-slf4j")                      => "uk.org.lidalia" % "sysout-over-slf4j" % "1.0.2"
 }
 
-dependencyOverrides in Global ++= {
-  val dm = dependenciesManager.value
-  Set(
-    dm("ch.qos.logback", "logback-classic"),
-    dm("com.fasterxml.jackson.core", "jackson-annotations"),
-    dm("com.fasterxml.jackson.core", "jackson-core"),
-    dm("com.fasterxml.jackson.core", "jackson-databind"),
-    dm("com.google.guava", "guava"),
-    dm("commons-codec", "commons-codec"),
-    dm("commons-lang", "commons-lang"),
-    dm("joda-time", "joda-time"),
-    dm("junit", "junit"),
-    dm("org.codehaus.plexus", "plexus-utils"),
-    dm("org.apache.commons", "commons-compress"),
-    dm("org.apache.httpcomponents", "httpclient"),
-    dm("org.codehaus.woodstox", "woodstox-asl"),
-    dm("org.joda", "joda-convert"),
-    dm("org.scala-lang", "scala-compiler"),
-    dm("org.scala-lang", "scala-reflect"),
-    dm("org.scala-lang", "scala-library"),
-    dm("org.slf4j", "jcl-over-slf4j"),
-    dm("org.slf4j", "slf4j-api"),
-    dm("xerces", "xercesImpl"),
-    dm("xml-apis", "xml-apis")
-  )
-}
+//dependencyOverrides in Global ++= {
+//  val dm = dependenciesManager.value
+//  Set(
+//    dm("ch.qos.logback", "logback-classic"),
+//    dm("com.fasterxml.jackson.core", "jackson-annotations"),
+//    dm("com.fasterxml.jackson.core", "jackson-core"),
+//    dm("com.fasterxml.jackson.core", "jackson-databind"),
+//    dm("com.google.guava", "guava"),
+//    dm("commons-codec", "commons-codec"),
+//    dm("commons-lang", "commons-lang"),
+//    dm("joda-time", "joda-time"),
+//    dm("junit", "junit"),
+//    dm("org.codehaus.plexus", "plexus-utils"),
+//    dm("org.apache.commons", "commons-compress"),
+//    dm("org.apache.httpcomponents", "httpclient"),
+//    dm("org.codehaus.woodstox", "woodstox-asl"),
+//    dm("org.joda", "joda-convert"),
+//    dm("org.scala-lang", "scala-compiler"),
+//    dm("org.scala-lang", "scala-reflect"),
+//    dm("org.scala-lang", "scala-library"),
+//    dm("org.slf4j", "jcl-over-slf4j"),
+//    dm("org.slf4j", "slf4j-api"),
+//    dm("xerces", "xercesImpl"),
+//    dm("xml-apis", "xml-apis")
+//  )
+//}
 
 excludeDependencies in ThisBuild += "org.slf4j" % "slf4j-jdk14"
 
 //conflictManager in Global := ConflictManager.strict //TODO: ideally we should use this to prevent jar hell (conflicts will explode to our faces explicitly at update phase)
 
-printDate := {
-  val logger = streams.value.log
-  logger.info("date: " + (new org.joda.time.DateTime()).toString())
-}
+printDate := streams.value.log.info("date: " + org.joda.time.DateTime.now().toString())
 
 lazy val util          = (project in file("cmwell-util")).enablePlugins(CMWellBuild)
 lazy val kafkaAssigner = (project in file("cmwell-kafka-assigner")).enablePlugins(CMWellBuild)
 lazy val dao           = (project in file("cmwell-dao")).enablePlugins(CMWellBuild)
 lazy val domain        = (project in file("cmwell-domain")).enablePlugins(CMWellBuild)                              dependsOn(util)
 lazy val zstore        = (project in file("cmwell-zstore")).enablePlugins(CMWellBuild, CassandraPlugin)             dependsOn(dao, util)
-lazy val common        = (project in file("cmwell-common")).enablePlugins(CMWellBuild)                              dependsOn(zstore, domain % "compile->compile;test->test")
+lazy val common        = (project in file("cmwell-common")).enablePlugins(CMWellBuild, BuildInfoPlugin)             dependsOn(zstore, domain % "compile->compile;test->test")
 lazy val grid          = (project in file("cmwell-grid")).enablePlugins(CMWellBuild)                                dependsOn(util)
-lazy val rts           = (project in file("cmwell-rts")).enablePlugins(CMWellBuild) settings(oneJarSettings:_*)     dependsOn(domain, grid, formats)
+lazy val rts           = (project in file("cmwell-rts")).enablePlugins(CMWellBuild)                                 dependsOn(domain, grid, formats)
 lazy val fts           = (project in file("cmwell-fts")).enablePlugins(CMWellBuild)                                 dependsOn(domain, common)
 lazy val formats       = (project in file("cmwell-formats")).enablePlugins(CMWellBuild)                             dependsOn(domain, common, fts)
 lazy val irw           = (project in file("cmwell-irw")).enablePlugins(CMWellBuild, CassandraPlugin)                dependsOn(dao, domain, common, zstore)
@@ -208,15 +206,15 @@ lazy val tlog          = (project in file("cmwell-tlog")).enablePlugins(CMWellBu
 lazy val imp           = (project in file("cmwell-imp")).enablePlugins(CMWellBuild, CassandraPlugin)                dependsOn(domain, common, tlog, irw, fts % "compile->compile;test->test", rts, zstore)
 lazy val indexer       = (project in file("cmwell-indexer")).enablePlugins(CMWellBuild)                             dependsOn(domain, common, tlog, irw, fts)
 lazy val stortill      = (project in file("cmwell-stortill")).enablePlugins(CMWellBuild)                            dependsOn(domain, irw, fts , imp)
-lazy val batch         = (project in file("cmwell-batch")).enablePlugins(CMWellBuild) settings(oneJarSettings:_*)   dependsOn(imp, indexer, ctrl)
+lazy val batch         = (project in file("cmwell-batch")).enablePlugins(CMWellBuild)                               dependsOn(imp, indexer, ctrl)
 lazy val bg            = (project in file("cmwell-bg")).enablePlugins(CMWellBuild, SbtKafkaPlugin, CassandraPlugin) dependsOn(kafkaAssigner, irw, domain, fts, grid, zstore, tracking)
 lazy val consIt        = (project in file("cmwell-it")).enablePlugins(CMWellBuild)                                  dependsOn(domain, common % "compile->compile;it->test", tlog, ws) configs(IntegrationTest)
 lazy val ctrl          = (project in file("cmwell-controller")).enablePlugins(CMWellBuild)                          dependsOn(tlog,grid)
-lazy val dc            = (project in file("cmwell-dc")).enablePlugins(CMWellBuild, JavaAppPackaging) settings(oneJarSettings:_*)      dependsOn(tracking, ctrl, sparqlAgent)
+lazy val dc            = (project in file("cmwell-dc")).enablePlugins(CMWellBuild, JavaAppPackaging)                dependsOn(tracking, ctrl, sparqlAgent)
 lazy val cons          = (project in file("cmwell-cons")).enablePlugins(CMWellBuild)                                dependsOn(util, ctrl) aggregate(batch, ws, ctrl, dc)
 lazy val pluginGremlin = (project in file("cmwell-plugin-gremlin")).enablePlugins(CMWellBuild)
 lazy val spa           = (project in file("cmwell-spa")) .enablePlugins(CMWellBuild)
-lazy val dataTools     = (project in file("cmwell-data-tools")).enablePlugins(CMWellBuild)
+lazy val dataTools     = (project in file("cmwell-data-tools")).enablePlugins(CMWellBuild)                          dependsOn(util)
 lazy val dataToolsApp  = (project in file("cmwell-data-tools-app")).enablePlugins(CMWellBuild)                      dependsOn(dataTools)
 lazy val sparqlAgent   = (project in file("cmwell-sparql-agent")).enablePlugins(CMWellBuild)                        dependsOn(dataTools, grid, util, ctrl)
 lazy val tracking      = (project in file("cmwell-tracking")).enablePlugins(CMWellBuild)                            dependsOn(util, zstore, grid, irw, ctrl)

@@ -1,5 +1,11 @@
 # Hands-On Exercise: Query with SPARQL #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.HandsOnExercisesTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercises.QueryForInfotons.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tutorial.HandsOnExercises.QueryWithGremlin.md)  
+
+----
+
 **Action:** Search for organizations whose name contains the string "Systems", and apply SPARQL to the results to display the infotons' URIs, and the organization names and addresses.
 
 **Curl command:**
@@ -31,3 +37,9 @@
 [Using SPARQL on Infotons](DevGuide.UsingSPARQLOnCM-WellInfotons.md)
 [Apply SPARQL to Query Results](API.Query.ApplySPARQLToQueryResults.md)
 [Field Condition Syntax](API.FieldConditionSyntax.md)
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.HandsOnExercisesTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercises.QueryForInfotons.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tutorial.HandsOnExercises.QueryWithGremlin.md)  
+
+----

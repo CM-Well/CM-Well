@@ -1,5 +1,11 @@
 # CM-Well Version Release Notes - Firebird (May 2017) #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](ReleaseNotes.Dolphin.Mar.2017.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](ReleaseNotes.Gopher.May.2017.md)  
+
+----
+
 ## Change Summary ##
 
 ### New Features ###
@@ -73,3 +79,9 @@ Previously there was a bug that caused the "add node" admin script to fail; now 
 
 **Documentation:** 
 N/A
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](ReleaseNotes.Dolphin.Mar.2017.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](ReleaseNotes.Gopher.May.2017.md)  
+
+----

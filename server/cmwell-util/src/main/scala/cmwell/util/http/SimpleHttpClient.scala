@@ -136,15 +136,36 @@ object SimpleHttpClient extends LazyLogging {
   }.toList
 
   private def mkURI(uri: String, queryParams: Seq[(String,String)]) = {
-    if (queryParams.isEmpty) uri
+
+    val noSchemeWithPort = uri.matches("[^:/]+:\\d+")
+    if (queryParams.isEmpty && !noSchemeWithPort) uri
     else {
-      uri + queryParams.map {
-        case (key, value) => {
-          val k = java.net.URLEncoder.encode(key, "UTF-8")
-          val v = java.net.URLEncoder.encode(value, "UTF-8")
-          s"$k=$v"
+      val sb = new StringBuilder
+
+      // assume HTTP as default, avoid parsing bug: https://github.com/akka/akka-http/issues/1547
+      if (noSchemeWithPort)
+        sb ++= "http://"
+
+      sb ++= uri
+
+      if (queryParams.isEmpty) sb.result()
+      else {
+
+        def appendKeyVal(ch: Char, key: String, value: String): Unit = {
+          sb += ch
+          sb ++= java.net.URLEncoder.encode(key, "UTF-8")
+          sb += '='
+          sb ++= java.net.URLEncoder.encode(value, "UTF-8")
         }
-      }.mkString("?", "&", "")
+
+        val (hKey,hVal) = queryParams.head
+        appendKeyVal('?',hKey,hVal)
+        queryParams.tail.foreach {
+          case (k,v) => appendKeyVal('&',k,v)
+        }
+
+        sb.result()
+      }
     }
   }
 
@@ -231,6 +252,7 @@ object SimpleHttpClient extends LazyLogging {
     implicit def apply(body: String): Body = new BodyFromString(body)
     implicit def apply(body: Array[Byte]): Body = new BodyFromBytes(body)
     implicit def apply(body: ByteString): Body = new BodyFromByteString(body)
+    implicit def apply(body: () => InputStream): Body = new BodyFromInputStreamFactory(body: () => InputStream)
 
     private class BodyFromString(body: String) extends Body {
       override def entity(ct: Option[String]) = ct match {
@@ -255,6 +277,13 @@ object SimpleHttpClient extends LazyLogging {
       override def entity(ct: Option[String]) = ct match {
         case None => HttpEntity(body)
         case Some(c) => HttpEntity(contentType(c), body)
+      }
+    }
+
+    private class BodyFromInputStreamFactory(body: () => InputStream) extends Body {
+      override def entity(ct: Option[String]) = ct match {
+        case None => HttpEntity(ContentTypes.`application/octet-stream`, StreamConverters.fromInputStream(body))
+        case Some(c) => HttpEntity(contentType(c), StreamConverters.fromInputStream(body))
       }
     }
   }

@@ -1,5 +1,11 @@
 # Hands-On Exercise: Query for Infotons #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.HandsOnExercisesTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercises.DeleteInfotonsAndFields.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tutorial.HandsOnExercises.QueryWithSPARQL.md)  
+
+----
+
 ## Step Outline ##
 
 >**Note:** These steps are not dependent on each other and do not have to be completed in order.
@@ -1197,3 +1203,9 @@ The steps in the query are:
 [Query for Infotons Using Field Conditions](API.Query.QueryForInfotonsUsingFieldConditions.md)
 [CM-Well Query Parameters](API.QueryParameters.md)
 [Field Condition Syntax](API.FieldConditionSyntax.md)
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.HandsOnExercisesTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercises.DeleteInfotonsAndFields.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tutorial.HandsOnExercises.QueryWithSPARQL.md)  
+
+----

@@ -1,5 +1,11 @@
 # Overview of the CM-Well API #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Intro.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Intro.CM-WellDataParadigms.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Intro.TechnicalAspectsOfCM-Well.md)  
+
+----
+
 This page provides a brief, high-level overview of the CM-Well API's functionality.
 
 For the detailed API documentation, please see [CM-Well API Reference](API.TOC.md).
@@ -27,7 +33,7 @@ Feature  | Reference
 Get infoton | [Basic Queries](DevGuide.BasicQueries.md)
 Search by field value | [Advanced Queries](DevGuide.AdvancedQueries.md)
 Advanced search using SPARQL | [Using SPARQL on CM-Well Infotons](DevGuide.UsingSPARQLOnCM-WellInfotons.md)
-Get inbound/outbound links | [Traversing Outbound and Inbound Links with xg and yg](API.TraversingOutboundAndInboundLinksWithXgAndYg.md)
+Traverse inbound/outbound links | [Traversing Outbound and Inbound Links](API.Traversal.TOC.md)
 Stream data | [Streaming Data from CM-Well](DevGuide.StreamingDataFromCM-Well.md)
 Subscribe to real-time updates | [Subscribing to Real-Time Updates](DevGuide.SubscribingToReal-TimeUpdates.md)
 CM-Well Downloader | [Using the CM-Well Downloader](Tools.UsingTheCM-WellDownloader.md)
@@ -36,3 +42,8 @@ Create a new infoton | [Updating CM-Well](DevGuide.UpdatingCM-Well.md)
 Add/update infoton fields | [Updating CM-Well](DevGuide.UpdatingCM-Well.md)
 Delete infotons and fields | [Updating CM-Well](DevGuide.UpdatingCM-Well.md)
  
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Intro.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Intro.CM-WellDataParadigms.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Intro.TechnicalAspectsOfCM-Well.md)  
+
+----

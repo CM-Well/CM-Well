@@ -27,7 +27,7 @@ import cmwell.web.ld.cmw.CMWellRDFHelper
 import cmwell.web.ld.exceptions.UnretrievableIdentifierException
 import cmwell.web.ld.util.LDFormatParser.ParsingResponse
 import cmwell.web.ld.util._
-import cmwell.ws.{AggregateBothOldAndNewTypesCaches, Settings}
+import cmwell.ws.Settings
 import cmwell.ws.util.{FieldKeyParser, TypeHelpers}
 import com.typesafe.scalalogging.LazyLogging
 import logic.{CRUDServiceFS, InfotonValidator}
@@ -40,7 +40,6 @@ import javax.inject._
 import filters.Attrs
 
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 import scala.language.postfixOps
 import scala.util._
@@ -48,12 +47,11 @@ import scala.util._
 @Singleton
 class InputHandler @Inject() (ingestPushback: IngestPushback,
                               crudService: CRUDServiceFS,
-                              tbg: NbgToggler,
                               authUtils: AuthUtils,
                               cmwellRDFHelper: CMWellRDFHelper,
                               formatterManager: FormatterManager) extends InjectedController with LazyLogging with TypeHelpers { self =>
 
-  val aggregateBothOldAndNewTypesCaches = new AggregateBothOldAndNewTypesCaches(crudService,tbg)
+  val typesCaches = crudService.passiveFieldTypesCache
   val bo1 = collection.breakOut[List[Infoton],String,Set[String]]
   val bo2 = collection.breakOut[Vector[Infoton],String,Set[String]]
 
@@ -63,9 +61,10 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
    * @return
    */
   def handlePost(format: String = "") = ingestPushback.async(parse.raw) { implicit req =>
+    import scala.concurrent.ExecutionContext.Implicits.global
     RequestMonitor.add("in", req.path, req.rawQueryString, req.body.asBytes().fold("")(_.utf8String),req.attrs(Attrs.RequestReceivedTimestamp))
     // first checking "priority" query string. Only if it is present we will consult the UserInfoton which is more expensive (order of && below matters):
-    if (req.getQueryString("priority").isDefined && !authUtils.isOperationAllowedForUser(security.PriorityWrite, authUtils.extractTokenFrom(req), req.attrs(Attrs.Nbg), evenForNonProdEnv = true)) {
+    if (req.getQueryString("priority").isDefined && !authUtils.isOperationAllowedForUser(security.PriorityWrite, authUtils.extractTokenFrom(req), evenForNonProdEnv = true)) {
       Future.successful(Forbidden(Json.obj("success" -> false, "message" -> "User not authorized for priority write")))
     } else {
       val resp = if ("jsonw" == format.toLowerCase) handlePostWrapped(req) -> Future.successful(Seq.empty[(String, String)]) else handlePostRDF(req)
@@ -85,8 +84,10 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
   }
 
   def handlePostForDCOverwrites =  ingestPushback.async(parse.raw) { implicit req =>
+    import scala.concurrent.ExecutionContext.Implicits.global
+
     val tokenOpt = authUtils.extractTokenFrom(req)
-    if (!authUtils.isOperationAllowedForUser(security.Overwrite, tokenOpt, req.attrs(Attrs.Nbg), evenForNonProdEnv = true))
+    if (!authUtils.isOperationAllowedForUser(security.Overwrite, tokenOpt, evenForNonProdEnv = true))
       Future.successful(Forbidden("not authorized"))
     else {
       Try {
@@ -94,18 +95,46 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
           case ParsingResponse(infotonsMap, metaDataMap, cmwHostsSet, tmpDeleteMap, deleteValsMap, deletePaths, atomicUpdates) => {
 
             require(tmpDeleteMap.isEmpty && deleteValsMap.isEmpty && deletePaths.isEmpty && atomicUpdates.isEmpty, "can't use meta operations here! this API is used internaly, and only for overwrites!")
-            require(metaDataMap.forall {
-              case (path, MetaData(mdType, date, data, text, mimeType, linkType, linkTo, dataCenter, indexTime)) => {
-                indexTime.isDefined &&
-                  dataCenter.isDefined &&
-                  dataCenter.get != Settings.dataCenter &&
-                  mdType.isDefined &&
-                  ((mdType.get == LinkMetaData && linkType.isDefined && linkTo.isDefined) ||
-                    (mdType.get == FileMetaData && mimeType.isDefined && (data.isDefined || text.isDefined)) ||
-                    (mdType.get == ObjectMetaData) ||
-                    (mdType.get == DeletedMetaData))
-              }
-            }, "in overwrites API all meta data must be present! no implicit inference is allowed. (every infoton must have all relevant system fields added)")
+            val (errs,_) = cmwell.util.collections.partitionWith(metaDataMap){
+              case (path, MetaData(mdType, date, data, text, mimeType, linkType, linkTo, dataCenter, indexTime)) =>
+                var errors = List.empty[String]
+                if(indexTime.isEmpty) {
+                  errors = "indexTime should be defined" :: errors
+                }
+                if(dataCenter.isEmpty) {
+                  errors = "dataCenter should be defined" :: errors
+                }
+                else if(dataCenter.get == Settings.dataCenter) {
+                  errors = "dataCenter cannot be equal to current ID" :: errors
+                }
+                if(mdType.isEmpty) {
+                  errors = "infoton's kind (type) must be defined" :: errors
+                }
+                else if(mdType.get == LinkMetaData){
+                  if(linkType.isEmpty) {
+                    errors = "link kind (type) must be defined" :: errors
+                  }
+                  if(linkTo.isEmpty) {
+                    errors = "link destination (to) must be defined" :: errors
+                  }
+                }
+                else if(mdType.get == FileMetaData){
+                  if(mimeType.isEmpty) {
+                    errors = "file's media type (mimeType) must be defined" :: errors
+                  }
+                  if(data.isEmpty && text.isEmpty) {
+                    errors = "file's content must be defined" :: errors
+                  }
+                }
+                else if(mdType.get != ObjectMetaData && mdType.get != DeletedMetaData){
+                  errors = s"infoton's kind (type) isn't recognized" :: errors
+                }
+
+                if(errors.isEmpty) Right(())
+                else Left(errors.mkString(s"path [$path] failed due to:\n\t","\n\t",""))
+            }
+            require(errs.isEmpty,errs.mkString("overwrites API failed to validate the request.\n\n","\n",""))
+
             enforceForceIfNeededAndReturnMetaFieldsInfotons(infotonsMap, true).flatMap { metaFields =>
               val infotonsWithoutFields = metaDataMap.keySet.filterNot(infotonsMap.keySet.apply) //meaning FileInfotons without extra data...
 
@@ -165,12 +194,9 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
       case _ => throw new RuntimeException("cant find valid content in body of request")
     }
 
-    val nbg = req.attrs(Attrs.Nbg)
-
-
     req.getQueryString("format") match {
-      case Some(f) => handleFormatByFormatParameter(cmwellRDFHelper,crudService,authUtils,nbg,bais, Some(List[String](f)), req.contentType, authUtils.extractTokenFrom(req), skipValidation, isOverwrite)
-      case None => handleFormatByContentType(cmwellRDFHelper,crudService,authUtils,nbg,bais, req.contentType, authUtils.extractTokenFrom(req), skipValidation, isOverwrite)
+      case Some(f) => handleFormatByFormatParameter(cmwellRDFHelper,crudService,authUtils,bais, Some(List[String](f)), req.contentType, authUtils.extractTokenFrom(req), skipValidation, isOverwrite)
+      case None => handleFormatByContentType(cmwellRDFHelper,crudService,authUtils,bais, req.contentType, authUtils.extractTokenFrom(req), skipValidation, isOverwrite)
     }
   }
 
@@ -181,7 +207,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
     def getMetaFields(fields: Map[DirectFieldKey, Set[FieldValue]]) = collector(fields) {
       case (fk, fvs) => {
         val newTypes = fvs.map(FieldValue.prefixByType)
-        aggregateBothOldAndNewTypesCaches.get(fk,Some(newTypes)).flatMap { types =>
+        typesCaches.get(fk,Some(newTypes)).flatMap { types =>
           val chars = newTypes diff types
           if (chars.isEmpty) Future.successful(None)
           else {
@@ -191,7 +217,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
                 "though you should be aware this may result in permanent system-wide performance downgrade " +
                 "related to all the enhanced fields you supply when using `force`. " +
                 s"(failed for field: ${fk.externalKey} and type/s: [${chars.mkString(",")}] out of infotons: [${allInfotons.keySet.mkString(",")}])")
-            aggregateBothOldAndNewTypesCaches.update(fk, chars).map { _ =>
+            typesCaches.update(fk, chars).map { _ =>
               Some(infotonFromMaps(
                 Set.empty,
                 fk.infoPath,
@@ -222,10 +248,10 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
    * @return
    */
   def handlePostRDF(req: Request[RawBuffer], skipValidation: Boolean = false): (Future[Result],Future[Seq[(String,String)]]) = {
+    import scala.concurrent.ExecutionContext.Implicits.global
 
     val now = req.attrs(Attrs.RequestReceivedTimestamp)
     val p = Promise[Seq[(String,String)]]()
-    lazy val nbg = req.attrs(Attrs.Nbg)
     lazy val id = cmwell.util.numeric.Radix64.encodeUnsigned(req.id)
     val debugLog = req.queryString.keySet("debug-log")
     val addDebugHeader: Result => Result = { res =>
@@ -290,15 +316,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
                               case someURI => FNull(someURI)
                             }
 
-                            if (Settings.newBGFlag && Settings.oldBGFlag) {
-                              val x = cmwellRDFHelper.getQuadUrlForAlias(alias, true)
-                              val y = cmwellRDFHelper.getQuadUrlForAlias(alias, false)
-                              require(x == y, s"inconsistency between new[$x] & old[$y] data path. don't use quad aliasing")
-                              optionToFNull(x)
-                            }
-                            else if (Settings.newBGFlag) optionToFNull(cmwellRDFHelper.getQuadUrlForAlias(alias, true))
-                            else if (Settings.oldBGFlag) optionToFNull(cmwellRDFHelper.getQuadUrlForAlias(alias, false))
-                            else throw new IllegalStateException("Neither old or new bg are enabled!")
+                            optionToFNull(cmwellRDFHelper.getQuadUrlForAlias(alias))
                           }
                           case uri => FNull(Some(uri))
                         }
@@ -378,6 +396,9 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
 
                   val (dontTrack, track) = deletePaths.partition(secondStagePaths.apply)
                   require(dontTrack.forall(!atomicUpdates.contains(_)), s"atomic updates cannot operate on multiple actions in a single ingest.")
+                  require(infotonsToUpsert.union(infotonsToPut).forall(_.kind != "DeletedInfoton"),s"Writing a DeletedInfoton does not make sense. use proper delete API instead. malformed paths: ${infotonsToUpsert.union(infotonsToPut).collect{
+                    case DeletedInfoton(path,_,_,_,_) => path
+                  }.mkString("[",",","]")}")
 
                   val to = tidOpt.map(_.token)
                   val d1 = crudService.deleteInfotons(dontTrack.map(_ -> None), isPriorityWrite = isPriorityWrite)
@@ -393,7 +414,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
                           val blockingFut = arOpt.get.?(SubscribeToDone)(timeout = 5.minutes).mapTo[Seq[PathStatus]]
                           blockingFut.map { data =>
                             val payload = {
-                              val formatter = getFormatter(req, formatterManager, defaultFormat = "ntriples", nbg = nbg, withoutMeta = true)
+                              val formatter = getFormatter(req, formatterManager, defaultFormat = "ntriples", withoutMeta = true)
                               val payload = BagOfInfotons(data map pathStatusAsInfoton)
                               formatter render payload
                             }
@@ -438,10 +459,10 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
    * @return
    */
   def handlePostWrapped(req: Request[RawBuffer], skipValidation: Boolean = false, setZeroTime: Boolean = false): Future[Result] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
 
     if (req.getQueryString("dry-run").isDefined)  Future.successful(BadRequest(Json.obj("success" -> false, "error" -> "dry-run is not implemented for wrapped requests.")))
     else {
-      val nbg = req.attrs(Attrs.Nbg)
       val charset = req.contentType match {
         case Some(contentType) => contentType.lastIndexOf("charset=") match {
           case i if i != -1 => contentType.substring(i + 8).trim
@@ -463,8 +484,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
           vec match {
             case Some(v) => {
               if (skipValidation || v.forall(i => InfotonValidator.isInfotonNameValid(normalizePath(i.path)))) {
-                val nbg = req.attrs(Attrs.Nbg)
-                val unauthorizedPaths = authUtils.filterNotAllowedPaths(v.map(_.path), PermissionLevel.Write, authUtils.extractTokenFrom(req), nbg)
+                val unauthorizedPaths = authUtils.filterNotAllowedPaths(v.map(_.path), PermissionLevel.Write, authUtils.extractTokenFrom(req))
                 if(unauthorizedPaths.isEmpty) {
                   Try(v.foreach{ i => if(i.fields.isDefined) InfotonValidator.validateValueSize(i.fields.get)}) match {
                     case Success(_) => {
@@ -476,7 +496,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
                             case Success(Right(d)) => d
                             case Success(Left(fk)) => {
                               Try[DirectFieldKey] {
-                                val (f, l) = Await.result(FieldKey.resolve(fk, cmwellRDFHelper,nbg).map {
+                                val (f, l) = Await.result(FieldKey.resolve(fk, cmwellRDFHelper).map {
                                   case PrefixFieldKey(first, last, _) => first -> last
                                   case URIFieldKey(first, last, _) => first -> last
                                   case unknown => {

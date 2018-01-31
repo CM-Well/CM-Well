@@ -40,6 +40,7 @@ object Settings {
   val maxTotalInfotonCountAggregatedForRetrieve = config.getInt("cmwell.dc.pull.maxTotalInfotonCountAggregatedForRetrieve")
 //  val tsvBufferSize = config.getInt("cmwell.dc.pull.tsvBufferSize")
   val initialTsvRetryCount = config.getInt("cmwell.dc.pull.initialTsvRetryCount")
+  val bulkTsvRetryCount = config.getInt("cmwell.dc.pull.bulkTsvRetryCount")
   val consumeFallbackDuration = config.getDuration("cmwell.dc.pull.consumeFallbackDuration").toMillis
 //  val delayInSecondsBetweenNoContentRetries = config.getInt("cmwell.dc.pull.delayInSecondsBetweenNoContentRetries")
   val retrieveParallelism = config.getInt("cmwell.dc.pull.retrieveParallelism")
@@ -55,6 +56,7 @@ object Settings {
   val initialSingleIngestRetryCount = config.getInt("cmwell.dc.push.initialSingleIngestRetryCount")
   val ingestRetryDelay = config.getDuration("cmwell.dc.push.ingestRetryDelay").toMillis millis
   val ingestServiceUnavailableDelay = config.getDuration("cmwell.dc.push.ingestServiceUnavailableDelay").toMillis millis
+  val gzippedIngest = config.getBoolean("cmwell.dc.push.gzippedIngest")
   val ingestParallelism = config.getInt("cmwell.dc.push.ingestParallelism")
   val ingestRetryQueueSize = config.getInt("cmwell.dc.push.ingestRetryQueueSize")
   val dcaUserToken = config.getString("dcaUser.token")

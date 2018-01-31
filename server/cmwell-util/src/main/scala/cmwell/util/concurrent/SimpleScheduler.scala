@@ -35,9 +35,9 @@ object SimpleScheduler extends LazyLogging {
     timer.schedule(new Runnable {
       override def run(): Unit = {
         // body must not be expensive to compute since it will be run in our only timer thread expense.
-        p.tryComplete(Try(body))
+        p.complete(Try(body))
       }
-    },duration.toMillis,java.util.concurrent.TimeUnit.MILLISECONDS)
+    }, duration.toMillis,java.util.concurrent.TimeUnit.MILLISECONDS)
     p.future
   }
 

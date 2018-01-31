@@ -1,5 +1,11 @@
 # CM-Well Data Paradigms #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Intro.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Intro.IntroductionToCM-Well.md)&nbsp;&nbsp;&nbsp;&nbsp;[**Next Topic**](Intro.OverviewOfTheCM-WellAPI.md)  
+
+----
+
 ## Introduction ##
 Since CM-Well is a sophisticated data repository, it stands to reason that many data structures and paradigms are involved. This section describes CM-Well's most central data paradigms, which should help you get a good conceptual understanding of the principles that guide CM-Well's design and functionality.
 
@@ -85,3 +91,9 @@ CM-Well uses a data structure nicknamed "infoton". An infoton is the set of all 
 By “flattening” the physical model in this way, CM-Well is able to more easily scale to very large numbers of triples, as it becomes easier to store the data horizontally across many more servers.
 
 The results of your queries to CM-Well will generally be one or more whole infotons.
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Intro.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Intro.IntroductionToCM-Well.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Intro.OverviewOfTheCM-WellAPI.md)  
+
+----

@@ -759,7 +759,7 @@ table.infoton-data {
     margin: 3px 30px 10px 30px;
     border-collapse: collapse;
     overflow-y: auto;
-    height: calc(100vh - 335px); /* AppUtils.heightOverhead === 335 */
+    height: calc(100vh - 370px); /* AppUtils.heightOverhead === 370 */
     display: block;
 }
 
@@ -913,6 +913,30 @@ table.infoton-data td ul {
 .glitch:before{content:attr(data-text);position:absolute;margin-left:-2px;text-shadow:-1px 0 #c5c5c5;top:0;text-align:center;font-weight:100;color:#fff;background:#777171;overflow:hidden;clip:rect(0,900px,0,0);animation:noise-anim 2s infinite linear alternate-reverse}
 */
 
+
+
+
+
+.qotd-container {
+    margin-left: 166px;
+}
+
+.qotd .quote-text {
+    color: whitesmoke;
+    font-size: 12px;
+    text-align: center;
+    margin-top: 5px;
+    line-height: 100%;
+    font-style: italic;
+}
+
+.qotd .quote-of {
+    color: #c5c5c5;
+    font-size: 10px;
+    text-align: right;
+    margin-right: 166px;
+    margin-bottom: 5px;
+}
 
 
 

@@ -1,13 +1,23 @@
 # Release Notes: Table of Contents #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) 
+
+----
+
 Click on a version to see its release notes.
 
 **Latest version:**
 
-* [Version Lynx - September 2017](ReleaseNotes.Lynx.September.2017.md)
+* [Version Piranha - January 2018](ReleaseNotes.Piranha.January.2018.md)
 
 **Older versions:**
 
+* [Version Octopus - December 2017](ReleaseNotes.Octopus.December.2017.md)
+* [Version Nautilus - November 2017](ReleaseNotes.Nautilus.November.2017.md)
+* [Version Mono - November 2017](ReleaseNotes.Mono.November.2017.md)
+* [Version Lynx - September 2017](ReleaseNotes.Lynx.September.2017.md)
 * [Version Kingbird - September 2017](ReleaseNotes.Kingbird.September.2017.md)
 * [Version Jaguar - August 2017](ReleaseNotes.Jaguar.August.2017.md)
 * [Version Iguana - July 2017](ReleaseNotes.Iguana.July.2017.md)
@@ -25,3 +35,10 @@ Click on a version to see its release notes.
 * [Version Sept. 11 2016](ReleaseNotes.Sept.11.2016.md)
 * [Version Oct. 6 2016](ReleaseNotes.Oct.6.2016.md)
 * [Version Nov. 10 2016](ReleaseNotes.Nov.10.2016.md)
+
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) 
+
+----

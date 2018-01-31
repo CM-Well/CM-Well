@@ -1,5 +1,11 @@
 # Technical Decisions in CM-Well's Design #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Intro.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Intro.BriefHistoryOfCM-Well.md)
+
+----
+
 This page describes CM-Well's main technical features and design principles, the implementation options that were considered, and the decisions that were taken.
 
 [Open, Linked Data and Web Oriented Architecture](#hdr1)
@@ -64,6 +70,8 @@ CM-Well supports an "immutable data" paradigm, meaning that even though infotons
 This way, you have the option of both obtaining the up-to-the-minute information, while still being able to access historical versions for analytical purposes. 
 Historical versions allow you to examine changes in attribute values over time.
 
+----
 
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Intro.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Intro.BriefHistoryOfCM-Well.md)
 
-
+----

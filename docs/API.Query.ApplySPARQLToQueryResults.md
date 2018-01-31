@@ -1,5 +1,11 @@
 # Apply SPARQL to Query Results #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Query.QueryForInfotonsUsingFieldConditions.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Query.ApplySPARQLToEntireGraph.md)  
+
+----
+
 ## Description ##
 
 SPARQL (SPARQL Protocol and RDF Query Language - pronounced "sparkle") is an industry-standard query language designed to work with graph databases. It is similar in syntax to SQL.
@@ -103,3 +109,9 @@ show-graph | Shows the list of infotons, which are the result of the initial CM-
 ## Related Topics ##
 [Using SPARQL on CM-Well Infotons](DevGuide.UsingSPARQLOnCM-WellInfotons.md)
 
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Query.QueryForInfotonsUsingFieldConditions.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Query.ApplySPARQLToEntireGraph.md)  
+
+----

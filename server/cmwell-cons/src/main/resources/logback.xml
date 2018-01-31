@@ -1,0 +1,70 @@
+<configuration debug="false">
+    <!--
+    A shutdown hook to properly finalize the logger system.
+    In order to avoid race conditions between shutdown hooks (logs from another one won't be printed) there is
+    a delay of 5 seconds that allows other hooks to write logs.
+    This will cause the process shutdown to be delayed with 5 seconds.
+    -->
+    <shutdownHook class="ch.qos.logback.core.hook.DelayingShutdownHook">
+        <delay>5000</delay>
+    </shutdownHook>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${application.home:-.}/logs/application.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- daily rollover with compression -->
+            <fileNamePattern>${application.home:-.}/logs/application-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
+            <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>20GB</totalSizeCap>
+            <!-- in case of process terminating too early for rollover - do the rollover during start -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
+        </encoder>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
+    </appender>
+
+    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="FILE" />
+        <maxFlushTime>0</maxFlushTime>
+        <discardingThreshold>0</discardingThreshold>
+    </appender>
+
+    <appender name="AKKA_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/akka.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- daily rollover with compression -->
+            <fileNamePattern>logs/akka-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
+            <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>20GB</totalSizeCap>
+            <!-- in case of process terminating too early for rollover - do the rollover during start -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date{ISO8601} [%thread %X{sourceThread}] %-5level %logger{36} %X{sourceActorSystem} %X{akkaSource} - %msg%n</pattern>
+        </encoder>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
+    </appender>
+
+    <appender name="ASYNC_AKKA_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="AKKA_FILE" />
+        <maxFlushTime>0</maxFlushTime>
+        <discardingThreshold>0</discardingThreshold>
+    </appender>
+
+    <logger name="akka" additivity="true">
+        <appender-ref ref="ASYNC_AKKA_FILE" />
+    </logger>
+
+    <root level="${log.level:-INFO}">
+        <appender-ref ref="ASYNC_FILE" />
+    </root>
+    <jmxConfigurator />
+</configuration>

@@ -1,5 +1,11 @@
 # Using the CM-Well Ingester #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tools.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tools.UsingTheCM-WellDownloader.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tools.UsingTheSPARQLTriggerProcessor.md)  
+
+----
+
 ## What is the CM-Well Ingester? ##
 
 The CM-Well Ingester is a CM-Well utility for uploading infotons to CM-Well in bulk. Using the Ingester, you can upload data from a file, the standard input, or a customized input source. The Ingester processes several upload requests in parallel, up to a configurable limit.
@@ -30,7 +36,7 @@ The resulting shell script executables are created in ```cmwell-data-tools-app/t
 1. Navigate to the the **cmwell-ingester** directory under the tools root directory. It contains a file called **build.sbt**.
 2. Run the following command: ```sbt ingester/package```. 
 
-The resulting `cmwell-ingester_2.11-1.0.LOCAL.jar` file is created in `cmwell-data-tools/cmwell-ingester/target/scala-2.11/`.
+The resulting `cmwell-ingester_2.12-1.0.LOCAL.jar` file is created in `cmwell-data-tools/cmwell-ingester/target/scala-2.12/`.
 
 ## Running the CM-Well Ingester as an Executable ##
 
@@ -148,3 +154,8 @@ val source = StreamConverters.fromInputStream(new FileInputStream(file))
 Data chunks are split according to the `\n` character. Each frame is converted to a UTF-8 encoded string. Lines related to the same infoton must be grouped together in a single string. You can use the `cmwell.tools.data.util.chunkers.GroupChunker` class for this purpose. This class's constructor receives a function for grouping the lines. In this case, lines are grouped by having the same subject.
 
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tools.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tools.UsingTheCM-WellDownloader.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tools.UsingTheSPARQLTriggerProcessor.md)  
+
+----

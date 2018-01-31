@@ -1,5 +1,11 @@
 # Tutorial: Hands-On Exercises #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.Docker.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tutorial.Building.md)  
+
+----
+
 Here is a list of hands-on exercises that you can perform to familiarize yourself with CM-Well workflows. Each exercise contains actual commands and input data that you can send to CM-Well, and the actual responses you can expect to receive.
 
 The exercises are designed as **curl** commands using input from a text file, whose contents are provided.
@@ -23,3 +29,9 @@ The exercises are designed as **curl** commands using input from a text file, wh
 * [Subscribe for pulled data](Tutorial.HandsOnExercises.SubscribeForPulledData.md)
 * [Work with named sub-graphs](Tutorial.HandsOnExercises.WorkWithSubGraphs.md)
 * [Add a file infoton](Tutorial.HandsOnExercises.AddFileInfoton.md)
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.Docker.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tutorial.Building.md)  
+
+----

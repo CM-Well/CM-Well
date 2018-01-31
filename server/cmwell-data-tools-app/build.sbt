@@ -1,6 +1,5 @@
 name := "cmwell-data-tools-app"
 
-packSettings
 packJvmOpts := Map(
   "consumer"                   -> Seq("-Xmx1500m", "-XX:+UseG1GC"),
   "downloader"                 -> Seq("-Xmx1500m", "-XX:+UseG1GC"),

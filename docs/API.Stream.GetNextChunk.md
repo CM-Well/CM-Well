@@ -1,5 +1,11 @@
 # Function: *Get Next Chunk* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Stream.CreateIterator.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Stream.ConsumeNextBulk.md)  
+
+----
+
 ## Description ##
 
 If you wish to retrieve a large number of infotons, but you want to iterate over small "chunks" of data in a controlled fashion, you can use the **create-iterator** and **next-chunk** APIs. This allows you to request the number of infotons you want to process, and receive only that number during each iteration.
@@ -88,8 +94,14 @@ format | The output format of the streamed chunks. The default value is **ntripl
 
 ## Notes ##
 
-* **If the iteration process fails in the middle for any reason, you will have to restart the process from the beginning (that is, iterate again over all infotons that match the query).**
+* If the iteration process fails in the middle for any reason, you can retry the same request, as long as `session-ttl` has not passed. And in case the last iterator-id is no longer valid, you will have to restart the process from the beginning (that is, iterate again over all infotons that match the query).
 * An alternative is to use the **consumer** API, which allows you to save the iteration state and restart from the same point after a failure. See [Create Consumer](API.Stream.CreateConsumer.md) to learn more.
 
 ## Related Topics ##
 [Create Iterator](API.Stream.CreateIterator.md)
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Stream.CreateIterator.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Stream.ConsumeNextBulk.md)  
+
+----

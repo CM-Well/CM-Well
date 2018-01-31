@@ -1,5 +1,13 @@
 # Using SPARQL on CM-Well Infotons #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.SubscribingToReal-TimeUpdates.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.CallingJavaScalaFunctionsFromSPARQLQueries.md)  
+
+----
+
+**On this page:**
+
 [What is SPARQL?](#hdr1)
 
 [Using the CM-Well UI to Submit SPARQL Queries](#hdrUI)
@@ -122,7 +130,7 @@ You can also add several SPARQL queries to the same command, by separating them 
 
 ### Example 1: Retrieving One Field ###
 
-In our [example of how to use the yg parameter](API.TraversingOutboundAndInboundLinksWithXgAndYg.md), we were looking for the corporate address for a given RIC code. What we actually got in response to our regular CM-Well query was the infotons that were related to the RIC code. We still had to retrieve the corporate address information ourselves from the relevant field. By using SPARQL, we can cause CM-Well to handle that step. 
+In our [example of how to use the yg flag](API.Traversal.yg), we were looking for the corporate address for a given RIC code. What we actually got in response to our regular CM-Well query was the infotons that were related to the RIC code. We still had to retrieve the corporate address information ourselves from the relevant field. By using SPARQL, we can cause CM-Well to handle that step. 
 
 To retrieve the mdaas:headquartersCommonAddress value, we can use this SPARQL query:
 
@@ -610,3 +618,9 @@ Note that both construct **a** and construct **b** are applied.
 ## Using the SPARQL Trigger Processor Agent ##
 
 You may want to create a materialized view of certain infotons in an ongoing fashion, by running SPARQL queries and uploading their results. To do this, you can create a custom configuration file that is read and processed by the CM-Well SPARQL Trigger Processor Agent. See [Using the SPARQL Trigger Processor](Tools.UsingTheSPARQLTriggerProcessor.md) to learn more.
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.SubscribingToReal-TimeUpdates.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.CallingJavaScalaFunctionsFromSPARQLQueries.md)  
+
+----

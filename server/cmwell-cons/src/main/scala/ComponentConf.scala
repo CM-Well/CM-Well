@@ -410,7 +410,7 @@ case class ZookeeperConf(home : String, clusterName : String, servers : Seq[Stri
 
   override def mkScript: ConfFile = {
     val exports = s"export PATH=$home/app/java/bin:$home/bin/utils:$PATH"
-    val cp = s"cur/lib/slf4j-log4j12-1.6.1.jar:cur/lib/slf4j-api-1.6.1.jar:cur/lib/netty-3.7.0.Final.jar:cur/lib/log4j-1.2.16.jar:cur/lib/jline-0.9.94.jar:cur/zookeeper-3.4.6.jar:$home/conf/$dir"
+    val cp = s"cur/lib/slf4j-log4j12-1.6.1.jar:cur/lib/slf4j-api-1.6.1.jar:cur/lib/netty-3.7.0.Final.jar:cur/lib/log4j-1.2.16.jar:cur/lib/jline-0.9.94.jar:cur/zookeeper-${cmwell.util.build.BuildInfo.zookeeperVersion}.jar:$home/conf/$dir"
     val scriptString =
       s"""
          |$exports
@@ -622,7 +622,6 @@ case class CwConf(home : String, clusterName : String, dataCenter :String , host
       "cmwell.grid.min-members" -> s"$minMembers",
       "cmwell.grid.monitor.port" -> s"${PortManagers.cw.monitorPortManager.getPort(1)}",
       "cmwell.clusterName" -> s"$clusterName",
-      "cmwell.ws.nbg" -> s"$nbg",
       "dataCenter.id" -> s"$dataCenter",
       "ftsService.clusterName" -> s"$clusterName",
       "cmwell.home" -> s"$home",
@@ -684,6 +683,7 @@ case class WebConf(home : String, zookeeperServers : Seq[String], clusterName:St
       s"""export PATH=$home/app/java/bin:$home/bin/utils:$PATH
        |export HOST_NAME=${cmwell.util.os.Props.machineName}
        |${createExportEnvStr("PLAY_CRYPTO_SECRET").getOrElse("")}
+       |${createExportEnvStr("PLAY_CRYPTO_SECRET2").getOrElse("")}
        |$CHKSTRT
        |$BMSG
        |${genDebugStr(5010)}
@@ -704,9 +704,6 @@ case class WebConf(home : String, zookeeperServers : Seq[String], clusterName:St
       "cmwell.grid.min-members" -> s"$minMembers",
       "cmwell.grid.monitor.port" -> s"${PortManagers.ws.monitorPortManager.getPort(1)}",
       "cmwell.clusterName" -> s"$clusterName",
-      "cmwell.flag.newBG" -> s"$newBg",
-      "cmwell.flag.oldBG" -> s"$oldBg",
-      "cmwell.ws.nbg" -> s"$nbg",
       "dataCenter.id" -> s"$dataCenter",
       "kafka.zkServers" -> s"${zookeeperServers.map(zkServer => s"$zkServer:2181").mkString(",")}",
       "kafka.url" -> s"localhost:9092,${zookeeperServers.map(kafkaNode => s"$kafkaNode:9092").mkString(",")}",

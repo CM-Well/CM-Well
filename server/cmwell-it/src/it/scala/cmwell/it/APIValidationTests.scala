@@ -19,7 +19,6 @@ package cmwell.it
 import com.typesafe.config.ConfigFactory
 import org.scalatest._
 import cmwell.util.concurrent.travector
-import cmwell.util.http.SimpleResponse
 import cmwell.util.concurrent.SimpleScheduler.scheduleFuture
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.jena.graph.NodeFactory
@@ -28,12 +27,11 @@ import org.yaml.snakeyaml.Yaml
 import play.api.libs.json.Json
 
 import scala.xml._
-import scala.concurrent.{Await, Future, Promise}
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.language.{implicitConversions, reflectiveCalls}
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.io.Source
-import scala.util.{Failure, Success}
+import scala.util.Try
 
 class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with OptionValues with Helpers with LazyLogging {
 
@@ -41,7 +39,7 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
 
   val wsConfig = ConfigFactory.load("ws/application.conf")
 
-  val meta = cmw / "meta"
+  val metaSys = cmw / "meta" / "sys"
 
   describe("CM-Well REST API") {
 
@@ -85,14 +83,14 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
       import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
       val path = cmt / "SmallFile"
       val f = Http.post(path, "this is a small file", textPlain, headers = ("X-CM-WELL-TYPE" -> "FILE") :: tokenHeader)
-      f -> executeAfterCompletion(f)(scheduleFuture(indexingDuration)(Http.get(path)))
+      f -> executeAfterCompletion(f)(scheduleFuture(indexingDuration)(spinCheck(100.millis,true)(Http.get(path))(_.status)))
     }
     val (f10,f11) = {
       val path = cmt / "LargeFile"
       val data: Array[Byte] = Array.fill(8*1000*1024)(1.toByte)
       val checksum = cmwell.util.string.Hash.sha1(data)
       val f = Http.post(path, data, Some("application/octet-stream"), headers = ("X-CM-WELL-TYPE" -> "FILE") :: tokenHeader)
-      f -> executeAfterCompletion(f)(scheduleFuture(indexingDuration)(Http.get(path).map(_ -> checksum)))
+      f -> executeAfterCompletion(f)(scheduleFuture(indexingDuration)(spinCheck(100.millis,true)(Http.get(path))(_.status).map(_ -> checksum)))
     }
     val (f12,f13) = {
       val path = cmt / "ObjectInfotonWithoutContent"
@@ -129,12 +127,10 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
         body =  "Text content for File Infoton",
         contentType = textPlain,
         headers = ("X-CM-WELL-TYPE" -> "FILE") :: tokenHeader)
-      val fs = Future.sequence((0 to 30).foldLeft(List(f)) {
-        case (fl, i) =>
-          val nf = Http.post(cmt / s"fw-link-${i + 1}", s"/cmt/cm/test/fw-link-$i", textPlain, headers = ("X-CM-WELL-LINK-TYPE" -> "2") :: ("X-CM-WELL-TYPE" -> "LN") :: tokenHeader)
-          nf :: fl
-      })
-      fs -> executeAfterCompletion(fs)(scheduleFuture(indexingDuration)(Http.get(cmt / "fw-link-31")))
+      val fs = travector(0 to 30){ i =>
+        Http.post(cmt / s"fw-link-${i + 1}", s"/cmt/cm/test/fw-link-$i", textPlain, headers = ("X-CM-WELL-LINK-TYPE" -> "2") :: ("X-CM-WELL-TYPE" -> "LN") :: tokenHeader)
+      }
+      fs -> executeAfterCompletion(fs)(scheduleFuture(indexingDuration)(spinCheck(100.millis,true)(Http.get(cmt / "fw-link-31"))(_.status)))
     }
     val (f24,f25,f26,f27) = {
       val jsonObj = Json.obj("name" -> "TestObject", "title" -> "title1")
@@ -181,9 +177,9 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
       val path = cmt / "YetAnotherObjectInfoton"
       val data = """{"foo":["bar1","bar2"],"consumer":"cmwell:a/fake/internal/path"}"""
       val f = Http.post(path, data, Some("application/json;charset=utf-8"), headers = ("X-CM-WELL-TYPE" -> "OBJ") :: tokenHeader)
-      val g = executeAfterCompletion(f)(scheduleFuture(indexingDuration)(Http.get(path, List("format" -> "json"))))
-      val h = executeAfterCompletion(f)(scheduleFuture(indexingDuration)(Http.get(path, List("format" -> "yaml"))))
-      val i = executeAfterCompletion(f)(scheduleFuture(indexingDuration)(Http.get(path, List("format" -> "n3"))))
+      val g = executeAfterCompletion(f)(scheduleFuture(indexingDuration)(spinCheck(100.millis,true)(Http.get(path, List("format" -> "json")))(_.status)))
+      val h = executeAfterCompletion(f)(scheduleFuture(indexingDuration)(spinCheck(100.millis,true)(Http.get(path, List("format" -> "yaml")))(_.status)))
+      val i = executeAfterCompletion(f)(scheduleFuture(indexingDuration)(spinCheck(100.millis,true)(Http.get(path, List("format" -> "n3")))(_.status)))
       f -> g.zip(h.zip(i))
     }
 
@@ -310,19 +306,24 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
 
     describe("uuid consistency") {
 
-      it("should be able to post a new Infoton")(f33.map(_.status should be(200)))
+      it("should be able to post a new Infoton")(f33.map { res =>
+        withClue(res)(res.status should be(200))
+      })
 
       it("should be same uuid for json, yaml, and n3")(f34.map {
         case (jr,(yr,nr)) =>
-          val uuidFromJson = (Json.parse(jr.payload) \ "system" \ "uuid").asOpt[String]
+          val uuidFromJson = Try(Json.parse(jr.payload) \ "system" \ "uuid").toOption.flatMap(_.asOpt[String])
           val uuidFromYaml = new Yaml().load(yr.payload) ⚡ "system" ⚡ "uuid"
           val model: Model = ModelFactory.createDefaultModel
           model.read(nr.payload, null, "N3")
-          val it = model.getGraph.find(NodeFactory.createURI(cmt / "YetAnotherObjectInfoton"), NodeFactory.createURI(meta.url + "/sys#uuid"), null)
-          val uuidFromN3 = it.next().getObject.getLiteral.getLexicalForm
-
-          uuidFromJson.value should be(uuidFromYaml)
-          uuidFromJson.value should be(uuidFromN3)
+          val it = model.getGraph.find(NodeFactory.createURI(cmt / "YetAnotherObjectInfoton"), NodeFactory.createURI(metaSys ⋕ "uuid"), null)
+          val uuidFromN3 = {
+            if (it.hasNext) Some(it.next().getObject.getLiteral.getLexicalForm)
+            else None
+          }
+          withClue(jr)(uuidFromJson should not be empty)
+          withClue(yr)(uuidFromJson.value should be(uuidFromYaml))
+          withClue(nr)(uuidFromJson.value should be(uuidFromN3.value))
       })
     }
 

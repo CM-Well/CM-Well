@@ -21,7 +21,6 @@ import java.io.{FileOutputStream, InputStream}
 
 import sbt._
 import sbt.Keys._
-import com.github.israel.sbt.zookeeper.{ZookeeperPluginMeta => ZPM}
 import cmwell.build.util._
 
 /**
@@ -92,13 +91,13 @@ object SbtZookeeperPlugin extends sbt.AutoPlugin{
 
   private def isZookeeperRunning:Boolean = {
     val p = sys.runtime.exec("jps -l")
-    val lines = io.Source.fromInputStream(p.getInputStream).getLines()
+    val lines = scala.io.Source.fromInputStream(p.getInputStream).getLines()
     lines.exists(_.contains("org.apache.zookeeper.server.quorum.QuorumPeerMain"))
   }
 
   private def killZookeeper(force:Boolean = false)(implicit logger:Logger) = {
     val p = sys.runtime.exec("jps -l")
-    val lines = io.Source.fromInputStream(p.getInputStream).getLines()
+    val lines = scala.io.Source.fromInputStream(p.getInputStream).getLines()
     val pidOpt = lines.collectFirst({case s if (s.contains("org.apache.zookeeper.server.quorum.QuorumPeerMain")) => s.split(" ")(0)})
     pidOpt match {
       case Some(pid) =>
@@ -131,13 +130,13 @@ object SbtZookeeperPlugin extends sbt.AutoPlugin{
     startZookeeper := {
       val logger = streams.value.log
         logger.info("preparing to start ZooKeeper")
+      val depClasspath = (externalDependencyClasspath in Zookeeper).value
       if(isZookeeperRunning)
         logger.info("zookeeper is already running. doing nothing")
       else {
         val baseDir = zookeeperServerRunDir.value
         if (!baseDir.isDirectory)
           baseDir.mkdir()
-        val depClasspath = (externalDependencyClasspath in Zookeeper).value
         val classpath = Attributed.data(depClasspath)
         val serverConfigFile = zookeeperServerConfig.value
         if (!serverConfigFile.exists()) {

@@ -1,5 +1,11 @@
 # Calling Custom Java/Scala Functions from SPARQL Queries #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.UsingSPARQLOnCM-WellInfotons.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.UsingElasticSearchStatistics.md)  
+
+----
+
 You can write a custom function in Java or Scala, upload a Scala source file or Java/Scala jar file, and call the function from within your SPARQL query code. This allows you unlimited flexibility to manipulate the data resulting from a SPARQL query. 
 
 Here is a comparison between the two packaging options:
@@ -64,7 +70,7 @@ class Add42 extends org.apache.jena.sparql.function.Function {
 
 Let's assume we have compiled this code using the following build configuration, and packaged it as `Add42.jar`.
 ```
-scalaVersion := "2.11.7"
+scalaVersion := "2.12.4"
 
 libraryDependencies ++= Seq(
 	"org.apache.jena" % "jena-arq" % "3.0.1"
@@ -122,3 +128,9 @@ BIND( <jar:Add42>(?active) as ?res).
 } ORDER BY DESC(?name)'
 ```
 
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](DevGuide.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](DevGuide.UsingSPARQLOnCM-WellInfotons.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](DevGuide.UsingElasticSearchStatistics.md)  
+
+----

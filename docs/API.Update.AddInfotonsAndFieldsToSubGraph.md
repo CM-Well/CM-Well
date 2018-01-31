@@ -1,5 +1,11 @@
 # Function: *Add Infotons and Fields to a Sub-Graph* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Update.DeleteSpecificFieldValues.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Update.DeleteOrReplaceValuesInNamedSubGraph.md)  
+
+----
+
 ## Description ##
 
 Sometimes you may want to group some infotons and/or field values together under a specific label. The CM-Well feature that supports this is called a "named sub-graph", where the label is the name, and the sub-graph are the items in the Linked Data graph that have the specific label. In this case, relationships in the graph are represented not by triples but by quads, which include the subject, predicate, object and label (sub-graph name).
@@ -71,3 +77,9 @@ priority | If this flag appears in an update call, that call receives priority r
 [Working with Named Sub-Graphs](DevGuide.WorkingWithNamedSub-Graphs.md)
 [Delete and Replace Field Values in Named Sub-Graphs](API.Update.DeleteOrReplaceValuesInNamedSubGraph.md)
 
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Update.DeleteSpecificFieldValues.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Update.DeleteOrReplaceValuesInNamedSubGraph.md)  
+
+----

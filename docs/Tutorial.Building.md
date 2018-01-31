@@ -1,5 +1,12 @@
 # Building CM-Well #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercisesTOC.md)  
+
+----
+
+
 This tutorial describes how to build CM-Well from scratch. It assumes you don't have the source, scala or SBT installed but are comfortable with UNIX command line.
 
 >**Note:** All commands/output shown were tested on a Mac running 10.12.5. Your mileage may vary.
@@ -10,33 +17,31 @@ CM-Well requires the following prerequisite software to install.
 
 ### Scala ###
 
-Build and run is quite sensitive to the version of Scala. Currently, we build and test using Scala [2.11.11](https://www.scala-lang.org/download/2.11.11.html).
-
-As the download page explains, there are multiple ways to install Scala. For this tutorial, we used the [binaries](https://downloads.lightbend.com/scala/2.11.11/scala-2.11.11.tgz) directly. 
+Build and run is quite sensitive to the version of Scala. Currently, we build and test using Scala [2.12.4](https://www.scala-lang.org/download/2.12.4.html).
 
 Once you've unpackaged the download, move the folder to a convenient directory, noting that we have to make a slight change to the Scala install so best to use a dedicated copy for CM-Well. In this example, we install Scala to the home directory.
 
 Next, set your SCALA_HOME variable:
 ```
-$ export SCALA_HOME=~/scala-2.11.11
+$ export SCALA_HOME=~/scala-2.12.4
 ```
 
-Add the scala binary directory to your path
+Add the Scala binary directory to your path
 ```
-$ PATH=$PATH:$SCALA_HOME/bin;export $PATH
+$ PATH=$PATH:$SCALA_HOME/bin;export PATH
 ```
 
 Verify that scala is available and running:
 
 ```
 $ scala -version
-Scala code runner version 2.11.11 -- Copyright 2002-2017, LAMP/EPFL
+Scala code runner version 2.12.4 -- Copyright 2002-2017, LAMP/EPFL
 ```
 
 We currently have version conflict between the versions of Akka in CM-Well and Scala. The workaround until this is resolved is to delete the Akka JAR from Scala
 
 ```
-$ rm $SCALA_HOME/lib/akka-actor_2.11-2.3.16.jar
+$ rm $SCALA_HOME/lib/akka-actor_2.12-2.3.16.jar
 ```
 
 ### Install Scala Build Tool (SBT) ###
@@ -58,9 +63,9 @@ WARN: No sbt.version set in project/build.properties, base directory: /Users/TRn
 [info] Set current project to code (in build file:/Users/TRnonodename/Code/)
 [info] This is sbt 0.13.15
 [info] The current project is {file:/Users/TRnonodename/Code/}code 0.1-SNAPSHOT
-[info] The current project is built against Scala 2.10.6
+[info] The current project is built against Scala 2.12.4
 [info] Available Plugins: sbt.plugins.IvyPlugin, sbt.plugins.JvmPlugin, sbt.plugins.CorePlugin, sbt.plugins.JUnitXmlReportPlugin, sbt.plugins.Giter8TemplatePlugin
-[info] sbt, sbt plugins, and build definitions are using Scala 2.10.6
+[info] sbt, sbt plugins, and build definitions are using Scala 2.12.4
 ```
 ## Installing CM-Well ##
 
@@ -143,7 +148,7 @@ $ ./cmwell.sh
                          `.--:/+++++ooooo++/:-.`                                
                                  ````````                                       
                                                                                 
-Welcome to Scala 2.11.11 (Java HotSpot(TM) 64-Bit Server VM, Java 1.8.0_45).
+Welcome to Scala 2.12.4 (Java HotSpot(TM) 64-Bit Server VM, Java 1.8.0_45).
 Type in expressions for evaluation. Or try :help.
 ```
 
@@ -184,3 +189,10 @@ Then issue a :quit command to exit the console:
 ```
 scala> :quit
 ```
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercisesTOC.md)  
+
+----
+

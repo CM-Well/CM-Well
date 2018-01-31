@@ -26,10 +26,9 @@ import javax.inject._
 
 import cmwell.ws.Settings
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
 
-class AuthFilter @Inject()(authCache: AuthCache, authUtils: AuthUtils, authorization: Authorization)(implicit override val mat: Materializer, ec: ExecutionContext) extends Filter {
+class AuthFilter @Inject()(authCache: EagerAuthCache, authUtils: AuthUtils, authorization: Authorization)(implicit override val mat: Materializer, ec: ExecutionContext) extends Filter {
 
   private val useAuthorizationParam = java.lang.Boolean.getBoolean("use.authorization")
   private val irrelevantPaths = Set("/ii/", "/_")
@@ -68,18 +67,16 @@ class AuthFilter @Inject()(authCache: AuthCache, authUtils: AuthUtils, authoriza
       orElse(requestHeader.cookies.get("X-CM-WELL-TOKEN").map(_.value)).
       flatMap(Token(_,authCache))
 
-    val nbg = requestHeader.attrs(Attrs.Nbg)
-
     tokenOpt match {
-      case Some(token) if token.isValid(nbg) => {
-        authCache.getUserInfoton(token.username, nbg) match {
-          case Some(user) => withMsg(authorization.isAllowedForUser(request, user, nbg, Some(token.username)), "Authenticated but not authorized")
+      case Some(token) if token.isValid => {
+        authCache.getUserInfoton(token.username) match {
+          case Some(user) => withMsg(authorization.isAllowedForUser(request, user, Some(token.username)), "Authenticated but not authorized")
           case None if token.username == "root" || token.username == "pUser" => (true, "") // special case only required for cases when CRUD is not yet ready
           case None => (false, s"Username ${token.username} was not found in CM-Well")
         }
       }
       case Some(_) => (false, "given token is not valid (not signed or expired)")
-      case None => withMsg(authorization.isAllowedForAnonymousUser(request, nbg), "Not authorized, please login first")
+      case None => withMsg(authorization.isAllowedForAnonymousUser(request), "Not authorized, please login first")
     }
   }
 }

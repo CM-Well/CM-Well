@@ -33,7 +33,6 @@ import org.scalatest.{Ignore, Matchers}
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
 import collection.JavaConverters._
 
 @Ignore class SparqlTriggeredProcessorSpec extends BaseWiremockSpec {

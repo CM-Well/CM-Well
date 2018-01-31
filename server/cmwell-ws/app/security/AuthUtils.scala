@@ -26,16 +26,16 @@ import play.api.libs.json.{JsObject, JsString}
 import play.api.mvc.Request
 import security.PermissionLevel.PermissionLevel
 
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
-import scala.util.Random
+import scala.util.{Random, Try}
 
-class AuthUtils @Inject()(authCache: AuthCache, authorization: Authorization, crudServiceFS: CRUDServiceFS) {
-  def changePassword(token: Token, currentPw: String, newPw: String, nbg: Boolean): Future[Boolean] = {
-    if(!token.isValid(nbg)) {
+class AuthUtils @Inject()(authCache: EagerAuthCache, authorization: Authorization, crudServiceFS: CRUDServiceFS) {
+  def changePassword(token: Token, currentPw: String, newPw: String): Future[Boolean] = {
+    if(!token.isValid) {
       Future.successful(false)
     } else {
-      authCache.getUserInfoton(token.username, nbg) match {
+      authCache.getUserInfoton(token.username) match {
         case Some(user) if Authentication.passwordMatches(user, currentPw) => {
           val digestValue = newPw.bcrypt(generateSalt)
           val digest2Value = cmwell.util.string.Hash.md5(s"${token.username}:cmwell:$newPw")
@@ -61,40 +61,40 @@ class AuthUtils @Inject()(authCache: AuthCache, authorization: Authorization, cr
     jwtOpt.flatMap(Token(_,authCache))
   }
 
-  def isValidatedAs(tokenOpt: Option[Token], expectedUsername: String, nbg: Boolean) = tokenOpt.exists(token => token.isValid(nbg) && token.username == expectedUsername)
+  def isValidatedAs(tokenOpt: Option[Token], expectedUsername: String) = tokenOpt.exists(token => token.isValid && token.username == expectedUsername)
 
   //todo find a better name for this method
-  def filterNotAllowedPaths(paths: Iterable[String], level: PermissionLevel, tokenOpt: Option[Token], nbg: Boolean): Iterable[String] = {
+  def filterNotAllowedPaths(paths: Iterable[String], level: PermissionLevel, tokenOpt: Option[Token]): Iterable[String] = {
     val doesRequestContainWritesToMeta = paths.exists(isWriteToMeta(level, _))
     if (!useAuthorizationParam && !doesRequestContainWritesToMeta)
       return Seq()
 
     tokenOpt match {
-      case Some(token) if token.isValid(nbg) => {
-        authCache.getUserInfoton(token.username, nbg) match {
-          case Some(user) => paths.filterNot(path => authorization.isAllowedForUser((path, level), user, nbg))
+      case Some(token) if token.isValid => {
+        authCache.getUserInfoton(token.username) match {
+          case Some(user) => paths.filterNot(path => authorization.isAllowedForUser((path, level), user))
           case None if token.username == "root" || token.username == "pUser" => Seq() // special case only required for cases when CRUD is not yet ready
           case None => paths
         }
       }
-      case _ => paths.filterNot(p => authorization.isAllowedForAnonymousUser(p -> level, nbg))
+      case _ => paths.filterNot(p => authorization.isAllowedForAnonymousUser(p -> level))
     }
   }
 
-  def isOperationAllowedForUser(op: Operation, token: Option[Token], nbg: Boolean, evenForNonProdEnv: Boolean = false): Boolean = {
+  def isOperationAllowedForUser(op: Operation, token: Option[Token], evenForNonProdEnv: Boolean = false): Boolean = {
     if(!useAuthorizationParam && !evenForNonProdEnv)
       true
     else
-      getUser(token, nbg).exists(authorization.isOperationAllowedForUser(op, _, nbg))
+      getUser(token).exists(authorization.isOperationAllowedForUser(op, _))
   }
 
   // todo rather than boolean result, one can return (deep-)filtered Seq (multitanency)
-  def isContentAllowedForUser(infotons: Seq[Infoton], token: Option[Token], nbg: Boolean) = {
+  def isContentAllowedForUser(infotons: Seq[Infoton], token: Option[Token]) = {
     if(!useAuthorizationParam) {
       true
     } else {
       val fields = infotons.flatMap(_.fields).map(_.keySet).reduceLeft(_ ++ _)
-      getUser(token, nbg).exists(authorization.areFieldsAllowedForUser(fields, _))
+      getUser(token).exists(authorization.areFieldsAllowedForUser(fields, _))
     }
   }
 
@@ -109,9 +109,9 @@ class AuthUtils @Inject()(authCache: AuthCache, authorization: Authorization, cr
     level == PermissionLevel.Write && path.matches("/meta/.*") && !path.matches("/meta/sys/dc/.*")
   }
 
-  def invalidateAuthCache(nbg: Boolean): Boolean = authCache.invalidate(nbg)
+  def invalidateAuthCache(): Future[Boolean] = authCache.invalidate()
 
-  private def getUser(tokenOpt: Option[Token], nbg: Boolean) =
-    tokenOpt.collect{ case token if token.isValid(nbg) => authCache.getUserInfoton(token.username, nbg) }.flatten
+  private def getUser(tokenOpt: Option[Token]) =
+    tokenOpt.collect{ case token if token.isValid => authCache.getUserInfoton(token.username) }.flatten
 
 }

@@ -27,7 +27,7 @@ import cmwell.fts._
 import cmwell.syntaxutils._
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import com.typesafe.scalalogging.LazyLogging
-import controllers.{JenaUtils, NbgToggler, SpHandler}
+import controllers.{JenaUtils, SpHandler}
 import ld.query.{ArqCache, JenaArqExtensionsUtils}
 import logic.CRUDServiceFS
 import org.apache.jena.graph.impl.GraphBase
@@ -62,35 +62,31 @@ import scala.util.{Failure, Success, Try}
   * Created by yaakov on 11/30/15.
   */
 object JenaArqExtensions {
-  def get(n: JenaArqExtensionsUtils,o: JenaArqExtensionsUtils) = new JenaArqExtensions(n,o)
+  def get(jenaArqExtensionsUtils: JenaArqExtensionsUtils) = new JenaArqExtensions(jenaArqExtensionsUtils)
 }
 
-class JenaArqExtensions private(nJenaArqExtensionsUtils: JenaArqExtensionsUtils,oJenaArqExtensionsUtils: JenaArqExtensionsUtils) extends LazyLogging {
+class JenaArqExtensions private(jenaArqExtensionsUtils: JenaArqExtensionsUtils) extends LazyLogging {
   // init extension1
   val globalArqContext = ARQ.getContext
   val originalStageGenerator = globalArqContext.get(ARQ.stageGenerator).asInstanceOf[StageGenerator]
-  StageBuilder.setGenerator(globalArqContext, new SortingAndMappingStageGenerator(nJenaArqExtensionsUtils, oJenaArqExtensionsUtils, Option(originalStageGenerator)))
+  StageBuilder.setGenerator(globalArqContext, new SortingAndMappingStageGenerator(jenaArqExtensionsUtils, Option(originalStageGenerator)))
 
   // init extension2
   val factory = new EmbedLimitQueryEngineFactory()
   QueryEngineRegistry.addFactory(factory)
 
-  logger.info("JenaArqExtensions were applied.")
+  logger.debug("JenaArqExtensions were applied.")
 }
 
 /**
   * Sorting the basicPattern (list of triples) and also convert all predicates to server-repr (i.e. localName.hash)
   */
-class SortingAndMappingStageGenerator(nJenaArqExtensionsUtils: JenaArqExtensionsUtils, oJenaArqExtensionsUtils: JenaArqExtensionsUtils, original: Option[StageGenerator] = None) extends StageGenerator with LazyLogging {
+class SortingAndMappingStageGenerator(jenaArqExtensionsUtils: JenaArqExtensionsUtils, original: Option[StageGenerator] = None) extends StageGenerator with LazyLogging {
   override def execute(basicPattern: BasicPattern, queryIterator: QueryIterator, ec: JenaExecutionContext): QueryIterator = {
-    val nbg = ec.getContext.get[Boolean](JenaArqExtensionsUtils.nbgSymbol)
-    val jenaArqExtensionsUtils = {
-      if (nbg) nJenaArqExtensionsUtils
-      else oJenaArqExtensionsUtils
-    }
+
     ec.getActiveGraph match {
       case graph: CmWellGraph =>
-        logger.info(s"[arq][FLOW] execute was invoked with ${basicPattern.getList.length} triplePatterns")
+        logger.debug(s"[arq][FLOW] execute was invoked with ${basicPattern.getList.length} triplePatterns")
 
         val needToOptimize = basicPattern.getList.length > 1 && !graph.dsg.config.doNotOptimize
 
@@ -165,7 +161,6 @@ object DataFetcher {
 }
 
 trait DataFetcher {
-  def nbg: Boolean
   def crudServiceFS: CRUDServiceFS
   def config: Config
   def chunkSize: Int
@@ -213,13 +208,12 @@ trait DataFetcher {
 
 }
 
-class DataFetcherImpl(val config: Config, val crudServiceFS: CRUDServiceFS, val nbg: Boolean) extends DataFetcher {
+class DataFetcherImpl(val config: Config, val crudServiceFS: CRUDServiceFS) extends DataFetcher {
   val chunkSize = 100
   val singleGetThreshold = 512 // must be under 1000 (because "even google...")
 }
 
 //object DefaultDataFetcher extends DataFetcher {
-//  def nbg: Boolean = WorkerMain.nbgToggler.get
 //  def crudServiceFS: CRUDServiceFS = Option(WorkerMain.crudServiceFS) match {
 //    case Some(crud) => crud
 //    case None => throw new IllegalStateException("CRUDServiceFS defined in main(App) was null (lazy init crap...)")
@@ -233,7 +227,7 @@ class NamespaceException(msg: String) extends RuntimeException(msg: String) { ov
 
 class CmWellGraph(val dsg: DatasetGraphCmWell) extends GraphBase with LazyLogging {
 
-  logger.info("[arq][FLOW] CmWellGraph was instansiated")
+  logger.debug("[arq][FLOW] CmWellGraph was instansiated")
 
   override def graphBaseFind(triple: Triple): ExtendedIterator[Triple] = {
     val data = dsg.findInDftGraph(triple.getSubject, triple.getPredicate, triple.getObject).map(_.asTriple)
@@ -269,7 +263,6 @@ object Config {
 
 class DatasetGraphCmWell(val host: String,
                          val config: Config,
-                         nbg: Boolean,
                          crudServiceFS: CRUDServiceFS,
                          arqCache: ArqCache,
                          jenaArqExtensionsUtils: JenaArqExtensionsUtils,
@@ -289,7 +282,7 @@ class DatasetGraphCmWell(val host: String,
   protected val relativeEpochTime = System.currentTimeMillis()
   private val fmt : DateTimeFormatter = ISODateTimeFormat.hourMinuteSecondMillis
 
-  logger.info("[arq][FLOW] DatasetGraphCmWell was instansiated")
+  logger.debug("[arq][FLOW] DatasetGraphCmWell was instansiated")
 
   val msgs: ArrayBuffer[(String,String)] = ArrayBuffer()
   def logMsg(category: String, msg: String) = {
@@ -355,7 +348,7 @@ class DatasetGraphCmWell(val host: String,
           val allFieldsAsQuads: Iterator[Quad] = infotonToQuadIterator(i)
           allFieldsAsQuads.filter(q => if(p.isURI && p.getURI.startsWith(JenaArqExtensionsUtils.engineInternalUriPrefix)) containerPredicateMatches(p, q.getPredicate, q.getObject) else predicateMatches(p, q.getPredicate) && matches(o, q.getObject))
         }
-        case None => logger.info(s"[arq] could not retrieve infoton: $subject"); Iterator[Quad]()
+        case None => logger.debug(s"[arq] could not retrieve infoton: $subject"); Iterator[Quad]()
       }
     }
 
@@ -367,7 +360,7 @@ class DatasetGraphCmWell(val host: String,
       val cachedResults = arqCache.getSearchResults(cacheKey)
 
       if(cachedResults.nonEmpty) {
-        logger.info(s"Reusing caching results (amount = ${cachedResults.length}, key = $subVarName)")
+        logger.debug(s"Reusing caching results (amount = ${cachedResults.length}, key = $subVarName)")
         cachedResults.filter(quadFilter).toIterator
       } else new Iterator[Quad] {
         var count = 0
@@ -378,7 +371,7 @@ class DatasetGraphCmWell(val host: String,
         var nextChunk: Chunk = scroll()
 
         def startScroll = {
-          logger.info("[arq] Scrolling ")
+          logger.debug("[arq] Scrolling ")
 
 //          logVerboseMsg("Fetch", fieldFilter)
 
@@ -427,7 +420,7 @@ class DatasetGraphCmWell(val host: String,
       case (_, true, _) => doSearchAndFilterFields
       case (_, _, true) => doSearchAndFilterFields
       case _ => {
-        logger.info(s"unexpected STREAM From [ $s $p $o ]")
+        logger.debug(s"unexpected STREAM From [ $s $p $o ]")
         val errMsg = "Each triple-matching must have binding of a subject, a predicate or an object. If you'd like to download entire CM-Well's content, please use the Stream API"
         msgs += "Error" -> errMsg
         Iterator()

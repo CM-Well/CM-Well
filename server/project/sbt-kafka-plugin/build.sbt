@@ -6,7 +6,7 @@ name := "sbt-kafka-plugin"
 
 sbtPlugin := true
 
-addSbtPlugin("com.github.israel" % "sbt-zookeeper-plugin" % "0.1")
+addSbtPlugin("com.github.israel" % "sbt-zookeeper-plugin" % "0.2")
 
 sourceGenerators in Compile += task[Seq[File]] {
   val file =  (sourceManaged in Compile).value / "com" / "github" / "israel" / "sbt" / "kafka" / "BuildUtils.scala"

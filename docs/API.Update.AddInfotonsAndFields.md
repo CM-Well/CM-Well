@@ -1,5 +1,11 @@
 # Function: *Add Infotons and Fields* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Subscribe.Unsubscribe.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Update.ReplaceFieldValues.md)  
+
+----
+
 ## Description ##
 CM-Well allows you to create your own infotons and triples as well as read existing ones. You can create new infotons in CM-Well, and add their field values by adding triples with the new infoton as their subject. To do this, you send a POST command to the _in endpoint.entity
 
@@ -75,6 +81,7 @@ The result of the call above will simply be a success code. We can see the new i
 
 ## Notes ##
 
+* See [CM-Well Input and Output Formats](API.InputAndOutputFormats.md) to learn about the formats that CM-Well supports.
 * If you are creating new infotons (which represent new entities), you will need to consult with the Information Architecture team about naming conventions. 
 * If you add a value for a field that already exists, the first value is *not* overwritten. Instead, a second triple relationship is created, or in other word, another field with the same name and a different value is created. To learn how to overwrite a field value, see [Replace Field Values](API.Update.ReplaceFieldValues.md).
 * When adding a new field value, you must use the full URI field name format, and not the prefix format (see [Field Name Formats](API.FieldNameFormats.md)).
@@ -82,4 +89,11 @@ The result of the call above will simply be a success code. We can see the new i
 
 ## Related Topics ##
 [Replace Field Values](API.Update.ReplaceFieldValues.md)
+[CM-Well Input and Output Formats](API.InputAndOutputFormats.md)
 
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Subscribe.Unsubscribe.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Update.ReplaceFieldValues.md)  
+
+----

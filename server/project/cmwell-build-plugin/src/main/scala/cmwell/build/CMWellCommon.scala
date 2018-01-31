@@ -16,10 +16,11 @@
 package cmwell.build
 
 import sbt._
+import scala.concurrent.Future
 
 object CMWellCommon {
 
-  val release = "Mono"
+  val release = "Quetzal"
 
   object Tags {
     val ES = sbt.Tags.Tag("elasticsearch")
@@ -39,15 +40,11 @@ object CMWellCommon {
     }
   }
 
-  case class ProcessLoggerImpl(f: File) extends ProcessLogger {
-    private[this] val inner = scala.sys.process.ProcessLogger(
-      (o: String) => sbt.IO.append(f,s"[OUT]: $o\n"),
-      (e: String) => sbt.IO.append(f,s"[ERR]: $e\n"))
-
-    def info(s: => String) {inner.out(s)}
-    def error(s: => String) {inner.err(s)}
-    def buffer[T](f: => T): T = inner.buffer(f)
-  }
+//  case class ProcessLoggerImpl(f: File) extends ProcessLogger {
+//
+//    def out(o: => String) = sbt.IO.append(f, s"[OUT]: $o\n")
+//    def err(e: => String) = sbt.IO.append(f, s"[ERR]: $e\n")
+//  }
 
   def copyLogs(destinationDir: File, sourceDir: File): Unit = {
     val listLogs = sbt.IO.listFiles(new java.io.FileFilter{def accept(f: File): Boolean = f.getName.endsWith(".log") && f.isFile}) _
@@ -101,4 +98,14 @@ object CMWellCommon {
     })
     p.future
   }
+
+  def combineThrowablesAsCause(t1: Throwable, t2: Throwable)(f: Throwable => Throwable): Throwable =
+    f(Option(t1.getCause).fold(t1.initCause(t2)){ _ =>
+      Option(t2.getCause).fold(t2.initCause(t1)){ _ =>
+        t2
+      }
+    })
+
+  def combineThrowablesAsCauseAsync[T](t1: Throwable, t2: Throwable)(f: Throwable => Throwable): Future[T] =
+    Future.failed[T](combineThrowablesAsCause(t1,t2)(f))
 }

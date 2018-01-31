@@ -39,7 +39,6 @@ import org.joda.time.DateTime
 import org.scalatest.OptionValues._
 import org.scalatest._
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, _}
 import scala.io.Source
@@ -76,9 +75,9 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
 
   def executeAfterCompletion[T](f: Future[_], timeout: FiniteDuration = 5.minutes)(body: =>Future[T])(implicit ec: ExecutionContext): Future[T] = {
     val p = Promise[T]()
-    f.onComplete(_ => p.tryCompleteWith(body))
+    f.onComplete(_ => p.tryCompleteWith(body))(ec)
     if(timeout != Duration.Zero) {
-      schedule(timeout)(p.tryFailure(new Exception("timeout")))
+      schedule(timeout)(p.tryFailure(new Exception("timeout")))(ec)
     }
     p.future
   }
@@ -318,7 +317,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
         }.toMap
 
         logger.info(s"waiting for 5 seconds for $recordMetaDataSeq")
-        cmwell.util.concurrent.retryUntil[cmwell.util.Box[Infoton]]({ bi =>
+        cmwell.util.concurrent.unsafeRetryUntil[cmwell.util.Box[Infoton]]({ bi =>
           bi.isDefined && bi.get.fields.fold(false)(_.size == 20)
         }, 30, 1.second) {
           irwService.readPathAsync(infotonPath, ConsistencyLevel.QUORUM)
@@ -694,11 +693,11 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
           datesFilter = None,
           paginationParams = DefaultPaginationParams,
           withHistory = true
-        ).flatMap { res =>
+        )(ec,logger).flatMap { res =>
           if (res.total >= numOfVersionsToExpect) Future.successful(res)
           else if(System.currentTimeMillis() - startTime > 30000L) Future.failed(new IllegalStateException(s"Waited for over 30s, last res: ${res.toString}"))
           else scheduleFuture(1.second)(waitForItInner())
-        }
+        }(ec)
       }
       waitForItInner()
     }

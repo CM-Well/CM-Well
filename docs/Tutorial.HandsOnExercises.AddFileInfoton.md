@@ -1,5 +1,11 @@
 # Hands-On Exercise: Add a File Infoton #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.HandsOnExercisesTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercises.WorkWithSubGraphs.md)  
+
+----
+
 **Action:** Add an image file to CM-Well.
 
 >**Note:** Before running the curl command, create the file: `c:\mypath\test.png`. After running the curl command, browse to \<cm-well-host\>/exercise/files/test.png and verify that the file was uploaded.
@@ -40,3 +46,9 @@ Two more complex examples, a [query builder](./examples/search_builder.html), an
 ## API Reference ##
 [Add File Infoton](API.Update.AddFileInfoton.md)
 
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.HandsOnExercisesTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercises.WorkWithSubGraphs.md)  
+
+----

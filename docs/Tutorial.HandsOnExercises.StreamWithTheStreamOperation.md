@@ -1,5 +1,11 @@
 # Hands-On Exercise: Stream with the Stream Operation #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.HandsOnExercisesTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercises.QueryWithGremlin.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tutorial.HandsOnExercises.StreamWithIterator.md)  
+
+----
+
 **Action:** Stream all infotons whose type is Organization from the permid.org path in CM-Well. Display only their CommonName triples. You can run this command in a command-line window. Streaming will continue until you abort the operation (e.g. using ctrl-C).
 
 **Curl command:**
@@ -54,3 +60,10 @@
         
 ## API Reference ##
 [Stream Infotons](API.Stream.StreamInfotons.md)
+
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.HandsOnExercisesTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercises.QueryWithGremlin.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tutorial.HandsOnExercises.StreamWithIterator.md)  
+
+----

@@ -10,7 +10,7 @@ rm kibana-4.1.1-linux-x64.tar.gz;
 
 wget http://builder/logstash/logstash-2.1.1.tar.gz;
 wget http://builder/logstash/kibana-4.1.1-linux-x64.tar.gz;
-wget http://downloads.lightbend.com/scala/2.11.11/scala-2.11.11.tgz;
+wget http://downloads.lightbend.com/scala/2.12.4/scala-2.12.4.tgz;
 wget http://builder/java/jdk-8u66-linux-x64.tar.gz;
 
-cd -" 2> /dev/null
+cd -"

@@ -19,7 +19,7 @@ package controllers
 import cmwell.domain._
 import cmwell.formats._
 import cmwell.fts._
-import cmwell.ws.Streams
+import cmwell.ws.{Settings, Streams}
 import cmwell.ws.adt.{BulkConsumeState, ConsumeState}
 import cmwell.ws.util._
 import logic.CRUDServiceFS
@@ -36,6 +36,7 @@ import com.typesafe.scalalogging.LazyLogging
 import cmwell.syntaxutils._
 import cmwell.web.ld.cmw.CMWellRDFHelper
 import cmwell.ws.Streams.Flows
+import cmwell.ws.util.TypeHelpers.asInt
 import filters.Attrs
 import play.api.http.Writeable
 
@@ -49,8 +50,6 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
                                   formatterManager: FormatterManager,
                                   action: DefaultActionBuilder,
                                   components: ControllerComponents)(implicit ec: ExecutionContext) extends AbstractController(components) with LazyLogging with TypeHelpers {
-
-//  def cache(nbg: Boolean) = if(nbg) crudServiceFS.nbgPassiveFieldTypesCache else crudServiceFS.obgPassiveFieldTypesCache
 
   //consts
   val paginationParamsForSingleResult = PaginationParams(0, 1)
@@ -195,7 +194,7 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
     }
   }
 
-  def getFormatter(request: Request[AnyContent], withHistory: Boolean, nbg: Boolean) = {
+  def getFormatter(request: Request[AnyContent], withHistory: Boolean) = {
 
     (extractInferredFormatWithData(request) match {
       case (fmt,b) if Set("text", "path", "tsv", "tab", "nt", "ntriples", "nq", "nquads")(fmt.toLowerCase) || fmt.toLowerCase.startsWith("json") => Success(fmt -> b)
@@ -234,8 +233,7 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
             withData = withData,
             withoutMeta = !withMeta,
             filterOutBlanks = true,
-            forceUniqueness = forceUniqueness,
-            nbg = nbg
+            forceUniqueness = forceUniqueness
           ) -> withData.isDefined
         }
       }
@@ -273,8 +271,6 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
       }
     }
 
-    val nbg = request.attrs(Attrs.Nbg)
-
     currStateEither match {
       case Left(err) => Future.successful(BadRequest(err))
       case Right(stateFuture) => stateFuture.flatMap {
@@ -291,27 +287,28 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
                            |withRecursive    = $r """.stripMargin)
           }
 
-          getFormatter(request, h, nbg) match {
+          getFormatter(request, h) match {
             case Failure(exception) => Future.successful(BadRequest(exception.getMessage))
             case Success((formatter, withData)) => {
 
               // Gets a scroll source according to received HTTP request parameters
               def getScrollSource() = {
                 (if (wasSupplied("slow-bulk")) {
-                  streams.scrollSource(nbg,
+                  streams.scrollSource(
                     pathFilter = createPathFilter(path, r),
                     fieldFilters = Option(fieldsFiltersFromTimeframeAndOptionalFilters(from, to, ffOpt)),
                     withHistory = h,
                     withDeleted = d)
                 } else {
-                  streams.superScrollSource(nbg,
+                  streams.superScrollSource(
                     pathFilter = createPathFilter(path, r),
                     fieldFilter = Option(fieldsFiltersFromTimeframeAndOptionalFilters(from, to, ffOpt)),
                     withHistory = h,
-                    withDeleted = d)
+                    withDeleted = d,
+                    parallelism = request.getQueryString("parallelism").flatMap(asInt).getOrElse(Settings.sstreamParallelism))
                 }).map { case (src, hits) =>
                   val s: Source[Infoton, NotUsed] = {
-                    if (withData) src.via(Flows.iterationResultsToFatInfotons(nbg, crudServiceFS))
+                    if (withData) src.via(Flows.iterationResultsToFatInfotons(crudServiceFS))
                     else src.via(Flows.iterationResultsToInfotons)
                   }
                   hits -> s
@@ -338,10 +335,10 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
     }
   }
 
-//  def parseQpFromRequest(qp: String, nbg: Boolean)(implicit ec: ExecutionContext): Future[Option[FieldFilter]] = {
+//  def parseQpFromRequest(qp: String)(implicit ec: ExecutionContext): Future[Option[FieldFilter]] = {
 //    FieldFilterParser.parseQueryParams(qp) match {
 //      case Failure(err) => Future.failed(err)
-//      case Success(rff) => RawFieldFilter.eval(rff,cache(nbg),cmwellRDFHelper,nbg).map(Option.apply)
+//      case Success(rff) => RawFieldFilter.eval(rff,cache,cmwellRDFHelper).map(Option.apply)
 //    }
 //  }
 

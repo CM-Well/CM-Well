@@ -16,7 +16,6 @@
 
 package cmwell.it
 
-import cmwell.util.concurrent.SimpleScheduler.scheduleFuture
 import cmwell.util.concurrent._
 import cmwell.util.http.SimpleResponse
 import cmwell.util.string.Hash._
@@ -153,35 +152,18 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
                        |        vcard:NOTE        "some other note" , "1st note" .
                      """.stripMargin
 
-      def futureToWaitFor(httpReq: =>Future[SimpleResponse[Array[Byte]]], expectedTotal: Int) = {
-        val timestamp = System.currentTimeMillis()
-        def recurse(): Future[SimpleResponse[Array[Byte]]] = {
-          httpReq.flatMap { res =>
-            Json.parse(res.payload) \ "results" \ "total" match {
-              case JsDefined(JsNumber(n)) if n.intValue() == expectedTotal => Future.successful(res)
-              case _ if System.currentTimeMillis()-timestamp > 24000L => Future.failed(new Exception(s"failed to wait within timeout. last response: $res"))
-              case _ => scheduleFuture(990.millis)(recurse())
-            }
-          }
-        }
-
-        recurse()
-      }
-
       //Assertions
       val verifyingIndexingBugFixed = executeAfterIndexing {
         val req = () => Http.get(cmw / "www.example.net", List("op" -> "search", "with-descendants" -> "true", "format" -> "json"))
-        futureToWaitFor(req(),4).map { res =>
+        spinCheck(100.millis,true)(req())(r => (Json.parse(r.payload) \ "results" \ "total").as[Long] == 4L).map { res =>
           withClue(s"got response:\n$res") {
             (Json.parse(res.payload) \ "results" \ "total").as[Long] should be(4L)
           }
-        }.recover {
-          case e@FutureTimeout(_) => fail("failed to get 4 results (2 infotons + 2 parent dirs) within the specified timeout",e)
         }
       }
 
       val verifyingOldNSAsJson = executeAfterIndexing {
-        Http.get(pathForOldNS, List("format" -> "json")).map { res =>
+        spinCheck(100.millis,true)(Http.get(pathForOldNS, List("format" -> "json")))(_.status).map { res =>
           Json.parse(res.payload)
             .transform((__ \ 'system \ 'indexTime).json.prune andThen fieldsSorter)
             .get shouldEqual expectedJsonForOldNS
@@ -199,7 +181,7 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
 <http://data.thomsonreuters.com/4-bd6d205c9e5f926f5f1b64ced180d1b3b7d7d4bae4632588d885c4e70585c00b> <http://www.w3.org/2006/vcard/ns#street-address> "710 N Post Oak Rd # 400" .
           """.trim.lines.toSeq.map(_.trim).sorted.mkString("\n")
         executeAfterIndexing {
-          Http.get(pathForOldNS, List("format" -> "ntriples")).map { res =>
+          spinCheck(100.millis,true)(Http.get(pathForOldNS, List("format" -> "ntriples")))(_.status).map { res =>
 
             //status should be OK
             res.status should be >= 200
@@ -217,14 +199,16 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
       }
 
       val failedSearchDueToAmbiguity = executeAfterIndexing {
-        Http.get(
+        spinCheck(100.millis,true)(Http.get(
           exampleNetPath,
           List("op" -> "search", "qp" -> "NOTE.vcard:note", "with-descendants" -> "true", "with-data" -> "true", "format" -> "n3")
-        ).map(_.status shouldEqual 422)
+        ))(_.status == 422).map(_.status shouldEqual 422)
       }
 
       val explicitNSSearchSuccess = executeAfterIndexing {
-        Http.get(exampleNetPath, List("op" -> "search", "qp" -> s"NOTE.$$${ns.vcard}:note", "with-descendants" -> "true", "with-data" -> "true", "format" -> "n3")).map { res =>
+        spinCheck(100.millis,true)(
+          Http.get(exampleNetPath, List("op" -> "search", "qp" -> s"NOTE.$$${ns.vcard}:note", "with-descendants" -> "true", "with-data" -> "true", "format" -> "n3"))
+        )(_.status).map { res =>
           val s = new String(res.payload, "UTF-8")
           withClue(s) {
             res.status should be >= 200
@@ -235,7 +219,9 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
       }
 
       val fullNSByURISearchSuccess = executeAfterIndexing {
-        Http.get(exampleNetPath, List("op" -> "search", "qp" -> "$http://www.w3.org/2006/vcard/ns#NOTE$:note", "with-descendants" -> "true", "with-data" -> "true","format" -> "n3")).map{res =>
+        spinCheck(100.millis,true)(
+          Http.get(exampleNetPath, List("op" -> "search", "qp" -> "$http://www.w3.org/2006/vcard/ns#NOTE$:note", "with-descendants" -> "true", "with-data" -> "true","format" -> "n3"))
+        )(_.status).map{res =>
           res.status should be >= 200
           res.status should be < 400 //status should be OK
           compareRDFwithoutSys(expectedN3BeforeRel2, new String(res.payload, "UTF-8"), "N3") should be(true)
@@ -243,14 +229,16 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
       }
 
       val nestedQueriesSearch = executeAfterIndexing {
-        val f = Http.get(exampleNetPath, List(
+        val f = spinCheck(100.millis,true)(Http.get(exampleNetPath, List(
           "op" -> "search",
           "qp" -> "*[$http://www.w3.org/2006/vcard/ns#NOTE$:note,$http://www.w3.org/2006/vcard/ns#FN$:John],*[$http://www.w3.org/2006/vcard/ns#POSTAL-CODE$::12345,$http://www.w3.org/2006/vcard/ns#COUNTRY-NAME$::USA]",
           "with-descendants" -> "true",
           "with-data" -> "true",
-          "format" -> "n3"))
+          "format" -> "n3")))(_.status)
 
-        f.map(res => compareRDFwithoutSys(expectedN3BeforeRel2, new String(res.payload,"UTF-8"), "N3") should be(true)).recoverWith {
+        f.map(res => withClue(res){
+          compareRDFwithoutSys(expectedN3BeforeRel2, new String(res.payload,"UTF-8"), "N3") should be(true)
+        }).recoverWith {
           case t: Throwable => f.map(res => new String(res.payload,"UTF-8")).map { s =>
             fail(s)
           }
@@ -269,7 +257,7 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
 
       val getJohnSmithThroughII = executeAfterIndexing {
         val path = cmw / "www.example.net" / "Individuals" / "JohnSmith"
-        Http.get(path, List("format" -> "json")).flatMap(res =>  {
+        spinCheck(100.millis,true)(Http.get(path, List("format" -> "json")))(_.status).flatMap(res =>  {
           val json1 = Json.parse(res.payload)
           val uuid = (json1 \ "system" \ "uuid").as[String]
           Http.get(cmw / "ii" / uuid, List("format" -> "json")).map(res => Json.parse(res.payload)).map{json2 =>
@@ -295,7 +283,7 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
              |}
         """.stripMargin)
         val vp = cmw / "clearforest.com" / "pe" / "VP"
-        Http.get(vp, List("format" -> "json")).map { res =>
+        spinCheck(100.millis,true)(Http.get(vp, List("format" -> "json")))(_.status).map { res =>
           val json = Json
             .parse(res.payload)               //blank node is unknown
             .transform(uuidDateEraser andThen (__ \ 'fields \ s"N.vcard").json.prune)
@@ -324,7 +312,7 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
                                      |}
                                   """.stripMargin)
         val path = metaNs / hash
-        Http.get(path, List("format" -> "json")).map { res =>
+        spinCheck(100.millis,true)(Http.get(path, List("format" -> "json")))(_.status).map { res =>
           Json
             .parse(res.payload)
             .transform(uuidDateEraser)
@@ -380,8 +368,9 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
 
       //Assertions
       val jSmithExplicitXg = executeAfterIndexing {
-        Http.get(jSmith, List("format" -> "json", "xg" -> s"ADR.$$${ns.vcard}")).map { res =>
+        spinCheck(100.millis,true)(Http.get(jSmith, List("format" -> "json", "xg" -> s"ADR.$$${ns.vcard}")))(_.status).map { res =>
           withClue(res) {
+            res.status should be(200)
             Json
               .parse(res.payload)
               .transform(bagUuidDateEraserAndSorter)
@@ -390,8 +379,9 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
         }
       }
       val jSmithFullNsURIXg = executeAfterIndexing {
-        Http.get(jSmith, List("format" -> "json", "xg" -> "$http://www.w3.org/2006/vcard/ns#ADR$")).map { res =>
+        spinCheck(100.millis,true)(Http.get(jSmith, List("format" -> "json", "xg" -> "$http://www.w3.org/2006/vcard/ns#ADR$")))(_.status).map { res =>
           withClue(res) {
+            res.status should be(200)
             Json
               .parse(res.payload)
               .transform(bagUuidDateEraserAndSorter)
@@ -400,11 +390,16 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
         }
       }
       val jSmithImplicitXg = executeAfterIndexing {
-        Http.get(jSmith, List("format" -> "json", "xg" -> "ADR.vcard")).map(_.status shouldEqual 422)
+        spinCheck(100.millis,true)(
+          Http.get(jSmith, List("format" -> "json", "xg" -> "ADR.vcard"))
+        )(_.status == 422).map(_.status shouldEqual 422)
       }
       val jSmithExplicitBulkXg = executeAfterIndexing {
-        Http.post(_out, "/www.example.net/Individuals/JohnSmith", Some("text/plain;charset=UTF-8"), List("format" -> "json", "xg" -> s"*.$$${ns.vcard}"), tokenHeader).map { res =>
+        spinCheck(100.millis,true)(
+          Http.post(_out, "/www.example.net/Individuals/JohnSmith", Some("text/plain;charset=UTF-8"), List("format" -> "json", "xg" -> s"*.$$${ns.vcard}"), tokenHeader)
+        )(_.status).map { res =>
           withClue(res) {
+            res.status should be(200)
             Json
               .parse(res.payload)
               .transform(bagUuidDateEraserAndSorter)
@@ -413,7 +408,9 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
         }
       }
       val jSmithImplicitBulkXg = executeAfterIndexing {
-        jSmithUnderscoreOut().map(_.status shouldEqual 422)
+        spinCheck(100.millis,true)(
+          jSmithUnderscoreOut()
+        )(_.status == 422).map(_.status shouldEqual 422)
       }
 
       //changing the data
@@ -437,7 +434,7 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
       def executeAfterIndexing2[T](body: =>Future[T]): Future[T] = indexingWaitingFuture2.flatMap(_ => body)
 
       val jSmithImplicitXgSuccess = executeAfterIndexing2 {
-        Http.get(jSmith, List("format" -> "json", "xg" -> "ADR.vcard")).map { res =>
+        spinCheck(100.millis,true)(Http.get(jSmith, List("format" -> "json", "xg" -> "ADR.vcard")))(_.status).map { res =>
           lazy val clue = new String(res.payload, "UTF-8")
           withClue(res -> clue) {
             Try {
@@ -452,7 +449,7 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
         }
       }
       val jSmithImplicitBulkXgSuccess = executeAfterIndexing2 {
-        jSmithUnderscoreOut().map { res =>
+        spinCheck(100.millis,true)(jSmithUnderscoreOut())(_.status).map { res =>
           lazy val clue = new String(res.payload, "UTF-8")
           withClue(res -> new String(res.payload, "UTF-8")) {
             Try {

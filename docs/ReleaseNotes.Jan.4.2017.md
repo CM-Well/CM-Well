@@ -1,5 +1,11 @@
 # CM-Well Version Release Notes - Jan. 4 2017 #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](ReleaseNotes.Dec.15.2016.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](ReleaseNotes.Jan.17.2016.md)  
+
+----
+
 ## Change Summary ##
 The changes in this release include bug fixes and infrastructure improvements only - see next section.
 
@@ -18,3 +24,9 @@ The changes in this release include bug fixes and infrastructure improvements on
 None.
 
 
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](ReleaseNotes.Dec.15.2016.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](ReleaseNotes.Jan.17.2016.md)  
+
+----

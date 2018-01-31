@@ -346,6 +346,9 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
       }
       FTSThinSearchResponse(response.getHits.getTotalHits, paginationParams.offset, response.getHits.getHits.size,
         esResponseToThinInfotons(response, sortParams eq NullSortParam), searchQueryStr = searchQueryStr)
+    }.andThen {
+      case Failure(err) =>
+        logger.error(s"thinSearch failed, time took: [$oldTimestamp - ${System.currentTimeMillis()}], request:\n${request.toString}")
     }
   }
 
@@ -522,7 +525,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
                        datesFilter: Option[DatesFilter],
                        paginationParams: PaginationParams, scrollTTL: Long,
                        withHistory: Boolean, withDeleted: Boolean)
-                      (implicit executionContext:ExecutionContext): Seq[Future[FTSStartScrollResponse]] = {
+                      (implicit executionContext:ExecutionContext): Seq[() => Future[FTSStartScrollResponse]] = {
 
     val ssr = client.admin().cluster().prepareSearchShards(s"${defaultPartition}_all").setTypes("infoclone").execute().actionGet()
 
@@ -532,7 +535,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
     })
 
     targetedShards.map{ case (index, node, shard) =>
-      startShardScroll(pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted, paginationParams.offset,
+      () => startShardScroll(pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted, paginationParams.offset,
         paginationParams.length, scrollTTL, index, node, shard)
     }
   }
@@ -1025,7 +1028,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
     }
   }
 
-  def getLastIndexTimeFor(dc: String, partition: String, fieldFilters: Option[FieldFilter])
+  override def getLastIndexTimeFor(dc: String, withHistory: Boolean, partition: String, fieldFilters: Option[FieldFilter])
                          (implicit executionContext:ExecutionContext): Future[Option[Long]] = {
 
     val request = client
@@ -1043,7 +1046,8 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
       request,
       None,
       Some(MultiFieldFilter(Must, fieldFilters.fold(filtersSeq)(filtersSeq.::))),
-      None
+      None,
+      withHistory = withHistory
     )
 
     injectFuture[SearchResponse](request.execute).map{ sr =>
@@ -1189,22 +1193,45 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
     }
   }
 
-  private def injectFuture[A](f: ActionListener[A] => Unit, timeout : Duration = FiniteDuration(10, SECONDS))
+  private def injectFuture[A](f: ActionListener[A] => Unit, timeout: Duration = Duration.Inf)
                              (implicit executionContext:ExecutionContext, logger:Logger = loger) = {
     val p = Promise[A]()
-    f(new ActionListener[A] {
-      def onFailure(t: Throwable): Unit = {
-        logger.error("Exception from ElasticSearch.",t)
-        if(!p.isCompleted) {
-          p.failure(t)
+    val timestamp = System.currentTimeMillis()
+
+    val actionListener: ActionListener[A] = {
+      if (timeout.isFinite()) {
+        val task = TimeoutScheduler.tryScheduleTimeout(p, timeout)
+        new ActionListener[A] {
+          def onFailure(t: Throwable): Unit = {
+            task.cancel()
+            if(!p.tryFailure(t))
+              logger.error(s"Exception from ElasticSearch (future timed out externally, response returned in [${System.currentTimeMillis() - timestamp}ms])", t)
+          }
+
+          def onResponse(res: A): Unit = {
+            task.cancel()
+            if(p.trySuccess(res))
+              logger.trace(s"Response from ElasticSearch [took ${System.currentTimeMillis() - timestamp}ms]:\n${res.toString}")
+            else
+              logger.error(s"Response from ElasticSearch (future timed out externally, response returned in [${System.currentTimeMillis() - timestamp}ms])\n${res.toString}")
+          }
         }
       }
-      def onResponse(res: A): Unit =  {
-        logger.debug("Response from ElasticSearch:\n%s".format(res.toString))
-        p.success(res)
+      else new ActionListener[A] {
+        def onFailure(t: Throwable): Unit = {
+          logger.error(s"Exception from ElasticSearch (no timeout, response returned in [${System.currentTimeMillis() - timestamp}ms])", t)
+          p.failure(t)
+        }
+
+        def onResponse(res: A): Unit = {
+          logger.trace(s"Response from ElasticSearch [took ${System.currentTimeMillis() - timestamp}ms]:\n${res.toString}")
+          p.success(res)
+        }
       }
-    })
-    TimeoutFuture.withTimeout(p.future, timeout)
+    }
+
+    f(actionListener)
+    p.future
   }
 
   def countSearchOpenContexts(): Array[(String,Long)] = {
@@ -1217,10 +1244,19 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
 
   object TimeoutScheduler {
     val timer = new HashedWheelTimer(10, TimeUnit.MILLISECONDS)
-    def scheduleTimeout(promise:Promise[_], after:Duration) = {
+
+    def scheduleTimeout(promise: Promise[_], after: Duration) = {
       timer.newTimeout(new TimerTask {
-        override def run(timeout:Timeout) = {
+        override def run(timeout: Timeout) = {
           promise.failure(new TimeoutException("Operation timed out after " + after.toMillis + " millis"))
+        }
+      }, after.toNanos, TimeUnit.NANOSECONDS)
+    }
+
+    def tryScheduleTimeout[T](promise: Promise[T], after: Duration) = {
+      timer.newTimeout(new TimerTask {
+        override def run(timeout: Timeout) = {
+          promise.tryFailure(new TimeoutException("Operation timed out after " + after.toMillis + " millis"))
         }
       }, after.toNanos, TimeUnit.NANOSECONDS)
     }

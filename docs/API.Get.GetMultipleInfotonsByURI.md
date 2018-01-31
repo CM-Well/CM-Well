@@ -1,5 +1,11 @@
 # Function: *Get Multiple Infotons by URI* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Get.GetSingleInfotonByURI.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Get.GetSingleInfotonByUUID.md)  
+
+----
+
 ## Description ##
 Retrieve multiple infotons, by URI, in the same query.
 
@@ -61,3 +67,8 @@ Use the PUT verb as well as the POST verb when directing a call to the _out endp
 ## Related Topics ##
 [Retrieve Single Infoton by URI](API.Get.GetSingleInfotonByURI.md)
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Get.GetSingleInfotonByURI.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Get.GetSingleInfotonByUUID.md)  
+
+----

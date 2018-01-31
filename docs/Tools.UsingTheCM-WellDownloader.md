@@ -1,5 +1,11 @@
 # Using CM-Well Downloader #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tools.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tools.UsingCM-WellDocker.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tools.UsingTheCM-WellIngester.md)  
+
+----
+
 ## What is CM-Well Downloader? ##
 CM-Well Downloader is a CM-Well utility for downloading infotons from CM-Well in bulk. You can run CM-Well Downloader as an alternative to calling the CM-Well streaming API from your own application. Using CM-Well Downloader is faster because its design optimizes performance for bulk downloads.
 
@@ -39,7 +45,7 @@ The resulting shell script executables are created in the ```cmwell-data-tools-a
 1. Navigate to the the **cmwell-downloader** directory under the data tools root directory. It contains a file called **build.sbt**.
 2. Run the following command: ```sbt downloader/package```.
 
-The resulting `cmwell-downloader_2.11-1.0.LOCAL.jar` file is created in `cmwell-data-tools/cmwell-downloader/target/scala-2.11/`.
+The resulting `cmwell-downloader_2.12-1.0.LOCAL.jar` file is created in `cmwell-data-tools/cmwell-downloader/target/scala-2.12/`.
 
 ## Running the CM-Well Downloader Executable ##
 
@@ -109,3 +115,10 @@ After the console is successfully loaded, execute the Downloader by running the 
 For the stream-based Downloader, call the static methods of the `cmwell.tools.data.downloader.streams.Downloader` class (see the method definitions in `cmwell-downloader/src/main/scala/cmwell/tools/data/downloader/streams/Downloader.scala`).
 
 For the consumer-based Downloader, call the static methods of the `cmwell.tools.data.downloader.consumer.Downloader` class (see the method definitions in `cmwell-downloader/src/main/scala/cmwell/tools/data/downloader/consumer/Downloader.scala`).
+
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tools.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tools.UsingCM-WellDocker.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](Tools.UsingTheCM-WellIngester.md)  
+
+----

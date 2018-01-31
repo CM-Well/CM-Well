@@ -16,7 +16,7 @@
 
 package cmwell.zcache
 
-import cmwell.util.concurrent.retryUntil
+import cmwell.util.concurrent.unsafeRetryUntil
 import cmwell.zstore.ZStore
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -54,7 +54,7 @@ class ZCache(zStore: ZStore) {
             (deserializer: Array[Byte] => T, pollingMaxRetries: Int, pollingInterval: Int)
             (implicit ec: ExecutionContext): Future[Option[T]] = {
     def isActualValue(valueOpt: Option[Array[Byte]]) = !valueOpt.exists(_ sameElements Pending.payload)
-    retryUntil(isActualValue, pollingMaxRetries, pollingInterval.seconds)(zStore.getOpt(key, dontRetry = true)).map {
+    unsafeRetryUntil(isActualValue, pollingMaxRetries, pollingInterval.seconds)(zStore.getOpt(key, dontRetry = true)).map {
       case Some(payload) if payload sameElements Pending.payload => None
       case noneOrActualValue => noneOrActualValue.map(deserializer)
     }

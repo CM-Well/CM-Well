@@ -21,7 +21,7 @@ import cmwell.ctrl.controllers.{CassandraController, ElasticsearchController}
 import cmwell.ctrl.config.Config
 import cmwell.ctrl.config.Config._
 import cmwell.ctrl.ddata.DData
-import cmwell.ctrl.utils.{AlertReporter, HttpUtil}
+import cmwell.ctrl.utils.{AlertReporter}
 import com.typesafe.scalalogging.{Logger, LazyLogging}
 import k.grid.Grid
 import org.slf4j.LoggerFactory
@@ -30,10 +30,6 @@ import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 import scala.language.postfixOps
-
-/**
- * Created by michael on 2/11/15.
- */
 
 object ClusterState extends LazyLogging with AlertReporter {
   val clusterLogger = LoggerFactory.getLogger("cluster_state")

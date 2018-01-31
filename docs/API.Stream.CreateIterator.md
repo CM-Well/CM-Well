@@ -1,5 +1,11 @@
 # Function: *Create Iterator* #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Stream.StreamInfotons.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Stream.GetNextChunk.md)  
+
+----
+
 ## Description ##
 If you wish to retrieve a large number of infotons, but you want to iterate over small "chunks" of data in a controlled fashion, you can use the **create-iterator** and **next-chunk** APIs. This allows you to request the number of infotons you want to process, and receive only that number during each iteration.
 
@@ -43,7 +49,7 @@ session-ttl | The time, in seconds, until the iteration session expires. The ite
 
 ## Notes ##
 
-* If the iteration process fails in the middle for any reason, you will have to restart the process from the beginning (that is, iterate again over all infotons that match the query).
+* If the iteration process fails in the middle for any reason, you might be able to resume with last token within the TTL window. Otherwise you'll have to restart the process from the beginning (that is, iterate again over all infotons that match the query).
 * An alternative is to use the **consumer** API (see **Related Topics**), which allows you to save the iteration state and restart from the same point after a failure.
 
 ## Related Topics ##
@@ -52,3 +58,9 @@ session-ttl | The time, in seconds, until the iteration session expires. The ite
 [Consume Next Chunk](API.Stream.ConsumeNextChunk.md)
 
 
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](API.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](API.Stream.StreamInfotons.md)&nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](API.Stream.GetNextChunk.md)  
+
+----

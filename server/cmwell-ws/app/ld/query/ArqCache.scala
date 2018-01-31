@@ -29,7 +29,7 @@ object ArqCache { // one day this will be a distributed cache ... // todo zStore
       build(new CacheLoader[String, Seq[Quad]] { override def load(key: String) = !!! })
 }
 
-class ArqCache(crudServiceFS: CRUDServiceFS, nbg: Boolean) extends LazyLogging {
+class ArqCache(crudServiceFS: CRUDServiceFS) extends LazyLogging {
 
   import ld.query.ArqCache._
 
@@ -43,7 +43,7 @@ class ArqCache(crudServiceFS: CRUDServiceFS, nbg: Boolean) extends LazyLogging {
   private lazy val infotonsCache: LoadingCache[String, Option[Infoton]] =
     CacheBuilder.newBuilder().maximumSize(100000).expireAfterAccess(5, TimeUnit.MINUTES).
       build(new CacheLoader[String, Option[Infoton]] {
-        override def load(key: String) = Await.result(crudServiceFS.getInfoton(key, None, None, nbg), 9.seconds) match { case Some(Everything(i)) => Option(i) case _ => None }
+        override def load(key: String) = Await.result(crudServiceFS.getInfoton(key, None, None), 9.seconds) match { case Some(Everything(i)) => Option(i) case _ => None }
       })
 
   private lazy val identifiersCache: LoadingCache[String, String] =
@@ -63,39 +63,38 @@ class ArqCache(crudServiceFS: CRUDServiceFS, nbg: Boolean) extends LazyLogging {
     def extractFieldValue(i: Infoton, fieldName: String) = i.fields.getOrElse(Map()).getOrElse(fieldName,Set()).mkString(",")
 
     // /meta/ns/{hash} if fields.url == pred.getURI return hash. else search over meta/ns?qp=url::pred.getURI -> get identifier from path of infoton
-    Await.result(crudServiceFS.getInfoton(s"/meta/ns/$hash", None, None, nbg), 9.seconds) match {
+    Await.result(crudServiceFS.getInfoton(s"/meta/ns/$hash", None, None), 9.seconds) match {
       case Some(Everything(i)) if knownUri.isEmpty => {
         NsResult(extractFieldValue(i, "url"), hash, extractFieldValue(i, "prefix"))
       }
       case Some(Everything(i)) if extractFieldValue(i, "url") == knownUri.get => {
-        logger.info(s"[arq] $hash was a good guess")
+        logger.debug(s"[arq] $hash was a good guess")
         NsResult(knownUri.get, hash, extractFieldValue(i, "prefix"))
       }
       case _ if knownUri.isDefined => {
         val searchFutureRes = crudServiceFS.search(
           pathFilter = Some(PathFilter("/", descendants = true)),
           fieldFilters = Some(SingleFieldFilter(Must, Equals, "url", knownUri)),
-          paginationParams = PaginationParams(0, 10),
-          nbg = nbg)
+          paginationParams = PaginationParams(0, 10))
         val infotonsWithThatUrl = Await.result(searchFutureRes, 9.seconds).infotons
         (infotonsWithThatUrl.length: @switch) match {
           case 0 =>
-            logger.info(s"[arq] ns for $hash was not found")
+            logger.debug(s"[arq] ns for $hash was not found")
             throw new NamespaceException(s"Namespace ${knownUri.get} does not exist")
           case 1 =>
-            logger.info(s"[arq] Fetched proper namespace for $hash")
+            logger.debug(s"[arq] Fetched proper namespace for $hash")
             val infoton = infotonsWithThatUrl.head
             val path = infoton.path
             val actualHash = path.substring(path.lastIndexOf('/') + 1)
             val uri = knownUri.getOrElse(extractFieldValue(infoton, "url"))
             NsResult(uri, actualHash, extractFieldValue(infoton, "prefix"))
           case _ =>
-            logger.info(s"[arq] this should never happen: same URL [${knownUri.get}] cannot be more than once in meta/ns [${infotonsWithThatUrl.map(i => i.path + "[" + i.uuid + "]").mkString(",")}]")
+            logger.debug(s"[arq] this should never happen: same URL [${knownUri.get}] cannot be more than once in meta/ns [${infotonsWithThatUrl.map(i => i.path + "[" + i.uuid + "]").mkString(",")}]")
             !!!
         }
       }
       case _ =>
-        logger.info(s"[arq] this should never happen: given a hash [$hash], when the URI is unknown, and there's no infoton under meta/ns/ - it means corrupted data")
+        logger.debug(s"[arq] this should never happen: given a hash [$hash], when the URI is unknown, and there's no infoton under meta/ns/ - it means corrupted data")
         !!!
     }
   }

@@ -22,6 +22,7 @@ import sbt._
 
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
+import scala.sys.process._
 
 import com.github.israel.sbt.zookeeper.SbtZookeeperPlugin
 
@@ -69,10 +70,6 @@ object SbtKafkaPlugin extends sbt.AutoPlugin {
       if(!baseDir.isDirectory) {
         val kafkaBinary = Await.result(cmwell.build.CMWellBuild.fetchKafka(kafkaScalaVersion.value,kafkaVersion.value),15.minutes)
 
-//        val depClasspath = (dependencyClasspath in Runtime).value
-//        val classpath = Attributed.data(depClasspath)
-//        val kafkaBinary = classpath.find(_.getName == s"kafka_${kafkaScalaVersion.value}-${kafkaVersion.value}.tgz").get
-
         // extract kafka tgz
         val pid = Process(Seq("tar","-xzf",kafkaBinary.getAbsolutePath), target.value).!
         kafkaConfigFile.value match {
@@ -118,10 +115,6 @@ object SbtKafkaPlugin extends sbt.AutoPlugin {
     /** Settings **/
     kafkaVersion := "0.10.1.0",
     kafkaScalaVersion := scalaBinaryVersion.value,
-//    libraryDependencies +=
-//      ("kafka" % s"kafka_${kafkaScalaVersion.value}" % kafkaVersion.value)
-//        .from(s"http://www-us.apache.org/dist/kafka/${kafkaVersion.value}/kafka_${kafkaScalaVersion.value}-${kafkaVersion.value}.tgz"),
-//    classpathTypes ~= (_ + "tgz"),
     kafkaConfigFile := None,
     zookeeperConfigFile := Some(zookeeperServerConfig.value),
     kafkaServerRunDir := target.value / s"kafka_${scalaBinaryVersion.value}-${kafkaVersion.value}",
@@ -155,7 +148,7 @@ object SbtKafkaPlugin extends sbt.AutoPlugin {
 
   private def stopJavaProcessByName(processName:String, forcibly:Boolean = false): Boolean = {
     val p = sys.runtime.exec("jps -l")
-    val lines = io.Source.fromInputStream(p.getInputStream).getLines().toSeq
+    val lines = scala.io.Source.fromInputStream(p.getInputStream).getLines().toSeq
     val pidOpt = lines.collectFirst({case s if (s.contains(processName)) => s.split(" ")(0)})
     val success = pidOpt match {
       case Some(pid) =>
@@ -169,7 +162,7 @@ object SbtKafkaPlugin extends sbt.AutoPlugin {
 
   private def isKafkaRunning:Boolean = {
     val p = sys.runtime.exec("jps -l")
-    val lines = io.Source.fromInputStream(p.getInputStream).getLines()
+    val lines = scala.io.Source.fromInputStream(p.getInputStream).getLines()
     lines.exists(_.contains("kafka.Kafka"))
   }
 

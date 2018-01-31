@@ -23,7 +23,6 @@ import javax.inject.{Inject, Singleton}
 import cmwell.syntaxutils._
 import cmwell.web.ld.cmw.CMWellRDFHelper
 import cmwell.web.ld.query.{Config, DataFetcherImpl}
-import cmwell.ws.AggregateBothOldAndNewTypesCaches
 import com.typesafe.scalalogging.LazyLogging
 import info.aduna.iteration.{CloseableIteration, CloseableIteratorIteration, EmptyIteration}
 import ld.query.TripleStore.TriplePattern
@@ -57,19 +56,18 @@ import scala.util.{Failure, Success, Try}
 // TODO 2. Remove JenaArqExtensions :( But keep its DataFetcher. Should be closer to TripleStore
 // TODO 3. Propagate query parameters to the proper places. Implement Verbose and Explain.
 // TODO 4. Add optimizations, support Range Queries, add special functions, run on SPARK...
-// TODO 5. propagate nbg properly according to request, or leave as is, knowing it's kinda broken (as in inconsistent), but will be "fixed" when old data path is discontinued
 
 /**
   * Created by yaakov on 5/24/17.
   */
 
 @Singleton
-class OpenRdfSpHandler @Inject()(tbg: NbgToggler, crudServiceFS: CRUDServiceFS, cmwellRDFHelper: CMWellRDFHelper)(implicit ec: ExecutionContext) extends InjectedController with LazyLogging {
+class OpenRdfSpHandler @Inject()(crudServiceFS: CRUDServiceFS, cmwellRDFHelper: CMWellRDFHelper)(implicit ec: ExecutionContext) extends InjectedController with LazyLogging {
 
   val config: Config = Config.defaultConfig
-  val typesCache = new AggregateBothOldAndNewTypesCaches(crudServiceFS,tbg)
-  val dataFetcher = new DataFetcherImpl(config,crudServiceFS,tbg.get)
-  val tripleStore = new TripleStore(dataFetcher, cmwellRDFHelper, tbg)
+  val typesCache = crudServiceFS.passiveFieldTypesCache
+  val dataFetcher = new DataFetcherImpl(config,crudServiceFS)
+  val tripleStore = new TripleStore(dataFetcher, cmwellRDFHelper)
   val cmWellTripleSource = new CmWellTripleSource(tripleStore)
   val cmWellReadOnlySailConnection = new CmWellReadOnlySailConnection(cmWellTripleSource)
   val cmWellReadOnlySail = new CmWellReadOnlySail(cmWellReadOnlySailConnection)

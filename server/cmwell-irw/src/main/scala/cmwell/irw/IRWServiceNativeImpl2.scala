@@ -26,7 +26,7 @@ import cmwell.common.metrics.WithMetrics
 import cmwell.domain._
 import cmwell.driver.{Dao, DaoExecution}
 import cmwell.util.collections.partitionWith
-import cmwell.util.concurrent.travector
+import cmwell.util.concurrent.{FutureTimeout, travector}
 import cmwell.util.jmx._
 import cmwell.util.{Box, BoxedFailure, EmptyBox, FullBox}
 import cmwell.zstore.ZStore
@@ -39,16 +39,13 @@ import org.joda.time.DateTime
 
 import scala.collection.JavaConversions._
 import scala.concurrent._
-import scala.concurrent.duration._
+import scala.concurrent.duration.{Duration => SDuration, _}
 import scala.util.{Failure, Success}
 
-//TODO: remove global ExecutionContext import. all accessor methods should receive an ExecutionContext implicitly
-//already done so for `readAsync` & `readOneAsync`, we should do it for all the other methods as well.
-import scala.concurrent.ExecutionContext.Implicits.global
 
 class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableReadCache : Boolean = false,
                             readCacheDuration: FiniteDuration = 120.seconds)
-                           (implicit val defaultCasTimeout:FiniteDuration = 10.seconds) extends IRWService
+                           (implicit val defaultCasTimeout: SDuration = 10.seconds) extends IRWService
   with LazyLogging with WithMetrics with DaoExecution {
 
   val delayOnError = 40.millis
@@ -193,22 +190,37 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
     })(futureBox)
   }
 
-  def executeAsync(statmentToExec: Statement, retries: Int = 5, delay: FiniteDuration = delayOnError,
-                   casTimeout:FiniteDuration = defaultCasTimeout)(implicit ec: ExecutionContext): Future[ResultSet] =
+  def executeAsync(statmentToExec: Statement, identifierForFailures: => String, retries: Int = 5, delay: FiniteDuration = delayOnError,
+                   casTimeout: SDuration = defaultCasTimeout)(implicit ec: ExecutionContext): Future[ResultSet] =
     cmwell.util.concurrent.retryWithDelays(Vector.iterate(delayOnError, retries)(_ * 2): _*) {
-      cmwell.util.concurrent.timeoutFuture(executeAsyncInternal(statmentToExec), casTimeout)
+      if(casTimeout.isFinite())
+        cmwell.util.concurrent.timeoutFuture(executeAsyncInternal(statmentToExec), casTimeout.asInstanceOf[FiniteDuration]).andThen {
+          case Failure(FutureTimeout(f)) => {
+            val givingUpTimestamp = System.currentTimeMillis()
+            val msg = identifierForFailures
+            val id = cmwell.util.numeric.Radix64.encodeUnsigned(givingUpTimestamp) + "_" + cmwell.util.numeric.Radix64.encodeUnsigned(msg.hashCode())
+            logger.error(s"[$id] FutureTimeout for [ $msg ], and givingUpTimestamp = [ $givingUpTimestamp ]")
+            f.onComplete {
+              case Success(_) => logger.error(s"executeAsync for [$id] returned successfully ${System.currentTimeMillis() - givingUpTimestamp}ms after giving up")
+              case Failure(t) => logger.error(s"executeAsync for [$id] returned with failure ${System.currentTimeMillis() - givingUpTimestamp}ms after giving up",t)
+            }
+          }
+        }
+      else
+        executeAsyncInternal(statmentToExec)
     }(ec)
 
   @deprecated("No need in IRW2, use `setPathLast` instead", "1.5.x")
   def setPathHistory(infoton: Infoton, level: ConsistencyLevel = QUORUM): Future[Infoton] =
-    setPathLast(infoton, level).map(_ => infoton)
+    setPathLast(infoton, level).map(_ => infoton)(scala.concurrent.ExecutionContext.Implicits.global)
 
   def setPathLast(infoton: Infoton, level: ConsistencyLevel = QUORUM): Future[Unit] =
     setPathLast(infoton.path, infoton.lastModified.toDate, infoton.uuid, level)
 
   def setPathLast(path: String, lastModified: java.util.Date, uuid: String, level: ConsistencyLevel): Future[Unit] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     val stmt = setPathLast.bind(path, lastModified, uuid).setConsistencyLevel(level)
-    executeAsync(stmt).map { rs =>
+    executeAsync(stmt,s"'${setPathLast.getQueryString}'.bind($path, $lastModified, $uuid)").map { rs =>
       logger.trace(s"resultSet from setPathLast: $rs")
     }
   }
@@ -216,23 +228,46 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
   def writeAsyncDataOnly(infoton: Infoton, level: ConsistencyLevel = QUORUM)(implicit ec: ExecutionContext): Future[Infoton] = {
 
     val p = Promise[Infoton]()
-    val batchStatement = new BatchStatement(BatchStatement.Type.UNLOGGED)
 
     val (uuid, rows) = InfotonSerializer.serialize2(infoton)
 
-    val statements = rows.flatMap{ case (quad, fields) =>
+    // Write the changes for one infoton as an un-logged batch so that the changes are written atomically.
+
+    val statements: Seq[(Statement,() => String)] = rows.flatMap{ case (quad, fields) =>
       fields.flatMap{ case (field, values) =>
         values.map{ case (value, data) =>
           if (field == "data")
-            setInfotonFileData.bind(uuid, quad, field, value, ByteBuffer.wrap(data)).setConsistencyLevel(level)
+            (setInfotonFileData.bind(uuid, quad, field, value, ByteBuffer.wrap(data)).setConsistencyLevel(level), () => s"'${setInfotonFileData.getQueryString}'.bind($uuid, $quad, $field, $value, ${data.take(8)})")
           else
-            setInfotonData.bind(uuid, quad, field, value).setConsistencyLevel(level)
+            (setInfotonData.bind(uuid, quad, field, value).setConsistencyLevel(level), () => s"'${setInfotonData.getQueryString}'.bind($uuid, $quad, $field, $value)")
         }
       }
     }
 
-    val futureResults = statements.grouped(0xFFFF).map{ stmts =>
-      executeAsync(new BatchStatement(BatchStatement.Type.UNLOGGED).addAll(stmts))
+    // This un-logged batch runs against a single partition, so it does not have the performance issue that
+    // multi-partition unlogged batches do.
+    // Cassandra limits the number of statements in a batch to 0xFFFF.
+
+    val futureResults = statements.grouped(0xFFFF).map{ zipped =>
+      val (stmts, ids) = zipped.unzip(identity)
+      val failStringFunc = () => {
+        if(ids.length <= 10) ids.foldLeft(new StringBuilder){
+          case (sb,f) =>
+            sb += '\n'
+            sb ++= f()
+        }.result()
+        else {
+          val h = ids.take(8).foldLeft(new StringBuilder) {
+            case (sb, f) =>
+              sb += '\n'
+              sb ++= f()
+          }
+          h ++= "\n…\n"
+          h ++= ids.last()
+          h.result
+        }
+      }
+      executeAsync(new BatchStatement(BatchStatement.Type.UNLOGGED).addAll(stmts),failStringFunc())
     }
 
     Future.sequence(futureResults).onComplete{
@@ -259,6 +294,7 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
   }
 
   def addIndexTimeToUuid(uuid: String, indexTime: Long, level: ConsistencyLevel = QUORUM): Future[Unit] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     if (!disableReadCache) {
       Option(dataCahce.getIfPresent(uuid)).foreach { i =>
         dataCahce.put(uuid, addIndexTime(i, Some(indexTime)))
@@ -281,19 +317,22 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
   }
 
   private def deleteIndexTimeFromUuid(uuid: String, level: ConsistencyLevel = QUORUM): Future[Unit] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     val stmt = delIndexTime.bind(uuid).setConsistencyLevel(level)
-    executeAsync(stmt).map(rs => if (!rs.wasApplied()) ???)
+    executeAsync(stmt,s"'${delIndexTime.getQueryString}'.bind($uuid)").map(rs => if (!rs.wasApplied()) ???)
   }
 
   private def writeIndexTimeToUuid(uuid: String, indexTime: Long, level: ConsistencyLevel = QUORUM): Future[Unit] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     val stmt = setIndexTime.bind(uuid, indexTime.toString).setConsistencyLevel(level)
-    executeAsync(stmt).map(rs => if (!rs.wasApplied()) ???)
+    executeAsync(stmt,s"'${setIndexTime.getQueryString}'.bind($uuid, $indexTime)").map(rs => if (!rs.wasApplied()) ???)
   }
 
   def readIndexTimeRowsForUuid(uuid: String, level: ConsistencyLevel = QUORUM): Future[Seq[Long]] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     import scala.collection.JavaConverters._
     val stmt = getIndexTime.bind(uuid).setConsistencyLevel(level)
-    executeAsync(stmt).map { rs =>
+    executeAsync(stmt,s"'${getIndexTime.getQueryString}'.bind($uuid)").map { rs =>
       if (!rs.wasApplied()) ???
       else rs.all().asScala.map { row =>
         row.getString("value").toLong
@@ -302,13 +341,14 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
   }
 
   def addDcToUuid(uuid: String, dc: String, level: ConsistencyLevel = QUORUM): Future[Unit] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     if (!disableReadCache) {
       Option(dataCahce.getIfPresent(uuid)).foreach { i =>
         dataCahce.put(uuid, addDc(i, dc))
       }
     }
     val stmt = setDc.bind(uuid, dc).setConsistencyLevel(level)
-    executeAsync(stmt).map(rs => if (!rs.wasApplied()) ???)
+    executeAsync(stmt,s"'${setDc.getQueryString}'.bind($uuid, $dc)").map(rs => if (!rs.wasApplied()) ???)
   }
 
   //FIXME: arghhhhh
@@ -355,7 +395,7 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
                    (implicit ec: ExecutionContext): Future[Box[String]] = {
     val stmt = getLastInPath.bind(path).setConsistencyLevel(level)
 
-    executeAsync(stmt).flatMap(extractLast _ andThen {
+    executeAsync(stmt,s"'${getLastInPath.getQueryString}'.bind($path)").flatMap(extractLast _ andThen {
       case None if level == ONE => readPathUUIDA(path, QUORUM, retry = true)
       case os =>
         if (os.isDefined && retry) logger.warn(s"The path $path is only available in QUORUM")
@@ -414,8 +454,9 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
   }
 
   def historyAsync(path: String, limit: Int): Future[Vector[(Long, String)]] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     val stmt = getHistory.bind(path.replaceAll("'", "''"), Int.box(limit)).setConsistencyLevel(ConsistencyLevel.QUORUM)
-    executeAsync(stmt).map { res =>
+    executeAsync(stmt,s"'${getHistory.getQueryString}'.bind($path)").map { res =>
       val it = res.iterator()
       val b = Vector.newBuilder[(Long, String)]
       while (it.hasNext) {
@@ -432,6 +473,7 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
   }
 
   def exists(paths: Set[String], level: ConsistencyLevel = ONE): Map[String, Option[String]] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     if (paths.isEmpty)
       Map.empty
     else {
@@ -452,19 +494,20 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
   }
 
   def purgeHistorical(path: String, uuid: String, lastModified: Long, isOnlyVersion: Boolean, level: ConsistencyLevel): Future[Unit] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     val pHistoryEntry = {
       val stmt = purgeHistoryEntry.bind(path, new java.util.Date(lastModified)).setConsistencyLevel(level)
-      executeAsync(stmt).map(rs => if (!rs.wasApplied()) ???)
+      executeAsync(stmt,s"'${purgeHistoryEntry.getQueryString}'.bind($path, $lastModified)").map(rs => if (!rs.wasApplied()) ???)
     }
 
     def pAllHistory = {
       val stmt = purgeAllHistory.bind(path).setConsistencyLevel(level)
-      executeAsync(stmt).map(rs => if (!rs.wasApplied()) ???)
+      executeAsync(stmt,s"'${purgeAllHistory.getQueryString}'.bind($path)").map(rs => if (!rs.wasApplied()) ???)
     }
 
     def pInfoton = {
       val stmt = purgeInfotonByUuid.bind(uuid).setConsistencyLevel(level)
-      executeAsync(stmt).map { rs =>
+      executeAsync(stmt,s"'${purgeInfotonByUuid.getQueryString}'.bind($uuid)").map { rs =>
         dataCahce.invalidate(uuid)
         if (!rs.wasApplied()) ???
       }
@@ -474,39 +517,48 @@ class IRWServiceNativeImpl2(storageDao : Dao, maxReadSize : Int = 25,disableRead
   }
 
   def purgeUuid(path: String, uuid: String, lastModified: Long, isOnlyVersion: Boolean, level: ConsistencyLevel = QUORUM): Future[Unit] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     def pAllHistory = {
       val stmt = purgeAllHistory.bind(path).setConsistencyLevel(level)
-      executeAsync(stmt).map(rs => if (!rs.wasApplied()) ???)
+      executeAsync(stmt,s"'${purgeAllHistory.getQueryString}'.bind($path)").map(rs => if (!rs.wasApplied()) ???)
     }
 
     def pHistoryEntry = {
       val stmt = purgeHistoryEntry.bind(new java.util.Date(lastModified), path).setConsistencyLevel(level)
-      executeAsync(stmt).map(rs => if (!rs.wasApplied()) ???)
+      executeAsync(stmt,s"'${purgeHistoryEntry.getQueryString}'.bind($lastModified, $path)").map(rs => if (!rs.wasApplied()) ???)
     }
 
     purgeFromInfotonsOnly(uuid, level).flatMap { _ => if (isOnlyVersion) pAllHistory else pHistoryEntry }
   }
 
   def purgeFromInfotonsOnly(uuid: String, level: ConsistencyLevel = QUORUM) = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     val stmt = purgeInfotonByUuid.bind(uuid).setConsistencyLevel(level)
-    executeAsync(stmt).map { rs =>
+    executeAsync(stmt,s"'${purgeInfotonByUuid.getQueryString}'.bind($uuid)").map { rs =>
       dataCahce.invalidate(uuid)
       if (!rs.wasApplied()) ???
     }
   }
 
   def purgeFromPathOnly(path: String, lastModified: Long, level: ConsistencyLevel = QUORUM): Future[Unit] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     val stmt = purgeHistoryEntry.bind(new java.util.Date(lastModified), path).setConsistencyLevel(level)
-    executeAsync(stmt).map(rs => if (!rs.wasApplied()) ???)
+    executeAsync(stmt,s"'${purgeHistoryEntry.getQueryString}'.bind($lastModified, $path)").map(rs => if (!rs.wasApplied()) ???)
   }
 
   def purgePathOnly(path: String, level: ConsistencyLevel = QUORUM): Future[Unit] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
     val stmt = purgeAllHistory.bind(path).setConsistencyLevel(level)
-    executeAsync(stmt).map(rs => if (!rs.wasApplied()) ???)
+    executeAsync(stmt,s"'${purgeAllHistory.getQueryString}'.bind($path)").map(rs => if (!rs.wasApplied()) ???)
   }
 
   override def purgeAll(): Future[Unit] = {
-    Future.sequence(Seq("path", "infoton", "zstore").map{ table => executeAsync(new SimpleStatement(s"TRUNCATE TABLE data2.$table"))}).map{ _ => Unit}
+    import scala.concurrent.ExecutionContext.Implicits.global
+
+    Future.sequence(Seq("path", "infoton", "zstore").map{ table =>
+      val truncate = s"TRUNCATE TABLE data2.$table"
+      executeAsync(new SimpleStatement(truncate),truncate)
+    }).map{ _ => Unit}
   }
 
   def fixPath(path: String, last: (DateTime, String), history: Seq[(DateTime, String)], level: ConsistencyLevel = QUORUM): Future[Seq[Infoton]] = ???

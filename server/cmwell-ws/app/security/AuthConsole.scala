@@ -33,13 +33,13 @@ object AuthConsole {
     """.stripMargin)
   }
 
-  val unusedCache = null.asInstanceOf[AuthCache]
+  val unusedCache = null.asInstanceOf[EagerAuthCache]
 
-  def generateToken(username: String, nbg: Boolean): String = {
-    Token.generate(unusedCache, nbg, username, None, Option(0), isAdmin = true)
+  def generateToken(username: String): String = {
+    Token.generate(unusedCache, username, None, Option(0), isAdmin = true)
   }
 
-  def generateToken(username: String, expiry: String, nbg: Boolean, rev: Int = 1): String = {
-    Token.generate(unusedCache, nbg, username, Some(org.joda.time.DateTime.parse(expiry)), Option(rev), isAdmin = true)
+  def generateToken(username: String, expiry: String, rev: Int = 1): String = {
+    Token.generate(unusedCache, username, Some(org.joda.time.DateTime.parse(expiry)), Option(rev), isAdmin = true)
   }
 }

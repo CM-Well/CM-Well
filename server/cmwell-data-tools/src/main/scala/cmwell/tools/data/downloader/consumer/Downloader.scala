@@ -783,7 +783,7 @@ class Downloader(baseUrl: String,
       // init of filling buffer with consumed data from token
 //      Future { blocking { fillBuffer(initToken) } }
 
-      var consumerStatsActor = system.actorOf(Props(new ConsumerStatsActor(baseUrl, initToken, params)))
+//      var consumerStatsActor = system.actorOf(Props(new ConsumerStatsActor(baseUrl, initToken, params)))
 
 
       /**
@@ -795,22 +795,29 @@ class Downloader(baseUrl: String,
 
         val elementFuture = (bufferFillerActor ? BufferFillerActor.GetData).mapTo[Option[(Token, TsvData)]]
 
-        elementFuture.map {
-          case Some((token,tsv)) =>
-            Some(token -> tsv)
+        elementFuture.flatMap {
+          case Some((null, null)) =>
+            val delay = 10.seconds
+            logger.info(s"Got empty result. Waiting for $delay before passing on the empty element.")
+            akka.pattern.after(delay, system.scheduler)(Future.successful(Some((null, null))))
+          case Some((token, tsv)) =>
+            Future.successful(Some(token -> tsv))
           case None =>
             noDataLeft = true // received the signal of last element in buffer
-            None
-          case null if (noDataLeft) =>
+            Future.successful(None)
+          case null if noDataLeft =>
             logger.debug("buffer is empty and noDataLeft=true")
-            None // tried to get new data but no data available
+            Future.successful(None) // tried to get new data but no data available
           case x =>
             logger.error(s"unexpected message: $x")
-            None
-        }.recoverWith{ case _ => next() }
+            Future.successful(None)
+        }.recoverWith {
+          case ex =>
+            logger.error("Getting data from BufferFillerActor failed with an exception: ", ex)
+            akka.pattern.after(1.second, system.scheduler)(next())
+        }
       }
     }
-
 
     Source.fromFuture(initTokenFuture)
       .flatMapConcat { initToken =>
@@ -819,7 +826,9 @@ class Downloader(baseUrl: String,
             case Some(tokenAndData) => Some(fs -> tokenAndData)
             case None => None
           }
-        }.via(BufferFillerKiller(bufferFillerActor))
+        }
+          .filterNot(pair => pair._1 == null && pair._2 == null)
+          .via(BufferFillerKiller(bufferFillerActor))
       }
   }
 }

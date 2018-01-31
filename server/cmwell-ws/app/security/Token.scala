@@ -23,7 +23,7 @@ import org.joda.time.DateTime
 
 import scala.util.Try
 
-class Token(jwt: String, authCache: AuthCache) {
+class Token(jwt: String, authCache: EagerAuthCache) {
   private val requiredClaims = Set("sub","exp")
 
   private val claimsSet = jwt match {
@@ -34,10 +34,10 @@ class Token(jwt: String, authCache: AuthCache) {
   val username = claimsSet.getClaimValue("sub").get
   val expiry = new DateTime(claimsSet.getClaimValue("exp").map(_.toLong).get)
 
-  def isValid(nbg: Boolean) = {
-    JsonWebToken.validate(jwt, Token.secret) &&
+  def isValid = {
+    (JsonWebToken.validate(jwt, Token.secret) || JsonWebToken.validate(jwt, Token.secret2)) &&
       expiry.isAfterNow &&
-      (claimsSet.getClaimValue("rev").map(_.toInt).getOrElse(0) >= Token.getUserRevNum(username, authCache, nbg) || username=="root") // root has immunity to revision revoking
+      (claimsSet.getClaimValue("rev").map(_.toInt).getOrElse(0) >= Token.getUserRevNum(username, authCache) || username=="root") // root has immunity to revision revoking
   }
 
   implicit class JwtClaimsSetJValueExtensions(cs: JwtClaimsSetJValue) {
@@ -48,21 +48,22 @@ class Token(jwt: String, authCache: AuthCache) {
 }
 
 object Token {
-  def apply(jwt: String, authCache: AuthCache) = Try(new Token(jwt, authCache)).toOption
+  def apply(jwt: String, authCache: EagerAuthCache) = Try(new Token(jwt, authCache)).toOption
 
-  private lazy val secret = ConfigFactory.load().getString("play.crypto.secret") // not using ws.Settings, so it'd be available from `sbt ws/console`
+  private lazy val secret = ConfigFactory.load().getString("play.http.secret.key") // not using ws.Settings, so it'd be available from `sbt ws/console`
+  private lazy val secret2 = ConfigFactory.load().getString("cmwell.ws.additionalSecret.key") // not using ws.Settings, so it'd be available from `sbt ws/console`
   private val jwtHeader = JwtHeader("HS256")
 
-  private def getUserRevNum(username: String, authCache: AuthCache, nbg: Boolean) = authCache.getUserInfoton(username, nbg).flatMap(u => (u\"rev").asOpt[Int]).getOrElse(0)
+  private def getUserRevNum(username: String, authCache: EagerAuthCache) = authCache.getUserInfoton(username).flatMap(u => (u\"rev").asOpt[Int]).getOrElse(0)
 
-  def generate(authCache: AuthCache, nbg: Boolean, username: String, expiry: Option[DateTime] = None, rev: Option[Int] = None, isAdmin: Boolean = false): String = {
+  def generate(authCache: EagerAuthCache, username: String, expiry: Option[DateTime] = None, rev: Option[Int] = None, isAdmin: Boolean = false): String = {
     val maxDays = Settings.maxDaysToAllowGenerateTokenFor
     if(!isAdmin && expiry.isDefined && expiry.get.isAfter(DateTime.now.plusDays(maxDays)))
       throw new IllegalArgumentException(s"Token expiry must be less than $maxDays days")
     if(!isAdmin && rev.isDefined)
       throw new IllegalArgumentException(s"rev should only be supplied in Admin mode (i.e. manually via console)")
 
-    val claims = Map("sub" -> username, "exp" -> expiry.getOrElse(DateTime.now.plusDays(1)).getMillis, "rev" -> rev.getOrElse(getUserRevNum(username, authCache, nbg)))
+    val claims = Map("sub" -> username, "exp" -> expiry.getOrElse(DateTime.now.plusDays(1)).getMillis, "rev" -> rev.getOrElse(getUserRevNum(username, authCache)))
     JsonWebToken(jwtHeader, JwtClaimsSet(claims), secret)
   }
 }

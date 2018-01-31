@@ -16,6 +16,8 @@
 
 package cmwell.rts
 
+import java.nio.charset.StandardCharsets
+
 import akka.actor.{ReceiveTimeout, _}
 import akka.cluster.ClusterEvent.{MemberRemoved, MemberUp, UnreachableMember, _}
 import akka.cluster.{Cluster, Member}
@@ -23,9 +25,9 @@ import akka.pattern.ask
 import akka.util.Timeout
 import cmwell.domain.Infoton
 import cmwell.formats.FormatType
+import cmwell.util.string.Base64
 import com.typesafe.scalalogging.LazyLogging
-import k.grid.{JvmLeftEvent, JvmJoinedEvent, GridJvm, Grid}
-import org.apache.commons.codec.binary.Base64
+import k.grid.{Grid, GridJvm, JvmJoinedEvent, JvmLeftEvent}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -270,20 +272,6 @@ class SubscriberAgent extends Actor with LazyLogging {
 
 }
 
-object Key {
-  // TODO: this is a temporary implementation of encode & decode
-  def encode(k : String ) : String = {
-    val buf = Base64.encodeBase64URLSafe(k.getBytes("UTF-8"))
-    new String(buf,"UTF-8")
-  }
-
-  def decode(k : String ) : String = {
-    val buf = Base64.decodeBase64(k.getBytes("UTF-8"))
-    new String(buf,"UTF-8")
-  }
-}
-
-
 object Subscriber {
   val subscriberAgentActor : ActorRef = Grid.create(classOf[SubscriberAgent], "subscriber")
   val s = new Subscriber(subscriberAgentActor)
@@ -297,13 +285,13 @@ class Subscriber(val subscriberAgent : ActorRef) extends LazyLogging {
   implicit val timeout = Timeout(5 seconds)
   def subscribe (subscriber : String , rule : Rule , transmitType: TransmitType) : Future[String] = {
     val futureSubscribe = subscriberAgent ? Subscribe(subscriber, rule , transmitType)
-    futureSubscribe.map(d => Key.encode(d.asInstanceOf[String]))
+    futureSubscribe.map(d => Base64.encodeBase64URLSafeString(d.asInstanceOf[String].getBytes(StandardCharsets.UTF_8)))
   }
 
   // TODO: this call can be made from any node we need to lookup the actor and send
   def unsubscribe (subscriber : String) {
     // first lets lookup the subscriber agent
-    val k = Key.decode(subscriber)
+    val k = Base64.decodeBase64String(subscriber, "UTF-8")
     val l = k.split("/")
     logger info(s"unsubscribe [$subscriber] to [$k] splited $l")
     val sub = l(l.length-1)
@@ -317,7 +305,7 @@ class Subscriber(val subscriberAgent : ActorRef) extends LazyLogging {
   }
 
   def pull(subscriber : String) : Future[PullDataContainer] = {
-    val k = Key.decode(subscriber)
+    val k = Base64.decodeBase64String(subscriber, "UTF-8")
     val f = Grid.selectByPath(k)
     val ff = f ? PullData
     ff.mapTo[PullDataContainer]

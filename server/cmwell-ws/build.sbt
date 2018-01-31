@@ -3,13 +3,13 @@
 //import NativePackagerKeys._
 
 name := "cmwell-ws"
-packAutoSettings
+
 libraryDependencies ++= {
   val dm = dependenciesManager.value
   Seq(
     guice,
     dm("com.typesafe.play","play-json"),
-    dm("com.typesafe.akka","akka-http-core")
+    dm("com.typesafe.akka","akka-http")
       .exclude("com.typesafe.akka","akka-slf4j"),
     dm("com.typesafe.akka","akka-slf4j"),
     dm("ch.qos.logback","logback-classic"),
@@ -94,6 +94,4 @@ mappings in Universal += {
 
 fullTest := (test in Test).value
 
-fullClasspath in (Compile,console) := {
-  (fullClasspath in (Compile,console)).value :+ Attributed.blank(packResourceDir.value.keys.head)
-}
+fullClasspath in (Compile,console) += Attributed.blank(sourceDirectory.value / "cws" / "resources")

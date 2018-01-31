@@ -61,7 +61,7 @@ trait DigestHttpAuthentication {
   //
   // We keep HA1 per user inside its UserInfoton as "digest2"
   //
-  def digestAuthenticate(authCache: AuthCache)(req: Request[_])(implicit ec: ExecutionContext): Future[DigestStatus] = {
+  def digestAuthenticate(authCache: EagerAuthCache)(req: Request[_])(implicit ec: ExecutionContext): Future[DigestStatus] = {
     import akka.pattern.ask
 
     req.headers.get("Authorization") match {
@@ -69,7 +69,7 @@ trait DigestHttpAuthentication {
       case Some(authHeader) => {
         val header = DigestHeaderUtils.fromClientHeaderString(authHeader)
         (Grid.serviceRef(classOf[NoncesManager].getName) ? ConsumeNonce(header.nonce)).mapTo[NonceStatus].map {
-          case NonceConsumed if header.opaque == opaque => authCache.getUserInfoton(header.username, req.attrs(Attrs.Nbg)) match {
+          case NonceConsumed if header.opaque == opaque => authCache.getUserInfoton(header.username) match {
             case None => DigestStatus(isAuthenticated = false, "")
             case Some(user) =>
               val ha1 = (user \ userInfotonPropName).asOpt[String].getOrElse("")

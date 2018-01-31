@@ -1,5 +1,11 @@
 # CM-Well Introductory Topics #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) 
+
+----
+
 The following topics provide a high-level functional and technical overview of CM-Well and related terms. Click on a topic to learn more about it. 
 
 Topic | Description
@@ -12,3 +18,9 @@ Topic | Description
 [A Brief History of CM-Well](Intro.BriefHistoryOfCM-Well.md) | A brief review of the evolution of the CM-Well platform
 [Technical Decisions in CM-Well's Design](Intro.TechnicalDecisionsInCM-WellDesign.md) | A description of the technical decisions taken when designing CM-Well
 [CM-Well Use Cases](UseCase.TOC.md) | Some CM-Well use cases (client applications) already implemented 
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) 
+
+----

@@ -1,5 +1,11 @@
 # Getting Started with CM-Well #
 
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) 
+
+----
+
 Before diving straight into the CM-Well API, we recommend reading at least the following introductory topics:
 
 Topic | Description
@@ -18,3 +24,9 @@ To learn about the CM-Well API, read **at least** these chapters of the [CM-Well
 To start getting some hands-on experience with CM-Well, work through one of the [CM-Well Tutorials](Tutorial.TOC.md). You can install CM-Well on your laptop.
 
 >**Note:** Please complete all introductory material described above, including working through tutorials, before attempting a proof-of-concept project.
+
+----
+
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) 
+
+----

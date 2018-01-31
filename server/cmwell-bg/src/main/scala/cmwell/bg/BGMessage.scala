@@ -16,7 +16,7 @@
 
 package cmwell.bg
 
-abstract class Offset(val topic:String, val offset:Long, val part:Int, val ofParts:Int) extends Comparable[Offset] {
+sealed abstract class Offset(val topic:String, val offset:Long, val part:Int, val ofParts:Int) extends Comparable[Offset] {
   override def compareTo(o: Offset) =
     if(o == null)
       throw new NullPointerException("Comparing null values is not supported!")

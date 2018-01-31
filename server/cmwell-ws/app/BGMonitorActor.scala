@@ -43,7 +43,7 @@ class BGMonitorActor(zkServers:String, offsetService:OffsetsService, implicit va
   val zkClient = new ZkClient(zkServers, 10000, 10000, ZKLikeStringSerializer)
   val zkUtils = ZkUtils(zkClient,false)
   val allBrokers = zkUtils.getAllBrokersInCluster().map{ b =>
-    val endPoint = b.endPoints.head._2
+    val endPoint = b.endPoints.head
     s"${endPoint.host}:${endPoint.port}"
   }.mkString(",")
   val topics = Seq("persist_topic", "persist_topic.priority", "index_topic", "index_topic.priority")
@@ -204,4 +204,6 @@ trait PartitionStatus
 case object Green extends PartitionStatus
 case object Yellow extends PartitionStatus
 case object Red extends PartitionStatus
-case class PartitionOffsetsInfo(topic:String, partition:Int, readOffset:Long, writeOffset:Long, partitionStatus:PartitionStatus = Green)
+case class PartitionOffsetsInfo(topic:String, partition:Int, readOffset:Long, writeOffset:Long, partitionStatus:PartitionStatus = Green) {
+  def toShortInfoString = s"${topic.head}${if(topic.contains(".p"))".p" else ""}:${writeOffset-readOffset}:${partitionStatus.toString.head}"
+}

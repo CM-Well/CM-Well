@@ -91,7 +91,11 @@ object InfotonSerializer extends LazyLogging {
 
     def setLastModified(lastModified: String): Unit = {
       if(this.lastModified eq null) this.lastModified = fmt.parseDateTime(lastModified)
-      else throw new IllegalStateException(s"lastModified was already set for uuid [$uuidHint] [${this.lastModified.toString(fmt)},$lastModified]")
+      else {
+        val newLastModified = fmt.parseDateTime(lastModified)
+        if (this.lastModified.compareTo(newLastModified) == 0) logger.warn(s"Been called twice on lastModified with same (parsed) value [${this.lastModified.toString(fmt)},$lastModified]")
+        else throw new IllegalStateException(s"lastModified was already set for uuid [$uuidHint] [${this.lastModified.toString(fmt)},$lastModified]")
+      }
     }
 
     def setDc(dc: String): Unit = {

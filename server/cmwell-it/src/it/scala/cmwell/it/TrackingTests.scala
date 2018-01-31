@@ -17,13 +17,12 @@
 package cmwell.it
 
 import cmwell.tracking.{Failed, InProgress, PathStatus}
-import cmwell.util.concurrent.{retry, retryUntil}
+import cmwell.util.concurrent.{retry, unsafeRetryUntil}
 import cmwell.util.http.SimpleResponse
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest._
 import play.api.libs.json.Json
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
@@ -112,7 +111,7 @@ class TrackingTests extends AsyncFunSpec with Matchers with Helpers with OptionV
       flatMap { resp =>
         Json.parse(resp.payload) shouldBe jsonSuccess
         def ready(resp: SimpleResponse[String]) = resp.status == 200 && resp.payload.split("\n").exists(_.contains("indexTime"))
-        retryUntil[SimpleResponse[String]](ready,10,500.millis)(Http.get(rd1Url, List("format"->"ntriples"))).map(_ => ())
+        unsafeRetryUntil[SimpleResponse[String]](ready,10,500.millis)(Http.get(rd1Url, List("format"->"ntriples"))).map(_ => ())
       }
     val simulateDeadActor: Future[Int] = simulateDeadTrackingActor("testActor2", Seq(PathStatus(rd1Path, InProgress)))
 
@@ -163,7 +162,7 @@ class TrackingTests extends AsyncFunSpec with Matchers with Helpers with OptionV
         val expectedResults = s"""${subjects.head} <$statusPredicate> "Evicted(expected:$otherUuid,actual:$existingUuid)" ."""
         ingestAndGetTrackingId(newPayload).flatMap { tid =>
           tid shouldBe defined
-          val actualFut = retryUntil((resp: String) => !resp.contains("InProgress"), 5, 1.second)(Http.get(_track / tid.get).map(_.payload.trim))
+          val actualFut = unsafeRetryUntil((resp: String) => !resp.contains("InProgress"), 5, 1.second)(Http.get(_track / tid.get).map(_.payload.trim))
           actualFut.map(_ should be(expectedResults))
         }
       })
