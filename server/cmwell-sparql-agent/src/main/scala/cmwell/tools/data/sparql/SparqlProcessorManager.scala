@@ -73,17 +73,23 @@ sealed trait JobActive extends JobStatus {
   val reporter: ActorRef
 }
 
-case class JobRunning(job: Job, killSwitch: KillSwitch, reporter: ActorRef, statusString : String = "Running") extends JobActive
-case class JobPausing(job: Job, killSwitch: KillSwitch, reporter: ActorRef, statusString : String = "Pausing") extends JobActive
-case class JobStopping(job: Job, killSwitch: KillSwitch, reporter: ActorRef, statusString : String = "Stopping") extends JobActive
+case class JobRunning(job: Job, killSwitch: KillSwitch, reporter: ActorRef) extends JobActive {
+  override val statusString = "Running"
+}
+case class JobPausing(job: Job, killSwitch: KillSwitch, reporter: ActorRef) extends JobActive {
+  override val statusString = "Pausing"
+}
+case class JobStopping(job: Job, killSwitch: KillSwitch, reporter: ActorRef) extends JobActive {
+  override val statusString: String = "Stopping"
+}
 
 case class JobFailed(job: Job, ex: Throwable) extends JobStatus {
-  val statusString = "Failed"
+  override val statusString = "Failed"
   override val canBeRestarted = true
 }
 case class JobPaused(job: Job) extends JobStatus {
   override val canBeRestarted = true
-  val statusString = "Paused"
+  override val statusString = "Paused"
 }
 
 object SparqlProcessorManager {
@@ -139,10 +145,10 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
     currentJobs.get(job.name).fold {
       logger.error(s"Got finished signal for job $job that doesn't exist in the job map. Not reasonable! Current job in map are: ${currentJobs.keys.mkString(",")}")
     } {
-      case JobPausing(runningJob, _, _,_) =>
+      case JobPausing(runningJob, _, _) =>
         logger.info(s"Job $runningJob has finished. Saving the job state.")
         currentJobs = currentJobs + (job.name -> JobPaused(runningJob))
-      case JobStopping(runningJob, _, _,_) =>
+      case JobStopping(runningJob, _, _) =>
         logger.info(s"Job $runningJob has finished. Removing the job from the job list.")
         currentJobs = currentJobs - runningJob.name
       case other =>
@@ -177,7 +183,7 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
     currentJobs.get(job.name).fold {
       logger.error(s"Got pause request for job $job that doesn't exist in the job map. Not reasonable! Current job in map are: ${currentJobs.keys.mkString(",")}")
     } {
-      case JobRunning(runningJob, killSwitch, reporter, _) =>
+      case JobRunning(runningJob, killSwitch, reporter) =>
         logger.info(s"Pausing job $runningJob. The job will actually pause only after it will finish all its current operations")
         currentJobs = currentJobs + (job.name -> JobPausing(job, killSwitch, reporter))
         killSwitch.shutdown()
@@ -194,7 +200,7 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
     currentJobs.get(job.name).fold {
       logger.error(s"Got stop and remove request for job $job that doesn't exist in the job map. Not reasonable! Current job in map are: ${currentJobs.keys.mkString(",")}")
     } {
-      case JobRunning(runningJob, killSwitch, reporter, _) =>
+      case JobRunning(runningJob, killSwitch, reporter) =>
         logger.info(s"Stopping job $runningJob. The job will actually stopped only after it will finish all its current operations")
         currentJobs = currentJobs + (job.name -> JobStopping(job, killSwitch, reporter))
         killSwitch.shutdown()
