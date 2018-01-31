@@ -167,7 +167,7 @@ class DownloaderStats[T](isStderr: Boolean,
             val message =
               s"[received=${toHumanReadable(totalDownloadedBytes.count)}]".padTo(20, ' ') +
                 s"[infotons=${formatter.format(totalReceivedInfotons.count)}".padTo(30, ' ') +
-                s"infoton rate=${formatter.format(totalReceivedInfotons.oneMinuteRate)}/sec]".padTo(30, ' ') +
+                s"infoton rate=${formatter.format(totalReceivedInfotons.meanRate)}/sec]".padTo(30, ' ') +
                 s"[mean rate=${toHumanReadable(metricRateBytes.meanRate)}/sec".padTo(25, ' ') +
                 s"rate=${rate}/sec]".padTo(24, ' ') +
                 s"[${DurationFormatUtils.formatDurationWords(executionTime, true, true)}]"
