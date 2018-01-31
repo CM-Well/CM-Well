@@ -142,15 +142,15 @@ object PassiveFieldTypesCache {
       val rv = typesOpt.fold(Set.empty[Char])(_.collect{
         case FString(t, _, _) if t.length == 1 => t.head
       })
-      if(rv.isEmpty) {
-        logger.warn(s"got empty type set for $infopt")
+      if(rv.isEmpty && infopt.isDefined) {
+        logger.error(s"got empty type set for $infopt")
       }
       rv
     }
 
     private def getMetaFieldInfoton(field: FieldKey): Future[Option[Infoton]] =
       crudService.getInfoton(field.metaPath, None, None).map(_.map(_.infoton))(updatingExecutionContext).andThen {
-        case Success(None) => logger.warn(s"got empty type infoton for $field")
+        case Success(None) => logger.info(s"got empty type infoton for [$field], this means either someone searched a non-existing field, or that we were unable to load from cassandra.")
       }(updatingExecutionContext)
   }
 }
