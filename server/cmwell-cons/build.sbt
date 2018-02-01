@@ -18,17 +18,17 @@ getExternalComponents := {
 
   val casM = dm("org.apache.cassandra", "apache-cassandra") artifacts (Artifact("apache-cassandra", "tar.gz", "tar.gz", "bin")) intransitive()
   val casF: scala.concurrent.Future[Seq[java.io.File]] = {
-    CMWellBuild.fetchMvnArtifact(casM,scalaVersion.value,scalaBinaryVersion.value)
+    CMWellBuild.fetchMvnArtifact(casM,scalaVersion.value,scalaBinaryVersion.value,logger.log)
   }
 
   val esM = dm("org.elasticsearch", "elasticsearch") artifacts (Artifact("elasticsearch", "tar.gz", "tar.gz")) intransitive()
   val esF: scala.concurrent.Future[Seq[java.io.File]] = {
-    CMWellBuild.fetchMvnArtifact(esM,scalaVersion.value,scalaBinaryVersion.value)
+    CMWellBuild.fetchMvnArtifact(esM,scalaVersion.value,scalaBinaryVersion.value,logger.log)
   }
 
   val mx4jM = dm("mx4j", "mx4j-tools")
   val mx4jF: scala.concurrent.Future[Seq[java.io.File]] = {
-    CMWellBuild.fetchMvnArtifact(mx4jM,scalaVersion.value,scalaBinaryVersion.value)
+    CMWellBuild.fetchMvnArtifact(mx4jM,scalaVersion.value,scalaBinaryVersion.value,logger.log)
   }
 
   val kafkaF = CMWellBuild.fetchKafka(scalaBinaryVersion.value,Versions.kafka)
