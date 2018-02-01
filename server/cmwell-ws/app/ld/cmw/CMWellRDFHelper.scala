@@ -45,7 +45,11 @@ import scala.collection.mutable.{Set => MSet}
 
 object CMWellRDFHelper {
 
-  class NoFallbackException extends RuntimeException("No fallback...")
+  sealed trait PrefixResolvingError extends RuntimeException
+  object PrefixResolvingError {
+    def apply(prefix: String) = new RuntimeException(s"Failed to resolve prefix [$prefix]") with PrefixResolvingError
+    def apply(prefix: String, cause: Throwable) = new RuntimeException(s"Failed to resolve prefix [$prefix]", cause) with PrefixResolvingError
+  }
 
   sealed trait PrefixState //to perform
   case object Create extends PrefixState
@@ -269,20 +273,20 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
     Await.result(getUrlAndLastForPrefixAsync(prefix),awaitTimeout)
   }
 
-  def getUrlAndLastForPrefixAsync(prefix: String, withFallBack: Boolean = true)(implicit ec: ExecutionContext): Future[(String,String)] = {
-    val f = getUrlForPrefixAsyncActual(prefix,withFallBack)
+  def getUrlAndLastForPrefixAsync(prefix: String)(implicit ec: ExecutionContext): Future[(String,String)] = {
+    val f = getUrlForPrefixAsyncActual(prefix)
     f.onComplete{
-      case Success((url,last,Right(infoton))) => {
+      case Success((url,last,infoton)) => {
         hashToUrlPermanentCache.put(last,url)
         urlToHashPermanentCache.put(url,last)
         hashToMetaNsInfotonCache.put(last, infoton)
       }
-      case Success((url,last,Left(infoton))) => {
+      case Success((url,last,infoton)) => {
         hashToUrlPermanentCache.put(last, url)
         urlToHashPermanentCache.put(url, last)
         logger.info(s"search for prefix $prefix succeeded but resulted with infoton: $infoton")
       }
-      case Failure(nf: NoFallbackException) => logger.debug(s"getHashForPrefixAsync for $prefix failed (without fallback)")
+      case Failure(nf: PrefixResolvingError) => logger.debug(s"getHashForPrefixAsync for $prefix failed (without fallback)")
       case Failure(e) => logger.error(s"getHashForPrefixAsync for $prefix failed",e)
     }
     f.map(t => t._1 -> t._2)
@@ -504,14 +508,14 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
 
   // private[this] section:
 
-  private[this] def getUrlForPrefixAsyncActual(prefix: String, withFallBack: Boolean = true)(implicit ec: ExecutionContext): Future[(String,String,Either[Infoton,Infoton])] = {
+  private[this] def getUrlForPrefixAsyncActual(prefix: String)(implicit ec: ExecutionContext): Future[(String,String,Infoton)] = {
 
     @inline def prefixRequirement(requirement: Boolean, message: => String): Unit = {
       if (!requirement)
         throw new UnretrievableIdentifierException(message)
     }
 
-    def ensureRequirementsAndOutputPair(infotons: Seq[Infoton], infotonToEither: Infoton => Either[Infoton,Infoton]): (String,String,Either[Infoton,Infoton]) = {
+    def ensureRequirementsAndOutputPair(infotons: Seq[Infoton]): (String,String,Infoton) = {
       prefixRequirement(infotons.nonEmpty, s"the prefix $prefix is not associated to any namespace")
 
       val triple = {
@@ -547,8 +551,7 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
         val url = urls.head.value.asInstanceOf[String]
         val i = iSeq.head
         val last = i.path.drop("/meta/ns/".length)
-        val either = infotonToEither(i)
-        (url, last, either)
+        (url, last, i)
       }
       triple
     }
@@ -557,14 +560,10 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
       pathFilter = Some(PathFilter("/meta/ns", false)),
       fieldFilters = Some(FieldFilter(Should, Equals, "prefix", prefix)),
       datesFilter = None,
-      withData = true).flatMap {
-      case SearchResults(_, _, _, _, _, infotons, _) if infotons.exists(_.fields.isDefined) =>
-        Future(ensureRequirementsAndOutputPair(infotons.filter(_.fields.isDefined),Right.apply))
-      case SearchResults(_, _, _, _, _, infotons, _) if withFallBack =>
-        crudServiceFS.getInfoton("/meta/ns/" + prefix, None, None).map { iOpt =>
-          ensureRequirementsAndOutputPair(iOpt.map(_.infoton).toSeq, Left.apply)
-        }
-      case _ => throw new NoFallbackException
+      withData = true).transform {
+      case Success(SearchResults(_, _, _, _, _, infotons, _)) if infotons.exists(_.fields.isDefined) =>
+        Success(ensureRequirementsAndOutputPair(infotons.filter(_.fields.isDefined)))
+      case t => t.fold({ cause => Failure(PrefixResolvingError(prefix,cause))},{ _ => Failure(PrefixResolvingError(prefix))})
     }
   }
 
