@@ -22,7 +22,7 @@ import cmwell.domain.{FReference, FString}
 import cmwell.fts._
 import cmwell.util.concurrent.retry
 import cmwell.web.ld.cmw.CMWellRDFHelper
-import cmwell.web.ld.exceptions.{PrefixAmbiguityException, UnretrievableIdentifierException}
+import cmwell.web.ld.exceptions.UnretrievableIdentifierException
 import cmwell.ws.util.PrefixRequirement
 import com.typesafe.scalalogging.LazyLogging
 import cmwell.syntaxutils._
@@ -221,7 +221,7 @@ object FieldKey extends LazyLogging with PrefixRequirement  {
   def resolvePrefix(cmwellRDFHelper: CMWellRDFHelper, first: String, requestedPrefix: String)(implicit ec: ExecutionContext): Future[(String,String)] = {
     Try(cmwellRDFHelper.getUrlAndLastForPrefixAsync(requestedPrefix)).recover {
       case t: Throwable =>
-        Future.failed[(String,String)](t)
+        Future.failed[(String,String)](new Exception("resolvePrefix failed",t))
     }.get.transform {
       case scala.util.Success((_, last)) => Success(first -> last)
       case scala.util.Failure(e: UnretrievableIdentifierException) => Failure(e)
