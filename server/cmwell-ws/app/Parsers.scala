@@ -21,7 +21,7 @@ import cmwell.fts.{ Settings => _, _ }
 import cmwell.util.collections._
 import cmwell.util.exceptions.trySequence
 import cmwell.web.ld.cmw.CMWellRDFHelper
-import cmwell.web.ld.exceptions.{ PrefixAmbiguityException, UnretrievableIdentifierException }
+import cmwell.web.ld.exceptions.UnretrievableIdentifierException
 import com.typesafe.scalalogging.LazyLogging
 import logic.CRUDServiceFS
 import org.joda.time.format.{ DateTimeFormat, ISODateTimeFormat }
