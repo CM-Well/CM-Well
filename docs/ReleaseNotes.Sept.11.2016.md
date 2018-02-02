@@ -40,7 +40,7 @@ The following features were added to the CM-Well API:
 * Call Java/Scala functions from SPARQL queries.
 * Call SPARQL CONSTRUCT "stored procedures" from SPARQL queries.
 * Obtain data statistics (produced by Elastic Search), via the **op=stats** flag. (The previous flag name **op=aggregate** is still supported.)
-* Sort results by matching score (**sort-by=score.system**).
+* Sort results by matching score (**sort-by=system.score**).
 
 ### Attention ###
 Please note the following items regarding changes in CM-Well's behavior:
@@ -216,7 +216,7 @@ The feature supports several output formats, including CSV.
 
 **Description:**
 
-Adding **sort-by=score.system** to a query causes the results to be sorted in descending order of the matching score. The matching score is produced by Elastic Search, as a TFIDF (Term Frequency Inverse Document Frequency) score on the search terms. This means that the score is higher if the search terms appear more frequently in a specific infoton than in other infotons on average.
+Adding **sort-by=system.score** to a query causes the results to be sorted in descending order of the matching score. The matching score is produced by Elastic Search, as a TFIDF (Term Frequency Inverse Document Frequency) score on the search terms. This means that the score is higher if the search terms appear more frequently in a specific infoton than in other infotons on average.
 
 >**Notes:** This feature does not work when the **with-data** flag is included in the query.
 

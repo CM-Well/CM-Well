@@ -28,7 +28,7 @@ If a search operation is not behaving as expected, you may want to examine the p
 
 To do this, add the **debug-info** flag to the query, as follows:
 
-    curl "<cm-well-host>/permid.org/?op=search&qp=CommonName.mdaas:Disney&debug-info&format=json&pretty&length=1" 
+    curl "<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Disney&debug-info&format=json&pretty&length=1" 
 
 >**Note:** The **debug-info** flag only works with the following output formats: json,jsonl,yaml.
 
