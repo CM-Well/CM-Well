@@ -39,18 +39,16 @@ class LoginHandler  @Inject()(authCache: EagerAuthCache)(implicit ec: ExecutionC
   def login: Action[AnyContent] = Action.async { implicit req =>
     val exp: Option[DateTime] = req.getQueryString("exp").map(parseShortFormatDuration)
 
-    val nbg = req.attrs(Attrs.Nbg)
-
     def whichAuthType: Option[HttpAuthType] = {
       req.headers.get("authorization").map { h => if (h.contains("Digest")) Digest else Basic }
     }
 
-    def loginDigest = digestAuthenticate(authCache)(req).map(status => if (status.isAuthenticated) grantToken(status.username, exp, nbg) else notAuthenticated)
+    def loginDigest = digestAuthenticate(authCache)(req).map(status => if (status.isAuthenticated) grantToken(status.username, exp) else notAuthenticated)
 
     def loginBasic = {
       val (username, pass) = decodeBasicAuth(req.headers("authorization"))
-        authCache.getUserInfoton(username, nbg) match {
-          case Some(user) if Authentication.passwordMatches(user, pass) => grantToken(username, exp, nbg)
+        authCache.getUserInfoton(username) match {
+          case Some(user) if Authentication.passwordMatches(user, pass) => grantToken(username, exp)
           case _ => notAuthenticated
         }
     }
@@ -93,14 +91,14 @@ class LoginHandler  @Inject()(authCache: EagerAuthCache)(implicit ec: ExecutionC
 //  }
 
   //  private def grantToken(username: String) = Future(Ok(s"Token is hereby granted for $username.").withHeaders("X-CM-WELL-TOKEN" -> Authentication.generateToken(username)))
-  private def grantToken(username: String, expiry: Option[DateTime], nbg: Boolean) = {
-    Try(Token.generate(authCache, nbg, username, expiry)) match {
+  private def grantToken(username: String, expiry: Option[DateTime]) = {
+    Try(Token.generate(authCache, username, expiry)) match {
       case Success(token) => Ok(Json.obj("token" -> token))
       case Failure(err) => wsutil.exceptionToResponse(err)
     }
   }
 
-  private def grantTokenWithHtmlRedirectToSPA(username: String, nbg: Boolean) = Redirect(s"/?token=${Token.generate(authCache, nbg, username)}")
+  private def grantTokenWithHtmlRedirectToSPA(username: String) = Redirect(s"/?token=${Token.generate(authCache, username)}")
 
   private def parseShortFormatDuration(shortFormatDuration: String): DateTime = {
     val durs = Seq("d", "h", "m").map(part => part -> s"(\\d+)(?i)$part".r.findFirstMatchIn(shortFormatDuration).map(_.group(1).toInt).getOrElse(0)).toMap

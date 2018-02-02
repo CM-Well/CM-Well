@@ -48,7 +48,7 @@ object DcChecker  extends Checker with RestarterChecker with LazyLogging {
 
   private def getActiveDcSyncs(host : String) : Future[Set[ActiveDcSync]] = {
 
-     Http.get(s"http://$host/meta/sys/dc/?op=search&qp=type::remote&format=json&with-data").map {
+     Http.get(s"http://$host/meta/sys/dc/?op=search&format=json&with-data").map {
       r =>
         val json: JsValue = Json.parse(r.payload)
         val JsDefined(JsArray(infotons)) = json.\("results").\("infotons")

@@ -27,6 +27,4 @@ class ParsingException(msg: String, t: Throwable = null) extends RuntimeExceptio
 
 class UnretrievableIdentifierException(msg: String, t: Throwable = null) extends ParsingException(msg, t)
 
-class PrefixAmbiguityException(msg: String) extends ParsingException(msg)
-
 class JsonParsingException(msg: String) extends ParsingException(msg)

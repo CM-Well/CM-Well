@@ -20,6 +20,7 @@ import cmwell.ctrl.ddata.DData
 import cmwell.ctrl.hc.HealthActor
 import cmwell.ctrl.utils.ProcUtil
 import cmwell.ctrl.config.Config._
+import com.typesafe.scalalogging.LazyLogging
 
 import scala.util.{Failure, Success}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -27,7 +28,7 @@ import scala.concurrent._
 /**
  * Created by michael on 12/11/14.
  */
-object CassandraChecker extends Checker {
+object CassandraChecker extends Checker with LazyLogging {
   override val storedStates: Int = 10
 
   private def getCassandraStatus(host : String = "") : ComponentState = {
@@ -55,7 +56,9 @@ object CassandraChecker extends Checker {
         }.toMap
         val racksReversed = racks groupBy {_._2} map {case (key,value) => (key, value.unzip._1)}
         CassandraOk(stats, racksReversed)
-      case Failure(err) => CassandraDown()
+      case Failure(err) =>
+        logger.error("Could not parse cassandra-status-viewer response", err)
+        CassandraDown()
     }
   }
 

@@ -50,27 +50,21 @@ object Runner extends LazyLogging {
       SysOutOverSLF4J.sendSystemOutAndErrToSLF4J()
       val config = ConfigFactory.load()
         logger info s"Loaded Configuration:\n ${config.entrySet().asScala.collect{case entry if entry.getKey.startsWith("cmwell") => s"${entry.getKey} -> ${entry.getValue.render()}"}.mkString("\n")}"
-      val irwServiceDaoClusterName = config.getString("irwServiceDao.clusterName")
-      val irwServiceDaoKeySpace = config.getString("irwServiceDao.keySpace")
-      val irwServiceDaoHostName = config.getString("irwServiceDao.hostName")
+
       val partition = config.getInt("cmwell.bg.persist.commands.partition") //main partition for this process
       val numOfPartitions = config.getInt("cmwell.kafka.numOfPartitions")
       val zkServers = config.getString("cmwell.kafka.zkServers")
-      val casDao = Dao(irwServiceDaoClusterName, irwServiceDaoKeySpace, irwServiceDaoHostName)
-      val irwService = {
 
+      val casDao = {
         val irwServiceDaoClusterName = config.getString("irwServiceDao.clusterName")
         val irwServiceDaoKeySpace = config.getString("irwServiceDao.keySpace")
         val irwServiceDaoHostName = config.getString("irwServiceDao.hostName")
-        val irwServiceDao = Dao(irwServiceDaoClusterName, irwServiceDaoKeySpace, irwServiceDaoHostName)
-
-        IRWService.newIRW(irwServiceDao, false)
+        Dao(irwServiceDaoClusterName, irwServiceDaoKeySpace, irwServiceDaoHostName)
       }
 
-      val ftsService = FTSServiceNew("bg.es.yml")
-
+      val irwService = IRWService.newIRW(casDao, false, 120.seconds)
       val zStore = ZStore(casDao)
-
+      val ftsService = FTSServiceNew("bg.es.yml")
       val offsetsService = new ZStoreOffsetsService(zStore)
 
       Grid.setGridConnection(GridConnection(memberName = "bg", labels = Set("bg")))

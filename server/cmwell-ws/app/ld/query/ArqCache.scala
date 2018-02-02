@@ -29,7 +29,7 @@ object ArqCache { // one day this will be a distributed cache ... // todo zStore
       build(new CacheLoader[String, Seq[Quad]] { override def load(key: String) = !!! })
 }
 
-class ArqCache(crudServiceFS: CRUDServiceFS, nbg: Boolean) extends LazyLogging {
+class ArqCache(crudServiceFS: CRUDServiceFS) extends LazyLogging {
 
   import ld.query.ArqCache._
 
@@ -43,7 +43,7 @@ class ArqCache(crudServiceFS: CRUDServiceFS, nbg: Boolean) extends LazyLogging {
   private lazy val infotonsCache: LoadingCache[String, Option[Infoton]] =
     CacheBuilder.newBuilder().maximumSize(100000).expireAfterAccess(5, TimeUnit.MINUTES).
       build(new CacheLoader[String, Option[Infoton]] {
-        override def load(key: String) = Await.result(crudServiceFS.getInfoton(key, None, None, nbg), 9.seconds) match { case Some(Everything(i)) => Option(i) case _ => None }
+        override def load(key: String) = Await.result(crudServiceFS.getInfoton(key, None, None), 9.seconds) match { case Some(Everything(i)) => Option(i) case _ => None }
       })
 
   private lazy val identifiersCache: LoadingCache[String, String] =
@@ -63,7 +63,7 @@ class ArqCache(crudServiceFS: CRUDServiceFS, nbg: Boolean) extends LazyLogging {
     def extractFieldValue(i: Infoton, fieldName: String) = i.fields.getOrElse(Map()).getOrElse(fieldName,Set()).mkString(",")
 
     // /meta/ns/{hash} if fields.url == pred.getURI return hash. else search over meta/ns?qp=url::pred.getURI -> get identifier from path of infoton
-    Await.result(crudServiceFS.getInfoton(s"/meta/ns/$hash", None, None, nbg), 9.seconds) match {
+    Await.result(crudServiceFS.getInfoton(s"/meta/ns/$hash", None, None), 9.seconds) match {
       case Some(Everything(i)) if knownUri.isEmpty => {
         NsResult(extractFieldValue(i, "url"), hash, extractFieldValue(i, "prefix"))
       }
@@ -75,8 +75,7 @@ class ArqCache(crudServiceFS: CRUDServiceFS, nbg: Boolean) extends LazyLogging {
         val searchFutureRes = crudServiceFS.search(
           pathFilter = Some(PathFilter("/", descendants = true)),
           fieldFilters = Some(SingleFieldFilter(Must, Equals, "url", knownUri)),
-          paginationParams = PaginationParams(0, 10),
-          nbg = nbg)
+          paginationParams = PaginationParams(0, 10))
         val infotonsWithThatUrl = Await.result(searchFutureRes, 9.seconds).infotons
         (infotonsWithThatUrl.length: @switch) match {
           case 0 =>
