@@ -33,7 +33,7 @@ class BackPressureToggler  @Inject()(authUtils: AuthUtils) extends InjectedContr
 
   def handleBackpressure = Action { implicit req =>
     val tokenOpt = authUtils.extractTokenFrom(req)
-    if (authUtils.isOperationAllowedForUser(security.Admin, tokenOpt, req.attrs(Attrs.Nbg))) {
+    if (authUtils.isOperationAllowedForUser(security.Admin, tokenOpt)) {
       val thresholdFactor = req.getQueryString("pbp")
       thresholdFactor.map(_.toLowerCase) match {
         case Some("old") =>

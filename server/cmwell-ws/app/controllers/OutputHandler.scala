@@ -39,7 +39,7 @@ import cmwell.util.FullBox
 import cmwell.web.ld.cmw.CMWellRDFHelper
 import cmwell.ws.util.TypeHelpers.asBoolean
 import filters.Attrs
-import ld.cmw.{NbgPassiveFieldTypesCache, ObgPassiveFieldTypesCache}
+import ld.cmw.passiveFieldTypesCacheImpl
 import play.api.http.DefaultHttpFilters
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -61,7 +61,7 @@ class OutputHandler  @Inject()(crudServiceFS: CRUDServiceFS,
 
   val fullDateFormatter = ISODateTimeFormat.dateTime().withZone(DateTimeZone.UTC)
 
-  def typesCache(nbg: Boolean) = if(nbg) crudServiceFS.nbgPassiveFieldTypesCache else crudServiceFS.obgPassiveFieldTypesCache
+  val typesCache = crudServiceFS.passiveFieldTypesCache
 
   def overrideMimetype(default: String, req: Request[AnyContent]): (String, String) = req.getQueryString("override-mimetype") match {
     case Some(mimetype) => (CONTENT_TYPE, mimetype)
@@ -116,12 +116,6 @@ class OutputHandler  @Inject()(crudServiceFS: CRUDServiceFS,
   }
 
   def handleWebSocket(format: String) = WebSocket.accept[String,String] { request =>
-    // FIXME: nbg should be: `request.attrs(Attrs.Nbg)`, but filters not applied
-    // FIXME: on WebSocket, only on Actions. Also, default should be NbgToggler.get
-    // FIXME: but it's an abuse to inject it to the handler only for websockets.
-    // FIXME: As a temporary hack, and as long as new & old data paths stay separate,
-    // FIXME: We'll live with default value of new.
-    val nbg = request.getQueryString("nbg").flatMap(asBoolean).getOrElse(true)
     val formatter = format match {
       case FormatExtractor(formatType) =>
         formatterManager.getFormatter(
@@ -130,8 +124,7 @@ class OutputHandler  @Inject()(crudServiceFS: CRUDServiceFS,
           uri = request.uri,
           pretty = request.queryString.keySet("pretty"),
           callback = request.queryString.get("callback").flatMap(_.headOption),
-          withData = request.getQueryString("with-data"),
-          nbg = nbg)
+          withData = request.getQueryString("with-data"))
     }
     Flow[String].mapAsync(cmwell.ws.Streams.parallelism){ msg =>
       msg.take(4) match {
@@ -175,8 +168,7 @@ class OutputHandler  @Inject()(crudServiceFS: CRUDServiceFS,
     else
       RequestMonitor.add("out",req.path, req.rawQueryString, req.body.asText.getOrElse(""),req.attrs(Attrs.RequestReceivedTimestamp))
 
-    val nbg = req.attrs(Attrs.Nbg)
-    val fieldsMaskFut = extractFieldsMask(req,typesCache(nbg),cmwellRDFHelper, nbg)
+    val fieldsMaskFut = extractFieldsMask(req,typesCache,cmwellRDFHelper)
 
     val formatType = format match {
       case FormatExtractor(ft) => ft
@@ -189,8 +181,7 @@ class OutputHandler  @Inject()(crudServiceFS: CRUDServiceFS,
       uri = req.uri,
       pretty = req.queryString.keySet("pretty"),
       callback = req.queryString.get("callback").flatMap(_.headOption),
-      withData = req.getQueryString("with-data"),
-      nbg = nbg)
+      withData = req.getQueryString("with-data"))
 
     val either: Either[SimpleResponse, Vector[String]] = req.body.asJson match {
       case Some(json) => {
@@ -223,8 +214,6 @@ class OutputHandler  @Inject()(crudServiceFS: CRUDServiceFS,
 
   def futureRetrievablePathsFromPathsAsLines(pathsVector: Vector[String], req: Request[AnyContent]) = {
 
-    val nbg = req.attrs(Attrs.Nbg)
-
     val (byUuid, byPath) = pathsVector.partition(_.startsWith("/ii/")) match {
       case (xs, ys) => (xs.map(_.drop(4)), ys) // "/ii/".length = 4
     }
@@ -233,7 +222,7 @@ class OutputHandler  @Inject()(crudServiceFS: CRUDServiceFS,
       case BagOfInfotons(coreInfotons) => {
         val eInfotons = req.getQueryString("yg") match {
           case None => Future.successful(true -> coreInfotons)
-          case Some(ygp) => Try(wsutil.pathExpansionParser(ygp, coreInfotons, req.getQueryString("yg-chunk-size").flatMap(asInt).getOrElse(10),cmwellRDFHelper,typesCache(nbg),nbg)) match {
+          case Some(ygp) => Try(wsutil.pathExpansionParser(ygp, coreInfotons, req.getQueryString("yg-chunk-size").flatMap(asInt).getOrElse(10),cmwellRDFHelper,typesCache)) match {
             case Success(f) => f
             case Failure(e) => Future.failed(e)
           }
@@ -242,7 +231,7 @@ class OutputHandler  @Inject()(crudServiceFS: CRUDServiceFS,
         val fInfotons = eInfotons.flatMap {
           case (true,ygExpandedInfotons) => req.getQueryString("xg") match {
             case None => Future.successful(true -> ygExpandedInfotons)
-            case Some(xgp) => Try(wsutil.deepExpandGraph(xgp, ygExpandedInfotons,cmwellRDFHelper,typesCache(nbg),nbg)) match {
+            case Some(xgp) => Try(wsutil.deepExpandGraph(xgp, ygExpandedInfotons,cmwellRDFHelper,typesCache)) match {
               case Success(f) => f
               case Failure(e) => Future.failed(e)
             }
@@ -254,7 +243,7 @@ class OutputHandler  @Inject()(crudServiceFS: CRUDServiceFS,
           val irretrievableUuids = byUuid.filterNot(uuid => coreInfotons.exists(_.uuid == uuid)).map(uuid => s"/ii/$uuid")
           val irretrievablePaths = byPath.filterNot(path => coreInfotons.exists(_.path == path))
 
-          val notAllowedPaths = authUtils.filterNotAllowedPaths(infotons.map(_.path), PermissionLevel.Read, authUtils.extractTokenFrom(req), req.attrs(Attrs.Nbg)).toVector
+          val notAllowedPaths = authUtils.filterNotAllowedPaths(infotons.map(_.path), PermissionLevel.Read, authUtils.extractTokenFrom(req)).toVector
           val allowedInfotons = infotons.filterNot(i => notAllowedPaths.contains(i.path))
 
           ok -> RetrievablePaths(allowedInfotons, irretrievableUuids ++ irretrievablePaths ++ notAllowedPaths)

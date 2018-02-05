@@ -204,4 +204,6 @@ trait PartitionStatus
 case object Green extends PartitionStatus
 case object Yellow extends PartitionStatus
 case object Red extends PartitionStatus
-case class PartitionOffsetsInfo(topic:String, partition:Int, readOffset:Long, writeOffset:Long, partitionStatus:PartitionStatus = Green)
+case class PartitionOffsetsInfo(topic:String, partition:Int, readOffset:Long, writeOffset:Long, partitionStatus:PartitionStatus = Green) {
+  def toShortInfoString = s"${topic.head}${if(topic.contains(".p"))".p" else ""}:${writeOffset-readOffset}:${partitionStatus.toString.head}"
+}
