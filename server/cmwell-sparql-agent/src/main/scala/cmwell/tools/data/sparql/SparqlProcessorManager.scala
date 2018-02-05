@@ -348,6 +348,7 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
     val (killSwitch, jobDone) = Ingester.ingest(baseUrl = settings.hostWriteOutput,
         format = settings.materializedViewFormat,
         source = agent,
+        force = job.config.force.getOrElse(false),
         label = Some(s"ingester-${job.name}"))
       .viaMat(KillSwitches.single)(Keep.right)
       .toMat(Sink.ignore)(Keep.both)
@@ -430,7 +431,7 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
       }
       implicit val sensorFormat = yamlFormat6(Sensor)
       implicit val sequenceFormat = seqFormat[Sensor](sensorFormat)
-      implicit val configFormat = yamlFormat4(Config)
+      implicit val configFormat = yamlFormat5(Config)
     }
     import SensorYamlProtocol._
     import net.jcazevedo.moultingyaml._
