@@ -18,7 +18,7 @@ package cmwell.tools.data.ingester
 
 import java.io._
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.stream._
@@ -30,6 +30,7 @@ import cmwell.tools.data.utils.logging.{DataToolsLogging, LabelId}
 import cmwell.tools.data.utils.akka._
 import cmwell.tools.data.utils.ArgsManipulations._
 import cmwell.tools.data.utils.akka.HeaderOps._
+import cmwell.tools.data.utils.akka.stats.IngesterStats
 import cmwell.tools.data.utils.ops.VersionChecker
 import com.typesafe.config.ConfigFactory
 
@@ -172,6 +173,7 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
              isPriority: Boolean = false,
              force: Boolean = false,
              source: Source[ByteString, _],
+             tokenReporter: Option[ActorRef] = None,
              within: FiniteDuration = 10.seconds,
              label: Option[String] = None)
             (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
@@ -231,8 +233,9 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
 
     // ingest graph
     source
-      .via( SizeChunker(chunkSize, within))
+      .via(SizeChunker(chunkSize, within))
       .via(ingestFlow)
+      .via(IngesterStats(isStderr = false, reporter = tokenReporter, label=label))
 //      .via(balancer(ingestFlow, 20))
   }
 
