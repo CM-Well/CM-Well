@@ -364,9 +364,9 @@ case class ElasticsearchConf(clusterName : String, nodeName : String, dataNode :
   }
 }
 
-case class KafkaConf(home : String, zookeeperServers : Seq[String], brokerId : Int, hostIp : String) extends ComponentConf(hostIp, s"$home/app/kafka", "start.sh", s"$home/conf/kafka","server.properties", 1) {
-  val dir = "kafka"
+case class KafkaConf(home : String, logDirs: Seq[String], zookeeperServers : Seq[String], brokerId : Int, hostIp : String) extends ComponentConf(hostIp, s"$home/app/kafka", "start.sh", s"$home/conf/kafka","server.properties", 1) {
   override def mkScript: ConfFile = {
+    val dir = "kafka"
     val exports = s"export PATH=$home/app/java/bin:$home/bin/utils:$PATH"
     val cp = ":cur/libs/*"
     val scriptString =
@@ -384,7 +384,7 @@ case class KafkaConf(home : String, zookeeperServers : Seq[String], brokerId : I
   override def mkConfig: List[ConfFile] = {
     val m = Map[String, String](
       "broker-id" -> brokerId.toString,
-      "log-dirs" -> s"$home/data/$dir",
+      "log-dirs" -> logDirs.mkString(","),
       "zookeeper-connect" -> zookeeperServers.map(zkServer => s"$zkServer:2181").mkString(",")
     )
 

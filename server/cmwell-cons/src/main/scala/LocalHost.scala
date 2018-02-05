@@ -157,7 +157,10 @@ case class LocalHost(dataCenter : String = "lh",
         command(s"mkdir -p $tlog", i, false)
     }
 
-    command(s"mkdir -p ${dataDirs.kafkaDataDir}", i, false)
+    dataDirs.kafkaDataDirs.foreach{
+      kafka =>
+        command(s"mkdir -p $kafka", i, false)
+    }
 
     command(s"mkdir -p ${dataDirs.zookeeperDataDir}", i, false)
 
@@ -376,6 +379,7 @@ case class LocalHost(dataCenter : String = "lh",
 
     val kafka = KafkaConf(
       home = homeDir,
+      logDirs = dataDirs.kafkaDataDirs.toList,
       zookeeperServers = ips.take(3),
       brokerId = 1,
       hostIp = ip
