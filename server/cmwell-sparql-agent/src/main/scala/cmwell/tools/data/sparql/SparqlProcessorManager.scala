@@ -330,25 +330,6 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
 
 
   /**
-    *
-    * @param config
-    * @param settings
-    * @return
-    */
-
-  /*
-
-  def getHostSource(config: Config, settings: SparqlProcessorManagerSettings) : String = {
-    if(Option(config.hostUpdatesSource).forall(_.isEmpty)){
-      settings.hostUpdatesSource
-    }
-    else{
-      config.hostUpdatesSource
-    }
-  }
-*/
-
-  /**
     * This method MUST be run from the actor's thread (it changes the actor state)!
     * @param jobRead
     */
