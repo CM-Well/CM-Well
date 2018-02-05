@@ -44,7 +44,8 @@ case class Sensor(name: String,
 case class Config(name: Option[String] = None,
                   sensors: Seq[Sensor],
                   updateFreq: FiniteDuration,
-                  sparqlMaterializer: String)
+                  sparqlMaterializer: String,
+                  hostUpdatesSource: Option[String])
 
 object SparqlTriggeredProcessor {
 

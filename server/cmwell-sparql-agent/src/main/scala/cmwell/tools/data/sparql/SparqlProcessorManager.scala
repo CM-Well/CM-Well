@@ -330,18 +330,42 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
 
 
   /**
+    *
+    * @param config
+    * @param settings
+    * @return
+    */
+
+  /*
+
+  def getHostSource(config: Config, settings: SparqlProcessorManagerSettings) : String = {
+    if(Option(config.hostUpdatesSource).forall(_.isEmpty)){
+      settings.hostUpdatesSource
+    }
+    else{
+      config.hostUpdatesSource
+    }
+  }
+*/
+
+  /**
     * This method MUST be run from the actor's thread (it changes the actor state)!
     * @param jobRead
     */
   def handleStartJob(jobRead: JobRead): Unit = {
+
     val job = jobRead.job
+
     //this method MUST BE RUN from the actor's thread and changing the state is allowed. the below will replace any existing state.
     //The state is changed instantly and every change that follows (even from another thread/Future) will be later.
     val tokenReporter = context.actorOf(
         props = InfotonReporter(baseUrl = settings.hostConfigFile, path = settings.pathAgentConfigs + "/" + job.name),
         name = s"${job.name}-${Hash.crc32(job.config.toString)}"
     )
-    val agent = SparqlTriggeredProcessor.listen(job.config, settings.hostUpdatesSource, false, Some(tokenReporter), Some(job.name))
+
+    val hostUpdatesSource = job.config.hostUpdatesSource.getOrElse(settings.hostUpdatesSource)
+
+    val agent = SparqlTriggeredProcessor.listen(job.config, hostUpdatesSource, false, Some(tokenReporter), Some(job.name))
       .map { case (data, _) => data }
       .via(GroupChunker(formatToGroupExtractor(settings.materializedViewFormat)))
       .map(concatByteStrings(_, endl))
@@ -430,7 +454,7 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
       }
       implicit val sensorFormat = yamlFormat6(Sensor)
       implicit val sequenceFormat = seqFormat[Sensor](sensorFormat)
-      implicit val configFormat = yamlFormat4(Config)
+      implicit val configFormat = yamlFormat5(Config)
     }
     import SensorYamlProtocol._
     import net.jcazevedo.moultingyaml._
