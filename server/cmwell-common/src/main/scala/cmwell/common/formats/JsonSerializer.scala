@@ -380,7 +380,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
               case _ => "utf-8"
             }
             jsonGenerator.writeStringField("data", new String(data, charset))
-          }else if(!omitBinaryData){
+          } else if(!omitBinaryData) {
             jsonGenerator.writeBinaryField("base64-data", data)
           }
         }

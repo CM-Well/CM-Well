@@ -277,19 +277,32 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       }.mkString("[", ",", "]")
     }")
 
-    val kafkaWritesRes = {
-      Future.traverse(infotons) {
+    def kafkaWritesRes(infos: Vector[Infoton], isPriorityWriteInner: Boolean): Future[Unit] = {
+      Future.traverse(infos) {
         case infoton if infoton.lastModified.getMillis == 0L =>
           sendToKafka(
             WriteCommand(
               infoton.copyInfoton(lastModified = DateTime.now(DateTimeZone.UTC)),
               validTid(infoton.path, tid),
-              prevUUID = atomicUpdates.get(infoton.path)), isPriorityWrite)
-        case infoton => sendToKafka(WriteCommand(infoton, validTid(infoton.path, tid), atomicUpdates.get(infoton.path)), isPriorityWrite)
-      }.map(_ => true)
+              prevUUID = atomicUpdates.get(infoton.path)), isPriorityWriteInner)
+        case infoton => sendToKafka(WriteCommand(infoton, validTid(infoton.path, tid), atomicUpdates.get(infoton.path)), isPriorityWriteInner)
+      }.map(_ => ())
     }
 
-    kafkaWritesRes
+    // writing meta to priority before regular infotons "ensures" (on pe,
+    // in distributed env it's only an optimization), that when infotons are read,
+    // the meta data to format & search by already exist.
+    // So if you read infoton right after an ingest, prefixes will come out properly.
+    val (meta,regs) = infotons.partition(_.path.matches("/meta/n(n|s)/.+"))
+
+    val metaWrites = {
+      if (meta.isEmpty) Future.successful(())
+      else kafkaWritesRes(meta, isPriorityWriteInner = true)
+    }
+    metaWrites.flatMap { _ =>
+      if(regs.isEmpty) Future.successful(())
+      else kafkaWritesRes(regs, isPriorityWrite)
+    }.map{_ => true}
   }
 
   def deleteInfotons(deletes: List[(String, Option[Map[String, Set[FieldValue]]])], tidOpt: Option[String] = None, atomicUpdates: Map[String,String] = Map.empty, isPriorityWrite: Boolean = false) = {
@@ -361,10 +374,22 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
 
       val commands:List[SingleCommand] = dels ::: ups
 
+      // writing meta to priority before regular infotons "ensures" (on pe,
+      // in distributed env it's only an optimization), that when infotons are read,
+      // the meta data to format & search by already exist.
+      // So if you read infoton right after an ingest, prefixes will come out properly.
+      val (meta,regs) = commands.partition(_.path.matches("/meta/n(n|s)/.+"))
 
-      Future.traverse(commands){
-        case cmd@UpdatePathCommand(_, _, _, lastModified, _, _) if lastModified.getMillis == 0L => sendToKafka(cmd.copy(lastModified = DateTime.now(DateTimeZone.UTC)), isPriorityWrite)
-        case cmd => sendToKafka(cmd, isPriorityWrite)
+      val metaWrites = {
+        if (meta.isEmpty) Future.successful(())
+        else Future.traverse(meta)(sendToKafka(_, isPriorityWrite = true))
+      }
+      metaWrites.flatMap { _ =>
+        if(regs.isEmpty) Future.successful(())
+        else Future.traverse(regs) {
+          case cmd@UpdatePathCommand(_, _, _, lastModified, _, _) if lastModified.getMillis == 0L => sendToKafka(cmd.copy(lastModified = DateTime.now(DateTimeZone.UTC)), isPriorityWrite)
+          case cmd => sendToKafka(cmd, isPriorityWrite)
+        }
       }.map{_ => true}
     }
   }

@@ -108,10 +108,12 @@ object RawFieldFilter extends PrefixRequirement {
       Future.successful(fieldFilterWithExplicitUrlOpt.get)
     }
     case RawMultiFieldFilter(fo,rs) => Future.traverse(rs)(eval(_,cache,cmwellRDFHelper))(bo1,ec).map(MultiFieldFilter(fo, _))
-    case RawSingleFieldFilter(fo,vo,fk,v) => FieldKey.eval(fk,cache,cmwellRDFHelper)(ec).map{
-      case s if s.isEmpty => !!!
-      case s if s.size == 1 => mkSingleFieldFilter(fo,vo,s.head,v)
-      case s => MultiFieldFilter(fo,s.map(mkSingleFieldFilter(Should,vo,_,v))(bo2))
+    case RawSingleFieldFilter(fo,vo,fk,v) => FieldKey.eval(fk,cache,cmwellRDFHelper)(ec).transform {
+      case Success(s) if s.isEmpty => Failure(new NoSuchElementException(s"cannot build FieldFilter from empty fields [$rff] - this might mean you try to query a field that does not (yet) exist."))
+      case anyOtherCase => anyOtherCase.map { s =>
+        if (s.size == 1) mkSingleFieldFilter(fo, vo, s.head, v)
+        else MultiFieldFilter(fo, s.map(mkSingleFieldFilter(Should, vo, _, v))(bo2))
+      }
     }
   }
 
@@ -187,12 +189,13 @@ object FieldKey extends LazyLogging with PrefixRequirement  {
 
   def enrichWithTypes(fk: FieldKey, cache: PassiveFieldTypesCacheTrait): Future[Set[String]] = {
     import scala.concurrent.ExecutionContext.Implicits.global
-    cache.get(fk).map {
-      case s if s.isEmpty => throw new NoSuchElementException(s"No field types bookkeeping was found for $fk")
-      case s => s.map {
+    cache.get(fk).transform {
+      case Failure(_: NoSuchElementException) => Success(Set.empty) // not sure about it...
+//      case Success(s) if s.isEmpty => Failure(new NoSuchElementException(s"No field types bookkeeping was found for $fk"))
+      case s => s.map(_.map {
         case 's' => fk.internalKey
         case c => s"$c$$${fk.internalKey}"
-      }
+      })
     }
   }
 
@@ -219,17 +222,17 @@ object FieldKey extends LazyLogging with PrefixRequirement  {
   }
 
   def resolvePrefix(cmwellRDFHelper: CMWellRDFHelper, first: String, requestedPrefix: String)(implicit ec: ExecutionContext): Future[(String,String)] = {
-    Try(cmwellRDFHelper.getUrlAndLastForPrefixAsync(requestedPrefix)).recover {
+    Try(cmwellRDFHelper.getIdentifierForPrefixAsync(requestedPrefix)).fold({
       case t: Throwable =>
         Future.failed[(String,String)](new Exception("resolvePrefix failed",t))
-    }.get.transform {
-      case scala.util.Success((_, last)) => Success(first -> last)
+    }, _.transform {
+      case scala.util.Success(identifier) => Success(first -> identifier)
       case scala.util.Failure(e: UnretrievableIdentifierException) => Failure(e)
       case scala.util.Failure(e: IllegalArgumentException) => Failure(new UnretrievableIdentifierException(e.getMessage, e))
       case scala.util.Failure(e) => {
         logger.error(s"couldn't find the prefix: $requestedPrefix", e)
         Failure(new UnretrievableIdentifierException(s"couldn't find the prefix: $requestedPrefix", e))
       }
-    }
+    })
   }
 }

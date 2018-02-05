@@ -42,7 +42,7 @@ class IterationsTests extends AsyncFunSpec with Matchers with Inspectors with He
             case _ => false
           } -> iSeq.size
         }).toOption,
-        Try(j.\("searchQueryStr").as[String]).toOption
+        Try(res.toString()).toOption //Try(j.\("searchQueryStr").as[String]).toOption
       )
     }
 
