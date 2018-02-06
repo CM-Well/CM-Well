@@ -435,7 +435,7 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
       }
       implicit val sensorFormat = yamlFormat6(Sensor)
       implicit val sequenceFormat = seqFormat[Sensor](sensorFormat)
-      implicit val configFormat = yamlFormat5(Config)
+      implicit val configFormat = yamlFormat6(Config)
     }
     import SensorYamlProtocol._
     import net.jcazevedo.moultingyaml._
