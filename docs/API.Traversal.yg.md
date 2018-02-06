@@ -30,7 +30,7 @@ This is illustrated in the diagram below. The black circle represents the single
 
 Here is an example that traverses both outbound and inbound links.
 
-Suppose we have a Quote, with a known RIC code of “VAC”. We want to find the corporate address of the company that issues it. We know the model in Open PermID includes Quotes, which link out to Instruments via the **IsQuoteOf** field. Organization infotons also link to Instruments, via the **primaryInstrument** field. The following diagram illustrates these relationships.
+Suppose we have a Quote, with a known RIC code of VAC. We want to find the corporate address of the company that issues it. We know the model in Open PermID includes Quotes, which link out to Instruments via the **IsQuoteOf** field. Organization infotons also link to Instruments, via the **primaryInstrument** field. The following diagram illustrates these relationships.
 
 <img src="./_Images/Instrument-Inbound-Outbound-Links.png">
 
