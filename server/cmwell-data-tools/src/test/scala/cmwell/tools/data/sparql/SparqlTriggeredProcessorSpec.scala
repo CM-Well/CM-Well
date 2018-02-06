@@ -89,7 +89,8 @@ import collection.JavaConverters._
         Sensor(name = "sensor1", path ="/path1")
       ),
       updateFreq = 10.seconds,
-      sparqlMaterializer = ""
+      sparqlMaterializer = "",
+      hostUpdatesSource = Some("http://localhost:9000")
     )
 
     val baseUrl = s"localhost:${wireMockServer.port}"
@@ -154,7 +155,8 @@ import collection.JavaConverters._
         Sensor(name = "sensor2", path ="/path1")
       ),
       updateFreq = 10.seconds,
-      sparqlMaterializer = ""
+      sparqlMaterializer = "",
+      hostUpdatesSource = Some("http://localhost:9000")
     )
 
     val baseUrl = s"localhost:${wireMockServer.port}"
@@ -235,7 +237,8 @@ import collection.JavaConverters._
         Sensor(name = "sensor1", path ="/path1")
       ),
       updateFreq = 5.seconds,
-      sparqlMaterializer = ""
+      sparqlMaterializer = "",
+      hostUpdatesSource = Some("http://localhost:9000")
     )
 
     val baseUrl = s"localhost:${wireMockServer.port}"
