@@ -131,7 +131,7 @@ object CMWellBuild extends AutoPlugin {
 		}
 	}
 
-	def fetchMvnArtifact(moduleID: ModuleID, scalaVersion: String, scalaBinaryVersion: String): Future[Seq[java.io.File]] = {
+	def fetchMvnArtifact(moduleID: ModuleID, scalaVersion: String, scalaBinaryVersion: String, logger: Logger): Future[Seq[java.io.File]] = {
 		import coursier._
 		import java.io.File
 		import scala.concurrent.Future
@@ -147,7 +147,10 @@ object CMWellBuild extends AutoPlugin {
 			case (_, dep) =>
 				coursier.Fetch.find(repositories, module, version, fetch)
 					.fold[Seq[Artifact]](
-					{ _ => Seq.empty[Artifact] }, { case (src, p) => src.artifacts(dep, p, None) })
+					{ errorString =>
+						logger.error(s"coursier fetch mvn artifact delegation encountered an error (skipping task): $errorString")
+						Seq.empty[Artifact]
+					}, { case (src, p) => src.artifacts(dep, p, None) })
 		}
 
 		val farts: Future[Seq[List[File]]] = Future.traverse(tasks) { task =>
@@ -155,14 +158,17 @@ object CMWellBuild extends AutoPlugin {
 				val x = arts.map { art =>
 					Cache.file(art).bimap(e => List(e), f => List(f))
 				}
-				val y = x.reduce[EitherT[Task, List[FileError], List[File]]] {
-					case (a, b) =>
-						a.flatMap(files => b.map(_ ::: files).orElse(a)).orElse(b)
-				}
+				if(x.isEmpty) Task[Try[List[File]]](Failure(new IllegalStateException("empty sequence")))
+				else {
+					val y = x.reduce[EitherT[Task, List[FileError], List[File]]] {
+						case (a, b) =>
+							a.flatMap(files => b.map(_ ::: files).orElse(a)).orElse(b)
+					}
 
-				y.fold({ errs =>
-					Failure[List[File]](new Exception(errs.map(err => err.message + ": " + err.describe).mkString("[\n\t", ",\n\t", "\n]")))
-				}, Success.apply)
+					y.fold({ errs =>
+						Failure[List[File]](new Exception(errs.map(err => err.message + ": " + err.describe).mkString("[\n\t", ",\n\t", "\n]")))
+					}, Success.apply)
+				}
 			})
 		}
 

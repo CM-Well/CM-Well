@@ -22,7 +22,7 @@ import cmwell.domain.{FReference, FString}
 import cmwell.fts._
 import cmwell.util.concurrent.retry
 import cmwell.web.ld.cmw.CMWellRDFHelper
-import cmwell.web.ld.exceptions.{PrefixAmbiguityException, UnretrievableIdentifierException}
+import cmwell.web.ld.exceptions.UnretrievableIdentifierException
 import cmwell.ws.util.PrefixRequirement
 import com.typesafe.scalalogging.LazyLogging
 import cmwell.syntaxutils._
@@ -219,78 +219,17 @@ object FieldKey extends LazyLogging with PrefixRequirement  {
   }
 
   def resolvePrefix(cmwellRDFHelper: CMWellRDFHelper, first: String, requestedPrefix: String)(implicit ec: ExecutionContext): Future[(String,String)] = {
-    val p = Promise[String]()
-
-    // easier, but we want better error messages returned
-    //            val (_,last) = CMWellRDFHelper.getUrlAndLastForPrefix(s)(Settings.esTimeout)
-    // or:
-    //            CMWellRDFHelper.prefixToHash(s)
-
-    val f = Try(cmwellRDFHelper.getUrlAndLastForPrefixAsync(requestedPrefix, withFallBack = false)).recover {
+    Try(cmwellRDFHelper.getUrlAndLastForPrefixAsync(requestedPrefix)).recover {
       case t: Throwable =>
-        Future.failed[(String,String)](t)
-    }.get
-
-    //first, try old API, assuming prefix == hash
-    cmwellRDFHelper.hashToInfoton(requestedPrefix) match {
-      case None => f.onComplete {
-        case scala.util.Success((_, last)) => p.success(last)
-        case scala.util.Failure(e: UnretrievableIdentifierException) => p.failure(e)
-        case scala.util.Failure(e: IllegalArgumentException) => p.failure(new UnretrievableIdentifierException(e.getMessage, e))
-        case scala.util.Failure(e) => {
-          logger.error(s"couldn't find the prefix: $requestedPrefix", e)
-          p.failure(new UnretrievableIdentifierException(s"couldn't find the prefix: $requestedPrefix", e))
-        }
-      }
-      case Some(infoton) => f.onComplete {
-        case Success((url, last)) => infoton.fields.flatMap(_.get("url")) match {
-          case None => {
-            logger.warn(s"infoton has empty fields? $infoton")
-            p.success(last)
-          }
-          case Some(urlSet) if urlSet.size != 1 => p.failure(new UnretrievableIdentifierException(s"multiple/no url values in: $infoton"))
-          case Some(urlSet) => {
-
-            val url22Try = urlSet.head match {
-              case FString(v, _, _) => Success(v)
-              case FReference(v, _) => Success(v)
-              case _ => Failure(new UnretrievableIdentifierException(s"url must be string in: $infoton"))
-            }
-
-            p.complete(url22Try.flatMap { url22 =>
-
-              if (url22 == url && last == infoton.path.drop("/meta/ns/".length)) {
-                //                    val path = infoton.path.drop("/meta/ns/".length)
-                lazy val prefixOpt = infoton.fields.flatMap(_.get("prefix").flatMap(_.headOption.collect {
-                  case f: FString => f.value
-                }))
-
-                if (requestedPrefix == last) Success(requestedPrefix)
-                else if (prefixOpt.isEmpty || prefixOpt.get != requestedPrefix) {
-                  logger.warn(s"false namespace ambiguity detected. prefix is empty for path: /meta/ns/$requestedPrefix & infoton: $infoton")
-                  Success(requestedPrefix)
-                }
-                else {
-                  //requestedPrefix == prefixOpt.get
-                  Failure(new PrefixAmbiguityException(s"prefix $requestedPrefix is ambiguous. search explicitly, i.e: (1) $first.$$$requestedPrefix or (2) $first.$$$last "))
-                }
-              }
-              else if (url22 == url) Failure(new PrefixAmbiguityException(s"prefix $requestedPrefix with the url $url is backed by both new API and old API." +
-                " as a workaround, you can explicitly use the 2 APIs." +
-                s" just specify your query predicate twice with '$$'. e.g: $first.$$$last & $first.$$$requestedPrefix"))
-              else Failure(new PrefixAmbiguityException(s"prefix $requestedPrefix is ambiguous. used by URLs: (1) $url , (2) $url22 , search explicitly, i.e: (1) $first.$$$requestedPrefix or (2) $first.$$$last "))
-            })
-          }
-        }
-        case Failure(e: IllegalArgumentException) => p.failure(new UnretrievableIdentifierException(e.getMessage))
-        case Failure(e: UnretrievableIdentifierException) => p.failure(e)
-        case Failure(e) => {
-          logger.info("CMWellRDFHelper.getUrlAndLastForPrefixAsync failed", e)
-          p.success(infoton.path.drop("/meta/ns/".length))
-        }
+        Future.failed[(String,String)](new Exception("resolvePrefix failed",t))
+    }.get.transform {
+      case scala.util.Success((_, last)) => Success(first -> last)
+      case scala.util.Failure(e: UnretrievableIdentifierException) => Failure(e)
+      case scala.util.Failure(e: IllegalArgumentException) => Failure(new UnretrievableIdentifierException(e.getMessage, e))
+      case scala.util.Failure(e) => {
+        logger.error(s"couldn't find the prefix: $requestedPrefix", e)
+        Failure(new UnretrievableIdentifierException(s"couldn't find the prefix: $requestedPrefix", e))
       }
     }
-
-    p.future.map(first -> _)
   }
 }

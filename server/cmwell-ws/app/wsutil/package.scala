@@ -25,7 +25,7 @@ import cmwell.fts._
 import cmwell.tracking.PathStatus
 import cmwell.util.collections._
 import cmwell.web.ld.cmw.CMWellRDFHelper
-import cmwell.web.ld.exceptions.{PrefixAmbiguityException, UnretrievableIdentifierException, UnsupportedURIException}
+import cmwell.web.ld.exceptions.{UnretrievableIdentifierException, UnsupportedURIException}
 import cmwell.ws.Settings
 import cmwell.ws.util.{ExpandGraphParser, FieldNameConverter, PathGraphExpansionParser, TypeHelpers}
 import com.typesafe.scalalogging.LazyLogging
@@ -757,7 +757,6 @@ package object wsutil extends LazyLogging {
       case _: TimeoutException => ServiceUnavailable -> {_.getMessage}
       case _: SpaMissingException => ServiceUnavailable -> {_.getMessage}
       case _: UnretrievableIdentifierException => UnprocessableEntity -> {_.getMessage}
-      case _: PrefixAmbiguityException => UnprocessableEntity -> {_.getMessage}
       case _: security.UnauthorizedException => Forbidden -> {_.getMessage}
       case _: org.apache.jena.shared.JenaException => BadRequest -> {_.getMessage}
       case _: cmwell.web.ld.exceptions.ParsingException => BadRequest -> {_.getMessage}
