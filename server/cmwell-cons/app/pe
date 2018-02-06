@@ -8,7 +8,7 @@ val dataDirs = DataDirs(
                             casCommitLogDirs = List(s"$location/cm-well-data/ccl") ,
                             esDataDirs = List(s"$location/cm-well-data/es"),
                             tlogDataDirs = List(s"$location/cm-well-data/tlog"),
-                            kafkaDataDir = s"$location/cm-well-data/kafka",
+                            kafkaDataDirs = List(s"$location/cm-well-data/kafka"),
                             zookeeperDataDir = s"$location/cm-well-data/zookeeper" ,
                             logsDataDir = s"$location/cm-well-data/log"
                         )

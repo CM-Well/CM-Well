@@ -143,7 +143,7 @@ case class DataDirs(casDataDirs: GenSeq[String],
                     casCommitLogDirs: GenSeq[String],
                     esDataDirs: GenSeq[String],
                     tlogDataDirs: GenSeq[String],
-                    kafkaDataDir: String,
+                    kafkaDataDirs: GenSeq[String],
                     zookeeperDataDir: String,
                     logsDataDir: String)
 
@@ -1045,8 +1045,8 @@ abstract class Host(user: String,
   }
 
   def disks: GenSet[String] = {
-    val DataDirs(casDataDirs, casCommitLogDirs, esDataDirs, tlogDataDirs, kafkaDataDir, zookeeperDataDir, logsDataDir) = dataDirs
-    val dirs = casDataDirs ++ casCommitLogDirs ++ esDataDirs ++ tlogDataDirs ++ Seq(kafkaDataDir, zookeeperDataDir, logsDataDir, instDirs.intallationDir)
+    val DataDirs(casDataDirs, casCommitLogDirs, esDataDirs, tlogDataDirs, kafkaDataDirs, zookeeperDataDir, logsDataDir) = dataDirs
+    val dirs = casDataDirs ++ casCommitLogDirs ++ esDataDirs ++ tlogDataDirs ++ kafkaDataDirs ++ Seq(zookeeperDataDir, logsDataDir, instDirs.intallationDir)
     dirs.map(dir => dir.substring(0, dir.lastIndexOf("/"))).toSet
   }
 
@@ -1354,7 +1354,10 @@ abstract class Host(user: String,
         command(s"rm -rf $tlog/*", hosts, false)
     }
 
-    command(s"rm -rf ${dataDirs.kafkaDataDir}/*; rm -rf ${dataDirs.kafkaDataDir}/.* 2> /dev/null", hosts, false)
+    dataDirs.kafkaDataDirs.foreach {
+      kafka =>
+        command(s"rm -rf $kafka/*", hosts, false)
+    }
 
     command(s"rm -rf ${dataDirs.zookeeperDataDir}/*", hosts, false)
 

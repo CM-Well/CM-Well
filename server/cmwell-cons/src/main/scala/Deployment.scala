@@ -351,7 +351,7 @@ case class KafkaProps(h : Host) extends ComponentProps(h, "kafka", "components",
 
   override def symLinkName: Option[String] = Some("cur")
 
-  override val componentDataDirs: Map[String, GenSeq[String]] = Map("kafka" -> Seq(h.getDataDirs.kafkaDataDir))
+  override val componentDataDirs: Map[String, GenSeq[String]] = Map("kafka" -> h.getDataDirs.kafkaDataDirs)
   override val componentName: String = "kafka"
   override val componentMappings: Map[String, Int] = Map("kafka" -> 1)
 

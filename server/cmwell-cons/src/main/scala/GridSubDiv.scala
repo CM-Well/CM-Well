@@ -374,6 +374,7 @@ case class GridSubDiv(user : String ,
 
         val kafka = KafkaConf(
           home = homeDir,
+          logDirs = dataDirs.kafkaDataDirs.toList,
           zookeeperServers = ips.take(3),
           brokerId = brokerId(host),
           hostIp = host
