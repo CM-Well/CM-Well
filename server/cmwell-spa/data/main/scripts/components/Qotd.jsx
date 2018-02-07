@@ -31,6 +31,8 @@ class Qotd extends React.Component {
             this.setState({hidden: false})
             this.fetchRandomQuote()
         })
+        
+        Mousetrap.bind('?', () => { if(location.pathname==='/meta/ns') location.href='/meta/app/metansmonitor/index.html' })
     }
     
     render() {

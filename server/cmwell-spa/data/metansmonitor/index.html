@@ -1,0 +1,83 @@
+<html><head><title>Ambiguity Monitor</title>
+<style>
+    body { font-family: Arial; margin: 0; }
+    h1 { color: white; background: #ff8800; padding: 26px; }
+    #app { font-size: 18px; margin-left: 26px; }
+    #status { color: grey; font-size: 14px; margin-bottom: 20px; }
+    #recent { font-size: 16px; color: grey; line-height: 100%: }
+    a { color: #ff8800; }
+    table, th, td { border: 1px solid grey; border-collapse: collapse; font-size: 13px; }
+    td { padding: 5px; }
+</style>
+<script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
+<script>
+data=[]
+
+function msg(s, append) {
+    document.getElementById('status').innerHTML = (append ? document.getElementById('status').innerHTML : '') + s;
+}
+
+function init() {
+    msg('creating consumer...');
+    fetch('/meta/ns?op=create-consumer').then(resp => {
+        position = resp.headers.get('X-CM-WELL-Position');
+        msg('consuming...');
+        consume();
+    });
+}
+
+function consume() {
+    fetch(`/_consume?position=${position}&format=json`).then(resp => {
+        position = resp.headers.get('X-CM-WELL-Position');
+        resp.text().then(text => {
+            data = data.concat(text.split`\n`.filter(i=>i).map(JSON.parse));
+            if(resp.status==200) {
+                msg('.', true);
+                setTimeout(consume, 1000);
+            }
+            if(resp.status==204) {
+                msg(`Updated ${new Date().toTimeString()}`);
+                setTimeout(consume, 10000);
+            }
+            analyze();
+            showRecent();
+        });
+    });
+}
+
+function analyze() {
+    
+    var entriesWithMoreThanOneValuePerField = data.filter(i=>i.fields.prefix.length+i.fields.url.length>2).map(_id);
+    var dupPrefix = _(data).chain().groupBy(i=>i.fields.prefix).filter((v,k)=>v.length>1).flatten().value().map(i => ({id:_id(i),prefix:i.fields.prefix,url:i.fields.url}));
+    var dupUrl = _(data).chain().groupBy(i=>i.fields.url).filter((v,k)=>v.length>1).flatten().value().map(i => ({id:_id(i),prefix:i.fields.prefix,url:i.fields.url}));
+    
+    if(entriesWithMoreThanOneValuePerField.length + dupPrefix.length + dupUrl.length === 0)
+        document.getElementById('data').innerHTML = '<i>Everything is awesome.</i>';
+    else {
+        var view = `<p><u>Entries with more than one value per field</u>:<br><ul>${entriesWithMoreThanOneValuePerField.map(e=>`<li>${e}</li>`).join``}</ul></p>` +
+                    `<p><u>Duplicated Prefix</u>:<table cellspacing=0><tr><th>ID</th><th>prefix</th><th>URL</th></tr>${dupPrefix.map(_tablify).join``}</table></p>` +
+                    `<p><u>Duplicated URL</u>:<table cellspacing=0><tr><th>ID</th><th>prefix</th><th>URL</th></tr>${dupUrl.map(_tablify).join``}</table></p>`
+        
+        document.getElementById('data').innerHTML = view;
+    }
+}
+
+function showRecent() {
+    var recent = _(data).chain().sortBy(i=>i.system.indexTime).last(10).map(i=>i.fields.prefix[0]).value();
+    document.getElementById('recent').innerHTML = `<u>Recent namecpaces</u>:<ul>${recent.map(r=>`<li>${r}</li>`).join``}</ul>`;
+}
+
+_id = i => `<a href="${i.system.path}">${i.system.path.replace(/\/meta\/ns\//,'')}</a>`
+
+_stringify = o => _(o).map((v,k)=>`${k}: ${v}`).join`, `
+
+_tablify = o => `<tr><td>${o.id}</td><td>${o.prefix}</td><td>${o.url}</td></tr>`
+
+</script></head><body onload="init()">
+<h1>meta/ns Ambiguity Monitor</h1>
+<div id="app">
+    <div id="status"></div>
+    <div id="recent"></div>
+    <div id="data"></div>
+</div>
+</body></html>
