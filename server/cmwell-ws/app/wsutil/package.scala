@@ -386,7 +386,8 @@ package object wsutil extends LazyLogging {
     override def resolve(cmwellRDFHelper: CMWellRDFHelper)(implicit ec: ExecutionContext) = cmwellRDFHelper.urlToHashAsync(nsUri)
   }
   case class PrefixPattern(prefix: String) extends ResolvedNsPattern {
-    override def resolve(cmwellRDFHelper: CMWellRDFHelper)(implicit ec: ExecutionContext) = cmwellRDFHelper.getUrlAndLastForPrefixAsync(prefix).map(_._2)
+    override def resolve(cmwellRDFHelper: CMWellRDFHelper)(implicit ec: ExecutionContext) =
+      cmwellRDFHelper.getIdentifierForPrefixAsync(prefix)
   }
 
   case object JokerPattern                       extends FieldPattern

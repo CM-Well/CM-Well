@@ -876,7 +876,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
               ta.getBuckets.asScala.map { b =>
                 val subAggregations:Option[AggregationsResponse] = b.asInstanceOf[HasAggregations].getAggregations match {
                   case null => None
-                  case subAggs => if(subAggs.asList().size()>0) Some(esAggsToOurAggs(subAggs)) else None
+                  case subAggs => if(subAggs.asList().isEmpty) None else Some(esAggsToOurAggs(subAggs))
                 }
                 Bucket(FieldValue(b.getKey), b.getDocCount, subAggregations)
               }.toSeq
@@ -916,10 +916,30 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
 
         }.toSeq
         ,debugInfo)
-
     }
 
-    resFuture.map{searchResponse => esAggsToOurAggs(searchResponse.getAggregations, searchQueryStr)}
+    @inline def buildErrString: String = {
+      s"""aggregate($pathFilter,
+         |          $fieldFilter,
+         |          $datesFilter,
+         |          $paginationParams,
+         |          $aggregationFilters,
+         |          $withHistory,
+         |          $partition,
+         |          $debugInfo)
+         |searchQueryStr:
+         |          ${request.toString}""".stripMargin
+    }
+
+
+
+    resFuture.transform {
+      case Success(res) if res.getAggregations eq null => Failure(new Exception(s"inner aggregations is null: $buildErrString"))
+      case Failure(err) => Failure(new Exception(s"aggregations failure: $buildErrString",err))
+      case Success(res) => Try(esAggsToOurAggs(res.getAggregations, searchQueryStr)).recoverWith {
+        case ex: Throwable => Failure(new Exception(s"aggregations converting failure: $buildErrString",ex))
+      }
+    }
   }
 
   def rInfo(path: String, scrollTTL: Long, paginationParams: PaginationParams = DefaultPaginationParams,

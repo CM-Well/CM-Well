@@ -35,6 +35,13 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
   //TODO use AtomicBoolean!
   private[this] var isLoadingSemaphore: Boolean = false
 
+  // following is ugly. should be called from Global.onStart
+  // willing to live with it so to not get many stacktraces on server startup
+  private[this] var serverIsWarmingUp = true
+  def sometimeAfterStart: Unit = {
+    serverIsWarmingUp = false
+  }
+
   SimpleScheduler.scheduleAtFixedRate(2.minutes, 15.minutes)(load())
 
   // TODO Do not Await.result... These should return Future[Option[JsValue]]]
@@ -100,7 +107,9 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
     case Some(Everything(i)) =>
       extractPayload(i)
     case other =>
-      logger.warn(s"AuthCache Trying to read $infotonPath but got from CAS $other")
+      if(!serverIsWarmingUp) {
+        logger.warn(s"AuthCache Trying to read $infotonPath but got from CAS $other")
+      }
       None
   }
 

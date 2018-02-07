@@ -768,7 +768,10 @@ object LDFormatParser extends LazyLogging {
         case Some(fName) => (predicateUrl, fName)
       }
 
-      if (url.endsWith("/meta/nn#")) Some(firstName)
+      if (url.endsWith("/meta/nn#")) {
+        if(firstName.contains(".")) throw new IllegalArgumentException(s"nn (No Namespace) fields aren't allowed to contain dots. [$url$firstName]")
+        else Some(firstName)
+      }
       else cmwellRDFHelper.urlToHash(url).map{
         hash =>  s"$firstName.$hash"
       }
