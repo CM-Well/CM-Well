@@ -27,4 +27,11 @@ class ParsingException(msg: String, t: Throwable = null) extends RuntimeExceptio
 
 class UnretrievableIdentifierException(msg: String, t: Throwable = null) extends ParsingException(msg, t)
 
+sealed trait ServerComponentNotAvailableException extends Exception
+object ServerComponentNotAvailableException {
+
+  def apply(msg: String) = new Exception(msg) with ServerComponentNotAvailableException
+  def apply(msg: String, cause: Throwable) = new Exception(msg,cause) with ServerComponentNotAvailableException
+}
+
 class JsonParsingException(msg: String) extends ParsingException(msg)

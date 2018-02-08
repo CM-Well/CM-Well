@@ -77,26 +77,7 @@ class Global @Inject()(crudServiceFS: CRUDServiceFS, cmwellRDFHelper: CMWellRDFH
 
     Subscriber.init
 
-//    val updateCachesOrLogAndExitOnFail: PartialFunction[Try[SearchResults],Unit] = {
-//      case Success(sr) => updateCaches(sr)
-//      case Failure(ex) =>
-//        logger.error("Failed to connect with CRUDService. Will exit now.",ex)
-//        sys.exit(1)
-//    }
-//
     RequestMonitor.init
-//
-//    Try(cmwell.util.concurrent.retry(3) {
-//        crudServiceFS.search(
-//          pathFilter = Some(PathFilter("/meta/ns", descendants = false)),
-//          fieldFilters = None,
-//          datesFilter = None,
-//          paginationParams = PaginationParams(0, initialMetaNsLoadingAmount),
-//          withHistory = false,
-//          withData = true,
-//          fieldSortParams = SortParam.empty)
-//      }.andThen(updateCachesOrLogAndExitOnFail))
-//    Logger.info("Application has started")
 
     scheduleAfterStart(2.minutes){
       ingestPushback.sometimeAfterStart

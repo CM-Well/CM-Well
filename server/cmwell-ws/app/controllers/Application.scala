@@ -51,7 +51,7 @@ import logic.{CRUDServiceFS, InfotonValidator}
 import markdown.MarkdownFormatter
 import org.joda.time.format.ISODateTimeFormat
 import org.joda.time.DateTimeZone
-import play.api.http.MediaType
+import play.api.http.{ContentTypes, MediaType}
 import play.api.libs.json.{JsArray, JsBoolean, JsNumber, JsObject, JsString, _}
 import play.api.mvc.{ResponseHeader, Result, _}
 import play.utils.UriEncoding
@@ -141,7 +141,7 @@ class Application @Inject()(bulkScrollHandler: BulkScrollHandler,
     }
   }
 
-  def handleTypesCacheGet = Action(r => Ok(typesCache.getState))
+  def handleTypesCacheGet = Action(r => Ok(typesCache.getState).as(ContentTypes.JSON))
 
   def handleGET(path:String) = Action.async { implicit originalRequest =>
 
@@ -522,7 +522,9 @@ callback=< [URL] >
         val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff,typesCache, cmwellRDFHelper).map(Some.apply))
         fieldsFiltersFut.transformWith {
           case Failure(err) => {
-            val res = FailedDependency(Json.obj("success" -> false, "message" -> s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"))
+            val msg = s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"
+            logger.error(msg,err)
+            val res = FailedDependency(Json.obj("success" -> false, "message" -> msg))
             request.attrs.get(Attrs.RequestReceivedTimestamp).fold(Future.successful(res)) { reqStartTime =>
               val timePassedInMillis = System.currentTimeMillis() - reqStartTime
               if(timePassedInMillis > 9000L) Future.successful(res)
@@ -630,7 +632,9 @@ callback=< [URL] >
             val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff,typesCache,cmwellRDFHelper).map(Some.apply))
             fieldsFiltersFut.transformWith {
               case Failure(err) => {
-                val res = FailedDependency(Json.obj("success" -> false, "message" -> s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"))
+                val msg = s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"
+                logger.error(msg,err)
+                val res = FailedDependency(Json.obj("success" -> false, "message" -> msg))
                 request.attrs.get(Attrs.RequestReceivedTimestamp).fold(Future.successful(res)) { reqStartTime =>
                   val timePassedInMillis = System.currentTimeMillis() - reqStartTime
                   if(timePassedInMillis > 9000L) Future.successful(res)
@@ -725,7 +729,9 @@ callback=< [URL] >
             val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff,typesCache,cmwellRDFHelper).map(Some.apply))
             fieldsFiltersFut.transformWith {
               case Failure(err) => {
-                val res = FailedDependency(Json.obj("success" -> false, "message" -> s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"))
+                val msg = s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"
+                logger.error(msg,err)
+                val res = FailedDependency(Json.obj("success" -> false, "message" -> msg))
                 request.attrs.get(Attrs.RequestReceivedTimestamp).fold(Future.successful(res)) { reqStartTime =>
                   val timePassedInMillis = System.currentTimeMillis() - reqStartTime
                   if(timePassedInMillis > 9000L) Future.successful(res)
@@ -816,7 +822,9 @@ callback=< [URL] >
             val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff,typesCache,cmwellRDFHelper).map(Some.apply))
             fieldsFiltersFut.transformWith {
               case Failure(err) => {
-                val res = FailedDependency(Json.obj("success" -> false, "message" -> s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"))
+                val msg = s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"
+                logger.error(msg,err)
+                val res = FailedDependency(Json.obj("success" -> false, "message" -> msg))
                 request.attrs.get(Attrs.RequestReceivedTimestamp).fold(Future.successful(res)) { reqStartTime =>
                   val timePassedInMillis = System.currentTimeMillis() - reqStartTime
                   if (timePassedInMillis > 9000L) Future.successful(res)
@@ -979,7 +987,9 @@ callback=< [URL] >
           indexTime = indexTime
         ).transformWith {
           case Failure(err) => {
-            val res = FailedDependency(Json.obj("success" -> false, "message" -> s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"))
+            val msg = s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"
+            logger.error(msg,err)
+            val res = FailedDependency(Json.obj("success" -> false, "message" -> msg))
             request.attrs.get(Attrs.RequestReceivedTimestamp).fold(Future.successful(res)) { reqStartTime =>
               val timePassedInMillis = System.currentTimeMillis() - reqStartTime
               if (timePassedInMillis > 9000L) Future.successful(res)
@@ -1075,7 +1085,9 @@ callback=< [URL] >
     }
     consumeStateFut.transformWith {
       case Failure(err) => {
-        val res = FailedDependency(Json.obj("success" -> false, "message" -> s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"))
+        val msg = s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"
+        logger.error(msg,err)
+        val res = FailedDependency(Json.obj("success" -> false, "message" -> msg))
         requestReceivedTimestamp.fold(Future.successful(res)) { reqStartTime =>
           val timePassedInMillis = System.currentTimeMillis() - reqStartTime
           if (timePassedInMillis > 9000L) Future.successful(res)
@@ -1491,7 +1503,9 @@ callback=< [URL] >
           val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff,typesCache,cmwellRDFHelper).map(Some.apply))
           fieldsFiltersFut.transformWith {
             case Failure(err) => {
-              val res = FailedDependency(Json.obj("success" -> false, "message" -> s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"))
+              val msg = s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"
+              logger.error(msg,err)
+              val res = FailedDependency(Json.obj("success" -> false, "message" -> msg))
               request.attrs.get(Attrs.RequestReceivedTimestamp).fold(Future.successful(res)) { reqStartTime =>
                 val timePassedInMillis = System.currentTimeMillis() - reqStartTime
                 if (timePassedInMillis > 9000L) Future.successful(res)
@@ -1572,7 +1586,9 @@ callback=< [URL] >
           val fieldsFiltersFut = qpOpt.fold[Future[Option[FieldFilter]]](Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff,typesCache,cmwellRDFHelper).map(Some.apply))
           fieldsFiltersFut.transformWith {
             case Failure(err) => {
-              val res = FailedDependency(Json.obj("success" -> false, "message" -> s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"))
+              val msg = s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"
+              logger.error(msg,err)
+              val res = FailedDependency(Json.obj("success" -> false, "message" -> msg))
               requestReceivedTimestamp.fold(Future.successful(res)) { reqStartTime =>
                 val timePassedInMillis = System.currentTimeMillis() - reqStartTime
                 if (timePassedInMillis > 9000L) Future.successful(res)

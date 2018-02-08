@@ -87,6 +87,8 @@ object Settings {
   lazy val fieldsNamesCacheTimeout: Duration = Try(config.getDuration("cmwell.ws.cache.fieldsNamesTimeout")).toOption.fold(2.minutes) { d =>
     Duration.fromNanos(d.toNanos)
   }
+  lazy val maxTypesCacheSize: Long = Try(config.getLong("cmwell.ws.cache.types.max-size")).getOrElse(10000L)
+  lazy val minimumEntryRefreshRateMillis: Long = Try(config.getDuration("cmwell.ws.cache.types.minimum-refresh-rate")).fold(_ => 30000L,_.toMillis)
 
   lazy val sstreamParallelism: Int = config.getInt("cmwell.ws.sstream-parallelism")
 

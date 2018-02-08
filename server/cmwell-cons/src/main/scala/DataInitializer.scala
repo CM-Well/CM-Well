@@ -78,6 +78,7 @@ class DataInitializer(h: Host, jwt: String, rootDigest: String, rootDigest2: Str
     jsons.foreach(lb.append(_))
     lb append """{"type" : "ObjectInfoton","system" : {"path" : "/meta/sys"}, "fields" : {"known-cmwell-hosts" : [""" + h.ips.map(""""""" + _ + """:9000"""").mkString(",") + """], "desc" : ["CM-Well system namespace"]}}"""
     lb append """{"type" : "ObjectInfoton","system" : {"path" : "/meta/nn"}, "fields" : {"desc" : ["CM-Well private namespace"]}}"""
+    lb append """{"type" : "ObjectInfoton","system" : {"path" : "/meta/nn/mang"}, "fields" : {"mang" : ["s"]}}"""
 
     awaitSeq(lb.sliding(chunkSize, chunkSize).map{ l =>
       val bagOfInfotons = """{"type" : "BagOfInfotons","infotons" : [""" + l.mkString(",") + """]}"""
@@ -94,6 +95,7 @@ class DataInitializer(h: Host, jwt: String, rootDigest: String, rootDigest2: Str
 
     lb append """{"type" : "ObjectInfoton","system" : {"path" : "/meta/sys"}, "fields" : {"known-cmwell-hosts" : [""" + h.ips.map(""""""" + _ + """:9000"""").mkString(",") + """], "desc" : ["CM-Well system namespace"]}}"""
     lb append """{"type" : "ObjectInfoton","system" : {"path" : "/meta/nn"}, "fields" : {"desc" : ["CM-Well private namespace"]}}"""
+    lb append """{"type" : "ObjectInfoton","system" : {"path" : "/meta/nn/mang"}, "fields" : {"mang" : ["s"]}}"""
 
     awaitSeq(lb.sliding(chunkSize, chunkSize).map{ l =>
       val bagOfInfotons = """{"type" : "BagOfInfotons","infotons" : [""" + l.mkString(",") + """]}"""

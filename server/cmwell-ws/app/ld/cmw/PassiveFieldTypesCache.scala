@@ -24,7 +24,7 @@ import com.google.common.cache.{Cache, CacheBuilder}
 import com.typesafe.scalalogging.LazyLogging
 import logic.CRUDServiceFS
 import wsutil.{FieldKey, NnFieldKey}
-
+import cmwell.ws.Settings.{minimumEntryRefreshRateMillis,maxTypesCacheSize}
 import scala.collection.generic.CanBuildFrom
 import scala.collection.mutable.{Set => MSet}
 import scala.collection.immutable
@@ -187,28 +187,32 @@ abstract class PassiveFieldTypesCache(val cache: Cache[String,Either[Future[Set[
     case field => Try {
       val key = field.internalKey
       val maybeEither = cache.getIfPresent(key)
-      if (maybeEither eq null) (actor ? UpdateAndGet(field)).mapTo[Set[Char]]
+      if (maybeEither eq null) (actor ? UpdateAndGet(field)).mapTo[Set[Char]].transform {
+        case Success(s) if s.isEmpty => Failure(new NoSuchElementException(s"(async) empty type set for [$field] ([$forceUpdateForType],[$maybeEither])"))
+        case successOrFailure => successOrFailure
+      }
       else maybeEither match {
         case Right((ts, types)) => forceUpdateForType match {
           case None =>
-            if (System.currentTimeMillis() - ts > 30000) {
+            if (System.currentTimeMillis() - ts > minimumEntryRefreshRateMillis) {
               actor ! RequestUpdateFor(field)
             }
             if(types.isEmpty) Future.failed(new NoSuchElementException(s"empty type set for [$field] ([$forceUpdateForType],[$maybeEither],${types.mkString("[",",","]")})"))
             else Future.successful(types)
           case Some(forceReCheckForTypes) =>
-            if(forceReCheckForTypes.diff(types).nonEmpty || (System.currentTimeMillis() - ts > 30000))
-              (actor ? UpdateAndGet(field)).mapTo[Set[Char]]/*.transform {
-                case Success(s) if s.isEmpty => Failure(new NoSuchElementException(s"empty type set for [$field] ([$forceUpdateForType],[$maybeEither],${types.mkString("[",",","]")})"))
-                case t => t
-              }*/
-            else if(types.isEmpty) Future.failed(new NoSuchElementException(s"empty type set for [$field] ([$forceUpdateForType],[$maybeEither],${types.mkString("[",",","]")})"))
+            if(forceReCheckForTypes.diff(types).nonEmpty || (System.currentTimeMillis() - ts > minimumEntryRefreshRateMillis))
+              (actor ? UpdateAndGet(field)).mapTo[Set[Char]].transform {
+                case Success(s) if s.isEmpty => Failure(new NoSuchElementException(s"(async) empty type set for [$field] ([$forceUpdateForType],[$maybeEither],${types.mkString("[",",","]")})"))
+                case successOrFailure => successOrFailure
+              }
+            else if(types.isEmpty)
+              Future.failed(new NoSuchElementException(s"empty type set for [$field] ([$forceUpdateForType],[$maybeEither],${types.mkString("[",",","]")})"))
             else Future.successful(types)
         }
         case Left(fut) => fut
       }
     }.recover{
-      case t: Throwable => Future.failed[Set[Char]](t)
+      case t: Throwable => Future.failed[Set[Char]](new Exception(s"failed to  get([$field], [$forceUpdateForType])",t))
     }.get
   }
 
@@ -239,12 +243,34 @@ abstract class PassiveFieldTypesCache(val cache: Cache[String,Either[Future[Set[
   def getState: String = {
     import scala.collection.JavaConverters._
     val m = cache.asMap().asScala
-    val sb = new StringBuilder("[\n")
+    val sb = new StringBuilder("{\n ")
+    var notFirst = false
     m.foreach{
       case (k,v) =>
-        sb.append(s"\t$k : $v\n")
+
+        if(notFirst) sb ++= ",\n "
+        else notFirst = true
+
+        sb += '"'
+        sb ++= k
+        sb ++= "\":{\"cooked\":"
+        v match {
+          case Left(f) =>
+            sb ++= "false,\"status\":\""
+            sb ++= f.value.toString
+            sb ++= "\"}"
+          case Right((ts,s)) =>
+            sb ++= "true,\"age\":"
+            sb ++= ts.toString
+            sb ++= ",\"types\":"
+
+            if(s.isEmpty) sb ++= "[]"
+            else sb ++= s.mkString("[\"","\",\"","\"]")
+
+            sb += '}'
+        }
     }
-    sb.append("]").result()
+    sb.append("\n}").result()
   }
 
   protected def createActor: ActorRef = null.asInstanceOf[ActorRef]
@@ -256,7 +282,11 @@ class passiveFieldTypesCacheImpl(crud: CRUDServiceFS, ec: ExecutionContext, sys:
   // cache's concurrencyLevel set to 1, so we should avoid useless updates,
   // nevertheless, it's okay to risk blocking on the cache's write lock here,
   // because writes are rare (once every 2 minutes, and on first-time asked fields)
-  PassiveFieldTypesCache(CacheBuilder.newBuilder().concurrencyLevel(1).build()) with LazyLogging {
+  PassiveFieldTypesCache(CacheBuilder
+    .newBuilder()
+    .concurrencyLevel(1)
+    .maximumSize(maxTypesCacheSize)
+    .build()) with LazyLogging {
 
   private val props = Props(classOf[PassiveFieldTypesCache.PassiveFieldTypesCacheActor], crud, cache, ec)
   override def createActor: ActorRef = sys.actorOf(props,"passiveFieldTypesCacheImpl_" + PassiveFieldTypesCache.uniqueIdentifierForActorName)

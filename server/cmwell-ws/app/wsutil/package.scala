@@ -25,7 +25,7 @@ import cmwell.fts._
 import cmwell.tracking.PathStatus
 import cmwell.util.collections._
 import cmwell.web.ld.cmw.CMWellRDFHelper
-import cmwell.web.ld.exceptions.{UnretrievableIdentifierException, UnsupportedURIException}
+import cmwell.web.ld.exceptions.{ServerComponentNotAvailableException, UnretrievableIdentifierException, UnsupportedURIException}
 import cmwell.ws.Settings
 import cmwell.ws.util.{ExpandGraphParser, FieldNameConverter, PathGraphExpansionParser, TypeHelpers}
 import com.typesafe.scalalogging.LazyLogging
@@ -755,6 +755,7 @@ package object wsutil extends LazyLogging {
 
   def exceptionToResponse(throwable: Throwable): Result = {
     val (status,eHandler): (Status,Throwable => String) = throwable match {
+      case _: ServerComponentNotAvailableException => ServiceUnavailable -> {_.getMessage}
       case _: TimeoutException => ServiceUnavailable -> {_.getMessage}
       case _: SpaMissingException => ServiceUnavailable -> {_.getMessage}
       case _: UnretrievableIdentifierException => UnprocessableEntity -> {_.getMessage}
