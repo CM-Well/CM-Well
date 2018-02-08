@@ -230,7 +230,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
         }
 
         typesCaches.get(fk,Some(newTypes)).transformWith {
-          case Failure(_: NoSuchElementException) => f(Set.empty)
+          case Failure(_: NoSuchElementException) => f(newTypes)
           case Success(types) => f(types)
           case Failure(error) => Future.failed(ServerComponentNotAvailableException("ingest failed during types resolution",error))
         }
