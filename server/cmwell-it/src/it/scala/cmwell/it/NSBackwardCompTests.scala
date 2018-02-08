@@ -161,15 +161,15 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
         }
       }
 
-      val verifyingOldNSAsJson = executeAfterIndexing {
-        spinCheck(100.millis,true)(Http.get(pathForOldNS, List("format" -> "json")))(_.status).map { res =>
-          withClue(res) {
-            Json.parse(res.payload)
-              .transform((__ \ 'system \ 'indexTime).json.prune andThen fieldsSorter)
-              .get shouldEqual expectedJsonForOldNS
-          }
-        }
-      }
+//      val verifyingOldNSAsJson = executeAfterIndexing {
+//        spinCheck(100.millis,true)(Http.get(pathForOldNS, List("format" -> "json")))(_.status).map { res =>
+//          withClue(res) {
+//            Json.parse(res.payload)
+//              .transform((__ \ 'system \ 'indexTime).json.prune andThen fieldsSorter)
+//              .get shouldEqual expectedJsonForOldNS
+//          }
+//        }
+//      }
 
       val verifyingOldNSAsNtriples = {
         val ntriples =
@@ -326,7 +326,7 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
       it("4 infotons were ingested (indexing bug)")(verifyingIndexingBugFixed)
 
       describe("ns backward compability to old-style ns data") {
-        it("should GET the infoton as regular json")(verifyingOldNSAsJson)
+//        it("should GET the infoton as regular json")(verifyingOldNSAsJson)
         it("should GET the infoton as RDF ntriples")(verifyingOldNSAsNtriples)
         it("should verify data from old VCARD onthology (but same prefix)")(checkVPOldVcardNS)
         it("should check hashed vcard")(checkOldVcardMetaNS)

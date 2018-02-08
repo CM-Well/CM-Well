@@ -24,7 +24,7 @@ import cmwell.util.concurrent._
 import cmwell.util.collections.opfut
 import cmwell.util.formats.JsonEncoder
 import cmwell.web.ld.cmw.CMWellRDFHelper
-import cmwell.web.ld.exceptions.UnretrievableIdentifierException
+import cmwell.web.ld.exceptions.{ServerComponentNotAvailableException, UnretrievableIdentifierException}
 import cmwell.web.ld.util.LDFormatParser.ParsingResponse
 import cmwell.web.ld.util._
 import cmwell.ws.Settings
@@ -201,13 +201,15 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
   }
 
 
+
   def enforceForceIfNeededAndReturnMetaFieldsInfotons(allInfotons: Map[String, Map[DirectFieldKey, Set[FieldValue]]], forceEnabled: Boolean = false)
                                                      (implicit ec: ExecutionContext): Future[Vector[Infoton]] = {
 
     def getMetaFields(fields: Map[DirectFieldKey, Set[FieldValue]]) = collector(fields) {
       case (fk, fvs) => {
         val newTypes = fvs.map(FieldValue.prefixByType)
-        typesCaches.get(fk,Some(newTypes)).flatMap { types =>
+
+        val f = (types: Set[Char]) => {
           val chars = newTypes diff types
           if (chars.isEmpty) Future.successful(None)
           else {
@@ -226,10 +228,16 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
             }
           }
         }
+
+        typesCaches.get(fk,Some(newTypes)).transformWith {
+          case Failure(_: NoSuchElementException) => f(newTypes)
+          case Success(types) => f(types)
+          case Failure(error) => Future.failed(ServerComponentNotAvailableException("ingest failed during types resolution",error))
+        }
       }
     }
 
-    val infotons = allInfotons.filterKeys(!_.matches("/meta/(ns|nn).*"))
+    val infotons = allInfotons//.filterKeys(!_.matches("/meta/(ns|nn).*"))
 
     if(infotons.isEmpty) Future.successful(Vector.empty)
     else {
