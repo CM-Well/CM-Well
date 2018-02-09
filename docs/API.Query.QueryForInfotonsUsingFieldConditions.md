@@ -84,7 +84,6 @@ For example, you can search for all organizations under the permid.org branch of
 
 ## Notes ##
 
-* If you don’t know the precise field name to search in, you can indicate that you want to search in all fields, as follows:  *qp=_all:Marriott%20Ownership%20Resorts*. Use this option with caution as it may be expensive in terms of run-time.
 * Special characters must be escaped in the usual way for URIs. For example, spaces are escaped via %20, # characters are encoded using %23, and so on.
 * Although most RDF structures use the standard of *prefix:fieldname*, in CM-Well you add the field name prefix *after* the name itself, as follows: *fieldname.prefix*. For example "CommonName.mdaas".
 * You can surround a list of conditions with square brackets [...], so they can be defined as mandatory or optional as a group.
