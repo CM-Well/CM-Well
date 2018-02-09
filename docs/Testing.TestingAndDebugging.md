@@ -28,42 +28,80 @@ If a search operation is not behaving as expected, you may want to examine the p
 
 To do this, add the **debug-info** flag to the query, as follows:
 
-    curl "<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Disney&debug-info&format=json&pretty&length=1" 
+    curl "<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Disney&debug-info&format=yaml&pretty&length=1" 
 
 >**Note:** The **debug-info** flag only works with the following output formats: json,jsonl,yaml.
 
 The response then contains the **searchQueryStr** attribute, as follows:
 
-    {
-      "type" : "SearchResponse",
-      "pagination" : {
-    		"type" : "PaginationInfo",
-    		"first" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-21T23%3A57%3A44.918Z&to=2016-07-21T23%3A57%3A44.918Z&qp=CommonName.mdaas%3ADisney&length=1&offset=0",
-    		"self" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-21T23%3A57%3A44.918Z&to=2016-07-21T23%3A57%3A44.918Z&qp=CommonName.mdaas%3ADisney&length=1&offset=0",
-    		"next" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-21T23%3A57%3A44.918Z&to=2016-07-21T23%3A57%3A44.918Z&qp=CommonName.mdaas%3ADisney&length=1&offset=1",
-    		"last" : "http://cm-well-host.com/permid.org?format=json?&op=search&from=2016-07-21T23%3A57%3A44.918Z&to=2016-07-21T23%3A57%3A44.918Z&qp=CommonName.mdaas%3ADisney&length=1&offset=11005"
-      },
-      "results" : {
-    		"type" : "SearchResults",
-    		"fromDate" : "2016-07-21T23:57:44.918Z",
-    		"toDate" : "2016-07-21T23:57:44.918Z",
-    		"total" : 11005,
-    		"offset" : 0,
-    		"length" : 1,
-    		"infotons" : [ {
-      			"type" : "ObjectInfoton",
-      			"system" : {
-    				"uuid" : "2571c64bd1e86d4651448ea4105e9044",
-    				"lastModified" : "2016-07-21T23:57:44.918Z",
-    				"path" : "/permid.org/1-21592415660",
-    				"dataCenter" : "dc1",
-    				"indexTime" : 1469145465545,
-    				"parent" : "/permid.org"
-      			}
-    		} ],
-        "searchQueryStr" : "{\n  \"from\" : 0,\n  \"size\" : 1,\n  \"query\" : {\n\"filtered\" : {\n  \"query\" : {\n\"bool\" : {\n  \"must\" : {\n\"match\" : {\n  \"CommonName.mdaas\" : {\n\"query\" : \"Disney\",\n\"type\" : \"phrase\"\n  }\n}\n  }\n}\n  },\n  \"filter\" : {\n\"bool\" : {\n  \"must\" : [ {\n\"term\" : {\n  \"parent\" : \"/permid.org\"\n}\n  }, {\n\"range\" : {\n  \"lastModified\" : {\n\"from\" : null,\n\"to\" : null,\n\"include_lower\" : true,\n\"include_upper\" : true\n  }\n}\n  } ]\n}\n  }\n}\n  },\n  \"fields\" : [ \"type\", \"system.path\", \"system.uuid\", \"system.lastModified\", \"content.length\", \"content.mimeType\", \"linkTo\", \"linkType\", \"system.dc\", \"system.indexTime\", \"system.quad\" ],\n  \"sort\" : [ {\n\"system.lastModified\" : {\n  \"order\" : \"desc\"\n}\n  } ]\n}"
-      }
-    }
+    pagination:
+    next: http://cm-well-prod.int.thomsonreuters.com/permid.org?op=search&format=yaml&from=2018-02-09T15%3A11%3A11.160Z&to=2018-02-09T15%3A11%3A11.160Z&qp=CommonName.mdaas%3ADisney&length=1&offset=1
+    last: http://cm-well-prod.int.thomsonreuters.com/permid.org?op=search&format=yaml&from=2018-02-09T15%3A11%3A11.160Z&to=2018-02-09T15%3A11%3A11.160Z&qp=CommonName.mdaas%3ADisney&length=1&offset=15464
+    self: http://cm-well-prod.int.thomsonreuters.com/permid.org?op=search&format=yaml&from=2018-02-09T15%3A11%3A11.160Z&to=2018-02-09T15%3A11%3A11.160Z&qp=CommonName.mdaas%3ADisney&length=1&offset=0
+    type: PaginationInfo
+    first: http://cm-well-prod.int.thomsonreuters.com/permid.org?op=search&format=yaml&from=2018-02-09T15%3A11%3A11.160Z&to=2018-02-09T15%3A11%3A11.160Z&qp=CommonName.mdaas%3ADisney&length=1&offset=0
+	type: SearchResponse
+	results:
+    fromDate: &id001 !!org.joda.time.DateTime {}
+    total: 15464
+    offset: 0
+    toDate: *id001
+    infotons:
+      -   system:
+            path: /permid.org/1-21636243712
+            indexTime: 1518189077158
+            parent: /permid.org
+            dataCenter: dc1
+            lastModified: *id001
+            uuid: 8d294722cbf2f9827d9f9d2baf8dc81c
+        type: ObjectInfoton
+    length: 1
+    type: SearchResults
+    searchQueryStr: |-
+        {
+          "from" : 0,
+          "size" : 1,
+          "query" : {
+            "filtered" : {
+              "query" : {
+                "bool" : {
+                  "must" : {
+                    "match" : {
+                      "fields.-Jamjg.CommonName" : {
+                        "query" : "Disney",
+                        "type" : "phrase"
+                      }
+                    }
+                  }
+                }
+              },
+              "filter" : {
+                "bool" : {
+                  "must" : [ {
+                    "term" : {
+                      "system.current" : true
+                    }
+                  }, {
+                    "term" : {
+                      "parent" : "/permid.org"
+                    }
+                  } ],
+                  "must_not" : {
+                    "term" : {
+                      "system.kind" : "DeletedInfoton"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "fields" : [ "system.kind", "system.path", "system.uuid", "system.lastModified", "content.length", "content.mimeType", "link.to", "link.kind", "system.dc", "system.indexTime", "system.quad", "system.current" ],
+          "sort" : [ {
+            "system.lastModified" : {
+              "order" : "desc"
+            }
+          } ]
+        }
     
 <a name="hdr2"></a>
 ## Using the verbose Flag in SPARQL Queries ##
