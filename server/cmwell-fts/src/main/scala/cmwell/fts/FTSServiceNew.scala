@@ -311,15 +311,70 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
                  sortParams: SortParam, withHistory: Boolean, withDeleted: Boolean = false,
                  partition:String, debugInfo:Boolean,
                  timeout : Option[Duration])
-                (implicit executionContext:ExecutionContext, logger:Logger = loger) : Future[FTSThinSearchResponse] = {
+                (implicit executionContext:ExecutionContext, logger:Logger = loger): Future[FTSThinSearchResponse] = {
+    fullSearch(
+      pathFilter,
+      fieldsFilter,
+      datesFilter,
+      paginationParams,
+      withHistory,
+      sortParams,
+      withDeleted,
+      partition,
+      debugInfo,
+      timeout,
+      fields = "system.path" :: "system.uuid" :: "system.lastModified" ::"system.indexTime" :: Nil)(esResponseToThinInfotons).map {
+      case (response,thinSeq,searchQueryStr) =>
+        FTSThinSearchResponse(
+          response.getHits.getTotalHits,
+          paginationParams.offset,
+          response.getHits.getHits.length,
+          thinSeq,
+          searchQueryStr = searchQueryStr)
+    }
+  }
+
+  // INTERNAL API - use this when you want to fetch specific fields from _source
+  /**
+    *
+    * @param pathFilter
+    * @param fieldsFilter
+    * @param datesFilter
+    * @param paginationParams
+    * @param withHistory
+    * @param sortParams
+    * @param withDeleted
+    * @param partition
+    * @param debugInfo
+    * @param timeout
+    * @param fields
+    * @param render - function provided should take 2 arguments.
+    *               The raw ES response, and a boolean indicating if score should (could) be included (i.e. no sorting)
+    * @param executionContext
+    * @param logger
+    * @tparam T
+    * @return
+    */
+  def fullSearch[T](pathFilter: Option[PathFilter] = None,
+                    fieldsFilter: Option[FieldFilter] = None,
+                    datesFilter: Option[DatesFilter] = None,
+                    paginationParams: PaginationParams = DefaultPaginationParams,
+                    withHistory: Boolean = false,
+                    sortParams: SortParam = SortParam.empty,
+                    withDeleted: Boolean = false,
+                    partition: String = defaultPartition,
+                    debugInfo: Boolean,
+                    timeout: Option[Duration],
+                    fields: Seq[String])
+                   (render: (SearchResponse,Boolean) => T)
+                   (implicit executionContext:ExecutionContext,
+                    logger:Logger = loger): Future[(SearchResponse,T,Option[String])] = {
 
     logger.debug(s"Search request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $sortParams, $withHistory, $partition, $debugInfo")
 
     if (pathFilter.isEmpty && fieldsFilter.isEmpty && datesFilter.isEmpty) {
       throw new IllegalArgumentException("at least one of the filters is needed in order to search")
     }
-
-    val fields = "system.path" :: "system.uuid" :: "system.lastModified" ::"system.indexTime" :: Nil
 
     val request = client.prepareSearch(s"${partition}_all").setTypes("infoclone").addFields(fields:_*).setFrom(paginationParams.offset).setSize(paginationParams.length)
 
@@ -344,8 +399,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String) extends FTSServiceO
       if(debugInfo) {
         logger.info(s"[!$debugInfoIdentifier] thinSearch debugInfo response: ($oldTimestamp - ${System.currentTimeMillis()}): ${response.toString}")
       }
-      FTSThinSearchResponse(response.getHits.getTotalHits, paginationParams.offset, response.getHits.getHits.size,
-        esResponseToThinInfotons(response, sortParams eq NullSortParam), searchQueryStr = searchQueryStr)
+      (response,render(response, sortParams eq NullSortParam),searchQueryStr)
     }.andThen {
       case Failure(err) =>
         logger.error(s"thinSearch failed, time took: [$oldTimestamp - ${System.currentTimeMillis()}], request:\n${request.toString}")

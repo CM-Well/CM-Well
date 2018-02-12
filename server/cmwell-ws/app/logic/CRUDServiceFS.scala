@@ -41,7 +41,7 @@ import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
 import org.elasticsearch.action.bulk.BulkResponse
 import org.joda.time.{DateTime, DateTimeZone}
-import wsutil.{FormatterManager, RawFieldFilter}
+import wsutil.{FieldKey, FormatterManager, RawFieldFilter}
 
 import scala.concurrent._
 import scala.concurrent.duration._
@@ -455,6 +455,32 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       }(thinSearchResultsBreakout), debugInfo = ftr.searchQueryStr)
     }
   }
+
+  def fullSearch[T](pathFilter: Option[PathFilter] = None,
+                    fieldFilters: Option[FieldFilter] = None,
+                    datesFilter: Option[DatesFilter] = None,
+                    paginationParams: PaginationParams = DefaultPaginationParams,
+                    withHistory: Boolean = false,
+                    fieldSortParams: SortParam = SortParam.empty,
+                    debugInfoFlag: Boolean = false,
+                    withDeleted: Boolean = false,
+                    searchTimeout: Option[Duration] = None,
+                    fields: Seq[String])
+                   (render: (org.elasticsearch.action.search.SearchResponse,Boolean) => T)
+                   (implicit ec: ExecutionContext): Future[T] = {
+    ftsService.fullSearch(
+      pathFilter,
+      fieldFilters,
+      datesFilter,
+      paginationParams,
+      withHistory,
+      fieldSortParams,
+      withDeleted,
+      debugInfo = debugInfoFlag,
+      timeout = searchTimeout,
+      fields = fields)(render)(ec).map(_._2)(ec)
+  }
+
 
 
 //  object SearchCacheHelpers {

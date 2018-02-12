@@ -4,12 +4,14 @@ import akka.actor.{Actor, ActorRef, ActorSystem, Props, Status}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 import cmwell.domain.{FieldValue, Infoton}
+import cmwell.fts.{Equals, Must, PathFilter, SingleFieldFilter}
 import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
 import cmwell.util.collections.{partitionWith, subtractedDistinctMultiMap, updatedDistinctMultiMap}
 import cmwell.util.string.Hash.crc32base64
 import cmwell.web.ld.exceptions.{ConflictingNsEntriesException, TooManyNsRequestsException}
 import com.typesafe.scalalogging.LazyLogging
 import logic.CRUDServiceFS
+import org.elasticsearch.search.SearchHit
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
@@ -78,8 +80,6 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
 
   // private section
 
-  private[this] def props = Props(classOf[TimeBasedAccumulatedNsCacheActor])
-
   private[cmw] class TimeBasedAccumulatedNsCacheActor extends Actor {
 
     private[this] var timestamp: Long = seedTimestamp
@@ -114,7 +114,7 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
           case None => nsIDBlacklist.get(id) match {
             case None => doFetch(id, sndr, 1)
             case Some((time, count)) => {
-              if (hasEnoughIncrementalWaitTimePassed(time, count))
+              if (hasEnoughIncrementalWaitTimeElapsed(time, count))
                 doFetch(id, sndr, math.min(maxCountIncrements,count+1))
               else
                 sndr ! Status.Failure(new TooManyNsRequestsException(s"Too frequent failed request after [$count] failures to resolve ns identifier [$id]"))
@@ -204,7 +204,7 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
           case None => nsURLBlacklist.get(url) match {
             case None => doFetchURL(url, sndr, 1)
             case Some((time, count)) => {
-              if (hasEnoughIncrementalWaitTimePassed(time, count))
+              if (hasEnoughIncrementalWaitTimeElapsed(time, count))
                 doFetchURL(url, sndr, math.min(maxCountIncrements,count+1))
               else
                 sndr ! Status.Failure(new TooManyNsRequestsException(s"Too frequent failed request after [$count] failures to resolve ns url [$url]"))
@@ -249,7 +249,27 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
       inner(crc32base64(url))
     }
 
-    def nsURLToNsIDsBySearch(url: NsURL): Future[Map[NsID,(NsURL,NsPrefix)]] = ???
+    private[this] val pathFilter = Some(PathFilter("/meta/ns",false))
+    private[this] val bo = scala.collection.breakOut[Array[Option[(NsID,(NsURL,NsPrefix))]],(NsID,(NsURL,NsPrefix)),Map[NsID,(NsURL,NsPrefix)]]
+    def nsURLToNsIDsBySearch(url: NsURL): Future[Map[NsID,(NsURL,NsPrefix)]] = {
+      crudService.fullSearch(
+        pathFilter,
+        fieldFilters = Some(SingleFieldFilter(Must,Equals,"nn.url",Some(url))),
+        fields = Seq("nn.prefix","nn.url")) { (sr,_) =>
+        sr.getHits.getHits.map { hit =>
+          for {
+            path <- Option(hit.field("system.path").value.asInstanceOf[String])
+            url <- Option(hit.field("fields.nn.url").value.asInstanceOf[String])
+            prefix <- Option(hit.field("fields.nn.prefix").value.asInstanceOf[String])
+          } yield {
+            val nsID = path.drop("/meta/ns/".length)
+            nsID -> (url,prefix)
+          }
+        }.collect {
+          case Some(tuple) => tuple
+        }(bo)
+      }
+    }
 
     private[this] def handleUpdateAfterSuccessfulURLFetch(url: NsURL, miup: Map[NsID,(NsURL,NsPrefix)]): Unit = {
       nsURLFutureList -= url
@@ -258,7 +278,7 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
       }
     }
 
-    private[this] def hasEnoughIncrementalWaitTimePassed(since: Long, cappedCount: Int): Boolean =
+    private[this] def hasEnoughIncrementalWaitTimeElapsed(since: Long, cappedCount: Int): Boolean =
       (System.currentTimeMillis() - since) > (cappedCount * incrementingWaitTimeMillis)
 
     private[this] def updatedRecently: Boolean =
@@ -266,18 +286,12 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
 
   }
 
-  val actor = sys.actorOf(props)
+  private[this] def props = Props(classOf[TimeBasedAccumulatedNsCacheActor])
+  private[this] val actor = sys.actorOf(props)
+
 }
 
 object TimeBasedAccumulatedNsCache extends LazyLogging {
-
-
-  private def getInvertedCaches(m: Map[NsID,(NsURL,NsPrefix)]): (Map[NsURL,NsID],Map[NsPrefix,NsID]) = {
-    m.foldLeft(Map.empty[NsURL,NsID] -> Map.empty[NsPrefix,NsID]) {
-      case ((accv1,accv2),(k,(v1,v2))) =>
-        accv1.updated(v1, k) -> accv2.updated(v2, k)
-    }
-  }
 
   private def validateLogAndGetInvertedCaches(m: Map[NsID,(NsURL,NsPrefix)],
                                               urls: Map[NsURL,Set[NsID]] = Map.empty,
@@ -331,7 +345,7 @@ object TimeBasedAccumulatedNsCache extends LazyLogging {
 
 
   def apply(seed: Map[NsID,(NsURL,NsPrefix)], seedTimestamp: Long, coolDown: FiniteDuration, crudService: CRUDServiceFS)
-           (implicit ec: ExecutionContext, sys: ActorSystem): TimeBasedAccumulatedNsCache = {
+           (implicit ec: ExecutionContext, sys: ActorSystem): TimeBasedAccumulatedNsCacheTrait = {
 
     val (urlToID,prefixToID) = validateLogAndGetInvertedCaches(seed)
     new TimeBasedAccumulatedNsCache(
