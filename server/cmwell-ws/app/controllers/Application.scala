@@ -143,6 +143,11 @@ class Application @Inject()(bulkScrollHandler: BulkScrollHandler,
 
   def handleTypesCacheGet = Action(r => Ok(typesCache.getState).as(ContentTypes.JSON))
 
+  def handleNsCacheGet = Action.async(r => {
+    implicit val timeout = akka.util.Timeout(10.seconds)
+    cmwellRDFHelper.newestGreatestMetaNsCacheImpl.getStatus.map(resp => Ok(resp).as(ContentTypes.JSON))
+  })
+
   def handleGET(path:String) = Action.async { implicit originalRequest =>
 
     val op = originalRequest.getQueryString("op").getOrElse("read")

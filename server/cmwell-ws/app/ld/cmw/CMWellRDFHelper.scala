@@ -33,8 +33,8 @@ import com.typesafe.scalalogging.LazyLogging
 import javax.inject._
 
 import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
-import cmwell.util.cache.TimeBasedAccumulatedCache
-import ld.cmw.PassiveFieldTypesCache
+import k.grid.Grid
+import ld.cmw.{PassiveFieldTypesCache, TimeBasedAccumulatedNsCache}
 import logic.CRUDServiceFS
 import wsutil.DirectFieldKey
 
@@ -70,32 +70,44 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
 
   import CMWellRDFHelper._
 
-  val identifierToUrlAndPrefixCache = TimeBasedAccumulatedCache[Seq[Infoton],String,String,String](Map.empty,0L,2.minutes){ indexTime =>
-    crudServiceFS.thinSearch(
-          pathFilter = Some(PathFilter("/meta/ns", descendants = false)),
-          fieldFilters = Some(FieldFilter(Must, GreaterThan, "system.indexTime", indexTime.toString)),
-          datesFilter = None,
-          paginationParams = PaginationParams(0, Settings.initialMetaNsLoadingAmount),
-          withHistory = false,
-          withDeleted = true,
-          fieldSortParams = FieldSortParams(List("system.indexTime" -> Asc))).flatMap { str =>
-      crudServiceFS.getInfotonsByUuidAsync(str.thinResults.map(_.uuid))
-    }(injectedExecutionContext)
-  }{ bagOfInfotons =>
-    bagOfInfotons.foldLeft(0L -> Map.empty[String,(String,String)]) {
-      case (orig@(iTime, acc), infoton) => {
-        val timestamp = math.max(iTime, infoton.indexTime.getOrElse {
-          logger.warn(s"encountered infoton [${infoton.path}/${infoton.uuid}] without index time")
-          0L
-        })
 
-        validateInfoton(infoton).fold({ err => logger.error("", err); orig },
-          { urlPrefix => timestamp -> acc.updated(infoton.path.drop("/meta/ns/".length), urlPrefix) })
-      }
-    }
-  }{ notFoundIdentifier =>
-    hashToInfotonAsync(notFoundIdentifier)((_,tupleOfUrlPrefix) => tupleOfUrlPrefix)(injectedExecutionContext)
-  }
+  implicit val timeout = akka.util.Timeout(10.seconds) // TODO IS THIS OK?
+  implicit val ec = injectedExecutionContext // TODO IS THIS OK?
+
+
+  // TODO not seed=Map.empty, but a search/consume-like. and then, timestamp should also be currentMillis rather than 0L.
+  val newestGreatestMetaNsCacheImpl = TimeBasedAccumulatedNsCache(Map.empty, 0L, 2.minutes, crudServiceFS)(injectedExecutionContext, Grid.system)
+
+
+
+
+
+//  val identifierToUrlAndPrefixCache = TimeBasedAccumulatedCache[Seq[Infoton],String,String,String](Map.empty,0L,2.minutes){ indexTime =>
+//    crudServiceFS.thinSearch(
+//          pathFilter = Some(PathFilter("/meta/ns", descendants = false)),
+//          fieldFilters = Some(FieldFilter(Must, GreaterThan, "system.indexTime", indexTime.toString)),
+//          datesFilter = None,
+//          paginationParams = PaginationParams(0, Settings.initialMetaNsLoadingAmount),
+//          withHistory = false,
+//          withDeleted = true,
+//          fieldSortParams = FieldSortParams(List("system.indexTime" -> Asc))).flatMap { str =>
+//      crudServiceFS.getInfotonsByUuidAsync(str.thinResults.map(_.uuid))
+//    }(injectedExecutionContext)
+//  }{ bagOfInfotons =>
+//    bagOfInfotons.foldLeft(0L -> Map.empty[String,(String,String)]) {
+//      case (orig@(iTime, acc), infoton) => {
+//        val timestamp = math.max(iTime, infoton.indexTime.getOrElse {
+//          logger.warn(s"encountered infoton [${infoton.path}/${infoton.uuid}] without index time")
+//          0L
+//        })
+//
+//        validateInfoton(infoton).fold({ err => logger.error("", err); orig },
+//          { urlPrefix => timestamp -> acc.updated(infoton.path.drop("/meta/ns/".length), urlPrefix) })
+//      }
+//    }
+//  }{ notFoundIdentifier =>
+//    hashToInfotonAsync(notFoundIdentifier)((_,tupleOfUrlPrefix) => tupleOfUrlPrefix)(injectedExecutionContext)
+//  }
 
   private def validateInfoton(infoton: Infoton): Try[(String,String)] = {
     if (!infoton.path.matches("/meta/ns/[^/]+")) Failure(new IllegalStateException(s"weird looking path for /meta/ns infoton [${infoton.path}/${infoton.uuid}]"))
@@ -315,19 +327,24 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
 //    }
 //  }
 
-  def hashToUrl(hash: String): Option[String] = identifierToUrlAndPrefixCache.get(hash).map { case (url,prefix) => url } //Try(hashToUrlPermanentCache.getBlocking(hash)).toOption
+  //todo: remove the await
+  def hashToUrl(hash: String): Option[String] = Await.result(newestGreatestMetaNsCacheImpl.get(hash).map { case (url,_) => Some(url) }, 5.seconds) //Try(hashToUrlPermanentCache.getBlocking(hash)).toOption
 
-  def hashToUrlAsync(hash: String)(implicit ec: ExecutionContext): Future[String] = identifierToUrlAndPrefixCache.getOrElseUpdate(hash)(ec).transform {
-    case Success(Some((url,prefix))) => Success(url)
-    case Success(None) => Failure(new NoSuchElementException(s"ns identifier not found [$hash]"))
-    case Failure(err: NoSuchElementException) => Failure(new NoSuchElementException(s"ns identifier not found [$hash]").initCause(err))
-    case Failure(err) => Failure(new IllegalStateException(s"failed to get ns infoton for identifier [$hash]",err))
-  }(ec)
+//  def hashToUrlAsync(hash: String)(implicit ec: ExecutionContext): Future[String] = identifierToUrlAndPrefixCache.getOrElseUpdate(hash)(ec).transform {
+//    case Success(Some((url,prefix))) => Success(url)
+//    case Success(None) => Failure(new NoSuchElementException(s"ns identifier not found [$hash]"))
+//    case Failure(err: NoSuchElementException) => Failure(new NoSuchElementException(s"ns identifier not found [$hash]").initCause(err))
+//    case Failure(err) => Failure(new IllegalStateException(s"failed to get ns infoton for identifier [$hash]",err))
+//  }(ec)
 
-  def urlToHash(url: String): Option[String] = identifierToUrlAndPrefixCache.getByV1(url)
+  def hashToUrlAsync(hash: String)(implicit ec: ExecutionContext): Future[String] = newestGreatestMetaNsCacheImpl.get(hash).map{ case (url,_) => url }(ec)
+
+  //todo remove the await
+  def urlToHash(url: String): Option[String] = Await.result(newestGreatestMetaNsCacheImpl.getByURL(url).map(Some.apply), 5.seconds)
 
   def urlToHashAsync(url: String)(implicit ec: ExecutionContext): Future[String] =
-    identifierToUrlAndPrefixCache.getByV1(url).fold(Future.failed[String](new NoSuchElementException(s"no ns identifier found for url [$url]")))(Future.successful)
+    newestGreatestMetaNsCacheImpl.getByURL(url)
+    //identifierToUrlAndPrefixCache.getByV1(url).fold(Future.failed[String](new NoSuchElementException(s"no ns identifier found for url [$url]")))(Future.successful)
 
 //  def getUrlAndLastForPrefix(prefix: String)(implicit ec: ExecutionContext, awaitTimeout: FiniteDuration = Settings.esTimeout): (String,String) = {
 //    Await.result(getUrlAndLastForPrefixAsync(prefix),awaitTimeout)
@@ -335,14 +352,7 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
 
 //  def getIdentifierForPrefix(prefix: String) = identifierToUrlAndPrefixCache.getByV2(prefix)
 
-  def getIdentifierForPrefixAsync(prefix: String)(implicit ec: ExecutionContext): Future[String] = {
-    identifierToUrlAndPrefixCache.getByV2(prefix).fold{
-      getUrlForPrefixAsyncActual(prefix).andThen {
-        case Success(identifier) =>
-          identifierToUrlAndPrefixCache.getOrElseUpdate(identifier)
-      }
-    }(Future.successful)
-  }
+  def getIdentifierForPrefixAsync(prefix: String)(implicit ec: ExecutionContext): Future[String] = newestGreatestMetaNsCacheImpl.getByPrefix(prefix)
 
 //  def hashToInfoton(hash: String): Option[Infoton] = Try(hashToMetaNsInfotonCache.getBlocking(hash)).toOption
 
@@ -358,8 +368,8 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
 
 //  def urlToInfoton(url: String): Option[Infoton] = Try(urlToMetaNsInfotonCache.getBlocking(url)).toOption
 
-  def hashToUrlAndPrefix(hash: String): Option[(String,String)] =
-    identifierToUrlAndPrefixCache.get(hash)
+  //todo: remove the await result
+  def hashToUrlAndPrefix(hash: String): Option[(String,String)] = Await.result(newestGreatestMetaNsCacheImpl.get(hash).map(Some.apply), 5.seconds)
 
 //  def prefixToHash(prefix: String): Option[String] = Try(prefixToHashCache.getBlocking(prefix)).toOption
 
