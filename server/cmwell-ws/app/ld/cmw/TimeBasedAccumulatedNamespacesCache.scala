@@ -3,9 +3,10 @@ package ld.cmw
 import akka.actor.{Actor, ActorRef, ActorSystem, Props, Status}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
-import cmwell.domain.Infoton
+import cmwell.domain.{FieldValue, Infoton}
 import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
 import cmwell.util.collections.{partitionWith, subtractedDistinctMultiMap, updatedDistinctMultiMap}
+import cmwell.util.string.Hash.crc32base64
 import cmwell.web.ld.exceptions.{ConflictingNsEntriesException, TooManyNsRequestsException}
 import com.typesafe.scalalogging.LazyLogging
 import logic.CRUDServiceFS
@@ -89,13 +90,19 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
     private[this] var nsPrefixBlacklist: Map[NsPrefix,(Long,Int)] = Map.empty
 
     private[this] var nsIDFutureList:     Map[NsID,Future[(NsURL,NsPrefix)]] = Map.empty
-    private[this] var nsURLFutureList:    Map[NsURL,Future[NsID]]            = Map.empty
-    private[this] var nsPrefixFutureList: Map[NsPrefix,Future[NsID]]         = Map.empty
+    private[this] var nsURLFutureList:    Map[NsURL,Future[Set[NsID]]]       = Map.empty
+    private[this] var nsPrefixFutureList: Map[NsPrefix,Future[Set[NsID]]]    = Map.empty
 
     override def receive: Receive = {
       case GetByID(id) => handleGetByID(id)
       case UpdateAfterSuccessfulFetch(id,tuple) => handleUpdateAfterSuccessfulFetch(id,tuple)
       case UpdateAfterFailedFetch(id,count,err) => handleUpdateAfterFailedFetch(id,count,err)
+      case GetByURL(url) => handleGetByURL(url)
+      case UpdateAfterFailedURLFetch(url, count,e) => ???
+      case UpdateAfterSuccessfulURLFetch(url,miup) => handleUpdateAfterSuccessfulURLFetch(url,miup)
+      case GetByPrefix(prefix) => ???
+      case UpdateAfterFailedPrefixFetch(prefix, count,e) => ???
+      case UpdateAfterSuccessfulPrefixFetch(prefix,miup) => ???
     }
 
     private[this] def handleGetByID(id: NsID): Unit = {
@@ -135,12 +142,34 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
         case Success(FullBox(i)) => extractMetadataFromInfoton(i)
       }
 
-    private[this] def extractMetadataFromInfoton(i: Infoton): Try[(NsURL,NsPrefix)] = {
-      ???
+    private[this] def extractMetadataFromInfoton(infoton: Infoton): Try[(NsURL,NsPrefix)] = {
+      if (!infoton.path.matches("/meta/ns/[^/]+")) Failure(new IllegalStateException(s"weird looking path for /meta/ns infoton [${infoton.path}/${infoton.uuid}]"))
+      else if (infoton.fields.isEmpty) Failure(new IllegalStateException(s"no fields found for /meta/ns infoton [${infoton.path}/${infoton.uuid}]"))
+      else {
+        val f = infoton.fields.get
+        metaNsFieldsValidator(infoton, f, "prefix").flatMap { p =>
+          metaNsFieldsValidator(infoton, f, "url").map(_ -> p)
+        }
+      }
+    }
+
+    private def metaNsFieldsValidator(i: Infoton, fields: Map[String, Set[FieldValue]], field: String): Try[String] = {
+      fields.get(field).fold[Try[String]](Failure(new IllegalStateException(s"$field field not found for /meta/ns infoton [${i.path}/${i.uuid}]"))) { values =>
+        if (values.isEmpty) Failure(new IllegalStateException(s"empty value set for $field field in /meta/ns infoton [${i.path}/${i.uuid}]"))
+        else if(values.size > 1) Failure(new IllegalStateException(s"multiple values ${values.mkString("[,",",","]")} for $field field in /meta/ns infoton [${i.path}/${i.uuid}]"))
+        else values.head.value match {
+          case s: String => Success(s)
+          case x => Failure(new IllegalStateException(s"found a weird /meta/ns infoton without a string value [${x.getClass.getSimpleName}] for prefix: [$i]"))
+        }
+      }
     }
 
     private[this] def handleUpdateAfterSuccessfulFetch(id: NsID, tuple: (NsURL,NsPrefix)): Unit = {
       nsIDFutureList -= id
+      handleUpdateAfterSuccessfulFetchPerTriple(id, tuple)
+    }
+
+    private[this] def handleUpdateAfterSuccessfulFetchPerTriple(id: NsID, tuple: (NsURL,NsPrefix)): Unit = {
       val (u,p) = tuple
       mainCache.get(id) match {
         // all is good. nothing needs to be changed. use of `return` avoids mainCache redundant update
@@ -164,6 +193,69 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
       nsIDFutureList -= id
       logger.error(s"failure to retrieve /meta/ns/$id [fail #$count]",err)
       nsIDBlacklist = nsIDBlacklist.updated(id,System.currentTimeMillis() -> count)
+    }
+
+    private[this] def handleGetByURL(url: NsURL): Unit = {
+      val sndr = sender()
+      urlCache.get(url) match {
+        case Some(set) => sndr ! set
+        case None => nsURLFutureList.get(url) match {
+          case Some(future) => future.pipeTo(sndr)
+          case None => nsURLBlacklist.get(url) match {
+            case None => doFetchURL(url, sndr, 1)
+            case Some((time, count)) => {
+              if (hasEnoughIncrementalWaitTimePassed(time, count))
+                doFetchURL(url, sndr, math.min(maxCountIncrements,count+1))
+              else
+                sndr ! Status.Failure(new TooManyNsRequestsException(s"Too frequent failed request after [$count] failures to resolve ns url [$url]"))
+            }
+          }
+        }
+      }
+    }
+
+    private[this] def doFetchURL(url: NsID, sndr: ActorRef, failureCount: Int): Unit = {
+      val f = wrappedGetByNsURL(url)
+      val g = f.map(_.keySet)
+      nsURLFutureList = nsURLFutureList.updated(url, g)
+      g.pipeTo(sndr)
+      f.transform{
+        case Failure(e) => Success(UpdateAfterFailedURLFetch(url, failureCount,e))
+        case success => success.map(UpdateAfterSuccessfulURLFetch(url,_))
+      }.pipeTo(self)
+    }
+
+    private[this] def wrappedGetByNsURL(url: NsURL): Future[Map[NsID,(NsURL,NsPrefix)]] = {
+      val f1 = nsURLToNsIDsBySearch(url)
+      val f2 = nsURLToNsIDByHash(url)
+      for {
+        nsIDs <- f1
+        anotherID <- f2
+      } yield nsIDs + anotherID
+    }
+
+    def nsURLToNsIDByHash(url: NsURL): Future[(NsID,(NsURL,NsPrefix))] = {
+
+      def inner(nsID: String): Future[(NsID,(NsURL,NsPrefix))] = wrappedGetByNsID(nsID).transformWith {
+        case Success(tuple@(`url`,p)) => Future.successful(nsID -> tuple)
+        case Failure(err) => Future.failed(new Exception(s"nsURLToNsID.inner failed for url [$url] and hash [$nsID]",err))
+        case Success(notSameUrl) => {
+          val doubleHash = crc32base64(nsID)
+          logger.warn(s"double hashing url's [$url] hash [$nsID] to [$doubleHash] because not same as [${notSameUrl._1}]")
+          inner(doubleHash)
+        }
+      }
+
+      inner(crc32base64(url))
+    }
+
+    def nsURLToNsIDsBySearch(url: NsURL): Future[Map[NsID,(NsURL,NsPrefix)]] = ???
+
+    private[this] def handleUpdateAfterSuccessfulURLFetch(url: NsURL, miup: Map[NsID,(NsURL,NsPrefix)]): Unit = {
+      nsURLFutureList -= url
+      miup.foreach {
+        case (id,tuple) => handleUpdateAfterSuccessfulFetchPerTriple(id, tuple)
+      }
     }
 
     private[this] def hasEnoughIncrementalWaitTimePassed(since: Long, cappedCount: Int): Boolean =
@@ -225,12 +317,16 @@ object TimeBasedAccumulatedNsCache extends LazyLogging {
 
   object Messages {
     case class GetByID(id: NsID)
-    case class GetByURL(id: NsURL)
-    case class GetByPrefix(id: NsPrefix)
+    case class GetByURL(url: NsURL)
+    case class GetByPrefix(prefix: NsPrefix)
 
     trait UpdateAfterFetch
     case class UpdateAfterSuccessfulFetch(id: NsID, tuple: (NsURL,NsPrefix)) extends UpdateAfterFetch
     case class UpdateAfterFailedFetch(id: NsID, count: Int, cause: Throwable) extends UpdateAfterFetch
+    case class UpdateAfterSuccessfulURLFetch(url: NsURL, nsIDs: Map[NsID,(NsURL,NsPrefix)]) extends UpdateAfterFetch
+    case class UpdateAfterFailedURLFetch(url: NsURL, count: Int, cause: Throwable) extends UpdateAfterFetch
+    case class UpdateAfterSuccessfulPrefixFetch(prefix: NsPrefix, nsIDs: Map[NsID,(NsURL,NsPrefix)]) extends UpdateAfterFetch
+    case class UpdateAfterFailedPrefixFetch(prefix: NsPrefix, count: Int, cause: Throwable) extends UpdateAfterFetch
   }
 
 
