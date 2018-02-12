@@ -33,6 +33,8 @@ trait TimeBasedAccumulatedNsCacheTrait {
   def getByURL(url: NsURL)(implicit timeout: Timeout): Future[NsID]
   def getByPrefix(prefix: NsPrefix)(implicit timeout: Timeout): Future[NsID]
   def get(key: NsID)(implicit timeout: Timeout): Future[(NsURL,NsPrefix)]
+  def invalidate(key: NsID)(implicit timeout: Timeout): Future[Unit]
+  def getStatus: Future[String]
 }
 
 class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,(NsURL,NsPrefix)],
@@ -51,7 +53,7 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
 
   // public API
 
-  @inline def getByURL(url: NsURL)(implicit timeout: Timeout): Future[NsID] = urlCache.get(url).fold((actor ? GetByURL(url)).mapTo[Set[NsID]].transform{
+  @inline override def getByURL(url: NsURL)(implicit timeout: Timeout): Future[NsID] = urlCache.get(url).fold((actor ? GetByURL(url)).mapTo[Set[NsID]].transform{
     case Failure(e) => Failure(new Exception(s"failed to getByURL($url) from ns cache",e))
     case Success(s) if s.isEmpty => Failure(new IllegalStateException(s"getByURL failed with EmptySet stored for [$url]"))
     case Success(s) if s.size == 1 => Success(s.head)
@@ -62,7 +64,7 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
     case many => Future.failed(ConflictingNsEntriesException.byURL(url,many))
   }
 
-  @inline def getByPrefix(prefix: NsPrefix)(implicit timeout: Timeout): Future[NsID] = prefixCache.get(prefix).fold((actor ? GetByPrefix(prefix)).mapTo[Set[NsID]].transform{
+  @inline override def getByPrefix(prefix: NsPrefix)(implicit timeout: Timeout): Future[NsID] = prefixCache.get(prefix).fold((actor ? GetByPrefix(prefix)).mapTo[Set[NsID]].transform{
     case Failure(e) => Failure(new Exception(s"failed to getByPrefix($prefix) from ns cache",e))
     case Success(s) if s.isEmpty => Failure(new IllegalStateException(s"getByPrefix failed with EmptySet stored for [$prefix]"))
     case Success(s) if s.size == 1  => Success(s.head)
@@ -73,10 +75,15 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
     case many => Future.failed(ConflictingNsEntriesException.byPrefix(prefix,many))
   }
 
-  @inline def get(key: NsID)(implicit timeout: Timeout): Future[(NsURL,NsPrefix)] = mainCache.get(key).fold((actor ? GetByID(key)).mapTo[(NsURL,NsPrefix)].transform{
+  @inline override def get(key: NsID)(implicit timeout: Timeout): Future[(NsURL,NsPrefix)] = mainCache.get(key).fold((actor ? GetByID(key)).mapTo[(NsURL,NsPrefix)].transform{
     case Failure(e) => Failure(new Exception(s"failed to get($key) from ns cache",e))
     case success => success
   })(Future.successful[(NsURL,NsPrefix)])
+
+  @inline override def invalidate(key: NsID)(implicit timeout: Timeout): Future[Unit] =
+    mainCache.get(key).fold(Future.successful(()))(_ => (actor ? Invalidate(key)).mapTo[Unit])
+
+  @inline override def getStatus: Future[String] = ???
 
   // private section
 
@@ -103,6 +110,7 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
       case GetByPrefix(prefix) => ???
       case UpdateAfterFailedPrefixFetch(prefix, count,e) => ???
       case UpdateAfterSuccessfulPrefixFetch(prefix,miup) => ???
+      case Invalidate(id) => ???
     }
 
     private[this] def handleGetByID(id: NsID): Unit = {
@@ -333,6 +341,7 @@ object TimeBasedAccumulatedNsCache extends LazyLogging {
     case class GetByID(id: NsID)
     case class GetByURL(url: NsURL)
     case class GetByPrefix(prefix: NsPrefix)
+    case class Invalidate(id: NsID)
 
     trait UpdateAfterFetch
     case class UpdateAfterSuccessfulFetch(id: NsID, tuple: (NsURL,NsPrefix)) extends UpdateAfterFetch
