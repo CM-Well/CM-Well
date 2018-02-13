@@ -235,8 +235,7 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
     source
       .via(SizeChunker(chunkSize, within))
       .via(ingestFlow)
-      .via(IngesterStats(isStderr = false, reporter = tokenReporter, label=label))
-//      .via(balancer(ingestFlow, 20))
+//    .via(balancer(ingestFlow, 20))
   }
 
   sealed trait IngestEvent

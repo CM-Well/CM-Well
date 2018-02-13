@@ -29,6 +29,7 @@ import cmwell.tools.data.sparql.InfotonReporter.{RequestDownloadStats, RequestIn
 import cmwell.tools.data.sparql.SparqlProcessorManager._
 import cmwell.tools.data.utils.akka._
 import cmwell.tools.data.utils.akka.stats.DownloaderStats.DownloadStats
+import cmwell.tools.data.utils.akka.stats.IngesterStats
 import cmwell.tools.data.utils.akka.stats.IngesterStats.IngestStats
 import cmwell.tools.data.utils.chunkers.GroupChunker
 import cmwell.tools.data.utils.chunkers.GroupChunker._
@@ -355,6 +356,8 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
         name = s"${job.name}-${Hash.crc32(job.config.toString)}"
     )
 
+    val label = Some(s"ingester-${job.name}")
+
     val hostUpdatesSource = job.config.hostUpdatesSource.getOrElse(settings.hostUpdatesSource)
 
     val agent = SparqlTriggeredProcessor.listen(job.config, hostUpdatesSource, false, Some(tokenReporter), Some(job.name))
@@ -366,7 +369,8 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
         source = agent,
         force = job.config.force.getOrElse(false),
         tokenReporter = Some(tokenReporter),
-        label = Some(s"ingester-${job.name}"))
+        label = label)
+      .via(IngesterStats(isStderr = false, reporter = Some(tokenReporter), label=label))
       .viaMat(KillSwitches.single)(Keep.right)
       .toMat(Sink.ignore)(Keep.both)
       .run()
