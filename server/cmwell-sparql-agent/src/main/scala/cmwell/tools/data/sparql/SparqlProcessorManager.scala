@@ -25,9 +25,12 @@ import akka.stream.scaladsl._
 import akka.util.Timeout
 import cmwell.ctrl.checkers.StpChecker.{RequestStats, ResponseStats, Row, Table}
 import cmwell.tools.data.ingester._
-import cmwell.tools.data.sparql.InfotonReporter.{RequestDownloadStats, ResponseDownloadStats}
+import cmwell.tools.data.sparql.InfotonReporter.{RequestDownloadStats, RequestIngestStats, ResponseDownloadStats, ResponseIngestStats}
 import cmwell.tools.data.sparql.SparqlProcessorManager._
 import cmwell.tools.data.utils.akka._
+import cmwell.tools.data.utils.akka.stats.DownloaderStats.DownloadStats
+import cmwell.tools.data.utils.akka.stats.IngesterStats
+import cmwell.tools.data.utils.akka.stats.IngesterStats.IngestStats
 import cmwell.tools.data.utils.chunkers.GroupChunker
 import cmwell.tools.data.utils.chunkers.GroupChunker._
 import cmwell.util.http.SimpleResponse
@@ -283,9 +286,13 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
       val statsFuture = (jobStatus.reporter ? RequestDownloadStats).mapTo[ResponseDownloadStats]
       val storedTokensFuture = (jobStatus.reporter ? RequestPreviousTokens).mapTo[ResponseWithPreviousTokens]
 
-      for {
+      val stats2Future = (jobStatus.reporter ? RequestIngestStats).mapTo[ResponseIngestStats]
+
+        for {
         statsRD <- statsFuture
         stats = statsRD.stats
+        statsIngestRD <- stats2Future
+        statsIngest = statsIngestRD.stats
         storedTokensRWPT <- storedTokensFuture
         storedTokens = storedTokensRWPT.tokens
       } yield {
@@ -313,12 +320,17 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
           Seq(sensorName, decodedToken) ++ sensorStats
         }
         val configName = Paths.get(path).getFileName
+
+        val sparqlIngestStats = statsIngest.get(s"ingester-$configName").map { s =>
+          s"""Ingested <span style="color:green"> **${s.ingestedInfotons}** </span> Failed <span style="color:red"> **${s.failedInfotons}** </span>""".stripMargin
+        }.getOrElse("")
+
         val sparqlMaterializerStats = stats.get(s"$configName-${SparqlTriggeredProcessor.sparqlMaterializerLabel}").map { s =>
           val totalRunTime = DurationFormatUtils.formatDurationWords(s.runningTime, true, true)
           s"""Materialized <span style="color:green"> **${s.receivedInfotons}** </span> infotons [$totalRunTime]""".stripMargin
         }.getOrElse("")
 
-        Table(title = title :+ sparqlMaterializerStats, header = header, body = body)
+        Table(title = title :+ sparqlMaterializerStats :+ sparqlIngestStats, header = header, body = body)
       }
     }
 
@@ -344,6 +356,8 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
         name = s"${job.name}-${Hash.crc32(job.config.toString)}"
     )
 
+    val label = Some(s"ingester-${job.name}")
+
     val hostUpdatesSource = job.config.hostUpdatesSource.getOrElse(settings.hostUpdatesSource)
 
     val agent = SparqlTriggeredProcessor.listen(job.config, hostUpdatesSource, false, Some(tokenReporter), Some(job.name))
@@ -354,7 +368,8 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
         format = settings.materializedViewFormat,
         source = agent,
         force = job.config.force.getOrElse(false),
-        label = Some(s"ingester-${job.name}"))
+        label = label)
+      .via(IngesterStats(isStderr = false, reporter = Some(tokenReporter), label=label))
       .viaMat(KillSwitches.single)(Keep.right)
       .toMat(Sink.ignore)(Keep.both)
       .run()
