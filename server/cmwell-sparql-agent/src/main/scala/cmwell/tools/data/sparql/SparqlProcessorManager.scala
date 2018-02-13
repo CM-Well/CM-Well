@@ -368,7 +368,6 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
         format = settings.materializedViewFormat,
         source = agent,
         force = job.config.force.getOrElse(false),
-        tokenReporter = Some(tokenReporter),
         label = label)
       .via(IngesterStats(isStderr = false, reporter = Some(tokenReporter), label=label))
       .viaMat(KillSwitches.single)(Keep.right)

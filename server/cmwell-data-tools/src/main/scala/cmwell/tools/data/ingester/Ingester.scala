@@ -173,7 +173,6 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
              isPriority: Boolean = false,
              force: Boolean = false,
              source: Source[ByteString, _],
-             tokenReporter: Option[ActorRef] = None,
              within: FiniteDuration = 10.seconds,
              label: Option[String] = None)
             (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
