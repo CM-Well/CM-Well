@@ -11,6 +11,7 @@ import cmwell.util.string.Hash.crc32base64
 import com.typesafe.scalalogging.LazyLogging
 import ld.exceptions.{ConflictingNsEntriesException, ServerComponentNotAvailableException, TooManyNsRequestsException}
 import logic.CRUDServiceFS
+import org.elasticsearch.search.SearchHit
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
@@ -274,7 +275,7 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
     }
 
     private[this] def wrappedGetByNsURL(url: NsURL): Future[Map[NsID,(NsURL,NsPrefix)]] = {
-      val f1 = nsURLToNsIDsBySearch(url)
+      val f1 = nsSearchBy("url",url)
       val f2 = nsURLToNsIDByHash(url)
       // TODO What if only one of the futures succeeds? Do we really want to yield a failed future?
       for {
@@ -303,46 +304,34 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
     }
 
     private[this] val pathFilter = Some(PathFilter("/meta/ns",false))
-    private[this] val bo = scala.collection.breakOut[Array[Option[(NsID,(NsURL,NsPrefix))]],(NsID,(NsURL,NsPrefix)),Map[NsID,(NsURL,NsPrefix)]]
+    private[this] val bo = scala.collection.breakOut[Array[SearchHit],(NsID,(NsURL,NsPrefix)),Array[(NsID,(NsURL,NsPrefix))]]
+    def nsSearchBy(fieldName: String, fieldValue: String): Future[Map[NsID,(NsURL,NsPrefix)]] = {
 
-    def nsURLToNsIDsBySearch(url: NsURL): Future[Map[NsID,(NsURL,NsPrefix)]] = {
+      import cmwell.util.collections.TryOps
+
       crudService.fullSearch(
         pathFilter,
-        fieldFilters = Some(SingleFieldFilter(Must,Equals,"nn.url",Some(url))),
-        fields = Seq("system.path","nn.prefix","nn.url")) { (sr,_) =>
-        sr.getHits.getHits.map { hit =>
-          for {
-            path <- Option(hit.field("system.path").value.asInstanceOf[String])
-            url <- Option(hit.field("fields.nn.url").value.asInstanceOf[String])       // TODO URL is Array of Strings!!!
-            prefix <- Option(hit.field("fields.nn.prefix").value.asInstanceOf[String]) // TODO PREFIX is Array of Strings!!!
-          } yield {
-            val nsID = path.drop("/meta/ns/".length)
-            nsID -> (url,prefix)
-          }
-        }.collect {
-          case Some(tuple) => tuple
-        }(bo)
-      }
-    }
+        fieldFilters = Some(SingleFieldFilter(Must, Equals, fieldName, Some(fieldValue))),
+        fields = Seq("system.path", "fields.nn.prefix", "fields.nn.url")) { (sr, _) =>
+        Try.traverse(sr.getHits.getHits.toSeq) { hit =>
 
-    def nsPrefixToNsIDsBySearch(prefix: NsPrefix): Future[Map[NsID,(NsURL,NsPrefix)]] = {
-      crudService.fullSearch(
-        pathFilter,
-        fieldFilters = Some(SingleFieldFilter(Must,Equals,"nn.prefix",Some(prefix))),
-        fields = Seq("system.path","nn.prefix","nn.url")) { (sr,_) =>
-        sr.getHits.getHits.map { hit =>
-          for {
-            path <- Option(hit.field("system.path").value.asInstanceOf[String])
-            url <- Option(hit.field("fields.nn.url").value.asInstanceOf[String])       // TODO URL is Array of Strings!!!
-            prefix <- Option(hit.field("fields.nn.prefix").value.asInstanceOf[String]) // TODO PREFIX is Array of Strings!!!
-          } yield {
-            val nsID = path.drop("/meta/ns/".length)
-            nsID -> (url,prefix)
+          if (hit.field("fields.nn.url").getValues().size() != 1 || hit.field("fields.nn.prefix").getValues().size() != 1)
+            Failure(new RuntimeException("More than one prefix or URL values!"))
+          else {
+            val pathOpt = Option(hit.field("system.path").getValue[String])
+            val urlOpt = Option(hit.field("fields.nn.url").getValue[String])
+            val prefixOpt = Option(hit.field("fields.nn.prefix").getValue[String])
+            (for {
+              path <- pathOpt
+              url <- urlOpt
+              prefix <- prefixOpt
+            } yield {
+              val nsID = path.drop("/meta/ns/".length)
+              nsID -> (url, prefix)
+            }).fold[Try[(NsID, (NsURL, NsPrefix))]](Failure(new IllegalStateException(s"invalid /meta/ns infoton [$pathOpt,$urlOpt,$prefixOpt]")))(Success.apply)
           }
-        }.collect {
-          case Some(tuple) => tuple
-        }(bo)
-      }
+        }.map(_.toMap)
+      }.transform(_.flatMap(identity))
     }
 
     private[this] def handleUpdateAfterSuccessfulURLFetch(url: NsURL, miup: Map[NsID,(NsURL,NsPrefix)]): Unit = {
@@ -380,7 +369,7 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
     }
 
     private[this] def doFetchPrefix(prefix: NsPrefix, sndr: ActorRef, failureCount: Int): Unit = {
-      val f: Future[Map[NsID, (NsURL, NsPrefix)]] = wrappedGetByNsPrefix(prefix)
+      val f: Future[Map[NsID, (NsURL, NsPrefix)]] = nsSearchBy("prefix",prefix)
       val g: Future[Set[NsID]] = f.map(_.keySet)
       nsPrefixFutureList = nsPrefixFutureList.updated(prefix, g)
       g.pipeTo(sndr)
@@ -389,9 +378,6 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
         case success => success.map(UpdateAfterSuccessfulPrefixFetch(prefix,_))
       }.pipeTo(self)
     }
-
-    private[this] def wrappedGetByNsPrefix(prefix: NsPrefix): Future[Map[NsID,(NsURL,NsPrefix)]] =
-      nsPrefixToNsIDsBySearch(prefix)
 
     private[this] def handleInvalidate(key: NsID): Unit = {
       mainCache.get(key).fold(logger.error(s"While invalidating NsID($key): it's not in cache! Should never happen...")) { case (url, prefix) =>
