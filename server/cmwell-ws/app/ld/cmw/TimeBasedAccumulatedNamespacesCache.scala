@@ -8,10 +8,9 @@ import cmwell.fts.{Equals, Must, PathFilter, SingleFieldFilter}
 import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
 import cmwell.util.collections.{partitionWith, subtractedDistinctMultiMap, updatedDistinctMultiMap}
 import cmwell.util.string.Hash.crc32base64
-import cmwell.web.ld.exceptions.{ConflictingNsEntriesException, TooManyNsRequestsException}
 import com.typesafe.scalalogging.LazyLogging
+import ld.exceptions.{ConflictingNsEntriesException, ServerComponentNotAvailableException, TooManyNsRequestsException}
 import logic.CRUDServiceFS
-import org.elasticsearch.search.SearchHit
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
@@ -19,23 +18,19 @@ import scala.util.{Failure, Success, Try}
 
 /**
   * TODO:
-  * - implement singular fetches by URL (guarded by blacklisting repeated failed queries)
-  * - implement singular fetches by Prefix (guarded by blacklisting repeated failed queries)
   * - add full incremental update (consume style) - only if mainCache size is under size cap
   * - add invalidate by id (and by url/prefix ?) - make sure to invalidate auxiliary caches.
-  * - add status reporting endpoint (see [[PassiveFieldTypesCache.getState]] for reference)
+  * - improve status reporting endpoint (see [[PassiveFieldTypesCache.getState]] for reference)
   * - implement ???s
-  * - replace CMWellRDFHelper instantiazation with this class
-  * - rm util "generic" version
   * - tests?
   */
 trait TimeBasedAccumulatedNsCacheTrait {
 
   // TODO Don't we want those to get an implicit Execution  Context?
 
-  def getByURL(url: NsURL)(implicit timeout: Timeout): Future[NsID]
-  def getByPrefix(prefix: NsPrefix)(implicit timeout: Timeout): Future[NsID]
-  def get(key: NsID)(implicit timeout: Timeout): Future[(NsURL,NsPrefix)]
+  def getByURL(url: NsURL, timeContext: Option[Long])(implicit timeout: Timeout): Future[NsID]
+  def getByPrefix(prefix: NsPrefix, timeContext: Option[Long])(implicit timeout: Timeout): Future[NsID]
+  def get(key: NsID, timeContext: Option[Long])(implicit timeout: Timeout): Future[(NsURL,NsPrefix)]
   def invalidate(key: NsID)(implicit timeout: Timeout): Future[Unit]
   def getStatus(implicit timeout: Timeout): Future[String]
 }
@@ -50,38 +45,62 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
 
   import TimeBasedAccumulatedNsCache.Messages._
 
+  private[this] var checkTime: Long = 0L
+
   // TODO: load from config
   val incrementingWaitTimeMillis = 1000L
   val maxCountIncrements = 30
 
   // public API
 
-  @inline override def getByURL(url: NsURL)(implicit timeout: Timeout): Future[NsID] = urlCache.get(url).fold((actor ? GetByURL(url)).mapTo[Set[NsID]].transform{
-    case Failure(e) => Failure(new Exception(s"failed to getByURL($url) from ns cache",e))
-    case Success(s) if s.isEmpty => Failure(new IllegalStateException(s"getByURL failed with EmptySet stored for [$url]"))
-    case Success(s) if s.size == 1 => Success(s.head)
-    case Success(many) => Failure(ConflictingNsEntriesException.byURL(url,many))
-  }){
-    case s if s.isEmpty => Future.failed(new IllegalStateException(s"getByURL failed with EmptySet stored for [$url]"))
-    case s if s.size == 1 => Future.successful(s.head)
-    case many => Future.failed(ConflictingNsEntriesException.byURL(url,many))
+  @inline override def getByURL(url: NsURL, timeContext: Option[Long])(implicit timeout: Timeout): Future[NsID] = {
+    timeContext.foreach { t =>
+      if (!updatedRecently(t)) {
+        actor ! UpdateRequest(t)
+      }
+    }
+    urlCache.get(url).fold((actor ? GetByURL(url)).mapTo[Set[NsID]].transform {
+      case Failure(e) => Failure(ServerComponentNotAvailableException(s"failed to getByURL($url) from ns cache", e))
+      case Success(s) if s.isEmpty => Failure(new NoSuchElementException(s"getByURL failed with EmptySet stored for [$url]"))
+      case Success(s) if s.size == 1 => Success(s.head)
+      case Success(many) => Failure(ConflictingNsEntriesException.byURL(url, many))
+    }) {
+      case s if s.isEmpty => Future.failed(new NoSuchElementException(s"getByURL failed with EmptySet stored for [$url]"))
+      case s if s.size == 1 => Future.successful(s.head)
+      case many => Future.failed(ConflictingNsEntriesException.byURL(url, many))
+    }
   }
 
-  @inline override def getByPrefix(prefix: NsPrefix)(implicit timeout: Timeout): Future[NsID] = prefixCache.get(prefix).fold((actor ? GetByPrefix(prefix)).mapTo[Set[NsID]].transform{
-    case Failure(e) => Failure(new Exception(s"failed to getByPrefix($prefix) from ns cache",e))
-    case Success(s) if s.isEmpty => Failure(new IllegalStateException(s"getByPrefix failed with EmptySet stored for [$prefix]"))
-    case Success(s) if s.size == 1  => Success(s.head)
-    case Success(many) => Failure(ConflictingNsEntriesException.byPrefix(prefix,many))
-  }){
-    case s if s.isEmpty => Future.failed(new IllegalStateException(s"getByPrefix failed with EmptySet stored for [$prefix]"))
-    case s if s.size == 1  => Future.successful(s.head)
-    case many => Future.failed(ConflictingNsEntriesException.byPrefix(prefix,many))
+  @inline override def getByPrefix(prefix: NsPrefix, timeContext: Option[Long])(implicit timeout: Timeout): Future[NsID] = {
+    timeContext.foreach { t =>
+      if (!updatedRecently(t)) {
+        actor ! UpdateRequest(t)
+      }
+    }
+    prefixCache.get(prefix).fold((actor ? GetByPrefix(prefix)).mapTo[Set[NsID]].transform {
+      case Failure(e) => Failure(ServerComponentNotAvailableException(s"failed to getByPrefix($prefix) from ns cache", e))
+      case Success(s) if s.isEmpty => Failure(new NoSuchElementException(s"getByPrefix failed with EmptySet stored for [$prefix]"))
+      case Success(s) if s.size == 1 => Success(s.head)
+      case Success(many) => Failure(ConflictingNsEntriesException.byPrefix(prefix, many))
+    }) {
+      case s if s.isEmpty => Future.failed(new NoSuchElementException(s"getByPrefix failed with EmptySet stored for [$prefix]"))
+      case s if s.size == 1 => Future.successful(s.head)
+      case many => Future.failed(ConflictingNsEntriesException.byPrefix(prefix, many))
+    }
   }
 
-  @inline override def get(key: NsID)(implicit timeout: Timeout): Future[(NsURL,NsPrefix)] = mainCache.get(key).fold((actor ? GetByID(key)).mapTo[(NsURL,NsPrefix)].transform{
-    case Failure(e) => Failure(new Exception(s"failed to get($key) from ns cache",e))
-    case success => success
-  })(Future.successful[(NsURL,NsPrefix)])
+  @inline override def get(key: NsID, timeContext: Option[Long])(implicit timeout: Timeout): Future[(NsURL,NsPrefix)] = {
+    timeContext.foreach { t =>
+      if (!updatedRecently(t)) {
+        actor ! UpdateRequest(t)
+      }
+    }
+    mainCache.get(key).fold((actor ? GetByID(key)).mapTo[(NsURL, NsPrefix)].transform {
+      case f@Failure(_: NoSuchElementException) => f
+      case Failure(e) => Failure(new Exception(s"failed to get($key) from ns cache", e))
+      case success => success
+    })(Future.successful[(NsURL, NsPrefix)])
+  }
 
   @inline override def invalidate(key: NsID)(implicit timeout: Timeout): Future[Unit] =
     mainCache.get(key).fold(Future.successful(()))(_ => (actor ? Invalidate(key)).mapTo[Unit])
@@ -93,7 +112,6 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
   private[cmw] class TimeBasedAccumulatedNsCacheActor extends Actor {
 
     private[this] var timestamp: Long = seedTimestamp
-    private[this] var checkTime: Long = 0L
 
     // TODO On each successful fetch, blacklist -= _
     private[this] var nsIDBlacklist:     Map[NsID,(Long,Int)]     = Map.empty
@@ -115,6 +133,7 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
       case UpdateAfterFailedPrefixFetch(prefix, count,err) => handleUpdateAfterFailedPrefixFetch(prefix,count,err)
       case UpdateAfterSuccessfulPrefixFetch(prefix,miup) => handleUpdateAfterSuccessfulPrefixFetch(prefix,miup)
       case Invalidate(id) => handleInvalidate(id)
+      case UpdateRequest(time) => handleUpdateRequest(time)
       case GetStatus => handleShowStatus
     }
 
@@ -426,16 +445,22 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
       ).map { case (k,v) => s""""$k":$v"""})
     }
 
+    private[this] def handleUpdateRequest(time: Long): Unit = if(!updatedRecently(time)) {
+      // assignment must come first, to reduce update calls to actor as much as possible
+      checkTime = time
+
+      ???
+    }
+
     private[this] def hasEnoughIncrementalWaitTimeElapsed(since: Long, cappedCount: Int): Boolean =
       (System.currentTimeMillis() - since) > (cappedCount * incrementingWaitTimeMillis)
-
-    private[this] def updatedRecently: Boolean =
-      System.currentTimeMillis() - checkTime <= coolDownMillis
-
   }
 
   private[this] def props = Props(classOf[TimeBasedAccumulatedNsCacheActor])
   private[this] val actor = sys.actorOf(props)
+
+  private[this] def updatedRecently(timeContext: Long): Boolean =
+    timeContext - checkTime <= coolDownMillis
 
 }
 
@@ -482,9 +507,10 @@ object TimeBasedAccumulatedNsCache extends LazyLogging {
     case class GetByURL(url: NsURL)
     case class GetByPrefix(prefix: NsPrefix)
     case class Invalidate(id: NsID)
+    case class UpdateRequest(time: Long)
     case object GetStatus
 
-    trait UpdateAfterFetch
+    sealed trait UpdateAfterFetch
     case class UpdateAfterSuccessfulFetch(id: NsID, tuple: (NsURL,NsPrefix)) extends UpdateAfterFetch
     case class UpdateAfterFailedFetch(id: NsID, count: Int, cause: Throwable) extends UpdateAfterFetch
     case class UpdateAfterSuccessfulURLFetch(url: NsURL, nsIDs: Map[NsID,(NsURL,NsPrefix)]) extends UpdateAfterFetch

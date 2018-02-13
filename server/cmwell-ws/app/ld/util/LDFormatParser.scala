@@ -263,7 +263,8 @@ object LDFormatParser extends LazyLogging {
                                   crudServiceFS: CRUDServiceFS)(
                                   models: Seq[(Option[String],Model)],
                                   urlToLast: Map[String,String],
-                                  metaNsInfotonMap: InfotonRepr): Future[ParsingResponse] = {
+                                  metaNsInfotonMap: InfotonRepr,
+                                  timeContext: Option[Long]): Future[ParsingResponse] = {
     val quadsToDelete = MSet.empty[String]
     val fuzzyQuadsToDelete = MSet.empty[String]
     val metaInfotons: MInfotonRepr = MMap.empty
@@ -319,7 +320,7 @@ object LDFormatParser extends LazyLogging {
             }
             case prefix if pNameSpace.matches(metaOpRegex("ns")) => {
               val url = o.toString
-              val last = urlToLast.getOrElse(url, cmwellRDFHelper.nsUrlToHash(url)._1)
+              val last = urlToLast.getOrElse(url, cmwellRDFHelper.nsUrlToHash(url,timeContext)._1)
               val (path, nsInfotonRepr) = createMetaNsInfoton(last, url, prefix)
               metaInfotons.update(path, nsInfotonRepr)
               updateDeleteMap(deleteFieldsMap, path, "prefix", None)
@@ -420,7 +421,7 @@ object LDFormatParser extends LazyLogging {
 
   case class DataSetConstructs(graphModelTuplesSeq: Seq[(Option[String], Model)], urlToLastMap: Map[String,String], metaNsInfotons: InfotonRepr)
 
-  def modelsFromRdfDataInputStream(cmwellRDFHelper: CMWellRDFHelper)(rdfData: InputStream, dialect: String): DataSetConstructs = {
+  def modelsFromRdfDataInputStream(cmwellRDFHelper: CMWellRDFHelper, timeContext: Option[Long])(rdfData: InputStream, dialect: String): DataSetConstructs = {
     val ds = DatasetFactory.createGeneral()
     RDFDataMgr.read(ds, rdfData, dialectToLang(dialect))
 
@@ -431,14 +432,14 @@ object LDFormatParser extends LazyLogging {
     val graphModelsTuplesSeq = (modelsSeqWithdefaultModel /: ds.listNames) {
       case (acc,name) => {
         val m = ds.getNamedModel(name)
-        val (u2lMap,nsiMap) = convertMetaMapToInfotonFormatMap(cmwellRDFHelper,m)
+        val (u2lMap,nsiMap) = convertMetaMapToInfotonFormatMap(cmwellRDFHelper,timeContext,m)
         metaNsInfotonsAcc ++= nsiMap
         urlToLastAcc ++= u2lMap
         acc :+ (Some(name) -> m)
       }
     }
 
-    val (urlToLastDefault,metaNsInfotonsDefault) = convertMetaMapToInfotonFormatMap(cmwellRDFHelper,defaultModel)
+    val (urlToLastDefault,metaNsInfotonsDefault) = convertMetaMapToInfotonFormatMap(cmwellRDFHelper,timeContext,defaultModel)
 
     val metaQuadsMap = (IMap.empty[String,Map[DirectFieldKey,Set[FieldValue]]] /: graphModelsTuplesSeq) {
       case (m,(subGraph, model)) => {
@@ -490,8 +491,9 @@ object LDFormatParser extends LazyLogging {
                        dialect: String,
                        token: Option[Token],
                        skipValidation: Boolean,
-                       isOverwrite: Boolean): Future[ParsingResponse] =
-    rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,stringToInputStream(rdfData),dialect,token,skipValidation,isOverwrite)
+                       isOverwrite: Boolean,
+                       timeContext: Option[Long]): Future[ParsingResponse] =
+    rdfToInfotonsMap(cmwellRDFHelper,crudServiceFS,authUtils,stringToInputStream(rdfData),dialect,token,skipValidation,isOverwrite,timeContext)
 
 	def rdfToInfotonsMap(cmwellRDFHelper: CMWellRDFHelper,
                        crudServiceFS: CRUDServiceFS,
@@ -500,13 +502,14 @@ object LDFormatParser extends LazyLogging {
                        dialect: String,
                        token: Option[Token],
                        skipValidation: Boolean,
-                       isOverwrite: Boolean): Future[ParsingResponse] = {
+                       isOverwrite: Boolean,
+                       timeContext: Option[Long]): Future[ParsingResponse] = {
 
 		require(dialectToLang.isDefinedAt(dialect), "the format " + dialect + " is unknown.")
 
-    val DataSetConstructs(models,urlToLast,metaInfotonsMap) = modelsFromRdfDataInputStream(cmwellRDFHelper)(rdfData, dialect)
+    val DataSetConstructs(models,urlToLast,metaInfotonsMap) = modelsFromRdfDataInputStream(cmwellRDFHelper,timeContext)(rdfData, dialect)
 
-    val globalParsingResponse = parseGlobalExpressionsAsync(cmwellRDFHelper,crudServiceFS)(models,urlToLast,metaInfotonsMap)
+    val globalParsingResponse = parseGlobalExpressionsAsync(cmwellRDFHelper,crudServiceFS)(models,urlToLast,metaInfotonsMap,timeContext)
 
     val parsingResults = models.map{ case (subGraph,model) =>
 
@@ -635,7 +638,7 @@ object LDFormatParser extends LazyLogging {
                 p = delStmt.getPredicate
                 v = delStmt.getObject
               } yield p -> v
-              updateDeleteValuesMap(cmwellRDFHelper, deleteValuesMap, subject, pvit.toList, changeQuadAccordingToDialect(subGraph,dialect))
+              updateDeleteValuesMap(cmwellRDFHelper, timeContext, deleteValuesMap, subject, pvit.toList, changeQuadAccordingToDialect(subGraph,dialect))
             }
             case Left(MarkDelete) => throw new IllegalArgumentException("when using 'markDelete' API, one must supply an anonymous node as value")
             case Left(FullDelete) => {
@@ -655,10 +658,10 @@ object LDFormatParser extends LazyLogging {
             }
             case Left(MarkReplace) => {
               val cmwellFieldName = {
-                if (!obj.isResource) getCmwellFieldNameForUrl(cmwellRDFHelper,obj.toString)
+                if (!obj.isResource) getCmwellFieldNameForUrl(cmwellRDFHelper,timeContext,obj.toString)
                 else {
                   val r = obj.asResource()
-                  getCmwellFieldNameForUrl(cmwellRDFHelper, r.getNameSpace, Some(r.getLocalName))
+                  getCmwellFieldNameForUrl(cmwellRDFHelper, timeContext, r.getNameSpace, Some(r.getLocalName))
                 }
               }
               if(cmwellFieldName.isEmpty) throw new IllegalArgumentException(s"CM-Well could not resolve predicate [${
@@ -731,6 +734,7 @@ object LDFormatParser extends LazyLogging {
   }
 
   def updateDeleteValuesMap(cmwellRDFHelper: CMWellRDFHelper,
+                            timeContext: Option[Long],
                             deleteValuesMap: MMap[String,Map[String,Set[FieldValue]]],
                             infotonPath: String,
                             pvl: List[(Property,RDFNode)],
@@ -739,7 +743,7 @@ object LDFormatParser extends LazyLogging {
       case (p,v) => {
         val predicateUrl = p.getNameSpace
         require(!predicateUrl.matches(metaOpRegex("(sys|ns)")), s"sys fields not allowed for markDelete failed for: [$predicateUrl${p.getLocalName}]")
-        val cmwAttribute = getCmwellFieldNameForUrl(cmwellRDFHelper, predicateUrl, Some(p.getLocalName)).get //TODO: protect against empty Option
+        val cmwAttribute = getCmwellFieldNameForUrl(cmwellRDFHelper, timeContext, predicateUrl, Some(p.getLocalName)).get //TODO: protect against empty Option
         val validValue: FieldValue = fieldValueFromObject(v,quad)
         deleteValuesMap.get(infotonPath) match {
           case None =>  deleteValuesMap.update(infotonPath, Map(cmwAttribute -> Set(validValue)))
@@ -755,7 +759,7 @@ object LDFormatParser extends LazyLogging {
   private def urlValidate(u: String): Boolean = Try(new java.net.URL(u)).isSuccess ||
     (u.startsWith(cmwell) && Try(new java.net.URL(http + u.drop(cmwell.length))).isSuccess)
 
-  def getCmwellFieldNameForUrl(cmwellRDFHelper: CMWellRDFHelper, predicateUrl: String, localName: Option[String] = None): Option[String] = predicateUrl match {
+  def getCmwellFieldNameForUrl(cmwellRDFHelper: CMWellRDFHelper, timeContext: Option[Long], predicateUrl: String, localName: Option[String] = None): Option[String] = predicateUrl match {
     case "*" => Some("*")
     case _ => {
       require(urlValidate(predicateUrl), s"the url: ${predicateUrl} is not a valid predicate url for ingest.")
@@ -772,7 +776,7 @@ object LDFormatParser extends LazyLogging {
         if(firstName.contains(".")) throw new IllegalArgumentException(s"nn (No Namespace) fields aren't allowed to contain dots. [$url$firstName]")
         else Some(firstName)
       }
-      else cmwellRDFHelper.urlToHash(url).map{
+      else cmwellRDFHelper.urlToHash(url,timeContext).map{
         hash =>  s"$firstName.$hash"
       }
     }
@@ -822,7 +826,7 @@ object LDFormatParser extends LazyLogging {
    * _1 : map from ns url to inner identifier (hash or old repr)
    * _2 : map of new `/meta/ns` infotons to write into cm-well
    */
-  def convertMetaMapToInfotonFormatMap(cmwellRDFHelper: CMWellRDFHelper, model: Model): (Map[String,String],InfotonRepr) = {
+  def convertMetaMapToInfotonFormatMap(cmwellRDFHelper: CMWellRDFHelper, timeContext: Option[Long], model: Model): (Map[String,String],InfotonRepr) = {
 
     val noJenaMap = model.getNsPrefixMap.toSeq.collect{
       case (shortName,uriValue) if !shortName.matches("""[Jj].\d+""") && shortName != "" =>
@@ -848,7 +852,7 @@ object LDFormatParser extends LazyLogging {
         //        .map(_ -> Exists)
         //        .getOrElse(CMWellRDFHelper.nsUrlToHash(url))
         //      t -> url
-        cmwellRDFHelper.nsUrlToHash(url) -> url
+        cmwellRDFHelper.nsUrlToHash(url,timeContext) -> url
       }.toSeq
     }
     val m = all.map{

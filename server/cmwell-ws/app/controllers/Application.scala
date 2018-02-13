@@ -183,7 +183,9 @@ class Application @Inject()(bulkScrollHandler: BulkScrollHandler,
 
   def handlePull(req: Request[AnyContent]): Future[Result] = {
 
-    extractFieldsMask(req,typesCache, cmwellRDFHelper).flatMap { fieldsMask =>
+    val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
+
+    extractFieldsMask(req,typesCache, cmwellRDFHelper, timeContext).flatMap { fieldsMask =>
 
       req.getQueryString("sub") match {
         case Some(sub) => {
@@ -196,6 +198,7 @@ class Application @Inject()(bulkScrollHandler: BulkScrollHandler,
               case _ => {
                 val formatter = formatterManager.getFormatter(
                   d.format,
+                  timeContext,
                   req.host,
                   req.uri,
                   req.queryString.keySet("pretty"),
@@ -246,9 +249,11 @@ callback=< [URL] >
 
    */
   def handleSubscribe(request: Request[AnyContent]): Future[Result] = Try {
+
+    val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
     val path = normalizePath(request.path)
     val name = cmwell.util.os.Props.machineName
-    val sub = cmwell.util.string.Hash.crc32(s"${request.attrs(Attrs.RequestReceivedTimestamp).toString}#$name")
+    val sub = cmwell.util.string.Hash.crc32(s"$timeContext#$name")
     //    val bulkSize = request.getQueryString("bulk-size").flatMap(asInt).getOrElse(50)
     request.getQueryString("qp")
       .map(RTSQueryPredicate.parseRule(_, path))
@@ -258,7 +263,7 @@ callback=< [URL] >
         case FormatExtractor(format) => request.getQueryString("method") match {
           case Some(m) if m.equalsIgnoreCase("pull") => Subscriber.subscribe(sub, rule, Pull(format)).map(Ok(_))
           case Some(m) if m.equalsIgnoreCase("push") => request.getQueryString("callback") match {
-            case Some(url) => Subscriber.subscribe(sub, rule, Push(getHandlerFor(format, url))).map(Ok(_))
+            case Some(url) => Subscriber.subscribe(sub, rule, Push(getHandlerFor(format, url, timeContext))).map(Ok(_))
             case None => Future.successful(BadRequest("missing callback for method push"))
           }
           case _ => Future.successful(BadRequest("unsupported or missing method for real time search "))
@@ -268,7 +273,7 @@ callback=< [URL] >
     }
   }.recover(asyncErrorHandler).get
 
-  def getHandlerFor(format: FormatType, url: String): (Seq[String]) => Unit = {
+  def getHandlerFor(format: FormatType, url: String, timeContext: Option[Long]): (Seq[String]) => Unit = {
     uuids => {
 
       uuids.foreach {
@@ -277,7 +282,7 @@ callback=< [URL] >
       }
       val infotonsFut = crudServiceFS.getInfotonsByPathOrUuid(uuids = uuids.toVector)
       //TODO: probably not the best host to provide a formatter. is there a way to get the original host the subscription was asked from?
-      val formatter = formatterManager.getFormatter(format, s"http://${cmwell.util.os.Props.machineName}:9000")
+      val formatter = formatterManager.getFormatter(format, timeContext, s"http://${cmwell.util.os.Props.machineName}:9000")
       val futureRes = infotonsFut.flatMap { bag =>
         import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
         SimpleHttpClient.post[String](url,formatter.render(bag),Some(formatter.mimetype))
@@ -331,10 +336,12 @@ callback=< [URL] >
         val length = req.getQueryString("length").flatMap(asInt).getOrElse(if (req.getQueryString("format").isEmpty) 13 else 0) // default is 0 unless 1st request for the ajax app
         val offset = req.getQueryString("offset").flatMap(asInt).getOrElse(0)
         val withHistory = req.getQueryString("with-history").flatMap(asBoolean).getOrElse(false)
-        val fieldsFiltersFut = qpOpt.fold[Future[Option[FieldFilter]]](Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff, typesCache, cmwellRDFHelper).map(Some.apply))
+        val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
+        val fieldsFiltersFut = qpOpt.fold[Future[Option[FieldFilter]]](Future.successful(Option.empty[FieldFilter]))(rff =>
+          RawFieldFilter.eval(rff, typesCache, cmwellRDFHelper, timeContext).map(Some.apply))
         fieldsFiltersFut.flatMap { fieldFilters =>
           activeInfotonGenerator
-            .generateInfoton(req.host, path, req.attrs(Attrs.RequestReceivedTimestamp), length, offset, isRoot, withHistory, fieldFilters)
+            .generateInfoton(req.host, path, req.attrs(Attrs.RequestReceivedTimestamp), length, offset, isRoot, withHistory, fieldFilters, timeContext)
             .flatMap(iOpt => infotonOptionToReply(req, iOpt.map(VirtualInfoton.v2i)))
         }
       }.recover(asyncErrorHandler).get
@@ -390,6 +397,7 @@ callback=< [URL] >
       val isPurgeOp = req.getQueryString("op").contains("purge")
       def fields = req.getQueryString("fields").map(FieldNameConverter.toActualFieldNames)
 
+      val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
       if (!uuid.matches("^[a-f0-9]{32}$"))
         Future.successful(BadRequest("not a valid uuid format"))
       else {
@@ -414,7 +422,7 @@ callback=< [URL] >
             }
           case FullBox(infoton) if isPurgeOp => Future.successful(Forbidden("Not authorized"))
 
-          case FullBox(infoton) if allowed(infoton) => extractFieldsMask(req,typesCache,cmwellRDFHelper).flatMap(fm => infotonOptionToReply(req, Some(infoton), fieldsMask = fm))
+          case FullBox(infoton) if allowed(infoton) => extractFieldsMask(req,typesCache,cmwellRDFHelper,timeContext).flatMap(fm => infotonOptionToReply(req, Some(infoton), fieldsMask = fm))
           case FullBox(infoton) => Future.successful(Forbidden("Not authorized"))
 
           case EmptyBox => infotonOptionToReply(req, None)
@@ -513,6 +521,7 @@ callback=< [URL] >
       if (crudServiceFS.countSearchOpenContexts.map(_._2).sum > Settings.maxSearchContexts)
         Future.successful(BadRequest(Json.obj("success" -> false, "message" -> "Too many open iterators. wait and try later.")))
       else {
+        val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
         val normalizedPath = normalizePath(request.path)
         val from = DateParser.parseDate(request.getQueryString("from").getOrElse(""), FromDate).toOption
         val to = DateParser.parseDate(request.getQueryString("to").getOrElse(""), ToDate).toOption
@@ -524,7 +533,7 @@ callback=< [URL] >
         val withDeleted = request.queryString.keySet("with-deleted")
         val pathFilter = Some(PathFilter(normalizedPath, withDescendants))
         val withData = request.getQueryString("with-data")
-        val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff,typesCache, cmwellRDFHelper).map(Some.apply))
+        val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff,typesCache, cmwellRDFHelper, timeContext).map(Some.apply))
         fieldsFiltersFut.transformWith {
           case Failure(err) => {
             val msg = s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"
@@ -540,6 +549,7 @@ callback=< [URL] >
             val formatter = request.getQueryString("format").getOrElse("json") match {
               case FormatExtractor(formatType) =>
                 formatterManager.getFormatter(format = formatType,
+                  timeContext = timeContext,
                   host = request.host,
                   uri = request.uri,
                   pretty = request.queryString.keySet("pretty"),
@@ -550,7 +560,7 @@ callback=< [URL] >
                   withData = withData)
             }
 
-            val fmFut = extractFieldsMask(request, typesCache, cmwellRDFHelper)
+            val fmFut = extractFieldsMask(request, typesCache, cmwellRDFHelper,timeContext)
             crudServiceFS.startScroll(
               pathFilter,
               fieldFilter,
@@ -618,7 +628,8 @@ callback=< [URL] >
         val withMeta = request.queryString.keySet("with-meta")
         val length = request.getQueryString("length").flatMap(asLong)
         val pathFilter = Some(PathFilter(normalizedPath, withDescendants))
-        val fieldsMaskFut = extractFieldsMask(request,typesCache,cmwellRDFHelper)
+        val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
+        val fieldsMaskFut = extractFieldsMask(request,typesCache,cmwellRDFHelper,timeContext)
         val (withData, format) = {
           val wd = request.getQueryString("with-data")
           val frmt = request.getQueryString("format").getOrElse({
@@ -634,7 +645,7 @@ callback=< [URL] >
         format match {
           case f if !Set("text", "path", "tsv", "tab", "nt", "ntriples", "nq", "nquads")(f.toLowerCase) && !f.toLowerCase.startsWith("json") => Future.successful(BadRequest(Json.obj("success" -> false, "message" -> "not a streamable type (use 'text','tsv','ntriples', 'nquads', or any json)")))
           case FormatExtractor(formatType) => {
-            val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff,typesCache,cmwellRDFHelper).map(Some.apply))
+            val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff,typesCache,cmwellRDFHelper,timeContext).map(Some.apply))
             fieldsFiltersFut.transformWith {
               case Failure(err) => {
                 val msg = s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"
@@ -660,6 +671,7 @@ callback=< [URL] >
                     case _ => false
                   })
                   val formatter = formatterManager.getFormatter(format = formatType,
+                    timeContext = timeContext,
                     host = request.host,
                     uri = request.uri,
                     pretty = false,
@@ -715,7 +727,8 @@ callback=< [URL] >
         val length = request.getQueryString("length").flatMap(asLong)
         val parallelism = request.getQueryString("parallelism").flatMap(asInt).getOrElse(Settings.sstreamParallelism)
         val pathFilter = Some(PathFilter(normalizedPath, withDescendants))
-        val fieldsMaskFut = extractFieldsMask(request,typesCache,cmwellRDFHelper)
+        val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
+        val fieldsMaskFut = extractFieldsMask(request,typesCache,cmwellRDFHelper,timeContext)
         val (withData, format) = {
           val wd = request.getQueryString("with-data")
           val frmt = request.getQueryString("format").getOrElse({
@@ -731,7 +744,7 @@ callback=< [URL] >
         format match {
           case f if !Set("text", "path", "tsv", "tab", "nt", "ntriples", "nq", "nquads")(f.toLowerCase) && !f.toLowerCase.startsWith("json") => Future.successful(BadRequest(Json.obj("success" -> false, "message" -> "not a streamable type (use 'text','tsv','ntriples', 'nquads', or any json)")))
           case FormatExtractor(formatType) => {
-            val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff,typesCache,cmwellRDFHelper).map(Some.apply))
+            val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff,typesCache,cmwellRDFHelper,timeContext).map(Some.apply))
             fieldsFiltersFut.transformWith {
               case Failure(err) => {
                 val msg = s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"
@@ -757,6 +770,7 @@ callback=< [URL] >
                     case _ => false
                   })
                   val formatter = formatterManager.getFormatter(format = formatType,
+                    timeContext = timeContext,
                     host = request.host,
                     uri = request.uri,
                     pretty = false,
@@ -808,7 +822,8 @@ callback=< [URL] >
         val scrollTtl = request.getQueryString("session-ttl").flatMap(asLong).getOrElse(3600L).min(3600L)
         val length = request.getQueryString("length").flatMap(asLong)
         val pathFilter = Some(PathFilter(normalizedPath, withDescendants))
-        val fieldsMaskFut = extractFieldsMask(request,typesCache,cmwellRDFHelper)
+        val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
+        val fieldsMaskFut = extractFieldsMask(request,typesCache,cmwellRDFHelper,timeContext)
         val (withData, format) = {
           val wd = request.getQueryString("with-data")
           val frmt = request.getQueryString("format").getOrElse({
@@ -824,7 +839,7 @@ callback=< [URL] >
         format match {
           case f if !Set("text", "path", "tsv", "tab", "nt", "ntriples", "nq", "nquads")(f.toLowerCase) && !f.toLowerCase.startsWith("json") => Future.successful(BadRequest(Json.obj("success" -> false, "message" -> "not a streamable type (use any json, or one of: 'text','tsv','ntriples', or 'nquads')")))
           case FormatExtractor(formatType) => {
-            val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff,typesCache,cmwellRDFHelper).map(Some.apply))
+            val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff,typesCache,cmwellRDFHelper,timeContext).map(Some.apply))
             fieldsFiltersFut.transformWith {
               case Failure(err) => {
                 val msg = s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"
@@ -850,6 +865,7 @@ callback=< [URL] >
                     case _ => false
                   })
                   val formatter = formatterManager.getFormatter(format = formatType,
+                    timeContext = timeContext,
                     host = request.host,
                     uri = request.uri,
                     pretty = false,
@@ -912,7 +928,8 @@ callback=< [URL] >
                                         withDescendants: Boolean,
                                         withHistory: Boolean,
                                         withDeleted: Boolean,
-                                        indexTime: Long): Future[SortedConsumeState] = {
+                                        indexTime: Long,
+                                        timeContext: Option[Long]): Future[SortedConsumeState] = {
     val pOpt = {
       if (path == "/" && withDescendants) None
       else Some(path)
@@ -921,7 +938,7 @@ callback=< [URL] >
     qpOpt.fold[Future[Option[FieldFilter]]](Future.successful(None)) { qp =>
       FieldFilterParser.parseQueryParams(qp) match {
         case Failure(err) => Future.failed(err)
-        case Success(rff) => RawFieldFilter.eval(rff,typesCache,cmwellRDFHelper).map(Some.apply)
+        case Success(rff) => RawFieldFilter.eval(rff,typesCache,cmwellRDFHelper,timeContext).map(Some.apply)
       }
     }.map { ffOpt =>
       SortedConsumeState(indexTime, pOpt, withHistory, withDeleted, withDescendants, ffOpt)
@@ -958,6 +975,7 @@ callback=< [URL] >
     val withDescendants = request.queryString.keySet("with-descendants") || request.queryString.keySet("recursive")
     val withHistory = request.queryString.keySet("with-history")
     val withDeleted = request.queryString.keySet("with-deleted")
+    val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
     val (withData, format) = {
       val wd = request.getQueryString("with-data")
       val frmt = request.getQueryString("format").getOrElse({
@@ -989,7 +1007,8 @@ callback=< [URL] >
           withDescendants = withDescendants,
           withHistory = withHistory,
           withDeleted = withDeleted,
-          indexTime = indexTime
+          indexTime = indexTime,
+          timeContext = timeContext
         ).transformWith {
           case Failure(err) => {
             val msg = s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"
@@ -1005,6 +1024,7 @@ callback=< [URL] >
 
             val formatter = formatterManager.getFormatter(
               format = formatType,
+              timeContext = timeContext,
               host = request.host,
               uri = request.uri,
               pretty = false,
@@ -1085,7 +1105,7 @@ callback=< [URL] >
     val withDeleted = createConsumerParams.contains("with-deleted")
     val lengthHint = createConsumerParams.get("length-hint").flatMap(_.headOption.flatMap(asLong))
     val consumeStateFut: Future[ConsumeState] = {
-      val f = generateSortedConsumeFieldFilters(qpOpt, normalizedPath, withDescendants, withHistory, withDeleted, indexTime.getOrElse(0L))
+      val f = generateSortedConsumeFieldFilters(qpOpt, normalizedPath, withDescendants, withHistory, withDeleted, indexTime.getOrElse(0L),requestReceivedTimestamp)
       lengthHint.fold[Future[ConsumeState]](f)(lh => f.map(_.asBulk(lh)))
     }
     consumeStateFut.transformWith {
@@ -1145,7 +1165,7 @@ callback=< [URL] >
     else if (wasSupplied("with-deleted"))
       Future.successful(BadRequest("`with-deleted` is determined in the beginning of the iteration. can't specify together with `position`"))
     else {
-
+      val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
       val sortedIteratorStateTry = ConsumeState.decode[SortedConsumeState](sortedIteratorID)
       val lengthHint = request
         .getQueryString("length-hint")
@@ -1181,6 +1201,7 @@ callback=< [URL] >
             case FormatExtractor(formatType) =>
               val f = formatterManager.getFormatter(
                 format = formatType,
+                timeContext = timeContext,
                 host = request.host,
                 uri = request.uri,
                 pretty = request.queryString.keySet("pretty"),
@@ -1215,13 +1236,13 @@ callback=< [URL] >
 
               // last chunk
               if (results.length >= total)
-                expandSearchResultsForSortedIteration(results, sortedConsumeState.copy(from = idxT), total, formatter, contentType, xg, yg, gqp, ygChunkSize, gqpChunkSize)
+                expandSearchResultsForSortedIteration(results, sortedConsumeState.copy(from = idxT), total, formatter, contentType, xg, yg, gqp, ygChunkSize, gqpChunkSize, timeContext)
               //regular chunk with more than 1 indexTime
               else if (results.exists(_.indexTime != idxT)) {
                 val newResults = results.filter(_.indexTime < idxT)
                 val id = sortedConsumeState.copy(from = idxT - 1)
                 //expand the infotons with yg/xg, but only after filtering out the infotons with the max indexTime
-                expandSearchResultsForSortedIteration(newResults, id, total, formatter, contentType, xg, yg, gqp, ygChunkSize, gqpChunkSize)
+                expandSearchResultsForSortedIteration(newResults, id, total, formatter, contentType, xg, yg, gqp, ygChunkSize, gqpChunkSize, timeContext)
               }
               //all the infotons in current chunk have the same indexTime
               else {
@@ -1242,7 +1263,7 @@ callback=< [URL] >
                 scrollFuture.flatMap {
                   //if by pure luck, the chunk length is exactly equal to the number of infotons in cm-well containing this same indexTime
                   case (_,hits) if hits <= results.size =>
-                    expandSearchResultsForSortedIteration(results, sortedConsumeState.copy(from = idxT), total, formatter, contentType, xg, yg, gqp, ygChunkSize, gqpChunkSize)
+                    expandSearchResultsForSortedIteration(results, sortedConsumeState.copy(from = idxT), total, formatter, contentType, xg, yg, gqp, ygChunkSize, gqpChunkSize, timeContext)
                   //if we were asked to expand chunk, but need to respond with a chunked response (workaround: try increasing length or search directly with adding `system.indexTime::${idxT}`)
                   case _ if xg.isDefined || yg.isDefined =>
                     Future.successful(UnprocessableEntity(s"encountered a large chunk which cannot be expanded using xg/yg. (indexTime=$idxT)"))
@@ -1276,7 +1297,8 @@ callback=< [URL] >
                                             yg: Option[String],
                                             gqp: Option[String],
                                             ygChunkSize: Int,
-                                            gqpChunkSize: Int): Future[Result] = {
+                                            gqpChunkSize: Int,
+                                            timeContext: Option[Long]): Future[Result] = {
 
     val id = ConsumeState.encode(sortedIteratorState)
 
@@ -1314,12 +1336,12 @@ callback=< [URL] >
           }
         }
 
-        val gqpModified = gqp.fold(Future.successful(newInfotons))(gqpFilter(_,newInfotons,cmwellRDFHelper,typesCache,gqpChunkSize).map(_.toVector))
+        val gqpModified = gqp.fold(Future.successful(newInfotons))(gqpFilter(_,newInfotons,cmwellRDFHelper,typesCache,gqpChunkSize,timeContext).map(_.toVector))
         gqpModified.flatMap { infotonsAfterGQP =>
           //TODO: xg/yg handling should be factor out (DRY principle)
           val ygModified = yg match {
             case Some(ygp) if infotonsAfterGQP.nonEmpty => {
-              pathExpansionParser(ygp, infotonsAfterGQP, ygChunkSize, cmwellRDFHelper, typesCache).map {
+              pathExpansionParser(ygp, infotonsAfterGQP, ygChunkSize, cmwellRDFHelper, typesCache, timeContext).map {
                 case (ok, infotonsAfterYg) => ok -> infotonsAfterYg
               }
             }
@@ -1346,7 +1368,7 @@ callback=< [URL] >
                 .withHeaders("X-CM-WELL-POSITION" -> id, "X-CM-WELL-N-LEFT" -> (total - newInfotonsBoxes.length).toString))
             }
             case (true, infotonsAfterYg) => {
-              deepExpandGraph(xg.get, infotonsAfterYg, cmwellRDFHelper, typesCache).map {
+              deepExpandGraph(xg.get, infotonsAfterYg, cmwellRDFHelper, typesCache, timeContext).map {
                 case (_, infotonsAfterXg) =>
                   val body = FormatterManager.formatFormattableSeq(infotonsAfterXg, formatter)
                   val result = {
@@ -1388,14 +1410,16 @@ callback=< [URL] >
       val (yg,ygChunkSize) = request.getQueryString("yg").fold(Option.empty[String] -> 0)(Some(_) -> request.getQueryString("yg-chunk-size").flatMap(asInt).getOrElse(10))
       val scrollTtl = request.getQueryString("session-ttl").flatMap(asInt).getOrElse(15).min(60)
       val withDataFormat = request.getQueryString("with-data")
+      val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
       val withData =
         (withDataFormat.isDefined && withDataFormat.get.toLowerCase != "false") ||
           (withDataFormat.isEmpty && (yg.isDefined || xg.isDefined)) //infer `with-data` implicitly, and don't fail the request
 
-      val fieldsMaskFut = extractFieldsMask(request,typesCache,cmwellRDFHelper)
+      val fieldsMaskFut = extractFieldsMask(request,typesCache,cmwellRDFHelper,timeContext)
 
       if (!withData && xg.isDefined) Future.successful(BadRequest("you can't use `xg` without also specifying `with-data`!"))
       else {
+        val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
         val deadLine = Deadline(Duration(request.attrs(Attrs.RequestReceivedTimestamp) + 7000, MILLISECONDS))
         val itStateEitherFuture: Future[Either[String, IterationState]] = {
           val as = Grid.selectByPath(Base64.decodeBase64String(encodedActorAddress, "UTF-8"))
@@ -1414,6 +1438,7 @@ callback=< [URL] >
             case Right(IterationState(scrollId, withHistory, ar)) => {
               val formatter = formatterManager.getFormatter(
                 format = formatType,
+                timeContext = timeContext,
                 host = request.host,
                 uri = request.uri,
                 pretty = request.queryString.keySet("pretty"),
@@ -1428,7 +1453,7 @@ callback=< [URL] >
 
                   val ygModified = yg match {
                     case Some(ygp) if iterationResults.infotons.isDefined => {
-                      pathExpansionParser(ygp, iterationResults.infotons.get, ygChunkSize,cmwellRDFHelper,typesCache).map {
+                      pathExpansionParser(ygp, iterationResults.infotons.get, ygChunkSize,cmwellRDFHelper,typesCache,timeContext).map {
                         case (ok, infotons) => ok -> iterationResults.copy(infotons = Some(infotons))
                       }
                     }
@@ -1440,7 +1465,7 @@ callback=< [URL] >
                       (xg, iterationResultsAfterYg.infotons) match {
                         case t if t._1.isEmpty || t._2.isEmpty || !ok => Future(formatter.render(iterationResultsAfterYg))
                         case (Some(xgp), Some(infotons)) => {
-                          val fIterationResults = deepExpandGraph(xgp, infotons, cmwellRDFHelper,typesCache).map { case (_, iseq) => iterationResultsAfterYg.copy(infotons = Some(iseq)) }
+                          val fIterationResults = deepExpandGraph(xgp, infotons, cmwellRDFHelper,typesCache,timeContext).map { case (_, iseq) => iterationResultsAfterYg.copy(infotons = Some(iseq)) }
                           fIterationResults.map(formatter.render)
                         }
                       }
@@ -1501,11 +1526,12 @@ callback=< [URL] >
       val pathFilter = if (normalizedPath.length > 1) Some(PathFilter(normalizedPath, withDescendants)) else None
       val withHistory = request.queryString.keySet("with-history")
       val rawAggregationsFilters = AggregationsFiltersParser.parseAggregationParams(request.getQueryString("ap"))
+      val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
 
       rawAggregationsFilters match {
         case Success(raf) =>
-          val apfut = Future.traverse(raf)(RawAggregationFilter.eval(_,typesCache,cmwellRDFHelper))
-          val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff,typesCache,cmwellRDFHelper).map(Some.apply))
+          val apfut = Future.traverse(raf)(RawAggregationFilter.eval(_,typesCache,cmwellRDFHelper,timeContext))
+          val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff,typesCache,cmwellRDFHelper,timeContext).map(Some.apply))
           fieldsFiltersFut.transformWith {
             case Failure(err) => {
               val msg = s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"
@@ -1524,6 +1550,7 @@ callback=< [URL] >
                     case FormatExtractor(formatType) => {
                       val formatter = formatterManager.getFormatter(
                         format = formatType,
+                        timeContext = timeContext,
                         host = request.host,
                         uri = request.uri,
                         pretty = request.queryString.keySet("pretty"),
@@ -1587,8 +1614,9 @@ callback=< [URL] >
         else if (!withData && (xg || (yg && getQueryString("yg").get.trim.startsWith(">")) || (gqp && getQueryString("gqp").get.trim.startsWith(">"))))
           Future.successful(BadRequest(s"you can't mix `xg` nor '>' prefixed `yg`/`gqp` expressions without also specifying `with-data`: it makes no sense!"))
         else {
-          val fieldSortParamsFut = RawSortParam.eval(rawSortParams,crudServiceFS,typesCache,cmwellRDFHelper)
-          val fieldsFiltersFut = qpOpt.fold[Future[Option[FieldFilter]]](Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff,typesCache,cmwellRDFHelper).map(Some.apply))
+          val fieldSortParamsFut = RawSortParam.eval(rawSortParams,crudServiceFS,typesCache,cmwellRDFHelper,requestReceivedTimestamp)
+          val fieldsFiltersFut = qpOpt.fold[Future[Option[FieldFilter]]](Future.successful(Option.empty[FieldFilter]))(rff =>
+            RawFieldFilter.eval(rff,typesCache,cmwellRDFHelper,requestReceivedTimestamp).map(Some.apply))
           fieldsFiltersFut.transformWith {
             case Failure(err) => {
               val msg = s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"
@@ -1610,12 +1638,13 @@ callback=< [URL] >
                     unmodifiedSearchResult.infotons,
                     cmwellRDFHelper,
                     typesCache,
-                    getQueryString("gqp-chunk-size").flatMap(asInt).getOrElse(10))
+                    getQueryString("gqp-chunk-size").flatMap(asInt).getOrElse(10),
+                    requestReceivedTimestamp)
                 }
 
                 val ygModified = getQueryString("yg") match {
                   case Some(ygp) => gqpModified.flatMap { gqpFilteredInfotons =>
-                    pathExpansionParser(ygp, gqpFilteredInfotons, getQueryString("yg-chunk-size").flatMap(asInt).getOrElse(10),cmwellRDFHelper,typesCache).map { case (ok, infotons) =>
+                    pathExpansionParser(ygp, gqpFilteredInfotons, getQueryString("yg-chunk-size").flatMap(asInt).getOrElse(10),cmwellRDFHelper,typesCache,requestReceivedTimestamp).map { case (ok, infotons) =>
                       ok -> unmodifiedSearchResult.copy(
                         length = infotons.size,
                         infotons = infotons
@@ -1635,7 +1664,7 @@ callback=< [URL] >
                   case (true, sr) => getQueryString("xg") match {
                     case None => Future.successful(true -> sr)
                     case Some(xgp) => {
-                      deepExpandGraph(xgp, sr.infotons,cmwellRDFHelper,typesCache).map { case (ok, infotons) =>
+                      deepExpandGraph(xgp, sr.infotons,cmwellRDFHelper,typesCache,requestReceivedTimestamp).map { case (ok, infotons) =>
                         ok -> unmodifiedSearchResult.copy(
                           length = infotons.size,
                           infotons = infotons
@@ -1647,7 +1676,7 @@ callback=< [URL] >
                 }
 
                 fSearchResult.flatMap { case (ok, searchResult) =>
-                  extractFieldsMask(getQueryString("fields"),typesCache,cmwellRDFHelper).map { fieldsMask =>
+                  extractFieldsMask(getQueryString("fields"),typesCache,cmwellRDFHelper,requestReceivedTimestamp).map { fieldsMask =>
                     // Prepare pagination info
                     val searchUrl = cmWellBase + normalizedPath + "?op=search"
                     val format = getQueryString("format").fold("")("&format=" .+)
@@ -1687,6 +1716,7 @@ callback=< [URL] >
                       case FormatExtractor(formatType) => {
                         val formatter = formatterManager.getFormatter(
                           format = formatType,
+                          timeContext = requestReceivedTimestamp,
                           host = requestHost,
                           uri = requestUri,
                           pretty = queryString.keySet("pretty"),
@@ -1719,6 +1749,7 @@ callback=< [URL] >
     val (yg,ygChunkSize) = request.getQueryString("yg").fold(Option.empty[String] -> 0)(Some(_) -> request.getQueryString("yg-chunk-size").flatMap(asInt).getOrElse(10))
     val withHistory = request.queryString.keySet("with-history")
     val limit = request.getQueryString("versions-limit").flatMap(asInt).getOrElse(Settings.defaultLimitForHistoryVersions)
+    val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
 
     if (offset > Settings.maxOffset) {
       Future.successful(BadRequest(s"Even Google doesn't handle offsets larger than ${Settings.maxOffset}!"))
@@ -1737,6 +1768,7 @@ callback=< [URL] >
                 Future.successful(BadRequest(Json.obj("success" -> false, "message" -> "not a streamable type (use any json, or one of: 'text','tsv','ntriples', or 'nquads')")))
               case FormatExtractor(formatType) => {
                 val formatter = formatterManager.getFormatter(format = formatType,
+                  timeContext = timeContext,
                   host = request.host,
                   uri = request.uri,
                   pretty = false,
@@ -1760,6 +1792,7 @@ callback=< [URL] >
             val formatter = format.getOrElse("atom") match {
               case FormatExtractor(formatType) => formatterManager.getFormatter(
                 format = formatType,
+                timeContext = timeContext,
                 host = request.host,
                 uri = request.uri,
                 pretty = request.queryString.keySet("pretty"),
@@ -1777,6 +1810,7 @@ callback=< [URL] >
             case FormatExtractor(formatType) =>
               formatterManager.getFormatter(
                 formatType,
+                timeContext = timeContext,
                 request.host,
                 request.uri,
                 request.queryString.keySet("pretty"),
@@ -1796,13 +1830,13 @@ callback=< [URL] >
                 case Everything(j) => j
                 case _: UnknownNestedContent => !!!
               }
-              extractFieldsMask(request,typesCache,cmwellRDFHelper).flatMap { fieldsMask =>
+              extractFieldsMask(request,typesCache,cmwellRDFHelper,timeContext).flatMap { fieldsMask =>
                 val toRes = (f: Future[(Boolean, Seq[Infoton])]) => f.map {
                   case ((true, xs)) => Ok(formatter.render(BagOfInfotons(xs))).as(overrideMimetype(formatter.mimetype, request)._2)
                   case ((false, xs)) => InsufficientStorage(formatter.render(BagOfInfotons(xs))).as(overrideMimetype(formatter.mimetype, request)._2)
                 }
-                val ygFuncOpt = yg.map(ygPattern => (iSeq: Seq[Infoton]) => pathExpansionParser(ygPattern, iSeq, ygChunkSize,cmwellRDFHelper,typesCache))
-                val xgFuncOpt = xg.map(xgPattern => (iSeq: Seq[Infoton]) => deepExpandGraph(xgPattern, iSeq,cmwellRDFHelper,typesCache))
+                val ygFuncOpt = yg.map(ygPattern => (iSeq: Seq[Infoton]) => pathExpansionParser(ygPattern, iSeq, ygChunkSize,cmwellRDFHelper,typesCache,timeContext))
+                val xgFuncOpt = xg.map(xgPattern => (iSeq: Seq[Infoton]) => deepExpandGraph(xgPattern, iSeq,cmwellRDFHelper,typesCache,timeContext))
                 val xygFuncOpt = ygFuncOpt.flatMap(ygFunc => xgFuncOpt.map(xgFunc => (iSeq: Seq[Infoton]) => ygFunc(iSeq).flatMap {
                   case (true, jSeq) => xgFunc(jSeq)
                   case t => Future.successful(t)
@@ -1824,6 +1858,7 @@ callback=< [URL] >
 
   def infotonOptionToReply(request: Request[AnyContent], infoton: Option[Infoton], recursiveCalls: Int = 30, fieldsMask: Set[String] = Set.empty): Future[Result] = Try {
     val offset = request.getQueryString("offset")
+    val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
     (if(offset.isEmpty) actions.ActiveInfotonHandler.wrapInfotonReply(infoton) else infoton) match {
       case None => Future.successful(NotFound("Infoton not found"))
       case Some(DeletedInfoton(p, _, _, lm,_)) => Future.successful(NotFound(s"Infoton was deleted on ${fullDateFormatter.print(lm)}"))
@@ -1840,7 +1875,7 @@ callback=< [URL] >
         val maskedInfoton = i.masked(fieldsMask)
 
         def infotonIslandResult(prefix: String, suffix: String) = {
-          val infotonStr = formatterManager.getFormatter(JsonlType).render(maskedInfoton)
+          val infotonStr = formatterManager.getFormatter(JsonlType,timeContext).render(maskedInfoton)
 
           //TODO: find out why did we use "plumbing" API. we should let play determine content length etc'...
           val r = Ok(prefix + Utility.escape(infotonStr) + suffix)
@@ -1857,6 +1892,7 @@ callback=< [URL] >
           case Some(FormatExtractor(formatType)) => {
             val formatter = formatterManager.getFormatter(
               format = formatType,
+              timeContext = timeContext,
               host = request.host,
               uri = request.uri,
               pretty = request.queryString.keySet("pretty"),

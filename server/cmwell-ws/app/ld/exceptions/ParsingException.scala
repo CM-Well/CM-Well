@@ -28,21 +28,3 @@ class ParsingException(msg: String, t: Throwable = null) extends RuntimeExceptio
 class UnretrievableIdentifierException(msg: String, t: Throwable = null) extends ParsingException(msg, t)
 
 class JsonParsingException(msg: String) extends ParsingException(msg)
-
-class TooManyNsRequestsException(msg: String) extends Exception(msg)
-
-sealed trait ServerComponentNotAvailableException extends Exception
-object ServerComponentNotAvailableException {
-  def apply(msg: String) = new Exception(msg) with ServerComponentNotAvailableException
-  def apply(msg: String, cause: Throwable) = new Exception(msg,cause) with ServerComponentNotAvailableException
-}
-
-sealed trait ConflictingNsEntriesException extends Exception
-object ConflictingNsEntriesException {
-  def format(kind: String, entry: String, nsIDs: Iterable[String]): String = nsIDs.mkString(s"Conflicting ns identifiers found for $kind [$entry] [",",","]")
-
-  def byURL(url: String, nsIDs: Iterable[String]) = new Exception(format("url",url,nsIDs)) with ConflictingNsEntriesException
-  def byURL(url: String, nsIDs: Iterable[String], cause: Throwable) = new Exception(format("url",url,nsIDs), cause) with ConflictingNsEntriesException
-  def byPrefix(prefix: String, nsIDs: Iterable[String]) = new Exception(format("prefix",prefix,nsIDs)) with ConflictingNsEntriesException
-  def byPrefix(prefix: String, nsIDs: Iterable[String], cause: Throwable) = new Exception(format("prefix",prefix,nsIDs), cause) with ConflictingNsEntriesException
-}

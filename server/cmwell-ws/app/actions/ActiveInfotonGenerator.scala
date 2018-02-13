@@ -555,7 +555,7 @@ ${lines.mkString("\n")}
   import scala.language.implicitConversions
 
 
-  def generateInfoton(host: String, path: String, now: Long, length: Int = 0, offset: Int = 0, isRoot : Boolean = false, withHistory: Boolean, fieldFilters: Option[FieldFilter]): Future[Option[VirtualInfoton]] = {
+  def generateInfoton(host: String, path: String, now: Long, length: Int = 0, offset: Int = 0, isRoot : Boolean = false, withHistory: Boolean, fieldFilters: Option[FieldFilter], timeContext: Option[Long]): Future[Option[VirtualInfoton]] = {
 
     val d: DateTime = new DateTime(now)
 
@@ -579,7 +579,7 @@ ${lines.mkString("\n")}
           qp
             .fold(Success(None): Try[Option[RawFieldFilter]])(FieldFilterParser.parseQueryParams(_).map(Some.apply))
             .map { qpOpt =>
-              val fieldsFiltersFut = qpOpt.fold[Future[Option[FieldFilter]]](Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff, typesCache, cmwellRDFHelper).map(Some.apply))
+              val fieldsFiltersFut = qpOpt.fold[Future[Option[FieldFilter]]](Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff, typesCache, cmwellRDFHelper, timeContext).map(Some.apply))
               fieldsFiltersFut
             }
             .get

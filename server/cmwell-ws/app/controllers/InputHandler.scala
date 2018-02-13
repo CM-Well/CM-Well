@@ -24,7 +24,8 @@ import cmwell.util.concurrent._
 import cmwell.util.collections.opfut
 import cmwell.util.formats.JsonEncoder
 import cmwell.web.ld.cmw.CMWellRDFHelper
-import cmwell.web.ld.exceptions.{ServerComponentNotAvailableException, UnretrievableIdentifierException}
+import cmwell.web.ld.exceptions.UnretrievableIdentifierException
+import ld.exceptions.ServerComponentNotAvailableException
 import cmwell.web.ld.util.LDFormatParser.ParsingResponse
 import cmwell.web.ld.util._
 import cmwell.ws.Settings
@@ -194,9 +195,11 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
       case _ => throw new RuntimeException("cant find valid content in body of request")
     }
 
+    val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
+
     req.getQueryString("format") match {
-      case Some(f) => handleFormatByFormatParameter(cmwellRDFHelper,crudService,authUtils,bais, Some(List[String](f)), req.contentType, authUtils.extractTokenFrom(req), skipValidation, isOverwrite)
-      case None => handleFormatByContentType(cmwellRDFHelper,crudService,authUtils,bais, req.contentType, authUtils.extractTokenFrom(req), skipValidation, isOverwrite)
+      case Some(f) => handleFormatByFormatParameter(cmwellRDFHelper,crudService,authUtils,bais, Some(List[String](f)), req.contentType, authUtils.extractTokenFrom(req), skipValidation, isOverwrite,timeContext)
+      case None => handleFormatByContentType(cmwellRDFHelper,crudService,authUtils,bais, req.contentType, authUtils.extractTokenFrom(req), skipValidation, isOverwrite,timeContext)
     }
   }
 
@@ -478,6 +481,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
         }
         case _ => "utf-8"
       }
+      val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
 
       req.body.asBytes() match {
         case Some(bs) => {
@@ -504,7 +508,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
                             case Success(Right(d)) => d
                             case Success(Left(fk)) => {
                               Try[DirectFieldKey] {
-                                val (f, l) = Await.result(FieldKey.resolve(fk, cmwellRDFHelper).map {
+                                val (f, l) = Await.result(FieldKey.resolve(fk, cmwellRDFHelper, timeContext).map {
                                   case PrefixFieldKey(first, last, _) => first -> last
                                   case URIFieldKey(first, last, _) => first -> last
                                   case unknown => {
