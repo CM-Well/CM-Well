@@ -67,7 +67,7 @@ object WorkerMain extends App with LazyLogging {
 //  val mySingleton = injector.getInstance(classOf[MySingleton])
 
   val crudServiceFS = new CRUDServiceFS()(implicitly,Grid.system)
-  val cmwellRDFHelper = new CMWellRDFHelper(crudServiceFS,implicitly)
+  val cmwellRDFHelper = new CMWellRDFHelper(crudServiceFS,implicitly,Grid.system)
   val arqCache = new ArqCache(crudServiceFS)
   val dataFetcher = new DataFetcherImpl(Config.defaultConfig,crudServiceFS)
   val jenaArqExtensionsUtils = new JenaArqExtensionsUtils(arqCache, crudServiceFS.passiveFieldTypesCache, cmwellRDFHelper, dataFetcher)

@@ -18,33 +18,25 @@ package cmwell.web.ld.cmw
 
 import java.util.concurrent.TimeUnit
 
-import akka.actor.Actor
-import akka.actor.Actor.Receive
+import akka.actor.ActorSystem
 import cmwell.domain._
-import cmwell.fts.{Settings => _, _}
+import cmwell.fts.{Equals,Should,FieldFilter,PathFilter}
 import cmwell.util.string.Hash._
 import cmwell.util.string._
-import cmwell.util.concurrent._
-import cmwell.util.collections.LoadingCacheExtensions
-import cmwell.web.ld.exceptions.UnretrievableIdentifierException
 import cmwell.ws.Settings
-import com.google.common.cache.{Cache, CacheBuilder, CacheLoader, LoadingCache}
+import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import com.typesafe.scalalogging.LazyLogging
 import javax.inject._
 
 import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
-import k.grid.Grid
-import ld.cmw.{PassiveFieldTypesCache, TimeBasedAccumulatedNsCache}
+import ld.cmw.TimeBasedAccumulatedNsCache
 import ld.exceptions.ServerComponentNotAvailableException
 import logic.CRUDServiceFS
-import wsutil.DirectFieldKey
 
 import scala.concurrent._
 import scala.concurrent.ExecutionContext.{global => globalExecutionContext}
 import scala.concurrent.duration._
-import scala.util.parsing.json.JSON.{parseFull => parseJson}
 import scala.util.{Failure, Success, Try}
-import scala.collection.mutable.{Set => MSet}
 
 
 object CMWellRDFHelper {
@@ -67,7 +59,7 @@ object CMWellRDFHelper {
 
 
 @Singleton
-class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecutionContext: ExecutionContext) extends LazyLogging {
+class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecutionContext: ExecutionContext, actorSystem: ActorSystem) extends LazyLogging {
 
   import CMWellRDFHelper._
 
@@ -76,7 +68,7 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
   implicit val ec = injectedExecutionContext // TODO IS THIS OK?
 
   // TODO not seed=Map.empty, but a search/consume-like. and then, timestamp should also be currentMillis rather than 0L.
-  val newestGreatestMetaNsCacheImpl = TimeBasedAccumulatedNsCache(Map.empty, 0L, 2.minutes, crudServiceFS)(injectedExecutionContext, Grid.system)
+  val newestGreatestMetaNsCacheImpl = TimeBasedAccumulatedNsCache(Map.empty, 0L, 2.minutes, crudServiceFS)(injectedExecutionContext, actorSystem)
 
   private def validateInfoton(infoton: Infoton): Try[(String,String)] = {
     if (!infoton.path.matches("/meta/ns/[^/]+")) Failure(new IllegalStateException(s"weird looking path for /meta/ns infoton [${infoton.path}/${infoton.uuid}]"))

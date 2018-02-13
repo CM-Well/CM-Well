@@ -449,19 +449,17 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
       // assignment must come first, to reduce update calls to actor as much as possible
       checkTime = time
 
-      ???
+//      ???
     }
 
     private[this] def hasEnoughIncrementalWaitTimeElapsed(since: Long, cappedCount: Int): Boolean =
       (System.currentTimeMillis() - since) > (cappedCount * incrementingWaitTimeMillis)
   }
 
-  private[this] def props = Props(classOf[TimeBasedAccumulatedNsCacheActor])
-  private[this] val actor = sys.actorOf(props)
+  private[this] val actor = sys.actorOf(Props(new TimeBasedAccumulatedNsCacheActor), "TimeBasedAccumulatedNsCacheActor")
 
   private[this] def updatedRecently(timeContext: Long): Boolean =
     timeContext - checkTime <= coolDownMillis
-
 }
 
 object TimeBasedAccumulatedNsCache extends LazyLogging {
