@@ -10,6 +10,12 @@
 ## Description ##
 If you want to perform a one-time retrieval of a large amount of CM-Well data, you can do this by using the **stream** operation. You can define the data you want by its path in CM-Well, and optionally add a query filter and query parameters. The data returned is the list of infotons under the path you specified that match your query filter.
 
+## Special Parameters ##
+
+Parameter | Description&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |  Values&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Example
+:----------|:-------------|:--------|:--------
+parallelism | The number of threads used for concurrent streaming. | Positive integers. Default is 10 | parallelism=15
+
 ## Syntax ##
 
 **URL:** \<CMWellHost\>
