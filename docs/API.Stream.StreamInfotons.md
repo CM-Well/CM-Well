@@ -14,7 +14,7 @@ If you want to perform a one-time retrieval of a large amount of CM-Well data, y
 
 Parameter | Description&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |  Values&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Example
 :----------|:-------------|:--------|:--------
-parallelism | The number of threads used for concurrent streaming. | Positive integers. Default is 10 | parallelism=15
+parallelism (**NOTE**: *Only* for the **sstream** operation.)| The number of threads used for concurrent streaming. | Positive integers. Default is 10 | parallelism=15
 
 ## Syntax ##
 

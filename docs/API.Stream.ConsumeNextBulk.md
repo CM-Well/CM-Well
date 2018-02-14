@@ -47,6 +47,8 @@ Parameter | Description&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nb
 position | Defines the position of the chunk in the stream |  Position ID returned by create-consumer or last call to _bulk-consume | position=eQA5eJwzNDE1sDQ3NDI0tjQ2rjGoMTE0MDI1NjS0BIEa_dSKxNyCnFS9_KJ0fc-8lMyyzJTSxJzimpoa
 slow-bulk | Optional. If added, streaming is slower than the regular bulk-consume streaming. You may want to use this flag for slow network connections, to avoid timeouts. | None; Boolean flag. | <cm-well-host>/example.org/Individuals/_bulk-consume?format=json&slow-bulk
 to-hint | Optional; to be used in retries. A timestamp which is the upper limit on the update times of the infotons in the bulk. Take the value returned in the **X-CM-WELL-TO** header of the bulk response you're retrying. | Timestamp values | to-hint=1425817923290
+parallelism | The number of threads used for concurrent streaming. | Positive integers. Default is 10 | parallelism=15
+
 
 ## Code Example ##
 
