@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit
 
 import akka.actor.ActorSystem
 import cmwell.domain._
-import cmwell.fts.{Equals,Should,FieldFilter,PathFilter}
+import cmwell.fts.{Equals, FieldFilter, PathFilter, Should}
 import cmwell.util.string.Hash._
 import cmwell.util.string._
 import cmwell.ws.Settings
@@ -30,7 +30,7 @@ import javax.inject._
 
 import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
 import ld.cmw.TimeBasedAccumulatedNsCache
-import ld.exceptions.ServerComponentNotAvailableException
+import ld.exceptions.{ConflictingNsEntriesException, ServerComponentNotAvailableException}
 import logic.CRUDServiceFS
 
 import scala.concurrent._
@@ -104,6 +104,7 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
   def hashToUrlAsync(hash: String, timeContext: Option[Long])(implicit ec: ExecutionContext): Future[String] =
     newestGreatestMetaNsCacheImpl.get(hash,timeContext).transform {
       case f@Failure(_: NoSuchElementException) => f.asInstanceOf[Try[String]]
+      case f@Failure(_: ConflictingNsEntriesException) => f.asInstanceOf[Try[String]]
       case Success((url,_)) => Success(url)
       case Failure(e) => Failure(ServerComponentNotAvailableException(s"hashToUrlAsync failed for [$hash]",e))
     }(ec)
@@ -120,6 +121,7 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
   def urlToHashAsync(url: String, timeContext: Option[Long])(implicit ec: ExecutionContext): Future[String] =
     newestGreatestMetaNsCacheImpl.getByURL(url, timeContext).transform {
       case f@Failure(_: NoSuchElementException) => f.asInstanceOf[Try[String]]
+      case f@Failure(_: ConflictingNsEntriesException) => f.asInstanceOf[Try[String]]
       case Failure(e) => Failure(ServerComponentNotAvailableException(s"urlToHashAsync failed for [$url]",e))
       case success => success
     }(ec)
@@ -127,6 +129,7 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
   def getIdentifierForPrefixAsync(prefix: String, timeContext: Option[Long])(implicit ec: ExecutionContext): Future[String] =
     newestGreatestMetaNsCacheImpl.getByPrefix(prefix, timeContext).transform {
       case f@Failure(_: NoSuchElementException) => f.asInstanceOf[Try[String]]
+      case f@Failure(_: ConflictingNsEntriesException) => f.asInstanceOf[Try[String]]
       case Failure(e) => Failure(ServerComponentNotAvailableException(s"getIdentifierForPrefixAsync failed for [$prefix]",e))
       case success => success
     }(ec)

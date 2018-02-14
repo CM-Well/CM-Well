@@ -474,12 +474,12 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
           ("time",_.append(time)),
           ("timeDiff",_.append(now-time)),
           ("count",_.append(count)),
-          ("error",_.append(err.getClass.getSimpleName)),
-          ("errorMsg",_.append(org.json.simple.JSONValue.escape(err.getMessage)))
+          ("error",_.append('"').append(err.getClass.getSimpleName).append('"')),
+          ("errorMsg",_.append('"').append(org.json.simple.JSONValue.escape(err.getMessage)).append('"'))
         ) ++ Option(err.getCause).fold(Seq.empty[(String,StringBuilder => Unit)]) { cause =>
           Seq(
-            ("errorCause",_.append(cause.getClass.getSimpleName)),
-            ("errorCauseMsg",_.append(org.json.simple.JSONValue.escape(cause.getMessage)))
+            ("errorCause",_.append('"').append(cause.getClass.getSimpleName).append('"')),
+            ("errorCauseMsg",_.append('"').append(org.json.simple.JSONValue.escape(cause.getMessage)).append('"'))
           )
         }
       }
@@ -492,7 +492,7 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
       val futureListFormattingFunction: Future[_] => Seq[(String,StringBuilder => Unit)] = { f =>
         Seq(
           ("isCompleted", _.append(f.isCompleted)),
-          ("futureValue", _.append(f.value))
+          ("futureValue", _.append('"').append(f.value).append('"'))
         )
       }
       sb ++= ",\"nsIDFutureList\":"
@@ -615,7 +615,6 @@ object TimeBasedAccumulatedNsCache extends LazyLogging {
     case class UpdateAfterSuccessfulPrefixFetch(prefix: NsPrefix, nsIDs: Map[NsID,(NsURL,NsPrefix)]) extends UpdateAfterFetch
     case class UpdateAfterFailedPrefixFetch(prefix: NsPrefix, count: Int, cause: Throwable) extends UpdateAfterFetch
   }
-
 
   def apply(seed: Map[NsID,(NsURL,NsPrefix)], seedTimestamp: Long, coolDown: FiniteDuration, crudService: CRUDServiceFS)
            (implicit ec: ExecutionContext, sys: ActorSystem): TimeBasedAccumulatedNsCacheTrait = {
