@@ -25,7 +25,7 @@ import cmwell.fts._
 import cmwell.tracking.PathStatus
 import cmwell.util.collections._
 import cmwell.web.ld.cmw.CMWellRDFHelper
-import cmwell.web.ld.exceptions._
+import cmwell.web.ld.exceptions.{UnretrievableIdentifierException, UnsupportedURIException}
 import cmwell.ws.Settings
 import cmwell.ws.util.{ExpandGraphParser, FieldNameConverter, PathGraphExpansionParser, TypeHelpers}
 import com.typesafe.scalalogging.LazyLogging
