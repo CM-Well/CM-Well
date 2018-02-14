@@ -191,6 +191,7 @@ object FieldKey extends LazyLogging with PrefixRequirement  {
   def enrichWithTypes(fk: FieldKey, cache: PassiveFieldTypesCacheTrait): Future[Set[String]] = {
     import scala.concurrent.ExecutionContext.Implicits.global
     cache.get(fk).transform {
+      case f@Failure(_: NoSuchElementException) => f.asInstanceOf[Try[Set[String]]]
       case Failure(err) => Failure(new Exception(s"resolving type mangling for field [$fk] failed",err))
       case s => s.map(_.map {
         case 's' => fk.internalKey

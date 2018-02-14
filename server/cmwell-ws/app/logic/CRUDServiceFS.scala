@@ -394,8 +394,6 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
     }
   }
 
-
-
   // todo move this logic to InputHandler!
   private def validTid(path: String, tid: Option[String]): Option[String] =
     tid.fold(Option.empty[String]){ t =>
@@ -417,10 +415,12 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
 
     payloadForKafkaFut.flatMap { payloadForKafka =>
       val pRecord = new ProducerRecord[Array[Byte], Array[Byte]](topicName, path.getBytes("UTF-8"), payloadForKafka)
-      injectFuture(kafkaProducer.send(pRecord, _))
+      injectFuture(kafkaProducer.send(pRecord, _)).map { recMD =>
+        if(isPriorityWrite) {
+          logger.info(s"sendToKafka priority for path [$path] and record [${recMD.offset()},${recMD.partition()}]")
+        }
+      }
     }
-
-    payloadForKafkaFut.map(_ => ())
   }
 
   //TODO: add with-deleted to aggregations
