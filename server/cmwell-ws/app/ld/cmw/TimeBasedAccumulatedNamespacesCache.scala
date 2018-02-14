@@ -4,7 +4,7 @@ import akka.actor.{Actor, ActorRef, ActorSystem, Props, Status}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 import cmwell.domain.{FieldValue, Infoton}
-import cmwell.fts.{Equals, Must, PathFilter, SingleFieldFilter}
+import cmwell.fts._
 import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
 import cmwell.util.collections.{partitionWith, subtractedDistinctMultiMap, updatedDistinctMultiMap}
 import cmwell.util.string.Hash.crc32base64
@@ -19,9 +19,9 @@ import scala.util.{Failure, Success, Try}
 
 /**
   * TODO:
-  * - add full incremental update (consume style) - only if mainCache size is under size cap
+  * - refine consume with pagination
   * - add invalidate by id (and by url/prefix ?) - make sure to invalidate auxiliary caches.
-  * - improve status reporting endpoint (see [[PassiveFieldTypesCache.getState]] for reference)
+  * - guard blacklist with a size cap (many non-existing prefixes searched => DOS-Attack)
   * - implement ???s
   * - tests?
   */
@@ -51,12 +51,13 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
   // TODO: load from config
   val incrementingWaitTimeMillis = 1000L
   val maxCountIncrements = 30
+  val cacheSizeCap = 10000
 
   // public API
 
   @inline override def getByURL(url: NsURL, timeContext: Option[Long])(implicit timeout: Timeout): Future[NsID] = {
     timeContext.foreach { t =>
-      if (!updatedRecently(t)) {
+      if (mainCache.size < cacheSizeCap && !updatedRecently(t)) {
         actor ! UpdateRequest(t)
       }
     }
@@ -75,7 +76,7 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
 
   @inline override def getByPrefix(prefix: NsPrefix, timeContext: Option[Long])(implicit timeout: Timeout): Future[NsID] = {
     timeContext.foreach { t =>
-      if (!updatedRecently(t)) {
+      if (mainCache.size < cacheSizeCap && !updatedRecently(t)) {
         actor ! UpdateRequest(t)
       }
     }
@@ -94,7 +95,7 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
 
   @inline override def get(key: NsID, timeContext: Option[Long])(implicit timeout: Timeout): Future[(NsURL,NsPrefix)] = {
     timeContext.foreach { t =>
-      if (!updatedRecently(t)) {
+      if (mainCache.size < cacheSizeCap && !updatedRecently(t)) {
         actor ! UpdateRequest(t)
       }
     }
@@ -146,6 +147,7 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
   private[cmw] class TimeBasedAccumulatedNsCacheActor extends Actor {
 
     private[this] var timestamp: Long = seedTimestamp
+    private[this] var isConsuming: Boolean = false
 
     private[this] var nsIDBlacklist:     Map[NsID,(Long,Int,Throwable)]     = Map.empty
     private[this] var nsURLBlacklist:    Map[NsURL,(Long,Int,Throwable)]    = Map.empty
@@ -166,8 +168,11 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
       case UpdateAfterFailedPrefixFetch(prefix, count,err) => handleUpdateAfterFailedPrefixFetch(prefix,count,err)
       case UpdateAfterSuccessfulPrefixFetch(prefix,miup) => handleUpdateAfterSuccessfulPrefixFetch(prefix,miup)
       case Invalidate(id) => handleInvalidate(id)
-      case UpdateRequest(time) => handleUpdateRequest(time)
+      case UpdateRequest(time, shouldContinue) => handleUpdateRequest(time, shouldContinue)
       case GetStatus => sender() ! handleShowStatus
+      case UpdateAfterSuccessfulConsume(newIdxTime, data, shoudCont) => handleUpdateAfterSuccessfulConsume(newIdxTime, data, shoudCont)
+      case UpdateAfterFailedConsume(origTime, e) => handleUpdateAfterFailedConsume(origTime, e)
+
     }
 
     private[this] def handleGetByID(id: NsID): Unit = {
@@ -234,6 +239,9 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
       nsIDBlacklist -= id
       handleUpdateAfterSuccessfulFetchPerTriple(id, tuple)
     }
+
+    private[this] val handleUpdateAfterSuccessfulFetchPerTripleValue: (NsID,(NsURL,NsPrefix)) => Unit =
+      handleUpdateAfterSuccessfulFetchPerTriple
 
     private[this] def handleUpdateAfterSuccessfulFetchPerTriple(id: NsID, tuple: (NsURL,NsPrefix)): Unit = {
       val (u,p) = tuple
@@ -380,6 +388,46 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
       }.transform(_.flatMap(identity))
     }
 
+    def nsSearchByIndexTime(indexTime: Long): Future[(Boolean,Long,Map[NsID,(NsURL,NsPrefix)])] = {
+
+      import cmwell.util.collections.TryOps
+
+      crudService.fullSearch(
+        pathFilter,
+        fieldFilters = Some(SingleFieldFilter(Must, GreaterThan, "system.indexTime", Some(indexTime.toString))),
+        fields = Seq("system.path", "system.indexTime", "fields.nn.prefix", "fields.nn.url")) { (sr, _) =>
+
+        val hits = sr.getHits.getHits
+        val shouldContinue = sr.getHits.totalHits() > hits.length
+
+        Try.traverse(hits.toSeq) { hit =>
+          if (hit.field("fields.nn.url").getValues().size() != 1 || hit.field("fields.nn.prefix").getValues().size() != 1)
+            Failure(new RuntimeException("More than one prefix or URL values!"))
+          else {
+            val pathOpt = Option(hit.field("system.path").getValue[String])
+            val indexTimeOpt = Option(hit.field("system.indexTime").getValue[Long])
+            val urlOpt = Option(hit.field("fields.nn.url").getValue[String])
+            val prefixOpt = Option(hit.field("fields.nn.prefix").getValue[String])
+            (for {
+              path <- pathOpt
+              infotonIndexTime <- indexTimeOpt
+              url <- urlOpt
+              prefix <- prefixOpt
+            } yield {
+              val nsID = path.drop("/meta/ns/".length)
+              (nsID, infotonIndexTime, url, prefix)
+            }).fold[Try[(NsID, Long, NsURL, NsPrefix)]](Failure(new IllegalStateException(s"invalid /meta/ns infoton [$pathOpt,$urlOpt,$prefixOpt]")))(Success.apply)
+          }
+        }.map(_.foldLeft(indexTime -> Map.newBuilder[NsID,(NsURL,NsPrefix)]){
+          case ((maxTime,b),(id,ts,url,pref)) => {
+            math.max(maxTime,ts) -> b.+=((id,url -> pref))
+          }
+        } -> shouldContinue)
+      }.transform(_.flatMap (_.map {
+        case ((iTime,builder),bool) => (bool,iTime,builder.result())
+      }))
+    }
+
     private[this] def handleUpdateAfterSuccessfulURLFetch(url: NsURL, miup: Map[NsID,(NsURL,NsPrefix)]): Unit = {
       nsURLFutureList -= url
       nsURLBlacklist -= url
@@ -504,15 +552,36 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
       sb.append('}').result()
     }
 
-    private[this] def handleUpdateRequest(time: Long): Unit = if(!updatedRecently(time)) {
+    private[this] def handleUpdateRequest(time: Long, shouldContinue: Boolean): Unit = if(!isConsuming && (shouldContinue || !updatedRecently(time))) {
+      val orig = checkTime
       // assignment must come first, to reduce update calls to actor as much as possible
       checkTime = time
 
-//      ???
+      isConsuming = true
+      nsSearchByIndexTime(timestamp).transform {
+        case Success((sc, newIndexTime, results)) => Success(UpdateAfterSuccessfulConsume(newIndexTime, results, sc && mainCache.size < cacheSizeCap))
+        case Failure(e) => Success(UpdateAfterFailedConsume(orig,e))
+      }.pipeTo(self)
+    }
+
+    private[this] def handleUpdateAfterSuccessfulConsume(indexTime: Long, data: Map[NsID, (NsURL, NsPrefix)], shouldContinue: Boolean) = {
+      timestamp = indexTime
+      data.foreach(handleUpdateAfterSuccessfulFetchPerTripleValue.tupled)
+      if(shouldContinue)
+        handleUpdateRequest(checkTime, shouldContinue = true)
+      else
+        isConsuming = false
+    }
+
+    private[this] def handleUpdateAfterFailedConsume(originalCheckTime: Long, e: Throwable) = {
+      logger.error(s"Failed to conusme NS Deltas, checkTime was $checkTime and it is now reverted to $originalCheckTime", e)
+      checkTime = originalCheckTime
+      isConsuming = false
     }
 
     private[this] def hasEnoughIncrementalWaitTimeElapsed(since: Long, cappedCount: Int): Boolean =
       (System.currentTimeMillis() - since) > (cappedCount * incrementingWaitTimeMillis)
+
   }
 
   def renderValueWithStringBuilder[T](value: T, sb: StringBuilder, isSequential: Boolean)(f: T => Seq[(String,StringBuilder => Unit)]): Unit = {
@@ -604,8 +673,10 @@ object TimeBasedAccumulatedNsCache extends LazyLogging {
     case class GetByURL(url: NsURL)
     case class GetByPrefix(prefix: NsPrefix)
     case class Invalidate(id: NsID)
-    case class UpdateRequest(time: Long)
+    case class UpdateRequest(time: Long, shouldContinue: Boolean = false)
     case object GetStatus
+    case class UpdateAfterSuccessfulConsume(newIndexTime: Long, data: Map[NsID,(NsURL,NsPrefix)], shouldContinue: Boolean)
+    case class UpdateAfterFailedConsume(originalCheckTime: Long, e: Throwable)
 
     sealed trait UpdateAfterFetch
     case class UpdateAfterSuccessfulFetch(id: NsID, tuple: (NsURL,NsPrefix)) extends UpdateAfterFetch
