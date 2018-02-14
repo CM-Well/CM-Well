@@ -19,9 +19,11 @@ There are several different formats you can use to identify CM-Well fields, each
 ## "Prefix" Format ##
  
 The "prefix" format in CM-Well uses the immediate parent of the field name, from the field's full ontology path.
-Thus, in the field "http://ont.com/mdaas/CommonName", CommonName is the filed name, while "mdaas" is its prefix.
+Thus, in the field "http://ont.com/mdaas/CommonName", CommonName is the field name, while "mdaas" is its prefix.
 
 In spite of its name, in CM-Well you add the prefix *after* the field name itself, as follows: *fieldname.prefix*. For example "CommonName.mdaas". 
+
+>**Note**: For the special metadata fields of type **system**, **content** and **link**, the opposite order (e.g. "system.indexTime" or "length.content") is currently also supported. This is deprecated and will stop being supported in the future.
 
 You may have noted that even adding the prefix to the field name does not guarantee uniqueness. If the same field name (with the same immediate parent name) is added to two different namespaces, the name becomes ambiguous and the query will fail.
 

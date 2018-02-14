@@ -72,9 +72,9 @@ CM-Well tolerates this situation when applying **yg** filters. That is, it skips
 
 If, on the other hand, if you want to constrain your query to return only results for which the intermediate infoton *does* exist, you can do this by adding a filter on the intermediate infoton's fields. For example:
 
-    \>aField[system.uuid:]<bField
+    \>aField[uuid.system:]<bField
 
-This filter requires only that the intermediate infoton have a ```system.uuid``` field with any value, and it works because every infoton has a ```system.uuid``` field. Alternatively, for our example searching for Person infotons, we could add this filter:
+This filter requires only that the intermediate infoton have a ```uuid.system``` field with any value, and it works because every infoton has a ```uuid.system``` field. Alternatively, for our example searching for Person infotons, we could add this filter:
 
     \>childOf[type.rdf:Person]<parentOf
 
