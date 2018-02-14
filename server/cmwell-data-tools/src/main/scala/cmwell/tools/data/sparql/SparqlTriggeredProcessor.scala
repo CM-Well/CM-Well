@@ -73,7 +73,7 @@ object SparqlTriggeredProcessor {
 }
 
 class SparqlTriggeredProcessor(config: Config,
-                               baseUrl: String,
+                               override val baseUrl: String,
                                isBulk: Boolean = false,
                                tokenReporter: Option[ActorRef] = None,
                                override val label: Option[String] = None,

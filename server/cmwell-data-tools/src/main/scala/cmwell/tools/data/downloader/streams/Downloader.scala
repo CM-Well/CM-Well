@@ -299,7 +299,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
   }
 }
 
-class Downloader(baseUrl: String,
+class Downloader(override val baseUrl: String,
                  path: String,
                  params: String = "",
                  qp: String = "",

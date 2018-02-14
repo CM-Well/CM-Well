@@ -158,7 +158,7 @@
             <cleanHistoryOnStart>true</cleanHistoryOnStart>
         </rollingPolicy>
         <encoder>
-            <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
+            <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-72.72logger{72} - %msg%n</pattern>
         </encoder>
         <!-- false quadruples logging throughput -->
         <immediateFlush>true</immediateFlush>
