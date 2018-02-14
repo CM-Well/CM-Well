@@ -197,9 +197,9 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
   }.via(sharedKillSwitch.flow)
 
   val priorityPersistCommandsSource = Consumer.plainSource[Array[Byte], Array[Byte]](persistCommandsConsumerSettings, prioritySubscription).map { msg =>
-      logger debug s"consuming next payload from priority persist commands topic @ ${msg.offset()}"
+    logger.info(s"consuming next payload from priority persist commands topic @ ${msg.offset()}")
     val command = CommandSerializer.decode(msg.value())
-      logger debug s"consumed priority command: $command"
+    logger.info(s"consumed priority command: $command")
     BGMessage[Command](CompleteOffset(msg.topic(), msg.offset()), command)
   }.via(sharedKillSwitch.flow)
 

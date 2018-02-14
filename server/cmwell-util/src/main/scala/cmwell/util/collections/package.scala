@@ -17,12 +17,15 @@
 package cmwell.util
 
 import java.io.{IOException, InputStream}
+
 import com.google.common.cache.LoadingCache
+
 import scala.annotation.tailrec
 import scala.concurrent._
-import scala.language.{postfixOps, higherKinds}
-import scala.collection.{mutable, GenTraversable, TraversableLike, SeqLike}
-import scala.collection.generic.{GenericCompanion, CanBuildFrom}
+import scala.language.{higherKinds, postfixOps}
+import scala.collection.{GenTraversable, SeqLike, TraversableLike, mutable}
+import scala.collection.generic.{CanBuildFrom, GenericCompanion}
+import scala.collection.immutable.Set
 import scala.collection.mutable.{Set => MSet}
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
@@ -76,6 +79,26 @@ package object collections {
     }
     ob
   }
+
+  def updatedMultiMap[K,V](m: Map[K,List[V]], k: K, v: V): Map[K,List[V]] =
+    m.updated(k, v :: m.getOrElse(k,Nil))
+
+  def subtractedMultiMap[K,V](m: Map[K,List[V]], k: K, v: V): Map[K,List[V]] =
+    m.get(k).fold(m){
+      case Nil => m - k
+      case `v` :: Nil => m - k
+      case many => m.updated(k,many.filterNot(v.==))
+    }
+
+  def updatedDistinctMultiMap[K,V](m: Map[K,Set[V]], k: K, v: V): Map[K,Set[V]] =
+    m.updated(k, m.getOrElse(k,Set.empty) + v)
+
+  def subtractedDistinctMultiMap[K,V](m: Map[K,Set[V]], k: K, v: V): Map[K,Set[V]] =
+    m.get(k).fold(m){ set =>
+      val sub = set - v
+      if(sub.isEmpty) m - k
+      else m.updated(k,sub)
+    }
 
   /**
    * `partition` and `map` combined.

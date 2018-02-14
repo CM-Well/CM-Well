@@ -24,7 +24,8 @@ import cmwell.util.concurrent._
 import cmwell.util.collections.opfut
 import cmwell.util.formats.JsonEncoder
 import cmwell.web.ld.cmw.CMWellRDFHelper
-import cmwell.web.ld.exceptions.{ServerComponentNotAvailableException, UnretrievableIdentifierException}
+import cmwell.web.ld.exceptions.UnretrievableIdentifierException
+import ld.exceptions.ServerComponentNotAvailableException
 import cmwell.web.ld.util.LDFormatParser.ParsingResponse
 import cmwell.web.ld.util._
 import cmwell.ws.Settings
@@ -194,23 +195,28 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
       case _ => throw new RuntimeException("cant find valid content in body of request")
     }
 
+    val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
+
     req.getQueryString("format") match {
-      case Some(f) => handleFormatByFormatParameter(cmwellRDFHelper,crudService,authUtils,bais, Some(List[String](f)), req.contentType, authUtils.extractTokenFrom(req), skipValidation, isOverwrite)
-      case None => handleFormatByContentType(cmwellRDFHelper,crudService,authUtils,bais, req.contentType, authUtils.extractTokenFrom(req), skipValidation, isOverwrite)
+      case Some(f) => handleFormatByFormatParameter(cmwellRDFHelper,crudService,authUtils,bais, Some(List[String](f)), req.contentType, authUtils.extractTokenFrom(req), skipValidation, isOverwrite,timeContext)
+      case None => handleFormatByContentType(cmwellRDFHelper,crudService,authUtils,bais, req.contentType, authUtils.extractTokenFrom(req), skipValidation, isOverwrite,timeContext)
     }
   }
 
 
 
-  def enforceForceIfNeededAndReturnMetaFieldsInfotons(allInfotons: Map[String, Map[DirectFieldKey, Set[FieldValue]]], forceEnabled: Boolean = false)
+  def enforceForceIfNeededAndReturnMetaFieldsInfotons(allInfotons: Map[String, Map[DirectFieldKey, Set[FieldValue]]], forceEnabled: Boolean = false, debugLog: Boolean = false)
                                                      (implicit ec: ExecutionContext): Future[Vector[Infoton]] = {
 
     def getMetaFields(fields: Map[DirectFieldKey, Set[FieldValue]]) = collector(fields) {
       case (fk, fvs) => {
         val newTypes = fvs.map(FieldValue.prefixByType)
 
-        val f = (types: Set[Char]) => {
+        val f: Set[Char] => Future[Option[Infoton]] = (types: Set[Char]) => {
           val chars = newTypes diff types
+          if(debugLog) {
+            logger.info(s"getMetaFields.f: ${newTypes.mkString("[",",","]")} diff ${types.mkString("[",",","]")} = ${chars.mkString("[",",","]")}")
+          }
           if (chars.isEmpty) Future.successful(None)
           else {
             require(forceEnabled || types.size != 1,
@@ -230,7 +236,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
         }
 
         typesCaches.get(fk,Some(newTypes)).transformWith {
-          case Failure(_: NoSuchElementException) => f(newTypes)
+          case Failure(_: NoSuchElementException) => f(Set.empty)
           case Success(types) => f(types)
           case Failure(error) => Future.failed(ServerComponentNotAvailableException("ingest failed during types resolution",error))
         }
@@ -246,6 +252,9 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
         m2 ++ m1.map {
           case (k, vs) => k -> (vs ++ mm(k))
         }
+      }
+      if(debugLog) {
+        logger.info(s"enforcing type contraint on: $aggFields")
       }
       getMetaFields(aggFields)
     }
@@ -278,7 +287,11 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
           }
           else {
             if(debugLog) logger.info(s"[$id] ParsingResponse: ${pRes.toString}")
-            enforceForceIfNeededAndReturnMetaFieldsInfotons(infotonsMap, req.getQueryString("force").isDefined).flatMap { metaFields =>
+            enforceForceIfNeededAndReturnMetaFieldsInfotons(infotonsMap, req.getQueryString("force").isDefined, debugLog).flatMap { metaFields =>
+
+              if(debugLog) {
+                logger.info(s"will add mangling data for the ingest: $metaFields")
+              }
 
               //we divide the infotons to write into 2 lists: regular writes and updates
               val (deleteMap, (upserts, regular)) = {
@@ -478,6 +491,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
         }
         case _ => "utf-8"
       }
+      val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
 
       req.body.asBytes() match {
         case Some(bs) => {
@@ -504,7 +518,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
                             case Success(Right(d)) => d
                             case Success(Left(fk)) => {
                               Try[DirectFieldKey] {
-                                val (f, l) = Await.result(FieldKey.resolve(fk, cmwellRDFHelper).map {
+                                val (f, l) = Await.result(FieldKey.resolve(fk, cmwellRDFHelper, timeContext).map {
                                   case PrefixFieldKey(first, last, _) => first -> last
                                   case URIFieldKey(first, last, _) => first -> last
                                   case unknown => {
