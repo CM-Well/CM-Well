@@ -102,7 +102,11 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
     }
 
   def hashToUrlAsync(hash: String, timeContext: Option[Long])(implicit ec: ExecutionContext): Future[String] =
-    newestGreatestMetaNsCacheImpl.get(hash,timeContext).map{ case (url,_) => url }(ec)
+    newestGreatestMetaNsCacheImpl.get(hash,timeContext).transform {
+      case f@Failure(_: NoSuchElementException) => f.asInstanceOf[Try[String]]
+      case Success((url,_)) => Success(url)
+      case Failure(e) => Failure(ServerComponentNotAvailableException(s"hashToUrlAsync failed for [$hash]",e))
+    }(ec)
 
   @deprecated("API may falsely return None on first calls for some value","Quetzal")
   def urlToHash(url: String, timeContext: Option[Long]): Option[String] =
@@ -114,10 +118,18 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
     }
 
   def urlToHashAsync(url: String, timeContext: Option[Long])(implicit ec: ExecutionContext): Future[String] =
-    newestGreatestMetaNsCacheImpl.getByURL(url, timeContext)
+    newestGreatestMetaNsCacheImpl.getByURL(url, timeContext).transform {
+      case f@Failure(_: NoSuchElementException) => f.asInstanceOf[Try[String]]
+      case Failure(e) => Failure(ServerComponentNotAvailableException(s"urlToHashAsync failed for [$url]",e))
+      case success => success
+    }(ec)
 
   def getIdentifierForPrefixAsync(prefix: String, timeContext: Option[Long])(implicit ec: ExecutionContext): Future[String] =
-    newestGreatestMetaNsCacheImpl.getByPrefix(prefix, timeContext)
+    newestGreatestMetaNsCacheImpl.getByPrefix(prefix, timeContext).transform {
+      case f@Failure(_: NoSuchElementException) => f.asInstanceOf[Try[String]]
+      case Failure(e) => Failure(ServerComponentNotAvailableException(s"getIdentifierForPrefixAsync failed for [$prefix]",e))
+      case success => success
+    }(ec)
 
   @deprecated("API may falsely return None on first calls for some value","Quetzal")
   def hashToUrlAndPrefix(nsID: String, timeContext: Option[Long]): Option[(String,String)] =

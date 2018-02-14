@@ -181,7 +181,8 @@ object RawSortParam extends LazyLogging {
 
 object FieldKey extends LazyLogging with PrefixRequirement  {
   
-  def eval(fieldKey: Either[UnresolvedFieldKey,DirectFieldKey], cache: PassiveFieldTypesCacheTrait, cmwellRDFHelper: CMWellRDFHelper, timeContext: Option[Long])(implicit ec: ExecutionContext): Future[Set[String]] = fieldKey match {
+  def eval(fieldKey: Either[UnresolvedFieldKey,DirectFieldKey], cache: PassiveFieldTypesCacheTrait, cmwellRDFHelper: CMWellRDFHelper, timeContext: Option[Long])
+          (implicit ec: ExecutionContext): Future[Set[String]] = fieldKey match {
     case Right(NnFieldKey(key)) if key.startsWith("system.") || key.startsWith("content.") || key.startsWith("link.")  => Future.successful(Set(key))
     case Right(dFieldKey) => enrichWithTypes(dFieldKey, cache)
     case Left(uFieldKey) => resolve(uFieldKey, cmwellRDFHelper, timeContext).flatMap(enrichWithTypes(_,cache))
