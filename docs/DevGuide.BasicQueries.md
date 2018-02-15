@@ -86,7 +86,10 @@ These are the components of the search request:
 -	**op=search** - indicates that this is a search operation.
 -	**qp=** - the string following qp= contains field names and values that you want to match. In this example, we’re looking for infotons that have the field CommonName.mdaas, where the value is “Marriott Ownership Resorts”.
 
-> **Note:** Special characters must be escaped in the usual way for URIs. For example, spaces are escaped via %20, # characters are encoded using %23, and so on.
+> **Notes:**
+> 
+> * Special characters must be escaped in the usual way for URIs. For example, spaces are escaped via %20, # characters are encoded using %23, and so on.
+> * It is possible to search in all fields rather than in a specific field, as follows:  *qp=_all:Marriott%20Ownership%20Resorts*. However, this is discouraged, as it can result in prohibitively long processing time for the query.
 
 
 See [Field Name Formats](API.FieldNameFormats.md) to learn about field name notation.

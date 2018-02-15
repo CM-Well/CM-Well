@@ -29,6 +29,10 @@ Optional source configuration for STP | [480](https://github.com/thomsonreuters/
 * New **parallelism** query parameter for [sstream](API.Stream.StreamInfotons.md) and [bulk-consume](API.Stream.ConsumeNextBulk.md).
 * New **hostUpdatesSource** parameter in [SPARQL Triggered Processor](Tools.UsingTheSPARQLTriggerProcessor.md) configuration.
 
+### Known Issues ###
+
+Queries on values of all fields, using the **_all** wildcard, currently do not work. To be fixed.
+
 ----
 
 **Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](ReleaseNotes.Piranha.January.2018.md)
