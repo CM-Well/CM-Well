@@ -164,7 +164,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
             fieldsFilter = None,
             datesFilter = None,
             paginationParams = DefaultPaginationParams,
-            sortParams = SortParam(("system.indexTime", Asc)),
+            sortParams = SortParam.indexTimeAscending,
             withHistory = false,
             withDeleted = false
           )
@@ -360,7 +360,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
             fieldsFilter = None,
             datesFilter = None,
             paginationParams = DefaultPaginationParams,
-            sortParams = SortParam(("system.indexTime", Asc)),
+            sortParams = SortParam.indexTimeAscending,
             withHistory = false,
             withDeleted = false
           )

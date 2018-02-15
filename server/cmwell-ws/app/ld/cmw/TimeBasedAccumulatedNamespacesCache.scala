@@ -358,6 +358,7 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
     }
 
     private[this] val pathFilter = Some(PathFilter("/meta/ns",false))
+    private[this] val fieldsForSearch = List("system.path", "fields.nn.prefix", "fields.nn.url")
     private[this] val bo = scala.collection.breakOut[Array[SearchHit],(NsID,(NsURL,NsPrefix)),Array[(NsID,(NsURL,NsPrefix))]]
     def nsSearchBy(fieldName: String, fieldValue: String): Future[Map[NsID,(NsURL,NsPrefix)]] = {
 
@@ -366,7 +367,7 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
       crudService.fullSearch(
         pathFilter,
         fieldFilters = Some(SingleFieldFilter(Must, Equals, fieldName, Some(fieldValue))),
-        fields = Seq("system.path", "fields.nn.prefix", "fields.nn.url")) { (sr, _) =>
+        fields = fieldsForSearch) { (sr, _) =>
         Try.traverse(sr.getHits.getHits.toSeq) { hit =>
 
           if (hit.field("fields.nn.url").getValues().size() != 1 || hit.field("fields.nn.prefix").getValues().size() != 1)
@@ -388,6 +389,8 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
       }.transform(_.flatMap(identity))
     }
 
+    private[this] val fieldsForIndexTimeSearch = "system.indexTime" :: fieldsForSearch
+    private[this] val paginationParamsForIndexTimeSearch = PaginationParams(0, 512)
     def nsSearchByIndexTime(indexTime: Long): Future[(Boolean,Long,Map[NsID,(NsURL,NsPrefix)])] = {
 
       import cmwell.util.collections.TryOps
@@ -395,7 +398,9 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
       crudService.fullSearch(
         pathFilter,
         fieldFilters = Some(SingleFieldFilter(Must, GreaterThan, "system.indexTime", Some(indexTime.toString))),
-        fields = Seq("system.path", "system.indexTime", "fields.nn.prefix", "fields.nn.url")) { (sr, _) =>
+        fields = fieldsForIndexTimeSearch,
+        paginationParams = paginationParamsForIndexTimeSearch,
+        fieldSortParams = SortParam.indexTimeAscending) { (sr, _) =>
 
         val hits = sr.getHits.getHits
         val shouldContinue = sr.getHits.totalHits() > hits.length

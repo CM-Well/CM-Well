@@ -132,7 +132,7 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
           fieldsFilter = None,
           datesFilter = None,
           paginationParams = PaginationParams(0, 3000),
-          sortParams = SortParam(("system.indexTime", Desc)),
+          sortParams = SortParam.indexTimeDescending,
           withHistory = false,
           withDeleted = false
         )(scala.concurrent.ExecutionContext.Implicits.global,logger)

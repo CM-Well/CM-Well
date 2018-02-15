@@ -1475,6 +1475,9 @@ object SortParam {
   type FieldSortParam = (String, FieldSortOrder)
   val empty = FieldSortParams(Nil)
   def apply(sortParam: (String, FieldSortOrder)*) = new FieldSortParams(sortParam.toList)
+
+  val indexTimeAscending =  new FieldSortParams(List("system.indexTime" -> Asc))
+  val indexTimeDescending =  new FieldSortParams(List("system.indexTime" -> Asc))
 }
 case class FieldSortParams(fieldSortParams: List[SortParam.FieldSortParam]) extends SortParam
 case object NullSortParam extends SortParam

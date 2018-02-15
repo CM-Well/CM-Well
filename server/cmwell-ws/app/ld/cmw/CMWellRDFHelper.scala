@@ -94,11 +94,11 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
 
   @deprecated("API may falsely return None on first calls for some value","Quetzal")
   def hashToUrl(nsID: String, timeContext: Option[Long]): Option[String] =
-    newestGreatestMetaNsCacheImpl.get(nsID,timeContext).value match {
-      case None => throw ServerComponentNotAvailableException(s"Internal old API (hashToUrl) used on id [$nsID], which was not yet in cache. subsequent requests should succeed eventually. Call should be migrated to new API")
-      case Some(Success((url,_))) => Some(url)
-      case Some(Failure(_: NoSuchElementException)) => None
-      case Some(Failure(e)) => throw e
+    newestGreatestMetaNsCacheImpl.get(nsID,timeContext).value.flatMap {
+//      case None => throw ServerComponentNotAvailableException(s"Internal old API (hashToUrl) used on id [$nsID], which was not yet in cache. subsequent requests should succeed eventually. Call should be migrated to new API")
+      case /*Some(*/Success((url,_))/*)*/ => Some(url)
+      case /*Some(*/Failure(_: NoSuchElementException)/*)*/ => None
+      case /*Some(*/Failure(e)/*)*/ => throw e
     }
 
   def hashToUrlAsync(hash: String, timeContext: Option[Long])(implicit ec: ExecutionContext): Future[String] =
@@ -136,11 +136,11 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
 
   @deprecated("API may falsely return None on first calls for some value","Quetzal")
   def hashToUrlAndPrefix(nsID: String, timeContext: Option[Long]): Option[(String,String)] =
-    newestGreatestMetaNsCacheImpl.get(nsID, timeContext).value match {
-      case None => throw ServerComponentNotAvailableException(s"Internal old API (hashToUrlAndPrefix) used on id [$nsID], which was not yet in cache. subsequent requests should succeed eventually. Call should be migrated to new API")
-      case Some(Success(urlAndPrefix)) => Some(urlAndPrefix)
-      case Some(Failure(_: NoSuchElementException)) => None
-      case Some(Failure(e)) => throw e
+    newestGreatestMetaNsCacheImpl.get(nsID, timeContext).value.flatMap {
+//      case None => throw ServerComponentNotAvailableException(s"Internal old API (hashToUrlAndPrefix) used on id [$nsID], which was not yet in cache. subsequent requests should succeed eventually. Call should be migrated to new API")
+      case /*Some(*/Success(urlAndPrefix)/*)*/ => Some(urlAndPrefix)
+      case /*Some(*/Failure(_: NoSuchElementException)/*)*/ => None
+      case /*Some(*/Failure(e)/*)*/ => throw e
     }
 
   /**
