@@ -79,7 +79,9 @@ class Global @Inject()(crudServiceFS: CRUDServiceFS, cmwellRDFHelper: CMWellRDFH
 
     RequestMonitor.init
 
-    scheduleAfterStart(2.minutes){
+    cmwellRDFHelper.newestGreatestMetaNsCacheImpl.init(System.currentTimeMillis())
+
+    scheduleAfterStart(2.minutes) {
       ingestPushback.sometimeAfterStart
       eagerAuthCache.sometimeAfterStart
     }

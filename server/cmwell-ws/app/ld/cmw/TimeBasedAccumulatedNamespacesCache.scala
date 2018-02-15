@@ -34,6 +34,7 @@ trait TimeBasedAccumulatedNsCacheTrait {
   def get(key: NsID, timeContext: Option[Long])(implicit timeout: Timeout): Future[(NsURL,NsPrefix)]
   def invalidate(key: NsID)(implicit timeout: Timeout): Future[Unit]
   def getStatus(quick: Boolean)(implicit timeout: Timeout): Future[String]
+  def init(time: Long): Unit
 }
 
 class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,(NsURL,NsPrefix)],
@@ -142,6 +143,8 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
   }
   else (actor ? GetStatus).mapTo[String]
 
+  @inline override def init(time: Long): Unit = actor ! UpdateRequest(time)
+
   // private section
 
   private[cmw] class TimeBasedAccumulatedNsCacheActor extends Actor {
@@ -172,7 +175,6 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
       case GetStatus => sender() ! handleShowStatus
       case UpdateAfterSuccessfulConsume(newIdxTime, data, shoudCont) => handleUpdateAfterSuccessfulConsume(newIdxTime, data, shoudCont)
       case UpdateAfterFailedConsume(origTime, e) => handleUpdateAfterFailedConsume(origTime, e)
-
     }
 
     private[this] def handleGetByID(id: NsID): Unit = {
@@ -181,13 +183,17 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
         case Some(tuple) => sndr ! tuple
         case None => nsIDFutureList.get(id) match {
           case Some(future) => future.pipeTo(sndr)
-          case None => nsIDBlacklist.get(id) match {
-            case None => doFetch(id, sndr, 1)
-            case Some((time, count, err)) => {
-              if (hasEnoughIncrementalWaitTimeElapsed(time, count))
-                doFetch(id, sndr, math.min(maxCountIncrements,count+1))
-              else
-                sndr ! Status.Failure(err)//(new TooManyNsRequestsException(s"Too frequent failed request after [$count] failures to resolve ns identifier [$id]"))
+          case None => {
+            val currentSize = nsIDFutureList.size
+            if (currentSize >= cacheSizeCap) sndr ! Status.Failure(ServerComponentNotAvailableException(s"asked to resolve ns id [$id], but too many [$currentSize] resolving requests are in flight"))
+            else nsIDBlacklist.get(id) match {
+              case None => doFetch(id, sndr, 1)
+              case Some((time, count, err)) => {
+                if (hasEnoughIncrementalWaitTimeElapsed(time, count))
+                  doFetch(id, sndr, math.min(maxCountIncrements, count + 1))
+                else
+                  sndr ! Status.Failure(err)
+              }
             }
           }
         }
@@ -275,6 +281,11 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
       if(count > 1) {
         logger.error(s"failure to retrieve /meta/ns/$id [fail #$count]", err)
       }
+      // an if (with == instead of >=) might suffice, but we do it in a while loop to be on the safe side
+      while(nsIDBlacklist.size >= cacheSizeCap) {
+        // remove earliest entry by timestamp until cache size is smaller than size cap
+        nsIDBlacklist -= nsIDBlacklist.minBy(_._2._1)._1
+      }
       nsIDBlacklist = nsIDBlacklist.updated(id,(System.currentTimeMillis(), count, err))
     }
 
@@ -287,12 +298,22 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
       if(count > 1) {
         logger.error(s"failure to retrieve or search data for URL $url [fail #$count]", err)
       }
+      // an if (with == instead of >=) might suffice, but we do it in a while loop to be on the safe side
+      while(nsURLBlacklist.size >= cacheSizeCap) {
+        // remove earliest entry by timestamp until cache size is smaller than size cap
+        nsURLBlacklist -= nsURLBlacklist.minBy(_._2._1)._1
+      }
       nsURLBlacklist = nsURLBlacklist.updated(url, (System.currentTimeMillis(), count, err))
     }
 
     private[this] def handleUpdateAfterFailedPrefixFetch(prefix: NsPrefix, count: Int, err: Throwable): Unit = {
       nsPrefixFutureList -= prefix
       logger.error(s"failure to retrieve or search data for prefix $prefix [fail #$count]", err)
+      // an if (with == instead of >=) might suffice, but we do it in a while loop to be on the safe side
+      while(nsPrefixBlacklist.size >= cacheSizeCap) {
+        // remove earliest entry by timestamp until cache size is smaller than size cap
+        nsPrefixBlacklist -= nsPrefixBlacklist.minBy(_._2._1)._1
+      }
       nsPrefixBlacklist = nsPrefixBlacklist.updated(prefix, (System.currentTimeMillis(), count, err))
     }
 
@@ -303,13 +324,17 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
         case Some(set) => sndr ! set
         case None => nsURLFutureList.get(url) match {
           case Some(future) => future.pipeTo(sndr)
-          case None => nsURLBlacklist.get(url) match {
-            case None => doFetchURL(url, sndr, 1)
-            case Some((time, count, err)) => {
-              if (hasEnoughIncrementalWaitTimeElapsed(time, count))
-                doFetchURL(url, sndr, math.min(maxCountIncrements,count+1))
-              else
-                sndr ! Status.Failure(err)//new TooManyNsRequestsException(s"Too frequent failed request after [$count] failures to resolve ns url [$url]"))
+          case None => {
+            val currentSize = nsURLFutureList.size
+            if (currentSize >= cacheSizeCap) sndr ! Status.Failure(ServerComponentNotAvailableException(s"asked to resolve ns url [$url], but too many [$currentSize] resolving requests are in flight"))
+            else nsURLBlacklist.get(url) match {
+              case None => doFetchURL(url, sndr, 1)
+              case Some((time, count, err)) => {
+                if (hasEnoughIncrementalWaitTimeElapsed(time, count))
+                  doFetchURL(url, sndr, math.min(maxCountIncrements, count + 1))
+                else
+                  sndr ! Status.Failure(err)
+              }
             }
           }
         }
@@ -456,13 +481,17 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
         case Some(set) => sndr ! set
         case None => nsPrefixFutureList.get(prefix) match {
           case Some(future) => future.pipeTo(sndr)
-          case None => nsPrefixBlacklist.get(prefix) match {
-            case None => doFetchPrefix(prefix, sndr, 1)
-            case Some((time, count, err)) => {
-              if (hasEnoughIncrementalWaitTimeElapsed(time, count))
-                doFetchPrefix(prefix, sndr, math.min(maxCountIncrements,count+1))
-              else
-                sndr ! Status.Failure(err)//new TooManyNsRequestsException(s"Too frequent failed request after [$count] failures to resolve ns prefix [$prefix]"))
+          case None => {
+            val currentSize = nsPrefixFutureList.size
+            if (currentSize >= cacheSizeCap) sndr ! Status.Failure(ServerComponentNotAvailableException(s"asked to resolve ns prefix [$prefix], but too many [$currentSize] resolving requests are in flight"))
+            else nsPrefixBlacklist.get(prefix) match {
+              case None => doFetchPrefix(prefix, sndr, 1)
+              case Some((time, count, err)) => {
+                if (hasEnoughIncrementalWaitTimeElapsed(time, count))
+                  doFetchPrefix(prefix, sndr, math.min(maxCountIncrements, count + 1))
+                else
+                  sndr ! Status.Failure(err)
+              }
             }
           }
         }
