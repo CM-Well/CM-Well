@@ -181,12 +181,12 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
       val sndr = sender()
       mainCache.get(id) match {
         case Some(tuple) => sndr ! tuple
-        case None => {
-          val currentSize = nsIDFutureList.size
-          if(currentSize >= cacheSizeCap) sndr ! Status.Failure(ServerComponentNotAvailableException(s"asked to resolve ns id [$id], but too many [$currentSize] resolving requests are in flight"))
-          else nsIDFutureList.get(id) match {
-            case Some(future) => future.pipeTo(sndr)
-            case None => nsIDBlacklist.get(id) match {
+        case None => nsIDFutureList.get(id) match {
+          case Some(future) => future.pipeTo(sndr)
+          case None => {
+            val currentSize = nsIDFutureList.size
+            if (currentSize >= cacheSizeCap) sndr ! Status.Failure(ServerComponentNotAvailableException(s"asked to resolve ns id [$id], but too many [$currentSize] resolving requests are in flight"))
+            else nsIDBlacklist.get(id) match {
               case None => doFetch(id, sndr, 1)
               case Some((time, count, err)) => {
                 if (hasEnoughIncrementalWaitTimeElapsed(time, count))
@@ -322,12 +322,12 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
       urlCache.get(url) match {
         // todo explain why this case can happen
         case Some(set) => sndr ! set
-        case None => {
-          val currentSize = nsURLFutureList.size
-          if (currentSize >= cacheSizeCap) sndr ! Status.Failure(ServerComponentNotAvailableException(s"asked to resolve ns url [$url], but too many [$currentSize] resolving requests are in flight"))
-          else nsURLFutureList.get(url) match {
-            case Some(future) => future.pipeTo(sndr)
-            case None => nsURLBlacklist.get(url) match {
+        case None => nsURLFutureList.get(url) match {
+          case Some(future) => future.pipeTo(sndr)
+          case None => {
+            val currentSize = nsURLFutureList.size
+            if (currentSize >= cacheSizeCap) sndr ! Status.Failure(ServerComponentNotAvailableException(s"asked to resolve ns url [$url], but too many [$currentSize] resolving requests are in flight"))
+            else nsURLBlacklist.get(url) match {
               case None => doFetchURL(url, sndr, 1)
               case Some((time, count, err)) => {
                 if (hasEnoughIncrementalWaitTimeElapsed(time, count))
@@ -479,12 +479,12 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
       prefixCache.get(prefix) match {
         // todo explain why this case can happen
         case Some(set) => sndr ! set
-        case None => {
-          val currentSize = nsPrefixFutureList.size
-          if (currentSize >= cacheSizeCap) sndr ! Status.Failure(ServerComponentNotAvailableException(s"asked to resolve ns prefix [$prefix], but too many [$currentSize] resolving requests are in flight"))
-          else nsPrefixFutureList.get(prefix) match {
-            case Some(future) => future.pipeTo(sndr)
-            case None => nsPrefixBlacklist.get(prefix) match {
+        case None => nsPrefixFutureList.get(prefix) match {
+          case Some(future) => future.pipeTo(sndr)
+          case None => {
+            val currentSize = nsPrefixFutureList.size
+            if (currentSize >= cacheSizeCap) sndr ! Status.Failure(ServerComponentNotAvailableException(s"asked to resolve ns prefix [$prefix], but too many [$currentSize] resolving requests are in flight"))
+            else nsPrefixBlacklist.get(prefix) match {
               case None => doFetchPrefix(prefix, sndr, 1)
               case Some((time, count, err)) => {
                 if (hasEnoughIncrementalWaitTimeElapsed(time, count))
