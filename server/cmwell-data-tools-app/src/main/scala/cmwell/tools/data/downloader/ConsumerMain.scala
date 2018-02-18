@@ -26,7 +26,7 @@ import cmwell.tools.data.utils.akka._
 import cmwell.tools.data.utils.akka.stats.DownloaderStats
 import cmwell.tools.data.utils.chunkers.GroupChunker
 import cmwell.tools.data.utils.ops._
-import nl.grons.metrics.scala.InstrumentedBuilder
+import nl.grons.metrics4.scala.InstrumentedBuilder
 import org.rogach.scallop.ScallopConf
 
 import scala.concurrent.ExecutionContext.Implicits.global

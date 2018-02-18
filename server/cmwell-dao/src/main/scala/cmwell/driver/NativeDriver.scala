@@ -55,11 +55,11 @@ class NativeDriver(clusterName: String , keyspaceName : String ,  host : String 
 
   val hosts = host.split(",")
 
-  //val d : String[] = hosts.toList.toArray[String]
   private val cluster = new Cluster.Builder()
     .addContactPoints(host)
     .withPoolingOptions(pools)
     .withSocketOptions(new SocketOptions().setTcpNoDelay(true))
+    .withoutJMXReporting() // datastax client depends on old io.dropwizard.metrics (3.2.2), while metrics4.scala depends on newer version (4.0.1). The 4.0.x release removed the jmx module to another artifact (metrics-jmx) and package (com.codahale.metrics.jmx). while this is true, we are better off without JMX reporting of the client. In future: consider to re-enable this.
     .build();
 
   private val session : Session = Try(cluster.connect(keyspaceName)) match {
@@ -72,10 +72,10 @@ class NativeDriver(clusterName: String , keyspaceName : String ,  host : String 
 
 
   def init() {
-    val metaData : Metadata = cluster.getMetadata();
-    //logger.debug("Connected to cluster: %s".format(metaData.getClusterName))
+    import scala.collection.JavaConverters._
+    val metaData : Metadata = cluster.getMetadata
     val allHosts = metaData.getAllHosts
-    //logger.debug(allHosts)
+    logger.info(s"Connected to cluster: ${metaData.getClusterName}, and Hosts: ${allHosts.asScala.map(_.toString).mkString("[",",","]")}")
   }
 
   def getSession : Session = session

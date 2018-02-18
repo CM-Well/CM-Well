@@ -3,8 +3,7 @@ name := "cmwell-indexer"
 libraryDependencies ++= {
   val dm = dependenciesManager.value
   Seq(
-    dm("com.typesafe.akka", "akka-actor"),
-    dm("nl.grons", "metrics-scala")
+    dm("com.typesafe.akka", "akka-actor")
   )
 }
 

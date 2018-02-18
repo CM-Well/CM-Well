@@ -23,7 +23,7 @@ import cmwell.tools.data.ingester.Ingester._
 import cmwell.tools.data.utils.akka.stats.IngesterStats.IngestStats
 import cmwell.tools.data.utils.logging.DataToolsLogging
 import cmwell.tools.data.utils.text.Files.toHumanReadable
-import nl.grons.metrics.scala.InstrumentedBuilder
+import nl.grons.metrics4.scala.InstrumentedBuilder
 import org.apache.commons.lang3.time.DurationFormatUtils
 
 import scala.concurrent.duration._

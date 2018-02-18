@@ -19,7 +19,8 @@ package cmwell.common.metrics
 
 import java.util.concurrent.TimeUnit
 //import com.codahale.metrics.graphite.{GraphiteReporter, Graphite}
-import com.codahale.metrics.{Slf4jReporter, MetricFilter, JmxReporter, MetricRegistry}
+import com.codahale.metrics.{Slf4jReporter, MetricFilter, MetricRegistry}
+import com.codahale.metrics.jmx.JmxReporter
 import com.typesafe.config.ConfigFactory
 import org.slf4j.LoggerFactory
 
@@ -65,6 +66,6 @@ object MetricsMain {
   }
 }
 
-trait WithMetrics extends nl.grons.metrics.scala.InstrumentedBuilder {
+trait WithMetrics extends nl.grons.metrics4.scala.InstrumentedBuilder {
   val metricRegistry = MetricsMain.metricRegistry
 }

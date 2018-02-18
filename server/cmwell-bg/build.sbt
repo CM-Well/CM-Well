@@ -16,7 +16,10 @@ libraryDependencies ++= {
     dm("com.typesafe.akka", "akka-slf4j"),
     dm("org.lz4", "lz4-java"),
     dm("org.elasticsearch", "elasticsearch"),
-    dm("nl.grons", "metrics-scala"),
+//    dm("nl.grons", "metrics-scala"),
+    dm("nl.grons", "metrics4-scala"),
+    dm("nl.grons", "metrics4-akka_a25"),
+    dm("nl.grons", "metrics4-scala-hdr"),
     dm("org.elasticsearch", "metrics-elasticsearch-reporter"),
     dm("org.apache.kafka", "kafka")
       .exclude("org.slf4j", "slf4j-log4j12")

@@ -29,7 +29,7 @@ import cmwell.zstore.ZStore
 import com.codahale.metrics.JmxReporter
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
-import nl.grons.metrics.scala.DefaultInstrumented
+import nl.grons.metrics4.scala.DefaultInstrumented
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.elasticsearch.metrics.ElasticsearchReporter
