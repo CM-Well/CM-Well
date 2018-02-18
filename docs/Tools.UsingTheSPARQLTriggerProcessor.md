@@ -40,6 +40,7 @@ sensors/token | *Optional*. A state token that indicates the time from which the
 sensors/sparqlToRoot | *Optional*. A SPARQL query that operates on the output of the **qp** query. You can use this query to travel upward from a changed node to the affected entity, for which you want to create a materialized view.
 sparqlMaterializer | A SPARQL query that processes the input data and constructs the materialized view.
 updateFreq | The SPARQL processor runs on data that's been updated since the time defined in **fromIndexTime**, and until the present time. Then it pauses for the amount of time defined in **updateFreq**, then it runs again until it processes all new updates, and so on. The **updateFreq** value is formatted like a Scala Duration object (\<timeUnit\> + '.' + \<unitNumber\>).
+hostUpdatesSource | Optional. The CM-Well host from which to read the infotons whose materialized view we're creating. If this parameter isn't defined, by default infotons are read from the host on which the STP is running.
 
 >**Note:** Make sure to indent the file correctly, according to YAML syntax rules.
 
@@ -48,6 +49,7 @@ Here is a (truncated) example of the YAML configuration file:
 ```yaml
     updateFreq: 1.minute
     name: MyMaterializedView
+	hostUpdatesSource: cm-well.myhost.com
     active: true
     sensors:
     - name: organization
@@ -157,23 +159,17 @@ To temporarily pause and restart the SPARQL job, you can toggle the value of thi
 
 In the SPARQL Triggered Processor monitoring page, you can view the status and processing metrics of all SPARQL agent jobs. To see the monitoring page, browse to `proc/stp.md` on the CM-Well host machine.
 
-Here is an example of how the monitoring page might look when running SPARQL agent jobs for two different configurations: **foo** and **bar**. 
-
 <img src="./_Images/SPARQLTriggerProcessorMonitoringPage.png">
 
-The monitoring page displays the host on which the SPARQL jobs are running, and also the following details for each configuration:
+These are the details displayed in the table for each sensor:
 
-Execution Module | Detail | Description
-:----------------|:------|:-----------
-Job | Status flag | Values: **Active**, **Non-active**. Indicates whether the job is running or paused
-Job | Configuration location | The location of the YAML configuration infoton 
-Job | Materialized infotons | The number of materialized infotons that the job has created
-Job | Execution time | The execution time it took to create the materialized infotons
-Sensor | sensor | Values: **oa-identifiers**, **oa-names**. The name of the sensor that polls for data changes.
-Sensor | point-in-time | The point in time that the sensor is currently processing
-Sensor | received-infotons | The number of changed infotons that the sensor detected
-Sensor | infoton-rate | The number of infotons that the sensor is processing per second.
-Sensor | last-update | The time that the sensor made its latest update.
+Detail | Description
+|:------|:-----------
+Sensor | The sensor's name
+Token Time | The point in time that the sensor is currently processing
+Received Infotons | The number of changed infotons that the sensor detected
+Infoton Rate | The number of infotons that the sensor is processing per second.
+Statistics Updated | The time that the sensor made its latest update.
 
 ## DEPRECATED: Downloading and Compiling CM-Well Data Tools ##
 
