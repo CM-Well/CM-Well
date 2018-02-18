@@ -37,11 +37,6 @@ case object ElasticsearchPortManager {
   val transportPortManager = PortManager(9301,1)
 }
 
-case object BatchPortManager {
-  val jmxPortManager = PortManager(7197,1)
-  val monitorPortManager = PortManager(8020,1)
-}
-
 case object BgPortManager {
   val jmxPortManager = PortManager(7196,1)
   val monitorPortManager = PortManager(8050,1)
@@ -74,7 +69,6 @@ case object KafkaPortManager {
 object PortManagers {
   val cas = CassandraPortManager
   val es = ElasticsearchPortManager
-  val batch = BatchPortManager
   val bg = BgPortManager
   val ws = WebServicePortManager
   val ctrl = CtrlPortManager

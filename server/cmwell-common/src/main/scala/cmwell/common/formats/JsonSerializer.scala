@@ -92,7 +92,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
 
     assume(jsonParser.nextToken()==JsonToken.FIELD_NAME, s"expected field")
     jsonParser.getCurrentName() match {
-      case "type" => JsonSerializer0.decodeCommandWithParser(jsonParser)
+      case "type" => logger.error("This version (0) is not supported anymore!!!"); !!!
       case "version" => {
         val jt = jsonParser.nextToken()
         val ver = jsonParser.getText
@@ -112,11 +112,11 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
         }
 
         ver match {
-          case "1" => JsonSerializer1.decodeCommandWithParser(jsonParser)
-          case "2" => JsonSerializer2.decodeCommandWithParser(jsonParser)
-          case "3" => JsonSerializer3.decodeCommandWithParser(jsonParser)
-          case "4" => JsonSerializer4.decodeCommandWithParser(jsonParser)
-          case "5" => JsonSerializer5.decodeCommandWithParser(jsonParser,tidOpt,prevUUIDOpt)
+          case "1" => logger.error("This version (1) is not supported anymore!!!"); !!!
+          case "2" => logger.error("This version (2) is not supported anymore!!!"); !!!
+          case "3" => logger.error("This version (3) is not supported anymore!!!"); !!!
+          case "4" => logger.error("This version (4) is not supported anymore!!!"); !!!
+          case "5" => logger.error("This version (5) is not supported anymore!!!"); !!!
           case "6" => JsonSerializer6.decodeCommandWithParser(jsonParser, tidOpt,prevUUIDOpt)
           case x => logger.error(s"got: $x"); ???
         }
@@ -244,7 +244,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
       case _:FExtra[_] => !!! // FExtra is just a marker for outputting special properties, should not index it anywhere...
     }
 
-    def encodeTLogFieldValue(fv: FieldValue, jp: JsonGenerator): Unit = fv match {
+    def fullEncodeFieldValue(fv: FieldValue, jp: JsonGenerator): Unit = fv match {
       case FString(str,l,q) => jp.writeString(s"s${l.getOrElse("")}\n${q.getOrElse("")}\n$str")
       case FBoolean(bool,q) => jp.writeString(s"b${q.getOrElse("")}\n${bool.toString.head}")
       case FReference(fr,q) => jp.writeString(s"r${q.getOrElse("")}\n$fr")
@@ -288,7 +288,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
       jsonGenerator.writeArrayFieldStart(key)
 
       if(toEs) values.foreach(encodeESFieldValue(_,jsonGenerator))
-      else values.foreach(encodeTLogFieldValue(_,jsonGenerator))
+      else values.foreach(fullEncodeFieldValue(_,jsonGenerator))
 
       jsonGenerator.writeEndArray()
     }

@@ -149,38 +149,6 @@ class WebGridStatus extends ComponentGridState with AlertReporter {
   }
 }
 
-
-class BatchGridStatus extends ComponentGridState with LazyLogging {
-  override def name: String = "Batch"
-  private[this] var batchColor : StatusColor = GreenStatus
-  def updateBatchColor() {
-    val colors = states.values.map(_.getColor).toList
-    val reds = colors.count( _ == RedStatus)
-    val yellows = colors.count( _ == YellowStatus)
-    lazy val greens = colors.count( _ == GreenStatus)
-
-    if(reds > 0 || yellows == colors.size) batchColor = RedStatus
-    else if(yellows > colors.size / 2) batchColor = YellowStatus
-    else batchColor = GreenStatus
-  }
-
-  override def afterUpdate: Unit = updateBatchColor()
-
-  override def getColor: StatusColor = batchColor
-
-  override def raiseEvents(ip: String): PartialFunction[(ComponentState, ComponentState), Set[ComponentEvent]] = {
-    case (s1 : ReportTimeout, s2 : ReportTimeout) => Set.empty[ComponentEvent]
-    case (s1 : BatchOk, s2 : BatchOk) => Set.empty[ComponentEvent]
-    case (s1 : BatchDown, s2 : BatchDown) => Set.empty[ComponentEvent]
-    case (s1 : BatchNotIndexing, s2 : BatchNotIndexing) => Set.empty[ComponentEvent]
-
-    case (_, s2 : BatchOk) => Set(BatchNormalEvent(ip))
-    case (_, s2 : BatchDown) => Set(BatchDownEvent(ip))
-    case (_, s2 : BatchNotIndexing) => Set(BatchNotIndexingEvent(ip))
-    case (_, s2 : ReportTimeout) => Set(ReportTimeoutEvent(ip))
-  }
-}
-
 class DcGridStatus extends ComponentGridState with LazyLogging {
   private[this] var dcColor : StatusColor = GreenStatus
 
@@ -276,6 +244,28 @@ class KafkaGridStatus extends ComponentGridState with LazyLogging {
     case (s1 : KafkaNotOk, s2 : KafkaNotOk) => Set.empty[ComponentEvent]
     case (_, s2 : KafkaOk) => Set(KafkaOkEvent(ip))
     case (_, s2 : KafkaNotOk) => Set(KafkaNotOkEvent(ip))
+    case (_, s2 : ReportTimeout) => Set(ReportTimeoutEvent(ip))
+  }
+}
+
+class BgGridStatus extends ComponentGridState with LazyLogging {
+  override def name: String = "Bg"
+
+  override def getColor: StatusColor = {
+    val numOfOks = states.count{
+      case (_, _ : BgOk) => true
+      case _ => false
+    }
+    val totalMachines = states.size
+    if(numOfOks == totalMachines) GreenStatus else RedStatus
+  }
+
+  override def raiseEvents(ip: String): PartialFunction[(ComponentState, ComponentState), Set[ComponentEvent]] = {
+    case (s1 : ReportTimeout, s2 : ReportTimeout) => Set.empty[ComponentEvent]
+    case (s1 : BgOk, s2 : BgOk) => Set.empty[ComponentEvent]
+    case (s1 : BgNotOk, s2 : BgNotOk) => Set.empty[ComponentEvent]
+    case (_, s2 : BgOk) => Set(BgOkEvent(ip))
+    case (_, s2 : BgNotOk) => Set(BgNotOkEvent(ip))
     case (_, s2 : ReportTimeout) => Set(ReportTimeoutEvent(ip))
   }
 }

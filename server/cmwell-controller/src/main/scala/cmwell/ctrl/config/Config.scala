@@ -54,20 +54,12 @@ object Config {
   val esMasters = config.getInt("ctrl.hc.esMasters")
   val idleWaitSeconds = config.getInt("ctrl.hc.idleWaitSeconds")
   val hcSampleInterval = config.getInt("ctrl.hc.hcSampleInterval")
-  val batchSampleInterval = config.getInt("ctrl.hs.batchSampleInterval")
+  val bgSampleInterval = config.getInt("ctrl.hs.bgSampleInterval")
   val downNodesGraceTimeMinutes = config.getInt("ctrl.hc.downNodesGraceTimeMinutes")
   val isolationCheckSeconds = config.getInt("ctrl.hc.isolationCheckSeconds")
-
-  val updatesTLogName = config.getString("updatesTlog.name")
-  val uuidsTLogName = config.getString("uuidsTlog.name")
 
   val heakupSampleInterval = config.getInt("ctrl.agent.heakupSampleInterval")
   val heakupReportInterval = config.getInt("ctrl.agent.heakupReportInterval")
 
   val webFailCount = config.getInt("ctrl.hc.webFailCount")
-
-  val updatesTLogPartition = try { config.getString("updatesTlog.partition") } catch { case _:Throwable => "updatesPar_" + hostName}
-  val uuidsTLogPartition = try { config.getString("uuidsTlog.partition") } catch { case _:Throwable => "uuidsPar_" + hostName }
-
-
 }

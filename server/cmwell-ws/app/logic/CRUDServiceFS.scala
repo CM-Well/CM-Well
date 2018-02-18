@@ -29,7 +29,6 @@ import cmwell.fts.{FTSServiceNew, Settings => _, _}
 import cmwell.irw._
 import cmwell.stortill.Strotill.{CasInfo, EsExtendedInfo, ZStoreInfo}
 import cmwell.stortill.{Operations, ProxyOperations}
-import cmwell.tlog.{TLog, TLogState}
 import cmwell.util.{Box, BoxedFailure, EmptyBox, FullBox}
 import cmwell.util.concurrent.SingleElementLazyAsyncCache
 import cmwell.common.{BulkCommand, DeleteAttributesCommand, DeletePathCommand, WriteCommand, _}

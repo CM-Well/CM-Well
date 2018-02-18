@@ -75,39 +75,6 @@ case class WebDown(genTime : Long = ComponentState.currentTimestamp) extends Web
 
 }
 
-
-
-trait BatchState extends ComponentState {
-  val impSize : Long
-  val impLocation : Long
-  val indexerSize : Long
-  val indexerLocation : Long
-
-  def getImpDiff = impSize - impLocation
-  def getIndexerDiff = indexerSize - indexerLocation
-
-  def isIndexing(_impSize : Long, _impLocation : Long, _indexerSize : Long, _indexerLocation : Long) : Boolean = {
-    if(_impSize == _impLocation && _indexerSize == _indexerLocation) true
-    else if(impLocation != _impLocation && indexerLocation != _indexerLocation) true
-    else if(impLocation != _impLocation && _indexerSize == _indexerLocation) true
-    else if(_impSize == _impLocation && indexerLocation != _indexerLocation) true
-    else false
-  }
-}
-
-
-case class BatchOk(impSize : Long, impLocation : Long, indexerSize : Long, indexerLocation : Long, impRate : Long = 0, indexerRate : Long = 0, genTime : Long = ComponentState.currentTimestamp) extends BatchState {
-  override def getColor: StatusColor = GreenStatus
-}
-
-case class BatchNotIndexing(impSize : Long, impLocation : Long, indexerSize : Long, indexerLocation : Long, impRate : Long = 0, indexerRate : Long = 0, genTime : Long = ComponentState.currentTimestamp) extends BatchState {
-  override def getColor: StatusColor = YellowStatus
-}
-
-case class BatchDown(impSize : Long, impLocation : Long, indexerSize : Long, indexerLocation : Long, genTime : Long = ComponentState.currentTimestamp) extends BatchState {
-  override def getColor: StatusColor = RedStatus
-}
-
 trait CassandraState extends ComponentState
 case class CassandraOk(m : Map[String,String], rackMapping : Map[String,Iterable[String]] = Map.empty, genTime : Long = ComponentState.currentTimestamp) extends CassandraState {
   def getTotal = m.values.size
@@ -237,6 +204,16 @@ case class KafkaOk(genTime: Long = ComponentState.currentTimestamp) extends Kafk
 }
 
 case class KafkaNotOk(genTime: Long = ComponentState.currentTimestamp) extends KafkaState {
+  override def getColor: StatusColor = RedStatus
+}
+
+trait BgState extends ComponentState
+
+case class BgOk(genTime: Long = ComponentState.currentTimestamp) extends BgState {
+  override def getColor: StatusColor = GreenStatus
+}
+
+case class BgNotOk(genTime: Long = ComponentState.currentTimestamp) extends BgState {
   override def getColor: StatusColor = RedStatus
 }
 

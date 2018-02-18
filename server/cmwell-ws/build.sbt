@@ -80,7 +80,8 @@ libraryDependencies ++= {
   dm("org.openrdf.sesame", "sesame-sail-memory"),
   dm("org.openrdf.sesame", "sesame-queryresultio-sparqljson"),
   dm("org.openrdf.sesame", "sesame-queryresultio-text"),
-  dm("org.openrdf.sesame", "sesame-sail-base"))
+  dm("org.openrdf.sesame", "sesame-sail-base"),
+  dm("org.scala-lang", "scala-compiler"))
 }
 
 testListeners := Seq.empty[TestReportListener]

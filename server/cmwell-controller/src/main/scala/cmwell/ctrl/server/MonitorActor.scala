@@ -138,12 +138,12 @@ class ElasticsearchMonitorActor(hostName : String, start : Int, interval : Int) 
   override def createUpdateState(cs : ComponentState): Set[UpdateStat] =  Set(UpdateEsStat(hostName, cs))
 }
 
-class BatchMonitorActor(hostName : String, start : Int, interval : Int) extends MonitorActor(BatchChecker, hostName, start, interval) {
-  override def createUpdateState(cs : ComponentState): Set[UpdateStat] = Set(UpdateBatchStat(hostName, cs))
-}
-
 class WebMonitorActor(hostName : String, start : Int, interval : Int) extends MonitorActor(WebChecker, hostName, start, interval) {
   override def createUpdateState(cs : ComponentState): Set[UpdateStat] = Set(UpdateWsStat(hostName, cs))
+}
+
+class BgHealthMonitorActor(hostName : String, start : Int, interval : Int) extends MonitorActor(BgChecker, hostName, start, interval) {
+  override def createUpdateState(cs : ComponentState): Set[UpdateStat] = Set(UpdateBgStat(hostName, cs))
 }
 
 class DcMonitorActor(hostName : String, start : Int, interval : Int) extends MonitorActor(DcChecker, hostName, start, interval) {
@@ -157,7 +157,7 @@ class ZookeeperMonitorActor(hostName : String, start : Int, interval : Int) exte
   override def createUpdateState(cs: ComponentState): Set[UpdateStat] = Set(UpdateZookeeperStat(hostName, cs))
 }
 
-class KafkaMonitorActor(hostName : String, start : Int, interval : Int) extends MonitorActor(KafkaChecker, hostName, start, interval) {
+class KafkaMonitorActor(hostName : String, start : Int, interval : Int) extends MonitorActor(BgChecker, hostName, start, interval) {
   override def createUpdateState(cs: ComponentState): Set[UpdateStat] = Set(UpdateKafkaStat(hostName, cs))
 }
 

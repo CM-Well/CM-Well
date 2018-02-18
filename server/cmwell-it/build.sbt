@@ -77,7 +77,7 @@ def installCmwell = Def.taskDyn[Array[(String,String)]] {
 }
 
 def launchCmwell(targetDir: File, log: Logger, pe: File): Array[(String,String)] = {
-  log.warn("DO NOT execute Scala REPL nor Cassandra nor Elasticsearch nor Play's Netty server nor cmwell-batch until integration tests are over!")
+  log.warn("DO NOT execute Scala REPL nor Cassandra nor Elasticsearch nor Play's Netty server nor cmwell-bg until integration tests are over!")
   val arr = jps()
   log.info("storing PIDs of processes to preserve before invoking CM-Well process:" + arr.map(t => t._1 + "\t" + t._2).mkString("\n\t", "\n\t", ""))
   log.info(s"executing ${pe.getAbsolutePath}")
@@ -105,7 +105,6 @@ testOptions in IntegrationTest ++= {
     log.info("going to kill all cm-well process")
     jps().filterNot(oldJps.contains).foreach {
       case (pid, clazz) => if (Set(
-        "cmwell.batch.boot.Runner",
         "cmwell.bg.Runner",
         "cmwell.crashableworker.WorkerMain",
         "cmwell.ctrl.server.CtrlServer",
@@ -125,4 +124,5 @@ test in IntegrationTest := Def.task {
 }.tag(Tags.ES,Tags.Cassandra,Tags.Kafka,Tags.Grid).value
 
 //FIXME: if https://github.com/sbt/sbt/issues/3250 is fixed, we should stop manually wiring the tests dependencies like that
-fullTest := (test in IntegrationTest).dependsOn(fullTest in LocalProject("bg"),fullTest in LocalProject("irw"),fullTest in LocalProject("imp"),fullTest in LocalProject("fts"),fullTest in LocalProject("zstore")).value
+fullTest := (test in IntegrationTest).dependsOn(fullTest in LocalProject("bg"),fullTest in LocalProject("fts"),fullTest in LocalProject("zstore")).value
+fullTest := (test in IntegrationTest).dependsOn(fullTest in LocalProject("bg"),fullTest in LocalProject("fts"),fullTest in LocalProject("zstore")).value
