@@ -92,14 +92,29 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
     }
   }
 
+  private[this] val looksLikeHashedNsIDRegex = "[A-Za-z0-9\\-_]{5,7}"
+  private[this] val transformFuncURL2URL: Try[String] => Option[String] = {
+    case Success(url) => Some(url)
+    case Failure(_: NoSuchElementException) => None
+    case Failure(e) => throw e
+  }
+  private[this] val transformFuncURLAndPrefix2URLAndPrefix: Try[(String,String)] => Option[(String,String)] = {
+    case Success(urlAndPrefix) => Some(urlAndPrefix)
+    case Failure(_: NoSuchElementException) => None
+    case Failure(e) => throw e
+  }
+
   @deprecated("API may falsely return None on first calls for some value","Quetzal")
-  def hashToUrl(nsID: String, timeContext: Option[Long]): Option[String] =
-    newestGreatestMetaNsCacheImpl.get(nsID,timeContext).value.flatMap {
-//      case None => throw ServerComponentNotAvailableException(s"Internal old API (hashToUrl) used on id [$nsID], which was not yet in cache. subsequent requests should succeed eventually. Call should be migrated to new API")
-      case /*Some(*/Success((url,_))/*)*/ => Some(url)
-      case /*Some(*/Failure(_: NoSuchElementException)/*)*/ => None
-      case /*Some(*/Failure(e)/*)*/ => throw e
-    }
+  def hashToUrl(nsID: String, timeContext: Option[Long]): Option[String] = {
+    val f = hashToUrlAsync(nsID, timeContext)
+    f.value.fold[Option[String]] {
+      if (nsID.matches(looksLikeHashedNsIDRegex))
+        // Await is OK here, as it is very rare (first fetch of an id which was not found in cache)
+        Await.ready(f, 9.seconds).value.flatMap(transformFuncURL2URL)
+      else
+        None
+    }(transformFuncURL2URL)
+  }
 
   def hashToUrlAsync(hash: String, timeContext: Option[Long])(implicit ec: ExecutionContext): Future[String] =
     newestGreatestMetaNsCacheImpl.get(hash,timeContext).transform {
@@ -135,13 +150,16 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
     }(ec)
 
   @deprecated("API may falsely return None on first calls for some value","Quetzal")
-  def hashToUrlAndPrefix(nsID: String, timeContext: Option[Long]): Option[(String,String)] =
-    newestGreatestMetaNsCacheImpl.get(nsID, timeContext).value.flatMap {
-//      case None => throw ServerComponentNotAvailableException(s"Internal old API (hashToUrlAndPrefix) used on id [$nsID], which was not yet in cache. subsequent requests should succeed eventually. Call should be migrated to new API")
-      case /*Some(*/Success(urlAndPrefix)/*)*/ => Some(urlAndPrefix)
-      case /*Some(*/Failure(_: NoSuchElementException)/*)*/ => None
-      case /*Some(*/Failure(e)/*)*/ => throw e
-    }
+  def hashToUrlAndPrefix(nsID: String, timeContext: Option[Long]): Option[(String,String)] = {
+    val f = newestGreatestMetaNsCacheImpl.get(nsID, timeContext)
+    f.value.fold[Option[(String, String)]] {
+      if (nsID.matches(looksLikeHashedNsIDRegex))
+        // Await is OK here, as it is very rare (first fetch of an id which was not found in cache)
+        Await.ready(f, 9.seconds).value.flatMap(transformFuncURLAndPrefix2URLAndPrefix)
+      else
+        None
+    }(transformFuncURLAndPrefix2URLAndPrefix)
+  }
 
   /**
    * @param url as plain string

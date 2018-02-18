@@ -40,7 +40,7 @@ import com.datastax.driver.core.ConsistencyLevel
 import com.google.common.cache.CacheBuilder
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.{LazyLogging, Logger}
-import nl.grons.metrics.scala._
+import nl.grons.metrics4.scala._
 import com.codahale.metrics.{Counter => DropwizardCounter, Histogram => DropwizardHistogram, Meter => DropwizardMeter, Timer => DropwizardTimer}
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerRecord

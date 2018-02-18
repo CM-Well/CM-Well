@@ -4,7 +4,6 @@ libraryDependencies ++= {
   val dm = dependenciesManager.value
   Seq(
     dm("com.typesafe.play", "play-json"),
-    dm("nl.grons", "metrics-scala"),
     dm("ch.qos.logback", "logback-classic"),
     dm("com.ecyrd.speed4j", "speed4j"),
     dm("com.fasterxml.jackson.core", "jackson-core"),
@@ -23,6 +22,9 @@ libraryDependencies ++= {
     dm("com.typesafe.akka", "akka-stream-testkit") % "test",
     dm("commons-io", "commons-io"),
     dm("io.netty", "netty"),
+//    dm("nl.grons", "metrics4-scala"),
+//    dm("nl.grons", "metrics4-akka_a25"),
+//    dm("nl.grons", "metrics4-scala-hdr"),
     dm("org.lz4","lz4-java"),
     dm("org.apache.commons", "commons-compress"),
     dm("org.apache.jena", "jena-arq")

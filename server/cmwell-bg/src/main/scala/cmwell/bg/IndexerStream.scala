@@ -32,7 +32,7 @@ import cmwell.domain.Infoton
 import cmwell.tracking._
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.{LazyLogging, Logger}
-import nl.grons.metrics.scala.{Counter, DefaultInstrumented, Histogram, Timer}
+import nl.grons.metrics4.scala.{Counter, DefaultInstrumented, Histogram, Timer}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.elasticsearch.action.ActionRequest
