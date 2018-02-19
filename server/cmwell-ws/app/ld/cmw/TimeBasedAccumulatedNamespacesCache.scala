@@ -6,7 +6,7 @@ import akka.util.Timeout
 import cmwell.domain.{FieldValue, Infoton}
 import cmwell.fts._
 import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
-import cmwell.util.collections.{partitionWith, subtractedDistinctMultiMap, updatedDistinctMultiMap}
+import cmwell.util.collections.{spanWith, partitionWith, subtractedDistinctMultiMap, updatedDistinctMultiMap}
 import cmwell.util.exceptions.MultipleFailures
 import cmwell.util.string.Hash.crc32base64
 import com.typesafe.scalalogging.LazyLogging
@@ -465,8 +465,9 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
           timeToSortBy -> tryValue
         }
 
-        // TODO: a general util `spanWith` could be useful here
-        val (ok, ko) = entries.sortBy(_._1).span(_._2.isSuccess)
+        val (ok, ko) = spanWith(entries.sortBy(_._1)){
+          case (_, tryQuadruple) => tryQuadruple.toOption
+        }
 
         val shouldContinue = sr.getHits.totalHits() > hits.length && ko.isEmpty
         val err: Throwable = {
@@ -488,11 +489,8 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
         else if (ok.isEmpty) Success((false, indexTime, Map.empty[NsID, (NsURL, NsPrefix)]))
         else {
           val (maxOkIndexTime, mapBuilder) = ok.foldLeft(indexTime -> Map.newBuilder[NsID, (NsURL, NsPrefix)]) {
-            // @unchecked is safe here, since we are only dealing with success thanks to the span
-            case ((maxTime, b), (_, tryValue)) => (tryValue: @unchecked) match {
-              case Success((id, ts, url, pref)) =>
-                math.max(maxTime, ts) -> b.+=((id, url -> pref))
-            }
+            case ((maxTime, b), (id, ts, url, pref)) =>
+              math.max(maxTime, ts) -> b.+=((id, url -> pref))
           }
 
           Success((shouldContinue, maxOkIndexTime, mapBuilder.result()))
