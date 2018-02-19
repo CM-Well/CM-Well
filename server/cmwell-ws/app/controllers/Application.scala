@@ -518,67 +518,62 @@ callback=< [URL] >
     .getQueryString("qp")
     .fold(Success(None): Try[Option[RawFieldFilter]])(FieldFilterParser.parseQueryParams(_).map(Some.apply))
     .map { qpOpt =>
+      val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
+      val normalizedPath = normalizePath(request.path)
+      val from = DateParser.parseDate(request.getQueryString("from").getOrElse(""), FromDate).toOption
+      val to = DateParser.parseDate(request.getQueryString("to").getOrElse(""), ToDate).toOption
+      val length = request.getQueryString("length").flatMap(asInt).getOrElse(10)
+      val offset = request.getQueryString("offset").flatMap(asInt).getOrElse(0)
+      val scrollTtl = request.getQueryString("session-ttl").flatMap(asInt).getOrElse(15).min(60)
+      val withDescendants = request.queryString.keySet("with-descendants") || request.queryString.keySet("recursive")
+      val withHistory = request.queryString.keySet("with-history")
+      val withDeleted = request.queryString.keySet("with-deleted")
+      val pathFilter = Some(PathFilter(normalizedPath, withDescendants))
+      val withData = request.getQueryString("with-data")
+      val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff, typesCache, cmwellRDFHelper, timeContext).map(Some.apply))
+      fieldsFiltersFut.transformWith {
+        case Failure(err) => {
+          val msg = s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"
+          logger.error(msg, err)
+          val res = FailedDependency(Json.obj("success" -> false, "message" -> msg))
+          request.attrs.get(Attrs.RequestReceivedTimestamp).fold(Future.successful(res)) { reqStartTime =>
+            val timePassedInMillis = System.currentTimeMillis() - reqStartTime
+            if (timePassedInMillis > 9000L) Future.successful(res)
+            else SimpleScheduler.schedule((9500L - timePassedInMillis).millis)(res)
+          }
+        }
+        case Success(fieldFilter) => {
+          val formatter = request.getQueryString("format").getOrElse("json") match {
+            case FormatExtractor(formatType) =>
+              formatterManager.getFormatter(format = formatType,
+                timeContext = timeContext,
+                host = request.host,
+                uri = request.uri,
+                pretty = request.queryString.keySet("pretty"),
+                callback = request.queryString.get("callback").flatMap(_.headOption),
+                fieldFilters = fieldFilter,
+                offset = Some(offset.toLong),
+                length = Some(length.toLong),
+                withData = withData)
+          }
 
-      if (crudServiceFS.countSearchOpenContexts.map(_._2).sum > Settings.maxSearchContexts)
-        Future.successful(BadRequest(Json.obj("success" -> false, "message" -> "Too many open iterators. wait and try later.")))
-      else {
-        val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
-        val normalizedPath = normalizePath(request.path)
-        val from = DateParser.parseDate(request.getQueryString("from").getOrElse(""), FromDate).toOption
-        val to = DateParser.parseDate(request.getQueryString("to").getOrElse(""), ToDate).toOption
-        val length = request.getQueryString("length").flatMap(asInt).getOrElse(10)
-        val offset = request.getQueryString("offset").flatMap(asInt).getOrElse(0)
-        val scrollTtl = request.getQueryString("session-ttl").flatMap(asInt).getOrElse(15).min(60)
-        val withDescendants = request.queryString.keySet("with-descendants") || request.queryString.keySet("recursive")
-        val withHistory = request.queryString.keySet("with-history")
-        val withDeleted = request.queryString.keySet("with-deleted")
-        val pathFilter = Some(PathFilter(normalizedPath, withDescendants))
-        val withData = request.getQueryString("with-data")
-        val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff,typesCache, cmwellRDFHelper, timeContext).map(Some.apply))
-        fieldsFiltersFut.transformWith {
-          case Failure(err) => {
-            val msg = s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"
-            logger.error(msg,err)
-            val res = FailedDependency(Json.obj("success" -> false, "message" -> msg))
-            request.attrs.get(Attrs.RequestReceivedTimestamp).fold(Future.successful(res)) { reqStartTime =>
-              val timePassedInMillis = System.currentTimeMillis() - reqStartTime
-              if(timePassedInMillis > 9000L) Future.successful(res)
-              else SimpleScheduler.schedule((9500L - timePassedInMillis).millis)(res)
+          val fmFut = extractFieldsMask(request, typesCache, cmwellRDFHelper, timeContext)
+          crudServiceFS.startScroll(
+            pathFilter,
+            fieldFilter,
+            Some(DatesFilter(from, to)),
+            PaginationParams(offset, length),
+            scrollTtl,
+            withHistory,
+            withDeleted,
+            debugInfo = request.queryString.keySet("debug-info")).flatMap { startScrollResult =>
+            val rv = createScrollIdDispatcherActorFromIteratorId(startScrollResult.iteratorId, withHistory, (scrollTtl + 5).seconds)
+            fmFut.map { fm =>
+              Ok(formatter.render(startScrollResult.copy(iteratorId = rv).masked(fm))).as(formatter.mimetype)
             }
           }
-          case Success(fieldFilter) => {
-            val formatter = request.getQueryString("format").getOrElse("json") match {
-              case FormatExtractor(formatType) =>
-                formatterManager.getFormatter(format = formatType,
-                  timeContext = timeContext,
-                  host = request.host,
-                  uri = request.uri,
-                  pretty = request.queryString.keySet("pretty"),
-                  callback = request.queryString.get("callback").flatMap(_.headOption),
-                  fieldFilters = fieldFilter,
-                  offset = Some(offset.toLong),
-                  length = Some(length.toLong),
-                  withData = withData)
-            }
-
-            val fmFut = extractFieldsMask(request, typesCache, cmwellRDFHelper,timeContext)
-            crudServiceFS.startScroll(
-              pathFilter,
-              fieldFilter,
-              Some(DatesFilter(from, to)),
-              PaginationParams(offset, length),
-              scrollTtl,
-              withHistory,
-              withDeleted,
-              debugInfo = request.queryString.keySet("debug-info")).flatMap { startScrollResult =>
-              val rv = createScrollIdDispatcherActorFromIteratorId(startScrollResult.iteratorId, withHistory, (scrollTtl + 5).seconds)
-              fmFut.map { fm =>
-                Ok(formatter.render(startScrollResult.copy(iteratorId = rv).masked(fm))).as(formatter.mimetype)
-              }
-            }
-          }
-        }.recover(errorHandler)
-      }
+        }
+      }.recover(errorHandler)
     }.recover(asyncErrorHandler).get
 
   private def createScrollIdDispatcherActorFromIteratorId(id: String, withHistory: Boolean, ttl: FiniteDuration): String = {
@@ -615,95 +610,91 @@ callback=< [URL] >
     .getQueryString("qp")
     .fold(Success(None): Try[Option[RawFieldFilter]])(FieldFilterParser.parseQueryParams(_).map(Some.apply))
     .map { qpOpt =>
-
-      if (crudServiceFS.countSearchOpenContexts.map(_._2).sum > Settings.maxSearchContexts)
-        Future.successful(BadRequest(Json.obj("success" -> false, "message" -> "Too many open search contexts. wait and try later.")))
-      else {
-        val normalizedPath = normalizePath(request.path)
-        val from = DateParser.parseDate(request.getQueryString("from").getOrElse(""), FromDate).toOption
-        val to = DateParser.parseDate(request.getQueryString("to").getOrElse(""), ToDate).toOption
-        val offset = 0 //request.getQueryString("offset").flatMap(asInt).getOrElse(0)
-        val withDescendants = request.queryString.keySet("with-descendants") || request.queryString.keySet("recursive")
-        val withHistory = request.queryString.keySet("with-history")
-        val withDeleted = request.queryString.keySet("with-deleted")
-        val withMeta = request.queryString.keySet("with-meta")
-        val length = request.getQueryString("length").flatMap(asLong)
-        val pathFilter = Some(PathFilter(normalizedPath, withDescendants))
-        val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
-        val fieldsMaskFut = extractFieldsMask(request,typesCache,cmwellRDFHelper,timeContext)
-        val (withData, format) = {
-          val wd = request.getQueryString("with-data")
-          val frmt = request.getQueryString("format").getOrElse({
-            if (wd.isEmpty) "text" else "nt"
-          })
-          if (Set("nt", "ntriples", "nq", "nquads").exists(frmt.equalsIgnoreCase) || frmt.toLowerCase.startsWith("json")) {
-            Some("text") -> frmt
-          }
-          else {
-            None -> frmt
-          }
+      val normalizedPath = normalizePath(request.path)
+      val from = DateParser.parseDate(request.getQueryString("from").getOrElse(""), FromDate).toOption
+      val to = DateParser.parseDate(request.getQueryString("to").getOrElse(""), ToDate).toOption
+      val offset = 0 //request.getQueryString("offset").flatMap(asInt).getOrElse(0)
+    val withDescendants = request.queryString.keySet("with-descendants") || request.queryString.keySet("recursive")
+      val withHistory = request.queryString.keySet("with-history")
+      val withDeleted = request.queryString.keySet("with-deleted")
+      val withMeta = request.queryString.keySet("with-meta")
+      val length = request.getQueryString("length").flatMap(asLong)
+      val pathFilter = Some(PathFilter(normalizedPath, withDescendants))
+      val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
+      val fieldsMaskFut = extractFieldsMask(request, typesCache, cmwellRDFHelper, timeContext)
+      val (withData, format) = {
+        val wd = request.getQueryString("with-data")
+        val frmt = request.getQueryString("format").getOrElse({
+          if (wd.isEmpty) "text" else "nt"
+        })
+        if (Set("nt", "ntriples", "nq", "nquads").exists(frmt.equalsIgnoreCase) || frmt.toLowerCase.startsWith("json")) {
+          Some("text") -> frmt
         }
-        format match {
-          case f if !Set("text", "path", "tsv", "tab", "nt", "ntriples", "nq", "nquads")(f.toLowerCase) && !f.toLowerCase.startsWith("json") => Future.successful(BadRequest(Json.obj("success" -> false, "message" -> "not a streamable type (use 'text','tsv','ntriples', 'nquads', or any json)")))
-          case FormatExtractor(formatType) => {
-            val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff,typesCache,cmwellRDFHelper,timeContext).map(Some.apply))
-            fieldsFiltersFut.transformWith {
-              case Failure(err) => {
-                val msg = s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"
-                logger.error(msg,err)
-                val res = FailedDependency(Json.obj("success" -> false, "message" -> msg))
-                request.attrs.get(Attrs.RequestReceivedTimestamp).fold(Future.successful(res)) { reqStartTime =>
-                  val timePassedInMillis = System.currentTimeMillis() - reqStartTime
-                  if(timePassedInMillis > 9000L) Future.successful(res)
-                  else SimpleScheduler.schedule((9500L - timePassedInMillis).millis)(res)
-                }
-              } case Success(fieldFilter) => {
-                fieldsMaskFut.flatMap { fieldsMask =>
+        else {
+          None -> frmt
+        }
+      }
+      format match {
+        case f if !Set("text", "path", "tsv", "tab", "nt", "ntriples", "nq", "nquads")(f.toLowerCase) && !f.toLowerCase.startsWith("json") => Future.successful(BadRequest(Json.obj("success" -> false, "message" -> "not a streamable type (use 'text','tsv','ntriples', 'nquads', or any json)")))
+        case FormatExtractor(formatType) => {
+          val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff, typesCache, cmwellRDFHelper, timeContext).map(Some.apply))
+          fieldsFiltersFut.transformWith {
+            case Failure(err) => {
+              val msg = s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"
+              logger.error(msg, err)
+              val res = FailedDependency(Json.obj("success" -> false, "message" -> msg))
+              request.attrs.get(Attrs.RequestReceivedTimestamp).fold(Future.successful(res)) { reqStartTime =>
+                val timePassedInMillis = System.currentTimeMillis() - reqStartTime
+                if (timePassedInMillis > 9000L) Future.successful(res)
+                else SimpleScheduler.schedule((9500L - timePassedInMillis).millis)(res)
+              }
+            }
+            case Success(fieldFilter) => {
+              fieldsMaskFut.flatMap { fieldsMask =>
 
-                  /* RDF types allowed in mstream are: ntriples, nquads, jsonld & jsonldq
+                /* RDF types allowed in mstream are: ntriples, nquads, jsonld & jsonldq
                  * since, the jsons are not realy RDF, just flattened json of infoton per line,
                  * there is no need to tnforce subject uniquness. but ntriples, and nquads
                  * which split infoton into statements (subject-predicate-object triples) per line,
                  * we don't want different versions to "mix" and we enforce uniquness only in this case
                  */
-                  val forceUniqueness: Boolean = withHistory && (formatType match {
-                    case RdfType(NquadsFlavor) => true
-                    case RdfType(NTriplesFlavor) => true
-                    case _ => false
-                  })
-                  val formatter = formatterManager.getFormatter(format = formatType,
-                    timeContext = timeContext,
-                    host = request.host,
-                    uri = request.uri,
-                    pretty = false,
-                    callback = request.queryString.get("callback").flatMap(_.headOption),
-                    fieldFilters = fieldFilter,
-                    offset = Some(offset.toLong),
-                    length = Some(500L),
-                    withData = withData,
-                    withoutMeta = !withMeta,
-                    filterOutBlanks = true,
-                    forceUniqueness = forceUniqueness) //cleanSystemBlanks set to true, so we won't output all the meta information we usaly output. it get's messy with streaming. we don't want each chunk to show the "document context"
+                val forceUniqueness: Boolean = withHistory && (formatType match {
+                  case RdfType(NquadsFlavor) => true
+                  case RdfType(NTriplesFlavor) => true
+                  case _ => false
+                })
+                val formatter = formatterManager.getFormatter(format = formatType,
+                  timeContext = timeContext,
+                  host = request.host,
+                  uri = request.uri,
+                  pretty = false,
+                  callback = request.queryString.get("callback").flatMap(_.headOption),
+                  fieldFilters = fieldFilter,
+                  offset = Some(offset.toLong),
+                  length = Some(500L),
+                  withData = withData,
+                  withoutMeta = !withMeta,
+                  filterOutBlanks = true,
+                  forceUniqueness = forceUniqueness) //cleanSystemBlanks set to true, so we won't output all the meta information we usaly output. it get's messy with streaming. we don't want each chunk to show the "document context"
 
-                  val datesFilter = {
-                    if (from.isEmpty && to.isEmpty) None
-                    else Some(DatesFilter(from, to))
+                val datesFilter = {
+                  if (from.isEmpty && to.isEmpty) None
+                  else Some(DatesFilter(from, to))
+                }
+                streams.multiScrollSource(
+                  pathFilter = pathFilter,
+                  fieldFilter = fieldFilter,
+                  datesFilter = datesFilter,
+                  withHistory = withHistory,
+                  withDeleted = withDeleted).map {
+                  case (source, hits) => {
+                    val s = streams.scrollSourceToByteString(source, formatter, withData.isDefined, withHistory, length, fieldsMask)
+                    Ok.chunked(s).as(overrideMimetype(formatter.mimetype, request)._2).withHeaders("X-CM-WELL-N" -> hits.toString)
                   }
-                  streams.multiScrollSource(
-                    pathFilter = pathFilter,
-                    fieldFilter = fieldFilter,
-                    datesFilter = datesFilter,
-                    withHistory = withHistory,
-                    withDeleted = withDeleted).map {
-                    case (source, hits) => {
-                      val s = streams.scrollSourceToByteString(source, formatter, withData.isDefined, withHistory, length, fieldsMask)
-                      Ok.chunked(s).as(overrideMimetype(formatter.mimetype, request)._2).withHeaders("X-CM-WELL-N" -> hits.toString)
-                    }
-                  }.recover(errorHandler)
                 }.recover(errorHandler)
-              }
-            }.recover(errorHandler)
-          }
+              }.recover(errorHandler)
+            }
+          }.recover(errorHandler)
         }
       }
     }.recover(asyncErrorHandler).get
@@ -712,90 +703,85 @@ callback=< [URL] >
     .getQueryString("qp")
     .fold(Success(None): Try[Option[RawFieldFilter]])(FieldFilterParser.parseQueryParams(_).map(Some.apply))
     .map { qpOpt =>
-
-      if (crudServiceFS.countSearchOpenContexts.map(_._2).sum > Settings.maxSearchContexts)
-        Future.successful(BadRequest(Json.obj("success" -> false, "message" -> "Too many open search contexts. wait and try later.")))
-      else {
-        val normalizedPath = normalizePath(request.path)
-        val from = DateParser.parseDate(request.getQueryString("from").getOrElse(""), FromDate).toOption
-        val to = DateParser.parseDate(request.getQueryString("to").getOrElse(""), ToDate).toOption
-        val offset = 0
-        //request.getQueryString("offset").flatMap(asInt).getOrElse(0)
-        val withDescendants = request.queryString.keySet("with-descendants") || request.queryString.keySet("recursive")
-        val withHistory = request.queryString.keySet("with-history")
-        val withDeleted = request.queryString.keySet("with-deleted")
-        val withMeta = request.queryString.keySet("with-meta")
-        val length = request.getQueryString("length").flatMap(asLong)
-        val parallelism = request.getQueryString("parallelism").flatMap(asInt).getOrElse(Settings.sstreamParallelism)
-        val pathFilter = Some(PathFilter(normalizedPath, withDescendants))
-        val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
-        val fieldsMaskFut = extractFieldsMask(request,typesCache,cmwellRDFHelper,timeContext)
-        val (withData, format) = {
-          val wd = request.getQueryString("with-data")
-          val frmt = request.getQueryString("format").getOrElse({
-            if (wd.isEmpty) "text" else "nt"
-          })
-          if (Set("nt", "ntriples", "nq", "nquads").exists(frmt.equalsIgnoreCase) || frmt.toLowerCase.startsWith("json")) {
-            Some("text") -> frmt
-          }
-          else {
-            None -> frmt
-          }
+      val normalizedPath = normalizePath(request.path)
+      val from = DateParser.parseDate(request.getQueryString("from").getOrElse(""), FromDate).toOption
+      val to = DateParser.parseDate(request.getQueryString("to").getOrElse(""), ToDate).toOption
+      val offset = 0
+      //request.getQueryString("offset").flatMap(asInt).getOrElse(0)
+      val withDescendants = request.queryString.keySet("with-descendants") || request.queryString.keySet("recursive")
+      val withHistory = request.queryString.keySet("with-history")
+      val withDeleted = request.queryString.keySet("with-deleted")
+      val withMeta = request.queryString.keySet("with-meta")
+      val length = request.getQueryString("length").flatMap(asLong)
+      val parallelism = request.getQueryString("parallelism").flatMap(asInt).getOrElse(Settings.sstreamParallelism)
+      val pathFilter = Some(PathFilter(normalizedPath, withDescendants))
+      val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
+      val fieldsMaskFut = extractFieldsMask(request, typesCache, cmwellRDFHelper, timeContext)
+      val (withData, format) = {
+        val wd = request.getQueryString("with-data")
+        val frmt = request.getQueryString("format").getOrElse({
+          if (wd.isEmpty) "text" else "nt"
+        })
+        if (Set("nt", "ntriples", "nq", "nquads").exists(frmt.equalsIgnoreCase) || frmt.toLowerCase.startsWith("json")) {
+          Some("text") -> frmt
         }
-        format match {
-          case f if !Set("text", "path", "tsv", "tab", "nt", "ntriples", "nq", "nquads")(f.toLowerCase) && !f.toLowerCase.startsWith("json") => Future.successful(BadRequest(Json.obj("success" -> false, "message" -> "not a streamable type (use 'text','tsv','ntriples', 'nquads', or any json)")))
-          case FormatExtractor(formatType) => {
-            val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff,typesCache,cmwellRDFHelper,timeContext).map(Some.apply))
-            fieldsFiltersFut.transformWith {
-              case Failure(err) => {
-                val msg = s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"
-                logger.error(msg,err)
-                val res = FailedDependency(Json.obj("success" -> false, "message" -> msg))
-                request.attrs.get(Attrs.RequestReceivedTimestamp).fold(Future.successful(res)) { reqStartTime =>
-                  val timePassedInMillis = System.currentTimeMillis() - reqStartTime
-                  if(timePassedInMillis > 9000L) Future.successful(res)
-                  else SimpleScheduler.schedule((9500L - timePassedInMillis).millis)(res)
-                }
+        else {
+          None -> frmt
+        }
+      }
+      format match {
+        case f if !Set("text", "path", "tsv", "tab", "nt", "ntriples", "nq", "nquads")(f.toLowerCase) && !f.toLowerCase.startsWith("json") => Future.successful(BadRequest(Json.obj("success" -> false, "message" -> "not a streamable type (use 'text','tsv','ntriples', 'nquads', or any json)")))
+        case FormatExtractor(formatType) => {
+          val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff, typesCache, cmwellRDFHelper, timeContext).map(Some.apply))
+          fieldsFiltersFut.transformWith {
+            case Failure(err) => {
+              val msg = s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"
+              logger.error(msg, err)
+              val res = FailedDependency(Json.obj("success" -> false, "message" -> msg))
+              request.attrs.get(Attrs.RequestReceivedTimestamp).fold(Future.successful(res)) { reqStartTime =>
+                val timePassedInMillis = System.currentTimeMillis() - reqStartTime
+                if (timePassedInMillis > 9000L) Future.successful(res)
+                else SimpleScheduler.schedule((9500L - timePassedInMillis).millis)(res)
               }
-              case Success(fieldFilter) => {
-                fieldsMaskFut.flatMap { fieldsMask =>
-                  /* RDF types allowed in mstream are: ntriples, nquads, jsonld & jsonldq
+            }
+            case Success(fieldFilter) => {
+              fieldsMaskFut.flatMap { fieldsMask =>
+                /* RDF types allowed in mstream are: ntriples, nquads, jsonld & jsonldq
                * since, the jsons are not realy RDF, just flattened json of infoton per line,
                * there is no need to tnforce subject uniquness. but ntriples, and nquads
                * which split infoton into statements (subject-predicate-object triples) per line,
                * we don't want different versions to "mix" and we enforce uniquness only in this case
                */
-                  val forceUniqueness: Boolean = withHistory && (formatType match {
-                    case RdfType(NquadsFlavor) => true
-                    case RdfType(NTriplesFlavor) => true
-                    case _ => false
-                  })
-                  val formatter = formatterManager.getFormatter(format = formatType,
-                    timeContext = timeContext,
-                    host = request.host,
-                    uri = request.uri,
-                    pretty = false,
-                    callback = request.queryString.get("callback").flatMap(_.headOption),
-                    fieldFilters = fieldFilter,
-                    offset = Some(offset.toLong),
-                    length = Some(500L),
-                    withData = withData,
-                    withoutMeta = !withMeta,
-                    filterOutBlanks = true,
-                    forceUniqueness = forceUniqueness) //cleanSystemBlanks set to true, so we won't output all the meta information we usaly output. it get's messy with streaming. we don't want each chunk to show the "document context"
+                val forceUniqueness: Boolean = withHistory && (formatType match {
+                  case RdfType(NquadsFlavor) => true
+                  case RdfType(NTriplesFlavor) => true
+                  case _ => false
+                })
+                val formatter = formatterManager.getFormatter(format = formatType,
+                  timeContext = timeContext,
+                  host = request.host,
+                  uri = request.uri,
+                  pretty = false,
+                  callback = request.queryString.get("callback").flatMap(_.headOption),
+                  fieldFilters = fieldFilter,
+                  offset = Some(offset.toLong),
+                  length = Some(500L),
+                  withData = withData,
+                  withoutMeta = !withMeta,
+                  filterOutBlanks = true,
+                  forceUniqueness = forceUniqueness) //cleanSystemBlanks set to true, so we won't output all the meta information we usaly output. it get's messy with streaming. we don't want each chunk to show the "document context"
 
-                  streams.superScrollSource(
-                    pathFilter = pathFilter,
-                    fieldFilter = fieldFilter,
-                    datesFilter = Some(DatesFilter(from, to)),
-                    paginationParams = PaginationParams(offset, 500),
-                    withHistory = withHistory,
-                    withDeleted = withDeleted,
-                    parallelism = parallelism).map { case (src, hits) =>
+                streams.superScrollSource(
+                  pathFilter = pathFilter,
+                  fieldFilter = fieldFilter,
+                  datesFilter = Some(DatesFilter(from, to)),
+                  paginationParams = PaginationParams(offset, 500),
+                  withHistory = withHistory,
+                  withDeleted = withDeleted,
+                  parallelism = parallelism).map { case (src, hits) =>
 
-                    val s = streams.scrollSourceToByteString(src, formatter, withData.isDefined, withHistory, length, fieldsMask)
-                    Ok.chunked(s).as(overrideMimetype(formatter.mimetype, request)._2).withHeaders("X-CM-WELL-N" -> hits.toString)
-                  }
+                  val s = streams.scrollSourceToByteString(src, formatter, withData.isDefined, withHistory, length, fieldsMask)
+                  Ok.chunked(s).as(overrideMimetype(formatter.mimetype, request)._2).withHeaders("X-CM-WELL-N" -> hits.toString)
                 }
               }
             }
@@ -808,10 +794,6 @@ callback=< [URL] >
     .getQueryString("qp")
     .fold(Success(None): Try[Option[RawFieldFilter]])(FieldFilterParser.parseQueryParams(_).map(Some.apply))
     .map { qpOpt =>
-
-      if (crudServiceFS.countSearchOpenContexts.map(_._2).sum > Settings.maxSearchContexts)
-        Future.successful(BadRequest(Json.obj("success" -> false, "message" -> "Too many open search contexts. wait and try later.")))
-      else {
         val normalizedPath = normalizePath(request.path)
         val from = DateParser.parseDate(request.getQueryString("from").getOrElse(""), FromDate).toOption
         val to = DateParser.parseDate(request.getQueryString("to").getOrElse(""), ToDate).toOption
@@ -824,7 +806,7 @@ callback=< [URL] >
         val length = request.getQueryString("length").flatMap(asLong)
         val pathFilter = Some(PathFilter(normalizedPath, withDescendants))
         val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
-        val fieldsMaskFut = extractFieldsMask(request,typesCache,cmwellRDFHelper,timeContext)
+        val fieldsMaskFut = extractFieldsMask(request, typesCache, cmwellRDFHelper, timeContext)
         val (withData, format) = {
           val wd = request.getQueryString("with-data")
           val frmt = request.getQueryString("format").getOrElse({
@@ -837,14 +819,14 @@ callback=< [URL] >
             None -> frmt
           }
         }
-        format match {
+      (format match {
           case f if !Set("text", "path", "tsv", "tab", "nt", "ntriples", "nq", "nquads")(f.toLowerCase) && !f.toLowerCase.startsWith("json") => Future.successful(BadRequest(Json.obj("success" -> false, "message" -> "not a streamable type (use any json, or one of: 'text','tsv','ntriples', or 'nquads')")))
           case FormatExtractor(formatType) => {
-            val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff,typesCache,cmwellRDFHelper,timeContext).map(Some.apply))
+            val fieldsFiltersFut = qpOpt.fold(Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff, typesCache, cmwellRDFHelper, timeContext).map(Some.apply))
             fieldsFiltersFut.transformWith {
               case Failure(err) => {
                 val msg = s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"
-                logger.error(msg,err)
+                logger.error(msg, err)
                 val res = FailedDependency(Json.obj("success" -> false, "message" -> msg))
                 request.attrs.get(Attrs.RequestReceivedTimestamp).fold(Future.successful(res)) { reqStartTime =>
                   val timePassedInMillis = System.currentTimeMillis() - reqStartTime
@@ -920,8 +902,7 @@ callback=< [URL] >
               }
             }
           }
-        }
-      }.recover(errorHandler)
+        }).recover(errorHandler)
     }.recover(asyncErrorHandler).get
 
   def generateSortedConsumeFieldFilters(qpOpt: Option[String],
