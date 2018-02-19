@@ -112,7 +112,6 @@ object Settings {
   lazy val clusterName = config.getString("cmwell.clusterName")
 
   lazy val authSystemVersion = config.getInt("auth.system.version")
-  lazy val maxSearchContexts = config.getLong("webservice.max.search.contexts")
   lazy val expansionLimit = config.getInt("webservice.xg.limit")
   lazy val chunkSize = config.getBytes("webservice.max.chunk.size")
   lazy val maxOffset = config.getInt("webservice.max-offset")
