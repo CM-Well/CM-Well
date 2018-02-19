@@ -131,6 +131,42 @@ package object collections {
   }
 
   /**
+   * `scan` and `map` on the first part combined.
+   * for a given collection, and a function from the collection elements to `Option[B]`,
+   * generates a tuple of 2 collections of types `B` and `A`
+   *
+   * @param xs the collection of elements
+   * @param f a function that convert an element to an `Option[B]`
+   * @tparam A original collection elements' type
+   * @tparam B left side mapped collection elements' type
+   * @tparam Coll collection's type
+   */
+  def spanWith[A, B,Coll[_]]
+  (xs: Coll[A])
+  (f: A => Option[B])
+  (implicit ev: Coll[A] <:< TraversableLike[A,Coll[A]],
+   cbf1: CanBuildFrom[Coll[A], B, Coll[B]],
+   cbf2: CanBuildFrom[Coll[A], A, Coll[A]]): (Coll[B],Coll[A]) = {
+
+    val b1 = cbf1(xs)
+    val b2 = cbf2(xs)
+
+    var stayOnLeft = true
+    xs.foreach { x =>
+      if(!stayOnLeft) b2 += x
+      else f(x) match {
+        case Some(b) => b1 += b
+        case None => {
+          b2 += x
+          stayOnLeft = false
+        }
+      }
+    }
+
+    b1.result() -> b2.result()
+  }
+
+  /**
    * like `distinct`, but uses a function to generate "distinctiveness"
    *
    * @param xs given collection

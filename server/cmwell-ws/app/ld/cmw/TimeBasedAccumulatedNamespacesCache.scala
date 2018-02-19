@@ -6,13 +6,14 @@ import akka.util.Timeout
 import cmwell.domain.{FieldValue, Infoton}
 import cmwell.fts._
 import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
-import cmwell.util.collections.{partitionWith, subtractedDistinctMultiMap, updatedDistinctMultiMap}
+import cmwell.util.collections.{spanWith, partitionWith, subtractedDistinctMultiMap, updatedDistinctMultiMap}
+import cmwell.util.exceptions.MultipleFailures
 import cmwell.util.string.Hash.crc32base64
 import com.typesafe.scalalogging.LazyLogging
 import ld.exceptions.{ConflictingNsEntriesException, ServerComponentNotAvailableException, TooManyNsRequestsException}
 import logic.CRUDServiceFS
 import org.elasticsearch.search.SearchHit
-
+import scala.unchecked
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
@@ -393,10 +394,15 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
         pathFilter,
         fieldFilters = Some(SingleFieldFilter(Must, Equals, fieldName, Some(fieldValue))),
         fields = fieldsForSearch) { (sr, _) =>
-        Try.traverse(sr.getHits.getHits.toSeq) { hit =>
+        val hits = sr.getHits.getHits.toSeq
+        Try.traverse(hits) { hit =>
 
-          if (hit.field("fields.nn.url").getValues().size() != 1 || hit.field("fields.nn.prefix").getValues().size() != 1)
-            Failure(new RuntimeException("More than one prefix or URL values!"))
+          if (hit.field("fields.nn.url").getValues().size() != 1 || hit.field("fields.nn.prefix").getValues().size() != 1) {
+            val path = Try(hit.field("system.path").getValue[String]).recover {
+              case t => s"path not available due to [${t.getClass.getSimpleName}] with message [${t.getMessage}]"
+            }.get
+            Failure(new RuntimeException(s"More than one prefix or URL values encountered when trying to resolve [$fieldName] value for [$fieldValue] in one of the [${hits.size}] results found! (bad path is [$path])"))
+          }
           else {
             val pathOpt = Option(hit.field("system.path").getValue[String])
             val urlOpt = Option(hit.field("fields.nn.url").getValue[String])
@@ -416,6 +422,7 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
 
     private[this] val fieldsForIndexTimeSearch = "system.indexTime" :: fieldsForSearch
     private[this] val paginationParamsForIndexTimeSearch = PaginationParams(0, 512)
+    private[this] val bo4err = scala.collection.breakOut[Seq[(Long,Try[(NsID, Long, NsURL, NsPrefix)])],Throwable,List[Throwable]]
     def nsSearchByIndexTime(indexTime: Long): Future[(Boolean,Long,Map[NsID,(NsURL,NsPrefix)])] = {
 
       import cmwell.util.collections.TryOps
@@ -428,14 +435,20 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
         fieldSortParams = SortParam.indexTimeAscending) { (sr, _) =>
 
         val hits = sr.getHits.getHits
-        val shouldContinue = sr.getHits.totalHits() > hits.length
 
-        Try.traverse(hits.toSeq) { hit =>
-          if (hit.field("fields.nn.url").getValues().size() != 1 || hit.field("fields.nn.prefix").getValues().size() != 1)
-            Failure(new RuntimeException("More than one prefix or URL values!"))
+        val entries: Seq[(Long, Try[(NsID, Long, NsURL, NsPrefix)])] = hits.map { hit =>
+
+          val indexTimeOpt = Option(hit.field("system.indexTime").getValue[Long])
+          val timeToSortBy = indexTimeOpt.getOrElse(Long.MaxValue)
+
+          val tryValue = if (hit.field("fields.nn.url").getValues().size() != 1 || hit.field("fields.nn.prefix").getValues().size() != 1) {
+            val path = Try(hit.field("system.path").getValue[String]).recover {
+              case t => s"path not available due to [${t.getClass.getSimpleName}] with message [${t.getMessage}]"
+            }.get
+            Failure(new RuntimeException(s"More than one prefix or URL values encountered when trying to consume latest changes in one of the [${hits.size}] results found! (bad path is [$path])"))
+          }
           else {
             val pathOpt = Option(hit.field("system.path").getValue[String])
-            val indexTimeOpt = Option(hit.field("system.indexTime").getValue[Long])
             val urlOpt = Option(hit.field("fields.nn.url").getValue[String])
             val prefixOpt = Option(hit.field("fields.nn.prefix").getValue[String])
             (for {
@@ -448,14 +461,41 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
               (nsID, infotonIndexTime, url, prefix)
             }).fold[Try[(NsID, Long, NsURL, NsPrefix)]](Failure(new IllegalStateException(s"invalid /meta/ns infoton [$pathOpt,$urlOpt,$prefixOpt]")))(Success.apply)
           }
-        }.map(_.foldLeft(indexTime -> Map.newBuilder[NsID,(NsURL,NsPrefix)]){
-          case ((maxTime,b),(id,ts,url,pref)) => {
-            math.max(maxTime,ts) -> b.+=((id,url -> pref))
+
+          timeToSortBy -> tryValue
+        }
+
+        val (ok, ko) = spanWith(entries.sortBy(_._1)){
+          case (_, tryQuadruple) => tryQuadruple.toOption
+        }
+
+        val shouldContinue = sr.getHits.totalHits() > hits.length && ko.isEmpty
+        val err: Throwable = {
+          if (ko.nonEmpty) {
+            val errors = ko.collect {
+              case (_, Failure(e)) => e
+            }(bo4err)
+            val error = {
+              if (errors.length == 1) errors.head
+              else new MultipleFailures(errors)
+            }
+            val msg = s"nsSearchByIndexTime([$indexTime]) failed with [${ko.length}] infotons omitted from results, and passing [${ok.length}] infotons"
+            logger.error(msg, error)
+            error
+          } else null
+        }
+
+        if (ok.isEmpty && ko.nonEmpty) Failure(err)
+        else if (ok.isEmpty) Success((false, indexTime, Map.empty[NsID, (NsURL, NsPrefix)]))
+        else {
+          val (maxOkIndexTime, mapBuilder) = ok.foldLeft(indexTime -> Map.newBuilder[NsID, (NsURL, NsPrefix)]) {
+            case ((maxTime, b), (id, ts, url, pref)) =>
+              math.max(maxTime, ts) -> b.+=((id, url -> pref))
           }
-        } -> shouldContinue)
-      }.transform(_.flatMap (_.map {
-        case ((iTime,builder),bool) => (bool,iTime,builder.result())
-      }))
+
+          Success((shouldContinue, maxOkIndexTime, mapBuilder.result()))
+        }
+      }.transform(_.flatMap(identity))
     }
 
     private[this] def handleUpdateAfterSuccessfulURLFetch(url: NsURL, miup: Map[NsID,(NsURL,NsPrefix)]): Unit = {
