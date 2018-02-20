@@ -124,6 +124,7 @@ class Application @Inject()(bulkScrollHandler: BulkScrollHandler,
 
   lazy val typesCache: passiveFieldTypesCacheImpl = crudServiceFS.passiveFieldTypesCache
   val fullDateFormatter = ISODateTimeFormat.dateTime().withZone(DateTimeZone.UTC)
+  val successResponse = Ok(Json.obj("success" -> true))
 
   def isReactive[A](req: Request[A]): Boolean = req.getQueryString("reactive").fold(false)(!_.equalsIgnoreCase("false"))
 
@@ -143,10 +144,25 @@ class Application @Inject()(bulkScrollHandler: BulkScrollHandler,
 
   def handleTypesCacheGet = Action(r => Ok(typesCache.getState).as(ContentTypes.JSON))
 
+  val nsCacheTimeout = akka.util.Timeout(1.minute)
   def handleNsCacheGet = Action.async(r => {
-    implicit val timeout = akka.util.Timeout(1.minute)
-    val quick = r.getQueryString("quick").fold(false)(asBoolean(_).getOrElse(true))
-    cmwellRDFHelper.newestGreatestMetaNsCacheImpl.getStatus(quick).map(resp => Ok(resp).as(ContentTypes.JSON))
+    r.getQueryString("invalidate").fold {
+      if(r.getQueryString("invalidate-all").fold(false)(asBoolean(_).getOrElse(true)))
+        cmwellRDFHelper.invalidateAll()(nsCacheTimeout)
+          .map(_ => successResponse)
+          .recover(errorHandler)
+      else {
+        val quick = r.getQueryString("quick").fold(false)(asBoolean(_).getOrElse(true))
+        cmwellRDFHelper
+          .newestGreatestMetaNsCacheImpl
+          .getStatus(quick)(nsCacheTimeout)
+          .map(resp => Ok(resp).as(ContentTypes.JSON))
+      }
+    }{ nsID =>
+      cmwellRDFHelper.invalidate(nsID)(nsCacheTimeout)
+        .map(_ => successResponse)
+        .recover(errorHandler)
+    }
   })
 
   def handleGET(path:String) = Action.async { implicit originalRequest =>
@@ -1922,7 +1938,7 @@ callback=< [URL] >
     mime.startsWith("text/x-markdown") || mime.startsWith("text/vnd.daringfireball.markdown")
 
   def boolFutureToRespones(fb: Future[Boolean]) = fb.map {
-    case true => Ok(Json.obj("success" -> true))
+    case true => successResponse
     case false => BadRequest(Json.obj("success" -> false))
   }
 

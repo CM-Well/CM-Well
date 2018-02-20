@@ -1,18 +1,20 @@
 package ld.cmw
 
+import akka.Done
 import akka.actor.{Actor, ActorRef, ActorSystem, Props, Status}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 import cmwell.domain.{FieldValue, Infoton}
 import cmwell.fts._
 import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
-import cmwell.util.collections.{spanWith, partitionWith, subtractedDistinctMultiMap, updatedDistinctMultiMap}
+import cmwell.util.collections.{partitionWith, spanWith, subtractedDistinctMultiMap, updatedDistinctMultiMap}
 import cmwell.util.exceptions.MultipleFailures
 import cmwell.util.string.Hash.crc32base64
 import com.typesafe.scalalogging.LazyLogging
 import ld.exceptions.{ConflictingNsEntriesException, ServerComponentNotAvailableException, TooManyNsRequestsException}
 import logic.CRUDServiceFS
 import org.elasticsearch.search.SearchHit
+
 import scala.unchecked
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
@@ -34,6 +36,7 @@ trait TimeBasedAccumulatedNsCacheTrait {
   def getByPrefix(prefix: NsPrefix, timeContext: Option[Long])(implicit timeout: Timeout): Future[NsID]
   def get(key: NsID, timeContext: Option[Long])(implicit timeout: Timeout): Future[(NsURL,NsPrefix)]
   def invalidate(key: NsID)(implicit timeout: Timeout): Future[Unit]
+  def invalidateAll()(implicit timeout: Timeout): Future[Unit]
   def getStatus(quick: Boolean)(implicit timeout: Timeout): Future[String]
   def init(time: Long): Unit
 }
@@ -109,7 +112,12 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
   }
 
   @inline override def invalidate(key: NsID)(implicit timeout: Timeout): Future[Unit] =
-    mainCache.get(key).fold(Future.successful(()))(_ => (actor ? Invalidate(key)).mapTo[Unit])
+    mainCache.get(key).fold(Future.successful(()))(_ => (actor ? Invalidate(key)).mapTo[Done].map(_ => ()))
+
+  @inline override def invalidateAll()(implicit timeout: Timeout): Future[Unit] = {
+    if(mainCache.isEmpty && urlCache.isEmpty && prefixCache.isEmpty) Future.successful(())
+    else (actor ? InvalidateAll).mapTo[Done].map(_ => ())
+  }
 
   @inline override def getStatus(quick: Boolean)(implicit timeout: Timeout): Future[String] = if(quick) {
     val now = System.currentTimeMillis()
@@ -172,6 +180,7 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
       case UpdateAfterFailedPrefixFetch(prefix, count,err) => handleUpdateAfterFailedPrefixFetch(prefix,count,err)
       case UpdateAfterSuccessfulPrefixFetch(prefix,miup) => handleUpdateAfterSuccessfulPrefixFetch(prefix,miup)
       case Invalidate(id) => handleInvalidate(id)
+      case InvalidateAll => handleInvalidateAll()
       case UpdateRequest(time, shouldContinue) => handleUpdateRequest(time, shouldContinue)
       case GetStatus => sender() ! handleShowStatus
       case UpdateAfterSuccessfulConsume(newIdxTime, data, shoudCont) => handleUpdateAfterSuccessfulConsume(newIdxTime, data, shoudCont)
@@ -549,12 +558,20 @@ class TimeBasedAccumulatedNsCache private(private[this] var mainCache: Map[NsID,
       }.pipeTo(self)
     }
 
+    private[this] def handleInvalidateAll(): Unit = {
+      mainCache = Map.empty
+      urlCache = Map.empty
+      prefixCache = Map.empty
+      sender() ! Done
+    }
+
     private[this] def handleInvalidate(key: NsID): Unit = {
       mainCache.get(key).fold(logger.warn(s"tried to invalidate NsID [$key], but it's not in cache!")) { case (url, prefix) =>
         mainCache -= key
         urlCache -= url
         prefixCache -= prefix
       }
+      sender() ! Done
     }
 
     private[this] def handleShowStatus: String = {
@@ -747,6 +764,7 @@ object TimeBasedAccumulatedNsCache extends LazyLogging {
     case class GetByURL(url: NsURL)
     case class GetByPrefix(prefix: NsPrefix)
     case class Invalidate(id: NsID)
+    case object InvalidateAll
     case class UpdateRequest(time: Long, shouldContinue: Boolean = false)
     case object GetStatus
     case class UpdateAfterSuccessfulConsume(newIndexTime: Long, data: Map[NsID,(NsURL,NsPrefix)], shouldContinue: Boolean)
