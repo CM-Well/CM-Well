@@ -28,6 +28,7 @@ import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import com.typesafe.scalalogging.LazyLogging
 import javax.inject._
 
+import akka.util.Timeout
 import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
 import ld.cmw.TimeBasedAccumulatedNsCache
 import ld.exceptions.{ConflictingNsEntriesException, ServerComponentNotAvailableException}
@@ -67,7 +68,6 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
   implicit val timeout = akka.util.Timeout(10.seconds) // TODO IS THIS OK?
   implicit val ec = injectedExecutionContext // TODO IS THIS OK?
 
-  // TODO not seed=Map.empty, but a search/consume-like. and then, timestamp should also be currentMillis rather than 0L.
   val newestGreatestMetaNsCacheImpl = TimeBasedAccumulatedNsCache(Map.empty, 0L, 2.minutes, crudServiceFS)(injectedExecutionContext, actorSystem)
 
   private def validateInfoton(infoton: Infoton): Try[(String,String)] = {
@@ -103,6 +103,9 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS, injectedExecut
     case Failure(_: NoSuchElementException) => None
     case Failure(e) => throw e
   }
+
+  @inline def invalidate(nsID: String)(implicit timeout: Timeout): Future[Unit] = newestGreatestMetaNsCacheImpl.invalidate(nsID)
+  @inline def invalidateAll()(implicit timeout: Timeout): Future[Unit] = newestGreatestMetaNsCacheImpl.invalidateAll()
 
   @deprecated("API may falsely return None on first calls for some value","Quetzal")
   def hashToUrl(nsID: String, timeContext: Option[Long]): Option[String] = {
