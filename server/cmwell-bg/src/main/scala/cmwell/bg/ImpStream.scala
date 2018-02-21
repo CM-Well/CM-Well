@@ -20,14 +20,14 @@ import java.util.concurrent.{ConcurrentHashMap, TimeoutException}
 
 import akka.actor.{ActorRef, ActorSystem}
 import akka.kafka.ProducerMessage.Message
-import akka.kafka.scaladsl.{Consumer, Producer}
-import akka.kafka.{ConsumerSettings, ProducerSettings, Subscriptions}
+import akka.kafka.scaladsl.Producer
+import akka.kafka.ProducerSettings
 import akka.stream.ActorAttributes.supervisionStrategy
 import akka.stream.contrib.PartitionWith
-import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, Merge, MergePreferred, Partition, RunnableGraph, Sink}
-import akka.stream.{ActorMaterializer, ClosedShape, KillSwitches, Supervision}
-import cmwell.common.exception.getStackTrace
-import cmwell.common.{Command, _}
+import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, Merge, Partition, RunnableGraph, Sink}
+import akka.stream.{ActorMaterializer, ClosedShape, Supervision}
+import cmwell.bg.imp.CommandsSource
+import cmwell.common._
 import cmwell.common.formats.JsonSerializerForES
 import cmwell.domain.{Infoton, ObjectInfoton}
 import cmwell.fts._
@@ -39,19 +39,17 @@ import cmwell.zstore.ZStore
 import com.datastax.driver.core.ConsistencyLevel
 import com.google.common.cache.CacheBuilder
 import com.typesafe.config.Config
-import com.typesafe.scalalogging.{LazyLogging, Logger}
+import com.typesafe.scalalogging.Logger
 import nl.grons.metrics4.scala._
 import com.codahale.metrics.{Counter => DropwizardCounter, Histogram => DropwizardHistogram, Meter => DropwizardMeter, Timer => DropwizardTimer}
-import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.serialization.{ByteArrayDeserializer, ByteArraySerializer}
+import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.elasticsearch.action.update.UpdateRequest
 import org.elasticsearch.client.Requests
 import org.joda.time.DateTime
 import org.slf4j.LoggerFactory
 
-import collection.JavaConverters._
+import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success, Try}
@@ -74,7 +72,6 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
 
   val merger = Merger()
 
-  val byteArrayDeserializer = new ByteArrayDeserializer()
   val bootStrapServers = config.getString("cmwell.bg.kafka.bootstrap.servers")
   val persistCommandsTopic = config.getString("cmwell.bg.persist.commands.topic")
   val persistCommandsTopicPriority = persistCommandsTopic + ".priority"
@@ -138,7 +135,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
   val startingOffset = offsetsService.read(s"${streamId}_offset").getOrElse(0L)
   val startingOffsetPriority = offsetsService.read(s"${streamId}.p_offset").getOrElse(0L)
 
-    logger info s"ImpStream($streamId), startingOffset: $startingOffset, startingOffsetPriority: $startingOffsetPriority"
+  logger.info(s"ImpStream($streamId), startingOffset: $startingOffset, startingOffsetPriority: $startingOffsetPriority")
 
   @volatile var (startingIndexName, startingIndexCount) = ftsService.latestIndexNameAndCount(s"cm_well_p${partition}_*") match {
     case Some((name, count)) => (name -> count)
@@ -174,34 +171,12 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
 
   val numOfShardPerIndex = ftsService.numOfShardsForIndex(currentIndexName)
 
-  val subscription = Subscriptions.assignmentWithOffset(
-    new TopicPartition(persistCommandsTopic, partition) -> startingOffset
-  )
-
-  val persistCommandsConsumerSettings =
-    ConsumerSettings(actorSystem, byteArrayDeserializer, byteArrayDeserializer)
-      .withBootstrapServers(bootStrapServers)
-      .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
-
-  val prioritySubscription = Subscriptions.assignmentWithOffset(
-    new TopicPartition(persistCommandsTopicPriority, partition) -> startingOffsetPriority
-  )
-
-  val sharedKillSwitch = KillSwitches.shared("persist-sources-kill-switch")
-
-  val persistCommandsSource = Consumer.plainSource[Array[Byte], Array[Byte]](persistCommandsConsumerSettings, subscription).map { msg =>
-      logger debug s"consuming next payload from persist commands topic @ ${msg.offset()}"
-    val command = CommandSerializer.decode(msg.value())
-      logger debug s"consumed command: $command"
-    BGMessage[Command](CompleteOffset(msg.topic(), msg.offset()), command)
-  }.via(sharedKillSwitch.flow)
-
-  val priorityPersistCommandsSource = Consumer.plainSource[Array[Byte], Array[Byte]](persistCommandsConsumerSettings, prioritySubscription).map { msg =>
-    logger.info(s"consuming next payload from priority persist commands topic @ ${msg.offset()}")
-    val command = CommandSerializer.decode(msg.value())
-    logger.info(s"consumed priority command: $command")
-    BGMessage[Command](CompleteOffset(msg.topic(), msg.offset()), command)
-  }.via(sharedKillSwitch.flow)
+  val (cmdsSrcFromKafka,sharedKillSwitch) = CommandsSource.fromKafka(
+    persistCommandsTopic,
+    bootStrapServers,
+    partition,
+    startingOffset,
+    startingOffsetPriority)
 
   val heartBitLog = Flow[BGMessage[Command]].keepAlive(60.seconds, () => BGMessage(HeartbitCommand.asInstanceOf[Command])).filterNot {
     case BGMessage(_, HeartbitCommand) =>
@@ -352,13 +327,10 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
     case BGMessage(offsets, indexCommands) =>
       logger debug s"checking missing parents for index commands: $indexCommands"
 
-      val parentsWithChildDate = cmwell.util.collections.distinctBy {
-        indexCommands.collect { case (indexCommand, Some(lastModified)) =>
-          (Infoton.getParent(indexCommand.path) -> lastModified)
-        }
-      } {
-        _._1
-      }
+      val parentsWithChildDate = cmwell.util.collections.distinctBy(indexCommands.collect {
+        case (indexCommand, Some(lastModified)) =>
+          Infoton.getParent(indexCommand.path) -> lastModified
+      })(_._1)
 
       Future.traverse(parentsWithChildDate)(checkParent).map(_.collect { case (true, (path, childLastModified)) =>
         val infoton = ObjectInfoton(path = path, dc = defaultDC, lastModified = childLastModified, indexName = currentIndexName)
@@ -544,17 +516,11 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
   }(Keep.right)
 
   val impGraph = RunnableGraph.fromGraph(
-    GraphDSL.create(
-      priorityPersistCommandsSource,
-      persistCommandsSource,
+    GraphDSL.create(cmdsSrcFromKafka,
       commitOffsetsFlow,
-      publishVirtualParentsSink) ((_, _, a, b) => (a, b) ){ implicit builder =>
-    (prioritySource, source, commitOffsets, publishVirtualParents) =>
+      publishVirtualParentsSink) ((_, a, b) => (a, b) ){ implicit builder =>
+    (commandsSource, commitOffsets, publishVirtualParents) =>
       import GraphDSL.Implicits._
-
-      val mergePreferedSources = builder.add(
-        MergePreferred[BGMessage[Command]](1, true)
-      )
 
 
       // partition incoming persist commands. override commands goes to outport 0, all the rest goes to 1
@@ -933,11 +899,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
           msg.copy(message = msg.message.map(_._1))
         })
 
-      prioritySource ~> mergePreferedSources.preferred
-
-      source ~> mergePreferedSources.in(0)
-
-      mergePreferedSources.out ~> heartBitLog ~> commandsPartitioner.in
+      commandsSource ~> heartBitLog ~> commandsPartitioner.in
 
       commandsPartitioner.out(0) ~> commandRefsFetcher ~> singleCommandsMerge.in(0)
 
