@@ -367,6 +367,7 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
     val (killSwitch, jobDone) = Ingester.ingest(baseUrl = settings.hostWriteOutput,
         format = settings.materializedViewFormat,
         source = agent,
+        writeToken = Option(settings.writeToken),
         force = job.config.force.getOrElse(false),
         label = label)
       .via(IngesterStats(isStderr = false, reporter = Some(tokenReporter), label=label))
