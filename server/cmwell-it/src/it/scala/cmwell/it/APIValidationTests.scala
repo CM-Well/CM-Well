@@ -327,7 +327,24 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
       })
     }
 
+    //FIXME: Implement limitation on max concurrent iterators
+    ignore("iterator creation limitation") {
+      import scala.concurrent.duration._
 
+      val defaultMax = 613000000 // TODO Create config such as "webservice.max.search.contexts"
+      val ttl = 60
+      val queryParams = List("op" -> "create-iterator", "session-ttl" -> ttl.toString)
+
+      val statusCodesFut = Future.traverse(1 to defaultMax)(_ => Http.get(cmw, queryParams).map(_.status))
+
+      (ttl - 3).seconds.fromNow.block
+      Http.get(cmw, queryParams).flatMap { anotherResp =>
+        statusCodesFut.map { statusCodes =>
+          all(statusCodes) should be(200)
+          anotherResp.status should be(503)
+        }
+      }
+    }
   }
 
   // Helpers
