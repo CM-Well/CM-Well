@@ -318,17 +318,6 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
         //expecting end of command object
         assume(jsonParser.nextToken()== JsonToken.END_OBJECT, s"expected end of command object\n${jsonParser.getCurrentLocation.toString}")
 
-      case "BulkCommand" =>
-        assume(jsonParser.nextToken()==JsonToken.FIELD_NAME && "commands".equals(jsonParser.getCurrentName()), s"expected 'commands' field name\n${jsonParser.getCurrentLocation.toString}")
-        val commands = new collection.mutable.ListBuffer[Command]()
-        assume(jsonParser.nextToken()==JsonToken.START_ARRAY, s"expected start array token for 'commands' object\n${jsonParser.getCurrentLocation.toString}")
-        while(jsonParser.nextToken() != JsonToken.END_ARRAY){
-          commands += JsonSerializer.decodeCommandWithParser(jsonParser,false)
-        }
-        command = BulkCommand(commands.toList)
-        //expecting end of command object
-        assume(jsonParser.nextToken()== JsonToken.END_OBJECT, s"expected end of command object\n${jsonParser.getCurrentLocation.toString}")
-
       case "MergedInfotonCommand" =>
         // expecting either previousInfoton field or currentInfoton field
         assume(jsonParser.nextToken()==JsonToken.FIELD_NAME, s"expected field token for either 'previousInfoton' or 'currentInfoton'\n${jsonParser.getCurrentLocation.toString}")

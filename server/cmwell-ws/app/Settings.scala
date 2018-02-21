@@ -68,9 +68,6 @@ object Settings {
 
   // size is in MB
   lazy val maxUploadSize = config.getInt("webservice.max.upload.size")
-  // size is number of infotons
-  lazy val maxBulkSize = config.getInt("webservice.max.bulkCommand.size")
-  lazy val maxBulkWeight = config.getBytes("webservice.max.bulkCommand.weight")
   //maximum weight of a single field value
   lazy val maxValueWeight: Long = Try(config.getBytes("webservice.max.value.weight")) match {
     case Success(n) => n

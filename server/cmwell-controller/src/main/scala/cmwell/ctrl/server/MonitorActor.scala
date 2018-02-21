@@ -157,7 +157,7 @@ class ZookeeperMonitorActor(hostName : String, start : Int, interval : Int) exte
   override def createUpdateState(cs: ComponentState): Set[UpdateStat] = Set(UpdateZookeeperStat(hostName, cs))
 }
 
-class KafkaMonitorActor(hostName : String, start : Int, interval : Int) extends MonitorActor(BgChecker, hostName, start, interval) {
+class KafkaMonitorActor(hostName : String, start : Int, interval : Int) extends MonitorActor(KafkaChecker, hostName, start, interval) {
   override def createUpdateState(cs: ComponentState): Set[UpdateStat] = Set(UpdateKafkaStat(hostName, cs))
 }
 

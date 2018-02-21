@@ -21,7 +21,7 @@ import java.io._
 import cmwell.domain._
 import cmwell.syntaxutils._
 import cmwell.common.file.MimeTypeIdentifier
-import cmwell.common.{BulkCommand, MergedInfotonCommand, WriteCommand, _}
+import cmwell.common.{MergedInfotonCommand, WriteCommand, _}
 import com.fasterxml.jackson.core._
 import com.typesafe.scalalogging.LazyLogging
 
@@ -47,7 +47,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
   def decodeCommand(in:Array[Byte]):Command = {
     val bais = new ByteArrayInputStream(in)
     val jsonParser = jsonFactory.createParser(bais).enable(JsonParser.Feature.AUTO_CLOSE_SOURCE)
-    val command = decodeCommandWithParser(jsonParser)
+    val command = decodeCommandWithParser(in, jsonParser)
     jsonParser.close()
     command
   }
@@ -84,7 +84,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
     rv
   }
 
-  def decodeCommandWithParser(jsonParser: JsonParser, assumeStartObject:Boolean = true):Command = {
+  def decodeCommandWithParser(originalJson: Array[Byte], jsonParser: JsonParser, assumeStartObject:Boolean = true):Command = {
       // If requested, expect start of command object
     if(assumeStartObject) {
       assume(jsonParser.nextToken()== JsonToken.START_OBJECT, s"expected start of command object\n${jsonParser.getCurrentLocation.toString}")
@@ -112,11 +112,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
         }
 
         ver match {
-          case "1" => logger.error("This version (1) is not supported anymore!!!"); !!!
-          case "2" => logger.error("This version (2) is not supported anymore!!!"); !!!
-          case "3" => logger.error("This version (3) is not supported anymore!!!"); !!!
-          case "4" => logger.error("This version (4) is not supported anymore!!!"); !!!
-          case "5" => logger.error("This version (5) is not supported anymore!!!"); !!!
+          case v@("1" | "2" | "3" | "4" | "5") => logger.error(s"This version ($v) is not supported anymore!!! The original json was: ${new String(originalJson, "UTF-8")}"); !!!
           case "6" => JsonSerializer6.decodeCommandWithParser(jsonParser, tidOpt,prevUUIDOpt)
           case x => logger.error(s"got: $x"); ???
         }
@@ -160,10 +156,6 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
         jsonGenerator.writeNumberField("weight", weight)
         jsonGenerator.writeStringField("path", path)
         jsonGenerator.writeStringField("indexName", indexName)
-      case BulkCommand(commands) =>
-        jsonGenerator.writeArrayFieldStart("commands")
-        commands.foreach{ encodeCommandWithGenerator(_, jsonGenerator)}
-        jsonGenerator.writeEndArray()
       case MergedInfotonCommand(previous, current, _) =>
         previous match {
           case Some(data) =>

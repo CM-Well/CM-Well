@@ -117,8 +117,6 @@ case class IndexExistingInfotonCommand(uuid: String,
                                        indexName: String,
                                        trackingIDs: Seq[StatusTracking] = Nil) extends IndexCommand
 
-case class BulkCommand(commands: List[Command]) extends Command
-
 case class MergedInfotonCommand(previousInfoton: Option[(String,Long)],
                                 currentInfoton: (String,Long),
                                 skipIndexTime:Boolean = false) extends IndexerCommand

@@ -50,8 +50,6 @@ class CommandSpec extends FlatSpec with Matchers {
     val cmdMerged2 = MergedInfotonCommand( Some( t ) , ("/command-test/mergedPath2",0) )
     val bulkCmd = List(cmdWrite,cmdWrite)
 
-    val cmdBulkCommand = BulkCommand(bulkCmd)
-
     val updateDate = new DateTime
 
     val deleteF = Map("location" -> Set[FieldValue](FString("usa")) , "company" -> Set[FieldValue](FString("IBM") , FString("FACEBOOK")))
@@ -60,7 +58,7 @@ class CommandSpec extends FlatSpec with Matchers {
 
     val cmdUpdate = UpdatePathCommand("/command-test/update" , deleteF , updateF , updateDate)
 
-    val cmds = Vector(cmdWrite , cmdDeletePathAttributeValues , cmdBulkCommand , cmdDeletePath   /*, cmdMerged1*/ , cmdMerged2 , cmdUpdate)
+    val cmds = Vector(cmdWrite , cmdDeletePathAttributeValues , cmdDeletePath   /*, cmdMerged1*/ , cmdMerged2 , cmdUpdate)
 
     val c = Vector( WriteCommand(linkInfo01) , WriteCommand(linkInfo02) , WriteCommand(linkInfo03) )
 
@@ -86,7 +84,6 @@ class CommandSpec extends FlatSpec with Matchers {
       cmpCommand match {
         case WriteCommand(infoton, trackingID, prevUUID) =>  infoton.path should equal (objInfo.path);infoton.fields.get("name").size should equal (objInfo.fields.get("name").size); infoton.lastModified.isEqual(objInfo.lastModified) should equal (true)
         case DeleteAttributesCommand(path, fields, lastModified, trackingID, prevUUID) =>  path should equal (cmdDeletePathAttributeValues.path)
-        case BulkCommand(commands) =>  commands.size should equal (bulkCmd.size)
         case DeletePathCommand(path, lastModified, trackingID, prevUUID) => path should equal (cmdDeletePath.path)
 
         case MergedInfotonCommand(Some(prev),current,_) =>

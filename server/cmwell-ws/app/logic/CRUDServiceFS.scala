@@ -31,7 +31,7 @@ import cmwell.stortill.Strotill.{CasInfo, EsExtendedInfo, ZStoreInfo}
 import cmwell.stortill.{Operations, ProxyOperations}
 import cmwell.util.{Box, BoxedFailure, EmptyBox, FullBox}
 import cmwell.util.concurrent.SingleElementLazyAsyncCache
-import cmwell.common.{BulkCommand, DeleteAttributesCommand, DeletePathCommand, WriteCommand, _}
+import cmwell.common.{DeleteAttributesCommand, DeletePathCommand, WriteCommand, _}
 import cmwell.ws.Settings
 import cmwell.zcache.{L1Cache, ZCache}
 import cmwell.zstore.ZStore
