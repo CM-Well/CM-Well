@@ -30,6 +30,7 @@ import cmwell.tools.data.utils.text.Tokens
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
+case class SensorContext(name: String, token: String, horizon: Boolean)
 
 case class Sensor(name: String,
                   qp: String = "",
@@ -72,6 +73,8 @@ object SparqlTriggeredProcessor {
   }
 }
 
+
+
 class SparqlTriggeredProcessor(config: Config,
                                baseUrl: String,
                                isBulk: Boolean = false,
@@ -80,7 +83,6 @@ class SparqlTriggeredProcessor(config: Config,
                                distinctWindowSize: FiniteDuration) extends DataToolsLogging {
 
   def listen()(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
-    case class SensorContext(name: String, token: String)
 
     def addStatsToSource(id: String, source: Source[(ByteString, Option[SensorContext]), _]) = {
       source.via(DownloaderStats(format = "ntriples", label = Some(id), reporter = tokenReporter))
@@ -169,12 +171,13 @@ class SparqlTriggeredProcessor(config: Config,
                 token   = token,
                 updateFreq  = Some(config.updateFreq),
                 label = Some(sensor.name))
-                .map {
-                  case (token, tsv) =>
+
+                  .map{
+                  case ((token, tsv),hz) =>
                     val path = tsv.path
                     logger.debug("sensor [{}] found new path: {}", sensor.name, path.utf8String)
+                    path -> Some(SensorContext(name=sensor.name, token=token, horizon=hz))
 
-                    path -> Some(SensorContext(sensor.name, token))
                   case x =>
                     logger.error(s"unexpected message: $x")
                     ???
@@ -225,7 +228,7 @@ class SparqlTriggeredProcessor(config: Config,
         // stores last received tokens from sensors
         sensorData => {
           sensorData.foreach {
-            case (data, Some(SensorContext(name, newToken))) if newToken != savedTokens.getOrElse(name, "") =>
+            case (data, Some(SensorContext(name, newToken, _))) if newToken != savedTokens.getOrElse(name, "") =>
               // received new token from sensor, write it to state file
               logger.debug("sensor '{}' received new token: {} {}", name, Tokens.decompress(newToken), newToken)
               tokenReporter.foreach(_ ! ReportNewToken(name, newToken) )

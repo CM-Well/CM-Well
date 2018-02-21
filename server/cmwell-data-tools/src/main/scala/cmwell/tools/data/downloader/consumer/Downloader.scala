@@ -38,7 +38,7 @@ import play.api.libs.json.{JsArray, Json}
 import scala.collection.immutable
 import scala.concurrent._
 import scala.concurrent.duration._
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 /**
   * Consumer-based CM-Well downloader
@@ -279,7 +279,8 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
                       updateFreq: Option[FiniteDuration] = None,
                       indexTime: Long = 0L,
                       label: Option[String] = None)
-                     (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext): Source[(Token, TsvData), NotUsed] = {
+          (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext): Source[((Token, TsvData),Boolean), NotUsed] = {
+
     val downloader = new Downloader(
       baseUrl = baseUrl,
       path = path,
@@ -351,17 +352,17 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
 
     format match {
       case "tsv" =>
-        tsvSource.map { case (token, tsv) => token -> tsv.toByteString }
+        tsvSource.map { case ((token, tsv),_) => token -> tsv.toByteString }
       case "text" =>
-        tsvSource.map { case (token, tsv) => token -> tsv.path }
+        tsvSource.map { case ((token, tsv),_) => token -> tsv.path }
       case _ =>
         if (usePaths) {
           tsvSource
-            .map {case (token, tsv) => token -> tsv.path }
+            .map {case ((token, tsv),_) => token -> tsv.path }
             .via(downloader.downloadDataFromPaths).async
         } else {
           tsvSource
-            .map {case (token, tsv) => token -> tsv.uuid }
+            .map {case ((token, tsv),_) => token -> tsv.uuid }
             .via(downloader.downloadDataFromUuids).async
         }
 
@@ -747,7 +748,9 @@ class Downloader(baseUrl: String,
     *                   ([[Duration.Undefined]] completes this source upon fully consumption)
     * @return [[akka.stream.scaladsl.Source Source]] of token (position) and its corresponding TSVs
     */
-  def createTsvSource(token: Option[Token] = None, updateFreq: Option[FiniteDuration] = None)(implicit ec: ExecutionContext) = {
+
+  def createTsvSource(token: Option[Token] = None, updateFreq: Option[FiniteDuration] = None)(implicit ec: ExecutionContext) : Source[((Token, TsvData),Boolean), NotUsed] = {
+
     import akka.pattern._
     val prefetchBufferSize = 3000000
 
@@ -781,53 +784,64 @@ class Downloader(baseUrl: String,
       var noDataLeft = false
 
       // init of filling buffer with consumed data from token
-//      Future { blocking { fillBuffer(initToken) } }
+      //      Future { blocking { fillBuffer(initToken) } }
 
-//      var consumerStatsActor = system.actorOf(Props(new ConsumerStatsActor(baseUrl, initToken, params)))
+      //      var consumerStatsActor = system.actorOf(Props(new ConsumerStatsActor(baseUrl, initToken, params)))
 
 
       /**
         * Gets next data element from buffer
+        *
         * @return Option of position token -> Tsv data element
         */
-      def next(): Future[Option[(Token, TsvData)]] = {
+      def next(): Future[Option[(Token, TsvData, Boolean)]] = {
         implicit val timeout = akka.util.Timeout(5.seconds)
 
-        val elementFuture = (bufferFillerActor ? BufferFillerActor.GetData).mapTo[Option[(Token, TsvData)]]
+        val elementFuture = (bufferFillerActor ? BufferFillerActor.GetData).mapTo[Option[(Token, TsvData, Boolean)]]
 
-        elementFuture.flatMap {
-          case Some((null, null)) =>
-            val delay = 10.seconds
-            logger.info(s"Got empty result. Waiting for $delay before passing on the empty element.")
-            akka.pattern.after(delay, system.scheduler)(Future.successful(Some((null, null))))
-          case Some((token, tsv)) =>
-            Future.successful(Some(token -> tsv))
-          case None =>
-            noDataLeft = true // received the signal of last element in buffer
-            Future.successful(None)
-          case null if noDataLeft =>
-            logger.debug("buffer is empty and noDataLeft=true")
-            Future.successful(None) // tried to get new data but no data available
-          case x =>
-            logger.error(s"unexpected message: $x")
-            Future.successful(None)
-        }.recoverWith {
+        elementFuture.flatMap(element => {
+
+          element match {
+            case Some((null, null, hz)) =>
+              val delay = 10.seconds
+              logger.info(s"Got empty result. Waiting for $delay before passing on the empty element.")
+              akka.pattern.after(delay, system.scheduler)(Future.successful(Some((null, null, hz))))
+            case Some((token, tsvData, hz)) =>
+              Future.successful(Some(token, tsvData, hz))
+            case None =>
+              noDataLeft = true // received the signal of last element in buffer
+              Future.successful(None)
+            case null if noDataLeft =>
+              logger.debug("buffer is empty and noDataLeft=true")
+              Future.successful(None) // tried to get new data but no data available
+            case x =>
+              logger.error(s"unexpected message: $x")
+              Future.successful(None)
+          }
+
+        }).recoverWith {
           case ex =>
             logger.error("Getting data from BufferFillerActor failed with an exception: ", ex)
             akka.pattern.after(1.second, system.scheduler)(next())
         }
+
       }
+
     }
 
     Source.fromFuture(initTokenFuture)
       .flatMapConcat { initToken =>
         Source.unfoldAsync(new FakeState(initToken)) { fs =>
           fs.next().map {
-            case Some(tokenAndData) => Some(fs -> tokenAndData)
-            case None => None
+            case Some(tokenAndData) => {
+              Some(fs -> ((tokenAndData._1,tokenAndData._2), tokenAndData._3))
+            }
+            case None => {
+              None
+            }
           }
         }
-          .filterNot(pair => pair._1 == null && pair._2 == null)
+          .filterNot(downloadedInfotonData => downloadedInfotonData._1._1 == null && downloadedInfotonData._1._2 == null)
           .via(BufferFillerKiller(bufferFillerActor))
       }
   }

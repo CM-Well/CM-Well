@@ -20,6 +20,7 @@ import akka.actor.{ActorRef, _}
 import akka.stream._
 import akka.stream.stage._
 import akka.util.ByteString
+import cmwell.tools.data.sparql.SensorContext
 import cmwell.tools.data.utils.akka.stats.DownloaderStats.DownloadStats
 import cmwell.tools.data.utils.logging.DataToolsLogging
 import cmwell.tools.data.utils.text.Files.toHumanReadable
@@ -36,28 +37,30 @@ object DownloaderStats {
                            infotonRate: Double,
                            bytesRate: Double,
                            runningTime: Long,
-                           statsTime: Long)
+                           statsTime: Long,
+                           horizon: Boolean)
 
-  def apply[T](isStderr: Boolean = false,
+  def apply(isStderr: Boolean = false,
             format: String,
             label: Option[String] = None,
             reporter: Option[ActorRef] = None,
             initDelay: FiniteDuration = 1.second,
             interval: FiniteDuration = 1.second) = {
 
-    new DownloaderStats[T](isStderr, format, label, reporter, initDelay, interval)
+    new DownloaderStats(isStderr, format, label, reporter, initDelay, interval)
+
   }
 }
 
-class DownloaderStats[T](isStderr: Boolean,
+class DownloaderStats(isStderr: Boolean,
                       format: String,
                       label: Option[String] = None,
                       reporter: Option[ActorRef] = None,
                       initDelay: FiniteDuration = 1.second,
-                      interval: FiniteDuration = 1.second) extends GraphStage[FlowShape[(ByteString, T), (ByteString, T)]] with DataToolsLogging {
+                      interval: FiniteDuration = 1.second) extends GraphStage[FlowShape[(ByteString, Option[SensorContext]), (ByteString, Option[SensorContext])]] with DataToolsLogging {
 
-  val in = Inlet[(ByteString, T)]("download-stats.in")
-  val out = Outlet[(ByteString, T)]("download-stats.out")
+  val in = Inlet[(ByteString, Option[SensorContext])]("download-stats.in")
+  val out = Outlet[(ByteString, Option[SensorContext])]("download-stats.out")
   override val shape = FlowShape.of(in, out)
 
   override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = {
@@ -71,6 +74,7 @@ class DownloaderStats[T](isStderr: Boolean,
       var lastTime = 0L
       var lastMessageSize = 0
       var timeOfLastStatistics = 0L
+      var horizon = false
 
       var eventPoller: Option[Cancellable] = None
 
@@ -96,6 +100,7 @@ class DownloaderStats[T](isStderr: Boolean,
         override def onPush(): Unit = {
           val element = grab(in)
           aggregateStats(element._1)
+          setSensorHorizon(element._2)
           push(out, element)
         }
 
@@ -148,6 +153,12 @@ class DownloaderStats[T](isStderr: Boolean,
         }
       }
 
+      def setSensorHorizon(contextOption : Option[SensorContext]) = {
+        contextOption.map(context=>{
+          horizon = context.horizon
+        })
+      }
+
       def aggregateStats(data: ByteString) = {
         val bytesRead = data.size
         bytesInWindow += bytesRead
@@ -183,7 +194,8 @@ class DownloaderStats[T](isStderr: Boolean,
                 infotonRate = totalReceivedInfotons.meanRate,
                 bytesRate = metricRateBytes.oneMinuteRate,
                 runningTime = executionTime,
-                statsTime = timeOfLastStatistics
+                statsTime = timeOfLastStatistics,
+                horizon = horizon
               )
             }
 
