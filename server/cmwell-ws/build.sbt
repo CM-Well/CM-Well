@@ -92,10 +92,6 @@ mappings in Universal += {
   f -> "/plugins/sg-engines/gremlin.jar"
 }
 
-mappings in (Compile,packageBin) ~= { (ms: Seq[(File, String)]) =>
-  ms filterNot { case (_, toPath) => toPath.contains("/sys/") }
-}
-
 fullTest := (test in Test).value
 
 fullClasspath in (Compile,console) += Attributed.blank(sourceDirectory.value / "cws" / "resources")
