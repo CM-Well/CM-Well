@@ -50,7 +50,7 @@ object BufferFillerActor {
 
 class BufferFillerActor(threshold: Int,
                         initToken: Future[Token],
-                        override val baseUrl: String,
+                        baseUrl: String,
                         params: String = "",
                         isBulk: Boolean = false,
                         updateFreq: Option[FiniteDuration] = None,

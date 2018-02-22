@@ -26,11 +26,9 @@ trait DataToolsLogging {
   private[data] lazy val badDataLogger = LoggerFactory.getLogger("bad-data")
 
   val label: Option[String] = None
-  val baseUrl: String = ""
-
 
   protected lazy val logger: Logger = {
-    val loggerName = if (label.isEmpty) getClass.getName else s"${getClass.getName} [${label.get} ${baseUrl}]"
+    val loggerName = if (label.isEmpty) getClass.getName else s"${getClass.getName} [${label.get}]"
     Logger(LoggerFactory.getLogger(loggerName))
   }
 }

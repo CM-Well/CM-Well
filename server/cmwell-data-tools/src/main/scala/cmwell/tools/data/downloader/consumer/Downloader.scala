@@ -373,7 +373,7 @@ sealed trait DownloadError
 case class DownloadHttpError(token: String, httpStatus: StatusCode) extends DownloadError
 case class DownloadException(token: String, ex: Throwable) extends DownloadError
 
-class Downloader(override val baseUrl: String,
+class Downloader(baseUrl: String,
                  path: String = "/",
                  params: String = "",
                  qp: String = "",

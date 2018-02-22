@@ -141,7 +141,7 @@ object SparqlProcessor extends DataToolsLogging with DataToolsConfig{
   }
 }
 
-class SparqlProcessor[T](override val baseUrl: String,
+class SparqlProcessor[T](baseUrl: String,
                       spQueryParamsBuilder: Seq[String] => String = _ => "",
                       parallelism: Int = 4,
                       isNeedWrapping: Boolean = true,
