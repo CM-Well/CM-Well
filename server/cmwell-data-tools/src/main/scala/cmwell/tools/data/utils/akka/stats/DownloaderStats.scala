@@ -154,7 +154,7 @@ class DownloaderStats(isStderr: Boolean,
       }
 
       def setSensorHorizon(contextOption : Option[SensorContext]) = {
-        contextOption.map(context=>{
+        contextOption.foreach(context=>{
           horizon = context.horizon
         })
       }
