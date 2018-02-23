@@ -46,7 +46,7 @@ object InfotonReporter {
   def apply(baseUrl: String, path: String)(implicit mat: Materializer, ec: ExecutionContext) = Props(new InfotonReporter(baseUrl, path))
 }
 
-class InfotonReporter private(override val baseUrl: String, path: String)(implicit mat: Materializer, ec: ExecutionContext) extends Actor with SparqlTriggerProcessorReporter with DataToolsLogging {
+class InfotonReporter private(baseUrl: String, path: String)(implicit mat: Materializer, ec: ExecutionContext) extends Actor with SparqlTriggerProcessorReporter with DataToolsLogging {
   if(mat.isInstanceOf[ActorMaterializer]) {
     require(mat.asInstanceOf[ActorMaterializer].system eq context.system, "ActorSystem of materializer MUST be the same as the one used to create current actor")
   }
