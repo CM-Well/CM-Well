@@ -33,6 +33,7 @@ import cmwell.tools.data.utils.akka.stats.IngesterStats
 import cmwell.tools.data.utils.akka.stats.IngesterStats.IngestStats
 import cmwell.tools.data.utils.chunkers.GroupChunker
 import cmwell.tools.data.utils.chunkers.GroupChunker._
+import cmwell.tools.data.utils.text.Tokens
 import cmwell.util.http.SimpleResponse
 import cmwell.util.string.Hash
 import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
@@ -304,8 +305,10 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
 
         val body : Iterable[Row] = allSensorsWithTokens.map { case (sensorName, token) =>
           val decodedToken = if (token.nonEmpty) {
-            val from = cmwell.tools.data.utils.text.Tokens.getFromIndexTime(token)
-            LocalDateTime.ofInstant(Instant.ofEpochMilli(from), ZoneId.systemDefault()).toString
+            Tokens.getFromIndexTime(token) match{
+              case 0 => ""
+              case tokenTime => (LocalDateTime.ofInstant(Instant.ofEpochMilli(tokenTime), ZoneId.systemDefault()).toString)
+            }
           }
           else ""
 
