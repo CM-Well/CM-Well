@@ -142,26 +142,33 @@ class Application @Inject()(bulkScrollHandler: BulkScrollHandler,
     }
   }
 
-  def handleTypesCacheGet = Action(r => Ok(typesCache.getState).as(ContentTypes.JSON))
+  def handleTypesCacheGet = Action(_ => Ok(typesCache.getState).as(ContentTypes.JSON))
 
   val nsCacheTimeout = akka.util.Timeout(1.minute)
   def handleNsCacheGet = Action.async(r => {
+
+    def forbiddenOrElse(f: => Future[Result]) =
+      if (!isAdminEvenNonProd(r)) Future.successful(Forbidden(Json.obj("success" -> false, "message" -> "Not authorized"))) else f
+
     r.getQueryString("invalidate").fold {
-      if(r.getQueryString("invalidate-all").fold(false)(asBoolean(_).getOrElse(true)))
+      if (r.getQueryString("invalidate-all").fold(false)(asBoolean(_).getOrElse(true))) forbiddenOrElse {
         cmwellRDFHelper.invalidateAll()(nsCacheTimeout)
           .map(_ => successResponse)
           .recover(errorHandler)
-      else {
+      } else {
         val quick = r.getQueryString("quick").fold(false)(asBoolean(_).getOrElse(true))
         cmwellRDFHelper
           .newestGreatestMetaNsCacheImpl
           .getStatus(quick)(nsCacheTimeout)
           .map(resp => Ok(resp).as(ContentTypes.JSON))
       }
-    }{ nsID =>
-      cmwellRDFHelper.invalidate(nsID)(nsCacheTimeout)
-        .map(_ => successResponse)
-        .recover(errorHandler)
+    } { nsID =>
+      forbiddenOrElse {
+        if (nsID.isEmpty) Future.successful(BadRequest(Json.obj("success" -> false, "message" -> "You need to specify whom to invalidate")))
+        else cmwellRDFHelper.invalidate(nsID)(nsCacheTimeout)
+          .map(_ => successResponse)
+          .recover(errorHandler)
+      }
     }
   })
 
@@ -365,7 +372,7 @@ callback=< [URL] >
 
   def handleZzGET(key: String) = Action.async {
     implicit req => {
-      val allowed = authUtils.isOperationAllowedForUser(security.Admin, authUtils.extractTokenFrom(req), evenForNonProdEnv = true)
+      val allowed = isAdminEvenNonProd(req)
 
       def mapToResp(task: Future[_]): Future[Result] = {
         val p = Promise[Result]
@@ -2040,7 +2047,7 @@ callback=< [URL] >
         }
       }
       case Some("invalidate-cache") => {
-        if(authUtils.isOperationAllowedForUser(Admin, authUtils.extractTokenFrom(req), evenForNonProdEnv = true))
+        if(isAdminEvenNonProd(req))
           authUtils.invalidateAuthCache().map(isSuccess => Ok(Json.obj("success" -> isSuccess)))
         else
           Future.successful(Unauthorized("Not authorized"))
@@ -2293,7 +2300,7 @@ callback=< [URL] >
 
   def handlePoisonPill() = Action { implicit req =>
 
-    if (!authUtils.isOperationAllowedForUser(security.Admin, authUtils.extractTokenFrom(req), evenForNonProdEnv = true)) {
+    if (!isAdminEvenNonProd(req)) {
       Forbidden("Not authorized")
     } else {
       val hostOpt = req.getQueryString("host")
@@ -2318,7 +2325,7 @@ callback=< [URL] >
   }
 
   def handleZzPost(uzid: String) = Action.async(parse.raw) { implicit req =>
-    val allowed = authUtils.isOperationAllowedForUser(security.Admin, authUtils.extractTokenFrom(req), evenForNonProdEnv = true)
+    val allowed = isAdminEvenNonProd(req)
     req.body.asBytes() match {
       case Some(payload) if allowed =>
         val ttl = req.getQueryString("ttl").fold(0)(_.toInt)
@@ -2372,6 +2379,10 @@ callback=< [URL] >
     val hosts = Grid.availableMachines.mkString(" ")
     val user = System.getProperty("user.name")
     s"$command $user $hosts"
+  }
+
+  private def isAdminEvenNonProd(r: Request[_]): Boolean = {
+    authUtils.isOperationAllowedForUser(Admin, authUtils.extractTokenFrom(r), evenForNonProdEnv = true)
   }
 
 }
