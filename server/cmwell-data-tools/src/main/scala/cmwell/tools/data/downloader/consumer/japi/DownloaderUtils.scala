@@ -122,7 +122,7 @@ object DownloaderUtils {
       recursive = recursive)
 
     downloader.createTsvSource(token)(ec).async
-      .map {case (token, tsv) => token -> tsv.uuid }
+      .map {case ((token, tsv),_) => token -> tsv.uuid }
       .via(downloader.downloadDataFromUuids()(ec))
       .map{ case (token, data) => data }
       .via(cmwell.tools.data.utils.akka.lineSeparatorFrame)

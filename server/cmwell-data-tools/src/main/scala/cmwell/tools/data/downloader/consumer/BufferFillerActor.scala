@@ -46,6 +46,7 @@ object BufferFillerActor {
   case class HttpResponseFailure(token: Token, err: Throwable)
   case class NewToHeader(to: Option[String])
   case object GetToHeader
+  case class SetHorizonStatus(status: Boolean)
 }
 
 class BufferFillerActor(threshold: Int,
@@ -70,6 +71,7 @@ class BufferFillerActor(threshold: Int,
   private val buf: mutable.Queue[Option[(Token, TsvData)]] = mutable.Queue()
   private var tsvCounter = 0L
   private var lastBulkConsumeToHeader: Option[String] = None
+  private var horizon = false
 
   val retryTimeout: FiniteDuration = {
     val timeoutDuration = Duration(config.getString("cmwell.downloader.consumer.http-retry-timeout")).toCoarsest
@@ -142,13 +144,17 @@ class BufferFillerActor(threshold: Int,
       tsvCounter += 1
 
     case GetData if buf.nonEmpty =>
-      sender ! buf.dequeue()
+      sender ! buf.dequeue.map(tokenAndData=> Some(tokenAndData._1, tokenAndData._2, horizon))
 
     // do nothing since there are no elements in buffer
-    case GetData => {
+    case GetData =>
       logger.debug("Got GetData message but there is no data")
-      sender ! Some[(Token, TsvData)]((null, null))
-    }
+      sender ! Some[(Token, TsvData, Boolean)](null, null, horizon)
+
+    case SetHorizonStatus(hzStatus) =>
+      logger.debug(s"Setting horizon to $hzStatus")
+      horizon = hzStatus
+
 
     case HttpResponseSuccess(t) =>
       // get point in time of token
@@ -228,8 +234,13 @@ class BufferFillerActor(threshold: Int,
 
             if (updateFreq.isEmpty) self ! NewData(None)
 
+            self ! SetHorizonStatus(true)
+
             None -> Source.empty
           case (Success(HttpResponse(s, h, e, _)), _) if s == StatusCodes.OK || s == StatusCodes.PartialContent =>
+
+            self ! SetHorizonStatus(false)
+
             val nextToken = getPosition(h) match {
               case Some(HttpHeader(_, pos)) => pos
               case None      => throw new RuntimeException("no position supplied")

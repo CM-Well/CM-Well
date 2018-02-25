@@ -314,7 +314,13 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
               case _ => LocalDateTime.ofInstant(Instant.ofEpochMilli(s.statsTime), ZoneId.systemDefault()).toString
             }
 
-            Seq(s.receivedInfotons.toString, s"${formatter.format(s.infotonRate)}/sec", statsTime)
+            val infotonRate = s.horizon match {
+              case true =>  s"""<span style="color:green">Horizon</span>"""
+              case false => s"${formatter.format(s.infotonRate)}/sec"
+            }
+
+            Seq(s.receivedInfotons.toString, infotonRate, statsTime)
+
           }.getOrElse(Seq.empty[String])
 
           Seq(sensorName, decodedToken) ++ sensorStats
