@@ -12,8 +12,8 @@ $(document).ready(function () {
     // other HEAD elements must be re-written, otherwise stylesheets won't be available.
     // this is because the head element was inside the implicit body...
     // the title was set, but if we rewrite head we need to preserve it.
-    $('html').html('<head><title>'+document.title+'</title><link rel="stylesheet" href="/meta/sys/wb/js/highlight/styl'+
-    'es/aiaas.css"/><link rel="stylesheet" href="/meta/sys/wb/css/cmwmdviewer.css"/></head><body><div id="cont"><div i'+
+    $('html').html('<head><title>'+document.title+'</title><link rel="stylesheet" href="/meta/app/sys/js/highlight/styl'+
+    'es/aiaas.css"/><link rel="stylesheet" href="/meta/app/sys/css/cmwmdviewer.css"/></head><body><div id="cont"><div i'+
     'd="rendered"></div></div></body>');
 
     $('#rendered')
