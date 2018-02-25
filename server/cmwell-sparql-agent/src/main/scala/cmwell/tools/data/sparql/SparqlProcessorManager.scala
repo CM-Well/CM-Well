@@ -281,7 +281,9 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
 
       val jobConfig = jobStatus.job.config
 
-      val title = Seq(s"""<span style="color:green"> **${jobStatus.statusString}** </span> ${path}""")
+      val hostUpdatesSource = jobConfig.hostUpdatesSource.getOrElse(settings.hostUpdatesSource)
+
+      val title = Seq(s"""<span style="color:green"> **${jobStatus.statusString}** </span> Agent: ${path} Source: ${hostUpdatesSource}""")
       val header = Seq("Sensor", "Token Time", "Received Infotons", "Infoton Rate", "Statistics Updated")
       val statsFuture = (jobStatus.reporter ? RequestDownloadStats).mapTo[ResponseDownloadStats]
       val storedTokensFuture = (jobStatus.reporter ? RequestPreviousTokens).mapTo[ResponseWithPreviousTokens]
