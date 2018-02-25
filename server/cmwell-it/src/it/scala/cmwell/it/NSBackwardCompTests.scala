@@ -167,7 +167,7 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
         spinCheck(100.millis,true)(Http.get(
           exampleNetPath,
           List("op" -> "search", "qp" -> "NOTE.vcard:note", "with-descendants" -> "true", "with-data" -> "true", "format" -> "n3")
-        ))(_.status == 424).map(res => withClue(res)(res.status shouldEqual 424))
+        ))(_.status == 200).map(res => withClue(res)(res.status shouldEqual 200))
       }
 
       val explicitNSSearchSuccess = executeAfterIndexing {
@@ -232,7 +232,7 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
       }
 
       val checkVPOldVcardNS = executeAfterIndexing {
-        val oldVcardHash = crc32("http://www.w3.org/2001/old-vcard-rdf/3.0#")
+        val oldVcardHash = crc32base64("http://www.w3.org/2001/old-vcard-rdf/3.0#")
         val expected = Json.parse(
           s"""
              |{
@@ -243,7 +243,7 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
              |    "dataCenter" : "$dcName"
              |  },
              |  "fields":{
-             |    "FN.vcard":["V P"]
+             |    "FN.vcard-$oldVcardHash":["V P"]
              |  }
              |}
         """.stripMargin)
@@ -251,7 +251,7 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
         spinCheck(100.millis,true)(Http.get(vp, List("format" -> "json")))(_.status).map { res =>
           val json = Json
             .parse(res.payload)               //blank node is unknown
-            .transform(uuidDateEraser andThen (__ \ 'fields \ s"N.vcard").json.prune)
+            .transform(uuidDateEraser andThen (__ \ 'fields \ s"N.vcard-$oldVcardHash").json.prune)
 
           withClue(new String(res.payload,"UTF-8") + res.headers.mkString("\n[",",","] : status=") + res.status) {
             json.isSuccess should be(true)
@@ -272,7 +272,7 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
                                      |  },
                                      |  "fields":{
                                      |    "url":["http://www.w3.org/2001/old-vcard-rdf/3.0#"],
-                                     |    "prefix":["vcard"]
+                                     |    "prefix":["vcard-$hash"]
                                      |  }
                                      |}
                                   """.stripMargin)
@@ -293,7 +293,7 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
       }
 
       describe("Search API on this data") {
-        it("should fail to search for 'note' under www.example.net using implicit ambiguous namespace")(failedSearchDueToAmbiguity)
+        it("should NOT fail to search for 'note' under www.example.net using implicit ambiguous namespace")(failedSearchDueToAmbiguity)
         it("should search for 'note' under www.example.net in n3 explicitly using $")(explicitNSSearchSuccess)
         it("should search for 'note' under www.example.net in n3 using the full NS URI")(fullNSByURISearchSuccess)
         it("should search with nested queries")(nestedQueriesSearch)
