@@ -30,6 +30,7 @@ import cmwell.tools.data.utils.akka.HeaderOps._
 import cmwell.tools.data.utils.akka.{DataToolsConfig, HttpConnections, lineSeparatorFrame}
 import cmwell.tools.data.utils.logging._
 import cmwell.tools.data.utils.text.Tokens
+import cmwell.util.http.HttpZipDecoder
 
 import scala.collection.mutable
 import scala.concurrent.duration.{FiniteDuration, _}
@@ -222,6 +223,8 @@ class BufferFillerActor(threshold: Int,
         .map(to => createRequestFromToken(token, to))
         .map(_ -> None)
         .via(conn)
+        .map{case (tryResponse, state) =>
+          tryResponse.map(HttpZipDecoder.decodeResponse) -> state}
         .map {
           case (Success(HttpResponse(s, h , e, _)), _) if s == StatusCodes.TooManyRequests =>
             e.discardBytes()
@@ -254,7 +257,6 @@ class BufferFillerActor(threshold: Int,
             logger.debug(s"received consume answer from host=${getHostnameValue(h)}")
 
             val dataSource: Source[(Token, Tsv), Any] = e.withoutSizeLimit().dataBytes
-              .via(Compression.gunzip())
               .via(lineSeparatorFrame)
               .map(extractTsv)
               .map(token -> _)

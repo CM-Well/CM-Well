@@ -77,15 +77,4 @@ object Util extends LazyLogging {
 
   def headersString(headers: Seq[HttpHeader]): String = headers.map(headerString).mkString("[", ",", "]")
 
-  def decodeResponse(response: HttpResponse): HttpResponse = {
-    val decoder = response.encoding match {
-      case HttpEncodings.gzip ⇒
-        Gzip
-      case HttpEncodings.deflate ⇒
-        Deflate
-      case HttpEncodings.identity ⇒
-        NoCoding
-    }
-    decoder.decodeMessage(response)
-  }
 }
