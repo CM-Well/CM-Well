@@ -144,7 +144,7 @@ class BufferFillerActor(threshold: Int,
       tsvCounter += 1
 
     case GetData if buf.nonEmpty =>
-      sender ! buf.dequeue.map(tokenAndData=> Some(tokenAndData._1, tokenAndData._2, horizon))
+      sender ! buf.dequeue.map(tokenAndData => (tokenAndData._1, tokenAndData._2, horizon))
 
     // do nothing since there are no elements in buffer
     case GetData =>
