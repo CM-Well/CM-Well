@@ -64,6 +64,19 @@ object LDFormatParser extends LazyLogging {
   private val cmwell = "cmwell://"
   private val blank = cmwell + "blank_node/"
   private lazy val cwd = new java.io.File("").toURI
+  private lazy val normalizedCWD = {
+    val fileURI = cwd.toString
+    if(fileURI.startsWith("file:///")) fileURI
+    else {
+      var charsSeen = 0
+      "file:///" + fileURI.drop("file:".length).dropWhile { ch =>
+        charsSeen < 3 && {
+          charsSeen += 1
+          ch == '/'
+        }
+      }
+    }
+  }
 
   implicit class LegalChar(ch: Char) {
     def isLegal: Boolean = {
@@ -88,7 +101,8 @@ object LDFormatParser extends LazyLogging {
       case rls: String if rls == RDFLangString.rdfLangString.getURI => getXSDType("string",l,lang,quad)
       case fun: String if fun.startsWith("urn:x-hp-jena:Functor") => ???
       case str: String if str.contains('$') => throw new IllegalArgumentException(s"custom types cannot contain '$$' character. please encode as '%24' or use another type. type recieved: '$str'")
-      case str: String => FExternal(l.getLexicalForm, str,quad)
+      case str: String if str.startsWith(normalizedCWD)=> FExternal(l.getLexicalForm, str.drop(normalizedCWD.length),quad)
+      case str: String => FExternal(l.getLexicalForm, str, quad)
     }
   }
 

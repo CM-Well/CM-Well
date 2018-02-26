@@ -179,8 +179,6 @@ package object wsutil extends LazyLogging {
 
     lazy val sb = new StringBuilder(path.length)
 
-    //println("\n\n")
-
     while(i < path.length) {
       chr = path(i)
       //println(s"pre=$pre, chr=$chr, starting=$starting, initialized=$initialized, lastIsSlash=$lastIsSlash last2AreSlash=$last2AreSlash, i=$i, j=$j, k=$k")
@@ -228,7 +226,6 @@ package object wsutil extends LazyLogging {
       }
       i += 1
     }
-
 
     if(initialized) sb.mkString
     else if(lastIsSlash) pre + path.substring(j,k)
