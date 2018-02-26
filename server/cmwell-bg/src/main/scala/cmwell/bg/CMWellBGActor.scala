@@ -137,11 +137,11 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
         logger debug s"became state503. scheduling resume in [waitAfter503] seconds"
       context.system.scheduler.scheduleOnce(waitAfter503.seconds, self, Resume)
     case Indexer503 =>
-        logger error "Indexer Stopped with Exception. Restarting it."
+        logger error "Indexer Stopped with Exception. check indexer log for details. Restarting indexer."
       stopIndexer
       startIndexer
     case Imp503 =>
-        logger error "Imp stopped with exception. Restarting it."
+        logger error "Imp stopped with exception. check imp log for details. Restarting imp."
       stopImp
       startImp
     case ExitWithError =>
