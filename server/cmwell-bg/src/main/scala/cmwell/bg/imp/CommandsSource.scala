@@ -1,5 +1,7 @@
 package cmwell.bg.imp
 
+import java.nio.charset.StandardCharsets
+
 import akka.Done
 import akka.actor.ActorSystem
 import akka.kafka.{ConsumerSettings, Subscriptions}
@@ -52,7 +54,7 @@ object CommandsSource extends LazyLogging {
       logger.debug(s"consuming next payload from persist commands topic @ ${msg.offset()}")
       val commandTry = Try(CommandSerializer.decode(msg.value()))
       commandTry.failed.foreach { err =>
-        logger.error(s"deserialize command error for msg [$msg]",err)
+        logger.error(s"deserialize command error for msg [$msg] and value: [${new String(msg.value(),StandardCharsets.UTF_8)}]",err)
       }
       val command = commandTry.get
       logger.debug(s"consumed command: $command")
@@ -63,7 +65,7 @@ object CommandsSource extends LazyLogging {
       logger.info(s"consuming next payload from priority persist commands topic @ ${msg.offset()}")
       val commandTry = Try(CommandSerializer.decode(msg.value()))
       commandTry.failed.foreach { err =>
-        logger.error(s"deserialize command error for msg [$msg]",err)
+        logger.error(s"deserialize command error for msg [$msg] and value: [${new String(msg.value(),StandardCharsets.UTF_8)}]",err)
       }
       val command =commandTry.get
       logger.info(s"consumed priority command: $command")
