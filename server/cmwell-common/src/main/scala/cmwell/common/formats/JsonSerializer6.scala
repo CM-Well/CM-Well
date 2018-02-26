@@ -76,7 +76,7 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
                 FString(arr.drop(2).mkString("\n"),lang,quad)
               }
               case 'x' => {
-                val arr = v.tail.split('\n')
+                val arr = v.tail.split("\n",-1)
                 val (uri,q,value) = (arr(0),arr(1),arr.drop(2).mkString("\n"))
                 val quad =
                   if(q.isEmpty) None

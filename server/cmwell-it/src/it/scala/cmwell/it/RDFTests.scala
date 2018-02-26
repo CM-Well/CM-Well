@@ -48,109 +48,164 @@ class RDFTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAndP
   }
 
 
-  describe("RDF API") {
+  //Assertions
+  val uploadYaakov = {
+    val data = """
+                 |@prefix vcard: <http://www.w3.org/2006/vcard/ns#> .
+                 |@prefix rdfa: <http://www.w3.org/ns/rdfa#> .
+                 |<http://clearforest.com/ce/YB> a vcard:Individual;
+                 |  vcard:hasEmail <mailto:yaakov.breuer@thomsonteuters.com>;
+                 |  vcard:FN "Yaakov Breuer";
+                 |  vcard:hasAddress <http://clearforest.com/address> .
+                 |<http://clearforest.com/address> a vcard:ADR ;
+                 |  vcard:country-name "Israel";
+                 |  vcard:locality "PetachTikva";
+                 |  vcard:postal-code "7131";
+                 |  vcard:street-address "94 Em HaMoshavot st." .
+               """.stripMargin
 
-    //Assertions
-    val uploadYaakov = {
-      val data = """
-      |@prefix vcard: <http://www.w3.org/2006/vcard/ns#> .
-      |@prefix rdfa: <http://www.w3.org/ns/rdfa#> .
-      |<http://clearforest.com/ce/YB> a vcard:Individual;
-      |  vcard:hasEmail <mailto:yaakov.breuer@thomsonteuters.com>;
-      |  vcard:FN "Yaakov Breuer";
-      |  vcard:hasAddress <http://clearforest.com/address> .
-      |<http://clearforest.com/address> a vcard:ADR ;
-      |  vcard:country-name "Israel";
-      |  vcard:locality "PetachTikva";
-      |  vcard:postal-code "7131";
-      |  vcard:street-address "94 Em HaMoshavot st." .
-      """.stripMargin
-
-      Http.post(_in,data,Some("text/rdf+turtle;charset=UTF-8"),List("format"->"ttl"), tokenHeader).map { res =>
-        withClue(res) {
-          res.status should be(200)
-          Json.parse(res.payload) should be(jsonSuccess)
-        }
+    Http.post(_in,data,Some("text/rdf+turtle;charset=UTF-8"),List("format"->"ttl"), tokenHeader).map { res =>
+      withClue(res) {
+        res.status should be(200)
+        Json.parse(res.payload) should be(jsonSuccess)
       }
     }
+  }
 
-    val waitForIngest = executeAfterFuture(uploadYaakov){
-      waitForIt(Http.get(clf / "ce" / "YB", List("format" -> "json")))(_.status == 200)
-    }
-    def executeAfterIngesting[T](body: =>Future[T]): Future[T] = waitForIngest.flatMap(_ => body)
+  val weirdTypeData = """<http://clearforest.com/weird> <http://ont.clearforest.com/weirdTypedValue> "x"^^<WEIRD> ."""
+  val emptyTypeData = """<http://clearforest.com/empty> <http://ont.clearforest.com/emptyTypedValue> ""^^<http://empty.val/TYPE> ."""
 
-    val verifyIngest = executeAfterIngesting {
-      Http.get(clf / "ce" / "YB", List("format" -> "json")).map { res =>
-        withClue(res)(res.status shouldBe 200)
+  val uploadWeirdType = {
+    Http.post(_in,weirdTypeData,Some("text/plain;charset=UTF-8"),List("format"->"ntriples"), tokenHeader).map { res =>
+      withClue(res) {
+        res.status should be(200)
+        Json.parse(res.payload) should be(jsonSuccess)
       }
     }
+  }
 
-    val markDeleteData = executeAfterIngesting {
-      val data = """
-        |@prefix vcard: <http://www.w3.org/2006/vcard/ns#> .
-        |@prefix rdfa:  <http://www.w3.org/ns/rdfa#> .
-        |@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-        |@prefix sys:   <cmwell://meta/sys#> .
-        |<http://clearforest.com/ce/YB>
-        |  sys:markDelete [
-        |    vcard:hasEmail <mailto:yaakov.breuer@thomsonteuters.com> ;
-        |    vcard:FN "Yaakov Breuer"
-        |  ];
-        |  vcard:EMAIL <http://clearforest.com/email_accounts/YB> .
-        |<http://clearforest.com/email_accounts/YB> a vcard:Internet ;
-        |  rdf:value  "yaakov.breuer@thomsonteuters.com" .
-      """.stripMargin
+  val verifyWeirdIngest = executeAfterFuture(uploadWeirdType){
+    import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
 
-      Http.post(_in, data, None, List("format" -> "turtle"), tokenHeader).map { res =>
-        withClue(res) {
-          res.status should be(200)
-          Json.parse(res.payload) should be(jsonSuccess)
-        }
-      }
-    }
-
-    val waitForChange = executeAfterFuture(markDeleteData){
-      waitForIt(Http.get(clf/"ce"/"YB", List("format"->"json","with-history"->""))){ res =>
-        res.status == 200 && {
-          Json.parse(res.payload) \ "versions" match {
-            case JsDefined(arr: JsArray) => arr.value.size == 2
-            case _ => false
+    waitForIt(Http.get(clf / "weird", List("format" -> "json")))(_.status == 200).flatMap { _ =>
+      scheduleFuture(5.seconds) {
+        Http.get(clf / "weird", List("format" -> "ntriples")).map { res =>
+          withClue(res) {
+            res.status should be(200)
+            res.payload.lines.toList should contain(weirdTypeData)
           }
         }
       }
     }
-    def executeAfterChanging[T](body: =>Future[T]): Future[T] = waitForChange.flatMap(_ => body)
+  }
 
-    val verifyChange = executeAfterChanging {
-      val expected = Json.parse(s"""
-        |{
-        |  "type" : "ObjectInfoton",
-        |  "system" : {
-        |    "path" : "/clearforest.com/ce/YB",
-        |    "parent" : "/clearforest.com/ce",
-        |    "dataCenter" : "$dcName"
-        |  },
-        |  "fields" : {
-        |    "EMAIL.vcard" : [ "http://clearforest.com/email_accounts/YB" ],
-        |    "hasAddress.vcard" : [ "http://clearforest.com/address" ],
-        |    "type.rdf" : [ "http://www.w3.org/2006/vcard/ns#Individual" ]
-        |  }
-        |}
+  val uploadEmptyType = {
+    Http.post(_in,emptyTypeData,Some("text/plain;charset=UTF-8"),List("format"->"ntriples"), tokenHeader).map { res =>
+      withClue(res) {
+        res.status should be(200)
+        Json.parse(res.payload) should be(jsonSuccess)
+      }
+    }
+  }
+
+  val verifyEmptyIngest = executeAfterFuture(uploadEmptyType){
+    import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+
+    waitForIt(Http.get(clf / "empty", List("format" -> "json")))(_.status == 200).flatMap { _ =>
+      scheduleFuture(5.seconds) {
+        Http.get(clf / "empty", List("format" -> "ntriples")).map { res =>
+          withClue(res) {
+            res.status should be(200)
+            res.payload.lines.toList should contain(emptyTypeData)
+          }
+        }
+      }
+    }
+  }
+
+  val waitForIngest = executeAfterFuture(uploadYaakov){
+    waitForIt(Http.get(clf / "ce" / "YB", List("format" -> "json")))(_.status == 200)
+  }
+
+  def executeAfterIngesting[T](body: =>Future[T]): Future[T] = waitForIngest.flatMap(_ => body)
+
+  val verifyIngest = executeAfterIngesting {
+    Http.get(clf / "ce" / "YB", List("format" -> "json")).map { res =>
+      withClue(res)(res.status shouldBe 200)
+    }
+  }
+
+  val markDeleteData = executeAfterIngesting {
+    val data = """
+                 |@prefix vcard: <http://www.w3.org/2006/vcard/ns#> .
+                 |@prefix rdfa:  <http://www.w3.org/ns/rdfa#> .
+                 |@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+                 |@prefix sys:   <cmwell://meta/sys#> .
+                 |<http://clearforest.com/ce/YB>
+                 |  sys:markDelete [
+                 |    vcard:hasEmail <mailto:yaakov.breuer@thomsonteuters.com> ;
+                 |    vcard:FN "Yaakov Breuer"
+                 |  ];
+                 |  vcard:EMAIL <http://clearforest.com/email_accounts/YB> .
+                 |<http://clearforest.com/email_accounts/YB> a vcard:Internet ;
+                 |  rdf:value  "yaakov.breuer@thomsonteuters.com" .
+               """.stripMargin
+
+    Http.post(_in, data, None, List("format" -> "turtle"), tokenHeader).map { res =>
+      withClue(res) {
+        res.status should be(200)
+        Json.parse(res.payload) should be(jsonSuccess)
+      }
+    }
+  }
+
+  val waitForChange = executeAfterFuture(markDeleteData){
+    waitForIt(Http.get(clf/"ce"/"YB", List("format"->"json","with-history"->""))){ res =>
+      res.status == 200 && {
+        Json.parse(res.payload) \ "versions" match {
+          case JsDefined(arr: JsArray) => arr.value.size == 2
+          case _ => false
+        }
+      }
+    }
+  }
+  def executeAfterChanging[T](body: =>Future[T]): Future[T] = waitForChange.flatMap(_ => body)
+
+  val verifyChange = executeAfterChanging {
+    val expected = Json.parse(s"""
+                                 |{
+                                 |  "type" : "ObjectInfoton",
+                                 |  "system" : {
+                                 |    "path" : "/clearforest.com/ce/YB",
+                                 |    "parent" : "/clearforest.com/ce",
+                                 |    "dataCenter" : "$dcName"
+                                 |  },
+                                 |  "fields" : {
+                                 |    "EMAIL.vcard" : [ "http://clearforest.com/email_accounts/YB" ],
+                                 |    "hasAddress.vcard" : [ "http://clearforest.com/address" ],
+                                 |    "type.rdf" : [ "http://www.w3.org/2006/vcard/ns#Individual" ]
+                                 |  }
+                                 |}
       """.stripMargin)
 
-      Http.get(clf / "ce" / "YB", List("format" -> "json")).map{res =>
-        withClue(res) {
-          Json.parse(res.payload).transform(uuidDateEraser) match {
-            case JsSuccess(j, _) => j shouldEqual expected
-            case err: JsError => fail(Json.prettyPrint(JsError.toJson(err)))
-          }
+    Http.get(clf / "ce" / "YB", List("format" -> "json")).map{res =>
+      withClue(res) {
+        Json.parse(res.payload).transform(uuidDateEraser) match {
+          case JsSuccess(j, _) => j shouldEqual expected
+          case err: JsError => fail(Json.prettyPrint(JsError.toJson(err)))
         }
       }
     }
+  }
 
+  describe("RDF API") {
     it("should upload turtle document with Yaakov's data")(uploadYaakov)
     it("should verify Yaakov's data has been ingested OK")(verifyIngest)
     it("should change Yaakov's email data with cmwell://meta/sys#markDelete predicate")(markDeleteData)
     it("should verify that the email was changed")(verifyChange)
+    it("should upload weird unlabeled type")(uploadWeirdType)
+    it("should verify weird output is same as ingested")(verifyWeirdIngest)
+    it("should upload empty typed value")(uploadEmptyType)
+    it("should verify empty output is same as ingested")(verifyEmptyIngest)
   }
 }
