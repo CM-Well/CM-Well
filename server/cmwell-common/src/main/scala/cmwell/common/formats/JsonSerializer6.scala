@@ -28,7 +28,7 @@ import scala.util.Try
   */
 object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
 
-  private def decodeFieldsWithParser(parser:JsonParser):Map[String, Set[FieldValue]] = {
+  private def decodeFieldsWithParser(parser:JsonParser): Map[String, Set[FieldValue]] = {
     assume(parser.nextToken()== JsonToken.START_OBJECT, s"expected start of 'fields' object\n${parser.getCurrentLocation.toString}")
     val fields = collection.mutable.Map[String, collection.mutable.Set[FieldValue]]()
     while(parser.nextToken() != JsonToken.END_OBJECT) {

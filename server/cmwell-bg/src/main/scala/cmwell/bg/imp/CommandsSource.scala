@@ -14,6 +14,7 @@ import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
 
 /**
   * Proj: server
@@ -49,14 +50,22 @@ object CommandsSource extends LazyLogging {
 
     val persistCommandsSource = Consumer.plainSource[Array[Byte], Array[Byte]](persistCommandsConsumerSettings, subscription).map { msg =>
       logger.debug(s"consuming next payload from persist commands topic @ ${msg.offset()}")
-      val command = CommandSerializer.decode(msg.value())
+      val commandTry = Try(CommandSerializer.decode(msg.value()))
+      commandTry.failed.foreach { err =>
+        logger.error(s"deserialize command error for msg [$msg]",err)
+      }
+      val command = commandTry.get
       logger.debug(s"consumed command: $command")
       BGMessage[Command](CompleteOffset(msg.topic(), msg.offset()), command)
     }.via(sharedKillSwitch.flow)
 
     val priorityPersistCommandsSource = Consumer.plainSource[Array[Byte], Array[Byte]](persistCommandsConsumerSettings, prioritySubscription).map { msg =>
       logger.info(s"consuming next payload from priority persist commands topic @ ${msg.offset()}")
-      val command = CommandSerializer.decode(msg.value())
+      val commandTry = Try(CommandSerializer.decode(msg.value()))
+      commandTry.failed.foreach { err =>
+        logger.error(s"deserialize command error for msg [$msg]",err)
+      }
+      val command =commandTry.get
       logger.info(s"consumed priority command: $command")
       BGMessage[Command](CompleteOffset(msg.topic(), msg.offset()), command)
     }.via(sharedKillSwitch.flow)
