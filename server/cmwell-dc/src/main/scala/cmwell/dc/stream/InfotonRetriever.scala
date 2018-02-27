@@ -30,7 +30,7 @@ import akka.util.{ByteString, ByteStringBuilder}
 import cmwell.dc.{LazyLogging, Settings}
 import cmwell.dc.Settings._
 import cmwell.dc.stream.MessagesTypesAndExceptions._
-import cmwell.util.http.HttpZipDecoder
+import cmwell.util.akka.http.HttpZipDecoder
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration._

@@ -30,7 +30,7 @@ import cmwell.tools.data.utils.akka.HeaderOps._
 import cmwell.tools.data.utils.akka.{DataToolsConfig, HttpConnections, lineSeparatorFrame}
 import cmwell.tools.data.utils.logging._
 import cmwell.tools.data.utils.text.Tokens
-import cmwell.util.http.HttpZipDecoder
+import cmwell.util.akka.http.HttpZipDecoder
 
 import scala.collection.mutable
 import scala.concurrent.duration.{FiniteDuration, _}
