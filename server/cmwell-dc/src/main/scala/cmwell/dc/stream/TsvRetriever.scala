@@ -31,7 +31,7 @@ import cmwell.dc.{LazyLogging, Settings}
 import cmwell.dc.Settings._
 import cmwell.dc.stream.MessagesTypesAndExceptions._
 import cmwell.dc.stream.akkautils.DebugStage
-import cmwell.util.http.HttpZipDecoder
+import cmwell.util.akka.http.HttpZipDecoder
 import com.typesafe.config.ConfigFactory
 
 import scala.collection.parallel.immutable

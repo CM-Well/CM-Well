@@ -1,4 +1,4 @@
-package cmwell.util.http
+package cmwell.util.akka.http
 
 import akka.http.scaladsl.coding.{Deflate, Gzip, NoCoding}
 import akka.http.scaladsl.model.HttpResponse
