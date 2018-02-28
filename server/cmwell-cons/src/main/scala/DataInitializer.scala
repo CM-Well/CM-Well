@@ -134,7 +134,8 @@ class DataInitializer(h: Host, jwt: String, rootDigest: String, rootDigest2: Str
       "root" -> s"""{"digest":"$rootDigest","digest2":"$rootDigest2","paths":[${allowRoot("rw")}],"operations":["Admin","Overwrite","PriorityWrite"],"roles":[]}""",
       "pUser" -> s"""{"paths":[${allowRoot("rw")}],"operations":["Admin","Overwrite","PriorityWrite"],"roles":[]}""",
       "dca" -> s"""{"paths":[${allowRoot("rw")}],"operations":["Overwrite"],"roles":[]}""",
-      "docu" -> """{"paths":[{"id":"/","recursive":true,"sign":"+","permissions":"r"},{"id":"/meta/docs","recursive":true,"sign":"+","permissions":"rw"}],"rev":0}"""
+      "docu" -> """{"paths":[{"id":"/","recursive":true,"sign":"+","permissions":"r"},{"id":"/meta/docs","recursive":true,"sign":"+","permissions":"rw"}],"rev":0}""",
+      "stpAgent" -> s"""{"paths":[${allowRoot("rw")}],"roles":[]}"""
     )
 
     val p = Progress(userInfotons.size)

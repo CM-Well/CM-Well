@@ -808,6 +808,7 @@ case class DcConf(home : String, sName : String, clusterName : String, resourceM
       s"""
          |export PATH=$home/app/java/bin:$home/bin/utils:$PATH
          |${createExportEnvStr("DCA_USER_TOKEN").getOrElse("")}
+         |${createExportEnvStr("STP_USER_TOKEN").getOrElse("")}
          |$CHKSTRT
          |$BMSG
          |${genDebugStr(5013)}
