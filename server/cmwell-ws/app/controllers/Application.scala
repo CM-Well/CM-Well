@@ -23,6 +23,7 @@ import javax.inject._
 
 import actions._
 import akka.NotUsed
+import akka.actor.ActorRef
 import akka.pattern.AskTimeoutException
 import akka.stream.scaladsl.Source
 import akka.util.{ByteString, Timeout}
@@ -62,6 +63,7 @@ import cmwell.syntaxutils.!!!
 import cmwell.util.stream.StreamEventInspector
 import cmwell.util.string.Base64
 import cmwell.web.ld.cmw.CMWellRDFHelper
+import com.google.common.cache.{Cache, CacheBuilder}
 import filters.Attrs
 import play.api.mvc.request.RequestTarget
 
@@ -601,7 +603,9 @@ callback=< [URL] >
 
   private def createScrollIdDispatcherActorFromIteratorId(id: String, withHistory: Boolean, ttl: FiniteDuration): String = {
     val ar = Grid.createAnon(classOf[IteratorIdDispatcher], id, withHistory, ttl)
-    val rv = Base64.encodeBase64URLSafeString(ar.path.toSerializationFormatWithAddress(Grid.me))
+    val path = ar.path.toSerializationFormatWithAddress(Grid.me)
+    putInCache(path,ar)
+    val rv = Base64.encodeBase64URLSafeString(path)
     logger.debug(s"created actor with id = $rv")
     rv
   }
@@ -1397,6 +1401,26 @@ callback=< [URL] >
     handleScroll(request)
   }
 
+  val (actorRefsCachedFactory, putInCache) = {
+    val c: Cache[String, Future[Option[ActorRef]]] = CacheBuilder.newBuilder().maximumSize(100).build()
+    val func: String => Future[Option[ActorRef]] = s => {
+      Grid.getRefFromSelection(Grid.selectByPath(s), 10, 1.second).transform {
+        case Failure(_: NoSuchElementException) => Success(None)
+        case otherTry => otherTry.map(Some.apply)
+      }
+    }
+
+    val putRefreshedValueEagerlyInCache: (String,ActorRef) => Unit =
+      (k: String, v: ActorRef) => {
+        c.put(k,Future.successful(Some(v)))
+      }
+
+    (cmwell.zcache.L1Cache.memoizeWithCache[String,Option[ActorRef]](func)(identity)(c)(ec) andThen (_.transform {
+      case Success(None) => Failure(new NoSuchElementException("actor address was not found please see previous log for the exact reason why."))
+      case anotherNonEmptyTry => anotherNonEmptyTry.map(_.get)
+    })) -> putRefreshedValueEagerlyInCache
+  }
+
   /**
    * WARNING: using xg with iterator, is at the user own risk!
    * results may be cut off if expansion limit is exceeded,
@@ -1427,8 +1451,7 @@ callback=< [URL] >
         val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
         val deadLine = Deadline(Duration(request.attrs(Attrs.RequestReceivedTimestamp) + 7000, MILLISECONDS))
         val itStateEitherFuture: Future[Either[String, IterationState]] = {
-          val as = Grid.selectByPath(Base64.decodeBase64String(encodedActorAddress, "UTF-8"))
-          Grid.getRefFromSelection(as, 10, 1.second).flatMap { ar =>
+          actorRefsCachedFactory(Base64.decodeBase64String(encodedActorAddress, "UTF-8")).flatMap { ar =>
             (ar ? GetID)(akka.util.Timeout(10.seconds)).mapTo[IterationState].map {
               case IterationState(id, wh, _) if wh && (yg.isDefined || xg.isDefined) => {
                 Left("iterator is defined to contain history. you can't use `xg` or `yg` operations on histories.")
