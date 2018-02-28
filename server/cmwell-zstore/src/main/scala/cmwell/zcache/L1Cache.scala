@@ -31,10 +31,10 @@ import scala.util.{Failure, Success}
   *
   */
 object L1Cache {
-  def memoize[K,V](task: K => Future[V])
-                  (digest: K => String, isCachable: V => Boolean = (_:V)=>true)
-                  (l1Size: Int = 1024, ttlSeconds: Int = 10)
-                  (implicit ec: ExecutionContext): K => Future[V] = {
+  def memoize[K, V](task: K => Future[V])
+                   (digest: K => String, isCachable: V => Boolean = (_: V) => true)
+                   (l1Size: Int = 1024, ttlSeconds: Int = 10)
+                   (implicit ec: ExecutionContext): K => Future[V] = {
 
     val cache: Cache[String, Future[V]] =
       CacheBuilder.newBuilder().maximumSize(l1Size).expireAfterWrite(ttlSeconds, TimeUnit.SECONDS).build()
@@ -53,6 +53,30 @@ object L1Cache {
               case `fut` => cache.invalidate(key)
               case _ => //Do Nothing
             }
+          }
+        }
+      }
+    }
+  }
+
+  def memoizeWithCache[K, V](task: K => Future[V])
+                            (digest: K => String, isCachable: V => Boolean = (_: V) => true)
+                            (cache: Cache[String, Future[V]])
+                            (implicit ec: ExecutionContext): K => Future[V] = {
+
+    (input: K) => {
+      val key = digest(input)
+      Option(cache.getIfPresent(key)).getOrElse {
+        val fut = task(input)
+        cache.put(key, fut)
+        fut.andThen {
+          case Success(v) => if (!isCachable(v)) cache.getIfPresent(key) match {
+            case `fut` => cache.invalidate(key)
+            case _ => //Do Nothing
+          }
+          case Failure(_) => cache.getIfPresent(key) match {
+            case `fut` => cache.invalidate(key)
+            case _ => //Do Nothing
           }
         }
       }

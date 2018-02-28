@@ -333,6 +333,7 @@ object Grid extends LazyLogging {
   }
 
   case object Resolve
+  case object NoResponseAfterGraceTimeTimedOut
   class Resolver(actorSelection: ActorSelection, retries: Int, timeout: FiniteDuration) extends Actor {
 
     import scala.concurrent.ExecutionContext.Implicits.global
@@ -342,34 +343,32 @@ object Grid extends LazyLogging {
     def retry(retriesLeft: Int, client: ActorRef, cancellable: akka.actor.Cancellable): Receive = {
       case Resolve if retriesLeft > 1 => {
         actorSelection ! Identify(None)
-        val c = context.system.scheduler.scheduleOnce(timeout, self, Resolve)
-        context.become(retry(retries - 1, client, c))
+        context.become(retry(retries - 1, client, cancellable))
       }
       case Resolve => {
-        client ! Failure(new RuntimeException("could not resolve actor selection"))
-        context.stop(self)
+        cancellable.cancel()
+        context.system.scheduler.scheduleOnce(timeout * retries, self, NoResponseAfterGraceTimeTimedOut)
       }
       case ActorIdentity(_, Some(remoteRef)) => {
+        client ! remoteRef
         cancellable.cancel()
-        client ! Success(remoteRef)
-        context.stop(self)
-      }
-      case ActorIdentity(_, None) if retriesLeft < 1 => {
-        cancellable.cancel()
-        client ! Failure(new RuntimeException("could not resolve actor selection"))
         context.stop(self)
       }
       case ActorIdentity(_, None) => {
+        client ! Status.Failure(new NoSuchElementException(s"could not resolve actor selection for actor $actorSelection. Actor doesn't exist."))
         cancellable.cancel()
-        context.become(retry(retries - 1, client, cancellable))
-        self ! Resolve
+        context.stop(self)
+      }
+      case NoResponseAfterGraceTimeTimedOut => {
+        client ! Status.Failure(new RuntimeException(s"No response (timeout) for actor selection of $actorSelection Identity request"))
+        context.stop(self)
       }
     }
 
     def receive: Receive = {
       case Resolve => {
         actorSelection ! Identify(None)
-        val c = context.system.scheduler.scheduleOnce(timeout,self,Resolve)
+        val c = context.system.scheduler.schedule(timeout, timeout, self, Resolve)
         context.become(retry(retries - 1, sender(), c))
       }
     }
@@ -378,7 +377,7 @@ object Grid extends LazyLogging {
   def getRefFromSelection(actorSelection: ActorSelection, retries: Int = 10, timeout: FiniteDuration = 1.second): Future[ActorRef] = {
     import scala.concurrent.ExecutionContext.Implicits.global
     val ar = system.actorOf(Props(new Resolver(actorSelection,retries,timeout)))
-    (ar ? Resolve)(akka.util.Timeout(timeout * retries)).mapTo[Try[ActorRef]].flatMap(Future.fromTry)
+    (ar ? Resolve)(akka.util.Timeout(timeout * retries * 3)).mapTo[Try[ActorRef]].flatMap(Future.fromTry)
   }
 
   def shutdown : Unit = {
