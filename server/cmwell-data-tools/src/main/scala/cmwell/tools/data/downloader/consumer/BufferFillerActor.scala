@@ -46,7 +46,8 @@ object BufferFillerActor {
   case class HttpResponseFailure(token: Token, err: Throwable)
   case class NewToHeader(to: Option[String])
   case object GetToHeader
-  case class SetHorizonStatus(status: Boolean)
+  case class SetConsumeStatus(complete: Boolean)
+  case object SetHorizon
 }
 
 class BufferFillerActor(threshold: Int,
@@ -71,6 +72,7 @@ class BufferFillerActor(threshold: Int,
   private val buf: mutable.Queue[Option[(Token, TsvData)]] = mutable.Queue()
   private var tsvCounter = 0L
   private var lastBulkConsumeToHeader: Option[String] = None
+  private var consumeComplete = false
   private var horizon = false
 
   val retryTimeout: FiniteDuration = {
@@ -144,17 +146,21 @@ class BufferFillerActor(threshold: Int,
       tsvCounter += 1
 
     case GetData if buf.nonEmpty =>
-      sender ! buf.dequeue.map(tokenAndData => (tokenAndData._1, tokenAndData._2, horizon))
+      sender ! buf.dequeue.map(tokenAndData => {
+        (tokenAndData._1, tokenAndData._2,  (buf.isEmpty && consumeComplete))
+      })
+
+
 
     // do nothing since there are no elements in buffer
     case GetData =>
       logger.debug("Got GetData message but there is no data")
-      sender ! Some[(Token, TsvData, Boolean)](null, null, horizon)
+      sender ! Some[(Token, TsvData, Boolean)](null, null, consumeComplete)
 
-    case SetHorizonStatus(hzStatus) =>
-      logger.debug(s"Setting horizon to $hzStatus")
-      horizon = hzStatus
-
+    case SetConsumeStatus(consumeStatus) =>
+      if(this.consumeComplete != consumeStatus)
+        logger.info(s"Setting consumeComplete to $consumeStatus")
+      consumeComplete = consumeStatus
 
     case HttpResponseSuccess(t) =>
       // get point in time of token
@@ -234,12 +240,12 @@ class BufferFillerActor(threshold: Int,
 
             if (updateFreq.isEmpty) self ! NewData(None)
 
-            self ! SetHorizonStatus(true)
+            self ! SetConsumeStatus(true)
 
             None -> Source.empty
           case (Success(HttpResponse(s, h, e, _)), _) if s == StatusCodes.OK || s == StatusCodes.PartialContent =>
 
-            self ! SetHorizonStatus(false)
+            self ! SetConsumeStatus(false)
 
             val nextToken = getPosition(h) match {
               case Some(HttpHeader(_, pos)) => pos
