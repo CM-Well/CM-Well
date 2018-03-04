@@ -59,7 +59,8 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
   val indexerOn = config.getBoolean("cmwell.bg.IndexerOn")
 
   // Metrics
-  val jmxReporter = JmxReporter.forRegistry(metricRegistry).build()
+  val bgMetrics = new BGMetrics
+  val jmxReporter = JmxReporter.forRegistry(bgMetrics.metricRegistry).build()
   jmxReporter.start()
   val reportMetricsToES = config.getBoolean("cmwell.common.reportMetricsToES")
     logger debug (s"report to es set to $reportMetricsToES")
@@ -182,7 +183,7 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
     if(impOn) {
       if (impStream == null) {
         logger info "starting ImpStream"
-        impStream = new ImpStream(partition, config, irwService, zStore, ftsService, offsetsService, self)
+        impStream = new ImpStream(partition, config, irwService, zStore, ftsService, offsetsService, self, bgMetrics)
       } else
         logger warn "requested to start Imp Stream but it is already running. doing nothing."
     }
