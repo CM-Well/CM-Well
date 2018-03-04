@@ -377,7 +377,7 @@ object Grid extends LazyLogging {
   def getRefFromSelection(actorSelection: ActorSelection, retries: Int = 10, timeout: FiniteDuration = 1.second): Future[ActorRef] = {
     import scala.concurrent.ExecutionContext.Implicits.global
     val ar = system.actorOf(Props(new Resolver(actorSelection,retries,timeout)))
-    (ar ? Resolve)(akka.util.Timeout(timeout * retries * 3)).mapTo[Try[ActorRef]].flatMap(Future.fromTry)
+    (ar ? Resolve)(akka.util.Timeout(timeout * retries * 3)).mapTo[ActorRef]
   }
 
   def shutdown : Unit = {
