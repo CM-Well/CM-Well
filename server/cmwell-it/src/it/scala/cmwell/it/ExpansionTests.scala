@@ -30,17 +30,26 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
     val ingestData = {
       val imntr = scala.io.Source.fromURL(this.getClass.getResource(s"/steve_harris/Iron_Maiden.nt")).mkString
       val shrdf = scala.io.Source.fromURL(this.getClass.getResource(s"/steve_harris/steve.rdf")).mkString
+      val bools = """
+          |<http://example.org/issue-529/bool> <http://schema.org/value> "true"^^<http://www.w3.org/2001/XMLSchema#boolean> .
+          |<http://example.org/issue-529/bool> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://schema.org/StructuredValue> .
+          |<http://example.org/issue-529/ref> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://schema.org/PropertyValue> .
+          |<http://example.org/issue-529/ref> <http://schema.org/valueReference> <http://example.org/issue-529/bool> .
+        """.stripMargin
       val f1 = Http.post(_in, imntr, Some("text/plain;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader)
       val f2 = Http.post(_in, shrdf, Some("application/rdf+xml;charset=UTF-8"), List("format" -> "rdfxml"), tokenHeader)
-      f1.zip(f2).map {
-        case (r1, r2) => {
-          withClue(r1 -> r2) {
+      val f3 = Http.post(_in, bools, None, List("format" -> "ntriples"), tokenHeader)
+      for {
+        r1 <- f1
+        r2 <- f2
+        r3 <- f3
+      } yield withClue((r1,r2,r3)){
             r1.status should be(200)
             r2.status should be(200)
+            r3.status should be(200)
             Json.parse(r1.payload) should be(jsonSuccess)
             Json.parse(r2.payload) should be(jsonSuccess)
-          }
-        }
+            Json.parse(r3.payload) should be(jsonSuccess)
       }
     }
 
@@ -122,6 +131,43 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
       }
     }
 
+    val refToBoolMatch = waitForIngest.flatMap { _ =>
+      spinCheck(1.second,true)(Http.get(cmw / "example.org" / "issue-529" / "ref", List("yg" -> ">valueReference.schema[value.schema:true]","format" -> "json")))(_.status).map {
+        res => withClue(res) {
+          res.status should be(200)
+          Json.parse(res.payload) \ "infotons" match {
+            case JsDefined(arr: JsArray) => arr should have size(2)
+            case somethingElse => fail(s"got something that is not json with array: $somethingElse")
+          }
+        }
+      }
+    }
+
+    val refToBoolExist = waitForIngest.flatMap { _ =>
+      spinCheck(1.second,true)(Http.get(cmw / "example.org" / "issue-529" / "ref", List("yg" -> ">valueReference.schema[value.schema:]","format" -> "json")))(_.status).map {
+        res => withClue(res) {
+          res.status should be(200)
+          Json.parse(res.payload) \ "infotons" match {
+            case JsDefined(arr: JsArray) => arr should have size(2)
+            case somethingElse => fail(s"got something that is not json with array: $somethingElse")
+          }
+        }
+      }
+    }
+
+    val refToBoolMismatch = waitForIngest.flatMap { _ =>
+      spinCheck(1.second,true)(Http.get(cmw / "example.org" / "issue-529" / "ref", List("yg" -> ">valueReference.schema[value.schema:false]","format" -> "json")))(_.status).map {
+        res => withClue(res) {
+          res.status should be(200)
+          Json.parse(res.payload) \ "infotons" match {
+            case JsDefined(arr: JsArray) => arr should have size(1)
+            case somethingElse => fail(s"got something that is not json with array: $somethingElse")
+          }
+        }
+      }
+    }
+
+
     it("should ingest the data")(ingestData)
     it("should make sure that steve harris is a ghost (I.E. 404)")(makeSureSteveHarrisIs404Ghost)
     it("should skip the ghost to get Iron Maiden band")(skipSteveHarrisGhostToGetBand)
@@ -129,6 +175,9 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
     it("should expand from 404 path to existing infotons")(getInfotonsPointingToGhostOfSteveHarrisFrom404Path)
     it("should return an empty json response if traversal started from 404 path & all results were filtered out")(filterOutInfotonsPointingToGhostOfSteveHarrisFrom404Path)
     it("should try to skip the ghost but ended up ghost filtered")(tryToSkipSteveHarrisGhostToGetIdentityButGetGhostFilttered)
+    it("should expand filtered passing mangled fields (with value)")(refToBoolMatch)
+    it("should expand filtered passing mangled fields (existence)")(refToBoolExist)
+    it("should NOT expand filtered passing mangled fields (mismatch)")(refToBoolMismatch)
     //TODO: all ghost tests should also work for a deleted infoton (still 404 path...)
   }
 }

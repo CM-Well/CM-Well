@@ -70,7 +70,6 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
     val esColor = Try(Await.result(dashBoard.getElasticsearchStatus(), esTimeout)._1.toString).getOrElse("grey")
     Some(Map[String,Set[FieldValue]](
       "pbp" -> Set(FString(backPressureToggler.get)),
-      "search_contexts_limit" -> Set(FLong(Settings.maxSearchContexts)),
       "cm-well_release" -> Set(FString(BuildInfo.release)),
       "cm-well_version" -> Set(FString(BuildInfo.version)),
       "git_commit_version" -> Set(FString(BuildInfo.gitCommitVersion)),

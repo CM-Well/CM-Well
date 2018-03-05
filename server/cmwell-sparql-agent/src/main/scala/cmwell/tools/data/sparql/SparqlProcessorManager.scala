@@ -33,6 +33,7 @@ import cmwell.tools.data.utils.akka.stats.IngesterStats
 import cmwell.tools.data.utils.akka.stats.IngesterStats.IngestStats
 import cmwell.tools.data.utils.chunkers.GroupChunker
 import cmwell.tools.data.utils.chunkers.GroupChunker._
+import cmwell.tools.data.utils.text.Tokens
 import cmwell.util.http.SimpleResponse
 import cmwell.util.string.Hash
 import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
@@ -281,7 +282,9 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
 
       val jobConfig = jobStatus.job.config
 
-      val title = Seq(s"""<span style="color:green"> **${jobStatus.statusString}** </span> ${path}""")
+      val hostUpdatesSource = jobConfig.hostUpdatesSource.getOrElse(settings.hostUpdatesSource)
+
+      val title = Seq(s"""<span style="color:green"> **${jobStatus.statusString}** </span> Agent: ${path} Source: ${hostUpdatesSource}""")
       val header = Seq("Sensor", "Token Time", "Received Infotons", "Infoton Rate", "Statistics Updated")
       val statsFuture = (jobStatus.reporter ? RequestDownloadStats).mapTo[ResponseDownloadStats]
       val storedTokensFuture = (jobStatus.reporter ? RequestPreviousTokens).mapTo[ResponseWithPreviousTokens]
@@ -302,8 +305,10 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
 
         val body : Iterable[Row] = allSensorsWithTokens.map { case (sensorName, token) =>
           val decodedToken = if (token.nonEmpty) {
-            val from = cmwell.tools.data.utils.text.Tokens.getFromIndexTime(token)
-            LocalDateTime.ofInstant(Instant.ofEpochMilli(from), ZoneId.systemDefault()).toString
+            Tokens.getFromIndexTime(token) match{
+              case 0 => ""
+              case tokenTime => (LocalDateTime.ofInstant(Instant.ofEpochMilli(tokenTime), ZoneId.systemDefault()).toString)
+            }
           }
           else ""
 
@@ -314,7 +319,13 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
               case _ => LocalDateTime.ofInstant(Instant.ofEpochMilli(s.statsTime), ZoneId.systemDefault()).toString
             }
 
-            Seq(s.receivedInfotons.toString, s"${formatter.format(s.infotonRate)}/sec", statsTime)
+            val infotonRate = s.horizon match {
+              case true =>  s"""<span style="color:green">Horizon</span>"""
+              case false => s"${formatter.format(s.infotonRate)}/sec"
+            }
+
+            Seq(s.receivedInfotons.toString, infotonRate, statsTime)
+
           }.getOrElse(Seq.empty[String])
 
           Seq(sensorName, decodedToken) ++ sensorStats
@@ -367,6 +378,7 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
     val (killSwitch, jobDone) = Ingester.ingest(baseUrl = settings.hostWriteOutput,
         format = settings.materializedViewFormat,
         source = agent,
+        writeToken = Option(settings.writeToken),
         force = job.config.force.getOrElse(false),
         label = label)
       .via(IngesterStats(isStderr = false, reporter = Some(tokenReporter), label=label))

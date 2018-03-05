@@ -50,6 +50,7 @@ rev | Integer | Optional. A revision number for the user details. This value is 
 digest | String | Optional. The user's password, encrypted using **bcrypt** and CM-Well's private key. This value is checked when a user logs in with HTTP Basic Authentication.
 digest2 | String | Optional. The MD5 encryption of "\<username\>:cmwell:\<password\>". This value is checked when a user logs in with HTTP Digest Authentication. See [Generating User Passwords](#hdrGenPassword).
 roles | Array of strings | Optional. An array of roles belonging to the user. See [Managing User Roles](#hdrRoles) for more details.
+operations | Array of strings | Optional. Possible values are:<br/><br/>**PriorityWrite** - allows the user to use the **priority** flag to boost priority for **_in** actions.<br/>**Admin** - allows the user to perform administrator actions such as changing the log level and invalidating caches.<br/>**Overwrite** - allows the user to use the **_ow** endpoint to create infoton versions as specified (with no merge to existing versions).
 
 >**Notes**: 
 >* The JSON body does not include the username, as the username is "stored" as the FileInfoton's name.
@@ -72,6 +73,7 @@ Here is an example of a user FileInfoton's JSON body:
 		      "permissions": "rw"
 	      }
       ],
+	  "operations":["PriorityWrite"],
 	  "rev":101,
       "digest": "$2a$10$7AnXsjks.IZXTbpRiAGN4OQItwiz4sgxM49lvTiCjWgOhbbOQkg2m",
       "digest2": "156a19430260e6b09497478441aea344"

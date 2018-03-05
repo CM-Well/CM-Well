@@ -327,28 +327,24 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
       })
     }
 
-//    TODO: should we re-enable this test?
-//    describe("iterator creation") {  //todo this should pass, but fails on Jenkins
-//      import scala.concurrent.duration._
-//
-//      val defaultMax = wsConfig.getInt("webservice.max.search.contexts")
-//      val ttl = 60
-//
-//      val req = Http.get(cmw, List("op" -> "create-iterator", "session-ttl" -> ttl.toString))
-//      val returnCodes = Future.traverse(1 to defaultMax)(_ => req.map(_.status))
-//
-//      (ttl - 3).seconds.fromNow.block
-//      val returnCode = req.map(_.status)
-//
-//      ignore(s"should allow $defaultMax iterators concurently") {
-//        val fi = returnCodes.map(_.count(_ == 200))
-//        Await.result(fi, requestTimeout) should be(defaultMax)
-//      }
-//
-//      ignore(s"should reject the ${defaultMax+1}th request") {
-//        Await.result(returnCode, requestTimeout) should be(400)
-//      }
-//    }
+    //FIXME: Implement limitation on max concurrent iterators
+    ignore("iterator creation limitation") {
+      import scala.concurrent.duration._
+
+      val defaultMax = 613000000 // TODO Create config such as "webservice.max.search.contexts"
+      val ttl = 60
+      val queryParams = List("op" -> "create-iterator", "session-ttl" -> ttl.toString)
+
+      val statusCodesFut = Future.traverse(1 to defaultMax)(_ => Http.get(cmw, queryParams).map(_.status))
+
+      (ttl - 3).seconds.fromNow.block
+      Http.get(cmw, queryParams).flatMap { anotherResp =>
+        statusCodesFut.map { statusCodes =>
+          all(statusCodes) should be(200)
+          anotherResp.status should be(503)
+        }
+      }
+    }
   }
 
   // Helpers

@@ -1508,8 +1508,6 @@ abstract class Host(user: String,
     injectMetaData(host)
     info("  uploading SPAs to meta/app")
     dataInitializer.uploadDirectory("data", s"http://$host:9000/meta/app/")
-    info("  uploading sys")
-    dataInitializer.uploadDirectory("sys", s"http://$host:9000/meta/sys/wb/")
     info("  uploading docs")
     dataInitializer.uploadDirectory("docs", s"http://$host:9000/meta/docs/")
     info("  uploading basic userInfotons (if not exist)")
@@ -2030,10 +2028,8 @@ abstract class Host(user: String,
 
     if (uploadSpa) {
       Try(WebServiceLock().waitForModule(ips(0), 1))
-      info("  uploading SPA to meta/app")
+      info("  uploading SPAs to meta/app")
       dataInitializer.uploadDirectory("data", s"http://${hosts.head}:9000/meta/app/")
-      info("  uploading sys")
-      dataInitializer.uploadDirectory("sys", s"http://${hosts.head}:9000/meta/sys/wb/")
     }
 
     if (uploadDocs) {

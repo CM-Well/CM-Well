@@ -6,12 +6,10 @@
 
 ----
 
-CM-Well provides two views that display the health of its nodes (machines) and software components:
+CM-Well provides several views that display the health status of its nodes (machines) and sub-systems. Two of the main views are:
 
 * **Component view** - shows the health of each type of component pool.
 * **Node view** - shows the health of each machine in the environment.
-
->**Note:** There are also views that show the health of the [JVM processes](#hdr1) running on CM-Well nodes.
 
 These are the software component acronyms you will see in the health views:
 
@@ -19,6 +17,8 @@ These are the software component acronyms you will see in the health views:
 * **BG** - background processes, which perform lengthier tasks.
 * **ES** - Elastic Search components, which perform full-text search operations.
 * **CAS** - Cassandra components, which provide storage infrastructure.
+* **ZK** - Zookeeper modules that manage synchronization for  a distributed cluster environment
+* **KF** - Kafka modules that manage virtual queues for writing to CM-Well
 
 The health of each node and component instance is polled about every 30 seconds.
 
@@ -75,7 +75,7 @@ The node view is displayed. It contains a table showing each node's IP address, 
 
 ----------
 
-<img src="./_Images/health-detailed-md-page.png">
+<img src="./_Images/health-detailed-new.png">
 
 <a name="hdr1"></a>
 ## JVM Views (for internal TMS use) ##

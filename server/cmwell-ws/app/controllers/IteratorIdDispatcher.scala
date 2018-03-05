@@ -31,17 +31,16 @@ case class IterationState(actualEsScrollId: String, withHistory: Boolean, iterat
 
 class IteratorIdDispatcher(actualEsScrollId: String, withHistory: Boolean, ttl: FiniteDuration) extends Actor {
 
-  var cancelable = context.system.scheduler.scheduleOnce(ttl,self,PoisonPill)
+  var cancelable = context.system.scheduler.scheduleOnce(ttl, self, PoisonPill)
 
   override def receive: Receive = {
     case GetID => {
       sender() ! IterationState(actualEsScrollId, withHistory, self)
       cancelable.cancel()
+      cancelable = context.system.scheduler.scheduleOnce(ttl * 2, self, PoisonPill)
     }
     case GotIt => {
-      if(!cancelable.isCancelled) {
-        cancelable.cancel()
-      }
+      cancelable.cancel()
       cancelable = context.system.scheduler.scheduleOnce(ttl, self, PoisonPill)
     }
   }
