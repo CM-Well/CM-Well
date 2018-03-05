@@ -72,7 +72,7 @@ class BufferFillerActor(threshold: Int,
   private var tsvCounter = 0L
   private var lastBulkConsumeToHeader: Option[String] = None
   private var consumeComplete = false
-  private var horizon = false
+
 
   val retryTimeout: FiniteDuration = {
     val timeoutDuration = Duration(config.getString("cmwell.downloader.consumer.http-retry-timeout")).toCoarsest
@@ -148,8 +148,6 @@ class BufferFillerActor(threshold: Int,
       sender ! buf.dequeue.map(tokenAndData => {
         (tokenAndData._1, tokenAndData._2,  (buf.isEmpty && consumeComplete))
       })
-
-
 
     // do nothing since there are no elements in buffer
     case GetData =>
