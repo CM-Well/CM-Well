@@ -204,16 +204,12 @@ lazy val rts           = (project in file("cmwell-rts")).enablePlugins(CMWellBui
 lazy val fts           = (project in file("cmwell-fts")).enablePlugins(CMWellBuild)                                 dependsOn(domain, common)
 lazy val formats       = (project in file("cmwell-formats")).enablePlugins(CMWellBuild)                             dependsOn(domain, common, fts)
 lazy val irw           = (project in file("cmwell-irw")).enablePlugins(CMWellBuild, CassandraPlugin)                dependsOn(dao, domain, common, zstore)
-lazy val tlog          = (project in file("cmwell-tlog")).enablePlugins(CMWellBuild)                                dependsOn(domain, common)
-lazy val imp           = (project in file("cmwell-imp")).enablePlugins(CMWellBuild, CassandraPlugin)                dependsOn(domain, common, tlog, irw, fts % "compile->compile;test->test", rts, zstore)
-lazy val indexer       = (project in file("cmwell-indexer")).enablePlugins(CMWellBuild)                             dependsOn(domain, common, tlog, irw, fts)
-lazy val stortill      = (project in file("cmwell-stortill")).enablePlugins(CMWellBuild)                            dependsOn(domain, irw, fts , imp)
-lazy val batch         = (project in file("cmwell-batch")).enablePlugins(CMWellBuild)                               dependsOn(imp, indexer, ctrl)
+lazy val stortill      = (project in file("cmwell-stortill")).enablePlugins(CMWellBuild)                            dependsOn(domain, irw, fts, formats)
 lazy val bg            = (project in file("cmwell-bg")).enablePlugins(CMWellBuild, SbtKafkaPlugin, CassandraPlugin) dependsOn(kafkaAssigner, irw, domain, fts, grid, zstore, tracking)
-lazy val consIt        = (project in file("cmwell-it")).enablePlugins(CMWellBuild)                                  dependsOn(domain, common % "compile->compile;it->test", tlog, ws) configs(IntegrationTest)
-lazy val ctrl          = (project in file("cmwell-controller")).enablePlugins(CMWellBuild)                          dependsOn(tlog,grid)
+lazy val consIt        = (project in file("cmwell-it")).enablePlugins(CMWellBuild)                                  dependsOn(domain, common % "compile->compile;it->test", ws) configs(IntegrationTest)
+lazy val ctrl          = (project in file("cmwell-controller")).enablePlugins(CMWellBuild)                          dependsOn(grid, common)
 lazy val dc            = (project in file("cmwell-dc")).enablePlugins(CMWellBuild, JavaAppPackaging)                dependsOn(tracking, ctrl, sparqlAgent)
-lazy val cons          = (project in file("cmwell-cons")).enablePlugins(CMWellBuild)                                dependsOn(util, ctrl) aggregate(batch, ws, ctrl, dc)
+lazy val cons          = (project in file("cmwell-cons")).enablePlugins(CMWellBuild)                                dependsOn(common, util, ctrl) aggregate(ws, ctrl, dc)
 lazy val pluginGremlin = (project in file("cmwell-plugin-gremlin")).enablePlugins(CMWellBuild)
 lazy val spa           = (project in file("cmwell-spa")) .enablePlugins(CMWellBuild)
 lazy val dataTools     = (project in file("cmwell-data-tools")).enablePlugins(CMWellBuild)                          dependsOn(util)
@@ -221,7 +217,7 @@ lazy val dataToolsApp  = (project in file("cmwell-data-tools-app")).enablePlugin
 lazy val sparqlAgent   = (project in file("cmwell-sparql-agent")).enablePlugins(CMWellBuild)                        dependsOn(dataTools, grid, util, ctrl)
 lazy val tracking      = (project in file("cmwell-tracking")).enablePlugins(CMWellBuild)                            dependsOn(util, zstore, grid, irw, ctrl)
 lazy val ws            = (project in file("cmwell-ws")).enablePlugins(CMWellBuild, PlayScala, SbtTwirl, PlayNettyServer)
-                                                       .disablePlugins(PlayAkkaHttpServer)                          dependsOn(domain, common, formats, tlog, fts, irw, rts, ctrl, stortill, zstore, tracking)
+                                                       .disablePlugins(PlayAkkaHttpServer)                          dependsOn(domain, common, formats, fts, irw, rts, ctrl, stortill, zstore, tracking)
 
 fullTest := {
   (fullTest in LocalProject("util")).value
@@ -235,11 +231,7 @@ fullTest := {
   (fullTest in LocalProject("fts")).value
   (fullTest in LocalProject("formats")).value
   (fullTest in LocalProject("irw")).value
-  (fullTest in LocalProject("tlog")).value
-  (fullTest in LocalProject("imp")).value
-  (fullTest in LocalProject("indexer")).value
   (fullTest in LocalProject("stortill")).value
-  (fullTest in LocalProject("batch")).value
   (fullTest in LocalProject("bg")).value
   (fullTest in LocalProject("ws")).value
   (fullTest in LocalProject("consIt")).value

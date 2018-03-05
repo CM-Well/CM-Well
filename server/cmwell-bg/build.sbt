@@ -56,6 +56,6 @@ test in Test := Def.taskDyn {
   }
 }.tag(Tags.ES,Tags.Cassandra,Tags.Grid,Tags.Kafka).value
 
-fullTest := (test in Test).dependsOn(fullTest in LocalProject("irw"),fullTest in LocalProject("imp"),fullTest in LocalProject("fts"),fullTest in LocalProject("zstore")).value
+fullTest := (test in Test).dependsOn(fullTest in LocalProject("fts"),fullTest in LocalProject("zstore")).value
 
 unmanagedResources in Test += packResourceDir.value.keys.head / "logback.xml"

@@ -40,8 +40,8 @@ case class Node(ip : String, ctrlActor : ActorRef) {
 
   }
 
-  def getBatchStatus : Future[BatchState] = {
-    (ctrlActor ? CheckBatch).mapTo[BatchState]
+  def getBgStatus : Future[BgState] = {
+    (ctrlActor ? CheckBg).mapTo[BgState]
   }
 
   def getElasticsearchStatus : Future[ElasticsearchState] = {

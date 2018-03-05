@@ -24,16 +24,13 @@ trait ComponentEvent {
 }
 
 trait WebEvent extends ComponentEvent
-
 case class WebNormalEvent(id : String) extends WebEvent
 case class WebBadCodeEvent(id : String, code : Int) extends WebEvent
 case class WebDownEvent(id : String) extends WebEvent
 
-
-trait BatchEvent extends ComponentEvent
-case class BatchNormalEvent(id : String) extends BatchEvent
-case class BatchNotIndexingEvent(id : String) extends BatchEvent
-case class BatchDownEvent(id : String) extends BatchEvent
+trait BgEvent extends ComponentEvent
+case class BgOkEvent(id : String) extends BgEvent
+case class BgNotOkEvent(id : String) extends BgEvent
 
 trait CassandraEvent extends ComponentEvent
 case class CassandraNodeNormalEvent(id : String) extends CassandraEvent

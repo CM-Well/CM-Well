@@ -50,8 +50,6 @@ case class LocalHost(dataCenter : String = "lh",
     minMembers = Some(1),
     haProxy = None,
     withElk = withElk,
-    withZkKfk = newBg,
-    withOldBg = oldBg,
     isDebug = isDebug) {
 
 //  LogLevel.debug
@@ -152,11 +150,6 @@ case class LocalHost(dataCenter : String = "lh",
       es => command(s"mkdir -p ${es}", i, false)
     }
 
-    dataDirs.tlogDataDirs.foreach{
-      tlog =>
-        command(s"mkdir -p $tlog", i, false)
-    }
-
     dataDirs.kafkaDataDirs.foreach{
       kafka =>
         command(s"mkdir -p $kafka", i, false)
@@ -253,22 +246,6 @@ case class LocalHost(dataCenter : String = "lh",
       autoCreateIndex = withElk
     )
 
-
-
-    val batch = BatchConf(
-      home = homeDir,
-      clusterName = cn,
-	    dataCenter = dc,
-      hostName = ip,
-      resourceManager = bgAllocations,
-      sName = "start.sh",
-      isMaster = true,
-      logLevel = BatchProps(this).LogLevel.getLogLevel,
-      debug = deb,
-      hostIp = ip,
-      minMembers = getMinMembers
-    )
-
     val bg = BgConf(
       home = homeDir,
       zookeeperServers = ips.take(3),
@@ -278,7 +255,7 @@ case class LocalHost(dataCenter : String = "lh",
       resourceManager = bgAllocations,
       sName = "start.sh",
       isMaster = true,
-      logLevel = BatchProps(this).LogLevel.getLogLevel,
+      logLevel = BgProps(this).LogLevel.getLogLevel,
       debug = deb,
       hostIp = ip,
       minMembers = getMinMembers,
@@ -299,9 +276,6 @@ case class LocalHost(dataCenter : String = "lh",
       debug = deb,
       hostIp = ip,
       minMembers = getMinMembers,
-      oldBg = withOldBg,
-      newBg = withZkKfk,
-      nbg = nbg,
       seedPort = 9301,
       seeds = getSeedNodes.mkString(",")
     )
@@ -317,7 +291,6 @@ case class LocalHost(dataCenter : String = "lh",
       debug = deb,
       hostIp = ip,
       minMembers = getMinMembers,
-      nbg = nbg,
       seeds = getSeedNodes.mkString(","),
       seedPort = 9301
     )
@@ -387,7 +360,7 @@ case class LocalHost(dataCenter : String = "lh",
 
 
     List(
-      cas,es,esMaster,batch,bg,web,cw,ctrl,dcConf,zookeeper,kafka
+      cas,es,esMaster,bg,web,cw,ctrl,dcConf,zookeeper,kafka
     ) ++ (if(withElk) List(logstash,kibana) else List.empty[ComponentConf])
 
   }

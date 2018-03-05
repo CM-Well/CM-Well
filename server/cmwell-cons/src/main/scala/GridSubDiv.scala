@@ -37,11 +37,8 @@ case class GridSubDiv(user : String ,
                       haProxy : Option[HaProxy] = None,
                       dcTarget : Option[String] = None,
                       minMembers : Option[Int] = None,
-                      withElk : Boolean = false,
-                      newBg : Boolean = true,
-                      oldBg : Boolean = true,
-                      nbg : Boolean = false)
-  extends Host(user, password, ipMappings, ipMappings.getIps.size * dataDirs.casDataDirs.size, inet, clusterName,dataCenter, dataDirs, instDirs, 1 ,allocationPlan,useAuthorization,deployJava,production, true, ctrlService, minMembers = minMembers, haProxy, withElk = withElk, withZkKfk = newBg, withOldBg = oldBg){
+                      withElk : Boolean = false)
+  extends Host(user, password, ipMappings, ipMappings.getIps.size * dataDirs.casDataDirs.size, inet, clusterName,dataCenter, dataDirs, instDirs, 1 ,allocationPlan,useAuthorization,deployJava,production, true, ctrlService, minMembers = minMembers, haProxy, withElk = withElk){
   //var persistentAliases = false
   override def getElasticsearchMasters : Int = esMasters
   //def hosts = ips.map(ip => s"${user}@${ip}")
@@ -267,20 +264,6 @@ case class GridSubDiv(user : String ,
           autoCreateIndex = withElk
         )
 
-        val batch = BatchConf(
-          home = homeDir,
-          clusterName = clusterName,
-          dataCenter = dataCenter,
-          hostName = aliases(0),
-          resourceManager = bgAllocations,
-          sName = "start.sh",
-          isMaster = host == ips(0),
-          logLevel = BatchProps(this).LogLevel.getLogLevel,
-          debug = deb,
-          hostIp = host,
-          minMembers = getMinMembers
-        )
-
         val bg = BgConf(
           home = homeDir,
           zookeeperServers = ips.take(3),
@@ -291,7 +274,7 @@ case class GridSubDiv(user : String ,
           sName = "start.sh",
           isMaster = host == ips(0),
           partition = ips.indexOf(host),
-          logLevel = BatchProps(this).LogLevel.getLogLevel,
+          logLevel = BgProps(this).LogLevel.getLogLevel,
           debug = deb,
           hostIp = host,
           minMembers = getMinMembers,
@@ -313,9 +296,6 @@ case class GridSubDiv(user : String ,
           debug = deb,
           hostIp = host,
           minMembers = getMinMembers,
-          oldBg = oldBg,
-          newBg = newBg,
-          nbg = nbg,
           seeds = getSeedNodes.mkString(","),
           seedPort = 9301
         )
@@ -331,7 +311,6 @@ case class GridSubDiv(user : String ,
           debug = deb,
           hostIp = host,
           minMembers = getMinMembers,
-          nbg = nbg,
           seeds = getSeedNodes.mkString(","),
           seedPort = 9301
         )
@@ -401,8 +380,8 @@ case class GridSubDiv(user : String ,
         )
 
         List(
-         esMaster,batch,web,cw,ctrl,dcConf,zookeeper,kafka
-        ) ++ (if(withKafka && withZookeeper) List(bg) else List.empty[ComponentConf] ) ++ casSubDivs ++esSubDivs ++ (if(withElk) List(logstash,kibana) else List.empty[ComponentConf])
+         esMaster,web,cw,ctrl,dcConf,zookeeper,kafka,bg
+        ) ++ casSubDivs ++esSubDivs ++ (if(withElk) List(logstash,kibana) else List.empty[ComponentConf])
     }
   }
 

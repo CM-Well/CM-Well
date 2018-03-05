@@ -49,16 +49,12 @@ case object StopElasticsearchMaster extends ControlCommand {
   override def execute: Unit = ElasticsearchController.stopMaster
 }
 
-case object StartBatch extends ControlCommand {
-  override def execute: Unit = BatchController.start
+case object StartBg extends ControlCommand {
+  override def execute: Unit = BgController.start
 }
 
-case object StopBatch extends ControlCommand {
-  override def execute: Unit = BatchController.stop
-}
-
-case object SetBatchMaster extends ControlCommand {
-  override def execute: Unit = BatchController.setAsMaster
+case object StopBg extends ControlCommand {
+  override def execute: Unit = BgController.stop
 }
 
 case object StartWebserver extends ControlCommand {

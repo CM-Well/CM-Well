@@ -26,10 +26,9 @@ object Jvms {
 
   val CTRL = JvmIdentity("ctrl" ,7777, Set("CTRL", "ControllerServer"))
   val WS = JvmIdentity("ws", 0)
-  val BATCH = JvmIdentity("batch", 0)
   val BG = JvmIdentity("bg", 0)
   val DC = JvmIdentity("dc", 0)
   val CW = JvmIdentity("cw", 2561)
 
-  val roles : Set[JvmIdentity] = Set(CTRL, WS, BG, BATCH, DC, CW)
+  val roles : Set[JvmIdentity] = Set(CTRL, WS, BG, DC, CW)
 }

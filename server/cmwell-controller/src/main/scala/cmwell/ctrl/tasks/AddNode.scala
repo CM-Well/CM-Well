@@ -95,7 +95,7 @@ case class AddNode(node : String) extends Task with LazyLogging {
     } yield {
       logger.info("Starting CM-WELL components")
       cmd ! StartKafka
-      cmd ! StartBatch
+      cmd ! StartBg
       cmd ! StartWebserver
       cmd ! StartCw
       cmd ! StartDc

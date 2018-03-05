@@ -41,7 +41,7 @@ case class Grid(user : String ,
                 newBg : Boolean = true,
                 oldBg : Boolean = true,
                 nbg : Boolean = false)
-  extends Host(user, password, ipMappings, ipMappings.getIps.size, inet, clusterName, dataCenter, dataDirs, instDirs, 1, allocationPlan,useAuthorization,deployJava,production ,su,ctrlService,minMembers, haProxy, withElk = withElk, withZkKfk = newBg, withOldBg = oldBg){
+  extends Host(user, password, ipMappings, ipMappings.getIps.size, inet, clusterName, dataCenter, dataDirs, instDirs, 1, allocationPlan,useAuthorization,deployJava,production ,su,ctrlService,minMembers, haProxy, withElk = withElk) {
 
   //if(!validateNumberOfMasterNodes(esMasters, ips.size)) throw new Exception("Bad number of Elasticsearch master nodes")
 
@@ -132,20 +132,6 @@ case class Grid(user : String ,
           autoCreateIndex = withElk
         )
 
-        val batch = BatchConf(
-          home = homeDir,
-          clusterName = clusterName,
-          dataCenter = dataCenter,
-          hostName = host,
-          resourceManager = bgAllocations,
-          sName = "start.sh",
-          isMaster = host == ips(0),
-          logLevel = BatchProps(this).LogLevel.getLogLevel,
-          debug = deb,
-          hostIp = host,
-          minMembers = getMinMembers
-        )
-
         val bg = BgConf(
           home = homeDir,
           zookeeperServers = ips.take(3),
@@ -156,7 +142,7 @@ case class Grid(user : String ,
           sName = "start.sh",
           isMaster = host == ips(0),
           partition = ips.indexOf(host),
-          logLevel = BatchProps(this).LogLevel.getLogLevel,
+          logLevel = BgProps(this).LogLevel.getLogLevel,
           debug = deb,
           hostIp = host,
           minMembers = getMinMembers,
@@ -178,9 +164,6 @@ case class Grid(user : String ,
           debug = deb,
           hostIp = host,
           minMembers = getMinMembers,
-          oldBg = oldBg,
-          newBg = newBg,
-          nbg = nbg,
           seeds = getSeedNodes.mkString(","),
           seedPort = 9301
         )
@@ -196,7 +179,6 @@ case class Grid(user : String ,
           debug = deb,
           hostIp = host,
           minMembers = getMinMembers,
-          nbg = nbg,
           seeds = getSeedNodes.mkString(","),
           seedPort = 9301
         )
@@ -265,8 +247,8 @@ case class Grid(user : String ,
         )
 
         List(
-          cas,es,esMaster,batch,web,cw,ctrl,dcConf,zookeeper,kafka
-        ) ++(if(withKafka && withZookeeper) List(bg) else List.empty[ComponentConf] ) ++ (if(withElk) List(logstash,kibana) else List.empty[ComponentConf])
+          cas,es,esMaster,web,cw,ctrl,dcConf,zookeeper,kafka,bg
+        ) ++ (if(withElk) List(logstash,kibana) else List.empty[ComponentConf])
     }
   }
 

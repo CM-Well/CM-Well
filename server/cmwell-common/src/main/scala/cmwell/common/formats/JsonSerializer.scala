@@ -21,7 +21,7 @@ import java.io._
 import cmwell.domain._
 import cmwell.syntaxutils._
 import cmwell.common.file.MimeTypeIdentifier
-import cmwell.common.{BulkCommand, MergedInfotonCommand, WriteCommand, _}
+import cmwell.common.{WriteCommand, _}
 import com.fasterxml.jackson.core._
 import com.typesafe.scalalogging.LazyLogging
 
@@ -47,7 +47,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
   def decodeCommand(in:Array[Byte]):Command = {
     val bais = new ByteArrayInputStream(in)
     val jsonParser = jsonFactory.createParser(bais).enable(JsonParser.Feature.AUTO_CLOSE_SOURCE)
-    val command = decodeCommandWithParser(jsonParser)
+    val command = decodeCommandWithParser(in, jsonParser)
     jsonParser.close()
     command
   }
@@ -84,7 +84,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
     rv
   }
 
-  def decodeCommandWithParser(jsonParser: JsonParser, assumeStartObject:Boolean = true):Command = {
+  def decodeCommandWithParser(originalJson: Array[Byte], jsonParser: JsonParser, assumeStartObject:Boolean = true):Command = {
       // If requested, expect start of command object
     if(assumeStartObject) {
       assume(jsonParser.nextToken()== JsonToken.START_OBJECT, s"expected start of command object\n${jsonParser.getCurrentLocation.toString}")
@@ -92,7 +92,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
 
     assume(jsonParser.nextToken()==JsonToken.FIELD_NAME, s"expected field")
     jsonParser.getCurrentName() match {
-      case "type" => JsonSerializer0.decodeCommandWithParser(jsonParser)
+      case "type" => logger.error("This version (0) is not supported anymore!!!"); !!!
       case "version" => {
         val jt = jsonParser.nextToken()
         val ver = jsonParser.getText
@@ -112,11 +112,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
         }
 
         ver match {
-          case "1" => JsonSerializer1.decodeCommandWithParser(jsonParser)
-          case "2" => JsonSerializer2.decodeCommandWithParser(jsonParser)
-          case "3" => JsonSerializer3.decodeCommandWithParser(jsonParser)
-          case "4" => JsonSerializer4.decodeCommandWithParser(jsonParser)
-          case "5" => JsonSerializer5.decodeCommandWithParser(jsonParser,tidOpt,prevUUIDOpt)
+          case v@("1" | "2" | "3" | "4" | "5") => logger.error(s"This version ($v) is not supported anymore!!! The original json was: ${new String(originalJson, "UTF-8")}"); !!!
           case "6" => JsonSerializer6.decodeCommandWithParser(jsonParser, tidOpt,prevUUIDOpt)
           case x => logger.error(s"got: $x"); ???
         }
@@ -160,45 +156,6 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
         jsonGenerator.writeNumberField("weight", weight)
         jsonGenerator.writeStringField("path", path)
         jsonGenerator.writeStringField("indexName", indexName)
-      case BulkCommand(commands) =>
-        jsonGenerator.writeArrayFieldStart("commands")
-        commands.foreach{ encodeCommandWithGenerator(_, jsonGenerator)}
-        jsonGenerator.writeEndArray()
-      case MergedInfotonCommand(previous, current, _) =>
-        previous match {
-          case Some(data) =>
-            jsonGenerator.writeStringField("previousInfoton", data._1)
-            jsonGenerator.writeNumberField("previousInfotonSize" , data._2)
-          case None =>
-        }
-        jsonGenerator.writeStringField("currentInfoton", current._1)
-        jsonGenerator.writeNumberField("currentInfotonSize", current._2)
-      case OverwrittenInfotonsCommand(previous, current, historic) =>
-        previous match {
-          case Some(data) =>
-            jsonGenerator.writeStringField("previousInfoton", data._1)
-            jsonGenerator.writeNumberField("previousInfotonSize" , data._2)
-          case None =>
-        }
-        current match {
-          case Some(data) =>
-            jsonGenerator.writeStringField("currentInfoton", data._1)
-            jsonGenerator.writeNumberField("currentInfotonSize" , data._2)
-            jsonGenerator.writeNumberField("currentInfotonIndexTime" , data._3)
-          case None =>
-        }
-        if(historic.nonEmpty) {
-          jsonGenerator.writeArrayFieldStart("historicInfotons")
-          historic.foreach {
-            case (uuid, weight, indexTime) =>
-              jsonGenerator.writeStartArray()
-              jsonGenerator.writeString(uuid)
-              jsonGenerator.writeNumber(weight)
-              jsonGenerator.writeNumber(indexTime)
-              jsonGenerator.writeEndArray()
-          }
-          jsonGenerator.writeEndArray()
-        }
       case DeleteAttributesCommand(path, fields, lastModified, trackingID, prevUUID) =>
         jsonGenerator.writeStringField("path", path)
         encodeFieldsWithGenerator(fields, jsonGenerator)
@@ -244,7 +201,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
       case _:FExtra[_] => !!! // FExtra is just a marker for outputting special properties, should not index it anywhere...
     }
 
-    def encodeTLogFieldValue(fv: FieldValue, jp: JsonGenerator): Unit = fv match {
+    def fullEncodeFieldValue(fv: FieldValue, jp: JsonGenerator): Unit = fv match {
       case FString(str,l,q) => jp.writeString(s"s${l.getOrElse("")}\n${q.getOrElse("")}\n$str")
       case FBoolean(bool,q) => jp.writeString(s"b${q.getOrElse("")}\n${bool.toString.head}")
       case FReference(fr,q) => jp.writeString(s"r${q.getOrElse("")}\n$fr")
@@ -288,7 +245,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
       jsonGenerator.writeArrayFieldStart(key)
 
       if(toEs) values.foreach(encodeESFieldValue(_,jsonGenerator))
-      else values.foreach(encodeTLogFieldValue(_,jsonGenerator))
+      else values.foreach(fullEncodeFieldValue(_,jsonGenerator))
 
       jsonGenerator.writeEndArray()
     }
