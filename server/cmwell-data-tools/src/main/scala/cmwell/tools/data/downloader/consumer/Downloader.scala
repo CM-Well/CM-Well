@@ -33,6 +33,7 @@ import cmwell.tools.data.utils.logging._
 import cmwell.tools.data.utils.akka._
 import cmwell.tools.data.utils.ops.VersionChecker
 import cmwell.tools.data.utils.text.Tokens
+import cmwell.util.akka.http.HttpZipDecoder
 import play.api.libs.json.{JsArray, Json}
 
 import scala.collection.immutable
@@ -279,7 +280,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig{
                       updateFreq: Option[FiniteDuration] = None,
                       indexTime: Long = 0L,
                       label: Option[String] = None)
-          (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext): Source[((Token, TsvData),Boolean), NotUsed] = {
+                     (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext): Source[((Token, TsvData),Boolean), NotUsed] = {
 
     val downloader = new Downloader(
       baseUrl = baseUrl,
@@ -471,56 +472,59 @@ class Downloader(baseUrl: String,
       val job = Flow[(Seq[Path], State)]
         .map { case (paths, state) => paths -> Some(state) }
         .via(Retry.retryHttp(timeout, parallelism, baseUrl)(createRequest)) // fetch data from paths
+        .map {
+        case (tryResponse, uuids, state) =>
+          tryResponse.map(HttpZipDecoder.decodeResponse) -> (uuids,state)}
         .mapAsyncUnordered(parallelism){
-        case (Success(res@HttpResponse(s,h,e,p)), sentPaths, Some(state)) if s.isSuccess() =>
-          logger.debug(s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}")
+          case (Success(res@HttpResponse(s,h,e,p)), (sentPaths,Some(state))) if s.isSuccess() =>
+            logger.debug(s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}")
 
-          e.toStrict(1.minute).flatMap { strict =>
-            val unzippedData = Source.single(strict.data).via(Compression.gunzip())
+            e.toStrict(1.minute).flatMap { strict =>
+              //val unzippedData = Source.single(strict.data).via(Compression.gunzip())
 
-            DataPostProcessor.postProcessByFormat(format, unzippedData).runFold(blank)(_ ++ _).map { receivedData =>
-              // accumulate received data
-              val totalReceivedData = state.retrievedData :+ receivedData
+              DataPostProcessor.postProcessByFormat(format,  Source.single(strict.data)).runFold(blank)(_ ++ _).map { receivedData =>
+                // accumulate received data
+                val totalReceivedData = state.retrievedData :+ receivedData
 
-              getMissingPaths(receivedData, sentPaths.map(_.utf8String)) match {
-                case Seq() =>
-                  // no missing data, success!
-                  Success(totalReceivedData) -> state.copy(pathsToRequest = Seq(), retrievedData = totalReceivedData)
-                case missingPaths if state.retriesLeft > 0 =>
-                  logger.debug(s"sent ${sentPaths.size} paths but received ${sentPaths.size - missingPaths.size}, total received data length=${receivedData.size}")
-                  logger.debug(s"sent ${sentPaths.map(_.utf8String).mkString("\n")}")
+                getMissingPaths(receivedData, sentPaths.map(_.utf8String)) match {
+                  case Seq() =>
+                    // no missing data, success!
+                    Success(totalReceivedData) -> state.copy(pathsToRequest = Seq(), retrievedData = totalReceivedData)
+                  case missingPaths if state.retriesLeft > 0 =>
+                    logger.debug(s"sent ${sentPaths.size} paths but received ${sentPaths.size - missingPaths.size}, total received data length=${receivedData.size}")
+                    logger.debug(s"sent ${sentPaths.map(_.utf8String).mkString("\n")}")
 
-                  // retry retrieving data from missing uuids
-                  val newState = state.copy(
-                    pathsToRequest = missingPaths.map(ByteString.apply),
-                    retrievedData = totalReceivedData,
-                    retriesLeft = state.retriesLeft - 1)
+                    // retry retrieving data from missing uuids
+                    val newState = state.copy(
+                      pathsToRequest = missingPaths.map(ByteString.apply),
+                      retrievedData = totalReceivedData,
+                      retriesLeft = state.retriesLeft - 1)
 
-                  logger.error(s"detected missing paths size=${missingPaths.size} retries left=${state.retriesLeft}")
-                  Failure(new Exception("missing data from paths")) -> newState
-                case missingPaths =>
-                  // do not retrieve data from missing paths
-                  val newState = state.copy(
-                    pathsToRequest = missingPaths.map(ByteString.apply),
-                    retrievedData = totalReceivedData)
+                    logger.error(s"detected missing paths size=${missingPaths.size} retries left=${state.retriesLeft}")
+                    Failure(new Exception("missing data from paths")) -> newState
+                  case missingPaths =>
+                    // do not retrieve data from missing paths
+                    val newState = state.copy(
+                      pathsToRequest = missingPaths.map(ByteString.apply),
+                      retrievedData = totalReceivedData)
 
-                  logger.error(s"got ${missingPaths.size} missing paths")
-                  badDataLogger.error(missingPaths.mkString("\n"))
-                  Success(totalReceivedData) -> newState
+                    logger.error(s"got ${missingPaths.size} missing paths")
+                    badDataLogger.error(missingPaths.mkString("\n"))
+                    Success(totalReceivedData) -> newState
+                }
               }
             }
-          }
 
-        case (Success(HttpResponse(s,h,e,p)), sentPaths, Some(state)) =>
-          e.discardBytes()
+          case (Success(HttpResponse(s,h,e,p)), (sentPaths,Some(state))) =>
+            e.discardBytes()
 
-          logger.debug(s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}")
+            logger.debug(s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}")
 
-          Future.successful(Failure(new Exception("cannot send request to send paths")) -> state)
-        case (Failure(err), sendPaths, Some(state)) =>
-          logger.error(s"error: token=${state.token} $err")
-          Future.successful(Failure(new Exception("cannot send request to send paths")) -> state)
-      }
+            Future.successful(Failure(new Exception("cannot send request to send paths")) -> state)
+          case (Failure(err), (sentPaths,Some(state))) =>
+            logger.error(s"error: token=${state.token} $err")
+            Future.successful(Failure(new Exception("cannot send request to send paths")) -> state)
+        }
 
       Flow[(Seq[Path], Token)]
         .map{ case (paths, token) => paths -> State(paths, token, Seq.empty[ByteString], limit) }
@@ -581,10 +585,10 @@ class Downloader(baseUrl: String,
       }
 
       def extractUuidsTsv(data: ByteString) = data.utf8String.lines.map(
-          _.dropWhile(_ != '\t').drop(1)
-           .dropWhile(_ != '\t').drop(1)
-           .takeWhile(_ != '\t'))
-          .toSeq
+        _.dropWhile(_ != '\t').drop(1)
+          .dropWhile(_ != '\t').drop(1)
+          .takeWhile(_ != '\t'))
+        .toSeq
 
       format match {
         case "json"                => extractMissingUuidsJson(receivedData)
@@ -596,8 +600,8 @@ class Downloader(baseUrl: String,
     }
 
     def sendUuidRequest(timeout: FiniteDuration, parallelism: Int, limit: Int = 0)
-                     (createRequest: (Seq[Uuid]) => HttpRequest)
-                    (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
+                       (createRequest: (Seq[Uuid]) => HttpRequest)
+                       (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
 
       case class State(uuidsToRequest: Seq[Uuid],
                        token: Token,
@@ -612,14 +616,18 @@ class Downloader(baseUrl: String,
       val job = Flow[(Seq[Uuid], State)]
         .map { case (uuids, state) => uuids -> Some(state) }
         .via(Retry.retryHttp(timeout, parallelism, baseUrl)(createRequest)) // fetch data from uuids
+        .map {
+        case (tryResponse, uuids, state) =>
+          tryResponse.map(HttpZipDecoder.decodeResponse) -> (uuids,state)}
         .mapAsyncUnordered(parallelism){
-          case (Success(res@HttpResponse(s,h,e,p)), sentUuids, Some(state)) if s.isSuccess() =>
+          case (Success(res@HttpResponse(s,h,e,p)), (sentUuids,Some(state))) if s.isSuccess() =>
+
             logger.debug(s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}")
 
             e.toStrict(1.minute).flatMap { strict =>
-              val unzippedData = Source.single(strict.data).via(Compression.gunzip())
+              // val unzippedData = Source.single(strict.data).via(Compression.gunzip())
 
-              DataPostProcessor.postProcessByFormat(format, unzippedData).runFold(blank)(_ ++ _).map { receivedData =>
+              DataPostProcessor.postProcessByFormat(format, Source.single(strict.data)).runFold(blank)(_ ++ _).map { receivedData =>
                 // accumulate received data
                 val totalReceivedData = state.retrievedData :+ receivedData
 
@@ -652,13 +660,13 @@ class Downloader(baseUrl: String,
               }
             }
 
-          case (Success(HttpResponse(s,h,e,p)), sentUuids, Some(state)) =>
+          case (Success(HttpResponse(s,h,e,p)), (sentUuids,Some(state))) =>
             e.discardBytes()
 
             logger.debug(s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}")
             Future.successful(Failure(new Exception("cannot send request to send uuids")) -> state)
 
-          case (Failure(err), sendUuids, Some(state)) =>
+          case (Failure(err), (sentUuids,Some(state))) =>
             logger.error(s"error: token=${state.token} $err")
             Future.successful(Failure(new Exception("cannot send request to send uuids")) -> state)
         }
@@ -714,7 +722,7 @@ class Downloader(baseUrl: String,
             .via(lineSeparatorFrame)
             .map(extractTsv)
 
-    }.runWith(Sink.head)
+      }.runWith(Sink.head)
   }
 
   /**
