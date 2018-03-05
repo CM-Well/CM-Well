@@ -21,7 +21,7 @@ import java.io._
 import cmwell.domain._
 import cmwell.syntaxutils._
 import cmwell.common.file.MimeTypeIdentifier
-import cmwell.common.{MergedInfotonCommand, WriteCommand, _}
+import cmwell.common.{WriteCommand, _}
 import com.fasterxml.jackson.core._
 import com.typesafe.scalalogging.LazyLogging
 
@@ -156,41 +156,6 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
         jsonGenerator.writeNumberField("weight", weight)
         jsonGenerator.writeStringField("path", path)
         jsonGenerator.writeStringField("indexName", indexName)
-      case MergedInfotonCommand(previous, current, _) =>
-        previous match {
-          case Some(data) =>
-            jsonGenerator.writeStringField("previousInfoton", data._1)
-            jsonGenerator.writeNumberField("previousInfotonSize" , data._2)
-          case None =>
-        }
-        jsonGenerator.writeStringField("currentInfoton", current._1)
-        jsonGenerator.writeNumberField("currentInfotonSize", current._2)
-      case OverwrittenInfotonsCommand(previous, current, historic) =>
-        previous match {
-          case Some(data) =>
-            jsonGenerator.writeStringField("previousInfoton", data._1)
-            jsonGenerator.writeNumberField("previousInfotonSize" , data._2)
-          case None =>
-        }
-        current match {
-          case Some(data) =>
-            jsonGenerator.writeStringField("currentInfoton", data._1)
-            jsonGenerator.writeNumberField("currentInfotonSize" , data._2)
-            jsonGenerator.writeNumberField("currentInfotonIndexTime" , data._3)
-          case None =>
-        }
-        if(historic.nonEmpty) {
-          jsonGenerator.writeArrayFieldStart("historicInfotons")
-          historic.foreach {
-            case (uuid, weight, indexTime) =>
-              jsonGenerator.writeStartArray()
-              jsonGenerator.writeString(uuid)
-              jsonGenerator.writeNumber(weight)
-              jsonGenerator.writeNumber(indexTime)
-              jsonGenerator.writeEndArray()
-          }
-          jsonGenerator.writeEndArray()
-        }
       case DeleteAttributesCommand(path, fields, lastModified, trackingID, prevUUID) =>
         jsonGenerator.writeStringField("path", path)
         encodeFieldsWithGenerator(fields, jsonGenerator)

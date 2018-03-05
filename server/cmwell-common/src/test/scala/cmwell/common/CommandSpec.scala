@@ -47,7 +47,6 @@ class CommandSpec extends FlatSpec with Matchers {
     // TODO : need to understand way the next test are having problem when adding the line to the test.
     //val cmdMerged1 = MergedInfotonCommand( None , "/command-test/mergedPath")
     val t = ("/command-test/mergedPath1",0L)
-    val cmdMerged2 = MergedInfotonCommand( Some( t ) , ("/command-test/mergedPath2",0) )
     val bulkCmd = List(cmdWrite,cmdWrite)
 
     val updateDate = new DateTime
@@ -58,7 +57,7 @@ class CommandSpec extends FlatSpec with Matchers {
 
     val cmdUpdate = UpdatePathCommand("/command-test/update" , deleteF , updateF , updateDate)
 
-    val cmds = Vector(cmdWrite , cmdDeletePathAttributeValues , cmdDeletePath   /*, cmdMerged1*/ , cmdMerged2 , cmdUpdate)
+    val cmds = Vector(cmdWrite , cmdDeletePathAttributeValues , cmdDeletePath   /*, cmdMerged1*/ , cmdUpdate)
 
     val c = Vector( WriteCommand(linkInfo01) , WriteCommand(linkInfo02) , WriteCommand(linkInfo03) )
 
@@ -85,22 +84,12 @@ class CommandSpec extends FlatSpec with Matchers {
         case WriteCommand(infoton, trackingID, prevUUID) =>  infoton.path should equal (objInfo.path);infoton.fields.get("name").size should equal (objInfo.fields.get("name").size); infoton.lastModified.isEqual(objInfo.lastModified) should equal (true)
         case DeleteAttributesCommand(path, fields, lastModified, trackingID, prevUUID) =>  path should equal (cmdDeletePathAttributeValues.path)
         case DeletePathCommand(path, lastModified, trackingID, prevUUID) => path should equal (cmdDeletePath.path)
-
-        case MergedInfotonCommand(Some(prev),current,_) =>
-          prev._1 should equal ("/command-test/mergedPath1")
-          current._1 should equal ("/command-test/mergedPath2")
-
-        case MergedInfotonCommand(None,current,_) =>
-          current should equal ("/command-test/mergedPath")
-
         case UpdatePathCommand(path, d_f, u_f, lm, trackingID, prevUUID) =>
           path should equal (cmdUpdate.path)
           d_f.size should equal (cmdUpdate.deleteFields.size )
           u_f.size should equal (cmdUpdate.updateFields.size )
-
           lm.getMillis should equal (cmdUpdate.lastModified.getMillis)
         case OverwriteCommand(_, trackingID) => ??? //TODO: add tests for OverwriteCommand
-        case OverwrittenInfotonsCommand(_, _, _) => ??? //TODO: add tests for OverwrittenInfotonsCommand
       }
     }
   }
@@ -121,61 +110,6 @@ class CommandSpec extends FlatSpec with Matchers {
     val cmpCommand = CommandSerializer.decode(payload)
     val owc = cmpCommand.asInstanceOf[OverwriteCommand]
     owc.infoton.asInstanceOf[ObjectInfoton].indexTime should equal (Some(12345L))
-  }
-
-  "OverwrittenInfotons encode and decode 1" should "be successful" in {
-    val i = ObjectInfoton("/exmaple.org/spiderman","other-dc", Some(27L),new DateTime("2015-02-25T16:03:57.216Z",DateTimeZone.UTC), Map("enemyOf.rel"->Set[FieldValue](FString("green-goblin"))))
-    val d = DeletedInfoton("/exmaple.org/spiderman","other-dc",Some(28L),new DateTime("2015-03-25T16:03:57.216Z",DateTimeZone.UTC))
-    val vec = Vector((i.uuid,i.weight,i.indexTime.get),(d.uuid,d.weight,d.indexTime.get))
-    val owicmd = OverwrittenInfotonsCommand(None,None,vec)
-    val payload : Array[Byte] = CommandSerializer.encode(owicmd)
-    val cmpCommand = CommandSerializer.decode(payload)
-    val oiwc = cmpCommand.asInstanceOf[OverwrittenInfotonsCommand]
-    oiwc.previousInfoton should equal (None)
-    oiwc.currentInfoton should equal (None)
-    oiwc.historicInfotons should equal (vec)
-  }
-
-  "OverwrittenInfotons encode and decode 2" should "be successful" in {
-    val i = ObjectInfoton("/exmaple.org/spiderman","other-dc",Some(29L),new DateTime("2015-02-25T16:03:57.216Z",DateTimeZone.UTC), Map("enemyOf.rel"->Set[FieldValue](FString("green-goblin"))))
-    val j = ObjectInfoton("/exmaple.org/spiderman","other-dc",Some(30L),new DateTime("2015-03-25T16:03:57.216Z",DateTimeZone.UTC), Map("enemyOf.rel"->Set[FieldValue](FString("dr-octopus"))))
-    val vec = Vector((i.uuid,i.weight,i.indexTime.get))
-    val opt = Some((j.uuid,j.weight,j.indexTime.get))
-    val owicmd = OverwrittenInfotonsCommand(None,opt,vec)
-    val payload : Array[Byte] = CommandSerializer.encode(owicmd)
-    val cmpCommand = CommandSerializer.decode(payload)
-    val oiwc = cmpCommand.asInstanceOf[OverwrittenInfotonsCommand]
-    oiwc.previousInfoton should equal (None)
-    oiwc.currentInfoton should equal (opt)
-    oiwc.historicInfotons should equal (vec)
-  }
-
-  "OverwrittenInfotons encode and decode 3" should "be successful" in {
-    val i = ObjectInfoton("/exmaple.org/spiderman","other-dc",Some(31L),new DateTime("2015-02-25T16:03:57.216Z",DateTimeZone.UTC), Map("enemyOf.rel"->Set[FieldValue](FString("green-goblin"))))
-    val j = ObjectInfoton("/exmaple.org/spiderman","other-dc",Some(32L),new DateTime("2015-03-25T16:03:57.216Z",DateTimeZone.UTC), Map("enemyOf.rel"->Set[FieldValue](FString("dr-octopus"))))
-    val optO = Some((i.uuid,i.weight))
-    val optN = Some((j.uuid,j.weight,j.indexTime.get))
-    val owicmd = OverwrittenInfotonsCommand(optO,optN,Vector.empty)
-    val payload : Array[Byte] = CommandSerializer.encode(owicmd)
-    val cmpCommand = CommandSerializer.decode(payload)
-    val oiwc = cmpCommand.asInstanceOf[OverwrittenInfotonsCommand]
-    oiwc.previousInfoton should equal (optO)
-    oiwc.currentInfoton should equal (optN)
-    oiwc.historicInfotons should equal (Vector.empty)
-  }
-
-  "OverwrittenInfotons encode and decode 4" should "be successful" in {
-    val i = ObjectInfoton("/exmaple.org/spiderman","other-dc",Some(33L),new DateTime("2015-02-25T16:03:57.216Z",DateTimeZone.UTC), Map("enemyOf.rel"->Set[FieldValue](FString("green-goblin"))))
-    val j = DeletedInfoton("/exmaple.org/spiderman","other-dc",Some(34L),new DateTime("2015-03-25T16:03:57.216Z",DateTimeZone.UTC))
-    val optO = Some((i.uuid,i.weight))
-    val vec = Vector((j.uuid,j.weight,j.indexTime.get))
-    val owicmd = OverwrittenInfotonsCommand(optO,None,vec)
-    val payload : Array[Byte] = CommandSerializer.encode(owicmd)
-    val cmpCommand = CommandSerializer.decode(payload)
-    val oiwc = cmpCommand.asInstanceOf[OverwrittenInfotonsCommand]
-    oiwc.previousInfoton should equal (optO)
-    oiwc.currentInfoton should equal (None)
-    oiwc.historicInfotons should equal (vec)
   }
 
   "CommandRef" should "be successfully encoded/decoded" in {
