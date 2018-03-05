@@ -47,7 +47,6 @@ object BufferFillerActor {
   case class NewToHeader(to: Option[String])
   case object GetToHeader
   case class SetConsumeStatus(complete: Boolean)
-  case object SetHorizon
 }
 
 class BufferFillerActor(threshold: Int,
