@@ -199,8 +199,8 @@ See the following resources to learn more about CM-Well workflows, APIs and arch
 Before building CM-Well, you will need to install the following software packages:
 
 * Java 8
-* [Scala](http://www.scala-lang.org/download/) 2.11.11
-* [SBT(Scala Build Tool)](http://www.scala-sbt.org/download.html) version 0.13 or later
+* [Scala](http://www.scala-lang.org/download/) 2.12.4
+* [SBT(Scala Build Tool)](http://www.scala-sbt.org/download.html) version 1.1.1 or later
 
 >**Note** Currently, CM-Well only runs on Mac and Linux environments
 
