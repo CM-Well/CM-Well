@@ -1486,6 +1486,16 @@ class APIFunctionalityTests extends AsyncFunSpec
         }
       }
 
+      it("should succeed with non-existing mask fields, for _out") {
+        import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+        Http.post(_out, "/example.org/Individuals/PeterParker\n", Some("text/plain;charset=UTF-8"), List("format" -> "ntriples", "fields" -> "nonExistingField.rel"), tokenHeader).map{ body =>
+          body.status should be >=200
+          body.status should be <400 //status should be OK
+          body.payload should not include("worksWith")
+          body.payload should not include("active")
+        }
+      }
+
       ignore("should mask fields, for search") {
 //        val req = requestOp("search", justWorksWith, "with-data"->"", "format"->"ntriples")
 //        val res = Await.result(HWR(req OK as.String), requestTimeout)
