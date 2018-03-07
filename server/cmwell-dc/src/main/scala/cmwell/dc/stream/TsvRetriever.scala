@@ -186,9 +186,9 @@ object TsvRetriever extends LazyLogging {
                 val expectedTsvCount = nHeader.value().toInt
                 val gotTsvCount = sortedData.size
                 if (gotTsvCount != expectedTsvCount) {
-                  val e = new Exception(s"Got $gotTsvCount but the expected count (taken from X-CM-WELL-N header) is $expectedTsvCount.")
+                  val e = new Exception(s"Got $gotTsvCount TSVs but the expected count (taken from X-CM-WELL-N header) is $expectedTsvCount.")
                   val ex = RetrieveTsvException(s"Retrieve TSVs using ${state.consumeState.op} failed. Data center ID ${dcInfo.id}, using remote location ${dcInfo.location}.", e)
-                  logger.warn(s"${ex.getMessage} The exception is:\\n${e.getMessage}")
+                  logger.warn(s"${ex.getMessage} The exception is:\n${e.getMessage}")
                   Failure[TsvFlowOutput](ex) -> state.copy(lastException = Some(ex))
                 }
                 else
