@@ -413,7 +413,7 @@ package cmwell.util {
      * in parallel:
      *
      * {{{
-     *   val myFutureVector = travector(myList)(x => Future(myFunc(x)))
+     *   val myFutureVector = travector(myTraversable)(x => Future(myFunc(x)))
      * }}}
      *
      * This is the same as `Future.traverse`, but it will always yield a vector, regardless of the provided collection type
@@ -430,7 +430,7 @@ package cmwell.util {
      * in parallel:
      *
      * {{{
-     *   val myFutureList = travelist(myList)(x => Future(myFunc(x)))
+     *   val myFutureList = travelist(myTraversable)(x => Future(myFunc(x)))
      * }}}
      *
      * This is the same as `Future.traverse`, but it will always yield a List, regardless of the provided collection type
@@ -439,6 +439,23 @@ package cmwell.util {
       in.foldLeft(Future.successful(List.newBuilder[B])) { (fr, a) =>
         val fb = fn(a)
         for (r <- fr; b <- fb) yield (r += b)
+      }.map(_.result())
+
+    /**
+     * Transforms a `TraversableOnce[A]` into a `Future[Set[B]]` using the provided function `A => Future[B]`.
+     * This is useful for performing a parallel map. For example, to apply a function to all items of a list
+     * in parallel:
+     *
+     * {{{
+     *   val myFutureList = travelist(myTraversable)(x => Future(myFunc(x)))
+     * }}}
+     *
+     * This is the same as `Future.traverse`, but it will always yield a Set, regardless of the provided collection type
+     */
+    def travset[A, B, M[X] <: TraversableOnce[X]](in: M[A])(fn: A => Future[B])(implicit executor: ExecutionContext): Future[Set[B]] =
+      in.foldLeft(Future.successful(Set.newBuilder[B])) { (fr, a) =>
+        val fb = fn(a)
+        for (r <- fr; b <- fb) yield r.+=(b)
       }.map(_.result())
 
     /**
@@ -455,7 +472,7 @@ package cmwell.util {
      *  in parallel:
      *
      *  {{{
-     *    val myFutureVector = travemp(myList)(x => Future(myFunc(x)))
+     *    val myFutureVector = travemp(myTraversable)(x => Future(myFunc(x)))
      *  }}}
      *
      * This is similar to `Future.traverse`, but it will always yield a Map, regardless of the provided collection type

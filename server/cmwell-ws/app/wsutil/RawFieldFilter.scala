@@ -185,7 +185,7 @@ object FieldKey extends LazyLogging with PrefixRequirement  {
           (implicit ec: ExecutionContext): Future[Set[String]] = fieldKey match {
     case Right(NnFieldKey(key)) if key.startsWith("system.") || key.startsWith("content.") || key.startsWith("link.")  => Future.successful(Set(key))
     case Right(dFieldKey) => enrichWithTypes(dFieldKey, cache)
-    case Left(uFieldKey) => resolve(uFieldKey, cmwellRDFHelper, timeContext).flatMap(enrichWithTypes(_,cache))
+    case Left(uFieldKey) => resolve(uFieldKey, cmwellRDFHelper, timeContext).flatMap(enrichWithTypes(_, cache))
   }
 
   def enrichWithTypes(fk: FieldKey, cache: PassiveFieldTypesCacheTrait): Future[Set[String]] = {

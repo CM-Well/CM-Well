@@ -24,6 +24,7 @@ import cmwell.formats.{FormatExtractor, Formatter}
 import cmwell.fts._
 import cmwell.tracking.PathStatus
 import cmwell.util.collections._
+import cmwell.util.concurrent.travset
 import cmwell.web.ld.cmw.CMWellRDFHelper
 import cmwell.web.ld.exceptions.{UnretrievableIdentifierException, UnsupportedURIException}
 import cmwell.ws.Settings
@@ -788,9 +789,12 @@ package object wsutil extends LazyLogging {
     extractFieldsMask(req.getQueryString("fields"),cache,cmwellRDFHelper, timeContext)
   }
 
-  def extractFieldsMask(fieldsOpt: Option[String],cache: PassiveFieldTypesCache, cmwellRDFHelper: CMWellRDFHelper, timeContext: Option[Long])(implicit ec: ExecutionContext): Future[Set[String]] = {
+  def extractFieldsMask(fieldsOpt: Option[String], cache: PassiveFieldTypesCache, cmwellRDFHelper: CMWellRDFHelper, timeContext: Option[Long])(implicit ec: ExecutionContext): Future[Set[String]] = {
     fieldsOpt.map(FieldNameConverter.toActualFieldNames) match {
-      case Some(Success(fields)) => Future.traverse(fields)(FieldKey.eval(_,cache,cmwellRDFHelper,timeContext)).map(_.reduce(_ | _))
+      case Some(Success(fields)) => travset(fields) {
+        case Right(x) => Future.successful(x.internalKey)
+        case Left(u) => FieldKey.resolve(u,cmwellRDFHelper,timeContext).map(_.internalKey)
+      }
       case Some(Failure(e)) => Future.failed(e)
       case None => Future.successful(Set.empty[String])
     }
