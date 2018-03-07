@@ -166,52 +166,54 @@ class OutputHandler  @Inject()(crudServiceFS: CRUDServiceFS,
 
   def handlePost(format: String = "") = Action.async { implicit req =>
     val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
-    if(req.contentType.getOrElse("").contains("json"))
-      RequestMonitor.add("out",req.path, req.rawQueryString, req.body.asJson.getOrElse("").toString,req.attrs(Attrs.RequestReceivedTimestamp))
-    else
-      RequestMonitor.add("out",req.path, req.rawQueryString, req.body.asText.getOrElse(""),req.attrs(Attrs.RequestReceivedTimestamp))
+    Try {
+      if (req.contentType.getOrElse("").contains("json"))
+        RequestMonitor.add("out", req.path, req.rawQueryString, req.body.asJson.getOrElse("").toString, req.attrs(Attrs.RequestReceivedTimestamp))
+      else
+        RequestMonitor.add("out", req.path, req.rawQueryString, req.body.asText.getOrElse(""), req.attrs(Attrs.RequestReceivedTimestamp))
 
-    val fieldsMaskFut = extractFieldsMask(req,typesCache,cmwellRDFHelper,timeContext)
+      val fieldsMaskFut = extractFieldsMask(req, typesCache, cmwellRDFHelper, timeContext)
 
-    val formatType = format match {
-      case FormatExtractor(ft) => ft
-      case _ => RdfType(N3Flavor)
-    }
+      val formatType = format match {
+        case FormatExtractor(ft) => ft
+        case _ => RdfType(N3Flavor)
+      }
 
-    val formatter = formatterManager.getFormatter(
-      format = formatType,
-      timeContext = timeContext,
-      host = req.host,
-      uri = req.uri,
-      pretty = req.queryString.keySet("pretty"),
-      callback = req.queryString.get("callback").flatMap(_.headOption),
-      withData = req.getQueryString("with-data"))
+      val formatter = formatterManager.getFormatter(
+        format = formatType,
+        timeContext = timeContext,
+        host = req.host,
+        uri = req.uri,
+        pretty = req.queryString.keySet("pretty"),
+        callback = req.queryString.get("callback").flatMap(_.headOption),
+        withData = req.getQueryString("with-data"))
 
-    val either: Either[SimpleResponse, Vector[String]] = req.body.asJson match {
-      case Some(json) => {
-        JsonEncoder.decodeInfotonPathsList(json) match {
-          case Some(infotonPaths: InfotonPaths) => Right(infotonPaths.paths.toVector)
-          case _ => Left(SimpleResponse(false, Some("not a valid bag of infotons request.")))
+      val either: Either[SimpleResponse, Vector[String]] = req.body.asJson match {
+        case Some(json) => {
+          JsonEncoder.decodeInfotonPathsList(json) match {
+            case Some(infotonPaths: InfotonPaths) => Right(infotonPaths.paths.toVector)
+            case _ => Left(SimpleResponse(false, Some("not a valid bag of infotons request.")))
+          }
+        }
+        case None => req.body.asText match {
+          case Some(text) => Right(getPathsVector(text, cmWellBase))
+          case None => Left(SimpleResponse(false, Some("unknown content (you may want to change content-type)")))
         }
       }
-      case None => req.body.asText match {
-        case Some(text) => Right(getPathsVector(text, cmWellBase))
-        case None => Left(SimpleResponse(false, Some("unknown content (you may want to change content-type)")))
-      }
-    }
-    val mimetype = overrideMimetype(formatter.mimetype, req)._2
-    either match {
-      case Left(badReqSimpleResponse) => Future.successful(BadRequest(formatter.render(badReqSimpleResponse)).as(mimetype))
-      case Right(vector) => {
-        val t = futureRetrievablePathsFromPathsAsLines(vector, req)
-        fieldsMaskFut.flatMap { fieldsMask =>
-          t.map {
-            case (ok, s) if ok => Ok(formatter.render(s.masked(fieldsMask))).as(mimetype)
-            case (_, s) => InsufficientStorage(formatter.render(s)).as(mimetype)
-          }.recover(PartialFunction(wsutil.exceptionToResponse))
+      val mimetype = overrideMimetype(formatter.mimetype, req)._2
+      either match {
+        case Left(badReqSimpleResponse) => Future.successful(BadRequest(formatter.render(badReqSimpleResponse)).as(mimetype))
+        case Right(vector) => {
+          val t = futureRetrievablePathsFromPathsAsLines(vector, req)
+          fieldsMaskFut.flatMap { fieldsMask =>
+            t.map {
+              case (ok, s) if ok => Ok(formatter.render(s.masked(fieldsMask))).as(mimetype)
+              case (_, s) => InsufficientStorage(formatter.render(s)).as(mimetype)
+            }.recover(PartialFunction(wsutil.exceptionToResponse))
+          }
         }
       }
-    }
+    }.recover(asyncErrorHandler).get
   }
 
   def futureRetrievablePathsFromPathsAsLines(text: String, baseUrl: String, req: Request[AnyContent]): Future[(Boolean,RetrievablePaths)] = futureRetrievablePathsFromPathsAsLines(getPathsVector(text, baseUrl), req)
