@@ -60,7 +60,7 @@ package object util {
     }
   }
 
-  def infotonFromMaps(cmwHostsSet: Set[String], ipath: String, fields: Option[Map[String, Set[FieldValue]]], metaData: Option[MetaData]): Infoton = {
+  def infotonFromMaps(cmwHostsSet: Set[String], ipath: String, fields: Option[Map[String, Set[FieldValue]]], metaData: Option[MetaData], currentTime: DateTime): Infoton = {
     val path = removeCmwHostAndPrependSlash(cmwHostsSet, ipath)
     metaData match {
       case Some(MetaData(mdt, date, data, text, ctype, linktype, linkto, dataCenter, indexTime)) => {
@@ -101,7 +101,7 @@ package object util {
           case Some(DeletedMetaData) => DeletedInfoton(path,dc,indexTime,_date)
           case None => (data, text, ctype) match {
             case (None, None, None) => ObjectInfoton(path = path, lastModified = _date, fields = fields, dc = dc, indexTime = indexTime)
-            case _ => infotonFromMaps(cmwHostsSet, path, fields, Some(metaData.get.copy(mdType = Some(FileMetaData)))) //TODO: better inference of types. needs to be refactored when link infotons will be used.
+            case _ => infotonFromMaps(cmwHostsSet, path, fields, Some(metaData.get.copy(mdType = Some(FileMetaData))), currentTime) //TODO: better inference of types. needs to be refactored when link infotons will be used.
           }
         }
       }
