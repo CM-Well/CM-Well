@@ -58,7 +58,7 @@ The **consume** API does not support a guaranteed chunk length (number of infoto
 ## Special Parameters ##
 
 Parameter | Description&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |  Values&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Example
-:----------|:-------------|:--------|:---------|:----------
+:----------|:-------------|:--------|:---------
 index-time | An optional parameter that contains the time from which you want to start streaming. If omitted, all results are returned, regardless of their index time. Set the index-time value to be the indexTime value returned in the last infoton you read. | An integer value. | index-time=1476811252896
 
 ## Code Example ##

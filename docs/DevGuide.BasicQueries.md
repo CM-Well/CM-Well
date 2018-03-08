@@ -90,6 +90,8 @@ These are the components of the search request:
 > 
 > * Special characters must be escaped in the usual way for URIs. For example, spaces are escaped via %20, # characters are encoded using %23, and so on.
 > * It is possible to search in all fields rather than in a specific field, as follows:  *qp=_all:Marriott%20Ownership%20Resorts*. However, this is discouraged, as it can result in prohibitively long processing time for the query.
+> * You can also search for values in infotons' [metadata fields](API.MetadataFields.md).
+
 
 See [Field Name Formats](API.FieldNameFormats.md) to learn about field name notation.
 

@@ -56,7 +56,7 @@ object SparqlProcessor extends DataToolsLogging with DataToolsConfig{
       indexTime = indexTime,
       isBulk = isBulk,
       label = label
-    ).map{ case (token, tsv) => tsv.path -> Some(token) }
+    ).map{ case ((token, tsv),_) => tsv.path -> Some(token) }
 
     createSparqlSourceFromPaths(
       baseUrl = baseUrl,
@@ -83,7 +83,7 @@ object SparqlProcessor extends DataToolsLogging with DataToolsConfig{
       isBulk  = isBulk,
       token = Some(token),
       label = label
-    ).map { case (token, tsv) => tsv.path -> Some(token)}
+    ).map { case ((token, tsv),_) => tsv.path -> Some(token)}
 
     createSparqlSourceFromPaths(
       baseUrl = baseUrl,

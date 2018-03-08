@@ -20,14 +20,14 @@ import java.util.concurrent.{ConcurrentHashMap, TimeoutException}
 
 import akka.actor.{ActorRef, ActorSystem}
 import akka.kafka.ProducerMessage.Message
-import akka.kafka.scaladsl.{Consumer, Producer}
-import akka.kafka.{ConsumerSettings, ProducerSettings, Subscriptions}
+import akka.kafka.scaladsl.Producer
+import akka.kafka.ProducerSettings
 import akka.stream.ActorAttributes.supervisionStrategy
 import akka.stream.contrib.PartitionWith
-import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, Merge, MergePreferred, Partition, RunnableGraph, Sink}
-import akka.stream.{ActorMaterializer, ClosedShape, KillSwitches, Supervision}
-import cmwell.common.exception.getStackTrace
-import cmwell.common.{Command, _}
+import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, Merge, Partition, RunnableGraph, Sink}
+import akka.stream.{ActorMaterializer, ClosedShape, Supervision}
+import cmwell.bg.imp.{CommandsSource, RefsEnricher}
+import cmwell.common._
 import cmwell.common.formats.JsonSerializerForES
 import cmwell.domain.{Infoton, ObjectInfoton}
 import cmwell.fts._
@@ -39,19 +39,16 @@ import cmwell.zstore.ZStore
 import com.datastax.driver.core.ConsistencyLevel
 import com.google.common.cache.CacheBuilder
 import com.typesafe.config.Config
-import com.typesafe.scalalogging.{LazyLogging, Logger}
-import nl.grons.metrics.scala._
-import com.codahale.metrics.{Counter => DropwizardCounter, Histogram => DropwizardHistogram, Meter => DropwizardMeter, Timer => DropwizardTimer}
-import org.apache.kafka.clients.consumer.ConsumerConfig
+import com.typesafe.scalalogging.Logger
+import nl.grons.metrics4.scala._
 import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.serialization.{ByteArrayDeserializer, ByteArraySerializer}
+import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.elasticsearch.action.update.UpdateRequest
 import org.elasticsearch.client.Requests
 import org.joda.time.DateTime
 import org.slf4j.LoggerFactory
 
-import collection.JavaConverters._
+import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success, Try}
@@ -60,7 +57,7 @@ import scala.util.{Failure, Success, Try}
   * Created by israel on 14/06/2016.
   */
 class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: ZStore, ftsService: FTSServiceNew,
-                offsetsService: OffsetsService, bgActor:ActorRef)
+                offsetsService: OffsetsService, bgActor:ActorRef, bGMetrics: BGMetrics)
                (implicit actorSystem: ActorSystem, executionContext: ExecutionContext,
                 materializer: ActorMaterializer
                ) extends DefaultInstrumented {
@@ -74,7 +71,6 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
 
   val merger = Merger()
 
-  val byteArrayDeserializer = new ByteArrayDeserializer()
   val bootStrapServers = config.getString("cmwell.bg.kafka.bootstrap.servers")
   val persistCommandsTopic = config.getString("cmwell.bg.persist.commands.topic")
   val persistCommandsTopicPriority = persistCommandsTopic + ".priority"
@@ -88,48 +84,6 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
   val groupCommandsByPathTtl = config.getInt("cmwell.bg.groupCommandsByPathTtl") // timeout for the above grouping
   val maxDocsPerShard = config.getLong("cmwell.bg.maxDocsPerShard")
 
-  /** *** Metrics *****/
-  val existingMetrics = metricRegistry.getMetrics.asScala
-  val writeCommandsCounter: Counter = existingMetrics.get("WriteCommand Counter").
-    map { m => new Counter(m.asInstanceOf[DropwizardCounter]) }.
-    getOrElse(metrics.counter("WriteCommand Counter"))
-  val updatePathCommandsCounter: Counter = existingMetrics.get("UpdatePathCommand Counter").
-    map { m => new Counter(m.asInstanceOf[DropwizardCounter]) }.
-    getOrElse(metrics.counter("UpdatePathCommand Counter"))
-  val deletePathCommandsCounter: Counter = existingMetrics.get("DeletePathCommand Counter").
-    map { m => new Counter(m.asInstanceOf[DropwizardCounter]) }.
-    getOrElse(metrics.counter("DeletePathCommand Counter"))
-  val deleteAttributesCommandsCounter: Counter = existingMetrics.get("DeleteAttributesCommand Counter").
-    map { m => new Counter(m.asInstanceOf[DropwizardCounter]) }.
-    getOrElse(metrics.counter("DeleteAttributesCommand Counter"))
-  val overrideCommandCounter: Counter = existingMetrics.get("OverrideCommand Counter").
-    map { m => new Counter(m.asInstanceOf[DropwizardCounter]) }.
-    getOrElse(metrics.counter("OverrideCommand Counter"))
-  val indexNewInfotonCommandCounter: Counter = existingMetrics.get("IndexNewCommand Counter").
-    map { m => new Counter(m.asInstanceOf[DropwizardCounter]) }.
-    getOrElse(metrics.counter("IndexNewCommand Counter"))
-  val indexExistingCommandCounter: Counter = existingMetrics.get("IndexExistingCommand Counter").
-    map { m => new Counter(m.asInstanceOf[DropwizardCounter]) }.
-    getOrElse(metrics.counter("IndexExistingCommand Counter"))
-  val mergeTimer: Timer = existingMetrics.get("Merge Timer").
-    map { m => new Timer(m.asInstanceOf[DropwizardTimer]) }.getOrElse(metrics.timer("Merge Timer"))
-  val commandMeter: Meter = existingMetrics.get("Commands Meter").map { m => new Meter(m.asInstanceOf[DropwizardMeter]) }.
-    getOrElse(metrics.meter("Commands Meter"))
-  val infotonCommandWeightHist: Histogram = existingMetrics.get("WriteCommand OverrideCommand Infoton Weight Histogram").
-    map { m => new Histogram(m.asInstanceOf[DropwizardHistogram]) }.
-    getOrElse(metrics.histogram("WriteCommand OverrideCommand Infoton Weight Histogram"))
-  val indexingTimer: Timer = existingMetrics.get("Indexing Timer").map { m => new Timer(m.asInstanceOf[DropwizardTimer]) }.
-    getOrElse(metrics.timer("Indexing Timer"))
-  val casFullReadTimer: Timer = existingMetrics.get("CAS Full Read Timer").map { m => new Timer(m.asInstanceOf[DropwizardTimer]) }.
-    getOrElse(metrics.timer("CAS Full Read Timer"))
-  val casEmptyReadTimer: Timer = existingMetrics.get("CAS Empty Read Timer").map { m => new Timer(m.asInstanceOf[DropwizardTimer]) }.
-    getOrElse(metrics.timer("CAS Empty Read Timer"))
-  val nullUpdateCounter: Counter = existingMetrics.get("NullUpdate Counter").
-    map { m => new Counter(m.asInstanceOf[DropwizardCounter]) }.
-    getOrElse(metrics.counter("NullUpdate Counter"))
-  val indexBulkSizeHist: Histogram = existingMetrics.get("Index Bulk Size Histogram").
-    map { m => new Histogram(m.asInstanceOf[DropwizardHistogram]) }.
-    getOrElse(metrics.histogram("Index Bulk Size Histogram"))
 
   /** ****************/
 
@@ -138,7 +92,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
   val startingOffset = offsetsService.read(s"${streamId}_offset").getOrElse(0L)
   val startingOffsetPriority = offsetsService.read(s"${streamId}.p_offset").getOrElse(0L)
 
-    logger info s"ImpStream($streamId), startingOffset: $startingOffset, startingOffsetPriority: $startingOffsetPriority"
+  logger.info(s"ImpStream($streamId), startingOffset: $startingOffset, startingOffsetPriority: $startingOffsetPriority")
 
   @volatile var (startingIndexName, startingIndexCount) = ftsService.latestIndexNameAndCount(s"cm_well_p${partition}_*") match {
     case Some((name, count)) => (name -> count)
@@ -174,34 +128,12 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
 
   val numOfShardPerIndex = ftsService.numOfShardsForIndex(currentIndexName)
 
-  val subscription = Subscriptions.assignmentWithOffset(
-    new TopicPartition(persistCommandsTopic, partition) -> startingOffset
-  )
-
-  val persistCommandsConsumerSettings =
-    ConsumerSettings(actorSystem, byteArrayDeserializer, byteArrayDeserializer)
-      .withBootstrapServers(bootStrapServers)
-      .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
-
-  val prioritySubscription = Subscriptions.assignmentWithOffset(
-    new TopicPartition(persistCommandsTopicPriority, partition) -> startingOffsetPriority
-  )
-
-  val sharedKillSwitch = KillSwitches.shared("persist-sources-kill-switch")
-
-  val persistCommandsSource = Consumer.plainSource[Array[Byte], Array[Byte]](persistCommandsConsumerSettings, subscription).map { msg =>
-      logger debug s"consuming next payload from persist commands topic @ ${msg.offset()}"
-    val command = CommandSerializer.decode(msg.value())
-      logger debug s"consumed command: $command"
-    BGMessage[Command](CompleteOffset(msg.topic(), msg.offset()), command)
-  }.via(sharedKillSwitch.flow)
-
-  val priorityPersistCommandsSource = Consumer.plainSource[Array[Byte], Array[Byte]](persistCommandsConsumerSettings, prioritySubscription).map { msg =>
-      logger debug s"consuming next payload from priority persist commands topic @ ${msg.offset()}"
-    val command = CommandSerializer.decode(msg.value())
-      logger debug s"consumed priority command: $command"
-    BGMessage[Command](CompleteOffset(msg.topic(), msg.offset()), command)
-  }.via(sharedKillSwitch.flow)
+  val (cmdsSrcFromKafka,sharedKillSwitch) = CommandsSource.fromKafka(
+    persistCommandsTopic,
+    bootStrapServers,
+    partition,
+    startingOffset,
+    startingOffsetPriority)
 
   val heartBitLog = Flow[BGMessage[Command]].keepAlive(60.seconds, () => BGMessage(HeartbitCommand.asInstanceOf[Command])).filterNot {
     case BGMessage(_, HeartbitCommand) =>
@@ -228,31 +160,6 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
   }.recover { case _: Throwable =>
     math.max(numOfCassandraNodes / 3, 2)
   }.get
-
-  val commandRefsFetcher = Flow[BGMessage[Command]].mapAsync(irwReadConcurrency) {
-    case bgMessage@BGMessage(_, CommandRef(ref)) =>
-      zStore.get(ref).map { payload =>
-        bgMessage.copy(message = CommandSerializer.decode(payload))
-      }
-  }
-
-  // cast to SingleCommand while updating metrics
-  val commandToSingle = Flow[BGMessage[Command]].map { bgMessage =>
-    bgMessage.message match {
-      case wc: WriteCommand =>
-        writeCommandsCounter += 1
-        infotonCommandWeightHist += wc.infoton.weight
-      case oc: OverwriteCommand =>
-        overrideCommandCounter += 1
-        infotonCommandWeightHist += oc.infoton.weight
-      case _: UpdatePathCommand => updatePathCommandsCounter += 1
-      case _: DeletePathCommand => deletePathCommandsCounter += 1
-      case _: DeleteAttributesCommand => deleteAttributesCommandsCounter += 1
-      case _ =>
-    }
-    commandMeter.mark()
-    bgMessage.copy(message = bgMessage.message.asInstanceOf[SingleCommand])
-  }
 
   val breakOut2 = scala.collection.breakOut[Map[String, Seq[(BGMessage[SingleCommand], Int)]], (Int, BGMessage[(String, Seq[SingleCommand])]), collection.immutable.Seq[(Int, BGMessage[(String, Seq[SingleCommand])])]]
 
@@ -283,9 +190,9 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
         logger debug s"got base infoton for path: $path from irw: ${box.toOption}"
         val end = System.currentTimeMillis()
         if (box.isDefined)
-          casFullReadTimer.update((end - start).millis)
+          bGMetrics.casFullReadTimer.update((end - start).millis)
         else
-          casEmptyReadTimer.update((end - start).millis)
+          bGMetrics.casEmptyReadTimer.update((end - start).millis)
         bgMessage.copy(message = box.toOption -> commands)
     }
   }
@@ -318,7 +225,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
 
         val mergedInfoton =
           if (baseInfoton.isDefined || commands.size > 1)
-            mergeTimer.time(merger.merge(baseInfoton, commands))
+            bGMetrics.mergeTimer.time(merger.merge(baseInfoton, commands))
           else
             merger.merge(baseInfoton, commands)
         mergedInfoton.merged.foreach { i =>
@@ -352,13 +259,10 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
     case BGMessage(offsets, indexCommands) =>
       logger debug s"checking missing parents for index commands: $indexCommands"
 
-      val parentsWithChildDate = cmwell.util.collections.distinctBy {
-        indexCommands.collect { case (indexCommand, Some(lastModified)) =>
-          (Infoton.getParent(indexCommand.path) -> lastModified)
-        }
-      } {
-        _._1
-      }
+      val parentsWithChildDate = cmwell.util.collections.distinctBy(indexCommands.collect {
+        case (indexCommand, Some(lastModified)) =>
+          Infoton.getParent(indexCommand.path) -> lastModified
+      })(_._1)
 
       Future.traverse(parentsWithChildDate)(checkParent).map(_.collect { case (true, (path, childLastModified)) =>
         val infoton = ObjectInfoton(path = path, dc = defaultDC, lastModified = childLastModified, indexName = currentIndexName)
@@ -544,17 +448,11 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
   }(Keep.right)
 
   val impGraph = RunnableGraph.fromGraph(
-    GraphDSL.create(
-      priorityPersistCommandsSource,
-      persistCommandsSource,
+    GraphDSL.create(cmdsSrcFromKafka,
       commitOffsetsFlow,
-      publishVirtualParentsSink) ((_, _, a, b) => (a, b) ){ implicit builder =>
-    (prioritySource, source, commitOffsets, publishVirtualParents) =>
+      publishVirtualParentsSink) ((_, a, b) => (a, b) ){ implicit builder =>
+    (commandsSource, commitOffsets, publishVirtualParents) =>
       import GraphDSL.Implicits._
-
-      val mergePreferedSources = builder.add(
-        MergePreferred[BGMessage[Command]](1, true)
-      )
 
 
       // partition incoming persist commands. override commands goes to outport 0, all the rest goes to 1
@@ -570,17 +468,6 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
         )
       )
 
-      // CommandRef goes left, all rest go right
-      // update metrics for each type of command
-      val commandsPartitioner = builder.add(
-        Partition[BGMessage[Command]](
-          2, {
-            case BGMessage(_, CommandRef(_)) => 0
-            case _ => 1
-          }
-        )
-      )
-
       val partitionMerged = builder.add(
         Partition[BGMessage[(Option[Infoton], MergeResponse)]](2, {
           case BGMessage(_, (_, mergeResponse)) if mergeResponse.isInstanceOf[RealUpdate] => 0
@@ -591,7 +478,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
       val reportNullUpdates = builder.add(
         Flow[BGMessage[(Option[Infoton], MergeResponse)]].mapAsync(1) {
           case BGMessage(offset, (_, NullUpdate(path, tids, evictions))) =>
-            nullUpdateCounter += 1
+            bGMetrics.nullUpdateCounter += 1
             val nullUpdatesReportedAsDone = {
               if (tids.nonEmpty)
                 TrackingUtilImpl.updateSeq(path, tids.map(StatusTracking(_, 1))).map {
@@ -635,8 +522,6 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
               Left(BGMessage(offset, (prev, (cur, tids))))
         }
       )
-
-      val singleCommandsMerge = builder.add(Merge[BGMessage[Command]](2))
 
       val overrideCommandsToInfotons = builder.add(
         Flow[BGMessage[(String, Seq[SingleCommand])]].map{
@@ -749,7 +634,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
           val actionRequests = indexCommands.flatMap {
             case IndexNewInfotonCommand(_, isCurrent, _, Some(infoton), indexName, trackingIDs) =>
               // count it for metrics
-              indexNewInfotonCommandCounter += 1
+              bGMetrics.indexNewInfotonCommandCounter += 1
               List(
                 Try {
                   val indexTime = if (infoton.indexTime.isDefined) None else Some(System.currentTimeMillis())
@@ -777,7 +662,7 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
               }
             case IndexExistingInfotonCommand(uuid, weight, _, indexName, _) =>
               //count it for metrics
-              indexExistingCommandCounter += 1
+              bGMetrics.indexExistingCommandCounter += 1
               List((ESIndexRequest(
                 new UpdateRequest(indexName, "infoclone", uuid).doc(s"""{"system":{"current": false}}""").version(1),
                 None
@@ -805,8 +690,8 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
                 _.message._2
               }.flatten
             }"
-            indexBulkSizeHist += actions.size
-            indexingTimer.timeFuture(ftsService.executeIndexRequests(actions).recover {
+            bGMetrics.indexBulkSizeHist += actions.size
+            bGMetrics.indexingTimer.timeFuture(ftsService.executeIndexRequests(actions).recover {
               case _: TimeoutException =>
                 RejectedBulkIndexResult("Future Timedout")
             }
@@ -933,17 +818,9 @@ class ImpStream(partition: Int, config: Config, irwService: IRWService, zStore: 
           msg.copy(message = msg.message.map(_._1))
         })
 
-      prioritySource ~> mergePreferedSources.preferred
+      val refsEnricher = RefsEnricher.toSingle(bGMetrics,irwReadConcurrency,zStore)
 
-      source ~> mergePreferedSources.in(0)
-
-      mergePreferedSources.out ~> heartBitLog ~> commandsPartitioner.in
-
-      commandsPartitioner.out(0) ~> commandRefsFetcher ~> singleCommandsMerge.in(0)
-
-      commandsPartitioner.out(1) ~> singleCommandsMerge.in(1)
-
-      singleCommandsMerge.out ~> commandToSingle ~> singleCommandsPartitioner
+      commandsSource ~> heartBitLog ~> refsEnricher ~> singleCommandsPartitioner
 
       singleCommandsPartitioner.out(0) ~> groupCommandsByPath ~> overrideCommandsToInfotons ~> partitionOverrideInfotons.in
 

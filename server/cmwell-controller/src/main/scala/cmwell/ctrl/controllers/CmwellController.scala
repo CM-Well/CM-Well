@@ -23,7 +23,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
  * Created by michael on 2/16/15.
  */
 object CmwellController {
-  val components : Seq[ComponentController] = Seq(CassandraController, ElasticsearchController, KafkaController, BatchController, BgController, WebserverController, CwController, DcController)
+  val components : Seq[ComponentController] = Seq(CassandraController, ElasticsearchController, KafkaController, BgController, WebserverController, CwController, DcController)
 
   def start {
     blocking {

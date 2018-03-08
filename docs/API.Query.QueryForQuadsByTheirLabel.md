@@ -17,26 +17,26 @@ You can retrieve all quads with a certain label with one query to CM-Well.
 
 **URL:** \<hostURL\>
 **REST verb:** GET
-**Mandatory parameters:** op=search&recursive&qp=system.quad::\<quadValue\>
+**Mandatory parameters:** op=search&recursive&qp=quad.system::\<quadValue\>
 
 ----------
 
 **Template:**
 
-    <cm-well-path>?op=search&recursive&qp=system.quad::<quadValue>
+    <cm-well-path>?op=search&recursive&qp=quad.system::<quadValue>
 
 **URL example:**
-   <cm-well-host>/example.org?op=search&recursive&qp=system.quad::http://MyOrgs/Startups
+   <cm-well-host>/example.org?op=search&recursive&qp=quad.system::http://MyOrgs/Startups
 
 **Curl example (REST API):**
 
-    curl <cm-well-host>/example.org?op=search&recursive&qp=system.quad::http://MyOrgs/Startups
+    curl <cm-well-host>/example.org?op=search&recursive&qp=quad.system::http://MyOrgs/Startups
 
 ## Code Example ##
 
 ### Call ###
 
-    curl "<cm-well-host>/example.org/movies?op=search&recursive&format=ttl&qp=system.quad::http://MyOntology/NewYorkTimes"
+    curl "<cm-well-host>/example.org/movies?op=search&recursive&format=ttl&qp=quad.system::http://MyOntology/NewYorkTimes"
 
 ### Results ###
 
@@ -53,9 +53,9 @@ You can retrieve all quads with a certain label with one query to CM-Well.
     sys:type  "ObjectInfoton" ;
     sys:uuid  "fe628dbe6298f263fecf548e85b33b37" .
     
-    [ sys:pagination  [ sys:first  <cm-well-host>/example.org/movies?format=ttl?&recursive=&op=search&from=2016-07-06T20%3A38%3A33.085Z&to=2016-07-26T14%3A30%3A38.600Z&qp=system.quad%3A%3Ahttp%3A%2F%2FMyOntology%2FNewYorkTimes&length=4&offset=0> ;
-    sys:last   <cm-well-host>/example.org/movies?format=ttl?&recursive=&op=search&from=2016-07-06T20%3A38%3A33.085Z&to=2016-07-26T14%3A30%3A38.600Z&qp=system.quad%3A%3Ahttp%3A%2F%2FMyOntology%2FNewYorkTimes&length=4&offset=4> ;
-    sys:self   <cm-well-host>/example.org/movies?format=ttl?&recursive=&op=search&from=2016-07-06T20%3A38%3A33.085Z&to=2016-07-26T14%3A30%3A38.600Z&qp=system.quad%3A%3Ahttp%3A%2F%2FMyOntology%2FNewYorkTimes&length=4&offset=0> ;
+    [ sys:pagination  [ sys:first  <cm-well-host>/example.org/movies?format=ttl?&recursive=&op=search&from=2016-07-06T20%3A38%3A33.085Z&to=2016-07-26T14%3A30%3A38.600Z&qp=quad.system%3A%3Ahttp%3A%2F%2FMyOntology%2FNewYorkTimes&length=4&offset=0> ;
+    sys:last   <cm-well-host>/example.org/movies?format=ttl?&recursive=&op=search&from=2016-07-06T20%3A38%3A33.085Z&to=2016-07-26T14%3A30%3A38.600Z&qp=quad.system%3A%3Ahttp%3A%2F%2FMyOntology%2FNewYorkTimes&length=4&offset=4> ;
+    sys:self   <cm-well-host>/example.org/movies?format=ttl?&recursive=&op=search&from=2016-07-06T20%3A38%3A33.085Z&to=2016-07-26T14%3A30%3A38.600Z&qp=quad.system%3A%3Ahttp%3A%2F%2FMyOntology%2FNewYorkTimes&length=4&offset=0> ;
     sys:type   "PaginationInfo"
       ] ;
       sys:results [ sys:fromDate  "2016-07-06T20:38:33.085Z"^^xsd:dateTime ;

@@ -130,20 +130,10 @@ abstract class ModuleLock(checkCount: Int = 50) extends Info {
   }
 }
 
-case class BatchResult(name: String, indexed: BigInt, fileSize: BigInt)
-
-case class BatchQuery(name: String, head: String, log: String)
-
-case class HostBatchStatus(name: String, br: ParSeq[BatchResult])
-
-//List("/mnt/d1/cas", "/mnt/d1/cas2", "/mnt/d1/cas3", "/mnt/d1/cas4")
-
-
 case class DataDirs(casDataDirs: GenSeq[String],
                     casCommitLogDirs: GenSeq[String],
                     esDataDirs: GenSeq[String],
-                    tlogDataDirs: GenSeq[String],
-                    kafkaDataDir: String,
+                    kafkaDataDirs: GenSeq[String],
                     zookeeperDataDir: String,
                     logsDataDir: String)
 
@@ -195,8 +185,6 @@ abstract class Host(user: String,
                     minMembers: Option[Int] = None,
                     haProxy: Option[HaProxy],
                     withElk: Boolean = false,
-                    val withZkKfk: Boolean = false,
-                    val withOldBg: Boolean = true,
                     isDebug:Boolean = false) {
 
   var sudoerCredentials: Option[Credentials] = None
@@ -280,7 +268,7 @@ abstract class Host(user: String,
 
   private val componentToJmxMapping = Map(
     "ws" -> PortManagers.ws.jmxPortManager.initialPort,
-    "batch" -> PortManagers.batch.jmxPortManager.initialPort,
+    "bg" -> PortManagers.bg.jmxPortManager.initialPort,
     "ctrl" -> PortManagers.ctrl.jmxPortManager.initialPort,
     "dc" -> PortManagers.dc.jmxPortManager.initialPort
   )
@@ -385,55 +373,6 @@ abstract class Host(user: String,
         println(s"infotons uploaded: $currentAmount, time passed: ${Math.round(timePassed / 60)}:${timePassed % 60}")
         Thread.sleep(5000)
       }
-    }
-
-    def printBatchStatus {
-      val results = batchStatus
-      results.toList.foreach {
-        hostRes =>
-          println(s"---------------------------------------${hostRes.name}---------------------------------------")
-          hostRes.br.toList.foreach {
-            res =>
-              println(res.name)
-              if (res.indexed == res.fileSize) {
-                println("Nothing to proccess")
-              } else {
-                println(s"${res.fileSize - res.indexed} bytes to index")
-              }
-          }
-      }
-    }
-
-
-    def batchStatus: ParSeq[HostBatchStatus] = {
-      val batchQuries = List(BatchQuery("Imp", "imp_UpdateTLog", "UpdateTLog_updatesPar"), BatchQuery("Indexer", "indexer_UuidsTLogupdatesPar", "UuidsTLog_uuidsPar"))
-
-      val y = ips.par.map {
-        host =>
-          val res = batchQuries.par.map { query =>
-            //val res = command( """cd """ + instDirs.globalLocation + """/cm-well/data/tlog/data/tlog ; cat """ + query.head +  """*; printf "," ;ls -alF | grep """ + query.log +  """ | awk '{print $5}'""", host, false)
-            val res = command( """cd """ + instDirs.globalLocation + """/cm-well/data/tlog ; cat """ + query.head + """*; printf "," ;ls -alF | grep """ + query.log + """ | awk '{print $5}'""", host, false)
-            val x = res match {
-              case Success(str) =>
-
-                val t = Try {
-                  val vals = str.split("\n")(0).split(",")
-                  BatchResult(query.name, BigInt(vals(0)), BigInt(vals(1)))
-                }
-
-                t match {
-                  case Success(br) => br
-                  case Failure(ex) => BatchResult(s"${query.name} - problem!!", BigInt(1), BigInt(0))
-                }
-
-              case Failure(ex) =>
-                throw new Exception("can't execute command on this host")
-            }
-            x
-          }
-          HostBatchStatus(host, res)
-      }
-      y
     }
 
     def infotonChangeAvg: BigDecimal = infotonChangeAvg()
@@ -858,12 +797,6 @@ abstract class Host(user: String,
       es => command(s"rm -rf ${es}", i, false)
     }
 
-    dataDirs.tlogDataDirs.foreach {
-      tlog =>
-        command(s"rm -rf $tlog", i, false)
-    }
-
-
     command(s"rm -rf ${dataDirs.logsDataDir}", i, false)
   }
 
@@ -978,20 +911,6 @@ abstract class Host(user: String,
     deployApplication(hosts)
   }
 
-  def updateBatch: Unit = updateBatch()
-
-  def updateBatch(hosts: GenSeq[String] = ips) {
-    hosts.foreach { h =>
-      rsync(s"./components/cmwell-batch_2.10-1.0.1-SNAPSHOT-selfexec.jar", s"${instDirs.globalLocation}/cm-well/app/bg/_cmwell-batch_2.10-1.0.1-SNAPSHOT-selfexec.jar", List(h))
-      //stopWebservice(List(hosts))
-      stopBatch(List(h))
-      command(s"mv ${instDirs.globalLocation}/cm-well/app/bg/_cmwell-batch_2.10-1.0.1-SNAPSHOT-selfexec.jar ${instDirs.globalLocation}/cm-well/app/bg/cmwell-batch_2.10-1.0.1-SNAPSHOT-selfexec.jar", List(h), false)
-      startBatch(List(h))
-      //startWebservice(List(hosts))
-    }
-
-  }
-
   def updateWebService: Unit = updateWebService()
 
   def updateWebService(hosts: GenSeq[String] = ips) {
@@ -1045,8 +964,8 @@ abstract class Host(user: String,
   }
 
   def disks: GenSet[String] = {
-    val DataDirs(casDataDirs, casCommitLogDirs, esDataDirs, tlogDataDirs, kafkaDataDir, zookeeperDataDir, logsDataDir) = dataDirs
-    val dirs = casDataDirs ++ casCommitLogDirs ++ esDataDirs ++ tlogDataDirs ++ Seq(kafkaDataDir, zookeeperDataDir, logsDataDir, instDirs.intallationDir)
+    val DataDirs(casDataDirs, casCommitLogDirs, esDataDirs, kafkaDataDirs, zookeeperDataDir, logsDataDir) = dataDirs
+    val dirs = casDataDirs ++ casCommitLogDirs ++ esDataDirs ++ kafkaDataDirs ++ Seq(zookeeperDataDir, logsDataDir, instDirs.intallationDir)
     dirs.map(dir => dir.substring(0, dir.lastIndexOf("/"))).toSet
   }
 
@@ -1169,52 +1088,6 @@ abstract class Host(user: String,
     getNewHostInstance(ipMappings.remove(List(host)))
   }
 
-  @deprecated
-  def removeNodeOld(host: String): Host = {
-    //decommissionCassandraNodes(hosts)
-    connectToGrid
-    if (CtrlClient.currentHost == host) CtrlClient.init((ips.toSet - host).head)
-    val hosts = Seq(host)
-    val numberOfCassandraDownNodes = command("ps aux | grep Cassandra | grep -v starter | grep -v grep | wc -l", hosts, false).map(r => r.get.trim.toInt).foldLeft(0)(_ + _)
-    //purge(hosts)
-
-
-    val taskResult = Await.result(CtrlClient.clearNode(host), 1.hours)
-    stopCtrl(host)
-
-    val newInstance = getNewHostInstance(ipMappings.remove(hosts.toList))
-
-    //Try(newInstance.CassandraDNLock().waitForModule(newInstance.ips(0), numberOfCassandraDownNodes, 20))
-    //newInstance.rebalanceCassandraDownNodes
-
-    info("Regenerating resource files")
-    newInstance.genResources()
-
-    if (hosts.contains(ips(0))) {
-      val newIndexerMaster = newInstance.ips(0)
-      newInstance.stopBatch(List(newIndexerMaster))
-      newInstance.startBatch(List(newIndexerMaster))
-      info(s"${newInstance.ips(0)}'s indexer will be promoted to be master.")
-    }
-
-    ipMappings.filePath match {
-      case Some(fp) =>
-        IpMappingController.writeMapping(ipMappings.remove(hosts.toList), fp)
-        IpMappingController.writeMapping(ipMappings.remove(ips.diff(hosts.toList)), s"${fp}_$host")
-      case None => // Do nothing.
-    }
-
-    info("Waiting for Health control.")
-    Host.ctrl.waitForHealth
-    Thread.sleep(20000)
-    Host.ctrl.removeNode(host)
-
-    newInstance.dataInitializer.updateKnownHosts
-    info(s"The node $host is removed from the cluster.")
-    newInstance
-  }
-
-
   def addNodesSH(path: String) {
     addNodes(path)
     sys.exit(0)
@@ -1320,7 +1193,6 @@ abstract class Host(user: String,
     checkProduction
     val tries = if (force) 0 else 5
     stopWebservice(hosts, tries)
-    stopBatch(hosts, tries)
     stopBg(hosts, tries)
     stopElasticsearch(hosts, tries)
     stopCassandra(hosts, tries)
@@ -1349,12 +1221,10 @@ abstract class Host(user: String,
       es => command(s"rm -rf ${es}/*", hosts, false)
     }
 
-    dataDirs.tlogDataDirs.foreach {
-      tlog =>
-        command(s"rm -rf $tlog/*", hosts, false)
+    dataDirs.kafkaDataDirs.foreach {
+      kafka =>
+        command(s"rm -rf $kafka/*", hosts, false)
     }
-
-    command(s"rm -rf ${dataDirs.kafkaDataDir}/*; rm -rf ${dataDirs.kafkaDataDir}/.* 2> /dev/null", hosts, false)
 
     command(s"rm -rf ${dataDirs.zookeeperDataDir}/*", hosts, false)
 
@@ -1414,16 +1284,6 @@ abstract class Host(user: String,
     killProcess("cmwell.bg.Runner", "", hosts, tries)
   }
 
-
-  def stopBatch: Unit = stopBatch(ips.par)
-
-  def stopBatch(hosts: String*): Unit = stopBatch(hosts.par)
-
-  def stopBatch(hosts: GenSeq[String], tries: Int = 5) {
-    checkProduction
-    killProcess("batch", "", hosts, tries)
-  }
-
   def stopWebservice: Unit = stopWebservice(ips.par)
 
   def stopWebservice(hosts: String*): Unit = stopWebservice(hosts.par)
@@ -1477,21 +1337,11 @@ abstract class Host(user: String,
 
   def startBg: Unit = startBg(ips.par)
 
-  def startBg(hosts: String*): Unit = startBatch(hosts.par)
+  def startBg(hosts: String*): Unit = startBg(hosts.par)
 
   def startBg(hosts: GenSeq[String]) {
     checkProduction
-    if (withZkKfk)
-      command(s"cd ${instDirs.globalLocation}/cm-well/app/bg; ${startScript("./start.sh")}", hosts, false)
-  }
-
-  def startBatch: Unit = startBatch(ips.par)
-
-  def startBatch(hosts: String*): Unit = startBatch(hosts.par)
-
-  def startBatch(hosts: GenSeq[String]) {
-    checkProduction
-    command(s"cd ${instDirs.globalLocation}/cm-well/app/batch; ${startScript("./start.sh")}", hosts, false)
+    command(s"cd ${instDirs.globalLocation}/cm-well/app/bg; ${startScript("./start.sh")}", hosts, false)
   }
 
   def startWebservice: Unit = startWebservice(ips.par)
@@ -1546,7 +1396,7 @@ abstract class Host(user: String,
     startKafka(hosts)
 
     startCtrl(hosts)
-    startBatch(hosts)
+    startBg(hosts)
     startCW(hosts)
     startWebservice(hosts)
     startDc(hosts)
@@ -1630,8 +1480,6 @@ abstract class Host(user: String,
     // wait until all the schemas are written.
     Thread.sleep(10000)
 
-    info("  starting batch")
-    startBatch(hosts)
     info("  starting bg")
     startBg(hosts)
     info(" starting cw")
@@ -1660,8 +1508,6 @@ abstract class Host(user: String,
     injectMetaData(host)
     info("  uploading SPAs to meta/app")
     dataInitializer.uploadDirectory("data", s"http://$host:9000/meta/app/")
-    info("  uploading sys")
-    dataInitializer.uploadDirectory("sys", s"http://$host:9000/meta/sys/wb/")
     info("  uploading docs")
     dataInitializer.uploadDirectory("docs", s"http://$host:9000/meta/docs/")
     info("  uploading basic userInfotons (if not exist)")
@@ -1701,43 +1547,37 @@ abstract class Host(user: String,
     //    command(s"curl -s -X POST http://${pingAddress}:$esRegPort/cm_well_0/", hosts(0), false)
     command(s"""curl -s -X POST http://${pingAddress}:$esRegPort/_aliases -H "Content-Type: application/json" --data-ascii '${aliases}'""", hosts(0), false)
     // create kafka topics
-    if (withZkKfk) {
-      val replicationFactor = math.min(hosts.size, 3)
-      val createTopicCommandPrefix = s"cd ${instDirs.globalLocation}/cm-well/app/kafka/cur; export PATH=/opt/cm-well/app/java/bin:$$PATH ; sh bin/kafka-topics.sh --create --zookeeper ${pingAddress}:2181 --replication-factor $replicationFactor --partitions ${hosts.size} --topic"
-      var tryNum:Int = 1
-      var ret = command(s"$createTopicCommandPrefix persist_topic", hosts(0), false)
-      while(ret.isFailure || !ret.get.contains("Created topic") && tryNum < 6 ){
-        tryNum += 1
-        Thread.sleep(5000)
-        ret = command(s"$createTopicCommandPrefix persist_topic", hosts(0), false)
-      }
+    val replicationFactor = math.min(hosts.size, 3)
+    val createTopicCommandPrefix = s"cd ${instDirs.globalLocation}/cm-well/app/kafka/cur; export PATH=/opt/cm-well/app/java/bin:$$PATH ; sh bin/kafka-topics.sh --create --zookeeper ${pingAddress}:2181 --replication-factor $replicationFactor --partitions ${hosts.size} --topic"
+    var tryNum:Int = 1
+    var ret = command(s"$createTopicCommandPrefix persist_topic", hosts(0), false)
+    while(ret.isFailure || !ret.get.contains("Created topic") && tryNum < 6 ){
+      tryNum += 1
+      Thread.sleep(5000)
+      ret = command(s"$createTopicCommandPrefix persist_topic", hosts(0), false)
+    }
 
+    ret = command(s"$createTopicCommandPrefix persist_topic.priority", hosts(0), false)
+    while(ret.isFailure || !ret.get.contains("Created topic") && tryNum < 6 ){
+      tryNum += 1
+      Thread.sleep(5000)
       ret = command(s"$createTopicCommandPrefix persist_topic.priority", hosts(0), false)
-      while(ret.isFailure || !ret.get.contains("Created topic") && tryNum < 6 ){
-        tryNum += 1
-        Thread.sleep(5000)
-        ret = command(s"$createTopicCommandPrefix persist_topic.priority", hosts(0), false)
-      }
+    }
 
+    ret = command(s"$createTopicCommandPrefix index_topic", hosts(0), false)
+    while(ret.isFailure || !ret.get.contains("Created topic") && tryNum < 6 ){
+      tryNum += 1
+      Thread.sleep(5000)
       ret = command(s"$createTopicCommandPrefix index_topic", hosts(0), false)
-      while(ret.isFailure || !ret.get.contains("Created topic") && tryNum < 6 ){
-        tryNum += 1
-        Thread.sleep(5000)
-        ret = command(s"$createTopicCommandPrefix index_topic", hosts(0), false)
-      }
+    }
 
+    ret = command(s"$createTopicCommandPrefix index_topic.priority", hosts(0), false)
+    while(ret.isFailure || !ret.get.contains("Created topic") && tryNum < 6 ){
+      tryNum += 1
+      Thread.sleep(5000)
       ret = command(s"$createTopicCommandPrefix index_topic.priority", hosts(0), false)
-      while(ret.isFailure || !ret.get.contains("Created topic") && tryNum < 6 ){
-        tryNum += 1
-        Thread.sleep(5000)
-        ret = command(s"$createTopicCommandPrefix index_topic.priority", hosts(0), false)
-      }
-
     }
   }
-
-  val withZookeeper = withZkKfk
-  val withKafka = withZkKfk
 
   def avaiableHosts = {
     ips.filter {
@@ -1752,18 +1592,17 @@ abstract class Host(user: String,
 
   def startZookeeper: Unit = {
     checkProduction
-    if (withZookeeper) command(s"cd ${instDirs.globalLocation}/cm-well/app/zookeeper; ${startScript("./start.sh")}", avaiableHosts.take(3), false)
+    command(s"cd ${instDirs.globalLocation}/cm-well/app/zookeeper; ${startScript("./start.sh")}", avaiableHosts.take(3), false)
   }
 
 
   def startZookeeper(host: String): Unit = {
-    if (withZookeeper) command(s"cd ${instDirs.globalLocation}/cm-well/app/zookeeper; ${startScript("./start.sh")}", host, false)
+    command(s"cd ${instDirs.globalLocation}/cm-well/app/zookeeper; ${startScript("./start.sh")}", host, false)
   }
 
   def startZookeeper(hosts: GenSeq[String]): Unit = {
     checkProduction
-    if (withZookeeper)
-      command(s"cd ${instDirs.globalLocation}/cm-well/app/zookeeper; ${startScript("./start.sh")}", hosts.intersect(avaiableHosts), false)
+    command(s"cd ${instDirs.globalLocation}/cm-well/app/zookeeper; ${startScript("./start.sh")}", hosts.intersect(avaiableHosts), false)
   }
 
   def stopZookeeper: Unit = stopZookeeper()
@@ -1779,16 +1618,12 @@ abstract class Host(user: String,
 
   def startKafka(hosts: GenSeq[String] = ips.par): Unit = {
     checkProduction
-    if (withKafka) {
-      command(s"cd ${instDirs.globalLocation}/cm-well/app/kafka; ${startScript("./start.sh")}", hosts, false)
-    }
+    command(s"cd ${instDirs.globalLocation}/cm-well/app/kafka; ${startScript("./start.sh")}", hosts, false)
   }
 
   def startKafka(host: String): Unit = {
     checkProduction
-    if (withKafka) {
-      command(s"cd ${instDirs.globalLocation}/cm-well/app/kafka; ${startScript("./start.sh")}", host, false)
-    }
+    command(s"cd ${instDirs.globalLocation}/cm-well/app/kafka; ${startScript("./start.sh")}", host, false)
   }
 
   def stopKafka: Unit = stopKafka()
@@ -1991,7 +1826,7 @@ abstract class Host(user: String,
 
   def upgradeCtrl = upgrade(List(CtrlProps(this)), uploadSpa = false, uploadDocs = false)
 
-  def upgradeBG = upgrade(List(BatchProps(this)), uploadSpa = false, uploadDocs = false)
+  def upgradeBG = upgrade(List(BgProps(this)), uploadSpa = false, uploadDocs = false)
 
   def upgradeWS = upgrade(List(WebserviceProps(this)))
 
@@ -2016,7 +1851,6 @@ abstract class Host(user: String,
 
 
     info("stopping CM-WELL components")
-    stopBatch(hosts)
     stopBg(hosts)
     stopDc(hosts)
     stopCW(hosts)
@@ -2039,7 +1873,6 @@ abstract class Host(user: String,
 
     hosts2.foreach { host => info(s"waiting for $host to respond"); WebServiceLock().com(host) }
 
-    startBatch(hosts)
     startBg(hosts)
     startDc(hosts)
     startCW(hosts)
@@ -2048,7 +1881,7 @@ abstract class Host(user: String,
 
   def upgrade: Unit = upgrade()
 
-  def upgrade(baseProps: List[ComponentProps] = List(CassandraProps(this), ElasticsearchProps(this), KafkaProps(this), ZooKeeperProps(this), BgProps(this), BatchProps(this), WebserviceProps(this), CtrlProps(this), DcProps(this), TlogProps(this)), clearTlogs: Boolean = false, uploadSpa: Boolean = true, uploadDocs: Boolean = true, uploadUserInfotons: Boolean = true, withUpdateSchemas: Boolean = false, hosts: GenSeq[String] = ips) {
+  def upgrade(baseProps: List[ComponentProps] = List(CassandraProps(this), ElasticsearchProps(this), KafkaProps(this), ZooKeeperProps(this), BgProps(this), WebserviceProps(this), CtrlProps(this), DcProps(this)), uploadSpa: Boolean = true, uploadDocs: Boolean = true, uploadUserInfotons: Boolean = true, withUpdateSchemas: Boolean = false, hosts: GenSeq[String] = ips) {
 
     checkProduction
     refreshUserState(user, None, hosts)
@@ -2132,10 +1965,6 @@ abstract class Host(user: String,
               rc.stop(List(h))
           }
 
-          if (clearTlogs) {
-            removeTlogs(List(h))
-          }
-
           // relinking the new components.
           (updatedComponentsSet -- preUpgradeComponents -- nonRunningComponents).foreach(cp => if (cp.symLinkName.isDefined) cp.relink(updatedHostComponents.get(cp).get._2, List(h)))
 
@@ -2199,10 +2028,8 @@ abstract class Host(user: String,
 
     if (uploadSpa) {
       Try(WebServiceLock().waitForModule(ips(0), 1))
-      info("  uploading SPA to meta/app")
+      info("  uploading SPAs to meta/app")
       dataInitializer.uploadDirectory("data", s"http://${hosts.head}:9000/meta/app/")
-      info("  uploading sys")
-      dataInitializer.uploadDirectory("sys", s"http://${hosts.head}:9000/meta/sys/wb/")
     }
 
     if (uploadDocs) {
@@ -2354,8 +2181,8 @@ abstract class Host(user: String,
     restartCW
     restartDc
 
-    stopBatch
-    startBatch
+    stopBg
+    startBg
   }
 
   def restartApp(host: String) = {
@@ -2372,8 +2199,8 @@ abstract class Host(user: String,
     stopDc(host)
     startDc(host)
 
-    stopBatch(host)
-    startBatch(host)
+    stopBg(host)
+    startBg(host)
   }
 
   def restartWebservice {
@@ -2490,10 +2317,6 @@ abstract class Host(user: String,
             }
         }
     }
-  }
-
-  def removeTlogs(ips: GenSeq[String] = ips.par) {
-    command(s"rm ${dataDirs.tlogDataDirs(0)}/*", ips, false)
   }
 
   /*def findIpToConnectWithToGrid : String = {

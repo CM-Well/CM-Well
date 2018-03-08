@@ -39,6 +39,13 @@ class IngestPushback @Inject() (backPressureToggler: BackPressureToggler, dashBo
 
   override val parser = pbp.defaultBodyParser
 
+  // following is ugly. should be called from Global.onStart
+  // willing to live with it so to not get many stacktraces on server startup
+  private[this] var serverIsWarmingUp = true
+  def sometimeAfterStart: Unit = {
+    serverIsWarmingUp = false
+  }
+
   lazy val bGMonitorProxy = new SingleElementLazyAsyncCache[OffsetsInfo](10000L,null)({
     Grid.serviceRef(BGMonitorActor.serviceName).ask(GetOffsetInfo)(akka.util.Timeout(bgMonitorAskTimeout), Actor.noSender).mapTo[OffsetsInfo]
   })
@@ -67,7 +74,9 @@ class IngestPushback @Inject() (backPressureToggler: BackPressureToggler, dashBo
       }
     }.recover {
       case ex: akka.pattern.AskTimeoutException =>
-        logger.error("Kafka queue monitor can't accept monitoring requests at the moment. You may try again later", ex)
+        if(!serverIsWarmingUp) {
+          logger.error("Kafka queue monitor can't accept monitoring requests at the moment. You may try again later", ex)
+        }
         Some(Results.ServiceUnavailable("Kafka queue monitor can't accept monitoring requests at the moment. You may try again later"))
       case e: Throwable => {
         logger.error("unexpected error occurred in IngestPushback.filterByKLog()",e)

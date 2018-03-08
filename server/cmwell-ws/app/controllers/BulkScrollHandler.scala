@@ -109,7 +109,7 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
         fieldFilters = Option(ffs),
         paginationParams = paginationParamsForSingleResultWithOffset,
         withHistory = h,
-        fieldSortParams = SortParam("system.indexTime" -> Asc),
+        fieldSortParams = SortParam.indexTimeAscending,
         withDeleted = d
       ).map {
         case SearchThinResults(_, _, _, results, _) =>
@@ -157,7 +157,7 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
           fieldFilters = ff,
           paginationParams = paginationParamsForSingleResult,
           withHistory = withHistory,
-          fieldSortParams = SortParam("system.indexTime" -> Asc),
+          fieldSortParams = SortParam.indexTimeAscending,
           withDeleted = withDeleted
         ).flatMap {
         case SearchThinResults(_, _, _, results, _) => {
@@ -196,6 +196,7 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
 
   def getFormatter(request: Request[AnyContent], withHistory: Boolean) = {
 
+    val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
     (extractInferredFormatWithData(request) match {
       case (fmt,b) if Set("text", "path", "tsv", "tab", "nt", "ntriples", "nq", "nquads")(fmt.toLowerCase) || fmt.toLowerCase.startsWith("json") => Success(fmt -> b)
       case (badFormat,_) => Failure(new IllegalArgumentException(s"requested format ($badFormat) is invalid for as streamable response."))
@@ -223,6 +224,7 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
           //cleanSystemBlanks set to true, so we won't output all the meta information we usually output. it get's messy with streaming. we don't want each chunk to show the "document context"
           formatterManager.getFormatter(
             format = formatType,
+            timeContext = timeContext,
             host = request.host,
             uri = request.uri,
             pretty = false,

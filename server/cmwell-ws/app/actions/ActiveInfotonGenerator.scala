@@ -70,7 +70,6 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
     val esColor = Try(Await.result(dashBoard.getElasticsearchStatus(), esTimeout)._1.toString).getOrElse("grey")
     Some(Map[String,Set[FieldValue]](
       "pbp" -> Set(FString(backPressureToggler.get)),
-      "search_contexts_limit" -> Set(FLong(Settings.maxSearchContexts)),
       "cm-well_release" -> Set(FString(BuildInfo.release)),
       "cm-well_version" -> Set(FString(BuildInfo.version)),
       "git_commit_version" -> Set(FString(BuildInfo.gitCommitVersion)),
@@ -212,12 +211,13 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
   private[this] def getClusterDetailedHealth : DetailedHealthTimedData = {
     val r = CtrlClient.getClusterDetailedStatus.map{
       cs =>
-        val keys = cs.wsStat.keySet ++ cs.batchStat.keySet ++ cs.esStat.keySet ++ cs.casStat.keySet
+        val keys = cs.wsStat.keySet ++ cs.bgStat.keySet ++ cs.esStat.keySet ++ cs.casStat.keySet
 
         val m = keys.map{
           k =>
-            (if(k == cs.healthHost) s"${k}*" else k) -> (colorAdapter(cs.wsStat.getOrElse(k, WebDown()).getColor),
-              colorAdapter(cs.batchStat.getOrElse(k,BatchDown(0,0,0,0)).getColor),
+            (if(k == cs.healthHost) s"${k}*" else k) -> (
+              colorAdapter(cs.wsStat.getOrElse(k, WebDown()).getColor),
+              colorAdapter(cs.bgStat.getOrElse(k, BgNotOk()).getColor),
               colorAdapter(cs.casStat.getOrElse(k,CassandraDown()).getColor),
               colorAdapter(cs.esStat.getOrElse(k,ElasticsearchDown()).getColor))
         }.toMap
@@ -440,11 +440,6 @@ ${csvToMarkdownTableRows(csvData)}
   private def csvToMarkdownTableRows(csvData: String): String =
     csvData.split("\\n").map(_.split(",").mkString("|","|","|")).mkString("\n")
 
-  trait BgType
-  case object Bg extends BgType
-  case object Batch extends BgType
-
-
   def generateBgData: Future[Map[String,Set[FieldValue]]] = {
     ask(bgMonitor, GetOffsetInfo)(10.seconds).mapTo[OffsetsInfo].map { offsetInfo =>
       offsetInfo.partitionsOffsetInfo.foldLeft(Map.empty[String, Set[FieldValue]]) {
@@ -476,7 +471,7 @@ ${csvToMarkdownTableRows(csvData)}
     }
   }
 
-  def generateBgMarkdown(t : BgType): String = {
+  def generateBgMarkdown(): String = {
 
     val offsetsInfo = ask(bgMonitor, GetOffsetInfo)(10.seconds).mapTo[OffsetsInfo].map{ offsetInfo =>
 
@@ -555,7 +550,7 @@ ${lines.mkString("\n")}
   import scala.language.implicitConversions
 
 
-  def generateInfoton(host: String, path: String, now: Long, length: Int = 0, offset: Int = 0, isRoot : Boolean = false, withHistory: Boolean, fieldFilters: Option[FieldFilter]): Future[Option[VirtualInfoton]] = {
+  def generateInfoton(host: String, path: String, now: Long, length: Int = 0, offset: Int = 0, isRoot : Boolean = false, withHistory: Boolean, fieldFilters: Option[FieldFilter], timeContext: Option[Long]): Future[Option[VirtualInfoton]] = {
 
     val d: DateTime = new DateTime(now)
 
@@ -579,7 +574,7 @@ ${lines.mkString("\n")}
           qp
             .fold(Success(None): Try[Option[RawFieldFilter]])(FieldFilterParser.parseQueryParams(_).map(Some.apply))
             .map { qpOpt =>
-              val fieldsFiltersFut = qpOpt.fold[Future[Option[FieldFilter]]](Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff, typesCache, cmwellRDFHelper).map(Some.apply))
+              val fieldsFiltersFut = qpOpt.fold[Future[Option[FieldFilter]]](Future.successful(Option.empty[FieldFilter]))(rff => RawFieldFilter.eval(rff, typesCache, cmwellRDFHelper, timeContext).map(Some.apply))
               fieldsFiltersFut
             }
             .get
@@ -605,7 +600,7 @@ ${lines.mkString("\n")}
       case "/proc/health-detailed" => Some(VirtualInfoton(ObjectInfoton(path, dc, None, d, generateHealthDetailedFields)))
       case "/proc/health-detailed.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateDetailedHealthMarkdown(d).getBytes, "text/x-markdown")))))
       case "/proc/health-detailed.csv" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateDetailedHealthCsvPretty().getBytes, "text/html")))))
-      case "/proc/bg.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateBgMarkdown(Bg).getBytes, "text/x-markdown")))))
+      case "/proc/bg.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateBgMarkdown.getBytes, "text/x-markdown")))))
       case "/proc/bg" => generateBgData.map(fields => Some(VirtualInfoton(ObjectInfoton(path, dc, None, d, fields))))
       case "/proc/search-contexts.md" => Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(generateIteratorMarkdown.getBytes, "text/x-markdown")))))
       case "/proc/members-active.md" => GridMonitoring.members(path, dc, Active, isRoot)

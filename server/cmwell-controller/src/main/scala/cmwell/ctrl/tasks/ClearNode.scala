@@ -111,7 +111,7 @@ case class ClearNode(node : String) extends Task with LazyLogging {
         logger.info("Stopping CM-WELL components")
         cmd ! StopKafka
         cmd ! StopWebserver
-        cmd ! StopBatch
+        cmd ! StopBg
         cmd ! StopCw
         cmd ! StopDc
     }

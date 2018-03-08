@@ -68,9 +68,6 @@ object Settings {
 
   // size is in MB
   lazy val maxUploadSize = config.getInt("webservice.max.upload.size")
-  // size is number of infotons
-  lazy val maxBulkSize = config.getInt("webservice.max.bulkCommand.size")
-  lazy val maxBulkWeight = config.getBytes("webservice.max.bulkCommand.weight")
   //maximum weight of a single field value
   lazy val maxValueWeight: Long = Try(config.getBytes("webservice.max.value.weight")) match {
     case Success(n) => n
@@ -87,6 +84,8 @@ object Settings {
   lazy val fieldsNamesCacheTimeout: Duration = Try(config.getDuration("cmwell.ws.cache.fieldsNamesTimeout")).toOption.fold(2.minutes) { d =>
     Duration.fromNanos(d.toNanos)
   }
+  lazy val maxTypesCacheSize: Long = Try(config.getLong("cmwell.ws.cache.types.max-size")).getOrElse(10000L)
+  lazy val minimumEntryRefreshRateMillis: Long = Try(config.getDuration("cmwell.ws.cache.types.minimum-refresh-rate")).fold(_ => 30000L,_.toMillis)
 
   lazy val sstreamParallelism: Int = config.getInt("cmwell.ws.sstream-parallelism")
 
@@ -110,7 +109,6 @@ object Settings {
   lazy val clusterName = config.getString("cmwell.clusterName")
 
   lazy val authSystemVersion = config.getInt("auth.system.version")
-  lazy val maxSearchContexts = config.getLong("webservice.max.search.contexts")
   lazy val expansionLimit = config.getInt("webservice.xg.limit")
   lazy val chunkSize = config.getBytes("webservice.max.chunk.size")
   lazy val maxOffset = config.getInt("webservice.max-offset")

@@ -93,19 +93,6 @@ getData := {
   Seq(data,docs)
 }
 
-getTlog := {
-  val str = streams.value
-  val bd = baseDirectory.value
-  val tlog = (assembly in LocalProject("tlog") in Compile).value
-
-  str.log.info(s"tlog tool file to copy is: ${tlog.getAbsolutePath}")
-  val destination = bd / "app" / "components" / tlog.getName
-  val filesToDelete = sbt.IO.listFiles(bd / "app" / "components").filter(_.getAbsolutePath.contains("cmwell-tlog_"))
-  filesToDelete.foreach(sbt.IO.delete)
-  sbt.IO.copyFile(tlog,destination,preserveLastModified = true)
-  destination
-}
-
 getCons := {
   val str = streams.value
   val bd = baseDirectory.value
@@ -268,9 +255,7 @@ getLib := {
   packProject("ctrl",(pack in LocalProject("ctrl") in pack).value,bd, bd / "app" / "conf" / "ctrl",logger)
   packProject("dc",(pack in LocalProject("dc") in pack).value,bd, bd / "app" / "conf" / "dc",logger)
   packProject("ws",(pack in LocalProject("ws") in pack).value,bd, bd / "app" / "conf" / "ws",logger)
-  packProject("batch",(pack in LocalProject("batch") in pack).value,bd, bd / "app" / "conf" / "batch",logger)
   packProject("bg",(pack in LocalProject("bg") in pack).value,bd, bd / "app" / "conf" / "bg",logger)
-  packProject("tlog",(pack in LocalProject("tlog") in pack).value,bd, bd / "app" / "conf" / "tlog",logger)
   packCons((pack in LocalProject("ctrl") in pack).value, getCons.value , bd)
 
   lib

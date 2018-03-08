@@ -364,9 +364,9 @@ case class ElasticsearchConf(clusterName : String, nodeName : String, dataNode :
   }
 }
 
-case class KafkaConf(home : String, zookeeperServers : Seq[String], brokerId : Int, hostIp : String) extends ComponentConf(hostIp, s"$home/app/kafka", "start.sh", s"$home/conf/kafka","server.properties", 1) {
-  val dir = "kafka"
+case class KafkaConf(home : String, logDirs: Seq[String], zookeeperServers : Seq[String], brokerId : Int, hostIp : String) extends ComponentConf(hostIp, s"$home/app/kafka", "start.sh", s"$home/conf/kafka","server.properties", 1) {
   override def mkScript: ConfFile = {
+    val dir = "kafka"
     val exports = s"export PATH=$home/app/java/bin:$home/bin/utils:$PATH"
     val cp = ":cur/libs/*"
     val scriptString =
@@ -384,7 +384,7 @@ case class KafkaConf(home : String, zookeeperServers : Seq[String], brokerId : I
   override def mkConfig: List[ConfFile] = {
     val m = Map[String, String](
       "broker-id" -> brokerId.toString,
-      "log-dirs" -> s"$home/data/$dir",
+      "log-dirs" -> logDirs.mkString(","),
       "zookeeper-connect" -> zookeeperServers.map(zkServer => s"$zkServer:2181").mkString(",")
     )
 
@@ -517,69 +517,7 @@ case class BgConf(home : String, zookeeperServers : Seq[String], clusterName: St
   }
 }
 
-case class BatchConf(home : String, clusterName: String, dataCenter :String ,hostName : String , resourceManager : JvmMemoryAllocations, sName : String, isMaster : Boolean , minMembers : Int = 1 , logLevel : String , debug : Boolean, hostIp : String) extends ComponentConf(hostIp, s"$home/app/batch",sName, s"$home/conf/batch","batch.yml", 1) {
-  val agentLibArgs = Seq.empty //Seq(s"-javaagent:$home/app/ctrl/cur", s"-Dctrl.listenAddress=$hostIp", s"-Dctrl.seedNodes=${host}", s"-Dctrl.clusterName=$clusterName", s"-Dctrl.roles=Metrics,BatchNode")
-
-  override def getPsIdentifier = s"/log/batch/"
-  override def mkScript: ConfFile = {
-    def jvmArgs = {
-      val aspectj = if(/*hasOption("useAspectj")*/ false) s"$home/app/tools/aspectjweaver.jar" else ""
-      val mXmx = resourceManager.getMxmx
-      val mXms = resourceManager.getMxms
-      val mXmn = resourceManager.getMxmn
-      val mXss = resourceManager.getMxss
-      val jmx = Seq(s"-Dcom.sun.management.jmxremote.port=${PortManagers.batch.jmxPortManager.getPort(1)}",
-        "-XX:-OmitStackTraceInFastThrow",
-        "-XX:+UseG1GC",
-        "-Dcom.sun.management.jmxremote.ssl=false",
-        "-Dcom.sun.management.jmxremote.authenticate=false")
-      Seq("-XX:+UseCondCardMark",
-        "-Duser.timezone=GMT0",
-        "-XX:+HeapDumpOnOutOfMemoryError",
-        aspectj,
-        "-Dfile.encoding=UTF-8",
-        s"-Dlog.level=$logLevel",
-        mXmx, mXms, mXmn, mXss) ++ jmx ++ JVMOptimizer.gcLoggingJVM(s"$home/log/batch/gc.log")
-    }
-
-    val args = Seq("starter", "java", "$DEBUG_STR", s"-Dcmwell.home=$home") ++ agentLibArgs ++ jvmArgs ++ Seq("-cp", s""" "conf:$home/app/batch/lib/*" """, "cmwell.batch.boot.Runner")
-
-    //new java.io.File(s"$home/log/bg").mkdirs
-
-    val scriptString =
-      s"""export PATH=$home/app/java/bin:$home/bin/utils:$PATH
-       |$CHKSTRT
-       |$BMSG
-       |${genDebugStr(5009)}
-       |${args.mkString(" ")} > $home/log/batch/stdout.log 2> $home/log/batch/stderr.log &""".stripMargin
-
-    ConfFile("start.sh",scriptString,true)
-  }
-
-  override def mkConfig: List[ConfFile] = {
-    val applicationConfMap = Map[String, String](
-      "cmwell.grid.dmap.persistence.data-dir" -> s"$home/log/batch/dmap/",
-      "cmwell.grid.bind.host" -> s"$hostIp",
-      "cmwell.grid.bind.port" -> s"${Jvms.BATCH.systemPort}",
-      "cmwell.grid.seeds" -> s"$hostIp:7777",
-      "cmwell.grid.min-members" -> s"$minMembers",
-      "cmwell.grid.monitor.port" -> s"${PortManagers.batch.monitorPortManager.getPort(1)}",
-      "cmwell.clusterName" -> s"$clusterName",
-      "ftsService.clusterName" -> s"$clusterName",
-      "ftsService.transportAddress" -> s"$hostName",
-      "irwServiceDao.hostName" -> s"$hostName",
-      "indexer.isMaster" -> s"$isMaster",
-      "dataCenter.id" -> s"$dataCenter"
-    )
-    val logbackConf = ResourceBuilder.getResource("conf/batch/logback.xml", Map[String, String]())
-    val applicationConfConf = ResourceBuilder.getResource("conf/batch/application.conf", applicationConfMap)
-    List(ConfFile("logback.xml", logbackConf, false),
-         ConfFile("application.conf", applicationConfConf, false))
-  }
-}
-
-
-case class CwConf(home : String, clusterName : String, dataCenter :String , hostName : String, resourceManager : JvmMemoryAllocations, sName : String,minMembers : Int = 1,  logLevel : String,  debug : Boolean, hostIp : String, nbg: Boolean, seeds : String, seedPort : Int) extends ComponentConf(hostIp, s"$home/app/ws",sName, s"$home/conf/cw","ws.yml", 1) {
+case class CwConf(home : String, clusterName : String, dataCenter :String , hostName : String, resourceManager : JvmMemoryAllocations, sName : String,minMembers : Int = 1,  logLevel : String,  debug : Boolean, hostIp : String, seeds : String, seedPort : Int) extends ComponentConf(hostIp, s"$home/app/ws",sName, s"$home/conf/cw","ws.yml", 1) {
   override def mkScript: ConfFile = {
     {
       val mXmx = resourceManager.getMxmx
@@ -652,7 +590,7 @@ case class CwConf(home : String, clusterName : String, dataCenter :String , host
   }
 }
 
-case class WebConf(home : String, zookeeperServers : Seq[String], clusterName:String,dataCenter:String , hostName : String , resourceManager : JvmMemoryAllocations, sName : String, minMembers : Int = 1 , useAuthorization : Boolean, numOfPartitions : Int = 1, logLevel : String, oldBg : Boolean , newBg : Boolean , nbg : Boolean = false, debug : Boolean, hostIp : String, seeds : String, seedPort : Int) extends ComponentConf(hostIp, s"$home/app/ws",sName, s"$home/conf/ws","ws.yml", 1) {
+case class WebConf(home : String, zookeeperServers : Seq[String], clusterName:String,dataCenter:String , hostName : String , resourceManager : JvmMemoryAllocations, sName : String, minMembers : Int = 1 , useAuthorization : Boolean, numOfPartitions : Int = 1, logLevel : String, debug : Boolean, hostIp : String, seeds : String, seedPort : Int) extends ComponentConf(hostIp, s"$home/app/ws",sName, s"$home/conf/ws","ws.yml", 1) {
   def genMemStr(mem : String) : String = {
     if(!mem.isEmpty) s"-J$mem" else mem
   }
@@ -808,6 +746,7 @@ case class DcConf(home : String, sName : String, clusterName : String, resourceM
       s"""
          |export PATH=$home/app/java/bin:$home/bin/utils:$PATH
          |${createExportEnvStr("DCA_USER_TOKEN").getOrElse("")}
+         |${createExportEnvStr("STP_USER_TOKEN").getOrElse("")}
          |$CHKSTRT
          |$BMSG
          |${genDebugStr(5013)}

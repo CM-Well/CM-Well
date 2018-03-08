@@ -29,10 +29,9 @@ import cmwell.fts.{FTSServiceNew, Settings => _, _}
 import cmwell.irw._
 import cmwell.stortill.Strotill.{CasInfo, EsExtendedInfo, ZStoreInfo}
 import cmwell.stortill.{Operations, ProxyOperations}
-import cmwell.tlog.{TLog, TLogState}
 import cmwell.util.{Box, BoxedFailure, EmptyBox, FullBox}
 import cmwell.util.concurrent.SingleElementLazyAsyncCache
-import cmwell.common.{BulkCommand, DeleteAttributesCommand, DeletePathCommand, WriteCommand, _}
+import cmwell.common.{DeleteAttributesCommand, DeletePathCommand, WriteCommand, _}
 import cmwell.ws.Settings
 import cmwell.zcache.{L1Cache, ZCache}
 import cmwell.zstore.ZStore
@@ -41,7 +40,7 @@ import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
 import org.elasticsearch.action.bulk.BulkResponse
 import org.joda.time.{DateTime, DateTimeZone}
-import wsutil.{FormatterManager, RawFieldFilter}
+import wsutil.{FieldKey, FormatterManager, RawFieldFilter}
 
 import scala.concurrent._
 import scala.concurrent.duration._
@@ -277,19 +276,32 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       }.mkString("[", ",", "]")
     }")
 
-    val kafkaWritesRes = {
-      Future.traverse(infotons) {
+    def kafkaWritesRes(infos: Vector[Infoton], isPriorityWriteInner: Boolean): Future[Unit] = {
+      Future.traverse(infos) {
         case infoton if infoton.lastModified.getMillis == 0L =>
           sendToKafka(
             WriteCommand(
               infoton.copyInfoton(lastModified = DateTime.now(DateTimeZone.UTC)),
               validTid(infoton.path, tid),
-              prevUUID = atomicUpdates.get(infoton.path)), isPriorityWrite)
-        case infoton => sendToKafka(WriteCommand(infoton, validTid(infoton.path, tid), atomicUpdates.get(infoton.path)), isPriorityWrite)
-      }.map(_ => true)
+              prevUUID = atomicUpdates.get(infoton.path)), isPriorityWriteInner)
+        case infoton => sendToKafka(WriteCommand(infoton, validTid(infoton.path, tid), atomicUpdates.get(infoton.path)), isPriorityWriteInner)
+      }.map(_ => ())
     }
 
-    kafkaWritesRes
+    // writing meta to priority before regular infotons "ensures" (on pe,
+    // in distributed env it's only an optimization), that when infotons are read,
+    // the meta data to format & search by already exist.
+    // So if you read infoton right after an ingest, prefixes will come out properly.
+    val (meta,regs) = infotons.partition(_.path.matches("/meta/n(n|s)/.+"))
+
+    val metaWrites = {
+      if (meta.isEmpty) Future.successful(())
+      else kafkaWritesRes(meta, isPriorityWriteInner = true)
+    }
+    metaWrites.flatMap { _ =>
+      if(regs.isEmpty) Future.successful(())
+      else kafkaWritesRes(regs, isPriorityWrite)
+    }.map{_ => true}
   }
 
   def deleteInfotons(deletes: List[(String, Option[Map[String, Set[FieldValue]]])], tidOpt: Option[String] = None, atomicUpdates: Map[String,String] = Map.empty, isPriorityWrite: Boolean = false) = {
@@ -361,15 +373,25 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
 
       val commands:List[SingleCommand] = dels ::: ups
 
+      // writing meta to priority before regular infotons "ensures" (on pe,
+      // in distributed env it's only an optimization), that when infotons are read,
+      // the meta data to format & search by already exist.
+      // So if you read infoton right after an ingest, prefixes will come out properly.
+      val (meta,regs) = commands.partition(_.path.matches("/meta/n(n|s)/.+"))
 
-      Future.traverse(commands){
-        case cmd@UpdatePathCommand(_, _, _, lastModified, _, _) if lastModified.getMillis == 0L => sendToKafka(cmd.copy(lastModified = DateTime.now(DateTimeZone.UTC)), isPriorityWrite)
-        case cmd => sendToKafka(cmd, isPriorityWrite)
+      val metaWrites = {
+        if (meta.isEmpty) Future.successful(())
+        else Future.traverse(meta)(sendToKafka(_, isPriorityWrite = true))
+      }
+      metaWrites.flatMap { _ =>
+        if(regs.isEmpty) Future.successful(())
+        else Future.traverse(regs) {
+          case cmd@UpdatePathCommand(_, _, _, lastModified, _, _) if lastModified.getMillis == 0L => sendToKafka(cmd.copy(lastModified = DateTime.now(DateTimeZone.UTC)), isPriorityWrite)
+          case cmd => sendToKafka(cmd, isPriorityWrite)
+        }
       }.map{_ => true}
     }
   }
-
-
 
   // todo move this logic to InputHandler!
   private def validTid(path: String, tid: Option[String]): Option[String] =
@@ -392,10 +414,12 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
 
     payloadForKafkaFut.flatMap { payloadForKafka =>
       val pRecord = new ProducerRecord[Array[Byte], Array[Byte]](topicName, path.getBytes("UTF-8"), payloadForKafka)
-      injectFuture(kafkaProducer.send(pRecord, _))
+      injectFuture(kafkaProducer.send(pRecord, _)).map { recMD =>
+        if(isPriorityWrite) {
+          logger.info(s"sendToKafka priority for path [$path] and record [${recMD.offset()},${recMD.partition()}]")
+        }
+      }
     }
-
-    payloadForKafkaFut.map(_ => ())
   }
 
   //TODO: add with-deleted to aggregations
@@ -430,6 +454,32 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       }(thinSearchResultsBreakout), debugInfo = ftr.searchQueryStr)
     }
   }
+
+  def fullSearch[T](pathFilter: Option[PathFilter] = None,
+                    fieldFilters: Option[FieldFilter] = None,
+                    datesFilter: Option[DatesFilter] = None,
+                    paginationParams: PaginationParams = DefaultPaginationParams,
+                    withHistory: Boolean = false,
+                    fieldSortParams: SortParam = SortParam.empty,
+                    debugInfoFlag: Boolean = false,
+                    withDeleted: Boolean = false,
+                    searchTimeout: Option[Duration] = None,
+                    fields: Seq[String])
+                   (render: (org.elasticsearch.action.search.SearchResponse,Boolean) => T)
+                   (implicit ec: ExecutionContext): Future[T] = {
+    ftsService.fullSearch(
+      pathFilter,
+      fieldFilters,
+      datesFilter,
+      paginationParams,
+      withHistory,
+      fieldSortParams,
+      withDeleted,
+      debugInfo = debugInfoFlag,
+      timeout = searchTimeout,
+      fields = fields)(render)(ec).map(_._2)(ec)
+  }
+
 
 
 //  object SearchCacheHelpers {

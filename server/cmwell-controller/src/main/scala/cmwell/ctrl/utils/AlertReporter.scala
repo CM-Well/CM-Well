@@ -125,9 +125,8 @@ trait AlertReporter extends LazyLogging {
       case WebBadCodeEvent(ip, code) => alert(s"Web is returning code $code at $ip", YELLOW, Some(ip), Some("Web"), hostName)
       case WebDownEvent(ip) => alert(s"Web is down at $ip", RED, Some(ip), Some("Web"), hostName)
 
-      case BatchNormalEvent(ip) => alert(s"Batch is normal at $ip", GREEN, Some(ip), Some("Batch"), hostName)
-      case BatchNotIndexingEvent(ip) => alert(s"Batch is not indexing at $ip", RED, Some(ip), Some("Batch"), hostName)
-      case BatchDownEvent(ip) => alert(s"Batch is down at $ip", RED, Some(ip), Some("Batch"), hostName)
+      case BgOkEvent(ip) => alert(s"Bg is normal at $ip", GREEN, Some(ip), Some("Bg"), hostName)
+      case BgNotOkEvent(ip) => alert(s"Bg is not ok (stuck?) at $ip", RED, Some(ip), Some("Bg"), hostName)
 
       case CassandraNodeNormalEvent(ip) => alert(s"Cassandra is normal at $ip", GREEN, getHostNameFromIp(ip), Some("Cassandra"), hostName)
       case CassandraNodeDownEvent(ip) => alert(s"Cassandra is down at $ip", YELLOW, getHostNameFromIp(ip), Some("Cassandra"), hostName)

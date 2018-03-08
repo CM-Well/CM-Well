@@ -24,10 +24,11 @@ import akka.stream.{ActorMaterializer, Materializer}
 import akka.pattern._
 import akka.stream.scaladsl.{Sink, Source}
 import cmwell.tools.data.downloader.consumer.Downloader.Token
-import cmwell.tools.data.sparql.InfotonReporter.{RequestDownloadStats, ResponseDownloadStats}
+import cmwell.tools.data.sparql.InfotonReporter.{RequestDownloadStats, RequestIngestStats, ResponseDownloadStats, ResponseIngestStats}
 import cmwell.tools.data.utils.ArgsManipulations
 import cmwell.tools.data.utils.ArgsManipulations.HttpAddress
 import cmwell.tools.data.utils.akka.stats.DownloaderStats.DownloadStats
+import cmwell.tools.data.utils.akka.stats.IngesterStats.IngestStats
 import cmwell.tools.data.utils.logging.DataToolsLogging
 import com.typesafe.config.ConfigFactory
 
@@ -35,8 +36,13 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 object InfotonReporter {
+
   case object RequestDownloadStats
+  case object RequestIngestStats
+
   case class ResponseDownloadStats(stats: Map[String, DownloadStats])
+  case class ResponseIngestStats(stats: Map[String, IngestStats])
+
   def apply(baseUrl: String, path: String)(implicit mat: Materializer, ec: ExecutionContext) = Props(new InfotonReporter(baseUrl, path))
 }
 
@@ -48,6 +54,7 @@ class InfotonReporter private(baseUrl: String, path: String)(implicit mat: Mater
   val format = "ntriples"
   val writeToken = ConfigFactory.load().getString("cmwell.agents.sparql-triggered-processor.write-token")
   var downloadStats: Map[String, DownloadStats] = Map()
+  var ingestStats: Map[String, IngestStats] = Map()
 
   val name = StpUtil.extractLastPart(path)
 
@@ -66,8 +73,14 @@ class InfotonReporter private(baseUrl: String, path: String)(implicit mat: Mater
     case s:DownloadStats =>
       downloadStats += (s.label.getOrElse("") -> s)
 
+    case s:IngestStats =>
+      ingestStats += (s.label.getOrElse("") -> s)
+
     case RequestDownloadStats =>
       sender() ! ResponseDownloadStats(downloadStats)
+
+    case RequestIngestStats =>
+      sender() ! ResponseIngestStats(ingestStats)
 
     case Failure(ex) =>
       logger.error("cannot read previous tokens infoton")
@@ -90,8 +103,14 @@ class InfotonReporter private(baseUrl: String, path: String)(implicit mat: Mater
     case s:DownloadStats =>
       downloadStats += (s.label.getOrElse("") -> s)
 
+    case s:IngestStats =>
+      ingestStats += (s.label.getOrElse("") -> s)
+
     case RequestDownloadStats =>
       sender() ! ResponseDownloadStats(downloadStats)
+
+    case RequestIngestStats =>
+      sender() ! ResponseIngestStats(ingestStats)
 
     case RequestReference(path) =>
       val data = getReferencedData(path)

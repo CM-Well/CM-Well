@@ -61,9 +61,6 @@ class DashBoard @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
 
   type FutureColorTuple4 = (Future[Color],Future[Color],Future[Color],Future[Color])
   type Ratio = (Int,Int)
-  type TlogDiffOnHost = Set[(String, Long,Long)]
-  type TlogState = (Long,Long,Long,Long)
-  type TlogStatus = Map[String,TlogState]
   type GenStatus = (Int,String,List[CassandraStatusExtracted],String)
   type Fields = Map[String,Set[FieldValue]]
   type FieldsOpt = Option[Fields]
@@ -273,19 +270,6 @@ class DashBoard @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
     @volatile private[this] var caTime = new DateTime(0L)
     @volatile private[this] var detail: DetailedHealthData = Map.empty[String,ColorTuple4]
     @volatile private[this] var detailTime = new DateTime(0L)
-
-    def init: Future[(DetailedHealthData,TlogStatus)] = {
-      val f = foreachHost{host =>
-        val detailedHealth: (String,ColorTuple4) = host -> (Grey,Grey,Grey,Grey)
-        val batchStatus: (String,TlogState) = host -> (0L,0L,0L,0L)
-        detailedHealth -> batchStatus
-        }.map(_.toList.sortBy(_._1).unzip)
-        f.onComplete{
-        case Success(v) => detail = v._1.toMap
-        case Failure(e) => logger.error("init DashBoardCache failed.", e)
-      }
-      f.map(t => t._1.toMap -> t._2.toMap)
-    }
 
     def cacheAndGetHealthData: HealthTimedData = {
       val (ws,es,ca) = generateHealthData

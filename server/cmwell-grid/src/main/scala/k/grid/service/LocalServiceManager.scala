@@ -55,6 +55,8 @@ case object KillService
 class ServiceRouter(routee : String) extends Actor with LazyLogging {
   implicit val timeout = akka.util.Timeout(24.hours)
 
+  private[this] var printWarnOnResolvingErrorsTimestamp = 0L
+
   override def receive: Actor.Receive = {
     case KillService => {
       val jvmOpt = LocalServiceManager.getServiceJvm(routee)
@@ -74,8 +76,14 @@ class ServiceRouter(routee : String) extends Actor with LazyLogging {
               logger.trace(s"[ServiceRouter] received msg from $routee, piping to sender")
               s ! f
           }
-        case None =>
-          logger.warn(s"[ServiceRouter] couldn't find Service $routee instance!")
+        case None => {
+          // don't pollute the logs more than once per routee every 2 minutes
+          val now = System.currentTimeMillis()
+          if (now - printWarnOnResolvingErrorsTimestamp > 120000) {
+            logger.warn(s"[ServiceRouter] couldn't find Service $routee instance!")
+            printWarnOnResolvingErrorsTimestamp = now
+          }
+        }
       }
     }
   }

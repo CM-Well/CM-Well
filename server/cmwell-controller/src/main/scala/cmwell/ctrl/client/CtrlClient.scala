@@ -103,12 +103,8 @@ object CtrlClient extends LazyLogging{
     (healthActor ? GetElasticsearchStatus).mapTo[ElasticsearchState]
   }
 
-  def getBatchStatus : Future[(Map[String,BatchState], StatusColor)] = {
-    (healthActor ? GetBatchStatus).mapTo[(Map[String,BatchState], StatusColor)]
-  }
-
-  def getBgStatus : Future[(Map[String,BatchState], StatusColor)] = {
-    (healthActor ? GetBgStatus).mapTo[(Map[String,BatchState], StatusColor)]
+  def getBgStatus : Future[(Map[String,BgState], StatusColor)] = {
+    (healthActor ? GetBgStatus).mapTo[(Map[String,BgState], StatusColor)]
   }
 
   def getWebStatus : Future[(Map[String, WebState], StatusColor)] = {

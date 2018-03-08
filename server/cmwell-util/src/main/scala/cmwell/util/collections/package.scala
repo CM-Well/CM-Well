@@ -17,12 +17,15 @@
 package cmwell.util
 
 import java.io.{IOException, InputStream}
+
 import com.google.common.cache.LoadingCache
+
 import scala.annotation.tailrec
 import scala.concurrent._
-import scala.language.{postfixOps, higherKinds}
-import scala.collection.{mutable, GenTraversable, TraversableLike, SeqLike}
-import scala.collection.generic.{GenericCompanion, CanBuildFrom}
+import scala.language.{higherKinds, postfixOps}
+import scala.collection.{GenTraversable, SeqLike, TraversableLike, mutable}
+import scala.collection.generic.{CanBuildFrom, GenericCompanion}
+import scala.collection.immutable.Set
 import scala.collection.mutable.{Set => MSet}
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
@@ -77,6 +80,26 @@ package object collections {
     ob
   }
 
+  def updatedMultiMap[K,V](m: Map[K,List[V]], k: K, v: V): Map[K,List[V]] =
+    m.updated(k, v :: m.getOrElse(k,Nil))
+
+  def subtractedMultiMap[K,V](m: Map[K,List[V]], k: K, v: V): Map[K,List[V]] =
+    m.get(k).fold(m){
+      case Nil => m - k
+      case `v` :: Nil => m - k
+      case many => m.updated(k,many.filterNot(v.==))
+    }
+
+  def updatedDistinctMultiMap[K,V](m: Map[K,Set[V]], k: K, v: V): Map[K,Set[V]] =
+    m.updated(k, m.getOrElse(k,Set.empty) + v)
+
+  def subtractedDistinctMultiMap[K,V](m: Map[K,Set[V]], k: K, v: V): Map[K,Set[V]] =
+    m.get(k).fold(m){ set =>
+      val sub = set - v
+      if(sub.isEmpty) m - k
+      else m.updated(k,sub)
+    }
+
   /**
    * `partition` and `map` combined.
    * for a given collection, and a function from the collection elements to `Either[A,B]`,
@@ -102,6 +125,42 @@ package object collections {
     for(x <- xs) f(x) match {
       case Left(a) => b1 += a
       case Right(b) => b2 += b
+    }
+
+    b1.result() -> b2.result()
+  }
+
+  /**
+   * `scan` and `map` on the first part combined.
+   * for a given collection, and a function from the collection elements to `Option[B]`,
+   * generates a tuple of 2 collections of types `B` and `A`
+   *
+   * @param xs the collection of elements
+   * @param f a function that convert an element to an `Option[B]`
+   * @tparam A original collection elements' type
+   * @tparam B left side mapped collection elements' type
+   * @tparam Coll collection's type
+   */
+  def spanWith[A, B,Coll[_]]
+  (xs: Coll[A])
+  (f: A => Option[B])
+  (implicit ev: Coll[A] <:< TraversableLike[A,Coll[A]],
+   cbf1: CanBuildFrom[Coll[A], B, Coll[B]],
+   cbf2: CanBuildFrom[Coll[A], A, Coll[A]]): (Coll[B],Coll[A]) = {
+
+    val b1 = cbf1(xs)
+    val b2 = cbf2(xs)
+
+    var stayOnLeft = true
+    xs.foreach { x =>
+      if(!stayOnLeft) b2 += x
+      else f(x) match {
+        case Some(b) => b1 += b
+        case None => {
+          b2 += x
+          stayOnLeft = false
+        }
+      }
     }
 
     b1.result() -> b2.result()

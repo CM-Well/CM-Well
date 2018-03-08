@@ -50,13 +50,8 @@ class CommandActor extends Actor with ActorLogging {
   override def receive: Receive = {
     case BashCommand(com) =>  sender ! ProcUtil.executeCommand(com)
     case CheckWeb => WebChecker.check pipeTo sender()
-    case CheckBatch => BatchChecker.check pipeTo sender()
     case CheckElasticsearch => ElasticsearchChecker.check pipeTo sender()
     case CheckCassandra => CassandraChecker.check pipeTo sender()
-
-
-
     case cc : ControlCommand => cc.execute
-
   }
 }

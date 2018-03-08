@@ -75,7 +75,7 @@ object HealthControl {
     Grid.create(classOf[CommandActor], commandActorName)
 
     Grid.create(classOf[WebMonitorActor], "WebMonitorActor", Grid.hostName, 0, hcSampleInterval)
-    Grid.create(classOf[BatchMonitorActor], "BatchMonitorActor", Grid.hostName, 0, batchSampleInterval)
+    Grid.create(classOf[BgHealthMonitorActor], "BgHealthMonitorActor", Grid.hostName, 0, bgSampleInterval)
     Grid.create(classOf[ElasticsearchMonitorActor], "ElasticsearchMonitorActor", Grid.hostName, 0, hcSampleInterval)
     Grid.create(classOf[SystemMonitorActor], "SystemMonitorActor", Grid.hostName, 0, hcSampleInterval)
     Grid.create(classOf[ZookeeperMonitorActor], "ZookeeperMonitorActor", Grid.hostName, 0, hcSampleInterval)

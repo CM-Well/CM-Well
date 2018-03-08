@@ -30,7 +30,7 @@ This is illustrated in the diagram below. The black circle represents the single
 
 Here is an example that traverses both outbound and inbound links.
 
-Suppose we have a Quote, with a known RIC code of “VAC”. We want to find the corporate address of the company that issues it. We know the model in Open PermID includes Quotes, which link out to Instruments via the **IsQuoteOf** field. Organization infotons also link to Instruments, via the **primaryInstrument** field. The following diagram illustrates these relationships.
+Suppose we have a Quote, with a known RIC code of VAC. We want to find the corporate address of the company that issues it. We know the model in Open PermID includes Quotes, which link out to Instruments via the **IsQuoteOf** field. Organization infotons also link to Instruments, via the **primaryInstrument** field. The following diagram illustrates these relationships.
 
 <img src="./_Images/Instrument-Inbound-Outbound-Links.png">
 
@@ -72,9 +72,9 @@ CM-Well tolerates this situation when applying **yg** filters. That is, it skips
 
 If, on the other hand, if you want to constrain your query to return only results for which the intermediate infoton *does* exist, you can do this by adding a filter on the intermediate infoton's fields. For example:
 
-    \>aField[system.uuid:]<bField
+    \>aField[uuid.system:]<bField
 
-This filter requires only that the intermediate infoton have a ```system.uuid``` field with any value, and it works because every infoton has a ```system.uuid``` field. Alternatively, for our example searching for Person infotons, we could add this filter:
+This filter requires only that the intermediate infoton have a ```uuid.system``` field with any value, and it works because every infoton has a ```uuid.system``` field. Alternatively, for our example searching for Person infotons, we could add this filter:
 
     \>childOf[type.rdf:Person]<parentOf
 

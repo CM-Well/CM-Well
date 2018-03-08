@@ -29,7 +29,7 @@ import cmwell.zstore.ZStore
 import com.codahale.metrics.JmxReporter
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
-import nl.grons.metrics.scala.DefaultInstrumented
+import nl.grons.metrics4.scala.DefaultInstrumented
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.elasticsearch.metrics.ElasticsearchReporter
@@ -59,7 +59,8 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
   val indexerOn = config.getBoolean("cmwell.bg.IndexerOn")
 
   // Metrics
-  val jmxReporter = JmxReporter.forRegistry(metricRegistry).build()
+  val bgMetrics = new BGMetrics
+  val jmxReporter = JmxReporter.forRegistry(bgMetrics.metricRegistry).build()
   jmxReporter.start()
   val reportMetricsToES = config.getBoolean("cmwell.common.reportMetricsToES")
     logger debug (s"report to es set to $reportMetricsToES")
@@ -137,11 +138,11 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
         logger debug s"became state503. scheduling resume in [waitAfter503] seconds"
       context.system.scheduler.scheduleOnce(waitAfter503.seconds, self, Resume)
     case Indexer503 =>
-        logger error "Indexer Stopped with Exception. Restarting it."
+        logger error "Indexer Stopped with Exception. check indexer log for details. Restarting indexer."
       stopIndexer
       startIndexer
     case Imp503 =>
-        logger error "Imp stopped with exception. Restarting it."
+        logger error "Imp stopped with exception. check imp log for details. Restarting imp."
       stopImp
       startImp
     case ExitWithError =>
@@ -182,7 +183,7 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
     if(impOn) {
       if (impStream == null) {
         logger info "starting ImpStream"
-        impStream = new ImpStream(partition, config, irwService, zStore, ftsService, offsetsService, self)
+        impStream = new ImpStream(partition, config, irwService, zStore, ftsService, offsetsService, self, bgMetrics)
       } else
         logger warn "requested to start Imp Stream but it is already running. doing nothing."
     }

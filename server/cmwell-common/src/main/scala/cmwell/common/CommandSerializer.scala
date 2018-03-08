@@ -79,10 +79,6 @@ case class OverwriteCommand(infoton: Infoton,
   override def lastModified: DateTime = infoton.lastModified
 }
 
-sealed trait IndexerCommand extends Command  {
-  def previousInfoton : Option[(String,Long)]
-}
-
 case class StatusTracking(tid:String, numOfParts:Int)
 
 sealed trait IndexCommand extends Command {
@@ -116,18 +112,6 @@ case class IndexExistingInfotonCommand(uuid: String,
                                        path: String,
                                        indexName: String,
                                        trackingIDs: Seq[StatusTracking] = Nil) extends IndexCommand
-
-case class BulkCommand(commands: List[Command]) extends Command
-
-case class MergedInfotonCommand(previousInfoton: Option[(String,Long)],
-                                currentInfoton: (String,Long),
-                                skipIndexTime:Boolean = false) extends IndexerCommand
-//1. no previous, since no need for merge, so no need for IMP to read previous
-//2. currentInfoton is option, since it can be DeletedInfoton, which in that case we won't add it to current, and it would be a part of historicInfotons
-case class OverwrittenInfotonsCommand(previousInfoton: Option[(String,Long)],
-                                      currentInfoton: Option[(String,Long,Long)],
-                                      historicInfotons: Vector[(String,Long,Long)]) extends IndexerCommand
-
 
 object CommandSerializer {
 

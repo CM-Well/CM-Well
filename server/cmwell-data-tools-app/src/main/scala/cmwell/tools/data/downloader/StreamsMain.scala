@@ -22,7 +22,7 @@ import cmwell.tools.data.utils.akka.Implicits._
 import cmwell.tools.data.utils.akka._
 import cmwell.tools.data.utils.ops._
 import cmwell.tools.data.utils.text.Files._
-import nl.grons.metrics.scala._
+import nl.grons.metrics4.scala._
 import org.apache.commons.lang3.time.DurationFormatUtils
 import org.rogach.scallop.ScallopConf
 import org.slf4j.LoggerFactory

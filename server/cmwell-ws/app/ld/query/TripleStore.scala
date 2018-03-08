@@ -107,12 +107,14 @@ class TripleStore(dataFetcher: DataFetcherImpl, cmwellRDFHelper: CMWellRDFHelper
     val value = o.map(_.asString)
     p match {
       case None => SingleFieldFilter(Must, Contains, "_all", value)
-      case Some(pred) => Await.result(RawFieldFilter.eval(RawSingleFieldFilter(Must, Equals, Left(UnresolvedURIFieldKey(pred)), value),typesCache,cmwellRDFHelper), 10.seconds)
+      case Some(pred) => Await.result(RawFieldFilter.eval(RawSingleFieldFilter(Must, Equals, Left(UnresolvedURIFieldKey(pred)), value),typesCache,cmwellRDFHelper, None), 10.seconds)
     }
   }
 
   // todo propagate withoutMeta boolean from request to here. If withoutMeta is set to false, we need to make sure it won't fail in URIFieldKey(...)
-  val f: String => Option[(String,Option[String])] = {(o: Option[String]) => o.map(u => u -> Option.empty[String])} compose {s => cmwellRDFHelper.hashToUrl(s)}
+  // todo 2 also propagate request time from play's typed attributes map, and use it instead of None
+  val time = Option.empty[Long]
+  val f: String => Option[(String,Option[String])] = {(o: Option[String]) => o.map(u => u -> Option.empty[String])} compose {s => cmwellRDFHelper.hashToUrl(s,time)}
   private val nullFormatter = new cmwell.formats.RDFFormatter("cmwell", f, withoutMeta = true, filterOutBlanks = false, forceUniqueness = false) {
     override def format: cmwell.formats.FormatType = ???
     override def render(formattable: Formattable): String = ???

@@ -35,15 +35,15 @@ object MarkdownFormatter {
         |<html>
         |  <head>
         |    <meta charset="utf-8">
-        |    <script src="/meta/sys/wb/js/jquery-1.6.2.min.js" type="text/javascript"></script>
-        |    <script type="text/javascript" src="/meta/sys/wb/js/Markdown.Converter.js"></script>
-        |    <script type="text/javascript" src="/meta/sys/wb/js/Markdown.Sanitizer.js"></script>
-        |    <script type="text/javascript" src="/meta/sys/wb/js/Markdown.Extra.js"></script>
-        |    <script src="/meta/sys/wb/js/highlight/highlight.pack.js" type="text/javascript"></script>
-        |    <script src="/meta/sys/wb/js/cmwmdviewer.js" type="text/javascript"></script>
+        |    <script src="/meta/app/sys/js/jquery-1.6.2.min.js" type="text/javascript"></script>
+        |    <script type="text/javascript" src="/meta/app/sys/js/Markdown.Converter.js"></script>
+        |    <script type="text/javascript" src="/meta/app/sys/js/Markdown.Sanitizer.js"></script>
+        |    <script type="text/javascript" src="/meta/app/sys/js/Markdown.Extra.js"></script>
+        |    <script src="/meta/app/sys/js/highlight/highlight.pack.js" type="text/javascript"></script>
+        |    <script src="/meta/app/sys/js/cmwmdviewer.js" type="text/javascript"></script>
         |    <title>$title</title>
-        |    <link rel="stylesheet" href="/meta/sys/wb/js/highlight/styles/aiaas.css"/>
-        |    <link rel="stylesheet" href="/meta/sys/wb/css/cmwmdviewer.css"/>
+        |    <link rel="stylesheet" href="/meta/app/sys/js/highlight/styles/aiaas.css"/>
+        |    <link rel="stylesheet" href="/meta/app/sys/css/cmwmdviewer.css"/>
         |  </head>
         |)</span>""".stripMargin.replace("\n","") + s"\n\n$content"
   }

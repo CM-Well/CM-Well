@@ -60,16 +60,15 @@ case object GetCassandraStatus
 case object GetCassandraDetailedStatus
 case object GetElasticsearchStatus
 case object GetElasticsearchDetailedStatus
-case object GetBatchStatus
 case object GetBgStatus
 case object GetWebStatus
 case object GetDcStatus
 
 case object GetGcStatus
 
-case class ClusterStatus(members : Set[String], casStat : ComponentState, esStat : ComponentState, wsStat : (Map[String, ComponentState], StatusColor), batchStat : (Map[String, ComponentState], StatusColor), zookeeperStat : (Map[String, ComponentState], StatusColor), kafkaStat : (Map[String, ComponentState], StatusColor), controlNode : String, esMasters : Set[String])
+case class ClusterStatus(members : Set[String], casStat : ComponentState, esStat : ComponentState, wsStat : (Map[String, ComponentState], StatusColor), bgStat : (Map[String, ComponentState], StatusColor), zookeeperStat : (Map[String, ComponentState], StatusColor), kafkaStat : (Map[String, ComponentState], StatusColor), controlNode : String, esMasters : Set[String])
 
-case class ClusterStatusDetailed(casStat : Map[String, ComponentState], esStat : Map[String, ComponentState], wsStat : Map[String, ComponentState], batchStat : Map[String, ComponentState], zkStat : Map[String, ComponentState], kafkaStat : Map[String, ComponentState], healthHost : String)
+case class ClusterStatusDetailed(casStat : Map[String, ComponentState], esStat : Map[String, ComponentState], wsStat : Map[String, ComponentState], bgStat : Map[String, ComponentState], zkStat : Map[String, ComponentState], kafkaStat : Map[String, ComponentState], healthHost : String)
 
 case class RemoveNode(ip : String)
 
@@ -89,7 +88,6 @@ trait UpdateStat
 case class UpdateCasStat(ccr : (String,ComponentState)) extends UpdateStat
 case class UpdateEsStat(ecr : (String,ComponentState)) extends UpdateStat
 case class UpdateWsStat(wcr : (String, ComponentState)) extends UpdateStat
-case class UpdateBatchStat(bcr : (String, ComponentState)) extends UpdateStat
 case class UpdateBgStat(bcr : (String, ComponentState)) extends UpdateStat
 case class UpdateDcStat(dcr : (String, ComponentState)) extends UpdateStat
 case class UpdateZookeeperStat(zkr : (String, ComponentState)) extends UpdateStat
@@ -150,8 +148,7 @@ class HealthActor extends Actor with LazyLogging with AlertReporter{
   private[this] val casStat = new CassandraGridStatus()
   private[this] val esStat = new ElasticsearchGridStatus()
   private[this] val wsStat  = new WebGridStatus()
-  private[this] val batchStat  = new BatchGridStatus()
-  private[this] val bgStat  = new BatchGridStatus()
+  private[this] val bgStat  = new BgGridStatus()
   private[this] val dcStat = new DcGridStatus()
   private[this] val zkStat = new ZkGridStatus()
   private[this] val kafkaStat = new KafkaGridStatus()
@@ -234,14 +231,6 @@ class HealthActor extends Actor with LazyLogging with AlertReporter{
           }
       }
 
-      batchStat.getStatesMap.foreach {
-        case (host,cs) =>
-          if (now - cs.genTime > idleWaitSeconds) {
-            log.warn(s"Batch $host diff ${now - cs.genTime}")
-            self ! UpdateBatchStat(host -> ReportTimeout())
-          }
-      }
-
       bgStat.getStatesMap.foreach {
         case (host,cs) =>
           if (now - cs.genTime > idleWaitSeconds) {
@@ -253,7 +242,7 @@ class HealthActor extends Actor with LazyLogging with AlertReporter{
       dcStat.getStatesMap.foreach {
         dcstat =>
           if (now - dcstat._2.genTime > idleWaitSeconds) {
-            log.warn(s"Batch ${dcstat._1} diff ${now - dcstat._2.genTime}")
+            log.warn(s"Dc ${dcstat._1} diff ${now - dcstat._2.genTime}")
             self ! UpdateDcStat(dcstat._1 -> ReportTimeout())
           }
       }
@@ -305,9 +294,6 @@ class HealthActor extends Actor with LazyLogging with AlertReporter{
 //          }
         case UpdateWsStat(wcr) =>
           wsStat.update(wcr._1, wcr._2)
-        case UpdateBatchStat(bcr) =>
-          batchStat.update(bcr._1, bcr._2)
-
         case UpdateBgStat(bcr) =>
           bgStat.update(bcr._1, bcr._2)
         case UpdateDcStat(dcr) =>
@@ -346,7 +332,7 @@ class HealthActor extends Actor with LazyLogging with AlertReporter{
                                                     casStat.getState,
                                                     esStat.getStatesMap.headOption.getOrElse("" -> ElasticsearchDown())._2,
                                                     (wsStat.getStatesMap.map(t => (t._1,t._2)), wsStat.getColor),
-                                                    (batchStat.getStatesMap.map(t => (t._1,t._2)), batchStat.getColor),
+                                                    (bgStat.getStatesMap.map(t => (t._1,t._2)), bgStat.getColor),
                                                     (zkStat.getStatesMap.map(t => (t._1, t._2)), zkStat.getColor),
                                                     (kafkaStat.getStatesMap.map(t => (t._1, t._2)), kafkaStat.getColor),
                                                     Config.listenAddress,
@@ -355,14 +341,13 @@ class HealthActor extends Actor with LazyLogging with AlertReporter{
     case GetCassandraStatus => sender ! casStat.getState
     case GetElasticsearchStatus => sender ! esStat.getStatesMap.head._2
     case GetWebStatus => sender ! (wsStat.getStatesMap.map(t => (t._1,t._2)), wsStat.getColor)
-    case GetBatchStatus => sender ! (batchStat.getStatesMap.map(t => (t._1,t._2)), batchStat.getColor)
     case GetBgStatus => sender ! (bgStat.getStatesMap.map(t => (t._1,t._2)), bgStat.getColor)
     case GetCassandraDetailedStatus =>
       sender ! getCasDetailed
     case GetElasticsearchDetailedStatus =>
       sender ! esStat
 
-    case GetClusterDetailedStatus => sender ! ClusterStatusDetailed(getCasDetailed, esStat.getStatesMap, wsStat.getStatesMap, batchStat.getStatesMap, zkStat.getStatesMap, kafkaStat.getStatesMap,listenAddress)
+    case GetClusterDetailedStatus => sender ! ClusterStatusDetailed(getCasDetailed, esStat.getStatesMap, wsStat.getStatesMap, bgStat.getStatesMap, zkStat.getStatesMap, kafkaStat.getStatesMap,listenAddress)
     case GetGcStatus => sender ! gcStats
 
     case GetDcStatus => sender ! dcStat.getStatesMap
@@ -376,7 +361,7 @@ class HealthActor extends Actor with LazyLogging with AlertReporter{
       logger.info(s"received $msg")
       sender ! CommandReceived
       esStat.remove(ip)
-      batchStat.remove(ip)
+      bgStat.remove(ip)
       wsStat.remove(ip)
       kafkaStat.remove(ip)
       zkStat.remove(ip)

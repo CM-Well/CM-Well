@@ -116,10 +116,12 @@ class OutputHandler  @Inject()(crudServiceFS: CRUDServiceFS,
   }
 
   def handleWebSocket(format: String) = WebSocket.accept[String,String] { request =>
+    val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
     val formatter = format match {
       case FormatExtractor(formatType) =>
         formatterManager.getFormatter(
           format = formatType,
+          timeContext = timeContext,
           host = request.host,
           uri = request.uri,
           pretty = request.queryString.keySet("pretty"),
@@ -163,51 +165,55 @@ class OutputHandler  @Inject()(crudServiceFS: CRUDServiceFS,
 //  }
 
   def handlePost(format: String = "") = Action.async { implicit req =>
-    if(req.contentType.getOrElse("").contains("json"))
-      RequestMonitor.add("out",req.path, req.rawQueryString, req.body.asJson.getOrElse("").toString,req.attrs(Attrs.RequestReceivedTimestamp))
-    else
-      RequestMonitor.add("out",req.path, req.rawQueryString, req.body.asText.getOrElse(""),req.attrs(Attrs.RequestReceivedTimestamp))
+    val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
+    Try {
+      if (req.contentType.getOrElse("").contains("json"))
+        RequestMonitor.add("out", req.path, req.rawQueryString, req.body.asJson.getOrElse("").toString, req.attrs(Attrs.RequestReceivedTimestamp))
+      else
+        RequestMonitor.add("out", req.path, req.rawQueryString, req.body.asText.getOrElse(""), req.attrs(Attrs.RequestReceivedTimestamp))
 
-    val fieldsMaskFut = extractFieldsMask(req,typesCache,cmwellRDFHelper)
+      val fieldsMaskFut = extractFieldsMask(req, typesCache, cmwellRDFHelper, timeContext)
 
-    val formatType = format match {
-      case FormatExtractor(ft) => ft
-      case _ => RdfType(N3Flavor)
-    }
+      val formatType = format match {
+        case FormatExtractor(ft) => ft
+        case _ => RdfType(N3Flavor)
+      }
 
-    val formatter = formatterManager.getFormatter(
-      format = formatType,
-      host = req.host,
-      uri = req.uri,
-      pretty = req.queryString.keySet("pretty"),
-      callback = req.queryString.get("callback").flatMap(_.headOption),
-      withData = req.getQueryString("with-data"))
+      val formatter = formatterManager.getFormatter(
+        format = formatType,
+        timeContext = timeContext,
+        host = req.host,
+        uri = req.uri,
+        pretty = req.queryString.keySet("pretty"),
+        callback = req.queryString.get("callback").flatMap(_.headOption),
+        withData = req.getQueryString("with-data"))
 
-    val either: Either[SimpleResponse, Vector[String]] = req.body.asJson match {
-      case Some(json) => {
-        JsonEncoder.decodeInfotonPathsList(json) match {
-          case Some(infotonPaths: InfotonPaths) => Right(infotonPaths.paths.toVector)
-          case _ => Left(SimpleResponse(false, Some("not a valid bag of infotons request.")))
+      val either: Either[SimpleResponse, Vector[String]] = req.body.asJson match {
+        case Some(json) => {
+          JsonEncoder.decodeInfotonPathsList(json) match {
+            case Some(infotonPaths: InfotonPaths) => Right(infotonPaths.paths.toVector)
+            case _ => Left(SimpleResponse(false, Some("not a valid bag of infotons request.")))
+          }
+        }
+        case None => req.body.asText match {
+          case Some(text) => Right(getPathsVector(text, cmWellBase))
+          case None => Left(SimpleResponse(false, Some("unknown content (you may want to change content-type)")))
         }
       }
-      case None => req.body.asText match {
-        case Some(text) => Right(getPathsVector(text, cmWellBase))
-        case None => Left(SimpleResponse(false, Some("unknown content (you may want to change content-type)")))
-      }
-    }
-    val mimetype = overrideMimetype(formatter.mimetype, req)._2
-    either match {
-      case Left(badReqSimpleResponse) => Future.successful(BadRequest(formatter.render(badReqSimpleResponse)).as(mimetype))
-      case Right(vector) => {
-        val t = futureRetrievablePathsFromPathsAsLines(vector, req)
-        fieldsMaskFut.flatMap { fieldsMask =>
-          t.map {
-            case (ok, s) if ok => Ok(formatter.render(s.masked(fieldsMask))).as(mimetype)
-            case (_, s) => InsufficientStorage(formatter.render(s)).as(mimetype)
-          }.recover(PartialFunction(wsutil.exceptionToResponse))
+      val mimetype = overrideMimetype(formatter.mimetype, req)._2
+      either match {
+        case Left(badReqSimpleResponse) => Future.successful(BadRequest(formatter.render(badReqSimpleResponse)).as(mimetype))
+        case Right(vector) => {
+          val t = futureRetrievablePathsFromPathsAsLines(vector, req)
+          fieldsMaskFut.flatMap { fieldsMask =>
+            t.map {
+              case (ok, s) if ok => Ok(formatter.render(s.masked(fieldsMask))).as(mimetype)
+              case (_, s) => InsufficientStorage(formatter.render(s)).as(mimetype)
+            }.recover(PartialFunction(wsutil.exceptionToResponse))
+          }
         }
       }
-    }
+    }.recover(asyncErrorHandler).get
   }
 
   def futureRetrievablePathsFromPathsAsLines(text: String, baseUrl: String, req: Request[AnyContent]): Future[(Boolean,RetrievablePaths)] = futureRetrievablePathsFromPathsAsLines(getPathsVector(text, baseUrl), req)
@@ -218,11 +224,12 @@ class OutputHandler  @Inject()(crudServiceFS: CRUDServiceFS,
       case (xs, ys) => (xs.map(_.drop(4)), ys) // "/ii/".length = 4
     }
 
+    val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
     crudServiceFS.getInfotonsByPathOrUuid(byPath, byUuid).flatMap {
       case BagOfInfotons(coreInfotons) => {
         val eInfotons = req.getQueryString("yg") match {
           case None => Future.successful(true -> coreInfotons)
-          case Some(ygp) => Try(wsutil.pathExpansionParser(ygp, coreInfotons, req.getQueryString("yg-chunk-size").flatMap(asInt).getOrElse(10),cmwellRDFHelper,typesCache)) match {
+          case Some(ygp) => Try(wsutil.pathExpansionParser(ygp, coreInfotons, req.getQueryString("yg-chunk-size").flatMap(asInt).getOrElse(10),cmwellRDFHelper,typesCache,timeContext)) match {
             case Success(f) => f
             case Failure(e) => Future.failed(e)
           }
@@ -231,7 +238,7 @@ class OutputHandler  @Inject()(crudServiceFS: CRUDServiceFS,
         val fInfotons = eInfotons.flatMap {
           case (true,ygExpandedInfotons) => req.getQueryString("xg") match {
             case None => Future.successful(true -> ygExpandedInfotons)
-            case Some(xgp) => Try(wsutil.deepExpandGraph(xgp, ygExpandedInfotons,cmwellRDFHelper,typesCache)) match {
+            case Some(xgp) => Try(wsutil.deepExpandGraph(xgp, ygExpandedInfotons,cmwellRDFHelper,typesCache,timeContext)) match {
               case Success(f) => f
               case Failure(e) => Future.failed(e)
             }

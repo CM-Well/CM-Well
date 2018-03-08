@@ -25,11 +25,15 @@ import akka.stream.scaladsl._
 import akka.util.Timeout
 import cmwell.ctrl.checkers.StpChecker.{RequestStats, ResponseStats, Row, Table}
 import cmwell.tools.data.ingester._
-import cmwell.tools.data.sparql.InfotonReporter.{RequestDownloadStats, ResponseDownloadStats}
+import cmwell.tools.data.sparql.InfotonReporter.{RequestDownloadStats, RequestIngestStats, ResponseDownloadStats, ResponseIngestStats}
 import cmwell.tools.data.sparql.SparqlProcessorManager._
 import cmwell.tools.data.utils.akka._
+import cmwell.tools.data.utils.akka.stats.DownloaderStats.DownloadStats
+import cmwell.tools.data.utils.akka.stats.IngesterStats
+import cmwell.tools.data.utils.akka.stats.IngesterStats.IngestStats
 import cmwell.tools.data.utils.chunkers.GroupChunker
 import cmwell.tools.data.utils.chunkers.GroupChunker._
+import cmwell.tools.data.utils.text.Tokens
 import cmwell.util.http.SimpleResponse
 import cmwell.util.string.Hash
 import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
@@ -278,14 +282,20 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
 
       val jobConfig = jobStatus.job.config
 
-      val title = Seq(s"""<span style="color:green"> **${jobStatus.statusString}** </span> ${path}""")
+      val hostUpdatesSource = jobConfig.hostUpdatesSource.getOrElse(settings.hostUpdatesSource)
+
+      val title = Seq(s"""<span style="color:green"> **${jobStatus.statusString}** </span> Agent: ${path} Source: ${hostUpdatesSource}""")
       val header = Seq("Sensor", "Token Time", "Received Infotons", "Infoton Rate", "Statistics Updated")
       val statsFuture = (jobStatus.reporter ? RequestDownloadStats).mapTo[ResponseDownloadStats]
       val storedTokensFuture = (jobStatus.reporter ? RequestPreviousTokens).mapTo[ResponseWithPreviousTokens]
 
-      for {
+      val stats2Future = (jobStatus.reporter ? RequestIngestStats).mapTo[ResponseIngestStats]
+
+        for {
         statsRD <- statsFuture
         stats = statsRD.stats
+        statsIngestRD <- stats2Future
+        statsIngest = statsIngestRD.stats
         storedTokensRWPT <- storedTokensFuture
         storedTokens = storedTokensRWPT.tokens
       } yield {
@@ -295,8 +305,10 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
 
         val body : Iterable[Row] = allSensorsWithTokens.map { case (sensorName, token) =>
           val decodedToken = if (token.nonEmpty) {
-            val from = cmwell.tools.data.utils.text.Tokens.getFromIndexTime(token)
-            LocalDateTime.ofInstant(Instant.ofEpochMilli(from), ZoneId.systemDefault()).toString
+            Tokens.getFromIndexTime(token) match{
+              case 0 => ""
+              case tokenTime => (LocalDateTime.ofInstant(Instant.ofEpochMilli(tokenTime), ZoneId.systemDefault()).toString)
+            }
           }
           else ""
 
@@ -307,18 +319,29 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
               case _ => LocalDateTime.ofInstant(Instant.ofEpochMilli(s.statsTime), ZoneId.systemDefault()).toString
             }
 
-            Seq(s.receivedInfotons.toString, s"${formatter.format(s.infotonRate)}/sec", statsTime)
+            val infotonRate = s.horizon match {
+              case true =>  s"""<span style="color:green">Horizon</span>"""
+              case false => s"${formatter.format(s.infotonRate)}/sec"
+            }
+
+            Seq(s.receivedInfotons.toString, infotonRate, statsTime)
+
           }.getOrElse(Seq.empty[String])
 
           Seq(sensorName, decodedToken) ++ sensorStats
         }
         val configName = Paths.get(path).getFileName
+
+        val sparqlIngestStats = statsIngest.get(s"ingester-$configName").map { s =>
+          s"""Ingested <span style="color:green"> **${s.ingestedInfotons}** </span> Failed <span style="color:red"> **${s.failedInfotons}** </span>""".stripMargin
+        }.getOrElse("")
+
         val sparqlMaterializerStats = stats.get(s"$configName-${SparqlTriggeredProcessor.sparqlMaterializerLabel}").map { s =>
           val totalRunTime = DurationFormatUtils.formatDurationWords(s.runningTime, true, true)
           s"""Materialized <span style="color:green"> **${s.receivedInfotons}** </span> infotons [$totalRunTime]""".stripMargin
         }.getOrElse("")
 
-        Table(title = title :+ sparqlMaterializerStats, header = header, body = body)
+        Table(title = title :+ sparqlMaterializerStats :+ sparqlIngestStats, header = header, body = body)
       }
     }
 
@@ -334,21 +357,31 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
     * @param jobRead
     */
   def handleStartJob(jobRead: JobRead): Unit = {
+
     val job = jobRead.job
+
     //this method MUST BE RUN from the actor's thread and changing the state is allowed. the below will replace any existing state.
     //The state is changed instantly and every change that follows (even from another thread/Future) will be later.
     val tokenReporter = context.actorOf(
         props = InfotonReporter(baseUrl = settings.hostConfigFile, path = settings.pathAgentConfigs + "/" + job.name),
         name = s"${job.name}-${Hash.crc32(job.config.toString)}"
     )
-    val agent = SparqlTriggeredProcessor.listen(job.config, settings.hostUpdatesSource, false, Some(tokenReporter), Some(job.name))
+
+    val label = Some(s"ingester-${job.name}")
+
+    val hostUpdatesSource = job.config.hostUpdatesSource.getOrElse(settings.hostUpdatesSource)
+
+    val agent = SparqlTriggeredProcessor.listen(job.config, hostUpdatesSource, false, Some(tokenReporter), Some(job.name))
       .map { case (data, _) => data }
       .via(GroupChunker(formatToGroupExtractor(settings.materializedViewFormat)))
       .map(concatByteStrings(_, endl))
     val (killSwitch, jobDone) = Ingester.ingest(baseUrl = settings.hostWriteOutput,
         format = settings.materializedViewFormat,
         source = agent,
-        label = Some(s"ingester-${job.name}"))
+        writeToken = Option(settings.writeToken),
+        force = job.config.force.getOrElse(false),
+        label = label)
+      .via(IngesterStats(isStderr = false, reporter = Some(tokenReporter), label=label))
       .viaMat(KillSwitches.single)(Keep.right)
       .toMat(Sink.ignore)(Keep.both)
       .run()
@@ -430,7 +463,8 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
       }
       implicit val sensorFormat = yamlFormat6(Sensor)
       implicit val sequenceFormat = seqFormat[Sensor](sensorFormat)
-      implicit val configFormat = yamlFormat4(Config)
+      implicit val configFormat = yamlFormat6(Config)
+
     }
     import SensorYamlProtocol._
     import net.jcazevedo.moultingyaml._

@@ -32,6 +32,7 @@ packJvmOpts := Map("dc-standalone" -> jvmOptsForDcStandAloneUsingPack)
 libraryDependencies ++= {
 	val dm = dependenciesManager.value
 	Seq(
+		dm("org.rogach", "scallop"),
 		dm("ch.qos.logback", "logback-classic"),
 		dm("com.github.andrewoma.dexx", "collection"),
 		dm("com.typesafe", "config"),

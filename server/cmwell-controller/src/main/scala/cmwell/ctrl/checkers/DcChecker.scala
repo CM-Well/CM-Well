@@ -17,7 +17,6 @@
 package cmwell.ctrl.checkers
 
 import akka.actor.Cancellable
-import cmwell.ctrl.checkers.BatchChecker._
 import cmwell.ctrl.config.Config
 import cmwell.stats.Stats.Settings
 import com.fasterxml.jackson.databind.JsonNode

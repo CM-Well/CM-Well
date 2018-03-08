@@ -35,12 +35,12 @@ import scala.util.Try
  * Time: 8:32 AM
  * Tests for IRWService
  */
-class IRWCassSpecOld extends {
-  val keyspace = "data"
-  val mkIRW: Dao => IRWService = { dao =>
-    IRWService(dao, 25, true, 120.seconds)
-  }
-} with IRWCassSpec
+//class IRWCassSpecOld extends {
+//  val keyspace = "data"
+//  val mkIRW: Dao => IRWService = { dao =>
+//    IRWService(dao, 25, true, 120.seconds)
+//  }
+//} with IRWCassSpec
 
 class IRWCassSpecNew extends {
   val keyspace = "data2"

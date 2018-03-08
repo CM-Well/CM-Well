@@ -22,6 +22,6 @@ package cmwell.ctrl.checkers
 trait CheckRequest
 
 case object CheckWeb extends CheckRequest
-case object CheckBatch extends CheckRequest
+case object CheckBg extends CheckRequest
 case object CheckElasticsearch extends CheckRequest
 case object CheckCassandra extends CheckRequest

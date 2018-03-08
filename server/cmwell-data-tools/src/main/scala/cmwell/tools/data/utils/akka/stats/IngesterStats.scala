@@ -16,27 +16,36 @@
 
 package cmwell.tools.data.utils.akka.stats
 
-import akka.actor.Cancellable
+import akka.actor.{ActorRef, Cancellable}
 import akka.stream._
 import akka.stream.stage._
 import cmwell.tools.data.ingester.Ingester._
+import cmwell.tools.data.utils.akka.stats.IngesterStats.IngestStats
 import cmwell.tools.data.utils.logging.DataToolsLogging
 import cmwell.tools.data.utils.text.Files.toHumanReadable
-import nl.grons.metrics.scala.InstrumentedBuilder
+import nl.grons.metrics4.scala.InstrumentedBuilder
 import org.apache.commons.lang3.time.DurationFormatUtils
 
 import scala.concurrent.duration._
 
 object IngesterStats {
+
+  case class IngestStats(label: Option[String] = None,
+                         ingestedBytes: Long,
+                         ingestedInfotons: Long,
+                         failedInfotons: Long)
+
   def apply(isStderr: Boolean = false,
             initDelay: FiniteDuration = 1.second,
             interval: FiniteDuration = 1.second,
-            label: Option[String] = None) = new IngesterStats(isStderr, initDelay, interval, label)
+            reporter: Option[ActorRef] = None,
+            label: Option[String] = None) = new IngesterStats(isStderr, initDelay, interval, reporter, label)
 }
 
 class IngesterStats(isStderr: Boolean,
                     initDelay: FiniteDuration = 1.second,
                     interval: FiniteDuration = 1.second,
+                    reporter: Option[ActorRef] = None,
                     label: Option[String] = None) extends GraphStage[FlowShape[IngestEvent, IngestEvent]] with DataToolsLogging{
   val in = Inlet[IngestEvent]("ingest-stats.in")
   val out = Outlet[IngestEvent]("ingest-stats.out")
@@ -94,6 +103,15 @@ class IngesterStats(isStderr: Boolean,
 
           if (isStderr) System.err.print("\r" * lastMessageSize + message)
 
+          reporter.foreach {
+            _ ! IngestStats(
+              label = label,
+              ingestedBytes = totalIngestedBytes.count,
+              ingestedInfotons = totalIngestedInfotons.count,
+              failedInfotons = totalFailedInfotons.count
+            )
+          }
+
           logger debug (s"$name $message")
 
           lastMessageSize = message.size
@@ -110,7 +128,6 @@ class IngesterStats(isStderr: Boolean,
         case IngestFailEvent(numInfotons) =>
           totalFailedInfotons mark numInfotons
       }
-
 
       setHandler(in, new InHandler {
         override def onPush(): Unit = {

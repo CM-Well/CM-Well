@@ -351,7 +351,7 @@ case class KafkaProps(h : Host) extends ComponentProps(h, "kafka", "components",
 
   override def symLinkName: Option[String] = Some("cur")
 
-  override val componentDataDirs: Map[String, GenSeq[String]] = Map("kafka" -> Seq(h.getDataDirs.kafkaDataDir))
+  override val componentDataDirs: Map[String, GenSeq[String]] = Map("kafka" -> h.getDataDirs.kafkaDataDirs)
   override val componentName: String = "kafka"
   override val componentMappings: Map[String, Int] = Map("kafka" -> 1)
 
@@ -401,37 +401,6 @@ case class BgProps(h : Host) extends ComponentProps(h, "cmwell-bg" , "components
 
   override def upgradeMethod : UpgradeMethod = NonRolling
 }
-
-case class BatchProps(h : Host) extends ComponentProps(h, "cmwell-batch" , "components" , true) with DataComponent with LoggingComponent with RunnableComponent {
-  override val componentName : String = "cmwell-batch"
-  override val componentDataDirs: Map[String, GenSeq[String]] = Map(
-    "tlog" -> h.getDataDirs.tlogDataDirs
-  )
-
-
-  override def getComponentName(name: String, location: String): String = name
-
-  override def uploadComponent(localLocation: String, target: String, postFix: Option[String], hosts: GenSeq[String]): Any = {}
-
-  override def upgradeMethod : UpgradeMethod = NonRolling
-  override val componentMappings: Map[String, Int] = Map("batch" -> h.getDataDirs.tlogDataDirs.size)
-
-  def targetLocation = "app/batch"
-  def unpackCommand : Option[String] = None
-  def symLinkName : Option[String] = None
-
-  override def isDir = false
-  override def getUnpackedName(packageName : String, location : String) : Option[String] = None
-
-  def start(hosts : GenSeq[String]): Unit = {
-    h.startBatch(hosts)
-  }
-
-  def stop(hosts : GenSeq[String]): Unit = {
-    h.stopBatch(hosts)
-  }
-}
-
 
 case class CtrlProps(h : Host) extends ComponentProps(h, "cmwell-controller" , "components" , true) with LoggingComponent with ConfigurableComponent with RunnableComponent {
   override val componentName: String = "cmwell-controller"
@@ -533,16 +502,6 @@ case class Mx4JProps(h : Host) extends ComponentProps(h, "mx4j", "components" , 
   override def getUnpackedName(packageName : String, location : String) : Option[String] = None
 }
 
-case class TlogProps(h : Host) extends ComponentProps(h, "tlog", "components" , false) {
-  def targetLocation = "app/tlog"
-  def unpackCommand : Option[String] = None
-  def symLinkName : Option[String] = None
-  override def uploadComponent(localLocation: String, target: String, postFix: Option[String], hosts: GenSeq[String]): Any = {}
-  override def getUnpackedName(packageName : String, location : String) : Option[String] = None
-  override def isDir = false
-  override def getComponentName(name: String, location: String): String = name
-}
-
 case class BinsProps(h : Host) extends ComponentProps(h, "bin", "." , false) {
   def targetLocation = ""
   def unpackCommand : Option[String] = None
@@ -579,7 +538,7 @@ class Deployment(h : Host) {
     val date = new Date()
     format.format(date)
   }
-  val componentProps : Vector[ComponentProps] = Vector(CassandraProps(h), ElasticsearchProps(h), ZooKeeperProps(h), KafkaProps(h) , BgProps(h) , BatchProps(h), WebserviceProps(h), BinsProps(h), Mx4JProps(h), TlogProps(h), CtrlProps(h), DcProps(h)) ++ (if(h.getWithElk) List(LogstashProps(h), KibanaProps(h)) else Vector.empty[ComponentProps]) ++ (if(h.getDeployJava) Vector(JavaProps(h)) else Vector.empty[ComponentProps])
+  val componentProps : Vector[ComponentProps] = Vector(CassandraProps(h), ElasticsearchProps(h), ZooKeeperProps(h), KafkaProps(h) , BgProps(h), WebserviceProps(h), BinsProps(h), Mx4JProps(h), CtrlProps(h), DcProps(h)) ++ (if(h.getWithElk) List(LogstashProps(h), KibanaProps(h)) else Vector.empty[ComponentProps]) ++ (if(h.getDeployJava) Vector(JavaProps(h)) else Vector.empty[ComponentProps])
   //val componentProps : Vector[ComponentProps] = Vector(ElasticsearchProps)
 
 

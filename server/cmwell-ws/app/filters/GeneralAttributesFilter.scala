@@ -17,7 +17,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class GeneralAttributesFilter @Inject()(implicit val mat: Materializer, ec: ExecutionContext) extends Filter with TypeHelpers {
   override def apply(f: RequestHeader => Future[Result])(rh: RequestHeader) = {
     f(rh.addAttr(Attrs.RequestReceivedTimestamp, System.currentTimeMillis())
-      .addAttr(Attrs.UserIP, rh.headers.get("X-Forwarded-For").getOrElse(rh.remoteAddress)) // TODO: might be good to add ip to logs when user misbehaves
+        .addAttr(Attrs.UserIP, rh.headers.get("X-Forwarded-For").getOrElse(rh.remoteAddress)) // TODO: might be good to add ip to logs when user misbehaves
     )
   }
 }

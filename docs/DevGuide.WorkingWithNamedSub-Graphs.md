@@ -40,11 +40,11 @@ Now let's add some review scores to the movies, using quads:
 
 You can retrieve all quads with a certain label by running a command with the following template:
 
-    <cm-well-host>/<cm-well-path>?op=search&recursive&qp=system.quad::<quadValue>
+    <cm-well-host>/<cm-well-path>?op=search&recursive&qp=quad.system::<quadValue>
 
 For example, the following command retrieves all quads under the PPE **example.org** folder, whose label (4th quad value) is **http://MyOrgs/Startups**:
 
-    <cm-well-host>/example.org?op=search&recursive&qp=system.quad::http://MyOrgs/Startups
+    <cm-well-host>/example.org?op=search&recursive&qp=quad.system::http://MyOrgs/Startups
 
 ## Deleting/Replacing a Named Sub-Graph ##
 
@@ -108,11 +108,11 @@ For example, to create the alias **"superman"** for the graph name ```<http://ex
 You can then use the string label instead of the name URI in any API call that refers to named graphs. 
 For example, using the example label created above, this command:
 
-    <cm-well-host>/example.org?op=search&recursive&qp=system.quad::superman
+    <cm-well-host>/example.org?op=search&recursive&qp=quad.system::superman
 
 \- is equivalent to this command:
 
-    <cm-well-host>/example.org?op=search&recursive&qp=system.quad::http://example.org/graphs/superman
+    <cm-well-host>/example.org?op=search&recursive&qp=quad.system::http://example.org/graphs/superman
 
 
 >**Note:** You can only add one alias per named sub-graph. Creating an alias when one already exists will overwrite the existing alias.

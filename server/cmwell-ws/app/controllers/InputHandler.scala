@@ -25,6 +25,7 @@ import cmwell.util.collections.opfut
 import cmwell.util.formats.JsonEncoder
 import cmwell.web.ld.cmw.CMWellRDFHelper
 import cmwell.web.ld.exceptions.UnretrievableIdentifierException
+import ld.exceptions.ServerComponentNotAvailableException
 import cmwell.web.ld.util.LDFormatParser.ParsingResponse
 import cmwell.web.ld.util._
 import cmwell.ws.Settings
@@ -38,6 +39,7 @@ import wsutil._
 import javax.inject._
 
 import filters.Attrs
+import org.joda.time.{DateTime, DateTimeZone}
 
 import scala.concurrent.duration._
 import scala.concurrent._
@@ -135,7 +137,9 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
             }
             require(errs.isEmpty,errs.mkString("overwrites API failed to validate the request.\n\n","\n",""))
 
-            enforceForceIfNeededAndReturnMetaFieldsInfotons(infotonsMap, true).flatMap { metaFields =>
+            val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
+            val currentTime = timeContext.fold(DateTime.now(DateTimeZone.UTC))(tc => new DateTime(tc))
+            enforceForceIfNeededAndReturnMetaFieldsInfotons(infotonsMap, currentTime, true).flatMap { metaFields =>
               val infotonsWithoutFields = metaDataMap.keySet.filterNot(infotonsMap.keySet.apply) //meaning FileInfotons without extra data...
 
               val allInfotons = (infotonsMap.toVector map {
@@ -146,9 +150,9 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
                   val fs = fields.map {
                     case (fk, vs) => fk.internalKey -> vs
                   }
-                  infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath))
+                  infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath), currentTime)
                 }
-              }) ++ infotonsWithoutFields.map(p => infotonFromMaps(cmwHostsSet, p, None, metaDataMap.get(p))) ++ metaFields
+              }) ++ infotonsWithoutFields.map(p => infotonFromMaps(cmwHostsSet, p, None, metaDataMap.get(p), currentTime)) ++ metaFields
 
               //logger.info(s"infotonsToPut: ${allInfotons.collect { case o: ObjectInfoton => o.toString }.mkString("[", ",", "]")}")
 
@@ -194,21 +198,28 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
       case _ => throw new RuntimeException("cant find valid content in body of request")
     }
 
+    val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
+
     req.getQueryString("format") match {
-      case Some(f) => handleFormatByFormatParameter(cmwellRDFHelper,crudService,authUtils,bais, Some(List[String](f)), req.contentType, authUtils.extractTokenFrom(req), skipValidation, isOverwrite)
-      case None => handleFormatByContentType(cmwellRDFHelper,crudService,authUtils,bais, req.contentType, authUtils.extractTokenFrom(req), skipValidation, isOverwrite)
+      case Some(f) => handleFormatByFormatParameter(cmwellRDFHelper,crudService,authUtils,bais, Some(List[String](f)), req.contentType, authUtils.extractTokenFrom(req), skipValidation, isOverwrite,timeContext)
+      case None => handleFormatByContentType(cmwellRDFHelper,crudService,authUtils,bais, req.contentType, authUtils.extractTokenFrom(req), skipValidation, isOverwrite,timeContext)
     }
   }
 
 
-  def enforceForceIfNeededAndReturnMetaFieldsInfotons(allInfotons: Map[String, Map[DirectFieldKey, Set[FieldValue]]], forceEnabled: Boolean = false)
+
+  def enforceForceIfNeededAndReturnMetaFieldsInfotons(allInfotons: Map[String, Map[DirectFieldKey, Set[FieldValue]]], currentTime: DateTime, forceEnabled: Boolean = false, debugLog: Boolean = false)
                                                      (implicit ec: ExecutionContext): Future[Vector[Infoton]] = {
 
     def getMetaFields(fields: Map[DirectFieldKey, Set[FieldValue]]) = collector(fields) {
       case (fk, fvs) => {
         val newTypes = fvs.map(FieldValue.prefixByType)
-        typesCaches.get(fk,Some(newTypes)).flatMap { types =>
+
+        val f: Set[Char] => Future[Option[Infoton]] = (types: Set[Char]) => {
           val chars = newTypes diff types
+          if(debugLog) {
+            logger.info(s"getMetaFields.f: ${newTypes.mkString("[",",","]")} diff ${types.mkString("[",",","]")} = ${chars.mkString("[",",","]")}")
+          }
           if (chars.isEmpty) Future.successful(None)
           else {
             require(forceEnabled || types.size != 1,
@@ -222,14 +233,20 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
                 Set.empty,
                 fk.infoPath,
                 Some(Map("mang" -> chars.map(c => FString(c.toString, None, None): FieldValue))),
-                None))
+                None, currentTime))
             }
           }
+        }
+
+        typesCaches.get(fk,Some(newTypes)).transformWith {
+          case Failure(_: NoSuchElementException) => f(Set.empty)
+          case Success(types) => f(types)
+          case Failure(error) => Future.failed(ServerComponentNotAvailableException("ingest failed during types resolution",error))
         }
       }
     }
 
-    val infotons = allInfotons.filterKeys(!_.matches("/meta/(ns|nn).*"))
+    val infotons = allInfotons//.filterKeys(!_.matches("/meta/(ns|nn).*"))
 
     if(infotons.isEmpty) Future.successful(Vector.empty)
     else {
@@ -238,6 +255,9 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
         m2 ++ m1.map {
           case (k, vs) => k -> (vs ++ mm(k))
         }
+      }
+      if(debugLog) {
+        logger.info(s"enforcing type contraint on: $aggFields")
       }
       getMetaFields(aggFields)
     }
@@ -250,7 +270,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
   def handlePostRDF(req: Request[RawBuffer], skipValidation: Boolean = false): (Future[Result],Future[Seq[(String,String)]]) = {
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    val now = req.attrs(Attrs.RequestReceivedTimestamp)
+    val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
     val p = Promise[Seq[(String,String)]]()
     lazy val id = cmwell.util.numeric.Radix64.encodeUnsigned(req.id)
     val debugLog = req.queryString.keySet("debug-log")
@@ -269,8 +289,15 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
             Future.successful(addDebugHeader(UnprocessableEntity(s"ingested data was well formed, but is meaningless and has no affect. error logged with id [$id].")))
           }
           else {
+
+            val currentTime = timeContext.fold(DateTime.now(DateTimeZone.UTC))(tc => new DateTime(tc))
+
             if(debugLog) logger.info(s"[$id] ParsingResponse: ${pRes.toString}")
-            enforceForceIfNeededAndReturnMetaFieldsInfotons(infotonsMap, req.getQueryString("force").isDefined).flatMap { metaFields =>
+            enforceForceIfNeededAndReturnMetaFieldsInfotons(infotonsMap, currentTime, req.getQueryString("force").isDefined, debugLog).flatMap { metaFields =>
+
+              if(debugLog) {
+                logger.info(s"will add mangling data for the ingest: $metaFields")
+              }
 
               //we divide the infotons to write into 2 lists: regular writes and updates
               val (deleteMap, (upserts, regular)) = {
@@ -340,9 +367,9 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
                   val fs = fields.map {
                     case (fk, vs) => fk.internalKey -> vs
                   }
-                  infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath))
+                  infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath), currentTime)
                 }
-              }) ++ infotonsWithoutFields.map(p => infotonFromMaps(cmwHostsSet, p, None, metaDataMap.get(p))) ++ metaFields
+              }) ++ infotonsWithoutFields.map(p => infotonFromMaps(cmwHostsSet, p, None, metaDataMap.get(p), currentTime)) ++ metaFields
 
               val infotonsToUpsert = upserts.toList map {
                 case (path, fields) => {
@@ -352,7 +379,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
                   val fs = fields.map {
                     case (fk, vs) => fk.internalKey -> vs
                   }
-                  infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath))
+                  infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath), currentTime)
                 }
               }
 
@@ -381,7 +408,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
                     }.filterNot(_.contains("/meta/ns"))
 
                     val actorId = cmwell.util.string.Hash.crc32(cmwell.util.numeric.toIntegerBytes(pRes.##))
-                    TrackingUtil().spawn(actorId, allPaths, now)
+                    TrackingUtil().spawn(actorId, allPaths, timeContext.get)
                   }) else None
                 )
 
@@ -470,6 +497,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
         }
         case _ => "utf-8"
       }
+      val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
 
       req.body.asBytes() match {
         case Some(bs) => {
@@ -496,7 +524,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
                             case Success(Right(d)) => d
                             case Success(Left(fk)) => {
                               Try[DirectFieldKey] {
-                                val (f, l) = Await.result(FieldKey.resolve(fk, cmwellRDFHelper).map {
+                                val (f, l) = Await.result(FieldKey.resolve(fk, cmwellRDFHelper, timeContext).map {
                                   case PrefixFieldKey(first, last, _) => first -> last
                                   case URIFieldKey(first, last, _) => first -> last
                                   case unknown => {
@@ -513,7 +541,8 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
                         }
                       }.toMap
 
-                      enforceForceIfNeededAndReturnMetaFieldsInfotons(infotonsMap, req.getQueryString("force").isDefined).flatMap { metaFields =>
+                      val currentTime = timeContext.fold(DateTime.now(DateTimeZone.UTC))(tc => new DateTime(tc))
+                      enforceForceIfNeededAndReturnMetaFieldsInfotons(infotonsMap, currentTime, req.getQueryString("force").isDefined).flatMap { metaFields =>
                         val infotonsToPut = (if (setZeroTime) v.map {
                           case i: ObjectInfoton => i.copy(lastModified = zeroTime)
                           case i: FileInfoton => {

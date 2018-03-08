@@ -28,7 +28,7 @@ import scala.util.Try
   */
 object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
 
-  private def decodeFieldsWithParser(parser:JsonParser):Map[String, Set[FieldValue]] = {
+  private def decodeFieldsWithParser(parser:JsonParser): Map[String, Set[FieldValue]] = {
     assume(parser.nextToken()== JsonToken.START_OBJECT, s"expected start of 'fields' object\n${parser.getCurrentLocation.toString}")
     val fields = collection.mutable.Map[String, collection.mutable.Set[FieldValue]]()
     while(parser.nextToken() != JsonToken.END_OBJECT) {
@@ -76,7 +76,7 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
                 FString(arr.drop(2).mkString("\n"),lang,quad)
               }
               case 'x' => {
-                val arr = v.tail.split('\n')
+                val arr = v.tail.split("\n",-1)
                 val (uri,q,value) = (arr(0),arr(1),arr.drop(2).mkString("\n"))
                 val quad =
                   if(q.isEmpty) None
@@ -317,93 +317,6 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
         command = OverwriteCommand(infoton, tidOpt.flatMap(_.right.toOption))
         //expecting end of command object
         assume(jsonParser.nextToken()== JsonToken.END_OBJECT, s"expected end of command object\n${jsonParser.getCurrentLocation.toString}")
-
-      case "BulkCommand" =>
-        assume(jsonParser.nextToken()==JsonToken.FIELD_NAME && "commands".equals(jsonParser.getCurrentName()), s"expected 'commands' field name\n${jsonParser.getCurrentLocation.toString}")
-        val commands = new collection.mutable.ListBuffer[Command]()
-        assume(jsonParser.nextToken()==JsonToken.START_ARRAY, s"expected start array token for 'commands' object\n${jsonParser.getCurrentLocation.toString}")
-        while(jsonParser.nextToken() != JsonToken.END_ARRAY){
-          commands += JsonSerializer.decodeCommandWithParser(jsonParser,false)
-        }
-        command = BulkCommand(commands.toList)
-        //expecting end of command object
-        assume(jsonParser.nextToken()== JsonToken.END_OBJECT, s"expected end of command object\n${jsonParser.getCurrentLocation.toString}")
-
-      case "MergedInfotonCommand" =>
-        // expecting either previousInfoton field or currentInfoton field
-        assume(jsonParser.nextToken()==JsonToken.FIELD_NAME, s"expected field token for either 'previousInfoton' or 'currentInfoton'\n${jsonParser.getCurrentLocation.toString}")
-        var previousInfoton:Option[(String , Long) ] = None
-        if("previousInfoton".equals(jsonParser.getCurrentName)) {
-          assume(jsonParser.nextToken()==JsonToken.VALUE_STRING, s"expected value for 'previousInfoton' field\n${jsonParser.getCurrentLocation.toString}")
-          val prevUuid = jsonParser.getText
-          // TODO backward supporting tlogs that have commands without the infoton size field. Remove when not needed any more
-          val nextToken = jsonParser.nextToken()
-          assume(nextToken==JsonToken.FIELD_NAME, s"expected value for 'previousInfotonSize' field or field token for 'currentInfoton'\n${jsonParser.getCurrentLocation.toString}")
-          if("previousInfotonSize".equals(jsonParser.getCurrentName)) {
-            assume(jsonParser.nextToken()==JsonToken.VALUE_NUMBER_INT, s"expected value for 'previousInfotonSize' field\n${jsonParser.getCurrentLocation.toString}")
-            previousInfoton = Some( (prevUuid, jsonParser.getLongValue) )
-            // skipping to currentInfoton token
-            assume(jsonParser.nextToken()==JsonToken.FIELD_NAME, s"expected field token for 'currentInfoton'\n${jsonParser.getCurrentLocation.toString}")
-          }
-        }
-        assume(jsonParser.nextToken()==JsonToken.VALUE_STRING, s"expected value for 'currentInfoton' field\n${jsonParser.getCurrentLocation.toString}")
-        val currentInfoton = jsonParser.getText
-
-        // TODO backward supporting tlogs that have commands without the infoton size field. Remove when not needed any more
-        val nextToken = jsonParser.nextToken()
-        if(nextToken==JsonToken.FIELD_NAME) {
-          assume(jsonParser.nextToken()==JsonToken.VALUE_NUMBER_INT, s"expected value for 'currentInfotonSize' field\n${jsonParser.getCurrentLocation.toString}")
-          val currentInfotonSize = jsonParser.getLongValue
-          command = MergedInfotonCommand(previousInfoton, (currentInfoton , currentInfotonSize) )
-          //expecting end of command object
-          assume(jsonParser.nextToken()== JsonToken.END_OBJECT, s"expected end of command object\n${jsonParser.getCurrentLocation.toString}")
-        } else {
-          assume(nextToken == JsonToken.END_OBJECT, s"expected end of command object\n${jsonParser.getCurrentLocation.toString}")
-          command = MergedInfotonCommand(previousInfoton, (currentInfoton, 0L))
-        }
-
-      case "OverwrittenInfotonsCommand" =>
-        assume(jsonParser.nextToken()==JsonToken.FIELD_NAME, s"expected field token for either 'previousInfoton', 'currentInfoton' or 'historicInfotons'\n${jsonParser.getCurrentLocation.toString}")
-        val prev = if("previousInfoton".equals(jsonParser.getCurrentName)) {
-          assume(jsonParser.nextToken()==JsonToken.VALUE_STRING, s"expected value for 'previousInfoton' field\n${jsonParser.getCurrentLocation.toString}")
-          val prevUuid = jsonParser.getText
-          assume(jsonParser.nextToken==JsonToken.FIELD_NAME && "previousInfotonSize".equals(jsonParser.getCurrentName), s"expected value for 'previousInfotonSize' field\n${jsonParser.getCurrentLocation.toString}")
-          assume(jsonParser.nextToken()==JsonToken.VALUE_NUMBER_INT, s"expected value for 'previousInfotonSize' field\n${jsonParser.getCurrentLocation.toString}")
-          val prevWeight = jsonParser.getLongValue
-          jsonParser.nextToken()//expecting field token for either 'currentInfoton' or 'historicInfotons' or end of command
-          Some(prevUuid -> prevWeight)
-        } else None
-        val curr = if("currentInfoton".equals(jsonParser.getCurrentName)) {
-          assume(jsonParser.nextToken()==JsonToken.VALUE_STRING, s"expected value for 'currentInfoton' field\n${jsonParser.getCurrentLocation.toString}")
-          val currentInfoton = jsonParser.getText
-          assume(jsonParser.nextToken()==JsonToken.FIELD_NAME && "currentInfotonSize".equals(jsonParser.getCurrentName), s"expected field token for either 'currentInfotonSize'\n${jsonParser.getCurrentLocation.toString}")
-          assume(jsonParser.nextToken()==JsonToken.VALUE_NUMBER_INT, s"expected value for 'currentInfotonSize' field\n${jsonParser.getCurrentLocation.toString}")
-          val currentInfotonSize = jsonParser.getLongValue
-          assume(jsonParser.nextToken()==JsonToken.FIELD_NAME && "currentInfotonIndexTime".equals(jsonParser.getCurrentName), s"expected field token for either 'currentInfotonIndexTime'\n${jsonParser.getCurrentLocation.toString}")
-          assume(jsonParser.nextToken()==JsonToken.VALUE_NUMBER_INT, s"expected value for 'currentInfotonIndexTime' field\n${jsonParser.getCurrentLocation.toString}")
-          val currentInfotonIndexTime = jsonParser.getLongValue
-          jsonParser.nextToken()//expecting field token for 'historicInfotons' or end of command
-          Some((currentInfoton,currentInfotonSize,currentInfotonIndexTime))
-        } else None
-        val hist = if("historicInfotons".equals(jsonParser.getCurrentName)) {
-          val historic = new collection.mutable.ListBuffer[(String,Long,Long)]()
-          assume(jsonParser.nextToken()==JsonToken.START_ARRAY, s"expected value for 'historicInfotons' field\n${jsonParser.getCurrentLocation.toString}")
-          while(jsonParser.nextToken() != JsonToken.END_ARRAY){
-            assume(jsonParser.nextToken==JsonToken.VALUE_STRING, s"expected value for uuid field\n${jsonParser.getCurrentLocation.toString}")
-            val uuid = jsonParser.getText
-            assume(jsonParser.nextToken()==JsonToken.VALUE_NUMBER_INT, s"expected value for historic infoton size field\n${jsonParser.getCurrentLocation.toString}")
-            val size = jsonParser.getLongValue
-            assume(jsonParser.nextToken()==JsonToken.VALUE_NUMBER_INT, s"expected value for historic infoton indexTime field\n${jsonParser.getCurrentLocation.toString}")
-            val idxT = jsonParser.getLongValue
-            assume(jsonParser.nextToken()==JsonToken.END_ARRAY, s"expected end tuple (uuid -> size) array\n${jsonParser.getCurrentLocation.toString}")
-            historic += ((uuid, size, idxT))
-          }
-          //expecting end of command object
-          assume(jsonParser.nextToken()== JsonToken.END_OBJECT, s"expected end of command object\n${jsonParser.getCurrentLocation.toString}")
-          historic.toVector
-        } else Vector.empty[(String,Long,Long)]
-
-        command = OverwrittenInfotonsCommand(prev, curr, hist)
 
       case "DeleteAttributesCommand" =>
         // expecting 'path' field

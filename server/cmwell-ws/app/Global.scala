@@ -29,14 +29,15 @@ import com.typesafe.scalalogging.LazyLogging
 import k.grid.{Grid, GridConnection}
 import k.grid.service.ServiceTypes
 import logic.CRUDServiceFS
-import play.api.{Logger, _}
-import security.NoncesManager
+import play.api.{Logger, controllers => _}
+import security.{EagerAuthCache, NoncesManager}
 import javax.inject._
 
 import cmwell.domain.SearchResults
+import controllers.IngestPushback
 
 import scala.concurrent.ExecutionContext
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.util.{Failure, Success, Try}
 import uk.org.lidalia.sysoutslf4j.context.SysOutOverSLF4J
 
@@ -48,7 +49,7 @@ import uk.org.lidalia.sysoutslf4j.context.SysOutOverSLF4J
  * To change this template use File | Settings | File Templates.
  */
 @Singleton
-class Global @Inject()(crudServiceFS: CRUDServiceFS, cmwellRDFHelper: CMWellRDFHelper)(implicit ec: ExecutionContext) extends LazyLogging {
+class Global @Inject()(crudServiceFS: CRUDServiceFS, cmwellRDFHelper: CMWellRDFHelper, ingestPushback: IngestPushback, eagerAuthCache: EagerAuthCache)(implicit ec: ExecutionContext) extends LazyLogging {
 
   onStart
 
@@ -76,49 +77,26 @@ class Global @Inject()(crudServiceFS: CRUDServiceFS, cmwellRDFHelper: CMWellRDFH
 
     Subscriber.init
 
-    val recoverWithExitOnFail: PartialFunction[Throwable,Unit] = {
-      case err : Throwable => {
-        Logger.error("Failed to connect with CRUDService. Will exit now.",err)
-        sys.exit(1)
-      }
-    }
-
-    val recoverWithLogOnFail: PartialFunction[Try[SearchResults],Unit] = {
-      case Success(sr) => updateCaches(sr)
-      case Failure(ex) => logger.error("Failed to connect with CRUDService. Will exit now.",ex)
-    }
-
     RequestMonitor.init
 
-    import scala.concurrent.duration._
+    cmwellRDFHelper.newestGreatestMetaNsCacheImpl.init(System.currentTimeMillis())
 
-    scheduleAfterStart(30.seconds){
-      Try(cmwell.util.concurrent.retry(3) {
-          crudServiceFS.search(
-            pathFilter = Some(PathFilter("/meta/ns", descendants = false)),
-            fieldFilters = None,
-            datesFilter = None,
-            paginationParams = PaginationParams(0, initialMetaNsLoadingAmount),
-            withHistory = false,
-            withData = true,
-            fieldSortParams = SortParam.empty)
-        }.andThen(recoverWithLogOnFail)).recover{
-        case err: Throwable => logger.error("unexpected error occured in Global initialization",err)
-      }
+    scheduleAfterStart(2.minutes) {
+      ingestPushback.sometimeAfterStart
+      eagerAuthCache.sometimeAfterStart
     }
-    Logger.info("Application has started")
   }
 
-  private def updateCaches(sr: SearchResults) = {
-
-    val groupedByUrls = sr.infotons.groupBy(_.fields.flatMap(_.get("url")))
-    val goodInfotons = groupedByUrls.collect { case (Some(k),v) if k.size==1 =>
-      val url = k.head.value.asInstanceOf[String]
-      cmwellRDFHelper.getTheFirstGeneratedMetaNsInfoton(url, v)
-    }
-
-    cmwellRDFHelper.loadNsCachesWith(goodInfotons.toSeq)
-  }
+//  private def updateCaches(sr: SearchResults) = {
+//
+//    val groupedByUrls = sr.infotons.groupBy(_.fields.flatMap(_.get("url")))
+//    val goodInfotons = groupedByUrls.collect { case (Some(k),v) if k.size==1 =>
+//      val url = k.head.value.asInstanceOf[String]
+//      cmwellRDFHelper.getTheFirstGeneratedMetaNsInfoton(url, v)
+//    }
+//
+//    cmwellRDFHelper.loadNsCachesWith(goodInfotons.toSeq)
+//  }
 
   def onStop {
     Grid.shutdown
