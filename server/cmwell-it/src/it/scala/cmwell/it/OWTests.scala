@@ -35,7 +35,7 @@ class OWTests extends AsyncFunSpec with Matchers with Inspectors with Helpers wi
     Http.post(_ow, h1, Some("text/nquads;charset=UTF-8"), List("format" -> "nquads"), tokenHeader).map { res =>
       withClue(res){
         res.status should be(200)
-        Json.parse(res.payload) should be(jsonSuccess)
+        jsonSuccessPruner(Json.parse(res.payload)) should be(jsonSuccess)
       }
     }
   }

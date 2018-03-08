@@ -206,7 +206,7 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
         data = """<> <cmwell://meta/sys#graphAlias> "superman" <http://example.org/graphs/superman> ."""
         res <- Http.post(_in, data, None, List("format" -> "nquads"), tokenHeader)
       } yield withClue(res) {
-      Json.parse(res.payload) should be(jsonSuccess)
+      jsonSuccessPruner(Json.parse(res.payload)) should be(jsonSuccess)
     }
     val fSuperman5 = fSuperman4.flatMap(_ => scheduleFuture(cacheEviction){
       Http.get(superman, List("format" -> "jsonl", "pretty" -> "")).map { res =>

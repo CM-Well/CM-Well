@@ -40,6 +40,7 @@ import javax.inject._
 
 import filters.Attrs
 import org.joda.time.{DateTime, DateTimeZone}
+import play.api.libs.json.Json.JsValueWrapper
 
 import scala.concurrent.duration._
 import scala.concurrent._
@@ -94,7 +95,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
     else {
       Try {
         parseRDF(req, false, true).flatMap {
-          case ParsingResponse(infotonsMap, metaDataMap, cmwHostsSet, tmpDeleteMap, deleteValsMap, deletePaths, atomicUpdates) => {
+          case ParsingResponse(infotonsMap, metaDataMap, cmwHostsSet, tmpDeleteMap, deleteValsMap, deletePaths, atomicUpdates, feedbacks) => {
 
             require(tmpDeleteMap.isEmpty && deleteValsMap.isEmpty && deletePaths.isEmpty && atomicUpdates.isEmpty, "can't use meta operations here! this API is used internaly, and only for overwrites!")
             val (errs,_) = cmwell.util.collections.partitionWith(metaDataMap){
@@ -161,7 +162,11 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
               val f = crudService.putInfotons(metaInfotons)
               crudService.putOverwrites(infotonsToPut).flatMap { b =>
                 f.map {
-                  case true if b => Ok(Json.obj("success" -> true))
+                  case true if b => feedbacks match {
+                    case Nil => Ok(Json.obj("success" -> true))
+                    case List(msg) => Ok(Json.obj("success" -> true, "message" -> msg))
+                    case multiples => Ok(Json.obj("success" -> true, "messages" -> multiples))
+                  }
                   case _ => BadRequest(Json.obj("success" -> false))
                 }
               }.recover {
@@ -281,7 +286,14 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
 
     Try {
       parseRDF(req,skipValidation).flatMap {
-        case pRes@ParsingResponse (infotonsMap, metaDataMap, cmwHostsSet, tmpDeleteMap, deleteValsMap, deletePaths, atomicUpdates) => {
+        case pRes@ParsingResponse (infotonsMap, metaDataMap, cmwHostsSet, tmpDeleteMap, deleteValsMap, deletePaths, atomicUpdates, feedbacks) => {
+
+          lazy val feedback: Option[(String, JsValueWrapper)] = feedbacks match {
+            case Nil => None
+            case List(msg) => Some("message" -> msg)
+            case multiples => Some("messages" -> multiples)
+          }
+
           if(pRes.isEmpty) {
             logger.warn(s"[$id] bad user ingest resulted in parsed response: ${pRes.toString}")
             if(debugLog) p.success(Seq("X-CM-WELL-LOG-ID" -> id))
@@ -385,7 +397,8 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
 
               if (req.getQueryString("dry-run").isDefined) {
                 p.success(Seq.empty)
-                Future(addDebugHeader(Ok(Json.obj("success" -> true, "dry-run" -> true))))
+                val jres = feedback.fold(Json.obj("success" -> true, "dry-run" -> true))(Json.obj("success" -> true, "dry-run" -> true, _))
+                Future(addDebugHeader(Ok(jres)))
               } else if(deletePaths.contains("/") || deleteMap.keySet("/")) {
                 p.success(Seq.empty)
                 Future.successful(addDebugHeader(BadRequest(Json.obj("success" -> false, "message" -> "Deleting Root Infoton does not make sense!"))))
@@ -435,12 +448,14 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
                     val f1 = crudService.upsertInfotons(infotonsToUpsert, deleteMap, to, atomicUpdates, isPriorityWrite)
                     val f2 = crudService.putInfotons(infotonsToPut, to, atomicUpdates, isPriorityWrite)
                     f1.zip(f2).flatMap { case (b1, b2) =>
-                      if (b01 && b02 && b1 && b2)
-                        blocking.fold(Future.successful(addDebugHeader(Ok(Json.obj("success" -> true)).withHeaders(tidHeaderOpt.toSeq: _*)))) { _ =>
+                      if (b01 && b02 && b1 && b2) {
+                        val jres = feedback.fold(Json.obj("success" -> true))(Json.obj("success" -> true, _))
+                        blocking.fold(Future.successful(addDebugHeader(Ok(jres).withHeaders(tidHeaderOpt.toSeq: _*)))) { _ =>
                           import akka.pattern.ask
                           val blockingFut = arOpt.get.?(SubscribeToDone)(timeout = 5.minutes).mapTo[Seq[PathStatus]]
                           blockingFut.map { data =>
                             val payload = {
+                              //TODO: add `feedback` data to response
                               val formatter = getFormatter(req, formatterManager, defaultFormat = "ntriples", withoutMeta = true)
                               val payload = BagOfInfotons(data map pathStatusAsInfoton)
                               formatter render payload
@@ -452,6 +467,7 @@ class InputHandler @Inject() (ingestPushback: IngestPushback,
                               addDebugHeader(ServiceUnavailable(Json.obj("success" -> false, "message" -> "Blocking is currently unavailable")))
                           }
                         }
+                      }
                       else Future.successful(addDebugHeader(InternalServerError(Json.obj("success" -> false))))
                     }
                   }
