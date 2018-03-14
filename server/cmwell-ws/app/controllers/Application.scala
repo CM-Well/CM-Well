@@ -1449,7 +1449,7 @@ callback=< [URL] >
       if (!withData && xg.isDefined) Future.successful(BadRequest("you can't use `xg` without also specifying `with-data`!"))
       else {
         val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
-        val deadLine = Deadline(Duration(request.attrs(Attrs.RequestReceivedTimestamp) + 7000, MILLISECONDS))
+        val deadLine = request.attrs(Attrs.RequestReceivedTimestamp) + 7000
         val itStateEitherFuture: Future[Either[String, IterationState]] = {
           actorRefsCachedFactory(Base64.decodeBase64String(encodedActorAddress, "UTF-8")).flatMap { ar =>
             (ar ? GetID)(akka.util.Timeout(10.seconds)).mapTo[IterationState].map {
@@ -1502,7 +1502,8 @@ callback=< [URL] >
                 }
               }
 
-              val initialGraceTime = deadLine.timeLeft
+              //initialGraceTime can become negative (think of a lengthy GC that will cause now to be after the dead line), but it's ok because the scheduler will start immidiately
+              val initialGraceTime = Duration(deadLine - System.currentTimeMillis(), MILLISECONDS)
               val injectInterval = 3.seconds
               val backOnTime: String => Result = { str =>
                 ar ! GotIt
