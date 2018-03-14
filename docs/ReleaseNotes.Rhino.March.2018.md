@@ -28,7 +28,8 @@ None.
 
 ### Known Issues ###
 
-Queries on values of all fields, using the **_all** wildcard, currently do not work. To be fixed.
+* Queries on values of all fields, using the **_all** wildcard, currently do not work. To be fixed.
+* If the Web Service instance that the STP Agent is working with restarts, all STP Dashboard Statistics will be reset.
 
 ----
 
