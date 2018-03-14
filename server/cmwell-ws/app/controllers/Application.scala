@@ -1503,7 +1503,11 @@ callback=< [URL] >
               }
 
               //initialGraceTime can become negative (think of a lengthy GC that will cause now to be after the dead line), but it's ok because the scheduler will start immidiately
-              val initialGraceTime = Duration(deadLine - System.currentTimeMillis(), MILLISECONDS)
+              val initialGraceTime = {
+                val now = System.currentTimeMillis()
+                if (now >= deadLine) Duration.Zero
+                else Duration(deadLine - now, MILLISECONDS)
+              }
               val injectInterval = 3.seconds
               val backOnTime: String => Result = { str =>
                 ar ! GotIt
