@@ -58,7 +58,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
       forAll(results) { res =>
         withClue(res) {
           res.status should be(200)
-          Json.parse(res.payload) shouldEqual jsonSuccess
+          jsonSuccessPruner(Json.parse(res.payload)) shouldEqual jsonSuccess
         }
       }
     }
@@ -241,7 +241,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
       Http.post(_in, gotN3, Some("text/n3;charset=UTF-8"), List("format" -> "n3"), tokenHeader).map { res =>
         withClue(res) {
           res.status should be(200)
-          Json.parse(res.payload) shouldEqual jsonSuccess
+          jsonSuccessPruner(Json.parse(res.payload)) shouldEqual jsonSuccess
         }
       }
     }

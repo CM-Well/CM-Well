@@ -81,7 +81,7 @@ class APIFunctionalityTests extends AsyncFunSpec
         it("should post with anti jena new onthology"){
           antiJenaVcardRFFIngest.map { res =>
             withClue(res) {
-              Json.parse(res.payload) should be(jsonSuccess)
+              jsonSuccessPruner(Json.parse(res.payload)) should be(jsonSuccess)
             }
           }
         }
@@ -89,7 +89,7 @@ class APIFunctionalityTests extends AsyncFunSpec
         it("should post with complicated inference logic"){
           complicatedInferenceIngest.map { res =>
             withClue(res) {
-              Json.parse(res.payload) should be(jsonSuccess)
+              jsonSuccessPruner(Json.parse(res.payload)) should be(jsonSuccess)
             }
           }
         }
@@ -1038,7 +1038,7 @@ class APIFunctionalityTests extends AsyncFunSpec
           delayedTask(indexingDuration * 2)(ingestOfNtriplesFromFilesPromise.success(()))
           forAll(responses) { case (res, file) =>
             withClue(s"uploading [$file] failed") {
-              Json.parse(res.payload) should be(jsonSuccess)
+              jsonSuccessPruner(Json.parse(res.payload)) should be(jsonSuccess)
             }
           }
         }
@@ -1232,7 +1232,7 @@ class APIFunctionalityTests extends AsyncFunSpec
         val triples = s"""<http://cmt/cm/test/Araújo> <http://ont.thomsonreuters.com/wiki#title> "Rock and Roll Over"^^<http://www.w3.org/2001/XMLSchema#string> ."""
         Http.post(_in, triples, Some("text/plain;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader).map { res =>
           withClue(res) {
-            Json.parse(res.payload) should be(jsonSuccess)
+            jsonSuccessPruner(Json.parse(res.payload)) should be(jsonSuccess)
           }
         }
       }
@@ -1311,7 +1311,6 @@ class APIFunctionalityTests extends AsyncFunSpec
     it("should ignore null updates") {
       val path = cmt / "InfotonForNullUpdatesTest"
       val jsonObjIn = Json.obj("Focus"->"OnYourBlueChips", "Be"->"HereNow")
-
       def postAndTest(msg: String) = {
         Http.post(path, Json.stringify(jsonObjIn), Some("application/json;charset=UTF-8"), Nil, ("X-CM-WELL-TYPE" -> "OBJ") :: tokenHeader).map { res =>
           withClue(msg) {
@@ -1345,7 +1344,6 @@ class APIFunctionalityTests extends AsyncFunSpec
       it("should add some historical data") {
         val data = Seq("DaisyDuck"->"Carrot", "DaisyDuck"->"Lemon", "PeterParker"->"Grapes", "PeterParker"->"Tomato", "DonaldDuck"->"Lemon",
           "RollMeBack"->"v1", "RollMeBack"->"v2", "RollMeBack"->"v3")
-
         data.foldLeft[Future[List[JsValue]]](Future.successful(Nil)) {
           case (f,(s,o)) => f.flatMap{ l =>
             Http.post(_in, s"<http://example.org/Individuals/$s> <http://purl.org/vocab/relationship/drinksJuiceOf> <http://example.org/Individuals/$o> .", None, Seq("format" -> "ntriples"), tokenHeader).flatMap{ res =>
@@ -1521,7 +1519,7 @@ class APIFunctionalityTests extends AsyncFunSpec
       it("should upload an Infoton with a DateTime field") {
         val data = s"""<http://example.org/1-429589421> <http://ont.thomsonreuters.com/mdaas/ipoDate> "$goodDateValue"^^<http://www.w3.org/2001/XMLSchema#dateTime> ."""
         Http.post(_in, data, Some("text/rdf+ntriples;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader).map { res =>
-          Json.parse(res.payload) should be(jsonSuccess)
+          jsonSuccessPruner(Json.parse(res.payload)) should be(jsonSuccess)
         }
       }
 
@@ -1555,7 +1553,7 @@ class APIFunctionalityTests extends AsyncFunSpec
       val length = 55000
       val triples = (0 until length).map(i => s"""<http://example.org/1-90210> <http://ont.thomsonreuters.com/mdaas/largeField${i/(length/5)}> "$i" .""").sorted
       Http.post(_in, triples.mkString("\n"), Some("text/rdf+ntriples;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader).flatMap { res =>
-        Json.parse(res.payload) should be(jsonSuccess)
+        jsonSuccessPruner(Json.parse(res.payload)) should be(jsonSuccess)
         scheduleFuture(indexingDuration){
           Http.get(cmw / "example.org" / "1-90210", List("format" -> "ntriples")).map { res =>
             val writtenData = res.payload.split('\n').filter(_.contains("largeField")).sorted

@@ -295,7 +295,7 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
 
       it("should return successfully from a dry-run")(f30.map { res =>
         res.status should be(200)
-        Json.parse(res.payload) should be(Json.parse("""{"success":true,"dry-run":true}"""))
+        jsonSuccessPruner(Json.parse(res.payload)) should be(Json.parse("""{"success":true,"dry-run":true}"""))
       })
 
       describe("should block documents with illegal subject") {

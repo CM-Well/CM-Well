@@ -46,7 +46,7 @@ class ManglingTests extends AsyncFunSpec with Matchers with Helpers with LazyLog
         |      mang:someDate   "2001-09-11T8:45:0Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
       """.stripMargin, Some("text/n3;charset=UTF-8"), List("format" -> "n3"), tokenHeader).map { res =>
       withClue(res) {
-        Json.parse(res.payload) should be(jsonSuccess)
+        jsonSuccessPruner(Json.parse(res.payload)) should be(jsonSuccess)
       }
     }
 

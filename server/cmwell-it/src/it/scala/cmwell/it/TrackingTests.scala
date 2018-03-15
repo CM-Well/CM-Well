@@ -109,7 +109,7 @@ class TrackingTests extends AsyncFunSpec with Matchers with Helpers with OptionV
 
     val ingestInfotonAndWaitUntilItIsPersisted: Future[Unit] = Http.post(_in, ntriples, textPlain, trackingQueryParams, tokenHeader).
       flatMap { resp =>
-        Json.parse(resp.payload) shouldBe jsonSuccess
+        jsonSuccessPruner(Json.parse(resp.payload)) shouldBe jsonSuccess
         def ready(resp: SimpleResponse[String]) = resp.status == 200 && resp.payload.split("\n").exists(_.contains("indexTime"))
         unsafeRetryUntil[SimpleResponse[String]](ready,10,500.millis)(Http.get(rd1Url, List("format"->"ntriples"))).map(_ => ())
       }
@@ -191,7 +191,7 @@ class TrackingTests extends AsyncFunSpec with Matchers with Helpers with OptionV
 
   private def ingestAndGetTrackingId(ntriples: String): Future[Option[String]] = {
     Http.post(_in, ntriples, textPlain, trackingQueryParams, tokenHeader).map { ingestResponse =>
-      Json.parse(ingestResponse.payload) should be(jsonSuccess)
+      jsonSuccessPruner(Json.parse(ingestResponse.payload)) should be(jsonSuccess)
       ingestResponse.headers.find(_._1 == "X-CM-WELL-TID").map(_._2)
     }
   }

@@ -43,13 +43,13 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
         r1 <- f1
         r2 <- f2
         r3 <- f3
-      } yield withClue((r1,r2,r3)){
-            r1.status should be(200)
-            r2.status should be(200)
-            r3.status should be(200)
-            Json.parse(r1.payload) should be(jsonSuccess)
-            Json.parse(r2.payload) should be(jsonSuccess)
-            Json.parse(r3.payload) should be(jsonSuccess)
+      } yield withClue((r1,r2,r3)) {
+        r1.status should be(200)
+        r2.status should be(200)
+        r3.status should be(200)
+        jsonSuccessPruner(Json.parse(r1.payload)) should be(jsonSuccess)
+        jsonSuccessPruner(Json.parse(r2.payload)) should be(jsonSuccess)
+        jsonSuccessPruner(Json.parse(r3.payload)) should be(jsonSuccess)
       }
     }
 
