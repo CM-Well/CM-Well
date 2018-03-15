@@ -877,7 +877,7 @@ object LDFormatParser extends LazyLogging {
         .filterNot(_.matches(metaOpRegex("(sys|ns|nn)")))
       
       it.map {
-        case url if url.startsWith(normalizedCWD) => throw new IllegalArgumentException("Unlabeled (namespace-less) predicates are not allowed. Please prefer a suitable ontology or use <cmwell://meta/nn#> (the \"No Namespace\" namespace)")
+        case url if url.startsWith(normalizedCWD) => throw new IllegalArgumentException("Unlabeled (namespace-less) predicates are not allowed. Please prefer a suitable ontology or use <cmwell://meta/nn#> (the \"No Namespace\" namespace) if you really must.")
         case url if url.contains('$') => throw new IllegalArgumentException(s"predicate namespace must not contain a dollar ('$$') sign: $url")
         case url =>
         //      TODO: commented out is more efficient, but won't update old style data.
