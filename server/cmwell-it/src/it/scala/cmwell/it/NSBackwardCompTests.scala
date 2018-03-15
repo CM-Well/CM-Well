@@ -85,7 +85,7 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
     val oldVcardOntologyDataIngest = {
       val oldVcardData = Source.fromURL(this.getClass.getResource("/vcard_old_ns.xml")).mkString
       Http.post(_in, oldVcardData, Some("application/rdf+xml;charset=UTF-8"), List("format" -> "rdfxml"), tokenHeader).map { res =>
-        Json.parse(res.payload) should be(jsonSuccess)
+        jsonSuccessPruner(Json.parse(res.payload)) should be(jsonSuccess)
       }
     }
 
@@ -387,7 +387,7 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
         res <- Http.post(_in, body, Some("text/plain;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader)
       } yield {
         Try(Json.parse(res.payload)) match {
-          case Success(j) => withClue(s"prefix renaming failed with response: $j")(j shouldEqual jsonSuccess)
+          case Success(j) => withClue(s"prefix renaming failed with response: $j")(jsonSuccessPruner(j) shouldEqual jsonSuccess)
           case Failure(e) => fail("failed to parse: '" + new String(res.payload,"UTF-8") + "'\n\n" + cmwell.util.exceptions.stackTraceToString(e))
         }
       }

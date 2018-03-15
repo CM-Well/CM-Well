@@ -79,7 +79,7 @@ class RDFTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAndP
     Http.post(_in,weirdTypeData,Some("text/plain;charset=UTF-8"),List("format"->"ntriples"), tokenHeader).map { res =>
       withClue(res) {
         res.status should be(200)
-        Json.parse(res.payload) should be(jsonSuccess)
+        jsonSuccessPruner(Json.parse(res.payload)) should be(jsonSuccess)
       }
     }
   }
@@ -103,7 +103,7 @@ class RDFTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAndP
     Http.post(_in,emptyTypeData,Some("text/plain;charset=UTF-8"),List("format"->"ntriples"), tokenHeader).map { res =>
       withClue(res) {
         res.status should be(200)
-        Json.parse(res.payload) should be(jsonSuccess)
+        jsonSuccessPruner(Json.parse(res.payload)) should be(jsonSuccess)
       }
     }
   }

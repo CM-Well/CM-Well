@@ -53,6 +53,7 @@ trait Helpers { self: LazyLogging =>
   val metaNs = cmw / "meta" / "ns"
   val textPlain = Some("text/plain;charset=UTF-8")
   val jsonSuccess = Json.parse("""{"success":true}""")
+  val jsonSuccessPruner: JsValue => JsValue = _.validate((__ \ 'message).json.prune).get.validate((__ \ 'messages).json.prune).get
   val jsonSimpleResponseSuccess = Json.parse("""{"success":true,"type":"SimpleResponse"}""")
   val uuidDateEraser = (__ \ 'system \ 'lastModified).json.prune andThen (__ \ 'system \ 'uuid).json.prune  andThen (__ \ 'system \ 'indexTime).json.prune
   val jsonlUuidDateIdEraser = (__ \ "lastModified.sys").json.prune andThen (__ \ "uuid.sys").json.prune andThen (__ \ "indexTime.sys").json.prune andThen (__ \ "@id.sys").json.prune

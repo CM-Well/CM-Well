@@ -35,7 +35,7 @@ class ClientsCompatabilityTests extends AsyncFunSpec with OptionValues with Matc
   val ingestResponseToAssertion: SimpleResponse[String] => scalatest.Assertion = { res =>
     withClue(res) {
       res.status should be(200)
-      Json.parse(res.payload) shouldEqual jsonSuccess
+      jsonSuccessPruner(Json.parse(res.payload)) shouldEqual jsonSuccess
     }
   }
 

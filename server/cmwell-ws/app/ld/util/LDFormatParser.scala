@@ -77,6 +77,10 @@ object LDFormatParser extends LazyLogging {
       }
     }
   }
+  val urlFKey = NnFieldKey("url")
+  val prefixFKey = NnFieldKey("prefix")
+  val aliasFKey = NnFieldKey("alias")
+  val graphFKey = NnFieldKey("graph")
 
   implicit class LegalChar(ch: Char) {
     def isLegal: Boolean = {
@@ -162,7 +166,8 @@ object LDFormatParser extends LazyLogging {
                              deleteMap: Map[String,Set[(String,Option[String])]],
                              deleteVal: Map[String, Map[String,Set[FieldValue]]],
                              deletePaths: List[String],
-                             atomicUpdates: Map[String,String]) {
+                             atomicUpdates: Map[String,String],
+                             feedbackMessages: List[String]) {
 
     def isEmpty: Boolean = {
       metaData.valuesIterator.forall(_.isEmpty) &&
@@ -211,7 +216,7 @@ object LDFormatParser extends LazyLogging {
         }
       }
 
-      ParsingResponse(infotons,metaData,knownCmwellHosts,deleteMap,deleteVal,deletePaths,atomicUpdatesBuilder.result())
+      ParsingResponse(infotons,metaData,knownCmwellHosts,deleteMap,deleteVal,deletePaths,atomicUpdatesBuilder.result(), this.feedbackMessages ++ that.feedbackMessages)
     }
   }
 
@@ -283,6 +288,7 @@ object LDFormatParser extends LazyLogging {
     val fuzzyQuadsToDelete = MSet.empty[String]
     val metaInfotons: MInfotonRepr = MMap.empty
     val deleteFieldsMap = MMap.empty[String, Set[(String, Option[String])]]
+    val feedbacks = List.newBuilder[String]
 
     var replaceGraphStatementsCounter = 0
 
@@ -331,12 +337,14 @@ object LDFormatParser extends LazyLogging {
                 )
               )
               updateDeleteMap(deleteFieldsMap, path, "alias", None)
+              feedbacks += s"Aliasing named graph [$url] as [$alias]"
             }
             case prefix if pNameSpace.matches(metaOpRegex("ns")) => {
               val url = o.toString
               val last = urlToLast.getOrElse(url, cmwellRDFHelper.nsUrlToHash(url,timeContext)._1)
               val (path, nsInfotonRepr) = createMetaNsInfoton(cmwellRDFHelper, timeContext, last, url, prefix)
               metaInfotons.update(path, nsInfotonRepr)
+              feedbacks += s"Renaming namespace [$url] with prefix [${nsInfotonRepr(prefixFKey).head.value}]"
               updateDeleteMap(deleteFieldsMap, path, "prefix", None)
             }
             case op => throw new IllegalArgumentException(s"operation [$op] on <> with value [$o] is not defined.")
@@ -348,7 +356,7 @@ object LDFormatParser extends LazyLogging {
 
     val globalQuadsDeletionFuture = {
       if (quadsToDelete.isEmpty && fuzzyQuadsToDelete.isEmpty) {
-        Future.successful(IMap.empty[String, Set[(String, Option[String])]])
+        Future.successful((IMap.empty[String, Set[(String, Option[String])]],Option.empty[String]))
       }
       else {
         //TODO: handle Global Operations authorizations
@@ -394,12 +402,13 @@ object LDFormatParser extends LazyLogging {
               "(2) for each such subject, POST the statement: `<SUBJECT> <cmwell://meta/sys#markReplace> <*> <QUAD_URI>`")
             searchThinResults.thinResults.map {
               _.path -> quadsToDeleteImmutable.map(q => "*" -> (Some(q): Option[String]))
-            }.toMap
+            }.toMap -> Option(s"replaceGraph and/or fuzzyReplaceGraph ops resulted with ${searchThinResults.thinResults.length} infotons affected (markReplaced) implicitly")
         }
       }
     }
 
-    globalQuadsDeletionFuture.map { qDelMap =>
+    globalQuadsDeletionFuture.map { case (qDelMap,feedback) =>
+      val allFeedbacks = feedback.fold(feedbacks.result())(feedbacks.+=(_).result())
       ParsingResponse(
         infotons = metaNsInfotonMap ++ metaInfotons,
         metaData = IMap.empty,
@@ -407,7 +416,8 @@ object LDFormatParser extends LazyLogging {
         deleteMap = qDelMap ++ deleteFieldsMap,
         deleteVal = IMap.empty,
         deletePaths = List.empty,
-        atomicUpdates = IMap.empty)
+        atomicUpdates = IMap.empty,
+        feedbackMessages = allFeedbacks)
     }
   }
 
@@ -433,7 +443,7 @@ object LDFormatParser extends LazyLogging {
     if (unauthorizedPaths.nonEmpty) throw new security.UnauthorizedException(unauthorizedPaths.mkString("unauthorized paths:\n\t", "\n\t", "\n\n"))
   }
 
-  case class DataSetConstructs(graphModelTuplesSeq: Seq[(Option[String], Model)], urlToLastMap: Map[String,String], metaNsInfotons: InfotonRepr)
+  case class DataSetConstructs(graphModelTuplesSeq: Seq[(Option[String], Model)], urlToLastMap: Map[String,String], metaNsInfotons: InfotonRepr, feedbacks: List[String])
 
   def modelsFromRdfDataInputStream(cmwellRDFHelper: CMWellRDFHelper, timeContext: Option[Long])(rdfData: InputStream, dialect: String): DataSetConstructs = {
     val ds = DatasetFactory.createGeneral()
@@ -455,15 +465,17 @@ object LDFormatParser extends LazyLogging {
 
     val (urlToLastDefault,metaNsInfotonsDefault) = convertMetaMapToInfotonFormatMap(cmwellRDFHelper,timeContext,defaultModel)
 
+    val feedbacks = List.newBuilder[String]
     val metaQuadsMap = (IMap.empty[String,Map[DirectFieldKey,Set[FieldValue]]] /: graphModelsTuplesSeq) {
       case (m,(subGraph, model)) => {
         val quadOpt = subGraph.flatMap(uri => Option(model.getNsURIPrefix(uri)).map(_ -> uri))
         quadOpt match {
           case Some((prefix,url)) if url != "*" && cmwellRDFHelper.getAliasForQuadUrl(url).isEmpty => {
+            feedbacks += s"Aliasing named graph [$url] as [$prefix]"
             m ++ Map[String, Map[DirectFieldKey, Set[FieldValue]]](s"/meta/quad/${Base64.encodeBase64URLSafeString(url)}" ->
               Map[DirectFieldKey, Set[FieldValue]](
-                NnFieldKey("alias") -> Set(FString(prefix)),
-                NnFieldKey("graph") -> Set(FReference(url))
+                aliasFKey -> Set(FString(prefix)),
+                graphFKey -> Set(FReference(url))
               )
             )
           }
@@ -472,10 +484,15 @@ object LDFormatParser extends LazyLogging {
       }
     }
 
+    val newMetaNsInfotons = metaNsInfotonsDefault ++ metaNsInfotonsAcc
+    newMetaNsInfotons.foreach { case (_,m) =>
+      feedbacks += s"Naming namespace [${m(urlFKey).head.value}] with prefix [${m(prefixFKey).head.value}]"
+    }
     DataSetConstructs(
       graphModelsTuplesSeq,
       urlToLastDefault ++ urlToLastAcc,
-      metaNsInfotonsDefault ++ metaNsInfotonsAcc ++ metaQuadsMap
+      newMetaNsInfotons ++ metaQuadsMap,
+      feedbacks.result()
     )
   }
 
@@ -521,12 +538,13 @@ object LDFormatParser extends LazyLogging {
 
 		require(dialectToLang.isDefinedAt(dialect), "the format " + dialect + " is unknown.")
 
-    val DataSetConstructs(models,urlToLast,metaInfotonsMap) = modelsFromRdfDataInputStream(cmwellRDFHelper,timeContext)(rdfData, dialect)
+    val DataSetConstructs(models,urlToLast,metaInfotonsMap,partialFeedback) = modelsFromRdfDataInputStream(cmwellRDFHelper,timeContext)(rdfData, dialect)
 
     val globalParsingResponse = parseGlobalExpressionsAsync(cmwellRDFHelper,crudServiceFS)(models,urlToLast,metaInfotonsMap,timeContext)
 
     val parsingResults = models.map{ case (subGraph,model) =>
 
+      val feedbacks = List.newBuilder[String] ++= partialFeedback
       val dels: Set[Resource] = {
         val p = model.createProperty("cmwell://meta/sys#", "markDelete")
         val it = model.listStatements(null, p, null)
@@ -693,6 +711,7 @@ object LDFormatParser extends LazyLogging {
               val uuid = obj.toString
               require(uuid.isEmpty || uuid.matches("^[a-f0-9]{32}$"),s"invalid uuid supplied for path: [$subject] and predicate prevUUID")
               require(!stmt.getSubject.isAnon,"prevUUID predicates can't operate on anonymous subjects.")
+              feedbacks += s"Conditional update for all statements with subject [$subject] has been emitted"
               atomicUpdatesBuilder += subject -> uuid
             }
           }
@@ -705,6 +724,9 @@ object LDFormatParser extends LazyLogging {
       if (!skipValidation) {
         require(immutableInfotonsMap.keys.forall(k => InfotonValidator.isInfotonNameValid(normalizePath(k))), "one or more subjects in the document are not valid")
       }
+      else {
+        feedbacks += s"skipping validation for all ingested subjects"
+      }
 
       val metaData = IMap[String, MetaData]() ++ cmwMetaDataMap
       val knownCmwellHosts = ISet[String]() ++ cmwHosts
@@ -712,7 +734,7 @@ object LDFormatParser extends LazyLogging {
       val deleteVal = IMap[String, Map[String, Set[FieldValue]]]() ++ deleteValuesMap
       val deletePaths = deletePathsList.toList
 
-      ParsingResponse(immutableInfotonsMap, metaData, knownCmwellHosts, deleteMap, deleteVal, deletePaths, atomicUpdatesBuilder.result())
+      ParsingResponse(immutableInfotonsMap, metaData, knownCmwellHosts, deleteMap, deleteVal, deletePaths, atomicUpdatesBuilder.result(), feedbacks.result())
     }.reduce(_ ⑃ _)
 
     globalParsingResponse.map(_ ⑃ parsingResults)
@@ -853,10 +875,9 @@ object LDFormatParser extends LazyLogging {
         .listStatements()
         .map(_.getPredicate.getNameSpace)
         .filterNot(_.matches(metaOpRegex("(sys|ns|nn)")))
-
-//      val it = model.listNameSpaces.filterNot(_.matches(metaOpRegex("(sys|ns|nn)")))
       
       it.map {
+        case url if url.startsWith(normalizedCWD) => throw new IllegalArgumentException("Unlabeled (namespace-less) predicates are not allowed. Please prefer a suitable ontology or use <cmwell://meta/nn#> (the \"No Namespace\" namespace) if you really must.")
         case url if url.contains('$') => throw new IllegalArgumentException(s"predicate namespace must not contain a dollar ('$$') sign: $url")
         case url =>
         //      TODO: commented out is more efficient, but won't update old style data.
@@ -891,8 +912,8 @@ object LDFormatParser extends LazyLogging {
 
     val path = s"/meta/ns/$last"
     path -> Map(
-      NnFieldKey("url") -> Set(FieldValue(url)),
-      NnFieldKey("prefix") -> Set[FieldValue](FString(uncollidedPrefix, None, None))
+      urlFKey -> Set(FieldValue(url)),
+      prefixFKey -> Set[FieldValue](FString(uncollidedPrefix, None, None))
     )
   }
 
