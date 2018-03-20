@@ -22,7 +22,7 @@ import cmwell.domain._
 import cmwell.fts._
 import cmwell.util.string.Hash._
 import cmwell.util.string._
-import cmwell.web.ld.cmw.CMWellRDFHelper.{Create, Update}
+import cmwell.web.ld.cmw.CMWellRDFHelper.{Create, Exists}
 import cmwell.web.ld.cmw._
 import cmwell.web.ld.exceptions._
 import ld.cmw.PassiveFieldTypesCache
@@ -484,7 +484,12 @@ object LDFormatParser extends LazyLogging {
       }
     }
 
-    val newMetaNsInfotons = metaNsInfotonsDefault ++ metaNsInfotonsAcc
+    val newMetaNsInfotons = {
+      val all = metaNsInfotonsDefault ++ metaNsInfotonsAcc
+      val x = all.values.flatMap(_.getOrElse(prefixFKey,Set.empty)).groupBy(_.value).values.filterNot(_.size == 1)
+      require(x.isEmpty,s"Uploaded RDF contained conflicting namespace prefixes. This might be due to inference. please be specific, and set sensible prefixes for your namespace instead of letting CM-Well infer using arbitrary heuristics. conflicts: ${x.flatMap(_.toSet).toSet.mkString("[",",","]")}")
+      all
+    }
     newMetaNsInfotons.foreach { case (_,m) =>
       feedbacks += s"Naming namespace [${m(urlFKey).head.value}] with prefix [${m(prefixFKey).head.value}]"
     }
@@ -870,7 +875,6 @@ object LDFormatParser extends LazyLogging {
     }.toMap
 
     val all = {
-
       val it = model
         .listStatements()
         .map(_.getPredicate.getNameSpace)
@@ -879,25 +883,27 @@ object LDFormatParser extends LazyLogging {
       it.map {
         case url if url.startsWith(normalizedCWD) => throw new IllegalArgumentException("Unlabeled (namespace-less) predicates are not allowed. Please prefer a suitable ontology or use <cmwell://meta/nn#> (the \"No Namespace\" namespace) if you really must.")
         case url if url.contains('$') => throw new IllegalArgumentException(s"predicate namespace must not contain a dollar ('$$') sign: $url")
-        case url =>
-        //      TODO: commented out is more efficient, but won't update old style data.
-        //      TODO: replace current code with commented out, once all the old data is updated.
-        //      val t = CMWellRDFHelper
-        //        .urlToHash(url)
-        //        .map(_ -> Exists)
-        //        .getOrElse(CMWellRDFHelper.nsUrlToHash(url))
-        //      t -> url
-        cmwellRDFHelper.nsUrlToHash(url,timeContext) -> url
+        case url => cmwellRDFHelper.nsUrlToHash(url,timeContext) -> url
       }.toSeq
     }
+
     val m = all.map{
       case ((hash,_),url) => url -> hash
     }.toMap
 
-    val n = all.collect {
-      case ((hash,Create),url) => createMetaNsInfoton(cmwellRDFHelper, timeContext, hash, url, noJenaMap.getOrElse(url, inferShortNameFromUrl(url)))
-      case ((hash,Update),url) => createMetaNsInfoton(cmwellRDFHelper, timeContext, hash, url, noJenaMap.getOrElse(url, hash))
-    }.toMap
+    val (_, n) = all.foldLeft(Set.empty[String] -> Map.empty[String,Map[DirectFieldKey,Set[FieldValue]]]){
+      case (prefixesAndResult,((_   ,Exists),_  )) => prefixesAndResult
+      case ((prefixes,result),((hash,Create),url)) => {
+        val prefix = {
+          val p = noJenaMap.getOrElse(url, inferShortNameFromUrl(url))
+          if (prefixes(p)) p + "-" + hash
+          else p
+        }
+        val entry = createMetaNsInfoton(cmwellRDFHelper, timeContext, hash, url, prefix)
+        (prefixes + prefix) -> (result + entry)
+      }
+    }
+
     m -> n
   }
 
