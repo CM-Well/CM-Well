@@ -28,7 +28,6 @@ import cmwell.tools.data.downloader.consumer._
 import cmwell.tools.data.utils.ArgsManipulations._
 import cmwell.tools.data.utils.akka.{Retry, _}
 import cmwell.tools.data.utils.logging.{DataToolsLogging, LabelId}
-import cmwell.tools.data.utils.ops.VersionChecker
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future}
