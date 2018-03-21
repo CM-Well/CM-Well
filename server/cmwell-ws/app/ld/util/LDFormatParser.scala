@@ -22,7 +22,7 @@ import cmwell.domain._
 import cmwell.fts._
 import cmwell.util.string.Hash._
 import cmwell.util.string._
-import cmwell.web.ld.cmw.CMWellRDFHelper.{Create, Exists}
+import cmwell.web.ld.cmw.CMWellRDFHelper.{Create, Exists, PrefixState}
 import cmwell.web.ld.cmw._
 import cmwell.web.ld.exceptions._
 import ld.cmw.PassiveFieldTypesCache
@@ -456,14 +456,14 @@ object LDFormatParser extends LazyLogging {
     val graphModelsTuplesSeq = (modelsSeqWithdefaultModel /: ds.listNames) {
       case (acc,name) => {
         val m = ds.getNamedModel(name)
-        val (u2lMap,nsiMap) = convertMetaMapToInfotonFormatMap(cmwellRDFHelper,timeContext,m)
+        val (u2lMap,nsiMap) = convertMetaMapToInfotonFormatMap(cmwellRDFHelper,timeContext,m,urlToLastAcc.keySet.toSet)
         metaNsInfotonsAcc ++= nsiMap
         urlToLastAcc ++= u2lMap
         acc :+ (Some(name) -> m)
       }
     }
 
-    val (urlToLastDefault,metaNsInfotonsDefault) = convertMetaMapToInfotonFormatMap(cmwellRDFHelper,timeContext,defaultModel)
+    val (urlToLastDefault,metaNsInfotonsDefault) = convertMetaMapToInfotonFormatMap(cmwellRDFHelper,timeContext,defaultModel,urlToLastAcc.keySet.toSet)
 
     val feedbacks = List.newBuilder[String]
     val metaQuadsMap = (IMap.empty[String,Map[DirectFieldKey,Set[FieldValue]]] /: graphModelsTuplesSeq) {
@@ -867,7 +867,7 @@ object LDFormatParser extends LazyLogging {
    * _1 : map from ns url to inner identifier (hash or old repr)
    * _2 : map of new `/meta/ns` infotons to write into cm-well
    */
-  def convertMetaMapToInfotonFormatMap(cmwellRDFHelper: CMWellRDFHelper, timeContext: Option[Long], model: Model): (Map[String,String],InfotonRepr) = {
+  def convertMetaMapToInfotonFormatMap(cmwellRDFHelper: CMWellRDFHelper, timeContext: Option[Long], model: Model, urlExcludes: Set[String]): (Map[String,String],InfotonRepr) = {
 
     val noJenaMap = model.getNsPrefixMap.toSeq.collect{
       case (shortName,uriValue) if !shortName.matches("""[Jj].\d+""") && shortName != "" =>
@@ -879,21 +879,22 @@ object LDFormatParser extends LazyLogging {
         .listStatements()
         .map(_.getPredicate.getNameSpace)
         .filterNot(_.matches(metaOpRegex("(sys|ns|nn)")))
-      
-      it.map {
-        case url if url.startsWith(normalizedCWD) => throw new IllegalArgumentException("Unlabeled (namespace-less) predicates are not allowed. Please prefer a suitable ontology or use <cmwell://meta/nn#> (the \"No Namespace\" namespace) if you really must.")
-        case url if url.contains('$') => throw new IllegalArgumentException(s"predicate namespace must not contain a dollar ('$$') sign: $url")
-        case url => cmwellRDFHelper.nsUrlToHash(url,timeContext) -> url
-      }.toSeq
+
+      it.foldLeft(Map.empty[String,(String,PrefixState)]) {
+        case (m,url) if url.startsWith(normalizedCWD) => throw new IllegalArgumentException("Unlabeled (namespace-less) predicates are not allowed. Please prefer a suitable ontology or use <cmwell://meta/nn#> (the \"No Namespace\" namespace) if you really must.")
+        case (m,url) if url.contains('$') => throw new IllegalArgumentException(s"predicate namespace must not contain a dollar ('$$') sign: $url")
+        case (m,url) if !urlExcludes(url) && !m.contains(url) => m.updated(url,cmwellRDFHelper.nsUrlToHash(url,timeContext))
+        case (m,_) => m
+      }
     }
 
-    val m = all.map{
-      case ((hash,_),url) => url -> hash
-    }.toMap
+    val m = all.mapValues {
+      case (hash,_) => hash
+    }
 
     val (_, n) = all.foldLeft(Set.empty[String] -> Map.empty[String,Map[DirectFieldKey,Set[FieldValue]]]){
-      case (prefixesAndResult,((_   ,Exists),_  )) => prefixesAndResult
-      case ((prefixes,result),((hash,Create),url)) => {
+      case (prefixesAndResult,(_  ,(_   ,Exists))) => prefixesAndResult
+      case ((prefixes,result),(url,(hash,Create))) => {
         val prefix = {
           val p = noJenaMap.getOrElse(url, inferShortNameFromUrl(url))
           if (prefixes(p)) p + "-" + hash
