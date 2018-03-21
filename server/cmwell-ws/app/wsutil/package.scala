@@ -38,9 +38,10 @@ import filters.Attrs
 import ld.cmw.PassiveFieldTypesCache
 import org.joda.time.DateTime
 import org.joda.time.format.ISODateTimeFormat
+import play.api.http.{HttpChunk, HttpEntity}
 import play.api.libs.json.Json
 import play.api.mvc.Results._
-import play.api.mvc.{Request, Result}
+import play.api.mvc.{Headers, Request, ResponseHeader, Result}
 import play.utils.InvalidUriEncodingException
 import wsutil.DirectedExpansion
 
@@ -859,8 +860,36 @@ package object wsutil extends LazyLogging {
     *         One can use the latter case for validation before long execution, and return 400 or so,
     *         prior to the decision of Chunked 200 OK.
     */
-  def keepAliveByDrippingNewlines(response: Future[Result], extraHeaders: Seq[(String,String)] = Nil)(implicit ec: ExecutionContext): Future[Result] = {
-    guardHangingFutureByExpandingToSource[Result, Source[ByteString, _], Result](response, 7.seconds, 3.seconds)(identity, () => Source.single(endln), _.body.dataStream, source => Ok.chunked(source.flatMapConcat(x => x)).withHeaders(extraHeaders: _*))
+  def keepAliveByDrippingNewlines(response: Future[Result], extraHeaders: Seq[(String,String)] = Nil, extraTrailers: Future[Seq[(String,String)]] = Future.successful(Nil), expandedResponseContentType: Option[String] = None)(implicit ec: ExecutionContext): Future[Result] = {
+    val isEmptySuccessfulFuture = extraTrailers.value.fold(false)(_.fold(err => false,_.isEmpty))
+    if(isEmptySuccessfulFuture) guardHangingFutureByExpandingToSource[Result, Source[ByteString, _], Result](
+      response, 7.seconds, 3.seconds)(
+      identity,
+      () => Source.single(endln),
+      _.body.dataStream,
+      source => {
+        val r = Ok.chunked(source.flatMapConcat(x => x)).withHeaders(extraHeaders: _*)
+        expandedResponseContentType.fold(r)(r.as)
+      })
+    else {
+      val prependInjections = () => Source.single(HttpChunk.Chunk(endln))
+      val injectOriginalFutureWith: Result => Source[HttpChunk, _] = _.body.dataStream.map(HttpChunk.Chunk).concat(Source
+          .fromFuture(extraTrailers)
+          .filter(_.nonEmpty).map(nonEmptyTrailers => HttpChunk.LastChunk(new Headers(nonEmptyTrailers))))
+      val continueWithSource: Source[Source[HttpChunk, _], NotUsed] => Result = source => {
+         Result(
+           header = ResponseHeader(200),
+           body = HttpEntity.Chunked(
+             source.flatMapConcat(x => x),
+             expandedResponseContentType
+           )
+         ).withHeaders(extraHeaders: _*)
+      }
+      guardHangingFutureByExpandingToSource[Result, Source[HttpChunk, _], Result](
+        response, 7.seconds, 3.seconds)(
+        identity, prependInjections, injectOriginalFutureWith, continueWithSource
+      )
+    }
   }
 
   def formattableToByteString(formatter: Formatter)(i: Formattable) = {
