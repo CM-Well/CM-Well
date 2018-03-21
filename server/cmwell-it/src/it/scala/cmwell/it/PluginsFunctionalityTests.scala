@@ -273,6 +273,12 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
         val body = Json.parse(waitAndExtractBody(req))
         body should be(expectedResults)
       }
+      it("should run a SPARQL query with one or more bad PATHS and see headers/trailers with info") {
+        val req = Http.post(_sp, makeReqBody(paths ++ Seq("/no/such/path1", "/no/such/path2"), "SPARQL", sparqlIdentity), textPlain, Seq("format"->"ascii"))
+        val header = Await.result(req, requestTimeout).headers.find(_._1 == "X-CM-WELL-SG-RS")
+        header shouldBe defined
+        header.get._2 should be("404,404")
+      }
     }
     describe("should run Gremlin queries") {
       it("should run a Gremlin query with Vertrices Iteration") {
