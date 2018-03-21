@@ -83,19 +83,22 @@ object WorkerMain extends App with LazyLogging {
   val jenaArqExtensions = JenaArqExtensions.get(jenaArqExtensionsUtils)
 }
 
-sealed trait QueryResponse {def content: String}
-case class Plain(content: String) extends QueryResponse
-case class Filename(content: String) extends QueryResponse
-case class RemoteFailure(failure: Throwable) extends QueryResponse {
+sealed trait QueryResponse {
+  def content: String
+  def stats: Map[String,String]
+}
+case class Plain(content: String, stats: Map[String,String] = Map.empty) extends QueryResponse
+case class Filename(content: String, stats: Map[String,String] = Map.empty) extends QueryResponse
+case class RemoteFailure(failure: Throwable, stats: Map[String,String] = Map.empty) extends QueryResponse {
   override def content = throw failure
 }
-case class ThroughPipe(pipeName: String) extends QueryResponse {
+case class ThroughPipe(pipeName: String, stats: Map[String,String] = Map.empty) extends QueryResponse {
   override def content: String = ??? //read from pipe
 }
-case class ShortCircuitOverloaded(numActiveRequests: Int) extends QueryResponse {
+case class ShortCircuitOverloaded(numActiveRequests: Int, stats: Map[String,String] = Map.empty) extends QueryResponse {
   override def content: String = ???
 }
-case class Status(counter: Int) extends QueryResponse { // for debugging purposes
+case class Status(counter: Int, stats: Map[String,String] = Map.empty) extends QueryResponse { // for debugging purposes
   override def content: String = s"numActiveQueries is $counter"
 }
 
@@ -157,10 +160,9 @@ class QueryEvaluatorActor(crudServiceFS: CRUDServiceFS,
     case paq: PopulateAndQuery => {
       updateActiveQueries(+1)
 
-
       Try(paq.evaluate(jarsImporter,queriesImporter,sourcesImporter)) match {
         case Success(queryResults) => {
-          val results = queryResults.flatMap(rawDataToResponseMsg(_, paq.rp.forceUsingFile))
+          val results = queryResults.flatMap { case (qr,stats) => rawDataToResponseMsg(qr, stats, paq.rp.forceUsingFile) }
           val originalSender = sender
 
           results.onComplete {
@@ -209,7 +211,7 @@ class QueryEvaluatorActor(crudServiceFS: CRUDServiceFS,
             val resultsBa = if(config.explainOnly) Array.emptyByteArray
                             else os.toByteArray
 
-            val results = rawDataToResponseMsg(msgsBa ++ resultsBa, forceWriteFile = false)
+            val results = rawDataToResponseMsg(msgsBa ++ resultsBa, Map.empty[String,String], forceWriteFile = false)
             val originalSender = sender
 
             results.onComplete {
@@ -244,17 +246,17 @@ class QueryEvaluatorActor(crudServiceFS: CRUDServiceFS,
     }
   }
 
-  protected def rawDataToResponseMsg(qr: String, forceWriteFile: Boolean): Future[QueryResponse] = rawDataToResponseMsg(qr.getBytes("UTF-8"), Some(qr), forceWriteFile)
+  protected def rawDataToResponseMsg(qr: String, stats: Map[String,String], forceWriteFile: Boolean): Future[QueryResponse] = rawDataToResponseMsg(qr.getBytes("UTF-8"), stats, Some(qr), forceWriteFile)
 
-  protected def rawDataToResponseMsg(data: Array[Byte], originalStringData: Option[String] = None, forceWriteFile: Boolean): Future[QueryResponse] = {
+  protected def rawDataToResponseMsg(data: Array[Byte], stats: Map[String,String], originalStringData: Option[String] = None, forceWriteFile: Boolean): Future[QueryResponse] = {
     if (forceWriteFile || data.length > responseThreshold) {
       Future {
         val path = generateTempFileName
         writeToFile(path)(data)
-        Filename(path)
+        Filename(path, stats)
       }
     } else {
-      Future.successful(Plain(originalStringData.getOrElse(new String(data, "UTF-8"))))
+      Future.successful(Plain(originalStringData.getOrElse(new String(data, "UTF-8")), stats))
     }
   }
 }
