@@ -133,9 +133,8 @@ class InfotonReporter private(baseUrl: String, path: String)(implicit mat: Mater
 
     def createTriples(sensor: String, token: Token, downloadStats: Option[DownloadStats]) = {
       val p = if (path startsWith "/") path.tail else path
-
-      downloadStats.fold(s"""<cmwell://$p/tokens/$sensor> <cmwell://meta/nn#token> "$token" .""") { s =>
-        s"""<cmwell://$p/tokens/$sensor> <cmwell://meta/nn#receivedInfotons> "${s.receivedInfotons}" ."""
+      downloadStats.foldLeft(s"""<cmwell://$p/tokens/$sensor> <cmwell://meta/nn#token> "$token" .""") { (acc,s) =>
+        acc + " " + s"""<cmwell://$p/tokens/$sensor> <cmwell://meta/nn#receivedInfotons> "${s.receivedInfotons}" ."""
       }
 
     }
