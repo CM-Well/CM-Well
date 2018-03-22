@@ -12,14 +12,15 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.dc.stream
 
 import akka.actor.ActorSystem
 import cmwell.ctrl.hc.HealthControl
 import cmwell.dc.{LazyLogging, Settings}
-import cmwell.tools.data.sparql.{SparqlProcessorManager, SparqlProcessorManagerSettings}
+import cmwell.tools.data.sparql.{
+  SparqlProcessorManager,
+  SparqlProcessorManagerSettings
+}
 import cmwell.tracking.ResurrectorActor
 import k.grid.service.ServiceTypes
 import k.grid.{Grid, GridConnection}
@@ -27,8 +28,8 @@ import org.rogach.scallop.ScallopConf
 import uk.org.lidalia.sysoutslf4j.context.SysOutOverSLF4J
 
 /**
- * Created by gilad on 1/4/16.
- */
+  * Created by gilad on 1/4/16.
+  */
 object Main extends App with LazyLogging {
   import Settings._
   logger.info("Starting Dc-Sync using stream")
@@ -37,12 +38,22 @@ object Main extends App with LazyLogging {
   SysOutOverSLF4J.sendSystemOutAndErrToSLF4J()
 
   Grid.setGridConnection(GridConnection(memberName = "dc"))
-  Grid.declareServices(ServiceTypes()
-    .add("DataCenterSyncManager", classOf[DataCenterSyncManager], destinationHostsAndPorts(rawTarget), None)
-    .add(HealthControl.services)
-    .add(SparqlProcessorManager.name, classOf[SparqlProcessorManager], new SparqlProcessorManagerSettings)
-    .add("Resurrector", classOf[ResurrectorActor])
-   )
+  Grid.declareServices(
+    ServiceTypes()
+      .add(
+        "DataCenterSyncManager",
+        classOf[DataCenterSyncManager],
+        destinationHostsAndPorts(rawTarget),
+        None
+      )
+      .add(HealthControl.services)
+      .add(
+        SparqlProcessorManager.name,
+        classOf[SparqlProcessorManager],
+        new SparqlProcessorManagerSettings
+      )
+      .add("Resurrector", classOf[ResurrectorActor])
+  )
   Grid.joinClient
   HealthControl.init
   Thread.sleep(10000)
@@ -55,7 +66,12 @@ object MainStandAlone extends App with LazyLogging {
 
   val conf = new Conf(args)
 
-  val ar = sys.actorOf(DataCenterSyncManager.props(destinationHostsAndPorts(conf.destinationHosts()), Some(conf.syncJson())))
+  val ar = sys.actorOf(
+    DataCenterSyncManager.props(
+      destinationHostsAndPorts(conf.destinationHosts()),
+      Some(conf.syncJson())
+    )
+  )
 }
 
 class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {

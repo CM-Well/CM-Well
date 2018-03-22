@@ -12,18 +12,14 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package k.grid
 
 import com.typesafe.config.ConfigFactory
 
 /**
- * Created by michael on 7/1/15.
- */
+  * Created by michael on 7/1/15.
+  */
 object Config {
-
-
 
   val config = ConfigFactory.load()
 
@@ -32,14 +28,14 @@ object Config {
   val port = config.getInt("cmwell.grid.bind.port")
   val seeds = config.getString("cmwell.grid.seeds").split(",").toSet
 
-
   val monitorPort = config.getInt("cmwell.grid.monitor.port")
   val minMembers = config.getInt("cmwell.grid.min-members")
   val labels = config.getString("cmwell.grid.labels").split(",").toSet
   val akkaClusterRole = "GridNode"
 
   val controllerMemberName = "ctrl"
-  val possibleRegFails = config.getInt("cmwell.grid.health.possible-registration-fails")
+  val possibleRegFails =
+    config.getInt("cmwell.grid.health.possible-registration-fails")
 
   val dmapDataDir = config.getString("cmwell.grid.dmap.persistence.data-dir")
 }

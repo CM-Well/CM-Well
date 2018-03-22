@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.utils.chunkers
 
 import akka.stream.scaladsl.Keep
@@ -23,12 +21,15 @@ import cmwell.tools.data.helpers.BaseStreamSpec
 
 import scala.concurrent.duration._
 
-class SizeChunkerSpecAutoFusingOn  extends { val autoFusing = true  } with SizeChunkerSpec
-class SizeChunkerSpecAutoFusingOff extends { val autoFusing = false } with SizeChunkerSpec
+class SizeChunkerSpecAutoFusingOn extends { val autoFusing = true }
+with SizeChunkerSpec
+class SizeChunkerSpecAutoFusingOff extends { val autoFusing = false }
+with SizeChunkerSpec
 
 trait SizeChunkerSpec extends BaseStreamSpec {
   "SizeChunker" should "emit elements when size threshold has reached" in {
-    val (pub, sub) = TestSource.probe[Int]
+    val (pub, sub) = TestSource
+      .probe[Int]
       .map(x => ByteString(x.toString))
       .via(SizeChunker(2, 2.seconds))
       .map(_.map(_.utf8String.toInt))
@@ -47,7 +48,8 @@ trait SizeChunkerSpec extends BaseStreamSpec {
   }
 
   it should "emit elements when time threshold has reached" in {
-    val (pub, sub) = TestSource.probe[Int]
+    val (pub, sub) = TestSource
+      .probe[Int]
       .map(x => ByteString(x.toString))
       .via(SizeChunker(2, 1.seconds))
       .map(_.map(_.utf8String.toInt))
@@ -65,7 +67,7 @@ trait SizeChunkerSpec extends BaseStreamSpec {
     pub.sendNext(3)
     pub.sendNext(4)
     pub.sendComplete()
-    sub.expectNext(Seq(3,4))
+    sub.expectNext(Seq(3, 4))
     sub.expectComplete()
   }
 }

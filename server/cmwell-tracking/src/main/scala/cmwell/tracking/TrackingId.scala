@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tracking
 
 import cmwell.util.string.Base64._
@@ -32,7 +30,8 @@ case class TrackingId(actorId: String, createTime: Long) {
 }
 
 object TrackingId {
-  def apply(actorId: String): TrackingId = TrackingId(actorId, System.currentTimeMillis())
+  def apply(actorId: String): TrackingId =
+    TrackingId(actorId, System.currentTimeMillis())
 
   def unapply(token: String): Option[TrackingId] = {
     Try {

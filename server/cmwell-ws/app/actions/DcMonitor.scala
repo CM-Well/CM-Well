@@ -12,16 +12,14 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package actions
 
 import akka.util.Timeout
 import cmwell.ctrl.checkers._
 import cmwell.ctrl.client.CtrlClient
 import cmwell.domain._
-import cmwell.fts.{FieldFilter, FieldOperator, PaginationParams, DatesFilter}
-import k.grid.{WhoIAm, WhoAreYou, Grid}
+import cmwell.fts.{DatesFilter, FieldFilter, FieldOperator, PaginationParams}
+import k.grid.{Grid, WhoAreYou, WhoIAm}
 import logic.CRUDServiceFS
 import org.joda.time.DateTime
 
@@ -35,21 +33,34 @@ object DcMonitor {
   private implicit val timeout = Timeout(5.seconds)
   lazy val dc = Grid.serviceRef("DataCenterSyncManager")
 
-  private def getDcAddress : Future[String] = {
-    (dc ? WhoAreYou).mapTo[WhoIAm].map(_.address).recover{case err : Throwable => "NA"}
+  private def getDcAddress: Future[String] = {
+    (dc ? WhoAreYou).mapTo[WhoIAm].map(_.address).recover {
+      case err: Throwable => "NA"
+    }
   }
-  
-  def dcDistribution(path : String, dc : String, crudServiceFS: CRUDServiceFS) : Future[Option[VirtualInfoton]] = {
+
+  def dcDistribution(
+    path: String,
+    dc: String,
+    crudServiceFS: CRUDServiceFS
+  ): Future[Option[VirtualInfoton]] = {
 
     val fDcAddress = getDcAddress
 
-    val fAggRes = crudServiceFS.aggregate(None,
-                            None,
-                            None,
-                            PaginationParams(0, 20),
-                            true,
-                            List(TermAggregationFilter("TermAggregation",Field(AnalyzedField,"system.dc"))),
-                            false)
+    val fAggRes = crudServiceFS.aggregate(
+      None,
+      None,
+      None,
+      PaginationParams(0, 20),
+      true,
+      List(
+        TermAggregationFilter(
+          "TermAggregation",
+          Field(AnalyzedField, "system.dc")
+        )
+      ),
+      false
+    )
 
     for {
       dcAddress <- fDcAddress
@@ -58,7 +69,10 @@ object DcMonitor {
       val tuples = aggRes.responses.flatMap {
         case TermsAggregationResponse(filter, buckets) => {
           buckets.map { bucket =>
-            MarkdownTuple(bucket.key.value.asInstanceOf[String], bucket.docCount.toString)
+            MarkdownTuple(
+              bucket.key.value.asInstanceOf[String],
+              bucket.docCount.toString
+            )
           }
         }
       }
@@ -68,12 +82,21 @@ object DcMonitor {
           |***Data center distribution*** <br>
           |**Current Data center host: $dcAddress** <br>
           |""".stripMargin + markdownTable.get
-      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(body.getBytes, "text/x-markdown")))))
+      Some(
+        VirtualInfoton(
+          FileInfoton(
+            path,
+            dc,
+            None,
+            content = Some(FileContent(body.getBytes, "text/x-markdown"))
+          )
+        )
+      )
     }
   }
-  
-  
-  def dcHealthInfotonMD(path : String, dc : String) : Future[Option[VirtualInfoton]] = {
+
+  def dcHealthInfotonMD(path: String,
+                        dc: String): Future[Option[VirtualInfoton]] = {
     val fDcAddress = getDcAddress
     val fM = CtrlClient.getDataCenterStatus
 
@@ -81,22 +104,49 @@ object DcMonitor {
       dcAddress <- fDcAddress
       m <- fM
     } yield {
-      val header = MarkdownTuple("Dc", "Local index", "Remote index", "Sync status")
+      val header =
+        MarkdownTuple("Dc", "Local index", "Remote index", "Sync status")
 
       val tuples = m.values.map {
         case DcSyncing(dcId, dcDiff, ch, genTime) =>
-          MarkdownTuple(dcId, cmwell.util.string.dateStringify(new DateTime(dcDiff.indextimeDiff.me)), cmwell.util.string.dateStringify(new DateTime(dcDiff.indextimeDiff.remote)), "Syncing")
+          MarkdownTuple(
+            dcId,
+            cmwell.util.string
+              .dateStringify(new DateTime(dcDiff.indextimeDiff.me)),
+            cmwell.util.string
+              .dateStringify(new DateTime(dcDiff.indextimeDiff.remote)),
+            "Syncing"
+          )
         case DcNotSyncing(dcId, dcDiff, notSyncingCounter, ch, genTime) =>
-          val msg = if(notSyncingCounter > 3)
-            "Not syncing"
-          else if(notSyncingCounter > 20)
-            "Lost connection"
-          else "Syncing"
-          MarkdownTuple(dcId, cmwell.util.string.dateStringify(new DateTime(dcDiff.indextimeDiff.me)), cmwell.util.string.dateStringify(new DateTime(dcDiff.indextimeDiff.remote)), msg)
-        case DcCouldNotGetDcStatus(dcId, dcDiff , errCounter , ch, genTime) =>
-          MarkdownTuple(dcId, cmwell.util.string.dateStringify(new DateTime(dcDiff.indextimeDiff.me)), "NA", s"Couldn't get remote host info.")
+          val msg =
+            if (notSyncingCounter > 3)
+              "Not syncing"
+            else if (notSyncingCounter > 20)
+              "Lost connection"
+            else "Syncing"
+          MarkdownTuple(
+            dcId,
+            cmwell.util.string
+              .dateStringify(new DateTime(dcDiff.indextimeDiff.me)),
+            cmwell.util.string
+              .dateStringify(new DateTime(dcDiff.indextimeDiff.remote)),
+            msg
+          )
+        case DcCouldNotGetDcStatus(dcId, dcDiff, errCounter, ch, genTime) =>
+          MarkdownTuple(
+            dcId,
+            cmwell.util.string
+              .dateStringify(new DateTime(dcDiff.indextimeDiff.me)),
+            "NA",
+            s"Couldn't get remote host info."
+          )
         case ReportTimeout(genTime) =>
-          MarkdownTuple("NA", "NA", "NA", s"Didn't receive DC stats for long time.")
+          MarkdownTuple(
+            "NA",
+            "NA",
+            "NA",
+            s"Didn't receive DC stats for long time."
+          )
       }
 
       val table = MarkdownTable(header, tuples.toSeq)
@@ -107,8 +157,16 @@ object DcMonitor {
           |**Current Data center host: $dcAddress** <br>
           |""".stripMargin + table.get
 
-
-      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(body.getBytes, "text/x-markdown")))))
+      Some(
+        VirtualInfoton(
+          FileInfoton(
+            path,
+            dc,
+            None,
+            content = Some(FileContent(body.getBytes, "text/x-markdown"))
+          )
+        )
+      )
     }
   }
 

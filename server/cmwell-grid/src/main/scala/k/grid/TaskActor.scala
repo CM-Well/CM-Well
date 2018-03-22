@@ -12,27 +12,26 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package k.grid
 
 import akka.actor.Actor.Receive
-import akka.actor.{Cancellable, Actor, ActorLogging}
+import akka.actor.{Actor, ActorLogging, Cancellable}
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.postfixOps
 
 /**
- * Created by michael on 12/30/14.
- */
+  * Created by michael on 12/30/14.
+  */
 case object PauseTask
 case object ResumeTask
-class TaskActor(start : Long, interval : Long, block : () => Unit) extends Actor with ActorLogging {
+class TaskActor(start: Long, interval: Long, block: () => Unit)
+    extends Actor
+    with ActorLogging {
 
+  var s: Cancellable = _
 
-  var s : Cancellable = _
-
-  def startTask : Cancellable = {
+  def startTask: Cancellable = {
     Grid.system.scheduler.schedule(start milli, interval milli) {
       block()
     }
@@ -41,7 +40,7 @@ class TaskActor(start : Long, interval : Long, block : () => Unit) extends Actor
   s = startTask
 
   override def receive: Receive = {
-    case PauseTask => if( !s.isCancelled ) s.cancel()
-    case ResumeTask => if( s.isCancelled ) s = startTask
+    case PauseTask  => if (!s.isCancelled) s.cancel()
+    case ResumeTask => if (s.isCancelled) s = startTask
   }
 }

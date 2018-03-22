@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.dc.stream
 
 import java.io.{BufferedWriter, File, FileWriter}
@@ -26,7 +24,7 @@ import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.util.ByteString
 import cmwell.dc.LazyLogging
 import cmwell.dc.stream.MessagesTypesAndExceptions.{DcInfo, InfotonData}
-import cmwell.dc.stream.TsvRetriever.{TsvFlowOutput, logger}
+import cmwell.dc.stream.TsvRetriever.{logger, TsvFlowOutput}
 import cmwell.util.resource._
 
 import scala.concurrent.Future
@@ -38,7 +36,10 @@ import scala.concurrent.ExecutionContext.Implicits.global
   */
 object TsvRetrieverFromFile extends LazyLogging {
 
-  def apply(dcInfo: DcInfo)(implicit mat: Materializer, system: ActorSystem): Source[InfotonData, (KillSwitch, Future[Seq[Option[String]]])] = {
+  def apply(dcInfo: DcInfo)(
+    implicit mat: Materializer,
+    system: ActorSystem
+  ): Source[InfotonData, (KillSwitch, Future[Seq[Option[String]]])] = {
     val persistFile = dcInfo.tsvFile.get + ".persist"
 
     def appendToPersistFile(str: String): Unit = {
@@ -49,7 +50,10 @@ object TsvRetrieverFromFile extends LazyLogging {
 
     val linesToDrop = dcInfo.positionKey.fold {
       if (!new File(persistFile).exists) 0L
-      else using(scala.io.Source.fromFile(persistFile))(_.getLines.toList.last.toLong)
+      else
+        using(scala.io.Source.fromFile(persistFile))(
+          _.getLines.toList.last.toLong
+        )
     }(pos => pos.toLong)
     val positionKeySink = Flow[InfotonData]
       .recover {
@@ -57,27 +61,41 @@ object TsvRetrieverFromFile extends LazyLogging {
       }
       .scan(linesToDrop) {
         case (count, InfotonData(null, null)) => {
-          appendToPersistFile("crash at: " + count + "\n" + count.toString + "\n")
+          appendToPersistFile(
+            "crash at: " + count + "\n" + count.toString + "\n"
+          )
           count
         }
         case (count, _) => {
           val newCount = count + 1
-          if (newCount % 10000 == 0) appendToPersistFile(newCount.toString + "\n")
+          if (newCount % 10000 == 0)
+            appendToPersistFile(newCount.toString + "\n")
           newCount
         }
       }
-      .toMat(Sink.last)((_, right) => right.map{count =>
-        appendToPersistFile(count.toString + "\n")
-        Seq.fill(2)(Option(count.toString))
-      })
+      .toMat(Sink.last)(
+        (_, right) =>
+          right.map { count =>
+            appendToPersistFile(count.toString + "\n")
+            Seq.fill(2)(Option(count.toString))
+        }
+      )
 
-    Source.fromIterator(() => scala.io.Source.fromFile(dcInfo.tsvFile.get).getLines())
+    Source
+      .fromIterator(
+        () => scala.io.Source.fromFile(dcInfo.tsvFile.get).getLines()
+      )
       .drop {
-        logger.info(s"Dropping $linesToDrop initial lines from file ${dcInfo.tsvFile.get} for sync for data center id: ${dcInfo.id} from location ${dcInfo.location}")
+        logger.info(
+          s"Dropping $linesToDrop initial lines from file ${dcInfo.tsvFile.get} for sync for data center id: ${dcInfo.id} from location ${dcInfo.location}"
+        )
         linesToDrop
       }
       .viaMat(KillSwitches.single)(Keep.right)
-      .map(line => TsvRetriever.parseTSVAndCreateInfotonDataFromIt(ByteString(line)))
+      .map(
+        line =>
+          TsvRetriever.parseTSVAndCreateInfotonDataFromIt(ByteString(line))
+      )
       .alsoToMat(positionKeySink)(Keep.both)
   }
 }

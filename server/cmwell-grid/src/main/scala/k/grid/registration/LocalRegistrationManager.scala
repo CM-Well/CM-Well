@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package k.grid.registration
 
 import scala.concurrent.duration._
@@ -23,10 +21,10 @@ import com.typesafe.scalalogging.LazyLogging
 import k.grid._
 import k.grid.registration.messages.{GridTopology, RegistrationPing}
 import scala.concurrent.ExecutionContext.Implicits.global
-/**
- * Created by michael on 3/21/16.
- */
 
+/**
+  * Created by michael on 3/21/16.
+  */
 object LocalRegistrationManager {
   val name = "LocalGossipManager"
   // todo: change to Map[(Host, IdentityName),GridJvm]
@@ -42,18 +40,28 @@ class LocalRegistrationManager extends Actor with LazyLogging {
   private case object IncreaseRegFails
 
   val isController = Grid.isController
-  def registrationCoordinator = Grid.selectSingleton(RegistrationCoordinator.name, None, Grid.clusterProxy)
-
-
+  def registrationCoordinator =
+    Grid.selectSingleton(RegistrationCoordinator.name, None, Grid.clusterProxy)
   @throws[Exception](classOf[Exception])
   override def preStart(): Unit = {
-    context.system.scheduler.schedule(5.seconds, 5.seconds, self, SendGossipPing)
-    context.system.scheduler.schedule(30.seconds, 30.seconds, self, IncreaseRegFails)
+    context.system.scheduler.schedule(
+      5.seconds,
+      5.seconds,
+      self,
+      SendGossipPing
+    )
+    context.system.scheduler.schedule(
+      30.seconds,
+      30.seconds,
+      self,
+      IncreaseRegFails
+    )
 
   }
 
   override def receive: Receive = {
-    case SendGossipPing => registrationCoordinator ! RegistrationPing(Grid.thisMember)
+    case SendGossipPing =>
+      registrationCoordinator ! RegistrationPing(Grid.thisMember)
     case GridTopology(jvms) =>
       LocalRegistrationManager._regFails = 0
 
@@ -63,9 +71,16 @@ class LocalRegistrationManager extends Actor with LazyLogging {
       LocalRegistrationManager._jvms = jvms
 
       // send the data to the client actor so it can forward it to its subscribers.
-      Grid.selectActor(ClientActor.name, Grid.thisMember) ! JvmMembershipReport(jvmsJoined, jvmsLeft)
+      Grid.selectActor(ClientActor.name, Grid.thisMember) ! JvmMembershipReport(
+        jvmsJoined,
+        jvmsLeft
+      )
 
       logger.debug(s"Current jvms: $jvms")
-    case IncreaseRegFails => LocalRegistrationManager._regFails = Math.min(LocalRegistrationManager._regFails + 1, Config.possibleRegFails)
+    case IncreaseRegFails =>
+      LocalRegistrationManager._regFails = Math.min(
+        LocalRegistrationManager._regFails + 1,
+        Config.possibleRegFails
+      )
   }
 }

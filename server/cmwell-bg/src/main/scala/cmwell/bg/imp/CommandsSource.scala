@@ -27,12 +27,13 @@ import scala.util.Try
 object CommandsSource extends LazyLogging {
 
   def fromKafka(persistCommandsTopic: String,
-          bootStrapServers: String,
-          partition: Int,
-          startingOffset: Long,
-          startingOffsetPriority: Long)
-         (implicit actorSystem: ActorSystem,
-                   executionContext: ExecutionContext): (Source[BGMessage[Command],Consumer.Control], KillSwitch) = {
+                bootStrapServers: String,
+                partition: Int,
+                startingOffset: Long,
+                startingOffsetPriority: Long)(
+    implicit actorSystem: ActorSystem,
+    executionContext: ExecutionContext
+  ): (Source[BGMessage[Command], Consumer.Control], KillSwitch) = {
 
     val byteArrayDeserializer = new ByteArrayDeserializer()
     val persistCommandsTopicPriority = persistCommandsTopic + ".priority"
@@ -40,57 +41,91 @@ object CommandsSource extends LazyLogging {
     val sharedKillSwitch = KillSwitches.shared("persist-sources-kill-switch")
 
     val subscription = Subscriptions.assignmentWithOffset(
-      new TopicPartition(persistCommandsTopic, partition) -> startingOffset)
+      new TopicPartition(persistCommandsTopic, partition) -> startingOffset
+    )
 
     val persistCommandsConsumerSettings =
-      ConsumerSettings(actorSystem, byteArrayDeserializer, byteArrayDeserializer)
-        .withBootstrapServers(bootStrapServers)
+      ConsumerSettings(
+        actorSystem,
+        byteArrayDeserializer,
+        byteArrayDeserializer
+      ).withBootstrapServers(bootStrapServers)
         .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
 
     val prioritySubscription = Subscriptions.assignmentWithOffset(
-      new TopicPartition(persistCommandsTopicPriority, partition) -> startingOffsetPriority)
+      new TopicPartition(persistCommandsTopicPriority, partition) -> startingOffsetPriority
+    )
 
-    val persistCommandsSource = Consumer.plainSource[Array[Byte], Array[Byte]](persistCommandsConsumerSettings, subscription).map { msg =>
-      logger.debug(s"consuming next payload from persist commands topic @ ${msg.offset()}")
-      val commandTry = Try(CommandSerializer.decode(msg.value()))
-      commandTry.failed.foreach { err =>
-        logger.error(s"deserialize command error for msg [$msg] and value: [${new String(msg.value(),StandardCharsets.UTF_8)}]",err)
-      }
-      val command = commandTry.get
-      logger.debug(s"consumed command: $command")
-      BGMessage[Command](CompleteOffset(msg.topic(), msg.offset()), command)
-    }.via(sharedKillSwitch.flow)
-
-    val priorityPersistCommandsSource = Consumer.plainSource[Array[Byte], Array[Byte]](persistCommandsConsumerSettings, prioritySubscription).map { msg =>
-      logger.info(s"consuming next payload from priority persist commands topic @ ${msg.offset()}")
-      val commandTry = Try(CommandSerializer.decode(msg.value()))
-      commandTry.failed.foreach { err =>
-        logger.error(s"deserialize command error for msg [$msg] and value: [${new String(msg.value(),StandardCharsets.UTF_8)}]",err)
-      }
-      val command =commandTry.get
-      logger.info(s"consumed priority command: $command")
-      BGMessage[Command](CompleteOffset(msg.topic(), msg.offset()), command)
-    }.via(sharedKillSwitch.flow)
-
-    val g = GraphDSL.create(priorityPersistCommandsSource, persistCommandsSource)(combineConsumerControls)(implicit builder => (prioritySource, source) => {
-
-      import GraphDSL.Implicits._
-
-      val mergePreferedSources = builder.add(
-        MergePreferred[BGMessage[Command]](1, true)
+    val persistCommandsSource = Consumer
+      .plainSource[Array[Byte], Array[Byte]](
+        persistCommandsConsumerSettings,
+        subscription
       )
+      .map { msg =>
+        logger.debug(
+          s"consuming next payload from persist commands topic @ ${msg.offset()}"
+        )
+        val commandTry = Try(CommandSerializer.decode(msg.value()))
+        commandTry.failed.foreach { err =>
+          logger.error(
+            s"deserialize command error for msg [$msg] and value: [${new String(msg.value(), StandardCharsets.UTF_8)}]",
+            err
+          )
+        }
+        val command = commandTry.get
+        logger.debug(s"consumed command: $command")
+        BGMessage[Command](CompleteOffset(msg.topic(), msg.offset()), command)
+      }
+      .via(sharedKillSwitch.flow)
 
-      prioritySource ~> mergePreferedSources.preferred
+    val priorityPersistCommandsSource = Consumer
+      .plainSource[Array[Byte], Array[Byte]](
+        persistCommandsConsumerSettings,
+        prioritySubscription
+      )
+      .map { msg =>
+        logger.info(
+          s"consuming next payload from priority persist commands topic @ ${msg.offset()}"
+        )
+        val commandTry = Try(CommandSerializer.decode(msg.value()))
+        commandTry.failed.foreach { err =>
+          logger.error(
+            s"deserialize command error for msg [$msg] and value: [${new String(msg.value(), StandardCharsets.UTF_8)}]",
+            err
+          )
+        }
+        val command = commandTry.get
+        logger.info(s"consumed priority command: $command")
+        BGMessage[Command](CompleteOffset(msg.topic(), msg.offset()), command)
+      }
+      .via(sharedKillSwitch.flow)
 
-      source ~> mergePreferedSources.in(0)
+    val g =
+      GraphDSL.create(priorityPersistCommandsSource, persistCommandsSource)(
+        combineConsumerControls
+      )(
+        implicit builder =>
+          (prioritySource, source) => {
 
-      SourceShape(mergePreferedSources.out)
-    })
+            import GraphDSL.Implicits._
+
+            val mergePreferedSources =
+              builder.add(MergePreferred[BGMessage[Command]](1, true))
+
+            prioritySource ~> mergePreferedSources.preferred
+
+            source ~> mergePreferedSources.in(0)
+
+            SourceShape(mergePreferedSources.out)
+        }
+      )
 
     Source.fromGraph(g) -> sharedKillSwitch
   }
 
-  def combineConsumerControls(left: Consumer.Control, right: Consumer.Control)(implicit ec: ExecutionContext): Consumer.Control = new Consumer.Control {
+  def combineConsumerControls(left: Consumer.Control, right: Consumer.Control)(
+    implicit ec: ExecutionContext
+  ): Consumer.Control = new Consumer.Control {
     override def stop(): Future[Done] = {
       val l = left.stop()
       val r = right.stop()

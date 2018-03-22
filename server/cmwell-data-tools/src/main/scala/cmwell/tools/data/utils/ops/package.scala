@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.utils
 
 import sun.misc.{Signal, SignalHandler}
@@ -24,11 +22,10 @@ package object ops {
     * Response to SIGINFO event
     * @param handler handler to be fired when SIGINFO is received
     */
-  def addSigInfoHook(handler: => Unit ): Unit = {
-    Signal.handle(
-      new Signal("INFO"),
-      new SignalHandler { override def handle(signal: Signal): Unit = handler }
-    )
+  def addSigInfoHook(handler: => Unit): Unit = {
+    Signal.handle(new Signal("INFO"), new SignalHandler {
+      override def handle(signal: Signal): Unit = handler
+    })
   }
 
   def getVersionFromManifest(): String = {

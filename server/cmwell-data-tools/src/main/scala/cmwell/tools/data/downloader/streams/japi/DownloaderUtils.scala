@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.downloader.streams.japi
 
 import java.io.InputStream
@@ -47,13 +45,13 @@ object DownloaderUtils {
     * @param recursive true if need to get records in a recursive way
     */
   def fromQuery(host: String,
-               path: String,
-               params: String,
-               qp: String,
-               format: String,
-               op: String,
-               length: Option[Int],
-               recursive: Boolean = false): Future[Done] = {
+                path: String,
+                params: String,
+                qp: String,
+                format: String,
+                op: String,
+                length: Option[Int],
+                recursive: Boolean = false): Future[Done] = {
     fromQuery(
       host = host,
       path = path,
@@ -63,7 +61,7 @@ object DownloaderUtils {
       op = op,
       length = length,
       recursive = recursive,
-      onFinish = new Runnable { override def run(): Unit = {}}
+      onFinish = new Runnable { override def run(): Unit = {} }
     )
   }
 
@@ -93,19 +91,20 @@ object DownloaderUtils {
     implicit val system = ActorSystem("reactive-downloader")
     implicit val mat = ActorMaterializer()
 
-    Downloader.downloadFromQuery(
-      baseUrl = host,
-      path = path,
-      params = params,
-      qp = qp,
-      format = format,
-      op = op,
-      length = length,
-      recursive = recursive,
-      outputHandler = println
-    )
-     .andThen { case _ => cleanup()      }
-     .andThen { case _ => onFinish.run() }
+    Downloader
+      .downloadFromQuery(
+        baseUrl = host,
+        path = path,
+        params = params,
+        qp = qp,
+        format = format,
+        op = op,
+        length = length,
+        recursive = recursive,
+        outputHandler = println
+      )
+      .andThen { case _ => cleanup() }
+      .andThen { case _ => onFinish.run() }
   }
 
   def fromUuidInputStream(host: String,
@@ -117,12 +116,14 @@ object DownloaderUtils {
     implicit val system = ActorSystem("reactive-downloader")
     implicit val mat = ActorMaterializer()
 
-    Downloader.downloadFromUuidInputStream(
-      baseUrl = host,
-      format = format,
-      outputHandler = println,
-      in = in
-    ).andThen { case _ => cleanup()      }
-     .andThen { case _ => onFinish.run() }
+    Downloader
+      .downloadFromUuidInputStream(
+        baseUrl = host,
+        format = format,
+        outputHandler = println,
+        in = in
+      )
+      .andThen { case _ => cleanup() }
+      .andThen { case _ => onFinish.run() }
   }
 }

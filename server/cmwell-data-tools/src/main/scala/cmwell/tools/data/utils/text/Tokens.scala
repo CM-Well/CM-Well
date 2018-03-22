@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.utils.text
 
 import java.util.zip.Inflater
@@ -33,11 +31,14 @@ object Tokens {
     val checksum = input.head
     val payload = input.tail
 
-    require(adler32long(payload).toByte == checksum,"compressed data contains invalid checksum byte")
+    require(
+      adler32long(payload).toByte == checksum,
+      "compressed data contains invalid checksum byte"
+    )
     val sizeHeader = payload.take(2)
     val compressed = payload.drop(2)
-    val size = sizeHeader.foldLeft(0){case (i,b) => (i << 8) | (255 & b)}
-    if(size == 0) new String(compressed, encoding)
+    val size = sizeHeader.foldLeft(0) { case (i, b) => (i << 8) | (255 & b) }
+    if (size == 0) new String(compressed, encoding)
     else {
       val decompresser = new Inflater()
       decompresser.setInput(compressed, 0, compressed.length)

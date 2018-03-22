@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.ingester
 
 import java.io._
@@ -43,11 +41,14 @@ import scala.util.{Failure, Success}
   */
 object Ingester extends DataToolsLogging with DataToolsConfig {
   val chunkSize = 25 * 1024
-  private val bufferSize = config.getInt("akka.http.host-connection-pool.max-connections")
+  private val bufferSize =
+    config.getInt("akka.http.host-connection-pool.max-connections")
 
-  private [ingester] var retryTimeout = {
-    val timeoutDuration = Duration(config.getString("cmwell.ingester.http-retry-timeout")).toCoarsest
-    FiniteDuration( timeoutDuration.length, timeoutDuration.unit )
+  private[ingester] var retryTimeout = {
+    val timeoutDuration = Duration(
+      config.getString("cmwell.ingester.http-retry-timeout")
+    ).toCoarsest
+    FiniteDuration(timeoutDuration.length, timeoutDuration.unit)
   }
 
   /**
@@ -90,8 +91,11 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
                force: Boolean = false,
                isPriority: Boolean = false,
                pipe: PipedOutputStream,
-               within: FiniteDuration = 10.seconds)
-              (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext): Source[IngestEvent, _] = {
+               within: FiniteDuration = 10.seconds)(
+    implicit system: ActorSystem,
+    mat: Materializer,
+    ec: ExecutionContext
+  ): Source[IngestEvent, _] = {
 
     fromInputStream(
       baseUrl = baseUrl,
@@ -103,7 +107,6 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
       in = new PipedInputStream(pipe)
     )
   }
-
 
   /**
     * Performs data ingestion from [[java.io.InputStream InputStream]] to the target CM-Well
@@ -128,10 +131,14 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
                       force: Boolean = false,
                       isPriority: Boolean = false,
                       in: InputStream,
-                      within: FiniteDuration = 10.seconds)
-                     (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext): Source[IngestEvent, _] = {
+                      within: FiniteDuration = 10.seconds)(
+    implicit system: ActorSystem,
+    mat: Materializer,
+    ec: ExecutionContext
+  ): Source[IngestEvent, _] = {
     // create akka source from input stream
-    val source = StreamConverters.fromInputStream(() => in)
+    val source = StreamConverters
+      .fromInputStream(() => in)
       .via(lineSeparatorFrame)
       .filter(isInteresting)
       .via(GroupChunker(GroupChunker.formatToGroupExtractor(format)))
@@ -146,7 +153,8 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
       isPriority = isPriority,
       force = force,
       source = source,
-      within = within)
+      within = within
+    )
   }
 
   /**
@@ -165,17 +173,18 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
     * @return future of [[akka.Done Done]] which signals when data ingestion is completed
     * @see [[akka.stream.scaladsl.Source]]
     */
-  def ingest(baseUrl: String,
-             format: String,
-             writeToken: Option[String] = None,
-             method: String = "_in",
-             replaceMode: Boolean = false,
-             isPriority: Boolean = false,
-             force: Boolean = false,
-             source: Source[ByteString, _],
-             within: FiniteDuration = 10.seconds,
-             label: Option[String] = None)
-            (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
+  def ingest(
+    baseUrl: String,
+    format: String,
+    writeToken: Option[String] = None,
+    method: String = "_in",
+    replaceMode: Boolean = false,
+    isPriority: Boolean = false,
+    force: Boolean = false,
+    source: Source[ByteString, _],
+    within: FiniteDuration = 10.seconds,
+    label: Option[String] = None
+  )(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
 
     val labelValue = label.map(l => s"[$l]").getOrElse("")
 
@@ -194,8 +203,10 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
       val forceValue = if (force) "&force" else ""
       val priorityValue = if (isPriority) "&priority" else ""
 
-      val uri = s"${formatHost(baseUrl)}/$method?format=$format$replaceModeValue$forceValue$priorityValue"
-      val req = HttpRequest(uri = uri, method = HttpMethods.POST, entity = entity)
+      val uri =
+        s"${formatHost(baseUrl)}/$method?format=$format$replaceModeValue$forceValue$priorityValue"
+      val req =
+        HttpRequest(uri = uri, method = HttpMethods.POST, entity = entity)
 
       writeToken match {
         case Some(token) => req.addHeader(RawHeader("X-CM-WELL-TOKEN", token))
@@ -205,30 +216,38 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
 
     implicit val labelId = label.map(LabelId.apply)
 
-    val parallelism = config.getInt("akka.http.host-connection-pool.max-connections")
+    val parallelism =
+      config.getInt("akka.http.host-connection-pool.max-connections")
 
     val ingestFlow = Flow[Seq[ByteString]]
-      .map( data => data -> None)
-      .via( Retry.retryHttp(retryTimeout, parallelism, baseUrl)(createRequest) )
+      .map(data => data -> None)
+      .via(Retry.retryHttp(retryTimeout, parallelism, baseUrl)(createRequest))
       .map {
         case (Failure(ex), infotons, _) =>
           logger.error(s"$labelValue problem: ${ex}")
-          badDataLogger.info(s"$labelValue data: ${infotons.map(_.utf8String).mkString("\n")}")
+          badDataLogger.info(
+            s"$labelValue data: ${infotons.map(_.utf8String).mkString("\n")}"
+          )
           IngestFailEvent(numInfotons = infotons.size)
 
-        case (Success(res@HttpResponse(s, h, e, p)), infotons, _) if s.isFailure() =>
+        case (Success(res @ HttpResponse(s, h, e, p)), infotons, _)
+            if s.isFailure() =>
           logger.error(s"$labelValue problem: host=${getHostname(h)} $e, $p")
-          badDataLogger.info(s"$labelValue data: ${infotons.map(_.utf8String).mkString("\n")}")
+          badDataLogger.info(
+            s"$labelValue data: ${infotons.map(_.utf8String).mkString("\n")}"
+          )
           res.discardEntityBytes()
           IngestFailEvent(numInfotons = infotons.size)
 
-        case (Success(res@HttpResponse(s, h, e, p)), infotons, _) =>
+        case (Success(res @ HttpResponse(s, h, e, p)), infotons, _) =>
           res.discardEntityBytes()
 
           val numBytes = infotons.foldLeft(0)(_ + _.size)
-          IngestSuccessEvent(sizeInBytes = numBytes, numInfotons = infotons.size)
+          IngestSuccessEvent(
+            sizeInBytes = numBytes,
+            numInfotons = infotons.size
+          )
       }
-
 
     // ingest graph
     source
@@ -238,6 +257,7 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
   }
 
   sealed trait IngestEvent
-  case class IngestSuccessEvent(sizeInBytes: Int = 0, numInfotons: Int) extends IngestEvent
+  case class IngestSuccessEvent(sizeInBytes: Int = 0, numInfotons: Int)
+      extends IngestEvent
   case class IngestFailEvent(numInfotons: Int) extends IngestEvent
 }

@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tracking
 
 import cmwell.util.string.Base64.encodeBase64URLSafeString
@@ -29,7 +27,7 @@ class TrackingSpec extends FlatSpec with Matchers {
 
     originalTid.token match {
       case TrackingId(extractedTid) => extractedTid should equal(originalTid)
-      case _ => Failed
+      case _                        => Failed
     }
   }
 
@@ -44,6 +42,6 @@ class TrackingSpec extends FlatSpec with Matchers {
 
   private def assertNotValid(payload: String) = payload match {
     case TrackingId(_) => Failed
-    case _ => Succeeded
+    case _             => Succeeded
   }
 }

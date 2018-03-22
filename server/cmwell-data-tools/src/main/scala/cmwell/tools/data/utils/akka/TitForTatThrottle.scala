@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.utils.akka
 
 import akka.stream.ThrottleMode.{Enforcing, Shaping}
@@ -39,53 +37,54 @@ class TitForTatThrottle[T] extends GraphStage[FlowShape[T, T]] {
 //  private val nanosBetweenTokens = per.toNanos / cost
   private val timerName: String = "ThrottleTimer"
 
-  override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new TimerGraphStageLogic(shape) {
+  override def createLogic(inheritedAttributes: Attributes): GraphStageLogic =
+    new TimerGraphStageLogic(shape) {
 //    private val tokenBucket = new NanoTimeTokenBucket(maximumBurst, nanosBetweenTokens)
 
-    var willStop = false
-    var currentElement: T = _
+      var willStop = false
+      var currentElement: T = _
 
+      // This scope is here just to not retain an extra reference to the handler below.
+      // We can't put this code into preRestart() because setHandler() must be called before that.
+      {
+        val handler = new InHandler with OutHandler {
+          var timeOfPreviousElmement = System.currentTimeMillis()
 
-    // This scope is here just to not retain an extra reference to the handler below.
-    // We can't put this code into preRestart() because setHandler() must be called before that.
-    {
-      val handler = new InHandler with OutHandler {
-        var timeOfPreviousElmement = System.currentTimeMillis()
+          override def onUpstreamFinish(): Unit =
+            if (isAvailable(out) && isTimerActive(timerName)) willStop = true
+            else completeStage()
 
-        override def onUpstreamFinish(): Unit =
-          if (isAvailable(out) && isTimerActive(timerName)) willStop = true
-          else completeStage()
+          override def onPush(): Unit = {
+            val elem = grab(in)
+            val now = System.currentTimeMillis()
+            val delayMillis = now - timeOfPreviousElmement
+            timeOfPreviousElmement = now
 
-        override def onPush(): Unit = {
-          val elem = grab(in)
-          val now =  System.currentTimeMillis()
-          val delayMillis = now - timeOfPreviousElmement
-          timeOfPreviousElmement = now
-
-
-          if (delayMillis == 0L) push(out, elem)
-          else {
-            currentElement = elem
-            System.err.println(s"scheduled push in ${delayMillis.milliseconds}" )
-            scheduleOnce(timerName, delayMillis.milliseconds)
+            if (delayMillis == 0L) push(out, elem)
+            else {
+              currentElement = elem
+              System.err.println(
+                s"scheduled push in ${delayMillis.milliseconds}"
+              )
+              scheduleOnce(timerName, delayMillis.milliseconds)
+            }
           }
+
+          override def onPull(): Unit = pull(in)
         }
 
-        override def onPull(): Unit = pull(in)
+        setHandler(in, handler)
+        setHandler(out, handler)
+        // After this point, we no longer need the `handler` so it can just fall out of scope.
       }
 
-      setHandler(in, handler)
-      setHandler(out, handler)
-      // After this point, we no longer need the `handler` so it can just fall out of scope.
-    }
+      override protected def onTimer(key: Any): Unit = {
+        push(out, currentElement)
+        currentElement = null.asInstanceOf[T]
+        if (willStop) completeStage()
+      }
 
-    override protected def onTimer(key: Any): Unit = {
-      push(out, currentElement)
-      currentElement = null.asInstanceOf[T]
-      if (willStop) completeStage()
     }
-
-  }
 
   override def toString = "Throttle"
 }

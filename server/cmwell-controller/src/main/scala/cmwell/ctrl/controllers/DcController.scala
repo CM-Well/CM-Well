@@ -12,15 +12,16 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.ctrl.controllers
 
 import cmwell.ctrl.config.Config
 
 /**
- * Created by michael on 7/12/15.
- */
-object DcController extends ComponentController(s"${Config.cmwellHome}/app/dc", "app/dc", Set("dc")) {
-
-}
+  * Created by michael on 7/12/15.
+  */
+object DcController
+    extends ComponentController(
+      s"${Config.cmwellHome}/app/dc",
+      "app/dc",
+      Set("dc")
+    ) {}

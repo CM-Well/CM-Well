@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.utils.logging
 
 import com.typesafe.scalalogging.{LazyLogging, Logger}
@@ -28,7 +26,9 @@ trait DataToolsLogging {
   val label: Option[String] = None
 
   protected lazy val logger: Logger = {
-    val loggerName = if (label.isEmpty) getClass.getName else s"${getClass.getName} [${label.get}]"
+    val loggerName =
+      if (label.isEmpty) getClass.getName
+      else s"${getClass.getName} [${label.get}]"
     Logger(LoggerFactory.getLogger(loggerName))
   }
 }

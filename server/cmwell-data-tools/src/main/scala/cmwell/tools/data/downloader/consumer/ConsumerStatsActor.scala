@@ -12,11 +12,16 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.downloader.consumer
 
-import akka.actor.{Actor, Cancellable, OneForOneStrategy, PoisonPill, Props, SupervisorStrategy}
+import akka.actor.{
+  Actor,
+  Cancellable,
+  OneForOneStrategy,
+  PoisonPill,
+  Props,
+  SupervisorStrategy
+}
 import akka.actor.Actor.Receive
 import akka.actor.SupervisorStrategy.Resume
 import akka.http.scaladsl.Http
@@ -24,7 +29,7 @@ import akka.http.scaladsl.model.Uri.Query
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
-import cmwell.tools.data.utils.ArgsManipulations.{HttpAddress, formatHost}
+import cmwell.tools.data.utils.ArgsManipulations.{formatHost, HttpAddress}
 import cmwell.tools.data.utils.akka._
 import cmwell.tools.data.utils.text.Tokens
 import akka.pattern._
@@ -188,7 +193,7 @@ class ConsumerStatsActor(baseUrl: String,
 //    }
   }
 }
-*/
+ */
 
 case object ConsumeEvent
 case object EndStreamEvent

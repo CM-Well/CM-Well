@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package security.httpauth
 
 import filters.Attrs
@@ -61,23 +59,33 @@ trait DigestHttpAuthentication {
   //
   // We keep HA1 per user inside its UserInfoton as "digest2"
   //
-  def digestAuthenticate(authCache: EagerAuthCache)(req: Request[_])(implicit ec: ExecutionContext): Future[DigestStatus] = {
+  def digestAuthenticate(
+    authCache: EagerAuthCache
+  )(req: Request[_])(implicit ec: ExecutionContext): Future[DigestStatus] = {
     import akka.pattern.ask
 
     req.headers.get("Authorization") match {
       case None => Future.successful(DigestStatus(isAuthenticated = false, ""))
       case Some(authHeader) => {
         val header = DigestHeaderUtils.fromClientHeaderString(authHeader)
-        (Grid.serviceRef(classOf[NoncesManager].getName) ? ConsumeNonce(header.nonce)).mapTo[NonceStatus].map {
-          case NonceConsumed if header.opaque == opaque => authCache.getUserInfoton(header.username) match {
-            case None => DigestStatus(isAuthenticated = false, "")
-            case Some(user) =>
-              val ha1 = (user \ userInfotonPropName).asOpt[String].getOrElse("")
-              val calculatedResponse = md5Concat(ha1, header.nonce, ha2)
-              DigestStatus(isAuthenticated = calculatedResponse == header.response, header.username)
+        (Grid.serviceRef(classOf[NoncesManager].getName) ? ConsumeNonce(
+          header.nonce
+        )).mapTo[NonceStatus]
+          .map {
+            case NonceConsumed if header.opaque == opaque =>
+              authCache.getUserInfoton(header.username) match {
+                case None => DigestStatus(isAuthenticated = false, "")
+                case Some(user) =>
+                  val ha1 =
+                    (user \ userInfotonPropName).asOpt[String].getOrElse("")
+                  val calculatedResponse = md5Concat(ha1, header.nonce, ha2)
+                  DigestStatus(
+                    isAuthenticated = calculatedResponse == header.response,
+                    header.username
+                  )
+              }
+            case _ => DigestStatus(isAuthenticated = false, "")
           }
-          case _ => DigestStatus(isAuthenticated = false, "")
-        }
       }
     }
   }

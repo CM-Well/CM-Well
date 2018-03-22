@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.util.stream
 
 import akka.stream.ActorAttributes.SupervisionStrategy
@@ -21,41 +19,49 @@ import akka.stream._
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import scala.util.control.NonFatal
 
-case class TakeWeighted[T](maxWeight: Long, inclusive: Boolean = true, costFn: T => Long) extends GraphStage[FlowShape[T,T]] {
+case class TakeWeighted[T](maxWeight: Long,
+                           inclusive: Boolean = true,
+                           costFn: T => Long)
+    extends GraphStage[FlowShape[T, T]] {
   val in: Inlet[T] = Inlet[T]("TakeWeighted.in")
   val out: Outlet[T] = Outlet[T]("TakeWeighted.out")
   override val shape = FlowShape(in, out)
 
-  override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) with OutHandler with InHandler {
+  override def createLogic(inheritedAttributes: Attributes): GraphStageLogic =
+    new GraphStageLogic(shape) with OutHandler with InHandler {
 
-    private[this] var sum = 0L
+      private[this] var sum = 0L
 
-    private def decider =
-      inheritedAttributes.get[SupervisionStrategy].map(_.decider).getOrElse(Supervision.stoppingDecider)
+      private def decider =
+        inheritedAttributes
+          .get[SupervisionStrategy]
+          .map(_.decider)
+          .getOrElse(Supervision.stoppingDecider)
 
-    override def onPull(): Unit = pull(in)
+      override def onPull(): Unit = pull(in)
 
-    override def onPush(): Unit = {
-      try {
-        val elem = grab(in)
-        val cost = costFn(elem)
-        if(cost + sum < maxWeight) {
-          sum += cost
-          push(out, elem)
-        } else {
-          if (inclusive || cost + sum == maxWeight) {
+      override def onPush(): Unit = {
+        try {
+          val elem = grab(in)
+          val cost = costFn(elem)
+          if (cost + sum < maxWeight) {
+            sum += cost
             push(out, elem)
+          } else {
+            if (inclusive || cost + sum == maxWeight) {
+              push(out, elem)
+            }
+            completeStage()
           }
-          completeStage()
-        }
-      } catch {
-        case NonFatal(ex) ⇒ decider(ex) match {
-          case Supervision.Stop ⇒ failStage(ex)
-          case _ ⇒ pull(in)
+        } catch {
+          case NonFatal(ex) ⇒
+            decider(ex) match {
+              case Supervision.Stop ⇒ failStage(ex)
+              case _ ⇒ pull(in)
+            }
         }
       }
-    }
 
-    setHandlers(in, out, this)
-  }
+      setHandlers(in, out, this)
+    }
 }

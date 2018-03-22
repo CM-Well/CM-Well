@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.ctrl.controllers
 
 import cmwell.ctrl.config.Config
@@ -21,4 +19,9 @@ import cmwell.ctrl.config.Config
 /**
   * Created by michael on 8/16/16.
   */
-object KafkaController extends ComponentController(s"${Config.cmwellHome}/app/kafka", "/log/kafka", Set("kafka"))
+object KafkaController
+    extends ComponentController(
+      s"${Config.cmwellHome}/app/kafka",
+      "/log/kafka",
+      Set("kafka")
+    )

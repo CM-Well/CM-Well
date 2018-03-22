@@ -12,10 +12,7 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.ctrl.controllers
-
 
 import akka.actor.ActorSelection
 import cmwell.ctrl.controllers.CassandraController._
@@ -24,24 +21,26 @@ import cmwell.ctrl.utils.ProcUtil
 import com.typesafe.scalalogging.LazyLogging
 import k.grid.Grid
 
-import scala.concurrent.{Future, blocking}
+import scala.concurrent.{blocking, Future}
 import scala.util.{Failure, Success}
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
-/**
- * Created by michael on 2/16/15.
- */
 
-abstract class ComponentController(startScriptLocation : String, psIdentifier : String, dirIdentifier : Set[String]) {
+/**
+  * Created by michael on 2/16/15.
+  */
+abstract class ComponentController(startScriptLocation: String,
+                                   psIdentifier: String,
+                                   dirIdentifier: Set[String]) {
   object ComponentControllerLogger extends LazyLogging {
     lazy val l = logger
   }
 
-  protected val startScriptPattern : String = "start[0-9]*.sh"
+  protected val startScriptPattern: String = "start[0-9]*.sh"
 
   def getStartScriptLocation = startScriptLocation
 
-  def getStartScripts(location : String) : Set[String] = {
+  def getStartScripts(location: String): Set[String] = {
     ProcUtil.executeCommand(s"ls -1 $location/ | grep $startScriptPattern") match {
       case Success(str) =>
         str.trim.split("\n").toSet
@@ -49,7 +48,7 @@ abstract class ComponentController(startScriptLocation : String, psIdentifier : 
     }
   }
 
-  def getDataDirs(location : String, id : String) : Set[String] = {
+  def getDataDirs(location: String, id: String): Set[String] = {
     ProcUtil.executeCommand(s"ls -1 $location | grep $id[0-9]*") match {
       case Success(str) =>
         str.trim.split("\n").toSet
@@ -58,10 +57,9 @@ abstract class ComponentController(startScriptLocation : String, psIdentifier : 
   }
 
   private def doStart: Unit = {
-    getStartScripts(startScriptLocation) foreach {
-      sScript =>
-        val runScript = s"HAL=9000 $startScriptLocation/$sScript"
-        ProcUtil.executeCommand(runScript)
+    getStartScripts(startScriptLocation).foreach { sScript =>
+      val runScript = s"HAL=9000 $startScriptLocation/$sScript"
+      ProcUtil.executeCommand(runScript)
     }
   }
 
@@ -73,14 +71,19 @@ abstract class ComponentController(startScriptLocation : String, psIdentifier : 
     }
   }
 
-
-  private def doStop(forceKill : Boolean = false, tries : Int = 5): Unit = {
-    val cmd = s"ps aux | grep $psIdentifier | egrep -v 'grep|starter' | awk '{print $$2}' | xargs kill ${if(forceKill) "-9" else ""}"
+  private def doStop(forceKill: Boolean = false, tries: Int = 5): Unit = {
+    val cmd =
+      s"ps aux | grep $psIdentifier | egrep -v 'grep|starter' | awk '{print $$2}' | xargs kill ${if (forceKill) "-9" else ""}"
     ComponentControllerLogger.l.info(s"executing $cmd")
     ProcUtil.executeCommand(cmd)
-    val isDead = ProcUtil.executeCommand(s"ps aux | grep $psIdentifier | egrep -v 'grep|starter' | awk '{print $$2}'").get.isEmpty
-    if(!isDead){
-      if(tries > 1) doStop(false , tries - 1) else doStop(true , tries - 1)
+    val isDead = ProcUtil
+      .executeCommand(
+        s"ps aux | grep $psIdentifier | egrep -v 'grep|starter' | awk '{print $$2}'"
+      )
+      .get
+      .isEmpty
+    if (!isDead) {
+      if (tries > 1) doStop(false, tries - 1) else doStop(true, tries - 1)
     }
 
   }
@@ -104,12 +107,10 @@ abstract class ComponentController(startScriptLocation : String, psIdentifier : 
   def clearData {
     Future {
       blocking {
-        dirIdentifier.foreach{
-          id =>
-            getDataDirs(s"${Config.cmwellHome}/data/", id).foreach {
-              dir =>
-                ProcUtil.executeCommand(s"rm -rf ${Config.cmwellHome}/data/$dir/")
-            }
+        dirIdentifier.foreach { id =>
+          getDataDirs(s"${Config.cmwellHome}/data/", id).foreach { dir =>
+            ProcUtil.executeCommand(s"rm -rf ${Config.cmwellHome}/data/$dir/")
+          }
         }
       }
     }

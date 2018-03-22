@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell
 
 import cmwell.driver.DaoExecution
@@ -28,11 +26,14 @@ package object zstore {
     private val lsHardLimit = 4096
 
     // DESIGN CHOICE: This method should not be part of ZStore trait. It is only meant for debugging.
-    def ls(limit: Int = 20)(implicit ec: ExecutionContext): Future[Seq[String]] = zs match {
+    def ls(
+      limit: Int = 20
+    )(implicit ec: ExecutionContext): Future[Seq[String]] = zs match {
       case zsImpl: ZStoreImpl =>
         implicit val daoProxy = zsImpl.daoProxy
         val l: java.lang.Integer = Math.min(limit, lsHardLimit)
-        val stmt = prepare("select distinct uzid from data2.zstore limit ?").bind(l)
+        val stmt =
+          prepare("select distinct uzid from data2.zstore limit ?").bind(l)
         executeAsyncInternal(stmt).map(_.all().map(_.getString("uzid")).toSeq)
 
       case zsMem: ZStoreMem =>

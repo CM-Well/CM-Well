@@ -12,25 +12,25 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.util.concurrent.executors
 
 import java.util
 import java.util.concurrent.Executor
 
 import scala.annotation.tailrec
-import scala.concurrent.{CanAwait, BlockContext}
+import scala.concurrent.{BlockContext, CanAwait}
 
 /**
- * copied from akka.dispatch.BatchingExecutor
- */
+  * copied from akka.dispatch.BatchingExecutor
+  */
 trait BatchingExecutor extends Executor {
 
   // invariant: if "_tasksLocal.get ne null" then we are inside Batch.run; if it is null, we are outside
   private[this] val _tasksLocal = new ThreadLocal[AbstractBatch]()
 
-  private[this] abstract class AbstractBatch extends util.ArrayDeque[Runnable](4) with Runnable {
+  private[this] abstract class AbstractBatch
+      extends util.ArrayDeque[Runnable](4)
+      with Runnable {
     @tailrec final def processBatch(batch: AbstractBatch): Unit =
       if ((batch eq this) && !batch.isEmpty) {
         batch.poll().run()
@@ -50,8 +50,9 @@ trait BatchingExecutor extends Executor {
   private[this] final class Batch extends AbstractBatch {
     override final def run: Unit = {
       require(_tasksLocal.get eq null)
-      _tasksLocal set this // Install ourselves as the current batch
-      try processBatch(this) catch {
+      _tasksLocal.set(this) // Install ourselves as the current batch
+      try processBatch(this)
+      catch {
         case t: Throwable ⇒
           resubmitUnbatched()
           throw t
@@ -61,15 +62,18 @@ trait BatchingExecutor extends Executor {
 
   private[this] val _blockContext = new ThreadLocal[BlockContext]()
 
-  private[this] final class BlockableBatch extends AbstractBatch with BlockContext {
+  private[this] final class BlockableBatch
+      extends AbstractBatch
+      with BlockContext {
     // this method runs in the delegate ExecutionContext's thread
     override final def run(): Unit = {
       require(_tasksLocal.get eq null)
-      _tasksLocal set this // Install ourselves as the current batch
+      _tasksLocal.set(this) // Install ourselves as the current batch
       val firstInvocation = _blockContext.get eq null
       if (firstInvocation) _blockContext.set(BlockContext.current)
       BlockContext.withBlockContext(this) {
-        try processBatch(this) catch {
+        try processBatch(this)
+        catch {
           case t: Throwable ⇒
             resubmitUnbatched()
             throw t
@@ -96,25 +100,28 @@ trait BatchingExecutor extends Executor {
     if (batchable(runnable)) { // If we can batch the runnable
       _tasksLocal.get match {
         case null ⇒
-          val newBatch: AbstractBatch = if (resubmitOnBlock) new BlockableBatch() else new Batch()
+          val newBatch: AbstractBatch =
+            if (resubmitOnBlock) new BlockableBatch() else new Batch()
           newBatch.add(runnable)
           unbatchedExecute(newBatch) // If we aren't in batching mode yet, enqueue batch
-        case batch ⇒ batch.add(runnable) // If we are already in batching mode, add to batch
+        case batch ⇒
+          batch.add(runnable) // If we are already in batching mode, add to batch
       }
-    } else unbatchedExecute(runnable) // If not batchable, just delegate to underlying
+    } else
+      unbatchedExecute(runnable) // If not batchable, just delegate to underlying
   }
 
   /** Override this to define which runnables will be batched. */
   def batchable(runnable: Runnable): Boolean = runnable match {
-    case b: Batchable                           ⇒ b.isBatchable
+    case b: Batchable ⇒ b.isBatchable
     case _: scala.concurrent.OnCompleteRunnable ⇒ true
-    case _                                      ⇒ false
+    case _ ⇒ false
   }
 }
 
 /**
- * All Batchables are automatically batched when submitted to a BatchingExecutor
- */
+  * All Batchables are automatically batched when submitted to a BatchingExecutor
+  */
 trait Batchable extends Runnable {
   def isBatchable: Boolean
 }

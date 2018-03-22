@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tracking
 
 import com.typesafe.config.ConfigFactory
@@ -25,6 +23,7 @@ object Settings {
   val config = ConfigFactory.load()
 
   lazy val irwServiceDaoHostName = config.getString("irwServiceDao.hostName")
-  lazy val irwServiceDaoClusterName = config.getString("irwServiceDao.clusterName")
+  lazy val irwServiceDaoClusterName =
+    config.getString("irwServiceDao.clusterName")
   lazy val irwServiceDaoKeySpace2 = config.getString("irwServiceDao.keySpace2")
 }

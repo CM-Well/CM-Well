@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.kafka
 
 import scala.collection.breakOut
@@ -37,19 +35,34 @@ class KafkaAssigner {
     }
 
     val partitions: Set[Int] = currentAssignment.map {
-      case entry@(partition, replicas) => {
+      case entry @ (partition, replicas) => {
         if (desiredReplicationFactor < 0) {
-          require(replicationFactor == replicas.size, s"Topic $topic has partition $partition with unexpected replication factor ${replicas.size}")
+          require(
+            replicationFactor == replicas.size,
+            s"Topic $topic has partition $partition with unexpected replication factor ${replicas.size}"
+          )
         }
         partition
       }
     }(breakOut)
 
     // Make sure that we actually managed to process something and get the replication factor
-    require(replicationFactor > 0, s"Topic $topic does not have a positive replication factor!")
-    require(replicationFactor <= brokers.size, s"Topic $topic has a higher replication factor ($replicationFactor) than available brokers!")
+    require(
+      replicationFactor > 0,
+      s"Topic $topic does not have a positive replication factor!"
+    )
+    require(
+      replicationFactor <= brokers.size,
+      s"Topic $topic has a higher replication factor ($replicationFactor) than available brokers!"
+    )
 
-    KafkaAssignmentStrategy.getRackAwareAssignment(topic, currentAssignment,
-                rackAssignment, brokers, partitions, replicationFactor)
+    KafkaAssignmentStrategy.getRackAwareAssignment(
+      topic,
+      currentAssignment,
+      rackAssignment,
+      brokers,
+      partitions,
+      replicationFactor
+    )
   }
 }

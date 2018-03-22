@@ -12,31 +12,26 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
-
-
 import com.typesafe.scalalogging.LazyLogging
 import scala.annotation.tailrec
-import scala.collection.{TraversableLike, IterableLike}
+import scala.collection.{IterableLike, TraversableLike}
 import scala.collection.generic.CanBuildFrom
 import scala.language.higherKinds
 import scala.concurrent._ //,ExecutionContext.Implicits.global
-import scala.concurrent.duration.{TimeUnit, Duration, Deadline, FiniteDuration}
+import scala.concurrent.duration.{Deadline, Duration, FiniteDuration, TimeUnit}
 import scala.util.{Failure, Success, Try}
 import scala.language.postfixOps
 import scala.language.implicitConversions
 
 /**
- * Created with IntelliJ IDEA.
- * User: gilad
- * Date: 7/23/13
- * Time: 10:49 AM
- * To change this template use File | Settings | File Templates.
- */
+  * Created with IntelliJ IDEA.
+  * User: gilad
+  * Date: 7/23/13
+  * Time: 10:49 AM
+  * To change this template use File | Settings | File Templates.
+  */
 package cmwell.util {
 
-  
   package object concurrent extends LazyLogging {
     //TODO: return "Thread++" instead of thread..
 
@@ -50,7 +45,8 @@ package cmwell.util {
 
     private def onThread(runNow: Boolean, body: => Unit): Thread = {
       val t = new Thread {
-        override def run = body //TODO: throw exception if got exception. (contains a vector of all the exception we got)
+        override def run =
+          body //TODO: throw exception if got exception. (contains a vector of all the exception we got)
       }
       if (runNow) {
         t.start
@@ -62,18 +58,19 @@ package cmwell.util {
       Try(Await.ready(Promise().future, deadline.timeLeft))
     }
 
-
     /**
-     * receives delay and task that returns type A to execute.
-     * the task will be executed after the delay and the future will be completed with the task's return value.
-     *
-     * @param delay
-     * @param task
-     * @param ec
-     * @tparam A
-     * @return
-     */
-    def delayedTask[A](delay : FiniteDuration)(task : => A)(implicit ec :ExecutionContext) : Future[A] = {
+      * receives delay and task that returns type A to execute.
+      * the task will be executed after the delay and the future will be completed with the task's return value.
+      *
+      * @param delay
+      * @param task
+      * @param ec
+      * @tparam A
+      * @return
+      */
+    def delayedTask[A](
+      delay: FiniteDuration
+    )(task: => A)(implicit ec: ExecutionContext): Future[A] = {
       val p = Promise[A]()
       SimpleScheduler.schedule(delay) {
         p.complete(Try(task))
@@ -81,44 +78,54 @@ package cmwell.util {
       p.future
     }
 
-
     /**
-     * https://gist.github.com/viktorklang/4488970
-     *
-     * "Select" off the first future to be satisfied.  Return this as a
-     * result, with the remainder of the Futures as a sequence.
-     *
-     * @param fs a scala.collection.Seq
-     */
-    def selectFuture[A](fs: Seq[Future[A]])(implicit ec: ExecutionContext): Future[(Try[A], Seq[Future[A]])] = {
+      * https://gist.github.com/viktorklang/4488970
+      *
+      * "Select" off the first future to be satisfied.  Return this as a
+      * result, with the remainder of the Futures as a sequence.
+      *
+      * @param fs a scala.collection.Seq
+      */
+    def selectFuture[A](
+      fs: Seq[Future[A]]
+    )(implicit ec: ExecutionContext): Future[(Try[A], Seq[Future[A]])] = {
       @tailrec
       def stripe(p: Promise[(Try[A], Seq[Future[A]])],
                  heads: Seq[Future[A]],
                  elem: Future[A],
                  tail: Seq[Future[A]]): Future[(Try[A], Seq[Future[A]])] = {
-        elem onComplete { res => if (!p.isCompleted) p.trySuccess((res, heads ++ tail)) }
+        elem.onComplete { res =>
+          if (!p.isCompleted) p.trySuccess((res, heads ++ tail))
+        }
         if (tail.isEmpty) p.future
         else stripe(p, heads :+ elem, tail.head, tail.tail)
       }
 
-      if (fs.isEmpty) Future.failed(new IllegalArgumentException("empty future list!"))
-      else stripe(Promise(), fs.genericBuilder[Future[A]].result, fs.head, fs.tail)
+      if (fs.isEmpty)
+        Future.failed(new IllegalArgumentException("empty future list!"))
+      else
+        stripe(Promise(), fs.genericBuilder[Future[A]].result, fs.head, fs.tail)
     }
 
     /**
-     * similar to above, but different in the return type (preserves collection's type)
-     *
-     * @see selectFuture
-     * @param fc futures collection
-     * @param ec
-     * @param ev
-     * @tparam T
-     * @tparam Coll
-     * @return a future of tuple of the first completed future's Try, and the rest of the collection
-     */
-    def select[T, Coll](fc: Coll)(implicit ec: ExecutionContext, ev: Coll <:< TraversableLike[Future[T], Coll]): Future[(Try[T], Coll)] = {
+      * similar to above, but different in the return type (preserves collection's type)
+      *
+      * @see selectFuture
+      * @param fc futures collection
+      * @param ec
+      * @param ev
+      * @tparam T
+      * @tparam Coll
+      * @return a future of tuple of the first completed future's Try, and the rest of the collection
+      */
+    def select[T, Coll](fc: Coll)(
+      implicit ec: ExecutionContext,
+      ev: Coll <:< TraversableLike[Future[T], Coll]
+    ): Future[(Try[T], Coll)] = {
       if (fc.isEmpty)
-        Future.failed(new IllegalArgumentException("select from empty collection"))
+        Future.failed(
+          new IllegalArgumentException("select from empty collection")
+        )
       else {
         val p = Promise[(Try[T], Future[T])]()
         fc.foreach { f =>
@@ -135,16 +142,17 @@ package cmwell.util {
     }
 
     /**
-     *
-     * @param future
-     * @param duration timeout duration
-     * @param ec
-     * @tparam T
-     * @return new future that either return in time with the original value,
-     *         or fail with a FutureTimeout exception that holds the original future
-     */
-    def timeoutFuture[T](future: Future[T], duration: FiniteDuration)
-                        (implicit ec: ExecutionContext): Future[T] = {
+      *
+      * @param future
+      * @param duration timeout duration
+      * @param ec
+      * @tparam T
+      * @return new future that either return in time with the original value,
+      *         or fail with a FutureTimeout exception that holds the original future
+      */
+    def timeoutFuture[T](future: Future[T], duration: FiniteDuration)(
+      implicit ec: ExecutionContext
+    ): Future[T] = {
 
       val p = Promise[T]()
       p.tryCompleteWith(future)
@@ -157,17 +165,18 @@ package cmwell.util {
     }
 
     /**
-     *
-     * @param future
-     * @param duration
-     * @param ec
-     * @tparam T
-     * @return new future that fails if the original future fails,
-     *         or Option filled with either the original future's value,
-     *         or None if future did not complete in time.
-     */
-    def timeoutOptionFuture[T](future: Future[T], duration: FiniteDuration)
-                              (implicit ec: ExecutionContext): Future[Option[T]] = {
+      *
+      * @param future
+      * @param duration
+      * @param ec
+      * @tparam T
+      * @return new future that fails if the original future fails,
+      *         or Option filled with either the original future's value,
+      *         or None if future did not complete in time.
+      */
+    def timeoutOptionFuture[T](future: Future[T], duration: FiniteDuration)(
+      implicit ec: ExecutionContext
+    ): Future[Option[T]] = {
       timeoutFuture(future, duration)(ec)
         .map(Some.apply)
         .recover {
@@ -176,83 +185,100 @@ package cmwell.util {
     }
 
     /**
-     *
-     * @param fc
-     * @param timeout
-     * @param ec
-     * @param ev
-     * @tparam T
-     * @tparam Coll
-     * @return a Stream of the futures collection's results
-     */
-    def stream[T, Coll](fc: Coll, timeout: FiniteDuration)(implicit ec: ExecutionContext, ev: Coll <:< TraversableLike[Future[T], Coll]): Stream[Try[T]] = {
+      *
+      * @param fc
+      * @param timeout
+      * @param ec
+      * @param ev
+      * @tparam T
+      * @tparam Coll
+      * @return a Stream of the futures collection's results
+      */
+    def stream[T, Coll](fc: Coll, timeout: FiniteDuration)(
+      implicit ec: ExecutionContext,
+      ev: Coll <:< TraversableLike[Future[T], Coll]
+    ): Stream[Try[T]] = {
       if (fc.isEmpty) Stream.empty[Try[T]]
-      else try {
-        Await.result(select[T, Coll](fc).map {
-          case (t, coll) => t #:: stream(coll, timeout)
-        }, timeout)
-      }
-      catch {
-        case e: TimeoutException => Stream(Failure[T](e))
-      }
+      else
+        try {
+          Await.result(select[T, Coll](fc).map {
+            case (t, coll) => t #:: stream(coll, timeout)
+          }, timeout)
+        } catch {
+          case e: TimeoutException => Stream(Failure[T](e))
+        }
     }
 
     implicit def asFiniteDuration(d: java.time.Duration) =
       scala.concurrent.duration.Duration.fromNanos(d.toNanos)
 
     /**
-    * @param maxRetries max numbers to retry the task
-    * @param delay "cool-down" wait period
-    * @param task the task to run
-    */
-    def retry[T](maxRetries: Int, delay: Duration = Duration.Zero, delayFactor: Double = 0)(task: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
+      * @param maxRetries max numbers to retry the task
+      * @param delay "cool-down" wait period
+      * @param task the task to run
+      */
+    def retry[T](
+      maxRetries: Int,
+      delay: Duration = Duration.Zero,
+      delayFactor: Double = 0
+    )(task: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
       require(maxRetries > 0, "maxRetries must be positive")
       require(delay >= Duration.Zero, "delay must be non-negative")
       if (maxRetries == 1) task
-      else task.recoverWith {
-        case _: Throwable => {
-          if (delay == Duration.Zero) retry(maxRetries - 1)(task)
-          else {
-            val nextDelay = if (delayFactor > 0) delay * delayFactor else delay
-            SimpleScheduler.scheduleFuture(delay)(retry(maxRetries - 1, nextDelay, delayFactor)(task))
+      else
+        task.recoverWith {
+          case _: Throwable => {
+            if (delay == Duration.Zero) retry(maxRetries - 1)(task)
+            else {
+              val nextDelay =
+                if (delayFactor > 0) delay * delayFactor else delay
+              SimpleScheduler.scheduleFuture(delay)(
+                retry(maxRetries - 1, nextDelay, delayFactor)(task)
+              )
+            }
           }
         }
-      }
     }
 
     /**
-     * @param maxRetries max numbers to retry the task
-     * @param pf a function to compute "wait duration" from the retry number and the type of the last failed attempt
-     * @param task the task to run
-     * @return
-     */
-    def retryWithPF[T](maxRetries: Int, pf: PartialFunction[(Int, Throwable),FiniteDuration])
-                    (task: => Future[T])
-                    (implicit ec: ExecutionContext): Future[T] = {
+      * @param maxRetries max numbers to retry the task
+      * @param pf a function to compute "wait duration" from the retry number and the type of the last failed attempt
+      * @param task the task to run
+      * @return
+      */
+    def retryWithPF[T](
+      maxRetries: Int,
+      pf: PartialFunction[(Int, Throwable), FiniteDuration]
+    )(task: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
       require(maxRetries > 0, "maxRetries must be positive")
 
       def retryInner(retryNum: Int): Future[T] = {
         if (maxRetries == retryNum) task
-        else task.recoverWith {
-          case t: Throwable =>
-            val d = pf(retryNum -> t)
-            if(d <= Duration.Zero) retryInner(maxRetries + 1)
-            else SimpleScheduler.scheduleFuture(d)(retryInner(maxRetries + 1))
-        }
+        else
+          task.recoverWith {
+            case t: Throwable =>
+              val d = pf(retryNum -> t)
+              if (d <= Duration.Zero) retryInner(maxRetries + 1)
+              else SimpleScheduler.scheduleFuture(d)(retryInner(maxRetries + 1))
+          }
       }
       retryInner(1)
     }
 
-    def retryWithDelays[T](delays: FiniteDuration*)
-                          (task: =>Future[T])
-                          (implicit ec: ExecutionContext): Future[T] = {
+    def retryWithDelays[T](
+      delays: FiniteDuration*
+    )(task: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
       if (delays.isEmpty) task
-      else task.recoverWith {
-        case _: Throwable =>
-          val (delay,tail) = (delays.head, delays.tail)
-          if(delay == Duration.Zero) retryWithDelays(tail:_*)(task)
-          else SimpleScheduler.scheduleFuture(delay)(retryWithDelays(tail:_*)(task))
-      }
+      else
+        task.recoverWith {
+          case _: Throwable =>
+            val (delay, tail) = (delays.head, delays.tail)
+            if (delay == Duration.Zero) retryWithDelays(tail: _*)(task)
+            else
+              SimpleScheduler.scheduleFuture(delay)(
+                retryWithDelays(tail: _*)(task)
+              )
+        }
     }
 
 //    def betterRetry[T](maxRetries: Int, waitBetweenRetries: Option[FiniteDuration] = None)(task: => Future[T])(implicit ec: ExecutionContext, sys: ActorSystem): Future[T] = {
@@ -268,9 +294,8 @@ package cmwell.util {
 //      } else task
 //    }
 
-
-    def safeFuture[T](fun: => Future[T]):Future[T] = {
-      Try[Future[T]]{fun}.recover{ case t:Throwable => Future.failed(t)}.get
+    def safeFuture[T](fun: => Future[T]): Future[T] = {
+      Try[Future[T]] { fun }.recover { case t: Throwable => Future.failed(t) }.get
     }
 
     /**
@@ -281,17 +306,31 @@ package cmwell.util {
       *
       * this retry flavor works with a predicate instead of a failed future
       */
-    def unsafeRetryUntil[T](isSuccessful: T=>Boolean, maxRetries: Int, delay: FiniteDuration = Duration.Zero, delayFactor: Long = 0)(task: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
+    def unsafeRetryUntil[T](
+      isSuccessful: T => Boolean,
+      maxRetries: Int,
+      delay: FiniteDuration = Duration.Zero,
+      delayFactor: Long = 0
+    )(task: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
       require(maxRetries > 0, "maxRetries must be positive")
       require(delay >= Duration.Zero, "delay must be non-negative")
       if (maxRetries == 1) task
-      else task.flatMap {
-        case t if isSuccessful(t) => Future.successful(t)
-        case t if delay == Duration.Zero => unsafeRetryUntil(isSuccessful, maxRetries - 1)(task)
-        case t =>
-          val nextDelay = if (delayFactor > 0) delay * delayFactor else delay
-          SimpleScheduler.scheduleFuture(delay)(unsafeRetryUntil(isSuccessful, maxRetries - 1, nextDelay, delayFactor)(task))
-      }
+      else
+        task.flatMap {
+          case t if isSuccessful(t) => Future.successful(t)
+          case t if delay == Duration.Zero =>
+            unsafeRetryUntil(isSuccessful, maxRetries - 1)(task)
+          case t =>
+            val nextDelay = if (delayFactor > 0) delay * delayFactor else delay
+            SimpleScheduler.scheduleFuture(delay)(
+              unsafeRetryUntil(
+                isSuccessful,
+                maxRetries - 1,
+                nextDelay,
+                delayFactor
+              )(task)
+            )
+        }
     }
 
 //    def retryUntil2[T, S](z: S)(shouldRetry: (Try[T], S) => ShouldRetry[S])(task: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
@@ -310,14 +349,21 @@ package cmwell.util {
 //      p.future
 //    }
 
-    def retryUntil[T, S : StateHandler](z: S)(shouldRetry: (Try[T], S) => ShouldRetry[S])(task: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
+    def retryUntil[T, S: StateHandler](z: S)(
+      shouldRetry: (Try[T], S) => ShouldRetry[S]
+    )(task: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
       val p = Promise[T]()
       task.onComplete { taskResult =>
         shouldRetry(taskResult, z) match {
           case DoNotRetry => {
             p.complete(taskResult)
           }
-          case RetryWith(newState) => p.completeWith(retryUntil(newState)(shouldRetry)(implicitly[StateHandler[S]].handle[T](newState)(task)))
+          case RetryWith(newState) =>
+            p.completeWith(
+              retryUntil(newState)(shouldRetry)(
+                implicitly[StateHandler[S]].handle[T](newState)(task)
+              )
+            )
         }
       }
       p.future
@@ -340,25 +386,30 @@ package cmwell.util {
 //    }
 //
     /**
-     * Does what Future.sequence does but it won't fail if one of the futures fails.
-     * Instead, the failed element won't be included in the produced collection.
-     *
-     * @param in Collection of futures that we want to turn into future of collection.
-     * @param bf CanBuildFrom
-     * @param ec Execution context.
-     * @return Future of the given collection.
-     */
-    def successes[A, M[X] <: Traversable[X]](in: M[Future[A]])(implicit bf: CanBuildFrom[M[Future[A]], A, M[A]], ec: ExecutionContext): Future[M[A]] = {
-      in.foldLeft(Future.successful(bf(in))) {
-        (fr, fa) => {
-          fa.flatMap(a => fr.map(_ += a)(ec))(ec).recoverWith { case _: Throwable => fr }(ec)
+      * Does what Future.sequence does but it won't fail if one of the futures fails.
+      * Instead, the failed element won't be included in the produced collection.
+      *
+      * @param in Collection of futures that we want to turn into future of collection.
+      * @param bf CanBuildFrom
+      * @param ec Execution context.
+      * @return Future of the given collection.
+      */
+    def successes[A, M[X] <: Traversable[X]](in: M[Future[A]])(
+      implicit bf: CanBuildFrom[M[Future[A]], A, M[A]],
+      ec: ExecutionContext
+    ): Future[M[A]] = {
+      in.foldLeft(Future.successful(bf(in))) { (fr, fa) =>
+          {
+            fa.flatMap(a => fr.map(_ += a)(ec))(ec)
+              .recoverWith { case _: Throwable => fr }(ec)
+          }
         }
-      }.map(_.result())
+        .map(_.result())
     }
 
     object Successfulness {
       implicit val bolleanToSuccessfulness: Boolean => Successfulness = {
-        case true => Successful
+        case true  => Successful
         case false => Recoverable
       }
     }
@@ -372,11 +423,11 @@ package cmwell.util {
       30.seconds
     }
 
-    def spinCheck[T](interval: FiniteDuration,
-                     returnOriginalElementOnFailure: Boolean = false,
-                     maxTimeUntilGivingUp: FiniteDuration = spinCheckTimeout)
-                    (task: =>Future[T])
-                    (isSuccessful: T => Successfulness): Future[T] = {
+    def spinCheck[T](
+      interval: FiniteDuration,
+      returnOriginalElementOnFailure: Boolean = false,
+      maxTimeUntilGivingUp: FiniteDuration = spinCheckTimeout
+    )(task: => Future[T])(isSuccessful: T => Successfulness): Future[T] = {
 
       import SimpleScheduler.{scheduleFuture => sf}
 
@@ -387,101 +438,136 @@ package cmwell.util {
           val timeSpent = System.currentTimeMillis() - startTime
 
           Try(isSuccessful(elem)) match {
-            case Success(Recoverable) if timeSpent < maxTimeUntilGivingUp.toMillis => sf(interval)(wait())
+            case Success(Recoverable)
+                if timeSpent < maxTimeUntilGivingUp.toMillis =>
+              sf(interval)(wait())
             case Success(Successful) => Future.successful(elem)
-            case Success(_) if returnOriginalElementOnFailure => Future.successful(elem)
-            case Success(_) => Future.failed(new IllegalStateException(s"got a bad element: $elem"))
+            case Success(_) if returnOriginalElementOnFailure =>
+              Future.successful(elem)
+            case Success(_) =>
+              Future.failed(
+                new IllegalStateException(s"got a bad element: $elem")
+              )
             case Failure(exception) =>
-              logger.error(s"got exception for element: $elem",exception)
-              if(timeSpent < maxTimeUntilGivingUp.toMillis) sf(interval)(wait())
-              else Future.failed(new IllegalStateException(s"got a bad element: $elem",exception))
+              logger.error(s"got exception for element: $elem", exception)
+              if (timeSpent < maxTimeUntilGivingUp.toMillis)
+                sf(interval)(wait())
+              else
+                Future.failed(
+                  new IllegalStateException(
+                    s"got a bad element: $elem",
+                    exception
+                  )
+                )
           }
         }(ExecutionContext.Implicits.global)
       }
       wait()
     }
 
-    def executeAfterCompletion[T](f: Future[_])(body: =>Future[T])(implicit ec: ExecutionContext): Future[T] = {
+    def executeAfterCompletion[T](
+      f: Future[_]
+    )(body: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
       val p = Promise[T]()
-      f.onComplete(_ => p.completeWith(try {body} catch { case err: Throwable => Future.failed[T](err) }))
+      f.onComplete(
+        _ =>
+          p.completeWith(try { body } catch {
+            case err: Throwable => Future.failed[T](err)
+          })
+      )
       p.future
     }
 
     /**
-     * Transforms a `TraversableOnce[A]` into a `Future[Vector[B]]` using the provided function `A => Future[B]`.
-     * This is useful for performing a parallel map. For example, to apply a function to all items of a list
-     * in parallel:
-     *
-     * {{{
-     *   val myFutureVector = travector(myTraversable)(x => Future(myFunc(x)))
-     * }}}
-     *
-     * This is the same as `Future.traverse`, but it will always yield a vector, regardless of the provided collection type
-     */
-    def travector[A, B, M[X] <: TraversableOnce[X]](in: M[A])(fn: A => Future[B])(implicit executor: ExecutionContext): Future[Vector[B]] =
+      * Transforms a `TraversableOnce[A]` into a `Future[Vector[B]]` using the provided function `A => Future[B]`.
+      * This is useful for performing a parallel map. For example, to apply a function to all items of a list
+      * in parallel:
+      *
+      * {{{
+      *   val myFutureVector = travector(myTraversable)(x => Future(myFunc(x)))
+      * }}}
+      *
+      * This is the same as `Future.traverse`, but it will always yield a vector, regardless of the provided collection type
+      */
+    def travector[A, B, M[X] <: TraversableOnce[X]](in: M[A])(
+      fn: A => Future[B]
+    )(implicit executor: ExecutionContext): Future[Vector[B]] =
       in.foldLeft(Future.successful(Vector.newBuilder[B])) { (fr, a) =>
-        val fb = fn(a)
-        for (r <- fr; b <- fb) yield (r += b)
-      }.map(_.result())
+          val fb = fn(a)
+          for (r <- fr; b <- fb) yield (r += b)
+        }
+        .map(_.result())
 
     /**
-     * Transforms a `TraversableOnce[A]` into a `Future[List[B]]` using the provided function `A => Future[B]`.
-     * This is useful for performing a parallel map. For example, to apply a function to all items of a list
-     * in parallel:
-     *
-     * {{{
-     *   val myFutureList = travelist(myTraversable)(x => Future(myFunc(x)))
-     * }}}
-     *
-     * This is the same as `Future.traverse`, but it will always yield a List, regardless of the provided collection type
-     */
-    def travelist[A, B, M[X] <: TraversableOnce[X]](in: M[A])(fn: A => Future[B])(implicit executor: ExecutionContext): Future[List[B]] =
+      * Transforms a `TraversableOnce[A]` into a `Future[List[B]]` using the provided function `A => Future[B]`.
+      * This is useful for performing a parallel map. For example, to apply a function to all items of a list
+      * in parallel:
+      *
+      * {{{
+      *   val myFutureList = travelist(myTraversable)(x => Future(myFunc(x)))
+      * }}}
+      *
+      * This is the same as `Future.traverse`, but it will always yield a List, regardless of the provided collection type
+      */
+    def travelist[A, B, M[X] <: TraversableOnce[X]](in: M[A])(
+      fn: A => Future[B]
+    )(implicit executor: ExecutionContext): Future[List[B]] =
       in.foldLeft(Future.successful(List.newBuilder[B])) { (fr, a) =>
-        val fb = fn(a)
-        for (r <- fr; b <- fb) yield (r += b)
-      }.map(_.result())
+          val fb = fn(a)
+          for (r <- fr; b <- fb) yield (r += b)
+        }
+        .map(_.result())
 
     /**
-     * Transforms a `TraversableOnce[A]` into a `Future[Set[B]]` using the provided function `A => Future[B]`.
-     * This is useful for performing a parallel map. For example, to apply a function to all items of a list
-     * in parallel:
-     *
-     * {{{
-     *   val myFutureList = travelist(myTraversable)(x => Future(myFunc(x)))
-     * }}}
-     *
-     * This is the same as `Future.traverse`, but it will always yield a Set, regardless of the provided collection type
-     */
-    def travset[A, B, M[X] <: TraversableOnce[X]](in: M[A])(fn: A => Future[B])(implicit executor: ExecutionContext): Future[Set[B]] =
+      * Transforms a `TraversableOnce[A]` into a `Future[Set[B]]` using the provided function `A => Future[B]`.
+      * This is useful for performing a parallel map. For example, to apply a function to all items of a list
+      * in parallel:
+      *
+      * {{{
+      *   val myFutureList = travelist(myTraversable)(x => Future(myFunc(x)))
+      * }}}
+      *
+      * This is the same as `Future.traverse`, but it will always yield a Set, regardless of the provided collection type
+      */
+    def travset[A, B, M[X] <: TraversableOnce[X]](
+      in: M[A]
+    )(fn: A => Future[B])(implicit executor: ExecutionContext): Future[Set[B]] =
       in.foldLeft(Future.successful(Set.newBuilder[B])) { (fr, a) =>
-        val fb = fn(a)
-        for (r <- fr; b <- fb) yield r.+=(b)
-      }.map(_.result())
+          val fb = fn(a)
+          for (r <- fr; b <- fb) yield r.+=(b)
+        }
+        .map(_.result())
 
     /**
-     * similar to [[travector]] with the addition of optional accumulation
-     */
-    def collector[A, B, M[X] <: TraversableOnce[X]](in: M[A])(fn: A => Future[Option[B]])(implicit executor: ExecutionContext): Future[Vector[B]] =
+      * similar to [[travector]] with the addition of optional accumulation
+      */
+    def collector[A, B, M[X] <: TraversableOnce[X]](in: M[A])(
+      fn: A => Future[Option[B]]
+    )(implicit executor: ExecutionContext): Future[Vector[B]] =
       in.foldLeft(Future.successful(Vector.newBuilder[B])) { (fr, a) =>
-        val fb = fn(a)
-        for (r <- fr; ob <- fb) yield ob.fold(r)(r.+=)
-      }.map(_.result())
+          val fb = fn(a)
+          for (r <- fr; ob <- fb) yield ob.fold(r)(r.+=)
+        }
+        .map(_.result())
 
     /** Transforms a `TraversableOnce[A]` into a `Future[Map[K,B]]` using the provided function `A => Future[(K,V)]`.
-     *  This is useful for performing a parallel map. For example, to apply a function to all items of a list
-     *  in parallel:
-     *
-     *  {{{
-     *    val myFutureVector = travemp(myTraversable)(x => Future(myFunc(x)))
-     *  }}}
-     *
-     * This is similar to `Future.traverse`, but it will always yield a Map, regardless of the provided collection type
-     */
-    def travemp[A, K, V, M[X] <: TraversableOnce[X]](in: M[A])(fn: A => Future[(K,V)])(implicit executor: ExecutionContext): Future[Map[K,V]] =
-      in.foldLeft(Future.successful(Map.newBuilder[K,V])) { (fr, a) =>
-        val fb = fn(a)
-        for (r <- fr; b <- fb) yield (r += b)
-      }.map(_.result())
+      *  This is useful for performing a parallel map. For example, to apply a function to all items of a list
+      *  in parallel:
+      *
+      *  {{{
+      *    val myFutureVector = travemp(myTraversable)(x => Future(myFunc(x)))
+      *  }}}
+      *
+      * This is similar to `Future.traverse`, but it will always yield a Map, regardless of the provided collection type
+      */
+    def travemp[A, K, V, M[X] <: TraversableOnce[X]](in: M[A])(
+      fn: A => Future[(K, V)]
+    )(implicit executor: ExecutionContext): Future[Map[K, V]] =
+      in.foldLeft(Future.successful(Map.newBuilder[K, V])) { (fr, a) =>
+          val fb = fn(a)
+          for (r <- fr; b <- fb) yield (r += b)
+        }
+        .map(_.result())
 
     // http://stackoverflow.com/questions/28277843/convert-scala-future-to-java-future
     // this is not 1:1 conversion, since `.cancel` is unsupported
@@ -492,11 +578,13 @@ package cmwell.util {
       new JFuture[A] {
         override def get(): A = Await.result(fut, Duration.Inf)
 
-        override def get(timeout: Long, unit: TimeUnit): A = Await.result(fut, Duration.create(timeout, unit))
+        override def get(timeout: Long, unit: TimeUnit): A =
+          Await.result(fut, Duration.create(timeout, unit))
 
         override def isDone: Boolean = fut.isCompleted
 
-        override def cancel(mayInterruptIfRunning: Boolean): Boolean = throw new UnsupportedOperationException
+        override def cancel(mayInterruptIfRunning: Boolean): Boolean =
+          throw new UnsupportedOperationException
 
         override def isCancelled: Boolean = false
       }
@@ -504,7 +592,8 @@ package cmwell.util {
   }
 
   package concurrent {
-    case class FutureTimeout[T](future: scala.concurrent.Future[T]) extends Exception
+    case class FutureTimeout[T](future: scala.concurrent.Future[T])
+        extends Exception
 
     trait StateHandler[S] {
       def handle[T](state: S)(task: => Future[T]): Future[T]
@@ -512,7 +601,9 @@ package cmwell.util {
 
     object StateHandler {
       implicit val durationHandler = new StateHandler[FiniteDuration] {
-        override def handle[T](delay: FiniteDuration)(task: => Future[T]): Future[T] = {
+        override def handle[T](
+          delay: FiniteDuration
+        )(task: => Future[T]): Future[T] = {
           if (delay == Duration.Zero) task
           else SimpleScheduler.scheduleFuture(delay)(task)
         }
@@ -526,7 +617,9 @@ package cmwell.util {
       }
     }
 
-    case class RetryParams(retriesLeft: Int, delay: FiniteDuration, delayFactor: Double)
+    case class RetryParams(retriesLeft: Int,
+                           delay: FiniteDuration,
+                           delayFactor: Double)
 
     sealed trait ShouldRetry[+S]
     case object DoNotRetry extends ShouldRetry[Nothing]

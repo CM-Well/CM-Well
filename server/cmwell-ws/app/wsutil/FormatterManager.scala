@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package wsutil
 
 import javax.inject._
@@ -26,26 +24,29 @@ import markdown.PrettyCsvFormatter
 
 object FormatterManager {
   val prettyMangledField: String => String = {
-    case s if s.length > 1 && s(1) == '$' => s.head match {
-      case 'i' => s.drop(2) + ": Int"
-      case 'l' => s.drop(2) + ": Long/BigInt"
-      case 'w' => s.drop(2) + ": Double/BigDecimal"
-      case 'b' => s.drop(2) + ": Boolean"
-      case 'd' => s.drop(2) + ": Date"
-      case 'f' => s.drop(2) + ": Float"
-    }
+    case s if s.length > 1 && s(1) == '$' =>
+      s.head match {
+        case 'i' => s.drop(2) + ": Int"
+        case 'l' => s.drop(2) + ": Long/BigInt"
+        case 'w' => s.drop(2) + ": Double/BigDecimal"
+        case 'b' => s.drop(2) + ": Boolean"
+        case 'd' => s.drop(2) + ": Date"
+        case 'f' => s.drop(2) + ": Float"
+      }
     case s => s
   }
-  def multiFormattableToSeq(formattable: Formattable, formatter: Formatter): String = {
+  def multiFormattableToSeq(formattable: Formattable,
+                            formatter: Formatter): String = {
 
     val infotons: Seq[Infoton] = formattable match {
       case _ => ???
     }
 
-    formatFormattableSeq(infotons,formatter)
+    formatFormattableSeq(infotons, formatter)
   }
 
-  def formatFormattableSeq[T <: Formattable](infotons: Seq[T], formatter: Formatter): String = {
+  def formatFormattableSeq[T <: Formattable](infotons: Seq[T],
+                                             formatter: Formatter): String = {
 
     val sb = new StringBuilder()
 
@@ -58,17 +59,19 @@ object FormatterManager {
   }
 
   private def getKeyForRdfFormatterMap(rdfFlavor: RdfFlavor,
-                                             host: String,
-                                             withoutMeta: Boolean,
-                                             filterOutBlanks: Boolean,
-                                             forcrUniquness: Boolean,
-                                             pretty: Boolean,
-                                             callback: Option[String]): String = {
+                                       host: String,
+                                       withoutMeta: Boolean,
+                                       filterOutBlanks: Boolean,
+                                       forcrUniquness: Boolean,
+                                       pretty: Boolean,
+                                       callback: Option[String]): String = {
 
-    def bool2string(b: Boolean): String = if(b) "T" else "F"
+    def bool2string(b: Boolean): String = if (b) "T" else "F"
 
-    if(Set[RdfFlavor](JsonLDFlavor,JsonLDQFlavor)(rdfFlavor)){
-      s"${rdfFlavor.key}\t$host\t${bool2string(withoutMeta)}\t${bool2string(filterOutBlanks)}\t${bool2string(forcrUniquness)}\t${bool2string(pretty)}\t${callback.getOrElse("")}"
+    if (Set[RdfFlavor](JsonLDFlavor, JsonLDQFlavor)(rdfFlavor)) {
+      s"${rdfFlavor.key}\t$host\t${bool2string(withoutMeta)}\t${bool2string(
+        filterOutBlanks
+      )}\t${bool2string(forcrUniquness)}\t${bool2string(pretty)}\t${callback.getOrElse("")}"
     } else {
       s"${rdfFlavor.key}\t$host\t${bool2string(withoutMeta)}\t${bool2string(filterOutBlanks)}\t${bool2string(forcrUniquness)}\t\t"
     }
@@ -89,69 +92,167 @@ class FormatterManager @Inject()(C: CMWellRDFHelper) extends LazyLogging {
       case i => {
         val (first, dotLast) = fieldName.splitAt(i)
         val last = dotLast.tail
-        C.hashToUrlAndPrefix(last,None) match {
-          case None => fieldName
+        C.hashToUrlAndPrefix(last, None) match {
+          case None              => fieldName
           case Some((_, prefix)) => s"$first.$prefix"
         }
       }
     }
   }
 
-
   lazy val jsonFormatter = new JsonFormatter(innerToSimpleFieldName)
   lazy val prettyJsonFormatter = new PrettyJsonFormatter(innerToSimpleFieldName)
   lazy val yamlFormatter = new YamlFormatter(innerToSimpleFieldName)
-  lazy val csvFormatter = CSVFormatter(prettyMangledField compose innerToSimpleFieldName)
+  lazy val csvFormatter = CSVFormatter(
+    prettyMangledField.compose(innerToSimpleFieldName)
+  )
   lazy val prettyCsvFormatter = new PrettyCsvFormatter(innerToSimpleFieldName)
-  
 
-  val fieldTranslatorForRichRDF: Option[Long] => String => Option[(String,Option[String])] = (t: Option[Long]) => (s: String) => C.hashToUrlAndPrefix(s,t).map{ case (url,prefix) => url -> Option(prefix)}
-  val fieldTranslatorForPrefixlessRDF: Option[Long] => String => Option[(String,Option[String])] = (t: Option[Long]) => (s: String) => C.hashToUrl(s,t).map{ case url => url -> None}
+  val fieldTranslatorForRichRDF
+    : Option[Long] => String => Option[(String, Option[String])] =
+    (t: Option[Long]) =>
+      (s: String) =>
+        C.hashToUrlAndPrefix(s, t).map {
+          case (url, prefix) => url -> Option(prefix)
+    }
+  val fieldTranslatorForPrefixlessRDF
+    : Option[Long] => String => Option[(String, Option[String])] =
+    (t: Option[Long]) =>
+      (s: String) => C.hashToUrl(s, t).map { case url => url -> None }
 
-  def getFormatter(format: FormatType,
-                   timeContext: Option[Long],
-                   host: String = "http://cm-well",
-                   uri: String = "http://cm-well",
-                   pretty: Boolean = false,
-                   callback: Option[String] = None,
-                   fieldFilters: Option[FieldFilter] = None,
-                   offset: Option[Long] = None,
-                   length: Option[Long] = None,
-                   withData: Option[String] = None,
-                   withoutMeta: Boolean = false,
-                   forceUniqueness: Boolean = false, //if you want histories to not collide, e.g. searching with-history and output RDF (RDF only flag)
-                   filterOutBlanks: Boolean = false): Formatter = {
+  def getFormatter(
+    format: FormatType,
+    timeContext: Option[Long],
+    host: String = "http://cm-well",
+    uri: String = "http://cm-well",
+    pretty: Boolean = false,
+    callback: Option[String] = None,
+    fieldFilters: Option[FieldFilter] = None,
+    offset: Option[Long] = None,
+    length: Option[Long] = None,
+    withData: Option[String] = None,
+    withoutMeta: Boolean = false,
+    forceUniqueness: Boolean = false, //if you want histories to not collide, e.g. searching with-history and output RDF (RDF only flag)
+    filterOutBlanks: Boolean = false
+  ): Formatter = {
     format match {
-      case TextType => PathFormatter
-      case TsvType => TsvFormatter
+      case TextType          => PathFormatter
+      case TsvType           => TsvFormatter
       case CsvType if pretty => prettyCsvFormatter
-      case CsvType => csvFormatter
-      case JsonType if pretty && callback.isDefined => new PrettyJsonFormatter(innerToSimpleFieldName, callback)
+      case CsvType           => csvFormatter
+      case JsonType if pretty && callback.isDefined =>
+        new PrettyJsonFormatter(innerToSimpleFieldName, callback)
       case JsonType if pretty => prettyJsonFormatter
-      case JsonType if callback.isDefined => new JsonFormatter(innerToSimpleFieldName, callback)
+      case JsonType if callback.isDefined =>
+        new JsonFormatter(innerToSimpleFieldName, callback)
       case JsonType => jsonFormatter
-      case JsonlType if pretty => new PrettyJsonlFormatter(C.hashToUrlAndPrefix(_,timeContext), { quadUrl =>
-        C.getAliasForQuadUrl(quadUrl) match {
-          case opt@Some(alias) => opt
-          case None => Some(quadUrl)
-        }
-      }, callback)
-      case JsonlType => new JsonlFormatter(C.hashToUrlAndPrefix(_,timeContext), Some.apply, callback)
+      case JsonlType if pretty =>
+        new PrettyJsonlFormatter(C.hashToUrlAndPrefix(_, timeContext), {
+          quadUrl =>
+            C.getAliasForQuadUrl(quadUrl) match {
+              case opt @ Some(alias) => opt
+              case None              => Some(quadUrl)
+            }
+        }, callback)
+      case JsonlType =>
+        new JsonlFormatter(
+          C.hashToUrlAndPrefix(_, timeContext),
+          Some.apply,
+          callback
+        )
       case YamlType => yamlFormatter
       case RdfType(rdfFlavor) => {
-        val key = getKeyForRdfFormatterMap(rdfFlavor, host, withoutMeta, filterOutBlanks, forceUniqueness, pretty, callback)
+        val key = getKeyForRdfFormatterMap(
+          rdfFlavor,
+          host,
+          withoutMeta,
+          filterOutBlanks,
+          forceUniqueness,
+          pretty,
+          callback
+        )
         if (rdfFormatterMap.contains(key)) rdfFormatterMap(key)
         else {
           val newFormatter = rdfFlavor match {
-            case RdfXmlFlavor => new RDFXmlFormatter(host, fieldTranslatorForRichRDF(timeContext), withoutMeta, filterOutBlanks, forceUniqueness)
-            case TurtleFlavor => new TurtleFormatter(host, fieldTranslatorForRichRDF(timeContext), withoutMeta, filterOutBlanks, forceUniqueness)
-            case N3Flavor => new N3Formatter(host, fieldTranslatorForRichRDF(timeContext), withoutMeta, filterOutBlanks, forceUniqueness)
-            case NTriplesFlavor => new NTriplesFormatter(host, fieldTranslatorForPrefixlessRDF(timeContext), withoutMeta, filterOutBlanks, forceUniqueness)
-            case JsonLDFlavor => JsonLDFormatter(host, fieldTranslatorForRichRDF(timeContext), withoutMeta, filterOutBlanks, forceUniqueness, pretty, callback)
-            case NquadsFlavor => new NQuadsFormatter(host, fieldTranslatorForPrefixlessRDF(timeContext), withoutMeta, filterOutBlanks, forceUniqueness)
-            case TriGFlavor => new TriGFormatter(host, fieldTranslatorForRichRDF(timeContext), C.getAliasForQuadUrl, withoutMeta, filterOutBlanks, forceUniqueness)
-            case TriXFlavor => new TriXFormatter(host, fieldTranslatorForRichRDF(timeContext), C.getAliasForQuadUrl, withoutMeta, filterOutBlanks, forceUniqueness)
-            case JsonLDQFlavor => JsonLDQFormatter(host, fieldTranslatorForRichRDF(timeContext), C.getAliasForQuadUrl, withoutMeta, filterOutBlanks, forceUniqueness, pretty, callback)
+            case RdfXmlFlavor =>
+              new RDFXmlFormatter(
+                host,
+                fieldTranslatorForRichRDF(timeContext),
+                withoutMeta,
+                filterOutBlanks,
+                forceUniqueness
+              )
+            case TurtleFlavor =>
+              new TurtleFormatter(
+                host,
+                fieldTranslatorForRichRDF(timeContext),
+                withoutMeta,
+                filterOutBlanks,
+                forceUniqueness
+              )
+            case N3Flavor =>
+              new N3Formatter(
+                host,
+                fieldTranslatorForRichRDF(timeContext),
+                withoutMeta,
+                filterOutBlanks,
+                forceUniqueness
+              )
+            case NTriplesFlavor =>
+              new NTriplesFormatter(
+                host,
+                fieldTranslatorForPrefixlessRDF(timeContext),
+                withoutMeta,
+                filterOutBlanks,
+                forceUniqueness
+              )
+            case JsonLDFlavor =>
+              JsonLDFormatter(
+                host,
+                fieldTranslatorForRichRDF(timeContext),
+                withoutMeta,
+                filterOutBlanks,
+                forceUniqueness,
+                pretty,
+                callback
+              )
+            case NquadsFlavor =>
+              new NQuadsFormatter(
+                host,
+                fieldTranslatorForPrefixlessRDF(timeContext),
+                withoutMeta,
+                filterOutBlanks,
+                forceUniqueness
+              )
+            case TriGFlavor =>
+              new TriGFormatter(
+                host,
+                fieldTranslatorForRichRDF(timeContext),
+                C.getAliasForQuadUrl,
+                withoutMeta,
+                filterOutBlanks,
+                forceUniqueness
+              )
+            case TriXFlavor =>
+              new TriXFormatter(
+                host,
+                fieldTranslatorForRichRDF(timeContext),
+                C.getAliasForQuadUrl,
+                withoutMeta,
+                filterOutBlanks,
+                forceUniqueness
+              )
+            case JsonLDQFlavor =>
+              JsonLDQFormatter(
+                host,
+                fieldTranslatorForRichRDF(timeContext),
+                C.getAliasForQuadUrl,
+                withoutMeta,
+                filterOutBlanks,
+                forceUniqueness,
+                pretty,
+                callback
+              )
           }
           rdfFormatterMap = rdfFormatterMap.updated(key, newFormatter)
           newFormatter
@@ -159,15 +260,35 @@ class FormatterManager @Inject()(C: CMWellRDFHelper) extends LazyLogging {
       }
       case AtomType => {
 
-        val innerFormatterOpt = withData.map(ft => FormatExtractor.withDefault(ft, RdfType(TriGFlavor))).map { ft =>
-          if (ft eq AtomType) throw new IllegalArgumentException("you can't have atom format with inline atom data!")
-          else getFormatter(ft, timeContext, host, uri, pretty, callback, fieldFilters, offset, length, None)
-        }
+        val innerFormatterOpt = withData
+          .map(ft => FormatExtractor.withDefault(ft, RdfType(TriGFlavor)))
+          .map { ft =>
+            if (ft eq AtomType)
+              throw new IllegalArgumentException(
+                "you can't have atom format with inline atom data!"
+              )
+            else
+              getFormatter(
+                ft,
+                timeContext,
+                host,
+                uri,
+                pretty,
+                callback,
+                fieldFilters,
+                offset,
+                length,
+                None
+              )
+          }
         (offset, length) match {
-          case (Some(o), Some(l)) => AtomFormatter(host, uri, fieldFilters, o, l, innerFormatterOpt)
+          case (Some(o), Some(l)) =>
+            AtomFormatter(host, uri, fieldFilters, o, l, innerFormatterOpt)
           case (None, None) => AtomFormatter(host, uri, innerFormatterOpt)
           case _ => {
-            logger.warn(s"Atom formatter: case that was un-thought of reached with: $fieldFilters , $offset , $length")
+            logger.warn(
+              s"Atom formatter: case that was un-thought of reached with: $fieldFilters , $offset , $length"
+            )
             AtomFormatter(host, uri, innerFormatterOpt)
           }
         }
@@ -175,6 +296,3 @@ class FormatterManager @Inject()(C: CMWellRDFHelper) extends LazyLogging {
     }
   }
 }
-
-
-

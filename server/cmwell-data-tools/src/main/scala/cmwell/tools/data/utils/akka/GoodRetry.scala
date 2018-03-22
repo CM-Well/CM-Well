@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.utils.akka
 
 import akka.stream._
@@ -27,7 +25,10 @@ import scala.util.{Success, Try}
   * Created by matan on 27/2/17.
   */
 object GoodRetry {
-  def concat[I, O, S, M](limit: Long, flow: Graph[FlowShape[(I, S), (Try[O], S)], M])(retryWith: S => Option[immutable.Iterable[(I, S)]]): Graph[FlowShape[(I, S), (Try[O], S)], M] = {
+  def concat[I, O, S, M](limit: Long,
+                         flow: Graph[FlowShape[(I, S), (Try[O], S)], M])(
+    retryWith: S => Option[immutable.Iterable[(I, S)]]
+  ): Graph[FlowShape[(I, S), (Try[O], S)], M] = {
     GraphDSL.create(flow) { implicit b => origFlow =>
       import GraphDSL.Implicits._
 
@@ -39,98 +40,118 @@ object GoodRetry {
     }
   }
 
-  class RetryConcatCoordinator[I, S, O](limit: Long, retryWith: S => Option[immutable.Iterable[(I, S)]]) extends GraphStage[BidiShape[(I, S), (Try[O], S), (Try[O], S), (I, S)]] {
+  class RetryConcatCoordinator[I, S, O](
+    limit: Long,
+    retryWith: S => Option[immutable.Iterable[(I, S)]]
+  ) extends GraphStage[BidiShape[(I, S), (Try[O], S), (Try[O], S), (I, S)]] {
     val in1 = Inlet[(I, S)]("RetryConcat.ext.in")
     val out1 = Outlet[(Try[O], S)]("RetryConcat.ext.out")
     val in2 = Inlet[(Try[O], S)]("RetryConcat.int.in")
     val out2 = Outlet[(I, S)]("RetryConcat.int.out")
-    override val shape = BidiShape[(I, S), (Try[O], S), (Try[O], S), (I, S)](in1, out1, in2, out2)
-    override def createLogic(attributes: Attributes) = new GraphStageLogic(shape) {
-      var numElementsInCycle = 0
-      val queue = scala.collection.mutable.Queue.empty[(I, S)]
+    override val shape =
+      BidiShape[(I, S), (Try[O], S), (Try[O], S), (I, S)](in1, out1, in2, out2)
+    override def createLogic(attributes: Attributes) =
+      new GraphStageLogic(shape) {
+        var numElementsInCycle = 0
+        val queue = scala.collection.mutable.Queue.empty[(I, S)]
 
-      setHandler(in1, new InHandler {
-        override def onPush() = {
-          val is = grab(in1)
-          if (isAvailable(out2)) {
+        setHandler(
+          in1,
+          new InHandler {
+            override def onPush() = {
+              val is = grab(in1)
+              if (isAvailable(out2)) {
 //            println(s"[push  in1] push out2 elementInCycle=$numElementsInCycle")
-            push(out2, is)
-            numElementsInCycle += 1
-          } else queue.enqueue(is)
-        }
+                push(out2, is)
+                numElementsInCycle += 1
+              } else queue.enqueue(is)
+            }
 
-        override def onUpstreamFinish() = {
-          if (numElementsInCycle == 0 && queue.isEmpty) {
+            override def onUpstreamFinish() = {
+              if (numElementsInCycle == 0 && queue.isEmpty) {
 //            println("<complete stage in1>")
-            completeStage()
-          }
-        }
-      })
-
-      setHandler(out1, new OutHandler {
-        override def onPull() = {
-//          println(s"[pull out1] pull in2  elementInCycle=$numElementsInCycle")
-          pull(in2)
-        }
-      })
-
-      setHandler(in2, new InHandler {
-        override def onPush() = {
-          numElementsInCycle -= 1
-          grab(in2) match {
-            case s @ (_: Success[O], _) => pushAndCompleteIfLast(s)
-            case failure @ (_, s) => retryWith(s).fold(pushAndCompleteIfLast(failure)) { xs =>
-              if (xs.size + queue.size > limit) failStage(new IllegalStateException(s"Queue limit of $limit has been exceeded. Trying to append ${xs.size} elements to a queue that has ${queue.size} elements."))
-              else {
-                xs.foreach(queue.enqueue(_))
-//                println(s"queue.size=${queue.size}")
-                if (queue.isEmpty) {
-                  if (isClosed(in1)) {
-//                    println("<complete stage in2>")
-                    completeStage()
-                  }
-//                  else {println("[push  in2] pull in1"); pull(in1) }
-                  else {
-//                    println(s"[push  in2] pull in2  elementInCycle=$numElementsInCycle")
-                    pull(in2)
-                  }
-                } else {
-//                  println(s"[push  in2] pull in2  elementInCycle=$numElementsInCycle")
-                  pull(in2)
-                  if (isAvailable(out2)) {
-                    val elem = queue.dequeue()
-//                    println(s"[push  in2] push out2 elementInCycle=$numElementsInCycle")
-                    push(out2, elem)
-                    numElementsInCycle += 1
-                  }
-                }
+                completeStage()
               }
             }
           }
-        }
-      })
+        )
 
-      def pushAndCompleteIfLast(elem: (Try[O], S)): Unit = {
-//        println(s"[push  in2] push out1 elementInCycle=$numElementsInCycle")
-        push(out1, elem)
-        if (isClosed(in1) && queue.isEmpty && numElementsInCycle == 0) {
-//          println(s"<complete stage in2 if last> elementInCycle=$numElementsInCycle")
-          completeStage()
-        }
-      }
-
-      setHandler(out2, new OutHandler {
-        override def onPull() = {
-          if (queue.isEmpty) {
-            if (!hasBeenPulled(in1) && !isClosed(in1)) {
-//              println(s"[pull out2] pull in1  elementInCycle=$numElementsInCycle")
-              pull(in1)
-            }
-          } else {
-//            println(s"[pull out2] push out2 elementInCycle=$numElementsInCycle")
-            push(out2, queue.dequeue())
-            numElementsInCycle += 1
+        setHandler(out1, new OutHandler {
+          override def onPull() = {
+//          println(s"[pull out1] pull in2  elementInCycle=$numElementsInCycle")
+            pull(in2)
           }
+        })
+
+        setHandler(
+          in2,
+          new InHandler {
+            override def onPush() = {
+              numElementsInCycle -= 1
+              grab(in2) match {
+                case s @ (_: Success[O], _) => pushAndCompleteIfLast(s)
+                case failure @ (_, s) =>
+                  retryWith(s).fold(pushAndCompleteIfLast(failure)) {
+                    xs =>
+                      if (xs.size + queue.size > limit)
+                        failStage(
+                          new IllegalStateException(
+                            s"Queue limit of $limit has been exceeded. Trying to append ${xs.size} elements to a queue that has ${queue.size} elements."
+                          )
+                        )
+                      else {
+                        xs.foreach(queue.enqueue(_))
+//                println(s"queue.size=${queue.size}")
+                        if (queue.isEmpty) {
+                          if (isClosed(in1)) {
+//                    println("<complete stage in2>")
+                            completeStage()
+                          }
+//                  else {println("[push  in2] pull in1"); pull(in1) }
+                          else {
+//                    println(s"[push  in2] pull in2  elementInCycle=$numElementsInCycle")
+                            pull(in2)
+                          }
+                        } else {
+//                  println(s"[push  in2] pull in2  elementInCycle=$numElementsInCycle")
+                          pull(in2)
+                          if (isAvailable(out2)) {
+                            val elem = queue.dequeue()
+//                    println(s"[push  in2] push out2 elementInCycle=$numElementsInCycle")
+                            push(out2, elem)
+                            numElementsInCycle += 1
+                          }
+                        }
+                      }
+                  }
+              }
+            }
+          }
+        )
+
+        def pushAndCompleteIfLast(elem: (Try[O], S)): Unit = {
+//        println(s"[push  in2] push out1 elementInCycle=$numElementsInCycle")
+          push(out1, elem)
+          if (isClosed(in1) && queue.isEmpty && numElementsInCycle == 0) {
+//          println(s"<complete stage in2 if last> elementInCycle=$numElementsInCycle")
+            completeStage()
+          }
+        }
+
+        setHandler(
+          out2,
+          new OutHandler {
+            override def onPull() = {
+              if (queue.isEmpty) {
+                if (!hasBeenPulled(in1) && !isClosed(in1)) {
+//              println(s"[pull out2] pull in1  elementInCycle=$numElementsInCycle")
+                  pull(in1)
+                }
+              } else {
+//            println(s"[pull out2] push out2 elementInCycle=$numElementsInCycle")
+                push(out2, queue.dequeue())
+                numElementsInCycle += 1
+              }
 //          if (!elementInCycle && isAvailable(out1)) {
 //            if (queue.isEmpty) {
 //              pull(in1)
@@ -141,12 +162,13 @@ object GoodRetry {
 //              if (!hasBeenPulled(in2)) pull(in2)
 //            }
 //          }
-        }
+            }
 
-        override def onDownstreamFinish() = {
-          //Do Nothing, intercept completion as downstream
-        }
-      })
-    }
+            override def onDownstreamFinish() = {
+              //Do Nothing, intercept completion as downstream
+            }
+          }
+        )
+      }
   }
 }

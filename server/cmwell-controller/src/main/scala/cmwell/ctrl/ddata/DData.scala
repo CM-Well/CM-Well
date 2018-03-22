@@ -12,74 +12,74 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.ctrl.ddata
 
-import k.grid.dmap.api.{SettingsString, SettingsSet}
+import k.grid.dmap.api.{SettingsSet, SettingsString}
 import k.grid.dmap.impl.inmem.InMemDMap
 
 /**
- * Created by michael on 3/29/15.
- */
+  * Created by michael on 3/29/15.
+  */
 object DData {
-  def getDownNodes : Set[String] = InMemDMap.get("downNodes").asInstanceOf[Option[SettingsSet]] match {
-    case Some(s) => s.set
-    case None => Set.empty[String]
-  }
+  def getDownNodes: Set[String] =
+    InMemDMap.get("downNodes").asInstanceOf[Option[SettingsSet]] match {
+      case Some(s) => s.set
+      case None    => Set.empty[String]
+    }
 
-  def setDownNodes(s : Set[String]) = {
-    if(getDownNodes != s)
+  def setDownNodes(s: Set[String]) = {
+    if (getDownNodes != s)
       InMemDMap.set("downNodes", SettingsSet(s))
   }
 
-  def addDownNode(n : String) = {
+  def addDownNode(n: String) = {
     InMemDMap.aggregate("downNodes", n)
   }
 
-  def getKnownNodes : Set[String] = {
+  def getKnownNodes: Set[String] = {
     InMemDMap.get("knownHosts").asInstanceOf[Option[SettingsSet]] match {
       case Some(s) => s.set
-      case None => Set.empty[String]
+      case None    => Set.empty[String]
     }
 
   }
 
-  def setKnownNodes(s : Set[String]) = {
-    if(getKnownNodes != s)
+  def setKnownNodes(s: Set[String]) = {
+    if (getKnownNodes != s)
       InMemDMap.set("knownHosts", SettingsSet(s))
   }
 
-  def addKnownNode(n : String) {
+  def addKnownNode(n: String) {
     InMemDMap.aggregate("knownHosts", n)
   }
 
-  def setPingIp(pip : String) = {
+  def setPingIp(pip: String) = {
     InMemDMap.set("pingIp", SettingsString(pip))
   }
 
-  def getPingIp : String = {
+  def getPingIp: String = {
     InMemDMap.get("pingIp") match {
       case Some(sVal) => sVal.asInstanceOf[SettingsString].str
-      case None => ""
+      case None       => ""
     }
   }
 
-  def getEsMasters : Set[String] = InMemDMap.get("esMasters").asInstanceOf[Option[SettingsSet]] match {
-    case Some(s) => s.set
-    case None => Set.empty[String]
-  }
+  def getEsMasters: Set[String] =
+    InMemDMap.get("esMasters").asInstanceOf[Option[SettingsSet]] match {
+      case Some(s) => s.set
+      case None    => Set.empty[String]
+    }
 
-  def setEsMasters(s : Set[String]) = {
-    if(getEsMasters != s)
+  def setEsMasters(s: Set[String]) = {
+    if (getEsMasters != s)
       InMemDMap.set("esMasters", SettingsSet(s))
   }
 
-  def addEsMaster(n : String) {
+  def addEsMaster(n: String) {
     InMemDMap.aggregate("esMasters", n)
   }
 
-  def removeEsMaster(n : String) {
+  def removeEsMaster(n: String) {
     InMemDMap.subtract("esMasters", n)
   }
 

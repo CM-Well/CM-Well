@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.ctrl.controllers
 
 import cmwell.ctrl.config.Config
@@ -22,24 +20,39 @@ import cmwell.util.http.{SimpleHttpClient => Http}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
- * Created by michael on 2/16/15.
- */
-object ElasticsearchController extends ComponentController(s"${Config.cmwellHome}/app/es/cur", "/log/es[0-9]*", Set("es")) {
+  * Created by michael on 2/16/15.
+  */
+object ElasticsearchController
+    extends ComponentController(
+      s"${Config.cmwellHome}/app/es/cur",
+      "/log/es[0-9]*",
+      Set("es")
+    ) {
   def stopElasticsearchRebalancing {
     //logger.info("[Elasticsearch controller] stopping ES rebalance")
-    Http.put(s"http://${Config.pingIp}:9201/_cluster/settings",  """{"transient" : {"cluster.routing.allocation.enable" : "none"}}""")
+    Http.put(
+      s"http://${Config.pingIp}:9201/_cluster/settings",
+      """{"transient" : {"cluster.routing.allocation.enable" : "none"}}"""
+    )
   }
 
   def startElasticsearchRebalancing {
     //logger.info("[Elasticsearch controller] resuming ES rebalance")
-    Http.put(s"http://${Config.pingIp}:9201/_cluster/settings",  """{"transient" : {"cluster.routing.allocation.enable" : "all"}}""")
+    Http.put(
+      s"http://${Config.pingIp}:9201/_cluster/settings",
+      """{"transient" : {"cluster.routing.allocation.enable" : "all"}}"""
+    )
   }
 
   def startMaster {
-    ProcUtil.executeCommand(s"HAL=9000 ${super.getStartScriptLocation}/start-master.sh")
+    ProcUtil.executeCommand(
+      s"HAL=9000 ${super.getStartScriptLocation}/start-master.sh"
+    )
   }
 
   def stopMaster {
-    ProcUtil.executeCommand(s"ps aux | grep es-master | grep -v grep | grep -v starter | awk '{print $$2}' | xargs kill")
+    ProcUtil.executeCommand(
+      s"ps aux | grep es-master | grep -v grep | grep -v starter | awk '{print $$2}' | xargs kill"
+    )
   }
 }

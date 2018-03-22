@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.utils.chunkers
 
 import akka.actor.Cancellable
@@ -28,12 +26,14 @@ object OldSizeChunker {
   type In = ByteString
   type Out = Seq[ByteString]
 
-  def apply(maxSize: Int, within: Duration = Duration.Undefined) = new OldSizeChunker(maxSize, within)
+  def apply(maxSize: Int, within: Duration = Duration.Undefined) =
+    new OldSizeChunker(maxSize, within)
 }
 
 import OldSizeChunker._
 
-class OldSizeChunker(maxSize: Int, within: Duration) extends GraphStage[FlowShape[In, Out]] {
+class OldSizeChunker(maxSize: Int, within: Duration)
+    extends GraphStage[FlowShape[In, Out]] {
   private[this] val BUFFER_SIZE = (maxSize * 1.2).toInt
   private var buffer: ArrayBuffer[In] = _
   private var dataSize: Long = _
@@ -78,6 +78,7 @@ class OldSizeChunker(maxSize: Int, within: Duration) extends GraphStage[FlowShap
     dataSize += elem.size
     buffer += elem
   }
+
   /**
     * Checks if buffered data size exceeded limit
     *
@@ -85,97 +86,108 @@ class OldSizeChunker(maxSize: Int, within: Duration) extends GraphStage[FlowShap
     */
   private def isFlushBufferedData = { dataSize > maxSize }
 
-  override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
-    private var outPendingElem: Option[Out] = None
-    private var asyncCB: AsyncCallback[Unit] = _
-    private var forcePushEvent: Option[Cancellable] = None
-    private var isWaitingForEvent: Boolean = false
+  override def createLogic(inheritedAttributes: Attributes): GraphStageLogic =
+    new GraphStageLogic(shape) {
+      private var outPendingElem: Option[Out] = None
+      private var asyncCB: AsyncCallback[Unit] = _
+      private var forcePushEvent: Option[Cancellable] = None
+      private var isWaitingForEvent: Boolean = false
 
-    override def preStart() = {
-      pull(in)
-      asyncCB = getAsyncCallback(_ => {
-        if (isWaitingForEvent) {
-          isWaitingForEvent = false
+      override def preStart() = {
+        pull(in)
+        asyncCB = getAsyncCallback(_ => {
+          if (isWaitingForEvent) {
+            isWaitingForEvent = false
 
-          if (buffer.nonEmpty) {
-            push(out, bufferToElement())
-            resetBuffer()
+            if (buffer.nonEmpty) {
+              push(out, bufferToElement())
+              resetBuffer()
+            }
           }
-        }
-      })
-    }
-
-    setHandler(in, new InHandler {
-      override def onPush(): Unit = {
-        val elem = grab(in)
-
-        if (isFlushBufferedData) {
-          isWaitingForEvent = false
-          forcePushEvent.foreach(_.cancel)
-
-          val elemToPush = bufferToElement()
-
-          if (isAvailable(out)) {
-            push(out, elemToPush)
-            pull(in)
-          } else {
-            outPendingElem = Some(elemToPush)
-          }
-
-          resetBuffer(elem)
-        } else {
-          addToBuffer(elem)
-          pull(in)
-        }
+        })
       }
 
-      override def onUpstreamFinish(): Unit = {
-        if (buffer.isEmpty) {
-          completeStage()
-        } else if (outPendingElem.isEmpty && isAvailable(out)) {
-          push(out, bufferToElement())
-          completeStage()
-        }
-      }
-    })
+      setHandler(
+        in,
+        new InHandler {
+          override def onPush(): Unit = {
+            val elem = grab(in)
 
-    setHandler(out, new OutHandler {
-      override def onPull(): Unit = {
-        outPendingElem match {
-          case Some(elem) =>
-            push(out, elem)
+            if (isFlushBufferedData) {
+              isWaitingForEvent = false
+              forcePushEvent.foreach(_.cancel)
 
-            if (isClosed(in)) {
-              if (buffer.nonEmpty) {
-                outPendingElem = Some(bufferToElement())
-                resetBuffer()
+              val elemToPush = bufferToElement()
+
+              if (isAvailable(out)) {
+                push(out, elemToPush)
+                pull(in)
               } else {
-                completeStage()
+                outPendingElem = Some(elemToPush)
               }
+
+              resetBuffer(elem)
             } else {
-              outPendingElem = None
+              addToBuffer(elem)
               pull(in)
             }
+          }
 
-          case None => { // there is no element to push yet
-            if (isClosed(in)){
-              if (buffer.nonEmpty) {
-                push(out, bufferToElement())
-              }
+          override def onUpstreamFinish(): Unit = {
+            if (buffer.isEmpty) {
               completeStage()
-            } else if (within.isFinite) {
-              isWaitingForEvent = true
-              // schedule a force push if no push is arrived in duration
-              forcePushEvent = Some (
-                materializer.scheduleOnce(FiniteDuration(within._1, within._2),
-                  new Runnable() {def run() = asyncCB.invoke(())})
-              )
+            } else if (outPendingElem.isEmpty && isAvailable(out)) {
+              push(out, bufferToElement())
+              completeStage()
             }
           }
         }
-      }
-    })
-  }
+      )
+
+      setHandler(
+        out,
+        new OutHandler {
+          override def onPull(): Unit = {
+            outPendingElem match {
+              case Some(elem) =>
+                push(out, elem)
+
+                if (isClosed(in)) {
+                  if (buffer.nonEmpty) {
+                    outPendingElem = Some(bufferToElement())
+                    resetBuffer()
+                  } else {
+                    completeStage()
+                  }
+                } else {
+                  outPendingElem = None
+                  pull(in)
+                }
+
+              case None => { // there is no element to push yet
+                if (isClosed(in)) {
+                  if (buffer.nonEmpty) {
+                    push(out, bufferToElement())
+                  }
+                  completeStage()
+                } else if (within.isFinite) {
+                  isWaitingForEvent = true
+                  // schedule a force push if no push is arrived in duration
+                  forcePushEvent = Some(
+                    materializer.scheduleOnce(
+                      FiniteDuration(within._1, within._2),
+                      new Runnable() {
+                        def run() = asyncCB.invoke(())
+                      }
+                    )
+                  )
+                }
+              }
+            }
+          }
+        }
+      )
+    }
 
   override val shape: FlowShape[In, Out] = FlowShape.of(in, out)
 }

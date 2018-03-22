@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package controllers
 
 import cmwell.ws.Settings
@@ -27,7 +25,9 @@ import javax.inject._
 import filters.Attrs
 
 @Singleton
-class BackPressureToggler  @Inject()(authUtils: AuthUtils) extends InjectedController with LazyLogging {
+class BackPressureToggler @Inject()(authUtils: AuthUtils)
+    extends InjectedController
+    with LazyLogging {
 
   val BACKPRESSURE_TRIGGER = "cmwell.ws.pushbackpressure.trigger"
 
@@ -52,19 +52,31 @@ class BackPressureToggler  @Inject()(authUtils: AuthUtils) extends InjectedContr
           PersistentDMap.set(BACKPRESSURE_TRIGGER, SettingsString("bar"))
           Ok(s"Changed backpressure trigger to bar")
         case None =>
-          val curValOpt = PersistentDMap.get(BACKPRESSURE_TRIGGER).flatMap(_.as[String])
+          val curValOpt =
+            PersistentDMap.get(BACKPRESSURE_TRIGGER).flatMap(_.as[String])
           curValOpt match {
-            case Some(v) => Ok(s"Please provide the parameter 'pbp'. The current value is: '$v'")
-            case None => Ok(s"Please provide the parameter 'pbp'. No value is set; defaulting to ${Settings.pushbackpressure}")
+            case Some(v) =>
+              Ok(
+                s"Please provide the parameter 'pbp'. The current value is: '$v'"
+              )
+            case None =>
+              Ok(
+                s"Please provide the parameter 'pbp'. No value is set; defaulting to ${Settings.pushbackpressure}"
+              )
           }
-        case Some(unknown) => BadRequest(s"value [$unknown] is invalid. valid values are: [old,new,off]")
+        case Some(unknown) =>
+          BadRequest(
+            s"value [$unknown] is invalid. valid values are: [old,new,off]"
+          )
       }
-    }
-    else Forbidden("not authorized")
+    } else Forbidden("not authorized")
   }
 
-  def get: String = PersistentDMap.get(BACKPRESSURE_TRIGGER).fold[String](Settings.pushbackpressure){
-    case SettingsString(v) => v
-    case unknown => s"invalid unknown state: $unknown"
-  }
+  def get: String =
+    PersistentDMap
+      .get(BACKPRESSURE_TRIGGER)
+      .fold[String](Settings.pushbackpressure) {
+        case SettingsString(v) => v
+        case unknown           => s"invalid unknown state: $unknown"
+      }
 }

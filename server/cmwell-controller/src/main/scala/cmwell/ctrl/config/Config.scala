@@ -12,15 +12,13 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.ctrl.config
 
 import com.typesafe.config.ConfigFactory
 
 /**
- * Created by michael on 12/2/14.
- */
+  * Created by michael on 12/2/14.
+  */
 object Config {
   val hostName = java.net.InetAddress.getLocalHost.getHostName
 
@@ -55,7 +53,8 @@ object Config {
   val idleWaitSeconds = config.getInt("ctrl.hc.idleWaitSeconds")
   val hcSampleInterval = config.getInt("ctrl.hc.hcSampleInterval")
   val bgSampleInterval = config.getInt("ctrl.hs.bgSampleInterval")
-  val downNodesGraceTimeMinutes = config.getInt("ctrl.hc.downNodesGraceTimeMinutes")
+  val downNodesGraceTimeMinutes =
+    config.getInt("ctrl.hc.downNodesGraceTimeMinutes")
   val isolationCheckSeconds = config.getInt("ctrl.hc.isolationCheckSeconds")
 
   val heakupSampleInterval = config.getInt("ctrl.agent.heakupSampleInterval")

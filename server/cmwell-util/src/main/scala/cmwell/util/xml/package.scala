@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.util
 
 import com.typesafe.scalalogging.LazyLogging
@@ -22,24 +20,30 @@ import scala.xml._
 import scala.xml.transform._
 
 /**
- * Created by gilad on 5/12/14.
- */
+  * Created by gilad on 5/12/14.
+  */
 package object xml extends LazyLogging {
   private def addChild(n: Node, newChild: Node) = n match {
     case Elem(prefix, label, attribs, scope, child @ _*) =>
-      Elem(prefix, label, attribs, scope, true, child ++ newChild : _*)
+      Elem(prefix, label, attribs, scope, true, child ++ newChild: _*)
     case _ => {
       logger.error("Can only add children to elements!")
       n
     }
   }
 
-  private class AddChildrenTo(label: String, newChild: Node) extends RewriteRule {
+  private class AddChildrenTo(label: String, newChild: Node)
+      extends RewriteRule {
     override def transform(n: Node) = n match {
       case n @ Elem(_, `label`, _, _, _*) => addChild(n, newChild)
-      case other => other
+      case other                          => other
     }
   }
 
-  def addChildInXml(xmlDoc: Node, parentNameInXmlDoc: String, childToAddUnderParent: Node): Node = new RuleTransformer(new AddChildrenTo(parentNameInXmlDoc, childToAddUnderParent)).transform(xmlDoc).head
+  def addChildInXml(xmlDoc: Node,
+                    parentNameInXmlDoc: String,
+                    childToAddUnderParent: Node): Node =
+    new RuleTransformer(
+      new AddChildrenTo(parentNameInXmlDoc, childToAddUnderParent)
+    ).transform(xmlDoc).head
 }

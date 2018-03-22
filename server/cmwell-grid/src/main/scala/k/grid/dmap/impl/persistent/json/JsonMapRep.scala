@@ -12,14 +12,12 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package k.grid.dmap.impl.persistent.json
 
 import k.grid.dmap.api._
 import play.api.libs.json._
 
-case object PersistentDMapDataFileParsingException extends Exception{
+case object PersistentDMapDataFileParsingException extends Exception {
   override def getMessage: String = "Couldn't parse persistent data file"
 }
 
@@ -28,56 +26,67 @@ object MapDataJsonProtocol {
   implicit object SettingsValueF extends Format[SettingsValue] {
     override def writes(obj: SettingsValue): JsValue = {
       obj match {
-        case SettingsString(str) => JsString(str)
+        case SettingsString(str)   => JsString(str)
         case SettingsBoolean(bool) => JsBoolean(bool)
-        case SettingsLong(lng) => JsNumber(lng)
-        case SettingsSet(set) => JsArray(set.toVector.map(s => JsString(s)))
+        case SettingsLong(lng)     => JsNumber(lng)
+        case SettingsSet(set)      => JsArray(set.toVector.map(s => JsString(s)))
       }
     }
 
     override def reads(json: JsValue): JsResult[SettingsValue] = json match {
-      case JsString(s) => JsSuccess(SettingsString(s))
+      case JsString(s)  => JsSuccess(SettingsString(s))
       case JsBoolean(b) => JsSuccess(SettingsBoolean(b))
-      case JsNumber(n) => JsSuccess(SettingsLong(n.toLong))
-      case JsArray(arr) => JsSuccess(SettingsSet(arr.collect{case JsString(s) => s}.toSet))
+      case JsNumber(n)  => JsSuccess(SettingsLong(n.toLong))
+      case JsArray(arr) =>
+        JsSuccess(SettingsSet(arr.collect { case JsString(s) => s }.toSet))
       case _ => JsError(PersistentDMapDataFileParsingException.getMessage)
     }
   }
 
   implicit object MapJsonFormat extends Format[Map[String, SettingsValue]] {
     override def writes(obj: Map[String, SettingsValue]): JsValue = {
-      val j = obj.map {
-        tup =>
-          tup._1 -> SettingsValueF.writes(tup._2)
+      val j = obj.map { tup =>
+        tup._1 -> SettingsValueF.writes(tup._2)
       }
       JsObject(j)
     }
 
-    override def reads(json: JsValue): JsResult[Map[String, SettingsValue]] = json match {
-      case JsObject(obj) => obj.mapValues(SettingsValueF.reads).foldLeft[JsResult[Map[String,SettingsValue]]](JsSuccess(Map.empty[String,SettingsValue])) {
-        case (JsSuccess(m,_),(s,JsSuccess(v,_))) => JsSuccess(m + (s -> v))
-        case (e: JsError, _) => e
-        case (_, (_, e: JsError)) => e
+    override def reads(json: JsValue): JsResult[Map[String, SettingsValue]] =
+      json match {
+        case JsObject(obj) =>
+          obj
+            .mapValues(SettingsValueF.reads)
+            .foldLeft[JsResult[Map[String, SettingsValue]]](
+              JsSuccess(Map.empty[String, SettingsValue])
+            ) {
+              case (JsSuccess(m, _), (s, JsSuccess(v, _))) =>
+                JsSuccess(m + (s -> v))
+              case (e: JsError, _)      => e
+              case (_, (_, e: JsError)) => e
+            }
+        case _ => JsError(PersistentDMapDataFileParsingException.getMessage)
       }
-      case _ => JsError(PersistentDMapDataFileParsingException.getMessage)
-    }
   }
 
   implicit object MapDataJsonFormat extends Format[MapData] {
     override def writes(obj: MapData): JsValue = {
-      Json.obj("timestamp" -> JsNumber(obj.timestamp), "data" -> MapJsonFormat.writes(obj.m))
+      Json.obj(
+        "timestamp" -> JsNumber(obj.timestamp),
+        "data" -> MapJsonFormat.writes(obj.m)
+      )
     }
 
-    override def reads(json: JsValue): JsResult[MapData] = (json: @unchecked) match {
-      case JsObject(obj) => {
-        val timestamp = (obj("timestamp"): @unchecked) match {
-          case JsNumber(n) => n.toLong
+    override def reads(json: JsValue): JsResult[MapData] =
+      (json: @unchecked) match {
+        case JsObject(obj) => {
+          val timestamp = (obj("timestamp"): @unchecked) match {
+            case JsNumber(n) => n.toLong
+          }
+
+          val data = obj("data").as[Map[String, SettingsValue]]
+
+          JsSuccess(MapData(data, timestamp))
         }
-
-        val data = obj("data").as[Map[String,SettingsValue]]
-
-        JsSuccess(MapData(data, timestamp))
       }
-    }
   }
 }

@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.ingester
 
 import java.io.FileInputStream
@@ -35,15 +33,42 @@ object IngesterMain extends App with LazyLogging {
   object Opts extends ScallopConf(args) {
     version(s"cm-well ingester ${getVersionFromManifest()} (c) 2015")
 
-    val host = opt[String]("host",      descr = "cm-well host name", required = true)
-    val format = opt[String]("format",  descr = "input format (e.g. ntriples, nquads, jsonld)", required = true)
-    val file = opt[String]("file",      descr = "input file path", default = None)
-    val gzip  = opt[Boolean]("gzip",   descr = "is input file gzipped", default = Some(false))
-    val token = opt[String]("token",    descr = "cm-well write permission token", default = None)
-    val replaceMode = opt[Boolean]("with-replace-mode", descr = "replace-mode parameter in cm-well", default = Some(false))
-    val force = opt[Boolean]("force", descr = "force parameter in cm-well", default = Some(false))
-    val priority = opt[Boolean]("priority", default = Some(false), descr = "ingest data in priority mode")
-    val numConnections = opt[Int]("num-connections", descr = "number of http connections to open")
+    val host = opt[String]("host", descr = "cm-well host name", required = true)
+    val format =
+      opt[String](
+        "format",
+        descr = "input format (e.g. ntriples, nquads, jsonld)",
+        required = true
+      )
+    val file = opt[String]("file", descr = "input file path", default = None)
+    val gzip = opt[Boolean](
+      "gzip",
+      descr = "is input file gzipped",
+      default = Some(false)
+    )
+    val token = opt[String](
+      "token",
+      descr = "cm-well write permission token",
+      default = None
+    )
+    val replaceMode = opt[Boolean](
+      "with-replace-mode",
+      descr = "replace-mode parameter in cm-well",
+      default = Some(false)
+    )
+    val force = opt[Boolean](
+      "force",
+      descr = "force parameter in cm-well",
+      default = Some(false)
+    )
+    val priority =
+      opt[Boolean](
+        "priority",
+        default = Some(false),
+        descr = "ingest data in priority mode"
+      )
+    val numConnections =
+      opt[Int]("num-connections", descr = "number of http connections to open")
 
     dependsOnAll(gzip, List(file))
     verify()
@@ -65,7 +90,10 @@ object IngesterMain extends App with LazyLogging {
 
   // resize akka http connection pool
   Opts.numConnections.toOption.map { numConnections =>
-    System.setProperty("akka.http.host-connection-pool.max-connections", numConnections.toString)
+    System.setProperty(
+      "akka.http.host-connection-pool.max-connections",
+      numConnections.toString
+    )
   }
 
   val inputStream = if (Opts.file.isSupplied) {
@@ -79,18 +107,18 @@ object IngesterMain extends App with LazyLogging {
     System.in
   }
 
-  val result = Ingester.fromInputStream(
-    baseUrl = formatHost( Opts.host() ),
-    format = Opts.format(),
-    writeToken = Opts.token.toOption,
-    replaceMode = Opts.replaceMode(),
-    force = Opts.force(),
-    isPriority = Opts.priority(),
-    in = inputStream
-  )
+  val result = Ingester
+    .fromInputStream(
+      baseUrl = formatHost(Opts.host()),
+      format = Opts.format(),
+      writeToken = Opts.token.toOption,
+      replaceMode = Opts.replaceMode(),
+      force = Opts.force(),
+      isPriority = Opts.priority(),
+      in = inputStream
+    )
     .via(IngesterStats(isStderr = true))
     .runWith(Sink.ignore)
-
 
   // actor system is still alive, will be destroyed when finished
   result.onComplete { x =>

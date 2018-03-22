@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.downloader.streams
 
 import akka.actor.ActorSystem
@@ -34,8 +32,11 @@ import com.github.tomakehurst.wiremock.stubbing.Scenario
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-
-class DownloaderSpec extends PropSpec with PropertyChecks with Matchers with BeforeAndAfterAll {
+class DownloaderSpec
+    extends PropSpec
+    with PropertyChecks
+    with Matchers
+    with BeforeAndAfterAll {
 
   implicit val system: ActorSystem = ActorSystem("reactive-tools-system")
   implicit val mat: Materializer = ActorMaterializer()
@@ -47,18 +48,15 @@ class DownloaderSpec extends PropSpec with PropertyChecks with Matchers with Bef
     super.afterAll()
   }
 
-  property ("Download from uuids stream sends request blocks of uuids") {
-    val uuids = Table(
-      ("numUuids", "blocksToSend"),
-      (1         , 1             ),
-      (10        , 1             ),
-      (20        , 1             ),
-      (30        , 2             ),
-      (60        , 3             )
-    )
+  property("Download from uuids stream sends request blocks of uuids") {
+    val uuids = Table(("numUuids", "blocksToSend"),
+                      (1, 1),
+                      (10, 1),
+                      (20, 1),
+                      (30, 2),
+                      (60, 3))
 
     forAll(uuids) { (numUuids: Int, expectedBlocksToSend: Int) =>
-
       // setup wiremock
       val wireMockServer = new WireMockServer(wireMockConfig().dynamicPort())
       wireMockServer.start()
@@ -69,27 +67,33 @@ class DownloaderSpec extends PropSpec with PropertyChecks with Matchers with Bef
       val data = for (x <- 1 to numUuids) yield s"uuid$x\n"
 
       // wiremock stubbing
-      stubFor(post(urlPathMatching("/_out.*"))
-        .willReturn(aResponse()
-          .withBody("body")
-          .withStatus(StatusCodes.OK.intValue)))
+      stubFor(
+        post(urlPathMatching("/_out.*"))
+          .willReturn(
+            aResponse()
+              .withBody("body")
+              .withStatus(StatusCodes.OK.intValue)
+          )
+      )
 
       // create uuid input-stream
-      val in = Source.fromIterator(() => data.iterator)
+      val in = Source
+        .fromIterator(() => data.iterator)
         .map(ByteString.apply)
         .runWith(StreamConverters.asInputStream())
 
       // download mock data
-      Await.result (
-        Downloader.downloadFromUuidInputStream(
-          baseUrl = s"$host:$port",
-          numInfotonsPerRequest = numUuidsPerRequest,
-          in = in)
-        ,30.seconds
+      Await.result(
+        Downloader.downloadFromUuidInputStream(baseUrl = s"$host:$port",
+                                               numInfotonsPerRequest =
+                                                 numUuidsPerRequest,
+                                               in = in),
+        30.seconds
       )
 
       // verifying
-      val numBlocksSent = findAll(postRequestedFor((urlPathMatching("/_out.*")))).size
+      val numBlocksSent =
+        findAll(postRequestedFor((urlPathMatching("/_out.*")))).size
 
       // teardown wiremock
       wireMockServer.shutdown()
@@ -97,7 +101,7 @@ class DownloaderSpec extends PropSpec with PropertyChecks with Matchers with Bef
       while (wireMockServer.isRunning) {}
       wireMockServer.resetRequests()
 
-      numBlocksSent should be (expectedBlocksToSend)
+      numBlocksSent should be(expectedBlocksToSend)
 
     }
   }

@@ -12,19 +12,19 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package k.grid.dmap.impl.inmem
 
-import k.grid.dmap.api.{DMapSlave, DMapMaster, DMapFacade, DMapActorInit}
+import k.grid.dmap.api.{DMapActorInit, DMapFacade, DMapMaster, DMapSlave}
 
 /**
- * Created by michael on 5/29/16.
- */
+  * Created by michael on 5/29/16.
+  */
 object InMemDMap extends DMapFacade {
-  override def masterType: DMapActorInit = DMapActorInit(classOf[InMemMaster], "InMemMaster")
+  override def masterType: DMapActorInit =
+    DMapActorInit(classOf[InMemMaster], "InMemMaster")
 
-  override def slaveType: DMapActorInit = DMapActorInit(classOf[InMemSlave], "InMemSlave")
+  override def slaveType: DMapActorInit =
+    DMapActorInit(classOf[InMemSlave], "InMemSlave")
 }
 
 class InMemMaster extends DMapMaster {
@@ -34,4 +34,3 @@ class InMemMaster extends DMapMaster {
 class InMemSlave extends DMapSlave {
   override val facade: DMapFacade = InMemDMap
 }
-

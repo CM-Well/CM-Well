@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package security.httpauth
 
 import scala.util.parsing.combinator.RegexParsers
@@ -28,22 +26,38 @@ trait DigestHeader {
   val opaque: String
 }
 
-case class DigestServerHeader(realm: String, nonce: String, opaque: String) extends DigestHeader {
+case class DigestServerHeader(realm: String, nonce: String, opaque: String)
+    extends DigestHeader {
   override def toString = {
-    Seq("realm" -> realm, "nonce" -> nonce, "opaque" -> opaque).
-      map { case (key, value) => s"""$key="$value"""" }.
-      mkString("Digest ", ",", "")
+    Seq("realm" -> realm, "nonce" -> nonce, "opaque" -> opaque)
+      .map { case (key, value) => s"""$key="$value"""" }
+      .mkString("Digest ", ",", "")
   }
 }
 
-case class DigestClientHeader(realm: String, nonce: String, opaque: String, username: String, response: String) extends DigestHeader
+case class DigestClientHeader(realm: String,
+                              nonce: String,
+                              opaque: String,
+                              username: String,
+                              response: String)
+    extends DigestHeader
 
 object DigestClientHeader {
-  private val mandatoryKeys = Set("realm", "nonce", "opaque", "username", "response")
+  private val mandatoryKeys =
+    Set("realm", "nonce", "opaque", "username", "response")
 
   def fromMap(map: Map[String, String]) = {
-    require(mandatoryKeys.forall(map.keySet), "Missing one or more mandatory keys")
-    DigestClientHeader(map("realm"), map("nonce"), map("opaque"), map("username"), map("response"))
+    require(
+      mandatoryKeys.forall(map.keySet),
+      "Missing one or more mandatory keys"
+    )
+    DigestClientHeader(
+      map("realm"),
+      map("nonce"),
+      map("opaque"),
+      map("username"),
+      map("response")
+    )
   }
 }
 
@@ -52,19 +66,28 @@ object DigestHeaderUtils {
     Try(DigestClientHeader.fromMap(DigestHeaderParser.parseHeader(s))) match {
       case Success(dch) => dch
       case _ =>
-        throw new IllegalArgumentException(s"$s is not a valid Digest Client Header")
+        throw new IllegalArgumentException(
+          s"$s is not a valid Digest Client Header"
+        )
     }
   }
 }
 
 object DigestHeaderParser extends RegexParsers {
-  private def keyParser: Parser[String] = "[a-zA-Z0-9\"?&/_-]+".r ^^ { _.toString.replace("\"","") }
-  private def valueParser: Parser[String] = "[a-zA-Z0-9\"?=&/_-]+".r ^^ { _.toString.replace("\"","") }
-  private def keyValueParser: Parser[(String,String)] = keyParser ~ "=" ~ valueParser ^^ { case k ~ _ ~ v => k -> v }
-  private def digestHeaderParser: Parser[Map[String,String]] = "Digest " ~> repsep(keyValueParser, ",\\s?".r) ^^ { _.toMap }
-
-  def parseHeader(headerValue: String): Map[String,String] = parse(digestHeaderParser, headerValue) match {
-    case Success(map, _) => map
-    case _ => Map.empty[String,String]
+  private def keyParser: Parser[String] = "[a-zA-Z0-9\"?&/_-]+".r ^^ {
+    _.toString.replace("\"", "")
   }
+  private def valueParser: Parser[String] = "[a-zA-Z0-9\"?=&/_-]+".r ^^ {
+    _.toString.replace("\"", "")
+  }
+  private def keyValueParser: Parser[(String, String)] =
+    keyParser ~ "=" ~ valueParser ^^ { case k ~ _ ~ v => k -> v }
+  private def digestHeaderParser: Parser[Map[String, String]] =
+    "Digest " ~> repsep(keyValueParser, ",\\s?".r) ^^ { _.toMap }
+
+  def parseHeader(headerValue: String): Map[String, String] =
+    parse(digestHeaderParser, headerValue) match {
+      case Success(map, _) => map
+      case _               => Map.empty[String, String]
+    }
 }

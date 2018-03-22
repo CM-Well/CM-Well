@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.plugins.impl
 
 import javax.script.{ScriptEngine, ScriptException}
@@ -32,12 +30,14 @@ class GremlinParser extends SgEngineClient {
   import scala.collection.JavaConversions._
 
   override def eval(ds: Dataset, query: String): String = {
-    val graph: com.tinkerpop.blueprints.Graph = new JenaGraph(ds.getDefaultModel) // todo figure out if Quads cannot be supported on Gremlin!!!
+    val graph: com.tinkerpop.blueprints.Graph = new JenaGraph(
+      ds.getDefaultModel
+    ) // todo figure out if Quads cannot be supported on Gremlin!!!
     val engine: ScriptEngine = new GremlinGroovyScriptEngine()
     val bindings = engine.createBindings
     bindings.put("g", graph)
 
-    def eval = engine eval(query, bindings)
+    def eval = engine.eval(query, bindings)
 
     // evil hack:
     def extractStartElementFromQuery = {
@@ -63,29 +63,42 @@ class GremlinParser extends SgEngineClient {
       typedPipe
     }
 
-    def read(p: Pipe[_,_]) = p.iterator().mkString("\n")
+    def read(p: Pipe[_, _]) = p.iterator().mkString("\n")
 
-    val firstNode = extractStartElementFromQuery.map(e=>Try(graph.getVertex(e)).getOrElse(graph.getEdge(e)))
+    val firstNode =
+      extractStartElementFromQuery.map(
+        e => Try(graph.getVertex(e)).getOrElse(graph.getEdge(e))
+      )
 
     Try(eval) match {
-      case Failure(e) => e match {
-        case e: QueryException => s"[ Error: ${e.getMessage} ]"
-        case e: ScriptException => "[ Gremlin Syntax Error ]"
-      }
-      case Success(r) => r match {
-        case p: Pipe[_, _] => {
-          Seq(Some(graph), firstNode).collect{case Some(x)=>x}.map(makeTypedPipe).map(p => Try(read(p)) match {
-            case Success(r) => Some(r)
-            case Failure(e) => e match {
-              case e: ClassCastException => None
-              case _ => Some("[ Unknown Error ]")
-            }
-          }).collect { case Some(s) => s}.mkString
+      case Failure(e) =>
+        e match {
+          case e: QueryException  => s"[ Error: ${e.getMessage} ]"
+          case e: ScriptException => "[ Gremlin Syntax Error ]"
         }
-        case null => "[ Requested element not present in Graph! ]"
-        case v => v.toString
-      }
+      case Success(r) =>
+        r match {
+          case p: Pipe[_, _] => {
+            Seq(Some(graph), firstNode)
+              .collect { case Some(x) => x }
+              .map(makeTypedPipe)
+              .map(
+                p =>
+                  Try(read(p)) match {
+                    case Success(r) => Some(r)
+                    case Failure(e) =>
+                      e match {
+                        case e: ClassCastException => None
+                        case _                     => Some("[ Unknown Error ]")
+                      }
+                }
+              )
+              .collect { case Some(s) => s }
+              .mkString
+          }
+          case null => "[ Requested element not present in Graph! ]"
+          case v    => v.toString
+        }
     }
   }
 }
-

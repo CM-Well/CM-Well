@@ -12,11 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
-
-
-
 import actions.RequestMonitor
 import cmwell.ws.BGMonitorActor
 import cmwell.ctrl.client.CtrlClient
@@ -42,14 +37,20 @@ import scala.util.{Failure, Success, Try}
 import uk.org.lidalia.sysoutslf4j.context.SysOutOverSLF4J
 
 /**
- * Created with IntelliJ IDEA.
- * User: gilad
- * Date: 11/26/13
- * Time: 12:16 PM
- * To change this template use File | Settings | File Templates.
- */
+  * Created with IntelliJ IDEA.
+  * User: gilad
+  * Date: 11/26/13
+  * Time: 12:16 PM
+  * To change this template use File | Settings | File Templates.
+  */
 @Singleton
-class Global @Inject()(crudServiceFS: CRUDServiceFS, cmwellRDFHelper: CMWellRDFHelper, ingestPushback: IngestPushback, eagerAuthCache: EagerAuthCache)(implicit ec: ExecutionContext) extends LazyLogging {
+class Global @Inject()(
+  crudServiceFS: CRUDServiceFS,
+  cmwellRDFHelper: CMWellRDFHelper,
+  ingestPushback: IngestPushback,
+  eagerAuthCache: EagerAuthCache
+)(implicit ec: ExecutionContext)
+    extends LazyLogging {
 
   onStart
 
@@ -60,13 +61,22 @@ class Global @Inject()(crudServiceFS: CRUDServiceFS, cmwellRDFHelper: CMWellRDFH
     //In this case some log lines are already printed and there is no need to write another one.
     SysOutOverSLF4J.sendSystemOutAndErrToSLF4J()
 
-    Grid.setGridConnection(GridConnection(memberName = "ws", labels = Set("subscriber")))
+    Grid.setGridConnection(
+      GridConnection(memberName = "ws", labels = Set("subscriber"))
+    )
 
     val offsetsService = new ZStoreOffsetsService(crudServiceFS.zStore)
 
-    Grid.declareServices(ServiceTypes().
-      add(BGMonitorActor.serviceName, classOf[BGMonitorActor], zkServers, offsetsService, concurrent.ExecutionContext.Implicits.global).
-      add(classOf[NoncesManager].getName, classOf[NoncesManager])
+    Grid.declareServices(
+      ServiceTypes()
+        .add(
+          BGMonitorActor.serviceName,
+          classOf[BGMonitorActor],
+          zkServers,
+          offsetsService,
+          concurrent.ExecutionContext.Implicits.global
+        )
+        .add(classOf[NoncesManager].getName, classOf[NoncesManager])
     )
 
     logger.info("The known jvms are: " + Grid.jvmIdentities)
@@ -79,7 +89,9 @@ class Global @Inject()(crudServiceFS: CRUDServiceFS, cmwellRDFHelper: CMWellRDFH
 
     RequestMonitor.init
 
-    cmwellRDFHelper.newestGreatestMetaNsCacheImpl.init(System.currentTimeMillis())
+    cmwellRDFHelper.newestGreatestMetaNsCacheImpl.init(
+      System.currentTimeMillis()
+    )
 
     scheduleAfterStart(2.minutes) {
       ingestPushback.sometimeAfterStart
@@ -103,5 +115,6 @@ class Global @Inject()(crudServiceFS: CRUDServiceFS, cmwellRDFHelper: CMWellRDFH
     Logger.info("Application has stopped")
   }
 
-  def scheduleAfterStart(duration: FiniteDuration)(task: =>Unit): Unit = cmwell.util.concurrent.SimpleScheduler.schedule(duration)(task)
+  def scheduleAfterStart(duration: FiniteDuration)(task: => Unit): Unit =
+    cmwell.util.concurrent.SimpleScheduler.schedule(duration)(task)
 }

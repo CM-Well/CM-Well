@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.sparql
 
 import akka.actor.{ActorRef, ActorSystem}
@@ -38,7 +36,8 @@ case class Sensor(name: String,
                   token: Option[String] = None,
                   sparqlToRoot: Option[String] = None) {
 
-  override def toString: String = s"Sensor [name=$name, path=$path, qp=$qp, fromIndexTime=$fromIndexTime]"
+  override def toString: String =
+    s"Sensor [name=$name, path=$path, qp=$qp, fromIndexTime=$fromIndexTime]"
 }
 
 case class Config(name: Option[String] = None,
@@ -48,18 +47,18 @@ case class Config(name: Option[String] = None,
                   hostUpdatesSource: Option[String],
                   force: Option[Boolean] = Some(false))
 
-
 object SparqlTriggeredProcessor {
 
   val sparqlMaterializerLabel = "sparql-materializer"
 
-  def listen(config: Config,
-             baseUrl: String,
-             isBulk: Boolean = false,
-             tokenReporter: Option[ActorRef] = None,
-             label: Option[String] = None,
-             distinctWindowSize: FiniteDuration = 10.seconds)
-            (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
+  def listen(
+    config: Config,
+    baseUrl: String,
+    isBulk: Boolean = false,
+    tokenReporter: Option[ActorRef] = None,
+    label: Option[String] = None,
+    distinctWindowSize: FiniteDuration = 10.seconds
+  )(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
 
     new SparqlTriggeredProcessor(
       config = config,
@@ -67,8 +66,8 @@ object SparqlTriggeredProcessor {
       isBulk = isBulk,
       tokenReporter = tokenReporter,
       label = label,
-      distinctWindowSize = distinctWindowSize)
-      .listen()
+      distinctWindowSize = distinctWindowSize
+    ).listen()
   }
 }
 
@@ -77,30 +76,43 @@ class SparqlTriggeredProcessor(config: Config,
                                isBulk: Boolean = false,
                                tokenReporter: Option[ActorRef] = None,
                                override val label: Option[String] = None,
-                               distinctWindowSize: FiniteDuration) extends DataToolsLogging {
+                               distinctWindowSize: FiniteDuration)
+    extends DataToolsLogging {
 
-  def listen()(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
+  def listen()(implicit system: ActorSystem,
+               mat: Materializer,
+               ec: ExecutionContext) = {
 
-    def addStatsToSource(id: String, source: Source[(ByteString, Option[SensorContext]), _], initialDownloadStats: Option[TokenAndStatisticsMap] = None) = {
-      source.via(DownloaderStats(format = "ntriples", label = Some(id), reporter = tokenReporter, initialDownloadStats =
-        for {
-          ids <- initialDownloadStats
-          (_, dStatsOpt) <- ids.get(id)
-          downloadStats <- dStatsOpt
-        } yield downloadStats
-      ))
+    def addStatsToSource(id: String,
+                         source: Source[(ByteString, Option[SensorContext]), _],
+                         initialDownloadStats: Option[TokenAndStatisticsMap] =
+                           None) = {
+      source.via(
+        DownloaderStats(
+          format = "ntriples",
+          label = Some(id),
+          reporter = tokenReporter,
+          initialDownloadStats = for {
+            ids <- initialDownloadStats
+            (_, dStatsOpt) <- ids.get(id)
+            downloadStats <- dStatsOpt
+          } yield downloadStats
+        )
+      )
     }
 
-
-    val savedTokensAndStatistics : TokenAndStatisticsMap = tokenReporter match {
+    val savedTokensAndStatistics: TokenAndStatisticsMap = tokenReporter match {
       case None => Map.empty[String, TokenAndStatistics]
       case Some(reporter) =>
         import akka.pattern._
         implicit val t = akka.util.Timeout(1.minute)
-        val result = (reporter ? RequestPreviousTokens).mapTo[ResponseWithPreviousTokens]
+        val result = (reporter ? RequestPreviousTokens)
+          .mapTo[ResponseWithPreviousTokens]
           .map {
             case ResponseWithPreviousTokens(tokens) => tokens
-            case x => logger.error(s"did not receive previous tokens: $x"); Map.empty[String, TokenAndStatistics]
+            case x =>
+              logger.error(s"did not receive previous tokens: $x");
+              Map.empty[String, TokenAndStatistics]
           }
 
         Await.result(result, 1.minute)
@@ -114,27 +126,33 @@ class SparqlTriggeredProcessor(config: Config,
       case None => Future.successful("")
       case Some(reporter) =>
         implicit val timeout = akka.util.Timeout(30.seconds)
-        (reporter ? RequestReference(path.tail)).mapTo[ResponseReference]
-          .map{ case ResponseReference(data) => data }
+        (reporter ? RequestReference(path.tail))
+          .mapTo[ResponseReference]
+          .map { case ResponseReference(data) => data }
     }
 
     def preProcessConfig(config: Config) = {
-      val configWithProcessedMaterializer = if (config.sparqlMaterializer.startsWith("@")) {
-        getReferencedData(config.sparqlMaterializer)
-          .map(data => config.copy(sparqlMaterializer = data))
-      } else {
-        Future.successful(config)
-      }
+      val configWithProcessedMaterializer =
+        if (config.sparqlMaterializer.startsWith("@")) {
+          getReferencedData(config.sparqlMaterializer)
+            .map(data => config.copy(sparqlMaterializer = data))
+        } else {
+          Future.successful(config)
+        }
 
       configWithProcessedMaterializer.flatMap { c =>
         val processedSensors = c.sensors.map {
-          case sensor@Sensor(_, _, _, _, _, Some(sparqlToRoot)) if sparqlToRoot.startsWith("@") =>
-            getReferencedData(sparqlToRoot).map(data => sensor.copy(sparqlToRoot = Some(data)))
+          case sensor @ Sensor(_, _, _, _, _, Some(sparqlToRoot))
+              if sparqlToRoot.startsWith("@") =>
+            getReferencedData(sparqlToRoot).map(
+              data => sensor.copy(sparqlToRoot = Some(data))
+            )
           case sensor =>
             Future.successful(sensor)
         }
 
-        Future.sequence(processedSensors)
+        Future
+          .sequence(processedSensors)
           .map(updatedSensors => c.copy(sensors = updatedSensors))
       }
     }
@@ -143,78 +161,118 @@ class SparqlTriggeredProcessor(config: Config,
       Source.fromGraph(GraphDSL.create() { implicit builder =>
         import GraphDSL.Implicits._
 
-        val merger = builder.add(Merge[(ByteString, Option[SensorContext])](config.sensors.size))
+        val merger = builder.add(
+          Merge[(ByteString, Option[SensorContext])](config.sensors.size)
+        )
 
         for ((sensor, i) <- config.sensors.zipWithIndex) {
           // if saved token available, ignore token in configuration
           // if configuration token was provided, ignore index-time
           val savedToken = savedTokens.get(sensor.name)
           val tokenFuture = if (savedToken.isDefined) {
-            logger.debug("received previous value of sensor {}: {}", sensor.name, savedToken.get)
+            logger.debug(
+              "received previous value of sensor {}: {}",
+              sensor.name,
+              savedToken.get
+            )
             Future.successful(savedToken)
-          } else sensor.token match {
-            case None => Consumer.getToken(
-                baseUrl = baseUrl,
-                path    = sensor.path,
-                qp      = sensor.qp,
-                isBulk = isBulk,
-                indexTime = sensor.fromIndexTime)
-              .map(Option.apply)
+          } else
+            sensor.token match {
+              case None =>
+                Consumer
+                  .getToken(
+                    baseUrl = baseUrl,
+                    path = sensor.path,
+                    qp = sensor.qp,
+                    isBulk = isBulk,
+                    indexTime = sensor.fromIndexTime
+                  )
+                  .map(Option.apply)
 
-            case token => Future.successful(token)
-          }
+              case token => Future.successful(token)
+            }
 
           // get updates from sensor
 
-          val source = Source.fromFuture(tokenFuture)
-            .flatMapConcat { token =>
-              val tsvSource = Consumer.createTsvSource(
-                baseUrl = baseUrl,
-                path    = sensor.path,
-                qp      = sensor.qp,
-                //            params  = params,
-                isBulk  = isBulk,
-                token   = token,
-                updateFreq  = Some(config.updateFreq),
-                label = Some(sensor.name))
+          val source = Source
+            .fromFuture(tokenFuture)
+            .flatMapConcat {
+              token =>
+                val tsvSource = Consumer
+                  .createTsvSource(
+                    baseUrl = baseUrl,
+                    path = sensor.path,
+                    qp = sensor.qp,
+                    //            params  = params,
+                    isBulk = isBulk,
+                    token = token,
+                    updateFreq = Some(config.updateFreq),
+                    label = Some(sensor.name)
+                  )
+                  .map {
+                    case ((token, tsv), hz) =>
+                      val path = tsv.path
+                      logger.debug(
+                        "sensor [{}] found new path: {}",
+                        sensor.name,
+                        path.utf8String
+                      )
+                      path -> Some(
+                        SensorContext(
+                          name = sensor.name,
+                          token = token,
+                          horizon = hz
+                        )
+                      )
 
-                  .map{
-                  case ((token, tsv),hz) =>
-                    val path = tsv.path
-                    logger.debug("sensor [{}] found new path: {}", sensor.name, path.utf8String)
-                    path -> Some(SensorContext(name=sensor.name, token=token, horizon=hz))
+                    case x =>
+                      logger.error(s"unexpected message: $x")
+                      ???
+                  }
 
-                  case x =>
-                    logger.error(s"unexpected message: $x")
-                    ???
-                }
-
-
-              addStatsToSource(id = sensor.name, source = tsvSource, initialDownloadStats = Option(savedTokensAndStatistics))
+                addStatsToSource(
+                  id = sensor.name,
+                  source = tsvSource,
+                  initialDownloadStats = Option(savedTokensAndStatistics)
+                )
 
             }
 
           // get root infoton
           val pathSource = if (sensor.sparqlToRoot.isDefined) {
-            SparqlProcessor.createSparqlSourceFromPaths(
-              baseUrl = baseUrl,
-              isNeedWrapping = false,
-              sparqlQuery = sensor.sparqlToRoot.get,
-              spQueryParamsBuilder = (p: Seq[String]) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
-              format = Some("tsv"),
-              label = Some(sensor.name),
-              source = source.map{ case (path, context) =>
-                context.foreach(c => logger.debug("sensor [{}] is trying to get root infoton of {}", c.name , path.utf8String))
-                path -> context}
-            )
-              .filter {case (data, _) => data startsWith "?" }
-              .map {case (data, sensorContext) =>
-                val path = data.dropWhile(_ != '\n') // drop ?orgId\n
-                  .drop(8).dropRight(1)              // <http://data.thomsonreuters.com/1-34418459938>, drop <http:/, >
+            SparqlProcessor
+              .createSparqlSourceFromPaths(
+                baseUrl = baseUrl,
+                isNeedWrapping = false,
+                sparqlQuery = sensor.sparqlToRoot.get,
+                spQueryParamsBuilder = (p: Seq[String]) =>
+                  "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
+                format = Some("tsv"),
+                label = Some(sensor.name),
+                source = source.map {
+                  case (path, context) =>
+                    context.foreach(
+                      c =>
+                        logger.debug(
+                          "sensor [{}] is trying to get root infoton of {}",
+                          c.name,
+                          path.utf8String
+                      )
+                    )
+                    path -> context
+                }
+              )
+              .filter { case (data, _) => data.startsWith("?") }
+              .map {
+                case (data, sensorContext) =>
+                  val path = data
+                    .dropWhile(_ != '\n') // drop ?orgId\n
+                    .drop(8)
+                    .dropRight(1) // <http://data.thomsonreuters.com/1-34418459938>, drop <http:/, >
 
-                path -> sensorContext
+                  path -> sensorContext
               }
-              .filter { case (path, _) => path.nonEmpty}
+              .filter { case (path, _) => path.nonEmpty }
 
           } else {
             source
@@ -232,24 +290,33 @@ class SparqlTriggeredProcessor(config: Config,
 
     val sensorSource = createSensorSource(processedConfig)
       .groupedWithin(10000, distinctWindowSize)
-      .statefulMapConcat{ () =>
-        // stores last received tokens from sensors
-        sensorData => {
-          sensorData.foreach {
-            case (data, Some(SensorContext(name, newToken, _))) if newToken != savedTokens.getOrElse(name, "") =>
-              // received new token from sensor, write it to state file
-              logger.debug("sensor '{}' received new token: {} {}", name, Tokens.decompress(newToken), newToken)
-              tokenReporter.foreach(_ ! ReportNewToken(name, newToken) )
+      .statefulMapConcat {
+        () =>
+          // stores last received tokens from sensors
+          sensorData =>
+            {
+              sensorData.foreach {
+                case (data, Some(SensorContext(name, newToken, _)))
+                    if newToken != savedTokens.getOrElse(name, "") =>
+                  // received new token from sensor, write it to state file
+                  logger.debug(
+                    "sensor '{}' received new token: {} {}",
+                    name,
+                    Tokens.decompress(newToken),
+                    newToken
+                  )
+                  tokenReporter.foreach(_ ! ReportNewToken(name, newToken))
 
-              //            stateFilePath.foreach { path => Files.write(path, savedTokens.mkString("\n").getBytes("UTF-8")) }
-              savedTokens = savedTokens + (name -> newToken)
-            case _ =>
-          }
+                  //            stateFilePath.foreach { path => Files.write(path, savedTokens.mkString("\n").getBytes("UTF-8")) }
+                  savedTokens = savedTokens + (name -> newToken)
+                case _ =>
+              }
 
-          sensorData.map { case (data, _) => data }
-            .distinct
-            .map(_ -> None)
-        }
+              sensorData
+                .map { case (data, _) => data }
+                .distinct
+                .map(_ -> None)
+            }
       }
       .map {
         case (path, _) =>
@@ -260,20 +327,24 @@ class SparqlTriggeredProcessor(config: Config,
           ByteString("") -> None
       }
 
-
     // execute sparql queries on populated paths
-    addStatsToSource (
-      id = label.map(_ + "-").getOrElse("") + SparqlTriggeredProcessor.sparqlMaterializerLabel,
+    addStatsToSource(
+      id = label
+        .map(_ + "-")
+        .getOrElse("") + SparqlTriggeredProcessor.sparqlMaterializerLabel,
       source = SparqlProcessor.createSparqlSourceFromPaths(
-          baseUrl = baseUrl,
-          sparqlQuery = processedConfig.sparqlMaterializer,
-          spQueryParamsBuilder = (p: Seq[String]) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
-          source = sensorSource,
-          isNeedWrapping = false,
-          label = Some(
-            label.map(l => s"$l-${SparqlTriggeredProcessor.sparqlMaterializerLabel}")
-              .getOrElse(SparqlTriggeredProcessor.sparqlMaterializerLabel))
+        baseUrl = baseUrl,
+        sparqlQuery = processedConfig.sparqlMaterializer,
+        spQueryParamsBuilder = (p: Seq[String]) =>
+          "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
+        source = sensorSource,
+        isNeedWrapping = false,
+        label = Some(
+          label
+            .map(l => s"$l-${SparqlTriggeredProcessor.sparqlMaterializerLabel}")
+            .getOrElse(SparqlTriggeredProcessor.sparqlMaterializerLabel)
         )
+      )
     )
   }
 }

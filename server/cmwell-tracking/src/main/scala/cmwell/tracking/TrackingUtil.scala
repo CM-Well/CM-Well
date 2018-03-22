@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tracking
 
 import java.util.NoSuchElementException
@@ -45,37 +43,63 @@ trait TrackingUtil {
   val zStore: ZStore
   val irw: IRWService
 
-  def spawn(actorName: String, data: Set[String] = Set.empty, createTime: Long = System.currentTimeMillis()): Future[(ActorRef,TrackingId)]
-  def update(trackingId: TrackingId)(pss: PathStatus*): Future[TrackingOperationResponse]
+  def spawn(
+    actorName: String,
+    data: Set[String] = Set.empty,
+    createTime: Long = System.currentTimeMillis()
+  ): Future[(ActorRef, TrackingId)]
+  def update(trackingId: TrackingId)(
+    pss: PathStatus*
+  ): Future[TrackingOperationResponse]
   def readStatus(trackingId: TrackingId): Future[Seq[PathStatus]]
   def debug(trackingId: TrackingId)(msg: Any): Unit
 
-  private val malformedTidResponse = Future.successful[TrackingOperationResponse](LogicalFailure("malformed tid"))
+  private val malformedTidResponse = Future
+    .successful[TrackingOperationResponse](LogicalFailure("malformed tid"))
 
   // done is syntactic sugar for update(Done) with Strings
-  def done(tid: String, path: String): Future[TrackingOperationResponse] = TrackingId
-    .unapply(tid)
-    .fold(malformedTidResponse)(update(_)(PathStatus(path, Done)))
+  def done(tid: String, path: String): Future[TrackingOperationResponse] =
+    TrackingId
+      .unapply(tid)
+      .fold(malformedTidResponse)(update(_)(PathStatus(path, Done)))
 
-  def update(path: String, st: StatusTracking): Future[TrackingOperationResponse] = TrackingId
-    .unapply(st.tid)
-    .fold(malformedTidResponse)(update(_)(PathStatus(path, PartialDone(1,st.numOfParts))))
+  def update(path: String,
+             st: StatusTracking): Future[TrackingOperationResponse] =
+    TrackingId
+      .unapply(st.tid)
+      .fold(malformedTidResponse)(
+        update(_)(PathStatus(path, PartialDone(1, st.numOfParts)))
+      )
 
-  def cleanDirtyData(data: Seq[PathStatus], createTime: Long): Future[Seq[PathStatus]]
+  def cleanDirtyData(data: Seq[PathStatus],
+                     createTime: Long): Future[Seq[PathStatus]]
 
-  def updateEvicted(path: String, st: StatusTracking, reason: String): Future[TrackingOperationResponse] =
+  def updateEvicted(path: String,
+                    st: StatusTracking,
+                    reason: String): Future[TrackingOperationResponse] =
     updateEvicted(path, st.tid, reason)
 
-  def updateEvicted(path: String, tid: String, reason: String): Future[TrackingOperationResponse] = TrackingId
+  def updateEvicted(path: String,
+                    tid: String,
+                    reason: String): Future[TrackingOperationResponse] =
+    TrackingId
       .unapply(tid)
       .fold(malformedTidResponse)(update(_)(PathStatus(path, Evicted(reason))))
 
   // todo merge PathsStatus and StatusTracking case classes...
-  def updateSeq(path:String, statusTrackings:Seq[StatusTracking]): Future[TrackingOperationResponse] = statusTrackings
-    .map(update(path, _))
-    .foldLeft(Future.successful(Successful)) {
-      case (f1, f2) => f1.zip(f2).map(_._1)
-    }.recoverWith{ case t: NoSuchElementException => Future.successful(LogicalFailure(t.getMessage)) }
+  def updateSeq(
+    path: String,
+    statusTrackings: Seq[StatusTracking]
+  ): Future[TrackingOperationResponse] =
+    statusTrackings
+      .map(update(path, _))
+      .foldLeft(Future.successful(Successful)) {
+        case (f1, f2) => f1.zip(f2).map(_._1)
+      }
+      .recoverWith {
+        case t: NoSuchElementException =>
+          Future.successful(LogicalFailure(t.getMessage))
+      }
 
   /**
     * {{{
@@ -83,9 +107,11 @@ trait TrackingUtil {
     * res0: String = LTIyNzkyMzc1Mg
     * }}}
     */
-  def actorIdFromActorPath[T : Stringer](actorPath: T): String = {
+  def actorIdFromActorPath[T: Stringer](actorPath: T): String = {
     val stringActorPath = implicitly[Stringer[T]].stringify(actorPath)
-    stringActorPath.drop(stringActorPath.lastIndexOf('/')+1).takeWhile(_!='#')
+    stringActorPath
+      .drop(stringActorPath.lastIndexOf('/') + 1)
+      .takeWhile(_ != '#')
   }
 }
 
@@ -110,7 +136,11 @@ object TrackingUtil {
 
 object TrackingUtilImpl extends TrackingUtil with LazyLogging {
 
-  private lazy val dao: Dao = Dao(Settings.irwServiceDaoClusterName, Settings.irwServiceDaoKeySpace2, Settings.irwServiceDaoHostName)
+  private lazy val dao: Dao = Dao(
+    Settings.irwServiceDaoClusterName,
+    Settings.irwServiceDaoKeySpace2,
+    Settings.irwServiceDaoHostName
+  )
   override lazy val zStore: ZStore = ZStore.apply(dao)
   override lazy val irw: IRWService = IRWService.newIRW(dao)
 
@@ -119,12 +149,22 @@ object TrackingUtilImpl extends TrackingUtil with LazyLogging {
   private lazy val system = Grid.system
 
   private val toOpResponse: Future[Unit] => Future[TrackingOperationResponse] =
-    _.map { _ => Successful }.recover { case t: NoSuchElementException => LogicalFailure(t.getMessage) }
+    _.map { _ =>
+      Successful
+    }.recover { case t: NoSuchElementException => LogicalFailure(t.getMessage) }
 
-  def spawn(actorName: String, initialData: Set[String], createTime: Long): Future[(ActorRef,TrackingId)] = {
+  def spawn(actorName: String,
+            initialData: Set[String],
+            createTime: Long): Future[(ActorRef, TrackingId)] = {
     Try {
-      (resurrector ? Spawn(actorName, initialData, Seq.empty[PathStatus], createTime)).map { case ta: ActorRef =>
-        ta -> TrackingId(actorIdFromActorPath(ta), createTime)
+      (resurrector ? Spawn(
+        actorName,
+        initialData,
+        Seq.empty[PathStatus],
+        createTime
+      )).map {
+        case ta: ActorRef =>
+          ta -> TrackingId(actorIdFromActorPath(ta), createTime)
       }
     } match {
       case Success(x) => x
@@ -132,7 +172,9 @@ object TrackingUtilImpl extends TrackingUtil with LazyLogging {
     }
   }
 
-  def update(trackingId: TrackingId)(pss: PathStatus*): Future[TrackingOperationResponse] = {
+  def update(
+    trackingId: TrackingId
+  )(pss: PathStatus*): Future[TrackingOperationResponse] = {
     val result = resolveActor(trackingId).map(actor => pss.foreach(actor.!))
     toOpResponse(result)
   }
@@ -150,32 +192,51 @@ object TrackingUtilImpl extends TrackingUtil with LazyLogging {
     val task = (trackingId: TrackingId) => {
       val TrackingId(actorAddr, _) = trackingId
       logger.debug(s"Resolving Actor: $actorAddr")
-      Grid.selectActor(actorIdFromActorPath(actorAddr), GridJvm(Jvms.WS)).resolveOne().
-        recoverWith { case t: Throwable =>
-          logger.warn(s"Tracking: Could not resolve TrackingActor($actorAddr), will try to resurrect.", t)
-          ressurect(trackingId)
+      Grid
+        .selectActor(actorIdFromActorPath(actorAddr), GridJvm(Jvms.WS))
+        .resolveOne()
+        .recoverWith {
+          case t: Throwable =>
+            logger.warn(
+              s"Tracking: Could not resolve TrackingActor($actorAddr), will try to resurrect.",
+              t
+            )
+            ressurect(trackingId)
         }
     }
-    L1Cache.memoize[TrackingId,ActorRef](task)(_.token)(l1Size = 256, ttlSeconds = 8)
+    L1Cache.memoize[TrackingId, ActorRef](task)(_.token)(
+      l1Size = 256,
+      ttlSeconds = 8
+    )
   }
 
   private def ressurect(trackingId: TrackingId): Future[ActorRef] = {
-    retry(3, 10.millis)((resurrector ? Resurrect(trackingId)).mapTo[Option[ActorRef]].andThen {
-      case Failure(t) =>
-        logger.warn(s"Tracking: [ressurect.Failure] Could not resolve TrackingActor($trackingId), will try to resurrect.", t)
-    }).flatMap {
+    retry(3, 10.millis)(
+      (resurrector ? Resurrect(trackingId)).mapTo[Option[ActorRef]].andThen {
+        case Failure(t) =>
+          logger.warn(
+            s"Tracking: [ressurect.Failure] Could not resolve TrackingActor($trackingId), will try to resurrect.",
+            t
+          )
+      }
+    ).flatMap {
       case Some(ref) => Future.successful(ref)
-      case None => Future.failed(new NoSuchElementException("could not resolve actor"))
+      case None =>
+        Future.failed(new NoSuchElementException("could not resolve actor"))
     }
   }
 
-  def cleanDirtyData(data: Seq[PathStatus], createTime: Long): Future[Seq[PathStatus]] = {
-    def isNew(i: Infoton) = (i.lastModified isAfter createTime) && i.indexTime.isDefined
+  def cleanDirtyData(data: Seq[PathStatus],
+                     createTime: Long): Future[Seq[PathStatus]] = {
+    def isNew(i: Infoton) =
+      (i.lastModified.isAfter(createTime)) && i.indexTime.isDefined
 
-    val (inProgress,notInProgress) = data.partition(_.status == InProgress)
-    if(inProgress.isEmpty) Future.successful(data) else {
+    val (inProgress, notInProgress) = data.partition(_.status == InProgress)
+    if (inProgress.isEmpty) Future.successful(data)
+    else {
 
-      val inProgressPaths: Vector[String] = inProgress.map(_.path)(collection.breakOut)
+      val inProgressPaths: Vector[String] =
+        inProgress.map(_.path)(collection.breakOut)
       val infotonsFut = travector(inProgressPaths)(irw.readPathAsync(_))
       val alreadyDonePathsFut = infotonsFut.map { infotons =>
         infotons.collect {
@@ -183,7 +244,8 @@ object TrackingUtilImpl extends TrackingUtil with LazyLogging {
         }.toSet
       }
       alreadyDonePathsFut.map { alreadyDonePaths =>
-        notInProgress ++ alreadyDonePaths.map(PathStatus(_,Done)) ++ inProgress.filterNot(ps => alreadyDonePaths(ps.path))
+        notInProgress ++ alreadyDonePaths.map(PathStatus(_, Done)) ++ inProgress
+          .filterNot(ps => alreadyDonePaths(ps.path))
       }
     }
   }

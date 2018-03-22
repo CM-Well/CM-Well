@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package trafficshaping
 
 import com.typesafe.scalalogging.LazyLogging
@@ -28,14 +26,20 @@ import filters.Attrs
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
+
 /**
   * Created by michael on 8/4/16.
   */
 @Singleton
-class TrafficHandler @Inject()(authUtils: AuthUtils)(implicit ec: ExecutionContext) extends InjectedController with LazyLogging {
+class TrafficHandler @Inject()(authUtils: AuthUtils)(
+  implicit ec: ExecutionContext
+) extends InjectedController
+    with LazyLogging {
   // todo: remove this.
   def handleTimeout = Action.async { implicit originalRequest =>
-    cmwell.util.concurrent.delayedTask(5.seconds)(Future.successful(Ok)).flatMap(identity)
+    cmwell.util.concurrent
+      .delayedTask(5.seconds)(Future.successful(Ok))
+      .flatMap(identity)
   }
 
   def handleThresholdFactor = Action { implicit req =>
@@ -47,13 +51,19 @@ class TrafficHandler @Inject()(authUtils: AuthUtils)(implicit ec: ExecutionConte
           PersistentDMap.set(THRESHOLD_FACTOR, SettingsLong(l))
           Ok(s"Changed Threshold factor to $l")
         case None =>
-          val curValOpt = PersistentDMap.get(THRESHOLD_FACTOR).flatMap(_.as[Long])
+          val curValOpt =
+            PersistentDMap.get(THRESHOLD_FACTOR).flatMap(_.as[Long])
           curValOpt match {
-            case Some(curVal) if curVal > 0L => Ok(s"""Please provide the parameter "tf". The current value is: $curVal""")
-            case _ => Ok(s"""Traffic shaping is disabled. Please provide the parameter "tf" in order to activate it.""")
+            case Some(curVal) if curVal > 0L =>
+              Ok(
+                s"""Please provide the parameter "tf". The current value is: $curVal"""
+              )
+            case _ =>
+              Ok(
+                s"""Traffic shaping is disabled. Please provide the parameter "tf" in order to activate it."""
+              )
           }
       }
-    }
-    else Forbidden("not authorized")
+    } else Forbidden("not authorized")
   }
 }

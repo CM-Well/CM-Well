@@ -12,23 +12,35 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package k.grid.webapi.jsobj
 
 import k.grid.MemoryInfo
 import play.api.libs.json._
 
 /**
- * Created by michael on 4/14/16.
- */
-case class GridMemoryInfo(clusterName : String, sampleTime : Long, machinesUsages : Set[MachineMemoryInfo]) {
-  val toJson : JsObject = {
-    Json.obj("clusterName" -> JsString(clusterName), "sampleTime" -> JsNumber(sampleTime), "machinesUsages" -> JsArray(machinesUsages.toVector.map(_.toJson)))
+  * Created by michael on 4/14/16.
+  */
+case class GridMemoryInfo(clusterName: String,
+                          sampleTime: Long,
+                          machinesUsages: Set[MachineMemoryInfo]) {
+  val toJson: JsObject = {
+    Json.obj(
+      "clusterName" -> JsString(clusterName),
+      "sampleTime" -> JsNumber(sampleTime),
+      "machinesUsages" -> JsArray(machinesUsages.toVector.map(_.toJson))
+    )
   }
 }
-case class MachineMemoryInfo(machineName : String, jvmName : String, mempools : Map[String, Long]) {
-  val toJson : JsObject = {
-    Json.obj("machineName" -> JsString(machineName), "jvmName" -> JsString(jvmName), "memoryPools" -> JsArray(mempools.map(mp => Json.obj(mp._1 -> JsNumber(mp._2))).toVector))
+case class MachineMemoryInfo(machineName: String,
+                             jvmName: String,
+                             mempools: Map[String, Long]) {
+  val toJson: JsObject = {
+    Json.obj(
+      "machineName" -> JsString(machineName),
+      "jvmName" -> JsString(jvmName),
+      "memoryPools" -> JsArray(
+        mempools.map(mp => Json.obj(mp._1 -> JsNumber(mp._2))).toVector
+      )
+    )
   }
 }

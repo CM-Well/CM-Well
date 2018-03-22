@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package filters
 
 import javax.inject._
@@ -28,81 +26,82 @@ import cmwell.ws.Settings._
 import trafficshaping._
 
 /**
- * Created by michael on 6/29/16.
- */
-class TrafficShapingFilter @Inject() (implicit override val mat: Materializer,ec: ExecutionContext)  extends Filter {
+  * Created by michael on 6/29/16.
+  */
+class TrafficShapingFilter @Inject()(implicit override val mat: Materializer,
+                                     ec: ExecutionContext)
+    extends Filter {
 
-  def reqType(req : RequestHeader) : String = {
+  def reqType(req: RequestHeader): String = {
     val opOpt = req.getQueryString("op")
     val segs = req.path.split("/")
     val path = Try(req.path.split("/")(1))
 
     (opOpt, path) match {
-      case (Some(op), _) => op
+      case (Some(op), _)                           => op
       case (None, Success(p)) if p.startsWith("_") => p
-      case _ => "get"
+      case _                                       => "get"
     }
   }
 
-
-  def collectData(resultFuture : Future[Result], ip : String, requestType : String, startTime : Long): Unit = {
-    if(ip != "127.0.0.1") {
-      resultFuture.foreach {
-        r =>
-          val requestDuration = System.currentTimeMillis() - startTime
-          TrafficShaper.addRequest(ip, requestType, requestDuration)
+  def collectData(resultFuture: Future[Result],
+                  ip: String,
+                  requestType: String,
+                  startTime: Long): Unit = {
+    if (ip != "127.0.0.1") {
+      resultFuture.foreach { r =>
+        val requestDuration = System.currentTimeMillis() - startTime
+        TrafficShaper.addRequest(ip, requestType, requestDuration)
       }
 
     }
   }
 
-  def collectData(ip : String, requestType : String, startTime : Long): Unit = {
-    if(ip != "127.0.0.1") {
+  def collectData(ip: String, requestType: String, startTime: Long): Unit = {
+    if (ip != "127.0.0.1") {
       val requestDuration = System.currentTimeMillis() - startTime
       TrafficShaper.addRequest(ip, requestType, requestDuration)
     }
   }
 
-
-  def isNeedTrafficShapping(ip : String, requestType : String) : Boolean = {
+  def isNeedTrafficShapping(ip: String, requestType: String): Boolean = {
     val untrackedRequests = Vector("_in", "_ow")
     !untrackedRequests.contains(requestType)
   }
 
-
-
-  override def apply(next: (RequestHeader) => Future[Result])(request: RequestHeader): Future[Result] = {
+  override def apply(
+    next: (RequestHeader) => Future[Result]
+  )(request: RequestHeader): Future[Result] = {
     import Math._
 
     val ip = request.attrs(Attrs.UserIP)
     lazy val resultFuture = next(request)
     val startTime = request.attrs(Attrs.RequestReceivedTimestamp)
-    val maxDurationMillis = maxRequestTimeSec*1000
+    val maxDurationMillis = maxRequestTimeSec * 1000
     val penalty = TrafficShaper.penalty(ip)
     val requestType = reqType(request)
 
-
-    if(TrafficShaper.isEnabled && isNeedTrafficShapping(ip, requestType))
+    if (TrafficShaper.isEnabled && isNeedTrafficShapping(ip, requestType))
       penalty match {
         case NoPenalty =>
           collectData(resultFuture, ip, requestType, startTime)
           resultFuture
         case DelayPenalty =>
           collectData(resultFuture, ip, requestType, startTime)
-          resultFuture.flatMap {
-            res =>
-              val currentTime = System.currentTimeMillis()
-              val reqDurationMillis = currentTime - startTime
-              val penalty = min(reqDurationMillis, maxDurationMillis - reqDurationMillis) max 0
-              cmwell.util.concurrent.delayedTask( penalty.millis ){res}
+          resultFuture.flatMap { res =>
+            val currentTime = System.currentTimeMillis()
+            val reqDurationMillis = currentTime - startTime
+            val penalty =
+              min(reqDurationMillis, maxDurationMillis - reqDurationMillis)
+                .max(0)
+            cmwell.util.concurrent.delayedTask(penalty.millis) { res }
           }
         case FullBlockPenalty =>
-          cmwell.util.concurrent.delayedTask( maxDurationMillis.millis ){
+          cmwell.util.concurrent.delayedTask(maxDurationMillis.millis) {
             collectData(ip, requestType, startTime)
             Results.ServiceUnavailable("Please reduce the amount of requests")
           }
-      }
-    else
+      } else
       resultFuture
   }
 }

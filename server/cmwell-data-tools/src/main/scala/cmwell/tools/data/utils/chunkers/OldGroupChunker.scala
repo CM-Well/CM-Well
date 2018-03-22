@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.utils.chunkers
 
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
@@ -34,7 +32,7 @@ object OldGroupChunker {
     * @return extracted subject in data
     */
   def extractSubject(data: In): In = data.splitAt(data.indexOf(' '))._1
-  def groupJson(data: In): In      = data
+  def groupJson(data: In): In = data
 
   /**
     * Gets group extractor according to input format string
@@ -44,17 +42,19 @@ object OldGroupChunker {
   def formatToGroupExtractor(format: String) = {
     format match {
       case "ntriples" | "nquads" => extractSubject(_)
-      case "json" => groupJson(_)
-      case _ => groupJson(_)
+      case "json"                => groupJson(_)
+      case _                     => groupJson(_)
     }
   }
 
-  def apply(extractGroup: (In) => In, within: Duration = Duration.Undefined) = new OldGroupChunker(extractGroup, within)
+  def apply(extractGroup: (In) => In, within: Duration = Duration.Undefined) =
+    new OldGroupChunker(extractGroup, within)
 }
 
 import OldGroupChunker._
 
-class OldGroupChunker private (extractGroup: (In) => In, within: Duration) extends GraphStage[FlowShape[In, Out]] {
+class OldGroupChunker private (extractGroup: (In) => In, within: Duration)
+    extends GraphStage[FlowShape[In, Out]] {
 
   private[this] val BUFFER_SIZE = 20 * 1024
   private var buffer: ArrayBuffer[In] = _
@@ -75,7 +75,9 @@ class OldGroupChunker private (extractGroup: (In) => In, within: Duration) exten
   /**
     * Clears buffered content
     */
-  private def resetBuffer(): Unit = { buffer = new ArrayBuffer[In](BUFFER_SIZE) }
+  private def resetBuffer(): Unit = {
+    buffer = new ArrayBuffer[In](BUFFER_SIZE)
+  }
 
   /**
     * Clears buffered content and stores new element
@@ -103,100 +105,110 @@ class OldGroupChunker private (extractGroup: (In) => In, within: Duration) exten
     */
   private def isFlushBufferedData(elem: In) = {
     lastGroup.isDefined &&
-      (extractGroup(elem) != lastGroup.get)
+    (extractGroup(elem) != lastGroup.get)
   }
 
-  override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
-    private var outPendingElem: Option[Out] = None
-    private var asyncCB: AsyncCallback[Unit] = _
-    private var forcePushEvent: Option[Cancellable] = None
-    private var isWaitingForEvent: Boolean = false
+  override def createLogic(inheritedAttributes: Attributes): GraphStageLogic =
+    new GraphStageLogic(shape) {
+      private var outPendingElem: Option[Out] = None
+      private var asyncCB: AsyncCallback[Unit] = _
+      private var forcePushEvent: Option[Cancellable] = None
+      private var isWaitingForEvent: Boolean = false
 
-    override def preStart() = {
-      pull(in)
-      asyncCB = getAsyncCallback(_ => {
-        if (isWaitingForEvent) {
-          isWaitingForEvent = false
+      override def preStart() = {
+        pull(in)
+        asyncCB = getAsyncCallback(_ => {
+          if (isWaitingForEvent) {
+            isWaitingForEvent = false
 
-          if (buffer.nonEmpty) {
-            push(out, bufferToElement())
-            resetBuffer()
+            if (buffer.nonEmpty) {
+              push(out, bufferToElement())
+              resetBuffer()
+            }
           }
-        }
-      })
-    }
-
-    setHandler(in, new InHandler {
-      override def onPush(): Unit = {
-        val elem = grab(in)
-        if (isFlushBufferedData(elem)) {
-          isWaitingForEvent = false
-          forcePushEvent.foreach(_.cancel)
-
-          lastGroup = Some(extractGroup(elem))
-
-          val elemToPush = bufferToElement()
-
-          if (isAvailable(out)) {
-            push(out, elemToPush)
-            tryPull(in)
-          } else {
-            outPendingElem = Some(elemToPush)
-          }
-
-          resetBuffer(elem)
-        } else {
-          if(lastGroup.isEmpty) {
-            lastGroup = Some(extractGroup(elem))
-          }
-          addToBuffer(elem)
-          tryPull(in)
-        }
+        })
       }
 
-      override def onUpstreamFinish(): Unit = {
-        if (buffer.isEmpty) {
-          completeStage()
-        } else if (outPendingElem.isEmpty && isAvailable(out)) {
-          push(out, bufferToElement())
-          completeStage()
-        }
-      }
-    })
+      setHandler(
+        in,
+        new InHandler {
+          override def onPush(): Unit = {
+            val elem = grab(in)
+            if (isFlushBufferedData(elem)) {
+              isWaitingForEvent = false
+              forcePushEvent.foreach(_.cancel)
 
-    setHandler(out, new OutHandler {
-      override def onPull(): Unit = {
-        outPendingElem match {
-          case Some(elem) =>
-            push(out, elem)
+              lastGroup = Some(extractGroup(elem))
 
-            if (isClosed(in))   {
-              if (buffer.nonEmpty) {
-                outPendingElem = Some(bufferToElement())
-                resetBuffer()
+              val elemToPush = bufferToElement()
+
+              if (isAvailable(out)) {
+                push(out, elemToPush)
+                tryPull(in)
               } else {
-                completeStage()
+                outPendingElem = Some(elemToPush)
               }
-            } else {
-              outPendingElem = None
-              pull(in)
-            }
 
-          case None => { // there is no element to push yet
-            if (within.isFinite) {
-              isWaitingForEvent = true
-              // schedule a force push if no push is arrived in duration
-              forcePushEvent = Some (materializer.scheduleOnce(
-                delay = FiniteDuration(within._1, within._2),
-                task = new Runnable() {def run() = asyncCB.invoke(())}
-              ))
+              resetBuffer(elem)
+            } else {
+              if (lastGroup.isEmpty) {
+                lastGroup = Some(extractGroup(elem))
+              }
+              addToBuffer(elem)
+              tryPull(in)
+            }
+          }
+
+          override def onUpstreamFinish(): Unit = {
+            if (buffer.isEmpty) {
+              completeStage()
+            } else if (outPendingElem.isEmpty && isAvailable(out)) {
+              push(out, bufferToElement())
+              completeStage()
             }
           }
         }
-      }
-    })
-}
+      )
+
+      setHandler(
+        out,
+        new OutHandler {
+          override def onPull(): Unit = {
+            outPendingElem match {
+              case Some(elem) =>
+                push(out, elem)
+
+                if (isClosed(in)) {
+                  if (buffer.nonEmpty) {
+                    outPendingElem = Some(bufferToElement())
+                    resetBuffer()
+                  } else {
+                    completeStage()
+                  }
+                } else {
+                  outPendingElem = None
+                  pull(in)
+                }
+
+              case None => { // there is no element to push yet
+                if (within.isFinite) {
+                  isWaitingForEvent = true
+                  // schedule a force push if no push is arrived in duration
+                  forcePushEvent = Some(
+                    materializer.scheduleOnce(
+                      delay = FiniteDuration(within._1, within._2),
+                      task = new Runnable() {
+                        def run() = asyncCB.invoke(())
+                      }
+                    )
+                  )
+                }
+              }
+            }
+          }
+        }
+      )
+    }
 
   override val shape: FlowShape[In, Out] = FlowShape.of(in, out)
 }
-

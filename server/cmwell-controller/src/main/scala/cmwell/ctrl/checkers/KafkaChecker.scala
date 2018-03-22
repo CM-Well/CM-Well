@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.ctrl.checkers
 
 import cmwell.ctrl.utils.ProcUtil
@@ -28,7 +26,8 @@ object KafkaChecker extends Checker {
   override def check: Future[ComponentState] = {
     Future {
       blocking {
-        if (ProcUtil.checkIfProcessRun("kafka.Kafka") > 0) KafkaOk() else KafkaNotOk()
+        if (ProcUtil.checkIfProcessRun("kafka.Kafka") > 0) KafkaOk()
+        else KafkaNotOk()
       }
     }
   }

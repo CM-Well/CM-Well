@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package controllers
 
 import cmwell.ctrl.utils.ProcUtil
@@ -34,8 +32,8 @@ import org.joda.time._
 import scala.language.postfixOps
 
 /**
- * Created by michael on 8/11/14.
- */
+  * Created by michael on 8/11/14.
+  */
 object HealthUtils {
   val config = ConfigFactory.load()
   val ip = config.getString("ftsService.transportAddress")
@@ -53,15 +51,22 @@ object HealthUtils {
     @volatile private[this] var modified: DateTime = new DateTime(0L)
 
     private[this] val nodetoolDaemonCancellable = {
-      cmwell.util.concurrent.SimpleScheduler.scheduleAtFixedRate(30 seconds, 20 minutes){
-        getStatus
-      }
+      cmwell.util.concurrent.SimpleScheduler
+        .scheduleAtFixedRate(30 seconds, 20 minutes) {
+          getStatus
+        }
     }
 
     private[this] def getStatus: Future[String] = {
-      val f = Future(ProcUtil.executeCommand(s"JAVA_HOME=$path/../java/bin $path/../cas/cur/bin/nodetool -h $ip status").get)
+      val f = Future(
+        ProcUtil
+          .executeCommand(
+            s"JAVA_HOME=$path/../java/bin $path/../cas/cur/bin/nodetool -h $ip status"
+          )
+          .get
+      )
       val p = Promise[String]()
-      f.onComplete{
+      f.onComplete {
         case Failure(e) => p.failure(e)
         case Success(s) => {
           modified = new DateTime()
@@ -72,86 +77,90 @@ object HealthUtils {
       p.future
     }
 
-    def get: String = (new DateTime()).minus(modified.getMillis).getMillis match {
-      case ms if (ms milliseconds) < (3 minutes) => status
-      case _ => Try(Await.result(getStatus, timeout)).getOrElse(status)
-    }
+    def get: String =
+      (new DateTime()).minus(modified.getMillis).getMillis match {
+        case ms if (ms milliseconds) < (3 minutes) => status
+        case _                                     => Try(Await.result(getStatus, timeout)).getOrElse(status)
+      }
   }
 
   def CassNodetoolStatus: String = CassandraNodetoolProxy.get
 }
 
 @Singleton
-class Health @Inject()(crudServiceFS: CRUDServiceFS) extends InjectedController {
+class Health @Inject()(crudServiceFS: CRUDServiceFS)
+    extends InjectedController {
 
   import HealthUtils._
 
-  def getCassandaraHealth = Action.async {implicit req =>
+  def getCassandaraHealth = Action.async { implicit req =>
     Future(Ok(CassNodetoolStatus))
   }
 
   def getElasticsearchHealth = Action.async { implicit req =>
-    val res = Seq("curl", s"http://$ip:9201/_cluster/health?pretty&level=shards") !!
+    val res =
+      Seq("curl", s"http://$ip:9201/_cluster/health?pretty&level=shards") !!
 
     Future(Ok(res))
   }
 
-  def getElasticsearchTop = Action.async {implicit req =>
+  def getElasticsearchTop = Action.async { implicit req =>
     val res = Seq("curl", s"http://$ip:9201/_nodes/hot_threads") !!
 
     Future(Ok(res))
   }
 
-  def getElasticsearchStats = Action.async {implicit req =>
+  def getElasticsearchStats = Action.async { implicit req =>
     val res = Seq("curl", s"http://$ip:9201/_cluster/stats?human&pretty") !!
 
     Future(Ok(res))
   }
-  def getElasticsearchSegments = Action.async {implicit req =>
+  def getElasticsearchSegments = Action.async { implicit req =>
     val res = Seq("curl", s"http://$ip:9201/_segments?pretty") !!
 
     Future(Ok(res))
   }
 
-  def getElasticsearchStatus = Action.async {implicit req =>
+  def getElasticsearchStatus = Action.async { implicit req =>
     val res = Seq("curl", s"http://$ip:9201/_status?pretty") !!
 
     Future(Ok(res))
   }
 
-  def getKafkaStatus = Action.async {implicit req =>
-
-    val res = Seq(s"$path/../kafka/cur/bin/kafka-topics.sh","--zookeeper", s"$ip:2181", "--describe") !!
-
-    Future(Ok(res))
-  }
-
-  def getZkStat = Action.async {implicit req =>
-
-    val res = Seq("echo", "stats" ) #| Seq("nc", ip, "2181") !!
+  def getKafkaStatus = Action.async { implicit req =>
+    val res =
+      Seq(
+        s"$path/../kafka/cur/bin/kafka-topics.sh",
+        "--zookeeper",
+        s"$ip:2181",
+        "--describe"
+      ) !!
 
     Future(Ok(res))
   }
 
-  def getZkRuok = Action.async {implicit req =>
-
-    val res = Seq("echo", "ruok" ) #| Seq("nc", ip, "2181") !!
-
-    Future(Ok(res))
-  }
-
-  def getZkMntr  = Action.async {implicit req =>
-
-    val res = Seq("echo", "mntr" ) #| Seq("nc", ip, "2181") !!
+  def getZkStat = Action.async { implicit req =>
+    val res = Seq("echo", "stats") #| Seq("nc", ip, "2181") !!
 
     Future(Ok(res))
   }
 
+  def getZkRuok = Action.async { implicit req =>
+    val res = Seq("echo", "ruok") #| Seq("nc", ip, "2181") !!
 
-  def getIndex = Action.async {implicit req =>
-    Future{
+    Future(Ok(res))
+  }
+
+  def getZkMntr = Action.async { implicit req =>
+    val res = Seq("echo", "mntr") #| Seq("nc", ip, "2181") !!
+
+    Future(Ok(res))
+  }
+
+  def getIndex = Action.async { implicit req =>
+    Future {
       val xml =
-      """
+        """
         |<html>
         | <head>
         |   <title>CM-Well Cluster Health</title>

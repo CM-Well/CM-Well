@@ -12,13 +12,12 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package security
 
 object AuthConsole {
   def help = {
-    println("""
+    println(
+      """
       |To generate a valid token for a user, invoke the genereateToken method, supply a username as the first argument.
       |
       |Second optional argument is expiry, you can supply a string which will be parsed by DateTime.parse
@@ -30,7 +29,8 @@ object AuthConsole {
       |
       |
       |You can test the results on the "Minimal JWT Debugger" (available in UI by clicking the robot's arm)
-    """.stripMargin)
+    """.stripMargin
+    )
   }
 
   val unusedCache = null.asInstanceOf[EagerAuthCache]
@@ -40,6 +40,12 @@ object AuthConsole {
   }
 
   def generateToken(username: String, expiry: String, rev: Int = 1): String = {
-    Token.generate(unusedCache, username, Some(org.joda.time.DateTime.parse(expiry)), Option(rev), isAdmin = true)
+    Token.generate(
+      unusedCache,
+      username,
+      Some(org.joda.time.DateTime.parse(expiry)),
+      Option(rev),
+      isAdmin = true
+    )
   }
 }

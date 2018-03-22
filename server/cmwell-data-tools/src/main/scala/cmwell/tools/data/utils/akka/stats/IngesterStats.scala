@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.utils.akka.stats
 
 import akka.actor.{ActorRef, Cancellable}
@@ -39,14 +37,17 @@ object IngesterStats {
             initDelay: FiniteDuration = 1.second,
             interval: FiniteDuration = 1.second,
             reporter: Option[ActorRef] = None,
-            label: Option[String] = None) = new IngesterStats(isStderr, initDelay, interval, reporter, label)
+            label: Option[String] = None) =
+    new IngesterStats(isStderr, initDelay, interval, reporter, label)
 }
 
 class IngesterStats(isStderr: Boolean,
                     initDelay: FiniteDuration = 1.second,
                     interval: FiniteDuration = 1.second,
                     reporter: Option[ActorRef] = None,
-                    label: Option[String] = None) extends GraphStage[FlowShape[IngestEvent, IngestEvent]] with DataToolsLogging{
+                    label: Option[String] = None)
+    extends GraphStage[FlowShape[IngestEvent, IngestEvent]]
+    with DataToolsLogging {
   val in = Inlet[IngestEvent]("ingest-stats.in")
   val out = Outlet[IngestEvent]("ingest-stats.out")
   override val shape = FlowShape.of(in, out)
@@ -73,12 +74,17 @@ class IngesterStats(isStderr: Boolean,
       val formatter = java.text.NumberFormat.getNumberInstance
 
       override def preStart(): Unit = {
-        asyncCB = getAsyncCallback{ _ =>
+        asyncCB = getAsyncCallback { _ =>
           displayStats()
           resetStats()
         }
 
-        eventPoller = Some(materializer.schedulePeriodically(initDelay, interval, new Runnable() {def run() = asyncCB.invoke(())}))
+        eventPoller = Some(
+          materializer
+            .schedulePeriodically(initDelay, interval, new Runnable() {
+              def run() = asyncCB.invoke(())
+            })
+        )
 
         pull(in)
       }
@@ -96,9 +102,12 @@ class IngesterStats(isStderr: Boolean,
             s"[ingested: ${toHumanReadable(totalIngestedBytes.count)}]    " +
               s"[ingested infotons: ${formatter.format(totalIngestedInfotons.count)}   " +
               s"${formatter.format(totalIngestedInfotons.oneMinuteRate)}/sec]   " +
-              s"[failed infotons: ${formatter.format(totalFailedInfotons.count)}]    ".padTo(25, ' ') +
-              s"[rate=${toHumanReadable(totalIngestedBytes.oneMinuteRate)}/sec    ".padTo(20, ' ') +
-              s"average rate=${toHumanReadable(totalIngestedBytes.meanRate)}/sec]    ".padTo(30, ' ') +
+              s"[failed infotons: ${formatter.format(totalFailedInfotons.count)}]    "
+                .padTo(25, ' ') +
+              s"[rate=${toHumanReadable(totalIngestedBytes.oneMinuteRate)}/sec    "
+                .padTo(20, ' ') +
+              s"average rate=${toHumanReadable(totalIngestedBytes.meanRate)}/sec]    "
+                .padTo(30, ' ') +
               s"[${DurationFormatUtils.formatDurationWords(now - start, true, true)}]        "
 
           if (isStderr) System.err.print("\r" * lastMessageSize + message)
@@ -112,7 +121,7 @@ class IngesterStats(isStderr: Boolean,
             )
           }
 
-          logger debug (s"$name $message")
+          logger.debug(s"$name $message")
 
           lastMessageSize = message.size
         } catch {
@@ -122,42 +131,48 @@ class IngesterStats(isStderr: Boolean,
 
       def aggregateStats(ingestEvent: IngestEvent) = ingestEvent match {
         case IngestSuccessEvent(sizeInBytes, numInfotons) =>
-          totalIngestedBytes mark sizeInBytes
-          totalIngestedInfotons mark numInfotons
+          totalIngestedBytes.mark(sizeInBytes)
+          totalIngestedInfotons.mark(numInfotons)
           ingestedBytesInWindow += sizeInBytes
         case IngestFailEvent(numInfotons) =>
-          totalFailedInfotons mark numInfotons
+          totalFailedInfotons.mark(numInfotons)
       }
 
-      setHandler(in, new InHandler {
-        override def onPush(): Unit = {
-          val element = grab(in)
-          aggregateStats(element)
-          pull(in)
+      setHandler(
+        in,
+        new InHandler {
+          override def onPush(): Unit = {
+            val element = grab(in)
+            aggregateStats(element)
+            pull(in)
+          }
+
+          override def onUpstreamFailure(ex: Throwable): Unit = {
+            failStage(ex)
+            eventPoller.foreach(_.cancel())
+          }
+
+          override def onUpstreamFinish(): Unit = {
+            val now = System.currentTimeMillis()
+
+            val message =
+              s"ingested: ${toHumanReadable(totalIngestedBytes.count)}    " +
+                s"ingested infotons: ${formatter.format(totalIngestedInfotons.count)}"
+                  .padTo(30, ' ') +
+                s"failed infotons: ${formatter.format(totalFailedInfotons.count)}"
+                  .padTo(25, ' ') +
+                s" average rate=${totalIngestedBytes.meanRate}/sec"
+                  .padTo(30, ' ') +
+                s"[${DurationFormatUtils.formatDurationWords(now - start, true, true)}]        "
+
+            System.err.println("")
+            System.err.println(message)
+
+            completeStage()
+            eventPoller.foreach(_.cancel())
+          }
         }
-
-        override def onUpstreamFailure(ex: Throwable): Unit = {
-          failStage(ex)
-          eventPoller.foreach(_.cancel())
-        }
-
-        override def onUpstreamFinish(): Unit = {
-          val now = System.currentTimeMillis()
-
-          val message =
-            s"ingested: ${toHumanReadable(totalIngestedBytes.count)}    " +
-              s"ingested infotons: ${formatter.format(totalIngestedInfotons.count)}".padTo(30, ' ') +
-              s"failed infotons: ${formatter.format(totalFailedInfotons.count)}".padTo(25, ' ') +
-              s" average rate=${totalIngestedBytes.meanRate}/sec".padTo(30, ' ') +
-              s"[${DurationFormatUtils.formatDurationWords(now - start, true, true)}]        "
-
-          System.err.println("")
-          System.err.println(message)
-
-          completeStage()
-          eventPoller.foreach(_.cancel())
-        }
-      })
+      )
 
       setHandler(out, new OutHandler {
         override def onPull(): Unit = {

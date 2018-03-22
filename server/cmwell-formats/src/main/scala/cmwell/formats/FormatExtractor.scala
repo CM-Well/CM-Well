@@ -12,13 +12,11 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.formats
 
 /**
- * Created by markz on 12/7/14.
- */
+  * Created by markz on 12/7/14.
+  */
 // format: off
 sealed abstract class FormatType         {def mimetype: String ; def isThin: Boolean = false}
 case object TextType  extends FormatType {def mimetype = "text/plain;charset=UTF8"; override def isThin = true}
@@ -45,7 +43,8 @@ case object JsonLDQFlavor  extends RdfFlavor {def mimetype = "application/ld+jso
 // format: on
 object FormatExtractor {
 
-  def withDefault(format: String, ft: FormatType): FormatType = unapply(format).getOrElse(ft)
+  def withDefault(format: String, ft: FormatType): FormatType =
+    unapply(format).getOrElse(ft)
 
   // format: off
   def unapply(format: String): Option[FormatType] = format.toLowerCase.trim match {
@@ -69,4 +68,3 @@ object FormatExtractor {
   }
   // format: on
 }
-

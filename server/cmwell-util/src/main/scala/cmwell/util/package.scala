@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell
 
 trait Actionable[T] {
@@ -21,9 +19,11 @@ trait Actionable[T] {
 }
 
 package object syntaxutils {
-  def !!! : Nothing = throw new RuntimeException("That shouldn't have happened.")
+  def !!! : Nothing =
+    throw new RuntimeException("That shouldn't have happened.")
 
-  implicit class OptionToEither[A,B](opt: Option[A]) {
-    def toEither(b: =>B): Either[B,A] = opt.fold[Either[B,A]](Left(b))(Right.apply)
+  implicit class OptionToEither[A, B](opt: Option[A]) {
+    def toEither(b: => B): Either[B, A] =
+      opt.fold[Either[B, A]](Left(b))(Right.apply)
   }
 }

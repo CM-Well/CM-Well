@@ -12,33 +12,40 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.blueprints.jena
 
 import java.lang.Iterable
 
 import org.apache.jena.rdf.model._
-import com.tinkerpop.blueprints.util.{StringFactory, DefaultVertexQuery}
-import com.tinkerpop.blueprints.{VertexQuery, Edge, Direction, Vertex}
+import com.tinkerpop.blueprints.util.{DefaultVertexQuery, StringFactory}
+import com.tinkerpop.blueprints.{Direction, Edge, Vertex, VertexQuery}
 
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 import Extensions._
 
-class JenaVertex(model1: Model, rdfNode1: RDFNode) extends JenaElement(model1, rdfNode1) with Vertex {
+class JenaVertex(model1: Model, rdfNode1: RDFNode)
+    extends JenaElement(model1, rdfNode1)
+    with Vertex {
 
   override def getId = rdfNode.id
 
-  override def getEdges(direction: Direction, labels: String*): Iterable[Edge] = {
+  override def getEdges(direction: Direction,
+                        labels: String*): Iterable[Edge] = {
     val labelsSet = labels.toSet
     val edges = mutable.Set[Edge]()
 
     val statements = model.listStatements(getSelector(direction))
     while (statements.hasNext) {
       val statement = statements.next
-      if(!statement.getObject.isLiteral) {
-        val edge = new JenaEdge(model, statement.getPredicate, statement.getObject, statement.getSubject)
+      if (!statement.getObject.isLiteral) {
+        val edge =
+          new JenaEdge(
+            model,
+            statement.getPredicate,
+            statement.getObject,
+            statement.getSubject
+          )
         if (labelsSet.isEmpty || labelsSet(edge.getLabel))
           edges += edge
       }
@@ -46,7 +53,8 @@ class JenaVertex(model1: Model, rdfNode1: RDFNode) extends JenaElement(model1, r
     edges
   }
 
-  override def getVertices(direction: Direction, labels: String*): Iterable[Vertex] = {
+  override def getVertices(direction: Direction,
+                           labels: String*): Iterable[Vertex] = {
     val labelsSet = labels.toSet
     val vertices = mutable.Set[Vertex]()
 
@@ -56,7 +64,7 @@ class JenaVertex(model1: Model, rdfNode1: RDFNode) extends JenaElement(model1, r
       if (labelsSet.isEmpty || labelsSet(statement.getPredicate.id.toString)) {
         val s = statement.getSubject
         val o = statement.getObject
-        vertices += new JenaVertex(model, if(rdfNode==s) o else s)
+        vertices += new JenaVertex(model, if (rdfNode == s) o else s)
       }
     }
     vertices
@@ -65,20 +73,36 @@ class JenaVertex(model1: Model, rdfNode1: RDFNode) extends JenaElement(model1, r
   override def query(): VertexQuery = new DefaultVertexQuery(this)
   override def toString = StringFactory.vertexString(this)
 
-  override def addEdge(s: String, vertex: Vertex): Edge = throw new UnsupportedOperationException("Current implementation is for a ReadOnly graph")
-  override def remove(): Unit = throw new UnsupportedOperationException("Current implementation is for a ReadOnly graph")
-  override def removeProperty[T](key: String): T = throw new UnsupportedOperationException("Current implementation is for a ReadOnly graph")
+  override def addEdge(s: String, vertex: Vertex): Edge =
+    throw new UnsupportedOperationException(
+      "Current implementation is for a ReadOnly graph"
+    )
+  override def remove(): Unit =
+    throw new UnsupportedOperationException(
+      "Current implementation is for a ReadOnly graph"
+    )
+  override def removeProperty[T](key: String): T =
+    throw new UnsupportedOperationException(
+      "Current implementation is for a ReadOnly graph"
+    )
 
   private def getSelector(dir: Direction): Selector = dir match {
-    case Direction.IN => new SimpleSelector {
-      override def selects(s: Statement): Boolean = s.getObject.isSameAs(rdfNode) && !s.getObject.isLiteral
-    }
-    case Direction.OUT => new SimpleSelector {
-      override def selects(s: Statement): Boolean = s.getSubject.isSameAs(rdfNode) && !s.getObject.isLiteral
-    }
-    case Direction.BOTH => new SimpleSelector {
-      override def selects(s: Statement): Boolean = (s.getSubject.isSameAs(rdfNode) || s.getObject.isSameAs(rdfNode)) && !s.getObject.isLiteral
-    }
+    case Direction.IN =>
+      new SimpleSelector {
+        override def selects(s: Statement): Boolean =
+          s.getObject.isSameAs(rdfNode) && !s.getObject.isLiteral
+      }
+    case Direction.OUT =>
+      new SimpleSelector {
+        override def selects(s: Statement): Boolean =
+          s.getSubject.isSameAs(rdfNode) && !s.getObject.isLiteral
+      }
+    case Direction.BOTH =>
+      new SimpleSelector {
+        override def selects(s: Statement): Boolean =
+          (s.getSubject.isSameAs(rdfNode) || s.getObject
+            .isSameAs(rdfNode)) && !s.getObject.isLiteral
+      }
     case _ => throw new IllegalArgumentException("Direction")
   }
 }

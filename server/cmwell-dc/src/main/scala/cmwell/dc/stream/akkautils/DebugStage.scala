@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.dc.stream.akkautils
 
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
@@ -27,37 +25,45 @@ object DebugStage {
   def apply[A](name: String): DebugStage[A] = new DebugStage(name)
 }
 
-class DebugStage[A](name: String) extends GraphStage[FlowShape[A, A]] with LazyLogging {
+class DebugStage[A](name: String)
+    extends GraphStage[FlowShape[A, A]]
+    with LazyLogging {
   val in = Inlet[A]("DebugStage.in")
   val out = Outlet[A]("DebugStage.out")
   override val shape = FlowShape.of(in, out)
   override def createLogic(attr: Attributes): GraphStageLogic =
     new GraphStageLogic(shape) {
-      setHandler(in, new InHandler {
-        override def onPush(): Unit = {
-          logger.info(s"[$name]: grabbing element")
-          val elem = grab(in)
-          logger.info(s"[$name]: pushing the grabbed element $elem")
-          push(out, elem)
+      setHandler(
+        in,
+        new InHandler {
+          override def onPush(): Unit = {
+            logger.info(s"[$name]: grabbing element")
+            val elem = grab(in)
+            logger.info(s"[$name]: pushing the grabbed element $elem")
+            push(out, elem)
+          }
+          override def onUpstreamFinish(): Unit = {
+            logger.info(s"[$name]: onUpstreamFinish")
+            super.onUpstreamFinish()
+          }
+          override def onUpstreamFailure(ex: Throwable): Unit = {
+            logger.info(s"[$name]: onUpstreamFailure")
+            super.onUpstreamFailure(ex)
+          }
         }
-        override def onUpstreamFinish(): Unit = {
-          logger.info(s"[$name]: onUpstreamFinish")
-          super.onUpstreamFinish()
+      )
+      setHandler(
+        out,
+        new OutHandler {
+          override def onPull(): Unit = {
+            logger.info(s"[$name]: pulling element")
+            pull(in)
+          }
+          override def onDownstreamFinish(): Unit = {
+            logger.info(s"[$name]: onDownstreamFinish")
+            super.onDownstreamFinish()
+          }
         }
-        override def onUpstreamFailure(ex: Throwable): Unit = {
-          logger.info(s"[$name]: onUpstreamFailure")
-          super.onUpstreamFailure(ex)
-        }
-      })
-      setHandler(out, new OutHandler {
-        override def onPull(): Unit = {
-          logger.info(s"[$name]: pulling element")
-          pull(in)
-        }
-        override def onDownstreamFinish(): Unit = {
-          logger.info(s"[$name]: onDownstreamFinish")
-          super.onDownstreamFinish()
-        }
-      })
+      )
     }
 }

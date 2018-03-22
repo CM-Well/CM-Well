@@ -4,7 +4,12 @@ import java.util.Properties
 
 import akka.actor.{ActorRef, ActorSystem}
 import cmwell.bg.{CMWellBGActor, ShutDown}
-import cmwell.common.{CommandSerializer, OffsetsService, WriteCommand, ZStoreOffsetsService}
+import cmwell.common.{
+  CommandSerializer,
+  OffsetsService,
+  WriteCommand,
+  ZStoreOffsetsService
+}
 import cmwell.domain.{FieldValue, ObjectInfoton}
 import cmwell.driver.Dao
 import cmwell.fts._
@@ -23,27 +28,38 @@ import scala.concurrent.{Await, Future}
 import scala.io.Source
 
 @DoNotDiscover
-class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers with LazyLogging {
+class BGSequentialSpec
+    extends FlatSpec
+    with BeforeAndAfterAll
+    with Matchers
+    with LazyLogging {
 
-  var kafkaProducer:KafkaProducer[Array[Byte], Array[Byte]] = _
-  var cmwellBGActor:ActorRef = _
-  var dao:Dao = _
-  var irwService:IRWService = _
-  var zStore:ZStore = _
-  var offsetsService:OffsetsService = _
-  var ftsServiceES:FTSServiceNew = _
-  var bgConfig:Config = _
-  var actorSystem:ActorSystem = _
+  var kafkaProducer: KafkaProducer[Array[Byte], Array[Byte]] = _
+  var cmwellBGActor: ActorRef = _
+  var dao: Dao = _
+  var irwService: IRWService = _
+  var zStore: ZStore = _
+  var offsetsService: OffsetsService = _
+  var ftsServiceES: FTSServiceNew = _
+  var bgConfig: Config = _
+  var actorSystem: ActorSystem = _
 
   override def beforeAll = {
     val producerProperties = new Properties
     producerProperties.put("bootstrap.servers", "localhost:9092")
-    producerProperties.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
-    producerProperties.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
-    kafkaProducer = new KafkaProducer[Array[Byte], Array[Byte]](producerProperties)
+    producerProperties.put(
+      "key.serializer",
+      "org.apache.kafka.common.serialization.ByteArraySerializer"
+    )
+    producerProperties.put(
+      "value.serializer",
+      "org.apache.kafka.common.serialization.ByteArraySerializer"
+    )
+    kafkaProducer =
+      new KafkaProducer[Array[Byte], Array[Byte]](producerProperties)
 
-    dao = Dao("Test","data2")
-    irwService = IRWService.newIRW(dao, 25 , true, 120.seconds)
+    dao = Dao("Test", "data2")
+    irwService = IRWService.newIRW(dao, 25, true, 120.seconds)
     // truncate all tables
     Await.ready(irwService.purgeAll(), 20.seconds)
 
@@ -52,7 +68,9 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
     ftsServiceES = FTSServiceNew("es.test.yml")
 
     // wait for green status
-    ftsServiceES.client.admin().cluster()
+    ftsServiceES.client
+      .admin()
+      .cluster()
       .prepareHealth()
       .setWaitForGreenStatus()
       .setTimeout(TimeValue.timeValueMinutes(5))
@@ -63,20 +81,31 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
     ftsServiceES.client.admin().indices().delete(new DeleteIndexRequest("_all"))
 
     // load indices template
-    val indicesTemplate = Source.fromURL(this.getClass.getResource("/indices_template_new.json")).getLines.reduceLeft(_ + _)
-    ftsServiceES.client.admin().indices().preparePutTemplate("indices_template").setSource(indicesTemplate).execute().actionGet()
+    val indicesTemplate = Source
+      .fromURL(this.getClass.getResource("/indices_template_new.json"))
+      .getLines
+      .reduceLeft(_ + _)
+    ftsServiceES.client
+      .admin()
+      .indices()
+      .preparePutTemplate("indices_template")
+      .setSource(indicesTemplate)
+      .execute()
+      .actionGet()
 
     bgConfig = ConfigFactory.load
 
     actorSystem = ActorSystem("cmwell-bg-test-system")
 
-    cmwellBGActor = actorSystem.actorOf(CMWellBGActor.props(0, bgConfig, irwService, ftsServiceES, zStore, offsetsService))
+    cmwellBGActor = actorSystem.actorOf(
+      CMWellBGActor
+        .props(0, bgConfig, irwService, ftsServiceES, zStore, offsetsService)
+    )
 
     println("waiting 10 seconds for all components to load")
     Thread.sleep(10000)
 
   }
-
 
   "BG" should "process priority commands" in {
     // prepare sequence of priority writeCommands
@@ -85,14 +114,18 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
         path = s"/cmt/cm/bg-test-priority-before-batch/prio/info$n",
         dc = "dc",
         indexTime = None,
-        fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))))
+        fields = Some(
+          Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))
+        )
+      )
       WriteCommand(infoton)
     }
 
     // make kafka records out of the commands
     val pRecords = pWriteCommands.map { writeCommand =>
       val commandBytes = CommandSerializer.encode(writeCommand)
-      new ProducerRecord[Array[Byte], Array[Byte]]("persist_topic.priority", commandBytes)
+      new ProducerRecord[Array[Byte], Array[Byte]]("persist_topic.priority",
+                                                   commandBytes)
     }
 
     // prepare sequence of priority writeCommands
@@ -101,24 +134,28 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
         path = s"/cmt/cm/bg-test-priority-before-batch/batch/info$n",
         dc = "dc",
         indexTime = None,
-        fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))))
+        fields = Some(
+          Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))
+        )
+      )
       WriteCommand(infoton)
     }
 
     // make kafka records out of the commands
     val records = writeCommands.map { writeCommand =>
       val commandBytes = CommandSerializer.encode(writeCommand)
-      new ProducerRecord[Array[Byte], Array[Byte]]("persist_topic", commandBytes)
+      new ProducerRecord[Array[Byte], Array[Byte]]("persist_topic",
+                                                   commandBytes)
     }
 
-    val f1 = Future{
-      records.foreach{ r =>
+    val f1 = Future {
+      records.foreach { r =>
         kafkaProducer.send(r)
       }
     }(scala.concurrent.ExecutionContext.Implicits.global)
-    val f2 = scheduleFuture(1000.millisecond){
-      Future{
-        pRecords.foreach{ r =>
+    val f2 = scheduleFuture(1000.millisecond) {
+      Future {
+        pRecords.foreach { r =>
           kafkaProducer.send(r)
         }
       }(scala.concurrent.ExecutionContext.Implicits.global)
@@ -126,19 +163,23 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
 
     val assertFut = scheduleFuture(25.seconds) {
       f2.flatMap { _ =>
-        logger error s"Finished sending"
+        logger.error(s"Finished sending")
         val res = ftsServiceES.search(
-          pathFilter = Some(PathFilter("/cmt/cm/bg-test-priority-before-batch/prio", true)),
+          pathFilter = Some(
+            PathFilter("/cmt/cm/bg-test-priority-before-batch/prio", true)
+          ),
           fieldsFilter = None,
           datesFilter = None,
           paginationParams = PaginationParams(0, 3000),
           sortParams = SortParam.indexTimeDescending,
           withHistory = false,
           withDeleted = false
-        )(scala.concurrent.ExecutionContext.Implicits.global,logger)
+        )(scala.concurrent.ExecutionContext.Implicits.global, logger)
 
-        withClue(res){
-          res.map{ _.infotons.size should equal(2000)}(scala.concurrent.ExecutionContext.Implicits.global)
+        withClue(res) {
+          res.map { _.infotons.size should equal(2000) }(
+            scala.concurrent.ExecutionContext.Implicits.global
+          )
         }
       }(scala.concurrent.ExecutionContext.Implicits.global)
     }
@@ -146,10 +187,10 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
     Await.result(assertFut, 30.seconds)
   }
 
-    override def afterAll() = {
-      cmwellBGActor ! ShutDown
-      Thread.sleep(2000)
-      ftsServiceES.shutdown()
-      irwService = null
-    }
+  override def afterAll() = {
+    cmwellBGActor ! ShutDown
+    Thread.sleep(2000)
+    ftsServiceES.shutdown()
+    irwService = null
+  }
 }

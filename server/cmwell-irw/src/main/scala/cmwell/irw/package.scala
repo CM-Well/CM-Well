@@ -12,16 +12,15 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell
 
 /**
- * Created by markz on 11/6/14.
- */
+  * Created by markz on 11/6/14.
+  */
 package object irw {
   type ConsistencyLevel = com.datastax.driver.core.ConsistencyLevel
-  val ONE    : ConsistencyLevel = com.datastax.driver.core.ConsistencyLevel.ONE
-  val QUORUM : ConsistencyLevel = com.datastax.driver.core.ConsistencyLevel.QUORUM
-  val ANY    : ConsistencyLevel = com.datastax.driver.core.ConsistencyLevel.ANY
+  val ONE: ConsistencyLevel = com.datastax.driver.core.ConsistencyLevel.ONE
+  val QUORUM: ConsistencyLevel =
+    com.datastax.driver.core.ConsistencyLevel.QUORUM
+  val ANY: ConsistencyLevel = com.datastax.driver.core.ConsistencyLevel.ANY
 }

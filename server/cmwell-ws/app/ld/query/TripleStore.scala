@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package ld.query
 
 import javax.inject.Inject
@@ -39,12 +37,18 @@ import org.openrdf.query.algebra.evaluation.{QueryOptimizer, TripleSource}
 import org.openrdf.query.algebra.helpers.AbstractQueryModelVisitor
 import org.openrdf.query.algebra._
 import org.openrdf.query.{BindingSet, Dataset, QueryEvaluationException}
-import wsutil.{FormatterManager, RawFieldFilter, RawSingleFieldFilter, UnresolvedURIFieldKey}
+import wsutil.{
+  FormatterManager,
+  RawFieldFilter,
+  RawSingleFieldFilter,
+  UnresolvedURIFieldKey
+}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext}
 
-class TripleStore(dataFetcher: DataFetcherImpl, cmwellRDFHelper: CMWellRDFHelper) {
+class TripleStore(dataFetcher: DataFetcherImpl,
+                  cmwellRDFHelper: CMWellRDFHelper) {
 
   //  private val dataFetcher = new DataFetcher(Config.defaultConfig.copy(intermediateLimit = 100000, resultsLimit = 100000))
 
@@ -56,12 +60,17 @@ class TripleStore(dataFetcher: DataFetcherImpl, cmwellRDFHelper: CMWellRDFHelper
   /**
     * Find statements by triple pattern. Can be used as the data layer of any SPARQL Engine
     */
-  def findTriplesByPattern(triplePattern: TriplePattern)(implicit ec: ExecutionContext): Iterator[Quad] = {
+  def findTriplesByPattern(
+    triplePattern: TriplePattern
+  )(implicit ec: ExecutionContext): Iterator[Quad] = {
     val infotons: Seq[Infoton] = triplePattern.subject match {
       case Some(s) =>
         fetchInfoton(uriToCmWellPath(s)).toList // Option.toList - zero or one Infotons
       case None =>
-        val ff = predicateAndObjectToFieldFilter(triplePattern.predicate, triplePattern.value)
+        val ff = predicateAndObjectToFieldFilter(
+          triplePattern.predicate,
+          triplePattern.value
+        )
         dataFetcher.fetch(ff)._2
     }
 
@@ -70,7 +79,9 @@ class TripleStore(dataFetcher: DataFetcherImpl, cmwellRDFHelper: CMWellRDFHelper
   }
 
   private def fetchInfoton(path: String): Option[Infoton] =
-    Await.result(crudServiceFS.getInfoton(path, None, None), 10.seconds).collect { case Everything(i) => i }
+    Await
+      .result(crudServiceFS.getInfoton(path, None, None), 10.seconds)
+      .collect { case Everything(i) => i }
 
   private def infotonToQuads(i: Infoton): Iterator[Quad] = {
     import scala.collection.JavaConversions._
@@ -78,44 +89,76 @@ class TripleStore(dataFetcher: DataFetcherImpl, cmwellRDFHelper: CMWellRDFHelper
     val ds = nullFormatter.formattableToDataset(i)
 
     def stmtToQuad(stmt: Statement, quad: Option[TripleStore.IRI]): Quad =
-      Quad(stmt.getSubject.getURI, stmt.getPredicate.getURI, jenaNodeToValue(stmt.getObject), quad)
+      Quad(
+        stmt.getSubject.getURI,
+        stmt.getPredicate.getURI,
+        jenaNodeToValue(stmt.getObject),
+        quad
+      )
 
     val defaultModelQuads = {
       val it = ds.getDefaultModel.listStatements().map(stmtToQuad(_, None))
-      if(it.hasNext) List(it) else Nil
+      if (it.hasNext) List(it) else Nil
     }
 
-    val namedModelsQuadsIterators = JenaUtils.getNamedModels(ds).foldLeft(defaultModelQuads) {
-      case (itList,(quad, model)) =>
-        val it = model.listStatements().map(stmtToQuad(_, Some(quad)))
-        if(it.hasNext) it :: itList else itList
-    }
+    val namedModelsQuadsIterators =
+      JenaUtils.getNamedModels(ds).foldLeft(defaultModelQuads) {
+        case (itList, (quad, model)) =>
+          val it = model.listStatements().map(stmtToQuad(_, Some(quad)))
+          if (it.hasNext) it :: itList else itList
+      }
 
     new Iterator[Quad] {
       private[this] var iterators = namedModelsQuadsIterators
       override def hasNext: Boolean = iterators.headOption.exists(_.hasNext)
       override def next(): Quad = {
         val rv = iterators.head.next()
-        if(!iterators.head.hasNext) iterators = iterators.tail
+        if (!iterators.head.hasNext) iterators = iterators.tail
         rv
       }
     }
   }
 
-
-  private def predicateAndObjectToFieldFilter(p: Option[TripleStore.IRI], o: Option[TripleStore.Value])(implicit ec: ExecutionContext): FieldFilter = {
+  private def predicateAndObjectToFieldFilter(
+    p: Option[TripleStore.IRI],
+    o: Option[TripleStore.Value]
+  )(implicit ec: ExecutionContext): FieldFilter = {
     val value = o.map(_.asString)
     p match {
       case None => SingleFieldFilter(Must, Contains, "_all", value)
-      case Some(pred) => Await.result(RawFieldFilter.eval(RawSingleFieldFilter(Must, Equals, Left(UnresolvedURIFieldKey(pred)), value),typesCache,cmwellRDFHelper, None), 10.seconds)
+      case Some(pred) =>
+        Await.result(
+          RawFieldFilter.eval(
+            RawSingleFieldFilter(
+              Must,
+              Equals,
+              Left(UnresolvedURIFieldKey(pred)),
+              value
+            ),
+            typesCache,
+            cmwellRDFHelper,
+            None
+          ),
+          10.seconds
+        )
     }
   }
 
   // todo propagate withoutMeta boolean from request to here. If withoutMeta is set to false, we need to make sure it won't fail in URIFieldKey(...)
   // todo 2 also propagate request time from play's typed attributes map, and use it instead of None
   val time = Option.empty[Long]
-  val f: String => Option[(String,Option[String])] = {(o: Option[String]) => o.map(u => u -> Option.empty[String])} compose {s => cmwellRDFHelper.hashToUrl(s,time)}
-  private val nullFormatter = new cmwell.formats.RDFFormatter("cmwell", f, withoutMeta = true, filterOutBlanks = false, forceUniqueness = false) {
+  val f: String => Option[(String, Option[String])] = { (o: Option[String]) =>
+    o.map(u => u -> Option.empty[String])
+  }.compose { s =>
+    cmwellRDFHelper.hashToUrl(s, time)
+  }
+  private val nullFormatter = new cmwell.formats.RDFFormatter(
+    "cmwell",
+    f,
+    withoutMeta = true,
+    filterOutBlanks = false,
+    forceUniqueness = false
+  ) {
     override def format: cmwell.formats.FormatType = ???
     override def render(formattable: Formattable): String = ???
   }
@@ -126,15 +169,24 @@ object TripleStore {
 
   type IRI = String // todo - this can be better than type. e.g. case class IRI(iri: String, ... )
 
-  case class TriplePattern(subject: Option[IRI], predicate: Option[IRI], value: Option[Value])
+  case class TriplePattern(subject: Option[IRI],
+                           predicate: Option[IRI],
+                           value: Option[Value])
 
   case class Triple(subject: IRI, predicate: IRI, value: Value)
 
-  case class Quad(subject: IRI, predicate: IRI, value: Value, graph: Option[IRI])
+  case class Quad(subject: IRI,
+                  predicate: IRI,
+                  value: Value,
+                  graph: Option[IRI])
 
   sealed trait Value { def asString: String }
-  case class LiteralValue(value: Any, `type`: LitaralType) extends Value { override def asString: String = value.toString }
-  case class IriValue(iri: IRI) extends Value { override def asString: String = iri }
+  case class LiteralValue(value: Any, `type`: LitaralType) extends Value {
+    override def asString: String = value.toString
+  }
+  case class IriValue(iri: IRI) extends Value {
+    override def asString: String = iri
+  }
   case object Anon extends Value { override def asString: String = "_B" }
 
   sealed trait LitaralType
@@ -148,7 +200,11 @@ object TripleStore {
   case object DateLtrl extends LitaralType
   case object UnknownLtrlType extends LitaralType
 
-  private def uriToCmWellPath(uri: IRI) = uri.replace("https://", "/https.").replace("http:/", "").replace("cmwell:/", "")
+  private def uriToCmWellPath(uri: IRI) =
+    uri
+      .replace("https://", "/https.")
+      .replace("http:/", "")
+      .replace("cmwell:/", "")
 
   private def jenaNodeToValue(jNode: RDFNode): Value = {
     if (jNode.isAnon)
@@ -160,14 +216,16 @@ object TripleStore {
 
       l.getDatatype.getJavaClass match {
         case Types.boolean => LiteralValue(l.getBoolean, BooleanLtrl)
-        case Types.string if l.getLanguage.isEmpty => LiteralValue(l.getString, StringLtrl)
-        case Types.string => LiteralValue(l.getString, LangStringLtrl(l.getLanguage))
-        case Types.date => LiteralValue(l.getValue, DateLtrl)
-        case Types.float => LiteralValue(l.getFloat, FloatLtrl)
+        case Types.string if l.getLanguage.isEmpty =>
+          LiteralValue(l.getString, StringLtrl)
+        case Types.string =>
+          LiteralValue(l.getString, LangStringLtrl(l.getLanguage))
+        case Types.date   => LiteralValue(l.getValue, DateLtrl)
+        case Types.float  => LiteralValue(l.getFloat, FloatLtrl)
         case Types.double => LiteralValue(l.getDouble, DoubleLtrl)
-        case Types.int => LiteralValue(l.getInt, IntLtrl)
-        case Types.long => LiteralValue(l.getLong, LongLtrl)
-        case _ => LiteralValue(l.getValue, UnknownLtrlType)
+        case Types.int    => LiteralValue(l.getInt, IntLtrl)
+        case Types.long   => LiteralValue(l.getLong, LongLtrl)
+        case _            => LiteralValue(l.getValue, UnknownLtrlType)
       }
     }
   }
@@ -183,16 +241,28 @@ object TripleStore {
   }
 
   // todo in future, it doesn't have to be ==, if filter is propagated as fieldOperator to support Range Queries
-  private def filter(quads: Iterator[Quad], pred: Option[IRI], obj: Option[Value]): Iterator[Quad] =
-    quads.filter(q => pred.fold(true)(_ == q.predicate) && obj.fold(true)(_ == q.value))
+  private def filter(quads: Iterator[Quad],
+                     pred: Option[IRI],
+                     obj: Option[Value]): Iterator[Quad] =
+    quads.filter(
+      q => pred.fold(true)(_ == q.predicate) && obj.fold(true)(_ == q.value)
+    )
 }
 
 object SesameExtensions {
 
-  class SortByCardinalityEvaluationStrategy(tripleSource: TripleSource, serviceResolver: FederatedServiceResolver)
-    extends SimpleEvaluationStrategy(tripleSource: TripleSource, serviceResolver: FederatedServiceResolver) {
+  class SortByCardinalityEvaluationStrategy(
+    tripleSource: TripleSource,
+    serviceResolver: FederatedServiceResolver
+  ) extends SimpleEvaluationStrategy(
+        tripleSource: TripleSource,
+        serviceResolver: FederatedServiceResolver
+      ) {
 
-    override def evaluate(tuplExpr: TupleExpr, bindings: BindingSet): CloseableIteration[BindingSet, QueryEvaluationException] = {
+    override def evaluate(
+      tuplExpr: TupleExpr,
+      bindings: BindingSet
+    ): CloseableIteration[BindingSet, QueryEvaluationException] = {
       SortByCardinalityQueryOptimizer.optimize(tuplExpr, null, bindings)
       super.evaluate(tuplExpr, bindings)
     }
@@ -200,7 +270,9 @@ object SesameExtensions {
   }
 
   object SortByCardinalityQueryOptimizer extends QueryOptimizer {
-    override def optimize(tupleExpr: TupleExpr, dataset: Dataset, bindings: BindingSet): Unit = {
+    override def optimize(tupleExpr: TupleExpr,
+                          dataset: Dataset,
+                          bindings: BindingSet): Unit = {
       tupleExpr.visit(CardinalitySorterVisitor)
     }
 
@@ -211,7 +283,7 @@ object SesameExtensions {
         */
       // todo move to a different Optimizer, placing it here as a side effect is not POLA
 //      override def meet(sp: StatementPattern): Unit = {
-        // todo populate metadata with something valuable to further optimizations
+      // todo populate metadata with something valuable to further optimizations
 //        val (cmWellSubVar, cmWellObjVar) = (CmWellValue("fooBarSubj", sp.getSubjectVar), CmWellValue("fooBarObj", sp.getObjectVar))
 //        val updatedSp = new StatementPattern(cmWellSubVar, sp.getPredicateVar, cmWellObjVar, sp.getContextVar)
 //        sp.replaceWith(updatedSp)
@@ -236,20 +308,25 @@ object SesameExtensions {
     }
   }
 
-
   def sesameValueToValue(sv: Value): TripleStore.Value = {
     sv match {
-      case _: BNode => Anon
+      case _: BNode       => Anon
       case iri: SimpleIRI => IriValue(iri.getNamespace + iri.getLocalName)
-      case sl: SimpleLiteral if sl.getLanguage.isPresent => LiteralValue(sl.stringValue(), LangStringLtrl(sl.getLanguage.get()))
-      case sl: SimpleLiteral => sl.getDatatype.getLocalName.toLowerCase match {
-        case "boolean" => LiteralValue(sl.booleanValue(), BooleanLtrl)
-        case "datetime" => LiteralValue(new XSDDateTime(sl.calendarValue().toGregorianCalendar), DateLtrl)
-        case "integer" => LiteralValue(sl.intValue(), IntLtrl)
-        case "long" => LiteralValue(sl.longValue(), LongLtrl)
-        case "float" => LiteralValue(sl.floatValue(), FloatLtrl)
-        case "double" => LiteralValue(sl.doubleValue(), DoubleLtrl)
-      }
+      case sl: SimpleLiteral if sl.getLanguage.isPresent =>
+        LiteralValue(sl.stringValue(), LangStringLtrl(sl.getLanguage.get()))
+      case sl: SimpleLiteral =>
+        sl.getDatatype.getLocalName.toLowerCase match {
+          case "boolean" => LiteralValue(sl.booleanValue(), BooleanLtrl)
+          case "datetime" =>
+            LiteralValue(
+              new XSDDateTime(sl.calendarValue().toGregorianCalendar),
+              DateLtrl
+            )
+          case "integer" => LiteralValue(sl.intValue(), IntLtrl)
+          case "long"    => LiteralValue(sl.longValue(), LongLtrl)
+          case "float"   => LiteralValue(sl.floatValue(), FloatLtrl)
+          case "double"  => LiteralValue(sl.doubleValue(), DoubleLtrl)
+        }
       case other => LiteralValue(other.stringValue(), UnknownLtrlType)
     }
   }
@@ -260,18 +337,26 @@ object SesameExtensions {
       new XMLGregorianCalendarImpl(new DateTime(millis).toGregorianCalendar)
     }
     value match {
-      case Anon => factory.createBNode()
+      case Anon          => factory.createBNode()
       case IriValue(uri) => factory.createIRI(uri)
-      case LiteralValue(v, BooleanLtrl) => factory.createLiteral(v.asInstanceOf[Boolean])
-      case LiteralValue(v, StringLtrl) => factory.createLiteral(v.asInstanceOf[String])
-      case LiteralValue(v, LangStringLtrl(lng)) => factory.createLiteral(v.asInstanceOf[String]) // todo lang?
-      case LiteralValue(v, IntLtrl) => factory.createLiteral(v.asInstanceOf[Int])
-      case LiteralValue(v, LongLtrl) => factory.createLiteral(v.asInstanceOf[Long])
-      case LiteralValue(v, FloatLtrl) => factory.createLiteral(v.asInstanceOf[Float])
-      case LiteralValue(v, DoubleLtrl) => factory.createLiteral(v.asInstanceOf[Double])
-      case LiteralValue(v, DateLtrl) => factory.createLiteral(dateConvert(v.asInstanceOf[XSDDateTime]))
+      case LiteralValue(v, BooleanLtrl) =>
+        factory.createLiteral(v.asInstanceOf[Boolean])
+      case LiteralValue(v, StringLtrl) =>
+        factory.createLiteral(v.asInstanceOf[String])
+      case LiteralValue(v, LangStringLtrl(lng)) =>
+        factory.createLiteral(v.asInstanceOf[String]) // todo lang?
+      case LiteralValue(v, IntLtrl) =>
+        factory.createLiteral(v.asInstanceOf[Int])
+      case LiteralValue(v, LongLtrl) =>
+        factory.createLiteral(v.asInstanceOf[Long])
+      case LiteralValue(v, FloatLtrl) =>
+        factory.createLiteral(v.asInstanceOf[Float])
+      case LiteralValue(v, DoubleLtrl) =>
+        factory.createLiteral(v.asInstanceOf[Double])
+      case LiteralValue(v, DateLtrl) =>
+        factory.createLiteral(dateConvert(v.asInstanceOf[XSDDateTime]))
       case LiteralValue(v, UnknownLtrlType) => factory.createLiteral(v.toString)
-      case other => factory.createLiteral(other.toString)
+      case other                            => factory.createLiteral(other.toString)
     }
   }
 
@@ -288,6 +373,6 @@ object CmWellValue {
 
   def apply(metadata: String, value: Value): Value = value match {
     case i: IRI => CmWellValue(metadata, i.getNamespace + i.getLocalName)
-    case _ => value
+    case _      => value
   }
 }

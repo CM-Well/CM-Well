@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.util.streams.test
 
 import akka.stream._
@@ -26,51 +24,54 @@ import scala.concurrent.duration.DurationInt
 
 class MapInitAndLastTests extends StreamSpec {
 
-  def generateGraph[In](): (SrcProbe[In],SnkProbe[(In,Boolean)]) = {
+  def generateGraph[In](): (SrcProbe[In], SnkProbe[(In, Boolean)]) = {
     val src = TestSource.probe[In]
-    val snk = TestSink.probe[(In,Boolean)]
-    RunnableGraph.fromGraph(GraphDSL.create(src, snk)((a, b) => (a, b)) {
-      implicit b => {
-        (s1, s2) => {
-          import GraphDSL.Implicits._
+    val snk = TestSink.probe[(In, Boolean)]
+    RunnableGraph
+      .fromGraph(GraphDSL.create(src, snk)((a, b) => (a, b)) { implicit b =>
+        { (s1, s2) =>
+          {
+            import GraphDSL.Implicits._
 
-          val mial = b.add(new MapInitAndLast[In, (In,Boolean)](_ -> false, _ -> true))
+            val mial = b
+              .add(new MapInitAndLast[In, (In, Boolean)](_ -> false, _ -> true))
 
-          s1 ~> mial ~> s2
+            s1 ~> mial ~> s2
 
-          ClosedShape
+            ClosedShape
+          }
         }
-      }
-    }).run()
+      })
+      .run()
   }
 
-  describe("MapInitAndLast Stage"){
-    it("should buffer a single element"){
-      val (src,snk) = generateGraph[Int]()
+  describe("MapInitAndLast Stage") {
+    it("should buffer a single element") {
+      val (src, snk) = generateGraph[Int]()
       snk.request(99)
       src.sendNext(1)
       snk.expectNoMessage(300.millis)
       src.sendComplete()
-      snk.expectNext((1,true))
+      snk.expectNext((1, true))
       snk.expectComplete()
     }
 
     it("should treat last element differently") {
-      val (src,snk) = generateGraph[Int]()
+      val (src, snk) = generateGraph[Int]()
       snk.request(99)
       src.sendNext(1)
       snk.expectNoMessage(300.millis)
       src.sendNext(2)
-      snk.expectNext((1,false))
+      snk.expectNext((1, false))
       src.sendNext(3)
-      snk.expectNext((2,false))
+      snk.expectNext((2, false))
       src.sendComplete()
-      snk.expectNext((3,true))
+      snk.expectNext((3, true))
       snk.expectComplete()
     }
 
-    it("should propagate back-pressure"){
-      val (src,snk) = generateGraph[Int]()
+    it("should propagate back-pressure") {
+      val (src, snk) = generateGraph[Int]()
       snk.ensureSubscription()
       src.sendNext(1)
       snk.expectNoMessage(300.millis)
@@ -79,9 +80,9 @@ class MapInitAndLastTests extends StreamSpec {
       src.sendComplete()
       snk.expectNoMessage(300.millis)
       snk.request(1)
-      snk.expectNext((1,false))
+      snk.expectNext((1, false))
       snk.request(1)
-      snk.expectNext((1,true))
+      snk.expectNext((1, true))
       snk.expectComplete()
     }
   }

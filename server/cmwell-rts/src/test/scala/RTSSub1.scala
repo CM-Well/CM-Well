@@ -12,20 +12,22 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
-import cmwell.rts.{Rule, PathFilter, Subscriber}
-import k.grid.{GridConnection, Grid}
+import cmwell.rts.{PathFilter, Rule, Subscriber}
+import k.grid.{Grid, GridConnection}
 import scala.io.StdIn
 
 /**
- * Created by markz on 7/13/14.
- */
+  * Created by markz on 7/13/14.
+  */
 object RTSSub1 extends App {
 
-
 //  Grid.roles = Set("subscriber")
-  Grid.setGridConnection(GridConnection(memberName = "rts", hostName = "127.0.0.1", seeds = Set("127.0.0.1:2551"), port = 0))
+  Grid.setGridConnection(
+    GridConnection(memberName = "rts",
+                   hostName = "127.0.0.1",
+                   seeds = Set("127.0.0.1:2551"),
+                   port = 0)
+  )
   Grid.joinClient
   Subscriber.init
   Thread.sleep(5000)

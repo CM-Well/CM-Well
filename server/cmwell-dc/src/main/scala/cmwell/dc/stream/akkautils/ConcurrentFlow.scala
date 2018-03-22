@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.dc.stream.akkautils
 
 import akka.NotUsed
@@ -25,7 +23,9 @@ import akka.stream.scaladsl.{Balance, Flow, GraphDSL, Merge}
   */
 object ConcurrentFlow {
 
-  def apply[I, O](parallelism: Int)(flow: Graph[FlowShape[I, O], NotUsed]): Graph[FlowShape[I, O], NotUsed] =
+  def apply[I, O](
+    parallelism: Int
+  )(flow: Graph[FlowShape[I, O], NotUsed]): Graph[FlowShape[I, O], NotUsed] =
     GraphDSL.create() { implicit builder =>
       import GraphDSL.Implicits._
       val balancer = builder.add(Balance[I](parallelism))

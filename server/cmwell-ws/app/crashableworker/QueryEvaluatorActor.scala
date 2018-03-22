@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.crashableworker
 
 import java.io.ByteArrayOutputStream
@@ -23,7 +21,12 @@ import akka.actor.{Actor, ActorRef, Props}
 import cmwell.ctrl.config.Jvms
 import cmwell.util.collections._
 import cmwell.web.ld.cmw.CMWellRDFHelper
-import cmwell.web.ld.query.{Config, DataFetcher, DataFetcherImpl, JenaArqExtensions}
+import cmwell.web.ld.query.{
+  Config,
+  DataFetcher,
+  DataFetcherImpl,
+  JenaArqExtensions
+}
 import com.google.inject.{AbstractModule, Guice}
 import com.typesafe.scalalogging.LazyLogging
 import controllers._
@@ -48,7 +51,6 @@ class CWModule extends AbstractModule {
   }
 }
 
-
 object WorkerMain extends App with LazyLogging {
   logger.info("Starting CW process")
   //SLF4J initialization is not thread safe, so it's "initialized" by writing some log and only then using sendSystemOutAndErrToSLF4J.
@@ -66,53 +68,83 @@ object WorkerMain extends App with LazyLogging {
 //  val injector = Guice.createInjector(new CWModule())
 //  val mySingleton = injector.getInstance(classOf[MySingleton])
 
-  val crudServiceFS = new CRUDServiceFS()(implicitly,Grid.system)
-  val cmwellRDFHelper = new CMWellRDFHelper(crudServiceFS,implicitly,Grid.system)
+  val crudServiceFS = new CRUDServiceFS()(implicitly, Grid.system)
+  val cmwellRDFHelper =
+    new CMWellRDFHelper(crudServiceFS, implicitly, Grid.system)
   val arqCache = new ArqCache(crudServiceFS)
-  val dataFetcher = new DataFetcherImpl(Config.defaultConfig,crudServiceFS)
-  val jenaArqExtensionsUtils = new JenaArqExtensionsUtils(arqCache, crudServiceFS.passiveFieldTypesCache, cmwellRDFHelper, dataFetcher)
+  val dataFetcher = new DataFetcherImpl(Config.defaultConfig, crudServiceFS)
+  val jenaArqExtensionsUtils = new JenaArqExtensionsUtils(
+    arqCache,
+    crudServiceFS.passiveFieldTypesCache,
+    cmwellRDFHelper,
+    dataFetcher
+  )
 
   val jarsImporter = new JarsImporter(crudServiceFS)
   val queriesImporter = new QueriesImporter(crudServiceFS)
   val sourcesImporter = new SourcesImporter(crudServiceFS)
 
-  val ref = Grid.create(classOf[QueryEvaluatorActor], "QueryEvaluatorActor",crudServiceFS,arqCache,jenaArqExtensionsUtils, dataFetcher, jarsImporter, queriesImporter, sourcesImporter)
+  val ref = Grid.create(
+    classOf[QueryEvaluatorActor],
+    "QueryEvaluatorActor",
+    crudServiceFS,
+    arqCache,
+    jenaArqExtensionsUtils,
+    dataFetcher,
+    jarsImporter,
+    queriesImporter,
+    sourcesImporter
+  )
 
-  Grid.create(Props(classOf[QueryEvaluatorActorWatcher], ref), "QueryEvaluatorActorWatcher")
+  Grid.create(
+    Props(classOf[QueryEvaluatorActorWatcher], ref),
+    "QueryEvaluatorActorWatcher"
+  )
 
   val jenaArqExtensions = JenaArqExtensions.get(jenaArqExtensionsUtils)
 }
 
 sealed trait QueryResponse {
   def content: String
-  def stats: Map[String,String]
+  def stats: Map[String, String]
 }
-case class Plain(content: String, stats: Map[String,String] = Map.empty) extends QueryResponse
-case class Filename(content: String, stats: Map[String,String] = Map.empty) extends QueryResponse
-case class RemoteFailure(failure: Throwable, stats: Map[String,String] = Map.empty) extends QueryResponse {
+case class Plain(content: String, stats: Map[String, String] = Map.empty)
+    extends QueryResponse
+case class Filename(content: String, stats: Map[String, String] = Map.empty)
+    extends QueryResponse
+case class RemoteFailure(failure: Throwable,
+                         stats: Map[String, String] = Map.empty)
+    extends QueryResponse {
   override def content = throw failure
 }
-case class ThroughPipe(pipeName: String, stats: Map[String,String] = Map.empty) extends QueryResponse {
+case class ThroughPipe(pipeName: String, stats: Map[String, String] = Map.empty)
+    extends QueryResponse {
   override def content: String = ??? //read from pipe
 }
-case class ShortCircuitOverloaded(numActiveRequests: Int, stats: Map[String,String] = Map.empty) extends QueryResponse {
+case class ShortCircuitOverloaded(numActiveRequests: Int,
+                                  stats: Map[String, String] = Map.empty)
+    extends QueryResponse {
   override def content: String = ???
 }
-case class Status(counter: Int, stats: Map[String,String] = Map.empty) extends QueryResponse { // for debugging purposes
+case class Status(counter: Int, stats: Map[String, String] = Map.empty)
+    extends QueryResponse { // for debugging purposes
   override def content: String = s"numActiveQueries is $counter"
 }
 
 object QueryEvaluatorActor {
   private var activeQueryMap = Map.empty[String, Int]
 
-  def get(name : String) : Int = activeQueryMap.get(name).getOrElse(0)
+  def get(name: String): Int = activeQueryMap.get(name).getOrElse(0)
 
-  def set(name : String, value : Int) = activeQueryMap = activeQueryMap.updated(name, value)
+  def set(name: String, value: Int) =
+    activeQueryMap = activeQueryMap.updated(name, value)
 
   def getExtraData = {
-    activeQueryMap.map {
-      case (n,v) => s"#aq: $v"
-    }.mkString("\n")
+    activeQueryMap
+      .map {
+        case (n, v) => s"#aq: $v"
+      }
+      .mkString("\n")
   }
 }
 
@@ -122,16 +154,18 @@ class QueryEvaluatorActor(crudServiceFS: CRUDServiceFS,
                           dataFetcher: DataFetcher,
                           jarsImporter: JarsImporter,
                           queriesImporter: QueriesImporter,
-                          sourcesImporter: SourcesImporter) extends Actor with SpFileUtils {
+                          sourcesImporter: SourcesImporter)
+    extends Actor
+    with SpFileUtils {
 
   import QueryEvaluatorActor._
   private case class SpResponse(sender: ActorRef, queryResponse: QueryResponse)
   private case class SpFailure(sender: ActorRef, ex: Throwable)
   private def myName = self.path.name
   private def numActiveQueries = get(myName)
-  private def updateActiveQueries(delta : Int) = set(myName , get(myName) + delta)
+  private def updateActiveQueries(delta: Int) = set(myName, get(myName) + delta)
 
-  val responseThreshold = 64*1024
+  val responseThreshold = 64 * 1024
 
   val ACTIVE_REQUESTS_DELAY_THRESHOLD = Runtime.getRuntime.availableProcessors
   val CIRCUIT_BREAKER = Runtime.getRuntime.availableProcessors * 4
@@ -151,7 +185,8 @@ class QueryEvaluatorActor(crudServiceFS: CRUDServiceFS,
     case /*Luke,*/ IAmYourWatcher => {
       context.become(watchedReceive(Some(sender())))
     }
-    case StatusRequest => sender ! Status(numActiveQueries) // for debugging purposes
+    case StatusRequest =>
+      sender ! Status(numActiveQueries) // for debugging purposes
 
     case paq: PopulateAndQuery if numActiveQueries > CIRCUIT_BREAKER =>
       watcher.foreach(_ ! Activate)
@@ -160,9 +195,12 @@ class QueryEvaluatorActor(crudServiceFS: CRUDServiceFS,
     case paq: PopulateAndQuery => {
       updateActiveQueries(+1)
 
-      Try(paq.evaluate(jarsImporter,queriesImporter,sourcesImporter)) match {
+      Try(paq.evaluate(jarsImporter, queriesImporter, sourcesImporter)) match {
         case Success(queryResults) => {
-          val results = queryResults.flatMap { case (qr,stats) => rawDataToResponseMsg(qr, stats, paq.rp.forceUsingFile) }
+          val results = queryResults.flatMap {
+            case (qr, stats) =>
+              rawDataToResponseMsg(qr, stats, paq.rp.forceUsingFile)
+          }
           val originalSender = sender
 
           results.onComplete {
@@ -178,40 +216,84 @@ class QueryEvaluatorActor(crudServiceFS: CRUDServiceFS,
       }
     }
 
-    case OverallSparqlQuery(_,_,_) if numActiveQueries > CIRCUIT_BREAKER => sender() ! ShortCircuitOverloaded(numActiveQueries)
-    case OverallSparqlQuery(query,host,rp) => {
+    case OverallSparqlQuery(_, _, _) if numActiveQueries > CIRCUIT_BREAKER =>
+      sender() ! ShortCircuitOverloaded(numActiveQueries)
+    case OverallSparqlQuery(query, host, rp) => {
       updateActiveQueries(+1)
 
       Try(QueryFactory.create(query)) match {
         case Failure(e) => sender() ! RemoteFailure(e)
         case Success(sprqlQuery) => {
-          val config = Config(rp.doNotOptimize, rp.intermediateLimit, rp.resultsLimit, rp.verbose, SpHandler.queryTimeout, Some(SpHandler.queryTimeout.fromNow), rp.explainOnly)
-          val JenaArqExtensionsUtils.BakedSparqlQuery(queryExecution,driver) =
-            JenaArqExtensionsUtils.buildCmWellQueryExecution(sprqlQuery, host, config, crudServiceFS, arqCache, jenaArqExtensionsUtils, dataFetcher)
+          val config = Config(
+            rp.doNotOptimize,
+            rp.intermediateLimit,
+            rp.resultsLimit,
+            rp.verbose,
+            SpHandler.queryTimeout,
+            Some(SpHandler.queryTimeout.fromNow),
+            rp.explainOnly
+          )
+          val JenaArqExtensionsUtils.BakedSparqlQuery(queryExecution, driver) =
+            JenaArqExtensionsUtils.buildCmWellQueryExecution(
+              sprqlQuery,
+              host,
+              config,
+              crudServiceFS,
+              arqCache,
+              jenaArqExtensionsUtils,
+              dataFetcher
+            )
 
           if (!sprqlQuery.isConstructType && !sprqlQuery.isSelectType) {
-            sender() ! RemoteFailure(new IllegalArgumentException("Query Type must be either SELECT or CONSTRUCT"))
+            sender() ! RemoteFailure(
+              new IllegalArgumentException(
+                "Query Type must be either SELECT or CONSTRUCT"
+              )
+            )
           } else {
             val os = new ByteArrayOutputStream()
 
-            if(config.explainOnly)
-              driver.logMsg("Expl", "AST:\n" + JenaArqExtensionsUtils.queryToSseString(sprqlQuery).lines.map("\t".+).mkString("\n"))
+            if (config.explainOnly)
+              driver.logMsg(
+                "Expl",
+                "AST:\n" + JenaArqExtensionsUtils
+                  .queryToSseString(sprqlQuery)
+                  .lines
+                  .map("\t".+)
+                  .mkString("\n")
+              )
 
             driver.logVerboseMsg("Plan", "Planning started.")
 
-            if(sprqlQuery.isSelectType)
-              ResultSetFormatter.out(os, queryExecution.execSelect(), sprqlQuery)
+            if (sprqlQuery.isSelectType)
+              ResultSetFormatter.out(
+                os,
+                queryExecution.execSelect(),
+                sprqlQuery
+              )
 
-            if(sprqlQuery.isConstructType)
-              RDFDataMgr.write(os, queryExecution.execConstruct(), RDFFormat.NTRIPLES)
+            if (sprqlQuery.isConstructType)
+              RDFDataMgr.write(
+                os,
+                queryExecution.execConstruct(),
+                RDFFormat.NTRIPLES
+              )
 
             driver.logVerboseMsg("Exec", "Executing completed.")
-            val msgsBa = driver.msgs.map{case(k,v)=>s"[$k] $v"}.mkString("","\n","\n\n").getBytes("UTF-8")
+            val msgsBa = driver.msgs
+              .map { case (k, v) => s"[$k] $v" }
+              .mkString("", "\n", "\n\n")
+              .getBytes("UTF-8")
 
-            val resultsBa = if(config.explainOnly) Array.emptyByteArray
-                            else os.toByteArray
+            val resultsBa =
+              if (config.explainOnly) Array.emptyByteArray
+              else os.toByteArray
 
-            val results = rawDataToResponseMsg(msgsBa ++ resultsBa, Map.empty[String,String], forceWriteFile = false)
+            val results = rawDataToResponseMsg(
+              msgsBa ++ resultsBa,
+              Map.empty[String, String],
+              forceWriteFile = false
+            )
             val originalSender = sender
 
             results.onComplete {
@@ -228,7 +310,8 @@ class QueryEvaluatorActor(crudServiceFS: CRUDServiceFS,
       watcher.foreach(_ ! Reset)
 
       if (isNeedToDelay) {
-        context.system.scheduler.scheduleOnce(3.seconds, originalSender, RemoteFailure(err))
+        context.system.scheduler
+          .scheduleOnce(3.seconds, originalSender, RemoteFailure(err))
       } else {
         originalSender ! RemoteFailure(err)
       }
@@ -239,16 +322,27 @@ class QueryEvaluatorActor(crudServiceFS: CRUDServiceFS,
       watcher.foreach(_ ! Reset)
 
       if (isNeedToDelay) {
-        context.system.scheduler.scheduleOnce(3.seconds, originalSender, queryResponse)
+        context.system.scheduler
+          .scheduleOnce(3.seconds, originalSender, queryResponse)
       } else {
         originalSender ! queryResponse
       }
     }
   }
 
-  protected def rawDataToResponseMsg(qr: String, stats: Map[String,String], forceWriteFile: Boolean): Future[QueryResponse] = rawDataToResponseMsg(qr.getBytes("UTF-8"), stats, Some(qr), forceWriteFile)
+  protected def rawDataToResponseMsg(
+    qr: String,
+    stats: Map[String, String],
+    forceWriteFile: Boolean
+  ): Future[QueryResponse] =
+    rawDataToResponseMsg(qr.getBytes("UTF-8"), stats, Some(qr), forceWriteFile)
 
-  protected def rawDataToResponseMsg(data: Array[Byte], stats: Map[String,String], originalStringData: Option[String] = None, forceWriteFile: Boolean): Future[QueryResponse] = {
+  protected def rawDataToResponseMsg(
+    data: Array[Byte],
+    stats: Map[String, String],
+    originalStringData: Option[String] = None,
+    forceWriteFile: Boolean
+  ): Future[QueryResponse] = {
     if (forceWriteFile || data.length > responseThreshold) {
       Future {
         val path = generateTempFileName
@@ -256,21 +350,27 @@ class QueryEvaluatorActor(crudServiceFS: CRUDServiceFS,
         Filename(path, stats)
       }
     } else {
-      Future.successful(Plain(originalStringData.getOrElse(new String(data, "UTF-8")), stats))
+      Future.successful(
+        Plain(originalStringData.getOrElse(new String(data, "UTF-8")), stats)
+      )
     }
   }
 }
 
 // will HCN its CW once 66 seconds were passed from Activate without any Reset received
-class QueryEvaluatorActorWatcher(qeaRef: ActorRef) extends Actor with LazyLogging {
+class QueryEvaluatorActorWatcher(qeaRef: ActorRef)
+    extends Actor
+    with LazyLogging {
 
   @scala.throws[Exception](classOf[Exception])
   override def preStart(): Unit = {
-    logger.info("Creating actor QueryEvaluatorActorWatcher for " + qeaRef.path.name)
+    logger.info(
+      "Creating actor QueryEvaluatorActorWatcher for " + qeaRef.path.name
+    )
     qeaRef ! IAmYourWatcher
   }
 
-  private val interval =  11.seconds
+  private val interval = 11.seconds
   private val threshold = 6
 
   private var counter = 0
@@ -280,21 +380,23 @@ class QueryEvaluatorActorWatcher(qeaRef: ActorRef) extends Actor with LazyLoggin
   def inactive: Receive = {
     case Activate =>
       context.system.scheduler.scheduleOnce(interval, self, Tick)
-      context become active
+      context.become(active)
   }
 
   def active: Receive = {
     case Tick =>
       counter += 1
       if (counter >= threshold) {
-        logger.info(s"Watcher detected QueryEvaluatorActor[${qeaRef.path.name}] is hung. Goodbye!")
+        logger.info(
+          s"Watcher detected QueryEvaluatorActor[${qeaRef.path.name}] is hung. Goodbye!"
+        )
         System.exit(1)
       }
       context.system.scheduler.scheduleOnce(interval, self, Tick)
 
     case Reset =>
       counter = 0
-      context become inactive
+      context.become(inactive)
   }
 }
 
