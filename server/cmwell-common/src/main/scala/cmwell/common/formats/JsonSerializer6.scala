@@ -52,6 +52,7 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
               quad -> v
             }
             val fv: FieldValue = v.head match {
+              // format: off
               case 'b' => {val (q,s) = getQuadValue(v.tail); FBoolean(s == "t",q)}
               case 'd' => {val (q,s) = getQuadValue(v.tail); FDate(s,q)}
               case 'f' => {val (q,s) = getQuadValue(v.tail); FFloat(s.toFloat,q)}
@@ -61,6 +62,7 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
               case 'j' => {val (q,s) = getQuadValue(v.tail); FLong(s.toLong,q)}
               case 'k' => {val (q,s) = getQuadValue(v.tail); FBigInt(BigInt(s).underlying(),q)}
               case 'r' => {val (q,s) = getQuadValue(v.tail); FReference(s,q)}
+              // format: on
               case 's' => {
                 val arr = v.tail.split("\n",-1) //http://stackoverflow.com/questions/14602062/java-string-split-removed-empty-values
                 val lang = {

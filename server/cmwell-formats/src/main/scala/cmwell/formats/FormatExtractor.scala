@@ -19,19 +19,20 @@ package cmwell.formats
 /**
  * Created by markz on 12/7/14.
  */
-sealed abstract class FormatType {def mimetype: String ; def isThin: Boolean = false}
-case object TextType extends FormatType {def mimetype = "text/plain;charset=UTF8"; override def isThin = true}
-case object TsvType extends FormatType {def mimetype = "text/tab-separated-values;charset=UTF8"; override def isThin = true}
-case object CsvType extends FormatType {def mimetype = "text/csv;charset=UTF8"}
-case object HtmlType extends FormatType {def mimetype = "text/html;charset=UTF8"}
-case object JsonType extends FormatType {def mimetype = "application/json;charset=UTF8"}
+// format: off
+sealed abstract class FormatType         {def mimetype: String ; def isThin: Boolean = false}
+case object TextType  extends FormatType {def mimetype = "text/plain;charset=UTF8"; override def isThin = true}
+case object TsvType   extends FormatType {def mimetype = "text/tab-separated-values;charset=UTF8"; override def isThin = true}
+case object CsvType   extends FormatType {def mimetype = "text/csv;charset=UTF8"}
+case object HtmlType  extends FormatType {def mimetype = "text/html;charset=UTF8"}
+case object JsonType  extends FormatType {def mimetype = "application/json;charset=UTF8"}
 case object JsonpType extends FormatType {def mimetype = "application/javascript;charset=UTF8"}
 case object JsonlType extends FormatType {def mimetype = "application/json;charset=UTF8"}
-case object YamlType extends FormatType {def mimetype = "text/yaml;charset=UTF8"}
-case object AtomType extends FormatType {def mimetype = "application/atom+xml;charset=UTF8"}
+case object YamlType  extends FormatType {def mimetype = "text/yaml;charset=UTF8"}
+case object AtomType  extends FormatType {def mimetype = "application/atom+xml;charset=UTF8"}
 case class RdfType(flavor: RdfFlavor) extends FormatType {def mimetype = flavor.mimetype}
 
-sealed abstract class RdfFlavor {def mimetype: String; def key: String}
+sealed abstract class RdfFlavor              {def mimetype: String; def key: String}
 case object RdfXmlFlavor   extends RdfFlavor {def mimetype = "application/rdf+xml;charset=UTF8";      def key = "xml"}
 case object TurtleFlavor   extends RdfFlavor {def mimetype = "text/turtle;charset=UTF8";              def key = "ttl"}
 case object NTriplesFlavor extends RdfFlavor {def mimetype = "text/plain;charset=UTF8";               def key = "nt"}
@@ -41,11 +42,12 @@ case object NquadsFlavor   extends RdfFlavor {def mimetype = "application/n-quad
 case object TriGFlavor     extends RdfFlavor {def mimetype = "application/trig;charset=UTF8";         def key = "trig"}
 case object TriXFlavor     extends RdfFlavor {def mimetype = "application/trix;ext=xml;charset=UTF8"; def key = "trix"}
 case object JsonLDQFlavor  extends RdfFlavor {def mimetype = "application/ld+json;charset=UTF8";      def key = "jldq"}
-
+// format: on
 object FormatExtractor {
 
   def withDefault(format: String, ft: FormatType): FormatType = unapply(format).getOrElse(ft)
 
+  // format: off
   def unapply(format: String): Option[FormatType] = format.toLowerCase.trim match {
     case "text"   | "path"               => Some(TextType)
     case "tsv"    | "tab"                => Some(TsvType)
@@ -65,4 +67,6 @@ object FormatExtractor {
     case "trix"                          => Some(RdfType(TriXFlavor))
     case _ => None
   }
+  // format: on
 }
+

@@ -74,6 +74,7 @@ package object numeric {
   }
 
   object Radix64 {
+    // format: off
     val encodeTable = Array(
       '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
       'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
@@ -82,6 +83,7 @@ package object numeric {
       'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
       'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
     )
+    // format: on
 
     trait SixBitCharHandler[N] {
       def numToArr(n: N): Array[Char]

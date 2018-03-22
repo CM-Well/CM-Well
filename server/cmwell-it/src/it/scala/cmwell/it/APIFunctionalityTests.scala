@@ -1016,7 +1016,7 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       def jSmithUnderscoreOut(): Future[SimpleResponse[Array[Byte]]] =
         Http.post(_out, "/example.net/Individuals/JohnSmith", Some("text/plain;charset=UTF-8"), List("format" -> "json", "xg" -> "*.vcard"), tokenHeader)
-
+      // format: off
       val f00 = ingestOfNtriplesFromFilesPromise.future
       val f01 = f00.flatMap(_ => Http.get(cmw / "example.org" / "BugChecks" / "xgBugCheck", List("format" -> "json", "xg" -> s"dislikes.rel")))
       val f08 = f00.flatMap(_ => Http.get(mZ, List("xg" -> s"colleagueOf.$$${ns.rel}>employedBy.$$${ns.rel}>mentorOf.$$${ns.rel}>friendOf.$$${ns.rel}>worksWith.$$${ns.rel}>parentOf.$$${ns.rel}","format" -> "json")))
@@ -1029,6 +1029,7 @@ class APIFunctionalityTests extends AsyncFunSpec
       val f15 = f00.flatMap(_ => Http.get(cKent, List("yg" -> "<neighborOf.rel>worksWith.rel|<neighborOf.rel<friendOf.rel<mentorOf.rel>knowsByReputation.rel<collaboratesWith.rel","format" -> "json")))
       val f16 = f00.flatMap(_ => Http.get(cKent, List("yg" -> "<neighborOf.rel[active.bold::true]>worksWith.rel[active.bold::false]|<neighborOf.rel[active.bold::true]<friendOf.rel[doesNotExist::SomeValue]<mentorOf.rel>knowsByReputation.rel<collaboratesWith.rel","format" -> "json")))
       val f17 = f00.flatMap(_ => Http.get(cKent, List("yg" -> "<neighborOf.rel[active.bold::true]>worksWith.rel[active.bold::false]|<neighborOf.rel[active.bold::true]<friendOf.rel[system.path:/not/real]<mentorOf.rel>knowsByReputation.rel<collaboratesWith.rel","format" -> "json")))
+      // format: on
 
       it("should post N-Triple files") {
         Future.traverse(Seq("/relationships.nt","/relationships2.nt")) { file =>

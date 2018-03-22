@@ -2421,7 +2421,7 @@ case class ParamExtractor(name: String, value: String => Boolean) {
 
 object Operation {
   private[this] def func(s: String)(t: String) = t.equalsIgnoreCase(s)
-
+  // format: off
   val search            = ParamExtractor("op", func("search")(_))
   val aggregate         = ParamExtractor("op", {s => s.equalsIgnoreCase("aggregate") || s.equalsIgnoreCase("stats")})
   val read              = ParamExtractor("op", func("read")(_))
@@ -2445,6 +2445,7 @@ object Operation {
   val purgeLast         = ParamExtractor("op", func("purge-last")(_))
   val rollback          = ParamExtractor("op", func("rollback")(_)) // alias for purge-last
   val purgeHistory      = ParamExtractor("op", func("purge-history")(_))
+  // format: on
 }
 
 object XCmWellType {

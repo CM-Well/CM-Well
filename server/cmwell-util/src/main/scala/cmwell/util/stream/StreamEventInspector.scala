@@ -18,13 +18,13 @@ package cmwell.util.stream
 
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
-
+// format: off
 class StreamEventInspector[Elem](onUpstreamFinishInspection:   ()        => Unit = () => {},
                                  onUpstreamFailureInspection:  Throwable => Unit = _  => {},
                                  onDownstreamFinishInspection: ()        => Unit = () => {},
                                  onPushInspection:             Elem      => Unit = (_: Elem)  => {},
                                  onPullInspection:             ()        => Unit = () => {}) extends GraphStage[FlowShape[Elem, Elem]] {
-
+  // format: on
   private val in = Inlet[Elem]("StreamEventInspector.in")
   private val out = Outlet[Elem]("StreamEventInspector.out")
 

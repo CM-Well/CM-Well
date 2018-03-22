@@ -330,6 +330,7 @@ object InfotonSerializer extends LazyLogging {
       (field, values) <- fields
       value <- values
     } yield value match {
+      // format: off
       case FString(v, l, q)     => (q.getOrElse(default), s"s${l.getOrElse("")}$$$field", v -> null.asInstanceOf[CData])
       case FReference(v, q)     => (q.getOrElse(default), s"r$$$field", v -> null.asInstanceOf[CData])
       case FDate(v, q)          => (q.getOrElse(default), s"d$$$field", v -> null.asInstanceOf[CData])
@@ -343,6 +344,7 @@ object InfotonSerializer extends LazyLogging {
       case FExternal(v, uri, q) => (q.getOrElse(default), s"x$uri$$$field", v -> null.asInstanceOf[CData])
       case _:FNull => !!! // FNull is just a marker for IMP, should not index it anywhere...
       case _:FExtra[_] => !!! // FExtra is just a marker for outputting special properties, should not index it anywhere...
+      // format: on
     }
 
     val vecBuilder = Vector.newBuilder[(CQuad,Vector[(CField,Vector[CValue])])] += sysQuad -> systemAttributes(infoton)
@@ -373,6 +375,7 @@ object InfotonSerializer extends LazyLogging {
   }
 
   private def getType(value : FieldValue ) : String = value match {
+    // format: off
     case FString(_,l,q) =>     s"s${l.getOrElse("")}$$$$" + q.getOrElse("") // "s$xsd#string"
     case FReference(_,q) =>     "r$$"                     + q.getOrElse("") // "r$xsd#anyURI"
     case FDate(_,q) =>          "d$$"                     + q.getOrElse("") // "d$xsd#date"
@@ -386,6 +389,7 @@ object InfotonSerializer extends LazyLogging {
     case FExternal(_,uri,q) => s"x$$$uri$$"               + q.getOrElse("")
     case _:FNull => !!! //this is just a marker for IMP, should not index it anywhere...
     case _:FExtra[_] => !!! // FExtra is just a marker for outputting special properties, should not index it anywhere...
+    // format: on
   }
 
   def serialize(infoton : Infoton ) : mutable.Buffer[(String , Array[Byte])] = {

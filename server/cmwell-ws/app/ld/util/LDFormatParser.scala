@@ -83,6 +83,7 @@ object LDFormatParser extends LazyLogging {
   val graphFKey = NnFieldKey("graph")
 
   implicit class LegalChar(ch: Char) {
+    // format: off
     def isLegal: Boolean = {
       val i = ch.toInt
       (45 to 57).contains(i)  ||     // (-, ., /, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
@@ -90,6 +91,7 @@ object LDFormatParser extends LazyLogging {
       (97 to 122).contains(i) ||     // (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z)
       i == 95 || i == 35 || i > 126  // 95 = '_', 35 = '#', 123 to 126 are: ({, |, }, ~)
     }
+    // format: on
   }
 
   def createFieldValue(l : Literal, q: Option[String]) : FieldValue = {

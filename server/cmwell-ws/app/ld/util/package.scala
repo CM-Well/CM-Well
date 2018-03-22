@@ -137,6 +137,7 @@ package util {
     indexTime: Option [Long]
   ) {
 
+    // format: off
     def isEmpty: Boolean = {
       mdType.isEmpty     &&
       date.isEmpty       &&
@@ -148,6 +149,7 @@ package util {
       dataCenter.isEmpty &&
       indexTime.isEmpty
     }
+    // format: on
 
     def merge(that: MetaData): MetaData = {
       val mdType = Try(this.mdType.getOrElse(that.mdType.get)).toOption

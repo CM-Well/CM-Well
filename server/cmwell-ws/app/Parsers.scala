@@ -58,6 +58,7 @@ package util {
 
     val namespaceUri: Parser[String] = """^(([^:/?#$]+):)?(//([^$/?#]*))?([^$?#]*)(\?([^$#]*))?(#([^$]*))?""".r
 
+    // format: off
     val cmwellUriPrefix: Parser[String] = {
 
       /* ******************* *
@@ -85,6 +86,7 @@ package util {
   */
       """((cmwell:/)|(http://((?!-)[A-Za-z0-9-]{1,63}(?<!-)\.)*((?!-)[A-Za-z0-9-]{1,63}(?<!-))(:\d+)?))/meta/""".r
     }
+    // format: on
 
     val cmwellUriType: Parser[String] = literal("sys") | literal("nn")
 

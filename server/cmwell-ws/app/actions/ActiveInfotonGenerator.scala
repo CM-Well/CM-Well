@@ -401,12 +401,12 @@ class ActiveInfotonGenerator @Inject() (backPressureToggler: controllers.BackPre
     val res = getClusterDetailedHealthNew
     Some(res.toSeq.sortBy(_._1).flatMap {
       case (host,(ws,bg,ca,es,zk,kf)) => List(
-        s"ws@$host"     -> Set[FieldValue](FString(ws._2.toString)),
-        s"bg@$host"  -> Set[FieldValue](FString(bg._2.toString)),
-        s"cas@$host"    -> Set[FieldValue](FString(ca._2.toString)),
-        s"es@$host"     -> Set[FieldValue](FString(es._2.toString)),
-        s"zk@$host"     -> Set[FieldValue](FString(zk._2.toString)),
-        s"kafka@$host"  -> Set[FieldValue](FString(kf._2.toString)))
+        s"ws@$host"    -> Set[FieldValue](FString(ws._2.toString)),
+        s"bg@$host"    -> Set[FieldValue](FString(bg._2.toString)),
+        s"cas@$host"   -> Set[FieldValue](FString(ca._2.toString)),
+        s"es@$host"    -> Set[FieldValue](FString(es._2.toString)),
+        s"zk@$host"    -> Set[FieldValue](FString(zk._2.toString)),
+        s"kafka@$host" -> Set[FieldValue](FString(kf._2.toString)))
     }(ghdfBreakout))
   }
 

@@ -898,6 +898,7 @@ package object wsutil extends LazyLogging {
     else ByteString(body, "utf-8") ++ endln
   }
 
+  // format: off
   def metaOpRegex(metaOpType: String): String = {
 
     /* ******************* *
@@ -925,6 +926,7 @@ package object wsutil extends LazyLogging {
 */
     """((cmwell:/)|(http://((?!-)[A-Za-z0-9-]{1,63}(?<!-)\.)*((?!-)[A-Za-z0-9-]{1,63}(?<!-))(:\d+)?))(/meta/""" + metaOpType + """#)"""
   }
+  // format: on
 
 
   def pathStatusAsInfoton(ps: PathStatus): Infoton = {
