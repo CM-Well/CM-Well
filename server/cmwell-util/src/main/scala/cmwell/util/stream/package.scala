@@ -14,7 +14,7 @@
   */
 
 
-package cmwell.util
+package cmwell.util.stream
 
 import akka.stream.scaladsl.Source
 import scala.collection.SeqLike
