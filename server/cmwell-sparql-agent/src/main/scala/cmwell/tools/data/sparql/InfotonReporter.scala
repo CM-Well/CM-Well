@@ -126,7 +126,7 @@ class InfotonReporter private(baseUrl: String, path: String)(implicit mat: Mater
     override def saveTokens(tokenAndStatistics: TokenAndStatisticsMap) : Unit = {
 
     def createRequest(tokensStats: TokenAndStatisticsMap) = {
-      val data = HttpEntity(tokensStats.foldLeft(Seq.empty[String]) { case (agg, (sensor, (token, downloadStats))) => agg ++ createTriples(sensor, token, downloadStats) }.mkString("\n"))
+      val data = HttpEntity(tokensStats.foldLeft(Seq.empty[String]) { case (agg, (sensor, (token, downloadStats))) => agg :+ createTriples(sensor, token, downloadStats) }.mkString("\n"))
       HttpRequest(uri = s"http://$host:$port/_in?format=$format&replace-mode", method = HttpMethods.POST, entity = data)
         .addHeader(RawHeader("X-CM-WELL-TOKEN", writeToken))
     }
@@ -134,8 +134,8 @@ class InfotonReporter private(baseUrl: String, path: String)(implicit mat: Mater
     def createTriples(sensor: String, token: Token, downloadStats: Option[DownloadStats]) = {
       val p = if (path startsWith "/") path.tail else path
 
-      downloadStats.fold(Seq(s"""<cmwell://$p/tokens/$sensor> <cmwell://meta/nn#token> "$token" .""")) { s =>
-        Seq(s"""<cmwell://$p/tokens/$sensor> <cmwell://meta/nn#receivedInfotons> "${s.receivedInfotons}" .""")
+      downloadStats.fold(s"""<cmwell://$p/tokens/$sensor> <cmwell://meta/nn#token> "$token" .""") { s =>
+        s"""<cmwell://$p/tokens/$sensor> <cmwell://meta/nn#receivedInfotons> "${s.receivedInfotons}" ."""
       }
 
     }
