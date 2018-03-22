@@ -65,9 +65,6 @@ class InfotonReporter private(baseUrl: String, path: String)(implicit mat: Mater
     case RequestPreviousTokens =>
       context.become(receiveBeforeInitializes(sender() :: recipients))
 
-    case RequestPreviousStatistics =>
-      context.become(receiveBeforeInitializes(sender() :: recipients))
-
     case Success(savedTokens: TokenAndStatisticsMap) =>
       recipients.foreach(_ ! ResponseWithPreviousTokens(savedTokens))
       context.become(receiveWithMap(savedTokens))
@@ -137,9 +134,9 @@ class InfotonReporter private(baseUrl: String, path: String)(implicit mat: Mater
     def createTriples(sensor: String, token: Token, downloadStats: Option[DownloadStats]) = {
       val p = if (path startsWith "/") path.tail else path
 
-      downloadStats.map { s =>
+      downloadStats.fold(Seq(s"""<cmwell://$p/tokens/$sensor> <cmwell://meta/nn#token> "$token" .""")) { s =>
         Seq(s"""<cmwell://$p/tokens/$sensor> <cmwell://meta/nn#receivedInfotons> "${s.receivedInfotons}" .""")
-      }.getOrElse(Seq.empty[String]) :+ s"""<cmwell://$p/tokens/$sensor> <cmwell://meta/nn#token> "$token" ."""
+      }
 
     }
 

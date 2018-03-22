@@ -1,7 +1,6 @@
 package cmwell.tools.data.sparql
 
 import cmwell.tools.data.utils.akka.stats.DownloaderStats.DownloadStats
-import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
 import io.circe._, io.circe.parser._
 import scala.concurrent.ExecutionContext
 
@@ -18,6 +17,9 @@ object StpUtil {
   }
 
   def readPreviousTokens(baseUrl: String, path: String, format: String)(implicit context : ExecutionContext) = {
+
+    import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+
     cmwell.util.http.SimpleHttpClient.get(s"http://$baseUrl$path/tokens?op=stream&recursive&format=json")
       .map(response =>{
         response.payload.lines.map( {row =>
@@ -35,7 +37,7 @@ object StpUtil {
               sensor -> (token,receivedInfotons)
             }
           }
-        }).foldLeft(Map.empty[String,TokenAndStatistics])(_ + _)
+        }).foldLeft(Map.newBuilder[String,TokenAndStatistics])(_.+=(_)).result()
       })
   }
 

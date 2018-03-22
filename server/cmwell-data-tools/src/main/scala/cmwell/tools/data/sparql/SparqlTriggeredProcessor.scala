@@ -82,14 +82,15 @@ class SparqlTriggeredProcessor(config: Config,
   def listen()(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
 
     def addStatsToSource(id: String, source: Source[(ByteString, Option[SensorContext]), _], initialDownloadStats: Option[TokenAndStatisticsMap] = None) = {
-      source.via(DownloaderStats(format = "ntriples", label = Some(id), reporter = tokenReporter, initialDownloadStats = {
-        initialDownloadStats.map { stats =>
-          stats.get(id).map { sensor =>
-            sensor._2
-          }.getOrElse(None)
-        }.getOrElse(None)
-      }))
+      source.via(DownloaderStats(format = "ntriples", label = Some(id), reporter = tokenReporter, initialDownloadStats =
+        for {
+          ids <- initialDownloadStats
+          (_, dStatsOpt) <- ids.get(id)
+          downloadStats <- dStatsOpt
+        } yield downloadStats
+      ))
     }
+
 
     val savedTokensAndStatistics : TokenAndStatisticsMap = tokenReporter match {
       case None => Map.empty[String, TokenAndStatistics]

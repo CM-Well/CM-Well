@@ -172,7 +172,6 @@ class WebExporter(reporter: ActorRef, port: Int = 8080)(implicit system: ActorSy
   }
 }
 
-case object RequestPreviousStatistics
 case object RequestPreviousTokens
 
 case class ResponseWithPreviousTokens(tokens: TokenAndStatisticsMap)

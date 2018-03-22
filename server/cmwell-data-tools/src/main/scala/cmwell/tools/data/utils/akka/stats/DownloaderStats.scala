@@ -93,7 +93,7 @@ class DownloaderStats(isStderr: Boolean,
       override def preStart(): Unit = {
 
         // Initialise persisted statistics
-        initialDownloadStats.map { stats=> totalReceivedInfotons mark stats.receivedInfotons }
+        initialDownloadStats.foreach { stats=> totalReceivedInfotons mark stats.receivedInfotons }
 
         asyncCB = getAsyncCallback{ _ =>displayStats()
           resetStatsInWindow()
