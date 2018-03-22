@@ -416,7 +416,7 @@ class SparqlProcessorManager (settings: SparqlProcessorManagerSettings) extends 
       }
   }
 
-  private[this] val parsedJsonsBreakOut = scala.collection.breakOut[Vector[Json], JobRead, Set[JobRead]]
+  private[this] val parsedJsonsBreakOut = scala.collection.breakOut[Iterable[Json], JobRead, Set[JobRead]]
   def parseJobsJson(configJson: String): Set[JobRead] = {
     import cats.syntax.either._
     import io.circe._, io.circe.parser._

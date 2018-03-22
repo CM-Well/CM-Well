@@ -51,7 +51,7 @@ object CMWellRDFHelper {
   sealed trait PrefixState //to perform
   case object Create extends PrefixState
   case object Exists extends PrefixState
-  case object Update extends PrefixState
+//  case object Update extends PrefixState
 
   private sealed trait ByAlg
   private case object ByBase64 extends ByAlg
