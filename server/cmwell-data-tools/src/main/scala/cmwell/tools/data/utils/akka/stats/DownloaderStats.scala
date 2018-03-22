@@ -32,22 +32,25 @@ import scala.concurrent.duration._
 
 object DownloaderStats {
   case class DownloadStats(label: Option[String] = None,
-                           receivedBytes: Long,
-                           receivedInfotons: Long,
-                           infotonRate: Double,
-                           bytesRate: Double,
-                           runningTime: Long,
-                           statsTime: Long,
-                           horizon: Boolean)
+                           receivedBytes: Long = 0,
+                           receivedInfotons: Long = 0,
+                           infotonRate: Double = 0,
+                           bytesRate: Double = 0,
+                           runningTime: Long= 0 ,
+                           statsTime: Long = 0,
+                           horizon: Boolean = false)
+
+
 
   def apply(isStderr: Boolean = false,
             format: String,
             label: Option[String] = None,
             reporter: Option[ActorRef] = None,
             initDelay: FiniteDuration = 1.second,
-            interval: FiniteDuration = 1.second) = {
+            interval: FiniteDuration = 1.second,
+            initialDownloadStats: Option[DownloadStats] = None) = {
 
-    new DownloaderStats(isStderr, format, label, reporter, initDelay, interval)
+    new DownloaderStats(isStderr, format, label, reporter, initDelay, interval, initialDownloadStats)
 
   }
 }
@@ -57,7 +60,8 @@ class DownloaderStats(isStderr: Boolean,
                       label: Option[String] = None,
                       reporter: Option[ActorRef] = None,
                       initDelay: FiniteDuration = 1.second,
-                      interval: FiniteDuration = 1.second) extends GraphStage[FlowShape[(ByteString, Option[SensorContext]), (ByteString, Option[SensorContext])]] with DataToolsLogging {
+                      interval: FiniteDuration = 1.second,
+                      initialDownloadStats: Option[DownloadStats] = None) extends GraphStage[FlowShape[(ByteString, Option[SensorContext]), (ByteString, Option[SensorContext])]] with DataToolsLogging {
 
   val in = Inlet[(ByteString, Option[SensorContext])]("download-stats.in")
   val out = Outlet[(ByteString, Option[SensorContext])]("download-stats.out")
@@ -87,6 +91,10 @@ class DownloaderStats(isStderr: Boolean,
       val formatter = java.text.NumberFormat.getNumberInstance
 
       override def preStart(): Unit = {
+
+        // Initialise persisted statistics
+        initialDownloadStats.foreach { stats=> totalReceivedInfotons mark stats.receivedInfotons }
+
         asyncCB = getAsyncCallback{ _ =>displayStats()
           resetStatsInWindow()
         }
