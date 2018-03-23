@@ -31,9 +31,6 @@ import cmwell.tools.data.utils.akka.HeaderOps._
 import cmwell.tools.data.utils.akka.{concatByteStrings, _}
 import cmwell.tools.data.utils.logging._
 import cmwell.tools.data.utils.akka._
-import cmwell.tools.data.utils.ops.VersionChecker
-import cmwell.tools.data.utils.text.Tokens
-import cmwell.util.akka.http.HttpZipDecoder
 import play.api.libs.json.{JsArray, Json}
 
 import scala.collection.immutable
@@ -472,15 +469,11 @@ class Downloader(baseUrl: String,
       val job = Flow[(Seq[Path], State)]
         .map { case (paths, state) => paths -> Some(state) }
         .via(Retry.retryHttp(timeout, parallelism, baseUrl)(createRequest)) // fetch data from paths
-        .map {
-        case (tryResponse, uuids, state) =>
-          tryResponse.map(HttpZipDecoder.decodeResponse) -> (uuids,state)}
         .mapAsyncUnordered(parallelism){
-          case (Success(res@HttpResponse(s,h,e,p)), (sentPaths,Some(state))) if s.isSuccess() =>
+          case (Success(res@HttpResponse(s,h,e,p)), sentPaths,Some(state)) if s.isSuccess() =>
             logger.debug(s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}")
 
             e.toStrict(1.minute).flatMap { strict =>
-              //val unzippedData = Source.single(strict.data).via(Compression.gunzip())
 
               DataPostProcessor.postProcessByFormat(format,  Source.single(strict.data)).runFold(blank)(_ ++ _).map { receivedData =>
                 // accumulate received data
@@ -515,13 +508,13 @@ class Downloader(baseUrl: String,
               }
             }
 
-          case (Success(HttpResponse(s,h,e,p)), (sentPaths,Some(state))) =>
+          case (Success(HttpResponse(s,h,e,p)), sentPaths,Some(state)) =>
             e.discardBytes()
 
             logger.debug(s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}")
 
             Future.successful(Failure(new Exception("cannot send request to send paths")) -> state)
-          case (Failure(err), (sentPaths,Some(state))) =>
+          case (Failure(err), sentPaths,Some(state)) =>
             logger.error(s"error: token=${state.token} $err")
             Future.successful(Failure(new Exception("cannot send request to send paths")) -> state)
         }
@@ -616,16 +609,12 @@ class Downloader(baseUrl: String,
       val job = Flow[(Seq[Uuid], State)]
         .map { case (uuids, state) => uuids -> Some(state) }
         .via(Retry.retryHttp(timeout, parallelism, baseUrl)(createRequest)) // fetch data from uuids
-        .map {
-        case (tryResponse, uuids, state) =>
-          tryResponse.map(HttpZipDecoder.decodeResponse) -> (uuids,state)}
         .mapAsyncUnordered(parallelism){
-          case (Success(res@HttpResponse(s,h,e,p)), (sentUuids,Some(state))) if s.isSuccess() =>
+          case (Success(res@HttpResponse(s,h,e,p)), sentUuids,Some(state)) if s.isSuccess() =>
 
             logger.debug(s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}")
 
             e.toStrict(1.minute).flatMap { strict =>
-              // val unzippedData = Source.single(strict.data).via(Compression.gunzip())
 
               DataPostProcessor.postProcessByFormat(format, Source.single(strict.data)).runFold(blank)(_ ++ _).map { receivedData =>
                 // accumulate received data
@@ -660,13 +649,13 @@ class Downloader(baseUrl: String,
               }
             }
 
-          case (Success(HttpResponse(s,h,e,p)), (sentUuids,Some(state))) =>
+          case (Success(HttpResponse(s,h,e,p)), sentUuids,Some(state)) =>
             e.discardBytes()
 
             logger.debug(s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}")
             Future.successful(Failure(new Exception("cannot send request to send uuids")) -> state)
 
-          case (Failure(err), (sentUuids,Some(state))) =>
+          case (Failure(err), sentUuids,Some(state)) =>
             logger.error(s"error: token=${state.token} $err")
             Future.successful(Failure(new Exception("cannot send request to send uuids")) -> state)
         }
@@ -687,8 +676,6 @@ class Downloader(baseUrl: String,
         case (responseBytes, token) => Source.fromIterator(() => responseBytes.map(token -> _).iterator)
       }
   }
-
-
 
   /**
     * Gets cm-well uuids and next token from given token (position)
