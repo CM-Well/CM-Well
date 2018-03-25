@@ -53,10 +53,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
     def toByteString: ByteString
   }
 
-  case class TsvData(path: Path,
-                     uuid: Uuid,
-                     lastModified: ByteString,
-                     indexTime: ByteString = ByteString.empty)
+  case class TsvData(path: Path, uuid: Uuid, lastModified: ByteString, indexTime: ByteString = ByteString.empty)
       extends Tsv {
     override def toByteString: ByteString =
       concatByteStrings(Seq(path, lastModified, uuid, indexTime), "", "\t", "")
@@ -79,15 +76,15 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
     * @param ec execution context
     * @return cm-well token (position) from given query parameters
     */
-  def getToken(baseUrl: String,
-               path: String = "/",
-               params: String = "",
-               qp: String = "",
-               recursive: Boolean = false,
-               indexTime: Long = 0L,
-               isBulk: Boolean)(implicit system: ActorSystem,
-                                mat: Materializer,
-                                ec: ExecutionContext): Future[Token] = {
+  def getToken(
+    baseUrl: String,
+    path: String = "/",
+    params: String = "",
+    qp: String = "",
+    recursive: Boolean = false,
+    indexTime: Long = 0L,
+    isBulk: Boolean
+  )(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext): Future[Token] = {
     val qpValue = if (qp.isEmpty) "" else s"&qp=$qp"
     val paramsValue = if (params.isEmpty) "" else s"&$params"
     val recursiveValue = if (recursive) "&recursive" else ""
@@ -134,10 +131,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
     */
   def extractTsv(bytes: ByteString): Tsv = bytes.split('\t') match {
     case path :: lastModified :: uuid :: indexTime :: Nil =>
-      TsvData(path = path,
-              uuid = uuid,
-              lastModified = lastModified,
-              indexTime = indexTime)
+      TsvData(path = path, uuid = uuid, lastModified = lastModified, indexTime = indexTime)
 
     case path :: lastModified :: uuid :: Nil =>
       TsvData(path = path, uuid = uuid, lastModified = lastModified)
@@ -178,12 +172,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
     val tokenFuture = token match {
       case Some(t) => Future.successful(t)
       case None =>
-        getToken(baseUrl = baseUrl,
-                 path = path,
-                 params = params,
-                 qp = qp,
-                 recursive = recursive,
-                 isBulk = isBulk)
+        getToken(baseUrl = baseUrl, path = path, params = params, qp = qp, recursive = recursive, isBulk = isBulk)
     }
 
     val downloader = new Downloader(
@@ -230,20 +219,11 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
     val tokenFuture = token match {
       case Some(t) => Future.successful(t)
       case None =>
-        getToken(baseUrl = baseUrl,
-                 path = path,
-                 params = params,
-                 qp = qp,
-                 recursive = recursive,
-                 isBulk = isBulk)
+        getToken(baseUrl = baseUrl, path = path, params = params, qp = qp, recursive = recursive, isBulk = isBulk)
     }
 
-    val downloader = new Downloader(baseUrl = baseUrl,
-                                    path = path,
-                                    params = params,
-                                    qp = qp,
-                                    isBulk = isBulk,
-                                    recursive = recursive)
+    val downloader =
+      new Downloader(baseUrl = baseUrl, path = path, params = params, qp = qp, isBulk = isBulk, recursive = recursive)
 
     tokenFuture.flatMap { tokenValue =>
       downloader.getTsvFromToken(tokenValue).flatMap {
@@ -394,8 +374,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
 }
 
 sealed trait DownloadError
-case class DownloadHttpError(token: String, httpStatus: StatusCode)
-    extends DownloadError
+case class DownloadHttpError(token: String, httpStatus: StatusCode) extends DownloadError
 case class DownloadException(token: String, ex: Throwable) extends DownloadError
 
 class Downloader(
@@ -439,9 +418,8 @@ class Downloader(
       HttpRequest(
         uri = s"${formatHost(baseUrl)}/_out?format=$format$paramsValue",
         method = HttpMethods.POST,
-        entity =
-          HttpEntity(concatByteStrings(paths, ByteString(",\n")).utf8String)
-            .withContentType(ContentTypes.`text/plain(UTF-8)`)
+        entity = HttpEntity(concatByteStrings(paths, ByteString(",\n")).utf8String)
+          .withContentType(ContentTypes.`text/plain(UTF-8)`)
       ).addHeader(RawHeader("Accept-Encoding", "gzip"))
     }
 
@@ -489,9 +467,7 @@ class Downloader(
       }
     }
 
-    def sendPathRequest(timeout: FiniteDuration,
-                        parallelism: Int,
-                        limit: Int = 0)(
+    def sendPathRequest(timeout: FiniteDuration, parallelism: Int, limit: Int = 0)(
       createRequest: (Seq[Path]) => HttpRequest
     )(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
 
@@ -511,8 +487,7 @@ class Downloader(
         .map { case (paths, state) => paths -> Some(state) }
         .via(Retry.retryHttp(timeout, parallelism, baseUrl)(createRequest)) // fetch data from paths
         .mapAsyncUnordered(parallelism) {
-          case (Success(res @ HttpResponse(s, h, e, p)), sentPaths, Some(state))
-              if s.isSuccess() =>
+          case (Success(res @ HttpResponse(s, h, e, p)), sentPaths, Some(state)) if s.isSuccess() =>
             logger.debug(
               s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}"
             )
@@ -529,8 +504,7 @@ class Downloader(
                     case Seq() =>
                       // no missing data, success!
                       Success(totalReceivedData) -> state
-                        .copy(pathsToRequest = Seq(),
-                              retrievedData = totalReceivedData)
+                        .copy(pathsToRequest = Seq(), retrievedData = totalReceivedData)
                     case missingPaths if state.retriesLeft > 0 =>
                       logger.debug(
                         s"sent ${sentPaths.size} paths but received ${sentPaths.size - missingPaths.size}, total received data length=${receivedData.size}"
@@ -541,8 +515,7 @@ class Downloader(
 
                       // retry retrieving data from missing uuids
                       val newState =
-                        state.copy(pathsToRequest =
-                                     missingPaths.map(ByteString.apply),
+                        state.copy(pathsToRequest = missingPaths.map(ByteString.apply),
                                    retrievedData = totalReceivedData,
                                    retriesLeft = state.retriesLeft - 1)
 
@@ -553,8 +526,7 @@ class Downloader(
                     case missingPaths =>
                       // do not retrieve data from missing paths
                       val newState =
-                        state.copy(pathsToRequest =
-                                     missingPaths.map(ByteString.apply),
+                        state.copy(pathsToRequest = missingPaths.map(ByteString.apply),
                                    retrievedData = totalReceivedData)
 
                       logger.error(s"got ${missingPaths.size} missing paths")
@@ -624,9 +596,8 @@ class Downloader(
       HttpRequest(
         uri = s"${formatHost(baseUrl)}/_out?format=$format$paramsValue",
         method = HttpMethods.POST,
-        entity =
-          HttpEntity(concatByteStrings(uuids, "/ii/", "\n/ii/", "").utf8String)
-            .withContentType(ContentTypes.`text/plain(UTF-8)`)
+        entity = HttpEntity(concatByteStrings(uuids, "/ii/", "\n/ii/", "").utf8String)
+          .withContentType(ContentTypes.`text/plain(UTF-8)`)
       ).addHeader(RawHeader("Accept-Encoding", "gzip"))
     }
 
@@ -675,9 +646,7 @@ class Downloader(
       }
     }
 
-    def sendUuidRequest(timeout: FiniteDuration,
-                        parallelism: Int,
-                        limit: Int = 0)(
+    def sendUuidRequest(timeout: FiniteDuration, parallelism: Int, limit: Int = 0)(
       createRequest: (Seq[Uuid]) => HttpRequest
     )(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
 
@@ -697,8 +666,7 @@ class Downloader(
         .map { case (uuids, state) => uuids -> Some(state) }
         .via(Retry.retryHttp(timeout, parallelism, baseUrl)(createRequest)) // fetch data from uuids
         .mapAsyncUnordered(parallelism) {
-          case (Success(res @ HttpResponse(s, h, e, p)), sentUuids, Some(state))
-              if s.isSuccess() =>
+          case (Success(res @ HttpResponse(s, h, e, p)), sentUuids, Some(state)) if s.isSuccess() =>
             logger.debug(
               s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}"
             )
@@ -715,8 +683,7 @@ class Downloader(
                     case Seq() =>
                       // no missing data, success!
                       Success(totalReceivedData) -> state
-                        .copy(uuidsToRequest = Seq(),
-                              retrievedData = totalReceivedData)
+                        .copy(uuidsToRequest = Seq(), retrievedData = totalReceivedData)
                     case missingUuids if state.retriesLeft > 0 =>
                       logger.debug(
                         s"sent ${sentUuids.size} paths but received ${sentUuids.size - missingUuids.size}, total received data length=${receivedData.size}"
@@ -727,8 +694,7 @@ class Downloader(
 
                       // retry retrieving data from missing uuids
                       val newState =
-                        state.copy(uuidsToRequest =
-                                     missingUuids.map(ByteString.apply),
+                        state.copy(uuidsToRequest = missingUuids.map(ByteString.apply),
                                    retrievedData = totalReceivedData,
                                    retriesLeft = state.retriesLeft - 1)
 
@@ -739,8 +705,7 @@ class Downloader(
                     case missingUuids =>
                       // do not retrieve data from missing uuids
                       val newState =
-                        state.copy(uuidsToRequest =
-                                     missingUuids.map(ByteString.apply),
+                        state.copy(uuidsToRequest = missingUuids.map(ByteString.apply),
                                    retrievedData = totalReceivedData)
 
                       logger.error(s"got ${missingUuids.size} missing uuids")
@@ -818,8 +783,7 @@ class Downloader(
       .single(req)
       .via(HttpConnections.outgoingConnection(host, port, protocol))
       .map {
-        case res @ HttpResponse(status, headers, entity, _)
-            if status.isFailure() =>
+        case res @ HttpResponse(status, headers, entity, _) if status.isFailure() =>
           // failure
           redLogger.error(s"http request failed: status=$status entity=$entity")
           res.discardEntityBytes()
@@ -827,8 +791,7 @@ class Downloader(
             new Exception("failure in http response")
           )
 
-        case res @ HttpResponse(status, headers, entity, _)
-            if status == StatusCodes.NoContent =>
+        case res @ HttpResponse(status, headers, entity, _) if status == StatusCodes.NoContent =>
           res.discardEntityBytes()
           val nextToken = getPositionValue(headers)
           nextToken -> Source.empty[TsvData]
@@ -882,8 +845,7 @@ class Downloader(
     *                   ([[Duration.Undefined]] completes this source upon fully consumption)
     * @return [[akka.stream.scaladsl.Source Source]] of token (position) and its corresponding TSVs
     */
-  def createTsvSource(token: Option[Token] = None,
-                      updateFreq: Option[FiniteDuration] = None)(
+  def createTsvSource(token: Option[Token] = None, updateFreq: Option[FiniteDuration] = None)(
     implicit ec: ExecutionContext
   ): Source[((Token, TsvData), Boolean), NotUsed] = {
 
@@ -995,8 +957,7 @@ class Downloader(
             }
           }
           .filterNot(
-            downloadedInfotonData =>
-              downloadedInfotonData._1._1 == null && downloadedInfotonData._1._2 == null
+            downloadedInfotonData => downloadedInfotonData._1._1 == null && downloadedInfotonData._1._2 == null
           )
           .via(BufferFillerKiller(bufferFillerActor))
       }

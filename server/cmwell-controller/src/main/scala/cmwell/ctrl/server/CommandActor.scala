@@ -12,35 +12,33 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.ctrl.server
 
-import akka.actor.{ActorRef, ActorSelection, Actor, ActorLogging}
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSelection}
 import akka.pattern.pipe
 import cmwell.ctrl.checkers._
 import cmwell.ctrl.commands.{ControlCommand, StartElasticsearchMaster}
-import cmwell.ctrl.config.{Jvms, Config}
+import cmwell.ctrl.config.{Config, Jvms}
 import cmwell.ctrl.utils.ProcUtil
-import k.grid.{GridJvm, GridJvm$, Grid}
+import k.grid.{Grid, GridJvm, GridJvm$}
 import scala.concurrent.Future
 import scala.sys.process._
 import Config._
 
-
-import scala.util.{Try, Failure, Success}
+import scala.util.{Failure, Success, Try}
 import scala.concurrent.ExecutionContext.Implicits.global
+
 /**
- * Created by michael on 11/25/14.
- */
-case class BashCommand(com : String)
+  * Created by michael on 11/25/14.
+  */
+case class BashCommand(com: String)
 
 object CommandActor {
-  def select(host : String) : ActorSelection = {
+  def select(host: String): ActorSelection = {
     Grid.selectActor(commandActorName, GridJvm(host, Some(Jvms.node)))
   }
 
-  def all : Set[ActorSelection] = {
+  def all: Set[ActorSelection] = {
     Grid.availableMachines.map(host => Grid.selectActor(commandActorName, GridJvm(host, Some(Jvms.node))))
   }
 }
@@ -48,10 +46,10 @@ object CommandActor {
 class CommandActor extends Actor with ActorLogging {
 
   override def receive: Receive = {
-    case BashCommand(com) =>  sender ! ProcUtil.executeCommand(com)
-    case CheckWeb => WebChecker.check pipeTo sender()
-    case CheckElasticsearch => ElasticsearchChecker.check pipeTo sender()
-    case CheckCassandra => CassandraChecker.check pipeTo sender()
-    case cc : ControlCommand => cc.execute
+    case BashCommand(com)   => sender ! ProcUtil.executeCommand(com)
+    case CheckWeb           => WebChecker.check.pipeTo(sender())
+    case CheckElasticsearch => ElasticsearchChecker.check.pipeTo(sender())
+    case CheckCassandra     => CassandraChecker.check.pipeTo(sender())
+    case cc: ControlCommand => cc.execute
   }
 }

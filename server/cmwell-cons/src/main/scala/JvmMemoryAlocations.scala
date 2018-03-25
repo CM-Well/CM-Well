@@ -12,28 +12,28 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 /**
- * Created by michael on 8/27/14.
- */
+  * Created by michael on 8/27/14.
+  */
+case class Resources(processors: Int, freePhysicalMemory: Long, totalPhysicalMemory: Long)
 
+case class JvmMemoryAllocations(mxmx: Int, mxms: Int, mxmn: Int, mxss: Int) {
 
-case class Resources(processors : Int, freePhysicalMemory : Long, totalPhysicalMemory : Long)
-
-case class JvmMemoryAllocations(mxmx : Int,mxms : Int, mxmn : Int , mxss : Int) {
-
-  def getMxmx: String = if(mxmx>0) s"-Xmx${mxmx}M" else ""
-  def getMxms: String = if(mxms>0) s"-Xms${mxms}M" else ""
-  def getMxmn: String = if(mxmn>0) s"-Xmn${mxmn}M" else ""
-  def getMxss: String = if(mxss>0) s"-Xss${mxss}k" else ""
+  def getMxmx: String = if (mxmx > 0) s"-Xmx${mxmx}M" else ""
+  def getMxms: String = if (mxms > 0) s"-Xms${mxms}M" else ""
+  def getMxmn: String = if (mxmn > 0) s"-Xmn${mxmn}M" else ""
+  def getMxss: String = if (mxss > 0) s"-Xss${mxss}k" else ""
 
 }
 
-case class ModuleJvmSettings(cas : JvmMemoryAllocations, es : JvmMemoryAllocations, bg : JvmMemoryAllocations, ws : JvmMemoryAllocations, ctrl : JvmMemoryAllocations = JvmMemoryAllocations(1024,0,0,0))
+case class ModuleJvmSettings(cas: JvmMemoryAllocations,
+                             es: JvmMemoryAllocations,
+                             bg: JvmMemoryAllocations,
+                             ws: JvmMemoryAllocations,
+                             ctrl: JvmMemoryAllocations = JvmMemoryAllocations(1024, 0, 0, 0))
 
 trait ModuleAllocations {
-  def getJvmAllocations : ModuleJvmSettings
+  def getJvmAllocations: ModuleJvmSettings
   def getElasticsearchMasterAllocations = JvmMemoryAllocations(1600, 0, 0, 256)
 }
 
@@ -48,25 +48,39 @@ trait ModuleAllocations {
 
 case class FixedAllocations() extends ModuleAllocations {
   override def getJvmAllocations: ModuleJvmSettings = {
-    ModuleJvmSettings(JvmMemoryAllocations(4000,4000,1000,256),JvmMemoryAllocations(5000,5000,1000,256),JvmMemoryAllocations(1000,1000,512,256),JvmMemoryAllocations(1000,1000,512,256))
+    ModuleJvmSettings(
+      JvmMemoryAllocations(4000, 4000, 1000, 256),
+      JvmMemoryAllocations(5000, 5000, 1000, 256),
+      JvmMemoryAllocations(1000, 1000, 512, 256),
+      JvmMemoryAllocations(1000, 1000, 512, 256)
+    )
   }
 }
 
 case class DevAllocations() extends ModuleAllocations {
   override def getJvmAllocations: ModuleJvmSettings = {
-    ModuleJvmSettings(JvmMemoryAllocations(1024,400,0,256),JvmMemoryAllocations(1024,400,0,256),JvmMemoryAllocations(1024,0,0,0),JvmMemoryAllocations(1024,0,0,0))
+    ModuleJvmSettings(JvmMemoryAllocations(1024, 400, 0, 256),
+                      JvmMemoryAllocations(1024, 400, 0, 256),
+                      JvmMemoryAllocations(1024, 0, 0, 0),
+                      JvmMemoryAllocations(1024, 0, 0, 0))
   }
 }
 
-case class CustomAllocations(cas : JvmMemoryAllocations, es : JvmMemoryAllocations, bg : JvmMemoryAllocations, ws : JvmMemoryAllocations) extends ModuleAllocations {
+case class CustomAllocations(cas: JvmMemoryAllocations,
+                             es: JvmMemoryAllocations,
+                             bg: JvmMemoryAllocations,
+                             ws: JvmMemoryAllocations)
+    extends ModuleAllocations {
   override def getJvmAllocations: ModuleJvmSettings = {
-    ModuleJvmSettings(cas,es,bg,ws)
+    ModuleJvmSettings(cas, es, bg, ws)
   }
 }
-
 
 case class DefaultAllocations() extends ModuleAllocations {
   override def getJvmAllocations: ModuleJvmSettings = {
-    ModuleJvmSettings(JvmMemoryAllocations(0,0,0,0),JvmMemoryAllocations(0,0,0,0),JvmMemoryAllocations(0,0,0,0),JvmMemoryAllocations(0,0,0,0))
+    ModuleJvmSettings(JvmMemoryAllocations(0, 0, 0, 0),
+                      JvmMemoryAllocations(0, 0, 0, 0),
+                      JvmMemoryAllocations(0, 0, 0, 0),
+                      JvmMemoryAllocations(0, 0, 0, 0))
   }
 }

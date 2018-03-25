@@ -12,19 +12,16 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tracking
 
 /**
   * Created by yaakov on 3/15/17.
   */
-
 sealed trait TrackingStatus
 
 case object InProgress extends TrackingStatus
-case object Done       extends TrackingStatus
-case object Failed     extends TrackingStatus
+case object Done extends TrackingStatus
+case object Failed extends TrackingStatus
 
 final case class PartialDone(completed: Int, total: Int) extends TrackingStatus {
   override def toString: String = s"PartialDone($completed/$total)"
@@ -37,17 +34,17 @@ object TrackingStatus {
   private val evictedRegex = "Evicted\\((.*?)\\)".r
 
   def apply(value: String): TrackingStatus = value match {
-    case "InProgress" => InProgress
-    case "Done" => Done
+    case "InProgress"                            => InProgress
+    case "Done"                                  => Done
     case evictedRegex(reason) if reason.nonEmpty => Evicted(reason)
-    case "Failed" => Failed
-    case partialDoneRegex(completed, total) => PartialDone(completed.toInt, total.toInt)
-    case other => throw new IllegalArgumentException(s"$other is not a valid TrackingStatus")
+    case "Failed"                                => Failed
+    case partialDoneRegex(completed, total)      => PartialDone(completed.toInt, total.toInt)
+    case other                                   => throw new IllegalArgumentException(s"$other is not a valid TrackingStatus")
   }
 
   def isFinal(ts: TrackingStatus): Boolean = ts match {
-    case InProgress | _ : PartialDone => false
-    case _ => true
+    case InProgress | _: PartialDone => false
+    case _                           => true
   }
 }
 

@@ -12,18 +12,16 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.web.ld.exceptions
 
 /**
- * Created with IntelliJ IDEA.
- * User: gilad
- * Date: 7/18/13
- * Time: 4:03 PM
- * To change this template use File | Settings | File Templates.
- */
-class ParsingException(msg: String, t: Throwable = null) extends RuntimeException(msg,t)
+  * Created with IntelliJ IDEA.
+  * User: gilad
+  * Date: 7/18/13
+  * Time: 4:03 PM
+  * To change this template use File | Settings | File Templates.
+  */
+class ParsingException(msg: String, t: Throwable = null) extends RuntimeException(msg, t)
 
 class UnretrievableIdentifierException(msg: String, t: Throwable = null) extends ParsingException(msg, t)
 
@@ -31,7 +29,7 @@ sealed trait ServerComponentNotAvailableException extends Exception
 object ServerComponentNotAvailableException {
 
   def apply(msg: String) = new Exception(msg) with ServerComponentNotAvailableException
-  def apply(msg: String, cause: Throwable) = new Exception(msg,cause) with ServerComponentNotAvailableException
+  def apply(msg: String, cause: Throwable) = new Exception(msg, cause) with ServerComponentNotAvailableException
 }
 
 class JsonParsingException(msg: String) extends ParsingException(msg)

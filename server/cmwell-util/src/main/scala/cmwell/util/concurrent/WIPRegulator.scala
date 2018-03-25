@@ -12,11 +12,9 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.util.concurrent
 
-import java.util.concurrent.{TimeUnit, ArrayBlockingQueue}
+import java.util.concurrent.{ArrayBlockingQueue, TimeUnit}
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 import com.typesafe.scalalogging.Logger
@@ -24,32 +22,35 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import cmwell.util.jmx._
 
 /**
- * Created with IntelliJ IDEA.
- * User: israel
- * Date: 12/3/13
- * Time: 1:35 PM
- * To change this template use File | Settings | File Templates.
- */
-case class WIPRegulator(private var numOfWorkers:Int, noWorkerAlertInterval:Long = 30000) extends WIPRegulatorMBean{
+  * Created with IntelliJ IDEA.
+  * User: israel
+  * Date: 12/3/13
+  * Time: 1:35 PM
+  * To change this template use File | Settings | File Templates.
+  */
+case class WIPRegulator(private var numOfWorkers: Int, noWorkerAlertInterval: Long = 30000) extends WIPRegulatorMBean {
 
   jmxRegister(this, "cmwell.indexer:type=WIPRegulator")
 
   private val wipQueue = new ArrayBlockingQueue[String](50)
 
   // Set intitial number of concurrent requests
-  for (i <- 1 to numOfWorkers) (wipQueue.add("WIP Worker " + i))
+  for (i <- 1 to numOfWorkers)(wipQueue.add("WIP Worker " + i))
 
-  def doWithWorkerAsync[T](f: => Future[T]) (implicit logger:Logger):Future[T] = {
+  def doWithWorkerAsync[T](f: => Future[T])(implicit logger: Logger): Future[T] = {
     var notFinished = true
-    var reply:Future[T] = Future.failed(FailedToExecuteException())
+    var reply: Future[T] = Future.failed(FailedToExecuteException())
 
-    while(notFinished) {
-      Try{
+    while (notFinished) {
+      Try {
         wipQueue.poll(noWorkerAlertInterval, TimeUnit.MILLISECONDS)
       } match {
-        case Success(null) => logger error (s"waited for $noWorkerAlertInterval miliseconds and did not get worker, something is wrong")
-        case Success(worker) => reply = f; reply.onComplete(_ => wipQueue.add(worker));notFinished = false
-        case Failure(execption) => logger error ("InteruptedException while trying to poll a worker from queue"); reply = Future.failed(execption); notFinished = false
+        case Success(null) =>
+          logger.error(s"waited for $noWorkerAlertInterval miliseconds and did not get worker, something is wrong")
+        case Success(worker) => reply = f; reply.onComplete(_ => wipQueue.add(worker)); notFinished = false
+        case Failure(execption) =>
+          logger.error("InteruptedException while trying to poll a worker from queue"); reply = Future.failed(execption);
+          notFinished = false
       }
     }
 
@@ -58,16 +59,16 @@ case class WIPRegulator(private var numOfWorkers:Int, noWorkerAlertInterval:Long
 
   def getNumOfWorkers(): Int = wipQueue.size()
 
-  def addWorker(): Unit = this.synchronized{ numOfWorkers += 1; wipQueue.add(s"WIP Worker $numOfWorkers")}
+  def addWorker(): Unit = this.synchronized { numOfWorkers += 1; wipQueue.add(s"WIP Worker $numOfWorkers") }
 
-  def removeWorker(): Unit = this.synchronized{ wipQueue.remove(s"WIP Worker $numOfWorkers"); numOfWorkers -= 1}
+  def removeWorker(): Unit = this.synchronized { wipQueue.remove(s"WIP Worker $numOfWorkers"); numOfWorkers -= 1 }
 
 }
 
 trait WIPRegulatorMBean {
-  def getNumOfWorkers():Int
+  def getNumOfWorkers(): Int
   def addWorker()
   def removeWorker()
 }
 
-case class FailedToExecuteException(msg:String = "Undifiened reason") extends Exception(msg)
+case class FailedToExecuteException(msg: String = "Undifiened reason") extends Exception(msg)

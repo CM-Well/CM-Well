@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.ws.qp
 
 import cmwell.fts._
@@ -28,19 +26,19 @@ object Encoder {
   }
 
   def encodeFieldOperator(fieldOperator: FieldOperator): String = fieldOperator match {
-    case Must => ""
-    case Should => "*"
+    case Must    => ""
+    case Should  => "*"
     case MustNot => "-"
   }
 
   def encodeValueOperator(valueOperator: ValueOperator): String = valueOperator match {
-    case Contains => ":"
-    case Equals => "::"
-    case GreaterThan => ">"
+    case Contains            => ":"
+    case Equals              => "::"
+    case GreaterThan         => ">"
     case GreaterThanOrEquals => ">>"
-    case LessThan => "<"
-    case LessThanOrEquals => "<<"
-    case Like => "~"
+    case LessThan            => "<"
+    case LessThanOrEquals    => "<<"
+    case Like                => "~"
   }
 
   def encodeFieldFilter(fieldFilter: FieldFilter): String = {
@@ -53,7 +51,8 @@ object Encoder {
 
     fieldFilter match {
       case sff: SingleFieldFilter => formatSingleFieldFilter(sff)
-      case mff @ MultiFieldFilter(fieldsOperator, filters) => s"${encodeFieldOperator(fieldsOperator)}[${filters.map(encodeFieldFilter).mkString(",")}]"
+      case mff @ MultiFieldFilter(fieldsOperator, filters) =>
+        s"${encodeFieldOperator(fieldsOperator)}[${filters.map(encodeFieldFilter).mkString(",")}]"
     }
 
   }

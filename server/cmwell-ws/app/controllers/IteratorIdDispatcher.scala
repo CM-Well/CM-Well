@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package controllers
 
 import akka.actor.{Actor, ActorRef, PoisonPill}
@@ -22,9 +20,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.FiniteDuration
 
 /**
- * Created by gilad on 6/2/15.
- */
-
+  * Created by gilad on 6/2/15.
+  */
 case object GetID
 case object GotIt
 case class IterationState(actualEsScrollId: String, withHistory: Boolean, iteratorIdDispatcher: ActorRef)

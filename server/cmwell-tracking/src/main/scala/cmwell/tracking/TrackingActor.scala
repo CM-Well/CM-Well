@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tracking
 
 import akka.actor.{Actor, ActorRef, PoisonPill}
@@ -35,14 +33,18 @@ class TrackingActor(paths: Set[String], restored: Boolean, createTime: Long) ext
   case object SelfCheck
   case object SelfDeadline
 
-  private val selfPersistInterval  = 10.seconds
-  private val selfCheckInterval    = 5.seconds
+  private val selfPersistInterval = 10.seconds
+  private val selfCheckInterval = 5.seconds
   private val selfDeadlineInterval = 15.minutes
 
   private def startSchedulers(): Unit = {
-    context.system.scheduler.schedule(selfPersistInterval, selfPersistInterval, self, SelfPersist)(executor = context.system.dispatcher)
+    context.system.scheduler.schedule(selfPersistInterval, selfPersistInterval, self, SelfPersist)(
+      executor = context.system.dispatcher
+    )
     context.system.scheduler.scheduleOnce(selfCheckInterval, self, SelfCheck)(executor = context.system.dispatcher)
-    context.system.scheduler.scheduleOnce(selfDeadlineInterval, self, SelfDeadline)(executor = context.system.dispatcher)
+    context.system.scheduler.scheduleOnce(selfDeadlineInterval, self, SelfDeadline)(
+      executor = context.system.dispatcher
+    )
   }
 
   private def log(s: String): Unit = logger.debug(s"TrackingActor[${context.self.path.name}]: $s")
@@ -55,7 +57,7 @@ class TrackingActor(paths: Set[String], restored: Boolean, createTime: Long) ext
   log(s"CTOR(paths = ${paths.mkString(",")}, restored = $restored)")
 
   override def preStart(): Unit = {
-    if(restored)
+    if (restored)
       context.become(zombie)
     else
       startSchedulers()
@@ -65,15 +67,18 @@ class TrackingActor(paths: Set[String], restored: Boolean, createTime: Long) ext
 
   val data: MMap[String, TrackingStatus] = {
     val m = MMap[String, TrackingStatus]()
-    if(!restored)
-      paths.foreach { path => m += path -> InProgress }
+    if (!restored)
+      paths.foreach { path =>
+        m += path -> InProgress
+      }
     m
   }
 
-  def dataToExpose: Seq[PathStatus] = data.map {
-    case (p, s) if !TrackingStatus.isFinal(s) => PathStatus(p, InProgress) // user should never see PartialDone(m,n)
-    case (p, s) => PathStatus(p, s)
-  }.toSeq
+  def dataToExpose: Seq[PathStatus] =
+    data.map {
+      case (p, s) if !TrackingStatus.isFinal(s) => PathStatus(p, InProgress) // user should never see PartialDone(m,n)
+      case (p, s)                               => PathStatus(p, s)
+    }.toSeq
 
   def zombie: Receive = {
     case RestoredData(pathStatuses) =>
@@ -95,12 +100,13 @@ class TrackingActor(paths: Set[String], restored: Boolean, createTime: Long) ext
       data += path -> Done
       pub(subscriber)
 
-    case PathStatus(path, pd@PartialDone(completed, total)) =>
+    case PathStatus(path, pd @ PartialDone(completed, total)) =>
       log(s"Got $pd")
       data += path -> data.get(path).fold[TrackingStatus](pd) {
         case InProgress => pd
         case PartialDone(c, t) =>
-          if (t != total) log(s"oops! for path $path got PartialDone($completed,$total) but current data says PartialDone($c,$t)")
+          if (t != total)
+            log(s"oops! for path $path got PartialDone($completed,$total) but current data says PartialDone($c,$t)")
           if (completed + c == t) Done else PartialDone(completed + c, t)
         case other =>
           log(s"$other was not expected")
@@ -128,7 +134,7 @@ class TrackingActor(paths: Set[String], restored: Boolean, createTime: Long) ext
 
     case SelfCheck =>
       log("SelfCheck")
-      TrackingUtil().cleanDirtyData(dataToExpose, createTime).map(RestoredData) pipeTo self
+      TrackingUtil().cleanDirtyData(dataToExpose, createTime).map(RestoredData).pipeTo(self)
       context.system.scheduler.scheduleOnce(selfCheckInterval, self, SelfCheck)(executor = context.system.dispatcher)
 
     case SelfDeadline if isDone =>
@@ -138,7 +144,6 @@ class TrackingActor(paths: Set[String], restored: Boolean, createTime: Long) ext
     case SelfDeadline => // in future will be sent to zombies pool instead of suicide?
       log("Deadline")
       self ! PoisonPill
-
 
     case SelfPersist =>
       log("SelfPersist")
@@ -153,7 +158,7 @@ class TrackingActor(paths: Set[String], restored: Boolean, createTime: Long) ext
 
   private def serializedSelf = data.map { case (p, s) => s"$p\0$s" }.mkString("\n").getBytes("UTF-8")
 
-  private def pub(sub: Option[ActorRef]) = if(isDone) sub.foreach(_ ! dataToExpose)
+  private def pub(sub: Option[ActorRef]) = if (isDone) sub.foreach(_ ! dataToExpose)
 }
 
 case class RestoredData(data: Seq[PathStatus])

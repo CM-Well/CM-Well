@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package filters
 
 import javax.inject._
@@ -22,7 +20,7 @@ import play.api.Logger
 import play.api.mvc._
 import scala.concurrent.{ExecutionContext, Future}
 
-class AccessLoggingFilter @Inject() (implicit val mat: Materializer, ec: ExecutionContext) extends Filter {
+class AccessLoggingFilter @Inject()(implicit val mat: Materializer, ec: ExecutionContext) extends Filter {
 
   val accessLogger = Logger("access")
 
@@ -33,12 +31,12 @@ class AccessLoggingFilter @Inject() (implicit val mat: Materializer, ec: Executi
       val reqTime = endTime - startTime
       val ip = request.headers.get("X-Forwarded-For").getOrElse("N/A")
       val msg = s"method=${request.method} uri=${request.uri} remote-address=${request.remoteAddress} " +
-                s"status=${result.header.status} process-time=$reqTime x-forwarded-for=${ip}";
-      lazy val headers = request.headers.headers.map(h => h._1 + ":" + h._2).mkString(" headers=[",",","]")
+        s"status=${result.header.status} process-time=$reqTime x-forwarded-for=${ip}";
+      lazy val headers = request.headers.headers.map(h => h._1 + ":" + h._2).mkString(" headers=[", ",", "]")
 
-      if(result.header.status < 400) accessLogger.info(msg)
-      else if(result.header.status != 500) accessLogger.warn(msg + headers)
-      else accessLogger.error(msg + headers) 
+      if (result.header.status < 400) accessLogger.info(msg)
+      else if (result.header.status != 500) accessLogger.warn(msg + headers)
+      else accessLogger.error(msg + headers)
 
       result.withHeaders("X-CMWELL-RT" -> s"${reqTime}ms")
     }

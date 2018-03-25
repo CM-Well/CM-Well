@@ -12,19 +12,17 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.stats
 
 import com.typesafe.config.ConfigFactory
 
 /**
- * Created with IntelliJ IDEA.
- * User: Michael
- * Date: 4/3/14
- * Time: 7:54 PM
- * To change this template use File | Settings | File Templates.
- */
+  * Created with IntelliJ IDEA.
+  * User: Michael
+  * Date: 4/3/14
+  * Time: 7:54 PM
+  * To change this template use File | Settings | File Templates.
+  */
 object Stats {
 
   object Settings {
@@ -38,30 +36,30 @@ object Stats {
   var withDate = false
 
   /**
-   * Creates a StatsSender object.
-   * @param path formats: some.nice.path | some.machine.related.statistics.{MachineName} | some.date.related.statistics.{DateTime}
-   * @return
-   */
-  def getStatsSender(path : String) = new StatsSender(Settings.domainName + "." + path, Settings.host, Settings.port)
+    * Creates a StatsSender object.
+    * @param path formats: some.nice.path | some.machine.related.statistics.{MachineName} | some.date.related.statistics.{DateTime}
+    * @return
+    */
+  def getStatsSender(path: String) = new StatsSender(Settings.domainName + "." + path, Settings.host, Settings.port)
 
   /**
-   * Creates a StopWatch object. Use the method stop in order to send the data.
-   * @param path formats: some.nice.path | some.machine.related.statistics.{MachineName} | some.date.related.statistics.{DateTime}
-   * @param action the name of the action
-   * @return
-   */
-  def getStopWatch(path : String, action : String) : StopWatch = {
+    * Creates a StopWatch object. Use the method stop in order to send the data.
+    * @param path formats: some.nice.path | some.machine.related.statistics.{MachineName} | some.date.related.statistics.{DateTime}
+    * @param action the name of the action
+    * @return
+    */
+  def getStopWatch(path: String, action: String): StopWatch = {
     val sSender = new StatsSender(Settings.domainName + "." + path, Settings.host, Settings.port)
     new StopWatch(sSender, action)
   }
 
   /**
-   * Measures the time it takes to execute a block of code.
-   * @param path formats: some.nice.path | some.machine.related.statistics.{MachineName} | some.date.related.statistics.{DateTime}
-   * @param action the name of the action
-   * @return
-   */
-  def measureBlock(path : String, action : String)(code : => Unit) : Unit = {
+    * Measures the time it takes to execute a block of code.
+    * @param path formats: some.nice.path | some.machine.related.statistics.{MachineName} | some.date.related.statistics.{DateTime}
+    * @param action the name of the action
+    * @return
+    */
+  def measureBlock(path: String, action: String)(code: => Unit): Unit = {
     val sSender = new StatsSender(Settings.domainName + "." + path, Settings.host, Settings.port)
     val sWatch = new StopWatch(sSender, action)
     code

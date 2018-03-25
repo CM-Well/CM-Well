@@ -12,45 +12,41 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package k.grid
 
-import akka.actor.{Props, ActorRef, Actor}
+import akka.actor.{Actor, ActorRef, Props}
 
 /**
- * Created by markz on 6/30/14.
- */
-
-case class WatchMe(actorRef : ActorRef )
-case class UnWatchMe(actorRef : ActorRef )
+  * Created by markz on 6/30/14.
+  */
+case class WatchMe(actorRef: ActorRef)
+case class UnWatchMe(actorRef: ActorRef)
 case class Create(props: Props, name: String)
 
 case object GetGridHosts
-case class GridHosts(hosts : Set[String])
+case class GridHosts(hosts: Set[String])
 
 class InternalActor extends Actor {
 
   var actors = Set.empty[ActorRef]
 
   def receive = {
-    case Create(p , name) =>
+    case Create(p, name) =>
       // lets create first the actor
-      val newActorRef = context.system.actorOf(p,name)
+      val newActorRef = context.system.actorOf(p, name)
       // send to all nodes a register watch operation for a specific actor
-      Grid.members.foreach{
-        m =>
-          val actorFullPath = m.toString + "/user/" + name
-          val actorRef = context.system.actorSelection(actorFullPath)
-          actorRef ! WatchMe(newActorRef)
+      Grid.members.foreach { m =>
+        val actorFullPath = m.toString + "/user/" + name
+        val actorRef = context.system.actorSelection(actorFullPath)
+        actorRef ! WatchMe(newActorRef)
       }
 
-    case WatchMe(actorRef : ActorRef) =>
+    case WatchMe(actorRef: ActorRef) =>
       actors += actorRef
-      context watch actorRef
-    case UnWatchMe(actorRef : ActorRef ) =>
+      context.watch(actorRef)
+    case UnWatchMe(actorRef: ActorRef) =>
       actors -= actorRef
-      context unwatch actorRef
+      context.unwatch(actorRef)
 
     case GetGridHosts => sender ! GridHosts(Grid.members.map(_.host.getOrElse("")))
 

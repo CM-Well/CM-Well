@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package controllers
 
 import java.io._
@@ -61,26 +59,32 @@ import scala.util.parsing.combinator.RegexParsers
 import scala.util.{Failure, Random, Success, Try}
 
 /**
-* Created by yaakov on 5/12/15.
-*/
+  * Created by yaakov on 5/12/15.
+  */
 
 @Singleton
-class SpHandlerController @Inject()(crudServiceFS: CRUDServiceFS)
-                                   (implicit ec: ExecutionContext, fmt: FileMimeTypes) extends InjectedController with LazyLogging with TypeHelpers {
+class SpHandlerController @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionContext, fmt: FileMimeTypes)
+    extends InjectedController
+    with LazyLogging
+    with TypeHelpers {
 
   val parser = new SPParser
 
-  def handleSparqlPost(formatByRest: String = "") = Action.async(parse.tolerantText) {
-    implicit req =>
-      handlePost(req, "") { req => (rp: RequestParameters) => /* no need to parse, returning the case class right away */ OverallSparqlQuery(req.body,req.host,rp) }
+  def handleSparqlPost(formatByRest: String = "") = Action.async(parse.tolerantText) { implicit req =>
+    handlePost(req, "") { req => (rp: RequestParameters) =>
+      /* no need to parse, returning the case class right away */
+      OverallSparqlQuery(req.body, req.host, rp)
+    }
   }
 
-  def handleSpPost(formatByRest: String = "") = Action.async(parse.tolerantText) {
-    implicit req =>
-      handlePost(req, formatByRest) { req => parser.parseQuery(req.body.filterNot(_ == '\r')) }
+  def handleSpPost(formatByRest: String = "") = Action.async(parse.tolerantText) { implicit req =>
+    handlePost(req, formatByRest) { req =>
+      parser.parseQuery(req.body.filterNot(_ == '\r'))
+    }
   }
 
-  private def handlePost[T](req: Request[String], formatByRest: String = "")(parse: Request[String]=>(RequestParameters=>T)) = {
+  private def handlePost[T](req: Request[String],
+                            formatByRest: String = "")(parse: Request[String] => (RequestParameters => T)) = {
 
     import SpHandler._
 
@@ -92,14 +96,19 @@ class SpHandlerController @Inject()(crudServiceFS: CRUDServiceFS)
         Try(fun(rp)) match {
           case Failure(err) => Future.successful(wsutil.exceptionToResponse(err))
           case Success(paq) => {
-            val qrFut = if(rp.bypassCache) task(paq) else viaCache(crudServiceFS)(paq)
-            val resultsAndStatsFut = qrFut map {
-              case Plain(content, stats) => Ok(content).withHeaders(stats.toSeq:_*) -> stats
-              case Filename(path, stats) => Ok.sendPath(Paths.get(path),onClose = () => files.deleteFile(path)).withHeaders(stats.toSeq:_*) -> stats
-              case ThroughPipe(_,_) => ???
-              case RemoteFailure(e,stats) => wsutil.exceptionToResponse(e).withHeaders(stats.toSeq:_*) -> stats
-              case ShortCircuitOverloaded(activeRequests,stats) => ServiceUnavailable("Busy, try again later").withHeaders(Seq("Retry-After" -> "10", "X-CM-WELL-N-ACT" -> activeRequests.toString) ++ stats.toSeq :_*) -> stats
-              case Status(_,_) => !!!
+            val qrFut = if (rp.bypassCache) task(paq) else viaCache(crudServiceFS)(paq)
+            val resultsAndStatsFut = qrFut.map {
+              case Plain(content, stats) => Ok(content).withHeaders(stats.toSeq: _*) -> stats
+              case Filename(path, stats) =>
+                Ok.sendPath(Paths.get(path), onClose = () => files.deleteFile(path))
+                  .withHeaders(stats.toSeq: _*) -> stats
+              case ThroughPipe(_, _)       => ???
+              case RemoteFailure(e, stats) => wsutil.exceptionToResponse(e).withHeaders(stats.toSeq: _*) -> stats
+              case ShortCircuitOverloaded(activeRequests, stats) =>
+                ServiceUnavailable("Busy, try again later").withHeaders(
+                  Seq("Retry-After" -> "10", "X-CM-WELL-N-ACT" -> activeRequests.toString) ++ stats.toSeq: _*
+                ) -> stats
+              case Status(_, _) => !!!
             }
 
             // if it will be done in < 7.seconds, we have headers in original result in resultsFut.
@@ -124,7 +133,7 @@ object SpHandler extends LazyLogging {
 
     (actorSel ? paq).mapTo[QueryResponse].andThen {
       case Failure(e) =>
-        logger.error(s"ask to ActorSel failed",e)
+        logger.error(s"ask to ActorSel failed", e)
     }
   }
   def digest[T](input: T): String = cmwell.util.string.Hash.md5(input.toString)
@@ -133,19 +142,25 @@ object SpHandler extends LazyLogging {
       val s = new String(payload, "UTF-8")
       s.splitAt(s.indexOf('\n'))
     }
-    Plain(content, Json.parse(stats).as[Map[String,String]])
+    Plain(content, Json.parse(stats).as[Map[String, String]])
   }
-  def serializer(qr: QueryResponse): Array[Byte] = qr match { case Plain(content,stats) => (Json.toJson(stats).toString() + "\n" + content).getBytes("UTF-8") case _ => !!! }
-  def isCachable(qr: QueryResponse): Boolean = qr match { case Plain(_,_) => true case _ => false }
+  def serializer(qr: QueryResponse): Array[Byte] = qr match {
+    case Plain(content, stats) => (Json.toJson(stats).toString() + "\n" + content).getBytes("UTF-8")
+    case _                     => !!!
+  }
+  def isCachable(qr: QueryResponse): Boolean = qr match {
+    case Plain(_, _) => true
+    case _           => false
+  }
 
-  def viaCache(crudServiceFS: CRUDServiceFS) = cmwell.zcache.l1l2(task)(digest,deserializer,serializer,isCachable)(
-    ttlSeconds = Settings.zCacheSecondsTTL,
-    pollingMaxRetries = Settings.zCachePollingMaxRetries,
-    pollingInterval = Settings.zCachePollingIntervalSeconds,
-    l1Size = Settings.zCacheL1Size)(crudServiceFS.zCache)
+  def viaCache(crudServiceFS: CRUDServiceFS) =
+    cmwell.zcache.l1l2(task)(digest, deserializer, serializer, isCachable)(
+      ttlSeconds = Settings.zCacheSecondsTTL,
+      pollingMaxRetries = Settings.zCachePollingMaxRetries,
+      pollingInterval = Settings.zCachePollingIntervalSeconds,
+      l1Size = Settings.zCacheL1Size
+    )(crudServiceFS.zCache)
 }
-
-
 
 class SPParser extends RegexParsers {
 
@@ -157,52 +172,70 @@ class SPParser extends RegexParsers {
   val minuses = "((-{3,}))"
   override val skipWhitespace = false
 
-  val paths = "(?i)paths".r ^^ {_.toLowerCase}
+  val paths = "(?i)paths".r ^^ { _.toLowerCase }
 
   val sourcesLiteral: Parser[String] = paths // | uuids | etc' ...
   def sourcesHeadLine: Parser[String] = whiteSpaces ~> sourcesLiteral <~ newline
 
-  def source: Parser[String] = "/.*".r ^^ {
-    //make sure all query strings has an equals sign, to help FakeRequest handle it better
-    case path => {
-      val (p,q) = {
-        val all = path.split('?')
-        all.head -> all.tail.mkString("?")
+  def source: Parser[String] =
+    "/.*".r ^^ {
+      //make sure all query strings has an equals sign, to help FakeRequest handle it better
+      case path => {
+        val (p, q) = {
+          val all = path.split('?')
+          all.head -> all.tail.mkString("?")
+        }
+        p + "?" + q
+          .split('&')
+          .map {
+            case qs if qs.contains('=') => qs
+            case qs                     => qs + "="
+          }
+          .mkString("&")
       }
-      p + "?" + q.split('&').map{
-        case qs if qs.contains('=') => qs
-        case qs => qs + "="
-      }.mkString("&")
-    }
-  } | failure("encountered invalid path") //TODO: refine constraints
-  def sourceRep: Parser[Seq[String]] = repsep(source,newline)
+    } | failure("encountered invalid path") //TODO: refine constraints
+  def sourceRep: Parser[Seq[String]] = repsep(source, newline)
   def sources: Parser[Seq[String]] = sourcesHeadLine ~> sourceRep
 
-  val importLiteral = "(?i)import".r ^^ {_.toLowerCase}
+  val importLiteral = "(?i)import".r ^^ { _.toLowerCase }
   def importHeadline: Parser[String] = whiteSpaces ~> importLiteral <~ newline
   def importRep: Parser[Seq[String]] = repsep(anything, newline)
   def imports: Parser[Seq[String]] = importHeadline ~> importRep
 
-  val sparql = "(?i)sparql".r ^^ {_ => {
-    (sources: Seq[String], imports: Seq[String], queries: Seq[String]) => (rp: RequestParameters) => SparqlQuery(sources, imports, queries, rp)
-  }}
-
-  val gremlin = "(?i)gremlin".r ^^ {_ => {
-    (sources: Seq[String], imports: Seq[String], queries: Seq[String]) => (rp: RequestParameters) => GremlinQuery(sources, imports, queries, rp)
-  }}
-
-  val queryLiteral: Parser[(Seq[String],Seq[String],Seq[String]) => (RequestParameters) => PopulateAndQuery] = sparql | gremlin
-  def queryHeadLine: Parser[(Seq[String],Seq[String],Seq[String]) => (RequestParameters) => PopulateAndQuery] = whiteSpaces ~> queryLiteral <~ newline
-
-  def queries: Parser[(Seq[String],Seq[String]) => (RequestParameters) => PopulateAndQuery] = queryHeadLine ~ repsep(anythingOrEmpty, newline) <~ whiteSpaces ^^ {
-    case func ~ queries => (sources: Seq[String], imports: Seq[String]) => (rp: RequestParameters) => func(sources, imports, queries.mkString("\n").split(minuses).map(_.trim))(rp)
+  val sparql = "(?i)sparql".r ^^ { _ =>
+    { (sources: Seq[String], imports: Seq[String], queries: Seq[String]) => (rp: RequestParameters) =>
+      SparqlQuery(sources, imports, queries, rp)
+    }
   }
 
-  def populateAndQuery: Parser[(RequestParameters) => PopulateAndQuery] = sources ~ repN(1,newline) ~ imports ~ repN(1,newline) ~ queries ^^ {
-    case s ~ _ ~ i ~ _ ~ f => (rp: RequestParameters) => f(s,i)(rp)
-  } | sources ~ repN(1,newline) ~ queries ^^ {
-    case s ~ _ ~ f => (rp: RequestParameters) => f(s,Seq())(rp) // import is optional. when not provided, is an empty Seq
+  val gremlin = "(?i)gremlin".r ^^ { _ =>
+    { (sources: Seq[String], imports: Seq[String], queries: Seq[String]) => (rp: RequestParameters) =>
+      GremlinQuery(sources, imports, queries, rp)
+    }
   }
+
+  val queryLiteral
+    : Parser[(Seq[String], Seq[String], Seq[String]) => (RequestParameters) => PopulateAndQuery] = sparql | gremlin
+  def queryHeadLine: Parser[(Seq[String], Seq[String], Seq[String]) => (RequestParameters) => PopulateAndQuery] =
+    whiteSpaces ~> queryLiteral <~ newline
+
+  def queries: Parser[(Seq[String], Seq[String]) => (RequestParameters) => PopulateAndQuery] =
+    queryHeadLine ~ repsep(anythingOrEmpty, newline) <~ whiteSpaces ^^ {
+      case func ~ queries =>
+        (sources: Seq[String], imports: Seq[String]) => (rp: RequestParameters) =>
+          func(sources, imports, queries.mkString("\n").split(minuses).map(_.trim))(rp)
+    }
+
+  def populateAndQuery: Parser[(RequestParameters) => PopulateAndQuery] =
+    sources ~ repN(1, newline) ~ imports ~ repN(1, newline) ~ queries ^^ {
+      case s ~ _ ~ i ~ _ ~ f =>
+        (rp: RequestParameters) =>
+          f(s, i)(rp)
+    } | sources ~ repN(1, newline) ~ queries ^^ {
+      case s ~ _ ~ f =>
+        (rp: RequestParameters) =>
+          f(s, Seq())(rp) // import is optional. when not provided, is an empty Seq
+    }
 
   import scala.util.{Failure => UFailure, Success => USuccess}
 
@@ -210,9 +243,9 @@ class SPParser extends RegexParsers {
     def throwError(msg: String) = throw new ParsingException(s"error: $msg, accured while parsing: $input")
 
     Try(parseAll(populateAndQuery, input)) match {
-      case USuccess(Success(paq, _)) => paq
+      case USuccess(Success(paq, _))   => paq
       case USuccess(NoSuccess(msg, _)) => throwError(msg)
-      case UFailure(err) => throwError(err.getMessage)
+      case UFailure(err)               => throwError(err.getMessage)
     }
   }
 }
@@ -231,27 +264,33 @@ object PopulateAndQuery extends LazyLogging {
   implicit val system: ActorSystem = Grid.system
   implicit val materializer = ActorMaterializer()
 
-  def httpRequest2(path: String): Future[Either[(Int,String),InputStream]] = {
+  def httpRequest2(path: String): Future[Either[(Int, String), InputStream]] = {
     import scala.concurrent.ExecutionContext.Implicits.global
 
     def nonError(httpCode: Int) = httpCode < 300
-    val textPlainUtf8 = Seq("Content-Type"->"text/plain;charset=UTF-8")
+    val textPlainUtf8 = Seq("Content-Type" -> "text/plain;charset=UTF-8")
 
     //this import is causing the response to contain an `InputStream` instead of the default `Array[Byte]`
     import cmwell.util.http.SimpleResponse.Implicits.InputStreamHandler
 
     def pathHasURLEncodedQps = path.contains("%")
 
-    val (justPath,queryParams) = if(!path.contains('?')) path -> "?" else path.splitAt(path.indexOf('?'))
-    val parsedQueryParams = queryParams.substring(1).split('&').map{kv => val s = kv.split('='); (if(s.length>0) s(0) else "") -> (if(s.length>1) s(1) else "")}.toSeq
+    val (justPath, queryParams) = if (!path.contains('?')) path -> "?" else path.splitAt(path.indexOf('?'))
+    val parsedQueryParams = queryParams
+      .substring(1)
+      .split('&')
+      .map { kv =>
+        val s = kv.split('='); (if (s.length > 0) s(0) else "") -> (if (s.length > 1) s(1) else "")
+      }
+      .toSeq
 
-    val pathToGet = "http://localhost:9000" + (if(pathHasURLEncodedQps) path else justPath)
-    val qpsToGet = if(pathHasURLEncodedQps) Seq() else parsedQueryParams
+    val pathToGet = "http://localhost:9000" + (if (pathHasURLEncodedQps) path else justPath)
+    val qpsToGet = if (pathHasURLEncodedQps) Seq() else parsedQueryParams
 
     cmwell.util.http.SimpleHttpClient.get(pathToGet, qpsToGet, textPlainUtf8).map {
-      case SimpleResponse(respCode,_,(_,inputStream)) if nonError(respCode) => Right(inputStream)
-      case SimpleResponse(respCode,_,(_,inputStream)) => {
-        val respBody = scala.io.Source.fromInputStream(inputStream,"UTF-8").mkString
+      case SimpleResponse(respCode, _, (_, inputStream)) if nonError(respCode) => Right(inputStream)
+      case SimpleResponse(respCode, _, (_, inputStream)) => {
+        val respBody = scala.io.Source.fromInputStream(inputStream, "UTF-8").mkString
         Left(respCode -> s"HTTP $respCode: $respBody")
       }
     }
@@ -259,9 +298,10 @@ object PopulateAndQuery extends LazyLogging {
 
   import cmwell.syntaxutils._
 
-  def retryFetchingIfWasEmpty(path: String): Future[Either[(Int,String),Dataset]] = {
+  def retryFetchingIfWasEmpty(path: String): Future[Either[(Int, String), Dataset]] = {
     lazy val errMsg = {
-      val reason = if(path.toLowerCase.contains("with-data")) "this might be a data issue" else "try adding `with-data`"
+      val reason =
+        if (path.toLowerCase.contains("with-data")) "this might be a data issue" else "try adding `with-data`"
       s"Fetching $path had no results, $reason"
     }
     import scala.concurrent.ExecutionContext.Implicits.global
@@ -287,7 +327,7 @@ object PopulateAndQuery extends LazyLogging {
         case Left(respCodeAndTxt) => Future.successful(Left(respCodeAndTxt)) // not retrying when status code > 200
         case Right(is) => {
           val ds = loadRdfToDataset(is)
-          if(isCorrupted(ds)) Future.failed(new Exception(errMsg)) // to retry
+          if (isCorrupted(ds)) Future.failed(new Exception(errMsg)) // to retry
           else Future.successful(Right(ds))
         }
         case _ => !!!
@@ -305,9 +345,9 @@ import controllers.PopulateAndQuery.retryFetchingIfWasEmpty
 
 trait TimedRequestKind
 case object Subgraph extends TimedRequestKind { override def toString = "Subgraph" }
-case object Sparql   extends TimedRequestKind { override def toString = "SPARQL  " }
-case object Gremlin  extends TimedRequestKind { override def toString = "Gremlin " }
-case object Import   extends TimedRequestKind { override def toString = "Import  " }
+case object Sparql extends TimedRequestKind { override def toString = "SPARQL  " }
+case object Gremlin extends TimedRequestKind { override def toString = "Gremlin " }
+case object Import extends TimedRequestKind { override def toString = "Import  " }
 
 abstract class PopulateAndQuery {
 
@@ -315,10 +355,10 @@ abstract class PopulateAndQuery {
 
   implicit class StringUtils(s: String) {
     def padOrEllide(length: Int): String = {
-      if(s.length<length-3)
+      if (s.length < length - 3)
         s.padTo(length, ' ')
       else
-        s.substring(0,length-3) + "..."
+        s.substring(0, length - 3) + "..."
     }
   }
 
@@ -326,7 +366,9 @@ abstract class PopulateAndQuery {
   def sources: Seq[String]
   def queries: Seq[String]
   val rp: RequestParameters
-  def evaluate(jarsImporter: JarsImporter,queriesImporter: QueriesImporter,sourcesImporter: SourcesImporter): Future[(String,Map[String,String])]
+  def evaluate(jarsImporter: JarsImporter,
+               queriesImporter: QueriesImporter,
+               sourcesImporter: SourcesImporter): Future[(String, Map[String, String])]
 
   def isTiming = rp.verbose && rp.format == "ascii"
   def isDumping = rp.showGraph && rp.format == "ascii"
@@ -335,44 +377,48 @@ abstract class PopulateAndQuery {
 
   val timedRequestTitle = {
     def pad(p: String, to: Int = 13) = p.padTo(to, ' ')
-    pad("Start") + pad("End") + pad("Duration") + pad("Type", 9) + "Task" + " "*60 + " # lines"
+    pad("Start") + pad("End") + pad("Duration") + pad("Type", 9) + "Task" + " " * 60 + " # lines"
   }
 
   case class TimedRequest(path: String, kind: TimedRequestKind, started: Long, ended: Long) {
-    private val fmt : DateTimeFormatter = ISODateTimeFormat.hourMinuteSecondMillis
-    private def formatTime(millis: Long) = new DateTime(millis-relativeEpochTime).toString(fmt)
+    private val fmt: DateTimeFormatter = ISODateTimeFormat.hourMinuteSecondMillis
+    private def formatTime(millis: Long) = new DateTime(millis - relativeEpochTime).toString(fmt)
     override def toString: String = s"${formatTime(started)} ${formatTime(ended)} $kind $path"
-    def toString(manipulator: String=>String): String = s"${formatTime(started)} ${formatTime(ended)} ${formatTime(ended-started+relativeEpochTime)} $kind ${manipulator(path)}"
+    def toString(manipulator: String => String): String =
+      s"${formatTime(started)} ${formatTime(ended)} ${formatTime(ended - started + relativeEpochTime)} $kind ${manipulator(path)}"
   }
 
-  protected def start(id: String, kind: TimedRequestKind): TimedRequest = TimedRequest(id, kind, System.currentTimeMillis, 0)
-  protected def end(tr: TimedRequest): TimedRequest = tr.copy(ended=System.currentTimeMillis)
+  protected def start(id: String, kind: TimedRequestKind): TimedRequest =
+    TimedRequest(id, kind, System.currentTimeMillis, 0)
+  protected def end(tr: TimedRequest): TimedRequest = tr.copy(ended = System.currentTimeMillis)
 
-
-  lazy val populateFormat = if(rp.quads) "nquads" else "ntriples"
+  lazy val populateFormat = if (rp.quads) "nquads" else "ntriples"
 //  lazy val populateLanguage = if(rp.quads) Lang.NQUADS else Lang.NTRIPLES
 
-  def populate(handler: ((Option[TimedRequest],Either[(Int,String),Dataset])) => (Option[TimedRequest],T)): Seq[Future[(Option[TimedRequest],T)]] = {
+  def populate(
+    handler: ((Option[TimedRequest], Either[(Int, String), Dataset])) => (Option[TimedRequest], T)
+  ): Seq[Future[(Option[TimedRequest], T)]] = {
 
-    def addFormat(url: String) ={
+    def addFormat(url: String) = {
       url + (if (url.contains('?')) "&" else "?") + s"format=$populateFormat"
     }
 
-
     def validateUrl(url: String) = {
       //TODO: add more constraints
-      def validKeyValuePair(key: String, value: String): Boolean = key->value match {
-        case (k, v) if k.toLowerCase == "op" => Set("search", "read")(v.toLowerCase)
+      def validKeyValuePair(key: String, value: String): Boolean = key -> value match {
+        case (k, v) if k.toLowerCase == "op"     => Set("search", "read")(v.toLowerCase)
         case (k, v) if k.toLowerCase == "format" => v.toLowerCase == populateFormat
-        case _ => true
+        case _                                   => true
       }
 
-      val queryString = url.dropWhile(_!='?').tail
-      queryString.split('&').map(_.split("=",2)).foreach { kv => require(validKeyValuePair(kv(0),kv(1))) }
+      val queryString = url.dropWhile(_ != '?').tail
+      queryString.split('&').map(_.split("=", 2)).foreach { kv =>
+        require(validKeyValuePair(kv(0), kv(1)))
+      }
     }
 
-    def timeWrapIfNeeded[T](id: String, f: => Future[T]): Future[(Option[TimedRequest],T)] = {
-      if(isTiming) {
+    def timeWrapIfNeeded[T](id: String, f: => Future[T]): Future[(Option[TimedRequest], T)] = {
+      if (isTiming) {
         val tr = start(id, Subgraph)
         f.map(Some(end(tr)) -> _)
       } else {
@@ -380,18 +426,24 @@ abstract class PopulateAndQuery {
       }
     }
 
-    sources.map(populatePlaceHolders).map(addFormat _ andThen { path => validateUrl(path); timeWrapIfNeeded(path, retryFetchingIfWasEmpty(path)).map(handler) })
+    sources
+      .map(populatePlaceHolders)
+      .map((addFormat _).andThen { path =>
+        validateUrl(path); timeWrapIfNeeded(path, retryFetchingIfWasEmpty(path)).map(handler)
+      })
   }
 
-  def extractBody(tRes: (Option[TimedRequest],Either[(Int,String),Dataset])): (Option[TimedRequest],Either[(Int,String),Dataset]) = tRes
+  def extractBody(
+    tRes: (Option[TimedRequest], Either[(Int, String), Dataset])
+  ): (Option[TimedRequest], Either[(Int, String), Dataset]) = tRes
 
   def addTimingAndOrGraphAsNeeded(ds: Dataset, perf: String): String = {
     val sb = new StringBuilder
 
-    if(isTiming)
+    if (isTiming)
       sb.append(s"Time metrics:\n$timedRequestTitle\n$perf\n\n")
 
-    if(isDumping) {
+    if (isDumping) {
       val os = new ByteArrayOutputStream
       if (rp.quads)
         RDFDataMgr.write(os, ds, Lang.NQUADS)
@@ -413,38 +465,48 @@ abstract class PopulateAndQuery {
   }
 }
 
-case class SparqlQuery( sources: Seq[String],
-                        imports: Seq[String],
-                        queries: Seq[String],
-                        rp: RequestParameters) extends PopulateAndQuery {
+case class SparqlQuery(sources: Seq[String], imports: Seq[String], queries: Seq[String], rp: RequestParameters)
+    extends PopulateAndQuery {
 
-  override type T = Either[(Int,String),Dataset]
+  override type T = Either[(Int, String), Dataset]
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
   val concreteQueries = queries.map(populatePlaceHolders)
 
-  override def evaluate(jarsImporter: JarsImporter,queriesImporter: QueriesImporter,sourcesImporter: SourcesImporter): Future[(String,Map[String,String])] = {
+  override def evaluate(jarsImporter: JarsImporter,
+                        queriesImporter: QueriesImporter,
+                        sourcesImporter: SourcesImporter): Future[(String, Map[String, String])] = {
     case class PopulateResults(verboseText: String, respCodes: Seq[Int], dataSet: Dataset) {
-      def merge(other: PopulateResults): PopulateResults = PopulateResults(verboseText + "\n" + other.verboseText, respCodes ++ other.respCodes, JenaUtils.merge(dataSet, other.dataSet))
+      def merge(other: PopulateResults): PopulateResults =
+        PopulateResults(verboseText + "\n" + other.verboseText,
+                        respCodes ++ other.respCodes,
+                        JenaUtils.merge(dataSet, other.dataSet))
     }
 
-    val ntriplesFutures: Seq[Future[(Option[TimedRequest], Either[(Int,String),Dataset])]] = populate(extractBody)
+    val ntriplesFutures: Seq[Future[(Option[TimedRequest], Either[(Int, String), Dataset])]] = populate(extractBody)
 
     def convert(rawFetchResult: (Option[TimedRequest], T)): PopulateResults = {
-      val (trOpt,valueOrError) = rawFetchResult
+      val (trOpt, valueOrError) = rawFetchResult
       valueOrError match {
-        case Left((respCode,errMsg)) => {
-          PopulateResults(trOpt.map(_.toString(_.padOrEllide(64)) + " 0       ").getOrElse("") + errMsg + "\n", List(respCode), DatasetFactory.create())
+        case Left((respCode, errMsg)) => {
+          PopulateResults(trOpt.map(_.toString(_.padOrEllide(64)) + " 0       ").getOrElse("") + errMsg + "\n",
+                          List(respCode),
+                          DatasetFactory.create())
         }
         case Right(dataset) => {
-          PopulateResults(trOpt.map(_.toString(_.padOrEllide(64)) + " " + JenaUtils.size(dataset) + "\n").getOrElse(""), Nil,  dataset)
+          PopulateResults(trOpt.map(_.toString(_.padOrEllide(64)) + " " + JenaUtils.size(dataset) + "\n").getOrElse(""),
+                          Nil,
+                          dataset)
         }
       }
     }
 
     val populateResultsFut = (ntriplesFutures.head.map(convert) /: ntriplesFutures.tail) {
-      case (fm, fs) => fm.flatMap { m => fs.map(t => m.merge(convert(t))) }
+      case (fm, fs) =>
+        fm.flatMap { m =>
+          fs.map(t => m.merge(convert(t)))
+        }
     }
 
     //TODO: FIXME! DON'T AFFECT GLOBALLY
@@ -453,77 +515,89 @@ case class SparqlQuery( sources: Seq[String],
     import cmwell.util.collections.partition3
 
     val (jarImportsPaths, sprqlImportsPaths, sourceImportPaths) = partition3(imports) {
-      case e if e.endsWith(".jar") => 0
+      case e if e.endsWith(".jar")   => 0
       case e if e.endsWith(".scala") => 2
-      case _ => 1
+      case _                         => 1
     }
 
     val importsFut = for {
       ij <- jarsImporter.fetch(jarImportsPaths)
       iq <- queriesImporter.fetch(sprqlImportsPaths).map(_.map(populatePlaceHolders))
       is <- sourcesImporter.fetch(sourceImportPaths)
-    } yield (ij,iq,is)
+    } yield (ij, iq, is)
 
-    populateResultsFut.flatMap {
-      perfAndDs => {
+    populateResultsFut.flatMap { perfAndDs =>
+      {
 
         val PopulateResults(perf, respCodes, ds) = perfAndDs
         val os = new ByteArrayOutputStream
 
-        importsFut.map { case (ij,iq,is) =>
-
-          ij.foreach(jenaFunc => FunctionRegistry.get.put(s"jar:${jenaFunc.getClass.getName}", jenaFunc.getClass))
-          is.foreach{ case NamedAnonJenaFuncImpl(name, impl) => FunctionRegistry.get.put(s"jar:$name", impl.getClass) }
-
-          val sparqlTime = concreteQueries.map { query =>
-            if (isTiming) {
-
-              val verboseImportsSb = new StringBuilder
-
-              val expandedDs = if(iq.isEmpty) ds else {
-                val dss = iq.map { q =>
-                  val tr = start(q.replace("\n", " "), Import)
-                  val curDs = JenaUtils.expandDataset(ds, q)
-                  verboseImportsSb.append(end(tr).toString(_.padOrEllide(64)) + " " + JenaUtils.size(curDs) + "\n")
-                  curDs
-                }
-                JenaUtils.flatten(dss :+ ds)
-              }
-
-              val queryOneLined = query.replace("\n", " ")
-              val tr = start(queryOneLined, Sparql)
-              val size = evaluateSparql(query, expandedDs, rp, os)
-              verboseImportsSb.toString() + end(tr).toString(_.padOrEllide(64)) + " " + size
-            } else {
-              val expandedDs = if(iq.isEmpty) ds else JenaUtils.flatten(iq.map( q => JenaUtils.expandDataset(ds, q)) :+ ds)
-              evaluateSparql(query, expandedDs, rp, os)
-              ""
+        importsFut.map {
+          case (ij, iq, is) =>
+            ij.foreach(jenaFunc => FunctionRegistry.get.put(s"jar:${jenaFunc.getClass.getName}", jenaFunc.getClass))
+            is.foreach {
+              case NamedAnonJenaFuncImpl(name, impl) => FunctionRegistry.get.put(s"jar:$name", impl.getClass)
             }
-          }.mkString("\n")
 
-          val verbosePart = addTimingAndOrGraphAsNeeded(ds, perf + sparqlTime)
-          val res = verbosePart + new String(os.toByteArray, "UTF-8")
+            val sparqlTime = concreteQueries
+              .map { query =>
+                if (isTiming) {
 
-          os.flush()
-          os.close()
+                  val verboseImportsSb = new StringBuilder
 
-          val stats = if(respCodes.nonEmpty) Map("X-CM-WELL-SG-RS" -> respCodes.mkString(",")) else Map.empty[String,String]
+                  val expandedDs =
+                    if (iq.isEmpty) ds
+                    else {
+                      val dss = iq.map { q =>
+                        val tr = start(q.replace("\n", " "), Import)
+                        val curDs = JenaUtils.expandDataset(ds, q)
+                        verboseImportsSb.append(
+                          end(tr).toString(_.padOrEllide(64)) + " " + JenaUtils.size(curDs) + "\n"
+                        )
+                        curDs
+                      }
+                      JenaUtils.flatten(dss :+ ds)
+                    }
 
-          res -> stats
+                  val queryOneLined = query.replace("\n", " ")
+                  val tr = start(queryOneLined, Sparql)
+                  val size = evaluateSparql(query, expandedDs, rp, os)
+                  verboseImportsSb.toString() + end(tr).toString(_.padOrEllide(64)) + " " + size
+                } else {
+                  val expandedDs =
+                    if (iq.isEmpty) ds else JenaUtils.flatten(iq.map(q => JenaUtils.expandDataset(ds, q)) :+ ds)
+                  evaluateSparql(query, expandedDs, rp, os)
+                  ""
+                }
+              }
+              .mkString("\n")
+
+            val verbosePart = addTimingAndOrGraphAsNeeded(ds, perf + sparqlTime)
+            val res = verbosePart + new String(os.toByteArray, "UTF-8")
+
+            os.flush()
+            os.close()
+
+            val stats =
+              if (respCodes.nonEmpty) Map("X-CM-WELL-SG-RS" -> respCodes.mkString(",")) else Map.empty[String, String]
+
+            res -> stats
         }
       }
     }
   }
 
   def evaluateSparql(sparql: String, ds: Dataset, rp: RequestParameters, outputStream: OutputStream): Long = {
-    val dsWithoutSsytemBlankNodes = JenaUtils.filter(ds) { s => !(s.getSubject.isAnon && s.getPredicate.getNameSpace.contains("meta/sys")) }
+    val dsWithoutSsytemBlankNodes = JenaUtils.filter(ds) { s =>
+      !(s.getSubject.isAnon && s.getPredicate.getNameSpace.contains("meta/sys"))
+    }
 
     val query = QueryFactory.create(sparql)
     val qExec = QueryExecutionFactory.create(query, dsWithoutSsytemBlankNodes)
 
     val tempOs = new ByteArrayOutputStream
 
-    if(rp.execLogging) {
+    if (rp.execLogging) {
       val arqLgr = ARQ.getExecLogger.asInstanceOf[ch.qos.logback.classic.Logger]
 
       val encoder = new PatternLayoutEncoder()
@@ -545,52 +619,52 @@ case class SparqlQuery( sources: Seq[String],
 
     // todo wrap query types more nicely (cmwell-881)
 
-    if(!(query.isSelectType || query.isConstructType))
+    if (!(query.isSelectType || query.isConstructType))
       throw new Exception("This query type is not supported.")
 
-    if(query.isSelectType) {
+    if (query.isSelectType) {
       val results = qExec.execSelect
 
-      if(rp.execLogging) tempOs.write("\n".getBytes)
-      if(rp.verbose) tempOs.write("Results:\n".getBytes)
+      if (rp.execLogging) tempOs.write("\n".getBytes)
+      if (rp.verbose) tempOs.write("Results:\n".getBytes)
 
       (rp.format match {
-        case "tsv" => Some(ResultsFormat.FMT_RS_TSV)
-        case "xml" => Some(ResultsFormat.FMT_RS_XML)
-        case "json" => Some(ResultsFormat.FMT_RS_JSON)
-        case "rdf" => Some(ResultsFormat.FMT_RDF_NT)
+        case "tsv"   => Some(ResultsFormat.FMT_RS_TSV)
+        case "xml"   => Some(ResultsFormat.FMT_RS_XML)
+        case "json"  => Some(ResultsFormat.FMT_RS_JSON)
+        case "rdf"   => Some(ResultsFormat.FMT_RDF_NT)
         case "ascii" => None
-        case _ => throw new IllegalArgumentException(s"Unsupported format for SELECT: ${rp.format}")
-      }
-        ).map(ResultSetFormatter.output(tempOs, results, _))
+        case _       => throw new IllegalArgumentException(s"Unsupported format for SELECT: ${rp.format}")
+      }).map(ResultSetFormatter.output(tempOs, results, _))
         .getOrElse(ResultSetFormatter.out(tempOs, results, query)) // ascii
     }
 
-    if(query.isConstructType) {
+    if (query.isConstructType) {
       // todo 1. do we want to allow the user choose RDF Format?
       // todo 2. what about quads in this case? see http://stackoverflow.com/questions/18345908/construct-into-a-named-graph
       val results = qExec.execConstruct
 
-      if(rp.execLogging) tempOs.write("\n".getBytes)
-      if(rp.verbose) tempOs.write("Results:\n".getBytes)
+      if (rp.execLogging) tempOs.write("\n".getBytes)
+      if (rp.verbose) tempOs.write("Results:\n".getBytes)
 
       RDFDataMgr.write(tempOs, results, RDFFormat.NTRIPLES)
     }
 
     val results = new String(tempOs.toByteArray, "UTF-8")
-    outputStream.write((results+"\n").getBytes)
+    outputStream.write((results + "\n").getBytes)
 
-    if(rp.format != "ascii" || results.replace("\n","").trim.isEmpty) {
+    if (rp.format != "ascii" || results.replace("\n", "").trim.isEmpty) {
       0
     } else {
       val headersAndBorders = 4
-      results.count(_=='\n') - headersAndBorders
+      results.count(_ == '\n') - headersAndBorders
     }
   }
 }
 
-case class GremlinQuery(sources: Seq[String], imports: Seq[String], queries: Seq[String], rp: RequestParameters) extends PopulateAndQuery {
-  override type T = Either[(Int,String),Dataset]
+case class GremlinQuery(sources: Seq[String], imports: Seq[String], queries: Seq[String], rp: RequestParameters)
+    extends PopulateAndQuery {
+  override type T = Either[(Int, String), Dataset]
 
   import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -599,18 +673,32 @@ case class GremlinQuery(sources: Seq[String], imports: Seq[String], queries: Seq
   def engine = SgEngines.engines.getOrElse("Gremlin", throw new Exception("Could not load Gremlin engine!"))
 
   // todo. Stay DRY. Massage some of PopulateAndQuery code to have a basic String evaluate.
-  override def evaluate(jarsImporter: JarsImporter,queriesImporter: QueriesImporter,sourcesImporter: SourcesImporter): Future[(String,Map[String,String])] = {
-    val ntriplesFutures: Seq[Future[(Option[TimedRequest],Either[(Int,String),Dataset])]] = populate(extractBody)
+  override def evaluate(jarsImporter: JarsImporter,
+                        queriesImporter: QueriesImporter,
+                        sourcesImporter: SourcesImporter): Future[(String, Map[String, String])] = {
+    val ntriplesFutures: Seq[Future[(Option[TimedRequest], Either[(Int, String), Dataset])]] = populate(extractBody)
 
     //todo finish implement verbodeMode for Gremlin as well
-    val first = ntriplesFutures.head.map(_._2).map { case Left(_) => DatasetFactory.create() case Right(ds) => ds }
+    val first = ntriplesFutures.head.map(_._2).map {
+      case Left(_)   => DatasetFactory.create()
+      case Right(ds) => ds
+    }
     val modelFuture = (first /: ntriplesFutures.tail) {
-      case (fm, fs) => fm.flatMap(m => fs.map(_._2 match { case Left(_) => m case Right(ds) => JenaUtils.merge(ds, m) }))
+      case (fm, fs) =>
+        fm.flatMap(
+          m =>
+            fs.map(_._2 match {
+              case Left(_)   => m
+              case Right(ds) => JenaUtils.merge(ds, m)
+            })
+        )
     }
 
     modelFuture.map { m =>
       // todo support system fields in Gremlin
-      val ds = DatasetFactory.create(JenaUtils.filter(m.getDefaultModel){ s => !s.getPredicate.getNameSpace.contains("meta/sys") })
+      val ds = DatasetFactory.create(JenaUtils.filter(m.getDefaultModel) { s =>
+        !s.getPredicate.getNameSpace.contains("meta/sys")
+      })
       engine.eval(ds, queries.head) -> Map.empty //todo for each query in queries
     }
   }
@@ -620,10 +708,19 @@ case class OverallSparqlQuery(query: String, host: String, rp: RequestParameters
 
 case object StatusRequest
 
-case class RequestParameters(format: String, quads: Boolean, verbose: Boolean, showGraph: Boolean,
-                             forceUsingFile: Boolean, disableImportsCache: Boolean, execLogging: Boolean,
-                             doNotOptimize: Boolean, intermediateLimit: Long, resultsLimit: Long,
-                             explainOnly: Boolean, customParams: Map[String,String] = Map(), bypassCache: Boolean)
+case class RequestParameters(format: String,
+                             quads: Boolean,
+                             verbose: Boolean,
+                             showGraph: Boolean,
+                             forceUsingFile: Boolean,
+                             disableImportsCache: Boolean,
+                             execLogging: Boolean,
+                             doNotOptimize: Boolean,
+                             intermediateLimit: Long,
+                             resultsLimit: Long,
+                             explainOnly: Boolean,
+                             customParams: Map[String, String] = Map(),
+                             bypassCache: Boolean)
 object RequestParameters {
   def apply(req: Request[_], formatByRest: Option[String]) = new RequestParameters(
     // todo formatByRest is deprecated. One day we should be stop respecting it.
@@ -638,24 +735,26 @@ object RequestParameters {
     intermediateLimit = req.getQueryString("intermediate-limit").map(_.toLong).getOrElse(10000), // this one is for _sparql, it's not in use in _sp
     resultsLimit = req.getQueryString("results-limit").map(_.toLong).getOrElse(10000), // this one is for _sparql, it's not in use in _sp
     explainOnly = req.getQueryString("explain-only").isDefined, // this one is for _sparql, it's not in use in _sp
-    customParams = req.queryString.
-      toSeq.
-      collect{ case (key, values) if key.startsWith("sp.") => "(?i)sp\\.".r.replaceAllIn(key, "").toLowerCase -> values.head }.
-      toMap,
+    customParams = req.queryString.toSeq.collect {
+      case (key, values) if key.startsWith("sp.") => "(?i)sp\\.".r.replaceAllIn(key, "").toLowerCase -> values.head
+    }.toMap,
     bypassCache = req.getQueryString("bypass-cache").isDefined
   )
 }
 
 object SgEngines extends LazyLogging {
-  lazy val engines: Map[String,SgEngineClient] = {
+  lazy val engines: Map[String, SgEngineClient] = {
     val jarsFolder = new File("plugins/sg-engines").getAbsoluteFile
-    if(jarsFolder.exists) {
-      jarsFolder.listFiles.map { f =>
-        val langName = f.getName.replace(".jar", "").capitalize
-        loadSgEngine(f.getAbsolutePath, langName).map(langName -> _)
-      }.collect { case Some(t) => t }.toMap
+    if (jarsFolder.exists) {
+      jarsFolder.listFiles
+        .map { f =>
+          val langName = f.getName.replace(".jar", "").capitalize
+          loadSgEngine(f.getAbsolutePath, langName).map(langName -> _)
+        }
+        .collect { case Some(t) => t }
+        .toMap
     } else {
-      Map[String,SgEngineClient]()
+      Map[String, SgEngineClient]()
     }
   }
 
@@ -669,7 +768,7 @@ object SgEngines extends LazyLogging {
 }
 
 trait Importer[A] { this: LazyLogging =>
-  type Fields = Map[String,Set[FieldValue]]
+  type Fields = Map[String, Set[FieldValue]]
 
   def crudServiceFS: CRUDServiceFS
 
@@ -681,13 +780,20 @@ trait Importer[A] { this: LazyLogging =>
 
   def readFileInfoton(path: String): Future[FileInfotonContent] = {
     import scala.concurrent.ExecutionContext.Implicits.global
-    crudServiceFS.getInfoton(path, None, None).map(res => (res: @unchecked) match {
-      case Some(Everything(FileInfoton(_, _, _, _, fields, Some(content),_))) => FileInfotonContent(content.data.get, fields.getOrElse(Map()))
-      case x => logger.debug(s"Could not fetch $path, got $x"); throw new RuntimeException(s"Could not fetch $path")
-    })
+    crudServiceFS
+      .getInfoton(path, None, None)
+      .map(
+        res =>
+          (res: @unchecked) match {
+            case Some(Everything(FileInfoton(_, _, _, _, fields, Some(content), _))) =>
+              FileInfotonContent(content.data.get, fields.getOrElse(Map()))
+            case x =>
+              logger.debug(s"Could not fetch $path, got $x"); throw new RuntimeException(s"Could not fetch $path")
+        }
+      )
   }
 
-  protected def extractFileNameFromPath(path: String) = path.substring(path.lastIndexOf("/")+1)
+  protected def extractFileNameFromPath(path: String) = path.substring(path.lastIndexOf("/") + 1)
 }
 
 //TODO: if really needed, do it appropriately with injection
@@ -705,14 +811,20 @@ class QueriesImporter(override val crudServiceFS: CRUDServiceFS) extends Importe
   private val importDirective = "#cmwell-import"
 
   private lazy val dataCache: LoadingCache[String, String] =
-    CacheBuilder.newBuilder().maximumSize(200).expireAfterWrite(15, TimeUnit.MINUTES).
-      build(new CacheLoader[String, String] {
+    CacheBuilder
+      .newBuilder()
+      .maximumSize(200)
+      .expireAfterWrite(15, TimeUnit.MINUTES)
+      .build(new CacheLoader[String, String] {
         override def load(key: String) = Await.result(readTextualFileInfoton(key), 5.seconds)
       })
 
   private lazy val directoriesCache: LoadingCache[String, Seq[String]] =
-    CacheBuilder.newBuilder().maximumSize(20).expireAfterWrite(15, TimeUnit.MINUTES).
-      build(new CacheLoader[String, Seq[String]] {
+    CacheBuilder
+      .newBuilder()
+      .maximumSize(20)
+      .expireAfterWrite(15, TimeUnit.MINUTES)
+      .build(new CacheLoader[String, Seq[String]] {
         override def load(key: String) = Await.result(listChildren(key), 5.seconds)
       })
 
@@ -738,9 +850,7 @@ class QueriesImporter(override val crudServiceFS: CRUDServiceFS) extends Importe
   }
 
   private def extractInlineImportsFrom(query: String): Set[String] = {
-    query.lines.filter(_.startsWith(importDirective)).
-      flatMap(_.replace(importDirective + " ", "").split(",")).
-      toSet
+    query.lines.filter(_.startsWith(importDirective)).flatMap(_.replace(importDirective + " ", "").split(",")).toSet
   }
 
   override def invalidateCaches() = {
@@ -750,7 +860,8 @@ class QueriesImporter(override val crudServiceFS: CRUDServiceFS) extends Importe
 
   private def explodeWildcardImports(importsPaths: Seq[String]) = {
     import scala.concurrent.ExecutionContext.Implicits.global
-    val (wildcardImports, plainImports) = importsPaths.map(toAbsolute).partition(imprt => wildcards.exists(imprt.endsWith))
+    val (wildcardImports, plainImports) =
+      importsPaths.map(toAbsolute).partition(imprt => wildcards.exists(imprt.endsWith))
     val normalizedWildcardImports = wildcardImports.map(_.dropRight(2)) // get rid of `/<wildcard>`
     Future.traverse(normalizedWildcardImports)(directoriesCache.getAsync).map(_.flatten ++ plainImports).map(_.distinct)
   }
@@ -777,18 +888,27 @@ class JarsImporter(override val crudServiceFS: CRUDServiceFS) extends Importer[J
   case class LoadedJar(tempPhysicalPath: String, jenaFunctions: Seq[JenaFunction])
 
   private lazy val jarsCache: LoadingCache[String, LoadedJar] =
-    CacheBuilder.newBuilder().maximumSize(200).expireAfterAccess(15, TimeUnit.MINUTES).removalListener(new RemovalListener[String, LoadedJar] {
-      override def onRemoval(notification: RemovalNotification[String, LoadedJar]): Unit = { new File(notification.getValue.tempPhysicalPath).delete()
-      }}).build(new CacheLoader[String, LoadedJar] {
+    CacheBuilder
+      .newBuilder()
+      .maximumSize(200)
+      .expireAfterAccess(15, TimeUnit.MINUTES)
+      .removalListener(new RemovalListener[String, LoadedJar] {
+        override def onRemoval(notification: RemovalNotification[String, LoadedJar]): Unit = {
+          new File(notification.getValue.tempPhysicalPath).delete()
+        }
+      })
+      .build(new CacheLoader[String, LoadedJar] {
         override def load(key: String) = self.load(Await.result(readFileInfoton(key), 15.seconds))
       })
 
   override def fetch(paths: Seq[String]): Future[Vector[JenaFunction]] =
-    travector(paths) { path => jarsCache.getAsync(s"$mandatoryBaseJarsPath$path") }.map(_.flatMap(_.jenaFunctions))
+    travector(paths) { path =>
+      jarsCache.getAsync(s"$mandatoryBaseJarsPath$path")
+    }.map(_.flatMap(_.jenaFunctions))
 
   private def load(fileInfotonContent: FileInfotonContent): LoadedJar = {
     val FileInfotonContent(data, fields) = fileInfotonContent
-    val excludes = fields.getOrElse("exclude", Set()).collect { case FString(value,_,_) => value }
+    val excludes = fields.getOrElse("exclude", Set()).collect { case FString(value, _, _) => value }
 
     val path = generateTempFileName
     writeToFile(path)(data) // temp file will be deleted onRemoval from cache
@@ -809,7 +929,9 @@ class JarsImporter(override val crudServiceFS: CRUDServiceFS) extends Importer[J
 // Since we know the className in advance, we can use it aside with the implementation in order to register in Jena's FunctionRegistry.
 case class NamedAnonJenaFuncImpl(name: String, impl: JenaFunction)
 
-class SourcesImporter(override val crudServiceFS: CRUDServiceFS) extends Importer[NamedAnonJenaFuncImpl] with LazyLogging {
+class SourcesImporter(override val crudServiceFS: CRUDServiceFS)
+    extends Importer[NamedAnonJenaFuncImpl]
+    with LazyLogging {
   import cmwell.util.collections.LoadingCacheExtensions
   import cmwell.util.concurrent.travector
 
@@ -817,27 +939,35 @@ class SourcesImporter(override val crudServiceFS: CRUDServiceFS) extends Importe
 
   override def fetch(paths: Seq[String]): Future[Vector[NamedAnonJenaFuncImpl]] = {
     import scala.concurrent.ExecutionContext.Implicits.global
-    travector(paths) { path => functionsCache.getAsync(s"$mandatoryBaseSourcesPath$path") }
+    travector(paths) { path =>
+      functionsCache.getAsync(s"$mandatoryBaseSourcesPath$path")
+    }
   }
 
   override def invalidateCaches(): Unit = functionsCache.invalidateAll()
 
   private lazy val functionsCache: LoadingCache[String, NamedAnonJenaFuncImpl] =
-    CacheBuilder.newBuilder().maximumSize(200).expireAfterAccess(15, TimeUnit.MINUTES).
-      build(new CacheLoader[String, NamedAnonJenaFuncImpl] {
-        override def load(key: String) = eval(new String(Await.result(readFileInfoton(key), 15.seconds).content,"UTF-8"), className = extractFileNameFromPath(key).replace(".scala",""))
+    CacheBuilder
+      .newBuilder()
+      .maximumSize(200)
+      .expireAfterAccess(15, TimeUnit.MINUTES)
+      .build(new CacheLoader[String, NamedAnonJenaFuncImpl] {
+        override def load(key: String) =
+          eval(new String(Await.result(readFileInfoton(key), 15.seconds).content, "UTF-8"),
+               className = extractFileNameFromPath(key).replace(".scala", ""))
       })
 
   def eval(source: String, className: String): NamedAnonJenaFuncImpl = { // WARNING: Black magic.
     import tools.reflect.ToolBox
     val tb = reflect.runtime.currentMirror.mkToolBox()
-    val impl = tb.eval(tb.parse(s"import scala._\nimport Predef._\n$source\n new $className()")).asInstanceOf[JenaFunction]
+    val impl =
+      tb.eval(tb.parse(s"import scala._\nimport Predef._\n$source\n new $className()")).asInstanceOf[JenaFunction]
     NamedAnonJenaFuncImpl(className, impl)
   }
 }
 
 object JenaUtils {
-  def getNamedModels(ds: Dataset): Map[String,Model] = {
+  def getNamedModels(ds: Dataset): Map[String, Model] = {
     import scala.collection.JavaConversions._
     ds.listNames().map(name => name -> ds.getNamedModel(name)).toMap
   }
@@ -849,16 +979,17 @@ object JenaUtils {
   }
 
   def size(dataset: Dataset): Long = {
-    dataset.getDefaultModel.size + getNamedModels(dataset).map{case(n,m)=>m.size}.sum
+    dataset.getDefaultModel.size + getNamedModels(dataset).map { case (n, m) => m.size }.sum
   }
 
-  def merge(ds1: Dataset, ds2: Dataset): Dataset = flatten(Seq(ds1,ds2))
+  def merge(ds1: Dataset, ds2: Dataset): Dataset = flatten(Seq(ds1, ds2))
 
   def flatten(dss: Seq[Dataset]): Dataset = {
     val resDs = DatasetFactory.create()
     dss.foreach { ds =>
       resDs.getDefaultModel.add(ds.getDefaultModel)
-      getNamedModels(ds).foreach { case (name, namedModel) =>
+      getNamedModels(ds).foreach {
+        case (name, namedModel) =>
           resDs.addNamedModel(name, namedModel)
       }
     }
@@ -875,7 +1006,7 @@ object JenaUtils {
   def filter(ds: Dataset)(predicate: Statement => Boolean): Dataset = {
     val filteredDs = DatasetFactory.create()
     filteredDs.setDefaultModel(filter(ds.getDefaultModel)(predicate))
-    getNamedModels(ds).foreach { case (name,model) => filteredDs.addNamedModel(name, filter(model)(predicate)) }
+    getNamedModels(ds).foreach { case (name, model) => filteredDs.addNamedModel(name, filter(model)(predicate)) }
     filteredDs
   }
 
@@ -891,7 +1022,8 @@ object JenaUtils {
 trait SpFileUtils extends LazyLogging {
   private val basePath = scala.sys.env.getOrElse("TMPDIR", "/tmp/") + Settings.queryResultsTempFileBaseName
 
-  protected def generateTempFileName = s"${basePath}_${java.lang.System.currentTimeMillis}_${Random.alphanumeric.take(10).mkString}"
+  protected def generateTempFileName =
+    s"${basePath}_${java.lang.System.currentTimeMillis}_${Random.alphanumeric.take(10).mkString}"
 
   protected def writeToFile(filename: String)(content: Array[Byte]) = {
     val path = Paths.get(filename)
@@ -905,11 +1037,15 @@ trait SpFileUtils extends LazyLogging {
   protected def deleteTempFiles(): Unit = {
     val (directory, prefix) = basePath.splitAt(basePath.lastIndexOf('/') + 1)
     if (prefix.isEmpty) {
-      logger.warn("CW is trying to delete tempFiles but file prefix is empty. HALTING AND NOT DELETING // we only want to delete our temp files...")
+      logger.warn(
+        "CW is trying to delete tempFiles but file prefix is empty. HALTING AND NOT DELETING // we only want to delete our temp files..."
+      )
     } else {
       Try {
         Option(new File(directory)).foreach { f =>
-          val cwTmpFiles = f.list(new FilenameFilter() { override def accept(file: File, filename: String) = filename.startsWith(prefix) })
+          val cwTmpFiles = f.list(new FilenameFilter() {
+            override def accept(file: File, filename: String) = filename.startsWith(prefix)
+          })
           cwTmpFiles.foreach(new File(_).delete())
         }
       }

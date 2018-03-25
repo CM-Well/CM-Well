@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.ctrl.hc
 
 import akka.util.Timeout
@@ -32,29 +30,41 @@ import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
- * Created by michael on 4/11/16.
- */
+  * Created by michael on 4/11/16.
+  */
 object HealthControl {
   private val clusterLogger = LoggerFactory.getLogger("cluster_state")
 
-  lazy val services = Map("CassandraMonitorActor" -> ServiceInitInfo(classOf[CassandraMonitorActor], None, Grid.hostName, 0, hcSampleInterval),
-                     "DcMonitorActor" -> ServiceInitInfo(classOf[DcMonitorActor], None, Grid.hostName, 0, hcSampleInterval),
-                     "HealthActor" -> ServiceInitInfo(classOf[HealthActor], None))
+  lazy val services = Map(
+    "CassandraMonitorActor" -> ServiceInitInfo(classOf[CassandraMonitorActor],
+                                               None,
+                                               Grid.hostName,
+                                               0,
+                                               hcSampleInterval),
+    "DcMonitorActor" -> ServiceInitInfo(classOf[DcMonitorActor], None, Grid.hostName, 0, hcSampleInterval),
+    "HealthActor" -> ServiceInitInfo(classOf[HealthActor], None)
+  )
 
   def init: Unit = {
     import akka.pattern.ask
     implicit val timeout = Timeout(3.seconds)
 
-
     def joinCtrlGrid: Unit = {
       val forceMajor = sys.env.get("FORCE").isDefined
       clusterLogger.info(s"force majour is $forceMajor")
-      Try(Await.result(cmwell.util.concurrent.retry(10, 5.seconds){ HealthActor.ref ? NodeJoinRequest(host) }.mapTo[JoinResponse], 30.seconds)) match {
+      Try(
+        Await.result(
+          cmwell.util.concurrent.retry(10, 5.seconds) { HealthActor.ref ? NodeJoinRequest(host) }.mapTo[JoinResponse],
+          30.seconds
+        )
+      ) match {
         case Success(r) =>
           clusterLogger.info(s"$host got $r from the cluster $clusterName")
           r match {
             case response if forceMajor =>
-              clusterLogger.info(s"$host received response $response from the cluster $clusterName. Doing force majour will boot cm-well components.")
+              clusterLogger.info(
+                s"$host received response $response from the cluster $clusterName. Doing force majour will boot cm-well components."
+              )
               HealthActor.ref ! RemoveFromDownNodes(host)
               CmwellController.start
             case JoinOk =>
@@ -67,7 +77,9 @@ object HealthControl {
           }
         case Failure(err) =>
           clusterLogger.error(err.getMessage, err)
-          clusterLogger.info(s"$host didn't receive response from the cluster $clusterName, will boot cm-well components.")
+          clusterLogger.info(
+            s"$host didn't receive response from the cluster $clusterName, will boot cm-well components."
+          )
           CmwellController.start
       }
     }
@@ -84,9 +96,9 @@ object HealthControl {
     Grid.create(classOf[PingActor], "PingActor")
     Grid.serviceRef(TaskExecutorActor.name)
     //Thread.sleep(20000)
-   // Grid.system.scheduler.scheduleOnce(20.seconds) {
-      joinCtrlGrid
-      InMemDMap.aggregate("knownHosts", host)
+    // Grid.system.scheduler.scheduleOnce(20.seconds) {
+    joinCtrlGrid
+    InMemDMap.aggregate("knownHosts", host)
     //}
   }
 }

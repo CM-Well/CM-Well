@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.downloader.consumer.japi
 
 import java.io.InputStream
@@ -32,6 +30,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 object DownloaderUtils {
+
   /**
     * Downloads infotons' data according to given CM-Well token (position)
     * @param baseUrl address of destination CM-Well
@@ -56,17 +55,18 @@ object DownloaderUtils {
     implicit val system = ActorSystem("reactive-downloader")
     implicit val mat = ActorMaterializer()
 
-    Downloader.getChunkData(
-      baseUrl   = baseUrl,
-      path      = if (path == null) "/" else path,
-      params    = if (params == null) "" else params,
-      qp        = if (qp == null) "" else qp,
-      format    = if (format == null) "trig" else format,
-      recursive = recursive,
-      token     = Option(token)
-    )
-    .andThen { case _ => cleanup()      }
-    .andThen { case _ => onFinish.run() }
+    Downloader
+      .getChunkData(
+        baseUrl = baseUrl,
+        path = if (path == null) "/" else path,
+        params = if (params == null) "" else params,
+        qp = if (qp == null) "" else qp,
+        format = if (format == null) "trig" else format,
+        recursive = recursive,
+        token = Option(token)
+      )
+      .andThen { case _ => cleanup() }
+      .andThen { case _ => onFinish.run() }
   }
 
   /**
@@ -91,40 +91,43 @@ object DownloaderUtils {
     implicit val system = ActorSystem("reactive-downloader")
     implicit val mat = ActorMaterializer()
 
-    Downloader.getChunkPaths(
-      baseUrl      = baseUrl,
-      path      = if (path == null) "/" else path,
-      params    = if (params == null) "" else params,
-      qp        = if (qp == null) "" else qp,
-      recursive = recursive,
-      token     = Option(token)
-    )
-      .andThen { case _ => cleanup()      }
+    Downloader
+      .getChunkPaths(
+        baseUrl = baseUrl,
+        path = if (path == null) "/" else path,
+        params = if (params == null) "" else params,
+        qp = if (qp == null) "" else qp,
+        recursive = recursive,
+        token = Option(token)
+      )
+      .andThen { case _ => cleanup() }
       .andThen { case _ => onFinish.run() }
   }
 
-  def createInputStream(baseUrl: String,
-                        path: String = "/",
-                        params: String = "",
-                        qp: String = "",
-                        format: String = "trig",
-                        recursive: Boolean = false,
-                        isBulk: Boolean = false,
-                        token: Option[String] = None)
-                       (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
-    val downloader = new Downloader(
-      baseUrl = baseUrl,
-      path = path,
-      params = params,
-      format = format,
-      qp = qp,
-      isBulk = isBulk,
-      recursive = recursive)
+  def createInputStream(
+    baseUrl: String,
+    path: String = "/",
+    params: String = "",
+    qp: String = "",
+    format: String = "trig",
+    recursive: Boolean = false,
+    isBulk: Boolean = false,
+    token: Option[String] = None
+  )(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
+    val downloader = new Downloader(baseUrl = baseUrl,
+                                    path = path,
+                                    params = params,
+                                    format = format,
+                                    qp = qp,
+                                    isBulk = isBulk,
+                                    recursive = recursive)
 
-    downloader.createTsvSource(token)(ec).async
-      .map {case ((token, tsv),_) => token -> tsv.uuid }
+    downloader
+      .createTsvSource(token)(ec)
+      .async
+      .map { case ((token, tsv), _) => token -> tsv.uuid }
       .via(downloader.downloadDataFromUuids()(ec))
-      .map{ case (token, data) => data }
+      .map { case (token, data) => data }
       .via(cmwell.tools.data.utils.akka.lineSeparatorFrame)
       .via(GroupChunker(GroupChunker.formatToGroupExtractor(format)))
       .map(concatByteStrings(_, endl))
@@ -156,7 +159,7 @@ object DownloaderUtils {
     implicit val system = ActorSystem("reactive-downloader")
     implicit val mat = ActorMaterializer()
 
-    val AWAIT_TIME = Duration(timeoutMillis, MILLISECONDS )
+    val AWAIT_TIME = Duration(timeoutMillis, MILLISECONDS)
 
     /**
       * Implementation of [Iterator] interface using CM-Well consumer API
@@ -175,8 +178,9 @@ object DownloaderUtils {
       override def hasNext: Boolean = moreToIterate
 
       override def next(): String = {
-        val tokenAndDataFuture = downloader.getChunkData(currToken)
-          .map{ case (token, data) => TokenAndData(token = token, data = data) }
+        val tokenAndDataFuture = downloader
+          .getChunkData(currToken)
+          .map { case (token, data) => TokenAndData(token = token, data = data) }
 
         val tokenAndData = Await.result(tokenAndDataFuture, AWAIT_TIME)
 
@@ -195,23 +199,24 @@ object DownloaderUtils {
     }
 
     val downloader = new Downloader(
-      baseUrl   = baseUrl,
-      path      = if (path == null) "/" else path,
-      params    = if (params == null) "" else params,
-      qp        = if (qp == null) "" else qp,
-      format    = if (format == null) "trig" else format,
+      baseUrl = baseUrl,
+      path = if (path == null) "/" else path,
+      params = if (params == null) "" else params,
+      qp = if (qp == null) "" else qp,
+      format = if (format == null) "trig" else format,
       recursive = recursive
     )
 
     // check if need to calculate token
-    val tokenFuture = if (token == null) Downloader.getToken(
-      baseUrl   = baseUrl,
-      path      = if (path == null) "/" else path,
-      params    = if (params == null) "" else params,
-      qp        = if (qp == null) "" else qp,
-      recursive = recursive,
-      isBulk    = false)
-    else Future.successful(token)
+    val tokenFuture =
+      if (token == null)
+        Downloader.getToken(baseUrl = baseUrl,
+                            path = if (path == null) "/" else path,
+                            params = if (params == null) "" else params,
+                            qp = if (qp == null) "" else qp,
+                            recursive = recursive,
+                            isBulk = false)
+      else Future.successful(token)
 
     val tokenValue = Await.result(tokenFuture, AWAIT_TIME)
 
@@ -229,17 +234,16 @@ object DownloaderUtils {
     implicit val system = ActorSystem("reactive-downloader")
     implicit val mat = ActorMaterializer()
 
-    val dataSource = Downloader.createDataSource(
-      baseUrl = baseUrl,
-      path = path,
-      params = params,
-      qp = qp,
-      recursive = recursive,
-      format = format,
-      token = Option(token))
+    val dataSource = Downloader.createDataSource(baseUrl = baseUrl,
+                                                 path = path,
+                                                 params = params,
+                                                 qp = qp,
+                                                 recursive = recursive,
+                                                 format = format,
+                                                 token = Option(token))
 
     dataSource
-      .map{ case (token, data) => data }
+      .map { case (token, data) => data }
       .via(GroupChunker(GroupChunker.formatToGroupExtractor("ntriples")))
       .map(concatByteStrings(_, endl))
       .runWith(StreamConverters.asJavaStream())
@@ -256,17 +260,16 @@ object DownloaderUtils {
     implicit val system = ActorSystem("reactive-downloader")
     implicit val mat = ActorMaterializer()
 
-    val dataSource = Downloader.createDataSource(
-      baseUrl = baseUrl,
-      path = path,
-      params = params,
-      qp = qp,
-      recursive = recursive,
-      format = format,
-      token = Option(token))
+    val dataSource = Downloader.createDataSource(baseUrl = baseUrl,
+                                                 path = path,
+                                                 params = params,
+                                                 qp = qp,
+                                                 recursive = recursive,
+                                                 format = format,
+                                                 token = Option(token))
 
     dataSource
-      .map{ case (token, data) => data }
+      .map { case (token, data) => data }
       .via(GroupChunker(GroupChunker.formatToGroupExtractor("ntriples")))
       .map(concatByteStrings(_, endl))
       .runWith(StreamConverters.asInputStream(FiniteDuration(timeout, TimeUnit.MILLISECONDS)))

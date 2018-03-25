@@ -12,25 +12,32 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.ctrl.controllers
 import cmwell.ctrl.hc.ZookeeperUtils
 
 import scala.concurrent._
 import scala.concurrent.ExecutionContext.Implicits.global
+
 /**
- * Created by michael on 2/16/15.
- */
+  * Created by michael on 2/16/15.
+  */
 object CmwellController {
-  val components : Seq[ComponentController] = Seq(CassandraController, ElasticsearchController, KafkaController, BgController, WebserverController, CwController, DcController)
+  val components: Seq[ComponentController] = Seq(CassandraController,
+                                                 ElasticsearchController,
+                                                 KafkaController,
+                                                 BgController,
+                                                 WebserverController,
+                                                 CwController,
+                                                 DcController)
 
   def start {
     blocking {
       Future {
-        components.foreach{c => c.start; Thread.sleep(2000)}
+        components.foreach { c =>
+          c.start; Thread.sleep(2000)
+        }
 
-        if(ZookeeperUtils.isZkNode)
+        if (ZookeeperUtils.isZkNode)
           ZookeeperController.start
       }
     }
