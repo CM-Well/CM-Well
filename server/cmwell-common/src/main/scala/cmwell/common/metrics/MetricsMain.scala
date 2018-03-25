@@ -12,20 +12,23 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.common.metrics
+
 
 import java.util.concurrent.TimeUnit
 //import com.codahale.metrics.graphite.{GraphiteReporter, Graphite}
-import com.codahale.metrics.{MetricFilter, MetricRegistry, Slf4jReporter}
+import com.codahale.metrics.{Slf4jReporter, MetricFilter, MetricRegistry}
 import com.codahale.metrics.jmx.JmxReporter
 import com.typesafe.config.ConfigFactory
 import org.slf4j.LoggerFactory
 
 /**
-  * User: israel
-  * Date: 8/27/14
-  * Time: 21:10
-  */
+ * User: israel
+ * Date: 8/27/14
+ * Time: 21:10
+ */
 object MetricsMain {
   // Application wide metric registry
   val metricRegistry = new MetricRegistry()
@@ -53,9 +56,8 @@ object MetricsMain {
 
   // report metrics through log4j, if requested
   val reportMetrcisSlf4j = config.getBoolean("metrics.reportMetricsSlf4j")
-  if (reportMetrcisSlf4j) {
-    val slf4jReporter = Slf4jReporter
-      .forRegistry(metricRegistry)
+  if(reportMetrcisSlf4j){
+    val slf4jReporter = Slf4jReporter.forRegistry(metricRegistry)
       .outputTo(LoggerFactory.getLogger("cmwell.metrics"))
       .convertRatesTo(TimeUnit.SECONDS)
       .convertDurationsTo(TimeUnit.MILLISECONDS)

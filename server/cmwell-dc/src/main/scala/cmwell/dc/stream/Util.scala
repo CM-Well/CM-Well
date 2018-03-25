@@ -31,8 +31,13 @@ object Util extends LazyLogging {
     ex match {
       case badResponse: FuturedBodyException =>
         badResponse.body.onComplete {
-          case Success(body) => logger.trace(s"${badResponse.getCause.getMessage} body: $body")
-          case Failure(e)    => logger.trace(s"${badResponse.getCause.getMessage} body: Couldn't get it. Exception: ", e)
+          case Success(body) =>
+            logger.trace(s"${badResponse.getCause.getMessage} body: $body")
+          case Failure(e) =>
+            logger.trace(
+              s"${badResponse.getCause.getMessage} body: Couldn't get it. Exception: ",
+              e
+            )
         }
       case _ =>
     }
@@ -42,8 +47,13 @@ object Util extends LazyLogging {
     ex match {
       case badResponse: FuturedBodyException =>
         badResponse.body.onComplete {
-          case Success(body) => logger.info(s"${badResponse.getCause.getMessage} body: $body")
-          case Failure(e)    => logger.info(s"${badResponse.getCause.getMessage} body: Couldn't get it. Exception: ", e)
+          case Success(body) =>
+            logger.info(s"${badResponse.getCause.getMessage} body: $body")
+          case Failure(e) =>
+            logger.info(
+              s"${badResponse.getCause.getMessage} body: Couldn't get it. Exception: ",
+              e
+            )
         }
       case _ =>
     }
@@ -53,8 +63,13 @@ object Util extends LazyLogging {
     ex match {
       case badResponse: FuturedBodyException =>
         badResponse.body.onComplete {
-          case Success(body) => logger.error(s"${badResponse.getCause.getMessage} body: $body")
-          case Failure(e)    => logger.error(s"${badResponse.getCause.getMessage} body: Couldn't get it. Exception: ", e)
+          case Success(body) =>
+            logger.error(s"${badResponse.getCause.getMessage} body: $body")
+          case Failure(e) =>
+            logger.error(
+              s"${badResponse.getCause.getMessage} body: Couldn't get it. Exception: ",
+              e
+            )
         }
       case _ =>
     }
@@ -64,26 +79,22 @@ object Util extends LazyLogging {
     ex match {
       case badResponse: FuturedBodyException =>
         badResponse.body.onComplete {
-          case Success(body) => logger.warn(s"${badResponse.getCause.getMessage} body: $body")
-          case Failure(e)    => logger.warn(s"${badResponse.getCause.getMessage} body: Couldn't get it. Exception: ", e)
+          case Success(body) =>
+            logger.warn(s"${badResponse.getCause.getMessage} body: $body")
+          case Failure(e) =>
+            logger.warn(
+              s"${badResponse.getCause.getMessage} body: Couldn't get it. Exception: ",
+              e
+            )
         }
       case _ =>
     }
   }
 
-  def headerString(header: HttpHeader): String = header.name + ":" + header.value
+  def headerString(header: HttpHeader): String =
+    header.name + ":" + header.value
 
-  def headersString(headers: Seq[HttpHeader]): String = headers.map(headerString).mkString("[", ",", "]")
+  def headersString(headers: Seq[HttpHeader]): String =
+    headers.map(headerString).mkString("[", ",", "]")
 
-  def decodeResponse(response: HttpResponse): HttpResponse = {
-    val decoder = response.encoding match {
-      case HttpEncodings.gzip ⇒
-        Gzip
-      case HttpEncodings.deflate ⇒
-        Deflate
-      case HttpEncodings.identity ⇒
-        NoCoding
-    }
-    decoder.decodeMessage(response)
-  }
 }

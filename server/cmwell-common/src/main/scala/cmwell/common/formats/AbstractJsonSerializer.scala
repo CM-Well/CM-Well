@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.common.formats
 
 import com.fasterxml.jackson.core.JsonFactory
@@ -20,8 +22,9 @@ import org.joda.time.DateTimeZone
 import org.joda.time.format.ISODateTimeFormat
 
 /**
-  * Created by gilad on 2/26/15.
-  */
+ * Created by gilad on 2/26/15.
+ */
+
 object SettingsHelper {
   val config = ConfigFactory.load()
   val dataCenter = config.getString("dataCenter.id")
@@ -33,17 +36,18 @@ class AbstractJsonSerializer {
   val dateFormatter = ISODateTimeFormat.dateTime().withZone(DateTimeZone.UTC)
 }
 
+
 trait NsSplitter {
   def splitNamespaceField(field: String) = field.lastIndexOf(".") match {
     case -1 => "nn" -> field
-    case i  => field.substring(i + 1) -> field.substring(0, i).replace('.', '_')
+    case i => field.substring(i+1) -> field.substring(0,i).replace('.','_')
   }
 
   def reverseNsTypedField(field: String) = {
-    if (field.startsWith("system.") || field.startsWith("content.") || field.startsWith("link.")) field
+    if(field.startsWith("system.") || field.startsWith("content.") || field.startsWith("link.")) field
     else {
       val (ns, typedField) = splitNamespaceField(field)
-      "fields." + ns + "." + typedField.replace('.', '_')
+      "fields." + ns + "." + typedField.replace('.','_')
     }
   }
 }

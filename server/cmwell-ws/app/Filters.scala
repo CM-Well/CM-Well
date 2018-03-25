@@ -12,17 +12,19 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 import javax.inject._
 import play.api.http.DefaultHttpFilters
 import play.filters.gzip.GzipFilter
 import filters._
 
-class Filters @Inject()(gatt: GeneralAttributesFilter,
-                        gzip: GzipFilter,
-                        alog: AccessLoggingFilter,
-                        acin: AddCharsetIfNotExistFilter,
-                        afpa: AddFormatParameterIfOnlyAcceptHeaderProvidedFilter,
-                        auth: AuthFilter,
-                        hdrs: HeadersFilter,
-                        trsf: TrafficShapingFilter)
-    extends DefaultHttpFilters(gatt, gzip, alog, acin, afpa, auth, hdrs, trsf)
+class Filters @Inject() (gatt: GeneralAttributesFilter,
+                         gzip: GzipFilter,
+                         alog: AccessLoggingFilter,
+                         acin: AddCharsetIfNotExistFilter,
+                         afpa: AddFormatParameterIfOnlyAcceptHeaderProvidedFilter,
+                         auth: AuthFilter,
+                         hdrs: HeadersFilter,
+                         trsf: TrafficShapingFilter) extends DefaultHttpFilters(gatt, gzip,alog,acin,afpa,auth,hdrs,trsf)
+

@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -20,17 +22,13 @@ import scala.concurrent.{ExecutionContext, Future}
   * Created by yaakov on 12/14/16.
   */
 package object zcache {
-  def l1l2[K, V](task: K => Future[V])(
-    digest: K => String,
-    deserializer: Array[Byte] => V,
-    serializer: V => Array[Byte],
-    isCachable: V => Boolean = (_: V) => true
-  )(ttlSeconds: Int = 10, pollingMaxRetries: Int = 5, pollingInterval: Int = 1, l1Size: Int = 1024)(
-    zCache: ZCache
-  )(implicit ec: ExecutionContext): K => Future[V] = {
+  def l1l2[K,V](task: K => Future[V])
+               (digest: K => String, deserializer: Array[Byte] => V, serializer: V => Array[Byte], isCachable: V => Boolean = (_:V)=>true)
+               (ttlSeconds: Int = 10, pollingMaxRetries: Int = 5, pollingInterval: Int = 1, l1Size: Int = 1024)
+               (zCache: ZCache)
+               (implicit ec: ExecutionContext): K => Future[V] = {
 
-    def l2 =
-      zCache.memoize(task)(digest, deserializer, serializer, isCachable)(ttlSeconds, pollingMaxRetries, pollingInterval)
+    def l2 = zCache.memoize(task)(digest, deserializer, serializer, isCachable)(ttlSeconds, pollingMaxRetries, pollingInterval)
     L1Cache.memoize(l2)(digest, isCachable)(l1Size, ttlSeconds)
   }
 }

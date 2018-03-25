@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.util
 
 /**
@@ -29,7 +31,6 @@ sealed abstract class Box[+A] {
     * {@code false} otherwise.
     */
   def isEmpty: Boolean
-
   /**
     * Returns {@code true} if the box is Failure,
     * {@code false} otherwise.
@@ -96,7 +97,7 @@ sealed abstract class Box[+A] {
   /**
     * Returns an Option. `Some` if the box is full or `None` otherwise.
     */
-  def toOption: Option[A] = if (isEmpty) None else Some(this.get)
+  def toOption: Option[A] = if(isEmpty) None else Some(this.get)
 
   /**
     * Returns {@code true} if both objects are equal based on the contents of
@@ -105,20 +106,19 @@ sealed abstract class Box[+A] {
     */
   override def equals(other: Any): Boolean = (this, other) match {
     case (FullBox(x), FullBox(y)) => x == y
-    case (x, y: AnyRef)           => x eq y
-    case _                        => false
+    case (x, y: AnyRef) => x eq y
+    case _ => false
   }
 
   override def hashCode: Int = this match {
     case FullBox(x) => x.##
-    case _          => super.hashCode
+    case _ => super.hashCode
   }
 }
 
 object Box {
 
   import scala.language.implicitConversions
-
   /**
     * Implicitly converts a Box to an Iterable.
     * This is needed, for instance to be able to flatten a List[Box[_]].
@@ -130,7 +130,7 @@ object Box {
     */
   def apply[A](o: Option[A]): Box[A] = o match {
     case Some(value) => FullBox(value)
-    case None        => EmptyBox
+    case None => EmptyBox
   }
 
   /**
@@ -141,7 +141,8 @@ object Box {
     try {
       val value = f
       if (value == null) EmptyBox else FullBox(value)
-    } catch {
+    }
+    catch {
       case e: Exception => BoxedFailure(e)
     }
 
@@ -189,7 +190,7 @@ final case class BoxedFailure(exception: Throwable) extends BoxWithNothing {
 
   override final def equals(other: Any): Boolean = (this, other) match {
     case (BoxedFailure(x), BoxedFailure(a)) => (x) == (a)
-    case _                                  => false
+    case _ => false
   }
 
   override final def hashCode: Int = exception.##

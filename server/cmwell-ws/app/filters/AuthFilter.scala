@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package filters
 
 import akka.stream.Materializer
@@ -26,10 +28,7 @@ import cmwell.ws.Settings
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class AuthFilter @Inject()(authCache: EagerAuthCache, authUtils: AuthUtils, authorization: Authorization)(
-  implicit override val mat: Materializer,
-  ec: ExecutionContext
-) extends Filter {
+class AuthFilter @Inject()(authCache: EagerAuthCache, authUtils: AuthUtils, authorization: Authorization)(implicit override val mat: Materializer, ec: ExecutionContext) extends Filter {
 
   private val useAuthorizationParam = java.lang.Boolean.getBoolean("use.authorization")
   private val irrelevantPaths = Set("/ii/", "/_")
@@ -54,37 +53,30 @@ class AuthFilter @Inject()(authCache: EagerAuthCache, authUtils: AuthUtils, auth
   private def isAuthenticatedAndAuthorized(requestHeader: RequestHeader): (Boolean, String) = {
     def isRequestWriteToMeta = authUtils.isWriteToMeta(PermissionLevel(requestHeader.method), requestHeader.path)
 
-    if ((!useAuthorizationParam && !isRequestWriteToMeta) || irrelevantPaths.exists(requestHeader.path.startsWith))
+    if((!useAuthorizationParam && !isRequestWriteToMeta) || irrelevantPaths.exists(requestHeader.path.startsWith))
       return (true, "")
 
-    def withMsg(allowed: Boolean, msg: String) = (allowed, if (allowed) "" else msg)
+    def withMsg(allowed: Boolean, msg: String) = (allowed, if(allowed) "" else msg)
 
-    val request =
-      (normalizePath(requestHeader.path), PermissionLevel(requestHeader.method, requestHeader.getQueryString("op")))
+    val request = (normalizePath(requestHeader.path), PermissionLevel(requestHeader.method, requestHeader.getQueryString("op")))
 
-    val tokenOpt = requestHeader.headers
-      .get("X-CM-WELL-TOKEN2")
-      . // todo TOKEN2 is only supported for backward compatibility. one day we should stop supporting it
-      orElse(requestHeader.headers.get("X-CM-WELL-TOKEN"))
-      .orElse(requestHeader.getQueryString("token"))
-      .orElse(requestHeader.cookies.get("X-CM-WELL-TOKEN2").map(_.value))
-      . // todo TOKEN2 is only supported for backward compatibility. one day we should stop supporting it
-      orElse(requestHeader.cookies.get("X-CM-WELL-TOKEN").map(_.value))
-      .flatMap(Token(_, authCache))
+    val tokenOpt = requestHeader.headers.get("X-CM-WELL-TOKEN2"). // todo TOKEN2 is only supported for backward compatibility. one day we should stop supporting it
+      orElse(requestHeader.headers.get("X-CM-WELL-TOKEN")).
+      orElse(requestHeader.getQueryString("token")).
+      orElse(requestHeader.cookies.get("X-CM-WELL-TOKEN2").map(_.value)). // todo TOKEN2 is only supported for backward compatibility. one day we should stop supporting it
+      orElse(requestHeader.cookies.get("X-CM-WELL-TOKEN").map(_.value)).
+      flatMap(Token(_,authCache))
 
     tokenOpt match {
       case Some(token) if token.isValid => {
         authCache.getUserInfoton(token.username) match {
-          case Some(user) =>
-            withMsg(authorization.isAllowedForUser(request, user, Some(token.username)),
-                    "Authenticated but not authorized")
-          case None if token.username == "root" || token.username == "pUser" =>
-            (true, "") // special case only required for cases when CRUD is not yet ready
+          case Some(user) => withMsg(authorization.isAllowedForUser(request, user, Some(token.username)), "Authenticated but not authorized")
+          case None if token.username == "root" || token.username == "pUser" => (true, "") // special case only required for cases when CRUD is not yet ready
           case None => (false, s"Username ${token.username} was not found in CM-Well")
         }
       }
       case Some(_) => (false, "given token is not valid (not signed or expired)")
-      case None    => withMsg(authorization.isAllowedForAnonymousUser(request), "Not authorized, please login first")
+      case None => withMsg(authorization.isAllowedForAnonymousUser(request), "Not authorized, please login first")
     }
   }
 }

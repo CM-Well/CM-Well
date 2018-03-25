@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.zstore
 
 import cmwell.driver.{Dao, DaoExecution}
@@ -39,25 +41,19 @@ class ZStoreSpec extends AsyncFunSpec with Matchers {
   }
 
   it("should put key with small value, and get it") {
-    val (k, v) = ("key1", "value1".getBytes(utf8))
+    val (k,v) = ("key1", "value1".getBytes(utf8))
     zStore.put(k, v).flatMap(_ => zStore.get(k).map(_ should be(v)))
   }
 
   it("should put key with large value, and get it") {
-    val (k, v) =
-      ("key2", scala.util.Random.alphanumeric.take(math.round(7.5 * chunkSize).toInt).mkString.getBytes(utf8))
-    zStore
-      .put(k, v)
-      .flatMap(
-        _ =>
-          withClue("large value was not as expected") {
-            zStore.get(k).map(_ should be(v))
-        }
-      )
+    val (k,v) = ("key2", scala.util.Random.alphanumeric.take(math.round(7.5 * chunkSize).toInt).mkString.getBytes(utf8))
+    zStore.put(k, v).flatMap(_ => withClue("large value was not as expected") {
+      zStore.get(k).map(_ should be(v))
+    })
   }
 
   it("should put key with value and TTL, get it, wait, and verify it's gone") {
-    val (k, v) = ("key3", "who let the dogs out? who? who? who?".getBytes(utf8))
+    val (k,v) = ("key3", "who let the dogs out? who? who? who?".getBytes(utf8))
     val ttl = 3 // seconds
     def f1 = zStore.put(k, v, ttl, false).flatMap(_ => zStore.get(k).map(_ should be(v)))
     def f2 = mapToFailure(zStore.get(k)).map(assertIsNoSuchElementException)
@@ -67,8 +63,7 @@ class ZStoreSpec extends AsyncFunSpec with Matchers {
 
   //Not failing any more due to corrupted data. just emitting an error message in logs.
   ignore("should corrupt data and get corresponding exception when getting it") {
-    val (k, v) =
-      ("key4", scala.util.Random.alphanumeric.take(math.round(3.14 * chunkSize).toInt).mkString.getBytes(utf8))
+    val (k,v) = ("key4", scala.util.Random.alphanumeric.take(math.round(3.14*chunkSize).toInt).mkString.getBytes(utf8))
 
     def deleteOneChunk() = {
       implicit val daoProxy = _dao
@@ -80,8 +75,8 @@ class ZStoreSpec extends AsyncFunSpec with Matchers {
       }.execDeleteOneChunk
     }
 
-    zStore.put(k, v).flatMap { _ =>
-      deleteOneChunk().flatMap { _ =>
+    zStore.put(k, v).flatMap{ _ =>
+      deleteOneChunk().flatMap{ _ =>
         mapToFailure(zStore.get(k)).flatMap { e =>
           e.getMessage should be("Corrupted data!")
         }
@@ -90,15 +85,15 @@ class ZStoreSpec extends AsyncFunSpec with Matchers {
   }
 
   it("should put and get a very large random content (64MB)") {
-    fillArrayAndTest(64 * 1024 * 1000, getRandomByte)
+    fillArrayAndTest(64*1024*1000, getRandomByte)
   }
 
   it("should put and get a very large constant content (64MB)") {
-    fillArrayAndTest(64 * 1024 * 1000, 1.toByte)
+    fillArrayAndTest(64*1024*1000, 1.toByte)
   }
 
   it("should put and get a very large constant content (128MB)") {
-    fillArrayAndTest(128 * 1024 * 1000, 1.toByte)
+    fillArrayAndTest(128*1024*1000, 1.toByte)
   }
 
   private def mapToFailure[T](f: Future[T]) = {
@@ -112,7 +107,7 @@ class ZStoreSpec extends AsyncFunSpec with Matchers {
 
   private def assertIsNoSuchElementException(t: Throwable) = t match {
     case _: NoSuchElementException => Succeeded
-    case e                         => fail(s"$e is not NoSuchElementException")
+    case e => fail(s"$e is not NoSuchElementException")
   }
 
   private def getRandomByte = (scala.util.Random.nextInt(256) - 128).toByte
@@ -130,10 +125,9 @@ class ZStoreSpec extends AsyncFunSpec with Matchers {
       }
     } match {
       case Failure(e) => fail(stackTraceToString(e))
-      case Success(v) =>
-        v.map(_ should be(checksum)).recover {
-          case t: Throwable => fail(stackTraceToString(t))
-        }
+      case Success(v) => v.map(_ should be(checksum)).recover {
+        case t: Throwable => fail(stackTraceToString(t))
+      }
     }
   }
 

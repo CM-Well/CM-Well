@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package security.httpauth
 
 import cmwell.util.string.Base64.decodeBase64String

@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package k.grid.webapi
 
 import k.grid.webapi.jsobj.{GridMemoryInfo, MachineMemoryInfo}
@@ -22,35 +24,33 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 /**
-  * Created by michael on 3/20/16.
-  */
+ * Created by michael on 3/20/16.
+ */
 object JsonApi {
-  def getJvmsJson: String = {
-    def genChildren(children: Set[GridJvm]): String = {
-      children
-        .map { child =>
+  def getJvmsJson : String = {
+    def genChildren(children : Set[GridJvm]) : String = {
+      children.map {
+        child =>
           s"""
              |{
              |  "name":"${child.identity.map(_.name).getOrElse("NA")}",
              |  "size": 10
              |}
            """.stripMargin
-        }
-        .mkString(",")
+      }.mkString(",")
     }
 
     val hostJvms = Grid.jvmsAll.groupBy(_.host)
 
-    val body = hostJvms
-      .map { host =>
+    val body = hostJvms.map {
+      host =>
         s"""
            |{
            |  "name":"${host._1}",
            |  "children": [${genChildren(host._2)}]
            |}
          """.stripMargin
-      }
-      .mkString(",")
+    }.mkString(",")
 
     s"""
        |{
@@ -60,18 +60,20 @@ object JsonApi {
      """.stripMargin
   }
 
-  def getMemJson: Future[String] = {
-    Grid.getAllJvmsInfo.map { m =>
-      val clusterName = Grid.clusterName
-      val sampleTime = System.currentTimeMillis()
 
-      val machinesUsages = m.map { tup =>
-        MachineMemoryInfo(tup._1.host,
-                          tup._1.identity.map(_.name).getOrElse(""),
-                          tup._2.memInfo.map(mi => mi.name -> mi.usedPercent.toLong).toMap)
-      }.toSet
 
-      Json.prettyPrint(GridMemoryInfo(clusterName, sampleTime, machinesUsages).toJson)
+  def getMemJson : Future[String] = {
+    Grid.getAllJvmsInfo.map {
+      m =>
+        val clusterName = Grid.clusterName
+        val sampleTime = System.currentTimeMillis()
+
+        val machinesUsages = m.map {
+          tup =>
+            MachineMemoryInfo(tup._1.host , tup._1.identity.map(_.name).getOrElse("") , tup._2.memInfo.map(mi => mi.name -> mi.usedPercent.toLong).toMap)
+        }.toSet
+
+        Json.prettyPrint(GridMemoryInfo(clusterName, sampleTime, machinesUsages).toJson)
     }
   }
 }

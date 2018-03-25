@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.tools.data.utils.text
 
 import java.text.DecimalFormat
@@ -31,13 +33,13 @@ object Files {
     }
 
     value match {
-      case v if v < 0  => throw new IllegalArgumentException("Invalid file size: " + value)
+      case v if v < 0 => throw new IllegalArgumentException("Invalid file size: " + value)
       case v if v == 0 => "0B"
-      case v if v < K  => format(v, B, "B")
-      case v if v < M  => format(v, K, "KB")
-      case v if v < G  => format(v, M, "MB")
-      case v if v < T  => format(v, G, "GB")
-      case v           => format(v, T, "TB")
+      case v if v < K => format(v, B, "B")
+      case v if v < M => format(v, K, "KB")
+      case v if v < G => format(v, M, "MB")
+      case v if v < T => format(v, G, "GB")
+      case v          => format(v, T, "TB")
     }
   }
 

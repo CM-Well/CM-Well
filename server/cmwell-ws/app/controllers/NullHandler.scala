@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package controllers
 
 import com.typesafe.scalalogging.LazyLogging
@@ -24,7 +26,7 @@ import play.api.mvc._
   * Replies with HTTP 200 OK
   */
 @Singleton
-class NullHandler @Inject() extends InjectedController with LazyLogging {
+class NullHandler @Inject() extends InjectedController with LazyLogging{
   def handle() = Action.async { implicit req =>
     Future.successful(Ok("greetings from null handler"))
   }

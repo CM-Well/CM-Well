@@ -29,6 +29,7 @@ import cmwell.dc.{LazyLogging, Settings}
 import cmwell.dc.Settings._
 import cmwell.dc.stream.MessagesTypesAndExceptions._
 import cmwell.dc.stream.akkautils.DebugStage
+import cmwell.util.akka.http.HttpZipDecoder
 import com.typesafe.config.ConfigFactory
 
 import scala.collection.parallel.immutable
@@ -61,7 +62,9 @@ object TsvRetriever extends LazyLogging {
     val uuid = tsv.slice(tabAfterLast + 1, tabAfterUuid)
     val idxt = tsv.drop(tabAfterUuid).utf8String.trim.toLong
 
-    logger.trace(s"parseTSVAndCreateInfotonDataFromIt: [path='$path',uuid='${uuid.utf8String}',idxt='$idxt']")
+    logger.trace(
+      s"parseTSVAndCreateInfotonDataFromIt: [path='$path',uuid='${uuid.utf8String}',idxt='$idxt']"
+    )
     InfotonData(InfotonMeta(path, uuid, idxt), empty)
   }
 
@@ -75,7 +78,9 @@ object TsvRetriever extends LazyLogging {
     override def toString = "Consume"
   }
 
-  case class TsvFlowOutput(tsvs: List[InfotonData], nextPositionKey: String, isNoContent: Boolean = false)
+  case class TsvFlowOutput(tsvs: List[InfotonData],
+                           nextPositionKey: String,
+                           isNoContent: Boolean = false)
 
   case class ConsumeState(op: ConsumeType, startTime: Long)
 
@@ -92,9 +97,12 @@ object TsvRetriever extends LazyLogging {
     implicit mat: Materializer,
     system: ActorSystem
   ): Source[List[InfotonData], (KillSwitch, Future[Seq[Option[String]]])] = {
-    SourceGen.unfoldFlowWith(Future.successful(dcInfo.positionKey.get),
-                             retrieveTsvsWithRetryAndLastPositionKey(dcInfo, decider)) {
-      case Success(TsvFlowOutput(tsvs, nextPositionKey, isNoContent)) if !isNoContent => {
+    SourceGen.unfoldFlowWith(
+      Future.successful(dcInfo.positionKey.get),
+      retrieveTsvsWithRetryAndLastPositionKey(dcInfo, decider)
+    ) {
+      case Success(TsvFlowOutput(tsvs, nextPositionKey, isNoContent))
+          if !isNoContent => {
         Some(Future.successful(nextPositionKey), tsvs)
       }
       case Success(TsvFlowOutput(tsvs, nextPositionKey, isNoContent)) => {
@@ -120,37 +128,46 @@ object TsvRetriever extends LazyLogging {
     }
   }
 
-  def retrieveTsvsWithRetryAndLastPositionKey(dcInfo: DcInfo, decider: Decider)(
-    implicit mat: Materializer,
-    system: ActorSystem
-  ): Flow[Future[String], Try[TsvRetrieveOutput], (KillSwitch, Future[Seq[Option[String]]])] = {
+  def retrieveTsvsWithRetryAndLastPositionKey(
+    dcInfo: DcInfo,
+    decider: Decider
+  )(implicit mat: Materializer, system: ActorSystem): Flow[Future[String], Try[
+    TsvRetrieveOutput
+  ], (KillSwitch, Future[Seq[Option[String]]])] = {
     //another sink to keep the last position got
     //the reason for sliding(2) is that the last element can be None (a stream can finish with an error) and then the element before should be taken
     val positionKeySink = Flow
       .fromFunction[Try[TsvRetrieveOutput], Option[String]] {
-        case Success(TsvFlowOutput(tsvs, nextPositionKey, isNoContent)) => Some(nextPositionKey)
-        case _                                                          => None
+        case Success(TsvFlowOutput(tsvs, nextPositionKey, isNoContent)) =>
+          Some(nextPositionKey)
+        case _ => None
       }
       .sliding(2)
       .toMat(Sink.last)(Keep.right)
     retrieveTsvsWithRetry(dcInfo, decider).alsoToMat(positionKeySink)(Keep.both)
   }
 
-  def retrieveTsvsWithRetry(
-    dcInfo: DcInfo,
-    decider: Decider
-  )(implicit mat: Materializer, system: ActorSystem): Flow[Future[String], Try[TsvRetrieveOutput], KillSwitch] =
+  def retrieveTsvsWithRetry(dcInfo: DcInfo, decider: Decider)(
+    implicit mat: Materializer,
+    system: ActorSystem
+  ): Flow[Future[String], Try[TsvRetrieveOutput], KillSwitch] =
     Flow[Future[String]]
       .mapAsync(1)(identity)
       .viaMat(KillSwitches.single)(Keep.right)
       .map(
         positionKey =>
-          Future.successful(positionKey) -> TsvFlowState(positionKey,
-                                                         Settings.initialTsvRetryCount,
-                                                         None,
-                                                         ConsumeState(BulkConsume, System.currentTimeMillis))
+          Future.successful(positionKey) -> TsvFlowState(
+            positionKey,
+            Settings.initialTsvRetryCount,
+            None,
+            ConsumeState(BulkConsume, System.currentTimeMillis)
+        )
       )
-      .via(Retry(retrieveTsvFlow(dcInfo, decider))(retryDecider(dcInfo.id, dcInfo.location)))
+      .via(
+        Retry(retrieveTsvFlow(dcInfo, decider))(
+          retryDecider(dcInfo.id, dcInfo.location)
+        )
+      )
       .map(_._1)
 
   private def stayInThisState(stateStartTime: Long): Boolean =
@@ -161,26 +178,37 @@ object TsvRetriever extends LazyLogging {
     case ConsumeState(Consume, _)     => ""
   }
 
-  private def getNewState(elementState: TsvRetrieveState, lastUsedState: ConsumeState) =
+  private def getNewState(elementState: TsvRetrieveState,
+                          lastUsedState: ConsumeState) =
     //If there were an error before - take the state as it came from the retry decider. else change from lower consume type to a better one only after the time interval.
     if (elementState.lastException.isDefined) elementState.consumeState
     else
       lastUsedState match {
         case state @ ConsumeState(BulkConsume, _) => state
         case state @ ConsumeState(Consume, start) =>
-          if (stayInThisState(start)) state else ConsumeState(BulkConsume, System.currentTimeMillis)
+          if (stayInThisState(start)) state
+          else ConsumeState(BulkConsume, System.currentTimeMillis)
       }
 
   def retrieveTsvFlow(dcInfo: DcInfo, decider: Decider)(
     implicit mat: Materializer,
     system: ActorSystem
-  ): Flow[(Future[TsvRetrieveInput], TsvRetrieveState), (Try[TsvRetrieveOutput], TsvRetrieveState), NotUsed] = {
+  ): Flow[(Future[TsvRetrieveInput], TsvRetrieveState),
+          (Try[TsvRetrieveOutput], TsvRetrieveState),
+          NotUsed] = {
     val startTime = System.currentTimeMillis
     val hostPort = dcInfo.location.split(":")
-    val (host, port) = hostPort.head -> hostPort.tail.headOption.getOrElse("80").toInt
-    val tsvPoolConfig =
-      ConfigFactory.parseString("akka.http.host-connection-pool.max-connections=1").withFallback(config)
-    val tsvConnPool = Http().newHostConnectionPool[TsvRetrieveState](host, port, ConnectionPoolSettings(tsvPoolConfig))
+    val (host, port) = hostPort.head -> hostPort.tail.headOption
+      .getOrElse("80")
+      .toInt
+    val tsvPoolConfig = ConfigFactory
+      .parseString("akka.http.host-connection-pool.max-connections=1")
+      .withFallback(config)
+    val tsvConnPool = Http().newHostConnectionPool[TsvRetrieveState](
+      host,
+      port,
+      ConnectionPoolSettings(tsvPoolConfig)
+    )
     Flow[(Future[TsvRetrieveInput], TsvRetrieveState)]
       .mapAsync(1) { case (input, state) => input.map(_ -> state) }
       .statefulMapConcat { () =>
@@ -189,24 +217,36 @@ object TsvRetriever extends LazyLogging {
           case (positionKey, state) =>
             currentState = getNewState(state, currentState)
             val bulkPrefix = extractPrefixes(currentState)
-            val request =
-              HttpRequest(uri = s"http://${dcInfo.location}/?op=${bulkPrefix}consume&format=tsv&position=$positionKey",
-                          headers = scala.collection.immutable.Seq(gzipAcceptEncoding))
+            val request = HttpRequest(
+              uri =
+                s"http://${dcInfo.location}/?op=${bulkPrefix}consume&format=tsv&position=$positionKey",
+              headers = scala.collection.immutable.Seq(gzipAcceptEncoding)
+            )
             logger.info(
               s"Data Center ID ${dcInfo.id}: Sending ${currentState.op} request to ${dcInfo.location} using position key $positionKey."
             )
-            scala.collection.immutable.Seq(request -> state.copy(consumeState = currentState))
+            scala.collection.immutable.Seq(
+              request -> state.copy(consumeState = currentState)
+            )
         }
       }
       .via(tsvConnPool)
-      .map { case (tryResponse, state) => tryResponse.map(Util.decodeResponse) -> state }
+      .map {
+        case (tryResponse, state) =>
+          tryResponse.map(HttpZipDecoder.decodeResponse) -> state
+      }
       .flatMapConcat {
         case (Success(res @ HttpResponse(s, h, entity, _)), state)
             if s.isSuccess() && h.exists(_.name == "X-CM-WELL-POSITION") => {
           val nextPositionKey = res.getHeader("X-CM-WELL-POSITION").get.value()
           entity.dataBytes
-            .via(Framing.delimiter(endln, maximumFrameLength = maxTsvLineLength * 2))
-            .fold(List[InfotonData]())((total, bs) => parseTSVAndCreateInfotonDataFromIt(bs) :: total)
+            .via(
+              Framing.delimiter(endln,
+                                maximumFrameLength = maxTsvLineLength * 2)
+            )
+            .fold(List[InfotonData]())(
+              (total, bs) => parseTSVAndCreateInfotonDataFromIt(bs) :: total
+            )
             .map { data =>
               val sortedData = data.sortBy(_.meta.indexTime)
               if (state.retriesLeft < Settings.initialTsvRetryCount) {
@@ -215,7 +255,9 @@ object TsvRetriever extends LazyLogging {
                   s"TSV (bulk)consume succeeded only after $consumeCount (bulk)consumes. token: ${state.tsvRetrieveInput}."
                 )
               }
-              Success(TsvFlowOutput(sortedData, nextPositionKey, s.intValue == 204)) -> state.copy(lastException = None)
+              Success(
+                TsvFlowOutput(sortedData, nextPositionKey, s.intValue == 204)
+              ) -> state.copy(lastException = None)
             }
             .withAttributes(ActorAttributes.supervisionStrategy(decider))
             .recover {
@@ -225,15 +267,19 @@ object TsvRetriever extends LazyLogging {
                   e
                 )
                 logger.warn("Retrieve TSVs failed.", ex)
-                Failure[TsvRetrieveOutput](ex) -> state.copy(lastException = Some(ex))
+                Failure[TsvRetrieveOutput](ex) -> state.copy(
+                  lastException = Some(ex)
+                )
             }
         }
         case (res @ Success(HttpResponse(s, h, entity, _)), state) => {
           val errorID = res.##
-          val e =
-            new Exception(s"Error ![$errorID]. Cm-Well returned bad response: status: ${s.intValue} headers: ${Util
-              .headersString(h)} reason: ${s.reason}")
-          val bodyFut = entity.dataBytes.runFold(empty)(_ ++ _).map(_.utf8String)
+          val e = new Exception(
+            s"Error ![$errorID]. Cm-Well returned bad response: status: ${s.intValue} headers: ${Util
+              .headersString(h)} reason: ${s.reason}"
+          )
+          val bodyFut =
+            entity.dataBytes.runFold(empty)(_ ++ _).map(_.utf8String)
           val ex = RetrieveTsvBadResponseException(
             s"Retrieve TSVs using ${state.consumeState.op} failed. Data center ID ${dcInfo.id}, using remote location ${dcInfo.location}.",
             bodyFut,
@@ -241,7 +287,10 @@ object TsvRetriever extends LazyLogging {
           )
           logger.warn(s"${ex.getMessage} ${ex.getCause.getMessage}")
           Util.warnPrintFuturedBodyException(ex)
-          Source.single(Failure[TsvRetrieveOutput](ex) -> state.copy(lastException = Some(ex)))
+          Source.single(
+            Failure[TsvRetrieveOutput](ex) -> state
+              .copy(lastException = Some(ex))
+          )
         }
         case (Failure(e), state) => {
           val ex = RetrieveTsvException(
@@ -249,13 +298,17 @@ object TsvRetriever extends LazyLogging {
             e
           )
           logger.warn("Retrieve TSVs failed.", ex)
-          Source.single(Failure[TsvRetrieveOutput](ex) -> state.copy(lastException = Some(ex)))
+          Source.single(
+            Failure[TsvRetrieveOutput](ex) -> state
+              .copy(lastException = Some(ex))
+          )
         }
       }
       .statefulMapConcat { () =>
         var infotonsGot: Long = 0;
         {
-          case output @ (Success(TsvFlowOutput(tsvs, nextPositionKey, _)), state) =>
+          case output @ (Success(TsvFlowOutput(tsvs, nextPositionKey, _)),
+                         state) =>
             infotonsGot += tsvs.size
             val rate = infotonsGot / ((System.currentTimeMillis - startTime) / 1000D)
             logger.info(
@@ -268,7 +321,10 @@ object TsvRetriever extends LazyLogging {
       }
   }
 
-  private def retryDecider(dataCenterId: String, location: String)(implicit mat: Materializer, system: ActorSystem) =
+  private def retryDecider(
+    dataCenterId: String,
+    location: String
+  )(implicit mat: Materializer, system: ActorSystem) =
     (state: TsvRetrieveState) =>
       state match {
         case TsvFlowState(_, 0, _, _) =>
@@ -286,19 +342,22 @@ object TsvRetriever extends LazyLogging {
               ??? // Shouldn't get here. The retry decider is called only when there is an exception and the ex should be in the state
           }
           val newConsumeOp = consumeState.op match {
-            case BulkConsume if Settings.initialTsvRetryCount - retriesLeft < Settings.bulkTsvRetryCount => BulkConsume
-            case _                                                                                       => Consume
+            case BulkConsume
+                if Settings.initialTsvRetryCount - retriesLeft < Settings.bulkTsvRetryCount =>
+              BulkConsume
+            case _ => Consume
           }
           logger.warn(
             s"Data Center ID $dataCenterId: Retrieve of TSVs from $location failed. Retries left $retriesLeft. Will try again in $waitSeconds seconds."
           )
           Some(
-            akka.pattern.after(waitSeconds.seconds, system.scheduler)(Future.successful(positionKey)) -> TsvFlowState(
-              positionKey,
-              retriesLeft - 1,
-              ex,
-              ConsumeState(newConsumeOp, System.currentTimeMillis)
-            )
+            akka.pattern.after(waitSeconds.seconds, system.scheduler)(
+              Future.successful(positionKey)
+            ) -> TsvFlowState(positionKey,
+                              retriesLeft - 1,
+                              ex,
+                              ConsumeState(newConsumeOp,
+                                           System.currentTimeMillis))
           )
     }
 }

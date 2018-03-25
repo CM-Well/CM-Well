@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.tools.data.sparql.japi
 
 import java.io.InputStream
@@ -37,16 +39,14 @@ object SparqlUtils {
     implicit val system = ActorSystem("reactive-sparql-processor")
     implicit val mat = ActorMaterializer()
 
-    SparqlProcessor
-      .createSourceFromPathsInputStream(
-        baseUrl = baseUrl,
-        spQueryParamsBuilder = (p: Seq[String]) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
-        parallelism = parallelism,
-        isNeedWrapping = isNeedWrapping,
-        sparqlQuery = sparqlQuery,
-        in = in
-      )
-      .map { case (data, _) => data }
+    SparqlProcessor.createSourceFromPathsInputStream(
+      baseUrl              = baseUrl,
+      spQueryParamsBuilder = (p: Seq[String]) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
+      parallelism          = parallelism,
+      isNeedWrapping       = isNeedWrapping,
+      sparqlQuery          = sparqlQuery,
+      in                   = in
+    ).map { case (data, _) => data }
       .via(GroupChunker(GroupChunker.formatToGroupExtractor("ntriples")))
       .map(concatByteStrings(_, endl))
       .runWith(StreamConverters.asJavaStream())
@@ -61,16 +61,14 @@ object SparqlUtils {
     implicit val system = ActorSystem("reactive-sparql-processor")
     implicit val mat = ActorMaterializer()
 
-    SparqlProcessor
-      .createSourceFromPathsInputStream(
-        baseUrl = baseUrl,
-        spQueryParamsBuilder = (p: Seq[String]) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
-        parallelism = parallelism,
-        isNeedWrapping = isNeedWrapping,
-        sparqlQuery = sparqlQuery,
-        in = in
-      )
-      .map { case (data, _) => data }
+    SparqlProcessor.createSourceFromPathsInputStream(
+      baseUrl              = baseUrl,
+      spQueryParamsBuilder = (p: Seq[String]) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
+      parallelism          = parallelism,
+      isNeedWrapping       = isNeedWrapping,
+      sparqlQuery          = sparqlQuery,
+      in                   = in
+    ).map { case (data, _) => data }
       .via(GroupChunker(GroupChunker.formatToGroupExtractor("ntriples")))
       .map(concatByteStrings(_, endl))
       .runWith(StreamConverters.asInputStream(timeout))

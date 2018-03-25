@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.dc.stream
 
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
@@ -23,21 +25,10 @@ import cmwell.dc.stream.MessagesTypesAndExceptions.DcInfo
   * Created by eli on 21/08/16.
   */
 object RatePrinter {
-  def apply[A](dcInfo: DcInfo,
-               elementCount: A => Double,
-               elementText: String,
-               elementsText: String,
-               printFrequency: Int): RatePrinter[A] =
-    new RatePrinter(dcInfo, elementCount, elementText, elementsText, printFrequency)
+  def apply[A](dcInfo: DcInfo, elementCount: A => Double, elementText: String, elementsText: String, printFrequency: Int): RatePrinter[A] = new RatePrinter(dcInfo, elementCount, elementText, elementsText, printFrequency)
 }
 
-class RatePrinter[A](dcInfo: DcInfo,
-                     elementCount: A => Double,
-                     elementText: String,
-                     elementsText: String,
-                     printFrequency: Int)
-    extends GraphStage[FlowShape[A, A]]
-    with LazyLogging {
+class RatePrinter[A](dcInfo: DcInfo, elementCount: A => Double, elementText: String, elementsText: String, printFrequency: Int) extends GraphStage[FlowShape[A, A]] with LazyLogging {
   val in = Inlet[A]("RatePrinter.in")
   val out = Outlet[A]("RatePrinter.out")
   override val shape = FlowShape.of(in, out)
@@ -51,33 +42,26 @@ class RatePrinter[A](dcInfo: DcInfo,
       private var localTotalElementsGot: Double = 0
       private var localRate: Double = 0
 
-      setHandler(
-        in,
-        new InHandler {
-          override def onPush(): Unit = {
-            val elem = grab(in)
-            val currentTime = System.currentTimeMillis
-            val currentElementsGot = elementCount(elem)
-            totalElementsGot += currentElementsGot
-            localTotalElementsGot += currentElementsGot
-            if (totalElementsGot - printedAtElementNo >= printFrequency) {
-              val rate = totalElementsGot / (currentTime - startTime) * 1000
-              logger.info(
-                s"Data Center ID ${dcInfo.id}: Got ${currentElementsGot.formatted("%.2f")} $elementText. Total ${totalElementsGot
-                  .formatted("%.2f")} $elementsText. Read rate: avg: ${rate.formatted("%.2f")} current: ${localRate
-                  .formatted("%.2f")} $elementText/second"
-              )
-              if (currentTime - localStartTime > 15000) {
-                localRate = localTotalElementsGot / (currentTime - localStartTime) * 1000
-                localTotalElementsGot = 0
-                localStartTime = currentTime
-              }
-              printedAtElementNo = totalElementsGot
+      setHandler(in, new InHandler {
+        override def onPush(): Unit = {
+          val elem = grab(in)
+          val currentTime = System.currentTimeMillis
+          val currentElementsGot = elementCount(elem)
+          totalElementsGot += currentElementsGot
+          localTotalElementsGot += currentElementsGot
+          if (totalElementsGot - printedAtElementNo >= printFrequency) {
+            val rate = totalElementsGot / (currentTime - startTime) * 1000
+            logger.info(s"Data Center ID ${dcInfo.id}: Got ${currentElementsGot.formatted("%.2f")} $elementText. Total ${totalElementsGot.formatted("%.2f")} $elementsText. Read rate: avg: ${rate.formatted("%.2f")} current: ${localRate.formatted("%.2f")} $elementText/second")
+            if (currentTime - localStartTime > 15000) {
+              localRate = localTotalElementsGot / (currentTime - localStartTime) * 1000
+              localTotalElementsGot = 0
+              localStartTime = currentTime
             }
-            push(out, elem)
+            printedAtElementNo = totalElementsGot
           }
+          push(out, elem)
         }
-      )
+      })
       setHandler(out, new OutHandler {
         override def onPull(): Unit = {
           pull(in)

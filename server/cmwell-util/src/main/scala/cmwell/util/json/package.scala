@@ -12,24 +12,25 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.util
 
 /**
-  * Created with IntelliJ IDEA.
-  * User: gilad
-  * Date: 7/23/13
-  * Time: 11:27 AM
-  * To change this template use File | Settings | File Templates.
-  */
+ * Created with IntelliJ IDEA.
+ * User: gilad
+ * Date: 7/23/13
+ * Time: 11:27 AM
+ * To change this template use File | Settings | File Templates.
+ */
 package object json {
 
   def escapeString(s: String) = s.split('\\').mkString("\\\\").split('"').mkString("\\\"")
-
   /**
-    * convert a map of: {"infoton path" -> map_of{"attribute" -> set[values]}} to suitable bulk json form
-    * @param infotonsMap
-    * @return
-    */
+   * convert a map of: {"infoton path" -> map_of{"attribute" -> set[values]}} to suitable bulk json form
+   * @param infotonsMap
+   * @return
+   */
   def infotonsMapToBulkJson(infotonsMap: Map[String, Map[String, Set[String]]]): String = {
     /*
      * convert a single infoton map of: path -> map of attributes to values into json form
@@ -40,12 +41,9 @@ package object json {
       /*
        * convert a map of attribute -> values to json form
        */
-      def fieldsTemplate(attrMap: Map[String, Set[String]]): String =
-        attrMap
-          .map {
-            case (k, v) => "\"%s\":[%s]".format(escapeString(k), v.map(escapeString(_)).mkString("\"", "\",\"", "\""))
-          }
-          .mkString(",")
+      def fieldsTemplate(attrMap: Map[String, Set[String]]): String = (attrMap map {
+        case (k, v) => "\"%s\":[%s]".format(escapeString(k), v.map(escapeString(_)).mkString("\"", "\",\"", "\""))
+      }).mkString(",")
 
       //generate array of infotons
       (for {
@@ -61,7 +59,7 @@ package object json {
                     |    }
                     |}
                   """.stripMargin.filterNot(_.isWhitespace).format(path, fieldsTemplate(infotonsMap(path)))
-      } yield infoton).mkString(",")
+      } yield infoton) mkString (",")
     }
 
     //generate bulk
@@ -76,16 +74,16 @@ package object json {
   }
 
   /**
-    * takes an infotons map, and returns a stream of bulk requests, where each request is of maximun bulkSize of infotons
-    * @param infotonsMap
-    * @param bulkSize
-    * @return
-    */
+   * takes an infotons map, and returns a stream of bulk requests, where each request is of maximun bulkSize of infotons
+   * @param infotonsMap
+   * @param bulkSize
+   * @return
+   */
   def mapToBulkStream(infotonsMap: Map[String, Map[String, Set[String]]], bulkSize: Int): Stream[String] = {
-    if (infotonsMap.isEmpty) Stream.Empty
+    if(infotonsMap.isEmpty) Stream.Empty
     else {
       val curr = infotonsMap.take(bulkSize)
-      infotonsMapToBulkJson(curr) #:: mapToBulkStream(infotonsMap.filterKeys(p => !curr.keySet.contains(p)), bulkSize)
+      infotonsMapToBulkJson(curr) #:: mapToBulkStream(infotonsMap.filterKeys(p => !curr.keySet.contains(p)),bulkSize)
     }
   }
 }

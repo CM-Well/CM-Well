@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.util.jmx
 
 import com.google.common.cache.Cache
@@ -21,38 +23,38 @@ import com.google.common.cache.Cache
   */
 trait GuavaCacheJMXMBean {
 
-  def getRequestCount(): Long
+  def getRequestCount():Long
 
-  def getHitCount(): Long
+  def getHitCount():Long
 
-  def getHitRate(): Double
+  def getHitRate():Double
 
-  def getMissCount(): Long
+  def getMissCount():Long
 
-  def getMissRate(): Double
+  def getMissRate():Double
 
-  def getLoadCount(): Long
+  def getLoadCount():Long
 
-  def getLoadSuccessCount(): Long
+  def getLoadSuccessCount():Long
 
-  def getLoadExceptionCount(): Long
+  def getLoadExceptionCount():Long
 
-  def getLoadExceptionRate(): Double
+  def getLoadExceptionRate():Double
 
-  def getTotalLoadTime(): Long
+  def getTotalLoadTime():Long
 
-  def getAverageLoadPenalty(): Double
+  def getAverageLoadPenalty():Double
 
-  def getEvictionCount(): Long
+  def getEvictionCount():Long
 
-  def getSize(): Long
+  def getSize():Long
 
-  def cleanUp(): Unit
+  def cleanUp():Unit
 
-  def invalidateAll(): Unit
+  def invalidateAll():Unit
 }
 
-class GuavaCacheJMX[K, V](var _cache: Cache[K, V]) extends GuavaCacheJMXMBean {
+class GuavaCacheJMX[K,V](var _cache:Cache[K,V]) extends GuavaCacheJMXMBean {
 
   override def getRequestCount(): Long = _cache.stats().requestCount()
 
@@ -84,3 +86,5 @@ class GuavaCacheJMX[K, V](var _cache: Cache[K, V]) extends GuavaCacheJMXMBean {
 
   override def invalidateAll(): Unit = _cache.invalidateAll()
 }
+
+

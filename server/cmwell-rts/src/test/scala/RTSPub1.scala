@@ -12,35 +12,34 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 import cmwell.domain._
 import cmwell.domain.FString
 import cmwell.rts.Publisher
-import k.grid.{Grid, GridConnection}
+import k.grid.{GridConnection, Grid}
 
 import scala.io.StdIn
 
 /**
-  * Created by markz on 7/10/14.
-  */
+ * Created by markz on 7/10/14.
+ */
 object RTSPub1 extends App {
 
   // start grid
 
 //  Grid.roles = Set("publisher")
 
-  Grid.setGridConnection(
-    GridConnection(memberName = "rts", hostName = "127.0.0.1", seeds = Set("127.0.0.1:2551"), port = 0)
-  )
+  Grid.setGridConnection(GridConnection(memberName = "rts", hostName = "127.0.0.1", seeds = Set("127.0.0.1:2551"), port = 0))
   Grid.joinClient
   //Grid.join(Set("127.0.0.1"),Set("subscriber"))
   Publisher.init
   println("Press enter publisher.")
   StdIn.readLine()
   println("-----------------------------------------")
-  (1 to 10).foreach { i =>
-    val m: Map[String, Set[FieldValue]] =
-      Map("name" -> Set(FString("gal"), FString("yoav")), "types" -> Set(FString("123"), FInt(123)))
-    val ii = ObjectInfoton("/cmt/news/command-test/objinfo_" + i, "dc_test", None, m)
+  (1 to 10).foreach{ i =>
+    val m : Map[String , Set[FieldValue]]= Map("name" -> Set(FString("gal"), FString("yoav")), "types" -> Set(FString("123"), FInt(123)))
+    val ii = ObjectInfoton("/cmt/news/command-test/objinfo_" + i,"dc_test", None, m)
     Publisher.publish(Vector(ii))
   }
   println("-----------------------------------------")

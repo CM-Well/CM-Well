@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package filters
 
 import javax.inject._
@@ -21,12 +23,13 @@ import play.api.mvc.{Filter, RequestHeader, Result}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class HeadersFilter @Inject()(implicit override val mat: Materializer, ec: ExecutionContext) extends Filter {
+class HeadersFilter @Inject()(implicit override val mat: Materializer,ec: ExecutionContext) extends Filter {
 
   def apply(next: (RequestHeader) => Future[Result])(request: RequestHeader): Future[Result] = {
     next(request).map { result =>
-      result.withHeaders("X-CMWELL-Hostname" -> cmwell.util.os.Props.machineName,
-                         "X-CMWELL-Version" -> cmwell.util.build.BuildInfo.version)
+      result.withHeaders(
+        "X-CMWELL-Hostname" -> cmwell.util.os.Props.machineName,
+        "X-CMWELL-Version" -> cmwell.util.build.BuildInfo.version)
     }
   }
 }

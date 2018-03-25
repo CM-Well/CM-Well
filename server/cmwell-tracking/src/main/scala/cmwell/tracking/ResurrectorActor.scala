@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.tracking
 
 import akka.actor.{Actor, ActorIdentity, ActorRef, Cancellable, Identify, Terminated}
@@ -31,8 +33,7 @@ import scala.util.{Failure, Success}
 class ResurrectorActor extends Actor with LazyLogging {
   import TrackingUtilImpl.actorIdFromActorPath
 
-  private lazy val dao =
-    Dao(Settings.irwServiceDaoClusterName, Settings.irwServiceDaoKeySpace2, Settings.irwServiceDaoHostName)
+  private lazy val dao = Dao(Settings.irwServiceDaoClusterName, Settings.irwServiceDaoKeySpace2, Settings.irwServiceDaoHostName)
   private lazy val zStore: ZStore = ZStore.apply(dao)
 
   override def receive: Receive = activelyWatch(Map.empty, Map.empty, Map.empty)
@@ -46,14 +47,11 @@ class ResurrectorActor extends Actor with LazyLogging {
       }
     }
 
-    val cleanDataFut =
-      dirtyDataFut.flatMap(dirtyData => TrackingUtil().cleanDirtyData(dirtyData, trackingId.createTime).map(_.toArray))
+    val cleanDataFut = dirtyDataFut.flatMap(dirtyData => TrackingUtil().cleanDirtyData(dirtyData, trackingId.createTime).map(_.toArray))
     cleanDataFut
   }
 
-  def activelyWatch(resurrectedRefs: Map[String, ActorRef],
-                    sendersWaitingForRefs: Map[String, SenderAndCreateTime],
-                    schedulingSubscriptions: Map[String, Cancellable]): Receive = {
+  def activelyWatch(resurrectedRefs: Map[String,ActorRef], sendersWaitingForRefs: Map[String,SenderAndCreateTime], schedulingSubscriptions: Map[String,Cancellable]): Receive = {
 
     case Spawn(name, initialData, restoredData, createTime) =>
       log(s"Spawn($name, $initialData, $restoredData)")
@@ -71,11 +69,7 @@ class ResurrectorActor extends Actor with LazyLogging {
             ta ! Ping
 
           val actorId = actorIdFromActorPath(ta)
-          context.become(
-            activelyWatch(resurrectedRefs,
-                          sendersWaitingForRefs.updated(actorId, SenderAndCreateTime(sender(), createTime)),
-                          schedulingSubscriptions)
-          )
+          context.become(activelyWatch(resurrectedRefs, sendersWaitingForRefs.updated(actorId, SenderAndCreateTime(sender(), createTime)), schedulingSubscriptions))
         }
       }
 
@@ -85,11 +79,7 @@ class ResurrectorActor extends Actor with LazyLogging {
       context.watch(ta)
       sendersWaitingForRefs.get(actorId).foreach(_.sender ! ta)
       schedulingSubscriptions.get(actorId).foreach(_.cancel())
-      context.become(
-        activelyWatch(resurrectedRefs.updated(actorId, ta),
-                      sendersWaitingForRefs - actorId,
-                      schedulingSubscriptions - actorId)
-      )
+      context.become(activelyWatch(resurrectedRefs.updated(actorId, ta), sendersWaitingForRefs - actorId, schedulingSubscriptions - actorId))
 
     case ActorData(actorId, data, createTime) =>
       log(s"ActorData($actorId, $data)")
@@ -98,31 +88,21 @@ class ResurrectorActor extends Actor with LazyLogging {
 
     case Resurrect(TrackingId(actorId, createTime)) =>
       log(s"Resurrect($actorId)")
-      resurrectedRefs
-        .get(actorId)
-        .fold[Unit] {
-          context.actorSelection(actorId) ! Identify(actorId)
-          val cancellable = context.system.scheduler.schedule(3.seconds, 3.seconds, self, RetryPathIdentify(actorId))
-          context.become(
-            activelyWatch(resurrectedRefs,
-                          sendersWaitingForRefs.updated(actorId, SenderAndCreateTime(sender, createTime)),
-                          schedulingSubscriptions.updated(actorId, cancellable))
-          )
-        }(ref => sender.tell(Some(ref), Actor.noSender))
+      resurrectedRefs.get(actorId).fold[Unit] {
+        context.actorSelection(actorId) ! Identify(actorId)
+        val cancellable = context.system.scheduler.schedule(3.seconds, 3.seconds, self, RetryPathIdentify(actorId))
+        context.become(activelyWatch(resurrectedRefs, sendersWaitingForRefs.updated(actorId, SenderAndCreateTime(sender,createTime)), schedulingSubscriptions.updated(actorId, cancellable)))
+      }(ref => sender.tell(Some(ref), Actor.noSender))
 
-    case ActorIdentity(path: String, Some(ref)) =>
+    case ActorIdentity(path: String,Some(ref)) =>
       log(s"ActorIdentity($path,Some($ref))")
       context.watch(ref)
       val actorId = actorIdFromActorPath(path)
       sendersWaitingForRefs.get(actorId).foreach(_.sender ! Some(ref))
       schedulingSubscriptions.get(actorId).foreach(_.cancel())
-      context.become(
-        activelyWatch(resurrectedRefs.updated(actorId, ref),
-                      sendersWaitingForRefs - actorId,
-                      schedulingSubscriptions - actorId)
-      )
+      context.become(activelyWatch(resurrectedRefs.updated(actorId, ref), sendersWaitingForRefs - actorId, schedulingSubscriptions - actorId))
 
-    case ActorIdentity(path: String, None) =>
+    case ActorIdentity(path: String,None) =>
       log(s"ActorIdentity($path,None)")
       val actorId = actorIdFromActorPath(path)
       schedulingSubscriptions.get(actorId).foreach(_.cancel())
@@ -145,9 +125,7 @@ class ResurrectorActor extends Actor with LazyLogging {
       context.actorSelection(path) ! Identify(path)
       val cancellable = context.system.scheduler.schedule(3.seconds, 3.seconds, self, RetryPathIdentify(path))
       val actorId = actorIdFromActorPath(path)
-      context.become(
-        activelyWatch(resurrectedRefs, sendersWaitingForRefs, schedulingSubscriptions.updated(actorId, cancellable))
-      )
+      context.become(activelyWatch(resurrectedRefs, sendersWaitingForRefs, schedulingSubscriptions.updated(actorId, cancellable)))
 
   }
 

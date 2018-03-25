@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.util
 
 package object numeric {
@@ -32,13 +34,13 @@ package object numeric {
   }
 
   /**
-    * toIntegerBytes can be used for implementing, e.g:
-    *   org.apache.commons.codec.binary.Base64.toIntegerBytes
-    * specialized for long values (which we know only use 1st 4 bytes, since e.g. crc32 uses only 32 bytes)
-    *
-    * @param long
-    * @return byte array representing the long value
-    */
+   * toIntegerBytes can be used for implementing, e.g:
+   *   org.apache.commons.codec.binary.Base64.toIntegerBytes
+   * specialized for long values (which we know only use 1st 4 bytes, since e.g. crc32 uses only 32 bytes)
+   *
+   * @param long
+   * @return byte array representing the long value
+   */
   def toIntegerBytes(long: Long): Array[Byte] = {
     var l = long
     val b3 = l.toByte
@@ -48,7 +50,7 @@ package object numeric {
     val b1 = l.toByte
     l >>= 8
     val b0 = l.toByte
-    Array(b0, b1, b2, b3)
+    Array(b0,b1,b2,b3)
   }
 
   def toLongBytes(long: Long): Array[Byte] = {
@@ -68,7 +70,7 @@ package object numeric {
     val b1 = l.toByte
     l >>= 8
     val b0 = l.toByte
-    Array(b0, b1, b2, b3, b4, b5, b6, b7)
+    Array(b0,b1,b2,b3,b4,b5,b6,b7)
   }
 
   object Radix64 {
@@ -95,7 +97,7 @@ package object numeric {
         else {
           v >>= 6
           val c1 = encodeTable(v & 0x3f toInt)
-          if (v < 0x40) Array(c1, c0)
+          if (v < 0x40) Array(c1,c0)
           else {
             v >>= 6
             val c2 = encodeTable(v & 0x3f toInt)
@@ -153,7 +155,7 @@ package object numeric {
         else {
           v >>= 6
           val c1 = encodeTable(v & 0x3f)
-          if (v < 0x40) Array(c1, c0)
+          if (v < 0x40) Array(c1,c0)
           else {
             v >>= 6
             val c2 = encodeTable(v & 0x3f)
@@ -178,11 +180,11 @@ package object numeric {
       }
     }
 
-    def encodeUnsigned[N: SixBitCharHandler](n: N, padToLength: Int = 1): String = {
+    def encodeUnsigned[N : SixBitCharHandler](n: N, padToLength: Int = 1): String = {
       require(padToLength > 0, "must be padded with a positive value (1 means no padding)")
       val num = implicitly[SixBitCharHandler[N]].numToArr(n)
-      if (num.length >= padToLength) new String(num)
-      else new java.lang.StringBuilder(Array.fill(padToLength - num.length)('-')).append(num).toString()
+      if(num.length >= padToLength) new String(num)
+      else new java.lang.StringBuilder(Array.fill(padToLength-num.length)('-')).append(num).toString()
     }
   }
 }

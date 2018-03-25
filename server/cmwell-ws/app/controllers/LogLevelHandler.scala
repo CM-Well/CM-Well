@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package controllers
 
 import cmwell.ctrl.config.Jvms
@@ -27,7 +29,7 @@ import filters.Attrs
 import scala.util.Try
 
 @Singleton
-class LogLevelHandler @Inject()(authUtils: AuthUtils) extends InjectedController with LazyLogging {
+class LogLevelHandler  @Inject()(authUtils: AuthUtils) extends InjectedController with LazyLogging {
   def handleSetLogLevel = Action { implicit req =>
     val tokenOpt = authUtils.extractTokenFrom(req)
     if (authUtils.isOperationAllowedForUser(security.Admin, tokenOpt))
@@ -48,42 +50,31 @@ class LogLevelHandler @Inject()(authUtils: AuthUtils) extends InjectedController
     val duration = if (req.getQueryString("duration").isEmpty) Some("10") else req.getQueryString("duration")
 
     (lvlStr, component, host, duration) match {
-      case (Some(l), _, _, _) if !validLogLevels.contains(l.toUpperCase) =>
-        BadRequest(s"Bad log level provided, the valid log levels are ${validLogLevels.mkString(", ")}.")
-      case (_, Some(c), _, _) if !validComponents.contains(c.toUpperCase) =>
-        BadRequest(s"Bad component provided, the valid components are ${validComponents.mkString(", ")}.")
-      case (_, _, Some(h), _) if !validHosts.contains(h.toUpperCase) =>
-        BadRequest(s"Bad host provided, the valid hosts are ${validHosts.mkString(", ")}.")
-      case (_, _, _, Some(d)) if Try(d.toInt).isFailure =>
-        BadRequest(
-          s"Bad duration provided, please provide a positive int, or 0 if you wish to keep this log level indefinitely."
-        )
-      case (None, _, _, _) =>
-        BadRequest(s"No log level provided, the valid log levels are ${validLogLevels.mkString(", ")}")
+      case (Some(l), _, _, _) if !validLogLevels.contains(l.toUpperCase) => BadRequest(s"Bad log level provided, the valid log levels are ${validLogLevels.mkString(", ")}.")
+      case (_, Some(c), _, _) if !validComponents.contains(c.toUpperCase) => BadRequest(s"Bad component provided, the valid components are ${validComponents.mkString(", ")}.")
+      case (_, _, Some(h), _) if !validHosts.contains(h.toUpperCase) => BadRequest(s"Bad host provided, the valid hosts are ${validHosts.mkString(", ")}.")
+      case (_, _, _, Some(d)) if Try(d.toInt).isFailure => BadRequest(s"Bad duration provided, please provide a positive int, or 0 if you wish to keep this log level indefinitely.")
+      case (None, _, _, _) => BadRequest(s"No log level provided, the valid log levels are ${validLogLevels.mkString(", ")}")
       case _ =>
         val lvl = lvlStr.flatMap(SetNodeLogLevel.levelTranslator)
 
         lvl.foreach { level =>
           val members = {
-            val f1 = host
-              .map { h =>
-                Grid.jvmsAll.filter(_.host == h)
-              }
-              .getOrElse(Grid.jvmsAll)
+            val f1 = host.map { h =>
+              Grid.jvmsAll.filter(_.host == h)
+            }.getOrElse(Grid.jvmsAll)
 
-            val f2 = component
-              .map(c => roleMapping(c))
-              .map { c =>
-                f1.filter(h => h.identity.isDefined && h.identity.get == c)
-              }
-              .getOrElse(f1)
+            val f2 = component.map( c => roleMapping(c)).map { c =>
+              f1.filter( h =>  h.identity.isDefined && h.identity.get == c)
+            }.getOrElse(f1)
             f2
           }
 
           logger.info(s"Changing the log level of [${members.mkString(", ")}] to $level")
 
-          members.foreach { member =>
-            Grid.selectActor(MonitorActor.name, member) ! SetNodeLogLevel(level, duration.map(_.toInt))
+          members.foreach {
+            member =>
+              Grid.selectActor(MonitorActor.name, member) ! SetNodeLogLevel(level, duration.map(_.toInt))
           }
         }
         Ok("Done!")

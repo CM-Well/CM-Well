@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package security
 
 import akka.actor.Actor
@@ -20,13 +22,14 @@ import com.typesafe.scalalogging.LazyLogging
 /**
   * Created by yaakov on 5/17/16.
   */
-class NoncesManager extends Actor with LazyLogging {
+
+class NoncesManager extends Actor with LazyLogging{
   private var nonces = Set.empty[String]
 
   override def receive: Receive = {
-    case AddNonce(nonce)                      => nonces += nonce
+    case AddNonce(nonce) => nonces += nonce
     case ConsumeNonce(nonce) if nonces(nonce) => nonces -= nonce; sender ! NonceConsumed
-    case ConsumeNonce(nonce)                  => sender ! NonceNotExist
+    case ConsumeNonce(nonce) => sender ! NonceNotExist
   }
 }
 

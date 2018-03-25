@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.ctrl.checkers
 
 import java.net.InetSocketAddress
@@ -25,7 +27,7 @@ import cmwell.ctrl.hc.ZookeeperUtils
 import com.typesafe.scalalogging.LazyLogging
 import k.grid.Grid
 
-import scala.concurrent.{blocking, Future, Promise}
+import scala.concurrent.{Future, Promise, blocking}
 import scala.sys.process._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success, Try}
@@ -55,21 +57,19 @@ object ZookeeperChecker extends Checker with LazyLogging {
       case Success(response) =>
         logger.warn(s"Zookeeper: unexpected answer to ruok: $response")
         p.success(ZookeeperNotOk())
-      case _ =>
-        Try(isZkNode) match {
-          case Success(true)  => p.success(ZookeeperSeedNotRunning())
-          case Success(false) => p.success(ZookeeperNotRunning())
-          case Failure(err) =>
-            p.failure(err)
-            logger.warn("Checking if zookeeper node failed with", err)
-        }
+      case _ => Try(isZkNode) match {
+        case Success(true) => p.success(ZookeeperSeedNotRunning())
+        case Success(false) => p.success(ZookeeperNotRunning())
+        case Failure(err) =>
+          p.failure(err)
+          logger.warn("Checking if zookeeper node failed with", err)
+      }
     }
     p.future
   }
 
   private def singleTcp(host: String, port: Int, request: String): Future[String] = {
-    val (killSwitch, futureByteString) = Source
-      .single(ByteString(request))
+    val (killSwitch, futureByteString) = Source.single(ByteString(request))
       .via(Tcp().outgoingConnection(new InetSocketAddress(host, port), None, Nil, true, 5.seconds, 5.seconds))
       .viaMat(KillSwitches.single)(Keep.right)
       .toMat(Sink.head)(Keep.both)
@@ -80,23 +80,18 @@ object ZookeeperChecker extends Checker with LazyLogging {
     val responseFuture = futureByteString.map(Right.apply)
     Future.firstCompletedOf[Either[Unit, ByteString]](List(scheduleFuture, responseFuture)).onSuccess {
       case Left(_) =>
-        logger
-          .warn("Zookeeper: timeout checking state. Cancelling check. It will be checked again on next scheduled check")
+        logger.warn("Zookeeper: timeout checking state. Cancelling check. It will be checked again on next scheduled check")
         killSwitch.abort(new TimeoutException("Zookeeper server didn't respond in time"))
     }
     scheduleFuture.onFailure {
       case err =>
-        logger.warn(
-          s"Zookeeper: $err occurred in status checker timeout scheduler. Cancelling check (only if it didn't finish already). It will be checked again on next scheduled check"
-        )
-        killSwitch.abort(
-          new TimeoutException(
-            "Zookeeper error occurred in status checker timeout scheduler and server didn't respond in time"
-          )
-        )
+        logger.warn(s"Zookeeper: $err occurred in status checker timeout scheduler. Cancelling check (only if it didn't finish already). It will be checked again on next scheduled check")
+        killSwitch.abort(new TimeoutException("Zookeeper error occurred in status checker timeout scheduler and server didn't respond in time"))
     }
     futureByteString.map(_.utf8String)
   }
+
+
   /*
     private def singleTcp(host: String, port: Int, request: String): Future[String] = {
       Source.single(ByteString(request))
@@ -105,5 +100,5 @@ object ZookeeperChecker extends Checker with LazyLogging {
         .run()
         .map(_.utf8String)
     }
- */
+  */
 }

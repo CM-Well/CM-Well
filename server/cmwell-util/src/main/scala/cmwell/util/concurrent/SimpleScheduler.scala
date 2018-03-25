@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.util.concurrent
 
 import com.typesafe.scalalogging.LazyLogging
@@ -21,8 +23,8 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.util.Try
 
 /**
-  * Created by gilad on 12/3/15.
-  */
+ * Created by gilad on 12/3/15.
+ */
 object SimpleScheduler extends LazyLogging {
   private[this] lazy val timer = java.util.concurrent.Executors.newScheduledThreadPool(1)
 
@@ -30,26 +32,20 @@ object SimpleScheduler extends LazyLogging {
   //this method can be used if and only if we know `body` is a safe and small job.
   private[util] def scheduleInstant[T](duration: FiniteDuration)(body: => T) = {
     val p = Promise[T]()
-    timer.schedule(
-      new Runnable {
-        override def run(): Unit = {
-          // body must not be expensive to compute since it will be run in our only timer thread expense.
-          p.complete(Try(body))
-        }
-      },
-      duration.toMillis,
-      java.util.concurrent.TimeUnit.MILLISECONDS
-    )
+    timer.schedule(new Runnable {
+      override def run(): Unit = {
+        // body must not be expensive to compute since it will be run in our only timer thread expense.
+        p.complete(Try(body))
+      }
+    }, duration.toMillis,java.util.concurrent.TimeUnit.MILLISECONDS)
     p.future
   }
 
-  def scheduleAtFixedRate(initialDelay: FiniteDuration, period: FiniteDuration, mayInterruptIfRunning: Boolean = false)(
-    task: => Any
-  )(implicit executionContext: ExecutionContext): Cancellable = {
+  def scheduleAtFixedRate(initialDelay: FiniteDuration, period: FiniteDuration, mayInterruptIfRunning: Boolean = false)(task: =>Any)(implicit executionContext: ExecutionContext): Cancellable = {
     // memoize runnable task
     val runnable: Runnable = new Runnable {
       override def run(): Unit = Try(task).failed.foreach { err =>
-        logger.error("schedueled task failed", err)
+        logger.error("schedueled task failed",err)
       }
     }
 
@@ -58,26 +54,22 @@ object SimpleScheduler extends LazyLogging {
 
     val cancellable = timer.scheduleAtFixedRate(new Runnable {
       override def run(): Unit = ec.execute(runnable)
-    }, initialDelay.toMillis, period.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
+    },initialDelay.toMillis,period.toMillis,java.util.concurrent.TimeUnit.MILLISECONDS)
 
     new Cancellable {
       override def cancel() = cancellable.cancel(mayInterruptIfRunning)
     }
   }
 
-  def schedule[T](duration: FiniteDuration)(body: => T)(implicit executionContext: ExecutionContext): Future[T] = {
+  def schedule[T] (duration: FiniteDuration)(body: => T)(implicit executionContext: ExecutionContext): Future[T] = {
     val p = Promise[T]()
-    timer.schedule(
-      new Runnable {
-        override def run(): Unit = {
-          // body may be expensive to compute, and must not be run in our only timer thread expense,
-          // so we compute the task inside a `Future` and make it run on the expense of the given executionContext.
-          p.completeWith(Future(body)(executionContext))
-        }
-      },
-      duration.toMillis,
-      java.util.concurrent.TimeUnit.MILLISECONDS
-    )
+    timer.schedule(new Runnable {
+      override def run(): Unit = {
+        // body may be expensive to compute, and must not be run in our only timer thread expense,
+        // so we compute the task inside a `Future` and make it run on the expense of the given executionContext.
+        p.completeWith(Future(body)(executionContext))
+      }
+    },duration.toMillis,java.util.concurrent.TimeUnit.MILLISECONDS)
     p.future
   }
 
@@ -85,7 +77,7 @@ object SimpleScheduler extends LazyLogging {
     val p = Promise[T]()
     timer.schedule(new Runnable {
       override def run(): Unit = p.completeWith(body)
-    }, duration.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
+    },duration.toMillis,java.util.concurrent.TimeUnit.MILLISECONDS)
     p.future
   }
 }

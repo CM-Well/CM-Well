@@ -12,66 +12,67 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.util.connection
 
 import com.jcraft.jsch._
-import java.io.{InputStream, OutputStream}
+import java.io.{OutputStream, InputStream}
 import com.typesafe.scalalogging.LazyLogging
-
 /**
-  * Created with IntelliJ IDEA.
-  * User: gilad
-  * Date: 5/29/13
-  * Time: 2:44 PM
-  * To change this template use File | Settings | File Templates.
-  */
+ * Created with IntelliJ IDEA.
+ * User: gilad
+ * Date: 5/29/13
+ * Time: 2:44 PM
+ * To change this template use File | Settings | File Templates.
+ */
 package object ssh extends {
 
-  class CustomJschUserInfo(psswrd: String, yesNoController: String => Boolean) extends UserInfo with LazyLogging {
+	class CustomJschUserInfo(psswrd: String, yesNoController: String => Boolean) extends UserInfo with LazyLogging {
 
-    //keep this default yesNoController ? (for testing, and such...)
-    private def myPrompt: Boolean = {
-      scala.io.StdIn.readLine().toLowerCase match {
-        case "y"   => true
-        case "yes" => true
-        case "no"  => false
-        case "n"   => false
-        case _     => throw new IllegalArgumentException("YES or NO only!!!")
-      }
-    }
+		//keep this default yesNoController ? (for testing, and such...)
+		private def myPrompt: Boolean = {
+			scala.io.StdIn.readLine().toLowerCase match {
+				case "y" => true
+				case "yes" => true
+				case "no" => false
+				case "n" => false
+				case _ => throw new IllegalArgumentException("YES or NO only!!!")
+			}
+		}
 
-    def getPassphrase(): String = { null }
+		def getPassphrase(): String = { null }
 
-    def getPassword(): String = { psswrd }
+		def getPassword(): String = { psswrd }
 
-    def promptPassword(msg: String): Boolean = yesNoController(msg)
+		def promptPassword(msg: String): Boolean = yesNoController(msg)
 
-    //{ logger.info(msg)/*println(msg)*/; true }
-    def promptPassphrase(msg: String): Boolean = yesNoController(msg)
+		//{ logger.info(msg)/*println(msg)*/; true }
+		def promptPassphrase(msg: String): Boolean = yesNoController(msg)
 
-    def promptYesNo(msg: String): Boolean = yesNoController(msg)
+		def promptYesNo(msg: String): Boolean = yesNoController(msg)
 
-    def showMessage(msg: String): Unit = { logger.info(msg) /*println(msg)*/ }
-  }
+		def showMessage(msg: String): Unit = { logger.info(msg) /*println(msg)*/ }
+	}
 
-  class SshConnectionProblem(msg: String) extends cmwell.util.exceptions.ConnectionException(msg)
+	class SshConnectionProblem(msg: String) extends cmwell.util.exceptions.ConnectionException(msg)
 
-  /**
+	/**
 	 *
 	 */
-  trait SshExecutor {
-    def getExecChannel(command: String): ChannelExec
+	trait SshExecutor {
+		def getExecChannel(command: String): ChannelExec
 
-    def getSftpChannel: ChannelSftp
+		def getSftpChannel: ChannelSftp
 
-    def getHost: String
+		def getHost: String
 
-    def getUserName: String
+		def getUserName: String
 
-    def disconnect: Unit
-  }
+		def disconnect: Unit
+	}
 
-  /**
+	/**
 	 * use SSH to log onto <i>host</i> as <i>user</i> using <i>password</i> to execute a <i>command</i>
 	 * @param user the remote host's user
 	 * @param host the host to connect to
@@ -79,68 +80,64 @@ package object ssh extends {
 	 * @param yesNoController [OPTIONAL] in case you want to control yes/no prompt (default behavior is auto approval - yes to all)
 	 * @return a tuple with InputStream & OutputStream connected to the remote execution
 	 */
-  def createSshExecutor(user: String,
-                        host: String,
-                        password: String,
-                        yesNoController: String => Boolean = _ => true): SshExecutor = {
+	def createSshExecutor(user: String, host: String, password: String, yesNoController: String => Boolean = _ => true): SshExecutor = {
 
-    class SshExecutorImpl(val session: Session) extends SshExecutor with LazyLogging {
+		class SshExecutorImpl(val session: Session) extends SshExecutor with LazyLogging {
 
-      private lazy val gotConnected = {
-        val config = new java.util.Properties()
-        config.put("StrictHostKeyChecking", "no")
-        session.setConfig(config)
-        if (!session.isConnected) {
-          try {
-            session.connect()
-            true
-          } catch {
-            case e: Exception =>
-              logger.error(
-                "caught exception: " + e.getMessage + "\n with stacktrace:" + e.getStackTrace
-                  .mkString("\n\t", "\n\t", "")
-              ); false
-          }
-        } else true
-      }
+			private lazy val gotConnected = {
+				val config = new java.util.Properties()
+				config.put("StrictHostKeyChecking", "no")
+				session.setConfig(config)
+				if(!session.isConnected) {
+					try {
+						session.connect()
+						true
+					}
+					catch {case e: Exception => logger.error("caught exception: " + e.getMessage + "\n with stacktrace:" + e.getStackTrace.mkString("\n\t", "\n\t", "")); false }
+				}
+				else true
+			}
 
-      def getHost = session.getHost
+			def getHost = session.getHost
 
-      def getUserName = session.getUserName
+			def getUserName = session.getUserName
 
-      def getExecChannel(command: String): ChannelExec = {
-        if (gotConnected && session.isConnected) {
-          val channel: ChannelExec = session.openChannel("exec").asInstanceOf[ChannelExec]
-          channel.setCommand(command)
-          channel
-        } else throw new SshConnectionProblem("could not open a connection!")
-      }
+			def getExecChannel(command: String): ChannelExec = {
+				if(gotConnected && session.isConnected) {
+					val channel: ChannelExec = session.openChannel("exec").asInstanceOf[ChannelExec]
+					channel.setCommand(command)
+					channel
+				}
+				else throw new SshConnectionProblem("could not open a connection!")
+			}
 
-      def getSftpChannel: ChannelSftp = {
-        if (gotConnected && session.isConnected) {
-          session.openChannel("sftp").asInstanceOf[ChannelSftp]
-        } else throw new SshConnectionProblem("could not open a connection!")
-      }
+			def getSftpChannel: ChannelSftp = {
+				if(gotConnected && session.isConnected) {
+					session.openChannel("sftp").asInstanceOf[ChannelSftp]
+				}
+				else throw new SshConnectionProblem("could not open a connection!")
+			}
 
-      def disconnect { session.disconnect }
-    }
+			def disconnect { session.disconnect }
+		}
 
-    val jsch = new JSch
-    val session = jsch.getSession(user, host, 22)
-    val ui = new CustomJschUserInfo(password, yesNoController)
-    session.setUserInfo(ui)
-    new SshExecutorImpl(session)
-  }
+		val jsch = new JSch
+		val session = jsch.getSession(user, host, 22)
+		val ui = new CustomJschUserInfo(password, yesNoController)
+		session.setUserInfo(ui)
+		new SshExecutorImpl(session)
+	}
 
-  def sshExec(ssh: SshExecutor, cmd: String): List[String] = {
-    val ce = ssh.getExecChannel(cmd)
-    ce.setInputStream(null)
-    val in = ce.getInputStream
-    ce.connect
-    val output = scala.io.Source.fromInputStream(in).getLines().toList
-    //			if(output.contains(expectedOutput)) logger.info("command: " + cmd + " succeeded!")
-    //			else {logger.error("something is wrong on: " + machine + ", command: " + cmd + " did not succeed.") }
-    ce.disconnect
-    output
-  }
+
+	def sshExec(ssh: SshExecutor, cmd: String): List[String] = {
+		val ce = ssh.getExecChannel(cmd)
+		ce.setInputStream(null)
+		val in = ce.getInputStream
+		ce.connect
+		val output = scala.io.Source.fromInputStream(in).getLines().toList
+		//			if(output.contains(expectedOutput)) logger.info("command: " + cmd + " succeeded!")
+		//			else {logger.error("something is wrong on: " + machine + ", command: " + cmd + " did not succeed.") }
+		ce.disconnect
+		output
+	}
 }

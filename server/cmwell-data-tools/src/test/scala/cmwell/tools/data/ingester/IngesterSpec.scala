@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.tools.data.ingester
 
 import java.io._
@@ -32,10 +34,11 @@ import org.scalatest.Ignore
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
+
 /**
   * Created by matan on 7/4/16.
   */
-class IngesterSpec extends BaseWiremockSpec {
+class IngesterSpec extends BaseWiremockSpec  {
   implicit val system: ActorSystem = ActorSystem("reactive-tools-system")
   implicit val mat: Materializer = ActorMaterializer()
   val path = "example.org"
@@ -51,9 +54,9 @@ class IngesterSpec extends BaseWiremockSpec {
   }
 
   def createTriplesFile(numInfotons: Integer, numTriples: Integer, filename: String, zipped: Boolean = false) = {
-    def subject(x: Integer) = s"<http://$path/subject-$x>"
+    def subject(x: Integer)   = s"<http://$path/subject-$x>"
     def predicate(x: Integer) = s"<http://$path.org/predicate#p$x>"
-    def obj(x: Integer) = s""""${x}"^^<http://www.w3.org/2001/XMLSchema#string> ."""
+    def obj(x: Integer)       = s""""${x}"^^<http://www.w3.org/2001/XMLSchema#string> ."""
 
 //    val writer = new PrintWriter(testFile)
 
@@ -70,26 +73,25 @@ class IngesterSpec extends BaseWiremockSpec {
   }
 
   def createTriplesStream(numInfotons: Integer, numTriples: Integer) = {
-    def subject(x: Integer) = s"<http://$path/subject-$x>"
+    def subject(x: Integer)   = s"<http://$path/subject-$x>"
     def predicate(x: Integer) = s"<http://$path.org/predicate#p$x>"
-    def obj(x: Integer) = s""""${x}"^^<http://www.w3.org/2001/XMLSchema#string> ."""
+    def obj(x: Integer)       = s""""${x}"^^<http://www.w3.org/2001/XMLSchema#string> ."""
 
-    Iterator
-      .range(1, numInfotons + 1)
+    Iterator.range(1, numInfotons + 1)
       .flatMap(i => (1 to numTriples).map(t => s"${subject(i)} ${predicate(t)} ${obj(t)}\n"))
   }
 
   private def numInfotonsInServer = {
     val port = wireMockServer.port
     val req = HttpRequest(uri = s"http://$host:$port/$path/?op=stream&length=1")
-    val numRecordsFuture = Http()
-      .singleRequest(req)
+    val numRecordsFuture = Http().singleRequest(req)
       .map(response => HeaderOps.getNumInfotons(response.headers))
 
-    val headerFuture = numRecordsFuture.map(_ match {
-      case None             => ???
-      case Some(numRecords) => numRecords
-    })
+    val headerFuture = numRecordsFuture.map ( _ match {
+        case None => ???
+        case Some(numRecords) => numRecords
+      }
+    )
 
     val header = Await.result(headerFuture, Duration.Inf)
 
@@ -99,16 +101,11 @@ class IngesterSpec extends BaseWiremockSpec {
   "Ingester" should "ingest all blocks without retries" in {
     val numInfotonsToCreate = 30
 
-    stubFor(
-      post(urlPathMatching("/_in"))
-        .willReturn(
-          aResponse()
-            .withStatus(StatusCodes.OK.intValue)
-        )
-    )
+    stubFor(post(urlPathMatching("/_in"))
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.OK.intValue)))
 
-    val in = Source
-      .fromIterator(() => createTriplesStream(numInfotonsToCreate, 10))
+    val in = Source.fromIterator(() => createTriplesStream(numInfotonsToCreate, 10))
       .map(ByteString.apply)
       .runWith(StreamConverters.asInputStream())
 
@@ -117,7 +114,7 @@ class IngesterSpec extends BaseWiremockSpec {
       .runWith(Sink.ignore)
 
     result.flatMap { _ =>
-      wireMockServer.findAll(postRequestedFor(urlPathMatching("/_in"))).size should be(2)
+      wireMockServer.findAll(postRequestedFor(urlPathMatching("/_in"))).size should be (2)
     }
   }
 
@@ -126,29 +123,18 @@ class IngesterSpec extends BaseWiremockSpec {
 
     val numInfotonsToCreate = 10
 
-    stubFor(
-      post(urlPathMatching("/_in"))
-        .inScenario(SCENARIO)
-        .whenScenarioStateIs(Scenario.STARTED)
-        .willReturn(
-          aResponse()
-            .withStatus(StatusCodes.NotFound.intValue)
-        )
-        .willSetStateTo(SUCCESS_STATE)
-    )
+    stubFor(post(urlPathMatching("/_in")).inScenario(SCENARIO)
+      .whenScenarioStateIs(Scenario.STARTED)
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.NotFound.intValue))
+      .willSetStateTo(SUCCESS_STATE))
 
-    stubFor(
-      post(urlPathMatching("/_in"))
-        .inScenario(SCENARIO)
-        .whenScenarioStateIs(SUCCESS_STATE)
-        .willReturn(
-          aResponse()
-            .withStatus(StatusCodes.OK.intValue)
-        )
-    )
+    stubFor(post(urlPathMatching("/_in")).inScenario(SCENARIO)
+      .whenScenarioStateIs(SUCCESS_STATE)
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.OK.intValue)))
 
-    val in = Source
-      .fromIterator(() => createTriplesStream(numInfotonsToCreate, 10))
+    val in = Source.fromIterator(() => createTriplesStream(numInfotonsToCreate, 10))
       .map(ByteString.apply)
       .runWith(StreamConverters.asInputStream())
 
@@ -157,7 +143,7 @@ class IngesterSpec extends BaseWiremockSpec {
       .runWith(Sink.ignore)
 
     result.flatMap { _ =>
-      wireMockServer.findAll(postRequestedFor(urlPathMatching("/_in"))).size should be(numInfotonsToCreate + 1)
+      wireMockServer.findAll(postRequestedFor(urlPathMatching("/_in"))).size should be (numInfotonsToCreate + 1)
     }
   }
 
@@ -166,40 +152,24 @@ class IngesterSpec extends BaseWiremockSpec {
 
     val numInfotonsToCreate = 300
 
-    stubFor(
-      post(urlPathMatching("/_in"))
-        .inScenario(SCENARIO)
-        .whenScenarioStateIs(Scenario.STARTED)
-        .willReturn(
-          aResponse()
-            .withStatus(StatusCodes.OK.intValue)
-        )
-        .willSetStateTo(FAIL_STATE)
-    )
+    stubFor(post(urlPathMatching("/_in")).inScenario(SCENARIO)
+      .whenScenarioStateIs(Scenario.STARTED)
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.OK.intValue))
+      .willSetStateTo(FAIL_STATE))
 
-    stubFor(
-      post(urlPathMatching("/_in"))
-        .inScenario(SCENARIO)
-        .whenScenarioStateIs(FAIL_STATE)
-        .willReturn(
-          aResponse()
-            .withStatus(StatusCodes.NotFound.intValue)
-        )
-        .willSetStateTo(SUCCESS_STATE)
-    )
+    stubFor(post(urlPathMatching("/_in")).inScenario(SCENARIO)
+      .whenScenarioStateIs(FAIL_STATE)
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.NotFound.intValue))
+      .willSetStateTo(SUCCESS_STATE))
 
-    stubFor(
-      post(urlPathMatching("/_in"))
-        .inScenario(SCENARIO)
-        .whenScenarioStateIs(SUCCESS_STATE)
-        .willReturn(
-          aResponse()
-            .withStatus(StatusCodes.OK.intValue)
-        )
-    )
+    stubFor(post(urlPathMatching("/_in")).inScenario(SCENARIO)
+      .whenScenarioStateIs(SUCCESS_STATE)
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.OK.intValue)))
 
-    val in = Source
-      .fromIterator(() => createTriplesStream(numInfotonsToCreate, 10))
+    val in = Source.fromIterator(() => createTriplesStream(numInfotonsToCreate, 10))
       .map(ByteString.apply)
       .runWith(StreamConverters.asInputStream())
 
@@ -216,49 +186,37 @@ class IngesterSpec extends BaseWiremockSpec {
   it should "retry packet twice (server error) and then succeed ingesting" in {
     Ingester.retryTimeout = 1.seconds
 
-    val in = Source
-      .fromIterator(() => createTriplesStream(1, 1))
+    val in = Source.fromIterator(() => createTriplesStream(1, 1))
       .map(ByteString.apply)
       .runWith(StreamConverters.asInputStream())
 
-    stubFor(
-      post(urlPathMatching("/_in"))
-        .inScenario(SCENARIO)
-        .whenScenarioStateIs(Scenario.STARTED)
-        .willReturn(
-          aResponse()
-            .withStatus(StatusCodes.ServiceUnavailable.intValue)
-        )
-        .willSetStateTo(FAIL_STATE)
+    stubFor(post(urlPathMatching("/_in")).inScenario(SCENARIO)
+      .whenScenarioStateIs(Scenario.STARTED)
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.ServiceUnavailable.intValue))
+      .willSetStateTo(FAIL_STATE)
     )
 
-    stubFor(
-      post(urlPathMatching("/_in"))
-        .inScenario(SCENARIO)
-        .whenScenarioStateIs(FAIL_STATE)
-        .willReturn(
-          aResponse()
-            .withStatus(StatusCodes.ServiceUnavailable.intValue)
-        )
-        .willSetStateTo(SUCCESS_STATE)
+    stubFor(post(urlPathMatching("/_in")).inScenario(SCENARIO)
+      .whenScenarioStateIs(FAIL_STATE)
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.ServiceUnavailable.intValue))
+      .willSetStateTo(SUCCESS_STATE)
     )
 
-    stubFor(
-      post(urlPathMatching("/_in"))
-        .inScenario(SCENARIO)
-        .whenScenarioStateIs(SUCCESS_STATE)
-        .willReturn(
-          aResponse()
-            .withStatus(StatusCodes.OK.intValue)
-        )
-    )
+    stubFor(post(urlPathMatching("/_in")).inScenario(SCENARIO)
+      .whenScenarioStateIs(SUCCESS_STATE )
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.OK.intValue)))
 
-    val result = Ingester
-      .fromInputStream(baseUrl = s"$host:${wireMockServer.port}", format = "ntriples", in = in)
-      .runWith(Sink.ignore)
+    val result = Ingester.fromInputStream(
+      baseUrl = s"$host:${wireMockServer.port}",
+      format = "ntriples",
+      in = in)
+    .runWith(Sink.ignore)
 
     result.flatMap { _ =>
-      wireMockServer.findAll(postRequestedFor(urlPathMatching("/_in"))).size should be(3)
+      wireMockServer.findAll(postRequestedFor(urlPathMatching("/_in"))).size should be (3)
     }
   }
 
@@ -267,25 +225,23 @@ class IngesterSpec extends BaseWiremockSpec {
 
     Ingester.retryTimeout = 1.seconds
 
-    val in = Source
-      .fromIterator(() => createTriplesStream(numInfotonsToIngest, 1))
+    val in = Source.fromIterator(() => createTriplesStream(numInfotonsToIngest, 1))
       .map(ByteString.apply)
       .runWith(StreamConverters.asInputStream())
 
-    stubFor(
-      post(urlPathMatching("/_in"))
-        .willReturn(
-          aResponse()
-            .withStatus(StatusCodes.NotFound.intValue)
-        )
+    stubFor(post(urlPathMatching("/_in"))
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.NotFound.intValue))
     )
 
-    val result = Ingester
-      .fromInputStream(baseUrl = s"$host:${wireMockServer.port}", format = "ntriples", in = in)
+    val result = Ingester.fromInputStream(
+      baseUrl = s"$host:${wireMockServer.port}",
+      format = "ntriples",
+      in = in)
       .runWith(Sink.ignore)
 
     result.flatMap { _ =>
-      wireMockServer.findAll(postRequestedFor(urlPathMatching("/_in"))).size should be(numInfotonsToIngest + 1)
+      wireMockServer.findAll(postRequestedFor(urlPathMatching("/_in"))).size should be (numInfotonsToIngest + 1)
     }
   }
 }

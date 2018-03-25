@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.util.stream
 
 import akka.stream.ActorAttributes.SupervisionStrategy
@@ -34,52 +36,46 @@ class MapInitAndLast[In, Out](init: In ⇒ Out, last: In ⇒ Out) extends GraphS
     override def preStart(): Unit = tryPull(in)
 
     def pushWith(elem: In, f: In ⇒ Out): Unit = try { push(out, f(elem)) } catch {
-      case NonFatal(ex) ⇒
-        decider(ex) match {
-          case Supervision.Stop ⇒ failStage(ex)
-          case _ ⇒ pull(in)
-        }
+      case NonFatal(ex) ⇒ decider(ex) match {
+        case Supervision.Stop ⇒ failStage(ex)
+        case _ ⇒ pull(in)
+      }
     }
 
-    setHandler(
-      in,
-      new InHandler {
-        override def onPush(): Unit = {
-          val elem = grab(in)
-          if (pending != null) pushWith(pending, init)
-          else if (isAvailable(out)) pull(in)
+    setHandler(in, new InHandler {
+      override def onPush(): Unit = {
+        val elem = grab(in)
+        if (pending != null) pushWith(pending,init)
+        else if(isAvailable(out)) pull(in)
 
-          pending = elem
-        }
-
-        override def onUpstreamFinish(): Unit = {
-          if (pending == null) completeStage()
-          else {
-            if (isAvailable(out)) {
-              pushWith(pending, last)
-              completeStage()
-            }
-          }
-        }
+        pending = elem
       }
-    )
 
-    setHandler(
-      out,
-      new OutHandler {
-        override def onPull(): Unit = {
-          if (!isClosed(in)) {
-            if (!hasBeenPulled(in)) {
-              pull(in)
-            }
-          } else {
-            if (pending != null) {
-              pushWith(pending, last)
-            }
+      override def onUpstreamFinish(): Unit = {
+        if(pending == null) completeStage()
+        else {
+          if (isAvailable(out)) {
+            pushWith(pending, last)
             completeStage()
           }
         }
       }
-    )
+    })
+
+    setHandler(out, new OutHandler {
+      override def onPull(): Unit = {
+        if (!isClosed(in)) {
+          if(!hasBeenPulled(in)) {
+            pull(in)
+          }
+        }
+        else {
+          if(pending != null) {
+            pushWith(pending, last)
+          }
+          completeStage()
+        }
+      }
+    })
   }
 }

@@ -12,55 +12,58 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
 
 /**
-  * Created by michael on 10/5/14.
-  */
-case class PortManager(initialPort: Int, step: Int) {
-  def getPort(index: Int): Int = {
+ * Created by michael on 10/5/14.
+ */
+case class PortManager(initialPort : Int , step : Int) {
+  def getPort(index : Int) : Int = {
     initialPort + step * (index - 1)
   }
 }
 
+
 case object CassandraPortManager {
-  val jmxPortManager = PortManager(7199, 2)
-  val dmx4jPortManager = PortManager(8989, 1)
+  val jmxPortManager = PortManager(7199,2)
+  val dmx4jPortManager = PortManager(8989,1)
 }
 
 case object ElasticsearchPortManager {
-  val jmxPortManager = PortManager(7200, 2)
-  val httpPortManager = PortManager(9201, 1)
-  val transportPortManager = PortManager(9301, 1)
+  val jmxPortManager = PortManager(7200,2)
+  val httpPortManager = PortManager(9201,1)
+  val transportPortManager = PortManager(9301,1)
 }
 
 case object BgPortManager {
-  val jmxPortManager = PortManager(7196, 1)
-  val monitorPortManager = PortManager(8050, 1)
+  val jmxPortManager = PortManager(7196,1)
+  val monitorPortManager = PortManager(8050,1)
 }
 
 case object CtrlPortManager {
-  val monitorPortManager = PortManager(8000, 1)
-  val jmxPortManager = PortManager(7192, 1)
+  val monitorPortManager = PortManager(8000,1)
+  val jmxPortManager = PortManager(7192,1)
 }
 
 case object WebServicePortManager {
-  val jmxPortManager = PortManager(7194, 1)
-  val playHttpPortManager = PortManager(9000, 1)
-  val monitorPortManager = PortManager(8010, 1)
+  val jmxPortManager = PortManager(7194,1)
+  val playHttpPortManager = PortManager(9000,1)
+  val monitorPortManager = PortManager(8010,1)
 }
 
 case object CwPortManager {
-  val monitorPortManager = PortManager(8030, 1)
+  val monitorPortManager = PortManager(8030,1)
 }
 
 case object DcPortManager {
-  val monitorPortManager = PortManager(8040, 1)
-  val jmxPortManager = PortManager(7193, 1)
+  val monitorPortManager = PortManager(8040,1)
+  val jmxPortManager = PortManager(7193,1)
 }
 
 case object KafkaPortManager {
-  val jmxPortManager = PortManager(7191, 1)
+  val jmxPortManager = PortManager(7191,1)
 }
 
 object PortManagers {
@@ -73,3 +76,4 @@ object PortManagers {
   val dc = DcPortManager
   val kafka = KafkaPortManager
 }
+

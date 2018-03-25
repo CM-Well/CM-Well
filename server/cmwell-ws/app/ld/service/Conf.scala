@@ -12,15 +12,17 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.web.ld.service
 
 /**
-  * Created with IntelliJ IDEA.
-  * User: gilad
-  * Date: 7/22/13
-  * Time: 9:02 AM
-  * To change this template use File | Settings | File Templates.
-  */
+ * Created with IntelliJ IDEA.
+ * User: gilad
+ * Date: 7/22/13
+ * Time: 9:02 AM
+ * To change this template use File | Settings | File Templates.
+ */
 object Conf {
   lazy val metaNsToken: String = {
     val is = Thread.currentThread.getContextClassLoader.getResourceAsStream("token-meta_ns.txt")

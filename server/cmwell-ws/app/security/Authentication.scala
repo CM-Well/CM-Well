@@ -12,16 +12,19 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package security
 
 import com.github.t3hnar.bcrypt._
 import play.api.libs.json.JsValue
 
 /**
-  * Created by yaakov on 1/20/15.
-  */
+ * Created by yaakov on 1/20/15.
+ */
+
 object Authentication {
-  def passwordMatches(user: JsValue, password: String): Boolean = {
-    password.isBcrypted((user \ "digest").asOpt[String].getOrElse(""))
+  def passwordMatches(user: JsValue, password:String): Boolean = {
+    password.isBcrypted((user\"digest").asOpt[String].getOrElse(""))
   }
 }

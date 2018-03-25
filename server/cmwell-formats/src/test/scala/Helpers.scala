@@ -12,27 +12,27 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 import play.api.libs.json.{JsArray, JsValue}
 
 import scala.language.{implicitConversions, postfixOps}
 import scala.util.Try
 
 /**
-  * Created by yaakov on 3/2/15.
-  */
+ * Created by yaakov on 3/2/15.
+ */
 trait Helpers {
   implicit class JsValueExtensions(v: JsValue) {
-    def getValue = withPrettyException({ (v \ "value").as[String] }, "getValue")
-    def getQuad = withPrettyException({ (v \ "quad").as[String] }, "getQuad")
-    def getArr(prop: String): Seq[JsValue] =
-      withPrettyException(_ => { ((v \ prop).get: @unchecked) match { case JsArray(seq) => seq } }, "getArr", prop)
+    def getValue =  withPrettyException({(v\"value").as[String]}, "getValue")
+    def getQuad = withPrettyException({(v\"quad").as[String]}, "getQuad")
+    def getArr(prop: String): Seq[JsValue] = withPrettyException(_=>{((v \ prop).get: @unchecked) match { case JsArray(seq) => seq }},"getArr",prop)
 
     def getFirst(prop: String) = getArr(prop).head
     def getValueOfFirst(prop: String) = getFirst(prop).getValue
 
-    private def withPrettyException(f: => String, desc: String): String =
-      Try(f).getOrElse(throw new Exception(s"Operation $desc failed on $v"))
-    private def withPrettyException(f: String => Seq[JsValue], desc: String, prop: String): Seq[JsValue] =
-      Try(f(prop)).getOrElse(throw new Exception(s"""Operation $desc("$prop") failed on $v"""))
+    private def withPrettyException(f: => String, desc: String):String = Try(f).getOrElse(throw new Exception(s"Operation $desc failed on $v"))
+    private def withPrettyException(f: String => Seq[JsValue], desc: String, prop: String):Seq[JsValue] = Try(f(prop)).getOrElse(throw new Exception(s"""Operation $desc("$prop") failed on $v"""))
   }
 }
+

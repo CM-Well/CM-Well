@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package k.grid.dmap.api
 
 import akka.actor.{Actor, ActorRef, ActorSelection, PoisonPill}
@@ -27,11 +29,11 @@ import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Try
-
 /**
-  * Created by michael on 5/26/16.
-  */
-case class DMapActorInit(classType: Class[_ <: DMapActor], name: String, args: Any*)
+ * Created by michael on 5/26/16.
+ */
+
+case class DMapActorInit(classType : Class[_ <: DMapActor], name : String, args: Any*)
 
 object DMapMessage {
   def currentTimestamp = System.currentTimeMillis()
@@ -49,57 +51,56 @@ object SettingsValue {
   implicit val stringSettingsValueExtractor = new SettingsValueExtractor[String] {
     override def get(sv: SettingsValue): Option[String] = sv match {
       case SettingsString(v) => Some(v)
-      case _                 => None
+      case _ => None
     }
   }
 
   implicit val booleanSettingsValueExtractor = new SettingsValueExtractor[Boolean] {
     override def get(sv: SettingsValue): Option[Boolean] = sv match {
       case SettingsBoolean(v) => Some(v)
-      case _                  => None
+      case _ => None
     }
   }
 
   implicit val stringSetSettingsValueExtractor = new SettingsValueExtractor[Set[String]] {
     override def get(sv: SettingsValue): Option[Set[String]] = sv match {
       case SettingsSet(v) => Some(v)
-      case _              => None
+      case _ => None
     }
   }
 
   implicit val longSettingsValueExtractor = new SettingsValueExtractor[Long] {
     override def get(sv: SettingsValue): Option[Long] = sv match {
       case SettingsLong(v) => Some(v)
-      case _               => None
+      case _ => None
     }
   }
 }
 sealed trait SettingsValue extends Serializable {
-  def as[T: SettingsValue.SettingsValueExtractor]: Option[T] =
-    implicitly[SettingsValue.SettingsValueExtractor[T]].get(this)
+    def as[T : SettingsValue.SettingsValueExtractor]: Option[T] =
+      implicitly[SettingsValue.SettingsValueExtractor[T]].get(this)
 }
-case class SettingsString(str: String) extends SettingsValue
-case class SettingsBoolean(str: Boolean) extends SettingsValue
-case class SettingsSet(set: Set[String]) extends SettingsValue
-case class SettingsLong(lng: Long) extends SettingsValue
+case class SettingsString(str : String) extends SettingsValue
+case class SettingsBoolean(str : Boolean) extends SettingsValue
+case class SettingsSet(set : Set[String]) extends SettingsValue
+case class SettingsLong(lng : Long) extends SettingsValue
 
 case object DMapSlaveJoined extends DMapMessage
 case object DMapMasterJoined extends DMapMessage
 case object GetDMap extends DMapMessage
 case object GetLeaderHost extends DMapMessage
-case class MapData(m: Map[String, SettingsValue], timestamp: Long = DMapMessage.currentTimestamp) extends DMapMessage
-case class HandShake(m: Map[String, SettingsValue], timestamp: Long)
+case class MapData(m : Map[String, SettingsValue], timestamp : Long = DMapMessage.currentTimestamp) extends DMapMessage
+case class HandShake(m : Map[String, SettingsValue], timestamp : Long)
 
-case class SetValue(key: String, value: SettingsValue, timestamp: Long = DMapMessage.currentTimestamp)
-    extends DMapMessage
-case class AggregateValue(key: String, value: String, timestamp: Long = DMapMessage.currentTimestamp)
-    extends DMapMessage
-case class SubtractValue(key: String, value: String, timestamp: Long = DMapMessage.currentTimestamp) extends DMapMessage
-case class GetValue(key: String) extends DMapMessage
+case class SetValue(key : String , value : SettingsValue, timestamp : Long = DMapMessage.currentTimestamp) extends DMapMessage
+case class AggregateValue(key : String , value : String, timestamp : Long = DMapMessage.currentTimestamp) extends DMapMessage
+case class SubtractValue(key : String, value : String, timestamp : Long = DMapMessage.currentTimestamp) extends DMapMessage
+case class GetValue(key : String) extends DMapMessage
+
 
 object DMaps extends LazyLogging {
   private[this] var dmaps = Set.empty[DMapFacade]
-  private[grid] def register(dmap: DMapFacade) = {
+  private[grid] def register(dmap : DMapFacade) = {
     logger.info(s" *** Registrating $dmap")
     dmaps = dmaps + dmap
   }
@@ -109,14 +110,18 @@ object DMaps extends LazyLogging {
   register(PersistentDMap)
 }
 
+
 /**
-  * DMapFacade is the trait that defines the api that the user uses to interact with the distributed map.
-  * When defining DMapFacade the DMapMaster and DMapSlave types should be provided.
-  */
+ * DMapFacade is the trait that defines the api that the user uses to interact with the distributed map.
+ * When defining DMapFacade the DMapMaster and DMapSlave types should be provided.
+ */
 trait DMapFacade {
   implicit val timeout = Timeout(20.seconds)
-  def masterType: DMapActorInit
-  def slaveType: DMapActorInit
+  def masterType : DMapActorInit
+  def slaveType : DMapActorInit
+
+
+
 
   private[this] val _m = masterType
   private[this] val _s = slaveType
@@ -124,69 +129,74 @@ trait DMapFacade {
   private[grid] var mm = Map.empty[String, SettingsValue]
   private[grid] var sm = Map.empty[String, SettingsValue]
 
-  var slave: ActorRef = _
+  var slave : ActorRef = _
 
   def salveName = _s.name
   def master = Grid.selectSingleton(_m.name, None, Grid.clusterProxy)
 
+
+
+
   private[grid] def initMaster: Unit = {
 
-    Grid.createSingleton(_m.classType, _m.name, None, _m.args: _*)
+    Grid.createSingleton(_m.classType, _m.name, None, _m.args:_*)
     Grid.selectSingleton(_m.name, None)
     initSlave
   }
 
   private[grid] def initSlave: Unit = {
-    slave = Grid.create(_s.classType, _s.name, _s.args: _*)
+    slave = Grid.create(_s.classType, _s.name, _s.args:_*)
   }
 
   private[grid] def shutdownSlave: Unit = {
-    if (slave != null) slave ! PoisonPill
+    if(slave != null) slave ! PoisonPill
   }
 
+
   /**
-    * Returns the current map
-    * @return
-    */
+   * Returns the current map
+   * @return
+   */
   def getMap = sm
 
   /**
-    * Aggregate is applicable only for SettingsSet. 'value' will be added to 'key' set.
-    * @param key
-    * @param value
-    */
-  def aggregate(key: String, value: String) {
+   * Aggregate is applicable only for SettingsSet. 'value' will be added to 'key' set.
+   * @param key
+   * @param value
+   */
+  def aggregate(key : String, value : String) {
     master ! AggregateValue(key, value)
   }
 
   /**
-    * Subtract is applicable only for SettingsSet. 'value' will be removed from 'key' set.
-    * @param key
-    * @param value
-    */
-  def subtract(key: String, value: String) {
+   * Subtract is applicable only for SettingsSet. 'value' will be removed from 'key' set.
+   * @param key
+   * @param value
+   */
+  def subtract(key : String, value : String) {
     master ! SubtractValue(key, value)
   }
 
   /**
-    * set adds or changes the 'value' of 'key'.
-    * @param key
-    * @param value
-    */
-  def set(key: String, value: SettingsValue) {
+   * set adds or changes the 'value' of 'key'.
+   * @param key
+   * @param value
+   */
+  def set(key : String, value : SettingsValue) {
     master ! SetValue(key, value)
   }
 
   /**
-    * get returns the 'value' of 'key'.
-    * @param key
-    * @return
-    */
-  def get(key: String): Option[SettingsValue] = {
+   * get returns the 'value' of 'key'.
+   * @param key
+   * @return
+   */
+  def get(key : String) : Option[SettingsValue] = {
     //Await.result((localSlave ? GetValue(key)).mapTo[Option[SettingsValue]], 20 seconds)
     //Await.result((ref ? GetValue(key)).mapTo[Option[SettingsValue]], 20 seconds)
     sm.get(key)
   }
+
 
 }
 
@@ -194,19 +204,21 @@ trait DMapActor extends Actor
 
 trait DMapMaster extends DMapActor with LazyLogging {
   implicit val timeout = Timeout(20.seconds)
-  val facade: DMapFacade
-  def currentTimestamp: Long = System.currentTimeMillis / 1000
+  val facade : DMapFacade
+  def currentTimestamp : Long = System.currentTimeMillis / 1000
 
-  def onStart: Unit = {}
+  def onStart: Unit = {
+
+  }
   protected[this] var lastTimestamp = 0L
-  private[this] def slaves: Set[ActorSelection] = Grid.jvmsAll.map(jvm => Grid.selectActor(facade.salveName, jvm))
+  private[this] def slaves : Set[ActorSelection] = Grid.jvmsAll.map(jvm => Grid.selectActor(facade.salveName,jvm))
 
-  protected def propagateMsgToSlaves(dmMsg: DMapMessage) {
+  protected def propagateMsgToSlaves(dmMsg : DMapMessage) {
     logger.debug(s"Master - propagating $dmMsg to slaves ($slaves}).")
     slaves.foreach(_ ! dmMsg)
   }
 
-  protected def askSlaves(dmMsg: DMapMessage): Future[Set[Any]] = {
+  protected def askSlaves(dmMsg : DMapMessage) : Future[Set[Any]] = {
     val ff = slaves.map(_ ? dmMsg)
     cmwell.util.concurrent.successes(ff)
   }
@@ -217,6 +229,7 @@ trait DMapMaster extends DMapActor with LazyLogging {
 
     logger.info("Starting DMap Master")
     logger.info("Requesting initial data from local slave")
+
 
     context.system.scheduler.schedule(60.seconds, 60.seconds) {
       propagateMsgToSlaves(MapData(facade.mm, lastTimestamp))
@@ -243,9 +256,9 @@ trait DMapMaster extends DMapActor with LazyLogging {
               propagateMsgToSlaves(AggregateValue(key, value, timestamp))
               lastTimestamp = timestamp
             //}
-            case SettingsString(str)   => //
+            case SettingsString(str) => //
             case SettingsBoolean(bool) => //
-            case SettingsLong(lng)     => //
+            case SettingsLong(lng) => //
           }
         case None =>
           facade.mm = facade.mm.updated(key, SettingsSet(Set(value)))
@@ -263,8 +276,8 @@ trait DMapMaster extends DMapActor with LazyLogging {
               propagateMsgToSlaves(SubtractValue(key, value, timestamp))
               lastTimestamp = timestamp
             //}
-            case SettingsString(str)   => //
-            case SettingsLong(lng)     => //
+            case SettingsString(str) => //
+            case SettingsLong(lng) => //
             case SettingsBoolean(bool) => //
           }
         case None =>
@@ -273,7 +286,7 @@ trait DMapMaster extends DMapActor with LazyLogging {
     case GetDMap => sender ! MapData(facade.mm, lastTimestamp)
 
     case HandShake(md, timestamp) =>
-      if (timestamp > lastTimestamp) {
+      if(timestamp > lastTimestamp) {
         facade.mm = md
         lastTimestamp = timestamp
         propagateMsgToSlaves(MapData(facade.mm, lastTimestamp))
@@ -281,28 +294,30 @@ trait DMapMaster extends DMapActor with LazyLogging {
         sender ! MapData(facade.mm, lastTimestamp)
       }
 
-    case CurrentClusterState(members, unreachable, seenBy, leader, roleLeaderMap) => //this.members = members.map(_.address)
 
-    case dmm: DMapMessage => dmm.act
-    case _                => // Do nothing
+    case CurrentClusterState(members,unreachable,seenBy,leader,roleLeaderMap) => //this.members = members.map(_.address)
+
+    case dmm : DMapMessage => dmm.act
+    case _ => // Do nothing
 
   }
 }
 
 trait DMapSlave extends DMapActor with LazyLogging {
   implicit val timeout = Timeout(20.seconds)
-  val facade: DMapFacade
+  val facade : DMapFacade
   //private[this] var m = Map.empty[String, SettingsValue]
 
+
   protected def onStart {}
-  protected def onUpdate(oldMap: Map[String, SettingsValue],
-                         newMap: Map[String, SettingsValue],
-                         timestamp: Long): Unit = {}
+  protected def onUpdate(oldMap : Map[String, SettingsValue] , newMap : Map[String, SettingsValue], timestamp : Long): Unit = {
+
+  }
 
   protected var lastTimestamp = 0L
 
 //  context.system.scheduler.schedule(Duration.Zero, 10.seconds ) {
-  //logger.debug(s"current slave state: ${facade.sm}")
+    //logger.debug(s"current slave state: ${facade.sm}")
 //  }
 
   override def preStart(): Unit = {
@@ -318,7 +333,7 @@ trait DMapSlave extends DMapActor with LazyLogging {
   }
 
   override def receive: Receive = {
-    case SetValue(key, value, timestamp) =>
+    case SetValue(key , value , timestamp) =>
       logger.debug(s"Slave - Setting value $key -> $value")
       lastTimestamp = timestamp
 
@@ -337,8 +352,8 @@ trait DMapSlave extends DMapActor with LazyLogging {
               lastTimestamp = timestamp
               onUpdate(old, facade.sm, timestamp)
             case SettingsString(str) => //
-            case SettingsBoolean(_)  => //
-            case SettingsLong(_)     => //
+            case SettingsBoolean(_) => //
+            case SettingsLong(_) => //
           }
         case None =>
       }
@@ -351,15 +366,15 @@ trait DMapSlave extends DMapActor with LazyLogging {
         case Some(sv) =>
           sv match {
             case SettingsSet(set) =>
-              if (!set.contains(value)) {
+              if(!set.contains(value)){
                 facade.sm = facade.sm.updated(key, SettingsSet(set + value))
                 lastTimestamp = timestamp
                 onUpdate(old, facade.sm, timestamp)
 
               }
             case SettingsString(str) => //
-            case SettingsBoolean(_)  => //
-            case SettingsLong(lng)   => //
+            case SettingsBoolean(_) => //
+            case SettingsLong(lng) => //
           }
         case None =>
           facade.sm = facade.sm.updated(key, SettingsSet(Set(value)))
@@ -377,6 +392,6 @@ trait DMapSlave extends DMapActor with LazyLogging {
 
     case GetDMap => sender ! MapData(facade.sm, lastTimestamp)
 
-    case dmm: DMapMessage => dmm.act
+    case dmm : DMapMessage => dmm.act
   }
 }

@@ -12,13 +12,15 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.web.ld.exceptions
 
 /**
-  * Created with IntelliJ IDEA.
-  * User: gilad
-  * Date: 7/11/13
-  * Time: 10:32 AM
-  * To change this template use File | Settings | File Templates.
-  */
+ * Created with IntelliJ IDEA.
+ * User: gilad
+ * Date: 7/11/13
+ * Time: 10:32 AM
+ * To change this template use File | Settings | File Templates.
+ */
 class UnsupportedURIException(msg: String) extends RuntimeException(msg)

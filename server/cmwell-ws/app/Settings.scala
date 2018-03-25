@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.ws
 
 import java.time.temporal.TemporalUnit
@@ -22,12 +24,12 @@ import concurrent.duration._
 import scala.util._
 
 /**
-  * Created with IntelliJ IDEA.
-  * User: Israel
-  * Date: 12/09/13
-  * Time: 16:08
-  * To change this template use File | Settings | File Templates.
-  */
+ * Created with IntelliJ IDEA.
+ * User: Israel
+ * Date: 12/09/13
+ * Time: 16:08
+ * To change this template use File | Settings | File Templates.
+ */
 object Settings {
   val hostName = java.net.InetAddress.getLocalHost.getHostName
 
@@ -47,15 +49,11 @@ object Settings {
 
   // updates tLog
   lazy val updatesTLogName = config.getString("updatesTlog.name")
-  lazy val updatesTLogPartition = try { config.getString("updatesTlog.partition") } catch {
-    case _: Throwable => "updatesPar_" + hostName
-  }
+  lazy val updatesTLogPartition = try { config.getString("updatesTlog.partition") } catch { case _: Throwable => "updatesPar_" + hostName }
 
   // uuids tLog
   lazy val uuidsTLogName = config.getString("uuidsTlog.name")
-  lazy val uuidsTLogPartition = try { config.getString("uuidsTlog.partition") } catch {
-    case _: Throwable => "uuidsPar_" + hostName
-  }
+  lazy val uuidsTLogPartition = try { config.getString("uuidsTlog.partition") } catch { case _: Throwable => "uuidsPar_" + hostName }
 
   // infotons DAO
   lazy val irwServiceDaoHostName = config.getString("irwServiceDao.hostName")
@@ -77,38 +75,30 @@ object Settings {
   }
   lazy val cassandraBulkSize: Int = config.getInt("cassandra.bulk.size")
   lazy val consumeBulkThreshold: Long = config.getLong("cmwell.ws.consume.bulk.threshold")
-  lazy val consumeBulkBinarySearchTimeout: FiniteDuration =
-    config.getDuration("cmwell.ws.consume.bulk.binarySearchTimeout").toMillis.millis
+  lazy val consumeBulkBinarySearchTimeout: FiniteDuration = config.getDuration("cmwell.ws.consume.bulk.binarySearchTimeout").toMillis.millis
   lazy val elasticsearchScrollBufferSize: Int = config.getInt("elasticsearch.scroll.buffer.size")
 
   //in seconds:
-  lazy val cacheTimeout: Long =
-    Try(config.getDuration("webservice.cache.timeout", java.util.concurrent.TimeUnit.SECONDS)).getOrElse(7L)
+  lazy val cacheTimeout: Long = Try(config.getDuration("webservice.cache.timeout", java.util.concurrent.TimeUnit.SECONDS)).getOrElse(7L)
 
-  lazy val fieldsNamesCacheTimeout: Duration =
-    Try(config.getDuration("cmwell.ws.cache.fieldsNamesTimeout")).toOption.fold(2.minutes) { d =>
-      Duration.fromNanos(d.toNanos)
-    }
+  lazy val fieldsNamesCacheTimeout: Duration = Try(config.getDuration("cmwell.ws.cache.fieldsNamesTimeout")).toOption.fold(2.minutes) { d =>
+    Duration.fromNanos(d.toNanos)
+  }
   lazy val maxTypesCacheSize: Long = Try(config.getLong("cmwell.ws.cache.types.max-size")).getOrElse(10000L)
-  lazy val minimumEntryRefreshRateMillis: Long =
-    Try(config.getDuration("cmwell.ws.cache.types.minimum-refresh-rate")).fold(_ => 30000L, _.toMillis)
+  lazy val minimumEntryRefreshRateMillis: Long = Try(config.getDuration("cmwell.ws.cache.types.minimum-refresh-rate")).fold(_ => 30000L,_.toMillis)
 
   lazy val sstreamParallelism: Int = config.getInt("cmwell.ws.sstream-parallelism")
 
   lazy val pushbackpressure: String = Try(config.getString("cmwell.ws.pushbackpressure.trigger")).getOrElse("old")
-  lazy val maximumQueueBuildupAllowedUTLog: Long =
-    Try(config.getLong("cmwell.ws.tlog.updating.limit")).toOption.getOrElse(13200000L)
-  lazy val maximumQueueBuildupAllowedITLog: Long =
-    Try(config.getLong("cmwell.ws.tlog.indexing.limit")).toOption.getOrElse(3500000L)
+  lazy val maximumQueueBuildupAllowedUTLog: Long = Try(config.getLong("cmwell.ws.tlog.updating.limit")).toOption.getOrElse(13200000L)
+  lazy val maximumQueueBuildupAllowedITLog: Long = Try(config.getLong("cmwell.ws.tlog.indexing.limit")).toOption.getOrElse(3500000L)
   lazy val maximumQueueBuildupAllowed: Long = Try(config.getLong("cmwell.ws.klog.limit")).toOption.getOrElse(496351L)
-  lazy val ingestPushbackByServer: FiniteDuration =
-    Try(config.getDuration("cmwell.ws.klog.pushback.time")).toOption.fold(7.seconds) { d =>
-      Duration.fromNanos(d.toNanos)
-    }
-  lazy val bgMonitorAskTimeout: FiniteDuration =
-    Try(config.getDuration("cmwell.ws.klog.pushback.timeout")).toOption.fold(5.seconds) { d =>
-      Duration.fromNanos(d.toNanos)
-    }
+  lazy val ingestPushbackByServer: FiniteDuration = Try(config.getDuration("cmwell.ws.klog.pushback.time")).toOption.fold(7.seconds) { d =>
+    Duration.fromNanos(d.toNanos)
+  }
+  lazy val bgMonitorAskTimeout: FiniteDuration = Try(config.getDuration("cmwell.ws.klog.pushback.timeout")).toOption.fold(5.seconds) { d =>
+    Duration.fromNanos(d.toNanos)
+  }
 
   // default timeout for ElasticSearch calls
   lazy val esTimeout = config.getInt("ftsService.default.timeout").seconds

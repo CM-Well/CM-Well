@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.tools.data.sparql
 
 import java.nio.file.{Files, Paths}
@@ -48,15 +50,14 @@ trait SparqlTriggerProcessorReporter {
   def saveTokens(tokensAndStats: TokenAndStatisticsMap): Unit
 }
 
+
 /**
   * Reporter which reads/writes token and stats to files
   * @param stateFile path to file which stores current state (tokens)
   * @param webPort
   */
-class FileReporterActor(stateFile: Option[String], webPort: Int = 8080)
-    extends Actor
-    with SparqlTriggerProcessorReporter
-    with DataToolsLogging {
+class FileReporterActor(stateFile: Option[String], webPort: Int = 8080) extends Actor with SparqlTriggerProcessorReporter
+  with DataToolsLogging {
   val path = stateFile.map(Paths.get(_))
   implicit val ec = context.dispatcher
 
@@ -79,25 +80,19 @@ class FileReporterActor(stateFile: Option[String], webPort: Int = 8080)
     case RequestReference(path) =>
       val data = getReferencedData(path)
       //      sender() ! ResponseReference(data)
-      data.map(ResponseReference.apply).pipeTo(sender())
+      data.map(ResponseReference.apply) pipeTo sender()
   }
 
-  def readTokensFromFile() =
-    path
-      .map { p =>
-        if (!Files.exists(p)) Map.empty[String, Token]
-        else
-          scala.io.Source
-            .fromFile(p.toFile)
-            .getLines()
-            .map(line => line.split(" -> "))
-            .map(arr => arr(0) -> arr(1))
-            .toMap
-      }
-      .getOrElse(Map.empty)
+  def readTokensFromFile() = path.map { p =>
+    if (!Files.exists(p)) Map.empty[String, Token]
+    else scala.io.Source.fromFile(p.toFile)
+      .getLines()
+      .map(line => line.split(" -> "))
+      .map(arr => arr(0) -> arr(1))
+      .toMap
+  }.getOrElse(Map.empty)
 
-  override def getReferencedData(path: String): Future[String] =
-    Future.successful(scala.io.Source.fromFile(path).mkString)
+  override def getReferencedData(path: String): Future[String] = Future.successful(scala.io.Source.fromFile(path).mkString)
 
   override def saveTokens(tokensAndStats: TokenAndStatisticsMap): Unit = {
     val tokens = tokensAndStats.map {
@@ -121,30 +116,26 @@ class WebExporter(reporter: ActorRef, port: Int = 8080)(implicit system: ActorSy
   }
 
   val bindingFuture: Future[Http.ServerBinding] =
-    serverSource
-      .to(Sink.foreach { connection =>
-        connection.handleWithAsyncHandler(requestHandler)
-      })
-      .run()
+    serverSource.to(Sink.foreach { connection =>
+      connection handleWithAsyncHandler requestHandler
+    }).run()
 
   def createContent(implicit ec: ExecutionContext) = {
     import scala.concurrent.duration._
     implicit val timeout = akka.util.Timeout(10.seconds)
-    (reporter ? RequestPreviousTokens)
-      .mapTo[ResponseWithPreviousTokens]
-      .map {
-        case ResponseWithPreviousTokens(tokens) =>
-          val title = "sensors state"
+    (reporter ? RequestPreviousTokens).mapTo[ResponseWithPreviousTokens]
+      .map { case ResponseWithPreviousTokens(tokens) =>
 
-          val (content, _) = tokens.foldLeft("" -> false) {
-            case ((agg, evenRow), (sensor, token)) =>
-              val style = if (evenRow) "tg-j2zy" else "tg-yw4l"
+        val title = "sensors state"
 
-              val decoded = cmwell.tools.data.utils.text.Tokens.decompress(token._1)
-              val timestamp = DateTime(decoded.takeWhile(_ != '|').toLong)
+        val (content, _) = tokens.foldLeft("" -> false) { case ((agg, evenRow), (sensor, token)) =>
+          val style = if (evenRow) "tg-j2zy" else "tg-yw4l"
 
-              val row =
-                s"""
+          val decoded = cmwell.tools.data.utils.text.Tokens.decompress(token._1)
+          val timestamp = DateTime(decoded.takeWhile(_ != '|').toLong)
+
+          val row =
+            s"""
               |<tr>
               |    <td class="$style">$sensor</th>
               |    <td class="$style">$timestamp</th>
@@ -153,10 +144,10 @@ class WebExporter(reporter: ActorRef, port: Int = 8080)(implicit system: ActorSy
               | </tr>
             """.stripMargin
 
-              (agg ++ "\n" ++ row) -> !evenRow
-          }
+          (agg ++ "\n" ++ row) -> !evenRow
+        }
 
-          s"""
+        s"""
           |<html><body>
           |<style type="text/css">
           |.tg  {border-collapse:collapse;border-spacing:0;border-color:#aaa;}

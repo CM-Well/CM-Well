@@ -12,9 +12,11 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package ld.exceptions
 
 /**
   * Created by eli on 22/05/16.
   */
-class BadFieldTypeException(msg: String, t: Throwable = null) extends RuntimeException(msg, t)
+class BadFieldTypeException(msg: String, t: Throwable = null) extends RuntimeException(msg,t)

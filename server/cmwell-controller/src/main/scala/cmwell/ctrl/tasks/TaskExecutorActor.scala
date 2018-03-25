@@ -12,9 +12,11 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.ctrl.tasks
 
-import akka.actor.{Actor, ActorRef}
+import akka.actor.{ActorRef, Actor}
 import akka.actor.Actor.Receive
 import akka.util.Timeout
 import cmwell.ctrl.tasks.TaskSuccessful
@@ -22,10 +24,10 @@ import com.typesafe.scalalogging.LazyLogging
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 import scala.concurrent.ExecutionContext.Implicits.global
-
 /**
-  * Created by michael on 3/9/16.
-  */
+ * Created by michael on 3/9/16.
+ */
+
 trait TaskStatus
 case object InProgress extends TaskStatus
 case object Complete extends TaskStatus
@@ -37,18 +39,23 @@ object TaskExecutorActor {
 
 class TaskExecutorActor extends Actor with LazyLogging {
   implicit val timeout = Timeout(15.seconds)
-  private var status: TaskStatus = _
-  private var s: ActorRef = _
-  private case class TaskFinished(status: TaskStatus)
+  private var status : TaskStatus = _
+  private var s : ActorRef = _
+  private case class TaskFinished(status : TaskStatus)
+
+
   @throws[Exception](classOf[Exception])
-  override def preStart(): Unit = {}
+  override def preStart(): Unit = {
+
+  }
+
 
   override def receive: Receive = {
-    case t: Task => {
+    case t : Task => {
       logger.info(s"Starting task: $t")
       s = sender()
       status = InProgress
-      t.exec.onComplete {
+      t.exec onComplete {
         case Success(tr) => {
           tr match {
             case TaskSuccessful =>

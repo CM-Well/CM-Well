@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package actions
 
 import java.util.TimeZone
@@ -31,20 +33,21 @@ import play.api.mvc.{AnyContent, Request, Result}
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import cmwell.util.concurrent.successes
-import cmwell.util.string.{dateStringify, Base64}
+import cmwell.util.string.{Base64, dateStringify}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.postfixOps
-
 /**
-  * Created by michael on 7/14/15.
-  */
+ * Created by michael on 7/14/15.
+ */
+
 case object GetRequest
 case object GetRequestShort
 class RequestMonitor(cmwellRequest: CmwellRequest) extends Actor with LazyLogging {
   implicit val timeout = Timeout(30.seconds)
 
   val deathWatch = 30.seconds
+
 
   context.system.scheduler.scheduleOnce(deathWatch, self, PoisonPill)
 
@@ -58,16 +61,13 @@ class RequestMonitor(cmwellRequest: CmwellRequest) extends Actor with LazyLoggin
   }
 }
 
-case class CmwellRequest(requestType: String,
-                         path: String,
-                         queryString: String,
-                         generationTime: Long,
-                         requestBody: String)
+
+case class CmwellRequest(requestType : String, path : String, queryString : String, generationTime : Long , requestBody : String)
 case object GetRequestActors
 
 object RequestMonitor extends LazyLogging {
   implicit val timeout = Timeout(30.seconds)
-  private[this] var requestContainer: ActorRef = _
+  private[this] var requestContainer : ActorRef = _
 
   def getRequestContainer = requestContainer
 
@@ -75,65 +75,65 @@ object RequestMonitor extends LazyLogging {
     requestContainer = Grid.create(classOf[RequestsContainer], "RequestsContainer")
   }
 
-  def add(requestType: String, path: String, queryString: String, requestBody: String, now: Long): Unit = {
-    requestContainer ! CmwellRequest(requestType, path, queryString, now, requestBody)
+  def add(requestType : String, path : String, queryString : String, requestBody : String, now: Long): Unit = {
+    requestContainer ! CmwellRequest(requestType, path,  queryString, now, requestBody)
   }
 
-  def getAllRequestPaths: Future[Map[String, Iterable[(String, CmwellRequest)]]] = {
+  def getAllRequestPaths : Future[Map[String, Iterable[(String, CmwellRequest)]]] = {
     startMonitoring
 
     val webHosts = Grid.jvms(Jvms.WS)
     logger.info(s"webHosts: $webHosts")
-    val futures = webHosts.map { host =>
-      logger.info(s"host: $host")
-      (Grid.selectActor("RequestsContainer", host) ? GetRequestActors)
-        .mapTo[Iterable[(String, CmwellRequest)]]
-        .map(it => host -> it)
+    val futures = webHosts.map {
+      host =>
+        logger.info(s"host: $host")
+        (Grid.selectActor("RequestsContainer", host) ? GetRequestActors).mapTo[Iterable[(String, CmwellRequest)]].map(it => host -> it)
     }
-    successes(futures).map(vec => vec.map(el => el._1.host -> el._2).toMap)
+    successes(futures).map(vec => vec.map(el => el._1.host -> el._2 ).toMap)
   }
 
-  def requestsInfoton(path: String, dc: String): Future[Option[VirtualInfoton]] = {
-    val res = getAllRequestPaths.map { m =>
-      logger.info(s"GOT MAP: $m")
-      val bd = m.toSeq
-        .sortBy(_._1)
-        .map { tuple =>
-          s"""***${tuple._1}*** <br>
+  def requestsInfoton(path : String, dc : String) : Future[Option[VirtualInfoton]] = {
+      val res = getAllRequestPaths.map {
+      m =>
+        logger.info(s"GOT MAP: $m")
+        val bd = m.toSeq.sortBy(_._1).map {
+          tuple =>
+            s"""***${tuple._1}*** <br>
                |
                |""".stripMargin +
             MarkdownTable(
               MarkdownTuple("Details", "Type", "Path", "Query String", "Generation Time"),
-              tuple._2.map { c =>
+              tuple._2.map{ c =>
+
                 val jodaTime = dateStringify(new DateTime(c._2.generationTime))
 
-                MarkdownTuple(s"<a href=/monitor/requests/${c._1}>Details</a>",
-                              c._2.requestType,
-                              c._2.path,
-                              c._2.queryString,
-                              jodaTime)
-              }.toSeq
-            ).get
-        }
-        .mkString("\n\n\n")
-      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(bd.getBytes, "text/x-markdown")))))
+                MarkdownTuple(
+                  s"<a href=/monitor/requests/${c._1}>Details</a>",
+                  c._2.requestType,
+                  c._2.path,
+                  c._2.queryString,
+                  jodaTime)
+              }.toSeq).get
+        }.mkString("\n\n\n")
+        Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(bd.getBytes, "text/x-markdown")))))
     }
     res
   }
 
   def startMonitoring {
-    Grid.jvms(Jvms.WS).foreach { host =>
-      Grid.selectActor("RequestsContainer", host) ! StartRequestMonitoring
+    Grid.jvms(Jvms.WS).foreach {
+      host => Grid.selectActor("RequestsContainer", host) ! StartRequestMonitoring
     }
   }
 
   def stopMonitoring {
-    Grid.jvms(Jvms.WS).foreach { host =>
-      Grid.selectActor("RequestsContainer", host) ! StopRequestMonitoring
+    Grid.jvms(Jvms.WS).foreach {
+      host => Grid.selectActor("RequestsContainer", host) ! StopRequestMonitoring
     }
   }
 
 }
+
 
 case object StartRequestMonitoring
 case object StopRequestMonitoring
@@ -142,12 +142,13 @@ class RequestsContainer extends Actor with LazyLogging {
   implicit val timeout = Timeout(30.seconds)
   var actors = Map.empty[String, ActorRef]
 
-  private[this] var doMonitoring: Boolean = false
-  private[this] var taskCanceller: Option[Cancellable] = None
+  private[this] var doMonitoring : Boolean = false
+  private[this] var taskCanceller : Option[Cancellable] = None
+
 
   override def receive: Actor.Receive = {
-    case cmwr: CmwellRequest =>
-      if (doMonitoring) {
+    case cmwr : CmwellRequest =>
+      if(doMonitoring){
         logger.info(s"adding CmwellRequest: $cmwr")
         context.actorOf(Props(classOf[RequestMonitor], cmwr))
         logger.info(s"current amount of children: ${context.children.size}")
@@ -156,19 +157,22 @@ class RequestsContainer extends Actor with LazyLogging {
     case GetRequestActors =>
       logger.info(s"Received GetRequestActors has (${context.children.size}) children")
       val s = sender()
-      val x = context.children.map { c =>
+      val x = context.children.map{c =>
+
         logger.debug(s"path: ${c.path.toSerializationFormatWithAddress(Grid.me)}")
         val pathB64 = Base64.encodeBase64String(c.path.toSerializationFormatWithAddress(Grid.me))
         //logger.info(s"pathB64: $pathB64")
-        (c ? GetRequestShort).mapTo[CmwellRequest].map { f =>
-          (pathB64, f)
+        (c ? GetRequestShort).mapTo[CmwellRequest].map {
+          f =>
+            (pathB64,f)
         }
       }
 
       //val y = context.children.map(c => c.path.toSerializationFormatWithAddress(Grid.me))
-      successes(x).foreach { xx =>
-        logger.debug(s"Request contents: ${xx.toString}")
-        s ! xx
+      successes(x).foreach{
+        xx =>
+          logger.debug(s"Request contents: ${xx.toString}")
+          s ! xx
       }
 
     case StartRequestMonitoring =>

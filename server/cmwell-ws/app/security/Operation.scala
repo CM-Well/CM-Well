@@ -12,11 +12,14 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package security
 
 /**
-  * Created by yaakov on 6/14/15.
-  */
+ * Created by yaakov on 6/14/15.
+ */
+
 sealed trait Operation
 case object Admin extends Operation
 case object Overwrite extends Operation
@@ -25,10 +28,10 @@ case object PriorityWrite extends Operation
 object Operation {
   def unapply(op: String): Option[Operation] = {
     op match {
-      case "Admin"         => Some(Admin)
-      case "Overwrite"     => Some(Overwrite)
+      case "Admin" => Some(Admin)
+      case "Overwrite" => Some(Overwrite)
       case "PriorityWrite" => Some(PriorityWrite)
-      case _               => None
+      case _ => None
     }
   }
 }

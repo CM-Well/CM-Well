@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 import java.io.{File, PrintWriter}
 import java.util.Date
 
@@ -19,8 +21,9 @@ import scala.collection.GenSeq
 import scala.util.{Failure, Success}
 
 /**
-  * Created by michael on 12/8/15.
-  */
+ * Created by michael on 12/8/15.
+ */
+
 //trait RunnableComponent {
 //  val processSignature : String
 //  val startScriptLocation : String
@@ -34,57 +37,50 @@ import scala.util.{Failure, Success}
 //}
 
 trait DataComponent {
-  val componentName: String
-  val componentDataDirs: Map[String, GenSeq[String]]
-  val h: Host
-  def createDataDirectories(hosts: GenSeq[String]) {
+  val componentName : String
+  val componentDataDirs : Map[String,GenSeq[String]]
+  val h : Host
+  def createDataDirectories(hosts : GenSeq[String]) {
     h.info(s"  creating $componentName data directories")
-    componentDataDirs.values.flatten.foreach { dataDir =>
-      hosts.par.foreach(host => h.command(s"mkdir -p $dataDir", host, false))
+    componentDataDirs.values.flatten.foreach{
+      dataDir => hosts.par.foreach (host => h.command(s"mkdir -p $dataDir", host, false))
     }
   }
 
-  def clearDataDirecoties(hosts: GenSeq[String]) {
+  def clearDataDirecoties(hosts : GenSeq[String]) {
     h.info(s"  clearing $componentName's data directories")
-    componentDataDirs.values.flatten.foreach { dataDir =>
-      h.command(s"rm -rf ${dataDir}/*", hosts, false)
+    componentDataDirs.values.flatten.foreach{
+      dataDir => h.command(s"rm -rf ${dataDir}/*", hosts, false)
     }
   }
 
-  def linkDataDirectories(hosts: GenSeq[String]) {
+  def linkDataDirectories(hosts : GenSeq[String]) {
     h.info(s"  linking $componentName data directories")
-    componentDataDirs.foreach { dd =>
-      for (index <- 1 to dd._2.size) {
-        h.command(
-          s"test -L ${h.getInstDirs.intallationDir}/data/${ResourceBuilder.getIndexedName(dd._1, index)} || ln -s ${dd
-            ._2(index - 1)} ${h.getInstDirs.intallationDir}/data/${ResourceBuilder.getIndexedName(dd._1, index)}",
-          hosts,
-          false
-        )
-      }
+    componentDataDirs.foreach{
+      dd =>
+        for(index <- 1 to dd._2.size){
+          h.command(s"test -L ${h.getInstDirs.intallationDir}/data/${ResourceBuilder.getIndexedName(dd._1,index)} || ln -s ${dd._2(index - 1)} ${h.getInstDirs.intallationDir}/data/${ResourceBuilder.getIndexedName(dd._1,index)}", hosts, false)
+        }
     }
   }
 }
 
 trait LoggingComponent {
-  val componentName: String
-  val componentMappings: Map[String, Int]
-  val h: Host
-  def createLoggingDirectories(hosts: GenSeq[String]) {
+  val componentName : String
+  val componentMappings : Map[String,Int]
+  val h : Host
+  def createLoggingDirectories(hosts : GenSeq[String]) {
     h.info(s"  creating $componentName log directories")
-    componentMappings.foreach { componentMapping =>
-      for (index <- 1 to componentMapping._2) {
-        h.command(
-          s"mkdir -p ${h.getInstDirs.intallationDir}/log/${ResourceBuilder.getIndexedName(componentMapping._1, index)}",
-          hosts,
-          false
-        )
-      }
+    componentMappings.foreach{
+      componentMapping =>
+        for(index <- 1 to componentMapping._2){
+          h.command(s"mkdir -p ${h.getInstDirs.intallationDir}/log/${ResourceBuilder.getIndexedName(componentMapping._1,index)}", hosts, false)
+        }
     }
   }
 
   object LogLevel {
-    private var lvl: String = "INFO"
+    private var lvl : String = "INFO"
     def warn = lvl = "WARN"
     def error = lvl = "ERROR"
     def info = lvl = "INFO"
@@ -95,19 +91,16 @@ trait LoggingComponent {
 }
 
 trait ConfigurableComponent {
-  val componentName: String
-  val componentMappings: Map[String, Int]
-  val h: Host
-  def createConigurationsDirectoires(hosts: GenSeq[String]) {
+  val componentName : String
+  val componentMappings : Map[String,Int]
+  val h : Host
+  def createConigurationsDirectoires(hosts : GenSeq[String]) {
     h.info(s"  creating $componentName configuration directories")
-    componentMappings.foreach { componentMapping =>
-      for (index <- 1 to componentMapping._2) {
-        h.command(
-          s"mkdir -p ${h.getInstDirs.intallationDir}/conf/${ResourceBuilder.getIndexedName(componentMapping._1, index)}",
-          hosts,
-          false
-        )
-      }
+    componentMappings.foreach{
+      componentMapping =>
+        for(index <- 1 to componentMapping._2){
+          h.command(s"mkdir -p ${h.getInstDirs.intallationDir}/conf/${ResourceBuilder.getIndexedName(componentMapping._1,index)}", hosts, false)
+        }
     }
   }
 }
@@ -121,14 +114,14 @@ case object NonRolling extends UpgradeMethod
 case object PreUpgrade extends UpgradeMethod
 
 trait RunnableComponent {
-  def start(hosts: GenSeq[String])
-  def stop(hosts: GenSeq[String])
+  def start(hosts : GenSeq[String])
+  def stop(hosts : GenSeq[String])
 
-  def upgradeMethod: UpgradeMethod = Rolling
-  def upgradeDependency: Set[ComponentProps] = Set.empty[ComponentProps]
+  def upgradeMethod : UpgradeMethod = Rolling
+  def upgradeDependency : Set[ComponentProps] = Set.empty[ComponentProps]
 }
 
-abstract class ComponentProps(h: Host, name: String, location: String, hasDate: Boolean) {
+abstract class ComponentProps(h : Host, name : String, location : String , hasDate : Boolean) {
   def getName = name
   def getCurrentDateStr = {
     val format = new java.text.SimpleDateFormat("yyyyMMdd_hhmmss")
@@ -141,7 +134,7 @@ abstract class ComponentProps(h: Host, name: String, location: String, hasDate: 
     osName match {
       case "Mac OS X" => "pax -rwl"
       case _ =>
-        if (isDir) "cp -al" else "cp -L"
+        if(isDir) "cp -al" else "cp -L"
     }
   }
 
@@ -150,59 +143,46 @@ abstract class ComponentProps(h: Host, name: String, location: String, hasDate: 
   lazy val packageName = getComponentName(name, location)
   lazy val unpackedName = getUnpackedName(packageName, location)
 
-  def getResolvedName: String = unpackedName match {
+  def getResolvedName : String = unpackedName match {
     case Some(uname) => uname
-    case None        => packageName
+    case None => packageName
   }
   /*      def packageLocation : String = location*/
-  def targetLocation: String
+  def targetLocation : String
 
-  def targetFullPath: String = s"${h.getInstDirs.intallationDir}/$targetLocation"
+  def targetFullPath : String = s"${h.getInstDirs.intallationDir}/$targetLocation"
 
-  def unpackCommand: Option[String]
-  def symLinkName: Option[String]
-  def getUnpackedName(packageName: String, location: String): Option[String] =
-    Some(getTarResName(packageName, location))
+  def unpackCommand : Option[String]
+  def symLinkName : Option[String]
+  def getUnpackedName(packageName : String, location : String) : Option[String] = Some(getTarResName(packageName, location))
 
-  def getTarResName(path: String, location: String): String =
-    h.command("tar -tf " + s"$location/$path" + " | awk -F '/' '{print $1}' | head -1").get.trim
+  def getTarResName(path : String, location : String) : String = h.command("tar -tf " + s"$location/$path" + " | awk -F '/' '{print $1}' | head -1").get.trim
 
-  def getZipResName(path: String, location: String): String =
-    h.command("unzip -l " + s"$location/$path" + " | awk '{print $4}' |  awk -F '/' '{print $1}' | head -4 | tail -1")
-      .get
-      .trim
+  def getZipResName(path : String, location : String) : String = h.command("unzip -l " + s"$location/$path" + " | awk '{print $4}' |  awk -F '/' '{print $1}' | head -4 | tail -1").get.trim
 
-  def getComponentName(name: String, location: String): String = {
+  def getComponentName(name : String, location : String) : String = {
     h.command(s"basename `ls $location/*$name*`").get.trim
   }
 
-  def createSymbolicLink(name: String, symbolicLinkName: String, hosts: GenSeq[String]) = {
+  def createSymbolicLink(name : String, symbolicLinkName : String , hosts : GenSeq[String]) = {
     h.command(s"ln -s $targetFullPath/$name $targetFullPath/$symbolicLinkName", hosts, false)
   }
 
-  def relink(linkTo: String, hosts: GenSeq[String]) = {
+  def relink(linkTo : String, hosts : GenSeq[String]) = {
     h.command(s"test -L $targetFullPath/${symLinkName.get} && rm $targetFullPath/${symLinkName.get}", hosts, false)
-    h.command(
-      s"test -L $targetFullPath/${symLinkName.get} || ln -s $targetFullPath/$linkTo $targetFullPath/${symLinkName.get}",
-      hosts,
-      false
-    )
+    h.command(s"test -L $targetFullPath/${symLinkName.get} || ln -s $targetFullPath/$linkTo $targetFullPath/${symLinkName.get}", hosts, false)
   }
 
-  def quickCopy(name: String, hosts: GenSeq[String]) = {
+  def quickCopy(name : String, hosts : GenSeq[String]) = {
 
     symLinkName match {
       case Some(sln) => {
-        if (osName == "Mac OS X")
+        if(osName == "Mac OS X")
           h.command(s"mkdir -p $targetFullPath/$name")
-        if (isDir)
-          h.command(s"test -d $targetFullPath/$sln/ && $archiveCommand $targetFullPath/$sln/ $targetFullPath/$name",
-                    hosts,
-                    false)
+        if(isDir)
+          h.command(s"test -d $targetFullPath/$sln/ && $archiveCommand $targetFullPath/$sln/ $targetFullPath/$name",hosts,false)
         else
-          h.command(s"test -f $targetFullPath/$sln && $archiveCommand $targetFullPath/$sln $targetFullPath/$name",
-                    hosts,
-                    false)
+          h.command(s"test -f $targetFullPath/$sln && $archiveCommand $targetFullPath/$sln $targetFullPath/$name",hosts,false)
       }
       case None => {
         //            if(isDir)
@@ -212,121 +192,109 @@ abstract class ComponentProps(h: Host, name: String, location: String, hasDate: 
 
   }
 
-  def unpackComponent(localLocation: String, name: String, cmd: String) = {
+  def unpackComponent(localLocation : String, name : String, cmd : String) = {
     h.command(s"cd $localLocation; $cmd $name")
   }
 
-  def addPostfixToComponent(remoteLocation: String, name: String, postfix: String, hosts: GenSeq[String]) = {
+  def addPostfixToComponent(remoteLocation : String, name : String, postfix : String, hosts : GenSeq[String]) = {
     h.command(s"mv $remoteLocation/$name $remoteLocation/$name-$postfix", hosts, false)
   }
 
-  def uploadComponent(localLocation: String, target: String, postFix: Option[String], hosts: GenSeq[String]) = {
+  def uploadComponent(localLocation : String, target : String, postFix : Option[String], hosts : GenSeq[String]) = {
     val realName = unpackedName match {
       case Some(uname) => uname
-      case None        => packageName
+      case None => packageName
     }
     unpackCommand match {
       case Some(cmd) => unpackComponent(location, packageName, cmd)
-      case None      => // Do nothing
+      case None => // Do nothing
     }
 
-    val results =
-      if (h.command(s"if test -d $localLocation/$realName; then echo 'folder'; else echo 'file'; fi")
-            .get
-            .equals("folder")) h.rsync(s"$localLocation/$realName/", s"$target/$realName", hosts)
-      else h.rsync(s"$localLocation/$realName", s"$target/", hosts)
 
-    if (results.filter(r => r.isFailure).size > 0) throw new Exception("Failed to upload components")
+    val results = if(h.command(s"if test -d $localLocation/$realName; then echo 'folder'; else echo 'file'; fi").get.equals("folder")) h.rsync(s"$localLocation/$realName/",s"$target/$realName",hosts) else h.rsync(s"$localLocation/$realName",s"$target/",hosts)
+
+    if(results.filter(r => r.isFailure).size > 0) throw new Exception("Failed to upload components")
 
     unpackedName match {
       case Some(uname) => removeUnpacked(location, uname)
-      case None        => // Do nothing
+      case None => // Do nothing
     }
 
     postFix match {
       case Some(pf) => addPostfixToComponent(target, realName, pf, hosts)
-      case None     => // Do nothing
+      case None => // Do nothing
     }
   }
 
-  def removeUnpacked(localLocation: String, name: String) = {
+  def removeUnpacked(localLocation : String, name : String) = {
     h.command(s"rm -rf $localLocation/$name")
   }
 
-  def redeployComponent(hosts: GenSeq[String] = h.ips.par): String = {
+  def redeployComponent(hosts : GenSeq[String] = h.ips.par) : String = {
     val dst = targetFullPath
     val dateStr = getCurrentDateStr
-    val datePostFix = if (hasDate) Some(dateStr) else None
+    val datePostFix = if(hasDate) Some(dateStr) else None
 
     val newName = datePostFix match {
       case Some(dpf) => s"$getResolvedName-$dpf"
-      case None      => getResolvedName
+      case None => getResolvedName
     }
 
-    quickCopy(getResolvedName, hosts)
+    quickCopy(getResolvedName,hosts)
     uploadComponent(location, dst, datePostFix, hosts)
 
     newName
   }
 
-  def deployComponent(hosts: GenSeq[String] = h.ips.par) {
+  def deployComponent(hosts : GenSeq[String] = h.ips.par){
     val dst = targetFullPath
     val dateStr = getCurrentDateStr
 
-    val datePostFix = if (hasDate) Some(dateStr) else None
+    val datePostFix = if(hasDate) Some(dateStr) else None
 
     uploadComponent(location, dst, datePostFix, hosts)
 
     val remoteName = (unpackedName, hasDate) match {
-      case (Some(uname), true)  => s"$uname-$dateStr"
-      case (Some(uname), false) => uname
-      case (None, true)         => s"$packageName-$dateStr"
-      case (None, false)        => packageName
+      case (Some(uname),true) => s"$uname-$dateStr"
+      case (Some(uname),false) => uname
+      case (None,true) => s"$packageName-$dateStr"
+      case (None,false) => packageName
 
     }
 
     symLinkName match {
       case Some(sln) => createSymbolicLink(remoteName, sln, hosts)
-      case None      => // Do nothing
+      case None => // Do nothing
     }
   }
 
-  def getUnsyncedHosts(hosts: GenSeq[String] = h.ips.par): GenSeq[String] = {
+  def getUnsyncedHosts(hosts : GenSeq[String] = h.ips.par) : GenSeq[String] = {
     val nameToCheck = symLinkName match {
       case Some(symName) =>
         symName
       case None =>
         packageName
     }
-    val res = h
-      .command(
-        s"test -L ${h.getInstDirs.intallationDir}/$targetLocation/$nameToCheck && basename `readlink ${h.getInstDirs.intallationDir}/$targetLocation/$nameToCheck`",
-        hosts,
-        false
-      )
-      .map { ts =>
+    val res = h.command(s"test -L ${h.getInstDirs.intallationDir}/$targetLocation/$nameToCheck && basename `readlink ${h.getInstDirs.intallationDir}/$targetLocation/$nameToCheck`",hosts,false).map {
+      ts =>
         ts match {
           case Success(str) => str.trim
           case Failure(err) => ""
         }
-      }
-      .zip(hosts)
+    }.zip(hosts)
 
     unpackedName match {
       case Some(uName) => res.filter(t => t._1 != uName).map(t => t._2)
-      case None        => res.filter(t => t._1 != packageName).map(t => t._2)
+      case None => res.filter(t => t._1 != packageName).map(t => t._2)
     }
+
 
   }
 }
 
-case class CassandraProps(h: Host)
-    extends ComponentProps(h, "cassandra", "components", false)
-    with DataComponent
-    with LoggingComponent
-    with ConfigurableComponent
-    with RunnableComponent {
-  override val componentName: String = "cassandra"
+
+case class CassandraProps(h : Host) extends ComponentProps(h, "cassandra", "components" , false) with DataComponent with LoggingComponent with ConfigurableComponent with RunnableComponent {
+  override val componentName : String = "cassandra"
   override val componentDataDirs: Map[String, GenSeq[String]] = Map(
     "cas" -> h.getDataDirs.casDataDirs,
     "ccl" -> h.getDataDirs.casCommitLogDirs
@@ -335,57 +303,47 @@ case class CassandraProps(h: Host)
   override val componentMappings: Map[String, Int] = Map("cas" -> h.getDataDirs.casDataDirs.size)
 
   def targetLocation = "app/cas"
-  def unpackCommand: Option[String] = Some("tar -xf")
-  def symLinkName: Option[String] = Some("cur")
+  def unpackCommand : Option[String] = Some("tar -xf")
+  def symLinkName : Option[String] = Some("cur")
 
-  def start(hosts: GenSeq[String]): Unit = {
+  def start(hosts : GenSeq[String]): Unit = {
     h.startCassandra(hosts)
   }
 
-  def stop(hosts: GenSeq[String]): Unit = {
+  def stop(hosts : GenSeq[String]): Unit = {
     h.stopCassandra(hosts)
   }
 
-  override def upgradeDependency: Set[ComponentProps] = Set(JavaProps(h))
+  override def upgradeDependency : Set[ComponentProps] = Set(JavaProps(h))
 
 }
 
-case class ElasticsearchProps(h: Host)
-    extends ComponentProps(h, "elasticsearch", "components", false)
-    with DataComponent
-    with LoggingComponent
-    with ConfigurableComponent
-    with RunnableComponent {
-  override val componentName: String = "elasticsearch"
+case class ElasticsearchProps(h : Host) extends ComponentProps(h, "elasticsearch", "components" , false) with DataComponent with LoggingComponent with ConfigurableComponent with RunnableComponent {
+  override val componentName : String = "elasticsearch"
   override val componentDataDirs: Map[String, GenSeq[String]] = Map(
     "es" -> h.getDataDirs.esDataDirs,
     "es-master" -> List(s"${h.getInstDirs.intallationDir}/data")
   )
   override val componentMappings: Map[String, Int] = Map("es" -> h.getDataDirs.esDataDirs.size, "es-master" -> 1)
 
-  override def upgradeMethod: UpgradeMethod = PreUpgrade
+  override def upgradeMethod : UpgradeMethod = PreUpgrade
 
   def targetLocation = "app/es"
-  def unpackCommand: Option[String] = Some("tar -xf")
-  def symLinkName: Option[String] = Some("cur")
+  def unpackCommand : Option[String] = Some("tar -xf")
+  def symLinkName : Option[String] = Some("cur")
 
-  def start(hosts: GenSeq[String]): Unit = {
+  def start(hosts : GenSeq[String]): Unit = {
     h.startElasticsearch(hosts)
   }
 
-  def stop(hosts: GenSeq[String]): Unit = {
+  def stop(hosts : GenSeq[String]): Unit = {
     h.stopElasticsearch(hosts)
   }
 
-  override def upgradeDependency: Set[ComponentProps] = Set(JavaProps(h))
+  override def upgradeDependency : Set[ComponentProps] = Set(JavaProps(h))
 }
 
-case class KafkaProps(h: Host)
-    extends ComponentProps(h, "kafka", "components", false)
-    with DataComponent
-    with LoggingComponent
-    with ConfigurableComponent
-    with RunnableComponent {
+case class KafkaProps(h : Host) extends ComponentProps(h, "kafka", "components", false) with DataComponent with LoggingComponent with ConfigurableComponent with RunnableComponent {
   /*      def packageLocation : String = location*/
   override def targetLocation: String = "app/kafka"
 
@@ -402,12 +360,7 @@ case class KafkaProps(h: Host)
   override def start(hosts: GenSeq[String]): Unit = h.startKafka(hosts)
 }
 
-case class ZooKeeperProps(h: Host)
-    extends ComponentProps(h, "zookeeper", "components", false)
-    with DataComponent
-    with LoggingComponent
-    with ConfigurableComponent
-    with RunnableComponent {
+case class ZooKeeperProps(h : Host) extends ComponentProps(h, "zookeeper", "components", false) with DataComponent with LoggingComponent with ConfigurableComponent with RunnableComponent {
   /*      def packageLocation : String = location*/
   override def targetLocation: String = "app/zookeeper"
 
@@ -424,11 +377,7 @@ case class ZooKeeperProps(h: Host)
   override def start(hosts: GenSeq[String]): Unit = h.startZookeeper(hosts)
 }
 
-case class BgProps(h: Host)
-    extends ComponentProps(h, "cmwell-bg", "components", true)
-    with LoggingComponent
-    with RunnableComponent
-    with ConfigurableComponent {
+case class BgProps(h : Host) extends ComponentProps(h, "cmwell-bg" , "components" , true) with LoggingComponent with RunnableComponent with ConfigurableComponent{
   /*      def packageLocation : String = location*/
   override def targetLocation: String = "app/bg"
 
@@ -444,56 +393,40 @@ case class BgProps(h: Host)
   override def start(hosts: GenSeq[String]): Unit = h.startBg(hosts)
 
   override def isDir = false
-  override def getUnpackedName(packageName: String, location: String): Option[String] = None
+  override def getUnpackedName(packageName : String, location : String) : Option[String] = None
 
   override def getComponentName(name: String, location: String): String = name
 
-  override def uploadComponent(localLocation: String,
-                               target: String,
-                               postFix: Option[String],
-                               hosts: GenSeq[String]): Any = {}
+  override def uploadComponent(localLocation: String, target: String, postFix: Option[String], hosts: GenSeq[String]): Any = {}
 
-  override def upgradeMethod: UpgradeMethod = NonRolling
+  override def upgradeMethod : UpgradeMethod = NonRolling
 }
 
-case class CtrlProps(h: Host)
-    extends ComponentProps(h, "cmwell-controller", "components", true)
-    with LoggingComponent
-    with ConfigurableComponent
-    with RunnableComponent {
+case class CtrlProps(h : Host) extends ComponentProps(h, "cmwell-controller" , "components" , true) with LoggingComponent with ConfigurableComponent with RunnableComponent {
   override val componentName: String = "cmwell-controller"
   override val componentMappings: Map[String, Int] = Map("ctrl" -> 1)
-  override def uploadComponent(localLocation: String,
-                               target: String,
-                               postFix: Option[String],
-                               hosts: GenSeq[String]): Any = {}
+  override def uploadComponent(localLocation: String, target: String, postFix: Option[String], hosts: GenSeq[String]): Any = {}
   def targetLocation = "app/ctrl"
-  def unpackCommand: Option[String] = None
-  def symLinkName: Option[String] = None
+  def unpackCommand : Option[String] = None
+  def symLinkName : Option[String] = None
   override def getComponentName(name: String, location: String): String = name
   override def isDir = false
-  override def getUnpackedName(packageName: String, location: String): Option[String] = None
+  override def getUnpackedName(packageName : String, location : String) : Option[String] = None
 
-  def start(hosts: GenSeq[String]): Unit = {
+  def start(hosts : GenSeq[String]): Unit = {
     h.startCtrl(hosts)
   }
 
-  def stop(hosts: GenSeq[String]): Unit = {
+  def stop(hosts : GenSeq[String]): Unit = {
     h.stopCtrl(hosts)
   }
 
-  override def upgradeMethod: UpgradeMethod = NonRolling
+  override def upgradeMethod : UpgradeMethod = NonRolling
 }
 
-case class DcProps(h: Host)
-    extends ComponentProps(h, "cmwell-dc", "components", true)
-    with LoggingComponent
-    with RunnableComponent {
+case class DcProps(h : Host) extends ComponentProps(h, "cmwell-dc" , "components" , true) with LoggingComponent with RunnableComponent {
   override def targetLocation: String = "app/dc"
-  override def uploadComponent(localLocation: String,
-                               target: String,
-                               postFix: Option[String],
-                               hosts: GenSeq[String]): Any = {}
+  override def uploadComponent(localLocation: String, target: String, postFix: Option[String], hosts: GenSeq[String]): Any = {}
   override def unpackCommand: Option[String] = None
 
   override def symLinkName: Option[String] = None
@@ -501,52 +434,41 @@ case class DcProps(h: Host)
   override val componentName: String = "cmwell-dc"
   override val componentMappings: Map[String, Int] = Map("dc" -> 1)
   override def isDir = false
-  override def getUnpackedName(packageName: String, location: String): Option[String] = None
+  override def getUnpackedName(packageName : String, location : String) : Option[String] = None
 
-  def start(hosts: GenSeq[String]): Unit = {
+  def start(hosts : GenSeq[String]): Unit = {
     h.startDc(hosts)
   }
 
-  def stop(hosts: GenSeq[String]): Unit = {
+  def stop(hosts : GenSeq[String]): Unit = {
     h.stopDc(hosts)
   }
 
-  override def upgradeMethod: UpgradeMethod = NonRolling
+  override def upgradeMethod : UpgradeMethod = NonRolling
 }
 
-case class WebserviceProps(h: Host)
-    extends ComponentProps(h, "cmwell-ws", "components", true)
-    with LoggingComponent
-    with ConfigurableComponent
-    with RunnableComponent {
-  override val componentName: String = "cmwell-ws"
+case class WebserviceProps(h : Host) extends ComponentProps(h, "cmwell-ws", "components",  true) with LoggingComponent with ConfigurableComponent with RunnableComponent {
+  override val componentName : String = "cmwell-ws"
   override val componentMappings: Map[String, Int] = Map("ws" -> 1)
-  override def uploadComponent(localLocation: String,
-                               target: String,
-                               postFix: Option[String],
-                               hosts: GenSeq[String]): Any = {}
+  override def uploadComponent(localLocation: String, target: String, postFix: Option[String], hosts: GenSeq[String]): Any = {}
   def targetLocation = "app/ws"
   override def isDir = false
-  def symLinkName: Option[String] = None
+  def symLinkName : Option[String] = None
   override def getComponentName(name: String, location: String): String = name
-  override def getUnpackedName(packageName: String, location: String): Option[String] = None
-  def unpackCommand: Option[String] = None
-  def start(hosts: GenSeq[String]): Unit = {
+  override def getUnpackedName(packageName : String, location : String) : Option[String] = None
+  def unpackCommand : Option[String] = None
+  def start(hosts : GenSeq[String]): Unit = {
     h.startWebservice(hosts)
     h.startCW(hosts)
   }
 
-  def stop(hosts: GenSeq[String]): Unit = {
+  def stop(hosts : GenSeq[String]): Unit = {
     h.stopWebservice(hosts)
     h.stopCW(hosts)
   }
 }
 
-case class KibanaProps(h: Host)
-    extends ComponentProps(h, "kibana", "components-extras", false)
-    with LoggingComponent
-    with ConfigurableComponent
-    with RunnableComponent {
+case class KibanaProps(h : Host) extends ComponentProps(h, "kibana", "components-extras", false) with LoggingComponent with ConfigurableComponent with RunnableComponent {
   /*      def packageLocation : String = location*/
   override def targetLocation: String = "app/kibana"
 
@@ -557,46 +479,42 @@ case class KibanaProps(h: Host)
   override val componentName: String = "kibana"
   override val componentMappings: Map[String, Int] = Map("kibana" -> 1)
 
-  def start(hosts: GenSeq[String]): Unit = {
+  def start(hosts : GenSeq[String]): Unit = {
     h.startKibana(hosts)
   }
 
-  def stop(hosts: GenSeq[String]): Unit = {
+  def stop(hosts : GenSeq[String]): Unit = {
     h.stopKibana(hosts)
   }
 }
 
-case class JavaProps(h: Host) extends ComponentProps(h, "jdk", "components-extras", false) {
+case class JavaProps(h : Host) extends ComponentProps(h, "jdk", "components-extras" , false) {
   def targetLocation = "app"
-  def unpackCommand: Option[String] = Some("tar -xf")
-  def symLinkName: Option[String] = Some("java")
+  def unpackCommand : Option[String] = Some("tar -xf")
+  def symLinkName : Option[String] = Some("java")
 }
 
-case class Mx4JProps(h: Host) extends ComponentProps(h, "mx4j", "components", false) {
+case class Mx4JProps(h : Host) extends ComponentProps(h, "mx4j", "components" , false) {
   def targetLocation = "app/tools"
-  def unpackCommand: Option[String] = None
-  def symLinkName: Option[String] = None
+  def unpackCommand : Option[String] = None
+  def symLinkName : Option[String] = None
 
-  override def getUnpackedName(packageName: String, location: String): Option[String] = None
+  override def getUnpackedName(packageName : String, location : String) : Option[String] = None
 }
 
-case class BinsProps(h: Host) extends ComponentProps(h, "bin", ".", false) {
+case class BinsProps(h : Host) extends ComponentProps(h, "bin", "." , false) {
   def targetLocation = ""
-  def unpackCommand: Option[String] = None
-  def symLinkName: Option[String] = None
+  def unpackCommand : Option[String] = None
+  def symLinkName : Option[String] = None
 
-  override def deployComponent(hosts: GenSeq[String] = h.ips.par) {
-    h.rsync("bin/", s"${h.getInstDirs.intallationDir}/bin/", hosts)
+  override def deployComponent(hosts : GenSeq[String] = h.ips.par){
+    h.rsync("bin/", s"${h.getInstDirs.intallationDir}/bin/",hosts)
   }
 
-  override def getUnpackedName(packageName: String, location: String): Option[String] = None
+  override def getUnpackedName(packageName : String, location : String) : Option[String] = None
 }
 
-case class LogstashProps(h: Host)
-    extends ComponentProps(h, "logstash", "components-extras", false)
-    with ConfigurableComponent
-    with LoggingComponent
-    with RunnableComponent {
+case class LogstashProps(h : Host) extends ComponentProps(h, "logstash", "components-extras", false) with ConfigurableComponent with LoggingComponent with RunnableComponent {
   override val componentName: String = "logstash"
   override val componentMappings: Map[String, Int] = Map("logstash" -> 1)
   override def targetLocation: String = "app/logstash"
@@ -604,62 +522,48 @@ case class LogstashProps(h: Host)
   override def symLinkName: Option[String] = Some("cur")
   override def isDir = true
   //override def getUnpackedName(packageName : String, location : String) : Option[String] = None
-  def start(hosts: GenSeq[String]): Unit = {
+  def start(hosts : GenSeq[String]): Unit = {
     h.startLogstash(hosts)
   }
 
-  def stop(hosts: GenSeq[String]): Unit = {
+  def stop(hosts : GenSeq[String]): Unit = {
     h.stopLogstash(hosts)
   }
 }
 
-class Deployment(h: Host) {
+class Deployment(h : Host) {
 
   def getCurrentDateStr = {
     val format = new java.text.SimpleDateFormat("yyyyMMdd_hhmmss")
     val date = new Date()
     format.format(date)
   }
-  val componentProps: Vector[ComponentProps] = Vector(
-    CassandraProps(h),
-    ElasticsearchProps(h),
-    ZooKeeperProps(h),
-    KafkaProps(h),
-    BgProps(h),
-    WebserviceProps(h),
-    BinsProps(h),
-    Mx4JProps(h),
-    CtrlProps(h),
-    DcProps(h)
-  ) ++ (if (h.getWithElk) List(LogstashProps(h), KibanaProps(h)) else Vector.empty[ComponentProps]) ++ (if (h.getDeployJava)
-                                                                                                          Vector(
-                                                                                                            JavaProps(h)
-                                                                                                          )
-                                                                                                        else
-                                                                                                          Vector.empty[
-                                                                                                            ComponentProps
-                                                                                                          ])
+  val componentProps : Vector[ComponentProps] = Vector(CassandraProps(h), ElasticsearchProps(h), ZooKeeperProps(h), KafkaProps(h) , BgProps(h), WebserviceProps(h), BinsProps(h), Mx4JProps(h), CtrlProps(h), DcProps(h)) ++ (if(h.getWithElk) List(LogstashProps(h), KibanaProps(h)) else Vector.empty[ComponentProps]) ++ (if(h.getDeployJava) Vector(JavaProps(h)) else Vector.empty[ComponentProps])
   //val componentProps : Vector[ComponentProps] = Vector(ElasticsearchProps)
 
-  def createDirs(hosts: GenSeq[String], components: Seq[Any]): Unit = {
-    components.collect {
-      case dc: DataComponent =>
+
+
+  def createDirs(hosts : GenSeq[String], components : Seq[Any]): Unit = {
+    components.collect{
+      case dc : DataComponent =>
         dc.createDataDirectories(hosts)
         dc.linkDataDirectories(hosts)
     }
 
-    components.collect {
-      case lc: LoggingComponent =>
+    components.collect{
+      case lc : LoggingComponent =>
         lc.createLoggingDirectories(hosts)
     }
 
-    components.collect {
-      case cc: ConfigurableComponent =>
+    components.collect{
+      case cc : ConfigurableComponent =>
         cc.createConigurationsDirectoires(hosts)
     }
   }
 
-  def createFile(content: String, fileName: String, location: String, hosts: GenSeq[String]) {
+
+
+  def createFile(content : String , fileName : String , location : String , hosts : GenSeq[String]) {
     def getMillis = java.lang.System.currentTimeMillis()
     def getRandomString = {
       import scala.util.Random
@@ -672,13 +576,14 @@ class Deployment(h: Host) {
     val writer = new PrintWriter(f)
     writer.write(content)
     writer.close
-    h.rsync(tmpName, s"$location/$fileName", hosts)
+    h.rsync(tmpName, s"$location/$fileName" , hosts)
     f.delete()
   }
 
-  def createScript(module: ComponentConf) {
+
+  def createScript(module : ComponentConf) {
     val confContent = module.mkScript
-    if (confContent != null) {
+    if(confContent != null) {
       val retStat = "echo '$?'"
 
       //val cont = "cd $(dirname -- \"$0\")\n" + "bash -c \"" + confContent.content + ";  if [ $? -ne 0 ]; then " + module.scriptDir + "/" + confContent.fileName + " ; fi \" & "
@@ -691,24 +596,27 @@ class Deployment(h: Host) {
     }
   }
 
-  def createConf(module: ComponentConf) {
+  def createConf(module : ComponentConf) {
     val confContents = module.mkConfig
-    if (confContents != null) {
-      confContents.foreach { confContent =>
-        val dir = confContent.path.getOrElse(module.confDir)
-        createFile(confContent.content, confContent.fileName, dir, Seq(module.host))
-        if (confContent.executable)
-          h.command(s"chmod +x $dir/${confContent.fileName}", module.host, false)
+    if(confContents != null) {
+      confContents.foreach{
+        confContent =>
+          val dir = confContent.path.getOrElse(module.confDir)
+          createFile(confContent.content, confContent.fileName, dir, Seq(module.host))
+          if(confContent.executable)
+            h.command(s"chmod +x $dir/${confContent.fileName}", module.host, false)
       }
     }
   }
 
-  def make(module: ComponentConf): Unit = {
+
+  def make(module : ComponentConf) : Unit = {
     createScript(module)
     createConf(module)
   }
 
-  def createResources(modules: GenSeq[ComponentConf]) {
+
+  def createResources(modules : GenSeq[ComponentConf]) {
     modules.toList.foreach(m => make(m))
   }
 
@@ -723,6 +631,6 @@ def createConf(content : String, dir : String , fileName : String, host : String
   command(s"""echo \"\"\"$content\"\"\" > $dir/$fileName""" , host, false)
 }
 
- */
+   */
 
 }

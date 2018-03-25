@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package actions
 
 import com.typesafe.scalalogging.LazyLogging
@@ -31,19 +33,16 @@ import scala.concurrent.ExecutionContext.Implicits.global
 object SparqlTriggeredProcessorMonitor extends LazyLogging {
   implicit val timeout = Timeout(30.seconds)
 
-  def getAddress =
-    (stpManager ? WhoAreYou)
-      .mapTo[WhoIAm]
-      .map(_.address)
-      .recover { case err: Throwable => "NA" }
+  def getAddress = (stpManager ? WhoAreYou).mapTo[WhoIAm]
+    .map(_.address)
+    .recover { case err: Throwable => "NA" }
 
   def stpManager = Grid.serviceRef("sparql-triggered-processor-manager")
 
   def jobsDataToTuple(lines: Iterable[Row]) = for (line <- lines) yield MarkdownTuple(line.toSeq: _*)
 
   def generateTables(path: String, dc: String): Future[Option[VirtualInfoton]] = {
-    val jobsDataFuture = (stpManager ? RequestStats)
-      .mapTo[ResponseStats]
+    val jobsDataFuture = (stpManager ? RequestStats).mapTo[ResponseStats]
       .map { case ResponseStats(tables) => tables }
 
     val future = for {
@@ -59,7 +58,7 @@ object SparqlTriggeredProcessorMonitor extends LazyLogging {
 
       val tablesFormattedData = tables.map { table =>
         val mdTable = MarkdownTable(
-          header = MarkdownTuple(table.header.toSeq: _*),
+          header = MarkdownTuple(table.header.toSeq:_*),
           body = jobsDataToTuple(table.body).toSeq
         )
 
@@ -71,11 +70,7 @@ object SparqlTriggeredProcessorMonitor extends LazyLogging {
       title + "\n\n" + tablesFormattedData.mkString("\n\n")
     }
     future.map { content =>
-      Some(
-        VirtualInfoton(
-          FileInfoton(path, dc, None, content = Some(FileContent(content.getBytes("utf-8"), "text/x-markdown")))
-        )
-      )
+      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(content.getBytes("utf-8"), "text/x-markdown")))))
     }
   }
 }

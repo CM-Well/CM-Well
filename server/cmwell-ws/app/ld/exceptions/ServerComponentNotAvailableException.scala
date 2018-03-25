@@ -9,5 +9,5 @@ package ld.exceptions
 sealed trait ServerComponentNotAvailableException extends Exception
 object ServerComponentNotAvailableException {
   def apply(msg: String) = new Exception(msg) with ServerComponentNotAvailableException
-  def apply(msg: String, cause: Throwable) = new Exception(msg, cause) with ServerComponentNotAvailableException
+  def apply(msg: String, cause: Throwable) = new Exception(msg,cause) with ServerComponentNotAvailableException
 }

@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package k.grid.registration
 
 import akka.actor.Actor
@@ -24,8 +26,9 @@ import k.grid.registration.messages.{GridTopology, RegistrationPing}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
-  * Created by michael on 3/21/16.
-  */
+ * Created by michael on 3/21/16.
+ */
+
 object RegistrationCoordinator {
   val name = "GossipCoordinator"
 
@@ -36,11 +39,13 @@ object RegistrationCoordinator {
 
 }
 class RegistrationCoordinator extends Actor with LazyLogging {
-  private case class GridJvmContainer(gj: GridJvm, ts: Long)
+  private case class GridJvmContainer(gj : GridJvm, ts : Long)
   private case object ClearIdles
 
   private def currentSeconds = System.currentTimeMillis() / 1000
   private[this] var jvmSet = Set.empty[GridJvmContainer]
+
+
   @throws[Exception](classOf[Exception])
   override def preStart(): Unit = {
     context.system.scheduler.schedule(0.seconds, 5.seconds, self, ClearIdles)
@@ -52,6 +57,6 @@ class RegistrationCoordinator extends Actor with LazyLogging {
       sender ! GridTopology(jvmSet.map(_.gj))
     case ClearIdles =>
       val currentTime = currentSeconds
-      jvmSet = jvmSet.filter(jvm => currentTime - jvm.ts < 30)
+      jvmSet = jvmSet.filter(jvm => currentTime - jvm.ts < 30 )
   }
 }

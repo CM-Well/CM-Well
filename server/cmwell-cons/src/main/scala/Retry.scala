@@ -12,17 +12,19 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 import scala.util.{Failure, Success, Try}
 
 /**
-  * Created by michael on 1/13/15.
-  */
+ * Created by michael on 1/13/15.
+ */
 object Retry {
-  def apply[T](block: => T, retries: Int = 3, delay: Int = 5000): Try[T] = {
-    for (i <- 1 to retries) {
+  def apply[T](block : => T, retries : Int = 3, delay : Int = 5000) : Try[T] = {
+    for(i <- 1 to retries){
       val res = Try(block)
       res match {
-        case Success(s)  => return res
+        case Success(s) => return res
         case Failure(ex) => Thread.sleep(delay)
       }
     }

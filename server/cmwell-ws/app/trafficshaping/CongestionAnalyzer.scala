@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package trafficshaping
 
 import akka.actor.Actor
@@ -26,10 +28,12 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 /**
-  * Created by michael on 6/29/16.
-  */
+ * Created by michael on 6/29/16.
+ */
+
 case object GetTrafficData
-case class TrafficData(requestors: Map[String, RequestorCounter])
+case class TrafficData(requestors : Map[String, RequestorCounter])
+
 
 object CongestionAnalyzer {
   val name = "CongestionAnalyzer"
@@ -42,13 +46,10 @@ class CongestionAnalyzer extends Actor with LazyLogging {
 
   val numOfCpus = Runtime.getRuntime.availableProcessors()
   def getThresholdFactor: Long = {
-    PersistentDMap
-      .get(THRESHOLD_FACTOR)
-      .map {
-        case SettingsLong(l) => l
-        case _               => 0L
-      }
-      .getOrElse(0L)
+    PersistentDMap.get(THRESHOLD_FACTOR).map {
+      case SettingsLong(l) => l
+      case _ => 0L
+    }.getOrElse(0L)
   }
 
   case object AnalyzeCongestion
@@ -63,21 +64,17 @@ class CongestionAnalyzer extends Actor with LazyLogging {
       val thresholdFactor = getThresholdFactor
       val threshold = checkFrequency.seconds.toMillis * thresholdFactor
 
-      TrafficShaper.lastRequests.toVector
-        .sortBy(_._2.requestsTime)
-        .takeRight(CongestionAnalyzer.penalizeTopUsers)
-        .foreach {
-          case (k, v) =>
-            if (v.requestsTime > threshold) {
-              v.penalty = v.penalty.next
-              logger.info(s"The user $k is getting ${v.penalty}.")
-            } else v.penalty = v.penalty.prev
-            v.reset
-        }
-
-      TrafficShaper.lastRequests = TrafficShaper.lastRequests.filter {
-        case (k, v) => v.penalty != NoPenalty || v.requestsTime > 0L
+      TrafficShaper.lastRequests.toVector.sortBy(_._2.requestsTime).takeRight(CongestionAnalyzer.penalizeTopUsers).foreach {
+        case (k,v) =>
+          if(v.requestsTime > threshold) {
+            v.penalty = v.penalty.next
+            logger.info(s"The user $k is getting ${v.penalty}.")
+          }
+          else v.penalty = v.penalty.prev
+          v.reset
       }
+
+      TrafficShaper.lastRequests = TrafficShaper.lastRequests.filter{case (k,v) => v.penalty != NoPenalty || v.requestsTime > 0L }
 
     case GetTrafficData =>
       sender ! TrafficData(TrafficShaper.getRequestors)

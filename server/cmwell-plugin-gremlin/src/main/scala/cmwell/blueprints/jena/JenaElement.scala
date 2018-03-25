@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.blueprints.jena
 
 import org.apache.jena.rdf.model._
@@ -30,9 +32,9 @@ abstract class JenaElement(val model: Model, val rdfNode: RDFNode) extends Eleme
   override def getProperty[T](key: String): T = {
     val it = model.listStatements(propertiesSelector)
     val values = ListBuffer[Any]()
-    while (it.hasNext) {
+    while(it.hasNext) {
       val next = it.next
-      if (next.getPredicate.id == key)
+      if(next.getPredicate.id==key)
         values += next.getObject.asLiteral.getValue
     }
 
@@ -43,8 +45,7 @@ abstract class JenaElement(val model: Model, val rdfNode: RDFNode) extends Eleme
     }).asInstanceOf[T]
   }
 
-  override def getPropertyKeys: java.util.Set[String] =
-    model.listStatements(propertiesSelector).map(_.getPredicate.id.toString).toSet[String]
+  override def getPropertyKeys: java.util.Set[String] = model.listStatements(propertiesSelector).map(_.getPredicate.id.toString).toSet[String]
 
   override def equals(obj: Any): Boolean = {
     if (obj == null) {
@@ -58,7 +59,8 @@ abstract class JenaElement(val model: Model, val rdfNode: RDFNode) extends Eleme
       if (other.rdfNode != null) {
         return false
       }
-    } else if (!(rdfNode == other.rdfNode)) {
+    }
+    else if (!(rdfNode == other.rdfNode)) {
       return false
     }
     return true
@@ -72,6 +74,5 @@ abstract class JenaElement(val model: Model, val rdfNode: RDFNode) extends Eleme
   }
 
   override def removeProperty[T](key: String): T = throw new UnsupportedOperationException("RDF Edge has no Props")
-  override def setProperty(key: String, value: Object) =
-    throw new UnsupportedOperationException("RDF Edge has no Props")
+  override def setProperty(key: String, value: Object) = throw new UnsupportedOperationException("RDF Edge has no Props")
 }

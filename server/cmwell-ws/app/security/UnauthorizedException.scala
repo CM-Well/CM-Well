@@ -12,9 +12,13 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package security
 
 /**
   * Created by yaakov on 2/25/16.
   */
-class UnauthorizedException(msg: String) extends RuntimeException(msg) {}
+class UnauthorizedException(msg: String) extends RuntimeException(msg) {
+
+}

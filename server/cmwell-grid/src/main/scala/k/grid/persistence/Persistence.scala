@@ -12,15 +12,18 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package k.grid.persistence
 
 /**
-  * Created by michael on 5/25/16.
-  */
+ * Created by michael on 5/25/16.
+ */
+
 trait PersistentValue
 
 trait Persistence {
-  def name: String
-  def setValue(key: String, value: PersistentValue): Unit
-  def getValue(key: String): PersistentValue
+  def name : String
+  def setValue(key : String, value : PersistentValue) : Unit
+  def getValue(key : String) : PersistentValue
 }

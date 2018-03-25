@@ -12,10 +12,12 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package k.grid
 
 import java.io.File
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Paths, Path, Files}
 
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
@@ -23,7 +25,7 @@ import k.grid.dmap.api._
 import k.grid.dmap.impl.inmem.InMemDMap
 import k.grid.dmap.impl.persistent.PersistentDMap
 import k.grid.service.{KillService, LocalServiceManager, ServiceTypes}
-import k.grid.testgrid.{DummyMessage, DummyService, WriteToPersistentDMap}
+import k.grid.testgrid.{WriteToPersistentDMap, DummyMessage, DummyService}
 import org.scalatest._
 
 import scala.concurrent.duration._
@@ -32,11 +34,12 @@ import akka.pattern.ask
 import akka.actor.Actor
 import akka.pattern.ask
 import scala.sys.process._
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Future, Await}
 
 /**
-  * Created by markz on 5/14/14.
-  */
+ * Created by markz on 5/14/14.
+ */
+
 object TestConfig {
   val config = ConfigFactory.load()
   val jarName = config.getString("grid.test.assembly-jar-name")
@@ -44,38 +47,27 @@ object TestConfig {
 
 }
 
+
 class GridSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
   implicit val timeout = Timeout(40 seconds)
   val expectedMembers = 4
-  var serviceJvmName: String = _
-  var serviceJvm: Option[GridJvm] = None
+  var serviceJvmName : String = _
+  var serviceJvm : Option[GridJvm] = None
+
 
   def cleanup: Unit = {
-    val filesToRemove = Seq("node-data", "client1-data", "client2-data", "sbt-tester-dmap").map(
-      p => s"${TestConfig.rootDir}/$p/gridCluster"
-    )
-    filesToRemove.foreach { file =>
-      if (Files.exists(Paths.get(file))) Files.delete(Paths.get(file))
+    val filesToRemove = Seq("node-data", "client1-data", "client2-data", "sbt-tester-dmap").map(p => s"${TestConfig.rootDir}/$p/gridCluster")
+    filesToRemove foreach {
+      file =>
+        if(Files.exists(Paths.get(file))) Files.delete(Paths.get(file))
     }
   }
 
   def spawnProcesses: Unit = {
-    Future {
-      s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/node-data -Dcmwell.grid.monitor.port=8001 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceNode" #> new File(
-        s"${TestConfig.rootDir}/node.out"
-      ) !
-    }
-    Future {
-      s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/client1-data -Dcmwell.grid.monitor.port=8002 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceClient" #> new File(
-        s"${TestConfig.rootDir}/client1.out"
-      ) !
-    }
-    Future {
-      s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/client2-data -Dcmwell.grid.monitor.port=8003 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceClient" #> new File(
-        s"${TestConfig.rootDir}/client2.out"
-      ) !
-    }
+    Future{s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/node-data -Dcmwell.grid.monitor.port=8001 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceNode" #> new File(s"${TestConfig.rootDir}/node.out") !}
+    Future{s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/client1-data -Dcmwell.grid.monitor.port=8002 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceClient" #> new File(s"${TestConfig.rootDir}/client1.out") !}
+    Future{s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/client2-data -Dcmwell.grid.monitor.port=8003 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceClient" #> new File(s"${TestConfig.rootDir}/client2.out") !}
     Thread.sleep(30000)
   }
 
@@ -90,14 +82,15 @@ class GridSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     // create fs read
     super.beforeAll()
 
-    Grid.setGridConnection(
-      GridConnection(memberName = "tester",
-                     clusterName = "testgrid",
-                     hostName = "127.0.0.1",
-                     port = 0,
-                     seeds = Set("127.0.0.1:6666"),
-                     persistentDmapDir = "target/sbt-tester-dmap")
-    )
+    Grid.setGridConnection(GridConnection(memberName = "tester",
+      clusterName = "testgrid",
+      hostName = "127.0.0.1",
+      port = 0,
+      seeds = Set("127.0.0.1:6666"),
+      persistentDmapDir = "target/sbt-tester-dmap"
+    ))
+
+
 
     Grid.joinClient
 
@@ -108,6 +101,9 @@ class GridSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     super.afterAll()
     killProcesses
   }
+
+
+
 
   "member" should s"see all $expectedMembers grid members" in {
     Grid.jvmsAll.size should equal(expectedMembers)
@@ -127,17 +123,20 @@ class GridSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     str should equal("some-value")
   }
 
+
+
+
   "service jvm" should "not be \"\"" in {
     serviceJvm = LocalServiceManager.getServiceJvm("DummyService")
     serviceJvmName = serviceJvm.map(_.jvmName).getOrElse("")
-    (serviceJvmName should not).equal("")
+    serviceJvmName should not equal("")
   }
 
   "PersistentDMap" should "be persistent after jvm restarts" in {
     val m1 = Map(
       "os" -> SettingsString("WIN9.1"),
       "machine" -> SettingsString("MacBookPro"),
-      "Suppliers" -> SettingsSet(Set("Apple", "Microsoft", "Ma'afe Ne'eman"))
+      "Suppliers" -> SettingsSet(Set("Apple","Microsoft","Ma'afe Ne'eman"))
     )
 
     val m2 = Map(
@@ -151,7 +150,9 @@ class GridSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     Thread.sleep(10000)
 
     info("Data that was written should be seen in this node")
-    PersistentDMap.sm should equal(m1)
+      PersistentDMap.sm should equal(m1)
+
+
 
     Grid.serviceRef("DummyService") ! WriteToPersistentDMap(MapData(m2), delay = 10.seconds)
 
@@ -163,7 +164,8 @@ class GridSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     Thread.sleep(5000)
 
     info("Data that was written while this node is down should not be written to this node")
-    PersistentDMap.sm should equal(m1)
+      PersistentDMap.sm should equal(m1)
+
 
     spawnProcesses
     PersistentDMap.initSlave
@@ -171,7 +173,8 @@ class GridSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
     Thread.sleep(5000)
 
     info("After the JVM restarts all data should be written to this node")
-    PersistentDMap.sm should equal(m1 ++ m2)
+      PersistentDMap.sm should equal(m1 ++ m2)
+
 
     PersistentDMap.set("longVal", SettingsLong(50L))
     Thread.sleep(5000)
@@ -180,12 +183,15 @@ class GridSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
   }
 
+
   "new service" should "be spawned on another jvm" in {
     Grid.selectActor(ClientActor.name, serviceJvm.get) ! RestartJvm
     Thread.sleep(60000)
     val newServiceJvm = LocalServiceManager.getServiceJvm("DummyService").map(_.jvmName).getOrElse("")
-    (newServiceJvm should not).equal("")
-    (newServiceJvm should not).equal(serviceJvmName)
+    newServiceJvm should not equal("")
+    newServiceJvm should not equal(serviceJvmName)
   }
+
+
 
 }

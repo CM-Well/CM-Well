@@ -12,35 +12,36 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package controllers
 
 import play.api.mvc.{Action, Controller, InjectedController}
 import javax.inject._
 
 /**
-  * Created with IntelliJ IDEA.
-  * User: israel
-  * Date: 10/23/13
-  * Time: 11:05 AM
-  * To change this template use File | Settings | File Templates.
-  */
+ * Created with IntelliJ IDEA.
+ * User: israel
+ * Date: 10/23/13
+ * Time: 11:05 AM
+ * To change this template use File | Settings | File Templates.
+ */
 @Singleton
-class Help @Inject() extends InjectedController {
+class Help  @Inject() extends InjectedController {
 
-  def handleHelp(page: String) = Action { request =>
+  def handleHelp(page:String) = Action{ request =>
     page match {
-      case "in"     => Ok(views.txt._in(request))
-      case "out"    => Ok(views.txt._out(request))
-      case "cmd"    => Ok(views.txt._cmd(request))
-      case "sp"     => Ok(views.txt._sp(request))
+      case "in" => Ok(views.txt._in(request))
+      case "out" => Ok(views.txt._out(request))
+      case "cmd" => Ok(views.txt._cmd(request))
+      case "sp" => Ok(views.txt._sp(request))
       case "sparql" => Ok(views.html._sparql(request))
-      case _        => NotFound
+      case _ => NotFound
     }
   }
 
   def iiBlockedRequests = Action {
     //TODO: this is not enough since one can submit a bulk of infotons, or RDF document which contains an infoton named "ii" or "ii/*"
-    req =>
-      BadRequest("\"ii\" is reserved for infoton id's retrieval.")
+    req =>  BadRequest("\"ii\" is reserved for infoton id's retrieval.")
   }
 }

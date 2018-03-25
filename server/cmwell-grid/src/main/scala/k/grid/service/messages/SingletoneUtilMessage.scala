@@ -12,22 +12,25 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package k.grid.service.messages
 
 import akka.actor.Actor
 import k.grid.GridJvm
 
 /**
-  * Created by michael on 2/10/16.
-  */
+ * Created by michael on 2/10/16.
+ */
 trait ServiceUtilMessage
 
-case class ServiceStatus(name: String, isRunning: Boolean, preferredJVM: Option[GridJvm])
+case class ServiceStatus(name : String, isRunning : Boolean, preferredJVM:Option[GridJvm])
 
-case class ServiceInstantiationRequest(member: GridJvm, s: Set[ServiceStatus]) extends ServiceUtilMessage
-case class RunService(name: String) extends ServiceUtilMessage
-case class StopService(name: String) extends ServiceUtilMessage
-case class ServiceMapping(mapping: Map[String, Option[GridJvm]]) extends ServiceUtilMessage
 
-case class RegisterServices(gm: GridJvm) extends ServiceUtilMessage
+case class ServiceInstantiationRequest(member : GridJvm, s : Set[ServiceStatus]) extends ServiceUtilMessage
+case class RunService(name : String) extends ServiceUtilMessage
+case class StopService(name : String) extends ServiceUtilMessage
+case class ServiceMapping(mapping : Map[String, Option[GridJvm]]) extends ServiceUtilMessage
+
+case class RegisterServices(gm : GridJvm) extends ServiceUtilMessage
 case object SendInstantiationRequest extends ServiceUtilMessage

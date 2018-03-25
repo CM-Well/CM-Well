@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.tools.data.utils
 
 import _root_.akka.actor.ActorSystem
@@ -28,12 +30,13 @@ import scala.concurrent._
 /**
   * Functions related to Akka integration
   */
-package object akka extends DataToolsConfig {
+package object akka extends DataToolsConfig{
   val blank = ByteString("", "UTF-8")
-  val endl = ByteString("\n", "UTF-8")
-  val lineSeparatorFrame = Framing.delimiter(delimiter = endl,
-                                             maximumFrameLength = config.getInt("cmwell.akka.max-frame-length"),
-                                             allowTruncation = true)
+  val endl  = ByteString("\n", "UTF-8")
+  val lineSeparatorFrame = Framing.delimiter(
+    delimiter = endl,
+    maximumFrameLength = config.getInt("cmwell.akka.max-frame-length"),
+    allowTruncation = true)
 
   /**
     * Dispose Akka resources after given future is complete
@@ -42,8 +45,8 @@ package object akka extends DataToolsConfig {
     * @param ec execution context
     */
   def cleanup()(implicit system: ActorSystem, ec: ExecutionContext) = {
-    Http().shutdownAllConnectionPools().onComplete { _ =>
-      system.terminate()
+    Http().shutdownAllConnectionPools().onComplete {
+      _ => system.terminate()
     }
   }
 
@@ -64,14 +67,14 @@ package object akka extends DataToolsConfig {
     })
   }
 
+
   /**
     * Builds a single [[akka.util.ByteString ByteString]] from a sequence,
     * separated by `\n` character
     * @param lines input sequence containing `ByteString` data
     * @return single ByteString containing concatenation of data elements separated with `\n`
     */
-  def concatByteStrings(lines: Seq[ByteString], sep: ByteString): ByteString =
-    concatByteStrings(lines, blank, endl, blank)
+  def concatByteStrings(lines: Seq[ByteString], sep: ByteString): ByteString = concatByteStrings(lines, blank, endl, blank)
 
   def concatByteStrings(lines: Seq[ByteString], start: String, sep: String, end: String): ByteString = {
     concatByteStrings(lines, ByteString(start), ByteString(sep), ByteString(end))
@@ -90,18 +93,18 @@ package object akka extends DataToolsConfig {
     val builder = ByteString.newBuilder
     var first = true
 
-    builder.append(start)
+    builder append start
     for (line <- lines) {
       if (first) {
-        builder.append(line)
+        builder append line
         first = false
       } else {
-        builder.append(sep)
-        builder.append(line)
+        builder append sep
+        builder append line
       }
     }
 
-    builder.append(end)
+    builder append end
 
     builder.result()
   }

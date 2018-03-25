@@ -12,21 +12,26 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
+
 package cmwell.ws.util
 
 import java.net.InetAddress
 import cmwell.ws.Settings
-import play.api.mvc.{Request, RequestHeader}
+import play.api.mvc.{RequestHeader, Request}
 import play.api.http.HeaderNames
 
 /**
-  * Created with IntelliJ IDEA.
-  * User: Israel
-  * Date: 22/09/13
-  * Time: 15:54
-  * To change this template use File | Settings | File Templates.
-  */
+ * Created with IntelliJ IDEA.
+ * User: Israel
+ * Date: 22/09/13
+ * Time: 15:54
+ * To change this template use File | Settings | File Templates.
+ */
 trait TypeHelpers {
+
+
 
   def asInt(number: String): Option[Int] = {
     //require(limit > 0, "must be positive!")
@@ -35,9 +40,10 @@ trait TypeHelpers {
       require(s.forall(_.isDigit), s"Not a valid positive number format: $s")
       require(s.length < 10 || (s.length == 10 && s <= "2147483647"), s"the number $s seems to be too big") //don't try to parse something larger than MAX_INT
       Some(s.toInt)
-    } catch {
-      case _: NumberFormatException | _: NullPointerException => None
-      case t: Throwable                                       => throw t
+    }
+    catch {
+      case _:NumberFormatException | _:NullPointerException => None
+      case t:Throwable => throw t
     }
   }
 
@@ -48,9 +54,10 @@ trait TypeHelpers {
       require(s.forall(_.isDigit), s"Not a valid positive number format: $s")
       require(s.length < 19 || (s.length == 19 && s <= "9223372036854775807"), s"the number $s seems to be too big") //don't try to parse something larger than MAX_LONG
       Some(s.toLong)
-    } catch {
-      case _: NumberFormatException | _: NullPointerException => None
-      case t: Throwable                                       => throw t
+    }
+    catch {
+      case _:NumberFormatException | _:NullPointerException => None
+      case t:Throwable => throw t
     }
   }
 
@@ -59,8 +66,8 @@ trait TypeHelpers {
     else
       s.toLowerCase match {
         case "" | "t" | "true" | "yes" | "1" => Some(true)
-        case "f" | "false" | "no" | "0"      => Some(false)
-        case _                               => None
+        case "f" | "false" | "no" | "0" => Some(false)
+        case _ => None
       }
   }
 
@@ -68,15 +75,10 @@ trait TypeHelpers {
 
 object TypeHelpers extends TypeHelpers
 
+
 object RequestHelpers {
 
-  def cmWellBase(implicit req: RequestHeader): String = {
-    "http://" + req.headers
-      .get(HeaderNames.HOST)
-      .getOrElse(
-        InetAddress.getLocalHost().getHostName() + Option(System.getProperty("application.port"))
-          .map(":" + _)
-          .getOrElse("")
-      )
+  def cmWellBase(implicit req:RequestHeader): String = {
+    "http://" + req.headers.get(HeaderNames.HOST).getOrElse(InetAddress.getLocalHost().getHostName() + Option(System.getProperty("application.port")).map(":" + _).getOrElse(""))
   }
 }

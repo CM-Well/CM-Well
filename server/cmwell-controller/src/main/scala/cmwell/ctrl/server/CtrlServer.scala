@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.ctrl.server
 
 import akka.util.Timeout
@@ -22,11 +24,11 @@ import uk.org.lidalia.sysoutslf4j.context.SysOutOverSLF4J
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
-
 /**
-  * Created by michael on 11/25/14.
-  */
-object CtrlServer extends App with LazyLogging {
+ * Created by michael on 11/25/14.
+ */
+
+object CtrlServer extends App with LazyLogging{
   logger.info("Starting CtrlServer process")
   //SLF4J initialization is not thread safe, so it's "initialized" by writing some log and only then using sendSystemOutAndErrToSLF4J.
   //Without it there will be en error in stderr and some log line at the beginning will be lost

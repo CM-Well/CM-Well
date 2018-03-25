@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.tools.data.utils.akka
 
 import akka.stream.ThrottleMode.{Enforcing, Shaping}
@@ -43,6 +45,7 @@ class TitForTatThrottle[T] extends GraphStage[FlowShape[T, T]] {
     var willStop = false
     var currentElement: T = _
 
+
     // This scope is here just to not retain an extra reference to the handler below.
     // We can't put this code into preRestart() because setHandler() must be called before that.
     {
@@ -55,14 +58,15 @@ class TitForTatThrottle[T] extends GraphStage[FlowShape[T, T]] {
 
         override def onPush(): Unit = {
           val elem = grab(in)
-          val now = System.currentTimeMillis()
+          val now =  System.currentTimeMillis()
           val delayMillis = now - timeOfPreviousElmement
           timeOfPreviousElmement = now
+
 
           if (delayMillis == 0L) push(out, elem)
           else {
             currentElement = elem
-            System.err.println(s"scheduled push in ${delayMillis.milliseconds}")
+            System.err.println(s"scheduled push in ${delayMillis.milliseconds}" )
             scheduleOnce(timerName, delayMillis.milliseconds)
           }
         }

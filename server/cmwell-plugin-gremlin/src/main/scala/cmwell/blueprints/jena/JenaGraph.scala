@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.blueprints.jena
 
 import java.io.{OutputStream, StringReader, StringWriter}
@@ -24,6 +26,7 @@ import com.tinkerpop.blueprints._
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 import Extensions._
+
 
 //todo Literals
 //todo ========
@@ -44,31 +47,33 @@ class JenaGraph(model: Model = ModelFactory.createDefaultModel) extends Graph {
   override def getEdge(id: Object): Edge = {
     val statements = model.listStatements(new SimpleSelector {
       override def selects(s: Statement): Boolean =
-        !s.getObject.isLiteral && s"${s.getSubject.id}-${s.getPredicate.id}->${s.getObject.id}" == id.toString
+        !s.getObject.isLiteral && s"${s.getSubject.id}-${s.getPredicate.id}->${s.getObject.id}"==id.toString
     })
     if (statements.hasNext) {
       val statement = statements.next
       new JenaEdge(model, statement.getPredicate, statement.getObject, statement.getSubject)
-    } else {
+    }
+    else {
       throw new QueryException(s"Edge [$id] not present in Graph")
     }
   }
-
+  
   override def getVertex(id: Object) = {
-    Seq(model.listSubjects.filter(_.id == id.toString),
-        model.listObjects.filter(o => o.id == id.toString && !o.isLiteral)).flatMap(identity).headOption match {
+    Seq(model.listSubjects.filter(_.id==id.toString),
+      model.listObjects.filter(o => o.id==id.toString && !o.isLiteral)
+    ).flatMap(identity).headOption match {
       case Some(rdfNode) => new JenaVertex(model, rdfNode)
-      case None          => throw new QueryException(s"Vertex [$id] not present in Graph")
+      case None => throw new QueryException(s"Vertex [$id] not present in Graph")
     }
   }
-
+  
   override def getEdges = {
     val edges = mutable.ListBuffer[Edge]()
     val statements = model.listStatements
     while (statements.hasNext) {
       val statement = statements.next
       val predicate = statement.getPredicate
-      if (!statement.getObject.isLiteral)
+      if(!statement.getObject.isLiteral)
         edges += new JenaEdge(model, predicate, statement.getObject, statement.getSubject)
     }
     edges
@@ -84,16 +89,14 @@ class JenaGraph(model: Model = ModelFactory.createDefaultModel) extends Graph {
       vertices.add(new JenaVertex(model, sub))
 
       val obj = statement.getObject
-      if (!obj.isLiteral)
+      if(!obj.isLiteral)
         vertices.add(new JenaVertex(model, obj))
     }
     vertices
   }
 
-  override def removeEdge(edge: Edge) =
-    throw new UnsupportedOperationException("Current implementation is for a ReadOnly graph")
-  override def removeVertex(vertex: Vertex) =
-    throw new UnsupportedOperationException("Current implementation is for a ReadOnly graph")
+  override def removeEdge(edge: Edge) = throw new UnsupportedOperationException("Current implementation is for a ReadOnly graph")
+  override def removeVertex(vertex: Vertex) = throw new UnsupportedOperationException("Current implementation is for a ReadOnly graph")
 
   def write(out: OutputStream) = model.write(out)
 
@@ -104,17 +107,13 @@ class JenaGraph(model: Model = ModelFactory.createDefaultModel) extends Graph {
   }
 
   override def query(): GraphQuery = new DefaultGraphQuery(this)
-  override def shutdown = {}
+  override def shutdown = { }
 
-  override def getEdges(key: String, value: Object): Iterable[Edge] =
-    throw new UnsupportedOperationException("getEdges by key,value is not supported")
-  override def getVertices(key: String, value: Object): Iterable[Vertex] =
-    throw new UnsupportedOperationException("getVertices by key,value is not supported")
+  override def getEdges(key: String, value: Object): Iterable[Edge] = throw new UnsupportedOperationException("getEdges by key,value is not supported")
+  override def getVertices(key: String, value: Object): Iterable[Vertex] = throw new UnsupportedOperationException("getVertices by key,value is not supported")
 
-  override def addEdge(id: Object, outVertex: Vertex, inVertex: Vertex, label: String) =
-    throw new UnsupportedOperationException("Current implementation is for a ReadOnly graph")
-  override def addVertex(id: Object) =
-    throw new UnsupportedOperationException("Current implementation is for a ReadOnly graph")
+  override def addEdge(id: Object, outVertex: Vertex, inVertex: Vertex, label: String) = throw new UnsupportedOperationException("Current implementation is for a ReadOnly graph")
+  override def addVertex(id: Object) = throw new UnsupportedOperationException("Current implementation is for a ReadOnly graph")
 
   override def getFeatures = features
   private val features = new Features
@@ -149,4 +148,4 @@ class JenaGraph(model: Model = ModelFactory.createDefaultModel) extends Graph {
   features.supportsThreadedTransactions = false
 }
 
-class QueryException(msg: String) extends Exception(msg) {}
+class QueryException(msg: String) extends Exception(msg) { }

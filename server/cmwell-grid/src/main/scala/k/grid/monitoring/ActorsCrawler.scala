@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package k.grid.monitoring
 
 import akka.actor._
@@ -19,19 +21,19 @@ import k.grid.Grid
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-
 /**
-  * Created by michael on 7/5/15.
-  */
+ * Created by michael on 7/5/15.
+ */
 case object PingActors
-case class ActorReport(name: String, latency: Long = 0L)
-case class ActiveActors(actors: Set[ActorReport], host: String = "")
+case class ActorReport(name : String, latency : Long = 0L)
+case class ActiveActors(actors : Set[ActorReport], host : String = "")
 case object CheckIfFinished
 class ActorsCrawler extends Actor {
 
+
   private[this] var s = Set.empty[ActorReport]
-  private[this] var senderVar: ActorRef = _
-  private[this] var lastUpdate: Long = Long.MaxValue
+  private[this] var senderVar : ActorRef = _
+  private[this] var lastUpdate : Long = Long.MaxValue
   private[this] def currentTime = System.currentTimeMillis
 
   override def receive: Receive = {
@@ -46,10 +48,12 @@ class ActorsCrawler extends Actor {
       }
 
     case CheckIfFinished =>
-      if (currentTime - lastUpdate > 1000) {
+
+      if(currentTime - lastUpdate > 1000){
         senderVar ! ActiveActors(s, Grid.thisMember.address)
         self ! PoisonPill
       }
+
 
     case PingActors =>
       senderVar = sender()

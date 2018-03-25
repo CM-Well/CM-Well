@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.util
 
 import scala.language.higherKinds
@@ -20,29 +22,26 @@ import scala.collection.mutable
 import scala.util.{Success, Try}
 
 /**
-  * Created with IntelliJ IDEA.
-  * User: gilad
-  * Date: 8/1/13
-  * Time: 9:59 AM
-  * To change this template use File | Settings | File Templates.
-  */
+ * Created with IntelliJ IDEA.
+ * User: gilad
+ * Date: 8/1/13
+ * Time: 9:59 AM
+ * To change this template use File | Settings | File Templates.
+ */
 package object exceptions {
 
-  def trySequence[A, M[X] <: TraversableOnce[X]](
-    in: M[Try[A]]
-  )(implicit cbf: CanBuildFrom[M[Try[A]], A, M[A]]): Try[M[A]] = {
-    in.foldLeft(Success(cbf(in)): Try[mutable.Builder[A, M[A]]]) { (tr, ta) =>
-        {
-          for {
-            r <- tr
-            a <- ta
-          } yield r += a
-        }
+  def trySequence[A, M[X] <: TraversableOnce[X]](in: M[Try[A]])(implicit cbf: CanBuildFrom[M[Try[A]], A, M[A]]): Try[M[A]] = {
+    in.foldLeft(Success(cbf(in)): Try[mutable.Builder[A,M[A]]]) {
+      (tr, ta) => {
+        for {
+          r <- tr
+          a <- ta
+        } yield r += a
       }
-      .map(_.result())
+    } map (_.result())
   }
 
-  def stackTraceToString(t: Throwable): String = {
+  def stackTraceToString(t : Throwable): String = {
     val w = new java.io.StringWriter()
     val pw = new java.io.PrintWriter(w)
     t.printStackTrace(pw)

@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.util.exceptions
 
-class ElementAlreadyExistException(msg: String) extends Exception(msg)
+class ElementAlreadyExistException(msg : String) extends Exception(msg)

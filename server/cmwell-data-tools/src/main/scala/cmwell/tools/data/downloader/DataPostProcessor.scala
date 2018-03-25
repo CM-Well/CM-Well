@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.tools.data.downloader
 
 import akka.stream.scaladsl._
@@ -44,7 +46,7 @@ object DataPostProcessor extends DataToolsLogging {
           false
         case _ => true
       }
-      .fold(mutable.Map.empty[ByteString, ByteStringBuilder]) { (agg, line) =>
+      .fold(mutable.Map.empty[ByteString, ByteStringBuilder]){ (agg, line) =>
         // aggregate each line according to its subject (i.e., bucket)
         val subject = GroupChunker.extractSubject(line)
         val builder = agg.getOrElse(subject, new ByteStringBuilder)
@@ -52,6 +54,7 @@ object DataPostProcessor extends DataToolsLogging {
         agg + (subject -> builder)
       }
       .map(_.toMap)
-      .mapConcat(_.map { case (_, ntupleBuilder) => ntupleBuilder.result })
+      .mapConcat(_.map{ case (_, ntupleBuilder) => ntupleBuilder.result})
   }
 }
+

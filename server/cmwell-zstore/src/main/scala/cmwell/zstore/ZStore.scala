@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.zstore
 
 import java.nio.ByteBuffer
@@ -40,51 +42,48 @@ trait ZStore {
   def get(uzid: String): Future[Array[Byte]]
   def get(uzid: String, dontRetry: Boolean): Future[Array[Byte]]
   def getOpt(uzid: String, dontRetry: Boolean = false): Future[Option[Array[Byte]]]
-  def putString(uzid: String, value: String, batched: Boolean = false): Future[Unit] = {
+  def putString(uzid:String, value:String, batched:Boolean = false):Future[Unit] = {
     put(uzid, value.getBytes("utf-8"), batched)
   }
   def putLong(uzid: String, value: Long, batched: Boolean = false): Future[Unit] =
     put(uzid, ByteBuffer.allocate(8).putLong(value).array(), batched)
 
-  def putInt(uzid: String, value: Int, batched: Boolean = false): Future[Unit] =
-    put(uzid, ByteBuffer.allocate(4).putInt(value).array(), batched)
+  def putInt(uzid: String, value: Int, batched: Boolean = false): Future[Unit] = put(uzid, ByteBuffer.allocate(4).putInt(value).array(), batched)
 
   def putBoolean(uzid: String, value: Boolean, batched: Boolean = false): Future[Unit] = {
-    val i: Int = if (value) 1 else 0
+    val i:Int = if(value) 1 else 0
     put(uzid, ByteBuffer.allocate(1).put(i.toByte).array(), batched)
   }
 
-  def getString(uzid: String): Future[String] = get(uzid).map { new String(_) }
+  def getString(uzid:String):Future[String] = get(uzid).map{new String(_)}
 
-  def getStringOpt(uzid: String): Future[Option[String]] = getOpt(uzid).map { _.map { new String(_) } }
+  def getStringOpt(uzid:String):Future[Option[String]] = getOpt(uzid).map{ _.map{new String(_)}}
 
-  def getLong(uzid: String): Future[Long] = get(uzid).map { bytes =>
+  def getLong(uzid: String): Future[Long] = get(uzid).map{ bytes =>
     ByteBuffer.wrap(bytes).getLong
   }
 
-  def getInt(uzid: String): Future[Int] = get(uzid).map { bytes =>
+  def getInt(uzid: String): Future[Int] = get(uzid).map{ bytes =>
     ByteBuffer.wrap(bytes).getInt
   }
 
-  def getBoolean(uzid: String): Future[Boolean] = get(uzid).map { bytes =>
-    if (bytes(0).toInt == 1)
+  def getBoolean(uzid: String): Future[Boolean] = get(uzid).map{ bytes =>
+    if(bytes(0).toInt == 1)
       true
     else
       false
   }
 
-  def getLongOpt(uzid: String): Future[Option[Long]] = getOpt(uzid, true).map { bytesOpt =>
-    bytesOpt.map { ByteBuffer.wrap(_).getLong }
+  def getLongOpt(uzid: String): Future[Option[Long]] = getOpt(uzid, true).map{ bytesOpt =>
+    bytesOpt.map{ ByteBuffer.wrap(_).getLong}
   }
 
-  def getIntOpt(uzid: String): Future[Option[Int]] = getOpt(uzid, true).map { bytesOpt =>
-    bytesOpt.map { ByteBuffer.wrap(_).getInt }
+  def getIntOpt(uzid: String): Future[Option[Int]] = getOpt(uzid, true).map{ bytesOpt =>
+    bytesOpt.map{ ByteBuffer.wrap(_).getInt}
   }
 
-  def getBooleanOpt(uzid: String): Future[Option[Boolean]] = getOpt(uzid, true).map { bytesOpt =>
-    bytesOpt.map { bytes =>
-      if (bytes(0) == 1) true else false
-    }
+  def getBooleanOpt(uzid: String): Future[Option[Boolean]] = getOpt(uzid, true).map{ bytesOpt =>
+    bytesOpt.map{ bytes => if(bytes(0) == 1) true else false}
   }
 
   def remove(uzid: String): Future[Unit]
@@ -93,8 +92,7 @@ trait ZStore {
 class ZStoreImpl(dao: Dao) extends ZStore with DaoExecution with LazyLogging {
   implicit val daoProxy = dao
 
-  override def put(uzid: String, value: Array[Byte], batched: Boolean): Future[Unit] =
-    put(uzid, value, neverExpire, batched)
+  override def put(uzid: String, value: Array[Byte], batched: Boolean): Future[Unit] = put(uzid, value, neverExpire, batched)
 
   override def put(uzid: String, value: Array[Byte], secondsToLive: Int, batched: Boolean): Future[Unit] = {
 
@@ -113,16 +111,17 @@ class ZStoreImpl(dao: Dao) extends ZStore with DaoExecution with LazyLogging {
     val adler32 = cmwell.util.string.Hash.adler32int(value)
     val rows = serialize(ZStoreObj(uzid, adler32, value))
 
-    def rowToStatement(row: ZStoreRow) =
-      putPStmt.bind(row.uzid, row.field, ByteBuffer.wrap(row.chunk), ttl).setConsistencyLevel(ConsistencyLevel.QUORUM)
+    def rowToStatement(row: ZStoreRow) = putPStmt.bind(row.uzid, row.field, ByteBuffer.wrap(row.chunk), ttl).
+      setConsistencyLevel(ConsistencyLevel.QUORUM)
 
-    if (batched) {
+    if(batched) {
       val batch = new BatchStatement()
       rows.foreach { row =>
         batch.add(putPStmt.bind(row.uzid, row.field, ByteBuffer.wrap(row.chunk), ttl))
       }
       execWithRetry(batch.setConsistencyLevel(ConsistencyLevel.QUORUM)).map(_ => ())
-    } else cmwell.util.concurrent.travector(rows)((rowToStatement _).andThen(execWithRetry)).map(_ => ())
+    }
+    else cmwell.util.concurrent.travector(rows)(rowToStatement _ andThen execWithRetry).map(_ => ())
   }
 
   override def get(uzid: String): Future[Array[Byte]] = {
@@ -130,19 +129,19 @@ class ZStoreImpl(dao: Dao) extends ZStore with DaoExecution with LazyLogging {
     val getStmtQuorum = getPStmt.bind(uzid).setConsistencyLevel(ConsistencyLevel.QUORUM)
 
     def fetchAndDeserialize(stmt: Statement) =
-      retry(exec(stmt).map((deserialize(uzid) _).andThen(_.fold(throw new NoSuchElementException)(_.value))))
+      retry(exec(stmt).map(deserialize(uzid) _ andThen (_.fold(throw new NoSuchElementException)(_.value))))
 
     fetchAndDeserialize(getStmtOne).andThen {
-      case Success(value) => value
-      case Failure(e) =>
-        logger.warn(s"[zStore] Reading uzid $uzid with cl=ONE threw $e. Trying cl=QUORUM...")
-        fetchAndDeserialize(getStmtQuorum).andThen {
-          case Success(value) => value
-          case Failure(e1) =>
-            logger.warn(s"[zStore] Reading uzid $uzid with cl=QUORUM threw $e1. Trying last time with cl=ONE...")
-            fetchAndDeserialize(getStmtOne)
-        }
-    }
+        case Success(value) => value
+        case Failure(e) =>
+          logger.warn(s"[zStore] Reading uzid $uzid with cl=ONE threw $e. Trying cl=QUORUM...")
+          fetchAndDeserialize(getStmtQuorum).andThen {
+              case Success(value) => value
+              case Failure(e1) =>
+                logger.warn(s"[zStore] Reading uzid $uzid with cl=QUORUM threw $e1. Trying last time with cl=ONE...")
+                fetchAndDeserialize(getStmtOne)
+            }
+      }
   }
 
   override def get(uzid: String, dontRetry: Boolean): Future[Array[Byte]] = {
@@ -150,7 +149,7 @@ class ZStoreImpl(dao: Dao) extends ZStore with DaoExecution with LazyLogging {
       get(uzid)
     else {
       val stmt = getPStmt.bind(uzid).setConsistencyLevel(ConsistencyLevel.ONE)
-      exec(stmt).map((deserialize(uzid) _).andThen(_.fold(throw new NoSuchElementException)(_.value)))
+      exec(stmt).map(deserialize(uzid) _ andThen (_.fold(throw new NoSuchElementException)(_.value)))
     }
   }
 
@@ -181,7 +180,7 @@ class ZStoreImpl(dao: Dao) extends ZStore with DaoExecution with LazyLogging {
   private val createTableCqlStmt = {
     // assuming data2 already exists from cmwell install
     val createTableCql =
-      """|
+    """|
        |CREATE TABLE IF NOT EXISTS data2.zstore (
        |   uzid text,
        |   field text,
@@ -196,7 +195,7 @@ class ZStoreImpl(dao: Dao) extends ZStore with DaoExecution with LazyLogging {
   }
   dao.getSession.execute(createTableCqlStmt) // deliberately not using execAsync
 
-  private val putPStmt = prepare("INSERT   INTO data2.zstore (uzid,field,value) VALUES(?,?,?) USING TTL ?") // TTL 0 == persist forever
+    private val putPStmt = prepare("INSERT   INTO data2.zstore (uzid,field,value) VALUES(?,?,?) USING TTL ?") // TTL 0 == persist forever
   private val getPStmt = prepare("SELECT * FROM data2.zstore WHERE uzid = ?")
   private val delPStmt = prepare("DELETE   FROM data2.zstore WHERE uzid = ?")
 
@@ -209,8 +208,7 @@ class ZStoreImpl(dao: Dao) extends ZStore with DaoExecution with LazyLogging {
       val bytesRow = result.one()
       val bytes = ByteBuffer.wrap(Bytes.getArray(bytesRow.getBytes("value"))).getLong
       if (result.isExhausted) {
-        require(bytes == 0 && adler == ZStoreImpl.zeroAdler,
-                s"expected empty content for uzid [$uzid] with bytes [$bytes] and adler [$adler]")
+        require(bytes == 0 && adler == ZStoreImpl.zeroAdler, s"expected empty content for uzid [$uzid] with bytes [$bytes] and adler [$adler]")
         Some(ZStoreObj(uzid, adler, Array.emptyByteArray))
       } else {
         val it = new Iterator[Array[Byte]] {
@@ -225,9 +223,7 @@ class ZStoreImpl(dao: Dao) extends ZStore with DaoExecution with LazyLogging {
         it.foreach(valueBuilder ++= _)
         val obj = ZStoreObj(uzid, adler, valueBuilder.result())
         if (!obj.isCorrect) {
-          logger.error(
-            s"[zStore] Reading uzid [$uzid] failed because data corruption! (stored adler[$adler] != computed adler[${obj.adlerizedValue}], stored bytes[$bytes], actual value size[${obj.value.length}])"
-          )
+          logger.error(s"[zStore] Reading uzid [$uzid] failed because data corruption! (stored adler[$adler] != computed adler[${obj.adlerizedValue}], stored bytes[$bytes], actual value size[${obj.value.length}])")
 //          throw new RuntimeException("Corrupted data!")
         }
         Some(obj)
@@ -258,11 +254,10 @@ class ZStoreMem extends ZStore {
   override def put(uzid: String, value: Array[Byte], batched: Boolean): Future[Unit] =
     Future.successful(store += uzid -> value)
 
-  override def put(uzid: String, value: Array[Byte], secondsToLive: Int, batched: Boolean): Future[Unit] =
-    Future.successful {
-      store += uzid -> value
-      delayedTask(secondsToLive.seconds) { store -= uzid }
-    }
+  override def put(uzid: String, value: Array[Byte], secondsToLive: Int, batched: Boolean): Future[Unit] = Future.successful {
+    store += uzid -> value
+    delayedTask(secondsToLive.seconds) { store -= uzid }
+  }
 
   override def get(uzid: String): Future[Array[Byte]] =
     Future(store(uzid))

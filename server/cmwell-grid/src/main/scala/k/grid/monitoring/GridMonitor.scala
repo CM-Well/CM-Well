@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package k.grid.monitoring
 
 import akka.util.Timeout
@@ -22,36 +24,37 @@ import akka.pattern.ask
 import k.grid._
 import k.grid.monitoring.GridMonitor
 import k.grid.service.LocalServiceManager
-import k.grid.service.messages.{RegisterServices, ServiceInstantiationRequest}
+import k.grid.service.messages.{ServiceInstantiationRequest, RegisterServices}
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import com.typesafe.scalalogging.LazyLogging
 import scala.concurrent.ExecutionContext.Implicits.global
-
 /**
-  * Created by michael on 3/2/16.
-  */
+ * Created by michael on 3/2/16.
+ */
+
+
 case object GetMembersInfo
-case class MembersInfo(m: Map[GridJvm, JvmInfo])
+case class MembersInfo(m : Map[GridJvm, JvmInfo])
 
 object GridMonitor extends LazyLogging {
   implicit val timeout = Timeout(15.seconds)
   lazy private val sel = Grid.selectSingleton(GridMonitor.name, None, Grid.seedMembers.head)
   def name = "GridMonitor"
   def init = Grid.createSingleton(classOf[GridMonitor], name, None)
-  def getMembersInfo: Future[MembersInfo] = {
+  def getMembersInfo : Future[MembersInfo] = {
     logger.info("[GridMonitor] getMembersInfo")
     (sel ? GetMembersInfo).mapTo[MembersInfo]
   }
 }
 
-case class MemInfoKey(host: String, name: String)
+case class MemInfoKey(host : String, name : String)
 class GridMonitor extends Actor with LazyLogging {
   private implicit val timeout = Timeout(15.seconds)
 
-  private[this] var membersInfo = Map.empty[MemInfoKey, (GridJvm, JvmInfo)]
+  private[this] var membersInfo = Map.empty[MemInfoKey, (GridJvm,JvmInfo)]
   private case object SendInfoRequests
-  private case class UpdateMembersInfoMap(m: Map[GridJvm, JvmInfo])
+  private case class UpdateMembersInfoMap(m : Map[GridJvm, JvmInfo])
 
   @throws[Exception](classOf[Exception])
   override def preStart(): Unit = {
@@ -60,23 +63,22 @@ class GridMonitor extends Actor with LazyLogging {
   }
 
   override def receive: Receive = {
-    case UpdateMembersInfoMap(m) =>
-      membersInfo = membersInfo ++ m.map {
-        case (k, v) => MemInfoKey(k.host, k.identity.map(_.name).getOrElse("")) -> (k, v)
-      }
+    case UpdateMembersInfoMap(m) => membersInfo = membersInfo ++ m.map{case (k,v) => MemInfoKey(k.host, k.identity.map(_.name).getOrElse("")) -> (k,v)}
     case SendInfoRequests => {
       logger.info("SendInfoRequests")
       val jvms = Grid.jvmsAll
-      val futures = jvms.map { jvm =>
-        ((Grid.selectActor(ClientActor.name, jvm) ? GetClientInfo).mapTo[JvmInfo].map(jvm -> _)).recover {
-          case _ => {
-            val inf = membersInfo.get(MemInfoKey(jvm.host, jvm.identity.map(_.name).getOrElse(""))) match {
-              case Some((gridJvm, jvmInfo)) => jvmInfo.copy(status = Stopped)
-              case None                     => JvmInfo(ClientMember, Stopped, -1, 0L, Set.empty[MemoryInfo], Set.empty[GcInfo], "NA", "")
+      val futures = jvms.map {
+        jvm =>
+          ((Grid.selectActor(ClientActor.name, jvm) ? GetClientInfo).mapTo[JvmInfo].map(jvm -> _)).
+          recover{
+            case _ => {
+              val inf = membersInfo.get(MemInfoKey(jvm.host, jvm.identity.map(_.name).getOrElse(""))) match {
+                case Some((gridJvm,jvmInfo)) => jvmInfo.copy(status = Stopped)
+                case None => JvmInfo(ClientMember,Stopped, -1, 0L, Set.empty[MemoryInfo], Set.empty[GcInfo], "NA", "")
+              }
+              jvm -> inf
             }
-            jvm -> inf
           }
-        }
       }
 
       val future = successes(futures).map(_.toMap)
@@ -84,6 +86,6 @@ class GridMonitor extends Actor with LazyLogging {
     }
     case GetMembersInfo =>
       logger.info("Got GetMembersInfo")
-      sender ! MembersInfo(membersInfo.map { case (k1, (k2, v)) => k2 -> v })
+      sender ! MembersInfo(membersInfo.map{case (k1,(k2,v)) => k2 -> v})
   }
 }

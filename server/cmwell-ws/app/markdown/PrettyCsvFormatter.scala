@@ -12,14 +12,15 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package markdown
 
 import cmwell.domain.Formattable
 import wsutil.FormatterManager._
 import cmwell.formats.{CSVFormatter, FormatType, HtmlType}
 
-class PrettyCsvFormatter(innerToSimpleFieldName: String => String)
-    extends CSVFormatter(prettyMangledField.compose(innerToSimpleFieldName)) {
+class PrettyCsvFormatter(innerToSimpleFieldName: String => String) extends CSVFormatter(prettyMangledField compose innerToSimpleFieldName) {
   override def format: FormatType = HtmlType
 
   override def render(formattable: Formattable): String = {

@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.tools.data.downloader.consumer
 
 import akka.actor.ActorSystem
@@ -22,6 +24,7 @@ import cmwell.tools.data.utils.akka.HeaderOps._
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.http.Fault
 import com.github.tomakehurst.wiremock.stubbing.Scenario
+
 
 /**
   * Created by matan on 12/9/16.
@@ -42,71 +45,49 @@ class ConsumerSpec extends BaseWiremockSpec {
     val ok = "ok"
     val noContent = "no-content"
 
-    stubFor(
-      post(urlPathMatching("/_out"))
-        .willReturn(
-          aResponse()
-            .withBody("response")
-            .withStatus(StatusCodes.OK.intValue)
-        )
+    stubFor(post(urlPathMatching("/_out"))
+      .willReturn(aResponse()
+        .withBody("response")
+        .withStatus(StatusCodes.OK.intValue))
     )
 
-    stubFor(
-      get(urlPathMatching("/.*"))
-        .inScenario(scenario)
-        .whenScenarioStateIs(Scenario.STARTED)
-        .willReturn(
-          aResponse()
-            .withStatus(StatusCodes.OK.intValue)
-            .withHeader(CMWELL_POSITION, "3AAAMHwv")
-        )
-        .willSetStateTo(tooManyRequests)
+    stubFor(get(urlPathMatching("/.*")).inScenario(scenario)
+      .whenScenarioStateIs(Scenario.STARTED)
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.OK.intValue)
+        .withHeader(CMWELL_POSITION, "3AAAMHwv"))
+      .willSetStateTo(tooManyRequests)
     )
 
-    stubFor(
-      get(urlPathMatching("/.*"))
-        .inScenario(scenario)
-        .whenScenarioStateIs(tooManyRequests)
-        .willReturn(
-          aResponse()
-            .withStatus(StatusCodes.TooManyRequests.intValue)
-            .withHeader(CMWELL_POSITION, "3AAAMHwv")
-        )
-        .willSetStateTo(ok)
+    stubFor(get(urlPathMatching("/.*")).inScenario(scenario)
+      .whenScenarioStateIs(tooManyRequests)
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.TooManyRequests.intValue)
+        .withHeader(CMWELL_POSITION, "3AAAMHwv"))
+      .willSetStateTo(ok)
     )
 
-    stubFor(
-      get(urlPathMatching("/.*"))
-        .inScenario(scenario)
-        .whenScenarioStateIs(ok)
-        .willReturn(
-          aResponse()
-            .withStatus(StatusCodes.OK.intValue)
-            .withBody("one\ttwo\tthree\tfour")
-            .withHeader(CMWELL_POSITION, "3AAAMHwv")
-        )
-        .willSetStateTo(noContent)
+    stubFor(get(urlPathMatching("/.*")).inScenario(scenario)
+      .whenScenarioStateIs(ok)
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.OK.intValue)
+        .withBody("one\ttwo\tthree\tfour")
+        .withHeader(CMWELL_POSITION, "3AAAMHwv"))
+      .willSetStateTo(noContent)
     )
 
-    stubFor(
-      get(urlPathMatching("/.*"))
-        .inScenario(scenario)
-        .whenScenarioStateIs(noContent)
-        .willReturn(
-          aResponse()
-            .withStatus(StatusCodes.NoContent.intValue)
-            .withHeader(CMWELL_POSITION, "3AAAMHwv")
-        )
+    stubFor(get(urlPathMatching("/.*")).inScenario(scenario)
+      .whenScenarioStateIs(noContent)
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.NoContent.intValue)
+        .withHeader(CMWELL_POSITION, "3AAAMHwv"))
     )
 
-    val result = Downloader
-      .createTsvSource(baseUrl = s"localhost:${wireMockServer.port}")
+    val result = Downloader.createTsvSource(baseUrl = s"localhost:${wireMockServer.port}")
       .map(_ => 1)
       .runFold(0)(_ + _)
 
-    result.flatMap { r =>
-      r should be(1)
-    }
+    result.flatMap { r => r should be (1)}
   }
 
   it should "download all uuids while getting server error" in {
@@ -115,91 +96,68 @@ class ConsumerSpec extends BaseWiremockSpec {
       "path1\tlastModified1\tuuid1\tindexTime1\n",
       "path2\tlastModified2\tuuid2\tindexTime2\n"
     )
-    val tsvsAfterError = List(
+    val tsvsAfterError  = List(
       "path3\tlastModified3\tuuid3\tindexTime3\n",
       "path4\tlastModified4\tuuid4\tindexTime4\n"
     )
-    val expectedTsvs = tsvsBeforeError ++ tsvsAfterError
+    val expectedTsvs    = tsvsBeforeError ++ tsvsAfterError
 
     val downloadSuccess1 = "download-success-1"
     val downloadFail = "download-fail"
     val downloadSuccess2 = "download-success-2"
     val noContent = "no-content"
 
-    stubFor(
-      get(urlPathMatching("/.*"))
-        .inScenario(scenario)
-        .whenScenarioStateIs(Scenario.STARTED)
-        .willReturn(
-          aResponse()
-            .withStatus(StatusCodes.OK.intValue)
-            .withHeader(CMWELL_POSITION, "3AAAMHwv")
-        )
-        .willSetStateTo(downloadSuccess1)
+    stubFor(get(urlPathMatching("/.*")).inScenario(scenario)
+      .whenScenarioStateIs(Scenario.STARTED)
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.OK.intValue)
+        .withHeader(CMWELL_POSITION, "3AAAMHwv"))
+      .willSetStateTo(downloadSuccess1)
     )
 
-    stubFor(
-      get(urlPathMatching("/_consume"))
-        .inScenario(scenario)
-        .whenScenarioStateIs(downloadSuccess1)
-        .willReturn(
-          aResponse()
-            .withBody(tsvsBeforeError.mkString)
-            .withStatus(StatusCodes.OK.intValue)
-            .withHeader(CMWELL_N, (tsvsBeforeError.size).toString)
-            .withHeader(CMWELL_POSITION, "3AAAMHwv")
-        )
-        .willSetStateTo(downloadFail)
+    stubFor(get(urlPathMatching("/_consume")).inScenario(scenario)
+      .whenScenarioStateIs(downloadSuccess1)
+      .willReturn(aResponse()
+        .withBody(tsvsBeforeError.mkString)
+        .withStatus(StatusCodes.OK.intValue)
+        .withHeader(CMWELL_N, (tsvsBeforeError.size).toString)
+        .withHeader(CMWELL_POSITION, "3AAAMHwv"))
+      .willSetStateTo(downloadFail)
     )
 
-    stubFor(
-      get(urlPathMatching("/_consume"))
-        .inScenario(scenario)
-        .whenScenarioStateIs(downloadFail)
-        .willReturn(
-          aResponse()
-            .withStatus(StatusCodes.ServiceUnavailable.intValue)
-        )
-        .willSetStateTo(downloadSuccess2)
+    stubFor(get(urlPathMatching("/_consume")).inScenario(scenario)
+      .whenScenarioStateIs(downloadFail)
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.ServiceUnavailable.intValue))
+      .willSetStateTo(downloadSuccess2)
     )
 
-    stubFor(
-      get(urlPathMatching("/_consume"))
-        .inScenario(scenario)
-        .whenScenarioStateIs(downloadSuccess2)
-        .willReturn(
-          aResponse()
-            .withBody(tsvsAfterError.mkString)
-            .withStatus(StatusCodes.OK.intValue)
-            .withHeader(CMWELL_N, (tsvsAfterError.size).toString)
-            .withHeader(CMWELL_POSITION, "3AAAMHwv")
-        )
-        .willSetStateTo(noContent)
+    stubFor(get(urlPathMatching("/_consume")).inScenario(scenario)
+      .whenScenarioStateIs(downloadSuccess2)
+      .willReturn(aResponse()
+        .withBody(tsvsAfterError.mkString)
+        .withStatus(StatusCodes.OK.intValue)
+        .withHeader(CMWELL_N, (tsvsAfterError.size).toString)
+        .withHeader(CMWELL_POSITION, "3AAAMHwv"))
+      .willSetStateTo(noContent)
     )
 
-    stubFor(
-      get(urlPathMatching("/.*"))
-        .inScenario(scenario)
-        .whenScenarioStateIs(noContent)
-        .willReturn(
-          aResponse()
-            .withStatus(StatusCodes.NoContent.intValue)
-            .withHeader(CMWELL_POSITION, "3AAAMHwv")
-        )
+    stubFor(get(urlPathMatching("/.*")).inScenario(scenario)
+      .whenScenarioStateIs(noContent)
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.NoContent.intValue)
+        .withHeader(CMWELL_POSITION, "3AAAMHwv"))
     )
 
-    val result = Downloader
-      .createTsvSource(baseUrl = s"localhost:${wireMockServer.port}")
+    val result = Downloader.createTsvSource(baseUrl = s"localhost:${wireMockServer.port}")
       .map(_ => 1)
       .runFold(0)(_ + _)
 
     result
-      .flatMap { numDownloadedTsvs =>
-        numDownloadedTsvs should be(expectedTsvs.size)
-      }
+      .flatMap { numDownloadedTsvs => numDownloadedTsvs should be (expectedTsvs.size ) }
       .flatMap { _ =>
         val numRequestsToConsume = wireMockServer.findAll(getRequestedFor(urlPathMatching("/_consume"))).size
-        numRequestsToConsume should be(4)
+        numRequestsToConsume should be (4)
       }
   }
 
@@ -209,71 +167,49 @@ class ConsumerSpec extends BaseWiremockSpec {
     val crushState = "crush-state"
     val afterCrushState = "after-crush-state"
 
-    stubFor(
-      post(urlPathMatching("_out"))
-        .willReturn(
-          aResponse()
-            .withBody("response")
-            .withStatus(StatusCodes.OK.intValue)
-        )
+    stubFor(post(urlPathMatching("_out"))
+      .willReturn(aResponse()
+        .withBody("response")
+        .withStatus(StatusCodes.OK.intValue))
     )
 
-    stubFor(
-      get(urlPathMatching("/"))
-        .inScenario(scenario)
-        .whenScenarioStateIs(Scenario.STARTED)
-        .willReturn(
-          aResponse()
-            .withStatus(StatusCodes.OK.intValue)
-            .withHeader(CMWELL_POSITION, "dummy-token-value")
-        )
+    stubFor(get(urlPathMatching("/")).inScenario(scenario)
+      .whenScenarioStateIs(Scenario.STARTED)
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.OK.intValue)
+        .withHeader(CMWELL_POSITION, "dummy-token-value"))
         .willSetStateTo(beforeCrushState)
     )
 
-    stubFor(
-      get(urlPathMatching("/"))
-        .inScenario(scenario)
-        .whenScenarioStateIs(beforeCrushState)
-        .willReturn(
-          aResponse()
-            .withStatus(StatusCodes.OK.intValue)
-            .withBody("one\ttwo\tthree\tfour")
-            .withHeader(CMWELL_POSITION, "dummy-token-value2")
-        )
+    stubFor(get(urlPathMatching("/")).inScenario(scenario)
+      .whenScenarioStateIs(beforeCrushState)
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.OK.intValue)
+        .withBody("one\ttwo\tthree\tfour")
+        .withHeader(CMWELL_POSITION, "dummy-token-value2"))
         .willSetStateTo(crushState)
     )
 
-    stubFor(
-      get(urlPathMatching("/"))
-        .inScenario(scenario)
-        .whenScenarioStateIs(crushState)
-        .willReturn(
-          aResponse()
-            .withFault(Fault.RANDOM_DATA_THEN_CLOSE)
-            .withStatus(StatusCodes.OK.intValue)
-            .withHeader(CMWELL_POSITION, "dummy-token-value3")
-        )
-        .willSetStateTo(afterCrushState)
+    stubFor(get(urlPathMatching("/")).inScenario(scenario)
+      .whenScenarioStateIs(crushState)
+      .willReturn(aResponse()
+        .withFault(Fault.RANDOM_DATA_THEN_CLOSE)
+        .withStatus(StatusCodes.OK.intValue)
+        .withHeader(CMWELL_POSITION, "dummy-token-value3"))
+      .willSetStateTo(afterCrushState)
     )
 
-    stubFor(
-      get(urlPathMatching("/"))
-        .inScenario(scenario)
-        .whenScenarioStateIs(afterCrushState)
-        .willReturn(
-          aResponse()
-            .withStatus(StatusCodes.OK.intValue)
-            .withBody("one\ttwo\tthree\tfour")
-            .withHeader(CMWELL_POSITION, "dummy-token-value4")
-        )
+    stubFor(get(urlPathMatching("/")).inScenario(scenario)
+      .whenScenarioStateIs(afterCrushState)
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.OK.intValue)
+        .withBody("one\ttwo\tthree\tfour")
+        .withHeader(CMWELL_POSITION, "dummy-token-value4"))
     )
 
-    val result = Downloader
-      .createTsvSource(baseUrl = s"localhost:${wireMockServer.port}")
+    val result = Downloader.createTsvSource(baseUrl = s"localhost:${wireMockServer.port}")
       .map(_ => 1)
       .runFold(0)(_ + _)
-    result.flatMap { _ =>
-      1 should be(1)
-    }
+    result.flatMap{_ => 1 should be (1)}
   }
 }

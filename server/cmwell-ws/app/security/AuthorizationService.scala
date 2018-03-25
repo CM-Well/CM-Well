@@ -12,11 +12,14 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package security
 
 /**
-  * Created by gilad on 9/18/14.
-  */
+ * Created by gilad on 9/18/14.
+ */
+
 // todo: delete. no longer in use
 
 trait AuthorizationService {

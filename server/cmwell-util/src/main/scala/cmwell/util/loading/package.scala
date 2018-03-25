@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.util
 
 import java.util.zip.{ZipEntry, ZipFile}
@@ -20,7 +22,7 @@ import scala.collection.JavaConversions._
 package object loading {
   def extractClassNamesFromJarFile(jarFilePath: String): Seq[String] = {
     def isNamedClass(entry: ZipEntry): Boolean = !entry.isDirectory && !entry.getName.contains('$')
-    def normalize(fileLikeClassname: String): String = fileLikeClassname.replaceAll("/", ".").replaceAll(".class", "")
+    def normalize(fileLikeClassname: String): String = fileLikeClassname.replaceAll("/",".").replaceAll(".class", "")
 
     new ZipFile(jarFilePath).entries().filter(isNamedClass).map(ent => normalize(ent.getName)).toSeq
   }

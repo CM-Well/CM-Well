@@ -12,27 +12,34 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.stats
 
-import java.net.{DatagramPacket, DatagramSocket, InetAddress}
+import java.net.{DatagramSocket, DatagramPacket, InetAddress}
 import java.util.Calendar
 import java.text.SimpleDateFormat
-import akka.actor.{Actor, ActorSystem, Props}
+import akka.actor.{Props, ActorSystem, Actor}
 import akka.actor.Actor.Receive
 
+
+
+
+
 /**
-  * Created with IntelliJ IDEA.
-  * User: Michael
-  * Date: 4/3/14
-  * Time: 12:26 PM
-  * To change this template use File | Settings | File Templates.
-  */
-case class Message(msg: String, host: String, port: Int)
+ * Created with IntelliJ IDEA.
+ * User: Michael
+ * Date: 4/3/14
+ * Time: 12:26 PM
+ * To change this template use File | Settings | File Templates.
+ */
+
+case class Message(msg : String, host : String , port : Int)
 
 class SenderActor extends Actor {
   private val dsocket = new DatagramSocket()
 
-  sys.addShutdownHook {
+  sys addShutdownHook {
     dsocket.close()
   }
 
@@ -44,49 +51,48 @@ class SenderActor extends Actor {
   }
 }
 
-class StatsSender(path: String, host: String = "localhost", port: Int = 8125) {
+
+class StatsSender (path : String , host : String = "localhost", port : Int = 8125) {
 
   object Sender {
     val system = ActorSystem("mySystem")
     val actor = system.actorOf(Props[SenderActor], "SenderActor")
     def send(message: String) {
-      actor ! Message(message, host, port)
+      actor ! Message(message, host , port)
     }
 
   }
 
-  private def getCurrentTimeStr: String = {
+  private def getCurrentTimeStr : String = {
     val now = Calendar.getInstance().getTime()
     val dateFormat = new SimpleDateFormat("ddMMyyyy_hhmm")
     dateFormat.format(now)
   }
 
-  private def getMachineName: String = {
+  private def getMachineName : String = {
     java.net.InetAddress.getLocalHost().getHostName().split('.')(0)
   }
 
-  private def getName(p: String, action: String): String = {
-    p.replace("{MachineName}", getMachineName).replace("{DateTime}", getCurrentTimeStr) + "." + action
-      .replace(".", "-")
-      .replace(" ", "_")
+  private def getName(p : String , action : String) : String = {
+    p.replace("{MachineName}", getMachineName).replace("{DateTime}", getCurrentTimeStr) + "." + action.replace(".","-").replace(" ","_")
   }
 
-  def sendCounts(action: String, num: Int) {
+  def sendCounts(action : String, num : Int) {
     val message = getName(path, action) + ":" + num + "|c"
     Sender.send(message)
   }
 
-  def sendTimings(action: String, num: Int) {
+  def sendTimings(action : String, num : Int) {
     val message = getName(path, action) + ":" + num + "|ms"
     Sender.send(message)
   }
 
-  def sendGauges(action: String, num: Int) {
+  def sendGauges(action : String, num : Int) {
     val message = getName(path, action) + ":" + num + "|g"
     Sender.send(message)
   }
 
-  def sendSets(action: String) {
+  def sendSets(action : String) {
     val message = getName(path, action) + "|s"
     Sender.send(message)
   }

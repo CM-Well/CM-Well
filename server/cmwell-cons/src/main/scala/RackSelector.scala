@@ -12,17 +12,19 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 /**
-  * Created by michael on 11/13/14.
-  */
+ * Created by michael on 11/13/14.
+ */
 trait RackSelector {
-  def getRackId(mc: ComponentConf): String
+  def getRackId(mc : ComponentConf) : String
 }
 
 case class IpRackSelector() extends RackSelector {
   override def getRackId(mc: ComponentConf): String = mc.host
 }
 
-case class IndexRackSelector(rackNum: Int) extends RackSelector {
-  override def getRackId(mc: ComponentConf): String = ((mc.moduleIndex - 1) % rackNum).toString
+case class IndexRackSelector(rackNum : Int) extends RackSelector {
+  override def getRackId(mc: ComponentConf): String = ((mc.moduleIndex-1) % rackNum).toString
 }

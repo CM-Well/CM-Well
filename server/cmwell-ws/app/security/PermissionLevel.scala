@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package object security {
 
   object PermissionLevel extends Enumeration {
@@ -22,13 +24,15 @@ package object security {
 
     def apply(verb: String) = verb match {
       case "PUT" | "POST" | "DELETE" => Write
-      case _                         => Read
+      case _ => Read
     }
 
-    def apply(verb: String, op: Option[String]) = (verb, op) match {
+    def apply(verb: String, op: Option[String]) = (verb,op) match {
       case ("POST", Some(operation)) if readOperations(operation.toLowerCase) => Read
-      case ("PUT", _) | ("POST", _) | ("DELETE", _)                           => Write
-      case _                                                                  => Read
+      case ("PUT", _) | ("POST", _) | ("DELETE", _) => Write
+      case _ => Read
     }
   }
 }
+
+

@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.tools.data.utils.chunkers
 
 import akka.stream.stage._
@@ -42,8 +44,7 @@ object SizeChunker {
   * @param maxSize size threshold
   * @param within timed window length
   */
-class SizeChunker(maxSize: Int, within: FiniteDuration)
-    extends GraphStage[FlowShape[ByteString, immutable.Seq[ByteString]]] {
+class SizeChunker(maxSize: Int, within: FiniteDuration) extends GraphStage[FlowShape[ByteString, immutable.Seq[ByteString]]] {
   require(maxSize > 0, "maxSize must be greater than 0")
   require(within > Duration.Zero)
 
@@ -54,85 +55,85 @@ class SizeChunker(maxSize: Int, within: FiniteDuration)
 
   val shape = FlowShape(in, out)
 
-  override def createLogic(inheritedAttributes: Attributes): GraphStageLogic =
-    new TimerGraphStageLogic(shape) with InHandler with OutHandler {
-      private var buffer: VectorBuilder[ByteString] = new VectorBuilder
-      private var totalSizeInBuffer = 0L
+  override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new TimerGraphStageLogic(shape) with InHandler with OutHandler {
+    private var buffer: VectorBuilder[ByteString] = new VectorBuilder
+    private var totalSizeInBuffer = 0L
 
-      // True if:
-      // - buffer is nonEmpty
-      //       AND
-      // - timer fired OR group is full
-      private var groupClosedSoft = false
-      private var groupClosedHard = false
-      private var groupEmitted = false
-      private var finished = false
+    // True if:
+    // - buffer is nonEmpty
+    //       AND
+    // - timer fired OR group is full
+    private var groupClosedSoft = false
+    private var groupClosedHard = false
+    private var groupEmitted = false
+    private var finished = false
 
-      private val ChunkerWithinTimer = "SizeChunkerTimer"
+    private val ChunkerWithinTimer = "SizeChunkerTimer"
 
-      def isNeedToCloseGroup(): Boolean = totalSizeInBuffer >= maxSize
+    def isNeedToCloseGroup(): Boolean = totalSizeInBuffer >= maxSize
 
-      override def preStart() = {
-        schedulePeriodically(ChunkerWithinTimer, within)
-        pull(in)
-      }
-
-      private def nextElement(elem: ByteString): Unit = {
-        groupEmitted = false
-        buffer += elem
-        totalSizeInBuffer += elem.size
-
-        if (isNeedToCloseGroup) {
-          schedulePeriodically(ChunkerWithinTimer, within)
-          closeGroupHard()
-        } else pull(in)
-      }
-
-      private def closeGroupHard(): Unit = {
-        groupClosedHard = true
-        if (isAvailable(out)) emitGroup()
-      }
-
-      private def closeGroupSoft(): Unit = {
-        groupClosedSoft = true
-        if (isAvailable(out)) emitGroup()
-      }
-
-      private def emitGroup(): Unit = {
-        groupEmitted = true
-        push(out, buffer.result())
-        buffer.clear()
-        if (!finished) startNewGroup()
-        else completeStage()
-      }
-
-      private def startNewGroup(): Unit = {
-        groupClosedSoft = false
-        groupClosedHard = false
-        totalSizeInBuffer = 0L
-
-        if (isAvailable(in)) nextElement(grab(in))
-        else if (!hasBeenPulled(in)) pull(in)
-      }
-
-      override def onPush(): Unit = {
-        schedulePeriodically(ChunkerWithinTimer, within)
-
-        if (!groupClosedHard) nextElement(grab(in))
-      }
-
-      override def onPull(): Unit = if (groupClosedSoft || groupClosedHard) emitGroup()
-
-      override def onUpstreamFinish(): Unit = {
-        finished = true
-        if (groupEmitted) completeStage()
-        else closeGroupHard()
-      }
-
-      private def isBufferNonEmpty() = totalSizeInBuffer > 0
-
-      override protected def onTimer(timerKey: Any) = if (isBufferNonEmpty) closeGroupSoft()
-
-      setHandlers(in, out, this)
+    override def preStart() = {
+      schedulePeriodically(ChunkerWithinTimer, within)
+      pull(in)
     }
+
+    private def nextElement(elem: ByteString): Unit = {
+      groupEmitted = false
+      buffer += elem
+      totalSizeInBuffer += elem.size
+
+
+      if (isNeedToCloseGroup) {
+        schedulePeriodically(ChunkerWithinTimer, within)
+        closeGroupHard()
+      } else pull(in)
+    }
+
+    private def closeGroupHard(): Unit = {
+      groupClosedHard = true
+      if (isAvailable(out)) emitGroup()
+    }
+
+    private def closeGroupSoft(): Unit = {
+      groupClosedSoft = true
+      if (isAvailable(out)) emitGroup()
+    }
+
+    private def emitGroup(): Unit = {
+      groupEmitted = true
+      push(out, buffer.result())
+      buffer.clear()
+      if (!finished) startNewGroup()
+      else completeStage()
+    }
+
+    private def startNewGroup(): Unit = {
+      groupClosedSoft = false
+      groupClosedHard = false
+      totalSizeInBuffer = 0L
+
+      if (isAvailable(in)) nextElement(grab(in))
+      else if (!hasBeenPulled(in)) pull(in)
+    }
+
+    override def onPush(): Unit = {
+      schedulePeriodically(ChunkerWithinTimer, within)
+
+      if (!groupClosedHard) nextElement(grab(in))
+    }
+
+    override def onPull(): Unit = if (groupClosedSoft || groupClosedHard) emitGroup()
+
+    override def onUpstreamFinish(): Unit = {
+      finished = true
+      if (groupEmitted) completeStage()
+      else closeGroupHard()
+    }
+
+    private def isBufferNonEmpty() = totalSizeInBuffer > 0
+
+    override protected def onTimer(timerKey: Any) = if (isBufferNonEmpty) closeGroupSoft()
+
+    setHandlers(in, out, this)
+  }
 }

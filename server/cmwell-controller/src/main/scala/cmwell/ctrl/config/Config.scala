@@ -12,13 +12,15 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.ctrl.config
 
 import com.typesafe.config.ConfigFactory
 
 /**
-  * Created by michael on 12/2/14.
-  */
+ * Created by michael on 12/2/14.
+ */
 object Config {
   val hostName = java.net.InetAddress.getLocalHost.getHostName
 

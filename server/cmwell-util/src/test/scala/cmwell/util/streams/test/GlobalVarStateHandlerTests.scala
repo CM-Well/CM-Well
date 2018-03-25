@@ -22,26 +22,20 @@ class GlobalVarStateHandlerTests extends StreamSpec {
         val src = TestSource.probe[Int]
         val snk = TestSink.probe[Int]
 
-        val (uStream, dStream) = RunnableGraph
-          .fromGraph(GraphDSL.create(src, snk)((a, b) => (a, b)) { implicit b =>
-            { (s1, s2) =>
-              {
-                import akka.stream.scaladsl.GraphDSL.Implicits._
+        val (uStream, dStream) = RunnableGraph.fromGraph(GraphDSL.create(src, snk)((a, b) => (a, b)) {
+          implicit b => {
+            (s1, s2) => {
+              import akka.stream.scaladsl.GraphDSL.Implicits._
 
-                val gvsh = b.add(
-                  new GlobalVarStateHandler[Int](1, 1)(() => Future.successful(42))(
-                    scala.concurrent.ExecutionContext.Implicits.global
-                  )
-                )
+              val gvsh = b.add(new GlobalVarStateHandler[Int](1, 1)(() => Future.successful(42))(scala.concurrent.ExecutionContext.Implicits.global))
 
-                s1 ~> gvsh.inlets.head
-                gvsh.outlets.head ~> s2
+              s1 ~> gvsh.inlets.head
+              gvsh.outlets.head ~> s2
 
-                ClosedShape
-              }
+              ClosedShape
             }
-          })
-          .run()
+          }
+        }).run()
 
         uStream.ensureSubscription()
         dStream.ensureSubscription()
@@ -60,26 +54,20 @@ class GlobalVarStateHandlerTests extends StreamSpec {
         val snk = TestSink.probe[Int]
         val p = Promise[Int]()
 
-        val (uStream, dStream) = RunnableGraph
-          .fromGraph(GraphDSL.create(src, snk)((a, b) => (a, b)) { implicit b =>
-            { (s1, s2) =>
-              {
-                import akka.stream.scaladsl.GraphDSL.Implicits._
+        val (uStream, dStream) = RunnableGraph.fromGraph(GraphDSL.create(src, snk)((a, b) => (a, b)) {
+          implicit b => {
+            (s1, s2) => {
+              import akka.stream.scaladsl.GraphDSL.Implicits._
 
-                val gvsh = b.add(
-                  new GlobalVarStateHandler[Int](1, 1)(() => p.future)(
-                    scala.concurrent.ExecutionContext.Implicits.global
-                  )
-                )
+              val gvsh = b.add(new GlobalVarStateHandler[Int](1, 1)(() => p.future)(scala.concurrent.ExecutionContext.Implicits.global))
 
-                s1 ~> gvsh.inlets.head
-                gvsh.outlets.head ~> s2
+              s1 ~> gvsh.inlets.head
+              gvsh.outlets.head ~> s2
 
-                ClosedShape
-              }
+              ClosedShape
             }
-          })
-          .run()
+          }
+        }).run()
 
         uStream.ensureSubscription()
         dStream.ensureSubscription()
@@ -100,26 +88,20 @@ class GlobalVarStateHandlerTests extends StreamSpec {
         val snk = TestSink.probe[Int]
         val p = Promise[Int]()
 
-        val (uStream, dStream) = RunnableGraph
-          .fromGraph(GraphDSL.create(src, snk)((a, b) => (a, b)) { implicit b =>
-            { (s1, s2) =>
-              {
-                import akka.stream.scaladsl.GraphDSL.Implicits._
+        val (uStream, dStream) = RunnableGraph.fromGraph(GraphDSL.create(src, snk)((a, b) => (a, b)) {
+          implicit b => {
+            (s1, s2) => {
+              import akka.stream.scaladsl.GraphDSL.Implicits._
 
-                val gvsh = b.add(
-                  new GlobalVarStateHandler[Int](1, 1)(() => p.future)(
-                    scala.concurrent.ExecutionContext.Implicits.global
-                  )
-                )
+              val gvsh = b.add(new GlobalVarStateHandler[Int](1, 1)(() => p.future)(scala.concurrent.ExecutionContext.Implicits.global))
 
-                s1 ~> gvsh.inlets.head
-                gvsh.outlets.head ~> s2
+              s1 ~> gvsh.inlets.head
+              gvsh.outlets.head ~> s2
 
-                ClosedShape
-              }
+              ClosedShape
             }
-          })
-          .run()
+          }
+        }).run()
 
         uStream.ensureSubscription()
         dStream.ensureSubscription()
@@ -142,26 +124,20 @@ class GlobalVarStateHandlerTests extends StreamSpec {
         val snk = TestSink.probe[Int]
         val p = Promise[Int]()
 
-        val (uStream, dStream) = RunnableGraph
-          .fromGraph(GraphDSL.create(src, snk)((a, b) => (a, b)) { implicit b =>
-            { (s1, s2) =>
-              {
-                import akka.stream.scaladsl.GraphDSL.Implicits._
+        val (uStream, dStream) = RunnableGraph.fromGraph(GraphDSL.create(src, snk)((a, b) => (a, b)) {
+          implicit b => {
+            (s1, s2) => {
+              import akka.stream.scaladsl.GraphDSL.Implicits._
 
-                val gvsh = b.add(
-                  new GlobalVarStateHandler[Int](1, 1)(() => p.future)(
-                    scala.concurrent.ExecutionContext.Implicits.global
-                  )
-                )
+              val gvsh = b.add(new GlobalVarStateHandler[Int](1, 1)(() => p.future)(scala.concurrent.ExecutionContext.Implicits.global))
 
-                s1 ~> gvsh.inlets.head
-                gvsh.outlets.head ~> s2
+              s1 ~> gvsh.inlets.head
+              gvsh.outlets.head ~> s2
 
-                ClosedShape
-              }
+              ClosedShape
             }
-          })
-          .run()
+          }
+        }).run()
 
         uStream.ensureSubscription()
         dStream.ensureSubscription()
@@ -185,27 +161,21 @@ class GlobalVarStateHandlerTests extends StreamSpec {
         val snk1 = TestSink.probe[Int]
         val snk2 = TestSink.probe[Int]
 
-        val (upStream, d1Stream, d2Stream) = RunnableGraph
-          .fromGraph(GraphDSL.create(src, snk1, snk2)((a, b, c) => (a, b, c)) { implicit b =>
-            { (s1, s2, s3) =>
-              {
-                import akka.stream.scaladsl.GraphDSL.Implicits._
+        val (upStream, d1Stream, d2Stream) = RunnableGraph.fromGraph(GraphDSL.create(src, snk1, snk2)((a, b, c) => (a, b, c)) {
+          implicit b => {
+            (s1, s2, s3) => {
+              import akka.stream.scaladsl.GraphDSL.Implicits._
 
-                val gvsh = b.add(
-                  new GlobalVarStateHandler[Int](1, 2)(() => Future.successful(42))(
-                    scala.concurrent.ExecutionContext.Implicits.global
-                  )
-                )
+              val gvsh = b.add(new GlobalVarStateHandler[Int](1, 2)(() => Future.successful(42))(scala.concurrent.ExecutionContext.Implicits.global))
 
-                s1 ~> gvsh.inlets.head
-                gvsh.outlets.head ~> s2
-                gvsh.outlets.last ~> s3
+              s1 ~> gvsh.inlets.head
+              gvsh.outlets.head ~> s2
+              gvsh.outlets.last ~> s3
 
-                ClosedShape
-              }
+              ClosedShape
             }
-          })
-          .run()
+          }
+        }).run()
 
         upStream.ensureSubscription()
         d1Stream.ensureSubscription()
@@ -229,27 +199,21 @@ class GlobalVarStateHandlerTests extends StreamSpec {
         val snk2 = TestSink.probe[Int]
         val p = Promise[Int]()
 
-        val (upStream, d1Stream, d2Stream) = RunnableGraph
-          .fromGraph(GraphDSL.create(src, snk1, snk2)((a, b, c) => (a, b, c)) { implicit b =>
-            { (s1, s2, s3) =>
-              {
-                import akka.stream.scaladsl.GraphDSL.Implicits._
+        val (upStream, d1Stream, d2Stream) = RunnableGraph.fromGraph(GraphDSL.create(src, snk1, snk2)((a, b, c) => (a, b, c)) {
+          implicit b => {
+            (s1, s2, s3) => {
+              import akka.stream.scaladsl.GraphDSL.Implicits._
 
-                val gvsh = b.add(
-                  new GlobalVarStateHandler[Int](1, 2)(() => p.future)(
-                    scala.concurrent.ExecutionContext.Implicits.global
-                  )
-                )
+              val gvsh = b.add(new GlobalVarStateHandler[Int](1, 2)(() => p.future)(scala.concurrent.ExecutionContext.Implicits.global))
 
-                s1 ~> gvsh.inlets.head
-                gvsh.outlets.head ~> s2
-                gvsh.outlets.last ~> s3
+              s1 ~> gvsh.inlets.head
+              gvsh.outlets.head ~> s2
+              gvsh.outlets.last ~> s3
 
-                ClosedShape
-              }
+              ClosedShape
             }
-          })
-          .run()
+          }
+        }).run()
 
         upStream.ensureSubscription()
         d1Stream.ensureSubscription()
@@ -277,27 +241,21 @@ class GlobalVarStateHandlerTests extends StreamSpec {
         val snk2 = TestSink.probe[Int]
         val p = Promise[Int]()
 
-        val (upStream, d1Stream, d2Stream) = RunnableGraph
-          .fromGraph(GraphDSL.create(src, snk1, snk2)((a, b, c) => (a, b, c)) { implicit b =>
-            { (s1, s2, s3) =>
-              {
-                import akka.stream.scaladsl.GraphDSL.Implicits._
+        val (upStream, d1Stream, d2Stream) = RunnableGraph.fromGraph(GraphDSL.create(src, snk1, snk2)((a, b, c) => (a, b, c)) {
+          implicit b => {
+            (s1, s2, s3) => {
+              import akka.stream.scaladsl.GraphDSL.Implicits._
 
-                val gvsh = b.add(
-                  new GlobalVarStateHandler[Int](1, 2)(() => p.future)(
-                    scala.concurrent.ExecutionContext.Implicits.global
-                  )
-                )
+              val gvsh = b.add(new GlobalVarStateHandler[Int](1, 2)(() => p.future)(scala.concurrent.ExecutionContext.Implicits.global))
 
-                s1 ~> gvsh.inlets.head
-                gvsh.outlets.head ~> s2
-                gvsh.outlets.last ~> s3
+              s1 ~> gvsh.inlets.head
+              gvsh.outlets.head ~> s2
+              gvsh.outlets.last ~> s3
 
-                ClosedShape
-              }
+              ClosedShape
             }
-          })
-          .run()
+          }
+        }).run()
 
         upStream.ensureSubscription()
         d1Stream.ensureSubscription()
@@ -328,27 +286,21 @@ class GlobalVarStateHandlerTests extends StreamSpec {
         val snk2 = TestSink.probe[Int]
         val p = Promise[Int]()
 
-        val (upStream, d1Stream, d2Stream) = RunnableGraph
-          .fromGraph(GraphDSL.create(src, snk1, snk2)((a, b, c) => (a, b, c)) { implicit b =>
-            { (s1, s2, s3) =>
-              {
-                import akka.stream.scaladsl.GraphDSL.Implicits._
+        val (upStream, d1Stream, d2Stream) = RunnableGraph.fromGraph(GraphDSL.create(src, snk1, snk2)((a, b, c) => (a, b, c)) {
+          implicit b => {
+            (s1, s2, s3) => {
+              import akka.stream.scaladsl.GraphDSL.Implicits._
 
-                val gvsh = b.add(
-                  new GlobalVarStateHandler[Int](1, 2)(() => p.future)(
-                    scala.concurrent.ExecutionContext.Implicits.global
-                  )
-                )
+              val gvsh = b.add(new GlobalVarStateHandler[Int](1, 2)(() => p.future)(scala.concurrent.ExecutionContext.Implicits.global))
 
-                s1 ~> gvsh.inlets.head
-                gvsh.outlets.head ~> s2
-                gvsh.outlets.last ~> s3
+              s1 ~> gvsh.inlets.head
+              gvsh.outlets.head ~> s2
+              gvsh.outlets.last ~> s3
 
-                ClosedShape
-              }
+              ClosedShape
             }
-          })
-          .run()
+          }
+        }).run()
 
         upStream.ensureSubscription()
         d1Stream.ensureSubscription()
@@ -378,27 +330,21 @@ class GlobalVarStateHandlerTests extends StreamSpec {
         val src2 = TestSource.probe[Int]
         val snk = TestSink.probe[Int]
 
-        val (u1Stream, u2Stream, dnStream) = RunnableGraph
-          .fromGraph(GraphDSL.create(src1, src2, snk)((a, b, c) => (a, b, c)) { implicit b =>
-            { (s1, s2, s3) =>
-              {
-                import akka.stream.scaladsl.GraphDSL.Implicits._
+        val (u1Stream, u2Stream, dnStream) = RunnableGraph.fromGraph(GraphDSL.create(src1, src2, snk)((a, b, c) => (a, b, c)) {
+          implicit b => {
+            (s1, s2, s3) => {
+              import akka.stream.scaladsl.GraphDSL.Implicits._
 
-                val gvsh = b.add(
-                  new GlobalVarStateHandler[Int](2, 1)(() => Future.successful(42))(
-                    scala.concurrent.ExecutionContext.Implicits.global
-                  )
-                )
+              val gvsh = b.add(new GlobalVarStateHandler[Int](2, 1)(() => Future.successful(42))(scala.concurrent.ExecutionContext.Implicits.global))
 
-                s1 ~> gvsh.inlets.head
-                s2 ~> gvsh.inlets.last
-                gvsh.outlets.head ~> s3
+              s1 ~> gvsh.inlets.head
+              s2 ~> gvsh.inlets.last
+              gvsh.outlets.head ~> s3
 
-                ClosedShape
-              }
+              ClosedShape
             }
-          })
-          .run()
+          }
+        }).run()
 
         u1Stream.ensureSubscription()
         dnStream.ensureSubscription()
@@ -421,27 +367,21 @@ class GlobalVarStateHandlerTests extends StreamSpec {
         val snk = TestSink.probe[Int]
         val p = Promise[Int]()
 
-        val (u1Stream, u2Stream, dnStream) = RunnableGraph
-          .fromGraph(GraphDSL.create(src1, src2, snk)((a, b, c) => (a, b, c)) { implicit b =>
-            { (s1, s2, s3) =>
-              {
-                import akka.stream.scaladsl.GraphDSL.Implicits._
+        val (u1Stream, u2Stream, dnStream) = RunnableGraph.fromGraph(GraphDSL.create(src1, src2, snk)((a, b, c) => (a, b, c)) {
+          implicit b => {
+            (s1, s2, s3) => {
+              import akka.stream.scaladsl.GraphDSL.Implicits._
 
-                val gvsh = b.add(
-                  new GlobalVarStateHandler[Int](2, 1)(() => p.future)(
-                    scala.concurrent.ExecutionContext.Implicits.global
-                  )
-                )
+              val gvsh = b.add(new GlobalVarStateHandler[Int](2, 1)(() => p.future)(scala.concurrent.ExecutionContext.Implicits.global))
 
-                s1 ~> gvsh.inlets.head
-                s2 ~> gvsh.inlets.last
-                gvsh.outlets.head ~> s3
+              s1 ~> gvsh.inlets.head
+              s2 ~> gvsh.inlets.last
+              gvsh.outlets.head ~> s3
 
-                ClosedShape
-              }
+              ClosedShape
             }
-          })
-          .run()
+          }
+        }).run()
 
         u1Stream.ensureSubscription()
         u2Stream.ensureSubscription()
@@ -467,27 +407,21 @@ class GlobalVarStateHandlerTests extends StreamSpec {
         val snk = TestSink.probe[Int]
         val p = Promise[Int]()
 
-        val (u1Stream, u2Stream, dnStream) = RunnableGraph
-          .fromGraph(GraphDSL.create(src1, src2, snk)((a, b, c) => (a, b, c)) { implicit b =>
-            { (s1, s2, s3) =>
-              {
-                import akka.stream.scaladsl.GraphDSL.Implicits._
+        val (u1Stream, u2Stream, dnStream) = RunnableGraph.fromGraph(GraphDSL.create(src1, src2, snk)((a, b, c) => (a, b, c)) {
+          implicit b => {
+            (s1, s2, s3) => {
+              import akka.stream.scaladsl.GraphDSL.Implicits._
 
-                val gvsh = b.add(
-                  new GlobalVarStateHandler[Int](2, 1)(() => p.future)(
-                    scala.concurrent.ExecutionContext.Implicits.global
-                  )
-                )
+              val gvsh = b.add(new GlobalVarStateHandler[Int](2, 1)(() => p.future)(scala.concurrent.ExecutionContext.Implicits.global))
 
-                s1 ~> gvsh.inlets.head
-                s2 ~> gvsh.inlets.last
-                gvsh.outlets.head ~> s3
+              s1 ~> gvsh.inlets.head
+              s2 ~> gvsh.inlets.last
+              gvsh.outlets.head ~> s3
 
-                ClosedShape
-              }
+              ClosedShape
             }
-          })
-          .run()
+          }
+        }).run()
 
         u1Stream.ensureSubscription()
         u2Stream.ensureSubscription()
@@ -517,27 +451,21 @@ class GlobalVarStateHandlerTests extends StreamSpec {
         val snk = TestSink.probe[Int]
         val p = Promise[Int]()
 
-        val (u1Stream, u2Stream, dnStream) = RunnableGraph
-          .fromGraph(GraphDSL.create(src1, src2, snk)((a, b, c) => (a, b, c)) { implicit b =>
-            { (s1, s2, s3) =>
-              {
-                import akka.stream.scaladsl.GraphDSL.Implicits._
+        val (u1Stream, u2Stream, dnStream) = RunnableGraph.fromGraph(GraphDSL.create(src1, src2, snk)((a, b, c) => (a, b, c)) {
+          implicit b => {
+            (s1, s2, s3) => {
+              import akka.stream.scaladsl.GraphDSL.Implicits._
 
-                val gvsh = b.add(
-                  new GlobalVarStateHandler[Int](2, 1)(() => p.future)(
-                    scala.concurrent.ExecutionContext.Implicits.global
-                  )
-                )
+              val gvsh = b.add(new GlobalVarStateHandler[Int](2, 1)(() => p.future)(scala.concurrent.ExecutionContext.Implicits.global))
 
-                s1 ~> gvsh.inlets.head
-                s2 ~> gvsh.inlets.last
-                gvsh.outlets.head ~> s3
+              s1 ~> gvsh.inlets.head
+              s2 ~> gvsh.inlets.last
+              gvsh.outlets.head ~> s3
 
-                ClosedShape
-              }
+              ClosedShape
             }
-          })
-          .run()
+          }
+        }).run()
 
         u1Stream.ensureSubscription()
         u2Stream.ensureSubscription()
@@ -567,28 +495,22 @@ class GlobalVarStateHandlerTests extends StreamSpec {
         val snk1 = TestSink.probe[Int]
         val snk2 = TestSink.probe[Int]
 
-        val (u1Stream, u2Stream, d1Stream, d2Stream) = RunnableGraph
-          .fromGraph(GraphDSL.create(src1, src2, snk1, snk2)((a, b, c, d) => (a, b, c, d)) { implicit b =>
-            { (s1, s2, s3, s4) =>
-              {
-                import akka.stream.scaladsl.GraphDSL.Implicits._
+        val (u1Stream, u2Stream, d1Stream, d2Stream) = RunnableGraph.fromGraph(GraphDSL.create(src1, src2, snk1, snk2)((a, b, c, d) => (a, b, c, d)) {
+          implicit b => {
+            (s1, s2, s3, s4) => {
+              import akka.stream.scaladsl.GraphDSL.Implicits._
 
-                val gvsh = b.add(
-                  new GlobalVarStateHandler[Int](2, 2)(() => Future.successful(42))(
-                    scala.concurrent.ExecutionContext.Implicits.global
-                  )
-                )
+              val gvsh = b.add(new GlobalVarStateHandler[Int](2, 2)(() => Future.successful(42))(scala.concurrent.ExecutionContext.Implicits.global))
 
-                s1 ~> gvsh.inlets.head
-                s2 ~> gvsh.inlets.last
-                gvsh.outlets.head ~> s3
-                gvsh.outlets.last ~> s4
+              s1 ~> gvsh.inlets.head
+              s2 ~> gvsh.inlets.last
+              gvsh.outlets.head ~> s3
+              gvsh.outlets.last ~> s4
 
-                ClosedShape
-              }
+              ClosedShape
             }
-          })
-          .run()
+          }
+        }).run()
 
         u1Stream.ensureSubscription()
         u2Stream.ensureSubscription()
@@ -619,28 +541,22 @@ class GlobalVarStateHandlerTests extends StreamSpec {
         val snk2 = TestSink.probe[Int]
         val p = Promise[Int]()
 
-        val (u1Stream, u2Stream, d1Stream, d2Stream) = RunnableGraph
-          .fromGraph(GraphDSL.create(src1, src2, snk1, snk2)((a, b, c, d) => (a, b, c, d)) { implicit b =>
-            { (s1, s2, s3, s4) =>
-              {
-                import akka.stream.scaladsl.GraphDSL.Implicits._
+        val (u1Stream, u2Stream, d1Stream, d2Stream) = RunnableGraph.fromGraph(GraphDSL.create(src1, src2, snk1, snk2)((a, b, c, d) => (a, b, c, d)) {
+          implicit b => {
+            (s1, s2, s3, s4) => {
+              import akka.stream.scaladsl.GraphDSL.Implicits._
 
-                val gvsh = b.add(
-                  new GlobalVarStateHandler[Int](2, 2)(() => p.future)(
-                    scala.concurrent.ExecutionContext.Implicits.global
-                  )
-                )
+              val gvsh = b.add(new GlobalVarStateHandler[Int](2, 2)(() => p.future)(scala.concurrent.ExecutionContext.Implicits.global))
 
-                s1 ~> gvsh.inlets.head
-                s2 ~> gvsh.inlets.last
-                gvsh.outlets.head ~> s3
-                gvsh.outlets.last ~> s4
+              s1 ~> gvsh.inlets.head
+              s2 ~> gvsh.inlets.last
+              gvsh.outlets.head ~> s3
+              gvsh.outlets.last ~> s4
 
-                ClosedShape
-              }
+              ClosedShape
             }
-          })
-          .run()
+          }
+        }).run()
 
         u1Stream.ensureSubscription()
         u2Stream.ensureSubscription()
@@ -674,28 +590,22 @@ class GlobalVarStateHandlerTests extends StreamSpec {
         val snk2 = TestSink.probe[Int]
         val p = Promise[Int]()
 
-        val (u1Stream, u2Stream, d1Stream, d2Stream) = RunnableGraph
-          .fromGraph(GraphDSL.create(src1, src2, snk1, snk2)((a, b, c, d) => (a, b, c, d)) { implicit b =>
-            { (s1, s2, s3, s4) =>
-              {
-                import akka.stream.scaladsl.GraphDSL.Implicits._
+        val (u1Stream, u2Stream, d1Stream, d2Stream) = RunnableGraph.fromGraph(GraphDSL.create(src1, src2, snk1, snk2)((a, b, c, d) => (a, b, c, d)) {
+          implicit b => {
+            (s1, s2, s3, s4) => {
+              import akka.stream.scaladsl.GraphDSL.Implicits._
 
-                val gvsh = b.add(
-                  new GlobalVarStateHandler[Int](2, 2)(() => p.future)(
-                    scala.concurrent.ExecutionContext.Implicits.global
-                  )
-                )
+              val gvsh = b.add(new GlobalVarStateHandler[Int](2, 2)(() => p.future)(scala.concurrent.ExecutionContext.Implicits.global))
 
-                s1 ~> gvsh.inlets.head
-                s2 ~> gvsh.inlets.last
-                gvsh.outlets.head ~> s3
-                gvsh.outlets.last ~> s4
+              s1 ~> gvsh.inlets.head
+              s2 ~> gvsh.inlets.last
+              gvsh.outlets.head ~> s3
+              gvsh.outlets.last ~> s4
 
-                ClosedShape
-              }
+              ClosedShape
             }
-          })
-          .run()
+          }
+        }).run()
 
         u1Stream.ensureSubscription()
         u2Stream.ensureSubscription()
@@ -735,28 +645,22 @@ class GlobalVarStateHandlerTests extends StreamSpec {
         val snk2 = TestSink.probe[Int]
         val p = Promise[Int]()
 
-        val (u1Stream, u2Stream, d1Stream, d2Stream) = RunnableGraph
-          .fromGraph(GraphDSL.create(src1, src2, snk1, snk2)((a, b, c, d) => (a, b, c, d)) { implicit b =>
-            { (s1, s2, s3, s4) =>
-              {
-                import akka.stream.scaladsl.GraphDSL.Implicits._
+        val (u1Stream, u2Stream, d1Stream, d2Stream) = RunnableGraph.fromGraph(GraphDSL.create(src1, src2, snk1, snk2)((a, b, c, d) => (a, b, c, d)) {
+          implicit b => {
+            (s1, s2, s3, s4) => {
+              import akka.stream.scaladsl.GraphDSL.Implicits._
 
-                val gvsh = b.add(
-                  new GlobalVarStateHandler[Int](2, 2)(() => p.future)(
-                    scala.concurrent.ExecutionContext.Implicits.global
-                  )
-                )
+              val gvsh = b.add(new GlobalVarStateHandler[Int](2, 2)(() => p.future)(scala.concurrent.ExecutionContext.Implicits.global))
 
-                s1 ~> gvsh.inlets.head
-                s2 ~> gvsh.inlets.last
-                gvsh.outlets.head ~> s3
-                gvsh.outlets.last ~> s4
+              s1 ~> gvsh.inlets.head
+              s2 ~> gvsh.inlets.last
+              gvsh.outlets.head ~> s3
+              gvsh.outlets.last ~> s4
 
-                ClosedShape
-              }
+              ClosedShape
             }
-          })
-          .run()
+          }
+        }).run()
 
         u1Stream.ensureSubscription()
         u2Stream.ensureSubscription()
@@ -793,28 +697,22 @@ class GlobalVarStateHandlerTests extends StreamSpec {
         val snk2 = TestSink.probe[Int]
         val p = Promise[Int]()
 
-        val (u1Stream, u2Stream, d1Stream, d2Stream) = RunnableGraph
-          .fromGraph(GraphDSL.create(src1, src2, snk1, snk2)((a, b, c, d) => (a, b, c, d)) { implicit b =>
-            { (s1, s2, s3, s4) =>
-              {
-                import akka.stream.scaladsl.GraphDSL.Implicits._
+        val (u1Stream, u2Stream, d1Stream, d2Stream) = RunnableGraph.fromGraph(GraphDSL.create(src1, src2, snk1, snk2)((a, b, c, d) => (a, b, c, d)) {
+          implicit b => {
+            (s1, s2, s3, s4) => {
+              import akka.stream.scaladsl.GraphDSL.Implicits._
 
-                val gvsh = b.add(
-                  new GlobalVarStateHandler[Int](2, 2)(() => p.future)(
-                    scala.concurrent.ExecutionContext.Implicits.global
-                  )
-                )
+              val gvsh = b.add(new GlobalVarStateHandler[Int](2, 2)(() => p.future)(scala.concurrent.ExecutionContext.Implicits.global))
 
-                s1 ~> gvsh.inlets.head
-                s2 ~> gvsh.inlets.last
-                gvsh.outlets.head ~> s3
-                gvsh.outlets.last ~> s4
+              s1 ~> gvsh.inlets.head
+              s2 ~> gvsh.inlets.last
+              gvsh.outlets.head ~> s3
+              gvsh.outlets.last ~> s4
 
-                ClosedShape
-              }
+              ClosedShape
             }
-          })
-          .run()
+          }
+        }).run()
 
         u1Stream.ensureSubscription()
         u2Stream.ensureSubscription()
@@ -851,28 +749,22 @@ class GlobalVarStateHandlerTests extends StreamSpec {
         val snk2 = TestSink.probe[Int]
         val p = Promise[Int]()
 
-        val (u1Stream, u2Stream, d1Stream, d2Stream) = RunnableGraph
-          .fromGraph(GraphDSL.create(src1, src2, snk1, snk2)((a, b, c, d) => (a, b, c, d)) { implicit b =>
-            { (s1, s2, s3, s4) =>
-              {
-                import akka.stream.scaladsl.GraphDSL.Implicits._
+        val (u1Stream, u2Stream, d1Stream, d2Stream) = RunnableGraph.fromGraph(GraphDSL.create(src1, src2, snk1, snk2)((a, b, c, d) => (a, b, c, d)) {
+          implicit b => {
+            (s1, s2, s3, s4) => {
+              import akka.stream.scaladsl.GraphDSL.Implicits._
 
-                val gvsh = b.add(
-                  new GlobalVarStateHandler[Int](2, 2)(() => p.future)(
-                    scala.concurrent.ExecutionContext.Implicits.global
-                  )
-                )
+              val gvsh = b.add(new GlobalVarStateHandler[Int](2, 2)(() => p.future)(scala.concurrent.ExecutionContext.Implicits.global))
 
-                s1 ~> gvsh.inlets.head
-                s2 ~> gvsh.inlets.last
-                gvsh.outlets.head ~> s3
-                gvsh.outlets.last ~> s4
+              s1 ~> gvsh.inlets.head
+              s2 ~> gvsh.inlets.last
+              gvsh.outlets.head ~> s3
+              gvsh.outlets.last ~> s4
 
-                ClosedShape
-              }
+              ClosedShape
             }
-          })
-          .run()
+          }
+        }).run()
 
         u1Stream.ensureSubscription()
         u2Stream.ensureSubscription()
@@ -909,28 +801,22 @@ class GlobalVarStateHandlerTests extends StreamSpec {
         val snk2 = TestSink.probe[Int]
         val p = Promise[Int]()
 
-        val (u1Stream, u2Stream, d1Stream, d2Stream) = RunnableGraph
-          .fromGraph(GraphDSL.create(src1, src2, snk1, snk2)((a, b, c, d) => (a, b, c, d)) { implicit b =>
-            { (s1, s2, s3, s4) =>
-              {
-                import akka.stream.scaladsl.GraphDSL.Implicits._
+        val (u1Stream, u2Stream, d1Stream, d2Stream) = RunnableGraph.fromGraph(GraphDSL.create(src1, src2, snk1, snk2)((a, b, c, d) => (a, b, c, d)) {
+          implicit b => {
+            (s1, s2, s3, s4) => {
+              import akka.stream.scaladsl.GraphDSL.Implicits._
 
-                val gvsh = b.add(
-                  new GlobalVarStateHandler[Int](2, 2)(() => p.future)(
-                    scala.concurrent.ExecutionContext.Implicits.global
-                  )
-                )
+              val gvsh = b.add(new GlobalVarStateHandler[Int](2, 2)(() => p.future)(scala.concurrent.ExecutionContext.Implicits.global))
 
-                s1 ~> gvsh.inlets.head
-                s2 ~> gvsh.inlets.last
-                gvsh.outlets.head ~> s3
-                gvsh.outlets.last ~> s4
+              s1 ~> gvsh.inlets.head
+              s2 ~> gvsh.inlets.last
+              gvsh.outlets.head ~> s3
+              gvsh.outlets.last ~> s4
 
-                ClosedShape
-              }
+              ClosedShape
             }
-          })
-          .run()
+          }
+        }).run()
 
         u1Stream.ensureSubscription()
         u2Stream.ensureSubscription()

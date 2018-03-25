@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.tools.data.helpers
 
 import com.github.tomakehurst.wiremock.WireMockServer
@@ -19,7 +21,7 @@ import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig
 import org.scalatest._
 
-trait BaseWiremockSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterAll with BeforeAndAfterEach {
+trait BaseWiremockSpec extends AsyncFlatSpec with Matchers with BeforeAndAfterAll with BeforeAndAfterEach{
   val host = "localhost"
   val wireMockServer = new WireMockServer(wireMockConfig().dynamicPort())
 

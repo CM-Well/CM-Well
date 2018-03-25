@@ -12,36 +12,41 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package actions
 
 /**
-  * Created by michael on 7/6/15.
-  */
-case class MarkdownTuple(fields: String*) {
-  def add(v: String) = {
-    MarkdownTuple((fields :+ v): _*)
+ * Created by michael on 7/6/15.
+ */
+
+
+
+case class MarkdownTuple(fields : String*) {
+  def add(v : String) = {
+    MarkdownTuple( (fields :+ v):_* )
   }
 
-  def add(seq: Seq[String]) = {
+  def add(seq : Seq[String]) = {
 
     val newSeq = fields ++ seq
 
-    MarkdownTuple(newSeq: _*)
+    MarkdownTuple(newSeq:_*)
   }
 }
-case class MarkdownTable(header: MarkdownTuple, body: Seq[MarkdownTuple], footer: Option[MarkdownTuple] = None) {
+case class MarkdownTable(header : MarkdownTuple, body : Seq[MarkdownTuple], footer : Option[MarkdownTuple] = None) {
 
-  private def pad(str: String, pattern: String, amount: Int = 30): String = {
+  private def pad(str : String, pattern : String, amount : Int = 30): String ={
     str.padTo(amount, pattern).mkString
   }
 
   private def genHeader = {
-    header.fields.map(f => pad(s"**$f**", " ")).mkString("|", "|", "|\n") +
-      header.fields.map(f => pad(s"", "-")).mkString("|", "|", "|\n")
+    header.fields.map(f => pad(s"**$f**", " ")).mkString("|","|","|\n") +
+    header.fields.map(f => pad(s"", "-")).mkString("|","|","|\n")
   }
 
-  private def genTuple(tuple: MarkdownTuple): String = {
-    tuple.fields.map(f => pad(f, " ")).mkString("|", "|", "|\n")
+  private def genTuple(tuple : MarkdownTuple): String = {
+    tuple.fields.map(f => pad(f, " ")).mkString("|","|","|\n")
   }
 
   private def genBody = {

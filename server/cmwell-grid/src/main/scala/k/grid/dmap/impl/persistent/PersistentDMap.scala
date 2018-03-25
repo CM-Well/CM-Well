@@ -12,7 +12,10 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package k.grid.dmap.impl.persistent
+
 
 import java.io.{File, FileNotFoundException, PrintWriter}
 
@@ -34,14 +37,16 @@ object PersistentDMap extends DMapFacade {
 
 class PersistentMaster extends DMapMaster {
   override val facade: DMapFacade = PersistentDMap
-  override def onStart: Unit = {}
+  override def onStart: Unit = {
+
+  }
 }
 
 class PersistentSlave extends DMapSlave with LazyLogging {
 
   Grid.system.scheduler.schedule(5.seconds, 1.second, self, WriteData)
 
-  case class MapHolder(m: Map[String, SettingsValue], timestamp: Long)
+  case class MapHolder(m : Map[String, SettingsValue], timestamp : Long)
 
   case object NewData extends DMapMessage {
     override def act: Unit = {
@@ -52,7 +57,7 @@ class PersistentSlave extends DMapSlave with LazyLogging {
   case object WriteData extends DMapMessage {
     override def act: Unit = {
       val m = facade.sm
-      if (hasNewData) {
+      if(hasNewData){
         writeMap(MapData(m, lastTimestamp))
         hasNewData = false
       }
@@ -60,18 +65,18 @@ class PersistentSlave extends DMapSlave with LazyLogging {
     }
   }
 
-  var hasNewData: Boolean = false
+  var hasNewData : Boolean = false
 
   private val dataFile = new File(s"${Grid.persistentDmapDir}/${Config.clusterName}")
 
-  def readMap: Option[MapData] = {
+  def readMap : Option[MapData] = {
     val content = Try {
       val src = scala.io.Source.fromFile(dataFile)
-      val mData = Json.parse(src.getLines().mkString("\n")).as[MapData]
+      val mData =  Json.parse(src.getLines().mkString("\n")).as[MapData]
       src.close()
       mData
     } match {
-      case Success(c)                                          => Some(c)
+      case Success(c) => Some(c)
       case Failure(e) if e.isInstanceOf[FileNotFoundException] => None
       case Failure(e) => {
         logger.error(e.getMessage, e)
@@ -81,15 +86,15 @@ class PersistentSlave extends DMapSlave with LazyLogging {
     content
   }
 
-  def writeMap(md: MapData) = {
-    val content = Json.stringify(Json.toJson(md))
+  def writeMap(md : MapData) = {
+    val content =  Json.stringify(Json.toJson(md))
     new PrintWriter(dataFile) { write(content); close }
   }
 
   override val facade: DMapFacade = PersistentDMap
   override def onStart: Unit = {
 
-    if (Grid.isController) {
+    if(Grid.isController){
       import java.io.File
       logger.info(s" *** Will use data dir: ${Grid.persistentDmapDir}")
       Try(new File(Grid.persistentDmapDir).mkdir())
@@ -103,10 +108,8 @@ class PersistentSlave extends DMapSlave with LazyLogging {
     }
   }
 
-  override protected def onUpdate(oldMap: Map[String, SettingsValue],
-                                  newMap: Map[String, SettingsValue],
-                                  timestamp: Long): Unit = {
-    if (Grid.isController)
+  override protected def onUpdate(oldMap: Map[String, SettingsValue], newMap: Map[String, SettingsValue], timestamp: Long): Unit = {
+    if(Grid.isController)
       self ! NewData
   }
 }

@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.bg.test
 
 import cmwell.domain.Infoton
@@ -25,51 +27,49 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * Created by israel on 19/06/2016.
   */
-case class FailingIRWServiceMockup(storageDao: Dao, errorModuloDivisor: Int)
-    extends IRWServiceNativeImpl2(storageDao, 25, true) {
+case class FailingIRWServiceMockup(storageDao:Dao, errorModuloDivisor:Int) extends IRWServiceNativeImpl2(storageDao, 25, true) {
 
   var errorModuloDividend = 0
   var errorCount = 0
 
-  override def readUUIDAsync(uuid: String, level: ConsistencyLevel, dontFetchPayload: Boolean = false)(
-    implicit ec: ExecutionContext
-  ): Future[Box[Infoton]] = {
+  override def readUUIDAsync(uuid: String, level: ConsistencyLevel, dontFetchPayload: Boolean = false)
+                            (implicit ec: ExecutionContext): Future[Box[Infoton]] = {
     errorModuloDividend += 1
-    logger.debug(s"readUUIDAsync for uuid:$uuid. errorModuloDividend=$errorModuloDividend")
-    if (errorCount < 3 && errorModuloDividend % errorModuloDivisor == 0) {
+      logger debug s"readUUIDAsync for uuid:$uuid. errorModuloDividend=$errorModuloDividend"
+    if(errorCount < 3 && errorModuloDividend % errorModuloDivisor == 0) {
       errorCount += 1
-      logger.debug(s"throwing DriverException in readUUIDAsync for uuid:$uuid")
+      logger debug s"throwing DriverException in readUUIDAsync for uuid:$uuid"
       throw new DriverException("test exception")
     } else
       super.readUUIDAsync(uuid, level)
   }
 
-  override def readPathAsync(path: String,
-                             level: ConsistencyLevel)(implicit ec: ExecutionContext): Future[Box[Infoton]] = {
+
+  override def readPathAsync(path: String, level: ConsistencyLevel)
+                            (implicit ec: ExecutionContext): Future[Box[Infoton]] = {
 
     errorModuloDividend += 1
-    logger.debug(s"readPathAsync for path:$path. errorModuloDividend=$errorModuloDividend")
-    if (errorCount < 3 && errorModuloDividend % errorModuloDivisor == 0) {
+    logger debug s"readPathAsync for path:$path. errorModuloDividend=$errorModuloDividend"
+    if(errorCount < 3 && errorModuloDividend % errorModuloDivisor == 0){
       errorCount += 1
-      logger.debug(s"throwing DriverException in readPathAsync for infoton path:${path}")
+      logger debug s"throwing DriverException in readPathAsync for infoton path:${path}"
       throw new DriverException("test exception")
     } else {
       super.readPathAsync(path, level)
     }
   }
 
-  override def writeAsync(infoton: Infoton, level: ConsistencyLevel, skipSetPathLast: Boolean)(
-    implicit ec: ExecutionContext
-  ): Future[Infoton] = {
+
+
+  override def writeAsync(infoton: Infoton, level: ConsistencyLevel, skipSetPathLast: Boolean)
+                         (implicit ec: ExecutionContext): Future[Infoton] = {
 
     errorModuloDividend += 1
-    logger.debug(s"writeAsync for path:${infoton.path}. errorModuloDividend=$errorModuloDividend")
-    if (errorCount < 3 && errorModuloDividend % errorModuloDivisor == 0) {
-      logger.debug(
-        s"errorModuloDividend:$errorModuloDividend % errorModuloDivisor:$errorModuloDivisor = ${errorModuloDividend % errorModuloDivisor}"
-      )
+    logger debug s"writeAsync for path:${infoton.path}. errorModuloDividend=$errorModuloDividend"
+    if(errorCount < 3 && errorModuloDividend % errorModuloDivisor == 0){
+      logger debug s"errorModuloDividend:$errorModuloDividend % errorModuloDivisor:$errorModuloDivisor = ${errorModuloDividend % errorModuloDivisor}"
       errorCount += 1
-      logger.debug(s"throwing DriverException in writeAsync for infoton path:${infoton.path}, uuid:${infoton.uuid}")
+      logger debug s"throwing DriverException in writeAsync for infoton path:${infoton.path}, uuid:${infoton.uuid}"
       throw new DriverException("test exception")
     } else
       super.writeAsync(infoton, level, skipSetPathLast)

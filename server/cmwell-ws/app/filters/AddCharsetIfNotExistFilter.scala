@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package filters
 
 import javax.inject._
@@ -22,17 +24,15 @@ import play.api.http.HeaderNames
 import play.api.mvc.{Filter, Headers, RequestHeader, Result}
 import scala.concurrent.Future
 
-class AddCharsetIfNotExistFilter @Inject()(implicit override val mat: Materializer) extends Filter {
+class AddCharsetIfNotExistFilter @Inject() (implicit override val mat: Materializer) extends Filter {
   def apply(next: (RequestHeader) => Future[Result])(request: RequestHeader): Future[Result] = request match {
-    case XCmWellType.File()             => next(request)
+    case XCmWellType.File() => next(request)
     case _ if request.charset.isDefined => next(request)
     case _ => {
       val charset = request.charset.getOrElse("UTF-8")
       val contentType = request.contentType.getOrElse("text/plain")
 
-      val headers = request.headers.headers.filterNot(_._1 == HeaderNames.CONTENT_TYPE) ++ Seq(
-        HeaderNames.CONTENT_TYPE -> s"$contentType;charset=$charset"
-      )
+      val headers = request.headers.headers.filterNot(_._1 == HeaderNames.CONTENT_TYPE) ++ Seq(HeaderNames.CONTENT_TYPE -> s"$contentType;charset=$charset")
       val modifiedRequestHeader = request.withHeaders(Headers(headers: _*))
 
       next(modifiedRequestHeader)

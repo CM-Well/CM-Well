@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.util.http
 
 import java.net.URLEncoder.encode
@@ -38,9 +40,8 @@ object StringPath {
   def sHost(domain: String, port: Int) = new StringPath("https://" + domain + s":$port")
 }
 
-class StringPath private (val url: String) {
-  def /(pathPart: String) = new StringPath(url + s"/${encode(pathPart, "UTF-8")}")
-  def h(fragment: String) = new StringPath(url + s"#${encode(fragment, "UTF-8")}")
-  @inline def ⋕(fragment: String) =
-    h(fragment) // other hash unicode look-alikes: '⌗','♯' ('#' - %23, is illegal as a method name in scala...)
+class StringPath private(val url: String) {
+  def /(pathPart: String) = new StringPath(url + s"/${encode(pathPart,"UTF-8")}")
+  def h(fragment: String) = new StringPath(url + s"#${encode(fragment,"UTF-8")}")
+  @inline def ⋕(fragment: String) = h(fragment) // other hash unicode look-alikes: '⌗','♯' ('#' - %23, is illegal as a method name in scala...)
 }

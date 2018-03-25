@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.tools.data.helpers
 
 import akka.actor.ActorSystem
@@ -25,10 +27,8 @@ import scala.concurrent.duration._
 trait BaseStreamSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
   protected implicit val system = {
-    def config =
-      ConfigFactory
-        .parseString(s"akka.stream.materializer.auto-fusing=$autoFusing")
-        .withFallback(ConfigFactory.load())
+    def config = ConfigFactory.parseString(s"akka.stream.materializer.auto-fusing=$autoFusing")
+      .withFallback(ConfigFactory.load())
     ActorSystem("default", config)
   }
 

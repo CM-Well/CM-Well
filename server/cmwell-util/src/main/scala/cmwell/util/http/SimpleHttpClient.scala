@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.util.http
 
 import java.io.InputStream
@@ -33,12 +35,10 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
+
 trait SimpleResponseHandler[T] {
   def mkStringRepr(t: T): String
-  def mkResponseOf(status: Int,
-                   headers: Seq[(String, String)],
-                   contentType: String,
-                   dataBytes: Source[ByteString, Any])(implicit ec: ExecutionContext): Future[SimpleResponse[T]]
+  def mkResponseOf(status: Int, headers: Seq[(String,String)], contentType: String, dataBytes: Source[ByteString,Any])(implicit ec: ExecutionContext): Future[SimpleResponse[T]]
 }
 
 object SimpleResponseHandler {
@@ -48,15 +48,13 @@ object SimpleResponseHandler {
 
     def mkStringRepr(payload: Array[Byte]): String = payload match {
       case arr if arr.isEmpty => ""
-      case arr                => new String(arr, "UTF-8")
+      case arr => new String(arr, "UTF-8")
     }
 
-    def mkResponseOf(
-      status: Int,
-      headers: Seq[(String, String)],
-      contentType: String,
-      dataBytes: Source[ByteString, Any]
-    )(implicit ec: ExecutionContext): Future[SimpleResponse[Array[Byte]]] = {
+    def mkResponseOf(status: Int,
+                     headers: Seq[(String,String)],
+                     contentType: String,
+                     dataBytes: Source[ByteString,Any])(implicit ec: ExecutionContext): Future[SimpleResponse[Array[Byte]]] = {
       dataBytes.runFold(ByteString(""))(_ ++ _)(SimpleHttpClient.materializer).map(_.toArray).map { arr =>
         SimpleResponse(status, headers, contentType -> arr)
       }
@@ -76,12 +74,10 @@ object SimpleResponse {
     implicit object InputStreamHandler extends SimpleResponseHandler[InputStream] {
       def mkStringRepr(payload: InputStream) = payload.toString()
 
-      def mkResponseOf(
-        status: Int,
-        headers: Seq[(String, String)],
-        contentType: String,
-        dataBytes: Source[ByteString, Any]
-      )(implicit ec: ExecutionContext): Future[SimpleResponse[InputStream]] = {
+      def mkResponseOf(status: Int,
+                       headers: Seq[(String, String)],
+                       contentType: String,
+                       dataBytes: Source[ByteString, Any])(implicit ec: ExecutionContext): Future[SimpleResponse[InputStream]] = {
         val is = dataBytes.runWith(StreamConverters.asInputStream(30.seconds))(SimpleHttpClient.materializer)
         Future.successful(SimpleResponse(status, headers, contentType -> is))
       }
@@ -91,12 +87,10 @@ object SimpleResponse {
 
       def mkStringRepr(payload: String): String = payload
 
-      def mkResponseOf(
-        status: Int,
-        headers: Seq[(String, String)],
-        contentType: String,
-        dataBytes: Source[ByteString, Any]
-      )(implicit ec: ExecutionContext): Future[SimpleResponse[String]] = {
+      def mkResponseOf(status: Int,
+                       headers: Seq[(String, String)],
+                       contentType: String,
+                       dataBytes: Source[ByteString, Any])(implicit ec: ExecutionContext): Future[SimpleResponse[String]] = {
         dataBytes.runFold(ByteString(""))(_ ++ _)(SimpleHttpClient.materializer).map(_.utf8String).map { utf8str =>
           SimpleResponse(status, headers, contentType -> utf8str)
         }
@@ -107,16 +101,14 @@ object SimpleResponse {
 
 import SimpleResponse._
 
-case class SimpleResponse[T: SimpleResponseHandler](status: Int,
-                                                    headers: Seq[(String, String)],
-                                                    body: ResponseBody[T]) {
+case class SimpleResponse[T : SimpleResponseHandler](status: Int, headers: Seq[(String,String)], body: ResponseBody[T]) {
   def contentType = body._1
   def payload = body._2
 
   override def toString() = {
     val handler = implicitly[SimpleResponseHandler[T]]
     val body = handler.mkStringRepr(payload)
-    s"""SimpleResponse($status, ${headers.mkString("[", ", ", "]")}, ($contentType, "$body"))"""
+    s"""SimpleResponse($status, ${headers.mkString("[",", ","]")}, ($contentType, "$body"))"""
   }
 }
 
@@ -125,7 +117,7 @@ object SimpleHttpClient extends LazyLogging {
   private[http] lazy val sys = {
     logger.warn("default actor system for SimpleHttpClient is initialized. you don't want this in production!")
     val config = ConfigFactory.load()
-    ActorSystem("SimpleHttpClient", config.getConfig("cmwell.util.http").withFallback(config))
+    ActorSystem("SimpleHttpClient",config.getConfig("cmwell.util.http").withFallback(config))
   }
   private[http] lazy val mat = {
     logger.warn("default materializer for SimpleHttpClient is initialized. you don't want this in production!")
@@ -136,16 +128,14 @@ object SimpleHttpClient extends LazyLogging {
   //just in case we need a materializer in the tests...
   private[cmwell] def materializer = mat
 
-  private def mkHeaders(headers: Seq[(String, String)]) =
-    headers.map {
-      case (name, value) =>
-        HttpHeader.parse(name, value) match {
-          case ParsingResult.Ok(header, _) => header
-          case ParsingResult.Error(err)    => throw new IllegalArgumentException(err.formatPretty)
-        }
-    }.toList
+  private def mkHeaders(headers: Seq[(String,String)]) = headers.map {
+    case (name, value) => HttpHeader.parse(name, value) match {
+      case ParsingResult.Ok(header, _) => header
+      case ParsingResult.Error(err) => throw new IllegalArgumentException(err.formatPretty)
+    }
+  }.toList
 
-  private def mkURI(uri: String, queryParams: Seq[(String, String)]) = {
+  private def mkURI(uri: String, queryParams: Seq[(String,String)]) = {
 
     val noSchemeWithPort = uri.matches("[^:/]+:\\d+")
     if (queryParams.isEmpty && !noSchemeWithPort) uri
@@ -168,10 +158,10 @@ object SimpleHttpClient extends LazyLogging {
           sb ++= java.net.URLEncoder.encode(value, "UTF-8")
         }
 
-        val (hKey, hVal) = queryParams.head
-        appendKeyVal('?', hKey, hVal)
+        val (hKey,hVal) = queryParams.head
+        appendKeyVal('?',hKey,hVal)
         queryParams.tail.foreach {
-          case (k, v) => appendKeyVal('&', k, v)
+          case (k,v) => appendKeyVal('&',k,v)
         }
 
         sb.result()
@@ -179,73 +169,69 @@ object SimpleHttpClient extends LazyLogging {
     }
   }
 
-  private def resToSimpleRes[T](res: HttpResponse, handler: SimpleResponseHandler[T])(implicit ec: ExecutionContext) =
-    res match {
-      case HttpResponse(s, h, e, _) => {
-        val headers = h.map { header =>
-          header.name -> header.value
-        }
-        val contentType = e.contentType.toString
-        val status = s.intValue()
-        val dataBytesTry = Try(e.withSizeLimit(-1).dataBytes).recover {
-          case ex: IllegalArgumentException => {
-            logger.error("could not receive response entity without size limit", ex)
-            e.dataBytes
-          }
-        }
-        dataBytesTry match {
-          case Success(dataBytes) => handler.mkResponseOf(status, headers, contentType, dataBytes)
-          case Failure(exception) => Future.failed[SimpleResponse[T]](exception)
+  private def resToSimpleRes[T](res: HttpResponse, handler: SimpleResponseHandler[T])(implicit ec: ExecutionContext) = res match {
+    case HttpResponse(s,h,e,_) => {
+      val headers = h.map{ header => header.name -> header.value}
+      val contentType = e.contentType.toString
+      val status = s.intValue()
+      val dataBytesTry = Try(e.withSizeLimit(-1).dataBytes).recover {
+        case ex: IllegalArgumentException => {
+          logger.error("could not receive response entity without size limit",ex)
+          e.dataBytes
         }
       }
+      dataBytesTry match {
+        case Success(dataBytes) => handler.mkResponseOf (status, headers, contentType, dataBytes)
+        case Failure(exception) => Future.failed[SimpleResponse[T]](exception)
+      }
     }
+  }
 
-  private def request[T: SimpleResponseHandler](_method: HttpMethod,
-                                                _uri: String,
-                                                queryParams: Seq[(String, String)],
-                                                headers: Seq[(String, String)],
-                                                _entity: RequestEntity)(
-    implicit ec: ExecutionContext,
-    as: ActorSystem = this.sys,
-    mat: Materializer = this.mat
-  ): Future[SimpleResponse[T]] = {
+  private def request[T : SimpleResponseHandler](_method: HttpMethod,
+                      _uri: String,
+                      queryParams: Seq[(String,String)],
+                      headers: Seq[(String,String)],
+                      _entity: RequestEntity)
+                     (implicit ec: ExecutionContext, as: ActorSystem = this.sys, mat: Materializer = this.mat): Future[SimpleResponse[T]] = {
 
     val http = {
-      if (as eq this.sys) this.http
+      if(as eq this.sys) this.http
       else Http()(as)
     }
 
     val _headers = mkHeaders(headers)
-    val uriWithqp = mkURI(_uri, queryParams)
+    val uriWithqp = mkURI(_uri,queryParams)
 
-    val req = HttpRequest(method = _method, uri = uriWithqp, headers = _headers, entity = _entity)
+    val req = HttpRequest(
+      method = _method,
+      uri = uriWithqp,
+      headers = _headers,
+      entity = _entity)
 
     val con = http.superPool[None.type]()
     val f = Source.single(req -> None).via(con).runWith(Sink.head)
     f.flatMap {
-      case (Success(res), _) => resToSimpleRes(res, implicitly[SimpleResponseHandler[T]])
-      case (Failure(err), _) => Future.failed[SimpleResponse[T]](err)
+      case (Success(res),_) => resToSimpleRes(res,implicitly[SimpleResponseHandler[T]])
+      case (Failure(err),_) => Future.failed[SimpleResponse[T]](err)
     }
   }
 
   private def cType(ct: Option[String]) = ct match {
     case None => ContentTypes.NoContentType
-    case Some("application/x-www-form-urlencoded") =>
-      ContentType.WithCharset(MediaTypes.`application/x-www-form-urlencoded`, HttpCharsets.`UTF-8`)
-    case Some(x) =>
-      ContentType.parse(x) match {
-        case Right(r) => r
-        case Left(errors) => {
-          val msg = errors.map(_.formatPretty).mkString("\n")
-          throw new IllegalArgumentException("Malformed Content-Type: \n" + msg)
-        }
+    case Some("application/x-www-form-urlencoded") => ContentType.WithCharset(MediaTypes.`application/x-www-form-urlencoded`,HttpCharsets.`UTF-8`)
+    case Some(x) => ContentType.parse(x) match {
+      case Right(r) => r
+      case Left(errors) => {
+        val msg = errors.map(_.formatPretty).mkString("\n")
+        throw new IllegalArgumentException("Malformed Content-Type: \n" + msg)
       }
+    }
   }
 
   private def cTypeNonBin(ct: Option[String]): ContentType.NonBinary = cType(ct) match {
-    case x: ContentType.NonBinary           => x
-    case ContentType.WithMissingCharset(mt) => ContentType.WithCharset(mt, HttpCharsets.`UTF-8`)
-    case x                                  => throw new IllegalArgumentException(s"expected a non-binary Content-Type. actual: `$x`")
+    case x: ContentType.NonBinary => x
+    case ContentType.WithMissingCharset(mt) => ContentType.WithCharset(mt,HttpCharsets.`UTF-8`)
+    case x => throw new IllegalArgumentException(s"expected a non-binary Content-Type. actual: `$x`")
   }
 
   sealed trait Body {
@@ -270,33 +256,33 @@ object SimpleHttpClient extends LazyLogging {
 
     private class BodyFromString(body: String) extends Body {
       override def entity(ct: Option[String]) = ct match {
-        case None    => HttpEntity(body)
-        case Some(c) => HttpEntity(contentType(c), body)
+        case None => HttpEntity(body)
+        case Some(c) => HttpEntity(contentType(c),body)
       }
       override def contentType(ct: String): ContentType.NonBinary = super.contentType(ct) match {
-        case x: ContentType.NonBinary           => x
-        case ContentType.WithMissingCharset(mt) => ContentType.WithCharset(mt, HttpCharsets.`UTF-8`)
-        case x                                  => throw new IllegalArgumentException(s"expected a non-binary Content-Type. actual: `$x`")
+        case x: ContentType.NonBinary => x
+        case ContentType.WithMissingCharset(mt) => ContentType.WithCharset(mt,HttpCharsets.`UTF-8`)
+        case x => throw new IllegalArgumentException(s"expected a non-binary Content-Type. actual: `$x`")
       }
     }
 
     private class BodyFromBytes(body: Array[Byte]) extends Body {
       override def entity(ct: Option[String]) = ct match {
-        case None    => HttpEntity(body)
+        case None => HttpEntity(body)
         case Some(c) => HttpEntity(contentType(c), body)
       }
     }
 
     private class BodyFromByteString(body: ByteString) extends Body {
       override def entity(ct: Option[String]) = ct match {
-        case None    => HttpEntity(body)
+        case None => HttpEntity(body)
         case Some(c) => HttpEntity(contentType(c), body)
       }
     }
 
     private class BodyFromInputStreamFactory(body: () => InputStream) extends Body {
       override def entity(ct: Option[String]) = ct match {
-        case None    => HttpEntity(ContentTypes.`application/octet-stream`, StreamConverters.fromInputStream(body))
+        case None => HttpEntity(ContentTypes.`application/octet-stream`, StreamConverters.fromInputStream(body))
         case Some(c) => HttpEntity(contentType(c), StreamConverters.fromInputStream(body))
       }
     }
@@ -312,27 +298,27 @@ object SimpleHttpClient extends LazyLogging {
   object SimpleMessageHandler {
     import scala.language.implicitConversions
 
-    implicit object StringMessageHandler extends SimpleMessageHandler[String] {
+    implicit object StringMessageHandler extends SimpleMessageHandler[String]{
       override def toMessage(msg: String) = TextMessage(msg)
       override def fromMessage(m: Message)(implicit ec: ExecutionContext, mat: Materializer = mat) = m match {
-        case tm: TextMessage   => tm.textStream.runFold("")(_ + _)
-        case bm: BinaryMessage => bm.dataStream.runFold(ByteString(""))(_ ++ _).map(_.utf8String)
+        case tm: TextMessage => tm.textStream.runFold("")(_+_)
+        case bm: BinaryMessage => bm.dataStream.runFold(ByteString(""))(_++_).map(_.utf8String)
       }
     }
 
-    implicit object BytesMessageHandler extends SimpleMessageHandler[Array[Byte]] {
+    implicit object BytesMessageHandler extends SimpleMessageHandler[Array[Byte]]{
       override def toMessage(msg: Array[Byte]) = BinaryMessage(ByteString(msg))
       override def fromMessage(m: Message)(implicit ec: ExecutionContext, mat: Materializer = mat) = m match {
-        case tm: TextMessage   => tm.textStream.runFold("")(_ + _).map(_.getBytes("UTF-8"))
-        case bm: BinaryMessage => bm.dataStream.runFold(ByteString(""))(_ ++ _).map(_.toArray)
+        case tm: TextMessage => tm.textStream.runFold("")(_+_).map(_.getBytes("UTF-8"))
+        case bm: BinaryMessage => bm.dataStream.runFold(ByteString(""))(_++_).map(_.toArray)
       }
     }
 
-    implicit object ByteStringMessageHandler extends SimpleMessageHandler[ByteString] {
+    implicit object ByteStringMessageHandler extends SimpleMessageHandler[ByteString]{
       override def toMessage(msg: ByteString) = BinaryMessage(msg)
       override def fromMessage(m: Message)(implicit ec: ExecutionContext, mat: Materializer = mat) = m match {
-        case tm: TextMessage   => tm.textStream.runFold("")(_ + _).map(ByteString.apply)
-        case bm: BinaryMessage => bm.dataStream.runFold(ByteString(""))(_ ++ _)
+        case tm: TextMessage => tm.textStream.runFold("")(_+_).map(ByteString.apply)
+        case bm: BinaryMessage => bm.dataStream.runFold(ByteString(""))(_++_)
       }
     }
   }
@@ -350,25 +336,23 @@ object SimpleHttpClient extends LazyLogging {
 
       override def preStart() = pull(in)
 
-      setHandler(
-        in,
-        new InHandler {
-          override def onPush(): Unit = toMsg(grab(in)) match {
-            case None => completeStage()
-            case Some(msg) => {
-              if (isAvailable(out)) {
-                push(out, msg)
-                pull(in)
-              } else pending = msg
+      setHandler(in, new InHandler {
+        override def onPush(): Unit = toMsg(grab(in)) match {
+          case None => completeStage()
+          case Some(msg) => {
+            if (isAvailable(out)) {
+              push(out, msg)
+              pull(in)
             }
+            else pending = msg
           }
         }
-      )
+      })
 
       setHandler(out, new OutHandler {
         override def onPull(): Unit = {
-          if (pending ne null) {
-            push(out, pending)
+          if(pending ne null) {
+            push(out,pending)
             pending = null
             pull(in)
           }
@@ -377,35 +361,35 @@ object SimpleHttpClient extends LazyLogging {
     }
   }
 
-  def ws[T: SimpleMessageHandler](
-    uri: String,
-    initiationMessage: T,
-    subprotocol: Option[String] = None,
-    queryParams: Seq[(String, String)] = Nil,
-    headers: Seq[(String, String)] = Nil
-  )(react: T => Option[T])(implicit ec: ExecutionContext, as: ActorSystem = this.sys, mat: Materializer = this.mat) = {
+  def ws[T : SimpleMessageHandler](uri: String,
+                                   initiationMessage: T,
+                                   subprotocol: Option[String] = None,
+                                   queryParams: Seq[(String,String)] = Nil,
+                                   headers: Seq[(String,String)] = Nil)(react: T => Option[T])
+                                  (implicit ec: ExecutionContext, as: ActorSystem = this.sys, mat: Materializer = this.mat) = {
 
     val simpleMessageHandler = implicitly[SimpleMessageHandler[T]]
     val h = mkHeaders(headers)
-    val u = mkURI(uri, queryParams)
-    val flow = http
-      .webSocketClientFlow(WebSocketRequest(u, h, subprotocol))
-      .mapAsync(1)(simpleMessageHandler.fromMessage)
-      .via(graphStage(react.andThen { _.map(simpleMessageHandler.toMessage) }))
+    val u = mkURI(uri,queryParams)
+    val flow = http.webSocketClientFlow(WebSocketRequest(u,h,subprotocol))
+                     .mapAsync(1)(simpleMessageHandler.fromMessage)
+                     .via(graphStage(react andThen {_.map(simpleMessageHandler.toMessage)}))
 
-    val g = RunnableGraph.fromGraph[Future[WebSocketUpgradeResponse]](GraphDSL.create(flow) { implicit b => f =>
+    val g = RunnableGraph.fromGraph[Future[WebSocketUpgradeResponse]](GraphDSL.create(flow) { implicit b =>
+
+      f =>
       import GraphDSL.Implicits._
 
-      val s = b.add(Source.single(simpleMessageHandler.toMessage(initiationMessage)))
-      val c = b.add(Concat[Message](2))
+        val s = b.add(Source.single(simpleMessageHandler.toMessage(initiationMessage)))
+        val c = b.add(Concat[Message](2))
 
-      s ~> c.in(0)
-      c.out ~> f ~> c.in(1)
+        s ~> c.in(0)
+             c.out ~> f ~> c.in(1)
 
-      ClosedShape
+        ClosedShape
     })
 
-    g.run().flatMap {
+    g.run().flatMap{
       case ValidUpgrade(res, chosenSubprotocol) => {
         chosenSubprotocol.foreach(p => logger.debug(s"ws: chosenSubprotocol = $p"))
         resToSimpleRes(res, SimpleResponseHandler.ByteArrayHandler)
@@ -417,46 +401,36 @@ object SimpleHttpClient extends LazyLogging {
     }
   }
 
-  def get[T: SimpleResponseHandler](
-    uri: String,
-    queryParams: Seq[(String, String)] = Nil,
-    headers: Seq[(String, String)] = Nil
-  )(implicit ec: ExecutionContext, as: ActorSystem = this.sys, mat: Materializer = this.mat) =
-    request[T](HttpMethods.GET, uri, queryParams, headers, HttpEntity.Empty)
+  def get[T : SimpleResponseHandler](uri: String,
+          queryParams: Seq[(String,String)] = Nil,
+          headers: Seq[(String,String)] = Nil)
+         (implicit ec: ExecutionContext, as: ActorSystem = this.sys, mat: Materializer = this.mat) =
+    request[T](HttpMethods.GET,uri,queryParams,headers,HttpEntity.Empty)
 
-  def put[T: SimpleResponseHandler](
-    uri: String,
-    body: Body,
-    contentType: Option[String] = None,
-    queryParams: Seq[(String, String)] = Nil,
-    headers: Seq[(String, String)] = Nil
-  )(implicit ec: ExecutionContext, as: ActorSystem = this.sys, mat: Materializer = this.mat) =
-    request[T](HttpMethods.PUT,
-               uri,
-               queryParams,
-               headers,
-               body.entity(contentType.orElse(headers.find(_._1.equalsIgnoreCase("content-type")).map(_._2))))
+  def put[T : SimpleResponseHandler](uri: String,
+          body: Body,
+          contentType: Option[String] = None,
+          queryParams: Seq[(String,String)] = Nil,
+          headers: Seq[(String,String)] = Nil)
+         (implicit ec: ExecutionContext, as: ActorSystem = this.sys, mat: Materializer = this.mat) =
+    request[T](HttpMethods.PUT,uri,queryParams,headers,body.entity(contentType.orElse(headers.find(_._1.equalsIgnoreCase("content-type")).map(_._2))))
 
-  def post[T: SimpleResponseHandler](
-    uri: String,
-    body: Body,
-    contentType: Option[String] = None,
-    queryParams: Seq[(String, String)] = Nil,
-    headers: Seq[(String, String)] = Nil
-  )(implicit ec: ExecutionContext, as: ActorSystem = this.sys, mat: Materializer = this.mat) =
-    request[T](HttpMethods.POST,
-               uri,
-               queryParams,
-               headers,
-               body.entity(contentType.orElse(headers.find(_._1.equalsIgnoreCase("content-type")).map(_._2))))
+  def post[T : SimpleResponseHandler](uri: String,
+           body: Body,
+           contentType: Option[String] = None,
+           queryParams: Seq[(String,String)] = Nil,
+           headers: Seq[(String,String)] = Nil)
+          (implicit ec: ExecutionContext, as: ActorSystem = this.sys, mat: Materializer = this.mat) =
+    request[T](HttpMethods.POST,uri,queryParams,headers,body.entity(contentType.orElse(headers.find(_._1.equalsIgnoreCase("content-type")).map(_._2))))
 
-  def delete[T: SimpleResponseHandler](
-    uri: String,
-    queryParams: Seq[(String, String)] = Nil,
-    headers: Seq[(String, String)] = Nil
-  )(implicit ec: ExecutionContext, as: ActorSystem = this.sys, mat: Materializer = this.mat) =
-    request[T](HttpMethods.DELETE, uri, queryParams, headers, HttpEntity.Empty)
+  def delete[T : SimpleResponseHandler](uri: String,
+             queryParams: Seq[(String,String)] = Nil,
+             headers: Seq[(String,String)] = Nil)
+            (implicit ec: ExecutionContext, as: ActorSystem = this.sys, mat: Materializer = this.mat) =
+    request[T](HttpMethods.DELETE, uri,queryParams,headers,HttpEntity.Empty)
 }
+
+
 //TODO: following won't compile (seems like a scalac bug???) need to investigate this.
 //import com.ning.http.client.AsyncHttpClient
 //import scala.collection.JavaConverters._
@@ -540,3 +514,4 @@ object SimpleHttpClient extends LazyLogging {
 //           headers: Seq[(String,String)] = Nil) =
 //    request(POST(StringBody(body,contentType)), url, queryParams, headers)
 //}
+

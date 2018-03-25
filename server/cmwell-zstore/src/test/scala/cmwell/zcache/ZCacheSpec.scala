@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.zcache
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -32,8 +34,8 @@ class ZCacheSpec extends AsyncFunSpec with Matchers {
   val pollingMaxRetries = 2
   val pollingInterval = 1
 
-  val stob = (s: String) => s.getBytes
-  val btos = (ba: Array[Byte]) => new String(ba)
+  val stob = (s:String) => s.getBytes
+  val btos = (ba:Array[Byte]) => new String(ba)
 
   // counters to validate amount of "actually performing heavy task"
   val c1: AtomicInteger = new AtomicInteger(0)
@@ -53,32 +55,28 @@ class ZCacheSpec extends AsyncFunSpec with Matchers {
   }
 
   it("should wait and see that item was gone") {
-    delayedTask((ttl + 1).seconds)(Unit).flatMap { _ =>
+    delayedTask((ttl+1).seconds)(Unit).flatMap { _ =>
       zCacheMem.get("foo")(btos, pollingMaxRetries, pollingInterval).map(_ should be(None))
     }
   }
 
   // the "heavy" task
-  def fetchData(dataId: String) = delayedTask((ttl / 2).seconds) {
+  def fetchData(dataId: String) = delayedTask((ttl/2).seconds) {
     dataId match {
       case "1" => c1.incrementAndGet()
       case "2" => c2.incrementAndGet()
-      case _   => c3.incrementAndGet()
+      case _ =>   c3.incrementAndGet()
     }
     s"Data[$dataId]"
   }
 
-  val fetchViaZCache = zCacheMem.memoize(fetchData)(digest = identity, deserializer = btos, serializer = stob)(
-    ttl,
-    pollingMaxRetries,
-    pollingInterval
-  )(scala.concurrent.ExecutionContext.global)
+  val fetchViaZCache = zCacheMem.memoize(fetchData)(digest = identity, deserializer = btos, serializer = stob)(ttl, pollingMaxRetries, pollingInterval)(scala.concurrent.ExecutionContext.global)
   val fetchViaL1L2 = l1l2(fetchData)(identity, btos, stob)(ttl, pollingMaxRetries, pollingInterval)(zCacheMem)
 
   it("should wrap data fetching (CORE FUNC. STEP 1/2)") {
     fetchViaZCache("1").map { res =>
       val c = c1.get
-      if (c > 1) throw new TooManyFetchesException(c.toString)
+      if(c > 1) throw new TooManyFetchesException(c.toString)
       res should be("Data[1]")
     }
   }
@@ -86,7 +84,7 @@ class ZCacheSpec extends AsyncFunSpec with Matchers {
   it("should wrap data fetching again, making sure no actual IO has been done (CORE FUNC. STEP 2/2)") {
     fetchViaZCache("1").map { res =>
       val c = c1.get
-      if (c > 1) throw new TooManyFetchesException(c.toString)
+      if(c > 1) throw new TooManyFetchesException(c.toString)
       res should be("Data[1]")
     }
   }
@@ -102,11 +100,10 @@ class ZCacheSpec extends AsyncFunSpec with Matchers {
 
   it("should test the L1 L2 logic") {
     val (numOfUniqRequests, amountOfEach) = (1500, 20)
-    val requests: Seq[String] =
-      scala.util.Random.shuffle(Seq.fill(amountOfEach)((3 to numOfUniqRequests + 3).map(_.toString)).flatten)
+    val requests: Seq[String] = scala.util.Random.shuffle(Seq.fill(amountOfEach)((3 to numOfUniqRequests + 3).map(_.toString)).flatten)
     Future.sequence(requests.map(fetchViaL1L2)).map { res =>
       val c = c3.get
-      if (c >= numOfUniqRequests * amountOfEach) throw new TooManyFetchesException(c.toString)
+      if (c >= numOfUniqRequests*amountOfEach) throw new TooManyFetchesException(c.toString)
       (res == requests.map(i => s"Data[$i]")) should be(true)
     }
   }

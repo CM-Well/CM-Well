@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package cmwell.driver
 
 import com.datastax.driver.core._
@@ -25,23 +27,23 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success, Try}
 
 /**
-  * Created with IntelliJ IDEA.
-  * User: markz
-  * Date: 3/2/14
-  * Time: 1:04 PM
-  * To change this template use File | Settings | File Templates.
-  */
-trait Dao extends LazyLogging {
+ * Created with IntelliJ IDEA.
+ * User: markz
+ * Date: 3/2/14
+ * Time: 1:04 PM
+ * To change this template use File | Settings | File Templates.
+ */
+
+trait Dao extends LazyLogging{
   def init()
-  def getSession: Session
-  def getKeyspace: String
+  def getSession : Session
+  def getKeyspace : String
   def shutdown()
 }
 
-class NativeDriver(clusterName: String, keyspaceName: String, host: String = "127.0.0.1", maxConnections: Int = 10)
-    extends Dao {
+class NativeDriver(clusterName: String , keyspaceName : String ,  host : String = "127.0.0.1" , maxConnections : Int = 10) extends Dao {
 
-  private val pools: PoolingOptions = new PoolingOptions();
+  private val pools : PoolingOptions = new PoolingOptions();
   pools.setNewConnectionThreshold(HostDistance.LOCAL, 128)
   // TODO: need understand what have been changed
   /*
@@ -49,7 +51,7 @@ class NativeDriver(clusterName: String, keyspaceName: String, host: String = "12
   pools.setMaxConnectionsPerHost(HostDistance.LOCAL, maxConnections)
   pools.setCoreConnectionsPerHost(HostDistance.REMOTE, maxConnections)
   pools.setMaxConnectionsPerHost(HostDistance.REMOTE, maxConnections)
-   */
+  */
 
   val hosts = host.split(",")
 
@@ -60,7 +62,7 @@ class NativeDriver(clusterName: String, keyspaceName: String, host: String = "12
     .withoutJMXReporting() // datastax client depends on old io.dropwizard.metrics (3.2.2), while metrics4.scala depends on newer version (4.0.1). The 4.0.x release removed the jmx module to another artifact (metrics-jmx) and package (com.codahale.metrics.jmx). while this is true, we are better off without JMX reporting of the client. In future: consider to re-enable this.
     .build();
 
-  private val session: Session = Try(cluster.connect(keyspaceName)) match {
+  private val session : Session = Try(cluster.connect(keyspaceName)) match {
     case Success(s) => s
     case Failure(err) =>
       logger.error(err.getMessage, err)
@@ -68,18 +70,17 @@ class NativeDriver(clusterName: String, keyspaceName: String, host: String = "12
       sys.exit(1)
   }
 
+
   def init() {
     import scala.collection.JavaConverters._
-    val metaData: Metadata = cluster.getMetadata
+    val metaData : Metadata = cluster.getMetadata
     val allHosts = metaData.getAllHosts
-    logger.info(
-      s"Connected to cluster: ${metaData.getClusterName}, and Hosts: ${allHosts.asScala.map(_.toString).mkString("[", ",", "]")}"
-    )
+    logger.info(s"Connected to cluster: ${metaData.getClusterName}, and Hosts: ${allHosts.asScala.map(_.toString).mkString("[",",","]")}")
   }
 
-  def getSession: Session = session
+  def getSession : Session = session
 
-  def getKeyspace: String = keyspaceName
+  def getKeyspace : String  = keyspaceName
 
   def shutdown() {
     cluster.close()
@@ -87,8 +88,7 @@ class NativeDriver(clusterName: String, keyspaceName: String, host: String = "12
 }
 
 object Dao {
-  def apply(clusterName: String, keyspaceName: String, host: String = "127.0.0.1", maxConnections: Int = 10) =
-    new NativeDriver(clusterName, keyspaceName, host, maxConnections)
+  def apply(clusterName: String , keyspaceName : String , host : String = "127.0.0.1" , maxConnections : Int = 10) = new NativeDriver(clusterName,keyspaceName, host, maxConnections)
 }
 
 trait DaoExecution {
@@ -98,23 +98,17 @@ trait DaoExecution {
   def executeAsyncInternal(statmentToExec: Statement)(implicit daoProxy: Dao): Future[ResultSet] = {
     val p = Promise[ResultSet]()
     Try {
-      daoProxy.getSession
-        .executeAsync(
-          statmentToExec
-            .setIdempotent(true)
-            .setRetryPolicy(DefaultRetryPolicy.INSTANCE)
-        )
+      daoProxy
+        .getSession
+        .executeAsync(statmentToExec
+          .setIdempotent(true)
+          .setRetryPolicy(DefaultRetryPolicy.INSTANCE))
     } match {
       case Failure(e) => p.failure(e)
-      case Success(f: ResultSetFuture) =>
-        Futures.addCallback(
-          f,
-          new FutureCallback[ResultSet]() {
-            def onSuccess(result: ResultSet): Unit = p.success(result)
-            def onFailure(t: Throwable): Unit = p.failure(t)
-          },
-          MoreExecutors.directExecutor()
-        )
+      case Success(f: ResultSetFuture) => Futures.addCallback(f, new FutureCallback[ResultSet]() {
+        def onSuccess(result: ResultSet): Unit = p.success(result)
+        def onFailure(t: Throwable): Unit = p.failure(t)
+      }, MoreExecutors.directExecutor())
     }
     p.future
   }
