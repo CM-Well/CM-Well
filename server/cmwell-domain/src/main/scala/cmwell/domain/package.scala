@@ -12,15 +12,13 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell
 
 import com.typesafe.scalalogging.LazyLogging
 
 /**
- * Created by gilad on 8/6/15.
- */
+  * Created by gilad on 8/6/15.
+  */
 package object domain extends LazyLogging {
 
   def addIndexTime(infoton: Infoton, indexTime: Option[Long], force: Boolean = false): Infoton = infoton match {
@@ -31,25 +29,30 @@ package object domain extends LazyLogging {
     case i:DeletedInfoton if force || i.indexTime.isEmpty => i.copy(indexTime = indexTime)
     // format: on
     case i if i.indexTime.isDefined => {
-      logger.warn(s"was asked to add indextime, but one is already supplied! uuid=${i.uuid}, path=${i.path}, indexTime=${i.indexTime.get}")
+      logger.warn(
+        s"was asked to add indextime, but one is already supplied! uuid=${i.uuid}, path=${i.path}, indexTime=${i.indexTime.get}"
+      )
       i
     }
     case _ => ???
   }
 
-  def addIndexInfo(infoton: Infoton, indexTime: Option[Long], indexName:String, force: Boolean = false): Infoton = infoton match {
-    // format: off
+  def addIndexInfo(infoton: Infoton, indexTime: Option[Long], indexName: String, force: Boolean = false): Infoton =
+    infoton match {
+      // format: off
     case i:ObjectInfoton  if force || i.indexTime.isEmpty => i.copy(indexTime = indexTime, indexName = indexName)
     case i:FileInfoton    if force || i.indexTime.isEmpty => i.copy(indexTime = indexTime, indexName = indexName)
     case i:LinkInfoton    if force || i.indexTime.isEmpty => i.copy(indexTime = indexTime, indexName = indexName)
     case i:DeletedInfoton if force || i.indexTime.isEmpty => i.copy(indexTime = indexTime, indexName = indexName)
     // format: on
-    case i if i.indexTime.isDefined => {
-      logger.warn(s"was asked to add indextime, but one is already supplied! uuid=${i.uuid}, path=${i.path}, indexTime=${i.indexTime.get}")
-      i
+      case i if i.indexTime.isDefined => {
+        logger.warn(
+          s"was asked to add indextime, but one is already supplied! uuid=${i.uuid}, path=${i.path}, indexTime=${i.indexTime.get}"
+        )
+        i
+      }
+      case _ => ???
     }
-    case _ => ???
-  }
 
   def addDc(infoton: Infoton, dc: String, force: Boolean = false): Infoton = infoton match {
     // format: off

@@ -12,61 +12,55 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 import cmwell.domain._
 import cmwell.rts.Rule
-import org.scalatest.{Matchers, FlatSpec}
+import org.scalatest.{FlatSpec, Matchers}
 
 /**
- * Created by markz on 1/19/15.
- */
+  * Created by markz on 1/19/15.
+  */
 class RuleSpec extends FlatSpec with Matchers {
   "path rule" should "be successful" in {
     // only exact match + 1 level
-    val r1 = Rule("/mark/test",false)
-    val r2 = Rule("/mark/test",true)
-
+    val r1 = Rule("/mark/test", false)
+    val r2 = Rule("/mark/test", true)
 
 //    println(r2.path == ObjectInfoton("/mark").path           ) // false
 //    println(r2.path == ObjectInfoton("/mark/test").path      ) // true
 //    println(r2.path == ObjectInfoton("/mark/test/1").path    ) // true
 //    println(r2.path == ObjectInfoton("/mark/test/1/2/").path ) // true
 
+    false should equal(r1.path.check(ObjectInfoton("/mark", "dc_test").path))
+    true should equal(r1.path.check(ObjectInfoton("/mark/test", "dc_test").path))
+    true should equal(r1.path.check(ObjectInfoton("/mark/test/1", "dc_test").path))
+    false should equal(r1.path.check(ObjectInfoton("/mark/test/1/2/", "dc_test").path))
 
-    false should equal (r1.path check ObjectInfoton("/mark","dc_test").path)
-    true should equal  (r1.path check ObjectInfoton("/mark/test","dc_test").path)
-    true should equal  (r1.path check ObjectInfoton("/mark/test/1","dc_test").path)
-    false should equal (r1.path check ObjectInfoton("/mark/test/1/2/","dc_test").path)
-
-
-    false should equal(r2.path check ObjectInfoton("/mark","dc_test").path)
-    true should equal (r2.path check  ObjectInfoton("/mark/test","dc_test").path)
-    true should equal (r2.path check  ObjectInfoton("/mark/test/1","dc_test").path)
-    true should equal(r2.path check ObjectInfoton("/mark/test/1/2/","dc_test").path)
-
+    false should equal(r2.path.check(ObjectInfoton("/mark", "dc_test").path))
+    true should equal(r2.path.check(ObjectInfoton("/mark/test", "dc_test").path))
+    true should equal(r2.path.check(ObjectInfoton("/mark/test/1", "dc_test").path))
+    true should equal(r2.path.check(ObjectInfoton("/mark/test/1/2/", "dc_test").path))
 
   }
 
-
   "match rule" should "be successful" in {
-    val m1 = Rule(Map.empty[String,Set[FieldValue]])
+    val m1 = Rule(Map.empty[String, Set[FieldValue]])
 
-    val m2 = Rule(Map[String,Set[FieldValue]]("kids" -> Set(FString("gal") , FString("yoav") , FString ("roni")),
-                      "name" -> Set(),
-                      "age" -> Set(FInt(34)) ))
+    val m2 = Rule(
+      Map[String, Set[FieldValue]]("kids" -> Set(FString("gal"), FString("yoav"), FString("roni")),
+                                   "name" -> Set(),
+                                   "age" -> Set(FInt(34)))
+    )
     // because empty map always return true
-    true should equal ( m1.matchMap check Map("kids" -> Set(FString("gal"))) )
+    true should equal(m1.matchMap.check(Map("kids" -> Set(FString("gal")))))
     // chekc if have a key - kids and value gal
-    true should equal ( m2.matchMap check Map("kids" -> Set(FString("gal")) ) ) // true
-    false should equal ( m2.matchMap check Map("kids" -> Set(FString("gilad")) )) // false
+    true should equal(m2.matchMap.check(Map("kids" -> Set(FString("gal"))))) // true
+    false should equal(m2.matchMap.check(Map("kids" -> Set(FString("gilad"))))) // false
 
-    true should equal ( m2.matchMap check Map("name" -> Set(FString("mark")) )) // true check is the key exists
-    false should equal ( m2.matchMap check Map("last_name" -> Set(FString("z")) )) // false check is the key exists
+    true should equal(m2.matchMap.check(Map("name" -> Set(FString("mark"))))) // true check is the key exists
+    false should equal(m2.matchMap.check(Map("last_name" -> Set(FString("z"))))) // false check is the key exists
 
-
-    true should equal ( m2.matchMap check Map("age" -> Set(FInt(34)))) // true checks int
-    false should equal ( m2.matchMap check Map("age" -> Set(FInt(30)))) // false checks int
+    true should equal(m2.matchMap.check(Map("age" -> Set(FInt(34))))) // true checks int
+    false should equal(m2.matchMap.check(Map("age" -> Set(FInt(30))))) // false checks int
 
   }
 }

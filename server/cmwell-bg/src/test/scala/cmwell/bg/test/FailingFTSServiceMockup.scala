@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.bg.test
 
 import java.util.concurrent.TimeoutException
@@ -29,22 +27,24 @@ import scala.concurrent.{ExecutionContext, Future}
 /**
   * Created by israel on 06/03/2017.
   */
-
 object FailingFTSServiceMockup {
-  def apply(esClasspathYml:String, errorModuloDivisor:Int) = new FailingFTSServiceMockup(ConfigFactory.load(), esClasspathYml, errorModuloDivisor)
+  def apply(esClasspathYml: String, errorModuloDivisor: Int) =
+    new FailingFTSServiceMockup(ConfigFactory.load(), esClasspathYml, errorModuloDivisor)
 }
 
-class FailingFTSServiceMockup(config: Config, esClasspathYaml: String, errorModuloDivisor:Int) extends FTSServiceNew(config, esClasspathYaml) {
+class FailingFTSServiceMockup(config: Config, esClasspathYaml: String, errorModuloDivisor: Int)
+    extends FTSServiceNew(config, esClasspathYaml) {
 
   var errorModuloDividend = 0
   var errorCount = 0
 
-  override def executeIndexRequests(indexRequests: Iterable[ESIndexRequest])
-                                   (implicit executionContext: ExecutionContext, logger:Logger = loger): Future[BulkIndexResult] = {
+  override def executeIndexRequests(
+    indexRequests: Iterable[ESIndexRequest]
+  )(implicit executionContext: ExecutionContext, logger: Logger = loger): Future[BulkIndexResult] = {
     errorModuloDividend += 1
-    if(errorModuloDividend % errorModuloDivisor == 0)
+    if (errorModuloDividend % errorModuloDivisor == 0)
       Future.successful(new RejectedBulkIndexResult("fake"))
-    else if(errorModuloDividend % errorModuloDivisor == 2 && errorCount <=2)
+    else if (errorModuloDividend % errorModuloDivisor == 2 && errorCount <= 2)
       SimpleScheduler.scheduleFuture(15.seconds)(super.executeIndexRequests(indexRequests))
     else
       super.executeIndexRequests(indexRequests)
@@ -59,19 +59,20 @@ class FailingFTSServiceMockup(config: Config, esClasspathYaml: String, errorModu
     * @param executionContext
     * @return
     */
-  override def executeBulkIndexRequests(indexRequests: Iterable[ESIndexRequest], numOfRetries: Int,
-                                        waitBetweenRetries: Long)
-                                       (implicit executionContext: ExecutionContext, logger:Logger = loger) = {
+  override def executeBulkIndexRequests(
+    indexRequests: Iterable[ESIndexRequest],
+    numOfRetries: Int,
+    waitBetweenRetries: Long
+  )(implicit executionContext: ExecutionContext, logger: Logger = loger) = {
 
     errorModuloDividend += 1
-    logger error s"executeBulkIndexRequests: errorModuloDividend=$errorModuloDividend"
-    if(errorModuloDividend % errorModuloDivisor == 2 && errorCount <=2 ) {
+    logger.error(s"executeBulkIndexRequests: errorModuloDividend=$errorModuloDividend")
+    if (errorModuloDividend % errorModuloDivisor == 2 && errorCount <= 2) {
       errorCount += 1
-      logger error s"delaying response"
+      logger.error(s"delaying response")
       throw new TimeoutException("fake")
-    }
-    else {
-        logger error "farwarding to real ftsservice"
+    } else {
+      logger.error("farwarding to real ftsservice")
       super.executeBulkIndexRequests(indexRequests, numOfRetries, waitBetweenRetries)
     }
   }

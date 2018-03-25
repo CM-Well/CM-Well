@@ -12,23 +12,21 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.ctrl.config
 
-import k.grid.{NodeMember, JvmIdentity}
+import k.grid.{JvmIdentity, NodeMember}
 
 /**
- * Created by michael on 2/4/16.
- */
+  * Created by michael on 2/4/16.
+  */
 object Jvms {
   def node = CTRL
 
-  val CTRL = JvmIdentity("ctrl" ,7777, Set("CTRL", "ControllerServer"))
+  val CTRL = JvmIdentity("ctrl", 7777, Set("CTRL", "ControllerServer"))
   val WS = JvmIdentity("ws", 0)
   val BG = JvmIdentity("bg", 0)
   val DC = JvmIdentity("dc", 0)
   val CW = JvmIdentity("cw", 2561)
 
-  val roles : Set[JvmIdentity] = Set(CTRL, WS, BG, DC, CW)
+  val roles: Set[JvmIdentity] = Set(CTRL, WS, BG, DC, CW)
 }

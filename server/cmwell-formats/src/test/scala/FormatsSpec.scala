@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 import cmwell.domain.{TermsAggregationResponse, _}
 import cmwell.formats._
 import cmwell.util.string.dateStringify
@@ -24,24 +22,48 @@ import play.api.libs.json.{JsValue, Json}
 import scala.language.postfixOps
 
 /**
- * Created by yaakov on 3/2/15.
- */
+  * Created by yaakov on 3/2/15.
+  */
 class FormatsSpec extends FunSpec with Matchers with Helpers {
 
   describe("JSONL tests") {
-    val jsonlFormatter = new JsonlFormatter(_=>None,_=>None) // for simplicity, assuming nothing is under meta/ns
+    val jsonlFormatter = new JsonlFormatter(_ => None, _ => None) // for simplicity, assuming nothing is under meta/ns
 
     val date = new DateTime("1985-11-25T18:43:00.000Z")
-    val defaultFields = Map("field1"->Set[FieldValue](FString("value1")))
+    val defaultFields = Map("field1" -> Set[FieldValue](FString("value1")))
     val infotons = Map(
-      'simpleObjectInfoton -> ObjectInfoton("simpleObjectInfoton","dc_test", None, date, defaultFields),
-      'objectInfotonWithQuads -> ObjectInfoton("objectInfotonWithQuads","dc_test", None, date, Map("field1"->Set[FieldValue](FString("value1", None, Some("spiderman"))))),
-      'fileInfoton -> FileInfoton("fileInfoton","dc_test", None, date, defaultFields, FileContent("CAFEBABE".getBytes("UTF8"), "application/java-byte-code")),
-      'compoundInfoton -> CompoundInfoton("compoundInfoton","dc_test", None, date, Some(defaultFields), Seq(ObjectInfoton("first-child","dc_test",None,date)), 0, 1, 1)
+      'simpleObjectInfoton -> ObjectInfoton("simpleObjectInfoton", "dc_test", None, date, defaultFields),
+      'objectInfotonWithQuads -> ObjectInfoton(
+        "objectInfotonWithQuads",
+        "dc_test",
+        None,
+        date,
+        Map("field1" -> Set[FieldValue](FString("value1", None, Some("spiderman"))))
+      ),
+      'fileInfoton -> FileInfoton("fileInfoton",
+                                  "dc_test",
+                                  None,
+                                  date,
+                                  defaultFields,
+                                  FileContent("CAFEBABE".getBytes("UTF8"), "application/java-byte-code")),
+      'compoundInfoton -> CompoundInfoton("compoundInfoton",
+                                          "dc_test",
+                                          None,
+                                          date,
+                                          Some(defaultFields),
+                                          Seq(ObjectInfoton("first-child", "dc_test", None, date)),
+                                          0,
+                                          1,
+                                          1)
     )
 
     def assertSystemFields(i: Infoton, jsonl: JsValue) = {
-      Seq("@id"->i.path, "type" -> i.kind, "uuid" -> i.uuid, "path" -> i.path, "parent" -> i.parent, "lastModified" -> dateStringify(i.lastModified)).foreach {
+      Seq("@id" -> i.path,
+          "type" -> i.kind,
+          "uuid" -> i.uuid,
+          "path" -> i.path,
+          "parent" -> i.parent,
+          "lastModified" -> dateStringify(i.lastModified)).foreach {
         case (key, expectedValue) => jsonl.getValueOfFirst(s"$key.sys") should be(expectedValue)
       }
     }
@@ -56,11 +78,11 @@ class FormatsSpec extends FunSpec with Matchers with Helpers {
 
     it("should serialize an object infoton with quads") {
       val i = infotons('objectInfotonWithQuads)
-      val jsonlResult = Json.parse(new JsonlFormatter(_=>None,_=>Some("spiderman")).render(i))
+      val jsonlResult = Json.parse(new JsonlFormatter(_ => None, _ => Some("spiderman")).render(i))
 
       assertSystemFields(i, jsonlResult)
 
-      val field1 = jsonlResult getFirst "field1.nn"
+      val field1 = jsonlResult.getFirst("field1.nn")
       field1.getValue should be("value1")
       field1.getQuad should be("spiderman")
     }
@@ -71,11 +93,13 @@ class FormatsSpec extends FunSpec with Matchers with Helpers {
 
       assertSystemFields(i, jsonlResult)
 
-      Seq("field1.nn"->"value1","mimeType.content.sys"->"application/java-byte-code","base64-data.content.sys"->"Q0FGRUJBQkU=").foreach{
-        case (key,expectedValue) => jsonlResult.getValueOfFirst(key) should be(expectedValue)
+      Seq("field1.nn" -> "value1",
+          "mimeType.content.sys" -> "application/java-byte-code",
+          "base64-data.content.sys" -> "Q0FGRUJBQkU=").foreach {
+        case (key, expectedValue) => jsonlResult.getValueOfFirst(key) should be(expectedValue)
       }
 
-      (jsonlResult.getFirst("length.content.sys")\"value").as[Int] should be(8)
+      (jsonlResult.getFirst("length.content.sys") \ "value").as[Int] should be(8)
     }
 
     it("should serialize a CompoundInfoton") {
@@ -142,20 +166,29 @@ class FormatsSpec extends FunSpec with Matchers with Helpers {
         }
       ]
     }*/
-    val aggregationsResponse1 = AggregationsResponse(Seq(
-      TermsAggregationResponse(
-        filter = TermAggregationFilter(
-          name = "TermAggregation",
-          field = Field(NonAnalyzedField, "category.jX2eAA"),
-          size = 5
-        ),
-        buckets = Seq(
-          Bucket(k = FieldValue("http://en.wikipedia.org/cat/living_people_d45c539"), dc = 710585, subAgg = None),
-          Bucket(k = FieldValue("http://en.wikipedia.org/cat/year_of_birth_missing__living_people__170e89c5"), dc = 56019, subAgg = None),
-          Bucket(k = FieldValue("http://en.wikipedia.org/cat/american_films_1fbf60ae"), dc = 39532, subAgg = None),
-          Bucket(k = FieldValue("http://en.wikipedia.org/cat/english_language_films_d8965cab"), dc = 33083, subAgg = None),
-          Bucket(k = FieldValue("http://en.wikipedia.org/cat/place_of_birth_missing__living_people__3f637be9"), dc = 26766, subAgg = None)
-        ))),
+    val aggregationsResponse1 = AggregationsResponse(
+      Seq(
+        TermsAggregationResponse(
+          filter = TermAggregationFilter(
+            name = "TermAggregation",
+            field = Field(NonAnalyzedField, "category.jX2eAA"),
+            size = 5
+          ),
+          buckets = Seq(
+            Bucket(k = FieldValue("http://en.wikipedia.org/cat/living_people_d45c539"), dc = 710585, subAgg = None),
+            Bucket(k = FieldValue("http://en.wikipedia.org/cat/year_of_birth_missing__living_people__170e89c5"),
+                   dc = 56019,
+                   subAgg = None),
+            Bucket(k = FieldValue("http://en.wikipedia.org/cat/american_films_1fbf60ae"), dc = 39532, subAgg = None),
+            Bucket(k = FieldValue("http://en.wikipedia.org/cat/english_language_films_d8965cab"),
+                   dc = 33083,
+                   subAgg = None),
+            Bucket(k = FieldValue("http://en.wikipedia.org/cat/place_of_birth_missing__living_people__3f637be9"),
+                   dc = 26766,
+                   subAgg = None)
+          )
+        )
+      ),
       Option("test debug info also")
     )
 
@@ -220,32 +253,52 @@ class FormatsSpec extends FunSpec with Matchers with Helpers {
         }
       ]
     }*/
-    val aggregationsResponse2 = AggregationsResponse(Seq(
-      SignificantTermsAggregationResponse(
-        filter = SignificantTermsAggregationFilter(
-          name = "SignificantTermsAggregation",
-          field = Field(NonAnalyzedField, "referTo.jX2eAA"),
-          backgroundTerm = None,
-          minDocCount = 0,
-          size = 3
+    val aggregationsResponse2 = AggregationsResponse(
+      Seq(
+        SignificantTermsAggregationResponse(
+          filter = SignificantTermsAggregationFilter(
+            name = "SignificantTermsAggregation",
+            field = Field(NonAnalyzedField, "referTo.jX2eAA"),
+            backgroundTerm = None,
+            minDocCount = 0,
+            size = 3
+          ),
+          docCount = 13884624,
+          buckets = Seq(
+            SignificantTermsBucket(key = FieldValue("http://en.wikipedia.org/wiki/united_states_b01f3e84"),
+                                   docCount = 282203,
+                                   score = 19307.54729346422,
+                                   bgCount = 282203,
+                                   subAggregations = None),
+            SignificantTermsBucket(key = FieldValue("http://en.wikipedia.org/wiki/france"),
+                                   docCount = 127296,
+                                   score = 3928.554773532682,
+                                   bgCount = 127296,
+                                   subAggregations = None),
+            SignificantTermsBucket(
+              key = FieldValue("http://en.wikipedia.org/wiki/association_football_b70932fc"),
+              docCount = 115031,
+              score = 3207.989815760563,
+              bgCount = 115031,
+              subAggregations = None
+            )
+          )
         ),
-        docCount = 13884624,
-        buckets = Seq(
-          SignificantTermsBucket(key = FieldValue("http://en.wikipedia.org/wiki/united_states_b01f3e84"), docCount = 282203, score = 19307.54729346422, bgCount = 282203, subAggregations = None),
-          SignificantTermsBucket(key = FieldValue("http://en.wikipedia.org/wiki/france"), docCount = 127296, score = 3928.554773532682, bgCount = 127296, subAggregations = None),
-          SignificantTermsBucket(key = FieldValue("http://en.wikipedia.org/wiki/association_football_b70932fc"), docCount = 115031, score = 3207.989815760563, bgCount = 115031, subAggregations = None)
-        )),
-      TermsAggregationResponse(
-        filter = TermAggregationFilter(
-          name = "TermAggregation",
-          field = Field(NonAnalyzedField, "category.jX2eAA"),
-          size = 3
-        ),
-        buckets = Seq(
-          Bucket(k = FieldValue("http://en.wikipedia.org/cat/living_people_d45c539"), dc = 710585, subAgg = None),
-          Bucket(k = FieldValue("http://en.wikipedia.org/cat/year_of_birth_missing__living_people__170e89c5"), dc = 56019, subAgg = None),
-          Bucket(k = FieldValue("http://en.wikipedia.org/cat/american_films_1fbf60ae"), dc = 39532, subAgg = None)
-        ))),
+        TermsAggregationResponse(
+          filter = TermAggregationFilter(
+            name = "TermAggregation",
+            field = Field(NonAnalyzedField, "category.jX2eAA"),
+            size = 3
+          ),
+          buckets = Seq(
+            Bucket(k = FieldValue("http://en.wikipedia.org/cat/living_people_d45c539"), dc = 710585, subAgg = None),
+            Bucket(k = FieldValue("http://en.wikipedia.org/cat/year_of_birth_missing__living_people__170e89c5"),
+                   dc = 56019,
+                   subAgg = None),
+            Bucket(k = FieldValue("http://en.wikipedia.org/cat/american_films_1fbf60ae"), dc = 39532, subAgg = None)
+          )
+        )
+      ),
       Option("test debug info also")
     )
 
@@ -417,42 +470,70 @@ class FormatsSpec extends FunSpec with Matchers with Helpers {
         }
       ]
     }*/
-    val aggregationsResponse3 = AggregationsResponse(Seq(
-      SignificantTermsAggregationResponse(
-        filter = SignificantTermsAggregationFilter(
-          name = "SignificantTermsAggregation",
-          field = Field(NonAnalyzedField, "organizationCountryCode.-Jamjg"),
-          backgroundTerm = None,
-          minDocCount = 0,
-          size = 3
-        ),
-        docCount = 87766563,
-        buckets = Seq(
-          SignificantTermsBucket(key = FieldValue("100319"), docCount = 2178650, score = 81723.15093613388, bgCount = 2178650, subAggregations = Some(AggregationsResponse(Seq(
-            TermsAggregationResponse(
-              filter = TermAggregationFilter(
-                name = "TermAggregation",
-                field = Field(NonAnalyzedField, "organizationFoundedDay.-Jamjg"),
-                size = 3
-              ),
-              buckets = Seq(
-                Bucket(k = FieldValue(1), dc = 7579, subAgg = None),
-                Bucket(k = FieldValue(28), dc = 5849, subAgg = None),
-                Bucket(k = FieldValue(15), dc = 5699, subAgg = None)
-              )))))),
-          SignificantTermsBucket(key = FieldValue("100317"), docCount = 300590, score = 1555.693292939183, bgCount = 300590, subAggregations = Some(AggregationsResponse(Seq(
-            TermsAggregationResponse(
-              filter = TermAggregationFilter(
-                name = "TermAggregation",
-                field = Field(NonAnalyzedField, "organizationFoundedDay.-Jamjg"),
-                size = 3
-              ),
-              buckets = Seq(
-                Bucket(k = FieldValue(1), dc = 3011, subAgg = None),
-                Bucket(k = FieldValue(19), dc = 2933, subAgg = None),
-                Bucket(k = FieldValue(14), dc = 2822, subAgg = None)
-              ))))))
-        ))))
+    val aggregationsResponse3 = AggregationsResponse(
+      Seq(
+        SignificantTermsAggregationResponse(
+          filter = SignificantTermsAggregationFilter(
+            name = "SignificantTermsAggregation",
+            field = Field(NonAnalyzedField, "organizationCountryCode.-Jamjg"),
+            backgroundTerm = None,
+            minDocCount = 0,
+            size = 3
+          ),
+          docCount = 87766563,
+          buckets = Seq(
+            SignificantTermsBucket(
+              key = FieldValue("100319"),
+              docCount = 2178650,
+              score = 81723.15093613388,
+              bgCount = 2178650,
+              subAggregations = Some(
+                AggregationsResponse(
+                  Seq(
+                    TermsAggregationResponse(
+                      filter = TermAggregationFilter(
+                        name = "TermAggregation",
+                        field = Field(NonAnalyzedField, "organizationFoundedDay.-Jamjg"),
+                        size = 3
+                      ),
+                      buckets = Seq(
+                        Bucket(k = FieldValue(1), dc = 7579, subAgg = None),
+                        Bucket(k = FieldValue(28), dc = 5849, subAgg = None),
+                        Bucket(k = FieldValue(15), dc = 5699, subAgg = None)
+                      )
+                    )
+                  )
+                )
+              )
+            ),
+            SignificantTermsBucket(
+              key = FieldValue("100317"),
+              docCount = 300590,
+              score = 1555.693292939183,
+              bgCount = 300590,
+              subAggregations = Some(
+                AggregationsResponse(
+                  Seq(
+                    TermsAggregationResponse(
+                      filter = TermAggregationFilter(
+                        name = "TermAggregation",
+                        field = Field(NonAnalyzedField, "organizationFoundedDay.-Jamjg"),
+                        size = 3
+                      ),
+                      buckets = Seq(
+                        Bucket(k = FieldValue(1), dc = 3011, subAgg = None),
+                        Bucket(k = FieldValue(19), dc = 2933, subAgg = None),
+                        Bucket(k = FieldValue(14), dc = 2822, subAgg = None)
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
 
     it("check json") {
       val formatString = "json"

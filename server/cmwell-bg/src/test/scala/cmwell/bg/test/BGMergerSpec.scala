@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.bg.test
 
 import cmwell.bg.Merger
@@ -27,7 +25,6 @@ import org.scalatest.{DoNotDiscover, FlatSpec, Matchers, OptionValues}
   */
 @DoNotDiscover
 class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
-
 
   val merger = Merger()
 
@@ -49,7 +46,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
 
   it should "merge WriteCommand with previous version correctly when new lastModified is greater" in {
     val now = DateTime.now()
-    val previous  = ObjectInfoton(
+    val previous = ObjectInfoton(
       "/bg-test-merge/objinfo2",
       "dc1",
       None,
@@ -81,7 +78,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
 
   it should "merge WriteCommand with previous version correctly when new lastModified is equal" in {
     val now = DateTime.now()
-    val previous  = ObjectInfoton(
+    val previous = ObjectInfoton(
       "/bg-test-merge/objinfo2",
       "dc1",
       None,
@@ -112,7 +109,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
 
   it should "merge WriteCommand with previous version correctly when new lastModified is less than" in {
     val now = DateTime.now()
-    val previous  = ObjectInfoton(
+    val previous = ObjectInfoton(
       "/bg-test-merge/objinfo2",
       "dc1",
       None,
@@ -198,9 +195,11 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       None
     )
 
-    val infotons = Seq.tabulate(7){ _ => infoton}
+    val infotons = Seq.tabulate(7) { _ =>
+      infoton
+    }
 
-    val writeCommands = infotons.map{WriteCommand(_)}
+    val writeCommands = infotons.map { WriteCommand(_) }
 
     val merged = merger.merge(Some(infoton), writeCommands).merged
 
@@ -217,9 +216,11 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       None
     )
 
-    val infotons = Seq.tabulate(10){ _ => infoton}
+    val infotons = Seq.tabulate(10) { _ =>
+      infoton
+    }
 
-    val writeCommands = infotons.map{WriteCommand(_)}
+    val writeCommands = infotons.map { WriteCommand(_) }
 
     val merged = merger.merge(Some(infoton), writeCommands).merged
 
@@ -246,7 +247,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
     val writeCommand2 = WriteCommand(infoton2)
     val merged = merger.merge(None, Seq(writeCommand1, writeCommand2))
 
-    merged.merged shouldEqual(Some(infoton2))
+    merged.merged shouldEqual (Some(infoton2))
 
   }
 
@@ -260,7 +261,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
     )
     val writeCommand = WriteCommand(baseInfoton.copyInfoton(lastModified = baseInfoton.lastModified.minus(1)))
     val merged = merger.merge(Some(baseInfoton), Seq(writeCommand))
-    withClue(merged){
+    withClue(merged) {
       merged.merged shouldBe defined
     }
   }

@@ -12,47 +12,42 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package k.grid.service
 
 import akka.actor._
 import akka.actor.Actor.Receive
 import akka.pattern.{ask, pipe}
 import com.typesafe.scalalogging.LazyLogging
-import k.grid.{GridJvm, Grid}
+import k.grid.{Grid, GridJvm}
 import k.grid.service.messages._
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
- * Created by michael on 2/10/16.
- */
+  * Created by michael on 2/10/16.
+  */
+case class ServiceInitInfo(ServiceType: Class[_ <: Actor], preferredJVM: Option[GridJvm], args: Any*)
 
-case class ServiceInitInfo(ServiceType : Class[_ <: Actor], preferredJVM:Option[GridJvm], args : Any*)
+case class ServiceTypes(m: Map[String, ServiceInitInfo] = Map.empty[String, ServiceInitInfo]) {
 
-
-case class ServiceTypes(m : Map[String, ServiceInitInfo] = Map.empty[String, ServiceInitInfo]) {
-
-  def addLocal(name : String, clazz: Class[_ <: Actor], args : Any*) : ServiceTypes = {
-    val initInfo = ServiceInitInfo(clazz, Some(Grid.thisMember), args:_*)
+  def addLocal(name: String, clazz: Class[_ <: Actor], args: Any*): ServiceTypes = {
+    val initInfo = ServiceInitInfo(clazz, Some(Grid.thisMember), args: _*)
     this.copy(m = m.updated(name, initInfo))
   }
 
-  def add(name : String, clazz: Class[_ <: Actor], args : Any*) : ServiceTypes = {
-    val initInfo = ServiceInitInfo(clazz, None, args:_*)
+  def add(name: String, clazz: Class[_ <: Actor], args: Any*): ServiceTypes = {
+    val initInfo = ServiceInitInfo(clazz, None, args: _*)
     this.copy(m = m.updated(name, initInfo))
   }
 
-  def add(mm : Map[String, ServiceInitInfo]) : ServiceTypes = {
+  def add(mm: Map[String, ServiceInitInfo]): ServiceTypes = {
     this.copy(m ++ mm)
   }
 }
 
-
 case object KillService
 // todo: add handling for router death.
-class ServiceRouter(routee : String) extends Actor with LazyLogging {
+class ServiceRouter(routee: String) extends Actor with LazyLogging {
   implicit val timeout = akka.util.Timeout(24.hours)
 
   private[this] var printWarnOnResolvingErrorsTimestamp = 0L
@@ -62,7 +57,7 @@ class ServiceRouter(routee : String) extends Actor with LazyLogging {
       val jvmOpt = LocalServiceManager.getServiceJvm(routee)
       jvmOpt match {
         case Some(jvm) => Grid.selectActor(s"${LocalServiceManager.name}/${routee}", jvm) ! PoisonPill
-        case None => // Do nothing
+        case None      => // Do nothing
       }
     }
     case msg => {
@@ -71,10 +66,9 @@ class ServiceRouter(routee : String) extends Actor with LazyLogging {
         case Some(jvm) =>
           logger.trace(s"[ServiceRouter] routing message($msg) to $routee on $jvm")
           val s = sender()
-          (Grid.selectActor(s"${LocalServiceManager.name}/${routee}", jvm) ? msg) foreach {
-            f =>
-              logger.trace(s"[ServiceRouter] received msg from $routee, piping to sender")
-              s ! f
+          (Grid.selectActor(s"${LocalServiceManager.name}/${routee}", jvm) ? msg).foreach { f =>
+            logger.trace(s"[ServiceRouter] received msg from $routee, piping to sender")
+            s ! f
           }
         case None => {
           // don't pollute the logs more than once per routee every 2 minutes
@@ -116,7 +110,7 @@ object LocalServiceManager extends LazyLogging {
     }
   }
 }
-class LocalServiceManager(st : ServiceTypes) extends Actor with LazyLogging{
+class LocalServiceManager(st: ServiceTypes) extends Actor with LazyLogging {
   implicit val timeout = akka.util.Timeout(15.seconds)
   private[this] lazy val coordinator = {
     val seed = Grid.seedMembers.head
@@ -130,29 +124,27 @@ class LocalServiceManager(st : ServiceTypes) extends Actor with LazyLogging{
     case RegisterServices(gm) => {
       Grid.singletonJvm = gm
       logger.debug(s"[RegisterServices] registering [${st.m.keySet.mkString(",")}]")
-      val statuses = st.m.map {
-        serviceType =>
-          val isRunning = context.child(serviceType._1).isDefined
-          logger.debug(s"[RegisterServices] the Service ${serviceType._1} running: $isRunning")
-          ServiceStatus(serviceType._1, isRunning, serviceType._2.preferredJVM)
+      val statuses = st.m.map { serviceType =>
+        val isRunning = context.child(serviceType._1).isDefined
+        logger.debug(s"[RegisterServices] the Service ${serviceType._1} running: $isRunning")
+        ServiceStatus(serviceType._1, isRunning, serviceType._2.preferredJVM)
       }.toSet
       sender ! ServiceInstantiationRequest(Grid.thisMember, statuses)
     }
     case RunService(name) => {
-      if(context.child(name).isDefined) {
+      if (context.child(name).isDefined) {
         logger.warn(s"[RunService] the Service $name is already running.")
       } else {
-        logger.info(s"[RunService] will run $name, known Services: ${st.m.keySet.mkString("[",",","]")}")
-        st.m.get(name).foreach {
-          t =>
-            val a = context.actorOf(Props(t.ServiceType, t.args: _*), name)
-            logger.debug(s"[RunService] the path of the actor is: ${a.path}")
+        logger.info(s"[RunService] will run $name, known Services: ${st.m.keySet.mkString("[", ",", "]")}")
+        st.m.get(name).foreach { t =>
+          val a = context.actorOf(Props(t.ServiceType, t.args: _*), name)
+          logger.debug(s"[RunService] the path of the actor is: ${a.path}")
         }
       }
     }
     case StopService(name) => {
       logger.info(s"[StopService] $name")
-      context.child(name).foreach( _ ! PoisonPill )
+      context.child(name).foreach(_ ! PoisonPill)
     }
   }
 

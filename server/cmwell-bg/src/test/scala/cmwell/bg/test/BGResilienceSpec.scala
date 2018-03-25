@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.bg.test
 
 import java.util.Properties
@@ -41,18 +39,18 @@ import scala.io.Source
   * Created by israel on 13/09/2016.
   */
 @DoNotDiscover
-class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers with LazyLogging {
+class BGResilienceSpec extends FlatSpec with BeforeAndAfterAll with Matchers with LazyLogging {
 
-  var kafkaProducer:KafkaProducer[Array[Byte], Array[Byte]] = _
-  var cmwellBGActor:ActorRef = _
-  var dao:Dao = _
-  var testIRWMockupService:IRWService = _
-  var irwService:IRWService = _
-  var zStore:ZStore = _
-  var offsetsService:OffsetsService = _
-  var ftsServiceES:FTSServiceNew = _
-  var bgConfig:Config = _
-  var actorSystem:ActorSystem = _
+  var kafkaProducer: KafkaProducer[Array[Byte], Array[Byte]] = _
+  var cmwellBGActor: ActorRef = _
+  var dao: Dao = _
+  var testIRWMockupService: IRWService = _
+  var irwService: IRWService = _
+  var zStore: ZStore = _
+  var offsetsService: OffsetsService = _
+  var ftsServiceES: FTSServiceNew = _
+  var bgConfig: Config = _
+  var actorSystem: ActorSystem = _
   import concurrent.ExecutionContext.Implicits.global
 
   override def beforeAll = {
@@ -63,16 +61,17 @@ class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers wi
     producerProperties.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
     kafkaProducer = new KafkaProducer[Array[Byte], Array[Byte]](producerProperties)
 
-    dao = Dao("Test","data2")
+    dao = Dao("Test", "data2")
     testIRWMockupService = FailingIRWServiceMockup(dao, 13)
     zStore = ZStore(dao)
-    irwService = IRWService.newIRW(dao, 25 , true, 0.seconds)
+    irwService = IRWService.newIRW(dao, 25, true, 0.seconds)
     offsetsService = new ZStoreOffsetsService(zStore)
     ftsServiceES = FailingFTSServiceMockup("es.test.yml", 5)
 
-
     // wait for green status
-    ftsServiceES.client.admin().cluster()
+    ftsServiceES.client
+      .admin()
+      .cluster()
       .prepareHealth()
       .setWaitForGreenStatus()
       .setTimeout(TimeValue.timeValueMinutes(5))
@@ -83,25 +82,35 @@ class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers wi
     ftsServiceES.client.admin().indices().delete(new DeleteIndexRequest("_all"))
 
     // load indices template
-    val indicesTemplate = Source.fromURL(this.getClass.getResource("/indices_template_new.json")).getLines.reduceLeft(_ + _)
-    ftsServiceES.client.admin().indices().preparePutTemplate("indices_template").setSource(indicesTemplate).execute().actionGet()
+    val indicesTemplate =
+      Source.fromURL(this.getClass.getResource("/indices_template_new.json")).getLines.reduceLeft(_ + _)
+    ftsServiceES.client
+      .admin()
+      .indices()
+      .preparePutTemplate("indices_template")
+      .setSource(indicesTemplate)
+      .execute()
+      .actionGet()
 
     // create current index
     ftsServiceES.client.admin().indices().prepareCreate("cm_well_0").execute().actionGet()
 
-    ftsServiceES.client.admin().indices().prepareAliases()
+    ftsServiceES.client
+      .admin()
+      .indices()
+      .prepareAliases()
       .addAlias("cm_well_0", "cm_well_all")
       .addAlias("cm_well_0", "cm_well_latest")
-      .execute().actionGet()
-
-
+      .execute()
+      .actionGet()
 
     bgConfig = ConfigFactory.load
     bgConfig.withValue("cmwell.bg.esActionsBulkSize", ConfigValueFactory.fromAnyRef(100))
 
     actorSystem = ActorSystem("cmwell-bg-test-system")
 
-    cmwellBGActor = actorSystem.actorOf(CMWellBGActor.props(0, bgConfig, testIRWMockupService, ftsServiceES, zStore, offsetsService))
+    cmwellBGActor =
+      actorSystem.actorOf(CMWellBGActor.props(0, bgConfig, testIRWMockupService, ftsServiceES, zStore, offsetsService))
 
     println("waiting 10 seconds for all components to load")
     Thread.sleep(10000)
@@ -110,58 +119,58 @@ class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers wi
 
   "Resilient BG" should "process commands as usual on circumvented BGActor (periodically failing IRWService) after suspending and resuming" in {
 
-    logger info "waiting 10 seconds for circumvented BGActor to start"
+    logger.info("waiting 10 seconds for circumvented BGActor to start")
 
     Thread.sleep(10000)
 
     val numOfCommands = 1500
     // prepare sequence of writeCommands
-    val writeCommands = Seq.tabulate(numOfCommands){ n =>
-      val infoton = ObjectInfoton(
-        path = s"/cmt/cm/bg-test/circumvented_bg/info$n",
-        dc = "dc",
-        indexTime = None,
-        fields = Some(Map("games" -> Set(FieldValue("Taki"), FieldValue("Race")))))
+    val writeCommands = Seq.tabulate(numOfCommands) { n =>
+      val infoton = ObjectInfoton(path = s"/cmt/cm/bg-test/circumvented_bg/info$n",
+                                  dc = "dc",
+                                  indexTime = None,
+                                  fields = Some(Map("games" -> Set(FieldValue("Taki"), FieldValue("Race")))))
       WriteCommand(infoton)
     }
 
     // make kafka records out of the commands
-    val pRecords = writeCommands.map{ writeCommand =>
+    val pRecords = writeCommands.map { writeCommand =>
       val commandBytes = CommandSerializer.encode(writeCommand)
       new ProducerRecord[Array[Byte], Array[Byte]]("persist_topic", commandBytes)
     }
 
     // send them all
-    pRecords.foreach { kafkaProducer.send(_)}
+    pRecords.foreach { kafkaProducer.send(_) }
 
     println("waiting for 10 seconds")
     Thread.sleep(10000)
 
-    for( i <- 0 to numOfCommands-1) {
+    for (i <- 0 to numOfCommands - 1) {
       val nextResult = Await.result(irwService.readPathAsync(s"/cmt/cm/bg-test/circumvented_bg/info$i"), 5.seconds)
-      withClue(nextResult, s"/cmt/cm/bg-test/circumvented_bg/info$i"){
+      withClue(nextResult, s"/cmt/cm/bg-test/circumvented_bg/info$i") {
         nextResult should not be empty
       }
     }
 
-    for( i <- 0 to numOfCommands-1) {
+    for (i <- 0 to numOfCommands - 1) {
       val searchResponse = Await.result(
         ftsServiceES.search(
           pathFilter = None,
-          fieldsFilter = Some(SingleFieldFilter(Must, Equals, "system.path", Some(s"/cmt/cm/bg-test/circumvented_bg/info$i"))),
+          fieldsFilter =
+            Some(SingleFieldFilter(Must, Equals, "system.path", Some(s"/cmt/cm/bg-test/circumvented_bg/info$i"))),
           datesFilter = None,
           paginationParams = PaginationParams(0, 200)
         ),
         10.seconds
       )
-      withClue(s"/cmt/cm/bg-test/circumvented_bg/info$i"){
+      withClue(s"/cmt/cm/bg-test/circumvented_bg/info$i") {
         searchResponse.infotons.size should equal(1)
       }
     }
   }
 
   override def afterAll() = {
-    logger debug "afterAll: sending Shutdown"
+    logger.debug("afterAll: sending Shutdown")
     cmwellBGActor ! ShutDown
     Thread.sleep(10000)
     ftsServiceES.shutdown()

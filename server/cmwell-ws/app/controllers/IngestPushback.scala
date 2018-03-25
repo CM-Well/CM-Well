@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package controllers
 
 import akka.actor.Actor
@@ -34,8 +32,10 @@ import scala.concurrent.duration.DurationLong
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class IngestPushback @Inject() (backPressureToggler: BackPressureToggler, dashBoard: DashBoard, pbp: PlayBodyParsers)
-                               (implicit override val executionContext: ExecutionContext) extends ActionBuilder[Request,AnyContent] with LazyLogging {
+class IngestPushback @Inject()(backPressureToggler: BackPressureToggler, dashBoard: DashBoard, pbp: PlayBodyParsers)(
+  implicit override val executionContext: ExecutionContext
+) extends ActionBuilder[Request, AnyContent]
+    with LazyLogging {
 
   override val parser = pbp.defaultBodyParser
 
@@ -46,8 +46,11 @@ class IngestPushback @Inject() (backPressureToggler: BackPressureToggler, dashBo
     serverIsWarmingUp = false
   }
 
-  lazy val bGMonitorProxy = new SingleElementLazyAsyncCache[OffsetsInfo](10000L,null)({
-    Grid.serviceRef(BGMonitorActor.serviceName).ask(GetOffsetInfo)(akka.util.Timeout(bgMonitorAskTimeout), Actor.noSender).mapTo[OffsetsInfo]
+  lazy val bGMonitorProxy = new SingleElementLazyAsyncCache[OffsetsInfo](10000L, null)({
+    Grid
+      .serviceRef(BGMonitorActor.serviceName)
+      .ask(GetOffsetInfo)(akka.util.Timeout(bgMonitorAskTimeout), Actor.noSender)
+      .mapTo[OffsetsInfo]
   })
 
   // we use our own custom filter instead of mixing in ActionFilter,
@@ -55,34 +58,41 @@ class IngestPushback @Inject() (backPressureToggler: BackPressureToggler, dashBo
   // with wrapping user code in invokeBlock.
   // (note that ActionFilter finalizes invokeBlock...)
   private def filterByKLog(): Future[Option[Result]] = {
-    bGMonitorProxy.getAndUpdateIfNeeded.map {
-      case OffsetsInfo(partitionOffsetsInfos, _) => {
-        val (persist, index) = partitionOffsetsInfos.values.partition(_.topic == "persist_topic")
-        val persistLoad = persist.foldLeft(Map.empty[Int, Long]) {
-          case (sumsByPartition, PartitionOffsetsInfo(_, partition, readOffset, writeOffset, _)) =>
-            sumsByPartition.updated(partition, sumsByPartition.getOrElse(partition, 0L) + writeOffset - readOffset)
+    bGMonitorProxy.getAndUpdateIfNeeded
+      .map {
+        case OffsetsInfo(partitionOffsetsInfos, _) => {
+          val (persist, index) = partitionOffsetsInfos.values.partition(_.topic == "persist_topic")
+          val persistLoad = persist.foldLeft(Map.empty[Int, Long]) {
+            case (sumsByPartition, PartitionOffsetsInfo(_, partition, readOffset, writeOffset, _)) =>
+              sumsByPartition.updated(partition, sumsByPartition.getOrElse(partition, 0L) + writeOffset - readOffset)
+          }
+          val indexLoad = index.foldLeft(Map.empty[Int, Long]) {
+            case (sumsByPartition, PartitionOffsetsInfo(_, partition, readOffset, writeOffset, _)) =>
+              sumsByPartition.updated(partition, sumsByPartition.getOrElse(partition, 0L) + writeOffset - readOffset)
+          }
+          if (persistLoad.exists(_._2 > maximumQueueBuildupAllowed))
+            Some(Results.ServiceUnavailable("Persistence queue is full. You may try again later"))
+          else if (indexLoad.exists(_._2 > maximumQueueBuildupAllowed))
+            Some(Results.ServiceUnavailable("Index queue is full. You may try again later"))
+          else None
         }
-        val indexLoad = index.foldLeft(Map.empty[Int, Long]) {
-          case (sumsByPartition, PartitionOffsetsInfo(_, partition, readOffset, writeOffset, _)) =>
-            sumsByPartition.updated(partition, sumsByPartition.getOrElse(partition, 0L) + writeOffset - readOffset)
-        }
-        if (persistLoad.exists(_._2 > maximumQueueBuildupAllowed))
-          Some(Results.ServiceUnavailable("Persistence queue is full. You may try again later"))
-        else if (indexLoad.exists(_._2 > maximumQueueBuildupAllowed))
-          Some(Results.ServiceUnavailable("Index queue is full. You may try again later"))
-        else None
       }
-    }.recover {
-      case ex: akka.pattern.AskTimeoutException =>
-        if(!serverIsWarmingUp) {
-          logger.error("Kafka queue monitor can't accept monitoring requests at the moment. You may try again later", ex)
+      .recover {
+        case ex: akka.pattern.AskTimeoutException =>
+          if (!serverIsWarmingUp) {
+            logger.error("Kafka queue monitor can't accept monitoring requests at the moment. You may try again later",
+                         ex)
+          }
+          Some(
+            Results.ServiceUnavailable(
+              "Kafka queue monitor can't accept monitoring requests at the moment. You may try again later"
+            )
+          )
+        case e: Throwable => {
+          logger.error("unexpected error occurred in IngestPushback.filterByKLog()", e)
+          Some(Results.InternalServerError("Unexpected error occurred in IngestPushback.filterByKLog()"))
         }
-        Some(Results.ServiceUnavailable("Kafka queue monitor can't accept monitoring requests at the moment. You may try again later"))
-      case e: Throwable => {
-        logger.error("unexpected error occurred in IngestPushback.filterByKLog()",e)
-        Some(Results.InternalServerError("Unexpected error occurred in IngestPushback.filterByKLog()"))
       }
-    }
   }
 
   override def invokeBlock[A](request: Request[A], block: Request[A] => Future[Result]): Future[Result] = {
@@ -97,13 +107,20 @@ class IngestPushback @Inject() (backPressureToggler: BackPressureToggler, dashBo
       else SimpleScheduler.schedule(ingestPushbackByServer - requestTime)(result)
     }
 
-    if(request.getQueryString("priority").isDefined) block(request) // Authorization of Priority usage is handled in InputHandler. Existence of the query parameter is sufficient to do nothing here.
-    else PersistentDMap.get(backPressureToggler.BACKPRESSURE_TRIGGER).flatMap(_.as[String]).getOrElse(Settings.pushbackpressure) match {
-      case "new" | "all" => filterByKLog().flatMap(resOptToFilterBy)
-      case "off" => block(request)
-      case "bar" => Future.successful(Results.ServiceUnavailable(s"Ingests has been barred by an admin. Please try again later."))
-      case unknown => Future.successful(Results.InternalServerError(s"unknown state for 'BACKPRESSURE_TRIGGER' [$unknown]"))
-    }
+    if (request.getQueryString("priority").isDefined)
+      block(request) // Authorization of Priority usage is handled in InputHandler. Existence of the query parameter is sufficient to do nothing here.
+    else
+      PersistentDMap
+        .get(backPressureToggler.BACKPRESSURE_TRIGGER)
+        .flatMap(_.as[String])
+        .getOrElse(Settings.pushbackpressure) match {
+        case "new" | "all" => filterByKLog().flatMap(resOptToFilterBy)
+        case "off"         => block(request)
+        case "bar" =>
+          Future.successful(Results.ServiceUnavailable(s"Ingests has been barred by an admin. Please try again later."))
+        case unknown =>
+          Future.successful(Results.InternalServerError(s"unknown state for 'BACKPRESSURE_TRIGGER' [$unknown]"))
+      }
   }
 }
 

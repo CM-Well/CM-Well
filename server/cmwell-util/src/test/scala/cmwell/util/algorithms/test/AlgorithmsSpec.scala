@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.util.algorithms.test
 
 import cmwell.util.algorithms.{UFNode, UnionFind}
@@ -26,14 +24,14 @@ import org.scalatest.{Matchers, PropSpec}
 // format: off
 class AlgorithmsSpec extends PropSpec with PropertyChecks with Matchers {
   /*
-     * Test case:
-     *
-     *  0  1--2
-     *  |  |
-     *  3  4  5
-     *
-     *  Using Strings ("one","two",etc.) as data of nodes.
-     */
+   * Test case:
+   *
+   *  0  1--2
+   *  |  |
+   *  3  4  5
+   *
+   *  Using Strings ("one","two",etc.) as data of nodes.
+   */
   val uf: UnionFind[String] = new UnionFind(Vector(UFNode("one"), UFNode("two"), UFNode("three"), UFNode("four"), UFNode("five"), UFNode("six"))).
     union(3, 0).
     union(4, 1).

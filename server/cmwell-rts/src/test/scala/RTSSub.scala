@@ -12,18 +12,16 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 import cmwell.rts._
-import k.grid.{GridConnection, Grid}
+import k.grid.{Grid, GridConnection}
 import scala.io.StdIn
 
 /**
- * Created by markz on 7/13/14.
- */
+  * Created by markz on 7/13/14.
+  */
 object RTSSub extends App {
 
-  val ip : String = "127.0.0.1"
+  val ip: String = "127.0.0.1"
 
 //  Grid.roles = Set("subscriber")
 

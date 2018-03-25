@@ -12,15 +12,13 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.ctrl.controllers
 
 import cmwell.ctrl.config.Config
 
 /**
- * Created by michael on 2/16/15.
- */
+  * Created by michael on 2/16/15.
+  */
 object WebserverController extends ComponentController(s"${Config.cmwellHome}/app/ws", "/log/ws/", Set.empty[String]) {
-  override val startScriptPattern : String = "start.sh"
+  override val startScriptPattern: String = "start.sh"
 }

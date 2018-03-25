@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.utils.chunkers
 
 import akka.stream.scaladsl.Keep
@@ -23,12 +21,13 @@ import cmwell.tools.data.helpers.BaseStreamSpec
 
 import scala.concurrent.duration._
 
-class GroupSpecAutoFusingOn  extends { val autoFusing = true  } with GroupChunkerSpec
+class GroupSpecAutoFusingOn extends { val autoFusing = true } with GroupChunkerSpec
 class GroupSpecAutoFusingOff extends { val autoFusing = false } with GroupChunkerSpec
 
 trait GroupChunkerSpec extends BaseStreamSpec {
   "GroupChunker" should "emit elements when new group has arrived" in {
-    val (pub, sub) = TestSource.probe[String]
+    val (pub, sub) = TestSource
+      .probe[String]
       .map(x => ByteString(x.toString))
       .via(GroupChunker(b => ByteString(b.size), 2.seconds)) // group byte-strings by size
       .map(_.map(_.utf8String))
@@ -53,7 +52,8 @@ trait GroupChunkerSpec extends BaseStreamSpec {
   }
 
   it should "emit elements when time threshold has reached" in {
-    val (pub, sub) = TestSource.probe[String]
+    val (pub, sub) = TestSource
+      .probe[String]
       .map(x => ByteString(x.toString))
       .via(GroupChunker(b => ByteString(b.size), 2.seconds)) // group byte-strings by size
       .map(_.map(_.utf8String))
@@ -71,7 +71,7 @@ trait GroupChunkerSpec extends BaseStreamSpec {
     pub.sendNext("four")
     pub.sendNext("five")
     pub.sendComplete()
-    sub.expectNext(Seq("four","five"))
+    sub.expectNext(Seq("four", "five"))
     sub.expectComplete()
   }
 }

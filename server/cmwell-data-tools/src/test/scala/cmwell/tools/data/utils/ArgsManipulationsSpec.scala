@@ -12,20 +12,18 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.utils
 
 import cmwell.tools.data.utils.ArgsManipulations._
 import org.scalatest._
 
-class ArgsManipulationsSpec extends FlatSpec with Matchers{
+class ArgsManipulationsSpec extends FlatSpec with Matchers {
   "format host" should "add http prefix" in {
     val input = "my-string"
     val expected = s"http://$input"
     val result = formatHost(input)
 
-    result should be (expected)
+    result should be(expected)
   }
 
   it should "not strip http prefix" in {
@@ -33,7 +31,7 @@ class ArgsManipulationsSpec extends FlatSpec with Matchers{
     val expected = input
     val result = formatHost(expected)
 
-    result should be (expected)
+    result should be(expected)
   }
 
   "format path" should "add / prefix" in {
@@ -41,21 +39,21 @@ class ArgsManipulationsSpec extends FlatSpec with Matchers{
     val expected = "/" + input
     val result = formatPath(input)
 
-    result should be ("/" + input)
+    result should be("/" + input)
   }
 
   it should "not add / prefix" in {
     val input = "/my-string"
     val result = formatPath(input)
 
-    result should be (input)
+    result should be(input)
   }
 
   "extract URL components" should "extract only host" in {
     val host = "api-garden"
     val result = extractBaseUrl(host)
 
-    result should be (HttpAddress(host = host, port = 80))
+    result should be(HttpAddress(host = host, port = 80))
   }
 
   it should "extract host and port" in {
@@ -63,7 +61,7 @@ class ArgsManipulationsSpec extends FlatSpec with Matchers{
     val port = 8080
 
     val result = extractBaseUrl(s"$host:$port")
-    result should be (HttpAddress(host = host, port = port))
+    result should be(HttpAddress(host = host, port = port))
   }
 
   it should "extract host and uri prefix" in {
@@ -71,7 +69,7 @@ class ArgsManipulationsSpec extends FlatSpec with Matchers{
     val uriPrefix = "/uri/dummy"
 
     val result = extractBaseUrl(s"$host$uriPrefix")
-    result should be (HttpAddress(host = host, port = 80, uriPrefix = uriPrefix))
+    result should be(HttpAddress(host = host, port = 80, uriPrefix = uriPrefix))
   }
 
   it should "extract host, port and uri prefix" in {
@@ -80,6 +78,6 @@ class ArgsManipulationsSpec extends FlatSpec with Matchers{
     val uriPrefix = "/uri/dummy"
 
     val result = extractBaseUrl(s"$host:$port$uriPrefix")
-    result should be (HttpAddress(host = host, port = port, uriPrefix = uriPrefix))
+    result should be(HttpAddress(host = host, port = port, uriPrefix = uriPrefix))
   }
 }

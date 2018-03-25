@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.dc.stream
 
 import akka.http.scaladsl.model.{HttpHeader, HttpResponse}
@@ -34,7 +32,7 @@ object Util extends LazyLogging {
       case badResponse: FuturedBodyException =>
         badResponse.body.onComplete {
           case Success(body) => logger.trace(s"${badResponse.getCause.getMessage} body: $body")
-          case Failure(e) => logger.trace(s"${badResponse.getCause.getMessage} body: Couldn't get it. Exception: ", e)
+          case Failure(e)    => logger.trace(s"${badResponse.getCause.getMessage} body: Couldn't get it. Exception: ", e)
         }
       case _ =>
     }
@@ -45,7 +43,7 @@ object Util extends LazyLogging {
       case badResponse: FuturedBodyException =>
         badResponse.body.onComplete {
           case Success(body) => logger.info(s"${badResponse.getCause.getMessage} body: $body")
-          case Failure(e) => logger.info(s"${badResponse.getCause.getMessage} body: Couldn't get it. Exception: ", e)
+          case Failure(e)    => logger.info(s"${badResponse.getCause.getMessage} body: Couldn't get it. Exception: ", e)
         }
       case _ =>
     }
@@ -56,7 +54,7 @@ object Util extends LazyLogging {
       case badResponse: FuturedBodyException =>
         badResponse.body.onComplete {
           case Success(body) => logger.error(s"${badResponse.getCause.getMessage} body: $body")
-          case Failure(e) => logger.error(s"${badResponse.getCause.getMessage} body: Couldn't get it. Exception: ", e)
+          case Failure(e)    => logger.error(s"${badResponse.getCause.getMessage} body: Couldn't get it. Exception: ", e)
         }
       case _ =>
     }
@@ -67,7 +65,7 @@ object Util extends LazyLogging {
       case badResponse: FuturedBodyException =>
         badResponse.body.onComplete {
           case Success(body) => logger.warn(s"${badResponse.getCause.getMessage} body: $body")
-          case Failure(e) => logger.warn(s"${badResponse.getCause.getMessage} body: Couldn't get it. Exception: ", e)
+          case Failure(e)    => logger.warn(s"${badResponse.getCause.getMessage} body: Couldn't get it. Exception: ", e)
         }
       case _ =>
     }

@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.kafka
 
 import com.typesafe.scalalogging.LazyLogging
@@ -23,24 +21,24 @@ class KafkaTopicAssignerTest extends FunSpec with Matchers with Inspectors with 
 
   def verifyPartitionsAndBuildReplicaCounts(currentAssignment: Assignment,
                                             newAssignment: Assignment,
-                                            minimalMovementThreshold: Int): Map[Int,Int] = {
-    newAssignment.foldLeft(Map.empty[Int,Int]) {
-      case (brokerReplicaCounts,(partition,replicas)) => {
+                                            minimalMovementThreshold: Int): Map[Int, Int] = {
+    newAssignment.foldLeft(Map.empty[Int, Int]) {
+      case (brokerReplicaCounts, (partition, replicas)) => {
         val replicaSet = replicas.toSet
 
         // Ensure that no broker is assigned twice to a replica
-        replicas should have size replicaSet.size
+        (replicas should have).size(replicaSet.size)
 
         // Keep track of how often a broker pops up
         val brokerReplicaCountsUpdated = replicas.foldLeft(brokerReplicaCounts) {
-          case(brc,broker) =>
-            brc.updated(broker,brc.getOrElse(broker,0) + 1)
+          case (brc, broker) =>
+            brc.updated(broker, brc.getOrElse(broker, 0) + 1)
         }
 
         // Ensure that movement was minimal
         // Each partition should have brokers from the original assignment that "stuck"
         val prevReplicaSet = currentAssignment(partition).toSet
-        val intersection = replicaSet intersect prevReplicaSet
+        val intersection = replicaSet.intersect(prevReplicaSet)
         intersection.size should be >= minimalMovementThreshold
 
         brokerReplicaCountsUpdated
@@ -51,18 +49,10 @@ class KafkaTopicAssignerTest extends FunSpec with Matchers with Inspectors with 
   describe("KafkaAssigner should") {
     it("expand rack aware") {
       val topic = "test"
-      val currentAssignment: Assignment = Map(
-        0 -> List(10,11),
-        1 -> List(11,12),
-        2 -> List(12,10),
-        3 -> List(10,12))
-      val newBrokers = Set(10,11,12,13,14)
-      val rackAssignments = Map(
-        10 -> "a",
-        11 -> "b",
-        12 -> "c",
-        13 -> "a",
-        14 -> "b")
+      val currentAssignment: Assignment =
+        Map(0 -> List(10, 11), 1 -> List(11, 12), 2 -> List(12, 10), 3 -> List(10, 12))
+      val newBrokers = Set(10, 11, 12, 13, 14)
+      val rackAssignments = Map(10 -> "a", 11 -> "b", 12 -> "c", 13 -> "a", 14 -> "b")
       val assigner = new KafkaAssigner
       val newAssignment = assigner.generateAssignment(topic, currentAssignment, newBrokers, rackAssignments, -1)
       val brokerReplicaCounts = verifyPartitionsAndBuildReplicaCounts(currentAssignment, newAssignment, 1)
@@ -77,12 +67,9 @@ class KafkaTopicAssignerTest extends FunSpec with Matchers with Inspectors with 
 
     it("expand cluster") {
       val topic = "test"
-      val currentAssignment: Assignment = Map(
-        0 -> List(10,11),
-        1 -> List(11,12),
-        2 -> List(12,10),
-        3 -> List(10,12))
-      val newBrokers = Set(10,11,12,13)
+      val currentAssignment: Assignment =
+        Map(0 -> List(10, 11), 1 -> List(11, 12), 2 -> List(12, 10), 3 -> List(10, 12))
+      val newBrokers = Set(10, 11, 12, 13)
       val assigner = new KafkaAssigner
       val newAssignment = assigner.generateAssignment(topic, currentAssignment, newBrokers, Map.empty, -1)
       val brokerReplicaCounts = verifyPartitionsAndBuildReplicaCounts(currentAssignment, newAssignment, 1)
@@ -91,18 +78,15 @@ class KafkaTopicAssignerTest extends FunSpec with Matchers with Inspectors with 
       // In this case, there are 4 brokers, 4 partitions, and 2 replicas,
       // so each broker should be serving exactly 2 total partition replicas.
       forAll(brokerReplicaCounts) {
-        case (broker,count) => count should be(2)
+        case (broker, count) => count should be(2)
       }
     }
 
-    it("decommission"){
+    it("decommission") {
       val topic = "test"
-      val currentAssignment: Assignment = Map(
-        0 -> List(10,11),
-        1 -> List(11,12),
-        2 -> List(12,13),
-        3 -> List(13,10))
-      val newBrokers = Set(10,11,13)
+      val currentAssignment: Assignment =
+        Map(0 -> List(10, 11), 1 -> List(11, 12), 2 -> List(12, 13), 3 -> List(13, 10))
+      val newBrokers = Set(10, 11, 13)
       val assigner = new KafkaAssigner
       val newAssignment = assigner.generateAssignment(topic, currentAssignment, newBrokers, Map.empty, -1)
       val brokerReplicaCounts = verifyPartitionsAndBuildReplicaCounts(currentAssignment, newAssignment, 1)
@@ -118,12 +102,9 @@ class KafkaTopicAssignerTest extends FunSpec with Matchers with Inspectors with 
 
     it("replace node") {
       val topic = "test"
-      val currentAssignment: Assignment = Map(
-        0 -> List(10,11),
-        1 -> List(11,12),
-        2 -> List(12,10),
-        3 -> List(10,12))
-      val newBrokers = Set(10,11,13)
+      val currentAssignment: Assignment =
+        Map(0 -> List(10, 11), 1 -> List(11, 12), 2 -> List(12, 10), 3 -> List(10, 12))
+      val newBrokers = Set(10, 11, 13)
       val assigner = new KafkaAssigner
       val newAssignment = assigner.generateAssignment(topic, currentAssignment, newBrokers, Map.empty, -1)
       val brokerReplicaCounts = verifyPartitionsAndBuildReplicaCounts(currentAssignment, newAssignment, 1)
@@ -135,15 +116,15 @@ class KafkaTopicAssignerTest extends FunSpec with Matchers with Inspectors with 
 
       // 11 should still be present in 1, and it can be joined by either 10 or 13
       newAssignment(1) should contain(11)
-      newAssignment(1) should (contain(10) or contain(13))
+      newAssignment(1) should (contain(10).or(contain(13)))
 
       // 10 should still be present in 2, and it can be joined by either 11 or 13
       newAssignment(2) should contain(10)
-      newAssignment(2) should (contain(11) or contain(13))
+      newAssignment(2) should (contain(11).or(contain(13)))
 
       // 10 should still be present in 3, and it can be joined by either 11 or 13
       newAssignment(3) should contain(10)
-      newAssignment(3) should (contain(11) or contain(13))
+      newAssignment(3) should (contain(11).or(contain(13)))
     }
   }
 }

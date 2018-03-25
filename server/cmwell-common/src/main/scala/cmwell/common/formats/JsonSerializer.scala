@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.common.formats
 
 import java.io._
@@ -26,17 +24,17 @@ import com.fasterxml.jackson.core._
 import com.typesafe.scalalogging.LazyLogging
 
 /**
- * Created with IntelliJ IDEA.
- * User: israel
- * Date: 12/19/13
- * Time: 3:48 PM
- * To change this template use File | Settings | File Templates.
- */
+  * Created with IntelliJ IDEA.
+  * User: israel
+  * Date: 12/19/13
+  * Time: 3:48 PM
+  * To change this template use File | Settings | File Templates.
+  */
 object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
 
-  val typeChars = List(/*'s',*/'i','l','w','b','d','f')
+  val typeChars = List(/*'s',*/ 'i', 'l', 'w', 'b', 'd', 'f')
 
-  def encodeCommand(command:Command):Array[Byte] = {
+  def encodeCommand(command: Command): Array[Byte] = {
     val baos = new ByteArrayOutputStream()
     val jsonGenerator = jsonFactory.createGenerator(baos).enable(JsonGenerator.Feature.AUTO_CLOSE_TARGET)
     encodeCommandWithGenerator(command, jsonGenerator)
@@ -44,7 +42,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
     baos.toByteArray
   }
 
-  def decodeCommand(in:Array[Byte]):Command = {
+  def decodeCommand(in: Array[Byte]): Command = {
     val bais = new ByteArrayInputStream(in)
     val jsonParser = jsonFactory.createParser(bais).enable(JsonParser.Feature.AUTO_CLOSE_SOURCE)
     val command = decodeCommandWithParser(in, jsonParser)
@@ -53,7 +51,11 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
   }
 
   //TODO: when TLog serialization is replaced (to binary serialization), ditch the toEs boolean (since it will always be to ES...)
-  def encodeInfoton(infoton:Infoton, omitBinaryData:Boolean = false, toEs: Boolean = false, newBG:Boolean = false, current:Boolean = true):Array[Byte] = {
+  def encodeInfoton(infoton: Infoton,
+                    omitBinaryData: Boolean = false,
+                    toEs: Boolean = false,
+                    newBG: Boolean = false,
+                    current: Boolean = true): Array[Byte] = {
     val baos = new ByteArrayOutputStream()
     val jsonGenerator = jsonFactory.createGenerator(baos).enable(JsonGenerator.Feature.AUTO_CLOSE_TARGET)
     encodeInfotonWithGenerator(infoton, jsonGenerator, omitBinaryData, toEs, newBG, current)
@@ -61,13 +63,14 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
     baos.toByteArray
   }
 
-  def decodeTrackingIDWithParser(jsonParser: JsonParser): Option[Either[Vector[StatusTracking],String]] = {
+  def decodeTrackingIDWithParser(jsonParser: JsonParser): Option[Either[Vector[StatusTracking], String]] = {
     if (jsonParser.nextToken() == JsonToken.VALUE_STRING) Some(Right(jsonParser.getText()))
     else {
       assume(jsonParser.currentToken == JsonToken.START_ARRAY, s"expected value of tid is either a string or an array")
       val b = Vector.newBuilder[StatusTracking]
       while (jsonParser.nextToken() != JsonToken.END_ARRAY) {
-        assume(jsonParser.currentToken == JsonToken.VALUE_STRING, s"expected value for tid field\n${jsonParser.getCurrentLocation.toString}")
+        assume(jsonParser.currentToken == JsonToken.VALUE_STRING,
+               s"expected value for tid field\n${jsonParser.getCurrentLocation.toString}")
         val t = StatusTrackingFormat.parseTrackingStatus(jsonParser.getText)
         assume(t.isSuccess, s"expected success for tid field\n$t")
         b += t.get
@@ -77,62 +80,75 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
   }
 
   def decodePrevUUIDWithParser(jsonParser: JsonParser): Option[String] = {
-    assume(jsonParser.nextToken() == JsonToken.VALUE_STRING, s"expected uuid string for 'prevUUID' field\n${jsonParser.getCurrentLocation.toString}")
+    assume(jsonParser.nextToken() == JsonToken.VALUE_STRING,
+           s"expected uuid string for 'prevUUID' field\n${jsonParser.getCurrentLocation.toString}")
     val rv = Some(jsonParser.getText())
     //consume "type" field name
-    assume(jsonParser.nextToken()==JsonToken.FIELD_NAME && "type".equals(jsonParser.getCurrentName()), s"expected 'type' field name\n${jsonParser.getCurrentLocation.toString}")
+    assume(
+      jsonParser.nextToken() == JsonToken.FIELD_NAME && "type".equals(jsonParser.getCurrentName()),
+      s"expected 'type' field name\n${jsonParser.getCurrentLocation.toString}"
+    )
     rv
   }
 
-  def decodeCommandWithParser(originalJson: Array[Byte], jsonParser: JsonParser, assumeStartObject:Boolean = true):Command = {
-      // If requested, expect start of command object
-    if(assumeStartObject) {
-      assume(jsonParser.nextToken()== JsonToken.START_OBJECT, s"expected start of command object\n${jsonParser.getCurrentLocation.toString}")
+  def decodeCommandWithParser(originalJson: Array[Byte],
+                              jsonParser: JsonParser,
+                              assumeStartObject: Boolean = true): Command = {
+    // If requested, expect start of command object
+    if (assumeStartObject) {
+      assume(jsonParser.nextToken() == JsonToken.START_OBJECT,
+             s"expected start of command object\n${jsonParser.getCurrentLocation.toString}")
     }
 
-    assume(jsonParser.nextToken()==JsonToken.FIELD_NAME, s"expected field")
+    assume(jsonParser.nextToken() == JsonToken.FIELD_NAME, s"expected field")
     jsonParser.getCurrentName() match {
       case "type" => logger.error("This version (0) is not supported anymore!!!"); !!!
       case "version" => {
         val jt = jsonParser.nextToken()
         val ver = jsonParser.getText
 
-        assume(jsonParser.nextToken()==JsonToken.FIELD_NAME, s"expected 'type','tid',or 'prevUUID' field name\n${jsonParser.getCurrentLocation.toString}")
+        assume(jsonParser.nextToken() == JsonToken.FIELD_NAME,
+               s"expected 'type','tid',or 'prevUUID' field name\n${jsonParser.getCurrentLocation.toString}")
 
-        val (tidOpt,prevUUIDOpt) = jsonParser.getCurrentName() match {
-          case "type" => None -> None
+        val (tidOpt, prevUUIDOpt) = jsonParser.getCurrentName() match {
+          case "type"     => None -> None
           case "prevUUID" => None -> decodePrevUUIDWithParser(jsonParser)
-          case "tid" => decodeTrackingIDWithParser(jsonParser) -> {
-            assume(jsonParser.nextToken()==JsonToken.FIELD_NAME, s"expected 'type',or 'prevUUID' field name\n${jsonParser.getCurrentLocation.toString}")
-            jsonParser.getCurrentName() match {
-              case "type" => None
-              case "prevUUID" => decodePrevUUIDWithParser(jsonParser)
+          case "tid" =>
+            decodeTrackingIDWithParser(jsonParser) -> {
+              assume(jsonParser.nextToken() == JsonToken.FIELD_NAME,
+                     s"expected 'type',or 'prevUUID' field name\n${jsonParser.getCurrentLocation.toString}")
+              jsonParser.getCurrentName() match {
+                case "type"     => None
+                case "prevUUID" => decodePrevUUIDWithParser(jsonParser)
+              }
             }
-          }
         }
 
         ver match {
-          case v@("1" | "2" | "3" | "4" | "5") => logger.error(s"This version ($v) is not supported anymore!!! The original json was: ${new String(originalJson, "UTF-8")}"); !!!
-          case "6" => JsonSerializer6.decodeCommandWithParser(jsonParser, tidOpt,prevUUIDOpt)
-          case x => logger.error(s"got: $x"); ???
+          case v @ ("1" | "2" | "3" | "4" | "5") =>
+            logger.error(
+              s"This version ($v) is not supported anymore!!! The original json was: ${new String(originalJson, "UTF-8")}"
+            ); !!!
+          case "6" => JsonSerializer6.decodeCommandWithParser(jsonParser, tidOpt, prevUUIDOpt)
+          case x   => logger.error(s"got: $x"); ???
         }
       }
     }
   }
 
-  private def encodeCommandWithGenerator(command: Command, jsonGenerator: JsonGenerator):Unit = {
+  private def encodeCommandWithGenerator(command: Command, jsonGenerator: JsonGenerator): Unit = {
     jsonGenerator.writeStartObject()
     jsonGenerator.writeStringField("version", cmwell.util.build.BuildInfo.encodingVersion)
     command match {
-      case sc: SingleCommand  => {
-        sc.trackingID.foreach(jsonGenerator.writeStringField("tid",_))
-        sc.prevUUID.foreach(jsonGenerator.writeStringField("prevUUID",_))
+      case sc: SingleCommand => {
+        sc.trackingID.foreach(jsonGenerator.writeStringField("tid", _))
+        sc.prevUUID.foreach(jsonGenerator.writeStringField("prevUUID", _))
       }
       case ic: IndexCommand if ic.trackingIDs.nonEmpty =>
         jsonGenerator.writeArrayFieldStart("tid")
-        ic.trackingIDs.foreach{
-          case StatusTracking(tid,1) => jsonGenerator.writeString(tid)
-          case StatusTracking(t,n) => jsonGenerator.writeString(s"$n,$t")
+        ic.trackingIDs.foreach {
+          case StatusTracking(tid, 1) => jsonGenerator.writeString(tid)
+          case StatusTracking(t, n)   => jsonGenerator.writeString(s"$n,$t")
         }
         jsonGenerator.writeEndArray()
       case _ => //Do Nothing!
@@ -147,7 +163,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
         jsonGenerator.writeBooleanField("isCurrent", isCurrent)
         jsonGenerator.writeStringField("path", path)
         jsonGenerator.writeStringField("indexName", indexName)
-        infotonOpt.foreach{ infoton =>
+        infotonOpt.foreach { infoton =>
           jsonGenerator.writeFieldName("infoton")
           encodeInfotonWithGenerator(infoton, jsonGenerator)
         }
@@ -163,9 +179,9 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
       case DeletePathCommand(path, lastModified, trackingID, prevUUID) =>
         jsonGenerator.writeStringField("path", path)
         jsonGenerator.writeStringField("lastModified", dateFormatter.print(lastModified))
-      case UpdatePathCommand(path, deleteFields , updateFields, lastModified, trackingID, prevUUID) =>
+      case UpdatePathCommand(path, deleteFields, updateFields, lastModified, trackingID, prevUUID) =>
         jsonGenerator.writeStringField("path", path)
-        encodeUpdateFieldsWithGenerator(deleteFields,updateFields, jsonGenerator)
+        encodeUpdateFieldsWithGenerator(deleteFields, updateFields, jsonGenerator)
         jsonGenerator.writeStringField("lastModified", dateFormatter.print(lastModified))
       case OverwriteCommand(infoton, trackingID) =>
         jsonGenerator.writeFieldName("infoton")
@@ -177,54 +193,62 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
     jsonGenerator.writeEndObject()
   }
 
-  private def encodeUpdateFieldsWithGenerator(deleteFields:Map[String,  Set[FieldValue]],updateFields:Map[String, Set[FieldValue]], jsonGenerator:JsonGenerator) = {
-    encodeFieldsWithGenerator(deleteFields,jsonGenerator, "deleteFields")
-    encodeFieldsWithGenerator(updateFields,jsonGenerator, "updateFields")
+  private def encodeUpdateFieldsWithGenerator(deleteFields: Map[String, Set[FieldValue]],
+                                              updateFields: Map[String, Set[FieldValue]],
+                                              jsonGenerator: JsonGenerator) = {
+    encodeFieldsWithGenerator(deleteFields, jsonGenerator, "deleteFields")
+    encodeFieldsWithGenerator(updateFields, jsonGenerator, "updateFields")
   }
 
   //TODO: when TLog serialization is replaced (to binary serialization), ditch the toEs boolean (since it will always be to ES...)
-  private def encodeFieldsWithGenerator(fields:Map[String, Set[FieldValue]], jsonGenerator:JsonGenerator, name : String = "fields", toEs: Boolean =false) = {
+  private def encodeFieldsWithGenerator(fields: Map[String, Set[FieldValue]],
+                                        jsonGenerator: JsonGenerator,
+                                        name: String = "fields",
+                                        toEs: Boolean = false) = {
 
     def encodeESFieldValue(fv: FieldValue, jp: JsonGenerator): Unit = fv match {
-      case FBoolean(bool,_) => jp.writeBoolean(bool)
-      case FString(str,_,_) => jp.writeString(str)
-      case FReference(fr,_) => jp.writeString(fr)
-      case FDate(dateTime,_) => jp.writeString(dateTime)
-      case FExternal(value,_,_) => jp.writeString(value)
-      case FInt(int,_) => jp.writeNumber(int)
-      case FLong(long,_) => jp.writeNumber(long)
-      case FBigInt(bigInt,_) => jp.writeNumber(bigInt)
-      case FFloat(float,_) => jp.writeNumber(float)
-      case FDouble(double,_) => jp.writeNumber(double)
-      case FBigDecimal(bigDecimal,_) => jp.writeNumber(bigDecimal)
-      case _:FNull => !!! //this is just a marker for IMP, should not index it anywhere...
-      case _:FExtra[_] => !!! // FExtra is just a marker for outputting special properties, should not index it anywhere...
+      case FBoolean(bool, _)          => jp.writeBoolean(bool)
+      case FString(str, _, _)         => jp.writeString(str)
+      case FReference(fr, _)          => jp.writeString(fr)
+      case FDate(dateTime, _)         => jp.writeString(dateTime)
+      case FExternal(value, _, _)     => jp.writeString(value)
+      case FInt(int, _)               => jp.writeNumber(int)
+      case FLong(long, _)             => jp.writeNumber(long)
+      case FBigInt(bigInt, _)         => jp.writeNumber(bigInt)
+      case FFloat(float, _)           => jp.writeNumber(float)
+      case FDouble(double, _)         => jp.writeNumber(double)
+      case FBigDecimal(bigDecimal, _) => jp.writeNumber(bigDecimal)
+      case _: FNull                   => !!! //this is just a marker for IMP, should not index it anywhere...
+      case _: FExtra[_] =>
+        !!! // FExtra is just a marker for outputting special properties, should not index it anywhere...
     }
 
     def fullEncodeFieldValue(fv: FieldValue, jp: JsonGenerator): Unit = fv match {
-      case FString(str,l,q) => jp.writeString(s"s${l.getOrElse("")}\n${q.getOrElse("")}\n$str")
-      case FBoolean(bool,q) => jp.writeString(s"b${q.getOrElse("")}\n${bool.toString.head}")
-      case FReference(fr,q) => jp.writeString(s"r${q.getOrElse("")}\n$fr")
-      case FDate(dateTime,q) => jp.writeString(s"d${q.getOrElse("")}\n$dateTime")
-      case FInt(int,q) => jp.writeString(s"i${q.getOrElse("")}\n$int")
-      case FLong(long,q) => jp.writeString(s"j${q.getOrElse("")}\n$long")
-      case FBigInt(bigInt,q) => jp.writeString(s"k${q.getOrElse("")}\n$bigInt")
-      case FFloat(float,q) => jp.writeString(s"f${q.getOrElse("")}\n$float")
-      case FDouble(double,q) => jp.writeString(s"g${q.getOrElse("")}\n$double")
-      case FBigDecimal(bigDecimal,q) => jp.writeString(s"h${q.getOrElse("")}\n$bigDecimal")
-      case FExternal(value,uri,q) => jp.writeString(s"x$uri\n${q.getOrElse("")}\n$value") //require !uri.exists(_ == '\n')
+      case FString(str, l, q)         => jp.writeString(s"s${l.getOrElse("")}\n${q.getOrElse("")}\n$str")
+      case FBoolean(bool, q)          => jp.writeString(s"b${q.getOrElse("")}\n${bool.toString.head}")
+      case FReference(fr, q)          => jp.writeString(s"r${q.getOrElse("")}\n$fr")
+      case FDate(dateTime, q)         => jp.writeString(s"d${q.getOrElse("")}\n$dateTime")
+      case FInt(int, q)               => jp.writeString(s"i${q.getOrElse("")}\n$int")
+      case FLong(long, q)             => jp.writeString(s"j${q.getOrElse("")}\n$long")
+      case FBigInt(bigInt, q)         => jp.writeString(s"k${q.getOrElse("")}\n$bigInt")
+      case FFloat(float, q)           => jp.writeString(s"f${q.getOrElse("")}\n$float")
+      case FDouble(double, q)         => jp.writeString(s"g${q.getOrElse("")}\n$double")
+      case FBigDecimal(bigDecimal, q) => jp.writeString(s"h${q.getOrElse("")}\n$bigDecimal")
+      case FExternal(value, uri, q) =>
+        jp.writeString(s"x$uri\n${q.getOrElse("")}\n$value") //require !uri.exists(_ == '\n')
       case FNull(q) => jp.writeString(s"n${q.getOrElse("")}")
-      case _:FExtra[_] => !!! // FExtra is just a marker for outputting special properties, should not ingest it anywhere...
+      case _: FExtra[_] =>
+        !!! // FExtra is just a marker for outputting special properties, should not ingest it anywhere...
     }
 
-    def escapeString(s: String): String = if(!s.isEmpty && s.head == '#' && !toEs) s"#$s" else s
+    def escapeString(s: String): String = if (!s.isEmpty && s.head == '#' && !toEs) s"#$s" else s
     jsonGenerator.writeObjectFieldStart(name)
 
-
-    def prefixByType(fValue:FieldValue):String = FieldValue.prefixByType(fValue) match { //.fold("")(`type` => s"${`type`}$$")
-      case 's' => ""
-      case chr => s"$chr$$"
-    }
+    def prefixByType(fValue: FieldValue): String =
+      FieldValue.prefixByType(fValue) match { //.fold("")(`type` => s"${`type`}$$")
+        case 's' => ""
+        case chr => s"$chr$$"
+      }
 //      fValue match {
 //      case _:FString | _:FBigInt | _:FReference | _:FExternal => "s$"
 //      case _:FInt => "i$"
@@ -236,49 +260,61 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
 //    }
 
     val fieldsByType = fields.flatMap {
-      case (k,vs) if toEs && vs.isEmpty => ((k -> vs) :: typeChars.map(typeChar => (typeChar + k) -> vs)).toMap
-      case (k,vs) if toEs => vs.groupBy { v =>  s"${prefixByType(v)}$k"}
-      case (k,vs) => Map(k -> vs)
+      case (k, vs) if toEs && vs.isEmpty => ((k -> vs) :: typeChars.map(typeChar => (typeChar + k) -> vs)).toMap
+      case (k, vs) if toEs =>
+        vs.groupBy { v =>
+          s"${prefixByType(v)}$k"
+        }
+      case (k, vs) => Map(k -> vs)
     }
 
-    fieldsByType.foreach{ case (key, values) =>
-      jsonGenerator.writeArrayFieldStart(key)
+    fieldsByType.foreach {
+      case (key, values) =>
+        jsonGenerator.writeArrayFieldStart(key)
 
-      if(toEs) values.foreach(encodeESFieldValue(_,jsonGenerator))
-      else values.foreach(fullEncodeFieldValue(_,jsonGenerator))
+        if (toEs) values.foreach(encodeESFieldValue(_, jsonGenerator))
+        else values.foreach(fullEncodeFieldValue(_, jsonGenerator))
 
-      jsonGenerator.writeEndArray()
+        jsonGenerator.writeEndArray()
     }
     jsonGenerator.writeEndObject()
   }
 
   //TODO: when TLog serialization is replaced (to binary serialization), ditch the toEs boolean (since it will always be to ES...)
   //TODO: aren't `toEs` and `omitBinaryData` always the same? we only omit binary data if we're indexing ES...
-  private def encodeInfotonWithGenerator(infoton: Infoton, jsonGenerator: JsonGenerator, omitBinaryData: Boolean = false,
-                                         toEs: Boolean = false, newBG: Boolean = false, current: Boolean = true): Unit = {
+  private def encodeInfotonWithGenerator(infoton: Infoton,
+                                         jsonGenerator: JsonGenerator,
+                                         omitBinaryData: Boolean = false,
+                                         toEs: Boolean = false,
+                                         newBG: Boolean = false,
+                                         current: Boolean = true): Unit = {
     jsonGenerator.writeStartObject()
-    if(!newBG || !toEs) {
+    if (!newBG || !toEs) {
       jsonGenerator.writeStringField("type", infoton.kind)
     }
     jsonGenerator.writeObjectFieldStart("system") // start system object field
-    if(newBG && toEs) {
+    if (newBG && toEs) {
       jsonGenerator.writeStringField("kind", infoton.kind)
     }
     jsonGenerator.writeStringField("path", infoton.path)
     jsonGenerator.writeStringField("lastModified", dateFormatter.print(infoton.lastModified))
     jsonGenerator.writeStringField("uuid", infoton.uuid)
     jsonGenerator.writeStringField("parent", infoton.parent)
-    jsonGenerator.writeStringField("dc" , infoton.dc)
+    jsonGenerator.writeStringField("dc", infoton.dc)
 
     //will add quad under system containing all the quads available in the fields
-    if(toEs) {
-      if(infoton.indexTime.nonEmpty && infoton.dc == SettingsHelper.dataCenter) {
-        logger.debug(s"should not happen when writing a new infoton! indexTime should only be created while indexing, and not before. uuid = ${infoton.uuid}")
+    if (toEs) {
+      if (infoton.indexTime.nonEmpty && infoton.dc == SettingsHelper.dataCenter) {
+        logger.debug(
+          s"should not happen when writing a new infoton! indexTime should only be created while indexing, and not before. uuid = ${infoton.uuid}"
+        )
       }
 
       val idxT = {
         if (infoton.indexTime.isEmpty) {
-          logger.error(s"indexing an infoton with no indexTime defined! setting a value of 613 as default. uuid = [${infoton.uuid}]")
+          logger.error(
+            s"indexing an infoton with no indexTime defined! setting a value of 613 as default. uuid = [${infoton.uuid}]"
+          )
           // an indexTime of something in the future is problematic.
           // i.e: when dc sync reaches "event horizon",
           // it will be synced, and new infotons indexed after it,
@@ -286,16 +322,17 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
           // default value MUST be set in the past,
           // though it really should'nt happen.
           613L
-        }
-        else infoton.indexTime.get
+        } else infoton.indexTime.get
       }
       jsonGenerator.writeNumberField("indexTime", idxT)
       val quadsOpt = infoton.fields.map(
-        _.values.flatMap(
-          _.collect {
+        _.values
+          .flatMap(_.collect {
             case fv if fv.quad.isDefined =>
               fv.quad.get
-          }).toSet)
+          })
+          .toSet
+      )
 
       quadsOpt match {
         case None => //DO NOTHING!
@@ -306,14 +343,14 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
           jsonGenerator.writeEndArray()
         }
       }
-      if(newBG){
-        if(current)
+      if (newBG) {
+        if (current)
           jsonGenerator.writeBooleanField("current", true)
         else
           jsonGenerator.writeBooleanField("current", false)
       }
     } else if (infoton.indexTime.isDefined) { //this means it's an overwrite command to tlog 1
-      if(infoton.dc == SettingsHelper.dataCenter){
+      if (infoton.dc == SettingsHelper.dataCenter) {
         logger.debug("if should not exist (I think...)")
       }
       val idxT = infoton.indexTime.get
@@ -327,17 +364,17 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
       encodeFieldsWithGenerator(fields, jsonGenerator, toEs = toEs)
     }
     infoton match {
-      case FileInfoton(_,_, _,_, _, Some(FileContent(dataOpt, mimeType, dl, dp)),_) =>
+      case FileInfoton(_, _, _, _, _, Some(FileContent(dataOpt, mimeType, dl, dp)), _) =>
         jsonGenerator.writeObjectFieldStart("content")
         jsonGenerator.writeStringField("mimeType", mimeType)
-        dataOpt.foreach{ data =>
-          if(MimeTypeIdentifier.isTextual(mimeType)) {
+        dataOpt.foreach { data =>
+          if (MimeTypeIdentifier.isTextual(mimeType)) {
             val charset = mimeType.lastIndexOf("charset=") match {
               case i if i != -1 => mimeType.substring(i + 8).trim
-              case _ => "utf-8"
+              case _            => "utf-8"
             }
             jsonGenerator.writeStringField("data", new String(data, charset))
-          } else if(!omitBinaryData) {
+          } else if (!omitBinaryData) {
             jsonGenerator.writeBinaryField("base64-data", data)
           }
         }
@@ -346,7 +383,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
         }
         jsonGenerator.writeNumberField("length", dataOpt.fold(dl)(_.length))
         jsonGenerator.writeEndObject()
-      case LinkInfoton(_, _,_,_, _,linkTo, linkType,_) =>
+      case LinkInfoton(_, _, _, _, _, linkTo, linkType, _) =>
         jsonGenerator.writeStringField("linkTo", linkTo)
         jsonGenerator.writeNumberField("linkType", linkType)
       case _ =>

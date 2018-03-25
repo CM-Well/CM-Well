@@ -12,20 +12,18 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.common
 
-import java.io.{StringWriter, PrintWriter}
+import java.io.{PrintWriter, StringWriter}
 
 /**
- * User: israel
- * Date: 9/10/14
- * Time: 15:21
- */
+  * User: israel
+  * Date: 9/10/14
+  * Time: 15:21
+  */
 package object exception {
 
-  def getStackTrace(throwable:Throwable) = {
+  def getStackTrace(throwable: Throwable) = {
     val sw = new StringWriter()
     val pw = new PrintWriter(sw, true)
     throwable.printStackTrace(pw)

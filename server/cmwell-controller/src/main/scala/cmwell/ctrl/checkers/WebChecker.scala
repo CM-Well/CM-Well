@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.ctrl.checkers
 
 import cmwell.ctrl.config.Config
@@ -27,8 +25,8 @@ import scala.concurrent.duration._
 import scala.concurrent.duration.FiniteDuration
 
 /**
- * Created by michael on 12/3/14.
- */
+  * Created by michael on 12/3/14.
+  */
 object WebChecker extends Checker with RestarterChecker with LazyLogging {
 
   override val storedStates: Int = 10
@@ -45,16 +43,18 @@ object WebChecker extends Checker with RestarterChecker with LazyLogging {
   override def check: Future[ComponentState] = {
     val res = Http.get(req)
     val startTime = System.currentTimeMillis()
-    res.map{ x =>
-      val now = System.currentTimeMillis()
-      if(x.status < 400 || x.status == 503) WebOk((now - startTime).toInt)
-      else {
-        logger.warn(s"WebChecker.check: got a bad response when GET $req. response = $x")
-        WebBadCode(x.status, (now - startTime).toInt)
+    res
+      .map { x =>
+        val now = System.currentTimeMillis()
+        if (x.status < 400 || x.status == 503) WebOk((now - startTime).toInt)
+        else {
+          logger.warn(s"WebChecker.check: got a bad response when GET $req. response = $x")
+          WebBadCode(x.status, (now - startTime).toInt)
+        }
       }
-    }.recover{
-      case _ : Throwable =>
-        WebDown()
-    }
+      .recover {
+        case _: Throwable =>
+          WebDown()
+      }
   }
 }

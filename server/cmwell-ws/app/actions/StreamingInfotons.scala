@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package actions
 
 import play.api.mvc._
@@ -25,12 +23,12 @@ import logic.CRUDServiceFS
 import cmwell.domain.{Everything, Infoton}
 
 /**
- * Created with IntelliJ IDEA.
- * User: gilad
- * Date: 12/8/13
- * Time: 10:45 AM
- * To change this template use File | Settings | File Templates.
- */
+  * Created with IntelliJ IDEA.
+  * User: gilad
+  * Date: 12/8/13
+  * Time: 10:45 AM
+  * To change this template use File | Settings | File Templates.
+  */
 object StreamingInfotons {
 
 //  val streamLinesBodyParser: BodyParser[List[Future[Option[Infoton]]]] = BodyParser {
