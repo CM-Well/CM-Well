@@ -274,20 +274,16 @@ object InfotonRetriever extends LazyLogging {
           (response, state)
         } else if (missingUuids.nonEmpty) {
           val errorID = response.##
-          val ex = RetrieveMissingUuidException(
-            s"Error ![$errorID]. Retrieve infotons failed. Some infotons don't have data. Data center ID $dataCenterId, using remote location $location missing uuids: ${missingUuids
-              .map(i => i.meta.uuid.utf8String)
-              .mkString(",")}."
-          )
+          val u = missingUuids.map(i => i.meta.uuid.utf8String).mkString(",")
+          val ex = RetrieveMissingUuidException(s"Error ![$errorID]. Retrieve infotons failed. Some infotons don't have data. " +
+                                                s"Data center ID $dataCenterId, using remote location $location missing uuids: $u.")
           logger.debug(s"Error ![$errorID]. Full response body was: $body")
           (Failure(ex), (state._1, RetrieveStateStatus(state._2.retriesLeft, Some(ex))))
         } else {
           val errorID = response.##
-          val ex = RetrieveBadIndexTimeException(
-            s"Error ![$errorID]. Retrieve infotons failed. Some infotons' indexTime has cas/es inconsistencies. Data center ID $dataCenterId, using remote location $location bad uuids: ${uuidsWithBadIndexTime
-              .map(i => i.meta.uuid.utf8String)
-              .mkString(",")}."
-          )
+          val u = uuidsWithBadIndexTime.map(i => i.meta.uuid.utf8String).mkString(",")
+          val ex = RetrieveBadIndexTimeException(s"Error ![$errorID]. Retrieve infotons failed. Some infotons' indexTime has cas/es inconsistencies. " +
+                                                 s"Data center ID $dataCenterId, using remote location $location bad uuids: $u.")
           logger.debug(s"Error ![$errorID]. Full response body was: $body")
           (Failure(ex), (state._1, RetrieveStateStatus(state._2.retriesLeft, Some(ex))))
         }
@@ -305,42 +301,33 @@ object InfotonRetriever extends LazyLogging {
           if (ingestSeq.size == 1 && retriesLeft == 0) {
             ex.get match {
               case e: FuturedBodyException =>
-                logger.error(
-                  s"${e.getMessage} ${e.getCause.getMessage} No more retries will be done. Please use the red log to see the list of all the failed retrievals."
-                )
+                logger.error(s"${e.getMessage} ${e.getCause.getMessage} No more retries will be done. Please use the red " +
+                             s"log to see the list of all the failed retrievals.")
                 Util.errorPrintFuturedBodyException(e)
-                redlog.info(
-                  s"Data Center ID $dataCenterId: Retrieve of uuid ${ingestSeq.head.meta.uuid.utf8String} of path ${ingestSeq.head.meta.path} from $location failed."
-                )
+                redlog.info(s"Data Center ID $dataCenterId: Retrieve of uuid ${ingestSeq.head.meta.uuid.utf8String} of " +
+                            s"path ${ingestSeq.head.meta.path} from $location failed.")
               case e: RetrieveMissingUuidException =>
-                logger.error(
-                  s"Data Center ID $dataCenterId: Retrieve of uuid ${ingestSeq.head.meta.uuid.utf8String} from $location failed. No more reties will be done. Please use the red log to see the list of all the failed retrievals. The exception is:\n${e.getMessage}"
-                )
-                redlog.info(
-                  s"Data Center ID $dataCenterId: Retrieve of uuid ${ingestSeq.head.meta.uuid.utf8String} of path ${ingestSeq.head.meta.path} from $location failed. No uuid got from _out."
-                )
+                logger.error(s"Data Center ID $dataCenterId: Retrieve of uuid ${ingestSeq.head.meta.uuid.utf8String} " +
+                             s"from $location failed. No more reties will be done. Please use the red log to see the list " +
+                             s"of all the failed retrievals. The exception is:\n${e.getMessage}")
+                redlog.info(s"Data Center ID $dataCenterId: Retrieve of uuid ${ingestSeq.head.meta.uuid.utf8String} of " +
+                            s"path ${ingestSeq.head.meta.path} from $location failed. No uuid got from _out.")
               case e: RetrieveBadIndexTimeException =>
-                logger.error(
-                  s"Data Center ID $dataCenterId: Retrieve of uuid ${ingestSeq.head.meta.uuid.utf8String} from $location failed. No more reties will be done. Please use the red log to see the list of all the failed retrievals. The exception is:\n${e.getMessage}"
-                )
-                redlog.info(
-                  s"Data Center ID $dataCenterId: Retrieve of uuid ${ingestSeq.head.meta.uuid.utf8String} of path ${ingestSeq.head.meta.path} from $location failed. IndexTime has cas/es inconsistency."
-                )
+                logger.error(s"Data Center ID $dataCenterId: Retrieve of uuid ${ingestSeq.head.meta.uuid.utf8String} " +
+                             s"from $location failed. No more reties will be done. Please use the red log to see the list of all " +
+                             s"the failed retrievals. The exception is:\n${e.getMessage}")
+                redlog.info(s"Data Center ID $dataCenterId: Retrieve of uuid ${ingestSeq.head.meta.uuid.utf8String} of " +
+                            s"path ${ingestSeq.head.meta.path} from $location failed. IndexTime has cas/es inconsistency.")
               case e =>
-                logger.error(
-                  s"Data Center ID $dataCenterId: Retrieve of uuid ${ingestSeq.head.meta.uuid.utf8String} from $location failed. No more reties will be done. Please use the red log to see the list of all the failed retrievals. The exception is: ",
-                  e
-                )
-                redlog.info(
-                  s"Data Center ID $dataCenterId: Retrieve of uuid ${ingestSeq.head.meta.uuid.utf8String} of path ${ingestSeq.head.meta.path} from $location failed."
-                )
+                logger.error(s"Data Center ID $dataCenterId: Retrieve of uuid ${ingestSeq.head.meta.uuid.utf8String} from $location failed. " +
+                             s"No more reties will be done. Please use the red log to see the list of all the failed retrievals. The exception is: ", e)
+                redlog.info(s"Data Center ID $dataCenterId: Retrieve of uuid ${ingestSeq.head.meta.uuid.utf8String} of " +
+                            s"path ${ingestSeq.head.meta.path} from $location failed.")
             }
             Some(List.empty[(Future[RetrieveInput], RetrieveState)])
           } else if (ingestSeq.size == 1) {
-            logger.trace(
-              s"Data Center ID $dataCenterId: Retrieve of uuid ${ingestSeq.head.meta.uuid.utf8String} from $location failed. Retries left $retriesLeft. Will try again. The exception is: ",
-              ex.get
-            )
+            logger.trace(s"Data Center ID $dataCenterId: Retrieve of uuid ${ingestSeq.head.meta.uuid.utf8String} from $location failed. " +
+                         s"Retries left $retriesLeft. Will try again. The exception is: ", ex.get)
             Util.tracePrintFuturedBodyException(ex.get)
             val ingestState =
               (ingestSeq, RetrieveStateStatus(retriesLeft - 1, ex))
@@ -353,10 +340,8 @@ object InfotonRetriever extends LazyLogging {
               )
             )
           } else if (retriesLeft == 0) {
-            logger.trace(
-              s"Data Center ID $dataCenterId: Retrieve of bulk uuids from $location failed. No more bulk retries left. Will split to request for each uuid and try again. The exception is: ",
-              ex.get
-            )
+            logger.trace(s"Data Center ID $dataCenterId: Retrieve of bulk uuids from $location failed. No more bulk retries left. " +
+                         s"Will split to request for each uuid and try again. The exception is: ", ex.get)
             Util.tracePrintFuturedBodyException(ex.get)
             Some(ingestSeq.map { infotonMetaAndData =>
               val ingestData = Seq(infotonMetaAndData)

@@ -41,13 +41,14 @@ class IndicesManager(ftsService: FTSServiceNew, config: Config) extends Actor wi
 //  val maintainIndicesInterval = Duration.fromNanos(config.getDuration("cmwell.bg.maintainIndicesInterval").toNanos)
   val maintainIndicesInterval = Duration.apply(config.getLong("cmwell.bg.maintainIndicesInterval"), "minutes")
 
-  logger.info(
-    s"config params:\nallIndicesAliasName:$allIndicesAliasName\nlatestIndexAliasName:$latestIndexAliasName\nindexNamePrefix:$indexNamePrefix\nmaxDocsPerShard:$maxDocsPerShard\nmaintainIndicesInterval:$maintainIndicesInterval"
-  )
+  logger.info(s"""config params:
+                 |allIndicesAliasName:$allIndicesAliasName
+                 |latestIndexAliasName:$latestIndexAliasName
+                 |indexNamePrefix:$indexNamePrefix
+                 |maxDocsPerShard:$maxDocsPerShard
+                 |maintainIndicesInterval:$maintainIndicesInterval""".stripMargin)
 
-  override def preStart(): Unit = {
-    self ! CheckIndices
-  }
+  override def preStart(): Unit = self ! CheckIndices
 
   override def receive: Receive = {
     case CheckIndices =>

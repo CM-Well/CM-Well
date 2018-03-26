@@ -86,14 +86,10 @@ object ZookeeperChecker extends Checker with LazyLogging {
     }
     scheduleFuture.onFailure {
       case err =>
-        logger.warn(
-          s"Zookeeper: $err occurred in status checker timeout scheduler. Cancelling check (only if it didn't finish already). It will be checked again on next scheduled check"
-        )
-        killSwitch.abort(
-          new TimeoutException(
-            "Zookeeper error occurred in status checker timeout scheduler and server didn't respond in time"
-          )
-        )
+        // scalastyle:off
+        logger.warn(s"Zookeeper: $err occurred in status checker timeout scheduler. Cancelling check (only if it didn't finish already). It will be checked again on next scheduled check")
+        // scalastyle:on
+        killSwitch.abort(new TimeoutException("Zookeeper error occurred in status checker timeout scheduler and server didn't respond in time"))
     }
     futureByteString.map(_.utf8String)
   }

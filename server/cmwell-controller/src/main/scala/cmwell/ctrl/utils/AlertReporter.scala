@@ -68,7 +68,8 @@ trait AlertReporter extends LazyLogging {
   }
 
 //  def alert(msg : String, color : AlertColor = GREEN, host : Option[String] = None, eventKey : Option[String] = None, node : Option[String] = None) {
-//    logger.info(s"""CM-WELL-ALERT alert_status=$color severity=${color.severity} alert_message='$msg' EventSource=ctrl${if(host.isDefined) s" alert_host=${host.get}" else ""}${if(eventKey.isDefined) s" EventKey=${eventKey.get}" else ""}${if(node.isDefined) s" Node=${node.get}" else ""}""")
+//    logger.info(s"""CM-WELL-ALERT alert_status=$color severity=${color.severity} alert_message='$msg' EventSource=ctrl${if(host.isDefined)
+//    s" alert_host=${host.get}" else ""}${if(eventKey.isDefined) s" EventKey=${eventKey.get}" else ""}${if(node.isDefined) s" Node=${node.get}" else ""}""")
 //  }
 
   case class Alert(msg: String,

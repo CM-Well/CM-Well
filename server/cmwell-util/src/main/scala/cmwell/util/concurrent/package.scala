@@ -257,7 +257,8 @@ package cmwell.util {
         }
     }
 
-//    def betterRetry[T](maxRetries: Int, waitBetweenRetries: Option[FiniteDuration] = None)(task: => Future[T])(implicit ec: ExecutionContext, sys: ActorSystem): Future[T] = {
+//    def betterRetry[T](maxRetries: Int, waitBetweenRetries: Option[FiniteDuration] = None)
+//                      (task: => Future[T])(implicit ec: ExecutionContext, sys: ActorSystem): Future[T] = {
 //      require(maxRetries > 0, "maxRetries must be positive")
 //      if (maxRetries > 1) task.recoverWith {
 //        case _: Throwable => waitBetweenRetries.fold(betterRetry(maxRetries - 1)(task)) { waitTime =>
@@ -333,7 +334,8 @@ package cmwell.util {
       p.future
     }
 
-//    def retryUntil[T](shouldRetry: Try[T] => Boolean, maxRetries: Int, delay: FiniteDuration = Duration.Zero, delayFactor: Long = 1)(task: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
+//    def retryUntil[T](shouldRetry: Try[T] => Boolean, maxRetries: Int, delay: FiniteDuration = Duration.Zero, delayFactor: Long = 1)
+//                     (task: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
 //      require(maxRetries > 0, "maxRetries must be positive")
 //      require(delay >= Duration.Zero, "delay must be non-negative")
 //      def scheduleRetry: Future[T] = {

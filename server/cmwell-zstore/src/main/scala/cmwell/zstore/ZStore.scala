@@ -225,10 +225,12 @@ class ZStoreImpl(dao: Dao) extends ZStore with DaoExecution with LazyLogging {
         it.foreach(valueBuilder ++= _)
         val obj = ZStoreObj(uzid, adler, valueBuilder.result())
         if (!obj.isCorrect) {
-          logger.error(
-            s"[zStore] Reading uzid [$uzid] failed because data corruption! (stored adler[$adler] != computed adler[${obj.adlerizedValue}], stored bytes[$bytes], actual value size[${obj.value.length}])"
-          )
+          val a = obj.adlerizedValue
+          val l = obj.value.length
+          // scalastyle:off
+          logger.error(s"[zStore] Reading uzid [$uzid] failed because data corruption! (stored adler[$adler] != computed adler[$a], stored bytes[$bytes], actual value size[$l])")
 //          throw new RuntimeException("Corrupted data!")
+          // scalastyle:on
         }
         Some(obj)
       }

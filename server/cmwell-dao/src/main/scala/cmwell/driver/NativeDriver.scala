@@ -57,8 +57,12 @@ class NativeDriver(clusterName: String, keyspaceName: String, host: String = "12
     .addContactPoints(host)
     .withPoolingOptions(pools)
     .withSocketOptions(new SocketOptions().setTcpNoDelay(true))
-    .withoutJMXReporting() // datastax client depends on old io.dropwizard.metrics (3.2.2), while metrics4.scala depends on newer version (4.0.1). The 4.0.x release removed the jmx module to another artifact (metrics-jmx) and package (com.codahale.metrics.jmx). while this is true, we are better off without JMX reporting of the client. In future: consider to re-enable this.
-    .build();
+    .withoutJMXReporting() // datastax client depends on old io.dropwizard.metrics (3.2.2),
+    .build();              // while metrics4.scala depends on newer version (4.0.1).
+                           // The 4.0.x release removed the jmx module to another artifact (metrics-jmx)
+                           // and package (com.codahale.metrics.jmx). while this is true,
+                           // we are better off without JMX reporting of the client.
+                           // In future: consider to re-enable this.
 
   private val session: Session = Try(cluster.connect(keyspaceName)) match {
     case Success(s) => s

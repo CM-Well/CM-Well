@@ -17,8 +17,9 @@ package cmwell.util.loading
 import java.io.{File, InputStream}
 import java.net.{URL, URLClassLoader}
 
+// scalastyle:off
 import sun.misc.CompoundEnumeration
-
+// scalastyle:on
 import scala.util.{Failure, Success, Try}
 
 /**

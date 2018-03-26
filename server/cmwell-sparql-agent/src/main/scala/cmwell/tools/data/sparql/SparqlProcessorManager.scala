@@ -4,7 +4,7 @@
   * Licensed under the Apache License, Version 2.0 (the “License”); you may not use this file except in compliance with the License.
   * You may obtain a copy of the License at
   *
-  * http://www.apache.org/licenses/LICENSE-2.0
+  *   http://www.apache.org/licenses/LICENSE-2.0
   *
   * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
   * an “AS IS” BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -380,7 +380,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
           val sparqlIngestStats = statsIngest
             .get(s"ingester-$configName")
             .map { s =>
-              s"""Ingested <span style="color:green"> **${s.ingestedInfotons}** </span> Failed <span style="color:red"> **${s.failedInfotons}** </span>""".stripMargin
+              s"""Ingested <span style="color:green"> **${s.ingestedInfotons}** </span> Failed <span style="color:red"> **${s.failedInfotons}** </span>"""
             }
             .getOrElse("")
 
@@ -484,10 +484,8 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
     val parsedJson = parse(configJson)
     parsedJson match {
       case Left(parseFailure @ ParsingFailure(message, ex)) =>
-        logger.error(
-          s"Parsing the agent config files failed with message: $message. Cancelling this configs check. It will be checked on the next iteration. The exception was: ",
-          ex
-        )
+        logger.error(s"Parsing the agent config files failed with message: $message. Cancelling this configs check. " +
+                     s"It will be checked on the next iteration. The exception was: ", ex)
         throw parseFailure
       case Right(json) => {
         try {
@@ -567,11 +565,13 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
       //a successful post - don't retry
       case (Success(simpleResponse), _) if simpleResponse.status == 200 => DoNotRetry
       /*
-          //Currently, the shouldRetry function is used only to check the config - no need for special 503 treatment is will be retried anyway (and it can cause a bug the a current config check
-          //is still running while a new one will be started and a new one and so on...)
-          //The "contract" is that with 503 keep retrying indefinitely, but don't spam the server - increase the delay (cap it with a maxDelay)
+          // Currently, the shouldRetry function is used only to check the config - no need for special 503 treatment
+          // is will be retried anyway (and it can cause a bug the a current config check
+          // is still running while a new one will be started and a new one and so on...)
+          // The "contract" is that with 503 keep retrying indefinitely, but don't spam the server - increase the delay (cap it with a maxDelay)
           case (Success(SimpleResponse(status, headers, body)), state) if status == 503 => {
-            logger.warn(s"$action failed. Cm-Well returned bad response: status: $status headers: ${StpUtil.headersString(headers)} body: $body. Will retry indefinitely on this error.")
+            logger.warn(s"$action failed. Cm-Well returned bad response: status: $status headers: ${StpUtil.headersString(headers)}" +
+                        s"body: $body. Will retry indefinitely on this error.")
             RetryWith(state.copy(delay = (state.delay * state.delayFactor).min(settings.maxDelay)))
           }
        */

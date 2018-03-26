@@ -193,16 +193,14 @@ object InfotonSerializer extends LazyLogging {
                 val dataPointerOpt =
                   if (fileContentCountVerifier == 0) Option(dataPointer)
                   else {
-                    if (fileContentBuildPosition != fileContentLength)
-                      logger.warn(
-                        s"content has different length than expected. expected: [$fileContentLength], actual: [$fileContentBuildPosition/${fileContentBuilder.length}] for uuid [$uuidHint]"
-                      )
-
-                    if (dataPointer ne null)
-                      logger.warn(
-                        s"both dataPointer and content are present! dataPointer: [$dataPointer], content length: [${fileContentBuilder.length}] for uuid [$uuidHint]"
-                      )
-
+                    if (fileContentBuildPosition != fileContentLength) {
+                      val l = s"$fileContentBuildPosition/${fileContentBuilder.length}"
+                      logger.warn(s"content has different length than expected. expected: [$fileContentLength], actual: [$l] for uuid [$uuidHint]")
+                    }
+                    if (dataPointer ne null) {
+                      val l = fileContentBuilder.length
+                      logger.warn(s"both dataPointer and content are present! dataPointer: [$dataPointer], content length: [$l] for uuid [$uuidHint]")
+                    }
                     None
                   }
                 Some(FileContent(Option(fileContentBuilder), mimeType, fileContentLength, dataPointerOpt))
