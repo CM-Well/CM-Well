@@ -123,13 +123,12 @@ class InfotonReporter private(baseUrl: String, path: String)(implicit mat: Mater
   }
 
 
-    override def saveTokens(tokenAndStatistics: TokenAndStatisticsMap) : Unit = {
+  override def saveTokens(tokenAndStatistics: TokenAndStatisticsMap) : Unit = {
 
     def createRequest(tokensStats: TokenAndStatisticsMap) = {
       val data = HttpEntity(tokensStats.foldLeft(Seq.empty[String]) { case (agg, (sensor, (token, downloadStats))) => agg :+ createTriples(sensor, token, downloadStats) }.mkString("\n"))
-      val d= HttpRequest(uri = s"http://$host:$port/_in?format=$format&replace-mode", method = HttpMethods.POST, entity = data)
+      HttpRequest(uri = s"http://$host:$port/_in?format=$format&replace-mode", method = HttpMethods.POST, entity = data)
         .addHeader(RawHeader("X-CM-WELL-TOKEN", writeToken))
-      d
     }
 
     def createTriples(sensor: String, token: Token, downloadStats: Option[DownloadStats]) = {
@@ -149,9 +148,6 @@ class InfotonReporter private(baseUrl: String, path: String)(implicit mat: Mater
         case HttpResponse(s, h, e, _)  =>
           logger.error(s"problem writing tokens infoton to $path")
           e.discardBytes()
-        case _ =>
-          logger.error(s"Broken")
-
       }
       .runWith(Sink.ignore)
 
