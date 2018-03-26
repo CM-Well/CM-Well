@@ -32,7 +32,7 @@ import cmwell.tools.data.utils.logging.{DataToolsLogging, LabelId}
 import scala.collection.immutable
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 object SparqlProcessor extends DataToolsLogging with DataToolsConfig{
   val format = "ntriples"
@@ -166,8 +166,23 @@ class SparqlProcessor[T](baseUrl: String,
     type Paths = Seq[ByteString]
     type StartTime = Long
 
-    def validateResponse(body: ByteString, headers: Seq[HttpHeader]) = {
-      !(body containsSlice "Could not process request") && !(headers.contains("X-CM-WELL-SG-RS"))
+    def validateResponse(body: ByteString, headers: Seq[HttpHeader]) : Try[Unit] = {
+      def validateBody(body: ByteString) = {
+        if (!(body containsSlice "Could not process request")) None
+        else Some("Response body was not valid")
+      }
+
+      def validateHeaders(headers: Seq[HttpHeader])  = {
+        if(!(headers.contains("X-CM-WELL-SG-RS"))) None
+        else Some("Error reported in trailer headers")
+      }
+
+      val errors = List(validateBody(body), validateHeaders(headers)).flatten
+
+      if (errors.isEmpty)
+        Success(Unit)
+      else
+        Failure(new Exception(errors.mkString("Failures in Http Response:"," ","")))
     }
 
     def sparqlFlow() = {

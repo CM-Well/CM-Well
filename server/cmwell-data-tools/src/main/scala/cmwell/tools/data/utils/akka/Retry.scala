@@ -32,7 +32,7 @@ import cmwell.tools.data.utils.logging.{DataToolsLogging, LabelId}
 import scala.collection.immutable
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 object Retry extends DataToolsLogging with DataToolsConfig{
   /**
@@ -59,7 +59,7 @@ object Retry extends DataToolsLogging with DataToolsConfig{
                    baseUrl: String,
                    limit: Option[Int] = None)
                   (createRequest: (Seq[ByteString]) => HttpRequest,
-                   responseValidator: (ByteString, Seq[HttpHeader]) => Boolean = (_,_) => true)
+                   responseValidator: (ByteString, Seq[HttpHeader]) => Try[Unit] = (_,_) => Success(Unit))
                   (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext, label: Option[LabelId] = None) = {
 
     val labelValue = label.map{case LabelId(id) => s"[$id]"}.getOrElse("")
@@ -203,11 +203,11 @@ object Retry extends DataToolsLogging with DataToolsConfig{
           }).map {
             case (entityBytes, trailerHeaders) =>
 
-              val combinedHeaders = headers ++ trailerHeaders.getOrElse(Seq.empty)
+              val combinedHeaders = trailerHeaders.fold(headers)(headers ++ _)
 
               responseValidator(entityBytes, combinedHeaders) match {
-                case true => Success(res.copy(entity = entityBytes, headers=combinedHeaders)) -> state.copy(response = response.toOption)
-                case _ =>  Failure(new Exception("response body is not valid")) -> state.copy(response = response.toOption)
+                case Success(_) => Success(res.copy(entity = entityBytes, headers=combinedHeaders)) -> state.copy(response = response.toOption)
+                case Failure(err) => Failure(err) -> state.copy(response = response.toOption)
               }
           }
 
