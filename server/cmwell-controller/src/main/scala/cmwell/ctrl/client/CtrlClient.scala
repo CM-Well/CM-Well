@@ -72,7 +72,10 @@ object CtrlClient extends LazyLogging {
 
     fa.onComplete {
       case Success(a) => healthActor = a
-      case Failure(e) => getHealthControl(joinToHost, retries - 1)
+      case Failure(e) if retries > 0 =>
+        logger.warn("Could not getHealthControl. Retrying...", e)
+        getHealthControl(joinToHost, retries - 1)
+      case Failure(e) => logger.error("Could not getHealthControl!", e)
     }
 
   }
