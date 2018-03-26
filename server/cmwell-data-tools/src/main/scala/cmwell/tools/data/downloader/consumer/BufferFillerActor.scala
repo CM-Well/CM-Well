@@ -25,11 +25,7 @@ import cmwell.tools.data.downloader.consumer.Downloader._
 import cmwell.tools.data.utils.ArgsManipulations
 import cmwell.tools.data.utils.ArgsManipulations.{formatHost, HttpAddress}
 import cmwell.tools.data.utils.akka.HeaderOps._
-import cmwell.tools.data.utils.akka.{
-  lineSeparatorFrame,
-  DataToolsConfig,
-  HttpConnections
-}
+import cmwell.tools.data.utils.akka.{lineSeparatorFrame, DataToolsConfig, HttpConnections}
 import cmwell.tools.data.utils.logging._
 import cmwell.tools.data.utils.text.Tokens
 import cmwell.util.akka.http.HttpZipDecoder
@@ -136,8 +132,7 @@ class BufferFillerActor(threshold: Int,
           self ! Status
 
         case None if updateFreq.nonEmpty =>
-          logger.info("no more data is available, will check again in {}",
-                      updateFreq.get)
+          logger.info("no more data is available, will check again in {}", updateFreq.get)
           context.system.scheduler.scheduleOnce(updateFreq.get, self, Status)
 
         case None =>
@@ -257,15 +252,13 @@ class BufferFillerActor(threshold: Int,
               tryResponse.map(HttpZipDecoder.decodeResponse) -> state
           }
           .map {
-            case (Success(HttpResponse(s, h, e, _)), _)
-                if s == StatusCodes.TooManyRequests =>
+            case (Success(HttpResponse(s, h, e, _)), _) if s == StatusCodes.TooManyRequests =>
               e.discardBytes()
 
               logger.error(s"HTTP 429: too many requests token=$token")
               None -> Source.failed(new Exception("too many requests"))
 
-            case (Success(HttpResponse(s, h, e, _)), _)
-                if s == StatusCodes.NoContent =>
+            case (Success(HttpResponse(s, h, e, _)), _) if s == StatusCodes.NoContent =>
               e.discardBytes()
 
               if (updateFreq.isEmpty) self ! NewData(None)
@@ -273,8 +266,7 @@ class BufferFillerActor(threshold: Int,
               self ! SetConsumeStatus(true)
 
               None -> Source.empty
-            case (Success(HttpResponse(s, h, e, _)), _)
-                if s == StatusCodes.OK || s == StatusCodes.PartialContent =>
+            case (Success(HttpResponse(s, h, e, _)), _) if s == StatusCodes.OK || s == StatusCodes.PartialContent =>
               self ! SetConsumeStatus(false)
 
               val nextToken = getPosition(h) match {
@@ -332,9 +324,7 @@ class BufferFillerActor(threshold: Int,
           import GraphDSL.Implicits._
           val tokenSource = builder.add(src)
           val bcast = builder.add(
-            Broadcast[(Option[String], Source[(Token, Tsv), Any])](2,
-                                                                   eagerCancel =
-                                                                     true)
+            Broadcast[(Option[String], Source[(Token, Tsv), Any])](2, eagerCancel = true)
           )
           tokenSource ~> bcast.in
           bcast.out(1) ~> sink

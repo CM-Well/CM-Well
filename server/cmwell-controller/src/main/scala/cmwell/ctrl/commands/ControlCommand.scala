@@ -12,15 +12,13 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.ctrl.commands
 
 import cmwell.ctrl.controllers._
 
 /**
- * Created by michael on 2/18/15.
- */
+  * Created by michael on 2/18/15.
+  */
 sealed trait ControlCommand {
   def execute
 }
@@ -92,4 +90,3 @@ case object StopKafka extends ControlCommand {
 case object StartKafka extends ControlCommand {
   override def execute: Unit = KafkaController.start
 }
-

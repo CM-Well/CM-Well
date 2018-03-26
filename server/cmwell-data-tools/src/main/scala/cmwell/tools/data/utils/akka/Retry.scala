@@ -53,16 +53,10 @@ object Retry extends DataToolsLogging with DataToolsConfig {
     * @tparam T context type, element paired with each request
     * @return flow which sends (and retries) HTTP requests and returns Try of results paired with request data and context
     */
-  def retryHttp[T](delay: FiniteDuration,
-                   parallelism: Int,
-                   baseUrl: String,
-                   limit: Option[Int] = None)(
+  def retryHttp[T](delay: FiniteDuration, parallelism: Int, baseUrl: String, limit: Option[Int] = None)(
     createRequest: (Seq[ByteString]) => HttpRequest,
     responseBodyValidator: ByteString => Boolean = _ => true
-  )(implicit system: ActorSystem,
-    mat: Materializer,
-    ec: ExecutionContext,
-    label: Option[LabelId] = None) = {
+  )(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext, label: Option[LabelId] = None) = {
 
     val labelValue = label.map { case LabelId(id) => s"[$id]" }.getOrElse("")
     val toStrictTimeout = 30.seconds
@@ -79,8 +73,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
       state: State
     ): Option[immutable.Iterable[(Future[Seq[ByteString]], State)]] =
       state match {
-        case State(data, _, Some(HttpResponse(s, h, e, _)), _)
-            if s == StatusCodes.TooManyRequests =>
+        case State(data, _, Some(HttpResponse(s, h, e, _)), _) if s == StatusCodes.TooManyRequests =>
           // api garden quota error
           e.toStrict(toStrictTimeout)
             .map { strictEntity =>
@@ -123,10 +116,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
             Some(immutable.Seq(future -> state))
           }
 
-        case State(data,
-                   context,
-                   Some(HttpResponse(s: ClientError, h, e, _)),
-                   _) =>
+        case State(data, context, Some(HttpResponse(s: ClientError, h, e, _)), _) =>
           // client error
           if (data.size > 1) {
             // before retry a request we should consume previous entity bytes
@@ -153,8 +143,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                 .map(
                   dataElement =>
                     Future
-                      .successful(Seq(dataElement)) -> State(Seq(dataElement),
-                                                             context)
+                      .successful(Seq(dataElement)) -> State(Seq(dataElement), context)
                 )
                 .to[immutable.Iterable]
             )
@@ -173,7 +162,9 @@ object Retry extends DataToolsLogging with DataToolsConfig {
               .onFailure {
                 case err =>
                   logger.warn(
-                    s"$labelValue client error: will retry again in $delay to send a single request, host=${getHostnameValue(h)} status=$s, cannot read entity, request data=${stringifyData(data)}",
+                    s"$labelValue client error: will retry again in $delay to send a single request, host=${getHostnameValue(
+                      h
+                    )} status=$s, cannot read entity, request data=${stringifyData(data)}",
                     err
                   )
               }
@@ -181,8 +172,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
             None // failed to send a single data element
           }
 
-        case State(data, _, Some(HttpResponse(s, h, e, _)), _)
-            if s.isSuccess() =>
+        case State(data, _, Some(HttpResponse(s, h, e, _)), _) if s.isSuccess() =>
           // content error
           logger.warn(
             s"$labelValue received $s but response body is not valid, will retry again in $delay host=${getHostnameValue(h)} data=${stringifyData(data)}"
@@ -281,8 +271,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
           tryResponse.map(HttpZipDecoder.decodeResponse) -> state
       }
       .mapAsyncUnordered(httpParallelism) {
-        case (response @ Success(HttpResponse(s, _, e, _)), state)
-            if !s.isSuccess() =>
+        case (response @ Success(HttpResponse(s, _, e, _)), state) if !s.isSuccess() =>
           // consume HTTP response bytes
           e.discardBytes()
           Future.successful(

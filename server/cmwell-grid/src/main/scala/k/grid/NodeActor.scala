@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package k.grid
 
 import akka.actor.Actor.Receive
@@ -34,26 +32,24 @@ import akka.actor._
 import akka.cluster._
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.{Try, Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 /**
- * Created by markz on 5/14/14.
- */
-
-case class ShutdownNode(address : Address)
+  * Created by markz on 5/14/14.
+  */
+case class ShutdownNode(address: Address)
 case object CheckIsolation
 case object BroadcastGridInfo
 
-case class MonitorMessage(from : String)
+case class MonitorMessage(from: String)
 
-
-case class Hosts(h : Set[String])
+case class Hosts(h: Set[String])
 
 class NodeActor extends Actor with LazyLogging {
-  private[this] var shutdownQueue = Map.empty[Address , Cancellable]
+  private[this] var shutdownQueue = Map.empty[Address, Cancellable]
 
   val cluster = Cluster(context.system)
-  var leader:Option[Address] = None
+  var leader: Option[Address] = None
   val system = Grid.system
 
   var hosts = Set.empty[String]
@@ -67,17 +63,15 @@ class NodeActor extends Actor with LazyLogging {
   override def preStart(): Unit = {
     //#subscribe
     cluster.subscribe(self, classOf[ClusterDomainEvent])
-    cluster.subscribe(self ,classOf[LeaderChanged])
+    cluster.subscribe(self, classOf[LeaderChanged])
     system.scheduler.schedule(30.seconds, 30.seconds, self, CheckIsolation)
     system.scheduler.schedule(0.seconds, 1.seconds, self, BroadcastGridInfo)
-
-
 
   }
   override def postStop(): Unit = cluster.unsubscribe(self)
   implicit val timeout = Timeout(5.seconds)
 
-  def membershipReceive : Receive = {
+  def membershipReceive: Receive = {
     case MemberUp(member) =>
       logger.info("[GridListener] Member is Up: {}", member.address)
       hosts = hosts + member.address.host.get
@@ -101,23 +95,27 @@ class NodeActor extends Actor with LazyLogging {
       leader = address
   }
 
-  def receive = membershipReceive orElse {
+  def receive = membershipReceive.orElse {
     case ShutdownNode(addr) =>
       logger.info(s"[GridListener] Downing node $addr")
       cluster.leave(addr)
       shutdownQueue = shutdownQueue.filterNot(t => t._1 != addr)
 
-
     case CheckIsolation =>
       val isCluster = Grid.hostName != "127.0.0.1"
-      val ctrls = LocalRegistrationManager.jvms.count(_.identity.map(_.name).getOrElse("") == Config.controllerMemberName)
+      val ctrls =
+        LocalRegistrationManager.jvms.count(_.identity.map(_.name).getOrElse("") == Config.controllerMemberName)
       val regFailure = LocalRegistrationManager.registrationFailure
       val isIsolated = ctrls < Config.minMembers
 
-      if(isCluster && (isIsolated || regFailure)){
-        logger.warn(s"IsolationStat: minMembers=${Config.minMembers}, ctrls=$ctrls, failCounter=$failCounter, failsAllowed=$failsAllowed, regFail=$regFailure")
-        if(failCounter >= failsAllowed) {
-          logger.warn(s"IsolationStat: This node was recognized as isolated and will restart its actor system. ($ctrls)")
+      if (isCluster && (isIsolated || regFailure)) {
+        logger.warn(
+          s"IsolationStat: minMembers=${Config.minMembers}, ctrls=$ctrls, failCounter=$failCounter, failsAllowed=$failsAllowed, regFail=$regFailure"
+        )
+        if (failCounter >= failsAllowed) {
+          logger.warn(
+            s"IsolationStat: This node was recognized as isolated and will restart its actor system. ($ctrls)"
+          )
           // Grid.rejoin
           sys.exit(1)
         } else failCounter += 1
@@ -125,7 +123,7 @@ class NodeActor extends Actor with LazyLogging {
 
     case BroadcastGridInfo =>
       val machines = Grid.members.map(_.host.getOrElse(""))
-      for ( host <- Grid.jvmsOnThisHost ) {
+      for (host <- Grid.jvmsOnThisHost) {
         Grid.selectActor("ClientActor", host) ! Hosts(machines)
       }
     case _: MemberEvent => // ignore

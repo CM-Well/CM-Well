@@ -12,23 +12,23 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
-import scala.util.{Failure, Try, Success}
+import scala.util.{Failure, Success, Try}
 import scala.sys.process._
 
 /**
- * Created by michael on 2/5/15.
- */
+  * Created by michael on 2/5/15.
+  */
 trait DockerFunctionallities {
 
-  private def command(com : String) : Try[String] = {
+  private def command(com: String): Try[String] = {
     val seq = Seq("bash", "-c", com)
     Try(seq.!!)
   }
 
-  def getDockerIps : Seq[String] = {
-    command("""docker ps | grep cmwellimage | awk '{print $1}' | xargs -I zzz docker inspect zzz | grep IPAddress | awk -F '"' '{print $4}'""") match {
+  def getDockerIps: Seq[String] = {
+    command(
+      """docker ps | grep cmwellimage | awk '{print $1}' | xargs -I zzz docker inspect zzz | grep IPAddress | awk -F '"' '{print $4}'"""
+    ) match {
       case Success(str) =>
         val res = str.trim.split("\n")
         res.toSeq
@@ -36,13 +36,18 @@ trait DockerFunctionallities {
     }
   }
 
-  def spawnDockerNode(casDir : Option[String] = None, cclDir : Option[String] = None , esDir : Option[String] = None, tlogDir : Option[String] = None, logsDir : Option[String] = None, instDir : Option[String] = None) {
-    val casDirCom = casDir.map(str => if(str != "") s"-v $str:/mnt/d1/cas" else "").getOrElse("")
-    val cclDirCom = cclDir.map(str => if(str != "") s"-v $str:/mnt/d1/ccl" else "").getOrElse("")
-    val esDirCom = esDir.map(str => if(str != "") s"-v $str:/mnt/d2/es" else "").getOrElse("")
-    val tlogDirCom = tlogDir.map(str => if(str != "") s"-v $str:/mnt/d2/tlog" else "").getOrElse("")
-    val logsDirCom = logsDir.map(str => if(str != "") s"-v $str:/mnt/d2/log" else "").getOrElse("")
-    val instDirCom = instDir.map(str => if(str != "") s"-v $str:/mnt/s1/cmwell-installation" else "").getOrElse("")
+  def spawnDockerNode(casDir: Option[String] = None,
+                      cclDir: Option[String] = None,
+                      esDir: Option[String] = None,
+                      tlogDir: Option[String] = None,
+                      logsDir: Option[String] = None,
+                      instDir: Option[String] = None) {
+    val casDirCom = casDir.map(str => if (str != "") s"-v $str:/mnt/d1/cas" else "").getOrElse("")
+    val cclDirCom = cclDir.map(str => if (str != "") s"-v $str:/mnt/d1/ccl" else "").getOrElse("")
+    val esDirCom = esDir.map(str => if (str != "") s"-v $str:/mnt/d2/es" else "").getOrElse("")
+    val tlogDirCom = tlogDir.map(str => if (str != "") s"-v $str:/mnt/d2/tlog" else "").getOrElse("")
+    val logsDirCom = logsDir.map(str => if (str != "") s"-v $str:/mnt/d2/log" else "").getOrElse("")
+    val instDirCom = instDir.map(str => if (str != "") s"-v $str:/mnt/s1/cmwell-installation" else "").getOrElse("")
 
     command(s"""docker run -d -P $casDirCom $cclDirCom $esDirCom $tlogDirCom $logsDirCom $instDirCom cmwellimage""")
   }

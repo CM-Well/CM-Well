@@ -12,24 +12,22 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package controllers
 
-import play.api.mvc._ ,BodyParsers.parse
+import play.api.mvc._, BodyParsers.parse
 import javax.inject._
 import scala.language.postfixOps
 
 //TODO: this must be refactored...!
 @Singleton
-class CommandHandler  @Inject() (inputHandler: InputHandler) extends InjectedController {
-  def handlePost(op: String) =  Action.async(parse.raw) {
-    implicit req => {
+class CommandHandler @Inject()(inputHandler: InputHandler) extends InjectedController {
+  def handlePost(op: String) = Action.async(parse.raw) { implicit req =>
+    {
       op.toLowerCase match {
         case "init" => {
           val format = req.getQueryString("format").getOrElse("jsonw")
-          if ("jsonw" == format.toLowerCase) inputHandler.handlePostWrapped (req, true, true)
-          else inputHandler.handlePostRDF (req, true)._1
+          if ("jsonw" == format.toLowerCase) inputHandler.handlePostWrapped(req, true, true)
+          else inputHandler.handlePostRDF(req, true)._1
         }
       }
     }

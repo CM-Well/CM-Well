@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.zcache
 
 import cmwell.util.concurrent.unsafeRetryUntil
@@ -31,11 +29,15 @@ import scala.concurrent.duration._
   *
   */
 class ZCache(zStore: ZStore) {
-  def memoize[K,V](task: K => Future[V])
-                  (digest: K => String, deserializer: Array[Byte] => V, serializer: V => Array[Byte], isCachable: V => Boolean = (_:V)=>true)
-                  (ttlSeconds: Int = 10, pollingMaxRetries: Int = 5, pollingInterval: Int = 1)
-                  (implicit ec: ExecutionContext): K => Future[V] = {
-    (input: K) => {
+  def memoize[K, V](task: K => Future[V])(
+    digest: K => String,
+    deserializer: Array[Byte] => V,
+    serializer: V => Array[Byte],
+    isCachable: V => Boolean = (_: V) => true
+  )(ttlSeconds: Int = 10, pollingMaxRetries: Int = 5, pollingInterval: Int = 1)(
+    implicit ec: ExecutionContext
+  ): K => Future[V] = { (input: K) =>
+    {
       val key = digest(input)
       get(key)(deserializer, pollingMaxRetries, pollingInterval)(ec).flatMap {
         case Some(result) => Future.successful(result)
@@ -43,31 +45,28 @@ class ZCache(zStore: ZStore) {
           put(key, Pending)(ttlSeconds)(ec)
           task(input).flatMap {
             case result if isCachable(result) => put(key, result)(serializer, ttlSeconds)(ec).map(_ => result)
-            case result => remove(key)(ec).map(_ => result)
+            case result                       => remove(key)(ec).map(_ => result)
           }
         }
       }
     }
   }
 
-  def get[T](key: String)
-            (deserializer: Array[Byte] => T, pollingMaxRetries: Int, pollingInterval: Int)
-            (implicit ec: ExecutionContext): Future[Option[T]] = {
-    def isActualValue(valueOpt: Option[Array[Byte]]) = !valueOpt.exists(_ sameElements Pending.payload)
-    unsafeRetryUntil(isActualValue, pollingMaxRetries, pollingInterval.seconds)(zStore.getOpt(key, dontRetry = true)).map {
-      case Some(payload) if payload sameElements Pending.payload => None
-      case noneOrActualValue => noneOrActualValue.map(deserializer)
-    }
+  def get[T](key: String)(deserializer: Array[Byte] => T, pollingMaxRetries: Int, pollingInterval: Int)(
+    implicit ec: ExecutionContext
+  ): Future[Option[T]] = {
+    def isActualValue(valueOpt: Option[Array[Byte]]) = !valueOpt.exists(_.sameElements(Pending.payload))
+    unsafeRetryUntil(isActualValue, pollingMaxRetries, pollingInterval.seconds)(zStore.getOpt(key, dontRetry = true))
+      .map {
+        case Some(payload) if payload.sameElements(Pending.payload) => None
+        case noneOrActualValue                                      => noneOrActualValue.map(deserializer)
+      }
   }
 
-  def put(key: String, state: State)
-         (ttl: Int)
-         (implicit ec: ExecutionContext): Future[Unit] =
+  def put(key: String, state: State)(ttl: Int)(implicit ec: ExecutionContext): Future[Unit] =
     zStore.put(key, state.payload, secondsToLive = ttl, false)
 
-  def put[T](key: String, value: T)
-            (serializer: T => Array[Byte], ttl: Int)
-            (implicit ec: ExecutionContext): Future[T] =
+  def put[T](key: String, value: T)(serializer: T => Array[Byte], ttl: Int)(implicit ec: ExecutionContext): Future[T] =
     zStore.put(key, serializer(value), secondsToLive = ttl, false).map(_ => value)
 
   def remove(key: String)(implicit ec: ExecutionContext): Future[Unit] = zStore.remove(key)

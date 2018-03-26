@@ -18,11 +18,7 @@ import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.coding.Gzip
-import akka.http.scaladsl.model.headers.{
-  `Accept-Encoding`,
-  `Content-Encoding`,
-  HttpEncodings
-}
+import akka.http.scaladsl.model.headers.{`Accept-Encoding`, `Content-Encoding`, HttpEncodings}
 import akka.http.scaladsl.model.{ContentTypes, _}
 import akka.stream.Supervision.Decider
 import akka.stream.contrib.Retry
@@ -50,8 +46,7 @@ object InfotonRetriever extends LazyLogging {
   type RetrieveOutput =
     scala.collection.immutable.Seq[(InfotonData, Option[Long])]
 
-  case class RetrieveStateStatus(retriesLeft: Int,
-                                 lastException: Option[Throwable])
+  case class RetrieveStateStatus(retriesLeft: Int, lastException: Option[Throwable])
 
   val okStatus = RetrieveStateStatus(0, None)
   type RetrieveState = (RetrieveInput, RetrieveStateStatus)
@@ -60,9 +55,7 @@ object InfotonRetriever extends LazyLogging {
   val initialRetrieveSingleStatus =
     RetrieveStateStatus(Settings.initialSingleRetrieveRetryCount, None)
 
-  case class ParsedNquad(path: String,
-                         nquad: ByteString,
-                         indexTime: Option[Long])
+  case class ParsedNquad(path: String, nquad: ByteString, indexTime: Option[Long])
 
   case class RetrieveTotals(
     parsed: Map[String, (ByteStringBuilder, Option[Long])],
@@ -77,16 +70,13 @@ object InfotonRetriever extends LazyLogging {
     ]]
 
   //The path will be unique for each bulk infoton got into the flow
-  def apply(dcInfo: DcInfo, decider: Decider)(implicit sys: ActorSystem,
-                                              mat: Materializer): Flow[Seq[
+  def apply(dcInfo: DcInfo, decider: Decider)(implicit sys: ActorSystem, mat: Materializer): Flow[Seq[
     InfotonData
   ], scala.collection.immutable.Seq[InfotonData], NotUsed] = {
     val remoteUri = "http://" + dcInfo.location
     val checkResponse =
       checkResponseCreator(dcInfo.id, dcInfo.location, decider) _
-    val retrieveFlow: Flow[(Future[RetrieveInput], RetrieveState),
-                           (Try[RetrieveOutput], RetrieveState),
-                           NotUsed] =
+    val retrieveFlow: Flow[(Future[RetrieveInput], RetrieveState), (Try[RetrieveOutput], RetrieveState), NotUsed] =
       Flow[(Future[RetrieveInput], RetrieveState)]
         .mapAsync(1) { case (input, state) => input.map(_ -> state) }
         .map {
@@ -105,8 +95,7 @@ object InfotonRetriever extends LazyLogging {
           case (Success(response), state) if response.status.isSuccess() => {
             response.entity.dataBytes
               .via(
-                Framing.delimiter(endln,
-                                  maximumFrameLength = maxStatementLength)
+                Framing.delimiter(endln, maximumFrameLength = maxStatementLength)
               )
               .fold(
                 RetrieveTotals(
@@ -153,10 +142,7 @@ object InfotonRetriever extends LazyLogging {
               .withAttributes(ActorAttributes.supervisionStrategy(decider))
               .recover {
                 case ex: Throwable =>
-                  (Failure[RetrieveOutput](ex),
-                   (state._1,
-                    RetrieveStateStatus(state._2.retriesLeft, Some(ex))),
-                   None)
+                  (Failure[RetrieveOutput](ex), (state._1, RetrieveStateStatus(state._2.retriesLeft, Some(ex))), None)
               }
           }
           case (res @ Success(HttpResponse(s, h, entity, _)), state) => {
@@ -200,8 +186,7 @@ object InfotonRetriever extends LazyLogging {
 
     Flow[RetrieveInput]
       .map(
-        input =>
-          Future.successful(input) -> (input -> initialRetrieveBulkStatus)
+        input => Future.successful(input) -> (input -> initialRetrieveBulkStatus)
       )
       .via(
         Retry.concat(Settings.retrieveRetryQueueSize, retrieveFlow)(
@@ -220,8 +205,7 @@ object InfotonRetriever extends LazyLogging {
       }
   }
 
-  def parseNquad(remoteUri: String,
-                 nquadLine: ByteString): Option[ParsedNquad] = {
+  def parseNquad(remoteUri: String, nquadLine: ByteString): Option[ParsedNquad] = {
     val line = nquadLine.utf8String.replace(remoteUri, cmwellPrefix)
     val wrappedSubject = line.takeWhile(_ != space)
     if (wrappedSubject.length > 1 &&
@@ -254,14 +238,11 @@ object InfotonRetriever extends LazyLogging {
       method = HttpMethods.POST,
       uri = s"$dst/_out?format=nquads",
       entity = entity,
-      headers =
-        scala.collection.immutable.Seq(gzipAcceptEncoding, gzipContentEncoding)
+      headers = scala.collection.immutable.Seq(gzipAcceptEncoding, gzipContentEncoding)
     )
   }
 
-  def checkResponseCreator(dataCenterId: String,
-                           location: String,
-                           decider: Decider)(
+  def checkResponseCreator(dataCenterId: String, location: String, decider: Decider)(
     response: (Try[RetrieveOutput], RetrieveState, Option[ByteString])
   ): (Try[RetrieveOutput], RetrieveState) =
     response match {
@@ -271,8 +252,7 @@ object InfotonRetriever extends LazyLogging {
         }
         //uuids that the index time from cassandra is different from the one got from ES
         val uuidsWithBadIndexTime = res.collect {
-          case (id, casIndexTime)
-              if casIndexTime.isDefined && id.meta.indexTime != casIndexTime.get =>
+          case (id, casIndexTime) if casIndexTime.isDefined && id.meta.indexTime != casIndexTime.get =>
             id
         }
         if (missingUuids.isEmpty && uuidsWithBadIndexTime.isEmpty) {
@@ -300,8 +280,7 @@ object InfotonRetriever extends LazyLogging {
               .mkString(",")}."
           )
           logger.debug(s"Error ![$errorID]. Full response body was: $body")
-          (Failure(ex),
-           (state._1, RetrieveStateStatus(state._2.retriesLeft, Some(ex))))
+          (Failure(ex), (state._1, RetrieveStateStatus(state._2.retriesLeft, Some(ex))))
         } else {
           val errorID = response.##
           val ex = RetrieveBadIndexTimeException(
@@ -310,8 +289,7 @@ object InfotonRetriever extends LazyLogging {
               .mkString(",")}."
           )
           logger.debug(s"Error ![$errorID]. Full response body was: $body")
-          (Failure(ex),
-           (state._1, RetrieveStateStatus(state._2.retriesLeft, Some(ex))))
+          (Failure(ex), (state._1, RetrieveStateStatus(state._2.retriesLeft, Some(ex))))
         }
       }
       case (fail @ Failure(e), state, _) => (fail, state)

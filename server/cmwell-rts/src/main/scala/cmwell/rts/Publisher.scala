@@ -12,55 +12,52 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.rts
 
-import akka.actor.{ActorSelection, Actor, ActorRef}
+import akka.actor.{Actor, ActorRef, ActorSelection}
 import cmwell.domain.Infoton
 import k.grid.Grid
 import com.typesafe.scalalogging.LazyLogging
 
 /**
- * Created by markz on 7/9/14.
- */
+  * Created by markz on 7/9/14.
+  */
+case class AddSubscriber(subscriber: String, rule: Rule)
+case class RemoveSubscriber(subscriber: String)
 
-case class AddSubscriber(subscriber : String , rule : Rule )
-case class RemoveSubscriber(subscriber : String)
-
-case class Publish(i : Vector[Infoton])
-case class PublishOne(uuid : String)
+case class Publish(i: Vector[Infoton])
+case class PublishOne(uuid: String)
 //case class Publish(s : String)
 
 class PublishAgent extends Actor with LazyLogging {
   // need a mapping rule (q) -> actor (label)
-  var rules : Map[String,Rule] = Map.empty[String,Rule]
-  var subMap : Map[String,ActorSelection] = Map.empty[String,ActorSelection]
+  var rules: Map[String, Rule] = Map.empty[String, Rule]
+  var subMap: Map[String, ActorSelection] = Map.empty[String, ActorSelection]
 
-  def publish_data(subscriber : String , i : Infoton) {
+  def publish_data(subscriber: String, i: Infoton) {
     // send
     val a = subMap(subscriber)
-    logger debug(s"Send data to $subscriber [$a]")
+    logger.debug(s"Send data to $subscriber [$a]")
     a ! PublishOne(i.uuid)
   }
 
   def receive = {
     // add a rule to the internal map
-    case AddSubscriber(subscriber : String , rule : Rule ) =>
+    case AddSubscriber(subscriber: String, rule: Rule) =>
       val addr = sender().path.address
       val path = s"akka.tcp://${addr.system}@${addr.host.getOrElse("")}:${addr.port.getOrElse(0)}/user/$subscriber"
-      rules += ( subscriber -> rule )
-      subMap += ( subscriber -> context.actorSelection(path))
-      logger debug(s"AddRule rules [${rules}] sub map [${subMap}]" )
+      rules += (subscriber -> rule)
+      subMap += (subscriber -> context.actorSelection(path))
+      logger.debug(s"AddRule rules [${rules}] sub map [${subMap}]")
     // remove the rule from the internal map
-    case RemoveSubscriber(subscriber : String ) =>
-      rules -= ( subscriber )
-      subMap -= ( subscriber )
-      logger debug(s"RemoveRule ${subscriber} rules [${rules}] sub map [${subMap}]")
+    case RemoveSubscriber(subscriber: String) =>
+      rules -= (subscriber)
+      subMap -= (subscriber)
+      logger.debug(s"RemoveRule ${subscriber} rules [${rules}] sub map [${subMap}]")
 
     // this publish the infoton according the rule
-    case  Publish(infotonVec : Vector[Infoton]) => {
-      logger debug (s"in actor $infotonVec")
+    case Publish(infotonVec: Vector[Infoton]) => {
+      logger.debug(s"in actor $infotonVec")
       // first lets calc
       infotonVec.foreach { i =>
         rules.foreach {
@@ -82,22 +79,21 @@ class PublishAgent extends Actor with LazyLogging {
       }
     }
     case _ =>
-      logger debug("Error")
+      logger.debug("Error")
   }
 
 }
 
-
 object Publisher {
-  val publishAgentActor : ActorRef = Grid.create(classOf[PublishAgent], "publisher")
-  val p : Publisher = new Publisher(publishAgentActor)
-  def init : Unit = {}
-  def publish(i : Vector[Infoton]) : Unit = p.publish(i)
+  val publishAgentActor: ActorRef = Grid.create(classOf[PublishAgent], "publisher")
+  val p: Publisher = new Publisher(publishAgentActor)
+  def init: Unit = {}
+  def publish(i: Vector[Infoton]): Unit = p.publish(i)
 }
 
-class Publisher(val publishAgentActor : ActorRef) {
+class Publisher(val publishAgentActor: ActorRef) {
 
-  def publish(i : Vector[Infoton]) : Unit = {
+  def publish(i: Vector[Infoton]): Unit = {
     // no block call here
     publishAgentActor ! Publish(i)
   }
