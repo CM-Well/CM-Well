@@ -127,16 +127,16 @@ class InfotonReporter private(baseUrl: String, path: String)(implicit mat: Mater
 
     def createRequest(tokensStats: TokenAndStatisticsMap) = {
       val data = HttpEntity(tokensStats.foldLeft(Seq.empty[String]) { case (agg, (sensor, (token, downloadStats))) => agg :+ createTriples(sensor, token, downloadStats) }.mkString("\n"))
-      HttpRequest(uri = s"http://$host:$port/_in?format=$format&replace-mode", method = HttpMethods.POST, entity = data)
+      val d= HttpRequest(uri = s"http://$host:$port/_in?format=$format&replace-mode", method = HttpMethods.POST, entity = data)
         .addHeader(RawHeader("X-CM-WELL-TOKEN", writeToken))
+      d
     }
 
     def createTriples(sensor: String, token: Token, downloadStats: Option[DownloadStats]) = {
       val p = if (path startsWith "/") path.tail else path
-      downloadStats.foldLeft(s"""<cmwell://$p/tokens/$sensor> <cmwell://meta/nn#token> "$token" .""") { (acc,s) =>
-        acc + " " + s"""<cmwell://$p/tokens/$sensor> <cmwell://meta/nn#receivedInfotons> "${s.receivedInfotons}" ."""
-      }
-
+      s"""<cmwell://$p/tokens/$sensor> <cmwell://meta/nn#token> "$token" .""" + downloadStats.map({ stats=>
+          "\n" + s"""<cmwell://$p/tokens/$sensor> <cmwell://meta/nn#receivedInfotons> "${stats.receivedInfotons}" ."""
+      }).get
     }
 
     Source.single(tokenAndStatistics)
@@ -149,6 +149,9 @@ class InfotonReporter private(baseUrl: String, path: String)(implicit mat: Mater
         case HttpResponse(s, h, e, _)  =>
           logger.error(s"problem writing tokens infoton to $path")
           e.discardBytes()
+        case _ =>
+          logger.error(s"Broken")
+
       }
       .runWith(Sink.ignore)
 
