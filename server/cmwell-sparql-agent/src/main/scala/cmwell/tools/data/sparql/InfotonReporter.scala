@@ -127,8 +127,9 @@ class InfotonReporter private (baseUrl: String, path: String)(implicit mat: Mate
       .map(_.payload)
   }
 
-  override def saveTokens(tokenAndStatistics: TokenAndStatisticsMap): Unit = {
 
+  override def saveTokens(tokenAndStatistics: TokenAndStatisticsMap) : Unit = {
+    
     def createRequest(tokensStats: TokenAndStatisticsMap) = {
       val data = HttpEntity(
         tokensStats
@@ -142,12 +143,10 @@ class InfotonReporter private (baseUrl: String, path: String)(implicit mat: Mate
     }
 
     def createTriples(sensor: String, token: Token, downloadStats: Option[DownloadStats]) = {
-      val p = if (path.startsWith("/")) path.tail else path
-
-      downloadStats.fold(s"""<cmwell://$p/tokens/$sensor> <cmwell://meta/nn#token> "$token" .""") { s =>
-        s"""<cmwell://$p/tokens/$sensor> <cmwell://meta/nn#receivedInfotons> "${s.receivedInfotons}" ."""
-      }
-
+      val p = if (path startsWith "/") path.tail else path
+      s"""<cmwell://$p/tokens/$sensor> <cmwell://meta/nn#token> "$token" .""" + downloadStats.fold("")({ stats =>
+        "\n" + s"""<cmwell://$p/tokens/$sensor> <cmwell://meta/nn#receivedInfotons> "${stats.receivedInfotons}" ."""
+      })
     }
 
     Source
