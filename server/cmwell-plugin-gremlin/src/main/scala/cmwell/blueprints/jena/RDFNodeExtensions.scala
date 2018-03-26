@@ -12,15 +12,13 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.blueprints.jena
 
 import org.apache.jena.rdf.model.RDFNode
 
 /**
- * Created by yaakov on 6/2/15.
- */
+  * Created by yaakov on 6/2/15.
+  */
 object Extensions {
   implicit class RDFNodeExtensions(rdfNode: RDFNode) {
     def id = {

@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.common.file
 
 import org.apache.tika.Tika
@@ -22,22 +20,24 @@ import scala.io.Source
 import scala.util.Try
 
 /**
- * Created by IntelliJ IDEA.
- * User: Israel
- * Date: 8/22/11
- * Time: 4:57 PM
- * To change this template use File | Settings | File Templates.
- */
-
+  * Created by IntelliJ IDEA.
+  * User: Israel
+  * Date: 8/22/11
+  * Time: 4:57 PM
+  * To change this template use File | Settings | File Templates.
+  */
 object MimeTypeIdentifier {
 
   //private[this] val mimeTypes =  TikaConfig.getDefaultConfig().getMimeRepository()
   private[this] val tika = new Tika
 
-  def identify(bytes:Array[Byte], name:String) = Try(tika.detect(bytes,name)).toOption
+  def identify(bytes: Array[Byte], name: String) = Try(tika.detect(bytes, name)).toOption
 
-  private val textualMimeTypes:HashSet[String] = HashSet() ++ Source.fromInputStream(getClass.getResourceAsStream("/textual.mime.types")).getLines().toSet
+  private val textualMimeTypes: HashSet[String] = HashSet() ++ Source
+    .fromInputStream(getClass.getResourceAsStream("/textual.mime.types"))
+    .getLines()
+    .toSet
 
-  def isTextual(mimeType:String) = (mimeType.contains("text") || textualMimeTypes.exists(_.equals(mimeType)))
+  def isTextual(mimeType: String) = (mimeType.contains("text") || textualMimeTypes.exists(_.equals(mimeType)))
 
 }

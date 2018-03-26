@@ -12,10 +12,7 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package k.grid.monitoring
-
 
 import akka.actor.{Actor, Cancellable}
 import ch.qos.logback.classic.{Level, Logger}
@@ -40,19 +37,19 @@ object SetNodeLogLevel {
     "ALL" -> Level.ALL
   )
 
-  def levelTranslator(lvl : String) : Option[Level] = {
+  def levelTranslator(lvl: String): Option[Level] = {
     lvlMappings.get(lvl.toUpperCase)
   }
 }
 
 case object GetNodeLogLevel
-case class NodeLogLevel(lvl : String)
-case class SetNodeLogLevel(level : Level, levelDuration : Option[Int] = Some(10))
+case class NodeLogLevel(lvl: String)
+case class SetNodeLogLevel(level: Level, levelDuration: Option[Int] = Some(10))
 
 class MonitorActor extends Actor with LazyLogging {
-  private[this] var originalLogLevel : Level = _
+  private[this] var originalLogLevel: Level = _
   private val editableLogger = "ROOT"
-  private[this] var scheduledLogLevelReset : Cancellable = _
+  private[this] var scheduledLogLevelReset: Cancellable = _
 
   @throws[Exception](classOf[Exception])
   override def preStart(): Unit = {
@@ -70,7 +67,7 @@ class MonitorActor extends Actor with LazyLogging {
       MonitorUtil.pingChildren.pipeTo(sender)
 
     case SetNodeLogLevel(lvl, duration) =>
-      if(scheduledLogLevelReset != null) {
+      if (scheduledLogLevelReset != null) {
         scheduledLogLevelReset.cancel()
         scheduledLogLevelReset = null
       }
@@ -78,9 +75,9 @@ class MonitorActor extends Actor with LazyLogging {
       logger.info(s"Setting $editableLogger to log level $lvl")
       duration.foreach { d =>
         logger.info(s"Scheduling $editableLogger to be in level $originalLogLevel in $d minutes")
-        scheduledLogLevelReset = context.system.scheduler.scheduleOnce(d.minutes, self, SetNodeLogLevel(originalLogLevel, None))
+        scheduledLogLevelReset =
+          context.system.scheduler.scheduleOnce(d.minutes, self, SetNodeLogLevel(originalLogLevel, None))
       }
-
 
       LoggerFactory.getLogger(editableLogger).asInstanceOf[ch.qos.logback.classic.Logger].setLevel(lvl)
       //change also the log level of the akka logger

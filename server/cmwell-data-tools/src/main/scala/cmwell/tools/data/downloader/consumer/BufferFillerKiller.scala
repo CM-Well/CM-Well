@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.downloader.consumer
 
 import akka.actor.{ActorRef, PoisonPill}
@@ -36,36 +34,42 @@ class BufferFillerKiller[T](bufferFiller: ActorRef) extends GraphStage[FlowShape
 
   override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = {
     new GraphStageLogic(shape) {
-      setHandler(in, new InHandler {
-        override def onPush(): Unit = {
-          if (isAvailable(out))
-            push(out, (grab(in)))
-        }
+      setHandler(
+        in,
+        new InHandler {
+          override def onPush(): Unit = {
+            if (isAvailable(out))
+              push(out, (grab(in)))
+          }
 
-        override def onUpstreamFailure(ex: Throwable): Unit = {
-          ex.printStackTrace()
-          bufferFiller ! PoisonPill
-          super.onUpstreamFailure(ex)
-        }
+          override def onUpstreamFailure(ex: Throwable): Unit = {
+            ex.printStackTrace()
+            bufferFiller ! PoisonPill
+            super.onUpstreamFailure(ex)
+          }
 
-        override def onUpstreamFinish(): Unit = {
-          bufferFiller ! PoisonPill
-          super.onUpstreamFinish()
-        }
+          override def onUpstreamFinish(): Unit = {
+            bufferFiller ! PoisonPill
+            super.onUpstreamFinish()
+          }
 
-      })
-
-      setHandler(out, new OutHandler {
-        override def onPull(): Unit = {
-          if (!hasBeenPulled(in))
-            pull(in)
         }
+      )
 
-        override def onDownstreamFinish(): Unit = {
-          bufferFiller ! PoisonPill
-          super.onDownstreamFinish()
+      setHandler(
+        out,
+        new OutHandler {
+          override def onPull(): Unit = {
+            if (!hasBeenPulled(in))
+              pull(in)
+          }
+
+          override def onDownstreamFinish(): Unit = {
+            bufferFiller ! PoisonPill
+            super.onDownstreamFinish()
+          }
         }
-      })
+      )
     }
   }
 }

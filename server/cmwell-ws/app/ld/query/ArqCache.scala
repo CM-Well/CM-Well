@@ -25,8 +25,11 @@ object ArqCache { // one day this will be a distributed cache ... // todo zStore
   private case class NsResult(uri: String, hash: String, prefix: String)
 
   private lazy val searchesCache: LoadingCache[String, Seq[Quad]] =
-    CacheBuilder.newBuilder().maximumSize(100000).expireAfterWrite(100, TimeUnit.SECONDS).
-      build(new CacheLoader[String, Seq[Quad]] { override def load(key: String) = !!! })
+    CacheBuilder
+      .newBuilder()
+      .maximumSize(100000)
+      .expireAfterWrite(100, TimeUnit.SECONDS)
+      .build(new CacheLoader[String, Seq[Quad]] { override def load(key: String) = !!! })
 }
 
 class ArqCache(crudServiceFS: CRUDServiceFS) extends LazyLogging {
@@ -41,26 +44,39 @@ class ArqCache(crudServiceFS: CRUDServiceFS) extends LazyLogging {
   def getSearchResults(key: String): Seq[Quad] = Try(searchesCache.get(key)).toOption.getOrElse(Seq())
 
   private lazy val infotonsCache: LoadingCache[String, Option[Infoton]] =
-    CacheBuilder.newBuilder().maximumSize(100000).expireAfterAccess(5, TimeUnit.MINUTES).
-      build(new CacheLoader[String, Option[Infoton]] {
-        override def load(key: String) = Await.result(crudServiceFS.getInfoton(key, None, None), 9.seconds) match { case Some(Everything(i)) => Option(i) case _ => None }
+    CacheBuilder
+      .newBuilder()
+      .maximumSize(100000)
+      .expireAfterAccess(5, TimeUnit.MINUTES)
+      .build(new CacheLoader[String, Option[Infoton]] {
+        override def load(key: String) = Await.result(crudServiceFS.getInfoton(key, None, None), 9.seconds) match {
+          case Some(Everything(i)) => Option(i)
+          case _                   => None
+        }
       })
 
   private lazy val identifiersCache: LoadingCache[String, String] =
-    CacheBuilder.newBuilder().maximumSize(1024).expireAfterAccess(5, TimeUnit.MINUTES).
-      build(new CacheLoader[String, String] { override def load(key: String) = translateAndFetch(Uri(key)).hash })
+    CacheBuilder
+      .newBuilder()
+      .maximumSize(1024)
+      .expireAfterAccess(5, TimeUnit.MINUTES)
+      .build(new CacheLoader[String, String] { override def load(key: String) = translateAndFetch(Uri(key)).hash })
 
   private lazy val namespacesCache: LoadingCache[String, NsResult] =
-    CacheBuilder.newBuilder().maximumSize(1024).expireAfterAccess(5, TimeUnit.MINUTES).
-      build(new CacheLoader[String, NsResult] { override def load(key: String) = translateAndFetch(Hash(key)) })
+    CacheBuilder
+      .newBuilder()
+      .maximumSize(1024)
+      .expireAfterAccess(5, TimeUnit.MINUTES)
+      .build(new CacheLoader[String, NsResult] { override def load(key: String) = translateAndFetch(Hash(key)) })
 
   private def translateAndFetch(input: Input): NsResult = {
-    val (hash,knownUri) = input match {
+    val (hash, knownUri) = input match {
       case Uri(uri) => cmwell.util.string.Hash.crc32base64(uri) -> Some(uri)
-      case Hash(h) => h -> None
+      case Hash(h)  => h -> None
     }
 
-    def extractFieldValue(i: Infoton, fieldName: String) = i.fields.getOrElse(Map()).getOrElse(fieldName,Set()).mkString(",")
+    def extractFieldValue(i: Infoton, fieldName: String) =
+      i.fields.getOrElse(Map()).getOrElse(fieldName, Set()).mkString(",")
 
     // /meta/ns/{hash} if fields.url == pred.getURI return hash. else search over meta/ns?qp=url::pred.getURI -> get identifier from path of infoton
     Await.result(crudServiceFS.getInfoton(s"/meta/ns/$hash", None, None), 9.seconds) match {
@@ -75,7 +91,8 @@ class ArqCache(crudServiceFS: CRUDServiceFS) extends LazyLogging {
         val searchFutureRes = crudServiceFS.search(
           pathFilter = Some(PathFilter("/", descendants = true)),
           fieldFilters = Some(SingleFieldFilter(Must, Equals, "url", knownUri)),
-          paginationParams = PaginationParams(0, 10))
+          paginationParams = PaginationParams(0, 10)
+        )
         val infotonsWithThatUrl = Await.result(searchFutureRes, 9.seconds).infotons
         (infotonsWithThatUrl.length: @switch) match {
           case 0 =>
@@ -89,12 +106,18 @@ class ArqCache(crudServiceFS: CRUDServiceFS) extends LazyLogging {
             val uri = knownUri.getOrElse(extractFieldValue(infoton, "url"))
             NsResult(uri, actualHash, extractFieldValue(infoton, "prefix"))
           case _ =>
-            logger.debug(s"[arq] this should never happen: same URL [${knownUri.get}] cannot be more than once in meta/ns [${infotonsWithThatUrl.map(i => i.path + "[" + i.uuid + "]").mkString(",")}]")
+            logger.debug(
+              s"[arq] this should never happen: same URL [${knownUri.get}] cannot be more than once in meta/ns [${infotonsWithThatUrl
+                .map(i => i.path + "[" + i.uuid + "]")
+                .mkString(",")}]"
+            )
             !!!
         }
       }
       case _ =>
-        logger.debug(s"[arq] this should never happen: given a hash [$hash], when the URI is unknown, and there's no infoton under meta/ns/ - it means corrupted data")
+        logger.debug(
+          s"[arq] this should never happen: given a hash [$hash], when the URI is unknown, and there's no infoton under meta/ns/ - it means corrupted data"
+        )
         !!!
     }
   }

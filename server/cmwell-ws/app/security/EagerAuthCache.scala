@@ -1,18 +1,17 @@
 /**
-* Copyright 2015 Thomson Reuters
-*
-* Licensed under the Apache License, Version 2.0 (the “License”); you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*   http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
-* an “AS IS” BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-*
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
-
+  * Copyright 2015 Thomson Reuters
+  *
+  * Licensed under the Apache License, Version 2.0 (the “License”); you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  *
+  *   http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+  * an “AS IS” BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  *
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
 package security
 
 import javax.inject.{Inject, Singleton}
@@ -48,8 +47,8 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
   def getRole(roleName: String): Option[JsValue] = {
     data.roles.get(roleName).orElse {
       Await.result(directReadFallback(s"/meta/auth/roles/$roleName"), 6.seconds).map { role =>
-          logger.debug(s"AuthCache role $roleName was not in memory, but added to Map")
-          data = data.copy(roles = data.roles + (roleName -> role))
+        logger.debug(s"AuthCache role $roleName was not in memory, but added to Map")
+        data = data.copy(roles = data.roles + (roleName -> role))
         role
       }
     }
@@ -66,48 +65,61 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
     }
   }
 
-  def invalidate(): Future[Boolean] = if(isLoadingSemaphore) Future.successful(false) else load()
+  def invalidate(): Future[Boolean] = if (isLoadingSemaphore) Future.successful(false) else load()
 
   // TODO use testAndSet in both cases, manual invalidate as well as scheduled load.
   private def load(): Future[Boolean] = {
     isLoadingSemaphore = true
 
-    unsafeRetryUntil[AuthData](isSuccessful = !_.isEmpty, maxRetries = 10, delay = 5.seconds)(loadOnce()).map { d =>
-      data = combiner(data, d)
-      isLoadingSemaphore = false
-      true
-    }.recover { case _ =>
-      isLoadingSemaphore = false
-      false
-    }
+    unsafeRetryUntil[AuthData](isSuccessful = !_.isEmpty, maxRetries = 10, delay = 5.seconds)(loadOnce())
+      .map { d =>
+        data = combiner(data, d)
+        isLoadingSemaphore = false
+        true
+      }
+      .recover {
+        case _ =>
+          isLoadingSemaphore = false
+          false
+      }
   }
 
   private def loadOnce(): Future[AuthData] = {
     // one level under /meta/auth is a parent (e.g. "users", "roles")
     def isParent(infoton: Infoton) = infoton.path.count(_ == '/') < 4
     logger.debug(s"AuthCache is now loading...")
-    crudServiceFS.search(Some(PathFilter("/meta/auth", descendants = true)), withData = true, paginationParams = PaginationParams(0, 2048)).map { searchResult =>
-      val data = searchResult.infotons.filterNot(isParent).map(i => i.path -> extractPayload(i)).collect { case (p, Some(jsv)) => p -> jsv }.toMap
-      val (usersData, rolesData) = cmwell.util.collections.partitionWith(data) { t =>
-        val (path, payload) = t
-        val isUser = path.startsWith("/meta/auth/users")
-        val key = path.substring(path.lastIndexOf("/") + 1)
-        if (isUser) Left(key -> payload)
-        else Right(key -> payload)
+    crudServiceFS
+      .search(Some(PathFilter("/meta/auth", descendants = true)),
+              withData = true,
+              paginationParams = PaginationParams(0, 2048))
+      .map { searchResult =>
+        val data = searchResult.infotons
+          .filterNot(isParent)
+          .map(i => i.path -> extractPayload(i))
+          .collect { case (p, Some(jsv)) => p -> jsv }
+          .toMap
+        val (usersData, rolesData) = cmwell.util.collections.partitionWith(data) { t =>
+          val (path, payload) = t
+          val isUser = path.startsWith("/meta/auth/users")
+          val key = path.substring(path.lastIndexOf("/") + 1)
+          if (isUser) Left(key -> payload)
+          else Right(key -> payload)
+        }
+        logger.debug(s"AuthCache Loaded with ${usersData.size} users and ${rolesData.size} roles.")
+        AuthData(usersData.toMap, rolesData.toMap)
       }
-      logger.debug(s"AuthCache Loaded with ${usersData.size} users and ${rolesData.size} roles.")
-      AuthData(usersData.toMap, rolesData.toMap)
-    }.recover { case t: Throwable =>
-      logger.error(s"AuthCache failed to load", t)
-      AuthData.empty
-    }
+      .recover {
+        case t: Throwable =>
+          logger.error(s"AuthCache failed to load", t)
+          AuthData.empty
+      }
   }
 
   private def directReadFallback(infotonPath: String) = crudServiceFS.getInfoton(infotonPath, None, None).map {
     case Some(Everything(i)) =>
       extractPayload(i)
     case other =>
-      if(!serverIsWarmingUp) {
+      if (!serverIsWarmingUp) {
         logger.warn(s"AuthCache Trying to read $infotonPath but got from CAS $other")
       }
       None
@@ -116,7 +128,7 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
   private def extractPayload(infoton: Infoton): Option[JsValue] = infoton match {
     case FileInfoton(_, _, _, _, _, Some(FileContent(Some(payload), _, _, _)), _) =>
       val jsValOpt = Try(Json.parse(payload)).toOption
-      if(jsValOpt.isEmpty)
+      if (jsValOpt.isEmpty)
         logger.warn(s"AuthCache Infoton(${infoton.path}) has invalid JSON content.")
       jsValOpt
     case _ =>
@@ -124,7 +136,7 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
       None
   }
 
-  private def combiner(ad1: AuthData, ad2: AuthData): AuthData = if(ad2.isEmpty) ad1 else ad2
+  private def combiner(ad1: AuthData, ad2: AuthData): AuthData = if (ad2.isEmpty) ad1 else ad2
 
   // todo - Leave JsValue for parsing only. Use case classes for User and Role !
   case class AuthData(users: Map[String, JsValue], roles: Map[String, JsValue]) {

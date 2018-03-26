@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package controllers
 
 import cmwell.ws.Settings
@@ -22,7 +20,7 @@ import org.joda.time.DateTime
 import play.api.libs.json.Json
 import play.api.mvc._
 import security.httpauth._
-import security.{EagerAuthCache, Authentication}
+import security.{Authentication, EagerAuthCache}
 import javax.inject._
 
 import filters.Attrs
@@ -33,24 +31,31 @@ import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
 @Singleton
-class LoginHandler  @Inject()(authCache: EagerAuthCache)(implicit ec: ExecutionContext) extends InjectedController with BasicHttpAuthentication with DigestHttpAuthentication {
+class LoginHandler @Inject()(authCache: EagerAuthCache)(implicit ec: ExecutionContext)
+    extends InjectedController
+    with BasicHttpAuthentication
+    with DigestHttpAuthentication {
   private val notAuthenticated = Unauthorized("Not authenticated.\n")
 
   def login: Action[AnyContent] = Action.async { implicit req =>
     val exp: Option[DateTime] = req.getQueryString("exp").map(parseShortFormatDuration)
 
     def whichAuthType: Option[HttpAuthType] = {
-      req.headers.get("authorization").map { h => if (h.contains("Digest")) Digest else Basic }
+      req.headers.get("authorization").map { h =>
+        if (h.contains("Digest")) Digest else Basic
+      }
     }
 
-    def loginDigest = digestAuthenticate(authCache)(req).map(status => if (status.isAuthenticated) grantToken(status.username, exp) else notAuthenticated)
+    def loginDigest =
+      digestAuthenticate(authCache)(req)
+        .map(status => if (status.isAuthenticated) grantToken(status.username, exp) else notAuthenticated)
 
     def loginBasic = {
       val (username, pass) = decodeBasicAuth(req.headers("authorization"))
-        authCache.getUserInfoton(username) match {
-          case Some(user) if Authentication.passwordMatches(user, pass) => grantToken(username, exp)
-          case _ => notAuthenticated
-        }
+      authCache.getUserInfoton(username) match {
+        case Some(user) if Authentication.passwordMatches(user, pass) => grantToken(username, exp)
+        case _                                                        => notAuthenticated
+      }
     }
 
     // default (`case None` below) is Digest, s.t. client can be provided with the challenge.
@@ -71,9 +76,13 @@ class LoginHandler  @Inject()(authCache: EagerAuthCache)(implicit ec: ExecutionC
     val penalty = Settings.loginPenalty.seconds
 
     (whichAuthType match {
-        case Some(Basic) => cmwell.util.concurrent.delayedTask(penalty)(loginBasic)
-        case Some(Digest) => cmwell.util.concurrent.delayedTask(penalty / 2)(loginDigest).flatMap(identity)
-        case None => cmwell.util.concurrent.delayedTask(penalty)(Unauthorized("Please provide your credentials.\n").withHeaders("WWW-Authenticate" -> initialDigestHeader.toString))
+      case Some(Basic)  => cmwell.util.concurrent.delayedTask(penalty)(loginBasic)
+      case Some(Digest) => cmwell.util.concurrent.delayedTask(penalty / 2)(loginDigest).flatMap(identity)
+      case None =>
+        cmwell.util.concurrent.delayedTask(penalty)(
+          Unauthorized("Please provide your credentials.\n")
+            .withHeaders("WWW-Authenticate" -> initialDigestHeader.toString)
+        )
     }).recover { case t => exceptionToResponse(t) }
   }
 
@@ -94,17 +103,19 @@ class LoginHandler  @Inject()(authCache: EagerAuthCache)(implicit ec: ExecutionC
   private def grantToken(username: String, expiry: Option[DateTime]) = {
     Try(Token.generate(authCache, username, expiry)) match {
       case Success(token) => Ok(Json.obj("token" -> token))
-      case Failure(err) => wsutil.exceptionToResponse(err)
+      case Failure(err)   => wsutil.exceptionToResponse(err)
     }
   }
 
-  private def grantTokenWithHtmlRedirectToSPA(username: String) = Redirect(s"/?token=${Token.generate(authCache, username)}")
+  private def grantTokenWithHtmlRedirectToSPA(username: String) =
+    Redirect(s"/?token=${Token.generate(authCache, username)}")
 
   private def parseShortFormatDuration(shortFormatDuration: String): DateTime = {
-    val durs = Seq("d", "h", "m").map(part => part -> s"(\\d+)(?i)$part".r.findFirstMatchIn(shortFormatDuration).map(_.group(1).toInt).getOrElse(0)).toMap
-    DateTime.now().
-      plusDays(durs("d")).
-      plusHours(durs("h")).
-      plusMinutes(durs("m"))
+    val durs = Seq("d", "h", "m")
+      .map(
+        part => part -> s"(\\d+)(?i)$part".r.findFirstMatchIn(shortFormatDuration).map(_.group(1).toInt).getOrElse(0)
+      )
+      .toMap
+    DateTime.now().plusDays(durs("d")).plusHours(durs("h")).plusMinutes(durs("m"))
   }
 }

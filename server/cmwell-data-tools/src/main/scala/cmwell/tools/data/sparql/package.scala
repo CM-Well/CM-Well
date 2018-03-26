@@ -5,5 +5,5 @@ import cmwell.tools.data.utils.akka.stats.DownloaderStats.DownloadStats
 
 package object sparql {
   type TokenAndStatisticsMap = Map[String, TokenAndStatistics]
-  type TokenAndStatistics = (Token,Option[DownloadStats])
+  type TokenAndStatistics = (Token, Option[DownloadStats])
 }

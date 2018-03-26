@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.ctrl.checkers
 
 import cmwell.ctrl.ddata.DData
@@ -25,36 +23,41 @@ import com.typesafe.scalalogging.LazyLogging
 import scala.util.{Failure, Success}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
+
 /**
- * Created by michael on 12/11/14.
- */
+  * Created by michael on 12/11/14.
+  */
 object CassandraChecker extends Checker with LazyLogging {
   override val storedStates: Int = 10
 
-  private def getCassandraStatus(host : String = "") : ComponentState = {
+  private def getCassandraStatus(host: String = ""): ComponentState = {
     val pingIp = DData.getPingIp //HealthActor.getPingIp
-    val com = if(host != "")
-      s"$cmwellHome/conf/cas/cassandra-status-viewer $host"
-    else if(pingIp != "")
-      s"$cmwellHome/conf/cas/cassandra-status-viewer $pingIp"
-    else
-      s"$cmwellHome/conf/cas/cassandra-status-viewer"
-
+    val com =
+      if (host != "")
+        s"$cmwellHome/conf/cas/cassandra-status-viewer $host"
+      else if (pingIp != "")
+        s"$cmwellHome/conf/cas/cassandra-status-viewer $pingIp"
+      else
+        s"$cmwellHome/conf/cas/cassandra-status-viewer"
 
     ProcUtil.executeCommand(com) match {
       case Success(res) =>
-        val stats = res.split("\n").map {
-          r =>
+        val stats = res
+          .split("\n")
+          .map { r =>
             val t = r.split(" ")
             t(1) -> t(0)
-        }.toMap
+          }
+          .toMap
 
-        val racks = res.split("\n").map {
-          r =>
+        val racks = res
+          .split("\n")
+          .map { r =>
             val t = r.split(" ")
             t(1) -> t(2)
-        }.toMap
-        val racksReversed = racks groupBy {_._2} map {case (key,value) => (key, value.unzip._1)}
+          }
+          .toMap
+        val racksReversed = racks.groupBy { _._2 }.map { case (key, value) => (key, value.unzip._1) }
         CassandraOk(stats, racksReversed)
       case Failure(err) =>
         logger.error("Could not parse cassandra-status-viewer response", err)
@@ -64,16 +67,15 @@ object CassandraChecker extends Checker with LazyLogging {
 
   override def check: Future[ComponentState] = {
     blocking {
-      Future{
+      Future {
         getCassandraStatus()
       }
     }
   }
 
-  def getReachableHost(hosts : Set[String]) : Option[String] = {
+  def getReachableHost(hosts: Set[String]): Option[String] = {
     hosts.collectFirst {
-      case host if(getCassandraStatus(host).isInstanceOf[CassandraOk]) => host
+      case host if (getCassandraStatus(host).isInstanceOf[CassandraOk]) => host
     }
   }
 }
-

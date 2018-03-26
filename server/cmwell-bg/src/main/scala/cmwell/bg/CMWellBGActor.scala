@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.bg
 
 import java.util.concurrent.TimeUnit
@@ -36,12 +34,13 @@ import org.elasticsearch.metrics.ElasticsearchReporter
 import cmwell.common.exception._
 import scala.concurrent.duration._
 
-
-
-
 object CMWellBGActor {
   val name = "CMWellBGActor"
-  def props(partition:Int, config:Config, irwService:IRWService, ftsService:FTSServiceNew, zStore: ZStore,
+  def props(partition: Int,
+            config: Config,
+            irwService: IRWService,
+            ftsService: FTSServiceNew,
+            zStore: ZStore,
             offsetsService: OffsetsService) =
     Props(new CMWellBGActor(partition, config, irwService, ftsService, zStore, offsetsService))
 }
@@ -49,11 +48,18 @@ object CMWellBGActor {
 /**
   * Created by israel on 15/06/2016.
   */
-class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsService:FTSServiceNew, zStore: ZStore,
-                    offsetsService: OffsetsService) extends Actor with LazyLogging with DefaultInstrumented {
+class CMWellBGActor(partition: Int,
+                    config: Config,
+                    irwService: IRWService,
+                    ftsService: FTSServiceNew,
+                    zStore: ZStore,
+                    offsetsService: OffsetsService)
+    extends Actor
+    with LazyLogging
+    with DefaultInstrumented {
 
-  var impStream:ImpStream = null
-  var indexerStream:IndexerStream = null
+  var impStream: ImpStream = null
+  var indexerStream: IndexerStream = null
   val waitAfter503 = config.getInt("cmwell.bg.waitAfter503")
   val impOn = config.getBoolean("cmwell.bg.ImpOn")
   val indexerOn = config.getBoolean("cmwell.bg.IndexerOn")
@@ -63,34 +69,33 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
   val jmxReporter = JmxReporter.forRegistry(bgMetrics.metricRegistry).build()
   jmxReporter.start()
   val reportMetricsToES = config.getBoolean("cmwell.common.reportMetricsToES")
-    logger debug (s"report to es set to $reportMetricsToES")
-  val esReporterOpt:Option[ElasticsearchReporter] = if(reportMetricsToES) {
-      logger debug (s"available ES nodes: ${ftsService.nodesHttpAddresses().mkString(",")}")
-    Some(ElasticsearchReporter.forRegistry(metricRegistry).hosts(ftsService.nodesHttpAddresses() :_*).build())
+  logger.debug(s"report to es set to $reportMetricsToES")
+  val esReporterOpt: Option[ElasticsearchReporter] = if (reportMetricsToES) {
+    logger.debug(s"available ES nodes: ${ftsService.nodesHttpAddresses().mkString(",")}")
+    Some(ElasticsearchReporter.forRegistry(metricRegistry).hosts(ftsService.nodesHttpAddresses(): _*).build())
   } else None
 
-  esReporterOpt.foreach{ esReporter =>
-    logger info "starting metrics ES Reporter"
+  esReporterOpt.foreach { esReporter =>
+    logger.info("starting metrics ES Reporter")
     esReporter.start(10, TimeUnit.SECONDS)
   }
 
   override def preStart(): Unit = {
-      logger info s"CMwellBGActor-$partition starting"
+    logger.info(s"CMwellBGActor-$partition starting")
     super.preStart()
     self ! Start
   }
 
-
   override def postStop(): Unit = {
-      logger info s"CMWellBGActor-$partition stopping"
+    logger.info(s"CMWellBGActor-$partition stopping")
     esReporterOpt.foreach(_.close())
     stopAll
     super.postStop()
   }
 
-  override def supervisorStrategy = OneForOneStrategy(){
-    case t:Throwable =>
-      logger error ("Exception caught in supervisor. resuming children actors", t)
+  override def supervisorStrategy = OneForOneStrategy() {
+    case t: Throwable =>
+      logger.error("Exception caught in supervisor. resuming children actors", t)
       akka.actor.SupervisorStrategy.Resume
   }
 
@@ -102,76 +107,76 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
 
   override def receive: Receive = {
     case Start =>
-        logger info "requested to start all streams"
+      logger.info("requested to start all streams")
       startAll
       sender() ! Started
     case StartImp =>
-        logger info "requested to start Imp Stream"
+      logger.info("requested to start Imp Stream")
       startImp
       sender() ! Started
     case StartIndexer =>
-        logger info "requested to start Indexer Stream"
+      logger.info("requested to start Indexer Stream")
       startIndexer
       sender() ! Started
     case Stop =>
-        logger info "requested to stop all streams"
+      logger.info("requested to stop all streams")
       stopAll
       sender() ! Stopped
     case StopImp =>
-        logger info "requested to stop Imp Stream"
+      logger.info("requested to stop Imp Stream")
       stopImp
       sender() ! Stopped
     case StopIndexer =>
-        logger info "requested to stop Indexer Stream"
+      logger.info("requested to stop Indexer Stream")
       stopIndexer
       sender() ! Stopped
     case ShutDown =>
-        logger info "requested to shutdown"
+      logger.info("requested to shutdown")
       stopAll
-        logger info "stopped all streams. taking the last pill...."
+      logger.info("stopped all streams. taking the last pill....")
       self ! PoisonPill
     case All503 =>
-        logger info "Got all503 message. becoming state503"
-      context become state503
-        logger debug "stopping all streams"
+      logger.info("Got all503 message. becoming state503")
+      context.become(state503)
+      logger.debug("stopping all streams")
       stopAll
-        logger debug s"became state503. scheduling resume in [waitAfter503] seconds"
+      logger.debug(s"became state503. scheduling resume in [waitAfter503] seconds")
       context.system.scheduler.scheduleOnce(waitAfter503.seconds, self, Resume)
     case Indexer503 =>
-        logger error "Indexer Stopped with Exception. check indexer log for details. Restarting indexer."
+      logger.error("Indexer Stopped with Exception. check indexer log for details. Restarting indexer.")
       stopIndexer
       startIndexer
     case Imp503 =>
-        logger error "Imp stopped with exception. check imp log for details. Restarting imp."
+      logger.error("Imp stopped with exception. check imp log for details. Restarting imp.")
       stopImp
       startImp
     case ExitWithError =>
-      logger error s"Requested to exit with error by ${sender()}"
+      logger.error(s"Requested to exit with error by ${sender()}")
       System.exit(1)
   }
 
   def state503: Receive = {
     case Resume =>
-      logger info "accepted Resume message"
-      context become receive
-      logger info s"became normal and sending Start message to myself"
+      logger.info("accepted Resume message")
+      context.become(receive)
+      logger.info(s"became normal and sending Start message to myself")
       self ! Start
 
     case ResumeIndexer =>
       self ! StartIndexer
-      context become receive
+      context.become(receive)
 
     case ShutDown =>
-      logger info "requested to shutdown"
+      logger.info("requested to shutdown")
       stopAll
-      logger info "stopped all streams. taking the last pill...."
+      logger.info("stopped all streams. taking the last pill....")
       self ! PoisonPill
 
     case ExitWithError =>
-      logger error s"Requested to exit with error by ${sender()}"
+      logger.error(s"Requested to exit with error by ${sender()}")
       System.exit(1)
 
-    case x => logger debug s"got $x in state503 state, ignoring!!!!"
+    case x => logger.debug(s"got $x in state503 state, ignoring!!!!")
   }
 
   def shutdown = {
@@ -180,22 +185,22 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
   }
 
   private def startImp = {
-    if(impOn) {
+    if (impOn) {
       if (impStream == null) {
-        logger info "starting ImpStream"
+        logger.info("starting ImpStream")
         impStream = new ImpStream(partition, config, irwService, zStore, ftsService, offsetsService, self, bgMetrics)
       } else
-        logger warn "requested to start Imp Stream but it is already running. doing nothing."
+        logger.warn("requested to start Imp Stream but it is already running. doing nothing.")
     }
   }
 
   private def startIndexer = {
-    if(indexerOn) {
+    if (indexerOn) {
       if (indexerStream == null) {
-        logger info "starting IndexerStream"
+        logger.info("starting IndexerStream")
         indexerStream = new IndexerStream(partition, config, irwService, ftsService, offsetsService, self)
       } else
-        logger warn "requested to start Indexer Stream but it is already running. doing nothing."
+        logger.warn("requested to start Indexer Stream but it is already running. doing nothing.")
     }
   }
 
@@ -208,20 +213,20 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
     * Stop the Imp Stream. If already running, will do nothing
     */
   private def stopImp = {
-    if(impStream != null) {
+    if (impStream != null) {
       impStream.shutdown
-      logger info "stopped imp stream"
+      logger.info("stopped imp stream")
     } else
-      logger info "Imp Stream was already stopped"
+      logger.info("Imp Stream was already stopped")
     impStream = null
   }
 
   private def stopIndexer = {
-    if(indexerStream != null ) {
+    if (indexerStream != null) {
       indexerStream.shutdown
-      logger info "stopped Indexer Stream"
+      logger.info("stopped Indexer Stream")
     } else
-      logger info "Indexer Stream was already stopped"
+      logger.info("Indexer Stream was already stopped")
     indexerStream = null
   }
 
@@ -253,18 +258,16 @@ case object Resume
 case object ResumeIndexer
 case object Suspend
 
-
-
-
-
 trait ESIndicesMapping {
+
   /**
     * gets relevant indices for given Infoton's UUID
     */
-  def indicesForUuid(uuid:String):Iterable[String]
+  def indicesForUuid(uuid: String): Iterable[String]
 }
 
-class SimpleESIndicesMapping(mapping:Map[String, Iterable[String]]) extends ESIndicesMapping {
+class SimpleESIndicesMapping(mapping: Map[String, Iterable[String]]) extends ESIndicesMapping {
+
   /**
     * gets relevant indices for given Infoton's UUID
     */
@@ -276,6 +279,6 @@ object BGIdentifiedException {
   val FTSRelated = BGIdentifiedException("org.elasticsearch")
 }
 
-case class BGIdentifiedException(prefix:String) {
+case class BGIdentifiedException(prefix: String) {
   def unapply(t: Throwable): Boolean = t.getClass.getName.startsWith(prefix)
 }
