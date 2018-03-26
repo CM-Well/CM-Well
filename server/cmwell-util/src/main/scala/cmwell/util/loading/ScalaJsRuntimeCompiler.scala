@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.util.loading
 
 import java.nio.file.{Files, Paths}
@@ -26,8 +24,8 @@ import scala.sys.process._
 object ScalaJsRuntimeCompiler {
   private val workingDir = System.getProperty("java.io.tmpdir") + "/sjsbuild"
   private val baseFileContent = Seq(
-    "build.sbt"                -> """ enablePlugins(ScalaJSPlugin); scalaVersion := "2.11.8"  """,
-    "project/plugins.sbt"      -> """ addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.12") """,
+    "build.sbt" -> """ enablePlugins(ScalaJSPlugin); scalaVersion := "2.11.8"  """,
+    "project/plugins.sbt" -> """ addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.12") """,
     "project/build.properties" -> """ sbt.version=0.13.9 """
   )
 
@@ -44,12 +42,14 @@ object ScalaJsRuntimeCompiler {
     */
   def compile(scalaContent: String)(implicit ec: ExecutionContext): Future[String] = {
     val filesContent = baseFileContent :+ "src/main/scala/sourceFile.scala" -> scalaContent
-    val subfolders = filesContent.filter(_._1.contains('/')).map{ case (path, _) => path.substring(0,path.lastIndexOf('/')) }
+    val subfolders =
+      filesContent.filter(_._1.contains('/')).map { case (path, _) => path.substring(0, path.lastIndexOf('/')) }
 
     Future {
       subfolders.foreach(subfolder => Files.createDirectories(Paths.get(s"$workingDir/$subfolder")))
-      filesContent.foreach { case (filename, contents) =>
-        Files.write(Paths.get(s"$workingDir/$filename"), contents.getBytes("UTF-8"))
+      filesContent.foreach {
+        case (filename, contents) =>
+          Files.write(Paths.get(s"$workingDir/$filename"), contents.getBytes("UTF-8"))
       }
       Process(Seq("sbt", "fastOptJS"), new java.io.File(workingDir)).!
       scala.io.Source.fromFile(s"$workingDir/target/scala-2.11/sjsbuild-fastopt.js").mkString("")

@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.downloader.streams
 
 import java.io.InputStream
@@ -41,7 +39,6 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
   private val defaultSortAsc = false
   private val numInfotonsPerRequest = 25
 
-
   /**
     * Creates a [[akka.stream.scaladsl.Source]] which downloads data from target CM-Well
     *
@@ -59,27 +56,27 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
     * @return [[akka.stream.scaladsl.Source Source]] which returns data chunks from cm-well
     * @see [[Downloader#createSourceFromQuery()]]
     */
-  def createSourceFromQuery(baseUrl: String,
-                            path: String,
-                            params: String = "",
-                            qp: String = "",
-                            format: String = "trig",
-                            op: String = "stream",
-                            length: Option[Int] = Some(50),
-                            recursive: Boolean = false,
-                            numInfotonsPerRequest: Int = numInfotonsPerRequest)
-                           (implicit system: ActorSystem, mat: Materializer) = {
+  def createSourceFromQuery(
+    baseUrl: String,
+    path: String,
+    params: String = "",
+    qp: String = "",
+    format: String = "trig",
+    op: String = "stream",
+    length: Option[Int] = Some(50),
+    recursive: Boolean = false,
+    numInfotonsPerRequest: Int = numInfotonsPerRequest
+  )(implicit system: ActorSystem, mat: Materializer) = {
 
-    val downloader = new Downloader(
-      baseUrl = baseUrl,
-      path = path,
-      params = params,
-      qp = qp,
-      format = format,
-      op = op,
-      length = length,
-      recursive = recursive,
-      numInfotonsPerRequest)
+    val downloader = new Downloader(baseUrl = baseUrl,
+                                    path = path,
+                                    params = params,
+                                    qp = qp,
+                                    format = format,
+                                    op = op,
+                                    length = length,
+                                    recursive = recursive,
+                                    numInfotonsPerRequest)
 
     downloader.createSourceFromQuery()
   }
@@ -102,28 +99,28 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
     * @return [[scala.concurrent.Future Future]] of download process
     * @see [[cmwell.tools.data.downloader.streams.Downloader#createSourceFromQuery]]
     */
-  def downloadFromQuery(baseUrl: String,
-                        path: String,
-                        params: String = "",
-                        qp: String = "",
-                        format: String = "trig",
-                        op: String = "stream",
-                        length: Option[Int] = Some(50),
-                        recursive: Boolean = false,
-                        numInfotonsPerRequest: Int = numInfotonsPerRequest,
-                        outputHandler: (String) => Unit = (s: String) => ())
-                       (implicit system: ActorSystem, mat: Materializer) = {
+  def downloadFromQuery(
+    baseUrl: String,
+    path: String,
+    params: String = "",
+    qp: String = "",
+    format: String = "trig",
+    op: String = "stream",
+    length: Option[Int] = Some(50),
+    recursive: Boolean = false,
+    numInfotonsPerRequest: Int = numInfotonsPerRequest,
+    outputHandler: (String) => Unit = (s: String) => ()
+  )(implicit system: ActorSystem, mat: Materializer) = {
 
-    createSourceFromQuery(
-      baseUrl = baseUrl,
-      path = path,
-      params = params,
-      qp = qp,
-      format = format,
-      op = op,
-      length = length,
-      recursive = recursive,
-      numInfotonsPerRequest = numInfotonsPerRequest)
+    createSourceFromQuery(baseUrl = baseUrl,
+                          path = path,
+                          params = params,
+                          qp = qp,
+                          format = format,
+                          op = op,
+                          length = length,
+                          recursive = recursive,
+                          numInfotonsPerRequest = numInfotonsPerRequest)
       .runForeach(data => outputHandler(data.utf8String))
   }
 
@@ -144,14 +141,12 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
                                   format: String = "trig",
                                   numInfotonsPerRequest: Int = numInfotonsPerRequest,
                                   outputHandler: (String) => Unit = (s: String) => (),
-                                  in: InputStream)
-                                 (implicit system: ActorSystem, mat: Materializer) = {
+                                  in: InputStream)(implicit system: ActorSystem, mat: Materializer) = {
 
-    createSourceFromUuidInputStream(
-      baseUrl = baseUrl,
-      format = format,
-      numInfotonsPerRequest = numInfotonsPerRequest,
-      in = in)
+    createSourceFromUuidInputStream(baseUrl = baseUrl,
+                                    format = format,
+                                    numInfotonsPerRequest = numInfotonsPerRequest,
+                                    in = in)
       .runForeach(data => outputHandler(data.utf8String))
   }
 
@@ -169,10 +164,10 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
   def createSourceFromUuidInputStream(baseUrl: String,
                                       format: String = "trig",
                                       numInfotonsPerRequest: Int = numInfotonsPerRequest,
-                                      in: InputStream)
-                                     (implicit system: ActorSystem, mat: Materializer) = {
+                                      in: InputStream)(implicit system: ActorSystem, mat: Materializer) = {
 
-    val source = StreamConverters.fromInputStream(() => in)
+    val source = StreamConverters
+      .fromInputStream(() => in)
       .via(lineSeparatorFrame)
 
     createSourceFromUuids(
@@ -198,17 +193,13 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
   def createSourceFromUuids(baseUrl: String,
                             format: String = "trig",
                             numInfotonsPerRequest: Int = numInfotonsPerRequest,
-                            source: Source[ByteString, _])
-                           (implicit system: ActorSystem, mat: Materializer) = {
-    val downloader = new Downloader(
-      baseUrl = baseUrl,
-      path = "/",
-      format = format,
-      numInfotonsPerRequest = numInfotonsPerRequest)
+                            source: Source[ByteString, _])(implicit system: ActorSystem, mat: Materializer) = {
+    val downloader =
+      new Downloader(baseUrl = baseUrl, path = "/", format = format, numInfotonsPerRequest = numInfotonsPerRequest)
 
     source
       .via(downloader.downloadDataFromUuids)
-      .recover{case t => System.err.println(t); ByteString(t.toString) }
+      .recover { case t => System.err.println(t); ByteString(t.toString) }
   }
 
   /**
@@ -227,13 +218,11 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
                                    format: String = "trig",
                                    numInfotonsPerRequest: Int = numInfotonsPerRequest,
                                    outputHandler: (String) => Unit = (s: String) => (),
-                                   in: InputStream)
-                                  (implicit system: ActorSystem, mat: Materializer) = {
-    createSourceFromPathsInputStream(
-      baseUrl = baseUrl,
-      format = format,
-      numInfotonsPerRequest = numInfotonsPerRequest,
-      in = in)
+                                   in: InputStream)(implicit system: ActorSystem, mat: Materializer) = {
+    createSourceFromPathsInputStream(baseUrl = baseUrl,
+                                     format = format,
+                                     numInfotonsPerRequest = numInfotonsPerRequest,
+                                     in = in)
       .runForeach(data => outputHandler(data.utf8String))
   }
 
@@ -252,9 +241,9 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
   def createSourceFromPathsInputStream(baseUrl: String,
                                        format: String = "trig",
                                        numInfotonsPerRequest: Int = numInfotonsPerRequest,
-                                       in: InputStream)
-                                      (implicit system: ActorSystem, mat: Materializer) = {
-    val source = StreamConverters.fromInputStream(() => in)
+                                       in: InputStream)(implicit system: ActorSystem, mat: Materializer) = {
+    val source = StreamConverters
+      .fromInputStream(() => in)
       .via(lineSeparatorFrame)
 
     createSourceFromPaths(
@@ -282,20 +271,17 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
                             format: String = "trig",
                             params: String = "",
                             numInfotonsPerRequest: Int = numInfotonsPerRequest,
-                            source: Source[ByteString, _])
-                           (implicit system: ActorSystem, mat: Materializer) = {
+                            source: Source[ByteString, _])(implicit system: ActorSystem, mat: Materializer) = {
 
-    val downloader = new Downloader(
-      baseUrl = baseUrl,
-      path = "/",
-      format = format,
-      params = params,
-      numInfotonsPerRequest = numInfotonsPerRequest)
-
+    val downloader = new Downloader(baseUrl = baseUrl,
+                                    path = "/",
+                                    format = format,
+                                    params = params,
+                                    numInfotonsPerRequest = numInfotonsPerRequest)
 
     source
       .via(downloader.downloadDataFromPaths)
-      .recover{case t => System.err.println(t); ByteString(t.toString) }
+      .recover { case t => System.err.println(t); ByteString(t.toString) }
   }
 }
 
@@ -308,15 +294,15 @@ class Downloader(baseUrl: String,
                  length: Option[Int] = Some(50),
                  recursive: Boolean = false,
                  numInfotonsPerRequest: Int = Downloader.numInfotonsPerRequest,
-                 outputHandler: (String) => Unit = (s: String) => ())
-                (implicit system: ActorSystem, mat: Materializer) extends DataToolsLogging {
+                 outputHandler: (String) => Unit = (s: String) => ())(implicit system: ActorSystem, mat: Materializer)
+    extends DataToolsLogging {
 
   type Data = Seq[ByteString]
   import Downloader._
 
-  private [streams] var retryTimeout = {
+  private[streams] var retryTimeout = {
     val timeoutDuration = Duration(config.getString("cmwell.downloader.streams.http-retry-timeout")).toCoarsest
-    FiniteDuration( timeoutDuration.length, timeoutDuration.unit )
+    FiniteDuration(timeoutDuration.length, timeoutDuration.unit)
   }
   private val badUuidsLogger = LoggerFactory.getLogger("bad-uuids")
 
@@ -343,12 +329,12 @@ class Downloader(baseUrl: String,
     Flow[ByteString]
       .grouped(numInfotonsPerRequest)
       .buffer(bufferSize, OverflowStrategy.backpressure)
-      .map (uuids => uuids -> None)
+      .map(uuids => uuids -> None)
       .via(Retry.retryHttp(retryTimeout, bufferSize, baseUrl)(createDataRequest))
       .flatMapConcat {
-        case (Success(HttpResponse(s,h,e,p)), _, _) if s.isSuccess() =>
+        case (Success(HttpResponse(s, h, e, p)), _, _) if s.isSuccess() =>
           DataPostProcessor.postProcessByFormat(format, e.withoutSizeLimit().dataBytes)
-        case (Success(res@HttpResponse(s,h,e,p)), uuids, _) =>
+        case (Success(res @ HttpResponse(s, h, e, p)), uuids, _) =>
           // entity databytes were discarded in job flow
           logger.error(s"error: status=$s")
           badUuidsLogger.error(s"uuids: ${uuids.map(_.utf8String).mkString("\n")}")
@@ -389,31 +375,33 @@ class Downloader(baseUrl: String,
     }
 
     def tsvToUuid(tsv: ByteString) = {
-      tsv.dropWhile(_ != '\t').drop(1) // path
-        .dropWhile(_ != '\t').drop(1)  // lastModified
-        .takeWhile(_ != '\t')          // uuid
+      tsv
+        .dropWhile(_ != '\t')
+        .drop(1) // path
+        .dropWhile(_ != '\t')
+        .drop(1) // lastModified
+        .takeWhile(_ != '\t') // uuid
     }
-
-
 
     val conn = HttpConnections.outgoingConnection(host, port, protocol)
 
-    Source.single(createQueryRequest())
+    Source
+      .single(createQueryRequest())
       .via(conn)
       .flatMapConcat {
-        case res@HttpResponse(s, h, e, p) if s.isSuccess() =>
-          e.withoutSizeLimit().dataBytes
+        case res @ HttpResponse(s, h, e, p) if s.isSuccess() =>
+          e.withoutSizeLimit()
+            .dataBytes
             .via(lineSeparatorFrame)
             .buffer(1000, OverflowStrategy.backpressure)
             .map(tsvToUuid)
             .filter(_.nonEmpty)
 
-        case res@HttpResponse(s,_,e,_) =>
+        case res @ HttpResponse(s, _, e, _) =>
           res.discardEntityBytes()
           logger.error(s"error in getting uuids: status=$s")
           Source.empty[ByteString]
       }
-
       .buffer(1000, OverflowStrategy.backpressure)
 //      .recover{case t => System.err.println(t); t.toString }
       .via(downloadDataFromUuids)
@@ -438,13 +426,13 @@ class Downloader(baseUrl: String,
 
     Flow[ByteString]
       .groupedWithin(numInfotonsPerRequest, 3.seconds)
-      .map (paths => paths -> None)
+      .map(paths => paths -> None)
       .via(Retry.retryHttp(retryTimeout, bufferSize, baseUrl)(createDataRequest))
       .flatMapConcat {
-        case (Success(HttpResponse(s,h,e,p)), _, _) if s.isSuccess() =>
+        case (Success(HttpResponse(s, h, e, p)), _, _) if s.isSuccess() =>
           DataPostProcessor.postProcessByFormat(format, e.withoutSizeLimit().dataBytes)
 
-        case (Success(res@HttpResponse(s,h,e,p)), paths, _) =>
+        case (Success(res @ HttpResponse(s, h, e, p)), paths, _) =>
           res.discardEntityBytes()
 
           logger.error(s"error: status=$s")

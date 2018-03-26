@@ -16,6 +16,7 @@
 package cmwell.build
 
 import com.github.tkawachi.doctest.DoctestPlugin
+import org.scalafmt.sbt.ScalafmtPlugin
 import coursier.CoursierPlugin
 import net.virtualvoid.sbt.graph.DependencyGraphPlugin
 import sbt.Keys._
@@ -54,6 +55,7 @@ object CMWellBuild extends AutoPlugin {
 	import autoImport._
 	import DoctestPlugin.autoImport._
 	import CoursierPlugin.autoImport._
+	import ScalafmtPlugin.autoImport._
 
   lazy val apacheMirror = {
     val zoneID = java.util.TimeZone
@@ -222,9 +224,10 @@ object CMWellBuild extends AutoPlugin {
 		CMWellCommon.scalazTaskAsScalaFuture(task)
 	}
 
-	override def requires = CoursierPlugin && DoctestPlugin && DependencyGraphPlugin
+	override def requires = CoursierPlugin && ScalafmtPlugin && DoctestPlugin && DependencyGraphPlugin
 
 	override def projectSettings = Seq(
+		scalafmtOnCompile := true,
 		coursierMaxIterations := 200,
 		Keys.fork in Test := true,
 //		doctestWithDependencies := false,

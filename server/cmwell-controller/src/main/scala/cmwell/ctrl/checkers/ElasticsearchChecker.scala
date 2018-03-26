@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.ctrl.checkers
 
 import cmwell.ctrl.config.Config
@@ -25,20 +23,19 @@ import scala.concurrent.Future
 import play.api.libs.json.{JsValue, Json}
 
 import scala.concurrent.ExecutionContext.Implicits.global
+
 /**
- * Created by michael on 12/3/14.
- */
-
-
+  * Created by michael on 12/3/14.
+  */
 object ElasticsearchChecker extends Checker with LazyLogging {
   override val storedStates: Int = 10
   override def check: Future[ComponentState] = {
     val url = s"http://${Config.pingIp}:9201/_cluster/health"
     val res = Http.get(url)
     val hasMaster = ProcUtil.checkIfProcessRun("es-master") > 0
-    res.map{
-      r =>
-        if(r.status == 200) {
+    res
+      .map { r =>
+        if (r.status == 200) {
           val json: JsValue = Json.parse(r.payload)
           val status = json.\("status").as[String]
           val n = (json \ "number_of_nodes").as[Int]
@@ -46,19 +43,19 @@ object ElasticsearchChecker extends Checker with LazyLogging {
           val p = (json \ "active_primary_shards").as[Int]
           val s = (json \ "active_shards").as[Int](implicitly)
           status match {
-            case "green" => ElasticsearchGreen(n,d,p,s,hasMaster)
-            case "yellow" => ElasticsearchYellow(n,d,p,s,hasMaster)
-            case "red" => ElasticsearchRed(n,d,p,s,hasMaster)
-            case _ => throw new Exception("Bad status")
+            case "green"  => ElasticsearchGreen(n, d, p, s, hasMaster)
+            case "yellow" => ElasticsearchYellow(n, d, p, s, hasMaster)
+            case "red"    => ElasticsearchRed(n, d, p, s, hasMaster)
+            case _        => throw new Exception("Bad status")
           }
-        }
-        else
-          ElasticsearchBadCode(r.status,hasMaster)
-    }.recover {
-      case e: Throwable => {
-        logger.error("ElasticsearchChecker check failed with an exception: ", e)
-        ElasticsearchDown(hasMaster)
+        } else
+          ElasticsearchBadCode(r.status, hasMaster)
       }
-    }
+      .recover {
+        case e: Throwable => {
+          logger.error("ElasticsearchChecker check failed with an exception: ", e)
+          ElasticsearchDown(hasMaster)
+        }
+      }
   }
 }

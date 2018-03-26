@@ -12,13 +12,11 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.ctrl.exceptions
 
 /**
- * Created by michael on 11/27/14.
- */
+  * Created by michael on 11/27/14.
+  */
 class BadHostException extends Throwable {
   override def getMessage: String = "Bad Host"
 }

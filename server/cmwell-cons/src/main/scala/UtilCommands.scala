@@ -12,19 +12,17 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 /**
   * Created by matan on 1/8/16.
   */
-import java.nio.file.{Paths, Files}
+import java.nio.file.{Files, Paths}
 object UtilCommands {
   val OSX_NAME = "Mac OS X"
 
   val linuxSshpass = if (Files.exists(Paths.get("bin/utils/sshpass"))) "bin/utils/sshpass" else "sshpass"
   val osxSshpass = "/usr/local/bin/sshpass"
 
-  val sshpass = if(isOSX) osxSshpass else linuxSshpass
+  val sshpass = if (isOSX) osxSshpass else linuxSshpass
 
   def isOSX = System.getProperty("os.name") == OSX_NAME
 }

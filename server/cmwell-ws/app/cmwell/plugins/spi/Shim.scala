@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.plugins.spi
 
 import java.util.concurrent.Future
@@ -25,5 +23,5 @@ trait Shim {
 
 trait SimpleCmWellClientForShim {
   def sp(paths: java.util.List[String], sparql: String, format: String): Future[String]
-  def get(path: String, queryParams: java.util.Map[String,String]): Future[String]
+  def get(path: String, queryParams: java.util.Map[String, String]): Future[String]
 }

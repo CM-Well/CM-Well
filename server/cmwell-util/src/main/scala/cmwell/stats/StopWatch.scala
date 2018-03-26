@@ -12,19 +12,17 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.stats
 
 /**
- * Created with IntelliJ IDEA.
- * User: Michael
- * Date: 4/3/14
- * Time: 7:36 PM
- * To change this template use File | Settings | File Templates.
- */
-case class StopWatch(sSender : StatsSender , action : String) {
-  private def getTimestamp : Long = {
+  * Created with IntelliJ IDEA.
+  * User: Michael
+  * Date: 4/3/14
+  * Time: 7:36 PM
+  * To change this template use File | Settings | File Templates.
+  */
+case class StopWatch(sSender: StatsSender, action: String) {
+  private def getTimestamp: Long = {
     System.currentTimeMillis
   }
 

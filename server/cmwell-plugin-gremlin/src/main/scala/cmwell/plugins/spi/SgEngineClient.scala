@@ -12,14 +12,11 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.plugins.spi
 
 /**
- * Created by yaakov on 7/23/15.
- */
+  * Created by yaakov on 7/23/15.
+  */
 trait SgEngineClient {
   def eval(ds: org.apache.jena.query.Dataset, query: String): String
 }
-

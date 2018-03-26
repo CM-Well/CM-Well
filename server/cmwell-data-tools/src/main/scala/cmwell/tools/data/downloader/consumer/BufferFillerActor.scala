@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.downloader.consumer
 
 import akka.NotUsed
@@ -25,11 +23,12 @@ import akka.stream._
 import akka.stream.scaladsl._
 import cmwell.tools.data.downloader.consumer.Downloader._
 import cmwell.tools.data.utils.ArgsManipulations
-import cmwell.tools.data.utils.ArgsManipulations.{HttpAddress, formatHost}
+import cmwell.tools.data.utils.ArgsManipulations.{formatHost, HttpAddress}
 import cmwell.tools.data.utils.akka.HeaderOps._
-import cmwell.tools.data.utils.akka.{DataToolsConfig, HttpConnections, lineSeparatorFrame}
+import cmwell.tools.data.utils.akka.{lineSeparatorFrame, DataToolsConfig, HttpConnections}
 import cmwell.tools.data.utils.logging._
 import cmwell.tools.data.utils.text.Tokens
+import cmwell.util.akka.http.HttpZipDecoder
 
 import scala.collection.mutable
 import scala.concurrent.duration.{FiniteDuration, _}
@@ -39,7 +38,7 @@ import scala.util.{Failure, Success, Try}
 object BufferFillerActor {
   case object Status
   case class FinishedToken(nextToken: Option[Token])
-  case class NewData(data: Option[(Token,TsvData)])
+  case class NewData(data: Option[(Token, TsvData)])
   case class InitToken(token: Token)
   case object GetData
   case class HttpResponseSuccess(token: Token)
@@ -55,12 +54,15 @@ class BufferFillerActor(threshold: Int,
                         params: String = "",
                         isBulk: Boolean = false,
                         updateFreq: Option[FiniteDuration] = None,
-                        override val label: Option[String] = None) extends Actor with DataToolsLogging with DataToolsConfig {
+                        override val label: Option[String] = None)
+    extends Actor
+    with DataToolsLogging
+    with DataToolsConfig {
   import BufferFillerActor._
 
   implicit val ec: ExecutionContext = context.dispatcher
-  implicit val system: ActorSystem  = context.system
-  implicit val mat: Materializer    = ActorMaterializer()
+  implicit val system: ActorSystem = context.system
+  implicit val mat: Materializer = ActorMaterializer()
   implicit val labelId = label.map(LabelId.apply)
 
   val receivedUuids = mutable.Set.empty[Uuid]
@@ -73,20 +75,22 @@ class BufferFillerActor(threshold: Int,
   private var lastBulkConsumeToHeader: Option[String] = None
   private var consumeComplete = false
 
-
   val retryTimeout: FiniteDuration = {
-    val timeoutDuration = Duration(config.getString("cmwell.downloader.consumer.http-retry-timeout")).toCoarsest
-    FiniteDuration( timeoutDuration.length, timeoutDuration.unit )
+    val timeoutDuration = Duration(
+      config.getString("cmwell.downloader.consumer.http-retry-timeout")
+    ).toCoarsest
+    FiniteDuration(timeoutDuration.length, timeoutDuration.unit)
   }
 
-  private val HttpAddress(protocol, host, port, _) = ArgsManipulations.extractBaseUrl(baseUrl)
-  private val conn = HttpConnections.newHostConnectionPool[Option[_]](host, port, protocol)
+  private val HttpAddress(protocol, host, port, _) =
+    ArgsManipulations.extractBaseUrl(baseUrl)
+  private val conn =
+    HttpConnections.newHostConnectionPool[Option[_]](host, port, protocol)
 
   override def preStart(): Unit = {
     logger.info("starting BufferFillerActor")
-    initToken.map(InitToken.apply) pipeTo self
+    initToken.map(InitToken.apply).pipeTo(self)
   }
-
 
   override def unhandled(message: Any): Unit = {
     logger.error(s"BufferFillerActor unhandled message $message")
@@ -94,7 +98,10 @@ class BufferFillerActor(threshold: Int,
   }
 
   override def preRestart(reason: Throwable, message: Option[Any]): Unit = {
-    logger.error(s"BufferFillerActor died during processing of $message. The exception was: ", reason)
+    logger.error(
+      s"BufferFillerActor died during processing of $message. The exception was: ",
+      reason
+    )
     super.preRestart(reason, message)
   }
 
@@ -114,7 +121,7 @@ class BufferFillerActor(threshold: Int,
     case FinishedToken(nextToken) =>
       logger.debug(s"received $tsvCounter uuids from token $currToken")
 
-      receivedUuids  --= uuidsFromCurrentToken
+      receivedUuids --= uuidsFromCurrentToken
       tsvCounter = 0L
       lastBulkConsumeToHeader = None
 
@@ -133,8 +140,10 @@ class BufferFillerActor(threshold: Int,
       }
 
     case Status if buf.size < threshold =>
-      logger.debug(s"status message: buffer-size=${buf.size}, will request for more data")
-      sendNextChunkRequest(currToken).map(FinishedToken.apply) pipeTo self
+      logger.debug(
+        s"status message: buffer-size=${buf.size}, will request for more data"
+      )
+      sendNextChunkRequest(currToken).map(FinishedToken.apply).pipeTo(self)
 
     case Status =>
       logger.debug(s"status message: buffer-size=${buf.size}")
@@ -146,7 +155,7 @@ class BufferFillerActor(threshold: Int,
 
     case GetData if buf.nonEmpty =>
       sender ! buf.dequeue.map(tokenAndData => {
-        (tokenAndData._1, tokenAndData._2,  (buf.isEmpty && consumeComplete))
+        (tokenAndData._1, tokenAndData._2, (buf.isEmpty && consumeComplete))
       })
 
     // do nothing since there are no elements in buffer
@@ -155,20 +164,30 @@ class BufferFillerActor(threshold: Int,
       sender ! Some[(Token, TsvData, Boolean)](null, null, consumeComplete)
 
     case SetConsumeStatus(consumeStatus) =>
-      if(this.consumeComplete != consumeStatus)
+      if (this.consumeComplete != consumeStatus)
         logger.info(s"Setting consumeComplete to $consumeStatus")
       consumeComplete = consumeStatus
 
     case HttpResponseSuccess(t) =>
       // get point in time of token
-      val decoded = Try(new org.joda.time.LocalDateTime(Tokens.decompress(t).takeWhile(_ != '|').toLong))
-      logger.debug(s"successfully consumed token: $t point in time: ${decoded.getOrElse("")} buffer-size: ${buf.size}")
+      val decoded = Try(
+        new org.joda.time.LocalDateTime(
+          Tokens.decompress(t).takeWhile(_ != '|').toLong
+        )
+      )
+      logger.debug(s"successfully consumed token: $t point in time: ${decoded
+        .getOrElse("")} buffer-size: ${buf.size}")
       currConsumeState = ConsumeStateHandler.nextSuccess(currConsumeState)
 
     case HttpResponseFailure(t, err) =>
       currConsumeState = ConsumeStateHandler.nextFailure(currConsumeState)
-      logger.info(s"error: ${err.getMessage} consumer will perform retry in $retryTimeout, token=$t", err)
-      after(retryTimeout, context.system.scheduler)(sendNextChunkRequest(t).map(FinishedToken.apply) pipeTo self)
+      logger.info(
+        s"error: ${err.getMessage} consumer will perform retry in $retryTimeout, token=$t",
+        err
+      )
+      after(retryTimeout, context.system.scheduler)(
+        sendNextChunkRequest(t).map(FinishedToken.apply).pipeTo(self)
+      )
 
     case NewToHeader(to) =>
       lastBulkConsumeToHeader = to
@@ -210,7 +229,8 @@ class BufferFillerActor(threshold: Int,
 
       val to = toHint.map("&to-hint=" + _).getOrElse("")
 
-      val uri = s"${formatHost(baseUrl)}/$consumeHandler?position=$token&format=tsv$paramsValue$slowBulk$to"
+      val uri =
+        s"${formatHost(baseUrl)}/$consumeHandler?position=$token&format=tsv$paramsValue$slowBulk$to"
       logger.debug("send HTTP request: {}", uri)
       HttpRequest(uri = uri).addHeader(RawHeader("Accept-Encoding", "gzip"))
     }
@@ -221,97 +241,118 @@ class BufferFillerActor(threshold: Int,
     val prevToHeader = (self ? GetToHeader).mapTo[Option[String]]
 
     val source: Source[Token, (Future[Option[Token]], UniqueKillSwitch)] = {
-      val src: Source[(Option[String], Source[(Token, Tsv), Any]), NotUsed] = Source.fromFuture(prevToHeader)
-        .map(to => createRequestFromToken(token, to))
-        .map(_ -> None)
-        .via(conn)
-        .map {
-          case (Success(HttpResponse(s, h , e, _)), _) if s == StatusCodes.TooManyRequests =>
-            e.discardBytes()
+      val src: Source[(Option[String], Source[(Token, Tsv), Any]), NotUsed] =
+        Source
+          .fromFuture(prevToHeader)
+          .map(to => createRequestFromToken(token, to))
+          .map(_ -> None)
+          .via(conn)
+          .map {
+            case (tryResponse, state) =>
+              tryResponse.map(HttpZipDecoder.decodeResponse) -> state
+          }
+          .map {
+            case (Success(HttpResponse(s, h, e, _)), _) if s == StatusCodes.TooManyRequests =>
+              e.discardBytes()
 
-            logger.error(s"HTTP 429: too many requests token=$token")
-            None -> Source.failed(new Exception("too many requests"))
+              logger.error(s"HTTP 429: too many requests token=$token")
+              None -> Source.failed(new Exception("too many requests"))
 
-          case (Success(HttpResponse(s, h , e, _)), _) if s == StatusCodes.NoContent =>
-            e.discardBytes()
+            case (Success(HttpResponse(s, h, e, _)), _) if s == StatusCodes.NoContent =>
+              e.discardBytes()
 
-            if (updateFreq.isEmpty) self ! NewData(None)
+              if (updateFreq.isEmpty) self ! NewData(None)
 
-            self ! SetConsumeStatus(true)
+              self ! SetConsumeStatus(true)
 
-            None -> Source.empty
-          case (Success(HttpResponse(s, h, e, _)), _) if s == StatusCodes.OK || s == StatusCodes.PartialContent =>
+              None -> Source.empty
+            case (Success(HttpResponse(s, h, e, _)), _) if s == StatusCodes.OK || s == StatusCodes.PartialContent =>
+              self ! SetConsumeStatus(false)
 
-            self ! SetConsumeStatus(false)
+              val nextToken = getPosition(h) match {
+                case Some(HttpHeader(_, pos)) => pos
+                case None                     => throw new RuntimeException("no position supplied")
+              }
 
-            val nextToken = getPosition(h) match {
-              case Some(HttpHeader(_, pos)) => pos
-              case None      => throw new RuntimeException("no position supplied")
-            }
+              getTo(h) match {
+                case Some(HttpHeader(_, to)) => self ! NewToHeader(Some(to))
+                case None                    => self ! NewToHeader(None)
+              }
 
-            getTo(h) match {
-              case Some(HttpHeader(_, to)) => self ! NewToHeader(Some(to))
-              case None                    => self ! NewToHeader(None)
-            }
+              logger.debug(
+                s"received consume answer from host=${getHostnameValue(h)}"
+              )
 
-            logger.debug(s"received consume answer from host=${getHostnameValue(h)}")
+              val dataSource: Source[(Token, Tsv), Any] = e
+                .withoutSizeLimit()
+                .dataBytes
+                .via(lineSeparatorFrame)
+                .map(extractTsv)
+                .map(token -> _)
 
-            val dataSource: Source[(Token, Tsv), Any] = e.withoutSizeLimit().dataBytes
-              .via(Compression.gunzip())
-              .via(lineSeparatorFrame)
-              .map(extractTsv)
-              .map(token -> _)
+              Some(nextToken) -> dataSource
 
-            Some(nextToken) -> dataSource
+            case (Success(HttpResponse(s, h, e, _)), _) =>
+              e.toStrict(1.minute).onComplete {
+                case Success(res: HttpEntity.Strict) =>
+                  logger
+                    .info(
+                      s"received consume answer from host=${getHostnameValue(
+                        h
+                      )} status=$s token=$token entity=${res.data.utf8String}"
+                    )
+                case Failure(err) =>
+                  logger.error(
+                    s"received consume answer from host=${getHostnameValue(h)} status=$s token=$token cannot extract entity",
+                    err
+                  )
+              }
 
-          case (Success(HttpResponse(s, h, e, _)), _) =>
-            e.toStrict(1.minute).onComplete {
-              case Success(res:HttpEntity.Strict) =>
-                logger.info(s"received consume answer from host=${getHostnameValue(h)} status=$s token=$token entity=${res.data.utf8String}")
-              case Failure(err) =>
-                logger.error(s"received consume answer from host=${getHostnameValue(h)} status=$s token=$token cannot extract entity", err)
-            }
+              Some(token) -> Source.failed(new Exception(s"Status is $s"))
 
-            Some(token) -> Source.failed(new Exception(s"Status is $s"))
-
-          case x =>
-            logger.error(s"unexpected message: $x")
-            Some(token) -> Source.failed(new UnsupportedOperationException(x.toString))
-        }
-
+            case x =>
+              logger.error(s"unexpected message: $x")
+              Some(token) -> Source.failed(
+                new UnsupportedOperationException(x.toString)
+              )
+          }
 
       val tokenSink = Sink.last[(Option[String], Source[(Token, Tsv), Any])]
       //The below is actually alsoToMat but with eagerCancel = true
-      val srcWithSink = Source.fromGraph(GraphDSL.create(tokenSink) { implicit builder =>
-        sink =>
+      val srcWithSink = Source
+        .fromGraph(GraphDSL.create(tokenSink) { implicit builder => sink =>
           import GraphDSL.Implicits._
           val tokenSource = builder.add(src)
-          val bcast = builder.add(Broadcast[(Option[String], Source[(Token, Tsv), Any])](2, eagerCancel = true))
+          val bcast = builder.add(
+            Broadcast[(Option[String], Source[(Token, Tsv), Any])](2, eagerCancel = true)
+          )
           tokenSource ~> bcast.in
           bcast.out(1) ~> sink
           SourceShape(bcast.out(0))
-      })
-        .mapMaterializedValue(_.map { case (nextToken, _) => nextToken})
+        })
+        .mapMaterializedValue(_.map { case (nextToken, _) => nextToken })
       srcWithSink
-        .map { case (_, dataSource) => dataSource}
+        .map { case (_, dataSource) => dataSource }
         .flatMapConcat(identity)
-        .collect { case (token, tsv: TsvData) =>
-          // if uuid was not emitted before, write it to buffer
-          if (receivedUuids.add(tsv.uuid)) {
-            self ! NewData(Some((token, tsv)))
-          }
+        .collect {
+          case (token, tsv: TsvData) =>
+            // if uuid was not emitted before, write it to buffer
+            if (receivedUuids.add(tsv.uuid)) {
+              self ! NewData(Some((token, tsv)))
+            }
 
-          uuidsFromCurrentToken.add(tsv.uuid)
-          token
+            uuidsFromCurrentToken.add(tsv.uuid)
+            token
         }
         .viaMat(KillSwitches.single)(Keep.both)
     }
 
-
-
-    val (result, killSwitch) = source.toMat(Sink.ignore) { case ((token, killSwitch), done) =>
-      done.flatMap(_ => token) -> killSwitch
-    }.run()
+    val (result, killSwitch) = source
+      .toMat(Sink.ignore) {
+        case ((token, killSwitch), done) =>
+          done.flatMap(_ => token) -> killSwitch
+      }
+      .run()
 
     currKillSwitch = Some(killSwitch)
 

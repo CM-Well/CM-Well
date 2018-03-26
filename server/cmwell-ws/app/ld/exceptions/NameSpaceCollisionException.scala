@@ -12,15 +12,13 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.web.ld.exceptions
 
 /**
- * Created with IntelliJ IDEA.
- * User: gilad
- * Date: 7/15/13
- * Time: 12:16 PM
- * To change this template use File | Settings | File Templates.
- */
+  * Created with IntelliJ IDEA.
+  * User: gilad
+  * Date: 7/15/13
+  * Time: 12:16 PM
+  * To change this template use File | Settings | File Templates.
+  */
 class NameSpaceCollisionException(msg: String) extends RuntimeException(msg)

@@ -12,19 +12,17 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.util.stream
 
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
-
+// format: off
 class StreamEventInspector[Elem](onUpstreamFinishInspection:   ()        => Unit = () => {},
                                  onUpstreamFailureInspection:  Throwable => Unit = _  => {},
                                  onDownstreamFinishInspection: ()        => Unit = () => {},
                                  onPushInspection:             Elem      => Unit = (_: Elem)  => {},
                                  onPullInspection:             ()        => Unit = () => {}) extends GraphStage[FlowShape[Elem, Elem]] {
-
+  // format: on
   private val in = Inlet[Elem]("StreamEventInspector.in")
   private val out = Outlet[Elem]("StreamEventInspector.out")
 
@@ -32,34 +30,40 @@ class StreamEventInspector[Elem](onUpstreamFinishInspection:   ()        => Unit
 
   override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
 
-    setHandler(in, new InHandler {
-      override def onPush(): Unit = {
-        val elem = grab(in)
-        onPushInspection(elem)
-        push(out, elem)
-      }
+    setHandler(
+      in,
+      new InHandler {
+        override def onPush(): Unit = {
+          val elem = grab(in)
+          onPushInspection(elem)
+          push(out, elem)
+        }
 
-      override def onUpstreamFailure(ex: Throwable): Unit = {
-        onUpstreamFailureInspection(ex)
-        super.onUpstreamFailure(ex)
-      }
+        override def onUpstreamFailure(ex: Throwable): Unit = {
+          onUpstreamFailureInspection(ex)
+          super.onUpstreamFailure(ex)
+        }
 
-      override def onUpstreamFinish(): Unit = {
-        onUpstreamFinishInspection()
-        super.onUpstreamFinish()
+        override def onUpstreamFinish(): Unit = {
+          onUpstreamFinishInspection()
+          super.onUpstreamFinish()
+        }
       }
-    })
+    )
 
-    setHandler(out, new OutHandler{
-      override def onPull(): Unit = {
-        onPullInspection()
-        pull(in)
-      }
+    setHandler(
+      out,
+      new OutHandler {
+        override def onPull(): Unit = {
+          onPullInspection()
+          pull(in)
+        }
 
-      override def onDownstreamFinish(): Unit = {
-        onDownstreamFinishInspection()
-        super.onDownstreamFinish()
+        override def onDownstreamFinish(): Unit = {
+          onDownstreamFinishInspection()
+          super.onDownstreamFinish()
+        }
       }
-    })
+    )
   }
 }

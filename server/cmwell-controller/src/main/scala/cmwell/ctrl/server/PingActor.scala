@@ -12,17 +12,14 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.ctrl.server
 
 import akka.actor.Actor
 import akka.actor.Actor.Receive
 
 /**
- * Created by michael on 2/12/15.
- */
-
+  * Created by michael on 2/12/15.
+  */
 case class PingMessage()
 class PingActor extends Actor {
   override def receive: Receive = {

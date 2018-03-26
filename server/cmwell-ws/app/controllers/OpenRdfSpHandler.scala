@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package controllers
 
 import java.io.{ByteArrayOutputStream, File, OutputStream}
@@ -62,44 +60,47 @@ import scala.util.{Failure, Success, Try}
   */
 
 @Singleton
-class OpenRdfSpHandler @Inject()(crudServiceFS: CRUDServiceFS, cmwellRDFHelper: CMWellRDFHelper)(implicit ec: ExecutionContext) extends InjectedController with LazyLogging {
+class OpenRdfSpHandler @Inject()(crudServiceFS: CRUDServiceFS, cmwellRDFHelper: CMWellRDFHelper)(
+  implicit ec: ExecutionContext
+) extends InjectedController
+    with LazyLogging {
 
   val config: Config = Config.defaultConfig
   val typesCache = crudServiceFS.passiveFieldTypesCache
-  val dataFetcher = new DataFetcherImpl(config,crudServiceFS)
+  val dataFetcher = new DataFetcherImpl(config, crudServiceFS)
   val tripleStore = new TripleStore(dataFetcher, cmwellRDFHelper)
   val cmWellTripleSource = new CmWellTripleSource(tripleStore)
   val cmWellReadOnlySailConnection = new CmWellReadOnlySailConnection(cmWellTripleSource)
   val cmWellReadOnlySail = new CmWellReadOnlySail(cmWellReadOnlySailConnection)
   val sailConn = new CmWellSailRepositoryConnection(cmWellReadOnlySailConnection, cmWellReadOnlySail)
 
-  def handleSsparqlPost(): Action[String] = Action.async(parse.tolerantText) {
-    implicit request =>
-      Try(QueryParserUtil.parseOperation(QueryLanguage.SPARQL, request.body, null)) match {
-        case Success(po) =>
+  def handleSsparqlPost(): Action[String] = Action.async(parse.tolerantText) { implicit request =>
+    Try(QueryParserUtil.parseOperation(QueryLanguage.SPARQL, request.body, null)) match {
+      case Success(po) =>
+        // todo case class RequestParams combined with Config or such
+        val formatOpt = request.getQueryString("format")
+        val withoutMeta = request.queryString.keySet("without-meta")
 
-          // todo case class RequestParams combined with Config or such
-          val formatOpt = request.getQueryString("format")
-          val withoutMeta = request.queryString.keySet("without-meta")
+        evaluateQuery(po, formatOpt, withoutMeta).map[Result](Ok.apply).recover {
+          case t: IllegalArgumentException => BadRequest(t.getMessage)
+          case _                           => InternalServerError("Unknown error occurred")
+        }
 
-          evaluateQuery(po, formatOpt, withoutMeta).map[Result](Ok.apply).recover {
-            case t: IllegalArgumentException => BadRequest(t.getMessage)
-            case _ => InternalServerError("Unknown error occurred")
-          }
+      case Success(_) =>
+        Future.successful(BadRequest("Unsupported query"))
 
-        case Success(_) =>
-          Future.successful(BadRequest("Unsupported query"))
+      case Failure(t) if t.isInstanceOf[MalformedQueryException] =>
+        Future.successful(BadRequest(t.getMessage))
 
-        case Failure(t) if t.isInstanceOf[MalformedQueryException] =>
-          Future.successful(BadRequest(t.getMessage))
-
-        case Failure(t) =>
-          logger.error("Unexpected error in parsing SPARQL", t)
-          Future.successful(InternalServerError("Unknown error occurred"))
-      }
+      case Failure(t) =>
+        logger.error("Unexpected error in parsing SPARQL", t)
+        Future.successful(InternalServerError("Unknown error occurred"))
+    }
   }
 
-  private def evaluateQuery(operation: ParsedOperation, formatOpt: Option[String], withoutMeta: Boolean): Future[String] = operation match {
+  private def evaluateQuery(operation: ParsedOperation,
+                            formatOpt: Option[String],
+                            withoutMeta: Boolean): Future[String] = operation match {
     case ptq: ParsedTupleQuery =>
       val format = formatOpt.getOrElse("tsv").toLowerCase()
       evaluateSelect(ptq, format, withoutMeta)
@@ -137,21 +138,24 @@ class OpenRdfSpHandler @Inject()(crudServiceFS: CRUDServiceFS, cmwellRDFHelper: 
     case "tsv" => new SPARQLResultsTSVWriter(os)
     case "csv" => new SPARQLResultsCSVWriter(os)
     case "xml" => new SPARQLResultsXMLWriter(os)
-    case "json" => new SPARQLResultsJSONWriter(os) // todo bypass JAR Hell to enable json: Sesame uses jackson-core 2.6.2 but we use 2.8.3
+    case "json" =>
+      new SPARQLResultsJSONWriter(os) // todo bypass JAR Hell to enable json: Sesame uses jackson-core 2.6.2 but we use 2.8.3
     case _ => !!! // todo throw illegalArgException
   }
 
   private def getConstructResultsHandler(format: String, os: OutputStream): RDFWriter = format match {
-    case "nt"  | "ntriples" => new NTriplesWriter(os)
-    case "ttl" | "turtle"   => new TurtleWriter(os)
-    case "trig"             => new TriGWriter(os)
-    case _ => !!! // todo throw illegalArgException
+    case "nt" | "ntriples" => new NTriplesWriter(os)
+    case "ttl" | "turtle"  => new TurtleWriter(os)
+    case "trig"            => new TriGWriter(os)
+    case _                 => !!! // todo throw illegalArgException
   }
 }
 
 // todo refactor - find a proper place for the Driver
 
-class CmWellSailRepositoryConnection(cmWellReadOnlySailConnection: CmWellReadOnlySailConnection, cmWellReadOnlySail: CmWellReadOnlySail)(implicit ec: ExecutionContext) extends SailRepositoryConnection(new SailRepository(cmWellReadOnlySail), cmWellReadOnlySailConnection)
+class CmWellSailRepositoryConnection(cmWellReadOnlySailConnection: CmWellReadOnlySailConnection,
+                                     cmWellReadOnlySail: CmWellReadOnlySail)(implicit ec: ExecutionContext)
+    extends SailRepositoryConnection(new SailRepository(cmWellReadOnlySail), cmWellReadOnlySailConnection)
 
 class CmWellReadOnlySail(cmWellReadOnlySailConnection: CmWellReadOnlySailConnection) extends Sail {
   import scala.collection.JavaConversions._
@@ -174,10 +178,11 @@ class CmWellReadOnlySail(cmWellReadOnlySailConnection: CmWellReadOnlySailConnect
   override def getSupportedIsolationLevels: util.List[IsolationLevel] = Seq(IsolationLevels.NONE)
 
   override def getDataDir: File = null
-  override def setDataDir(dataDir: File): Unit = { }
+  override def setDataDir(dataDir: File): Unit = {}
 }
 
-class CmWellReadOnlySailConnection(cmWellTripleSource: CmWellTripleSource)(implicit ec: ExecutionContext) extends SailConnection {
+class CmWellReadOnlySailConnection(cmWellTripleSource: CmWellTripleSource)(implicit ec: ExecutionContext)
+    extends SailConnection {
   override def prepare(): Unit = { /* Not supporting Transactions */ }
   override def commit(): Unit = { /* Not supporting Transactions */ }
   override def rollback(): Unit = { /* Not supporting Transactions */ }
@@ -186,7 +191,8 @@ class CmWellReadOnlySailConnection(cmWellTripleSource: CmWellTripleSource)(impli
 
   override def removeNamespace(prefix: String): Unit = ???
 
-  override def isActive: Boolean = false // as we are not supporting Transactions, there will never be an in-flight transaction
+  override def isActive: Boolean =
+    false // as we are not supporting Transactions, there will never be an in-flight transaction
 
   override def getContextIDs: CloseableIteration[_ <: Resource, SailException] = ???
 
@@ -194,7 +200,8 @@ class CmWellReadOnlySailConnection(cmWellTripleSource: CmWellTripleSource)(impli
     // currently, nothing to do here
   }
 
-  override def removeStatement(op: UpdateContext, subj: Resource, pred: IRI, obj: Value, contexts: Resource*): Unit = ???
+  override def removeStatement(op: UpdateContext, subj: Resource, pred: IRI, obj: Value, contexts: Resource*): Unit =
+    ???
 
   override def close(): Unit = {
     // currently, nothing to do here
@@ -203,7 +210,8 @@ class CmWellReadOnlySailConnection(cmWellTripleSource: CmWellTripleSource)(impli
   override def startUpdate(op: UpdateContext): Unit = ???
   override def endUpdate(op: UpdateContext): Unit = ???
 
-  override def getNamespaces: CloseableIteration[_ <: Namespace, SailException] = new EmptyIteration // todo should we list namespaces?
+  override def getNamespaces: CloseableIteration[_ <: Namespace, SailException] =
+    new EmptyIteration // todo should we list namespaces?
 
   override def clear(contexts: Resource*): Unit = ???
   override def removeStatements(subj: Resource, pred: IRI, obj: Value, contexts: Resource*): Unit = ???
@@ -211,10 +219,19 @@ class CmWellReadOnlySailConnection(cmWellTripleSource: CmWellTripleSource)(impli
   override def addStatement(op: UpdateContext, subj: Resource, pred: IRI, obj: Value, contexts: Resource*): Unit = ???
 
   override def isOpen: Boolean = true
-  override def getStatements(subj: Resource, pred: IRI, obj: Value, includeInferred: Boolean, contexts: Resource*): CloseableIteration[_ <: Statement, SailException] =
-    cmWellTripleSource.originalIterator(subj, pred, obj, contexts:_*).asInstanceOf[CloseableIteration[_ <: Statement, SailException]]
+  override def getStatements(subj: Resource,
+                             pred: IRI,
+                             obj: Value,
+                             includeInferred: Boolean,
+                             contexts: Resource*): CloseableIteration[_ <: Statement, SailException] =
+    cmWellTripleSource
+      .originalIterator(subj, pred, obj, contexts: _*)
+      .asInstanceOf[CloseableIteration[_ <: Statement, SailException]]
 
-  override def evaluate(tupleExpr: TupleExpr, dataset: Dataset, bindings: BindingSet, includeInferred: Boolean): CloseableIteration[_ <: BindingSet, QueryEvaluationException] = {
+  override def evaluate(tupleExpr: TupleExpr,
+                        dataset: Dataset,
+                        bindings: BindingSet,
+                        includeInferred: Boolean): CloseableIteration[_ <: BindingSet, QueryEvaluationException] = {
     // overriding Strategy (e.g. sort by cardinality or JoinSelectivity etc.) can take place here :)
 
     SesameExtensions.SortByCardinalityQueryOptimizer.optimize(tupleExpr, dataset, bindings)
@@ -233,17 +250,23 @@ class CmWellReadOnlySailConnection(cmWellTripleSource: CmWellTripleSource)(impli
 
 }
 
-
 class CmWellTripleSource(tripleStore: TripleStore)(implicit ec: ExecutionContext) extends TripleSource {
 
   private val factory = SimpleValueFactory.getInstance()
 
-  override def getStatements(subj: Resource, pred: IRI, obj: Value, contexts: Resource*): CloseableIteration[_ <: Statement, QueryEvaluationException] = {
-    originalIterator(subj, pred, obj, contexts:_*).asInstanceOf[CloseableIteration[_ <: Statement, QueryEvaluationException]]
+  override def getStatements(subj: Resource,
+                             pred: IRI,
+                             obj: Value,
+                             contexts: Resource*): CloseableIteration[_ <: Statement, QueryEvaluationException] = {
+    originalIterator(subj, pred, obj, contexts: _*)
+      .asInstanceOf[CloseableIteration[_ <: Statement, QueryEvaluationException]]
   }
 
   // FIXME: this is temp. hack to map CloseableIteration of different types of Exceptions.
-  def originalIterator(subj: Resource, pred: IRI, obj: Value, contexts: Resource*): CloseableIteration[_ <: Statement, OpenRDFException] = {
+  def originalIterator(subj: Resource,
+                       pred: IRI,
+                       obj: Value,
+                       contexts: Resource*): CloseableIteration[_ <: Statement, OpenRDFException] = {
     import scala.collection.JavaConversions._
 
     // todo levarage metadata to use cache or such
@@ -252,8 +275,17 @@ class CmWellTripleSource(tripleStore: TripleStore)(implicit ec: ExecutionContext
     //      case _ =>
     //    }
 
-    val tp = TriplePattern(Option(subj).map(_.stringValue), Option(pred).map(_.stringValue), Option(obj).map(SesameExtensions.sesameValueToValue))
-    val statementsIterator = tripleStore.findTriplesByPattern(tp).map(q => factory.createStatement(factory.createIRI(q.subject), factory.createIRI(q.predicate), SesameExtensions.valueToSesameValue(q.value)))
+    val tp = TriplePattern(Option(subj).map(_.stringValue),
+                           Option(pred).map(_.stringValue),
+                           Option(obj).map(SesameExtensions.sesameValueToValue))
+    val statementsIterator = tripleStore
+      .findTriplesByPattern(tp)
+      .map(
+        q =>
+          factory.createStatement(factory.createIRI(q.subject),
+                                  factory.createIRI(q.predicate),
+                                  SesameExtensions.valueToSesameValue(q.value))
+      )
 
     new CloseableIteratorIteration(statementsIterator)
   }

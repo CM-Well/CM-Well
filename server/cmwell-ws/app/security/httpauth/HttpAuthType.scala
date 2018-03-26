@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package security.httpauth
 
 /**
@@ -23,4 +21,3 @@ sealed trait HttpAuthType
 
 case object Basic extends HttpAuthType
 case object Digest extends HttpAuthType
-
