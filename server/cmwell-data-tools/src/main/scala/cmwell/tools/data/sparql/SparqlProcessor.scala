@@ -19,7 +19,7 @@ package cmwell.tools.data.sparql
 import java.io.InputStream
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.{HttpMethods, HttpRequest, HttpResponse}
+import akka.http.scaladsl.model.{HttpHeader, HttpMethods, HttpRequest, HttpResponse}
 import akka.stream.Materializer
 import akka.stream.scaladsl._
 import akka.util._
@@ -29,6 +29,7 @@ import cmwell.tools.data.utils.ArgsManipulations._
 import cmwell.tools.data.utils.akka.{Retry, _}
 import cmwell.tools.data.utils.logging.{DataToolsLogging, LabelId}
 
+import scala.collection.immutable
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
@@ -165,8 +166,8 @@ class SparqlProcessor[T](baseUrl: String,
     type Paths = Seq[ByteString]
     type StartTime = Long
 
-    def validateResponseBody(body: ByteString) = {
-      !(body containsSlice "Could not process request")
+    def validateResponse(body: ByteString, headers: Seq[HttpHeader]) = {
+      !(body containsSlice "Could not process request") && !(headers.contains("X-CM-WELL-SG-RS"))
     }
 
     def sparqlFlow() = {
@@ -204,7 +205,7 @@ class SparqlProcessor[T](baseUrl: String,
           val startTime = System.currentTimeMillis
           data -> Some(context -> startTime)
         }
-        .via(Retry.retryHttp(retryTimeout, parallelism, baseUrl)(createRequest, validateResponseBody))
+        .via(Retry.retryHttp(retryTimeout, parallelism, baseUrl)(createRequest, validateResponse))
         .map {
           case (Success(HttpResponse(s,h,e,p)), paths, contextAndStartTime) if s.isSuccess() =>
             logger.debug(s"host=${getHostnameValue(h)} received sparql response for paths: {}", concatByteStrings(paths, ByteString(",")).utf8String)

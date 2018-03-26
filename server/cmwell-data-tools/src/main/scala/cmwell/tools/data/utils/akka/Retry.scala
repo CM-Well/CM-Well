@@ -17,8 +17,9 @@
 package cmwell.tools.data.utils.akka
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.model.HttpEntity.{Chunked, LastChunk}
 import akka.http.scaladsl.model.StatusCodes.{ClientError, ServerError}
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
+import akka.http.scaladsl.model._
 import akka.pattern._
 import akka.stream._
 import akka.stream.scaladsl._
@@ -58,7 +59,7 @@ object Retry extends DataToolsLogging with DataToolsConfig{
                    baseUrl: String,
                    limit: Option[Int] = None)
                   (createRequest: (Seq[ByteString]) => HttpRequest,
-                   responseBodyValidator: ByteString => Boolean = _ => true)
+                   responseValidator: (ByteString, Seq[HttpHeader]) => Boolean = (_,_) => true)
                   (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext, label: Option[LabelId] = None) = {
 
     val labelValue = label.map{case LabelId(id) => s"[$id]"}.getOrElse("")
@@ -176,6 +177,7 @@ object Retry extends DataToolsLogging with DataToolsConfig{
     val httpPipelineSize = config.getInt("akka.http.host-connection-pool.pipelining-limit")
     val httpParallelism = maxConnections * httpPipelineSize
 
+
     val job = Flow[(Future[Seq[ByteString]], State)]
       .mapAsyncUnordered(httpParallelism){ case (data, state) => data.map(_ -> state) } // used for delay between executions
       .map{ case (data, state) => createRequest(data) -> state }
@@ -186,18 +188,28 @@ object Retry extends DataToolsLogging with DataToolsConfig{
           e.discardBytes()
           Future.successful(Failure(new Exception(s"status is not success ($s) $e")) -> state.copy(response = response.toOption))
 
-        case (response@Success(res@HttpResponse(s, _, e, _)), state) =>
+        case (response@Success(res@HttpResponse(s, headers, e, _)), state) =>
           // consume HTTP response bytes and later pack them in fake response
-          val responseAndState = e.withoutSizeLimit().dataBytes.runFold(blank)(_ ++ _)
-            .map { dataBytes =>
-              val isValidBody = responseBodyValidator(dataBytes)
-
-              if (isValidBody) {
-                Success(res.copy(entity = dataBytes)) -> state.copy(response = response.toOption)
-              } else {
-                Failure(new Exception("response body is not valid")) -> state.copy(response = response.toOption)
+          val responseAndState = (e match {
+            case chunkedEntity:Chunked => {
+              chunkedEntity.chunks.runFold[ (ByteString,Option[Seq[HttpHeader]]) ]((ByteString.empty,None)) {
+                case (accumulatedEntity, chunk: LastChunk) => (accumulatedEntity._1 ++ chunk.data, Option(chunk.trailer))
+                case (accumulatedEntity, chunk) => (accumulatedEntity._1 ++ chunk.data, None)
               }
             }
+            case entity:HttpEntity => {
+              entity.withoutSizeLimit.dataBytes.runFold(blank)(_ ++ _).map (_ -> None)
+            }
+          }).map {
+            case (entityBytes, trailerHeaders) =>
+
+              val combinedHeaders = headers ++ trailerHeaders.getOrElse(Seq.empty)
+
+              responseValidator(entityBytes, combinedHeaders) match {
+                case true => Success(res.copy(entity = entityBytes, headers=combinedHeaders)) -> state.copy(response = response.toOption)
+                case _ =>  Failure(new Exception("response body is not valid")) -> state.copy(response = response.toOption)
+              }
+          }
 
           responseAndState.recover { case err =>
             logger.error(s"$labelValue error in consuming data bytes from response, paths=${stringifyData(state.data)}, err=$err", err)
