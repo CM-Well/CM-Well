@@ -35,7 +35,7 @@ object ConsumeStateHandler {
     * @param state current consume state
     * @return next consume state after failure event
     */
-  def nextFailure(state: ConsumeState) = state match {
+  def nextFailure(state: ConsumeState): ConsumeState = state match {
     case SuccessState(fails) if fails == successToLightFailureThreshold               => LightFailure(0, 0)
     case SuccessState(fails)                                                          => SuccessState(fails = fails + 1) // still in success
     case LightFailure(fails, successesInRow) if fails == lightToHeavyFailureThreshold => HeavyFailure(0)
@@ -48,11 +48,11 @@ object ConsumeStateHandler {
     * @param state current consume state
     * @return next consume state after success event
     */
-  def nextSuccess(state: ConsumeState) = state match {
+  def nextSuccess(state: ConsumeState): ConsumeState = state match {
     case s @ SuccessState(_)                                                                         => s
     case s @ LightFailure(fails, successesInRow) if successesInRow == lightFailureToSuccessThreshold => SuccessState(0)
-    case s @ LightFailure(fails, successesInRow)                                                     => LightFailure(fails = 0, successesInRow = successesInRow + 1)
+    case s @ LightFailure(fails, successesInRow)                                                     => LightFailure(0, successesInRow + 1)
     case HeavyFailure(successesInRow) if successesInRow == heavyFailureToLightFailureThreshold       => LightFailure(0, 0)
-    case HeavyFailure(successesInRow)                                                                => HeavyFailure(successesInRow = successesInRow + 1)
+    case HeavyFailure(successesInRow)                                                                => HeavyFailure(successesInRow + 1)
   }
 }

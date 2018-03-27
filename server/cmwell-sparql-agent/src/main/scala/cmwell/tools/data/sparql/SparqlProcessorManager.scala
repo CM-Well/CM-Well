@@ -576,9 +576,8 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
           }
        */
       case (Success(SimpleResponse(status, headers, body)), state) if state.retriesLeft == 0 => {
-        logger.error(
-          s"$action failed. Cm-Well returned bad response: status: $status headers: ${StpUtil.headersString(headers)} body: $body. No more retries left, will fail the request!"
-        )
+        val h = StpUtil.headersString(headers)
+        logger.error(s"$action failed. Cm-Well returned bad response: status: $status headers: $h body: $body. No more retries left, will fail the request!")
         DoNotRetry
       }
       case (Success(SimpleResponse(status, headers, body)), state @ RetryParams(retriesLeft, delay, delayFactor)) => {

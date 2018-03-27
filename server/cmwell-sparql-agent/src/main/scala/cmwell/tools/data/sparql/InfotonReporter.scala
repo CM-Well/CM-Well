@@ -129,7 +129,7 @@ class InfotonReporter private (baseUrl: String, path: String)(implicit mat: Mate
 
 
   override def saveTokens(tokenAndStatistics: TokenAndStatisticsMap) : Unit = {
-    
+
     def createRequest(tokensStats: TokenAndStatisticsMap) = {
       val data = HttpEntity(
         tokensStats

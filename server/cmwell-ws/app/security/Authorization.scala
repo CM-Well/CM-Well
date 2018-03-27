@@ -22,10 +22,14 @@ import security.PermissionLevel.PermissionLevel
 
 object Authorization extends LazyLogging {
   // todo we only need those for cases when CRUD is not yet initialized (for example during install). Can we have an onInitialized callback?
-  private val defaultAnonymousUser = Json.parse(
-    """{"paths":[{"id":"/","recursive":true,"sign":"+","permissions":"r"},{"id":"/meta/ns","recursive":true,"sign":"-","permissions":"rw"},{"id":"/meta/auth","recursive":true,"sign":"-","permissions":"rw"}],"roles":[]}"""
-  )
-
+  private val defaultAnonymousUser = {
+    val paths = Json.arr(
+      Json.obj("id"->"/","recursive"->true,"sign"->"+","permissions"->"r"),
+      Json.obj("id"->"/meta/ns","recursive"->true,"sign"->"-","permissions"->"rw"),
+      Json.obj("id"->"/meta/auth","recursive"->true,"sign"->"-","permissions"->"rw"))
+    val roles = JsArray.empty
+    Json.obj("paths" -> paths, "roles" -> roles)
+  }
   implicit class StringExtensions(s: String) {
     def appendSlash = if (s.endsWith("/")) s else s + "/"
 
@@ -65,37 +69,36 @@ class Authorization @Inject()(authCache: EagerAuthCache) extends LazyLogging {
         .map { case 'r' => PermissionLevel.Read; case 'w' => PermissionLevel.Write }
         .toSet
 
-      if (!levels(request._2))
-        return false
-
-      val fullPath = (path \ "id").as[String]
-      val rec = (path \ "recursive").asOpt[Boolean].getOrElse(false)
-      request._1.isSameAs(fullPath) || rec && request._1.isSubfolderOf(fullPath)
-    }
-
-    // user is allowed to view his/her UserInfoton:
-    if (request._1 == s"/meta/auth/users/${username.getOrElse("")}" && request._2 == PermissionLevel.Read)
-      return true
-
-    def isPositive(path: JsValue) = (path \ "sign").as[String] == "+"
-
-    val specificPaths = user.getArr("paths").filter(relevant)
-    val (allow, deny) = specificPaths.partition(isPositive)
-
-    if (specificPaths.nonEmpty)
-      return allow.nonEmpty && deny.isEmpty
-
-    def getRolesPaths(roleName: JsValue) = {
-      authCache.getRole(roleName.as[String]) match {
-        case Some(role) => role.getArr("paths")
-        case None       => logger.error(s"Role $roleName was not found"); Seq()
+      levels(request._2) && {
+        val fullPath = (path \ "id").as[String]
+        val rec = (path \ "recursive").asOpt[Boolean].getOrElse(false)
+        request._1.isSameAs(fullPath) || rec && request._1.isSubfolderOf(fullPath)
       }
     }
 
-    val rolesPaths = user.getArr("roles").flatMap(getRolesPaths).filter(relevant)
-    val (allowByRole, denyByRole) = rolesPaths.partition(isPositive)
+    // user is allowed to view his/her UserInfoton:
+    (request._1 == s"/meta/auth/users/${username.getOrElse("")}" && request._2 == PermissionLevel.Read) || {
 
-    allowByRole.nonEmpty && denyByRole.isEmpty
+      def isPositive(path: JsValue) = (path \ "sign").as[String] == "+"
+
+      val specificPaths = user.getArr("paths").filter(relevant)
+      val (allow, deny) = specificPaths.partition(isPositive)
+
+      (specificPaths.nonEmpty && allow.nonEmpty && deny.isEmpty) || {
+
+        def getRolesPaths(roleName: JsValue) = {
+          authCache.getRole(roleName.as[String]) match {
+            case Some(role) => role.getArr("paths")
+            case None => logger.error(s"Role $roleName was not found"); Seq()
+          }
+        }
+
+        val rolesPaths = user.getArr("roles").flatMap(getRolesPaths).filter(relevant)
+        val (allowByRole, denyByRole) = rolesPaths.partition(isPositive)
+
+        allowByRole.nonEmpty && denyByRole.isEmpty
+      }
+    }
   }
 
   def isOperationAllowedForUser(op: Operation, user: JsValue): Boolean = {

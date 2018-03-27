@@ -17,7 +17,7 @@ package cmwell.dc.stream
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.headers.{`Accept-Encoding`, HttpEncodings}
+import akka.http.scaladsl.model.headers.{HttpEncodings, `Accept-Encoding`}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.stream.{ActorAttributes, KillSwitch, KillSwitches, Materializer}
@@ -29,6 +29,7 @@ import cmwell.dc.{LazyLogging, Settings}
 import cmwell.dc.Settings._
 import cmwell.dc.stream.MessagesTypesAndExceptions._
 import cmwell.dc.stream.akkautils.DebugStage
+import cmwell.util.akka.http.HttpZipDecoder
 import com.typesafe.config.ConfigFactory
 
 import scala.collection.parallel.immutable
@@ -232,7 +233,7 @@ object TsvRetriever extends LazyLogging {
       .via(tsvConnPool)
       .map {
         case (tryResponse, state) =>
-          tryResponse.map(Util.decodeResponse) -> state
+          tryResponse.map(HttpZipDecoder.decodeResponse) -> state
       }
       .flatMapConcat {
         case (Success(res @ HttpResponse(s, h, entity, _)), state)

@@ -63,6 +63,7 @@ package util {
     val namespaceUri: Parser[String] = """^(([^:/?#$]+):)?(//([^$/?#]*))?([^$?#]*)(\?([^$#]*))?(#([^$]*))?""".r
 
     // format: off
+    // scalastyle:off
     val cmwellUriPrefix: Parser[String] = {
 
       /* ******************* *
@@ -90,6 +91,7 @@ package util {
        */
       """((cmwell:/)|(http://((?!-)[A-Za-z0-9-]{1,63}(?<!-)\.)*((?!-)[A-Za-z0-9-]{1,63}(?<!-))(:\d+)?))/meta/""".r
     }
+    // scalastyle:on
     // format: on
 
     val cmwellUriType: Parser[String] = literal("sys") | literal("nn")
@@ -379,6 +381,7 @@ package util {
     protected def filteredFields = repsep(filteredField, ",")
   }
 
+  // scalastyle:off
   /**
     * A parser for eXpandGraph API (xg).
     * syntax is:
@@ -422,6 +425,7 @@ package util {
     * }}}
     *
     */
+  // scalastyle:on
   object ExpandGraphParser extends BaseExpandParser {
 
     private def fields: Parser[LevelExpansion] = filteredFields ^^ LevelExpansion.apply
@@ -460,6 +464,7 @@ package util {
     }
   }
 
+  // scalastyle:off
   /**
     * yg parser
     * TODO: write yg syntax documentation
@@ -470,6 +475,7 @@ package util {
     * res0: Boolean = true
     * }}}
     */
+  // scalastyle:on
   object PathGraphExpansionParser extends BaseExpandParser {
 
     private def filteredFieldExact: Parser[FilteredField[FieldKeyPattern]] =
@@ -516,8 +522,8 @@ package util {
     val dollarsEscaped = ("$" ~> commit("""(?:(?:\$\$)|[^$])+""".r <~ "$") ^^ (_.replaceAll("\\Q$$\\E", "\\$")))
       .withFailureMessage(
         "Dollars escaped strings can match any string, as long that any '$' character is double escaped " +
-          "(e.g: to match \"foo$bar\" you'll need to query for: \"foo$$bar\"), and the entire expression should be  wrapped with single dollar characters (i.e: \"$foo$$bar$\")."
-      )
+          "(e.g: to match \"foo$bar\" you'll need to query for: \"foo$$bar\"), and the entire expression" +
+          " should be  wrapped with single dollar characters (i.e: \"$foo$$bar$\").")
 
     def valueParser: Parser[Option[String]] = (dollarsEscaped | unescapedValue).?
 
@@ -545,6 +551,7 @@ package util {
     }
   }
 
+  // scalastyle:off
   /**
     * search's qp parser
     * TODO: write syntax documentation
@@ -586,6 +593,7 @@ package util {
     * }}}
     *
     */
+  // scalastyle:on
   class FieldFilterParser extends BaseFieldFilterParser {
 
     def multiFieldFilter: Parser[RawMultiFieldFilter] = fieldOperator ~ "[" ~ fieldFilters <~ "]" ^^ {

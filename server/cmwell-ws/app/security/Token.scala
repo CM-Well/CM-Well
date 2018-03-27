@@ -52,8 +52,10 @@ class Token(jwt: String, authCache: EagerAuthCache) {
 object Token {
   def apply(jwt: String, authCache: EagerAuthCache) = Try(new Token(jwt, authCache)).toOption
 
-  private lazy val secret = ConfigFactory.load().getString("play.http.secret.key") // not using ws.Settings, so it'd be available from `sbt ws/console`
-  private lazy val secret2 = ConfigFactory.load().getString("cmwell.ws.additionalSecret.key") // not using ws.Settings, so it'd be available from `sbt ws/console`
+  // not using ws.Settings, so it'd be available from `sbt ws/console`
+  private lazy val secret = ConfigFactory.load().getString("play.http.secret.key")
+  // not using ws.Settings, so it'd be available from `sbt ws/console`
+  private lazy val secret2 = ConfigFactory.load().getString("cmwell.ws.additionalSecret.key")
   private val jwtHeader = JwtHeader("HS256")
 
   private def getUserRevNum(username: String, authCache: EagerAuthCache) =
@@ -65,11 +67,12 @@ object Token {
                rev: Option[Int] = None,
                isAdmin: Boolean = false): String = {
     val maxDays = Settings.maxDaysToAllowGenerateTokenFor
-    if (!isAdmin && expiry.isDefined && expiry.get.isAfter(DateTime.now.plusDays(maxDays)))
+    if (!isAdmin && expiry.isDefined && expiry.get.isAfter(DateTime.now.plusDays(maxDays))) {
       throw new IllegalArgumentException(s"Token expiry must be less than $maxDays days")
-    if (!isAdmin && rev.isDefined)
-      throw new IllegalArgumentException(s"rev should only be supplied in Admin mode (i.e. manually via console)")
-
+    }
+    if (!isAdmin && rev.isDefined) {
+      throw new IllegalArgumentException("rev should only be supplied in Admin mode (i.e. manually via console)")
+    }
     val claims = Map("sub" -> username,
                      "exp" -> expiry.getOrElse(DateTime.now.plusDays(1)).getMillis,
                      "rev" -> rev.getOrElse(getUserRevNum(username, authCache)))

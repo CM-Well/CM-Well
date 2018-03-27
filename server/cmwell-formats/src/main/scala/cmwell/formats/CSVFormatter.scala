@@ -210,7 +210,8 @@ class CSVFormatter(fieldNameModifier: String => String) extends Formatter {
 
     def depth(ag: AggregationsResponse): Int = {
       val allBuckets = ag.responses.collect { case b: BucketsAggregationResponse => b }.flatMap(_.buckets)
-      val allDepths = allBuckets.map(b => b.subAggregations.fold(0)(sa => if (sa.responses.nonEmpty) depth(sa) else 0)) //WHY for histogram there is subAggr that is empty, it should be None !
+      //WHY for histogram there is subAggr that is empty, it should be None !
+      val allDepths = allBuckets.map(b => b.subAggregations.fold(0)(sa => if (sa.responses.nonEmpty) depth(sa) else 0))
       1 + allDepths.fold(0)(max)
     }
 

@@ -156,7 +156,9 @@ object RawSortParam extends LazyLogging {
     scala.collection.breakOut[Set[String], SortParam.FieldSortParam, List[SortParam.FieldSortParam]]
 
 //  private[this] val indexedFieldsNamesCache =
-//    new SingleElementLazyAsyncCache[Set[String]](Settings.fieldsNamesCacheTimeout.toMillis,Set.empty)(CRUDServiceFS.ftsService.getMappings(withHistory = true))(scala.concurrent.ExecutionContext.Implicits.global)
+//    new SingleElementLazyAsyncCache[Set[String]](Settings.fieldsNamesCacheTimeout.toMillis,Set.empty)
+//                                                (CRUDServiceFS.ftsService.getMappings(withHistory = true))
+//                                                (scala.concurrent.ExecutionContext.Implicits.global)
 
   def eval(rsps: RawSortParam,
            crudServiceFS: CRUDServiceFS,

@@ -143,7 +143,9 @@ object PassiveFieldTypesCache {
                     case Failure(error) => {
                       logger.error("future stored in types cache failed", error)
                       self ! Put(internalKey, types)
-                      sndr ! types // this could be only a subset of the types. maybe it is better to let the ask fail with timeout, or otherwise signal the failure?
+                      sndr ! types // this could be only a subset of the types.
+                                   // maybe it is better to let the ask fail with timeout,
+                                   // or otherwise signal the failure?
                     }
                     case Success(chars) => {
                       sndr ! chars.union(types)
@@ -176,7 +178,8 @@ object PassiveFieldTypesCache {
           case Failure(err) => Failure(new Exception(s"failed to getMetaFieldInfoton($field)", err))
           case Success(BoxedFailure(err)) =>
             Failure(new Exception(s"failed to getMetaFieldInfoton($field) from IRW", err))
-          // logger.info(s"got empty type infoton for [$field], this means either someone searched a non-existing field, or that we were unable to load from cassandra.")
+          // logger.info(s"got empty type infoton for [$field], this means either someone searched a non-existing field,
+          // or that we were unable to load from cassandra.")
           case success => success.map(_.toOption)
         }(updatingExecutionContext)
   }

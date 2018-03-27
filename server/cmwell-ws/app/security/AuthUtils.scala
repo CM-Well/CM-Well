@@ -78,10 +78,8 @@ class AuthUtils @Inject()(authCache: EagerAuthCache, authorization: Authorizatio
                             level: PermissionLevel,
                             tokenOpt: Option[Token]): Iterable[String] = {
     val doesRequestContainWritesToMeta = paths.exists(isWriteToMeta(level, _))
-    if (!useAuthorizationParam && !doesRequestContainWritesToMeta)
-      return Seq()
-
-    tokenOpt match {
+    if (!useAuthorizationParam && !doesRequestContainWritesToMeta) Seq()
+    else tokenOpt match {
       case Some(token) if token.isValid => {
         authCache.getUserInfoton(token.username) match {
           case Some(user) => paths.filterNot(path => authorization.isAllowedForUser((path, level), user))

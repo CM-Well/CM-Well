@@ -209,7 +209,8 @@ object AtomFormatter {
   def apply(host: String, uri: String): AtomFormatter = new AtomFormatter(host, uri, None, None, None, None)
   def apply(host: String, uri: String, withDataFormatter: Option[Formatter]): AtomFormatter =
     new AtomFormatter(host, uri, withDataFormatter, None, None, None)
-//  def apply(host: String, uri: String, fieldFilters: List[FieldFilter], offset: Long, length: Long): AtomFormatter = new AtomFormatter(host,uri,None,Some(fieldFilters),Some(offset),Some(length))
+//  def apply(host: String, uri: String, fieldFilters: List[FieldFilter], offset: Long, length: Long): AtomFormatter =
+//    new AtomFormatter(host,uri,None,Some(fieldFilters),Some(offset),Some(length))
   def apply(host: String,
             uri: String,
             fieldsFilter: Option[FieldFilter],

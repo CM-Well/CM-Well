@@ -1,3 +1,17 @@
+/**
+  * Copyright 2015 Thomson Reuters
+  *
+  * Licensed under the Apache License, Version 2.0 (the “License”); you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  *
+  *   http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+  * an “AS IS” BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  *
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
 package ld.cmw
 
 import akka.Done
@@ -304,6 +318,7 @@ class TimeBasedAccumulatedNsCache private (private[this] var mainCache: Map[NsID
 
     private[this] def handleUpdateAfterSuccessfulFetchPerTriple(id: NsID, tuple: (NsURL, NsPrefix)): Unit = {
       val (u, p) = tuple
+      // scalastyle:off
       mainCache.get(id) match {
         // all is good. nothing needs to be changed. use of `return` avoids mainCache redundant update
         // or else it would have to be repeated in all other cases
@@ -322,6 +337,7 @@ class TimeBasedAccumulatedNsCache private (private[this] var mainCache: Map[NsID
           prefixCache = updatedDistinctMultiMap(prefixCache, p, id)
           urlCache = updatedDistinctMultiMap(urlCache, u, id)
       }
+      // scalastyle:on
       mainCache = mainCache.updated(id, tuple)
     }
 
@@ -468,11 +484,9 @@ class TimeBasedAccumulatedNsCache private (private[this] var mainCache: Map[NsID
                 val path = Try(hit.field("system.path").getValue[String]).recover {
                   case t => s"path not available due to [${t.getClass.getSimpleName}] with message [${t.getMessage}]"
                 }.get
-                Failure(
-                  new RuntimeException(
-                    s"More than one prefix or URL values encountered when trying to resolve [$fieldName] value for [$fieldValue] in one of the [${hits.size}] results found! (bad path is [$path])"
-                  )
-                )
+                Failure(new RuntimeException(s"More than one prefix or URL values encountered when trying to resolve [" +
+                                             fieldName+"] value for ["+fieldValue+"] in one of the ["+hits.size.toString+
+                                             "] results found! (bad path is ["+path+"])"))
               } else {
                 val pathOpt = Option(hit.field("system.path").getValue[String])
                 val urlOpt = Option(hit.field("fields.nn.url").getValue[String])
@@ -524,11 +538,8 @@ class TimeBasedAccumulatedNsCache private (private[this] var mainCache: Map[NsID
                 val path = Try(hit.field("system.path").getValue[String]).recover {
                   case t => s"path not available due to [${t.getClass.getSimpleName}] with message [${t.getMessage}]"
                 }.get
-                Failure(
-                  new RuntimeException(
-                    s"More than one prefix or URL values encountered when trying to consume latest changes in one of the [${hits.size}] results found! (bad path is [$path])"
-                  )
-                )
+                Failure(new RuntimeException("More than one prefix or URL values encountered when trying to consume latest changes in one of the [" +
+                                             hits.size.toString + "] results found! (bad path is [" + path + "])"))
               } else {
                 val pathOpt = Option(hit.field("system.path").getValue[String])
                 val urlOpt = Option(hit.field("fields.nn.url").getValue[String])

@@ -128,9 +128,11 @@ object LDFormatParser extends LazyLogging {
 //    case "unsignedInt" => convertXSD(l.getLexicalForm, XSDDatatype.XSDunsignedInt, l.getLexicalForm)
 //    case "unsignedLong" => convertXSD(l.getLexicalForm, XSDDatatype.XSDunsignedLong, l.getLexicalForm)
     case "decimal" =>
-      FBigDecimal(BigDecimal(l.getLexicalForm).underlying(), quad) //convertXSD(BigDecimal(l.getLexicalForm).underlying(), XSDDatatype.XSDdecimal, l.getLexicalForm,lang,quad)
+      FBigDecimal(BigDecimal(l.getLexicalForm).underlying(), quad)
+    //convertXSD(BigDecimal(l.getLexicalForm).underlying(),XSDDatatype.XSDdecimal,l.getLexicalForm,lang,quad)
     case "integer" =>
-      FBigInt(BigInt(l.getLexicalForm).underlying(), quad) //convertXSD(BigInt(l.getLexicalForm).underlying(), XSDDatatype.XSDinteger, l.getLexicalForm,lang,quad)
+      FBigInt(BigInt(l.getLexicalForm).underlying(),quad)
+    //convertXSD(BigInt(l.getLexicalForm).underlying(),XSDDatatype.XSDinteger,l.getLexicalForm,lang,quad)
 //    case "nonPositiveInteger" => convertXSD(l.getLexicalForm, XSDDatatype.XSDnonPositiveInteger, l.getLexicalForm)
 //    case "nonNegativeInteger" => convertXSD(l.getLexicalForm, XSDDatatype.XSDnonNegativeInteger, l.getLexicalForm)
 //    case "positiveInteger" => convertXSD(l.getLexicalForm, XSDDatatype.XSDpositiveInteger, l.getLexicalForm)
@@ -166,10 +168,11 @@ object LDFormatParser extends LazyLogging {
     case s: String => FExternal(l.getLexicalForm, s"xsd#$s", quad)
   }
 
-//  def convertXSD(default: Any, xsd: XSDDatatype, lexicalForm: String,lang: Option[String],quad: Option[String]): FieldValue = Try(FieldValue(default,lang,quad)) match {
-//    case Success(obj) => obj
-//    case Failure(_) => FieldValue(xsd.parse(lexicalForm),lang,quad)
-//  }
+//  def convertXSD(default: Any, xsd: XSDDatatype, lexicalForm: String,lang: Option[String],quad: Option[String]): FieldValue =
+//    Try(FieldValue(default,lang,quad)) match {
+//      case Success(obj) => obj
+//      case Failure(_) => FieldValue(xsd.parse(lexicalForm),lang,quad)
+//    }
 
   case class ParsingResponse(infotons: Map[String, Map[DirectFieldKey, Set[FieldValue]]],
                              metaData: Map[String, MetaData],
@@ -258,6 +261,7 @@ object LDFormatParser extends LazyLogging {
     case "TRIG"                       => Lang.TRIG
   }
 
+  // scalastyle:off
   /**
     * {{{
     * # Scala REPL style
@@ -285,6 +289,7 @@ object LDFormatParser extends LazyLogging {
     * @param stmt
     * @return
     */
+  // scalastyle:on
   def isGlobalMetaOp(stmt: Statement) = {
 
     val thisDocSub = {
@@ -535,10 +540,10 @@ object LDFormatParser extends LazyLogging {
     val newMetaNsInfotons = {
       val all = metaNsInfotonsDefault ++ metaNsInfotonsAcc
       val x = all.values.flatMap(_.getOrElse(prefixFKey, Set.empty)).groupBy(_.value).values.filterNot(_.size == 1)
-      require(
-        x.isEmpty,
-        s"Uploaded RDF contained conflicting namespace prefixes. This might be due to inference. please be specific, and set sensible prefixes for your namespace instead of letting CM-Well infer using arbitrary heuristics. conflicts: ${x.flatMap(_.toSet).toSet.mkString("[", ",", "]")}"
-      )
+      require(x.isEmpty,
+        "Uploaded RDF contained conflicting namespace prefixes. This might be due to inference. please be specific, " +
+        "and set sensible prefixes for your namespace instead of letting CM-Well infer using arbitrary heuristics. conflicts: " +
+        x.flatMap(_.toSet).toSet.mkString("[", ",", "]"))
       all
     }
     newMetaNsInfotons.foreach {
@@ -641,10 +646,9 @@ object LDFormatParser extends LazyLogging {
 
             val metaNamespaces = model.listNameSpaces().count(_.contains("/meta/sys#"))
             if (metaNamespaces != 0 || subGraph.isEmpty) {
-              require(
-                metaNamespaces == 1,
-                s"must use exactly one `/meta/sys#` namespace in document when forcing uniquness, namespaces found: ${model.listNameSpaces().mkString("[", ",", "]")}"
-              )
+              require(metaNamespaces == 1,
+                "must use exactly one `/meta/sys#` namespace in document when forcing uniquness, namespaces found:" +
+                model.listNameSpaces().mkString("[", ",", "]"))
               val metaNs = model.listNameSpaces().find(_.contains("/meta/sys#")).get
               val props: Seq[Property] =
                 Seq("type", "lastModified", "dataCenter", "indexTime").map(model.createProperty(metaNs, _))
@@ -691,10 +695,8 @@ object LDFormatParser extends LazyLogging {
                 val url = p.getNameSpace
                 val firstName = p.getLocalName
 
-                require(
-                  XMLChar.isValidNCName(firstName),
-                  s"illegal predicate localName: $firstName, predicate localName must conform the XML Namespaces 1.0 Recommendation: http://www.w3.org/TR/1999/REC-xml-names-19990114/#NT-NCName"
-                )
+                require(XMLChar.isValidNCName(firstName), "illegal predicate localName: " + firstName +
+                  ", predicate localName must conform the XML Namespaces 1.0 Recommendation: http://www.w3.org/TR/1999/REC-xml-names-19990114/#NT-NCName")
 
                 if (isCMWellSystemNS(url)) {
                   if (!url.startsWith(cmwell)) {
@@ -972,7 +974,9 @@ object LDFormatParser extends LazyLogging {
   type InfotonRepr = Map[String, Map[DirectFieldKey, Set[FieldValue]]]
   type MInfotonRepr = MMap[String, Map[DirectFieldKey, Set[FieldValue]]]
 
-  //TODO: a more sophisticated approach is needed - domain should belong to cmwell, cmwell-host inference logic could be done by saving under /meta/sys a field: known_cmwell_domains, and check if domain is known to belong to CMWell...
+  //TODO: a more sophisticated approach is needed - domain should belong to cmwell,
+  //TODO: cmwell-host inference logic could be done by saving under /meta/sys a field: known_cmwell_domains,
+  //TODO: and check if domain is known to belong to CMWell...
   def isCMWellModifiedDateNS(ns: String) = ns.endsWith("/meta/sys#modifiedDate")
   def isCMWellSystemNS(url: String) =
     url.endsWith("/meta/sys#") || url.endsWith("/meta/nn#") || url.endsWith("/meta/ns#")
@@ -1001,9 +1005,9 @@ object LDFormatParser extends LazyLogging {
 
       it.foldLeft(Map.empty[String, (String, PrefixState)]) {
         case (m, url) if url.startsWith(normalizedCWD) =>
-          throw new IllegalArgumentException(
-            "Unlabeled (namespace-less) predicates are not allowed. Please prefer a suitable ontology or use <cmwell://meta/nn#> (the \"No Namespace\" namespace) if you really must."
-          )
+          // scalastyle:off
+          throw new IllegalArgumentException("Unlabeled (namespace-less) predicates are not allowed. Please prefer a suitable ontology or use <cmwell://meta/nn#> (the \"No Namespace\" namespace) if you really must.")
+        // scalastyle:on
         case (m, url) if url.contains('$') =>
           throw new IllegalArgumentException(s"predicate namespace must not contain a dollar ('$$') sign: $url")
         case (m, url) if !urlExcludes(url) && !m.contains(url) =>
@@ -1114,7 +1118,10 @@ object LDFormatParser extends LazyLogging {
 //    if(url.isEmpty) {
 //      val domain = pilledSuffix.split('.')
 //      val chosenPartOrInitials = domain.find(!blackList(_)).getOrElse(domain.flatMap(_.headOption).mkString)
-//      val (start,rest): Tuple2[String,String] = if(chosenPartOrInitials.headOption.isDefined && XMLChar.isNCNameStart(chosenPartOrInitials.head)) chosenPartOrInitials.splitAt(1) else ("q-",chosenPartOrInitials)
+//      val (start,rest): Tuple2[String,String] =
+//        if(chosenPartOrInitials.headOption.isDefined && XMLChar.isNCNameStart(chosenPartOrInitials.head))
+//          chosenPartOrInitials.splitAt(1)
+//        else ("q-",chosenPartOrInitials)
 //      start + rest
 //    }
 //    else {
@@ -1150,7 +1157,7 @@ object LDFormatParser extends LazyLogging {
         case _                              => name.append("X" + c.toInt.toHexString + "X")
       }
     }
-    return name.mkString
+    name.mkString
   }
 
 //  /**
@@ -1158,7 +1165,7 @@ object LDFormatParser extends LazyLogging {
 //   * @param url
 //   * @return
 //   */
-//	def getNsShortName(url: String): String = {
+//  def getNsShortName(url: String): String = {
 //    val noProtocol = if(url.startsWith(http)) url.drop(http.length)
 //    else if(url.startsWith(https)) url.drop(https.length)
 //    else if(url.matches("\\w+://.+")){ //some other weird protocol... regex matches <protocol>://whatever...
@@ -1171,7 +1178,7 @@ object LDFormatParser extends LazyLogging {
 //
 //      val short = inferShortNameFromUrl(noProtocol)
 //      CMWellRDFHelper.nsUrlToHash(short, url)
-//	}
+//}
 
   /**
     *

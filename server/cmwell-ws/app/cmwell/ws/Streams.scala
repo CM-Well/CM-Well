@@ -220,7 +220,9 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
   private def firstHitTupleApply(
     withDeleted: Boolean
   )(implicit ec: ExecutionContext): Future[IterationResults] => Future[(Future[IterationResults], Long)] = _.map {
-    startScrollResult => //map the `Future[IterationResults]` (empty initial results) to a tuple of another `Future[IterationResults]` (this time with data) and the number of total hits for that index
+    startScrollResult =>
+      // map the `Future[IterationResults]` (empty initial results) to a tuple of another `Future[IterationResults]`
+      // (this time with data) and the number of total hits for that index
       crudServiceFS.scroll(startScrollResult.iteratorId, 360, false) -> startScrollResult.totalHits
   }
 

@@ -507,8 +507,9 @@ class DatasetGraphCmWell(val host: String,
         case (_, _, true) => doSearchAndFilterFields
         case _ => {
           logger.debug(s"unexpected STREAM From [ $s $p $o ]")
-          val errMsg =
-            "Each triple-matching must have binding of a subject, a predicate or an object. If you'd like to download entire CM-Well's content, please use the Stream API"
+          // scalastyle:off
+          val errMsg = "Each triple-matching must have binding of a subject, a predicate or an object. If you'd like to download entire CM-Well's content, please use the Stream API"
+          // scalastyle:on
           msgs += "Error" -> errMsg
           Iterator()
         }

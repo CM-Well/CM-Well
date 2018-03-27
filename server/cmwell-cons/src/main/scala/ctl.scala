@@ -2589,11 +2589,14 @@ abstract class Host(user: String,
   }*/
 
   def findIpToConnectWithToGrid: String = {
-    ips.foreach { ip =>
+    var out = Option.empty[String]
+    ips.find { ip =>
       val res = getIpInGrid(ip)
-      if (res.isDefined) return res.get
+      val rv = res.isDefined
+      if(rv) out = Some(res.get)
+      rv
     }
-    ips(0)
+    out.getOrElse(ips(0))
   }
 
   def getIpInGrid(ipToCheckAgainst: String): Option[String] = {
