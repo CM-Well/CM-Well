@@ -38,23 +38,13 @@ class JenaEdge(model1: Model, rdfNode1: RDFNode, inVertex1: RDFNode, outVertex1:
   override def toString = StringFactory.edgeString(this)
 
   override def equals(obj: Any): Boolean = {
-    if (obj == null) {
-      return false
-    }
-    if (getClass ne obj.getClass) {
-      return false
-    }
-    val other: JenaVertex = obj.asInstanceOf[JenaVertex]
-
-    this.getId == other.getId
+    (obj != null)              &&
+    (getClass eq obj.getClass) &&
+    (this.getId == obj.asInstanceOf[JenaVertex].getId)
   }
 
-  override def hashCode: Int = {
-    val prime: Int = 31
-    var result: Int = 1
-    result = prime * result + (if ((rdfNode == null)) 0 else rdfNode.hashCode)
-    return result
-  }
+  override def hashCode: Int =
+    31 + (if (rdfNode eq null) 0 else rdfNode.hashCode)
 
   override def getProperty[T](key: String): T = throw new UnsupportedOperationException("RDF Edge has no Props")
   override def removeProperty[T](key: String): T =

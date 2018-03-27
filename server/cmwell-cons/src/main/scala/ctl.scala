@@ -246,32 +246,24 @@ abstract class Host(user: String,
 
   def jstat = {
     ips.par.map { ip =>
-      ip -> command(
-        s"ps aux | grep java | egrep -v 'starter|grep' | awk '{print $$2}' | xargs -I zzz ${getInstDirs.globalLocation}/cm-well/app/java/bin/jstat -gcutil zzz",
-        ip,
-        false
-      ).map(_.trim)
+      // scalastyle:off
+      ip -> command(s"ps aux | grep java | egrep -v 'starter|grep' | awk '{print $$2}' | xargs -I zzz ${getInstDirs.globalLocation}/cm-well/app/java/bin/jstat -gcutil zzz", ip, false).map(_.trim)
+      // scalastyle:on
     }.toMap
   }
 
   def jstat(comp: String) = {
     ips.par.map { ip =>
-      ip -> command(
-        s"ps aux | grep java | egrep -v 'starter|grep' | grep $comp | awk '{print $$2}' | xargs -I zzz ${getInstDirs.globalLocation}/cm-well/app/java/bin/jstat -gcutil zzz",
-        ip,
-        false
-      ).map(_.trim)
+      // scalastyle:off
+      ip -> command(s"ps aux | grep java | egrep -v 'starter|grep' | grep $comp | awk '{print $$2}' | xargs -I zzz ${getInstDirs.globalLocation}/cm-well/app/java/bin/jstat -gcutil zzz", ip, false).map(_.trim)
+      // scalastyle:on
     }.toMap
   }
 
   def jstat(comp: String, ip: String): Unit = {
-    ParMap(
-      ip -> command(
-        s"ps aux | grep java | egrep -v 'starter|grep' | grep $comp | awk '{print $$2}' | xargs -I zzz ${getInstDirs.globalLocation}/cm-well/app/java/bin/jstat -gcutil zzz",
-        ip,
-        false
-      ).map(_.trim)
-    )
+    // scalastyle:off
+    ParMap(ip -> command(s"ps aux | grep java | egrep -v 'starter|grep' | grep $comp | awk '{print $$2}' | xargs -I zzz ${getInstDirs.globalLocation}/cm-well/app/java/bin/jstat -gcutil zzz", ip, false).map(_.trim))
+    // scalastyle:on
   }
 
   private val componentToJmxMapping = Map(
@@ -310,9 +302,9 @@ abstract class Host(user: String,
   }
 
   def dcSync(remoteHost: String, dc: String): Unit = {
-    command(
-      s"""curl -XPOST "http://${ips(0)}:9000/meta/sys/dc/$dc" -H "X-CM-Well-Type:Obj" -H "Content-Type:application/json" --data-binary '{"type":"remote" , "location" : "$remoteHost"  , "id" : "$dc"}'"""
-    )
+    // scalastyle:off
+    command(s"""curl -XPOST "http://${ips(0)}:9000/meta/sys/dc/$dc" -H "X-CM-Well-Type:Obj" -H "Content-Type:application/json" --data-binary '{"type":"remote" , "location" : "$remoteHost"  , "id" : "$dc"}'""")
+    // scalastyle:on
   }
 
   def ips = ipMappings.getIps
@@ -381,117 +373,43 @@ abstract class Host(user: String,
     }
   }
 
-  object tests {
-    def loadTest(port: Int = 9000, host: String = ips(0), amount: Int = 1000000, path: String = "/test/lorem") {
-      val com = Seq("java",
-                    "-jar",
-                    "components/lorem-ipsum-agent-executable.jar",
-                    "-hosts",
-                    host,
-                    "-p",
-                    path,
-                    "-a",
-                    "5",
-                    "-v",
-                    "3",
-                    "-n",
-                    s"$amount",
-                    "--port",
-                    s"$port").run
-      val startTime: Long = System.currentTimeMillis / 1000
-
-      var currentAmount = 0
-
-      while (currentAmount < amount) {
-        currentAmount = (Seq("curl", "-s", s"http://$host:$port$path?format=atom&op=search&length=0") #| Seq(
-          "grep",
-          "-o",
-          "<os:totalResults>[0-9]*</os:totalResults>"
-        ) #| Seq("grep", "-o", "[0-9]*") !!).trim.toInt
-        val timePassed = (System.currentTimeMillis / 1000 - startTime)
-        println(s"infotons uploaded: $currentAmount, time passed: ${Math.round(timePassed / 60)}:${timePassed % 60}")
-        Thread.sleep(5000)
-      }
-    }
-
-    def infotonChangeAvg: BigDecimal = infotonChangeAvg()
-
-    def infotonChangeAvg(checkCount: Int = 5): BigDecimal = {
-      val checks = (1 to checkCount).toList
-      val res = checks.map { x =>
-        Thread.sleep(1000); infotonCount
-      }
-
-      val x = res.drop(1).zip(res.dropRight(1)).map { item =>
-        item._1 - item._2
-      }
-      val y = x.foldRight[BigDecimal](0)(_ + _) / checkCount
-      y
-    }
-
-    def infotonCount: BigDecimal = {
-      val res = command(s"curl -s  ${pingAddress}:$esRegPort/_status", ips(0), false).get
-      val json = JSON.parseFull(res).get.asInstanceOf[Map[String, Any]]
-      BigDecimal(
-        json("indices")
-          .asInstanceOf[Map[String, Any]]("cmwell0_current")
-          .asInstanceOf[Map[String, Any]]("docs")
-          .asInstanceOf[Map[String, Any]]("num_docs")
-          .toString
-      )
-    }
-
-    def getCpuUsage: List[Double] = {
-      // top -bn 2 -d 0.01 | grep '^%Cpu' | tail -n 1 | awk '{print $2+$4+$6}'
-      val ret1 = ips.par.map { ip =>
-        val res = command("top -bn 2 -d 0.01 | grep '^%Cpu' | tail -n 1 | awk '{print $2+$4+$6}'", ip, false)
-        val ret2 = res match {
-          case Success(str) => str.toDouble
-          case Failure(err) => -1.0d
-        }
-        ret2
-      }
-      ret1.toList
-    }
-  }
-
   val deployment = new Deployment(this)
 
   //FIXME: was object inside a class, caused this nifty hard to track exception:
   /*
    * java.lang.NoSuchFieldError: LogLevel$module
-   *	at Host.LogLevel(ctl.scala:415)
-   *	at Main$$anon$1.<init>(scalacmd4970030751979185144.scala:10)
-   *	at Main$.main(scalacmd4970030751979185144.scala:1)
-   *	at Main.main(scalacmd4970030751979185144.scala)
-   *	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
-   *	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
-   *	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
-   *	at java.lang.reflect.Method.invoke(Method.java:497)
-   *	at scala.reflect.internal.util.ScalaClassLoader$$anonfun$run$1.apply(ScalaClassLoader.scala:70)
-   *	at scala.reflect.internal.util.ScalaClassLoader$class.asContext(ScalaClassLoader.scala:31)
-   *	at scala.reflect.internal.util.ScalaClassLoader$URLClassLoader.asContext(ScalaClassLoader.scala:101)
-   *	at scala.reflect.internal.util.ScalaClassLoader$class.run(ScalaClassLoader.scala:70)
-   *	at scala.reflect.internal.util.ScalaClassLoader$URLClassLoader.run(ScalaClassLoader.scala:101)
-   *	at scala.tools.nsc.CommonRunner$class.run(ObjectRunner.scala:22)
-   *	at scala.tools.nsc.ObjectRunner$.run(ObjectRunner.scala:39)
-   *	at scala.tools.nsc.CommonRunner$class.runAndCatch(ObjectRunner.scala:29)
-   *	at scala.tools.nsc.ObjectRunner$.runAndCatch(ObjectRunner.scala:39)
-   *	at scala.tools.nsc.ScriptRunner.scala$tools$nsc$ScriptRunner$$runCompiled(ScriptRunner.scala:175)
-   *	at scala.tools.nsc.ScriptRunner$$anonfun$runCommand$1.apply(ScriptRunner.scala:222)
-   *	at scala.tools.nsc.ScriptRunner$$anonfun$runCommand$1.apply(ScriptRunner.scala:222)
-   *	at scala.tools.nsc.ScriptRunner$$anonfun$withCompiledScript$1$$anonfun$apply$mcZ$sp$1.apply(ScriptRunner.scala:161)
-   *	at scala.tools.nsc.ScriptRunner$$anonfun$withCompiledScript$1.apply$mcZ$sp(ScriptRunner.scala:161)
-   *	at scala.tools.nsc.ScriptRunner$$anonfun$withCompiledScript$1.apply(ScriptRunner.scala:129)
-   *	at scala.tools.nsc.ScriptRunner$$anonfun$withCompiledScript$1.apply(ScriptRunner.scala:129)
-   *	at scala.tools.nsc.util.package$.trackingThreads(package.scala:43)
-   *	at scala.tools.nsc.util.package$.waitingForThreads(package.scala:27)
-   *	at scala.tools.nsc.ScriptRunner.withCompiledScript(ScriptRunner.scala:128)
-   *	at scala.tools.nsc.ScriptRunner.runCommand(ScriptRunner.scala:222)
-   *	at scala.tools.nsc.MainGenericRunner.run$1(MainGenericRunner.scala:85)
-   *	at scala.tools.nsc.MainGenericRunner.process(MainGenericRunner.scala:98)
-   *	at scala.tools.nsc.MainGenericRunner$.main(MainGenericRunner.scala:103)
-   *	at scala.tools.nsc.MainGenericRunner.main(MainGenericRunner.scala)
+   *  at Host.LogLevel(ctl.scala:415)
+   *  at Main$$anon$1.<init>(scalacmd4970030751979185144.scala:10)
+   *  at Main$.main(scalacmd4970030751979185144.scala:1)
+   *  at Main.main(scalacmd4970030751979185144.scala)
+   *  at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+   *  at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+   *  at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+   *  at java.lang.reflect.Method.invoke(Method.java:497)
+   *  at scala.reflect.internal.util.ScalaClassLoader$$anonfun$run$1.apply(ScalaClassLoader.scala:70)
+   *  at scala.reflect.internal.util.ScalaClassLoader$class.asContext(ScalaClassLoader.scala:31)
+   *  at scala.reflect.internal.util.ScalaClassLoader$URLClassLoader.asContext(ScalaClassLoader.scala:101)
+   *  at scala.reflect.internal.util.ScalaClassLoader$class.run(ScalaClassLoader.scala:70)
+   *  at scala.reflect.internal.util.ScalaClassLoader$URLClassLoader.run(ScalaClassLoader.scala:101)
+   *  at scala.tools.nsc.CommonRunner$class.run(ObjectRunner.scala:22)
+   *  at scala.tools.nsc.ObjectRunner$.run(ObjectRunner.scala:39)
+   *  at scala.tools.nsc.CommonRunner$class.runAndCatch(ObjectRunner.scala:29)
+   *  at scala.tools.nsc.ObjectRunner$.runAndCatch(ObjectRunner.scala:39)
+   *  at scala.tools.nsc.ScriptRunner.scala$tools$nsc$ScriptRunner$$runCompiled(ScriptRunner.scala:175)
+   *  at scala.tools.nsc.ScriptRunner$$anonfun$runCommand$1.apply(ScriptRunner.scala:222)
+   *  at scala.tools.nsc.ScriptRunner$$anonfun$runCommand$1.apply(ScriptRunner.scala:222)
+   *  at scala.tools.nsc.ScriptRunner$$anonfun$withCompiledScript$1$$anonfun$apply$mcZ$sp$1.apply(ScriptRunner.scala:161)
+   *  at scala.tools.nsc.ScriptRunner$$anonfun$withCompiledScript$1.apply$mcZ$sp(ScriptRunner.scala:161)
+   *  at scala.tools.nsc.ScriptRunner$$anonfun$withCompiledScript$1.apply(ScriptRunner.scala:129)
+   *  at scala.tools.nsc.ScriptRunner$$anonfun$withCompiledScript$1.apply(ScriptRunner.scala:129)
+   *  at scala.tools.nsc.util.package$.trackingThreads(package.scala:43)
+   *  at scala.tools.nsc.util.package$.waitingForThreads(package.scala:27)
+   *  at scala.tools.nsc.ScriptRunner.withCompiledScript(ScriptRunner.scala:128)
+   *  at scala.tools.nsc.ScriptRunner.runCommand(ScriptRunner.scala:222)
+   *  at scala.tools.nsc.MainGenericRunner.run$1(MainGenericRunner.scala:85)
+   *  at scala.tools.nsc.MainGenericRunner.process(MainGenericRunner.scala:98)
+   *  at scala.tools.nsc.MainGenericRunner$.main(MainGenericRunner.scala:103)
+   *  at scala.tools.nsc.MainGenericRunner.main(MainGenericRunner.scala)
    *
    *  changed it to an anon val, which is ugly, but works.
    *  this is a TEMPORARY PATCH!
@@ -631,8 +549,9 @@ abstract class Host(user: String,
       val rootSshDir = "/root/.ssh"
       val fileName = "authorized_keys"
       val rootVarMap = Map("STR" -> pubKey, "DIR" -> rootSshDir, "FILE" -> fileName)
-      val cmdTemplate =
-        "%smkdir -p $DIR; %ssed -i -e '\\$a\\' $DIR/$FILE 2> /dev/null; %sgrep -q '$STR' $DIR/$FILE 2> /dev/null || echo -e '$STR' | %stee -a $DIR/$FILE > /dev/null"
+      // scalastyle:off
+      val cmdTemplate = "%smkdir -p $DIR; %ssed -i -e '\\$a\\' $DIR/$FILE 2> /dev/null; %sgrep -q '$STR' $DIR/$FILE 2> /dev/null || echo -e '$STR' | %stee -a $DIR/$FILE > /dev/null"
+      // scalastyle:on
       val rootCmd = cmdTemplate.format(Seq.fill(4)("sudo "): _*)
       val userCmd = cmdTemplate.format(Seq.fill(4)(""): _*)
       sudoer.foreach(_ => command(rootCmd, hosts, sudo = true, sudoer, rootVarMap))
@@ -810,10 +729,11 @@ abstract class Host(user: String,
         (s"$readVarsStr read $varName;", s"$varValuesForEcho$value\\n")
     }
     val (commandLine, process) = if (sudo && isSu) {
-      val cmd =
-        s"""ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR ${sudoer.get.name}@$host export PATH=$path;$readVarsLine read PASS; sshpass -p $$PASS bash -c "${escapedCommand(
-          com
-        )}"""" //old version that get stuck sometimes - val command = s"""ssh -o StrictHostKeyChecking=no ${sudoer.get.name}@$host bash -c $$'{ export PATH=$path; read PASS; ./sshpass -p $$PASS bash -c "${escapedCommand(com)}"; }'"""
+
+      // scalastyle:off
+      //old version that get stuck sometimes - val command = s"""ssh -o StrictHostKeyChecking=no ${sudoer.get.name}@$host bash -c $$'{ export PATH=$path; read PASS; ./sshpass -p $$PASS bash -c "${escapedCommand(com)}"; }'"""
+      val cmd = s"""ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR ${sudoer.get.name}@$host export PATH=$path;$readVarsLine read PASS; sshpass -p $$PASS bash -c "${escapedCommand(com)}""""
+      // scalastyle:on
       (cmd, s"echo -e -n $varValues${sudoer.get.pass}\\n" #| cmd)
     } else {
       if (variables.nonEmpty) {
@@ -924,16 +844,11 @@ abstract class Host(user: String,
     info("deploying application")
     info("  creating application directories")
     //command(s"mkdir -p ${instDirs.intallationDir}/", hosts, false)
-    command(
-      s"mkdir ${instDirs.intallationDir}/app ${instDirs.intallationDir}/conf ${instDirs.intallationDir}/data ${instDirs.intallationDir}/bin",
-      hosts,
-      false
-    )
-    command(
-      s"mkdir ${instDirs.intallationDir}/app/batch ${instDirs.intallationDir}/app/bg ${instDirs.intallationDir}/app/ctrl ${instDirs.intallationDir}/app/dc ${instDirs.intallationDir}/app/cas ${instDirs.intallationDir}/app/es ${instDirs.intallationDir}/app/ws ${instDirs.intallationDir}/app/scripts ${instDirs.intallationDir}/app/tools",
-      hosts,
-      false
-    )
+
+    // scalastyle:off
+    command(s"mkdir ${instDirs.intallationDir}/app ${instDirs.intallationDir}/conf ${instDirs.intallationDir}/data ${instDirs.intallationDir}/bin", hosts, false)
+    command(s"mkdir ${instDirs.intallationDir}/app/batch ${instDirs.intallationDir}/app/bg ${instDirs.intallationDir}/app/ctrl ${instDirs.intallationDir}/app/dc ${instDirs.intallationDir}/app/cas ${instDirs.intallationDir}/app/es ${instDirs.intallationDir}/app/ws ${instDirs.intallationDir}/app/scripts ${instDirs.intallationDir}/app/tools", hosts, false)
+    // scalastyle:on
     command(s"ln -s ${dataDirs.logsDataDir} ${instDirs.intallationDir}/log", hosts, false)
     info("  deploying components")
     deployComponents(hosts)
@@ -968,71 +883,25 @@ abstract class Host(user: String,
 
   private def createAppLinks(hosts: GenSeq[String]) = {
 
-    command(
-      s"test -L ${instDirs.globalLocation}/cm-well/app/batch/logs || ln -s ${instDirs.globalLocation}/cm-well/log/batch/ ${instDirs.globalLocation}/cm-well/app/batch/logs",
-      hosts,
-      false
-    )
-    command(
-      s"test -L ${instDirs.globalLocation}/cm-well/app/bg/logs || ln -s ${instDirs.globalLocation}/cm-well/log/bg/ ${instDirs.globalLocation}/cm-well/app/bg/logs",
-      hosts,
-      false
-    )
-    command(
-      s"test -L ${instDirs.globalLocation}/cm-well/app/ws/logs || ln -s ${instDirs.globalLocation}/cm-well/log/ws/ ${instDirs.globalLocation}/cm-well/app/ws/logs",
-      hosts,
-      false
-    )
+    // scalastyle:off
+    command(s"test -L ${instDirs.globalLocation}/cm-well/app/batch/logs || ln -s ${instDirs.globalLocation}/cm-well/log/batch/ ${instDirs.globalLocation}/cm-well/app/batch/logs", hosts, false)
+    command(s"test -L ${instDirs.globalLocation}/cm-well/app/bg/logs || ln -s ${instDirs.globalLocation}/cm-well/log/bg/ ${instDirs.globalLocation}/cm-well/app/bg/logs", hosts, false)
+    command(s"test -L ${instDirs.globalLocation}/cm-well/app/ws/logs || ln -s ${instDirs.globalLocation}/cm-well/log/ws/ ${instDirs.globalLocation}/cm-well/app/ws/logs", hosts, false)
     command(s"mkdir -p ${instDirs.globalLocation}/cm-well/log/cw/", hosts, false)
-    command(
-      s"test -L ${instDirs.globalLocation}/cm-well/app/ws/cw-logs || ln -s ${instDirs.globalLocation}/cm-well/log/cw/ ${instDirs.globalLocation}/cm-well/app/ws/cw-logs",
-      hosts,
-      false
-    )
-    command(
-      s"test -L ${instDirs.globalLocation}/cm-well/app/ctrl/logs || ln -s ${instDirs.globalLocation}/cm-well/log/ctrl/ ${instDirs.globalLocation}/cm-well/app/ctrl/logs",
-      hosts,
-      false
-    )
-    command(
-      s"test -L ${instDirs.globalLocation}/cm-well/app/dc/logs || ln -s ${instDirs.globalLocation}/cm-well/log/dc/ ${instDirs.globalLocation}/cm-well/app/dc/logs",
-      hosts,
-      false
-    )
+    command(s"test -L ${instDirs.globalLocation}/cm-well/app/ws/cw-logs || ln -s ${instDirs.globalLocation}/cm-well/log/cw/ ${instDirs.globalLocation}/cm-well/app/ws/cw-logs", hosts, false)
+    command(s"test -L ${instDirs.globalLocation}/cm-well/app/ctrl/logs || ln -s ${instDirs.globalLocation}/cm-well/log/ctrl/ ${instDirs.globalLocation}/cm-well/app/ctrl/logs", hosts, false)
+    command(s"test -L ${instDirs.globalLocation}/cm-well/app/dc/logs || ln -s ${instDirs.globalLocation}/cm-well/log/dc/ ${instDirs.globalLocation}/cm-well/app/dc/logs", hosts, false)
 
     command(s"mkdir -p ${instDirs.globalLocation}/cm-well/conf/batch/", hosts, false)
-    command(
-      s"test -L ${instDirs.globalLocation}/cm-well/app/batch/conf || ln -s ${instDirs.globalLocation}/cm-well/conf/batch/ ${instDirs.globalLocation}/cm-well/app/batch/conf",
-      hosts,
-      false
-    )
-    command(
-      s"test -L ${instDirs.globalLocation}/cm-well/app/bg/conf || ln -s ${instDirs.globalLocation}/cm-well/conf/bg/ ${instDirs.globalLocation}/cm-well/app/bg/conf",
-      hosts,
-      false
-    )
-    command(
-      s"test -L ${instDirs.globalLocation}/cm-well/app/ws/conf || ln -s ${instDirs.globalLocation}/cm-well/conf/ws/ ${instDirs.globalLocation}/cm-well/app/ws/conf",
-      hosts,
-      false
-    )
+    command(s"test -L ${instDirs.globalLocation}/cm-well/app/batch/conf || ln -s ${instDirs.globalLocation}/cm-well/conf/batch/ ${instDirs.globalLocation}/cm-well/app/batch/conf", hosts, false)
+    command(s"test -L ${instDirs.globalLocation}/cm-well/app/bg/conf || ln -s ${instDirs.globalLocation}/cm-well/conf/bg/ ${instDirs.globalLocation}/cm-well/app/bg/conf", hosts, false)
+    command(s"test -L ${instDirs.globalLocation}/cm-well/app/ws/conf || ln -s ${instDirs.globalLocation}/cm-well/conf/ws/ ${instDirs.globalLocation}/cm-well/app/ws/conf", hosts, false)
     command(s"mkdir -p ${instDirs.globalLocation}/cm-well/conf/cw/", hosts, false)
-    command(
-      s"test -L ${instDirs.globalLocation}/cm-well/app/ws/cw-conf || ln -s ${instDirs.globalLocation}/cm-well/conf/cw/ ${instDirs.globalLocation}/cm-well/app/ws/cw-conf",
-      hosts,
-      false
-    )
-    command(
-      s"test -L ${instDirs.globalLocation}/cm-well/app/ctrl/conf || ln -s ${instDirs.globalLocation}/cm-well/conf/ctrl/ ${instDirs.globalLocation}/cm-well/app/ctrl/conf",
-      hosts,
-      false
-    )
+    command(s"test -L ${instDirs.globalLocation}/cm-well/app/ws/cw-conf || ln -s ${instDirs.globalLocation}/cm-well/conf/cw/ ${instDirs.globalLocation}/cm-well/app/ws/cw-conf", hosts, false)
+    command(s"test -L ${instDirs.globalLocation}/cm-well/app/ctrl/conf || ln -s ${instDirs.globalLocation}/cm-well/conf/ctrl/ ${instDirs.globalLocation}/cm-well/app/ctrl/conf", hosts, false)
     command(s"mkdir -p ${instDirs.globalLocation}/cm-well/conf/dc/", hosts, false)
-    command(
-      s"test -L ${instDirs.globalLocation}/cm-well/app/dc/conf || ln -s ${instDirs.globalLocation}/cm-well/conf/dc/ ${instDirs.globalLocation}/cm-well/app/dc/conf",
-      hosts,
-      false
-    )
+    command(s"test -L ${instDirs.globalLocation}/cm-well/app/dc/conf || ln -s ${instDirs.globalLocation}/cm-well/conf/dc/ ${instDirs.globalLocation}/cm-well/app/dc/conf", hosts, false)
+    // scalastyle:on
   }
 
   def mkScripts(ips: GenSeq[String] = ips): GenSeq[ComponentConf] = {
@@ -1098,7 +967,8 @@ abstract class Host(user: String,
                  Source.fromFile("scripts/templates/ctrl").mkString.replace("{{user}}", user),
                  hosts)
       command(s"chmod +x ${instDirs.globalLocation}/cm-well/conf/ctrl/ctrl", hosts, false)
-      val cmwellRunner = Source.fromFile("scripts/templates/cmwell-runner").mkString.replace("\n", "\\\\n") // it's used inside echo -e that will remove the \\ to \ and then another echo -e that will make the actual new line
+      // it's used inside echo -e that will remove the \\ to \ and then another echo -e that will make the actual new line
+      val cmwellRunner = Source.fromFile("scripts/templates/cmwell-runner").mkString.replace("\n", "\\\\n")
       createFile("/etc/init.d/cmwell-runner", cmwellRunner, hosts, true, Some(sudoer))
       command("sudo chmod +x /etc/init.d/cmwell-runner", hosts, true, Some(sudoer))
       hosts.foreach { host =>
@@ -1706,47 +1576,22 @@ abstract class Host(user: String,
                             { "add" : { "index" : "cm_well_p0_0", "alias" : "cm_well_all" } }
                         ]
                     }""".replace("\n", "")
-    command(
-      s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/cassandra-cql-init-cluster",
-      hosts(0),
-      false
-    )
-    command(
-      s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/cassandra-cql-init-cluster-new",
-      hosts(0),
-      false
-    )
-    command(
-      s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/zstore-cql-init-cluster",
-      hosts(0),
-      false
-    )
-    command(
-      s"""curl -s -X POST http://${pingAddress}:$esRegPort/_template/cmwell_indices_template -H "Content-Type: application/json" --data-ascii @${instDirs.globalLocation}/cm-well/conf/es/mapping.json""",
-      hosts(0),
-      false
-    )
-    command(
-      s"""curl -s -X POST http://${pingAddress}:$esRegPort/_template/cmwell_index_template -H "Content-Type: application/json" --data-ascii @${instDirs.globalLocation}/cm-well/conf/es/indices_template_new.json""",
-      hosts(0),
-      false
-    )
-    command(
-      s"curl -s -X POST http://${pingAddress}:$esRegPort/cmwell_current_0/;curl -s -X POST http://${pingAddress}:$esRegPort/cmwell_history_0/",
-      hosts(0),
-      false
-    )
+    // scalastyle:off
+    command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/cassandra-cql-init-cluster", hosts(0), false)
+    command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/cassandra-cql-init-cluster-new", hosts(0), false)
+    command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/zstore-cql-init-cluster", hosts(0), false)
+    command(s"""curl -s -X POST http://${pingAddress}:$esRegPort/_template/cmwell_indices_template -H "Content-Type: application/json" --data-ascii @${instDirs.globalLocation}/cm-well/conf/es/mapping.json""", hosts(0), false)
+    command(s"""curl -s -X POST http://${pingAddress}:$esRegPort/_template/cmwell_index_template -H "Content-Type: application/json" --data-ascii @${instDirs.globalLocation}/cm-well/conf/es/indices_template_new.json""", hosts(0), false)
+    command(s"curl -s -X POST http://${pingAddress}:$esRegPort/cmwell_current_0/;curl -s -X POST http://${pingAddress}:$esRegPort/cmwell_history_0/", hosts(0), false)
+    // scalastyle:on
     command(s"curl -s -X POST http://${pingAddress}:$esRegPort/cm_well_p0_0/", hosts(0), false)
     //    command(s"curl -s -X POST http://${pingAddress}:$esRegPort/cm_well_0/", hosts(0), false)
-    command(
-      s"""curl -s -X POST http://${pingAddress}:$esRegPort/_aliases -H "Content-Type: application/json" --data-ascii '${aliases}'""",
-      hosts(0),
-      false
-    )
+    command(s"""curl -s -X POST http://${pingAddress}:$esRegPort/_aliases -H "Content-Type: application/json" --data-ascii '${aliases}'""", hosts(0), false)
     // create kafka topics
     val replicationFactor = math.min(hosts.size, 3)
-    val createTopicCommandPrefix =
-      s"cd ${instDirs.globalLocation}/cm-well/app/kafka/cur; export PATH=/opt/cm-well/app/java/bin:$$PATH ; sh bin/kafka-topics.sh --create --zookeeper ${pingAddress}:2181 --replication-factor $replicationFactor --partitions ${hosts.size} --topic"
+    // scalastyle:off
+    val createTopicCommandPrefix = s"cd ${instDirs.globalLocation}/cm-well/app/kafka/cur; export PATH=/opt/cm-well/app/java/bin:$$PATH ; sh bin/kafka-topics.sh --create --zookeeper ${pingAddress}:2181 --replication-factor $replicationFactor --partitions ${hosts.size} --topic"
+    // scalastyle:on
     var tryNum: Int = 1
     var ret = command(s"$createTopicCommandPrefix persist_topic", hosts(0), false)
     while (ret.isFailure || !ret.get.contains("Created topic") && tryNum < 6) {
@@ -1989,17 +1834,16 @@ abstract class Host(user: String,
   }
 
   def updateCasKeyspace: Unit = {
-    command(
-      s"cd ${absPath(instDirs.globalLocation)}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${absPath(instDirs.globalLocation)}/cm-well/conf/cas/cassandra-cql-init-cluster-new",
-      ips(0),
-      false
-    )
+    // scalastyle:off
+    command(s"cd ${absPath(instDirs.globalLocation)}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${absPath(instDirs.globalLocation)}/cm-well/conf/cas/cassandra-cql-init-cluster-new", ips(0), false)
+    // scalastyle:on
   }
 
   def updateKafkaScemas: Unit = {
     val replicationFactor = math.min(ips.size, 3)
-    val createTopicCommandPrefix =
-      s"cd ${absPath(instDirs.globalLocation)}/cm-well/app/kafka/cur; export PATH=/opt/cm-well/app/java/bin:$$PATH ; sh bin/kafka-topics.sh --create --zookeeper ${pingAddress}:2181 --replication-factor $replicationFactor --partitions ${ips.size} --topic"
+    // scalastyle:off
+    val createTopicCommandPrefix = s"cd ${absPath(instDirs.globalLocation)}/cm-well/app/kafka/cur; export PATH=/opt/cm-well/app/java/bin:$$PATH ; sh bin/kafka-topics.sh --create --zookeeper ${pingAddress}:2181 --replication-factor $replicationFactor --partitions ${ips.size} --topic"
+    // scalastyle:on
     command(s"$createTopicCommandPrefix persist_topic", ips(0), false)
     command(s"$createTopicCommandPrefix index_topic", ips(0), false)
   }
@@ -2577,7 +2421,8 @@ abstract class Host(user: String,
     import collection.JavaConverters._
     Future {
       val interfaces: Seq[java.net.NetworkInterface] = util.Collections.list(NetworkInterface.getNetworkInterfaces())
-      val validInterfaceOpt = interfaces.collectFirst { case i if (command(s"ping -c 1 -I ${i.getName} $ipToCheckAgainst ; echo $$?").get.split("\n").toList.last.trim == "0") => i}
+      val validInterfaceOpt = interfaces.collectFirst { case i if (command(s"ping -c 1 -I ${i.getName}
+       $ipToCheckAgainst ; echo $$?").get.split("\n").toList.last.trim == "0") => i}
       validInterfaceOpt match {
         case Some(validInterface) =>
           validInterface.getInterfaceAddresses.asScala.collectFirst {
@@ -2728,8 +2573,13 @@ abstract class Host(user: String,
       ips.take(3).map(ip => s"$ip:$elkEsTransportPort").mkString(",")
     }
 
-    //docker run -e elk_cluster='docker-elk' -v /home/michael/me/projects/elk-docker/conf:/etc/logstash -v /home/michael/app/cm-well/log:/cm-well/log  -p 8080:80 -p 9200:9220 -p 9300:9320 elk
-    //command(s"docker run -d --net=host --name=$elkContainerName -e elk_cluster='$cn-$elkClusterNameSuffix' -e elk_hosts='$getSeeds' -v ${instDirs.intallationDir}/conf/logstash/:/etc/logstash -v ${instDirs.intallationDir}/log:/opt/cm-well/log -v ${instDirs.intallationDir}/log/$elkDirName:/usr/share/elasticsearch/data -p $elkWebPort:80 -p $elkEsWebPort:$elkEsWebPort -p $elkEsTransportPort:$elkEsTransportPort $elkImageName", ips, true)
+    //docker run -e elk_cluster='docker-elk' -v /home/michael/me/projects/elk-docker/conf:/etc/logstash -v
+    // /home/michael/app/cm-well/log:/cm-well/log  -p 8080:80 -p 9200:9220 -p 9300:9320 elk
+    //command(s"docker run -d --net=host --name=$elkContainerName -e elk_cluster='$cn-$elkClusterNameSuffix'
+    // -e elk_hosts='$getSeeds' -v ${instDirs.intallationDir}/conf/logstash/:/etc/logstash -v
+    // ${instDirs.intallationDir}/log:/opt/cm-well/log -v
+    // ${instDirs.intallationDir}/log/$elkDirName:/usr/share/elasticsearch/data
+    // -p $elkWebPort:80 -p $elkEsWebPort:$elkEsWebPort -p $elkEsTransportPort:$elkEsTransportPort $elkImageName", ips, true)
     ???
   }
 
@@ -2806,11 +2656,9 @@ abstract class Host(user: String,
     command(s"mkdir -p ${instDirs.globalLocation}/cm-well/app/$target/lib", hosts, false)
 
     hosts.foreach { host =>
-      command(
-        s"cat ${instDirs.globalLocation}/cm-well/dependencies/$component | xargs -I zzz ln -s ${instDirs.globalLocation}/cm-well/lib/zzz ${instDirs.globalLocation}/cm-well/app/$target/lib/zzz",
-        host,
-        false
-      )
+      // scalastyle:off
+      command(s"cat ${instDirs.globalLocation}/cm-well/dependencies/$component | xargs -I zzz ln -s ${instDirs.globalLocation}/cm-well/lib/zzz ${instDirs.globalLocation}/cm-well/app/$target/lib/zzz", host, false)
+      // scalastyle:on
     }
   }
 
