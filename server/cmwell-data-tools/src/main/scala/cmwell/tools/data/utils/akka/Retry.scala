@@ -54,10 +54,9 @@ object Retry extends DataToolsLogging with DataToolsConfig {
     * @tparam T context type, element paired with each request
     * @return flow which sends (and retries) HTTP requests and returns Try of results paired with request data and context
     */
-
   def retryHttp[T](delay: FiniteDuration, parallelism: Int, baseUrl: String, limit: Option[Int] = None)(
     createRequest: (Seq[ByteString]) => HttpRequest,
-    responseValidator: (ByteString, Seq[HttpHeader]) => Try[Unit] = (_,_) => Success(Unit)
+    responseValidator: (ByteString, Seq[HttpHeader]) => Try[Unit] = (_, _) => Success(Unit)
   )(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext, label: Option[LabelId] = None) = {
 
     val labelValue = label.map { case LabelId(id) => s"[$id]" }.getOrElse("")
@@ -262,7 +261,6 @@ object Retry extends DataToolsLogging with DataToolsConfig {
       config.getInt("akka.http.host-connection-pool.pipelining-limit")
     val httpParallelism = maxConnections * httpPipelineSize
 
-
     val job = Flow[(Future[Seq[ByteString]], State)]
       .mapAsyncUnordered(httpParallelism) {
         case (data, state) => data.map(_ -> state)
@@ -278,27 +276,32 @@ object Retry extends DataToolsLogging with DataToolsConfig {
           // consume HTTP response bytes
           e.discardBytes()
 
-          Future.successful(Failure(new Exception(s"status is not success ($s) $e")) -> state.copy(response = response.toOption))
+          Future.successful(
+            Failure(new Exception(s"status is not success ($s) $e")) -> state.copy(response = response.toOption)
+          )
 
-        case (response@Success(res@HttpResponse(s, headers, e, _)), state) =>
+        case (response @ Success(res @ HttpResponse(s, headers, e, _)), state) =>
           // consume HTTP response bytes and later pack them in fake response
           val responseAndState = (e match {
-            case chunkedEntity:Chunked => {
-              chunkedEntity.chunks.runFold[ (ByteString,Option[Seq[HttpHeader]]) ]((ByteString.empty,None)) {
-                case (accumulatedEntity, chunk: LastChunk) => (accumulatedEntity._1 ++ chunk.data, Option(chunk.trailer))
+            case chunkedEntity: Chunked => {
+              chunkedEntity.chunks.runFold[(ByteString, Option[Seq[HttpHeader]])]((ByteString.empty, None)) {
+                case (accumulatedEntity, chunk: LastChunk) =>
+                  (accumulatedEntity._1 ++ chunk.data, Option(chunk.trailer))
                 case (accumulatedEntity, chunk) => (accumulatedEntity._1 ++ chunk.data, None)
               }
             }
-            case entity:HttpEntity => {
-              entity.withoutSizeLimit.dataBytes.runFold(blank)(_ ++ _).map (_ -> None)
+            case entity: HttpEntity => {
+              entity.withoutSizeLimit.dataBytes.runFold(blank)(_ ++ _).map(_ -> None)
             }
           }).map {
             case (entityBytes, trailerHeaders) =>
-
               val combinedHeaders = trailerHeaders.fold(headers)(headers ++ _)
 
               responseValidator(entityBytes, combinedHeaders) match {
-                case Success(_) => Success(res.copy(entity = entityBytes, headers=combinedHeaders)) -> state.copy(response = response.toOption)
+                case Success(_) =>
+                  Success(res.copy(entity = entityBytes, headers = combinedHeaders)) -> state.copy(
+                    response = response.toOption
+                  )
                 case Failure(err) => Failure(err) -> state.copy(response = response.toOption)
               }
           }

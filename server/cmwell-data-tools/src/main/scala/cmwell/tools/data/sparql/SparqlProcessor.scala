@@ -174,23 +174,22 @@ class SparqlProcessor[T](baseUrl: String,
     type Paths = Seq[ByteString]
     type StartTime = Long
 
-    def validateResponse(body: ByteString, headers: Seq[HttpHeader]) : Try[Unit] = {
+    def validateResponse(body: ByteString, headers: Seq[HttpHeader]): Try[Unit] = {
       def validateBody(body: ByteString) = {
         if (!(body containsSlice "Could not process request")) None
-        else Some("Response body was not valid")
+        else Some("[Response body was not valid]")
       }
 
-      def validateHeaders(headers: Seq[HttpHeader])  = {
-        if(!(headers.contains("X-CM-WELL-SG-RS"))) None
-        else Some("Error reported in trailer headers")
+      def validateHeaders(headers: Seq[HttpHeader], errorHeader: String) = {
+        headers.find(_.name == errorHeader).map(header=>Some(s"[${header.name} returned errors: ${header.value}]"))
       }
 
-      val errors = List(validateBody(body), validateHeaders(headers)).flatten
+      val errors = List(validateBody(body), validateHeaders(headers, "X-CM-WELL-SG-RS")).flatten
 
       if (errors.isEmpty)
         Success(Unit)
       else
-        Failure(new Exception(errors.mkString("Failures in Http Response:"," ","")))
+        Failure(new Exception(errors.mkString("Failures in Http Response:", " ", "")))
     }
 
     def sparqlFlow() = {
