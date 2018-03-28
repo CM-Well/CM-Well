@@ -34,7 +34,9 @@ object RTSPub1 extends App {
   Grid.joinClient
   //Grid.join(Set("127.0.0.1"),Set("subscriber"))
   Publisher.init
+  // scalastyle:off
   println("Press enter publisher.")
+  // scalastyle:on
   StdIn.readLine()
   // scalastyle:off
   println("-----------------------------------------")

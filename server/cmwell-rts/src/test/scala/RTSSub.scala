@@ -40,7 +40,6 @@ object RTSSub extends App {
   StdIn.readLine()
 
   //val key = Subscriber.subscribe("sub01", Rule("/cmt/cm/command-test", true), Push("http://www.cool.com/"))
-  //println(s"the key to use $key")
 //  Subscriber.subscribe("sub02", Rule("/cmt/cm/command-test", false), Pull)
 //  Subscriber.subscribe("sub03", Rule())
   StdIn.readLine()
