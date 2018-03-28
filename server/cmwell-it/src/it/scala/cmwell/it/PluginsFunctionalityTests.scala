@@ -18,7 +18,7 @@ package cmwell.it
 
 import cmwell.ctrl.utils.ProcUtil
 import cmwell.util.concurrent.SimpleScheduler
-import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+import cmwell.util.http.SimpleResponse.Implicits
 import cmwell.util.http.{SimpleResponse, StringPath}
 import com.typesafe.scalalogging.LazyLogging
 import org.joda.time.DateTime
@@ -53,7 +53,7 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
 
     var (length, retry) = (0, 0)
     do {
-      val res = new String(Await.result(Http.get(path, Seq("op"->"search", "length"->"1", "format"->"json")), requestTimeout).payload, "UTF-8")
+      val res = Await.result(Http.get(path, Seq("op"->"search", "length"->"1", "format"->"json"))(Implicits.UTF8StringHandler), requestTimeout).payload
       length = (Json.parse(res) \ "results" \ "total").asOpt[Int].getOrElse(0)
       retry+=1
       sleepTime.fromNow.block
@@ -74,7 +74,7 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
         Http.get(
           "http://localhost:9000/example.org",
           Seq("op"->"search", "recursive"->"", "with-data"->"", "length"->"1000", "format"->"ntriples")
-        )(UTF8StringHandler), requestTimeout).payload
+        )(Implicits.UTF8StringHandler), requestTimeout).payload
       s"jps data:\n$jpsData\n\nContent:\n$contentData"
     }
 

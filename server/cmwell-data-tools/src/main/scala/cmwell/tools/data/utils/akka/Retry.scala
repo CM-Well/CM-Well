@@ -58,7 +58,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                    baseUrl: String,
                    limit: Option[Int] = None)(
                    createRequest: (Seq[ByteString]) => HttpRequest,
-                   responseBodyValidator: ByteString => Boolean = _ => true)(
+                   responseValidator: (ByteString, Seq[HttpHeader]) => Try[Unit] = (_, _) => Success(Unit))(
                    implicit system: ActorSystem,
                    mat: Materializer,
                    ec: ExecutionContext,
