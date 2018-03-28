@@ -121,11 +121,15 @@ case class GridSubDiv(user: String,
     var s = 1
     for (host <- hosts) {
       for (index <- 1 to dataDirs.casDataDirs.size) {
-        command(
-          s"bash -c 'sleep ${s} ; cd ${instDirs.globalLocation}/cm-well/app/cas/cur/; ${startScript(s"./start${Host.getIndexTxt(index)}.sh")}' > /dev/null 2> /dev/null &",
-          Seq(host),
-          false
-        )
+        val sb = new StringBuilder
+        sb ++= "bash -c 'sleep "
+        sb ++= s.toString
+        sb ++= " ; cd "
+        sb ++= instDirs.globalLocation
+        sb ++= "/cm-well/app/cas/cur/; "
+        sb ++= startScript(s"./start${Host.getIndexTxt(index)}.sh")
+        sb ++= "' > /dev/null 2> /dev/null &"
+        command(sb.result(), Seq(host), false)
         s += 1
       }
     }

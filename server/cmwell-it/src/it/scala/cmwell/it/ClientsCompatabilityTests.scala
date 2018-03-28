@@ -48,7 +48,9 @@ class ClientsCompatabilityTests extends AsyncFunSpec with OptionValues with Matc
   }
 
   val ingestSampleFromAnna1: Future[SimpleResponse[String]] = {
+    // scalastyle:off
     val dateWithoutTZ = raw"""<http://clients.compatability.test.permid.org/timestamp/1-3133333333> <http://permid.org/ontology/organization/hasIPODateB> "2011-02-17 00:01:00.000"^^<http://www.w3.org/2001/XMLSchema#dateTime> ."""
+    // scalastyle:on
     Http.post(_in, dateWithoutTZ, Some("text/plain;charset=UTF-8"), List("format" -> "ntriples", "force" -> ""), tokenHeader)
   }
 
@@ -61,7 +63,9 @@ class ClientsCompatabilityTests extends AsyncFunSpec with OptionValues with Matc
   }
 
   val ingestSampleFromAnna2: Future[SimpleResponse[String]] = {
+    // scalastyle:off
     val dateWithoutT = raw"""<http://clients.compatability.test.permid.org/timestamp/1-3233333333> <http://permid.org/ontology/organization/hasIPODateB> "2011-02-17 00:01:00.000Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> ."""
+    // scalastyle:on
     Http.post(_in, dateWithoutT, Some("text/plain;charset=UTF-8"), List("format" -> "ntriples", "force" -> ""), tokenHeader)
   }
 
@@ -74,7 +78,9 @@ class ClientsCompatabilityTests extends AsyncFunSpec with OptionValues with Matc
   }
 
   val ingestSampleFromAnna3: Future[SimpleResponse[String]] = {
+    // scalastyle:off
     val dateWithoutZ = raw"""<http://clients.compatability.test.permid.org/timestamp/1-3333333333> <http://permid.org/ontology/organization/hasIPODateB> "2011-02-17T00:01:00.000"^^<http://www.w3.org/2001/XMLSchema#dateTime> ."""
+    // scalastyle:on
     Http.post(_in, dateWithoutZ, Some("text/plain;charset=UTF-8"), List("format" -> "ntriples", "force" -> ""), tokenHeader)
   }
 
@@ -89,7 +95,9 @@ class ClientsCompatabilityTests extends AsyncFunSpec with OptionValues with Matc
   //NO MILLIS
 
   val ingestSampleFromAnna4: Future[SimpleResponse[String]] = {
+    // scalastyle:off
     val dateWithoutTZ = raw"""<http://clients.compatability.test.permid.org/timestamp/1-3433333333> <http://permid.org/ontology/organization/hasIPODateB> "2011-02-17 00:01:00"^^<http://www.w3.org/2001/XMLSchema#dateTime> ."""
+    // scalastyle:on
     Http.post(_in, dateWithoutTZ, Some("text/plain;charset=UTF-8"), List("format" -> "ntriples", "force" -> ""), tokenHeader)
   }
 
@@ -102,7 +110,9 @@ class ClientsCompatabilityTests extends AsyncFunSpec with OptionValues with Matc
   }
 
   val ingestSampleFromAnna5: Future[SimpleResponse[String]] = {
+    // scalastyle:off
     val dateWithoutT = raw"""<http://clients.compatability.test.permid.org/timestamp/1-3533333333> <http://permid.org/ontology/organization/hasIPODateB> "2011-02-17 00:01:00Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> ."""
+    // scalastyle:on
     Http.post(_in, dateWithoutT, Some("text/plain;charset=UTF-8"), List("format" -> "ntriples", "force" -> ""), tokenHeader)
   }
 
@@ -115,12 +125,16 @@ class ClientsCompatabilityTests extends AsyncFunSpec with OptionValues with Matc
   }
 
   val ingestSampleFromAnna6: Future[SimpleResponse[String]] = {
+    // scalastyle:off
     val dateWithoutZ = raw"""<http://clients.compatability.test.permid.org/timestamp/1-3633333333> <http://permid.org/ontology/organization/hasIPODateB> "2011-02-17T00:01:00"^^<http://www.w3.org/2001/XMLSchema#dateTime> ."""
+    // scalastyle:on
     Http.post(_in, dateWithoutZ, Some("text/plain;charset=UTF-8"), List("format" -> "ntriples", "force" -> ""), tokenHeader)
   }
 
   val ingestSampleDateSingleSecondsDigit: Future[SimpleResponse[String]] = {
+    // scalastyle:off
     val dateWithoutZ = raw"""<http://clients.compatability.test.permid.org/timestamp/1-3733333333> <http://permid.org/ontology/organization/hasIPODateB> "2017-04-18 11:30:00.0"^^<http://www.w3.org/2001/XMLSchema#dateTime> ."""
+    // scalastyle:on
     Http.post(_in, dateWithoutZ, Some("text/plain;charset=UTF-8"), List("format" -> "ntriples", "force" -> ""), tokenHeader)
   }
   val verifySampleDateSingleSecondsDigit: Future[SimpleResponse[String]] = ingestSampleDateSingleSecondsDigit.flatMap { iRes =>

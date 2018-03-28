@@ -27,25 +27,15 @@ class RuleSpec extends FlatSpec with Matchers {
     val r1 = Rule("/mark/test",false)
     val r2 = Rule("/mark/test",true)
 
-
-//    println(r2.path == ObjectInfoton("/mark").path           ) // false
-//    println(r2.path == ObjectInfoton("/mark/test").path      ) // true
-//    println(r2.path == ObjectInfoton("/mark/test/1").path    ) // true
-//    println(r2.path == ObjectInfoton("/mark/test/1/2/").path ) // true
-
-
     false should equal (r1.path check ObjectInfoton("/mark","dc_test").path)
     true should equal  (r1.path check ObjectInfoton("/mark/test","dc_test").path)
     true should equal  (r1.path check ObjectInfoton("/mark/test/1","dc_test").path)
     false should equal (r1.path check ObjectInfoton("/mark/test/1/2/","dc_test").path)
 
-
     false should equal(r2.path check ObjectInfoton("/mark","dc_test").path)
     true should equal (r2.path check  ObjectInfoton("/mark/test","dc_test").path)
     true should equal (r2.path check  ObjectInfoton("/mark/test/1","dc_test").path)
     true should equal(r2.path check ObjectInfoton("/mark/test/1/2/","dc_test").path)
-
-
   }
 
 

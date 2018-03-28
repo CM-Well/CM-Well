@@ -22,7 +22,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 object Retry {
   def apply[T](block: => T, retries: Int = 3, delay: Int = 5000): Try[T] = {
     val r = cmwell.util.concurrent.retry(retries + 1,delay.millis)(Future.successful(Try(block)))(ExecutionContext.global)
-    val f = r.transform(_.flatMap(identity))
-    f.value.fold(Try(Await.result(f, Duration.Inf)))(identity)
+    val f = r.transform(_.flatten)(ExecutionContext.global)
+    f.value.getOrElse(Try(Await.result(f, Duration.Inf)))
   }
 }

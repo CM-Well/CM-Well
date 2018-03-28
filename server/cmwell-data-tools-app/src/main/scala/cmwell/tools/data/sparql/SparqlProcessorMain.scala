@@ -160,7 +160,9 @@ object SparqlProcessorMain extends App {
     // display statistics of received infotons
     infotonSource
       .map { infoton =>
+        // scalastyle:off
         println(infoton.utf8String); infoton
+        // scalastyle:on
       } // print to stdout
       .map(_ -> None)
       .via(DownloaderStats(format = "ntriples", isStderr = true))

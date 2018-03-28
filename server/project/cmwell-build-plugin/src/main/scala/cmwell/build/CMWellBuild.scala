@@ -54,6 +54,7 @@ object CMWellBuild extends AutoPlugin {
 		val getData = TaskKey[Seq[java.io.File]]("get-data", "get data to upload to cm-well")
 		val getExternalComponents = TaskKey[Iterable[File]]("get-external-components", "get external dependencies binaries")
 		val testScalastyle = taskKey[Unit]("testScalastyle")
+		val itScalastyle = taskKey[Unit]("itScalastyle")
 		val compileScalastyle = taskKey[Unit]("compileScalastyle")
 	}
 
@@ -233,15 +234,15 @@ object CMWellBuild extends AutoPlugin {
 	override def requires = CoursierPlugin && ScalastylePlugin && ScalafmtPlugin && DoctestPlugin && DependencyGraphPlugin
 
 	override def projectSettings = Seq(
-//scalafmtOnCompile := true,
 		scalastyleFailOnError := true,
 		testScalastyle in ThisProject := (scalastyle in ThisProject).in(Test).toTask("").value,
 		(test in Test) := ((test in Test) dependsOn testScalastyle).value,
 		compileScalastyle in ThisProject := (scalastyle in ThisProject).in(Compile).toTask("").value,
 		(compile in Compile) := ((compile in Compile) dependsOn compileScalastyle).value,
+		//scalafmtOnCompile := true,
+		//doctestWithDependencies := false,
 		coursierMaxIterations := 200,
 		Keys.fork in Test := true,
-//doctestWithDependencies := false,
 		libraryDependencies ++= {
 			val dm = dependenciesManager.value
 			Seq(

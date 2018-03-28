@@ -32,9 +32,11 @@ object RTSSub extends App {
   //Grid.join(Set("127.0.0.1"),0,Set("subscriber"))
   Subscriber.init
   Thread.sleep(5000)
+  // scalastyle:off
   println("-----------------------------------------")
   // now lets subscribe
   println("Press enter to subscriber.")
+  // scalastyle:on
   StdIn.readLine()
 
   //val key = Subscriber.subscribe("sub01", Rule("/cmt/cm/command-test", true), Push("http://www.cool.com/"))
@@ -42,10 +44,12 @@ object RTSSub extends App {
 //  Subscriber.subscribe("sub02", Rule("/cmt/cm/command-test", false), Pull)
 //  Subscriber.subscribe("sub03", Rule())
   StdIn.readLine()
+  // scalastyle:off
   println("Press enter to unsubscriber.")
 //  Subscriber.unsubscribe(key)
 //  Subscriber.unsubscribe("sub03")
   println("wait.")
+  // scalastyle:on
   StdIn.readLine()
   Grid.shutdown
 }

@@ -121,7 +121,9 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
 
     cmwellBGActor = actorSystem.actorOf(CMWellBGActor.props(0, bgConfig, irwService, ftsServiceES, zStore, offsetsService))
 
+    // scalastyle:off
     println("waiting 10 seconds for all components to load")
+    // scalastyle:on
     schedule(10.seconds){
       okToStartPromise.success(())
     }
@@ -892,13 +894,17 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
 //    }
     it("re process OW commands even if were not indexed at first")(reProcessNotIndexedOWCommands)
     it("process OverrideCommands correctly by keeping its original indexTime and not generating a new one")(processOverrideCommands)
+    // scalastyle:off
     it("process group of writecommands in short time while keeping all fields (in case of the data being splitted to several versions, last version must contain all data)")(groupedWriteCommands)
+    // scalastyle:on
     it("process OverrideCommands correctly by not grouping same path commands together for merge")(notGroupingOverrideCommands)
     it("process OverrideCommands correctly by creating parents if needed")(deeplyNestedOverrideCommands)
     describe("process OverrideCommands correctly by keeping history in correct order") {
       it("while ingesting version 3 first, and verifying  version 3 is current")(version3IngestAndVerify)
       it("and then ingesting version 1 and verifying version 1 is history, while version 3 stays current")(version1IngestAndVerify)
+      // scalastyle:off
       it("and then ingesting version 2, which is history but with newer indexTime, and verifying version 2&1 are history, while version 3 stays current")(version2IngestAndVerify)
+      // scalastyle:on
       it("and then ingesting version 4 with older indexTime and verifying version 1-3 are history, while version 4 became current")(version4IngestAndVerify)
       it("and then ingesting version 5 and verifying version 1-4 are history, while version 5 became current")(version5IngestAndVerify)
     }

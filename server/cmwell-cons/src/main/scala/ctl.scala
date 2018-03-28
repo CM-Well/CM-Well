@@ -39,7 +39,10 @@ import scala.util.{Failure, Success, Try}
 //todo: make sure that some applications are installed.
 
 trait Info {
+
+  // scalastyle:off
   def info(msg: String) = println(s"Info: $msg")
+  // scalastyle:on
 }
 
 object ResourceBuilder {
@@ -73,7 +76,9 @@ abstract class ModuleLock(checkCount: Int = 50) extends Info {
   private var prevRes = "UNLIKLY RES"
 
   def fail = {
+    // scalastyle:off
     println("failed to check " + name)
+    // scalastyle:on
     throw new Exception("failed to check " + name)
   }
 
@@ -441,19 +446,27 @@ abstract class Host(user: String,
 
   def debug_=(v: Boolean) = {
     deb = v
+    // scalastyle:off
     println("The ports are:\nws: 5010\nbatch: 5009\nctrl: 5011\ncw: 5012\ndc: 5013\nbg: 5014")
+    // scalastyle:on
   }
 
   var doInfo = true
 
+  // scalastyle:off
   def info(msg: String) = if (doInfo) println(s"Info: $msg")
+  // scalastyle:on
 
   def warn(msg: String) = {
+    // scalastyle:off
     println(s"Warning: $msg")
+    // scalastyle:on
   }
 
   def warnPrompt = {
+    // scalastyle:off
     println("Warning: Are you sure you want to continue: (yes/no)")
+    // scalastyle:on
     val ln = scala.io.StdIn.readLine()
     if (ln != "yes") {
       throw new Exception("You chose to not continue the process.")
@@ -468,7 +481,9 @@ abstract class Host(user: String,
 
   def isSu = su
 
+  // scalastyle:off
   def help = println(Source.fromFile("readme").mkString)
+  // scalastyle:on
 
   //def hosts = ips.map(ip => s"${user}@${ip}")
   def getSeedNodes: List[String]
@@ -492,7 +507,9 @@ abstract class Host(user: String,
     val interval = 60 * 60
 
     if (production && (timeStamp - lastProdCheckTimeStamp > interval)) {
+      // scalastyle:off
       println("This is a production cluster. Are you sure you want to do this operation: (yes/no)")
+      // scalastyle:on
       val ln = scala.io.StdIn.readLine()
 
       if (ln != "yes") {
@@ -530,12 +547,10 @@ abstract class Host(user: String,
       Seq("ssh-keygen", "-R", sshHost).!!
     }
     sshHosts.foreach { sshHost =>
-      val cmd = Seq(
-        "bash",
-        "-c",
-        s"read PASS; ${UtilCommands.sshpass} -p $$PASS ssh-copy-id -i $privateKey -o StrictHostKeyChecking=no $sshHost"
-      )
+      val cmd = Seq("bash", "-c", s"read PASS; ${UtilCommands.sshpass} -p $$PASS ssh-copy-id -i $privateKey -o StrictHostKeyChecking=no $sshHost")
+      // scalastyle:off
       if (verbose) println("command: " + cmd.mkString(" "))
+      // scalastyle:on
       (s"echo -e -n $pass\\n" #| cmd).!!
     }
   }
@@ -748,7 +763,9 @@ abstract class Host(user: String,
         (cmd.mkString(" "), Process(cmd))
       }
     }
+    // scalastyle:off
     if (verbose) println("command: " + commandLine)
+    // scalastyle:on
     Try(process.!!)
   }
 
@@ -760,7 +777,9 @@ abstract class Host(user: String,
       Try(sudoComm(com).!!)
     else {
       val seq = Seq("bash", "-c", com)
+      // scalastyle:off
       if (verbose) println("command: " + seq.mkString(" "))
+      // scalastyle:on
       Try(seq.!!)
     }
   }
@@ -775,7 +794,9 @@ abstract class Host(user: String,
   def _rsync(from: String, to: String, host: String, tries: Int = 10, sudo: Boolean): Try[String] = {
     val seq = Seq("rsync", "-Paz", "--delete", from, host + ":" + to)
 
+    // scalastyle:off
     if (verbose) println("command: " + seq.mkString(" "))
+    // scalastyle:on
     val res = Try(seq.!!)
     res match {
       case Success(r)   => res
@@ -1030,15 +1051,22 @@ abstract class Host(user: String,
       if (sudoerName != "") sudoerName else scala.io.StdIn.readLine("Please enter sudoer username\n")
     val sudoerPassword: String =
       if (sudoerPass != "") sudoerPass else scala.io.StdIn.readLine(s"Please enter $sudoerNameFinal password\n")
+
+    // scalastyle:off
     println(s"Gaining trust of sudoer account: $sudoerNameFinal")
+    // scalastyle:on
     gainTrust(sudoerNameFinal, sudoerPassword, hosts)
     sudoerCredentials = Some(Credentials(sudoerNameFinal, sudoerPassword))
     val sudoer = sudoerCredentials.get
     copySshpass(hosts, sudoer)
+    // scalastyle:off
     println("We will now create a local user 'u' for this cluster")
+    // scalastyle:on
     val pass = if (userPass != "") userPass else scala.io.StdIn.readLine(s"Please enter $user password\n")
     createUser(user, pass, hosts, sudoer)
+    // scalastyle:off
     println(s"Gaining trust of the account $user")
+    // scalastyle:on
     gainTrust(user, pass, hosts)
     refreshUserState(user, Some(sudoer), hosts)
     changeOwnerAndAddExcutePermission(hosts, disksWithAncestors(disks).toSeq, user, sudoer)
@@ -1102,11 +1130,9 @@ abstract class Host(user: String,
   def getNewHostInstance(ipms: IpMappings): Host
 
   def cassandraNetstats = {
-    println(
-      command(s"JAVA_HOME=${instDirs.globalLocation}/cm-well/app/java/bin $nodeToolPath netstats 2> /dev/null",
-              ips(0),
-              false).get
-    )
+    // scalastyle:off
+    println(command(s"JAVA_HOME=${instDirs.globalLocation}/cm-well/app/java/bin $nodeToolPath netstats 2> /dev/null", ips(0), false).get)
+    // scalastyle:on
   }
 
   def removeNode(host: String): Host = {
@@ -1987,8 +2013,6 @@ abstract class Host(user: String,
     linkLibs(hosts)
     rsyncPlugins(hosts)
     BinsProps(this).deployComponent(hosts)
-
-    //println(s"props: $props")
 
     // get for each component its unsynced hosts and redeploy the new version of the component.
     val updatedHosts = props

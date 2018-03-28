@@ -186,7 +186,6 @@ package object wsutil extends LazyLogging {
 
     while (i < path.length) {
       chr = path(i)
-      //println(s"pre=$pre, chr=$chr, starting=$starting, initialized=$initialized, lastIsSlash=$lastIsSlash last2AreSlash=$last2AreSlash, i=$i, j=$j, k=$k")
       if (chr == '/') {
         if (!starting) {
           if (initialized) {

@@ -48,12 +48,11 @@ package object ssh extends {
 
     def promptPassword(msg: String): Boolean = yesNoController(msg)
 
-    //{ logger.info(msg)/*println(msg)*/; true }
     def promptPassphrase(msg: String): Boolean = yesNoController(msg)
 
     def promptYesNo(msg: String): Boolean = yesNoController(msg)
 
-    def showMessage(msg: String): Unit = { logger.info(msg) /*println(msg)*/ }
+    def showMessage(msg: String): Unit = { logger.info(msg) }
   }
 
   class SshConnectionProblem(msg: String)

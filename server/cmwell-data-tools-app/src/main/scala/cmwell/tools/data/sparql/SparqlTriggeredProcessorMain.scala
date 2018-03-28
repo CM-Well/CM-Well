@@ -130,7 +130,10 @@ object SparqlTriggeredProcessorMain extends App with DataToolsLogging {
   } else {
     processor
       .map { infoton =>
-        println(infoton.utf8String); infoton
+        // scalastyle:off
+        println(infoton.utf8String)
+        // scalastyle:on
+        infoton
       } // print to stdout
       .map(_ -> None)
       .via(DownloaderStats(format = "ntriples"))

@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.bg.test
 
 import java.util.Properties
@@ -103,8 +101,10 @@ class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers wi
 
     cmwellBGActor = actorSystem.actorOf(CMWellBGActor.props(0, bgConfig, testIRWMockupService, ftsServiceES, zStore, offsetsService))
 
+    // scalastyle:off
     println("waiting 10 seconds for all components to load")
     Thread.sleep(10000)
+    // scalastyle:on
 
   }
 
@@ -134,8 +134,10 @@ class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers wi
     // send them all
     pRecords.foreach { kafkaProducer.send(_)}
 
+    // scalastyle:off
     println("waiting for 10 seconds")
     Thread.sleep(10000)
+    // scalastyle:on
 
     for( i <- 0 to numOfCommands-1) {
       val nextResult = Await.result(irwService.readPathAsync(s"/cmt/cm/bg-test/circumvented_bg/info$i"), 5.seconds)

@@ -36,13 +36,17 @@ object RTSPub1 extends App {
   Publisher.init
   println("Press enter publisher.")
   StdIn.readLine()
+  // scalastyle:off
   println("-----------------------------------------")
+  // scalastyle:on
   (1 to 10).foreach{ i =>
     val m : Map[String , Set[FieldValue]]= Map("name" -> Set(FString("gal"), FString("yoav")), "types" -> Set(FString("123"), FInt(123)))
     val ii = ObjectInfoton("/cmt/news/command-test/objinfo_" + i,"dc_test", None, m)
     Publisher.publish(Vector(ii))
   }
+  // scalastyle:off
   println("-----------------------------------------")
+  // scalastyle:on
   StdIn.readLine()
   Grid.shutdown
 }

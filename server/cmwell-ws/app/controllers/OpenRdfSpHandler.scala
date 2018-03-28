@@ -271,7 +271,7 @@ class CmWellTripleSource(tripleStore: TripleStore)(implicit ec: ExecutionContext
 
     // todo levarage metadata to use cache or such
     //    subj match {
-    //      case CmWellValue(metadata, iri) => println(s"here is some metadata: $metadata for IRI($iri)")
+    //      case CmWellValue(metadata, iri) => log(s"here is some metadata: $metadata for IRI($iri)")
     //      case _ =>
     //    }
 

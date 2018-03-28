@@ -37,13 +37,19 @@ class CommandSpec extends FlatSpec with Matchers {
     // create object infoton
     val objInfo = ObjectInfoton("/command-test/objinfo1","dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))))
     // create all commands case classes for serialization testing
+    // scalastyle:off
     val linkInfo01 = LinkInfoton("/command-test/objinfo1","dc_test", Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))) , "/mark" , LinkType.Forward )
     val linkInfo02 = LinkInfoton("/command-test/objinfo1","dc_test", Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))) , "/mark" , LinkType.Permanent )
     val linkInfo03 = LinkInfoton("/command-test/objinfo1","dc_test", Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))) , "/mark" , LinkType.Temporary )
+    // scalastyle:on
 
     val cmdWrite = WriteCommand(objInfo)
     val cmdDeletePath = DeletePathCommand("/command-test/deletePath",new DateTime)
-    val cmdDeletePathAttributeValues = DeleteAttributesCommand("/command-test/deletePath",Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))),new DateTime)
+    val cmdDeletePathAttributeValues = DeleteAttributesCommand(
+      "/command-test/deletePath",
+      Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))),
+      new DateTime)
+
     // TODO : need to understand way the next test are having problem when adding the line to the test.
     //val cmdMerged1 = MergedInfotonCommand( None , "/command-test/mergedPath")
     val t = ("/command-test/mergedPath1",0L)
@@ -78,10 +84,12 @@ class CommandSpec extends FlatSpec with Matchers {
     for ( item <- cmds ) {
       val payload : Array[Byte] = CommandSerializer.encode(item)
       val cmpCommand = CommandSerializer.decode(payload)
-      //println(cmpCommand)
 
       cmpCommand match {
-        case WriteCommand(infoton, trackingID, prevUUID) =>  infoton.path should equal (objInfo.path);infoton.fields.get("name").size should equal (objInfo.fields.get("name").size); infoton.lastModified.isEqual(objInfo.lastModified) should equal (true)
+        case WriteCommand(infoton, trackingID, prevUUID) =>
+          infoton.path should equal (objInfo.path)
+          infoton.fields.get("name").size should equal (objInfo.fields.get("name").size)
+          infoton.lastModified.isEqual(objInfo.lastModified) should equal (true)
         case DeleteAttributesCommand(path, fields, lastModified, trackingID, prevUUID) =>  path should equal (cmdDeletePathAttributeValues.path)
         case DeletePathCommand(path, lastModified, trackingID, prevUUID) => path should equal (cmdDeletePath.path)
         case UpdatePathCommand(path, d_f, u_f, lm, trackingID, prevUUID) =>
@@ -105,7 +113,12 @@ class CommandSpec extends FlatSpec with Matchers {
   }
 
   "OverWrite encode and decode" should "be successful" in {
-    val owcmd = OverwriteCommand(ObjectInfoton("/exmaple.org/spiderman","other-dc", Some(12345L), new DateTime("2015-02-25T16:03:57.216Z",DateTimeZone.UTC), Map("enemyOf.rel"->Set[FieldValue](FString("green-goblin")))))
+    val owcmd = OverwriteCommand(ObjectInfoton(
+      "/exmaple.org/spiderman",
+      "other-dc",
+      Some(12345L),
+      new DateTime("2015-02-25T16:03:57.216Z",DateTimeZone.UTC),
+      Map("enemyOf.rel"->Set[FieldValue](FString("green-goblin")))))
     val payload : Array[Byte] = CommandSerializer.encode(owcmd)
     val cmpCommand = CommandSerializer.decode(payload)
     val owc = cmpCommand.asInstanceOf[OverwriteCommand]
@@ -118,7 +131,12 @@ class CommandSpec extends FlatSpec with Matchers {
   }
 
   "IndexNewInfotonCommand with infoton" should "be successfully encoded/decoded" in {
-    val infoton = ObjectInfoton("/cmt/cm/news/1", "dc", None, DateTime.now(DateTimeZone.UTC), Map("a" -> Set[FieldValue](FString("b"))))
+    val infoton = ObjectInfoton(
+      "/cmt/cm/news/1",
+      "dc",
+      None,
+      DateTime.now(DateTimeZone.UTC),
+      Map("a" -> Set[FieldValue](FString("b"))))
     val indexCommand = IndexNewInfotonCommand(infoton.uuid, true, infoton.path, Some(infoton), "")
     val payload = CommandSerializer.encode(indexCommand)
     val decodedCommand = CommandSerializer.decode(payload).asInstanceOf[IndexNewInfotonCommand]
@@ -126,7 +144,12 @@ class CommandSpec extends FlatSpec with Matchers {
   }
 
   "IndexNewInfotonCommand without infoton" should "be successfully encoded/decoded" in {
-    val infoton = ObjectInfoton("/cmt/cm/news/1", "dc", None, DateTime.now(DateTimeZone.UTC), Map("a" -> Set[FieldValue](FString("b"))))
+    val infoton = ObjectInfoton(
+      "/cmt/cm/news/1",
+      "dc",
+      None,
+      DateTime.now(DateTimeZone.UTC),
+      Map("a" -> Set[FieldValue](FString("b"))))
     val indexCommand = IndexNewInfotonCommand(infoton.uuid, true, infoton.path, None, "")
     val payload = CommandSerializer.encode(indexCommand)
     val decodedCommand = CommandSerializer.decode(payload).asInstanceOf[IndexNewInfotonCommand]
@@ -134,7 +157,12 @@ class CommandSpec extends FlatSpec with Matchers {
   }
 
   "TrackingID de/serialization" should "be enabled for any SingleCommand" in {
-    val objInfot = ObjectInfoton("/command-test/objinfo1","dc_test", None, DateTime.now(DateTimeZone.UTC), Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))))
+    val objInfot = ObjectInfoton(
+      "/command-test/objinfo1",
+      "dc_test",
+      None,
+      DateTime.now(DateTimeZone.UTC),
+      Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))))
     val wCommand = WriteCommand(objInfot,Some("sweet_kids"))
     val eCommand = CommandSerializer.encode(wCommand)
     val dCommand = CommandSerializer.decode(eCommand).asInstanceOf[WriteCommand]
@@ -142,7 +170,12 @@ class CommandSpec extends FlatSpec with Matchers {
   }
 
   "TrackingID de/serialization" should "be enabled for any IndexCommand" in {
-    val objInfot = ObjectInfoton("/command-test/objinfo1","dc_test", None, DateTime.now(DateTimeZone.UTC), Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))))
+    val objInfot = ObjectInfoton(
+      "/command-test/objinfo1",
+      "dc_test",
+      None,
+      DateTime.now(DateTimeZone.UTC),
+      Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))))
     val iCommand = IndexNewInfotonCommand(objInfot.uuid,true,objInfot.path,None, "", Seq(StatusTracking("sweet",2),StatusTracking("kids",1)))
     val eCommand = CommandSerializer.encode(iCommand)
     val dCommand = CommandSerializer.decode(eCommand).asInstanceOf[IndexNewInfotonCommand]
@@ -150,7 +183,12 @@ class CommandSpec extends FlatSpec with Matchers {
   }
 
   "prevUUID de/serialization" should "be enabled for any SingleCommand" in {
-    val objInfot = ObjectInfoton("/command-test/objinfo1","dc_test", None, DateTime.now(DateTimeZone.UTC), Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))))
+    val objInfot = ObjectInfoton(
+      "/command-test/objinfo1",
+      "dc_test",
+      None,
+      DateTime.now(DateTimeZone.UTC),
+      Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))))
     val wCommand = WriteCommand(objInfot,None,Some("0123456789abcdef0123456789abcdef"))
     val eCommand = CommandSerializer.encode(wCommand)
     val dCommand = CommandSerializer.decode(eCommand).asInstanceOf[WriteCommand]
@@ -158,7 +196,12 @@ class CommandSpec extends FlatSpec with Matchers {
   }
 
   "TrackingID and prevUUID de/serialization" should "be enabled for any SingleCommand" in {
-    val objInfot = ObjectInfoton("/command-test/objinfo1","dc_test", None, DateTime.now(DateTimeZone.UTC), Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))))
+    val objInfot = ObjectInfoton(
+      "/command-test/objinfo1",
+      "dc_test",
+      None,
+      DateTime.now(DateTimeZone.UTC),
+      Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))))
     val wCommand = WriteCommand(objInfot,Some("cute_kids"),Some("0123456789abcdef0123456789abcdef"))
     val eCommand = CommandSerializer.encode(wCommand)
     val dCommand = CommandSerializer.decode(eCommand).asInstanceOf[WriteCommand]

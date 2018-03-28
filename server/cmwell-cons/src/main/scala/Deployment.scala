@@ -298,20 +298,28 @@ abstract class ComponentProps(h: Host, name: String, location: String, hasDate: 
       case None =>
         packageName
     }
-    val res = h
-      .command(
-        s"test -L ${h.getInstDirs.intallationDir}/$targetLocation/$nameToCheck && basename `readlink ${h.getInstDirs.intallationDir}/$targetLocation/$nameToCheck`",
-        hosts,
-        false
-      )
-      .map { ts =>
-        ts match {
+    val res = {
+      val sb = new StringBuilder
+      sb ++= "test -L "
+      sb ++= h.getInstDirs.intallationDir
+      sb += '/'
+      sb ++= targetLocation
+      sb += '/'
+      sb ++= nameToCheck
+      sb ++= " && basename `readlink "
+      sb ++= h.getInstDirs.intallationDir
+      sb += '/'
+      sb ++= targetLocation
+      sb += '/'
+      sb ++= nameToCheck
+      sb += '`'
+      h.command(sb.result(), hosts, false)
+        .map {
           case Success(str) => str.trim
           case Failure(err) => ""
         }
-      }
-      .zip(hosts)
-
+        .zip(hosts)
+    }
     unpackedName match {
       case Some(uName) => res.filter(t => t._1 != uName).map(t => t._2)
       case None        => res.filter(t => t._1 != packageName).map(t => t._2)
@@ -681,7 +689,8 @@ class Deployment(h: Host) {
     if (confContent != null) {
       val retStat = "echo '$?'"
 
-      //val cont = "cd $(dirname -- \"$0\")\n" + "bash -c \"" + confContent.content + ";  if [ $? -ne 0 ]; then " + module.scriptDir + "/" + confContent.fileName + " ; fi \" & "
+      //val cont = "cd $(dirname -- \"$0\")\n" + "bash -c \"" + confContent.content + ";  if [ $? -ne 0 ]; then " +
+      // module.scriptDir + "/" + confContent.fileName + " ; fi \" & "
       val cont = "cd $(dirname -- \"$0\")\n " + s""" ${confContent.content} """
 
       //command( s"""echo '${cont}' > ${module.scriptDir}/${confContent.fileName}""", module.host, false)

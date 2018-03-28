@@ -376,6 +376,7 @@ class APIFunctionalityTests extends AsyncFunSpec
       }
 
       describe("in put get Binary File Infoton") {
+        // scalastyle:off
         val json = Json.parse(s"""
           {
             "type": "FileInfoton",
@@ -390,6 +391,7 @@ class APIFunctionalityTests extends AsyncFunSpec
                 "length": 711
             }
            }""")
+        // scalastyle:on
         val f = Http.post(_in, Json.stringify(json), None, List("format" -> "jsonw"), tokenHeader)
 
         it("should post the file") {
@@ -463,7 +465,12 @@ class APIFunctionalityTests extends AsyncFunSpec
       }
 
       it("should read the bag of infotons from _out") {
-        val bulkReq = Json.obj("type" -> "InfotonPaths", "paths" -> Json.arr("/cmt/cm/test/bag/InfoObj1", "/cmt/cm/test/bag/InfoObj2", "/cmt/cm/test/bag/InfoTextFile1"))
+        val bulkReq = Json.obj(
+          "type" -> "InfotonPaths",
+          "paths" -> Json.arr(
+            "/cmt/cm/test/bag/InfoObj1",
+            "/cmt/cm/test/bag/InfoObj2",
+            "/cmt/cm/test/bag/InfoTextFile1"))
         postReq.flatMap { _ =>
           scheduleFuture(indexingDuration) {
             Http.post(_out, Json.stringify(bulkReq), Some("application/json;charset=UTF-8"), List("format" -> "json"), tokenHeader).map { res =>
@@ -476,7 +483,12 @@ class APIFunctionalityTests extends AsyncFunSpec
       }
 
       it("should read  the bag of infotons from _out in CSV format") {
-        val bulkReq = Json.obj("type" -> "InfotonPaths", "paths" -> Json.arr("/cmt/cm/test/bag/InfoObj1", "/cmt/cm/test/bag/InfoObj2", "/cmt/cm/test/bag/InfoTextFile1"))
+        val bulkReq = Json.obj(
+          "type" -> "InfotonPaths",
+          "paths" -> Json.arr(
+            "/cmt/cm/test/bag/InfoObj1",
+            "/cmt/cm/test/bag/InfoObj2",
+            "/cmt/cm/test/bag/InfoTextFile1"))
         val expectedHeaderPattern =
           """path,lastModified,type,uuid,parent,dataCenter,indexTime,mimeType,length,data,(name|title),(name|title)"""
         val expectedContentPattern = {
@@ -492,7 +504,36 @@ class APIFunctionalityTests extends AsyncFunSpec
           val dataRegex = "(this is the data!!!)?"
           val nameRegex = "((just another name)|(sabaab))?"
           val titleRegex = "((Gladiator)|(the return of the jedi))?"
-          s"$pathRegex,$lastModifiedRegex,$typeRegex,$uuidRegex,$parent,$dataCenterRegex,$indexTimeRegex,$mimeTypeRegex,$lengthRegex,$dataRegex,(($titleRegex,$nameRegex)|($nameRegex,$titleRegex))"
+          val sb = new StringBuilder
+          sb ++= pathRegex
+          sb += ','
+          sb ++= lastModifiedRegex
+          sb += ','
+          sb ++= typeRegex
+          sb += ','
+          sb ++= uuidRegex
+          sb += ','
+          sb ++= parent
+          sb += ','
+          sb ++= dataCenterRegex
+          sb += ','
+          sb ++= indexTimeRegex
+          sb += ','
+          sb ++= mimeTypeRegex
+          sb += ','
+          sb ++= lengthRegex
+          sb += ','
+          sb ++= dataRegex
+          sb ++= ",(("
+          sb ++= titleRegex
+          sb += ','
+          sb ++= nameRegex
+          sb ++= ")|("
+          sb ++= nameRegex
+          sb += ','
+          sb ++= titleRegex
+          sb ++= "))"
+          sb.result()
         }
         postReq.flatMap(_ => scheduleFuture(indexingDuration) {
           Http.post(_out, Json.stringify(bulkReq), Some("application/json;charset=UTF-8"), List("format" -> "csv"), tokenHeader).map { res =>
@@ -699,6 +740,7 @@ class APIFunctionalityTests extends AsyncFunSpec
         }
 
         it("it should retrieve textual file from ntriples as JSON") {
+            // scalastyle:off
           val expected = Json.parse(s"""
                                       |{
                                       |  "type": "FileInfoton",
@@ -714,7 +756,7 @@ class APIFunctionalityTests extends AsyncFunSpec
                                       |  }
                                       |}
                                     """.stripMargin)
-
+          // scalastyle:on
           f1.map(res => withClue(new String(res.payload,"UTF-8") + "\n" + res.toString) {
             Json
               .parse(res.payload)
@@ -724,6 +766,7 @@ class APIFunctionalityTests extends AsyncFunSpec
         }
 
         it("it should retrieve textual file from ntriples as N3") {
+            // scalastyle:off
           val expected = s"""
                             |@prefix sys:   <http://localhost:9000/meta/sys#> .
                             |@prefix nn:    <http://localhost:9000/meta/nn#> .
@@ -739,7 +782,7 @@ class APIFunctionalityTests extends AsyncFunSpec
                             |      sys:dataCenter  "$dcName" ;
                             |      sys:type        "FileInfoton" .
                           """.stripMargin
-
+          // scalastyle:on
           f2.map { res =>
             val body = new String(res.payload, "UTF-8")
             withClue(body + "\n" + res.toString) {
@@ -754,6 +797,7 @@ class APIFunctionalityTests extends AsyncFunSpec
         }
 
         it("it should retrieve textual file from ntriples as RDF/XML") {
+            // scalastyle:off
           val expected = s"""
                             |<rdf:RDF
                             |    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -773,7 +817,7 @@ class APIFunctionalityTests extends AsyncFunSpec
                             |</rdf:RDF>
                             |
                           """.stripMargin
-
+          // scalastyle:on
           f3.map { res =>
             val body = new String(res.payload, "UTF-8")
             withClue(body + "\n" + res.toString) {
@@ -796,6 +840,7 @@ class APIFunctionalityTests extends AsyncFunSpec
           val f6 = f0.flatMap(_ => Http.post(_out, Json.stringify(input), Some("application/json;charset=UTF-8"), List("format" -> "rdfxml"), tokenHeader))
 
           it("should get: application/json -> json") {
+            // scalastyle:off
             val expected = Json.parse(s"""
                                         |{
                                         |    "type": "RetrievablePaths",
@@ -815,7 +860,7 @@ class APIFunctionalityTests extends AsyncFunSpec
                                         |    "irretrievablePaths":[]
                                         |}
                                       """.stripMargin)
-
+            // scalastyle:on
             f4.map { res =>
               val body = new String(res.payload, "UTF-8")
               withClue(body + "\n" + res.toString) {
@@ -828,6 +873,7 @@ class APIFunctionalityTests extends AsyncFunSpec
           }
 
           it("should get: application/json -> n3") {
+            // scalastyle:off
             val expected = s"""
                             |@prefix nn:    <http://localhost:9000/meta/nn#> .
                             |@prefix sys:   <http://localhost:9000/meta/sys#> .
@@ -847,7 +893,7 @@ class APIFunctionalityTests extends AsyncFunSpec
                             |  sys:type      "RetrievablePaths"
                             |] .
                             """.stripMargin
-
+            // scalastyle:on
             f5.map { res =>
               val body = new String(res.payload, "UTF-8")
               withClue(body + "\n" + res.toString) {
@@ -863,6 +909,7 @@ class APIFunctionalityTests extends AsyncFunSpec
           }
 
           it("should get: application/json -> rdfxml") {
+            // scalastyle:off
             val expected = s"""
                               |<rdf:RDF
                               |    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -882,13 +929,13 @@ class APIFunctionalityTests extends AsyncFunSpec
                               |        <sys:length rdf:datatype="http://www.w3.org/2001/XMLSchema#long">2244</sys:length>
                               |        <sys:base64-data rdf:datatype="http://www.w3.org/2001/XMLSchema#base64Binary">
                               |          iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAYAAACpSkzOAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2lpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wUmlnaHRzPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvcmlnaHRzLyIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcFJpZ2h0czpNYXJrZWQ9IkZhbHNlIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOkM3MUJFMDdFOEU4QzExREZCMjU5OEFEMjE5QjA1MDRDIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOkM3MUJFMDdEOEU4QzExREZCMjU5OEFEMjE5QjA1MDRDIiB4bXA6Q3JlYXRvclRvb2w9IkFkb2JlIFBob3Rvc2hvcCBDUzIgV2luZG93cyI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ1dWlkOjgyRTY0QjM0QzU5QkRGMTFBODA4OTIwNUU4Mjg0ODVBIiBzdFJlZjpkb2N1bWVudElEPSJ1dWlkOkI2NjNCOUQyOTk5OERGMTE4MzE1RDE2MUYyMTQyRDUxIi8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+4K+uiwAABPFJREFUeNq0lQ1MlVUYx//vey8X7gcfl9D4agjdqIjbkumtUTA+drlQsZRqy6YL52wa4ow0ZqKORRHCamprS5ljQS3D5pBcCrKgXftyc+VMEVACkpRvhAvcj/d9O+e87wXcbl228tkeODvnPL//ec7z3PNykiTBa9mHdGjbPoPFRuZMPKfqhh9rLZ7i/m1dDf8WSv+8m9+I0ake8DwHjpMQqAIZ8wgMSMCeUwV+IUsRYjY9/Rs6B45Db1BBGyjgkft4BAXoEBNetKR4JnSj/kl2f0eNZjq+a0NZiAnvT/VicmYQI9PX4eTV0IsezLp4smqAy3MLixm+LGHDz5z6el2K1DMcDOuLhT43uSf7AXuN3xOveHqL79p9XQeJaPAQ3LCuWY/WE8fAhSSh7AOy4Bic977RziVdzeIYyqAsyqRsqsFLHhckMsi2ZqHlyJuoqKgEm1P88njf0oQWxVAGZVEmZdM5ng0ED/Z+3IqsnAy01JaAj7bOuznOtiShxTGUQVmUSdlUQ+3NqHxzKlO2bqzC6bK15AQzUJFWuR1EKA/yfoXO7rOB9AikoHDklTVA6GuWmUpGakkgQiLNyqXcgYgHolwIfzQdAToj/nDfAf7q8Cv0RF4+XNMjmOy9whjzPIVNMnISRarqVHQEaPRaaLUqaIJ1CHJ62LzTPeVTQJQc7L/WoAXv4TGjkRjDy4PCZlcHJT0POUn+ybWAjmwYkLOIDAzBa5a3MDze5lNo1nUN+cmFePn3enmCxlIGsVNJL4HzXp3onIPomoXodIBWoi77MLa3bsOBV39Ax5VKROiTcXP0PIbv9PgUmnFexhpzKjITDyBcn42zVxtw6cY3KDfGMyY0lD0HnhZQJKoiUaW+LNCIIncYShozkZW8F/auKvSO2skL4PAp5BEn4HBeRFSIiPbuE+j45SOUr94FtSDITMYGbW960XILUqeFjBQ4WHTLsenzVXjDdh7m2AKo+UCfQipej1CdDe09c6j7qQIZbg30qqAFHmOTt05gJXJCcM3JxSUnkUQRWyMexzTHYfMXqTjyyveY80ygb8xO22Xht8PrYNQ/i4s3jfjUXop1oSZY+m8zhpcHxlYykgTajgJzmhFpJUyOjGNb2FNI0ITj9S/TkflYKWKNKXdlY9Tb0D2SgIPflSLHYEKmK4zEikp7C4qLLCOezZORKMpOP4TUI8w2LDfn4mBODWL092PrVzmwmvcvZMNpMORIQfW5HUiLtmBHWimLEZX4BZ7AtHmJHUBi1yXJqmyj688fmYuDF/DhQ/kw6SKw5Xgu1lsasTIyiWRTgP2ni5FmfBhvR1nm97MvtrTAk9lEyEPSEgQJHsXpiUSyIpAiekjXCOQHF0A27ovPQ5QmmDTIC1i54hhKmhqQEhyDoph0tkcgb5pAO4zAKcPLk9mkGUS5JCw99jKQ8cCQA5OXOqE2DJPP9sJHeB3iUKu+ioKjFsSKWjw3tgydY7/KcaTirqkhTAyLSFzE87JlIeJVJ/vxXmU1mg/txPPFtf/4psXP3MIn1z7D7uQiGAL0PvfIjBrs2b0L72w0MT7XvglSYu4G6BPz0Hx4J55ZHYf/w+wX+pBPxBxd36LrTD3pOpoaWWgip0hdFYfqpn453f/glEFZlCkq18edK4Q0yEUjIzcb98Laz7QhWhoER9uxpZCTcA8tp07i/hZgAMNRD8XVs1vdAAAAAElFTkSuQmCC
-                              |	       </sys:base64-data>
+                              |        </sys:base64-data>
                               |      </rdf:Description>
                               |    </sys:infotons>
                               |  </rdf:Description>
                               |</rdf:RDF>
                             """.stripMargin
-
+            // scalastyle:on
             f6.map { res =>
               val body = new String(res.payload, "UTF-8")
               withClue(body + "\n" + res.toString) {
@@ -1017,6 +1064,7 @@ class APIFunctionalityTests extends AsyncFunSpec
       def jSmithUnderscoreOut(): Future[SimpleResponse[Array[Byte]]] =
         Http.post(_out, "/example.net/Individuals/JohnSmith", Some("text/plain;charset=UTF-8"), List("format" -> "json", "xg" -> "*.vcard"), tokenHeader)
       // format: off
+      // scalastyle:off
       val f00 = ingestOfNtriplesFromFilesPromise.future
       val f01 = f00.flatMap(_ => Http.get(cmw / "example.org" / "BugChecks" / "xgBugCheck", List("format" -> "json", "xg" -> s"dislikes.rel")))
       val f08 = f00.flatMap(_ => Http.get(mZ, List("xg" -> s"colleagueOf.$$${ns.rel}>employedBy.$$${ns.rel}>mentorOf.$$${ns.rel}>friendOf.$$${ns.rel}>worksWith.$$${ns.rel}>parentOf.$$${ns.rel}","format" -> "json")))
@@ -1029,6 +1077,7 @@ class APIFunctionalityTests extends AsyncFunSpec
       val f15 = f00.flatMap(_ => Http.get(cKent, List("yg" -> "<neighborOf.rel>worksWith.rel|<neighborOf.rel<friendOf.rel<mentorOf.rel>knowsByReputation.rel<collaboratesWith.rel","format" -> "json")))
       val f16 = f00.flatMap(_ => Http.get(cKent, List("yg" -> "<neighborOf.rel[active.bold::true]>worksWith.rel[active.bold::false]|<neighborOf.rel[active.bold::true]<friendOf.rel[doesNotExist::SomeValue]<mentorOf.rel>knowsByReputation.rel<collaboratesWith.rel","format" -> "json")))
       val f17 = f00.flatMap(_ => Http.get(cKent, List("yg" -> "<neighborOf.rel[active.bold::true]>worksWith.rel[active.bold::false]|<neighborOf.rel[active.bold::true]<friendOf.rel[system.path:/not/real]<mentorOf.rel>knowsByReputation.rel<collaboratesWith.rel","format" -> "json")))
+      // scalastyle:on
       // format: on
 
       it("should post N-Triple files") {
@@ -1055,7 +1104,9 @@ class APIFunctionalityTests extends AsyncFunSpec
       }
 
       it("should expand 6 levels deep with explicit $ namespace") {
+        // scalastyle:off
         val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/G_H","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://example.net/Individuals/N-l_H"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/I_K","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"employedBy.rel":["http://example.net/Individuals/D_L"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/M_I","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"worksWith.rel":["http://example.net/Individuals/G_H"],"neighborOf.rel":["http://example.net/Individuals/Gilad_Zafran"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/N-l_H","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"childOf.rel":["http://example.net/Individuals/G_H"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/D_L","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://example.net/Individuals/M_O"],"mentorOf.rel":["http://example.net/Individuals/Y_B"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/Y_B","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://example.net/Individuals/T-S_B"],"friendOf.rel":["http://example.net/Individuals/M_I"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/M_Z","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://example.net/Individuals/I_K"]}}]}"""
+        // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
         f08.map { res =>
           lazy val clue = new String(res.payload, "UTF-8")
@@ -1074,7 +1125,9 @@ class APIFunctionalityTests extends AsyncFunSpec
       }
 
       it("should expand 6 levels deep using full NS URI") {
+        // scalastyle:off
         val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/G_H","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://example.net/Individuals/N-l_H"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/I_K","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"employedBy.rel":["http://example.net/Individuals/D_L"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/M_I","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"worksWith.rel":["http://example.net/Individuals/G_H"],"neighborOf.rel":["http://example.net/Individuals/Gilad_Zafran"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/N-l_H","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"childOf.rel":["http://example.net/Individuals/G_H"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/D_L","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://example.net/Individuals/M_O"],"mentorOf.rel":["http://example.net/Individuals/Y_B"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/Y_B","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://example.net/Individuals/T-S_B"],"friendOf.rel":["http://example.net/Individuals/M_I"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/M_Z","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://example.net/Individuals/I_K"]}}]}"""
+        // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
         f09.map { res =>
           lazy val clue = new String(res.payload, "UTF-8")
@@ -1093,7 +1146,9 @@ class APIFunctionalityTests extends AsyncFunSpec
       }
 
       it("should expand 6 levels deep with implicit namespace") {
+        // scalastyle:off
         val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/G_H","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://example.net/Individuals/N-l_H"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/I_K","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"employedBy.rel":["http://example.net/Individuals/D_L"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/M_I","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"worksWith.rel":["http://example.net/Individuals/G_H"],"neighborOf.rel":["http://example.net/Individuals/Gilad_Zafran"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/N-l_H","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"childOf.rel":["http://example.net/Individuals/G_H"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/D_L","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://example.net/Individuals/M_O"],"mentorOf.rel":["http://example.net/Individuals/Y_B"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/Y_B","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://example.net/Individuals/T-S_B"],"friendOf.rel":["http://example.net/Individuals/M_I"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/M_Z","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://example.net/Individuals/I_K"]}}]}"""
+        // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
         f10.map { res =>
           lazy val clue = new String(res.payload, "UTF-8")
@@ -1112,7 +1167,9 @@ class APIFunctionalityTests extends AsyncFunSpec
       }
 
       it("should NOT to expand 6 levels deep if guarded by a non existed filter") {
+        // scalastyle:off
         val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/M_Z","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://example.net/Individuals/I_K"]}}]}"""
+        // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
         f11.map { res =>
           val str = new String(res.payload, "UTF-8")
@@ -1125,7 +1182,9 @@ class APIFunctionalityTests extends AsyncFunSpec
       }
 
       it("should NOT expand 6 levels deep if guarded by a filter") {
+        // scalastyle:off
         val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/M_Z","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://example.net/Individuals/I_K"]}}]}"""
+        // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
         f12.map { res =>
           val str = new String(res.payload, "UTF-8")
@@ -1138,7 +1197,9 @@ class APIFunctionalityTests extends AsyncFunSpec
       }
 
       it("should allow paths expansion with yg flag with explicit $ namespace") {
+        // scalastyle:off
         val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/JohnSmith","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://example.org/Individuals/SaraSmith"],"friendOf.rel":["http://example.org/Individuals/PeterParker"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/RonaldKhun","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://example.org/Individuals/MartinOdersky"],"category.bold":["deals","news"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/HarryMiller","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://example.org/Individuals/NatalieMiller"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/DonaldDuck","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://example.org/Individuals/MartinOdersky"],"active.bold":["true"],"mentorOf.rel":["http://example.org/Individuals/JohnSmith"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/ClarkKent","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"neighborOf.rel":["http://example.org/Individuals/PeterParker"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/PeterParker","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"active.bold":["true"],"worksWith.rel":["http://example.org/Individuals/HarryMiller"],"neighborOf.rel":["http://example.org/Individuals/ClarkKent"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/MartinOdersky","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://example.org/Individuals/RonaldKhun"],"active.bold":["true"]}}]}"""
+        // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
         f13.map { res =>
           Json
@@ -1149,7 +1210,9 @@ class APIFunctionalityTests extends AsyncFunSpec
       }
 
       it("should allow paths expansion with yg flag using full NS URI") {
+        // scalastyle:off
         val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/JohnSmith","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://example.org/Individuals/SaraSmith"],"friendOf.rel":["http://example.org/Individuals/PeterParker"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/RonaldKhun","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://example.org/Individuals/MartinOdersky"],"category.bold":["deals","news"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/HarryMiller","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://example.org/Individuals/NatalieMiller"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/DonaldDuck","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://example.org/Individuals/MartinOdersky"],"active.bold":["true"],"mentorOf.rel":["http://example.org/Individuals/JohnSmith"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/ClarkKent","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"neighborOf.rel":["http://example.org/Individuals/PeterParker"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/PeterParker","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"active.bold":["true"],"worksWith.rel":["http://example.org/Individuals/HarryMiller"],"neighborOf.rel":["http://example.org/Individuals/ClarkKent"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/MartinOdersky","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://example.org/Individuals/RonaldKhun"],"active.bold":["true"]}}]}"""
+        // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
         f14.map { res =>
           Json
@@ -1160,7 +1223,9 @@ class APIFunctionalityTests extends AsyncFunSpec
       }
 
       it("should allow paths expansion with yg flag with implicit namespace") {
+        // scalastyle:off
         val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/JohnSmith","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://example.org/Individuals/SaraSmith"],"friendOf.rel":["http://example.org/Individuals/PeterParker"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/RonaldKhun","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://example.org/Individuals/MartinOdersky"],"category.bold":["deals","news"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/HarryMiller","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://example.org/Individuals/NatalieMiller"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/DonaldDuck","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://example.org/Individuals/MartinOdersky"],"active.bold":["true"],"mentorOf.rel":["http://example.org/Individuals/JohnSmith"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/ClarkKent","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"neighborOf.rel":["http://example.org/Individuals/PeterParker"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/PeterParker","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"active.bold":["true"],"worksWith.rel":["http://example.org/Individuals/HarryMiller"],"neighborOf.rel":["http://example.org/Individuals/ClarkKent"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/MartinOdersky","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://example.org/Individuals/RonaldKhun"],"active.bold":["true"]}}]}"""
+        // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
         f15.map { res =>
           Json
@@ -1171,7 +1236,9 @@ class APIFunctionalityTests extends AsyncFunSpec
       }
 
       it("should NOT allow limited paths expansion if guarded by non existed filters") {
+        // scalastyle:off
         val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","fields":{"neighborOf.rel":["http://example.org/Individuals/PeterParker"]},"system":{"path":"/example.org/Individuals/ClarkKent","dataCenter":"$dcName","parent":"/example.org/Individuals"}},{"type":"ObjectInfoton","fields":{"worksWith.rel":["http://example.org/Individuals/HarryMiller"],"neighborOf.rel":["http://example.org/Individuals/ClarkKent"],"active.bold":["true"]},"system":{"path":"/example.org/Individuals/PeterParker","dataCenter":"$dcName","parent":"/example.org/Individuals"}}]}"""
+        // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
         f16.map { res =>
           val str = new String(res.payload, "UTF-8")
@@ -1184,7 +1251,9 @@ class APIFunctionalityTests extends AsyncFunSpec
       }
 
       it("should allow limited paths expansion if guarded by filters") {
+        // scalastyle:off
         val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","fields":{"neighborOf.rel":["http://example.org/Individuals/PeterParker"]},"system":{"path":"/example.org/Individuals/ClarkKent","dataCenter":"$dcName","parent":"/example.org/Individuals"}},{"type":"ObjectInfoton","fields":{"worksWith.rel":["http://example.org/Individuals/HarryMiller"],"neighborOf.rel":["http://example.org/Individuals/ClarkKent"],"active.bold":["true"]},"system":{"path":"/example.org/Individuals/PeterParker","dataCenter":"$dcName","parent":"/example.org/Individuals"}}]}"""
+        // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
         f17.map { res =>
           val str = new String(res.payload, "UTF-8")
@@ -1230,7 +1299,8 @@ class APIFunctionalityTests extends AsyncFunSpec
     describe("should render UTF-8 characters in subject") {
 
       it("should upload an Infoton with UTF-8 in subject using _in") {
-        val triples = s"""<http://cmt/cm/test/Araújo> <http://ont.thomsonreuters.com/wiki#title> "Rock and Roll Over"^^<http://www.w3.org/2001/XMLSchema#string> ."""
+        val triples =
+          s"""<http://cmt/cm/test/Araújo> <http://ont.thomsonreuters.com/wiki#title> "Rock and Roll Over"^^<http://www.w3.org/2001/XMLSchema#string> ."""
         Http.post(_in, triples, Some("text/plain;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader).map { res =>
           withClue(res) {
             jsonSuccessPruner(Json.parse(res.payload)) should be(jsonSuccess)
@@ -1240,11 +1310,16 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       val infotonUTF8 = Json.obj("title" -> "Rock and Roll Over")
       it("should upload an Infoton with escaped UTF-8 in subject using post") {
-        Http.post(cmt / "Araújo3", infotonUTF8.toString(), Some("application/json;charset=UTF-8"), List("format" -> "json"), ("X-CM-WELL-TYPE" -> "OBJ") :: tokenHeader).map { res =>
-          withClue(res) {
-            Json.parse(res.payload) should be(jsonSuccess)
+        Http.post(
+          cmt / "Araújo3",
+          infotonUTF8.toString(),
+          Some("application/json;charset=UTF-8"),
+          List("format" -> "json"),
+          ("X-CM-WELL-TYPE" -> "OBJ") :: tokenHeader).map { res =>
+            withClue(res) {
+              Json.parse(res.payload) should be(jsonSuccess)
+            }
           }
-        }
       }
 
       it("should get an Infoton with UTF-8 in subject using get") {
@@ -1347,12 +1422,17 @@ class APIFunctionalityTests extends AsyncFunSpec
           "RollMeBack"->"v1", "RollMeBack"->"v2", "RollMeBack"->"v3")
         data.foldLeft[Future[List[JsValue]]](Future.successful(Nil)) {
           case (f,(s,o)) => f.flatMap{ l =>
-            Http.post(_in, s"<http://example.org/Individuals/$s> <http://purl.org/vocab/relationship/drinksJuiceOf> <http://example.org/Individuals/$o> .", None, Seq("format" -> "ntriples"), tokenHeader).flatMap{ res =>
-              // need to wait between each POST, so versions won't collapse in IMP
-              delayedTask(indexingDuration) {
-                Json.parse(res.payload) :: l
+            Http.post(
+              _in,
+              s"<http://example.org/Individuals/$s> <http://purl.org/vocab/relationship/drinksJuiceOf> <http://example.org/Individuals/$o> .",
+              None,
+              Seq("format" -> "ntriples"),
+              tokenHeader).flatMap { res =>
+                // need to wait between each POST, so versions won't collapse in IMP
+                delayedTask(indexingDuration) {
+                  Json.parse(res.payload) :: l
+                }
               }
-            }
           }
         }.map(all(_) should be(jsonSuccess))
       }
@@ -1447,12 +1527,21 @@ class APIFunctionalityTests extends AsyncFunSpec
 //        val path = cmw / "example.org" / "Individuals" / "RollMeBack"
 //
 //        def rollback() = {
-//          Await.result(Http.get(path, Seq("op" -> "purge-last"), tokenHeader).map(res => Json.parse(res.payload)), requestTimeout) should be(jsonSimpleResponseSuccess)
+//          Await.result(
+      // Http.get(
+      // path,
+      // Seq("op" -> "purge-last"),
+      // tokenHeader).map(res =>
+      // Json.parse(res.payload)), requestTimeout) should be(jsonSimpleResponseSuccess)
 //          indexingDuration.fromNow.block
 //        }
 //
 //        def assertVersions(amount: Int) = {
-//          val versions = Await.result(Http.get(path, Seq("with-history" -> "", "format" -> "json")).map(res => Json.parse(res.payload)), requestTimeout) getArr "versions"
+//          val versions = Await.result(
+      // Http.get(
+      // path,
+      // Seq("with-history" -> "", "format" -> "json")).map(res =>
+      // Json.parse(res.payload)), requestTimeout) getArr "versions"
 //          versions.length should be(amount)
 //        }
 //
@@ -1477,22 +1566,32 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       it("should mask fields, for _out") {
         import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
-        Http.post(_out, "/example.org/Individuals/PeterParker\n", Some("text/plain;charset=UTF-8"), List("format" -> "ntriples", justWorksWith), tokenHeader).map{ body =>
-          body.status should be >=200
-          body.status should be <400 //status should be OK
-          body.payload should include("worksWith")
-          body.payload should not include("active")
-        }
+        Http.post(
+          _out,
+          "/example.org/Individuals/PeterParker\n",
+          Some("text/plain;charset=UTF-8"),
+          List("format" -> "ntriples", justWorksWith),
+          tokenHeader).map{ body =>
+            body.status should be >=200
+            body.status should be <400 //status should be OK
+            body.payload should include("worksWith")
+            body.payload should not include("active")
+          }
       }
 
       it("should succeed with non-existing mask fields, for _out") {
         import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
-        Http.post(_out, "/example.org/Individuals/PeterParker\n", Some("text/plain;charset=UTF-8"), List("format" -> "ntriples", "fields" -> "nonExistingField.rel"), tokenHeader).map{ body =>
-          body.status should be >=200
-          body.status should be <400 //status should be OK
-          body.payload should not include("worksWith")
-          body.payload should not include("active")
-        }
+        Http.post(
+          _out,
+          "/example.org/Individuals/PeterParker\n",
+          Some("text/plain;charset=UTF-8"),
+          List("format" -> "ntriples", "fields" -> "nonExistingField.rel"),
+          tokenHeader).map{ body =>
+            body.status should be >=200
+            body.status should be <400 //status should be OK
+            body.payload should not include("worksWith")
+            body.payload should not include("active")
+          }
       }
 
       ignore("should mask fields, for search") {
@@ -1518,7 +1617,8 @@ class APIFunctionalityTests extends AsyncFunSpec
       val (goodDateValue,badDateValue) =  ("2005-08-11T04:00:00Z","2005-08-11 04:00:00")
 
       it("should upload an Infoton with a DateTime field") {
-        val data = s"""<http://example.org/1-429589421> <http://ont.thomsonreuters.com/mdaas/ipoDate> "$goodDateValue"^^<http://www.w3.org/2001/XMLSchema#dateTime> ."""
+        val data = "<http://example.org/1-429589421> <http://ont.thomsonreuters.com/mdaas/ipoDate> \"" +
+                   goodDateValue + "\"^^<http://www.w3.org/2001/XMLSchema#dateTime> ."
         Http.post(_in, data, Some("text/rdf+ntriples;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader).map { res =>
           jsonSuccessPruner(Json.parse(res.payload)) should be(jsonSuccess)
         }
@@ -1526,14 +1626,19 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       ignore("should partially index an Infoton with bad field value") {
         val goodTriple = "<http://example.org/1--926126> <http://ont.thomsonreuters.com/mdaas/ipoName> \"Not 4295893421\" ."
-        val data = s"""<http://example.org/1--926126> <http://ont.thomsonreuters.com/mdaas/ipoDate> "$badDateValue"^^<http://www.w3.org/2001/XMLSchema#dateTime> .\n$goodTriple"""
+        val data =
+          s"""<http://example.org/1--926126> <http://ont.thomsonreuters.com/mdaas/ipoDate> "$badDateValue"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+             |$goodTriple""".stripMargin
 
         Http.post(_in, data, Some("text/rdf+ntriples;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader).flatMap { res =>
           Json.parse(res.payload) should be(jsonSuccess)
           scheduleFuture(indexingDuration) {
 
             // asserting other field is readable
-            val infotonReq = Http.get(cmw / "example.org" / "1--926126", Seq("format" -> "ntriples"))(cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler)
+            val infotonReq = Http.get(
+              cmw / "example.org" / "1--926126",
+              Seq("format" -> "ntriples"))(
+              cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler)
 
             // asserting indexing was successful (i.e. there's a cas version and a es version)
             Http.get(cmw / "example.org" / "1--926126", Seq("op" -> "x-verify")).map { res =>
@@ -1558,7 +1663,9 @@ class APIFunctionalityTests extends AsyncFunSpec
         scheduleFuture(indexingDuration){
           Http.get(cmw / "example.org" / "1-90210", List("format" -> "ntriples")).map { res =>
             val writtenData = res.payload.split('\n').filter(_.contains("largeField")).sorted
-            withClue(s"Written data (${writtenData.length} triples) was not same NTriples as ingested data (${triples.length})\nFirst 5 written triples are: ${writtenData.take(5).mkString(" ")}") {
+            withClue(
+              s"""Written data (${writtenData.length} triples) was not same NTriples as ingested data (${triples.length})
+                 |First 5 written triples are: ${writtenData.take(5).mkString("\n")}""".stripMargin) {
               (writtenData sameElements triples) should be(true)
             }
           }
@@ -1576,7 +1683,9 @@ class APIFunctionalityTests extends AsyncFunSpec
         scheduleFuture(indexingDuration){
           Http.get(path).map { res =>
             val writtenData = res.payload
-            withClue(s"Written data (${writtenData.length}) was not same content as ingested data ($length)\nFirst 16 chars are: ${writtenData.take(16)}") {
+            withClue(
+              s"""Written data (${writtenData.length}) was not same content as ingested data ($length)
+                 |First 16 chars are: ${writtenData.take(16)}""".stripMargin) {
               writtenData shouldBe data
             }
           }
