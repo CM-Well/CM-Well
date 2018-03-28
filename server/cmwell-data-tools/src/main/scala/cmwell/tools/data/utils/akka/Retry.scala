@@ -15,8 +15,9 @@
 package cmwell.tools.data.utils.akka
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.model.HttpEntity.{Chunked, LastChunk}
 import akka.http.scaladsl.model.StatusCodes.{ClientError, ServerError}
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
+import akka.http.scaladsl.model._
 import akka.pattern._
 import akka.stream._
 import akka.stream.scaladsl._
@@ -29,7 +30,7 @@ import cmwell.tools.data.utils.logging.{DataToolsLogging, LabelId}
 import scala.collection.immutable
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 object Retry extends DataToolsLogging with DataToolsConfig {
 
@@ -56,12 +57,12 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                    parallelism: Int,
                    baseUrl: String,
                    limit: Option[Int] = None)(
-    createRequest: (Seq[ByteString]) => HttpRequest,
-    responseBodyValidator: ByteString => Boolean = _ => true
-  )(implicit system: ActorSystem,
-    mat: Materializer,
-    ec: ExecutionContext,
-    label: Option[LabelId] = None) = {
+                   createRequest: (Seq[ByteString]) => HttpRequest,
+                   responseBodyValidator: ByteString => Boolean = _ => true)(
+                   implicit system: ActorSystem,
+                   mat: Materializer,
+                   ec: ExecutionContext,
+                   label: Option[LabelId] = None) = {
 
     val labelValue = label.map { case LabelId(id) => s"[$id]" }.getOrElse("")
     val toStrictTimeout = 30.seconds
@@ -281,29 +282,32 @@ object Retry extends DataToolsLogging with DataToolsConfig {
             if !s.isSuccess() =>
           // consume HTTP response bytes
           e.discardBytes()
-          Future.successful(
-            Failure(new Exception(s"status is not success ($s) $e")) -> state
-              .copy(response = response.toOption)
-          )
-
-        case (response @ Success(res @ HttpResponse(s, _, e, _)), state) =>
+          Future.successful(Failure(new Exception(s"status is not success ($s) $e")) -> state.copy(response = response.toOption))
+        case (response @ Success(res @ HttpResponse(s, headers, e, _)), state) =>
           // consume HTTP response bytes and later pack them in fake response
-          val responseAndState = e
-            .withoutSizeLimit()
-            .dataBytes
-            .runFold(blank)(_ ++ _)
-            .map { dataBytes =>
-              val isValidBody = responseBodyValidator(dataBytes)
-
-              if (isValidBody) {
-                Success(res.copy(entity = dataBytes)) -> state.copy(
-                  response = response.toOption
-                )
-              } else {
-                Failure(new Exception("response body is not valid")) -> state
-                  .copy(response = response.toOption)
+          val responseAndState = (e match {
+            case chunkedEntity: Chunked => {
+              chunkedEntity.chunks.runFold[(ByteString, Option[Seq[HttpHeader]])]((ByteString.empty, None)) {
+                case (accumulatedEntity, chunk: LastChunk) =>
+                  (accumulatedEntity._1 ++ chunk.data, Option(chunk.trailer))
+                case (accumulatedEntity, chunk) => (accumulatedEntity._1 ++ chunk.data, None)
               }
             }
+            case entity: HttpEntity => {
+              entity.withoutSizeLimit.dataBytes.runFold(blank)(_ ++ _).map(_ -> None)
+            }
+          }).map {
+            case (entityBytes, trailerHeaders) =>
+              val combinedHeaders = trailerHeaders.fold(headers)(headers ++ _)
+
+              responseValidator(entityBytes, combinedHeaders) match {
+                case Success(_) =>
+                  Success(res.copy(entity = entityBytes, headers = combinedHeaders)) -> state.copy(
+                    response = response.toOption
+                  )
+                case Failure(err) => Failure(err) -> state.copy(response = response.toOption)
+              }
+          }
 
           responseAndState.recover {
             case err =>
