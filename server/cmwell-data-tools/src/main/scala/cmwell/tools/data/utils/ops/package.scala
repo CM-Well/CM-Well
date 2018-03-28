@@ -13,9 +13,9 @@
   * limitations under the License.
   */
 package cmwell.tools.data.utils
-
+// scalastyle:off
 import sun.misc.{Signal, SignalHandler}
-
+// scalastyle:on
 package object ops {
 
   /**

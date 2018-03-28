@@ -47,28 +47,17 @@ abstract class JenaElement(val model: Model, val rdfNode: RDFNode) extends Eleme
     model.listStatements(propertiesSelector).map(_.getPredicate.id.toString).toSet[String]
 
   override def equals(obj: Any): Boolean = {
-    if (obj == null) {
-      return false
+    (obj != null) &&
+    (getClass eq obj.getClass) && {
+      val other: JenaVertex = obj.asInstanceOf[JenaVertex]
+       (rdfNode != null)       &&
+       (other.rdfNode != null) &&
+       (rdfNode == other.rdfNode)
     }
-    if (getClass ne obj.getClass) {
-      return false
-    }
-    val other: JenaVertex = obj.asInstanceOf[JenaVertex]
-    if (rdfNode == null) {
-      if (other.rdfNode != null) {
-        return false
-      }
-    } else if (!(rdfNode == other.rdfNode)) {
-      return false
-    }
-    return true
   }
 
   override def hashCode: Int = {
-    val prime: Int = 31
-    var result: Int = 1
-    result = prime * result + (if ((rdfNode == null)) 0 else rdfNode.hashCode)
-    return result
+    31 + (if (rdfNode == null) 0 else rdfNode.hashCode)
   }
 
   override def removeProperty[T](key: String): T = throw new UnsupportedOperationException("RDF Edge has no Props")

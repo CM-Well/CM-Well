@@ -60,17 +60,18 @@ class ProcessStopWatch(id: String) {
   }
 
   def stop(count: Long = 1) {
-    if (!isRunning) {
-      return //throw new IllegalStateException("Can't stop ProcessStopWatch: it's not running")
-    }
-    val lastTime: Long = System.currentTimeMillis() - startTimeMillis
-    totalTimeMillis = totalTimeMillis + lastTime;
+    if (isRunning) {
 
-    lastTaskInfo = new TaskInfo(currentTaskName, lastTime, count)
-    taskList.append(lastTaskInfo)
-    taskCount = taskCount + 1
-    isRunning = false
-    currentTaskName = null
+      val lastTime: Long = System.currentTimeMillis() - startTimeMillis
+      totalTimeMillis = totalTimeMillis + lastTime;
+
+      lastTaskInfo = new TaskInfo(currentTaskName, lastTime, count)
+      taskList.append(lastTaskInfo)
+      taskCount = taskCount + 1
+      isRunning = false
+      currentTaskName = null
+    }
+    //else throw new IllegalStateException("Can't stop ProcessStopWatch: it's not running")
   }
 
   def shortSummary: String = {

@@ -130,7 +130,10 @@ object ConsumerMain extends App with InstrumentedBuilder {
     .via(GroupChunker(GroupChunker.formatToGroupExtractor(Opts.format())))
     .map(concatByteStrings(_, endl))
     .map { infoton =>
-      println(infoton.utf8String); infoton
+      // scalastyle:off
+      println(infoton.utf8String)
+      // scalastyle:on
+      infoton
     } // print to stdout
     .map(_ -> None)
     .via(DownloaderStats(format = Opts.format(), isStderr = true))

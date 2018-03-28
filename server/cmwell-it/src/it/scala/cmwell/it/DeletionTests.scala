@@ -33,7 +33,10 @@ class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Help
     val ioffd = cmt / "InfoObjForFullDelete"
     val deletes500 = cmt / "bulkDeletes" / "d500"
     val deletes501 = cmt / "bulkDeletes" / "d501"
-    val jsonObjForDelete: JsValue = Json.obj("company" -> Seq("clearforest", "ibm", "microsoft"), "movie" -> Seq("the best"), "phrase" -> Seq("four eyes commit", "quality is a mindset", "ubuntu shmubuntu"))
+    val jsonObjForDelete: JsValue = Json.obj(
+      "company" -> Seq("clearforest", "ibm", "microsoft"),
+      "movie" -> Seq("the best"),
+      "phrase" -> Seq("four eyes commit", "quality is a mindset", "ubuntu shmubuntu"))
     val j4d: JsValue = Json.obj("k" -> Seq("v"))
 
     //Assertions =
@@ -67,7 +70,9 @@ class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Help
       }
     }
 
-    def waitForNumberOfResults[T](n: Int, waitDuration: FiniteDuration, tries: Int)(request: => Future[T])(computeNumOfResults: T => Int): Future[Int] = request.flatMap{ t =>
+    def waitForNumberOfResults[T](n: Int, waitDuration: FiniteDuration, tries: Int)
+                                 (request: => Future[T])
+                                 (computeNumOfResults: T => Int): Future[Int] = request.flatMap{ t =>
       val r = computeNumOfResults(t)
       if(r >= n || tries <= 0) Future.successful(r)
       else scheduleFuture(waitDuration)(waitForNumberOfResults(n,waitDuration,tries-1)(request)(computeNumOfResults))
@@ -117,7 +122,16 @@ class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Help
     })
 
     val getWithoutArrayValue = deleteFromArray.flatMap(_ => scheduleFuture(indexingDuration) {
-      val expected = Json.parse(s"""{"type":"ObjectInfoton","system":{"path":"/cmt/cm/test/InfoObjForDelete","parent":"/cmt/cm/test","dataCenter":"$dcName"},"fields":{"company":["clearforest","ibm","microsoft"],"phrase":["four eyes commit","quality is a mindset"]}}""")
+      val expected = Json.obj(
+        "type"   -> "ObjectInfoton",
+        "system" -> Json.obj(
+          "path"       -> "/cmt/cm/test/InfoObjForDelete",
+          "parent"     -> "/cmt/cm/test",
+          "dataCenter" -> dcName),
+        "fields" -> Json.obj(
+          "company"    -> Json.arr("clearforest","ibm","microsoft"),
+          "phrase"     -> Json.arr("four eyes commit","quality is a mindset")))
+
       spinCheck(1.second,true)(Http.get(iofd, List("format" -> "json"))) { res =>
         res.status == 200 && {
           (Json.parse(res.payload) \ "fields" \ "phrase").as[JsArray].length < 3
@@ -131,15 +145,25 @@ class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Help
     })
 
     val deleteAllAttributes = getWithoutArrayValue.flatMap(_ => scheduleFuture(indexingDuration) {
-      Http.delete(iofd,List("data" -> """{"company":["clearforest","ibm","microsoft"],"phrase":["quality is a mindset","four eyes commit"]}"""),tokenHeader).map{ res =>
-        withClue(res) {
-          Json.parse(res.payload) should be(jsonSuccess)
-        }
+      Http.delete(
+        iofd,
+        List("data" -> """{"company":["clearforest","ibm","microsoft"],"phrase":["quality is a mindset","four eyes commit"]}"""),
+        tokenHeader).map { res =>
+          withClue(res) {
+            Json.parse(res.payload) should be(jsonSuccess)
+          }
       }
     })
 
     val verifyAllAttributesDeleted = deleteAllAttributes.flatMap(_ => scheduleFuture(indexingDuration) {
-      val expected = Json.parse(s"""{"type": "ObjectInfoton","system": {"path": "/cmt/cm/test/InfoObjForDelete","parent":"/cmt/cm/test","dataCenter":"$dcName"}}""")
+      val expected = {
+        Json.obj(
+          "type"   -> "ObjectInfoton",
+          "system" -> Json.obj(
+            "path"       -> "/cmt/cm/test/InfoObjForDelete",
+            "parent"     -> "/cmt/cm/test",
+            "dataCenter" -> dcName))
+      }
       spinCheck(1.second,true)(Http.get(iofd, List("format" -> "json"))) { res =>
         res.status == 200 && (Json.parse(res.payload) \ "fields").isInstanceOf[JsUndefined]
       }.map { res =>

@@ -68,7 +68,8 @@ case class UpdatePathCommand(path: String,
 
 case class OverwriteCommand(infoton: Infoton, trackingID: Option[String] = None) extends SingleCommand {
 //  require(infoton.indexTime.isDefined && infoton.dc != SettingsHelper.dataCenter,
-//    s"OverwriteCommands must be used only for infotons from other data centers [${infoton.indexTime}] && ${infoton.dc} != ${SettingsHelper.dataCenter}.\ninfoton: ${new String(JsonSerializer.encodeInfoton(infoton),"UTF-8")}")
+//    s"OverwriteCommands must be used only for infotons from other data centers [${infoton.indexTime}] &&
+// ${infoton.dc} != ${SettingsHelper.dataCenter}.\ninfoton: ${new String(JsonSerializer.encodeInfoton(infoton),"UTF-8")}")
 
   override def prevUUID: Option[String] = None
   override def path = infoton.path

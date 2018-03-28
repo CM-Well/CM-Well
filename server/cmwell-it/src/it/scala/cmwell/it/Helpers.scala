@@ -38,7 +38,9 @@ trait Helpers { self: LazyLogging =>
   val dcName = "lh"
   System.setProperty("dataCenter.id",dcName)
   System.setProperty("clusterName","cm-well-p")
+  // scalastyle:off
   val tokenHeader:List[(String, String)] = ("X-CM-WELL-TOKEN" -> sys.env.getOrElse("PUSER_TOKEN", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwVXNlciIsImV4cCI6NDYzODkwMjQwMDAwMCwicmV2IjoxfQ.j-tJCGnWHbJ-XAUJ1wyHxMlnMaLvO6IO0fKVjsXOzYM")) :: Nil
+  // scalastyle:on
   val requestTimeout = 2 minutes
   val spinCheckTimeout = 3 minutes
   val cacheEviction = 30 seconds
@@ -55,8 +57,13 @@ trait Helpers { self: LazyLogging =>
   val jsonSuccess = Json.parse("""{"success":true}""")
   val jsonSuccessPruner: JsValue => JsValue = _.validate((__ \ 'message).json.prune).get.validate((__ \ 'messages).json.prune).get
   val jsonSimpleResponseSuccess = Json.parse("""{"success":true,"type":"SimpleResponse"}""")
-  val uuidDateEraser = (__ \ 'system \ 'lastModified).json.prune andThen (__ \ 'system \ 'uuid).json.prune  andThen (__ \ 'system \ 'indexTime).json.prune
-  val jsonlUuidDateIdEraser = (__ \ "lastModified.sys").json.prune andThen (__ \ "uuid.sys").json.prune andThen (__ \ "indexTime.sys").json.prune andThen (__ \ "@id.sys").json.prune
+  val uuidDateEraser = (__ \ 'system \ 'lastModified).json.prune andThen
+                       (__ \ 'system \ 'uuid).json.prune         andThen
+                       (__ \ 'system \ 'indexTime).json.prune
+  val jsonlUuidDateIdEraser = (__ \ "lastModified.sys").json.prune andThen
+                              (__ \ "uuid.sys").json.prune         andThen
+                              (__ \ "indexTime.sys").json.prune    andThen
+                              (__ \ "@id.sys").json.prune
   val jsonlInfotonArraySorterAndUuidDateIdEraser = (__ \ "infotons").json.update(
     Reads.JsArrayReads.map{
       case JsArray(xs: Seq[JsObject @unchecked]) => JsArray(xs.map {
@@ -156,7 +163,7 @@ trait Helpers { self: LazyLogging =>
 
     // remove the values that varies according to time.
     model2.remove(getStatementsExcludes(model2, excludes))
-    val rv = model1.isIsomorphicWith(model2) || (model1.difference(model2).isEmpty && model2.difference(model1).isEmpty) //.toString.equals("<ModelCom   {} | >")
+    val rv = model1.isIsomorphicWith(model2) || (model1.difference(model2).isEmpty && model2.difference(model1).isEmpty)
     if(!rv) {
       val strWriter1 = new StringWriter
       val strWriter2 = new StringWriter
@@ -203,7 +210,9 @@ trait Helpers { self: LazyLogging =>
       val strWriter2 = new StringWriter
       model1.write(strWriter1,format,null)
       model2.write(strWriter2,format,null)
+      // scalastyle:off
       println(s"${strWriter1.toString}\n\ndiffers from:\n\n${strWriter2.toString}")
+      // scalastyle:on
     }
     rv
   }
@@ -292,7 +301,9 @@ trait Helpers { self: LazyLogging =>
   case object Recoverable extends Successfulness
   case object UnRecoverable extends Successfulness
 
-  def spinCheck[T : SimpleResponseHandler](interval: FiniteDuration, returnOriginalReqOnFailure: Boolean = false, maxTimeUntilGivingUp: FiniteDuration = spinCheckTimeout)
+  def spinCheck[T : SimpleResponseHandler](interval: FiniteDuration,
+                                           returnOriginalReqOnFailure: Boolean = false,
+                                           maxTimeUntilGivingUp: FiniteDuration = spinCheckTimeout)
                                           (httpReq: =>Future[SimpleResponse[T]])
                                           (isSuccessful: SimpleResponse[T] => Successfulness): Future[SimpleResponse[T]] = {
     val startTime = System.currentTimeMillis()

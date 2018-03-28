@@ -131,7 +131,9 @@ object Runner extends LazyLogging {
       }
       // Since logger is async, this is to ensure we don't miss any lines
       LoggerFactory.getILoggerFactory.asInstanceOf[LoggerContext].stop()
+      // scalastyle:off
       println("existing BG Runner")
+      // scalastyle:on
     }
 
   }

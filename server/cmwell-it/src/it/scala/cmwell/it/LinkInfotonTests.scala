@@ -28,7 +28,16 @@ class LinkInfotonTests extends AsyncFunSpec with Matchers with Helpers with Lazy
 
   describe("Link infoton") {
     val jsonObjIn = Json.obj("name" -> "TestObjectForLink", "title" -> "title1")
-    val expected = Json.parse(s"""{"type":"ObjectInfoton","system":{"path":"/cmt/cm/test/InfoObj3","parent":"/cmt/cm/test","dataCenter":"$dcName"},"fields":{"title":["title1"],"name":["TestObjectForLink"]}}""")
+    val expected = Json.obj(
+      "type"   -> "ObjectInfoton",
+      "system" -> Json.obj(
+        "path"       -> "/cmt/cm/test/InfoObj3",
+        "parent"     -> "/cmt/cm/test",
+        "dataCenter" -> dcName),
+      "fields" -> Json.obj(
+        "title"      ->Json.arr("title1"),
+        "name"       ->Json.arr("TestObjectForLink")))
+
 
     val postLinkAndObj = {
       val fo = Http.post(cmt / "InfoObj3", Json.stringify(jsonObjIn), Some("application/json;charset=UTF-8"), Nil, ("X-CM-WELL-TYPE" -> "OBJ") :: tokenHeader)

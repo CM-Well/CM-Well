@@ -193,16 +193,14 @@ object InfotonSerializer extends LazyLogging {
                 val dataPointerOpt =
                   if (fileContentCountVerifier == 0) Option(dataPointer)
                   else {
-                    if (fileContentBuildPosition != fileContentLength)
-                      logger.warn(
-                        s"content has different length than expected. expected: [$fileContentLength], actual: [$fileContentBuildPosition/${fileContentBuilder.length}] for uuid [$uuidHint]"
-                      )
-
-                    if (dataPointer ne null)
-                      logger.warn(
-                        s"both dataPointer and content are present! dataPointer: [$dataPointer], content length: [${fileContentBuilder.length}] for uuid [$uuidHint]"
-                      )
-
+                    if (fileContentBuildPosition != fileContentLength) {
+                      val l = s"$fileContentBuildPosition/${fileContentBuilder.length}"
+                      logger.warn(s"content has different length than expected. expected: [$fileContentLength], actual: [$l] for uuid [$uuidHint]")
+                    }
+                    if (dataPointer ne null) {
+                      val l = fileContentBuilder.length
+                      logger.warn(s"both dataPointer and content are present! dataPointer: [$dataPointer], content length: [$l] for uuid [$uuidHint]")
+                    }
                     None
                   }
                 Some(FileContent(Option(fileContentBuilder), mimeType, fileContentLength, dataPointerOpt))
@@ -553,29 +551,19 @@ object InfotonSerializer extends LazyLogging {
     val pathString = new String(path, "UTF-8")
     val uuidString = new String(uuid, "UTF-8")
     val dcString = new String(dc, "UTF-8")
-    //println(sysInfo)
 
     // Very Very bad code
-    //println("------------------------")
-    //println(data_buffer)
     val l = data_buffer.toSet
-    //println("x")
     val x = l.map { kv =>
       (clean_key(kv._1), getFieldValue(kv._1, new String(kv._2, "UTF-8")))
     }
-    //println(x)
-    //println("g")
     val g = x.groupBy(_._1) //{ kv => kv._1 }
-    //println(g)
     val t = g.map { k =>
       (k._1 -> (for (v <- k._2) yield (v._2)))
     }
-    //println(t)
-    //println("fields")
-    val fields = if (t.nonEmpty) Some(t) else None
-    //println(fields)
-    // get type
 
+    val fields = if (t.nonEmpty) Some(t) else None
+    // get type
     val reply = infoType match {
       case "o" =>
         val i = ObjectInfoton(pathString, dcString, indexTime, lastModified, fields)

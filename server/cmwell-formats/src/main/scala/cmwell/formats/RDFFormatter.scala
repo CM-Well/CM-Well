@@ -297,7 +297,9 @@ abstract class RDFFormatter(hostForNs: String,
     }
     /*models.foreach(m => */
     {
-      val m = ds.getDefaultModel //TODO: make special internal graph for cm-well system properties. should be represented by a VirtualInfoton under /meta/quad/ with a fixed alias (`cm-well`?)
+      //TODO: make special internal graph for cm-well system properties. should be represented by a
+      //TODO: VirtualInfoton under /meta/quad/ with a fixed alias (`cm-well`?)
+      val m = ds.getDefaultModel
       //val m = ds.getNamedModel("cmwell://meta/sys")
       selfAttributes.foreach {
         case (p, v) => {

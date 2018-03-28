@@ -56,7 +56,6 @@ object GoodRetry {
           override def onPush() = {
             val is = grab(in1)
             if (isAvailable(out2)) {
-//            println(s"[push  in1] push out2 elementInCycle=$numElementsInCycle")
               push(out2, is)
               numElementsInCycle += 1
             } else queue.enqueue(is)
@@ -64,7 +63,6 @@ object GoodRetry {
 
           override def onUpstreamFinish() = {
             if (numElementsInCycle == 0 && queue.isEmpty) {
-//            println("<complete stage in1>")
               completeStage()
             }
           }
@@ -73,7 +71,6 @@ object GoodRetry {
 
       setHandler(out1, new OutHandler {
         override def onPull() = {
-//          println(s"[pull out1] pull in2  elementInCycle=$numElementsInCycle")
           pull(in2)
         }
       })
@@ -96,23 +93,17 @@ object GoodRetry {
                       )
                     else {
                       xs.foreach(queue.enqueue(_))
-//                println(s"queue.size=${queue.size}")
                       if (queue.isEmpty) {
                         if (isClosed(in1)) {
-//                    println("<complete stage in2>")
                           completeStage()
                         }
-//                  else {println("[push  in2] pull in1"); pull(in1) }
                         else {
-//                    println(s"[push  in2] pull in2  elementInCycle=$numElementsInCycle")
                           pull(in2)
                         }
                       } else {
-//                  println(s"[push  in2] pull in2  elementInCycle=$numElementsInCycle")
                         pull(in2)
                         if (isAvailable(out2)) {
                           val elem = queue.dequeue()
-//                    println(s"[push  in2] push out2 elementInCycle=$numElementsInCycle")
                           push(out2, elem)
                           numElementsInCycle += 1
                         }
@@ -125,10 +116,8 @@ object GoodRetry {
       )
 
       def pushAndCompleteIfLast(elem: (Try[O], S)): Unit = {
-//        println(s"[push  in2] push out1 elementInCycle=$numElementsInCycle")
         push(out1, elem)
         if (isClosed(in1) && queue.isEmpty && numElementsInCycle == 0) {
-//          println(s"<complete stage in2 if last> elementInCycle=$numElementsInCycle")
           completeStage()
         }
       }
@@ -139,11 +128,9 @@ object GoodRetry {
           override def onPull() = {
             if (queue.isEmpty) {
               if (!hasBeenPulled(in1) && !isClosed(in1)) {
-//              println(s"[pull out2] pull in1  elementInCycle=$numElementsInCycle")
                 pull(in1)
               }
             } else {
-//            println(s"[pull out2] push out2 elementInCycle=$numElementsInCycle")
               push(out2, queue.dequeue())
               numElementsInCycle += 1
             }

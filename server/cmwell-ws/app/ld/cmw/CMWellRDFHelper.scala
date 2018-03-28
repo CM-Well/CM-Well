@@ -152,10 +152,8 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS,
   @deprecated("API may falsely return None on first calls for some value", "Quetzal")
   def urlToHash(url: String, timeContext: Option[Long]): Option[String] =
     newestGreatestMetaNsCacheImpl.getByURL(url, timeContext).value match {
-      case None =>
-        throw ServerComponentNotAvailableException(
-          s"Internal old API (urlToHash) used on id [$url], which was not yet in cache. subsequent requests should succeed eventually. Call should be migrated to new API"
-        )
+      case None => throw ServerComponentNotAvailableException("Internal old API (urlToHash) used on id [" + url +
+        "], which was not yet in cache. subsequent requests should succeed eventually. Call should be migrated to new API")
       case Some(Success(nsID))                      => Some(nsID)
       case Some(Failure(_: NoSuchElementException)) => None
       case Some(Failure(e))                         => throw e

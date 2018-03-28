@@ -186,7 +186,6 @@ package object wsutil extends LazyLogging {
 
     while (i < path.length) {
       chr = path(i)
-      //println(s"pre=$pre, chr=$chr, starting=$starting, initialized=$initialized, lastIsSlash=$lastIsSlash last2AreSlash=$last2AreSlash, i=$i, j=$j, k=$k")
       if (chr == '/') {
         if (!starting) {
           if (initialized) {
@@ -647,10 +646,26 @@ package object wsutil extends LazyLogging {
       val filterFut: Future[FieldFilter] = internalFieldNameFut.map { internalFieldName =>
         urls match {
           case Nil =>
-            throw new IllegalStateException(
-              s"empty urls in expandUp($filteredFields,population[size=${population.size}],cache[size=${cache.size}])\nfor pattern: $pattern\nand infotons.take(3) = ${infotonsSample
-                .mkString("[", ",", "]")}"
-            )
+            val sb = new StringBuilder
+            sb ++= "empty urls in expandUp("
+            sb ++= filteredFields.toString
+            sb ++= ",population[size="
+            sb ++= population.size.toString
+            sb ++= "],cache[size="
+            sb ++= cache.size.toString
+            sb ++= "])\nfor pattern: "
+            sb ++= pattern
+            sb ++= "\nand infotons.take(3) = "
+            sb += '['
+            infotonsSample.headOption.foreach { i =>
+              sb ++= i.toString
+              infotonsSample.tail.foreach { j =>
+                sb += ','
+                sb ++= j.toString
+              }
+            }
+            sb += ']'
+            throw new IllegalStateException(sb.result())
           case url :: Nil =>
             SingleFieldFilter(rffo.fold[FieldOperator](outerFieldOperator)(_ => Must),
                               Equals,
@@ -675,10 +690,10 @@ package object wsutil extends LazyLogging {
 
         val fieldFilterFut = filteredFields match {
           case Nil =>
-            throw new IllegalStateException(
-              s"expandUp($filteredFields,population[size=${population.size}],cache[size=${cache.size}])\nfor pattern: $pattern\nand infotons.take(3) = ${infotonsSample
-                .mkString("[", ",", "]")}"
-            )
+            val i = infotonsSample.mkString("[", ",", "]")
+            val c = cache.size
+            val p = population.size
+            throw new IllegalStateException(s"expandUp($filteredFields,population[size=$p],cache[size=$c])\nfor pattern: $pattern\nand infotons.take(3) = $i")
           case ff :: Nil => mkFieldFilters2(ff, Must, urls)
           case _         => Future.traverse(filteredFields)(mkFieldFilters2(_, Should, urls)).map(MultiFieldFilter(Must, _))
         }
@@ -1098,6 +1113,7 @@ package object wsutil extends LazyLogging {
   }
 
   // format: off
+  // scalastyle:off
   def metaOpRegex(metaOpType: String): String = {
 
     /* ******************* *
@@ -1125,6 +1141,7 @@ package object wsutil extends LazyLogging {
      */
     """((cmwell:/)|(http://((?!-)[A-Za-z0-9-]{1,63}(?<!-)\.)*((?!-)[A-Za-z0-9-]{1,63}(?<!-))(:\d+)?))(/meta/""" + metaOpType + """#)"""
   }
+  // scalastyle:on
   // format: on
 
   def pathStatusAsInfoton(ps: PathStatus): Infoton = {

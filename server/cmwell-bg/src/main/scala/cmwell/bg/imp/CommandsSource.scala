@@ -1,3 +1,17 @@
+/**
+  * Copyright 2015 Thomson Reuters
+  *
+  * Licensed under the Apache License, Version 2.0 (the “License”); you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  *
+  *   http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+  * an “AS IS” BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  *
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
 package cmwell.bg.imp
 
 import java.nio.charset.StandardCharsets
@@ -30,18 +44,17 @@ object CommandsSource extends LazyLogging {
                 bootStrapServers: String,
                 partition: Int,
                 startingOffset: Long,
-                startingOffsetPriority: Long)(
-    implicit actorSystem: ActorSystem,
-    executionContext: ExecutionContext
-  ): (Source[BGMessage[Command], Consumer.Control], KillSwitch) = {
+                startingOffsetPriority: Long)
+               (implicit actorSystem: ActorSystem,
+                executionContext: ExecutionContext): (Source[BGMessage[Command], Consumer.Control], KillSwitch) = {
 
     val byteArrayDeserializer = new ByteArrayDeserializer()
     val persistCommandsTopicPriority = persistCommandsTopic + ".priority"
 
     val sharedKillSwitch = KillSwitches.shared("persist-sources-kill-switch")
 
-    val subscription =
-      Subscriptions.assignmentWithOffset(new TopicPartition(persistCommandsTopic, partition) -> startingOffset)
+    val subscription = Subscriptions.assignmentWithOffset(
+      new TopicPartition(persistCommandsTopic, partition) -> startingOffset)
 
     val persistCommandsConsumerSettings =
       ConsumerSettings(actorSystem, byteArrayDeserializer, byteArrayDeserializer)
@@ -49,61 +62,47 @@ object CommandsSource extends LazyLogging {
         .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
 
     val prioritySubscription = Subscriptions.assignmentWithOffset(
-      new TopicPartition(persistCommandsTopicPriority, partition) -> startingOffsetPriority
-    )
+      new TopicPartition(persistCommandsTopicPriority, partition) -> startingOffsetPriority)
 
-    val persistCommandsSource = Consumer
-      .plainSource[Array[Byte], Array[Byte]](persistCommandsConsumerSettings, subscription)
-      .map { msg =>
-        logger.debug(s"consuming next payload from persist commands topic @ ${msg.offset()}")
-        val commandTry = Try(CommandSerializer.decode(msg.value()))
-        commandTry.failed.foreach { err =>
-          logger.error(
-            s"deserialize command error for msg [$msg] and value: [${new String(msg.value(), StandardCharsets.UTF_8)}]",
-            err
-          )
-        }
-        val command = commandTry.get
-        logger.debug(s"consumed command: $command")
-        BGMessage[Command](CompleteOffset(msg.topic(), msg.offset()), command)
-      }
-      .via(sharedKillSwitch.flow)
+    val persistCommandsSource =
+      Consumer.plainSource[Array[Byte], Array[Byte]](persistCommandsConsumerSettings, subscription)
+        .map { msg =>
+          logger.debug(s"consuming next payload from persist commands topic @ ${msg.offset()}")
+          val commandTry = Try(CommandSerializer.decode(msg.value()))
+          commandTry.failed.foreach { err =>
+            val s = new String(msg.value(), StandardCharsets.UTF_8)
+            logger.error(s"deserialize command error for msg [$msg] and value: [$s]",err)
+          }
+          val command = commandTry.get
+          logger.debug(s"consumed command: $command")
+          BGMessage[Command](CompleteOffset(msg.topic(), msg.offset()), command)
+        }.via(sharedKillSwitch.flow)
 
-    val priorityPersistCommandsSource = Consumer
-      .plainSource[Array[Byte], Array[Byte]](persistCommandsConsumerSettings, prioritySubscription)
-      .map { msg =>
-        logger.info(s"consuming next payload from priority persist commands topic @ ${msg.offset()}")
-        val commandTry = Try(CommandSerializer.decode(msg.value()))
-        commandTry.failed.foreach { err =>
-          logger.error(
-            s"deserialize command error for msg [$msg] and value: [${new String(msg.value(), StandardCharsets.UTF_8)}]",
-            err
-          )
-        }
-        val command = commandTry.get
-        logger.info(s"consumed priority command: $command")
-        BGMessage[Command](CompleteOffset(msg.topic(), msg.offset()), command)
-      }
-      .via(sharedKillSwitch.flow)
+    val priorityPersistCommandsSource =
+      Consumer.plainSource[Array[Byte], Array[Byte]](persistCommandsConsumerSettings,prioritySubscription)
+        .map { msg =>
+          logger.info(s"consuming next payload from priority persist commands topic @ ${msg.offset()}")
+          val commandTry = Try(CommandSerializer.decode(msg.value()))
+          commandTry.failed.foreach { err =>
+            val s = new String(msg.value(), StandardCharsets.UTF_8)
+            logger.error(s"deserialize command error for msg [$msg] and value: [$s]", err)
+          }
+          val command = commandTry.get
+          logger.info(s"consumed priority command: $command")
+          BGMessage[Command](CompleteOffset(msg.topic(), msg.offset()), command)
+        }.via(sharedKillSwitch.flow)
 
-    val g = GraphDSL.create(priorityPersistCommandsSource, persistCommandsSource)(combineConsumerControls)(
-      implicit builder =>
-        (prioritySource, source) => {
+    val g =GraphDSL.create(priorityPersistCommandsSource, persistCommandsSource)(combineConsumerControls)( implicit b =>
+      (prioritySource, source) => {
+        import GraphDSL.Implicits._
 
-          import GraphDSL.Implicits._
+        val mergePreferedSources = b.add(MergePreferred[BGMessage[Command]](1, true))
 
-          val mergePreferedSources = builder.add(
-            MergePreferred[BGMessage[Command]](1, true)
-          )
-
-          prioritySource ~> mergePreferedSources.preferred
-
-          source ~> mergePreferedSources.in(0)
-
-          SourceShape(mergePreferedSources.out)
+        prioritySource ~> mergePreferedSources.preferred
+        source ~> mergePreferedSources.in(0)
+        SourceShape(mergePreferedSources.out)
       }
     )
-
     Source.fromGraph(g) -> sharedKillSwitch
   }
 

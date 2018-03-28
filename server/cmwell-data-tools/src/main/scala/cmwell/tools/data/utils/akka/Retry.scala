@@ -26,7 +26,6 @@ import cmwell.tools.data.utils.ArgsManipulations
 import cmwell.tools.data.utils.ArgsManipulations.HttpAddress
 import cmwell.tools.data.utils.akka.HeaderOps._
 import cmwell.tools.data.utils.logging.{DataToolsLogging, LabelId}
-import cmwell.util.akka.http.HttpZipDecoder
 
 import scala.collection.immutable
 import scala.concurrent.duration._
@@ -54,10 +53,16 @@ object Retry extends DataToolsLogging with DataToolsConfig {
     * @tparam T context type, element paired with each request
     * @return flow which sends (and retries) HTTP requests and returns Try of results paired with request data and context
     */
-  def retryHttp[T](delay: FiniteDuration, parallelism: Int, baseUrl: String, limit: Option[Int] = None)(
-    createRequest: (Seq[ByteString]) => HttpRequest,
-    responseValidator: (ByteString, Seq[HttpHeader]) => Try[Unit] = (_, _) => Success(Unit)
-  )(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext, label: Option[LabelId] = None) = {
+  def retryHttp[T](delay: FiniteDuration,
+                   parallelism: Int,
+                   baseUrl: String,
+                   limit: Option[Int] = None)(
+                   createRequest: (Seq[ByteString]) => HttpRequest,
+                   responseValidator: (ByteString, Seq[HttpHeader]) => Try[Unit] = (_, _) => Success(Unit))(
+                   implicit system: ActorSystem,
+                   mat: Materializer,
+                   ec: ExecutionContext,
+                   label: Option[LabelId] = None) = {
 
     val labelValue = label.map { case LabelId(id) => s"[$id]" }.getOrElse("")
     val toStrictTimeout = 30.seconds
@@ -74,7 +79,8 @@ object Retry extends DataToolsLogging with DataToolsConfig {
       state: State
     ): Option[immutable.Iterable[(Future[Seq[ByteString]], State)]] =
       state match {
-        case State(data, _, Some(HttpResponse(s, h, e, _)), _) if s == StatusCodes.TooManyRequests =>
+        case State(data, _, Some(HttpResponse(s, h, e, _)), _)
+            if s == StatusCodes.TooManyRequests =>
           // api garden quota error
           e.toStrict(toStrictTimeout)
             .map { strictEntity =>
@@ -117,7 +123,12 @@ object Retry extends DataToolsLogging with DataToolsConfig {
             Some(immutable.Seq(future -> state))
           }
 
-        case State(data, context, Some(HttpResponse(s: ClientError, h, e, _)), _) =>
+        case State(
+            data,
+            context,
+            Some(HttpResponse(s: ClientError, h, e, _)),
+            _
+            ) =>
           // client error
           if (data.size > 1) {
             // before retry a request we should consume previous entity bytes
@@ -143,8 +154,10 @@ object Retry extends DataToolsLogging with DataToolsConfig {
               data
                 .map(
                   dataElement =>
-                    Future
-                      .successful(Seq(dataElement)) -> State(Seq(dataElement), context)
+                    Future.successful(Seq(dataElement)) -> State(
+                      Seq(dataElement),
+                      context
+                  )
                 )
                 .to[immutable.Iterable]
             )
@@ -162,18 +175,15 @@ object Retry extends DataToolsLogging with DataToolsConfig {
               }
               .onFailure {
                 case err =>
-                  logger.warn(
-                    s"$labelValue client error: will retry again in $delay to send a single request, host=${getHostnameValue(
-                      h
-                    )} status=$s, cannot read entity, request data=${stringifyData(data)}",
-                    err
-                  )
+                  logger.warn(s"$labelValue client error: will retry again in $delay to send a single request, " +
+                              s"host=${getHostnameValue(h)} status=$s, cannot read entity, request data=${stringifyData(data)}", err)
               }
 
             None // failed to send a single data element
           }
 
-        case State(data, _, Some(HttpResponse(s, h, e, _)), _) if s.isSuccess() =>
+        case State(data, _, Some(HttpResponse(s, h, e, _)), _)
+            if s.isSuccess() =>
           // content error
           logger.warn(
             s"$labelValue received $s but response body is not valid, will retry again in $delay host=${getHostnameValue(h)} data=${stringifyData(data)}"
@@ -267,19 +277,12 @@ object Retry extends DataToolsLogging with DataToolsConfig {
       } // used for delay between executions
       .map { case (data, state) => createRequest(data) -> state }
       .via(conn)
-      .map {
-        case (tryResponse, state) =>
-          tryResponse.map(HttpZipDecoder.decodeResponse) -> state
-      }
       .mapAsyncUnordered(httpParallelism) {
-        case (response @ Success(HttpResponse(s, _, e, _)), state) if !s.isSuccess() =>
+        case (response @ Success(HttpResponse(s, _, e, _)), state)
+            if !s.isSuccess() =>
           // consume HTTP response bytes
           e.discardBytes()
-
-          Future.successful(
-            Failure(new Exception(s"status is not success ($s) $e")) -> state.copy(response = response.toOption)
-          )
-
+          Future.successful(Failure(new Exception(s"status is not success ($s) $e")) -> state.copy(response = response.toOption))
         case (response @ Success(res @ HttpResponse(s, headers, e, _)), state) =>
           // consume HTTP response bytes and later pack them in fake response
           val responseAndState = (e match {

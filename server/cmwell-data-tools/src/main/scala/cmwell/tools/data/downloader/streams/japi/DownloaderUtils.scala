@@ -101,7 +101,9 @@ object DownloaderUtils {
         op = op,
         length = length,
         recursive = recursive,
+        // scalastyle:off
         outputHandler = println
+        // scalastyle:on
       )
       .andThen { case _ => cleanup() }
       .andThen { case _ => onFinish.run() }
@@ -116,7 +118,9 @@ object DownloaderUtils {
       .downloadFromUuidInputStream(
         baseUrl = host,
         format = format,
+        // scalastyle:off
         outputHandler = println,
+        // scalastyle:on
         in = in
       )
       .andThen { case _ => cleanup() }

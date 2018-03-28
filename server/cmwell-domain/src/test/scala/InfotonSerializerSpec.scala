@@ -50,7 +50,10 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
       b.result()
     }
 
-    val objInfo = new ObjectInfoton(path = "/command-test/objinfo1", dc = "test", fields = Option(Map[String,Set[FieldValue]]("g" -> Set(FString("h")),"last" -> Set(FString("zitnik")) , "name" ->  x )))
+    val objInfo = new ObjectInfoton(
+      path = "/command-test/objinfo1",
+      dc = "test",
+      fields = Option(Map[String,Set[FieldValue]]("g" -> Set(FString("h")),"last" -> Set(FString("zitnik")), "name" ->  x )))
     InfotonSerializer.deserialize(InfotonSerializer.serialize(objInfo)) shouldEqual objInfo
     serialize2Anddeserialize2(objInfo) shouldEqual objInfo
   }
@@ -251,7 +254,12 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
   }
 
   "link infoton serializer" should "be successful" in {
-    val forward = LinkInfoton("/command-test/objinfo1","dc_test" , Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))) , "/mark" , LinkType.Forward )
+    val forward = LinkInfoton(
+      "/command-test/objinfo1",
+      "dc_test",
+      Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))),
+      "/mark",
+      LinkType.Forward)
 
     val forwardCmp = InfotonSerializer.deserialize(InfotonSerializer.serialize(forward))
     // check system
@@ -314,8 +322,18 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
   }
 
   "diffetent infotons with same fields" should "return isSameAs==true" in {
-    val infoton1 = ObjectInfoton("/pathOfInfoton1","dc_test", None, new DateTime("2015-03-04T12:51:39.000Z"), Map("Mark"->Set[FieldValue](FString("King"),FString("Awesome"))))
-    val infoton2 = ObjectInfoton("/pathOfInfoton2","dc_test", None, new DateTime("2001-02-03T09:34:21.000Z"), Map("Mark"->Set[FieldValue](FString("Awesome"),FString("King"))))
+    val infoton1 = ObjectInfoton(
+      "/pathOfInfoton1",
+      "dc_test",
+      None,
+      new DateTime("2015-03-04T12:51:39.000Z"),
+      Map("Mark"->Set[FieldValue](FString("King"),FString("Awesome"))))
+    val infoton2 = ObjectInfoton(
+      "/pathOfInfoton2",
+      "dc_test",
+      None,
+      new DateTime("2001-02-03T09:34:21.000Z"),
+      Map("Mark"->Set[FieldValue](FString("Awesome"),FString("King"))))
 
     (infoton1 isSameAs infoton2) should equal (true)
   }

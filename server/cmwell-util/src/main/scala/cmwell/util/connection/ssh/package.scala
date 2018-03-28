@@ -27,7 +27,9 @@ import com.typesafe.scalalogging.LazyLogging
   */
 package object ssh extends {
 
-  class CustomJschUserInfo(psswrd: String, yesNoController: String => Boolean) extends UserInfo with LazyLogging {
+  class CustomJschUserInfo(psswrd: String, yesNoController: String => Boolean)
+      extends UserInfo
+      with LazyLogging {
 
     //keep this default yesNoController ? (for testing, and such...)
     private def myPrompt: Boolean = {
@@ -46,19 +48,16 @@ package object ssh extends {
 
     def promptPassword(msg: String): Boolean = yesNoController(msg)
 
-    //{ logger.info(msg)/*println(msg)*/; true }
     def promptPassphrase(msg: String): Boolean = yesNoController(msg)
 
     def promptYesNo(msg: String): Boolean = yesNoController(msg)
 
-    def showMessage(msg: String): Unit = { logger.info(msg) /*println(msg)*/ }
+    def showMessage(msg: String): Unit = { logger.info(msg) }
   }
 
-  class SshConnectionProblem(msg: String) extends cmwell.util.exceptions.ConnectionException(msg)
+  class SshConnectionProblem(msg: String)
+      extends cmwell.util.exceptions.ConnectionException(msg)
 
-  /**
-	 *
-	 */
   trait SshExecutor {
     def getExecChannel(command: String): ChannelExec
 
@@ -72,19 +71,22 @@ package object ssh extends {
   }
 
   /**
-	 * use SSH to log onto <i>host</i> as <i>user</i> using <i>password</i> to execute a <i>command</i>
-	 * @param user the remote host's user
-	 * @param host the host to connect to
-	 * @param password the password for user@host
-	 * @param yesNoController [OPTIONAL] in case you want to control yes/no prompt (default behavior is auto approval - yes to all)
-	 * @return a tuple with InputStream & OutputStream connected to the remote execution
-	 */
-  def createSshExecutor(user: String,
-                        host: String,
-                        password: String,
-                        yesNoController: String => Boolean = _ => true): SshExecutor = {
+   * use SSH to log onto <i>host</i> as <i>user</i> using <i>password</i> to execute a <i>command</i>
+   * @param user the remote host's user
+   * @param host the host to connect to
+   * @param password the password for user@host
+   * @param yesNoController [OPTIONAL] in case you want to control yes/no prompt (default behavior is auto approval - yes to all)
+   * @return a tuple with InputStream & OutputStream connected to the remote execution
+   */
+  def createSshExecutor(
+    user: String,
+    host: String,
+    password: String,
+    yesNoController: String => Boolean = _ => true): SshExecutor = {
 
-    class SshExecutorImpl(val session: Session) extends SshExecutor with LazyLogging {
+    class SshExecutorImpl(val session: Session)
+        extends SshExecutor
+        with LazyLogging {
 
       private lazy val gotConnected = {
         val config = new java.util.Properties()
@@ -110,7 +112,8 @@ package object ssh extends {
 
       def getExecChannel(command: String): ChannelExec = {
         if (gotConnected && session.isConnected) {
-          val channel: ChannelExec = session.openChannel("exec").asInstanceOf[ChannelExec]
+          val channel: ChannelExec =
+            session.openChannel("exec").asInstanceOf[ChannelExec]
           channel.setCommand(command)
           channel
         } else throw new SshConnectionProblem("could not open a connection!")
@@ -138,8 +141,8 @@ package object ssh extends {
     val in = ce.getInputStream
     ce.connect
     val output = scala.io.Source.fromInputStream(in).getLines().toList
-    //			if(output.contains(expectedOutput)) logger.info("command: " + cmd + " succeeded!")
-    //			else {logger.error("something is wrong on: " + machine + ", command: " + cmd + " did not succeed.") }
+    //if(output.contains(expectedOutput)) logger.info("command: " + cmd + " succeeded!")
+    //else {logger.error("something is wrong on: " + machine + ", command: " + cmd + " did not succeed.") }
     ce.disconnect
     output
   }

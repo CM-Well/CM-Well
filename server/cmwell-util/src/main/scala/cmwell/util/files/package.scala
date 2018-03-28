@@ -32,10 +32,7 @@ import scala.language.implicitConversions
   */
 package object files extends LazyLogging {
 
-  /**
-	 * @author gilad
-	 * it's a wrapper for plexus' weird logger...
-	 */
+  //it's a wrapper for plexus' weird logger...
   //TODO: use the threshold!
   private[this] class FileOpsTmpLogger(threshold: Int, name: String)
       extends org.codehaus.plexus.logging.AbstractLogger(threshold, name)

@@ -165,12 +165,14 @@ package object algorithms extends LazyLogging {
       logger.trace(s"expandTimeRange: from[$from], to[$to]")
       if (timeoutMarker.isCompleted) {
         val resultingTo =
-          //in case that the time was finished before doing any inner iteration - return the toSeed we started with. If not it will return the middle between from and toSeed to potentially don't have any data in it.
+          //in case that the time was finished before doing any inner iteration - return the toSeed we started with.
+        // If not it will return the middle between from and toSeed to potentially don't have any data in it.
           if (ord.compare(to, toSeed) == 0) toSeed
           else math.minus(to, math.quot(math.minus(to, from), consts.two))
         Future.successful(Right((from, resultingTo, None)))
       }
-      //if to>=now then 1. the binary search should be between the previous position and now or 2. the now position itself. Both cases will be check in the below function
+      //if to>=now then 1. the binary search should be between the previous position and now or 2.
+      // the now position itself. Both cases will be check in the below function
       else if (ord.compare(to, upperBound) >= 0)
         checkRangeUpToUpperBound(from,
                                  math.minus(to, math.quot(math.minus(to, from), consts.two)),
@@ -242,7 +244,9 @@ package object algorithms extends LazyLogging {
     //In case of an early cut off we have 2 options:
     //1. the previous didn't have enough results - we can use it
     //2. the previous had too many results - we cannot use it but we can use the position before it which is our position minus twice the given step
-    //Also note: even with the case we moved back several times the logic is correct. The next step to reach the last position that we jump ahead from is exactly the previous step done which is twice the step we would do in case that we had continue the search
+    //Also note: even with the case we moved back several times the logic is correct.
+    //           The next step to reach the last position that we jump ahead from is exactly the previous step done
+    //           which is twice the step we would do in case that we had continue the search
     if (timeoutMarker.isCompleted)
       Future.successful((from, math.minus(timePosition, math.times(step, consts.two)), nextTo))
     else

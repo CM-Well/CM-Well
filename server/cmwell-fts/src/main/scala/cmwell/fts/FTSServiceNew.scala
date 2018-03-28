@@ -1184,7 +1184,8 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
 
     // since in ES scroll API, size is per shard, we need to convert our paginationParams.length parameter to be per shard
     // We need to find how many shards are relevant for this query. For that we'll issue a fake search request
-    val fakeRequest = client.prepareSearch(alias).setTypes("infoclone").addFields("system.uuid", "system.lastModified") // TODO: fix should add indexTime, so why not pull it now?
+    // TODO: fix should add indexTime, so why not pull it now?
+    val fakeRequest = client.prepareSearch(alias).setTypes("infoclone").addFields("system.uuid", "system.lastModified")
 
     fakeRequest.setQuery(QueryBuilders.matchQuery("path", path))
 

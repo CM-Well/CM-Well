@@ -156,6 +156,7 @@ class WebExporter(reporter: ActorRef, port: Int = 8080)(implicit system: ActorSy
               (agg ++ "\n" ++ row) -> !evenRow
           }
 
+// scalastyle:off
           s"""
           |<html><body>
           |<style type="text/css">
@@ -176,7 +177,7 @@ class WebExporter(reporter: ActorRef, port: Int = 8080)(implicit system: ActorSy
           |</table>
           |</body></html>
         """.stripMargin
-
+// scalastyle:on
       }
   }
 }

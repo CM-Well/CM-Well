@@ -22,6 +22,7 @@ import k.grid.Grid
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.{Failure, Try, Success}
 
 /**
   * Created by michael on 2/16/15.
@@ -32,44 +33,65 @@ object CassandraController
 
   def checkAndRemove: Unit = {
     logger.info("Removing Cassandra down nodes")
-    val downNodes = blocking {
-      ProcUtil.executeCommand(
-        s"""JAVA_HOME=${Config.cmwellHome}/app/java/bin ${Config.cmwellHome}/app/cas/cur/bin/nodetool status 2> /dev/null | grep DN | awk '{print $$2 " " $$7}'"""
-      )
-    }.get.trim.split("\n").toList.map { dn =>
-      try {
-        val dnsplt = dn.split(" ")
-        dnsplt(0) -> dnsplt(1)
-      } catch {
-        case t: Throwable =>
-          logger.error("Couldn't get down nodes.", t)
-          return
+    val downNodesTry = {
+      val t = blocking {
+        val c = Config.cmwellHome
+        ProcUtil.executeCommand(
+          s"""JAVA_HOME=$c/app/java/bin $c/app/cas/cur/bin/nodetool status 2> /dev/null | grep DN | awk '{print $$2 " " $$7}'"""
+        )
       }
 
+        t.flatMap { s =>
+          val lb = List.newBuilder[(String, String)]
+          s.trim.split("\n").foldLeft(Try(lb)) {
+            case (tb, dn) => tb.flatMap { b =>
+              Try {
+                val dnsplt = dn.split(" ")
+                b += ((dnsplt(0), dnsplt(1)))
+              }
+            }
+          }.map(_.result())
+
+
+          //          a.toList.map { dn =>
+          //            try {
+          //              val dnsplt = dn.split(" ")
+          //              dnsplt(0) -> dnsplt(1)
+          //            } catch {
+          //              case t: Throwable =>
+          //                logger.error("Couldn't get down nodes.", t)
+          //                return
+          //            }
+          //
+          //          }
+        }
     }
 
-    try {
-      if (downNodes.size > 0) {
-        downNodes.foreach { dn =>
-          logger.info(s"Removing cassandra node: $dn")
-          Future {
-            blocking {
-              ProcUtil.executeCommand(
-                s"JAVA_HOME=${Config.cmwellHome}/app/java/bin ${Config.cmwellHome}/app/cas/cur/bin/nodetool removenode ${dn._2} 2> /dev/null"
-              )
+    downNodesTry match {
+      case Failure(e) => logger.error("Couldn't get down nodes.", e)
+      case Success(downNodes) => try {
+        if (downNodes.nonEmpty) {
+          downNodes.foreach { dn =>
+            logger.info(s"Removing cassandra node: $dn")
+            Future {
+              blocking {
+                ProcUtil.executeCommand(
+                  s"JAVA_HOME=${Config.cmwellHome}/app/java/bin ${Config.cmwellHome}/app/cas/cur/bin/nodetool removenode ${dn._2} 2> /dev/null"
+                )
+              }
             }
           }
+          Grid.system.scheduler.scheduleOnce(10.seconds) {
+            checkAndRemove
+          }
         }
-        Grid.system.scheduler.scheduleOnce(10.seconds) {
-          checkAndRemove
-        }
+      } catch {
+        case t: Throwable =>
+          logger.error("Couldn't remove down nodes.", t)
+          Grid.system.scheduler.scheduleOnce(10.seconds) {
+            checkAndRemove
+          }
       }
-    } catch {
-      case t: Throwable =>
-        logger.error("Couldn't remove down nodes.", t)
-        Grid.system.scheduler.scheduleOnce(10.seconds) {
-          checkAndRemove
-        }
     }
   }
 

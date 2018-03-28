@@ -29,22 +29,14 @@ object KafkaAssignmentStrategy {
     val maxReplicas: Int = getMaxReplicasPerNode(nodes, partitions, replicationFactor)
     val nodeMap: Map[Int, Node] = createNodeMap(nodeRackAssignment, nodes, maxReplicas)
 
-//    println(nodeMap)
-
     // Using the current assignment, reassign as many partitions as each node can accept
     fillNodesFromAssignment(currentAssignment, nodeMap)
-
-//    println(nodeMap)
 
     // Figure out the replicas that have not been assigned yet
     val orphanedReplicas: Map[Int, Int] = getOrphanedReplicas(nodeMap, partitions, replicationFactor)
 
-//    println(orphanedReplicas)
-
     // Assign those replicas to nodes that can accept them
     assignOrphans(topicName, nodeMap, orphanedReplicas)
-
-//    println(nodeMap)
 
     computePreferenceLists(topicName, nodeMap)
   }
@@ -125,11 +117,7 @@ object KafkaAssignmentStrategy {
 
     val keys = nodeMap.keys.toList.sorted
 
-//    println("before assignOrphans$getNodeProcessingOrder: " + keys)
-
     val nodeProcessingOrderList = getNodeProcessingOrder(topicName, keys)
-
-//    println("after assignOrphans$getNodeProcessingOrder: " + nodeProcessingOrderList)
 
     // Assign unassigned replicas to nodes that can accept them
     orphanedReplicas.foreach { p2r =>
@@ -166,8 +154,6 @@ object KafkaAssignmentStrategy {
           }
       }
       .mapValues(_.reverse)
-
-//    println("computePreferenceLists: " + unorderedPreferences.toString())
 
     val balanceLeadersTracker = new PreferenceListOrderTracker(topicName)
     unorderedPreferences.map {

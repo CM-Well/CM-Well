@@ -99,7 +99,8 @@ class LoginHandler @Inject()(authCache: EagerAuthCache)(implicit ec: ExecutionCo
 //    }
 //  }
 
-  //  private def grantToken(username: String) = Future(Ok(s"Token is hereby granted for $username.").withHeaders("X-CM-WELL-TOKEN" -> Authentication.generateToken(username)))
+  //  private def grantToken(username: String) = Future(Ok(s"Token is hereby granted for $username.")
+  // .withHeaders("X-CM-WELL-TOKEN" -> Authentication.generateToken(username)))
   private def grantToken(username: String, expiry: Option[DateTime]) = {
     Try(Token.generate(authCache, username, expiry)) match {
       case Success(token) => Ok(Json.obj("token" -> token))

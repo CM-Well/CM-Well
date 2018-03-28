@@ -29,12 +29,16 @@ object RTSSub1 extends App {
   Grid.joinClient
   Subscriber.init
   Thread.sleep(5000)
+  // scalastyle:off
   println("-----------------------------------------")
   // now lets subscribe
   println("Press enter subscriber.")
+  // scalastyle:on
   StdIn.readLine()
 //  Subscriber.subscribe("sub02", Rule("/cmt/cm/command-test", true))
   //Subscriber.subscribe("sub02", Rule())
+  // scalastyle:off
   println("wait.")
+  // scalastyle:on
   StdIn.readLine()
 }

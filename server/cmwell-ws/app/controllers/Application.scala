@@ -855,7 +855,8 @@ callback=< [URL] >
                         withoutMeta = !withMeta,
                         filterOutBlanks = true,
                         forceUniqueness = forceUniqueness
-                      ) //cleanSystemBlanks set to true, so we won't output all the meta information we usaly output. it get's messy with streaming. we don't want each chunk to show the "document context"
+                      ) // cleanSystemBlanks set to true, so we won't output all the meta information we usaly output.
+                        // it get's messy with streaming. we don't want each chunk to show the "document context"
 
                       val datesFilter = {
                         if (from.isEmpty && to.isEmpty) None
@@ -978,7 +979,8 @@ callback=< [URL] >
                     withoutMeta = !withMeta,
                     filterOutBlanks = true,
                     forceUniqueness = forceUniqueness
-                  ) //cleanSystemBlanks set to true, so we won't output all the meta information we usaly output. it get's messy with streaming. we don't want each chunk to show the "document context"
+                  ) // cleanSystemBlanks set to true, so we won't output all the meta information we usaly output.
+                    // it get's messy with streaming. we don't want each chunk to show the "document context"
 
                   streams
                     .superScrollSource(
@@ -1440,43 +1442,20 @@ callback=< [URL] >
       val isSimpleConsume = !(xg.isDefined || yg.isDefined || gqp.isDefined)
 
       def wasSupplied(queryParamKey: String) = request.queryString.keySet(queryParamKey)
-
+      // scalastyle:off
       if (wasSupplied("qp"))
-        Future.successful(
-          BadRequest(
-            "you can't specify `qp` together with `position` (`qp` is meant to be used only in the first iteration request. after that, continue iterating using the received `position`)"
-          )
-        )
+        Future.successful(BadRequest("you can't specify `qp` together with `position` (`qp` is meant to be used only in the first iteration request. after that, continue iterating using the received `position`)"))
       else if (wasSupplied("from") || wasSupplied("to"))
-        Future.successful(
-          BadRequest(
-            "`from`/`to` is determined in the beginning of the iteration. can't specify together with `position`"
-          )
-        )
+        Future.successful(BadRequest("`from`/`to` is determined in the beginning of the iteration. can't specify together with `position`"))
       else if (wasSupplied("indexTime"))
-        Future.successful(
-          BadRequest(
-            "`indexTime` is determined in the beginning of the iteration. can't specify together with `position`"
-          )
-        )
+        Future.successful(BadRequest("`indexTime` is determined in the beginning of the iteration. can't specify together with `position`"))
       else if (wasSupplied("with-descendants") || wasSupplied("recursive"))
-        Future.successful(
-          BadRequest(
-            "`with-descendants`/`recursive` is determined in the beginning of the iteration. can't specify together with `position`"
-          )
-        )
+        Future.successful(BadRequest("`with-descendants`/`recursive` is determined in the beginning of the iteration. can't specify together with `position`"))
       else if (wasSupplied("with-history"))
-        Future.successful(
-          BadRequest(
-            "`with-history` is determined in the beginning of the iteration. can't specify together with `position`"
-          )
-        )
+        Future.successful(BadRequest("`with-history` is determined in the beginning of the iteration. can't specify together with `position`"))
       else if (wasSupplied("with-deleted"))
-        Future.successful(
-          BadRequest(
-            "`with-deleted` is determined in the beginning of the iteration. can't specify together with `position`"
-          )
-        )
+        Future.successful(BadRequest("`with-deleted` is determined in the beginning of the iteration. can't specify together with `position`"))
+      // scalastyle:on
       else {
         val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
         val sortedIteratorStateTry = ConsumeState.decode[SortedConsumeState](sortedIteratorID)
@@ -1626,7 +1605,8 @@ callback=< [URL] >
                                                                   ygChunkSize,
                                                                   gqpChunkSize,
                                                                   timeContext)
-                          //if we were asked to expand chunk, but need to respond with a chunked response (workaround: try increasing length or search directly with adding `system.indexTime::${idxT}`)
+                          // if we were asked to expand chunk, but need to respond with a chunked response
+                          // (workaround: try increasing length or search directly with adding `system.indexTime::${idxT}`)
                           case _ if xg.isDefined || yg.isDefined =>
                             Future.successful(
                               UnprocessableEntity(
@@ -1915,7 +1895,9 @@ callback=< [URL] >
                             }
                           }
 
-                        //initialGraceTime can become negative (think of a lengthy GC that will cause now to be after the dead line), but it's ok because the scheduler will start immidiately
+                        // initialGraceTime can become negative
+                        // (think of a lengthy GC that will cause now to be after the dead line),
+                        // but it's ok because the scheduler will start immidiately
                         val initialGraceTime = {
                           val now = System.currentTimeMillis()
                           if (now >= deadLine) Duration.Zero
@@ -2476,7 +2458,8 @@ callback=< [URL] >
               .withHeaders(getNoCacheHeaders(): _*)
             //          val contentBytes = (prefix + Utility.escape(infotonStr) + suffix).getBytes("UTF-8")
             //          val r = new Result(header = ResponseHeader(200, Map(
-            //            CONTENT_LENGTH -> String.valueOf(contentBytes.length), overrideMimetype("text/html;charset=UTF-8", request)) ++ getNoCacheHeaders().toMap), body = Enumerator(contentBytes))
+            //            CONTENT_LENGTH -> String.valueOf(contentBytes.length), overrideMimetype("text/html;charset=UTF-8", request))
+            //                              ++ getNoCacheHeaders().toMap), body = Enumerator(contentBytes))
             Future.successful(r)
           }
 

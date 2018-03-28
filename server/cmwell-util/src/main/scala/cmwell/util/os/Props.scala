@@ -41,7 +41,9 @@ object Props {
     val it = runtimemxBean.getSystemProperties.keySet.iterator
     while (it.hasNext) {
       val next = it.next
+      // scalastyle:off
       println(next + " -> " + runtimemxBean.getSystemProperties.get(next))
+      // scalastyle:on
     }
   }
 

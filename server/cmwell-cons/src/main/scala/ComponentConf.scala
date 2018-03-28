@@ -222,7 +222,9 @@ case class CassandraConf(home: String,
         home + "/build/classes/thrift:" +
         s"$home/app/cas/cur/lib/*"
 
-    val agentLibArgs = Seq.empty //Seq(s"-javaagent:$home/app/ctrl/cur", s"-Dctrl.listenAddress=$listenAddress", s"-Dctrl.seedNodes=${host}", s"-Dctrl.clusterName=$clusterName", s"-Dctrl.roles=Metrics,CassandraNode")
+    // Seq(s"-javaagent:$home/app/ctrl/cur", s"-Dctrl.listenAddress=$listenAddress", s"-Dctrl.seedNodes=${host}",
+    // s"-Dctrl.clusterName=$clusterName", s"-Dctrl.roles=Metrics,CassandraNode")
+    val agentLibArgs = Seq.empty
 
     val args = Seq("starter", "java") ++ agentLibArgs ++ jvmArgs ++ JVMOptimizer.gcLoggingJVM(
       s"$home/log/" + dir + "/gc.log"
@@ -340,7 +342,9 @@ case class ElasticsearchConf(clusterName: String,
         s"-Des.path.home=$home/app/es/cur",
         s"-Des.config=$home/conf/${dir}/es.yml")
     }*/
-    val agentLibArgs = Seq.empty //Seq(s"-javaagent:$home/app/ctrl/cur", s"-Dctrl.listenAddress=$listenAddress", s"-Dctrl.seedNodes=${host}", s"-Dctrl.clusterName=$clusterName", s"-Dctrl.roles=Metrics,ElasticsearchNode")
+    // Seq(s"-javaagent:$home/app/ctrl/cur", s"-Dctrl.listenAddress=$listenAddress", s"-Dctrl.seedNodes=${host}",
+    // s"-Dctrl.clusterName=$clusterName", s"-Dctrl.roles=Metrics,ElasticsearchNode")
+    val agentLibArgs = Seq.empty
     val cmsGc = Seq(
       "-XX:+UseCondCardMark",
       "-XX:+UseParNewGC",
@@ -432,6 +436,7 @@ case class KafkaConf(home: String, logDirs: Seq[String], zookeeperServers: Seq[S
     val dir = "kafka"
     val exports = s"export PATH=$home/app/java/bin:$home/bin/utils:$PATH"
     val cp = ":cur/libs/*"
+    // scalastyle:off
     val scriptString =
       s"""
          |$exports
@@ -440,6 +445,7 @@ case class KafkaConf(home: String, logDirs: Seq[String], zookeeperServers: Seq[S
           |starter java -Xmx1G -Xms1G -server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+DisableExplicitGC -Djava.awt.headless=true -Xloggc:$home/log/$dir/kafkaServer-gc.log -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps -Dcom.sun.management.jmxremote.port=${PortManagers.kafka.jmxPortManager
            .getPort(1)} -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dkafka.logs.dir=$home/log/$dir -Dlog4j.configuration=file:$home/conf/$dir/log4j.properties -cp $cp kafka.Kafka $home/conf/$dir/server.properties  > $home/log/$dir/stdout.log 2>  $home/log/$dir/stderr.log &
      """.stripMargin
+    // scalastyle:on
     ConfFile("start.sh", scriptString, true)
   }
 
@@ -475,8 +481,8 @@ case class ZookeeperConf(home: String, clusterName: String, servers: Seq[String]
 
   override def mkScript: ConfFile = {
     val exports = s"export PATH=$home/app/java/bin:$home/bin/utils:$PATH"
-    val cp =
-      s"cur/lib/slf4j-log4j12-1.6.1.jar:cur/lib/slf4j-api-1.6.1.jar:cur/lib/netty-3.7.0.Final.jar:cur/lib/log4j-1.2.16.jar:cur/lib/jline-0.9.94.jar:cur/zookeeper-${cmwell.util.build.BuildInfo.zookeeperVersion}.jar:$home/conf/$dir"
+    // scalastyle:off
+    val cp = s"cur/lib/slf4j-log4j12-1.6.1.jar:cur/lib/slf4j-api-1.6.1.jar:cur/lib/netty-3.7.0.Final.jar:cur/lib/log4j-1.2.16.jar:cur/lib/jline-0.9.94.jar:cur/zookeeper-${cmwell.util.build.BuildInfo.zookeeperVersion}.jar:$home/conf/$dir"
     val scriptString =
       s"""
          |$exports
@@ -484,6 +490,7 @@ case class ZookeeperConf(home: String, clusterName: String, servers: Seq[String]
           |$BMSG
           |starter java -Xmx300m -Xms300m -XX:+UseG1GC -cp $cp -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.local.only=false org.apache.zookeeper.server.quorum.QuorumPeerMain $home/conf/$dir/zoo.cfg > $home/log/$dir/stdout.log 2>  $home/log/$dir/stderr.log &
       """.stripMargin
+    // scalastyle:on
     ConfFile("start.sh", scriptString, true)
   }
 
@@ -825,6 +832,7 @@ case class CtrlConf(home: String,
       "-Dcom.sun.management.jmxremote.ssl=false"
     ) ++ JVMOptimizer.gcLoggingJVM(s"$home/log/ctrl/gc.log")
 
+    // scalastyle:off
     val scriptString =
       s"""
         |export PATH=$home/app/java/bin:$home/bin/utils:$PATH
@@ -833,6 +841,7 @@ case class CtrlConf(home: String,
         |${genDebugStr(5011)}
         |starter java $$DEBUG_STR $mXmx $mXms $mXmn $mXss ${args.mkString(" ")} -cp "conf:$home/app/ctrl/lib/*" cmwell.ctrl.server.CtrlServer > $home/log/ctrl/stdout.log 2> $home/log/ctrl/stderr.log &
       """.stripMargin
+    // scalastyle:on
     ConfFile(sName, scriptString, true)
   }
 
@@ -892,16 +901,51 @@ case class DcConf(home: String,
       s"-Dlog.level=$logLevel"
     ) ++ JVMOptimizer.gcLoggingJVM(s"$home/log/dc/gc.log")
 
-    val scriptString =
-      s"""
-         |export PATH=$home/app/java/bin:$home/bin/utils:$PATH
-         |${createExportEnvStr("DCA_USER_TOKEN").getOrElse("")}
-         |${createExportEnvStr("STP_USER_TOKEN").getOrElse("")}
-         |$CHKSTRT
-         |$BMSG
-         |${genDebugStr(5013)}
-         |starter java $$DEBUG_STR $mXmx $mXms $mXmn $mXss ${args.mkString(" ")} -cp "conf:$home/app/dc/lib/*" cmwell.dc.stream.Main > $home/log/dc/stdout.log 2> $home/log/dc/stderr.log &
-      """.stripMargin
+    val scriptString = {
+      val sb = new StringBuilder
+      sb ++= "export PATH="
+      sb ++= home
+      sb ++= "/app/java/bin:"
+      sb ++= home
+      sb ++= "/bin/utils:"
+      sb ++= PATH
+      sb += '\n'
+      createExportEnvStr("DCA_USER_TOKEN").foreach { dut =>
+        sb ++= dut
+        sb += '\n'
+      }
+      createExportEnvStr("STP_USER_TOKEN").foreach { sut =>
+        sb ++= sut
+        sb += '\n'
+      }
+      sb ++= CHKSTRT
+      sb += '\n'
+      sb ++= BMSG
+      sb += '\n'
+      sb ++= genDebugStr(5013)
+      sb += '\n'
+      sb ++= "starter java $DEBUG_STR "
+      sb ++= mXmx
+      sb += ' '
+      sb ++= mXms
+      sb += ' '
+      sb ++= mXmn
+      sb += ' '
+      sb ++= mXss
+      sb += ' '
+      args.foreach { arg =>
+        sb ++= arg
+        sb += ' '
+      }
+      sb ++= "-cp \"conf:"
+      sb ++= home
+      sb ++= "/app/dc/lib/*\" cmwell.dc.stream.Main > "
+      sb ++= home
+      sb ++= "/log/dc/stdout.log 2> "
+      sb ++= home
+      sb ++= "/log/dc/stderr.log &\n"
+      sb.result()
+    }
     ConfFile(sName, scriptString, true)
   }
 
@@ -931,6 +975,8 @@ case class DcConf(home: String,
   override def getPsIdentifier: String = "log/dc"
 }
 
+//TODO: remove LogstashConf
+// scalastyle:off
 object LogstashConf {
   def genLogstashConfFile(clusterName: String,
                           esHost: String,
@@ -1055,7 +1101,7 @@ object LogstashConf {
     """.stripMargin
   }
 }
-
+// scalastyle:on
 case class LogstashConf(clusterName: String,
                         elasticsearchUrl: String,
                         home: String,
@@ -1065,12 +1111,30 @@ case class LogstashConf(clusterName: String,
                         hostIp: String)
     extends ComponentConf(hostIp, s"$home/app/logstash", sName, s"$home/conf/logstash", "logstash.yml", 1) {
   override def mkScript: ConfFile = {
-    val scriptContent =
-      s"""
-         |export PATH=$home/app/java/bin:$home/bin/utils:$PATH
-         |$CHKSTRT
-         |$BMSG
-         |starter $home/app/logstash/cur/bin/logstash agent -f $home/conf/logstash/ > $home/log/logstash/stdout.log 2> $home/log/logstash/stderr.log &""".stripMargin
+    val scriptContent = {
+      val sb = new StringBuilder
+      sb ++= "export PATH="
+      sb ++= home
+      sb ++= "/app/java/bin:"
+      sb ++= home
+      sb ++= "/bin/utils:"
+      sb ++= PATH
+      sb += '\n'
+      sb ++= CHKSTRT
+      sb += '\n'
+      sb ++= BMSG
+      sb += '\n'
+      sb ++= "starter "
+      sb ++= home
+      sb ++= "/app/logstash/cur/bin/logstash agent -f "
+      sb ++= home
+      sb ++= "/conf/logstash/ > "
+      sb ++= home
+      sb ++= "/log/logstash/stdout.log 2> "
+      sb ++= home
+      sb ++= "/log/logstash/stderr.log &"
+      sb.result()
+    }
     ConfFile("start.sh", scriptContent, true)
   }
 

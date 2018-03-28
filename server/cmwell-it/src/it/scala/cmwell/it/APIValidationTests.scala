@@ -34,9 +34,9 @@ import scala.io.Source
 import scala.util.Try
 
 class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with OptionValues with Helpers with LazyLogging {
-
+  // scalastyle:off
   val wrongTokenHeader: List[(String, String)] = ("X-CM-WELL-TOKEN" -> "qXoFmO/mK9tKbSreT3xVRr3tKB1KEZr+9xTZ6We+oa0hvonnGjwF9QS7BTIQ57cr0k42cv9Qr9oMpoqHu0LdWLR8vdEPln3q/p66jDt8uZCITA/Epfopcj8dI0xDqL8X504ZRpuvzs3fAdiHmi2dKn5Xz13I5BuRXCYnq/VvDL1r2aKn/PJBEvb9315YKNSzeAWX7JM0ARyanBO2eVtfquTxGV9PUK79IxyzEG/9TXZlA/LNLd22yPhHxzgSgXCgQoWV/nEHjgNNnz70FqDVdPk2FcU0wTlIsjpveL8Prdqp3b/1ENNmA5s74TMo4XNf9/fjrVkcwmZD9WM4oZKLSg==") :: Nil
-
+  // scalastyle:on
   val wsConfig = ConfigFactory.load("ws/application.conf")
 
   val metaSys = cmw / "meta" / "sys"
@@ -58,7 +58,8 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
       Http.post(_in, data, queryParams = List("format" -> "n3", "debug-log" -> ""), headers = tokenHeader)
     }
     val f1 = {
-      val onlyPathIsBenign = """<http://test.permid.org/testsortby> <http://cm-well-uk-lab.int.thomsonreuters.com/meta/sys#path> "/test.permid.org/testsortby" ."""
+      val onlyPathIsBenign =
+        """<http://test.permid.org/testsortby> <http://cm-well-uk-lab.int.thomsonreuters.com/meta/sys#path> "/test.permid.org/testsortby" ."""
       Http.post(_in, onlyPathIsBenign, textPlain, queryParams = List("format" -> "ntriples", "debug-log" -> ""), headers = tokenHeader)
     }
     val f2 = {
@@ -128,7 +129,11 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
         contentType = textPlain,
         headers = ("X-CM-WELL-TYPE" -> "FILE") :: tokenHeader)
       val fs = travector(0 to 30){ i =>
-        Http.post(cmt / s"fw-link-${i + 1}", s"/cmt/cm/test/fw-link-$i", textPlain, headers = ("X-CM-WELL-LINK-TYPE" -> "2") :: ("X-CM-WELL-TYPE" -> "LN") :: tokenHeader)
+        Http.post(
+          cmt / s"fw-link-${i + 1}",
+          s"/cmt/cm/test/fw-link-$i",
+          textPlain,
+          headers = ("X-CM-WELL-LINK-TYPE" -> "2") :: ("X-CM-WELL-TYPE" -> "LN") :: tokenHeader)
       }
       fs -> executeAfterCompletion(fs)(scheduleFuture(indexingDuration)(spinCheck(100.millis,true)(Http.get(cmt / "fw-link-31"))(_.status)))
     }
@@ -279,7 +284,9 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
         ignore("with posting 10 infotons as preparation")(f26.map(s => forAll(s)(_.status should be(200))))
 
         ignore("with comparing expected to given results")(f27.map { r =>
+          // scalastyle:off
           val expected = XML.loadString("""<feed xmlns:os="http://a9.com/-/spec/opensearch/1.1/" xmlns="http://www.w3.org/2005/Atom"><title>Infotons search results</title><id>http://localhost:9000/cmt/cm/test/atom1?format=atom&amp;length=4</id><os:totalResults>10</os:totalResults><link rel="self" href="http://localhost:9000/cmt/cm/test/atom1?format=atom&amp;length=4&amp;offset=0" type="application/atom+xml"/><link rel="first" href="http://localhost:9000/cmt/cm/test/atom1?format=atom&amp;length=4&amp;offset=0" type="application/atom+xml"/><link rel="next" href="http://localhost:9000/cmt/cm/test/atom1?format=atom&amp;length=4&amp;offset=4" type="application/atom+xml"/><link rel="last" href="http://localhost:9000/cmt/cm/test/atom1?format=atom&amp;length=4&amp;offset=8" type="application/atom+xml"/><author><name>CM-Well</name><uri>http://localhost:9000/cmt/sys/home.html</uri></author><entry><title>/cmt/cm/test/atom1/InfoObj9</title><link href="http://localhost:9000/cmt/cm/test/atom1/InfoObj9" rel="alternate" type="text/html"/><link href="http://localhost:9000/cmt/cm/test/atom1/InfoObj9?format=json" rel="alternate" type="application/json"/><link href="http://localhost:9000/cmt/cm/test/atom1/InfoObj9?format=n3" rel="alternate" type="text/rdf+n3"/><link href="http://localhost:9000/cmt/cm/test/atom1/InfoObj9?format=ntriple" rel="alternate" type="text/plain"/><link href="http://localhost:9000/cmt/cm/test/atom1/InfoObj9?format=rdfxml" rel="alternate" type="application/rdf+xml"/><link href="http://localhost:9000/cmt/cm/test/atom1/InfoObj9?format=yaml" rel="alternate" type="text/yaml"/><id>http://localhost:9000/cmt/cm/test/atom1/InfoObj9</id></entry><entry><title>/cmt/cm/test/atom1/InfoObj8</title><link href="http://localhost:9000/cmt/cm/test/atom1/InfoObj8" rel="alternate" type="text/html"/><link href="http://localhost:9000/cmt/cm/test/atom1/InfoObj8?format=json" rel="alternate" type="application/json"/><link href="http://localhost:9000/cmt/cm/test/atom1/InfoObj8?format=n3" rel="alternate" type="text/rdf+n3"/><link href="http://localhost:9000/cmt/cm/test/atom1/InfoObj8?format=ntriple" rel="alternate" type="text/plain"/><link href="http://localhost:9000/cmt/cm/test/atom1/InfoObj8?format=rdfxml" rel="alternate" type="application/rdf+xml"/><link href="http://localhost:9000/cmt/cm/test/atom1/InfoObj8?format=yaml" rel="alternate" type="text/yaml"/><id>http://localhost:9000/cmt/cm/test/atom1/InfoObj8</id></entry><entry><title>/cmt/cm/test/atom1/InfoObj7</title><link href="http://localhost:9000/cmt/cm/test/atom1/InfoObj7" rel="alternate" type="text/html"/><link href="http://localhost:9000/cmt/cm/test/atom1/InfoObj7?format=json" rel="alternate" type="application/json"/><link href="http://localhost:9000/cmt/cm/test/atom1/InfoObj7?format=n3" rel="alternate" type="text/rdf+n3"/><link href="http://localhost:9000/cmt/cm/test/atom1/InfoObj7?format=ntriple" rel="alternate" type="text/plain"/><link href="http://localhost:9000/cmt/cm/test/atom1/InfoObj7?format=rdfxml" rel="alternate" type="application/rdf+xml"/><link href="http://localhost:9000/cmt/cm/test/atom1/InfoObj7?format=yaml" rel="alternate" type="text/yaml"/><id>http://localhost:9000/cmt/cm/test/atom1/InfoObj7</id></entry><entry><title>/cmt/cm/test/atom1/InfoObj6</title><link href="http://localhost:9000/cmt/cm/test/atom1/InfoObj6" rel="alternate" type="text/html"/><link href="http://localhost:9000/cmt/cm/test/atom1/InfoObj6?format=json" rel="alternate" type="application/json"/><link href="http://localhost:9000/cmt/cm/test/atom1/InfoObj6?format=n3" rel="alternate" type="text/rdf+n3"/><link href="http://localhost:9000/cmt/cm/test/atom1/InfoObj6?format=ntriple" rel="alternate" type="text/plain"/><link href="http://localhost:9000/cmt/cm/test/atom1/InfoObj6?format=rdfxml" rel="alternate" type="application/rdf+xml"/><link href="http://localhost:9000/cmt/cm/test/atom1/InfoObj6?format=yaml" rel="alternate" type="text/yaml"/><id>http://localhost:9000/cmt/cm/test/atom1/InfoObj6</id></entry></feed>""")
+          // scalastyle:on
           val xml = XML.loadString(r.payload)
           val filtered = filterAllDates(xml)
           filtered shouldEqual expected

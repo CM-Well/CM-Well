@@ -260,7 +260,8 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
               case RdfType(NTriplesFlavor) => true
               case _                       => false
             })
-            //cleanSystemBlanks set to true, so we won't output all the meta information we usually output. it get's messy with streaming. we don't want each chunk to show the "document context"
+            // cleanSystemBlanks set to true, so we won't output all the meta information we usually output.
+            // it get's messy with streaming. we don't want each chunk to show the "document context"
             formatterManager.getFormatter(
               format = formatType,
               timeContext = timeContext,
@@ -290,30 +291,20 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
       .fold[Either[ErrorMessage, Future[(BulkConsumeState, Option[Long])]]] {
         Left("position param is mandatory")
       } { pos: String =>
+      // scalastyle:off
         if (wasSupplied("qp"))
-          Left(
-            "you can't specify `qp` together with `position` (`qp` is meant to be used only in the first iteration request. after that, continue iterating using the received `position`)"
-          )
+          Left("you can't specify `qp` together with `position` (`qp` is meant to be used only in the first iteration request. after that, continue iterating using the received `position`)")
         else if (wasSupplied("index-time"))
-          Left(
-            "`index-time` is determined in the beginning of the iteration. can't be specified together with `position`"
-          )
+          Left("`index-time` is determined in the beginning of the iteration. can't be specified together with `position`")
         else if (wasSupplied("with-descendants") || wasSupplied("recursive"))
-          Left(
-            "`with-descendants`/`recursive` is determined in the beginning of the iteration. can't be specified together with `position`"
-          )
+          Left("`with-descendants`/`recursive` is determined in the beginning of the iteration. can't be specified together with `position`")
         else if (wasSupplied("with-history"))
-          Left(
-            "`with-history` is determined in the beginning of the iteration. can't be specified together with `position`"
-          )
+          Left("`with-history` is determined in the beginning of the iteration. can't be specified together with `position`")
         else if (wasSupplied("with-deleted"))
-          Left(
-            "`with-deleted` is determined in the beginning of the iteration. can't be specified together with `position`"
-          )
+          Left("`with-deleted` is determined in the beginning of the iteration. can't be specified together with `position`")
         else if (wasSupplied("length-hint"))
-          Left(
-            "`length-hint` is determined in the beginning of the bulk consume iteration. can't be specified together with `position`"
-          )
+          Left("`length-hint` is determined in the beginning of the bulk consume iteration. can't be specified together with `position`")
+        // scalastyle:on
         else {
           ConsumeState
             .decode[BulkConsumeState](pos)

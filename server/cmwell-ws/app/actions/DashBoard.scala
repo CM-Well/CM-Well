@@ -146,7 +146,8 @@ class DashBoard @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
         }
     }
 
-    val ffsew = fsfes.map[Future[Set[Either[String, (String, Int)]]]](Future.sequence(_)) //TODO: report scala bug? `Future.sequence(_)` should be equivalent to `Future.sequence`, but infered type is `Nothing`?
+    //TODO: report scala bug? `Future.sequence(_)` should be equivalent to `Future.sequence`, but infered type is `Nothing`?
+    val ffsew = fsfes.map[Future[Set[Either[String, (String, Int)]]]](Future.sequence(_))
     ffsew.onComplete {
       case Success(fsw) => {
         fsw.foreach { s =>

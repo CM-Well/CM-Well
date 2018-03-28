@@ -17,6 +17,7 @@ package cmwell.build
 
 import com.github.tkawachi.doctest.DoctestPlugin
 import org.scalafmt.sbt.ScalafmtPlugin
+import org.scalastyle.sbt.ScalastylePlugin
 import coursier.CoursierPlugin
 import net.virtualvoid.sbt.graph.DependencyGraphPlugin
 import sbt.Keys._
@@ -30,9 +31,11 @@ object CMWellBuild extends AutoPlugin {
 	type PartialFunction2[-T1,-T2,+R] = PartialFunction[Tuple2[T1,T2],R]
 
 	object autoImport {
-//		val configSettingsResource = TaskKey[Seq[sbt.File]]("config-settings-resource", "gets the .conf resource")
+//  val configSettingsResource = TaskKey[Seq[sbt.File]]("config-settings-resource", "gets the .conf resource")
 		val dependenciesManager = settingKey[PartialFunction2[String, String, ModuleID]]("a setting containing versions for dependencies. if we only use it to declare dependencies, we can avoid a lot of version collisions.")
-		val iTestsLightMode = settingKey[Boolean]("a flag, which if turns on, does not take cm-well down after integration tests, but rather purge everything in it, so it will be ready for next time. on startup, it checks if there is an instance running, and if so, does not re-install cm-well.")
+		// scalastyle:off
+    val iTestsLightMode = settingKey[Boolean]("a flag, which if turns on, does not take cm-well down after integration tests, but rather purge everything in it, so it will be ready for next time. on startup, it checks if there is an instance running, and if so, does not re-install cm-well.")
+		// scalastyle:on
 		val peScript = TaskKey[sbt.File]("pe-script", "returns the script that executes cmwell in PE mode.")
 		val uploadInitContent = TaskKey[sbt.File]("upload-init-content", "returns the script that uploads the initial content in to PE Cm-Well.")
 		val packageCMWell = TaskKey[Seq[java.io.File]]("package-cmwell", "get components from dependencies and sibling projects.")
@@ -50,19 +53,23 @@ object CMWellBuild extends AutoPlugin {
 		val fullTest = TaskKey[Unit]("full-test", "executes all tests in project in parallel (with respect to dependent tests)")
 		val getData = TaskKey[Seq[java.io.File]]("get-data", "get data to upload to cm-well")
 		val getExternalComponents = TaskKey[Iterable[File]]("get-external-components", "get external dependencies binaries")
+		val testScalastyle = taskKey[Unit]("testScalastyle")
+		val itScalastyle = taskKey[Unit]("itScalastyle")
+		val compileScalastyle = taskKey[Unit]("compileScalastyle")
 	}
 
 	import autoImport._
 	import DoctestPlugin.autoImport._
 	import CoursierPlugin.autoImport._
 	import ScalafmtPlugin.autoImport._
+	import ScalastylePlugin.autoImport._
 
   lazy val apacheMirror = {
     val zoneID = java.util.TimeZone
       .getDefault()
       .getID
     if(zoneID.startsWith("America") || zoneID.startsWith("Pacific") || zoneID.startsWith("Etc")) "us"
-    else "eu"
+		else "eu"
   }
 
 	def fetchZookeeperApacheMirror(version: String): Future[File] = {
@@ -224,13 +231,18 @@ object CMWellBuild extends AutoPlugin {
 		CMWellCommon.scalazTaskAsScalaFuture(task)
 	}
 
-	override def requires = CoursierPlugin && ScalafmtPlugin && DoctestPlugin && DependencyGraphPlugin
+	override def requires = CoursierPlugin && ScalastylePlugin && ScalafmtPlugin && DoctestPlugin && DependencyGraphPlugin
 
 	override def projectSettings = Seq(
-		scalafmtOnCompile := true,
+		scalastyleFailOnError := true,
+		testScalastyle in ThisProject := (scalastyle in ThisProject).in(Test).toTask("").value,
+		(test in Test) := ((test in Test) dependsOn testScalastyle).value,
+		compileScalastyle in ThisProject := (scalastyle in ThisProject).in(Compile).toTask("").value,
+		(compile in Compile) := ((compile in Compile) dependsOn compileScalastyle).value,
+		//scalafmtOnCompile := true,
+		//doctestWithDependencies := false,
 		coursierMaxIterations := 200,
 		Keys.fork in Test := true,
-//		doctestWithDependencies := false,
 		libraryDependencies ++= {
 			val dm = dependenciesManager.value
 			Seq(

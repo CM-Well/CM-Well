@@ -144,15 +144,6 @@ object CtrlClient extends LazyLogging {
 
   }
 
-  def clearNode(ip: String) = {
-    implicit val timeout = Timeout(1 hours)
-    println(s"Sending ${ClearNode(ip)} request to health control")
-    (healthActor ? ClearNode(ip)).mapTo[TaskResult].map { tr =>
-      println(s"Received status $tr in CtrlClient")
-      tr
-    }
-  }
-
   def addNode(ip: String) = {
 //    logger.info(s"inside addNode with ip $ip")
     healthActor ! RemoveFromDownNodes(ip)
@@ -166,11 +157,9 @@ object CtrlClient extends LazyLogging {
       val f = (healthActor ? WhoAreYou).mapTo[WhoIAm]
       Try(Await.result(f, 10.seconds)) match {
         case Success(_) =>
-          //          println(s"Success, counter=$counter")
           counter = 0
           healthIsActive = true
         case Failure(_) =>
-          //          println(s"Failure, counter=$counter")
           counter -= 1
       }
     }

@@ -643,7 +643,6 @@ class GridImp extends Grid with LazyLogging {
     // first lets create the local settings actor
 //    val settingsActor = system.actorOf(Props[SettingsActor],"settings")
 //    settings = new Settings(settingsActor)
-    //println(cluster.state.allRoles)
 
     // create a new internal actor
     internalActor = system.actorOf(Props[InternalActor], name = "internalactor")

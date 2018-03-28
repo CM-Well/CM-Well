@@ -182,6 +182,8 @@ class DataInitializer(h: Host, jwt: String, rootDigest: String, rootDigest2: Str
     val denyForAnon =
       Seq("/meta/auth").map(p => s"""{"id":"$p","recursive":true,"sign":"-","permissions":"rw"}""").mkString(",")
 
+
+    // scalastyle:off
     // WARNING: modifying any hard-coded UserInfoton won't affect any environment even on upgrade. You will have to upload them manually!
     val userInfotons = Map(
       "anonymous" -> s"""{"paths":[${allowRoot("r")},$denyForAnon],"roles":[]}""",
@@ -191,6 +193,7 @@ class DataInitializer(h: Host, jwt: String, rootDigest: String, rootDigest2: Str
       "docu" -> """{"paths":[{"id":"/","recursive":true,"sign":"+","permissions":"r"},{"id":"/meta/docs","recursive":true,"sign":"+","permissions":"rw"}],"rev":0}""",
       "stpAgent" -> s"""{"paths":[${allowRoot("rw")}],"roles":[]}"""
     )
+    // scalastyle:on
 
     val p = Progress(userInfotons.size)
     val results =
@@ -296,14 +299,20 @@ class DataInitializer(h: Host, jwt: String, rootDigest: String, rootDigest2: Str
     ).map {
         case resp if isOk(resp) => resp.body._2
         case badResp => {
-          println(s" Failed to upload eli1 $url and payload ${payload.mkString} with response $badResp");
-          Thread.dumpStack(); ""
+          // scalastyle:off
+          println(s" Failed to upload eli1 $url and payload ${payload.mkString} with response $badResp")
+          // scalastyle:on
+          Thread.dumpStack()
+          ""
         }
       }
       .recover {
         case err =>
-          println(s" Failed to upload eli2 $url"); Thread.dumpStack();
-          "" + cmwell.util.exceptions.stackTraceToString(err)
+          // scalastyle:off
+          println(s" Failed to upload eli2 $url")
+          // scalastyle:on
+          Thread.dumpStack()
+          cmwell.util.exceptions.stackTraceToString(err)
       }
   }
 
@@ -345,11 +354,15 @@ class DataInitializer(h: Host, jwt: String, rootDigest: String, rootDigest2: Str
       printf("\r\t%.2f%%", 100 / (total / counter))
     }
 
+    // scalastyle:off
     def complete(): Unit = println("\r\t100.0%  ")
+    // scalastyle:on
   }
 
   private def withTry(desc: String)(block: => Unit): Unit = Try(block).recover {
     case t =>
+      // scalastyle:off
       println(s"\t*** FAILED to $desc due to ${t.getMessage} ...Moving on!")
+      // scalastyle:on
   }
 }

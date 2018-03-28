@@ -46,7 +46,8 @@ trait TypeHelpers {
     try {
       val s = number.trim.dropWhile(_ == '0')
       require(s.forall(_.isDigit), s"Not a valid positive number format: $s")
-      require(s.length < 19 || (s.length == 19 && s <= "9223372036854775807"), s"the number $s seems to be too big") //don't try to parse something larger than MAX_LONG
+      //don't try to parse something larger than MAX_LONG
+      require(s.length < 19 || (s.length == 19 && s <= "9223372036854775807"), s"the number $s seems to be too big")
       Some(s.toLong)
     } catch {
       case _: NumberFormatException | _: NullPointerException => None

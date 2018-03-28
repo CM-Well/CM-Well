@@ -97,15 +97,18 @@ case class LocalHost(dataCenter: String = "lh",
   }
 
   override def command(com: String, sudo: Boolean = false): Try[String] = {
+    // scalastyle:off
     if (verbose) println(s"localhost: ${com}")
+    // scalastyle:on
     Try(Seq("bash", "-c", s"$com").!!)
   }
 
   override def rsync(from: String, to: String, hosts: GenSeq[String], sudo: Boolean = false): GenSeq[Try[String]] = {
-    //println("executing rsync from " + from + " to " + host + ":" + to)
     val seq = s"rsync -Pavz --delete ${from} ${to}"
     //val seq = s"cp -al ${from} ${to}"
+    // scalastyle:off
     if (verbose) println("command: " + seq.mkString(" "))
+    // scalastyle:on
     List(Try(Seq("bash", "-c", seq).!!))
   }
 
@@ -115,8 +118,10 @@ case class LocalHost(dataCenter: String = "lh",
   }
 
   override def startCassandra(hosts: GenSeq[String]): Unit = {
-    //command(s"cp ${instDirs.globalLocation}/cm-well/app/scripts/pe/cassandra.yaml ${instDirs.globalLocation}/cm-well/conf/cas/cassandra.yaml", hosts(0), false)
-    //command(s"cp ${instDirs.globalLocation}/cm-well/app/scripts/pe/log4j-server.properties ${instDirs.globalLocation}/cm-well/conf/cas/log4j-server.properties", hosts(0), false)
+    //command(s"cp ${instDirs.globalLocation}/cm-well/app/scripts/pe/cassandra.yaml
+    // ${instDirs.globalLocation}/cm-well/conf/cas/cassandra.yaml", hosts(0), false)
+    //command(s"cp ${instDirs.globalLocation}/cm-well/app/scripts/pe/log4j-server.properties
+    // ${instDirs.globalLocation}/cm-well/conf/cas/log4j-server.properties", hosts(0), false)
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur/; ${startScript("./start.sh")}", hosts(0), false)
   }
 
@@ -155,7 +160,6 @@ case class LocalHost(dataCenter: String = "lh",
 
   override def injectMetaData(i: String) {
     Try(WebServiceLock().waitForModule("localhost", 1))
-    //println("Uploading meta data")
     dataInitializer.uploadMetaData
     dataInitializer.uploadNameSpaces()
   }

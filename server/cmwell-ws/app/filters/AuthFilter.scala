@@ -55,36 +55,37 @@ class AuthFilter @Inject()(authCache: EagerAuthCache, authUtils: AuthUtils, auth
     def isRequestWriteToMeta = authUtils.isWriteToMeta(PermissionLevel(requestHeader.method), requestHeader.path)
 
     if ((!useAuthorizationParam && !isRequestWriteToMeta) || irrelevantPaths.exists(requestHeader.path.startsWith))
-      return (true, "")
+      (true, "")
+    else {
+      def withMsg(allowed: Boolean, msg: String) = (allowed, if (allowed) "" else msg)
 
-    def withMsg(allowed: Boolean, msg: String) = (allowed, if (allowed) "" else msg)
+      val request =
+        (normalizePath(requestHeader.path), PermissionLevel(requestHeader.method, requestHeader.getQueryString("op")))
 
-    val request =
-      (normalizePath(requestHeader.path), PermissionLevel(requestHeader.method, requestHeader.getQueryString("op")))
+      val tokenOpt = requestHeader.headers
+        .get("X-CM-WELL-TOKEN2")
+        . // todo TOKEN2 is only supported for backward compatibility. one day we should stop supporting it
+        orElse(requestHeader.headers.get("X-CM-WELL-TOKEN"))
+        .orElse(requestHeader.getQueryString("token"))
+        .orElse(requestHeader.cookies.get("X-CM-WELL-TOKEN2").map(_.value))
+        . // todo TOKEN2 is only supported for backward compatibility. one day we should stop supporting it
+        orElse(requestHeader.cookies.get("X-CM-WELL-TOKEN").map(_.value))
+        .flatMap(Token(_, authCache))
 
-    val tokenOpt = requestHeader.headers
-      .get("X-CM-WELL-TOKEN2")
-      . // todo TOKEN2 is only supported for backward compatibility. one day we should stop supporting it
-      orElse(requestHeader.headers.get("X-CM-WELL-TOKEN"))
-      .orElse(requestHeader.getQueryString("token"))
-      .orElse(requestHeader.cookies.get("X-CM-WELL-TOKEN2").map(_.value))
-      . // todo TOKEN2 is only supported for backward compatibility. one day we should stop supporting it
-      orElse(requestHeader.cookies.get("X-CM-WELL-TOKEN").map(_.value))
-      .flatMap(Token(_, authCache))
-
-    tokenOpt match {
-      case Some(token) if token.isValid => {
-        authCache.getUserInfoton(token.username) match {
-          case Some(user) =>
-            withMsg(authorization.isAllowedForUser(request, user, Some(token.username)),
-                    "Authenticated but not authorized")
-          case None if token.username == "root" || token.username == "pUser" =>
-            (true, "") // special case only required for cases when CRUD is not yet ready
-          case None => (false, s"Username ${token.username} was not found in CM-Well")
+      tokenOpt match {
+        case Some(token) if token.isValid => {
+          authCache.getUserInfoton(token.username) match {
+            case Some(user) =>
+              withMsg(authorization.isAllowedForUser(request, user, Some(token.username)),
+                "Authenticated but not authorized")
+            case None if token.username == "root" || token.username == "pUser" =>
+              (true, "") // special case only required for cases when CRUD is not yet ready
+            case None => (false, s"Username ${token.username} was not found in CM-Well")
+          }
         }
+        case Some(_) => (false, "given token is not valid (not signed or expired)")
+        case None => withMsg(authorization.isAllowedForAnonymousUser(request), "Not authorized, please login first")
       }
-      case Some(_) => (false, "given token is not valid (not signed or expired)")
-      case None    => withMsg(authorization.isAllowedForAnonymousUser(request), "Not authorized, please login first")
     }
   }
 }

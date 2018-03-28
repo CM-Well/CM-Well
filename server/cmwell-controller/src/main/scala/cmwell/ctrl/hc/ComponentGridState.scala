@@ -327,7 +327,8 @@ class ElasticsearchGridStatus extends ComponentGridState with LazyLogging {
     val seedNodesThatShouldStartMaster = availableSeedNodes -- runningMasters
     val nodesThatShouldStopMaster = {
       val runningMastersNotOnSeeds = runningMasters -- availableSeedNodes
-      // always take 1 (if the set is empty of course take nothing) to put down master nodes slowly. On the next iteration on other node will be stopped until no master elastic on non seed node
+      // always take 1 (if the set is empty of course take nothing) to put down master nodes slowly.
+      // On the next iteration on other node will be stopped until no master elastic on non seed node
       runningMastersNotOnSeeds.take(1)
     }
 

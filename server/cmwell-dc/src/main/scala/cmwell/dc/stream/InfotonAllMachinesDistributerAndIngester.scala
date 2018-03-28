@@ -24,7 +24,12 @@ import akka.stream.scaladsl.{Flow, GraphDSL, Keep, Merge, Partition, Sink}
 import akka.util.ByteString
 import cmwell.dc.{LazyLogging, Settings}
 import cmwell.dc.stream.MessagesTypesAndExceptions._
-import cmwell.dc.stream.SingleMachineInfotonIngester.{IngestInput, IngestOutput, IngestState, IngestStateStatus}
+import cmwell.dc.stream.SingleMachineInfotonIngester.{
+  IngestInput,
+  IngestOutput,
+  IngestState,
+  IngestStateStatus
+}
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
@@ -37,12 +42,16 @@ import scala.concurrent.ExecutionContext.Implicits.global
   */
 object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
 
-  val breakOut =
-    scala.collection.breakOut[IngestInput, (Future[IngestInput], IngestState), List[(Future[IngestInput], IngestState)]]
-  val initialBulkStatus = IngestStateStatus(Settings.initialBulkIngestRetryCount, 0, None)
+  val breakOut = scala.collection
+    .breakOut[IngestInput, (Future[IngestInput], IngestState), List[
+      (Future[IngestInput], IngestState)
+    ]]
+  val initialBulkStatus =
+    IngestStateStatus(Settings.initialBulkIngestRetryCount, 0, None)
 
-  def apply(dataCenterId: String, hosts: Vector[(String, Option[Int])], decider: Decider)(implicit sys: ActorSystem,
-                                                                                          mat: Materializer) = {
+  def apply(dataCenterId: String,
+            hosts: Vector[(String, Option[Int])],
+            decider: Decider)(implicit sys: ActorSystem, mat: Materializer) = {
     val size = hosts.length
     Flow.fromGraph(GraphDSL.create() { implicit b =>
       import GraphDSL.Implicits._
@@ -55,66 +64,101 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
         case (o: Outlet[InfotonData @unchecked], i) => {
           val (host, portOpt) = hosts(i)
           val location = s"$host:${portOpt.getOrElse(80)}"
-          val ingestFlow = SingleMachineInfotonIngester(dataCenterId, location, decider)
+          val ingestFlow =
+            SingleMachineInfotonIngester(dataCenterId, location, decider)
           val infotonAggregator = b.add(
-            InfotonAggregator(Settings.maxIngestInfotonCount,
-                              Settings.maxIngestByteSize,
-                              Settings.maxTotalInfotonCountAggregatedForIngest)
+            InfotonAggregator(
+              Settings.maxIngestInfotonCount,
+              Settings.maxIngestByteSize,
+              Settings.maxTotalInfotonCountAggregatedForIngest
+            )
           )
           val initialStateAdder = b.add(
-            Flow[scala.collection.immutable.Seq[InfotonData]]
-              .map(ingestData => Future.successful(ingestData) -> (ingestData -> initialBulkStatus))
+            Flow[scala.collection.immutable.Seq[InfotonData]].map(
+              ingestData =>
+                Future
+                  .successful(ingestData) -> (ingestData -> initialBulkStatus)
+            )
           )
           val ingestRetrier =
-            Retry.concat(Settings.ingestRetryQueueSize, ingestFlow)(retryDecider(dataCenterId, location))
-          o ~> infotonAggregator ~> initialStateAdder ~> ingestRetrier ~> mergeIngests.in(i)
+            Retry.concat(Settings.ingestRetryQueueSize, ingestFlow)(
+              retryDecider(dataCenterId, location)
+            )
+          o ~> infotonAggregator ~> initialStateAdder ~> ingestRetrier ~> mergeIngests
+            .in(i)
         }
       }
       FlowShape(part.in, mergeIngests.out)
     })
   }
 
-  def retryDecider(dataCenterId: String, location: String)(implicit sys: ActorSystem, mat: Materializer) =
+  def retryDecider(
+    dataCenterId: String,
+    location: String
+  )(implicit sys: ActorSystem, mat: Materializer) =
     (state: IngestState) =>
       state match {
-        case (ingestSeq,
-              IngestStateStatus(retriesLeft, singleRetryCount, Some(ex: IngestServiceUnavailableException))) => {
-          logger.warn(
-            s"Data Center ID $dataCenterId: Ingest to machine $location failed (Service Unavailable). Will keep trying again until the service will be available. The exception is: ${ex.getMessage} ${ex.getCause.getMessage}"
-          )
+        case (
+            ingestSeq,
+            IngestStateStatus(
+              retriesLeft,
+              singleRetryCount,
+              Some(ex: IngestServiceUnavailableException)
+            )
+            ) => {
+          logger.warn(s"Data Center ID $dataCenterId: Ingest to machine $location failed (Service Unavailable). " +
+                      s"Will keep trying again until the service will be available. The exception is: ${ex.getMessage} ${ex.getCause.getMessage}")
           Util.warnPrintFuturedBodyException(ex)
           val ingestState =
-            (ingestSeq,
-             IngestStateStatus(retriesLeft, singleRetryCount + (if (ingestSeq.size == 1) 1 else 0), Some(ex)))
+            (
+              ingestSeq,
+              IngestStateStatus(
+                retriesLeft,
+                singleRetryCount + (if (ingestSeq.size == 1) 1 else 0),
+                Some(ex)
+              )
+            )
           Some(
             List(
-              akka.pattern
-                .after(Settings.ingestServiceUnavailableDelay, sys.scheduler)(Future.successful(ingestSeq)) -> ingestState
+              akka.pattern.after(
+                Settings.ingestServiceUnavailableDelay,
+                sys.scheduler
+              )(Future.successful(ingestSeq)) -> ingestState
             )
           )
         }
-        case (ingestSeq, IngestStateStatus(retriesLeft, singleRetryCount, ex)) =>
+        case (
+            ingestSeq,
+            IngestStateStatus(retriesLeft, singleRetryCount, ex)
+            ) =>
           if (ingestSeq.size == 1 && retriesLeft == 0) {
-            val originalRequest = ingestSeq.foldLeft(empty)(_ ++ _.data).utf8String
+            val originalRequest =
+              ingestSeq.foldLeft(empty)(_ ++ _.data).utf8String
             if (!originalRequest.contains("meta/sys#indexTime")) {
               val originalInfotonData = state._1.head
               val idxTime = originalInfotonData.meta.indexTime
-              val subject = originalInfotonData.data.takeWhile(_ != space).utf8String
-              val idxTimeQuad =
-                s"""$subject <cmwell://meta/sys#indexTime> "$idxTime"^^<http://www.w3.org/2001/XMLSchema#long> ."""
-              logger.warn(
-                s"""Data Center ID $dataCenterId: Ingest of uuid ${originalInfotonData.meta.uuid.utf8String} to machine $location didn't have index time. Adding "$idxTimeQuad" from metadata manually"""
-              )
+              val subject =
+                originalInfotonData.data.takeWhile(_ != space).utf8String
+              val idxTimeQuad = s"""$subject <cmwell://meta/sys#indexTime> "$idxTime"^^<http://www.w3.org/2001/XMLSchema#long> ."""
+              val u = originalInfotonData.meta.uuid.utf8String
+              val q = "\""+idxTimeQuad+"\""
+              logger.warn(s"Data Center ID $dataCenterId: Ingest of uuid $u to machine $location didn't have index time. Adding $q from metadata manually")
               val ingestData = Seq(
-                InfotonData(originalInfotonData.meta, originalInfotonData.data ++ ByteString(idxTimeQuad) ++ endln)
+                InfotonData(
+                  originalInfotonData.meta,
+                  originalInfotonData.data ++ ByteString(idxTimeQuad) ++ endln
+                )
               )
-              val ingestState = ingestData -> IngestStateStatus(Settings.initialSingleIngestRetryCount,
-                                                                singleRetryCount + 1,
-                                                                ex)
+              val ingestState = ingestData -> IngestStateStatus(
+                Settings.initialSingleIngestRetryCount,
+                singleRetryCount + 1,
+                ex
+              )
               Some(
                 List(
-                  akka.pattern
-                    .after(Settings.ingestRetryDelay, sys.scheduler)(Future.successful(ingestData)) -> ingestState
+                  akka.pattern.after(Settings.ingestRetryDelay, sys.scheduler)(
+                    Future.successful(ingestData)
+                  ) -> ingestState
                 )
               )
             } else {
@@ -125,10 +169,9 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
                   )
                   Util.errorPrintFuturedBodyException(e)
                 case e =>
-                  logger.error(
-                    s"Data Center ID $dataCenterId: Ingest of uuid ${ingestSeq.head.meta.uuid.utf8String} to machine $location failed. No more reties will be done. Please use the red log to see the list of all the failed ingests. The exception is: ",
-                    e
-                  )
+                  val u = ingestSeq.head.meta.uuid.utf8String
+                  logger.error(s"Data Center ID $dataCenterId: Ingest of uuid $u to machine $location failed. No more reties will be done. " +
+                               "Please use the red log to see the list of all the failed ingests. The exception is: ", e)
               }
               logger.trace(
                 s"Original Ingest request for uuid ${ingestSeq.head.meta.uuid.utf8String} was: $originalRequest"
@@ -139,30 +182,35 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
               Some(Nil)
             }
           } else if (ingestSeq.size == 1) {
-            logger.trace(
-              s"Data Center ID $dataCenterId: Ingest of uuid ${ingestSeq.head.meta.uuid.utf8String} to machine $location failed. Retries left $retriesLeft. Will try again. The exception is: ",
-              ex.get
-            )
+            logger.trace(s"Data Center ID $dataCenterId: Ingest of uuid ${ingestSeq.head.meta.uuid.utf8String} to " +
+                         s"machine $location failed. Retries left $retriesLeft. Will try again. The exception is: ", ex.get)
             Util.tracePrintFuturedBodyException(ex.get)
-            val ingestState = (ingestSeq, IngestStateStatus(retriesLeft - 1, singleRetryCount + 1, ex))
+            val ingestState =
+              (
+                ingestSeq,
+                IngestStateStatus(retriesLeft - 1, singleRetryCount + 1, ex)
+              )
             Some(
               List(
-                akka.pattern
-                  .after(Settings.ingestRetryDelay, sys.scheduler)(Future.successful(ingestSeq)) -> ingestState
+                akka.pattern.after(Settings.ingestRetryDelay, sys.scheduler)(
+                  Future.successful(ingestSeq)
+                ) -> ingestState
               )
             )
           } else if (retriesLeft == 0) {
-            logger.trace(
-              s"Data Center ID $dataCenterId: Ingest of bulk uuids to machine $location failed. No more bulk retries left. Will split to request for each uuid and try again. The exception is: ",
-              ex.get
-            )
+            logger.trace(s"Data Center ID $dataCenterId: Ingest of bulk uuids to machine $location failed. No more bulk retries left. " +
+                         s"Will split to request for each uuid and try again. The exception is: ", ex.get)
             Util.tracePrintFuturedBodyException(ex.get)
             Some(ingestSeq.map { infotonMetaAndData =>
               val ingestData = Seq(infotonMetaAndData)
-              val ingestState = ingestData -> IngestStateStatus(Settings.initialSingleIngestRetryCount,
-                                                                singleRetryCount,
-                                                                ex)
-              akka.pattern.after(Settings.ingestRetryDelay, sys.scheduler)(Future.successful(ingestData)) -> ingestState
+              val ingestState = ingestData -> IngestStateStatus(
+                Settings.initialSingleIngestRetryCount,
+                singleRetryCount,
+                ex
+              )
+              akka.pattern.after(Settings.ingestRetryDelay, sys.scheduler)(
+                Future.successful(ingestData)
+              ) -> ingestState
             }(breakOut))
           } else {
             logger.trace(
@@ -170,11 +218,16 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
               ex.get
             )
             Util.tracePrintFuturedBodyException(ex.get)
-            val ingestState = (ingestSeq, IngestStateStatus(retriesLeft - 1, singleRetryCount, ex))
+            val ingestState =
+              (
+                ingestSeq,
+                IngestStateStatus(retriesLeft - 1, singleRetryCount, ex)
+              )
             Some(
               List(
-                akka.pattern
-                  .after(Settings.ingestRetryDelay, sys.scheduler)(Future.successful(ingestSeq)) -> ingestState
+                akka.pattern.after(Settings.ingestRetryDelay, sys.scheduler)(
+                  Future.successful(ingestSeq)
+                ) -> ingestState
               )
             )
           }

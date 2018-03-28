@@ -23,7 +23,6 @@ import akka.stream.{ActorMaterializer, Materializer}
 import cmwell.tools.data.downloader.consumer.Downloader
 import cmwell.tools.data.utils.akka._
 import cmwell.tools.data.utils.chunkers.GroupChunker
-import sun.misc.Cleaner
 
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.ExecutionContext.Implicits.global

@@ -430,10 +430,9 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
 
                               def optionToFNull(o: Option[String]): FNull = o match {
                                 //TODO: future optimization: check replace-mode's alias before invoking jena and parsing RDF document
-                                case None =>
-                                  throw new UnretrievableIdentifierException(
-                                    s"The alias '$alias' provided for quad as replace-mode's argument does not exist. Use explicit quad URL, or register a new alias using `graphAlias` meta operation."
-                                  )
+                                case None => throw new UnretrievableIdentifierException("The alias '" + alias +
+                                  "' provided for quad as replace-mode's argument does not exist. " +
+                                  "Use explicit quad URL, or register a new alias using `graphAlias` meta operation.")
                                 case someURI => FNull(someURI)
                               }
 

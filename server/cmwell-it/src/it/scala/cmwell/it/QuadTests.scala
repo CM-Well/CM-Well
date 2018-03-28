@@ -86,10 +86,21 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
   ).transform(jsonlSorter andThen jsonlUuidDateIdEraser).get
 
   val batmanExpected = bEnemies(
-    Json.obj("value" -> "http://example.org/comics/characters/joker", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
-    Json.obj("value" -> "http://example.org/comics/characters/riddler", "quad" -> "http://example.org/graphs/batman", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
-    Json.obj("value" -> "http://example.org/comics/characters/joker", "quad" -> "http://example.org/graphs/batman", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
-    Json.obj("value" -> "http://example.org/comics/characters/joker", "quad" -> "http://example.org/graphs/joker", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"))
+    Json.obj(
+      "value" -> "http://example.org/comics/characters/joker",
+      "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
+    Json.obj(
+      "value" -> "http://example.org/comics/characters/riddler",
+      "quad" -> "http://example.org/graphs/batman",
+      "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
+    Json.obj(
+      "value" -> "http://example.org/comics/characters/joker",
+      "quad" -> "http://example.org/graphs/batman",
+      "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
+    Json.obj(
+      "value" -> "http://example.org/comics/characters/joker",
+      "quad" -> "http://example.org/graphs/joker",
+      "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"))
 
 
   describe("n-quads data") {
@@ -162,35 +173,43 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
         }
       }
     })
-    val fSuperman1 = fSuperHeroes.flatMap(_ => Http.get(exampleOrg, List("op" -> "search", "qp" -> "system.quad::http://example.org/graphs/superman", "format" -> "jsonl", "recursive" -> "")).map { res =>
-      val expected =
-        Json.obj(
-          "type" -> "SearchResults",
-          "total" -> 4,
-          "offset" -> 0,
-          "length" -> 4,
-          "infotons" -> Json.arr(
-            jsonlNoData("john-kent"),
-            jsonlNoData("clark-kent"),
-            jsonlNoData("martha-kent"),
-            jsonlNoData("superman")
-          )
-        ).transform(jsonlSorter).get
-      withClue(res) {
-        Json
-          .parse(res.payload)
-          .transform((__ \ 'results).json.pick andThen
-            (__ \ 'fromDate).json.prune andThen
-            (__ \ 'toDate).json.prune andThen
-            jsonlInfotonArraySorterAndUuidDateIdEraser)
-          .get shouldEqual expected
-      }
-    })
-    val fSuperman2 = fSuperHeroes.flatMap(_ => Http.get(exampleOrg, List("format" -> "jsonl", "op" -> "search", "qp" -> "system.quad::superman", "recursive" -> "")).map { res =>
-      withClue(res) {
-        res.status should be(422)
-      }
-    })
+    val fSuperman1 = fSuperHeroes.flatMap(_ => Http.get(
+      exampleOrg,
+      List(
+        "op" -> "search",
+        "qp" -> "system.quad::http://example.org/graphs/superman",
+        "format" -> "jsonl",
+        "recursive" -> "")).map { res =>
+          val expected =
+            Json.obj(
+              "type" -> "SearchResults",
+              "total" -> 4,
+              "offset" -> 0,
+              "length" -> 4,
+              "infotons" -> Json.arr(
+                jsonlNoData("john-kent"),
+                jsonlNoData("clark-kent"),
+                jsonlNoData("martha-kent"),
+                jsonlNoData("superman")
+              )
+            ).transform(jsonlSorter).get
+          withClue(res) {
+            Json
+              .parse(res.payload)
+              .transform((__ \ 'results).json.pick andThen
+                (__ \ 'fromDate).json.prune andThen
+                (__ \ 'toDate).json.prune andThen
+                jsonlInfotonArraySorterAndUuidDateIdEraser)
+              .get shouldEqual expected
+          }
+        })
+    val fSuperman2 = fSuperHeroes.flatMap(_ => Http.get(
+      exampleOrg,
+      List("format" -> "jsonl", "op" -> "search", "qp" -> "system.quad::superman", "recursive" -> "")).map { res =>
+        withClue(res) {
+          res.status should be(422)
+        }
+      })
     val fSuperman3 = fSuperHeroes.flatMap(_ => Http.get(superman, List("format" -> "jsonl", "pretty" -> "")).map { res =>
       withClue(res) {
         Json
@@ -320,19 +339,29 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
             .parse(res.payload)
             .transform(jsonlSorter andThen jsonlUuidDateIdEraser)
             .get shouldEqual bEnemies(
-            Json.obj("value" -> "http://example.org/comics/characters/joker", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
-            Json.obj("value" -> "http://example.org/comics/characters/joker", "quad" -> "http://example.org/graphs/batman", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
-            Json.obj("value" -> "http://example.org/comics/characters/joker", "quad" -> "http://example.org/graphs/joker", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"))
+            Json.obj(
+              "value" -> "http://example.org/comics/characters/joker",
+              "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
+            Json.obj(
+              "value" -> "http://example.org/comics/characters/joker",
+              "quad" -> "http://example.org/graphs/batman",
+              "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
+            Json.obj(
+              "value" -> "http://example.org/comics/characters/joker",
+              "quad" -> "http://example.org/graphs/joker",
+              "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"))
         }
       }
     })
     val fBatman06 = {
+      // scalastyle:off
       val quads =
         """
           |<http://example.org/comics/characters/batman> <http://purl.org/vocab/relationship/enemyOf> <http://example.org/comics/characters/scarecrow> <http://example.org/graphs/batman> .
           |<http://example.org/comics/characters/batman> <cmwell://meta/sys#markDelete> _:batmanDeletes <http://example.org/graphs/joker> .
           |_:batmanDeletes <http://purl.org/vocab/relationship/enemyOf> <http://example.org/comics/characters/joker> .
         """.stripMargin
+      // scalastyle:on
       fBatman05.flatMap(_ => Http.post(_in, quads, None, List("format" -> "nquads"), tokenHeader).map{res =>
         withClue(res) {
           Json.parse(res.payload) should be(jsonSuccess)
@@ -346,10 +375,21 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
             .parse(res.payload)
             .transform(jsonlSorter andThen jsonlUuidDateIdEraser)
             .get shouldEqual bEnemies(
-            Json.obj("value" -> "http://example.org/comics/characters/joker", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
-            Json.obj("value" -> "http://example.org/comics/characters/joker", "quad" -> "http://example.org/graphs/batman", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
-            Json.obj("value" -> "http://example.org/comics/characters/joker", "quad" -> "http://example.org/graphs/joker", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
-            Json.obj("value" -> "http://example.org/comics/characters/scarecrow", "quad" -> "http://example.org/graphs/batman", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"))
+            Json.obj(
+              "value" -> "http://example.org/comics/characters/joker",
+              "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
+            Json.obj(
+              "value" -> "http://example.org/comics/characters/joker",
+              "quad" -> "http://example.org/graphs/batman",
+              "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
+            Json.obj(
+              "value" -> "http://example.org/comics/characters/joker",
+              "quad" -> "http://example.org/graphs/joker",
+              "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
+            Json.obj(
+              "value" -> "http://example.org/comics/characters/scarecrow",
+              "quad" -> "http://example.org/graphs/batman",
+              "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"))
         }
       }
     })
@@ -372,9 +412,17 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
             .parse(res.payload)
             .transform(jsonlSorter andThen jsonlUuidDateIdEraser)
             .get shouldEqual bEnemies(
-            Json.obj("value" -> "http://example.org/comics/characters/joker", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
-            Json.obj("value" -> "http://example.org/comics/characters/joker", "quad" -> "http://example.org/graphs/batman", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
-            Json.obj("value" -> "http://example.org/comics/characters/scarecrow", "quad" -> "http://example.org/graphs/batman", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"))
+            Json.obj(
+              "value" -> "http://example.org/comics/characters/joker",
+              "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
+            Json.obj(
+              "value" -> "http://example.org/comics/characters/joker",
+              "quad" -> "http://example.org/graphs/batman",
+              "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
+            Json.obj(
+              "value" -> "http://example.org/comics/characters/scarecrow",
+              "quad" -> "http://example.org/graphs/batman",
+              "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"))
         }
       }
     })
@@ -397,11 +445,15 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
             .parse(res.payload)
             .transform(jsonlSorter andThen jsonlUuidDateIdEraser)
             .get shouldEqual bEnemies(
-            Json.obj("value" -> "http://example.org/comics/characters/scarecrow", "quad" -> "http://example.org/graphs/batman", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"))
+            Json.obj(
+              "value" -> "http://example.org/comics/characters/scarecrow",
+              "quad" -> "http://example.org/graphs/batman",
+              "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"))
         }
       }
     })
     val fBatman12 = {
+      // scalastyle:off
       val quads =
         """
           |<http://example.org/comics/characters/batman> <http://purl.org/vocab/relationship/enemyOf> <http://example.org/comics/characters/joker> <http://example.org/graphs/batman> .
@@ -409,6 +461,7 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
           |<http://example.org/comics/characters/batman> <http://purl.org/vocab/relationship/enemyOf> <http://example.org/comics/characters/riddler> <http://example.org/graphs/batman> .
           |<http://example.org/comics/characters/batman> <http://purl.org/vocab/relationship/enemyOf> <http://example.org/comics/characters/joker> <http://example.org/graphs/joker> .
         """.stripMargin
+      // scalastyle:on
       fBatman11.flatMap(_ => Http.post(_in, quads, None, List("format" -> "nquads", "replace-mode" -> "*"), tokenHeader).map{res =>
         withClue(res) {
           Json.parse(res.payload) should be(jsonSuccess)
@@ -422,19 +475,32 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
             .parse(res.payload)
             .transform(jsonlSorter andThen jsonlUuidDateIdEraser)
             .get shouldEqual bEnemies(
-            Json.obj("value" -> "http://example.org/comics/characters/joker", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
-            Json.obj("value" -> "http://example.org/comics/characters/joker", "quad" -> "http://example.org/graphs/joker", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
-            Json.obj("value" -> "http://example.org/comics/characters/joker", "quad" -> "http://example.org/graphs/batman", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
-            Json.obj("value" -> "http://example.org/comics/characters/riddler", "quad" -> "http://example.org/graphs/batman", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"))
+            Json.obj(
+              "value" -> "http://example.org/comics/characters/joker",
+              "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
+            Json.obj(
+              "value" -> "http://example.org/comics/characters/joker",
+              "quad" -> "http://example.org/graphs/joker",
+              "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
+            Json.obj(
+              "value" -> "http://example.org/comics/characters/joker",
+              "quad" -> "http://example.org/graphs/batman",
+              "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
+            Json.obj(
+              "value" -> "http://example.org/comics/characters/riddler",
+              "quad" -> "http://example.org/graphs/batman",
+              "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"))
         }
       }
     })
     val fBatman14 = {
+      // scalastyle:off
       val quads =
         """
           |<http://example.org/comics/characters/batman> <cmwell://meta/sys#markReplace> <http://purl.org/vocab/relationship/enemyOf> <http://example.org/graphs/batman> .
           |<http://example.org/comics/characters/batman> <http://purl.org/vocab/relationship/enemyOf> <http://example.org/comics/characters/enigma> <http://example.org/graphs/batman> .
         """.stripMargin
+      // scalastyle:on
       fBatman13.flatMap(_ => Http.post(_in, quads, None, List("format" -> "nquads"), tokenHeader).map{res =>
         withClue(res) {
           Json.parse(res.payload) should be(jsonSuccess)
@@ -448,9 +514,17 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
             .parse(res.payload)
             .transform(jsonlSorter andThen jsonlUuidDateIdEraser)
             .get shouldEqual bEnemies(
-            Json.obj("value" -> "http://example.org/comics/characters/joker", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
-            Json.obj("value" -> "http://example.org/comics/characters/joker", "quad" -> "http://example.org/graphs/joker", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
-            Json.obj("value" -> "http://example.org/comics/characters/enigma", "quad" -> "http://example.org/graphs/batman", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"))
+            Json.obj(
+              "value" -> "http://example.org/comics/characters/joker",
+              "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
+            Json.obj(
+              "value" -> "http://example.org/comics/characters/joker",
+              "quad" -> "http://example.org/graphs/joker",
+              "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
+            Json.obj(
+              "value" -> "http://example.org/comics/characters/enigma",
+              "quad" -> "http://example.org/graphs/batman",
+              "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"))
         }
       }
     })
@@ -473,13 +547,22 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
             .parse(res.payload)
             .transform(jsonlSorter andThen jsonlUuidDateIdEraser)
             .get shouldEqual bEnemies(
-            Json.obj("value" -> "http://example.org/comics/characters/scarecrow", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
-            Json.obj("value" -> "http://example.org/comics/characters/joker", "quad" -> "http://example.org/graphs/joker", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
-            Json.obj("value" -> "http://example.org/comics/characters/enigma", "quad" -> "http://example.org/graphs/batman", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"))
+            Json.obj(
+              "value" -> "http://example.org/comics/characters/scarecrow",
+              "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
+            Json.obj(
+              "value" -> "http://example.org/comics/characters/joker",
+              "quad" -> "http://example.org/graphs/joker",
+              "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
+            Json.obj(
+              "value" -> "http://example.org/comics/characters/enigma",
+              "quad" -> "http://example.org/graphs/batman",
+              "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"))
         }
       }
     })
     val fBatman18 = {
+      // scalastyle:off
       val quads =
         """
           |<http://example.org/comics/characters/batman> <cmwell://meta/sys#markReplace> <http://purl.org/vocab/relationship/enemyOf> <*> .
@@ -489,6 +572,7 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
           |<http://example.org/comics/characters/cat-woman> <http://purl.org/vocab/relationship/collaboratesWith> <http://example.org/comics/characters/batman> .
           |<http://example.org/comics/characters/james-gordon> <http://purl.org/vocab/relationship/collaboratesWith> <http://example.org/comics/characters/batman> <http://example.org/graphs/batman> .
         """.stripMargin
+      // scalastyle:on
       fBatman17.flatMap(_ => Http.post(_in, quads, None, List("format" -> "nquads"), tokenHeader).map { res =>
         withClue(res) {
           Json.parse(res.payload) should be(jsonSuccess)
@@ -500,8 +584,13 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
         Reads.JsObjectReads.map{
           case JsObject(xs) => JsObject(
             xs + ("collaboratesWith.rel" -> Json.arr(
-              Json.obj("value" -> "http://example.org/comics/characters/cat-woman", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
-              Json.obj("value" -> "http://example.org/comics/characters/james-gordon", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI", "quad" -> "http://example.org/graphs/batman")))
+              Json.obj(
+                "value" -> "http://example.org/comics/characters/cat-woman",
+                "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
+              Json.obj(
+                "value" -> "http://example.org/comics/characters/james-gordon",
+                "type" -> "http://www.w3.org/2001/XMLSchema#anyURI",
+                "quad" -> "http://example.org/graphs/batman")))
           )
         }
       )
@@ -511,18 +600,23 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
             .parse(res.payload)
             .transform(jsonlSorter andThen jsonlUuidDateIdEraser)
             .get shouldEqual bEnemies(
-            Json.obj("value" -> "http://example.org/comics/characters/ivy", "quad" -> "http://example.org/graphs/batman", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI")
+            Json.obj(
+              "value" -> "http://example.org/comics/characters/ivy",
+              "quad" -> "http://example.org/graphs/batman",
+              "type" -> "http://www.w3.org/2001/XMLSchema#anyURI")
           ).transform(addColls andThen jsonlSorter).get
         }
       }
     })
     val fBatman20 = {
+      // scalastyle:off
       val quads =
         """
           |<http://example.org/comics/characters/batman> <cmwell://meta/sys#markReplace> <*> <http://example.org/graphs/batman> .
           |<http://example.org/comics/characters/batman> <http://purl.org/vocab/relationship/collaboratesWith> <http://example.org/comics/characters/robin> <http://example.org/graphs/batman> .
           |<http://example.org/comics/characters/robin> <http://purl.org/vocab/relationship/collaboratesWith> <http://example.org/comics/characters/batman> <http://example.org/graphs/batman> .
         """.stripMargin
+      // scalastyle:on
       fBatman19.flatMap(_ => Http.post(_in, quads, None, List("format" -> "nquads"), tokenHeader).map { res =>
         withClue(res) {Json.parse(res.payload) should be(jsonSuccess)
         }
@@ -540,13 +634,18 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
             "parent.sys"           -> arr(Json.obj("value" -> "/example.org/comics/characters")),
             "dataCenter.sys"       -> arr(Json.obj("value" -> dcName)),
             "collaboratesWith.rel" -> Json.arr(
-              Json.obj("value" -> "http://example.org/comics/characters/cat-woman", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
-              Json.obj("value" -> "http://example.org/comics/characters/robin", "type" -> "http://www.w3.org/2001/XMLSchema#anyURI", "quad" -> "http://example.org/graphs/batman"))
+              Json.obj(
+                "value" -> "http://example.org/comics/characters/cat-woman",
+                "type" -> "http://www.w3.org/2001/XMLSchema#anyURI"),
+              Json.obj(
+                "value" -> "http://example.org/comics/characters/robin",
+                "type" -> "http://www.w3.org/2001/XMLSchema#anyURI",
+                "quad" -> "http://example.org/graphs/batman"))
           ).transform(jsonlSorter).get
         }
       }
     })
-
+    // scalastyle:off
     it("should accept and process n-quads data")(ingestingNquads)
     it("should not succeed deleting all quads globally using <*>")(failGlobalQuadReplace)
     it("should fail to exceed the maximum allowed replaceGraph statements per request")(failTooManyGraphReplaceStatements)
@@ -605,5 +704,6 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
       it("succeed posting the quads")(fBatman20)
       it("verifying the data")(fBatman21)
     }
+    // scalastyle:on
   }
 }

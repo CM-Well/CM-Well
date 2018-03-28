@@ -69,7 +69,6 @@ class MatchMap(fields: Map[String, Set[FieldValue]]) extends Serializable {
               stop = true
             else {
               val i = s.intersect(fs)
-              //println(s"$s - $fs - $i")
               if (!i.isEmpty) {
                 stop = true
               }

@@ -50,7 +50,12 @@ class AuthTests extends FunSpec with Matchers with Helpers with LazyLogging {
 
     describe("Preparing data...") {
       def buildPathObj(path: String, recursive: Boolean, allow: Boolean, permissions: String) = {
-        Json.toJson(Map("id" -> Json.toJson(path), "recursive" -> Json.toJson(recursive), "sign" -> Json.toJson(if (allow) "+" else "-"), "permissions" -> Json.toJson(permissions)))
+        Json.toJson(
+          Map(
+            "id" -> Json.toJson(path),
+            "recursive" -> Json.toJson(recursive),
+            "sign" -> Json.toJson(if (allow) "+" else "-"),
+            "permissions" -> Json.toJson(permissions)))
       }
 
       it("should add a custom user") {
@@ -117,7 +122,11 @@ class AuthTests extends FunSpec with Matchers with Helpers with LazyLogging {
       it("should add an empty UserInfoton") {
         val path = cmw / "meta" / "auth" / "users" / "EmptyTestUser"
         val saltedPassword = "$2a$10$hrLLP9IUUJyUHP5skFtpC.LG.WFvcKHkbrcymcg0yPWXxg08z2mhW" // bcrypt("myPassword"+salt)
-        val userInfoton = Json.toJson(Map("digest" -> Json.toJson(saltedPassword), "paths" -> Json.toJson(Seq[String]()), "roles" -> Json.toJson(Seq[String]()))).toString
+        val userInfoton = Json.toJson(
+          Map(
+            "digest" -> Json.toJson(saltedPassword),
+            "paths" -> Json.toJson(Seq[String]()),
+            "roles" -> Json.toJson(Seq[String]()))).toString
         val res = waitAndExtractBody(Http.post(path, userInfoton, Some("application/json"), headers = ("X-CM-Well-Type" -> "File") :: tokenHeader))
         Json.parse(res) should be(jsonSuccess)
       }
@@ -211,6 +220,7 @@ class AuthTests extends FunSpec with Matchers with Helpers with LazyLogging {
     }
 
     describe("bad token") {
+      // scalastyle:off
       Map("an expired token" -> "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJUZXN0VXNlciIsImV4cCI6MTQyMjgyODAwMDAwMCwicmV2IjoxfQ.0uKmaV6di_nHI1EJYW0xs5CyP4De2yU6C2KuPu7dd3E",
         "a token with bad rev num" -> "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJUZXN0VXNlciIsImV4cCI6NDYwNDk0MDAwMDAwMCwicmV2IjozfQ.MLMO8VRf0OXnI2o7wIcOKuaZD2deaxi3qO4fJgnQ8Lc",
         "a token with wrong signature" -> "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJUZXN0VXNlciIsImV4cCI6NDYwNDk0MDAwMDAwMCwicmV2IjoxfQ.VquZLMOHuTvHv495j0eacHpy2ikzwAKEaAe1U7nl5fg",
@@ -220,6 +230,7 @@ class AuthTests extends FunSpec with Matchers with Helpers with LazyLogging {
           waitAndExtractStatus(Http.get(cmw / "whatever", headers = Seq("X-CM-WELL-TOKEN" -> token))) should be(403)
         }
       }
+      // scalastyle:on
     }
 
     describe("user with an empty permissions set") {
@@ -296,40 +307,75 @@ class AuthTests extends FunSpec with Matchers with Helpers with LazyLogging {
 
       it("should not be able to read nor write if there's no levels defined") {
         // weird case, but for the sake of soundness...
-        val readRes = waitAndExtractStatus(Http.get(emptyPath, Seq("format"->"json"), Seq(tokenForCustomUser)))
+        val readRes = waitAndExtractStatus(
+          Http.get(
+            emptyPath,
+            Seq("format"->"json"),
+            Seq(tokenForCustomUser)))
         readRes should be(403)
 
-        val writeRes = waitAndExtractStatus(Http.post(emptyPath, exampleObj, Some("application/json"), headers = Seq("X-CM-WELL-TYPE" -> "OBJ")))
+        val writeRes = waitAndExtractStatus(
+          Http.post(
+            emptyPath,
+            exampleObj, Some("application/json"),
+            headers = Seq("X-CM-WELL-TYPE" -> "OBJ")))
         writeRes should be(403)
       }
 
       it("should be able to read if has Read Only permission") {
-        val readRes = waitAndExtractStatus(Http.get(readOnlyPath, Seq("format"->"json"), Seq(tokenForCustomUser)))
+        val readRes = waitAndExtractStatus(
+          Http.get(
+            readOnlyPath,
+            Seq("format"->"json"),
+            Seq(tokenForCustomUser)))
         readRes should be(200)
       }
 
       it("should not be able to write if has Read Only permission") {
-        val res = waitAndExtractStatus(Http.post(readOnlyPath, exampleObj, Some("application/json"), headers = Seq("X-CM-WELL-TYPE" -> "OBJ", tokenForCustomUser)))
+        val res = waitAndExtractStatus(
+          Http.post(
+            readOnlyPath,
+            exampleObj,
+            Some("application/json"),
+            headers = Seq("X-CM-WELL-TYPE" -> "OBJ", tokenForCustomUser)))
         res should be(403)
       }
 
       it("should be able to write if has Write Only permission") {
         // weird case, but for the sake of soundness...
-        val res = waitAndExtractStatus(Http.post(writeOnlyPath, exampleObj, Some("application/json"), headers = Seq("X-CM-WELL-TYPE" -> "OBJ", tokenForCustomUser)))
+        val res = waitAndExtractStatus(
+          Http.post(
+            writeOnlyPath,
+            exampleObj,
+            Some("application/json"),
+            headers = Seq("X-CM-WELL-TYPE" -> "OBJ", tokenForCustomUser)))
         res should be(200)
       }
 
       it("should not be able to read if has Write Only permission") {
         // weird case, but for the sake of soundness...
-        val res = waitAndExtractStatus(Http.get(writeOnlyPath, Seq("format"->"json"), Seq(tokenForCustomUser)))
+        val res = waitAndExtractStatus(
+          Http.get(
+            writeOnlyPath,
+            Seq("format"->"json"),
+            Seq(tokenForCustomUser)))
         res should be(403)
       }
 
       it("should be able to read and write if has all permissions") {
-        val readRes = waitAndExtractStatus(Http.get(readWritePath, Seq("format"->"json"), Seq(tokenForCustomUser)))
+        val readRes = waitAndExtractStatus(
+          Http.get(
+            readWritePath,
+            Seq("format"->"json"),
+            Seq(tokenForCustomUser)))
         readRes should be(200)
 
-        val writeRes = waitAndExtractStatus(Http.post(readWritePath, exampleObj, Some("application/json"), headers = Seq("X-CM-WELL-TYPE" -> "OBJ", tokenForCustomUser)))
+        val writeRes = waitAndExtractStatus(
+          Http.post(
+            readWritePath,
+            exampleObj,
+            Some("application/json"),
+            headers = Seq("X-CM-WELL-TYPE" -> "OBJ", tokenForCustomUser)))
         writeRes should be(200)
       }
 
@@ -467,10 +513,11 @@ class AuthTests extends FunSpec with Matchers with Helpers with LazyLogging {
     }
 
     describe("Providing lastModified to _in") {
+      // scalastyle:off
       val daisyDuckWithLastModified = """<http://example.org/Individuals/DaisyDuck> <http://www.tr-lbd.com/bold#active> "false" .
                                         |<http://example.org/Individuals/DaisyDuck> <http://purl.org/vocab/relationship/colleagueOf> <http://example.org/Individuals/BruceWayne> .
                                         |<http://example.org/Individuals/DaisyDuck> <http://localhost:9000/meta/sys#lastModified> "2015-11-21T19:09:25.508Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .""".stripMargin
-
+      // scalastyle:on
       it("should allow with permission") {
         val resp = Json.parse(waitAndExtractBody(Http.post(_in, daisyDuckWithLastModified, None, Seq("format" -> "ntriples"), Seq(tokenForOverwriter))))
         resp should be(jsonSuccess)
@@ -482,13 +529,26 @@ class AuthTests extends FunSpec with Matchers with Helpers with LazyLogging {
       val priorityData = """<http://example.org/Individuals/DaisyDuck1> <http://www.tr-lbd.com/bold#active> "false" ."""
 
       it("should not allow priority write without a valid token supplied") {
-        val (status, body) = waitAndExtractStatusAndBody(Http.post(_in, priorityData, None, Seq("format" -> "ntriples", priorityQueryParam), Seq(tokenForCustomUser)))
+        val (status, body) = waitAndExtractStatusAndBody(
+          Http.post(
+            _in,
+            priorityData,
+            None,
+            Seq("format" -> "ntriples", priorityQueryParam),
+            Seq(tokenForCustomUser)))
         status should be(403)
         Json.parse(body) should be(Json.parse("""{"success":false,"message":"User not authorized for priority write"}"""))
       }
 
       it("should allow priority write with a valid token supplied") {
-        val resp = Json.parse(waitAndExtractBody(Http.post(_in, priorityData, None, Seq("format" -> "ntriples", priorityQueryParam), Seq(tokenForPriorityWriter))))
+        val resp = Json.parse(
+          waitAndExtractBody(
+            Http.post(
+              _in,
+              priorityData,
+              None,
+              Seq("format" -> "ntriples", priorityQueryParam),
+              Seq(tokenForPriorityWriter))))
         resp should be(jsonSuccess)
       }
     }

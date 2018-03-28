@@ -30,7 +30,9 @@ object DupClener extends App {
   val pathsFile = args(2)
   val numOfVersions = args(3).toInt
 
+  // scalastyle:off
   println(s" ${hostname}  ${clusterName} ${pathsFile} ")
+  // scalastyle:on
   // init dao & irw & fts
   System.setProperty("ftsService.transportAddress", hostname)
   System.setProperty("ftsService.clusterName", clusterName)
@@ -41,10 +43,14 @@ object DupClener extends App {
   val f = ProxyOperations(irw, fts)
 
   for (line <- Source.fromFile(pathsFile).getLines()) {
+    // scalastyle:off
     println(s"Working on $line")
+    // scalastyle:on
     f.fix(line, 1, numOfVersions)
   }
+  // scalastyle:off
   println("Done.")
   println("Shutdown tool.")
+  // scalastyle:on
   f.shutdown
 }

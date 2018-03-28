@@ -36,7 +36,8 @@ object ZStore {
 // Design choice: using (seconds: Int) TTL, and not Duration. There are reasons...
 trait ZStore {
   def put(uzid: String, value: Array[Byte], batched: Boolean = false): Future[Unit]
-  def put(uzid: String, value: Array[Byte], secondsToLive: Int, batched: Boolean): Future[Unit] // not using FiniteDuration, since CAS only supports INT values for TTL
+  // not using FiniteDuration, since CAS only supports INT values for TTL
+  def put(uzid: String, value: Array[Byte], secondsToLive: Int, batched: Boolean): Future[Unit]
   def get(uzid: String): Future[Array[Byte]]
   def get(uzid: String, dontRetry: Boolean): Future[Array[Byte]]
   def getOpt(uzid: String, dontRetry: Boolean = false): Future[Option[Array[Byte]]]
@@ -66,12 +67,7 @@ trait ZStore {
     ByteBuffer.wrap(bytes).getInt
   }
 
-  def getBoolean(uzid: String): Future[Boolean] = get(uzid).map { bytes =>
-    if (bytes(0).toInt == 1)
-      true
-    else
-      false
-  }
+  def getBoolean(uzid: String): Future[Boolean] = get(uzid).map(_(0).toInt == 1)
 
   def getLongOpt(uzid: String): Future[Option[Long]] = getOpt(uzid, true).map { bytesOpt =>
     bytesOpt.map { ByteBuffer.wrap(_).getLong }
@@ -82,9 +78,7 @@ trait ZStore {
   }
 
   def getBooleanOpt(uzid: String): Future[Option[Boolean]] = getOpt(uzid, true).map { bytesOpt =>
-    bytesOpt.map { bytes =>
-      if (bytes(0) == 1) true else false
-    }
+    bytesOpt.map(_(0) == 1)
   }
 
   def remove(uzid: String): Future[Unit]
@@ -122,7 +116,10 @@ class ZStoreImpl(dao: Dao) extends ZStore with DaoExecution with LazyLogging {
         batch.add(putPStmt.bind(row.uzid, row.field, ByteBuffer.wrap(row.chunk), ttl))
       }
       execWithRetry(batch.setConsistencyLevel(ConsistencyLevel.QUORUM)).map(_ => ())
-    } else cmwell.util.concurrent.travector(rows)((rowToStatement _).andThen(execWithRetry)).map(_ => ())
+    }
+    else {
+      travector(rows)((rowToStatement _).andThen(execWithRetry)).map(_ => ())
+    }
   }
 
   override def get(uzid: String): Future[Array[Byte]] = {
@@ -225,10 +222,12 @@ class ZStoreImpl(dao: Dao) extends ZStore with DaoExecution with LazyLogging {
         it.foreach(valueBuilder ++= _)
         val obj = ZStoreObj(uzid, adler, valueBuilder.result())
         if (!obj.isCorrect) {
-          logger.error(
-            s"[zStore] Reading uzid [$uzid] failed because data corruption! (stored adler[$adler] != computed adler[${obj.adlerizedValue}], stored bytes[$bytes], actual value size[${obj.value.length}])"
-          )
+          val a = obj.adlerizedValue
+          val l = obj.value.length
+          // scalastyle:off
+          logger.error(s"[zStore] Reading uzid [$uzid] failed because data corruption! (stored adler[$adler] != computed adler[$a], stored bytes[$bytes], actual value size[$l])")
 //          throw new RuntimeException("Corrupted data!")
+          // scalastyle:on
         }
         Some(obj)
       }

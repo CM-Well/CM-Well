@@ -14,8 +14,10 @@
   */
 package cmwell.util
 
+// scalastyle:off
 import sun.tools.jps.Arguments
 import sun.jvmstat.monitor._
+// scalastyle:on
 import org.apache.commons.io.IOUtils
 
 import java.io.{InputStream, OutputStream, PrintStream}
