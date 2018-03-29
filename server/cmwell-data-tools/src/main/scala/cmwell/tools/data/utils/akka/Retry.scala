@@ -305,7 +305,9 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                   Success(res.copy(entity = entityBytes, headers = combinedHeaders)) -> state.copy(
                     response = response.toOption
                   )
-                case Failure(err) => Failure(err) -> state.copy(response = response.toOption)
+                case Failure(err) =>
+                  logger.error(s"responseValidator function failed: ${err.getMessage}")
+                  Failure(err) -> state.copy(response = response.toOption)
               }
           }
 
