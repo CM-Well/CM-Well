@@ -107,7 +107,6 @@
 
     <appender name="ASYNC_BAD_DATA" class="ch.qos.logback.classic.AsyncAppender">
         <appender-ref ref="BAD_DATA" />
-        <maxFlushTime>0</maxFlushTime>
         <discardingThreshold>0</discardingThreshold>
     </appender>
 
@@ -115,7 +114,7 @@
         <appender-ref ref="ASYNC_RED_LOG" />
     </logger>
 
-    <logger name="bad-data" additivity="false">
+    <logger name="bad-data" additivity="true">
         <appender-ref ref="ASYNC_BAD_DATA" />
     </logger>
 
