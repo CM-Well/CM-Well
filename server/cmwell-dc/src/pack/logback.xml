@@ -1,4 +1,4 @@
-<configuration debug="true">
+<configuration debug="false">
     <!--
     A shutdown hook to properly finalize the logger system.
     In order to avoid race conditions between shutdown hooks (logs from another one won't be printed) there is
