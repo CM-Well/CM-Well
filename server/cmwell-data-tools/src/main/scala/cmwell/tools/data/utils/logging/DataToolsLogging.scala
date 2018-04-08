@@ -21,7 +21,7 @@ case class LabelId(id: String)
 
 trait DataToolsLogging {
   private[data] lazy val redLogger = Logger(LoggerFactory.getLogger("tools-red-logger"))
-  private[data] lazy val badDataLogger = Logger(LoggerFactory.getLogger("bad-data"))
+  private[data] lazy val badDataLogger = Logger(LoggerFactory.getLogger("tools-bad-data"))
 
   val label: Option[String] = None
 
