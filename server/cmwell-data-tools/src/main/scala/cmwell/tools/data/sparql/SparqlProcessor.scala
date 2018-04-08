@@ -165,6 +165,11 @@ class SparqlProcessor[T](baseUrl: String,
   val httpPipelineSize = config.getInt("akka.http.host-connection-pool.pipelining-limit")
   val httpParallelism = maxConnections * httpPipelineSize
 
+  val retryCountLimit = config.hasPath("cmwell.sparql.http-retry-count") match {
+    case true => Some(config.getInt("cmwell.sparql.http-retry-count"))
+    case false => None
+  }
+
   private[sparql] var retryTimeout = {
     val timeoutDuration = Duration(config.getString("cmwell.sparql.http-retry-timeout")).toCoarsest
     FiniteDuration(timeoutDuration.length, timeoutDuration.unit)
@@ -228,7 +233,7 @@ class SparqlProcessor[T](baseUrl: String,
             val startTime = System.currentTimeMillis
             data -> Some(context -> startTime)
         }
-        .via(Retry.retryHttp(retryTimeout, parallelism, baseUrl)(createRequest, validateResponse))
+        .via(Retry.retryHttp(retryTimeout, parallelism, baseUrl, retryCountLimit)(createRequest, validateResponse))
         .map {
           case (Success(HttpResponse(s, h, e, p)), paths, contextAndStartTime) if s.isSuccess() =>
             logger.debug(s"host=${getHostnameValue(h)} received sparql response for paths: {}",
