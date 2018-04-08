@@ -183,7 +183,6 @@ case class CassandraConf(home: String,
     //"-Dcassandra.config=file://${path}/conf/cas/cassandra.yaml")
 
     val cmsGc = Seq(
-      "-XX:+HeapDumpOnOutOfMemoryError",
       "-XX:+UseParNewGC",
       "-XX:+UseConcMarkSweepGC",
       "-XX:+CMSParallelRemarkEnabled",
@@ -350,9 +349,7 @@ case class ElasticsearchConf(clusterName: String,
       "-XX:+UseParNewGC",
       "-XX:+UseConcMarkSweepGC",
       "-XX:CMSInitiatingOccupancyFraction=75",
-      "-XX:+UseCMSInitiatingOccupancyOnly",
-      "-XX:+HeapDumpOnOutOfMemoryError"
-    )
+      "-XX:+UseCMSInitiatingOccupancyOnly")
 
     val g1Gc = Seq("-XX:+UseG1GC", "-XX:SurvivorRatio=8")
 
@@ -550,7 +547,6 @@ case class BgConf(home: String,
       Seq(
         "-XX:+UseCondCardMark",
         "-Duser.timezone=GMT0",
-        "-XX:+HeapDumpOnOutOfMemoryError",
         aspectj,
         "-Dfile.encoding=UTF-8",
         s"-Dlog.level=$logLevel",
