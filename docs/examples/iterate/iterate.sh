@@ -13,7 +13,7 @@ while :; do
       if [ "$2" ]; then
         OUTPUT=$2
       else
-        err 'ERROR: "--output" reqquires an argument to be supplied!'
+        err 'ERROR: "--output" requires an argument to be supplied!'
       fi
       shift
     ;;
@@ -33,11 +33,14 @@ while :; do
          QP=""
        fi
     ;;
+    -r|--recursive)
+      RECURSIVE="&recursive"
+    ;;
     -s|--host)
        if [ "$2" ]; then
          CMW_HOST=$2
        else
-         err 'ERROR: "--host" reqquires an argument to be supplied!'
+         err 'ERROR: "--host" requires an argument to be supplied!'
        fi
        shift
     ;;
@@ -63,7 +66,7 @@ if [ -z "$CMW_HOST" ]; then
   err 'ERROR: "--host" is required!'
 fi
 
-ID=$(curl -s "$CMW_HOST$CMW_PATH?op=create-iterator$QP&session-ttl=60" | jq -r '.iteratorId')
+ID=$(curl -s "$CMW_HOST$CMW_PATH?op=create-iterator$QP$RECURSIVE&session-ttl=60" | jq -r '.iteratorId')
 OUT=$(curl -k --silent -L -w "\n%{http_code}" "$CMW_HOST/_iterate?session-ttl=60$WITH_DATA&format=json&iterator-id=$ID")
 BODY="${OUT%$'\n'*}"
 STATUS="${OUT##*$'\n'}"
