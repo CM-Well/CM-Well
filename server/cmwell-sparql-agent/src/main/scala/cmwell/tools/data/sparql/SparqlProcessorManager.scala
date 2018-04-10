@@ -24,12 +24,7 @@ import akka.stream.scaladsl._
 import akka.util.Timeout
 import cmwell.ctrl.checkers.StpChecker.{RequestStats, ResponseStats, Row, Table}
 import cmwell.tools.data.ingester._
-import cmwell.tools.data.sparql.InfotonReporter.{
-  RequestDownloadStats,
-  RequestIngestStats,
-  ResponseDownloadStats,
-  ResponseIngestStats
-}
+import cmwell.tools.data.sparql.InfotonReporter.{RequestDownloadStats, RequestIngestStats, ResponseDownloadStats, ResponseIngestStats}
 import cmwell.tools.data.sparql.SparqlProcessorManager._
 import cmwell.tools.data.utils.akka._
 import cmwell.tools.data.utils.akka.stats.IngesterStats
@@ -40,6 +35,7 @@ import cmwell.util.http.SimpleResponse
 import cmwell.util.string.Hash
 import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
 import cmwell.util.concurrent._
+import cmwell.util.stream.StreamEventInspector
 import com.typesafe.scalalogging.LazyLogging
 import k.grid.GridReceives
 import net.jcazevedo.moultingyaml._
@@ -435,6 +431,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
         force = job.config.force.getOrElse(false),
         label = label
       )
+      .via(StpPeriodicLogger(infotonReporter = tokenReporter, logFrequency = 5.minutes))
       .via(IngesterStats(isStderr = false, reporter = Some(tokenReporter), label = label))
       .viaMat(KillSwitches.single)(Keep.right)
       .toMat(Sink.ignore)(Keep.both)
