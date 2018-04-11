@@ -182,16 +182,12 @@ object Retry extends DataToolsLogging with DataToolsConfig {
             None // failed to send a single data element
           }
 
-        case State(data, _, Some(HttpResponse(s, h, e, _)), _)
-            if s.isSuccess() =>
-          // content error
-          logger.warn(
-            s"$labelValue received $s but response body is not valid, will retry again in $delay host=${getHostnameValue(h)} data=${stringifyData(data)}"
-          )
-          val future = after(delay, system.scheduler)(Future.successful(data))
-          Some(immutable.Seq(future -> state))
-
         case State(data, _, Some(HttpResponse(s, h, e, _)), count) =>
+
+          if (s.isSuccess)
+            logger.warn(s"$labelValue received $s but response body is not valid, will retry again in " +
+              s"$delay host=${getHostnameValue(h)} data=${stringifyData(data)}")
+
           redLogger.error(
             s"$labelValue error: host=${getHostnameValue(h)} status=$s entity=$e data=${stringifyData(data)}"
           )
