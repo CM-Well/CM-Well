@@ -156,7 +156,7 @@ function bindTypesWidget() {
 
     $(".typeListItem").click( function () {
         var t = $(this).attr('title');
-        window.open(infoton.system.path + '?format=' + t + '&override-mimetype=text/plain');
+        window.open(infoton.system.path + '?format=' + t + '&override-mimetype=text/plain%3Bcharset=UTF-8');
         $("#typeListContainer").slideUp("slow");
     });
 }
@@ -659,7 +659,7 @@ function renderInfoton() {
                     img.attributes.setNamedItem(src);
                     img.attributes.setNamedItem(style);
                     plainText.attributes.setNamedItem(title);
-                    plainText.href = path + "?override-mimetype=text/plain";
+                    plainText.href = path + "?override-mimetype=text/plain%3Bcharset=utf-8";
                     plainText.appendChild(img);
 
                     $(linkCont).append($a);

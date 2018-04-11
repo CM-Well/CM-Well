@@ -8,13 +8,13 @@ class ActionsBar extends React.Component {
     
     getFormat(fmt, selectBox) {
         let fields = this.props.isFiltering ? `&fields=${this.props.fields.join`,`}` : ''
-        fmt && window.open(`${location.pathname}?format=${fmt}&override-mimetype=text/plain${fields}`)
+        fmt && window.open(`${location.pathname}?format=${fmt}&override-mimetype=text/plain%3Bcharset=utf-8${fields}`)
         selectBox.selectedIndex = 0
         selectBox.blur()
     }
 
     getHistory(fmt, selectBox) {
-        fmt && window.open(`${location.pathname}?with-history&format=${fmt}&override-mimetype=text/plain`)
+        fmt && window.open(`${location.pathname}?with-history&format=${fmt}&override-mimetype=text/plain%3Bcharset=utf-8`)
         selectBox.selectedIndex = 0
         selectBox.blur()
     }

@@ -92,24 +92,11 @@ class Health @Inject()(crudServiceFS: CRUDServiceFS) extends InjectedController 
     Future(Ok(CassNodetoolStatus))
   }
 
-  def getElasticsearchHealth = Action  {
+  def getElasticsearchHealth = Action.async { implicit req =>
+    val res = Seq("curl", s"http://$ip:9201/_cluster/health?pretty&level=shards") !!
 
-    val futureRes = {
-      import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
-      SimpleHttpClient.get(s"http://$ip:9201/_cluster/health?pretty&level=shards")
-    }
-
-    futureRes.onComplete
-      {
-        case Success(wsr) => if (wsr.status == 200)
-          Ok("")
-        else {
-          InternalServerError("")
-        }
-        case Failure(t) => InternalServerError(t.getMessage)
-      }
-    }
-
+    Future(Ok(res))
+  }
 
     /* */
   //  Future(Ok("sas"))
