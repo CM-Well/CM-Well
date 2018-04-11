@@ -64,6 +64,8 @@ class ConsumeTests extends AsyncFunSpec with Inspectors with Matchers with Helpe
     val path = cmw / "example.net" / "Consumeable"
     val badReq1 = Http.get(path, List("op" -> "consume")).map(_.status should be(400))
     val badReq2 = Http.get(path, List("op" -> "bulk-consume")).map(_.status should be(400))
+
+    // scalastyle:off
     val f1 = waitForIngestPlus40Seconds.flatMap(_ => Http.get(path, List("op" -> "create-consumer")).map(requestHandler))
     val f2 = f1.flatMap(t => Http.get(path, List("op" -> "consume", "position" -> t._2.get, "length-hint" -> "7")).map(requestHandler))
     val f3 = f2.flatMap(t => Http.get(path, List("op" -> "consume", "position" -> t._2.get, "length-hint" -> "613")).map(requestHandler))
@@ -83,7 +85,7 @@ class ConsumeTests extends AsyncFunSpec with Inspectors with Matchers with Helpe
     val i2 = f1.flatMap ( t => Http.get(_consume, List("position" -> t._2.get, "length-hint" -> "613", "format" -> "json", "with-data" -> "", "gqp" -> "<parentOf.rel[friendOf.rel:]")))
     val i3 = f1.flatMap ( t => Http.get(_consume, List("position" -> t._2.get, "length-hint" -> "613", "format" -> "json", "with-data" -> "", "gqp" -> ">parentOf.rel")))
     val i4 = f1.flatMap ( t => Http.get(_consume, List("position" -> t._2.get, "length-hint" -> "613", "format" -> "json", "with-data" -> "", "gqp" -> ">parentOf.rel[childOf.rel:]")))
-
+    // scalastyle:on
     it("should ingest data to consume later") {
 
       firstConsumableChunk.zip(secondConsumableChunk).map {

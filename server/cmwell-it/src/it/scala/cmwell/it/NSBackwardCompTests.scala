@@ -166,13 +166,25 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
       val failedSearchDueToAmbiguity = executeAfterIndexing {
         spinCheck(100.millis,true)(Http.get(
           exampleNetPath,
-          List("op" -> "search", "qp" -> "NOTE.vcard:note", "with-descendants" -> "true", "with-data" -> "true", "format" -> "n3")
+          List(
+            "op" -> "search",
+            "qp" -> "NOTE.vcard:note",
+            "with-descendants" -> "true",
+            "with-data" -> "true",
+            "format" -> "n3")
         ))(_.status == 200).map(res => withClue(res)(res.status shouldEqual 200))
       }
 
       val explicitNSSearchSuccess = executeAfterIndexing {
         spinCheck(100.millis,true)(
-          Http.get(exampleNetPath, List("op" -> "search", "qp" -> s"NOTE.$$${ns.vcard}:note", "with-descendants" -> "true", "with-data" -> "true", "format" -> "n3"))
+          Http.get(
+            exampleNetPath,
+            List(
+              "op" -> "search",
+              "qp" -> s"NOTE.$$${ns.vcard}:note",
+              "with-descendants" -> "true",
+              "with-data" -> "true",
+              "format" -> "n3"))
         )(_.status).map { res =>
           val s = new String(res.payload, "UTF-8")
           withClue(s) {
@@ -185,7 +197,14 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
 
       val fullNSByURISearchSuccess = executeAfterIndexing {
         spinCheck(100.millis,true)(
-          Http.get(exampleNetPath, List("op" -> "search", "qp" -> "$http://www.w3.org/2006/vcard/ns#NOTE$:note", "with-descendants" -> "true", "with-data" -> "true","format" -> "n3"))
+          Http.get(
+            exampleNetPath,
+            List(
+              "op" -> "search",
+              "qp" -> "$http://www.w3.org/2006/vcard/ns#NOTE$:note",
+              "with-descendants" -> "true",
+              "with-data" -> "true",
+              "format" -> "n3"))
         )(_.status).map{res =>
           res.status should be >= 200
           res.status should be < 400 //status should be OK
@@ -196,7 +215,10 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
       val nestedQueriesSearch = executeAfterIndexing {
         val f = spinCheck(100.millis,true)(Http.get(exampleNetPath, List(
           "op" -> "search",
-          "qp" -> "*[$http://www.w3.org/2006/vcard/ns#NOTE$:note,$http://www.w3.org/2006/vcard/ns#FN$:John],*[$http://www.w3.org/2006/vcard/ns#POSTAL-CODE$::12345,$http://www.w3.org/2006/vcard/ns#COUNTRY-NAME$::USA]",
+          "qp" -> ("*[$http://www.w3.org/2006/vcard/ns#NOTE$:note," +
+                     "$http://www.w3.org/2006/vcard/ns#FN$:John]," +
+                   "*[$http://www.w3.org/2006/vcard/ns#POSTAL-CODE$::12345," +
+                     "$http://www.w3.org/2006/vcard/ns#COUNTRY-NAME$::USA]"),
           "with-descendants" -> "true",
           "with-data" -> "true",
           "format" -> "n3")))(_.status)
@@ -213,7 +235,10 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
       val oldStyleQPFailure = executeAfterIndexing {
         Http.get(exampleNetPath, List(
           "op" -> "search",
-          "qp" -> "*[$http://www.w3.org/2006/vcard/ns#NOTE$:note,$http://www.w3.org/2006/vcard/ns#FN$:John]*[$http://www.w3.org/2006/vcard/ns#POSTAL-CODE$::12345,$http://www.w3.org/2006/vcard/ns#COUNTRY-NAME$::USA]",
+          "qp" -> ("*[$http://www.w3.org/2006/vcard/ns#NOTE$:note,"          +
+                     "$http://www.w3.org/2006/vcard/ns#FN$:John]"            +
+                   "*[$http://www.w3.org/2006/vcard/ns#POSTAL-CODE$::12345," +
+                     "$http://www.w3.org/2006/vcard/ns#COUNTRY-NAME$::USA]"),
           "with-descendants" -> "true",
           "with-data" -> "true",
           "format" -> "n3"))
@@ -313,7 +338,7 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
                           "COUNTRY-NAME.vcard" -> Json.arr("USA"),
                           "LOCALITY.vcard" -> Json.arr("Springfield;IL"),
                           "POSTAL-CODE.vcard" -> Json.arr("12345"),
-                          "NOTE.vcard" -> Json.arr("1st note","some other note","note to self"),//Json.arr("one note to rule them all!"),
+                          "NOTE.vcard" -> Json.arr("1st note","some other note","note to self"),
                           "STREET-ADDRESS.vcard" -> Json.arr("123 Main St.")))
       val i2 = Json.obj("type" -> "ObjectInfoton",
                         "system" -> Json.obj("path" -> "/www.example.net/Individuals/JohnSmith",
@@ -322,8 +347,8 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
                         "fields" -> Json.obj("type.rdf" -> Json.arr("http://www.w3.org/2006/vcard/ns#Individual"),
                           "FN.vcard" -> Json.arr("John Smith"),
                           "ADR.vcard" -> Json.arr("http://www.example.net/Addresses/c9ca3047"),
-                          "EMAIL.vcard" -> Json.arr("mailto:jsmith@gmail.com","mailto:john.smith@example.net"),//Json.arr("mailto:jsmith@yahoo.com", "mailto:john.smith@example.net"),
-                          "NOTE.vcard" -> Json.arr("1st note","some other note"))) //Json.arr("1st note", "2nd note")
+                          "EMAIL.vcard" -> Json.arr("mailto:jsmith@gmail.com","mailto:john.smith@example.net"),
+                          "NOTE.vcard" -> Json.arr("1st note","some other note")))
       val jSmith = cmw / "www.example.net" / "Individuals" / "JohnSmith"
 
       def jSmithUnderscoreOut(): Future[SimpleResponse[Array[Byte]]] =
@@ -359,14 +384,23 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
 //      }
       val jSmithExplicitBulkXg = executeAfterIndexing {
         spinCheck(100.millis,true)(
-          Http.post(_out, "/www.example.net/Individuals/JohnSmith", Some("text/plain;charset=UTF-8"), List("format" -> "json", "xg" -> s"*.$$${ns.vcard}"), tokenHeader)
+          Http.post(
+            _out,
+            "/www.example.net/Individuals/JohnSmith",
+            Some("text/plain;charset=UTF-8"),
+            List("format" -> "json", "xg" -> s"*.$$${ns.vcard}"),
+            tokenHeader)
         )(_.status).map { res =>
           withClue(res) {
             res.status should be(200)
             Json
               .parse(res.payload)
               .transform(bagUuidDateEraserAndSorter)
-              .get shouldEqual Json.obj("type" -> "RetrievablePaths", "infotons" -> Json.arr(i1, i2), "irretrievablePaths" -> Json.arr()).transform(bagUuidDateEraserAndSorter).get
+              .get shouldEqual Json.obj(
+                "type" -> "RetrievablePaths",
+                "infotons" -> Json.arr(i1, i2),
+                "irretrievablePaths" -> Json.arr()
+              ).transform(bagUuidDateEraserAndSorter).get
           }
         }
       }
@@ -421,13 +455,16 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
                 .transform(bagUuidDateEraserAndSorter)
                 .get
             } match {
-              case Success(j) => j shouldEqual Json.obj("type" -> "RetrievablePaths", "infotons" -> Json.arr(i1, i2), "irretrievablePaths" -> Json.arr()).transform(bagUuidDateEraserAndSorter).get
+              case Success(j) => j shouldEqual Json.obj(
+                "type" -> "RetrievablePaths",
+                "infotons" -> Json.arr(i1, i2),
+                "irretrievablePaths" -> Json.arr()).transform(bagUuidDateEraserAndSorter).get
               case Failure(e) => fail(clue)
             }
           }
         }
       }
-
+      // scalastyle:off
       describe("expand graph API") {
         it("should expand JohnSmith with address on regular read with explicit $ namespace")(jSmithExplicitXg)
         it("should expand JohnSmith with address on regular read using full NS URI")(jSmithFullNsURIXg)
@@ -441,6 +478,7 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
         ignore("should succeed previously failed request to expand JohnSmith with address on regular read with implicit ambiguous namespace")(jSmithImplicitXgSuccess)
         ignore("should succeed previously failed request to expand JohnSmith with any vcard on bulk read through _out with implicit ambiguous namespace")(jSmithImplicitBulkXgSuccess)
       }
+      // scalastyle:on
     }
   }
 }

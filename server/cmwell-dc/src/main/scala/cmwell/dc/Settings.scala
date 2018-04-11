@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.dc
 
 import com.typesafe.config.ConfigFactory
@@ -27,8 +25,8 @@ object Settings {
   val port = config.getInt("cmwell.grid.bind.port")
   val rawTarget = config.getString("cmwell.dc.target")
   private[this] val hostPort = """([^:/]+)(:\d+)?""".r
-  def destinationHostsAndPorts(target: String) = target.split(",").toVector.map{
-    case hostPort(h,p) => h -> Option(p).map(_.tail.toInt)
+  def destinationHostsAndPorts(target: String) = target.split(",").toVector.map {
+    case hostPort(h, p) => h -> Option(p).map(_.tail.toInt)
   }
   val maxStatementLength = {
     val l = config.getBytes("cmwell.dc.maxStatementLength")
@@ -37,7 +35,8 @@ object Settings {
   }
   val maxRetrieveInfotonCount = config.getInt("cmwell.dc.pull.maxRetrieveInfotonCount")
   val maxRetrieveByteSize = config.getBytes("cmwell.dc.pull.maxRetrieveByteSize")
-  val maxTotalInfotonCountAggregatedForRetrieve = config.getInt("cmwell.dc.pull.maxTotalInfotonCountAggregatedForRetrieve")
+  val maxTotalInfotonCountAggregatedForRetrieve =
+    config.getInt("cmwell.dc.pull.maxTotalInfotonCountAggregatedForRetrieve")
 //  val tsvBufferSize = config.getInt("cmwell.dc.pull.tsvBufferSize")
   val initialTsvRetryCount = config.getInt("cmwell.dc.pull.initialTsvRetryCount")
   val bulkTsvRetryCount = config.getInt("cmwell.dc.pull.bulkTsvRetryCount")

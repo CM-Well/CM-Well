@@ -34,10 +34,32 @@ class FormatsSpec extends FunSpec with Matchers with Helpers {
     val date = new DateTime("1985-11-25T18:43:00.000Z")
     val defaultFields = Map("field1"->Set[FieldValue](FString("value1")))
     val infotons = Map(
-      'simpleObjectInfoton -> ObjectInfoton("simpleObjectInfoton","dc_test", None, date, defaultFields),
-      'objectInfotonWithQuads -> ObjectInfoton("objectInfotonWithQuads","dc_test", None, date, Map("field1"->Set[FieldValue](FString("value1", None, Some("spiderman"))))),
-      'fileInfoton -> FileInfoton("fileInfoton","dc_test", None, date, defaultFields, FileContent("CAFEBABE".getBytes("UTF8"), "application/java-byte-code")),
-      'compoundInfoton -> CompoundInfoton("compoundInfoton","dc_test", None, date, Some(defaultFields), Seq(ObjectInfoton("first-child","dc_test",None,date)), 0, 1, 1)
+      'simpleObjectInfoton -> ObjectInfoton(
+        "simpleObjectInfoton",
+        "dc_test",
+        None,
+        date,
+        defaultFields),
+      'objectInfotonWithQuads -> ObjectInfoton(
+        "objectInfotonWithQuads",
+        "dc_test",
+        None,
+        date,
+        Map("field1"->Set[FieldValue](FString("value1", None, Some("spiderman"))))),
+      'fileInfoton -> FileInfoton(
+        "fileInfoton",
+        "dc_test",
+        None,
+        date,
+        defaultFields,
+        FileContent("CAFEBABE".getBytes("UTF8"), "application/java-byte-code")),
+      'compoundInfoton -> CompoundInfoton(
+        "compoundInfoton",
+        "dc_test",
+        None,
+        date,
+        Some(defaultFields),
+        Seq(ObjectInfoton("first-child","dc_test",None,date)), 0, 1, 1)
     )
 
     def assertSystemFields(i: Infoton, jsonl: JsValue) = {
@@ -231,9 +253,24 @@ class FormatsSpec extends FunSpec with Matchers with Helpers {
         ),
         docCount = 13884624,
         buckets = Seq(
-          SignificantTermsBucket(key = FieldValue("http://en.wikipedia.org/wiki/united_states_b01f3e84"), docCount = 282203, score = 19307.54729346422, bgCount = 282203, subAggregations = None),
-          SignificantTermsBucket(key = FieldValue("http://en.wikipedia.org/wiki/france"), docCount = 127296, score = 3928.554773532682, bgCount = 127296, subAggregations = None),
-          SignificantTermsBucket(key = FieldValue("http://en.wikipedia.org/wiki/association_football_b70932fc"), docCount = 115031, score = 3207.989815760563, bgCount = 115031, subAggregations = None)
+          SignificantTermsBucket(
+            key = FieldValue("http://en.wikipedia.org/wiki/united_states_b01f3e84"),
+            docCount = 282203,
+            score = 19307.54729346422,
+            bgCount = 282203,
+            subAggregations = None),
+          SignificantTermsBucket(
+            key = FieldValue("http://en.wikipedia.org/wiki/france"),
+            docCount = 127296,
+            score = 3928.554773532682,
+            bgCount = 127296,
+            subAggregations = None),
+          SignificantTermsBucket(
+            key = FieldValue("http://en.wikipedia.org/wiki/association_football_b70932fc"),
+            docCount = 115031,
+            score = 3207.989815760563,
+            bgCount = 115031,
+            subAggregations = None)
         )),
       TermsAggregationResponse(
         filter = TermAggregationFilter(
@@ -249,7 +286,8 @@ class FormatsSpec extends FunSpec with Matchers with Helpers {
       Option("test debug info also")
     )
 
-    // sample request: `curl 'cmwell:9000/permid.org?op=aggregate&ap=type:sig,field::organizationCountryCode.-Jamjg,size:5<type:term,field::organizationFoundedDay.-Jamjg,size:3>'`
+//sample request:
+//`curl 'cmwell:9000/permid.org?op=aggregate&ap=type:sig,field::organizationCountryCode.-Jamjg,size:5<type:term,field::organizationFoundedDay.-Jamjg,size:3>'`
     /* sample response:
     {
       "AggregationsResponse": [
@@ -428,30 +466,40 @@ class FormatsSpec extends FunSpec with Matchers with Helpers {
         ),
         docCount = 87766563,
         buckets = Seq(
-          SignificantTermsBucket(key = FieldValue("100319"), docCount = 2178650, score = 81723.15093613388, bgCount = 2178650, subAggregations = Some(AggregationsResponse(Seq(
-            TermsAggregationResponse(
-              filter = TermAggregationFilter(
-                name = "TermAggregation",
-                field = Field(NonAnalyzedField, "organizationFoundedDay.-Jamjg"),
-                size = 3
-              ),
-              buckets = Seq(
-                Bucket(k = FieldValue(1), dc = 7579, subAgg = None),
-                Bucket(k = FieldValue(28), dc = 5849, subAgg = None),
-                Bucket(k = FieldValue(15), dc = 5699, subAgg = None)
-              )))))),
-          SignificantTermsBucket(key = FieldValue("100317"), docCount = 300590, score = 1555.693292939183, bgCount = 300590, subAggregations = Some(AggregationsResponse(Seq(
-            TermsAggregationResponse(
-              filter = TermAggregationFilter(
-                name = "TermAggregation",
-                field = Field(NonAnalyzedField, "organizationFoundedDay.-Jamjg"),
-                size = 3
-              ),
-              buckets = Seq(
-                Bucket(k = FieldValue(1), dc = 3011, subAgg = None),
-                Bucket(k = FieldValue(19), dc = 2933, subAgg = None),
-                Bucket(k = FieldValue(14), dc = 2822, subAgg = None)
-              ))))))
+          SignificantTermsBucket(
+            key = FieldValue("100319"),
+            docCount = 2178650,
+            score = 81723.15093613388,
+            bgCount = 2178650,
+            subAggregations = Some(AggregationsResponse(Seq(
+              TermsAggregationResponse(
+                filter = TermAggregationFilter(
+                  name = "TermAggregation",
+                  field = Field(NonAnalyzedField, "organizationFoundedDay.-Jamjg"),
+                  size = 3
+                ),
+                buckets = Seq(
+                  Bucket(k = FieldValue(1), dc = 7579, subAgg = None),
+                  Bucket(k = FieldValue(28), dc = 5849, subAgg = None),
+                  Bucket(k = FieldValue(15), dc = 5699, subAgg = None)
+                )))))),
+          SignificantTermsBucket(
+            key = FieldValue("100317"),
+            docCount = 300590,
+            score = 1555.693292939183,
+            bgCount = 300590,
+            subAggregations = Some(AggregationsResponse(Seq(
+              TermsAggregationResponse(
+                filter = TermAggregationFilter(
+                  name = "TermAggregation",
+                  field = Field(NonAnalyzedField, "organizationFoundedDay.-Jamjg"),
+                  size = 3
+                ),
+                buckets = Seq(
+                  Bucket(k = FieldValue(1), dc = 3011, subAgg = None),
+                  Bucket(k = FieldValue(19), dc = 2933, subAgg = None),
+                  Bucket(k = FieldValue(14), dc = 2822, subAgg = None)
+                ))))))
         ))))
 
     it("check json") {

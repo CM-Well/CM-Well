@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package k.grid.testgrid
 
 import akka.actor.Actor
@@ -24,16 +22,14 @@ import k.grid.dmap.api.MapData
 import k.grid.dmap.impl.persistent.PersistentDMap
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
+
 /**
- * Created by michael on 4/20/16.
- */
+  * Created by michael on 4/20/16.
+  */
+case class DummyMessage(str: String)
+case class WriteToPersistentDMap(md: MapData, delay: FiniteDuration = 1.seconds)
 
-
-case class DummyMessage(str : String)
-case class WriteToPersistentDMap(md : MapData, delay : FiniteDuration = 1.seconds)
-
-class DummyService extends Actor with LazyLogging{
-
+class DummyService extends Actor with LazyLogging {
 
   @throws[Exception](classOf[Exception])
   override def preStart(): Unit = {
@@ -41,17 +37,16 @@ class DummyService extends Actor with LazyLogging{
   }
 
   override def receive: Receive = {
-    case msg@DummyMessage(str) => {
+    case msg @ DummyMessage(str) => {
       logger.info(s" *** DummyService Received $msg")
       sender ! str
     }
 
-    case msg@WriteToPersistentDMap(md, delay) => {
+    case msg @ WriteToPersistentDMap(md, delay) => {
       logger.info(s" *** DummyService Received $msg")
       Grid.system.scheduler.scheduleOnce(delay) {
-        md.m.foreach {
-          tuple =>
-            PersistentDMap.set(tuple._1, tuple._2)
+        md.m.foreach { tuple =>
+          PersistentDMap.set(tuple._1, tuple._2)
         }
       }
     }

@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.sparql
 
 import java.nio.file.{Files, Paths}
@@ -26,11 +24,14 @@ import akka.pattern._
 import akka.stream.scaladsl._
 import akka.stream.{ActorMaterializer, Materializer}
 import cmwell.tools.data.downloader.consumer.Downloader.Token
+import cmwell.tools.data.utils.akka.stats.DownloaderStats.DownloadStats
+import cmwell.tools.data.utils.akka.stats.IngesterStats.IngestStats
 import cmwell.tools.data.utils.logging.DataToolsLogging
 
 import scala.concurrent.{ExecutionContext, Future}
 
 trait SparqlTriggerProcessorReporter {
+
   /**
     * Reads a referenced data from sparql-triggered-processor config file.
     * Referenced data is a path starts with '@' character
@@ -42,19 +43,20 @@ trait SparqlTriggerProcessorReporter {
 
   /**
     * Store given tokens for a future usage (e.g., in a non-volatile memory)
-    * @param tokens tokens to be saved
+    * @param tokensAndStats tokens with current statistics to be saved
     */
-  def saveTokens(tokens: Map[String, Token]): Unit
+  def saveTokens(tokensAndStats: TokenAndStatisticsMap): Unit
 }
-
 
 /**
   * Reporter which reads/writes token and stats to files
   * @param stateFile path to file which stores current state (tokens)
   * @param webPort
   */
-class FileReporterActor(stateFile: Option[String], webPort: Int = 8080) extends Actor with SparqlTriggerProcessorReporter
-  with DataToolsLogging {
+class FileReporterActor(stateFile: Option[String], webPort: Int = 8080)
+    extends Actor
+    with SparqlTriggerProcessorReporter
+    with DataToolsLogging {
   val path = stateFile.map(Paths.get(_))
   implicit val ec = context.dispatcher
 
@@ -64,30 +66,45 @@ class FileReporterActor(stateFile: Option[String], webPort: Int = 8080) extends 
 
   def receiveWithMap(tokens: Map[String, Token]): Receive = {
     case RequestPreviousTokens =>
-      sender() ! ResponseWithPreviousTokens(tokens)
+      sender() ! ResponseWithPreviousTokens(tokens.map {
+        case (sensor, token) => sensor -> (token, None)
+      })
     case ReportNewToken(sensor, token) =>
       val updatedTokens = tokens + (sensor -> token)
-      saveTokens(updatedTokens)
+      saveTokens(updatedTokens.map {
+        case (sensor, token) => (sensor -> (token, None))
+      })
+
       context.become(receiveWithMap(updatedTokens))
     case RequestReference(path) =>
       val data = getReferencedData(path)
-//      sender() ! ResponseReference(data)
-      data.map(ResponseReference.apply) pipeTo sender()
+      //      sender() ! ResponseReference(data)
+      data.map(ResponseReference.apply).pipeTo(sender())
   }
 
-  def readTokensFromFile() = path.map { p =>
-    if (!Files.exists(p)) Map.empty[String, Token]
-    else scala.io.Source.fromFile(p.toFile)
-      .getLines()
-      .map(line => line.split(" -> "))
-      .map(arr => arr(0) -> arr(1))
-      .toMap
-  }.getOrElse(Map.empty)
+  def readTokensFromFile() =
+    path
+      .map { p =>
+        if (!Files.exists(p)) Map.empty[String, Token]
+        else
+          scala.io.Source
+            .fromFile(p.toFile)
+            .getLines()
+            .map(line => line.split(" -> "))
+            .map(arr => arr(0) -> arr(1))
+            .toMap
+      }
+      .getOrElse(Map.empty)
 
-  override def getReferencedData(path: String): Future[String] = Future.successful(scala.io.Source.fromFile(path).mkString)
+  override def getReferencedData(path: String): Future[String] =
+    Future.successful(scala.io.Source.fromFile(path).mkString)
 
-  override def saveTokens(tokens: Map[String, Token]): Unit =
+  override def saveTokens(tokensAndStats: TokenAndStatisticsMap): Unit = {
+    val tokens = tokensAndStats.map {
+      case (sensor, (token, _)) => sensor -> token
+    }
     path.foreach(p => Files.write(p, tokens.mkString("\n").getBytes("UTF-8")))
+  }
 }
 
 class WebExporter(reporter: ActorRef, port: Int = 8080)(implicit system: ActorSystem, mat: Materializer) {
@@ -104,26 +121,30 @@ class WebExporter(reporter: ActorRef, port: Int = 8080)(implicit system: ActorSy
   }
 
   val bindingFuture: Future[Http.ServerBinding] =
-    serverSource.to(Sink.foreach { connection =>
-      connection handleWithAsyncHandler requestHandler
-    }).run()
+    serverSource
+      .to(Sink.foreach { connection =>
+        connection.handleWithAsyncHandler(requestHandler)
+      })
+      .run()
 
   def createContent(implicit ec: ExecutionContext) = {
     import scala.concurrent.duration._
     implicit val timeout = akka.util.Timeout(10.seconds)
-    (reporter ? RequestPreviousTokens).mapTo[ResponseWithPreviousTokens]
-      .map { case ResponseWithPreviousTokens(tokens) =>
+    (reporter ? RequestPreviousTokens)
+      .mapTo[ResponseWithPreviousTokens]
+      .map {
+        case ResponseWithPreviousTokens(tokens) =>
+          val title = "sensors state"
 
-        val title = "sensors state"
+          val (content, _) = tokens.foldLeft("" -> false) {
+            case ((agg, evenRow), (sensor, token)) =>
+              val style = if (evenRow) "tg-j2zy" else "tg-yw4l"
 
-        val (content, _) = tokens.foldLeft("" -> false) { case ((agg, evenRow), (sensor, token)) =>
-          val style = if (evenRow) "tg-j2zy" else "tg-yw4l"
+              val decoded = cmwell.tools.data.utils.text.Tokens.decompress(token._1)
+              val timestamp = DateTime(decoded.takeWhile(_ != '|').toLong)
 
-          val decoded = cmwell.tools.data.utils.text.Tokens.decompress(token)
-          val timestamp = DateTime(decoded.takeWhile(_ != '|').toLong)
-
-          val row =
-            s"""
+              val row =
+                s"""
               |<tr>
               |    <td class="$style">$sensor</th>
               |    <td class="$style">$timestamp</th>
@@ -132,10 +153,11 @@ class WebExporter(reporter: ActorRef, port: Int = 8080)(implicit system: ActorSy
               | </tr>
             """.stripMargin
 
-          (agg ++ "\n" ++ row) -> !evenRow
-        }
+              (agg ++ "\n" ++ row) -> !evenRow
+          }
 
-        s"""
+// scalastyle:off
+          s"""
           |<html><body>
           |<style type="text/css">
           |.tg  {border-collapse:collapse;border-spacing:0;border-color:#aaa;}
@@ -155,13 +177,14 @@ class WebExporter(reporter: ActorRef, port: Int = 8080)(implicit system: ActorSy
           |</table>
           |</body></html>
         """.stripMargin
-
+// scalastyle:on
       }
   }
 }
 
 case object RequestPreviousTokens
-case class ResponseWithPreviousTokens(tokens: Map[String, Token])
+
+case class ResponseWithPreviousTokens(tokens: TokenAndStatisticsMap)
 case class ReportNewToken(sensor: String, token: Token)
 case class RequestReference(path: String)
 case class ResponseReference(data: String)

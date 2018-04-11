@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package markdown
 
 import cmwell.domain.FileInfoton
@@ -21,13 +19,13 @@ import cmwell.domain.FileInfoton
 import scala.util.Try
 
 /**
- * Created by gilad on 10/6/14.
- */
+  * Created by gilad on 10/6/14.
+  */
 object MarkdownFormatter {
   def asHtmlString(i: FileInfoton): String = {
-    val title = Try(i.path.drop(i.path.lastIndexOf('/')+1).replace(".md","")).toOption.getOrElse(i.path)
+    val title = Try(i.path.drop(i.path.lastIndexOf('/') + 1).replace(".md", "")).toOption.getOrElse(i.path)
     val content = xml.Utility.escape(i.content.get.asString)
-    asHtmlString(title,content)
+    asHtmlString(title, content)
   }
 
   def asHtmlString(title: String, content: String): String = {
@@ -45,6 +43,6 @@ object MarkdownFormatter {
         |    <link rel="stylesheet" href="/meta/app/sys/js/highlight/styles/aiaas.css"/>
         |    <link rel="stylesheet" href="/meta/app/sys/css/cmwmdviewer.css"/>
         |  </head>
-        |)</span>""".stripMargin.replace("\n","") + s"\n\n$content"
+        |)</span>""".stripMargin.replace("\n", "") + s"\n\n$content"
   }
 }

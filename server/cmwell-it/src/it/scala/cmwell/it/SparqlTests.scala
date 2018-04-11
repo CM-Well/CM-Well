@@ -83,7 +83,9 @@ class SparqlTests extends FunSpec with Matchers with Helpers with BeforeAndAfter
     }
 
     it("should explain to user that one does not simply stream all cm-well content using SPARQL") {
+      // scalastyle:off
       postSparqlAndWaitForResults("SELECT * WHERE { ?s ?p ?o }") should be("[Error] Each triple-matching must have binding of a subject, a predicate or an object. If you'd like to download entire CM-Well's content, please use the Stream API\n\n-------------\n| s | p | o |\n=============\n-------------")
+      // scalastyle:on
     }
 
     it("should fail for a non-existing namespace") {
@@ -94,7 +96,10 @@ class SparqlTests extends FunSpec with Matchers with Helpers with BeforeAndAfter
 
     ignore("should warn the user when some searches were exahusted") {
       val query = ""
-      postSparqlAndWaitForResults(query, Seq("intermediate-limit"->"1")) should startWith("[Warning] a query search was exhausted; results below may be partial! Please narrow your query to have complete results.")
+      postSparqlAndWaitForResults(
+        query,
+        Seq("intermediate-limit"->"1")) should startWith(
+        "[Warning] a query search was exhausted; results below may be partial! Please narrow your query to have complete results.")
     }
 
     it("should tell the user what is wrong with syntax of the query") {
@@ -109,8 +114,10 @@ class SparqlTests extends FunSpec with Matchers with Helpers with BeforeAndAfter
     // SPARQL TESTS CONVENTIONS:
     // ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
     // Please only add data in NTriples to the resource file `data-for-sparql.nt`
-    // Each test should use a different "subfolder" under /sparql.org (i.e. do not add more ntriples which their subject starts with /sparql.org/data.thomsonreuters.com) (NOT MANDATORY)
-    // Each time you add data, kindly add an invocation to `waitForData` with the path and the amount of Infotons - at the end of `beforeAll` method (~ at line 30) (MANDATORY)
+    // Each test should use a different "subfolder" under /sparql.org
+    // (i.e. do not add more ntriples which their subject starts with /sparql.org/data.thomsonreuters.com) (NOT MANDATORY)
+    // Each time you add data, kindly add an invocation to `waitForData` with the path and the amount of Infotons -
+    // at the end of `beforeAll` method (~ at line 30) (MANDATORY)
 
 
   }

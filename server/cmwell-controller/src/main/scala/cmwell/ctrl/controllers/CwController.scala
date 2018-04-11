@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.ctrl.controllers
 
 import cmwell.ctrl.config.Config
@@ -22,8 +20,8 @@ import cmwell.ctrl.utils.ProcUtil
 import scala.util.{Failure, Success}
 
 /**
- * Created by michael on 7/12/15.
- */
-object CwController extends ComponentController(s"${Config.cmwellHome}/app/ws", "crashableworker", Set("ws"))  {
-  override def getStartScripts(location : String) : Set[String] = Set("cw-start.sh")
+  * Created by michael on 7/12/15.
+  */
+object CwController extends ComponentController(s"${Config.cmwellHome}/app/ws", "crashableworker", Set("ws")) {
+  override def getStartScripts(location: String): Set[String] = Set("cw-start.sh")
 }

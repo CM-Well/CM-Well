@@ -17,7 +17,7 @@
 import play.api.libs.json.{JsArray, JsValue}
 
 import scala.language.{implicitConversions, postfixOps}
-import scala.util.Try
+import scala.util.{Failure, Try}
 
 /**
  * Created by yaakov on 3/2/15.
@@ -32,7 +32,12 @@ trait Helpers {
     def getValueOfFirst(prop: String) = getFirst(prop).getValue
 
     private def withPrettyException(f: => String, desc: String):String = Try(f).getOrElse(throw new Exception(s"Operation $desc failed on $v"))
-    private def withPrettyException(f: String => Seq[JsValue], desc: String, prop: String):Seq[JsValue] = Try(f(prop)).getOrElse(throw new Exception(s"""Operation $desc("$prop") failed on $v"""))
+    private def withPrettyException(f: String => Seq[JsValue], desc: String, prop: String):Seq[JsValue] = {
+      Try(f(prop)).recoverWith {
+        case t: Throwable =>
+          Failure(new Exception(s"""Operation $desc("$prop") failed on $v""",t))
+      }.get
+    }
   }
 }
 

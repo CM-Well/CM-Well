@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 /*
  * Copyright (c) 2016 Gilad Hoch
  *
@@ -44,7 +42,7 @@ import akka.stream.stage._
 object StreamUtils {
 
   def unfoldFlow[E, I, O, M](seed: I, flow: Graph[FlowShape[I, O], M])(
-      unfoldWith: O => Option[(E, I)]
+    unfoldWith: O => Option[(E, I)]
   ): Source[E, M] = {
 
     val fanOut2Shape = new GraphStage[FanOutShape2[O, I, E]] {
@@ -58,25 +56,28 @@ object StreamUtils {
 
           override def preStart() = pull(in)
 
-          setHandler(in, new InHandler {
-            override def onPush() = {
-              val o = grab(in)
-              unfoldWith(o) match {
-                case None => completeStage()
-                case Some((e, i)) => {
-                  pull(in)
+          setHandler(
+            in,
+            new InHandler {
+              override def onPush() = {
+                val o = grab(in)
+                unfoldWith(o) match {
+                  case None => completeStage()
+                  case Some((e, i)) => {
+                    pull(in)
 
-                  if (isAvailable(out0)) {
-                    push(out0, i)
-                    iPending = null.asInstanceOf[I]
-                  } else iPending = i
+                    if (isAvailable(out0)) {
+                      push(out0, i)
+                      iPending = null.asInstanceOf[I]
+                    } else iPending = i
 
-                  if (isAvailable(out1)) push(out1, e)
-                  else ePending = e
+                    if (isAvailable(out1)) push(out1, e)
+                    else ePending = e
+                  }
                 }
               }
             }
-          })
+          )
 
           setHandler(out0, new OutHandler {
             override def onPull() = {
@@ -87,18 +88,21 @@ object StreamUtils {
             }
           })
 
-          setHandler(out1, new OutHandler {
-            override def onPull() = {
-              if (ePending != null) {
-                push(out1, ePending)
-                ePending = null.asInstanceOf[E]
-              }
-              if (isAvailable(out0) && iPending != null) {
-                push(out0, iPending)
-                iPending = null.asInstanceOf[I]
+          setHandler(
+            out1,
+            new OutHandler {
+              override def onPull() = {
+                if (ePending != null) {
+                  push(out1, ePending)
+                  ePending = null.asInstanceOf[E]
+                }
+                if (isAvailable(out0) && iPending != null) {
+                  push(out0, iPending)
+                  iPending = null.asInstanceOf[I]
+                }
               }
             }
-          })
+          )
         }
       }
     }

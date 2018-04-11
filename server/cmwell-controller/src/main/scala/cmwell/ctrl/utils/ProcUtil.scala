@@ -12,38 +12,33 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.ctrl.utils
 
 import com.typesafe.scalalogging.LazyLogging
 
-import scala.util.{Success, Failure, Try}
+import scala.util.{Failure, Success, Try}
 import scala.sys.process._
 import scala.language.postfixOps
 
 /**
- * Created by michael on 12/4/14.
- */
+  * Created by michael on 12/4/14.
+  */
+object ProcUtil extends LazyLogging {
 
-
-
-object ProcUtil extends LazyLogging{
-
-  def executeCommand(com : String) : Try[String] = {
+  def executeCommand(com: String): Try[String] = {
     logger.debug(s"executing $com")
     Try(Seq("bash", "-c", com) !!)
   }
 
-  def rsync(from : String, user : String, host : String, path : String, flags : String = "-Pvaz") : Try[String] = {
+  def rsync(from: String, user: String, host: String, path: String, flags: String = "-Pvaz"): Try[String] = {
     _rsync(from, s"$user@$host:$path", flags)
   }
 
-  private def _rsync(from : String, to : String, flags : String = "-Pvaz") : Try[String] = {
+  private def _rsync(from: String, to: String, flags: String = "-Pvaz"): Try[String] = {
     Try(Seq("rsync", flags, from, to) !!)
   }
 
-  def checkIfProcessRun(processName : String) : Int = {
+  def checkIfProcessRun(processName: String): Int = {
     executeCommand(s"ps aux | grep java | grep -v starter | grep -v grep | grep $processName | wc -l") match {
       case Success(str) => str.trim.toInt
       case Failure(err) => 0

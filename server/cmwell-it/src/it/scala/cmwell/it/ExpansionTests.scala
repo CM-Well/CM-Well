@@ -56,7 +56,9 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
     val waitForIngest = ingestData.flatMap(_ => schedule(indexingDuration)(()))
 
     val makeSureSteveHarrisIs404Ghost = waitForIngest.flatMap { _ =>
-      spinCheck(1.second,true)(Http.get(cmw / "dbpedia.org" / "resource" / "Steve_Harris_(musician)", List("format" -> "json")))(_.status).map {
+      spinCheck(1.second,true)(Http.get(
+        cmw / "dbpedia.org" / "resource" / "Steve_Harris_(musician)",
+        List("format" -> "json")))(_.status).map {
         res => withClue(res) {
           res.status should be(404)
         }
@@ -72,7 +74,11 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
     }
 
     val skipSteveHarrisGhostToGetBand = waitForIngest.flatMap { _ =>
-      spinCheck(1.second,true)(Http.get(cmw / "identi.ca" / "user" / "13766", List("yg" -> ">sameAs.owl<bandMember.ontology","format" -> "json")))(_.status).map {
+      spinCheck(1.second,true)(Http.get(
+        cmw / "identi.ca" / "user" / "13766",
+        List(
+          "yg" -> ">sameAs.owl<bandMember.ontology",
+          "format" -> "json")))(_.status).map {
         res => withClue(res) {
           res.status should be(200)
           Json.parse(res.payload) \ "infotons" match {
@@ -84,19 +90,28 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
     }
 
     val skipSteveHarrisGhostToGetIdentity = waitForIngest.flatMap { _ =>
-      spinCheck(1.second,true)(Http.get(cmw / "dbpedia.org" / "resource" / "Iron_Maiden",List("yg" -> ">bandMember.ontology<sameAs.owl","format" -> "json")))(_.status).map {
-        res => withClue(res) {
-          res.status should be(200)
-          Json.parse(res.payload) \ "infotons" match {
-            case JsDefined(arr: JsArray) => arr should have size(2)
-            case somethingElse => fail(s"got something that is not json with array: $somethingElse")
+      spinCheck(1.second, true)(Http.get(
+        cmw / "dbpedia.org" / "resource" / "Iron_Maiden",
+        List(
+          "yg" -> ">bandMember.ontology<sameAs.owl",
+          "format" -> "json")))(_.status).map {
+        res =>
+          withClue(res) {
+            res.status should be(200)
+            Json.parse(res.payload) \ "infotons" match {
+              case JsDefined(arr: JsArray) => arr should have size (2)
+              case somethingElse => fail(s"got something that is not json with array: $somethingElse")
+            }
           }
-        }
       }
     }
 
     val getInfotonsPointingToGhostOfSteveHarrisFrom404Path = waitForIngest.flatMap { _ =>
-      spinCheck(1.second,true)(Http.get(cmw / "dbpedia.org" / "resource" / "Steve_Harris_(musician)", List("yg" -> "<bandMember.ontology,sameAs.owl","format" -> "json")))(_.status).map {
+      spinCheck(1.second,true)(Http.get(
+        cmw / "dbpedia.org" / "resource" / "Steve_Harris_(musician)",
+        List(
+          "yg" -> "<bandMember.ontology,sameAs.owl",
+          "format" -> "json")))(_.status).map {
         res => withClue(res) {
           res.status should be(200)
           Json.parse(res.payload) \ "infotons" match {
@@ -108,7 +123,11 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
     }
 
     val filterOutInfotonsPointingToGhostOfSteveHarrisFrom404Path = waitForIngest.flatMap { _ =>
-      spinCheck(1.second,true)(Http.get(cmw / "dbpedia.org" / "resource" / "Steve_Harris_(musician)", List("yg" -> "<bandMember.ontology[type.rdf::http://www.w3.org/ns/prov#NotRealPersonType]","format" -> "json")))(_.status).map {
+      spinCheck(1.second,true)(Http.get(
+        cmw / "dbpedia.org" / "resource" / "Steve_Harris_(musician)",
+        List(
+          "yg" -> "<bandMember.ontology[type.rdf::http://www.w3.org/ns/prov#NotRealPersonType]",
+          "format" -> "json")))(_.status).map {
         res => withClue(res) {
           res.status should be(200)
           Json.parse(res.payload) \ "infotons" match {
@@ -120,7 +139,11 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
     }
 
     val tryToSkipSteveHarrisGhostToGetIdentityButGetGhostFilttered = waitForIngest.flatMap { _ =>
-      spinCheck(1.second,true)(Http.get(cmw / "dbpedia.org" / "resource" / "Iron_Maiden",List("yg" -> ">bandMember.ontology[type.rdf::http://www.w3.org/ns/prov#NotRealPersonType]<sameAs.owl","format" -> "json")))(_.status).map {
+      spinCheck(1.second,true)(Http.get(
+        cmw / "dbpedia.org" / "resource" / "Iron_Maiden",
+        List(
+          "yg" -> ">bandMember.ontology[type.rdf::http://www.w3.org/ns/prov#NotRealPersonType]<sameAs.owl",
+          "format" -> "json")))(_.status).map {
         res => withClue(res) {
           res.status should be(200)
           Json.parse(res.payload) \ "infotons" match {
@@ -132,7 +155,11 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
     }
 
     val refToBoolMatch = waitForIngest.flatMap { _ =>
-      spinCheck(1.second,true)(Http.get(cmw / "example.org" / "issue-529" / "ref", List("yg" -> ">valueReference.schema[value.schema:true]","format" -> "json")))(_.status).map {
+      spinCheck(1.second,true)(Http.get(
+        cmw / "example.org" / "issue-529" / "ref",
+        List(
+          "yg" -> ">valueReference.schema[value.schema:true]",
+          "format" -> "json")))(_.status).map {
         res => withClue(res) {
           res.status should be(200)
           Json.parse(res.payload) \ "infotons" match {
@@ -144,7 +171,11 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
     }
 
     val refToBoolExist = waitForIngest.flatMap { _ =>
-      spinCheck(1.second,true)(Http.get(cmw / "example.org" / "issue-529" / "ref", List("yg" -> ">valueReference.schema[value.schema:]","format" -> "json")))(_.status).map {
+      spinCheck(1.second,true)(Http.get(
+        cmw / "example.org" / "issue-529" / "ref",
+        List(
+          "yg" -> ">valueReference.schema[value.schema:]",
+          "format" -> "json")))(_.status).map {
         res => withClue(res) {
           res.status should be(200)
           Json.parse(res.payload) \ "infotons" match {
@@ -156,7 +187,11 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
     }
 
     val refToBoolMismatch = waitForIngest.flatMap { _ =>
-      spinCheck(1.second,true)(Http.get(cmw / "example.org" / "issue-529" / "ref", List("yg" -> ">valueReference.schema[value.schema:false]","format" -> "json")))(_.status).map {
+      spinCheck(1.second,true)(Http.get(
+        cmw / "example.org" / "issue-529" / "ref",
+        List(
+          "yg" -> ">valueReference.schema[value.schema:false]",
+          "format" -> "json")))(_.status).map {
         res => withClue(res) {
           res.status should be(200)
           Json.parse(res.payload) \ "infotons" match {
@@ -167,7 +202,7 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
       }
     }
 
-
+    // scalastyle:off
     it("should ingest the data")(ingestData)
     it("should make sure that steve harris is a ghost (I.E. 404)")(makeSureSteveHarrisIs404Ghost)
     it("should skip the ghost to get Iron Maiden band")(skipSteveHarrisGhostToGetBand)
@@ -179,5 +214,6 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
     it("should expand filtered passing mangled fields (existence)")(refToBoolExist)
     it("should NOT expand filtered passing mangled fields (mismatch)")(refToBoolMismatch)
     //TODO: all ghost tests should also work for a deleted infoton (still 404 path...)
+    // scalastyle:on
   }
 }

@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.utils.ops
 
 import cmwell.tools.data.utils.ops
@@ -28,7 +26,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success, Try}
 
-object VersionChecker extends DataToolsLogging with DataToolsConfig{
+object VersionChecker extends DataToolsLogging with DataToolsConfig {
   val remoteVersionHost = config.getString("cmwell.remote-version-host")
   val remoteVersionPath = config.getString("cmwell.remote-version-path")
   var wasChecked = false
@@ -43,7 +41,8 @@ object VersionChecker extends DataToolsLogging with DataToolsConfig{
 
     val conn = Http().newHostConnectionPool[Option[_]](host = remoteVersionHost)
 
-    Source.single(HttpRequest(uri = s"http://$remoteVersionHost$remoteVersionPath?format=ntriples") -> None)
+    Source
+      .single(HttpRequest(uri = s"http://$remoteVersionHost$remoteVersionPath?format=ntriples") -> None)
       .via(conn)
       .mapAsync(1) {
         case (Success(HttpResponse(status, _, entity, _)), _) if status.isSuccess() =>
@@ -60,20 +59,22 @@ object VersionChecker extends DataToolsLogging with DataToolsConfig{
 
   private def printIfNeedUpdate() = if (!wasChecked) {
     wasChecked = true
-    val currentVersion = System.getProperty("prog.version",ops.getVersionFromManifest()) match {
-      case null => None
+    val currentVersion = System.getProperty("prog.version", ops.getVersionFromManifest()) match {
+      case null                                                  => None
       case version if version.toLowerCase().contains("snapshot") => None
-      case version => Some(version)
+      case version                                               => Some(version)
     }
 
-    val remoteData  = Try { Await.result(getVersionFromRemote(), 10.seconds) }
+    val remoteData = Try { Await.result(getVersionFromRemote(), 10.seconds) }
 
     val remoteVersion = remoteData match {
       case Success(Some(data)) =>
-        Some(data.utf8String.lines
-          .filter(_.contains("#version>"))
-          .map(line => line.substring(line.lastIndexOf('>') + 3, line.size - 3))
-          .mkString)
+        Some(
+          data.utf8String.lines
+            .filter(_.contains("#version>"))
+            .map(line => line.substring(line.lastIndexOf('>') + 3, line.size - 3))
+            .mkString
+        )
       case Success(None) =>
         None
       case Failure(err) =>
@@ -84,7 +85,7 @@ object VersionChecker extends DataToolsLogging with DataToolsConfig{
 
     for {
       current <- currentVersion
-      remote  <- remoteVersion
+      remote <- remoteVersion
       if remote.nonEmpty
       if current != remote
     } {
@@ -102,7 +103,8 @@ object VersionChecker extends DataToolsLogging with DataToolsConfig{
           |            /  ^  \  \   \/   / /  ^  \    |  | |  |       /  ^  \    |  |_)  | |  |     |  |__
           |           /  /_\  \  \      / /  /_\  \   |  | |  |      /  /_\  \   |   _  <  |  |     |   __|
           |          /  _____  \  \    / /  _____  \  |  | |  `----./  _____  \  |  |_)  | |  `----.|  |____
-          |         /__/     \__\  \__/ /__/     \__\ |__| |_______/__/     \__\ |______/  |_______||_______|  """.stripMargin + remote)
+          |         /__/     \__\  \__/ /__/     \__\ |__| |_______/__/     \__\ |______/  |_______||_______|  """.stripMargin + remote
+      )
     }
   }
 }

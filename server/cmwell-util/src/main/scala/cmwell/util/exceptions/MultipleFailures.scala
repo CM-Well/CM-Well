@@ -12,10 +12,12 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.util.exceptions
 
-class MultipleFailures(failures: List[Throwable]) extends Exception(failures.foldLeft("multiple failures:"){
-  case (s,t) => s"$s\n${t.getMessage}"
-}, failures.headOption.getOrElse(new NoSuchElementException("empty failures seq")))
+class MultipleFailures(failures: List[Throwable])
+    extends Exception(
+      failures.foldLeft("multiple failures:") {
+        case (s, t) => s"$s\n${t.getMessage}"
+      },
+      failures.headOption.getOrElse(new NoSuchElementException("empty failures seq"))
+    )

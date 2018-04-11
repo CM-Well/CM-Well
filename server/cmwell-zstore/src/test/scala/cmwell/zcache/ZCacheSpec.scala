@@ -70,7 +70,12 @@ class ZCacheSpec extends AsyncFunSpec with Matchers {
     s"Data[$dataId]"
   }
 
-  val fetchViaZCache = zCacheMem.memoize(fetchData)(digest = identity, deserializer = btos, serializer = stob)(ttl, pollingMaxRetries, pollingInterval)(scala.concurrent.ExecutionContext.global)
+  val fetchViaZCache = zCacheMem.memoize(
+    fetchData)(
+    digest = identity, deserializer = btos, serializer = stob)(
+    ttl, pollingMaxRetries, pollingInterval)(
+    scala.concurrent.ExecutionContext.global)
+
   val fetchViaL1L2 = l1l2(fetchData)(identity, btos, stob)(ttl, pollingMaxRetries, pollingInterval)(zCacheMem)
 
   it("should wrap data fetching (CORE FUNC. STEP 1/2)") {

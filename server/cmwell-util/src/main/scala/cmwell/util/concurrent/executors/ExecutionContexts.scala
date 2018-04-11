@@ -12,15 +12,13 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.util.concurrent.executors
 
 import scala.concurrent.ExecutionContext
 
 /**
- * Copied from akka.dispatch.ExecutionContexts.sameThreadExecutionContext
- */
+  * Copied from akka.dispatch.ExecutionContexts.sameThreadExecutionContext
+  */
 object ExecutionContexts {
   val sameThreadExecutionContext = new ExecutionContext with BatchingExecutor {
     override protected def unbatchedExecute(runnable: Runnable): Unit = runnable.run()

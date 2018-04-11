@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.util.exceptions
 
-class IllegalFileException(msg : String) extends Exception(msg) {}
+class IllegalFileException(msg: String) extends Exception(msg) {}

@@ -65,10 +65,12 @@ class GridSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
   }
 
   def spawnProcesses: Unit = {
+    // scalastyle:off
     Future{s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/node-data -Dcmwell.grid.monitor.port=8001 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceNode" #> new File(s"${TestConfig.rootDir}/node.out") !}
     Future{s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/client1-data -Dcmwell.grid.monitor.port=8002 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceClient" #> new File(s"${TestConfig.rootDir}/client1.out") !}
     Future{s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/client2-data -Dcmwell.grid.monitor.port=8003 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceClient" #> new File(s"${TestConfig.rootDir}/client2.out") !}
     Thread.sleep(30000)
+    // scalastyle:on
   }
 
   def killProcesses: Unit = {
