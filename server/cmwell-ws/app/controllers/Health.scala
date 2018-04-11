@@ -22,8 +22,6 @@ import logic.CRUDServiceFS
 import play.api.mvc._
 import javax.inject._
 
-import cmwell.util.http.{SimpleHttpClient, SimpleResponseHandler}
-
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -97,16 +95,6 @@ class Health @Inject()(crudServiceFS: CRUDServiceFS) extends InjectedController 
 
     Future(Ok(res))
   }
-
-    /* */
-  //  Future(Ok("sas"))
-    //OK  var responseBody;
-
-    // val res = SimpleHttpClient.get(s"http://$ip:9201/_cluster/health?pretty&level=shards")
-    //val res = Seq("curl", s"http://$ip:9201/_cluster/health?pretty&level=shards") !!
-
-
- // }
 
   def getElasticsearchTop = Action.async { implicit req =>
     val res = Seq("curl", s"http://$ip:9201/_nodes/hot_threads") !!
