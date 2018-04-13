@@ -107,12 +107,14 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
         withClue(s"number of infotons retrieved by paths ${ps.mkString("[",",","]")} must equal the total number of written infotons [${data.size}]") {
           ps.size should equal(data.size)
         }
+        // scalastyle:off
         withClue(s"number of infotons retrieved by uuids ${uj.mkString("[",",","]")} and junk ${junks.mkString("[",",","]")} must equal the total number of written infotons [${data.size}]") {
           uj.size should equal(data.size)
         }
         withClue(s"number of infotons retrieved by uuids ${pj.mkString("[",",","]")} and junk ${junks.mkString("[",",","]")} must equal the total number of written infotons [${data.size}]") {
           pj.size should equal(data.size)
         }
+        // scalastyle:on
       }
     }
   }
@@ -131,7 +133,9 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
   }
 
   "file write and read" should "be successful" in {
+    // scalastyle:off
     val content = new String("iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAALEgAACxIB0t1+/AAAABV0RVh0Q3JlYXRpb24gVGltZQA2LzI0LzA59sFr4wAAABx0RVh0U29mdHdhcmUAQWRvYmUgRmlyZXdvcmtzIENTNAay06AAAAIgSURBVDiNlZI9aFNRGIaf+2PSVJvc5PZHJaRxCsZCW52iUap0KChYB3E0jkUQ0cVB7FVR10JRcEtnh2booKCYgOCg6Q/FQqHiLTQh2sZ7g0rU5PY4JK2J1lI/+Dh8h/M+533hk3L3CegKU26I8R/1A14XHc6ogXWm3J3RGHsPgbRDtQB34V0sUFiYUluqxJAh+/IJAG0toHlAbwVF3gbijdJSJSaJmwj8wDUBwJf3Gez5FPbbJLpqs9+7DcQCSdxAoAMX0uALg7cbAOd7iU/pMawXBpGOf7gpgiSuI+houPSFIW5Az0UAyrk5lsYHiPrsvyGrIIkrCLogmwOXCroHuvaA4g/D+RR09uKUSyzdCRNps5sBH0GmAjhw5KEgcstEOm6wYGvYeRMe98HcBIrHR+hymrxde7vZlQYAZgbXbo19p0eJ3jUpBoexvwGTCYSZwRPsRT5h4FSbAZJIIAg22DplwMlRAD48Okcon0Lxh3FGZhCAde8AHXI9ygrIG7R8CeYLkJ80YLwfgNClJKsVDYomTE+gtmrQl2iKIVO3pA4aRB6YqIMGrMzC89soHh/ysavggPJqDAB3z9nfgGoDQI8ncLV3o8frPzw1WC+X0I7W5zWTytoy3oMDfwAc4Csob5JgLdfODXv5WVzt3ZvzrpJZy17X4ID0eZisX+UwGuDZYtu2qjJgg1VlWl2UGYr85Jm/QP8O5QBYMjOLKkO/ABjzzMAyxYbTAAAAAElFTkSuQmCC").getBytes
+    // scalastyle:on
     val c = new Base64().decode(content)
     val fileContent = FileContent(c, "image/png")
     val fileInfo = FileInfoton("/irw/command-test/file_1","dc_test", Some(666L), Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))) , fileContent)
@@ -166,7 +170,10 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
   }
 
   "object utf write and read " should "be successful" in {
-    val objInfo = ObjectInfoton("/irw/utf8/objinfo_1","dc_test", None, Map("name" -> Set[FieldValue](FString("罗湖区南湖路国贸商业大厦28-30楼\"@ese"), FString("罗湖区南湖路国贸商业大厦30楼a、B\"@ese"))))
+    val objInfo = ObjectInfoton(
+      "/irw/utf8/objinfo_1","dc_test",
+      None,
+      Map("name" -> Set[FieldValue](FString("罗湖区南湖路国贸商业大厦28-30楼\"@ese"), FString("罗湖区南湖路国贸商业大厦30楼a、B\"@ese"))))
     for {
       _ <- irw.writeAsync(objInfo)
       cmpObjInfo <- irw.readUUIDAsync(objInfo.uuid)
@@ -203,7 +210,11 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
     }
 
 
-    val objInfo_v2 = ObjectInfoton("/irw/command-test/objinfo_1", "dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"), FString("rony"))))
+    val objInfo_v2 = ObjectInfoton(
+      "/irw/command-test/objinfo_1",
+      "dc_test",
+      None,
+      Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"), FString("rony"))))
 
     val f2 = for {
       _ <- f1

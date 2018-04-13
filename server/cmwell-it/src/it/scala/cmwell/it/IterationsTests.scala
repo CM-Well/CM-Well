@@ -77,11 +77,13 @@ class IterationsTests extends AsyncFunSpec with Matchers with Inspectors with He
 
     def executeAfterIndexing[T](body: =>Future[T]): Future[T] = allIngestedSuccessfully.flatMap(_ => body)
 
+    // scalastyle:off
     val f1 = executeAfterIndexing(Http.get(path, List("op" -> "create-iterator", "session-ttl" -> "60", "length" -> "20", "format" -> "json")).map(requestHandler))
     val f2 = f1.flatMap(t => Http.get(path, List("op" -> "next-chunk", "iterator-id" -> t._2.get, "session-ttl" -> "60", "format" -> "json")).map(requestHandler))
     val f3 = f2.flatMap(t => Http.get(path, List("op" -> "next-chunk", "iterator-id" -> t._2.get, "session-ttl" -> "60", "format" -> "json")).map(requestHandler))
     val f4 = f3.flatMap(t => Http.get(path, List("op" -> "next-chunk", "iterator-id" -> t._2.get, "session-ttl" -> "60", "format" -> "json")).map(requestHandler))
     val f5 = f4.flatMap(t => Http.get(path, List("op" -> "next-chunk", "iterator-id" -> t._2.get, "session-ttl" -> "60", "format" -> "json")).map(requestHandler))
+    // scalastyle:on
 
     val deleteSomeValues = executeAfterCompletion(f5){
       Future.traverse(1 to 70 by 2 : IndexedSeq[Int]){ i =>
@@ -93,7 +95,12 @@ class IterationsTests extends AsyncFunSpec with Matchers with Inspectors with He
       }
     }
 
-    val allDeletedSuccessfully = executeAfterCompletion(deleteSomeValues)(spinCheck[Array[Byte]](1.second)(Http.get(path, List("op" -> "search", "length" -> "1", "format" -> "json"))){ r =>
+    val allDeletedSuccessfully = executeAfterCompletion(deleteSomeValues)(spinCheck[Array[Byte]](1.second)(Http.get(
+      path,
+      List(
+        "op"     -> "search",
+        "length" -> "1",
+        "format" -> "json"))){ r =>
       r.status == 200 && {
         val j = Json.parse(r.payload)
         (j \ "results" \ "total" : @unchecked) match {
@@ -101,14 +108,20 @@ class IterationsTests extends AsyncFunSpec with Matchers with Inspectors with He
         }
       }
     })
-
+    // scalastyle:off
     val d1 = executeAfterCompletion(allDeletedSuccessfully)(Http.get(path, List("op" -> "create-iterator", "session-ttl" -> "60", "length" -> "20", "format" -> "json", "with-history" -> "", "qp" -> "system.kind:DeletedInfoton")).map(requestHandler))
     val d2 = d1.flatMap(t => Http.get(path, List("op" -> "next-chunk", "iterator-id" -> t._2.get, "session-ttl" -> "60", "format" -> "json")).map(requestHandler))
     val d3 = d2.flatMap(t => Http.get(path, List("op" -> "next-chunk", "iterator-id" -> t._2.get, "session-ttl" -> "60", "format" -> "json")).map(requestHandler))
-
+    // scalastyle:on
     val ldPath = cmw / "ld-scroll.com"
 
-    val allLdIngestedSuccessfully = spinCheck[Array[Byte]](1.second)(Http.get(ldPath, List("op" -> "search", "qp" -> "identifier.dc<<50", "length" -> "1", "format" -> "json"))){ r =>
+    val allLdIngestedSuccessfully = spinCheck[Array[Byte]](1.second)(Http.get(
+      ldPath,
+      List(
+        "op"     -> "search",
+        "qp"     -> "identifier.dc<<50",
+        "length" -> "1",
+        "format" -> "json"))){ r =>
       r.status == 200 && {
         val j = Json.parse(r.payload)
         (j \ "results" \ "total" : @unchecked) match {
@@ -121,7 +134,15 @@ class IterationsTests extends AsyncFunSpec with Matchers with Inspectors with He
       case _: Throwable => body
     }
 
-    val g1 = executeAfterIndexing2(spinCheck[Array[Byte]](1.second,true)(Http.get(ldPath, List("op" -> "create-iterator", "session-ttl" -> "60", "length" -> "20", "format" -> "json", "qp" -> "identifier.dc<<50", "debug-info" -> ""))){ r =>
+    val g1 = executeAfterIndexing2(spinCheck[Array[Byte]](1.second,true)(Http.get(
+      ldPath,
+      List(
+        "op"          -> "create-iterator",
+        "session-ttl" -> "60",
+        "length"      -> "20",
+        "format"      -> "json",
+        "qp"          -> "identifier.dc<<50",
+        "debug-info"  -> ""))){ r =>
       r.status == 200 && {
         val j = Json.parse(r.payload)
 
@@ -143,11 +164,23 @@ class IterationsTests extends AsyncFunSpec with Matchers with Inspectors with He
         b1 && b2
       }
     }.map(requestHandler))
+
+    // scalastyle:off
     val g2 = g1.flatMap(t => Http.get(ldPath, List("op" -> "next-chunk", "iterator-id" -> t._2.get, "session-ttl" -> "60", "format" -> "json")).map(requestHandler))
     val g3 = g2.flatMap(t => Http.get(ldPath, List("op" -> "next-chunk", "iterator-id" -> t._2.get, "session-ttl" -> "60", "format" -> "json")).map(requestHandler))
     val g4 = g3.flatMap(t => Http.get(ldPath, List("op" -> "next-chunk", "iterator-id" -> t._2.get, "session-ttl" -> "60", "format" -> "json")).map(requestHandler))
+    // scalastyle:on
 
-    val h0 = executeAfterIndexing2(spinCheck[Array[Byte]](1.second,true)(Http.get(ldPath, List("op" -> "create-iterator", "session-ttl" -> "60", "length" -> "20", "format" -> "json", "qp" -> s"identifier.$$${ns.dc}<50", "debug-info" -> ""))){ r =>
+    val h0 = executeAfterIndexing2(spinCheck[Array[Byte]](1.second,true)(Http.get(
+      ldPath,
+      List(
+        "op"          -> "create-iterator",
+        "session-ttl" -> "60",
+        "length"      -> "20",
+        "format"      -> "json",
+        "qp"          -> s"identifier.$$${ns.dc}<50",
+        "debug-info"  -> ""))){ r =>
+
       r.status == 200 && {
         val j = Json.parse(r.payload)
         val b1 = (j \ "totalHits" : @unchecked) match {
@@ -170,15 +203,32 @@ class IterationsTests extends AsyncFunSpec with Matchers with Inspectors with He
     }.map(requestHandler))
     val h1 = h0.flatMap {
       case (_, None, _, _, debug) => fail("no iterator id from previous request" + debug.fold("")("; ".+))
-      case (_, Some(iteratorID), _, _, _) => Http.get(ldPath, List("op" -> "next-chunk", "iterator-id" -> iteratorID, "session-ttl" -> "60", "format" -> "json")).map(requestHandler)
+      case (_, Some(iteratorID), _, _, _) => Http.get(
+        ldPath,
+        List("op" -> "next-chunk",
+          "iterator-id" -> iteratorID,
+          "session-ttl" -> "60",
+          "format" -> "json")).map(requestHandler)
     }
     val h2 = h1.flatMap {
       case (_, None, _, _, debug) => fail("no iterator id from previous request" + debug.fold("")("; ".+))
-      case (_, Some(iteratorID), _, _, _) => Http.get(ldPath, List("op" -> "next-chunk", "iterator-id" -> iteratorID, "session-ttl" -> "60", "format" -> "json")).map(requestHandler)
+      case (_, Some(iteratorID), _, _, _) => Http.get(
+        ldPath,
+        List(
+          "op" -> "next-chunk",
+          "iterator-id" -> iteratorID,
+          "session-ttl" -> "60",
+          "format" -> "json")).map(requestHandler)
     }
     val h3 = h2.flatMap {
       case (_, None, _, _, debug) => fail("no iterator id from previous request" + debug.fold("")("; ".+))
-      case (_, Some(iteratorID), _, _, _) => Http.get(ldPath, List("op" -> "next-chunk", "iterator-id" -> iteratorID, "session-ttl" -> "60", "format" -> "json")).map(requestHandler)
+      case (_, Some(iteratorID), _, _, _) => Http.get(
+        ldPath,
+        List(
+          "op" -> "next-chunk",
+          "iterator-id" -> iteratorID,
+          "session-ttl" -> "60",
+          "format" -> "json")).map(requestHandler)
     }
 
     it("should insert infotons to scroll on")(scrollDataFuture)

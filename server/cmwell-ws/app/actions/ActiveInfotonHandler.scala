@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package actions
 
 import cmwell.domain._
@@ -21,22 +19,22 @@ import cmwell.ws.Settings
 import wsutil.StringExtensions
 
 /**
- * Created by gilad on 6/22/14.
- */
+  * Created by gilad on 6/22/14.
+  */
 object ActiveInfotonHandler {
 
 //  private[this] val activeInfotons = Set[String]("/proc","/proc/node")
 
   def wrapInfotonReply(infoton: Option[Infoton]): Option[Infoton] = infoton match {
     case Some(i) if requiresWrapping(i.path) => Some(wrap(i))
-    case i => i
+    case i                                   => i
   }
 
   private[this] def requiresWrapping(path: String): Boolean = path match {
-    case "/" => true
-    case p if p.startsWith("/proc/") => true
+    case "/"                                         => true
+    case p if p.startsWith("/proc/")                 => true
     case p if p.dropTrailingChars('/') == "/meta/ns" => true
-    case _ => false
+    case _                                           => false
   }
 
   import scala.language.implicitConversions
@@ -44,10 +42,18 @@ object ActiveInfotonHandler {
 
   // todo why do we have to invoke v2i explicitly if it's an implicit def ?!
   private[this] def wrap(infoton: Infoton): Infoton = infoton match {
-    case cp @ CompoundInfoton("/", _, _, _, _, children, _, length, total,_) =>
-      cp.copy(children = v2i(VirtualInfoton(ObjectInfoton("/proc", Settings.dataCenter))) +: children, total = total + 1, length = length + 1)
-    case cp @ CompoundInfoton("/meta/ns", _, _, _, _, children, _, length, total,_) =>
-      cp.copy(children = v2i(VirtualInfoton(ObjectInfoton("/meta/ns/sys", Settings.dataCenter))) +: v2i(VirtualInfoton(ObjectInfoton("/meta/ns/nn", Settings.dataCenter))) +: children, total = total + 2, length = length + 2)
+    case cp @ CompoundInfoton("/", _, _, _, _, children, _, length, total, _) =>
+      cp.copy(children = v2i(VirtualInfoton(ObjectInfoton("/proc", Settings.dataCenter))) +: children,
+              total = total + 1,
+              length = length + 1)
+    case cp @ CompoundInfoton("/meta/ns", _, _, _, _, children, _, length, total, _) =>
+      cp.copy(
+        children = v2i(VirtualInfoton(ObjectInfoton("/meta/ns/sys", Settings.dataCenter))) +: v2i(
+          VirtualInfoton(ObjectInfoton("/meta/ns/nn", Settings.dataCenter))
+        ) +: children,
+        total = total + 2,
+        length = length + 2
+      )
     case i => i
   }
 

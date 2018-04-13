@@ -12,12 +12,11 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package security
 
 object AuthConsole {
   def help = {
+    // scalastyle:off
     println("""
       |To generate a valid token for a user, invoke the genereateToken method, supply a username as the first argument.
       |
@@ -31,6 +30,7 @@ object AuthConsole {
       |
       |You can test the results on the "Minimal JWT Debugger" (available in UI by clicking the robot's arm)
     """.stripMargin)
+    // scalastyle:on
   }
 
   val unusedCache = null.asInstanceOf[EagerAuthCache]

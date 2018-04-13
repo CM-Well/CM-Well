@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package actions
 
 import akka.util.Timeout
@@ -29,13 +27,14 @@ import scala.concurrent.duration._
 import scala.util.Success
 import akka.pattern.ask
 import scala.concurrent.ExecutionContext.Implicits.global
+
 /**
- * Created by michael on 7/6/15.
- */
+  * Created by michael on 7/6/15.
+  */
 object GridMonitoring {
   implicit val timeout = Timeout(30.seconds)
 
-/*  // todo: maybe should be moved to util... might be useful..
+  /*  // todo: maybe should be moved to util... might be useful..
   val daysHoursMinutesFormat = new PeriodFormatterBuilder()
     .appendYears()
     .appendSuffix(" year", " years")
@@ -53,7 +52,7 @@ object GridMonitoring {
     .appendSuffix(" second", " seconds")
     .toFormatter()*/
 
-  def durationToWords(duration : Long) : String = {
+  def durationToWords(duration: Long): String = {
     val sec = 1L
     val min = 60 * sec
     val hr = 60 * min
@@ -68,24 +67,26 @@ object GridMonitoring {
   }
   //
 
-  private def genMemInfo(memSet : Set[MemoryInfo]) : String = {
-    memSet.map {
-      mem =>
+  private def genMemInfo(memSet: Set[MemoryInfo]): String = {
+    memSet
+      .map { mem =>
         s"${mem.name} -> ${mem.usedPercent}%"
-    }.mkString("<br>")
+      }
+      .mkString("<br>")
   }
 
-  private def genGcInfo(gcSet : Set[GcInfo]) : String = {
-    gcSet.map {
-      gc =>
+  private def genGcInfo(gcSet: Set[GcInfo]): String = {
+    gcSet
+      .map { gc =>
         s"${gc.name} -> t:${gc.gcTime},c:${gc.gcCount}"
-    }.mkString("<br>")
+      }
+      .mkString("<br>")
   }
 
-  private def getRoleSymbol(jvmInfo: JvmInfo) : String = {
+  private def getRoleSymbol(jvmInfo: JvmInfo): String = {
     jvmInfo.role match {
-      case k.grid.Member => "△"
-      case k.grid.Controller => "▲"
+      case k.grid.Member       => "△"
+      case k.grid.Controller   => "▲"
       case k.grid.ClientMember => "◯"
     }
   }
@@ -98,76 +99,101 @@ object GridMonitoring {
   case object Markdown extends TableFormat
   case object CsvPretty extends TableFormat
 
-  def members(path: String, dc: String, method: RetrievalMethod, isRoot: Boolean, format: TableFormat = Markdown, contentTranformator: String=>String = identity) : Future[Option[VirtualInfoton]] = {
+  def members(path: String,
+              dc: String,
+              method: RetrievalMethod,
+              isRoot: Boolean,
+              format: TableFormat = Markdown,
+              contentTranformator: String => String = identity): Future[Option[VirtualInfoton]] = {
     val members = {
       method match {
-        case All => Grid.getAllJvmsInfo
+        case All    => Grid.getAllJvmsInfo
         case Active => Grid.getRunningJvmsInfo
       }
     }
-    members.map {
-      m =>
-        val tupls = m.map {
-          tpl =>
-            val t = Seq(getRoleSymbol(tpl._2), tpl._1.identity.map(_.name).getOrElse("NA"),tpl._2.pid.toString ,tpl._1.hostname, durationToWords(tpl._2.uptime / 1000), genMemInfo(tpl._2.memInfo) , genGcInfo(tpl._2.gcInfo) , tpl._2.logLevel , tpl._2.status.toString , fdf(new DateTime(tpl._2.sampleTime)) ,  tpl._2.extraData )
-            if(isRoot) t :+ s"<a href='/_hcn?host=${tpl._1.host}&jvm=${tpl._1.identity.map(_.name).getOrElse("")}'>restart</a>" else t
-        }.toVector.sortBy(_(3))
-
-        val headers = Seq("Role","Name","Pid", "Address", "Uptime", "Mem", "Gc" , "Level", "Status", "ST" ,"Extra", "Restart").filterNot(_=="Restart" && !isRoot)
-
-        val (payload, mimeType) = format match {
-          case Markdown => MarkdownTable(MarkdownTuple(headers:_*), tupls.map(MarkdownTuple(_:_*))).get -> "text/x-markdown"
-          case CsvPretty => s"${headers.mkString(",")}\\n${tupls.map(_.map(_.replace(","," ")).mkString(",")).mkString("\\n")}" -> "text/html"
+    members.map { m =>
+      val tupls = m
+        .map { tpl =>
+          val t = Seq(
+            getRoleSymbol(tpl._2),
+            tpl._1.identity.map(_.name).getOrElse("NA"),
+            tpl._2.pid.toString,
+            tpl._1.hostname,
+            durationToWords(tpl._2.uptime / 1000),
+            genMemInfo(tpl._2.memInfo),
+            genGcInfo(tpl._2.gcInfo),
+            tpl._2.logLevel,
+            tpl._2.status.toString,
+            fdf(new DateTime(tpl._2.sampleTime)),
+            tpl._2.extraData
+          )
+          if (isRoot)
+            t :+ s"<a href='/_hcn?host=${tpl._1.host}&jvm=${tpl._1.identity.map(_.name).getOrElse("")}'>restart</a>"
+          else t
         }
-        Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(contentTranformator(payload).getBytes, mimeType)))))
+        .toVector
+        .sortBy(_(3))
+
+      val headers =
+        Seq("Role", "Name", "Pid", "Address", "Uptime", "Mem", "Gc", "Level", "Status", "ST", "Extra", "Restart")
+          .filterNot(_ == "Restart" && !isRoot)
+
+      val (payload, mimeType) = format match {
+        case Markdown =>
+          MarkdownTable(MarkdownTuple(headers: _*), tupls.map(MarkdownTuple(_: _*))).get -> "text/x-markdown"
+        case CsvPretty =>
+          s"${headers.mkString(",")}\\n${tupls.map(_.map(_.replace(",", " ")).mkString(",")).mkString("\\n")}" -> "text/html"
+      }
+      Some(
+        VirtualInfoton(
+          FileInfoton(path, dc, None, content = Some(FileContent(contentTranformator(payload).getBytes, mimeType)))
+        )
+      )
     }
   }
 
-  def singletons(path : String, dc : String) : Future[Option[VirtualInfoton]] = {
+  def singletons(path: String, dc: String): Future[Option[VirtualInfoton]] = {
     val singletons = Grid.getSingletonsInfo
-    val body = singletons.map{
-      t =>
-        MarkdownTuple(t.name, t.role, t.location)
+    val body = singletons.map { t =>
+      MarkdownTuple(t.name, t.role, t.location)
     }
     val md = MarkdownTable(MarkdownTuple("Singleton", "Role", "Location"), body.toSeq).get
-    Future.successful(Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(md.getBytes, "text/x-markdown"))))))
+    Future.successful(
+      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(md.getBytes, "text/x-markdown")))))
+    )
   }
 
-  def actors(path : String, dc : String) : Future[Option[VirtualInfoton]] = {
+  def actors(path: String, dc: String): Future[Option[VirtualInfoton]] = {
     val allActorsF = Grid.allActors
 
-    allActorsF.map{
-      allActors =>
-        val actors = allActors.map(m => m.actors.map(a => (m.host, a.name, a.latency.toString)))
-        val actorsFlatten = actors.flatten
-        val body = actorsFlatten.toSeq.sortBy(_._1).map(t => MarkdownTuple(t._1, t._2, t._3))
-        val md = MarkdownTable(MarkdownTuple("Member", "Actor", "Latency (ms)"), body).get
-        Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(md.getBytes, "text/x-markdown")))))
+    allActorsF.map { allActors =>
+      val actors = allActors.map(m => m.actors.map(a => (m.host, a.name, a.latency.toString)))
+      val actorsFlatten = actors.flatten
+      val body = actorsFlatten.toSeq.sortBy(_._1).map(t => MarkdownTuple(t._1, t._2, t._3))
+      val md = MarkdownTable(MarkdownTuple("Member", "Actor", "Latency (ms)"), body).get
+      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(md.getBytes, "text/x-markdown")))))
     }
   }
 
-  def actorsDiff(path : String, dc : String) : Future[Option[VirtualInfoton]] = {
+  def actorsDiff(path: String, dc: String): Future[Option[VirtualInfoton]] = {
     val membersWithActorsF = Grid.allActors
-    membersWithActorsF.map {
-      membersWithActors =>
-        val actorsMap = membersWithActors.map(mwa => mwa.host -> mwa.actors.map(_.name)).toMap
+    membersWithActorsF.map { membersWithActors =>
+      val actorsMap = membersWithActors.map(mwa => mwa.host -> mwa.actors.map(_.name)).toMap
 
-        val actors = membersWithActors.flatMap{
-          memberWithActors => memberWithActors.actors.map(_.name)
+      val actors = membersWithActors.flatMap { memberWithActors =>
+        memberWithActors.actors.map(_.name)
+      }
+      val bodyData = actors.map { actor =>
+        actorsMap.keySet.toSeq.sorted.map { host =>
+          if (actorsMap(host).contains(actor)) s"<span style='color:green'>$actor</span>"
+          else s"<span style='color:red'>$actor</span>"
         }
-        val bodyData = actors.map {
-          actor =>
-            actorsMap.keySet.toSeq.sorted.map {
-              host =>
-                if(actorsMap(host).contains(actor)) s"<span style='color:green'>$actor</span>" else s"<span style='color:red'>$actor</span>"
-            }
-        }
-        val body = bodyData.map {
-          bodyDatum =>
-            MarkdownTuple(bodyDatum:_*)
-        }
-        val md = MarkdownTable(MarkdownTuple(actorsMap.keySet.toSeq.sorted:_*), body.toSeq).get
-        Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(md.getBytes, "text/x-markdown")))))
+      }
+      val body = bodyData.map { bodyDatum =>
+        MarkdownTuple(bodyDatum: _*)
+      }
+      val md = MarkdownTable(MarkdownTuple(actorsMap.keySet.toSeq.sorted: _*), body.toSeq).get
+      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(md.getBytes, "text/x-markdown")))))
     }
   }
 }

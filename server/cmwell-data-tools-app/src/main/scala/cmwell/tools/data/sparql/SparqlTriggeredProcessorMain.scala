@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.sparql
 
 import java.nio.file.{Files, Paths}
@@ -37,7 +35,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
-object SparqlTriggeredProcessorMain extends App with DataToolsLogging{
+object SparqlTriggeredProcessorMain extends App with DataToolsLogging {
   object Opts extends ScallopConf(args) {
     version(s"cm-well sparql-processor-agent ${getVersionFromManifest()} (c) 2016")
 
@@ -50,8 +48,10 @@ object SparqlTriggeredProcessorMain extends App with DataToolsLogging{
     val ingest = opt[Boolean]("ingest", descr = "ingest data to destination cm-well instance", default = Some(false))
     val appConfig = opt[String]("app-config", descr = "application.conf file custom location")
     val numConnections = opt[Int]("num-connections", descr = "number of http connections to open")
-    val validationFilter = opt[List[String]]("validation-predicates", descr = "strings which must be present in each triple")
-    val validationTrigger = opt[List[String]]("validation-trigger", descr = "fields in infoton which causes validation check")
+    val validationFilter =
+      opt[List[String]]("validation-predicates", descr = "strings which must be present in each triple")
+    val validationTrigger =
+      opt[List[String]]("validation-trigger", descr = "fields in infoton which causes validation check")
     val webPort = opt[Int]("web-port", descr = "http monitor port", default = Some(8080))
 
     dependsOnAll(ingest, List(dstHost))
@@ -59,14 +59,13 @@ object SparqlTriggeredProcessorMain extends App with DataToolsLogging{
     verify()
   }
 
-
   // resize akka http connection pool
-  Opts.numConnections.map(numConnections =>
-    System.setProperty("akka.http.host-connection-pool.max-connections", numConnections.toString)
+  Opts.numConnections.map(
+    numConnections => System.setProperty("akka.http.host-connection-pool.max-connections", numConnections.toString)
   )
 
   // set application.conf file
-  Opts.appConfig.foreach {System.setProperty("config.file", _)}
+  Opts.appConfig.foreach { System.setProperty("config.file", _) }
 
   val config = getSensorsConfig(Opts.configPath())
 
@@ -81,18 +80,23 @@ object SparqlTriggeredProcessorMain extends App with DataToolsLogging{
       isBulk = Opts.bulk(),
       tokenReporter = Some(tokenFileReporter)
     )
-    .map { case (data, _) => data}
+    .map { case (data, _) => data }
     .via(GroupChunker(GroupChunker.formatToGroupExtractor("ntriples")))
     .filter { lines =>
-      val isNeedValidation = Opts.validationTrigger.map { trigger =>
-        trigger.forall { predicate => lines exists (_ containsSlice predicate)}
-      }.getOrElse(true)
+      val isNeedValidation = Opts.validationTrigger
+        .map { trigger =>
+          trigger.forall { predicate =>
+            lines.exists(_ containsSlice predicate)
+          }
+        }
+        .getOrElse(true)
 
 //      logger.info(s"${lines(0).utf8String.takeWhile(_ != ' ')} needs validation=$isNeedValidation")
 
       if (isNeedValidation) {
-        Opts.validationFilter.map { validator =>
-          val isValidInfoton = validator.forall(predicate => lines exists (_ containsSlice ByteString(predicate)))
+        Opts.validationFilter
+          .map { validator =>
+            val isValidInfoton = validator.forall(predicate => lines.exists(_ containsSlice ByteString(predicate)))
 
 //          if (!isValidInfoton) {
 //            redLogger.error("infoton is not valid for ingest: {}", concatByteStrings(lines, endl).utf8String)
@@ -100,8 +104,8 @@ object SparqlTriggeredProcessorMain extends App with DataToolsLogging{
 //            logger.info(s"${lines(0).utf8String.takeWhile(_ != ' ')} is valid for ingest")
 //          }
 
-          isValidInfoton
-        }
+            isValidInfoton
+          }
           .getOrElse(true)
       } else {
 //        logger.info(s"infoton ${lines(0).utf8String.takeWhile(_ != ' ')} does not need validation")
@@ -113,7 +117,8 @@ object SparqlTriggeredProcessorMain extends App with DataToolsLogging{
 
   // check if need to ingest result infotons
   val processResult = if (Opts.ingest()) {
-      Ingester.ingest(
+    Ingester
+      .ingest(
         baseUrl = Opts.dstHost(),
         format = "ntriples",
         writeToken = Opts.writeToken.toOption,
@@ -124,7 +129,12 @@ object SparqlTriggeredProcessorMain extends App with DataToolsLogging{
       .runWith(Sink.ignore)
   } else {
     processor
-      .map { infoton =>println(infoton.utf8String); infoton} // print to stdout
+      .map { infoton =>
+        // scalastyle:off
+        println(infoton.utf8String)
+        // scalastyle:on
+        infoton
+      } // print to stdout
       .map(_ -> None)
       .via(DownloaderStats(format = "ntriples"))
       .runWith(Sink.ignore)
@@ -162,4 +172,3 @@ object SparqlTriggeredProcessorMain extends App with DataToolsLogging{
     yamlConfig.convertTo[Config]
   }
 }
-

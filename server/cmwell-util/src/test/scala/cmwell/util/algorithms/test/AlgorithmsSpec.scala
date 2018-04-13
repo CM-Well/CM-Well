@@ -23,6 +23,7 @@ import org.scalatest.{Matchers, PropSpec}
 /**
   * Created by yaakov on 3/2/17.
   */
+// format: off
 class AlgorithmsSpec extends PropSpec with PropertyChecks with Matchers {
   /*
      * Test case:
@@ -72,3 +73,4 @@ class AlgorithmsSpec extends PropSpec with PropertyChecks with Matchers {
     uf.find("four") should be("one")
   }
 }
+// format: on

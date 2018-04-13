@@ -12,14 +12,12 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.sparql
 
 import java.io.InputStream
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.{HttpMethods, HttpRequest, HttpResponse}
+import akka.http.scaladsl.model.{HttpHeader, HttpMethods, HttpRequest, HttpResponse}
 import akka.stream.Materializer
 import akka.stream.scaladsl._
 import akka.util._
@@ -28,35 +26,38 @@ import cmwell.tools.data.downloader.consumer._
 import cmwell.tools.data.utils.ArgsManipulations._
 import cmwell.tools.data.utils.akka.{Retry, _}
 import cmwell.tools.data.utils.logging.{DataToolsLogging, LabelId}
-import cmwell.tools.data.utils.ops.VersionChecker
 
+import scala.collection.immutable
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
-object SparqlProcessor extends DataToolsLogging with DataToolsConfig{
+object SparqlProcessor extends DataToolsLogging with DataToolsConfig {
   val format = "ntriples"
 
-  def createSourceFromQuery(baseUrl: String,
-                            path: String,
-                            qp: String,
-                            spQueryParamsBuilder: Seq[String] => String = _ => "",
-                            parallelism: Int = 4,
-                            isNeedWrapping: Boolean = true,
-                            indexTime: Long = 0L,
-                            isBulk: Boolean = false,
-                            sparqlQuery: String,
-                            label: Option[String] = None)
-                           (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
+  def createSourceFromQuery(
+    baseUrl: String,
+    path: String,
+    qp: String,
+    spQueryParamsBuilder: Seq[String] => String = _ => "",
+    parallelism: Int = 4,
+    isNeedWrapping: Boolean = true,
+    indexTime: Long = 0L,
+    isBulk: Boolean = false,
+    sparqlQuery: String,
+    label: Option[String] = None
+  )(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
 
-    val source = Downloader.createTsvSource(
-      baseUrl = baseUrl,
-      path   = path,
-      qp     = qp,
-      indexTime = indexTime,
-      isBulk = isBulk,
-      label = label
-    ).map{ case ((token, tsv),_) => tsv.path -> Some(token) }
+    val source = Downloader
+      .createTsvSource(
+        baseUrl = baseUrl,
+        path = path,
+        qp = qp,
+        indexTime = indexTime,
+        isBulk = isBulk,
+        label = label
+      )
+      .map { case ((token, tsv), _) => tsv.path -> Some(token) }
 
     createSparqlSourceFromPaths(
       baseUrl = baseUrl,
@@ -69,21 +70,24 @@ object SparqlProcessor extends DataToolsLogging with DataToolsConfig{
     )
   }
 
-  def createSourceFromToken(baseUrl: String,
-                            spQueryParamsBuilder: Seq[String] => String = _ => "",
-                            parallelism: Int = 4,
-                            isNeedWrapping: Boolean = true,
-                            token: String,
-                            isBulk: Boolean = false,
-                            sparqlQuery: String,
-                            label: Option[String] = None)
-                           (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
-    val source = Downloader.createTsvSource(
-      baseUrl = baseUrl,
-      isBulk  = isBulk,
-      token = Some(token),
-      label = label
-    ).map { case ((token, tsv),_) => tsv.path -> Some(token)}
+  def createSourceFromToken(
+    baseUrl: String,
+    spQueryParamsBuilder: Seq[String] => String = _ => "",
+    parallelism: Int = 4,
+    isNeedWrapping: Boolean = true,
+    token: String,
+    isBulk: Boolean = false,
+    sparqlQuery: String,
+    label: Option[String] = None
+  )(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
+    val source = Downloader
+      .createTsvSource(
+        baseUrl = baseUrl,
+        isBulk = isBulk,
+        token = Some(token),
+        label = label
+      )
+      .map { case ((token, tsv), _) => tsv.path -> Some(token) }
 
     createSparqlSourceFromPaths(
       baseUrl = baseUrl,
@@ -96,15 +100,17 @@ object SparqlProcessor extends DataToolsLogging with DataToolsConfig{
     )
   }
 
-  def createSourceFromPathsInputStream(baseUrl: String,
-                                       spQueryParamsBuilder: Seq[String] => String = _ => "",
-                                       parallelism: Int = 4,
-                                       isNeedWrapping: Boolean = true,
-                                       sparqlQuery: String,
-                                       in: InputStream,
-                                       label: Option[String] = None)
-                                      (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
-    val source = StreamConverters.fromInputStream(() => in)
+  def createSourceFromPathsInputStream(
+    baseUrl: String,
+    spQueryParamsBuilder: Seq[String] => String = _ => "",
+    parallelism: Int = 4,
+    isNeedWrapping: Boolean = true,
+    sparqlQuery: String,
+    in: InputStream,
+    label: Option[String] = None
+  )(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
+    val source = StreamConverters
+      .fromInputStream(() => in)
       .via(lineSeparatorFrame)
       .map(line => line -> None)
 
@@ -115,18 +121,20 @@ object SparqlProcessor extends DataToolsLogging with DataToolsConfig{
       sparqlQuery = sparqlQuery,
       isNeedWrapping = isNeedWrapping,
       source = source,
-      label = label)
+      label = label
+    )
   }
 
-  def createSparqlSourceFromPaths[T](baseUrl: String,
-                                  spQueryParamsBuilder: Seq[String] => String = _ => "",
-                                  format: Option[String] = None,
-                                   parallelism: Int = 4,
-                                  isNeedWrapping: Boolean = true,
-                                  sparqlQuery: String,
-                                  source: Source[(ByteString, Option[T]), _],
-                                  label: Option[String] = None)
-                                 (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
+  def createSparqlSourceFromPaths[T](
+    baseUrl: String,
+    spQueryParamsBuilder: Seq[String] => String = _ => "",
+    format: Option[String] = None,
+    parallelism: Int = 4,
+    isNeedWrapping: Boolean = true,
+    sparqlQuery: String,
+    source: Source[(ByteString, Option[T]), _],
+    label: Option[String] = None
+  )(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
 
     new SparqlProcessor(
       baseUrl = baseUrl,
@@ -142,14 +150,14 @@ object SparqlProcessor extends DataToolsLogging with DataToolsConfig{
 }
 
 class SparqlProcessor[T](baseUrl: String,
-                      spQueryParamsBuilder: Seq[String] => String = _ => "",
-                      parallelism: Int = 4,
-                      isNeedWrapping: Boolean = true,
-                      sparqlQuery: String,
-                      format: Option[String] = None,
-                      source: Source[(ByteString, Option[T]), _],
-                      override val label: Option[String] = None
-                     ) extends DataToolsLogging {
+                         spQueryParamsBuilder: Seq[String] => String = _ => "",
+                         parallelism: Int = 4,
+                         isNeedWrapping: Boolean = true,
+                         sparqlQuery: String,
+                         format: Option[String] = None,
+                         source: Source[(ByteString, Option[T]), _],
+                         override val label: Option[String] = None)
+    extends DataToolsLogging {
 
   import SparqlProcessor._
 
@@ -157,17 +165,36 @@ class SparqlProcessor[T](baseUrl: String,
   val httpPipelineSize = config.getInt("akka.http.host-connection-pool.pipelining-limit")
   val httpParallelism = maxConnections * httpPipelineSize
 
-  private [sparql] var retryTimeout = {
+  val retryCountLimit = config.hasPath("cmwell.sparql.http-retry-count") match {
+    case true => Some(config.getInt("cmwell.sparql.http-retry-count"))
+    case false => None
+  }
+
+  private[sparql] var retryTimeout = {
     val timeoutDuration = Duration(config.getString("cmwell.sparql.http-retry-timeout")).toCoarsest
-    FiniteDuration( timeoutDuration.length, timeoutDuration.unit )
+    FiniteDuration(timeoutDuration.length, timeoutDuration.unit)
   }
 
   def createSource()(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
     type Paths = Seq[ByteString]
     type StartTime = Long
 
-    def validateResponseBody(body: ByteString) = {
-      !(body containsSlice "Could not process request")
+    def validateResponse(body: ByteString, headers: Seq[HttpHeader]): Try[Unit] = {
+      def validateBody(body: ByteString) = {
+        if (!(body containsSlice "Could not process request")) None
+        else Some("[Response body was not valid]")
+      }
+
+      def validateHeaders(headers: Seq[HttpHeader], errorHeader: String) = {
+        headers.find(_.name == errorHeader).map(header=>Some(s"[${header.name} returned errors: ${header.value}]"))
+      }
+
+      val errors = List(validateBody(body), validateHeaders(headers, "X-CM-WELL-SG-RS")).flatten
+
+      if (errors.isEmpty)
+        Success(Unit)
+      else
+        Failure(new Exception(errors.mkString("Failures in Http Response:", " ", "")))
     }
 
     def sparqlFlow() = {
@@ -184,7 +211,7 @@ class SparqlProcessor[T](baseUrl: String,
           sparqlQuery
         }
 
-        val formatValue = format.map(f => s"&format=$f") getOrElse ""
+        val formatValue = format.map(f => s"&format=$f").getOrElse("")
 
         val uri = s"${formatHost(baseUrl)}/_sp?${spQueryParamsBuilder(paths.map(_.utf8String))}$formatValue"
 
@@ -201,23 +228,28 @@ class SparqlProcessor[T](baseUrl: String,
       import cmwell.tools.data.utils.akka.HeaderOps._
 
       Flow[(Seq[ByteString], Option[T])]
-        .map { case (data, context) =>
-          val startTime = System.currentTimeMillis
-          data -> Some(context -> startTime)
-        }
-        .via(Retry.retryHttp(retryTimeout, parallelism, baseUrl)(createRequest, validateResponseBody))
         .map {
-          case (Success(HttpResponse(s,h,e,p)), paths, contextAndStartTime) if s.isSuccess() =>
-            logger.debug(s"host=${getHostnameValue(h)} received sparql response for paths: {}", concatByteStrings(paths, ByteString(",")).utf8String)
+          case (data, context) =>
+            val startTime = System.currentTimeMillis
+            data -> Some(context -> startTime)
+        }
+        .via(Retry.retryHttp(retryTimeout, parallelism, baseUrl, retryCountLimit)(createRequest, validateResponse))
+        .map {
+          case (Success(HttpResponse(s, h, e, p)), paths, contextAndStartTime) if s.isSuccess() =>
+            logger.debug(s"host=${getHostnameValue(h)} received sparql response for paths: {}",
+                         concatByteStrings(paths, ByteString(",")).utf8String)
 
-            val f = DataPostProcessor.postProcessByFormat(SparqlProcessor.format, e.withoutSizeLimit().dataBytes)
+            val f = DataPostProcessor
+              .postProcessByFormat(SparqlProcessor.format, e.withoutSizeLimit().dataBytes)
               .via(lineSeparatorFrame)
               .filter(_.nonEmpty)
 
             contextAndStartTime -> f
-          case (Success(HttpResponse(s,h,e,_)), paths, contextAndStartTime) =>
+          case (Success(HttpResponse(s, h, e, _)), paths, contextAndStartTime) =>
             e.discardBytes()
-            redLogger.error(s"host=${getHostnameValue(h)} error: status=$s entity=$e paths=${paths.map(_.utf8String).mkString(",")}")
+            redLogger.error(
+              s"host=${getHostnameValue(h)} error: status=$s entity=$e paths=${paths.map(_.utf8String).mkString(",")}"
+            )
 
             contextAndStartTime -> Source.empty
           case (Failure(err), paths, contextAndStartTime) =>
@@ -240,15 +272,16 @@ class SparqlProcessor[T](baseUrl: String,
             logger.info(s"unexpected message: $x")
             Future.successful(Source.empty -> None)
         }
-        .mapAsyncUnordered(httpParallelism) {case (dataLines, context) =>
-          dataLines.runFold(blank)(_ ++ _ ++ endl).map(_.trim() -> context)
+        .mapAsyncUnordered(httpParallelism) {
+          case (dataLines, context) =>
+            dataLines.runFold(blank)(_ ++ _ ++ endl).map(_.trim() -> context)
         }
-        .filter { case (data, context) => data.nonEmpty}
+        .filter { case (data, context) => data.nonEmpty }
 //        .flatMapConcat {case (dataLines, context) => dataLines.map(_ -> context)}
     }
 
-    source//.async
-      .map {case (path, context) => Seq(path) -> context}
+    source //.async
+      .map { case (path, context) => Seq(path) -> context }
 //      .via(sparqlFlow())
       .via(balancer(sparqlFlow(), parallelism))
   }

@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.ctrl.service
 
 import akka.actor.Actor
@@ -24,12 +22,13 @@ import cmwell.ctrl.hc.HealthActor
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.postfixOps
 import scala.concurrent.duration._
+
 /**
- * Created by michael on 2/1/16.
- */
+  * Created by michael on 2/1/16.
+  */
 class ClusterServiceActor extends Actor {
   implicit val timeout = Timeout(3 seconds)
   override def receive: Receive = {
-    case msg => (HealthActor.ref ? msg) pipeTo sender
+    case msg => (HealthActor.ref ? msg).pipeTo(sender)
   }
 }

@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.util.string
 
 import java.nio.charset.StandardCharsets
@@ -25,21 +23,21 @@ object Hash {
 
   trait Radix {
     def getRadix: Int
-    def digitMap: Map[Long,Char] = {
+    def digitMap: Map[Long, Char] = {
       val r = getRadix
-      if(r > 62) throw new RuntimeException("unable to represent a radix that large. (" + r + ")")
-      ((0L to 61L) map {d: Long =>
-        if(d < 10) d -> (d+48).toChar
-        else if(d < 36) d -> ('a' to 'z')(d.toInt - 10)
+      if (r > 62) throw new RuntimeException("unable to represent a radix that large. (" + r + ")")
+      (0L to 61L).map { d: Long =>
+        if (d < 10) d -> (d + 48).toChar
+        else if (d < 36) d -> ('a' to 'z')(d.toInt - 10)
         else /*if(d <62)*/ d -> ('A' to 'Z')(d.toInt - 36)
-      }).toMap
+      }.toMap
     }
   }
 
-  object Binary      extends Radix {def getRadix = 2}
-  object Octal       extends Radix {def getRadix = 8}
-  object Decimal     extends Radix {def getRadix = 10}
-  object Hexadecimal extends Radix {def getRadix = 16}
+  object Binary extends Radix { def getRadix = 2 }
+  object Octal extends Radix { def getRadix = 8 }
+  object Decimal extends Radix { def getRadix = 10 }
+  object Hexadecimal extends Radix { def getRadix = 16 }
 
   def crc32(s: String): String = crc32(s.getBytes(StandardCharsets.UTF_8))(Hexadecimal)
 
@@ -89,19 +87,19 @@ object Hash {
         def toRadixString(n: Long): String = {
           @tailrec
           def recHelper(n: Long, acc: List[Char] = Nil): List[Char] = {
-            def divRemainder(x: Long): (Long,Long) = {
+            def divRemainder(x: Long): (Long, Long) = {
               val remainder = x % r.getRadix
               (x / r.getRadix, remainder)
             }
             if (n < r.getRadix) r.digitMap(n) :: acc
             else {
               val (a, b) = divRemainder(n)
-              recHelper(a,r.digitMap(b) :: acc)
+              recHelper(a, r.digitMap(b) :: acc)
             }
           }
           recHelper(n).mkString
         }
-        if(r.getRadix < 1) throw new RuntimeException("radix = " + r.getRadix + " ???")
+        if (r.getRadix < 1) throw new RuntimeException("radix = " + r.getRadix + " ???")
         else toRadixString(checksum.getValue)
       }
     }
@@ -121,12 +119,12 @@ object Hash {
 
   def xxhash32(str: String): Long = xxhash32(str.getBytes(StandardCharsets.UTF_8))
   def xxhash32(arr: Array[Byte]): Long = {
-    val i = xxhashFactory.hash32().hash(arr,0,arr.length,786)
+    val i = xxhashFactory.hash32().hash(arr, 0, arr.length, 786)
     4294967295L & i // 4294967295L == -1L >>> 32, which will result in a long with 32 MSBits zeroed
   }
 
   def xxhash64(str: String): Long = xxhash64(str.getBytes(StandardCharsets.UTF_8))
-  def xxhash64(arr: Array[Byte]): Long = xxhashFactory.hash64().hash(arr,0,arr.length,786)
+  def xxhash64(arr: Array[Byte]): Long = xxhashFactory.hash64().hash(arr, 0, arr.length, 786)
 
   private lazy val xxhashFactory = XXHashFactory.fastestJavaInstance()
   private val md5Func = msgDigester("md5")

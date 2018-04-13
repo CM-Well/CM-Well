@@ -20,7 +20,7 @@ sys.env.get("BUILD_NUMBER") match {
   )
 }
 
-scalaVersion in Global := "2.12.4"
+scalaVersion in Global := "2.12.5"
 //javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint")
 initialize := {
   import semverfi._
@@ -43,27 +43,27 @@ dependenciesManager in Global := {
   case ("com.avast","bytecompressor-zlib")                         => "com.avast" %% "bytecompressor-zlib"    % "1.2.2"
   case ("com.datastax.cassandra","cassandra-driver-core")          => "com.datastax.cassandra" % "cassandra-driver-core" % "3.4.0"
   case ("com.ecyrd.speed4j","speed4j")                             => "com.ecyrd.speed4j" % "speed4j" % "0.18"
-  case ("com.fasterxml.jackson.core", art)                         => "com.fasterxml.jackson.core" % art % "2.9.1"
+  case ("com.fasterxml.jackson.core", art)                         => "com.fasterxml.jackson.core" % art % "2.9.4"
   case ("com.github.andrewoma.dexx","collection")                  => "com.github.andrewoma.dexx" % "collection" % "0.7"
   case ("com.github.tomakehurst", "wiremock")                      => "com.github.tomakehurst" % "wiremock" % "2.7.1"
   case ("com.github.t3hnar", "scala-bcrypt")                       => "com.github.t3hnar" %% "scala-bcrypt" % "3.1"
   case ("com.google.code.findbugs","jsr305")                       => "com.google.code.findbugs" % "jsr305" % "1.3.9" //newest is 3.0.0
-  case ("com.google.guava","guava")                                => "com.google.guava" % "guava" % "23.0"
+  case ("com.google.guava","guava")                                => "com.google.guava" % "guava" % "24.1-jre"
   case ("com.jason-goodwin", "authentikat-jwt")                    => "com.jason-goodwin" %% "authentikat-jwt" % "0.4.5"
-  case ("com.lightbend.akka", "akka-stream-alpakka-cassandra")     => "com.lightbend.akka" %% "akka-stream-alpakka-cassandra" % "0.15"
+  case ("com.lightbend.akka", "akka-stream-alpakka-cassandra")     => "com.lightbend.akka" %% "akka-stream-alpakka-cassandra" % "0.17"
   case ("com.ning","async-http-client")                            => "com.ning" % "async-http-client" % "1.9.40"
   case ("com.spatial4j","spatial4j")                               => "com.spatial4j" % "spatial4j" % "0.5"
   case ("com.tinkerpop.blueprints","blueprints-core")              => "com.tinkerpop.blueprints" % "blueprints-core" % "2.6.0"
   case ("com.tinkerpop.gremlin","gremlin-groovy")                  => "com.tinkerpop.gremlin" % "gremlin-groovy" % "2.6.0"
   case ("com.thaiopensource","jing")                               => "com.thaiopensource" % "jing" % "20091111"
-  case ("com.typesafe","config")                                   => "com.typesafe" % "config" % "1.3.1"
-  case ("com.typesafe.scala-logging","scala-logging")              => "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0"
-  case ("com.typesafe.akka", "akka-stream-kafka")                  => "com.typesafe.akka" %% "akka-stream-kafka" % "0.18"
-  case ("com.typesafe.akka", "akka-stream-contrib")                => "com.typesafe.akka" %% "akka-stream-contrib" % "0.8"
+  case ("com.typesafe","config")                                   => "com.typesafe" % "config" % "1.3.3"
+  case ("com.typesafe.scala-logging","scala-logging")              => "com.typesafe.scala-logging" %% "scala-logging" % "3.8.0"
+  case ("com.typesafe.akka", "akka-stream-kafka")                  => "com.typesafe.akka" %% "akka-stream-kafka" % "0.19"
+  case ("com.typesafe.akka", "akka-stream-contrib")                => "com.typesafe.akka" %% "akka-stream-contrib" % "0.9"
   case ("com.typesafe.akka", "akka-http")                          => "com.typesafe.akka" %% "akka-http" % "10.0.11"
-  case ("com.typesafe.akka",art)                                   => "com.typesafe.akka" %% art % "2.5.9"
+  case ("com.typesafe.akka",art)                                   => "com.typesafe.akka" %% art % "2.5.11"
   case ("com.typesafe.play", "twirl-api")                          => "com.typesafe.play" %% "twirl-api" % "1.3.13"
-  case ("com.typesafe.play", "play-json")                          => "com.typesafe.play" %% "play-json" % "2.6.8"
+  case ("com.typesafe.play", "play-json")                          => "com.typesafe.play" %% "play-json" % "2.6.9"
   case ("com.typesafe.play", art)                                  => "com.typesafe.play" %% art % Versions.play
   case ("com.twitter","chill-akka")                                => "com.twitter" %% "chill-akka" % "0.5.2"
   case ("commons-io","commons-io")                                 => "commons-io" % "commons-io" % "2.5"
@@ -71,7 +71,7 @@ dependenciesManager in Global := {
   case ("commons-lang","commons-lang")                             => "commons-lang" % "commons-lang" % "2.6"
   case ("eu.piotrbuda","scalawebsocket")                           => "eu.piotrbuda" %% "scalawebsocket" % "0.1.1"
   case ("io.netty","netty")                                        => "io.netty" % "netty" % "3.10.6.Final"
-  case ("io.circe", art)                                           => "io.circe" %% art % "0.8.0"
+  case ("io.circe", art)                                           => "io.circe" %% art % "0.9.2"
   case ("io.dropwizard.metrics",art)                               => "io.dropwizard.metrics" % art % "4.0.1" // make sure this is a compatible version with "nl.grons" metrics dependencies!
   case ("com.jcraft","jsch")                                       => "com.jcraft" % "jsch" % "0.1.54"
   case ("joda-time","joda-time")                                   => "joda-time" % "joda-time" % "2.9.4"
@@ -206,7 +206,19 @@ lazy val formats       = (project in file("cmwell-formats")).enablePlugins(CMWel
 lazy val irw           = (project in file("cmwell-irw")).enablePlugins(CMWellBuild, CassandraPlugin)                dependsOn(dao, domain, common, zstore)
 lazy val stortill      = (project in file("cmwell-stortill")).enablePlugins(CMWellBuild)                            dependsOn(domain, irw, fts, formats)
 lazy val bg            = (project in file("cmwell-bg")).enablePlugins(CMWellBuild, SbtKafkaPlugin, CassandraPlugin) dependsOn(kafkaAssigner, irw, domain, fts, grid, zstore, tracking)
-lazy val consIt        = (project in file("cmwell-it")).enablePlugins(CMWellBuild)                                  dependsOn(domain, common % "compile->compile;it->test", ws) configs(IntegrationTest)
+lazy val consIt        = (project in file("cmwell-it")).enablePlugins(CMWellBuild).settings(
+  // scalastyle settings to enable it for integration tests:
+  // this is low-level and should be updated on every version upgrade of the plugin (if needed)
+  Seq(
+    (scalastyleConfig in IntegrationTest) := (scalastyleConfig in scalastyle).value,
+    (scalastyleConfigUrl in IntegrationTest) := None,
+    (scalastyleConfigUrlCacheFile in IntegrationTest) := "scalastyle-it-config.xml",
+    (scalastyleConfigRefreshHours in IntegrationTest) := (scalastyleConfigRefreshHours in scalastyle).value,
+    (scalastyleTarget in IntegrationTest) := target.value / "scalastyle-it-result.xml",
+    (scalastyleFailOnError in IntegrationTest) := (scalastyleFailOnError in scalastyle).value,
+    (scalastyleFailOnWarning in IntegrationTest) := (scalastyleFailOnWarning in scalastyle).value,
+    (scalastyleSources in IntegrationTest) := (unmanagedSourceDirectories in IntegrationTest).value,
+  ) ++ Project.inConfig(IntegrationTest)(ScalastylePlugin.rawScalastyleSettings()))                                 dependsOn(domain, common % "compile->compile;it->test", ws) configs(IntegrationTest)
 lazy val ctrl          = (project in file("cmwell-controller")).enablePlugins(CMWellBuild)                          dependsOn(grid, common)
 lazy val dc            = (project in file("cmwell-dc")).enablePlugins(CMWellBuild, JavaAppPackaging)                dependsOn(tracking, ctrl, sparqlAgent)
 lazy val cons          = (project in file("cmwell-cons")).enablePlugins(CMWellBuild)                                dependsOn(common, util, ctrl) aggregate(ws, ctrl, dc)

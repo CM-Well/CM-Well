@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.utils.logging
 
 import com.typesafe.scalalogging.{LazyLogging, Logger}
@@ -22,8 +20,8 @@ import org.slf4j.LoggerFactory
 case class LabelId(id: String)
 
 trait DataToolsLogging {
-  private[data] lazy val redLogger = LoggerFactory.getLogger("tools-red-logger")
-  private[data] lazy val badDataLogger = LoggerFactory.getLogger("bad-data")
+  private[data] lazy val redLogger = Logger(LoggerFactory.getLogger("tools-red-logger"))
+  private[data] lazy val badDataLogger = Logger(LoggerFactory.getLogger("tools-bad-data"))
 
   val label: Option[String] = None
 

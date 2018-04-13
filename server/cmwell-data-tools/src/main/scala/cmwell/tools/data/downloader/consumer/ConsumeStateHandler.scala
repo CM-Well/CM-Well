@@ -12,14 +12,12 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.downloader.consumer
 
 sealed trait ConsumeState
-case class SuccessState(fails: Int) extends ConsumeState                      // normal state
+case class SuccessState(fails: Int) extends ConsumeState // normal state
 case class LightFailure(fails: Int, successesInRow: Int) extends ConsumeState // a few errors
-case class HeavyFailure(successesInRow: Int) extends ConsumeState             // a lot of errors
+case class HeavyFailure(successesInRow: Int) extends ConsumeState // a lot of errors
 
 /**
   * State machine of consume states
@@ -27,9 +25,9 @@ case class HeavyFailure(successesInRow: Int) extends ConsumeState             //
   * @see [[ConsumeState]]
   */
 object ConsumeStateHandler {
-  val successToLightFailureThreshold      = 2
-  val lightToHeavyFailureThreshold        = 2
-  val lightFailureToSuccessThreshold      = 15
+  val successToLightFailureThreshold = 2
+  val lightToHeavyFailureThreshold = 2
+  val lightFailureToSuccessThreshold = 15
   val heavyFailureToLightFailureThreshold = 15
 
   /**
@@ -37,12 +35,12 @@ object ConsumeStateHandler {
     * @param state current consume state
     * @return next consume state after failure event
     */
-  def nextFailure(state: ConsumeState) = state match {
-    case SuccessState(fails) if fails == successToLightFailureThreshold => LightFailure(0, 0)
-    case SuccessState(fails) => SuccessState(fails = fails + 1) // still in success
+  def nextFailure(state: ConsumeState): ConsumeState = state match {
+    case SuccessState(fails) if fails == successToLightFailureThreshold               => LightFailure(0, 0)
+    case SuccessState(fails)                                                          => SuccessState(fails = fails + 1) // still in success
     case LightFailure(fails, successesInRow) if fails == lightToHeavyFailureThreshold => HeavyFailure(0)
-    case LightFailure(fails, successesInRow) => LightFailure(fails = fails + 1, successesInRow = 0)
-    case HeavyFailure(successesInRow) => HeavyFailure(successesInRow = 0)
+    case LightFailure(fails, successesInRow)                                          => LightFailure(fails = fails + 1, successesInRow = 0)
+    case HeavyFailure(successesInRow)                                                 => HeavyFailure(successesInRow = 0)
   }
 
   /**
@@ -50,11 +48,11 @@ object ConsumeStateHandler {
     * @param state current consume state
     * @return next consume state after success event
     */
-  def nextSuccess(state: ConsumeState) = state match {
-    case s@SuccessState(_) => s
-    case s@LightFailure(fails, successesInRow) if successesInRow == lightFailureToSuccessThreshold => SuccessState(0)
-    case s@LightFailure(fails, successesInRow) => LightFailure(fails = 0, successesInRow = successesInRow + 1)
-    case HeavyFailure(successesInRow) if successesInRow == heavyFailureToLightFailureThreshold => LightFailure(0, 0)
-    case HeavyFailure(successesInRow) => HeavyFailure(successesInRow = successesInRow + 1)
+  def nextSuccess(state: ConsumeState): ConsumeState = state match {
+    case s @ SuccessState(_)                                                                         => s
+    case s @ LightFailure(fails, successesInRow) if successesInRow == lightFailureToSuccessThreshold => SuccessState(0)
+    case s @ LightFailure(fails, successesInRow)                                                     => LightFailure(0, successesInRow + 1)
+    case HeavyFailure(successesInRow) if successesInRow == heavyFailureToLightFailureThreshold       => LightFailure(0, 0)
+    case HeavyFailure(successesInRow)                                                                => HeavyFailure(successesInRow + 1)
   }
 }

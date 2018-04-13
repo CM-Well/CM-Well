@@ -12,19 +12,19 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.util
 
+// scalastyle:off
 import sun.tools.jps.Arguments
 import sun.jvmstat.monitor._
+// scalastyle:on
 import org.apache.commons.io.IOUtils
 
-import java.io.{PrintStream, OutputStream, InputStream}
+import java.io.{InputStream, OutputStream, PrintStream}
 import scala.sys.process._
 import scala.collection.JavaConverters._
 import scala.annotation.tailrec
-import scala.sys.process.{ProcessLogger, ProcessBuilder}
+import scala.sys.process.{ProcessBuilder, ProcessLogger}
 import com.typesafe.scalalogging.LazyLogging
 
 import cmwell.util.os.Props._
@@ -33,15 +33,15 @@ import cmwell.util.exceptions._
 import scala.language.postfixOps
 
 /**
- * Created with IntelliJ IDEA.
- * User: gilad
- * Date: 7/23/13
- * Time: 9:51 AM
- * To change this template use File | Settings | File Templates.
- */
-package object process extends LazyLogging  {
+  * Created with IntelliJ IDEA.
+  * User: gilad
+  * Date: 7/23/13
+  * Time: 9:51 AM
+  * To change this template use File | Settings | File Templates.
+  */
+package object process extends LazyLogging {
 
-  def exec(args: Seq[String], environmentVariables: Seq[(String,String)] = Seq(), home: Option[String] = None) = {
+  def exec(args: Seq[String], environmentVariables: Seq[(String, String)] = Seq(), home: Option[String] = None) = {
     import scala.collection.JavaConverters._
 
     val cmd: java.util.List[String] = args.asJava
@@ -49,11 +49,11 @@ package object process extends LazyLogging  {
 
     home match {
       case Some(dir) => pb.directory(new java.io.File(dir))
-      case _ => /* DO NOTHING */
+      case _         => /* DO NOTHING */
     }
 
     val env = pb.environment
-    environmentVariables.foreach{
+    environmentVariables.foreach {
       case (variableName, variableValue) => env.put(variableName, variableValue)
     }
 
@@ -88,8 +88,7 @@ package object process extends LazyLogging  {
         val sb: StringBuilder = new StringBuilder
         while (sb.toString != stopString) {
           val ch = inputStream.read.toChar
-          if (ch == '\n' || ch == '\r') { sb.clear }
-          else if (sb.length == stopString.length) {
+          if (ch == '\n' || ch == '\r') { sb.clear } else if (sb.length == stopString.length) {
             val str = sb.toString.tail
             sb.clear
             sb.appendAll(str)
@@ -106,24 +105,32 @@ package object process extends LazyLogging  {
     writer.flush()
   }
 
-  private def mapContainsSuffixOf(map: Map[String,String], text: String): Boolean = {
-    map.keySet.exists{k => k.length <= text.length && k == text.drop(text.length - k.length)}
+  private def mapContainsSuffixOf(map: Map[String, String], text: String): Boolean = {
+    map.keySet.exists { k =>
+      k.length <= text.length && k == text.drop(text.length - k.length)
+    }
   }
 
-  private def getKeyThatIsSuffixOf(map: Map[String,String], text: String): String = {
-    map.keySet.filter{k => k.length <= text.length && k == text.drop(text.length - k.length)}.toList match {
-      case Nil => throw new NoneOfTheKeysMatchThisTextSuffixException("text is: " + text + "\n\tkeys are: " + map.keySet.toString)
+  private def getKeyThatIsSuffixOf(map: Map[String, String], text: String): String = {
+    map.keySet.filter { k =>
+      k.length <= text.length && k == text.drop(text.length - k.length)
+    }.toList match {
+      case Nil =>
+        throw new NoneOfTheKeysMatchThisTextSuffixException("text is: " + text + "\n\tkeys are: " + map.keySet.toString)
       case noneEmptyList => noneEmptyList(0)
     }
   }
 
   /**
-   * NOT TERMINATIMG! use on a spawned thread with care!
-   * also, replacementMap keys should NOT contain '\r' characters!!!
-   * also #2, replacementMap keys should NOT contain '\n' characters,
-   * unless it is the first character (to indicate a string in the beginning of a line)!
-   */
-  def pipeWithLinesReplacment(src: InputStream, dest: PrintStream, replacementMap: Map[String, String], defaultString: String) {
+    * NOT TERMINATIMG! use on a spawned thread with care!
+    * also, replacementMap keys should NOT contain '\r' characters!!!
+    * also #2, replacementMap keys should NOT contain '\n' characters,
+    * unless it is the first character (to indicate a string in the beginning of a line)!
+    */
+  def pipeWithLinesReplacment(src: InputStream,
+                              dest: PrintStream,
+                              replacementMap: Map[String, String],
+                              defaultString: String) {
     logger.debug("map is: " + replacementMap.toString)
 
     replacementMap.isEmpty match {
@@ -138,8 +145,7 @@ package object process extends LazyLogging  {
               dest.print(sb.toString)
               dest.flush()
               sb.clear
-            }
-            else if (ch == '\n') {
+            } else if (ch == '\n') {
               dest.print(sb.toString)
               dest.flush()
               sb.clear
@@ -194,8 +200,8 @@ package object process extends LazyLogging  {
   }
 
   /**
-   * kill a process represented by a pid
-   */
+    * kill a process represented by a pid
+    */
   def kill(pid: Int) { kill(pid.toString) }
   def kill(pid: String) {
     val seq = if (isWin) {
@@ -219,9 +225,9 @@ package object process extends LazyLogging  {
   }
 
   /**
-   * returns an empty Set when no such process is found,
-   * or a Set of all suitable pids
-   */
+    * returns an empty Set when no such process is found,
+    * or a Set of all suitable pids
+    */
   def getPid(name: String): Set[Int] = {
     val jpsResult = jps.filter(p => p._2(0).contains(name))
     if (jpsResult.isEmpty) {
@@ -237,21 +243,21 @@ package object process extends LazyLogging  {
   def killWaitAndKill9(pid: String, ttl: Int): Unit = {
     kill(pid)
     var ms = 0
-    while(!jps.filter(p => p._1.toString == pid).isEmpty){
+    while (!jps.filter(p => p._1.toString == pid).isEmpty) {
       Thread.sleep(500)
       ms += 500
-      if(ms >= ttl) kill9(pid)
+      if (ms >= ttl) kill9(pid)
     }
   }
 
   /**
-   * return value is a set of pairs: (pid, process info),
-   * where process info is either unavailable, or a list of:
-   * 1- main class
-   * 2- main args
-   * 3- jvm args
-   * 4- jvm flags
-   */
+    * return value is a set of pairs: (pid, process info),
+    * where process info is either unavailable, or a list of:
+    * 1- main class
+    * 2- main args
+    * 3- jvm args
+    * 4- jvm flags
+    */
   def jps: Set[(Int, List[String])] = {
     val arguments: Arguments = new Arguments(Array[String]("-l", "-v", "-V", "-m"))
     val hostId: HostIdentifier = arguments.hostId
@@ -260,8 +266,8 @@ package object process extends LazyLogging  {
     for {
       lvmid <- jvms
       vm: MonitoredVm = monitoredHost.getMonitoredVm(new VmIdentifier("//" + lvmid + "?mode=r"), 0)
-    } yield (lvmid,
-      if (vm == null) {
+    } yield
+      (lvmid, if (vm == null) {
         " -- process information unavailable" :: Nil
       } else {
         val r = MonitoredVmUtil.mainClass(vm, arguments.showLongPaths) ::
@@ -274,9 +280,9 @@ package object process extends LazyLogging  {
   }
 
   /**
-   * Run a ProcessBuilder, collecting the stdout, stderr and exit status
-   * and based on that, decide what to do next
-   */
+    * Run a ProcessBuilder, collecting the stdout, stderr and exit status
+    * and based on that, decide what to do next
+    */
   def runAndDo(pb: ProcessBuilder)(runAgain: (List[String], List[String]) => Boolean, doAction: => Any): Int = {
 
     var out = List[String]()

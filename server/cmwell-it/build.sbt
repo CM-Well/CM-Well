@@ -119,9 +119,16 @@ testOptions in IntegrationTest ++= {
   }))
 }
 
+itScalastyle in ThisProject := (scalastyle in ThisProject).in(IntegrationTest).toTask("").value
+
 test in IntegrationTest := Def.task {
+  itScalastyle.value
   (test in IntegrationTest).value
 }.tag(Tags.ES,Tags.Cassandra,Tags.Kafka,Tags.Grid).value
 
 //FIXME: if https://github.com/sbt/sbt/issues/3250 is fixed, we should stop manually wiring the tests dependencies like that
-fullTest := (test in IntegrationTest).dependsOn(fullTest in LocalProject("bg"),fullTest in LocalProject("irw"),fullTest in LocalProject("fts"),fullTest in LocalProject("zstore")).value
+fullTest := (test in IntegrationTest).dependsOn(
+  fullTest in LocalProject("bg"),
+  fullTest in LocalProject("irw"),
+  fullTest in LocalProject("fts"),
+  fullTest in LocalProject("zstore")).value

@@ -12,17 +12,15 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package k.grid.monitoring
 
 /**
- * Created by michael on 1/27/16.
- */
+  * Created by michael on 1/27/16.
+  */
 object ProcKiller {
   var l = Seq.empty[String]
 
-  def genString : String = {
+  def genString: String = {
     (for {
       i <- 1 to 5000000
     } yield {

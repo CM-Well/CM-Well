@@ -18,6 +18,7 @@ package cmwell.it
 
 import cmwell.ctrl.utils.ProcUtil
 import cmwell.util.concurrent.SimpleScheduler
+import cmwell.util.http.SimpleResponse.Implicits
 import cmwell.util.http.{SimpleResponse, StringPath}
 import com.typesafe.scalalogging.LazyLogging
 import org.joda.time.DateTime
@@ -52,7 +53,7 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
 
     var (length, retry) = (0, 0)
     do {
-      val res = new String(Await.result(Http.get(path, Seq("op"->"search", "length"->"1", "format"->"json")), requestTimeout).payload, "UTF-8")
+      val res = Await.result(Http.get(path, Seq("op"->"search", "length"->"1", "format"->"json"))(Implicits.UTF8StringHandler), requestTimeout).payload
       length = (Json.parse(res) \ "results" \ "total").asOpt[Int].getOrElse(0)
       retry+=1
       sleepTime.fromNow.block
@@ -69,7 +70,11 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
 
     def getInfo() = {
       val jpsData = ProcUtil.executeCommand("jps -l").toOption.getOrElse("<jps failed>")
-      val contentData = new String(Await.result(Http.get("http://localhost:9000/example.org", Seq("op"->"search", "recursive"->"", "with-data"->"", "length"->"1000", "format"->"ntriples")), requestTimeout).payload, "UTF-8")
+      val contentData = Await.result(
+        Http.get(
+          "http://localhost:9000/example.org",
+          Seq("op"->"search", "recursive"->"", "with-data"->"", "length"->"1000", "format"->"ntriples")
+        )(Implicits.UTF8StringHandler), requestTimeout).payload
       s"jps data:\n$jpsData\n\nContent:\n$contentData"
     }
 
@@ -113,7 +118,14 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
       }
       it("should run a SPARQL query and render JSON format") {
         val sparql = "SELECT ?name WHERE { ?name <http://purl.org/vocab2/relationship/siblingOf> <http://example.org/Individuals2/SaraSmith> . }"
-        val expectedResults = Json.parse("""{"head":{"vars":["name"]},"results":{"bindings":[{"name":{"type":"uri","value":"http://example.org/Individuals2/RebbecaSmith"}}]}}""")
+        val expectedResults = Json.obj(
+          "head" -> Json.obj("vars" -> Json.arr("name")),
+          "results" -> Json.obj(
+            "bindings" -> Json.arr(
+              Json.obj(
+                "name" -> Json.obj(
+                  "type" -> "uri",
+                  "value" -> "http://example.org/Individuals2/RebbecaSmith")))))
         val req = Http.post(_sp, makeReqBody(paths, "SPARQL", sparql), textPlain, Seq("format"->"json"))
         val body = Json.parse(waitAndExtractBody(req))
         body should be(expectedResults)
@@ -121,12 +133,23 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
       describe("_sp Imports") {
         it("should upload a \"stored\" query") {
           val importedSpPath = cmw / "example.org" / "queries" / "foo.sparql"
-          val importedSpBody = "CONSTRUCT { ?s <http://purl.org/vocab/relationship/siblingOf> \"his sister\" . }  WHERE { ?s <http://www.tr-lbd.com/bold#active> \"true\" }"
-          Json.parse(waitAndExtractBody(Http.post(importedSpPath, importedSpBody, textPlain, headers = "x-cm-well-type" -> "file" :: tokenHeader))) should be(jsonSuccess)
+          val importedSpBody =
+            """CONSTRUCT { ?s <http://purl.org/vocab/relationship/siblingOf> "his sister" . }
+              |WHERE { ?s <http://www.tr-lbd.com/bold#active> "true" }""".stripMargin
+          Json.parse(
+            waitAndExtractBody(
+              Http.post(
+                importedSpPath,
+                importedSpBody,
+                textPlain,
+                headers = "x-cm-well-type" -> "file" :: tokenHeader))
+          ) should be(jsonSuccess)
           indexingDuration.fromNow.block
         }
         it("should run a SPARQL query with imported queries") {
-          val sparql = "PREFIX rel: <http://purl.org/vocab/relationship/>\nSELECT ?name WHERE { ?name rel:siblingOf \"his sister\" . } ORDER BY ?name"
+          val sparql =
+            """PREFIX rel: <http://purl.org/vocab/relationship/>
+              |SELECT ?name WHERE { ?name rel:siblingOf "his sister" . } ORDER BY ?name""".stripMargin
           val expectedResults =
             """---------------------------------------------------
               || name                                            |
@@ -147,11 +170,23 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
         }
         it("should upload a \"stored\" JAR") {
           val jarPayload = Source.fromURL(this.getClass.getResource("/Add42.jar"), "ISO-8859-1").map(_.toByte).toArray
-          Json.parse(waitAndExtractBody(Http.post(cmw / "meta" / "lib" / "Add42.jar", jarPayload, Some("application/java-archive"), headers = "x-cm-well-type" -> "file" :: tokenHeader))) should be(jsonSuccess)
+          Json.parse(
+            waitAndExtractBody(
+              Http.post(
+                cmw / "meta" / "lib" / "Add42.jar",
+                jarPayload,
+                Some("application/java-archive"),
+                headers = "x-cm-well-type" -> "file" :: tokenHeader))
+          ) should be(jsonSuccess)
           indexingDuration.fromNow.block
         }
         it("should run a SPARQL query with imported JARs") {
-          val sparql = "PREFIX cmwellspi: <jar:cmwell.spi.>\nSELECT DISTINCT ?name ?active ?res WHERE {\n?name <http://www.tr-lbd.com/bold#active> ?active .\nBIND( cmwellspi:Add42(?active) as ?res).\n} ORDER BY DESC(?name)"
+          val sparql =
+            """PREFIX cmwellspi: <jar:cmwell.spi.>
+              |SELECT DISTINCT ?name ?active ?res WHERE {
+              |?name <http://www.tr-lbd.com/bold#active> ?active .
+              |BIND( cmwellspi:Add42(?active) as ?res).
+              |} ORDER BY DESC(?name)""".stripMargin
           val expectedResults =
             """--------------------------------------------------------------------------
               || name                                            | active  | res        |
@@ -175,11 +210,22 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
         it("should upload Scala source") {
           val source = Source.fromURL(this.getClass.getResource("/Add42.scala")).map(_.toByte).toArray
           val importedSourcePath = cmw / "meta" / "lib" / "sources" / "scala" / "Add42.scala"
-          Json.parse(waitAndExtractBody(Http.post(importedSourcePath, source, textPlain, headers = "x-cm-well-type" -> "file" :: tokenHeader))) should be(jsonSuccess)
+          Json.parse(
+            waitAndExtractBody(
+              Http.post(
+                importedSourcePath,
+                source,
+                textPlain,
+                headers = "x-cm-well-type" -> "file" :: tokenHeader))
+          ) should be(jsonSuccess)
           indexingDuration.fromNow.block
         }
         it("should run a SPARQL query with imported sources") {
-          val sparql = "SELECT DISTINCT ?name ?active ?res WHERE {\n?name <http://www.tr-lbd.com/bold#active> ?active .\nBIND( <jar:Add42>(?active) as ?res).\n} ORDER BY DESC(?name)"
+          val sparql =
+            """SELECT DISTINCT ?name ?active ?res WHERE {
+              |?name <http://www.tr-lbd.com/bold#active> ?active .
+              |BIND( <jar:Add42>(?active) as ?res).
+              |} ORDER BY DESC(?name)""".stripMargin
           val expectedResults =
             """--------------------------------------------------------------------------
               || name                                            | active  | res        |
@@ -224,8 +270,13 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
                """.stripMargin
 
             def addQuery(basePath: StringPath, name: String, imports: Seq[String] = Seq()) =
-              Http.post(basePath / name, makeQueryBody(name, imports), textPlain, headers = "X-CM-WELL-TYPE" -> "File" :: tokenHeader).map(resp => Json.parse(new String(resp.payload, "UTF-8")))
-
+              Http.post(
+                basePath / name,
+                makeQueryBody(name, imports),
+                textPlain,
+                headers = "X-CM-WELL-TYPE" -> "File" :: tokenHeader).map { resp =>
+                  Json.parse(new String(resp.payload, "UTF-8"))
+                }
             Future.sequence(Seq(
               addQuery(firstPath, "a", Seq("a1", "a2")),
               addQuery(secondPath, "a1", Seq("a11", "a12")),
@@ -268,10 +319,24 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
       }
       it("should run a SPARQL query with secret parameter to use file") {
         val sparql = "SELECT ?name WHERE { ?name <http://purl.org/vocab2/relationship/siblingOf> <http://example.org/Individuals2/SaraSmith> . }"
-        val expectedResults = Json.parse("""{"head":{"vars":["name"]},"results":{"bindings":[{"name":{"type":"uri","value":"http://example.org/Individuals2/RebbecaSmith"}}]}}""")
+        val expectedResults = Json.obj(
+          "head" -> Json.obj("vars" -> Json.arr("name")),
+          "results" -> Json.obj(
+            "bindings" -> Json.arr(
+              Json.obj(
+                "name" -> Json.obj(
+                  "type" -> "uri",
+                  "value" -> "http://example.org/Individuals2/RebbecaSmith")))))
+
         val req = Http.post(_sp, makeReqBody(paths, "SPARQL", sparql), textPlain, Seq("format"->"json","x-write-file"->""))
         val body = Json.parse(waitAndExtractBody(req))
         body should be(expectedResults)
+      }
+      it("should run a SPARQL query with one or more bad PATHS and see headers/trailers with info") {
+        val req = Http.post(_sp, makeReqBody(paths ++ Seq("/no/such/path1", "/no/such/path2"), "SPARQL", sparqlIdentity), textPlain, Seq("format"->"ascii"))
+        val header = Await.result(req, requestTimeout).headers.find(_._1 == "X-CM-WELL-SG-RS")
+        header shouldBe defined
+        header.get._2 should be("404,404")
       }
     }
     describe("should run Gremlin queries") {

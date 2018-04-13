@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.ctrl.client
 
 import akka.pattern.ask
@@ -27,28 +25,28 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 /**
- * Created by michael on 12/9/14.
- */
-case class Node(ip : String, ctrlActor : ActorRef) {
+  * Created by michael on 12/9/14.
+  */
+case class Node(ip: String, ctrlActor: ActorRef) {
   implicit val timeout = Timeout(5 seconds)
-  def command(com : String) : Future[String] = {
+  def command(com: String): Future[String] = {
     (ctrlActor ? BashCommand(com)).mapTo[String]
   }
 
-  def getWebStatus : Future[WebState] = {
+  def getWebStatus: Future[WebState] = {
     (ctrlActor ? CheckWeb).mapTo[WebState]
 
   }
 
-  def getBgStatus : Future[BgState] = {
+  def getBgStatus: Future[BgState] = {
     (ctrlActor ? CheckBg).mapTo[BgState]
   }
 
-  def getElasticsearchStatus : Future[ElasticsearchState] = {
+  def getElasticsearchStatus: Future[ElasticsearchState] = {
     (ctrlActor ? CheckElasticsearch).mapTo[ElasticsearchState]
   }
 
-  def getCassandraStatus : Future[CassandraState] = {
+  def getCassandraStatus: Future[CassandraState] = {
     (ctrlActor ? CheckCassandra).mapTo[CassandraState]
   }
 }

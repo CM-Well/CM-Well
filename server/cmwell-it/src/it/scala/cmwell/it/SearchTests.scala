@@ -73,11 +73,15 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
     val path = cmw / "sws.geonames.org"
 
 
-    val f0 = executeAfterCompletion(ingestGeonames)(spinCheck(1.second)(Http.get(path, List("op" -> "search", "recursive" -> "", "length" -> "14", "format" -> "json"))){ r =>
-      (Json.parse(r.payload) \ "results" \ "total" : @unchecked) match {
-        case JsDefined(JsNumber(n)) => n.intValue() == 14
-      }
-    })
+    val f0 = executeAfterCompletion(ingestGeonames) {
+      spinCheck(1.second)(Http.get(
+        path,
+        List("op" -> "search", "recursive" -> "", "length" -> "14", "format" -> "json"))) { r =>
+          (Json.parse(r.payload) \ "results" \ "total": @unchecked) match {
+            case JsDefined(JsNumber(n)) => n.intValue() == 14
+          }
+        }
+    }
 
     val f1 = f0.flatMap(_ => scheduleFuture(10.seconds){
       spinCheck(1.second,true)(Http.get(cmw / "meta" / "ns" / "2_fztg" / "alt", List("format"->"json"))){ r =>
@@ -142,11 +146,19 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
           case JsDefined(JsNumber(n)) => n.intValue() >= 7
         }
       }.map { res =>
-        withClue(res + s"\ntypes cache before: ${typesCache.value}\ntypes cache after: " + Try(Await.result(getTypesCache,60.seconds)).getOrElse("getTypesCache failed!!!")) {
-          val jInfotonsArr = (Json.parse(res.payload) \ "results" \ "infotons").get.asInstanceOf[JsArray].value
-          implicit val ord = orderingForField[Float]("lat.wgs84_pos", ascending = false)
-          jInfotonsArr shouldBe sorted
-        }
+        withClue {
+          val sb = new StringBuilder
+          sb ++= res.toString()
+          sb ++= "\ntypes cache before: "
+          sb ++= typesCache.value.toString
+          sb ++= "\ntypes cache after: "
+          sb ++= Try(Await.result(getTypesCache,60.seconds)).getOrElse("getTypesCache failed!!!")
+          sb.result()
+        } {
+            val jInfotonsArr = (Json.parse(res.payload) \ "results" \ "infotons").get.asInstanceOf[JsArray].value
+            implicit val ord = orderingForField[Float]("lat.wgs84_pos", ascending = false)
+            jInfotonsArr shouldBe sorted
+          }
       }
     }
 
@@ -175,7 +187,13 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
     val sortByScoreFilterByIL = executeAfterCompletion(f1){
       spinCheck(1.second,true)(Http.get(
         uri = path,
-        queryParams = List("op" -> "search","sort-by" -> "system.score","format" -> "json","qp" -> "*alternateName.geonames:israel,*countryCode.geonames:il","pretty" -> "","debug-info" -> "")
+        queryParams = List(
+          "op" -> "search",
+          "sort-by" -> "system.score",
+          "format" -> "json",
+          "qp" -> "*alternateName.geonames:israel,*countryCode.geonames:il",
+          "pretty" -> "",
+          "debug-info" -> "")
       )){ r =>
         val j = Json.parse(r.payload) \ "results"
         (j \ "total": @unchecked) match {
@@ -378,11 +396,12 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
       }
     }
 
-    def recSearch(path: String, queryParams: Seq[(String,String)], expectedTotal: Int) = executeAfterCompletion(deleteAbouts)(spinCheck(1.second,true)(Http.get(path, queryParams)){ r =>
-      (Json.parse(r.payload) \ "results" \ "total" : @unchecked) match {
-        case JsDefined(JsNumber(n)) => n.intValue() == expectedTotal
-      }
-    })
+    def recSearch(path: String, queryParams: Seq[(String,String)], expectedTotal: Int) =
+      executeAfterCompletion(deleteAbouts)(spinCheck(1.second,true)(Http.get(path, queryParams)){ r =>
+        (Json.parse(r.payload) \ "results" \ "total" : @unchecked) match {
+          case JsDefined(JsNumber(n)) => n.intValue() == expectedTotal
+        }
+      })
 
     val recursiveSearch2 = recSearch(path, List("op" -> "search", "recursive" -> "", "debug-info" -> "", "length" -> "14", "format" -> "json"), 7).map { res =>
       withClue(res) {
@@ -391,42 +410,52 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
       }
     }
 
-    val recursiveSearch3 =  executeAfterCompletion(recursiveSearch2)(recSearch(path,List("op" -> "search","format" -> "json","pretty" -> "","debug-info" -> "","recursive" -> "","with-deleted"->"","length" -> "14"), 14).map { res =>
-      withClue(res) {
-        val results = Json.parse(res.payload) \ "results"
-        val total = (results \ "total").as[Int]
-        total should be(14)
-        results \ "infotons" match {
-          case JsDefined(JsArray(infotons)) => {
-            val m = infotons.groupBy(jv => (jv \ "type").as[String])
-            m should have size (2)
-            forAll(m.values) { seqByType =>
-              seqByType should have size (7)
+    val recursiveSearch3 =  executeAfterCompletion(
+      recursiveSearch2)(
+      recSearch(
+        path,
+        List("op" -> "search","format" -> "json","pretty" -> "","debug-info" -> "","recursive" -> "","with-deleted"->"","length" -> "14"),
+        14).map { res =>
+          withClue(res) {
+            val results = Json.parse(res.payload) \ "results"
+            val total = (results \ "total").as[Int]
+            total should be(14)
+            results \ "infotons" match {
+              case JsDefined(JsArray(infotons)) => {
+                val m = infotons.groupBy(jv => (jv \ "type").as[String])
+                m should have size (2)
+                forAll(m.values) { seqByType =>
+                  seqByType should have size (7)
+                }
+              }
+              case somethingElse => fail(s"was expecting an array, but got: $somethingElse")
             }
           }
-          case somethingElse => fail(s"was expecting an array, but got: $somethingElse")
-        }
-      }
-    })
+        })
 
-    val recursiveSearch4 = executeAfterCompletion(recursiveSearch2)(recSearch(path,List("op" -> "search","format" -> "json","pretty" -> "","debug-info" -> "","recursive" -> "","with-history"->"","length" -> "42"),21).map { res =>
-      withClue(res) {
-        val results = Json.parse(res.payload) \ "results"
-        val total = (results \ "total").as[Int]
-        total should be(21)
-        results \ "infotons" match {
-          case JsDefined(JsArray(infotons)) => {
-            val m = infotons.groupBy(jv => (jv \ "type").as[String])
-            m should have size (2)
-            forAll(m) {
-              case ("DeletedInfoton", deletedInfotons) => deletedInfotons should have size (7)
-              case ("ObjectInfoton", deletedInfotons) => deletedInfotons should have size (14)
+    val recursiveSearch4 = executeAfterCompletion(
+      recursiveSearch2)(
+      recSearch(
+        path,
+        List("op" -> "search","format" -> "json","pretty" -> "","debug-info" -> "","recursive" -> "","with-history"->"","length" -> "42"),
+        21).map { res =>
+          withClue(res) {
+            val results = Json.parse(res.payload) \ "results"
+            val total = (results \ "total").as[Int]
+            total should be(21)
+            results \ "infotons" match {
+              case JsDefined(JsArray(infotons)) => {
+                val m = infotons.groupBy(jv => (jv \ "type").as[String])
+                m should have size (2)
+                forAll(m) {
+                  case ("DeletedInfoton", deletedInfotons) => deletedInfotons should have size (7)
+                  case ("ObjectInfoton", deletedInfotons) => deletedInfotons should have size (14)
+                }
+              }
+              case somethingElse => fail(s"was expecting an array, but got: $somethingElse")
             }
           }
-          case somethingElse => fail(s"was expecting an array, but got: $somethingElse")
-        }
-      }
-    })
+        })
 
     it("verify boxed error bug on root search without qp is solved")(boxedErrorOnRootWithoutQP)
     it("ingest geonames data successfully")(ingestGeonames)
@@ -444,7 +473,9 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
     it("filter person results with 'ghost skipping' an intermediate missing infoton")(gqpFilterBySkippingGhostNed)
     it("filter all person results with 'ghost skipping' an intermediate missing infoton if it also contains a filter")(gqpFilterAllAlthoughSkippingGhostNed)
 // TODO: uncomment when implemented:
+    // scalastyle:off
 //  it("filter all person results with 'ghost skipping' an intermediate missing infoton if it also contains an empty filter")(gqpFilterAllAlthoughSkippingGhostNedWithEmptyFilter)
+    // scalastyle:on
     describe("delete infotons and search for in") {
       it("succeed deleting nested objects")(deleteAbouts)
       it("not get nested objects using recursive query param after deletes")(recursiveSearch2)

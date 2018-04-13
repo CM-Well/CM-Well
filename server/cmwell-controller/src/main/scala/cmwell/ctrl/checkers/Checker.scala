@@ -12,29 +12,26 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.ctrl.checkers
 
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.Future
-import scala.concurrent.duration.{FiniteDuration, Duration}
+import scala.concurrent.duration.{Duration, FiniteDuration}
 
 /**
- * Created by michael on 12/3/14.
- */
-
-case class StateStore(size : Int) extends LazyLogging {
+  * Created by michael on 12/3/14.
+  */
+case class StateStore(size: Int) extends LazyLogging {
   private[this] val s = new scala.collection.mutable.Queue[ComponentState]()
 
-  def add(cs : ComponentState): Unit = {
+  def add(cs: ComponentState): Unit = {
     s.enqueue(cs)
-    if(s.size > size) s.dequeue()
+    if (s.size > size) s.dequeue()
     logger.debug(s"StateStore: $s, max-size: $size, current-size: ${s.size}")
   }
 
-  def getLastStates(num : Int) : Vector[ComponentState] = {
+  def getLastStates(num: Int): Vector[ComponentState] = {
     s.reverse.take(num).toVector
   }
 
@@ -44,19 +41,18 @@ case class StateStore(size : Int) extends LazyLogging {
 }
 
 trait Checker {
-  val storedStates : Int = 5
+  val storedStates: Int = 5
   private lazy val states = StateStore(storedStates)
-  def check : Future[ComponentState]
-  def storeState(cs : ComponentState): Unit = {
+  def check: Future[ComponentState]
+  def storeState(cs: ComponentState): Unit = {
     states.add(cs)
   }
 
-  def getLastStates(num : Int) = states.getLastStates(num)
+  def getLastStates(num: Int) = states.getLastStates(num)
   def resetStates = states.reset
 }
 
-
 trait RestarterChecker {
-  def restartAfter : FiniteDuration
-  def doRestart : Unit
+  def restartAfter: FiniteDuration
+  def doRestart: Unit
 }

@@ -12,22 +12,17 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 import scala.util.{Failure, Success, Try}
+import scala.concurrent.duration.{Duration, DurationInt}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 /**
- * Created by michael on 1/13/15.
- */
+  * Created by michael on 1/13/15.
+  */
 object Retry {
-  def apply[T](block : => T, retries : Int = 3, delay : Int = 5000) : Try[T] = {
-    for(i <- 1 to retries){
-      val res = Try(block)
-      res match {
-        case Success(s) => return res
-        case Failure(ex) => Thread.sleep(delay)
-      }
-    }
-    Try(block)
+  def apply[T](block: => T, retries: Int = 3, delay: Int = 5000): Try[T] = {
+    val r = cmwell.util.concurrent.retry(retries + 1,delay.millis)(Future.successful(Try(block)))(ExecutionContext.global)
+    val f = r.transform(_.flatten)(ExecutionContext.global)
+    f.value.getOrElse(Try(Await.result(f, Duration.Inf)))
   }
 }

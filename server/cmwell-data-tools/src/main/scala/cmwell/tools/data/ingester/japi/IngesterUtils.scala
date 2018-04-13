@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.ingester.japi
 
 import java.io._
@@ -76,13 +74,15 @@ object IngesterUtils {
     implicit val system = ActorSystem("reactive-downloader")
     implicit val mat = ActorMaterializer()
 
-    Ingester.fromInputStream(
-      baseUrl = host,
-      format = format,
-      writeToken = Option(writeToken),
-      in = in
-    ).runWith(Sink.ignore)
-     .andThen { case _ => cleanup()      }
-     .andThen { case _ => onFinish.run() }
+    Ingester
+      .fromInputStream(
+        baseUrl = host,
+        format = format,
+        writeToken = Option(writeToken),
+        in = in
+      )
+      .runWith(Sink.ignore)
+      .andThen { case _ => cleanup() }
+      .andThen { case _ => onFinish.run() }
   }
 }

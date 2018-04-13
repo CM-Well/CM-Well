@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.utils.akka.stats
 
 import akka.actor.{ActorRef, _}
@@ -32,22 +30,23 @@ import scala.concurrent.duration._
 
 object DownloaderStats {
   case class DownloadStats(label: Option[String] = None,
-                           receivedBytes: Long,
-                           receivedInfotons: Long,
-                           infotonRate: Double,
-                           bytesRate: Double,
-                           runningTime: Long,
-                           statsTime: Long,
-                           horizon: Boolean)
+                           receivedBytes: Long = 0,
+                           receivedInfotons: Long = 0,
+                           infotonRate: Double = 0,
+                           bytesRate: Double = 0,
+                           runningTime: Long = 0,
+                           statsTime: Long = 0,
+                           horizon: Boolean = false)
 
   def apply(isStderr: Boolean = false,
             format: String,
             label: Option[String] = None,
             reporter: Option[ActorRef] = None,
             initDelay: FiniteDuration = 1.second,
-            interval: FiniteDuration = 1.second) = {
+            interval: FiniteDuration = 1.second,
+            initialDownloadStats: Option[DownloadStats] = None) = {
 
-    new DownloaderStats(isStderr, format, label, reporter, initDelay, interval)
+    new DownloaderStats(isStderr, format, label, reporter, initDelay, interval, initialDownloadStats)
 
   }
 }
@@ -57,14 +56,17 @@ class DownloaderStats(isStderr: Boolean,
                       label: Option[String] = None,
                       reporter: Option[ActorRef] = None,
                       initDelay: FiniteDuration = 1.second,
-                      interval: FiniteDuration = 1.second) extends GraphStage[FlowShape[(ByteString, Option[SensorContext]), (ByteString, Option[SensorContext])]] with DataToolsLogging {
+                      interval: FiniteDuration = 1.second,
+                      initialDownloadStats: Option[DownloadStats] = None)
+    extends GraphStage[FlowShape[(ByteString, Option[SensorContext]), (ByteString, Option[SensorContext])]]
+    with DataToolsLogging {
 
   val in = Inlet[(ByteString, Option[SensorContext])]("download-stats.in")
   val out = Outlet[(ByteString, Option[SensorContext])]("download-stats.out")
   override val shape = FlowShape.of(in, out)
 
   override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = {
-    new GraphStageLogic(shape) with InstrumentedBuilder{
+    new GraphStageLogic(shape) with InstrumentedBuilder {
       val metricRegistry = new com.codahale.metrics.MetricRegistry()
       val totalDownloadedBytes = metrics.counter("received-bytes")
       val totalReceivedInfotons = metrics.meter("received-infotons")
@@ -87,46 +89,58 @@ class DownloaderStats(isStderr: Boolean,
       val formatter = java.text.NumberFormat.getNumberInstance
 
       override def preStart(): Unit = {
-        asyncCB = getAsyncCallback{ _ =>displayStats()
+
+        // Initialise persisted statistics
+        initialDownloadStats.foreach { stats =>
+          totalReceivedInfotons.mark(stats.receivedInfotons)
+        }
+
+        asyncCB = getAsyncCallback { _ =>
+          displayStats()
           resetStatsInWindow()
         }
 
-        eventPoller = Some(materializer.schedulePeriodically(initDelay, interval, new Runnable() {def run() = asyncCB.invoke(())}))
+        eventPoller = Some(materializer.schedulePeriodically(initDelay, interval, new Runnable() {
+          def run() = asyncCB.invoke(())
+        }))
 
         pull(in)
       }
 
-      setHandler(in, new InHandler {
-        override def onPush(): Unit = {
-          val element = grab(in)
-          aggregateStats(element._1)
-          setSensorHorizon(element._2)
-          push(out, element)
+      setHandler(
+        in,
+        new InHandler {
+          override def onPush(): Unit = {
+            val element = grab(in)
+            aggregateStats(element._1)
+            setSensorHorizon(element._2)
+            push(out, element)
+          }
+
+          override def onUpstreamFailure(ex: Throwable): Unit = {
+            eventPoller.foreach(_.cancel())
+            failStage(ex)
+          }
+
+          override def onUpstreamFinish(): Unit = {
+            val now = System.currentTimeMillis()
+
+            val message =
+              s"received=${toHumanReadable(totalDownloadedBytes.count)}".padTo(20, ' ') +
+                s"infotons=${formatter.format(totalReceivedInfotons.count)}".padTo(30, ' ') +
+                s"infoton rate=${formatter.format(totalReceivedInfotons.meanRate)}/sec".padTo(30, ' ') +
+                s"mean rate=${toHumanReadable(metricRateBytes.meanRate)}/sec".padTo(30, ' ') +
+                s"[${DurationFormatUtils.formatDurationWords(now - start, true, true)}]"
+
+            System.err.println("")
+            System.err.println(message)
+
+            eventPoller.foreach(_.cancel())
+            completeStage()
+          }
+
         }
-
-        override def onUpstreamFailure(ex: Throwable): Unit = {
-          eventPoller.foreach(_.cancel())
-          failStage(ex)
-        }
-
-        override def onUpstreamFinish(): Unit = {
-          val now = System.currentTimeMillis()
-
-          val message =
-            s"received=${toHumanReadable(totalDownloadedBytes.count)}".padTo(20, ' ') +
-              s"infotons=${formatter.format(totalReceivedInfotons.count)}".padTo(30, ' ') +
-              s"infoton rate=${formatter.format(totalReceivedInfotons.meanRate)}/sec".padTo(30, ' ') +
-              s"mean rate=${toHumanReadable(metricRateBytes.meanRate)}/sec".padTo(30, ' ') +
-              s"[${DurationFormatUtils.formatDurationWords(now - start, true, true)}]"
-
-          System.err.println("")
-          System.err.println(message)
-
-          eventPoller.foreach(_.cancel())
-          completeStage()
-        }
-
-      })
+      )
 
       setHandler(out, new OutHandler {
         override def onPull(): Unit = {
@@ -153,8 +167,8 @@ class DownloaderStats(isStderr: Boolean,
         }
       }
 
-      def setSensorHorizon(contextOption : Option[SensorContext]) = {
-        contextOption.foreach(context=>{
+      def setSensorHorizon(contextOption: Option[SensorContext]) = {
+        contextOption.foreach(context => {
           horizon = context.horizon
         })
       }
@@ -163,8 +177,8 @@ class DownloaderStats(isStderr: Boolean,
         val bytesRead = data.size
         bytesInWindow += bytesRead
         totalDownloadedBytes += bytesRead
-        metricRateBytes mark bytesRead
-        totalReceivedInfotons mark countInfotonsInChunk(data)
+        metricRateBytes.mark(bytesRead)
+        totalReceivedInfotons.mark(countInfotonsInChunk(data))
         timeOfLastStatistics = System.currentTimeMillis()
       }
 
@@ -184,7 +198,7 @@ class DownloaderStats(isStderr: Boolean,
 
             if (isStderr) System.err.print("\r" * lastMessageSize + message)
 
-            logger debug (s"$name $message")
+            logger.debug(s"$name $message")
 
             reporter.foreach {
               _ ! DownloadStats(

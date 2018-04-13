@@ -12,23 +12,19 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.common
 
 import cmwell.common.formats.JsonSerializer
 import cmwell.domain.{FieldValue, Infoton}
 import org.joda.time.DateTime
 
-
 /**
- * Created with IntelliJ IDEA.
- * User: markz
- * Date: 12/17/12
- * Time: 5:58 PM
- *
- */
-
+  * Created with IntelliJ IDEA.
+  * User: markz
+  * Date: 12/17/12
+  * Time: 5:58 PM
+  *
+  */
 sealed abstract class Command
 
 case object HeartbitCommand extends Command
@@ -40,11 +36,10 @@ sealed abstract class SingleCommand extends Command {
   def lastModified: DateTime
 }
 
-case class CommandRef(ref:String) extends Command
+case class CommandRef(ref: String) extends Command
 
-case class WriteCommand(infoton: Infoton,
-                        trackingID: Option[String] = None,
-                        prevUUID: Option[String] = None) extends SingleCommand {
+case class WriteCommand(infoton: Infoton, trackingID: Option[String] = None, prevUUID: Option[String] = None)
+    extends SingleCommand {
   override def path = infoton.path
 
   override def lastModified: DateTime = infoton.lastModified
@@ -53,25 +48,28 @@ case class DeleteAttributesCommand(path: String,
                                    fields: Map[String, Set[FieldValue]],
                                    lastModified: DateTime,
                                    trackingID: Option[String] = None,
-                        prevUUID: Option[String] = None) extends SingleCommand
+                                   prevUUID: Option[String] = None)
+    extends SingleCommand
 case class DeletePathCommand(path: String,
                              lastModified: DateTime = new DateTime(),
                              trackingID: Option[String] = None,
-                        prevUUID: Option[String] = None) extends SingleCommand
+                             prevUUID: Option[String] = None)
+    extends SingleCommand
 // ( Option[Set[FieldValue]] , Set[FieldValue] )
 // 1 .when getting None delete all values of specific field
 // 2. when getting a empty Set we just add the new fields without delete
 case class UpdatePathCommand(path: String,
-                             deleteFields: Map[String,Set[FieldValue]],
-                             updateFields: Map[ String,Set[FieldValue]],
+                             deleteFields: Map[String, Set[FieldValue]],
+                             updateFields: Map[String, Set[FieldValue]],
                              lastModified: DateTime,
                              trackingID: Option[String] = None,
-                        prevUUID: Option[String] = None) extends SingleCommand
+                             prevUUID: Option[String] = None)
+    extends SingleCommand
 
-case class OverwriteCommand(infoton: Infoton,
-                            trackingID: Option[String] = None) extends SingleCommand {
+case class OverwriteCommand(infoton: Infoton, trackingID: Option[String] = None) extends SingleCommand {
 //  require(infoton.indexTime.isDefined && infoton.dc != SettingsHelper.dataCenter,
-//    s"OverwriteCommands must be used only for infotons from other data centers [${infoton.indexTime}] && ${infoton.dc} != ${SettingsHelper.dataCenter}.\ninfoton: ${new String(JsonSerializer.encodeInfoton(infoton),"UTF-8")}")
+//    s"OverwriteCommands must be used only for infotons from other data centers [${infoton.indexTime}] &&
+// ${infoton.dc} != ${SettingsHelper.dataCenter}.\ninfoton: ${new String(JsonSerializer.encodeInfoton(infoton),"UTF-8")}")
 
   override def prevUUID: Option[String] = None
   override def path = infoton.path
@@ -79,13 +77,13 @@ case class OverwriteCommand(infoton: Infoton,
   override def lastModified: DateTime = infoton.lastModified
 }
 
-case class StatusTracking(tid:String, numOfParts:Int)
+case class StatusTracking(tid: String, numOfParts: Int)
 
 sealed trait IndexCommand extends Command {
   def path: String
   def trackingIDs: Seq[StatusTracking]
-  def uuid:String
-  def indexName:String
+  def uuid: String
+  def indexName: String
 }
 
 /**
@@ -98,8 +96,9 @@ case class IndexNewInfotonCommand(uuid: String,
                                   isCurrent: Boolean,
                                   path: String,
                                   infotonOpt: Option[Infoton] = None,
-                                  indexName:String,
-                                  trackingIDs: Seq[StatusTracking] = Nil) extends IndexCommand
+                                  indexName: String,
+                                  trackingIDs: Seq[StatusTracking] = Nil)
+    extends IndexCommand
 
 /**
   * A commnad for the Indexer to update existing infoton
@@ -111,18 +110,17 @@ case class IndexExistingInfotonCommand(uuid: String,
                                        weight: Long,
                                        path: String,
                                        indexName: String,
-                                       trackingIDs: Seq[StatusTracking] = Nil) extends IndexCommand
+                                       trackingIDs: Seq[StatusTracking] = Nil)
+    extends IndexCommand
 
 object CommandSerializer {
 
-  def encode(cmd : Command) : Array[Byte] = {
+  def encode(cmd: Command): Array[Byte] = {
     JsonSerializer.encodeCommand(cmd)
   }
 
-  def decode(payload : Array[Byte]) : Command = {
+  def decode(payload: Array[Byte]): Command = {
     JsonSerializer.decodeCommand(payload)
   }
 
 }
-
-

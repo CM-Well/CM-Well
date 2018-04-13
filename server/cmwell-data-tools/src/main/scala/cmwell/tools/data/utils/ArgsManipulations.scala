@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.tools.data.utils
 
 /**
@@ -32,20 +30,26 @@ object ArgsManipulations {
       path
   }
 
-
   def extractBaseUrl(baseUrl: String): HttpAddress = {
-    // TODO: every untrivial regex should either be explained (LDFormatter style) or constructed using e.g: verbal expressions (https://github.com/VerbalExpressions)
+    // TODO: every untrivial regex should either be explained (LDFormatter style) or constructed using
+    // TODO: e.g: verbal expressions (https://github.com/VerbalExpressions)
     val pattern = """(http[s]?:\/\/)?([^\?\:\/#]+)(\:([0-9]+))?(\/[^\?\#]*)?(\?([^#]*))?(#.*)?""".r
 
     baseUrl match {
-      case pattern(protocol, host, _, port, uriPrefix, _, _*) => HttpAddress(
-        protocol = if (protocol != null && protocol.startsWith("https")) "https" else "http",
-        host = host,
-        port = Option(port).getOrElse("80").toInt,
-        uriPrefix = Option(uriPrefix).fold("")(identity)
-      )
+      case pattern(protocol, host, _, port, uriPrefix, _, _*) =>
+        HttpAddress(
+          protocol =
+            if (protocol != null && protocol.startsWith("https")) "https"
+            else "http",
+          host = host,
+          port = Option(port).getOrElse("80").toInt,
+          uriPrefix = Option(uriPrefix).fold("")(identity)
+        )
     }
   }
 
-  case class HttpAddress(protocol: String = "http", host: String, port: Int = 80, uriPrefix: String = "")
+  case class HttpAddress(protocol: String = "http",
+                         host: String,
+                         port: Int = 80,
+                         uriPrefix: String = "")
 }

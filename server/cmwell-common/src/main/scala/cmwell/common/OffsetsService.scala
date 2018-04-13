@@ -12,8 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
-
 package cmwell.common
 
 import scala.concurrent.Await
@@ -25,13 +23,14 @@ import cmwell.zstore.ZStore
   */
 trait OffsetsService {
 
-  def read(id:String):Option[Long]
-  def write(id:String, offset:Long):Unit
+  def read(id: String): Option[Long]
+  def write(id: String, offset: Long): Unit
 }
 
-class ZStoreOffsetsService(zStore:ZStore) extends OffsetsService {
+class ZStoreOffsetsService(zStore: ZStore) extends OffsetsService {
 
   override def read(id: String): Option[Long] = Await.result(zStore.getLongOpt(id), 10.seconds)
 
-  override def write(id: String, offset: Long): Unit = Await.result(zStore.putLong(id, offset, batched = true), 10.seconds)
+  override def write(id: String, offset: Long): Unit =
+    Await.result(zStore.putLong(id, offset, batched = true), 10.seconds)
 }

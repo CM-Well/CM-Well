@@ -20,7 +20,7 @@ import com.typesafe.scalalogging.LazyLogging
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.FiniteDuration
 
-package object algorithms extends LazyLogging  {
+package object algorithms extends LazyLogging {
   /*
    * Union Find Algorithm
    *
@@ -80,12 +80,12 @@ package object algorithms extends LazyLogging  {
 
   trait IntegralConsts[N] {
     val tc: Integral[N]
-    lazy val two = tc.plus(tc.one,tc.one)
-    lazy val four = tc.plus(two,two)
+    lazy val two = tc.plus(tc.one, tc.one)
+    lazy val four = tc.plus(two, two)
   }
 
   object IntegralConsts {
-    implicit def consts[N : Integral] = new IntegralConsts[N] {
+    implicit def consts[N: Integral] = new IntegralConsts[N] {
       override val tc = implicitly[Integral[N]]
     }
   }
@@ -104,31 +104,31 @@ package object algorithms extends LazyLogging  {
     * @tparam N
     * @return (from, to , nextTo)
     */
-  def binRangeSearch[N : IntegralConsts](from: N, toSeed: N, upperBound: N, threshold: Long, thresholdFactor: Double, timeout: FiniteDuration)
-                                 (searchFunction: N => Future[Long])
-                                 (implicit ec: ExecutionContext): Future[(N,N,Option[N])] = {
+  def binRangeSearch[N: IntegralConsts](
+    from: N,
+    toSeed: N,
+    upperBound: N,
+    threshold: Long,
+    thresholdFactor: Double,
+    timeout: FiniteDuration
+  )(searchFunction: N => Future[Long])(implicit ec: ExecutionContext): Future[(N, N, Option[N])] = {
     val consts = implicitly[IntegralConsts[N]]
     val math = consts.tc
-    require(math.compare(from,math.zero) >= 0,"from must be positive or zero")
-    require(math.compare(from,toSeed) < 0,"from must be smaller than toSeed")
-    require(math.compare(toSeed,upperBound) <= 0,"toSeed must be smaller or equal to upperBound")
-    require(thresholdFactor < 1.0 && thresholdFactor > 0.0,"thresholdFactor must be greater than 0, but less than 1")
-    val notEnough = (threshold * (1-thresholdFactor)).toLong
-    val tooMany = (threshold * (1+thresholdFactor)).toLong
+    require(math.compare(from, math.zero) >= 0, "from must be positive or zero")
+    require(math.compare(from, toSeed) < 0, "from must be smaller than toSeed")
+    require(math.compare(toSeed, upperBound) <= 0, "toSeed must be smaller or equal to upperBound")
+    require(thresholdFactor < 1.0 && thresholdFactor > 0.0, "thresholdFactor must be greater than 0, but less than 1")
+    val notEnough = (threshold * (1 - thresholdFactor)).toLong
+    val tooMany = (threshold * (1 + thresholdFactor)).toLong
     val timeoutMarker = schedule(timeout)(())
     logger.trace(s"expandRange($from, $toSeed, $upperBound, $notEnough, $tooMany, ...)")
-    expandRange(from, toSeed,upperBound,notEnough,tooMany,timeoutMarker)(searchFunction).flatMap{
+    expandRange(from, toSeed, upperBound, notEnough, tooMany, timeoutMarker)(searchFunction).flatMap {
       case Right(result) => Future.successful(result)
-      case r@Left((timePosition, step, nextToOptimization)) =>
+      case r @ Left((timePosition, step, nextToOptimization)) =>
         logger.trace(s"expandRange returned $r moving on to the shrinking binary search")
-        shrinkingStepBinarySearch(
-          from,
-          timePosition,
-          step,
-          nextToOptimization,
-          notEnough,
-          tooMany,
-          timeoutMarker)(searchFunction)
+        shrinkingStepBinarySearch(from, timePosition, step, nextToOptimization, notEnough, tooMany, timeoutMarker)(
+          searchFunction
+        )
     }
   }
 
@@ -149,14 +149,14 @@ package object algorithms extends LazyLogging  {
     *   3. found suitable range during the expand phase
     * @return either Right(from, to, nextTo) or Left(position, step, nextTo)
     */
-  def expandRange[N : IntegralConsts](from: N,
-                                toSeed: N,
-                                upperBound: N,
-                                notEnough: Long,
-                                tooMany: Long,
-                                timeoutMarker: Future[Unit])
-                               (searchFunction: N => Future[Long])
-                               (implicit ec: ExecutionContext): Future[Either[(N, N, Option[N]),(N, N, Option[N])]] = {
+  def expandRange[N: IntegralConsts](from: N,
+                                     toSeed: N,
+                                     upperBound: N,
+                                     notEnough: Long,
+                                     tooMany: Long,
+                                     timeoutMarker: Future[Unit])(
+    searchFunction: N => Future[Long]
+  )(implicit ec: ExecutionContext): Future[Either[(N, N, Option[N]), (N, N, Option[N])]] = {
     val consts = implicitly[IntegralConsts[N]]
     val math, ord = consts.tc
 
@@ -165,39 +165,49 @@ package object algorithms extends LazyLogging  {
       logger.trace(s"expandTimeRange: from[$from], to[$to]")
       if (timeoutMarker.isCompleted) {
         val resultingTo =
-          //in case that the time was finished before doing any inner iteration - return the toSeed we started with. If not it will return the middle between from and toSeed to potentially don't have any data in it.
-          if(ord.compare(to,toSeed) == 0) toSeed
+          //in case that the time was finished before doing any inner iteration - return the toSeed we started with.
+        // If not it will return the middle between from and toSeed to potentially don't have any data in it.
+          if (ord.compare(to, toSeed) == 0) toSeed
           else math.minus(to, math.quot(math.minus(to, from), consts.two))
         Future.successful(Right((from, resultingTo, None)))
       }
-      //if to>=now then 1. the binary search should be between the previous position and now or 2. the now position itself. Both cases will be check in the below function
-      else if (ord.compare(to, upperBound) >= 0) checkRangeUpToUpperBound(from, math.minus(to, math.quot(math.minus(to, from), consts.two)), upperBound, notEnough, tooMany)(searchFunction)
-      else searchFunction(to).flatMap { total =>
-        //not enough results - keep expanding
-        if (total < notEnough) inner(math.plus(to, math.minus(to, from)))
-        //in range - return final result
-        else if (total < tooMany) Future.successful(Right(from, to, None))
-        //too many results - return the position to start the binary search from
-        else {
-          val nextToOptimizedForTheNextToken = if (total < tooMany * 2) Some(to) else None
-          //The last step got us to this position
-          val lastStep = math.quot(math.minus(to, from),consts.two)
-          val toToStartSearchFrom = math.minus(to, math.quot(lastStep, consts.two))
-          Future.successful(Left(toToStartSearchFrom, math.quot(lastStep,consts.four), nextToOptimizedForTheNextToken))
+      //if to>=now then 1. the binary search should be between the previous position and now or 2.
+      // the now position itself. Both cases will be check in the below function
+      else if (ord.compare(to, upperBound) >= 0)
+        checkRangeUpToUpperBound(from,
+                                 math.minus(to, math.quot(math.minus(to, from), consts.two)),
+                                 upperBound,
+                                 notEnough,
+                                 tooMany)(searchFunction)
+      else
+        searchFunction(to).flatMap { total =>
+          //not enough results - keep expanding
+          if (total < notEnough) inner(math.plus(to, math.minus(to, from)))
+          //in range - return final result
+          else if (total < tooMany) Future.successful(Right(from, to, None))
+          //too many results - return the position to start the binary search from
+          else {
+            val nextToOptimizedForTheNextToken = if (total < tooMany * 2) Some(to) else None
+            //The last step got us to this position
+            val lastStep = math.quot(math.minus(to, from), consts.two)
+            val toToStartSearchFrom = math.minus(to, math.quot(lastStep, consts.two))
+            Future.successful(
+              Left(toToStartSearchFrom, math.quot(lastStep, consts.four), nextToOptimizedForTheNextToken)
+            )
+          }
         }
-      }
     }
 
     inner(toSeed)
   }
 
-  def checkRangeUpToUpperBound[N : IntegralConsts](from: N,
-                                             rangeStart: N,
-                                             upperBound: N,
-                                             notEnough: Long,
-                                             tooMany: Long)
-                                            (searchFunction: N => Future[Long])
-                                            (implicit ec: ExecutionContext): Future[Either[(N, N, Option[N]),(N, N, Option[N])]] = {
+  def checkRangeUpToUpperBound[N: IntegralConsts](from: N,
+                                                  rangeStart: N,
+                                                  upperBound: N,
+                                                  notEnough: Long,
+                                                  tooMany: Long)(
+    searchFunction: N => Future[Long]
+  )(implicit ec: ExecutionContext): Future[Either[(N, N, Option[N]), (N, N, Option[N])]] = {
     logger.trace(s"checkRangeUpToNow: from[$from], rangeStart[$rangeStart]")
     val consts = implicitly[IntegralConsts[N]]
     val math = consts.tc
@@ -208,7 +218,7 @@ package object algorithms extends LazyLogging  {
         val nextToOptimizedForTheNextToken = if (total < tooMany * 2) Some(upperBound) else None
         //rangeStart is the last known position to be with not enough results. This is the lower bound for the binary search
         //range is the range of the binary search. The whole search will be between rangeStart and now
-        val range = math.minus(upperBound,rangeStart)
+        val range = math.minus(upperBound, rangeStart)
         //The next position to be checked using the binary search
         val middle = math.plus(rangeStart, math.quot(range, consts.two))
         //In case the next iteration won't finish, this is the step to be taken. The step is half of the step that was taken to get to the middle point
@@ -218,15 +228,15 @@ package object algorithms extends LazyLogging  {
     }
   }
 
-  def shrinkingStepBinarySearch[N : IntegralConsts](from: N,
-                                              timePosition: N,
-                                              step: N,
-                                              nextTo: Option[N],
-                                              notEnough: Long,
-                                              tooMany: Long,
-                                              timeoutMarker: Future[Unit])
-                                             (searchFunction: N => Future[Long])
-                                             (implicit ec: ExecutionContext): Future[(N,N,Option[N])] = {
+  def shrinkingStepBinarySearch[N: IntegralConsts](
+    from: N,
+    timePosition: N,
+    step: N,
+    nextTo: Option[N],
+    notEnough: Long,
+    tooMany: Long,
+    timeoutMarker: Future[Unit]
+  )(searchFunction: N => Future[Long])(implicit ec: ExecutionContext): Future[(N, N, Option[N])] = {
     logger.trace(s"shrinkingStepBinarySearch: from[$from], timePosition[$timePosition], step[$step], nextTo[$nextTo]")
     val consts = implicitly[IntegralConsts[N]]
     val math = consts.tc
@@ -234,29 +244,35 @@ package object algorithms extends LazyLogging  {
     //In case of an early cut off we have 2 options:
     //1. the previous didn't have enough results - we can use it
     //2. the previous had too many results - we cannot use it but we can use the position before it which is our position minus twice the given step
-    //Also note: even with the case we moved back several times the logic is correct. The next step to reach the last position that we jump ahead from is exactly the previous step done which is twice the step we would do in case that we had continue the search
-    if (timeoutMarker.isCompleted) Future.successful((from, math.minus(timePosition, math.times(step, consts.two)), nextTo))
-    else searchFunction(timePosition).flatMap { total =>
-      //not enough results - keep the search up in the timeline
-      if (total < notEnough) shrinkingStepBinarySearch(
-        from,
-        math.plus(timePosition, step),
-        math.quot(step, consts.two),
-        nextTo,
-        notEnough,
-        tooMany,
-        timeoutMarker)(searchFunction)
-      //in range - return final result
-      else if (total < tooMany) Future.successful((from, timePosition, nextTo))
-      //too many results - keep the search down in the timeline
-      else shrinkingStepBinarySearch(
-        from,
-        math.minus(timePosition, step),
-        math.quot(step, consts.two),
-        nextTo orElse (if (total < tooMany * 2) Some(timePosition) else None),
-        notEnough,
-        tooMany,
-        timeoutMarker)(searchFunction)
-    }
+    //Also note: even with the case we moved back several times the logic is correct.
+    //           The next step to reach the last position that we jump ahead from is exactly the previous step done
+    //           which is twice the step we would do in case that we had continue the search
+    if (timeoutMarker.isCompleted)
+      Future.successful((from, math.minus(timePosition, math.times(step, consts.two)), nextTo))
+    else
+      searchFunction(timePosition).flatMap { total =>
+        //not enough results - keep the search up in the timeline
+        if (total < notEnough)
+          shrinkingStepBinarySearch(from,
+                                    math.plus(timePosition, step),
+                                    math.quot(step, consts.two),
+                                    nextTo,
+                                    notEnough,
+                                    tooMany,
+                                    timeoutMarker)(searchFunction)
+        //in range - return final result
+        else if (total < tooMany) Future.successful((from, timePosition, nextTo))
+        //too many results - keep the search down in the timeline
+        else
+          shrinkingStepBinarySearch(
+            from,
+            math.minus(timePosition, step),
+            math.quot(step, consts.two),
+            nextTo.orElse(if (total < tooMany * 2) Some(timePosition) else None),
+            notEnough,
+            tooMany,
+            timeoutMarker
+          )(searchFunction)
+      }
   }
 }
