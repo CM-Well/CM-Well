@@ -867,7 +867,7 @@ class Downloader(
     val bufferFillerActor = system.actorOf(
       Props(
         new BufferFillerActor(
-          threshold = (prefetchBufferSize * 0.3).toInt,
+          threshold = (prefetchBufferSize * 0.1).toInt,
           initToken = initTokenFuture,
           baseUrl = baseUrl,
           params = params,

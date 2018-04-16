@@ -252,7 +252,7 @@ class SparqlTriggeredProcessor(config: Config,
     val processedConfig = Await.result(preProcessConfig(config), 3.minutes)
 
     val sensorSource = createSensorSource(processedConfig)
-      .groupedWithin(10000, distinctWindowSize)
+      .groupedWithin(100, distinctWindowSize)
       .statefulMapConcat {
         () =>
           // stores last received tokens from sensors
