@@ -10,10 +10,11 @@ Click on a version to see its release notes.
 
 **Latest version:**
 
-* [Version Rhino - March 2018](ReleaseNotes.Rhino.March.2018.md)
+* [Version Swan - April 2018](ReleaseNotes.Swan.April.2018.md)
 
 **Older versions:**
 
+* [Version Rhino - March 2018](ReleaseNotes.Rhino.March.2018.md)
 * [Version Quetzal - February 2018](ReleaseNotes.Quetzal.February.2018.md)
 * [Version Piranha - January 2018](ReleaseNotes.Piranha.January.2018.md)
 * [Version Octopus - December 2017](ReleaseNotes.Octopus.December.2017.md)
