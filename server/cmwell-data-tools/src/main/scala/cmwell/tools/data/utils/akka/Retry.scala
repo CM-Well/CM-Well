@@ -200,7 +200,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
           count match {
             case Some(c) if c > 0 =>
               e.discardBytes()
-              logger.warn(
+              logger.debug(
                 s"$labelValue received $s, count=$count will retry again in $delay host=${getHostnameValue(h)} data=${stringifyData(data)}"
               )
               val future =
