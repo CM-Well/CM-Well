@@ -279,6 +279,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
             if !s.isSuccess() =>
           // consume HTTP response bytes
           e.discardBytes()
+          logger.error(s"$labelValue status is not success ($s) $e")
           Future.successful(Failure(new Exception(s"status is not success ($s) $e")) -> state.copy(response = response.toOption))
         case (response @ Success(res @ HttpResponse(s, headers, e, _)), state) =>
           // consume HTTP response bytes and later pack them in fake response
