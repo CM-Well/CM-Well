@@ -67,17 +67,8 @@ object CtrlClient extends LazyLogging {
     healthActor = HealthActor.ref
   }
 
-  def getHealthControl(joinToHost: String, retries: Int = 10): Unit = {
-    val fa = Grid.selectActor("HealthActor-router", GridJvm(joinToHost, Jvms.DC)).resolveOne(15.seconds)
-
-    fa.onComplete {
-      case Success(a) => healthActor = a
-      case Failure(e) if retries > 0 =>
-        logger.warn("Could not getHealthControl. Retrying...", e)
-        getHealthControl(joinToHost, retries - 1)
-      case Failure(e) => logger.error("Could not getHealthControl!", e)
-    }
-
+  def getHealthControl(): Unit = {
+    healthActor = Grid.serviceRef("HealthActor")
   }
 
   /**
@@ -87,7 +78,7 @@ object CtrlClient extends LazyLogging {
     */
   def init(joinToHost: String): Unit = {
     currentHost = joinToHost
-    getHealthControl(joinToHost)
+    getHealthControl()
     Thread.sleep(10000)
   }
 
