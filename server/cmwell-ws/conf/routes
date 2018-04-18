@@ -50,6 +50,7 @@ GET         /health/es_top          controllers.Health.getElasticsearchTop
 GET         /health/es_stats        controllers.Health.getElasticsearchStats
 GET         /health/es_seg          controllers.Health.getElasticsearchSegments
 GET         /health/es_status       controllers.Health.getElasticsearchStatus
+GET         /health/es_thread_pool  controllers.Health.getElasticsearchThreadPool
 GET         /health/kafka           controllers.Health.getKafkaStatus
 GET         /health/zk-stat         controllers.Health.getZkStat
 GET         /health/zk-ruok         controllers.Health.getZkRuok
