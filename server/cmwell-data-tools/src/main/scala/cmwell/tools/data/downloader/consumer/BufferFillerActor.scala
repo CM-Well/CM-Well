@@ -232,7 +232,13 @@ class BufferFillerActor(threshold: Int,
 
       val uri =
         s"${formatHost(baseUrl)}/$consumeHandler?position=$token&format=tsv$paramsValue$slowBulk$to" +
-          consumeLengthHint.fold(""){"&length-hint=" + _ }
+         consumeLengthHint.fold(""){ hint =>
+            isBulk match {
+              case false => "&length-hint=" + hint
+              case _ => ""
+            }
+          }
+
       logger.debug("send HTTP request: {}", uri)
       HttpRequest(uri = uri).addHeader(RawHeader("Accept-Encoding", "gzip"))
     }
