@@ -54,7 +54,8 @@ class BufferFillerActor(threshold: Int,
                         params: String = "",
                         isBulk: Boolean = false,
                         updateFreq: Option[FiniteDuration] = None,
-                        override val label: Option[String] = None)
+                        override val label: Option[String] = None,
+                        consumeLengthHint: Option[Int] = None)
     extends Actor
     with DataToolsLogging
     with DataToolsConfig {
@@ -80,11 +81,6 @@ class BufferFillerActor(threshold: Int,
       config.getString("cmwell.downloader.consumer.http-retry-timeout")
     ).toCoarsest
     FiniteDuration(timeoutDuration.length, timeoutDuration.unit)
-  }
-
-  val consumeLengthHint = config.hasPath("cmwell.downloader.consumer.fetch-size") match {
-    case true => Some(config.getInt("cmwell.downloader.consumer.fetch-size"))
-    case false => None
   }
 
   private val HttpAddress(protocol, host, port, _) =

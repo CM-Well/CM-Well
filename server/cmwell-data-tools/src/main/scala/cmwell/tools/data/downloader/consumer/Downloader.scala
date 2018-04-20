@@ -276,7 +276,8 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
                       token: Option[String] = None,
                       updateFreq: Option[FiniteDuration] = None,
                       indexTime: Long = 0L,
-                      label: Option[String] = None)(
+                      label: Option[String] = None,
+                      consumeLengthHint: Option[Int] = None)(
     implicit system: ActorSystem,
     mat: Materializer,
     ec: ExecutionContext
@@ -289,7 +290,8 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
                                     isBulk = isBulk,
                                     indexTime = indexTime,
                                     recursive = recursive,
-                                    label = label)
+                                    label = label,
+                                    consumeLengthHint = consumeLengthHint)
 
     downloader.createTsvSource(token, updateFreq)
   }
@@ -386,7 +388,8 @@ class Downloader(
   recursive: Boolean = false,
   isBulk: Boolean = false,
   indexTime: Long = 0L,
-  override val label: Option[String] = None
+  override val label: Option[String] = None,
+  consumeLengthHint: Option[Int] = None
 )(implicit system: ActorSystem, mat: Materializer)
     extends DataToolsLogging {
   import Downloader._
@@ -873,7 +876,8 @@ class Downloader(
           params = params,
           isBulk = isBulk,
           updateFreq = updateFreq,
-          label = label
+          label = label,
+          consumeLengthHint = consumeLengthHint
         )
       )
     )
