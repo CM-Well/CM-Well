@@ -22,9 +22,9 @@ import cmwell.fts.FTSServiceNew
 import cmwell.irw.IRWService
 import cmwell.common.ZStoreOffsetsService
 import cmwell.zstore.ZStore
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{ConfigFactory, ConfigValueFactory}
 import com.typesafe.scalalogging.LazyLogging
-import k.grid.service.{ServiceInitInfo, ServiceTypes}
+import k.grid.service.ServiceTypes
 import k.grid.{Grid, GridConnection}
 import org.slf4j.LoggerFactory
 import uk.org.lidalia.sysoutslf4j.context.SysOutOverSLF4J
@@ -69,48 +69,31 @@ object Runner extends LazyLogging {
       val ftsService = FTSServiceNew("bg.es.yml")
       val offsetsService = new ZStoreOffsetsService(zStore)
 
-      Grid.setGridConnection(GridConnection(memberName = "bg", labels = Set("bg")))
-      Grid.declareServices(
-        ServiceTypes()
+      val serviceTypes = {
+        val neighborhoodPartitions = (partition to partition+2) map (_ % numOfPartitions)
+
+        val basicServiceTypes = ServiceTypes()
           .add("KafkaMonitor",
-               classOf[KafkaMonitorActor],
-               zkServers,
-               15 * 60 * 1000L,
-               concurrent.ExecutionContext.Implicits.global)
-          .addLocal(s"BGActor$partition",
-                    classOf[CMWellBGActor],
-                    partition,
-                    config,
-                    irwService,
-                    ftsService,
-                    zStore,
-                    offsetsService)
-          .
-          //     This is part of a temp solution to make Grid service start current partition actor here and register for failover
-          //     purposes rest of partitions
-          add(
-          (1 to numOfPartitions - 1).toSet
-            .filter(_ != partition)
-            .map { par =>
-              s"BGActor$par" -> ServiceInitInfo(classOf[CMWellBGActor],
-                                                None,
-                                                par,
-                                                config,
-                                                irwService,
-                                                ftsService,
-                                                zStore,
-                                                offsetsService)
-            }
-            .toMap
-        )
-      )
+            classOf[KafkaMonitorActor],
+            zkServers,
+            15 * 60 * 1000L,
+            concurrent.ExecutionContext.Implicits.global)
+
+        neighborhoodPartitions.foldLeft(basicServiceTypes) { (st,par) =>
+          st.add(s"BGActor$par", classOf[CMWellBGActor], par,
+            config.withValue("cmwell.bg.persist.commands.partition", ConfigValueFactory.fromAnyRef(par))
+              .withValue("cmwell.bg.index.commands.partition", ConfigValueFactory.fromAnyRef(par)),
+            irwService, ftsService, zStore, offsetsService
+          )
+        }
+      }
+
+      Grid.setGridConnection(GridConnection(memberName = "bg", labels = Set("bg")))
+      Grid.declareServices(serviceTypes)
 
       Grid.joinClient
 
       Thread.sleep(60000)
-
-      val actorSystem = Grid.system
-
       cmwellBGActor = Grid.serviceRef(s"BGActor$partition")
     } catch {
       case t: Throwable =>
