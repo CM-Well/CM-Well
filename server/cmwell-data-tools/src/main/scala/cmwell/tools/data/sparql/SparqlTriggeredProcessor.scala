@@ -56,8 +56,7 @@ object SparqlTriggeredProcessor {
     isBulk: Boolean = false,
     tokenReporter: Option[ActorRef] = None,
     label: Option[String] = None,
-    distinctWindowSize: FiniteDuration = 10.seconds,
-    consumeLengthHint: Option[Int] = None
+    distinctWindowSize: FiniteDuration = 10.seconds
   )(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
 
     new SparqlTriggeredProcessor(config = config,
@@ -65,8 +64,7 @@ object SparqlTriggeredProcessor {
                                  isBulk = isBulk,
                                  tokenReporter = tokenReporter,
                                  label = label,
-                                 distinctWindowSize = distinctWindowSize,
-                                 consumeLengthHint = consumeLengthHint)
+                                 distinctWindowSize = distinctWindowSize)
       .listen()
   }
 }
@@ -76,8 +74,7 @@ class SparqlTriggeredProcessor(config: Config,
                                isBulk: Boolean = false,
                                tokenReporter: Option[ActorRef] = None,
                                override val label: Option[String] = None,
-                               distinctWindowSize: FiniteDuration,
-                               consumeLengthHint: Option[Int] = None)
+                               distinctWindowSize: FiniteDuration)
     extends DataToolsLogging {
 
   def listen()(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
@@ -191,8 +188,7 @@ class SparqlTriggeredProcessor(config: Config,
                     isBulk = isBulk,
                     token = token,
                     updateFreq = Some(config.updateFreq),
-                    label = Some(sensor.name),
-                    consumeLengthHint = consumeLengthHint
+                    label = Some(sensor.name)
                   )
                   .map {
                     case ((token, tsv), hz) =>

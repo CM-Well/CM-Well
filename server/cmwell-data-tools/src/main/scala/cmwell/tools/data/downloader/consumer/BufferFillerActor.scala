@@ -54,8 +54,7 @@ class BufferFillerActor(threshold: Int,
                         params: String = "",
                         isBulk: Boolean = false,
                         updateFreq: Option[FiniteDuration] = None,
-                        override val label: Option[String] = None,
-                        consumeLengthHint: Option[Int] = None)
+                        override val label: Option[String] = None)
     extends Actor
     with DataToolsLogging
     with DataToolsConfig {
@@ -81,6 +80,11 @@ class BufferFillerActor(threshold: Int,
       config.getString("cmwell.downloader.consumer.http-retry-timeout")
     ).toCoarsest
     FiniteDuration(timeoutDuration.length, timeoutDuration.unit)
+  }
+
+  val consumeLengthHint = config.hasPath("cmwell.downloader.consumer.consume-fetch-size") match {
+    case true => Some(config.getInt("cmwell.downloader.consumer.consume-fetch-size"))
+    case false => None
   }
 
   private val HttpAddress(protocol, host, port, _) =
@@ -228,16 +232,15 @@ class BufferFillerActor(threshold: Int,
           ("_consume", "&slow-bulk")
       }
 
+      val lengthHintStr = consumeLengthHint.fold("") { chunkSize =>
+        if (consumeHandler == "_consume") "&length-hint=" + chunkSize
+        else ""
+      }
+
       val to = toHint.map("&to-hint=" + _).getOrElse("")
 
       val uri =
-        s"${formatHost(baseUrl)}/$consumeHandler?position=$token&format=tsv$paramsValue$slowBulk$to" +
-         consumeLengthHint.fold(""){ hint =>
-            isBulk match {
-              case false => "&length-hint=" + hint
-              case _ => ""
-            }
-          }
+        s"${formatHost(baseUrl)}/$consumeHandler?position=$token&format=tsv$paramsValue$slowBulk$to$lengthHintStr"
 
       logger.debug("send HTTP request: {}", uri)
       HttpRequest(uri = uri).addHeader(RawHeader("Accept-Encoding", "gzip"))
