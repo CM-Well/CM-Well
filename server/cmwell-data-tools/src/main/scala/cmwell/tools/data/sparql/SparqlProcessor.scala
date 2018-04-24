@@ -163,7 +163,7 @@ class SparqlProcessor[T](baseUrl: String,
 
   val maxConnections = config.getInt("akka.http.host-connection-pool.max-connections")
   val httpPipelineSize = config.getInt("akka.http.host-connection-pool.pipelining-limit")
-  val httpParallelism = maxConnections * httpPipelineSize
+  val httpParallelism = config.getInt("cmwell.sparql.http-parallelisation")
 
   val retryCountLimit = config.hasPath("cmwell.sparql.http-retry-count") match {
     case true => Some(config.getInt("cmwell.sparql.http-retry-count"))

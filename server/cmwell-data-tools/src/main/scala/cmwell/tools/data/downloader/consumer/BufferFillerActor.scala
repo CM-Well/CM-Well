@@ -21,11 +21,11 @@ import akka.http.scaladsl.model.headers.RawHeader
 import akka.pattern._
 import akka.stream._
 import akka.stream.scaladsl._
-import cmwell.tools.data.downloader.consumer.Downloader._
+import cmwell.tools.data.downloader.consumer.Downloader.{config, _}
 import cmwell.tools.data.utils.ArgsManipulations
-import cmwell.tools.data.utils.ArgsManipulations.{formatHost, HttpAddress}
+import cmwell.tools.data.utils.ArgsManipulations.{HttpAddress, formatHost}
 import cmwell.tools.data.utils.akka.HeaderOps._
-import cmwell.tools.data.utils.akka.{lineSeparatorFrame, DataToolsConfig, HttpConnections}
+import cmwell.tools.data.utils.akka.{DataToolsConfig, HttpConnections, lineSeparatorFrame}
 import cmwell.tools.data.utils.logging._
 import cmwell.tools.data.utils.text.Tokens
 import cmwell.util.akka.http.HttpZipDecoder
@@ -80,6 +80,11 @@ class BufferFillerActor(threshold: Int,
       config.getString("cmwell.downloader.consumer.http-retry-timeout")
     ).toCoarsest
     FiniteDuration(timeoutDuration.length, timeoutDuration.unit)
+  }
+
+  val consumeLengthHint = config.hasPath("cmwell.downloader.consumer.consume-fetch-size") match {
+    case true => Some(config.getInt("cmwell.downloader.consumer.consume-fetch-size"))
+    case false => None
   }
 
   private val HttpAddress(protocol, host, port, _) =
@@ -227,10 +232,16 @@ class BufferFillerActor(threshold: Int,
           ("_consume", "&slow-bulk")
       }
 
+      val lengthHintStr = consumeLengthHint.fold("") { chunkSize =>
+        if (consumeHandler == "_consume") "&length-hint=" + chunkSize
+        else ""
+      }
+
       val to = toHint.map("&to-hint=" + _).getOrElse("")
 
       val uri =
-        s"${formatHost(baseUrl)}/$consumeHandler?position=$token&format=tsv$paramsValue$slowBulk$to"
+        s"${formatHost(baseUrl)}/$consumeHandler?position=$token&format=tsv$paramsValue$slowBulk$to$lengthHintStr"
+
       logger.debug("send HTTP request: {}", uri)
       HttpRequest(uri = uri).addHeader(RawHeader("Accept-Encoding", "gzip"))
     }
