@@ -82,8 +82,8 @@ class BufferFillerActor(threshold: Int,
     FiniteDuration(timeoutDuration.length, timeoutDuration.unit)
   }
 
-  val consumeLengthHint = config.hasPath("cmwell.downloader.consumer.fetch-size") match {
-    case true => Some(config.getInt("cmwell.downloader.consumer.fetch-size"))
+  val consumeLengthHint = config.hasPath("cmwell.downloader.consumer.consume-fetch-size") match {
+    case true => Some(config.getInt("cmwell.downloader.consumer.consume-fetch-size"))
     case false => None
   }
 
@@ -232,11 +232,16 @@ class BufferFillerActor(threshold: Int,
           ("_consume", "&slow-bulk")
       }
 
+      val lengthHintStr = consumeLengthHint.fold("") { chunkSize =>
+        if (consumeHandler == "_consume") "&length-hint=" + chunkSize
+        else ""
+      }
+
       val to = toHint.map("&to-hint=" + _).getOrElse("")
 
       val uri =
-        s"${formatHost(baseUrl)}/$consumeHandler?position=$token&format=tsv$paramsValue$slowBulk$to" +
-          consumeLengthHint.fold(""){"&length-hint=" + _ }
+        s"${formatHost(baseUrl)}/$consumeHandler?position=$token&format=tsv$paramsValue$slowBulk$to$lengthHintStr"
+
       logger.debug("send HTTP request: {}", uri)
       HttpRequest(uri = uri).addHeader(RawHeader("Accept-Encoding", "gzip"))
     }
