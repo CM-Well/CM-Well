@@ -12,6 +12,8 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+
 package controllers
 
 import cmwell.ctrl.utils.ProcUtil
@@ -28,12 +30,13 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.sys.process._
 import scala.util._
 import org.joda.time._
+import play.api.libs.ws.WSClient
 
 import scala.language.postfixOps
 
 /**
-  * Created by michael on 8/11/14.
-  */
+ * Created by michael on 8/11/14.
+ */
 object HealthUtils {
   val config = ConfigFactory.load()
   val ip = config.getString("ftsService.transportAddress")
@@ -51,17 +54,15 @@ object HealthUtils {
     @volatile private[this] var modified: DateTime = new DateTime(0L)
 
     private[this] val nodetoolDaemonCancellable = {
-      cmwell.util.concurrent.SimpleScheduler.scheduleAtFixedRate(30 seconds, 20 minutes) {
+      cmwell.util.concurrent.SimpleScheduler.scheduleAtFixedRate(30 seconds, 20 minutes){
         getStatus
       }
     }
 
     private[this] def getStatus: Future[String] = {
-      val f = Future(
-        ProcUtil.executeCommand(s"JAVA_HOME=$path/../java/bin $path/../cas/cur/bin/nodetool -h $ip status").get
-      )
+      val f = Future(ProcUtil.executeCommand(s"JAVA_HOME=$path/../java/bin $path/../cas/cur/bin/nodetool -h $ip status").get)
       val p = Promise[String]()
-      f.onComplete {
+      f.onComplete{
         case Failure(e) => p.failure(e)
         case Success(s) => {
           modified = new DateTime()
@@ -74,7 +75,7 @@ object HealthUtils {
 
     def get: String = (new DateTime()).minus(modified.getMillis).getMillis match {
       case ms if (ms milliseconds) < (3 minutes) => status
-      case _                                     => Try(Await.result(getStatus, timeout)).getOrElse(status)
+      case _ => Try(Await.result(getStatus, timeout)).getOrElse(status)
     }
   }
 
@@ -82,71 +83,71 @@ object HealthUtils {
 }
 
 @Singleton
-class Health @Inject()(crudServiceFS: CRUDServiceFS) extends InjectedController {
+class Health @Inject()(crudServiceFS: CRUDServiceFS, ws: WSClient) extends InjectedController {
 
   import HealthUtils._
 
-  def getCassandaraHealth = Action.async { implicit req =>
+  def getCassandaraHealth = Action.async {implicit req =>
     Future(Ok(CassNodetoolStatus))
   }
 
-  def getElasticsearchHealth = Action.async { implicit req =>
-    val res = Seq("curl", s"http://$ip:9201/_cluster/health?pretty&level=shards") !!
+  def getElasticsearchHealth ={
+    esRequestHelper(s"http://$ip:9201/_cluster/health?pretty&level=shards")
+  }
+
+
+  def getElasticsearchTop = {
+    esRequestHelper(s"http://$ip:9201/_nodes/hot_threads")
+  }
+
+  def getElasticsearchStats = {
+    esRequestHelper(s"http://$ip:9201/_cluster/stats?human&pretty")
+  }
+  def getElasticsearchSegments = {
+    esRequestHelper(s"http://$ip:9201/_segments?pretty")
+  }
+
+  def getElasticsearchStatus = {
+    esRequestHelper(s"http://$ip:9201/_status?pretty")
+  }
+
+  def getElasticsearchThreadPool =  {
+    esRequestHelper(s"http://$ip:9201/_cat/thread_pool?v")
+  }
+
+  def getKafkaStatus = Action.async {implicit req =>
+
+    val res = Seq(s"$path/../kafka/cur/bin/kafka-topics.sh","--zookeeper", s"$ip:2181", "--describe") !!
 
     Future(Ok(res))
   }
 
-  def getElasticsearchTop = Action.async { implicit req =>
-    val res = Seq("curl", s"http://$ip:9201/_nodes/hot_threads") !!
+  def getZkStat = Action.async {implicit req =>
+
+    val res = Seq("echo", "stats" ) #| Seq("nc", ip, "2181") !!
 
     Future(Ok(res))
   }
 
-  def getElasticsearchStats = Action.async { implicit req =>
-    val res = Seq("curl", s"http://$ip:9201/_cluster/stats?human&pretty") !!
+  def getZkRuok = Action.async {implicit req =>
 
-    Future(Ok(res))
-  }
-  def getElasticsearchSegments = Action.async { implicit req =>
-    val res = Seq("curl", s"http://$ip:9201/_segments?pretty") !!
+    val res = Seq("echo", "ruok" ) #| Seq("nc", ip, "2181") !!
 
     Future(Ok(res))
   }
 
-  def getElasticsearchStatus = Action.async { implicit req =>
-    val res = Seq("curl", s"http://$ip:9201/_status?pretty") !!
+  def getZkMntr  = Action.async {implicit req =>
+
+    val res = Seq("echo", "mntr" ) #| Seq("nc", ip, "2181") !!
 
     Future(Ok(res))
   }
 
-  def getKafkaStatus = Action.async { implicit req =>
-    val res = Seq(s"$path/../kafka/cur/bin/kafka-topics.sh", "--zookeeper", s"$ip:2181", "--describe") !!
 
-    Future(Ok(res))
-  }
-
-  def getZkStat = Action.async { implicit req =>
-    val res = Seq("echo", "stats") #| Seq("nc", ip, "2181") !!
-
-    Future(Ok(res))
-  }
-
-  def getZkRuok = Action.async { implicit req =>
-    val res = Seq("echo", "ruok") #| Seq("nc", ip, "2181") !!
-
-    Future(Ok(res))
-  }
-
-  def getZkMntr = Action.async { implicit req =>
-    val res = Seq("echo", "mntr") #| Seq("nc", ip, "2181") !!
-
-    Future(Ok(res))
-  }
-
-  def getIndex = Action.async { implicit req =>
-    Future {
+  def getIndex = Action.async {implicit req =>
+    Future{
       val xml =
-        """
+      """
         |<html>
         | <head>
         |   <title>CM-Well Cluster Health</title>
@@ -159,6 +160,7 @@ class Health @Inject()(crudServiceFS: CRUDServiceFS) extends InjectedController 
         |   <a href="/health/es_stats">Elasticsearch Stats</a><br>
         |   <a href="/health/es_seg">Elasticsearch Segments</a><br>
         |   <a href="/health/es_status">Elasticsearch Status</a><br>
+        |   <a href="/health/es_thread_pool">Elasticsearch Thread Pool</a><br>
         |   <a href="/health/kafka">Kafka</a><br>
         |   <a href="/health/zk-stat">zk-stat</a><br>
         |   <a href="/health/zk-ruok">zk-ruok</a><br>
@@ -173,5 +175,17 @@ class Health @Inject()(crudServiceFS: CRUDServiceFS) extends InjectedController 
 
   def getWsHealth = Action { implicit req =>
     Ok(s"IRW ReadCache Size: ${crudServiceFS.irwService.dataCahce.size()}")
+  }
+
+  def esRequestHelper(url : String)  = Action.async {
+    ws.url(url).withRequestTimeout(30.seconds).execute().map {
+      response => Ok(response.body)
+    }.recover {
+      case e: scala.concurrent.TimeoutException =>
+        ServiceUnavailable("Timeout reached during method execution. ")
+      case e: Exception =>
+        InternalServerError(e.getMessage)
+    }
+
   }
 }
