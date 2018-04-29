@@ -19,6 +19,8 @@ import java.util.concurrent.TimeUnit
 import akka.actor.{Actor, ActorRef, OneForOneStrategy, PoisonPill, Props}
 import akka.kafka.{ConsumerSettings, KafkaConsumerActor}
 import akka.stream.{ActorMaterializer, Supervision}
+import ch.qos.logback.classic.LoggerContext
+import cmwell.bg.Runner.logger
 import cmwell.fts.FTSServiceNew
 import cmwell.irw.IRWService
 import cmwell.common.OffsetsService
@@ -32,6 +34,9 @@ import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.elasticsearch.metrics.ElasticsearchReporter
 import cmwell.common.exception._
+import org.slf4j.LoggerFactory
+
+import scala.concurrent.Await
 import scala.concurrent.duration._
 
 object CMWellBGActor {
@@ -84,6 +89,20 @@ class CMWellBGActor(partition: Int,
     logger.info(s"CMwellBGActor-$partition starting")
     super.preStart()
     self ! Start
+
+    import akka.pattern.ask
+    sys.addShutdownHook {
+      logger.info(s"shutting down cmwell-bg's Indexer and Imp flows before process is exiting (partition $partition")
+      try {
+        Await.result(ask(self, ShutDown)(30.seconds), 30.seconds)
+      } catch {
+        case t: Throwable =>
+          logger.error(
+            s"BG Process failed to send Shutdown message to BGActor-$partition during shutdownhook. " +
+              s"Reason:\n${cmwell.common.exception.getStackTrace(t)}"
+          )
+      }
+    }
   }
 
   override def postStop(): Unit = {

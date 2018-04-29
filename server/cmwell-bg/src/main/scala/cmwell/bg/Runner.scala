@@ -14,25 +14,20 @@
   */
 package cmwell.bg
 
-import akka.actor.ActorRef
-import akka.pattern.ask
-import ch.qos.logback.classic.LoggerContext
+import cmwell.common.ZStoreOffsetsService
 import cmwell.driver.Dao
 import cmwell.fts.FTSServiceNew
 import cmwell.irw.IRWService
-import cmwell.common.ZStoreOffsetsService
 import cmwell.zstore.ZStore
 import com.typesafe.config.{ConfigFactory, ConfigValueFactory}
 import com.typesafe.scalalogging.LazyLogging
 import k.grid.service.ServiceTypes
 import k.grid.{Grid, GridConnection}
-import org.slf4j.LoggerFactory
 import uk.org.lidalia.sysoutslf4j.context.SysOutOverSLF4J
 
-import scala.concurrent.Await
+import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import collection.JavaConverters._
 
 /**
   * Created by israel on 11/23/15.
@@ -40,7 +35,6 @@ import collection.JavaConverters._
 object Runner extends LazyLogging {
 
   def main(args: Array[String]): Unit = {
-    var cmwellBGActor: ActorRef = null
     try {
       logger.info("Starting BG process")
       //SLF4J initialization is not thread safe, so it's "initialized" by writing some log and only then using sendSystemOutAndErrToSLF4J.
@@ -94,30 +88,10 @@ object Runner extends LazyLogging {
       Grid.joinClient
 
       Thread.sleep(60000)
-      cmwellBGActor = Grid.serviceRef(s"BGActor$partition")
     } catch {
       case t: Throwable =>
         logger.error(s"BG Process failed to start thus exiting. Reason:\n${cmwell.common.exception.getStackTrace(t)}")
         sys.exit(1)
     }
-
-    sys.addShutdownHook {
-      logger.info(s"shutting down cmwell-bg's Indexer and Imp flows before process is exiting")
-      try {
-        Await.result(ask(cmwellBGActor, ShutDown)(30.seconds), 30.seconds)
-      } catch {
-        case t: Throwable =>
-          logger.error(
-            "BG Process failed to send Shutdown message to BGActor during shutdownhook. " +
-              s"Reason:\n${cmwell.common.exception.getStackTrace(t)}"
-          )
-      }
-      // Since logger is async, this is to ensure we don't miss any lines
-      LoggerFactory.getILoggerFactory.asInstanceOf[LoggerContext].stop()
-      // scalastyle:off
-      println("existing BG Runner")
-      // scalastyle:on
-    }
-
   }
 }
