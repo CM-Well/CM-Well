@@ -89,20 +89,6 @@ class CMWellBGActor(partition: Int,
     logger.info(s"CMwellBGActor-$partition starting")
     super.preStart()
     self ! Start
-
-    import akka.pattern.ask
-    sys.addShutdownHook {
-      logger.info(s"shutting down cmwell-bg's Indexer and Imp flows before process is exiting (partition $partition")
-      try {
-        Await.result(ask(self, ShutDown)(30.seconds), 30.seconds)
-      } catch {
-        case t: Throwable =>
-          logger.error(
-            s"BG Process failed to send Shutdown message to BGActor-$partition during shutdownhook. " +
-              s"Reason:\n${cmwell.common.exception.getStackTrace(t)}"
-          )
-      }
-    }
   }
 
   override def postStop(): Unit = {
