@@ -457,6 +457,10 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
           }
         })
 
+    val searchUnderscoreAll = recSearch(cmw / "", Seq("op"->"search", "recursive"->"", "qp"->"_all:Tikva", "format"->"json"), 10).map { r =>
+      (Json.parse(r.payload) \ "results" \ "total").as[Int] should be(1)
+    }
+
     it("verify boxed error bug on root search without qp is solved")(boxedErrorOnRootWithoutQP)
     it("ingest geonames data successfully")(ingestGeonames)
     it("retrieve only infotons with `alt.wgs84_pos` field")(testSearchForExistence)
@@ -483,5 +487,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
       it("get nested deleted & historic objects using recursive and with-history after deletes")(recursiveSearch4)
     }
     //TODO: dcSync style search
+
+    it("search using _all API")(searchUnderscoreAll)
   }
 }
