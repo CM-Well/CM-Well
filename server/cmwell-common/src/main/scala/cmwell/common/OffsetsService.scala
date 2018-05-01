@@ -24,13 +24,25 @@ import cmwell.zstore.ZStore
 trait OffsetsService {
 
   def read(id: String): Option[Long]
+  def readWithTimestamp(id: String): Option[PersistedOffset]
   def write(id: String, offset: Long): Unit
 }
 
+case class PersistedOffset(offset: Long, timestamp: Long)
+
 class ZStoreOffsetsService(zStore: ZStore) extends OffsetsService {
 
-  override def read(id: String): Option[Long] = Await.result(zStore.getLongOpt(id), 10.seconds)
+  override def readWithTimestamp(id: String): Option[PersistedOffset] =
+    Await.result(zStore.getStringOpt(id), 10.seconds).map { s =>
+      val (offset, timestamp) = cmwell.util.string.splitAtNoSep(s, ',')
+      PersistedOffset(offset.toLong, timestamp.toLong)
+    }
+
+  override def read(id: String): Option[Long] =
+    Await.result(zStore.getStringOpt(id), 10.seconds).map(s => s.substring(0, s.indexOf(',')).toLong)
+//    Await.result(zStore.getLongOpt(id), 10.seconds)
 
   override def write(id: String, offset: Long): Unit =
-    Await.result(zStore.putLong(id, offset, batched = true), 10.seconds)
+    Await.result(zStore.putString(id, s"$offset,${System.currentTimeMillis}", batched = true), 10.seconds)
+//    Await.result(zStore.putLong(id, offset, batched = true), 10.seconds)
 }
