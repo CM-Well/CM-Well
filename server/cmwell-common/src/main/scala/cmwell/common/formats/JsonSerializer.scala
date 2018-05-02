@@ -167,11 +167,29 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
           jsonGenerator.writeFieldName("infoton")
           encodeInfotonWithGenerator(infoton, jsonGenerator)
         }
+      case IndexNewInfotonCommandForIndexer(uuid, isCurrent, path, infotonOpt, indexName, persistOffsets, trackingIDs) =>
+        jsonGenerator.writeStringField("uuid", uuid)
+        jsonGenerator.writeBooleanField("isCurrent", isCurrent)
+        jsonGenerator.writeStringField("path", path)
+        jsonGenerator.writeStringField("indexName", indexName)
+        jsonGenerator.writeFieldName("persistOffsets")
+        encodeOffsetSeqWithGenerator(persistOffsets, jsonGenerator)
+        infotonOpt.foreach { infoton =>
+          jsonGenerator.writeFieldName("infoton")
+          encodeInfotonWithGenerator(infoton, jsonGenerator)
+        }
       case IndexExistingInfotonCommand(uuid, weight, path, indexName, trackingIDs) =>
         jsonGenerator.writeStringField("uuid", uuid)
         jsonGenerator.writeNumberField("weight", weight)
         jsonGenerator.writeStringField("path", path)
         jsonGenerator.writeStringField("indexName", indexName)
+      case IndexExistingInfotonCommandForIndexer(uuid, weight, path, indexName, persistOffsets, trackingIDs) =>
+        jsonGenerator.writeStringField("uuid", uuid)
+        jsonGenerator.writeNumberField("weight", weight)
+        jsonGenerator.writeStringField("path", path)
+        jsonGenerator.writeStringField("indexName", indexName)
+        jsonGenerator.writeFieldName("persistOffsets")
+        encodeOffsetSeqWithGenerator(persistOffsets, jsonGenerator)
       case DeleteAttributesCommand(path, fields, lastModified, trackingID, prevUUID) =>
         jsonGenerator.writeStringField("path", path)
         encodeFieldsWithGenerator(fields, jsonGenerator)
@@ -277,6 +295,24 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
 
         jsonGenerator.writeEndArray()
     }
+    jsonGenerator.writeEndObject()
+  }
+
+  private def encodeOffsetSeqWithGenerator(offsets: Seq[Offset],
+                                           jsonGenerator: JsonGenerator): Unit = {
+    jsonGenerator.writeStartArray()
+    offsets.foreach(offset => encodeOffsetWithGenerator(offset, jsonGenerator))
+    jsonGenerator.writeEndArray()
+  }
+
+  private def encodeOffsetWithGenerator(offset: Offset,
+                                        jsonGenerator: JsonGenerator): Unit = {
+    jsonGenerator.writeStartObject()
+    jsonGenerator.writeStringField("offsetType", offset.getClass.getSimpleName)
+    jsonGenerator.writeStringField("topic", offset.topic)
+    jsonGenerator.writeNumberField("offset", offset.offset)
+    jsonGenerator.writeNumberField("part", offset.part)
+    jsonGenerator.writeNumberField("ofParts", offset.ofParts)
     jsonGenerator.writeEndObject()
   }
 

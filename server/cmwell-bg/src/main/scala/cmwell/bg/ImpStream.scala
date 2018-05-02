@@ -36,6 +36,7 @@ import akka.stream.{ActorMaterializer, ClosedShape, Supervision}
 import cmwell.bg.imp.{CommandsSource, RefsEnricher}
 import cmwell.common._
 import cmwell.common.formats.JsonSerializerForES
+import cmwell.common.formats.{BGMessage, Offset, PartialOffset, CompleteOffset}
 import cmwell.domain.{Infoton, ObjectInfoton}
 import cmwell.fts._
 import cmwell.irw.IRWService
@@ -422,13 +423,11 @@ class ImpStream(partition: Int,
     .mapConcat(identity)
 
   val breakout =
-    breakOut[Iterable[IndexCommand], Message[Array[Byte], Array[Byte], Seq[
-      Offset
-    ]], ISeq[Message[Array[Byte], Array[Byte], Seq[Offset]]]]
+    breakOut[Iterable[IndexCommand], Message[Array[Byte], Array[Byte], Seq[Offset]], ISeq[Message[Array[Byte], Array[Byte], Seq[Offset]]]]
 
   val mergedCommandToKafkaRecord =
     Flow[BGMessage[(BulkIndexResult, Seq[IndexCommand])]].mapConcat {
-      case BGMessage(offset, (bulkIndexResults, commands)) =>
+      case BGMessage(offsets, (bulkIndexResults, commands)) =>
         logger.debug(
           s"failed indexcommands to kafka records. bulkResults: $bulkIndexResults \n commands: $commands"
         )
@@ -446,7 +445,7 @@ class ImpStream(partition: Int,
 
         failedCommands.map { failedCommand =>
           val commandToSerialize =
-            if (failedCommand.isInstanceOf[IndexNewInfotonCommand] &&
+            (if (failedCommand.isInstanceOf[IndexNewInfotonCommand] &&
                 failedCommand
                   .asInstanceOf[IndexNewInfotonCommand]
                   .infotonOpt
@@ -460,10 +459,14 @@ class ImpStream(partition: Int,
                 .copy(infotonOpt = None)
             } else {
               failedCommand
+            }) match {
+              case cmd: IndexNewInfotonCommand =>
+                IndexNewInfotonCommandForIndexer(cmd.uuid, cmd.isCurrent, cmd.path, cmd.infotonOpt, cmd.indexName, offsets, cmd.trackingIDs)
+              case cmd: IndexExistingInfotonCommand =>
+                IndexExistingInfotonCommandForIndexer(cmd.uuid, cmd.weight, cmd.path, cmd.indexName, offsets, cmd.trackingIDs)
             }
-
           val topic =
-            if (offset.exists(_.topic.endsWith("priority")))
+            if (offsets.exists(_.topic.endsWith("priority")))
               indexCommandsTopicPriority
             else
               indexCommandsTopic
@@ -473,18 +476,18 @@ class ImpStream(partition: Int,
               commandToSerialize.path.getBytes,
               CommandSerializer.encode(commandToSerialize)
             ),
-            offset
+            offsets
           )
         }(breakout)
     }
 
   val indexCommandsToKafkaRecords =
     Flow[BGMessage[Seq[IndexCommand]]].mapConcat {
-      case BGMessage(offset, commands) =>
+      case BGMessage(offsets, commands) =>
         logger.debug(s"converting indexcommands to kafka records:\n$commands")
         commands.map { command =>
           val commandToSerialize =
-            if (command.isInstanceOf[IndexNewInfotonCommand] &&
+            (if (command.isInstanceOf[IndexNewInfotonCommand] &&
                 command
                   .asInstanceOf[IndexNewInfotonCommand]
                   .infotonOpt
@@ -494,14 +497,19 @@ class ImpStream(partition: Int,
                 .asInstanceOf[IndexNewInfotonCommand]
                 .copy(infotonOpt = None)
             } else
-              command
+              command) match {
+              case cmd: IndexNewInfotonCommand =>
+                IndexNewInfotonCommandForIndexer(cmd.uuid, cmd.isCurrent, cmd.path, cmd.infotonOpt, cmd.indexName, offsets, cmd.trackingIDs)
+              case cmd: IndexExistingInfotonCommand =>
+                IndexExistingInfotonCommandForIndexer(cmd.uuid, cmd.weight, cmd.path, cmd.indexName, offsets, cmd.trackingIDs)
+            }
           Message(
             new ProducerRecord[Array[Byte], Array[Byte]](
               indexCommandsTopic,
               commandToSerialize.path.getBytes,
               CommandSerializer.encode(commandToSerialize)
             ),
-            offset
+            offsets
           )
         }(breakout)
     }
