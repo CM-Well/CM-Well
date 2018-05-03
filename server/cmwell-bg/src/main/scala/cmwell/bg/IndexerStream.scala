@@ -28,6 +28,7 @@ import akka.stream.scaladsl.{
 }
 import akka.stream.{ActorMaterializer, ClosedShape, KillSwitches, Supervision}
 import cmwell.common.formats.JsonSerializerForES
+import cmwell.common.formats.{BGMessage, Offset, CompleteOffset}
 import cmwell.fts._
 import cmwell.irw.{IRWService, QUORUM}
 import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
@@ -278,7 +279,7 @@ class IndexerStream(partition: Int,
               .mapAsync(math.max(numOfCassandraNodes / 2, 2)) {
                 case bgMessage @ BGMessage(
                       _,
-                      inic @ IndexNewInfotonCommand(uuid, _, _, None, _, _)
+                      inic @ IndexNewInfotonCommandForIndexer(uuid, _, _, None, _, _, _)
                     ) =>
                   irwService.readUUIDAsync(uuid, QUORUM).map {
                     case FullBox(infoton) =>
@@ -315,12 +316,13 @@ class IndexerStream(partition: Int,
               .map {
                 case bgMessage @ BGMessage(
                       _,
-                      inic @ IndexNewInfotonCommand(
+                      inic @ IndexNewInfotonCommandForIndexer(
                         uuid,
                         isCurrent,
                         path,
                         Some(infoton),
                         indexName,
+                        _,
                         tids
                       )
                     ) =>
@@ -332,11 +334,12 @@ class IndexerStream(partition: Int,
                   }
                 case bgMessage @ BGMessage(
                       _,
-                      ieic @ IndexExistingInfotonCommand(
+                      ieic @ IndexExistingInfotonCommandForIndexer(
                         uuid,
                         weight,
                         _,
                         indexName,
+                        _,
                         tids
                       )
                     ) =>
