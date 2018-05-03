@@ -4,7 +4,7 @@
   * Licensed under the Apache License, Version 2.0 (the “License”); you may not use this file except in compliance with the License.
   * You may obtain a copy of the License at
   *
-  *   http://www.apache.org/licenses/LICENSE-2.0
+  * http://www.apache.org/licenses/LICENSE-2.0
   *
   * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
   * an “AS IS” BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -68,7 +68,7 @@ class IndexerStream(partition: Int,
                     bgActor: ActorRef)(implicit actorSystem: ActorSystem,
                                        executionContext: ExecutionContext,
                                        materializer: ActorMaterializer)
-    extends DefaultInstrumented {
+  extends DefaultInstrumented {
 
   implicit val logger = Logger[IndexerStream]
 
@@ -87,7 +87,7 @@ class IndexerStream(partition: Int,
   val esActionsBulkSize = config.getInt("cmwell.bg.esActionsBulkSize") // in bytes
   val esActionsGroupingTtl = config.getInt("cmwell.bg.esActionsGroupingTtl") // ttl for bulk es actions grouping in ms
 
-  /***** Metrics *****/
+  /** *** Metrics *****/
   val existingMetrics = metricRegistry.getMetrics.asScala
   val indexNewInfotonCommandCounter: Counter = existingMetrics
     .get("IndexNewCommand Counter")
@@ -114,7 +114,7 @@ class IndexerStream(partition: Int,
     }
     .getOrElse(metrics.histogram("Index Bulk Size Histogram"))
 
-  /*******************/
+  /** *****************/
   val streamId = s"indexer.${partition}"
 
   val startingOffset = offsetsService.read(s"${streamId}_offset").getOrElse(0L)
@@ -142,9 +142,9 @@ class IndexerStream(partition: Int,
 
   val indexCommandsSource = Consumer
     .plainSource[Array[Byte], Array[Byte]](
-      indexCommandsConsumerSettings,
-      subscription
-    )
+    indexCommandsConsumerSettings,
+    subscription
+  )
     .map { msg =>
       logger.debug(
         s"consuming next payload from index commands topic @ offset: ${msg.offset()}"
@@ -161,9 +161,9 @@ class IndexerStream(partition: Int,
 
   val priorityIndexCommandsSource = Consumer
     .plainSource[Array[Byte], Array[Byte]](
-      indexCommandsConsumerSettings,
-      prioritySubscription
-    )
+    indexCommandsConsumerSettings,
+    prioritySubscription
+  )
     .map { msg =>
       logger.debug(
         s"consuming next payload from priority index commands topic @ offset: ${msg.offset()}"
@@ -196,13 +196,6 @@ class IndexerStream(partition: Int,
     }
 
   import scala.language.existentials
-
-  case class InfoAction(
-    esAction: ActionRequest[_ <: ActionRequest[_ <: AnyRef]],
-    weight: Long,
-    indexTime: Option[Long]
-  )
-
   val commitOffsets = Flow[Seq[Offset]]
     .groupedWithin(6000, 3.seconds)
     .toMat {
@@ -221,7 +214,6 @@ class IndexerStream(partition: Int,
         }
       }
     }(Keep.right)
-
   val indexerGraph =
     RunnableGraph.fromGraph(
       GraphDSL
@@ -229,248 +221,252 @@ class IndexerStream(partition: Int,
           indexCommandsSource,
           priorityIndexCommandsSource,
           commitOffsets
-        )((_, _, M) => M) { implicit builder => (batchSource, prioritySource, sink) =>
-          import GraphDSL.Implicits._
+        )((_, _, M) => M) { implicit builder =>
+          (batchSource, prioritySource, sink) =>
+            import GraphDSL.Implicits._
 
-          def newIndexCommandToEsAction(infoton: Infoton,
-                                        isCurrent: Boolean,
-                                        indexName: String): Try[InfoAction] = {
-            Try {
-              val indexTime =
-                if (infoton.indexTime.isDefined) None
-                else Some(System.currentTimeMillis())
-              val infotonWithUpdatedIndexTime =
-                if (indexTime.isDefined)
-                  infoton.replaceIndexTime(indexTime.get)
-                else
-                  infoton
-              val serializedInfoton =
-                JsonSerializerForES.encodeInfoton(
-                  infotonWithUpdatedIndexTime,
-                  isCurrent
-                )
+            def newIndexCommandToEsAction(infoton: Infoton,
+                                          isCurrent: Boolean,
+                                          indexName: String): Try[InfoAction] = {
+              Try {
+                val indexTime =
+                  if (infoton.indexTime.isDefined) None
+                  else Some(System.currentTimeMillis())
+                val infotonWithUpdatedIndexTime =
+                  if (indexTime.isDefined)
+                    infoton.replaceIndexTime(indexTime.get)
+                  else
+                    infoton
+                val serializedInfoton =
+                  JsonSerializerForES.encodeInfoton(
+                    infotonWithUpdatedIndexTime,
+                    isCurrent
+                  )
 
-              val indexRequest: ActionRequest[_ <: ActionRequest[_ <: AnyRef]] =
-                Requests
-                  .indexRequest(indexName)
-                  .`type`("infoclone")
-                  .id(infoton.uuid)
-                  .create(true)
-                  .source(serializedInfoton)
-              logger.debug(
-                s"creating es actions for indexNewInfotonCommand: $indexRequest"
-              )
-              InfoAction(indexRequest, infoton.weight, indexTime)
-            }.recoverWith {
-              case t: Throwable =>
-                redlog.info(
-                  "exception while encoding infoton to json for ES. will be ignored",
-                  t
+                val indexRequest: ActionRequest[_ <: ActionRequest[_ <: AnyRef]] =
+                  Requests
+                    .indexRequest(indexName)
+                    .`type`("infoclone")
+                    .id(infoton.uuid)
+                    .create(true)
+                    .source(serializedInfoton)
+                logger.debug(
+                  s"creating es actions for indexNewInfotonCommand: $indexRequest"
                 )
-                Failure(t)
+                InfoAction(indexRequest, infoton.weight, indexTime)
+              }.recoverWith {
+                case t: Throwable =>
+                  redlog.info(
+                    "exception while encoding infoton to json for ES. will be ignored",
+                    t
+                  )
+                  Failure(t)
+              }
             }
-          }
 
-          val mergePrefferedSources =
-            builder.add(MergePreferred[BGMessage[IndexCommand]](1, true))
+            val mergePrefferedSources =
+              builder.add(MergePreferred[BGMessage[IndexCommand]](1, true))
 
-          val getInfotonIfNeeded = builder.add(
-            Flow[BGMessage[IndexCommand]]
-              .mapAsync(math.max(numOfCassandraNodes / 2, 2)) {
-                case bgMessage @ BGMessage(
-                      _,
-                      inic @ IndexNewInfotonCommandForIndexer(uuid, _, _, None, _, _, _)
-                    ) =>
-                  irwService.readUUIDAsync(uuid, QUORUM).map {
-                    case FullBox(infoton) =>
-                      Success(
-                        bgMessage.copy(
-                          message = inic
-                            .copy(infotonOpt = Some(infoton))
-                            .asInstanceOf[IndexCommand]
+            val getInfotonIfNeeded = builder.add(
+              Flow[BGMessage[IndexCommand]]
+                .mapAsync(math.max(numOfCassandraNodes / 2, 2)) {
+                  case bgMessage@BGMessage(
+                  _,
+                  inic@IndexNewInfotonCommandForIndexer(uuid, _, _, None, _, _, _)
+                  ) =>
+                    irwService.readUUIDAsync(uuid, QUORUM).map {
+                      case FullBox(infoton) =>
+                        Success(
+                          bgMessage.copy(
+                            message = inic
+                              .copy(infotonOpt = Some(infoton))
+                              .asInstanceOf[IndexCommand]
+                          )
                         )
-                      )
-                    case EmptyBox =>
-                      val e = new RuntimeException(
-                        s"Infoton for uuid: $uuid was not found by irwService. ignoring command"
-                      )
-                      redlog.info("", e)
-                      Failure(e)
-                    case BoxedFailure(t) =>
-                      val e = new RuntimeException(
-                        s"Exception from irwService while reading uuid: $uuid",
-                        t
-                      )
-                      redlog.info("", e)
-                      Failure(e)
-                  }
-                case bgMessage => Future.successful(Success(bgMessage))
-              }
-              .collect {
-                case Success(x) => x
-              }
-          )
-
-          val indexCommandToEsActions = builder.add(
-            Flow[BGMessage[IndexCommand]]
-              .map {
-                case bgMessage @ BGMessage(
-                      _,
-                      inic @ IndexNewInfotonCommandForIndexer(
-                        uuid,
-                        isCurrent,
-                        path,
-                        Some(infoton),
-                        indexName,
-                        _,
-                        tids
-                      )
-                    ) =>
-                  indexNewInfotonCommandCounter += 1
-                  newIndexCommandToEsAction(infoton, isCurrent, indexName).map {
-                    ia =>
-                      bgMessage
-                        .copy(message = (ia, inic.asInstanceOf[IndexCommand]))
-                  }
-                case bgMessage @ BGMessage(
-                      _,
-                      ieic @ IndexExistingInfotonCommandForIndexer(
-                        uuid,
-                        weight,
-                        _,
-                        indexName,
-                        _,
-                        tids
-                      )
-                    ) =>
-                  logger.debug(
-                    s"creating es actions for indexExistingInfotonCommand: $ieic"
-                  )
-                  indexExistingCommandCounter += 1
-                  val updateRequest =
-                    new UpdateRequest(indexName, "infoclone", uuid)
-                      .version(1)
-                      .doc(s"""{"system":{"current": false}}""")
-                      .asInstanceOf[ActionRequest[
-                        _ <: ActionRequest[_ <: AnyRef]
-                      ]]
-                  Success(
-                    bgMessage.copy(
-                      message = (
-                        InfoAction(updateRequest, weight, None),
-                        ieic.asInstanceOf[IndexCommand]
-                      )
-                    )
-                  )
-              }
-              .collect {
-                case Success(x) => x
-              }
-          )
-
-          val groupEsActions = builder.add(
-            Flow[BGMessage[(InfoAction, IndexCommand)]].groupedWeightedWithin(
-              esActionsBulkSize,
-              esActionsGroupingTtl.milliseconds
-            )(_.message._1.weight)
-          )
-
-          val indexInfoActionsFlow =
-            builder.add(
-              Flow[Seq[BGMessage[(InfoAction, IndexCommand)]]].mapAsync(1) {
-                bgMessages =>
-                  val esIndexRequests = bgMessages.map {
-                    case BGMessage(
-                        _,
-                        (InfoAction(esAction, _, indexTime), _)
-                        ) =>
-                      ESIndexRequest(esAction, indexTime)
-                  }
-                  logger.debug(
-                    s"${esIndexRequests.length} actions to index: \n${esIndexRequests.map {
-                      ir =>
-                        if (ir.esAction.isInstanceOf[UpdateRequest])
-                          ir.esAction.asInstanceOf[UpdateRequest].doc().toString
-                        else ir.esAction.toString
-                    }}"
-                  )
-                  val highestOffset = bgMessages.map(_.offsets).flatten.max
-                  indexBulkSizeHist += esIndexRequests.size
-                  indexingTimer
-                    .timeFuture(
-                      cmwell.util.concurrent.retry(10, 10.seconds, 1.15)(
-                        ftsService.executeBulkIndexRequests(esIndexRequests)
-                      )
-                    )
-                    .map { bulkIndexResult =>
-                      BGMessage(
-                        highestOffset,
-                        (bulkIndexResult, bgMessages.map {
-                          _.message._2
-                        })
-                      )
+                      case EmptyBox =>
+                        val e = new RuntimeException(
+                          s"Infoton for uuid: $uuid was not found by irwService. ignoring command"
+                        )
+                        redlog.info("", e)
+                        Failure(e)
+                      case BoxedFailure(t) =>
+                        val e = new RuntimeException(
+                          s"Exception from irwService while reading uuid: $uuid",
+                          t
+                        )
+                        redlog.info("", e)
+                        Failure(e)
                     }
-              }
+                  case bgMessage => Future.successful(Success(bgMessage))
+                }
+                .collect {
+                  case Success(x) => x
+                }
             )
 
-          val updateIndexInfoInCas = builder.add(
-            Flow[BGMessage[(SuccessfulBulkIndexResult, Seq[IndexCommand])]]
-              .mapAsync(math.max(numOfCassandraNodes / 3, 2)) {
-                case bgMessage @ BGMessage(_, (bulkRes, indexCommands)) =>
-                  logger.debug(
-                    s"updating index time in cas for index commands: $indexCommands"
+            val indexCommandToEsActions = builder.add(
+              Flow[BGMessage[IndexCommand]]
+                .map {
+                  case bgMessage@BGMessage(
+                  _,
+                  inic@IndexNewInfotonCommandForIndexer(
+                  uuid,
+                  isCurrent,
+                  path,
+                  Some(infoton),
+                  indexName,
+                  _,
+                  tids
                   )
-                  val indexTimesToUpdate = bulkRes.successful.collect {
-                    case SuccessfulIndexResult(uuid, Some(indexTime)) =>
-                      (uuid, indexTime)
-                  }
+                  ) =>
+                    indexNewInfotonCommandCounter += 1
+                    newIndexCommandToEsAction(infoton, isCurrent, indexName).map {
+                      ia =>
+                        bgMessage
+                          .copy(message = (ia, inic.asInstanceOf[IndexCommand]))
+                    }
+                  case bgMessage@BGMessage(
+                  _,
+                  ieic@IndexExistingInfotonCommandForIndexer(
+                  uuid,
+                  weight,
+                  _,
+                  indexName,
+                  _,
+                  tids
+                  )
+                  ) =>
+                    logger.debug(
+                      s"creating es actions for indexExistingInfotonCommand: $ieic"
+                    )
+                    indexExistingCommandCounter += 1
+                    val updateRequest =
+                      new UpdateRequest(indexName, "infoclone", uuid)
+                        .version(1)
+                        .doc(s"""{"system":{"current": false}}""")
+                        .asInstanceOf[ActionRequest[
+                        _ <: ActionRequest[_ <: AnyRef]
+                        ]]
+                    Success(
+                      bgMessage.copy(
+                        message = (
+                          InfoAction(updateRequest, weight, None),
+                          ieic.asInstanceOf[IndexCommand]
+                        )
+                      )
+                    )
+                }
+                .collect {
+                  case Success(x) => x
+                }
+            )
+
+            val groupEsActions = builder.add(
+              Flow[BGMessage[(InfoAction, IndexCommand)]].groupedWeightedWithin(
+                esActionsBulkSize,
+                esActionsGroupingTtl.milliseconds
+              )(_.message._1.weight)
+            )
+
+            val indexInfoActionsFlow =
+              builder.add(
+                Flow[Seq[BGMessage[(InfoAction, IndexCommand)]]].mapAsync(1) {
+                  bgMessages =>
+                    val esIndexRequests = bgMessages.map {
+                      case BGMessage(
+                      _,
+                      (InfoAction(esAction, _, indexTime), _)
+                      ) =>
+                        ESIndexRequest(esAction, indexTime)
+                    }
+                    logger.debug(
+                      s"${esIndexRequests.length} actions to index: \n${
+                        esIndexRequests.map {
+                          ir =>
+                            if (ir.esAction.isInstanceOf[UpdateRequest])
+                              ir.esAction.asInstanceOf[UpdateRequest].doc().toString
+                            else ir.esAction.toString
+                        }
+                      }"
+                    )
+                    val highestOffset = bgMessages.map(_.offsets).flatten.max
+                    indexBulkSizeHist += esIndexRequests.size
+                    indexingTimer
+                      .timeFuture(
+                        cmwell.util.concurrent.retry(10, 10.seconds, 1.15)(
+                          ftsService.executeBulkIndexRequests(esIndexRequests)
+                        )
+                      )
+                      .map { bulkIndexResult =>
+                        BGMessage(
+                          highestOffset,
+                          (bulkIndexResult, bgMessages.map {
+                            _.message._2
+                          })
+                        )
+                      }
+                }
+              )
+
+            val updateIndexInfoInCas = builder.add(
+              Flow[BGMessage[(SuccessfulBulkIndexResult, Seq[IndexCommand])]]
+                .mapAsync(math.max(numOfCassandraNodes / 3, 2)) {
+                  case bgMessage@BGMessage(_, (bulkRes, indexCommands)) =>
+                    logger.debug(
+                      s"updating index time in cas for index commands: $indexCommands"
+                    )
+                    val indexTimesToUpdate = bulkRes.successful.collect {
+                      case SuccessfulIndexResult(uuid, Some(indexTime)) =>
+                        (uuid, indexTime)
+                    }
+                    logger.debug(
+                      s"indexInfo to update: (uuid/indexTime/indexName): $indexTimesToUpdate"
+                    )
+                    Future
+                      .sequence {
+                        indexTimesToUpdate.map {
+                          case (uuid, indexTime) =>
+                            irwService.addIndexTimeToUuid(uuid, indexTime, QUORUM)
+                        }
+                      }
+                      .map { _ =>
+                        bgMessage.copy(message = indexCommands)
+                      }
+                }
+            )
+
+            val reportProcessTracking =
+              builder.add(Flow[BGMessage[Seq[IndexCommand]]].mapAsync(3) {
+                case BGMessage(offsets, indexCommands) =>
                   logger.debug(
-                    s"indexInfo to update: (uuid/indexTime/indexName): $indexTimesToUpdate"
+                    s"reporting process tracking for offsets: $offsets ,index commands: $indexCommands"
                   )
                   Future
-                    .sequence {
-                      indexTimesToUpdate.map {
-                        case (uuid, indexTime) =>
-                          irwService.addIndexTimeToUuid(uuid, indexTime, QUORUM)
-                      }
+                    .traverse(indexCommands) { indexCommand =>
+                      TrackingUtilImpl
+                        .updateSeq(indexCommand.path, indexCommand.trackingIDs)
+                        .recover {
+                          case t: Throwable =>
+                            logger.error(
+                              s"updateSeq for path [${indexCommand.path}] with trackingIDs [${
+                                indexCommand.trackingIDs
+                                  .mkString(",")
+                              }] failed",
+                              t
+                            )
+                        }
                     }
-                    .map { _ =>
-                      bgMessage.copy(message = indexCommands)
-                    }
-              }
-          )
+                    .map(_ => offsets)
+              })
 
-          val reportProcessTracking =
-            builder.add(Flow[BGMessage[Seq[IndexCommand]]].mapAsync(3) {
-              case BGMessage(offsets, indexCommands) =>
-                logger.debug(
-                  s"reporting process tracking for offsets: $offsets ,index commands: $indexCommands"
-                )
-                Future
-                  .traverse(indexCommands) { indexCommand =>
-                    TrackingUtilImpl
-                      .updateSeq(indexCommand.path, indexCommand.trackingIDs)
-                      .recover {
-                        case t: Throwable =>
-                          logger.error(
-                            s"updateSeq for path [${indexCommand.path}] with trackingIDs [${indexCommand.trackingIDs
-                              .mkString(",")}] failed",
-                            t
-                          )
-                      }
-                  }
-                  .map(_ => offsets)
-            })
-
-          prioritySource ~> mergePrefferedSources.preferred
-          batchSource ~> mergePrefferedSources.in(0)
-          // scalastyle:off
-          mergePrefferedSources ~> heartBitLog ~> getInfotonIfNeeded ~> indexCommandToEsActions ~> groupEsActions ~> indexInfoActionsFlow ~> updateIndexInfoInCas ~> reportProcessTracking ~> sink
-          // scalastyle:on
-          ClosedShape
+            prioritySource ~> mergePrefferedSources.preferred
+            batchSource ~> mergePrefferedSources.in(0)
+            // scalastyle:off
+            mergePrefferedSources ~> heartBitLog ~> getInfotonIfNeeded ~> indexCommandToEsActions ~> groupEsActions ~> indexInfoActionsFlow ~> updateIndexInfoInCas ~> reportProcessTracking ~> sink
+            // scalastyle:on
+            ClosedShape
         }
     )
-
   val decider: Supervision.Decider = {
 
     case t: Throwable =>
@@ -481,9 +477,23 @@ class IndexerStream(partition: Int,
       bgActor ! Indexer503
       Supervision.Stop
   }
-
   val indexerControl =
     indexerGraph.withAttributes(supervisionStrategy(decider)).run()
+
+  def shutdown = {
+    logger.warn("IndexerStream requested to shutdown")
+    if (!indexerControl.isCompleted)
+      sharedKillSwitch.shutdown()
+    Try {
+      Await.ready(indexerControl, 10.seconds)
+    }.recover {
+      case t: Throwable =>
+        logger.error(
+          s"Indexer stream failed to shutdown after waiting for 10 seconds."
+        )
+    }
+    logger.warn("IndexerStream is down")
+  }
 
   indexerControl.onComplete {
     case Failure(t) =>
@@ -492,17 +502,10 @@ class IndexerStream(partition: Int,
       logger.info("indexer stream stopped normally", x)
   }
 
-  def shutdown = {
-    logger.warn("IndexerStream requested to shutdown")
-    if (!indexerControl.isCompleted)
-      sharedKillSwitch.shutdown()
-    Try { Await.ready(indexerControl, 10.seconds) }.recover {
-      case t: Throwable =>
-        logger.error(
-          s"Indexer stream failed to shutdown after waiting for 10 seconds."
-        )
-    }
-    logger.warn("IndexerStream is down")
-  }
+  case class InfoAction(
+                         esAction: ActionRequest[_ <: ActionRequest[_ <: AnyRef]],
+                         weight: Long,
+                         indexTime: Option[Long]
+                       )
 
 }
