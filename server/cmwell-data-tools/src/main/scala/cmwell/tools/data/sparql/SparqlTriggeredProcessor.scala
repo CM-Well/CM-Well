@@ -56,7 +56,8 @@ object SparqlTriggeredProcessor {
     isBulk: Boolean = false,
     tokenReporter: Option[ActorRef] = None,
     label: Option[String] = None,
-    distinctWindowSize: FiniteDuration = 10.seconds
+    distinctWindowSize: FiniteDuration = 10.seconds,
+    infotonGroupSize: Integer = 100
   )(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
 
     new SparqlTriggeredProcessor(config = config,
@@ -64,7 +65,8 @@ object SparqlTriggeredProcessor {
                                  isBulk = isBulk,
                                  tokenReporter = tokenReporter,
                                  label = label,
-                                 distinctWindowSize = distinctWindowSize)
+                                 distinctWindowSize = distinctWindowSize,
+                                 infotonGroupSize = infotonGroupSize)
       .listen()
   }
 }
@@ -74,7 +76,8 @@ class SparqlTriggeredProcessor(config: Config,
                                isBulk: Boolean = false,
                                tokenReporter: Option[ActorRef] = None,
                                override val label: Option[String] = None,
-                               distinctWindowSize: FiniteDuration)
+                               distinctWindowSize: FiniteDuration,
+                               infotonGroupSize: Integer)
     extends DataToolsLogging {
 
   def listen()(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
@@ -252,7 +255,7 @@ class SparqlTriggeredProcessor(config: Config,
     val processedConfig = Await.result(preProcessConfig(config), 3.minutes)
 
     val sensorSource = createSensorSource(processedConfig)
-      .groupedWithin(100, distinctWindowSize)
+      .groupedWithin(infotonGroupSize, distinctWindowSize)
       .statefulMapConcat {
         () =>
           // stores last received tokens from sensors

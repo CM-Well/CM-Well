@@ -40,6 +40,7 @@ class SparqlProcessorManagerSettings {
     stpSettings.getDuration("cmwell.agents.sparql-triggered-processor.max-delay").toMillis.millis
   val interval: FiniteDuration =
     stpSettings.getDuration("cmwell.agents.sparql-triggered-processor.config-polling-interval").toMillis.millis
+  val infotonGroupSize: Integer = stpSettings.getInt("cmwell.triggeredProcessor.infoton-group-size ")
   //val httpPool: Flow[(HttpRequest, ByteString), (Try[HttpResponse], ByteString), Http.HostConnectionPool] = {
   //val HttpAddress(_, host, port, _) = ArgsManipulations.extractBaseUrl(hostConfigFile)
   //Http().cachedHostConnectionPool[ByteString](host, port)
