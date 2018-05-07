@@ -4,7 +4,7 @@
   * Licensed under the Apache License, Version 2.0 (the “License”); you may not use this file except in compliance with the License.
   * You may obtain a copy of the License at
   *
-  * http://www.apache.org/licenses/LICENSE-2.0
+  *   http://www.apache.org/licenses/LICENSE-2.0
   *
   * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
   * an “AS IS” BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,6 +16,7 @@ package cmwell.bg
 
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.{ConcurrentHashMap, TimeoutException}
+import akka.Done
 import akka.actor.{ActorRef, ActorSystem}
 import akka.kafka.ProducerMessage.Message
 import akka.kafka.scaladsl.Producer
@@ -80,8 +81,7 @@ class ImpStream(partition: Int,
   val merger = Merger()
 
   val bootStrapServers = config.getString("cmwell.bg.kafka.bootstrap.servers")
-  val persistCommandsTopic =
-    config.getString("cmwell.bg.persist.commands.topic")
+  val persistCommandsTopic = config.getString("cmwell.bg.persist.commands.topic")
   val persistCommandsTopicPriority = persistCommandsTopic + ".priority"
   val indexCommandsTopic = config.getString("cmwell.bg.index.commands.topic")
   val indexCommandsTopicPriority = indexCommandsTopic + ".priority"
@@ -97,17 +97,49 @@ class ImpStream(partition: Int,
   val maxDocsPerShard = config.getLong("cmwell.bg.maxDocsPerShard")
   val streamId = s"imp.${partition}"
   val startingOffset = offsetsService.read(s"${streamId}_offset").getOrElse(0L)
-  val startingOffsetPriority =
-    offsetsService.read(s"${streamId}.p_offset").getOrElse(0L)
+  val startingOffsetPriority = offsetsService.read(s"${streamId}.p_offset").getOrElse(0L)
+  @volatile var (startingIndexName, startingIndexCount) =
+    ftsService.latestIndexNameAndCount(s"cm_well_p${partition}_*") match {
+      case Some((name, count)) => (name -> count)
+      case None =>
+        logger.info(
+          s"no indexes found for partition $partition, creating first one"
+        )
+        Try {
+          Await.result(
+            ftsService.createIndex(s"cm_well_p${partition}_0").flatMap {
+              createResponse =>
+                if (createResponse.isAcknowledged) {
+                  logger.info(
+                    s"successfully created first index for partition $partition"
+                  )
+                  scheduleFuture(5.seconds) {
+                    logger.info("updating all aliases")
+                    ftsService.updateAllAlias()
+                  }
+                } else
+                  Future.failed(
+                    new RuntimeException(
+                      s"failed to create first index for partition: $partition"
+                    )
+                  )
+            },
+            10.seconds
+          )
+        }.recover {
+          case t: Throwable =>
+            logger.error("failed to init ES index/alias, aborting !!!", t)
+            throw t
+        }
 
-  logger.info(
-    s"ImpStream($streamId), startingOffset: $startingOffset, startingOffsetPriority: $startingOffsetPriority"
-  )
+        (s"cm_well_p${partition}_0" -> 0L)
+    }
+  @volatile var currentIndexName = startingIndexName
+  @volatile var fuseOn = config.getBoolean("cmwell.bg.fuseOn")
+  logger.info(s"ImpStream($streamId), startingOffset: $startingOffset, startingOffsetPriority: $startingOffsetPriority")
   val numOfShardPerIndex = ftsService.numOfShardsForIndex(currentIndexName)
 
-  logger.info(
-    s"ImpStream($streamId), startingIndexName: $startingIndexName, startingIndexCount: $startingIndexCount"
-  )
+  logger.info(s"ImpStream($streamId), startingIndexName: $startingIndexName, startingIndexCount: $startingIndexCount")
   val (cmdsSrcFromKafka, sharedKillSwitch) = CommandsSource.fromKafka(
     persistCommandsTopic,
     bootStrapServers,
@@ -452,79 +484,11 @@ class ImpStream(partition: Int,
     .map {
       _.message.passThrough
     }
-  val doneOffsets = new java.util.TreeSet[Offset]()
-  val doneOffsetsPriority = new java.util.TreeSet[Offset]()
-  val commitOffsetsFlow = Flow[Seq[Offset]]
-    .groupedWithin(6000, 3.seconds)
-    .toMat {
-      Sink.foreach { offsetGroups =>
-        doneOffsets
-          .synchronized { // until a suitable concurrent collection is found
-            val (offsets, offsetsPriority) =
-              offsetGroups.flatten.partition(_.topic == persistCommandsTopic)
-            logger.debug(s"offsets: $offsets")
-            logger.debug(s"priority offsets: $offsetsPriority")
 
-            if (offsets.size > 0) {
-              var prev = lastOffsetPersisted
-              mergeOffsets(doneOffsets, offsets)
-              val it = doneOffsets.iterator()
-              while ( {
-                val next = if (it.hasNext) Some(it.next) else None
-                val continue =
-                  next.fold(false)(
-                    o => o.isInstanceOf[CompleteOffset] && o.offset - prev == 1
-                  )
-                if (continue)
-                  prev = next.get.offset
-                continue
-              }) {
-                it.remove()
-              }
-
-              if (prev > lastOffsetPersisted) {
-                logger.debug(
-                  s"prev: $prev is greater than lastOffsetPersisted: $lastOffsetPersisted"
-                )
-                offsetsService.write(s"${streamId}_offset", prev + 1L)
-                lastOffsetPersisted = prev
-              }
-            }
-
-            if (offsetsPriority.size > 0) {
-              var prevPriority = lastOffsetPersistedPriority
-              mergeOffsets(doneOffsetsPriority, offsetsPriority)
-              val itPriority = doneOffsetsPriority.iterator()
-              while ( {
-                val next =
-                  if (itPriority.hasNext) Some(itPriority.next) else None
-                val continue = next.fold(false)(
-                  o =>
-                    o.isInstanceOf[CompleteOffset] && o.offset - prevPriority == 1
-                )
-                if (continue)
-                  prevPriority = next.get.offset
-                continue
-              }) {
-                itPriority.remove()
-              }
-
-              if (prevPriority > lastOffsetPersistedPriority) {
-                logger.debug(
-                  s"prevPriority: $prevPriority is greater than lastOffsetPersistedPriority: $lastOffsetPersistedPriority"
-                )
-                offsetsService.write(s"${streamId}.p_offset", prevPriority + 1L)
-                lastOffsetPersistedPriority = prevPriority
-              }
-            }
-
-          }
-      }
-    }(Keep.right)
   // @formatter:off
   val impGraph = RunnableGraph.fromGraph(
     GraphDSL.create(cmdsSrcFromKafka,
-      commitOffsetsFlow,
+      OffsetUtils.commitOffsetSink(streamId, persistCommandsTopic, startingOffset,startingOffsetPriority, offsetsService),
       publishVirtualParentsSink)((_, a, b) => (a, b)) { implicit builder =>
       (commandsSource, commitOffsets, publishVirtualParents) =>
         import GraphDSL.Implicits._
@@ -959,91 +923,12 @@ class ImpStream(partition: Int,
       Supervision.Stop
   }
   val impControl = impGraph.withAttributes(supervisionStrategy(decider)).run()
-  @volatile var (startingIndexName, startingIndexCount) =
-    ftsService.latestIndexNameAndCount(s"cm_well_p${partition}_*") match {
-      case Some((name, count)) => (name -> count)
-      case None =>
-        logger.info(
-          s"no indexes found for partition $partition, creating first one"
-        )
-        Try {
-          Await.result(
-            ftsService.createIndex(s"cm_well_p${partition}_0").flatMap {
-              createResponse =>
-                if (createResponse.isAcknowledged) {
-                  logger.info(
-                    s"successfully created first index for partition $partition"
-                  )
-                  scheduleFuture(5.seconds) {
-                    logger.info("updating all aliases")
-                    ftsService.updateAllAlias()
-                  }
-                } else
-                  Future.failed(
-                    new RuntimeException(
-                      s"failed to create first index for partition: $partition"
-                    )
-                  )
-            },
-            10.seconds
-          )
-        }.recover {
-          case t: Throwable =>
-            logger.error("failed to init ES index/alias, aborting !!!", t)
-            throw t
-        }
-
-        (s"cm_well_p${partition}_0" -> 0L)
-    }
-  @volatile var currentIndexName = startingIndexName
-  @volatile var fuseOn = config.getBoolean("cmwell.bg.fuseOn")
-  var lastOffsetPersisted = startingOffset - 1
   // @formatter:on
-  var lastOffsetPersistedPriority = startingOffsetPriority - 1
-
-  def mergeOffsets(doneOffsets: java.util.TreeSet[Offset],
-                   newOffsets: Seq[Offset]) = {
-    logger.debug(
-      s"merging doneOffsets:\n $doneOffsets \n with newOffsets:\n $newOffsets"
-    )
-    val (completedOffsets, partialOffsets) =
-      newOffsets.partition(_.isInstanceOf[CompleteOffset])
-    logger.debug(
-      s"completedOffsests:\n $completedOffsets \n partialOffsets:\n$partialOffsets"
-    )
-    doneOffsets.addAll(completedOffsets.asJava)
-    logger.debug(
-      s"doneOffsets after adding all completed new offsets:\n$doneOffsets"
-    )
-    partialOffsets.groupBy(_.offset).foreach {
-      case (_, o) =>
-        logger.debug(s"handling new partial offset: $o")
-        if (o.size == 2) {
-          logger.debug(
-            s"two new partial offsets become one completed, adding to doneOffsets"
-          )
-          doneOffsets.add(CompleteOffset(o.head.topic, o.head.offset))
-        } else if (doneOffsets.contains(o.head)) {
-          logger.debug(
-            s"doneOffsets already contained 1 partial offset for ${o.head} removing it and adding completed instead"
-          )
-          doneOffsets.remove(o.head)
-          doneOffsets.add(CompleteOffset(o.head.topic, o.head.offset))
-        } else {
-          logger.debug(s"adding new partial ${o.head} to doneOffsets")
-          doneOffsets.add(o.head)
-        }
-    }
-    logger.debug(
-      s"doneOffsets after adding partial new offsets:\n $doneOffsets"
-    )
-  }
-
   impControl._1.onComplete {
     case Failure(t) =>
       logger.error("ImpStream: CommitOffsetsSink done with error", t)
     case _ =>
-      logger.info("ImpStream: CommitOffstesSink done without error")
+      logger.info("ImpStream: CommitOffsetsSink done without error")
   }
 
   impControl._2.onComplete {

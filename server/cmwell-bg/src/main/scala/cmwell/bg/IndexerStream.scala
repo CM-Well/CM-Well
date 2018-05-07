@@ -4,7 +4,7 @@
   * Licensed under the Apache License, Version 2.0 (the “License”); you may not use this file except in compliance with the License.
   * You may obtain a copy of the License at
   *
-  * http://www.apache.org/licenses/LICENSE-2.0
+  *   http://www.apache.org/licenses/LICENSE-2.0
   *
   * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
   * an “AS IS” BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,21 +14,15 @@
   */
 package cmwell.bg
 
+import akka.NotUsed
 import akka.actor.{ActorRef, ActorSystem}
 import akka.kafka.scaladsl.Consumer
 import akka.kafka.{ConsumerSettings, Subscriptions}
 import akka.stream.ActorAttributes.supervisionStrategy
-import akka.stream.scaladsl.{
-  Flow,
-  GraphDSL,
-  Keep,
-  MergePreferred,
-  RunnableGraph,
-  Sink
-}
+import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, MergePreferred, RunnableGraph, Sink}
 import akka.stream.{ActorMaterializer, ClosedShape, KillSwitches, Supervision}
 import cmwell.common.formats.JsonSerializerForES
-import cmwell.common.formats.{BGMessage, Offset, CompleteOffset}
+import cmwell.common.formats.{BGMessage, CompleteOffset, Offset}
 import cmwell.fts._
 import cmwell.irw.{IRWService, QUORUM}
 import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
@@ -45,11 +39,7 @@ import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.action.update.UpdateRequest
 import org.elasticsearch.client.Requests
 import org.slf4j.LoggerFactory
-import com.codahale.metrics.{
-  Counter => DropwizardCounter,
-  Histogram => DropwizardHistogram,
-  Timer => DropwizardTimer
-}
+import com.codahale.metrics.{Counter => DropwizardCounter, Histogram => DropwizardHistogram, Timer => DropwizardTimer}
 import org.apache.kafka.clients.consumer.ConsumerConfig
 
 import collection.JavaConverters._
@@ -115,11 +105,10 @@ class IndexerStream(partition: Int,
     .getOrElse(metrics.histogram("Index Bulk Size Histogram"))
 
   /** *****************/
-  val streamId = s"indexer.${partition}"
+  val streamId = s"indexer.$partition"
 
   val startingOffset = offsetsService.read(s"${streamId}_offset").getOrElse(0L)
-  val startingOffsetPriority =
-    offsetsService.read(s"${streamId}.p_offset").getOrElse(0L)
+  val startingOffsetPriority = offsetsService.read(s"${streamId}.p_offset").getOrElse(0L)
 
   logger.info(
     s"IndexerStream($streamId), startingOffset: $startingOffset, startingOffsetPriority: $startingOffsetPriority"
@@ -214,15 +203,22 @@ class IndexerStream(partition: Int,
         }
       }
     }(Keep.right)
+
+  val persistCommandsTopic: String = config.getString("cmwell.bg.persist.commands.topic")
+  val impOffsetsInIndexerId = s"persistOffsetsDoneByIndexer.${partition}"
+  val startingImpOffset: Long = offsetsService.read(s"${impOffsetsInIndexerId}_offset").getOrElse(0L)
+  val startingImpOffsetPriority: Long = offsetsService.read(s"$impOffsetsInIndexerId.p_offset").getOrElse(0L)
+  val commitImpOffsets = OffsetUtils.commitOffsetSink(impOffsetsInIndexerId , persistCommandsTopic, startingImpOffset,startingImpOffsetPriority, offsetsService)
   val indexerGraph =
     RunnableGraph.fromGraph(
       GraphDSL
         .create(
           indexCommandsSource,
           priorityIndexCommandsSource,
+          commitImpOffsets,
           commitOffsets
-        )((_, _, M) => M) { implicit builder =>
-          (batchSource, prioritySource, sink) =>
+        )((_, _, m3, m4) => m3.flatMap(_ => m4)) { implicit builder =>
+          (batchSource, prioritySource, impOffsetsSink, indexerOffsetsSink) =>
             import GraphDSL.Implicits._
 
             def newIndexCommandToEsAction(infoton: Infoton,
@@ -461,8 +457,17 @@ class IndexerStream(partition: Int,
 
             prioritySource ~> mergePrefferedSources.preferred
             batchSource ~> mergePrefferedSources.in(0)
+            val broadcastMessages = builder.add(Broadcast[BGMessage[Seq[IndexCommand]]](2))
+            val extactImpOffsetsFromMessage: Flow[BGMessage[Seq[IndexCommand]], Seq[Offset], NotUsed] = Flow.fromFunction {
+              commadSeq =>
+                commadSeq.message.flatMap {
+                  case IndexNewInfotonCommandForIndexer(_, _, _, _, _, persistOffsets, _) => persistOffsets
+                  case IndexExistingInfotonCommandForIndexer(_, _, _, _, persistOffsets, _) => persistOffsets
+                }
+            }
             // scalastyle:off
-            mergePrefferedSources ~> heartBitLog ~> getInfotonIfNeeded ~> indexCommandToEsActions ~> groupEsActions ~> indexInfoActionsFlow ~> updateIndexInfoInCas ~> reportProcessTracking ~> sink
+            mergePrefferedSources ~> heartBitLog ~> getInfotonIfNeeded ~> indexCommandToEsActions ~> groupEsActions ~> indexInfoActionsFlow ~> updateIndexInfoInCas ~> broadcastMessages ~> reportProcessTracking ~> indexerOffsetsSink
+            broadcastMessages ~> extactImpOffsetsFromMessage ~> impOffsetsSink
             // scalastyle:on
             ClosedShape
         }
