@@ -14,35 +14,27 @@
   */
 package cmwell.bg
 
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.{ConcurrentHashMap, TimeoutException}
-
 import akka.actor.{ActorRef, ActorSystem}
 import akka.kafka.ProducerMessage.Message
 import akka.kafka.scaladsl.Producer
 import akka.kafka.ProducerSettings
 import akka.stream.ActorAttributes.supervisionStrategy
 import akka.stream.contrib.PartitionWith
-import akka.stream.scaladsl.{
-  Broadcast,
-  Flow,
-  GraphDSL,
-  Keep,
-  Merge,
-  Partition,
-  RunnableGraph,
-  Sink
-}
+import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, Merge, Partition, RunnableGraph, Sink}
 import akka.stream.{ActorMaterializer, ClosedShape, Supervision}
 import cmwell.bg.imp.{CommandsSource, RefsEnricher}
 import cmwell.common._
 import cmwell.common.formats.JsonSerializerForES
-import cmwell.common.formats.{BGMessage, Offset, PartialOffset, CompleteOffset}
+import cmwell.common.formats.{BGMessage, CompleteOffset, Offset, PartialOffset}
 import cmwell.domain.{Infoton, ObjectInfoton}
 import cmwell.fts._
 import cmwell.irw.IRWService
 import cmwell.tracking._
 import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
 import cmwell.util.concurrent.SimpleScheduler._
+import cmwell.util.concurrent.travector
 import cmwell.zstore.ZStore
 import com.datastax.driver.core.ConsistencyLevel
 import com.google.common.cache.CacheBuilder
@@ -55,10 +47,9 @@ import org.elasticsearch.action.update.UpdateRequest
 import org.elasticsearch.client.Requests
 import org.joda.time.DateTime
 import org.slf4j.LoggerFactory
-
 import scala.collection.breakOut
 import scala.collection.JavaConverters._
-import scala.collection.immutable.{Seq => ISeq, Iterable => IIterable}
+import scala.collection.immutable.{Iterable => IIterable, Seq => ISeq}
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success, Try}
@@ -663,7 +654,7 @@ class ImpStream(partition: Int,
 
         val reportNullUpdates = builder.add(
           Flow[BGMessage[(Option[Infoton], MergeResponse)]].mapAsync(1) {
-            case BGMessage(offset, (_, NullUpdate(path, tids, evictions))) =>
+            case BGMessage(offsets, (_, NullUpdate(path, tids, evictions))) =>
               bGMetrics.nullUpdateCounter += 1
               val nullUpdatesReportedAsDone = {
                 if (tids.nonEmpty)
@@ -687,11 +678,19 @@ class ImpStream(partition: Int,
                   case (reason, None) => Future(logger .info (s"evicted command in path:$path because of: $reason"))
                 }
               }
+              val zStored = {
+                val ttlSeconds = 7.days.toSeconds.toInt //TODO propagate offsets.retention.minutes's value to here
+                travector(offsets.map(_.offset)) { o =>
+                  val (key, payload) = s"bg.offset_$o" -> "nu".getBytes(StandardCharsets.UTF_8)
+                  zStore.put(key, payload, ttlSeconds, batched = true).recover { case _ => () }
+                }
+              }
 
               val offsetFuture = for {
                 _ <- nullUpdatesReportedAsDone
                 _ <- evictionsReported
-              } yield offset
+                _ <- zStored
+              } yield offsets
 
               offsetFuture
           }
