@@ -681,7 +681,7 @@ class ImpStream(partition: Int,
               val zStored = {
                 val ttlSeconds = 7.days.toSeconds.toInt //TODO propagate offsets.retention.minutes's value to here
                 travector(offsets.map(_.offset)) { o =>
-                  val (key, payload) = s"bg.offset_$o" -> "nu".getBytes(StandardCharsets.UTF_8)
+                  val (key, payload) = s"imp.${partition}_$o" -> "nu".getBytes(StandardCharsets.UTF_8)
                   zStore.put(key, payload, ttlSeconds, batched = true).recover { case _ => () }
                 }
               }
