@@ -839,7 +839,8 @@ class ImpStream(partition: Int,
 
         val fusePartition = builder.add(
           Partition[BGMessage[Seq[IndexCommand]]](2, {
-            case bgMessage => if (fuseOn) 0 else 1
+            //The mechanism that persists the offsets of the imp in the indexer is based on the fact that there will be no fusing at all - disabled in code!!!
+            case bgMessage => 1 //if (fuseOn) 0 else 1
           })
         )
 
