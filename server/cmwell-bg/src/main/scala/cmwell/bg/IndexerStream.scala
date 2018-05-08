@@ -430,12 +430,12 @@ class IndexerStream(partition: Int,
 
             prioritySource ~> mergePrefferedSources.preferred
             batchSource ~> mergePrefferedSources.in(0)
-            val broadcastMessages = builder.add(Broadcast[BGMessage[Seq[IndexCommand]]](2))
-            val splitNullMessages = builder.add(Partition[BGMessage[IndexCommand]](2 ,{
+            val broadcastMessages = builder.add(Broadcast[BGMessage[Seq[IndexCommand]]](2, eagerCancel = true))
+            val splitNullMessages = builder.add(new Partition[BGMessage[IndexCommand]](2 ,{
               case BGMessage(_, _: NullUpdateCommandForIndexer) => 1
               case _ => 0
-            }))
-            val mergeOffsetMessages = builder.add(Merge[BGMessage[Seq[IndexCommand]]](2))
+            }, eagerCancel = true))
+            val mergeOffsetMessages = builder.add(Merge[BGMessage[Seq[IndexCommand]]](2, eagerComplete = true))
             val extactImpOffsetsFromMessage: Flow[BGMessage[Seq[IndexCommand]], Seq[Offset], NotUsed] = Flow.fromFunction {
               commadSeq =>
                 commadSeq.message.flatMap {
@@ -446,7 +446,7 @@ class IndexerStream(partition: Int,
             }
             // scalastyle:off
             mergePrefferedSources ~> heartBitLog ~> splitNullMessages ~> getInfotonIfNeeded ~> indexCommandToEsActions ~> groupEsActions ~> indexInfoActionsFlow ~> updateIndexInfoInCas ~> broadcastMessages ~> reportProcessTracking ~> indexerOffsetsSink
-                                                    splitNullMessages.map(msg => BGMessage(Seq(msg.message))) ~> mergeOffsetMessages
+                                                    splitNullMessages.map(msg => BGMessage(Seq(msg.message)))                                                                                                 ~> mergeOffsetMessages
                                                                                                                                                                                             broadcastMessages ~> mergeOffsetMessages ~> extactImpOffsetsFromMessage ~> impOffsetsSink
             // scalastyle:on
             ClosedShape
