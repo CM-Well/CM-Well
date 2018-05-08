@@ -158,6 +158,13 @@ case class IndexExistingInfotonCommandForIndexer(uuid: String,
                                                  trackingIDs: Seq[StatusTracking] = Nil)
   extends IndexCommand
 
+case class NullUpdateCommandForIndexer(uuid: String = "",
+                                       path: String,
+                                       indexName: String = "",
+                                       persistOffsets: Seq[Offset],
+                                       trackingIDs: Seq[StatusTracking] = Nil)
+  extends IndexCommand
+
 object CommandSerializer {
 
   def encode(cmd: Command): Array[Byte] = {

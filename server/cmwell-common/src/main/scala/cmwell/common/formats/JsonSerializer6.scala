@@ -104,7 +104,7 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
               offsets,
               tidOpt.fold(Seq.empty[StatusTracking])(_.left.get))
         }
-      case command @("IndexExistingInfotonCommand" | "IndexExistingInfotonCommandForIndexer") =>
+      case command @("IndexExistingInfotonCommand" | "IndexExistingInfotonCommandForIndexer" | "NullUpdateCommandForIndexer") =>
         assume(
           jsonParser.nextToken() == JsonToken.FIELD_NAME && "uuid".equals(jsonParser.getCurrentName()),
           s"expected 'uuid' field name\n${jsonParser.getCurrentLocation.toString}"
@@ -112,13 +112,15 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
         assume(jsonParser.nextToken() == JsonToken.VALUE_STRING,
           s"expected value for 'uuid' field\n${jsonParser.getCurrentLocation.toString}")
         val uuid = jsonParser.getText
-        assume(
-          jsonParser.nextToken() == JsonToken.FIELD_NAME && "weight".equals(jsonParser.getCurrentName()),
-          s"expected 'weight' field name\n${jsonParser.getCurrentLocation.toString}"
-        )
-        assume(jsonParser.nextToken() == JsonToken.VALUE_NUMBER_INT,
-          s"expected value for 'weight' field\n${jsonParser.getCurrentLocation.toString}")
-        val weight = jsonParser.getLongValue
+        val weight = if (command != "NullUpdateCommandForIndexer") {
+          assume(
+            jsonParser.nextToken() == JsonToken.FIELD_NAME && "weight".equals(jsonParser.getCurrentName()),
+            s"expected 'weight' field name\n${jsonParser.getCurrentLocation.toString}"
+          )
+          assume(jsonParser.nextToken() == JsonToken.VALUE_NUMBER_INT,
+            s"expected value for 'weight' field\n${jsonParser.getCurrentLocation.toString}")
+          jsonParser.getLongValue
+        } else -1
         assume(
           jsonParser.nextToken() == JsonToken.FIELD_NAME && "path".equals(jsonParser.getCurrentName()),
           s"expected 'path' field name\n${jsonParser.getCurrentLocation.toString}"
@@ -134,7 +136,8 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
           s"expected value for 'indexName' field\n${jsonParser.getCurrentLocation.toString}")
         val indexName = jsonParser.getText
         var offsets: Seq[Offset] = null
-        if (command == "IndexExistingInfotonCommandForIndexer") offsets = decodeOffsetSeqWithParser(jsonParser)
+        if (command == "IndexExistingInfotonCommandForIndexer" || command == "NullUpdateCommandForIndexer")
+          offsets = decodeOffsetSeqWithParser(jsonParser)
         assume(jsonParser.nextToken() == JsonToken.END_OBJECT,
           s"expected end of command object\n${jsonParser.getCurrentLocation.toString}")
         command match {
@@ -142,6 +145,8 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
             IndexExistingInfotonCommand(uuid, weight, path, indexName, tidOpt.fold(Seq.empty[StatusTracking])(_.left.get))
           case "IndexExistingInfotonCommandForIndexer" =>
             IndexExistingInfotonCommandForIndexer(uuid, weight, path, indexName, offsets,tidOpt.fold(Seq.empty[StatusTracking])(_.left.get))
+          case "NullUpdateCommandForIndexer" =>
+            NullUpdateCommandForIndexer(uuid, path, indexName, offsets,tidOpt.fold(Seq.empty[StatusTracking])(_.left.get))
         }
       case "OverwriteCommand" | "OverWriteCommand" =>
         assume(

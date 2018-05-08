@@ -16,7 +16,8 @@ package cmwell.bg
 
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.{ConcurrentHashMap, TimeoutException}
-import akka.Done
+
+import akka.{Done, NotUsed}
 import akka.actor.{ActorRef, ActorSystem}
 import akka.kafka.ProducerMessage.Message
 import akka.kafka.scaladsl.Producer
@@ -48,6 +49,7 @@ import org.elasticsearch.action.update.UpdateRequest
 import org.elasticsearch.client.Requests
 import org.joda.time.DateTime
 import org.slf4j.LoggerFactory
+
 import scala.collection.breakOut
 import scala.collection.JavaConverters._
 import scala.collection.immutable.{Iterable => IIterable, Seq => ISeq}
@@ -450,7 +452,7 @@ class ImpStream(partition: Int,
   val indexCommandsToKafkaRecords =
     Flow[BGMessage[Seq[IndexCommand]]].mapConcat {
       case BGMessage(offsets, commands) =>
-        logger.debug(s"converting indexcommands to kafka records:\n$commands")
+        logger.debug(s"converting index commands to kafka records:\n$commands")
         commands.map { command =>
           val commandToSerialize =
             (if (command.isInstanceOf[IndexNewInfotonCommand] &&
@@ -478,6 +480,25 @@ class ImpStream(partition: Int,
             offsets
           )
         }(breakout)
+    }
+  val nullCommandsToKafkaRecords: Flow[BGMessage[(Option[Infoton], MergeResponse)], Message[Array[Byte], Array[Byte], Seq[Offset]], NotUsed] =
+    Flow.fromFunction {
+      case msg@BGMessage(offsets, (_, NullUpdate(path, tids, evictions))) =>
+        logger.debug(s"converting null command to kafka records:\n path: $path, offsets: [$offsets]")
+        val nullCmd = NullUpdateCommandForIndexer(path = path, persistOffsets = offsets)
+        val topic =
+          if (offsets.exists(_.topic.endsWith("priority")))
+            indexCommandsTopicPriority
+          else
+            indexCommandsTopic
+        Message(
+          new ProducerRecord[Array[Byte], Array[Byte]](
+            topic,
+            nullCmd.path.getBytes,
+            CommandSerializer.encode(nullCmd)
+          ),
+          offsets
+        )
     }
   val publishIndexCommandsFlow = Producer
     .flow[Array[Byte], Array[Byte], Seq[Offset]](kafkaProducerSettings)
@@ -516,7 +537,7 @@ class ImpStream(partition: Int,
 
         val reportNullUpdates = builder.add(
           Flow[BGMessage[(Option[Infoton], MergeResponse)]].mapAsync(1) {
-            case BGMessage(offsets, (_, NullUpdate(path, tids, evictions))) =>
+            case msg@BGMessage(offsets, (_, NullUpdate(path, tids, evictions))) =>
               bGMetrics.nullUpdateCounter += 1
               val nullUpdatesReportedAsDone = {
                 if (tids.nonEmpty)
@@ -548,13 +569,13 @@ class ImpStream(partition: Int,
                 }
               }
 
-              val offsetFuture = for {
+              val msgFuture = for {
                 _ <- nullUpdatesReportedAsDone
                 _ <- evictionsReported
                 _ <- zStored
-              } yield offsets
+              } yield msg
 
-              offsetFuture
+              msgFuture
           }
         )
 
@@ -885,7 +906,7 @@ class ImpStream(partition: Int,
 
         partitionNonNullMerged.out1 ~> logOrReportEvicted ~> Sink.ignore
 
-        partitionMerged.out(1) ~> reportNullUpdates ~> mergeCompletedOffsets.in(1)
+        partitionMerged.out(1) ~> reportNullUpdates ~> nullCommandsToKafkaRecords ~> publishIndexCommandsFlow ~> mergeCompletedOffsets.in(1)
 
         nonOverrideIndexCommandsBroadcast.out(0) ~> createVirtualParents ~> publishVirtualParents
 

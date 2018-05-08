@@ -19,7 +19,7 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.kafka.scaladsl.Consumer
 import akka.kafka.{ConsumerSettings, Subscriptions}
 import akka.stream.ActorAttributes.supervisionStrategy
-import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, MergePreferred, RunnableGraph, Sink}
+import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, Merge, MergePreferred, Partition, RunnableGraph, Sink}
 import akka.stream.{ActorMaterializer, ClosedShape, KillSwitches, Supervision}
 import cmwell.common.formats.JsonSerializerForES
 import cmwell.common.formats.{BGMessage, CompleteOffset, Offset}
@@ -303,46 +303,19 @@ class IndexerStream(partition: Int,
             val indexCommandToEsActions = builder.add(
               Flow[BGMessage[IndexCommand]]
                 .map {
-                  case bgMessage@BGMessage(
-                  _,
-                  inic@IndexNewInfotonCommandForIndexer(
-                  uuid,
-                  isCurrent,
-                  path,
-                  Some(infoton),
-                  indexName,
-                  _,
-                  tids
-                  )
-                  ) =>
+                  case bgMessage@BGMessage(_, inic@IndexNewInfotonCommandForIndexer(uuid, isCurrent, path, Some(infoton), indexName, _, tids)) =>
                     indexNewInfotonCommandCounter += 1
-                    newIndexCommandToEsAction(infoton, isCurrent, indexName).map {
-                      ia =>
-                        bgMessage
-                          .copy(message = (ia, inic.asInstanceOf[IndexCommand]))
+                    newIndexCommandToEsAction(infoton, isCurrent, indexName).map { ia =>
+                      bgMessage.copy(message = (ia, inic.asInstanceOf[IndexCommand]))
                     }
-                  case bgMessage@BGMessage(
-                  _,
-                  ieic@IndexExistingInfotonCommandForIndexer(
-                  uuid,
-                  weight,
-                  _,
-                  indexName,
-                  _,
-                  tids
-                  )
-                  ) =>
-                    logger.debug(
-                      s"creating es actions for indexExistingInfotonCommand: $ieic"
-                    )
+                  case bgMessage@BGMessage(_, ieic@IndexExistingInfotonCommandForIndexer(uuid, weight, _, indexName, _, tids)) =>
+                    logger.debug(s"creating es actions for indexExistingInfotonCommand: $ieic")
                     indexExistingCommandCounter += 1
                     val updateRequest =
                       new UpdateRequest(indexName, "infoclone", uuid)
                         .version(1)
                         .doc(s"""{"system":{"current": false}}""")
-                        .asInstanceOf[ActionRequest[
-                        _ <: ActionRequest[_ <: AnyRef]
-                        ]]
+                        .asInstanceOf[ActionRequest[_ <: ActionRequest[_ <: AnyRef]]]
                     Success(
                       bgMessage.copy(
                         message = (
@@ -458,16 +431,23 @@ class IndexerStream(partition: Int,
             prioritySource ~> mergePrefferedSources.preferred
             batchSource ~> mergePrefferedSources.in(0)
             val broadcastMessages = builder.add(Broadcast[BGMessage[Seq[IndexCommand]]](2))
+            val splitNullMessages = builder.add(Partition[BGMessage[IndexCommand]](2 ,{
+              case BGMessage(_, _: NullUpdateCommandForIndexer) => 1
+              case _ => 0
+            }))
+            val mergeOffsetMessages = builder.add(Merge[BGMessage[Seq[IndexCommand]]](2))
             val extactImpOffsetsFromMessage: Flow[BGMessage[Seq[IndexCommand]], Seq[Offset], NotUsed] = Flow.fromFunction {
               commadSeq =>
                 commadSeq.message.flatMap {
                   case IndexNewInfotonCommandForIndexer(_, _, _, _, _, persistOffsets, _) => persistOffsets
                   case IndexExistingInfotonCommandForIndexer(_, _, _, _, persistOffsets, _) => persistOffsets
+                  case NullUpdateCommandForIndexer(_, _, _, persistOffsets, _) => persistOffsets
                 }
             }
             // scalastyle:off
-            mergePrefferedSources ~> heartBitLog ~> getInfotonIfNeeded ~> indexCommandToEsActions ~> groupEsActions ~> indexInfoActionsFlow ~> updateIndexInfoInCas ~> broadcastMessages ~> reportProcessTracking ~> indexerOffsetsSink
-            broadcastMessages ~> extactImpOffsetsFromMessage ~> impOffsetsSink
+            mergePrefferedSources ~> heartBitLog ~> splitNullMessages ~> getInfotonIfNeeded ~> indexCommandToEsActions ~> groupEsActions ~> indexInfoActionsFlow ~> updateIndexInfoInCas ~> broadcastMessages ~> reportProcessTracking ~> indexerOffsetsSink
+                                                    splitNullMessages.map(msg => BGMessage(Seq(msg.message))) ~> mergeOffsetMessages
+                                                                                                                                                                                            broadcastMessages ~> mergeOffsetMessages ~> extactImpOffsetsFromMessage ~> impOffsetsSink
             // scalastyle:on
             ClosedShape
         }

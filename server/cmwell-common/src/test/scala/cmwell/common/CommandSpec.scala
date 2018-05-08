@@ -210,6 +210,18 @@ class CommandSpec extends FlatSpec with Matchers {
     decodedCommand should equal(indexCommand)
   }
 
+  "NullUpdateCommandForIndexer" should "be successfully encoded/decoded" in {
+    val offsets: Seq[Offset] = Seq(
+      PartialOffset("blahTopic", 98253344, 3, 4),
+      CompleteOffset("blahTopic2", 498273923),
+      PartialOffset("blahTopic6346", 98253344, 9, 400)
+    )
+    val indexCommand = NullUpdateCommandForIndexer("mySecretUuid", "what a path!!!", "someIndexName", offsets)
+    val payload = CommandSerializer.encode(indexCommand)
+    val decodedCommand = CommandSerializer.decode(payload).asInstanceOf[NullUpdateCommandForIndexer]
+    decodedCommand should equal(indexCommand)
+  }
+
   "TrackingID de/serialization" should "be enabled for any SingleCommand" in {
     val objInfot = ObjectInfoton(
       "/command-test/objinfo1",
