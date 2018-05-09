@@ -184,22 +184,23 @@ object Retry extends DataToolsLogging with DataToolsConfig {
 
         case State(data, _, Some(HttpResponse(s, h, e, _)), count) =>
 
-          if (s.isSuccess)
-            // 200 OK, but errors response validator returned false
-            logger.warn(s"$labelValue received $s but response body is not valid. " +
-              s"host=${getHostnameValue(h)} data=${stringifyData(data)}")
-
           redLogger.error(
             s"$labelValue error: host=${getHostnameValue(h)} status=$s entity=$e data=${stringifyData(data)}"
           )
-          logger.warn(
-            s"$labelValue error: host=${getHostnameValue(h)} status=$s data=${stringifyData(data)}"
-          )
+
+          s.isSuccess match {
+            case true =>
+              // 200 OK, but errors response validator returned false
+              logger.warn(s"$labelValue received $s but response body is not valid. " +
+                s"host=${getHostnameValue(h)} data=${stringifyData(data)}")
+            case _ => logger.warn(s"$labelValue error: host=${getHostnameValue(h)}" +
+                s" status=$s data=${stringifyData(data)}")
+          }
 
           count match {
             case Some(c) if c > 0 =>
               e.discardBytes()
-              logger.warn(
+              logger.debug(
                 s"$labelValue received $s, count=$count will retry again in $delay host=${getHostnameValue(h)} data=${stringifyData(data)}"
               )
               val future =

@@ -495,9 +495,14 @@ class ImpStream(partition: Int,
                 .copy(infotonOpt = None)
             } else
               command
+          val topic =
+            if (offset.exists(_.topic.endsWith("priority")))
+              indexCommandsTopicPriority
+            else
+              indexCommandsTopic
           Message(
             new ProducerRecord[Array[Byte], Array[Byte]](
-              indexCommandsTopic,
+              topic,
               commandToSerialize.path.getBytes,
               CommandSerializer.encode(commandToSerialize)
             ),

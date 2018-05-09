@@ -8,6 +8,7 @@ libraryDependencies ++= {
   val dm = dependenciesManager.value
   Seq(
     guice,
+    ws,
     dm("com.typesafe.play","play-json"),
     dm("com.typesafe.akka","akka-http")
       .exclude("com.typesafe.akka","akka-slf4j"),

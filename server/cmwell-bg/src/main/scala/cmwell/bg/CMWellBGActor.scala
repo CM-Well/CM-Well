@@ -19,6 +19,8 @@ import java.util.concurrent.TimeUnit
 import akka.actor.{Actor, ActorRef, OneForOneStrategy, PoisonPill, Props}
 import akka.kafka.{ConsumerSettings, KafkaConsumerActor}
 import akka.stream.{ActorMaterializer, Supervision}
+import ch.qos.logback.classic.LoggerContext
+import cmwell.bg.Runner.logger
 import cmwell.fts.FTSServiceNew
 import cmwell.irw.IRWService
 import cmwell.common.OffsetsService
@@ -32,6 +34,9 @@ import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.elasticsearch.metrics.ElasticsearchReporter
 import cmwell.common.exception._
+import org.slf4j.LoggerFactory
+
+import scala.concurrent.Await
 import scala.concurrent.duration._
 
 object CMWellBGActor {
