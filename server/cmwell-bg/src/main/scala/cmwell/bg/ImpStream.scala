@@ -471,9 +471,14 @@ class ImpStream(partition: Int,
               case cmd: IndexExistingInfotonCommand =>
                 IndexExistingInfotonCommandForIndexer(cmd.uuid, cmd.weight, cmd.path, cmd.indexName, offsets, cmd.trackingIDs)
             }
+          val topic =
+            if (offset.exists(_.topic.endsWith("priority")))
+              indexCommandsTopicPriority
+            else
+              indexCommandsTopic
           Message(
             new ProducerRecord[Array[Byte], Array[Byte]](
-              indexCommandsTopic,
+              topic,
               commandToSerialize.path.getBytes,
               CommandSerializer.encode(commandToSerialize)
             ),
