@@ -472,7 +472,7 @@ class ImpStream(partition: Int,
                 IndexExistingInfotonCommandForIndexer(cmd.uuid, cmd.weight, cmd.path, cmd.indexName, offsets, cmd.trackingIDs)
             }
           val topic =
-            if (offset.exists(_.topic.endsWith("priority")))
+            if (offsets.exists(_.topic.endsWith("priority")))
               indexCommandsTopicPriority
             else
               indexCommandsTopic
