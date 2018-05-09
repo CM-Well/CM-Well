@@ -445,9 +445,10 @@ class IndexerStream(partition: Int,
                 }
             }
             // scalastyle:off
-            mergePrefferedSources ~> heartBitLog ~> splitNullMessages ~> getInfotonIfNeeded ~> indexCommandToEsActions ~> groupEsActions ~> indexInfoActionsFlow ~> updateIndexInfoInCas ~> broadcastMessages ~> reportProcessTracking ~> indexerOffsetsSink
-                                                    splitNullMessages.map(msg => BGMessage(Seq(msg.message)))                                                                                                 ~> mergeOffsetMessages
-                                                                                                                                                                                            broadcastMessages ~> mergeOffsetMessages ~> extactImpOffsetsFromMessage ~> impOffsetsSink
+            mergePrefferedSources ~> heartBitLog ~> splitNullMessages ~> getInfotonIfNeeded ~> indexCommandToEsActions ~> groupEsActions ~> indexInfoActionsFlow ~> updateIndexInfoInCas ~> mergeOffsetMessages
+                                                    splitNullMessages.map(msg => msg.copy(message = Seq(msg.message)))                                                                   ~> mergeOffsetMessages ~> broadcastMessages
+            broadcastMessages ~> reportProcessTracking ~> indexerOffsetsSink
+            broadcastMessages ~> extactImpOffsetsFromMessage ~> impOffsetsSink
             // scalastyle:on
             ClosedShape
         }
