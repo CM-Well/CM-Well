@@ -20,7 +20,7 @@ sys.env.get("BUILD_NUMBER") match {
   )
 }
 
-scalaVersion in Global := "2.12.5"
+scalaVersion in Global := "2.12.6"
 //javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint")
 initialize := {
   import semverfi._
