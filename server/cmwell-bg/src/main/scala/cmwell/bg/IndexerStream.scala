@@ -391,7 +391,6 @@ class IndexerStream(partition: Int,
                         else ir.esAction.toString
                     }}"
                   )
-                  val highestOffset = bgMessages.map(_.offsets).flatten.max
                   indexBulkSizeHist += esIndexRequests.size
                   indexingTimer
                     .timeFuture(
@@ -400,12 +399,7 @@ class IndexerStream(partition: Int,
                       )
                     )
                     .map { bulkIndexResult =>
-                      BGMessage(
-                        highestOffset,
-                        (bulkIndexResult, bgMessages.map {
-                          _.message._2
-                        })
-                      )
+                        BGMessage(bgMessages.flatMap(_.offsets), (bulkIndexResult, bgMessages.map(_.message._2)))
                     }
               }
             )
