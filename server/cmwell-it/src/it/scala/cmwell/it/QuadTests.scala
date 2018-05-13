@@ -25,6 +25,7 @@ import org.apache.jena.query.DatasetFactory
 import org.apache.jena.riot.{Lang, RDFDataMgr}
 import org.scalatest.{AsyncFunSpec, Matchers}
 import play.api.libs.json.{Reads, _}
+import scala.concurrent.duration._
 
 import scala.io.Source
 
@@ -268,9 +269,9 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
         }
       }
     }
-    val fSuperman8 = fSuperman7.flatMap(_ => scheduleFuture(indexingDuration*10){
-      Http.get(superman, List("format" -> "jsonl")).map{ res =>
-        withClue(res){
+    val fSuperman8 = fSuperman7.flatMap(_ => scheduleFuture(indexingDuration) {
+      spinCheck(100.millis, true)(Http.get(superman, List("format" -> "jsonl")))(_.status).map { res =>
+        withClue(res) {
           Json
             .parse(res.payload)
             .transform(jsonlSorter andThen jsonlUuidDateIdEraser)
