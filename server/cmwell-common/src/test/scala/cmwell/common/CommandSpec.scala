@@ -4,7 +4,7 @@
   * Licensed under the Apache License, Version 2.0 (the “License”); you may not use this file except in compliance with the License.
   * You may obtain a copy of the License at
   *
-  * http://www.apache.org/licenses/LICENSE-2.0
+  *   http://www.apache.org/licenses/LICENSE-2.0
   *
   * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
   * an “AS IS” BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -207,6 +207,18 @@ class CommandSpec extends FlatSpec with Matchers {
     val indexCommand = IndexExistingInfotonCommandForIndexer("mySecretUuid", 94723, "what a path!!!", "someIndexName", offsets)
     val payload = CommandSerializer.encode(indexCommand)
     val decodedCommand = CommandSerializer.decode(payload).asInstanceOf[IndexExistingInfotonCommandForIndexer]
+    decodedCommand should equal(indexCommand)
+  }
+
+  "NullUpdateCommandForIndexer" should "be successfully encoded/decoded" in {
+    val offsets: Seq[Offset] = Seq(
+      PartialOffset("blahTopic", 98253344, 3, 4),
+      CompleteOffset("blahTopic2", 498273923),
+      PartialOffset("blahTopic6346", 98253344, 9, 400)
+    )
+    val indexCommand = NullUpdateCommandForIndexer("mySecretUuid", "what a path!!!", "someIndexName", offsets)
+    val payload = CommandSerializer.encode(indexCommand)
+    val decodedCommand = CommandSerializer.decode(payload).asInstanceOf[NullUpdateCommandForIndexer]
     decodedCommand should equal(indexCommand)
   }
 
