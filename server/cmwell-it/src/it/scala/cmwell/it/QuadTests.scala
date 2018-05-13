@@ -406,8 +406,8 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
         }
       })
     }
-    val fBatman09 = fBatman08.flatMap(_ => scheduleFuture(indexingDuration*4) {
-      Http.get(batman, List("format" -> "jsonl")).map{res =>
+    val fBatman09 = fBatman08.flatMap(_ => scheduleFuture(indexingDuration) {
+      spinCheck(100.millis, true)(Http.get(batman, List("format" -> "jsonl")))(_.status).map { res =>
         withClue(res) {
           Json
             .parse(res.payload)
@@ -439,8 +439,8 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
         }
       })
     }
-    val fBatman11 = fBatman10.flatMap(_ => scheduleFuture(indexingDuration*4) {
-      Http.get(batman, List("format" -> "jsonl")).map{res =>
+    val fBatman11 = fBatman10.flatMap(_ => scheduleFuture(indexingDuration) {
+      spinCheck(100.millis, true)(Http.get(batman, List("format" -> "jsonl")))(_.status).map { res =>
         withClue(res){
           Json
             .parse(res.payload)
