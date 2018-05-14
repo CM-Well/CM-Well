@@ -58,7 +58,7 @@ GET         /health/zk-mntr         controllers.Health.getZkMntr
 GET         /health/ws              controllers.Health.getWsHealth
 GET         /ws/_out                controllers.OutputHandler.handleWebSocket(format: String)
 GET         /ii/*uuid               controllers.Application.handleUuidGET(uuid)
-GET         /zz                     controllers.Application.handleZzGET(key = "")
+GET         /zz                     controllers.Help.handleHelp(page = "zz")
 GET         /zz/*key                controllers.Application.handleZzGET(key)
 GET         /proc                   controllers.Application.handleProcGET(path = "/proc")
 GET         /proc/                  controllers.Application.handleProcGET(path = "/proc")

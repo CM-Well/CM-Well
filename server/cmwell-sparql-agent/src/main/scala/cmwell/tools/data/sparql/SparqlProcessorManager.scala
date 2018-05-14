@@ -431,7 +431,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
     val hostUpdatesSource = job.config.hostUpdatesSource.getOrElse(settings.hostUpdatesSource)
 
     val agent = SparqlTriggeredProcessor
-      .listen(job.config, hostUpdatesSource, false, Some(tokenReporter), Some(job.name))
+      .listen(job.config, hostUpdatesSource, false, Some(tokenReporter), Some(job.name), infotonGroupSize = settings.infotonGroupSize)
       .map { case (data, _) => data }
       .via(GroupChunker(formatToGroupExtractor(settings.materializedViewFormat)))
       .map(concatByteStrings(_, endl))
