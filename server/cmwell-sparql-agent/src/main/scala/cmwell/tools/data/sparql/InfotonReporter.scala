@@ -69,9 +69,13 @@ class InfotonReporter private (baseUrl: String, path: String)(implicit mat: Mate
     case RequestPreviousTokens =>
       context.become(receiveBeforeInitializes(sender() :: recipients))
 
-    case Success(savedTokens: TokenAndStatisticsMap) =>
-      recipients.foreach(_ ! ResponseWithPreviousTokens(savedTokens))
-      context.become(receiveWithMap(savedTokens))
+    case Success(savedTokens: Either[TokenAndStatisticsMap,String]) =>
+      savedTokens match {
+        case Left(tokens) =>
+          recipients.foreach(_ ! ResponseWithPreviousTokens(Success(savedTokens)))
+          context.become(receiveWithMap(tokens))
+        case Right(_) => recipients.foreach(_ ! ResponseWithPreviousTokens(Success(savedTokens)))
+      }
 
     case s: DownloadStats =>
       downloadStats += (s.label.getOrElse("") -> s)
@@ -96,7 +100,7 @@ class InfotonReporter private (baseUrl: String, path: String)(implicit mat: Mate
 
   def receiveWithMap(tokensAndStats: TokenAndStatisticsMap): Receive = {
     case RequestPreviousTokens =>
-      sender() ! ResponseWithPreviousTokens(tokensAndStats)
+      sender() ! ResponseWithPreviousTokens(Success(Left(tokensAndStats)))
 
     case ReportNewToken(sensor, token) =>
       val updatedTokens = tokensAndStats + (sensor -> (token, downloadStats.get(sensor)))

@@ -14,6 +14,7 @@
   */
 package cmwell.tools.data.sparql
 
+import java.lang.Exception
 import java.nio.file.Paths
 import java.time.{Instant, LocalDateTime, ZoneId}
 
@@ -24,12 +25,7 @@ import akka.stream.scaladsl._
 import akka.util.Timeout
 import cmwell.ctrl.checkers.StpChecker.{RequestStats, ResponseStats, Row, Table}
 import cmwell.tools.data.ingester._
-import cmwell.tools.data.sparql.InfotonReporter.{
-  RequestDownloadStats,
-  RequestIngestStats,
-  ResponseDownloadStats,
-  ResponseIngestStats
-}
+import cmwell.tools.data.sparql.InfotonReporter.{RequestDownloadStats, RequestIngestStats, ResponseDownloadStats, ResponseIngestStats}
 import cmwell.tools.data.sparql.SparqlProcessorManager._
 import cmwell.tools.data.utils.akka._
 import cmwell.tools.data.utils.akka.stats.IngesterStats
@@ -300,20 +296,25 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
         val header = Seq("Sensor", "Token Time")
 
         StpUtil.readPreviousTokens(settings.hostConfigFile, settings.pathAgentConfigs + "/" + path, "ntriples").map {
-          storedTokens =>
-            val pathsWithoutSavedToken = sensorNames.toSet.diff(storedTokens.keySet)
-            val allSensorsWithTokens = storedTokens ++ pathsWithoutSavedToken.map(_ -> ("", None))
+          result =>
+            result match {
+              case Left(storedTokens) =>
+                val pathsWithoutSavedToken = sensorNames.toSet.diff (storedTokens.keySet)
+                val allSensorsWithTokens = storedTokens ++ pathsWithoutSavedToken.map (_-> ("", None) )
 
-            val body: Iterable[Row] = allSensorsWithTokens.map {
-              case (sensorName, (token, _)) =>
+                val body: Iterable[Row] = allSensorsWithTokens.map {
+                case (sensorName, (token, _) ) =>
                 val decodedToken = if (token.nonEmpty) {
-                  val from = cmwell.tools.data.utils.text.Tokens.getFromIndexTime(token)
-                  LocalDateTime.ofInstant(Instant.ofEpochMilli(from), ZoneId.systemDefault()).toString
+                val from = cmwell.tools.data.utils.text.Tokens.getFromIndexTime (token)
+                LocalDateTime.ofInstant (Instant.ofEpochMilli (from), ZoneId.systemDefault () ).toString
                 } else ""
 
-                Seq(sensorName, decodedToken)
-            }
-            Table(title = title, header = header, body = body)
+                Seq (sensorName, decodedToken)
+                }
+                Table (title = title, header = header, body = body)
+                }
+        }.recover {
+          case _ => Table(title = title, header = header, body = Seq(Seq("error")))
         }
     }
 
@@ -338,8 +339,10 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
           statsIngestRD <- stats2Future
           statsIngest = statsIngestRD.stats
           storedTokensRWPT <- storedTokensFuture
-          storedTokens = storedTokensRWPT.tokens
+          storedTokensResponse = storedTokensRWPT.tokens
+          storedTokens = storedTokensResponse.collect({case Left(tokens) => tokens}).get
         } yield {
+
           val sensorNames = jobConfig.sensors.map(_.name)
           val pathsWithoutSavedToken = sensorNames.toSet.diff(storedTokens.keySet)
           val allSensorsWithTokens = storedTokens ++ pathsWithoutSavedToken.map(_ -> ("", None))
