@@ -68,7 +68,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
 
     val expected = ObjectInfoton(
       "/bg-test-merge/objinfo2",
-      "dc1",
+      merger.defaultDC,
       None,
       currentDateTime,
       Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith")))
@@ -99,7 +99,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
 
     val expected = ObjectInfoton(
       "/bg-test-merge/objinfo2",
-      "dc1",
+      merger.defaultDC,
       None,
       now.plus(1L),
       Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith")))
@@ -130,7 +130,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
 
     val expected = ObjectInfoton(
       "/bg-test-merge/objinfo2",
-      "dc1",
+      merger.defaultDC,
       None,
       now.plus(2L),
       Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith")))
@@ -166,7 +166,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
 
     val merged = merger.merge(None, writeCommands).merged
 
-    merged.value shouldEqual infoton.copyInfoton(lastModified = new DateTime(0L))
+    merged.value shouldEqual infoton.copyInfoton(lastModified = new DateTime(0L), dc = merger.defaultDC)
   }
 
   it should "merge even number of virtual parents commands with no previous version correctly" in {
@@ -185,7 +185,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
 
     val merged = merger.merge(None, writeCommands).merged
 
-    merged.value shouldEqual infoton.copyInfoton(lastModified = new DateTime(0L))
+    merged.value shouldEqual infoton.copyInfoton(lastModified = new DateTime(0L), dc = merger.defaultDC)
   }
 
   it should "merge odd number of virtual parents commands with a previous version correctly" in {
@@ -246,7 +246,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
     val writeCommand2 = WriteCommand(infoton2)
     val merged = merger.merge(None, Seq(writeCommand1, writeCommand2))
 
-    merged.merged shouldEqual(Some(infoton2))
+    //Taking care of dataCenter
+    merged.merged shouldEqual(Some(infoton2.copy(dc=merger.defaultDC)))
 
   }
 
