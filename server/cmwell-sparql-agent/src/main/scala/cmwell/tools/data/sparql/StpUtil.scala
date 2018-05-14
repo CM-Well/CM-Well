@@ -37,34 +37,36 @@ object StpUtil {
 
     cmwell.util.http.SimpleHttpClient
       .get(s"http://$baseUrl$path/tokens?op=stream&recursive&format=json")
-      .map(response => {
-        response.payload.lines
-          .map({
-            row =>
-              parse(row) match {
-                case Left(parseFailure @ ParsingFailure(_, _)) => throw parseFailure
-                case Right(json) => {
+      .map{
+        case response if response.status == 200 || response.status == 404 =>
+          Right(response.payload.lines
+            .map({
+              row =>
+                parse(row) match {
+                  case Left(parseFailure @ ParsingFailure(_, _)) => throw parseFailure
+                  case Right(json) => {
 
-                  val token = (for {
-                    vec <- json.hcursor.downField("fields").downField("token").values
-                    jsn <- vec.headOption
-                    str <- jsn.asString
-                  } yield str).getOrElse("")
+                    val token = (for {
+                      vec <- json.hcursor.downField("fields").downField("token").values
+                      jsn <- vec.headOption
+                      str <- jsn.asString
+                    } yield str).getOrElse("")
 
-                  val receivedInfotons: Option[DownloadStats] =
-                    json.hcursor.downField("fields").downField("receivedInfotons").downArray.as[Long].toOption.map {
-                      value =>
-                        DownloadStats(receivedInfotons = value)
-                    }
+                    val receivedInfotons: Option[DownloadStats] =
+                      json.hcursor.downField("fields").downField("receivedInfotons").downArray.as[Long].toOption.map {
+                        value =>
+                          DownloadStats(receivedInfotons = value)
+                      }
 
-                  val sensor = extractLastPart(json.hcursor.downField("system").get[String]("path").toOption.get)
-                  sensor -> (token, receivedInfotons)
+                    val sensor = extractLastPart(json.hcursor.downField("system").get[String]("path").toOption.get)
+                    sensor -> (token, receivedInfotons)
+                  }
                 }
-              }
-          })
-          .foldLeft(Map.newBuilder[String, TokenAndStatistics])(_.+=(_))
-          .result()
-      })
+            })
+            .foldLeft(Map.newBuilder[String, TokenAndStatistics])(_.+=(_))
+            .result())
+        case _ => Left(s"Could not read token infoton from cm-well for agent: ${path}")
+      }
   }
 
 }

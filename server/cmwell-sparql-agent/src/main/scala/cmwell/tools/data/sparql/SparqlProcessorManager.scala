@@ -14,6 +14,7 @@
   */
 package cmwell.tools.data.sparql
 
+import java.lang.Exception
 import java.nio.file.Paths
 import java.time.{Instant, LocalDateTime, ZoneId}
 
@@ -24,12 +25,7 @@ import akka.stream.scaladsl._
 import akka.util.Timeout
 import cmwell.ctrl.checkers.StpChecker.{RequestStats, ResponseStats, Row, Table}
 import cmwell.tools.data.ingester._
-import cmwell.tools.data.sparql.InfotonReporter.{
-  RequestDownloadStats,
-  RequestIngestStats,
-  ResponseDownloadStats,
-  ResponseIngestStats
-}
+import cmwell.tools.data.sparql.InfotonReporter.{RequestDownloadStats, RequestIngestStats, ResponseDownloadStats, ResponseIngestStats}
 import cmwell.tools.data.sparql.SparqlProcessorManager._
 import cmwell.tools.data.utils.akka._
 import cmwell.tools.data.utils.akka.stats.IngesterStats
@@ -300,20 +296,25 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
         val header = Seq("Sensor", "Token Time")
 
         StpUtil.readPreviousTokens(settings.hostConfigFile, settings.pathAgentConfigs + "/" + path, "ntriples").map {
-          storedTokens =>
-            val pathsWithoutSavedToken = sensorNames.toSet.diff(storedTokens.keySet)
-            val allSensorsWithTokens = storedTokens ++ pathsWithoutSavedToken.map(_ -> ("", None))
+          result =>
+            result match {
+              case Right(storedTokens) =>
+                val pathsWithoutSavedToken = sensorNames.toSet.diff(storedTokens.keySet)
+                val allSensorsWithTokens = storedTokens ++ pathsWithoutSavedToken.map(_ -> ("", None))
 
-            val body: Iterable[Row] = allSensorsWithTokens.map {
-              case (sensorName, (token, _)) =>
-                val decodedToken = if (token.nonEmpty) {
-                  val from = cmwell.tools.data.utils.text.Tokens.getFromIndexTime(token)
-                  LocalDateTime.ofInstant(Instant.ofEpochMilli(from), ZoneId.systemDefault()).toString
-                } else ""
+                val body: Iterable[Row] = allSensorsWithTokens.map {
+                  case (sensorName, (token, _)) =>
+                    val decodedToken = if (token.nonEmpty) {
+                      val from = cmwell.tools.data.utils.text.Tokens.getFromIndexTime(token)
+                      LocalDateTime.ofInstant(Instant.ofEpochMilli(from), ZoneId.systemDefault()).toString
+                    } else ""
 
-                Seq(sensorName, decodedToken)
+                    Seq(sensorName, decodedToken)
+                }
+                Table(title = title, header = header, body = body)
             }
-            Table(title = title, header = header, body = body)
+        }.recover {
+          case _ => Table(title = title, header = header, body = Seq(Seq("")))
         }
     }
 
@@ -338,61 +339,69 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
           statsIngestRD <- stats2Future
           statsIngest = statsIngestRD.stats
           storedTokensRWPT <- storedTokensFuture
-          storedTokens = storedTokensRWPT.tokens
+          //storedTokens <- storedTokensRWPT.tokens.left
+         // storedTokens = storedTokensRWPT.tokens
         } yield {
-          val sensorNames = jobConfig.sensors.map(_.name)
-          val pathsWithoutSavedToken = sensorNames.toSet.diff(storedTokens.keySet)
-          val allSensorsWithTokens = storedTokens ++ pathsWithoutSavedToken.map(_ -> ("", None))
+          storedTokensRWPT.tokens match {
+            case Right(storedTokens) => {
 
-          val body: Iterable[Row] = allSensorsWithTokens.map {
-            case (sensorName, (token, _)) =>
-              val decodedToken = if (token.nonEmpty) {
-                Tokens.getFromIndexTime(token) match {
-                  case 0 => ""
-                  case tokenTime =>
-                    (LocalDateTime.ofInstant(Instant.ofEpochMilli(tokenTime), ZoneId.systemDefault()).toString)
-                }
-              } else ""
+              val sensorNames = jobConfig.sensors.map(_.name)
+              val pathsWithoutSavedToken = sensorNames.toSet.diff(storedTokens.keySet)
+              val allSensorsWithTokens = storedTokens ++ pathsWithoutSavedToken.map(_ -> ("", None))
 
-              val sensorStats = stats
-                .get(sensorName)
+              val body: Iterable[Row] = allSensorsWithTokens.map {
+                case (sensorName, (token, _)) =>
+                  val decodedToken = if (token.nonEmpty) {
+                    Tokens.getFromIndexTime(token) match {
+                      case 0 => ""
+                      case tokenTime =>
+                        (LocalDateTime.ofInstant(Instant.ofEpochMilli(tokenTime), ZoneId.systemDefault()).toString)
+                    }
+                  } else ""
+
+                  val sensorStats = stats
+                    .get(sensorName)
+                    .map { s =>
+                      val statsTime = s.statsTime match {
+                        case 0 => "Not Yet Updated"
+                        case _ =>
+                          LocalDateTime.ofInstant(Instant.ofEpochMilli(s.statsTime), ZoneId.systemDefault()).toString
+                      }
+
+                      val infotonRate = s.horizon match {
+                        case true => s"""<span style="color:green">Horizon</span>"""
+                        case false => s"${formatter.format(s.infotonRate)}/sec"
+                      }
+
+                      Seq(s.receivedInfotons.toString, infotonRate, statsTime)
+
+                    }
+                    .getOrElse(Seq.empty[String])
+
+                  Seq(sensorName, decodedToken) ++ sensorStats
+              }
+              val configName = Paths.get(path).getFileName
+
+              val sparqlIngestStats = statsIngest
+                .get(s"ingester-$configName")
                 .map { s =>
-                  val statsTime = s.statsTime match {
-                    case 0 => "Not Yet Updated"
-                    case _ =>
-                      LocalDateTime.ofInstant(Instant.ofEpochMilli(s.statsTime), ZoneId.systemDefault()).toString
-                  }
-
-                  val infotonRate = s.horizon match {
-                    case true  => s"""<span style="color:green">Horizon</span>"""
-                    case false => s"${formatter.format(s.infotonRate)}/sec"
-                  }
-
-                  Seq(s.receivedInfotons.toString, infotonRate, statsTime)
-
+                  s"""Ingested <span style="color:green"> **${s.ingestedInfotons}** </span> Failed <span style="color:red"> **${s.failedInfotons}** </span>"""
                 }
-                .getOrElse(Seq.empty[String])
+                .getOrElse("")
 
-              Seq(sensorName, decodedToken) ++ sensorStats
+              val sparqlMaterializerStats = stats
+                .get(s"$configName-${SparqlTriggeredProcessor.sparqlMaterializerLabel}")
+                .map { s =>
+                  val totalRunTime = DurationFormatUtils.formatDurationWords(s.runningTime, true, true)
+                  s"""Materialized <span style="color:green"> **${s.receivedInfotons}** </span> infotons [$totalRunTime]""".stripMargin
+                }
+                .getOrElse("")
+
+              Table(title = title :+ sparqlMaterializerStats :+ sparqlIngestStats, header = header, body = body)
+
+            }
+            case _ => Table(title = title, header = header, body = Seq(Seq("")))
           }
-          val configName = Paths.get(path).getFileName
-
-          val sparqlIngestStats = statsIngest
-            .get(s"ingester-$configName")
-            .map { s =>
-              s"""Ingested <span style="color:green"> **${s.ingestedInfotons}** </span> Failed <span style="color:red"> **${s.failedInfotons}** </span>"""
-            }
-            .getOrElse("")
-
-          val sparqlMaterializerStats = stats
-            .get(s"$configName-${SparqlTriggeredProcessor.sparqlMaterializerLabel}")
-            .map { s =>
-              val totalRunTime = DurationFormatUtils.formatDurationWords(s.runningTime, true, true)
-              s"""Materialized <span style="color:green"> **${s.receivedInfotons}** </span> infotons [$totalRunTime]""".stripMargin
-            }
-            .getOrElse("")
-
-          Table(title = title :+ sparqlMaterializerStats :+ sparqlIngestStats, header = header, body = body)
         }
     }
 
