@@ -39,7 +39,7 @@ object StpUtil {
       .get(s"http://$baseUrl$path/tokens?op=stream&recursive&format=json")
       .map{
         case response if response.status == 200 || response.status == 404 =>
-          Left(response.payload.lines
+          Right(response.payload.lines
             .map({
               row =>
                 parse(row) match {
@@ -65,7 +65,7 @@ object StpUtil {
             })
             .foldLeft(Map.newBuilder[String, TokenAndStatistics])(_.+=(_))
             .result())
-        case _ => Right(s"Could not read token infoton from cm-well for agent: ${path}")
+        case _ => Left(s"Could not read token infoton from cm-well for agent: ${path}")
       }
   }
 

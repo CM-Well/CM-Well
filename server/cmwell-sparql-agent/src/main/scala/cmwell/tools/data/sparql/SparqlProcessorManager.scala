@@ -298,21 +298,21 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
         StpUtil.readPreviousTokens(settings.hostConfigFile, settings.pathAgentConfigs + "/" + path, "ntriples").map {
           result =>
             result match {
-              case Left(storedTokens) =>
-                val pathsWithoutSavedToken = sensorNames.toSet.diff (storedTokens.keySet)
-                val allSensorsWithTokens = storedTokens ++ pathsWithoutSavedToken.map (_-> ("", None) )
+              case Right(storedTokens) =>
+                val pathsWithoutSavedToken = sensorNames.toSet.diff(storedTokens.keySet)
+                val allSensorsWithTokens = storedTokens ++ pathsWithoutSavedToken.map(_ -> ("", None))
 
                 val body: Iterable[Row] = allSensorsWithTokens.map {
-                case (sensorName, (token, _) ) =>
-                val decodedToken = if (token.nonEmpty) {
-                val from = cmwell.tools.data.utils.text.Tokens.getFromIndexTime (token)
-                LocalDateTime.ofInstant (Instant.ofEpochMilli (from), ZoneId.systemDefault () ).toString
-                } else ""
+                  case (sensorName, (token, _)) =>
+                    val decodedToken = if (token.nonEmpty) {
+                      val from = cmwell.tools.data.utils.text.Tokens.getFromIndexTime(token)
+                      LocalDateTime.ofInstant(Instant.ofEpochMilli(from), ZoneId.systemDefault()).toString
+                    } else ""
 
-                Seq (sensorName, decodedToken)
+                    Seq(sensorName, decodedToken)
                 }
-                Table (title = title, header = header, body = body)
-                }
+                Table(title = title, header = header, body = body)
+            }
         }.recover {
           case _ => Table(title = title, header = header, body = Seq(Seq("")))
         }
@@ -343,7 +343,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
          // storedTokens = storedTokensRWPT.tokens
         } yield {
           storedTokensRWPT.tokens match {
-            case Left(storedTokens) => {
+            case Right(storedTokens) => {
 
               val sensorNames = jobConfig.sensors.map(_.name)
               val pathsWithoutSavedToken = sensorNames.toSet.diff(storedTokens.keySet)

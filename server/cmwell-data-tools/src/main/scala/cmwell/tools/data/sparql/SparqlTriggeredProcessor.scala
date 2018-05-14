@@ -100,8 +100,8 @@ class SparqlTriggeredProcessor(config: Config,
       )
     }
 
-    val savedTokensAndStatistics: Either[TokenAndStatisticsMap, String] = tokenReporter match {
-      case None => Left(Map.empty[String, TokenAndStatistics])
+    val savedTokensAndStatistics: Either[String,TokenAndStatisticsMap] = tokenReporter match {
+      case None => Right(Map.empty[String, TokenAndStatistics])
       case Some(reporter) =>
         import akka.pattern._
         implicit val t = akka.util.Timeout(1.minute)
@@ -109,7 +109,7 @@ class SparqlTriggeredProcessor(config: Config,
           .mapTo[ResponseWithPreviousTokens]
           .map {
             case ResponseWithPreviousTokens(tokens) => tokens
-            case x => logger.error(s"did not receive previous tokens: $x"); Right(s"did not receive previous tokens: $x")
+            case x => logger.error(s"did not receive previous tokens: $x"); Left(s"did not receive previous tokens: $x")
           }
         Await.result(result, 1.minute)
     }
@@ -147,10 +147,10 @@ class SparqlTriggeredProcessor(config: Config,
 
     savedTokensAndStatistics match {
 
-      case Right(error) =>
+      case Left(error) =>
         Source.failed(new Exception(error))
 
-      case Left(tokensAndStatistics) => {
+      case Right(tokensAndStatistics) => {
 
         var savedTokens = tokensAndStatistics.map {
           case (sensor, (token, _)) => sensor -> token
