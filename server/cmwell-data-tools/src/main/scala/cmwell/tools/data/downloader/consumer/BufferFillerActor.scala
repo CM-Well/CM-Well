@@ -30,7 +30,7 @@ import cmwell.tools.data.utils.logging._
 import cmwell.tools.data.utils.text.Tokens
 import cmwell.util.akka.http.HttpZipDecoder
 
-import scala.collection.mutable
+import scala.collection.{immutable, mutable}
 import scala.concurrent.duration.{FiniteDuration, _}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
@@ -74,6 +74,7 @@ class BufferFillerActor(threshold: Int,
   private var tsvCounter = 0L
   private var lastBulkConsumeToHeader: Option[String] = None
   private var consumeComplete = false
+  private var remainingInfotons : Option[Int] = None
 
   val retryTimeout: FiniteDuration = {
     val timeoutDuration = Duration(
@@ -160,13 +161,13 @@ class BufferFillerActor(threshold: Int,
 
     case GetData if buf.nonEmpty =>
       sender ! buf.dequeue.map(tokenAndData => {
-        (tokenAndData._1, tokenAndData._2, (buf.isEmpty && consumeComplete))
+        (tokenAndData._1, tokenAndData._2, (buf.isEmpty && consumeComplete), remainingInfotons)
       })
 
     // do nothing since there are no elements in buffer
     case GetData =>
       logger.debug("Got GetData message but there is no data")
-      sender ! Some[(Token, TsvData, Boolean)](null, null, consumeComplete)
+      sender ! Some[(Token, TsvData, Boolean, Option[Int])](null, null, consumeComplete, remainingInfotons)
 
     case SetConsumeStatus(consumeStatus) =>
       if (this.consumeComplete != consumeStatus)
@@ -279,6 +280,11 @@ class BufferFillerActor(threshold: Int,
               None -> Source.empty
             case (Success(HttpResponse(s, h, e, _)), _) if s == StatusCodes.OK || s == StatusCodes.PartialContent =>
               self ! SetConsumeStatus(false)
+
+              remainingInfotons = getNLeft(h) match {
+                case Some(HttpHeader(_, nLeft)) => Some(nLeft.toInt)
+                case _ => None
+              }
 
               val nextToken = getPosition(h) match {
                 case Some(HttpHeader(_, pos)) => pos

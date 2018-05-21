@@ -280,7 +280,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
     implicit system: ActorSystem,
     mat: Materializer,
     ec: ExecutionContext
-  ): Source[((Token, TsvData), Boolean), NotUsed] = {
+  ): Source[((Token, TsvData), Boolean, Option[Int]), NotUsed] = {
 
     val downloader = new Downloader(baseUrl = baseUrl,
                                     path = path,
@@ -353,18 +353,18 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
 
     format match {
       case "tsv" =>
-        tsvSource.map { case ((token, tsv), _) => token -> tsv.toByteString }
+        tsvSource.map { case ((token, tsv), _, _) => token -> tsv.toByteString }
       case "text" =>
-        tsvSource.map { case ((token, tsv), _) => token -> tsv.path }
+        tsvSource.map { case ((token, tsv), _, _) => token -> tsv.path }
       case _ =>
         if (usePaths) {
           tsvSource
-            .map { case ((token, tsv), _) => token -> tsv.path }
+            .map { case ((token, tsv), _, _) => token -> tsv.path }
             .via(downloader.downloadDataFromPaths)
             .async
         } else {
           tsvSource
-            .map { case ((token, tsv), _) => token -> tsv.uuid }
+            .map { case ((token, tsv), _, _) => token -> tsv.uuid }
             .via(downloader.downloadDataFromUuids)
             .async
         }
@@ -847,7 +847,7 @@ class Downloader(
     */
   def createTsvSource(token: Option[Token] = None, updateFreq: Option[FiniteDuration] = None)(
     implicit ec: ExecutionContext
-  ): Source[((Token, TsvData), Boolean), NotUsed] = {
+  ): Source[((Token, TsvData), Boolean, Option[Int]), NotUsed] = {
 
     import akka.pattern._
     val prefetchBufferSize = 3000000
@@ -895,26 +895,26 @@ class Downloader(
         *
         * @return Option of position token -> Tsv data element
         */
-      def next(): Future[Option[(Token, TsvData, Boolean)]] = {
+      def next(): Future[Option[(Token, TsvData, Boolean, Option[Int])]] = {
         implicit val timeout = akka.util.Timeout(5.seconds)
 
         val elementFuture = (bufferFillerActor ? BufferFillerActor.GetData)
-          .mapTo[Option[(Token, TsvData, Boolean)]]
+          .mapTo[Option[(Token, TsvData, Boolean, Option[Int])]]
 
         elementFuture
           .flatMap(element => {
 
             element match {
-              case Some((null, null, hz)) =>
+              case Some((null, null, hz, remaining)) =>
                 val delay = 10.seconds
                 logger.info(
                   s"Got empty result. Waiting for $delay before passing on the empty element."
                 )
                 akka.pattern.after(delay, system.scheduler)(
-                  Future.successful(Some((null, null, hz)))
+                  Future.successful(Some((null, null, hz, remaining)))
                 )
-              case Some((token, tsvData, hz)) =>
-                Future.successful(Some(token, tsvData, hz))
+              case Some((token, tsvData, hz, remaining)) =>
+                Future.successful(Some(token, tsvData, hz, remaining))
               case None =>
                 noDataLeft = true // received the signal of last element in buffer
                 Future.successful(None)
@@ -948,7 +948,7 @@ class Downloader(
             fs.next().map {
               case Some(tokenAndData) => {
                 Some(
-                  fs -> ((tokenAndData._1, tokenAndData._2), tokenAndData._3)
+                  fs -> ((tokenAndData._1, tokenAndData._2), tokenAndData._3, tokenAndData._4)
                 )
               }
               case None => {

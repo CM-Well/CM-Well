@@ -28,7 +28,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.Success
 
-case class SensorContext(name: String, token: String, horizon: Boolean)
+case class SensorContext(name: String, token: String, horizon: Boolean, remainingInfotons: Option[Int])
 
 case class Sensor(name: String,
                   qp: String = "",
@@ -201,10 +201,10 @@ class SparqlTriggeredProcessor(config: Config,
                         label = Some(sensor.name)
                       )
                       .map {
-                        case ((token, tsv), hz) =>
+                        case ((token, tsv), hz, remaining) =>
                           val path = tsv.path
                           logger.debug("sensor [{}] found new path: {}", sensor.name, path.utf8String)
-                          path -> Some(SensorContext(name = sensor.name, token = token, horizon = hz))
+                          path -> Some(SensorContext(name = sensor.name, token = token, horizon = hz, remainingInfotons = remaining))
 
                         case x =>
                           logger.error(s"unexpected message: $x")
@@ -268,7 +268,7 @@ class SparqlTriggeredProcessor(config: Config,
               // stores last received tokens from sensors
               sensorData => {
                 sensorData.foreach {
-                  case (data, Some(SensorContext(name, newToken, _))) if newToken != savedTokens.getOrElse(name, "") =>
+                  case (data, Some(SensorContext(name, newToken, _, _))) if newToken != savedTokens.getOrElse(name, "") =>
                     // received new token from sensor, write it to state file
                     logger.debug("sensor '{}' received new token: {} {}", name, Tokens.decompress(newToken), newToken)
                     tokenReporter.foreach(_ ! ReportNewToken(name, newToken))
