@@ -57,7 +57,8 @@ trait ZStore {
 
   def getString(uzid: String): Future[String] = get(uzid).map { new String(_) }
 
-  def getStringOpt(uzid: String): Future[Option[String]] = getOpt(uzid).map { _.map { new String(_) } }
+  def getStringOpt(uzid: String, dontRetry: Boolean = false) :
+    Future[Option[String]] = getOpt(uzid,dontRetry).map { _.map { new String(_) } }
 
   def getLong(uzid: String): Future[Long] = get(uzid).map { bytes =>
     ByteBuffer.wrap(bytes).getLong

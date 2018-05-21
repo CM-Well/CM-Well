@@ -24,6 +24,7 @@ import akka.stream._
 import akka.stream.scaladsl._
 import akka.util.Timeout
 import cmwell.ctrl.checkers.StpChecker.{RequestStats, ResponseStats, Row, Table}
+import cmwell.driver.Dao
 import cmwell.tools.data.ingester._
 import cmwell.tools.data.sparql.InfotonReporter.{RequestDownloadStats, RequestIngestStats, ResponseDownloadStats, ResponseIngestStats}
 import cmwell.tools.data.sparql.SparqlProcessorManager._
@@ -36,6 +37,7 @@ import cmwell.util.http.SimpleResponse
 import cmwell.util.string.Hash
 import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
 import cmwell.util.concurrent._
+import cmwell.zstore.ZStore
 import com.typesafe.scalalogging.LazyLogging
 import k.grid.GridReceives
 import net.jcazevedo.moultingyaml._
@@ -113,6 +115,9 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
     require(mat.asInstanceOf[ActorMaterializer].system eq context.system,
             "ActorSystem of materializer MUST be the same as the one used to create current actor")
   }
+
+  lazy val stpDao = Dao(settings.irwServiceDaoClusterName, settings.irwServiceDaoKeySpace2, settings.irwServiceDaoHostName)
+  lazy val zStore : ZStore = ZStore.apply(stpDao)
 
   var currentJobs: Jobs = Map.empty
 
@@ -295,10 +300,10 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
         )
         val header = Seq("Sensor", "Token Time")
 
-        StpUtil.readPreviousTokens(settings.hostConfigFile, settings.pathAgentConfigs + "/" + path, "ntriples").map {
+        StpUtil.readPreviousTokens(settings.hostConfigFile, settings.pathAgentConfigs + "/" + path, zStore).map {
           result =>
             result match {
-              case Right(storedTokens) =>
+              case storedTokens =>
                 val pathsWithoutSavedToken = sensorNames.toSet.diff(storedTokens.keySet)
                 val allSensorsWithTokens = storedTokens ++ pathsWithoutSavedToken.map(_ -> ("", None))
 
@@ -422,7 +427,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
     //this method MUST BE RUN from the actor's thread and changing the state is allowed. the below will replace any existing state.
     //The state is changed instantly and every change that follows (even from another thread/Future) will be later.
     val tokenReporter = context.actorOf(
-      props = InfotonReporter(baseUrl = settings.hostConfigFile, path = settings.pathAgentConfigs + "/" + job.name),
+      props = InfotonReporter(baseUrl = settings.hostConfigFile, path = settings.pathAgentConfigs + "/" + job.name, zStore = zStore),
       name = s"${job.name}-${Hash.crc32(job.config.toString)}"
     )
 
