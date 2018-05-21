@@ -14,7 +14,6 @@
   */
 package cmwell.tools.data.sparql
 
-import java.lang.Exception
 import java.nio.file.Paths
 import java.time.{Instant, LocalDateTime, ZoneId}
 
