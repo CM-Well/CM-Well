@@ -475,7 +475,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
     //retryUntil(initialRetryState)(shouldRetry("Getting config information from local cm-well")) {
     safeFuture(
       client.get(s"http://${settings.hostConfigFile}${settings.pathAgentConfigs}",
-                 queryParams = List("op" -> "search", "with-data" -> "", "format" -> "json"))
+                 queryParams = List("op" -> "search", "with-data" -> "", "format" -> "json", "length" -> "100"))
     ).map(response => parseJobsJson(response.payload)).andThen {
       case Failure(ex) =>
         logger.warn(
