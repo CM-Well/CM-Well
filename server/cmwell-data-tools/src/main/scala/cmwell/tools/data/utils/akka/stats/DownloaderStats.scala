@@ -36,7 +36,8 @@ object DownloaderStats {
                            bytesRate: Double = 0,
                            runningTime: Long = 0,
                            statsTime: Long = 0,
-                           horizon: Boolean = false)
+                           horizon: Boolean = false,
+                           remaining: Option[Long] = None)
 
   def apply(isStderr: Boolean = false,
             format: String,
@@ -70,6 +71,7 @@ class DownloaderStats(isStderr: Boolean,
       val metricRegistry = new com.codahale.metrics.MetricRegistry()
       val totalDownloadedBytes = metrics.counter("received-bytes")
       val totalReceivedInfotons = metrics.meter("received-infotons")
+      var remainingInfotons : Option[Long] = None
       var bytesInWindow = 0L
       val metricRateBytes = metrics.meter("rate-bytes")
       var nextTimeToReport = 0L
@@ -77,6 +79,7 @@ class DownloaderStats(isStderr: Boolean,
       var lastMessageSize = 0
       var timeOfLastStatistics = 0L
       var horizon = false
+
 
       var eventPoller: Option[Cancellable] = None
 
@@ -114,6 +117,7 @@ class DownloaderStats(isStderr: Boolean,
             val element = grab(in)
             aggregateStats(element._1)
             setSensorHorizon(element._2)
+            setRemainingInfotons(element._2)
             push(out, element)
           }
 
@@ -167,6 +171,13 @@ class DownloaderStats(isStderr: Boolean,
         }
       }
 
+
+      def setRemainingInfotons(contextOption: Option[SensorContext]) = {
+        contextOption.foreach(context => {
+          remainingInfotons = context.remainingInfotons
+        })
+      }
+
       def setSensorHorizon(contextOption: Option[SensorContext]) = {
         contextOption.foreach(context => {
           horizon = context.horizon
@@ -209,7 +220,8 @@ class DownloaderStats(isStderr: Boolean,
                 bytesRate = metricRateBytes.oneMinuteRate,
                 runningTime = executionTime,
                 statsTime = timeOfLastStatistics,
-                horizon = horizon
+                horizon = horizon,
+                remaining = remainingInfotons
               )
             }
 

@@ -14,7 +14,6 @@
   */
 package cmwell.tools.data.sparql
 
-import java.lang.Exception
 import java.nio.file.Paths
 import java.time.{Instant, LocalDateTime, ZoneId}
 
@@ -327,7 +326,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
         val title = Seq(
           s"""<span style="color:green"> **${jobStatus.statusString}** </span> Agent: ${path} Source: ${hostUpdatesSource}"""
         )
-        val header = Seq("Sensor", "Token Time", "Received Infotons", "Infoton Rate", "Statistics Updated")
+        val header = Seq("Sensor", "Token Time", "Received Infotons", "Remaining Infotons", "Infoton Rate", "Statistics Updated")
         val statsFuture = (jobStatus.reporter ? RequestDownloadStats).mapTo[ResponseDownloadStats]
         val storedTokensFuture = (jobStatus.reporter ? RequestPreviousTokens).mapTo[ResponseWithPreviousTokens]
 
@@ -339,8 +338,6 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
           statsIngestRD <- stats2Future
           statsIngest = statsIngestRD.stats
           storedTokensRWPT <- storedTokensFuture
-          //storedTokens <- storedTokensRWPT.tokens.left
-         // storedTokens = storedTokensRWPT.tokens
         } yield {
           storedTokensRWPT.tokens match {
             case Right(storedTokens) => {
@@ -373,7 +370,12 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
                         case false => s"${formatter.format(s.infotonRate)}/sec"
                       }
 
-                      Seq(s.receivedInfotons.toString, infotonRate, statsTime)
+                      val remainingInfotons = s.remaining match {
+                        case None => s"No Data"
+                        case Some(remain) => remain.toString
+                      }
+
+                      Seq(s.receivedInfotons.toString, remainingInfotons, infotonRate, statsTime)
 
                     }
                     .getOrElse(Seq.empty[String])
