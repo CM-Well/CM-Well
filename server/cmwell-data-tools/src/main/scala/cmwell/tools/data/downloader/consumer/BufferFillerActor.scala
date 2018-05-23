@@ -21,6 +21,7 @@ import akka.http.scaladsl.model.headers.RawHeader
 import akka.pattern._
 import akka.stream._
 import akka.stream.scaladsl._
+import cmwell.tools.data.downloader.consumer.Downloader.{Token, Tsv, TsvData, Uuid, extractTsv}
 import cmwell.tools.data.utils.ArgsManipulations
 import cmwell.tools.data.utils.ArgsManipulations.{HttpAddress, formatHost}
 import cmwell.tools.data.utils.akka.HeaderOps._
@@ -73,7 +74,7 @@ class BufferFillerActor(threshold: Int,
   private var tsvCounter = 0L
   private var lastBulkConsumeToHeader: Option[String] = None
   private var consumeComplete = false
-  private var remainingInfotons : Option[Int] = None
+  private var remainingInfotons : Option[Long] = None
 
   val retryTimeout: FiniteDuration = {
     val timeoutDuration = Duration(
@@ -166,7 +167,7 @@ class BufferFillerActor(threshold: Int,
     // do nothing since there are no elements in buffer
     case GetData =>
       logger.debug("Got GetData message but there is no data")
-      sender ! Some[(Token, TsvData, Boolean, Option[Int])](null, null, consumeComplete, remainingInfotons)
+      sender ! Some[(Token, TsvData, Boolean, Option[Long])](null, null, consumeComplete, remainingInfotons)
 
     case SetConsumeStatus(consumeStatus) =>
       if (this.consumeComplete != consumeStatus)

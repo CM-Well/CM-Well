@@ -28,7 +28,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.Success
 
-case class SensorContext(name: String, token: String, horizon: Boolean, remainingInfotons: Option[Int])
+case class SensorContext(name: String, token: String, horizon: Boolean, remainingInfotons: Option[Long])
 
 case class Sensor(name: String,
                   qp: String = "",

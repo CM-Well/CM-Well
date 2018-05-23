@@ -37,7 +37,7 @@ object DownloaderStats {
                            runningTime: Long = 0,
                            statsTime: Long = 0,
                            horizon: Boolean = false,
-                           remaining: Option[Int] = None)
+                           remaining: Option[Long] = None)
 
   def apply(isStderr: Boolean = false,
             format: String,
@@ -71,7 +71,7 @@ class DownloaderStats(isStderr: Boolean,
       val metricRegistry = new com.codahale.metrics.MetricRegistry()
       val totalDownloadedBytes = metrics.counter("received-bytes")
       val totalReceivedInfotons = metrics.meter("received-infotons")
-      var remainingInfotons : Option[Int] = None
+      var remainingInfotons : Option[Long] = None
       var bytesInWindow = 0L
       val metricRateBytes = metrics.meter("rate-bytes")
       var nextTimeToReport = 0L

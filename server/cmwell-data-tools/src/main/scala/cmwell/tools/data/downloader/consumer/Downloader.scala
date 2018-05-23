@@ -280,7 +280,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
     implicit system: ActorSystem,
     mat: Materializer,
     ec: ExecutionContext
-  ): Source[((Token, TsvData), Boolean, Option[Int]), NotUsed] = {
+  ): Source[((Token, TsvData), Boolean, Option[Long]), NotUsed] = {
 
     val downloader = new Downloader(baseUrl = baseUrl,
                                     path = path,
@@ -847,7 +847,7 @@ class Downloader(
     */
   def createTsvSource(token: Option[Token] = None, updateFreq: Option[FiniteDuration] = None)(
     implicit ec: ExecutionContext
-  ): Source[((Token, TsvData), Boolean, Option[Int]), NotUsed] = {
+  ): Source[((Token, TsvData), Boolean, Option[Long]), NotUsed] = {
 
     import akka.pattern._
     val prefetchBufferSize = 3000000
@@ -895,11 +895,11 @@ class Downloader(
         *
         * @return Option of position token -> Tsv data element
         */
-      def next(): Future[Option[(Token, TsvData, Boolean, Option[Int])]] = {
+      def next(): Future[Option[(Token, TsvData, Boolean, Option[Long])]] = {
         implicit val timeout = akka.util.Timeout(5.seconds)
 
         val elementFuture = (bufferFillerActor ? BufferFillerActor.GetData)
-          .mapTo[Option[(Token, TsvData, Boolean, Option[Int])]]
+          .mapTo[Option[(Token, TsvData, Boolean, Option[Long])]]
 
         elementFuture
           .flatMap(element => {
