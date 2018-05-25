@@ -41,8 +41,9 @@ class SparqlProcessorManagerSettings {
   val interval: FiniteDuration =
     stpSettings.getDuration("cmwell.agents.sparql-triggered-processor.config-polling-interval").toMillis.millis
   val infotonGroupSize: Integer = stpSettings.getInt("cmwell.triggeredProcessor.infoton-group-size ")
-  //val httpPool: Flow[(HttpRequest, ByteString), (Try[HttpResponse], ByteString), Http.HostConnectionPool] = {
-  //val HttpAddress(_, host, port, _) = ArgsManipulations.extractBaseUrl(hostConfigFile)
-  //Http().cachedHostConnectionPool[ByteString](host, port)
-  //}
+
+  val irwServiceDaoHostName = stpSettings.getString("irwServiceDao.hostName")
+  val irwServiceDaoClusterName = stpSettings.getString("irwServiceDao.clusterName")
+  val irwServiceDaoKeySpace2 = stpSettings.getString("irwServiceDao.keySpace2")
+
 }
