@@ -46,6 +46,9 @@ class OffsetThrottler()
         if (pending.offset <= maxAllowedOffset /* && !isClosed(messageOut)*/ ) {
           logger.info(s"Got a new max allowed offset $maxAllowedOffset. Releasing the back pressure.")
           push(messageOut, pending)
+          pending = null
+          if (isClosed(messageIn))
+            completeStage()
         }
         else {
           logger.error(s"Got a new max allowed offset $maxAllowedOffset but the pending message has offset ${pending.offset}. " +
@@ -55,8 +58,8 @@ class OffsetThrottler()
       }
 
       override def onUpstreamFinish(): Unit = {
-        super.onUpstreamFinish()
-        completeStage()
+        if (isClosed(messageIn) || pending.offset > maxAllowedOffset)
+          completeStage()
       }
 
       override def onUpstreamFailure(ex: Throwable): Unit = {
@@ -94,13 +97,16 @@ class OffsetThrottler()
           pull(offsetIn)
         }
         //checking that the port isn't closed isn't necessary because the whole stage will be finished by then
-        else /* if (!isClosed(messageOut))*/
+        else {
+          /* if (!isClosed(messageOut))*/
           push(messageOut, pending)
+          pending = null
+        }
       }
 
       override def onUpstreamFinish(): Unit = {
-        super.onUpstreamFinish()
-        completeStage()
+        if (pending == null || isClosed(offsetIn))
+          completeStage()
       }
 
       override def onUpstreamFailure(ex: Throwable): Unit = {
