@@ -23,75 +23,105 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 
 object OffsetThrottler {
 
-
+  def apply(): OffsetThrottler = new OffsetThrottler()
 }
 
 class OffsetThrottler()
   extends GraphStage[FanInShape2[Long, ConsumerRecord[Array[Byte], Array[Byte]], ConsumerRecord[Array[Byte], Array[Byte]]]] with LazyLogging {
-  val offsetIn = Inlet[Long]("OffsetThrottler.offsetIn")
-  val messageIn = Inlet[ConsumerRecord[Array[Byte], Array[Byte]]]("OffsetThrottler.messageIn")
-  val messageOut = Outlet[ConsumerRecord[Array[Byte], Array[Byte]]]("OffsetThrottler.messageOut")
+  private val offsetIn = Inlet[Long]("OffsetThrottler.offsetIn")
+  private val messageIn = Inlet[ConsumerRecord[Array[Byte], Array[Byte]]]("OffsetThrottler.messageIn")
+  private val messageOut = Outlet[ConsumerRecord[Array[Byte], Array[Byte]]]("OffsetThrottler.messageOut")
   override val shape = new FanInShape2(offsetIn, messageIn, messageOut)
 
   override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
     private var pending: ConsumerRecord[Array[Byte], Array[Byte]] = _
     private var maxAllowedOffset: Long = -1L
 
-    setHandler(
-      offsetIn,
-      new InHandler {
-        override def onPush(): Unit = {
-          maxAllowedOffset = grab(offsetIn)
-          if (pending.offset > maxAllowedOffset && isAvailable(messageOut))
-            push(messageOut, pending)
+    private val offsetInHandler: InHandler = new InHandler {
+      override def onPush(): Unit = {
+        maxAllowedOffset = grab(offsetIn)
+        //checking that the port isn't closed isn't necessary because the whole stage will be finished by then
+        //also, no need for isAvailable check because:
+        //messageOut-onPull->pull(messageIn)->pull(offsetIn)=>isAvailable(messageOut)==true
+        if (pending.offset <= maxAllowedOffset /* && !isClosed(messageOut)*/ ) {
+          logger.info(s"Got a new max allowed offset $maxAllowedOffset. Releasing the back pressure.")
+          push(messageOut, pending)
         }
-
-        override def onUpstreamFinish(): Unit = {
-          super.onUpstreamFinish()
-          completeStage()
-        }
-
-        override def onUpstreamFailure(ex: Throwable): Unit = {
-          super.onUpstreamFailure(ex)
-          failStage(ex)
+        else {
+          logger.error(s"Got a new max allowed offset $maxAllowedOffset but the pending message has offset ${pending.offset}. " +
+            s"Pulling again from another max allowed offset.")
+          pull(offsetIn)
         }
       }
-    )
-    setHandler(
-      messageIn,
-      new InHandler {
-        override def onPush(): Unit = {
-          val elem = grab(messageIn)
-          pending = elem
-          if (maxAllowedOffset == -1 || elem.offset > maxAllowedOffset)
-            pull(offsetIn)
-          else if (isAvailable(messageOut))
-            push(messageOut, pending)
-        }
 
-        override def onUpstreamFinish(): Unit = {
-          super.onUpstreamFinish()
-          completeStage()
-        }
-
-        override def onUpstreamFailure(ex: Throwable): Unit = {
-          super.onUpstreamFailure(ex)
-          failStage(ex)
-        }
+      override def onUpstreamFinish(): Unit = {
+        super.onUpstreamFinish()
+        completeStage()
       }
-    )
-    setHandler(
-      messageOut,
-      new OutHandler {
-        override def onPull(): Unit = {
-          pull(messageIn)
-        }
 
-        override def onDownstreamFinish(): Unit = {
-          super.onDownstreamFinish()
-          completeStage()
-        }
+      override def onUpstreamFailure(ex: Throwable): Unit = {
+        super.onUpstreamFailure(ex)
+        failStage(ex)
       }
-    )
+    }
+    private val initialMessageInHandler: InHandler = new InHandler {
+      override def onPush(): Unit = {
+        val elem = grab(messageIn)
+        pending = elem
+        logger.info("Initial message received - pulling the offset source for the max allowed offset (setting back pressure)")
+        pull(offsetIn)
+        //from now on, each message we get should be checked against the maxAllowedOffset - set a new handler for the newly got messages
+        setHandler(messageIn, ongoingMessageInHandler)
+      }
+
+      override def onUpstreamFinish(): Unit = {
+        super.onUpstreamFinish()
+        completeStage()
+      }
+
+      override def onUpstreamFailure(ex: Throwable): Unit = {
+        super.onUpstreamFailure(ex)
+        failStage(ex)
+      }
+    }
+    private val ongoingMessageInHandler: InHandler = new InHandler {
+      override def onPush(): Unit = {
+        val elem = grab(messageIn)
+        pending = elem
+        if (pending.offset > maxAllowedOffset) {
+          logger.info(s"Got a message with offset ${pending.offset} that is larger than the current max allowed $maxAllowedOffset. " +
+            s"Pulling the offset source for a newer maxAllowedOffset (setting back pressure)")
+          pull(offsetIn)
+        }
+        //checking that the port isn't closed isn't necessary because the whole stage will be finished by then
+        else /* if (!isClosed(messageOut))*/
+          push(messageOut, pending)
+      }
+
+      override def onUpstreamFinish(): Unit = {
+        super.onUpstreamFinish()
+        completeStage()
+      }
+
+      override def onUpstreamFailure(ex: Throwable): Unit = {
+        super.onUpstreamFailure(ex)
+        failStage(ex)
+      }
+    }
+    private val messageOutHandler: OutHandler = new OutHandler {
+      override def onPull(): Unit = {
+        pull(messageIn)
+      }
+
+      override def onDownstreamFinish(): Unit = {
+        super.onDownstreamFinish()
+        completeStage()
+      }
+    }
+    //initial handler allocation
+    setHandler(offsetIn, offsetInHandler)
+    setHandler(messageIn, initialMessageInHandler)
+    setHandler(messageOut, messageOutHandler)
+    logger.info("OffsetThrottler initialized")
   }
 }
