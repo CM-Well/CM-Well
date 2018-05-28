@@ -118,10 +118,12 @@ class Health @Inject()(crudServiceFS: CRUDServiceFS, ws: WSClient) extends Injec
   }
 
   def getKafkaStatus = Action.async {implicit req =>
+    val javaHomeLocation = s"$path/../java"
+    val javaHomeAddition = if (Files.exists(Paths.get(javaHomeLocation)))
+      s"JAVA_HOME=$path/../java"
+    else ""
 
-    val res = if (Files.exists(Paths.get(s"$path/../java")))
-      Seq("bash", "-c", s"JAVA_HOME=$path/../java $path/../kafka/cur/bin/kafka-topics.sh --zookeeper $ip:2181 --describe") !!
-    else Seq("bash", "-c", s"$path/../kafka/cur/bin/kafka-topics.sh --zookeeper $ip:2181 --describe") !!
+    val res = Seq("bash", "-c", javaHomeAddition + s" $path/../kafka/cur/bin/kafka-topics.sh --zookeeper $ip:2181 --describe") !!
 
     Future(Ok(res))
   }
