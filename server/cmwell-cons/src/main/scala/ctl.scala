@@ -1620,7 +1620,7 @@ abstract class Host(user: String,
       else ""
 
     // scalastyle:off
-    val createTopicCommandPrefix = s"cd ${instDirs.globalLocation}/cm-well/app/kafka/cur; "+ exportCommand +" sh bin/kafka-topics.sh --create --zookeeper ${pingAddress}:2181 --replication-factor $replicationFactor --partitions ${hosts.size} --topic"
+    val createTopicCommandPrefix = s"cd ${instDirs.globalLocation}/cm-well/app/kafka/cur; "+ exportCommand +s" sh bin/kafka-topics.sh --create --zookeeper ${pingAddress}:2181 --replication-factor $replicationFactor --partitions ${hosts.size} --topic"
 
     // scalastyle:on
     var tryNum: Int = 1
@@ -1878,7 +1878,7 @@ abstract class Host(user: String,
       s"export PATH=${absPath(instDirs.globalLocation)}/cm-well/app/java/bin:$$PATH ; export JAVA_HOME=${javaHomeLocation} ;"
     else ""
     // scalastyle:off
-    val createTopicCommandPrefix = s"cd ${absPath(instDirs.globalLocation)}/cm-well/app/kafka/cur; " + exportCommand + " sh bin/kafka-topics.sh --create --zookeeper ${pingAddress}:2181 --replication-factor $replicationFactor --partitions ${ips.size} --topic"
+    val createTopicCommandPrefix = s"cd ${absPath(instDirs.globalLocation)}/cm-well/app/kafka/cur; " + exportCommand + s" sh bin/kafka-topics.sh --create --zookeeper ${pingAddress}:2181 --replication-factor $replicationFactor --partitions ${ips.size} --topic"
 
     // scalastyle:on
     command(s"$createTopicCommandPrefix persist_topic", ips(0), false)
