@@ -21,13 +21,14 @@ import cmwell.util.concurrent.SimpleScheduler
 import cmwell.util.http.SimpleResponse.Implicits
 import cmwell.util.http.{SimpleResponse, StringPath}
 import com.typesafe.scalalogging.LazyLogging
-import org.joda.time.DateTime
+import org.scalatest
 import org.scalatest.{BeforeAndAfterAll, FunSpec, Inspectors, Matchers}
 import play.api.libs.json.{JsArray, JsValue, Json}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.io.Source
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * Created by yaakov on 11/24/15.
@@ -49,7 +50,6 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
 
   // todo generalize and add to Helpers
   def waitForData(path: StringPath, expectedDataLength: Int, maxRetries: Int = 32, sleepTime: FiniteDuration = 1.second) = {
-    import scala.concurrent.ExecutionContext.Implicits.global
 
     var (length, retry) = (0, 0)
     do {
@@ -144,7 +144,6 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
                 textPlain,
                 headers = "x-cm-well-type" -> "file" :: tokenHeader))
           ) should be(jsonSuccess)
-          indexingDuration.fromNow.block
         }
         it("should run a SPARQL query with imported queries") {
           val sparql =
@@ -164,9 +163,8 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
               || <http://example.org/Individuals2/RonaldKhun>    |
               || <http://example.org/Individuals2/SaraSmith>     |
               |---------------------------------------------------""".stripMargin
-          val req = Http.post(_sp, makeReqBody(paths, "SPARQL", sparql, Seq("/example.org/queries/foo.sparql")), textPlain, Seq("format" -> "ascii"))
-          val body = waitAndExtractBody(req).trim
-          body should be(expectedResults)
+
+          validateResult(sparql, expectedResults, "/example.org/queries/foo.sparql")
         }
         it("should upload a \"stored\" JAR") {
           val jarPayload = Source.fromURL(this.getClass.getResource("/Add42.jar"), "ISO-8859-1").map(_.toByte).toArray
@@ -178,7 +176,6 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
                 Some("application/java-archive"),
                 headers = "x-cm-well-type" -> "file" :: tokenHeader))
           ) should be(jsonSuccess)
-          indexingDuration.fromNow.block
         }
         it("should run a SPARQL query with imported JARs") {
           val sparql =
@@ -203,10 +200,18 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
               || <http://example.org/Individuals2/DaisyDuck>     | "false" | "42_false" |
               || <http://example.org/Individuals2/BruceWayne>    | "true"  | "42_true"  |
               |--------------------------------------------------------------------------""".stripMargin
-          val req = Http.post(_sp, makeReqBody(paths, "SPARQL", sparql, Seq("Add42.jar")), textPlain, Seq("format" -> "ascii"))
-          val body = waitAndExtractBody(req).trim
-          body should be(expectedResults)
+
+          validateResult(sparql, expectedResults, "Add42.jar")
         }
+
+        def validateResult (sparql: String, expectedResults: String, path: String) : Future[scalatest.Assertion] = {
+          spinCheck(100.millisecond,true)(
+            Http.post(_sp, makeReqBody(paths, "SPARQL", sparql, Seq(path)), textPlain, Seq("format" -> "ascii")))(
+            res => new String(res.payload, "UTF-8").trim().equals(expectedResults)).map{
+            res => new String(res.payload, "UTF-8").trim should be (expectedResults)
+          }
+        }
+
         it("should upload Scala source") {
           val source = Source.fromURL(this.getClass.getResource("/Add42.scala")).map(_.toByte).toArray
           val importedSourcePath = cmw / "meta" / "lib" / "sources" / "scala" / "Add42.scala"
@@ -218,7 +223,6 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
                 textPlain,
                 headers = "x-cm-well-type" -> "file" :: tokenHeader))
           ) should be(jsonSuccess)
-          indexingDuration.fromNow.block
         }
         it("should run a SPARQL query with imported sources") {
           val sparql =
@@ -242,13 +246,11 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
               || <http://example.org/Individuals2/DaisyDuck>     | "false" | "42_false" |
               || <http://example.org/Individuals2/BruceWayne>    | "true"  | "42_true"  |
               |--------------------------------------------------------------------------""".stripMargin
-          val req = Http.post(_sp, makeReqBody(paths, "SPARQL", sparql, Seq("scala/Add42.scala")), textPlain, Seq("format" -> "ascii"))
-          val body = waitAndExtractBody(req).trim
-          body should be(expectedResults)
+
+          validateResult(sparql, expectedResults, "scala/Add42.scala")
         }
 
         it("should import recursively") {
-          import scala.concurrent.ExecutionContext.Implicits.global
 
           val firstFolder = "queries1"
           val secondFolder = "queries2"
