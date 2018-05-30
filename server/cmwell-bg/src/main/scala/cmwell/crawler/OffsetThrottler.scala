@@ -51,7 +51,7 @@ class OffsetThrottler()
             completeStage()
         }
         else {
-          logger.error(s"Got a new max allowed offset $maxAllowedOffset but the pending message has offset ${pending.offset}. " +
+          logger.info(s"Got a new max allowed offset $maxAllowedOffset but the pending message has offset ${pending.offset}. " +
             s"Pulling again from another max allowed offset.")
           pull(offsetIn)
         }

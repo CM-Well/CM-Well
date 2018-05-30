@@ -19,9 +19,10 @@ import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.kafka.scaladsl.Consumer
 import akka.kafka.{ConsumerSettings, Subscriptions}
-import akka.stream.scaladsl.Source
+import akka.stream.{ClosedShape, SourceShape}
+import akka.stream.scaladsl.{GraphDSL, RunnableGraph, Source}
 import com.typesafe.scalalogging.LazyLogging
-import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.{ByteArrayDeserializer, StringDeserializer}
 
@@ -46,7 +47,7 @@ object CrawlerStream extends LazyLogging {
 */
 
 
-  def positionSource(startingState: CrawlerPosition)(sys: ActorSystem, ec: ExecutionContext): Source[CrawlerState, NotUsed] = {
+  private def positionSource(startingState: CrawlerPosition)(sys: ActorSystem, ec: ExecutionContext): Source[CrawlerState, NotUsed] = {
     Source.unfoldAsync(startingState) { state =>
       val zStorePosition: CrawlerPosition = ???
       if (zStorePosition.offset < state.offset) {
@@ -76,9 +77,9 @@ object CrawlerStream extends LazyLogging {
       }
   }
 
-  def messageSource()(sys: ActorSystem) = {
+  private def messageSource()(sys: ActorSystem): Source[ConsumerRecord[Array[Byte], Array[Byte]], Consumer.Control] = {
     val consumerSettings = ConsumerSettings(sys, new ByteArrayDeserializer, new ByteArrayDeserializer)
-/*
+    /*
       .withBootstrapServers("localhost:9092")
       .withGroupId("group1")
       .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
@@ -89,4 +90,18 @@ object CrawlerStream extends LazyLogging {
     )
     Consumer.plainSource(consumerSettings, subscription)
   }
+
+  private def backpressuredMessageSource(offsetSource: Source[Long, NotUsed],
+                                         messageSource: Source[ConsumerRecord[Array[Byte], Array[Byte]], Consumer.Control]) =
+    Source.fromGraph(GraphDSL.create(offsetSource, messageSource)((a, b) => b) {
+      implicit builder => {
+        (offstSource, msgSource) => {
+          import akka.stream.scaladsl.GraphDSL.Implicits._
+          val ot = builder.add(OffsetThrottler())
+          offstSource ~> ot.in0
+          msgSource ~> ot.in1
+          SourceShape(ot.out)
+        }
+      }
+    })
 }

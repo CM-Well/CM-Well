@@ -25,6 +25,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.producer.ProducerRecord
 
 import scala.concurrent.duration.DurationInt
+import scala.util.Try
 
 class OffsetThrottlerSpec extends CrawlerStreamSpec {
   private val expectDuration = 150.millis
@@ -127,6 +128,8 @@ class OffsetThrottlerSpec extends CrawlerStreamSpec {
     messageSrc.sendNext(element2)
     messageSnk.expectNext(element)
     messageSnk.expectNoMessage(expectDuration)
+    //check that if the offset got is too early, pull again for another max offset
+    offsetSrc.sendNext(24)
     offsetSrc.sendNext(30)
     messageSrc.sendNext(element3)
     messageSnk.expectNext(element2)
@@ -157,6 +160,28 @@ class OffsetThrottlerSpec extends CrawlerStreamSpec {
     messageSnk.expectNoMessage(expectDuration)
     offsetSrc.sendNext(100)
     messageSnk.expectNext(element5)
+  }
+
+  it should "not request another offset if not needed (don't spam zStore with unnecessary reads)" in {
+    val element = new ConsumerRecord("testTopic", 8, 20, "testPath".getBytes(StandardCharsets.UTF_8), "testCommand".getBytes(StandardCharsets.UTF_8))
+    val element2 = new ConsumerRecord("testTopic", 8, 25, "testPath".getBytes(StandardCharsets.UTF_8), "testCommand".getBytes(StandardCharsets.UTF_8))
+    val element3 = new ConsumerRecord("testTopic", 8, 28, "testPath".getBytes(StandardCharsets.UTF_8), "testCommand".getBytes(StandardCharsets.UTF_8))
+    val element4 = new ConsumerRecord("testTopic", 8, 30, "testPath".getBytes(StandardCharsets.UTF_8), "testCommand".getBytes(StandardCharsets.UTF_8))
+    val element5 = new ConsumerRecord("testTopic", 8, 35, "testPath".getBytes(StandardCharsets.UTF_8), "testCommand".getBytes(StandardCharsets.UTF_8))
+    val (offsetSrc, messageSrc, messageSnk) = createAndRunOffsetThrottlerTestGraph
+    messageSnk.request(10)
+    messageSrc.sendNext(element)
+    offsetSrc.sendNext(40)
+    messageSrc.sendNext(element2)
+    messageSrc.sendNext(element3)
+    messageSrc.sendNext(element4)
+    messageSrc.sendNext(element5)
+    messageSnk.expectNext(element)
+    messageSnk.expectNext(element2)
+    messageSnk.expectNext(element3)
+    messageSnk.expectNext(element4)
+    messageSnk.expectNext(element5)
+    offsetSrc.expectNoMessage(expectDuration)
   }
 
   it should "complete stage if messageSrc finishes before having any message or offset" in {
