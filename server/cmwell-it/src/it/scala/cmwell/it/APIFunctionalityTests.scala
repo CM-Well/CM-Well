@@ -19,27 +19,30 @@ package cmwell.it
 import java.io.ByteArrayInputStream
 import java.time.Instant
 
-import cmwell.util.concurrent.SimpleScheduler.scheduleFuture
 import cmwell.util.concurrent.delayedTask
+import cmwell.util.concurrent.SimpleScheduler.scheduleFuture
 import cmwell.util.formats.JsonEncoder
 import cmwell.util.http.SimpleResponse
+import cmwell.util.formats.JsonEncoder
 import cmwell.util.string.Hash.crc32base64
+import cmwell.common.build.JsonSerializer
+import cmwell.util.formats.JsonEncoder
 import com.typesafe.scalalogging.LazyLogging
+import org.apache.jena.query.DatasetFactory
 import org.apache.jena.rdf.model.{ModelFactory, ResourceFactory}
 import org.apache.jena.riot.{Lang, RDFDataMgr}
 import play.api.libs.json._
-
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.io.Source
 import scala.util.{Failure, Success, Try}
 
 /**
-  * Created by:
-  * User: Gilad
-  * Date: 11/10/14
-  * Time: 6:59 AM
-  */
+ * Created by:
+ * User: Gilad
+ * Date: 11/10/14
+ * Time: 6:59 AM
+ */
 import org.scalatest._
 
 class APIFunctionalityTests extends AsyncFunSpec
@@ -180,7 +183,7 @@ class APIFunctionalityTests extends AsyncFunSpec
           Http.get(path, List("format" -> "n3")).map { body =>
             body.status should be >= 200
             body.status should be < 400 //status should be OK
-          val graphResult = ModelFactory.createDefaultModel()
+            val graphResult = ModelFactory.createDefaultModel()
             RDFDataMgr.read(graphResult, new java.io.ByteArrayInputStream(body.payload), Lang.N3)
             graphResult.getProperty(subject, predHead).getLiteral.getLexicalForm should be("seatle")
             graphResult.getProperty(subject, predComp).getLiteral.getLexicalForm should be("microsoft")
@@ -192,7 +195,7 @@ class APIFunctionalityTests extends AsyncFunSpec
         Http.get(path, List("format" -> "ntriples")).map{ body =>
           body.status should be >=200
           body.status should be <400 //status should be OK
-        val graphResult = ModelFactory.createDefaultModel()
+          val graphResult = ModelFactory.createDefaultModel()
           RDFDataMgr.read(graphResult, new java.io.ByteArrayInputStream(body.payload), Lang.NTRIPLES)
           graphResult.getProperty(subject,predHead).getLiteral.getLexicalForm should be("seatle")
           graphResult.getProperty(subject,predComp).getLiteral.getLexicalForm should be("microsoft")
@@ -203,7 +206,7 @@ class APIFunctionalityTests extends AsyncFunSpec
         Http.get(path, List("format" -> "rdfxml")).map{ body =>
           body.status should be >=200
           body.status should be <400 //status should be OK
-        val graphResult = ModelFactory.createDefaultModel()
+          val graphResult = ModelFactory.createDefaultModel()
           RDFDataMgr.read(graphResult, new java.io.ByteArrayInputStream(body.payload), Lang.RDFXML)
           graphResult.getProperty(subject,predHead).getLiteral.getLexicalForm should be("seatle")
           graphResult.getProperty(subject,predComp).getLiteral.getLexicalForm should be("microsoft")
@@ -574,9 +577,9 @@ class APIFunctionalityTests extends AsyncFunSpec
         it("should change Jane Smith name") {
           val jenniferSmith =
             """
-              |<http://example.org/JaneSmith> <cmwell://meta/sys#markReplace> <http://www.w3.org/2006/vcard/ns#FN> .
-              |<http://example.org/JaneSmith> <http://www.w3.org/2006/vcard/ns#FN> "Jennifer Smith" .
-            """.stripMargin
+            |<http://example.org/JaneSmith> <cmwell://meta/sys#markReplace> <http://www.w3.org/2006/vcard/ns#FN> .
+            |<http://example.org/JaneSmith> <http://www.w3.org/2006/vcard/ns#FN> "Jennifer Smith" .
+          """.stripMargin
           Http.post(_in, jenniferSmith, None, List("format" -> "nquads"), tokenHeader).map { res =>
             withClue(res) {
               Json.parse(res.payload) should be(jsonSuccess)
@@ -585,33 +588,30 @@ class APIFunctionalityTests extends AsyncFunSpec
         }
 
         it("should verify that the name was changed") {
-          val expectedJson = JsArray(Seq(JsString("Jennifer Smith")))
-          spinCheck(100.millis, true)(Http.get(exampleOrg./("JaneSmith"), List("format" -> "json"))){res =>
+          indexingDuration.fromNow.block
+          Http.get(exampleOrg./("JaneSmith"), List("format" -> "json")).map { res =>
             val jv = Json.parse(res.payload).transform((__ \ 'fields \ "FN.vcard").json.pick).get
-            jv.equals(expectedJson)
-          }.map {res =>
-            val jv = Json.parse(res.payload).transform((__ \ 'fields \ "FN.vcard").json.pick).get
-            jv shouldEqual expectedJson
+            jv shouldEqual JsArray(Seq(JsString("Jennifer Smith")))
           }
         }
       }
 
       it("should deal with anti-jena namespace") {
         val expected = Json.parse(
-          s"""
-             |{
-             |  "type":"ObjectInfoton",
-             |  "system":{
-             |    "path":"/clearforest.com/ce/GH",
-             |    "parent":"/clearforest.com/ce",
-             |    "dataCenter" : "$dcName"
-             |  },
-             |  "fields":{
-             |    "ide.cmwtest":["IntelliJ IDEA"],
-             |    "browser.cmwtest":["FireFox"],
-             |    "lang.cmwtest":["Scala"]
-             |  }
-             |}
+        s"""
+          |{
+          |  "type":"ObjectInfoton",
+          |  "system":{
+          |    "path":"/clearforest.com/ce/GH",
+          |    "parent":"/clearforest.com/ce",
+          |    "dataCenter" : "$dcName"
+          |  },
+          |  "fields":{
+          |    "ide.cmwtest":["IntelliJ IDEA"],
+          |    "browser.cmwtest":["FireFox"],
+          |    "lang.cmwtest":["Scala"]
+          |  }
+          |}
         """.stripMargin)
         val g = clf / "ce" / "GH"
         executeAfterCompletion(antiJenaVcardRFFIngest)(scheduleFuture(10.seconds){
@@ -655,18 +655,18 @@ class APIFunctionalityTests extends AsyncFunSpec
         val hash = crc32base64("http://zzz.me/2014/ZzZzz/2014-06-24#")
         val expected = Json.parse(
           s"""
-             |{
-             |  "type":"ObjectInfoton",
-             |  "system":{
-             |    "path":"/meta/ns/$hash",
-             |    "parent":"/meta/ns",
-             |    "dataCenter" : "$dcName"
-             |  },
-             |  "fields":{
-             |    "url":["http://zzz.me/2014/ZzZzz/2014-06-24#"],
-             |    "prefix":["ZzZzz"]
-             |  }
-             |}
+            |{
+            |  "type":"ObjectInfoton",
+            |  "system":{
+            |    "path":"/meta/ns/$hash",
+            |    "parent":"/meta/ns",
+            |    "dataCenter" : "$dcName"
+            |  },
+            |  "fields":{
+            |    "url":["http://zzz.me/2014/ZzZzz/2014-06-24#"],
+            |    "prefix":["ZzZzz"]
+            |  }
+            |}
           """.stripMargin)
         val zzz = metaNs / hash
         Http.get(zzz, List("format" -> "json")).map { res =>
@@ -681,18 +681,18 @@ class APIFunctionalityTests extends AsyncFunSpec
         it("should verify I's data as json") {
           val expected = Json.parse(
             s"""
-               |{
-               |  "type":"ObjectInfoton",
-               |  "system":{
-               |    "path":"/clearforest.com/ce/IK",
-               |    "parent":"/clearforest.com/ce",
-               |    "dataCenter" : "$dcName"
-               |  },
-               |  "fields":{
-               |    "NOTE.vcard":["I Hate SBT!"],
-               |    "FN.vcard":["I K"]
-               |  }
-               |}
+            |{
+            |  "type":"ObjectInfoton",
+            |  "system":{
+            |    "path":"/clearforest.com/ce/IK",
+            |    "parent":"/clearforest.com/ce",
+            |    "dataCenter" : "$dcName"
+            |  },
+            |  "fields":{
+            |    "NOTE.vcard":["I Hate SBT!"],
+            |    "FN.vcard":["I K"]
+            |  }
+            |}
           """.stripMargin)
           Http.get(ik, List("format" -> "json")).map { res =>
             withClue(res) {
@@ -726,7 +726,7 @@ class APIFunctionalityTests extends AsyncFunSpec
           val fileNTriple = Source.fromURL(this.getClass.getResource("/file_ntriple")).mkString
           Http.post(_in, fileNTriple, Some("text/plain;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader)
         }
-        val f0 = fp.flatMap(_ => spinCheck(1.second)(Http.get(icon, List("format" -> "text")))(_.status))
+        val f0 = fp.flatMap(_ => scheduleFuture(indexingDuration)(spinCheck(1.second)(Http.get(icon, List("format" -> "text")))(_.status)))
         val f1 = f0.flatMap(_ => Http.get(icon, List("format" -> "json")))
         val f2 = f0.flatMap(_ => Http.get(icon, List("format" -> "n3")))
         val f3 = f0.flatMap(_ => Http.get(icon, List("format" -> "rdfxml")))
@@ -740,21 +740,21 @@ class APIFunctionalityTests extends AsyncFunSpec
         }
 
         it("it should retrieve textual file from ntriples as JSON") {
-          // scalastyle:off
+            // scalastyle:off
           val expected = Json.parse(s"""
-                                       |{
-                                       |  "type": "FileInfoton",
-                                       |  "system": {
-                                       |    "path": "/test/imgs/icon.png",
-                                       |    "parent": "/test/imgs",
-                                       |    "dataCenter" : "$dcName"
-                                       |  },
-                                       |  "content": {
-                                       |    "mimeType": "image/png",
-                                       |    "base64-data": "iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAYAAACpSkzOAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2lpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wUmlnaHRzPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvcmlnaHRzLyIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcFJpZ2h0czpNYXJrZWQ9IkZhbHNlIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOkM3MUJFMDdFOEU4QzExREZCMjU5OEFEMjE5QjA1MDRDIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOkM3MUJFMDdEOEU4QzExREZCMjU5OEFEMjE5QjA1MDRDIiB4bXA6Q3JlYXRvclRvb2w9IkFkb2JlIFBob3Rvc2hvcCBDUzIgV2luZG93cyI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ1dWlkOjgyRTY0QjM0QzU5QkRGMTFBODA4OTIwNUU4Mjg0ODVBIiBzdFJlZjpkb2N1bWVudElEPSJ1dWlkOkI2NjNCOUQyOTk5OERGMTE4MzE1RDE2MUYyMTQyRDUxIi8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+4K+uiwAABPFJREFUeNq0lQ1MlVUYx//vey8X7gcfl9D4agjdqIjbkumtUTA+drlQsZRqy6YL52wa4ow0ZqKORRHCamprS5ljQS3D5pBcCrKgXftyc+VMEVACkpRvhAvcj/d9O+e87wXcbl228tkeODvnPL//ec7z3PNykiTBa9mHdGjbPoPFRuZMPKfqhh9rLZ7i/m1dDf8WSv+8m9+I0ake8DwHjpMQqAIZ8wgMSMCeUwV+IUsRYjY9/Rs6B45Db1BBGyjgkft4BAXoEBNetKR4JnSj/kl2f0eNZjq+a0NZiAnvT/VicmYQI9PX4eTV0IsezLp4smqAy3MLixm+LGHDz5z6el2K1DMcDOuLhT43uSf7AXuN3xOveHqL79p9XQeJaPAQ3LCuWY/WE8fAhSSh7AOy4Bic977RziVdzeIYyqAsyqRsqsFLHhckMsi2ZqHlyJuoqKgEm1P88njf0oQWxVAGZVEmZdM5ng0ED/Z+3IqsnAy01JaAj7bOuznOtiShxTGUQVmUSdlUQ+3NqHxzKlO2bqzC6bK15AQzUJFWuR1EKA/yfoXO7rOB9AikoHDklTVA6GuWmUpGakkgQiLNyqXcgYgHolwIfzQdAToj/nDfAf7q8Cv0RF4+XNMjmOy9whjzPIVNMnISRarqVHQEaPRaaLUqaIJ1CHJ62LzTPeVTQJQc7L/WoAXv4TGjkRjDy4PCZlcHJT0POUn+ybWAjmwYkLOIDAzBa5a3MDze5lNo1nUN+cmFePn3enmCxlIGsVNJL4HzXp3onIPomoXodIBWoi77MLa3bsOBV39Ax5VKROiTcXP0PIbv9PgUmnFexhpzKjITDyBcn42zVxtw6cY3KDfGMyY0lD0HnhZQJKoiUaW+LNCIIncYShozkZW8F/auKvSO2skL4PAp5BEn4HBeRFSIiPbuE+j45SOUr94FtSDITMYGbW960XILUqeFjBQ4WHTLsenzVXjDdh7m2AKo+UCfQipej1CdDe09c6j7qQIZbg30qqAFHmOTt05gJXJCcM3JxSUnkUQRWyMexzTHYfMXqTjyyveY80ygb8xO22Xht8PrYNQ/i4s3jfjUXop1oSZY+m8zhpcHxlYykgTajgJzmhFpJUyOjGNb2FNI0ITj9S/TkflYKWKNKXdlY9Tb0D2SgIPflSLHYEKmK4zEikp7C4qLLCOezZORKMpOP4TUI8w2LDfn4mBODWL092PrVzmwmvcvZMNpMORIQfW5HUiLtmBHWimLEZX4BZ7AtHmJHUBi1yXJqmyj688fmYuDF/DhQ/kw6SKw5Xgu1lsasTIyiWRTgP2ni5FmfBhvR1nm97MvtrTAk9lEyEPSEgQJHsXpiUSyIpAiekjXCOQHF0A27ovPQ5QmmDTIC1i54hhKmhqQEhyDoph0tkcgb5pAO4zAKcPLk9mkGUS5JCw99jKQ8cCQA5OXOqE2DJPP9sJHeB3iUKu+ioKjFsSKWjw3tgydY7/KcaTirqkhTAyLSFzE87JlIeJVJ/vxXmU1mg/txPPFtf/4psXP3MIn1z7D7uQiGAL0PvfIjBrs2b0L72w0MT7XvglSYu4G6BPz0Hx4J55ZHYf/w+wX+pBPxBxd36LrTD3pOpoaWWgip0hdFYfqpn453f/glEFZlCkq18edK4Q0yEUjIzcb98Laz7QhWhoER9uxpZCTcA8tp07i/hZgAMNRD8XVs1vdAAAAAElFTkSuQmCC",
-                                       |    "length": 2244
-                                       |  }
-                                       |}
+                                      |{
+                                      |  "type": "FileInfoton",
+                                      |  "system": {
+                                      |    "path": "/test/imgs/icon.png",
+                                      |    "parent": "/test/imgs",
+                                      |    "dataCenter" : "$dcName"
+                                      |  },
+                                      |  "content": {
+                                      |    "mimeType": "image/png",
+                                      |    "base64-data": "iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAYAAACpSkzOAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2lpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wUmlnaHRzPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvcmlnaHRzLyIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcFJpZ2h0czpNYXJrZWQ9IkZhbHNlIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOkM3MUJFMDdFOEU4QzExREZCMjU5OEFEMjE5QjA1MDRDIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOkM3MUJFMDdEOEU4QzExREZCMjU5OEFEMjE5QjA1MDRDIiB4bXA6Q3JlYXRvclRvb2w9IkFkb2JlIFBob3Rvc2hvcCBDUzIgV2luZG93cyI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ1dWlkOjgyRTY0QjM0QzU5QkRGMTFBODA4OTIwNUU4Mjg0ODVBIiBzdFJlZjpkb2N1bWVudElEPSJ1dWlkOkI2NjNCOUQyOTk5OERGMTE4MzE1RDE2MUYyMTQyRDUxIi8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+4K+uiwAABPFJREFUeNq0lQ1MlVUYx//vey8X7gcfl9D4agjdqIjbkumtUTA+drlQsZRqy6YL52wa4ow0ZqKORRHCamprS5ljQS3D5pBcCrKgXftyc+VMEVACkpRvhAvcj/d9O+e87wXcbl228tkeODvnPL//ec7z3PNykiTBa9mHdGjbPoPFRuZMPKfqhh9rLZ7i/m1dDf8WSv+8m9+I0ake8DwHjpMQqAIZ8wgMSMCeUwV+IUsRYjY9/Rs6B45Db1BBGyjgkft4BAXoEBNetKR4JnSj/kl2f0eNZjq+a0NZiAnvT/VicmYQI9PX4eTV0IsezLp4smqAy3MLixm+LGHDz5z6el2K1DMcDOuLhT43uSf7AXuN3xOveHqL79p9XQeJaPAQ3LCuWY/WE8fAhSSh7AOy4Bic977RziVdzeIYyqAsyqRsqsFLHhckMsi2ZqHlyJuoqKgEm1P88njf0oQWxVAGZVEmZdM5ng0ED/Z+3IqsnAy01JaAj7bOuznOtiShxTGUQVmUSdlUQ+3NqHxzKlO2bqzC6bK15AQzUJFWuR1EKA/yfoXO7rOB9AikoHDklTVA6GuWmUpGakkgQiLNyqXcgYgHolwIfzQdAToj/nDfAf7q8Cv0RF4+XNMjmOy9whjzPIVNMnISRarqVHQEaPRaaLUqaIJ1CHJ62LzTPeVTQJQc7L/WoAXv4TGjkRjDy4PCZlcHJT0POUn+ybWAjmwYkLOIDAzBa5a3MDze5lNo1nUN+cmFePn3enmCxlIGsVNJL4HzXp3onIPomoXodIBWoi77MLa3bsOBV39Ax5VKROiTcXP0PIbv9PgUmnFexhpzKjITDyBcn42zVxtw6cY3KDfGMyY0lD0HnhZQJKoiUaW+LNCIIncYShozkZW8F/auKvSO2skL4PAp5BEn4HBeRFSIiPbuE+j45SOUr94FtSDITMYGbW960XILUqeFjBQ4WHTLsenzVXjDdh7m2AKo+UCfQipej1CdDe09c6j7qQIZbg30qqAFHmOTt05gJXJCcM3JxSUnkUQRWyMexzTHYfMXqTjyyveY80ygb8xO22Xht8PrYNQ/i4s3jfjUXop1oSZY+m8zhpcHxlYykgTajgJzmhFpJUyOjGNb2FNI0ITj9S/TkflYKWKNKXdlY9Tb0D2SgIPflSLHYEKmK4zEikp7C4qLLCOezZORKMpOP4TUI8w2LDfn4mBODWL092PrVzmwmvcvZMNpMORIQfW5HUiLtmBHWimLEZX4BZ7AtHmJHUBi1yXJqmyj688fmYuDF/DhQ/kw6SKw5Xgu1lsasTIyiWRTgP2ni5FmfBhvR1nm97MvtrTAk9lEyEPSEgQJHsXpiUSyIpAiekjXCOQHF0A27ovPQ5QmmDTIC1i54hhKmhqQEhyDoph0tkcgb5pAO4zAKcPLk9mkGUS5JCw99jKQ8cCQA5OXOqE2DJPP9sJHeB3iUKu+ioKjFsSKWjw3tgydY7/KcaTirqkhTAyLSFzE87JlIeJVJ/vxXmU1mg/txPPFtf/4psXP3MIn1z7D7uQiGAL0PvfIjBrs2b0L72w0MT7XvglSYu4G6BPz0Hx4J55ZHYf/w+wX+pBPxBxd36LrTD3pOpoaWWgip0hdFYfqpn453f/glEFZlCkq18edK4Q0yEUjIzcb98Laz7QhWhoER9uxpZCTcA8tp07i/hZgAMNRD8XVs1vdAAAAAElFTkSuQmCC",
+                                      |    "length": 2244
+                                      |  }
+                                      |}
                                     """.stripMargin)
           // scalastyle:on
           f1.map(res => withClue(new String(res.payload,"UTF-8") + "\n" + res.toString) {
@@ -766,7 +766,7 @@ class APIFunctionalityTests extends AsyncFunSpec
         }
 
         it("it should retrieve textual file from ntriples as N3") {
-          // scalastyle:off
+            // scalastyle:off
           val expected = s"""
                             |@prefix sys:   <http://localhost:9000/meta/sys#> .
                             |@prefix nn:    <http://localhost:9000/meta/nn#> .
@@ -797,7 +797,7 @@ class APIFunctionalityTests extends AsyncFunSpec
         }
 
         it("it should retrieve textual file from ntriples as RDF/XML") {
-          // scalastyle:off
+            // scalastyle:off
           val expected = s"""
                             |<rdf:RDF
                             |    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -842,32 +842,32 @@ class APIFunctionalityTests extends AsyncFunSpec
           it("should get: application/json -> json") {
             // scalastyle:off
             val expected = Json.parse(s"""
-                                         |{
-                                         |    "type": "RetrievablePaths",
-                                         |    "infotons": [{
-                                         |        "type": "FileInfoton",
-                                         |        "system": {
-                                         |            "path": "/test/imgs/icon.png",
-                                         |            "parent": "/test/imgs",
-                                         |            "dataCenter" : "$dcName"
-                                         |        },
-                                         |        "content": {
-                                         |            "mimeType": "image/png",
-                                         |            "base64-data": "iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAYAAACpSkzOAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2lpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wUmlnaHRzPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvcmlnaHRzLyIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcFJpZ2h0czpNYXJrZWQ9IkZhbHNlIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOkM3MUJFMDdFOEU4QzExREZCMjU5OEFEMjE5QjA1MDRDIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOkM3MUJFMDdEOEU4QzExREZCMjU5OEFEMjE5QjA1MDRDIiB4bXA6Q3JlYXRvclRvb2w9IkFkb2JlIFBob3Rvc2hvcCBDUzIgV2luZG93cyI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ1dWlkOjgyRTY0QjM0QzU5QkRGMTFBODA4OTIwNUU4Mjg0ODVBIiBzdFJlZjpkb2N1bWVudElEPSJ1dWlkOkI2NjNCOUQyOTk5OERGMTE4MzE1RDE2MUYyMTQyRDUxIi8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+4K+uiwAABPFJREFUeNq0lQ1MlVUYx//vey8X7gcfl9D4agjdqIjbkumtUTA+drlQsZRqy6YL52wa4ow0ZqKORRHCamprS5ljQS3D5pBcCrKgXftyc+VMEVACkpRvhAvcj/d9O+e87wXcbl228tkeODvnPL//ec7z3PNykiTBa9mHdGjbPoPFRuZMPKfqhh9rLZ7i/m1dDf8WSv+8m9+I0ake8DwHjpMQqAIZ8wgMSMCeUwV+IUsRYjY9/Rs6B45Db1BBGyjgkft4BAXoEBNetKR4JnSj/kl2f0eNZjq+a0NZiAnvT/VicmYQI9PX4eTV0IsezLp4smqAy3MLixm+LGHDz5z6el2K1DMcDOuLhT43uSf7AXuN3xOveHqL79p9XQeJaPAQ3LCuWY/WE8fAhSSh7AOy4Bic977RziVdzeIYyqAsyqRsqsFLHhckMsi2ZqHlyJuoqKgEm1P88njf0oQWxVAGZVEmZdM5ng0ED/Z+3IqsnAy01JaAj7bOuznOtiShxTGUQVmUSdlUQ+3NqHxzKlO2bqzC6bK15AQzUJFWuR1EKA/yfoXO7rOB9AikoHDklTVA6GuWmUpGakkgQiLNyqXcgYgHolwIfzQdAToj/nDfAf7q8Cv0RF4+XNMjmOy9whjzPIVNMnISRarqVHQEaPRaaLUqaIJ1CHJ62LzTPeVTQJQc7L/WoAXv4TGjkRjDy4PCZlcHJT0POUn+ybWAjmwYkLOIDAzBa5a3MDze5lNo1nUN+cmFePn3enmCxlIGsVNJL4HzXp3onIPomoXodIBWoi77MLa3bsOBV39Ax5VKROiTcXP0PIbv9PgUmnFexhpzKjITDyBcn42zVxtw6cY3KDfGMyY0lD0HnhZQJKoiUaW+LNCIIncYShozkZW8F/auKvSO2skL4PAp5BEn4HBeRFSIiPbuE+j45SOUr94FtSDITMYGbW960XILUqeFjBQ4WHTLsenzVXjDdh7m2AKo+UCfQipej1CdDe09c6j7qQIZbg30qqAFHmOTt05gJXJCcM3JxSUnkUQRWyMexzTHYfMXqTjyyveY80ygb8xO22Xht8PrYNQ/i4s3jfjUXop1oSZY+m8zhpcHxlYykgTajgJzmhFpJUyOjGNb2FNI0ITj9S/TkflYKWKNKXdlY9Tb0D2SgIPflSLHYEKmK4zEikp7C4qLLCOezZORKMpOP4TUI8w2LDfn4mBODWL092PrVzmwmvcvZMNpMORIQfW5HUiLtmBHWimLEZX4BZ7AtHmJHUBi1yXJqmyj688fmYuDF/DhQ/kw6SKw5Xgu1lsasTIyiWRTgP2ni5FmfBhvR1nm97MvtrTAk9lEyEPSEgQJHsXpiUSyIpAiekjXCOQHF0A27ovPQ5QmmDTIC1i54hhKmhqQEhyDoph0tkcgb5pAO4zAKcPLk9mkGUS5JCw99jKQ8cCQA5OXOqE2DJPP9sJHeB3iUKu+ioKjFsSKWjw3tgydY7/KcaTirqkhTAyLSFzE87JlIeJVJ/vxXmU1mg/txPPFtf/4psXP3MIn1z7D7uQiGAL0PvfIjBrs2b0L72w0MT7XvglSYu4G6BPz0Hx4J55ZHYf/w+wX+pBPxBxd36LrTD3pOpoaWWgip0hdFYfqpn453f/glEFZlCkq18edK4Q0yEUjIzcb98Laz7QhWhoER9uxpZCTcA8tp07i/hZgAMNRD8XVs1vdAAAAAElFTkSuQmCC",
-                                         |            "length": 2244
-                                         |        }
-                                         |    }],
-                                         |    "irretrievablePaths":[]
-                                         |}
+                                        |{
+                                        |    "type": "RetrievablePaths",
+                                        |    "infotons": [{
+                                        |        "type": "FileInfoton",
+                                        |        "system": {
+                                        |            "path": "/test/imgs/icon.png",
+                                        |            "parent": "/test/imgs",
+                                        |            "dataCenter" : "$dcName"
+                                        |        },
+                                        |        "content": {
+                                        |            "mimeType": "image/png",
+                                        |            "base64-data": "iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAYAAACpSkzOAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2lpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wUmlnaHRzPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvcmlnaHRzLyIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcFJpZ2h0czpNYXJrZWQ9IkZhbHNlIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOkM3MUJFMDdFOEU4QzExREZCMjU5OEFEMjE5QjA1MDRDIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOkM3MUJFMDdEOEU4QzExREZCMjU5OEFEMjE5QjA1MDRDIiB4bXA6Q3JlYXRvclRvb2w9IkFkb2JlIFBob3Rvc2hvcCBDUzIgV2luZG93cyI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ1dWlkOjgyRTY0QjM0QzU5QkRGMTFBODA4OTIwNUU4Mjg0ODVBIiBzdFJlZjpkb2N1bWVudElEPSJ1dWlkOkI2NjNCOUQyOTk5OERGMTE4MzE1RDE2MUYyMTQyRDUxIi8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+4K+uiwAABPFJREFUeNq0lQ1MlVUYx//vey8X7gcfl9D4agjdqIjbkumtUTA+drlQsZRqy6YL52wa4ow0ZqKORRHCamprS5ljQS3D5pBcCrKgXftyc+VMEVACkpRvhAvcj/d9O+e87wXcbl228tkeODvnPL//ec7z3PNykiTBa9mHdGjbPoPFRuZMPKfqhh9rLZ7i/m1dDf8WSv+8m9+I0ake8DwHjpMQqAIZ8wgMSMCeUwV+IUsRYjY9/Rs6B45Db1BBGyjgkft4BAXoEBNetKR4JnSj/kl2f0eNZjq+a0NZiAnvT/VicmYQI9PX4eTV0IsezLp4smqAy3MLixm+LGHDz5z6el2K1DMcDOuLhT43uSf7AXuN3xOveHqL79p9XQeJaPAQ3LCuWY/WE8fAhSSh7AOy4Bic977RziVdzeIYyqAsyqRsqsFLHhckMsi2ZqHlyJuoqKgEm1P88njf0oQWxVAGZVEmZdM5ng0ED/Z+3IqsnAy01JaAj7bOuznOtiShxTGUQVmUSdlUQ+3NqHxzKlO2bqzC6bK15AQzUJFWuR1EKA/yfoXO7rOB9AikoHDklTVA6GuWmUpGakkgQiLNyqXcgYgHolwIfzQdAToj/nDfAf7q8Cv0RF4+XNMjmOy9whjzPIVNMnISRarqVHQEaPRaaLUqaIJ1CHJ62LzTPeVTQJQc7L/WoAXv4TGjkRjDy4PCZlcHJT0POUn+ybWAjmwYkLOIDAzBa5a3MDze5lNo1nUN+cmFePn3enmCxlIGsVNJL4HzXp3onIPomoXodIBWoi77MLa3bsOBV39Ax5VKROiTcXP0PIbv9PgUmnFexhpzKjITDyBcn42zVxtw6cY3KDfGMyY0lD0HnhZQJKoiUaW+LNCIIncYShozkZW8F/auKvSO2skL4PAp5BEn4HBeRFSIiPbuE+j45SOUr94FtSDITMYGbW960XILUqeFjBQ4WHTLsenzVXjDdh7m2AKo+UCfQipej1CdDe09c6j7qQIZbg30qqAFHmOTt05gJXJCcM3JxSUnkUQRWyMexzTHYfMXqTjyyveY80ygb8xO22Xht8PrYNQ/i4s3jfjUXop1oSZY+m8zhpcHxlYykgTajgJzmhFpJUyOjGNb2FNI0ITj9S/TkflYKWKNKXdlY9Tb0D2SgIPflSLHYEKmK4zEikp7C4qLLCOezZORKMpOP4TUI8w2LDfn4mBODWL092PrVzmwmvcvZMNpMORIQfW5HUiLtmBHWimLEZX4BZ7AtHmJHUBi1yXJqmyj688fmYuDF/DhQ/kw6SKw5Xgu1lsasTIyiWRTgP2ni5FmfBhvR1nm97MvtrTAk9lEyEPSEgQJHsXpiUSyIpAiekjXCOQHF0A27ovPQ5QmmDTIC1i54hhKmhqQEhyDoph0tkcgb5pAO4zAKcPLk9mkGUS5JCw99jKQ8cCQA5OXOqE2DJPP9sJHeB3iUKu+ioKjFsSKWjw3tgydY7/KcaTirqkhTAyLSFzE87JlIeJVJ/vxXmU1mg/txPPFtf/4psXP3MIn1z7D7uQiGAL0PvfIjBrs2b0L72w0MT7XvglSYu4G6BPz0Hx4J55ZHYf/w+wX+pBPxBxd36LrTD3pOpoaWWgip0hdFYfqpn453f/glEFZlCkq18edK4Q0yEUjIzcb98Laz7QhWhoER9uxpZCTcA8tp07i/hZgAMNRD8XVs1vdAAAAAElFTkSuQmCC",
+                                        |            "length": 2244
+                                        |        }
+                                        |    }],
+                                        |    "irretrievablePaths":[]
+                                        |}
                                       """.stripMargin)
             // scalastyle:on
             f4.map { res =>
               val body = new String(res.payload, "UTF-8")
               withClue(body + "\n" + res.toString) {
-                Json
-                  .parse(res.payload)
-                  .transform(bagUuidDateEraserAndSorter)
-                  .get shouldEqual expected
+              Json
+                .parse(res.payload)
+                .transform(bagUuidDateEraserAndSorter)
+                .get shouldEqual expected
               }
             }
           }
@@ -875,23 +875,23 @@ class APIFunctionalityTests extends AsyncFunSpec
           it("should get: application/json -> n3") {
             // scalastyle:off
             val expected = s"""
-                              |@prefix nn:    <http://localhost:9000/meta/nn#> .
-                              |@prefix sys:   <http://localhost:9000/meta/sys#> .
-                              |@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
-                              |
+                            |@prefix nn:    <http://localhost:9000/meta/nn#> .
+                            |@prefix sys:   <http://localhost:9000/meta/sys#> .
+                            |@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+                            |
                             |<http://localhost:9000/test/imgs/icon.png>
-                              |      sys:base64-data   "iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAYAAACpSkzOAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2lpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wUmlnaHRzPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvcmlnaHRzLyIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcFJpZ2h0czpNYXJrZWQ9IkZhbHNlIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOkM3MUJFMDdFOEU4QzExREZCMjU5OEFEMjE5QjA1MDRDIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOkM3MUJFMDdEOEU4QzExREZCMjU5OEFEMjE5QjA1MDRDIiB4bXA6Q3JlYXRvclRvb2w9IkFkb2JlIFBob3Rvc2hvcCBDUzIgV2luZG93cyI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ1dWlkOjgyRTY0QjM0QzU5QkRGMTFBODA4OTIwNUU4Mjg0ODVBIiBzdFJlZjpkb2N1bWVudElEPSJ1dWlkOkI2NjNCOUQyOTk5OERGMTE4MzE1RDE2MUYyMTQyRDUxIi8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+4K+uiwAABPFJREFUeNq0lQ1MlVUYx//vey8X7gcfl9D4agjdqIjbkumtUTA+drlQsZRqy6YL52wa4ow0ZqKORRHCamprS5ljQS3D5pBcCrKgXftyc+VMEVACkpRvhAvcj/d9O+e87wXcbl228tkeODvnPL//ec7z3PNykiTBa9mHdGjbPoPFRuZMPKfqhh9rLZ7i/m1dDf8WSv+8m9+I0ake8DwHjpMQqAIZ8wgMSMCeUwV+IUsRYjY9/Rs6B45Db1BBGyjgkft4BAXoEBNetKR4JnSj/kl2f0eNZjq+a0NZiAnvT/VicmYQI9PX4eTV0IsezLp4smqAy3MLixm+LGHDz5z6el2K1DMcDOuLhT43uSf7AXuN3xOveHqL79p9XQeJaPAQ3LCuWY/WE8fAhSSh7AOy4Bic977RziVdzeIYyqAsyqRsqsFLHhckMsi2ZqHlyJuoqKgEm1P88njf0oQWxVAGZVEmZdM5ng0ED/Z+3IqsnAy01JaAj7bOuznOtiShxTGUQVmUSdlUQ+3NqHxzKlO2bqzC6bK15AQzUJFWuR1EKA/yfoXO7rOB9AikoHDklTVA6GuWmUpGakkgQiLNyqXcgYgHolwIfzQdAToj/nDfAf7q8Cv0RF4+XNMjmOy9whjzPIVNMnISRarqVHQEaPRaaLUqaIJ1CHJ62LzTPeVTQJQc7L/WoAXv4TGjkRjDy4PCZlcHJT0POUn+ybWAjmwYkLOIDAzBa5a3MDze5lNo1nUN+cmFePn3enmCxlIGsVNJL4HzXp3onIPomoXodIBWoi77MLa3bsOBV39Ax5VKROiTcXP0PIbv9PgUmnFexhpzKjITDyBcn42zVxtw6cY3KDfGMyY0lD0HnhZQJKoiUaW+LNCIIncYShozkZW8F/auKvSO2skL4PAp5BEn4HBeRFSIiPbuE+j45SOUr94FtSDITMYGbW960XILUqeFjBQ4WHTLsenzVXjDdh7m2AKo+UCfQipej1CdDe09c6j7qQIZbg30qqAFHmOTt05gJXJCcM3JxSUnkUQRWyMexzTHYfMXqTjyyveY80ygb8xO22Xht8PrYNQ/i4s3jfjUXop1oSZY+m8zhpcHxlYykgTajgJzmhFpJUyOjGNb2FNI0ITj9S/TkflYKWKNKXdlY9Tb0D2SgIPflSLHYEKmK4zEikp7C4qLLCOezZORKMpOP4TUI8w2LDfn4mBODWL092PrVzmwmvcvZMNpMORIQfW5HUiLtmBHWimLEZX4BZ7AtHmJHUBi1yXJqmyj688fmYuDF/DhQ/kw6SKw5Xgu1lsasTIyiWRTgP2ni5FmfBhvR1nm97MvtrTAk9lEyEPSEgQJHsXpiUSyIpAiekjXCOQHF0A27ovPQ5QmmDTIC1i54hhKmhqQEhyDoph0tkcgb5pAO4zAKcPLk9mkGUS5JCw99jKQ8cCQA5OXOqE2DJPP9sJHeB3iUKu+ioKjFsSKWjw3tgydY7/KcaTirqkhTAyLSFzE87JlIeJVJ/vxXmU1mg/txPPFtf/4psXP3MIn1z7D7uQiGAL0PvfIjBrs2b0L72w0MT7XvglSYu4G6BPz0Hx4J55ZHYf/w+wX+pBPxBxd36LrTD3pOpoaWWgip0hdFYfqpn453f/glEFZlCkq18edK4Q0yEUjIzcb98Laz7QhWhoER9uxpZCTcA8tp07i/hZgAMNRD8XVs1vdAAAAAElFTkSuQmCC"^^xsd:base64Binary ;
-                              |      sys:length        "2244"^^xsd:long ;
-                              |      sys:mimeType      "image/png" ;
-                              |      sys:parent        "/test/imgs" ;
-                              |      sys:path          "/test/imgs/icon.png" ;
-                              |      sys:dataCenter    "$dcName" ;
-                              |      sys:type          "FileInfoton" .
-                              |
+                            |      sys:base64-data   "iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAYAAACpSkzOAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2lpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wUmlnaHRzPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvcmlnaHRzLyIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcFJpZ2h0czpNYXJrZWQ9IkZhbHNlIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOkM3MUJFMDdFOEU4QzExREZCMjU5OEFEMjE5QjA1MDRDIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOkM3MUJFMDdEOEU4QzExREZCMjU5OEFEMjE5QjA1MDRDIiB4bXA6Q3JlYXRvclRvb2w9IkFkb2JlIFBob3Rvc2hvcCBDUzIgV2luZG93cyI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ1dWlkOjgyRTY0QjM0QzU5QkRGMTFBODA4OTIwNUU4Mjg0ODVBIiBzdFJlZjpkb2N1bWVudElEPSJ1dWlkOkI2NjNCOUQyOTk5OERGMTE4MzE1RDE2MUYyMTQyRDUxIi8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+4K+uiwAABPFJREFUeNq0lQ1MlVUYx//vey8X7gcfl9D4agjdqIjbkumtUTA+drlQsZRqy6YL52wa4ow0ZqKORRHCamprS5ljQS3D5pBcCrKgXftyc+VMEVACkpRvhAvcj/d9O+e87wXcbl228tkeODvnPL//ec7z3PNykiTBa9mHdGjbPoPFRuZMPKfqhh9rLZ7i/m1dDf8WSv+8m9+I0ake8DwHjpMQqAIZ8wgMSMCeUwV+IUsRYjY9/Rs6B45Db1BBGyjgkft4BAXoEBNetKR4JnSj/kl2f0eNZjq+a0NZiAnvT/VicmYQI9PX4eTV0IsezLp4smqAy3MLixm+LGHDz5z6el2K1DMcDOuLhT43uSf7AXuN3xOveHqL79p9XQeJaPAQ3LCuWY/WE8fAhSSh7AOy4Bic977RziVdzeIYyqAsyqRsqsFLHhckMsi2ZqHlyJuoqKgEm1P88njf0oQWxVAGZVEmZdM5ng0ED/Z+3IqsnAy01JaAj7bOuznOtiShxTGUQVmUSdlUQ+3NqHxzKlO2bqzC6bK15AQzUJFWuR1EKA/yfoXO7rOB9AikoHDklTVA6GuWmUpGakkgQiLNyqXcgYgHolwIfzQdAToj/nDfAf7q8Cv0RF4+XNMjmOy9whjzPIVNMnISRarqVHQEaPRaaLUqaIJ1CHJ62LzTPeVTQJQc7L/WoAXv4TGjkRjDy4PCZlcHJT0POUn+ybWAjmwYkLOIDAzBa5a3MDze5lNo1nUN+cmFePn3enmCxlIGsVNJL4HzXp3onIPomoXodIBWoi77MLa3bsOBV39Ax5VKROiTcXP0PIbv9PgUmnFexhpzKjITDyBcn42zVxtw6cY3KDfGMyY0lD0HnhZQJKoiUaW+LNCIIncYShozkZW8F/auKvSO2skL4PAp5BEn4HBeRFSIiPbuE+j45SOUr94FtSDITMYGbW960XILUqeFjBQ4WHTLsenzVXjDdh7m2AKo+UCfQipej1CdDe09c6j7qQIZbg30qqAFHmOTt05gJXJCcM3JxSUnkUQRWyMexzTHYfMXqTjyyveY80ygb8xO22Xht8PrYNQ/i4s3jfjUXop1oSZY+m8zhpcHxlYykgTajgJzmhFpJUyOjGNb2FNI0ITj9S/TkflYKWKNKXdlY9Tb0D2SgIPflSLHYEKmK4zEikp7C4qLLCOezZORKMpOP4TUI8w2LDfn4mBODWL092PrVzmwmvcvZMNpMORIQfW5HUiLtmBHWimLEZX4BZ7AtHmJHUBi1yXJqmyj688fmYuDF/DhQ/kw6SKw5Xgu1lsasTIyiWRTgP2ni5FmfBhvR1nm97MvtrTAk9lEyEPSEgQJHsXpiUSyIpAiekjXCOQHF0A27ovPQ5QmmDTIC1i54hhKmhqQEhyDoph0tkcgb5pAO4zAKcPLk9mkGUS5JCw99jKQ8cCQA5OXOqE2DJPP9sJHeB3iUKu+ioKjFsSKWjw3tgydY7/KcaTirqkhTAyLSFzE87JlIeJVJ/vxXmU1mg/txPPFtf/4psXP3MIn1z7D7uQiGAL0PvfIjBrs2b0L72w0MT7XvglSYu4G6BPz0Hx4J55ZHYf/w+wX+pBPxBxd36LrTD3pOpoaWWgip0hdFYfqpn453f/glEFZlCkq18edK4Q0yEUjIzcb98Laz7QhWhoER9uxpZCTcA8tp07i/hZgAMNRD8XVs1vdAAAAAElFTkSuQmCC"^^xsd:base64Binary ;
+                            |      sys:length        "2244"^^xsd:long ;
+                            |      sys:mimeType      "image/png" ;
+                            |      sys:parent        "/test/imgs" ;
+                            |      sys:path          "/test/imgs/icon.png" ;
+                            |      sys:dataCenter    "$dcName" ;
+                            |      sys:type          "FileInfoton" .
+                            |
                             |[ sys:infotons  <http://localhost:9000/test/imgs/icon.png> ;
-                              |  sys:size      "1"^^xsd:int ;
-                              |  sys:type      "RetrievablePaths"
-                              |] .
+                            |  sys:size      "1"^^xsd:int ;
+                            |  sys:type      "RetrievablePaths"
+                            |] .
                             """.stripMargin
             // scalastyle:on
             f5.map { res =>
@@ -958,34 +958,34 @@ class APIFunctionalityTests extends AsyncFunSpec
       it("should retrieve JohnSmith via web sockets") {
         val expected =
           s"""
-             |<rdf:RDF
-             |    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-             |    xmlns:sys="http://localhost:9000/meta/sys#"
-             |    xmlns:nn="http://localhost:9000/meta/nn#"
-             |    xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
-             |    xmlns:vcard="http://www.w3.org/2006/vcard/ns#">
-             |  <rdf:Description>
-             |    <sys:type>BagOfInfotons</sys:type>
-             |    <sys:size rdf:datatype="http://www.w3.org/2001/XMLSchema#int">1</sys:size>
-             |    <sys:infotons>
-             |      <vcard:Individual rdf:about="http://example.org/JohnSmith">
-             |        <sys:type>ObjectInfoton</sys:type>
-             |        <sys:path>/example.org/JohnSmith</sys:path>
-             |        <sys:parent>/example.org</sys:parent>
-             |        <sys:dataCenter>$dcName</sys:dataCenter>
-             |        <vcard:FN>John Smith</vcard:FN>
-             |        <vcard:GENDER>Male</vcard:GENDER>
-             |      </vcard:Individual>
-             |    </sys:infotons>
-             |  </rdf:Description>
-             |</rdf:RDF>
+            |<rdf:RDF
+            |    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+            |    xmlns:sys="http://localhost:9000/meta/sys#"
+            |    xmlns:nn="http://localhost:9000/meta/nn#"
+            |    xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+            |    xmlns:vcard="http://www.w3.org/2006/vcard/ns#">
+            |  <rdf:Description>
+            |    <sys:type>BagOfInfotons</sys:type>
+            |    <sys:size rdf:datatype="http://www.w3.org/2001/XMLSchema#int">1</sys:size>
+            |    <sys:infotons>
+            |      <vcard:Individual rdf:about="http://example.org/JohnSmith">
+            |        <sys:type>ObjectInfoton</sys:type>
+            |        <sys:path>/example.org/JohnSmith</sys:path>
+            |        <sys:parent>/example.org</sys:parent>
+            |        <sys:dataCenter>$dcName</sys:dataCenter>
+            |        <vcard:FN>John Smith</vcard:FN>
+            |        <vcard:GENDER>Male</vcard:GENDER>
+            |      </vcard:Individual>
+            |    </sys:infotons>
+            |  </rdf:Description>
+            |</rdf:RDF>
           """.stripMargin
 
         val p = Promise[String]()
 
         Http.ws(uri = "ws://localhost:9000/ws/_out",
-          initiationMessage = "/example.org/JohnSmith",
-          queryParams = List("format"->"rdfxml")) { msg =>
+                initiationMessage = "/example.org/JohnSmith",
+                queryParams = List("format"->"rdfxml")) { msg =>
           p.success(msg)
           None
         }
@@ -1001,17 +1001,17 @@ class APIFunctionalityTests extends AsyncFunSpec
       it("should retrieve inserted N3 docs as JSON") {
         val expected = Json.parse(
           s"""
-             |{
-             |  "type":"ObjectInfoton",
-             |  "system":{
-             |    "path":"/clearforest.com/ce/MZ",
-             |    "parent":"/clearforest.com/ce",
-             |    "dataCenter":"$dcName"
-             |  },
-             |  "fields":{
-             |    "FN.vcard":["M Z"]
-             |  }
-             |}
+            |{
+            |  "type":"ObjectInfoton",
+            |  "system":{
+            |    "path":"/clearforest.com/ce/MZ",
+            |    "parent":"/clearforest.com/ce",
+            |    "dataCenter":"$dcName"
+            |  },
+            |  "fields":{
+            |    "FN.vcard":["M Z"]
+            |  }
+            |}
           """.stripMargin)
 
         val path = clf / "ce" / "MZ"
@@ -1029,18 +1029,18 @@ class APIFunctionalityTests extends AsyncFunSpec
           val hash = crc32base64("http://made.up.property.org/2013/cmwtest#")
           val expected = Json.parse(
             s"""
-               |{
-               |  "type":"ObjectInfoton",
-               |  "system":{
-               |    "path":"/meta/ns/$hash",
-               |    "parent":"/meta/ns",
-               |    "dataCenter":"$dcName"
-               |  },
-               |  "fields":{
-               |    "url":["http://made.up.property.org/2013/cmwtest#"],
-               |    "prefix":["cmwtest"]
-               |  }
-               |}
+              |{
+              |  "type":"ObjectInfoton",
+              |  "system":{
+              |    "path":"/meta/ns/$hash",
+              |    "parent":"/meta/ns",
+              |    "dataCenter":"$dcName"
+              |  },
+              |  "fields":{
+              |    "url":["http://made.up.property.org/2013/cmwtest#"],
+              |    "prefix":["cmwtest"]
+              |  }
+              |}
             """.stripMargin)
           val path = metaNs / hash
           Http.get(path, List("format" -> "json")).map { res =>
@@ -1293,8 +1293,6 @@ class APIFunctionalityTests extends AsyncFunSpec
             }
           }
         })
-
-
       }
     }
 
@@ -1318,10 +1316,10 @@ class APIFunctionalityTests extends AsyncFunSpec
           Some("application/json;charset=UTF-8"),
           List("format" -> "json"),
           ("X-CM-WELL-TYPE" -> "OBJ") :: tokenHeader).map { res =>
-          withClue(res) {
-            Json.parse(res.payload) should be(jsonSuccess)
+            withClue(res) {
+              Json.parse(res.payload) should be(jsonSuccess)
+            }
           }
-        }
       }
 
       it("should get an Infoton with UTF-8 in subject using get") {
@@ -1341,21 +1339,12 @@ class APIFunctionalityTests extends AsyncFunSpec
             |  }
             |}
           """.stripMargin)
-        /*indexingDuration.fromNow.block
+        indexingDuration.fromNow.block
         Http.get(cmt / "Araújo3", List("format" -> "json")).map { res =>
           withClue(res) {
             Json.parse(res.payload).transform(uuidDateEraser).get should be(expected)
           }
         }
-*/
-        spinCheck(100.millis, true)(Http.get(cmt / "Araújo3", List("format" -> "json"))) { res =>
-          Json.parse(res.payload).transform(uuidDateEraser).get.equals(expected)
-        } .map { res =>
-          withClue(res) {
-            Json.parse(res.payload).transform(uuidDateEraser).get should be(expected)
-          }
-        }
-
       }
 
       it("should get an Infoton with UTF-8 in subject using get without parameters") {
@@ -1439,11 +1428,11 @@ class APIFunctionalityTests extends AsyncFunSpec
               None,
               Seq("format" -> "ntriples"),
               tokenHeader).flatMap { res =>
-              // need to wait between each POST, so versions won't collapse in IMP
-              delayedTask(indexingDuration) {
-                Json.parse(res.payload) :: l
+                // need to wait between each POST, so versions won't collapse in IMP
+                delayedTask(indexingDuration) {
+                  Json.parse(res.payload) :: l
+                }
               }
-            }
           }
         }.map(all(_) should be(jsonSuccess))
       }
@@ -1486,27 +1475,27 @@ class APIFunctionalityTests extends AsyncFunSpec
       }
 
       //FIXME: temporary not supported
-      //      ignore("should purge all historical version by path, but keep the last (current) one") {
-      //        val path = cmw / "example.org" / "Individuals" / "PeterParker"
-      //
-      //        // purge history
-      //        val f = Http.get(path, Seq("op"->"purge-history"), tokenHeader)
-      //          .map(res => Json.parse(res.payload))
-      //        val body = Await.result(f, requestTimeout)
-      //        body should be(jsonSimpleResponseSuccess)
-      //
-      //        indexingDuration.fromNow.block
-      //
-      //        // verify Infoton is still out there
-      //        val body1 = Await.result(Http.get(path).map(_.status), requestTimeout)
-      //        body1 should be(200)
-      //
-      //        // verify there's only 1 (last) version of it
-      //        val body2 = Await.result(Http.get(path, Seq("with-history" -> "", "format" -> "json"))
-      //          .map(res => Json.parse(res.payload)), requestTimeout)
-      //        val versions = body2 getArr "versions"
-      //        versions.length should be (1)
-      //      }
+//      ignore("should purge all historical version by path, but keep the last (current) one") {
+//        val path = cmw / "example.org" / "Individuals" / "PeterParker"
+//
+//        // purge history
+//        val f = Http.get(path, Seq("op"->"purge-history"), tokenHeader)
+//          .map(res => Json.parse(res.payload))
+//        val body = Await.result(f, requestTimeout)
+//        body should be(jsonSimpleResponseSuccess)
+//
+//        indexingDuration.fromNow.block
+//
+//        // verify Infoton is still out there
+//        val body1 = Await.result(Http.get(path).map(_.status), requestTimeout)
+//        body1 should be(200)
+//
+//        // verify there's only 1 (last) version of it
+//        val body2 = Await.result(Http.get(path, Seq("with-history" -> "", "format" -> "json"))
+//          .map(res => Json.parse(res.payload)), requestTimeout)
+//        val versions = body2 getArr "versions"
+//        versions.length should be (1)
+//      }
 
       it("should purge current and all historical versions by path") {
         val path = cmw / "example.org" / "Individuals" / "DonaldDuck"
@@ -1534,34 +1523,34 @@ class APIFunctionalityTests extends AsyncFunSpec
       }
 
       //FIXME: temporary not supported
-      //      ignore("should rollback last version of an Infoton") {
-      //        val path = cmw / "example.org" / "Individuals" / "RollMeBack"
-      //
-      //        def rollback() = {
-      //          Await.result(
+//      ignore("should rollback last version of an Infoton") {
+//        val path = cmw / "example.org" / "Individuals" / "RollMeBack"
+//
+//        def rollback() = {
+//          Await.result(
       // Http.get(
       // path,
       // Seq("op" -> "purge-last"),
       // tokenHeader).map(res =>
       // Json.parse(res.payload)), requestTimeout) should be(jsonSimpleResponseSuccess)
-      //          indexingDuration.fromNow.block
-      //        }
-      //
-      //        def assertVersions(amount: Int) = {
-      //          val versions = Await.result(
+//          indexingDuration.fromNow.block
+//        }
+//
+//        def assertVersions(amount: Int) = {
+//          val versions = Await.result(
       // Http.get(
       // path,
       // Seq("with-history" -> "", "format" -> "json")).map(res =>
       // Json.parse(res.payload)), requestTimeout) getArr "versions"
-      //          versions.length should be(amount)
-      //        }
-      //
-      //        // starting from 3 versions, rolling back last one, 3 times:
-      //        (0 to 2).reverse.foreach { i => rollback(); assertVersions(i) }
-      //
-      //        // verify Infoton does not exist:
-      //        Await.result(Http.get(path).map(_.status), requestTimeout) should be(404)
-      //      }
+//          versions.length should be(amount)
+//        }
+//
+//        // starting from 3 versions, rolling back last one, 3 times:
+//        (0 to 2).reverse.foreach { i => rollback(); assertVersions(i) }
+//
+//        // verify Infoton does not exist:
+//        Await.result(Http.get(path).map(_.status), requestTimeout) should be(404)
+//      }
     }
 
     describe("fields masking") {
@@ -1583,11 +1572,11 @@ class APIFunctionalityTests extends AsyncFunSpec
           Some("text/plain;charset=UTF-8"),
           List("format" -> "ntriples", justWorksWith),
           tokenHeader).map{ body =>
-          body.status should be >=200
-          body.status should be <400 //status should be OK
-          body.payload should include("worksWith")
-          body.payload should not include("active")
-        }
+            body.status should be >=200
+            body.status should be <400 //status should be OK
+            body.payload should include("worksWith")
+            body.payload should not include("active")
+          }
       }
 
       it("should succeed with non-existing mask fields, for _out") {
@@ -1598,28 +1587,28 @@ class APIFunctionalityTests extends AsyncFunSpec
           Some("text/plain;charset=UTF-8"),
           List("format" -> "ntriples", "fields" -> "nonExistingField.rel"),
           tokenHeader).map{ body =>
-          body.status should be >=200
-          body.status should be <400 //status should be OK
-          body.payload should not include("worksWith")
-          body.payload should not include("active")
-        }
+            body.status should be >=200
+            body.status should be <400 //status should be OK
+            body.payload should not include("worksWith")
+            body.payload should not include("active")
+          }
       }
 
       ignore("should mask fields, for search") {
-        //        val req = requestOp("search", justWorksWith, "with-data"->"", "format"->"ntriples")
-        //        val res = Await.result(HWR(req OK as.String), requestTimeout)
-        //        res should include("worksWith")
-        //        res should not include("active")
+//        val req = requestOp("search", justWorksWith, "with-data"->"", "format"->"ntriples")
+//        val res = Await.result(HWR(req OK as.String), requestTimeout)
+//        res should include("worksWith")
+//        res should not include("active")
         Future.successful(succeed)
       }
 
       ignore("should mask fields, for *stream") { // todo - this works for me but retunrs 500 on bingo. why?
-        //        Seq("","m","s","n").map(_+"stream").foreach { op =>
-        //          val req = requestOp(op, justWorksWith, "with-data"->"ntriples", "format"->"ntriples")
-        //          val res = Await.result(HWR(req OK as.String), requestTimeout)
-        //          res should include("worksWith")
-        //          res should not include("active")
-        //        }
+//        Seq("","m","s","n").map(_+"stream").foreach { op =>
+//          val req = requestOp(op, justWorksWith, "with-data"->"ntriples", "format"->"ntriples")
+//          val res = Await.result(HWR(req OK as.String), requestTimeout)
+//          res should include("worksWith")
+//          res should not include("active")
+//        }
         Future.successful(succeed)
       }
     }
@@ -1629,7 +1618,7 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       it("should upload an Infoton with a DateTime field") {
         val data = "<http://example.org/1-429589421> <http://ont.thomsonreuters.com/mdaas/ipoDate> \"" +
-          goodDateValue + "\"^^<http://www.w3.org/2001/XMLSchema#dateTime> ."
+                   goodDateValue + "\"^^<http://www.w3.org/2001/XMLSchema#dateTime> ."
         Http.post(_in, data, Some("text/rdf+ntriples;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader).map { res =>
           jsonSuccessPruner(Json.parse(res.payload)) should be(jsonSuccess)
         }
@@ -1705,4 +1694,3 @@ class APIFunctionalityTests extends AsyncFunSpec
     }
   }
 }
-
