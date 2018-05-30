@@ -17,6 +17,7 @@
 package cmwell.it
 
 import cmwell.ctrl.utils.ProcUtil
+import cmwell.util.concurrent.SimpleScheduler
 import cmwell.util.http.SimpleResponse.Implicits
 import cmwell.util.http.{SimpleResponse, StringPath}
 import com.typesafe.scalalogging.LazyLogging
@@ -24,10 +25,10 @@ import org.scalatest
 import org.scalatest.{BeforeAndAfterAll, FunSpec, Inspectors, Matchers}
 import play.api.libs.json.{JsArray, JsValue, Json}
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.io.Source
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * Created by yaakov on 11/24/15.
@@ -290,19 +291,15 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
 
           prepareQueries().flatMap { r =>
             assert(r.forall(_ == jsonSuccess), "failed ingesting data")
-            val spPostBody = makeReqBody(paths, "SPARQL", sparqlIdentity, Seq(s"/$firstFolder/_")) // using wildcards
-            spinCheck(100 milliseconds,true)(
-              Http.post(_sp, spPostBody, textPlain)){resp => val body = new String(resp.payload, "UTF-8").trim
-                leaves.foldLeft(true) { (isTrue, l) =>
-                  isTrue && (body.contains(l) == true)
-                }
-              }.map {
-              resp =>
+            SimpleScheduler.scheduleFuture(indexingDuration) {
+              val spPostBody = makeReqBody(paths, "SPARQL", sparqlIdentity, Seq(s"/$firstFolder/_")) // using wildcards
+              Http.post(_sp, spPostBody, textPlain).map { resp =>
                 val body = new String(resp.payload, "UTF-8").trim
                 withClue("could not find recursively-imported subgraph-expansions in result data") {
                   forAll(leaves) { l => body.contains(l) should be(true) }
                 }
               }
+            }
           }
         }
       }
