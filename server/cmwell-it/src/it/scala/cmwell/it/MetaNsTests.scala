@@ -31,13 +31,12 @@ class MetaNsTests extends AsyncFunSpec with Matchers with Helpers with NSHashesA
       val urls = metaNsPaths.mkString("", "\n", "\n")
 
       spinCheck(100.millis, true)(Http.post(_out, urls, Some("text/plain;charset=UTF-8"), List("format" -> "json"), tokenHeader)){
-        case res@SimpleResponse(_, _, (_, bag)) => {
+        case SimpleResponse(_, _, (_, bag)) => {
           JsonEncoder.decodeBagOfInfotons(bag) match {
             case Some(boi) => boi.infotons.length == metaNsPaths.size
             case None => false
           }
         }
-        case _ => false
       }
       .map {
         case res@SimpleResponse(_, _, (_, bag)) => {
