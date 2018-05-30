@@ -11,6 +11,7 @@ libraryDependencies ++= {
     dm("org.slf4j", "log4j-over-slf4j"),
     dm("com.typesafe.akka", "akka-stream"),
     dm("com.typesafe.akka", "akka-stream-contrib"),
+    dm("com.typesafe.akka", "akka-stream-testkit") % "test",
     dm("com.typesafe.akka", "akka-stream-kafka").exclude("org.apache.kafka", "kafka-clients"),
     dm("com.typesafe.akka", "akka-agent"),
     dm("com.typesafe.akka", "akka-slf4j"),
