@@ -149,11 +149,11 @@ class AuthTests extends FunSpec with Matchers with Helpers with LazyLogging {
       }
 
       it("should add some example data") {
-        exampleData.map(Json.parse(_) should be(jsonSuccess))
+        all(exampleData.map(Json.parse)) should be(jsonSuccess)
       }
 
       it("should reset AuthCache once all user/role data was ingested") {
-        spinCheck(100.millis, true)(Http.get(cmw / "_auth", List("op" -> "invalidate-cache"), tokenHeader))( res => Json.parse(res.payload).equals(jsonSuccess))
+        spinCheck(100.millis, true)(Http.get(cmw / "_auth", List("op" -> "invalidate-cache"), tokenHeader))( res => Json.parse(res.payload) == jsonSuccess)
           .map{ res => Json.parse(res.payload) should be(jsonSuccess) }
       }
 
