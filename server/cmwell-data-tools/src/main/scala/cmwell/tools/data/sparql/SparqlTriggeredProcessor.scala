@@ -21,12 +21,12 @@ import akka.stream.{Materializer, SourceShape}
 import akka.util.ByteString
 import cmwell.tools.data.downloader.consumer.{Downloader => Consumer}
 import cmwell.tools.data.utils.akka.stats.DownloaderStats
+import cmwell.tools.data.utils.akka.stats.DownloaderStats.DownloadStats
 import cmwell.tools.data.utils.logging.DataToolsLogging
 import cmwell.tools.data.utils.text.Tokens
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.util.Success
 
 case class SensorContext(name: String, token: String, horizon: Boolean, remainingInfotons: Option[Long])
 
@@ -47,18 +47,37 @@ case class Config(name: Option[String] = None,
                   hostUpdatesSource: Option[String],
                   force: Option[Boolean] = Some(false))
 
-object SparqlTriggeredProcessor {
+object SparqlTriggeredProcessor extends DataToolsLogging {
 
   val sparqlMaterializerLabel = "sparql-materializer"
 
+  def loadInitialTokensAndStatistics(tokenReporter : Option[ActorRef])
+                                    (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = tokenReporter match {
+
+
+    case None => Right(AgentTokensAndStatistics(Map.empty[String, TokenAndStatistics], None, None))
+    case Some(reporter) =>
+      import akka.pattern._
+      implicit val t = akka.util.Timeout(1.minute)
+      val result = (reporter ? RequestPreviousTokens)
+        .mapTo[ResponseWithPreviousTokens]
+        .map {
+          case ResponseWithPreviousTokens(tokens) => tokens
+          case x => logger.error(s"did not receive previous tokens: $x"); Left(s"did not receive previous tokens: $x")
+        }
+      Await.result(result, 1.minute)
+  }
+
   def listen(
-    config: Config,
-    baseUrl: String,
-    isBulk: Boolean = false,
-    tokenReporter: Option[ActorRef] = None,
-    label: Option[String] = None,
-    distinctWindowSize: FiniteDuration = 10.seconds,
-    infotonGroupSize: Integer = 100
+              config: Config,
+              baseUrl: String,
+              isBulk: Boolean = false,
+              tokenReporter: Option[ActorRef] = None,
+              initialTokensAndStatistics: Either[String,AgentTokensAndStatistics] =
+                Right(AgentTokensAndStatistics(Map.empty[String, TokenAndStatistics],None,None)),
+              label: Option[String] = None,
+              distinctWindowSize: FiniteDuration = 10.seconds,
+              infotonGroupSize: Integer = 100
   )(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
 
     new SparqlTriggeredProcessor(config = config,
@@ -68,7 +87,7 @@ object SparqlTriggeredProcessor {
                                  label = label,
                                  distinctWindowSize = distinctWindowSize,
                                  infotonGroupSize = infotonGroupSize)
-      .listen()
+      .listen(initialTokensAndStatistics)
   }
 }
 
@@ -81,37 +100,19 @@ class SparqlTriggeredProcessor(config: Config,
                                infotonGroupSize: Integer)
     extends DataToolsLogging {
 
-  def listen()(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
+  def listen(initialTokensAndStatistics: Either[String,AgentTokensAndStatistics])(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
 
     def addStatsToSource(id: String,
                          source: Source[(ByteString, Option[SensorContext]), _],
-                         initialDownloadStats: Option[TokenAndStatisticsMap] = None) = {
+                         initialDownloadStats: Option[DownloadStats] = None) = {
       source.via(
         DownloaderStats(
           format = "ntriples",
           label = Some(id),
           reporter = tokenReporter,
-          initialDownloadStats = for {
-            ids <- initialDownloadStats
-            (_, dStatsOpt) <- ids.get(id)
-            downloadStats <- dStatsOpt
-          } yield downloadStats
+          initialDownloadStats = initialDownloadStats
         )
       )
-    }
-
-    val savedTokensAndStatistics: Either[String,TokenAndStatisticsMap] = tokenReporter match {
-      case None => Right(Map.empty[String, TokenAndStatistics])
-      case Some(reporter) =>
-        import akka.pattern._
-        implicit val t = akka.util.Timeout(1.minute)
-        val result = (reporter ? RequestPreviousTokens)
-          .mapTo[ResponseWithPreviousTokens]
-          .map {
-            case ResponseWithPreviousTokens(tokens) => tokens
-            case x => logger.error(s"did not receive previous tokens: $x"); Left(s"did not receive previous tokens: $x")
-          }
-        Await.result(result, 1.minute)
     }
 
     def getReferencedData(path: String) = tokenReporter match {
@@ -145,14 +146,14 @@ class SparqlTriggeredProcessor(config: Config,
       }
     }
 
-    savedTokensAndStatistics match {
+    initialTokensAndStatistics match {
 
       case Left(error) =>
         Source.failed(new Exception(error))
 
       case Right(tokensAndStatistics) => {
 
-        var savedTokens = tokensAndStatistics.map {
+        var savedTokens = tokensAndStatistics.sensors.map {
           case (sensor, (token, _)) => sensor -> token
         }
 
@@ -213,8 +214,11 @@ class SparqlTriggeredProcessor(config: Config,
 
                     addStatsToSource(id = sensor.name,
                       source = tsvSource,
-                      initialDownloadStats = Option(tokensAndStatistics))
-
+                      initialDownloadStats = {for {
+                        sensor <- tokensAndStatistics.sensors.get(sensor.name)
+                        initial <- sensor._2
+                      } yield initial}
+                    )
                 }
 
               // get root infoton
@@ -296,7 +300,8 @@ class SparqlTriggeredProcessor(config: Config,
 
         // execute sparql queries on populated paths
         addStatsToSource(
-          id = label.map(_ + "-").getOrElse("") + SparqlTriggeredProcessor.sparqlMaterializerLabel,
+          id = SparqlTriggeredProcessor.sparqlMaterializerLabel,
+          initialDownloadStats = tokensAndStatistics.materializedStats,
           source = SparqlProcessor.createSparqlSourceFromPaths(
             baseUrl = baseUrl,
             sparqlQuery = processedConfig.sparqlMaterializer,

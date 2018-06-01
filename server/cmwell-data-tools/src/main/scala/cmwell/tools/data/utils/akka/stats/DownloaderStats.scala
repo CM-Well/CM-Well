@@ -95,6 +95,7 @@ class DownloaderStats(isStderr: Boolean,
 
         // Initialise persisted statistics
         initialDownloadStats.foreach { stats =>
+          logger.debug(s"${name} Loading statistics initial state of Received Infotons: ${stats.receivedInfotons}")
           totalReceivedInfotons.mark(stats.receivedInfotons)
         }
 

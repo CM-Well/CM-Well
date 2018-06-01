@@ -301,7 +301,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
 
         StpUtil.readPreviousTokens(settings.hostConfigFile, settings.pathAgentConfigs + "/" + path, zStore).map {
           result =>
-            result match {
+            result.sensors match {
               case storedTokens =>
                 val pathsWithoutSavedToken = sensorNames.toSet.diff(storedTokens.keySet)
                 val allSensorsWithTokens = storedTokens ++ pathsWithoutSavedToken.map(_ -> ("", None))
@@ -345,11 +345,11 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
           storedTokensRWPT <- storedTokensFuture
         } yield {
           storedTokensRWPT.tokens match {
-            case Right(storedTokens) => {
+            case Right(storedTokensAndStats) => {
 
               val sensorNames = jobConfig.sensors.map(_.name)
-              val pathsWithoutSavedToken = sensorNames.toSet.diff(storedTokens.keySet)
-              val allSensorsWithTokens = storedTokens ++ pathsWithoutSavedToken.map(_ -> ("", None))
+              val pathsWithoutSavedToken = sensorNames.toSet.diff(storedTokensAndStats.sensors.keySet)
+              val allSensorsWithTokens = storedTokensAndStats.sensors ++ pathsWithoutSavedToken.map(_ -> ("", None))
 
               val body: Iterable[Row] = allSensorsWithTokens.map {
                 case (sensorName, (token, _)) =>
@@ -390,14 +390,13 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
               val configName = Paths.get(path).getFileName
 
               val sparqlIngestStats = statsIngest
-                .get(s"ingester-$configName")
                 .map { s =>
                   s"""Ingested <span style="color:green"> **${s.ingestedInfotons}** </span> Failed <span style="color:red"> **${s.failedInfotons}** </span>"""
                 }
                 .getOrElse("")
 
               val sparqlMaterializerStats = stats
-                .get(s"$configName-${SparqlTriggeredProcessor.sparqlMaterializerLabel}")
+                .get(s"${SparqlTriggeredProcessor.sparqlMaterializerLabel}")
                 .map { s =>
                   val totalRunTime = DurationFormatUtils.formatDurationWords(s.runningTime, true, true)
                   s"""Materialized <span style="color:green"> **${s.receivedInfotons}** </span> infotons [$totalRunTime]""".stripMargin
@@ -437,43 +436,53 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
 
     val hostUpdatesSource = job.config.hostUpdatesSource.getOrElse(settings.hostUpdatesSource)
 
-    val agent = SparqlTriggeredProcessor
-      .listen(job.config, hostUpdatesSource, false, Some(tokenReporter), Some(job.name), infotonGroupSize = settings.infotonGroupSize)
-      .map { case (data, _) => data }
-      .via(GroupChunker(formatToGroupExtractor(settings.materializedViewFormat)))
-      .map(concatByteStrings(_, endl))
-    val (killSwitch, jobDone) = Ingester
-      .ingest(
-        baseUrl = settings.hostWriteOutput,
-        format = settings.materializedViewFormat,
-        source = agent,
-        writeToken = Option(settings.writeToken),
-        force = job.config.force.getOrElse(false),
-        label = label
-      )
-      .via(IngesterStats(isStderr = false, reporter = Some(tokenReporter), label = label))
-      .viaMat(KillSwitches.single)(Keep.right)
-      .toMat(Sink.ignore)(Keep.both)
-      .run()
-    currentJobs = currentJobs + (job.name -> JobRunning(job, killSwitch, tokenReporter))
-    logger.info(s"starting job $job")
-    jobDone.onComplete {
-      case Success(_) => {
-        logger.info(s"job: $job finished successfully")
-        //The stream has already finished - kill the token actor
-        tokenReporter ! PoisonPill
-        self ! JobHasFinished(job)
-      }
-      case Failure(ex) => {
-        logger.error(
-          s"job: $job finished with error (In case this job should be running it will be restarted on the next periodic check):",
-          ex
-        )
-        //The stream has already finished - kill the token actor
-        tokenReporter ! PoisonPill
-        self ! JobHasFailed(job, ex)
-      }
+    SparqlTriggeredProcessor.loadInitialTokensAndStatistics(Option(tokenReporter)) match {
+
+      case Right(initialTokensAndStatistics) =>
+        val agent = SparqlTriggeredProcessor
+          .listen(job.config, hostUpdatesSource, false, Some(tokenReporter),
+            Right(initialTokensAndStatistics), Some(job.name), infotonGroupSize = settings.infotonGroupSize)
+          .map { case (data, _) => data }
+          .via(GroupChunker(formatToGroupExtractor(settings.materializedViewFormat)))
+          .map(concatByteStrings(_, endl))
+        val (killSwitch, jobDone) = Ingester
+          .ingest(
+            baseUrl = settings.hostWriteOutput,
+            format = settings.materializedViewFormat,
+            source = agent,
+            writeToken = Option(settings.writeToken),
+            force = job.config.force.getOrElse(false),
+            label = label
+          )
+          .via(IngesterStats(isStderr = false, reporter = Some(tokenReporter), label = label,
+            initialIngestStats = initialTokensAndStatistics.agentIngestStats ))
+          .viaMat(KillSwitches.single)(Keep.right)
+          .toMat(Sink.ignore)(Keep.both)
+          .run()
+        currentJobs = currentJobs + (job.name -> JobRunning(job, killSwitch, tokenReporter))
+        logger.info(s"starting job $job")
+        jobDone.onComplete {
+          case Success(_) => {
+            logger.info(s"job: $job finished successfully")
+            //The stream has already finished - kill the token actor
+            tokenReporter ! PoisonPill
+            self ! JobHasFinished(job)
+          }
+          case Failure(ex) => {
+            logger.error(
+              s"job: $job finished with error (In case this job should be running it will be restarted on the next periodic check):",
+              ex
+            )
+            //The stream has already finished - kill the token actor
+            tokenReporter ! PoisonPill
+            self ! JobHasFailed(job, ex)
+          }
+        }
+
+      case Left(error) =>
+        Source.failed(new Exception(error))
     }
+
   }
 
   def getJobConfigsFromTheUser: Future[Set[JobRead]] = {

@@ -14,8 +14,8 @@
   */
 package cmwell.tools.data.sparql
 
-
 import cmwell.tools.data.utils.akka.stats.DownloaderStats.DownloadStats
+import cmwell.tools.data.utils.akka.stats.IngesterStats.IngestStats
 import cmwell.tools.data.utils.logging.DataToolsLogging
 import cmwell.zstore.ZStore
 import io.circe._
@@ -23,7 +23,7 @@ import io.circe.parser._
 import cmwell.util.concurrent.{DoNotRetry, RetryParams, RetryWith, ShouldRetry, retryUntil}
 
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
 
@@ -43,7 +43,7 @@ object StpUtil extends DataToolsLogging {
   def readPreviousTokensWithRetry(baseUrl: String, path: String, format: String, zStore: ZStore)
                                  (implicit context: ExecutionContext) = {
 
-    def shouldRetry(action: String): (Try[TokenAndStatisticsMap], RetryParams) => ShouldRetry[RetryParams] = {
+    def shouldRetry(action: String): (Try[AgentTokensAndStatistics], RetryParams) => ShouldRetry[RetryParams] = {
       import scala.language.implicitConversions
       implicit def asFiniteDuration(d: Duration) = scala.concurrent.duration.Duration.fromNanos(d.toNanos);
       {
@@ -73,36 +73,47 @@ object StpUtil extends DataToolsLogging {
   }
 
   def readPreviousTokens(baseUrl: String, path: String, zStore: ZStore)
-                        (implicit context: ExecutionContext)  = {
+                        (implicit context: ExecutionContext) : Future[AgentTokensAndStatistics]  = {
 
     zStore.getStringOpt(s"stp-agent-${extractLastPart(path)}", dontRetry = true).map {
       case None => {
         // No such key - start STP from scratch
-        Map.newBuilder[String, TokenAndStatistics].result()
+        AgentTokensAndStatistics(Map.newBuilder[String, TokenAndStatistics].result())
       }
       case Some(tokenPayload) => {
         // Key exists and has returned
-        tokenPayload.lines.map({
+        val allJson = tokenPayload.lines.map{
           row =>
             parse(row) match {
               case Left(parseFailure@ParsingFailure(_, _)) => throw parseFailure
-              case Right(json) => {
-                val token = json.hcursor.downField("token").as[String].getOrElse("")
-                val sensor = json.hcursor.downField("sensor").as[String].getOrElse("")
-                val receivedInfotons = json.hcursor.downField("receivedInfotons").as[Long].toOption.map {
-                  value => DownloadStats(receivedInfotons = value)
-                }
-
-                sensor -> (token, receivedInfotons)
-              }
+              case Right(json) => json
             }
-        })
-        .foldLeft(Map.newBuilder[String, TokenAndStatistics])(_.+=(_))
-        .result()
+        }.toList
+
+        val ingestStats = allJson.find{  _.hcursor.downField("ingestedInfotons").succeeded }.map { json =>
+          val ingestedInfotons = json.hcursor.downField("ingestedInfotons").as[Long].toOption
+          val failedInfotons = json.hcursor.downField("failedInfotons").as[Long].toOption
+          IngestStats(None,0,ingestedInfotons.get,failedInfotons.get)
+        }
+
+        val materializedStats = allJson.find{ _.hcursor.downField("materializedInfotons").succeeded }.map { json=>
+          val materialized = json.hcursor.downField("materializedInfotons").as[Long].toOption
+          DownloadStats(receivedInfotons = materialized.get)
+        }
+
+        val sensors = allJson.map { json=>
+          val token = json.hcursor.downField("token").as[String].getOrElse("")
+          val sensor = json.hcursor.downField("sensor").as[String].getOrElse("")
+          val receivedInfotons = json.hcursor.downField("receivedInfotons").as[Long].toOption.map {
+            value => DownloadStats(receivedInfotons = value)
+          }
+          sensor -> (token, receivedInfotons)
+        }.foldLeft(Map.newBuilder[String, TokenAndStatistics])(_.+=(_))
+        .result
+
+        AgentTokensAndStatistics(sensors, ingestStats, materializedStats)
+
       }
     }
   }
-
 }
-
-

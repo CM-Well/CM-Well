@@ -29,22 +29,25 @@ import scala.concurrent.duration._
 object IngesterStats {
 
   case class IngestStats(label: Option[String] = None,
-                         ingestedBytes: Long,
-                         ingestedInfotons: Long,
-                         failedInfotons: Long)
+                         ingestedBytes: Long = 0,
+                         ingestedInfotons: Long = 0,
+                         failedInfotons: Long = 0)
 
   def apply(isStderr: Boolean = false,
             initDelay: FiniteDuration = 1.second,
             interval: FiniteDuration = 1.second,
             reporter: Option[ActorRef] = None,
-            label: Option[String] = None) = new IngesterStats(isStderr, initDelay, interval, reporter, label)
+            label: Option[String] = None,
+            initialIngestStats: Option[IngestStats] = None) =
+    new IngesterStats(isStderr, initDelay, interval, reporter, label, initialIngestStats)
 }
 
 class IngesterStats(isStderr: Boolean,
                     initDelay: FiniteDuration = 1.second,
                     interval: FiniteDuration = 1.second,
                     reporter: Option[ActorRef] = None,
-                    label: Option[String] = None)
+                    label: Option[String] = None,
+                    initialIngestStats: Option[IngestStats] = None)
     extends GraphStage[FlowShape[IngestEvent, IngestEvent]]
     with DataToolsLogging {
   val in = Inlet[IngestEvent]("ingest-stats.in")
@@ -73,6 +76,15 @@ class IngesterStats(isStderr: Boolean,
       val formatter = java.text.NumberFormat.getNumberInstance
 
       override def preStart(): Unit = {
+
+        // Initialise persisted statistics
+        initialIngestStats.foreach { stats =>
+          logger.debug(s"${name} Loading statistics initial state of Ingested Infotons: ${stats.ingestedInfotons}," +
+            s" Failed Infotons ${stats.failedInfotons}")
+          totalIngestedInfotons.mark(stats.ingestedInfotons)
+          totalFailedInfotons.mark(stats.failedInfotons)
+        }
+
         asyncCB = getAsyncCallback { _ =>
           displayStats()
           resetStats()
