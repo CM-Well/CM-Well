@@ -293,9 +293,9 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
             val spPostBody = makeReqBody(paths, "SPARQL", sparqlIdentity, Seq(s"/$firstFolder/_")) // using wildcards
             spinCheck(100 milliseconds,true)(
               Http.post(_sp, spPostBody, textPlain)){resp => val body = new String(resp.payload, "UTF-8").trim
-              leaves.foldLeft(true) { (isTrue, l) =>
-                isTrue && (body.contains(l) == true)
-              }
+
+              leaves.forall(l => body.contains(l) == true)
+
             }.map {
               resp =>
                 val body = new String(resp.payload, "UTF-8").trim
