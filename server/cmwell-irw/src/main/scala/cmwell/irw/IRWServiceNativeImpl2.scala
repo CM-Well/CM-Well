@@ -15,6 +15,7 @@
 package cmwell.irw
 
 import java.nio.ByteBuffer
+import java.util.NoSuchElementException
 import java.util.concurrent.TimeUnit
 
 import akka.NotUsed
@@ -24,7 +25,7 @@ import cmwell.common.metrics.WithMetrics
 import cmwell.domain._
 import cmwell.driver.{Dao, DaoExecution}
 import cmwell.util.collections.partitionWith
-import cmwell.util.concurrent.{travector, FutureTimeout}
+import cmwell.util.concurrent.{FutureTimeout, travector}
 import cmwell.util.jmx._
 import cmwell.util.{Box, BoxedFailure, EmptyBox, FullBox}
 import cmwell.zstore.ZStore
@@ -78,10 +79,12 @@ class IRWServiceNativeImpl2(
   // here we are prepering all statments to use
 
   val getInfotonUUID: PreparedStatement = storageDao.getSession.prepare("SELECT * FROM infoton WHERE uuid = ?")
-  val getLastInPath: PreparedStatement = storageDao.getSession.prepare("SELECT uuid FROM path WHERE path = ? LIMIT 1")
+  val getLastInPath: PreparedStatement = storageDao.getSession.prepare("SELECT uuid, last_modified FROM path WHERE path = ? LIMIT 1")
   val getAllHistory: PreparedStatement =
     storageDao.getSession.prepare("SELECT last_modified,uuid FROM path WHERE path = ?")
   val getHistory = storageDao.getSession.prepare("SELECT last_modified,uuid FROM path WHERE path = ? limit ?")
+  val getHistoryNeighbourhoodAsc = storageDao.getSession.prepare("SELECT last_modified,uuid FROM path WHERE path = ? AND last_modified >= ? LIMIT ?")
+  val getHistoryNeighbourhoodDesc = storageDao.getSession.prepare("SELECT last_modified,uuid FROM path WHERE path = ? AND last_modified <= ? LIMIT ?")
   val getIndexTime: PreparedStatement = storageDao.getSession.prepare(
     s"SELECT uuid,quad,field,value FROM infoton WHERE uuid = ? AND quad = '$sysQuad' AND field = 'indexTime'"
   )
@@ -139,6 +142,29 @@ class IRWServiceNativeImpl2(
       } catch {
         case t: Throwable => BoxedFailure(t)
       }
+  }
+
+  def rawReadUuidAsyc(uuid: String, lvl: ConsistencyLevel): Future[Seq[(String,String,(String,Array[Byte]))]] = {
+    // TODO this was copied from convert method, we need to stay DRY
+
+    import scala.concurrent.ExecutionContext.Implicits.global
+
+    executeAsyncInternal(getInfotonUUID.bind(uuid).setConsistencyLevel(lvl)).map { result =>
+      new Iterator[(String, String, (String, Array[Byte]))] {
+        override def hasNext: Boolean = !result.isExhausted
+        override def next(): (String, String, (String, Array[Byte])) = {
+          val r: Row = result.one()
+          val q = r.getString("quad")
+          val f = r.getString("field")
+          val v = r.getString("value")
+          val d = {
+            if (f != "data") null
+            else Bytes.getArray(r.getBytes("data"))
+          }
+          (q, f, v -> d)
+        }
+      }.toSeq
+    }
   }
 
   def readUUIDSAsync(uuids: Seq[String],
@@ -521,6 +547,45 @@ class IRWServiceNativeImpl2(
     val stmt = getAllHistory.bind(path).setConsistencyLevel(level)
     CassandraSource(stmt)(storageDao.getSession).map { r: Row =>
       r.getTimestamp("last_modified").getTime -> r.getString("uuid")
+    }
+  }
+
+  def lastVersion(path: String, level: ConsistencyLevel): Future[(Long, String)] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
+    val stmt = getLastInPath.bind(path.replaceAll("'", "''")).setConsistencyLevel(level)
+    executeAsync(stmt, s"'${getLastInPath.getQueryString}'.bind($path)").map { res =>
+      val it = res.iterator()
+      val b = Vector.newBuilder[(Long, String)]
+      while (it.hasNext) {
+        val r: Row = it.next()
+        if (r ne null) {
+          val d = r.getTimestamp("last_modified") // TODO this Vector.newBuilder should be a private def!!!
+          val u = r.getString("uuid")
+          b += (d.getTime -> u)
+        }
+      }
+
+      b.result().headOption.getOrElse(throw new NoSuchElementException(s"path $path has no history"))
+    }
+  }
+
+  def historyNeighbourhood(path: String, timestamp: Long, desc: Boolean, limit: Int, level: ConsistencyLevel): Future[Vector[(Long, String)]] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
+    val pStmt = if(desc) getHistoryNeighbourhoodDesc else getHistoryNeighbourhoodAsc
+    val stmt = pStmt.bind(path.replaceAll("'", "''"), new java.util.Date(timestamp), Int.box(limit)).setConsistencyLevel(level)
+    executeAsync(stmt, s"'${pStmt.getQueryString}'.bind($path,$timestamp,$limit)").map { res =>
+      val it = res.iterator()
+      val b = Vector.newBuilder[(Long, String)]
+      while (it.hasNext) {
+        val r: Row = it.next()
+        if (r ne null) {
+          val d = r.getTimestamp("last_modified")
+          val u = r.getString("uuid")
+          b += (d.getTime -> u)
+        }
+      }
+
+      b.result()
     }
   }
 
