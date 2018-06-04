@@ -15,12 +15,16 @@
 
 package cmwell.crawler
 
-import akka.NotUsed
+import akka.{Done, NotUsed}
 import akka.actor.ActorSystem
 import akka.kafka.scaladsl.Consumer
 import akka.kafka.{ConsumerSettings, Subscriptions}
 import akka.stream.{ClosedShape, SourceShape}
 import akka.stream.scaladsl.{GraphDSL, RunnableGraph, Source}
+import cmwell.common._
+import cmwell.common.formats.BGMessage
+import cmwell.zstore.ZStore
+import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord}
 import org.apache.kafka.common.TopicPartition
@@ -28,66 +32,98 @@ import org.apache.kafka.common.serialization.{ByteArrayDeserializer, StringDeser
 
 import scala.concurrent.duration.{DurationInt, DurationLong}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 
-case class CrawlerPosition(offset: Long, timeStamp: Long)
+//case class CrawlerPosition(offset: Long, timeStamp: Long)
 sealed trait CrawlerState
-case class CrawlerBounds(startingOffset: Long, endOffset: Long) extends CrawlerState
+case class CrawlerBounds(offset: Long) extends CrawlerState
+case class CrawlerMessage[T](offset: Long, msg: T)
 case object NullCrawlerBounds extends CrawlerState
 
 object CrawlerStream extends LazyLogging {
+  //todo: delay should be configurable
+  val retryDuration = 30.seconds
+  val safetyNetTimeInMillis: Long = ??? // todo: get from config
+  case class CrawlerMaterialization(control: Consumer.Control, doneState: Future[Done])
 
-  /*
-  def createCrawlerStream(startingPoint: CrawlerPosition)(sys: ActorSystem) = {
-    positionSource(startingPoint)
-      .flatMapConcat {
+  def createAndRunCrawlerStream(config: Config, topic: String, partition: Int, zStore: ZStore, offsetsService: OffsetsService)
+                               (sys: ActorSystem, ec: ExecutionContext): CrawlerMaterialization = {
+    val bootStrapServers = config.getString("cmwell.bg.kafka.bootstrap.servers")
+    val persistId = config.getString("cmwell.crawler.persist.key") + "." + partition + (if (!topic.endsWith(".priority")) ".p" else "") + "_offset"
+    val initialPersistOffset = Try(offsetsService.readWithTimestamp(persistId))
+    initialPersistOffset match {
+      case Failure(ex) =>
+        val failure = Future.failed[Done](
+          new Exception(s"zStore read for initial offset failed! Failing the crawler stream. It should be automatically restarted later.", ex))
+        CrawlerMaterialization(null, failure)
+      case Success(persistedOffset) =>
+        val initialOffset = persistedOffset.fold(0L)(_.offset)
+        val offsetSrc = positionSource(topic, partition, offsetsService)(sys, ec)
+        val nonBackpressuredMessageSrc = messageSource(initialOffset, topic, partition, bootStrapServers)(sys)
+        val messageSrc = backpressuredMessageSource(offsetSrc, nonBackpressuredMessageSrc)
+        messageSrc
+            .map { msg =>
+              val cmd = CommandSerializer.decode(msg.value) match {
+                case CommandRef(ref) => zStore.get(ref).map(CommandSerializer.decode(_).asInstanceOf[SingleCommand])(ec)
+                case singleCommand => Future.successful(singleCommand.asInstanceOf[SingleCommand])
+              }
+              CrawlerMessage(msg.offset(), cmd)
+            }
+            .mapAsync(1)(cm => cm.msg.map(CrawlerMessage(cm.offset, _))(ec))
+//            .map(b => b.)
 
-      }
-
+        ???
+      //todo: the future[done] will combine isShutDown with the sink future done!!!
+    }
   }
-*/
-
-
-  private def positionSource(startingState: CrawlerPosition)(sys: ActorSystem, ec: ExecutionContext): Source[CrawlerState, NotUsed] = {
+  private def positionSource(topic: String, partition: Int, offsetService: OffsetsService)
+                            (sys: ActorSystem, ec: ExecutionContext): Source[Long, NotUsed] = {
+    val startingState = PersistedOffset(-1, -1)
+    val zStoreKeyForImp = "imp." + partition + (if (!topic.endsWith(".priority")) ".p" else "") + "_offset"
+    val zStoreKeyForIndexer = "persistOffsetsDoneByIndexer." + partition + (if (!topic.endsWith(".priority")) ".p" else "") + "_offset"
     Source.unfoldAsync(startingState) { state =>
-      val zStorePosition: CrawlerPosition = ???
-      if (zStorePosition.offset < state.offset) {
-        val e = new Exception(s"Persisted offset [${zStorePosition.offset}] is smaller than current crawler offset [${state.offset}]. " +
-          s"This should never happen. Closing crawler stream!")
-        logger.error("This is no need to print an exception twice - just read it from the oncomplete log print!!!") //todo: implement in onComplete
-        Future.failed[Option[(CrawlerPosition, CrawlerState)]](e)
-      }
-      else if (zStorePosition.offset == state.offset) {
-        //Bg didn't do anything from the previous check - sleep and then emit some sentinel for another element
-        //todo: delay should be configurable
-        akka.pattern.after(30.seconds, sys.scheduler)(Future.successful(Some(state -> NullCrawlerBounds)))(ec)
-      }
-      else {
-        val safetyNetTimeInMillis: Long = ??? // todo: get from config
-        val now = System.currentTimeMillis()
-        val timeDiff = now - zStorePosition.timeStamp
-        val delayDuration = Math.max(0, safetyNetTimeInMillis - timeDiff).millis
-        //todo: watch off by one errors!!
-        val bounds = CrawlerBounds(state.offset + 1, zStorePosition.offset)
-        akka.pattern.after(delayDuration, sys.scheduler)(Future.successful(Some(zStorePosition -> bounds)))(ec)
+      val zStoreImpPosition: Option[PersistedOffset] = offsetService.readWithTimestamp(zStoreKeyForImp)
+      val zStoreIndexerPosition: Option[PersistedOffset] = offsetService.readWithTimestamp(zStoreKeyForIndexer)
+      val zStorePosition = for {
+        impPosition <- zStoreImpPosition
+        indexPosition <- zStoreIndexerPosition
+      } yield PersistedOffset(Math.min(impPosition.offset, indexPosition.offset), Math.max(impPosition.timestamp, indexPosition.timestamp))
+      zStorePosition.fold {
+        logger.warn(s"zStore responded with None for key $zStoreKeyForImp or $zStoreKeyForIndexer. Not reasonable! Will retry again in $retryDuration.")
+        akka.pattern.after(retryDuration, sys.scheduler)(Future.successful(Option(state -> (NullCrawlerBounds: CrawlerState))))(ec)
+      } { position =>
+        if (position.offset < state.offset) {
+          val e = new Exception(s"Persisted offset [${position.offset}] is smaller than the current crawler offset [${state.offset}]. " +
+            s"This should never happen. Closing crawler stream!")
+          logger.error("This is no need to print an exception twice - just read it from the oncomplete log print!!!") //todo: implement in onComplete
+          Future.failed[Option[(PersistedOffset, CrawlerState)]](e)
+        }
+        else if (position.offset == state.offset) {
+          //Bg didn't do anything from the previous check - sleep and then emit some sentinel for another element
+          akka.pattern.after(retryDuration, sys.scheduler)(Future.successful(Some(state -> NullCrawlerBounds)))(ec)
+        }
+        else {
+          val now = System.currentTimeMillis()
+          val timeDiff = now - position.timestamp
+          val delayDuration = Math.max(0, safetyNetTimeInMillis - timeDiff).millis
+          //todo: watch off by one errors!!
+          val bounds = CrawlerBounds(position.offset)
+          akka.pattern.after(delayDuration, sys.scheduler)(Future.successful(Some(position -> bounds)))(ec)
+        }
       }
     }
-      .filter {
-        case _: CrawlerBounds => true
-        case NullCrawlerBounds => false
+      .collect {
+        case bounds: CrawlerBounds => bounds.offset
       }
   }
 
-  private def messageSource()(sys: ActorSystem): Source[ConsumerRecord[Array[Byte], Array[Byte]], Consumer.Control] = {
+  private def messageSource(initialOffset: Long, topic: String, partition: Int, bootStrapServers: String)
+                           (sys: ActorSystem): Source[ConsumerRecord[Array[Byte], Array[Byte]], Consumer.Control] = {
     val consumerSettings = ConsumerSettings(sys, new ByteArrayDeserializer, new ByteArrayDeserializer)
-    /*
-      .withBootstrapServers("localhost:9092")
-      .withGroupId("group1")
+      .withBootstrapServers(bootStrapServers)
       .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
-*/
-    val partition = 0
     val subscription = Subscriptions.assignmentWithOffset(
-      new TopicPartition("topic1", partition) -> 0L //fromOffset
-    )
+      new TopicPartition(topic, partition) -> initialOffset)
     Consumer.plainSource(consumerSettings, subscription)
   }
 
@@ -95,10 +131,10 @@ object CrawlerStream extends LazyLogging {
                                          messageSource: Source[ConsumerRecord[Array[Byte], Array[Byte]], Consumer.Control]) =
     Source.fromGraph(GraphDSL.create(offsetSource, messageSource)((a, b) => b) {
       implicit builder => {
-        (offstSource, msgSource) => {
+        (offsetSource, msgSource) => {
           import akka.stream.scaladsl.GraphDSL.Implicits._
           val ot = builder.add(OffsetThrottler())
-          offstSource ~> ot.in0
+          offsetSource ~> ot.in0
           msgSource ~> ot.in1
           SourceShape(ot.out)
         }

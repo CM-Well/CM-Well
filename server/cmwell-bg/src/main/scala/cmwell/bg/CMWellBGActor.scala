@@ -34,10 +34,13 @@ import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.elasticsearch.metrics.ElasticsearchReporter
 import cmwell.common.exception._
+import cmwell.crawler.CrawlerStream
+import cmwell.crawler.CrawlerStream.CrawlerMaterialization
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import scala.util.{Failure, Success}
 
 object CMWellBGActor {
   val name = "CMWellBGActor"
@@ -65,9 +68,12 @@ class CMWellBGActor(partition: Int,
 
   var impStream: ImpStream = null
   var indexerStream: IndexerStream = null
+  var crawlerMaterialization: CrawlerMaterialization = null
   val waitAfter503 = config.getInt("cmwell.bg.waitAfter503")
+  val crawlerRestartDelayTime = config.getDuration("cmwell.crawler.restartDelayTime").toMillis.millis
   val impOn = config.getBoolean("cmwell.bg.ImpOn")
   val indexerOn = config.getBoolean("cmwell.bg.IndexerOn")
+  val persistCommandsTopic = config.getString("cmwell.bg.persist.commands.topic")
 
   // Metrics
   val bgMetrics = new BGMetrics
@@ -114,39 +120,45 @@ class CMWellBGActor(partition: Int,
     case Start =>
       logger.info("requested to start all streams")
       startAll
-      sender() ! Started
-    case StartImp =>
-      logger.info("requested to start Imp Stream")
-      startImp
-      sender() ! Started
-    case StartIndexer =>
-      logger.info("requested to start Indexer Stream")
-      startIndexer
-      sender() ! Started
-    case Stop =>
-      logger.info("requested to stop all streams")
-      stopAll
-      sender() ! Stopped
-    case StopImp =>
-      logger.info("requested to stop Imp Stream")
-      stopImp
-      sender() ! Stopped
-    case StopIndexer =>
-      logger.info("requested to stop Indexer Stream")
-      stopIndexer
-      sender() ! Stopped
+//      sender() ! Started
+//    case StartImp =>
+//      logger.info("requested to start Imp Stream")
+//      startImp
+//      sender() ! Started
+//    case StartIndexer =>
+//      logger.info("requested to start Indexer Stream")
+//      startIndexer
+//      sender() ! Started
+//    case Stop =>
+//      logger.info("requested to stop all streams")
+//      stopAll
+//      sender() ! Stopped
+//    case StopImp =>
+//      logger.info("requested to stop Imp Stream")
+//      stopImp
+//      sender() ! Stopped
+//    case StopIndexer =>
+//      logger.info("requested to stop Indexer Stream")
+//      stopIndexer
+//      sender() ! Stopped
     case ShutDown =>
       logger.info("requested to shutdown")
       stopAll
       logger.info("stopped all streams. taking the last pill....")
       self ! PoisonPill
-    case All503 =>
-      logger.info("Got all503 message. becoming state503")
-      context.become(state503)
-      logger.debug("stopping all streams")
-      stopAll
-      logger.debug(s"became state503. scheduling resume in [waitAfter503] seconds")
-      context.system.scheduler.scheduleOnce(waitAfter503.seconds, self, Resume)
+//    case All503 =>
+//      logger.info("Got all503 message. becoming state503")
+//      context.become(state503)
+//      logger.debug("stopping all streams")
+//      stopAll
+//      logger.debug(s"became state503. scheduling resume in [waitAfter503] seconds")
+//      context.system.scheduler.scheduleOnce(waitAfter503.seconds, self, Resume)
+    case MarkCrawlerAsStopped =>
+      logger.info(s"Crawler stream stopped. Check its logs for details. Marking it as stopped and restarting it in $crawlerRestartDelayTime")
+      crawlerMaterialization = null
+      system.scheduler.scheduleOnce(crawlerRestartDelayTime)(self ! StartCrawler)
+    case StartCrawler =>
+      startCrawler
     case Indexer503 =>
       logger.error("Indexer Stopped with Exception. check indexer log for details. Restarting indexer.")
       stopIndexer
@@ -160,29 +172,29 @@ class CMWellBGActor(partition: Int,
       System.exit(1)
   }
 
-  def state503: Receive = {
-    case Resume =>
-      logger.info("accepted Resume message")
-      context.become(receive)
-      logger.info(s"became normal and sending Start message to myself")
-      self ! Start
-
-    case ResumeIndexer =>
-      self ! StartIndexer
-      context.become(receive)
-
-    case ShutDown =>
-      logger.info("requested to shutdown")
-      stopAll
-      logger.info("stopped all streams. taking the last pill....")
-      self ! PoisonPill
-
-    case ExitWithError =>
-      logger.error(s"Requested to exit with error by ${sender()}")
-      System.exit(1)
-
-    case x => logger.debug(s"got $x in state503 state, ignoring!!!!")
-  }
+//  def state503: Receive = {
+////    case Resume =>
+////      logger.info("accepted Resume message")
+////      context.become(receive)
+////      logger.info(s"became normal and sending Start message to myself")
+////      self ! Start
+//
+////    case ResumeIndexer =>
+////      self ! StartIndexer
+////      context.become(receive)
+//
+//    case ShutDown =>
+//      logger.info("requested to shutdown")
+//      stopAll
+//      logger.info("stopped all streams. taking the last pill....")
+//      self ! PoisonPill
+//
+//    case ExitWithError =>
+//      logger.error(s"Requested to exit with error by ${sender()}")
+//      System.exit(1)
+//
+//    case x => logger.debug(s"got $x in state503 state, ignoring!!!!")
+//  }
 
   def shutdown = {
     indexerStream.shutdown
@@ -209,7 +221,42 @@ class CMWellBGActor(partition: Int,
     }
   }
 
+  private def startCrawler = {
+    if (crawlerMaterialization == null) {
+      logger.info("starting CrawlerStream")
+      //todo: add priority crawler
+      crawlerMaterialization = CrawlerStream.createAndRunCrawlerStream(config, persistCommandsTopic, partition, zStore, offsetsService)(system, ec)
+      crawlerMaterialization.doneState.onComplete {
+        case Success(_) =>
+          logger.info("The crawler stream finished with success. Sending a self message to mark it as finished.")
+          self ! MarkCrawlerAsStopped
+        case Failure(ex) =>
+          logger.error("The crawler stream finished with exception. Sending a self message to mark it as finished. The exception was: ", ex)
+          self ! MarkCrawlerAsStopped
+      }
+      //The stream didn't even start - set it as null
+      if (crawlerMaterialization.control == null)
+        crawlerMaterialization = null
+    } else
+      logger.error("requested to start Crawler Stream but it is already running. doing nothing.")
+  }
+
+  private def stopCrawler = {
+    if (crawlerMaterialization != null) {
+      logger.info("Sending the stop signal to the crawler stream")
+      val res = crawlerMaterialization.control.shutdown()
+      res.onComplete {
+        case Success(_) => logger.info("The future of the crawler stream shutdown control finished with success. " +
+          "It will be marked as stopped only after the stream will totally finish.")
+        case Failure(ex) => logger.error("The future of the crawler stream shutdown control finished with exception. " +
+          "The crawler stream will be marked as stopped only after the stream will totally finish.The exception was: ", ex)
+      }
+    } else
+      logger.error("Crawler Stream was already stopped and it was requested to finish it again. Not reasonable!")
+  }
+
   private def startAll = {
+    startCrawler
     startImp
     startIndexer
   }
@@ -236,6 +283,7 @@ class CMWellBGActor(partition: Int,
   }
 
   private def stopAll = {
+    stopCrawler
     stopIndexer
     stopImp
   }
@@ -270,25 +318,27 @@ class CMWellBGActor(partition: Int,
 }
 
 case object Start
-case object Started
-case object StartImp
-case object ImpStarted
-case object StartIndexer
-case object IndexerStarted
-case object Stop
-case object Stopped
-case object StopImp
-case object ImpStopped
-case object StopIndexer
-case object IndexerStopped
+//case object Started
+//case object StartImp
+//case object ImpStarted
+//case object StartIndexer
+//case object IndexerStarted
+//case object Stop
+//case object Stopped
+//case object StopImp
+//case object ImpStopped
+//case object StopIndexer
+//case object IndexerStopped
 case object ShutDown
-case object All503
+case object MarkCrawlerAsStopped
+case object StartCrawler
+//case object All503
 case object Indexer503
 case object Imp503
-case object State503
-case object Resume
-case object ResumeIndexer
-case object Suspend
+//case object State503
+//case object Resume
+//case object ResumeIndexer
+//case object Suspend
 
 trait ESIndicesMapping {
 
