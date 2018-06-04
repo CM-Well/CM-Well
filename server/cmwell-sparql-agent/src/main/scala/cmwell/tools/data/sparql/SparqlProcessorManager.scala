@@ -478,17 +478,6 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
         self ! JobHasFailed(job, ex)
       }
     }
-/*
-      case Left(error) =>
-        logger.error(
-          s"job: $job could not initial token and statistics (In case this job should be running it will be restarted on the next periodic check):",
-          error
-        )
-
-        tokenReporter ! PoisonPill
-        self ! JobHasFailed(job, new Exception(error))
-        */
-
 
   }
 
