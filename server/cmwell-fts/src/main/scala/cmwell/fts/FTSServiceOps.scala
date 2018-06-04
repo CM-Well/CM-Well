@@ -109,7 +109,7 @@ trait FTSServiceOps {
   ): Future[Boolean]
 
   def get(uuid: String, indexName: String, partition: String = defaultPartition)(
-    implicit executionContext: ExecutionContext): Future[FTSThinInfoton]
+    implicit executionContext: ExecutionContext): Future[(FTSThinInfoton,Boolean)]
 
   def getIndicesNamesByType(suffix: String, partition: String = defaultPartition): Seq[String]
 

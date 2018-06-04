@@ -203,9 +203,9 @@ class FTSServiceES private (classPathConfigFile: String, waitForGreen: Boolean)
 
   override def get(uuid: String, indexName: String, partition: String = defaultPartition)(
     implicit executionContext: ExecutionContext
-  ): Future[FTSThinInfoton] = {
+  ): Future[(FTSThinInfoton,Boolean)] = {
     val req = client.prepareGet(indexName, "infoclone", uuid).setFields("system.path", "system.uuid", "system.lastModified", "system.indexTime")
-    injectFuture[GetResponse](req.execute).map(FTSThinInfoton(_))
+    injectFuture[GetResponse](req.execute).map(FTSThinInfoton(_) -> !indexName.contains("history"))
   }
 
   def getTotalRequestedToIndex(): Long = totalRequestedToIndex
@@ -1979,6 +1979,8 @@ object FTSThinInfoton {
       gr.getField("system.lastModified").getValue.asInstanceOf[String],
       gr.getField("system.indexTime").getValue.asInstanceOf[Long],
       None
+      //todo once Old FTS is removed, any ThinInfoton should contain current as well
+//      gr.getField("system.current").getValue.asInstanceOf[Boolean]
     )
   }
 }
