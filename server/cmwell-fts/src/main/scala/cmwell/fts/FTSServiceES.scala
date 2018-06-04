@@ -201,6 +201,13 @@ class FTSServiceES private (classPathConfigFile: String, waitForGreen: Boolean)
     loger.info("got yellow light from ES")
   }
 
+  override def get(uuid: String, indexName: String, partition: String = defaultPartition)(
+    implicit executionContext: ExecutionContext
+  ): Future[(FTSThinInfoton,Boolean)] = {
+    val req = client.prepareGet(indexName, "infoclone", uuid).setFields("system.path", "system.uuid", "system.lastModified", "system.indexTime")
+    injectFuture[GetResponse](req.execute).map(FTSThinInfoton(_) -> !indexName.contains("history"))
+  }
+
   def getTotalRequestedToIndex(): Long = totalRequestedToIndex
 
   def getTotalIndexed(): Long = totalIndexed.get()
@@ -1964,6 +1971,20 @@ case class FTSScrollThinResponse(total: Long,
 case object FTSTimeout
 
 case class FTSThinInfoton(path: String, uuid: String, lastModified: String, indexTime: Long, score: Option[Float])
+object FTSThinInfoton {
+  def apply(gr: GetResponse): FTSThinInfoton = {
+    FTSThinInfoton(
+      gr.getField("system.path").getValue.asInstanceOf[String],
+      gr.getField("system.uuid").getValue.asInstanceOf[String],
+      gr.getField("system.lastModified").getValue.asInstanceOf[String],
+      gr.getField("system.indexTime").getValue.asInstanceOf[Long],
+      None
+      //todo once Old FTS is removed, any ThinInfoton should contain current as well
+//      gr.getField("system.current").getValue.asInstanceOf[Boolean]
+    )
+  }
+}
+
 case class FTSThinSearchResponse(total: Long,
                                  offset: Long,
                                  length: Long,

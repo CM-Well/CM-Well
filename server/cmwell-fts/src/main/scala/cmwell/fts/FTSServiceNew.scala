@@ -30,7 +30,8 @@ import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesResponse
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse
 import org.elasticsearch.action.bulk.{BulkItemResponse, BulkResponse}
-import org.elasticsearch.action.get.GetResponse
+import org.elasticsearch.action.exists.ExistsRequest
+import org.elasticsearch.action.get.{GetRequest, GetResponse}
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.search.{SearchRequestBuilder, SearchResponse, SearchType}
 import org.elasticsearch.action.update.UpdateRequest
@@ -345,6 +346,22 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
           request.addSort(fieldSort(reversed).order(order).unmappedType(fType.asString))
         }
       }
+  }
+
+  override def get(uuid: String, indexName: String, partition: String = defaultPartition)(
+    implicit executionContext: ExecutionContext
+  ): Future[(FTSThinInfoton, Boolean)] = {
+    val p = Promise[(FTSThinInfoton, Boolean)]
+    val fields = Seq("path", "uuid", "lastModified", "indexTime", "current").map(f => s"system.$f")
+    val req = client.prepareGet(indexName, "infoclone", uuid).setFields(fields:_*)
+    injectFuture[GetResponse](req.execute).onComplete {
+      case Success(gr) if gr.isExists =>
+        val isCurrent = gr.getField("system.current").getValue.asInstanceOf[Boolean]
+        p.success(FTSThinInfoton(gr) -> isCurrent)
+      case Success(_) => p.failure(new NoSuchElementException(s"uuid $uuid was not found on index $indexName"))
+      case Failure(t) => p.failure(t)
+    }
+    p.future
   }
 
   def thinSearch(
@@ -786,11 +803,6 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
   )(implicit executionContext: ExecutionContext, logger: Logger = loger): Seq[Future[FTSStartScrollResponse]] = {
 
     logger.debug(s"StartMultiScroll request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $withHistory")
-    def indicesNames(indexName: String): Seq[String] = {
-      val currentAliasRes = client.admin.indices().prepareGetAliases(indexName).execute().actionGet()
-      val indices = currentAliasRes.getAliases.keysIt().asScala.toSeq
-      indices
-    }
 
     def dataNodeIDs = {
       client
@@ -892,6 +904,12 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
       case Desc => SortOrder.DESC
       case Asc  => SortOrder.ASC
     }
+  }
+
+  private def indicesNames(indexName: String): Seq[String] = {
+    val currentAliasRes = client.admin.indices().prepareGetAliases(indexName).execute().actionGet()
+    val indices = currentAliasRes.getAliases.keysIt().asScala.toSeq
+    indices
   }
 
   private def applyFiltersToRequest(request: SearchRequestBuilder,
