@@ -29,6 +29,7 @@ import cmwell.tools.data.sparql.InfotonReporter.{RequestDownloadStats, RequestIn
 import cmwell.tools.data.sparql.SparqlProcessorManager._
 import cmwell.tools.data.utils.akka._
 import cmwell.tools.data.utils.akka.stats.IngesterStats
+import cmwell.tools.data.utils.akka.stats.IngesterStats.IngestStats
 import cmwell.tools.data.utils.chunkers.GroupChunker
 import cmwell.tools.data.utils.chunkers.GroupChunker._
 import cmwell.tools.data.utils.text.Tokens
@@ -436,52 +437,58 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
 
     val hostUpdatesSource = job.config.hostUpdatesSource.getOrElse(settings.hostUpdatesSource)
 
-    SparqlTriggeredProcessor.loadInitialTokensAndStatistics(Option(tokenReporter)) match {
+    val initialTokensAndStatistics = SparqlTriggeredProcessor.loadInitialTokensAndStatistics(Option(tokenReporter))
 
-      case Right(initialTokensAndStatistics) =>
-        val agent = SparqlTriggeredProcessor
-          .listen(job.config, hostUpdatesSource, false, Some(tokenReporter),
-            Right(initialTokensAndStatistics), Some(job.name), infotonGroupSize = settings.infotonGroupSize)
-          .map { case (data, _) => data }
-          .via(GroupChunker(formatToGroupExtractor(settings.materializedViewFormat)))
-          .map(concatByteStrings(_, endl))
-        val (killSwitch, jobDone) = Ingester
-          .ingest(
-            baseUrl = settings.hostWriteOutput,
-            format = settings.materializedViewFormat,
-            source = agent,
-            writeToken = Option(settings.writeToken),
-            force = job.config.force.getOrElse(false),
-            label = label
-          )
-          .via(IngesterStats(isStderr = false, reporter = Some(tokenReporter), label = label,
-            initialIngestStats = initialTokensAndStatistics.agentIngestStats ))
-          .viaMat(KillSwitches.single)(Keep.right)
-          .toMat(Sink.ignore)(Keep.both)
-          .run()
-        currentJobs = currentJobs + (job.name -> JobRunning(job, killSwitch, tokenReporter))
-        logger.info(s"starting job $job")
-        jobDone.onComplete {
-          case Success(_) => {
-            logger.info(s"job: $job finished successfully")
-            //The stream has already finished - kill the token actor
-            tokenReporter ! PoisonPill
-            self ! JobHasFinished(job)
-          }
-          case Failure(ex) => {
-            logger.error(
-              s"job: $job finished with error (In case this job should be running it will be restarted on the next periodic check):",
-              ex
-            )
-            //The stream has already finished - kill the token actor
-            tokenReporter ! PoisonPill
-            self ! JobHasFailed(job, ex)
-          }
-        }
-
-      case Left(error) =>
-        Source.failed(new Exception(error))
+    val agent = SparqlTriggeredProcessor
+      .listen(job.config, hostUpdatesSource, false, Some(tokenReporter),
+        initialTokensAndStatistics, Some(job.name), infotonGroupSize = settings.infotonGroupSize)
+      .map { case (data, _) => data }
+      .via(GroupChunker(formatToGroupExtractor(settings.materializedViewFormat)))
+      .map(concatByteStrings(_, endl))
+    val (killSwitch, jobDone) = Ingester
+      .ingest(
+        baseUrl = settings.hostWriteOutput,
+        format = settings.materializedViewFormat,
+        source = agent,
+        writeToken = Option(settings.writeToken),
+        force = job.config.force.getOrElse(false),
+        label = label
+      )
+      .via(IngesterStats(isStderr = false, reporter = Some(tokenReporter), label = label,
+        initialIngestStats =   initialTokensAndStatistics.fold(_ => None, r=>r.agentIngestStats) ))
+      .viaMat(KillSwitches.single)(Keep.right)
+      .toMat(Sink.ignore)(Keep.both)
+      .run()
+    currentJobs = currentJobs + (job.name -> JobRunning(job, killSwitch, tokenReporter))
+    logger.info(s"starting job $job")
+    jobDone.onComplete {
+      case Success(_) => {
+        logger.info(s"job: $job finished successfully")
+        //The stream has already finished - kill the token actor
+        tokenReporter ! PoisonPill
+        self ! JobHasFinished(job)
+      }
+      case Failure(ex) => {
+        logger.error(
+          s"job: $job finished with error (In case this job should be running it will be restarted on the next periodic check):",
+          ex
+        )
+        //The stream has already finished - kill the token actor
+        tokenReporter ! PoisonPill
+        self ! JobHasFailed(job, ex)
+      }
     }
+/*
+      case Left(error) =>
+        logger.error(
+          s"job: $job could not initial token and statistics (In case this job should be running it will be restarted on the next periodic check):",
+          error
+        )
+
+        tokenReporter ! PoisonPill
+        self ! JobHasFailed(job, new Exception(error))
+        */
+
 
   }
 

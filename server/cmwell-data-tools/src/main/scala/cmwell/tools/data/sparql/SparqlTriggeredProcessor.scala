@@ -54,7 +54,6 @@ object SparqlTriggeredProcessor extends DataToolsLogging {
   def loadInitialTokensAndStatistics(tokenReporter : Option[ActorRef])
                                     (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = tokenReporter match {
 
-
     case None => Right(AgentTokensAndStatistics(Map.empty[String, TokenAndStatistics], None, None))
     case Some(reporter) =>
       import akka.pattern._
