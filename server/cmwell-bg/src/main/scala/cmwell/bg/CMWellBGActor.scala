@@ -203,7 +203,7 @@ class CMWellBGActor(partition: Int,
     if (indexerOn) {
       if (indexerStream == null) {
         logger.info("starting IndexerStream")
-        indexerStream = new IndexerStream(partition, config, irwService, ftsService, offsetsService, self)
+        indexerStream = new IndexerStream(partition, config, irwService, ftsService, zStore, offsetsService, self)
       } else
         logger.warn("requested to start Indexer Stream but it is already running. doing nothing.")
     }
