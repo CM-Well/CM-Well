@@ -225,7 +225,8 @@ class CMWellBGActor(partition: Int,
     if (crawlerMaterialization == null) {
       logger.info("starting CrawlerStream")
       //todo: add priority crawler
-      crawlerMaterialization = CrawlerStream.createAndRunCrawlerStream(config, persistCommandsTopic, partition, zStore, offsetsService)(system, ec)
+      crawlerMaterialization = CrawlerStream.createAndRunCrawlerStream(config, persistCommandsTopic, partition)(
+        irwService, ftsService, zStore, offsetsService)(system, ec)
       crawlerMaterialization.doneState.onComplete {
         case Success(_) =>
           logger.info("The crawler stream finished with success. Sending a self message to mark it as finished.")
@@ -287,34 +288,6 @@ class CMWellBGActor(partition: Int,
     stopIndexer
     stopImp
   }
-
-  // todo this code belongs in CrawlerStream, we need to wire it with zStore, IRW, etc. and move that logic there
-  private def detectCas(offset: Long, path: String, timestamp: Long) = {
-    irwService.lastVersion(path).map { case (ts,uuid) =>
-        ??? // what do we want to do with last version?
-    }.recover {
-      case _: NoSuchElementException => // inconsistency detected! (no data in `path` table at all!)
-      case t => logger.error(s"detect failed on path $path", t)
-    }
-
-    irwService.historyNeighbourhood(path, timestamp, desc = true, limit = 2).map { v =>
-      // will return the version of timestamp `timestamp`, and the previous one
-      if(v.length!=2) {
-        zStore.getStringOpt(s"imp.${partition}_$offset").map {
-          case Some("nu") => // Ok this was a null update
-          case _ => // inconsistency detected!
-        }
-      } else {
-        ??? // we have confirmed an update with timestamp `timestamp`, and we have the one before it. What's next?
-      }
-    }
-
-
-    // todo filter system fields in cql...
-    def getRawSystemFields(uuid: String) = irwService.rawReadUuidAsyc(uuid).map(_.filter(_._1 == "cmwell://meta/sys"))
-
-  }
-
 }
 
 case object Start
