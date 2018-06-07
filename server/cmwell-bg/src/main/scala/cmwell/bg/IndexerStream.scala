@@ -446,9 +446,10 @@ class IndexerStream(partition: Int,
                 persistOffsetsGroups.foreach { os =>
                   if (os.length > 1) {
                     val ttlSeconds = 7.days.toSeconds.toInt //TODO propagate offsets.retention.minutes's value to here
-                    val allOffsetsButLast = os.init.map(_.offset)
+                    val allOffsetsButLast = os.init
                     travector(allOffsetsButLast) { o =>
-                      val (key, payload) = s"imp.${partition}_$o" -> "grp".getBytes(StandardCharsets.UTF_8)
+                      val key = s"imp.$partition${if(o.topic.contains("priority")) ".p" else ""}_${o.offset}"
+                      val payload = "grp".getBytes(StandardCharsets.UTF_8)
                       zStore.put(key, payload, ttlSeconds, batched = true).recover { case _ => () }
                     }
                   }
