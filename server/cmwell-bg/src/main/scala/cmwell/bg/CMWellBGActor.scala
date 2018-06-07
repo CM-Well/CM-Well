@@ -68,12 +68,14 @@ class CMWellBGActor(partition: Int,
 
   var impStream: ImpStream = null
   var indexerStream: IndexerStream = null
-  var crawlerMaterialization: CrawlerMaterialization = null
   val waitAfter503 = config.getInt("cmwell.bg.waitAfter503")
   val crawlerRestartDelayTime = config.getDuration("cmwell.crawler.restartDelayTime").toMillis.millis
   val impOn = config.getBoolean("cmwell.bg.ImpOn")
   val indexerOn = config.getBoolean("cmwell.bg.IndexerOn")
   val persistCommandsTopic = config.getString("cmwell.bg.persist.commands.topic")
+  val persistCommandsTopicPriority = persistCommandsTopic + ".priority"
+  val crawlerMaterializations: scala.collection.mutable.Map[String, CrawlerMaterialization] =
+    scala.collection.mutable.Map(persistCommandsTopic -> null, persistCommandsTopicPriority -> null)
 
   // Metrics
   val bgMetrics = new BGMetrics
@@ -153,12 +155,12 @@ class CMWellBGActor(partition: Int,
 //      stopAll
 //      logger.debug(s"became state503. scheduling resume in [waitAfter503] seconds")
 //      context.system.scheduler.scheduleOnce(waitAfter503.seconds, self, Resume)
-    case MarkCrawlerAsStopped =>
-      logger.info(s"Crawler stream stopped. Check its logs for details. Marking it as stopped and restarting it in $crawlerRestartDelayTime")
-      crawlerMaterialization = null
+    case MarkCrawlerAsStopped(topic) =>
+      logger.info(s"Crawler stream of topic $topic stopped. Check its logs for details. Marking it as stopped and restarting it in $crawlerRestartDelayTime")
+      crawlerMaterializations(topic) = null
       system.scheduler.scheduleOnce(crawlerRestartDelayTime)(self ! StartCrawler)
-    case StartCrawler =>
-      startCrawler
+    case StartCrawler(topic) =>
+      startCrawler(topic)
     case Indexer503 =>
       logger.error("Indexer Stopped with Exception. check indexer log for details. Restarting indexer.")
       stopIndexer
@@ -221,43 +223,44 @@ class CMWellBGActor(partition: Int,
     }
   }
 
-  private def startCrawler = {
-    if (crawlerMaterialization == null) {
-      logger.info("starting CrawlerStream")
+  private def startCrawler(topic: String) = {
+    if (crawlerMaterializations(topic) == null) {
+      logger.info(s"starting CrawlerStream of topic $topic")
       //todo: add priority crawler
-      crawlerMaterialization = CrawlerStream.createAndRunCrawlerStream(config, persistCommandsTopic, partition)(
+      crawlerMaterializations(topic) = CrawlerStream.createAndRunCrawlerStream(config, topic, partition)(
         irwService, ftsService, zStore, offsetsService)(system, materializer, ec)
-      crawlerMaterialization.doneState.onComplete {
+      crawlerMaterializations(topic).doneState.onComplete {
         case Success(_) =>
-          logger.info("The crawler stream finished with success. Sending a self message to mark it as finished.")
+          logger.info(s"The crawler stream of topic $topic finished with success. Sending a self message to mark it as finished.")
           self ! MarkCrawlerAsStopped
         case Failure(ex) =>
-          logger.error("The crawler stream finished with exception. Sending a self message to mark it as finished. The exception was: ", ex)
+          logger.error(s"The crawler stream of topic $topic finished with exception. Sending a self message to mark it as finished. The exception was: ", ex)
           self ! MarkCrawlerAsStopped
       }
       //The stream didn't even start - set it as null
-      if (crawlerMaterialization.control == null)
-        crawlerMaterialization = null
+      if (crawlerMaterializations(topic).control == null)
+        crawlerMaterializations(topic) = null
     } else
-      logger.error("requested to start Crawler Stream but it is already running. doing nothing.")
+      logger.error(s"requested to start Crawler Stream of topic $topic but it is already running. doing nothing.")
   }
 
-  private def stopCrawler = {
-    if (crawlerMaterialization != null) {
-      logger.info("Sending the stop signal to the crawler stream")
-      val res = crawlerMaterialization.control.shutdown()
+  private def stopCrawler(topic: String) = {
+    if (crawlerMaterializations(topic) != null) {
+      logger.info(s"Sending the stop signal to the crawler stream of topic $topic")
+      val res = crawlerMaterializations(topic).control.shutdown()
       res.onComplete {
-        case Success(_) => logger.info("The future of the crawler stream shutdown control finished with success. " +
+        case Success(_) => logger.info(s"The future of the crawler stream shutdown control of topic $topic finished with success. " +
           "It will be marked as stopped only after the stream will totally finish.")
-        case Failure(ex) => logger.error("The future of the crawler stream shutdown control finished with exception. " +
+        case Failure(ex) => logger.error(s"The future of the crawler stream shutdown control of topic $topic finished with exception. " +
           "The crawler stream will be marked as stopped only after the stream will totally finish.The exception was: ", ex)
       }
     } else
-      logger.error("Crawler Stream was already stopped and it was requested to finish it again. Not reasonable!")
+      logger.error(s"Crawler Stream of topic $topic was already stopped and it was requested to finish it again. Not reasonable!")
   }
 
   private def startAll = {
-    startCrawler
+    startCrawler(persistCommandsTopic)
+    startCrawler(persistCommandsTopicPriority)
     startImp
     startIndexer
   }
@@ -284,7 +287,8 @@ class CMWellBGActor(partition: Int,
   }
 
   private def stopAll = {
-    stopCrawler
+    stopCrawler(persistCommandsTopic)
+    stopCrawler(persistCommandsTopicPriority)
     stopIndexer
     stopImp
   }
@@ -303,8 +307,8 @@ case object Start
 //case object StopIndexer
 //case object IndexerStopped
 case object ShutDown
-case object MarkCrawlerAsStopped
-case object StartCrawler
+case class MarkCrawlerAsStopped(topic: String)
+case class StartCrawler(topic: String)
 //case object All503
 case object Indexer503
 case object Imp503
