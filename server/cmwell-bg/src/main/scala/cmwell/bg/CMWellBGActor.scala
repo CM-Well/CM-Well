@@ -226,7 +226,7 @@ class CMWellBGActor(partition: Int,
       logger.info("starting CrawlerStream")
       //todo: add priority crawler
       crawlerMaterialization = CrawlerStream.createAndRunCrawlerStream(config, persistCommandsTopic, partition)(
-        irwService, ftsService, zStore, offsetsService)(system, ec)
+        irwService, ftsService, zStore, offsetsService)(system, materializer, ec)
       crawlerMaterialization.doneState.onComplete {
         case Success(_) =>
           logger.info("The crawler stream finished with success. Sending a self message to mark it as finished.")

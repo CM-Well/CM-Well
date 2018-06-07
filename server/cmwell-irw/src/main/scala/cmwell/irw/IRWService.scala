@@ -188,7 +188,7 @@ trait IRWService {
 
   def historyReactive(path: String, level: ConsistencyLevel = ONE): Source[(Long, String), NotUsed]
 
-  def lastVersion(path: String, level: ConsistencyLevel = ONE): Future[(Long, String)]
+  def lastVersion(path: String, level: ConsistencyLevel = ONE): Future[Option[(Long, String)]]
 
   def historyNeighbourhood(path: String, timestamp: Long, desc: Boolean, limit: Int, level: ConsistencyLevel = ONE): Future[Vector[(Long, String)]]
 
@@ -679,7 +679,7 @@ class IRWServiceNativeImpl(storageDao: Dao,
       .mapConcat(_.sortBy(_._1))
   }
 
-  def lastVersion(path: String, level: ConsistencyLevel): Future[(Long, String)] = ???
+  def lastVersion(path: String, level: ConsistencyLevel): Future[Option[(Long, String)]] = ???
 
   def historyNeighbourhood(path: String, timestamp: Long, desc: Boolean, limit: Int, level: ConsistencyLevel): Future[Vector[(Long, String)]] = ???
 

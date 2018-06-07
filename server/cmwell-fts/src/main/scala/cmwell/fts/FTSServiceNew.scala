@@ -350,18 +350,16 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
 
   override def get(uuid: String, indexName: String, partition: String = defaultPartition)(
     implicit executionContext: ExecutionContext
-  ): Future[(FTSThinInfoton, Boolean)] = {
-    val p = Promise[(FTSThinInfoton, Boolean)]
+  ): Future[Option[(FTSThinInfoton, Boolean)]] = {
     val fields = Seq("path", "uuid", "lastModified", "indexTime", "current").map(f => s"system.$f")
     val req = client.prepareGet(indexName, "infoclone", uuid).setFields(fields:_*)
-    injectFuture[GetResponse](req.execute).onComplete {
-      case Success(gr) if gr.isExists =>
+    injectFuture[GetResponse](req.execute).map { gr =>
+      if (gr.isExists) {
         val isCurrent = gr.getField("system.current").getValue.asInstanceOf[Boolean]
-        p.success(FTSThinInfoton(gr) -> isCurrent)
-      case Success(_) => p.failure(new NoSuchElementException(s"uuid $uuid was not found on index $indexName"))
-      case Failure(t) => p.failure(t)
+        Some(FTSThinInfoton(gr) -> isCurrent)
+      }
+      else None
     }
-    p.future
   }
 
   def thinSearch(

@@ -71,7 +71,7 @@ class OffsetThrottler()
       override def onPush(): Unit = {
         val elem = grab(messageIn)
         pending = elem
-        logger.info("Initial message received - pulling the offset source for the max allowed offset (setting back pressure)")
+        logger.info(s"Initial message with offset ${pending.offset()} received - pulling the offset source for the max allowed offset (setting back pressure)")
         pull(offsetIn)
         //from now on, each message we get should be checked against the maxAllowedOffset - set a new handler for the newly got messages
         setHandler(messageIn, ongoingMessageInHandler)
@@ -99,6 +99,9 @@ class OffsetThrottler()
         //checking that the port isn't closed isn't necessary because the whole stage will be finished by then
         else {
           /* if (!isClosed(messageOut))*/
+          if (pending.offset() == maxAllowedOffset)
+            logger.info(s"The current element's offset $maxAllowedOffset is the same as the max allowed one. " +
+              s"This means the crawler is going to handle the last infoton before horizon.")
           push(messageOut, pending)
           pending = null
         }

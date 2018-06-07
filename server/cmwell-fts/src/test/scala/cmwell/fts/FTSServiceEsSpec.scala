@@ -351,7 +351,7 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
     Await.result(ftsService.index(existingInfoton, None, ftsService.defaultPartition), timeout)
     refreshAll()
     Await.result(ftsService.get(existingInfoton.uuid, "cmwell_current")(
-      scala.concurrent.ExecutionContext.Implicits.global), timeout)._1.path should be(existingInfoton.path)
+      scala.concurrent.ExecutionContext.Implicits.global), timeout).get._1.path should be(existingInfoton.path)
   }
 
   "listChildren" should "return a list of given infoton's current version children" in {
