@@ -550,7 +550,7 @@ class IRWServiceNativeImpl2(
     }
   }
 
-  def lastVersion(path: String, level: ConsistencyLevel): Future[(Long, String)] = {
+  def lastVersion(path: String, level: ConsistencyLevel): Future[Option[(Long, String)]] = {
     import scala.concurrent.ExecutionContext.Implicits.global
     val stmt = getLastInPath.bind(path.replaceAll("'", "''")).setConsistencyLevel(level)
     executeAsync(stmt, s"'${getLastInPath.getQueryString}'.bind($path)").map { res =>
@@ -565,7 +565,7 @@ class IRWServiceNativeImpl2(
         }
       }
 
-      b.result().headOption.getOrElse(throw new NoSuchElementException(s"path $path has no history"))
+      b.result().headOption
     }
   }
 
