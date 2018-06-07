@@ -14,6 +14,8 @@
   */
 package cmwell.bg
 
+import java.nio.charset.StandardCharsets
+
 import akka.NotUsed
 import akka.actor.{ActorRef, ActorSystem}
 import akka.kafka.scaladsl.Consumer
@@ -30,6 +32,8 @@ import cmwell.common._
 import cmwell.common.exception.getStackTrace
 import cmwell.domain.Infoton
 import cmwell.tracking._
+import cmwell.util.concurrent.travector
+import cmwell.zstore.ZStore
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 import nl.grons.metrics4.scala.{Counter, DefaultInstrumented, Histogram, Timer}
@@ -54,6 +58,7 @@ class IndexerStream(partition: Int,
                     config: Config,
                     irwService: IRWService,
                     ftsService: FTSServiceNew,
+                    zStore: ZStore,
                     offsetsService: OffsetsService,
                     bgActor: ActorRef)(implicit actorSystem: ActorSystem,
                                        executionContext: ExecutionContext,
@@ -432,11 +437,25 @@ class IndexerStream(partition: Int,
             val mergeOffsetMessages = builder.add(Merge[BGMessage[Seq[IndexCommand]]](2, eagerComplete = true))
             val extactImpOffsetsFromMessage: Flow[BGMessage[Seq[IndexCommand]], Seq[Offset], NotUsed] = Flow.fromFunction {
               commadSeq =>
-                commadSeq.message.flatMap {
+                val persistOffsetsGroups = commadSeq.message.map {
                   case IndexNewInfotonCommandForIndexer(_, _, _, _, _, persistOffsets, _) => persistOffsets
                   case IndexExistingInfotonCommandForIndexer(_, _, _, _, persistOffsets, _) => persistOffsets
                   case NullUpdateCommandForIndexer(_, _, _, persistOffsets, _) => persistOffsets
                 }
+
+                persistOffsetsGroups.foreach { os =>
+                  if (os.length > 1) {
+                    val ttlSeconds = 7.days.toSeconds.toInt //TODO propagate offsets.retention.minutes's value to here
+                    val allOffsetsButLast = os.init
+                    travector(allOffsetsButLast) { o =>
+                      val key = s"imp.$partition${if(o.topic.contains("priority")) ".p" else ""}_${o.offset}"
+                      val payload = "grp".getBytes(StandardCharsets.UTF_8)
+                      zStore.put(key, payload, ttlSeconds, batched = true).recover { case _ => () }
+                    }
+                  }
+                }
+
+                persistOffsetsGroups.flatten
             }
             // scalastyle:off
             mergePrefferedSources ~> heartBitLog ~> splitNullMessages ~> getInfotonIfNeeded ~> indexCommandToEsActions ~> groupEsActions ~> indexInfoActionsFlow ~> updateIndexInfoInCas ~> mergeOffsetMessages
