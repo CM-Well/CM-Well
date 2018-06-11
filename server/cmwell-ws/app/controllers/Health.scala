@@ -117,7 +117,7 @@ class Health @Inject()(crudServiceFS: CRUDServiceFS, ws: WSClient) extends Injec
   def getKafkaStatus = Action.async {implicit req =>
     val javaHomeLocation = s"$path/../java"
 
-    val javaHomeAddition = s"""if [ -d $javaHomeLocation ]
+    val javaHomeAddition = s"""if [ -d $javaHomeLocation ] ;
         then JAVA_HOME=$javaHomeLocation ;
         fi ;"""
 

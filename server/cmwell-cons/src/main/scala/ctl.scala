@@ -1615,7 +1615,7 @@ abstract class Host(user: String,
     val replicationFactor = math.min(hosts.size, 3)
 
     val javaHomeLocation = s"${instDirs.globalLocation}/cm-well/app/java"
-    val exportCommand = s"""if [ -d $javaHomeLocation ]
+    val exportCommand = s"""if [ -d $javaHomeLocation ] ;
         then export PATH=$javaHomeLocation/cm-well/app/java/bin:$$PATH ;
         export JAVA_HOME=$javaHomeLocation ;
         fi ; """
@@ -1876,7 +1876,7 @@ abstract class Host(user: String,
 
     val javaHomeLocation = s"${absPath(instDirs.globalLocation)}/cm-well/app/java"
 
-    val exportCommand = s"""if [ -d $javaHomeLocation ]
+    val exportCommand = s"""if [ -d $javaHomeLocation ] ;
         then export PATH=$javaHomeLocation/cm-well/app/java/bin:$$PATH ;
         export JAVA_HOME=$javaHomeLocation ;
         fi ; """
