@@ -23,10 +23,10 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 
 object OffsetThrottler {
 
-  def apply(): OffsetThrottler = new OffsetThrottler()
+  def apply(crawlerId: String): OffsetThrottler = new OffsetThrottler(crawlerId)
 }
 
-class OffsetThrottler()
+class OffsetThrottler(crawlerId: String)
   extends GraphStage[FanInShape2[Long, ConsumerRecord[Array[Byte], Array[Byte]], ConsumerRecord[Array[Byte], Array[Byte]]]] with LazyLogging {
   private val offsetIn = Inlet[Long]("OffsetThrottler.offsetIn")
   private val messageIn = Inlet[ConsumerRecord[Array[Byte], Array[Byte]]]("OffsetThrottler.messageIn")
@@ -44,14 +44,14 @@ class OffsetThrottler()
         //also, no need for isAvailable check because:
         //messageOut-onPull->pull(messageIn)->pull(offsetIn)=>isAvailable(messageOut)==true
         if (pending.offset <= maxAllowedOffset /* && !isClosed(messageOut)*/ ) {
-          logger.info(s"Got a new max allowed offset $maxAllowedOffset. Releasing the back pressure.")
+          logger.info(s"$crawlerId Got a new max allowed offset $maxAllowedOffset. Releasing the back pressure.")
           push(messageOut, pending)
           pending = null
           if (isClosed(messageIn))
             completeStage()
         }
         else {
-          logger.info(s"Got a new max allowed offset $maxAllowedOffset but the pending message has offset ${pending.offset}. " +
+          logger.info(s"$crawlerId Got a new max allowed offset $maxAllowedOffset but the pending message has offset ${pending.offset}. " +
             s"Pulling again from another max allowed offset.")
           pull(offsetIn)
         }
@@ -71,7 +71,8 @@ class OffsetThrottler()
       override def onPush(): Unit = {
         val elem = grab(messageIn)
         pending = elem
-        logger.info(s"Initial message with offset ${pending.offset()} received - pulling the offset source for the max allowed offset (setting back pressure)")
+        logger.info(s"$crawlerId Initial message with offset ${pending.offset()} received - " +
+          s"pulling the offset source for the max allowed offset (setting back pressure)")
         pull(offsetIn)
         //from now on, each message we get should be checked against the maxAllowedOffset - set a new handler for the newly got messages
         setHandler(messageIn, ongoingMessageInHandler)
@@ -92,7 +93,7 @@ class OffsetThrottler()
         val elem = grab(messageIn)
         pending = elem
         if (pending.offset > maxAllowedOffset) {
-          logger.info(s"Got a message with offset ${pending.offset} that is larger than the current max allowed $maxAllowedOffset. " +
+          logger.info(s"$crawlerId Got a message with offset ${pending.offset} that is larger than the current max allowed $maxAllowedOffset. " +
             s"Pulling the offset source for a newer maxAllowedOffset (setting back pressure)")
           pull(offsetIn)
         }
@@ -100,7 +101,7 @@ class OffsetThrottler()
         else {
           /* if (!isClosed(messageOut))*/
           if (pending.offset() == maxAllowedOffset)
-            logger.info(s"The current element's offset $maxAllowedOffset is the same as the max allowed one. " +
+            logger.info(s"$crawlerId The current element's offset $maxAllowedOffset is the same as the max allowed one. " +
               s"This means the crawler is going to handle the last infoton before horizon.")
           push(messageOut, pending)
           pending = null
@@ -131,6 +132,5 @@ class OffsetThrottler()
     setHandler(offsetIn, offsetInHandler)
     setHandler(messageIn, initialMessageInHandler)
     setHandler(messageOut, messageOutHandler)
-    logger.info("OffsetThrottler initialized")
   }
 }
