@@ -476,6 +476,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
     }
   }
 
+
   def getJobConfigsFromTheUser: Future[Set[JobRead]] = {
     logger.info("Checking the current status of the Sparql Triggered Processor manager config infotons")
     //val initialRetryState = RetryParams(2, 2.seconds, 1)
@@ -483,7 +484,13 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
     safeFuture(
       client.get(s"http://${settings.hostConfigFile}${settings.pathAgentConfigs}",
                  queryParams = List("op" -> "search", "with-data" -> "", "format" -> "json", "length" -> "100"))
-    ).map(response => parseJobsJson(response.payload)).andThen {
+    ).map{
+      case response@SimpleResponse(respCode,_,_) if respCode < 300 =>
+        parseJobsJson(response.payload)
+      case failedResponse@SimpleResponse(respCode,_,_) =>
+        logger.warn(s"Failed to read config infoton from cm-well. Error code: $respCode payload: ${failedResponse.payload} headers: ${failedResponse.headers}")
+        throw new Exception(failedResponse.payload)
+    }.andThen {
       case Failure(ex) =>
         logger.warn(
           "Reading the config infotons failed. It will be checked on the next schedule check. The exception was: ",
