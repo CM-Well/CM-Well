@@ -38,13 +38,13 @@ object OffsetUtils extends LazyLogging {
         Sink.foreach { offsetGroups =>
           val (offsets, offsetsPriority) =
             offsetGroups.flatten.partition(_.topic == topicName)
-          logger.debug(s"offsets: $offsets")
-          logger.debug(s"priority offsets: $offsetsPriority")
+          logger.debug(s"commit offset sink of $streamId: offsets: $offsets")
+          logger.debug(s"commit offset sink of $streamId: priority offsets: $offsetsPriority")
           doneOffsets
             .synchronized { // until a suitable concurrent collection is found
               if (offsets.nonEmpty) {
                 var prev = lastOffsetPersisted
-                mergeOffsets(doneOffsets, offsets)
+                mergeOffsets(streamId, doneOffsets, offsets)
                 val it = doneOffsets.iterator()
                 while ( {
                   val next = if (it.hasNext) Some(it.next) else None
@@ -61,7 +61,7 @@ object OffsetUtils extends LazyLogging {
 
                 if (prev > lastOffsetPersisted) {
                   logger.debug(
-                    s"prev: $prev is greater than lastOffsetPersisted: $lastOffsetPersisted"
+                    s"commit offset sink of $streamId: prev: $prev is greater than lastOffsetPersisted: $lastOffsetPersisted"
                   )
                   offsetsService.write(s"${streamId}_offset", prev + 1L)
                   lastOffsetPersisted = prev
@@ -70,7 +70,7 @@ object OffsetUtils extends LazyLogging {
 
               if (offsetsPriority.nonEmpty) {
                 var prevPriority = lastOffsetPersistedPriority
-                mergeOffsets(doneOffsetsPriority, offsetsPriority)
+                mergeOffsets(streamId, doneOffsetsPriority, offsetsPriority)
                 val itPriority = doneOffsetsPriority.iterator()
                 while ( {
                   val next =
@@ -88,7 +88,7 @@ object OffsetUtils extends LazyLogging {
 
                 if (prevPriority > lastOffsetPersistedPriority) {
                   logger.debug(
-                    s"prevPriority: $prevPriority is greater than lastOffsetPersistedPriority: $lastOffsetPersistedPriority"
+                    s"commit offset sink of $streamId: prevPriority: $prevPriority is greater than lastOffsetPersistedPriority: $lastOffsetPersistedPriority"
                   )
                   offsetsService.write(s"$streamId.p_offset", prevPriority + 1L)
                   lastOffsetPersistedPriority = prevPriority
@@ -99,41 +99,41 @@ object OffsetUtils extends LazyLogging {
       }(Keep.right)
   }
 
-  def mergeOffsets(doneOffsets: java.util.TreeSet[Offset],
+  def mergeOffsets(streamId: String, doneOffsets: java.util.TreeSet[Offset],
                    newOffsets: Seq[Offset]) = {
     logger.debug(
-      s"merging doneOffsets:\n $doneOffsets \n with newOffsets:\n $newOffsets"
+      s"commit offset sink of $streamId: merging doneOffsets:\n $doneOffsets \n with newOffsets:\n $newOffsets"
     )
     val (completedOffsets, partialOffsets) =
       newOffsets.partition(_.isInstanceOf[CompleteOffset])
     logger.debug(
-      s"completedOffsests:\n $completedOffsets \n partialOffsets:\n$partialOffsets"
+      s"commit offset sink of $streamId: completedOffsests:\n $completedOffsets \n partialOffsets:\n$partialOffsets"
     )
     doneOffsets.addAll(completedOffsets.asJava)
     logger.debug(
-      s"doneOffsets after adding all completed new offsets:\n$doneOffsets"
+      s"commit offset sink of $streamId: doneOffsets after adding all completed new offsets:\n$doneOffsets"
     )
     partialOffsets.groupBy(_.offset).foreach {
       case (_, o) =>
-        logger.debug(s"handling new partial offset: $o")
+        logger.debug(s"commit offset sink of $streamId: handling new partial offset: $o")
         if (o.size == 2) {
           logger.debug(
-            s"two new partial offsets become one completed, adding to doneOffsets"
+            s"commit offset sink of $streamId: two new partial offsets become one completed, adding to doneOffsets"
           )
           doneOffsets.add(CompleteOffset(o.head.topic, o.head.offset))
         } else if (doneOffsets.contains(o.head)) {
           logger.debug(
-            s"doneOffsets already contained 1 partial offset for ${o.head} removing it and adding completed instead"
+            s"commit offset sink of $streamId: doneOffsets already contained 1 partial offset for ${o.head} removing it and adding completed instead"
           )
           doneOffsets.remove(o.head)
           doneOffsets.add(CompleteOffset(o.head.topic, o.head.offset))
         } else {
-          logger.debug(s"adding new partial ${o.head} to doneOffsets")
+          logger.debug(s"commit offset sink of $streamId: adding new partial ${o.head} to doneOffsets")
           doneOffsets.add(o.head)
         }
     }
     logger.debug(
-      s"doneOffsets after adding partial new offsets:\n $doneOffsets"
+      s"commit offset sink of $streamId: doneOffsets after adding partial new offsets:\n $doneOffsets"
     )
   }
 }
