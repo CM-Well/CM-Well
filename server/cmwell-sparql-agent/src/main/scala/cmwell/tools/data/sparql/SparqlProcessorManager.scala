@@ -483,12 +483,12 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
     //retryUntil(initialRetryState)(shouldRetry("Getting config information from local cm-well")) {
     safeFuture(
       client.get(s"http://${settings.hostConfigFile}${settings.pathAgentConfigs}",
-                 queryParams = List("op" -> "search", "with-data" -> "", "format" -> "jsonh", "length" -> "100"))
+                 queryParams = List("op" -> "search", "with-data" -> "", "format" -> "json", "length" -> "100"))
     ).map{
       case response@SimpleResponse(respCode,_,_) if respCode < 300 =>
         parseJobsJson(response.payload)
       case failedResponse@SimpleResponse(respCode,_,_) =>
-        logger.warn(s"Failed to read config infoton from cm-well. Error code: $respCode payload: ${failedResponse.payload}")
+        logger.warn(s"Failed to read config infoton from cm-well. Error code: $respCode payload: ${failedResponse.payload} headers: ${failedResponse.headers}")
         throw new Exception(failedResponse.payload)
     }.andThen {
       case Failure(ex) =>
