@@ -24,13 +24,6 @@
         <encoder>
             <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
         </encoder>
-        <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
-            <evaluator class="ch.qos.logback.classic.boolex.OnMarkerEvaluator">
-                <marker>markedMsg</marker>
-            </evaluator>
-            <onMismatch>NEUTRAL</onMismatch>
-            <onMatch>DENY</onMatch>
-        </filter>
         <!-- false quadruples logging throughput -->
         <immediateFlush>true</immediateFlush>
     </appender>
@@ -39,6 +32,13 @@
         <appender-ref ref="FILE" />
         <maxFlushTime>0</maxFlushTime>
         <discardingThreshold>0</discardingThreshold>
+        <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
+            <evaluator class="ch.qos.logback.classic.boolex.OnMarkerEvaluator">
+                <marker>markedMsg</marker>
+            </evaluator>
+            <onMismatch>NEUTRAL</onMismatch>
+            <onMatch>DENY</onMatch>
+        </filter>
     </appender>
 
     <appender name="FILE_MARKER" class="ch.qos.logback.core.rolling.RollingFileAppender">
@@ -56,13 +56,6 @@
         <encoder>
             <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
         </encoder>
-        <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
-            <evaluator class="ch.qos.logback.classic.boolex.OnMarkerEvaluator">
-                <marker>markedMsg</marker>
-            </evaluator>
-            <onMismatch>DENY</onMismatch>
-            <onMatch>NEUTRAL</onMatch>
-        </filter>
         <!-- false quadruples logging throughput -->
         <immediateFlush>true</immediateFlush>
     </appender>
@@ -71,6 +64,13 @@
         <appender-ref ref="FILE_MARKER" />
         <maxFlushTime>0</maxFlushTime>
         <discardingThreshold>0</discardingThreshold>
+        <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
+            <evaluator class="ch.qos.logback.classic.boolex.OnMarkerEvaluator">
+                <marker>markedMsg</marker>
+            </evaluator>
+            <onMismatch>DENY</onMismatch>
+            <onMatch>NEUTRAL</onMatch>
+        </filter>
     </appender>
 
     <appender name="AKKA_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">

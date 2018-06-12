@@ -112,7 +112,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
       (if (fieldsFilter != "") s"fieldsFilter: $fieldsFilter" )+
       (if (additionalInformation != "") s"AdditionalInformation: $additionalInformation"))
 
-  def logRequest(methodName: String, message: String) = loger.info(ftsMarker, s"Request command from: $methodName .  message: $message")
+  def logRequest(methodName: String, message: => String) = loger.info(ftsMarker, s"Request command from: $methodName .  message: $message")
 
   /*****************/
   if (isTransportClient) {
