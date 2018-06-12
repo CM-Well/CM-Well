@@ -107,7 +107,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
 
   def logAdminCommand(methodName: String) = loger.info(ftsMarker, s"Sent admin command from: $methodName")
 
-  def logRequest(methodName: String, pathFilter: String, fieldsFilter: String, additionalInformation: String = "") = loger.info(
+  def logRequest(methodName: String, pathFilter: => String, fieldsFilter: => String, additionalInformation: String = "") = loger.info(
     ftsMarker, s"Request from: $methodName .  PathFilter: $pathFilter" +
       (if (fieldsFilter != "") s"fieldsFilter: $fieldsFilter" )+
       (if (additionalInformation != "") s"AdditionalInformation: $additionalInformation"))
