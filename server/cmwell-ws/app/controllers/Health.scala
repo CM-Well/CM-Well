@@ -118,7 +118,7 @@ class Health @Inject()(crudServiceFS: CRUDServiceFS, ws: WSClient) extends Injec
     val javaHomeLocation = s"$path/../java"
 
     val javaHomeAddition = s"""if [ -d $javaHomeLocation ] ;
-        then JAVA_HOME=$javaHomeLocation ;
+        then export JAVA_HOME=$javaHomeLocation ;
         fi ;"""
 
     val res = Seq("bash", "-c", javaHomeAddition + s" $path/../kafka/cur/bin/kafka-topics.sh --zookeeper $ip:2181 --describe") !!
