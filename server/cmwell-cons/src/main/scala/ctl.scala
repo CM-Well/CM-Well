@@ -17,7 +17,6 @@
 // comment
 
 import java.io.File
-import java.nio.file.{Files, Paths}
 import java.util.Date
 
 import cmwell.ctrl.client.CtrlClient
@@ -1616,7 +1615,7 @@ abstract class Host(user: String,
 
     val javaHomeLocation = s"${instDirs.globalLocation}/cm-well/app/java"
     val exportCommand = s"""if [ -d $javaHomeLocation ] ;
-        then export PATH=$javaHomeLocation/cm-well/app/java/bin:$$PATH ;
+        then export PATH=$javaHomeLocation/bin:$$PATH ;
         export JAVA_HOME=$javaHomeLocation ;
         fi ; """
 
@@ -1877,7 +1876,7 @@ abstract class Host(user: String,
     val javaHomeLocation = s"${absPath(instDirs.globalLocation)}/cm-well/app/java"
 
     val exportCommand = s"""if [ -d $javaHomeLocation ] ;
-        then export PATH=$javaHomeLocation/cm-well/app/java/bin:$$PATH ;
+        then export PATH=$javaHomeLocation/bin:$$PATH ;
         export JAVA_HOME=$javaHomeLocation ;
         fi ; """
 
