@@ -129,9 +129,10 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                   }
                   if (dataCenter.isEmpty) {
                     errors = "dataCenter should be defined" :: errors
-                  } else if (dataCenter.get == Settings.dataCenter) {
-                    errors = "dataCenter cannot be equal to current ID" :: errors
                   }
+//                  else if (dataCenter.get == Settings.dataCenter) {
+//                    errors = "dataCenter cannot be equal to current ID" :: errors
+//                  }
                   if (mdType.isEmpty) {
                     errors = "infoton's kind (type) must be defined" :: errors
                   } else if (mdType.get == LinkMetaData) {

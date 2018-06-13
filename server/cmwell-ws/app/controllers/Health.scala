@@ -16,6 +16,8 @@
 
 package controllers
 
+import java.nio.file.{Files, Paths}
+
 import cmwell.ctrl.utils.ProcUtil
 import cmwell.ws.Settings
 import cmwell.ws.util.DateParser.fdf
@@ -116,8 +118,12 @@ class Health @Inject()(crudServiceFS: CRUDServiceFS, ws: WSClient) extends Injec
   }
 
   def getKafkaStatus = Action.async {implicit req =>
+    val javaHomeLocation = s"$path/../java"
+    val javaHomeAddition = if (Files.exists(Paths.get(javaHomeLocation)))
+      s"JAVA_HOME=$path/../java"
+    else ""
 
-    val res = Seq(s"$path/../kafka/cur/bin/kafka-topics.sh","--zookeeper", s"$ip:2181", "--describe") !!
+    val res = Seq("bash", "-c", javaHomeAddition + s" $path/../kafka/cur/bin/kafka-topics.sh --zookeeper $ip:2181 --describe") !!
 
     Future(Ok(res))
   }

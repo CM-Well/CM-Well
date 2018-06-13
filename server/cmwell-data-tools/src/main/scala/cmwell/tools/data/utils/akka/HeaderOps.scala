@@ -22,6 +22,7 @@ object HeaderOps {
   val CMWELL_N = "X-CM-WELL-N"
   val CMWELL_RT = "X-CMWELL-RT"
   val CMWELL_TO = "X-CM-WELL-TO"
+  val CMWELL_N_LEFT = "X-CM-WELL-N-LEFT"
 
   def getHeader(name: String)(headers: Seq[HttpHeader]) = headers.find(_.name == name)
 
@@ -30,6 +31,7 @@ object HeaderOps {
     case Some(HttpHeader(_, value)) => value
   }
 
+  val getNLeft = getHeader(CMWELL_N_LEFT) _
   val getHostname = getHeader(CMWELL_HOSTNAME) _
   val getPosition = getHeader(CMWELL_POSITION) _
   val getNumInfotons = getHeader(CMWELL_N) _

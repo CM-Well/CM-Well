@@ -38,15 +38,9 @@ $ scala -version
 Scala code runner version 2.12.4 -- Copyright 2002-2017, LAMP/EPFL
 ```
 
-We currently have version conflict between the versions of Akka in CM-Well and Scala. The workaround until this is resolved is to delete the Akka JAR from Scala
-
-```
-$ rm $SCALA_HOME/lib/akka-actor_2.12-2.3.16.jar
-```
-
 ### Install Scala Build Tool (SBT) ###
 
-Next we need [SBT](http://www.scala-sbt.org). For this tutorial, we downloaded the [binaries](https://github.com/sbt/sbt/releases/download/v0.13.15/sbt-0.13.15.zip) directly and unzipped alongside the Scala directory. This tutorial was tested with version 0.13.15.
+Next we need [SBT](http://www.scala-sbt.org). For this tutorial, we downloaded the [binaries](https://github.com/sbt/sbt/releases/download/v1.1.4/sbt-1.1.4.zip) directly and unzipped alongside the Scala directory. This tutorial was tested with version 1.1.4.
 
 Like Scala, add sbt to your path:
 ```
@@ -69,6 +63,7 @@ WARN: No sbt.version set in project/build.properties, base directory: /Users/TRn
 ```
 ## Installing CM-Well ##
 
+>**Note:** On the machine from which you're installing CM-Well, you'll first need to install [Python 2.7](https://www.python.org/download/releases/2.7).
 
 [Download](https://github.com/thomsonreuters/CM-Well/archive/master.zip) or clone the source from Github. Once you have the source, navigate into the server directory:
 ```
