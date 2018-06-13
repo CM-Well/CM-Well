@@ -15,27 +15,26 @@
 
 package cmwell.crawler
 
-import akka.{Done, NotUsed}
 import akka.actor.ActorSystem
 import akka.kafka.scaladsl.Consumer
 import akka.kafka.{ConsumerSettings, Subscriptions}
-import akka.stream.{ActorMaterializer, ClosedShape, SourceShape}
-import akka.stream.scaladsl.{GraphDSL, RunnableGraph, Sink, Source}
+import akka.stream.scaladsl.{GraphDSL, Sink, Source}
+import akka.stream.{ActorMaterializer, SourceShape}
+import akka.{Done, NotUsed}
 import cmwell.common._
-import cmwell.common.formats.BGMessage
-import cmwell.fts.{FTSServiceNew, FTSServiceOps}
+import cmwell.fts.FTSServiceOps
 import cmwell.irw.IRWService
+import cmwell.util.concurrent.travector
 import cmwell.zstore.ZStore
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord}
 import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.serialization.{ByteArrayDeserializer, StringDeserializer}
+import org.apache.kafka.common.serialization.ByteArrayDeserializer
 
-import scala.concurrent.duration.{DurationInt, DurationLong, FiniteDuration}
+import scala.concurrent.duration.{DurationLong, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
-import cmwell.util.concurrent.travector
 
 //case class CrawlerPosition(offset: Long, timeStamp: Long)
 sealed trait CrawlerState
@@ -76,14 +75,7 @@ object CrawlerStream extends LazyLogging {
 
     //todo: check priority scenario - what will be the current version?
 
-    //todo: make sure irw won't use its cache (for last and for system fields)!!!
-    // todo filter system fields in cql...
-
     val crawlerId = s"Crawler [$topic, partition: $partition]:"
-
-    def getRawSystemFields(uuid: String) =
-      irwService.rawReadUuidAsyc(uuid).map(_.filter(row => row._1 == "cmwell://meta/sys" && systemFieldsNames(row._2)))(ec)
-
     val bootStrapServers = config.getString("cmwell.bg.kafka.bootstrap.servers")
     val partitionId = partition + (if (topic.endsWith(".priority")) ".p" else "")
     val persistId = config.getString("cmwell.crawler.persist.key") + "." + partitionId + "_offset"
@@ -149,15 +141,9 @@ object CrawlerStream extends LazyLogging {
       }
     }
 
-    lazy val fieldBreakOut = scala.collection.breakOut[Seq[(String, String, (String, Array[Byte]))], SystemField, Vector[SystemField]]
-    def getSystemFields(uuid: String) = {
-      val fieldsFut = getRawSystemFields(uuid)
-      fieldsFut.map { fields =>
-        fields.map {
-          case (quad, field, (value, data)) => SystemField(field, value)
-        }(fieldBreakOut)
-      }(ec)
-    }
+    lazy val fieldBreakOut = scala.collection.breakOut[Seq[(String, String, String)], SystemField, Vector[SystemField]]
+    def getSystemFields(uuid: String) =
+      irwService.rawReadSystemFields(uuid).map(_.map { case (_, field, value) => SystemField(field, value) }(fieldBreakOut))(ec)
 
     def enrichVersionsWithSystemFields(previousResult: DetectionResult) = {
       previousResult match {

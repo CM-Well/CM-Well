@@ -79,6 +79,7 @@ class IRWServiceNativeImpl2(
   // here we are prepering all statments to use
 
   val getInfotonUUID: PreparedStatement = storageDao.getSession.prepare("SELECT * FROM infoton WHERE uuid = ?")
+  val getSystemFields: PreparedStatement = storageDao.getSession.prepare(s"SELECT quad,field,value FROM infoton WHERE uuid = ? AND quad = '$sysQuad'")
   val getLastInPath: PreparedStatement = storageDao.getSession.prepare("SELECT uuid, last_modified FROM path WHERE path = ? LIMIT 1")
   val getAllHistory: PreparedStatement =
     storageDao.getSession.prepare("SELECT last_modified,uuid FROM path WHERE path = ?")
@@ -142,6 +143,25 @@ class IRWServiceNativeImpl2(
       } catch {
         case t: Throwable => BoxedFailure(t)
       }
+  }
+
+  def rawReadSystemFields(uuid: String, lvl: ConsistencyLevel): Future[Seq[(String,String,String)]] = {
+    // TODO this was copied from convert method, we need to stay DRY
+
+    import scala.concurrent.ExecutionContext.Implicits.global
+
+    executeAsyncInternal(getInfotonUUID.bind(uuid).setConsistencyLevel(lvl)).map { result =>
+      new Iterator[(String, String, String)] {
+        override def hasNext: Boolean = !result.isExhausted
+        override def next(): (String, String, String) = {
+          val r: Row = result.one()
+          val q = r.getString("quad")
+          val f = r.getString("field")
+          val v = r.getString("value")
+          (q, f, v)
+        }
+      }.toSeq
+    }
   }
 
   def rawReadUuidAsyc(uuid: String, lvl: ConsistencyLevel): Future[Seq[(String,String,(String,Array[Byte]))]] = {
