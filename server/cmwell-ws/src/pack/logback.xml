@@ -45,7 +45,7 @@
         <file>${application.home:-.}/logs/markedLog.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <!-- daily rollover with compression -->
-            <fileNamePattern>${application.home:-.}/logs/marked-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
+            <fileNamePattern>${application.home:-.}/logs/markedLog-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
             <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
             <maxFileSize>100MB</maxFileSize>
             <maxHistory>7</maxHistory>
