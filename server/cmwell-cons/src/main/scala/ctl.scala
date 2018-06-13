@@ -17,7 +17,6 @@
 // comment
 
 import java.io.File
-import java.nio.file.{Files, Paths}
 import java.util.Date
 
 import cmwell.ctrl.client.CtrlClient
@@ -1615,9 +1614,10 @@ abstract class Host(user: String,
     val replicationFactor = math.min(hosts.size, 3)
 
     val javaHomeLocation = s"${instDirs.globalLocation}/cm-well/app/java"
-    val exportCommand = if (Files.exists(Paths.get(javaHomeLocation)))
-      s"export PATH=${instDirs.globalLocation}/cm-well/app/java/bin:$$PATH ; export JAVA_HOME=${javaHomeLocation} ;"
-      else ""
+    val exportCommand = s"""if [ -d $javaHomeLocation ] ;
+        then export PATH=$javaHomeLocation/bin:$$PATH ;
+        export JAVA_HOME=$javaHomeLocation ;
+        fi ; """
 
     // scalastyle:off
     val createTopicCommandPrefix = s"cd ${instDirs.globalLocation}/cm-well/app/kafka/cur; $exportCommand sh bin/kafka-topics.sh --create --zookeeper ${pingAddress}:2181 --replication-factor $replicationFactor --partitions ${hosts.size} --topic"
@@ -1874,9 +1874,12 @@ abstract class Host(user: String,
     val replicationFactor = math.min(ips.size, 3)
 
     val javaHomeLocation = s"${absPath(instDirs.globalLocation)}/cm-well/app/java"
-    val exportCommand = if (Files.exists(Paths.get(javaHomeLocation)))
-      s"export PATH=${absPath(instDirs.globalLocation)}/cm-well/app/java/bin:$$PATH ; export JAVA_HOME=${javaHomeLocation} ;"
-    else ""
+
+    val exportCommand = s"""if [ -d $javaHomeLocation ] ;
+        then export PATH=$javaHomeLocation/bin:$$PATH ;
+        export JAVA_HOME=$javaHomeLocation ;
+        fi ; """
+
     // scalastyle:off
     val createTopicCommandPrefix = s"cd ${absPath(instDirs.globalLocation)}/cm-well/app/kafka/cur; $exportCommand sh bin/kafka-topics.sh --create --zookeeper ${pingAddress}:2181 --replication-factor $replicationFactor --partitions ${ips.size} --topic"
 
