@@ -211,9 +211,12 @@ class IndexerStream(partition: Int,
 
   val persistCommandsTopic: String = config.getString("cmwell.bg.persist.commands.topic")
   val impOffsetsInIndexerId = s"persistOffsetsDoneByIndexer.${partition}"
-  val startingImpOffset: Long = offsetsService.read(s"${impOffsetsInIndexerId}_offset").getOrElse(0L)
-  val startingImpOffsetPriority: Long = offsetsService.read(s"$impOffsetsInIndexerId.p_offset").getOrElse(0L)
-  val commitImpOffsets = OffsetUtils.commitOffsetSink(impOffsetsInIndexerId , persistCommandsTopic, startingImpOffset,startingImpOffsetPriority, offsetsService)
+  val impStreamId = s"imp.$partition"
+  val startingImpOffset: Long = offsetsService.read(s"${impStreamId}_offset").getOrElse(0L)
+  val startingImpOffsetPriority: Long = offsetsService.read(s"$impStreamId.p_offset").getOrElse(0L)
+  logger.info(s"Setting initial values [normal, priority] for persistOffsetsDoneByIndexer to be [$startingImpOffset, $startingImpOffsetPriority]")
+  val commitImpOffsets =
+    OffsetUtils.commitOffsetSink(impOffsetsInIndexerId, persistCommandsTopic, startingImpOffset, startingImpOffsetPriority, offsetsService)
   val indexerGraph =
     RunnableGraph.fromGraph(
       GraphDSL
