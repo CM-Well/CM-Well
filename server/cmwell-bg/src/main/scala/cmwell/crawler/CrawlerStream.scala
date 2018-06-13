@@ -78,6 +78,8 @@ object CrawlerStream extends LazyLogging {
 
     def getRawSystemFields(uuid: String) = irwService.rawReadSystemFields(uuid)
 
+    val crawlerId = s"Crawler [$topic, partition: $partition]:"
+
     val bootStrapServers = config.getString("cmwell.bg.kafka.bootstrap.servers")
     val partitionId = partition + (if (topic.endsWith(".priority")) ".p" else "")
     val persistId = config.getString("cmwell.crawler.persist.key") + "." + partitionId + "_offset"
@@ -89,7 +91,6 @@ object CrawlerStream extends LazyLogging {
     val initialPersistOffset = Try(offsetsService.readWithTimestamp(persistId))
 
     def checkKafkaMessage(msg: ConsumerRecord[Array[Byte], Array[Byte]]): Future[Long] = {
-      logger.info(s"handling offset ${msg.offset()}")
       kafkaMessageToSingleCommand(msg)
         .flatMap(getVersionsFromPathsTable)(ec)
         .flatMap(checkInconsistencyOfPathTableOnly)(ec)
@@ -122,26 +123,25 @@ object CrawlerStream extends LazyLogging {
 
     //checks that the given command is ok (either in paths table or null update or grouped command)
     def checkInconsistencyOfPathTableOnly(pathsCmdWithLocation: (PathsVersions, CommandWithLocation)) = {
-      val (paths, cmdWithOffset@CommandWithLocation(cmd, location)) = pathsCmdWithLocation
+      val (paths, cmdWithLocation@CommandWithLocation(cmd, location)) = pathsCmdWithLocation
       if (paths.latest.isEmpty)
-        Future.successful[DetectionResult](CasError(s"No last version in paths table for path ${cmd.path}!", cmdWithOffset))
+        Future.successful[DetectionResult](CasError(s"No last version in paths table for path ${cmd.path}!", cmdWithLocation))
       else if (paths.versions.isEmpty)
         Future.successful[DetectionResult](
-          CasError(s"No versions in paths table for path ${cmd.path} in last modified ${cmd.lastModified} and earlier!", cmdWithOffset))
+          CasError(s"No versions in paths table for path ${cmd.path} in last modified ${cmd.lastModified} and earlier!", cmdWithLocation))
       else {
         //todo: check the lastModified + 1 of BG. in some case there might be small shift of last modified and it will be ok.
         if (paths.versions.head.timestamp != cmd.lastModified.getMillis) {
           zStore.getStringOpt(s"imp.${partitionId}_${location.offset}").map {
             //the current offset was null update of grouped command. Bg didn't change anything in the system due to it - The check is finished in this stage
             case Some("nu" | "grp") =>
-              logger.info(s"allclear for: $cmdWithOffset")
-              AllClear(cmdWithOffset)
+              AllClear(cmdWithLocation)
             case _ => CasError(s"command [path:${cmd.path}, last modified:${cmd.lastModified}] " +
-              s"is not in paths table and it isn't null update or grouped command!", cmdWithOffset)
+              s"is not in paths table and it isn't null update or grouped command!", cmdWithLocation)
           }(ec)
         }
         //This offset's command exists. Still need to verify current and ES.
-        else Future.successful(SoFarClear(paths, cmdWithOffset))
+        else Future.successful(SoFarClear(paths, cmdWithLocation))
       }
     }
 
@@ -152,17 +152,13 @@ object CrawlerStream extends LazyLogging {
     def enrichVersionsWithSystemFields(previousResult: DetectionResult) = {
       previousResult match {
         case SoFarClear(PathsVersions(latestOpt, versions), cmdWithLocation) =>
-          logger.info("in sofarclear")
           //todo: I am not sure getting the fields of latest is needed
           //val latest = latestOpt.get
           //val enrichedLatestFut = getSystemFields(latest.uuid).map(CasVersionWithSysFields(latest.uuid, latest.timestamp, _))
           val enrichedVersionsFut = travector(versions)(v => getSystemFields(v.uuid).map(CasVersionWithSysFields(v.uuid, v.timestamp, _))(ec))(ec)
           enrichedVersionsFut.map(enrichedVersions => SoFarClear(PathsVersions(latestOpt, enrichedVersions), cmdWithLocation))(ec)
-//          for (l <- enrichedLatestFut; v <- enrichedVersionsFut) yield SoFarClear(PathsVersions(Some(l), v), cmdAndOffset)
-        case other => {
-          logger.info(s"in other: $other")
-          Future.successful(other)
-        }
+        //for (l <- enrichedLatestFut; v <- enrichedVersionsFut) yield SoFarClear(PathsVersions(Some(l), v), cmdAndOffset)
+        case other => Future.successful(other)
       }
     }
 
@@ -217,7 +213,7 @@ object CrawlerStream extends LazyLogging {
     def reportErrors(finalResult: DetectionResult) = {
       finalResult match {
         case err: DetectionError =>
-          logger.error(s"Inconsistency found: ${err.details} for command in location ${err.cmdWithLocation.location}. " +
+          logger.error(s"$crawlerId Inconsistency found: ${err.details} for command in location ${err.cmdWithLocation.location}. " +
             s"Original command: ${err.cmdWithLocation.cmd}")
         case other => other
       }
@@ -231,10 +227,10 @@ object CrawlerStream extends LazyLogging {
         CrawlerMaterialization(null, failure)
       case Success(persistedOffset) =>
         val initialOffset = persistedOffset.fold(0L)(_.offset + 1)
-        logger.info(s"Crawler of topic $topic. Starting the crawler with initial offset of $initialOffset")
+        logger.info(s"$crawlerId Starting the crawler with initial offset of $initialOffset")
         val offsetSrc = positionSource(topic, partitionId, offsetsService, retryDuration, safetyNetTimeInMillis)(sys, ec)
         val nonBackpressuredMessageSrc = messageSource(initialOffset, topic, partition, bootStrapServers)(sys)
-        val messageSrc = backpressuredMessageSource(offsetSrc, nonBackpressuredMessageSrc)
+        val messageSrc = backpressuredMessageSource(crawlerId, offsetSrc, nonBackpressuredMessageSrc)
         messageSrc
           .mapAsync(1)(checkKafkaMessage)
           //todo: We need only the last element. There might be a way without save all the elements. Also getting last can be time consuming
@@ -243,9 +239,9 @@ object CrawlerStream extends LazyLogging {
           .map(offsetsService.write(persistId, _))
           .toMat(Sink.ignore) { (control, done) =>
             val allDone = done.flatMap { _ =>
-              logger.info(s"The sink of the crawler of topic $topic is done. Still waiting for the done signal of the control.")
+              logger.info(s"$crawlerId The sink of the crawler of is done. Still waiting for the done signal of the control.")
               control.isShutdown.map { d =>
-                logger.info(s"The control of the crawler of topic $topic is completely done now. If the system is up it should be restarted later.")
+                logger.info(s"$crawlerId The control of the stream is completely done now. If the system is up it should be restarted later.")
                 d
               }(ec)
             }(ec)
@@ -255,7 +251,7 @@ object CrawlerStream extends LazyLogging {
     }
   }
 
-  private def positionSource(topic: String, partitionId: String, offsetService: OffsetsService, retryDuration: FiniteDuration, safetyNetTimeInMillis: Long)
+  private def positionSource(crawlerId: String, partitionId: String, offsetService: OffsetsService, retryDuration: FiniteDuration, safetyNetTimeInMillis: Long)
                             (sys: ActorSystem, ec: ExecutionContext): Source[Long, NotUsed] = {
     val startingState = PersistedOffset(-1, -1)
     val zStoreKeyForImp = "imp." + partitionId + "_offset"
@@ -268,7 +264,8 @@ object CrawlerStream extends LazyLogging {
         indexPosition <- zStoreIndexerPosition
       } yield PersistedOffset(Math.max(Math.min(impPosition.offset, indexPosition.offset) - 1, 0), Math.max(impPosition.timestamp, indexPosition.timestamp))
       zStorePosition.fold {
-        logger.warn(s"zStore responded with None for key $zStoreKeyForImp or $zStoreKeyForIndexer. Not reasonable! Will retry again in $retryDuration.")
+        logger.warn(s"$crawlerId zStore responded with None for key $zStoreKeyForImp or $zStoreKeyForIndexer. Not reasonable! " +
+          s"Will retry again in $retryDuration.")
         akka.pattern.after(retryDuration, sys.scheduler)(Future.successful(Option(state -> (NullCrawlerBounds: CrawlerState))))(ec)
       } { position =>
         if (position.offset < state.offset) {
@@ -278,7 +275,7 @@ object CrawlerStream extends LazyLogging {
         }
         else if (position.offset == state.offset) {
           //Bg didn't do anything from the previous check - sleep and then emit some sentinel for another element
-          logger.info(s"Crawler of topic $topic. Got an offset ${position.offset} that is the same as the previous one. " +
+          logger.info(s"$crawlerId Got an offset ${position.offset} that is the same as the previous one. " +
             s"Will try again in $retryDuration")
           akka.pattern.after(retryDuration, sys.scheduler)(Future.successful(Some(state -> NullCrawlerBounds)))(ec)
         }
@@ -288,7 +285,7 @@ object CrawlerStream extends LazyLogging {
           val delayDuration = Math.max(0, safetyNetTimeInMillis - timeDiff).millis
           //todo: watch off by one errors!!
           val bounds = CrawlerBounds(position.offset)
-          logger.info(s"Crawler of topic $topic. Got new max offset ${position.offset}. Setting up a safety net delay of $delayDuration before using it.")
+          logger.info(s"$crawlerId Got new max offset ${position.offset}. Setting up a safety net delay of $delayDuration before using it.")
           akka.pattern.after(delayDuration, sys.scheduler)(Future.successful(Some(position -> bounds)))(ec)
         }
       }
@@ -308,13 +305,14 @@ object CrawlerStream extends LazyLogging {
     Consumer.plainSource(consumerSettings, subscription)
   }
 
-  private def backpressuredMessageSource(offsetSource: Source[Long, NotUsed],
+  private def backpressuredMessageSource(crawlerId: String,
+                                         offsetSource: Source[Long, NotUsed],
                                          messageSource: Source[ConsumerRecord[Array[Byte], Array[Byte]], Consumer.Control]) =
     Source.fromGraph(GraphDSL.create(offsetSource, messageSource)((a, b) => b) {
       implicit builder => {
         (offsetSource, msgSource) => {
           import akka.stream.scaladsl.GraphDSL.Implicits._
-          val ot = builder.add(OffsetThrottler())
+          val ot = builder.add(OffsetThrottler(crawlerId))
           offsetSource ~> ot.in0
           msgSource ~> ot.in1
           SourceShape(ot.out)
