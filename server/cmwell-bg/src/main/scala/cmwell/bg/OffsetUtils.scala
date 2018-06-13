@@ -19,6 +19,7 @@ import akka.stream.scaladsl.{Flow, Keep, Sink}
 import cmwell.common.OffsetsService
 import cmwell.common.formats.{CompleteOffset, Offset}
 import com.typesafe.scalalogging.LazyLogging
+import org.apache.kafka.common.TopicPartition
 
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.Future
@@ -36,8 +37,11 @@ object OffsetUtils extends LazyLogging {
       .groupedWithin(6000, 3.seconds)
       .toMat {
         Sink.foreach { offsetGroups =>
-          val (offsets, offsetsPriority) =
+          val (allOffsets, allOffsetsPriority) =
             offsetGroups.flatten.partition(_.topic == topicName)
+          val offsets = allOffsets.filter(o => o.offset >= startingOffset)
+          val offsetsPriority = allOffsetsPriority.filter(o => o.offset >= startingOffsetPriority)
+
           logger.debug(s"commit offset sink of $streamId: offsets: $offsets")
           logger.debug(s"commit offset sink of $streamId: priority offsets: $offsetsPriority")
           doneOffsets
@@ -135,5 +139,24 @@ object OffsetUtils extends LazyLogging {
     logger.debug(
       s"commit offset sink of $streamId: doneOffsets after adding partial new offsets:\n $doneOffsets"
     )
+  }
+
+  def getEarliestOffset(bootStrapServers: String, topicPartition: TopicPartition): Long = {
+    import java.util
+    import java.util.Properties
+
+    import org.apache.kafka.clients.consumer.KafkaConsumer
+    import org.apache.kafka.common.TopicPartition
+
+    val kafkaConsumerProps = new Properties()
+    kafkaConsumerProps.put("bootstrap.servers", bootStrapServers)
+    kafkaConsumerProps.put("key.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer")
+    kafkaConsumerProps.put("value.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer")
+    val consumer = new KafkaConsumer[Array[Byte], Array[Byte]](kafkaConsumerProps)
+    val topicPartitionList = new util.ArrayList[TopicPartition]()
+    topicPartitionList.add(topicPartition)
+    consumer.assign(topicPartitionList)
+    consumer.seekToBeginning(topicPartitionList)
+    consumer.position(topicPartition)
   }
 }
