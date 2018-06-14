@@ -41,7 +41,6 @@ class SparqlProcessorManagerSettings {
   val interval: FiniteDuration =
     stpSettings.getDuration("cmwell.agents.sparql-triggered-processor.config-polling-interval").toMillis.millis
   val infotonGroupSize: Integer = stpSettings.getInt("cmwell.triggeredProcessor.infoton-group-size")
-  val prefetchBufferSize: Long = stpSettings.getLong("cmwell.downloader.consumer.prefetch-buffer-size")
 
   val irwServiceDaoHostName = stpSettings.getString("irwServiceDao.hostName")
   val irwServiceDaoClusterName = stpSettings.getString("irwServiceDao.clusterName")
