@@ -100,6 +100,8 @@ trait IRWService {
     implicit ec: ExecutionContext
   ): Future[Box[Infoton]]
 
+  def rawReadUuidAsyc(uuid: String, lvl: ConsistencyLevel = ONE): Future[Seq[(String,String,(String,Array[Byte]))]]
+
   /**
     *
     * @param uuid
@@ -185,6 +187,10 @@ trait IRWService {
   def history(path: String, limit: Int): Vector[(Long, String)]
 
   def historyReactive(path: String, level: ConsistencyLevel = ONE): Source[(Long, String), NotUsed]
+
+  def lastVersion(path: String, level: ConsistencyLevel = ONE): Future[Option[(Long, String)]]
+
+  def historyNeighbourhood(path: String, timestamp: Long, desc: Boolean, limit: Int, level: ConsistencyLevel = ONE): Future[Vector[(Long, String)]]
 
   def historyAsync(path: String, limit: Int): Future[Vector[(Long, String)]]
 
@@ -372,6 +378,8 @@ class IRWServiceNativeImpl(storageDao: Dao,
       }
     } else getUuidsFromCas(uuids)
   }
+
+  def rawReadUuidAsyc(uuid: String, lvl: ConsistencyLevel): Future[Seq[(String,String,(String,Array[Byte]))]] = ???
 
   def readUUIDAsync(uuid: String, level: ConsistencyLevel = ONE, dontFetchPayload: Boolean = false)(
     implicit ec: ExecutionContext
@@ -670,6 +678,10 @@ class IRWServiceNativeImpl(storageDao: Dao,
       .fromFuture(historyAsync(path, Int.MaxValue))
       .mapConcat(_.sortBy(_._1))
   }
+
+  def lastVersion(path: String, level: ConsistencyLevel): Future[Option[(Long, String)]] = ???
+
+  def historyNeighbourhood(path: String, timestamp: Long, desc: Boolean, limit: Int, level: ConsistencyLevel): Future[Vector[(Long, String)]] = ???
 
   def historyAsync(path: String, limit: Int): Future[Vector[(Long, String)]] = {
     import scala.concurrent.ExecutionContext.Implicits.global

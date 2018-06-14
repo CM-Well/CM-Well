@@ -15,6 +15,7 @@
 package cmwell.zstore
 
 import java.nio.ByteBuffer
+import java.nio.charset.{Charset, StandardCharsets}
 
 import cmwell.driver.{Dao, DaoExecution}
 import cmwell.util.concurrent._
@@ -42,7 +43,7 @@ trait ZStore {
   def get(uzid: String, dontRetry: Boolean): Future[Array[Byte]]
   def getOpt(uzid: String, dontRetry: Boolean = false): Future[Option[Array[Byte]]]
   def putString(uzid: String, value: String, batched: Boolean = false): Future[Unit] = {
-    put(uzid, value.getBytes("utf-8"), batched)
+    put(uzid, value.getBytes(StandardCharsets.UTF_8), batched)
   }
   def putLong(uzid: String, value: Long, batched: Boolean = false): Future[Unit] =
     put(uzid, ByteBuffer.allocate(8).putLong(value).array(), batched)
@@ -55,10 +56,9 @@ trait ZStore {
     put(uzid, ByteBuffer.allocate(1).put(i.toByte).array(), batched)
   }
 
-  def getString(uzid: String): Future[String] = get(uzid).map { new String(_) }
+  def getString(uzid: String): Future[String] = get(uzid).map { new String(_, StandardCharsets.UTF_8) }
 
-  def getStringOpt(uzid: String, dontRetry: Boolean = false) :
-    Future[Option[String]] = getOpt(uzid,dontRetry).map { _.map { new String(_) } }
+  def getStringOpt(uzid: String): Future[Option[String]] = getOpt(uzid, true).map { _.map { new String(_, StandardCharsets.UTF_8) } }
 
   def getLong(uzid: String): Future[Long] = get(uzid).map { bytes =>
     ByteBuffer.wrap(bytes).getLong
