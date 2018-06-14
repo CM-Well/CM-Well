@@ -45,8 +45,6 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
   private val bufferSize =
     config.getInt("akka.http.host-connection-pool.max-connections")
 
-  //private val downloadBuffer = config.getInt()
-
   type Token = String
   type Uuid = ByteString
   type Path = ByteString
