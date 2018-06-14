@@ -17,12 +17,12 @@
 package cmwell.it
 
 import cmwell.it.fixture.NSHashesAndPrefixes
-import cmwell.util.concurrent._
 import cmwell.util.formats.JsonEncoder
 import cmwell.util.http.SimpleResponse
-import cmwell.util.formats.JsonEncoder
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.{AsyncFunSpec, Matchers}
+
+import scala.concurrent.duration._
 
 class MetaNsTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAndPrefixes with LazyLogging {
   describe("CM-Well /meta/ns") {
@@ -30,11 +30,15 @@ class MetaNsTests extends AsyncFunSpec with Matchers with Helpers with NSHashesA
     it("should make sure all meta was uploaded and indexed") {
       val urls = metaNsPaths.mkString("", "\n", "\n")
 
-      //waiting a little extra to make sure meta was fully uploaded
-      val f = delayedTask(indexingDuration) {
-        Http.post(_out, urls, Some("text/plain;charset=UTF-8"), List("format" -> "json"), tokenHeader)
+      spinCheck(100.millis, true)(Http.post(_out, urls, Some("text/plain;charset=UTF-8"), List("format" -> "json"), tokenHeader)){
+        case SimpleResponse(_, _, (_, bag)) => {
+          JsonEncoder.decodeBagOfInfotons(bag) match {
+            case Some(boi) => boi.infotons.length == metaNsPaths.size
+            case None => false
+          }
+        }
       }
-      f.flatMap(_.map {
+      .map {
         case res@SimpleResponse(_, _, (_, bag)) => {
           val infotons = JsonEncoder.decodeBagOfInfotons(bag) match {
             case Some(boi) => boi.infotons
@@ -51,7 +55,7 @@ class MetaNsTests extends AsyncFunSpec with Matchers with Helpers with NSHashesA
              |s2 &~ s1 = ${s2 &~ s1}
              |""".stripMargin }(infotons.length should be(metaNsPaths.size))
         }
-      })
+      }
     }
   }
 }
