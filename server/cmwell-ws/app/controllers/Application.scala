@@ -3001,15 +3001,24 @@ callback=< [URL] >
     }
   }
 
-  def consumeKafka(topic: String, partition: Int, offset: Long, maxLengthOpt: Option[Long]): Action[AnyContent] = Action { implicit req =>
-    val source = crudServiceFS.consumeKafka(topic, partition, offset, maxLengthOpt)
+  def handleKafkaConsume(topic: String, partition: Int): Action[AnyContent] = Action { implicit req =>
+    val sysTopics = Set("persist_topic", "index_topic", "persist_topic.priority", "index_topic.priority")
+    if (sysTopics(topic) && !authUtils.isOperationAllowedForUser(Admin, authUtils.extractTokenFrom(req), evenForNonProdEnv = true))
+      Forbidden("Consuming this topic requires an Admin token.")
+    else {
+      val offset = req.getQueryString("offset").fold(0L)(_.toLong)
+      val maxLengthOpt = req.getQueryString("max-length").map(_.toLong)
+      val isText = req.getQueryString("format").fold(false)(_ == "text")
 
-    Ok.chunked(source.map { ba =>
-      Try(CommandSerializer.decode(ba)) match {
-        case Success(msg) => msg.toString
-        case Failure(t) => s"<<< could not parse msg (${t.getMessage}) >>>"
-      }
-    })
+      val source = crudServiceFS.consumeKafka(topic, partition, offset, maxLengthOpt)
+      Ok.chunked(source.map { bytes =>
+        (Try(CommandSerializer.decode(bytes)) match {
+          case Success(msg) => msg.toString
+          case Failure(_) if isText => new String(bytes, StandardCharsets.UTF_8)
+          case Failure(_) => bytes.mkString(",")
+        }) + "\n"
+      })
+    }
   }
 
 

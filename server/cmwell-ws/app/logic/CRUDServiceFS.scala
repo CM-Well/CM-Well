@@ -21,6 +21,7 @@ import akka.actor.{Actor, ActorSystem}
 import akka.actor.Actor.Receive
 import akka.kafka.{ConsumerSettings, Subscriptions}
 import akka.kafka.scaladsl.Consumer
+import akka.stream.ThrottleMode
 import akka.stream.scaladsl.Source
 import cmwell.domain._
 import cmwell.driver.Dao
@@ -475,7 +476,8 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       .withBootstrapServers("localhost:9092")
       .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
 
-    val source = Consumer.plainSource[Array[Byte], Array[Byte]](consumerSettings, subscription).map(_.value())
+    val source = Consumer.plainSource[Array[Byte], Array[Byte]](consumerSettings, subscription).
+      map(_.value())
 
     maxLengthOpt.fold(source)(source.take)
   }

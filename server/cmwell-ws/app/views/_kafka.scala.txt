@@ -1,0 +1,21 @@
+@(request: Request[AnyContent])
+Consume a Kafka Topic
+---------------------
+
+Usage: /_kafka/topicName/partition
+
+Response:
+Chunked Response where each line is a msg.
+
+Optional Query parameters:
+- offset: Offset to start from, if not provided will start from earliest exists offset.
+- max-length: If not provided will consume until end of queue and will hang until new msg is produced.
+- format: if format=text was provided, Strings will be constructed from msg's payload. Otherwise, just bytes will be returned.
+
+Notes:
+- Consuming system queues requires an Admin token.
+- If a msg is a payload of a Command, it will be deserialized, otherwise the optional "format" query parameter will be used as described above.
+
+Example:
+curl "http://@request.host/_kafka/persist_topic/0?offset=604&max-length=3"
+
