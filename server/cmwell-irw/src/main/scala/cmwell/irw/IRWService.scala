@@ -100,6 +100,9 @@ trait IRWService {
     implicit ec: ExecutionContext
   ): Future[Box[Infoton]]
 
+
+  def rawReadSystemFields(uuid: String, lvl: ConsistencyLevel = ONE): Future[Seq[(String,String,String)]]
+
   def rawReadUuidAsyc(uuid: String, lvl: ConsistencyLevel = ONE): Future[Seq[(String,String,(String,Array[Byte]))]]
 
   /**
@@ -378,6 +381,8 @@ class IRWServiceNativeImpl(storageDao: Dao,
       }
     } else getUuidsFromCas(uuids)
   }
+
+  def rawReadSystemFields(uuid: String, lvl: ConsistencyLevel = ONE): Future[Seq[(String,String,String)]] = ???
 
   def rawReadUuidAsyc(uuid: String, lvl: ConsistencyLevel): Future[Seq[(String,String,(String,Array[Byte]))]] = ???
 
