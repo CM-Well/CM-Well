@@ -39,7 +39,7 @@ class OffsetThrottlerSpec extends CrawlerStreamSpec {
         implicit b => {
           (offstSource, msgSource, msgSink) => {
             import akka.stream.scaladsl.GraphDSL.Implicits._
-            val ot = b.add(OffsetThrottler())
+            val ot = b.add(OffsetThrottler("testCrawler"))
             offstSource ~> ot.in0
             msgSource ~> ot.in1
             ot.out ~> msgSink
