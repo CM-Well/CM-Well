@@ -150,7 +150,7 @@ class IRWServiceNativeImpl2(
 
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    executeAsyncInternal(getInfotonUUID.bind(uuid).setConsistencyLevel(lvl)).map { result =>
+    executeAsyncInternal(getSystemFields.bind(uuid).setConsistencyLevel(lvl)).map { result =>
       new Iterator[(String, String, String)] {
         override def hasNext: Boolean = !result.isExhausted
         override def next(): (String, String, String) = {
