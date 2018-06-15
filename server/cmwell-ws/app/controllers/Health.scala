@@ -20,19 +20,18 @@ import cmwell.ctrl.utils.ProcUtil
 import cmwell.ws.Settings
 import cmwell.ws.util.DateParser.fdf
 import com.typesafe.config.ConfigFactory
-import logic.CRUDServiceFS
-import play.api.mvc._
 import javax.inject._
-
-import scala.concurrent._
-import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.sys.process._
-import scala.util._
+import logic.CRUDServiceFS
 import org.joda.time._
 import play.api.libs.ws.WSClient
+import play.api.mvc._
 
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent._
+import scala.concurrent.duration._
 import scala.language.postfixOps
+import scala.sys.process._
+import scala.util._
 
 /**
  * Created by michael on 8/11/14.
@@ -116,8 +115,13 @@ class Health @Inject()(crudServiceFS: CRUDServiceFS, ws: WSClient) extends Injec
   }
 
   def getKafkaStatus = Action.async {implicit req =>
+    val javaHomeLocation = s"$path/../java"
 
-    val res = Seq(s"$path/../kafka/cur/bin/kafka-topics.sh","--zookeeper", s"$ip:2181", "--describe") !!
+    val javaHomeAddition = s"""if [ -d $javaHomeLocation ] ;
+        then export JAVA_HOME=$javaHomeLocation ;
+        fi ;"""
+
+    val res = Seq("bash", "-c", javaHomeAddition + s" $path/../kafka/cur/bin/kafka-topics.sh --zookeeper $ip:2181 --describe") !!
 
     Future(Ok(res))
   }

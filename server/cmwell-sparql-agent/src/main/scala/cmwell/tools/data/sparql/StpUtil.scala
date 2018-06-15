@@ -75,7 +75,7 @@ object StpUtil extends DataToolsLogging {
   def readPreviousTokens(baseUrl: String, path: String, zStore: ZStore)
                         (implicit context: ExecutionContext) : Future[AgentTokensAndStatistics]  = {
 
-    zStore.getStringOpt(s"stp-agent-${extractLastPart(path)}", dontRetry = true).map {
+    zStore.getStringOpt(s"stp-agent-${extractLastPart(path)}").map {
       case None => {
         // No such key - start STP from scratch
         AgentTokensAndStatistics(Map.newBuilder[String, TokenAndStatistics].result())

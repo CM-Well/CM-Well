@@ -16,18 +16,15 @@
 
 // comment
 
-import java.io.{ByteArrayInputStream, File, PrintWriter}
-import java.nio.file.Files
+import java.io.File
 import java.util.Date
 
 import cmwell.ctrl.client.CtrlClient
 import cmwell.ctrl.hc.{ActiveNodes, ClusterStatus}
-import cmwell.util.build.BuildInfo
 import k.grid.{GridConnection, Grid => AkkaGrid}
-import org.apache.commons.io.FileUtils
 
+import scala.collection.parallel.ParMap
 import scala.collection.{GenSeq, GenSet}
-import scala.collection.parallel.{ParMap, ParSeq}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
@@ -1615,8 +1612,16 @@ abstract class Host(user: String,
     command(s"""curl -s -X POST http://${pingAddress}:$esRegPort/_aliases -H "Content-Type: application/json" --data-ascii '${aliases}'""", hosts(0), false)
     // create kafka topics
     val replicationFactor = math.min(hosts.size, 3)
+
+    val javaHomeLocation = s"${instDirs.globalLocation}/cm-well/app/java"
+    val exportCommand = s"""if [ -d $javaHomeLocation ] ;
+        then export PATH=$javaHomeLocation/bin:$$PATH ;
+        export JAVA_HOME=$javaHomeLocation ;
+        fi ; """
+
     // scalastyle:off
-    val createTopicCommandPrefix = s"cd ${instDirs.globalLocation}/cm-well/app/kafka/cur; export PATH=/opt/cm-well/app/java/bin:$$PATH ; sh bin/kafka-topics.sh --create --zookeeper ${pingAddress}:2181 --replication-factor $replicationFactor --partitions ${hosts.size} --topic"
+    val createTopicCommandPrefix = s"cd ${instDirs.globalLocation}/cm-well/app/kafka/cur; $exportCommand sh bin/kafka-topics.sh --create --zookeeper ${pingAddress}:2181 --replication-factor $replicationFactor --partitions ${hosts.size} --topic"
+
     // scalastyle:on
     var tryNum: Int = 1
     var ret = command(s"$createTopicCommandPrefix persist_topic", hosts(0), false)
@@ -1867,8 +1872,17 @@ abstract class Host(user: String,
 
   def updateKafkaScemas: Unit = {
     val replicationFactor = math.min(ips.size, 3)
+
+    val javaHomeLocation = s"${absPath(instDirs.globalLocation)}/cm-well/app/java"
+
+    val exportCommand = s"""if [ -d $javaHomeLocation ] ;
+        then export PATH=$javaHomeLocation/bin:$$PATH ;
+        export JAVA_HOME=$javaHomeLocation ;
+        fi ; """
+
     // scalastyle:off
-    val createTopicCommandPrefix = s"cd ${absPath(instDirs.globalLocation)}/cm-well/app/kafka/cur; export PATH=/opt/cm-well/app/java/bin:$$PATH ; sh bin/kafka-topics.sh --create --zookeeper ${pingAddress}:2181 --replication-factor $replicationFactor --partitions ${ips.size} --topic"
+    val createTopicCommandPrefix = s"cd ${absPath(instDirs.globalLocation)}/cm-well/app/kafka/cur; $exportCommand sh bin/kafka-topics.sh --create --zookeeper ${pingAddress}:2181 --replication-factor $replicationFactor --partitions ${ips.size} --topic"
+
     // scalastyle:on
     command(s"$createTopicCommandPrefix persist_topic", ips(0), false)
     command(s"$createTopicCommandPrefix index_topic", ips(0), false)

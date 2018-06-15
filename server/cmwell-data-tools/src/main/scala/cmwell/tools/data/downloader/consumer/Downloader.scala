@@ -386,12 +386,18 @@ class Downloader(
   recursive: Boolean = false,
   isBulk: Boolean = false,
   indexTime: Long = 0L,
-  override val label: Option[String] = None
+  override val label: Option[String] = None,
+  downloadBufferSize: Option[Long] = None
 )(implicit system: ActorSystem, mat: Materializer)
     extends DataToolsLogging {
   import Downloader._
 
   implicit val labelId = label.map(LabelId.apply)
+
+  private val prefetchBufferSize = config.hasPath("cmwell.downloader.consumer.prefetch-buffer-size") match {
+    case true => config.getInt("cmwell.downloader.consumer.prefetch-buffer-size")
+    case false => 3000000L
+  }
 
   private[Downloader] val retryTimeout = {
     val timeoutDuration = Duration(
@@ -850,7 +856,6 @@ class Downloader(
   ): Source[((Token, TsvData), Boolean, Option[Long]), NotUsed] = {
 
     import akka.pattern._
-    val prefetchBufferSize = 3000000
 
     val initTokenFuture = token match {
       case Some(t) => Future.successful(t)

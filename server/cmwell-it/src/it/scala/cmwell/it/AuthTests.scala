@@ -16,14 +16,15 @@
 
 package cmwell.it
 
+import cmwell.util.http.SimpleResponse
+import com.typesafe.scalalogging.LazyLogging
 import org.apache.commons.codec.binary.Base64
 import org.scalatest.{FunSpec, Matchers}
 import play.api.libs.json.{JsArray, JsValue, Json}
-import cmwell.util.http.SimpleResponse
-import com.typesafe.scalalogging.LazyLogging
 
+import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
-
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
  * Created by yaakov on 2/1/15.
@@ -131,7 +132,7 @@ class AuthTests extends FunSpec with Matchers with Helpers with LazyLogging {
         Json.parse(res) should be(jsonSuccess)
       }
 
-      it("should add some example data") {
+      val exampleData = {
         Set(
           cmw / "SafeZoneInfoton1",
           cmw / "tests" / "infoton1",
@@ -142,16 +143,18 @@ class AuthTests extends FunSpec with Matchers with Helpers with LazyLogging {
           cmw / "levels" / "r" / "infoton1",
           cmw / "levels" / "rw" / "infoton1",
           cmw / "tests" / "news" / "new-infoton-1"
-        ) foreach { path =>
-          val res = waitAndExtractBody(Http.post(path, exampleObj, Some("application/json"), headers = ("X-CM-Well-Type" -> "File") :: tokenHeader))
-          Json.parse(res) should be(jsonSuccess)
+        ) map { path =>
+          waitAndExtractBody(Http.post(path, exampleObj, Some("application/json"), headers = ("X-CM-Well-Type" -> "File") :: tokenHeader))
         }
-        indexingDuration.fromNow.block
+      }
+
+      it("should add some example data") {
+        all(exampleData.map(Json.parse)) should be(jsonSuccess)
       }
 
       it("should reset AuthCache once all user/role data was ingested") {
-        val res = waitAndExtractBody(Http.get(cmw / "_auth", List("op" -> "invalidate-cache"), tokenHeader))
-        Json.parse(res) should be(jsonSuccess)
+        spinCheck(100.millis, true)(Http.get(cmw / "_auth", List("op" -> "invalidate-cache"), tokenHeader))( res => Json.parse(res.payload) == jsonSuccess)
+          .map{ res => Json.parse(res.payload) should be(jsonSuccess) }
       }
 
       it("should be able to login with the CustomUser and receive a token") {
