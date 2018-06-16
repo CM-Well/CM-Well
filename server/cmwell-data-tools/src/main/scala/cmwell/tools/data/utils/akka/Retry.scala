@@ -264,9 +264,9 @@ object Retry extends DataToolsLogging with DataToolsConfig {
       protocol
     ) // http connection flow
     val maxConnections =
-      config.getInt("akka.http.host-connection-pool.max-connections")
+      config.getInt("data-tools.akka.http.host-connection-pool.max-connections")
     val httpPipelineSize =
-      config.getInt("akka.http.host-connection-pool.pipelining-limit")
+      config.getInt("data-tools.akka.http.host-connection-pool.pipelining-limit")
     val httpParallelism = maxConnections * httpPipelineSize
 
     val job = Flow[(Future[Seq[ByteString]], State)]
