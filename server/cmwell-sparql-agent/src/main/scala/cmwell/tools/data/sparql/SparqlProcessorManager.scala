@@ -29,6 +29,7 @@ import cmwell.tools.data.sparql.InfotonReporter.{RequestDownloadStats, RequestIn
 import cmwell.tools.data.sparql.SparqlProcessorManager._
 import cmwell.tools.data.utils.akka._
 import cmwell.tools.data.utils.akka.stats.IngesterStats
+import cmwell.tools.data.utils.akka.stats.IngesterStats.IngestStats
 import cmwell.tools.data.utils.chunkers.GroupChunker
 import cmwell.tools.data.utils.chunkers.GroupChunker._
 import cmwell.tools.data.utils.text.Tokens
@@ -301,7 +302,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
 
         StpUtil.readPreviousTokens(settings.hostConfigFile, settings.pathAgentConfigs + "/" + path, zStore).map {
           result =>
-            result match {
+            result.sensors match {
               case storedTokens =>
                 val pathsWithoutSavedToken = sensorNames.toSet.diff(storedTokens.keySet)
                 val allSensorsWithTokens = storedTokens ++ pathsWithoutSavedToken.map(_ -> ("", None))
@@ -345,11 +346,11 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
           storedTokensRWPT <- storedTokensFuture
         } yield {
           storedTokensRWPT.tokens match {
-            case Right(storedTokens) => {
+            case Right(storedTokensAndStats) => {
 
               val sensorNames = jobConfig.sensors.map(_.name)
-              val pathsWithoutSavedToken = sensorNames.toSet.diff(storedTokens.keySet)
-              val allSensorsWithTokens = storedTokens ++ pathsWithoutSavedToken.map(_ -> ("", None))
+              val pathsWithoutSavedToken = sensorNames.toSet.diff(storedTokensAndStats.sensors.keySet)
+              val allSensorsWithTokens = storedTokensAndStats.sensors ++ pathsWithoutSavedToken.map(_ -> ("", None))
 
               val body: Iterable[Row] = allSensorsWithTokens.map {
                 case (sensorName, (token, _)) =>
@@ -390,14 +391,13 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
               val configName = Paths.get(path).getFileName
 
               val sparqlIngestStats = statsIngest
-                .get(s"ingester-$configName")
                 .map { s =>
                   s"""Ingested <span style="color:green"> **${s.ingestedInfotons}** </span> Failed <span style="color:red"> **${s.failedInfotons}** </span>"""
                 }
                 .getOrElse("")
 
               val sparqlMaterializerStats = stats
-                .get(s"$configName-${SparqlTriggeredProcessor.sparqlMaterializerLabel}")
+                .get(s"${SparqlTriggeredProcessor.sparqlMaterializerLabel}")
                 .map { s =>
                   val totalRunTime = DurationFormatUtils.formatDurationWords(s.runningTime, true, true)
                   s"""Materialized <span style="color:green"> **${s.receivedInfotons}** </span> infotons [$totalRunTime]""".stripMargin
@@ -437,11 +437,11 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
 
     val hostUpdatesSource = job.config.hostUpdatesSource.getOrElse(settings.hostUpdatesSource)
 
-
-
+    val initialTokensAndStatistics = SparqlTriggeredProcessor.loadInitialTokensAndStatistics(Option(tokenReporter))
 
     val agent = SparqlTriggeredProcessor
-      .listen(job.config, hostUpdatesSource, false, Some(tokenReporter), Some(job.name), infotonGroupSize = settings.infotonGroupSize)
+      .listen(job.config, hostUpdatesSource, false, Some(tokenReporter),
+        initialTokensAndStatistics, Some(job.name), infotonGroupSize = settings.infotonGroupSize)
       .map { case (data, _) => data }
       .via(GroupChunker(formatToGroupExtractor(settings.materializedViewFormat)))
       .map(concatByteStrings(_, endl))
@@ -454,7 +454,8 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
         force = job.config.force.getOrElse(false),
         label = label
       )
-      .via(IngesterStats(isStderr = false, reporter = Some(tokenReporter), label = label))
+      .via(IngesterStats(isStderr = false, reporter = Some(tokenReporter), label = label,
+        initialIngestStats =   initialTokensAndStatistics.fold(_ => None, r=>r.agentIngestStats) ))
       .viaMat(KillSwitches.single)(Keep.right)
       .toMat(Sink.ignore)(Keep.both)
       .run()
@@ -477,6 +478,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
         self ! JobHasFailed(job, ex)
       }
     }
+
   }
 
 
