@@ -14,19 +14,18 @@
   */
 package controllers
 
+import actions.DashBoard
 import akka.actor.Actor
-import cmwell.util.concurrent.{Combiner, SimpleScheduler, SingleElementLazyAsyncCache}
-import cmwell.ws._
-import cmwell.ws.Settings._
-import com.typesafe.scalalogging.LazyLogging
-import k.grid.Grid
 import akka.pattern.ask
+import cmwell.util.concurrent.{SimpleScheduler, SingleElementLazyAsyncCache}
+import cmwell.ws.Settings._
+import cmwell.ws._
+import com.typesafe.scalalogging.LazyLogging
+import filters.Attrs
+import javax.inject._
+import k.grid.Grid
 import k.grid.dmap.impl.persistent.PersistentDMap
 import play.api.mvc._
-import javax.inject._
-
-import actions.DashBoard
-import filters.Attrs
 
 import scala.concurrent.duration.DurationLong
 import scala.concurrent.{ExecutionContext, Future}
@@ -114,10 +113,10 @@ class IngestPushback @Inject()(backPressureToggler: BackPressureToggler, dashBoa
         .get(backPressureToggler.BACKPRESSURE_TRIGGER)
         .flatMap(_.as[String])
         .getOrElse(Settings.pushbackpressure) match {
-        case "new" | "all" => filterByKLog().flatMap(resOptToFilterBy)
-        case "off"         => block(request)
-        case "bar" =>
-          Future.successful(Results.ServiceUnavailable(s"Ingests has been barred by an admin. Please try again later."))
+        case "enable" => filterByKLog().flatMap(resOptToFilterBy)
+        case "disable"         => block(request)
+        case "block" =>
+          Future.successful(Results.ServiceUnavailable(s"Ingests has been blocked by an admin. Please try again later."))
         case unknown =>
           Future.successful(Results.InternalServerError(s"unknown state for 'BACKPRESSURE_TRIGGER' [$unknown]"))
       }
