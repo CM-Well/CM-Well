@@ -231,6 +231,7 @@ lazy val tracking      = (project in file("cmwell-tracking")).enablePlugins(CMWe
 lazy val ws            = (project in file("cmwell-ws")).enablePlugins(CMWellBuild, PlayScala, SbtTwirl, PlayNettyServer)
                                                        .disablePlugins(PlayAkkaHttpServer)                          dependsOn(domain, common, formats, fts, irw, rts, ctrl, stortill, zstore, tracking)
 
+testOptions in Test in ThisBuild += Tests.Argument(TestFrameworks.ScalaTest, "-oD")
 fullTest := {
   (fullTest in LocalProject("util")).value
   (fullTest in LocalProject("kafkaAssigner")).value
