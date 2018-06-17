@@ -473,7 +473,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
     val byteArrayDeserializer = new ByteArrayDeserializer()
     val subscription = Subscriptions.assignmentWithOffset(new TopicPartition(topic, partition) -> offset)
     val consumerSettings = ConsumerSettings(Grid.system, byteArrayDeserializer, byteArrayDeserializer)
-      .withBootstrapServers("localhost:9092")
+      .withBootstrapServers(kafkaURL)
       .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
 
     val source = Consumer.plainSource[Array[Byte], Array[Byte]](consumerSettings, subscription).
