@@ -124,22 +124,22 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
         Json.parse(r3.payload) should be(jsonSuccess)
       }
     }
-    val failGlobalQuadReplace = ingestingNquads.flatMap { _ =>
-      val data = """<> <cmwell://meta/sys#replaceGraph> <*> ."""
-      spinCheck(100.millis, true)(Http.post(_in, data, None, List("format" -> "nquads"), tokenHeader))( _.status == 400)
-        .map { res =>
+
+    val failGlobalQuadReplace = ingestingNquads.flatMap { _ => {
+        val data = """<> <cmwell://meta/sys#replaceGraph> <*> ."""
+        Http.post(_in, data, None, List("format" -> "nquads"), tokenHeader).map { res =>
           withClue(res) {
             res.status should be(400)
           }
         }
+      }
     }
 
-    val failTooManyGraphReplaceStatements = ingestingNquads.flatMap { _ =>
+      val failTooManyGraphReplaceStatements = ingestingNquads.flatMap { _ =>
       val stmtPrefix = "<> <cmwell://meta/sys#replaceGraph> <http://graph.number/"
       val stmtSuffix = "> .\n"
       val ntriplesRG = (1 to 21).mkString(stmtPrefix, stmtSuffix + stmtPrefix, stmtSuffix)
-      spinCheck(100.millis, true)(Http.post(_in, ntriplesRG, None, List("format" -> "ntriples"), tokenHeader))( _.status == 400)
-        .map { res =>
+      Http.post(_in, ntriplesRG, None, List("format" -> "ntriples"), tokenHeader).map { res =>
           withClue(res) {
             res.status should be(400)
           }
@@ -162,7 +162,7 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
         val res = result.payload
         val ds = DatasetFactory.createGeneral()
         RDFDataMgr.read(ds, new ByteArrayInputStream(res), Lang.NQUADS)
-        ds.getNamedModel("http://example.org/graphs/spiderman").isEmpty == false
+        !ds.getNamedModel("http://example.org/graphs/spiderman").isEmpty
       }).map { result =>
       val res = result.payload
       val ds = DatasetFactory.createGeneral()
@@ -253,14 +253,15 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
     } yield withClue(res) {
       jsonSuccessPruner(Json.parse(res.payload)) should be(jsonSuccess)
     }
-    val fSuperman5 = fSuperman4.flatMap(_ => scheduleFuture(cacheEviction){
-      Http.get(superman, List("format" -> "jsonl", "pretty" -> "")).map { res =>
-        withClue(res) {
-          Json
-            .parse(res.payload)
-            .transform(jsonlSorter andThen jsonlUuidDateIdEraser)
-            .get shouldEqual supermanWithQuad("superman")
-        }
+    val fSuperman5 = fSuperman4.flatMap(_ => spinCheck(100.millis, true)(Http.get(superman, List("format" -> "jsonl", "pretty" -> ""))){
+      res =>
+        Json.parse(res.payload).transform(jsonlSorter andThen jsonlUuidDateIdEraser).get == supermanWithQuad("superman")
+    }.map { res =>
+      withClue(res) {
+        Json
+          .parse(res.payload)
+          .transform(jsonlSorter andThen jsonlUuidDateIdEraser)
+          .get shouldEqual supermanWithQuad("superman")
       }
     })
     val fSuperman6 = fSuperman5.flatMap { _ =>
