@@ -22,6 +22,45 @@
         <appender-ref ref="FILE" />
         <maxFlushTime>0</maxFlushTime>
         <discardingThreshold>0</discardingThreshold>
+        <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
+            <evaluator class="ch.qos.logback.classic.boolex.OnMarkerEvaluator">
+                <marker>markedMsg</marker>
+            </evaluator>
+            <onMismatch>NEUTRAL</onMismatch>
+            <onMatch>DENY</onMatch>
+        </filter>
+    </appender>
+
+    <appender name="FILE_MARKER" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${application.home:-.}/logs/markedLog.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- daily rollover with compression -->
+            <fileNamePattern>${application.home:-.}/logs/markedLog-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
+            <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>20GB</totalSizeCap>
+            <!-- in case of process terminating too early for rollover - do the rollover during start -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
+        </encoder>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
+    </appender>
+
+    <appender name="ASYNC_FILE_MARKER" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="FILE_MARKER" />
+        <maxFlushTime>0</maxFlushTime>
+        <discardingThreshold>0</discardingThreshold>
+        <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
+            <evaluator class="ch.qos.logback.classic.boolex.OnMarkerEvaluator">
+                <marker>markedMsg</marker>
+            </evaluator>
+            <onMismatch>DENY</onMismatch>
+            <onMatch>NEUTRAL</onMatch>
+        </filter>
     </appender>
 
     <appender name="IMP_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
@@ -223,6 +262,10 @@
         <appender-ref ref="ASYNC_AKKA_FILE" />
     </logger>
 
+    <logger name="cmwell.fts.FTSServiceNew" additivity="true">
+        <appender-ref ref="ASYNC_FILE_MARKER" />
+    </logger>
+
     <logger name="cmwell.crawler" additivity="false">
         <appender-ref ref="ASYNC_CRAWLER__FILE"/>
     </logger>
@@ -232,3 +275,4 @@
     </root>
     <jmxConfigurator />
 </configuration>
+
