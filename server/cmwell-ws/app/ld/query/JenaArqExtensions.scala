@@ -568,6 +568,14 @@ class DatasetGraphCmWell(val host: String,
   override def getDefaultGraph: Graph = new CmWellGraph(this)
 
   override def getGraph(graphNode: Node): Graph = getDefaultGraph // todo quads
+
+  override def begin(`type`: TxnType): Unit = ???
+
+  override def promote(mode: Transactional.Promote): Boolean = ???
+
+  override def transactionMode(): ReadWrite = ???
+
+  override def transactionType(): TxnType = ???
 }
 
 class EmbedLimitQueryEngineFactory extends QueryEngineFactory with LazyLogging {

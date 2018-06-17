@@ -219,8 +219,8 @@ def packProject(projName : String, proj : File, bd : File, confDir: File, logger
 
 def refreshAppCacheManifest(appCacheManifestFile: File) = {
   if(appCacheManifestFile.exists()) {
-    val newFileContent = sbt.IO.read(appCacheManifestFile).linesIterator.map { line =>
-      if (line.startsWith("#")) s"# ${Process("git rev-parse HEAD").lines.head}-${System.currentTimeMillis}"
+    val newFileContent = sbt.IO.read(appCacheManifestFile).lineStream.map { line =>
+      if (line.startsWith("#")) s"# ${Process("git rev-parse HEAD").lineStream.head}-${System.currentTimeMillis}"
       else line
     }.mkString("\n")
     sbt.IO.write(appCacheManifestFile, newFileContent)

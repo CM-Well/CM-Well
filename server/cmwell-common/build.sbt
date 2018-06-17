@@ -73,7 +73,7 @@ buildInfoKeys := Seq[BuildInfoKey](
     (new org.joda.time.DateTime()).toString()
   },
   BuildInfoKey.action("gitCommitVersion") {
-    Process("git rev-parse HEAD").lines.head //neat trick from SBT in action book :)
+    Process("git rev-parse HEAD").lineStream.head //neat trick from SBT in action book :)
   }, // re-computed each time at compile
   "release" -> cmwell.build.CMWellCommon.release
 )

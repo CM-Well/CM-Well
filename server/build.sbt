@@ -20,7 +20,7 @@ sys.env.get("BUILD_NUMBER") match {
   )
 }
 
-scalaVersion in Global := "2.12.5"
+scalaVersion in Global := "2.12.6"
 //javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint")
 initialize := {
   import semverfi._
@@ -50,7 +50,7 @@ dependenciesManager in Global := {
   case ("com.google.code.findbugs","jsr305")                       => "com.google.code.findbugs" % "jsr305" % "1.3.9" //newest is 3.0.0
   case ("com.google.guava","guava")                                => "com.google.guava" % "guava" % "24.1-jre"
   case ("com.jason-goodwin", "authentikat-jwt")                    => "com.jason-goodwin" %% "authentikat-jwt" % "0.4.5"
-  case ("com.lightbend.akka", "akka-stream-alpakka-cassandra")     => "com.lightbend.akka" %% "akka-stream-alpakka-cassandra" % "0.17"
+  case ("com.lightbend.akka", "akka-stream-alpakka-cassandra")     => "com.lightbend.akka" %% "akka-stream-alpakka-cassandra" % "0.19"
   case ("com.ning","async-http-client")                            => "com.ning" % "async-http-client" % "1.9.40"
   case ("com.spatial4j","spatial4j")                               => "com.spatial4j" % "spatial4j" % "0.5"
   case ("com.tinkerpop.blueprints","blueprints-core")              => "com.tinkerpop.blueprints" % "blueprints-core" % "2.6.0"
@@ -61,8 +61,8 @@ dependenciesManager in Global := {
   case ("com.typesafe.akka", "akka-stream-kafka")                  => "com.typesafe.akka" %% "akka-stream-kafka" % "0.19"
   case ("com.typesafe.akka", "akka-stream-contrib")                => "com.typesafe.akka" %% "akka-stream-contrib" % "0.9"
   case ("com.typesafe.akka", "akka-http")                          => "com.typesafe.akka" %% "akka-http" % "10.0.11"
-  case ("com.typesafe.akka",art)                                   => "com.typesafe.akka" %% art % "2.5.11"
-  case ("com.typesafe.play", "twirl-api")                          => "com.typesafe.play" %% "twirl-api" % "1.3.13"
+  case ("com.typesafe.akka",art)                                   => "com.typesafe.akka" %% art % "2.5.13"
+  case ("com.typesafe.play", "twirl-api")                          => "com.typesafe.play" %% "twirl-api" % "1.3.15"
   case ("com.typesafe.play", "play-json")                          => "com.typesafe.play" %% "play-json" % "2.6.9"
   case ("com.typesafe.play", art)                                  => "com.typesafe.play" %% art % Versions.play
   case ("com.twitter","chill-akka")                                => "com.twitter" %% "chill-akka" % "0.5.2"
@@ -122,8 +122,8 @@ dependenciesManager in Global := {
     "jena-shaded-guava",
     "jena-spatial",
     "jena-tdb",
-    "jena-text")(art))                                             => "org.apache.jena" % art % "3.3.0"
-  case ("org.apache.jena",art) => throw new Exception(s"jena artifact: $art is not in the 3.1.0 version list")
+    "jena-text")(art))                                             => "org.apache.jena" % art % "3.7.0"
+  case ("org.apache.jena",art) => throw new Exception(s"jena artifact: $art is not in the 3.7.0 version list")
   case ("org.apache.tika",art)                                     => "org.apache.tika" % art % "1.13" jar()
   case ("org.apache.thrift","libthrift")                           => "org.apache.thrift" % "libthrift" % "0.9.3"
   case ("org.apache.kafka", "kafka")                               => "org.apache.kafka" %% "kafka" % Versions.kafka
