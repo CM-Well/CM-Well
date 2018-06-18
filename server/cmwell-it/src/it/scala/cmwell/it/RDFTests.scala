@@ -88,12 +88,13 @@ class RDFTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAndP
     import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
 
     waitForIt(Http.get(clf / "weird", List("format" -> "json")))(_.status == 200).flatMap { _ =>
-      scheduleFuture(5.seconds) {
-        Http.get(clf / "weird", List("format" -> "ntriples")).map { res =>
-          withClue(res) {
-            res.status should be(200)
-            res.payload.lines.toList should contain(weirdTypeData)
-          }
+
+      spinCheck(100.millis, true)(Http.get(clf / "weird", List("format" -> "ntriples"))){
+        res => (res.status == 200) && res.payload.lines.toList.contains(weirdTypeData)
+      }.map { res =>
+        withClue(res) {
+          res.status should be(200)
+          res.payload.lines.toList should contain(weirdTypeData)
         }
       }
     }
@@ -112,12 +113,12 @@ class RDFTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAndP
     import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
 
     waitForIt(Http.get(clf / "empty", List("format" -> "json")))(_.status == 200).flatMap { _ =>
-      scheduleFuture(5.seconds) {
-        Http.get(clf / "empty", List("format" -> "ntriples")).map { res =>
-          withClue(res) {
-            res.status should be(200)
-            res.payload.lines.toList should contain(emptyTypeData)
-          }
+      spinCheck(100.millis, true)(Http.get(clf / "empty", List("format" -> "ntriples"))) { res =>
+        (res.status == 200) && res.payload.lines.toList.contains(emptyTypeData)
+      }.map { res =>
+        withClue(res) {
+          res.status should be(200)
+          res.payload.lines.toList should contain(emptyTypeData)
         }
       }
     }
