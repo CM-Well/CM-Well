@@ -232,6 +232,7 @@ lazy val ws            = (project in file("cmwell-ws")).enablePlugins(CMWellBuil
                                                        .disablePlugins(PlayAkkaHttpServer)                          dependsOn(domain, common, formats, fts, irw, rts, ctrl, stortill, zstore, tracking)
 
 testOptions in Test in ThisBuild += Tests.Argument(TestFrameworks.ScalaTest, "-oD")
+testOptions in IntegrationTest in ThisBuild += Tests.Argument(TestFrameworks.ScalaTest, "-oD")
 fullTest := {
   (fullTest in LocalProject("util")).value
   (fullTest in LocalProject("kafkaAssigner")).value
