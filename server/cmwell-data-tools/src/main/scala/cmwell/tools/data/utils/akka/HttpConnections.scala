@@ -19,60 +19,29 @@ import akka.http.scaladsl._
 import akka.http.scaladsl.settings.{ClientConnectionSettings, ConnectionPoolSettings}
 import akka.stream.Materializer
 import cmwell.tools.data.utils.logging.LabelId
-import com.typesafe.config.ConfigFactory
 
 object HttpConnections extends DataToolsConfig {
 
   def outgoingConnection(host: String, port: Int, protocol: String = "http")(implicit system: ActorSystem,
-                                                                             label: Option[LabelId] = None) = {
-    val userAgent = label.fold(s"cmwell-data-tools using akka-http/${config.getString("akka.version")}")(
-      l => s"cmwell-data-tools ${l.id}"
-    )
-    val settings = ClientConnectionSettings(
-      ConfigFactory
-        .parseString(s"akka.http.host-connection-pool.client.user-agent-header=$userAgent")
-        .withFallback(config)
-    )
+                                                                             label: Option[LabelId] = None) = protocol match {
 
-    protocol match {
-      case "https" => Http().outgoingConnectionHttps(host, port, settings = settings)
-      case _       => Http().outgoingConnection(host, port, settings = settings)
-    }
+    case "https" => Http().outgoingConnectionHttps(host, port, settings = ClientConnectionSettings(config))
+    case _       => Http().outgoingConnection(host, port, settings = ClientConnectionSettings(config))
   }
 
   def newHostConnectionPool[T](host: String, port: Int, protocol: String = "http")(implicit system: ActorSystem,
                                                                                    mat: Materializer,
-                                                                                   label: Option[LabelId] = None) = {
-    val userAgent = label.fold(s"cmwell-data-tools using akka-http/${config.getString("akka.version")}")(
-      l => s"cmwell-data-tools ${l.id}"
-    )
-    val settings = ConnectionPoolSettings(
-      ConfigFactory
-        .parseString(s"data-tools.akka.http.host-connection-pool.client.user-agent-header=$userAgent")
-        .withFallback(config)
-    )
+                                                                                   label: Option[LabelId] = None) = protocol match {
 
-    protocol match {
-      case "https" => Http().newHostConnectionPoolHttps[T](host, port, settings = settings)
-      case _       => Http().newHostConnectionPool[T](host, port, settings = settings)
-    }
+    case "https" => Http().newHostConnectionPoolHttps[T](host, port, settings = ConnectionPoolSettings(config))
+    case _       => Http().newHostConnectionPool[T](host, port, settings = ConnectionPoolSettings(config))
   }
 
   def cachedHostConnectionPool[T](host: String, port: Int, protocol: String = "http")(implicit system: ActorSystem,
                                                                                       mat: Materializer,
-                                                                                      label: Option[LabelId] = None) = {
-    val userAgent = label.fold(s"cmwell-data-tools using akka-http/${config.getString("akka.version")}")(
-      l => s"cmwell-data-tools ${l.id}"
-    )
-    val settings = ConnectionPoolSettings(
-      ConfigFactory
-        .parseString(s"data-tools.akka.http.host-connection-pool.client.user-agent-header=$userAgent")
-        .withFallback(config)
-    )
+                                                                                      label: Option[LabelId] = None) = protocol match {
 
-    protocol match {
-      case "https" => Http().cachedHostConnectionPoolHttps[T](host, port, settings = settings)
-      case _       => Http().cachedHostConnectionPool[T](host, port, settings = settings)
-    }
+    case "https" => Http().cachedHostConnectionPoolHttps[T](host, port, settings = ConnectionPoolSettings(config))
+    case _       => Http().cachedHostConnectionPool[T](host, port, settings = ConnectionPoolSettings(config))
   }
 }
