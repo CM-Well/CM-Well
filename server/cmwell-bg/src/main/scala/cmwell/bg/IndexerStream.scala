@@ -271,6 +271,14 @@ class IndexerStream(partition: Int,
             val mergePrefferedSources =
               builder.add(MergePreferred[BGMessage[IndexCommand]](1, true))
 
+            val convertToIndexerCommands: Flow[BGMessage[IndexCommand], BGMessage[IndexCommand], NotUsed] = Flow.fromFunction {
+              case bgMsg@BGMessage(_, IndexNewInfotonCommand(uuid, isCurrent, path, infotonOpt, indexName, trackingIDs)) =>
+                bgMsg.copy(message = IndexNewInfotonCommandForIndexer(uuid, isCurrent, path, infotonOpt, indexName, Seq(), trackingIDs))
+              case bgMsg@BGMessage(_, IndexExistingInfotonCommand(uuid, weight, path, indexName, trackingIDs)) =>
+                bgMsg.copy(message = IndexExistingInfotonCommandForIndexer(uuid, weight, path, indexName, Seq(), trackingIDs))
+              case other => other
+            }
+
             val getInfotonIfNeeded = builder.add(
               Flow[BGMessage[IndexCommand]]
                 .mapAsync(math.max(numOfCassandraNodes / 2, 2)) {
@@ -461,8 +469,8 @@ class IndexerStream(partition: Int,
                 persistOffsetsGroups.flatten
             }
             // scalastyle:off
-            mergePrefferedSources ~> heartBitLog ~> splitNullMessages ~> getInfotonIfNeeded ~> indexCommandToEsActions ~> groupEsActions ~> indexInfoActionsFlow ~> updateIndexInfoInCas ~> mergeOffsetMessages
-                                                    splitNullMessages.map(msg => msg.copy(message = Seq(msg.message)))                                                                   ~> mergeOffsetMessages ~> broadcastMessages
+            mergePrefferedSources ~> convertToIndexerCommands ~> heartBitLog ~> splitNullMessages ~> getInfotonIfNeeded ~> indexCommandToEsActions ~> groupEsActions ~> indexInfoActionsFlow ~> updateIndexInfoInCas ~> mergeOffsetMessages
+                                                                                splitNullMessages.map(msg => msg.copy(message = Seq(msg.message)))                                                                   ~> mergeOffsetMessages ~> broadcastMessages
             broadcastMessages ~> reportProcessTracking ~> indexerOffsetsSink
             broadcastMessages ~> extactImpOffsetsFromMessage ~> impOffsetsSink
             // scalastyle:on
