@@ -205,9 +205,13 @@ object CrawlerStream extends LazyLogging {
         case prev@SoFarClear(PathsVersions(Some(latest), Vector(first: CasVersionWithSysFields, second: CasVersionWithSysFields)), _) =>
           val shouldFirstBeCurrent = latest.timestamp == first.timestamp
           val firstIndexName = first.fields.find(_.name == "indexName").get.value
-          val secondIndexName = second.fields.find(_.name == "indexName").get.value
+          val secondIndexNameOpt = second.fields.find(_.name == "indexName").map(_.value)
           verifyEsCurrentState(first.uuid, firstIndexName, shouldFirstBeCurrent)(prev)
-            .flatMap(_ => verifyEsCurrentState(second.uuid, secondIndexName, shouldBeCurrent = false)(prev))(ec)
+            .flatMap { firstResult =>
+              secondIndexNameOpt.fold(Future.successful(firstResult)) { secondIndexName =>
+                verifyEsCurrentState(second.uuid, secondIndexName, shouldBeCurrent = false)(prev)
+              }
+            }(ec)
         case other => Future.successful(other)
       }
     }
