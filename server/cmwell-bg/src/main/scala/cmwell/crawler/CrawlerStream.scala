@@ -116,7 +116,10 @@ object CrawlerStream extends LazyLogging {
       for {
         latest <- latestVersion
         versions <- neighbourhoodVersions
-      } yield (PathsVersions(latest, versions), cmdOffset)
+      } yield {
+        logger.trace(s"$crawlerId The CAS versions of offset: ${cmdOffset.location.offset} are: [latest: $latest] [versions: $versions]")
+        (PathsVersions(latest, versions), cmdOffset)
+      }
     }
 
     //checks that the given command is ok (either in paths table or null update or grouped command)
@@ -168,7 +171,7 @@ object CrawlerStream extends LazyLogging {
           val analyzed = versions.head
           analyzed match {
             case CasVersionWithSysFields(uuid, timestamp, fields) =>
-              logger.trace(s"$crawlerId The fields of $uuid and timestamp $timestamp are: $fields")
+              logger.trace(s"$crawlerId The fields of [offset: ${cmdWithLocation.location.offset}, uuid: $uuid, timestamp: $timestamp] are: $fields")
               val badFields = fields.groupBy(_.name).collect {
                 case (name, values) if values.length > 1 => s"field [$name] has too many values [${values.map(_.value).mkString(",")}]"
               }
@@ -232,6 +235,7 @@ object CrawlerStream extends LazyLogging {
         val messageSrc = backpressuredMessageSource(crawlerId, offsetSrc, nonBackpressuredMessageSrc)
         messageSrc
           .mapAsync(1)(checkKafkaMessage)
+          .via(CrawlerRatePrinter(crawlerId, 500, 60000)(logger))
           //todo: We need only the last element. There might be a way without save all the elements. Also getting last can be time consuming
           .groupedWithin(maxAmount, maxTime)
           .map(_.last)
