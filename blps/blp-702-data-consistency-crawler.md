@@ -20,26 +20,22 @@ The assumption is DCC can verify the same Kafka messages more than once with no 
 
 ### Verification Algorithm
 
-Starting offset: min(o1,o2) if o2 is the in last offset of indexTopic ignore it (e.g. if the lag is 0).
-start time: max(now1,now2)+safety net
+#### 1) Starting point
 
+(Crawler should never work on commands that are being processed by bg, but crawl a little bit behind it.)
 
-An idea how to check duplicates without searching ES:
-1. Let's assume the system is ok (either manually fixed or the DCC crawled it from the beginning of time).
-2. Let's "relax" our expectations and "trust" BG to not ruin older versions.
-3. for each new command:
+This is how it's done: Crawler's starting offset is the minumum of imp.offset and the imp.offset reported by Indexer. In the same manner, the starting timestamp is the **maximum** of those two offsets' timestamps. We added a configurable amout of time as a safety net, defaults to 1 minute.
 
-    3.1. if it's a normal command:
-    
-    3.1.1 read path table. If it's the most recent one - check that it's current (in ES)
-    
-    3.1.2. else check that it is not current
-   
-   3.2. if it's an override command check from this lastModified to the most recent one. Actually from one before this lastModified.
-The assumption is that dc-sync will sync most of the times the most recent one, hence, the performance penalty is not so bad.
+#### 2) Detection Steps
 
-3.1.1. read path table. If it's the most recent one - check that it's current (in ES). also check the previous lasModified that it's not current.
+(Crawler should never Search Elasticsearch. Neither should fetch entire history from Cassndra.)
 
+1. Consume a message from Kafka's "persist_topic" topic, with the offset according to the logic above (1).
+2. According to lastModified and path, fetch from Cassandra the relevant version **and the one before that**.
+3. Make sure the PATH table has no inconsistencies, and if we suspect so, consult zStore for Null Updates.
+4. Fetch System Fields of those two (or one in case this is the first write to that path) versions and validate their correctness (no missing, nor duplicated system fields).
+5. Get from Elasticsearch according to UUID and indexName (one or two versions) and make sure they exist, and
+6. Last one should be "current" and previous one, should be current=false.
 
 
 Known Limitations / Assumptions
@@ -55,4 +51,5 @@ Argument: The check will be _for each Kafka Command_ verifying that a version ex
 
 Future Work
 -----------
-As first phase only detection will be implemented.
+- As first phase only detection will be implemented.
+- Next is the Fix phase. This bloop will be updated with the detailed design of Fix logic soon.
