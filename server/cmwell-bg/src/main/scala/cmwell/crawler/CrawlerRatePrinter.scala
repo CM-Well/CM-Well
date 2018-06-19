@@ -54,13 +54,13 @@ class CrawlerRatePrinter(crawlerId: String,
               val currentTime = System.currentTimeMillis
               if (currentTime - printedAtTime > maxPrintRateMillis) {
                 val rate = totalElementsGot / (currentTime - startTime) * 1000
-                logger.info(s"$crawlerId Current offset is $elem. Total $totalElementsGot offsets already processed. " +
-                  s"Read rate: avg: ${rate.formatted("%.2f")} current: ${localRate.formatted("%.2f")} offsets/second")
                 if (currentTime - localStartTime > 15000) {
                   localRate = localTotalElementsGot / (currentTime - localStartTime) * 1000
                   localTotalElementsGot = 0
                   localStartTime = currentTime
                 }
+                logger.info(s"$crawlerId Current offset is $elem. Total $totalElementsGot offsets already processed. " +
+                s"Read rate: avg: ${rate.formatted("%.2f")} current: ${localRate.formatted("%.2f")} offsets/second")
                 printedAtElementNo = totalElementsGot
                 printedAtTime = currentTime
               }
