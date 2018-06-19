@@ -156,9 +156,10 @@ class CMWellBGActor(partition: Int,
 //      logger.debug(s"became state503. scheduling resume in [waitAfter503] seconds")
 //      context.system.scheduler.scheduleOnce(waitAfter503.seconds, self, Resume)
     case MarkCrawlerAsStopped(topic) =>
-      logger.info(s"Crawler stream of topic $topic stopped. Check its logs for details. Marking it as stopped and restarting it in $crawlerRestartDelayTime")
+      logger.info(s"Crawler [$topic, partition: $partition] stopped. Check its logs for details. " +
+        s"Marking it as stopped and restarting it in $crawlerRestartDelayTime")
       crawlerMaterializations(topic) = null
-      system.scheduler.scheduleOnce(crawlerRestartDelayTime)(self ! StartCrawler)
+      system.scheduler.scheduleOnce(crawlerRestartDelayTime)(self ! StartCrawler(topic))
     case StartCrawler(topic) =>
       startCrawler(topic)
     case Indexer503 =>
@@ -225,37 +226,37 @@ class CMWellBGActor(partition: Int,
 
   private def startCrawler(topic: String) = {
     if (crawlerMaterializations(topic) == null) {
-      logger.info(s"starting CrawlerStream of topic $topic")
-      //todo: add priority crawler
+      logger.info(s"starting Crawler [$topic, partition: $partition]")
       crawlerMaterializations(topic) = CrawlerStream.createAndRunCrawlerStream(config, topic, partition)(
         irwService, ftsService, zStore, offsetsService)(system, materializer, ec)
       crawlerMaterializations(topic).doneState.onComplete {
         case Success(_) =>
-          logger.info(s"The crawler stream of topic $topic finished with success. Sending a self message to mark it as finished.")
-          self ! MarkCrawlerAsStopped
+          logger.info(s"Crawler [$topic, partition: $partition] finished with success. Sending a self message to mark it as finished.")
+          self ! MarkCrawlerAsStopped(topic)
         case Failure(ex) =>
-          logger.error(s"The crawler stream of topic $topic finished with exception. Sending a self message to mark it as finished. The exception was: ", ex)
-          self ! MarkCrawlerAsStopped
+          logger.error(s"Crawler [$topic, partition: $partition] finished with exception. " +
+            s"Sending a self message to mark it as finished. The exception was: ", ex)
+          self ! MarkCrawlerAsStopped(topic)
       }
       //The stream didn't even start - set it as null
       if (crawlerMaterializations(topic).control == null)
         crawlerMaterializations(topic) = null
     } else
-      logger.error(s"requested to start Crawler Stream of topic $topic but it is already running. doing nothing.")
+      logger.error(s"It was requested to start Crawler [$topic, partition: $partition] but it is already running. doing nothing.")
   }
 
   private def stopCrawler(topic: String) = {
     if (crawlerMaterializations(topic) != null) {
-      logger.info(s"Sending the stop signal to the crawler stream of topic $topic")
+      logger.info(s"Sending the stop signal to Crawler [$topic, partition: $partition]")
       val res = crawlerMaterializations(topic).control.shutdown()
       res.onComplete {
-        case Success(_) => logger.info(s"The future of the crawler stream shutdown control of topic $topic finished with success. " +
-          "It will be marked as stopped only after the stream will totally finish.")
-        case Failure(ex) => logger.error(s"The future of the crawler stream shutdown control of topic $topic finished with exception. " +
-          "The crawler stream will be marked as stopped only after the stream will totally finish.The exception was: ", ex)
+        case Success(_) => logger.info(s"The future of the crawler stream shutdown control of Crawler [$topic, partition: $partition] " +
+          s"finished with success. It will be marked as stopped only after the stream will totally finish.")
+        case Failure(ex) => logger.error(s"The future of the crawler stream shutdown control of Crawler [$topic, partition: $partition] " +
+          s"finished with exception. The crawler stream will be marked as stopped only after the stream will totally finish.The exception was: ", ex)
       }
     } else
-      logger.error(s"Crawler Stream of topic $topic was already stopped and it was requested to finish it again. Not reasonable!")
+      logger.error(s"Crawler [$topic, partition: $partition] was already stopped and it was requested to finish it again. Not reasonable!")
   }
 
   private def startAll = {

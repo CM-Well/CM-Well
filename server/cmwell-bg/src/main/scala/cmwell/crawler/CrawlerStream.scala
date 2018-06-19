@@ -116,7 +116,10 @@ object CrawlerStream extends LazyLogging {
       for {
         latest <- latestVersion
         versions <- neighbourhoodVersions
-      } yield (PathsVersions(latest, versions), cmdOffset)
+      } yield {
+        logger.trace(s"$crawlerId The CAS versions of offset: ${cmdOffset.location.offset} are: [latest: $latest] [versions: $versions]")
+        (PathsVersions(latest, versions), cmdOffset)
+      }
     }
 
     //checks that the given command is ok (either in paths table or null update or grouped command)
@@ -168,6 +171,7 @@ object CrawlerStream extends LazyLogging {
           val analyzed = versions.head
           analyzed match {
             case CasVersionWithSysFields(uuid, timestamp, fields) =>
+              logger.trace(s"$crawlerId The fields of [offset: ${cmdWithLocation.location.offset}, uuid: $uuid, timestamp: $timestamp] are: $fields")
               val badFields = fields.groupBy(_.name).collect {
                 case (name, values) if values.length > 1 => s"field [$name] has too many values [${values.map(_.value).mkString(",")}]"
               }
@@ -226,11 +230,12 @@ object CrawlerStream extends LazyLogging {
       case Success(persistedOffset) =>
         val initialOffset = persistedOffset.fold(0L)(_.offset + 1)
         logger.info(s"$crawlerId Starting the crawler with initial offset of $initialOffset")
-        val offsetSrc = positionSource(topic, partitionId, offsetsService, retryDuration, safetyNetTimeInMillis)(sys, ec)
+        val offsetSrc = positionSource(crawlerId, partitionId, offsetsService, retryDuration, safetyNetTimeInMillis)(sys, ec)
         val nonBackpressuredMessageSrc = messageSource(initialOffset, topic, partition, bootStrapServers)(sys)
         val messageSrc = backpressuredMessageSource(crawlerId, offsetSrc, nonBackpressuredMessageSrc)
         messageSrc
           .mapAsync(1)(checkKafkaMessage)
+          .via(CrawlerRatePrinter(crawlerId, 500, 60000)(logger))
           //todo: We need only the last element. There might be a way without save all the elements. Also getting last can be time consuming
           .groupedWithin(maxAmount, maxTime)
           .map(_.last)
@@ -242,6 +247,12 @@ object CrawlerStream extends LazyLogging {
                 logger.info(s"$crawlerId The control of the stream is completely done now. If the system is up it should be restarted later.")
                 d
               }(ec)
+            }(ec)
+            allDone.onComplete {
+              case Success(_) => //do nothing (the log prints are in the future itself)
+              case Failure(ex) =>
+                logger.error(s"$crawlerId The stream exited with an exception. " +
+                  s"If the system is up it should be restarted later, please look in the main application log file. The exception was:", ex)
             }(ec)
             CrawlerMaterialization(control, allDone)
           }
