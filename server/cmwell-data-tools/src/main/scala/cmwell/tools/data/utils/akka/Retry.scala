@@ -258,7 +258,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
 //    val conn = Http().newHostConnectionPool[State](host = baseUrl, port = port) // http connection flow
     val HttpAddress(protocol, host, port, uriPrefix) =
       ArgsManipulations.extractBaseUrl(baseUrl)
-    val conn = HttpConnections.newHostConnectionPool[State](
+    val conn = HttpConnections.cachedHostConnectionPool[State](
       host,
       port,
       protocol

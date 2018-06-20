@@ -91,7 +91,7 @@ class BufferFillerActor(threshold: Int,
   private val HttpAddress(protocol, host, port, _) =
     ArgsManipulations.extractBaseUrl(baseUrl)
   private val conn =
-    HttpConnections.newHostConnectionPool[Option[_]](host, port, protocol)
+    HttpConnections.cachedHostConnectionPool[Option[_]](host, port, protocol)
 
   override def preStart(): Unit = {
     logger.info("starting BufferFillerActor")
