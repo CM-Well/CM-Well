@@ -217,7 +217,7 @@ class IRWServiceNativeImpl2(
   ): Future[Box[Infoton]] = {
 
     def getFromCas(lvl: ConsistencyLevel, isARetry: Boolean = false): Future[Box[Infoton]] = {
-      val stmt = getInfotonUUID.bind(uuid).setConsistencyLevel(level)
+      val stmt = getInfotonUUID.bind(uuid).setConsistencyLevel(lvl)
       val resultedInfotonFuture =
         cmwell.util.concurrent.retry(5, delayOnError, 2)(executeAsyncInternal(stmt).map(convert(uuid)))(ec)
       resultedInfotonFuture
