@@ -16,6 +16,8 @@
 
 package cmwell.it
 
+import java.nio.charset.StandardCharsets
+
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.{AsyncFunSpec, Matchers, TryValues}
 import play.api.libs.json._
@@ -35,10 +37,10 @@ class FileInfotonTests extends AsyncFunSpec with Matchers with TryValues with He
       }
     }
     val f1 = f0.flatMap {_ => spinCheck(100.millis, true)(Http.get(path)){res =>
-      new String(res.payload, "UTF-8").equals(fileStr) && res.contentType.takeWhile(_ != ';').equals("text/plain")}
+      new String(res.payload, StandardCharsets.UTF_8) == fileStr && res.contentType.takeWhile(_ != ';') == "text/plain"}
       .map { res =>
         withClue(res) {
-          new String(res.payload, "UTF-8") should be(fileStr)
+          new String(res.payload, StandardCharsets.UTF_8) should be(fileStr)
           res.contentType.takeWhile(_ != ';') should be("text/plain")
         }
       }}
