@@ -738,7 +738,7 @@ class ImpStream(partition: Int,
                 //count it for metrics
                 bGMetrics.indexExistingCommandCounter += 1
                 List((ESIndexRequest(
-                  new UpdateRequest(indexName, "infoclone", uuid).doc(s"""{"system":{"current": false}}""").version(1),
+                  new UpdateRequest(indexName, "infoclone", uuid).doc(s"""{"system":{"current": false}}"""),
                   None
                 ), weight))
               case _ => ???

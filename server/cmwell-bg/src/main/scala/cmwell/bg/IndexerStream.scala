@@ -329,7 +329,6 @@ class IndexerStream(partition: Int,
                     indexExistingCommandCounter += 1
                     val updateRequest =
                       new UpdateRequest(indexName, "infoclone", uuid)
-                        .version(1)
                         .doc(s"""{"system":{"current": false}}""")
                         .asInstanceOf[ActionRequest[_ <: ActionRequest[_ <: AnyRef]]]
                     Success(

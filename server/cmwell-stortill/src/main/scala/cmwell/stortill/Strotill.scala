@@ -137,8 +137,6 @@ class Strotill(irw: IRWService, ftsService: FTSServiceOps) extends LazyLogging {
           .`type`("infoclone")
           .id(i.uuid)
           .create(true)
-          .versionType(VersionType.FORCE)
-          .version(1)
           .source(JsonSerializer.encodeInfoton(modifyInfoton(i), true, true))
       )
     }
@@ -150,8 +148,6 @@ class Strotill(irw: IRWService, ftsService: FTSServiceOps) extends LazyLogging {
           .`type`("infoclone")
           .id(i.uuid)
           .create(true)
-          .versionType(VersionType.FORCE)
-          .version(1)
           .source(JsonSerializer.encodeInfoton(modifyInfoton(i), true, true))
       )
     }

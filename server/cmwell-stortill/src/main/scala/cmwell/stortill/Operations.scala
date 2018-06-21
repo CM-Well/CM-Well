@@ -477,8 +477,6 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSServiceOps)
       .`type`("infoclone")
       .id(infoton.uuid)
       .create(true)
-      .versionType(VersionType.FORCE)
-      .version(1)
       .source(JsonSerializer.encodeInfoton(infoton, omitBinaryData = true, toEs = true))
 
   private def purgeFromCas(path: String, uuid: String, timestamp: Long) =
@@ -558,8 +556,6 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSServiceOps)
                 .`type`("infoclone")
                 .id(infotonWithFixedIndexTimeAndDc.uuid)
                 .create(true)
-                .versionType(VersionType.FORCE)
-                .version(1)
                 .source(JsonSerializer.encodeInfoton(infotonWithFixedIndexTimeAndDc, true, true))
             }
             s.ftsProxy.purgeByUuids(Seq(), Some(infotonWithFixedIndexTimeAndDc.uuid)).flatMap {
