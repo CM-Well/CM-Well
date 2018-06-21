@@ -234,7 +234,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
           "qp" -> "type.rdf::http://xmlns.com/foaf/0.1/Document",
           "gqp" -> "<isDefinedBy.rdfs[countryCode.geonames::US]"))){ r =>
         (Json.parse(r.payload) \ "results" \ "total": @unchecked) match {
-          case JsDefined(JsNumber(n)) => n.intValue() == 2
+          case JsDefined(JsNumber(n)) => n.intValue() == 7
         }
       }.map { res =>
         withClue(res) {
