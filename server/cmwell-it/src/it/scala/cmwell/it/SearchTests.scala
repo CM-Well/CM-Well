@@ -16,15 +16,12 @@
 
 package cmwell.it
 
-import cmwell.util.concurrent.SimpleScheduler.{schedule, scheduleFuture}
-import cmwell.util.http.SimpleResponse
 import com.typesafe.scalalogging.LazyLogging
+import org.scalatest.{AsyncFunSpec, Inspectors, Matchers}
 import play.api.libs.json._
 
-import scala.concurrent.{Await, Future, Promise}
 import scala.concurrent.duration._
-import org.scalatest.{AsyncFunSpec, Inspectors, Matchers}
-
+import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success, Try}
 
 class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helpers with fixture.NSHashesAndPrefixes with LazyLogging {
@@ -74,7 +71,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
 
 
     val f0 = executeAfterCompletion(ingestGeonames) {
-      spinCheck(1.second)(Http.get(
+      spinCheck(100.millis)(Http.get(
         path,
         List("op" -> "search", "recursive" -> "", "length" -> "14", "format" -> "json"))) { r =>
           (Json.parse(r.payload) \ "results" \ "total": @unchecked) match {
@@ -83,8 +80,8 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
         }
     }
 
-    val f1 = f0.flatMap(_ => scheduleFuture(10.seconds){
-      spinCheck(1.second,true)(Http.get(cmw / "meta" / "ns" / "2_fztg" / "alt", List("format"->"json"))){ r =>
+    val f1 = f0.flatMap(_ => {
+      spinCheck(100.millis,true)(Http.get(cmw / "meta" / "ns" / "2_fztg" / "alt", List("format"->"json"))){ r =>
         ((Json.parse(r.payload) \ "fields" \ "mang").head : @unchecked) match {
           case JsDefined(JsString(char)) => char == "f"
         }
@@ -92,7 +89,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
     })
 
     val searchForExistence = executeAfterCompletion(f1){
-      spinCheck(1.second,true)(Http.get(path, List("op" -> "search", "qp" -> "alt.wgs84_pos:", "format" -> "json", "debug-info" -> ""))) { r =>
+      spinCheck(100.millis,true)(Http.get(path, List("op" -> "search", "qp" -> "alt.wgs84_pos:", "format" -> "json", "debug-info" -> ""))) { r =>
         val j = Json.parse(r.payload)
         (j \ "results" \ "total" : @unchecked) match {
           case JsDefined(JsNumber(n)) => n.intValue() == 2
@@ -101,7 +98,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
     }
 
     val postSearchForExistence = executeAfterCompletion(f1){
-      spinCheck(1.second,true)(Http.post(path,
+      spinCheck(100.millis,true)(Http.post(path,
                                            "qp=alt.wgs84_pos:&format=json&debug-info=",
                                            Some("application/x-www-form-urlencoded"),
                                            queryParams = List("op" -> "search"),
@@ -137,7 +134,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
 
     val sortByLatitude = executeAfterCompletion(typesCache){
 
-      spinCheck(1.second,true)(Http.get(
+      spinCheck(100.millis,true)(Http.get(
         uri = path,
         queryParams = List("op" -> "search","sort-by" -> "-lat.wgs84_pos","format" -> "json","with-data" -> "","pretty" -> "","debug-info" -> "")
       )){ r =>
@@ -163,7 +160,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
     }
 
     val sortByAltitude = executeAfterCompletion(f1){
-      spinCheck(1.second,true)(Http.get(
+      spinCheck(100.millis,true)(Http.get(
         uri = path,
         queryParams = List("op" -> "search","sort-by" -> "-alt.wgs84_pos","format" -> "json","with-data" -> "","pretty" -> "","debug-info" -> "")
       )){ r =>
@@ -185,7 +182,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
     }
 
     val sortByScoreFilterByIL = executeAfterCompletion(f1){
-      spinCheck(1.second,true)(Http.get(
+      spinCheck(100.millis,true)(Http.get(
         uri = path,
         queryParams = List(
           "op" -> "search",
@@ -210,7 +207,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
     }
 
     val recursiveSearch = executeAfterCompletion(f1){
-      spinCheck(1.second,true)(Http.get(
+      spinCheck(100.millis,true)(Http.get(
         uri = path,
         queryParams = List("op" -> "search","format" -> "json","pretty" -> "","debug-info" -> "","recursive" -> ""))){ r =>
         (Json.parse(r.payload) \ "results" \ "total": @unchecked) match {
@@ -226,7 +223,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
 
     ///sws.geonames.org/?op=search&recursive&qp=type.rdf::http://xmlns.com/foaf/0.1/Document&gqp=<isDefinedBy.rdfs[countryCode.geonames::US]
     val gqpFiltering = executeAfterCompletion(f1){
-      spinCheck(1.second,true)(Http.get(
+      spinCheck(100.millis,true)(Http.get(
         uri = path,
         queryParams = List(
           "op" -> "search",
@@ -237,7 +234,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
           "qp" -> "type.rdf::http://xmlns.com/foaf/0.1/Document",
           "gqp" -> "<isDefinedBy.rdfs[countryCode.geonames::US]"))){ r =>
         (Json.parse(r.payload) \ "results" \ "total": @unchecked) match {
-          case JsDefined(JsNumber(n)) => n.intValue() == 2
+          case JsDefined(JsNumber(n)) => n.intValue() == 7
         }
       }.map { res =>
         withClue(res) {
@@ -267,7 +264,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
     val awoiaf = cmw / "awoiaf.westeros.org"
 
     val awoiafSearch = executeAfterCompletion(ingestGOT){
-      spinCheck(1.second,true)(Http.get(
+      spinCheck(100.millis,true)(Http.get(
         awoiaf,
         List("op" -> "search", "format" -> "json", "length" -> "1")
       )) { r =>
@@ -397,7 +394,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
     }
 
     def recSearch(path: String, queryParams: Seq[(String,String)], expectedTotal: Int) =
-      executeAfterCompletion(deleteAbouts)(spinCheck(1.second,true)(Http.get(path, queryParams)){ r =>
+      executeAfterCompletion(deleteAbouts)(spinCheck(500.millis,true)(Http.get(path, queryParams)){ r =>
         (Json.parse(r.payload) \ "results" \ "total" : @unchecked) match {
           case JsDefined(JsNumber(n)) => n.intValue() == expectedTotal
         }
@@ -457,7 +454,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
           }
         })
 
-    val searchUnderscoreAll = recSearch(cmw / "", Seq("op"->"search", "recursive"->"", "qp"->"_all:Tikva", "format"->"json"), 10).map { r =>
+    val searchUnderscoreAll = recSearch(cmw / "", Seq("op"->"search", "recursive"->"", "qp"->"_all:Tikva", "format"->"json"), 1).map { r =>
       (Json.parse(r.payload) \ "results" \ "total").as[Int] should be(1)
     }
 
