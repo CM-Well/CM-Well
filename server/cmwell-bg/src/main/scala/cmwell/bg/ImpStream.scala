@@ -571,7 +571,8 @@ class ImpStream(partition: Int,
                 travector(offsets) { o =>
                   val key = s"imp.$partition${if(o.topic == persistCommandsTopicPriority) ".p" else ""}_${o.offset}"
                   val payload = "nu".getBytes(StandardCharsets.UTF_8)
-                  zStore.put(key, payload, ttlSeconds, batched = true).recover { case _ => () }
+                  zStore.put(key, payload, ttlSeconds, batched = true).
+                    recover { case t => logger.error(s"Could not write to zStore ($key,nu)", t) }
                 }
               }
 

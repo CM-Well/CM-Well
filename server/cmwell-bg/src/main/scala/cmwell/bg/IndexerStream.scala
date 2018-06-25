@@ -460,7 +460,8 @@ class IndexerStream(partition: Int,
                     travector(allOffsetsButLast) { o =>
                       val key = s"imp.$partition${if(o.topic.contains("priority")) ".p" else ""}_${o.offset}"
                       val payload = "grp".getBytes(StandardCharsets.UTF_8)
-                      zStore.put(key, payload, ttlSeconds, batched = true).recover { case _ => () }
+                      zStore.put(key, payload, ttlSeconds, batched = true).
+                        recover { case t => logger.error(s"Could not write to zStore ($key,grp)", t) }
                     }
                   }
                 }
