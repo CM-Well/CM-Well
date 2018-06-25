@@ -85,6 +85,7 @@ object CrawlerStream extends LazyLogging {
     val maxAmount = config.getInt("cmwell.crawler.persist.maxAmount")
     val safetyNetTimeInMillis: Long = config.getDuration("cmwell.crawler.safetyNetTime").toMillis
     val retryDuration = config.getDuration("cmwell.crawler.retryDuration").getSeconds.seconds
+    val checkParallelism = config.getInt("cmwell.crawler.checkParallelism")
 
     val initialPersistOffset = Try(offsetsService.readWithTimestamp(persistId))
 
@@ -238,7 +239,7 @@ object CrawlerStream extends LazyLogging {
         val nonBackpressuredMessageSrc = messageSource(initialOffset, topic, partition, bootStrapServers)(sys)
         val messageSrc = backpressuredMessageSource(crawlerId, offsetSrc, nonBackpressuredMessageSrc)
         messageSrc
-          .mapAsync(1)(checkKafkaMessage)
+          .mapAsync(checkParallelism)(checkKafkaMessage)
           .via(CrawlerRatePrinter(crawlerId, 500, 60000)(logger))
           //todo: We need only the last element. There might be a way without save all the elements. Also getting last can be time consuming
           .groupedWithin(maxAmount, maxTime)
