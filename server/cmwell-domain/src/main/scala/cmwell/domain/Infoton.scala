@@ -404,7 +404,8 @@ case class FileInfoton(path: String,
                     indexTime,
                     lastModified,
                     fields,
-                    content.map(c => FileContent(None, c.mimeType, content.get.dataLength, hash))) {
+                    content.map(c => FileContent(None, c.mimeType, content.get.dataLength, hash)),
+                    indexName) {
       override val uuid = originalUuid
       override def kind = "FileInfoton"
     }
@@ -424,7 +425,8 @@ case class FileInfoton(path: String,
                         indexTime,
                         lastModified,
                         fields,
-                        content.map(c => FileContent(Some(data), c.mimeType, data.length, hashOpt))) {
+                        content.map(c => FileContent(Some(data), c.mimeType, data.length, hashOpt)),
+                        indexName) {
           override val uuid = originalUuid
           override def kind = "FileInfoton"
       }
