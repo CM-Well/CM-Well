@@ -15,27 +15,30 @@
 
 package cmwell.crawler
 
-import akka.{Done, NotUsed}
+import java.util.Properties
+
 import akka.actor.ActorSystem
 import akka.kafka.scaladsl.Consumer
 import akka.kafka.{ConsumerSettings, Subscriptions}
-import akka.stream.{ActorMaterializer, ClosedShape, SourceShape}
-import akka.stream.scaladsl.{GraphDSL, RunnableGraph, Sink, Source}
+import akka.stream.scaladsl.{GraphDSL, Sink, Source}
+import akka.stream.{ActorMaterializer, SourceShape}
+import akka.{Done, NotUsed}
 import cmwell.common._
-import cmwell.common.formats.BGMessage
-import cmwell.fts.{FTSServiceNew, FTSServiceOps}
+import cmwell.fts.FTSServiceOps
 import cmwell.irw.IRWService
+import cmwell.util.concurrent.travector
 import cmwell.zstore.ZStore
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord}
+import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
 import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.serialization.{ByteArrayDeserializer, StringDeserializer}
+import org.apache.kafka.common.serialization.ByteArrayDeserializer
+import play.api.libs.json.Json
 
-import scala.concurrent.duration.{DurationInt, DurationLong, FiniteDuration}
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.{DurationLong, FiniteDuration}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success, Try}
-import cmwell.util.concurrent.travector
 
 //case class CrawlerPosition(offset: Long, timeStamp: Long)
 sealed trait CrawlerState
@@ -87,6 +90,14 @@ object CrawlerStream extends LazyLogging {
     val retryDuration = config.getDuration("cmwell.crawler.retryDuration").getSeconds.seconds
     val checkParallelism = config.getInt("cmwell.crawler.checkParallelism")
 
+    val kafkaProducer = {
+      val producerProperties = new Properties
+      producerProperties.put("bootstrap.servers", bootStrapServers)
+      producerProperties.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
+      producerProperties.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
+      new KafkaProducer[Array[Byte], Array[Byte]](producerProperties)
+    }
+
     val initialPersistOffset = Try(offsetsService.readWithTimestamp(persistId))
 
     def checkKafkaMessage(msg: ConsumerRecord[Array[Byte], Array[Byte]]): Future[Long] = {
@@ -96,7 +107,7 @@ object CrawlerStream extends LazyLogging {
         .flatMap(enrichVersionsWithSystemFields)(ec)
         .map(checkSystemFields)(ec)
         .flatMap(checkEsVersions)(ec)
-        .map(reportErrors)(ec)
+        .flatMap(reportErrors)(ec)
         .map(_ => msg.offset())(ec)
     }
 
@@ -218,11 +229,30 @@ object CrawlerStream extends LazyLogging {
     }
 
     def reportErrors(finalResult: DetectionResult) = {
+      def kafkaProduce(pRecord: ProducerRecord[Array[Byte],Array[Byte]]): Future[RecordMetadata] = {
+        val p = Promise[RecordMetadata]()
+        kafkaProducer.send(pRecord, new Callback {
+          override def onCompletion(metadata: RecordMetadata, exception: Exception): Unit =
+            Option(exception).fold(p.success(metadata))(p.failure)
+        })
+        p.future
+      }
+
       finalResult match {
         case err: DetectionError =>
           logger.error(s"$crawlerId Inconsistency found: ${err.details} for command in location ${err.cmdWithLocation.location}. " +
             s"Original command: ${err.cmdWithLocation.cmd}")
-        case other => other
+
+          val (details, origin, command) = {
+            val loc = err.cmdWithLocation.location
+            val origin = Json.obj("topic" -> loc.topic, "partition" -> loc.partition, "offset" -> loc.offset)
+            (err.details, origin, err.cmdWithLocation.cmd.toString)
+          }
+          val path = err.cmdWithLocation.cmd.path.getBytes("UTF-8")
+          val msg = Json.stringify(Json.obj("details" -> details, "origin" -> origin, "command" -> command)).getBytes("UTF-8")
+          val pRecord = new ProducerRecord[Array[Byte], Array[Byte]]("red_queue", partition, path, msg)
+          kafkaProduce(pRecord).map(_ => err)(ec)
+        case other => Future.successful(other)
       }
     }
 
