@@ -16,12 +16,11 @@
 
 package cmwell.it
 
-import cmwell.util.concurrent.SimpleScheduler._
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest._
 import play.api.libs.json.Json
 
-import scala.concurrent.Future
+import scala.concurrent.duration._
 import scala.util.Try
 
 class LinkInfotonTests extends AsyncFunSpec with Matchers with Helpers with LazyLogging {
@@ -49,33 +48,46 @@ class LinkInfotonTests extends AsyncFunSpec with Matchers with Helpers with Lazy
         }
       }
     }
-    val getLink = postLinkAndObj.flatMap(_ => scheduleFuture(indexingDuration){
-      Http.get(cmt / "LinkToObj3")
-    })
-    val testLink = getLink.map { res =>
-      withClue(s"expecting a redirect response: $res") {
-        res.status should be(307)
-      }
+
+    val testLink = spinCheck(100.millis, true)(Http.get(cmt / "LinkToObj3")) {res =>
       val loc = res.headers.find(_._1 == "Location").map(_._2)
-      withClue(s"expecting a Location header: ${res.headers}") {
-        loc.isDefined should be(true)
+      res.status == 307 && loc.isDefined}
+      .map { res =>
+        withClue(s"expecting a redirect response: $res") {
+          res.status should be(307)
+        }
+        val loc = res.headers.find(_._1 == "Location").map(_._2)
+        withClue(s"expecting a Location header: ${res.headers}") {
+          loc.isDefined should be(true)
+        }
+
       }
-    }
-    val getDataThroughLink = getLink.flatMap { result =>
-      val locH = result.headers.find(_._1 == "Location")
-      locH.map(_._2).fold(Future[Assertion](fail("expected location header"))) { loc =>
-        val dst = loc.split('/').filter(_.nonEmpty).foldLeft(cmw)(_ / _)
-        Http.get(dst,List("format" -> "json")).map { res =>
+
+    val getDataThroughLink = testLink.flatMap{ _ =>
+      Http.get(cmt / "LinkToObj3").flatMap { res =>
+        val loc = res.headers.find(_._1 == "Location").map(_._2)
+        val dst = loc.get.split('/').filter(_.nonEmpty).foldLeft(cmw)(_ / _)
+        spinCheck(100.millis, true)(Http.get(dst, List("format" -> "json"))) {
+          res => {
+            Try(Json.parse(res.payload).transform(uuidDateEraser).get) match {
+              case scala.util.Failure(e) => false
+              case scala.util.Success(v) => v == expected
+            }
+          }
+        }.map { res =>
           val body = new String(res.payload, "UTF-8")
           withClue(body + "\n" + res.toString) {
             Try(Json.parse(res.payload).transform(uuidDateEraser).get) match {
-              case scala.util.Failure(e) => fail(s"parsing & transforming failed for [$body]",e)
+              case scala.util.Failure(e) => fail(s"parsing & transforming failed for [$body]", e)
               case scala.util.Success(v) => v shouldEqual expected
+
             }
           }
         }
       }
+
     }
+
     val postUnderscoreInFwdLink = {
       val triples =
         """
@@ -89,34 +101,38 @@ class LinkInfotonTests extends AsyncFunSpec with Matchers with Helpers with Lazy
         }
       }
     }
-    val verifyFwdLink = postUnderscoreInFwdLink.flatMap(_ => scheduleFuture(indexingDuration) {
-      Http.post(_out, "/en.wikipedia.org/wiki/cyrtantheae", Some("text/plain;charset=UTF-8"), List("format" -> "json"), tokenHeader).map { res =>
-        val expected = Json.parse(s"""
-          |{
-          |  "type": "RetrievablePaths",
-          |  "infotons": [
-          |    {
-          |      "type": "LinkInfoton",
-          |      "system": {
-          |        "path": "/en.wikipedia.org/wiki/cyrtantheae",
-          |        "parent": "/en.wikipedia.org/wiki",
-          |        "dataCenter": "lh"
-          |      },
-          |      "linkTo": "/en.wikipedia.org/wiki/cyrtanthus",
-          |      "linkType": 2
-          |    }
-          |  ],
-          |  "irretrievablePaths": []
-          |}
+    val verifyFwdLink = postUnderscoreInFwdLink.flatMap(_ => {
+      val expected = Json.parse(
+        s"""
+           |{
+           |  "type": "RetrievablePaths",
+           |  "infotons": [
+           |    {
+           |      "type": "LinkInfoton",
+           |      "system": {
+           |        "path": "/en.wikipedia.org/wiki/cyrtantheae",
+           |        "parent": "/en.wikipedia.org/wiki",
+           |        "dataCenter": "lh"
+           |      },
+           |      "linkTo": "/en.wikipedia.org/wiki/cyrtanthus",
+           |      "linkType": 2
+           |    }
+           |  ],
+           |  "irretrievablePaths": []
+           |}
         """.stripMargin)
-        withClue(res){
+
+      spinCheck(100.millis, true)(Http.post(_out, "/en.wikipedia.org/wiki/cyrtantheae", Some("text/plain;charset=UTF-8"), List("format" -> "json"),
+        tokenHeader)) { res => Json.parse(res.payload).transform(bagUuidDateEraserAndSorter).get == expected }
+        .map { res =>
+        withClue(res) {
           Json.parse(res.payload).transform(bagUuidDateEraserAndSorter).get should be(expected)
         }
       }
     })
 
     it("should succeed posting ObjectInfoton & LinkInfoton")(postLinkAndObj)
-    it("should get obj through link")(testLink)
+    it("should get obj through link  +  should retrieve data from link ref")(testLink)
     it("should retrieve data from link ref")(getDataThroughLink)
     it("should succeed posting LinkInfoton type Forward")(postUnderscoreInFwdLink)
     it("should verify the forward link infoton using POST")(verifyFwdLink)
