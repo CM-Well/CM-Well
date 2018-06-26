@@ -16,11 +16,11 @@
 
 package cmwell.it
 
-import cmwell.util.concurrent.SimpleScheduler.schedule
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.enablers.{Emptiness, Size}
-import play.api.libs.json._
 import org.scalatest.{AsyncFunSpec, Matchers}
+import play.api.libs.json._
+
 import scala.concurrent.duration.DurationInt
 
 class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixture.NSHashesAndPrefixes with LazyLogging {
@@ -53,16 +53,12 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
       }
     }
 
-    val waitForIngest = ingestData.flatMap(_ => schedule(indexingDuration)(()))
-
-    val makeSureSteveHarrisIs404Ghost = waitForIngest.flatMap { _ =>
-      spinCheck(1.second,true)(Http.get(
+    val makeSureSteveHarrisIs404Ghost = spinCheck(1.second,true)(Http.get(
         cmw / "dbpedia.org" / "resource" / "Steve_Harris_(musician)",
-        List("format" -> "json")))(_.status).map {
+        List("format" -> "json")))(_.status == 404).map {
         res => withClue(res) {
           res.status should be(404)
         }
-      }
     }
 
     implicit val jsValueArrSize = new Size[JsArray] {
@@ -73,28 +69,35 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
       override def isEmpty(thing: JsArray): Boolean = thing.value.isEmpty
     }
 
-    val skipSteveHarrisGhostToGetBand = waitForIngest.flatMap { _ =>
-      spinCheck(1.second,true)(Http.get(
+    val skipSteveHarrisGhostToGetBand = spinCheck(1.second,true)(Http.get(
         cmw / "identi.ca" / "user" / "13766",
         List(
           "yg" -> ">sameAs.owl<bandMember.ontology",
-          "format" -> "json")))(_.status).map {
+          "format" -> "json")))
+      { res => res.status == 200 && (Json.parse(res.payload) \ "infotons" match {
+          case JsDefined(arr: JsArray) => arr.value.size == 2
+          case _ => false
+        })
+      }.map {
         res => withClue(res) {
-          res.status should be(200)
-          Json.parse(res.payload) \ "infotons" match {
-            case JsDefined(arr: JsArray) => arr should have size(2)
-            case somethingElse => fail(s"got something that is not json with array: $somethingElse")
+        res.status should be(200)
+        Json.parse(res.payload) \ "infotons" match {
+          case JsDefined(arr: JsArray) => arr should have size (2)
+          case somethingElse => fail(s"got something that is not json with array: $somethingElse ")
           }
         }
       }
-    }
 
-    val skipSteveHarrisGhostToGetIdentity = waitForIngest.flatMap { _ =>
-      spinCheck(1.second, true)(Http.get(
+    val skipSteveHarrisGhostToGetIdentity = spinCheck(1.second, true)(Http.get(
         cmw / "dbpedia.org" / "resource" / "Iron_Maiden",
         List(
           "yg" -> ">bandMember.ontology<sameAs.owl",
-          "format" -> "json")))(_.status).map {
+          "format" -> "json")))
+      { res =>
+        Json.parse(res.payload) \ "infotons" match {
+          case JsDefined(arr: JsArray) => arr.value.size == 2
+          case _ => false
+        }}.map {
         res =>
           withClue(res) {
             res.status should be(200)
@@ -104,14 +107,20 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
             }
           }
       }
-    }
 
-    val getInfotonsPointingToGhostOfSteveHarrisFrom404Path = waitForIngest.flatMap { _ =>
-      spinCheck(1.second,true)(Http.get(
+
+    val getInfotonsPointingToGhostOfSteveHarrisFrom404Path = spinCheck(1.second,true)(Http.get(
         cmw / "dbpedia.org" / "resource" / "Steve_Harris_(musician)",
         List(
           "yg" -> "<bandMember.ontology,sameAs.owl",
-          "format" -> "json")))(_.status).map {
+          "format" -> "json")))
+        {res =>
+          (res.status == 200) && (Json.parse(res.payload) \ "infotons" match {
+            case JsDefined(arr: JsArray) => arr.value.size == 2
+            case somethingElse => false
+          })
+          }
+        .map {
         res => withClue(res) {
           res.status should be(200)
           Json.parse(res.payload) \ "infotons" match {
@@ -120,30 +129,40 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
           }
         }
       }
-    }
 
-    val filterOutInfotonsPointingToGhostOfSteveHarrisFrom404Path = waitForIngest.flatMap { _ =>
-      spinCheck(1.second,true)(Http.get(
+    val filterOutInfotonsPointingToGhostOfSteveHarrisFrom404Path = spinCheck(1.second,true)(Http.get(
         cmw / "dbpedia.org" / "resource" / "Steve_Harris_(musician)",
         List(
           "yg" -> "<bandMember.ontology[type.rdf::http://www.w3.org/ns/prov#NotRealPersonType]",
-          "format" -> "json")))(_.status).map {
-        res => withClue(res) {
-          res.status should be(200)
-          Json.parse(res.payload) \ "infotons" match {
-            case JsDefined(arr: JsArray) => arr shouldBe empty
-            case somethingElse => fail(s"got something that is not json with array: $somethingElse")
+          "format" -> "json")))
+      {
+        res =>
+          res.status == 200 && (Json.parse(res.payload) \ "infotons" match {
+              case JsDefined(arr: JsArray) => arr.value.size == 0
+              case _ => false
+            })
+      }.map {
+        res =>
+          withClue(res) {
+            res.status should be(200)
+            Json.parse(res.payload) \ "infotons" match {
+              case JsDefined(arr: JsArray) => arr shouldBe empty
+              case somethingElse => fail(s"got something that is not json with array: $somethingElse")
+            }
           }
-        }
       }
-    }
 
-    val tryToSkipSteveHarrisGhostToGetIdentityButGetGhostFilttered = waitForIngest.flatMap { _ =>
-      spinCheck(1.second,true)(Http.get(
+    val tryToSkipSteveHarrisGhostToGetIdentityButGetGhostFilttered = spinCheck(1.second,true)(Http.get(
         cmw / "dbpedia.org" / "resource" / "Iron_Maiden",
         List(
           "yg" -> ">bandMember.ontology[type.rdf::http://www.w3.org/ns/prov#NotRealPersonType]<sameAs.owl",
-          "format" -> "json")))(_.status).map {
+          "format" -> "json")))
+      {
+        res => res.status == 200 && (Json.parse(res.payload) \ "infotons" match {
+            case JsDefined(arr: JsArray) => arr.value.size == 1
+            case _ => false
+          })
+      }.map {
         res => withClue(res) {
           res.status should be(200)
           Json.parse(res.payload) \ "infotons" match {
@@ -152,14 +171,18 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
           }
         }
       }
-    }
 
-    val refToBoolMatch = waitForIngest.flatMap { _ =>
-      spinCheck(1.second,true)(Http.get(
+    val refToBoolMatch = spinCheck(1.second,true)(Http.get(
         cmw / "example.org" / "issue-529" / "ref",
         List(
           "yg" -> ">valueReference.schema[value.schema:true]",
-          "format" -> "json")))(_.status).map {
+          "format" -> "json")))
+      {
+        res => res.status == 200 && (Json.parse(res.payload) \ "infotons" match {
+            case JsDefined(arr: JsArray) => arr.value.size == 2
+            case _ => false
+          })
+      }.map {
         res => withClue(res) {
           res.status should be(200)
           Json.parse(res.payload) \ "infotons" match {
@@ -168,14 +191,21 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
           }
         }
       }
-    }
 
-    val refToBoolExist = waitForIngest.flatMap { _ =>
-      spinCheck(1.second,true)(Http.get(
+    val refToBoolExist = spinCheck(1.second,true)(Http.get(
         cmw / "example.org" / "issue-529" / "ref",
         List(
           "yg" -> ">valueReference.schema[value.schema:]",
-          "format" -> "json")))(_.status).map {
+          "format" -> "json")))
+      {
+        res => withClue(res) {
+          res.status should be(200)
+          Json.parse(res.payload) \ "infotons" match {
+            case JsDefined(arr: JsArray) => arr.value.size == 2
+            case _ => false
+          }
+        }
+      }.map {
         res => withClue(res) {
           res.status should be(200)
           Json.parse(res.payload) \ "infotons" match {
@@ -184,14 +214,18 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
           }
         }
       }
-    }
 
-    val refToBoolMismatch = waitForIngest.flatMap { _ =>
-      spinCheck(1.second,true)(Http.get(
+    val refToBoolMismatch = spinCheck(1.second,true)(Http.get(
         cmw / "example.org" / "issue-529" / "ref",
         List(
           "yg" -> ">valueReference.schema[value.schema:false]",
-          "format" -> "json")))(_.status).map {
+          "format" -> "json")))
+      {
+        res => res.status  == 200 && (Json.parse(res.payload) \ "infotons" match {
+            case JsDefined(arr: JsArray) => arr.value.size == 1
+            case _ => false
+          })
+      }.map {
         res => withClue(res) {
           res.status should be(200)
           Json.parse(res.payload) \ "infotons" match {
@@ -200,7 +234,6 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
           }
         }
       }
-    }
 
     // scalastyle:off
     it("should ingest the data")(ingestData)
@@ -217,3 +250,4 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
     // scalastyle:on
   }
 }
+
