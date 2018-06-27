@@ -45,6 +45,9 @@ class OffsetThrottler(crawlerId: String)
         //messageOut-onPull->pull(messageIn)->pull(offsetIn)=>isAvailable(messageOut)==true
         if (pending.offset <= maxAllowedOffset /* && !isClosed(messageOut)*/ ) {
           logger.info(s"$crawlerId Got a new max allowed offset $maxAllowedOffset. Releasing the back pressure.")
+          if (pending.offset() == maxAllowedOffset)
+            logger.info(s"$crawlerId The current element's offset $maxAllowedOffset is the same as the max allowed one. " +
+              s"This means the crawler is going to handle the last infoton before horizon.")
           push(messageOut, pending)
           pending = null
           if (isClosed(messageIn))
