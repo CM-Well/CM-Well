@@ -315,9 +315,8 @@ class Merger(config: Config) extends LazyLogging {
         RealUpdate(infoton, trackingIds, evictions)
 
       // We are also testing for indexTime in order to handle BG recovery mode.
-      case Some(i) if baseInfoton.exists { bi =>
-        bi.isSameAs(i) && bi.indexTime.isEmpty
-      } =>
+      case Some(i) if baseInfoton.exists(bi => bi.isSameAs(i) && bi.indexTime.isEmpty) =>
+        logger.warn(s"Merged infoton [$i] is the same as the base infoton [${baseInfoton.get}] but the base infoton doesn't have index time!")
         RealUpdate(i.copyInfoton(lastModified = baseInfoton.get.lastModified), trackingIds, evictions)
       case _ => NullUpdate(baseInfoton.fold(cmds.head.path)(_.path), trackingIds, evictions)
     }

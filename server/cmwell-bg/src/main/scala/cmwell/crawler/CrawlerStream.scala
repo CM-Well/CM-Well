@@ -128,12 +128,11 @@ object CrawlerStream extends LazyLogging {
       val (paths, cmdWithLocation@CommandWithLocation(cmd, location)) = pathsCmdWithLocation
       if (paths.latest.isEmpty)
         Future.successful[DetectionResult](CasError(s"No last version in paths table for path ${cmd.path}!", cmdWithLocation))
-      else if (paths.versions.isEmpty)
-        Future.successful[DetectionResult](
-          CasError(s"No versions in paths table for path ${cmd.path} in last modified ${cmd.lastModified} and earlier!", cmdWithLocation))
       else {
+        //in case initial version of an infoton that was written several times fast, there will be a grouped commands without anything before.
+        //Crawler needs to check whether this is the case (e.g. empty versions and the command is grouped)
         //todo: check the lastModified + 1 of BG. in some case there might be small shift of last modified and it will be ok.
-        if (paths.versions.head.timestamp != cmd.lastModified.getMillis) {
+        if (paths.versions.isEmpty || paths.versions.head.timestamp != cmd.lastModified.getMillis) {
           zStore.getStringOpt(s"imp.${partitionId}_${location.offset}").map {
             //the current offset was null update of grouped command. Bg didn't change anything in the system due to it - The check is finished in this stage
             case Some("nu" | "grp") =>
