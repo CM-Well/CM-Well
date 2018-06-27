@@ -29,7 +29,9 @@ Each message returned via the **_kafka** API is in a separate line.
 
 When you consume the messages from the 4 Kafka topics described, CM-Well automatically deserializes them into JSON-formatted strings.
 
-If you are consuming a different topic (YAAKOV, LIKE WHAT???), and you know that its messages are also strings, you can specify the **format=text** parameter value to cause its messages to be deserialized as strings. Otherwise, each message is returned as comma-separated byte values (YAAKOV, why do we need the commas?).
+>**Note**: Currently only the 4 topics mentioned above are available for consumption. In the future, you'll be able to consume a queue populated with issues detected by the [Data Consistency Crawler](Architecture.DCC.md).)
+
+If you are consuming a different topic, and you know that its messages are also strings, you can specify the **format=text** parameter value to cause its messages to be deserialized as strings. Otherwise, each message is returned as comma-separated byte values (e.g. ```72,101,108,108,111,32,87,111,114,108,100...```).
 
 ## Syntax ##
 
@@ -41,13 +43,13 @@ If you are consuming a different topic (YAAKOV, LIKE WHAT???), and you know that
 
 **Template:**
 
-    curl -X GET "<cm-well-host>/_kafka/<topicName>/<partitionNumber>"
+    curl -X GET "<cm-well-host>/_kafka/<topicName>/<partitionNumber>" -H X-CM-Well-Token:<admin-token>
 
 **URL example:** ```<cm-well-host>/_kafka/persist_topic/0?format=text```
 
 **Curl example (REST API):**
 
-    curl -X GET "<cm-well-host>/_kafka/persist_topic/0?format=text"
+    curl -X GET "<cm-well-host>/_kafka/persist_topic/0?format=text" -H X-CM-Well-Token:<admin-token>
 
 
 ## Parameters ##
@@ -62,11 +64,13 @@ format | Optional. The only valid value is **text**; i.e. the parameter must app
 
 ### Call ###
 
-    curl "http://<cm-well-host>/_kafka/persist_topic/0?offset=604&max-length=3"
+    curl "http://<cm-well-host>/_kafka/persist_topic/0?offset=604&max-length=3" -H X-CM-Well-Token:<admin-token>
 
 ### Results ###
 
-    YAAKOV PLEASE PROVIDE RESPONSE EXAMPLE.
+    WriteCommand(ObjectInfoton(/meta/auth/users,lh,None,2018-06-25T13:32:48.935Z,None,),None,None)
+    WriteCommand(ObjectInfoton(/meta/logs/version-history,lh,None,2018-06-25T13:32:49.040Z,None,),None,None)
+    WriteCommand(ObjectInfoton(/meta/auth,lh,None,2018-06-25T13:32:48.935Z,None,),None,None)
 
 
 ## Notes ##
