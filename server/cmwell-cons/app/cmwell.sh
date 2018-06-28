@@ -22,5 +22,5 @@ fi
 CONS=`echo components/cmwell-cons*`
 CTRL=`echo components/cmwell-controller-assembly*`
 
-bash -c "scala -Dscala.color -nc -cp '$CMWELL_CONS_PATH/cons-lib/*' 2> >( grep -v '^#.*#' )"
+bash -c "scala -Dscala.color -nc -cp '$CMWELL_CONS_PATH/cons-lib/*' "
 
