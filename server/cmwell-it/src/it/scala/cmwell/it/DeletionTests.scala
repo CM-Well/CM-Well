@@ -196,8 +196,7 @@ class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Help
       }
     })
 
-    val verify404 = deleteInfotonPath.flatMap(_ => {
-      spinCheck(100.millis,true)(Http.get(ioffd, List("format" -> "json")))(_.status == 404).map { res =>
+    val verify404 = deleteInfotonPath.flatMap(_ => scheduleFuture(indexingDuration){Http.get(ioffd, List("format" -> "json")).map { res =>
          withClue(res) {
            res.status should be(404)
          }
@@ -254,8 +253,7 @@ class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Help
 
     val verifyInfotonWasDeleted = deleteSingleInfotonThroughUnderscoreIn.flatMap(_ =>
       // gotta have format since the SPA returned isn't 404... just Pooh complaining...
-      spinCheck(100.millis, true)(Http.get(deletes501 / "i-501", List("format"->"json")))(_.status == 404)
-      .map { res =>
+      scheduleFuture(indexingDuration)(Http.get(deletes501 / "i-501", List("format"->"json"))).map { res =>
         withClue(res) {
           res.status should be(404)
         }
