@@ -129,7 +129,7 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
       }
 
       val f = Future.sequence(Seq(req1,req2,req3))
-      f -> executeAfterCompletion(f.zip(waitForIngest)){
+      f -> executeAfterCompletion(f.flatMap(_ => waitForIngest)){
         Http.post(cmt / "fwc-link-1", "/fwc-link-2", textPlain, headers = ("X-CM-WELL-LINK-TYPE" -> "2") :: ("X-CM-WELL-TYPE" -> "LN") :: tokenHeader)
       }
     }
@@ -146,7 +146,7 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
           textPlain,
           headers = ("X-CM-WELL-LINK-TYPE" -> "2") :: ("X-CM-WELL-TYPE" -> "LN") :: tokenHeader)
       }
-      fs -> executeAfterCompletion(fs)(spinCheck(100.millis,true)(Http.get(cmt / "fw-link-31"))(_.status))
+      fs -> executeAfterCompletion(fs)(Http.get(cmt / "fw-link-31"))
     }
     val (f24,f25,f26,f27) = {
       val jsonObj = Json.obj("name" -> "TestObject", "title" -> "title1")
