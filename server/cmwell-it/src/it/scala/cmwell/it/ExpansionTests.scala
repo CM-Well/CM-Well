@@ -16,7 +16,7 @@
 
 package cmwell.it
 
-import cmwell.util.concurrent.SimpleScheduler.schedule
+import cmwell.util.concurrent.SimpleScheduler.scheduleFuture
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.enablers.{Emptiness, Size}
 import org.scalatest.{AsyncFunSpec, Matchers}
@@ -54,14 +54,13 @@ class ExpansionTests extends AsyncFunSpec with Matchers with Helpers with fixtur
       }
     }
 
-    val makeSureSteveHarrisIs404Ghost = ingestData.flatMap( _ => { schedule(indexingDuration)(())
-      spinCheck(1.second,true)(Http.get(
+    val makeSureSteveHarrisIs404Ghost = ingestData.flatMap( _ => { scheduleFuture(indexingDuration)(spinCheck(1.second,true)(Http.get(
         cmw / "dbpedia.org" / "resource" / "Steve_Harris_(musician)",
         List("format" -> "json")))(_.status == 404).flatMap {
         res => withClue(res) {
           res.status should be(404)
         }
-    }})
+    })})
 
     implicit val jsValueArrSize = new Size[JsArray] {
       def sizeOf(obj: JsArray): Long = obj.value.size
