@@ -17,17 +17,21 @@
 package cmwell.it
 
 import java.io.ByteArrayInputStream
-import java.nio.charset.StandardCharsets
 import java.time.Instant
 
+import cmwell.util.concurrent.delayedTask
+import cmwell.util.concurrent.SimpleScheduler.scheduleFuture
 import cmwell.util.formats.JsonEncoder
 import cmwell.util.http.SimpleResponse
+import cmwell.util.formats.JsonEncoder
 import cmwell.util.string.Hash.crc32base64
+import cmwell.common.build.JsonSerializer
+import cmwell.util.formats.JsonEncoder
 import com.typesafe.scalalogging.LazyLogging
+import org.apache.jena.query.DatasetFactory
 import org.apache.jena.rdf.model.{ModelFactory, ResourceFactory}
 import org.apache.jena.riot.{Lang, RDFDataMgr}
 import play.api.libs.json._
-
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.io.Source
@@ -149,15 +153,12 @@ class APIFunctionalityTests extends AsyncFunSpec
           "fields" -> JsObject(
             Seq("title" -> JsArray(Seq(JsString("TestTitle"))),
               "header" -> JsArray(Seq(JsString("TestHeader")))))))
-
-      spinCheck(100.millis, true)(Http.get(cmt / "InfoObj2", List("format" -> "json"))){res =>
-        Json.parse(res.payload)
-          .transform(uuidDateEraser)
-          .get == expected
-      }.map { res =>
-        Json.parse(res.payload)
-          .transform(uuidDateEraser)
-          .get shouldEqual expected
+      scheduleFuture(indexingDuration) {
+        spinCheck(1.second, true)(Http.get(cmt / "InfoObj2", List("format" -> "json")))(_.status).map{ res =>
+          Json.parse(res.payload)
+            .transform(uuidDateEraser)
+            .get shouldEqual expected
+        }
       }
     }
 
@@ -178,15 +179,8 @@ class APIFunctionalityTests extends AsyncFunSpec
       val predComp = ResourceFactory.createProperty("http://localhost:9000/meta/nn#", "company")
 
       it("in RDF N3 format") {
-
-        spinCheck(100.millis, true)(Http.get(path, List("format" -> "n3"))){ body =>
-          val status = body.status
-          val graphResult = ModelFactory.createDefaultModel()
-          RDFDataMgr.read(graphResult, new java.io.ByteArrayInputStream(body.payload), Lang.N3)
-          //Todo : extract to vars
-          status >=200 && status < 400 && graphResult.getProperty(subject, predHead).getLiteral.getLexicalForm == "seatle" &&
-            graphResult.getProperty(subject, predComp).getLiteral.getLexicalForm == "microsoft"
-        }.map { body =>
+        scheduleFuture(indexingDuration) {
+          Http.get(path, List("format" -> "n3")).map { body =>
             body.status should be >= 200
             body.status should be < 400 //status should be OK
             val graphResult = ModelFactory.createDefaultModel()
@@ -194,6 +188,7 @@ class APIFunctionalityTests extends AsyncFunSpec
             graphResult.getProperty(subject, predHead).getLiteral.getLexicalForm should be("seatle")
             graphResult.getProperty(subject, predComp).getLiteral.getLexicalForm should be("microsoft")
           }
+        }
       }
 
       it("in RDF NTriple format") {
@@ -253,19 +248,16 @@ class APIFunctionalityTests extends AsyncFunSpec
         }
 
         it("should get the infoton") {
-          f.flatMap(_ => spinCheck(100.millis, true)(Http.get(wrapped./("ObjectInfoton1"), List("format" -> "json"))) { res =>
-            Json.parse(res.payload)
-              .transform(uuidDateEraser andThen fieldsSorter)
-              .get == jsonw
-          }.map { res =>
-            withClue(new String(res.payload, "UTF-8")) {
-              Json
-                .parse(res.payload)
-                .transform(uuidDateEraser andThen fieldsSorter)
-                .get shouldEqual jsonw
+          f.flatMap(_ => scheduleFuture(indexingDuration) {
+            Http.get(wrapped./("ObjectInfoton1"), List("format" -> "json")).map { res =>
+              withClue(new String(res.payload,"UTF-8")) {
+                Json
+                  .parse(res.payload)
+                  .transform(uuidDateEraser andThen fieldsSorter)
+                  .get shouldEqual jsonw
+              }
             }
-          }
-          )
+          })
         }
       }
 
@@ -324,18 +316,13 @@ class APIFunctionalityTests extends AsyncFunSpec
         }
 
         it("should get the obj through the link") {
-          f.flatMap(_ => {
-            spinCheck(100.millis, true)(Http.get(uri = wrapped / "LinkToObj")){ res =>
-              val loc = res.headers.find(_._1 == "Location").map(_._2.split('/').filter(_.nonEmpty).foldLeft(cmw)(_ / _))
-              res.status == 307 && loc.isDefined
-            }.flatMap { res =>
+          f.flatMap(_ => scheduleFuture(indexingDuration) {
+            Http.get(uri = wrapped / "LinkToObj").flatMap { res =>
               withClue(res) {
                 res.status should be(307)
                 val loc = res.headers.find(_._1 == "Location").map(_._2.split('/').filter(_.nonEmpty).foldLeft(cmw)(_ / _))
                 loc shouldBe defined
-                spinCheck(100.millis, true)(Http.get(loc.get, queryParams = List("format" -> "json"))){ result =>
-                  result.status == 200 && Json.parse(result.payload).transform(uuidDateEraser).get == obj
-                }.map { result =>
+                Http.get(loc.get, queryParams = List("format" -> "json")).map { result =>
                   withClue(s"response for GET '${loc.get.url}': $result") {
                     result.status should be(200)
                     Json
@@ -348,7 +335,6 @@ class APIFunctionalityTests extends AsyncFunSpec
             }
           })
         }
-
       }
 
       describe("in put get Text File Infoton in jsonw") {
@@ -374,23 +360,18 @@ class APIFunctionalityTests extends AsyncFunSpec
         }
 
         it("should get the file") {
-          val expected = json.transform((__ \ 'content).json.update {
-            Reads.JsObjectReads.map { case JsObject(xs) => JsObject(xs + ("length" -> JsNumber(data.length))) }
-          }).get
-
-          f.flatMap(_ => spinCheck(100.millis, true)(Http.get(wrapped./("FileInfoton.txt"), List("format" -> "json"))){res =>
-            Json.parse(res.payload)
-              .transform(uuidDateEraser)
-              .get == expected
-          }.map { res =>
-            withClue(res) {
-              Json
-                .parse(res.payload)
-                .transform(uuidDateEraser)
-                .get shouldEqual expected
+          f.flatMap(_ => scheduleFuture(indexingDuration) {
+            Http.get(wrapped./("FileInfoton.txt"), List("format" -> "json")).map { res =>
+              withClue(res) {
+                Json
+                  .parse(res.payload)
+                  .transform(uuidDateEraser)
+                  .get shouldEqual json.transform((__ \ 'content).json.update {
+                  Reads.JsObjectReads.map { case JsObject(xs) => JsObject(xs + ("length" -> JsNumber(data.length))) }
+                }).get
+              }
             }
-          }
-          )
+          })
         }
       }
 
@@ -418,20 +399,16 @@ class APIFunctionalityTests extends AsyncFunSpec
         }
 
         it("should get the file") {
-          f.flatMap(_ => spinCheck(100.millis, true)(Http.get(wrapped./("BinaryFileInfoton.png"), List("format" -> "json"))){res =>
-            Json
-              .parse(res.payload)
-              .transform(uuidDateEraser)
-              .get == json
-          }.map { res =>
-            withClue(res) {
-              Json
-                .parse(res.payload)
-                .transform(uuidDateEraser)
-                .get shouldEqual json
+          f.flatMap(_ => scheduleFuture(indexingDuration) {
+            Http.get(wrapped./("BinaryFileInfoton.png"), List("format" -> "json")).map { res =>
+              withClue(res) {
+                Json
+                  .parse(res.payload)
+                  .transform(uuidDateEraser)
+                  .get shouldEqual json
+              }
             }
-          }
-          )
+          })
         }
       }
     }
@@ -495,14 +472,12 @@ class APIFunctionalityTests extends AsyncFunSpec
             "/cmt/cm/test/bag/InfoObj2",
             "/cmt/cm/test/bag/InfoTextFile1"))
         postReq.flatMap { _ =>
-          spinCheck(100.millis, true)(Http.post(_out, Json.stringify(bulkReq), Some("application/json;charset=UTF-8"), List("format" -> "json"), tokenHeader))
-          {res =>
-            val resStatus = res.status
-            resStatus >=200 && resStatus < 400 && JsonEncoder.decodeBagOfInfotons(res.payload).value.infotons.length == 3
-          }.map { res =>
-            res.status should be >= 200
-            res.status should be < 400 //status should be OK
-            JsonEncoder.decodeBagOfInfotons(res.payload).value.infotons.length should be(3)
+          scheduleFuture(indexingDuration) {
+            Http.post(_out, Json.stringify(bulkReq), Some("application/json;charset=UTF-8"), List("format" -> "json"), tokenHeader).map { res =>
+              res.status should be >= 200
+              res.status should be < 400 //status should be OK
+              JsonEncoder.decodeBagOfInfotons(res.payload).value.infotons.length should be(3)
+            }
           }
         }
       }
@@ -516,8 +491,6 @@ class APIFunctionalityTests extends AsyncFunSpec
             "/cmt/cm/test/bag/InfoTextFile1"))
         val expectedHeaderPattern =
           """path,lastModified,type,uuid,parent,dataCenter,indexTime,mimeType,length,data,(name|title),(name|title)"""
-        val expectedHeaderPattern_reg =
-          """path,lastModified,type,uuid,parent,dataCenter,indexTime,mimeType,length,data,(name|title),(name|title)""".r
         val expectedContentPattern = {
           val pathRegex = """"(/cmt/cm/test/bag/Info(Obj1|Obj2|TextFile1))""""
           val lastModifiedRegex = """([0-9]{4}\-[0-9]{2}\-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]{0,3})?Z)"""
@@ -562,28 +535,8 @@ class APIFunctionalityTests extends AsyncFunSpec
           sb ++= "))"
           sb.result()
         }
-        postReq.flatMap(_ => {
-          spinCheck(100.millis, true)(Http.post(_out, Json.stringify(bulkReq), Some("application/json;charset=UTF-8"), List("format" -> "csv"),
-            tokenHeader)){ res =>
-            val status = res.status
-
-            val l = new String(res.payload, "UTF-8").lines.toList
-            val (header, lines) = (l.head, l.tail)
-
-            //todo validate patterns
-            //indexingDuration
-            val matchResult = header match {
-               case expectedHeaderPattern_reg() => true
-              case _ => false
-            }
-
-            val contentMatch = lines.forall(l => l match {
-              case expectedContentPattern => true
-              case _ => false
-            })
-
-            status >= 200 && status < 400 && matchResult && contentMatch
-          }.map { res =>
+        postReq.flatMap(_ => scheduleFuture(indexingDuration) {
+          Http.post(_out, Json.stringify(bulkReq), Some("application/json;charset=UTF-8"), List("format" -> "csv"), tokenHeader).map { res =>
 
             res.status should be >= 200
             res.status should be < 400 //status should be OK
@@ -635,10 +588,8 @@ class APIFunctionalityTests extends AsyncFunSpec
         }
 
         it("should verify that the name was changed") {
-          spinCheck(100.millis, true)(Http.get(exampleOrg./("JaneSmith"), List("format" -> "json"))){ res =>
-            val jv = Json.parse(res.payload).transform((__ \ 'fields \ "FN.vcard").json.pick).get
-            jv == JsArray(Seq(JsString("Jennifer Smith")))
-          }.map { res =>
+          indexingDuration.fromNow.block
+          Http.get(exampleOrg./("JaneSmith"), List("format" -> "json")).map { res =>
             val jv = Json.parse(res.payload).transform((__ \ 'fields \ "FN.vcard").json.pick).get
             jv shouldEqual JsArray(Seq(JsString("Jennifer Smith")))
           }
@@ -663,16 +614,14 @@ class APIFunctionalityTests extends AsyncFunSpec
           |}
         """.stripMargin)
         val g = clf / "ce" / "GH"
-        executeAfterCompletion(antiJenaVcardRFFIngest)(spinCheck(100.millis)(Http.get(g, List("format" -> "json"))) { res =>
-            val jv = Json.parse(res.payload).transform(uuidDateEraser).get
-            jv == expected
-          }.map { res =>
-              withClue(res) {
-                val jv = Json.parse(res.payload).transform(uuidDateEraser).get
-                jv shouldEqual expected
-              }
+        executeAfterCompletion(antiJenaVcardRFFIngest)(scheduleFuture(10.seconds){
+          Http.get(g, List("format" -> "json")).map { res =>
+            withClue(res) {
+              val jv = Json.parse(res.payload).transform(uuidDateEraser).get
+              jv shouldEqual expected
+            }
           }
-        )
+        })
       }
 
       it("should deal with complicated prefix inference logic") {
@@ -685,17 +634,9 @@ class APIFunctionalityTests extends AsyncFunSpec
           """<http://example.org/hochgi> <http://localhost:9000/meta/sys#parent> "/example.org" .""",
           """<http://example.org/hochgi> <http://localhost:9000/meta/sys#path> "/example.org/hochgi" ."""
         )
-        def mSys(s: String) = s"/meta/sys#$s"
 
-        executeAfterCompletion(complicatedInferenceIngest)(spinCheck(100.millis)(Http.get(exampleOrg./("hochgi"), List("format" -> "ntriples"))){
-          body =>
-            val res = new String(body.payload, "UTF-8").split('\n').filterNot { t =>
-              t.contains(mSys("lastModified")) ||
-                t.contains(mSys("uuid"))       ||
-                t.contains(mSys("indexTime"))
-            }
-            (body.status >= 200) && (body.status < 400) && (res.toSet == expectedNt)
-        }.map { body =>
+        executeAfterCompletion(complicatedInferenceIngest)(scheduleFuture(10.seconds) {
+          Http.get(exampleOrg./("hochgi"), List("format" -> "ntriples")).map { body =>
             body.status should be >= 200
             body.status should be < 400 //status should be OK
           def mSys(s: String) = s"/meta/sys#$s"
@@ -707,7 +648,7 @@ class APIFunctionalityTests extends AsyncFunSpec
             }
             res.toSet shouldEqual expectedNt
           }
-        )
+        })
       }
 
       it("should verify ZzZzz meta creation") {
@@ -785,7 +726,7 @@ class APIFunctionalityTests extends AsyncFunSpec
           val fileNTriple = Source.fromURL(this.getClass.getResource("/file_ntriple")).mkString
           Http.post(_in, fileNTriple, Some("text/plain;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader)
         }
-        val f0 = fp.flatMap(_ => (spinCheck(1.second)(Http.get(icon, List("format" -> "text")))(_.status)))
+        val f0 = fp.flatMap(_ => scheduleFuture(indexingDuration)(spinCheck(1.second)(Http.get(icon, List("format" -> "text")))(_.status)))
         val f1 = f0.flatMap(_ => Http.get(icon, List("format" -> "json")))
         val f2 = f0.flatMap(_ => Http.get(icon, List("format" -> "n3")))
         val f3 = f0.flatMap(_ => Http.get(icon, List("format" -> "rdfxml")))
@@ -1114,8 +1055,8 @@ class APIFunctionalityTests extends AsyncFunSpec
 
     describe("expand graph API") {
 
-      val mZ = cmw / "testExample.net" / "Individuals" / "M_Z"
-      val cKent = cmw / "testExample.org" / "Individuals" / "ClarkKent"
+      val mZ = cmw / "example.net" / "Individuals" / "M_Z"
+      val cKent = cmw / "example.org" / "Individuals" / "ClarkKent"
 
 
       val ingestOfNtriplesFromFilesPromise = Promise[Unit]()
@@ -1125,7 +1066,7 @@ class APIFunctionalityTests extends AsyncFunSpec
       // format: off
       // scalastyle:off
       val f00 = ingestOfNtriplesFromFilesPromise.future
-      val f01 = f00.flatMap(_ => Http.get(cmw / "testExample.org" / "BugChecks" / "xgBugCheck", List("format" -> "json", "xg" -> s"dislikes.rel")))
+      val f01 = f00.flatMap(_ => Http.get(cmw / "example.org" / "BugChecks" / "xgBugCheck", List("format" -> "json", "xg" -> s"dislikes.rel")))
       val f08 = f00.flatMap(_ => Http.get(mZ, List("xg" -> s"colleagueOf.$$${ns.rel}>employedBy.$$${ns.rel}>mentorOf.$$${ns.rel}>friendOf.$$${ns.rel}>worksWith.$$${ns.rel}>parentOf.$$${ns.rel}","format" -> "json")))
       val f09 = f00.flatMap(_ => Http.get(mZ, List("xg" -> "$http://purl.org/vocab/relationship/colleagueOf$>$http://purl.org/vocab/relationship/employedBy$>$http://purl.org/vocab/relationship/mentorOf$>$http://purl.org/vocab/relationship/friendOf$>$http://purl.org/vocab/relationship/worksWith$>$http://purl.org/vocab/relationship/parentOf$","format" -> "json")))
       val f10 = f00.flatMap(_ => Http.get(mZ, List("xg" -> "colleagueOf.rel>employedBy.rel>mentorOf.rel>friendOf.rel>worksWith.rel>parentOf.rel","format" -> "json")))
@@ -1140,42 +1081,21 @@ class APIFunctionalityTests extends AsyncFunSpec
       // format: on
 
       it("should post N-Triple files") {
-
-        def verifyIngest(fileName: String, fileContent: String) = {
-          val path = if (fileName.contains("2")) "testExample.org" else "testExample.net"
-          import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
-          spinCheck(100.millis, true)(Http.get(cmw / path, List("op" -> "search", "recursive" -> "", "with-data" -> "", "format" -> "nquads",
-            "override-mimetype" -> "text/plain", "length" -> "1000"))) { res => {
-            val response = res.payload.split("\n").filter(triple => !(triple.contains("meta/sys#") || triple.contains("_:BsearchResponse")))
-            fileContent.forall(response.contains) && response.forall(fileContent.contains)
-          }
-          }
-        }
-
-        Future.traverse(Seq("/relationships.nt", "/relationships2.nt")) { file =>
+        Future.traverse(Seq("/relationships.nt","/relationships2.nt")) { file =>
           val fileNTriple = Source.fromURL(this.getClass.getResource(file)).mkString
-
-          val result = Http.post(_in, fileNTriple, Some("text/plain;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader).map(_ => (file, fileNTriple))
-          result.flatMap { case (file, fileNTriple) => {
-              verifyIngest(file,fileNTriple).map { res =>
-                val response = res.payload.split("\n").filter(triple => !(triple.contains("meta/sys#") || triple.contains("_:BsearchResponse")))
-                response should be (fileNTriple)
-              }
+          Http.post(_in, fileNTriple, Some("text/plain;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader).map(_ -> file)
+        }.map { responses =>
+          delayedTask(indexingDuration * 2)(ingestOfNtriplesFromFilesPromise.success(()))
+          forAll(responses) { case (res, file) =>
+            withClue(s"uploading [$file] failed") {
+              jsonSuccessPruner(Json.parse(res.payload)) should be(jsonSuccess)
             }
           }
-        }.map { assertions =>
-          ingestOfNtriplesFromFilesPromise.success(())
-          forAll(assertions)(identity)
         }
       }
 
       it("should verify that xg's flatMap on Map bug is gone") {
-        spinCheck(100.millis, true)(f01){res =>
-          val j = Json.parse(res.payload)
-          ((j \ "infotons").get: @unchecked) match {
-            case JsArray(xs) => xs.size == 3
-          }
-        }.map{res =>
+        f01.map{res =>
           val j = Json.parse(res.payload)
           ((j \ "infotons").get: @unchecked) match {
             case JsArray(xs) => xs.size should be(3)
@@ -1185,16 +1105,10 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       it("should expand 6 levels deep with explicit $ namespace") {
         // scalastyle:off
-        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/G_H","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.net/Individuals/N-l_H"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/I_K","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"employedBy.rel":["http://testExample.net/Individuals/D_L"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/M_I","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"worksWith.rel":["http://testExample.net/Individuals/G_H"],"neighborOf.rel":["http://testExample.net/Individuals/Gilad_Zafran"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/N-l_H","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"childOf.rel":["http://testExample.net/Individuals/G_H"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/D_L","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://testExample.net/Individuals/M_O"],"mentorOf.rel":["http://testExample.net/Individuals/Y_B"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/Y_B","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.net/Individuals/T-S_B"],"friendOf.rel":["http://testExample.net/Individuals/M_I"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/M_Z","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://testExample.net/Individuals/I_K"]}}]}"""
+        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/G_H","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://example.net/Individuals/N-l_H"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/I_K","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"employedBy.rel":["http://example.net/Individuals/D_L"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/M_I","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"worksWith.rel":["http://example.net/Individuals/G_H"],"neighborOf.rel":["http://example.net/Individuals/Gilad_Zafran"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/N-l_H","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"childOf.rel":["http://example.net/Individuals/G_H"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/D_L","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://example.net/Individuals/M_O"],"mentorOf.rel":["http://example.net/Individuals/Y_B"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/Y_B","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://example.net/Individuals/T-S_B"],"friendOf.rel":["http://example.net/Individuals/M_I"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/M_Z","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://example.net/Individuals/I_K"]}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
-        spinCheck(100.millis, true)(f08){ res =>
-          lazy val clue = new String(res.payload, "UTF-8")
-          Try { Json.parse(res.payload).transform(bagUuidDateEraserAndSorter).get } match {
-              case Success(j) => j == expected
-              case Failure(e) => false
-            }
-        }.map { res =>
+        f08.map { res =>
           lazy val clue = new String(res.payload, "UTF-8")
           withClue(res -> clue) {
             Try {
@@ -1212,16 +1126,10 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       it("should expand 6 levels deep using full NS URI") {
         // scalastyle:off
-        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/G_H","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.net/Individuals/N-l_H"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/I_K","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"employedBy.rel":["http://testExample.net/Individuals/D_L"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/M_I","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"worksWith.rel":["http://testExample.net/Individuals/G_H"],"neighborOf.rel":["http://testExample.net/Individuals/Gilad_Zafran"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/N-l_H","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"childOf.rel":["http://testExample.net/Individuals/G_H"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/D_L","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://testExample.net/Individuals/M_O"],"mentorOf.rel":["http://testExample.net/Individuals/Y_B"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/Y_B","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.net/Individuals/T-S_B"],"friendOf.rel":["http://testExample.net/Individuals/M_I"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/M_Z","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://testExample.net/Individuals/I_K"]}}]}"""
+        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/G_H","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://example.net/Individuals/N-l_H"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/I_K","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"employedBy.rel":["http://example.net/Individuals/D_L"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/M_I","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"worksWith.rel":["http://example.net/Individuals/G_H"],"neighborOf.rel":["http://example.net/Individuals/Gilad_Zafran"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/N-l_H","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"childOf.rel":["http://example.net/Individuals/G_H"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/D_L","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://example.net/Individuals/M_O"],"mentorOf.rel":["http://example.net/Individuals/Y_B"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/Y_B","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://example.net/Individuals/T-S_B"],"friendOf.rel":["http://example.net/Individuals/M_I"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/M_Z","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://example.net/Individuals/I_K"]}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
-        spinCheck(100.millis, true)(f09){ res =>
-          lazy val clue = new String(res.payload, "UTF-8")
-            Try {Json.parse(res.payload).transform(bagUuidDateEraserAndSorter).get } match {
-              case Success(j) => j == expected
-              case Failure(e) => false
-            }
-        }.map { res =>
+        f09.map { res =>
           lazy val clue = new String(res.payload, "UTF-8")
           withClue(res -> clue) {
             Try {
@@ -1239,16 +1147,10 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       it("should expand 6 levels deep with implicit namespace") {
         // scalastyle:off
-        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/G_H","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.net/Individuals/N-l_H"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/I_K","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"employedBy.rel":["http://testExample.net/Individuals/D_L"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/M_I","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"worksWith.rel":["http://testExample.net/Individuals/G_H"],"neighborOf.rel":["http://testExample.net/Individuals/Gilad_Zafran"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/N-l_H","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"childOf.rel":["http://testExample.net/Individuals/G_H"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/D_L","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://testExample.net/Individuals/M_O"],"mentorOf.rel":["http://testExample.net/Individuals/Y_B"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/Y_B","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.net/Individuals/T-S_B"],"friendOf.rel":["http://testExample.net/Individuals/M_I"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/M_Z","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://testExample.net/Individuals/I_K"]}}]}"""
+        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/G_H","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://example.net/Individuals/N-l_H"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/I_K","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"employedBy.rel":["http://example.net/Individuals/D_L"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/M_I","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"worksWith.rel":["http://example.net/Individuals/G_H"],"neighborOf.rel":["http://example.net/Individuals/Gilad_Zafran"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/N-l_H","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"childOf.rel":["http://example.net/Individuals/G_H"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/D_L","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://example.net/Individuals/M_O"],"mentorOf.rel":["http://example.net/Individuals/Y_B"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/Y_B","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://example.net/Individuals/T-S_B"],"friendOf.rel":["http://example.net/Individuals/M_I"]}},{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/M_Z","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://example.net/Individuals/I_K"]}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
-        spinCheck(100.millis, true)(f10){ res =>
-          lazy val clue = new String(res.payload, "UTF-8")
-            Try { Json.parse(res.payload).transform(bagUuidDateEraserAndSorter).get } match {
-              case Success(j) => j == expected
-              case Failure(e) => false
-            }
-        }.map { res =>
+        f10.map { res =>
           lazy val clue = new String(res.payload, "UTF-8")
           withClue(res -> clue) {
             Try {
@@ -1266,16 +1168,10 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       it("should NOT to expand 6 levels deep if guarded by a non existed filter") {
         // scalastyle:off
-        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/M_Z","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://testExample.net/Individuals/I_K"]}}]}"""
+        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/M_Z","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://example.net/Individuals/I_K"]}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
-        spinCheck(100.millis, true)(f11){ res =>
-          val str = new String(res.payload, "UTF-8")
-          val jsn = Json.parse(res.payload).transform(bagUuidDateEraserAndSorter)
-          withClue(s"got: $str") {
-            jsn.isSuccess == true && jsn.get == expected
-          }
-        }.map { res =>
+        f11.map { res =>
           val str = new String(res.payload, "UTF-8")
           val jsn = Json.parse(res.payload).transform(bagUuidDateEraserAndSorter)
           withClue(s"got: $str") {
@@ -1287,13 +1183,10 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       it("should NOT expand 6 levels deep if guarded by a filter") {
         // scalastyle:off
-        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/M_Z","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://testExample.net/Individuals/I_K"]}}]}"""
+        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/example.net/Individuals/M_Z","parent":"/example.net/Individuals","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://example.net/Individuals/I_K"]}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
-        spinCheck(100.millis, true)(f12){ res =>
-          val jsn = Json.parse(res.payload).transform(bagUuidDateEraserAndSorter)
-            jsn.isSuccess == true && jsn.get == expected
-        }.map { res =>
+        f12.map { res =>
           val str = new String(res.payload, "UTF-8")
           val jsn = Json.parse(res.payload).transform(bagUuidDateEraserAndSorter)
           withClue(s"got: $str") {
@@ -1305,29 +1198,23 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       it("should allow paths expansion with yg flag with explicit $ namespace") {
         // scalastyle:off
-        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/JohnSmith","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.org/Individuals/SaraSmith"],"friendOf.rel":["http://testExample.org/Individuals/PeterParker"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/RonaldKhun","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://testExample.org/Individuals/MartinOdersky"],"category.bold":["deals","news"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/HarryMiller","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.org/Individuals/NatalieMiller"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/DonaldDuck","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://testExample.org/Individuals/MartinOdersky"],"active.bold":["true"],"mentorOf.rel":["http://testExample.org/Individuals/JohnSmith"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/ClarkKent","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"neighborOf.rel":["http://testExample.org/Individuals/PeterParker"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/PeterParker","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"active.bold":["true"],"worksWith.rel":["http://testExample.org/Individuals/HarryMiller"],"neighborOf.rel":["http://testExample.org/Individuals/ClarkKent"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/MartinOdersky","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://testExample.org/Individuals/RonaldKhun"],"active.bold":["true"]}}]}"""
+        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/JohnSmith","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://example.org/Individuals/SaraSmith"],"friendOf.rel":["http://example.org/Individuals/PeterParker"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/RonaldKhun","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://example.org/Individuals/MartinOdersky"],"category.bold":["deals","news"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/HarryMiller","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://example.org/Individuals/NatalieMiller"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/DonaldDuck","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://example.org/Individuals/MartinOdersky"],"active.bold":["true"],"mentorOf.rel":["http://example.org/Individuals/JohnSmith"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/ClarkKent","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"neighborOf.rel":["http://example.org/Individuals/PeterParker"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/PeterParker","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"active.bold":["true"],"worksWith.rel":["http://example.org/Individuals/HarryMiller"],"neighborOf.rel":["http://example.org/Individuals/ClarkKent"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/MartinOdersky","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://example.org/Individuals/RonaldKhun"],"active.bold":["true"]}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
-        spinCheck(100.millis, true, 30.seconds)(f13){ res =>
-          Json.parse(res.payload).transform(bagUuidDateEraserAndSorter).get == expected
-        }.map { res =>
-          withClue(res.payload) {
-            Json
-              .parse(res.payload)
-              .transform(bagUuidDateEraserAndSorter)
-              .get shouldEqual expected
-          }
+        f13.map { res =>
+          Json
+            .parse(res.payload)
+            .transform(bagUuidDateEraserAndSorter)
+            .get shouldEqual expected
         }
       }
 
       it("should allow paths expansion with yg flag using full NS URI") {
         // scalastyle:off
-        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/JohnSmith","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.org/Individuals/SaraSmith"],"friendOf.rel":["http://testExample.org/Individuals/PeterParker"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/RonaldKhun","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://testExample.org/Individuals/MartinOdersky"],"category.bold":["deals","news"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/HarryMiller","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.org/Individuals/NatalieMiller"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/DonaldDuck","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://testExample.org/Individuals/MartinOdersky"],"active.bold":["true"],"mentorOf.rel":["http://testExample.org/Individuals/JohnSmith"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/ClarkKent","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"neighborOf.rel":["http://testExample.org/Individuals/PeterParker"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/PeterParker","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"active.bold":["true"],"worksWith.rel":["http://testExample.org/Individuals/HarryMiller"],"neighborOf.rel":["http://testExample.org/Individuals/ClarkKent"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/MartinOdersky","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://testExample.org/Individuals/RonaldKhun"],"active.bold":["true"]}}]}"""
+        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/JohnSmith","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://example.org/Individuals/SaraSmith"],"friendOf.rel":["http://example.org/Individuals/PeterParker"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/RonaldKhun","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://example.org/Individuals/MartinOdersky"],"category.bold":["deals","news"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/HarryMiller","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://example.org/Individuals/NatalieMiller"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/DonaldDuck","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://example.org/Individuals/MartinOdersky"],"active.bold":["true"],"mentorOf.rel":["http://example.org/Individuals/JohnSmith"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/ClarkKent","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"neighborOf.rel":["http://example.org/Individuals/PeterParker"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/PeterParker","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"active.bold":["true"],"worksWith.rel":["http://example.org/Individuals/HarryMiller"],"neighborOf.rel":["http://example.org/Individuals/ClarkKent"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/MartinOdersky","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://example.org/Individuals/RonaldKhun"],"active.bold":["true"]}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
-        spinCheck(100.millis, true, 30.seconds)(f14){ res =>
-          Json.parse(res.payload).transform(bagUuidDateEraserAndSorter).get == expected
-        }.map { res =>
+        f14.map { res =>
           Json
             .parse(res.payload)
             .transform(bagUuidDateEraserAndSorter)
@@ -1337,33 +1224,23 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       it("should allow paths expansion with yg flag with implicit namespace") {
         // scalastyle:off
-        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/JohnSmith","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.org/Individuals/SaraSmith"],"friendOf.rel":["http://testExample.org/Individuals/PeterParker"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/RonaldKhun","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://testExample.org/Individuals/MartinOdersky"],"category.bold":["deals","news"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/HarryMiller","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.org/Individuals/NatalieMiller"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/DonaldDuck","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://testExample.org/Individuals/MartinOdersky"],"active.bold":["true"],"mentorOf.rel":["http://testExample.org/Individuals/JohnSmith"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/ClarkKent","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"neighborOf.rel":["http://testExample.org/Individuals/PeterParker"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/PeterParker","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"active.bold":["true"],"worksWith.rel":["http://testExample.org/Individuals/HarryMiller"],"neighborOf.rel":["http://testExample.org/Individuals/ClarkKent"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/MartinOdersky","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://testExample.org/Individuals/RonaldKhun"],"active.bold":["true"]}}]}"""
-
+        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/JohnSmith","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://example.org/Individuals/SaraSmith"],"friendOf.rel":["http://example.org/Individuals/PeterParker"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/RonaldKhun","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://example.org/Individuals/MartinOdersky"],"category.bold":["deals","news"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/HarryMiller","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://example.org/Individuals/NatalieMiller"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/DonaldDuck","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://example.org/Individuals/MartinOdersky"],"active.bold":["true"],"mentorOf.rel":["http://example.org/Individuals/JohnSmith"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/ClarkKent","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"neighborOf.rel":["http://example.org/Individuals/PeterParker"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/PeterParker","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"active.bold":["true"],"worksWith.rel":["http://example.org/Individuals/HarryMiller"],"neighborOf.rel":["http://example.org/Individuals/ClarkKent"]}},{"type":"ObjectInfoton","system":{"path":"/example.org/Individuals/MartinOdersky","parent":"/example.org/Individuals","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://example.org/Individuals/RonaldKhun"],"active.bold":["true"]}}]}"""
+        // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
-        spinCheck(100.millis, true)(Http.get(cKent, List("yg" -> "<neighborOf.rel>worksWith.rel|<neighborOf.rel<friendOf.rel<mentorOf.rel>knowsByReputation.rel<collaboratesWith.rel","format" -> "json"))){ res =>
-          info(s"info## res.payload = $res.payload")
-          Json.parse(res.payload).transform(bagUuidDateEraserAndSorter).get == expected
-          // scalastyle:on
-        }.map { res =>
-          withClue(s"res: $res  |   f15.value: $f15.value") {
-            Json
-              .parse(res.payload)
-              .transform(bagUuidDateEraserAndSorter)
-              .get shouldEqual expected
-          }
+        f15.map { res =>
+          Json
+            .parse(res.payload)
+            .transform(bagUuidDateEraserAndSorter)
+            .get shouldEqual expected
         }
       }
 
       it("should NOT allow limited paths expansion if guarded by non existed filters") {
         // scalastyle:off
-        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","fields":{"neighborOf.rel":["http://testExample.org/Individuals/PeterParker"]},"system":{"path":"/testExample.org/Individuals/ClarkKent","dataCenter":"$dcName","parent":"/testExample.org/Individuals"}},{"type":"ObjectInfoton","fields":{"worksWith.rel":["http://testExample.org/Individuals/HarryMiller"],"neighborOf.rel":["http://testExample.org/Individuals/ClarkKent"],"active.bold":["true"]},"system":{"path":"/testExample.org/Individuals/PeterParker","dataCenter":"$dcName","parent":"/testExample.org/Individuals"}}]}"""
+        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","fields":{"neighborOf.rel":["http://example.org/Individuals/PeterParker"]},"system":{"path":"/example.org/Individuals/ClarkKent","dataCenter":"$dcName","parent":"/example.org/Individuals"}},{"type":"ObjectInfoton","fields":{"worksWith.rel":["http://example.org/Individuals/HarryMiller"],"neighborOf.rel":["http://example.org/Individuals/ClarkKent"],"active.bold":["true"]},"system":{"path":"/example.org/Individuals/PeterParker","dataCenter":"$dcName","parent":"/example.org/Individuals"}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
-        spinCheck(100.millis, true, 30.seconds)(f16){ res =>
-          val str = new String(res.payload, "UTF-8")
-          val jsn = Json.parse(res.payload).transform(bagUuidDateEraserAndSorter)
-          jsn.isSuccess == true && jsn.get == expected
-        }.map { res =>
+        f16.map { res =>
           val str = new String(res.payload, "UTF-8")
           val jsn = Json.parse(res.payload).transform(bagUuidDateEraserAndSorter)
           withClue(s"got: $str") {
@@ -1375,16 +1252,10 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       it("should allow limited paths expansion if guarded by filters") {
         // scalastyle:off
-        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","fields":{"neighborOf.rel":["http://testExample.org/Individuals/PeterParker"]},"system":{"path":"/testExample.org/Individuals/ClarkKent","dataCenter":"$dcName","parent":"/testExample.org/Individuals"}},{"type":"ObjectInfoton","fields":{"worksWith.rel":["http://testExample.org/Individuals/HarryMiller"],"neighborOf.rel":["http://testExample.org/Individuals/ClarkKent"],"active.bold":["true"]},"system":{"path":"/testExample.org/Individuals/PeterParker","dataCenter":"$dcName","parent":"/testExample.org/Individuals"}}]}"""
+        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","fields":{"neighborOf.rel":["http://example.org/Individuals/PeterParker"]},"system":{"path":"/example.org/Individuals/ClarkKent","dataCenter":"$dcName","parent":"/example.org/Individuals"}},{"type":"ObjectInfoton","fields":{"worksWith.rel":["http://example.org/Individuals/HarryMiller"],"neighborOf.rel":["http://example.org/Individuals/ClarkKent"],"active.bold":["true"]},"system":{"path":"/example.org/Individuals/PeterParker","dataCenter":"$dcName","parent":"/example.org/Individuals"}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
-        spinCheck(100.millis, true, 30.seconds)(f17){ res =>
-          val str = new String(res.payload, "UTF-8")
-          val jsn = Json.parse(res.payload).transform(bagUuidDateEraserAndSorter)
-          withClue(s"got: $str") {
-            jsn.isSuccess == true && jsn.get == expected
-          }
-        }.map { res =>
+        f17.map { res =>
           val str = new String(res.payload, "UTF-8")
           val jsn = Json.parse(res.payload).transform(bagUuidDateEraserAndSorter)
           withClue(s"got: $str") {
@@ -1413,14 +1284,12 @@ class APIFunctionalityTests extends AsyncFunSpec
       }
 
       it("should verify Hebrew is readable in each and every format") {
-        f.flatMap(_ => {
+        f.flatMap(_ => scheduleFuture(indexingDuration) {
           Future.traverse(Seq("json", "jsonld", "n3", "ntriples", "turtle", "rdfxml", "yaml")) { format =>
-            spinCheck(100.millis, true)(Http.get(path, List("format" -> format))) { res =>
-              new String(res.payload, StandardCharsets.UTF_8).contains("שלום")
-            }
+            Http.get(path, List("format" -> format))
           }.map { responses =>
             forAll(responses) { res =>
-              new String(res.payload, StandardCharsets.UTF_8) should include("שלום")
+              new String(res.payload,"UTF-8") should include("שלום")
             }
           }
         })
@@ -1470,9 +1339,8 @@ class APIFunctionalityTests extends AsyncFunSpec
             |  }
             |}
           """.stripMargin)
-        spinCheck(100.millis, true)(Http.get(cmt / "Araújo3", List("format" -> "json")))(
-          res => Json.parse(res.payload).transform(uuidDateEraser).get == expected
-        ).map { res =>
+        indexingDuration.fromNow.block
+        Http.get(cmt / "Araújo3", List("format" -> "json")).map { res =>
           withClue(res) {
             Json.parse(res.payload).transform(uuidDateEraser).get should be(expected)
           }
@@ -1499,12 +1367,11 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       it("should verify an Infoton with UTF-8 in subject actually was deleted") {
         import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
-        spinCheck(100.millis, true)(Http.get(cmt / "Araújo3")){
-          _.payload.contains("Infoton was deleted")
-        }.map { res =>
+        scheduleFuture(indexingDuration) {
+          Http.get(cmt / "Araújo3").map { res =>
             res.payload should include("Infoton was deleted")
           }
-
+        }
       }
 
       it("should verify an Infoton with %2F in subject is rejected") {
@@ -1517,7 +1384,6 @@ class APIFunctionalityTests extends AsyncFunSpec
       }
     }
 
-    //todo run with sleep
     it("should ignore null updates") {
       val path = cmt / "InfotonForNullUpdatesTest"
       val jsonObjIn = Json.obj("Focus"->"OnYourBlueChips", "Be"->"HereNow")
@@ -1529,33 +1395,21 @@ class APIFunctionalityTests extends AsyncFunSpec
         }
       }
 
-      def validateInjection() = {
-        spinCheck(100.millis, true)(Http.get(path, Seq("format"->"json", "with-history"->"true", "with-data"->"true"))
-        ){ res =>
-          info(s"Checking versions. res = $res")
+      val f = postAndTest("should put a new Infoton")
+      val ff = f.flatMap { _ =>
+        delayedTask(indexingDuration)(postAndTest("should put it again")).flatMap(identity)
+      }
+
+      ff.flatMap { _ =>
+        Http.get(path, Seq("format"->"json", "with-history"->"true", "with-data"->"true")).map { res =>
           val versions = (Json.parse(res.payload) \ "versions": @unchecked)  match {
             case JsDefined(JsArray(seq)) => seq
           }
-          versions.length == 1
-        }.map{ res =>
-          withClue(s"should validate success = 200. res = $res") {
-            val versions = (Json.parse(res.payload) \ "versions": @unchecked)  match {
-              case JsDefined(JsArray(seq)) => seq
-            }
+          withClue(s"should verify nothing happened: $versions"){
             versions.length should be(1)
           }
         }
       }
-
-      val f = postAndTest("should put a new Infoton")
-      val validateInjection_1 = f.flatMap(_ => validateInjection())
-
-      val ff = validateInjection_1.flatMap { _ =>
-        postAndTest("should put it again")
-      }
-
-      ff.flatMap { _ => validateInjection() }
-
     }
 
     describe("purge") {
@@ -1566,37 +1420,26 @@ class APIFunctionalityTests extends AsyncFunSpec
       it("should add some historical data") {
         val data = Seq("DaisyDuck"->"Carrot", "DaisyDuck"->"Lemon", "PeterParker"->"Grapes", "PeterParker"->"Tomato", "DonaldDuck"->"Lemon",
           "RollMeBack"->"v1", "RollMeBack"->"v2", "RollMeBack"->"v3")
-        //indexingDuration
-        data.foldLeft[Future[String]](Future.successful("S")) {
-          case (f,(s,o)) => f.flatMap { _ => {
-            val triplet = s"<http://testExample.org/Individuals/$s> <http://purl.org/vocab/relationship/drinksJuiceOf> " +
-              s"<http://testExample.org/Individuals/$o> ."
+        data.foldLeft[Future[List[JsValue]]](Future.successful(Nil)) {
+          case (f,(s,o)) => f.flatMap{ l =>
             Http.post(
               _in,
-              triplet,
+              s"<http://example.org/Individuals/$s> <http://purl.org/vocab/relationship/drinksJuiceOf> <http://example.org/Individuals/$o> .",
               None,
               Seq("format" -> "ntriples"),
-              tokenHeader).flatMap { _ => {
-              import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
-              // need to verify ingest between each POST, so versions won't collapse in IMP
-
-              spinCheck(100.millis, true)(Http.get(cmw / "testExample.org" / "Individuals" / s"$s", List("format" -> "ntriples"))) { res =>
-                res.payload.lines.toList.contains(triplet)
-              }.map { res =>
-                if (res.payload.lines.toList.contains(triplet)) "S" else "F"
+              tokenHeader).flatMap { res =>
+                // need to wait between each POST, so versions won't collapse in IMP
+                delayedTask(indexingDuration) {
+                  Json.parse(res.payload) :: l
+                }
               }
-            }
-
-
-            }
           }
-          }
-        }.map(all(_) should be ('S'))
+        }.map(all(_) should be(jsonSuccess))
       }
 
       it("should purge one historical version by uuid") {
         // get some uuid
-        val path = cmw / "testExample.org" / "Individuals" / "DaisyDuck"
+        val path = cmw / "example.org" / "Individuals" / "DaisyDuck"
         Http.get(path, Seq("with-history" -> "", "format" -> "json")).flatMap { res =>
 
           val body = Json.parse(res.payload)
@@ -1613,15 +1456,19 @@ class APIFunctionalityTests extends AsyncFunSpec
             val body1 = Json.parse(res.payload)
             body1 should be(jsonSimpleResponseSuccess)
 
-            spinCheck(100.millis, true)(Http.get(uuidPath))(_.status == 404).map{res => res.status should be(404)}
-            spinCheck(100.millis, true)(Http.get(path, Seq("with-history" -> "", "format" -> "json"))){res =>
-              val body = Json.parse(res.payload)
-              val versions = body getArr "versions"
-              versions.length == 2
-             }.map{res =>
-              val body = Json.parse(res.payload)
-               val versions = body getArr "versions"
-              versions.length should be(2)
+            scheduleFuture(indexingDuration) {
+
+              // verify it does not exist in direct access
+              for {
+                r1 <- Http.get(uuidPath)
+                r2 <- Http.get(path, Seq("with-history" -> "", "format" -> "json"))
+              } yield {
+                r1.status should be(404)
+                // verify it does not exist in search
+                val body2 = Json.parse(r2.payload)
+                val versions2 = body2 getArr "versions"
+                versions2.length should be(2)
+              }
             }
           }
         }
@@ -1651,28 +1498,25 @@ class APIFunctionalityTests extends AsyncFunSpec
 //      }
 
       it("should purge current and all historical versions by path") {
-        val path = cmw / "testExample.org" / "Individuals" / "DonaldDuck"
+        val path = cmw / "example.org" / "Individuals" / "DonaldDuck"
 
         // purge all the versions!
         Http.get(path, Seq("op" -> "purge-all"), tokenHeader).flatMap { res =>
           val body = Json.parse(res.payload)
           body should be(jsonSimpleResponseSuccess)
-          // verify Infoton does not exist
-          spinCheck(100.millisecond, true)(Http.get(path)){
-            _.status == 404
-          }.flatMap { r =>
-            r.status should be(404)
 
-            // verify there's no memory of it
-            spinCheck(100.millisecond, true)(Http.get(path, Seq("with-history" -> "", "format" -> "json"))){
-              res =>
+          scheduleFuture(indexingDuration) {
+
+            // verify Infoton does not exist
+            Http.get(path).flatMap { r =>
+              r.status should be(404)
+
+              // verify there's no memory of it
+              Http.get(path, Seq("with-history" -> "", "format" -> "json")).map { res =>
                 val body2 = Json.parse(res.payload)
                 val versions = body2 getArr "versions"
-                versions.length == 0
-            }.map { res =>
-              val body2 = Json.parse(res.payload)
-              val versions = body2 getArr "versions"
-              versions.length should be(0)
+                versions.length should be(0)
+              }
             }
           }
         }
@@ -1714,7 +1558,7 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       it("should mask fields, reading a single Infoton") {
         val fieldsMask = Seq("worksWith.rel","active.bold")
-        val f = Http.get(cmw / "testExample.org" / "Individuals" / "PeterParker", Seq("fields"->fieldsMask.mkString(","), "format"->"json"))
+        val f = Http.get(cmw / "example.org" / "Individuals" / "PeterParker", Seq("fields"->fieldsMask.mkString(","), "format"->"json"))
         f.map { res =>
           (Json.parse(res.payload) \ "fields" \ "neighborOf.rel").asOpt[String] should be(None)
         }
@@ -1724,7 +1568,7 @@ class APIFunctionalityTests extends AsyncFunSpec
         import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
         Http.post(
           _out,
-          "/testExample.org/Individuals/PeterParker\n",
+          "/example.org/Individuals/PeterParker\n",
           Some("text/plain;charset=UTF-8"),
           List("format" -> "ntriples", justWorksWith),
           tokenHeader).map{ body =>
@@ -1739,7 +1583,7 @@ class APIFunctionalityTests extends AsyncFunSpec
         import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
         Http.post(
           _out,
-          "/testExample.org/Individuals/PeterParker\n",
+          "/example.org/Individuals/PeterParker\n",
           Some("text/plain;charset=UTF-8"),
           List("format" -> "ntriples", "fields" -> "nonExistingField.rel"),
           tokenHeader).map{ body =>
@@ -1773,7 +1617,7 @@ class APIFunctionalityTests extends AsyncFunSpec
       val (goodDateValue,badDateValue) =  ("2005-08-11T04:00:00Z","2005-08-11 04:00:00")
 
       it("should upload an Infoton with a DateTime field") {
-        val data = "<http://testExample.org/1-429589421> <http://ont.thomsonreuters.com/mdaas/ipoDate> \"" +
+        val data = "<http://example.org/1-429589421> <http://ont.thomsonreuters.com/mdaas/ipoDate> \"" +
                    goodDateValue + "\"^^<http://www.w3.org/2001/XMLSchema#dateTime> ."
         Http.post(_in, data, Some("text/rdf+ntriples;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader).map { res =>
           jsonSuccessPruner(Json.parse(res.payload)) should be(jsonSuccess)
@@ -1781,7 +1625,6 @@ class APIFunctionalityTests extends AsyncFunSpec
       }
 
       ignore("should partially index an Infoton with bad field value") {
-        import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
         val goodTriple = "<http://example.org/1--926126> <http://ont.thomsonreuters.com/mdaas/ipoName> \"Not 4295893421\" ."
         val data =
           s"""<http://example.org/1--926126> <http://ont.thomsonreuters.com/mdaas/ipoDate> "$badDateValue"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
@@ -1789,25 +1632,24 @@ class APIFunctionalityTests extends AsyncFunSpec
 
         Http.post(_in, data, Some("text/rdf+ntriples;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader).flatMap { res =>
           Json.parse(res.payload) should be(jsonSuccess)
-          // asserting other field is readable
-          spinCheck(100.millis, true)(Http.get(
-            cmw / "example.org" / "1--926126",
-            Seq("format" -> "ntriples"))){
-          res =>
-            val actualTripleIfExist = res.payload.lines.filter(_.contains("ipoName")).toSeq.headOption.getOrElse("")
-            actualTripleIfExist == goodTriple
-          }.map { res =>
-            val actualTripleIfExist = res.payload.lines.filter(_.contains("ipoName")).toSeq.headOption.getOrElse("")
-            actualTripleIfExist should be(goodTriple)
-          }
+          scheduleFuture(indexingDuration) {
 
-          // asserting indexing was successful (i.e. there's a cas version and a es version)
-          spinCheck(100.millis, true)(Http.get(cmw / "example.org" / "1--926126", Seq("op" -> "x-verify"))){res =>
-            Json.parse(res.payload) == jsonSimpleResponseSuccess
-          }.map { res =>
-            Json.parse(res.payload) should be(jsonSimpleResponseSuccess)
-          }
+            // asserting other field is readable
+            val infotonReq = Http.get(
+              cmw / "example.org" / "1--926126",
+              Seq("format" -> "ntriples"))(
+              cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler)
 
+            // asserting indexing was successful (i.e. there's a cas version and a es version)
+            Http.get(cmw / "example.org" / "1--926126", Seq("op" -> "x-verify")).map { res =>
+              Json.parse(res.payload) should be(jsonSimpleResponseSuccess)
+            }
+
+            infotonReq.map { res =>
+              val actualTripleIfExist = res.payload.lines.filter(_.contains("ipoName")).toSeq.headOption.getOrElse("")
+              actualTripleIfExist should be(goodTriple)
+            }
+          }
         }
       }
     }
@@ -1818,11 +1660,8 @@ class APIFunctionalityTests extends AsyncFunSpec
       val triples = (0 until length).map(i => s"""<http://example.org/1-90210> <http://ont.thomsonreuters.com/mdaas/largeField${i/(length/5)}> "$i" .""").sorted
       Http.post(_in, triples.mkString("\n"), Some("text/rdf+ntriples;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader).flatMap { res =>
         jsonSuccessPruner(Json.parse(res.payload)) should be(jsonSuccess)
-        spinCheck(100.millis, true)(Http.get(cmw / "example.org" / "1-90210", List("format" -> "ntriples"))){
-          res =>
-            val writtenData = res.payload.split('\n').filter(_.contains("largeField")).sorted
-            writtenData sameElements triples
-        }.map { res =>
+        scheduleFuture(indexingDuration){
+          Http.get(cmw / "example.org" / "1-90210", List("format" -> "ntriples")).map { res =>
             val writtenData = res.payload.split('\n').filter(_.contains("largeField")).sorted
             withClue(
               s"""Written data (${writtenData.length} triples) was not same NTriples as ingested data (${triples.length})
@@ -1830,7 +1669,7 @@ class APIFunctionalityTests extends AsyncFunSpec
               (writtenData sameElements triples) should be(true)
             }
           }
-
+        }
       }
     }
 
@@ -1841,14 +1680,14 @@ class APIFunctionalityTests extends AsyncFunSpec
       val data = scala.util.Random.alphanumeric.take(length).mkString
       Http.post(path, data, Some("text/plain"), headers = tokenHeader :+ "X-CM-WELL-Type"->"File").flatMap { res =>
         Json.parse(res.payload) should be(jsonSuccess)
-        spinCheck(100.millis, true)(Http.get(path)){
-          _.payload == data
-        }.map { res =>
-          val writtenData = res.payload
-          withClue(
-            s"""Written data (${writtenData.length}) was not same content as ingested data ($length)
-               |First 16 chars are: ${writtenData.take(16)}""".stripMargin) {
-            writtenData shouldBe data
+        scheduleFuture(indexingDuration){
+          Http.get(path).map { res =>
+            val writtenData = res.payload
+            withClue(
+              s"""Written data (${writtenData.length}) was not same content as ingested data ($length)
+                 |First 16 chars are: ${writtenData.take(16)}""".stripMargin) {
+              writtenData shouldBe data
+            }
           }
         }
       }
