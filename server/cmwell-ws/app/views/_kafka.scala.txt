@@ -9,7 +9,7 @@ Chunked Response where each line is a msg.
 
 Optional Query parameters:
 - offset: Offset to start from, if not provided will start from earliest exists offset.
-- max-length: If not provided will consume until end of queue and will hang until new msg is produced.
+- max-length: If not provided will consume until end of queue.
 - format: if format=text was provided, Strings will be constructed from msg's payload. Otherwise, just bytes will be returned.
 
 Notes:
