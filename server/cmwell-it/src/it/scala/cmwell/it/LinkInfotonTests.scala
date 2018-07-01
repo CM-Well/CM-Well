@@ -49,7 +49,7 @@ class LinkInfotonTests extends AsyncFunSpec with Matchers with Helpers with Lazy
       }
     }
 
-    val testLink = spinCheck(100.millis, true)(Http.get(cmt / "LinkToObj3")) {res =>
+    val testLink = postLinkAndObj.flatMap(_ => spinCheck(100.millis, true)(Http.get(cmt / "LinkToObj3")) {res =>
       val loc = res.headers.find(_._1 == "Location").map(_._2)
       res.status == 307 && loc.isDefined}
       .map { res =>
@@ -61,7 +61,7 @@ class LinkInfotonTests extends AsyncFunSpec with Matchers with Helpers with Lazy
           loc.isDefined should be(true)
         }
 
-      }
+      })
 
     val getDataThroughLink = testLink.flatMap{ _ =>
       Http.get(cmt / "LinkToObj3").flatMap { res =>
