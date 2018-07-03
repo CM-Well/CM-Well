@@ -789,7 +789,7 @@ abstract class Host(user: String,
   }
 
   def _rsync(from: String, to: String, host: String, tries: Int = 10, sudo: Boolean): Try[String] = {
-    val seq = Seq("rsync", "-e", "'ssh -o LogLevel=ERROR'", "-Paz", "--delete", from, host + ":" + to)
+    val seq = Seq("rsync", "-e", "ssh -o LogLevel=ERROR", "-Paz", "--delete", from, host + ":" + to)
 
     // scalastyle:off
     if (verbose) println("command: " + seq.mkString(" "))
