@@ -363,10 +363,10 @@ abstract class Host(user: String,
 
   def genLogstashConfFile(esHost: String, globalFields: Map[String, String]): String =
     LogstashConf.genLogstashConfFile(cn,
-                                     esHost,
-                                     globalFields,
-                                     s"${instDirs.globalLocation}/cm-well/log",
-                                     dataDirs.esDataDirs.size)
+      esHost,
+      globalFields,
+      s"${instDirs.globalLocation}/cm-well/log",
+      dataDirs.esDataDirs.size)
 
   private def resolveIndex(index: Int): String = {
     index match {
@@ -676,12 +676,12 @@ abstract class Host(user: String,
     hosts.zipWithIndex.foreach { ip =>
       val content = s"dc=DC1\nrack=RAC${ip._2 + 1}"
       command(s"""echo "$content" > ${instDirs.globalLocation}/cm-well/conf/cas/cassandra-rackdc.properties""",
-              ip._1,
-              false)
+        ip._1,
+        false)
       for (i <- 2 to dataDirs.casDataDirs.size)
         command(s"""echo "$content" > ${instDirs.globalLocation}/cm-well/conf/cas$i/cassandra-rackdc.properties""",
-                ip._1,
-                false)
+          ip._1,
+          false)
     }
   }
 
@@ -789,7 +789,7 @@ abstract class Host(user: String,
   }
 
   def _rsync(from: String, to: String, host: String, tries: Int = 10, sudo: Boolean): Try[String] = {
-    val seq = Seq("rsync", "-Paz", "--delete", from, host + ":" + to)
+    val seq = Seq("rsync", "-e", "ssh -o LogLevel=ERROR", "-Paz", "--delete", from, host + ":" + to)
 
     // scalastyle:off
     if (verbose) println("command: " + seq.mkString(" "))
@@ -941,11 +941,11 @@ abstract class Host(user: String,
     hosts.foreach { h =>
       command(s"cd ${instDirs.globalLocation}/cm-well/app/ws; mkdir tmp", List(h), false)
       rsync("./components/cmwell-ws_2.10-1.0.1-SNAPSHOT-dist.zip",
-            s"${instDirs.globalLocation}/cm-well/app/ws/tmp/cmwell-ws_2.10-1.0.1-SNAPSHOT-dist.zip",
-            List(h))
+        s"${instDirs.globalLocation}/cm-well/app/ws/tmp/cmwell-ws_2.10-1.0.1-SNAPSHOT-dist.zip",
+        List(h))
       command(s"cd ${instDirs.globalLocation}/cm-well/app/ws/tmp; unzip cmwell-ws_2.10-1.0.1-SNAPSHOT-dist.zip",
-              hosts,
-              false)
+        hosts,
+        false)
       stopWebservice(List(h))
       command(s"rm -rf ${instDirs.intallationDir}/cm-well/app/ws/cmwell-ws-1.0.1-SNAPSHOT", List(h), false)
       command(s"rm ${instDirs.globalLocation}/cm-well/app/ws/RUNNING_PID", List(h), false)
@@ -982,8 +982,8 @@ abstract class Host(user: String,
       command("sudo rm -f /etc/init.d/ctrl", hosts, true, Some(sudoer))
       command(s"mkdir -p ${instDirs.globalLocation}/cm-well/conf/ctrl", hosts, false)
       createFile(s"${instDirs.globalLocation}/cm-well/conf/ctrl/ctrl",
-                 Source.fromFile("scripts/templates/ctrl").mkString.replace("{{user}}", user),
-                 hosts)
+        Source.fromFile("scripts/templates/ctrl").mkString.replace("{{user}}", user),
+        hosts)
       command(s"chmod +x ${instDirs.globalLocation}/cm-well/conf/ctrl/ctrl", hosts, false)
       // it's used inside echo -e that will remove the \\ to \ and then another echo -e that will make the actual new line
       val cmwellRunner = Source.fromFile("scripts/templates/cmwell-runner").mkString.replace("\n", "\\\\n")
@@ -1005,8 +1005,8 @@ abstract class Host(user: String,
   def disks: GenSet[String] = {
     val DataDirs(casDataDirs, casCommitLogDirs, esDataDirs, kafkaDataDirs, zookeeperDataDir, logsDataDir) = dataDirs
     val dirs = casDataDirs ++ casCommitLogDirs ++ esDataDirs ++ kafkaDataDirs ++ Seq(zookeeperDataDir,
-                                                                                     logsDataDir,
-                                                                                     instDirs.intallationDir)
+      logsDataDir,
+      instDirs.intallationDir)
     dirs.map(dir => dir.substring(0, dir.lastIndexOf("/"))).toSet
   }
 
@@ -1074,7 +1074,7 @@ abstract class Host(user: String,
   }
 
   protected def finishPrepareMachines(hosts: GenSeq[String], sudoer: Credentials) = {
-//    deleteSshpass(hosts, sudoer)
+    //    deleteSshpass(hosts, sudoer)
     info("Machine preparation was done. Please look at the console output to see if there were any errors.")
   }
 
@@ -1084,11 +1084,11 @@ abstract class Host(user: String,
       hosts.foreach(
         host =>
           Seq("rsync",
-              "-z",
-              "-e",
-              "ssh -o StrictHostKeyChecking=no",
-              UtilCommands.linuxSshpass,
-              s"${sudoer.name}@$host:~/bin/") !!
+            "-z",
+            "-e",
+            "ssh -o StrictHostKeyChecking=no ",
+            UtilCommands.linuxSshpass,
+            s"${sudoer.name}@$host:~/bin/") !!
       )
     }
   }
@@ -1114,7 +1114,7 @@ abstract class Host(user: String,
     createDataDirs()
     createCmwellSymLink(Some(sudoer))
     registerCtrlService(hosts, sudoer)
-//    deleteSshpass(hosts, sudoer)
+    //    deleteSshpass(hosts, sudoer)
   }
 
   def deploy: Unit = deploy()
@@ -1236,8 +1236,8 @@ abstract class Host(user: String,
   def killProcess(name: String, flag: String, hosts: GenSeq[String] = ips.par, tries: Int = 5) {
     if (tries > 0) {
       command(s"ps aux | grep -v grep | grep $name | awk '{print $$2}' | xargs -I zzz kill $flag zzz 2> /dev/null",
-              hosts,
-              false)
+        hosts,
+        false)
       val died = command(s"ps aux | grep java | grep -v grep | grep $name | wc -l ", hosts, false)
         .map(s => s.get.trim.toInt)
         .filterNot(_ == 0)
@@ -1248,8 +1248,8 @@ abstract class Host(user: String,
       }
     } else {
       command(s"ps aux | grep java | grep " + name + " | awk '{print $2}' | xargs -I zzz kill -9 zzz 2> /dev/null",
-              hosts,
-              false)
+        hosts,
+        false)
     }
   }
 
@@ -1665,8 +1665,8 @@ abstract class Host(user: String,
   def startZookeeper: Unit = {
     checkProduction
     command(s"cd ${instDirs.globalLocation}/cm-well/app/zookeeper; ${startScript("./start.sh")}",
-            avaiableHosts.take(3),
-            false)
+      avaiableHosts.take(3),
+      false)
   }
 
   def startZookeeper(host: String): Unit = {
@@ -1676,8 +1676,8 @@ abstract class Host(user: String,
   def startZookeeper(hosts: GenSeq[String]): Unit = {
     checkProduction
     command(s"cd ${instDirs.globalLocation}/cm-well/app/zookeeper; ${startScript("./start.sh")}",
-            hosts.intersect(avaiableHosts),
-            false)
+      hosts.intersect(avaiableHosts),
+      false)
   }
 
   def stopZookeeper: Unit = stopZookeeper()
@@ -1831,11 +1831,11 @@ abstract class Host(user: String,
             s"JAVA_HOME=${instDirs.globalLocation}/cm-well/app/java/bin $nodeToolPath removenode ${dn._2} 2> /dev/null",
             ips(0),
             false
-        )
+          )
       )
       if (command(s"""JAVA_HOME=${instDirs.globalLocation}/cm-well/app/java/bin $nodeToolPath status 2> /dev/null | grep DN | awk '{print $$2 " " $$7}'""",
-                  ips(0),
-                  false).get.trim.split("\n").toList.size > 0)
+        ips(0),
+        false).get.trim.split("\n").toList.size > 0)
         throw new Exception("Failed to remove down nodes")
 
       info(s"Cassandra nodes were removed from the cluster. The cluster now will rebalance its data.")
@@ -1992,13 +1992,13 @@ abstract class Host(user: String,
   def upgrade: Unit = upgrade()
 
   def upgrade(baseProps: List[ComponentProps] = List(CassandraProps(this),
-                                                     ElasticsearchProps(this),
-                                                     KafkaProps(this),
-                                                     ZooKeeperProps(this),
-                                                     BgProps(this),
-                                                     WebserviceProps(this),
-                                                     CtrlProps(this),
-                                                     DcProps(this)),
+    ElasticsearchProps(this),
+    KafkaProps(this),
+    ZooKeeperProps(this),
+    BgProps(this),
+    WebserviceProps(this),
+    CtrlProps(this),
+    DcProps(this)),
               uploadSpa: Boolean = true,
               uploadDocs: Boolean = true,
               uploadUserInfotons: Boolean = true,
@@ -2196,39 +2196,39 @@ abstract class Host(user: String,
   }
 
   def createEsIndices: Unit = {
-//    val numberOfShards = getSize
-//    val numberOfReplicas = 2
-//
-//    val settingsJson =
-//      s"""
-//         |{
-//         |    "settings" : {
-//         |        "index" : {
-//         |            "number_of_shards" : $numberOfShards,
-//         |            "number_of_replicas" : $numberOfReplicas
-//         |        }
-//         |    }
-//         |}
-//      """.stripMargin
-//
-//    command(s"""curl -s -XPUT 'http://${pingAddress}:$esRegPort/cm_well_0/' -d '$settingsJson'""", ips.head, false)
+    //    val numberOfShards = getSize
+    //    val numberOfReplicas = 2
+    //
+    //    val settingsJson =
+    //      s"""
+    //         |{
+    //         |    "settings" : {
+    //         |        "index" : {
+    //         |            "number_of_shards" : $numberOfShards,
+    //         |            "number_of_replicas" : $numberOfReplicas
+    //         |        }
+    //         |    }
+    //         |}
+    //      """.stripMargin
+    //
+    //    command(s"""curl -s -XPUT 'http://${pingAddress}:$esRegPort/cm_well_0/' -d '$settingsJson'""", ips.head, false)
 
-//    val actionsJson =
-//      s"""
-//         |{
-//         |    "actions" : [
-//         |        {
-//         |           "add" : { "index" : "cm_well_0", "alias" : "cm_well_latest" }
-//         |        },
-//         |        {
-//         |           "add" : { "index" : "cm_well_0", "alias" : "cm_well_all" }
-//         |        }
-//         |    ]
-//         |}
-//      """.stripMargin
-//
-//
-//    command(s"""curl -s -X POST 'http://${pingAddress}:$esRegPort/_aliases' -d '$actionsJson'""", ips.head, false)
+    //    val actionsJson =
+    //      s"""
+    //         |{
+    //         |    "actions" : [
+    //         |        {
+    //         |           "add" : { "index" : "cm_well_0", "alias" : "cm_well_latest" }
+    //         |        },
+    //         |        {
+    //         |           "add" : { "index" : "cm_well_0", "alias" : "cm_well_all" }
+    //         |        }
+    //         |    ]
+    //         |}
+    //      """.stripMargin
+    //
+    //
+    //    command(s"""curl -s -X POST 'http://${pingAddress}:$esRegPort/_aliases' -d '$actionsJson'""", ips.head, false)
   }
 
   def createNewEsIndices: Unit = {
@@ -2270,11 +2270,11 @@ abstract class Host(user: String,
     val oldHistoryIndex = s"cmwell_history_$historyIndex"
 
     command(s"""curl -s -XPUT 'http://${pingAddress}:$esRegPort/$newCurrentIndex/' -d '$settingsJson'""",
-            ips.head,
-            false)
+      ips.head,
+      false)
     command(s"""curl -s -XPUT 'http://${pingAddress}:$esRegPort/$newHistoryIndex/' -d '$settingsJson'""",
-            ips.head,
-            false)
+      ips.head,
+      false)
 
     val actionsJson =
       s"""
@@ -2389,9 +2389,9 @@ abstract class Host(user: String,
         m.foreach { tuple =>
           var index = 0
           command(s"echo '/sbin/modprobe 8021q' | sudo tee /etc/sysconfig/modules/vlan.modules > /dev/null",
-                  tuple._1,
-                  true,
-                  Some(sudoer))
+            tuple._1,
+            true,
+            Some(sudoer))
           command(s"sudo chmod +x /etc/sysconfig/modules/vlan.modules", tuple._1, true, Some(sudoer))
           command(s"sudo modprobe 8021q", tuple._1, true, Some(sudoer))
 
@@ -2402,10 +2402,10 @@ abstract class Host(user: String,
           val path = "/etc/sysconfig/network-scripts"
           val fileContent =
             s"""
-                 |DEVICE=$inet.$tag
-                 |BOOTPROTO=none
-                 |ONBOOT=yes
-                 |VLAN=yes
+               |DEVICE=$inet.$tag
+               |BOOTPROTO=none
+               |ONBOOT=yes
+               |VLAN=yes
               """.stripMargin
           command(s"echo '$fileContent' | sudo tee $path/$fileName > /dev/null", tuple._1, true, Some(sudoer))
           tuple._2.foreach { ip =>
@@ -2414,10 +2414,10 @@ abstract class Host(user: String,
             val path = "/etc/sysconfig/network-scripts"
             val fileContent =
               s"""
-                     |DEVICE=${inet}.${tag}:${index}
-                     |IPADDR=${ip}
-                     |NETMASK=$mask
-                     |ONBOOT=yes
+                 |DEVICE=${inet}.${tag}:${index}
+                 |IPADDR=${ip}
+                 |NETMASK=$mask
+                 |ONBOOT=yes
                   """.stripMargin
             command(s"echo '$fileContent' | sudo tee $path/$fileName > /dev/null", tuple._1, true, Some(sudoer))
             command(s"sudo ifconfig $inet.$tag:$index $ip netmask $mask", tuple._1, true, Some(sudoer))
@@ -2435,10 +2435,10 @@ abstract class Host(user: String,
               val fileName = s"ifcfg-$inet:$index"
               val fileContent =
                 s"""
-                       |DEVICE=$inet:$index
-                       |IPADDR=$ip
-                       |NETMASK=${topology.getNetMask}
-                       |ONBOOT=yes
+                   |DEVICE=$inet:$index
+                   |IPADDR=$ip
+                   |NETMASK=${topology.getNetMask}
+                   |ONBOOT=yes
                  """.stripMargin
               command(s"echo '$fileContent' | sudo tee $path/$fileName > /dev/null", tuple._1, true, Some(sudoer))
             }
@@ -2492,11 +2492,11 @@ abstract class Host(user: String,
     val interfaces: Seq[java.net.NetworkInterface] = util.Collections.list(NetworkInterface.getNetworkInterfaces())
     val validInterfaceOpt = interfaces.collectFirst {
       case i
-          if (command(s"ping -c 1 -I ${i.getName} $ipToCheckAgainst ; echo $$?").get
-            .split("\n")
-            .toList
-            .last
-            .trim == "0") =>
+        if (command(s"ping -c 1 -I ${i.getName} $ipToCheckAgainst ; echo $$?").get
+          .split("\n")
+          .toList
+          .last
+          .trim == "0") =>
         i
     }
     validInterfaceOpt match {
@@ -2520,10 +2520,10 @@ abstract class Host(user: String,
       } else ip
       AkkaGrid.setGridConnection(
         GridConnection(memberName = "CONS",
-                       clusterName = cn,
-                       hostName = useIp,
-                       port = 0,
-                       seeds = ips.take(3).map(seedIp => s"$seedIp:7777").toSet)
+          clusterName = cn,
+          hostName = useIp,
+          port = 0,
+          seeds = ips.take(3).map(seedIp => s"$seedIp:7777").toSet)
       )
       AkkaGrid.joinClient
 
@@ -2656,17 +2656,17 @@ abstract class Host(user: String,
     hosts.foreach { host =>
       val comStr =
         s"""test -L ${instDirs.globalLocation}/cm-well/lib &&
-             |cp -al `readlink ${instDirs.globalLocation}/cm-well/lib`/ ${instDirs.globalLocation}/cm-well/lib-$currentDate/ ||
-             |mkdir -p ${instDirs.globalLocation}/cm-well/lib-$currentDate""".stripMargin
+           |cp -al `readlink ${instDirs.globalLocation}/cm-well/lib`/ ${instDirs.globalLocation}/cm-well/lib-$currentDate/ ||
+           |mkdir -p ${instDirs.globalLocation}/cm-well/lib-$currentDate""".stripMargin
 
       command(comStr, host, false)
 
       command(s"test -L ${instDirs.globalLocation}/cm-well/lib && rm ${instDirs.globalLocation}/cm-well/lib",
-              host,
-              false)
+        host,
+        false)
       command(s"ln -s ${instDirs.globalLocation}/cm-well/lib-$currentDate ${instDirs.globalLocation}/cm-well/lib",
-              host,
-              false)
+        host,
+        false)
 
       rsync("lib/", s"${instDirs.globalLocation}/cm-well/lib/", Seq(host))
     }
