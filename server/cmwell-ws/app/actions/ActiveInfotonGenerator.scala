@@ -21,33 +21,22 @@ import cmwell.ctrl.checkers._
 import cmwell.ctrl.client.CtrlClient
 import cmwell.domain._
 import cmwell.fts.FieldFilter
+import cmwell.util.FullBox
 import cmwell.util.build.BuildInfo
 import cmwell.util.os.Props
 import cmwell.util.string.Hash.crc32
-import cmwell.util.FullBox
 import cmwell.web.ld.cmw.CMWellRDFHelper
-import ld.cmw.passiveFieldTypesCacheImpl
-import cmwell.ws.{
-  BGMonitorActor,
-  GetOffsetInfo,
-  OffsetsInfo,
-  PartitionOffsetsInfo,
-  PartitionStatus,
-  Settings,
-  Green => _,
-  Red => _,
-  Yellow => _
-}
 import cmwell.ws.Settings.esTimeout
-import cmwell.ws.util.{DateParser, FieldFilterParser}
-import DateParser._
+import cmwell.ws.util.DateParser._
+import cmwell.ws.util.FieldFilterParser
+import cmwell.ws.{BGMonitorActor, GetOffsetInfo, OffsetsInfo, PartitionOffsetsInfo, PartitionStatus, Settings, Green => _, Red => _, Yellow => _}
 import com.typesafe.scalalogging.LazyLogging
+import javax.inject._
 import k.grid.Grid
 import logic.CRUDServiceFS
 import org.joda.time._
 import trafficshaping.TrafficMonitoring
 import wsutil._
-import javax.inject._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -312,10 +301,16 @@ class ActiveInfotonGenerator @Inject()(
             )
           }
 
+          def generateCasLine(casIns: (String, String)) : String = {
+            val msg = s"${casIns._1} -> ${casIns._2}"
+            if (casIns._2 == "UN") msg
+            else s"""<font color="red"><b>$msg</b></font>"""
+          }
+
           val casMessage = cs.casStat.getOrElse(k, CassandraDown()) match {
             case cr: CassandraOk =>
               (
-                cr.m.map(r => s"${r._1} -> ${r._2}").mkString("<br>"),
+                cr.m.map(generateCasLine).mkString("<br>"),
                 colorAdapter(cr.getColor)
               )
             case cr: CassandraDown =>
