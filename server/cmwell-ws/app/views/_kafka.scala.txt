@@ -16,6 +16,16 @@ Notes:
 - Consuming system queues requires an Admin token.
 - If a msg is a payload of a Command, it will be deserialized, otherwise the optional "format" query parameter will be used as described above.
 
-Example:
+
+System Queues Examples:
 curl "http://@request.host/_kafka/persist_topic/0?offset=604&max-length=3"
+curl "http://@request.host/_kafka/index_topic/0?offset=604&max-length=3"
+curl "http://@request.host/_kafka/persist_topic.priority/0?offset=604&max-length=3"
+curl "http://@request.host/_kafka/index_topic.priority/0?offset=604&max-length=3"
+
+
+Custom Queue Example:
+curl "http://@request.host/_kafka/red_queue
+
+
 
