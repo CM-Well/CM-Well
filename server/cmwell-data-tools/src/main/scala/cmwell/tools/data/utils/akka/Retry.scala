@@ -103,7 +103,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
           val future = after(delay, system.scheduler)(Future.successful(data))
           Some(immutable.Seq(future -> state))
 
-        case State(data, _, Some(HttpResponse(s: ServerError, h, e, _)), _) =>
+        case State(data, _, Some(HttpResponse(s: ServerError, h, e, _)), count) =>
           // server error
           // special case: sparql-processor //todo: remove this in future
           if (e.toString contains "Fetching") {
@@ -113,14 +113,33 @@ object Retry extends DataToolsLogging with DataToolsConfig {
             e.discardBytes()
             None
           } else {
-            e.discardBytes()
-
-            // schedule a retry to http stream
-            logger.warn(
-              s"$labelValue server error: will retry again in $delay host=${getHostname(h)} status=$s entity=$e"
-            )
-            val future = after(delay, system.scheduler)(Future.successful(data))
-            Some(immutable.Seq(future -> state))
+            count match {
+              case Some(c) if c > 0 =>
+                e.discardBytes()
+                logger.debug(
+                  s"$labelValue server error - received $s, count=$count will retry again in $delay host=${getHostnameValue(h)} data=${stringifyData(data)}"
+                )
+                val future =
+                  after(delay, system.scheduler)(Future.successful(data))
+                Some(immutable.Seq(future -> state.copy(count = Some(c - 1))))
+              case Some(0) =>
+                logger.warn(
+                  s"$labelValue server error - received $s, count=$count will not not retry sending request," +
+                    s" host=${getHostnameValue(h)} data=${stringifyData(data)}"
+                )
+                badDataLogger.info(
+                  s"$labelValue data=${concatByteStrings(data, endl).utf8String}"
+                )
+                None
+              case None =>
+                e.discardBytes()
+                logger.warn(
+                  s"$labelValue server error - received $s, will retry again in $delay host=${getHostnameValue(h)} data=${stringifyData(data)}"
+                )
+                val future =
+                  after(delay, system.scheduler)(Future.successful(data))
+                Some(immutable.Seq(future -> state))
+            }
           }
 
         case State(

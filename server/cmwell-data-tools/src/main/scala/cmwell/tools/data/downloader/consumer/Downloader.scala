@@ -45,6 +45,18 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
   private val bufferSize =
     config.getInt("akka.http.host-connection-pool.max-connections")
 
+  val retryTimeout: FiniteDuration = {
+    val timeoutDuration = Duration(
+      config.getString("cmwell.downloader.consumer.http-retry-timeout")
+    ).toCoarsest
+    FiniteDuration(timeoutDuration.length, timeoutDuration.unit)
+  }
+
+  val retryLimit = config.hasPath("cmwell.downloader.consumer.http-retry-limit") match {
+    case true => Some(config.getInt("cmwell.downloader.consumer.http-retry-limit"))
+    case false => None
+  }
+
   type Token = String
   type Uuid = ByteString
   type Path = ByteString
@@ -96,7 +108,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
     val tokenFuture = Source
       .single(Seq(blank) -> None)
       .via(
-        Retry.retryHttp(5.seconds, 1, formatHost(baseUrl))(
+        Retry.retryHttp(retryTimeout, 1, formatHost(baseUrl), retryLimit)(
           _ => HttpRequest(uri = uri)
         )
       )
