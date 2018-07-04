@@ -40,6 +40,30 @@ class ConsumerSpec extends BaseWiremockSpec {
     super.afterAll()
   }
 
+  it should "be reslient against server errors" in {
+
+    val exitRetry = "exit-retry"
+
+    stubFor(get(urlPathMatching("/.*")).inScenario(scenario)
+      .whenScenarioStateIs(Scenario.STARTED)
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.OK.intValue)
+        .withHeader(CMWELL_POSITION, "3AAAMHwv"))
+      .willSetStateTo(exitRetry)
+    )
+
+    Downloader.createTsvSource(baseUrl = s"localhost:${wireMockServer.port}")
+
+    1 shouldBe 1
+  }
+
+
+
+
+
+
+
+
   ignore /*"Consumer"*/ should "be resilient against HTTP 429" in {
     val tooManyRequests = "too-many-requests"
     val ok = "ok"
