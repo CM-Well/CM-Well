@@ -35,7 +35,6 @@ import scala.concurrent.duration.{FiniteDuration, _}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
-
 object BufferFillerActor {
   case object Status
   case class FinishedToken(nextToken: Option[Token])
@@ -76,7 +75,6 @@ class BufferFillerActor(threshold: Int,
   private var lastBulkConsumeToHeader: Option[String] = None
   private var consumeComplete = false
   private var remainingInfotons : Option[Long] = None
-  private var retryCount : Int = 0
 
   val retryTimeout: FiniteDuration = {
     val timeoutDuration = Duration(
@@ -87,11 +85,6 @@ class BufferFillerActor(threshold: Int,
 
   val consumeLengthHint = config.hasPath("cmwell.downloader.consumer.consume-fetch-size") match {
     case true => Some(config.getInt("cmwell.downloader.consumer.consume-fetch-size"))
-    case false => None
-  }
-
-  val consumeRetryLimit = config.hasPath("cmwell.downloader.consumer.consume-retry-limit") match {
-    case true => Some(config.getInt("cmwell.downloader.consumer.consume-retry-limit"))
     case false => None
   }
 
@@ -182,9 +175,6 @@ class BufferFillerActor(threshold: Int,
       consumeComplete = consumeStatus
 
     case HttpResponseSuccess(t) =>
-
-      retryCount = 0
-
       // get point in time of token
       val decoded = Try(
         new org.joda.time.LocalDateTime(
@@ -201,32 +191,9 @@ class BufferFillerActor(threshold: Int,
         s"error: ${err.getMessage} consumer will perform retry in $retryTimeout, token=$t",
         err
       )
-
-      consumeRetryLimit match {
-        case None =>
-          logger.info(
-            s"error: ${err.getMessage} consumer will perform retry in $retryTimeout, token=$t",
-            err
-          )
-          after(retryTimeout, context.system.scheduler)({
-            retryCount += 1
-            sendNextChunkRequest(t).map(FinishedToken.apply).pipeTo(self)
-          })
-        case Some(limit) if retryCount <= limit =>
-          logger.info(
-            s"error: ${err.getMessage} consumer will perform retry in $retryTimeout, token=$t. Counter = $retryCount of $limit",
-            err
-          )
-          after(retryTimeout, context.system.scheduler)({
-            retryCount += 1
-            sendNextChunkRequest(t).map(FinishedToken.apply).pipeTo(self)
-          })
-        case _ =>
-          logger.warn(
-            s"error: ${err.getMessage}. Consumer will not retry, retry limit reached.",
-            err
-          )
-      }
+      after(retryTimeout, context.system.scheduler)(
+        sendNextChunkRequest(t).map(FinishedToken.apply).pipeTo(self)
+      )
 
     case NewToHeader(to) =>
       lastBulkConsumeToHeader = to
@@ -366,8 +333,6 @@ class BufferFillerActor(threshold: Int,
                 new UnsupportedOperationException(x.toString)
               )
           }
-
-
 
       val tokenSink = Sink.last[(Option[String], Source[(Token, Tsv), Any])]
       //The below is actually alsoToMat but with eagerCancel = true

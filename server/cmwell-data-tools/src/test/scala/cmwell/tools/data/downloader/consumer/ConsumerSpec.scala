@@ -236,4 +236,23 @@ class ConsumerSpec extends BaseWiremockSpec {
       .runFold(0)(_ + _)
     result.flatMap{_ => 1 should be (1)}
   }
+
+  it should "be resilient against server errors" in {
+
+    stubFor(get(urlPathMatching("/.*")).inScenario(scenario)
+      .whenScenarioStateIs(Scenario.STARTED)
+      .willReturn(aResponse()
+      .withStatus(StatusCodes.GatewayTimeout.intValue))
+      .willSetStateTo(Scenario.STARTED)
+    )
+
+    val result = Downloader.createTsvSource(baseUrl = s"localhost:${wireMockServer.port}").map(_ => 1)
+      .runFold(0)(_ + _)
+
+    result.flatMap(_=>{
+      1 shouldBe 1
+    })
+
+  }
+
 }
