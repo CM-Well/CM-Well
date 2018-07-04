@@ -408,6 +408,8 @@ case class KafkaProps(h: Host)
   override def stop(hosts: GenSeq[String]): Unit = h.stopKafka(hosts)
 
   override def start(hosts: GenSeq[String]): Unit = h.startKafka(hosts)
+
+  override def upgradeDependency: Set[ComponentProps] = Set(JavaProps(h))
 }
 
 case class ZooKeeperProps(h: Host)
@@ -430,6 +432,8 @@ case class ZooKeeperProps(h: Host)
   override def stop(hosts: GenSeq[String]): Unit = h.stopZookeeper(hosts)
 
   override def start(hosts: GenSeq[String]): Unit = h.startZookeeper(hosts)
+
+  override def upgradeDependency: Set[ComponentProps] = Set(JavaProps(h))
 }
 
 case class BgProps(h: Host)
