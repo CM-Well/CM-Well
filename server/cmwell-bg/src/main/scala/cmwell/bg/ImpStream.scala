@@ -381,11 +381,11 @@ class ImpStream(partition: Int,
                 val previousTimestamp = previous.get.lastModified.getMillis
                 irwService.historyNeighbourhood(previous.get.path, previousTimestamp,
                   desc = true, limit = 2, ConsistencyLevel.QUORUM).flatMap { previousAndOneBeforeThat =>
+                  val statusTracking = trackingIds.map(StatusTracking(_, 1))
+                  val indexNewInfoton: (IndexCommand, Option[DateTime]) =
+                    IndexNewInfotonCommand(i.uuid, true, i.path, Some(i), i.indexName, statusTracking) -> Some(i.lastModified)
                   val oldUuidOpt = previousAndOneBeforeThat.find(_._1 != previous.get.lastModified.getMillis).map(_._2)
                   oldUuidOpt.fold{
-                    val statusTracking = trackingIds.map(StatusTracking(_, 1))
-                    val indexNewInfoton: (IndexCommand, Option[DateTime]) =
-                      IndexNewInfotonCommand(i.uuid, true, i.path, Some(i), i.indexName, statusTracking) -> Some(i.lastModified)
                     Future.successful(List(BGMessage(offsets, Seq(indexNewInfoton))))
                   }{ oldUuid =>
                     irwService.readUUIDAsync(oldUuid, ConsistencyLevel.QUORUM, dontFetchPayload = true).map {
@@ -405,7 +405,14 @@ class ImpStream(partition: Int,
                           BGMessage(updatedOffsetsForNew, Seq(indexNewInfoton)),
                           BGMessage(updatedOffsetsForExisting, Seq(indexExistingInfoton))
                         )
-                      case _=> ??? // todo what if Box not FullBox ?
+                      case EmptyBox =>
+                        redlog.error(s"UUID $oldUuid was in the neighbourhood when merging path ${previous.get.path} - " +
+                          s"but is not in infoton table - this might introduce a Duplicate!")
+                        List(BGMessage(offsets, Seq(indexNewInfoton)))
+                      case BoxedFailure(t) =>
+                        redlog.error(s"UUID $oldUuid was in the neighbourhood when merging path ${previous.get.path} - " +
+                          s"but could not be read from infoton table (see exception) - this might introduce a Duplicate!", t)
+                        List(BGMessage(offsets, Seq(indexNewInfoton)))
                     }
                   }
                 }
