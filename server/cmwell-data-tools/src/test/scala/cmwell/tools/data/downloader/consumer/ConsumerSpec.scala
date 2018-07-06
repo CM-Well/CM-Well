@@ -215,7 +215,7 @@ class ConsumerSpec extends BaseWiremockSpec {
     result.flatMap{_ => 1 should be (1)}
   }
 
-  it should "be resilient against 5xx errors" in {
+  it should "be retry against persistent 5xx errors to a defined limit" in {
 
     val expectedRetries = ConfigFactory.load().getInt("cmwell.downloader.consumer.http-retry-limit")
 
