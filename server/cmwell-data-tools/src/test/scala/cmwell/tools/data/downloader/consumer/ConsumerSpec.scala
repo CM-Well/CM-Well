@@ -18,24 +18,21 @@ package cmwell.tools.data.downloader.consumer
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
-import akka.stream.scaladsl.{Keep, Sink, Source}
+import akka.stream.scaladsl.{Keep, Sink}
 import akka.stream.{ActorMaterializer, Materializer}
 import cmwell.tools.data.helpers.BaseWiremockSpec
 import cmwell.tools.data.utils.akka.HeaderOps._
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.http.Fault
 import com.github.tomakehurst.wiremock.stubbing.Scenario
-import org.scalatest.concurrent.PatienceConfiguration
-
-import scala.concurrent.{Await, Future}
+import com.typesafe.config.ConfigFactory
 
 
 /**
   * Created by matan on 12/9/16.
   */
-class ConsumerSpec extends BaseWiremockSpec with PatienceConfiguration {
+class ConsumerSpec extends BaseWiremockSpec {
   val scenario = "scenario"
-  val scenario2 = "scenario2"
 
   implicit val system: ActorSystem = ActorSystem("reactive-tools-system")
   implicit val mat: Materializer = ActorMaterializer()
@@ -44,30 +41,6 @@ class ConsumerSpec extends BaseWiremockSpec with PatienceConfiguration {
     system.terminate()
     super.afterAll()
   }
-
-  it should "be reslient against server errors" in {
-
-    val exitRetry = "exit-retry"
-
-    stubFor(get(urlPathMatching("/.*")).inScenario(scenario)
-      .whenScenarioStateIs(Scenario.STARTED)
-      .willReturn(aResponse()
-        .withStatus(StatusCodes.OK.intValue)
-        .withHeader(CMWELL_POSITION, "3AAAMHwv"))
-      .willSetStateTo(exitRetry)
-    )
-
-    Downloader.createTsvSource(baseUrl = s"localhost:${wireMockServer.port}")
-
-    1 shouldBe 1
-  }
-
-
-
-
-
-
-
 
   ignore /*"Consumer"*/ should "be resilient against HTTP 429" in {
     val tooManyRequests = "too-many-requests"
@@ -119,7 +92,7 @@ class ConsumerSpec extends BaseWiremockSpec with PatienceConfiguration {
     result.flatMap { r => r should be (1)}
   }
 
-  ignore should "download all uuids while getting server error" in {
+  it should "download all uuids while getting server error" in {
 
     val tsvsBeforeError = List(
       "path1\tlastModified1\tuuid1\tindexTime1\n",
@@ -207,7 +180,7 @@ class ConsumerSpec extends BaseWiremockSpec with PatienceConfiguration {
       .willReturn(aResponse()
         .withStatus(StatusCodes.OK.intValue)
         .withHeader(CMWELL_POSITION, "dummy-token-value"))
-        .willSetStateTo(beforeCrushState)
+      .willSetStateTo(beforeCrushState)
     )
 
     stubFor(get(urlPathMatching("/")).inScenario(scenario)
@@ -216,7 +189,7 @@ class ConsumerSpec extends BaseWiremockSpec with PatienceConfiguration {
         .withStatus(StatusCodes.OK.intValue)
         .withBody("one\ttwo\tthree\tfour")
         .withHeader(CMWELL_POSITION, "dummy-token-value2"))
-        .willSetStateTo(crushState)
+      .willSetStateTo(crushState)
     )
 
     stubFor(get(urlPathMatching("/")).inScenario(scenario)
@@ -242,38 +215,25 @@ class ConsumerSpec extends BaseWiremockSpec with PatienceConfiguration {
     result.flatMap{_ => 1 should be (1)}
   }
 
-  it should "be resilient against server errors" in {
+  it should "be resilient against 5xx errors" in {
 
-    import scala.concurrent.duration._
+    val expectedRetries = ConfigFactory.load().getInt("cmwell.downloader.consumer.http-retry-limit")
 
-    stubFor(get(urlPathMatching("/.*")).inScenario(scenario2)
+    stubFor(get(urlPathMatching("/.*")).inScenario("5xx")
+      .whenScenarioStateIs(Scenario.STARTED)
       .willReturn(aResponse()
-      .withStatus(StatusCodes.GatewayTimeout.intValue))
+        .withStatus(StatusCodes.GatewayTimeout.intValue))
+      .willSetStateTo(Scenario.STARTED)
     )
 
     val source = Downloader.createTsvSource(baseUrl = s"localhost:${wireMockServer.port}")
+    val future = source.take(1).toMat(Sink.seq)(Keep.right).run
 
-    val f = source.toMat(Sink.seq)(Keep.right)
-    val d = f.run()
-
-    d.map {
-       d => d.foreach({
-         e => e._2
-       })
-    }
-
-
-    //val sourceFromRange = Source(1 to 10)
-
-    d.foreach(d=>{
-      println("dd")
-    })
-
-
-    println("Here")
-
-    assert(1==1)
+    recoverToExceptionIf[Exception] {
+      future.map(_ => 1)
+    }.map ( _ => assert(wireMockServer.getAllServeEvents.size == expectedRetries + 1) )
 
   }
+
 
 }
