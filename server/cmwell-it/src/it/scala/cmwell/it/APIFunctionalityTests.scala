@@ -1139,10 +1139,11 @@ class APIFunctionalityTests extends AsyncFunSpec
           val path = if (fileName.contains("2")) "testExample.org" else "testExample.net"
           import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
           spinCheck(100.millis, true)(Http.get(cmw / path, List("op" -> "search", "recursive" -> "", "with-data" -> "", "format" -> "nquads",
-            "override-mimetype" -> "text/plain", "length" -> "1000"))) { res => {
+            "length" -> "1000"))) { res => {
             val response = res.payload.split("\n").filter(triple => !(triple.contains("meta/sys#") || triple.contains("_:BsearchResponse")))
             val fileContentLines = fileContent.split("\n")
             fileContentLines.forall(response.contains) && response.forall(fileContentLines.contains)
+            //fileContentLines.sorted == response.sorted
           }
           }
         }
@@ -1155,7 +1156,7 @@ class APIFunctionalityTests extends AsyncFunSpec
             verifyIngest(file,fileNTriple).map { res =>
               val response = res.payload.split("\n").filter(triple => !(triple.contains("meta/sys#") || triple.contains("_:BsearchResponse")))
               val fileContentLines = fileNTriple.split("\n")
-              response should contain theSameElementsAs (fileContentLines)
+              response.sorted shouldEqual (fileContentLines.sorted)
             }
           }
           }//Will not reach here in case of failiure!!!
@@ -1185,7 +1186,6 @@ class APIFunctionalityTests extends AsyncFunSpec
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
         spinCheck(100.millis, true)(f08){ res =>
-          lazy val clue = new String(res.payload, "UTF-8")
           Try { Json.parse(res.payload).transform(bagUuidDateEraserAndSorter).get } match {
             case Success(j) => j == expected
             case Failure(e) => false
@@ -1212,7 +1212,6 @@ class APIFunctionalityTests extends AsyncFunSpec
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
         spinCheck(100.millis, true)(f09){ res =>
-          lazy val clue = new String(res.payload, "UTF-8")
           Try {Json.parse(res.payload).transform(bagUuidDateEraserAndSorter).get } match {
             case Success(j) => j == expected
             case Failure(e) => false
@@ -1239,7 +1238,6 @@ class APIFunctionalityTests extends AsyncFunSpec
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
         spinCheck(100.millis, true)(f10){ res =>
-          lazy val clue = new String(res.payload, "UTF-8")
           Try { Json.parse(res.payload).transform(bagUuidDateEraserAndSorter).get } match {
             case Success(j) => j == expected
             case Failure(e) => false
@@ -1268,9 +1266,7 @@ class APIFunctionalityTests extends AsyncFunSpec
         spinCheck(100.millis, true)(f11){ res =>
           val str = new String(res.payload, "UTF-8")
           val jsn = Json.parse(res.payload).transform(bagUuidDateEraserAndSorter)
-          withClue(s"got: $str") {
-            jsn.isSuccess == true && jsn.get == expected
-          }
+          jsn.isSuccess && jsn.get == expected
         }.map { res =>
           val str = new String(res.payload, "UTF-8")
           val jsn = Json.parse(res.payload).transform(bagUuidDateEraserAndSorter)
@@ -1337,7 +1333,6 @@ class APIFunctionalityTests extends AsyncFunSpec
 
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
         spinCheck(100.millis, true)(Http.get(cKent, List("yg" -> "<neighborOf.rel>worksWith.rel|<neighborOf.rel<friendOf.rel<mentorOf.rel>knowsByReputation.rel<collaboratesWith.rel","format" -> "json"))){ res =>
-          info(s"info## res.payload = $res.payload")
           Json.parse(res.payload).transform(bagUuidDateEraserAndSorter).get == expected
           // scalastyle:on
         }.map { res =>
