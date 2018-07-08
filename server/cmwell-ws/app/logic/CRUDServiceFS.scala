@@ -15,6 +15,7 @@
 package logic
 
 import java.util.Properties
+import java.util.concurrent.TimeoutException
 
 import akka.NotUsed
 import akka.actor.{Actor, ActorSystem}
@@ -479,7 +480,14 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
     val source = Consumer.plainSource[Array[Byte], Array[Byte]](consumerSettings, subscription).
       map(_.value())
 
-    maxLengthOpt.fold(source)(source.take)
+    maxLengthOpt.fold{
+      source
+        .idleTimeout(5.seconds)
+        .recoverWithRetries(1, {
+          //only for the case that the stream ended gracefully complete it. otherwise, pass the exception.
+          case ex: TimeoutException if ex.getMessage.startsWith("No elements passed in the last") => Source.empty
+        })
+    }(source.take)
   }
 
   // todo move this logic to InputHandler!
