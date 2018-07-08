@@ -146,7 +146,7 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
           textPlain,
           headers = ("X-CM-WELL-LINK-TYPE" -> "2") :: ("X-CM-WELL-TYPE" -> "LN") :: tokenHeader)
       }
-      fs -> executeAfterCompletion(fs)(Http.get(cmt / "fw-link-31"))
+      fs -> executeAfterCompletion(fs)(spinCheck(100.millis,true)(Http.get(cmt / "fw-link-31"))(_.status == 400))
     }
     val (f24,f25,f26,f27) = {
       val jsonObj = Json.obj("name" -> "TestObject", "title" -> "title1")
