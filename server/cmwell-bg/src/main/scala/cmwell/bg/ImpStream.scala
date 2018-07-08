@@ -154,17 +154,19 @@ class ImpStream(partition: Int,
     val tp2 = new TopicPartition(persistCommandsTopicPriority, partition)
     val kafkaConsumerProps = new Properties()
     kafkaConsumerProps.put("bootstrap.servers", bootStrapServers)
-    kafkaConsumerProps.put("group.id", s"imp.$partition")
     kafkaConsumerProps.put("key.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer")
     kafkaConsumerProps.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
     kafkaConsumerProps.put("value.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer")
     kafkaConsumerProps.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
-    val endOffsetsByTopicPartition = new KafkaConsumer[Array[Byte], Array[Byte]](kafkaConsumerProps).endOffsets(Seq(tp1,tp2).asJavaCollection)
+    val consumer = new KafkaConsumer[Array[Byte], Array[Byte]](kafkaConsumerProps)
+    val endOffsetsByTopicPartition = consumer.endOffsets(Seq(tp1,tp2).asJavaCollection)
+    consumer.close()
     endOffsetsByTopicPartition.get(tp1) -> endOffsetsByTopicPartition.get(tp2)
   }
 
-  logger.info(s"ImpStream($streamId), startingOffset: $startingOffset, startingOffsetPriority: $startingOffsetPriority;" +
-    s"writeHead: $initialWriteHead, writeHeadPriority: $initialWriteHeadPriority")
+  logger.info(s"ImpStream($streamId), startingOffset: $startingOffset, startingOffsetPriority: $startingOffsetPriority; " +
+    s"initalWriteHead (kafka.endOffset for $persistCommandsTopic($partition)): $initialWriteHead, " +
+    s"initialWriteHeadPriority (kafka.endOffset for $persistCommandsTopicPriority($partition)): $initialWriteHeadPriority")
 
   val numOfShardPerIndex = ftsService.numOfShardsForIndex(currentIndexName)
 
@@ -360,7 +362,8 @@ class ImpStream(partition: Int,
             }(breakOut3))
       }
       .mapConcat(identity)
-  val persistInCas = Flow[BGMessage[(Option[Infoton], (Infoton, Seq[String]))]]
+
+  val extractIndexCommands = Flow[BGMessage[(Option[Infoton], (Infoton, Seq[String]))]]
     .mapAsync(irwWriteConcurrency) {
       case BGMessage(offsets, (previous, (latest, trackingIds))) =>
         val latestWithIndexName = latest.copyInfoton(indexName = currentIndexName)
@@ -375,6 +378,7 @@ class ImpStream(partition: Int,
               Future.successful(List(BGMessage(offsets, Seq(ini))))
             } else if(previous.get.isSameAs(latest)) {
               if(!isRecoveryRequired) {
+                logger.warn(s"Previous [${previous.get.uuid}] isSameAs Latest but recoveryMode is off, this should never happen.")
                 Future.successful(List(BGMessage(offsets, Seq(ini))))
               } else {
                 // this case is when we're replaying persist command which was not indexed at all (due to error of some kind)
@@ -579,13 +583,13 @@ class ImpStream(partition: Int,
 
         val checkRecoveryState = builder.add(
           Flow[BGMessage[Command]].map { cmd =>
-            if(isRecoveryMode || isRecoveryModePriority) cmd.offsets.foreach { o =>
-              if(isRecoveryMode && o.topic==persistCommandsTopic && o.offset >= initialWriteHead) {
-                logger.info("Quitting Recovery Mode")
+            if (isRecoveryMode || isRecoveryModePriority) {
+              if(cmd.offsets.forall(o => isRecoveryMode && o.topic == persistCommandsTopic && o.offset >= initialWriteHead)) {
+                logger.info(s"Quitting Recovery Mode for $persistCommandsTopic($partition)")
                 isRecoveryMode = false
               }
-              if(isRecoveryModePriority && o.topic==persistCommandsTopicPriority && o.offset >= initialWriteHeadPriority) {
-                logger.info("Quitting Recovery Mode (for Priority)")
+              if(cmd.offsets.forall(o => isRecoveryModePriority && o.topic == persistCommandsTopicPriority && o.offset >= initialWriteHeadPriority)) {
+                logger.info(s"Quitting Recovery Mode for $persistCommandsTopicPriority($partition)")
                 isRecoveryModePriority = false
               }
             }
@@ -970,7 +974,7 @@ class ImpStream(partition: Int,
 
         partitionMerged.out(0) ~> partitionNonNullMerged.in
 
-        partitionNonNullMerged.out0 ~> persistInCas ~> nonOverrideIndexCommandsBroadcast.in
+        partitionNonNullMerged.out0 ~> extractIndexCommands ~> nonOverrideIndexCommandsBroadcast.in
 
         partitionNonNullMerged.out1 ~> logOrReportEvicted ~> Sink.ignore
 
