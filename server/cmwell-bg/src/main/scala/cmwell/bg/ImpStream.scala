@@ -378,7 +378,7 @@ class ImpStream(partition: Int,
               Future.successful(List(BGMessage(offsets, Seq(ini))))
             } else if(previous.get.isSameAs(latest)) {
               if(!isRecoveryRequired) {
-                logger.warn(s"Previous [${previous.get.uuid}] isSameAs Latest but recoveryMode is off, this should never happen.")
+                logger.warn(s"Previous [${previous.get.uuid}] isSameAs Latest but recoveryMode is off, this should only happen to parent Infotons.")
                 Future.successful(List(BGMessage(offsets, Seq(ini))))
               } else {
                 // this case is when we're replaying persist command which was not indexed at all (due to error of some kind)
@@ -584,11 +584,12 @@ class ImpStream(partition: Int,
         val checkRecoveryState = builder.add(
           Flow[BGMessage[Command]].map { cmd =>
             if (isRecoveryMode || isRecoveryModePriority) {
-              if(cmd.offsets.forall(o => isRecoveryMode && o.topic == persistCommandsTopic && o.offset >= initialWriteHead)) {
+              val (nonPriorityOffsets, priorityOffsets) = cmd.offsets.partition(_.topic == persistCommandsTopic)
+              if(nonPriorityOffsets.forall(o => isRecoveryMode && o.offset >= initialWriteHead)) {
                 logger.info(s"Quitting Recovery Mode for $persistCommandsTopic($partition)")
                 isRecoveryMode = false
               }
-              if(cmd.offsets.forall(o => isRecoveryModePriority && o.topic == persistCommandsTopicPriority && o.offset >= initialWriteHeadPriority)) {
+              if(priorityOffsets.forall(o => isRecoveryModePriority && o.offset >= initialWriteHeadPriority)) {
                 logger.info(s"Quitting Recovery Mode for $persistCommandsTopicPriority($partition)")
                 isRecoveryModePriority = false
               }
