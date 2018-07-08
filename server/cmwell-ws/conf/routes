@@ -13,19 +13,20 @@ GET         /_login           controllers.LoginHandler.login
 # SAML POC
 #GET         /_sso             controllers.LoginHandler.sso
 
-GET         /_auth            controllers.Application.handleAuthGet
-GET         /_hcn             controllers.Application.handlePoisonPill
-GET         /_cas/*path       controllers.Application.handleRawRow(path)
-GET         /_es/:uuid        controllers.Application.handleRawDoc(uuid: String)
-GET         /_es/:index/:uuid controllers.Application.handleRawDocWithIndex(index: String, uuid: String)
-GET         /_ll              controllers.LogLevelHandler.handleSetLogLevel
-GET         /_consume         controllers.Application.handleConsumeRoute
-GET         /_bulk-consume         controllers.Application.handleBulkConsumeRoute
-GET         /_iterate         controllers.Application.handleScrollRoute
-GET         /_cssh            controllers.Application.handleCssh
-GET         /_csshx            controllers.Application.handleCsshx
-GET         /_null            controllers.NullHandler.handle
-POST        /_null            controllers.NullHandler.handle
+GET         /_auth                    controllers.Application.handleAuthGet
+GET         /_hcn                     controllers.Application.handlePoisonPill
+GET         /_cas/*path               controllers.Application.handleRawRow(path)
+GET         /_es/:uuid                controllers.Application.handleRawDoc(uuid: String)
+GET         /_es/:index/:uuid         controllers.Application.handleRawDocWithIndex(index: String, uuid: String)
+GET         /_ll                      controllers.LogLevelHandler.handleSetLogLevel
+GET         /_consume                 controllers.Application.handleConsumeRoute
+GET         /_bulk-consume            controllers.Application.handleBulkConsumeRoute
+GET         /_iterate                 controllers.Application.handleScrollRoute
+GET         /_cssh                    controllers.Application.handleCssh
+GET         /_csshx                   controllers.Application.handleCsshx
+GET         /_null                    controllers.NullHandler.handle
+POST        /_null                    controllers.NullHandler.handle
+GET         /_kafka/:topic/:partition controllers.Application.handleKafkaConsume(topic: String, partition: Int)
 
 GET         /_track/*tid      controllers.Application.handleTrack(tid)
 

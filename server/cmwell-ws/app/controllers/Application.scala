@@ -17,25 +17,19 @@ package controllers
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.Locale
-import javax.inject._
 
+import javax.inject._
 import actions._
 import akka.NotUsed
 import akka.actor.ActorRef
+import akka.kafka.{ConsumerSettings, Subscriptions}
+import akka.kafka.scaladsl.Consumer
 import akka.pattern.AskTimeoutException
 import akka.stream.scaladsl.Source
 import akka.util.{ByteString, Timeout}
+import cmwell.common.CommandSerializer
 import cmwell.common.file.MimeTypeIdentifier
-import cmwell.domain.{
-  BagOfInfotons,
-  CompoundInfoton,
-  DeletedInfoton,
-  FString,
-  PaginationInfo,
-  SearchResponse,
-  SearchResults,
-  _
-}
+import cmwell.domain.{BagOfInfotons, CompoundInfoton, DeletedInfoton, FString, PaginationInfo, SearchResponse, SearchResults, _}
 import cmwell.formats._
 import cmwell.fts._
 import cmwell.rts.{Pull, Push, Subscriber}
@@ -72,6 +66,9 @@ import cmwell.util.string.Base64
 import cmwell.web.ld.cmw.CMWellRDFHelper
 import com.google.common.cache.{Cache, CacheBuilder}
 import filters.Attrs
+import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.serialization.{ByteArrayDeserializer, StringDeserializer}
 import play.api.mvc.request.RequestTarget
 
 import scala.collection.mutable.{HashMap, MultiMap}
@@ -3003,6 +3000,29 @@ callback=< [URL] >
       case _               => Future.successful(Forbidden("Not allowed to use zz"))
     }
   }
+
+  def handleKafkaConsume(topic: String, partition: Int): Action[AnyContent] = Action { implicit req =>
+    val isSysTopic = {
+      val sysTopics = Set("persist_topic", "index_topic", "persist_topic.priority", "index_topic.priority")
+      sysTopics(topic)
+    }
+    if (isSysTopic && !authUtils.isOperationAllowedForUser(Admin, authUtils.extractTokenFrom(req), evenForNonProdEnv = true))
+      Forbidden("Consuming this topic requires an Admin token.")
+    else {
+      val offset = req.getQueryString("offset").fold(0L)(_.toLong)
+      val maxLengthOpt = req.getQueryString("max-length").map(_.toLong)
+      val isText = req.getQueryString("format").fold(false)(_ == "text")
+
+      val source = crudServiceFS.consumeKafka(topic, partition, offset, maxLengthOpt)
+      Ok.chunked(source.map { bytes => (
+          if(isSysTopic)  CommandSerializer.decode(bytes).toString
+          else if(isText) new String(bytes, StandardCharsets.UTF_8)
+          else            bytes.mkString(",")
+        ) + "\n"
+      })
+    }
+  }
+
 
   def requestDetailedView(path: String) = Action.async { implicit req =>
     {

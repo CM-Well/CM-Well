@@ -15,10 +15,14 @@
 package logic
 
 import java.util.Properties
+import java.util.concurrent.TimeoutException
 
 import akka.NotUsed
 import akka.actor.{Actor, ActorSystem}
 import akka.actor.Actor.Receive
+import akka.kafka.{ConsumerSettings, Subscriptions}
+import akka.kafka.scaladsl.Consumer
+import akka.stream.ThrottleMode
 import akka.stream.scaladsl.Source
 import cmwell.domain._
 import cmwell.driver.Dao
@@ -44,9 +48,13 @@ import scala.concurrent._
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 import javax.inject._
-
 import cmwell.ws.qp.Encoder
+import k.grid.Grid
 import ld.cmw.passiveFieldTypesCacheImpl
+import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.serialization.ByteArrayDeserializer
+import play.api.mvc.{Action, AnyContent}
 
 @Singleton
 class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) extends LazyLogging {
@@ -460,6 +468,26 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
           true
         }
     }
+  }
+
+  def consumeKafka(topic: String, partition: Int, offset: Long, maxLengthOpt: Option[Long]): Source[Array[Byte], Consumer.Control] = {
+    val byteArrayDeserializer = new ByteArrayDeserializer()
+    val subscription = Subscriptions.assignmentWithOffset(new TopicPartition(topic, partition) -> offset)
+    val consumerSettings = ConsumerSettings(Grid.system, byteArrayDeserializer, byteArrayDeserializer)
+      .withBootstrapServers(kafkaURL)
+      .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
+
+    val source = Consumer.plainSource[Array[Byte], Array[Byte]](consumerSettings, subscription).
+      map(_.value())
+
+    maxLengthOpt.fold{
+      source
+        .idleTimeout(5.seconds)
+        .recoverWithRetries(1, {
+          //only for the case that the stream ended gracefully complete it. otherwise, pass the exception.
+          case ex: TimeoutException if ex.getMessage.startsWith("No elements passed in the last") => Source.empty
+        })
+    }(source.take)
   }
 
   // todo move this logic to InputHandler!
