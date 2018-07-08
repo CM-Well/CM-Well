@@ -34,7 +34,9 @@ import com.typesafe.config.ConfigFactory
 class ConsumerSpec extends BaseWiremockSpec {
   val scenario = "scenario"
 
-  implicit val system: ActorSystem = ActorSystem("reactive-tools-system")
+  val config = ConfigFactory.load()
+
+  implicit val system: ActorSystem = ActorSystem.create("reactive-tools-system")
   implicit val mat: Materializer = ActorMaterializer()
 
   override protected def afterAll(): Unit = {
@@ -217,7 +219,12 @@ class ConsumerSpec extends BaseWiremockSpec {
 
   it should "be retry against persistent 5xx errors to a defined limit" in {
 
-    val expectedRetries = ConfigFactory.load().getInt("cmwell.downloader.consumer.http-retry-limit")
+    val ec = scala.concurrent.ExecutionContext.Implicits.global
+
+    val expectedRetries = config.hasPath("cmwell.downloader.consumer.http-retry-limit") match {
+      case true => config.getInt("cmwell.downloader.consumer.http-retry-limit")
+      case false => 0
+    }
 
     stubFor(get(urlPathMatching("/.*")).inScenario("5xx")
       .whenScenarioStateIs(Scenario.STARTED)
@@ -226,7 +233,7 @@ class ConsumerSpec extends BaseWiremockSpec {
       .willSetStateTo(Scenario.STARTED)
     )
 
-    val source = Downloader.createTsvSource(baseUrl = s"localhost:${wireMockServer.port}")
+    val source = Downloader.createTsvSource(baseUrl = s"localhost:${wireMockServer.port}")(system, mat, ec)
     val future = source.take(1).toMat(Sink.seq)(Keep.right).run
 
     recoverToExceptionIf[Exception] {
