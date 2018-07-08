@@ -583,16 +583,14 @@ class ImpStream(partition: Int,
 
         val checkRecoveryState = builder.add(
           Flow[BGMessage[Command]].map { cmd =>
-            if (isRecoveryMode || isRecoveryModePriority) {
-              val (nonPriorityOffsets, priorityOffsets) = cmd.offsets.partition(_.topic == persistCommandsTopic)
-              if(nonPriorityOffsets.forall(o => isRecoveryMode && o.offset >= initialWriteHead)) {
-                logger.info(s"Quitting Recovery Mode for $persistCommandsTopic($partition)")
-                isRecoveryMode = false
-              }
-              if(priorityOffsets.forall(o => isRecoveryModePriority && o.offset >= initialWriteHeadPriority)) {
-                logger.info(s"Quitting Recovery Mode for $persistCommandsTopicPriority($partition)")
-                isRecoveryModePriority = false
-              }
+            val (nonPriorityOffsets, priorityOffsets) = cmd.offsets.partition(_.topic == persistCommandsTopic)
+            if (isRecoveryMode && nonPriorityOffsets.forall(_.offset >= initialWriteHead)) {
+              logger.info(s"Quitting Recovery Mode for $persistCommandsTopic($partition)")
+              isRecoveryMode = false
+            }
+            if (isRecoveryModePriority && priorityOffsets.forall(_.offset >= initialWriteHeadPriority)) {
+              logger.info(s"Quitting Recovery Mode for $persistCommandsTopicPriority($partition)")
+              isRecoveryModePriority = false
             }
             cmd
           }
