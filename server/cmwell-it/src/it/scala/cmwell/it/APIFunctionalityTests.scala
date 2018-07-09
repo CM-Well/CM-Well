@@ -27,6 +27,7 @@ import cmwell.util.string.Hash.crc32base64
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.jena.rdf.model.{ModelFactory, ResourceFactory}
 import org.apache.jena.riot.{Lang, RDFDataMgr}
+import org.scalatest.Assertion
 import play.api.libs.json._
 
 import scala.concurrent._
@@ -1142,8 +1143,7 @@ class APIFunctionalityTests extends AsyncFunSpec
             "length" -> "1000"))) { res => {
             val response = res.payload.split("\n").filter(triple => !(triple.contains("meta/sys#") || triple.contains("_:BsearchResponse")))
             val fileContentLines = fileContent.split("\n")
-            fileContentLines.forall(response.contains) && response.forall(fileContentLines.contains)
-            //fileContentLines.sorted == response.sorted
+            fileContentLines.sorted sameElements response.sorted
           }
           }
         }
@@ -1552,8 +1552,8 @@ class APIFunctionalityTests extends AsyncFunSpec
       it("should add some historical data") {
         val data = Seq("DaisyDuck"->"Carrot", "DaisyDuck"->"Lemon", "PeterParker"->"Grapes", "PeterParker"->"Tomato", "DonaldDuck"->"Lemon",
           "RollMeBack"->"v1", "RollMeBack"->"v2", "RollMeBack"->"v3")
-        data.foldLeft[Future[String]](Future.successful("S")) {
-          case (f,(s,o)) => f.flatMap { _ => {
+        data.foldLeft[Future[List[Assertion]]](Future.successful(Nil)) {
+          case (f,(s,o)) => f.flatMap { assertList => {
             val triplet = s"<http://testExample.org/Individuals/$s> <http://purl.org/vocab/relationship/drinksJuiceOf> " +
               s"<http://testExample.org/Individuals/$o> ."
             Http.post(
@@ -1568,7 +1568,7 @@ class APIFunctionalityTests extends AsyncFunSpec
               spinCheck(100.millis, true)(Http.get(cmw / "testExample.org" / "Individuals" / s"$s", List("format" -> "ntriples"))) { res =>
                 res.payload.lines.toList.contains(triplet)
               }.map { res =>
-                if (res.payload.lines.toList.contains(triplet)) "S" else "F"
+                (res.payload.lines.toList should contain (triplet)) :: assertList
               }
             }
 
@@ -1576,7 +1576,7 @@ class APIFunctionalityTests extends AsyncFunSpec
             }
           }
           }
-        }.map(all(_) should be ('S'))
+        }.map(forAll(_)(identity))
       }
 
       it("should purge one historical version by uuid") {
