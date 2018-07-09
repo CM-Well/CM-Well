@@ -67,8 +67,8 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
         it("should upload the problematic infotons successfully")(indexingBugSampleIngest)
       }
       describe("data to test ns backward compatibility to old-style ns data") {
-//        it("should upload a /meta/ns old-style infoton to _cmd")(oldStyleNSDataIngest)
-//        it("should use wrapped API to upload old style infoton using old-style ns")(wrappedAPIUploadOldStyle)
+        //        it("should upload a /meta/ns old-style infoton to _cmd")(oldStyleNSDataIngest)
+        //        it("should use wrapped API to upload old style infoton using old-style ns")(wrappedAPIUploadOldStyle)
         it("should post data with old VCARD onthology")(oldVcardOntologyDataIngest)
       }
     }
@@ -76,10 +76,10 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
     describe("verifying") {
 
       val johnSmithExpectedJson = Json.obj("ADR.vcard" -> Seq("http://www.example.net/Addresses/c9ca3047"),
-      "EMAIL.vcard" -> Seq("mailto:john.smith@example.net", "mailto:jsmith@gmail.com"),
-      "FN.vcard" -> Seq("John Smith"),
-      "NOTE.vcard" -> Seq("1st note", "some other note"),
-      "type.rdf" -> Seq("http://www.w3.org/2006/vcard/ns#Individual" ))
+        "EMAIL.vcard" -> Seq("mailto:john.smith@example.net", "mailto:jsmith@gmail.com"),
+        "FN.vcard" -> Seq("John Smith"),
+        "NOTE.vcard" -> Seq("1st note", "some other note"),
+        "type.rdf" -> Seq("http://www.w3.org/2006/vcard/ns#Individual" ))
 
       val addressExpectedJson = Json.obj(
         "COUNTRY-NAME.vcard" -> Seq("USA"),
@@ -89,29 +89,27 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
         "STREET-ADDRESS.vcard" -> Seq("123 Main St."),
         "type.rdf" -> Seq("http://www.w3.org/2006/vcard/ns#HOME") )
 
-      val vpExpectedJson = Json.obj(
-        "FN.vcard-hP45Hw" -> Seq("V P"),
-        "N.vcard-hP45Hw" -> Seq("/blank_node/A2a4445a9X2dX8d8dX2dX416dX2dX9a2fX2dX170f430be222")
-      )
-
       val vpStr = """<http://clearforest.com/pe/VP> <http://www.w3.org/2001/old-vcard-rdf/3.0#FN> "V P" ."""
 
       val executeAfterIndexing = indexingBugSampleIngest.zip(oldVcardOntologyDataIngest).flatMap(_ => {
         spinCheck(100.millis, true)(
-        Http.get(cmw / "www.example.net" / "Individuals" / "JohnSmith", List("format" -> "json"))){ res =>
+          Http.get(cmw / "www.example.net" / "Individuals" / "JohnSmith", List("format" -> "json"))){ res =>
           Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get == johnSmithExpectedJson
-        }}.flatMap { _ => spinCheck(100.millis, true)(
-        Http.get(cmw / "www.example.net" / "Addresses" / "c9ca3047", List("format" -> "json"))){ res =>
+        }}.flatMap{
+          res => Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get shouldEqual johnSmithExpectedJson}.flatMap {_ =>
+        spinCheck(100.millis, true)(
+          Http.get(cmw / "www.example.net" / "Addresses" / "c9ca3047", List("format" -> "json"))){ res =>
           Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get == addressExpectedJson
-        }}.flatMap { _ => {import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+        }}.flatMap{res => Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get shouldEqual addressExpectedJson}.flatMap {_ => {
+        import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
         spinCheck(100.millis, true, 1.minute){
-        Http.get(cmw / "clearforest.com" / "pe" / "VP", List("format" -> "ntriples"))}{ res =>
+          Http.get(cmw / "clearforest.com" / "pe" / "VP", List("format" -> "ntriples"))}{ res =>
           res.payload.lines.toList.contains(vpStr)
         }}.flatMap { res =>
-          withClue(res) {
-            res.payload.lines.toList should contain(vpStr)
-          }
-        }})
+        withClue(res) {
+          res.payload.lines.toList should contain(vpStr)
+        }
+      }})
 
       it("validate ingection was successful")(executeAfterIndexing)
 
@@ -133,25 +131,25 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
           "postal-code.vcard" -> Json.arr("Houston, Texas 77024-3812"),
           "country-name.vcard" -> Json.arr("U.S.A."))).transform(fieldsSorter).get
       val expectedN3BeforeRel2 ="""
-                       |@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
-                       |@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-                       |@prefix vcard: <http://www.w3.org/2006/vcard/ns#> .
-                       |
-                       |<http://www.example.net/Addresses/c9ca3047>
-                       |        a                     <http://www.w3.org/2006/vcard/ns#HOME> ;
-                       |        vcard:COUNTRY-NAME    "USA" ;
-                       |        vcard:LOCALITY        "Springfield;IL" ;
-                       |        vcard:NOTE            "some other note" , "note to self" , "1st note" ;
-                       |        vcard:POSTAL-CODE     "12345" ;
-                       |        vcard:STREET-ADDRESS  "123 Main St." .
-                       |
-                       |<http://www.example.net/Individuals/JohnSmith>
-                       |        a                 <http://www.w3.org/2006/vcard/ns#Individual> ;
-                       |        vcard:ADR         <http://www.example.net/Addresses/c9ca3047> ;
-                       |        vcard:EMAIL       <mailto:john.smith@example.net> , <mailto:jsmith@gmail.com> ;
-                       |        vcard:FN          "John Smith" ;
-                       |        vcard:NOTE        "some other note" , "1st note" .
-                     """.stripMargin
+                                  |@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+                                  |@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+                                  |@prefix vcard: <http://www.w3.org/2006/vcard/ns#> .
+                                  |
+                                  |<http://www.example.net/Addresses/c9ca3047>
+                                  |        a                     <http://www.w3.org/2006/vcard/ns#HOME> ;
+                                  |        vcard:COUNTRY-NAME    "USA" ;
+                                  |        vcard:LOCALITY        "Springfield;IL" ;
+                                  |        vcard:NOTE            "some other note" , "note to self" , "1st note" ;
+                                  |        vcard:POSTAL-CODE     "12345" ;
+                                  |        vcard:STREET-ADDRESS  "123 Main St." .
+                                  |
+                                  |<http://www.example.net/Individuals/JohnSmith>
+                                  |        a                 <http://www.w3.org/2006/vcard/ns#Individual> ;
+                                  |        vcard:ADR         <http://www.example.net/Addresses/c9ca3047> ;
+                                  |        vcard:EMAIL       <mailto:john.smith@example.net> , <mailto:jsmith@gmail.com> ;
+                                  |        vcard:FN          "John Smith" ;
+                                  |        vcard:NOTE        "some other note" , "1st note" .
+                                """.stripMargin
 
       //Assertions
       val verifyingIndexingBugFixed = executeAfterIndexing.flatMap{ _ => spinCheck(100.millis, true)(Http.get(cmw / "www.example.net",
@@ -215,9 +213,9 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
         val f = spinCheck(100.millis,true)(Http.get(exampleNetPath, List(
           "op" -> "search",
           "qp" -> ("*[$http://www.w3.org/2006/vcard/ns#NOTE$:note," +
-                     "$http://www.w3.org/2006/vcard/ns#FN$:John]," +
-                   "*[$http://www.w3.org/2006/vcard/ns#POSTAL-CODE$::12345," +
-                     "$http://www.w3.org/2006/vcard/ns#COUNTRY-NAME$::USA]"),
+            "$http://www.w3.org/2006/vcard/ns#FN$:John]," +
+            "*[$http://www.w3.org/2006/vcard/ns#POSTAL-CODE$::12345," +
+            "$http://www.w3.org/2006/vcard/ns#COUNTRY-NAME$::USA]"),
           "with-descendants" -> "true",
           "with-data" -> "true",
           "format" -> "n3")))(_.status)
@@ -235,9 +233,9 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
         Http.get(exampleNetPath, List(
           "op" -> "search",
           "qp" -> ("*[$http://www.w3.org/2006/vcard/ns#NOTE$:note,"          +
-                     "$http://www.w3.org/2006/vcard/ns#FN$:John]"            +
-                   "*[$http://www.w3.org/2006/vcard/ns#POSTAL-CODE$::12345," +
-                     "$http://www.w3.org/2006/vcard/ns#COUNTRY-NAME$::USA]"),
+            "$http://www.w3.org/2006/vcard/ns#FN$:John]"            +
+            "*[$http://www.w3.org/2006/vcard/ns#POSTAL-CODE$::12345," +
+            "$http://www.w3.org/2006/vcard/ns#COUNTRY-NAME$::USA]"),
           "with-descendants" -> "true",
           "with-data" -> "true",
           "format" -> "n3"))
@@ -330,24 +328,24 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
 
       //CONSTS
       val i1 = Json.obj("type" -> "ObjectInfoton",
-                        "system" -> Json.obj("path" -> "/www.example.net/Addresses/c9ca3047",
-                          "parent" -> "/www.example.net/Addresses",
-                          "dataCenter" -> dcName),
-                        "fields" -> Json.obj("type.rdf" -> Json.arr("http://www.w3.org/2006/vcard/ns#HOME"),
-                          "COUNTRY-NAME.vcard" -> Json.arr("USA"),
-                          "LOCALITY.vcard" -> Json.arr("Springfield;IL"),
-                          "POSTAL-CODE.vcard" -> Json.arr("12345"),
-                          "NOTE.vcard" -> Json.arr("1st note","some other note","note to self"),
-                          "STREET-ADDRESS.vcard" -> Json.arr("123 Main St.")))
+        "system" -> Json.obj("path" -> "/www.example.net/Addresses/c9ca3047",
+          "parent" -> "/www.example.net/Addresses",
+          "dataCenter" -> dcName),
+        "fields" -> Json.obj("type.rdf" -> Json.arr("http://www.w3.org/2006/vcard/ns#HOME"),
+          "COUNTRY-NAME.vcard" -> Json.arr("USA"),
+          "LOCALITY.vcard" -> Json.arr("Springfield;IL"),
+          "POSTAL-CODE.vcard" -> Json.arr("12345"),
+          "NOTE.vcard" -> Json.arr("1st note","some other note","note to self"),
+          "STREET-ADDRESS.vcard" -> Json.arr("123 Main St.")))
       val i2 = Json.obj("type" -> "ObjectInfoton",
-                        "system" -> Json.obj("path" -> "/www.example.net/Individuals/JohnSmith",
-                          "parent" -> "/www.example.net/Individuals",
-                          "dataCenter" -> dcName),
-                        "fields" -> Json.obj("type.rdf" -> Json.arr("http://www.w3.org/2006/vcard/ns#Individual"),
-                          "FN.vcard" -> Json.arr("John Smith"),
-                          "ADR.vcard" -> Json.arr("http://www.example.net/Addresses/c9ca3047"),
-                          "EMAIL.vcard" -> Json.arr("mailto:jsmith@gmail.com","mailto:john.smith@example.net"),
-                          "NOTE.vcard" -> Json.arr("1st note","some other note")))
+        "system" -> Json.obj("path" -> "/www.example.net/Individuals/JohnSmith",
+          "parent" -> "/www.example.net/Individuals",
+          "dataCenter" -> dcName),
+        "fields" -> Json.obj("type.rdf" -> Json.arr("http://www.w3.org/2006/vcard/ns#Individual"),
+          "FN.vcard" -> Json.arr("John Smith"),
+          "ADR.vcard" -> Json.arr("http://www.example.net/Addresses/c9ca3047"),
+          "EMAIL.vcard" -> Json.arr("mailto:jsmith@gmail.com","mailto:john.smith@example.net"),
+          "NOTE.vcard" -> Json.arr("1st note","some other note")))
       val jSmith = cmw / "www.example.net" / "Individuals" / "JohnSmith"
 
       def jSmithUnderscoreOut(): Future[SimpleResponse[Array[Byte]]] =
@@ -376,11 +374,11 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
           }
         }
       }
-//      val jSmithImplicitXg = executeAfterIndexing {
-//        spinCheck(100.millis,true)(
-//          Http.get(jSmith, List("format" -> "json", "xg" -> "ADR.vcard"))
-//        )(_.status == 422).map(r => withClue(r)(r.status shouldEqual 422))
-//      }
+      //      val jSmithImplicitXg = executeAfterIndexing {
+      //        spinCheck(100.millis,true)(
+      //          Http.get(jSmith, List("format" -> "json", "xg" -> "ADR.vcard"))
+      //        )(_.status == 422).map(r => withClue(r)(r.status shouldEqual 422))
+      //      }
       val jSmithExplicitBulkXg = executeAfterIndexing.flatMap { _ =>
         spinCheck(100.millis,true)(
           Http.post(
@@ -396,26 +394,26 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
               .parse(res.payload)
               .transform(bagUuidDateEraserAndSorter)
               .get shouldEqual Json.obj(
-                "type" -> "RetrievablePaths",
-                "infotons" -> Json.arr(i1, i2),
-                "irretrievablePaths" -> Json.arr()
-              ).transform(bagUuidDateEraserAndSorter).get
+              "type" -> "RetrievablePaths",
+              "infotons" -> Json.arr(i1, i2),
+              "irretrievablePaths" -> Json.arr()
+            ).transform(bagUuidDateEraserAndSorter).get
           }
         }
       }
-//      val jSmithImplicitBulkXg = executeAfterIndexing {
-//        spinCheck(100.millis,true)(
-//          jSmithUnderscoreOut()
-//        )(_.status == 422).map(r => withClue(r)(r.status shouldEqual 422))
-//      }
+      //      val jSmithImplicitBulkXg = executeAfterIndexing {
+      //        spinCheck(100.millis,true)(
+      //          jSmithUnderscoreOut()
+      //        )(_.status == 422).map(r => withClue(r)(r.status shouldEqual 422))
+      //      }
 
       //changing the data
       val renamingOldVcardPrefix = for {
         _ <- jSmithExplicitXg
         _ <- jSmithFullNsURIXg
-//        _ <- jSmithImplicitXg
+        //        _ <- jSmithImplicitXg
         _ <- jSmithExplicitBulkXg
-//        _ <- jSmithImplicitBulkXg
+        //        _ <- jSmithImplicitBulkXg
         body = """<> <cmwell://meta/ns#old-vcard> "http://www.w3.org/2001/old-vcard-rdf/3.0#" . """
         res <- Http.post(_in, body, Some("text/plain;charset=UTF-8"), List("format" -> "ntriples"), tokenHeader)
       } yield {
@@ -426,9 +424,9 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
       }
 
       // new waiting helper
-      //Note: Since this methods are in ignore - they were never tested without the indexingDuration.--help
+      //Note: Since this methods are in ignore - they were never tested without the indexingDuration.
       val indexingWaitingFuture2 = renamingOldVcardPrefix.flatMap(_ => SimpleScheduler.schedule[Unit](/*indexingDuration*/1.millis
-        )(())(implicitly[ExecutionContext]))
+      )(())(implicitly[ExecutionContext]))
       def executeAfterIndexing2[T](body: =>Future[T]): Future[T] = indexingWaitingFuture2.flatMap(_ => body)
 
       val jSmithImplicitXgSuccess = executeAfterIndexing2 {
@@ -437,9 +435,9 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
           withClue(res -> clue) {
             Try {
               Json
-              .parse(res.payload)
-              .transform(bagUuidDateEraserAndSorter)
-              .get} match {
+                .parse(res.payload)
+                .transform(bagUuidDateEraserAndSorter)
+                .get} match {
               case Success(j) => j shouldEqual Json.obj("type" -> "BagOfInfotons", "infotons" -> Json.arr(i1, i2)).transform(bagUuidDateEraserAndSorter).get
               case Failure(e) => fail(clue)
             }
@@ -469,9 +467,9 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
       describe("expand graph API") {
         it("should expand JohnSmith with address on regular read with explicit $ namespace")(jSmithExplicitXg)
         it("should expand JohnSmith with address on regular read using full NS URI")(jSmithFullNsURIXg)
-//        it("should fail to expand JohnSmith with address on regular read with implicit ambiguous namespace")(jSmithImplicitXg)
+        //        it("should fail to expand JohnSmith with address on regular read with implicit ambiguous namespace")(jSmithImplicitXg)
         it("should expand JohnSmith with any vcard on bulk read through _out with explicit $ namespace")(jSmithExplicitBulkXg)
-//        it("should fail to expand JohnSmith with any vcard on bulk read through _out with implicit ambiguous namespace")(jSmithImplicitBulkXg)
+        //        it("should fail to expand JohnSmith with any vcard on bulk read through _out with implicit ambiguous namespace")(jSmithImplicitBulkXg)
 
         //after renaming vcard prefix
         it("should change prefix for ambiguous vcard namespace")(renamingOldVcardPrefix)
@@ -483,3 +481,4 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
     }
   }
 }
+
