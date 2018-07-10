@@ -14,6 +14,8 @@
   */
 package cmwell.util.concurrent
 
+import java.util.concurrent.{ScheduledExecutorService, ScheduledThreadPoolExecutor}
+
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -24,13 +26,17 @@ import scala.util.Try
   * Created by gilad on 12/3/15.
   */
 object SimpleScheduler extends LazyLogging {
-  private[this] lazy val timer = java.util.concurrent.Executors.newScheduledThreadPool(1)
+  private[this] lazy val timer = {
+    val executor = new ScheduledThreadPoolExecutor(1)
+    executor.setRemoveOnCancelPolicy(true)
+    executor.asInstanceOf[ScheduledExecutorService]
+  }
 
   //method is private, since we must keep execution on the expense of out timer thread to be as limited as possible.
   //this method can be used if and only if we know `body` is a safe and small job.
   private[util] def scheduleInstant[T](duration: FiniteDuration)(body: => T) = {
     val p = Promise[T]()
-    timer.schedule(
+    val cancellable = timer.schedule(
       new Runnable {
         override def run(): Unit = {
           // body must not be expensive to compute since it will be run in our only timer thread expense.
@@ -40,7 +46,7 @@ object SimpleScheduler extends LazyLogging {
       duration.toMillis,
       java.util.concurrent.TimeUnit.MILLISECONDS
     )
-    p.future
+    p.future.andThen { case _ => cancellable.cancel(false) }
   }
 
   def scheduleAtFixedRate(initialDelay: FiniteDuration, period: FiniteDuration, mayInterruptIfRunning: Boolean = false)(
@@ -65,7 +71,7 @@ object SimpleScheduler extends LazyLogging {
     }
   }
 
-  def schedule[T](duration: FiniteDuration, mayInterruptIfRunning: Boolean = false)(body: => T)
+  def schedule[T](duration: FiniteDuration)(body: => T)
                  (implicit executionContext: ExecutionContext): Future[T]= {
     val p = Promise[T]()
     val cancellable = timer.schedule(
@@ -79,15 +85,15 @@ object SimpleScheduler extends LazyLogging {
       duration.toMillis,
       java.util.concurrent.TimeUnit.MILLISECONDS
     )
-    p.future.andThen { case _ => cancellable.cancel(mayInterruptIfRunning) }
+    p.future.andThen { case _ => cancellable.cancel(false) }
   }
 
   def scheduleFuture[T](duration: Duration)(body: => Future[T]): Future[T] = {
     val p = Promise[T]()
-    timer.schedule(new Runnable {
+    val cancellable = timer.schedule(new Runnable {
       override def run(): Unit = p.completeWith(body)
     }, duration.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
-    p.future
+    p.future.andThen { case _ => cancellable.cancel(false) }
   }
 }
 
