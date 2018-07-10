@@ -65,9 +65,10 @@ object SimpleScheduler extends LazyLogging {
     }
   }
 
-  def schedule[T](duration: FiniteDuration)(body: => T)(implicit executionContext: ExecutionContext): Future[T] = {
+  def schedule[T](duration: FiniteDuration, mayInterruptIfRunning: Boolean = false)(body: => T)
+                 (implicit executionContext: ExecutionContext): Future[T]= {
     val p = Promise[T]()
-    timer.schedule(
+    val cancellable = timer.schedule(
       new Runnable {
         override def run(): Unit = {
           // body may be expensive to compute, and must not be run in our only timer thread expense,
@@ -78,7 +79,7 @@ object SimpleScheduler extends LazyLogging {
       duration.toMillis,
       java.util.concurrent.TimeUnit.MILLISECONDS
     )
-    p.future
+    p.future.andThen { case _ => cancellable.cancel(mayInterruptIfRunning) }
   }
 
   def scheduleFuture[T](duration: Duration)(body: => Future[T]): Future[T] = {
