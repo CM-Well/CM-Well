@@ -95,17 +95,17 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
         spinCheck(100.millis, true)(
           Http.get(cmw / "www.example.net" / "Individuals" / "JohnSmith", List("format" -> "json"))){ res =>
           Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get == johnSmithExpectedJson
-        }}.flatMap{
+        }}.map{
           res => Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get shouldEqual johnSmithExpectedJson}.flatMap {_ =>
         spinCheck(100.millis, true)(
           Http.get(cmw / "www.example.net" / "Addresses" / "c9ca3047", List("format" -> "json"))){ res =>
           Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get == addressExpectedJson
-        }}.flatMap{res => Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get shouldEqual addressExpectedJson}.flatMap {_ => {
+        }}.map{res => Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get shouldEqual addressExpectedJson}.flatMap {_ => {
         import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
         spinCheck(100.millis, true, 1.minute){
           Http.get(cmw / "clearforest.com" / "pe" / "VP", List("format" -> "ntriples"))}{ res =>
           res.payload.lines.toList.contains(vpStr)
-        }}.flatMap { res =>
+        }}.map { res =>
         withClue(res) {
           res.payload.lines.toList should contain(vpStr)
         }
