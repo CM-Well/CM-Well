@@ -96,10 +96,15 @@ object StpUtil extends DataToolsLogging {
           IngestStats(None,0,ingestedInfotons.get,failedInfotons.get)
         }
 
-        val materializedStats = allJson.find{ _.hcursor.downField("materializedInfotons").succeeded }.map { json=>
-          val materialized = json.hcursor.downField("materializedInfotons").as[Long].toOption
-          DownloadStats(receivedInfotons = materialized.get)
-        }
+        val materializedStats = allJson.find{ _.hcursor.downField("materializedInfotons").succeeded }.flatMap { json=>
+          json.hcursor.downField("materializedInfotons").as[Long].toOption
+        }.getOrElse(0L)
+
+        val totalRunningMillis = allJson.find{ _.hcursor.downField("totalRunningMillis").succeeded }.flatMap { json =>
+          json.hcursor.downField("totalRunningMillis").as[Long].toOption
+        }.getOrElse(0L)
+
+        val agentStats = Option(DownloadStats(totalRunningTime = totalRunningMillis,receivedInfotons = materializedStats))
 
         val sensors = allJson.map { json=>
           val token = json.hcursor.downField("token").as[String].getOrElse("")
@@ -111,7 +116,7 @@ object StpUtil extends DataToolsLogging {
         }.foldLeft(Map.newBuilder[String, TokenAndStatistics])(_.+=(_))
         .result
 
-        AgentTokensAndStatistics(sensors, ingestStats, materializedStats)
+        AgentTokensAndStatistics(sensors, ingestStats, agentStats)
 
       }
     }

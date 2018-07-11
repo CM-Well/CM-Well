@@ -400,7 +400,8 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
                 .get(s"${SparqlTriggeredProcessor.sparqlMaterializerLabel}")
                 .map { s =>
                   val totalRunTime = DurationFormatUtils.formatDurationWords(s.runningTime, true, true)
-                  s"""Materialized <span style="color:green"> **${s.receivedInfotons}** </span> infotons [$totalRunTime]""".stripMargin
+                  val allRunTime = DurationFormatUtils.formatDurationWords(s.totalRunningTime, true, true)
+                  s"""Materialized <span style="color:green"> **${s.receivedInfotons}** </span> infotons [$totalRunTime]|/[$allRunTime]""".stripMargin
                 }
                 .getOrElse("")
 
