@@ -17,7 +17,7 @@ package cmwell.common
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
-import scala.concurrent.Await
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import cmwell.zstore.ZStore
 
@@ -28,7 +28,7 @@ trait OffsetsService {
 
   def read(id: String): Option[Long]
   def readWithTimestamp(id: String): Option[PersistedOffset]
-  def write(id: String, offset: Long): Unit
+  def writeAsync(id: String, offset: Long): Future[Unit]
 }
 
 case class PersistedOffset(offset: Long, timestamp: Long)
@@ -60,7 +60,6 @@ class ZStoreOffsetsService(zStore: ZStore) extends OffsetsService {
 //    Await.result(zStore.getStringOpt(id), 10.seconds).map(s => s.substring(0, s.indexOf(',')).toLong)
 //    Await.result(zStore.getLongOpt(id), 10.seconds)
 
-  override def write(id: String, offset: Long): Unit =
-    Await.result(zStore.putString(id, s"$offset,${System.currentTimeMillis}", batched = true), 10.seconds)
-//    Await.result(zStore.putLong(id, offset, batched = true), 10.seconds)
+  override def writeAsync(id: String, offset: Long): Future[Unit] =
+    zStore.putString(id, s"$offset,${System.currentTimeMillis}", batched = true)
 }
