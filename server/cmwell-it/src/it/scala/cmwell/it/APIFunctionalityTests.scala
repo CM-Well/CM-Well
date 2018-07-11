@@ -1120,17 +1120,17 @@ class APIFunctionalityTests extends AsyncFunSpec
       // format: off
       // scalastyle:off
       val f00 = ingestOfNtriplesFromFilesPromise.future
-      val f01 = f00.flatMap(_ => Http.get(cmw / "testExample.org" / "BugChecks" / "xgBugCheck", List("format" -> "json", "xg" -> s"dislikes.rel")))
-      val f08 = f00.flatMap(_ => Http.get(mZ, List("xg" -> s"colleagueOf.$$${ns.rel}>employedBy.$$${ns.rel}>mentorOf.$$${ns.rel}>friendOf.$$${ns.rel}>worksWith.$$${ns.rel}>parentOf.$$${ns.rel}","format" -> "json")))
-      val f09 = f00.flatMap(_ => Http.get(mZ, List("xg" -> "$http://purl.org/vocab/relationship/colleagueOf$>$http://purl.org/vocab/relationship/employedBy$>$http://purl.org/vocab/relationship/mentorOf$>$http://purl.org/vocab/relationship/friendOf$>$http://purl.org/vocab/relationship/worksWith$>$http://purl.org/vocab/relationship/parentOf$","format" -> "json")))
-      val f10 = f00.flatMap(_ => Http.get(mZ, List("xg" -> "colleagueOf.rel>employedBy.rel>mentorOf.rel>friendOf.rel>worksWith.rel>parentOf.rel","format" -> "json")))
-      val f11 = f00.flatMap(_ => Http.get(mZ, List("xg" -> "colleagueOf.rel[doesNotExist:]>employedBy.rel>mentorOf.rel>friendOf.rel>worksWith.rel>parentOf.rel","format" -> "json")))
-      val f12 = f00.flatMap(_ => Http.get(mZ, List("xg" -> "colleagueOf.rel[system.path:/not/real]>employedBy.rel>mentorOf.rel>friendOf.rel>worksWith.rel>parentOf.rel","format" -> "json")))
-      val f13 = f00.flatMap(_ => Http.get(cKent, List("yg" -> s"<neighborOf.$$${ns.rel}>worksWith.$$${ns.rel}|<neighborOf.$$${ns.rel}<friendOf.$$${ns.rel}<mentorOf.$$${ns.rel}>knowsByReputation.$$${ns.rel}<collaboratesWith.$$${ns.rel}","format" -> "json")))
-      val f14 = f00.flatMap(_ => Http.get(cKent, List("yg" -> "<$http://purl.org/vocab/relationship/neighborOf$>$http://purl.org/vocab/relationship/worksWith$|<$http://purl.org/vocab/relationship/neighborOf$<$http://purl.org/vocab/relationship/friendOf$<$http://purl.org/vocab/relationship/mentorOf$>$http://purl.org/vocab/relationship/knowsByReputation$<$http://purl.org/vocab/relationship/collaboratesWith$","format" -> "json")))
-      val f15 = f00.flatMap(_ => Http.get(cKent, List("yg" -> "<neighborOf.rel>worksWith.rel|<neighborOf.rel<friendOf.rel<mentorOf.rel>knowsByReputation.rel<collaboratesWith.rel","format" -> "json")))
-      val f16 = f00.flatMap(_ => Http.get(cKent, List("yg" -> "<neighborOf.rel[active.bold::true]>worksWith.rel[active.bold::false]|<neighborOf.rel[active.bold::true]<friendOf.rel[doesNotExist::SomeValue]<mentorOf.rel>knowsByReputation.rel<collaboratesWith.rel","format" -> "json")))
-      val f17 = f00.flatMap(_ => Http.get(cKent, List("yg" -> "<neighborOf.rel[active.bold::true]>worksWith.rel[active.bold::false]|<neighborOf.rel[active.bold::true]<friendOf.rel[system.path:/not/real]<mentorOf.rel>knowsByReputation.rel<collaboratesWith.rel","format" -> "json")))
+      val f01 = () => Http.get(cmw / "testExample.org" / "BugChecks" / "xgBugCheck", List("format" -> "json", "xg" -> s"dislikes.rel"))
+      val f08 = () => Http.get(mZ, List("xg" -> s"colleagueOf.$$${ns.rel}>employedBy.$$${ns.rel}>mentorOf.$$${ns.rel}>friendOf.$$${ns.rel}>worksWith.$$${ns.rel}>parentOf.$$${ns.rel}","format" -> "json"))
+      val f09 = () => Http.get(mZ, List("xg" -> "$http://purl.org/vocab/relationship/colleagueOf$>$http://purl.org/vocab/relationship/employedBy$>$http://purl.org/vocab/relationship/mentorOf$>$http://purl.org/vocab/relationship/friendOf$>$http://purl.org/vocab/relationship/worksWith$>$http://purl.org/vocab/relationship/parentOf$","format" -> "json"))
+      val f10 = () => Http.get(mZ, List("xg" -> "colleagueOf.rel>employedBy.rel>mentorOf.rel>friendOf.rel>worksWith.rel>parentOf.rel","format" -> "json"))
+      val f11 = () => Http.get(mZ, List("xg" -> "colleagueOf.rel[doesNotExist:]>employedBy.rel>mentorOf.rel>friendOf.rel>worksWith.rel>parentOf.rel","format" -> "json"))
+      val f12 = () => Http.get(mZ, List("xg" -> "colleagueOf.rel[system.path:/not/real]>employedBy.rel>mentorOf.rel>friendOf.rel>worksWith.rel>parentOf.rel","format" -> "json"))
+      val f13 = () => Http.get(cKent, List("yg" -> s"<neighborOf.$$${ns.rel}>worksWith.$$${ns.rel}|<neighborOf.$$${ns.rel}<friendOf.$$${ns.rel}<mentorOf.$$${ns.rel}>knowsByReputation.$$${ns.rel}<collaboratesWith.$$${ns.rel}","format" -> "json"))
+      val f14 = () => Http.get(cKent, List("yg" -> "<$http://purl.org/vocab/relationship/neighborOf$>$http://purl.org/vocab/relationship/worksWith$|<$http://purl.org/vocab/relationship/neighborOf$<$http://purl.org/vocab/relationship/friendOf$<$http://purl.org/vocab/relationship/mentorOf$>$http://purl.org/vocab/relationship/knowsByReputation$<$http://purl.org/vocab/relationship/collaboratesWith$","format" -> "json"))
+      val f15 = () => Http.get(cKent, List("yg" -> "<neighborOf.rel>worksWith.rel|<neighborOf.rel<friendOf.rel<mentorOf.rel>knowsByReputation.rel<collaboratesWith.rel","format" -> "json"))
+      val f16 = () => Http.get(cKent, List("yg" -> "<neighborOf.rel[active.bold::true]>worksWith.rel[active.bold::false]|<neighborOf.rel[active.bold::true]<friendOf.rel[doesNotExist::SomeValue]<mentorOf.rel>knowsByReputation.rel<collaboratesWith.rel","format" -> "json"))
+      val f17 = () => Http.get(cKent, List("yg" -> "<neighborOf.rel[active.bold::true]>worksWith.rel[active.bold::false]|<neighborOf.rel[active.bold::true]<friendOf.rel[system.path:/not/real]<mentorOf.rel>knowsByReputation.rel<collaboratesWith.rel","format" -> "json"))
       // scalastyle:on
       // format: on
 
@@ -1167,12 +1167,12 @@ class APIFunctionalityTests extends AsyncFunSpec
       }
 
       it("should verify that xg's flatMap on Map bug is gone") {
-        spinCheck(100.millis, true)(f01){res =>
+        f00.flatMap{_ => spinCheck(100.millis, true)(f01()) { res =>
           val j = Json.parse(res.payload)
           ((j \ "infotons").get: @unchecked) match {
             case JsArray(xs) => xs.size == 3
           }
-        }.map{res =>
+        }}.map{res =>
           val j = Json.parse(res.payload)
           ((j \ "infotons").get: @unchecked) match {
             case JsArray(xs) => xs.size should be(3)
@@ -1185,12 +1185,12 @@ class APIFunctionalityTests extends AsyncFunSpec
         val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/G_H","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.net/Individuals/N-l_H"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/I_K","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"employedBy.rel":["http://testExample.net/Individuals/D_L"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/M_I","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"worksWith.rel":["http://testExample.net/Individuals/G_H"],"neighborOf.rel":["http://testExample.net/Individuals/Gilad_Zafran"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/N-l_H","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"childOf.rel":["http://testExample.net/Individuals/G_H"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/D_L","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://testExample.net/Individuals/M_O"],"mentorOf.rel":["http://testExample.net/Individuals/Y_B"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/Y_B","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.net/Individuals/T-S_B"],"friendOf.rel":["http://testExample.net/Individuals/M_I"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/M_Z","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://testExample.net/Individuals/I_K"]}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
-        spinCheck(100.millis, true)(f08){ res =>
+        f00.flatMap{_ => spinCheck(100.millis, true)(f08()){ res =>
           Try { Json.parse(res.payload).transform(bagUuidDateEraserAndSorter).get } match {
             case Success(j) => j == expected
             case Failure(e) => false
           }
-        }.map { res =>
+        }}.map { res =>
           lazy val clue = new String(res.payload, "UTF-8")
           withClue(res -> clue) {
             Try {
@@ -1211,12 +1211,12 @@ class APIFunctionalityTests extends AsyncFunSpec
         val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/G_H","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.net/Individuals/N-l_H"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/I_K","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"employedBy.rel":["http://testExample.net/Individuals/D_L"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/M_I","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"worksWith.rel":["http://testExample.net/Individuals/G_H"],"neighborOf.rel":["http://testExample.net/Individuals/Gilad_Zafran"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/N-l_H","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"childOf.rel":["http://testExample.net/Individuals/G_H"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/D_L","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://testExample.net/Individuals/M_O"],"mentorOf.rel":["http://testExample.net/Individuals/Y_B"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/Y_B","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.net/Individuals/T-S_B"],"friendOf.rel":["http://testExample.net/Individuals/M_I"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/M_Z","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://testExample.net/Individuals/I_K"]}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
-        spinCheck(100.millis, true)(f09){ res =>
+        f00.flatMap{_ => spinCheck(100.millis, true)(f09()){ res =>
           Try {Json.parse(res.payload).transform(bagUuidDateEraserAndSorter).get } match {
             case Success(j) => j == expected
             case Failure(e) => false
           }
-        }.map { res =>
+        }}.map { res =>
           lazy val clue = new String(res.payload, "UTF-8")
           withClue(res -> clue) {
             Try {
@@ -1237,12 +1237,12 @@ class APIFunctionalityTests extends AsyncFunSpec
         val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/G_H","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.net/Individuals/N-l_H"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/I_K","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"employedBy.rel":["http://testExample.net/Individuals/D_L"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/M_I","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"worksWith.rel":["http://testExample.net/Individuals/G_H"],"neighborOf.rel":["http://testExample.net/Individuals/Gilad_Zafran"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/N-l_H","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"childOf.rel":["http://testExample.net/Individuals/G_H"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/D_L","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://testExample.net/Individuals/M_O"],"mentorOf.rel":["http://testExample.net/Individuals/Y_B"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/Y_B","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.net/Individuals/T-S_B"],"friendOf.rel":["http://testExample.net/Individuals/M_I"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/M_Z","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://testExample.net/Individuals/I_K"]}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
-        spinCheck(100.millis, true)(f10){ res =>
+        f00.flatMap{_ => spinCheck(100.millis, true)(f10()){ res =>
           Try { Json.parse(res.payload).transform(bagUuidDateEraserAndSorter).get } match {
             case Success(j) => j == expected
             case Failure(e) => false
           }
-        }.map { res =>
+        }}.map { res =>
           lazy val clue = new String(res.payload, "UTF-8")
           withClue(res -> clue) {
             Try {
@@ -1263,11 +1263,10 @@ class APIFunctionalityTests extends AsyncFunSpec
         val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/M_Z","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://testExample.net/Individuals/I_K"]}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
-        spinCheck(100.millis, true)(f11){ res =>
-          val str = new String(res.payload, "UTF-8")
+        f00.flatMap{_ => spinCheck(100.millis, true)(f11()){ res =>
           val jsn = Json.parse(res.payload).transform(bagUuidDateEraserAndSorter)
           jsn.isSuccess && jsn.get == expected
-        }.map { res =>
+        }}.map { res =>
           val str = new String(res.payload, "UTF-8")
           val jsn = Json.parse(res.payload).transform(bagUuidDateEraserAndSorter)
           withClue(s"got: $str") {
@@ -1282,10 +1281,10 @@ class APIFunctionalityTests extends AsyncFunSpec
         val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/M_Z","parent":"/testExample.net/Individuals","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://testExample.net/Individuals/I_K"]}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
-        spinCheck(100.millis, true)(f12){ res =>
+        f00.flatMap{ _ => spinCheck(100.millis, true)(f12()){ res =>
           val jsn = Json.parse(res.payload).transform(bagUuidDateEraserAndSorter)
           jsn.isSuccess == true && jsn.get == expected
-        }.map { res =>
+        }}.map { res =>
           val str = new String(res.payload, "UTF-8")
           val jsn = Json.parse(res.payload).transform(bagUuidDateEraserAndSorter)
           withClue(s"got: $str") {
@@ -1300,9 +1299,9 @@ class APIFunctionalityTests extends AsyncFunSpec
         val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/JohnSmith","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.org/Individuals/SaraSmith"],"friendOf.rel":["http://testExample.org/Individuals/PeterParker"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/RonaldKhun","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://testExample.org/Individuals/MartinOdersky"],"category.bold":["deals","news"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/HarryMiller","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.org/Individuals/NatalieMiller"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/DonaldDuck","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://testExample.org/Individuals/MartinOdersky"],"active.bold":["true"],"mentorOf.rel":["http://testExample.org/Individuals/JohnSmith"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/ClarkKent","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"neighborOf.rel":["http://testExample.org/Individuals/PeterParker"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/PeterParker","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"active.bold":["true"],"worksWith.rel":["http://testExample.org/Individuals/HarryMiller"],"neighborOf.rel":["http://testExample.org/Individuals/ClarkKent"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/MartinOdersky","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://testExample.org/Individuals/RonaldKhun"],"active.bold":["true"]}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
-        spinCheck(100.millis, true, 30.seconds)(f13){ res =>
+        f00.flatMap{_ => spinCheck(100.millis, true, 30.seconds)(f13()) { res =>
           Json.parse(res.payload).transform(bagUuidDateEraserAndSorter).get == expected
-        }.map { res =>
+        }}.map { res =>
           withClue(res.payload) {
             Json
               .parse(res.payload)
@@ -1317,9 +1316,9 @@ class APIFunctionalityTests extends AsyncFunSpec
         val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/JohnSmith","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.org/Individuals/SaraSmith"],"friendOf.rel":["http://testExample.org/Individuals/PeterParker"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/RonaldKhun","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://testExample.org/Individuals/MartinOdersky"],"category.bold":["deals","news"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/HarryMiller","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.org/Individuals/NatalieMiller"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/DonaldDuck","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://testExample.org/Individuals/MartinOdersky"],"active.bold":["true"],"mentorOf.rel":["http://testExample.org/Individuals/JohnSmith"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/ClarkKent","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"neighborOf.rel":["http://testExample.org/Individuals/PeterParker"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/PeterParker","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"active.bold":["true"],"worksWith.rel":["http://testExample.org/Individuals/HarryMiller"],"neighborOf.rel":["http://testExample.org/Individuals/ClarkKent"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/MartinOdersky","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://testExample.org/Individuals/RonaldKhun"],"active.bold":["true"]}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
-        spinCheck(100.millis, true, 30.seconds)(f14){ res =>
+        f00.flatMap{_ => spinCheck(100.millis, true, 30.seconds)(f14()){ res =>
           Json.parse(res.payload).transform(bagUuidDateEraserAndSorter).get == expected
-        }.map { res =>
+        }}.map { res =>
           Json
             .parse(res.payload)
             .transform(bagUuidDateEraserAndSorter)
@@ -1332,10 +1331,10 @@ class APIFunctionalityTests extends AsyncFunSpec
         val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/JohnSmith","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.org/Individuals/SaraSmith"],"friendOf.rel":["http://testExample.org/Individuals/PeterParker"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/RonaldKhun","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://testExample.org/Individuals/MartinOdersky"],"category.bold":["deals","news"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/HarryMiller","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.org/Individuals/NatalieMiller"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/DonaldDuck","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://testExample.org/Individuals/MartinOdersky"],"active.bold":["true"],"mentorOf.rel":["http://testExample.org/Individuals/JohnSmith"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/ClarkKent","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"neighborOf.rel":["http://testExample.org/Individuals/PeterParker"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/PeterParker","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"active.bold":["true"],"worksWith.rel":["http://testExample.org/Individuals/HarryMiller"],"neighborOf.rel":["http://testExample.org/Individuals/ClarkKent"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/MartinOdersky","parent":"/testExample.org/Individuals","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://testExample.org/Individuals/RonaldKhun"],"active.bold":["true"]}}]}"""
 
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
-        spinCheck(100.millis, true)(Http.get(cKent, List("yg" -> "<neighborOf.rel>worksWith.rel|<neighborOf.rel<friendOf.rel<mentorOf.rel>knowsByReputation.rel<collaboratesWith.rel","format" -> "json"))){ res =>
+        f00.flatMap{_ => spinCheck(100.millis, true)(f15()) { res =>
           Json.parse(res.payload).transform(bagUuidDateEraserAndSorter).get == expected
           // scalastyle:on
-        }.map { res =>
+        }}.map { res =>
           withClue(s"res: $res  |   f15.value: $f15.value") {
             Json
               .parse(res.payload)
@@ -1350,10 +1349,10 @@ class APIFunctionalityTests extends AsyncFunSpec
         val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","fields":{"neighborOf.rel":["http://testExample.org/Individuals/PeterParker"]},"system":{"path":"/testExample.org/Individuals/ClarkKent","dataCenter":"$dcName","parent":"/testExample.org/Individuals"}},{"type":"ObjectInfoton","fields":{"worksWith.rel":["http://testExample.org/Individuals/HarryMiller"],"neighborOf.rel":["http://testExample.org/Individuals/ClarkKent"],"active.bold":["true"]},"system":{"path":"/testExample.org/Individuals/PeterParker","dataCenter":"$dcName","parent":"/testExample.org/Individuals"}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
-        spinCheck(100.millis, true, 30.seconds)(f16){ res =>
+        f00.flatMap{_ => spinCheck(100.millis, true, 30.seconds)(f16()){ res =>
           val jsn = Json.parse(res.payload).transform(bagUuidDateEraserAndSorter)
           jsn.isSuccess == true && jsn.get == expected
-        }.map { res =>
+        }}.map { res =>
           val str = new String(res.payload, "UTF-8")
           val jsn = Json.parse(res.payload).transform(bagUuidDateEraserAndSorter)
           withClue(s"got: $str") {
@@ -1368,10 +1367,10 @@ class APIFunctionalityTests extends AsyncFunSpec
         val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","fields":{"neighborOf.rel":["http://testExample.org/Individuals/PeterParker"]},"system":{"path":"/testExample.org/Individuals/ClarkKent","dataCenter":"$dcName","parent":"/testExample.org/Individuals"}},{"type":"ObjectInfoton","fields":{"worksWith.rel":["http://testExample.org/Individuals/HarryMiller"],"neighborOf.rel":["http://testExample.org/Individuals/ClarkKent"],"active.bold":["true"]},"system":{"path":"/testExample.org/Individuals/PeterParker","dataCenter":"$dcName","parent":"/testExample.org/Individuals"}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
-        spinCheck(100.millis, true, 30.seconds)(f17){ res =>
+        f00.flatMap{_ => spinCheck(100.millis, true, 30.seconds)(f17()) { res =>
           val jsn = Json.parse(res.payload).transform(bagUuidDateEraserAndSorter)
           jsn.isSuccess == true && jsn.get == expected
-        }.map { res =>
+        }}.map { res =>
           val str = new String(res.payload, "UTF-8")
           val jsn = Json.parse(res.payload).transform(bagUuidDateEraserAndSorter)
           withClue(s"got: $str") {
