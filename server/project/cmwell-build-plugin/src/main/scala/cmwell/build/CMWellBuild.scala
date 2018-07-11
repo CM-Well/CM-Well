@@ -55,7 +55,7 @@ object CMWellBuild extends AutoPlugin {
 		val getExternalComponents = TaskKey[Iterable[File]]("get-external-components", "get external dependencies binaries")
 		val testScalastyle = taskKey[Unit]("testScalastyle")
 		val itScalastyle = taskKey[Unit]("itScalastyle")
-		val compileScalastyle = taskKey[Unit]("compileScalastyle")
+//		val compileScalastyle = taskKey[Unit]("compileScalastyle")
 	}
 
 	import autoImport._
@@ -237,8 +237,8 @@ object CMWellBuild extends AutoPlugin {
 		scalastyleFailOnError := true,
 		testScalastyle in ThisProject := (scalastyle in ThisProject).in(Test).toTask("").value,
 		(test in Test) := ((test in Test) dependsOn testScalastyle).value,
-		compileScalastyle in ThisProject := (scalastyle in ThisProject).in(Compile).toTask("").value,
-		(compile in Compile) := ((compile in Compile) dependsOn compileScalastyle).value,
+		//compileScalastyle in ThisProject := (scalastyle in ThisProject).in(Compile).toTask("").value,
+		//(compile in Compile) := ((compile in Compile) dependsOn compileScalastyle).value,
 		//scalafmtOnCompile := true,
 		//doctestWithDependencies := false,
 		coursierMaxIterations := 200,
