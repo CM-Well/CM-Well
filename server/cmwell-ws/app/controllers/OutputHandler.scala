@@ -18,27 +18,23 @@ import java.text.SimpleDateFormat
 import java.util.{Date, Locale, TimeZone}
 
 import actions.RequestMonitor
+import akka.stream.scaladsl.Flow
 import cmwell.domain._
 import cmwell.formats.{FormatExtractor, _}
+import cmwell.util.FullBox
 import cmwell.util.formats.JsonEncoder
+import cmwell.web.ld.cmw.CMWellRDFHelper
 import cmwell.ws.util.RequestHelpers._
 import cmwell.ws.util.TypeHelpers
 import com.typesafe.scalalogging.LazyLogging
+import filters.Attrs
+import javax.inject._
 import logic.CRUDServiceFS
 import org.joda.time.DateTimeZone
 import org.joda.time.format.ISODateTimeFormat
 import play.api.mvc.{Filters => _, _}
 import security.{AuthUtils, PermissionLevel}
 import wsutil._
-import javax.inject._
-
-import akka.stream.scaladsl.Flow
-import cmwell.util.FullBox
-import cmwell.web.ld.cmw.CMWellRDFHelper
-import cmwell.ws.util.TypeHelpers.asBoolean
-import filters.Attrs
-import ld.cmw.passiveFieldTypesCacheImpl
-import play.api.http.DefaultHttpFilters
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -230,7 +226,7 @@ class OutputHandler @Inject()(crudServiceFS: CRUDServiceFS,
                 case (ok, s) if ok => Ok(formatter.render(s.masked(fieldsMask))).as(mimetype)
                 case (_, s)        => InsufficientStorage(formatter.render(s)).as(mimetype)
               }
-              .recover(PartialFunction(wsutil.exceptionToResponse))
+              .recover({ case t => wsutil.exceptionToResponse(t)} )
           }
         }
       }
