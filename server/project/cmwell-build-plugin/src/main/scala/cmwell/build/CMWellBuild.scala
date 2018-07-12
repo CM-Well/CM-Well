@@ -239,6 +239,7 @@ object CMWellBuild extends AutoPlugin {
 		(test in Test) := ((test in Test) dependsOn testScalastyle).value,
 		compileScalastyle in ThisProject := (scalastyle in ThisProject).in(Compile).toTask("").value,
 		(compile in Compile) := ((compile in Compile) dependsOn compileScalastyle).value,
+		logLevel in (scalastyle in Compile) := Level.Warn,
 		//scalafmtOnCompile := true,
 		//doctestWithDependencies := false,
 		coursierMaxIterations := 200,
