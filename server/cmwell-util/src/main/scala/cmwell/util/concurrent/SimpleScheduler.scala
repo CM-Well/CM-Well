@@ -34,7 +34,7 @@ object SimpleScheduler extends LazyLogging {
 
   //method is private, since we must keep execution on the expense of out timer thread to be as limited as possible.
   //this method can be used if and only if we know `body` is a safe and small job.
-  private[util] def scheduleInstant[T](duration: FiniteDuration)(body: => T) = {
+  private[util] def scheduleInstant[T](duration: FiniteDuration)(body: => T)(implicit executionContext: ExecutionContext) = {
     val p = Promise[T]()
     val cancellable = timer.schedule(
       new Runnable {
@@ -88,7 +88,7 @@ object SimpleScheduler extends LazyLogging {
     p.future.andThen { case _ => cancellable.cancel(false) }
   }
 
-  def scheduleFuture[T](duration: Duration)(body: => Future[T]): Future[T] = {
+  def scheduleFuture[T](duration: Duration)(body: => Future[T])(implicit executionContext: ExecutionContext): Future[T] = {
     val p = Promise[T]()
     val cancellable = timer.schedule(new Runnable {
       override def run(): Unit = p.completeWith(body)

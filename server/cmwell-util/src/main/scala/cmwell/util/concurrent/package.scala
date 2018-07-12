@@ -390,7 +390,7 @@ package cmwell.util {
       interval: FiniteDuration,
       returnOriginalElementOnFailure: Boolean = false,
       maxTimeUntilGivingUp: FiniteDuration = spinCheckTimeout
-    )(task: => Future[T])(isSuccessful: T => Successfulness): Future[T] = {
+    )(task: => Future[T])(isSuccessful: T => Successfulness)(implicit executionContext: ExecutionContext): Future[T] = {
 
       import SimpleScheduler.{scheduleFuture => sf}
 
@@ -536,19 +536,19 @@ package cmwell.util {
     case class FutureTimeout[T](future: scala.concurrent.Future[T]) extends Exception
 
     trait StateHandler[S] {
-      def handle[T](state: S)(task: => Future[T]): Future[T]
+      def handle[T](state: S)(task: => Future[T])(implicit executionContext: ExecutionContext): Future[T]
     }
 
     object StateHandler {
       implicit val durationHandler = new StateHandler[FiniteDuration] {
-        override def handle[T](delay: FiniteDuration)(task: => Future[T]): Future[T] = {
+        override def handle[T](delay: FiniteDuration)(task: => Future[T])(implicit executionContext: ExecutionContext): Future[T] = {
           if (delay == Duration.Zero) task
           else SimpleScheduler.scheduleFuture(delay)(task)
         }
       }
 
       implicit val retryParamsHandler = new StateHandler[RetryParams] {
-        override def handle[T](state: RetryParams)(task: => Future[T]) = {
+        override def handle[T](state: RetryParams)(task: => Future[T])(implicit executionContext: ExecutionContext) = {
           if (state.delay == Duration.Zero) task
           else SimpleScheduler.scheduleFuture(state.delay)(task)
         }
