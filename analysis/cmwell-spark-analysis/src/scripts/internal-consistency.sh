@@ -22,7 +22,7 @@ EXTRACT_DIRECTORY_PATH="path-key-fields"
 # This is a matter of quality of service policy, and might vary according to the system.
 # For cases where there are multiple extracts, the consistency threshold will be this value
 # plus the total time to extract all the data.
-CONSISTENCY_THRESHOLD=`expr 10 * 60 * 1000`  # 10 minutes in milliseconds
+CONSISTENCY_THRESHOLD=`expr 10 \* 60 \* 1000`  # 10 minutes in milliseconds
 
 set -e # bail out if any command fails
 
