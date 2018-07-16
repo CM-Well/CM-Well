@@ -406,8 +406,8 @@ class ImpStream(partition: Int,
                           PartialOffset(o.topic, o.offset, 2, 2)
                         }
                         List(
-                          BGMessage(updatedOffsetsForNew, Seq(indexNewInfoton)),
-                          BGMessage(updatedOffsetsForExisting, Seq(indexExistingInfoton))
+                          BGMessage(updatedOffsetsForExisting, Seq(indexExistingInfoton)),
+                          BGMessage(updatedOffsetsForNew, Seq(indexNewInfoton))
                         )
                       case EmptyBox =>
                         redlog.error(s"UUID $oldUuid was in the neighbourhood when merging path ${previous.get.path} - " +
@@ -434,8 +434,8 @@ class ImpStream(partition: Int,
                 PartialOffset(o.topic, o.offset, 2, 2)
               }
               Future.successful(List(
-                BGMessage(updatedOffsetsForNew, Seq(indexNewInfoton)),
-                BGMessage(updatedOffsetsForExisting, Seq(indexExistingInfoton))
+                BGMessage(updatedOffsetsForExisting, Seq(indexExistingInfoton)),
+                BGMessage(updatedOffsetsForNew, Seq(indexNewInfoton))
               ))
             }
           }
