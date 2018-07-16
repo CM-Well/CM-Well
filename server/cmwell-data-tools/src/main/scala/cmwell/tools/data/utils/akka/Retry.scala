@@ -56,7 +56,8 @@ object Retry extends DataToolsLogging with DataToolsConfig {
   def retryHttp[T](delay: FiniteDuration,
                    parallelism: Int,
                    baseUrl: String,
-                   limit: Option[Int] = None)(
+                   limit: Option[Int] = None,
+                   delayFactor : Int = 1)(
                    createRequest: (Seq[ByteString]) => HttpRequest,
                    responseValidator: (ByteString, Seq[HttpHeader]) => Try[Unit] = (_, _) => Success(Unit))(
                    implicit system: ActorSystem,
@@ -66,6 +67,12 @@ object Retry extends DataToolsLogging with DataToolsConfig {
 
     val labelValue = label.map { case LabelId(id) => s"[$id]" }.getOrElse("")
     val toStrictTimeout = 30.seconds
+
+    def delayWithFactor(delayFactor: Int, countRemaining: Int, initialDelay: FiniteDuration, retryLimit : Int) : FiniteDuration = {
+      import scala.math._
+      val retryNumber = retryLimit - countRemaining
+      round(pow(delayFactor,retryNumber)) * initialDelay
+    }
 
     case class State(data: Seq[ByteString],
                      context: Option[T] = None,
@@ -115,12 +122,17 @@ object Retry extends DataToolsLogging with DataToolsConfig {
           } else {
             count match {
               case Some(c) if c > 0 =>
+
+                val retryBackoff = delayWithFactor(delayFactor,c,delay,limit.get)
+
                 e.discardBytes()
                 logger.debug(
-                  s"$labelValue server error - received $s, count=$count will retry again in $delay host=${getHostnameValue(h)} data=${stringifyData(data)}"
+                  s"$labelValue server error - received $s, count=$count will retry again in $retryBackoff" +
+                    s" host=${getHostnameValue(h)} data=${stringifyData(data)}"
                 )
+
                 val future =
-                  after(delay, system.scheduler)(Future.successful(data))
+                  after(retryBackoff, system.scheduler)(Future.successful(data))
                 Some(immutable.Seq(future -> state.copy(count = Some(c - 1))))
               case Some(0) =>
                 logger.warn(

@@ -57,6 +57,11 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
     case false => None
   }
 
+  val delayFactor = config.hasPath("cmwell.downloader.consumer.http-retry-delay-factor") match {
+    case true => config.getInt("cmwell.downloader.consumer.http-retry-delay-factor")
+    case false => 1
+  }
+
   type Token = String
   type Uuid = ByteString
   type Path = ByteString
@@ -108,7 +113,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
     val tokenFuture = Source
       .single(Seq(blank) -> None)
       .via(
-        Retry.retryHttp(retryTimeout, 1, formatHost(baseUrl), retryLimit)(
+        Retry.retryHttp(retryTimeout, 1, formatHost(baseUrl), retryLimit, delayFactor)(
           _ => HttpRequest(uri = uri)
         )
       )
@@ -120,7 +125,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
           res.discardEntityBytes()
           None
         case x =>
-          logger.error(s"cannot get initial token: $x")
+          logger.error(s"cannot get initial token: $x, original request: $uri")
           None
       }
       .map {
