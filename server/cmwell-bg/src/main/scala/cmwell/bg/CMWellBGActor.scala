@@ -36,6 +36,7 @@ import org.elasticsearch.metrics.ElasticsearchReporter
 import cmwell.common.exception._
 import cmwell.crawler.CrawlerStream
 import cmwell.crawler.CrawlerStream.CrawlerMaterialization
+import org.apache.kafka.common.TopicPartition
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.Await
@@ -74,6 +75,8 @@ class CMWellBGActor(partition: Int,
   val indexerOn = config.getBoolean("cmwell.bg.IndexerOn")
   val persistCommandsTopic = config.getString("cmwell.bg.persist.commands.topic")
   val persistCommandsTopicPriority = persistCommandsTopic + ".priority"
+  val indexCommandsTopic = config.getString("cmwell.bg.index.commands.topic")
+  val indexCommandsTopicPriority = indexCommandsTopic + ".priority"
   val crawlerMaterializations: scala.collection.mutable.Map[String, CrawlerMaterialization] =
     scala.collection.mutable.Map(persistCommandsTopic -> null, persistCommandsTopicPriority -> null)
 
@@ -259,7 +262,38 @@ class CMWellBGActor(partition: Int,
       logger.error(s"Crawler [$topic, partition: $partition] was already stopped and it was requested to finish it again. Not reasonable!")
   }
 
+  private def checkPersistencyAndUpdateIfNeeded(): Unit = {
+    val bootStrapServers = config.getString("cmwell.bg.kafka.bootstrap.servers")
+    def checkAndFix(streamType: String, topic: String, topicPriority: String) = {
+      val streamId = s"$streamType.$partition"
+      val offsetId = s"${streamId}_offset"
+      val persistedOffset = offsetsService.read(offsetId).getOrElse(0L)
+      val offsetIdPriority = s"$streamId.p_offset"
+      val persistedOffsetPriority = offsetsService.read(offsetIdPriority).getOrElse(0L)
+      val (earliestOffset, latestOffset) = OffsetUtils.getOffsetBoundries(bootStrapServers, new TopicPartition(topic, partition))
+      val (earliestOffsetPriority, latestOffsetPriority) = OffsetUtils.getOffsetBoundries(bootStrapServers, new TopicPartition(topicPriority, partition))
+      logger.info(s"Persisted $streamType offsets [normal, priority] for partition $partition are [$persistedOffset, $persistedOffsetPriority]")
+      logger.info(s"Earliest $streamType offsets in kafka topics [$topic, $topicPriority] for partition $partition " +
+        s"are [$earliestOffset, $earliestOffsetPriority]")
+      logger.info(s"Latest $streamType offsets in kafka topics [$topic, $topicPriority] for partition $partition " +
+        s"are [$latestOffset, $latestOffsetPriority]")
+      if (persistedOffset < earliestOffset || persistedOffset > latestOffset) {
+        logger.error(s"Persisted offset $persistedOffset for [$topic, partition: $partition] is out of range. " +
+          s"Setting it to the earliest available offset [$earliestOffset]. It probably means data loss!")
+        Await.result(offsetsService.writeAsync(offsetId, earliestOffset), 10.seconds)
+      }
+      if (persistedOffsetPriority < earliestOffsetPriority || persistedOffsetPriority > latestOffsetPriority) {
+        logger.error(s"Persisted offset $persistedOffsetPriority for [$topic, partition: $partition] is out of range. " +
+          s"Setting it to the earliest available offset [$earliestOffsetPriority]. It probably means data loss!")
+        Await.result(offsetsService.writeAsync(offsetIdPriority, earliestOffsetPriority), 10.seconds)
+      }
+    }
+    checkAndFix("imp", persistCommandsTopic, persistCommandsTopicPriority)
+    checkAndFix("indexer", indexCommandsTopic, indexCommandsTopicPriority)
+  }
+
   private def startAll = {
+    checkPersistencyAndUpdateIfNeeded()
     startCrawler(persistCommandsTopic)
     startCrawler(persistCommandsTopicPriority)
     startImp
