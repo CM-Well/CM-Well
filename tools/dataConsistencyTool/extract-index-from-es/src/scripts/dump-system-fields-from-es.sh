@@ -24,5 +24,10 @@ $JAVA_HOME/bin/java \
  -XX:+UseG1GC \
  -cp "${EXTRACT_ES_UUIDS_JAR}" cmwell.analytics.main.DumpSystemFieldsFromEs \
  --out "${WORKING_DIRECTORY}/es-system-fields" \
+ --no-source-filter \
  --format parquet \
  "${CMWELL_INSTANCE}"
+
+# Touch the _SUCCESS file to indicate successful completion
+touch "${WORKING_DIRECTORY}/es-system-fields/_SUCCESS"
+

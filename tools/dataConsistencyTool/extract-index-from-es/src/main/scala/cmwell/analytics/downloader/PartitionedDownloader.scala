@@ -72,10 +72,12 @@ object PartitionedDownloader {
 
     Source.unfoldAsync(ScrollState()) { scrollState: ScrollState =>
 
+      val shardInfo = s"index:${shard.indexName}, shard:${shard.shard} from:$httpAddress"
+
       if (scrollState.isInitialRequest)
-        logger.info(s"Requesting initial _scroll_id for index:${shard.indexName}, shard:${shard.shard} from:$httpAddress.")
+        logger.info(s"Requesting initial _scroll_id for $shardInfo.") 
       else
-        logger.info(s"Requesting next $fetchSize uuids for index:${shard.indexName}, shard:${shard.shard} from:$httpAddress.")
+        logger.info(s"Requesting next $fetchSize uuids for $shardInfo.") 
 
       HttpUtil.jsonResultAsync(scrollState.request, "fetch next block").map { json =>
 
@@ -86,9 +88,9 @@ object PartitionedDownloader {
 
         if (scrollState.isInitialRequest) {
           assert(objects.isEmpty)
-          logger.info(s"Received initial _scroll_id.")
+          logger.info(s"Received initial _scroll_id for $shardInfo.")
         } else {
-          logger.info(s"Received $objectsFetched infotons. Total retrieved: ${scrollState.fetched + objectsFetched}.")
+          logger.info(s"Received $objectsFetched infotons for $shardInfo. Total retrieved: ${scrollState.fetched + objectsFetched}.")
         }
 
         if (objects.isEmpty && !scrollState.isInitialRequest) {
@@ -136,10 +138,12 @@ object PartitionedDownloader {
 
       val writer: DataWriter[T] = dataWriterFactory(shard)
 
+      val shardInfo = s"index:${shard.indexName}, shard:${shard.shard} from:$address"
+
       if (shard.downloadAttempt == 0)
-        logger.info(s"Starting initial extract for index:${shard.indexName}, shard:${shard.shard}, from:$address.")
+        logger.info(s"Starting initial extract for $shardInfo.") 
       else
-        logger.warn(s"Starting extract retry ${shard.downloadAttempt} for index:${shard.indexName}, shard:${shard.shard}, from:$address.")
+        logger.warn(s"Starting extract retry ${shard.downloadAttempt} for $shardInfo.") 
 
       infotonsFromShard[T](
         shard = shard,
@@ -169,6 +173,14 @@ object PartitionedDownloader {
       */
     def onDownloadFailure(shard: Shard, ex: Throwable): Unit = {
 
+      val shardInfo = s"index:${shard.indexName}, shard:${shard.shard}"
+
+      if (shard.downloadAttempt <= maxReadAttempts) {
+        val waitInSeconds = (shard.downloadAttempt + 1) * 2
+        logger.warn(s"Failed download for $shardInfo. Waiting for $waitInSeconds seconds before re-queueing.", ex)
+        Thread.sleep(1000 * waitInSeconds)
+      }
+
       shards.synchronized {
 
         if (shardsInFlight.contains(shard)) { // Check if failure was already handled
@@ -176,7 +188,7 @@ object PartitionedDownloader {
           shardsInFlight -= shard
 
           if (shard.downloadAttempt <= maxReadAttempts) {
-            logger.warn(s"Failed download for index:${shard.indexName}, shard:${shard.shard}.", ex)
+            logger.warn(s"Failed download for $shardInfo. Re-queueing.", ex)
 
             assert(!shards.contains(shard))
             shards.enqueue(shard.nextAttempt)
@@ -184,7 +196,7 @@ object PartitionedDownloader {
             launchShards()
           }
           else {
-            logger.warn(s"Failed download for index:${shard.indexName}, shard:${shard.shard}. Giving up!", ex)
+            logger.warn(s"Failed download for $shardInfo. Giving up!", ex)
             isDone.tryFailure(ex)
 
             // Don't launch any more shards - let the system wind down to failure

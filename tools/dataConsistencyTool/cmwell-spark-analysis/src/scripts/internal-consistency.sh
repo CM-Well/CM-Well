@@ -49,6 +49,7 @@ rm -rf "${WORKING_DIRECTORY}"/infoton-data-integrity
 # Extract key fields from index, path and infoton.
 # For the index, we do additional analysis, so extract all system fields.
 # We want all of the retrieval operations to be grouped together do minimize the inconsistency window.
+# Disable source filtering because of Elastic index bug returning random 500 internal server errors.
 
 extract_start=`date +%s`
 
@@ -58,6 +59,7 @@ ${JAVA_HOME}/bin/java \
  -cp "${EXTRACT_ES_UUIDS_JAR}" cmwell.analytics.main.DumpSystemFieldsFromEs \
  --out "${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_INDEX}" \
  --format parquet \
+ --no-source-filter \
  "${CMWELL_INSTANCE}"
 
 ${SPARK_HOME}/bin/spark-submit \
