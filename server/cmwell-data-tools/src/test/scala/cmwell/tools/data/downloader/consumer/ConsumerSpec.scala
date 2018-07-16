@@ -94,7 +94,7 @@ class ConsumerSpec extends BaseWiremockSpec {
     result.flatMap { r => r should be (1)}
   }
 
-  it should "download all uuids while getting server error" in {
+  ignore should "download all uuids while getting server error" in {
 
     val tsvsBeforeError = List(
       "path1\tlastModified1\tuuid1\tindexTime1\n",

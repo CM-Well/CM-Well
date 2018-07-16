@@ -31,6 +31,8 @@ import scala.collection.immutable
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
+import scala.language.implicitConversions
+
 
 object Retry extends DataToolsLogging with DataToolsConfig {
 
@@ -57,7 +59,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                    parallelism: Int,
                    baseUrl: String,
                    limit: Option[Int] = None,
-                   delayFactor : Int = 1)(
+                   delayFactor : Double = 1)(
                    createRequest: (Seq[ByteString]) => HttpRequest,
                    responseValidator: (ByteString, Seq[HttpHeader]) => Try[Unit] = (_, _) => Success(Unit))(
                    implicit system: ActorSystem,
@@ -65,19 +67,21 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                    ec: ExecutionContext,
                    label: Option[LabelId] = None) = {
 
+    implicit def asFiniteDuration(d: Duration) = scala.concurrent.duration.Duration.fromNanos(d.toNanos);
+
     val labelValue = label.map { case LabelId(id) => s"[$id]" }.getOrElse("")
     val toStrictTimeout = 30.seconds
 
-    def delayWithFactor(delayFactor: Int, countRemaining: Int, initialDelay: FiniteDuration, retryLimit : Int) : FiniteDuration = {
-      import scala.math._
-      val retryNumber = retryLimit - countRemaining
-      round(pow(delayFactor,retryNumber)) * initialDelay
+    def delayWithFactor(delayFactor: Double, countRemaining: Int, initialDelay: FiniteDuration, retryLimit : Int)  = {
+      val firstDelay = countRemaining==retryLimit
+      if ((delayFactor > 0) && !firstDelay) delay * delayFactor else delay
     }
 
     case class State(data: Seq[ByteString],
                      context: Option[T] = None,
                      response: Option[HttpResponse] = None,
-                     count: Option[Int] = limit)
+                     count: Option[Int] = limit,
+                     delay: FiniteDuration = delay)
 
     def stringifyData(data: Seq[ByteString]) =
       concatByteStrings(data, ByteString(",")).utf8String
@@ -86,7 +90,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
       state: State
     ): Option[immutable.Iterable[(Future[Seq[ByteString]], State)]] =
       state match {
-        case State(data, _, Some(HttpResponse(s, h, e, _)), _)
+        case State(data, _, Some(HttpResponse(s, h, e, _)), _, _)
             if s == StatusCodes.TooManyRequests =>
           // api garden quota error
           e.toStrict(toStrictTimeout)
@@ -110,7 +114,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
           val future = after(delay, system.scheduler)(Future.successful(data))
           Some(immutable.Seq(future -> state))
 
-        case State(data, _, Some(HttpResponse(s: ServerError, h, e, _)), count) =>
+        case State(data, _, Some(HttpResponse(s: ServerError, h, e, _)), count, iterationDelay) =>
           // server error
           // special case: sparql-processor //todo: remove this in future
           if (e.toString contains "Fetching") {
@@ -123,7 +127,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
             count match {
               case Some(c) if c > 0 =>
 
-                val retryBackoff = delayWithFactor(delayFactor,c,delay,limit.get)
+                val retryBackoff = delayWithFactor(delayFactor,c,iterationDelay,limit.get)
 
                 e.discardBytes()
                 logger.debug(
@@ -133,7 +137,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
 
                 val future =
                   after(retryBackoff, system.scheduler)(Future.successful(data))
-                Some(immutable.Seq(future -> state.copy(count = Some(c - 1))))
+                Some(immutable.Seq(future -> state.copy(count = Some(c - 1), delay=retryBackoff)))
               case Some(0) =>
                 logger.warn(
                   s"$labelValue server error - received $s, count=$count will not not retry sending request," +
@@ -158,7 +162,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
             data,
             context,
             Some(HttpResponse(s: ClientError, h, e, _)),
-            _
+            _, _
             ) =>
           // client error
           if (data.size > 1) {
@@ -213,7 +217,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
             None // failed to send a single data element
           }
 
-        case State(data, _, Some(HttpResponse(s, h, e, _)), count) =>
+        case State(data, _, Some(HttpResponse(s, h, e, _)), count, _) =>
 
           redLogger.error(
             s"$labelValue error: host=${getHostnameValue(h)} status=$s entity=$e data=${stringifyData(data)}"
@@ -255,7 +259,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
               Some(immutable.Seq(future -> state))
           }
 
-        case State(data, _, None, count) =>
+        case State(data, _, None, count, _) =>
           count match {
             case Some(c) if c > 0 =>
               logger.warn(
