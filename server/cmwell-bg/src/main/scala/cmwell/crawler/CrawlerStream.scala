@@ -257,7 +257,7 @@ object CrawlerStream extends LazyLogging {
           //todo: We need only the last element. There might be a way without save all the elements. Also getting last can be time consuming
           .groupedWithin(maxAmount, maxTime)
           .map(_.last)
-          .map(offsetsService.write(persistId, _))
+          .mapAsync(1)(offsetsService.writeAsync(persistId, _))
           .toMat(Sink.ignore) { (control, done) =>
             val allDone = done.flatMap { _ =>
               logger.info(s"$crawlerId The sink of the crawler of is done. Still waiting for the done signal of the control.")
