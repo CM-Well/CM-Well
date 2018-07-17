@@ -73,8 +73,8 @@ object Retry extends DataToolsLogging with DataToolsConfig {
     val toStrictTimeout = 30.seconds
 
     def delayWithFactor(delayFactor: Double, countRemaining: Int, initialDelay: FiniteDuration, retryLimit : Int)  = {
-      val firstDelay = countRemaining==retryLimit
-      if ((delayFactor > 0) && !firstDelay) delay * delayFactor else delay
+      val isFirstIteration = countRemaining==retryLimit
+      if ((delayFactor > 0) && !isFirstIteration) delay * delayFactor else delay
     }
 
     case class State(data: Seq[ByteString],
@@ -132,7 +132,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                 e.discardBytes()
                 logger.debug(
                   s"$labelValue server error - received $s, count=$count will retry again in $retryBackoff" +
-                    s" host=${getHostnameValue(h)} data=${stringifyData(data)}"
+                    s" host=${getHostnameValue(h)} data=${stringifyData(data)}, "
                 )
 
                 val future =
@@ -150,11 +150,12 @@ object Retry extends DataToolsLogging with DataToolsConfig {
               case None =>
                 e.discardBytes()
                 logger.warn(
-                  s"$labelValue server error - received $s, will retry again in $delay host=${getHostnameValue(h)} data=${stringifyData(data)}"
+                  s"$labelValue server error - received $s. host=${getHostnameValue(h)} data=${stringifyData(data)}"
                 )
-                val future =
-                  after(delay, system.scheduler)(Future.successful(data))
-                Some(immutable.Seq(future -> state))
+                badDataLogger.info(
+                  s"$labelValue data=${concatByteStrings(data, endl).utf8String}"
+                )
+                None
             }
           }
 

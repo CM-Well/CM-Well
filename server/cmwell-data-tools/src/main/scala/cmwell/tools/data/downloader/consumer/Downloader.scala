@@ -58,7 +58,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
   }
 
   val delayFactor = config.hasPath("cmwell.downloader.consumer.http-retry-delay-factor") match {
-    case true => config.getInt("cmwell.downloader.consumer.http-retry-delay-factor")
+    case true => config.getDouble("cmwell.downloader.consumer.http-retry-delay-factor")
     case false => 1
   }
 
