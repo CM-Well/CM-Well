@@ -3,13 +3,30 @@
 # Run a suite of internal data consistency checks on a CM-Well instance.
 
 if [ -z $1 ]; then
- echo "usage: $0 <cmwell-url>"
+ echo "usage: $0 <cmwell-url> [--no-source-filter]"
  exit 1
 fi
 
-source ./set-runtime.sh
-
 CMWELL_INSTANCE=$1
+
+export SOURCE_FILTER="--source-filter"
+while test $# -gt 0; do
+    case "$1" in
+        -h|--help)
+            echo "usage: $0 <cmwell-url> [--no-source-filter]"
+            exit 1
+            ;;
+        -nsf|--no-source-filter)
+            shift
+            export SOURCE_FILTER="--no-source-filter"
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+
+source ./set-runtime.sh
 
 # Do all our work in this directory
 WORKING_DIRECTORY="internal-consistency"
@@ -58,8 +75,8 @@ ${JAVA_HOME}/bin/java \
  -XX:+UseG1GC \
  -cp "${EXTRACT_ES_UUIDS_JAR}" cmwell.analytics.main.DumpSystemFieldsFromEs \
  --out "${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_INDEX}" \
+ "${SOURCE_FILTER}" \
  --format parquet \
- --no-source-filter \
  "${CMWELL_INSTANCE}"
 
 ${SPARK_HOME}/bin/spark-submit \
