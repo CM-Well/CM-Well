@@ -58,7 +58,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
   def retryHttp[T](delay: FiniteDuration,
                    parallelism: Int,
                    baseUrl: String,
-                   limit: Option[Int] = None,
+                   limit: Option[Int] = Some(3),
                    delayFactor : Double = 1)(
                    createRequest: (Seq[ByteString]) => HttpRequest,
                    responseValidator: (ByteString, Seq[HttpHeader]) => Try[Unit] = (_, _) => Success(Unit))(
