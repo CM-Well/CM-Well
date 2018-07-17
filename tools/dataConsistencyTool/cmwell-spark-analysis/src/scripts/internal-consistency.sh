@@ -3,13 +3,30 @@
 # Run a suite of internal data consistency checks on a CM-Well instance.
 
 if [ -z $1 ]; then
- echo "usage: $0 <cmwell-url>"
+ echo "usage: $0 <cmwell-url> [--no-source-filter]"
  exit 1
 fi
 
-source ./set-runtime.sh
-
 CMWELL_INSTANCE=$1
+
+export SOURCE_FILTER="--source-filter"
+while test $# -gt 0; do
+    case "$1" in
+        -h|--help)
+            echo "usage: $0 <cmwell-url> [--no-source-filter]"
+            exit 1
+            ;;
+        -nsf|--no-source-filter)
+            shift
+            export SOURCE_FILTER="--no-source-filter"
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+
+source ./set-runtime.sh
 
 # Do all our work in this directory
 WORKING_DIRECTORY="internal-consistency"
@@ -49,6 +66,7 @@ rm -rf "${WORKING_DIRECTORY}"/infoton-data-integrity
 # Extract key fields from index, path and infoton.
 # For the index, we do additional analysis, so extract all system fields.
 # We want all of the retrieval operations to be grouped together do minimize the inconsistency window.
+# Disable source filtering because of Elastic index bug returning random 500 internal server errors.
 
 extract_start=`date +%s`
 
@@ -57,6 +75,7 @@ ${JAVA_HOME}/bin/java \
  -XX:+UseG1GC \
  -cp "${EXTRACT_ES_UUIDS_JAR}" cmwell.analytics.main.DumpSystemFieldsFromEs \
  --out "${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_INDEX}" \
+ "${SOURCE_FILTER}" \
  --format parquet \
  "${CMWELL_INSTANCE}"
 
