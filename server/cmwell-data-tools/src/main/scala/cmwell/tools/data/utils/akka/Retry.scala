@@ -72,6 +72,10 @@ object Retry extends DataToolsLogging with DataToolsConfig {
     val labelValue = label.map { case LabelId(id) => s"[$id]" }.getOrElse("")
     val toStrictTimeout = 30.seconds
 
+    def headerString(header: HttpHeader): String = header.name + ":" + header.value
+
+    def headersString(headers: Seq[HttpHeader]): String = headers.map(headerString).mkString("[", ",", "]")
+
     def delayWithFactor(delayFactor: Double, countRemaining: Int, initialDelay: FiniteDuration, retryLimit : Int)  = {
       val isFirstIteration = countRemaining==retryLimit
       if ((delayFactor > 0) && !isFirstIteration) delay * delayFactor else delay
@@ -114,14 +118,21 @@ object Retry extends DataToolsLogging with DataToolsConfig {
           val future = after(delay, system.scheduler)(Future.successful(data))
           Some(immutable.Seq(future -> state))
 
-        case State(data, _, Some(HttpResponse(s: ServerError, h, e, _)), count, iterationDelay) =>
+        case State(data, _, Some(res@HttpResponse(s: ServerError, h, e, _)), count, iterationDelay) =>
+
+          val errorID = res.##
+
+          e.dataBytes.runFold(ByteString.empty)(_ ++ _).map(_.utf8String).map{ entity=>
+            logger.warn(s"[$errorID] server error. Body of response: $entity, headers: ${headersString(h)}")
+          }
+
           // server error
           // special case: sparql-processor //todo: remove this in future
           if (e.toString contains "Fetching") {
             logger.warn(
               s"$labelValue will not schedule a retry on data ${concatByteStrings(data, endl).utf8String}"
             )
-            e.discardBytes()
+
             None
           } else {
             count match {
@@ -129,7 +140,6 @@ object Retry extends DataToolsLogging with DataToolsConfig {
 
                 val retryBackoff = delayWithFactor(delayFactor,c,iterationDelay,limit.get)
 
-                e.discardBytes()
                 logger.debug(
                   s"$labelValue server error - received $s, count=$count will retry again in $retryBackoff" +
                     s" host=${getHostnameValue(h)} data=${stringifyData(data)}, "
@@ -148,7 +158,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                 )
                 None
               case None =>
-                e.discardBytes()
+
                 logger.warn(
                   s"$labelValue server error - received $s. host=${getHostnameValue(h)} data=${stringifyData(data)}"
                 )
