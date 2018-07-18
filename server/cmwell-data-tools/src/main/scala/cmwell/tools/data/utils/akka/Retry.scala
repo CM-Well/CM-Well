@@ -138,7 +138,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
             count match {
               case Some(c) if c > 0 =>
 
-                val retryBackoff = delayWithFactor(delayFactor,c,iterationDelay,limit.get)
+                val retryBackoff = delayWithFactor(delayFactor,c,iterationDelay,limit)
 
                 logger.debug(
                   s"$labelValue server error - received $s, count=$count will retry again in $retryBackoff" +
