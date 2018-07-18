@@ -18,43 +18,38 @@ import java.util.Properties
 import java.util.concurrent.TimeoutException
 
 import akka.NotUsed
-import akka.actor.{Actor, ActorSystem}
-import akka.actor.Actor.Receive
-import akka.kafka.{ConsumerSettings, Subscriptions}
+import akka.actor.ActorSystem
 import akka.kafka.scaladsl.Consumer
-import akka.stream.ThrottleMode
+import akka.kafka.{ConsumerSettings, Subscriptions}
 import akka.stream.scaladsl.Source
+import cmwell.common.{DeleteAttributesCommand, DeletePathCommand, WriteCommand, _}
 import cmwell.domain._
 import cmwell.driver.Dao
-import cmwell.formats.{NquadsFlavor, RdfType}
 import cmwell.fts.{FTSServiceNew, Settings => _, _}
 import cmwell.irw._
 import cmwell.stortill.Strotill.{CasInfo, EsExtendedInfo, ZStoreInfo}
 import cmwell.stortill.{Operations, ProxyOperations}
-import cmwell.util.{Box, BoxedFailure, EmptyBox, FullBox}
 import cmwell.util.concurrent.SingleElementLazyAsyncCache
-import cmwell.common.{DeleteAttributesCommand, DeletePathCommand, WriteCommand, _}
+import cmwell.util.{Box, BoxedFailure, EmptyBox, FullBox}
 import cmwell.ws.Settings
-import cmwell.zcache.{L1Cache, ZCache}
+import cmwell.ws.qp.Encoder
+import cmwell.zcache.ZCache
 import cmwell.zstore.ZStore
 import com.datastax.driver.core.ConsistencyLevel
 import com.typesafe.scalalogging.LazyLogging
+import javax.inject._
+import k.grid.Grid
+import ld.cmw.passiveFieldTypesCacheImpl
+import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
+import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.elasticsearch.action.bulk.BulkResponse
 import org.joda.time.{DateTime, DateTimeZone}
-import wsutil.{FieldKey, FormatterManager, RawFieldFilter}
 
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
-import javax.inject._
-import cmwell.ws.qp.Encoder
-import k.grid.Grid
-import ld.cmw.passiveFieldTypesCacheImpl
-import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.serialization.ByteArrayDeserializer
-import play.api.mvc.{Action, AnyContent}
 
 @Singleton
 class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) extends LazyLogging {
@@ -99,6 +94,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
   private def fetchEntireMetaNsAsPredicates = {
     val chunkSize = 512
     def fetchFields(offset: Int = 0): Future[Seq[Infoton]] = {
+      logger.info("Moria #1")
       val fieldsFut = search(Some(PathFilter("/meta/ns", descendants = true)),
                              paginationParams = PaginationParams(offset, chunkSize),
                              withData = true)
@@ -269,6 +265,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
     require(infoton.kind != "DeletedInfoton",
             "Writing a DeletedInfoton does not make sense. use proper delete API instead.")
     // build a command with infoton
+    logger.info("Moria #2")
     val cmdWrite = WriteCommand(infoton)
     // convert the command to Array[Byte] payload
     lazy val payload: Array[Byte] = CommandSerializer.encode(cmdWrite)
@@ -302,6 +299,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
   }
 
   def putOverwrites(infotons: Vector[Infoton]): Future[Boolean] = {
+    logger.info("Moria #3")
     val cmds = infotons.map(OverwriteCommand(_))
     Future.traverse(cmds)(sendToKafka(_)).map { _ =>
       true
@@ -325,14 +323,14 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       Future
         .traverse(infos) {
           case infoton if infoton.lastModified.getMillis == 0L =>
-            sendToKafka(
+            logger.info("Moria #4"); sendToKafka(
               WriteCommand(infoton.copyInfoton(lastModified = DateTime.now(DateTimeZone.UTC)),
                            validTid(infoton.path, tid),
                            prevUUID = atomicUpdates.get(infoton.path)),
               isPriorityWriteInner
             )
           case infoton =>
-            sendToKafka(WriteCommand(infoton, validTid(infoton.path, tid), atomicUpdates.get(infoton.path)),
+            logger.info("Moria #5"); sendToKafka(WriteCommand(infoton, validTid(infoton.path, tid), atomicUpdates.get(infoton.path)),
                         isPriorityWriteInner)
         }
         .map(_ => ())
@@ -1072,6 +1070,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
   def purgePath2(path: String, limit: Int): Future[Unit] = {
 
     import cmwell.util.concurrent.retry
+
     import scala.language.postfixOps
 
     irwService.historyAsync(path, limit).map { casHistory =>
