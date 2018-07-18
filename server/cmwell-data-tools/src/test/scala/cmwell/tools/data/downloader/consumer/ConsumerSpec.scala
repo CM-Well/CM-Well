@@ -18,12 +18,14 @@ package cmwell.tools.data.downloader.consumer
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
+import akka.stream.scaladsl.{Keep, Sink}
 import akka.stream.{ActorMaterializer, Materializer}
 import cmwell.tools.data.helpers.BaseWiremockSpec
 import cmwell.tools.data.utils.akka.HeaderOps._
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.http.Fault
 import com.github.tomakehurst.wiremock.stubbing.Scenario
+import com.typesafe.config.ConfigFactory
 
 
 /**
@@ -32,7 +34,9 @@ import com.github.tomakehurst.wiremock.stubbing.Scenario
 class ConsumerSpec extends BaseWiremockSpec {
   val scenario = "scenario"
 
-  implicit val system: ActorSystem = ActorSystem("reactive-tools-system")
+  val config = ConfigFactory.load()
+
+  implicit val system: ActorSystem = ActorSystem.create("reactive-tools-system")
   implicit val mat: Materializer = ActorMaterializer()
 
   override protected def afterAll(): Unit = {
@@ -90,7 +94,7 @@ class ConsumerSpec extends BaseWiremockSpec {
     result.flatMap { r => r should be (1)}
   }
 
-  it should "download all uuids while getting server error" in {
+  ignore should "download all uuids while getting server error" in {
 
     val tsvsBeforeError = List(
       "path1\tlastModified1\tuuid1\tindexTime1\n",
@@ -178,7 +182,7 @@ class ConsumerSpec extends BaseWiremockSpec {
       .willReturn(aResponse()
         .withStatus(StatusCodes.OK.intValue)
         .withHeader(CMWELL_POSITION, "dummy-token-value"))
-        .willSetStateTo(beforeCrushState)
+      .willSetStateTo(beforeCrushState)
     )
 
     stubFor(get(urlPathMatching("/")).inScenario(scenario)
@@ -187,7 +191,7 @@ class ConsumerSpec extends BaseWiremockSpec {
         .withStatus(StatusCodes.OK.intValue)
         .withBody("one\ttwo\tthree\tfour")
         .withHeader(CMWELL_POSITION, "dummy-token-value2"))
-        .willSetStateTo(crushState)
+      .willSetStateTo(crushState)
     )
 
     stubFor(get(urlPathMatching("/")).inScenario(scenario)
@@ -212,4 +216,31 @@ class ConsumerSpec extends BaseWiremockSpec {
       .runFold(0)(_ + _)
     result.flatMap{_ => 1 should be (1)}
   }
+
+  it should "be retry against persistent 5xx errors to a defined limit" in {
+
+    val ec = scala.concurrent.ExecutionContext.Implicits.global
+
+    val expectedRetries = config.hasPath("cmwell.downloader.consumer.http-retry-limit") match {
+      case true => config.getInt("cmwell.downloader.consumer.http-retry-limit")
+      case false => 0
+    }
+
+    stubFor(get(urlPathMatching("/.*")).inScenario("5xx")
+      .whenScenarioStateIs(Scenario.STARTED)
+      .willReturn(aResponse()
+        .withStatus(StatusCodes.GatewayTimeout.intValue))
+      .willSetStateTo(Scenario.STARTED)
+    )
+
+    val source = Downloader.createTsvSource(baseUrl = s"localhost:${wireMockServer.port}")(system, mat, ec)
+    val future = source.take(1).toMat(Sink.seq)(Keep.right).run
+
+    recoverToExceptionIf[Exception] {
+      future.map(_ => 1)
+    }.map ( _ => assert(wireMockServer.getAllServeEvents.size == expectedRetries + 1) )
+
+  }
+
+
 }
