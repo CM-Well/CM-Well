@@ -58,7 +58,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
   def retryHttp[T](delay: FiniteDuration,
                    parallelism: Int,
                    baseUrl: String,
-                   limit: Option[Int] = Some(3),
+                   limit: Option[Int] = None,
                    delayFactor : Double = 1)(
                    createRequest: (Seq[ByteString]) => HttpRequest,
                    responseValidator: (ByteString, Seq[HttpHeader]) => Try[Unit] = (_, _) => Success(Unit))(
@@ -138,7 +138,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
             count match {
               case Some(c) if c > 0 =>
 
-                val retryBackoff = delayWithFactor(delayFactor,c,iterationDelay,limit)
+                val retryBackoff = delayWithFactor(delayFactor,c,iterationDelay,limit.getOrElse(3))
 
                 logger.debug(
                   s"$labelValue server error - received $s, count=$count will retry again in $retryBackoff" +
