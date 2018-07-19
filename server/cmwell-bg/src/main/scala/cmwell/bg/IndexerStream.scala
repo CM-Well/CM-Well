@@ -192,22 +192,23 @@ class IndexerStream(partition: Int,
   import scala.language.existentials
   val commitOffsets = Flow[Seq[Offset]]
     .groupedWithin(6000, 3.seconds)
-    .toMat {
-      Sink.foreach { offsetGroups =>
+      .mapAsync(1) { offsetGroups =>
         val (offsets, offsetsPriority) =
           offsetGroups.flatten.partition(_.topic == indexCommandsTopic)
-        if (offsets.length > 0) {
+        (if (offsets.nonEmpty) {
           val lastOffset = offsets.map(_.offset).max
           logger.debug(s"committing last offset: $lastOffset")
-          offsetsService.write(s"${streamId}_offset", lastOffset + 1L)
-        }
-        if (offsetsPriority.length > 0) {
-          val lastOffset = offsetsPriority.map(_.offset).max
-          logger.debug(s"committing last offset priority: $lastOffset")
-          offsetsService.write(s"${streamId}.p_offset", lastOffset + 1L)
-        }
+          offsetsService.writeAsync(s"${streamId}_offset", lastOffset + 1L)
+        } else Future.successful(()))
+          .flatMap { _ =>
+            if (offsetsPriority.nonEmpty) {
+              val lastOffset = offsetsPriority.map(_.offset).max
+              logger.debug(s"committing last offset priority: $lastOffset")
+              offsetsService.writeAsync(s"${streamId}.p_offset", lastOffset + 1L)
+            } else Future.successful(())
+          }
       }
-    }(Keep.right)
+    .toMat(Sink.ignore)(Keep.right)
 
   val persistCommandsTopic: String = config.getString("cmwell.bg.persist.commands.topic")
   val impOffsetsInIndexerId = s"persistOffsetsDoneByIndexer.${partition}"

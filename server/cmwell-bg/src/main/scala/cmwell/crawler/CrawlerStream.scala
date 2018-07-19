@@ -64,7 +64,8 @@ sealed trait DetectionError {
   val cmdWithLocation: CommandWithLocation
 }
 case class CasError(details: String, cmdWithLocation: CommandWithLocation) extends DetectionResult with DetectionError
-case class EsError(details: String, cmdWithLocation: CommandWithLocation) extends DetectionResult with DetectionError
+case class EsBadCurrentError(details: String, cmdWithLocation: CommandWithLocation) extends DetectionResult with DetectionError
+case class EsMissingUuidError(details: String, cmdWithLocation: CommandWithLocation) extends DetectionResult with DetectionError
 
 object CrawlerStream extends LazyLogging {
   case class CrawlerMaterialization(control: Consumer.Control, doneState: Future[Done])
@@ -192,21 +193,34 @@ object CrawlerStream extends LazyLogging {
     def verifyEsCurrentState(uuid: String, indexName: String, shouldBeCurrent: Boolean)(previous: SoFarClear) =
       ftsService.get(uuid, indexName)(ec).map {
         case Some((_, isActualCurrent)) if isActualCurrent == shouldBeCurrent => previous
-        case Some((_, isActualCurrent)) => EsError(s"uuid [$uuid] has unexpected current property of [$isActualCurrent]", previous.cmdWithLocation)
-        case None => EsError(s"uuid $uuid doesn't exist in index $indexName.", previous.cmdWithLocation)
+        case Some((_, isActualCurrent)) => EsBadCurrentError(s"uuid [$uuid] has unexpected current property of [$isActualCurrent]", previous.cmdWithLocation)
+        case None => EsMissingUuidError(s"uuid $uuid doesn't exist in index $indexName.", previous.cmdWithLocation)
       }(ec)
+
+    def checkFirstEsVersion(first: CasVersionWithSysFields)(previousResult: SoFarClear) = {
+      val latest = previousResult.pathVersions.latest.get
+      val shouldFirstBeCurrent = latest.timestamp == first.timestamp
+      val firstIndexName = first.fields.find(_.name == "indexName").get.value
+      verifyEsCurrentState(first.uuid, firstIndexName, shouldFirstBeCurrent)(previousResult).map {
+        case _: EsBadCurrentError if !shouldFirstBeCurrent =>
+          logger.info(s"The checked uuid [${first.uuid}] has current property of true but it's not the last version in CAS. " +
+            s"It is probably that a newer version is being written to Cassandra and not yet updated in ES.")
+          //The initial thought was to recheck it but in case of a long difference between imp and indexer it won't help.
+          //And anyway it can't be an issue because an infoton is always written with current: true. Hence returning SoFarClear
+          //val delayDuration = safetyNetTimeInMillis.millis
+          //akka.pattern.after(delayDuration, sys.scheduler)(verifyEsCurrentState(first.uuid, firstIndexName, shouldFirstBeCurrent)(previousResult))(ec)
+          previousResult
+        case other => other
+      }(ec)
+    }
 
     def checkEsVersions(previousResult: DetectionResult) = {
       previousResult match {
-        case prev@SoFarClear(PathsVersions(Some(latest), Vector(first: CasVersionWithSysFields)), _) =>
-          val shouldFirstBeCurrent = latest.timestamp == first.timestamp
-          val firstIndexName = first.fields.find(_.name == "indexName").get.value
-          verifyEsCurrentState(first.uuid, firstIndexName, shouldFirstBeCurrent)(prev)
-        case prev@SoFarClear(PathsVersions(Some(latest), Vector(first: CasVersionWithSysFields, second: CasVersionWithSysFields)), _) =>
-          val shouldFirstBeCurrent = latest.timestamp == first.timestamp
-          val firstIndexName = first.fields.find(_.name == "indexName").get.value
+        case prev@SoFarClear(PathsVersions(Some(_), Vector(first: CasVersionWithSysFields)), _) =>
+          checkFirstEsVersion(first)(prev)
+        case prev@SoFarClear(PathsVersions(Some(_), Vector(first: CasVersionWithSysFields, second: CasVersionWithSysFields)), _) =>
           val secondIndexNameOpt = second.fields.find(_.name == "indexName").map(_.value)
-          verifyEsCurrentState(first.uuid, firstIndexName, shouldFirstBeCurrent)(prev)
+          checkFirstEsVersion(first)(prev)
             .flatMap { firstResult =>
               secondIndexNameOpt.fold(Future.successful(firstResult)) { secondIndexName =>
                 verifyEsCurrentState(second.uuid, secondIndexName, shouldBeCurrent = false)(prev)
@@ -243,7 +257,7 @@ object CrawlerStream extends LazyLogging {
           //todo: We need only the last element. There might be a way without save all the elements. Also getting last can be time consuming
           .groupedWithin(maxAmount, maxTime)
           .map(_.last)
-          .map(offsetsService.write(persistId, _))
+          .mapAsync(1)(offsetsService.writeAsync(persistId, _))
           .toMat(Sink.ignore) { (control, done) =>
             val allDone = done.flatMap { _ =>
               logger.info(s"$crawlerId The sink of the crawler of is done. Still waiting for the done signal of the control.")

@@ -22,23 +22,17 @@ import cmwell.formats.{FormatExtractor, Formatter}
 import cmwell.fts._
 import cmwell.tracking.PathStatus
 import cmwell.util.collections._
-import cmwell.util.concurrent.travset
+import cmwell.util.concurrent.{SimpleScheduler, travset}
 import cmwell.web.ld.cmw.CMWellRDFHelper
 import cmwell.web.ld.exceptions.{UnretrievableIdentifierException, UnsupportedURIException}
 import cmwell.ws.Settings
-import cmwell.ws.util.{ExpandGraphParser, FieldNameConverter, PathGraphExpansionParser, TypeHelpers}
+import cmwell.ws.util.{ExpandGraphParser, FieldNameConverter, PathGraphExpansionParser}
 import com.typesafe.scalalogging.LazyLogging
-import ld.exceptions.{
-  BadFieldTypeException,
-  ConflictingNsEntriesException,
-  ServerComponentNotAvailableException,
-  TooManyNsRequestsException
-}
-import logic.CRUDServiceFS
-import cmwell.util.concurrent.SimpleScheduler
 import controllers.SpaMissingException
 import filters.Attrs
 import ld.cmw.PassiveFieldTypesCache
+import ld.exceptions.{BadFieldTypeException, ConflictingNsEntriesException, ServerComponentNotAvailableException, TooManyNsRequestsException}
+import logic.CRUDServiceFS
 import org.joda.time.DateTime
 import org.joda.time.format.ISODateTimeFormat
 import play.api.http.{HttpChunk, HttpEntity}
@@ -46,7 +40,6 @@ import play.api.libs.json.Json
 import play.api.mvc.Results._
 import play.api.mvc.{Headers, Request, ResponseHeader, Result}
 import play.utils.InvalidUriEncodingException
-import wsutil.DirectedExpansion
 
 import scala.collection.breakOut
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
@@ -1189,14 +1182,11 @@ package object wsutil extends LazyLogging {
     case _                                     => false
   }
 
-  val errorHandler = {
-    val err2res: Throwable => Result = exceptionToResponse
-    PartialFunction(err2res)
-  }
+  val errorHandler: PartialFunction[Throwable, Result] = { case t => exceptionToResponse(t) }
 
-  val asyncErrorHandler = {
+  val asyncErrorHandler: PartialFunction[Throwable, Future[Result]] = {
     val res2fut: Result => Future[Result] = Future.successful[Result]
     val err2res: Throwable => Result = exceptionToResponse
-    PartialFunction(res2fut.compose(err2res))
+    ({ case t => res2fut.compose(err2res)(t) }): PartialFunction[Throwable, Future[Result]]
   }
 }

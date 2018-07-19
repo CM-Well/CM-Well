@@ -57,7 +57,7 @@ If you are consuming a different topic, and you know that its messages are also 
 Parameter | Description | Values 
 :----------|:-------------|:--------
 offset | Optional. Message offset to start from. If not provided, messages will be consumed starting from the beginning of the queue. | 0 to (queue size - 1)
-max-length | Optional. The maximal number of messages to return. If not provided, consumption will continue until the end of the queue and will then hang until a new message is produced. | 1 to queue size
+max-length | Optional. The maximal number of messages to return. If not provided, consumption will continue until the end of the queue. | 1 to queue size
 format | Optional. The only valid value is **text**; i.e. the parameter must appear as **format=text**. In this case, each message will be converted into a JSON-formatted string. Otherwise, the message's bytes will be returned as is. | text
 
 ## Code Example ##

@@ -22,85 +22,88 @@ import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.common.TopicPartition
 
 import scala.concurrent.duration.DurationInt
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.collection.JavaConverters._
 
 object OffsetUtils extends LazyLogging {
 
   def commitOffsetSink(streamId: String, topicName: String, startingOffset: Long, startingOffsetPriority: Long,
-                       offsetsService: OffsetsService): Sink[Seq[Offset], Future[Done]] = {
+                       offsetsService: OffsetsService)(implicit ec: ExecutionContext): Sink[Seq[Offset], Future[Done]] = {
     var lastOffsetPersisted = startingOffset - 1
     var lastOffsetPersistedPriority = startingOffsetPriority - 1
     val doneOffsets = new java.util.TreeSet[Offset]()
     val doneOffsetsPriority = new java.util.TreeSet[Offset]()
     Flow[Seq[Offset]]
       .groupedWithin(6000, 3.seconds)
-      .toMat {
-        Sink.foreach { offsetGroups =>
-          val (allOffsets, allOffsetsPriority) =
-            offsetGroups.flatten.partition(_.topic == topicName)
-          val offsets = allOffsets.filter(o => o.offset >= startingOffset)
-          val offsetsPriority = allOffsetsPriority.filter(o => o.offset >= startingOffsetPriority)
+      .mapAsync(1) { offsetGroups =>
+        val (allOffsets, allOffsetsPriority) =
+          offsetGroups.flatten.partition(_.topic == topicName)
+        val offsets = allOffsets.filter(o => o.offset >= startingOffset)
+        val offsetsPriority = allOffsetsPriority.filter(o => o.offset >= startingOffsetPriority)
 
-          logger.debug(s"commit offset sink of $streamId: offsets: $offsets")
-          logger.debug(s"commit offset sink of $streamId: priority offsets: $offsetsPriority")
-          doneOffsets
-            .synchronized { // until a suitable concurrent collection is found
-              if (offsets.nonEmpty) {
-                var prev = lastOffsetPersisted
-                mergeOffsets(streamId, doneOffsets, offsets)
-                val it = doneOffsets.iterator()
-                while ( {
-                  val next = if (it.hasNext) Some(it.next) else None
-                  val continue =
-                    next.fold(false)(
-                      o => o.isInstanceOf[CompleteOffset] && o.offset - prev == 1
-                    )
-                  if (continue)
-                    prev = next.get.offset
-                  continue
-                }) {
-                  it.remove()
-                }
-
-                if (prev > lastOffsetPersisted) {
-                  logger.debug(
-                    s"commit offset sink of $streamId: prev: $prev is greater than lastOffsetPersisted: $lastOffsetPersisted"
+        logger.debug(s"commit offset sink of $streamId: offsets: $offsets")
+        logger.debug(s"commit offset sink of $streamId: priority offsets: $offsetsPriority")
+        val (offsetToPersist, offsetPriorityToPersist) = doneOffsets
+          .synchronized { // until a suitable concurrent collection is found
+            val offsetToPersist = if (offsets.nonEmpty) {
+              var prev = lastOffsetPersisted
+              mergeOffsets(streamId, doneOffsets, offsets)
+              val it = doneOffsets.iterator()
+              while ( {
+                val next = if (it.hasNext) Some(it.next) else None
+                val continue =
+                  next.fold(false)(
+                    o => o.isInstanceOf[CompleteOffset] && o.offset - prev == 1
                   )
-                  offsetsService.write(s"${streamId}_offset", prev + 1L)
-                  lastOffsetPersisted = prev
-                }
+                if (continue)
+                  prev = next.get.offset
+                continue
+              }) {
+                it.remove()
               }
 
-              if (offsetsPriority.nonEmpty) {
-                var prevPriority = lastOffsetPersistedPriority
-                mergeOffsets(streamId, doneOffsetsPriority, offsetsPriority)
-                val itPriority = doneOffsetsPriority.iterator()
-                while ( {
-                  val next =
-                    if (itPriority.hasNext) Some(itPriority.next) else None
-                  val continue = next.fold(false)(
-                    o =>
-                      o.isInstanceOf[CompleteOffset] && o.offset - prevPriority == 1
-                  )
-                  if (continue)
-                    prevPriority = next.get.offset
-                  continue
-                }) {
-                  itPriority.remove()
-                }
+              if (prev > lastOffsetPersisted) {
+                logger.debug(s"commit offset sink of $streamId: prev: $prev is greater than lastOffsetPersisted: $lastOffsetPersisted")
+                lastOffsetPersisted = prev
+                Some(prev)
+              } else None
+            } else None
 
-                if (prevPriority > lastOffsetPersistedPriority) {
-                  logger.debug(
-                    s"commit offset sink of $streamId: prevPriority: $prevPriority is greater than lastOffsetPersistedPriority: $lastOffsetPersistedPriority"
-                  )
-                  offsetsService.write(s"$streamId.p_offset", prevPriority + 1L)
-                  lastOffsetPersistedPriority = prevPriority
-                }
+            val offsetPriorityToPersist = if (offsetsPriority.nonEmpty) {
+              var prevPriority = lastOffsetPersistedPriority
+              mergeOffsets(streamId, doneOffsetsPriority, offsetsPriority)
+              val itPriority = doneOffsetsPriority.iterator()
+              while ( {
+                val next =
+                  if (itPriority.hasNext) Some(itPriority.next) else None
+                val continue = next.fold(false)(
+                  o =>
+                    o.isInstanceOf[CompleteOffset] && o.offset - prevPriority == 1
+                )
+                if (continue)
+                  prevPriority = next.get.offset
+                continue
+              }) {
+                itPriority.remove()
               }
-            }
+
+              if (prevPriority > lastOffsetPersistedPriority) {
+                logger.debug(s"commit offset sink of $streamId: prevPriority: $prevPriority is greater than " +
+                  s"lastOffsetPersistedPriority: $lastOffsetPersistedPriority")
+                lastOffsetPersistedPriority = prevPriority
+                Some(prevPriority)
+              } else None
+            } else None
+            (offsetToPersist, offsetPriorityToPersist)
+          }
+        offsetToPersist.fold(Future.successful(())) { prev =>
+          offsetsService.writeAsync(s"${streamId}_offset", prev + 1L)
         }
-      }(Keep.right)
+          .flatMap(_ => offsetPriorityToPersist.fold(Future.successful(())) { prevPriority =>
+            offsetsService.writeAsync(s"$streamId.p_offset", prevPriority + 1L)
+          })
+      }
+      .toMat(Sink.ignore)(Keep.right)
   }
 
   def mergeOffsets(streamId: String, doneOffsets: java.util.TreeSet[Offset],
