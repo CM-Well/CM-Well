@@ -24,12 +24,9 @@ import akka.pattern._
 import akka.stream.scaladsl._
 import akka.stream.{ActorMaterializer, Materializer}
 import cmwell.tools.data.downloader.consumer.Downloader.Token
-import cmwell.tools.data.utils.akka.stats.DownloaderStats.DownloadStats
-import cmwell.tools.data.utils.akka.stats.IngesterStats.IngestStats
 import cmwell.tools.data.utils.logging.DataToolsLogging
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Success, Try}
 
 trait SparqlTriggerProcessorReporter {
 
@@ -184,6 +181,7 @@ class WebExporter(reporter: ActorRef, port: Int = 8080)(implicit system: ActorSy
           |</body></html>
         """.stripMargin
 // scalastyle:on
+        case ResponseWithPreviousTokens(Left(_)) => ???
       }
   }
 }
