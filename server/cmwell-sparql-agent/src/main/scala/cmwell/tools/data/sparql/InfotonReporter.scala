@@ -164,11 +164,16 @@ class InfotonReporter private (baseUrl: String, path: String, zStore: ZStore)(im
     }
 
     def createPayload(tokenAndStatistics: AgentTokensAndStatistics)  = {
-      (tokenAndStatistics.sensors.foldLeft(Seq.empty[String]) {
-        case (agg, (sensor, (token, downloadStats))) => agg :+ createSensorJson(sensor, token, downloadStats)
+      (tokenAndStatistics.sensors.filter({
+        case (_,(_,Some(_))) => true
+        case _ =>false
+      }).foldLeft(Seq.empty[String]) {
+        case (agg, (sensor, (token, Some(downloadStats)))) =>
+          agg :+ createSensorJson(sensor, token, Some(downloadStats))
       } ++
         createAgentJson(tokenAndStatistics.agentIngestStats, tokenAndStatistics.materializedStats)).mkString("\n")
     }
+
 
     Source
       .single(tokenAndStatistics)
