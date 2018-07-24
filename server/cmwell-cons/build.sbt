@@ -12,6 +12,16 @@ name := "cmwell-cons"
 
 unmanagedResources := Seq()
 
+resourceGenerators in Compile += Def.task {
+  val file = baseDirectory.value / "app" / "cmwell.properties"
+  val gitCommitVersion = s""""git_commit_version": "${Process("git rev-parse HEAD").lineStream.head}""""
+  val buildRelease = s""""cm-well_release": "${cmwell.build.CMWellCommon.release}""""
+  val buildVersion = s""""cm-well_version": "${version.value}""""
+  val content = s"{$gitCommitVersion,\n$buildRelease,\n$buildVersion}"
+  IO.write(file, content)
+  Seq(file)
+}.taskValue
+
 getExternalComponents := {
   val logger = streams.value
   val dm = dependenciesManager.value
