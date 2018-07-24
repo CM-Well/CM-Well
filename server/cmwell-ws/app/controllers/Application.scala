@@ -2850,6 +2850,8 @@ callback=< [URL] >
           val a = handleRawDocWithIndex(index, uuid)
           a(req)
         }
+        case x @ BoxedFailure(_) => logger.error(s"Unexpected result: Boxed Failiure: $x") ; ???
+        case EmptyBox => logger.error(s"Unexpected result: Empty Boxed") ; ???
       }
       .recoverWith {
         case err: Throwable => {
