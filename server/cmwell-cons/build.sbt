@@ -14,10 +14,10 @@ unmanagedResources := Seq()
 
 resourceGenerators in Compile += Def.task {
   val file = baseDirectory.value / "app" / "cmwell.properties"
-  val getCommitVersion = s""""git_commit_version": "${Process("git rev-parse HEAD").lineStream.head}""""
+  val gitCommitVersion = s""""git_commit_version": "${Process("git rev-parse HEAD").lineStream.head}""""
   val buildRelease = s""""cm-well_release": "${cmwell.build.CMWellCommon.release}""""
   val buildVersion = s""""cm-well_version": "${version.value}""""
-  val content = s"{$getCommitVersion,\n$buildRelease,\n$buildVersion}"
+  val content = s"{$gitCommitVersion,\n$buildRelease,\n$buildVersion}"
   IO.write(file, content)
   Seq(file)
 }.taskValue
