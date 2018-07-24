@@ -23,29 +23,26 @@ import cmwell.util.string._
 import cmwell.web.ld.cmw.CMWellRDFHelper.{Create, Exists, PrefixState}
 import cmwell.web.ld.cmw._
 import cmwell.web.ld.exceptions._
-import ld.cmw.PassiveFieldTypesCache
-import security.Token
 import cmwell.ws.Settings
+import com.typesafe.scalalogging.LazyLogging
+import logic.{CRUDServiceFS, InfotonValidator}
 import org.apache.jena.datatypes.xsd.XSDDatatype
 import org.apache.jena.datatypes.xsd.impl.RDFLangString
 import org.apache.jena.graph.BlankNodeId
 import org.apache.jena.query.DatasetFactory
 import org.apache.jena.rdf.model.{Seq => _, _}
-import com.typesafe.scalalogging.LazyLogging
-import filters.Attrs
-import logic.{CRUDServiceFS, InfotonValidator}
 import org.apache.jena.riot.{Lang, RDFDataMgr}
 import org.apache.xerces.util.XMLChar
-import security.{AuthUtils, PermissionLevel}
+import security.{AuthUtils, PermissionLevel, Token}
 import wsutil._
 
 import scala.annotation.tailrec
 import scala.collection.JavaConversions._
 import scala.collection.immutable.{Map => IMap, Set => ISet}
 import scala.collection.mutable.{ListBuffer, Map => MMap, Set => MSet}
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -155,7 +152,8 @@ object LDFormatParser extends LazyLogging {
 //    case "NOTATION" => convertXSD(l.getLexicalForm, XSDDatatype.XSDNOTATION, l.getLexicalForm)
 //    case "hexBinary" => convertXSD(l.getLexicalForm, XSDDatatype.XSDhexBinary, l.getLexicalForm)
 //    case "base64Binary" => convertXSD(l.getLexicalForm, XSDDatatype.XSDbase64Binary, l.getLexicalForm)
-//    case "date" => convertXSD(l.getLexicalForm, XSDDatatype.XSDdate, l.getLexicalForm)
+     /*moria */
+    case "date" => FDate(l.getLexicalForm, quad) //convertXSD(l.getLexicalForm, XSDDatatype.XSDdate, l.getLexicalForm)
 //    case "time" => convertXSD(l.getLexicalForm, XSDDatatype.XSDtime, l.getLexicalForm)
     case "dateTime" =>
       FDate(l.getLexicalForm, quad) //convertXSD(l.getLexicalForm, XSDDatatype.XSDdateTime, l.getLexicalForm,lang,quad)
@@ -168,11 +166,11 @@ object LDFormatParser extends LazyLogging {
     case s: String => FExternal(l.getLexicalForm, s"xsd#$s", quad)
   }
 
-//  def convertXSD(default: Any, xsd: XSDDatatype, lexicalForm: String,lang: Option[String],quad: Option[String]): FieldValue =
-//    Try(FieldValue(default,lang,quad)) match {
-//      case Success(obj) => obj
-//      case Failure(_) => FieldValue(xsd.parse(lexicalForm),lang,quad)
-//    }
+  /*def convertXSD(default: Any, xsd: XSDDatatype, lexicalForm: String,lang: Option[String],quad: Option[String]): FieldValue =
+    Try(FieldValue(default,lang,quad)) match {
+      case Success(obj) => obj
+      case Failure(_) => FieldValue(xsd.parse(lexicalForm),lang,quad)
+    }*/
 
   case class ParsingResponse(infotons: Map[String, Map[DirectFieldKey, Set[FieldValue]]],
                              metaData: Map[String, MetaData],

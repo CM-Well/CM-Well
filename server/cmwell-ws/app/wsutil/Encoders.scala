@@ -14,11 +14,11 @@
   */
 package cmwell.util.formats
 
+import cmwell.common.file.MimeTypeIdentifier
 import cmwell.domain._
 import cmwell.syntaxutils._
-import cmwell.common.file.MimeTypeIdentifier
 import cmwell.ws.Settings
-import cmwell.ws.util.DateParser
+import com.typesafe.scalalogging.LazyLogging
 import org.apache.commons.codec.binary.Base64
 import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat}
 import org.joda.time.{DateTime, DateTimeZone}
@@ -34,7 +34,7 @@ import scala.util.{Failure, Success, Try}
   * Time: 10:38 AM
   * To change this template use File | Settings | File Templates.
   */
-object Encoders {
+object Encoders extends LazyLogging{
   private val withDotdateParser = ISODateTimeFormat.dateTime().withZone(DateTimeZone.UTC)
   private val withoutDotdateParser = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss'Z'").withZone(DateTimeZone.UTC)
 
@@ -341,6 +341,7 @@ object Encoders {
         case di: DeletedInfoton =>
           structure += "type" -> Json.toJson("DeletedInfoton")
           structure += "system" -> getSystem(di)
+        case x @ GhostInfoton(_, _) => logger.error(s"Unexpected input. Received: $x"); ???
       }
       structure.get()
     }

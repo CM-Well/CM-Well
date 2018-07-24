@@ -341,6 +341,7 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
     f.foreach{
       case FTSSearchResponse(total, offset, length, infotons, None) =>
         logger.debug(s"before failing: total: $total, offset: $offset, length: $length and infotons:\n${infotons.map(_.path).mkString("\t","\n\t","\n")} ")
+      case x @ FTSSearchResponse(_, _, _, _, Some(_) => logger.error(s"Unexpected input. Received: $x"); ???
     }(scala.concurrent.ExecutionContext.Implicits.global)
     Await.result(f, timeout).length should equal (0)
   }

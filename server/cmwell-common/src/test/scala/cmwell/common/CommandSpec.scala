@@ -18,6 +18,7 @@ package cmwell.common
 
 import cmwell.common.formats.{CompleteOffset, Offset, PartialOffset}
 import cmwell.domain.{FString, _}
+import com.typesafe.scalalogging.LazyLogging
 import org.joda.time.{DateTime, DateTimeZone}
 import org.scalatest._
 
@@ -29,7 +30,7 @@ import org.scalatest._
   *
   */
 
-class CommandSpec extends FlatSpec with Matchers {
+class CommandSpec extends FlatSpec with Matchers with LazyLogging {
 
 
   "command encode decode" should "be successful" in {
@@ -99,6 +100,9 @@ class CommandSpec extends FlatSpec with Matchers {
           u_f.size should equal(cmdUpdate.updateFields.size)
           lm.getMillis should equal(cmdUpdate.lastModified.getMillis)
         case OverwriteCommand(_, trackingID) => ??? //TODO: add tests for OverwriteCommand
+        case x @ (CommandRef(_) | HeartbitCommand | IndexExistingInfotonCommand(_, _, _, _, _) | IndexExistingInfotonCommandForIndexer(_, _, _, _, _, _) |
+                  IndexNewInfotonCommand(_, _, _, _, _, _) | IndexNewInfotonCommandForIndexer(_, _, _, _, _, _, _) | NullUpdateCommandForIndexer(_, _, _, _, _))
+          => logger.error(s"Unexpected input. Received: $x"); ???
       }
     }
   }

@@ -544,6 +544,7 @@ package object wsutil extends LazyLogging {
           .map(hash => { (internalFieldName: String) =>
             internalFieldName.endsWith(s".$hash")
           } -> rffo)
+      case x @ FilteredField(_, _) => logger.error(s"Unexpected input. Received: $x"); ???
     }
     expansionFuncsFut.flatMap { funs =>
       // all the infotons' fields

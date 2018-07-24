@@ -69,6 +69,7 @@ class BGMonitorActor(zkServers: String,
       partitions.map { partition =>
         (new TopicPartition("index_topic.priority", partition), s"indexer.p.$partition")
       }
+    case x@(_, _) => logger.error(s"Unexpected input. Received: $x"); ???
   }
 
   val topicsPartitionsAndConsumers = topicsPartitionsAndGroups.map {
