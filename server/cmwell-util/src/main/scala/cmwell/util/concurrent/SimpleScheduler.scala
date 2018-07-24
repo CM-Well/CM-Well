@@ -14,7 +14,7 @@
   */
 package cmwell.util.concurrent
 
-import java.util.concurrent.{ScheduledExecutorService, ScheduledThreadPoolExecutor}
+import java.util.concurrent.{ScheduledExecutorService, ScheduledFuture, ScheduledThreadPoolExecutor}
 
 import com.typesafe.scalalogging.LazyLogging
 
@@ -34,7 +34,7 @@ object SimpleScheduler extends LazyLogging {
 
   //method is private, since we must keep execution on the expense of out timer thread to be as limited as possible.
   //this method can be used if and only if we know `body` is a safe and small job.
-  private[util] def scheduleInstant[T](duration: FiniteDuration)(body: => T)(implicit executionContext: ExecutionContext) = {
+  private[util] def scheduleInstant[T](duration: FiniteDuration)(body: => T) = {
     val p = Promise[T]()
     val cancellable = timer.schedule(
       new Runnable {
@@ -46,7 +46,7 @@ object SimpleScheduler extends LazyLogging {
       duration.toMillis,
       java.util.concurrent.TimeUnit.MILLISECONDS
     )
-    p.future.andThen { case _ => cancellable.cancel(false) }
+    p.future -> Cancellable(cancellable)
   }
 
   def scheduleAtFixedRate(initialDelay: FiniteDuration, period: FiniteDuration, mayInterruptIfRunning: Boolean = false)(
@@ -66,15 +66,12 @@ object SimpleScheduler extends LazyLogging {
       override def run(): Unit = ec.execute(runnable)
     }, initialDelay.toMillis, period.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
 
-    new Cancellable {
-      override def cancel() = cancellable.cancel(mayInterruptIfRunning)
-    }
+    Cancellable(cancellable, mayInterruptIfRunning)
   }
 
-  def schedule[T](duration: FiniteDuration)(body: => T)
-                 (implicit executionContext: ExecutionContext): Future[T]= {
+  def schedule[T](duration: FiniteDuration)(body: => T)(implicit executionContext: ExecutionContext): Future[T] = {
     val p = Promise[T]()
-    val cancellable = timer.schedule(
+    timer.schedule(
       new Runnable {
         override def run(): Unit = {
           // body may be expensive to compute, and must not be run in our only timer thread expense,
@@ -85,16 +82,21 @@ object SimpleScheduler extends LazyLogging {
       duration.toMillis,
       java.util.concurrent.TimeUnit.MILLISECONDS
     )
-    p.future.andThen { case _ => cancellable.cancel(false) }
+    p.future
   }
 
-  def scheduleFuture[T](duration: Duration)(body: => Future[T])(implicit executionContext: ExecutionContext): Future[T] = {
+  def scheduleFuture[T](duration: Duration)(body: => Future[T]): Future[T] = {
     val p = Promise[T]()
-    val cancellable = timer.schedule(new Runnable {
+    timer.schedule(new Runnable {
       override def run(): Unit = p.completeWith(body)
     }, duration.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
-    p.future.andThen { case _ => cancellable.cancel(false) }
+    p.future
   }
+}
+
+object Cancellable {
+  def apply(scheduledFuture: ScheduledFuture[_], mayInterruptIfRunning: Boolean = false)=
+    new Cancellable { override def cancel(): Boolean = scheduledFuture.cancel(mayInterruptIfRunning) }
 }
 
 trait Cancellable {

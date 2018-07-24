@@ -141,13 +141,11 @@ package cmwell.util {
       *         or fail with a FutureTimeout exception that holds the original future
       */
     def timeoutFuture[T](future: Future[T], duration: FiniteDuration)(implicit ec: ExecutionContext): Future[T] = {
-
       val p = Promise[T]()
       p.tryCompleteWith(future)
 
-      SimpleScheduler.scheduleInstant(duration) {
-        p.tryFailure(FutureTimeout(future))
-      }
+      val (_,c) = SimpleScheduler.scheduleInstant(duration) { p.tryFailure(FutureTimeout(future)) }
+      future.andThen { case _ => c.cancel() }
 
       p.future
     }
@@ -390,7 +388,7 @@ package cmwell.util {
       interval: FiniteDuration,
       returnOriginalElementOnFailure: Boolean = false,
       maxTimeUntilGivingUp: FiniteDuration = spinCheckTimeout
-    )(task: => Future[T])(isSuccessful: T => Successfulness)(implicit executionContext: ExecutionContext): Future[T] = {
+    )(task: => Future[T])(isSuccessful: T => Successfulness): Future[T] = {
 
       import SimpleScheduler.{scheduleFuture => sf}
 
@@ -536,19 +534,19 @@ package cmwell.util {
     case class FutureTimeout[T](future: scala.concurrent.Future[T]) extends Exception
 
     trait StateHandler[S] {
-      def handle[T](state: S)(task: => Future[T])(implicit executionContext: ExecutionContext): Future[T]
+      def handle[T](state: S)(task: => Future[T]): Future[T]
     }
 
     object StateHandler {
       implicit val durationHandler = new StateHandler[FiniteDuration] {
-        override def handle[T](delay: FiniteDuration)(task: => Future[T])(implicit executionContext: ExecutionContext): Future[T] = {
+        override def handle[T](delay: FiniteDuration)(task: => Future[T]): Future[T] = {
           if (delay == Duration.Zero) task
           else SimpleScheduler.scheduleFuture(delay)(task)
         }
       }
 
       implicit val retryParamsHandler = new StateHandler[RetryParams] {
-        override def handle[T](state: RetryParams)(task: => Future[T])(implicit executionContext: ExecutionContext) = {
+        override def handle[T](state: RetryParams)(task: => Future[T]) = {
           if (state.delay == Duration.Zero) task
           else SimpleScheduler.scheduleFuture(state.delay)(task)
         }

@@ -138,7 +138,7 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
           kafkaProducer.send(r)
         }
       }(scala.concurrent.ExecutionContext.Implicits.global)
-    }(scala.concurrent.ExecutionContext.Implicits.global)
+    }
 
     val assertFut = scheduleFuture(25.seconds) {
       f2.flatMap { _ =>
@@ -157,7 +157,7 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
           res.map{ _.infotons.size should equal(2000)}(scala.concurrent.ExecutionContext.Implicits.global)
         }
       }(scala.concurrent.ExecutionContext.Implicits.global)
-    }(scala.concurrent.ExecutionContext.Implicits.global)
+    }
 
     Await.result(assertFut, 30.seconds)
   }

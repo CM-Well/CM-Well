@@ -698,7 +698,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
         )(ec,logger).flatMap { res =>
           if (res.total >= numOfVersionsToExpect) Future.successful(res)
           else if(System.currentTimeMillis() - startTime > 30000L) Future.failed(new IllegalStateException(s"Waited for over 30s, last res: ${res.toString}"))
-          else scheduleFuture(1.second)(waitForItInner())(ec)
+          else scheduleFuture(1.second)(waitForItInner())
         }(ec)
       }
       waitForItInner()

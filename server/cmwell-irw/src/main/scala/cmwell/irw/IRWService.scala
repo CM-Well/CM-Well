@@ -30,7 +30,7 @@ import com.typesafe.scalalogging.LazyLogging
 import org.joda.time.DateTime
 
 import scala.collection.mutable
-import scala.concurrent.duration._
+import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success}
 import cmwell.common.metrics.WithMetrics
@@ -53,10 +53,11 @@ object IRWService {
   def newIRW(storageDao: Dao) = new IRWServiceNativeImpl2(storageDao)
   def newIRW(storageDao: Dao, disableReadCache: Boolean) =
     new IRWServiceNativeImpl2(storageDao, disableReadCache = disableReadCache)
-  def newIRW(storageDao: Dao, disableReadCache: Boolean, casTimeout: FiniteDuration) =
+  def newIRW(storageDao: Dao, disableReadCache: Boolean, casTimeout: Duration) =
     new IRWServiceNativeImpl2(storageDao, disableReadCache = disableReadCache)(casTimeout)
   def newIRW(storageDao: Dao, maxReadSize: Int, disableReadCache: Boolean, readCacheDuration: FiniteDuration) =
     new IRWServiceNativeImpl2(storageDao, maxReadSize, disableReadCache, readCacheDuration)
+
 }
 
 trait IRWService {
