@@ -102,7 +102,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
         case OverwriteCommand(_, trackingID) => ??? //TODO: add tests for OverwriteCommand
         case x @ (CommandRef(_) | HeartbitCommand | IndexExistingInfotonCommand(_, _, _, _, _) | IndexExistingInfotonCommandForIndexer(_, _, _, _, _, _) |
                   IndexNewInfotonCommand(_, _, _, _, _, _) | IndexNewInfotonCommandForIndexer(_, _, _, _, _, _, _) | NullUpdateCommandForIndexer(_, _, _, _, _))
-          => logger.error(s"Unexpected input. Received: $x"); ???
+          => logger.error(s"Unexpected cmpCommand. Received: $x"); ???
       }
     }
   }

@@ -152,8 +152,7 @@ object LDFormatParser extends LazyLogging {
 //    case "NOTATION" => convertXSD(l.getLexicalForm, XSDDatatype.XSDNOTATION, l.getLexicalForm)
 //    case "hexBinary" => convertXSD(l.getLexicalForm, XSDDatatype.XSDhexBinary, l.getLexicalForm)
 //    case "base64Binary" => convertXSD(l.getLexicalForm, XSDDatatype.XSDbase64Binary, l.getLexicalForm)
-     /*moria */
-    case "date" => FDate(l.getLexicalForm, quad) //convertXSD(l.getLexicalForm, XSDDatatype.XSDdate, l.getLexicalForm)
+//    case "date" => convertXSD(l.getLexicalForm, XSDDatatype.XSDdate, l.getLexicalForm)
 //    case "time" => convertXSD(l.getLexicalForm, XSDDatatype.XSDtime, l.getLexicalForm)
     case "dateTime" =>
       FDate(l.getLexicalForm, quad) //convertXSD(l.getLexicalForm, XSDDatatype.XSDdateTime, l.getLexicalForm,lang,quad)
@@ -166,11 +165,11 @@ object LDFormatParser extends LazyLogging {
     case s: String => FExternal(l.getLexicalForm, s"xsd#$s", quad)
   }
 
-  /*def convertXSD(default: Any, xsd: XSDDatatype, lexicalForm: String,lang: Option[String],quad: Option[String]): FieldValue =
-    Try(FieldValue(default,lang,quad)) match {
-      case Success(obj) => obj
-      case Failure(_) => FieldValue(xsd.parse(lexicalForm),lang,quad)
-    }*/
+//  def convertXSD(default: Any, xsd: XSDDatatype, lexicalForm: String,lang: Option[String],quad: Option[String]): FieldValue =
+//    Try(FieldValue(default,lang,quad)) match {
+//      case Success(obj) => obj
+//      case Failure(_) => FieldValue(xsd.parse(lexicalForm),lang,quad)
+//    }
 
   case class ParsingResponse(infotons: Map[String, Map[DirectFieldKey, Set[FieldValue]]],
                              metaData: Map[String, MetaData],

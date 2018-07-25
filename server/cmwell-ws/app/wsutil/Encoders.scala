@@ -341,7 +341,7 @@ object Encoders extends LazyLogging{
         case di: DeletedInfoton =>
           structure += "type" -> Json.toJson("DeletedInfoton")
           structure += "system" -> getSystem(di)
-        case x @ GhostInfoton(_, _) => logger.error(s"Unexpected input. Received: $x"); ???
+        case x: GhostInfoton => logger.error(s"Unexpected infoton. Received: $x"); ???
       }
       structure.get()
     }
