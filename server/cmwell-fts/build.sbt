@@ -22,9 +22,7 @@ libraryDependencies ++= {
 		dm("com.google.code.findbugs", "jsr305"),
 		dm("com.typesafe", "config"),
 		dm("com.spatial4j", "spatial4j"),
-		dm("org.slf4j","jcl-over-slf4j"),
-		(dm("org.codehaus.groovy", "groovy-all") % "test")
-			.exclude("commons-logging","commons-logging"))
+		dm("org.slf4j","jcl-over-slf4j"))
 }
 
 test in Test := Def.task((test in Test).value).tag(cmwell.build.CMWellCommon.Tags.ES).value
