@@ -25,6 +25,7 @@ import akka.stream.scaladsl._
 import akka.stream.{ActorMaterializer, Materializer}
 import cmwell.tools.data.downloader.consumer.Downloader.Token
 import cmwell.tools.data.utils.logging.DataToolsLogging
+import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -110,7 +111,7 @@ class FileReporterActor(stateFile: Option[String], webPort: Int = 8080)
   }
 }
 
-class WebExporter(reporter: ActorRef, port: Int = 8080)(implicit system: ActorSystem, mat: Materializer) {
+class WebExporter(reporter: ActorRef, port: Int = 8080)(implicit system: ActorSystem, mat: Materializer) extends LazyLogging{
 
   implicit val ec = system.dispatcher
 
@@ -181,7 +182,7 @@ class WebExporter(reporter: ActorRef, port: Int = 8080)(implicit system: ActorSy
           |</body></html>
         """.stripMargin
 // scalastyle:on
-        case ResponseWithPreviousTokens(Left(_)) => ???
+        case ResponseWithPreviousTokens(Left(ex)) => logger.error(s"Caught exception: $ex"); ???
       }
   }
 }

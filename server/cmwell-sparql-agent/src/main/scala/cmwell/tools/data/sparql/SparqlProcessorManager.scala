@@ -291,7 +291,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
             ("red", "Exception : " + jobFailed.ex.getMessage)
           case _: JobPaused =>
             ("green", "No exceptions reported")
-          case JobPausing(_, _, _) | JobRunning(_, _, _) | JobStopping(_, _, _) => ???
+          case x @ (JobPausing(_, _, _) | JobRunning(_, _, _) | JobStopping(_, _, _)) => logger.error(s"Unexpected Job Status: $x"); ???
         }
 
         val sensorNames = jobStatus.job.config.sensors.map(_.name)
