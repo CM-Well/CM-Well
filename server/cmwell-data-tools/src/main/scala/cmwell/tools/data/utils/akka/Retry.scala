@@ -160,12 +160,11 @@ object Retry extends DataToolsLogging with DataToolsConfig {
               case None =>
 
                 logger.warn(
-                  s"$labelValue server error - received $s. host=${getHostnameValue(h)} data=${stringifyData(data)}"
+                  s"$labelValue server error - received $s. host=${getHostnameValue(h)} data=${stringifyData(data)}. Will try again in ${delay}"
                 )
-                badDataLogger.info(
-                  s"$labelValue data=${concatByteStrings(data, endl).utf8String}"
-                )
-                None
+
+                val future = after(delay, system.scheduler)(Future.successful(data))
+                Some(immutable.Seq(future -> state))
             }
           }
 
