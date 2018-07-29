@@ -591,9 +591,9 @@ class IRWServiceNativeImpl2(
 
   def historyNeighbourhood(path: String, timestamp: Long, desc: Boolean, limit: Int, level: ConsistencyLevel): Future[Vector[(Long, String)]] = {
     import scala.concurrent.ExecutionContext.Implicits.global
-    val pStmt = if(desc) getHistoryNeighbourhoodDesc else getHistoryNeighbourhoodAsc
-    val stmt = pStmt.bind(path.replaceAll("'", "''"), new java.util.Date(timestamp), Int.box(limit)).setConsistencyLevel(level)
-    executeAsync(stmt, s"'${pStmt.getQueryString}'.bind($path,$timestamp,$limit)").map { res =>
+    val getHistoryNeighbourhood = if(desc) getHistoryNeighbourhoodDesc else getHistoryNeighbourhoodAsc
+    val stmt = getHistoryNeighbourhood.bind(path.replaceAll("'", "''"), new java.util.Date(timestamp), Int.box(limit)).setConsistencyLevel(level)
+    executeAsync(stmt, s"'${getHistoryNeighbourhood.getQueryString}'.bind($path,$timestamp,$limit)").map { res =>
       val it = res.iterator()
       val b = Vector.newBuilder[(Long, String)]
       while (it.hasNext) {
