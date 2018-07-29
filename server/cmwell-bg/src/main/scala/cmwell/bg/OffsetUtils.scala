@@ -144,7 +144,7 @@ object OffsetUtils extends LazyLogging {
     )
   }
 
-  def getEarliestOffset(bootStrapServers: String, topicPartition: TopicPartition): Long = {
+  def getOffsetBoundries(bootStrapServers: String, topicPartition: TopicPartition): (Long, Long) = {
     import java.util
     import java.util.Properties
 
@@ -160,6 +160,9 @@ object OffsetUtils extends LazyLogging {
     topicPartitionList.add(topicPartition)
     consumer.assign(topicPartitionList)
     consumer.seekToBeginning(topicPartitionList)
-    consumer.position(topicPartition)
+    val earliest = consumer.position(topicPartition)
+    consumer.seekToEnd(topicPartitionList)
+    val latest = consumer.position(topicPartition)
+    (earliest, latest)
   }
 }
