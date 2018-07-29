@@ -76,6 +76,8 @@ POST        /_sp/*format            controllers.SpHandlerController.handleSpPost
 POST        /_sparql                controllers.SpHandlerController.handleSparqlPost(format = "")
 POST        /_ssparql               controllers.OpenRdfSpHandler.handleSsparqlPost
 POST        /zz/*uzid               controllers.Application.handleZzPost(uzid)
+POST        /                       controllers.Application.handlePost(path = "")
+PUT         /                       controllers.Application.handlePost(path = "")
 POST        /*path                  controllers.Application.handlePost(path)
 PUT         /*path                  controllers.Application.handlePost(path)
 
