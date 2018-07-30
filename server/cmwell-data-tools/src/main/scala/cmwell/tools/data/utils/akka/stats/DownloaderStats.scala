@@ -37,7 +37,8 @@ object DownloaderStats {
                            runningTime: Long = 0,
                            statsTime: Long = 0,
                            horizon: Boolean = false,
-                           remaining: Option[Long] = None)
+                           remaining: Option[Long] = None,
+                           totalRunningTime: Long = 0)
 
   def apply(isStderr: Boolean = false,
             format: String,
@@ -79,7 +80,7 @@ class DownloaderStats(isStderr: Boolean,
       var lastMessageSize = 0
       var timeOfLastStatistics = 0L
       var horizon = false
-
+      var previousRunningMillis = 0L
 
       var eventPoller: Option[Cancellable] = None
 
@@ -87,7 +88,7 @@ class DownloaderStats(isStderr: Boolean,
 
       private var asyncCB: AsyncCallback[Unit] = _
 
-      val start = System.currentTimeMillis()
+      val start = System.currentTimeMillis
 
       val formatter = java.text.NumberFormat.getNumberInstance
 
@@ -97,6 +98,7 @@ class DownloaderStats(isStderr: Boolean,
         initialDownloadStats.foreach { stats =>
           logger.debug(s"${name} Loading statistics initial state of Received Infotons: ${stats.receivedInfotons}")
           totalReceivedInfotons.mark(stats.receivedInfotons)
+          previousRunningMillis = stats.totalRunningTime
         }
 
         asyncCB = getAsyncCallback { _ =>
@@ -200,6 +202,8 @@ class DownloaderStats(isStderr: Boolean,
           try {
             val rate = toHumanReadable(bytesInWindow * 1000 / (now - lastTime))
             val executionTime = now - start
+            val totalRunningMillis = previousRunningMillis + executionTime
+
             val message =
               s"[received=${toHumanReadable(totalDownloadedBytes.count)}]".padTo(20, ' ') +
                 s"[infotons=${formatter.format(totalReceivedInfotons.count)}".padTo(30, ' ') +
@@ -220,6 +224,7 @@ class DownloaderStats(isStderr: Boolean,
                 infotonRate = totalReceivedInfotons.meanRate,
                 bytesRate = metricRateBytes.oneMinuteRate,
                 runningTime = executionTime,
+                totalRunningTime = totalRunningMillis,
                 statsTime = timeOfLastStatistics,
                 horizon = horizon,
                 remaining = remainingInfotons
