@@ -1,5 +1,18 @@
 <configuration debug="false">
 
+    <appender name="STDOUT-ERROR" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <encoder>
+            <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
+        </encoder>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
+    </appender>
+
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${application.home:-.}/logs/application.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
@@ -113,10 +126,12 @@
     dynamically be changed. Setting the x-fix level to info fixes it to info always-->
     <logger name="cmwell.xfix" level="INFO" additivity="false">
         <appender-ref ref="X_FIX"/>
+        <appender-ref ref="STDOUT-ERROR" />
     </logger>
 
     <logger name="access" additivity="false">
         <appender-ref ref="ACCESS_FILE" />
+        <appender-ref ref="STDOUT-ERROR" />
     </logger>
 
     <logger name="cmwell.fts.FTSServiceNew" additivity="true">
@@ -128,6 +143,7 @@
     </logger>
 
     <root level="${log.level:-INFO}">
+        <appender-ref ref="STDOUT-ERROR" />
         <appender-ref ref="FILE" />
     </root>
     <jmxConfigurator />
