@@ -18,6 +18,7 @@ server/cmwell-cons/app/cons-lib
 server/cmwell-cons/app/sys
 server/cmwell-cons/app/dependencies
 server/cmwell-cons/app/plugins
+server/cmwell-cons/app/cmwell.properties
 server/cmwell-spa/data/.brackets.json
 
 # sbt specific
