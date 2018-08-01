@@ -44,7 +44,7 @@ import com.typesafe.config.Config
 import com.typesafe.scalalogging.Logger
 import nl.grons.metrics4.scala._
 import org.apache.kafka.clients.consumer.KafkaConsumer
-import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.kafka.clients.producer.{ProducerConfig, ProducerRecord}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.elasticsearch.action.update.UpdateRequest
@@ -190,6 +190,7 @@ class ImpStream(partition: Int,
   val kafkaProducerSettings =
     ProducerSettings(actorSystem, byteArraySerializer, byteArraySerializer)
       .withBootstrapServers(bootStrapServers)
+      .withProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG,"lz4")
   val numOfCassandraNodes = config.getInt("cmwell.bg.num.of.cassandra.nodes")
   val irwReadConcurrency = Try {
     config.getInt("cmwell.bg.irwReadConcurrency")

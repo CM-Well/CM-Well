@@ -18,43 +18,38 @@ import java.util.Properties
 import java.util.concurrent.TimeoutException
 
 import akka.NotUsed
-import akka.actor.{Actor, ActorSystem}
-import akka.actor.Actor.Receive
-import akka.kafka.{ConsumerSettings, Subscriptions}
+import akka.actor.ActorSystem
 import akka.kafka.scaladsl.Consumer
-import akka.stream.ThrottleMode
+import akka.kafka.{ConsumerSettings, Subscriptions}
 import akka.stream.scaladsl.Source
+import cmwell.common.{DeleteAttributesCommand, DeletePathCommand, WriteCommand, _}
 import cmwell.domain._
 import cmwell.driver.Dao
-import cmwell.formats.{NquadsFlavor, RdfType}
 import cmwell.fts.{FTSServiceNew, Settings => _, _}
 import cmwell.irw._
 import cmwell.stortill.Strotill.{CasInfo, EsExtendedInfo, ZStoreInfo}
 import cmwell.stortill.{Operations, ProxyOperations}
-import cmwell.util.{Box, BoxedFailure, EmptyBox, FullBox}
 import cmwell.util.concurrent.SingleElementLazyAsyncCache
-import cmwell.common.{DeleteAttributesCommand, DeletePathCommand, WriteCommand, _}
+import cmwell.util.{Box, BoxedFailure, EmptyBox, FullBox}
 import cmwell.ws.Settings
-import cmwell.zcache.{L1Cache, ZCache}
+import cmwell.ws.qp.Encoder
+import cmwell.zcache.ZCache
 import cmwell.zstore.ZStore
 import com.datastax.driver.core.ConsistencyLevel
 import com.typesafe.scalalogging.LazyLogging
-import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
+import javax.inject._
+import k.grid.Grid
+import ld.cmw.passiveFieldTypesCacheImpl
+import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.producer._
+import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.elasticsearch.action.bulk.BulkResponse
 import org.joda.time.{DateTime, DateTimeZone}
-import wsutil.{FieldKey, FormatterManager, RawFieldFilter}
 
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
-import javax.inject._
-import cmwell.ws.qp.Encoder
-import k.grid.Grid
-import ld.cmw.passiveFieldTypesCacheImpl
-import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.serialization.ByteArrayDeserializer
-import play.api.mvc.{Action, AnyContent}
 
 @Singleton
 class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) extends LazyLogging {
@@ -77,8 +72,9 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
 
   val producerProperties = new Properties
   producerProperties.put("bootstrap.servers", kafkaURL)
-  producerProperties.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
-  producerProperties.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
+  producerProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer")
+  producerProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer")
+  producerProperties.put(ProducerConfig.COMPRESSION_TYPE_CONFIG,"lz4")
   //With CW there is no kafka writes and no kafka configuration thus the producer is created lazily
   lazy val kafkaProducer = new KafkaProducer[Array[Byte], Array[Byte]](producerProperties)
 
@@ -1072,6 +1068,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
   def purgePath2(path: String, limit: Int): Future[Unit] = {
 
     import cmwell.util.concurrent.retry
+
     import scala.language.postfixOps
 
     irwService.historyAsync(path, limit).map { casHistory =>
