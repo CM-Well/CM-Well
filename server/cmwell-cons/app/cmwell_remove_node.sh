@@ -26,7 +26,7 @@ do
 done
 
 source ./cmw.env
-scala -nc -cp 'cons-lib/*' -I cmw.conf -e "cmw.removeNode(\"$1\"); sys.exit(0)" 2>&1 | bash -c 'tee > out.log'
+scala -nc -cp 'cons-lib/*' -I cmw.conf -e "cmw.removeNode(\"$1\"); sys.exit(0)" 2>&1 | bash -c 'tee out.log'
 
 echo "Please backup and send to TMS Operation team following files:"
 ls -d -1 `pwd`/cmw-mappings*
