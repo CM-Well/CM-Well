@@ -16,7 +16,7 @@ package cmwell.util.akka.http
 
 import akka.http.scaladsl.coding.{Deflate, Gzip, NoCoding}
 import akka.http.scaladsl.model.HttpResponse
-import akka.http.scaladsl.model.headers.HttpEncodings
+import akka.http.scaladsl.model.headers.{HttpEncoding, HttpEncodings}
 
 object HttpZipDecoder {
 
@@ -28,6 +28,7 @@ object HttpZipDecoder {
         Deflate
       case HttpEncodings.identity ⇒
         NoCoding
+      case HttpEncoding(_) ⇒ ???
     }
     decoder.decodeMessage(response)
   }

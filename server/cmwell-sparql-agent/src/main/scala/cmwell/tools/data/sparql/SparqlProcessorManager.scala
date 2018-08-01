@@ -29,25 +29,24 @@ import cmwell.tools.data.sparql.InfotonReporter.{RequestDownloadStats, RequestIn
 import cmwell.tools.data.sparql.SparqlProcessorManager._
 import cmwell.tools.data.utils.akka._
 import cmwell.tools.data.utils.akka.stats.IngesterStats
-import cmwell.tools.data.utils.akka.stats.IngesterStats.IngestStats
 import cmwell.tools.data.utils.chunkers.GroupChunker
 import cmwell.tools.data.utils.chunkers.GroupChunker._
 import cmwell.tools.data.utils.text.Tokens
-import cmwell.util.http.SimpleResponse
-import cmwell.util.string.Hash
-import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
 import cmwell.util.concurrent._
+import cmwell.util.http.SimpleResponse
+import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+import cmwell.util.string.Hash
 import cmwell.zstore.ZStore
 import com.typesafe.scalalogging.LazyLogging
+import io.circe.Json
 import k.grid.GridReceives
 import net.jcazevedo.moultingyaml._
 import org.apache.commons.lang3.time.DurationFormatUtils
-import io.circe.Json
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.concurrent.duration.{FiniteDuration, _}
 import scala.util.{Failure, Success, Try}
-import ExecutionContext.Implicits.global
 
 case class Job(name: String, config: Config) {
   val jobString = {
@@ -292,6 +291,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
             ("red", "Exception : " + jobFailed.ex.getMessage)
           case _: JobPaused =>
             ("green", "No exceptions reported")
+          case x @ (JobPausing(_, _, _) | JobRunning(_, _, _) | JobStopping(_, _, _)) => logger.error(s"Unexpected Job Status: $x"); ???
         }
 
         val sensorNames = jobStatus.job.config.sensors.map(_.name)
@@ -507,8 +507,8 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
 
   private[this] val parsedJsonsBreakOut = scala.collection.breakOut[Iterable[Json], JobRead, Set[JobRead]]
   def parseJobsJson(configJson: String): Set[JobRead] = {
-    import cats.syntax.either._
-    import io.circe._, io.circe.parser._
+    import io.circe._
+    import io.circe.parser._
     //This method is run from map of a future - no need for try/catch (=can throw exceptions here). Each exception will be mapped to a failed future.
     val parsedJson = parse(configJson)
     parsedJson match {

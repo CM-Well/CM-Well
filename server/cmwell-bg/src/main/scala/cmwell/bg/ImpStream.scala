@@ -15,48 +15,45 @@
 package cmwell.bg
 
 import java.nio.charset.StandardCharsets
-import java.util
 import java.util.Properties
 import java.util.concurrent.{ConcurrentHashMap, TimeoutException}
 
-import akka.{Done, NotUsed}
+import akka.NotUsed
 import akka.actor.{ActorRef, ActorSystem}
 import akka.kafka.ProducerMessage.Message
+import akka.kafka.ProducerSettings
 import akka.kafka.scaladsl.Producer
-import akka.kafka.{ConsumerSettings, ProducerSettings, Subscriptions}
 import akka.stream.ActorAttributes.supervisionStrategy
 import akka.stream.contrib.PartitionWith
-import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, Merge, Partition, RunnableGraph, Sink}
+import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Merge, Partition, RunnableGraph, Sink}
 import akka.stream.{ActorMaterializer, ClosedShape, Supervision}
 import cmwell.bg.imp.{CommandsSource, RefsEnricher}
 import cmwell.common._
-import cmwell.common.formats.JsonSerializerForES
-import cmwell.common.formats.{BGMessage, CompleteOffset, Offset, PartialOffset}
+import cmwell.common.formats.{BGMessage, JsonSerializerForES, Offset, PartialOffset}
 import cmwell.domain.{Infoton, ObjectInfoton}
 import cmwell.fts._
 import cmwell.irw.IRWService
 import cmwell.tracking._
-import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
 import cmwell.util.concurrent.SimpleScheduler._
 import cmwell.util.concurrent.travector
+import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
 import cmwell.zstore.ZStore
 import com.datastax.driver.core.ConsistencyLevel
 import com.google.common.cache.CacheBuilder
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.Logger
-import kafka.consumer.ConsumerConfig
 import nl.grons.metrics4.scala._
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.serialization.{ByteArrayDeserializer, ByteArraySerializer}
+import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.elasticsearch.action.update.UpdateRequest
 import org.elasticsearch.client.Requests
 import org.joda.time.DateTime
 import org.slf4j.LoggerFactory
 
-import scala.collection.breakOut
 import scala.collection.JavaConverters._
+import scala.collection.breakOut
 import scala.collection.immutable.{Iterable => IIterable, Seq => ISeq}
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
@@ -482,6 +479,8 @@ class ImpStream(partition: Int,
                 IndexNewInfotonCommandForIndexer(cmd.uuid, cmd.isCurrent, cmd.path, cmd.infotonOpt, cmd.indexName, offsets, cmd.trackingIDs)
               case cmd: IndexExistingInfotonCommand =>
                 IndexExistingInfotonCommandForIndexer(cmd.uuid, cmd.weight, cmd.path, cmd.indexName, offsets, cmd.trackingIDs)
+              case x @ (IndexExistingInfotonCommandForIndexer(_, _, _, _, _, _) | IndexNewInfotonCommandForIndexer(_, _, _, _, _, _, _) |
+                   NullUpdateCommandForIndexer(_, _, _, _, _)) => logger.error(s"Unexpected input. Received: $x"); ???
             }
           val topic =
             if (offsets.exists(_.topic.endsWith("priority")))
@@ -519,6 +518,8 @@ class ImpStream(partition: Int,
                 IndexNewInfotonCommandForIndexer(cmd.uuid, cmd.isCurrent, cmd.path, cmd.infotonOpt, cmd.indexName, offsets, cmd.trackingIDs)
               case cmd: IndexExistingInfotonCommand =>
                 IndexExistingInfotonCommandForIndexer(cmd.uuid, cmd.weight, cmd.path, cmd.indexName, offsets, cmd.trackingIDs)
+              case x @ (IndexExistingInfotonCommandForIndexer(_, _, _, _, _, _) | IndexNewInfotonCommandForIndexer(_, _, _, _, _, _, _) |
+                   NullUpdateCommandForIndexer(_, _, _, _, _)) => logger.error(s"Unexpected input. Received: $x"); ???
             }
           val topic =
             if (offsets.exists(_.topic.endsWith("priority")))
@@ -664,7 +665,11 @@ class ImpStream(partition: Int,
         val overrideCommandsToInfotons = builder.add(
           Flow[BGMessage[(String, Seq[SingleCommand])]].map {
             case bgMessage@BGMessage(_, (path, commands)) =>
-              bgMessage.copy(message = (path, commands.map { case OverwriteCommand(infoton, trackingID) => (infoton, trackingID) }))
+              bgMessage.copy(message = (path, commands.map {
+                case OverwriteCommand(infoton, trackingID) => (infoton, trackingID)
+                case x @ (DeleteAttributesCommand(_, _, _, _, _) | DeletePathCommand(_, _, _, _) | UpdatePathCommand(_, _, _, _, _, _) | WriteCommand(_, _, _))
+                  => logger.error(s"Unexpected input. Received: $x"); ???
+              }))
           }
         )
 
@@ -813,8 +818,6 @@ class ImpStream(partition: Int,
             _.message._1.nonEmpty
           }
         )
-
-        import cmwell.util.concurrent._
         val sendActionsToES = builder.add(
           Flow[Seq[BGMessage[(Seq[(ESIndexRequest, Long)], Seq[IndexCommand])]]].mapAsync(1) {
             case bgMessages =>

@@ -340,6 +340,9 @@ class IndexerStream(partition: Int,
                         )
                       )
                     )
+                  case x @ (BGMessage(_, IndexExistingInfotonCommand(_, _, _, _, _)) | BGMessage(_, IndexNewInfotonCommand(_, _, _, _, _, _)) |
+                            BGMessage(_, IndexNewInfotonCommandForIndexer(_, _, _, None, _, _, _)) | BGMessage(_, NullUpdateCommandForIndexer(_, _, _, _, _)))
+                      => logger.error(s"Unexpected input. Received: $x"); ???
                 }
                 .collect {
                   case Success(x) => x
@@ -452,6 +455,8 @@ class IndexerStream(partition: Int,
                   case IndexNewInfotonCommandForIndexer(_, _, _, _, _, persistOffsets, _) => persistOffsets
                   case IndexExistingInfotonCommandForIndexer(_, _, _, _, persistOffsets, _) => persistOffsets
                   case NullUpdateCommandForIndexer(_, _, _, persistOffsets, _) => persistOffsets
+                  case x @ (IndexExistingInfotonCommand(_, _, _, _, _) | IndexNewInfotonCommand(_, _, _, _, _, _))
+                  => logger.error(s"Unexpected input. Received: $x"); ???
                 }
 
                 persistOffsetsGroups.foreach { os =>
