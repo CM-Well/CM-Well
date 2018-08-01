@@ -1197,7 +1197,7 @@ object LDFormatParser extends LazyLogging {
       val domainLength = detectIfUrlBelongsToCmwellAndGetLength(su)
       val v =
         if (su.startsWith(http)) su.drop(http.length + domainLength)
-        else if (su.startsWith(https)) "https." + su.drop(https.length + domainLength)
+        else if (su.startsWith(https)) su.drop(https.length + domainLength)
         else su.drop(cmwell.length)
 
       val u = v.takeWhile(_ != '/') match {
