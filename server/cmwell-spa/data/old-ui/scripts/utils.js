@@ -13,12 +13,11 @@ cmwell.utils = {
                 return _.isString(s) && s.indexOf(' ')==-1 && s.indexOf('://')>-1;
             }
             , bendback = function(url) {
-                var https = url.indexOf('https://')>-1?'https.':''
-                    , domain = https+(url.match(/:\/\/(.+?)\//)||[])[1]
+                var domain = (url.match(/:\/\/(.+?)\//)||[])[1]
                     , found = _(cmwell.bendback.data).contains(domain)
                     , withoutProtocol = url.substr(url.indexOf('://')+3)
                     , isCmwellProtocol = url.indexOf('cmwell://')>-1
-                    , resultUrl = found ? '/'+https+withoutProtocol : url;
+                    , resultUrl = found ? '/'+withoutProtocol : url;
 
                 resultUrl = (isCmwellProtocol ? url.replace('cmwell://','/') : resultUrl).replace('#','%23');
 

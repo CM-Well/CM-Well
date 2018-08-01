@@ -124,14 +124,12 @@ class Infoton extends React.Component {
         
         let dataFields = this.state.fields
         
-        let makeLink = (url, className, children) => _(this.props.rootFolders).some(rf => url.indexOf(rf)===6) ?
-                <Link to={url.replace('http:/','').replace('#','%23')} className={className}>{children || url}</Link> :
+        let makeLink = (url, className, children) => _(this.props.rootFolders).some(rf => url.indexOf(rf)>-1) ?
+                <Link to={url.replace('http:/','').replace('https:/','').replace('#','%23')} className={className}>{children || url}</Link> :
                 <a href={url} className={className} target="_blank">{children || url}</a>
         
         let renderFieldValue = fv => {
             let isUri = fv.type === AppUtils.constants.anyURI
-            let innerLink = isUri ? fv.value.replace('http:/','').replace('#','%23') : ''
-            let isInner = isUri && _(this.props.rootFolders).some(rf => innerLink.indexOf(rf)===0)
             return <span>
                 { isUri ? makeLink(fv.value, 'value') : <span className="value">{''+fv.value}</span> }
                 { fv.quad ? makeLink(fv.quad, 'quad', <img src="/meta/app/main/images/quad.svg" title={fv.quad} />) : null }
