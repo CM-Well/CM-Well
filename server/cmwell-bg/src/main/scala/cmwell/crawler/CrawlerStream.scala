@@ -15,31 +15,30 @@
 
 package cmwell.crawler
 
-import java.util.Properties
-
-import akka.{Done, NotUsed}
 import akka.actor.ActorSystem
-import akka.kafka.ProducerMessage.Message
-import akka.kafka.scaladsl.{Consumer, Producer}
-import akka.kafka.{ConsumerSettings, ProducerSettings, Subscriptions}
-import akka.stream.{ActorMaterializer, ClosedShape, SourceShape}
-import akka.stream.scaladsl.{GraphDSL, RunnableGraph, Sink, Source}
+import akka.kafka.scaladsl.Consumer
+import akka.kafka.{ConsumerSettings, Subscriptions}
+import akka.stream.scaladsl.{GraphDSL, Sink, Source}
+import akka.stream.{ActorMaterializer, SourceShape}
+import akka.{Done, NotUsed}
 import cmwell.common._
-import cmwell.common.formats.{BGMessage, Offset}
-import cmwell.fts.{FTSServiceNew, FTSServiceOps, FTSThinInfoton}
+import cmwell.fts.{ESIndexRequest, FTSServiceOps, FTSThinInfoton, SuccessfulBulkIndexResult}
 import cmwell.irw.IRWService
+import cmwell.util.concurrent.travector
 import cmwell.zstore.ZStore
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord}
 import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.serialization.{ByteArrayDeserializer, ByteArraySerializer, StringDeserializer}
+import org.apache.kafka.common.serialization.ByteArrayDeserializer
+import org.elasticsearch.action.ActionRequest
+import org.elasticsearch.action.bulk.BulkResponse
+import org.elasticsearch.action.index.IndexAction
+import org.elasticsearch.action.update.UpdateRequest
 
 import scala.concurrent.duration.{DurationInt, DurationLong, FiniteDuration}
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
-import cmwell.util.concurrent.{timeoutFuture, travector}
-import org.apache.kafka.clients.producer._
 
 //case class CrawlerPosition(offset: Long, timeStamp: Long)
 sealed trait CrawlerState
@@ -100,25 +99,6 @@ object CrawlerStream extends LazyLogging {
     val safetyNetTimeInMillis: Long = config.getDuration("cmwell.crawler.safetyNetTime").toMillis
     val retryDuration = config.getDuration("cmwell.crawler.retryDuration").getSeconds.seconds
     val checkParallelism = config.getInt("cmwell.crawler.checkParallelism")
-
-    // TODO: Do we want to produce Kafka messages (e.g. to index_topic) via Flow?
-//    val kafkaProducerFlow = {
-//      val baSerializer = new ByteArraySerializer()
-//      val kafkaProducerSettings = {
-//        ProducerSettings(sys, baSerializer, baSerializer).
-//          withBootstrapServers(bootStrapServers).
-//          withProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG, "lz4")
-//      }
-//      Producer.flow[Array[Byte], Array[Byte], Seq[Offset]](kafkaProducerSettings).map(_.message.passThrough)
-//    }
-    val kafkaProducer = {
-      val producerProperties = new Properties
-      producerProperties.put("bootstrap.servers", bootStrapServers)
-      producerProperties.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
-      producerProperties.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
-      producerProperties.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "lz4")
-      new KafkaProducer[Array[Byte], Array[Byte]](producerProperties)
-    }
 
     val initialPersistOffset = Try(offsetsService.readWithTimestamp(persistId))
 
@@ -264,18 +244,23 @@ object CrawlerStream extends LazyLogging {
       }
     }
 
-    def sendIndexExistingCommand(thinfoton: FTSThinInfoton, indexName: String, lclzdCmd: LocalizedCommand): Future[Unit] = {
-      val cmd = lclzdCmd.cmd
-      val indexTopic = if(topic.contains("priority")) "index_topic.priority" else "index_topic"
-      val command = IndexExistingInfotonCommandForIndexer(thinfoton.uuid, 0L, thinfoton.path, indexName, Seq.empty, Seq.empty)
-      val payloadForKafka: Array[Byte] = CommandSerializer.encode(command)
-      val pRecord = new ProducerRecord[Array[Byte], Array[Byte]](indexTopic, cmd.path.getBytes("UTF-8"), payloadForKafka)
-      injectKafkaFuture(kafkaProducer.send(pRecord, _))(ec).map(_ => ())(ec)
+    def setCurrentFalse(uuid: String, indexName: String, lclzdCmd: LocalizedCommand, details: String): Future[Unit] = {
+      val updateRequest = ESIndexRequest(new UpdateRequest(indexName, "infoclone", uuid).
+        doc(s"""{"system":{"current": false}}""").asInstanceOf[ActionRequest[_ <: ActionRequest[_ <: AnyRef]]], None)
+
+      val isOk = (bulkIndexResult: SuccessfulBulkIndexResult) => bulkIndexResult.failed.isEmpty && bulkIndexResult.successful.nonEmpty
+
+      cmwell.util.concurrent.unsafeRetryUntil[SuccessfulBulkIndexResult](isOk, 3, 2.seconds)(
+        ftsService.executeBulkIndexRequests(Seq(updateRequest))(ec)
+      )(ec).andThen {
+        case Success(bulkIndexResult) if isOk(bulkIndexResult) => /* do nothing */
+        case _ => logger.error(s"FAILED to update current:false for uuid $uuid on index $indexName")
+      }(ec).map(_ => ())(ec)
     }
 
     def fixEsCurrentState(previousResult: DetectionResult): Future[DetectionResult] = previousResult match {
       case EsBadCurrentError(EsRecord(thinfoton, isCurrent, indexName), details, lclzdCmd) if isCurrent =>
-        sendIndexExistingCommand(thinfoton, indexName, lclzdCmd).map(_ => EsBadCurrentErrorFix(details, lclzdCmd))(ec)
+        setCurrentFalse(thinfoton.uuid, indexName, lclzdCmd, details).map(_ => EsBadCurrentErrorFix(details, lclzdCmd))(ec)
       case _ => Future.successful(previousResult)
     }
 
@@ -398,12 +383,4 @@ object CrawlerStream extends LazyLogging {
         }
       }
     })
-
-  private def injectKafkaFuture(future: Callback => java.util.concurrent.Future[RecordMetadata],
-    timeout: FiniteDuration = 9.seconds)(implicit ec: ExecutionContext) = {
-    val p = Promise[RecordMetadata]()
-    future((metadata: RecordMetadata, exception: Exception) =>
-      if (exception != null) p.failure(exception) else p.success(metadata))
-    timeoutFuture(p.future, timeout)(ec)
-  }
 }
