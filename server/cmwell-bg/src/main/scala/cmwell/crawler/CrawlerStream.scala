@@ -32,8 +32,6 @@ import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.elasticsearch.action.ActionRequest
-import org.elasticsearch.action.bulk.BulkResponse
-import org.elasticsearch.action.index.IndexAction
 import org.elasticsearch.action.update.UpdateRequest
 
 import scala.concurrent.duration.{DurationInt, DurationLong, FiniteDuration}
@@ -72,11 +70,11 @@ sealed trait DetectionError extends DetectionResult {
 
 case class EsRecord(thinfoton: FTSThinInfoton, isCurrent: Boolean, indexName: String)
 
-case class CasError(details: String, lclzdCmd: LocalizedCommand) extends DetectionResult with DetectionError
-case class EsBadCurrentError(esRecord: EsRecord, details: String, lclzdCmd: LocalizedCommand) extends DetectionResult with DetectionError
-case class EsMissingUuidError(details: String, lclzdCmd: LocalizedCommand) extends DetectionResult with DetectionError
+case class CasError(details: String, lclzdCmd: LocalizedCommand) extends DetectionError
+case class EsBadCurrentError(esRecord: EsRecord, details: String, lclzdCmd: LocalizedCommand) extends DetectionError
+case class EsMissingUuidError(details: String, lclzdCmd: LocalizedCommand) extends DetectionError
 
-sealed trait Fix extends DetectionResult with DetectionError
+sealed trait Fix extends DetectionError
 case class EsBadCurrentErrorFix(details: String, lclzdCmd: LocalizedCommand) extends Fix
 
 object CrawlerStream extends LazyLogging {
@@ -259,7 +257,7 @@ object CrawlerStream extends LazyLogging {
     }
 
     def fixEsCurrentState(previousResult: DetectionResult): Future[DetectionResult] = previousResult match {
-      case EsBadCurrentError(EsRecord(thinfoton, isCurrent, indexName), details, lclzdCmd) if isCurrent =>
+      case EsBadCurrentError(EsRecord(thinfoton, true, indexName), details, lclzdCmd) =>
         setCurrentFalse(thinfoton.uuid, indexName, lclzdCmd, details).map(_ => EsBadCurrentErrorFix(details, lclzdCmd))(ec)
       case _ => Future.successful(previousResult)
     }
