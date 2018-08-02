@@ -1470,7 +1470,7 @@ callback=< [URL] >
                 if (isSimpleConsume) Settings.consumeSimpleChunkSize
                 else Settings.consumeExpandableChunkSize
               }
-          )
+          ).min(Settings.consumeSimpleChunkSize)  //Making sure length hint is not bigger than max
 
         val debugInfo = request.queryString.keySet("debug-info")
 
