@@ -8,6 +8,8 @@
 
 The following table describes parameters that you can add to most CM-Well calls. Some parameters take values and some serve as Boolean flags (see details in table). If multiple parameters appear in the call, they must be separated by the & character.
 
+>**NOTE:** When performing a search operation, query parameters can be added either to the request URL (using the GET syntax) or to the request body (using the POST syntax). See [Query for Infotons Using Field Conditions](API.Query.QueryForInfotonsUsingFieldConditions.md) to learn more.
+
 Parameter | Description&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Values&nbsp;&nbsp; | Example | Reference
 :----------|:-----------------------|:--------|:---------|:----------
 blocking | This flag causes update requests to be blocking, i.e. to behave synchronously. | None | <cm-well-host>/_in?format=ttl&replace-mode&blocking | [Using the blocking Flag](API.UsingTheBlockingFlag.md)

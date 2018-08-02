@@ -15,11 +15,11 @@ For example, you can search for all organizations under the permid.org branch of
 
 >`<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Coca%20Cola&length=1&format=n3&recursive`
 
-## Syntax ##
+## Syntax 1 ##
 
-**URL:** \<hostURL\>/\<PATH\>
+**URL:** ```<hostURL>/<PATH>```
 **REST verb:** GET
-**Mandatory parameters:** op=search&qp=\<fieldConditions\>
+**Mandatory parameters:** ```op=search&qp=<fieldConditions>```
 
 ----------
 
@@ -81,6 +81,32 @@ For example, you can search for all organizations under the permid.org branch of
       ] ;
       sys:type"SearchResponse"
     ] .
+
+## Syntax 2 ##
+
+For some complex queries, the length of the field conditions might exceed the limitation that some clients impose on GET commands. In this case, you can use an alternate POST syntax, while providing the query parameters in the request's body rather than in its URL, as in the example below.
+
+If you use this syntax, please pay attention to the following:
+
+>**NOTES:** 
+>* ```op=search``` is a mandatory query parameter and cannot be moved to the request body. All other parameters, including ```qp```, can be moved to the request body.
+>* The path value still determines which CM-Well directory will be searched.
+>* For this syntax, the content type should be ```application/x-www-form-urlencoded```.
+
+
+**URL:** ```<hostURL>/<PATH>```
+**REST verb:** POST
+**Mandatory parameters:** ```op=search```
+
+----------
+
+**Curl example (REST API):**
+
+```curl –X POST "cmwell/example.org?op=search" -H Content-Type:application/x-www-form-urlencoded --data-binary 'recursive=true&qp=FN.vcard::Jane%20Smith&format=tsv'```
+
+### Results ###
+
+```/example.org/JaneSmith     2018-07-29T08:47:15.665Z   844a646f09b1e39b1be144e8d4f4fbbf       1532854035927```
 
 ## Notes ##
 
