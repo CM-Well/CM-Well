@@ -411,7 +411,7 @@ case class ElasticsearchConf(clusterName: String,
 
     val confContent = ResourceBuilder.getResource(s"scripts/templates/${template}", m)
 
-    val m2 = Map[String, String]("number_of_shards" -> expectedNodes.toString,
+    val m2 = Map[String, String]("number_of_shards" -> Math.min(expectedNodes, 10).toString,
                                  "number_of_replicas" -> numberOfReplicas.toString)
     val mappingContent = ResourceBuilder.getResource(s"scripts/templates/mapping.json", m2)
     val mappingContentNew = ResourceBuilder.getResource(s"scripts/templates/indices_template_new.json", m2)
