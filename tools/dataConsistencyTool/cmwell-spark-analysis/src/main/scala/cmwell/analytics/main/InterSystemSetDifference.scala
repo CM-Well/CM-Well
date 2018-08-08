@@ -1,6 +1,7 @@
 package cmwell.analytics.main
 
 import cmwell.analytics.data.Spark
+import cmwell.analytics.util.TimestampConversion.timestampConverter
 import cmwell.analytics.util._
 import org.apache.log4j.LogManager
 import org.apache.spark.sql.Dataset
@@ -37,6 +38,9 @@ object InterSystemSetDifference {
 
         val durationConverter: ValueConverter[Long] = singleArgConverter[Long](Duration(_).toMillis)
 
+        val lastModifiedGteFilter: ScallopOption[java.sql.Timestamp] = opt[java.sql.Timestamp]("lastmodified-gte-filter", descr = "Filter on lastModified >= <value>, where value is an ISO8601 timestamp", default = None)(timestampConverter)
+        val pathPrefixFilter: ScallopOption[String] = opt[String]("path-prefix-filter", descr = "Filter on the path prefix matching <value>", default = None)
+
         val site1Data: ScallopOption[String] = opt[String]("site1data", short = '1', descr = "The path to the site1 data {uuid,lastModified,path} in parquet format", required = true)
         val site2Data: ScallopOption[String] = opt[String]("site2data", short = '2', descr = "The path to the site2 data {uuid,lastModified,path} in parquet format", required = true)
 
@@ -56,12 +60,18 @@ object InterSystemSetDifference {
         sparkShell = Opts.shell()
       ).withSparkSessionDo { implicit spark =>
 
+        val datasetFilter = DatasetFilter(
+          lastModifiedGte = Opts.lastModifiedGteFilter.toOption,
+          pathPrefix = Opts.pathPrefixFilter.toOption)
+
         // Since we will be doing multiple set differences with the same files, do an initial repartition and cache to
         // avoid repeating shuffles. We also want to calculate an ideal partition size to avoid OOM.
 
         def load(name: String): Dataset[KeyFields] = {
           import spark.implicits._
-          spark.read.parquet(name).as[KeyFields]
+          val ds = spark.read.parquet(name).as[KeyFields]
+
+          datasetFilter.applyFilter(ds, forAnalysis = true)
         }
 
         val site1Raw = load(Opts.site1Data())

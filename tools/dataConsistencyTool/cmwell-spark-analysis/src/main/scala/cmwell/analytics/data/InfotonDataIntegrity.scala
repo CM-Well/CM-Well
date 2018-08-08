@@ -3,7 +3,7 @@ package cmwell.analytics.data
 import java.nio.charset.StandardCharsets.UTF_8
 import java.security.MessageDigest
 
-import cmwell.analytics.util.CassandraSystem
+import cmwell.analytics.util.{CassandraSystem, DatasetFilter}
 import com.datastax.spark.connector._
 import com.google.common.primitives.Longs
 import org.apache.commons.codec.binary.Hex
@@ -16,7 +16,7 @@ import scala.util.Try
 import scala.util.control.NonFatal
 
 /**
-  * This representation of an Infoton includes all the fields and data that is necessary to calculate the uuid.
+  * This representation of an Infoton includes all the fields and data that are necessary to calculate the uuid.
   *
   * This will detect infotons that have missing or corrupted data. In addition to checking that the uuid can be
   * recalculated correctly, some basic checks are done on the infoton since some kinds of incorrect data
@@ -24,23 +24,19 @@ import scala.util.control.NonFatal
   *
   * The Dataset returned includes all the data needed to determine that the infoton has data that agrees with
   * the uuid, as well as some Boolean columns that indicate possible reasons for the failure.
+  *
+  * We do filtering of the dataset here, primarily to avoid uuid calculation on the entire datasets.
+  * This still requires the entire dataset (all fields) to be retrieved from Cassandra, but at least we can avoid
+  * the uuid calculation for some infotons.
   */
 
 case class DataChunk(index: String, data: Array[Byte])
 
 case class Field(name: String, values: Seq[String])
 
-case class InfotonDataIntegrity(`type`: String,
-                                uuid: String,
-                                lastModified: String,
+case class InfotonDataIntegrity(uuid: String,
+                                lastModified: java.sql.Timestamp,
                                 path: String,
-                                fields: Seq[Field],
-                                data: List[DataChunk],
-                                contentPointer: String,
-                                mimeType: String,
-                                linkTo: String,
-                                linkType: String,
-                                contentLength: String,
 
                                 hasIncorrectUuid: Boolean,
                                 hasMissingOrIllFormedSystemFields: Boolean,
@@ -50,7 +46,7 @@ case class InfotonDataIntegrity(`type`: String,
 
 object InfotonDataIntegrity extends EstimateDatasetSize {
 
-  private val BytesPerRow = 16 + (16 * 8) + 1 + 32 + 24 + 32 + 256
+  private val BytesPerRow = 8 + (8 * 8) + 32 + 24
 
   override def estimateDatasetSize(implicit spark: SparkSession): Long =
     CassandraSystem.rowCount(table = "infoton") * BytesPerRow
@@ -58,7 +54,7 @@ object InfotonDataIntegrity extends EstimateDatasetSize {
   /**
     * Get a Dataset[InfotonDataIntegrity].
     */
-  def apply()
+  def apply(datasetFilter: Option[DatasetFilter] = None)
            (implicit spark: SparkSession): Dataset[InfotonDataIntegrity] = {
 
     val infotonRdd = spark.sparkContext.cassandraTable("data2", "infoton")
@@ -69,7 +65,7 @@ object InfotonDataIntegrity extends EstimateDatasetSize {
       .spanBy(row => row.getString("uuid"))
 
     // Map the grouped data to Infoton objects containing only the system fields.
-    val objectRDD = infotonRdd.map { case (uuid, rows) =>
+    val objectRDD = infotonRdd.flatMap { case (uuid, rows) =>
 
       // Test for duplicated field names.
       // 'data' is excluded since multiple data chunks can be present.
@@ -91,6 +87,11 @@ object InfotonDataIntegrity extends EstimateDatasetSize {
       var contentPointer: String = null
       var mimeType: String = null
       var contentLength: String = null
+
+      // These fields are not included in the hash, but we still detect whether they are present.
+      var dc: String = null
+      var indexName: String = null
+      var indexTime: String = null
 
       var linkTo: String = null
       var linkType: String = null
@@ -117,7 +118,9 @@ object InfotonDataIntegrity extends EstimateDatasetSize {
             case "linkTo" => linkTo = infotonRow.getString("value")
             case "linkType" => linkType = infotonRow.getString("value")
 
-            case "dc" | "indexName" | "indexTime" => // Known system fields that are not included in the hash
+            case "dc" => dc = infotonRow.getString("dc")
+            case "indexName" => indexName = infotonRow.getString("indexName")
+            case "indexTime" => indexTime = infotonRow.getString("indexTime")
 
             case _ => unknownSystemField = true
           }
@@ -135,79 +138,90 @@ object InfotonDataIntegrity extends EstimateDatasetSize {
         }
       }
 
-      val isContentValid = `type` match {
+      var hasMissingOrIllFormedSystemFields =
+        (dc == null || dc.isEmpty) ||
+          (indexName == null || indexName.isEmpty) ||
+          (indexTime == null || indexTime.isEmpty || Try(java.lang.Long.parseLong(indexTime)).isFailure)
 
-        case "f" => isFileInfotonContentValid(data = data,
-          contentLength = contentLength,
-          contentPointer = contentPointer,
-          mimeType = mimeType)
-
-        case "l" => isLinkInfotonContentValid(linkTo = linkTo, linkType = linkType)
-
-        case _ => // Don't expect content with these types - check that there is none.
-          contentLength == null && contentPointer == null &&
-            data.isEmpty &&
-            linkTo == null && linkType == null
+      val lastModifiedAsTimestamp = try {
+        new java.sql.Timestamp(ISODateTimeFormat.dateTime.parseDateTime(lastModified).getMillis)
+      }
+      catch {
+        case NonFatal(_) =>
+          hasMissingOrIllFormedSystemFields |= true
+          null
       }
 
-      val fieldData: Seq[Field] = fields.map { case (name, values) => Field(name, values.toSeq) }(breakOut)
+      def isFilteredOutByLastModified: Boolean =
+        datasetFilter.fold(false) { filters =>
+          filters.lastModifiedGte.isDefined &&
+            lastModifiedAsTimestamp != null && lastModifiedAsTimestamp.before(filters.lastModifiedGte.get)
+        }
 
-      // Recalculate the uuid and check it against the stored value.
-      // This is done in a Try to prevent missing (i.e., null) fields from causing analysis to fail.
-      // If calculating the uuid fails, it is presumed that the reason is ill-formed system fields.
+      def isFilteredOutByPath: Boolean =
+        datasetFilter.fold(false) { filters =>
+          filters.pathPrefix.isDefined &&
+            !path.startsWith(filters.pathPrefix.get)
+        }
 
-      // The hash is done over the string value for each field.
-      // In the Infoton code, the values are converted to their type, but then converted toString when hashed.
-      // Here, we just leave the values as Strings.
+      if (isFilteredOutByLastModified || isFilteredOutByPath) {
+        None
+      }
+      else {
+        val isContentValid = `type` match {
 
-      val hasIncorrectUuid: Try[Boolean] = Try(uuid != calculateUuid(
-        lastModified = lastModified,
-        `type` = `type`,
-        data = data,
-        mimeType = mimeType,
-        contentPointer = contentPointer,
-        linkTo = linkTo,
-        linkType = linkType,
-        path = path,
-        fields = fieldData))
+          case "f" => isFileInfotonContentValid(data = data,
+            contentLength = contentLength,
+            contentPointer = contentPointer,
+            mimeType = mimeType)
 
-      InfotonDataIntegrity(
-        `type` = `type`,
-        uuid = uuid,
-        lastModified = lastModified,
-        path = path,
-        fields = fieldData,
-        data = data,
-        contentPointer = contentPointer,
-        mimeType = mimeType,
-        linkTo = linkTo,
-        linkType = linkType,
-        contentLength = contentLength,
+          case "l" => isLinkInfotonContentValid(linkTo = linkTo, linkType = linkType)
 
-        hasIncorrectUuid = hasIncorrectUuid.getOrElse(false),
-        hasMissingOrIllFormedSystemFields = hasIncorrectUuid.isFailure,
-        hasDuplicatedSystemFields = hasDuplicatedSystemFields,
-        hasInvalidContent = !isContentValid,
-        hasUnknownSystemField = unknownSystemField)
+          case _ => // Don't expect content with these types - check that there is none.
+            contentLength == null && contentPointer == null &&
+              data.isEmpty &&
+              linkTo == null && linkType == null
+        }
+
+        val fieldData: Seq[Field] = fields.map { case (name, values) => Field(name, values.toSeq) }(breakOut)
+
+        // Recalculate the uuid and check it against the stored value.
+        // This is done in a Try to prevent missing (i.e., null) fields from causing analysis to fail.
+        // If calculating the uuid fails, it is presumed that the reason is ill-formed system fields.
+
+        // The hash is done over the string value for each field.
+        // In the Infoton code, the values are converted to their type, but then converted toString when hashed.
+        // Here, we just leave the values as Strings.
+
+        val hasIncorrectUuid = uuid != calculateUuid(
+          lastModified = lastModifiedAsTimestamp,
+          `type` = `type`,
+          data = data,
+          mimeType = mimeType,
+          contentPointer = contentPointer,
+          linkTo = linkTo,
+          linkType = linkType,
+          path = path,
+          fields = fieldData)
+
+        Some(InfotonDataIntegrity(
+          uuid = uuid,
+          lastModified = lastModifiedAsTimestamp,
+          path = path,
+
+          hasIncorrectUuid = hasIncorrectUuid,
+          hasMissingOrIllFormedSystemFields = hasMissingOrIllFormedSystemFields,
+          hasDuplicatedSystemFields = hasDuplicatedSystemFields,
+          hasInvalidContent = !isContentValid,
+          hasUnknownSystemField = unknownSystemField))
+      }
     }
 
     import spark.implicits._
     spark.createDataset(objectRDD)
   }
 
-  def calculateUuid(infoton: InfotonDataIntegrity): String =
-    calculateUuid(
-      lastModified = infoton.lastModified,
-      `type` = infoton.`type`,
-      data = infoton.data,
-      mimeType = infoton.mimeType,
-      contentPointer = infoton.contentPointer,
-      linkTo = infoton.linkTo,
-      linkType = infoton.linkType,
-      path = infoton.path,
-      fields = infoton.fields)
-
-  def calculateUuid(lastModified: String,
+  def calculateUuid(lastModified: java.sql.Timestamp,
                     `type`: String,
                     data: List[DataChunk],
                     mimeType: String,
@@ -220,9 +234,6 @@ object InfotonDataIntegrity extends EstimateDatasetSize {
 
     // These get methods convert the value to the typed value.
     // If the conversion fails, the exception will cause the uuid calculation to fail.
-
-    def lastModifiedMillis: java.lang.Long = java.lang.Long.valueOf(
-      ISODateTimeFormat.dateTime.parseDateTime(lastModified).getMillis)
 
     // This does not check that the data is correctly constructed, but it will produce the correct hash if
     // correct data is supplied. Duplicated system fields could result in correct or incorrect hashes, depending
@@ -264,8 +275,11 @@ object InfotonDataIntegrity extends EstimateDatasetSize {
 
     // Calculate the uuid hash
 
-    updateDigestFromString(path)
-    updateDigestFromLong(lastModifiedMillis)
+    if (path != null)
+      updateDigestFromString(path)
+
+    if (lastModified != null)
+      updateDigestFromLong(lastModified.getTime)
 
     fields.sortBy(_.name).foreach { field =>
       updateDigestFromString(field.name)

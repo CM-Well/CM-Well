@@ -30,7 +30,9 @@ object PartitionedDownloader {
   /** Create a Source that produces a stream of objects from a given shard. */
   private def infotonsFromShard[T <: GenericRecord](shard: Shard,
                                                     httpAddress: String,
-                                                    currentOnly: Boolean,
+                                                    currentFilter: Option[Boolean],
+                                                    lastModifiedGteFilter: Option[java.sql.Timestamp],
+                                                    pathPrefixFilter: Option[String],
                                                     extractor: ObjectExtractor[T],
                                                     format: String = "parquet",
                                                     sourceFilter: Boolean)
@@ -49,11 +51,16 @@ object PartitionedDownloader {
 
       def request: HttpRequest = scrollId.fold(initialRequest)(subsequentRequest)
 
-      private val query =
+      private def filter: String = extractor.filter(
+        current = currentFilter,
+        lastModifiedGte = lastModifiedGteFilter,
+        pathPrefix = pathPrefixFilter)
+
+      private def query: String =
         if (sourceFilter)
-          s"{${extractor.filter(currentOnly)},${extractor.includeFields}}"
+          s"{ $filter, ${extractor.includeFields} }"
         else
-          s"{${extractor.filter(currentOnly)}}" // Omit as a workaround for some broken shards
+          s"{ $filter }" // Omit as a workaround for some broken shards
 
       private def initialRequest = HttpRequest(
         method = HttpUtil.SAFE_POST,
@@ -113,7 +120,11 @@ object PartitionedDownloader {
     */
   def runDownload[T <: GenericRecord](esTopology: EsTopology,
                                       parallelism: Int,
-                                      currentOnly: Boolean,
+
+                                      currentFilter: Option[Boolean] = None,
+                                      lastModifiedGteFilter: Option[java.sql.Timestamp] = None,
+                                      pathPrefixFilter: Option[String] = None,
+
                                       objectExtractor: ObjectExtractor[T],
                                       dataWriterFactory: Shard => DataWriter[T],
                                       sourceFilter: Boolean)
@@ -148,7 +159,11 @@ object PartitionedDownloader {
       infotonsFromShard[T](
         shard = shard,
         httpAddress = address,
-        currentOnly = currentOnly,
+
+        currentFilter = currentFilter,
+        lastModifiedGteFilter = lastModifiedGteFilter,
+        pathPrefixFilter = pathPrefixFilter,
+
         extractor = objectExtractor,
         sourceFilter = sourceFilter)
         // TODO: Since the writer will be blocking, should it be dispatched on a separate (bounded) thread pool?
