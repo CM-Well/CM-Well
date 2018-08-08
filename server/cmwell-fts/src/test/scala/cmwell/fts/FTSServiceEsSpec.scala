@@ -17,7 +17,7 @@
 package cmwell.fts
 
 import cmwell.domain._
-import com.typesafe.scalalogging.{LazyLogging, Logger}
+import com.typesafe.scalalogging.Logger
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
 import org.elasticsearch.common.unit.TimeValue
 import org.joda.time.DateTime
@@ -341,7 +341,7 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
     f.foreach{
       case FTSSearchResponse(total, offset, length, infotons, None) =>
         logger.debug(s"before failing: total: $total, offset: $offset, length: $length and infotons:\n${infotons.map(_.path).mkString("\t","\n\t","\n")} ")
-      case x @ FTSSearchResponse(_, _, _, _, Some(_) => logger.error(s"Unexpected SearchResponse. Received: $x"); ???
+      case x @ FTSSearchResponse(_, _, _, _, Some(_)) => logger.error(s"Unexpected SearchResponse. Received: $x"); ???
     }(scala.concurrent.ExecutionContext.Implicits.global)
     Await.result(f, timeout).length should equal (0)
   }
