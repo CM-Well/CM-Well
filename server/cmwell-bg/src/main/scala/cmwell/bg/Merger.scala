@@ -310,7 +310,11 @@ class Merger(config: Config) extends LazyLogging {
       case Some(i) if !baseInfoton.exists(_.isSameAs(i)) =>
         val infoton = baseInfoton.fold(i) { j =>
           if (j.lastModified.getMillis < i.lastModified.getMillis) i
-          else i.copyInfoton(lastModified = new DateTime(j.lastModified.getMillis + 1L))
+          else {
+            logger.info(s"PlusDebug: There was an infoton [$j] in the system that is not the same as the merged one [$i] but has earlier lastModified. " +
+              s"Adding 1 milli")
+            i.copyInfoton(lastModified = new DateTime(j.lastModified.getMillis + 1L))
+          }
         }
         RealUpdate(infoton, trackingIds, evictions)
 
