@@ -35,7 +35,7 @@ object DumpKeyFieldsFromEs {
         val readIndex: ScallopOption[String] = opt[String]("read-index", short = 'i', descr = "The name of the index to read from (default: cm_well_all)", required = false)
         val parallelism: ScallopOption[Int] = opt[Int]("parallelism", short = 'p', descr = "The parallelism level", default = Some(defaultParallelism))
 
-        val currentFilter: ScallopOption[Boolean] = opt[Boolean]("current-only", short = 'c', descr = "Filter on current infotons only", default = None)
+        val currentFilter: ScallopOption[Boolean] = opt[Boolean]("current-filter", short = 'c', descr = "Filter on current status", default = None)
         val lastModifiedGteFilter: ScallopOption[java.sql.Timestamp] = opt[java.sql.Timestamp]("lastmodified-gte-filter", descr = "Filter on lastModified >= <value>, where value is an ISO8601 timestamp", default = None)(timestampConverter)
         val pathPrefixFilter: ScallopOption[String] = opt[String]("path-prefix-filter", descr = "Filter on the path prefix matching <value>", default = None)
 
