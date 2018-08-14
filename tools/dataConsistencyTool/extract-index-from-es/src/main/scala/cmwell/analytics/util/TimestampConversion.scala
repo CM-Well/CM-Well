@@ -12,7 +12,7 @@ object TimestampConversion {
   }
 
   def convertToString(timestamp: java.sql.Timestamp): String =
-    ISODateTimeFormat.dateTime.print(timestamp.getTime)
+    ISODateTimeFormat.dateTime.withZoneUTC.print(timestamp.getTime)
 
   val timestampConverter: ValueConverter[java.sql.Timestamp] = singleArgConverter[java.sql.Timestamp](convertToTimestamp)
 }

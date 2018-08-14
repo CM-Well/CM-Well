@@ -22,7 +22,7 @@ trait ObjectExtractor[T <: GenericRecord] {
     s"""{ "term": { "system.current": $current } }"""
 
   private def lastModifiedGteFilter(timestamp: java.sql.Timestamp): String =
-    s"""{ "range": { "system.lastModified": { "gt": "${convertToString(timestamp)}" } } }"""
+    s"""{ "range": { "system.lastModified": { "gte": "${convertToString(timestamp)}" } } }"""
 
   private def pathPrefixFilter(pathPrefix: String): String =
     s"""{ "prefix": { "system.path": "$pathPrefix" } }"""
@@ -57,16 +57,18 @@ trait ObjectExtractor[T <: GenericRecord] {
        |}
      """.stripMargin
 
-  private def noFilter: String = """ "match_all": { } """
+  private def noFilter: String =
+    """
+      |"match_all": {
+      |}
+    """.stripMargin
 
   private def queryTemplate(filterList: String): String =
     s"""
-       |{ "query":
-       |    {
-       |        "constant_score" : {
-       |            "filter" : {
-       |                $filterList
-       |            }
+       |"query": {
+       |    "constant_score" : {
+       |        "filter" : {
+       |            $filterList
        |        }
        |    }
        |}
@@ -87,23 +89,39 @@ trait ObjectExtractor[T <: GenericRecord] {
     * When we do the analysis part, we would conceptually AND any temporal predicates, but the reality is that
     * one or the other of current and lastModifiedGte would be used in any given analysis.
     */
-  def filter(current: Option[Boolean] = None,
-             pathPrefix: Option[String] = None,
-             lastModifiedGte: Option[java.sql.Timestamp] = None): String = {
+  def filter(currentOnly: Boolean,
+             pathPrefix: Option[String],
+             lastModifiedGte: Option[java.sql.Timestamp]): String = {
 
-    val prefixFilterClause = pathPrefix.fold("")(pathPrefixFilter)
+    // The --current-only parameter works differently from other filters, for both historical reasons
+    // and because of the inconsistent way that Scallop handles Boolean options.
+    // We can't filter on current=false, only current=true or no current filter.
+    val currentFilterClause = if (currentOnly) Some(currentFilter(true)) else None
 
-    val temporalFilterClauses = Seq(current.map(currentFilter), lastModifiedGte.map(lastModifiedGteFilter))
-      .flatten
-      .mkString(",")
+    val prefixFilterClause = pathPrefix.map(pathPrefixFilter)
+    val lastModifiedGteClause = lastModifiedGte.map(lastModifiedGteFilter)
 
-    val filters =
-      (prefixFilterClause, temporalFilterClauses) match {
-        case ("", "") => noFilter
-        case ("", _) => andFilters(prefixFilterClause)
-        case (_, "") => orFilters(temporalFilterClauses)
-        case (_, _) => andOrFilters(prefixFilterClause, temporalFilterClauses)
+    val temporalFilterClause = currentFilterClause match {
+      case Some(c) => lastModifiedGteClause match {
+        case Some(lm) => Some(s"$c,$lm")
+        case _ => currentFilterClause
       }
+      case _ => lastModifiedGteClause match {
+        case Some(_) => lastModifiedGteClause
+        case _ => None
+      }
+    }
+
+    val filters = temporalFilterClause match {
+      case Some(t) => prefixFilterClause match {
+        case Some(p) => andOrFilters(p, t)
+        case _ => orFilters(t)
+      }
+      case _ => prefixFilterClause match {
+        case Some(p) => andFilters(p)
+        case _ => noFilter
+      }
+    }
 
     queryTemplate(filters)
   }

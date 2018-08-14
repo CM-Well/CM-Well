@@ -30,7 +30,7 @@ object PartitionedDownloader {
   /** Create a Source that produces a stream of objects from a given shard. */
   private def infotonsFromShard[T <: GenericRecord](shard: Shard,
                                                     httpAddress: String,
-                                                    currentFilter: Option[Boolean],
+                                                    currentFilter: Boolean,
                                                     lastModifiedGteFilter: Option[java.sql.Timestamp],
                                                     pathPrefixFilter: Option[String],
                                                     extractor: ObjectExtractor[T],
@@ -52,7 +52,7 @@ object PartitionedDownloader {
       def request: HttpRequest = scrollId.fold(initialRequest)(subsequentRequest)
 
       private def filter: String = extractor.filter(
-        current = currentFilter,
+        currentOnly = currentFilter,
         lastModifiedGte = lastModifiedGteFilter,
         pathPrefix = pathPrefixFilter)
 
@@ -121,7 +121,7 @@ object PartitionedDownloader {
   def runDownload[T <: GenericRecord](esTopology: EsTopology,
                                       parallelism: Int,
 
-                                      currentFilter: Option[Boolean] = None,
+                                      currentOnly: Boolean = false,
                                       lastModifiedGteFilter: Option[java.sql.Timestamp] = None,
                                       pathPrefixFilter: Option[String] = None,
 
@@ -160,7 +160,7 @@ object PartitionedDownloader {
         shard = shard,
         httpAddress = address,
 
-        currentFilter = currentFilter,
+        currentFilter = currentOnly,
         lastModifiedGteFilter = lastModifiedGteFilter,
         pathPrefixFilter = pathPrefixFilter,
 
