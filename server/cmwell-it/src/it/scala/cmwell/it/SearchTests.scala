@@ -447,6 +447,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
                 forAll(m) {
                   case ("DeletedInfoton", deletedInfotons) => deletedInfotons should have size (7)
                   case ("ObjectInfoton", deletedInfotons) => deletedInfotons should have size (14)
+                  case x @ (_, _) => logger.error(s"Unexpected input. Received: $x"); ???
                 }
               }
               case somethingElse => fail(s"was expecting an array, but got: $somethingElse")

@@ -18,12 +18,9 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.Locale
 
-import javax.inject._
 import actions._
 import akka.NotUsed
 import akka.actor.ActorRef
-import akka.kafka.{ConsumerSettings, Subscriptions}
-import akka.kafka.scaladsl.Consumer
 import akka.pattern.AskTimeoutException
 import akka.stream.scaladsl.Source
 import akka.util.{ByteString, Timeout}
@@ -33,11 +30,15 @@ import cmwell.domain.{BagOfInfotons, CompoundInfoton, DeletedInfoton, FString, P
 import cmwell.formats._
 import cmwell.fts._
 import cmwell.rts.{Pull, Push, Subscriber}
+import cmwell.syntaxutils.!!!
 import cmwell.util.concurrent.{SimpleScheduler, SingleElementLazyAsyncCache}
 import cmwell.util.formats.Encoders
 import cmwell.util.http.SimpleHttpClient
 import cmwell.util.loading.ScalaJsRuntimeCompiler
+import cmwell.util.stream.StreamEventInspector
+import cmwell.util.string.Base64
 import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
+import cmwell.web.ld.cmw.CMWellRDFHelper
 import cmwell.web.ld.exceptions.UnsupportedURIException
 import cmwell.ws.adt.request.{CMWellRequest, CreateConsumer, Search}
 import cmwell.ws.adt.{BulkConsumeState, ConsumeState, SortedConsumeState}
@@ -45,34 +46,28 @@ import cmwell.ws.util.RequestHelpers._
 import cmwell.ws.util.TypeHelpers._
 import cmwell.ws.util._
 import cmwell.ws.{Settings, Streams}
+import com.google.common.cache.{Cache, CacheBuilder}
 import com.typesafe.scalalogging.LazyLogging
+import filters.Attrs
+import javax.inject._
 import k.grid.{ClientActor, Grid, GridJvm, RestartJvm}
 import ld.cmw.passiveFieldTypesCacheImpl
 import ld.exceptions.BadFieldTypeException
 import logic.{CRUDServiceFS, InfotonValidator}
 import markdown.MarkdownFormatter
-import org.joda.time.format.ISODateTimeFormat
 import org.joda.time.DateTimeZone
+import org.joda.time.format.ISODateTimeFormat
 import play.api.http.{ContentTypes, MediaType}
 import play.api.libs.json.{JsArray, JsBoolean, JsNumber, JsObject, JsString, _}
+import play.api.mvc.request.RequestTarget
 import play.api.mvc.{ResponseHeader, Result, _}
 import play.utils.UriEncoding
 import security.PermissionLevel.PermissionLevel
 import security._
 import wsutil.{asyncErrorHandler, errorHandler, _}
-import cmwell.syntaxutils.!!!
-import cmwell.util.stream.StreamEventInspector
-import cmwell.util.string.Base64
-import cmwell.web.ld.cmw.CMWellRDFHelper
-import com.google.common.cache.{Cache, CacheBuilder}
-import filters.Attrs
-import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.serialization.{ByteArrayDeserializer, StringDeserializer}
-import play.api.mvc.request.RequestTarget
 
-import scala.collection.mutable.{HashMap, MultiMap}
 import scala.collection.immutable
+import scala.collection.mutable.{HashMap, MultiMap}
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -2850,6 +2845,8 @@ callback=< [URL] >
           val a = handleRawDocWithIndex(index, uuid)
           a(req)
         }
+        case BoxedFailure(ex) => logger.error(s"Unexpected result: Boxed Failiure with exception:", ex) ; throw ex
+        case EmptyBox => logger.error(s"Unexpected result: Empty Boxed") ; ???
       }
       .recoverWith {
         case err: Throwable => {
