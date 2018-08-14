@@ -17,7 +17,6 @@ libraryDependencies ++= {
     dm("com.google.code.findbugs", "jsr305"),
     dm("com.google.guava", "guava"),
     dm("io.netty", "netty"),
-    dm("org.codehaus.groovy", "groovy-all") % "test",
     dm("org.slf4j", "log4j-over-slf4j") % "test")
 }
 	
