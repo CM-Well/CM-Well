@@ -1,0 +1,135 @@
+<configuration debug="false">
+
+    <appender name="STDOUT-ERROR" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <encoder>
+            <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
+        </encoder>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/application.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- daily rollover with compression -->
+            <fileNamePattern>logs/application-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
+            <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>20GB</totalSizeCap>
+            <!-- in case of process terminating too early for rollover - do the rollover during start -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
+        </encoder>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
+    </appender>
+
+    <appender name="AKKA_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/akka.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- daily rollover with compression -->
+            <fileNamePattern>logs/akka-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
+            <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>20GB</totalSizeCap>
+            <!-- in case of process terminating too early for rollover - do the rollover during start -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date{ISO8601} [%thread %X{sourceThread}] %-5level %logger{36} %X{sourceActorSystem} %X{akkaSource} - %msg%n</pattern>
+        </encoder>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
+    </appender>
+
+    <appender name="AGENTS_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/agents.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- daily rollover with compression -->
+            <fileNamePattern>logs/agents-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
+            <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>20GB</totalSizeCap>
+            <!-- in case of process terminating too early for rollover - do the rollover during start -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
+        </encoder>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
+    </appender>
+
+    <appender name="BAD_DATA" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/tools-bad-data.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- daily rollover with compression -->
+            <fileNamePattern>logs/tools-bad-data-%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
+            <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>20GB</totalSizeCap>
+            <!-- in case of process terminating too early for rollover - do the rollover during start -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
+        </encoder>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
+    </appender>
+
+    <appender name="TOOLS_RED_LOG" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/tools-red.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- daily rollover with compression -->
+            <fileNamePattern>logs/tools-red-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
+            <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>20GB</totalSizeCap>
+            <!-- in case of process terminating too early for rollover - do the rollover during start -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
+        </encoder>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
+    </appender>
+
+    <logger name="tools-bad-data" additivity="false">
+        <appender-ref ref="BAD_DATA" />
+        <appender-ref ref="STDOUT-ERROR" />
+    </logger>
+
+    <logger name="akka" additivity="true">
+        <appender-ref ref="AKKA_FILE" />
+    </logger>
+
+    <logger name="cmwell.tools.data" additivity="false">
+        <appender-ref ref="AGENTS_FILE"/>
+        <appender-ref ref="STDOUT-ERROR"/>
+    </logger>
+
+    <logger name="tools-red-logger" additivity="false">
+        <appender-ref ref="TOOLS_RED_LOG" />
+        <appender-ref ref="STDOUT-ERROR" />
+    </logger>
+
+    <root level="${log.level:-INFO}">
+        <appender-ref ref="FILE" />
+        <appender-ref ref="STDOUT-ERROR" />
+    </root>
+    <jmxConfigurator />
+</configuration>
