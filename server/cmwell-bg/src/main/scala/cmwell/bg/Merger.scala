@@ -317,9 +317,11 @@ class Merger(config: Config) extends LazyLogging {
           }
         }
         RealUpdate(infoton, trackingIds, evictions)
-
-      // We are also testing for indexTime in order to handle BG recovery mode.
-      case Some(i) if baseInfoton.exists(bi => bi.isSameAs(i) && bi.indexTime.isEmpty) =>
+      case Some(i) if baseInfoton.exists(bi => bi.isSameAs(i) && bi.indexTime.isEmpty && bi.lastModified == cmds.last.lastModified) =>
+        //We are also testing for indexTime in order to handle BG recovery mode.
+        //The merge process sets the last modified to be as the base one (in case they are the same).
+        //If the merged infoton is the same as the the base one but the "should be" lastModified is different it means it's a null update
+        //and not a replay after crash (it happens a lot with parents in clustered env.). This is the reason the the last command modified check
         logger.warn(s"Merged infoton [$i] is the same as the base infoton [${baseInfoton.get}] but the base infoton doesn't have index time!")
         RealUpdate(i.copyInfoton(lastModified = baseInfoton.get.lastModified), trackingIds, evictions)
       case _ => NullUpdate(baseInfoton.fold(cmds.head.path)(_.path), trackingIds, evictions)
