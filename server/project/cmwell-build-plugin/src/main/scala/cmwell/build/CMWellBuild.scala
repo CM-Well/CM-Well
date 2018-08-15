@@ -18,6 +18,7 @@ package cmwell.build
 import com.github.tkawachi.doctest.DoctestPlugin
 import org.scalafmt.sbt.ScalafmtPlugin
 import org.scalastyle.sbt.ScalastylePlugin
+import sbtdynver.DynVerPlugin
 import coursier.CoursierPlugin
 import net.virtualvoid.sbt.graph.DependencyGraphPlugin
 import sbt.Keys._
@@ -56,6 +57,7 @@ object CMWellBuild extends AutoPlugin {
 		val testScalastyle = taskKey[Unit]("testScalastyle")
 		val itScalastyle = taskKey[Unit]("itScalastyle")
 		val compileScalastyle = taskKey[Unit]("compileScalastyle")
+		val versionCheck = taskKey[Unit]("test dyn version task")
 	}
 
 	import autoImport._
@@ -63,8 +65,10 @@ object CMWellBuild extends AutoPlugin {
 	import CoursierPlugin.autoImport._
 	import ScalafmtPlugin.autoImport._
 	import ScalastylePlugin.autoImport._
+	import DynVerPlugin.autoImport._
 
-  lazy val apacheMirror = {
+
+	lazy val apacheMirror = {
     val zoneID = java.util.TimeZone
       .getDefault()
       .getID
@@ -239,6 +243,7 @@ object CMWellBuild extends AutoPlugin {
 		(test in Test) := ((test in Test) dependsOn testScalastyle).value,
 		compileScalastyle in ThisProject := (scalastyle in ThisProject).in(Compile).toTask("").value,
 		(compile in Compile) := ((compile in Compile) dependsOn compileScalastyle).value,
+		(compile in Compile) := ((compile in Compile) dependsOn versionCheck).value,
 		logLevel in (scalastyle in Compile) := Level.Warn,
 		//scalafmtOnCompile := true,
 		//doctestWithDependencies := false,
@@ -249,6 +254,13 @@ object CMWellBuild extends AutoPlugin {
 			Seq(
 				dm("org.scalatest","scalatest") % "test",
 				dm("org.scalacheck","scalacheck") % "test")
+		},
+		versionCheck := {
+			val dynamicVersion = dynver.value
+			val staticVersion = version.value
+			if (dynamicVersion != staticVersion)
+				sys.error(s"The version setting ($staticVersion) is different from the dynamic (dynver) one ($dynamicVersion). " +
+					s"Please use the refreshVersion command to refresh the setting.")
 		},
 		testListeners := Seq(new sbt.JUnitXmlTestsListener(target.value.getAbsolutePath)),
 		doctestTestFramework := DoctestTestFramework.ScalaTest,

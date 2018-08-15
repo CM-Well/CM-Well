@@ -9,16 +9,32 @@ organization in Global := "cmwell"                                           //s
 //version in Global := "1.2." + sys.env.getOrElse("BUILD_NUMBER","x-SNAPSHOT") //build.JenkinsEnv.buildNumber.getOrElse("x-SNAPSHOT")
 shellPrompt in ThisBuild := { state => Project.extract(state).currentRef.project + "> " }
 
-sys.env.get("BUILD_NUMBER") match {
-  case None => Seq(
-    version in Global := "1.5.x-SNAPSHOT",
-    isSnapshot in Global := true
-  )
-  case Some(n) => Seq(
-    version in Global := s"1.5.$n",
-    isSnapshot in Global := false
-  )
+def refreshVersion = Command.command("refreshVersion") { state =>
+  val extracted = Project extract state
+  import extracted._
+  /* - At first I thought to manually set the version. It seems unimportant - just refresh the session
+    val result: Option[(State, Result[String])] = Project.runTask(dynver, state)
+    result match {
+      case None => state.fail // Key wasn't defined.
+      case Some((newState, Inc(inc))) => state.fail // error detail, inc is of type Incomplete, use Incomplete.show(inc.tpe) to get an error message
+      case Some((newState, Value(v))) =>
+        println(s"Setting the version to $v")
+        appendWithoutSession(Seq(version := v), state) // do something with v: inc.Analysis
+    }
+  */
+  state.log.info("refreshing version")
+  appendWithoutSession(Seq(), state) // do something with v: inc.Analysis
 }
+
+ThisBuild / commands += refreshVersion
+
+val dirtyEnd = """.*(-\d\d\d\d)$""".r
+def stripTime(version: String) = version match {
+  case dirtyEnd(time) => version.stripSuffix(time)
+  case _ => version
+}
+ThisBuild / version ~= stripTime
+ThisBuild / dynver ~= stripTime
 
 scalaVersion in Global := "2.12.6"
 //javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint")
