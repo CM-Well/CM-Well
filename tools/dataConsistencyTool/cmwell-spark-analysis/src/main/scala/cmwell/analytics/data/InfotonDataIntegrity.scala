@@ -118,9 +118,9 @@ object InfotonDataIntegrity extends EstimateDatasetSize {
             case "linkTo" => linkTo = infotonRow.getString("value")
             case "linkType" => linkType = infotonRow.getString("value")
 
-            case "dc" => dc = infotonRow.getString("dc")
-            case "indexName" => indexName = infotonRow.getString("indexName")
-            case "indexTime" => indexTime = infotonRow.getString("indexTime")
+            case "dc" => dc = infotonRow.getString("value")
+            case "indexName" => indexName = infotonRow.getString("value")
+            case "indexTime" => indexTime = infotonRow.getString("value")
 
             case _ => unknownSystemField = true
           }

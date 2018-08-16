@@ -106,15 +106,18 @@ This is necessary since there are multiple filtering parameters implemented alon
 For example, we might want to do an extract of the Elasticsearch index and use it for both 
 *find-duplicated-current-paths-in-index* and *set-difference-uuids*. For this case, we would specify both the
 *--current-filter* and *--last-modified-gte-filter* parameters when extracting the data from the index, which would
-*or* the results of the two filters together. When using the generated extract, the *--current-filter true* parameter
+*or* the results of the two filters together. When using the generated extract, the *--current-filter* parameter
 would be passed to the *find-duplicated-current-paths-in-index* analysis, and the *--last-modified-gte-filter*
 parameter would be passed to the *set-difference-uuids* analysis to select the subset of the extract that is needed
 for each analysis.
 
 The filtering parameters are:
 
-* **--current-filter \<boolean>** - Selects infotons that are either current or not current (i.e., the latest
-infoton in the paths's history). 
+* **--current-filter** - Selects infotons that are either current (i.e., the latest
+infoton in the paths's history). If this option is not specified, no filtering is done on the current field.
+Note that there is no corresponding option to filter for non-current infotons. This is for historical reasons,
+as well as an oddity of the way that Scallop deals with Boolean options. This parameter really only applies 
+to extract tools in the companion *extract-index-from-es* project.
 * **--last-modified-gte-filter <ISO 8601 timestamp>** - Selects infotons that have a lastModified value that is
 greater than or equal to a given timestamp.
 * **--path-prefix-filter \<prefix>** - Selects infotons that have a path that starts with a given prefix.

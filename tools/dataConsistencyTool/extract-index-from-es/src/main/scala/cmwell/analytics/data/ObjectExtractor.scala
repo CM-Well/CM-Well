@@ -19,60 +19,25 @@ trait ObjectExtractor[T <: GenericRecord] {
 
 
   private def currentFilter(current: Boolean): String =
-    s"""{ "term": { "system.current": $current } }"""
+    s""" "term": { "system.current": $current }"""
 
   private def lastModifiedGteFilter(timestamp: java.sql.Timestamp): String =
-    s"""{ "range": { "system.lastModified": { "gte": "${convertToString(timestamp)}" } } }"""
+    s""" "range": { "system.lastModified": { "gte": "${convertToString(timestamp)}" } } """
 
   private def pathPrefixFilter(pathPrefix: String): String =
-    s"""{ "prefix": { "system.path": "$pathPrefix" } }"""
+    s""" "prefix": { "system.path": "$pathPrefix" } """
 
-  private def orFilters(filterClauses: String): String =
-    s"""
-       |"bool": {
-       |		"should": [
-       |        $filterClauses
-       |    ]
-       |}
-     """.stripMargin
+  private def orFilters(filter1: String, filter2: String): String =
+    s""" "or": [ { $filter1 }, { $filter2 } ] """
 
-  private def andFilters(filterClauses: String): String =
-    s"""
-       |"bool": {
-       |    "must": [
-       |        $filterClauses
-       |    ]
-       |}
-     """.stripMargin
+  private def andFilters(filter1: String, filter2: String): String =
+    s""" "and": [ { $filter1 }, { $filter2 } ] """
 
-  private def andOrFilters(andFilterClauses: String, orFilterClauses: String): String =
-    s"""
-       |"bool": {
-       |    "must": [
-       |        $andFilterClauses
-       |    ],
-       |    "should": [
-       |        $orFilterClauses
-       |    ]
-       |}
-     """.stripMargin
+  private def noFilter: String = """ "match_all": { }"""
 
-  private def noFilter: String =
-    """
-      |"match_all": {
-      |}
-    """.stripMargin
-
-  private def queryTemplate(filterList: String): String =
-    s"""
-       |"query": {
-       |    "constant_score" : {
-       |        "filter" : {
-       |            $filterList
-       |        }
-       |    }
-       |}
-     """.stripMargin
+  // This template does not include the outer braces - they will be added by the caller.
+  private def queryTemplate(filter: String): String =
+    s""" "query": { "filtered" : { "filter" : { $filter } } }"""
 
 
   /**
@@ -82,8 +47,9 @@ trait ObjectExtractor[T <: GenericRecord] {
     * When filtering on current and lastModified, we conceptually OR the filters together for the extract,
     * This is because current and lastModified are conceptually on the same (temporal) axis.
     * Since the extract might be used for multiple purposes (e.g., duplicate-current-index and uuid-set-comparison),
-    * the specific use of that extract should apply the filter again. For example, if both current and lastModified
-    * were filtered (ORed together), then a duplicate-current-index analysis should always filter its dataset
+    * the specific use of that extract should apply (one of the) filters again.
+    * For example, if both current and lastModified were filtered (ORed together),
+    * then a duplicate-current-index analysis should always filter its dataset
     * using current=true, since the extract could include rows with current=false but have a recent lastModified.
     *
     * When we do the analysis part, we would conceptually AND any temporal predicates, but the reality is that
@@ -95,30 +61,31 @@ trait ObjectExtractor[T <: GenericRecord] {
 
     // The --current-only parameter works differently from other filters, for both historical reasons
     // and because of the inconsistent way that Scallop handles Boolean options.
-    // We can't filter on current=false, only current=true or no current filter.
-    val currentFilterClause = if (currentOnly) Some(currentFilter(true)) else None
+    // currentOnly == true => filter on current==true
+    // currentOnly == false => no filtering on current (NOT: filter on current==false)
 
     val prefixFilterClause = pathPrefix.map(pathPrefixFilter)
     val lastModifiedGteClause = lastModifiedGte.map(lastModifiedGteFilter)
 
-    val temporalFilterClause = currentFilterClause match {
-      case Some(c) => lastModifiedGteClause match {
-        case Some(lm) => Some(s"$c,$lm")
-        case _ => currentFilterClause
+    val temporalFilterClause = if (currentOnly)
+      lastModifiedGteClause match {
+        case Some(lm) => Some(orFilters(currentFilter(true), lm))
+        case _ => Some(currentFilter(true))
       }
-      case _ => lastModifiedGteClause match {
-        case Some(_) => lastModifiedGteClause
+    else {
+      lastModifiedGteClause match {
+        case Some(lm) => Some(lm)
         case _ => None
       }
     }
 
     val filters = temporalFilterClause match {
       case Some(t) => prefixFilterClause match {
-        case Some(p) => andOrFilters(p, t)
-        case _ => orFilters(t)
+        case Some(p) => andFilters(p, t)
+        case _ => t
       }
       case _ => prefixFilterClause match {
-        case Some(p) => andFilters(p)
+        case Some(p) => p
         case _ => noFilter
       }
     }
