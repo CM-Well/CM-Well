@@ -17,21 +17,17 @@ EXTRACT_DIRECTORY_INDEX="index-key-fields"
 EXTRACT_DIRECTORY_INFOTON="infoton-key-fields"
 EXTRACT_DIRECTORY_PATH="path-key-fields"
 
-CONSISTENCY_THRESHOLD="1d"
-
 set -e # bail out if any command fails
 
 rm -rf "${WORKING_DIRECTORY}"
 
-# Extract key fields from index, path and infoton.
 
-${JAVA_HOME}/bin/java \
- -Xmx31G \
- -XX:+UseG1GC \
- -cp "${EXTRACT_ES_UUIDS_JAR}" cmwell.analytics.main.DumpKeyFieldsFromEs \
- --out "${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_INDEX}" \
- --format parquet \
- "${CMWELL_INSTANCE}"
+# The consistency threshold (the instant after which we will ignore inconsistencies) is set to
+# the point where we start extracting data, minus 10 minutes of slack to allow data to get to
+# a consistent state.
+CONSISTENCY_THRESHOLD=`date --date="10 minutes ago" -u +"%Y-%m-%dT%H:%M:%SZ"`
+
+# Extract key fields from index, path and infoton.
 
 ${SPARK_HOME}/bin/spark-submit \
  --conf "spark.driver.extraJavaOptions=-XX:+UseG1GC" \
@@ -47,13 +43,22 @@ ${SPARK_HOME}/bin/spark-submit \
  --out "${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_PATH}" \
  "${CMWELL_INSTANCE}"
 
+${JAVA_HOME}/bin/java \
+ -Xmx31G \
+ -XX:+UseG1GC \
+ -cp "${EXTRACT_ES_UUIDS_JAR}" cmwell.analytics.main.DumpKeyFieldsFromEs \
+ --out "${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_INDEX}" \
+ --format parquet \
+ "${CMWELL_INSTANCE}"
+
+
 # Do the set difference operations
 
 ${SPARK_HOME}/bin/spark-submit \
  --conf "spark.driver.extraJavaOptions=-XX:+UseG1GC" \
  --master ${SPARK_MASTER} --driver-memory ${SPARK_MEMORY} --conf "spark.local.dir=${SPARK_TMP}" \
  --class cmwell.analytics.main.SetDifferenceUuids "${SPARK_ANALYSIS_JAR}" \
- --current-threshold="${CONSISTENCY_THRESHOLD}" \
+ --consistency-threshold="${CONSISTENCY_THRESHOLD}" \
  --infoton "${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_INFOTON}" \
  --path "${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_PATH}" \
  --index "${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_INDEX}" \

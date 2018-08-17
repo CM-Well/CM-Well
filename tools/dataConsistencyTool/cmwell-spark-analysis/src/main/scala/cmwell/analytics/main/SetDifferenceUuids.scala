@@ -1,6 +1,8 @@
 package cmwell.analytics.main
 
 import cmwell.analytics.data.Spark
+import cmwell.analytics.util.ConsistencyThreshold.defaultConsistencyThreshold
+import cmwell.analytics.util.ISO8601.{instantToMillis, instantToText}
 import cmwell.analytics.util.{CmwellConnector, KeyFields, SetDifferenceAndFilter}
 import org.apache.log4j.LogManager
 import org.apache.spark.sql.Dataset
@@ -8,16 +10,13 @@ import org.apache.spark.sql.functions.udf
 import org.apache.spark.storage.StorageLevel
 import org.rogach.scallop.{ScallopConf, ScallopOption, ValueConverter, singleArgConverter}
 
-import scala.concurrent.duration.Duration
-
-
 /**
   * This analysis compares the uuids in the infoton and paths tables (from Cassandra) and the index (from ES),
   * and is intended to the internal consistency of uuids within a single CM-Well instance.
   * The set difference is calculated between each source (infoton, path, index) and in each direction.
   *
   * The result is filtered to exclude false positives, which are current infotons
-  * (i.e., lastModified > now - currentThreshold) that have not reached consistency yet.
+  * (i.e., lastModified > now - consistencyThreshold) that have not reached consistency yet.
   *
   * The results are written as CSV files.
   */
@@ -35,7 +34,7 @@ object SetDifferenceUuids {
 
       object Opts extends ScallopConf(args) {
 
-        val durationConverter: ValueConverter[Long] = singleArgConverter[Long](Duration(_).toMillis)
+        private val instantConverter: ValueConverter[Long] = singleArgConverter[Long](instantToMillis)
 
         val parallelism: ScallopOption[Int] = opt[Int]("parallelism", short = 'p', descr = "The parallelism level", default = Some(defaultParallelism))
 
@@ -43,7 +42,7 @@ object SetDifferenceUuids {
         val index: ScallopOption[String] = opt[String]("index", short = 'x', descr = "The path to the index {uuid,lastModified,path} in parquet format", required = true)
         val path: ScallopOption[String] = opt[String]("path", short = 'h', descr = "The path to the path {uuid,lastModified,path} in parquet format", required = true)
 
-        val currentThreshold: ScallopOption[Long] = opt[Long]("current-threshold", short = 'c', descr = "Filter out any inconsistencies that are more current than this duration (e.g., 24h)", default = Some(Duration("1d").toMillis))(durationConverter)
+        val consistencyThreshold: ScallopOption[Long] = opt[Long]("consistency-threshold", short = 'c', descr = "Ignore any inconsistencies at or after this instant", default = Some(defaultConsistencyThreshold))(instantConverter)
 
         val out: ScallopOption[String] = opt[String]("out", short = 'o', descr = "The directory to save the output to (in csv format)", required = true)
         val shell: ScallopOption[Boolean] = opt[Boolean]("spark-shell", short = 's', descr = "Run a Spark shell", required = false, default = Some(false))
@@ -57,6 +56,8 @@ object SetDifferenceUuids {
         appName = "Set Difference UUIDs infoton/path/index",
         sparkShell = Opts.shell()
       ).withSparkSessionDo { implicit spark =>
+
+        logger.info(s"Using a consistency threshold of ${instantToText(Opts.consistencyThreshold())}.")
 
         import spark.implicits._
 
@@ -99,22 +100,22 @@ object SetDifferenceUuids {
         val index = repartition(loadES(Opts.index()).coalesce(Opts.parallelism() * CmwellConnector.coalesceParallelismMultiplier))
         val path = repartition(load(Opts.path()))
 
-        SetDifferenceAndFilter(infoton, path, Opts.currentThreshold())
+        SetDifferenceAndFilter(infoton, path, Opts.consistencyThreshold())
           .write.csv(Opts.out() + "/infoton-except-path")
 
-        SetDifferenceAndFilter(infoton, index, Opts.currentThreshold())
+        SetDifferenceAndFilter(infoton, index, Opts.consistencyThreshold())
           .write.csv(Opts.out() + "/infoton-except-index")
 
-        SetDifferenceAndFilter(path, index, Opts.currentThreshold())
+        SetDifferenceAndFilter(path, index, Opts.consistencyThreshold())
           .write.csv(Opts.out() + "/path-except-index")
 
-        SetDifferenceAndFilter(path, infoton, Opts.currentThreshold())
+        SetDifferenceAndFilter(path, infoton, Opts.consistencyThreshold())
           .write.csv(Opts.out() + "/path-except-infoton")
 
-        SetDifferenceAndFilter(index, infoton, Opts.currentThreshold())
+        SetDifferenceAndFilter(index, infoton, Opts.consistencyThreshold())
           .write.csv(Opts.out() + "/index-except-infoton")
 
-        SetDifferenceAndFilter(index, path, Opts.currentThreshold())
+        SetDifferenceAndFilter(index, path, Opts.consistencyThreshold())
           .write.csv(Opts.out() + "/index-except-path")
       }
     }

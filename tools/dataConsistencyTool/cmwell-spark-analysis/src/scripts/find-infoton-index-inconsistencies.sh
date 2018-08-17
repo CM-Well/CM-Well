@@ -14,11 +14,15 @@ CMWELL_INSTANCE=$1
 WORKING_DIRECTORY="infoton-index-inconsistencies"
 ES_SYSTEM_FIELDS_TEMP="index-system-fields"
 
-CONSISTENCY_THRESHOLD="1d"
-
 set -e # bail out if any command fails
 
 rm -rf "${WORKING_DIRECTORY}"
+
+
+# The consistency threshold (the instant after which we will ignore inconsistencies) is set to
+# the point where we start extracting data, minus 10 minutes of slack to allow data to get to
+# a consistent state.
+CONSISTENCY_THRESHOLD=`date --date="10 minutes ago" -u +"%Y-%m-%dT%H:%M:%SZ"`
 
 $JAVA_HOME/bin/java \
  -XX:+UseG1GC \
@@ -32,7 +36,7 @@ $SPARK_HOME/bin/spark-submit \
  --conf "spark.driver.extraJavaOptions=-XX:+UseG1GC" \
  --master "$SPARK_MASTER" --driver-memory ${SPARK_MEMORY} --conf "spark.local.dir=$SPARK_TMP" \
  --class "cmwell.analytics.main.FindInfotonIndexInconsistencies" "${SPARK_ANALYSIS_JAR}" \
- --current-threshold="${CONSISTENCY_THRESHOLD}" \
+ --consistency-threshold="${CONSISTENCY_THRESHOLD}" \
  --es "${WORKING_DIRECTORY}/${ES_SYSTEM_FIELDS_TEMP}" \
  --out-parquet "${WORKING_DIRECTORY}/detail" \
  --out-csv "${WORKING_DIRECTORY}/detail_csv" \

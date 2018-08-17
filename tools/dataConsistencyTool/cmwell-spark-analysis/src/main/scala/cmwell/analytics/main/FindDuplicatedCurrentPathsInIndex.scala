@@ -2,12 +2,12 @@ package cmwell.analytics.main
 
 import cmwell.analytics.data.{IndexWithSystemFields, Spark}
 import cmwell.analytics.util.CmwellConnector
+import cmwell.analytics.util.ConsistencyThreshold.defaultConsistencyThreshold
+import cmwell.analytics.util.ISO8601.{instantToMillis, instantToText}
 import org.apache.log4j.LogManager
 import org.apache.spark.sql.DataFrame
 import org.joda.time.format.ISODateTimeFormat
 import org.rogach.scallop.{ScallopConf, ScallopOption, ValueConverter, singleArgConverter}
-
-import scala.concurrent.duration.Duration
 
 /**
   * When a new version of an infoton is ingested, the index entry for the existing infoton should be marked as
@@ -27,11 +27,11 @@ object FindDuplicatedCurrentPathsInIndex {
 
       object Opts extends ScallopConf(args) {
 
-        val durationConverter: ValueConverter[Long] = singleArgConverter[Long](Duration(_).toMillis)
+        private val instantConverter: ValueConverter[Long] = singleArgConverter[Long](instantToMillis)
 
         val index: ScallopOption[String] = opt[String]("index", short = 'x', descr = "The path to the index data (with system fields) in parquet format", required = true)
 
-        val currentThreshold: ScallopOption[Long] = opt[Long]("current-threshold", short = 'c', descr = "Filter out any inconsistencies that are more current than this duration (e.g., 24h)", default = Some(Duration("1d").toMillis))(durationConverter)
+        val consistencyThreshold: ScallopOption[Long] = opt[Long]("consistency-threshold", short = 'c', descr = "Ignore any inconsistencies at or after this instant", default = Some(defaultConsistencyThreshold))(instantConverter)
 
         val out: ScallopOption[String] = opt[String]("out", short = 'o', descr = "The directory to save the output to (in csv format)", required = true)
         val shell: ScallopOption[Boolean] = opt[Boolean]("spark-shell", short = 's', descr = "Run a Spark shell", required = false, default = Some(false))
@@ -45,6 +45,8 @@ object FindDuplicatedCurrentPathsInIndex {
         appName = "Find paths with more than one current=true",
         sparkShell = Opts.shell()
       ).withSparkSessionDo { implicit spark =>
+
+        logger.info(s"Using a consistency threshold of ${instantToText(Opts.consistencyThreshold())}.")
 
         import spark.implicits._
 
@@ -63,14 +65,12 @@ object FindDuplicatedCurrentPathsInIndex {
 
         import org.apache.spark.sql.functions._
 
-        val consistencyThreshold = System.currentTimeMillis - Opts.currentThreshold()
-
         // Group by path, and keep any groups that have more than one row that are older than the consistency threshold.
         val filtered: DataFrame = index
           .select(
             index("path"),
             // this column counts 1 if it must be consistent, or 0 if it is current and is allowed to be inconsistent.
-            when(index("lastModified") < consistencyThreshold, 1).otherwise(0).as("mustBeConsistent"),
+            when(index("lastModified") < Opts.consistencyThreshold(), 1).otherwise(0).as("mustBeConsistent"),
             struct("kind", "uuid", "lastModified", "path", "dc", "indexName", "indexTime", "parent", "current").as("data"))
           .groupBy("path")
           .agg(sum("mustBeConsistent").as("mustBeConsistent"), collect_list("data").as("data"))
