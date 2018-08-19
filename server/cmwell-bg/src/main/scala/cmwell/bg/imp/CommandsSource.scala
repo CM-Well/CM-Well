@@ -26,7 +26,7 @@ import cmwell.common.formats.{BGMessage, CompleteOffset}
 import cmwell.common.{Command, CommandSerializer}
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.{Metric, MetricName, TopicPartition}
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -135,5 +135,7 @@ object CommandsSource extends LazyLogging {
         _ <- r
       } yield Done
     }
+
+    override def metrics: Future[Map[MetricName, Metric]] = ???
   }
 }

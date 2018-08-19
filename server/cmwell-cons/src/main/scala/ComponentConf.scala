@@ -439,7 +439,8 @@ case class KafkaConf(home: String, logDirs: Seq[String], zookeeperServers: Seq[S
     val m = Map[String, String](
       "broker-id" -> brokerId.toString,
       "log-dirs" -> logDirs.mkString(","),
-      "zookeeper-connect" -> zookeeperServers.map(zkServer => s"$zkServer:2181").mkString(",")
+      "zookeeper-connect" -> zookeeperServers.map(zkServer => s"$zkServer:2181").mkString(","),
+      "broker-ip" -> hostIp
     )
 
     val confContent = ResourceBuilder.getResource(s"scripts/templates/kafka.server.properties", m)
@@ -466,7 +467,7 @@ case class ZookeeperConf(home: String, clusterName: String, servers: Seq[String]
   override def mkScript: ConfFile = {
     val exports = s"""export PATH=$home/app/java/bin:$home/bin/utils:$PATH\nexport ZOO_LOG_DIR=$home/log/zookeeper\nexport JVMFLAGS="-Xmx500m -Xms500m""""
     // scalastyle:off
-    val cp = s"cur/lib/slf4j-log4j12-1.6.1.jar:cur/lib/slf4j-api-1.6.1.jar:cur/lib/netty-3.7.0.Final.jar:cur/lib/log4j-1.2.16.jar:cur/lib/jline-0.9.94.jar:cur/zookeeper-${cmwell.util.build.BuildInfo.zookeeperVersion}.jar:$home/conf/$dir"
+    val cp = s"cur/lib/slf4j-log4j12-1.7.25.jar:cur/lib/slf4j-api-1.7.25.jar:cur/lib/netty-3.10.6.Final.jar:cur/lib/log4j-1.2.17.jar:cur/lib/jline-0.9.94.jar:cur/zookeeper-${cmwell.util.build.BuildInfo.zookeeperVersion}.jar:$home/conf/$dir"
     val scriptString =
       s"""
          |$exports
