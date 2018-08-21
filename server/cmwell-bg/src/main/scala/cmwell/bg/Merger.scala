@@ -18,7 +18,7 @@ import cmwell.domain._
 import cmwell.common._
 import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.LazyLogging
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, DateTimeZone}
 
 import scala.annotation.tailrec
 
@@ -313,11 +313,13 @@ class Merger(config: Config) extends LazyLogging {
           else {
             logger.info(s"PlusDebug: There was an infoton [$j] in the system that is not the same as the merged one [$i] but has earlier lastModified. " +
               s"Adding 1 milli")
-            i.copyInfoton(lastModified = new DateTime(j.lastModified.getMillis + 1L))
+            i.copyInfoton(lastModified = new DateTime(j.lastModified.getMillis + 1L, DateTimeZone.UTC))
           }
         }
         RealUpdate(infoton, trackingIds, evictions)
-      case Some(i) if baseInfoton.exists(bi => bi.isSameAs(i) && bi.indexTime.isEmpty && bi.lastModified == cmds.last.lastModified) =>
+      case Some(i) if baseInfoton.exists(bi => bi.isSameAs(i)
+        && bi.indexTime.isEmpty
+        && new DateTime(bi.lastModified, DateTimeZone.UTC) == new DateTime(cmds.last.lastModified, DateTimeZone.UTC)) =>
         //We are also testing for indexTime in order to handle BG recovery mode.
         //The merge process sets the last modified to be as the base one (in case they are the same).
         //If the merged infoton is the same as the the base one but the "should be" lastModified is different it means it's a null update
