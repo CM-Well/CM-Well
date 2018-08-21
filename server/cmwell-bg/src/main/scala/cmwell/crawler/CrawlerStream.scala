@@ -222,6 +222,13 @@ object CrawlerStream extends LazyLogging {
           //val delayDuration = safetyNetTimeInMillis.millis
           //akka.pattern.after(delayDuration, sys.scheduler)(verifyEsCurrentState(first.uuid, firstIndexName, shouldFirstBeCurrent)(previousResult))(ec)
           previousResult
+        case _: EsBadCurrentError if shouldFirstBeCurrent =>
+          logger.info(s"The checked uuid [${first.uuid}] has current property of false but it's the last version in CAS. " +
+            s"It is probably that a newer version has being written to ES and not yet written/available in Cassandra.")
+          //The initial version is always true. If the current version has properly of false it means a newer version has already been written.
+          //Crawler couldn't see this newer version in CAS, hence considering the current version as the latest.
+          //If the newer update will be missing when the crawler will check the newer update it will be found. No need to alarm now.
+          previousResult
         case other => other
       }(ec)
     }
