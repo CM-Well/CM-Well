@@ -313,7 +313,7 @@ class Merger(config: Config) extends LazyLogging {
           else {
             logger.info(s"PlusDebug: There was an infoton [$j] in the system that is not the same as the merged one [$i] but has earlier lastModified. " +
               s"Adding 1 milli")
-            i.copyInfoton(lastModified = new DateTime(j.lastModified.getMillis + 1L, DateTimeZone.UTC))
+            i.copyInfoton(lastModified = new DateTime(j.lastModified.getMillis + 1L))
           }
         }
         RealUpdate(infoton, trackingIds, evictions)
