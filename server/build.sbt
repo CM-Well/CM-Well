@@ -82,8 +82,8 @@ dependenciesManager in Global := {
   case ("com.typesafe.play", "play-json")                          => "com.typesafe.play" %% "play-json" % "2.6.9"
   case ("com.typesafe.play", art)                                  => "com.typesafe.play" %% art % Versions.play
   case ("com.twitter","chill-akka")                                => "com.twitter" %% "chill-akka" % "0.5.2"
-  case ("commons-io","commons-io")                                 => "commons-io" % "commons-io" % "2.5"
-  case ("commons-codec","commons-codec")                           => "commons-codec" % "commons-codec" % "1.10"
+  case ("commons-io","commons-io")                                 => "commons-io" % "commons-io" % "2.6"
+  case ("commons-codec","commons-codec")                           => "commons-codec" % "commons-codec" % "1.11"
   case ("commons-lang","commons-lang")                             => "commons-lang" % "commons-lang" % "2.6"
   case ("eu.piotrbuda","scalawebsocket")                           => "eu.piotrbuda" %% "scalawebsocket" % "0.1.1"
   case ("io.netty","netty")                                        => "io.netty" % "netty" % "3.10.6.Final"
@@ -102,11 +102,11 @@ dependenciesManager in Global := {
   case ("org.apache.abdera",art)                                   => "org.apache.abdera" % art % "1.1.3"
   case ("org.apache.cassandra","apache-cassandra")                 => "org.apache.cassandra" % "apache-cassandra" % Versions.cassandra
   case ("org.apache.lucene",art)                                   => "org.apache.lucene" % art % "4.10.4"
-  case ("org.apache.commons","commons-compress")                   => "org.apache.commons" % "commons-compress" % "1.12"
-  case ("org.apache.commons", "commons-lang3")                     => "org.apache.commons" % "commons-lang3" % "3.5"
-  case ("org.apache.commons","commons-csv")                        => "org.apache.commons" % "commons-csv" % "1.4"
-  case ("org.apache.httpcomponents","httpclient")                  => "org.apache.httpcomponents" % "httpclient" % "4.5.2"
-  case ("org.apache.httpcomponents","httpcore")                    => "org.apache.httpcomponents" % "httpcore" % "4.4.5"
+  case ("org.apache.commons","commons-compress")                   => "org.apache.commons" % "commons-compress" % "1.18"
+  case ("org.apache.commons", "commons-lang3")                     => "org.apache.commons" % "commons-lang3" % "3.8"
+  case ("org.apache.commons","commons-csv")                        => "org.apache.commons" % "commons-csv" % "1.5"
+  case ("org.apache.httpcomponents","httpclient")                  => "org.apache.httpcomponents" % "httpclient" % "4.5.6"
+  case ("org.apache.httpcomponents","httpcore")                    => "org.apache.httpcomponents" % "httpcore" % "4.4.10"
   case ("org.apache.jena",art) if(Set("apache-jena",
     "apache-jena-libs",
     "apache-jena-osgi",
