@@ -337,7 +337,8 @@ class APIValidationTests extends AsyncFunSpec with Matchers with Inspectors with
       it("should be same uuid for json, yaml, and n3")(f34.map {
         case (jr,(yr,nr)) =>
           val uuidFromJson = Try(Json.parse(jr.payload) \ "system" \ "uuid").toOption.flatMap(_.asOpt[String])
-          val uuidFromYaml = new Yaml().load(yr.payload) ⚡ "system" ⚡ "uuid"
+          val parsedYaml: java.util.LinkedHashMap[String, java.util.LinkedHashMap[String, String]] = new Yaml().load(yr.payload)
+          val uuidFromYaml = parsedYaml.get("system").get("uuid")
           val model: Model = ModelFactory.createDefaultModel
           model.read(nr.payload, null, "N3")
           val it = model.getGraph.find(NodeFactory.createURI(cmt / "YetAnotherObjectInfoton"), NodeFactory.createURI(metaSys ⋕ "uuid"), null)
