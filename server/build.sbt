@@ -28,9 +28,9 @@ def refreshVersion = Command.command("refreshVersion") { state =>
 
 ThisBuild / commands += refreshVersion
 
-val dirtyEnd = """.*(-\d\d\d\d)$""".r
+val dirtyEnd = """.*(\d\d\d\d\d\d\d\d)(-\d\d\d\d)$""".r
 def stripTime(version: String) = version match {
-  case dirtyEnd(time) => version.stripSuffix(time)
+  case dirtyEnd(date, time) => version.replace("+"+date, "-"+date).stripSuffix(time)
   case _ => version
 }
 ThisBuild / version ~= stripTime
@@ -174,6 +174,7 @@ dependenciesManager in Global := {
   case ("xerces","xercesImpl")                                     => "xerces" % "xercesImpl" % "2.12.0"
   case ("xml-apis","xml-apis")                                     => "xml-apis" % "xml-apis" % "1.4.01"
   case ("uk.org.lidalia","sysout-over-slf4j")                      => "uk.org.lidalia" % "sysout-over-slf4j" % "1.0.2"
+  case ("net.leibman", "semverfi")                                 => "net.leibman" %% "semverfi" % "0.2.0"
 }
 
 //dependencyOverrides in Global ++= {
