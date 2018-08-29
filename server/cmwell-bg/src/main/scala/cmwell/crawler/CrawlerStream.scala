@@ -139,7 +139,13 @@ object CrawlerStream extends LazyLogging {
     def checkInconsistencyOfPathTableOnly(pathslclzdCmd: (PathsVersions, LocalizedCommand)) = {
       val (paths, lclzdCmd@LocalizedCommand(cmd, location)) = pathslclzdCmd
       if (paths.latest.isEmpty)
-        Future.successful[DetectionResult](CasError(s"No last version in paths table for path ${cmd.path}!", lclzdCmd))
+        cmd match {
+          case _: DeletePathCommand | _: DeleteAttributesCommand =>
+            logger.info(s"$crawlerId The checked command [$cmd] in location $location is a delete command but there is nothing of this path in Cassandra's " +
+              s"Path table. It's probably a delete command issued before any write command done.")
+            Future.successful(AllClear(lclzdCmd))
+          case _ => Future.successful[DetectionResult](CasError(s"No last version in paths table for path ${cmd.path}!", lclzdCmd))
+        }
       else {
         //in case initial version of an infoton that was written several times fast, there will be a grouped commands without anything before.
         //Crawler needs to check whether this is the case (e.g. empty versions and the command is grouped)
@@ -215,7 +221,7 @@ object CrawlerStream extends LazyLogging {
       val firstIndexName = first.fields.find(_.name == "indexName").get.value
       verifyEsCurrentState(first.uuid, firstIndexName, shouldFirstBeCurrent)(previousResult).map {
         case _: EsBadCurrentError if !shouldFirstBeCurrent =>
-          logger.info(s"The checked uuid [${first.uuid}] has current property of true but it's not the last version in CAS. " +
+          logger.info(s"$crawlerId The checked uuid [${first.uuid}] has current property of true but it's not the last version in CAS. " +
             s"It is probably that a newer version is being written to Cassandra and not yet updated in ES.")
           //The initial thought was to recheck it but in case of a long difference between imp and indexer it won't help.
           //And anyway it can't be an issue because an infoton is always written with current: true. Hence returning SoFarClear
@@ -223,7 +229,7 @@ object CrawlerStream extends LazyLogging {
           //akka.pattern.after(delayDuration, sys.scheduler)(verifyEsCurrentState(first.uuid, firstIndexName, shouldFirstBeCurrent)(previousResult))(ec)
           previousResult
         case _: EsBadCurrentError if shouldFirstBeCurrent =>
-          logger.info(s"The checked uuid [${first.uuid}] has current property of false but it's the last version in CAS. " +
+          logger.info(s"$crawlerId The checked uuid [${first.uuid}] has current property of false but it's the last version in CAS. " +
             s"It is probably that a newer version has being written to ES and not yet written/available in Cassandra.")
           //The initial version is always true. If the current version has properly of false it means a newer version has already been written.
           //Crawler couldn't see this newer version in CAS, hence considering the current version as the latest.
