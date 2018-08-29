@@ -520,7 +520,7 @@ class APIFunctionalityTests extends AsyncFunSpec
         val expectedHeaderPattern_reg =
           Pattern.compile(expectedHeaderPattern)
         val expectedContentPattern = {
-          val pathRegex = """"(/cmt/cm/test/bag/Info(Obj1|Obj2|TextFile1))""""
+          val pathRegex = """(/cmt/cm/test/bag/Info(Obj1|Obj2|TextFile1))"""
           val lastModifiedRegex = """([0-9]{4}\-[0-9]{2}\-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]{0,3})?Z)"""
           val typeRegex = """(ObjectInfoton|FileInfoton)"""
           val uuidRegex = """([0-9a-f]{32})"""
