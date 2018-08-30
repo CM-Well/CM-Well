@@ -653,15 +653,18 @@ abstract class Host(user: String,
       command("curl -sX GET http://" + host + ":9000/meta/sys?format=ntriples")
   }
 
-  def webServerStatus(host: String) = command("curl -Is http://" + host + ":9000/ | head -1")
+  def webServerStatus(host: String) = command("curl -Is http://" + host + ":9000/")
 
   case class WebServiceLock() extends ModuleLock {
     def name: String = "Web Service boot"
 
     def com(host: String): Try[String] = webServerStatus(host)
 
-    def continueCondition(v: String, waitFor: Int): Boolean =
-      !v.contains("200") && !v.contains("404") && !v.contains("503")
+    def continueCondition(v: String, waitFor: Int): Boolean = {
+      val containsCmwellHeader = v.contains("X-CMWELL-Hostname:")
+      val first = v.lineStream.head
+      !(containsCmwellHeader && (first.contains("200") || first.contains("404") || first.contains("503")))
+    }
   }
 
   val dataInitializer = new DataInitializer(this, jwt, rootDigest, rootDigest2)
