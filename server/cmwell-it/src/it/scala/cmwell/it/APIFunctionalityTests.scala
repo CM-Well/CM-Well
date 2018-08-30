@@ -153,9 +153,11 @@ class APIFunctionalityTests extends AsyncFunSpec
               "header" -> JsArray(Seq(JsString("TestHeader")))))))
 
       spinCheck(100.millis, true)(Http.get(cmt / "InfoObj2", List("format" -> "json"))){res =>
-        Json.parse(res.payload)
-          .transform(uuidDateEraser)
-          .get == expected
+        val payloadStr = (res.payload.map(_.toChar)).mkString
+        if (payloadStr == "Infoton not found") false
+        else Json.parse(payloadStr)
+            .transform(uuidDateEraser)
+            .get == expected
       }.map { res =>
         Json.parse(res.payload)
           .transform(uuidDateEraser)
@@ -182,11 +184,15 @@ class APIFunctionalityTests extends AsyncFunSpec
       it("in RDF N3 format") {
 
         spinCheck(100.millis, true)(Http.get(path, List("format" -> "n3"))){ body =>
-          val status = body.status
-          val graphResult = ModelFactory.createDefaultModel()
-          RDFDataMgr.read(graphResult, new java.io.ByteArrayInputStream(body.payload), Lang.N3)
-          status >=200 && status < 400 && graphResult.getProperty(subject, predHead).getLiteral.getLexicalForm == "seatle" &&
-            graphResult.getProperty(subject, predComp).getLiteral.getLexicalForm == "microsoft"
+          val payloadStr = (body.payload.map(_.toChar)).mkString
+          if (payloadStr== "Infoton not found") false
+          else {
+            val status = body.status
+            val graphResult = ModelFactory.createDefaultModel()
+            RDFDataMgr.read(graphResult, new java.io.ByteArrayInputStream(body.payload), Lang.N3)
+            status >= 200 && status < 400 && graphResult.getProperty(subject, predHead).getLiteral.getLexicalForm == "seatle" &&
+              graphResult.getProperty(subject, predComp).getLiteral.getLexicalForm == "microsoft"
+          }
         }.map { body =>
           body.status should be >= 200
           body.status should be < 400 //status should be OK
@@ -1456,9 +1462,12 @@ class APIFunctionalityTests extends AsyncFunSpec
             |  }
             |}
           """.stripMargin)
-        spinCheck(100.millis, true)(Http.get(cmt / "Araújo3", List("format" -> "json")))(
-          res => Json.parse(res.payload).transform(uuidDateEraser).get == expected
-        ).map { res =>
+        spinCheck(100.millis, true)(Http.get(cmt / "Araújo3", List("format" -> "json"))) {
+          res =>
+            val payloadStr = (res.payload.map(_.toChar)).mkString
+            if (payloadStr == "Infoton not found") false
+            else Json.parse(payloadStr).transform(uuidDateEraser).get == expected
+        }.map { res =>
           withClue(res) {
             Json.parse(res.payload).transform(uuidDateEraser).get should be(expected)
           }
