@@ -231,6 +231,7 @@ trait Helpers { self: LazyLogging =>
     a.toArray
   }
 
+/*
   implicit class YamlWrapper[T](m: java.lang.Object) {
     /**
      * Method name is a special character since it's an implicit for java.lang.Object (i.e. anything), and we don't want ambiguities
@@ -240,6 +241,7 @@ trait Helpers { self: LazyLogging =>
      */
     def ⚡[T](key:T) = m.asInstanceOf[java.util.LinkedHashMap[T,java.lang.Object]].get(key)
   }
+*/
 
   object Http {
 
