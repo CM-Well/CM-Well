@@ -2180,6 +2180,12 @@ abstract class Host(user: String,
 
     info("  updating version history")
     dataInitializer.logVersionUpgrade(hosts(0))
+
+    val upgradedVersion = extractVersionFromCmwellProperties
+    info(s"Upgrading to version: $upgradedVersion")
+
+    Upgrade.runPostUpgradeActions(currentVersion, upgradedVersion)
+    info(s"Upgrade completed!")
   }
 
   def extractVersionFromCmwellProperties : String = {
