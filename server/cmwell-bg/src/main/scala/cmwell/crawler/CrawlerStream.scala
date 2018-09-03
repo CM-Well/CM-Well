@@ -33,6 +33,7 @@ import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.action.update.UpdateRequest
+import org.joda.time.DateTime
 
 import scala.concurrent.duration.{DurationInt, DurationLong, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future}
@@ -54,7 +55,7 @@ case class PathsVersions(latest: Option[CasVersion], versions: Vector[CasVersion
 case class KafkaLocation(topic: String, partition: Int, offset: Long) {
   override def toString: String = s"[$topic, partition: $partition, offset: $offset]"
 }
-case class LocalizedCommand(cmd: SingleCommand, location: KafkaLocation)
+case class LocalizedCommand(cmd: SingleCommand, originalLastModified: Option[DateTime], location: KafkaLocation)
 
 sealed trait DetectionResult
 
@@ -115,8 +116,8 @@ object CrawlerStream extends LazyLogging {
     def kafkaMessageToSingleCommand(msg: ConsumerRecord[Array[Byte], Array[Byte]]) = {
       val kafkaLocation = KafkaLocation(topic, partition, msg.offset())
       CommandSerializer.decode(msg.value) match {
-        case CommandRef(ref) => zStore.get(ref).map(cmd => LocalizedCommand(CommandSerializer.decode(cmd).asInstanceOf[SingleCommand], kafkaLocation))(ec)
-        case singleCommand => Future.successful(LocalizedCommand(singleCommand.asInstanceOf[SingleCommand], kafkaLocation))
+        case CommandRef(ref) => zStore.get(ref).map(cmd => LocalizedCommand(CommandSerializer.decode(cmd).asInstanceOf[SingleCommand], None, kafkaLocation))(ec)
+        case singleCommand => Future.successful(LocalizedCommand(singleCommand.asInstanceOf[SingleCommand], None, kafkaLocation))
       }
     }
 
@@ -136,8 +137,8 @@ object CrawlerStream extends LazyLogging {
     }
 
     //checks that the given command is ok (either in paths table or null update or grouped command)
-    def checkInconsistencyOfPathTableOnly(pathslclzdCmd: (PathsVersions, LocalizedCommand)) = {
-      val (paths, lclzdCmd@LocalizedCommand(cmd, location)) = pathslclzdCmd
+    def checkInconsistencyOfPathTableOnly(pathslclzdCmd: (PathsVersions, LocalizedCommand)): Future[DetectionResult] = {
+      val (paths, lclzdCmd@LocalizedCommand(cmd, _, location)) = pathslclzdCmd
       if (paths.latest.isEmpty)
         cmd match {
           case _: DeletePathCommand | _: DeleteAttributesCommand =>
@@ -149,18 +150,34 @@ object CrawlerStream extends LazyLogging {
       else {
         //in case initial version of an infoton that was written several times fast, there will be a grouped commands without anything before.
         //Crawler needs to check whether this is the case (e.g. empty versions and the command is grouped)
-        //todo: check the lastModified + 1 of BG. in some case there might be small shift of last modified and it will be ok.
         if (paths.versions.isEmpty || paths.versions.head.timestamp != cmd.lastModified.getMillis) {
-          zStore.getStringOpt(s"imp.${partitionId}_${location.offset}").map {
+          zStore.getStringOpt(s"imp.${partitionId}_${location.offset}").flatMap {
             //the current offset was null update of grouped command. Bg didn't change anything in the system due to it - The check is finished in this stage
             case Some("nu" | "grp") =>
-              AllClear(lclzdCmd)
-            case _ => CasError(s"command [path:${cmd.path}, last modified:${cmd.lastModified}] " +
-              s"is not in paths table and it isn't null update or grouped command!", lclzdCmd)
+              Future.successful(AllClear(lclzdCmd))
+            case Some(alteredLastModified) =>
+              val newDate = new DateTime(alteredLastModified)
+              val alteredCommand = alterCommandLastModifiedDate(cmd, newDate)
+              val newLocalizedCmd = LocalizedCommand(alteredCommand, Some(cmd.lastModified), location)
+              logger.info(s"$crawlerId The checked command [$cmd] in location $location had a time shift in BG side. " +
+                s"Checking again with date $newDate")
+              getVersionsFromPathsTable(newLocalizedCmd).flatMap(checkInconsistencyOfPathTableOnly)(ec)
+            case _ => Future.successful(CasError(s"command [path:${cmd.path}, last modified:${cmd.lastModified}] " +
+              s"is not in paths table and it isn't null update or grouped command!", lclzdCmd))
           }(ec)
         }
         //This offset's command exists. Still need to verify current and ES.
         else Future.successful(SoFarClear(paths, lclzdCmd))
+      }
+    }
+
+    def alterCommandLastModifiedDate(cmd: SingleCommand, newDate: DateTime) = {
+      cmd match {
+        case c@WriteCommand(infoton, _, _) => c.copy(infoton = infoton.copyInfoton(lastModified = newDate))
+        case c@DeleteAttributesCommand(_, _, _, _, _) => c.copy(lastModified = newDate)
+        case c@DeletePathCommand(_, _, _, _) => c.copy(lastModified = newDate)
+        case c@UpdatePathCommand(_, _, _, _, _, _) => c.copy(lastModified = newDate)
+        case c@OverwriteCommand(infoton, _) => c.copy(infoton = infoton.copyInfoton(lastModified = newDate))
       }
     }
 
@@ -279,10 +296,10 @@ object CrawlerStream extends LazyLogging {
       finalResult match {
         case fix: EsBadCurrentErrorFix =>
           logger.error(s"$crawlerId Inconsistency found: ${fix.details} for command in location ${fix.lclzdCmd.location}. " +
-            s"Original command: ${fix.lclzdCmd.cmd} and was fixed.")
+            s"Original command: ${fix.lclzdCmd.cmd}${fix.lclzdCmd.originalLastModified.fold("")(olm => s" [Original command date: $olm]")} and was fixed.")
         case err: DetectionError =>
           logger.error(s"$crawlerId Inconsistency found: ${err.details} for command in location ${err.lclzdCmd.location}. " +
-            s"Original command: ${err.lclzdCmd.cmd}")
+            s"Original command: ${err.lclzdCmd.cmd}${err.lclzdCmd.originalLastModified.fold("")(olm => s" [Original command date: $olm]")}")
         case _ => /* Do nothing */
       }
     }
