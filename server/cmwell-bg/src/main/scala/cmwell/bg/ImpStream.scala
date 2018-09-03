@@ -304,12 +304,12 @@ class ImpStream(partition: Int,
   val persistNewLastModified = Flow[BGMessage[(Option[Infoton],MergeResponse)]].mapAsync(irwWriteConcurrency) {
     case bm@BGMessage(offsets, (_, mr)) => mr.extra.fold(Future.successful(bm)) { extra =>
       val ttlSeconds = 7.days.toSeconds.toInt //TODO propagate offsets.retention.minutes's value to here
-      travector(offsets) { o =>
-        val key = s"imp.$partition${if(o.topic == persistCommandsTopicPriority) ".p" else ""}_${o.offset}"
+      val offset = offsets.last
+        val key = s"imp.$partition${if(offset.topic == persistCommandsTopicPriority) ".p" else ""}_${offset.offset}"
         val payload = extra.getBytes(StandardCharsets.UTF_8)
         zStore.put(key, payload, ttlSeconds, batched = true).
-          recover { case t => logger.error(s"Could not write to zStore ($key,$extra)", t) }
-      }.map(_ => bm)
+          recover { case t => logger.error(s"Could not write to zStore ($key,$extra)", t) }.
+          map(_ => bm)
     }
   }
 
