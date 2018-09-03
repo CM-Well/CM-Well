@@ -137,7 +137,7 @@ object CrawlerStream extends LazyLogging {
     }
 
     //checks that the given command is ok (either in paths table or null update or grouped command)
-    def checkInconsistencyOfPathTableOnly(pathslclzdCmd: (PathsVersions, LocalizedCommand)) = {
+    def checkInconsistencyOfPathTableOnly(pathslclzdCmd: (PathsVersions, LocalizedCommand)): Future[DetectionResult] = {
       val (paths, lclzdCmd@LocalizedCommand(cmd, _, location)) = pathslclzdCmd
       if (paths.latest.isEmpty)
         cmd match {
@@ -150,17 +150,20 @@ object CrawlerStream extends LazyLogging {
       else {
         //in case initial version of an infoton that was written several times fast, there will be a grouped commands without anything before.
         //Crawler needs to check whether this is the case (e.g. empty versions and the command is grouped)
-        //todo: check the lastModified + 1 of BG. in some case there might be small shift of last modified and it will be ok.
         if (paths.versions.isEmpty || paths.versions.head.timestamp != cmd.lastModified.getMillis) {
-          zStore.getStringOpt(s"imp.${partitionId}_${location.offset}").map {
+          zStore.getStringOpt(s"imp.${partitionId}_${location.offset}").flatMap {
             //the current offset was null update of grouped command. Bg didn't change anything in the system due to it - The check is finished in this stage
             case Some("nu" | "grp") =>
-              AllClear(lclzdCmd)
+              Future.successful(AllClear(lclzdCmd))
             case Some(alteredLastModified) =>
-              val alteredCommand = alterCommandLastModifiedDate(cmd, alteredLastModified.toLong)
-              SoFarClear(paths, LocalizedCommand(alteredCommand, Some(cmd.lastModified), location))
-            case _ => CasError(s"command [path:${cmd.path}, last modified:${cmd.lastModified}] " +
-              s"is not in paths table and it isn't null update or grouped command!", lclzdCmd)
+              val newDate = new DateTime(alteredLastModified)
+              val alteredCommand = alterCommandLastModifiedDate(cmd, newDate)
+              val newLocalizedCmd = LocalizedCommand(alteredCommand, Some(cmd.lastModified), location)
+              logger.info(s"$crawlerId The checked command [$cmd] in location $location had a time shift in BG side. " +
+                s"Checking again with date $newDate")
+              getVersionsFromPathsTable(newLocalizedCmd).flatMap(checkInconsistencyOfPathTableOnly)(ec)
+            case _ => Future.successful(CasError(s"command [path:${cmd.path}, last modified:${cmd.lastModified}] " +
+              s"is not in paths table and it isn't null update or grouped command!", lclzdCmd))
           }(ec)
         }
         //This offset's command exists. Still need to verify current and ES.
@@ -168,8 +171,7 @@ object CrawlerStream extends LazyLogging {
       }
     }
 
-    def alterCommandLastModifiedDate(cmd: SingleCommand, newDateTimestamp: Long) = {
-      val newDate = new DateTime(newDateTimestamp)
+    def alterCommandLastModifiedDate(cmd: SingleCommand, newDate: DateTime) = {
       cmd match {
         case c@WriteCommand(infoton, _, _) => c.copy(infoton = infoton.copyInfoton(lastModified = newDate))
         case c@DeleteAttributesCommand(_, _, _, _, _) => c.copy(lastModified = newDate)
