@@ -34,12 +34,13 @@ sealed trait MergeResponse {
   def evictions: Seq[(String, Option[String])]
   def merged: Option[Infoton]
   def path: String
+  def extra: Option[String]
 }
-final case class NullUpdate(path: String, tids: Seq[String], evictions: Seq[(String, Option[String])])
+final case class NullUpdate(path: String, tids: Seq[String], evictions: Seq[(String, Option[String])], extra: Option[String])
   extends MergeResponse {
   override def merged = None
 }
-final case class RealUpdate(infoton: Infoton, tids: Seq[String], evictions: Seq[(String, Option[String])])
+final case class RealUpdate(infoton: Infoton, tids: Seq[String], evictions: Seq[(String, Option[String])], extra: Option[String])
   extends MergeResponse {
   override lazy val merged = Some(infoton)
 
@@ -308,15 +309,16 @@ class Merger(config: Config) extends LazyLogging {
 
     merged match {
       case Some(i) if !baseInfoton.exists(_.isSameAs(i)) =>
-        val infoton = baseInfoton.fold(i) { j =>
-          if (j.lastModified.getMillis < i.lastModified.getMillis) i
+        val (infoton, extraData) = baseInfoton.fold(i -> Option.empty[String]) { j =>
+          if (j.lastModified.getMillis < i.lastModified.getMillis) i -> None
           else {
             logger.info(s"PlusDebug: There was an infoton [$j] in the system that is not the same as the merged one [$i] but has earlier lastModified. " +
               s"Adding 1 milli")
-            i.copyInfoton(lastModified = new DateTime(j.lastModified.getMillis + 1L))
+            val newLastModified = new DateTime(j.lastModified.getMillis + 1L)
+            i.copyInfoton(lastModified = newLastModified) -> Some(newLastModified.getMillis.toString)
           }
         }
-        RealUpdate(infoton, trackingIds, evictions)
+        RealUpdate(infoton, trackingIds, evictions, extraData)
       case Some(i) if baseInfoton.exists(bi => bi.isSameAs(i)
         && bi.indexTime.isEmpty
         && new DateTime(bi.lastModified, DateTimeZone.UTC) == new DateTime(cmds.last.lastModified, DateTimeZone.UTC)) =>
@@ -325,8 +327,8 @@ class Merger(config: Config) extends LazyLogging {
         //If the merged infoton is the same as the the base one but the "should be" lastModified is different it means it's a null update
         //and not a replay after crash (it happens a lot with parents in clustered env.). This is the reason the the last command modified check
         logger.warn(s"Merged infoton [$i] is the same as the base infoton [${baseInfoton.get}] but the base infoton doesn't have index time!")
-        RealUpdate(i.copyInfoton(lastModified = baseInfoton.get.lastModified), trackingIds, evictions)
-      case _ => NullUpdate(baseInfoton.fold(cmds.head.path)(_.path), trackingIds, evictions)
+        RealUpdate(i.copyInfoton(lastModified = baseInfoton.get.lastModified), trackingIds, evictions, extra = None)
+      case _ => NullUpdate(baseInfoton.fold(cmds.head.path)(_.path), trackingIds, evictions, extra = None)
     }
   }
 }
