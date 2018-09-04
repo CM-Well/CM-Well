@@ -2,7 +2,8 @@
 
 ----
 
-**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](ReleaseNotes.Unicorn.June.2018.md)
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](ReleaseNotes.Unicorn.June.2018.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](ReleaseNotes.Wombat.August.2018.md)
+
 
 ----
 
@@ -26,6 +27,6 @@ STP Connection Pool | [747](https://github.com/thomsonreuters/CM-Well/pull/747) 
 
 ----
 
-**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](ReleaseNotes.Unicorn.June.2018.md)
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](ReleaseNotes.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](ReleaseNotes.Unicorn.June.2018.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Next Topic**](ReleaseNotes.Wombat.August.2018.md)
 
 ----
