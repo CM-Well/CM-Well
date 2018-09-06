@@ -660,8 +660,7 @@ package object wsutil extends LazyLogging {
           sb += ']'
           throw new IllegalStateException(sb.result())
         } else {
-          val shoulds = (paths.map(p => s"http:/$p") ++ paths.map(p => s"https:/$p")).
-              map(path => SingleFieldFilter(Should, Equals, internalFieldName, Some(path)))
+          val shoulds = paths.flatMap(pathToUris).map(url => SingleFieldFilter(Should, Equals, internalFieldName, Some(url)))
           MultiFieldFilter(rffo.fold[FieldOperator](outerFieldOperator)(_ => Must), shoulds)
         }
       }
@@ -930,6 +929,11 @@ package object wsutil extends LazyLogging {
   }
 
   def isPathADomain(path: String): Boolean = path.dropWhile(_ == '/').takeWhile(_ != '/').contains('.')
+
+  def pathToUris(path: String): Seq[String] = {
+    if(isPathADomain(path)) List(s"http:/$path", s"https:/$path")
+    else List(s"cmwell:/$path")
+  }
 
   def exceptionToResponse(throwable: Throwable): Result = {
     val (status, eHandler): (Status, Throwable => String) = throwable match {
