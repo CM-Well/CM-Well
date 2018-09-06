@@ -2010,7 +2010,11 @@ abstract class Host(user: String,
               hosts: GenSeq[String] = ips) {
 
     val currentVersion = extractVersionFromProcNode(ips(0))
+    //If all 3 retries will fail, will wait for result. If fails, upgrade will be stopped.
+    Await.result(currentVersion, 10.seconds)
+
     currentVersion.map(ver => info(s"Current version is $ver"))
+
     checkProduction
     refreshUserState(user, None, hosts)
 
@@ -2184,7 +2188,8 @@ abstract class Host(user: String,
     val upgradedVersion = extractVersionFromCmwellProperties
     info(s"Upgrading to version: $upgradedVersion")
 
-    Upgrade.runPostUpgradeActions(currentVersion, upgradedVersion, hosts)
+    val completed = Upgrade.runPostUpgradeActions(currentVersion, upgradedVersion, hosts)
+    //completed.onComplete(info(s"Upgrade completed!"))
     info(s"Upgrade completed!")
   }
 
@@ -2193,7 +2198,7 @@ abstract class Host(user: String,
     (Json.parse(cmwellProp) \ "cm-well_version").as[String].replace("x-SNAPSHOT", "0")
   }
 
-  def extractVersionFromProcNode(host : String) : Future[String] = {
+  def extractVersionFromProcNode(host : String) : Future[String] = cmwell.util.concurrent.retry(3, 1.seconds){
     val procNode = SimpleHttpClient.get(s"http://${host}:9000/proc/node", Seq("format" -> "json"))
     procNode.map{r =>
       val jsonRes: JsValue = Json.parse(r.payload)

@@ -16,31 +16,42 @@
 import semverfi.{SemVersion, Version}
 
 import scala.collection.GenSeq
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object Upgrade {
 
-  class UpgradeFunc (desc: String, func: (GenSeq[String]) => Boolean){
-    def executeUpgrade(hosts: GenSeq[String]) = if (func(hosts)) info(s"$desc succeeded") else error(s"$desc failed")
+  case class UpgradeFunc (applyToVersion: String, desc: String, func: (GenSeq[String]) => Future[Boolean]){
+    def executeUpgrade(hosts: GenSeq[String]) = {
+      if (Await.result(func(hosts), 1.minutes))
+        info(s"$desc succeeded")
+      else
+        error(s"$desc failed")
+    }
   }
 
-  val postUpgradeMap : Map[String, UpgradeFunc] = {
+  val postUpgradeList : List[UpgradeFunc] = {
     //example
-    /*Map( "1.6.2" -> new UpgradeFunc("myUpgradeSomething",(hosts: GenSeq[String]) => {info(s"in func print: ${hosts(0)}"); true}),
-      "1.6.7" -> new UpgradeFunc("myUpgradeSomethingFailed",(hosts: GenSeq[String]) => {info(s"in func print failed: ${hosts(0)}"); false}))*/
+    /*List(UpgradeFunc("1.6.2", "myUpgradeSomething",(hosts: GenSeq[String]) => {info(s"in func print: ${hosts(0)}"); Future.successful(true)}),
+      UpgradeFunc("1.6.7", "myUpgradeSomethingFailed",(hosts: GenSeq[String]) => {info(s"in func print failed: ${hosts(0)}"); Future.successful(false)}))*/
+    Nil
   }
 
-  def runPostUpgradeActions(currentVersionF : Future[String], upgraded : String, hosts: GenSeq[String])= {
+  def runPostUpgradeActions(currentVersionF : Future[String], upgraded : String, hosts: GenSeq[String]): Future[Boolean]= {
     def shouldRun(test : SemVersion, curr : SemVersion, upgrade : SemVersion) : Boolean = (test > curr) && (test <= upgrade)
 
-    currentVersionF.map(current => postUpgradeMap.foreach{f =>
+    currentVersionF.foreach{current =>
       val currentVersion = Version(current)
       val upgradedVersion = Version(upgraded)
-      val applyToVersion = Version(f._1)
 
-      if (shouldRun(applyToVersion, currentVersion, upgradedVersion)) f._2.executeUpgrade(hosts) })
+      val relevantUpgradeFunctions = postUpgradeList.filter(f => shouldRun(Version(f.applyToVersion), currentVersion, upgradedVersion))
+      info(s"Going to run ${relevantUpgradeFunctions.size} upgrade functions")
 
+      relevantUpgradeFunctions.sortBy(f => Version(f.applyToVersion)).foreach(_.executeUpgrade(hosts))
+    }
+
+    Future(true)
   }
 
 
