@@ -2189,8 +2189,8 @@ abstract class Host(user: String,
     info(s"Upgrading to version: $upgradedVersion")
 
     val completed = Upgrade.runPostUpgradeActions(currentVersion, upgradedVersion, hosts)
-    //completed.onComplete(info(s"Upgrade completed!"))
-    info(s"Upgrade completed!")
+    completed.onComplete(_ => info(s"Upgrade completed!"))
+
   }
 
   def extractVersionFromCmwellProperties : String = {
