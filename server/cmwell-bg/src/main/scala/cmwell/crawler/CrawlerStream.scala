@@ -26,6 +26,7 @@ import cmwell.fts.{ESIndexRequest, FTSServiceOps, FTSThinInfoton, SuccessfulBulk
 import cmwell.irw.IRWService
 import cmwell.util.concurrent.travector
 import cmwell.zstore.ZStore
+import com.datastax.driver.core.ConsistencyLevel
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord}
@@ -124,9 +125,10 @@ object CrawlerStream extends LazyLogging {
     def getVersionsFromPathsTable(cmdOffset: LocalizedCommand) = {
       implicit val localEc: ExecutionContext = ec
       val cmd = cmdOffset.cmd
-      val latestVersion = irwService.lastVersion(cmd.path).map(v1 => v1.map(v2 => BareCasVersion(v2._2, v2._1)))(ec)
+      val latestVersion = irwService.lastVersion(cmd.path, ConsistencyLevel.QUORUM).map(v1 => v1.map(v2 => BareCasVersion(v2._2, v2._1)))(ec)
       val neighbourhoodVersions =
-        irwService.historyNeighbourhood(cmd.path, cmd.lastModified.getMillis, desc = true, limit = 2).map(_.map(v => BareCasVersion(v._2, v._1)))(ec)
+        irwService.historyNeighbourhood(cmd.path, cmd.lastModified.getMillis, desc = true, limit = 2, ConsistencyLevel.QUORUM)
+          .map(_.map(v => BareCasVersion(v._2, v._1)))(ec)
       for {
         latest <- latestVersion
         versions <- neighbourhoodVersions
@@ -183,7 +185,8 @@ object CrawlerStream extends LazyLogging {
 
     lazy val fieldBreakOut = scala.collection.breakOut[Seq[(String, String, String)], SystemField, Vector[SystemField]]
     def getSystemFields(uuid: String) =
-      irwService.rawReadSystemFields(uuid).map(_.collect { case (_, field, value) if field != "data" => SystemField(field, value) }(fieldBreakOut))(ec)
+      irwService.rawReadSystemFields(uuid, ConsistencyLevel.QUORUM)
+        .map(_.collect { case (_, field, value) if field != "data" => SystemField(field, value) }(fieldBreakOut))(ec)
 
     def enrichVersionsWithSystemFields(previousResult: DetectionResult) = {
       previousResult match {
