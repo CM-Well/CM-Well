@@ -198,7 +198,7 @@ class SparqlProcessor[T](baseUrl: String,
     }
 
     def sparqlFlow() = {
-      def createRequest(paths: Paths) = {
+      def createRequest(paths: Paths, vars: Map[String,String]) = {
         val body = if (isNeedWrapping) {
           s"""
              |PATHS

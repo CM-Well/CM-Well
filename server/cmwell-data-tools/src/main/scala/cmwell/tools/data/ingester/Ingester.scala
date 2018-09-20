@@ -184,7 +184,7 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
       * @return Http request for pushing data
       * @see [[akka.http.scaladsl.model.HttpRequest]]
       */
-    def createRequest(data: Seq[ByteString]) = {
+    def createRequest(data: Seq[ByteString], vars: Map[String,String]) = {
       val entity = HttpEntity(concatByteStrings(data, endl).utf8String)
         .withContentType(ContentTypes.`text/plain(UTF-8)`)
 
