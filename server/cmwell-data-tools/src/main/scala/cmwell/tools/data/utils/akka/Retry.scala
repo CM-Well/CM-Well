@@ -273,12 +273,36 @@ object Retry extends DataToolsLogging with DataToolsConfig {
         case State(data, _, None, count, _) =>
           count match {
             case Some(c) if c > 0 =>
-              logger.warn(
-                s"$labelValue error: could not send http request, counter=$c will retry again in $delay data=${stringifyData(data)}"
-              )
-              val future =
-                after(delay, system.scheduler)(Future.successful(data))
-              Some(immutable.Seq(future -> state.copy(count = Some(c - 1))))
+              if(state.data.size > 1) {
+
+                logger.warn(
+                  s"$labelValue error: could not send http request with multiple data. Splitting data to individual requests. data=${stringifyData(data)}"
+                )
+
+                // Failed to send a chunk of data, split to singles and retry
+
+                Some(
+                  data
+                    .map(
+                      dataElement =>
+                        Future.successful(Seq(dataElement)) -> State(
+                          Seq(dataElement),
+                          state.context
+                        )
+                    )
+                    .to[immutable.Iterable]
+                )
+              }
+
+              else{
+
+                logger.warn(
+                  s"$labelValue error: could not send http request, counter=$c will retry again in $delay data=${stringifyData(data)}"
+                )
+
+                val future = after(delay, system.scheduler)(Future.successful(data))
+                Some(immutable.Seq(future -> state.copy(count = Some(c - 1))))
+              }
             case Some(0) =>
               logger.warn(
                 s"$labelValue error: could not send http request, counter=0, will not retry sending request, data=${stringifyData(data)}"
