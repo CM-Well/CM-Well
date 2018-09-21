@@ -160,7 +160,8 @@ class SparqlTriggeredProcessor(config: Config,
           Source.fromGraph(GraphDSL.create() { implicit builder =>
             import GraphDSL.Implicits._
 
-            val merger = builder.add(Merge[(ByteString, Option[SensorContext])](config.sensors.size))
+           // val merger = builder.add(Merge[(ByteString, Option[SensorContext])](config.sensors.size))
+           val merger = builder.add(Merge[((ByteString,Option[Map[String,String]]), Option[SensorContext])](config.sensors.size))
 
             for ((sensor, i) <- config.sensors.zipWithIndex) {
               // if saved token available, ignore token in configuration
@@ -218,7 +219,7 @@ class SparqlTriggeredProcessor(config: Config,
                         initial <- sensor._2
                       } yield initial}
                     )
-                }
+                }.map(source=> (source._1, None) -> source._2)
 
               // get root infoton
               val pathSource = if (sensor.sparqlToRoot.isDefined) {
@@ -231,7 +232,7 @@ class SparqlTriggeredProcessor(config: Config,
                     format = Some("tsv"),
                     label = Some(sensor.name),
                     source = source.map {
-                      case (path, context) =>
+                      case ((path, _), context) =>
                         context.foreach(
                           c => logger.debug("sensor [{}] is trying to get root infoton of {}", c.name, path.utf8String)
                         )
@@ -241,14 +242,22 @@ class SparqlTriggeredProcessor(config: Config,
                   .filter { case (data, _) => data.startsWith("?") }
                   .map {
                     case (data, sensorContext) =>
+
+                      val vars = data.utf8String.filterNot("?\"".toSet)
+                        .split("\n")
+                        .map{_.split("\t")}
+                        .transpose
+                        .map{ f => f(0) -> f(1) }
+                        .toMap
+
                       val path = data
                         .dropWhile(_ != '\n') // drop ?orgId\n
                         .drop(8)
                         .dropRight(1) // <http://data.thomsonreuters.com/1-34418459938>, drop <http:/, >
 
-                      path -> sensorContext
+                      (path,Some(vars)) -> sensorContext
                   }
-                  .filter { case (path, _) => path.nonEmpty }
+                  .filter { case (path, _) => path._1.nonEmpty }
 
               } else {
                 source
@@ -285,16 +294,15 @@ class SparqlTriggeredProcessor(config: Config,
                   .map { case (data, _) => data }
                   .distinct
                   .map(_ -> None)
-
               }
           }
           .map {
             case (path, _) =>
-              logger.debug("request materialization of {}", path.utf8String)
+              logger.debug("request materialization of {}", path._1.utf8String)
               path -> None
             case x =>
               logger.error(s"unexpected message: $x")
-              ByteString("") -> None
+              (ByteString(""), None) -> None
           }
 
         // execute sparql queries on populated paths
@@ -308,7 +316,10 @@ class SparqlTriggeredProcessor(config: Config,
               "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1) +
                 "&sp.path=" + p.head.substring(p.head.lastIndexOf('/') + 1)
             },
-            source = sensorSource,
+            source = sensorSource.map {
+              case ((path,_), context) =>
+                path -> context
+            },
             isNeedWrapping = false,
             label = Some(
               label
