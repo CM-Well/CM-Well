@@ -153,9 +153,11 @@ class APIFunctionalityTests extends AsyncFunSpec
               "header" -> JsArray(Seq(JsString("TestHeader")))))))
 
       spinCheck(100.millis, true)(Http.get(cmt / "InfoObj2", List("format" -> "json"))){res =>
-        Json.parse(res.payload)
-          .transform(uuidDateEraser)
-          .get == expected
+        val payloadStr = (res.payload.map(_.toChar)).mkString
+        if (payloadStr == "Infoton not found") false
+        else Json.parse(payloadStr)
+            .transform(uuidDateEraser)
+            .get == expected
       }.map { res =>
         Json.parse(res.payload)
           .transform(uuidDateEraser)
@@ -176,17 +178,21 @@ class APIFunctionalityTests extends AsyncFunSpec
       }
 
       val subject = ResourceFactory.createResource(cmw.url + "/cmt/cm/test/InfoObjForRdfGet")
-      val predHead = ResourceFactory.createProperty("http://localhost:9000/meta/nn#", "head")
-      val predComp = ResourceFactory.createProperty("http://localhost:9000/meta/nn#", "company")
+      val predHead = ResourceFactory.createProperty(s"${cmw.url}/meta/nn#", "head")
+      val predComp = ResourceFactory.createProperty(s"${cmw.url}/meta/nn#", "company")
 
       it("in RDF N3 format") {
 
         spinCheck(100.millis, true)(Http.get(path, List("format" -> "n3"))){ body =>
-          val status = body.status
-          val graphResult = ModelFactory.createDefaultModel()
-          RDFDataMgr.read(graphResult, new java.io.ByteArrayInputStream(body.payload), Lang.N3)
-          status >=200 && status < 400 && graphResult.getProperty(subject, predHead).getLiteral.getLexicalForm == "seatle" &&
-            graphResult.getProperty(subject, predComp).getLiteral.getLexicalForm == "microsoft"
+          val payloadStr = (body.payload.map(_.toChar)).mkString
+          if (payloadStr== "Infoton not found") false
+          else {
+            val status = body.status
+            val graphResult = ModelFactory.createDefaultModel()
+            RDFDataMgr.read(graphResult, new java.io.ByteArrayInputStream(body.payload), Lang.N3)
+            status >= 200 && status < 400 && graphResult.getProperty(subject, predHead).getLiteral.getLexicalForm == "seatle" &&
+              graphResult.getProperty(subject, predComp).getLiteral.getLexicalForm == "microsoft"
+          }
         }.map { body =>
           body.status should be >= 200
           body.status should be < 400 //status should be OK
@@ -676,9 +682,9 @@ class APIFunctionalityTests extends AsyncFunSpec
           """<http://example.org/hochgi> <http://zzz.me/2014/ZzZzz/2014-06-24#FN> "G H" .""",
           """<http://example.org/hochgi> <http://zzz.me/2014/ZzZzz/2014-06-24#GENDER> "Male" .""",
           """<http://example.org/hochgi> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://zzz.me/2014/ZzZzz/2014-06-24#Individual> .""",
-          s"""<http://example.org/hochgi> <http://localhost:9000/meta/sys#dataCenter> "$dcName" .""",
-          """<http://example.org/hochgi> <http://localhost:9000/meta/sys#parent> "/example.org" .""",
-          """<http://example.org/hochgi> <http://localhost:9000/meta/sys#path> "/example.org/hochgi" ."""
+          s"""<http://example.org/hochgi> <${cmw.url}/meta/sys#dataCenter> "$dcName" .""",
+          s"""<http://example.org/hochgi> <${cmw.url}/meta/sys#parent> "/example.org" .""",
+          s"""<http://example.org/hochgi> <${cmw.url}/meta/sys#path> "/example.org/hochgi" ."""
         )
         def mSys(s: String) = s"/meta/sys#$s"
 
@@ -822,10 +828,10 @@ class APIFunctionalityTests extends AsyncFunSpec
         it("it should retrieve textual file from ntriples as N3") {
           // scalastyle:off
           val expected = s"""
-                            |@prefix sys:   <http://localhost:9000/meta/sys#> .
-                            |@prefix nn:    <http://localhost:9000/meta/nn#> .
+                            |@prefix sys:   <${cmw.url}/meta/sys#> .
+                            |@prefix nn:    <${cmw.url}/meta/nn#> .
                             |@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
-                            |@prefix o:     <http://localhost:9000/test/imgs/> .
+                            |@prefix o:     <${cmw.url}/test/imgs/> .
                             |
                             |o:icon.png
                             |      sys:base64-data "iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAYAAACpSkzOAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2lpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wUmlnaHRzPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvcmlnaHRzLyIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcFJpZ2h0czpNYXJrZWQ9IkZhbHNlIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOkM3MUJFMDdFOEU4QzExREZCMjU5OEFEMjE5QjA1MDRDIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOkM3MUJFMDdEOEU4QzExREZCMjU5OEFEMjE5QjA1MDRDIiB4bXA6Q3JlYXRvclRvb2w9IkFkb2JlIFBob3Rvc2hvcCBDUzIgV2luZG93cyI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ1dWlkOjgyRTY0QjM0QzU5QkRGMTFBODA4OTIwNUU4Mjg0ODVBIiBzdFJlZjpkb2N1bWVudElEPSJ1dWlkOkI2NjNCOUQyOTk5OERGMTE4MzE1RDE2MUYyMTQyRDUxIi8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+4K+uiwAABPFJREFUeNq0lQ1MlVUYx//vey8X7gcfl9D4agjdqIjbkumtUTA+drlQsZRqy6YL52wa4ow0ZqKORRHCamprS5ljQS3D5pBcCrKgXftyc+VMEVACkpRvhAvcj/d9O+e87wXcbl228tkeODvnPL//ec7z3PNykiTBa9mHdGjbPoPFRuZMPKfqhh9rLZ7i/m1dDf8WSv+8m9+I0ake8DwHjpMQqAIZ8wgMSMCeUwV+IUsRYjY9/Rs6B45Db1BBGyjgkft4BAXoEBNetKR4JnSj/kl2f0eNZjq+a0NZiAnvT/VicmYQI9PX4eTV0IsezLp4smqAy3MLixm+LGHDz5z6el2K1DMcDOuLhT43uSf7AXuN3xOveHqL79p9XQeJaPAQ3LCuWY/WE8fAhSSh7AOy4Bic977RziVdzeIYyqAsyqRsqsFLHhckMsi2ZqHlyJuoqKgEm1P88njf0oQWxVAGZVEmZdM5ng0ED/Z+3IqsnAy01JaAj7bOuznOtiShxTGUQVmUSdlUQ+3NqHxzKlO2bqzC6bK15AQzUJFWuR1EKA/yfoXO7rOB9AikoHDklTVA6GuWmUpGakkgQiLNyqXcgYgHolwIfzQdAToj/nDfAf7q8Cv0RF4+XNMjmOy9whjzPIVNMnISRarqVHQEaPRaaLUqaIJ1CHJ62LzTPeVTQJQc7L/WoAXv4TGjkRjDy4PCZlcHJT0POUn+ybWAjmwYkLOIDAzBa5a3MDze5lNo1nUN+cmFePn3enmCxlIGsVNJL4HzXp3onIPomoXodIBWoi77MLa3bsOBV39Ax5VKROiTcXP0PIbv9PgUmnFexhpzKjITDyBcn42zVxtw6cY3KDfGMyY0lD0HnhZQJKoiUaW+LNCIIncYShozkZW8F/auKvSO2skL4PAp5BEn4HBeRFSIiPbuE+j45SOUr94FtSDITMYGbW960XILUqeFjBQ4WHTLsenzVXjDdh7m2AKo+UCfQipej1CdDe09c6j7qQIZbg30qqAFHmOTt05gJXJCcM3JxSUnkUQRWyMexzTHYfMXqTjyyveY80ygb8xO22Xht8PrYNQ/i4s3jfjUXop1oSZY+m8zhpcHxlYykgTajgJzmhFpJUyOjGNb2FNI0ITj9S/TkflYKWKNKXdlY9Tb0D2SgIPflSLHYEKmK4zEikp7C4qLLCOezZORKMpOP4TUI8w2LDfn4mBODWL092PrVzmwmvcvZMNpMORIQfW5HUiLtmBHWimLEZX4BZ7AtHmJHUBi1yXJqmyj688fmYuDF/DhQ/kw6SKw5Xgu1lsasTIyiWRTgP2ni5FmfBhvR1nm97MvtrTAk9lEyEPSEgQJHsXpiUSyIpAiekjXCOQHF0A27ovPQ5QmmDTIC1i54hhKmhqQEhyDoph0tkcgb5pAO4zAKcPLk9mkGUS5JCw99jKQ8cCQA5OXOqE2DJPP9sJHeB3iUKu+ioKjFsSKWjw3tgydY7/KcaTirqkhTAyLSFzE87JlIeJVJ/vxXmU1mg/txPPFtf/4psXP3MIn1z7D7uQiGAL0PvfIjBrs2b0L72w0MT7XvglSYu4G6BPz0Hx4J55ZHYf/w+wX+pBPxBxd36LrTD3pOpoaWWgip0hdFYfqpn453f/glEFZlCkq18edK4Q0yEUjIzcb98Laz7QhWhoER9uxpZCTcA8tp07i/hZgAMNRD8XVs1vdAAAAAElFTkSuQmCC"^^xsd:base64Binary ;
@@ -855,11 +861,11 @@ class APIFunctionalityTests extends AsyncFunSpec
           val expected = s"""
                             |<rdf:RDF
                             |    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-                            |    xmlns:sys="http://localhost:9000/meta/sys#"
-                            |    xmlns:nn="http://localhost:9000/meta/nn#"
+                            |    xmlns:sys="${cmw.url}/meta/sys#"
+                            |    xmlns:nn="${cmw.url}/meta/nn#"
                             |    xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
-                            |    xmlns:o="http://localhost:9000/test/imgs/" >
-                            |  <rdf:Description rdf:about="http://localhost:9000/test/imgs/icon.png">
+                            |    xmlns:o="${cmw.url}/test/imgs/" >
+                            |  <rdf:Description rdf:about="${cmw.url}/test/imgs/icon.png">
                             |    <sys:type>FileInfoton</sys:type>
                             |    <sys:path>/test/imgs/icon.png</sys:path>
                             |    <sys:parent>/test/imgs</sys:parent>
@@ -929,11 +935,11 @@ class APIFunctionalityTests extends AsyncFunSpec
           it("should get: application/json -> n3") {
             // scalastyle:off
             val expected = s"""
-                              |@prefix nn:    <http://localhost:9000/meta/nn#> .
-                              |@prefix sys:   <http://localhost:9000/meta/sys#> .
+                              |@prefix nn:    <${cmw.url}/meta/nn#> .
+                              |@prefix sys:   <${cmw.url}/meta/sys#> .
                               |@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
                               |
-                            |<http://localhost:9000/test/imgs/icon.png>
+                            |<${cmw.url}/test/imgs/icon.png>
                               |      sys:base64-data   "iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAYAAACpSkzOAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2lpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wUmlnaHRzPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvcmlnaHRzLyIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcFJpZ2h0czpNYXJrZWQ9IkZhbHNlIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOkM3MUJFMDdFOEU4QzExREZCMjU5OEFEMjE5QjA1MDRDIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOkM3MUJFMDdEOEU4QzExREZCMjU5OEFEMjE5QjA1MDRDIiB4bXA6Q3JlYXRvclRvb2w9IkFkb2JlIFBob3Rvc2hvcCBDUzIgV2luZG93cyI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ1dWlkOjgyRTY0QjM0QzU5QkRGMTFBODA4OTIwNUU4Mjg0ODVBIiBzdFJlZjpkb2N1bWVudElEPSJ1dWlkOkI2NjNCOUQyOTk5OERGMTE4MzE1RDE2MUYyMTQyRDUxIi8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+4K+uiwAABPFJREFUeNq0lQ1MlVUYx//vey8X7gcfl9D4agjdqIjbkumtUTA+drlQsZRqy6YL52wa4ow0ZqKORRHCamprS5ljQS3D5pBcCrKgXftyc+VMEVACkpRvhAvcj/d9O+e87wXcbl228tkeODvnPL//ec7z3PNykiTBa9mHdGjbPoPFRuZMPKfqhh9rLZ7i/m1dDf8WSv+8m9+I0ake8DwHjpMQqAIZ8wgMSMCeUwV+IUsRYjY9/Rs6B45Db1BBGyjgkft4BAXoEBNetKR4JnSj/kl2f0eNZjq+a0NZiAnvT/VicmYQI9PX4eTV0IsezLp4smqAy3MLixm+LGHDz5z6el2K1DMcDOuLhT43uSf7AXuN3xOveHqL79p9XQeJaPAQ3LCuWY/WE8fAhSSh7AOy4Bic977RziVdzeIYyqAsyqRsqsFLHhckMsi2ZqHlyJuoqKgEm1P88njf0oQWxVAGZVEmZdM5ng0ED/Z+3IqsnAy01JaAj7bOuznOtiShxTGUQVmUSdlUQ+3NqHxzKlO2bqzC6bK15AQzUJFWuR1EKA/yfoXO7rOB9AikoHDklTVA6GuWmUpGakkgQiLNyqXcgYgHolwIfzQdAToj/nDfAf7q8Cv0RF4+XNMjmOy9whjzPIVNMnISRarqVHQEaPRaaLUqaIJ1CHJ62LzTPeVTQJQc7L/WoAXv4TGjkRjDy4PCZlcHJT0POUn+ybWAjmwYkLOIDAzBa5a3MDze5lNo1nUN+cmFePn3enmCxlIGsVNJL4HzXp3onIPomoXodIBWoi77MLa3bsOBV39Ax5VKROiTcXP0PIbv9PgUmnFexhpzKjITDyBcn42zVxtw6cY3KDfGMyY0lD0HnhZQJKoiUaW+LNCIIncYShozkZW8F/auKvSO2skL4PAp5BEn4HBeRFSIiPbuE+j45SOUr94FtSDITMYGbW960XILUqeFjBQ4WHTLsenzVXjDdh7m2AKo+UCfQipej1CdDe09c6j7qQIZbg30qqAFHmOTt05gJXJCcM3JxSUnkUQRWyMexzTHYfMXqTjyyveY80ygb8xO22Xht8PrYNQ/i4s3jfjUXop1oSZY+m8zhpcHxlYykgTajgJzmhFpJUyOjGNb2FNI0ITj9S/TkflYKWKNKXdlY9Tb0D2SgIPflSLHYEKmK4zEikp7C4qLLCOezZORKMpOP4TUI8w2LDfn4mBODWL092PrVzmwmvcvZMNpMORIQfW5HUiLtmBHWimLEZX4BZ7AtHmJHUBi1yXJqmyj688fmYuDF/DhQ/kw6SKw5Xgu1lsasTIyiWRTgP2ni5FmfBhvR1nm97MvtrTAk9lEyEPSEgQJHsXpiUSyIpAiekjXCOQHF0A27ovPQ5QmmDTIC1i54hhKmhqQEhyDoph0tkcgb5pAO4zAKcPLk9mkGUS5JCw99jKQ8cCQA5OXOqE2DJPP9sJHeB3iUKu+ioKjFsSKWjw3tgydY7/KcaTirqkhTAyLSFzE87JlIeJVJ/vxXmU1mg/txPPFtf/4psXP3MIn1z7D7uQiGAL0PvfIjBrs2b0L72w0MT7XvglSYu4G6BPz0Hx4J55ZHYf/w+wX+pBPxBxd36LrTD3pOpoaWWgip0hdFYfqpn453f/glEFZlCkq18edK4Q0yEUjIzcb98Laz7QhWhoER9uxpZCTcA8tp07i/hZgAMNRD8XVs1vdAAAAAElFTkSuQmCC"^^xsd:base64Binary ;
                               |      sys:length        "2244"^^xsd:long ;
                               |      sys:mimeType      "image/png" ;
@@ -942,7 +948,7 @@ class APIFunctionalityTests extends AsyncFunSpec
                               |      sys:dataCenter    "$dcName" ;
                               |      sys:type          "FileInfoton" .
                               |
-                            |[ sys:infotons  <http://localhost:9000/test/imgs/icon.png> ;
+                            |[ sys:infotons  <${cmw.url}/test/imgs/icon.png> ;
                               |  sys:size      "1"^^xsd:int ;
                               |  sys:type      "RetrievablePaths"
                               |] .
@@ -967,14 +973,14 @@ class APIFunctionalityTests extends AsyncFunSpec
             val expected = s"""
                               |<rdf:RDF
                               |    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-                              |    xmlns:sys="http://localhost:9000/meta/sys#"
-                              |    xmlns:nn="http://localhost:9000/meta/nn#"
+                              |    xmlns:sys="${cmw.url}/meta/sys#"
+                              |    xmlns:nn="${cmw.url}/meta/nn#"
                               |    xmlns:xsd="http://www.w3.org/2001/XMLSchema#">
                               |  <rdf:Description>
                               |    <sys:type>RetrievablePaths</sys:type>
                               |    <sys:size rdf:datatype="http://www.w3.org/2001/XMLSchema#int">1</sys:size>
                               |    <sys:infotons>
-                              |      <rdf:Description rdf:about="http://localhost:9000/test/imgs/icon.png">
+                              |      <rdf:Description rdf:about="${cmw.url}/test/imgs/icon.png">
                               |        <sys:type>FileInfoton</sys:type>
                               |        <sys:path>/test/imgs/icon.png</sys:path>
                               |        <sys:parent>/test/imgs</sys:parent>
@@ -1014,8 +1020,8 @@ class APIFunctionalityTests extends AsyncFunSpec
           s"""
              |<rdf:RDF
              |    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-             |    xmlns:sys="http://localhost:9000/meta/sys#"
-             |    xmlns:nn="http://localhost:9000/meta/nn#"
+             |    xmlns:sys="${cmw.url}/meta/sys#"
+             |    xmlns:nn="${cmw.url}/meta/nn#"
              |    xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
              |    xmlns:vcard="http://www.w3.org/2006/vcard/ns#">
              |  <rdf:Description>
@@ -1037,7 +1043,7 @@ class APIFunctionalityTests extends AsyncFunSpec
 
         val p = Promise[String]()
 
-        Http.ws(uri = "ws://localhost:9000/ws/_out",
+        Http.ws(uri = s"ws://${cmw.url.replace("http://", "")}/ws/_out",
           initiationMessage = "/example.org/JohnSmith",
           queryParams = List("format"->"rdfxml")) { msg =>
           p.success(msg)
@@ -1456,9 +1462,12 @@ class APIFunctionalityTests extends AsyncFunSpec
             |  }
             |}
           """.stripMargin)
-        spinCheck(100.millis, true)(Http.get(cmt / "Araújo3", List("format" -> "json")))(
-          res => Json.parse(res.payload).transform(uuidDateEraser).get == expected
-        ).map { res =>
+        spinCheck(100.millis, true)(Http.get(cmt / "Araújo3", List("format" -> "json"))) {
+          res =>
+            val payloadStr = (res.payload.map(_.toChar)).mkString
+            if (payloadStr == "Infoton not found") false
+            else Json.parse(payloadStr).transform(uuidDateEraser).get == expected
+        }.map { res =>
           withClue(res) {
             Json.parse(res.payload).transform(uuidDateEraser).get should be(expected)
           }

@@ -94,7 +94,10 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
       val executeAfterIndexing = indexingBugSampleIngest.zip(oldVcardOntologyDataIngest).flatMap(_ => {
         spinCheck(100.millis, true)(
           Http.get(cmw / "www.example.net" / "Individuals" / "JohnSmith", List("format" -> "json"))){ res =>
-          Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get == johnSmithExpectedJson
+          val payload = res.payload
+          if (payload.toString == "Infoton not found") false
+          else
+            Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get == johnSmithExpectedJson
         }}.map{
           res => Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get shouldEqual johnSmithExpectedJson}.flatMap {_ =>
         spinCheck(100.millis, true)(

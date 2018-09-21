@@ -51,7 +51,11 @@ class FileInfotonTests extends AsyncFunSpec with Matchers with TryValues with He
     }
     val f3 = f2.flatMap(_ => spinCheck(100.millis, true)(Http.get(path, List("format" -> "json"))){
       res =>
-        Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get == j
+        val jsonResult = Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick)
+        jsonResult match {
+          case JsSuccess(value, _) => value == j
+          case JsError(_) => false
+        }
     }.map{ res =>
         withClue(res) {
           Json
