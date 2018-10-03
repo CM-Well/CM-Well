@@ -28,7 +28,8 @@ case class LocalHost(dataCenter: String = "lh",
                      newBg: Boolean = true,
                      oldBg: Boolean = true,
                      nbg: Boolean = false,
-                     isDebug: Boolean = false)
+                     isDebug: Boolean = false,
+                     subjectsInSpAreHttps: Boolean = false)
     extends Host(
       System.getProperty("user.name"),
       "",
@@ -48,7 +49,8 @@ case class LocalHost(dataCenter: String = "lh",
       minMembers = Some(1),
       haProxy = None,
       withElk = withElk,
-      isDebug = isDebug
+      isDebug = isDebug,
+      subjectsInSpAreHttps = subjectsInSpAreHttps
     ) {
 
 //  LogLevel.debug
@@ -289,7 +291,8 @@ case class LocalHost(dataCenter: String = "lh",
       hostIp = ip,
       minMembers = getMinMembers,
       seeds = getSeedNodes.mkString(","),
-      seedPort = 9301
+      seedPort = 9301,
+      subjectsInSpAreHttps = subjectsInSpAreHttps
     )
 
     val ctrl = CtrlConf(

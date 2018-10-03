@@ -38,7 +38,8 @@ case class Grid(user: String,
                 withElk: Boolean = false,
                 newBg: Boolean = true,
                 oldBg: Boolean = true,
-                nbg: Boolean = false)
+                nbg: Boolean = false,
+               subjectsInSpAreHttps: Boolean = false)
     extends Host(
       user,
       password,
@@ -58,7 +59,8 @@ case class Grid(user: String,
       ctrlService,
       minMembers,
       haProxy,
-      withElk = withElk
+      withElk = withElk,
+      subjectsInSpAreHttps = subjectsInSpAreHttps
     ) {
 
   //if(!validateNumberOfMasterNodes(esMasters, ips.size)) throw new Exception("Bad number of Elasticsearch master nodes")
@@ -196,7 +198,8 @@ case class Grid(user: String,
         hostIp = host,
         minMembers = getMinMembers,
         seeds = getSeedNodes.mkString(","),
-        seedPort = 9301
+        seedPort = 9301,
+        subjectsInSpAreHttps = subjectsInSpAreHttps
       )
 
       val ctrl = CtrlConf(
