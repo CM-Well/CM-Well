@@ -62,6 +62,8 @@ object Infoton {
       }
     }
   }
+
+  val https = Some("https")
 }
 
 sealed trait Infoton extends Formattable { self =>
@@ -73,6 +75,7 @@ sealed trait Infoton extends Formattable { self =>
   def dc: String
   def indexTime: Option[Long]
   def indexName: String
+  def protocol: Option[String]
   def extraBytesForDigest: Seq[Array[Byte]] = Seq.empty
   def extraLengthForWeight: Long = 0
 
@@ -81,38 +84,43 @@ sealed trait Infoton extends Formattable { self =>
                   fields: Option[Map[String, Set[FieldValue]]] = this.fields,
                   dc: String = this.dc,
                   indexTime: Option[Long] = this.indexTime,
-                  indexName: String = ""): Infoton = this match {
+                  indexName: String = "",
+                  protocol: Option[String]): Infoton = this match {
     case oi: ObjectInfoton =>
       oi.copy(path = path,
               lastModified = lastModified,
               fields = fields,
               dc = dc,
               indexTime = indexTime,
-              indexName = indexName)
+              indexName = indexName,
+              protocol = protocol)
     case fi: FileInfoton =>
       fi.copy(path = path,
               lastModified = lastModified,
               fields = fields,
               dc = dc,
               indexTime = indexTime,
-              indexName = indexName)
+              indexName = indexName,
+              protocol = protocol)
     case li: LinkInfoton =>
       li.copy(path = path,
               lastModified = lastModified,
               fields = fields,
               dc = dc,
               indexTime = indexTime,
-              indexName = indexName)
+              indexName = indexName,
+              protocol = protocol)
     case di: DeletedInfoton =>
-      di.copy(path = path, lastModified = lastModified, dc = dc, indexTime = indexTime, indexName = indexName)
+      di.copy(path = path, lastModified = lastModified, dc = dc, indexTime = indexTime, indexName = indexName, protocol = protocol)
     case ci: CompoundInfoton =>
       ci.copy(path = path,
               lastModified = lastModified,
               fields = fields,
               dc = dc,
               indexTime = indexTime,
-              indexName = indexName)
-    case gi: GhostInfoton => gi.copy(path = path)
+              indexName = indexName,
+              protocol = protocol)
+    case gi: GhostInfoton => gi.copy(path = path, protocol = protocol)
   }
 
   def overrideUuid(forcedUuid: String) = this match {
@@ -243,11 +251,12 @@ case class ObjectInfoton(path: String,
                          indexTime: Option[Long] = None,
                          lastModified: DateTime = new DateTime, // TODO: `DateTime.now(DateTimeZone.UTC),` instead
                          override val fields: Option[Map[String, Set[FieldValue]]] = None,
-                         indexName: String = "")
+                         indexName: String = "",
+                         protocol: Option[String])
     extends Infoton {
   override def getMasked(fieldsMask: Set[String]): Infoton = {
     val originalUuid = uuid
-    new ObjectInfoton(path, dc, indexTime, lastModified, maskedFields(fieldsMask)) {
+    new ObjectInfoton(path, dc, indexTime, lastModified, maskedFields(fieldsMask), protocol) {
       override val uuid = originalUuid
       override def kind = "ObjectInfoton"
     }
