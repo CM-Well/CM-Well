@@ -318,8 +318,8 @@ class SparqlTriggeredProcessor(config: Config,
                   vars.foldLeft("") {
                     case (string, (key, value)) => {
                       val paramsString = string match {
-                        case "" => string + "&"
-                        case _ => string
+                        case x if !x.isEmpty => string + "&"
+                        case _ => ""
                       }
                       paramsString + "sp." + key + "=" + value
                     }
