@@ -312,12 +312,9 @@ class SparqlTriggeredProcessor(config: Config,
           source = SparqlProcessor.createSparqlSourceFromPaths(
             baseUrl = baseUrl,
             sparqlQuery = processedConfig.sparqlMaterializer,
-            spQueryParamsBuilder = (p: Seq[String], v: Option[Map[String,String]]) => {
-              v match {
-                case None =>
-                  "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1) +
-                    "&sp.path=" + p.head.substring(p.head.lastIndexOf('/') + 1)
-                case Some(vars) =>
+            spQueryParamsBuilder = (path: Seq[String], vars: Option[Map[String,String]]) => {
+              vars match {
+                case Some(vars) if (vars.nonEmpty && !vars.contains("orgId")) =>
                   vars.foldLeft("") {
                     case (string, (key, value)) => {
                       val paramsString = string match {
@@ -327,6 +324,9 @@ class SparqlTriggeredProcessor(config: Config,
                       paramsString + "sp." + key + "=" + value
                     }
                   }
+                case _ =>
+                  "sp.pid=" + path.head.substring(path.head.lastIndexOf('-') + 1) +
+                    "&sp.path=" + path.head.substring(path.head.lastIndexOf('/') + 1)
               }
             },
             source = sensorSource,
