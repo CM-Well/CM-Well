@@ -237,13 +237,7 @@ class SparqlProcessor[T](baseUrl: String,
         .map {
           case ((path,vars), context) =>
             val startTime = System.currentTimeMillis
-
-            val varsMap = vars match {
-              case None => Map[String,String]()
-              case Some(vars) => vars
-            }
-
-            (path, varsMap) -> Some(context -> startTime)
+            (path, vars.getOrElse(Map[String,String]()) ) -> Some(context -> startTime)
         }
         .via(Retry.retryHttp(retryTimeout, parallelism, baseUrl, retryCountLimit)(createRequest, validateResponse))
         .map {
