@@ -161,7 +161,7 @@ class SparqlTriggeredProcessor(config: Config,
             import GraphDSL.Implicits._
 
            // val merger = builder.add(Merge[(ByteString, Option[SensorContext])](config.sensors.size))
-           val merger = builder.add(Merge[((ByteString,Option[Map[String,String]]), Option[SensorContext])](config.sensors.size))
+           val merger = builder.add(Merge[((ByteString,Map[String,String]), Option[SensorContext])](config.sensors.size))
 
             for ((sensor, i) <- config.sensors.zipWithIndex) {
               // if saved token available, ignore token in configuration
@@ -219,7 +219,7 @@ class SparqlTriggeredProcessor(config: Config,
                         initial <- sensor._2
                       } yield initial}
                     )
-                }.map(source=> (source._1, None) -> source._2)
+                }.map(source=> (source._1, Map.empty[String,String]) -> source._2)
 
               // get root infoton
               val pathSource = if (sensor.sparqlToRoot.isDefined) {
@@ -228,7 +228,7 @@ class SparqlTriggeredProcessor(config: Config,
                     baseUrl = baseUrl,
                     isNeedWrapping = false,
                     sparqlQuery = sensor.sparqlToRoot.get,
-                    spQueryParamsBuilder = (p: Seq[String], v: Option[Map[String,String]]) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
+                    spQueryParamsBuilder = (p: Seq[String], v: Map[String,String]) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
                     format = Some("tsv"),
                     label = Some(sensor.name),
                     source = source.map {
@@ -236,7 +236,7 @@ class SparqlTriggeredProcessor(config: Config,
                         context.foreach(
                           c => logger.debug("sensor [{}] is trying to get root infoton of {}", c.name, path.utf8String)
                         )
-                        (path, None) -> context
+                        (path, Map.empty[String,String]) -> context
                     }
                   )
                   .filter { case (data, _)  => data.startsWith("?") }
@@ -250,14 +250,17 @@ class SparqlTriggeredProcessor(config: Config,
                         .map{ f => f(0) -> f(1) }
                         .toMap
 
-                      val path = vars.contains("orgId") match {
-                        case true => ByteString(vars.get("orgId").get.drop(8).dropRight(1))
-                        case _ => ByteString("")
-                      }
+                      val path =
+                        if(vars.size == 1){
+                          ByteString(vars.head._2.drop(8).dropRight(1))
+                        }
+                        else {
+                          ByteString("")
+                        }
 
-                      (path, Some(vars)) -> sensorContext
+                      (path, vars) -> sensorContext
                   }
-                  .filter { case ( (path, Some(vars)), _) => path.nonEmpty || vars.nonEmpty }
+                  .filter { case ( (path, vars), _) => path.nonEmpty || vars.nonEmpty }
 
               } else {
                 source
@@ -302,7 +305,7 @@ class SparqlTriggeredProcessor(config: Config,
               path -> None
             case x =>
               logger.error(s"unexpected message: $x")
-              (ByteString(""), None) -> None
+              (ByteString(""), Map.empty[String,String]) -> None
           }
 
         // execute sparql queries on populated paths
@@ -312,22 +315,17 @@ class SparqlTriggeredProcessor(config: Config,
           source = SparqlProcessor.createSparqlSourceFromPaths(
             baseUrl = baseUrl,
             sparqlQuery = processedConfig.sparqlMaterializer,
-            spQueryParamsBuilder = (path: Seq[String], vars: Option[Map[String,String]]) => {
-              vars match {
-                case Some(vars) if (vars.nonEmpty && !vars.contains("orgId")) =>
-                  vars.foldLeft("") {
-                    case (string, (key, value)) => {
-                      val paramsString = string match {
-                        case x if !x.isEmpty => string + "&"
-                        case _ => ""
-                      }
-                      paramsString + "sp." + key + "=" + value
-                    }
+            spQueryParamsBuilder = (path: Seq[String], vars: Map[String,String]) => {
+              (if(path.head.length>0) {
+                 "sp.pid=" + path.head.substring(path.head.lastIndexOf('-') + 1) +
+                   "&sp.path=" + path.head.substring(path.head.lastIndexOf('/') + 1)
+               }
+               else{""}) +
+                vars.foldLeft("") {
+                  case (string, (key, value)) => {
+                    string + "sp." + key + "=" + value + "&"
                   }
-                case _ =>
-                  "sp.pid=" + path.head.substring(path.head.lastIndexOf('-') + 1) +
-                    "&sp.path=" + path.head.substring(path.head.lastIndexOf('/') + 1)
-              }
+                }
             },
             source = sensorSource,
             isNeedWrapping = false,
