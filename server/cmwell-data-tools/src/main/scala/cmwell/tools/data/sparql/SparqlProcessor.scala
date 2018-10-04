@@ -287,7 +287,7 @@ class SparqlProcessor[T](baseUrl: String,
     }
 
     source //.async
-      .map { case (path, context) => ( Seq(path._1), path._2) -> context }
+      .map { case ((path,vars), context) => ( Seq(path), vars) -> context }
 //      .via(sparqlFlow())
       .via(balancer(sparqlFlow(), parallelism))
   }
