@@ -93,14 +93,14 @@ object SparqlProcessorMain extends App {
       isNeedWrapping = Opts.sparqlQueryWrap(),
       parallelism = Opts.parallelism(),
       indexTime = Opts.indexTime(),
-      spQueryParamsBuilder = (p: Seq[String]) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
+      spQueryParamsBuilder = (p: Seq[String], v: Option[Map[String,String]]) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
       sparqlQuery = sparqlQuery
     )
   } else if (Opts.fromPaths()) {
     SparqlProcessor.createSourceFromPathsInputStream(
       baseUrl = Opts.srcHost(),
       isNeedWrapping = Opts.sparqlQueryWrap(),
-      spQueryParamsBuilder = (p: Seq[String]) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
+      spQueryParamsBuilder = (p: Seq[String], v: Option[Map[String,String]]) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
       sparqlQuery = sparqlQuery,
       parallelism = Opts.parallelism(),
       in = System.in
@@ -109,7 +109,7 @@ object SparqlProcessorMain extends App {
     SparqlProcessor.createSourceFromToken(
       baseUrl = Opts.srcHost(),
       isNeedWrapping = Opts.sparqlQueryWrap(),
-      spQueryParamsBuilder = (p: Seq[String]) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
+      spQueryParamsBuilder = (p: Seq[String], v: Option[Map[String,String]]) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
       sparqlQuery = sparqlQuery,
       parallelism = Opts.parallelism(),
       token = Opts.positionToken()
