@@ -149,13 +149,13 @@ class HttpsTests extends AsyncFunSpec with Matchers with Helpers with Inspectors
     }
   }
 
-  it("Inject data to cmwell")(inject.map(_.status should be(200)))
-  it("Verify YG > for B")(verifyYgForB)
-  it("Verify YG < for A")(verifyYgForA)
-  it("Verify XG for A")(verifyXgForA)
-  it("Verify GQP > for A with HTTP relation")(verifyGqpForAPointingAtHttp)
-  it("Verify GQP > for A with HTTPS relation")(verifyGqpForAPointingAtHttps)
-  it("Verify GQP < for A")(verifyGqpForPointingAtA)
+  ignore("Inject data to cmwell")(inject.map(_.status should be(200)))
+  ignore("Verify YG > for B")(verifyYgForB)
+  ignore("Verify YG < for A")(verifyYgForA)
+  ignore("Verify XG for A")(verifyXgForA)
+  ignore("Verify GQP > for A with HTTP relation")(verifyGqpForAPointingAtHttp)
+  ignore("Verify GQP > for A with HTTPS relation")(verifyGqpForAPointingAtHttps)
+  ignore("Verify GQP < for A")(verifyGqpForPointingAtA)
 
 
 }
