@@ -68,6 +68,7 @@ object InfotonSerializer extends LazyLogging {
     private[this] var dc: String = _
     private[this] var indexTime: Option[Long] = None
     private[this] var indexName: String = ""
+    private[this] var protocol: Option[String] = None
     private[this] var fields: Option[MMap[String, Set[FieldValue]]] = None
     private[this] var fileContentBuildPosition = 0
     private[this] var fileContentBuilder = null.asInstanceOf[Array[Byte]]
@@ -118,6 +119,14 @@ object InfotonSerializer extends LazyLogging {
       case currentIndexName =>
         throw new IllegalStateException(
           s"indexName was already set for uuid [$uuidHint] [$currentIndexName,$indexName]"
+        )
+    }
+
+    def setProtocol(protocol: String): Unit = this.protocol match {
+      case None => this.protocol = Some(protocol)
+      case currentProtocol =>
+        throw new IllegalStateException(
+          s"protocol was already set for uuid [$uuidHint] [$currentProtocol,$protocol]"
         )
     }
 
@@ -185,7 +194,7 @@ object InfotonSerializer extends LazyLogging {
         require(dc ne null, s"must have dc initialized [$uuidHint]")
 
         infoton = kind match {
-          case "o" => new ObjectInfoton(path, dc, indexTime, lastModified, fields.map(_.toMap), indexName)
+          case "o" => new ObjectInfoton(path, dc, indexTime, lastModified, fields.map(_.toMap), indexName, protocol)
           case "f" => {
             val fileContent = {
               if (mimeType eq null) None
@@ -206,14 +215,14 @@ object InfotonSerializer extends LazyLogging {
                 Some(FileContent(Option(fileContentBuilder), mimeType, fileContentLength, dataPointerOpt))
               }
             }
-            new FileInfoton(path, dc, indexTime, lastModified, fields.map(_.toMap), fileContent, indexName)
+            new FileInfoton(path, dc, indexTime, lastModified, fields.map(_.toMap), fileContent, indexName, protocol)
           }
           case "l" => {
             if ((linkTo eq null) || (linkType == -1))
               throw new IllegalStateException(
                 s"cannot create a LinkInfoton for uuid [$uuidHint] if linkTo [$linkTo] or linkType [$linkType] is not initialized."
               )
-            else new LinkInfoton(path, dc, indexTime, lastModified, fields.map(_.toMap), linkTo, linkType, indexName)
+            else new LinkInfoton(path, dc, indexTime, lastModified, fields.map(_.toMap), linkTo, linkType, indexName, protocol)
           }
           case "d" => new DeletedInfoton(path, dc, indexTime, lastModified, indexName)
           case _   => throw new IllegalStateException(s"unrecognized type was inserted [$kind] for uuid [$uuidHint]")
@@ -247,6 +256,7 @@ object InfotonSerializer extends LazyLogging {
       case "dc"             => infotonBuilder.setDc(value._1)
       case "indexTime"      => infotonBuilder.setIndexTime(value._1.toLong)
       case "indexName"      => infotonBuilder.setIndexName(value._1)
+      case "protocol"       => infotonBuilder.setProtocol(value._1)
       case "mimeType"       => infotonBuilder.setMimeType(value._1)
       case "contentLength"  => infotonBuilder.setContentLength(value._1.toInt)
       case "data"           => infotonBuilder.setFileContent(value._2, value._1.toInt)
@@ -302,13 +312,12 @@ object InfotonSerializer extends LazyLogging {
         b += "lastModified" -> Vector(i.lastModified.toString(fmt))
         b += "dc" -> Vector(i.dc)
         b += "indexName" -> Vector(i.indexName)
-        i.indexTime.fold(b) { indexTime =>
-          b += "indexTime" -> Vector(indexTime.toString)
-        }
+        i.indexTime.fold(b) { indexTime => b += "indexTime" -> Vector(indexTime.toString) }
+        i.protocol.fold(b) { protocol => b += "protocol" -> Vector(protocol) }
       }
 
       i match {
-        case FileInfoton(_, _, _, _, _, Some(FileContent(data, mime, dl, dp)), _) => {
+        case FileInfoton(_, _, _, _, _, Some(FileContent(data, mime, dl, dp)), _, _) => {
           builder += "mimeType" -> Vector(mime)
           data.foreach { d =>
             def padWithZeros(num: String, padToLength: Int): String = {
@@ -337,7 +346,7 @@ object InfotonSerializer extends LazyLogging {
             builder += "contentLength" -> Vector(dl.toString)
           }
         }
-        case LinkInfoton(_, _, _, _, _, linkTo, linkType, _) => {
+        case LinkInfoton(_, _, _, _, _, linkTo, linkType, _, _) => {
           builder += "linkTo" -> Vector(linkTo.toString)
           builder += "linkType" -> Vector(linkType.toString)
         }
@@ -450,10 +459,10 @@ object InfotonSerializer extends LazyLogging {
 
     // lets save specific data for each infoton
     infoton match {
-      case ObjectInfoton(_, _, _, _, _, _) =>
+      case ObjectInfoton(_, _, _, _, _, _, _) =>
         data += (("$type", "o".getBytes("UTF-8")))
 
-      case FileInfoton(_, _, _, _, _, c, _) =>
+      case FileInfoton(_, _, _, _, _, c, _, _) =>
         data += (("$type", "f".getBytes("UTF-8")))
         c match {
           case Some(FileContent(d, mimeType, dl, dp)) =>
@@ -477,7 +486,7 @@ object InfotonSerializer extends LazyLogging {
           case None =>
         }
 
-      case LinkInfoton(_, _, _, _, _, t, lt, _) =>
+      case LinkInfoton(_, _, _, _, _, t, lt, _, _) =>
         data += (("$type", "l".getBytes("UTF-8")))
         data += (("$to", t.getBytes("UTF-8")))
         data += (("$lt", lt.toString.getBytes("UTF-8")))
@@ -530,106 +539,108 @@ object InfotonSerializer extends LazyLogging {
   }
 
   def deserialize(data: mutable.Buffer[(String, Array[Byte])]): Infoton = {
-    // partition into
-    val (system_buffer, data_buffer) = data.partition(v => v._1.startsWith("$"))
+//    // partition into
+//    val (system_buffer, data_buffer) = data.partition(v => v._1.startsWith("$"))
+//
+//    var v = new mutable.HashMap[String, Array[Byte]]
+//    for (item <- system_buffer) {
+//      v += item
+//    }
+//    val path = v("$path")
+//    val uuid = v("$uuid")
+//    val dc = v.getOrElse("$dc", "na".getBytes("utf-8"))
+//    val infoType = new String(v("$type"), "UTF-8")
+//    val lastModified: DateTime = fmt.parseDateTime(new String(v("$lastModified"), "UTF-8"))
+//    val indexTime = v.get("$indexTime").map { v =>
+//      new String(v).toLong
+//    }
+//    //val lastModified : Long =  new String(v("$lastModified")).toLong
+////    val sysInfo = SysInfo(new lang.String(path, "utf-8"),lastModified)
+////    val sysFields = SystemFields(new lang.String(path, "utf-8"), lastModified, new lang.String(uuid, "utf-8"))
+//    val pathString = new String(path, "UTF-8")
+//    val uuidString = new String(uuid, "UTF-8")
+//    val dcString = new String(dc, "UTF-8")
+//
+//    // Very Very bad code
+//    val l = data_buffer.toSet
+//    val x = l.map { kv =>
+//      (clean_key(kv._1), getFieldValue(kv._1, new String(kv._2, "UTF-8")))
+//    }
+//    val g = x.groupBy(_._1) //{ kv => kv._1 }
+//    val t = g.map { k =>
+//      k._1 -> (for (v <- k._2) yield v._2)
+//    }
+//
+//    val fields = if (t.nonEmpty) Some(t) else None
+//    // get type
+//    val reply = infoType match {
+//      case "o" =>
+//        val i = ObjectInfoton(pathString, dcString, indexTime, lastModified, fields)
+//        i
+//
+//      case "f" =>
+//        val mimeType = v("$mimeType")
+//        if (v.contains("$content_pointer")) {
+//          val dataPointer = new String(v("$content_pointer"), "UTF-8")
+//          val dataLength = new String(v("$content_length"), "UTF-8").toInt
+//          val f = FileInfoton(pathString,
+//                              dcString,
+//                              indexTime,
+//                              lastModified,
+//                              fields,
+//                              Some(FileContent(None, new String(mimeType), dataLength, Option(dataPointer))))
+//          f
+//        } else if (v.contains("$content_count") == true) {
+//          val chunks_count = new String(v("$content_count"), "UTF-8").toInt
+//          val c: Array[Byte] = (0 to chunks_count)
+//            .map { f =>
+//              v("$content_%d".format(f))
+//            }
+//            .flatten
+//            .toArray
+//          //val c = v("$content")
+//          //val content = new sun.misc.BASE64Decoder().decodeBuffer(new String(c,"utf-8"))
+//          val content = new Base64().decode(c)
+//          //val content = new String(new sun.misc.BASE64Decoder().decodeBuffer(new String(c,"utf-8")))
+//          //val content = new String(c)
+//          //        val f = FileInfoton(sysInfo, fields, FileContent(content ,new String(mimeType)))
+//          val f = FileInfoton(pathString,
+//                              dcString,
+//                              indexTime,
+//                              lastModified,
+//                              fields,
+//                              Some(FileContent(content, new String(mimeType))))
+//          f
+//        } else {
+//          val fc = FileContent(new String(mimeType), 0)
+//          val f = FileInfoton(pathString, dcString, indexTime, lastModified, fields, Some(fc))
+//          f
+//        }
+//
+//      case "l" =>
+//        val to = v("$to")
+//        val lt = v("$lt")
+////        val i = LinkInfoton(sysInfo,fields ,new String(to) , new String(lt).toByte )
+//        val i = LinkInfoton(pathString,
+//                            dcString,
+//                            indexTime,
+//                            lastModified,
+//                            fields,
+//                            new String(to, "UTF-8"),
+//                            new String(lt, "UTF-8").toByte)
+//        i
+//      case "d" =>
+////        val d = DeletedInfoton(sysInfo)
+//        val d = DeletedInfoton(pathString, dcString, indexTime, lastModified)
+//        d
+//    }
+//
+//    if (!reply.uuid.equals(uuidString))
+//      logger.error(
+//        s"deserialize error for infoton path: $pathString original uuid: $uuidString new uuid: ${reply.uuid}"
+//      )
+//    reply
 
-    var v = new mutable.HashMap[String, Array[Byte]]
-    for (item <- system_buffer) {
-      v += item
-    }
-    val path = v("$path")
-    val uuid = v("$uuid")
-    val dc = v.getOrElse("$dc", "na".getBytes("utf-8"))
-    val infoType = new String(v("$type"), "UTF-8")
-    val lastModified: DateTime = fmt.parseDateTime(new String(v("$lastModified"), "UTF-8"))
-    val indexTime = v.get("$indexTime").map { v =>
-      new String(v).toLong
-    }
-    //val lastModified : Long =  new String(v("$lastModified")).toLong
-//    val sysInfo = SysInfo(new lang.String(path, "utf-8"),lastModified)
-//    val sysFields = SystemFields(new lang.String(path, "utf-8"), lastModified, new lang.String(uuid, "utf-8"))
-    val pathString = new String(path, "UTF-8")
-    val uuidString = new String(uuid, "UTF-8")
-    val dcString = new String(dc, "UTF-8")
-
-    // Very Very bad code
-    val l = data_buffer.toSet
-    val x = l.map { kv =>
-      (clean_key(kv._1), getFieldValue(kv._1, new String(kv._2, "UTF-8")))
-    }
-    val g = x.groupBy(_._1) //{ kv => kv._1 }
-    val t = g.map { k =>
-      (k._1 -> (for (v <- k._2) yield (v._2)))
-    }
-
-    val fields = if (t.nonEmpty) Some(t) else None
-    // get type
-    val reply = infoType match {
-      case "o" =>
-        val i = ObjectInfoton(pathString, dcString, indexTime, lastModified, fields)
-        i
-
-      case "f" =>
-        val mimeType = v("$mimeType")
-        if (v.contains("$content_pointer")) {
-          val dataPointer = new String(v("$content_pointer"), "UTF-8")
-          val dataLength = new String(v("$content_length"), "UTF-8").toInt
-          val f = FileInfoton(pathString,
-                              dcString,
-                              indexTime,
-                              lastModified,
-                              fields,
-                              Some(FileContent(None, new String(mimeType), dataLength, Option(dataPointer))))
-          f
-        } else if (v.contains("$content_count") == true) {
-          val chunks_count = new String(v("$content_count"), "UTF-8").toInt
-          val c: Array[Byte] = (0 to chunks_count)
-            .map { f =>
-              v("$content_%d".format(f))
-            }
-            .flatten
-            .toArray
-          //val c = v("$content")
-          //val content = new sun.misc.BASE64Decoder().decodeBuffer(new String(c,"utf-8"))
-          val content = new Base64().decode(c)
-          //val content = new String(new sun.misc.BASE64Decoder().decodeBuffer(new String(c,"utf-8")))
-          //val content = new String(c)
-          //        val f = FileInfoton(sysInfo, fields, FileContent(content ,new String(mimeType)))
-          val f = FileInfoton(pathString,
-                              dcString,
-                              indexTime,
-                              lastModified,
-                              fields,
-                              Some(FileContent(content, new String(mimeType))))
-          f
-        } else {
-          val fc = FileContent(new String(mimeType), 0)
-          val f = FileInfoton(pathString, dcString, indexTime, lastModified, fields, Some(fc))
-          f
-        }
-
-      case "l" =>
-        val to = v("$to")
-        val lt = v("$lt")
-//        val i = LinkInfoton(sysInfo,fields ,new String(to) , new String(lt).toByte )
-        val i = LinkInfoton(pathString,
-                            dcString,
-                            indexTime,
-                            lastModified,
-                            fields,
-                            new String(to, "UTF-8"),
-                            new String(lt, "UTF-8").toByte)
-        i
-      case "d" =>
-//        val d = DeletedInfoton(sysInfo)
-        val d = DeletedInfoton(pathString, dcString, indexTime, lastModified)
-        d
-    }
-
-    if (!reply.uuid.equals(uuidString))
-      logger.error(
-        s"deserialize error for infoton path: $pathString original uuid: $uuidString new uuid: ${reply.uuid}"
-      )
-    reply
+    !!!
   }
 }
