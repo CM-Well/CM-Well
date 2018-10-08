@@ -247,7 +247,7 @@ class SparqlTriggeredProcessor(config: Config,
                         .split("\n")
                         .map{_.split("\t")}
                         .transpose
-                        .map{ f => f(0) -> f(1) }
+                        .map{ f => f(0) -> { if (f.isDefinedAt(1)) f(1) else "" } }
                         .toMap
 
                       val path =
