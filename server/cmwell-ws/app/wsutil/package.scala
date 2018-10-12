@@ -1133,7 +1133,7 @@ package object wsutil extends LazyLogging {
   def pathStatusAsInfoton(ps: PathStatus): Infoton = {
     val PathStatus(path, status) = ps
     val fields: Option[Map[String, Set[FieldValue]]] = Some(Map("trackingStatus" -> Set(FString(status.toString))))
-    VirtualInfoton(ObjectInfoton(path, Settings.dataCenter, None, fields = fields))
+    VirtualInfoton(ObjectInfoton(path, Settings.dataCenter, None, fields = fields, protocol = None))
   }
 
   def getFormatter(request: Request[_],
@@ -1167,6 +1167,7 @@ package object wsutil extends LazyLogging {
     case ("system", "indexTime")               => true
     case ("system", "current")                 => true
     case ("system", "parent")                  => true
+    case ("system", "protocol")                => true
     case ("link", "to")                        => true
     case ("link", "kind")                      => true
     case ("content", "data")                   => true

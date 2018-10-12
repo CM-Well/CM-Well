@@ -126,7 +126,7 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
   }
 
   private def extractPayload(infoton: Infoton): Option[JsValue] = infoton match {
-    case FileInfoton(_, _, _, _, _, Some(FileContent(Some(payload), _, _, _)), _) =>
+    case FileInfoton(_, _, _, _, _, Some(FileContent(Some(payload), _, _, _)), _, _) =>
       val jsValOpt = Try(Json.parse(payload)).toOption
       if (jsValOpt.isEmpty)
         logger.warn(s"AuthCache Infoton(${infoton.path}) has invalid JSON content.")

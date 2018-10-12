@@ -53,7 +53,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     val objInfo = new ObjectInfoton(
       path = "/command-test/objinfo1",
       dc = "test",
-      fields = Option(Map[String,Set[FieldValue]]("g" -> Set(FString("h")),"last" -> Set(FString("zitnik")), "name" ->  x )))
+      fields = Option(Map[String,Set[FieldValue]]("g" -> Set(FString("h")),"last" -> Set(FString("zitnik")), "name" ->  x )), protocol = None)
     InfotonSerializer.deserialize(InfotonSerializer.serialize(objInfo)) shouldEqual objInfo
     serialize2Anddeserialize2(objInfo) shouldEqual objInfo
   }
@@ -105,7 +105,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     imgInfo.fields.get("name").size should equal (imgInfoCmp2.fields.get("name").size)
 
     (imgInfoCmp: @unchecked) match {
-      case FileInfoton(_,_,_,_,fields , content, _ ) =>
+      case FileInfoton(_,_,_,_,fields , content, _ , _ ) =>
         content.get match {
           case FileContent(data,mimeType,_,_) =>
             val d = data.get
@@ -115,7 +115,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     }
 
     (imgInfoCmp2: @unchecked) match {
-      case FileInfoton(_,_,_,_,fields , content, _ ) =>
+      case FileInfoton(_,_,_,_,fields , content, _ , _ ) =>
         content.get match {
           case FileContent(data,mimeType,_,_) =>
             val d = data.get
@@ -150,7 +150,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     textInfo.fields.get("name").size should equal (textInfoCmp2.fields.get("name").size)
 
     (textInfoCmp: @unchecked) match {
-      case FileInfoton(_,_,_,_,fields , content, _ ) =>
+      case FileInfoton(_,_,_,_,fields , content, _ , _ ) =>
         content.get match {
           case FileContent(data,mimeType,_,_) =>
             val d = data.get
@@ -160,7 +160,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     }
 
     (textInfoCmp2: @unchecked) match {
-      case FileInfoton(_,_,_,_,fields , content, _ ) =>
+      case FileInfoton(_,_,_,_,fields , content, _ , _ ) =>
         content.get match {
           case FileContent(data,mimeType,_,_) =>
             val d = data.get
@@ -193,7 +193,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     fInf.fields.get("name").size should equal (dataInfoCmp2.fields.get("name").size)
 
     (dataInfoCmp: @unchecked) match {
-      case FileInfoton(_,_,_,_,_,content,_) =>
+      case FileInfoton(_,_,_,_,_,content,_,_) =>
         content.get match {
           case FileContent(binData,mimeType,_,_) =>
             val d = binData.get
@@ -203,7 +203,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     }
 
     (dataInfoCmp2: @unchecked) match {
-      case FileInfoton(_,_,_,_,_,content,_) =>
+      case FileInfoton(_,_,_,_,_,content,_,_) =>
         content.get match {
           case FileContent(binData,mimeType,_,_) =>
             val d = binData.get
@@ -233,7 +233,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     fInf.fields.get("name").size should equal (dataInfoCmp2.fields.get("name").size)
 
     (dataInfoCmp: @unchecked) match {
-      case FileInfoton(_,_,_,_,_,content,_) =>
+      case FileInfoton(_,_,_,_,_,content,_,_) =>
         content.get match {
           case FileContent(binData,mimeType,_,_) =>
             val d = binData.get
@@ -243,7 +243,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     }
 
     (dataInfoCmp2: @unchecked) match {
-      case FileInfoton(_,_,_,_,_,content,_) =>
+      case FileInfoton(_,_,_,_,_,content,_,_) =>
         content.get match {
           case FileContent(binData,mimeType,_,_) =>
             val d = binData.get
@@ -268,7 +268,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     forward.lastModified should equal (forwardCmp.lastModified)
     // check link
     (forwardCmp: @unchecked) match {
-      case LinkInfoton(_,_,_,_,_,t,lt,_) => {
+      case LinkInfoton(_,_,_,_,_,t,lt,_,_) => {
         forward.linkTo should equal (t)
         forward.linkType should equal (lt)
       }
@@ -285,7 +285,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     per.lastModified should equal (perCmp.lastModified)
     // check link
     (perCmp: @unchecked) match {
-      case LinkInfoton(_,_,_,_,_,t,lt,_ ) => {
+      case LinkInfoton(_,_,_,_,_,t,lt,_,_ ) => {
         per.linkTo should equal (t)
         per.linkType should equal (lt)
       }
@@ -303,7 +303,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     temp.lastModified should equal (tempCmp.lastModified)
     // check link
     (tempCmp: @unchecked) match {
-      case LinkInfoton(_,_,_,_,_,t,lt,_ ) => {
+      case LinkInfoton(_,_,_,_,_,t,lt,_,_ ) => {
         temp.linkTo should equal (t)
         temp.linkType should equal (lt)
       }

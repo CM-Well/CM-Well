@@ -151,7 +151,7 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
         i.fields.size should equal (fileInfo.fields.size)
         i.indexTime should equal (Some(666L))
         i match {
-          case FileInfoton(_,_,_,_,_,c,_) =>
+          case FileInfoton(_,_,_,_,_,c,_,_) =>
             c match {
               case Some(cc) =>
                 withClue(new String(cc.data.get) + "-------------------------------------" + new String(fileContent.data.get)) {

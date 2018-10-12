@@ -697,6 +697,7 @@ class FTSServiceES private (classPathConfigFile: String, waitForGreen: Boolean)
         val lastModified = new DateTime(hit.field("system.lastModified").getValue.asInstanceOf[String])
         val id = hit.field("system.uuid").getValue.asInstanceOf[String]
         val dc = Try(hit.field("system.dc").getValue.asInstanceOf[String]).getOrElse(Settings.dataCenter)
+        val protocol = Try(hit.field("system.protocol").getValue.asInstanceOf[String]).toOption
 
         val indexTime = tryLongThenInt[Option[Long]](hit, "system.indexTime", Some.apply[Long], None, id, path)
         val score: Option[Map[String, Set[FieldValue]]] =
@@ -704,7 +705,7 @@ class FTSServiceES private (classPathConfigFile: String, waitForGreen: Boolean)
 
         hit.field("type").getValue.asInstanceOf[String] match {
           case "ObjectInfoton" =>
-            new ObjectInfoton(path, dc, indexTime, lastModified, score) {
+            new ObjectInfoton(path, dc, indexTime, lastModified, score, protocol = protocol) {
               override def uuid = id
               override def kind = "ObjectInfoton"
             }
@@ -717,7 +718,8 @@ class FTSServiceES private (classPathConfigFile: String, waitForGreen: Boolean)
               indexTime,
               lastModified,
               score,
-              Some(FileContent(hit.field("content.mimeType").getValue.asInstanceOf[String], contentLength))
+              Some(FileContent(hit.field("content.mimeType").getValue.asInstanceOf[String], contentLength)),
+              protocol = protocol
             ) {
               override def uuid = id
               override def kind = "FileInfoton"
@@ -729,7 +731,8 @@ class FTSServiceES private (classPathConfigFile: String, waitForGreen: Boolean)
                             lastModified,
                             score,
                             hit.field("linkTo").getValue.asInstanceOf[String],
-                            hit.field("linkType").getValue[Int]) {
+                            hit.field("linkType").getValue[Int],
+                            protocol = protocol) {
               override def uuid = id
               override def kind = "LinkInfoton"
             }

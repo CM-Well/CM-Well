@@ -2421,7 +2421,7 @@ callback=< [URL] >
         case None => Future.successful(NotFound("Infoton not found"))
         case Some(DeletedInfoton(p, _, _, lm, _)) =>
           Future.successful(NotFound(s"Infoton was deleted on ${fullDateFormatter.print(lm)}"))
-        case Some(LinkInfoton(_, _, _, _, _, to, lType, _)) =>
+        case Some(LinkInfoton(_, _, _, _, _, to, lType, _, _)) =>
           lType match {
             case LinkType.Permanent => Future.successful(Redirect(to, request.queryString, MOVED_PERMANENTLY))
             case LinkType.Temporary => Future.successful(Redirect(to, request.queryString, TEMPORARY_REDIRECT))
@@ -2571,7 +2571,8 @@ callback=< [URL] >
                 boolFutureToRespones(
                   crudServiceFS.putInfoton(FileInfoton(path = normalizedPath,
                                                        dc = Settings.dataCenter,
-                                                       content = Some(FileContent(content, contentType))),
+                                                       content = Some(FileContent(content, contentType)),
+                                                       protocol = None),
                                            isPriorityWrite)
                 )
               }
@@ -2583,7 +2584,7 @@ callback=< [URL] >
                   InfotonValidator.validateValueSize(fields)
                   boolFutureToRespones(
                     crudServiceFS
-                      .putInfoton(FileInfoton(path = normalizedPath, dc = Settings.dataCenter, fields = Some(fields)),
+                      .putInfoton(FileInfoton(path = normalizedPath, dc = Settings.dataCenter, fields = Some(fields), protocol = None),
                                   isPriorityWrite)
                   )
                 case Failure(exception) =>
@@ -2603,7 +2604,8 @@ callback=< [URL] >
                                                      dc = Settings.dataCenter,
                                                      fields = Some(Map[String, Set[FieldValue]]()),
                                                      linkTo = linkTo,
-                                                     linkType = linkType),
+                                                     linkType = linkType,
+                                                     protocol = None),
                                          isPriorityWrite)
               )
             }
@@ -3128,7 +3130,7 @@ class CachedSpa @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
   private def doFetchContent(isOldUi: Boolean): Future[String] = {
     val path = if (isOldUi) contentPath else newContentPath
     crudServiceFS.getInfotonByPathAsync(path).collect {
-      case FullBox(FileInfoton(_, _, _, _, _, Some(c), _)) => new String(c.data.get, "UTF-8")
+      case FullBox(FileInfoton(_, _, _, _, _, Some(c), _, _)) => new String(c.data.get, "UTF-8")
       case somethingElse => {
         logger.error("got something else: " + somethingElse)
         throw new SpaMissingException("SPA Content is currently unreachable")

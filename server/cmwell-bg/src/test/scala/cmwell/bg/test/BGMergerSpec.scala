@@ -157,6 +157,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       new DateTime(0L),
+      None,
+      "",
       None
     )
 
@@ -176,6 +178,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       new DateTime(0L),
+      None,
+      "",
       None
     )
 
@@ -195,6 +199,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       Some(1L),
       new DateTime(0L),
+      None,
+      "",
       None
     )
 
@@ -214,6 +220,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       Some(2L),
       new DateTime(0L),
+      None,
+      "",
       None
     )
 
@@ -233,6 +241,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       now,
+      None,
+      "",
       None
     )
     val infoton2 = ObjectInfoton(
@@ -240,6 +250,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       now.plusMillis(20),
+      None,
+      "",
       None
     )
     val writeCommand1 = WriteCommand(infoton1)
@@ -257,6 +269,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       DateTime.now(),
+      None,
+      "",
       None
     )
     val writeCommand = WriteCommand(baseInfoton.copyInfoton(lastModified = baseInfoton.lastModified.minus(1)))
@@ -273,6 +287,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       Some(1L),
       now,
+      None,
+      "",
       None
     )
     val infoton1 = ObjectInfoton(
@@ -280,6 +296,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       now.minusMillis(161),
+      None,
+      "",
       None
     )
     val infoton2 = ObjectInfoton(
@@ -287,6 +305,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       now.plusMillis(53),
+      None,
+      "",
       None
     )
     val writeCommand1 = WriteCommand(infoton1)

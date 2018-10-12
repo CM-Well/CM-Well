@@ -52,9 +52,9 @@ package object util {
 
   private[this] def makeMetaWithZero(path: String, fields: Option[Map[String, Set[FieldValue]]]): ObjectInfoton = {
     if (path.startsWith("/meta/")) {
-      ObjectInfoton(path, Settings.dataCenter, None, zeroTime, fields)
+      ObjectInfoton(path, Settings.dataCenter, None, zeroTime, fields, protocol = None)
     } else {
-      ObjectInfoton(path = path, fields = fields, dc = Settings.dataCenter)
+      ObjectInfoton(path = path, fields = fields, dc = Settings.dataCenter, protocol = None)
     }
   }
 
@@ -65,14 +65,14 @@ package object util {
                       currentTime: DateTime): Infoton = {
     val path = removeCmwHostAndPrependSlash(cmwHostsSet, ipath)
     metaData match {
-      case Some(MetaData(mdt, date, data, text, ctype, linktype, linkto, dataCenter, indexTime)) => {
+      case Some(MetaData(mdt, date, data, text, ctype, linktype, linkto, dataCenter, indexTime, protocol)) => {
         lazy val (_date, dc) =
           if (path.startsWith("/meta/")) DateTime.now(DateTimeZone.UTC) -> Settings.dataCenter
           else date.getOrElse(DateTime.now(DateTimeZone.UTC)) -> dataCenter.getOrElse(Settings.dataCenter)
         mdt match {
           case Some(ObjectMetaData) if path.startsWith("/meta/") => makeMetaWithZero(path, fields)
           case Some(ObjectMetaData) => {
-            ObjectInfoton(path, dc, indexTime, _date, fields)
+            ObjectInfoton(path, dc, indexTime, _date, fields, protocol = protocol)
           }
           case Some(FileMetaData) => {
             val contentTypeFromByteArray = ctype match {
@@ -91,7 +91,8 @@ package object util {
                             fields = fields,
                             content = Some(FileContent(ba, contentTypeFromByteArray(ba))),
                             dc = dc,
-                            indexTime = indexTime)
+                            indexTime = indexTime,
+                            protocol = protocol)
               case (None, Some(txt)) =>
                 FileInfoton(
                   path = path,
@@ -99,7 +100,8 @@ package object util {
                   fields = fields,
                   content = Some(FileContent(txt.getBytes(Charset.forName("UTF-8")), "text/plain; utf-8")),
                   dc = dc,
-                  indexTime = indexTime
+                  indexTime = indexTime,
+                  protocol = protocol
                 )
               case _ => ??? //TODO: case is untreated yet
             }
@@ -115,7 +117,8 @@ package object util {
                   linkTo = lto,
                   linkType = ltype,
                   dc = dc,
-                  indexTime = indexTime
+                  indexTime = indexTime,
+                  protocol = protocol
                 )
               case _ => ??? //TODO: case is untreated yet
             }
@@ -123,7 +126,7 @@ package object util {
           case None =>
             (data, text, ctype) match {
               case (None, None, None) =>
-                ObjectInfoton(path = path, lastModified = _date, fields = fields, dc = dc, indexTime = indexTime)
+                ObjectInfoton(path = path, lastModified = _date, fields = fields, dc = dc, indexTime = indexTime, protocol = protocol)
               case _ =>
                 infotonFromMaps(
                   cmwHostsSet,
@@ -164,7 +167,8 @@ package util {
     linkType: Option[Int],
     linkTo: Option[String],
     dataCenter: Option[String],
-    indexTime: Option[Long]
+    indexTime: Option[Long],
+    protocol: Option[String]
   ) {
 
     // format: off
@@ -177,7 +181,8 @@ package util {
       linkType.isEmpty   &&
       linkTo.isEmpty     &&
       dataCenter.isEmpty &&
-      indexTime.isEmpty
+      indexTime.isEmpty  &&
+      protocol.isEmpty
     }
     // format: on
 
@@ -191,10 +196,11 @@ package util {
       val linkTo = Try(this.linkTo.getOrElse(that.linkTo.get)).toOption
       val dataCenter = Try(this.dataCenter.getOrElse(that.dataCenter.get)).toOption
       val indexTime = Try(this.indexTime.getOrElse(that.indexTime.get)).toOption
-      MetaData(mdType, date, data, text, mimeType, linkType, linkTo, dataCenter, indexTime)
+      val protocol = Try(this.protocol.getOrElse(that.protocol.get)).toOption
+      MetaData(mdType, date, data, text, mimeType, linkType, linkTo, dataCenter, indexTime, protocol)
     }
   }
   object MetaData {
-    val empty = MetaData(None, None, None, None, None, None, None, None, None)
+    val empty = MetaData(None, None, None, None, None, None, None, None, None, None)
   }
 }

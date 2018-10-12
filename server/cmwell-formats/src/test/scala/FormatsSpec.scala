@@ -59,7 +59,7 @@ class FormatsSpec extends FunSpec with Matchers with Helpers {
         None,
         date,
         Some(defaultFields),
-        Seq(ObjectInfoton("first-child","dc_test",None,date)), 0, 1, 1)
+        Seq(ObjectInfoton("first-child","dc_test",None,date, protocol = None)), 0, 1, 1, protocol = None)
     )
 
     def assertSystemFields(i: Infoton, jsonl: JsValue) = {

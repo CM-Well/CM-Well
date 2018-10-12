@@ -85,7 +85,7 @@ sealed trait Infoton extends Formattable { self =>
                   dc: String = this.dc,
                   indexTime: Option[Long] = this.indexTime,
                   indexName: String = "",
-                  protocol: Option[String]): Infoton = this match {
+                  protocol: Option[String] = this.protocol): Infoton = this match {
     case oi: ObjectInfoton =>
       oi.copy(path = path,
               lastModified = lastModified,

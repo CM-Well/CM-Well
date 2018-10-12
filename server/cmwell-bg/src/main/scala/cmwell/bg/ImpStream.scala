@@ -357,7 +357,8 @@ class ImpStream(partition: Int,
                   path = path,
                   dc = defaultDC,
                   lastModified = childLastModified,
-                  indexName = currentIndexName
+                  indexName = currentIndexName,
+                  protocol = None
                 )
                 val writeCommand = WriteCommand(infoton)
                 val payload = CommandSerializer.encode(writeCommand)

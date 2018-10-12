@@ -68,7 +68,7 @@ object InfotonGenerator {
           case false => None
           case true => Some(mkFields)
         }
-        FileInfoton(path=path.mkString("/", "/", ""),"dc_test", fields=f, content=Some(FileContent(content, mimeType)))
+        FileInfoton(path=path.mkString("/", "/", ""),"dc_test", fields=f, content=Some(FileContent(content, mimeType)),protocol = None)
       }
       case 2 => ??? //unreacable for now, TODO: add LinkInfoton Generation
       case _ => ??? //should never get here

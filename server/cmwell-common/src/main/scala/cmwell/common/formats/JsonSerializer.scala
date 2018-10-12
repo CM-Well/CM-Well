@@ -400,13 +400,15 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
       jsonGenerator.writeNumberField("indexTime", idxT)
     }
 
+    infoton.protocol.foreach(jsonGenerator.writeStringField("protocol", _))
+
     jsonGenerator.writeEndObject() // end system object field
     // write field object, if not empty
     infoton.fields.foreach { fields =>
       encodeFieldsWithGenerator(fields, jsonGenerator, toEs = toEs)
     }
     infoton match {
-      case FileInfoton(_, _, _, _, _, Some(FileContent(dataOpt, mimeType, dl, dp)), _) =>
+      case FileInfoton(_, _, _, _, _, Some(FileContent(dataOpt, mimeType, dl, dp)), _, _) =>
         jsonGenerator.writeObjectFieldStart("content")
         jsonGenerator.writeStringField("mimeType", mimeType)
         dataOpt.foreach { data =>
@@ -425,7 +427,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
         }
         jsonGenerator.writeNumberField("length", dataOpt.fold(dl)(_.length))
         jsonGenerator.writeEndObject()
-      case LinkInfoton(_, _, _, _, _, linkTo, linkType, _) =>
+      case LinkInfoton(_, _, _, _, _, linkTo, linkType, _, _) =>
         jsonGenerator.writeStringField("linkTo", linkTo)
         jsonGenerator.writeNumberField("linkType", linkType)
       case _ =>

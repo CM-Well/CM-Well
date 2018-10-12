@@ -146,7 +146,7 @@ object GridMonitoring {
       }
       Some(
         VirtualInfoton(
-          FileInfoton(path, dc, None, content = Some(FileContent(contentTranformator(payload).getBytes, mimeType)))
+          FileInfoton(path, dc, None, content = Some(FileContent(contentTranformator(payload).getBytes, mimeType)), protocol = None)
         )
       )
     }
@@ -159,7 +159,7 @@ object GridMonitoring {
     }
     val md = MarkdownTable(MarkdownTuple("Singleton", "Role", "Location"), body.toSeq).get
     Future.successful(
-      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(md.getBytes, "text/x-markdown")))))
+      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(md.getBytes, "text/x-markdown")), protocol = None)))
     )
   }
 
@@ -171,7 +171,7 @@ object GridMonitoring {
       val actorsFlatten = actors.flatten
       val body = actorsFlatten.toSeq.sortBy(_._1).map(t => MarkdownTuple(t._1, t._2, t._3))
       val md = MarkdownTable(MarkdownTuple("Member", "Actor", "Latency (ms)"), body).get
-      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(md.getBytes, "text/x-markdown")))))
+      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(md.getBytes, "text/x-markdown")), protocol = None)))
     }
   }
 
@@ -193,7 +193,7 @@ object GridMonitoring {
         MarkdownTuple(bodyDatum: _*)
       }
       val md = MarkdownTable(MarkdownTuple(actorsMap.keySet.toSeq.sorted: _*), body.toSeq).get
-      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(md.getBytes, "text/x-markdown")))))
+      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(md.getBytes, "text/x-markdown")), protocol = None)))
     }
   }
 }

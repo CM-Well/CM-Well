@@ -498,15 +498,23 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
       s"expected value for 'dc' field\n${jsonParser.getCurrentLocation.toString}")
     val dataCenter = jsonParser.getText()
 
+
+    // Both indexTime and protocol are optional:
     val nt = jsonParser.nextToken()
-    val indexTime = if (nt == JsonToken.FIELD_NAME && "indexTime".equals(jsonParser.getCurrentName())) {
-      assume(jsonParser.nextToken() == JsonToken.VALUE_NUMBER_INT,
-        s"expected value for 'indexTime' field\n${jsonParser.getCurrentLocation.toString}")
-      val idxTime = Try(jsonParser.getLongValue).toOption
+
+    val indexTime = if (nt == JsonToken.FIELD_NAME && "indexTime".equals(jsonParser.getCurrentName)) {
+      assume(jsonParser.nextToken() == JsonToken.VALUE_NUMBER_INT, s"expected value for 'indexTime' field\n${jsonParser.getCurrentLocation.toString}")
+      Try(jsonParser.getLongValue).toOption
+    } else {
+      None
+    }
+
+    val protocol = if (nt == JsonToken.FIELD_NAME && "protocol".equals(jsonParser.getCurrentName)) {
+      assume(jsonParser.nextToken() == JsonToken.VALUE_STRING, s"expected value for 'protocol' field\n${jsonParser.getCurrentLocation.toString}")
+      val protocol = jsonParser.getText()
       // End of system object
-      assume(jsonParser.nextToken() == JsonToken.END_OBJECT,
-        s"expected end of 'system' object\n${jsonParser.getCurrentLocation.toString}")
-      idxTime
+      assume(jsonParser.nextToken() == JsonToken.END_OBJECT, s"expected end of 'system' object\n${jsonParser.getCurrentLocation.toString}")
+      Option(protocol)
     } else {
       assume(nt == JsonToken.END_OBJECT, s"expected end of 'system' object\n${jsonParser.getCurrentLocation.toString}")
       None
@@ -531,7 +539,7 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
         //expecting end of json object
         assume(nextToken == JsonToken.END_OBJECT,
           s"expected end of json object\n${jsonParser.getCurrentLocation.toString}")
-        ObjectInfoton(path, dataCenter, indexTime, lastModified, fields)
+        ObjectInfoton(path, dataCenter, indexTime, lastModified, fields, protocol = protocol)
       case "LinkInfoton" =>
         assume(
           nextToken == JsonToken.FIELD_NAME && "linkTo".equals(jsonParser.getCurrentName()),
@@ -552,7 +560,7 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
         //expecting end of json object
         assume(jsonParser.nextToken() == JsonToken.END_OBJECT,
           s"expected end of json object\n${jsonParser.getCurrentLocation.toString}")
-        LinkInfoton(path, dataCenter, indexTime, lastModified, fields, linkTo, linkType)
+        LinkInfoton(path, dataCenter, indexTime, lastModified, fields, linkTo, linkType, protocol = protocol)
       case "FileInfoton" =>
         var fileContent: Option[FileContent] = None
         if (nextToken.id == JsonTokenId.ID_FIELD_NAME) {
@@ -629,7 +637,7 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
             s"expected end of json object\n${jsonParser.getCurrentLocation.toString}")
         }
 
-        FileInfoton(path, dataCenter, indexTime, lastModified, fields, fileContent)
+        FileInfoton(path, dataCenter, indexTime, lastModified, fields, fileContent, protocol = protocol)
       case "DeletedInfoton" =>
         assume(nextToken == JsonToken.END_OBJECT,
           s"expected end of json object\n${jsonParser.getCurrentLocation.toString}")

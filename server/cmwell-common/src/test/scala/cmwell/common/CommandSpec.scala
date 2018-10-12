@@ -109,7 +109,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
 
   "file infoton decode" should "be successful" in {
     System.setProperty("dataCenter.id", "dc_test")
-    val fInfoton = FileInfoton(path = "/stam/kacha", dc = "dc_test", content = Some(FileContent("test text".getBytes("UTF-8"), "text/plain")))
+    val fInfoton = FileInfoton(path = "/stam/kacha", dc = "dc_test", content = Some(FileContent("test text".getBytes("UTF-8"), "text/plain")), protocol = None)
     val payload: Array[Byte] = CommandSerializer.encode(WriteCommand(fInfoton))
     val cmpCommand = CommandSerializer.decode(payload)
     val wc = cmpCommand.asInstanceOf[WriteCommand]

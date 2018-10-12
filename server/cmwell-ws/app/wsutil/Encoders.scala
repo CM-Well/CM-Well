@@ -191,7 +191,7 @@ object Encoders extends LazyLogging{
           ObjectInfoton(path, dc, None, md, fields)
         case (Some(sf), None) =>
           val (path, md, dc) = processSystem(sf)
-          ObjectInfoton(path, dc, None, md)
+          ObjectInfoton(path, dc, None, md, None, "", None)
       }
     }
 
@@ -205,7 +205,7 @@ object Encoders extends LazyLogging{
       (systemFieldOpt, fieldsOpt, fileContentsOpt) match {
         case (Some(sf), None, None) =>
           val (path, md, dc) = processSystem(sf)
-          FileInfoton(path, dc, None, md)
+          FileInfoton(path, dc, None, md, None, None, "", None)
         case (None, _, _) => throw InfotonParsingException("System field is not present")
         case (Some(sf), Some(f), Some(fc)) =>
           val (path, md, dc) = processSystem(sf)
@@ -216,11 +216,11 @@ object Encoders extends LazyLogging{
           val (path, md, dc) = processSystem(sf)
           val fields = None
           val fileContent = processFileContent(fc)
-          FileInfoton(path = path, dc = dc, lastModified = md, content = Some(fileContent))
+          FileInfoton(path, dc, None, md, None, Some(fileContent), "", None)
         case (Some(sf), Some(f), None) =>
           val (path, md, dc) = processSystem(sf)
           val fields = processFields(f)
-          FileInfoton(path = path, dc = dc, lastModified = md, fields = Some(fields))
+          FileInfoton(path, dc, None, md, Some(fields), None, "", None)
       }
     }
 
@@ -240,7 +240,7 @@ object Encoders extends LazyLogging{
           LinkInfoton(path, dc, md, fields, lTo, lType)
         case (Some(s), None, Some(lTo), Some(lType)) =>
           val (path, md, dc) = processSystem(s)
-          LinkInfoton(path = path, dc = dc, lastModified = md, linkTo = lTo, linkType = lType)
+          LinkInfoton(path = path, dc = dc, lastModified = md, linkTo = lTo, linkType = lType, protocol = None)
       }
     }
 

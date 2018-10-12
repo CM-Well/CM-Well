@@ -286,9 +286,9 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
   }
 
   "purging infoton" should "permanently delete infoton with given UUID from history index" in {
-    val infotonToPurge = ObjectInfoton("/fts-test/infoToPurge","dc_test",Some(System.currentTimeMillis()))
+    val infotonToPurge = ObjectInfoton("/fts-test/infoToPurge","dc_test",Some(System.currentTimeMillis()), protocol = None)
     Await.result(ftsService.index(infotonToPurge, None), timeout)
-    val updatedInfotonToPurge = ObjectInfoton("/fts-test/infoToPurge","dc_test",Some(System.currentTimeMillis()))
+    val updatedInfotonToPurge = ObjectInfoton("/fts-test/infoToPurge","dc_test",Some(System.currentTimeMillis()), protocol = None)
     Await.result(ftsService.index(updatedInfotonToPurge, Some(infotonToPurge)), timeout)
     refreshAll()
     val result = Await.result(
@@ -315,9 +315,9 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
   }
 
   "purgeAll infoton" should "permanently delete all infoton's versions with given path from all indices" in {
-    val infotonToPurgeAll = ObjectInfoton("/fts-test/infoToPurgeAll","dc_test")
+    val infotonToPurgeAll = ObjectInfoton("/fts-test/infoToPurgeAll","dc_test", protocol = None)
     Await.result(ftsService.index(infotonToPurgeAll, None), timeout)
-    val updatedInfotonToPurgeAll = ObjectInfoton("/fts-test/infoToPurgeAll","dc_test")
+    val updatedInfotonToPurgeAll = ObjectInfoton("/fts-test/infoToPurgeAll","dc_test", protocol = None)
     Await.result(ftsService.index(updatedInfotonToPurgeAll, Some(infotonToPurgeAll)), timeout)
     refreshAll()
     Await.result(
@@ -359,7 +359,7 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
     val infotonToList1 = ObjectInfoton(
       "/fts-test/infotons/infotonToList1",
       "dc_test",
-      Some(System.currentTimeMillis()))
+      Some(System.currentTimeMillis()), protocol = None)
     val infotonToList2 = ObjectInfoton(
       "/fts-test/infotons/infotonToList2",
       "dc_test",
@@ -369,7 +369,7 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
       path= "/fts-test/infotons/infotonToList3",
       dc = "dc_test",
       linkTo = "/fts-test/infotons/infotonToList2",
-      linkType = LinkType.Temporary).copy(indexTime = Some(System.currentTimeMillis()))
+      linkType = LinkType.Temporary, protocol = None).copy(indexTime = Some(System.currentTimeMillis()))
     Await.result(ftsService.index(infotonToList1,None), timeout)
     Await.result(ftsService.index(infotonToList2,None), timeout)
     Await.result(ftsService.index(infotonToList3,None), timeout)

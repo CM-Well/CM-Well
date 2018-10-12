@@ -168,7 +168,8 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                                       searchResponse.infotons,
                                       searchResponse.offset,
                                       searchResponse.length,
-                                      searchResponse.total)
+                                      searchResponse.total,
+                                      protocol = None)
                     )
                   )
                 } else Some(Everything(i))
@@ -273,7 +274,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       Future.failed(new IllegalArgumentException("too many fields"))
     } else {
       val payloadForIndirectLargeInfoton: Future[(Array[Byte], Array[Byte])] = infoton match {
-        case i @ FileInfoton(_, _, _, _, _, Some(FileContent(Some(data), _, _, _)), _)
+        case i @ FileInfoton(_, _, _, _, _, Some(FileContent(Some(data), _, _, _)), _, _)
             if data.length >= thresholdToUseZStore => {
           val fi = i.withoutData
           zStore.put(fi.content.flatMap(_.dataPointer).get, data).map { _ =>
@@ -721,7 +722,8 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                         i.dc,
                         i.indexTime,
                         i.lastModified,
-                        i.fields.fold(extra)(f => extra.fold(i.fields)(e => Some(f ++ e)))) {
+                        i.fields.fold(extra)(f => extra.fold(i.fields)(e => Some(f ++ e))),
+                        protocol = i.protocol) {
         override def uuid = i.uuid
         override def kind = i.kind
       }
@@ -731,7 +733,8 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                       i.indexTime,
                       i.lastModified,
                       i.fields.fold(extra)(f => extra.fold(i.fields)(e => Some(f ++ e))),
-                      i.content) {
+                      i.content,
+                      protocol = i.protocol) {
         override def uuid = i.uuid
         override def kind = i.kind
       }
@@ -742,7 +745,8 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                       i.lastModified,
                       i.fields.fold(extra)(f => extra.fold(i.fields)(e => Some(f ++ e))),
                       i.linkTo,
-                      i.linkType) {
+                      i.linkType,
+                      protocol = i.protocol) {
         override def uuid = i.uuid
         override def kind = i.kind
       }

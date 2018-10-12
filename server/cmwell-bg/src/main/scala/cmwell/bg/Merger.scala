@@ -127,13 +127,13 @@ class Merger(config: Config) extends LazyLogging {
                            fields: Map[String, Set[FieldValue]],
                            lastModified: DateTime): Infoton = {
     prev_infoton match {
-      case ObjectInfoton(path, dc, _, _, current_fields, _) =>
+      case ObjectInfoton(path, _, _, _, current_fields, _, _) =>
         val newFields = delete_f(current_fields, fields)
-        if (newFields.nonEmpty) ObjectInfoton(path, defaultDC, None, lastModified, newFields)
+        if (newFields.nonEmpty) ObjectInfoton(path, defaultDC, None, lastModified, newFields, protocol = None)
         else DeletedInfoton(path, defaultDC, None, lastModified)
-      case f @ FileInfoton(_, _, _, _, current_fields, _, _) =>
+      case f @ FileInfoton(_, _, _, _, current_fields, _, _, _) =>
         f.copy(indexTime = None, lastModified = lastModified, fields = delete_f(current_fields, fields))
-      case l @ LinkInfoton(_, _, _, _, current_fields, _, _, _) =>
+      case l @ LinkInfoton(_, _, _, _, current_fields, _, _, _, _) =>
         l.copy(indexTime = None, lastModified = lastModified, fields = delete_f(current_fields, fields))
       case i: DeletedInfoton => i // if we got a delete on delete we need ignore the create of delete
       case j =>
@@ -145,19 +145,22 @@ class Merger(config: Config) extends LazyLogging {
                            delete_fields: Map[String, Set[FieldValue]],
                            add_fields: Map[String, Set[FieldValue]],
                            lastModified: DateTime): Infoton = {
+
+    val newInfotonProtocol: Option[String] = None // TODO UpdatePathCommand should be added with Protocol!!!
+
     val u_f = update_f(current_infoton.fields, delete_fields, add_fields)
     current_infoton match {
-      case ObjectInfoton(path, dc, idxT, lm, current_fields, _) if u_f.exists(_.nonEmpty) =>
-        ObjectInfoton(path, defaultDC, None, lastModified, u_f)
-      case ObjectInfoton(path, dc, idxT, lm, current_fields, _) =>
+      case ObjectInfoton(path, dc, idxT, lm, current_fields, _, _) if u_f.exists(_.nonEmpty) =>
+        ObjectInfoton(path, defaultDC, None, lastModified, u_f, protocol = newInfotonProtocol)
+      case ObjectInfoton(path, dc, idxT, lm, current_fields, _, _) =>
         DeletedInfoton(path, defaultDC, None, lastModified)
-      case FileInfoton(path, dc, idxT, lm, current_fields, c_fc, _) =>
-        FileInfoton(path, defaultDC, None, lastModified, u_f, c_fc)
-      case LinkInfoton(path, dc, idxT, lm, current_fields, c_to, c_linkType, _) =>
-        LinkInfoton(path, defaultDC, None, lastModified, u_f, c_to, c_linkType)
+      case FileInfoton(path, dc, idxT, lm, current_fields, c_fc, _, _) =>
+        FileInfoton(path, defaultDC, None, lastModified, u_f, c_fc, protocol = newInfotonProtocol)
+      case LinkInfoton(path, dc, idxT, lm, current_fields, c_to, c_linkType, _, _) =>
+        LinkInfoton(path, defaultDC, None, lastModified, u_f, c_to, c_linkType, protocol = newInfotonProtocol)
       case DeletedInfoton(path, dc, idxT, lm, _) if u_f.exists(_.nonEmpty) =>
         // if we got update after a delete infoton we create a new one
-        ObjectInfoton(path, defaultDC, None, lastModified, u_f)
+        ObjectInfoton(path, defaultDC, None, lastModified, u_f, protocol = newInfotonProtocol)
       case _ =>
         // might happen when e.g: writing a "skeleton" on top of a deleted infoton.
         logger.warn(s"kind [${current_infoton.kind}] uuid [${current_infoton.uuid}] info [$current_infoton]")
@@ -168,46 +171,47 @@ class Merger(config: Config) extends LazyLogging {
   private def write_merge(prev_infoton: Infoton, current_infoton: Infoton): Infoton = {
     // we build the new infoton based on the old one first we need to merge the fields
     current_infoton match {
-      case ObjectInfoton(path, dc, _, lastModified, current_fields, _) =>
+      case ObjectInfoton(path, dc, _, lastModified, current_fields, _, protocol) =>
         prev_infoton match {
-          case ObjectInfoton(_, _, _, _, prev_fields, _) =>
-            ObjectInfoton(path, defaultDC, None, lastModified, merge_f(prev_fields, current_fields))
-          case FileInfoton(_, _, _, _, prev_fields, perv_fc, _) =>
-            FileInfoton(path, defaultDC, None, lastModified, merge_f(prev_fields, current_fields), perv_fc)
-          case LinkInfoton(_, _, _, _, prev_fields, prev_to, prev_linkType, _) =>
-            LinkInfoton(path, defaultDC, None, lastModified, merge_f(prev_fields, current_fields), prev_to, prev_linkType)
+          case ObjectInfoton(_, _, _, _, prev_fields, _, _) =>
+            ObjectInfoton(path, defaultDC, None, lastModified, merge_f(prev_fields, current_fields), protocol = protocol)
+          case FileInfoton(_, _, _, _, prev_fields, perv_fc, _, protocol) =>
+            FileInfoton(path, defaultDC, None, lastModified, merge_f(prev_fields, current_fields), perv_fc, protocol = protocol)
+          case LinkInfoton(_, _, _, _, prev_fields, prev_to, prev_linkType, _, protocol) =>
+            LinkInfoton(path, defaultDC, None, lastModified, merge_f(prev_fields, current_fields), prev_to, prev_linkType, protocol = protocol)
           case DeletedInfoton(_, _, _, _, _) =>
             current_infoton
           case _ =>
             throw new NotImplementedError(s"was trying to write_merge o[ $current_infoton ] on top of[ $prev_infoton ]")
         }
-      case FileInfoton(path, dc, _, lastModified, current_fields, c_fc, _) =>
+      case FileInfoton(path, dc, _, lastModified, current_fields, c_fc, _, protocol) =>
         prev_infoton match {
-          case ObjectInfoton(_, _, _, _, prev_fields, _) =>
-            FileInfoton(path, defaultDC, None, lastModified, merge_f(prev_fields, current_fields), c_fc)
-          case FileInfoton(_, _, _, _, prev_fields, prev_fc, _) =>
+          case ObjectInfoton(_, _, _, _, prev_fields, _, _) =>
+            FileInfoton(path, defaultDC, None, lastModified, merge_f(prev_fields, current_fields), c_fc, protocol = protocol)
+          case FileInfoton(_, _, _, _, prev_fields, prev_fc, _, _) =>
             FileInfoton(path,
               defaultDC,
               None,
               lastModified,
               merge_f(if (prev_fields.exists(_.nonEmpty)) prev_fields else None, current_fields),
-              c_fc.orElse(prev_fc))
-          case LinkInfoton(_, _, _, _, prev_fields, _, _, _) if prev_fields.exists(_.nonEmpty) =>
-            FileInfoton(path, defaultDC, None, lastModified, merge_f(prev_fields, current_fields), c_fc)
+              c_fc.orElse(prev_fc),
+              protocol = protocol)
+          case LinkInfoton(_, _, _, _, prev_fields, _, _, _, _) if prev_fields.exists(_.nonEmpty) =>
+            FileInfoton(path, defaultDC, None, lastModified, merge_f(prev_fields, current_fields), c_fc, protocol = protocol)
           case _: LinkInfoton | _: DeletedInfoton =>
             current_infoton
           case _ =>
             throw new NotImplementedError(s"was trying to write_merge f[ $current_infoton ] on top of[ $prev_infoton ]")
 
         }
-      case LinkInfoton(path, dc, _, lastModified, current_fields, c_to, c_linkType, _) =>
+      case LinkInfoton(path, dc, _, lastModified, current_fields, c_to, c_linkType, _, protocol) =>
         prev_infoton match {
-          case ObjectInfoton(_, _, _, _, prev_fields, _) =>
-            LinkInfoton(path, defaultDC, None, lastModified, merge_f(prev_fields, current_fields), c_to, c_linkType)
-          case LinkInfoton(_, _, _, _, prev_fields, _, _, _) =>
-            LinkInfoton(path, defaultDC, None, lastModified, merge_f(prev_fields, current_fields), c_to, c_linkType)
-          case FileInfoton(_, _, _, _, prev_fields, _, _) if prev_fields.exists(_.nonEmpty) =>
-            LinkInfoton(path, defaultDC, None, lastModified, merge_f(prev_fields, current_fields), c_to, c_linkType)
+          case ObjectInfoton(_, _, _, _, prev_fields, _, _) =>
+            LinkInfoton(path, defaultDC, None, lastModified, merge_f(prev_fields, current_fields), c_to, c_linkType, protocol = protocol)
+          case LinkInfoton(_, _, _, _, prev_fields, _, _, _, _) =>
+            LinkInfoton(path, defaultDC, None, lastModified, merge_f(prev_fields, current_fields), c_to, c_linkType, protocol = protocol)
+          case FileInfoton(_, _, _, _, prev_fields, _, _, _) if prev_fields.exists(_.nonEmpty) =>
+            LinkInfoton(path, defaultDC, None, lastModified, merge_f(prev_fields, current_fields), c_to, c_linkType, protocol = protocol)
           case _: DeletedInfoton | _: FileInfoton =>
             current_infoton
           case _ =>
