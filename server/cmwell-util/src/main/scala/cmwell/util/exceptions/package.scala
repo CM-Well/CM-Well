@@ -46,6 +46,9 @@ package object exceptions {
     val w = new java.io.StringWriter()
     val pw = new java.io.PrintWriter(w)
     t.printStackTrace(pw)
-    w.toString
+    val resp = w.toString
+    w.close()
+    pw.close()
+    resp
   }
 }

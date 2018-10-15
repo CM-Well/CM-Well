@@ -16,13 +16,14 @@
 
 package cmwell.it
 
-import cmwell.util.concurrent.SimpleScheduler._
+import java.nio.charset.StandardCharsets
+
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.{AsyncFunSpec, Matchers, TryValues}
 import play.api.libs.json._
 
-import scala.io.Source
 import scala.concurrent.duration.DurationInt
+import scala.io.Source
 
 class FileInfotonTests extends AsyncFunSpec with Matchers with TryValues with Helpers with LazyLogging {
   describe("file infoton") {
@@ -35,19 +36,27 @@ class FileInfotonTests extends AsyncFunSpec with Matchers with TryValues with He
         Json.parse(res.payload) should be(jsonSuccess)
       }
     }
-    val f1 = f0.flatMap(_ => scheduleFuture(indexingDuration)(Http.get(path))).map { res =>
-      withClue(res) {
-        new String(res.payload, "UTF-8") should be(fileStr)
-        res.contentType.takeWhile(_ != ';') should be("text/plain")
-      }
-    }
+    val f1 = f0.flatMap {_ => spinCheck(100.millis, true)(Http.get(path)){res =>
+      new String(res.payload, StandardCharsets.UTF_8) == fileStr && res.contentType.takeWhile(_ != ';') == "text/plain"}
+      .map { res =>
+        withClue(res) {
+          new String(res.payload, StandardCharsets.UTF_8) should be(fileStr)
+          res.contentType.takeWhile(_ != ';') should be("text/plain")
+        }
+      }}
     val f2 = f1.flatMap(_ => Http.post(path, Json.stringify(j), None, Nil, ("X-CM-WELL-TYPE" -> "FILE_MD") :: tokenHeader)).map {res =>
       withClue(res) {
         Json.parse(res.payload) should be(jsonSuccess)
       }
     }
-    val f3 = f2.flatMap(_ => scheduleFuture(indexingDuration) {
-      Http.get(path, List("format" -> "json")).map{ res =>
+    val f3 = f2.flatMap(_ => spinCheck(100.millis, true)(Http.get(path, List("format" -> "json"))){
+      res =>
+        val jsonResult = Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick)
+        jsonResult match {
+          case JsSuccess(value, _) => value == j
+          case JsError(_) => false
+        }
+    }.map{ res =>
         withClue(res) {
           Json
             .parse(res.payload)
@@ -55,7 +64,7 @@ class FileInfotonTests extends AsyncFunSpec with Matchers with TryValues with He
             .get shouldEqual j
         }
       }
-    })
+    )
     val f4 = f3.flatMap(_ => Http.delete(uri = path, headers = tokenHeader).map { res =>
        withClue(res) {
          Json.parse(res.payload) should be(jsonSuccess)

@@ -1,0 +1,77 @@
+@(request: Request[AnyContent])
+zz - Admin Façade for zStore
+----------------------------
+
+- zStore is a key value store where the keys are Strings and values are Byte Arrays. It is backed by Cassandra.
+- The key is called UZID.
+- All /zz/* HTTP calls must be provided with a valid Admin Security Token.
+
+POST /zz/{UZID} - will zStore the post body (as bytes) in {UZID} uzid.
+    Optional query parameter: "ttl" with an Integer value for TTL in seconds.
+    Optional query parameter: "batched" - if exists, will use BatchedStatement for all data chunks.
+
+GET /zz/{UZID} - will return the value of zStore[UZID], or 404 "zz item not found" if not exists.
+    Optional query parameter: "format=text" - will return a String from Byte Array; if not supplied, will mkString(",")
+    Optional query parameter: "op=put" - a syntactic sugar for storing a String value (when using a web browser). "payload" query parameter's value will be the value. An optional "ttl" is also supported (see above).
+    Optional query parameter: "op=purge" - will remove UZID from zStore.
+    Optional query parameter: "op=list" - will return a list of UZIDs with the default LIMIT of 20. An optional "limit" query parameter is supported for Integer values. Please think twice before invoking with large limits.
+
+
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+Examples:
+---------
+(assuming "token" is a valid Admin token header (in key:value format))
+
+
+$ curl @request.host/zz/zebra.jpg -H $token --data-binary @@zebra.jpg
+{"success":true}
+
+$ curl @request.host/zz/dolphin.jpg
+Not allowed to use zz
+
+$ curl @request.host/zz/dolphin.jpg -H $token
+zz item not found
+
+$ curl @request.host/zz/zebra.jpg -H $token > zebra2.jpg
+$ diff zebra*
+$
+
+$ curl @request.host/zz/foo?op=put&payload=bar -H $token
+{"success":true}
+
+$ curl @request.host/zz/foo -H $token
+bar
+
+$ curl @request.host/zz/x?op=list -H $token
+zebra.jpg
+foo
+
+$ curl @request.host/zz/foo?op=purge -H $token
+{"success":true}
+
+$ curl @request.host/zz/x?op=list -H $token
+zebra.jpg
+
+$ curl @request.host/zz/bar -H $token --data-binary 'Hello World'
+{"success":true}
+
+$ curl @request.host/zz/bar -H $token
+72,101,108,108,111,32,87,111,114,108,100
+
+$ curl @request.host/zz/bar?format=text -H $token
+Hello World
+
+$ curl @request.host/zz/qaz?ttl=5 --data-binary 'this msg will self destruct in 5 seconds' -H $token
+{"success":true}
+
+$ curl @request.host/zz/qaz?format=text -H $token
+this msg will self destruct in 5 seconds
+
+$ sleep 5; curl @request.host/zz/qaz?format=text -H $token
+zz item not found
+
+

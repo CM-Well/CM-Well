@@ -8,9 +8,11 @@ libraryDependencies ++= {
   val dm = dependenciesManager.value
   Seq(
     guice,
+    ws,
     dm("com.typesafe.play","play-json"),
     dm("com.typesafe.akka","akka-http")
       .exclude("com.typesafe.akka","akka-slf4j"),
+    dm("com.typesafe.akka", "akka-stream-kafka").exclude("org.apache.kafka", "kafka-clients"),
     dm("com.typesafe.akka","akka-slf4j"),
     dm("ch.qos.logback","logback-classic"),
     dm("org.slf4j", "log4j-over-slf4j"),

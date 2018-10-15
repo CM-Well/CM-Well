@@ -21,5 +21,14 @@ import com.typesafe.config.ConfigFactory
   * all data-tools modules
   */
 trait DataToolsConfig {
-  private[data] lazy val config = ConfigFactory.load()
+  private[data] lazy val config = {
+    val dataToolsPath = "data-tools"
+    val defaultConfig = ConfigFactory.load()
+
+    //only the data-tools section but it's treated and the root config
+    val dataToolsSection = defaultConfig.getConfig(dataToolsPath)
+
+    //the data-tools as root with fallback to default config of the real root
+    dataToolsSection.withFallback(defaultConfig.withoutPath(dataToolsPath))
+  }
 }

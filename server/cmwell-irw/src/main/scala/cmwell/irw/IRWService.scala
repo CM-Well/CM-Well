@@ -30,7 +30,7 @@ import com.typesafe.scalalogging.LazyLogging
 import org.joda.time.DateTime
 
 import scala.collection.mutable
-import scala.concurrent.duration._
+import scala.concurrent.duration.Duration
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success}
 import cmwell.common.metrics.WithMetrics
@@ -53,10 +53,11 @@ object IRWService {
   def newIRW(storageDao: Dao) = new IRWServiceNativeImpl2(storageDao)
   def newIRW(storageDao: Dao, disableReadCache: Boolean) =
     new IRWServiceNativeImpl2(storageDao, disableReadCache = disableReadCache)
-  def newIRW(storageDao: Dao, disableReadCache: Boolean, casTimeout: FiniteDuration) =
+  def newIRW(storageDao: Dao, disableReadCache: Boolean, casTimeout: Duration) =
     new IRWServiceNativeImpl2(storageDao, disableReadCache = disableReadCache)(casTimeout)
   def newIRW(storageDao: Dao, maxReadSize: Int, disableReadCache: Boolean, readCacheDuration: FiniteDuration) =
     new IRWServiceNativeImpl2(storageDao, maxReadSize, disableReadCache, readCacheDuration)
+
 }
 
 trait IRWService {
@@ -99,6 +100,11 @@ trait IRWService {
   def readUUIDAsync(uuid: String, level: ConsistencyLevel = ONE, dontFetchPayload: Boolean = false)(
     implicit ec: ExecutionContext
   ): Future[Box[Infoton]]
+
+
+  def rawReadSystemFields(uuid: String, lvl: ConsistencyLevel): Future[Seq[(String,String,String)]]
+
+  def rawReadUuidAsyc(uuid: String, lvl: ConsistencyLevel = ONE): Future[Seq[(String,String,(String,Array[Byte]))]]
 
   /**
     *
@@ -185,6 +191,10 @@ trait IRWService {
   def history(path: String, limit: Int): Vector[(Long, String)]
 
   def historyReactive(path: String, level: ConsistencyLevel = ONE): Source[(Long, String), NotUsed]
+
+  def lastVersion(path: String, level: ConsistencyLevel): Future[Option[(Long, String)]]
+
+  def historyNeighbourhood(path: String, timestamp: Long, desc: Boolean, limit: Int, level: ConsistencyLevel): Future[Vector[(Long, String)]]
 
   def historyAsync(path: String, limit: Int): Future[Vector[(Long, String)]]
 
@@ -372,6 +382,10 @@ class IRWServiceNativeImpl(storageDao: Dao,
       }
     } else getUuidsFromCas(uuids)
   }
+
+  def rawReadSystemFields(uuid: String, lvl: ConsistencyLevel = ONE): Future[Seq[(String,String,String)]] = ???
+
+  def rawReadUuidAsyc(uuid: String, lvl: ConsistencyLevel): Future[Seq[(String,String,(String,Array[Byte]))]] = ???
 
   def readUUIDAsync(uuid: String, level: ConsistencyLevel = ONE, dontFetchPayload: Boolean = false)(
     implicit ec: ExecutionContext
@@ -670,6 +684,10 @@ class IRWServiceNativeImpl(storageDao: Dao,
       .fromFuture(historyAsync(path, Int.MaxValue))
       .mapConcat(_.sortBy(_._1))
   }
+
+  def lastVersion(path: String, level: ConsistencyLevel): Future[Option[(Long, String)]] = ???
+
+  override def historyNeighbourhood(path: String, timestamp: Long, desc: Boolean, limit: Int, level: ConsistencyLevel): Future[Vector[(Long, String)]] = ???
 
   def historyAsync(path: String, limit: Int): Future[Vector[(Long, String)]] = {
     import scala.concurrent.ExecutionContext.Implicits.global

@@ -66,7 +66,7 @@ object HttpConnections extends DataToolsConfig {
     )
     val settings = ConnectionPoolSettings(
       ConfigFactory
-        .parseString(s"akka.http.host-connection-pool.client.user-agent-header=$userAgent")
+        .parseString(s"data-tools.akka.http.host-connection-pool.client.user-agent-header=$userAgent")
         .withFallback(config)
     )
 

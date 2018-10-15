@@ -14,11 +14,9 @@
   */
 package cmwell.ws
 
-import java.time.temporal.TemporalUnit
-
-import com.typesafe.config.ConfigException.Missing
 import com.typesafe.config.ConfigFactory
-import concurrent.duration._
+
+import scala.concurrent.duration._
 import scala.util._
 
 /**
@@ -95,7 +93,7 @@ object Settings {
 
   lazy val sstreamParallelism: Int = config.getInt("cmwell.ws.sstream-parallelism")
 
-  lazy val pushbackpressure: String = Try(config.getString("cmwell.ws.pushbackpressure.trigger")).getOrElse("old")
+  lazy val pushbackpressure: String = Try(config.getString("cmwell.ws.pushbackpressure.trigger")).getOrElse("enable")
   lazy val maximumQueueBuildupAllowedUTLog: Long =
     Try(config.getLong("cmwell.ws.tlog.updating.limit")).toOption.getOrElse(13200000L)
   lazy val maximumQueueBuildupAllowedITLog: Long =
@@ -126,6 +124,7 @@ object Settings {
 
   lazy val maxQueryResultsLength = config.getInt("crashableworker.results.maxLength")
   lazy val queryResultsTempFileBaseName = config.getString("crashableworker.results.baseFileName")
+  lazy val subjectsInSpAreHttps = config.getBoolean("crashableworker.subjectsAreHttps")
 
   lazy val dataCenter = config.getString("dataCenter.id")
   lazy val maxDataCenters = config.getInt("dataCenter.maxInstances")

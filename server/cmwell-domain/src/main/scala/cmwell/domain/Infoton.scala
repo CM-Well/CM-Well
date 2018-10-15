@@ -404,7 +404,8 @@ case class FileInfoton(path: String,
                     indexTime,
                     lastModified,
                     fields,
-                    content.map(c => FileContent(None, c.mimeType, content.get.dataLength, hash))) {
+                    content.map(c => FileContent(None, c.mimeType, content.get.dataLength, hash)),
+                    indexName) {
       override val uuid = originalUuid
       override def kind = "FileInfoton"
     }
@@ -424,7 +425,8 @@ case class FileInfoton(path: String,
                         indexTime,
                         lastModified,
                         fields,
-                        content.map(c => FileContent(Some(data), c.mimeType, data.length, hashOpt))) {
+                        content.map(c => FileContent(Some(data), c.mimeType, data.length, hashOpt)),
+                        indexName) {
           override val uuid = originalUuid
           override def kind = "FileInfoton"
       }
@@ -710,7 +712,7 @@ case class FReference(value: String, quad: Option[String]) extends FieldValue wi
   override def toString(): String = value
   override def size: Long = value.getBytes("UTF-8").size
   def getCmwellPath: String =
-    if (value.startsWith("https")) s"/https.${value.drop("https://".length)}"
+    if (value.startsWith("https:/")) value.drop("https:/".length)
     else if (value.startsWith("cmwell://")) value.drop("cmwell:/".length)
     else if (value.startsWith("http:/")) value.drop("http:/".length)
     else {

@@ -30,7 +30,8 @@ import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesResponse
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse
 import org.elasticsearch.action.bulk.{BulkItemResponse, BulkResponse}
-import org.elasticsearch.action.get.GetResponse
+import org.elasticsearch.action.exists.ExistsRequest
+import org.elasticsearch.action.get.{GetRequest, GetResponse}
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.search.{SearchRequestBuilder, SearchResponse, SearchType}
 import org.elasticsearch.action.update.UpdateRequest
@@ -57,13 +58,13 @@ import org.elasticsearch.search.aggregations.metrics.stats.InternalStats
 import org.elasticsearch.search.sort.SortBuilders._
 import org.elasticsearch.search.sort.SortOrder
 import org.joda.time.DateTime
-import org.slf4j.LoggerFactory
-
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.implicitConversions
 import scala.util._
+import org.slf4j.Marker
+import org.slf4j.MarkerFactory
 
 /**
   * Created by israel on 30/06/2016.
@@ -102,6 +103,17 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
   def getTotalIndexed(): Long = totalIndexed.get()
 
   def getTotalFailedToIndex(): Long = totalFailedToIndex.get()
+
+  val ftsMarker: Marker = MarkerFactory.getMarker("markedMsg")
+
+  def logAdminCommand(methodName: String) = loger.info(ftsMarker, s"Sent admin command from: $methodName")
+
+  def logRequest(methodName: String, pathFilter: => String, fieldsFilter: => String, additionalInformation: String = "") = loger.info(
+    ftsMarker, s"Request from: $methodName .  PathFilter: $pathFilter" +
+      (if (fieldsFilter != "") s"fieldsFilter: $fieldsFilter" )+
+      (if (additionalInformation != "") s"AdditionalInformation: $additionalInformation"))
+
+  def logRequest(methodName: String, message: => String) = loger.info(ftsMarker, s"Request command from: $methodName .  message: $message")
 
   /*****************/
   if (isTransportClient) {
@@ -195,6 +207,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
 
   def latestIndexNameAndCount(prefix: String): Option[(String, Long)] = {
     val indices = client.admin().indices().prepareStats(prefix).clear().setDocs(true).execute().actionGet().getIndices
+    logAdminCommand("latestIndexNameAndCount")
     if (indices.size() > 0) {
       val lastIndexName = indices.keySet().asScala.maxBy { k =>
         k.substring(k.lastIndexOf('_') + 1).toInt
@@ -212,9 +225,11 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
   }
 
   def createIndex(indexName: String)(implicit executionContext: ExecutionContext): Future[CreateIndexResponse] =
-    injectFuture[CreateIndexResponse](client.admin.indices().prepareCreate(indexName).execute(_))
+    { logAdminCommand("createIndex")
+      injectFuture[CreateIndexResponse](client.admin.indices().prepareCreate(indexName).execute(_))}
 
-  def updateAllAlias()(implicit executionContext: ExecutionContext): Future[IndicesAliasesResponse] =
+  def updateAllAlias()(implicit executionContext: ExecutionContext): Future[IndicesAliasesResponse] = {
+    logAdminCommand("updateAllAlias")
     injectFuture[IndicesAliasesResponse](
       client
         .admin()
@@ -222,7 +237,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
         .prepareAliases()
         .addAlias("cm_well_*", "cm_well_all")
         .execute(_)
-    )
+    )}
 
   def listChildren(path: String, offset: Int, length: Int, descendants: Boolean, partition: String)(
     implicit executionContext: ExecutionContext
@@ -269,6 +284,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
     applyFiltersToRequest(request, pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted)
 
     val searchQueryStr = if (debugInfo) Some(request.toString) else None
+    logRequest("search", pathFilter.toString, fieldsFilter.toString)
     logger.trace(s"^^^^^^^(**********************\n\n request: ${request.toString}\n\n")
     val resFuture = timeout match {
       case Some(t) => injectFuture[SearchResponse](request.execute, t)
@@ -345,6 +361,20 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
           request.addSort(fieldSort(reversed).order(order).unmappedType(fType.asString))
         }
       }
+  }
+
+  override def get(uuid: String, indexName: String, partition: String = defaultPartition)(
+    implicit executionContext: ExecutionContext
+  ): Future[Option[(FTSThinInfoton, Boolean)]] = {
+    val fields = Seq("path", "uuid", "lastModified", "indexTime", "current").map(f => s"system.$f")
+    val req = client.prepareGet(indexName, "infoclone", uuid).setFields(fields:_*)
+    injectFuture[GetResponse](req.execute).map { gr =>
+      if (gr.isExists) {
+        val isCurrent = gr.getField("system.current").getValue.asInstanceOf[Boolean]
+        Some(FTSThinInfoton(gr) -> isCurrent)
+      }
+      else None
+    }
   }
 
   def thinSearch(
@@ -436,6 +466,8 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
 
     applyFiltersToRequest(request, pathFilter, fieldsFilter, datesFilter, withDeleted)
 
+    logRequest("fullSearch", pathFilter.toString, fieldsFilter.toString)
+
     val resFuture = timeout match {
       case Some(t) => injectFuture[SearchResponse](request.execute, t)
       case None    => injectFuture[SearchResponse](request.execute)
@@ -480,6 +512,8 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
       .request()
       .add(indexRequests.map { _.esAction.asInstanceOf[ActionRequest[_ <: ActionRequest[_ <: AnyRef]]] }.asJava)
 
+    logRequest("executeIndexRequests", s"number of index requests: ${indexRequests.size}")
+
     val esResponse = injectFuture[BulkResponse](bulkRequest.execute(_))
 
     esResponse.onComplete {
@@ -520,6 +554,9 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
     bulkRequest
       .request()
       .add(indexRequests.map { _.esAction.asInstanceOf[ActionRequest[_ <: ActionRequest[_ <: AnyRef]]] }.asJava)
+
+
+    logRequest("executeBulkIndexRequests", s"number of index requests: ${indexRequests.size}")
 
     val esResponse = injectFuture[BulkResponse](bulkRequest.execute(_))
 
@@ -669,6 +706,8 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
     withDeleted: Boolean
   )(implicit executionContext: ExecutionContext): Seq[() => Future[FTSStartScrollResponse]] = {
 
+    logRequest("startSuperScroll", pathFilter.toString, fieldsFilter.toString)
+
     val ssr = client
       .admin()
       .cluster()
@@ -762,6 +801,8 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
         applyFiltersToRequest(request, pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted)
       }
 
+      logRequest("startScroll", pathFilter.toString, fieldsFilter.toString, "also sent fake request")
+
       val scrollResponseFuture = injectFuture[SearchResponse](request.execute(_))
 
       val searchQueryStr = if (debugInfo) Some(request.toString) else None
@@ -786,11 +827,6 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
   )(implicit executionContext: ExecutionContext, logger: Logger = loger): Seq[Future[FTSStartScrollResponse]] = {
 
     logger.debug(s"StartMultiScroll request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $withHistory")
-    def indicesNames(indexName: String): Seq[String] = {
-      val currentAliasRes = client.admin.indices().prepareGetAliases(indexName).execute().actionGet()
-      val indices = currentAliasRes.getAliases.keysIt().asScala.toSeq
-      indices
-    }
 
     def dataNodeIDs = {
       client
@@ -838,6 +874,8 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
     logger.debug(s"StartMultiScroll request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $withHistory")
 
     val indices = {
+      logAdminCommand("startMultiScroll")
+
       val currentAliasRes = client.admin.indices().prepareGetAliases(s"${partition}_all").execute().actionGet()
       currentAliasRes.getAliases.keysIt().asScala.toSeq
     }
@@ -864,9 +902,10 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
     logger.debug(s"Scroll request: $scrollId, $scrollTTL")
 
     val clint = nodeId.map { clients(_) }.getOrElse(client)
-    val scrollResponseFuture = injectFuture[SearchResponse](
+    val scrollResponseFuture = injectFuture[SearchResponse] {
+      logRequest("scroll", s"scrollId is: $scrollId")
       clint.prepareSearchScroll(scrollId).setScroll(TimeValue.timeValueSeconds(scrollTTL)).execute(_)
-    )
+    }
 
     val p = Promise[FTSScrollResponse]()
     scrollResponseFuture.onComplete {
@@ -892,6 +931,12 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
       case Desc => SortOrder.DESC
       case Asc  => SortOrder.ASC
     }
+  }
+
+  private def indicesNames(indexName: String): Seq[String] = {
+    val currentAliasRes = client.admin.indices().prepareGetAliases(indexName).execute().actionGet()
+    val indices = currentAliasRes.getAliases.keysIt().asScala.toSeq
+    indices
   }
 
   private def applyFiltersToRequest(request: SearchRequestBuilder,
@@ -1018,6 +1063,8 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
       .setFrom(paginationParams.offset)
       .setSize(paginationParams.length)
       .setSearchType(SearchType.COUNT)
+
+    logRequest("aggregate", pathFilter.toString, fieldFilter.toString)
 
     if (pathFilter.isDefined || fieldFilter.nonEmpty || datesFilter.isDefined) {
       applyFiltersToRequest(request, pathFilter, fieldFilter, datesFilter)
@@ -1206,6 +1253,8 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
 
       val scrollResponseFuture = injectFuture[SearchResponse](al => request.execute(al))
 
+      logRequest("rInfo", path.toString, "", "also sent fake request")
+
       scrollResponseFuture.map { scrollResponse =>
         if (scrollResponse.getHits.totalHits == 0) Source.empty[Vector[(Long, String, String)]]
         else
@@ -1256,6 +1305,8 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
 
     request.setQuery(qb)
 
+    logRequest("info", path.toString, "")
+
     val resFuture = injectFuture[SearchResponse](request.execute)
     resFuture.map { response =>
       extractInfo(response)
@@ -1270,6 +1321,8 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
     val request = client.prepareSearch(s"${partition}_all").setTypes("infoclone").setFetchSource(true).setVersion(true)
     val qb: QueryBuilder = QueryBuilders.matchQuery("uuid", uuid)
     request.setQuery(qb)
+
+    logRequest("uinfo", s"uuid: $uuid")
 
     injectFuture[SearchResponse](request.execute).map { response =>
       val hits = response.getHits.hits()
@@ -1317,6 +1370,8 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
       None,
       withHistory = withHistory
     )
+
+    logRequest("getLastIndexTimeFor", s"dc: $dc")
 
     injectFuture[SearchResponse](request.execute).map { sr =>
       val hits = sr.getHits.hits()
@@ -1447,6 +1502,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
   }
 
   def getIndicesNames(partition: String = defaultPartition): Iterable[String] = {
+    logAdminCommand("getIndicesNames")
     val currentAliasRes = client.admin.indices().prepareGetAliases(s"${partition}_all").execute().actionGet()
     currentAliasRes.getAliases.keysIt().asScala.toIterable
   }
@@ -1549,6 +1605,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
   }
 
   def countSearchOpenContexts(): Array[(String, Long)] = {
+    logAdminCommand("countSearchOpenContexts")
     val response = client.admin().cluster().prepareNodesStats().setIndices(true).execute().get()
     response.getNodes
       .map { nodeStats =>
@@ -1607,6 +1664,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
   override def extractSource[T: EsSourceExtractor](uuid: String, index: String)(
     implicit executionContext: ExecutionContext
   ): Future[(T, Long)] = {
+    logRequest("extractSource", s"uuid: $uuid")
     injectFuture[GetResponse](client.prepareGet(index, "infoclone", uuid).execute(_)).map { hit =>
       implicitly[EsSourceExtractor[T]].extract(hit) -> hit.getVersion
     }
@@ -1636,6 +1694,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
     }
 
     val req = client.admin().cluster().prepareState()
+    logAdminCommand("getMappings")
     val f = injectFuture[ClusterStateResponse](req.execute)
     val csf: Future[ClusterState] = f.map(_.getState)
     csf.map { cs =>
@@ -1697,6 +1756,8 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
           )
       }
 
+      logRequest("purgeByUuidsAndIndexes", s"uuidsAtIndexes: ${uuidsAtIndexes.mkString(",")}")
+
       injectFuture[BulkResponse](bulkRequest.execute(_))
     }
   }
@@ -1709,6 +1770,8 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
         client.prepareDelete(infoton.indexName, "infoclone", infoton.uuid)
       )
     }
+
+    logRequest("deleteInfotons", s"infotons path: ${infotons.map(_.path).mkString(", ")}")
     injectFuture[BulkResponse](bulkRequest.execute(_)).map(_ => true)
   }
 
@@ -1725,6 +1788,8 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
           .setVersion(1L)
       )
     }
+
+    logRequest("purge", s"uuid: $uuid")
     injectFuture[BulkResponse](bulkRequest.execute(_)).map(_ => true)
   }
 
@@ -1748,6 +1813,8 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
             .setVersion(1L)
         )
       }
+
+      logRequest("purgeByUuidsFromAllIndexes", s"uuids: ${uuids.mkString(",")}")
 
       injectFuture[BulkResponse](bulkRequest.execute(_))
     }

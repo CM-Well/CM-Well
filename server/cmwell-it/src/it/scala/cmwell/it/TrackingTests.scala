@@ -123,7 +123,7 @@ class TrackingTests extends AsyncFunSpec with Matchers with Helpers with OptionV
 
   val makeSureNoMetaNsAreTracked: Future[Assertion] = {
     val subjects = toSubjects(List("s9", "s10"))
-    val predicateOfNewNamespace = "http://tracking-new-namespace.tests.com/tracking/track"
+    val predicateOfNewNamespace = "http://tracking-new-namespace.tests.com/tracking-new/track"
     val ntriples = subjects.map(s => s"""$s <$predicateOfNewNamespace> "a value" .""")
 
     ingestAndGetTrackingId(ntriples.mkString("\n")).flatMap { tid =>

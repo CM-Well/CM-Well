@@ -115,9 +115,9 @@
     <td><a href="Tools.UsingTheCM-WellSparkConnector.md">Spark Connector</a></td>
   </tr>
 <tr>
-    <th align=left>Admin</th>
-    <td><a href="Admin.TestAndFixCorruptedData.md">Testing and Fixing Corrupted Data</a></td>
-  </tr>
+    <th rowspan="3" align=left>Admin</th><td><a href="Admin.TestAndFixCorruptedData.md">Testing and Fixing Corrupted Data</a></td></tr>
+	<tr><td><a href="Admin.Backpressure.md">_backpressure API</a></td></tr>
+	<tr><td><a href="Admin.Kafka.md">_kafka API</a></td></tr>
 <tr>
     <th rowspan="2" align=left>Testing</a></th>
   </tr>
@@ -127,6 +127,10 @@
 <tr>
     <th align=left>Monitoring</th>
     <td align=left><a href="Monitoring.HealthDashboards.md">Health Dashboards</a></td>
+  </tr>
+<tr>
+    <th align=left>Architecture</th>
+    <td><a href="Architecture.DCC.md">Data Consistency Crawler</a></td>
   </tr>
 <tr>
     <th align=left>Release Notes</th>

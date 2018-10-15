@@ -215,8 +215,10 @@ class DataInitializer(h: Host, jwt: String, rootDigest: String, rootDigest2: Str
         filesToUpload.map(
           file =>
             uploadFile(file.getPath, goodUrl + file.getPath.substring(pathSize)).map(p.sideEffectInc).recover {
-              case _ => { h.info(s"Failed to upload eli3 ${file.getName}"); Thread.dumpStack() }
-          }
+              case err =>
+                h.info(s"Failed to upload eli3 ${file.getName}")
+                h.info(cmwell.util.exceptions.stackTraceToString(err))
+            }
         )
       )
       p.complete()
@@ -302,7 +304,6 @@ class DataInitializer(h: Host, jwt: String, rootDigest: String, rootDigest2: Str
           // scalastyle:off
           println(s" Failed to upload eli1 $url and payload ${payload.mkString} with response $badResp")
           // scalastyle:on
-          Thread.dumpStack()
           ""
         }
       }
@@ -310,9 +311,9 @@ class DataInitializer(h: Host, jwt: String, rootDigest: String, rootDigest2: Str
         case err =>
           // scalastyle:off
           println(s" Failed to upload eli2 $url")
+          println(cmwell.util.exceptions.stackTraceToString(err))
           // scalastyle:on
-          Thread.dumpStack()
-          cmwell.util.exceptions.stackTraceToString(err)
+          ""
       }
   }
 

@@ -411,7 +411,7 @@ case class ElasticsearchConf(clusterName: String,
 
     val confContent = ResourceBuilder.getResource(s"scripts/templates/${template}", m)
 
-    val m2 = Map[String, String]("number_of_shards" -> expectedNodes.toString,
+    val m2 = Map[String, String]("number_of_shards" -> Math.min(expectedNodes, 10).toString,
                                  "number_of_replicas" -> numberOfReplicas.toString)
     val mappingContent = ResourceBuilder.getResource(s"scripts/templates/mapping.json", m2)
     val mappingContentNew = ResourceBuilder.getResource(s"scripts/templates/indices_template_new.json", m2)
@@ -624,7 +624,8 @@ case class CwConf(home: String,
                   debug: Boolean,
                   hostIp: String,
                   seeds: String,
-                  seedPort: Int)
+                  seedPort: Int,
+                  subjectsInSpAreHttps: Boolean)
     extends ComponentConf(hostIp, s"$home/app/ws", sName, s"$home/conf/cw", "ws.yml", 1) {
   override def mkScript: ConfFile = {
     {
@@ -642,7 +643,8 @@ case class CwConf(home: String,
           s"-Dcom.sun.management.jmxremote.port=${PortManagers.ws.jmxPortManager.getPort(2)}",
           "-Dcom.sun.management.jmxremote.ssl=false",
           "-Dcom.sun.management.jmxremote.authenticate=false",
-          "-Duser.timezone=GMT0"
+          "-Duser.timezone=GMT0",
+          s"-Dcrashableworker.subjectsAreHttps=$subjectsInSpAreHttps"
         ) ++ JVMOptimizer.gcLoggingJVM(s"$home/log/ws/gc.log") ++
         Seq("-cp", s""" "cw-conf:$home/app/ws/lib/*" """, "cmwell.crashableworker.WorkerMain")
 

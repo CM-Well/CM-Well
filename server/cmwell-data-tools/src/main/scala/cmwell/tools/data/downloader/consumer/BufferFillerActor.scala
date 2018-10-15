@@ -21,11 +21,11 @@ import akka.http.scaladsl.model.headers.RawHeader
 import akka.pattern._
 import akka.stream._
 import akka.stream.scaladsl._
-import cmwell.tools.data.downloader.consumer.Downloader._
+import cmwell.tools.data.downloader.consumer.Downloader.{Token, Tsv, TsvData, Uuid, extractTsv}
 import cmwell.tools.data.utils.ArgsManipulations
-import cmwell.tools.data.utils.ArgsManipulations.{formatHost, HttpAddress}
+import cmwell.tools.data.utils.ArgsManipulations.{HttpAddress, formatHost}
 import cmwell.tools.data.utils.akka.HeaderOps._
-import cmwell.tools.data.utils.akka.{lineSeparatorFrame, DataToolsConfig, HttpConnections}
+import cmwell.tools.data.utils.akka.{DataToolsConfig, HttpConnections, lineSeparatorFrame}
 import cmwell.tools.data.utils.logging._
 import cmwell.tools.data.utils.text.Tokens
 import cmwell.util.akka.http.HttpZipDecoder
@@ -74,12 +74,18 @@ class BufferFillerActor(threshold: Int,
   private var tsvCounter = 0L
   private var lastBulkConsumeToHeader: Option[String] = None
   private var consumeComplete = false
+  private var remainingInfotons : Option[Long] = None
 
   val retryTimeout: FiniteDuration = {
     val timeoutDuration = Duration(
       config.getString("cmwell.downloader.consumer.http-retry-timeout")
     ).toCoarsest
     FiniteDuration(timeoutDuration.length, timeoutDuration.unit)
+  }
+
+  val consumeLengthHint = config.hasPath("cmwell.downloader.consumer.consume-fetch-size") match {
+    case true => Some(config.getInt("cmwell.downloader.consumer.consume-fetch-size"))
+    case false => None
   }
 
   private val HttpAddress(protocol, host, port, _) =
@@ -155,13 +161,13 @@ class BufferFillerActor(threshold: Int,
 
     case GetData if buf.nonEmpty =>
       sender ! buf.dequeue.map(tokenAndData => {
-        (tokenAndData._1, tokenAndData._2, (buf.isEmpty && consumeComplete))
+        (tokenAndData._1, tokenAndData._2, (buf.isEmpty && consumeComplete), remainingInfotons)
       })
 
     // do nothing since there are no elements in buffer
     case GetData =>
       logger.debug("Got GetData message but there is no data")
-      sender ! Some[(Token, TsvData, Boolean)](null, null, consumeComplete)
+      sender ! Some[(Token, TsvData, Boolean, Option[Long])](null, null, consumeComplete, remainingInfotons)
 
     case SetConsumeStatus(consumeStatus) =>
       if (this.consumeComplete != consumeStatus)
@@ -227,10 +233,16 @@ class BufferFillerActor(threshold: Int,
           ("_consume", "&slow-bulk")
       }
 
+      val lengthHintStr = consumeLengthHint.fold("") { chunkSize =>
+        if (consumeHandler == "_consume") "&length-hint=" + chunkSize
+        else ""
+      }
+
       val to = toHint.map("&to-hint=" + _).getOrElse("")
 
       val uri =
-        s"${formatHost(baseUrl)}/$consumeHandler?position=$token&format=tsv$paramsValue$slowBulk$to"
+        s"${formatHost(baseUrl)}/$consumeHandler?position=$token&format=tsv$paramsValue$slowBulk$to$lengthHintStr"
+
       logger.debug("send HTTP request: {}", uri)
       HttpRequest(uri = uri).addHeader(RawHeader("Accept-Encoding", "gzip"))
     }
@@ -269,6 +281,11 @@ class BufferFillerActor(threshold: Int,
             case (Success(HttpResponse(s, h, e, _)), _) if s == StatusCodes.OK || s == StatusCodes.PartialContent =>
               self ! SetConsumeStatus(false)
 
+              remainingInfotons = getNLeft(h) match {
+                case Some(HttpHeader(_, nLeft)) => Some(nLeft.toInt)
+                case _ => None
+              }
+
               val nextToken = getPosition(h) match {
                 case Some(HttpHeader(_, pos)) => pos
                 case None                     => throw new RuntimeException("no position supplied")
@@ -278,6 +295,10 @@ class BufferFillerActor(threshold: Int,
                 case Some(HttpHeader(_, to)) => self ! NewToHeader(Some(to))
                 case None                    => self ! NewToHeader(None)
               }
+
+              logger.debug(
+                s"remaining infotons=${remainingInfotons}"
+              )
 
               logger.debug(
                 s"received consume answer from host=${getHostnameValue(h)}"

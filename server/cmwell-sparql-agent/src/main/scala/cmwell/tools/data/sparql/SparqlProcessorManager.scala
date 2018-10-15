@@ -23,6 +23,7 @@ import akka.stream._
 import akka.stream.scaladsl._
 import akka.util.Timeout
 import cmwell.ctrl.checkers.StpChecker.{RequestStats, ResponseStats, Row, Table}
+import cmwell.driver.Dao
 import cmwell.tools.data.ingester._
 import cmwell.tools.data.sparql.InfotonReporter.{RequestDownloadStats, RequestIngestStats, ResponseDownloadStats, ResponseIngestStats}
 import cmwell.tools.data.sparql.SparqlProcessorManager._
@@ -31,21 +32,24 @@ import cmwell.tools.data.utils.akka.stats.IngesterStats
 import cmwell.tools.data.utils.chunkers.GroupChunker
 import cmwell.tools.data.utils.chunkers.GroupChunker._
 import cmwell.tools.data.utils.text.Tokens
-import cmwell.util.http.SimpleResponse
-import cmwell.util.string.Hash
-import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
 import cmwell.util.concurrent._
+import cmwell.util.http.SimpleResponse
+import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+
 import cmwell.util.stream.StreamEventInspector
+import cmwell.util.string.Hash
+import cmwell.zstore.ZStore
+
 import com.typesafe.scalalogging.LazyLogging
+import io.circe.Json
 import k.grid.GridReceives
 import net.jcazevedo.moultingyaml._
 import org.apache.commons.lang3.time.DurationFormatUtils
-import io.circe.Json
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.concurrent.duration.{FiniteDuration, _}
 import scala.util.{Failure, Success, Try}
-import ExecutionContext.Implicits.global
 
 case class Job(name: String, config: Config) {
   val jobString = {
@@ -113,6 +117,9 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
     require(mat.asInstanceOf[ActorMaterializer].system eq context.system,
             "ActorSystem of materializer MUST be the same as the one used to create current actor")
   }
+
+  lazy val stpDao = Dao(settings.irwServiceDaoClusterName, settings.irwServiceDaoKeySpace2, settings.irwServiceDaoHostName)
+  lazy val zStore : ZStore = ZStore.apply(stpDao)
 
   var currentJobs: Jobs = Map.empty
 
@@ -287,6 +294,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
             ("red", "Exception : " + jobFailed.ex.getMessage)
           case _: JobPaused =>
             ("green", "No exceptions reported")
+          case x @ (JobPausing(_, _, _) | JobRunning(_, _, _) | JobStopping(_, _, _)) => logger.error(s"Unexpected Job Status: $x"); ???
         }
 
         val sensorNames = jobStatus.job.config.sensors.map(_.name)
@@ -295,21 +303,26 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
         )
         val header = Seq("Sensor", "Token Time")
 
-        StpUtil.readPreviousTokens(settings.hostConfigFile, settings.pathAgentConfigs + "/" + path, "ntriples").map {
-          storedTokens =>
-            val pathsWithoutSavedToken = sensorNames.toSet.diff(storedTokens.keySet)
-            val allSensorsWithTokens = storedTokens ++ pathsWithoutSavedToken.map(_ -> ("", None))
+        StpUtil.readPreviousTokens(settings.hostConfigFile, settings.pathAgentConfigs + "/" + path, zStore).map {
+          result =>
+            result.sensors match {
+              case storedTokens =>
+                val pathsWithoutSavedToken = sensorNames.toSet.diff(storedTokens.keySet)
+                val allSensorsWithTokens = storedTokens ++ pathsWithoutSavedToken.map(_ -> ("", None))
 
-            val body: Iterable[Row] = allSensorsWithTokens.map {
-              case (sensorName, (token, _)) =>
-                val decodedToken = if (token.nonEmpty) {
-                  val from = cmwell.tools.data.utils.text.Tokens.getFromIndexTime(token)
-                  LocalDateTime.ofInstant(Instant.ofEpochMilli(from), ZoneId.systemDefault()).toString
-                } else ""
+                val body: Iterable[Row] = allSensorsWithTokens.map {
+                  case (sensorName, (token, _)) =>
+                    val decodedToken = if (token.nonEmpty) {
+                      val from = cmwell.tools.data.utils.text.Tokens.getFromIndexTime(token)
+                      LocalDateTime.ofInstant(Instant.ofEpochMilli(from), ZoneId.systemDefault()).toString
+                    } else ""
 
-                Seq(sensorName, decodedToken)
+                    Seq(sensorName, decodedToken)
+                }
+                Table(title = title, header = header, body = body)
             }
-            Table(title = title, header = header, body = body)
+        }.recover {
+          case _ => Table(title = title, header = header, body = Seq(Seq("")))
         }
     }
 
@@ -322,7 +335,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
         val title = Seq(
           s"""<span style="color:green"> **${jobStatus.statusString}** </span> Agent: ${path} Source: ${hostUpdatesSource}"""
         )
-        val header = Seq("Sensor", "Token Time", "Received Infotons", "Infoton Rate", "Statistics Updated")
+        val header = Seq("Sensor", "Token Time", "Received Infotons", "Remaining Infotons", "Infoton Rate", "Statistics Updated")
         val statsFuture = (jobStatus.reporter ? RequestDownloadStats).mapTo[ResponseDownloadStats]
         val storedTokensFuture = (jobStatus.reporter ? RequestPreviousTokens).mapTo[ResponseWithPreviousTokens]
 
@@ -334,61 +347,72 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
           statsIngestRD <- stats2Future
           statsIngest = statsIngestRD.stats
           storedTokensRWPT <- storedTokensFuture
-          storedTokens = storedTokensRWPT.tokens
         } yield {
-          val sensorNames = jobConfig.sensors.map(_.name)
-          val pathsWithoutSavedToken = sensorNames.toSet.diff(storedTokens.keySet)
-          val allSensorsWithTokens = storedTokens ++ pathsWithoutSavedToken.map(_ -> ("", None))
+          storedTokensRWPT.tokens match {
+            case Right(storedTokensAndStats) => {
 
-          val body: Iterable[Row] = allSensorsWithTokens.map {
-            case (sensorName, (token, _)) =>
-              val decodedToken = if (token.nonEmpty) {
-                Tokens.getFromIndexTime(token) match {
-                  case 0 => ""
-                  case tokenTime =>
-                    (LocalDateTime.ofInstant(Instant.ofEpochMilli(tokenTime), ZoneId.systemDefault()).toString)
-                }
-              } else ""
+              val sensorNames = jobConfig.sensors.map(_.name)
+              val pathsWithoutSavedToken = sensorNames.toSet.diff(storedTokensAndStats.sensors.keySet)
+              val allSensorsWithTokens = storedTokensAndStats.sensors ++ pathsWithoutSavedToken.map(_ -> ("", None))
 
-              val sensorStats = stats
-                .get(sensorName)
+              val body: Iterable[Row] = allSensorsWithTokens.map {
+                case (sensorName, (token, _)) =>
+                  val decodedToken = if (token.nonEmpty) {
+                    Tokens.getFromIndexTime(token) match {
+                      case 0 => ""
+                      case tokenTime =>
+                        (LocalDateTime.ofInstant(Instant.ofEpochMilli(tokenTime), ZoneId.systemDefault()).toString)
+                    }
+                  } else ""
+
+                  val sensorStats = stats
+                    .get(sensorName)
+                    .map { s =>
+                      val statsTime = s.statsTime match {
+                        case 0 => "Not Yet Updated"
+                        case _ =>
+                          LocalDateTime.ofInstant(Instant.ofEpochMilli(s.statsTime), ZoneId.systemDefault()).toString
+                      }
+
+                      val infotonRate = s.horizon match {
+                        case true => s"""<span style="color:green">Horizon</span>"""
+                        case false => s"${formatter.format(s.infotonRate)}/sec"
+                      }
+
+                      val remainingInfotons = s.remaining match {
+                        case None => s"No Data"
+                        case Some(remain) => remain.toString
+                      }
+
+                      Seq(s.receivedInfotons.toString, remainingInfotons, infotonRate, statsTime)
+
+                    }
+                    .getOrElse(Seq.empty[String])
+
+                  Seq(sensorName, decodedToken) ++ sensorStats
+              }
+              val configName = Paths.get(path).getFileName
+
+              val sparqlIngestStats = statsIngest
                 .map { s =>
-                  val statsTime = s.statsTime match {
-                    case 0 => "Not Yet Updated"
-                    case _ =>
-                      LocalDateTime.ofInstant(Instant.ofEpochMilli(s.statsTime), ZoneId.systemDefault()).toString
-                  }
-
-                  val infotonRate = s.horizon match {
-                    case true  => s"""<span style="color:green">Horizon</span>"""
-                    case false => s"${formatter.format(s.infotonRate)}/sec"
-                  }
-
-                  Seq(s.receivedInfotons.toString, infotonRate, statsTime)
-
+                  s"""Ingested <span style="color:green"> **${s.ingestedInfotons}** </span> Failed <span style="color:red"> **${s.failedInfotons}** </span>"""
                 }
-                .getOrElse(Seq.empty[String])
+                .getOrElse("")
 
-              Seq(sensorName, decodedToken) ++ sensorStats
+              val sparqlMaterializerStats = stats
+                .get(s"${SparqlTriggeredProcessor.sparqlMaterializerLabel}")
+                .map { s =>
+                  val totalRunTime = DurationFormatUtils.formatDurationWords(s.runningTime, true, true)
+                  val allRunTime = DurationFormatUtils.formatDurationWords(s.totalRunningTime, true, true)
+                  s"""Materialized <span style="color:green"> **${s.receivedInfotons}** </span> infotons [$totalRunTime]|/[$allRunTime]""".stripMargin
+                }
+                .getOrElse("")
+
+              Table(title = title :+ sparqlMaterializerStats :+ sparqlIngestStats, header = header, body = body)
+
+            }
+            case _ => Table(title = title, header = header, body = Seq(Seq("")))
           }
-          val configName = Paths.get(path).getFileName
-
-          val sparqlIngestStats = statsIngest
-            .get(s"ingester-$configName")
-            .map { s =>
-              s"""Ingested <span style="color:green"> **${s.ingestedInfotons}** </span> Failed <span style="color:red"> **${s.failedInfotons}** </span>"""
-            }
-            .getOrElse("")
-
-          val sparqlMaterializerStats = stats
-            .get(s"$configName-${SparqlTriggeredProcessor.sparqlMaterializerLabel}")
-            .map { s =>
-              val totalRunTime = DurationFormatUtils.formatDurationWords(s.runningTime, true, true)
-              s"""Materialized <span style="color:green"> **${s.receivedInfotons}** </span> infotons [$totalRunTime]""".stripMargin
-            }
-            .getOrElse("")
-
-          Table(title = title :+ sparqlMaterializerStats :+ sparqlIngestStats, header = header, body = body)
         }
     }
 
@@ -409,7 +433,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
     //this method MUST BE RUN from the actor's thread and changing the state is allowed. the below will replace any existing state.
     //The state is changed instantly and every change that follows (even from another thread/Future) will be later.
     val tokenReporter = context.actorOf(
-      props = InfotonReporter(baseUrl = settings.hostConfigFile, path = settings.pathAgentConfigs + "/" + job.name),
+      props = InfotonReporter(baseUrl = settings.hostConfigFile, path = settings.pathAgentConfigs + "/" + job.name, zStore = zStore),
       name = s"${job.name}-${Hash.crc32(job.config.toString)}"
     )
 
@@ -417,8 +441,11 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
 
     val hostUpdatesSource = job.config.hostUpdatesSource.getOrElse(settings.hostUpdatesSource)
 
+    val initialTokensAndStatistics = SparqlTriggeredProcessor.loadInitialTokensAndStatistics(Option(tokenReporter))
+
     val agent = SparqlTriggeredProcessor
-      .listen(job.config, hostUpdatesSource, false, Some(tokenReporter), Some(job.name))
+      .listen(job.config, hostUpdatesSource, false, Some(tokenReporter),
+        initialTokensAndStatistics, Some(job.name), infotonGroupSize = settings.infotonGroupSize)
       .map { case (data, _) => data }
       .via(GroupChunker(formatToGroupExtractor(settings.materializedViewFormat)))
       .map(concatByteStrings(_, endl))
@@ -432,7 +459,8 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
         label = label
       )
       .via(StpPeriodicLogger(infotonReporter = tokenReporter, logFrequency = 5.minutes))
-      .via(IngesterStats(isStderr = false, reporter = Some(tokenReporter), label = label))
+      .via(IngesterStats(isStderr = false, reporter = Some(tokenReporter), label = label,
+        initialIngestStats =   initialTokensAndStatistics.fold(_ => None, r=>r.agentIngestStats) ))
       .viaMat(KillSwitches.single)(Keep.right)
       .toMat(Sink.ignore)(Keep.both)
       .run()
@@ -455,7 +483,9 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
         self ! JobHasFailed(job, ex)
       }
     }
+
   }
+
 
   def getJobConfigsFromTheUser: Future[Set[JobRead]] = {
     logger.info("Checking the current status of the Sparql Triggered Processor manager config infotons")
@@ -463,8 +493,14 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
     //retryUntil(initialRetryState)(shouldRetry("Getting config information from local cm-well")) {
     safeFuture(
       client.get(s"http://${settings.hostConfigFile}${settings.pathAgentConfigs}",
-                 queryParams = List("op" -> "search", "with-data" -> "", "format" -> "json"))
-    ).map(response => parseJobsJson(response.payload)).andThen {
+                 queryParams = List("op" -> "search", "with-data" -> "", "format" -> "json", "length" -> "100"))
+    ).map{
+      case response@SimpleResponse(respCode,_,_) if respCode < 300 =>
+        parseJobsJson(response.payload)
+      case failedResponse@SimpleResponse(respCode,_,_) =>
+        logger.warn(s"Failed to read config infoton from cm-well. Error code: $respCode payload: ${failedResponse.payload} headers: ${failedResponse.headers}")
+        throw new Exception(failedResponse.payload)
+    }.andThen {
       case Failure(ex) =>
         logger.warn(
           "Reading the config infotons failed. It will be checked on the next schedule check. The exception was: ",
@@ -475,8 +511,8 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
 
   private[this] val parsedJsonsBreakOut = scala.collection.breakOut[Iterable[Json], JobRead, Set[JobRead]]
   def parseJobsJson(configJson: String): Set[JobRead] = {
-    import cats.syntax.either._
-    import io.circe._, io.circe.parser._
+    import io.circe._
+    import io.circe.parser._
     //This method is run from map of a future - no need for try/catch (=can throw exceptions here). Each exception will be mapped to a failed future.
     val parsedJson = parse(configJson)
     parsedJson match {

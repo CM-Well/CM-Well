@@ -9,18 +9,34 @@ organization in Global := "cmwell"                                           //s
 //version in Global := "1.2." + sys.env.getOrElse("BUILD_NUMBER","x-SNAPSHOT") //build.JenkinsEnv.buildNumber.getOrElse("x-SNAPSHOT")
 shellPrompt in ThisBuild := { state => Project.extract(state).currentRef.project + "> " }
 
-sys.env.get("BUILD_NUMBER") match {
-  case None => Seq(
-    version in Global := "1.5.x-SNAPSHOT",
-    isSnapshot in Global := true
-  )
-  case Some(n) => Seq(
-    version in Global := s"1.5.$n",
-    isSnapshot in Global := false
-  )
+def refreshVersion = Command.command("refreshVersion") { state =>
+  val extracted = Project extract state
+  import extracted._
+  /* - At first I thought to manually set the version. It seems unimportant - just refresh the session
+    val result: Option[(State, Result[String])] = Project.runTask(dynver, state)
+    result match {
+      case None => state.fail // Key wasn't defined.
+      case Some((newState, Inc(inc))) => state.fail // error detail, inc is of type Incomplete, use Incomplete.show(inc.tpe) to get an error message
+      case Some((newState, Value(v))) =>
+        println(s"Setting the version to $v")
+        appendWithoutSession(Seq(version := v), state) // do something with v: inc.Analysis
+    }
+  */
+  state.log.info("refreshing version")
+  appendWithoutSession(Seq(), state) // do something with v: inc.Analysis
 }
 
-scalaVersion in Global := "2.12.5"
+ThisBuild / commands += refreshVersion
+
+val dirtyEnd = """.*(\d\d\d\d\d\d\d\d)(-\d\d\d\d)$""".r
+def stripTime(version: String) = version match {
+  case dirtyEnd(date, time) => version.replace("+"+date, "-"+date).stripSuffix(time)
+  case _ => version
+}
+ThisBuild / version ~= stripTime
+ThisBuild / dynver ~= stripTime
+
+scalaVersion in Global := "2.12.6"
 //javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint")
 initialize := {
   import semverfi._
@@ -43,12 +59,12 @@ dependenciesManager in Global := {
   case ("com.avast","bytecompressor-zlib")                         => "com.avast" %% "bytecompressor-zlib"    % "1.2.2"
   case ("com.datastax.cassandra","cassandra-driver-core")          => "com.datastax.cassandra" % "cassandra-driver-core" % "3.4.0"
   case ("com.ecyrd.speed4j","speed4j")                             => "com.ecyrd.speed4j" % "speed4j" % "0.18"
-  case ("com.fasterxml.jackson.core", art)                         => "com.fasterxml.jackson.core" % art % "2.9.4"
+  case ("com.fasterxml.jackson.core", art)                         => "com.fasterxml.jackson.core" % art % "2.9.6"
   case ("com.github.andrewoma.dexx","collection")                  => "com.github.andrewoma.dexx" % "collection" % "0.7"
-  case ("com.github.tomakehurst", "wiremock")                      => "com.github.tomakehurst" % "wiremock" % "2.7.1"
+  case ("com.github.tomakehurst", "wiremock")                      => "com.github.tomakehurst" % "wiremock" % "2.18.0"
   case ("com.github.t3hnar", "scala-bcrypt")                       => "com.github.t3hnar" %% "scala-bcrypt" % "3.1"
-  case ("com.google.code.findbugs","jsr305")                       => "com.google.code.findbugs" % "jsr305" % "1.3.9" //newest is 3.0.0
-  case ("com.google.guava","guava")                                => "com.google.guava" % "guava" % "24.1-jre"
+  case ("com.google.code.findbugs","jsr305")                       => "com.google.code.findbugs" % "jsr305" % "3.0.2"
+  case ("com.google.guava","guava")                                => "com.google.guava" % "guava" % "25.1-jre"
   case ("com.jason-goodwin", "authentikat-jwt")                    => "com.jason-goodwin" %% "authentikat-jwt" % "0.4.5"
   case ("com.lightbend.akka", "akka-stream-alpakka-cassandra")     => "com.lightbend.akka" %% "akka-stream-alpakka-cassandra" % "0.17"
   case ("com.ning","async-http-client")                            => "com.ning" % "async-http-client" % "1.9.40"
@@ -57,40 +73,40 @@ dependenciesManager in Global := {
   case ("com.tinkerpop.gremlin","gremlin-groovy")                  => "com.tinkerpop.gremlin" % "gremlin-groovy" % "2.6.0"
   case ("com.thaiopensource","jing")                               => "com.thaiopensource" % "jing" % "20091111"
   case ("com.typesafe","config")                                   => "com.typesafe" % "config" % "1.3.3"
-  case ("com.typesafe.scala-logging","scala-logging")              => "com.typesafe.scala-logging" %% "scala-logging" % "3.8.0"
+  case ("com.typesafe.scala-logging","scala-logging")              => "com.typesafe.scala-logging" %% "scala-logging" % "3.9.0"
   case ("com.typesafe.akka", "akka-stream-kafka")                  => "com.typesafe.akka" %% "akka-stream-kafka" % "0.19"
   case ("com.typesafe.akka", "akka-stream-contrib")                => "com.typesafe.akka" %% "akka-stream-contrib" % "0.9"
   case ("com.typesafe.akka", "akka-http")                          => "com.typesafe.akka" %% "akka-http" % "10.0.11"
-  case ("com.typesafe.akka",art)                                   => "com.typesafe.akka" %% art % "2.5.11"
+  case ("com.typesafe.akka",art)                                   => "com.typesafe.akka" %% art % "2.5.16"
   case ("com.typesafe.play", "twirl-api")                          => "com.typesafe.play" %% "twirl-api" % "1.3.13"
   case ("com.typesafe.play", "play-json")                          => "com.typesafe.play" %% "play-json" % "2.6.9"
   case ("com.typesafe.play", art)                                  => "com.typesafe.play" %% art % Versions.play
   case ("com.twitter","chill-akka")                                => "com.twitter" %% "chill-akka" % "0.5.2"
-  case ("commons-io","commons-io")                                 => "commons-io" % "commons-io" % "2.5"
-  case ("commons-codec","commons-codec")                           => "commons-codec" % "commons-codec" % "1.10"
+  case ("commons-io","commons-io")                                 => "commons-io" % "commons-io" % "2.6"
+  case ("commons-codec","commons-codec")                           => "commons-codec" % "commons-codec" % "1.11"
   case ("commons-lang","commons-lang")                             => "commons-lang" % "commons-lang" % "2.6"
   case ("eu.piotrbuda","scalawebsocket")                           => "eu.piotrbuda" %% "scalawebsocket" % "0.1.1"
   case ("io.netty","netty")                                        => "io.netty" % "netty" % "3.10.6.Final"
-  case ("io.circe", art)                                           => "io.circe" %% art % "0.9.2"
+  case ("io.circe", art)                                           => "io.circe" %% art % "0.9.3"
   case ("io.dropwizard.metrics",art)                               => "io.dropwizard.metrics" % art % "4.0.1" // make sure this is a compatible version with "nl.grons" metrics dependencies!
   case ("com.jcraft","jsch")                                       => "com.jcraft" % "jsch" % "0.1.54"
-  case ("joda-time","joda-time")                                   => "joda-time" % "joda-time" % "2.9.4"
+  case ("joda-time","joda-time")                                   => "joda-time" % "joda-time" % "2.10"
   case ("junit","junit")                                           => "junit" % "junit" % "4.12"
   case ("mx4j","mx4j-tools")                                       => "mx4j" % "mx4j-tools" % "3.0.1"
   case ("net.jcazevedo", "moultingyaml")                           => "net.jcazevedo" %% "moultingyaml" % "0.4.0"
-  case ("org.lz4","lz4-java")                                      => "org.lz4" % "lz4-java" % "1.4.0"
-  case ("net.logstash.logback", "logstash-logback-encoder")        => "net.logstash.logback" % "logstash-logback-encoder" % "4.7"
+  case ("org.lz4","lz4-java")                                      => "org.lz4" % "lz4-java" % "1.4.1"
+  case ("net.logstash.logback", "logstash-logback-encoder")        => "net.logstash.logback" % "logstash-logback-encoder" % "5.2"
   case ("net.sf.ehcache","ehcache")                                => "net.sf.ehcache" % "ehcache" % "2.10.2"
 //  case ("nl.grons", "metrics-scala")                               => "nl.grons" %% "metrics-scala" % "3.5.7"
   case ("nl.grons", art)                                           => "nl.grons" %% art % "4.0.1" // make sure to update also "io.dropwizard.metrics" dependencies
   case ("org.apache.abdera",art)                                   => "org.apache.abdera" % art % "1.1.3"
   case ("org.apache.cassandra","apache-cassandra")                 => "org.apache.cassandra" % "apache-cassandra" % Versions.cassandra
   case ("org.apache.lucene",art)                                   => "org.apache.lucene" % art % "4.10.4"
-  case ("org.apache.commons","commons-compress")                   => "org.apache.commons" % "commons-compress" % "1.12"
-  case ("org.apache.commons", "commons-lang3")                     => "org.apache.commons" % "commons-lang3" % "3.5"
-  case ("org.apache.commons","commons-csv")                        => "org.apache.commons" % "commons-csv" % "1.4"
-  case ("org.apache.httpcomponents","httpclient")                  => "org.apache.httpcomponents" % "httpclient" % "4.5.2"
-  case ("org.apache.httpcomponents","httpcore")                    => "org.apache.httpcomponents" % "httpcore" % "4.4.5"
+  case ("org.apache.commons","commons-compress")                   => "org.apache.commons" % "commons-compress" % "1.18"
+  case ("org.apache.commons", "commons-lang3")                     => "org.apache.commons" % "commons-lang3" % "3.8"
+  case ("org.apache.commons","commons-csv")                        => "org.apache.commons" % "commons-csv" % "1.5"
+  case ("org.apache.httpcomponents","httpclient")                  => "org.apache.httpcomponents" % "httpclient" % "4.5.6"
+  case ("org.apache.httpcomponents","httpcore")                    => "org.apache.httpcomponents" % "httpcore" % "4.4.10"
   case ("org.apache.jena",art) if(Set("apache-jena",
     "apache-jena-libs",
     "apache-jena-osgi",
@@ -124,40 +140,41 @@ dependenciesManager in Global := {
     "jena-tdb",
     "jena-text")(art))                                             => "org.apache.jena" % art % "3.3.0"
   case ("org.apache.jena",art) => throw new Exception(s"jena artifact: $art is not in the 3.1.0 version list")
-  case ("org.apache.tika",art)                                     => "org.apache.tika" % art % "1.13" jar()
+  case ("org.apache.tika",art)                                     => "org.apache.tika" % art % "1.18" jar()
   case ("org.apache.thrift","libthrift")                           => "org.apache.thrift" % "libthrift" % "0.9.3"
   case ("org.apache.kafka", "kafka")                               => "org.apache.kafka" %% "kafka" % Versions.kafka
   case ("org.apache.kafka", "kafka-clients")                       => "org.apache.kafka" % "kafka-clients" % Versions.kafka
   case ("org.apache.zookeeper", "zookeeper")                       => "org.apache.zookeeper" % "zookeeper" % Versions.zookeeper
   case ("org.aspectj","aspectjweaver")                             => "org.aspectj" % "aspectjweaver" % "1.8.9"
   case ("org.codehaus.groovy",art)                                 => "org.codehaus.groovy" % art % "2.4.7"
-  case ("org.codehaus.plexus","plexus-archiver")                   => "org.codehaus.plexus" % "plexus-archiver" % "3.4" //3.2
+  case ("org.codehaus.plexus","plexus-archiver")                   => "org.codehaus.plexus" % "plexus-archiver" % "3.6.0"
   case ("org.codehaus.plexus","plexus-container-default")          => "org.codehaus.plexus" % "plexus-container-default" % "1.7.1" //"1.6"
-  case ("org.codehaus.plexus","plexus-utils")                      => "org.codehaus.plexus" % "plexus-utils" % "3.0.24"
+  case ("org.codehaus.plexus","plexus-utils")                      => "org.codehaus.plexus" % "plexus-utils" % "3.1.0"
   case ("org.codehaus.woodstox","woodstox-asl")                    => "org.codehaus.woodstox" % "woodstox-asl" % "3.2.7"
   case ("org.elasticsearch","elasticsearch")                       => "org.elasticsearch" % "elasticsearch" % Versions.elasticsearch
   case ("org.elasticsearch", "metrics-elasticsearch-reporter")     => "org.elasticsearch" % "metrics-elasticsearch-reporter" % "2.0"
   case ("org.hdrhistogram","HdrHistogram")                         => "org.hdrhistogram" % "HdrHistogram" % "2.1.9"
   case ("org.jfarcand","wcs")                                      => "org.jfarcand" % "wcs" % "1.3"
   case ("org.jdom","jdom2")                                        => "org.jdom" % "jdom2" % "2.0.6"
-  case ("org.joda","joda-convert")                                 => "org.joda" % "joda-convert" % "1.8.1"
+  case ("org.joda","joda-convert")                                 => "org.joda" % "joda-convert" % "2.1.1"
   case("org.openrdf.sesame", art)                                  => "org.openrdf.sesame" % art % "4.1.2"
   case ("org.pac4j", "play-pac4j")                                 => "org.pac4j" % "play-pac4j_scala2.11" % "1.3.0" // % "play-pac4j-scala" % "2.0.1"
   case ("org.pac4j", "pac4j-saml")                                 => "org.pac4j" % "pac4j-saml" % "1.7.0"           // "1.8.7"
   case ("org.pac4j", "pac4j-oauth")                                => "org.pac4j" % "pac4j-oauth" % "1.7.0"          // "1.8.7"
   case ("org.pac4j", "pac4j-openid")                               => "org.pac4j" % "pac4j-openid" % "1.7.0"         // "1.8.7"
-  case ("org.rogach","scallop")                                    => "org.rogach" %% "scallop" % "2.0.5"
+  case ("org.rogach","scallop")                                    => "org.rogach" %% "scallop" % "3.1.3"
   case ("org.scala-lang",art)                                      => "org.scala-lang" % art % scalaVersion.value
-  case ("org.scalacheck","scalacheck")                             => "org.scalacheck" %% "scalacheck" % "1.13.4"
-  case ("org.scalatest","scalatest")                               => "org.scalatest" %% "scalatest" % "3.0.1"
+  case ("org.scalacheck","scalacheck")                             => "org.scalacheck" %% "scalacheck" % "1.14.0"
+  case ("org.scalatest","scalatest")                               => "org.scalatest" %% "scalatest" % "3.0.5"
   case ("org.scala-lang.modules", "scala-parser-combinators")      => "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4"
-  case ("org.scala-lang.modules", "scala-xml")                     => "org.scala-lang.modules" %% "scala-xml" % "1.0.6"
+  case ("org.scala-lang.modules", "scala-xml")                     => "org.scala-lang.modules" %% "scala-xml" % "1.1.0"
   case ("org.slf4j",art)                                           => "org.slf4j" % art % "1.7.25"
   case ("org.xerial.snappy","snappy-java")                         => "org.xerial.snappy" % "snappy-java" % "1.1.2.4"
-  case ("org.yaml","snakeyaml")                                    => "org.yaml" % "snakeyaml" % "1.17"
-  case ("xerces","xercesImpl")                                     => "xerces" % "xercesImpl" % "2.11.0"
+  case ("org.yaml","snakeyaml")                                    => "org.yaml" % "snakeyaml" % "1.21"
+  case ("xerces","xercesImpl")                                     => "xerces" % "xercesImpl" % "2.12.0"
   case ("xml-apis","xml-apis")                                     => "xml-apis" % "xml-apis" % "1.4.01"
   case ("uk.org.lidalia","sysout-over-slf4j")                      => "uk.org.lidalia" % "sysout-over-slf4j" % "1.0.2"
+  case ("net.leibman", "semverfi")                                 => "net.leibman" %% "semverfi" % "0.2.0"
 }
 
 //dependencyOverrides in Global ++= {
@@ -231,6 +248,8 @@ lazy val tracking      = (project in file("cmwell-tracking")).enablePlugins(CMWe
 lazy val ws            = (project in file("cmwell-ws")).enablePlugins(CMWellBuild, PlayScala, SbtTwirl, PlayNettyServer)
                                                        .disablePlugins(PlayAkkaHttpServer)                          dependsOn(domain, common, formats, fts, irw, rts, ctrl, stortill, zstore, tracking)
 
+testOptions in Test in ThisBuild += Tests.Argument(TestFrameworks.ScalaTest, "-oD")
+testOptions in IntegrationTest in ThisBuild += Tests.Argument(TestFrameworks.ScalaTest, "-oD")
 fullTest := {
   (fullTest in LocalProject("util")).value
   (fullTest in LocalProject("kafkaAssigner")).value

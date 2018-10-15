@@ -13,19 +13,20 @@ GET         /_login           controllers.LoginHandler.login
 # SAML POC
 #GET         /_sso             controllers.LoginHandler.sso
 
-GET         /_auth            controllers.Application.handleAuthGet
-GET         /_hcn             controllers.Application.handlePoisonPill
-GET         /_cas/*path       controllers.Application.handleRawRow(path)
-GET         /_es/:uuid        controllers.Application.handleRawDoc(uuid: String)
-GET         /_es/:index/:uuid controllers.Application.handleRawDocWithIndex(index: String, uuid: String)
-GET         /_ll              controllers.LogLevelHandler.handleSetLogLevel
-GET         /_consume         controllers.Application.handleConsumeRoute
-GET         /_bulk-consume         controllers.Application.handleBulkConsumeRoute
-GET         /_iterate         controllers.Application.handleScrollRoute
-GET         /_cssh            controllers.Application.handleCssh
-GET         /_csshx            controllers.Application.handleCsshx
-GET         /_null            controllers.NullHandler.handle
-POST        /_null            controllers.NullHandler.handle
+GET         /_auth                    controllers.Application.handleAuthGet
+GET         /_hcn                     controllers.Application.handlePoisonPill
+GET         /_cas/*path               controllers.Application.handleRawRow(path)
+GET         /_es/:uuid                controllers.Application.handleRawDoc(uuid: String)
+GET         /_es/:index/:uuid         controllers.Application.handleRawDocWithIndex(index: String, uuid: String)
+GET         /_ll                      controllers.LogLevelHandler.handleSetLogLevel
+GET         /_consume                 controllers.Application.handleConsumeRoute
+GET         /_bulk-consume            controllers.Application.handleBulkConsumeRoute
+GET         /_iterate                 controllers.Application.handleScrollRoute
+GET         /_cssh                    controllers.Application.handleCssh
+GET         /_csshx                   controllers.Application.handleCsshx
+GET         /_null                    controllers.NullHandler.handle
+POST        /_null                    controllers.NullHandler.handle
+GET         /_kafka/:topic/:partition controllers.Application.handleKafkaConsume(topic: String, partition: Int)
 
 GET         /_track/*tid      controllers.Application.handleTrack(tid)
 
@@ -50,6 +51,7 @@ GET         /health/es_top          controllers.Health.getElasticsearchTop
 GET         /health/es_stats        controllers.Health.getElasticsearchStats
 GET         /health/es_seg          controllers.Health.getElasticsearchSegments
 GET         /health/es_status       controllers.Health.getElasticsearchStatus
+GET         /health/es_thread_pool  controllers.Health.getElasticsearchThreadPool
 GET         /health/kafka           controllers.Health.getKafkaStatus
 GET         /health/zk-stat         controllers.Health.getZkStat
 GET         /health/zk-ruok         controllers.Health.getZkRuok
@@ -57,7 +59,7 @@ GET         /health/zk-mntr         controllers.Health.getZkMntr
 GET         /health/ws              controllers.Health.getWsHealth
 GET         /ws/_out                controllers.OutputHandler.handleWebSocket(format: String)
 GET         /ii/*uuid               controllers.Application.handleUuidGET(uuid)
-GET         /zz                     controllers.Application.handleZzGET(key = "")
+GET         /zz                     controllers.Help.handleHelp(page = "zz")
 GET         /zz/*key                controllers.Application.handleZzGET(key)
 GET         /proc                   controllers.Application.handleProcGET(path = "/proc")
 GET         /proc/                  controllers.Application.handleProcGET(path = "/proc")
@@ -74,6 +76,8 @@ POST        /_sp/*format            controllers.SpHandlerController.handleSpPost
 POST        /_sparql                controllers.SpHandlerController.handleSparqlPost(format = "")
 POST        /_ssparql               controllers.OpenRdfSpHandler.handleSsparqlPost
 POST        /zz/*uzid               controllers.Application.handleZzPost(uzid)
+POST        /                       controllers.Application.handlePost(path = "")
+PUT         /                       controllers.Application.handlePost(path = "")
 POST        /*path                  controllers.Application.handlePost(path)
 PUT         /*path                  controllers.Application.handlePost(path)
 

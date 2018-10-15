@@ -36,7 +36,9 @@ object DownloaderStats {
                            bytesRate: Double = 0,
                            runningTime: Long = 0,
                            statsTime: Long = 0,
-                           horizon: Boolean = false)
+                           horizon: Boolean = false,
+                           remaining: Option[Long] = None,
+                           totalRunningTime: Long = 0)
 
   def apply(isStderr: Boolean = false,
             format: String,
@@ -70,6 +72,7 @@ class DownloaderStats(isStderr: Boolean,
       val metricRegistry = new com.codahale.metrics.MetricRegistry()
       val totalDownloadedBytes = metrics.counter("received-bytes")
       val totalReceivedInfotons = metrics.meter("received-infotons")
+      var remainingInfotons : Option[Long] = None
       var bytesInWindow = 0L
       val metricRateBytes = metrics.meter("rate-bytes")
       var nextTimeToReport = 0L
@@ -77,6 +80,7 @@ class DownloaderStats(isStderr: Boolean,
       var lastMessageSize = 0
       var timeOfLastStatistics = 0L
       var horizon = false
+      var previousRunningMillis = 0L
 
       var eventPoller: Option[Cancellable] = None
 
@@ -84,7 +88,7 @@ class DownloaderStats(isStderr: Boolean,
 
       private var asyncCB: AsyncCallback[Unit] = _
 
-      val start = System.currentTimeMillis()
+      val start = System.currentTimeMillis
 
       val formatter = java.text.NumberFormat.getNumberInstance
 
@@ -92,7 +96,9 @@ class DownloaderStats(isStderr: Boolean,
 
         // Initialise persisted statistics
         initialDownloadStats.foreach { stats =>
+          logger.debug(s"${name} Loading statistics initial state of Received Infotons: ${stats.receivedInfotons}")
           totalReceivedInfotons.mark(stats.receivedInfotons)
+          previousRunningMillis = stats.totalRunningTime
         }
 
         asyncCB = getAsyncCallback { _ =>
@@ -114,6 +120,7 @@ class DownloaderStats(isStderr: Boolean,
             val element = grab(in)
             aggregateStats(element._1)
             setSensorHorizon(element._2)
+            setRemainingInfotons(element._2)
             push(out, element)
           }
 
@@ -167,6 +174,13 @@ class DownloaderStats(isStderr: Boolean,
         }
       }
 
+
+      def setRemainingInfotons(contextOption: Option[SensorContext]) = {
+        contextOption.foreach(context => {
+          remainingInfotons = context.remainingInfotons
+        })
+      }
+
       def setSensorHorizon(contextOption: Option[SensorContext]) = {
         contextOption.foreach(context => {
           horizon = context.horizon
@@ -188,6 +202,8 @@ class DownloaderStats(isStderr: Boolean,
           try {
             val rate = toHumanReadable(bytesInWindow * 1000 / (now - lastTime))
             val executionTime = now - start
+            val totalRunningMillis = previousRunningMillis + executionTime
+
             val message =
               s"[received=${toHumanReadable(totalDownloadedBytes.count)}]".padTo(20, ' ') +
                 s"[infotons=${formatter.format(totalReceivedInfotons.count)}".padTo(30, ' ') +
@@ -208,8 +224,10 @@ class DownloaderStats(isStderr: Boolean,
                 infotonRate = totalReceivedInfotons.meanRate,
                 bytesRate = metricRateBytes.oneMinuteRate,
                 runningTime = executionTime,
+                totalRunningTime = totalRunningMillis,
                 statsTime = timeOfLastStatistics,
-                horizon = horizon
+                horizon = horizon,
+                remaining = remainingInfotons
               )
             }
 

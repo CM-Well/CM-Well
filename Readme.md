@@ -1,4 +1,4 @@
-[![Gitter chat](https://badges.gitter.im/thomsonreuters/CM-Well.svg)](https://gitter.im/thomsonreuters/CM-Well)
+[![Gitter chat](https://badges.gitter.im/thomsonreuters/CM-Well.svg)](https://gitter.im/CM-Wells/CM-Well)
 
 # Introduction #
 CM-Well is a writable Linked Data repository, developed by Thomson Reuters and used as its central Knowledge Graph database. CM-Well (Content Matrix Well) adheres to RDF principles, meaning that data is in a [standard](https://www.w3.org/RDF/), machine-readable format.
@@ -200,7 +200,7 @@ Before building CM-Well, you will need to install the following software package
 
 * Java 8
 * [Scala](http://www.scala-lang.org/download/) 2.12.4
-* [SBT(Scala Build Tool)](http://www.scala-sbt.org/download.html) version 1.1.1 or later
+* [SBT(Scala Build Tool)](https://github.com/sbt/sbt/releases/download/v1.1.4/sbt-1.1.4.zip) version 1.1.4 or later
 
 >**Note** Currently, CM-Well only runs on Mac and Linux environments
 

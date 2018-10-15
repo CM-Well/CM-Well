@@ -45,6 +45,23 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
   private val bufferSize =
     config.getInt("akka.http.host-connection-pool.max-connections")
 
+  val retryTimeout: FiniteDuration = {
+    val timeoutDuration = Duration(
+      config.getString("cmwell.downloader.consumer.http-retry-timeout")
+    ).toCoarsest
+    FiniteDuration(timeoutDuration.length, timeoutDuration.unit)
+  }
+
+  val retryLimit = config.hasPath("cmwell.downloader.consumer.http-retry-limit") match {
+    case true => Some(config.getInt("cmwell.downloader.consumer.http-retry-limit"))
+    case false => None
+  }
+
+  val delayFactor = config.hasPath("cmwell.downloader.consumer.http-retry-delay-factor") match {
+    case true => config.getDouble("cmwell.downloader.consumer.http-retry-delay-factor")
+    case false => 1
+  }
+
   type Token = String
   type Uuid = ByteString
   type Path = ByteString
@@ -96,8 +113,8 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
     val tokenFuture = Source
       .single(Seq(blank) -> None)
       .via(
-        Retry.retryHttp(5.seconds, 1, formatHost(baseUrl))(
-          _ => HttpRequest(uri = uri)
+        Retry.retryHttp(retryTimeout, 1, formatHost(baseUrl), retryLimit, delayFactor)(
+          (_,_) => HttpRequest(uri = uri)
         )
       )
       .map {
@@ -108,7 +125,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
           res.discardEntityBytes()
           None
         case x =>
-          logger.error(s"cannot get initial token: $x")
+          logger.error(s"cannot get initial token: $x, original request: $uri")
           None
       }
       .map {
@@ -280,7 +297,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
     implicit system: ActorSystem,
     mat: Materializer,
     ec: ExecutionContext
-  ): Source[((Token, TsvData), Boolean), NotUsed] = {
+  ): Source[((Token, TsvData), Boolean, Option[Long]), NotUsed] = {
 
     val downloader = new Downloader(baseUrl = baseUrl,
                                     path = path,
@@ -353,18 +370,18 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
 
     format match {
       case "tsv" =>
-        tsvSource.map { case ((token, tsv), _) => token -> tsv.toByteString }
+        tsvSource.map { case ((token, tsv), _, _) => token -> tsv.toByteString }
       case "text" =>
-        tsvSource.map { case ((token, tsv), _) => token -> tsv.path }
+        tsvSource.map { case ((token, tsv), _, _) => token -> tsv.path }
       case _ =>
         if (usePaths) {
           tsvSource
-            .map { case ((token, tsv), _) => token -> tsv.path }
+            .map { case ((token, tsv), _, _) => token -> tsv.path }
             .via(downloader.downloadDataFromPaths)
             .async
         } else {
           tsvSource
-            .map { case ((token, tsv), _) => token -> tsv.uuid }
+            .map { case ((token, tsv), _, _) => token -> tsv.uuid }
             .via(downloader.downloadDataFromUuids)
             .async
         }
@@ -386,12 +403,18 @@ class Downloader(
   recursive: Boolean = false,
   isBulk: Boolean = false,
   indexTime: Long = 0L,
-  override val label: Option[String] = None
+  override val label: Option[String] = None,
+  downloadBufferSize: Option[Long] = None
 )(implicit system: ActorSystem, mat: Materializer)
     extends DataToolsLogging {
   import Downloader._
 
   implicit val labelId = label.map(LabelId.apply)
+
+  private val prefetchBufferSize = config.hasPath("cmwell.downloader.consumer.prefetch-buffer-size") match {
+    case true => config.getInt("cmwell.downloader.consumer.prefetch-buffer-size")
+    case false => 3000000L
+  }
 
   private[Downloader] val retryTimeout = {
     val timeoutDuration = Duration(
@@ -412,7 +435,7 @@ class Downloader(
     * @return flow that gets uuids and download their data
     */
   private[data] def downloadDataFromPaths()(implicit ec: ExecutionContext) = {
-    def createDataRequest(paths: Seq[ByteString]) = {
+    def createDataRequest(paths: Seq[ByteString], vars: Map[String,String]) = {
       val paramsValue = if (params.isEmpty) "" else s"&$params"
 
       HttpRequest(
@@ -468,7 +491,7 @@ class Downloader(
     }
 
     def sendPathRequest(timeout: FiniteDuration, parallelism: Int, limit: Int = 0)(
-      createRequest: (Seq[Path]) => HttpRequest
+      createRequest: (Seq[Path],Map[String,String]) => HttpRequest
     )(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
 
       case class State(pathsToRequest: Seq[Path],
@@ -590,7 +613,7 @@ class Downloader(
     * @return flow that gets uuids and download their data
     */
   private[data] def downloadDataFromUuids()(implicit ec: ExecutionContext) = {
-    def createDataRequest(uuids: Seq[ByteString]) = {
+    def createDataRequest(uuids: Seq[ByteString], vars: Map[String,String]) = {
       val paramsValue = if (params.isEmpty) "" else s"&$params"
 
       HttpRequest(
@@ -647,7 +670,7 @@ class Downloader(
     }
 
     def sendUuidRequest(timeout: FiniteDuration, parallelism: Int, limit: Int = 0)(
-      createRequest: (Seq[Uuid]) => HttpRequest
+      createRequest: (Seq[Uuid], Map[String,String]) => HttpRequest
     )(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
 
       case class State(uuidsToRequest: Seq[Uuid],
@@ -847,10 +870,9 @@ class Downloader(
     */
   def createTsvSource(token: Option[Token] = None, updateFreq: Option[FiniteDuration] = None)(
     implicit ec: ExecutionContext
-  ): Source[((Token, TsvData), Boolean), NotUsed] = {
+  ): Source[((Token, TsvData), Boolean, Option[Long]), NotUsed] = {
 
     import akka.pattern._
-    val prefetchBufferSize = 3000000
 
     val initTokenFuture = token match {
       case Some(t) => Future.successful(t)
@@ -867,7 +889,7 @@ class Downloader(
     val bufferFillerActor = system.actorOf(
       Props(
         new BufferFillerActor(
-          threshold = (prefetchBufferSize * 0.3).toInt,
+          threshold = (prefetchBufferSize * 0.1).toInt,
           initToken = initTokenFuture,
           baseUrl = baseUrl,
           params = params,
@@ -895,26 +917,26 @@ class Downloader(
         *
         * @return Option of position token -> Tsv data element
         */
-      def next(): Future[Option[(Token, TsvData, Boolean)]] = {
+      def next(): Future[Option[(Token, TsvData, Boolean, Option[Long])]] = {
         implicit val timeout = akka.util.Timeout(5.seconds)
 
         val elementFuture = (bufferFillerActor ? BufferFillerActor.GetData)
-          .mapTo[Option[(Token, TsvData, Boolean)]]
+          .mapTo[Option[(Token, TsvData, Boolean, Option[Long])]]
 
         elementFuture
           .flatMap(element => {
 
             element match {
-              case Some((null, null, hz)) =>
+              case Some((null, null, hz, remaining)) =>
                 val delay = 10.seconds
                 logger.info(
                   s"Got empty result. Waiting for $delay before passing on the empty element."
                 )
                 akka.pattern.after(delay, system.scheduler)(
-                  Future.successful(Some((null, null, hz)))
+                  Future.successful(Some((null, null, hz, remaining)))
                 )
-              case Some((token, tsvData, hz)) =>
-                Future.successful(Some(token, tsvData, hz))
+              case Some((token, tsvData, hz, remaining)) =>
+                Future.successful(Some(token, tsvData, hz, remaining))
               case None =>
                 noDataLeft = true // received the signal of last element in buffer
                 Future.successful(None)
@@ -948,7 +970,7 @@ class Downloader(
             fs.next().map {
               case Some(tokenAndData) => {
                 Some(
-                  fs -> ((tokenAndData._1, tokenAndData._2), tokenAndData._3)
+                  fs -> ((tokenAndData._1, tokenAndData._2), tokenAndData._3, tokenAndData._4)
                 )
               }
               case None => {

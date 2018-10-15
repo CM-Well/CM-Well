@@ -14,7 +14,10 @@
   */
 package cmwell.common
 
-import scala.concurrent.Await
+import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets
+
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import cmwell.zstore.ZStore
 
@@ -24,13 +27,39 @@ import cmwell.zstore.ZStore
 trait OffsetsService {
 
   def read(id: String): Option[Long]
-  def write(id: String, offset: Long): Unit
+  def readWithTimestamp(id: String): Option[PersistedOffset]
+  def writeAsync(id: String, offset: Long): Future[Unit]
 }
+
+case class PersistedOffset(offset: Long, timestamp: Long)
 
 class ZStoreOffsetsService(zStore: ZStore) extends OffsetsService {
 
-  override def read(id: String): Option[Long] = Await.result(zStore.getLongOpt(id), 10.seconds)
+  override def readWithTimestamp(id: String): Option[PersistedOffset] =
+    Await.result(zStore.getOpt(id, dontRetry = true), 10.seconds).map { payload =>
+      //todo: this is a check to allow backward compatibility until all clusters` persisted offsets will contain also timestamp
+      if (payload.length == 8)
+        PersistedOffset(ByteBuffer.wrap(payload).getLong, -1)
+      else {
+        val s = new String(payload, StandardCharsets.UTF_8)
+        val (offset, timestamp) = cmwell.util.string.splitAtNoSep(s, ',')
+        PersistedOffset(offset.toLong, timestamp.toLong)
+      }
+    }
 
-  override def write(id: String, offset: Long): Unit =
-    Await.result(zStore.putLong(id, offset, batched = true), 10.seconds)
+  override def read(id: String): Option[Long] =
+    Await.result(zStore.getOpt(id, dontRetry = true), 10.seconds).map { payload =>
+      //todo: this is a check to allow backward compatibility until all clusters` persisted offsets will contain also timestamp
+      if (payload.length == 8)
+        ByteBuffer.wrap(payload).getLong
+      else {
+        val s = new String(payload, StandardCharsets.UTF_8)
+        s.substring(0, s.indexOf(',')).toLong
+      }
+    }
+//    Await.result(zStore.getStringOpt(id), 10.seconds).map(s => s.substring(0, s.indexOf(',')).toLong)
+//    Await.result(zStore.getLongOpt(id), 10.seconds)
+
+  override def writeAsync(id: String, offset: Long): Future[Unit] =
+    zStore.putString(id, s"$offset,${System.currentTimeMillis}", batched = true)
 }

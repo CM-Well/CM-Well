@@ -22,7 +22,7 @@ import akka.kafka.{ConsumerSettings, Subscriptions}
 import akka.kafka.scaladsl.Consumer
 import akka.stream.{KillSwitch, KillSwitches, SourceShape}
 import akka.stream.scaladsl.{GraphDSL, Keep, MergePreferred, Source}
-import cmwell.bg.{BGMessage, CompleteOffset}
+import cmwell.common.formats.{BGMessage, CompleteOffset}
 import cmwell.common.{Command, CommandSerializer}
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.consumer.ConsumerConfig

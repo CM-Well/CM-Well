@@ -24,9 +24,8 @@ import akka.pattern._
 import akka.stream.scaladsl._
 import akka.stream.{ActorMaterializer, Materializer}
 import cmwell.tools.data.downloader.consumer.Downloader.Token
-import cmwell.tools.data.utils.akka.stats.DownloaderStats.DownloadStats
-import cmwell.tools.data.utils.akka.stats.IngesterStats.IngestStats
 import cmwell.tools.data.utils.logging.DataToolsLogging
+import com.typesafe.scalalogging.LazyLogging
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -45,7 +44,7 @@ trait SparqlTriggerProcessorReporter {
     * Store given tokens for a future usage (e.g., in a non-volatile memory)
     * @param tokensAndStats tokens with current statistics to be saved
     */
-  def saveTokens(tokensAndStats: TokenAndStatisticsMap): Unit
+  def saveTokens(tokensAndStats : AgentTokensAndStatistics): Unit
 }
 
 /**
@@ -66,14 +65,19 @@ class FileReporterActor(stateFile: Option[String], webPort: Int = 8080)
 
   def receiveWithMap(tokens: Map[String, Token]): Receive = {
     case RequestPreviousTokens =>
-      sender() ! ResponseWithPreviousTokens(tokens.map {
-        case (sensor, token) => sensor -> (token, None)
-      })
+      sender() ! ResponseWithPreviousTokens(Right(
+        AgentTokensAndStatistics(
+          tokens.map {
+            case (sensor, token) => sensor -> (token, None)
+          },None,None
+        )
+      ))
     case ReportNewToken(sensor, token) =>
       val updatedTokens = tokens + (sensor -> token)
-      saveTokens(updatedTokens.map {
+
+      saveTokens(AgentTokensAndStatistics(updatedTokens.map {
         case (sensor, token) => (sensor -> (token, None))
-      })
+      }))
 
       context.become(receiveWithMap(updatedTokens))
     case RequestReference(path) =>
@@ -99,15 +103,15 @@ class FileReporterActor(stateFile: Option[String], webPort: Int = 8080)
   override def getReferencedData(path: String): Future[String] =
     Future.successful(scala.io.Source.fromFile(path).mkString)
 
-  override def saveTokens(tokensAndStats: TokenAndStatisticsMap): Unit = {
-    val tokens = tokensAndStats.map {
+  override def saveTokens(tokensAndStats: AgentTokensAndStatistics): Unit = {
+    val tokens = tokensAndStats.sensors.map {
       case (sensor, (token, _)) => sensor -> token
     }
     path.foreach(p => Files.write(p, tokens.mkString("\n").getBytes("UTF-8")))
   }
 }
 
-class WebExporter(reporter: ActorRef, port: Int = 8080)(implicit system: ActorSystem, mat: Materializer) {
+class WebExporter(reporter: ActorRef, port: Int = 8080)(implicit system: ActorSystem, mat: Materializer) extends LazyLogging{
 
   implicit val ec = system.dispatcher
 
@@ -133,10 +137,10 @@ class WebExporter(reporter: ActorRef, port: Int = 8080)(implicit system: ActorSy
     (reporter ? RequestPreviousTokens)
       .mapTo[ResponseWithPreviousTokens]
       .map {
-        case ResponseWithPreviousTokens(tokens) =>
+        case ResponseWithPreviousTokens(Right(tokens)) =>
           val title = "sensors state"
 
-          val (content, _) = tokens.foldLeft("" -> false) {
+          val (content, _) = tokens.sensors.foldLeft("" -> false) {
             case ((agg, evenRow), (sensor, token)) =>
               val style = if (evenRow) "tg-j2zy" else "tg-yw4l"
 
@@ -178,13 +182,14 @@ class WebExporter(reporter: ActorRef, port: Int = 8080)(implicit system: ActorSy
           |</body></html>
         """.stripMargin
 // scalastyle:on
+        case ResponseWithPreviousTokens(Left(ex)) => logger.error(s"Caught exception: $ex"); ???
       }
   }
 }
 
 case object RequestPreviousTokens
 
-case class ResponseWithPreviousTokens(tokens: TokenAndStatisticsMap)
+case class ResponseWithPreviousTokens(tokens: Either[String,AgentTokensAndStatistics])
 case class ReportNewToken(sensor: String, token: Token)
 case class RequestReference(path: String)
 case class ResponseReference(data: String)

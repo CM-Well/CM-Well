@@ -18,7 +18,8 @@ import akka.NotUsed
 import akka.stream.FlowShape
 import akka.stream.contrib.PartitionWith
 import akka.stream.scaladsl.{Flow, GraphDSL, Merge, Partition}
-import cmwell.bg.{BGMessage, BGMetrics}
+import cmwell.bg.BGMetrics
+import cmwell.common.formats.BGMessage
 import cmwell.common._
 import cmwell.zstore.ZStore
 import com.typesafe.scalalogging.LazyLogging

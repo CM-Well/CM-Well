@@ -22,9 +22,8 @@ import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.{AsyncFunSpec, Inspectors, Matchers}
 import play.api.libs.json._
 
-import scala.concurrent.duration._
 import scala.concurrent.Future
-import scala.util.Try
+import scala.concurrent.duration._
 
 class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Helpers with LazyLogging {
   describe("delete object infoton") {
@@ -94,7 +93,15 @@ class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Help
       }
     }
 
-    val deleteKeyValuePair = ingestOf2Infotons.flatMap(_ => scheduleFuture(indexingDuration) {
+    val verifyIngestOfInfotonInfoObjForDelete = ingestOf2Infotons.flatMap(_ => spinCheck(100.millis, true)(Http.get(iofd, List("format" -> "json"))){ res =>
+          Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get == jsonObjForDelete
+        }.map { res =>
+        withClue(res) {
+          Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get should be (jsonObjForDelete)
+        }
+      })
+
+    val deleteKeyValuePair = verifyIngestOfInfotonInfoObjForDelete.flatMap(_ => {
       val data = """{"movie":"the best"}"""
       Http.delete(iofd,List("data" -> data),tokenHeader).map { res =>
         withClue(res) {
@@ -103,17 +110,16 @@ class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Help
       }
     })
 
-    val verifyKeyValuePairDeleted = deleteKeyValuePair.flatMap(_ => scheduleFuture(indexingDuration) {
-      val expected = jsonObjForDelete.transform((__ \ 'movie).json.prune).get
-      Http.get(iofd, List("format" -> "json")).map { res =>
-        withClue(res){
+    val verifyKeyValuePairDeleted = deleteKeyValuePair.flatMap{_ => val expected = jsonObjForDelete.transform((__ \ 'movie).json.prune).get
+      spinCheck(100.millis,true)(Http.get(iofd, List("format" -> "json")))(
+        res => res.status==200 && Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get == expected ).map {
+        res => withClue(res) {
           res.status should be(200)
           Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get shouldEqual expected
         }
-      }
-    })
+      }}
 
-    val deleteFromArray = verifyKeyValuePairDeleted.flatMap(_ => scheduleFuture(indexingDuration) {
+    val deleteFromArray = verifyKeyValuePairDeleted.flatMap(_ => {
       Http.delete(iofd,List("data" -> """{"phrase":"ubuntu shmubuntu"}"""),tokenHeader).map{ res =>
         withClue(res){
           Json.parse(res.payload) should be(jsonSuccess)
@@ -121,7 +127,7 @@ class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Help
       }
     })
 
-    val getWithoutArrayValue = deleteFromArray.flatMap(_ => scheduleFuture(indexingDuration) {
+    val getWithoutArrayValue = deleteFromArray.flatMap(_ => {
       val expected = Json.obj(
         "type"   -> "ObjectInfoton",
         "system" -> Json.obj(
@@ -132,9 +138,9 @@ class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Help
           "company"    -> Json.arr("clearforest","ibm","microsoft"),
           "phrase"     -> Json.arr("four eyes commit","quality is a mindset")))
 
-      spinCheck(1.second,true)(Http.get(iofd, List("format" -> "json"))) { res =>
+      spinCheck(100.millis,true)(Http.get(iofd, List("format" -> "json"))) { res =>
         res.status == 200 && {
-          (Json.parse(res.payload) \ "fields" \ "phrase").as[JsArray].length < 3
+          Json.parse(res.payload).transform(uuidDateEraser andThen fieldsSorter).get == expected
         }
       }.map { res =>
         withClue(res) {
@@ -144,7 +150,7 @@ class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Help
       }
     })
 
-    val deleteAllAttributes = getWithoutArrayValue.flatMap(_ => scheduleFuture(indexingDuration) {
+    val deleteAllAttributes = getWithoutArrayValue.flatMap(_ => {
       Http.delete(
         iofd,
         List("data" -> """{"company":["clearforest","ibm","microsoft"],"phrase":["quality is a mindset","four eyes commit"]}"""),
@@ -155,7 +161,7 @@ class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Help
       }
     })
 
-    val verifyAllAttributesDeleted = deleteAllAttributes.flatMap(_ => scheduleFuture(indexingDuration) {
+    val verifyAllAttributesDeleted = deleteAllAttributes.flatMap(_ => {
       val expected = {
         Json.obj(
           "type"   -> "ObjectInfoton",
@@ -164,8 +170,8 @@ class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Help
             "parent"     -> "/cmt/cm/test",
             "dataCenter" -> dcName))
       }
-      spinCheck(1.second,true)(Http.get(iofd, List("format" -> "json"))) { res =>
-        res.status == 200 && (Json.parse(res.payload) \ "fields").isInstanceOf[JsUndefined]
+      spinCheck(100.millis,true)(Http.get(iofd, List("format" -> "json"))) { res =>
+        res.status == 200 && Json.parse(res.payload).transform(uuidDateEraser).get == expected
       }.map { res =>
         withClue(res) {
           res.status should be(200)
@@ -174,7 +180,15 @@ class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Help
       }
     })
 
-    val deleteInfotonPath = ingestOf2Infotons.flatMap(_ => scheduleFuture(indexingDuration) {
+    val verifyIngestOfInfotonInPathIoffd = ingestOf2Infotons.flatMap(_ => spinCheck(100.millis, true)(Http.get(ioffd, List("format" -> "json"))){ res =>
+      Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get == jsonObjForDelete
+    }.map { res =>
+      withClue(res) {
+        Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get should be (jsonObjForDelete)
+      }
+    })
+
+    val deleteInfotonPath = verifyIngestOfInfotonInPathIoffd.flatMap(_ => {
       Http.delete(uri = ioffd,headers = tokenHeader).map { res =>
         withClue(res) {
           Json.parse(res.payload) should be(jsonSuccess)
@@ -182,15 +196,14 @@ class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Help
       }
     })
 
-    val verify404 = deleteInfotonPath.flatMap(_ => scheduleFuture(indexingDuration) {
-      spinCheck(1.second,true,5.minutes)(Http.get(ioffd, List("format" -> "json")))(_.status == 404).map { res =>
+    val verify404 = deleteInfotonPath.flatMap(_ => scheduleFuture(indexingDuration){Http.get(ioffd, List("format" -> "json")).map { res =>
          withClue(res) {
            res.status should be(404)
          }
        }
     })
 
-    val rewriteDeletedInfoton = verify404.flatMap(_ => scheduleFuture(indexingDuration) {
+    val rewriteDeletedInfoton = verify404.flatMap(_ => {
       Http.post(ioffd, Json.stringify(jsonObjForDelete), None, Nil, ("X-CM-WELL-TYPE" -> "OBJ") :: tokenHeader).map { res =>
         withClue(res) {
           Json.parse(res.payload) should be(jsonSuccess)
@@ -198,8 +211,13 @@ class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Help
       }
     })
 
-    val getRewrittenInfoton = rewriteDeletedInfoton.flatMap(_ => scheduleFuture(indexingDuration) {
-      spinCheck(1.second,true,5.minutes)(Http.get(ioffd, List("format" -> "json")))(_.status).map { res =>
+    val getRewrittenInfoton = rewriteDeletedInfoton.flatMap(_ => {
+      spinCheck(100.millis,true)(Http.get(ioffd, List("format" -> "json"))){ res =>
+        val payloadStr = (res.payload.map(_.toChar)).mkString
+        if (payloadStr.startsWith("Infoton was deleted on")) false
+        else
+          Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get == jsonObjForDelete
+      }.map { res =>
         withClue(res) {
           Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get  shouldEqual jsonObjForDelete
         }
@@ -236,24 +254,28 @@ class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Help
       }
     }
 
-    val verifyInfotonWasDeleted = deleteSingleInfotonThroughUnderscoreIn.flatMap(_ => scheduleFuture(indexingDuration) {
+    val verifyInfotonWasDeleted = deleteSingleInfotonThroughUnderscoreIn.flatMap(_ =>
       // gotta have format since the SPA returned isn't 404... just Pooh complaining...
-      Http.get(deletes501 / "i-501", List("format"->"json")).map { res =>
+      scheduleFuture(indexingDuration)(Http.get(deletes501 / "i-501", List("format"->"json"))).map { res =>
         withClue(res) {
           res.status should be(404)
         }
       }
-    })
+    )
 
 
     val spinCheckDeletedInfotonIsConsistedInES = verifyInfotonWasDeleted.flatMap{ _ =>
-      //25ms*(40*60*5) = 25ms*12000 = 5min
-      waitForNumberOfResults(500, 25.millis, 12000)(Http.get(deletes501, List("op" -> "search", "length" -> "1", "format" -> "json"))) { res =>
-        (Json.parse(res.payload) \ "results" \ "total").as[Int]
-      }.map(_ should be(500))
+
+      spinCheck(100.millis, true)(Http.get(deletes501, List("op" -> "search", "length" -> "1", "format" -> "json")))(
+        res => (Json.parse(res.payload) \ "results" \ "total").as[Int] == 500
+      ).map { res =>
+          withClue(res) {
+            (Json.parse(res.payload) \ "results" \ "total").as[Int] should be (500)
+          }
+        }
     }
 
-    val delete500InfotonsThroughUnderscoreIn = spinCheckDeletedInfotonIsConsistedInES.flatMap(_ => scheduleFuture(indexingDuration) {
+    val delete500InfotonsThroughUnderscoreIn = spinCheckDeletedInfotonIsConsistedInES.flatMap(_ => {
       val data = """<cmwell://cmt/cm/test/bulkDeletes/d501> <cmwell://meta/sys#fullDelete> "true"^^<http://www.w3.org/2001/XMLSchema#boolean> ."""
       Http.post(_in, data, None, List("format" -> "ntriples"), tokenHeader).map { res =>
         withClue(res) {
@@ -265,12 +287,14 @@ class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Help
     it("should post infotons to delete later")(ingestOf2Infotons)
     it("should upload 500 + 501 infotons to test deletes later")(massiveIngestOf1001Infotons)
     it("should spin-check until infoton is available")(spinCheckUntilWritesAreIndexed)
+    it("should get the infoton 'InfoObjForDelete'")(verifyIngestOfInfotonInfoObjForDelete)
     it("delete only 1 pair of key:value attribute")(deleteKeyValuePair)
     it("should verify only one pair was deleted")(verifyKeyValuePairDeleted)
     it("should delete 1 value from array of values")(deleteFromArray)
     it("should get the json without deleted value")(getWithoutArrayValue)
     it("should delete all attributes")(deleteAllAttributes)
     it("should not get all attributes")(verifyAllAttributesDeleted)
+    it("should get the infoton in Path ioffd")(verifyIngestOfInfotonInPathIoffd)
     it("should delete infoton path")(deleteInfotonPath)
     it("should not get a deleted infoton")(verify404)
     it("should re-write the deleted infoton")(rewriteDeletedInfoton)

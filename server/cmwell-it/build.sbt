@@ -29,8 +29,7 @@ libraryDependencies ++= {
     dm("org.slf4j", "log4j-over-slf4j") % "it,test",
     dm("org.slf4j", "slf4j-api") % "it,test",
     dm("xerces", "xercesImpl") % "it,test",
-    dm("xml-apis", "xml-apis") % "it,test",
-    dm("org.codehaus.groovy", "groovy-all") % "it,test")
+    dm("xml-apis", "xml-apis") % "it,test")
 }
 
 logBuffered in IntegrationTest := false

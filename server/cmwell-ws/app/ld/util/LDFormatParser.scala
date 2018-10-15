@@ -23,29 +23,26 @@ import cmwell.util.string._
 import cmwell.web.ld.cmw.CMWellRDFHelper.{Create, Exists, PrefixState}
 import cmwell.web.ld.cmw._
 import cmwell.web.ld.exceptions._
-import ld.cmw.PassiveFieldTypesCache
-import security.Token
 import cmwell.ws.Settings
+import com.typesafe.scalalogging.LazyLogging
+import logic.{CRUDServiceFS, InfotonValidator}
 import org.apache.jena.datatypes.xsd.XSDDatatype
 import org.apache.jena.datatypes.xsd.impl.RDFLangString
 import org.apache.jena.graph.BlankNodeId
 import org.apache.jena.query.DatasetFactory
 import org.apache.jena.rdf.model.{Seq => _, _}
-import com.typesafe.scalalogging.LazyLogging
-import filters.Attrs
-import logic.{CRUDServiceFS, InfotonValidator}
 import org.apache.jena.riot.{Lang, RDFDataMgr}
 import org.apache.xerces.util.XMLChar
-import security.{AuthUtils, PermissionLevel}
+import security.{AuthUtils, PermissionLevel, Token}
 import wsutil._
 
 import scala.annotation.tailrec
 import scala.collection.JavaConversions._
 import scala.collection.immutable.{Map => IMap, Set => ISet}
 import scala.collection.mutable.{ListBuffer, Map => MMap, Set => MSet}
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -1197,7 +1194,7 @@ object LDFormatParser extends LazyLogging {
       val domainLength = detectIfUrlBelongsToCmwellAndGetLength(su)
       val v =
         if (su.startsWith(http)) su.drop(http.length + domainLength)
-        else if (su.startsWith(https)) "https." + su.drop(https.length + domainLength)
+        else if (su.startsWith(https)) su.drop(https.length + domainLength)
         else su.drop(cmwell.length)
 
       val u = v.takeWhile(_ != '/') match {

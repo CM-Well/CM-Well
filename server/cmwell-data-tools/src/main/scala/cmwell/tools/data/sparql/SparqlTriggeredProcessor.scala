@@ -21,13 +21,14 @@ import akka.stream.{Materializer, SourceShape}
 import akka.util.ByteString
 import cmwell.tools.data.downloader.consumer.{Downloader => Consumer}
 import cmwell.tools.data.utils.akka.stats.DownloaderStats
+import cmwell.tools.data.utils.akka.stats.DownloaderStats.DownloadStats
 import cmwell.tools.data.utils.logging.DataToolsLogging
 import cmwell.tools.data.utils.text.Tokens
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
-case class SensorContext(name: String, token: String, horizon: Boolean)
+case class SensorContext(name: String, token: String, horizon: Boolean, remainingInfotons: Option[Long])
 
 case class Sensor(name: String,
                   qp: String = "",
@@ -46,17 +47,36 @@ case class Config(name: Option[String] = None,
                   hostUpdatesSource: Option[String],
                   force: Option[Boolean] = Some(false))
 
-object SparqlTriggeredProcessor {
+object SparqlTriggeredProcessor extends DataToolsLogging {
 
   val sparqlMaterializerLabel = "sparql-materializer"
 
+  def loadInitialTokensAndStatistics(tokenReporter : Option[ActorRef])
+                                    (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = tokenReporter match {
+
+    case None => Right(AgentTokensAndStatistics(Map.empty[String, TokenAndStatistics], None, None))
+    case Some(reporter) =>
+      import akka.pattern._
+      implicit val t = akka.util.Timeout(1.minute)
+      val result = (reporter ? RequestPreviousTokens)
+        .mapTo[ResponseWithPreviousTokens]
+        .map {
+          case ResponseWithPreviousTokens(tokens) => tokens
+          case x => logger.error(s"did not receive previous tokens: $x"); Left(s"did not receive previous tokens: $x")
+        }
+      Await.result(result, 1.minute)
+  }
+
   def listen(
-    config: Config,
-    baseUrl: String,
-    isBulk: Boolean = false,
-    tokenReporter: Option[ActorRef] = None,
-    label: Option[String] = None,
-    distinctWindowSize: FiniteDuration = 10.seconds
+              config: Config,
+              baseUrl: String,
+              isBulk: Boolean = false,
+              tokenReporter: Option[ActorRef] = None,
+              initialTokensAndStatistics: Either[String,AgentTokensAndStatistics] =
+                Right(AgentTokensAndStatistics(Map.empty[String, TokenAndStatistics],None,None)),
+              label: Option[String] = None,
+              distinctWindowSize: FiniteDuration = 10.seconds,
+              infotonGroupSize: Integer = 100
   )(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
 
     new SparqlTriggeredProcessor(config = config,
@@ -64,8 +84,9 @@ object SparqlTriggeredProcessor {
                                  isBulk = isBulk,
                                  tokenReporter = tokenReporter,
                                  label = label,
-                                 distinctWindowSize = distinctWindowSize)
-      .listen()
+                                 distinctWindowSize = distinctWindowSize,
+                                 infotonGroupSize = infotonGroupSize)
+      .listen(initialTokensAndStatistics)
   }
 }
 
@@ -74,45 +95,23 @@ class SparqlTriggeredProcessor(config: Config,
                                isBulk: Boolean = false,
                                tokenReporter: Option[ActorRef] = None,
                                override val label: Option[String] = None,
-                               distinctWindowSize: FiniteDuration)
+                               distinctWindowSize: FiniteDuration,
+                               infotonGroupSize: Integer)
     extends DataToolsLogging {
 
-  def listen()(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
+  def listen(initialTokensAndStatistics: Either[String,AgentTokensAndStatistics])(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
 
     def addStatsToSource(id: String,
                          source: Source[(ByteString, Option[SensorContext]), _],
-                         initialDownloadStats: Option[TokenAndStatisticsMap] = None) = {
+                         initialDownloadStats: Option[DownloadStats] = None) = {
       source.via(
         DownloaderStats(
           format = "ntriples",
           label = Some(id),
           reporter = tokenReporter,
-          initialDownloadStats = for {
-            ids <- initialDownloadStats
-            (_, dStatsOpt) <- ids.get(id)
-            downloadStats <- dStatsOpt
-          } yield downloadStats
+          initialDownloadStats = initialDownloadStats
         )
       )
-    }
-
-    val savedTokensAndStatistics: TokenAndStatisticsMap = tokenReporter match {
-      case None => Map.empty[String, TokenAndStatistics]
-      case Some(reporter) =>
-        import akka.pattern._
-        implicit val t = akka.util.Timeout(1.minute)
-        val result = (reporter ? RequestPreviousTokens)
-          .mapTo[ResponseWithPreviousTokens]
-          .map {
-            case ResponseWithPreviousTokens(tokens) => tokens
-            case x                                  => logger.error(s"did not receive previous tokens: $x"); Map.empty[String, TokenAndStatistics]
-          }
-
-        Await.result(result, 1.minute)
-    }
-
-    var savedTokens = savedTokensAndStatistics.map {
-      case (sensor, (token, _)) => sensor -> token
     }
 
     def getReferencedData(path: String) = tokenReporter match {
@@ -134,7 +133,7 @@ class SparqlTriggeredProcessor(config: Config,
 
       configWithProcessedMaterializer.flatMap { c =>
         val processedSensors = c.sensors.map {
-          case sensor @ Sensor(_, _, _, _, _, Some(sparqlToRoot)) if sparqlToRoot.startsWith("@") =>
+          case sensor@Sensor(_, _, _, _, _, Some(sparqlToRoot)) if sparqlToRoot.startsWith("@") =>
             getReferencedData(sparqlToRoot).map(data => sensor.copy(sparqlToRoot = Some(data)))
           case sensor =>
             Future.successful(sensor)
@@ -146,159 +145,198 @@ class SparqlTriggeredProcessor(config: Config,
       }
     }
 
-    def createSensorSource(config: Config) = {
-      Source.fromGraph(GraphDSL.create() { implicit builder =>
-        import GraphDSL.Implicits._
+    initialTokensAndStatistics match {
 
-        val merger = builder.add(Merge[(ByteString, Option[SensorContext])](config.sensors.size))
+      case Left(error) =>
+        Source.failed(new Exception(error))
 
-        for ((sensor, i) <- config.sensors.zipWithIndex) {
-          // if saved token available, ignore token in configuration
-          // if configuration token was provided, ignore index-time
-          val savedToken = savedTokens.get(sensor.name)
-          val tokenFuture = if (savedToken.isDefined) {
-            logger.debug("received previous value of sensor {}: {}", sensor.name, savedToken.get)
-            Future.successful(savedToken)
-          } else
-            sensor.token match {
-              case None =>
-                Consumer
-                  .getToken(baseUrl = baseUrl,
-                            path = sensor.path,
-                            qp = sensor.qp,
-                            isBulk = isBulk,
-                            indexTime = sensor.fromIndexTime)
-                  .map(Option.apply)
+      case Right(tokensAndStatistics) => {
 
-              case token => Future.successful(token)
-            }
-
-          // get updates from sensor
-
-          val source = Source
-            .fromFuture(tokenFuture)
-            .flatMapConcat {
-              token =>
-                val tsvSource = Consumer
-                  .createTsvSource(
-                    baseUrl = baseUrl,
-                    path = sensor.path,
-                    qp = sensor.qp,
-                    //            params  = params,
-                    isBulk = isBulk,
-                    token = token,
-                    updateFreq = Some(config.updateFreq),
-                    label = Some(sensor.name)
-                  )
-                  .map {
-                    case ((token, tsv), hz) =>
-                      val path = tsv.path
-                      logger.debug("sensor [{}] found new path: {}", sensor.name, path.utf8String)
-                      path -> Some(SensorContext(name = sensor.name, token = token, horizon = hz))
-
-                    case x =>
-                      logger.error(s"unexpected message: $x")
-                      ???
-                  }
-
-                addStatsToSource(id = sensor.name,
-                                 source = tsvSource,
-                                 initialDownloadStats = Option(savedTokensAndStatistics))
-
-            }
-
-          // get root infoton
-          val pathSource = if (sensor.sparqlToRoot.isDefined) {
-            SparqlProcessor
-              .createSparqlSourceFromPaths(
-                baseUrl = baseUrl,
-                isNeedWrapping = false,
-                sparqlQuery = sensor.sparqlToRoot.get,
-                spQueryParamsBuilder = (p: Seq[String]) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
-                format = Some("tsv"),
-                label = Some(sensor.name),
-                source = source.map {
-                  case (path, context) =>
-                    context.foreach(
-                      c => logger.debug("sensor [{}] is trying to get root infoton of {}", c.name, path.utf8String)
-                    )
-                    path -> context
-                }
-              )
-              .filter { case (data, _) => data.startsWith("?") }
-              .map {
-                case (data, sensorContext) =>
-                  val path = data
-                    .dropWhile(_ != '\n') // drop ?orgId\n
-                    .drop(8)
-                    .dropRight(1) // <http://data.thomsonreuters.com/1-34418459938>, drop <http:/, >
-
-                  path -> sensorContext
-              }
-              .filter { case (path, _) => path.nonEmpty }
-
-          } else {
-            source
-          }
-
-          pathSource ~> merger.in(i)
+        var savedTokens = tokensAndStatistics.sensors.map {
+          case (sensor, (token, _)) => sensor -> token
         }
 
-        SourceShape(merger.out) // todo: might change this to UniformFanInShape
-      })
-    }
+        def createSensorSource(config: Config) = {
+          Source.fromGraph(GraphDSL.create() { implicit builder =>
+            import GraphDSL.Implicits._
 
-    // populate unique changes on paths
-    val processedConfig = Await.result(preProcessConfig(config), 3.minutes)
+           // val merger = builder.add(Merge[(ByteString, Option[SensorContext])](config.sensors.size))
+           val merger = builder.add(Merge[((ByteString,Map[String,String]), Option[SensorContext])](config.sensors.size))
 
-    val sensorSource = createSensorSource(processedConfig)
-      .groupedWithin(10000, distinctWindowSize)
-      .statefulMapConcat {
-        () =>
-          // stores last received tokens from sensors
-          sensorData =>
-            {
-              sensorData.foreach {
-                case (data, Some(SensorContext(name, newToken, _))) if newToken != savedTokens.getOrElse(name, "") =>
-                  // received new token from sensor, write it to state file
-                  logger.debug("sensor '{}' received new token: {} {}", name, Tokens.decompress(newToken), newToken)
-                  tokenReporter.foreach(_ ! ReportNewToken(name, newToken))
+            for ((sensor, i) <- config.sensors.zipWithIndex) {
+              // if saved token available, ignore token in configuration
+              // if configuration token was provided, ignore index-time
+              val savedToken = savedTokens.get(sensor.name)
+              val tokenFuture = if (savedToken.isDefined) {
+                logger.debug("received previous value of sensor {}: {}", sensor.name, savedToken.get)
+                Future.successful(savedToken)
+              } else
+                sensor.token match {
+                  case None =>
+                    Consumer
+                      .getToken(baseUrl = baseUrl,
+                        path = sensor.path,
+                        qp = sensor.qp,
+                        isBulk = isBulk,
+                        indexTime = sensor.fromIndexTime)
+                      .map(Option.apply)
 
-                  //            stateFilePath.foreach { path => Files.write(path, savedTokens.mkString("\n").getBytes("UTF-8")) }
-                  savedTokens = savedTokens + (name -> newToken)
-                case _ =>
+                  case token => Future.successful(token)
+                }
+
+              // get updates from sensor
+
+              val source = Source
+                .fromFuture(tokenFuture)
+                .flatMapConcat {
+                  token =>
+                    val tsvSource = Consumer
+                      .createTsvSource(
+                        baseUrl = baseUrl,
+                        path = sensor.path,
+                        qp = sensor.qp,
+                        //            params  = params,
+                        isBulk = isBulk,
+                        token = token,
+                        updateFreq = Some(config.updateFreq),
+                        label = Some(sensor.name)
+                      )
+                      .map {
+                        case ((token, tsv), hz, remaining) =>
+                          val path = tsv.path
+                          logger.debug("sensor [{}] found new path: {}", sensor.name, path.utf8String)
+                          path -> Some(SensorContext(name = sensor.name, token = token, horizon = hz, remainingInfotons = remaining))
+
+                        case x =>
+                          logger.error(s"unexpected message: $x")
+                          ???
+                      }
+
+                    addStatsToSource(id = sensor.name,
+                      source = tsvSource,
+                      initialDownloadStats = {for {
+                        sensor <- tokensAndStatistics.sensors.get(sensor.name)
+                        initial <- sensor._2
+                      } yield initial}
+                    )
+                }.map(source=> (source._1, Map.empty[String,String]) -> source._2)
+
+              // get root infoton
+              val pathSource = if (sensor.sparqlToRoot.isDefined) {
+                SparqlProcessor
+                  .createSparqlSourceFromPaths(
+                    baseUrl = baseUrl,
+                    isNeedWrapping = false,
+                    sparqlQuery = sensor.sparqlToRoot.get,
+                    spQueryParamsBuilder = (p: Seq[String], v: Map[String,String]) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
+                    format = Some("tsv"),
+                    label = Some(sensor.name),
+                    source = source.map {
+                      case ((path, _), context) =>
+                        context.foreach(
+                          c => logger.debug("sensor [{}] is trying to get root infoton of {}", c.name, path.utf8String)
+                        )
+                        (path, Map.empty[String,String]) -> context
+                    }
+                  )
+                  .filter { case (data, _)  => data.startsWith("?") }
+                  .map {
+                    case (data, sensorContext) =>
+
+                      val vars = data.utf8String.filterNot("?\"".toSet)
+                        .split("\n")
+                        .map{_.split("\t")}
+                        .transpose
+                        .map{ f => f(0) -> { if (f.isDefinedAt(1)) f(1) else "" } }
+                        .toMap
+
+                      val path =
+                        if(vars.size == 1){
+                          ByteString(vars.head._2.drop(8).dropRight(1))
+                        }
+                        else {
+                          ByteString("")
+                        }
+
+                      (path, vars) -> sensorContext
+                  }
+                  .filter { case ( (path, vars), _) => path.nonEmpty || vars.nonEmpty }
+
+              } else {
+                source
               }
 
-              sensorData
-                .map { case (data, _) => data }
-                .distinct
-                .map(_ -> None)
+              pathSource ~> merger.in(i)
             }
-      }
-      .map {
-        case (path, _) =>
-          logger.debug("request materialization of {}", path.utf8String)
-          path -> None
-        case x =>
-          logger.error(s"unexpected message: $x")
-          ByteString("") -> None
-      }
 
-    // execute sparql queries on populated paths
-    addStatsToSource(
-      id = label.map(_ + "-").getOrElse("") + SparqlTriggeredProcessor.sparqlMaterializerLabel,
-      source = SparqlProcessor.createSparqlSourceFromPaths(
-        baseUrl = baseUrl,
-        sparqlQuery = processedConfig.sparqlMaterializer,
-        spQueryParamsBuilder = (p: Seq[String]) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
-        source = sensorSource,
-        isNeedWrapping = false,
-        label = Some(
-          label
-            .map(l => s"$l-${SparqlTriggeredProcessor.sparqlMaterializerLabel}")
-            .getOrElse(SparqlTriggeredProcessor.sparqlMaterializerLabel)
+            SourceShape(merger.out) // todo: might change this to UniformFanInShape
+          })
+        }
+
+        // populate unique changes on paths
+        val processedConfig = Await.result(preProcessConfig(config), 3.minutes)
+
+        val sensorSource = createSensorSource(processedConfig)
+          .groupedWithin(infotonGroupSize, distinctWindowSize)
+          .statefulMapConcat {
+            () =>
+              // stores last received tokens from sensors
+              sensorData => {
+                sensorData.foreach {
+                  case (data, Some(SensorContext(name, newToken, _, _))) if newToken != savedTokens.getOrElse(name, "") =>
+                    // received new token from sensor, write it to state file
+                    logger.debug("sensor '{}' received new token: {} {}", name, Tokens.decompress(newToken), newToken)
+                    tokenReporter.foreach(_ ! ReportNewToken(name, newToken))
+
+                    //            stateFilePath.foreach { path => Files.write(path, savedTokens.mkString("\n").getBytes("UTF-8")) }
+                    savedTokens = savedTokens + (name -> newToken)
+                  case _ =>
+                }
+
+                sensorData
+                  .map { case (data, _) => data }
+                  .distinct
+                  .map(_ -> None)
+              }
+          }
+          .map {
+            case (path, _) =>
+              logger.debug("request materialization of {}", path._1.utf8String)
+              path -> None
+            case x =>
+              logger.error(s"unexpected message: $x")
+              (ByteString(""), Map.empty[String,String]) -> None
+          }
+
+        // execute sparql queries on populated paths
+        addStatsToSource(
+          id = SparqlTriggeredProcessor.sparqlMaterializerLabel,
+          initialDownloadStats = tokensAndStatistics.materializedStats,
+          source = SparqlProcessor.createSparqlSourceFromPaths(
+            baseUrl = baseUrl,
+            sparqlQuery = processedConfig.sparqlMaterializer,
+            spQueryParamsBuilder = (path: Seq[String], vars: Map[String,String]) => {
+              (if(path.head.length>0) {
+                 "sp.pid=" + path.head.substring(path.head.lastIndexOf('-') + 1) +
+                   "&sp.path=" + path.head.substring(path.head.lastIndexOf('/') + 1)
+               }
+               else{""}) +
+                vars.foldLeft("") {
+                  case (string, (key, value)) => {
+                    string + "sp." + key + "=" + value + "&"
+                  }
+                }
+            },
+            source = sensorSource,
+            isNeedWrapping = false,
+            label = Some(
+              label
+                .map(l => s"$l-${SparqlTriggeredProcessor.sparqlMaterializerLabel}")
+                .getOrElse(SparqlTriggeredProcessor.sparqlMaterializerLabel)
+            )
+          )
         )
-      )
-    )
+      }
+    }
   }
 }

@@ -1,0 +1,150 @@
+<configuration debug="false">
+
+    <appender name="STDOUT-ERROR" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <encoder>
+            <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
+        </encoder>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${application.home:-.}/target/logs/application.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- daily rollover with compression -->
+            <fileNamePattern>${application.home:-.}/target/logs/application-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
+            <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>20GB</totalSizeCap>
+            <!-- in case of process terminating too early for rollover - do the rollover during start -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
+        </encoder>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
+        <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
+            <evaluator class="ch.qos.logback.classic.boolex.OnMarkerEvaluator">
+                <marker>markedMsg</marker>
+            </evaluator>
+            <onMismatch>NEUTRAL</onMismatch>
+            <onMatch>DENY</onMatch>
+        </filter>
+    </appender>
+
+    <appender name="FILE_MARKER" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${application.home:-.}/target/logs/markedLog.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- daily rollover with compression -->
+            <fileNamePattern>${application.home:-.}/target/logs/markedLog-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
+            <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>20GB</totalSizeCap>
+            <!-- in case of process terminating too early for rollover - do the rollover during start -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
+        </encoder>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
+        <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
+            <evaluator class="ch.qos.logback.classic.boolex.OnMarkerEvaluator">
+                <marker>markedMsg</marker>
+            </evaluator>
+            <onMismatch>DENY</onMismatch>
+            <onMatch>NEUTRAL</onMatch>
+        </filter>
+    </appender>
+
+    <appender name="AKKA_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/akka.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- daily rollover with compression -->
+            <fileNamePattern>logs/akka-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
+            <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>20GB</totalSizeCap>
+            <!-- in case of process terminating too early for rollover - do the rollover during start -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date{ISO8601} [%thread %X{sourceThread}] %-5level %logger{36} %X{sourceActorSystem} %X{akkaSource} - %msg%n</pattern>
+        </encoder>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
+    </appender>
+
+    <appender name="ACCESS_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${application.home:-.}/target/logs/access.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- daily rollover with compression -->
+            <fileNamePattern>${application.home:-.}/target/logs/access-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
+            <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>20GB</totalSizeCap>
+            <!-- in case of process terminating too early for rollover - do the rollover during start -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
+        </encoder>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
+    </appender>
+
+    <appender name="X_FIX" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${application.home:-.}/target/logs/x-fix.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- daily rollover with compression -->
+            <fileNamePattern>${application.home:-.}/target/logs/x-fix-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
+            <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>20GB</totalSizeCap>
+            <!-- in case of process terminating too early for rollover - do the rollover during start -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
+        </encoder>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
+    </appender>
+
+    <!--X-fix is a special operation that should always be logged. CM-Well root logger level can
+    dynamically be changed. Setting the x-fix level to info fixes it to info always-->
+    <logger name="cmwell.xfix" level="INFO" additivity="false">
+        <appender-ref ref="X_FIX"/>
+        <appender-ref ref="STDOUT-ERROR" />
+    </logger>
+
+    <logger name="access" additivity="false">
+        <appender-ref ref="ACCESS_FILE" />
+        <appender-ref ref="STDOUT-ERROR" />
+    </logger>
+
+    <logger name="cmwell.fts.FTSServiceNew" additivity="true">
+        <appender-ref ref="FILE_MARKER" />
+    </logger>
+
+    <logger name="akka" additivity="true">
+        <appender-ref ref="AKKA_FILE" />
+    </logger>
+
+    <root level="${log.level:-INFO}">
+        <appender-ref ref="STDOUT-ERROR" />
+        <appender-ref ref="FILE" />
+    </root>
+    <jmxConfigurator />
+</configuration>

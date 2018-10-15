@@ -14,50 +14,47 @@
   */
 package cmwell.bg
 
+import java.nio.charset.StandardCharsets
+import java.util.Properties
 import java.util.concurrent.{ConcurrentHashMap, TimeoutException}
 
+import akka.NotUsed
 import akka.actor.{ActorRef, ActorSystem}
 import akka.kafka.ProducerMessage.Message
-import akka.kafka.scaladsl.Producer
 import akka.kafka.ProducerSettings
+import akka.kafka.scaladsl.Producer
 import akka.stream.ActorAttributes.supervisionStrategy
 import akka.stream.contrib.PartitionWith
-import akka.stream.scaladsl.{
-  Broadcast,
-  Flow,
-  GraphDSL,
-  Keep,
-  Merge,
-  Partition,
-  RunnableGraph,
-  Sink
-}
+import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Merge, Partition, RunnableGraph, Sink}
 import akka.stream.{ActorMaterializer, ClosedShape, Supervision}
 import cmwell.bg.imp.{CommandsSource, RefsEnricher}
 import cmwell.common._
-import cmwell.common.formats.JsonSerializerForES
+import cmwell.common.formats.{BGMessage, JsonSerializerForES, Offset, PartialOffset}
 import cmwell.domain.{Infoton, ObjectInfoton}
 import cmwell.fts._
 import cmwell.irw.IRWService
 import cmwell.tracking._
-import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
 import cmwell.util.concurrent.SimpleScheduler._
+import cmwell.util.concurrent.travector
+import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
 import cmwell.zstore.ZStore
 import com.datastax.driver.core.ConsistencyLevel
 import com.google.common.cache.CacheBuilder
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.Logger
 import nl.grons.metrics4.scala._
-import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.kafka.clients.consumer.KafkaConsumer
+import org.apache.kafka.clients.producer.{ProducerConfig, ProducerRecord}
+import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.elasticsearch.action.update.UpdateRequest
 import org.elasticsearch.client.Requests
 import org.joda.time.DateTime
 import org.slf4j.LoggerFactory
 
-import scala.collection.breakOut
 import scala.collection.JavaConverters._
-import scala.collection.immutable.{Seq => ISeq, Iterable => IIterable}
+import scala.collection.breakOut
+import scala.collection.immutable.{Iterable => IIterable, Seq => ISeq}
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success, Try}
@@ -75,7 +72,7 @@ class ImpStream(partition: Int,
                 bGMetrics: BGMetrics)(implicit actorSystem: ActorSystem,
                                       executionContext: ExecutionContext,
                                       materializer: ActorMaterializer)
-    extends DefaultInstrumented {
+  extends DefaultInstrumented {
 
   implicit val logger = Logger[ImpStream]
 
@@ -88,8 +85,7 @@ class ImpStream(partition: Int,
   val merger = Merger()
 
   val bootStrapServers = config.getString("cmwell.bg.kafka.bootstrap.servers")
-  val persistCommandsTopic =
-    config.getString("cmwell.bg.persist.commands.topic")
+  val persistCommandsTopic = config.getString("cmwell.bg.persist.commands.topic")
   val persistCommandsTopicPriority = persistCommandsTopic + ".priority"
   val indexCommandsTopic = config.getString("cmwell.bg.index.commands.topic")
   val indexCommandsTopicPriority = indexCommandsTopic + ".priority"
@@ -105,13 +101,7 @@ class ImpStream(partition: Int,
   val maxDocsPerShard = config.getLong("cmwell.bg.maxDocsPerShard")
   val streamId = s"imp.${partition}"
   val startingOffset = offsetsService.read(s"${streamId}_offset").getOrElse(0L)
-  val startingOffsetPriority =
-    offsetsService.read(s"${streamId}.p_offset").getOrElse(0L)
-
-  logger.info(
-    s"ImpStream($streamId), startingOffset: $startingOffset, startingOffsetPriority: $startingOffsetPriority"
-  )
-
+  val startingOffsetPriority = offsetsService.read(s"${streamId}.p_offset").getOrElse(0L)
   @volatile var (startingIndexName, startingIndexCount) =
     ftsService.latestIndexNameAndCount(s"cm_well_p${partition}_*") match {
       case Some((name, count)) => (name -> count)
@@ -148,16 +138,36 @@ class ImpStream(partition: Int,
 
         (s"cm_well_p${partition}_0" -> 0L)
     }
-
-  logger.info(
-    s"ImpStream($streamId), startingIndexName: $startingIndexName, startingIndexCount: $startingIndexCount"
-  )
-
   @volatile var currentIndexName = startingIndexName
   @volatile var fuseOn = config.getBoolean("cmwell.bg.fuseOn")
+  @volatile var isRecoveryMode = true
+  @volatile var isRecoveryModePriority = true
+
+  private def isRecoveryModeForTopic(topic: String): Boolean =
+    topic == persistCommandsTopic && isRecoveryMode || topic == persistCommandsTopicPriority && isRecoveryModePriority
+
+  val (initialWriteHead, initialWriteHeadPriority) = {
+    val tp1 = new TopicPartition(persistCommandsTopic, partition)
+    val tp2 = new TopicPartition(persistCommandsTopicPriority, partition)
+    val kafkaConsumerProps = new Properties()
+    kafkaConsumerProps.put("bootstrap.servers", bootStrapServers)
+    kafkaConsumerProps.put("key.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer")
+    kafkaConsumerProps.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
+    kafkaConsumerProps.put("value.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer")
+    kafkaConsumerProps.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
+    val consumer = new KafkaConsumer[Array[Byte], Array[Byte]](kafkaConsumerProps)
+    val endOffsetsByTopicPartition = consumer.endOffsets(Seq(tp1,tp2).asJavaCollection)
+    consumer.close()
+    endOffsetsByTopicPartition.get(tp1) -> endOffsetsByTopicPartition.get(tp2)
+  }
+
+  logger.info(s"ImpStream($streamId), startingOffset: $startingOffset, startingOffsetPriority: $startingOffsetPriority; " +
+    s"initalWriteHead (kafka.endOffset for $persistCommandsTopic($partition)): $initialWriteHead, " +
+    s"initialWriteHeadPriority (kafka.endOffset for $persistCommandsTopicPriority($partition)): $initialWriteHeadPriority")
 
   val numOfShardPerIndex = ftsService.numOfShardsForIndex(currentIndexName)
 
+  logger.info(s"ImpStream($streamId), startingIndexName: $startingIndexName, startingIndexCount: $startingIndexCount")
   val (cmdsSrcFromKafka, sharedKillSwitch) = CommandsSource.fromKafka(
     persistCommandsTopic,
     bootStrapServers,
@@ -165,7 +175,6 @@ class ImpStream(partition: Int,
     startingOffset,
     startingOffsetPriority
   )
-
   val heartBitLog = Flow[BGMessage[Command]]
     .keepAlive(
       60.seconds,
@@ -177,13 +186,11 @@ class ImpStream(partition: Int,
         true
       case _ => false
     }
-
   val byteArraySerializer = new ByteArraySerializer()
-
   val kafkaProducerSettings =
     ProducerSettings(actorSystem, byteArraySerializer, byteArraySerializer)
       .withBootstrapServers(bootStrapServers)
-
+      .withProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG,"lz4")
   val numOfCassandraNodes = config.getInt("cmwell.bg.num.of.cassandra.nodes")
   val irwReadConcurrency = Try {
     config.getInt("cmwell.bg.irwReadConcurrency")
@@ -191,45 +198,41 @@ class ImpStream(partition: Int,
     case _: Throwable =>
       math.max(numOfCassandraNodes / 2, 2)
   }.get
-
   val irwWriteConcurrency = Try {
     config.getInt("cmwell.bg.irwWriteConcurrency")
   }.recover {
     case _: Throwable =>
       math.max(numOfCassandraNodes / 3, 2)
   }.get
-
   val breakOut2 = breakOut[Map[String, Seq[(BGMessage[SingleCommand], Int)]],
-                           (Int, BGMessage[(String, Seq[SingleCommand])]),
-                           ISeq[(Int, BGMessage[(String, Seq[SingleCommand])])]]
-
+    (Int, BGMessage[(String, Seq[SingleCommand])]),
+    ISeq[(Int, BGMessage[(String, Seq[SingleCommand])])]]
   val groupCommandsByPath = Flow[BGMessage[SingleCommand]]
     .groupedWithin(groupCommandsByPathSize, groupCommandsByPathTtl.milliseconds)
     .mapConcat[BGMessage[(String, Seq[SingleCommand])]] { messages =>
-      logger.debug(s"grouping commands: ${messages.map(_.message)}")
+    logger.debug(s"grouping commands: ${messages.map(_.message)}")
 
-      val groupedByPath = messages.zipWithIndex.groupBy(_._1.message.path)
+    val groupedByPath = messages.zipWithIndex.groupBy(_._1.message.path)
 
-      groupedByPath
-        .map[(Int, BGMessage[(String, Seq[SingleCommand])]),
-             ISeq[(Int, BGMessage[(String, Seq[SingleCommand])])]] {
-          case (path, bgMessages) =>
-            val offsets = bgMessages.flatMap {
-              case (BGMessage(offsets, _), _) => offsets
-            }
-            val commands = bgMessages.map {
-              case (BGMessage(_, messages), _) => messages
-            }
-            val minIndex = bgMessages.minBy { case (_, index) => index }._2
-            (minIndex, BGMessage(offsets, path -> commands))
-        }(breakOut2)
-        .sortBy { case (index, _) => index }
-        .map { case (_, bgMessage) => bgMessage }
-    }
-
+    groupedByPath
+      .map[(Int, BGMessage[(String, Seq[SingleCommand])]),
+      ISeq[(Int, BGMessage[(String, Seq[SingleCommand])])]] {
+      case (path, bgMessages) =>
+        val offsets = bgMessages.flatMap {
+          case (BGMessage(offsets, _), _) => offsets
+        }
+        val commands = bgMessages.map {
+          case (BGMessage(_, messages), _) => messages
+        }
+        val minIndex = bgMessages.minBy { case (_, index) => index }._2
+        (minIndex, BGMessage(offsets, path -> commands))
+    }(breakOut2)
+      .sortBy { case (index, _) => index }
+      .map { case (_, bgMessage) => bgMessage }
+  }
   val addLatestInfotons =
     Flow[BGMessage[(String, Seq[SingleCommand])]].mapAsync(irwReadConcurrency) {
-      case bgMessage @ BGMessage(_, (path, commands)) =>
+      case bgMessage@BGMessage(_, (path, commands)) =>
         logger.debug(s"reading base infoton by path: $path")
         val start = System.currentTimeMillis()
         irwService.readPathAsync(path, ConsistencyLevel.QUORUM).map {
@@ -248,9 +251,8 @@ class ImpStream(partition: Int,
             bgMessage.copy(message = box.toOption -> commands)
         }
     }
-
   val addMerged = Flow[BGMessage[(Option[Infoton], Seq[SingleCommand])]].map {
-    case bgMessage @ BGMessage(_, (existingInfotonOpt, commands)) =>
+    case bgMessage@BGMessage(_, (existingInfotonOpt, commands)) =>
       beforePersistedCache.synchronized {
         val baseInfoton =
           Option(beforePersistedCache.get(commands.head.path)) match {
@@ -259,7 +261,7 @@ class ImpStream(partition: Int,
                 s"baseInfoton for path: ${commands.head.path} not in cache"
               )
               existingInfotonOpt
-            case cachedInfotonOpt @ Some(cachedInfoton) =>
+            case cachedInfotonOpt@Some(cachedInfoton) =>
               logger.debug(
                 s"base infoton for path: ${commands.head.path} in cache: $cachedInfoton"
               )
@@ -299,6 +301,19 @@ class ImpStream(partition: Int,
       }
   }
 
+  val persistNewLastModified = Flow[BGMessage[(Option[Infoton],MergeResponse)]].mapAsync(irwWriteConcurrency) {
+    case bm@BGMessage(offsets, (_, mr)) => mr.extra.fold(Future.successful(bm)) { extra =>
+      //TODO propagate offsets.retention.minutes's value to here
+      val ttlSeconds = 7.days.toSeconds.toInt
+      val offset = offsets.last
+      val key = s"imp.$partition${if (offset.topic == persistCommandsTopicPriority) ".p" else ""}_${offset.offset}"
+      val payload = extra.getBytes(StandardCharsets.UTF_8)
+      zStore.put(key, payload, ttlSeconds, batched = true).
+        recover { case t => logger.error(s"Could not write to zStore ($key,$extra)", t) }.
+        map(_ => bm)
+    }
+  }
+
   val filterDups = Flow[BGMessage[(Option[Infoton], Infoton)]].filterNot {
     bgMessage =>
       val isDup = bgMessage.message._1
@@ -307,20 +322,19 @@ class ImpStream(partition: Int,
         }
         .getOrElse("")
         .equals(bgMessage.message._2.uuid)
-      logger.debug(s"filtering infoton due to same uuid: ${bgMessage.message._1
-        .map(_.uuid)
-        .getOrElse("")} equals ${bgMessage.message._2.uuid}")
+      logger.debug(s"filtering infoton due to same uuid: ${
+        bgMessage.message._1
+          .map(_.uuid)
+          .getOrElse("")
+      } equals ${bgMessage.message._2.uuid}")
       isDup
   }
-
   val publishVirtualParentsSink =
     Producer.plainSink[Array[Byte], Array[Byte]](kafkaProducerSettings)
-
   val breakOut3 = breakOut[Seq[(Boolean, (String, DateTime))], ProducerRecord[
     Array[Byte],
     Array[Byte]
-  ], IIterable[ProducerRecord[Array[Byte], Array[Byte]]]]
-
+    ], IIterable[ProducerRecord[Array[Byte], Array[Byte]]]]
   val createVirtualParents =
     Flow[BGMessage[Seq[(IndexCommand, Option[DateTime])]]]
       .mapAsync(1) {
@@ -361,74 +375,89 @@ class ImpStream(partition: Int,
       }
       .mapConcat(identity)
 
-  val persistInCas = Flow[BGMessage[(Option[Infoton], (Infoton, Seq[String]))]]
+  val extractIndexCommands = Flow[BGMessage[(Option[Infoton], (Infoton, Seq[String]))]]
     .mapAsync(irwWriteConcurrency) {
       case BGMessage(offsets, (previous, (latest, trackingIds))) =>
-        val latestWithIndexName =
-          latest.copyInfoton(indexName = currentIndexName)
+        val latestWithIndexName = latest.copyInfoton(indexName = currentIndexName)
         logger.debug(s"writing lastest infoton: $latestWithIndexName")
+        val isRecoveryRequired = offsets.exists(o => isRecoveryModeForTopic(o.topic))
         irwService
           .writeAsync(latestWithIndexName, ConsistencyLevel.QUORUM)
-          .map { i =>
-            // this case is when we're replaying persist command which was not indexed at all (due to error of some kind)
-            if (previous.isEmpty || previous.get.isSameAs(latest)) {
-              val statusTracking = trackingIds.map {
-                StatusTracking(_, 1)
+          .flatMap { i =>
+            val ini: (IndexCommand, Option[DateTime]) = IndexNewInfotonCommand(i.uuid, true, i.path, Some(i), i.indexName,
+              trackingIds.map(StatusTracking(_, 1))) -> Some(i.lastModified)
+            if (previous.isEmpty) {
+              Future.successful(List(BGMessage(offsets, Seq(ini))))
+            } else if(previous.get.isSameAs(latest)) {
+              if(!isRecoveryRequired) {
+                logger.warn(s"Previous [${previous.get.uuid}] isSameAs Latest but recoveryMode is off, this should only happen to parent Infotons.")
+                Future.successful(List(BGMessage(offsets, Seq(ini))))
+              } else {
+                // this case is when we're replaying persist command which was not indexed at all (due to error of some kind)
+                val previousTimestamp = previous.get.lastModified.getMillis
+                irwService.historyNeighbourhood(previous.get.path, previousTimestamp,
+                  desc = true, limit = 2, ConsistencyLevel.QUORUM).flatMap { previousAndOneBeforeThat =>
+                  val statusTracking = trackingIds.map(StatusTracking(_, 1))
+                  val indexNewInfoton: (IndexCommand, Option[DateTime]) =
+                    IndexNewInfotonCommand(i.uuid, true, i.path, Some(i), i.indexName, statusTracking) -> Some(i.lastModified)
+                  val oldUuidOpt = previousAndOneBeforeThat.find(_._1 != previous.get.lastModified.getMillis).map(_._2)
+                  oldUuidOpt.fold{
+                    Future.successful(List(BGMessage(offsets, Seq(indexNewInfoton))))
+                  }{ oldUuid =>
+                    irwService.readUUIDAsync(oldUuid, ConsistencyLevel.QUORUM, dontFetchPayload = true).map {
+                      case FullBox(oldInfoton) =>
+                        val statusTracking = trackingIds.map(StatusTracking(_, 2))
+                        val indexNewInfoton: (IndexCommand, Option[DateTime]) =
+                          IndexNewInfotonCommand(i.uuid, true, i.path, Some(i), i.indexName, statusTracking) -> Some(i.lastModified)
+                        val indexExistingInfoton: (IndexCommand, Option[DateTime]) =
+                          IndexExistingInfotonCommand(oldInfoton.uuid, oldInfoton.weight, oldInfoton.path, oldInfoton.indexName, statusTracking) -> None
+                        val updatedOffsetsForNew = offsets.map { o =>
+                          PartialOffset(o.topic, o.offset, 1, 2)
+                        }
+                        val updatedOffsetsForExisting = offsets.map { o =>
+                          PartialOffset(o.topic, o.offset, 2, 2)
+                        }
+                        List(
+                          BGMessage(updatedOffsetsForExisting, Seq(indexExistingInfoton)),
+                          BGMessage(updatedOffsetsForNew, Seq(indexNewInfoton))
+                        )
+                      case EmptyBox =>
+                        redlog.error(s"UUID $oldUuid was in the neighbourhood when merging path ${previous.get.path} - " +
+                          s"but is not in infoton table - this might introduce a Duplicate!")
+                        List(BGMessage(offsets, Seq(indexNewInfoton)))
+                      case BoxedFailure(t) =>
+                        redlog.error(s"UUID $oldUuid was in the neighbourhood when merging path ${previous.get.path} - " +
+                          s"but could not be read from infoton table (see exception) - this might introduce a Duplicate!", t)
+                        List(BGMessage(offsets, Seq(indexNewInfoton)))
+                    }
+                  }
+                }
               }
-              val indexNewInfoton
-                : (IndexCommand, Option[DateTime]) = IndexNewInfotonCommand(
-                i.uuid,
-                true,
-                i.path,
-                Some(i),
-                i.indexName,
-                statusTracking
-              ) -> Some(i.lastModified)
-              List(BGMessage(offsets, Seq(indexNewInfoton)))
             } else {
-              val statusTracking = trackingIds.map {
-                StatusTracking(_, 2)
-              }
-              val indexNewInfoton
-                : (IndexCommand, Option[DateTime]) = IndexNewInfotonCommand(
-                i.uuid,
-                true,
-                i.path,
-                Some(i),
-                i.indexName,
-                statusTracking
-              ) -> Some(i.lastModified)
-              val indexExistingInfoton
-                : (IndexCommand, Option[DateTime]) = IndexExistingInfotonCommand(
-                previous.get.uuid,
-                previous.get.weight,
-                previous.get.path,
-                previous.get.indexName,
-                statusTracking
-              ) -> None
+              val statusTracking = trackingIds.map(StatusTracking(_, 2))
+              val indexNewInfoton: (IndexCommand, Option[DateTime]) = IndexNewInfotonCommand(i.uuid, true, i.path, Some(i), i.indexName, statusTracking) ->
+                Some(i.lastModified)
+              val indexExistingInfoton: (IndexCommand, Option[DateTime]) =
+                IndexExistingInfotonCommand(previous.get.uuid, previous.get.weight, previous.get.path, previous.get.indexName, statusTracking) -> None
               val updatedOffsetsForNew = offsets.map { o =>
                 PartialOffset(o.topic, o.offset, 1, 2)
               }
               val updatedOffsetsForExisting = offsets.map { o =>
                 PartialOffset(o.topic, o.offset, 2, 2)
               }
-              List(
-                BGMessage(updatedOffsetsForNew, Seq(indexNewInfoton)),
-                BGMessage(updatedOffsetsForExisting, Seq(indexExistingInfoton))
-              )
+              Future.successful(List(
+                BGMessage(updatedOffsetsForExisting, Seq(indexExistingInfoton)),
+                BGMessage(updatedOffsetsForNew, Seq(indexNewInfoton))
+              ))
             }
           }
     }
     .mapConcat(identity)
-
   val breakout =
-    breakOut[Iterable[IndexCommand], Message[Array[Byte], Array[Byte], Seq[
-      Offset
-    ]], ISeq[Message[Array[Byte], Array[Byte], Seq[Offset]]]]
-
+    breakOut[Iterable[IndexCommand], Message[Array[Byte], Array[Byte], Seq[Offset]], ISeq[Message[Array[Byte], Array[Byte], Seq[Offset]]]]
   val mergedCommandToKafkaRecord =
     Flow[BGMessage[(BulkIndexResult, Seq[IndexCommand])]].mapConcat {
-      case BGMessage(offset, (bulkIndexResults, commands)) =>
+      case BGMessage(offsets, (bulkIndexResults, commands)) =>
         logger.debug(
           s"failed indexcommands to kafka records. bulkResults: $bulkIndexResults \n commands: $commands"
         )
@@ -446,12 +475,12 @@ class ImpStream(partition: Int,
 
         failedCommands.map { failedCommand =>
           val commandToSerialize =
-            if (failedCommand.isInstanceOf[IndexNewInfotonCommand] &&
-                failedCommand
-                  .asInstanceOf[IndexNewInfotonCommand]
-                  .infotonOpt
-                  .get
-                  .weight > maxInfotonWeightToIncludeInCommand) {
+            (if (failedCommand.isInstanceOf[IndexNewInfotonCommand] &&
+              failedCommand
+                .asInstanceOf[IndexNewInfotonCommand]
+                .infotonOpt
+                .get
+                .weight > maxInfotonWeightToIncludeInCommand) {
               logger.debug(
                 s"infoton weight: ${failedCommand.asInstanceOf[IndexNewInfotonCommand].infotonOpt.get.weight} of failed command exceeds max weight"
               )
@@ -460,10 +489,16 @@ class ImpStream(partition: Int,
                 .copy(infotonOpt = None)
             } else {
               failedCommand
+            }) match {
+              case cmd: IndexNewInfotonCommand =>
+                IndexNewInfotonCommandForIndexer(cmd.uuid, cmd.isCurrent, cmd.path, cmd.infotonOpt, cmd.indexName, offsets, cmd.trackingIDs)
+              case cmd: IndexExistingInfotonCommand =>
+                IndexExistingInfotonCommandForIndexer(cmd.uuid, cmd.weight, cmd.path, cmd.indexName, offsets, cmd.trackingIDs)
+              case x @ (IndexExistingInfotonCommandForIndexer(_, _, _, _, _, _) | IndexNewInfotonCommandForIndexer(_, _, _, _, _, _, _) |
+                   NullUpdateCommandForIndexer(_, _, _, _, _)) => logger.error(s"Unexpected input. Received: $x"); ???
             }
-
           val topic =
-            if (offset.exists(_.topic.endsWith("priority")))
+            if (offsets.exists(_.topic.endsWith("priority")))
               indexCommandsTopicPriority
             else
               indexCommandsTopic
@@ -473,167 +508,83 @@ class ImpStream(partition: Int,
               commandToSerialize.path.getBytes,
               CommandSerializer.encode(commandToSerialize)
             ),
-            offset
+            offsets
           )
         }(breakout)
     }
-
   val indexCommandsToKafkaRecords =
     Flow[BGMessage[Seq[IndexCommand]]].mapConcat {
-      case BGMessage(offset, commands) =>
-        logger.debug(s"converting indexcommands to kafka records:\n$commands")
+      case BGMessage(offsets, commands) =>
+        logger.debug(s"converting index commands to kafka records:\n$commands")
         commands.map { command =>
           val commandToSerialize =
-            if (command.isInstanceOf[IndexNewInfotonCommand] &&
-                command
-                  .asInstanceOf[IndexNewInfotonCommand]
-                  .infotonOpt
-                  .get
-                  .weight > maxInfotonWeightToIncludeInCommand) {
+            (if (command.isInstanceOf[IndexNewInfotonCommand] &&
+              command
+                .asInstanceOf[IndexNewInfotonCommand]
+                .infotonOpt
+                .get
+                .weight > maxInfotonWeightToIncludeInCommand) {
               command
                 .asInstanceOf[IndexNewInfotonCommand]
                 .copy(infotonOpt = None)
             } else
-              command
+              command) match {
+              case cmd: IndexNewInfotonCommand =>
+                IndexNewInfotonCommandForIndexer(cmd.uuid, cmd.isCurrent, cmd.path, cmd.infotonOpt, cmd.indexName, offsets, cmd.trackingIDs)
+              case cmd: IndexExistingInfotonCommand =>
+                IndexExistingInfotonCommandForIndexer(cmd.uuid, cmd.weight, cmd.path, cmd.indexName, offsets, cmd.trackingIDs)
+              case x @ (IndexExistingInfotonCommandForIndexer(_, _, _, _, _, _) | IndexNewInfotonCommandForIndexer(_, _, _, _, _, _, _) |
+                   NullUpdateCommandForIndexer(_, _, _, _, _)) => logger.error(s"Unexpected input. Received: $x"); ???
+            }
+          val topic =
+            if (offsets.exists(_.topic.endsWith("priority")))
+              indexCommandsTopicPriority
+            else
+              indexCommandsTopic
           Message(
             new ProducerRecord[Array[Byte], Array[Byte]](
-              indexCommandsTopic,
+              topic,
               commandToSerialize.path.getBytes,
               CommandSerializer.encode(commandToSerialize)
             ),
-            offset
+            offsets
           )
         }(breakout)
     }
-
+  val nullCommandsToKafkaRecords: Flow[BGMessage[(Option[Infoton], MergeResponse)], Message[Array[Byte], Array[Byte], Seq[Offset]], NotUsed] =
+    Flow.fromFunction {
+      case msg@BGMessage(offsets, (_, NullUpdate(path, tids, evictions, _))) =>
+        logger.debug(s"converting null command to kafka records:\n path: $path, offsets: [$offsets]")
+        val nullCmd = NullUpdateCommandForIndexer(path = path, persistOffsets = offsets)
+        val topic =
+          if (offsets.exists(_.topic.endsWith("priority")))
+            indexCommandsTopicPriority
+          else
+            indexCommandsTopic
+        Message(
+          new ProducerRecord[Array[Byte], Array[Byte]](
+            topic,
+            nullCmd.path.getBytes,
+            CommandSerializer.encode(nullCmd)
+          ),
+          offsets
+        )
+    }
   val publishIndexCommandsFlow = Producer
     .flow[Array[Byte], Array[Byte], Seq[Offset]](kafkaProducerSettings)
     .map {
       _.message.passThrough
     }
 
-  var lastOffsetPersisted = startingOffset - 1
-  var lastOffsetPersistedPriority = startingOffsetPriority - 1
-
-  val doneOffsets = new java.util.TreeSet[Offset]()
-  val doneOffsetsPriority = new java.util.TreeSet[Offset]()
-
-  def mergeOffsets(doneOffsets: java.util.TreeSet[Offset],
-                   newOffsets: Seq[Offset]) = {
-    logger.debug(
-      s"merging doneOffsets:\n $doneOffsets \n with newOffsets:\n $newOffsets"
-    )
-    val (completedOffsets, partialOffsets) =
-      newOffsets.partition(_.isInstanceOf[CompleteOffset])
-    logger.debug(
-      s"completedOffsests:\n $completedOffsets \n partialOffsets:\n$partialOffsets"
-    )
-    doneOffsets.addAll(completedOffsets.asJava)
-    logger.debug(
-      s"doneOffsets after adding all completed new offsets:\n$doneOffsets"
-    )
-    partialOffsets.groupBy(_.offset).foreach {
-      case (_, o) =>
-        logger.debug(s"handling new partial offset: $o")
-        if (o.size == 2) {
-          logger.debug(
-            s"two new partial offsets become one completed, adding to doneOffsets"
-          )
-          doneOffsets.add(CompleteOffset(o.head.topic, o.head.offset))
-        } else if (doneOffsets.contains(o.head)) {
-          logger.debug(
-            s"doneOffsets already contained 1 partial offset for ${o.head} removing it and adding completed instead"
-          )
-          doneOffsets.remove(o.head)
-          doneOffsets.add(CompleteOffset(o.head.topic, o.head.offset))
-        } else {
-          logger.debug(s"adding new partial ${o.head} to doneOffsets")
-          doneOffsets.add(o.head)
-        }
-    }
-    logger.debug(
-      s"doneOffsets after adding partial new offsets:\n $doneOffsets"
-    )
-  }
-
-  val commitOffsetsFlow = Flow[Seq[Offset]]
-    .groupedWithin(6000, 3.seconds)
-    .toMat {
-      Sink.foreach { offsetGroups =>
-        doneOffsets
-          .synchronized { // until a suitable concurrent collection is found
-            val (offsets, offsetsPriority) =
-              offsetGroups.flatten.partition(_.topic == persistCommandsTopic)
-            logger.debug(s"offsets: $offsets")
-            logger.debug(s"priority offsets: $offsetsPriority")
-
-            if (offsets.size > 0) {
-              var prev = lastOffsetPersisted
-              mergeOffsets(doneOffsets, offsets)
-              val it = doneOffsets.iterator()
-              while ({
-                val next = if (it.hasNext) Some(it.next) else None
-                val continue =
-                  next.fold(false)(
-                    o => o.isInstanceOf[CompleteOffset] && o.offset - prev == 1
-                  )
-                if (continue)
-                  prev = next.get.offset
-                continue
-              }) {
-                it.remove()
-              }
-
-              if (prev > lastOffsetPersisted) {
-                logger.debug(
-                  s"prev: $prev is greater than lastOffsetPersisted: $lastOffsetPersisted"
-                )
-                offsetsService.write(s"${streamId}_offset", prev + 1L)
-                lastOffsetPersisted = prev
-              }
-            }
-
-            if (offsetsPriority.size > 0) {
-              var prevPriority = lastOffsetPersistedPriority
-              mergeOffsets(doneOffsetsPriority, offsetsPriority)
-              val itPriority = doneOffsetsPriority.iterator()
-              while ({
-                val next =
-                  if (itPriority.hasNext) Some(itPriority.next) else None
-                val continue = next.fold(false)(
-                  o =>
-                    o.isInstanceOf[CompleteOffset] && o.offset - prevPriority == 1
-                )
-                if (continue)
-                  prevPriority = next.get.offset
-                continue
-              }) {
-                itPriority.remove()
-              }
-
-              if (prevPriority > lastOffsetPersistedPriority) {
-                logger.debug(
-                  s"prevPriority: $prevPriority is greater than lastOffsetPersistedPriority: $lastOffsetPersistedPriority"
-                )
-                offsetsService.write(s"${streamId}.p_offset", prevPriority + 1L)
-                lastOffsetPersistedPriority = prevPriority
-              }
-            }
-
-          }
-      }
-    }(Keep.right)
-
   // @formatter:off
   val impGraph = RunnableGraph.fromGraph(
     GraphDSL.create(cmdsSrcFromKafka,
-      commitOffsetsFlow,
-      publishVirtualParentsSink) ((_, a, b) => (a, b) ) { implicit builder =>
+      OffsetUtils.commitOffsetSink(streamId, persistCommandsTopic, startingOffset,startingOffsetPriority, offsetsService),
+      publishVirtualParentsSink)((_, a, b) => (a, b)) { implicit builder =>
       (commandsSource, commitOffsets, publishVirtualParents) =>
         import GraphDSL.Implicits._
 
-
-        // partition incoming persist commands. override commands goes to outport 0, all the rest goes to 1
+    // partition incoming persist commands. override commands goes to outport 0, all the rest goes to 1
         val singleCommandsPartitioner = builder.add(
           Partition[BGMessage[SingleCommand]](
             2, {
@@ -646,6 +597,21 @@ class ImpStream(partition: Int,
           )
         )
 
+        val checkRecoveryState = builder.add(
+          Flow[BGMessage[Command]].map { cmd =>
+            val (nonPriorityOffsets, priorityOffsets) = cmd.offsets.partition(_.topic == persistCommandsTopic)
+            if (isRecoveryMode && nonPriorityOffsets.forall(_.offset >= initialWriteHead)) {
+              logger.info(s"Quitting Recovery Mode for $persistCommandsTopic($partition)")
+              isRecoveryMode = false
+            }
+            if (isRecoveryModePriority && priorityOffsets.forall(_.offset >= initialWriteHeadPriority)) {
+              logger.info(s"Quitting Recovery Mode for $persistCommandsTopicPriority($partition)")
+              isRecoveryModePriority = false
+            }
+            cmd
+          }
+        )
+
         val partitionMerged = builder.add(
           Partition[BGMessage[(Option[Infoton], MergeResponse)]](2, {
             case BGMessage(_, (_, mergeResponse)) if mergeResponse.isInstanceOf[RealUpdate] => 0
@@ -655,13 +621,13 @@ class ImpStream(partition: Int,
 
         val reportNullUpdates = builder.add(
           Flow[BGMessage[(Option[Infoton], MergeResponse)]].mapAsync(1) {
-            case BGMessage(offset, (_, NullUpdate(path, tids, evictions))) =>
+            case msg@BGMessage(offsets, (_, NullUpdate(path, tids, evictions, _))) =>
               bGMetrics.nullUpdateCounter += 1
               val nullUpdatesReportedAsDone = {
                 if (tids.nonEmpty)
                   TrackingUtilImpl.updateSeq(path, tids.map(StatusTracking(_, 1))).map {
                     case LogicalFailure(reason) =>
-                      logger .warn (s"Failed to report tracking due to: $reason")
+                      logger.warn(s"Failed to report tracking due to: $reason")
                       Future.successful(Unit)
                     case _ => Future.successful(Unit)
                   }
@@ -672,20 +638,30 @@ class ImpStream(partition: Int,
                 Future.traverse(evictions) {
                   case (reason, Some(tid)) => TrackingUtilImpl.updateEvicted(path, tid, reason).map {
                     case LogicalFailure(reason) =>
-                      logger .warn (s"Failed to report eviction tracking due to: $reason")
+                      logger.warn(s"Failed to report eviction tracking due to: $reason")
                       Future.successful(Unit)
                     case _ => Future.successful(Unit)
                   }
-                  case (reason, None) => Future(logger .info (s"evicted command in path:$path because of: $reason"))
+                  case (reason, None) => Future(logger.info(s"evicted command in path:$path because of: $reason"))
+                }
+              }
+              val zStored = {
+                val ttlSeconds = 7.days.toSeconds.toInt //TODO propagate offsets.retention.minutes's value to here
+                travector(offsets) { o =>
+                  val key = s"imp.$partition${if(o.topic == persistCommandsTopicPriority) ".p" else ""}_${o.offset}"
+                  val payload = "nu".getBytes(StandardCharsets.UTF_8)
+                  zStore.put(key, payload, ttlSeconds, batched = true).
+                    recover { case t => logger.error(s"Could not write to zStore ($key,nu)", t) }
                 }
               }
 
-              val offsetFuture = for {
+              val msgFuture = for {
                 _ <- nullUpdatesReportedAsDone
                 _ <- evictionsReported
-              } yield offset
+                _ <- zStored
+              } yield msg
 
-              offsetFuture
+              msgFuture
           }
         )
 
@@ -693,7 +669,7 @@ class ImpStream(partition: Int,
           PartitionWith[BGMessage[(Option[Infoton], MergeResponse)],
             BGMessage[(Option[Infoton], (Infoton, Seq[String]))],
             (String, Seq[(String, Option[String])])] {
-            case BGMessage(offset, (prev, RealUpdate(cur, tids, evicted))) =>
+            case BGMessage(offset, (prev, RealUpdate(cur, tids, evicted, _))) =>
               if (evicted.nonEmpty)
                 Right(cur.path -> evicted)
               else
@@ -704,7 +680,11 @@ class ImpStream(partition: Int,
         val overrideCommandsToInfotons = builder.add(
           Flow[BGMessage[(String, Seq[SingleCommand])]].map {
             case bgMessage@BGMessage(_, (path, commands)) =>
-              bgMessage.copy(message = (path, commands.map { case OverwriteCommand(infoton, trackingID) => (infoton, trackingID) }))
+              bgMessage.copy(message = (path, commands.map {
+                case OverwriteCommand(infoton, trackingID) => (infoton, trackingID)
+                case x @ (DeleteAttributesCommand(_, _, _, _, _) | DeletePathCommand(_, _, _, _) | UpdatePathCommand(_, _, _, _, _, _) | WriteCommand(_, _, _))
+                  => logger.error(s"Unexpected input. Received: $x"); ???
+              }))
           }
         )
 
@@ -736,7 +716,7 @@ class ImpStream(partition: Int,
                   bgMessage.copy(message = (sortedInfotons, None))
                 case b =>
                   val infoOpt = b.toOption
-                  logger .debug (s"readPathAsync for path:$path returned: ${b.toOption}")
+                  logger.debug(s"readPathAsync for path:$path returned: ${b.toOption}")
                   bgMessage.copy(message = (sortedInfotons, infoOpt))
               }
           }.mapAsync(irwWriteConcurrency) {
@@ -790,7 +770,7 @@ class ImpStream(partition: Int,
                   case _ => ???
                 }
 
-                logger .debug (s"override flow produced IndexCommands:\n$bgMessages")
+                logger.debug(s"override flow produced IndexCommands:\n$bgMessages")
 
                 bgMessages
               }
@@ -833,7 +813,7 @@ class ImpStream(partition: Int,
                 ).filter {
                   case Success(_) => true
                   case Failure(t) =>
-                    redlog .info("failed to encode indexnewInfotonCommand's infoton, skipping it", t)
+                    redlog.info("failed to encode indexnewInfotonCommand's infoton, skipping it", t)
                     false
                 }.map {
                   _.get
@@ -842,19 +822,17 @@ class ImpStream(partition: Int,
                 //count it for metrics
                 bGMetrics.indexExistingCommandCounter += 1
                 List((ESIndexRequest(
-                  new UpdateRequest(indexName, "infoclone", uuid).doc(s"""{"system":{"current": false}}""").version(1),
+                  new UpdateRequest(indexName, "infoclone", uuid).doc(s"""{"system":{"current": false}}"""),
                   None
                 ), weight))
               case _ => ???
             }
-            logger .debug (s"creating esactions:\n $actionRequests from index commands:\n $indexCommands")
+            logger.debug(s"creating esactions:\n $actionRequests from index commands:\n $indexCommands")
             bgMessage.copy(message = (actionRequests, indexCommands))
           }.filter {
             _.message._1.nonEmpty
           }
         )
-
-        import cmwell.util.concurrent._
         val sendActionsToES = builder.add(
           Flow[Seq[BGMessage[(Seq[(ESIndexRequest, Long)], Seq[IndexCommand])]]].mapAsync(1) {
             case bgMessages =>
@@ -863,7 +841,7 @@ class ImpStream(partition: Int,
                   _._1
                 }
               }.flatten
-              logger .debug (s"sending ${actions.size} actions to elasticsearch: ${actions} from commands: ${
+              logger.debug(s"sending ${actions.size} actions to elasticsearch: ${actions} from commands: ${
                 bgMessages.map {
                   _.message._2
                 }.flatten
@@ -912,7 +890,7 @@ class ImpStream(partition: Int,
         val updateIndexInfoInCas = builder.add(
           Flow[BGMessage[(BulkIndexResult, Seq[IndexCommand])]].mapAsync(math.max(numOfCassandraNodes / 3, 2)) {
             case bgMessage@BGMessage(_, (bulkRes, commands)) =>
-              logger .debug (s"updating index info in cas for bulkRes: $bulkRes from commands: $commands")
+              logger.debug(s"updating index info in cas for bulkRes: $bulkRes from commands: $commands")
               val indexTimeToUpdate = bulkRes.successful.collect { case SuccessfulIndexResult(uuid, Some(indexTime)) =>
                 (uuid, indexTime)
               }
@@ -928,20 +906,20 @@ class ImpStream(partition: Int,
         val partitionIndexResult = builder.add(
           Partition[BGMessage[(BulkIndexResult, Seq[IndexCommand])]](2, {
             case BGMessage(_, (bulkIndexResult, commands)) =>
-              logger .debug (s"Partitioning index results: $bulkIndexResult from commands: $commands")
+              logger.debug(s"Partitioning index results: $bulkIndexResult from commands: $commands")
               if (bulkIndexResult.isInstanceOf[RejectedBulkIndexResult]) {
-                logger .info ("ftservice rejected, turning fusing off and scheduling back on in 3 minutes")
+                logger.info("ftservice rejected, turning fusing off and scheduling back on in 3 minutes")
                 fuseOn = false
                 cmwell.util.concurrent.SimpleScheduler.schedule(3.minutes) {
-                  logger .info ("turning fusing on after 3 minutes wait")
+                  logger.info("turning fusing on after 3 minutes wait")
                   fuseOn = true
                 }
               }
               if (bulkIndexResult.isInstanceOf[RejectedBulkIndexResult] || bulkIndexResult.failed.size > 0) {
-                logger .debug (s"BulkIndexResult:${bulkIndexResult.isInstanceOf[RejectedBulkIndexResult]} failed size:${bulkIndexResult.failed.size}")
+                logger.debug(s"BulkIndexResult:${bulkIndexResult.isInstanceOf[RejectedBulkIndexResult]} failed size:${bulkIndexResult.failed.size}")
                 1
               } else {
-                logger .debug ("no failures in BulkIndexResult")
+                logger.debug("no failures in BulkIndexResult")
                 0
               }
           })
@@ -949,20 +927,21 @@ class ImpStream(partition: Int,
 
         val fusePartition = builder.add(
           Partition[BGMessage[Seq[IndexCommand]]](2, {
-            case bgMessage => if (fuseOn) 0 else 1
+            //The mechanism that persists the offsets of the imp in the indexer is based on the fact that there will be no fusing at all - disabled in code!!!
+            case bgMessage => 1 //if (fuseOn) 0 else 1
           })
         )
 
         val reportProcessTracking = builder.add(
           Flow[BGMessage[(BulkIndexResult, Seq[IndexCommand])]].mapAsync(3) {
             case BGMessage(offset, (_, indexCommands)) =>
-              logger .debug (s"report process tracking of indexCommands: $indexCommands")
+              logger.debug(s"report process tracking of indexCommands: $indexCommands")
               Future.traverse(indexCommands) { indexCommand =>
                 TrackingUtilImpl.updateSeq(indexCommand.path, indexCommand.trackingIDs).map {
                   case LogicalFailure(reason) =>
                     val p = indexCommand.path
                     val tids = indexCommand.trackingIDs.mkString(",")
-                    logger.warn (s"Failed to report tracking for path: $p with tids: $tids due to: $reason")
+                    logger.warn(s"Failed to report tracking for path: $p with tids: $tids due to: $reason")
                     Future.successful(Unit)
                   case _ => Future.successful(Unit)
                 }
@@ -976,11 +955,11 @@ class ImpStream(partition: Int,
               Future.traverse(evictions) {
                 case (reason, Some(tid)) => TrackingUtilImpl.updateEvicted(path, tid, reason).map {
                   case LogicalFailure(reason) =>
-                    logger .warn (s"Failed to report eviction tracking due to: $reason")
+                    logger.warn(s"Failed to report eviction tracking due to: $reason")
                     Future.successful(Unit)
                   case _ => Future.successful(Unit)
                 }
-                case (reason, None) => Future(logger .info (s"evicted command in path:$path because of: $reason"))
+                case (reason, None) => Future(logger.info(s"evicted command in path:$path because of: $reason"))
               }
           }
         )
@@ -1000,7 +979,7 @@ class ImpStream(partition: Int,
 
         val refsEnricher = RefsEnricher.toSingle(bGMetrics, irwReadConcurrency, zStore)
 
-        commandsSource ~> heartBitLog ~> refsEnricher ~> singleCommandsPartitioner
+        commandsSource ~> heartBitLog ~> checkRecoveryState ~> refsEnricher ~> singleCommandsPartitioner
 
         singleCommandsPartitioner.out(0) ~> groupCommandsByPath ~> overrideCommandsToInfotons ~> partitionOverrideInfotons.in
 
@@ -1008,15 +987,15 @@ class ImpStream(partition: Int,
 
         partitionOverrideInfotons.out1 ~> mergeCompletedOffsets.in(0)
 
-        singleCommandsPartitioner.out(1) ~> groupCommandsByPath ~> addLatestInfotons ~> addMerged ~> partitionMerged.in
+        singleCommandsPartitioner.out(1) ~> groupCommandsByPath ~> addLatestInfotons ~> addMerged ~> persistNewLastModified ~> partitionMerged.in
 
         partitionMerged.out(0) ~> partitionNonNullMerged.in
 
-        partitionNonNullMerged.out0 ~> persistInCas ~> nonOverrideIndexCommandsBroadcast.in
+        partitionNonNullMerged.out0 ~> extractIndexCommands ~> nonOverrideIndexCommandsBroadcast.in
 
         partitionNonNullMerged.out1 ~> logOrReportEvicted ~> Sink.ignore
 
-        partitionMerged.out(1) ~> reportNullUpdates ~> mergeCompletedOffsets.in(1)
+        partitionMerged.out(1) ~> reportNullUpdates ~> nullCommandsToKafkaRecords ~> publishIndexCommandsFlow ~> mergeCompletedOffsets.in(1)
 
         nonOverrideIndexCommandsBroadcast.out(0) ~> createVirtualParents ~> publishVirtualParents
 
@@ -1043,8 +1022,6 @@ class ImpStream(partition: Int,
         ClosedShape
     }
   )
-  // @formatter:on
-
   val decider: Supervision.Decider = {
 
     case t: Throwable =>
@@ -1055,14 +1032,13 @@ class ImpStream(partition: Int,
       bgActor ! Imp503
       Supervision.Stop
   }
-
   val impControl = impGraph.withAttributes(supervisionStrategy(decider)).run()
-
+  // @formatter:on
   impControl._1.onComplete {
     case Failure(t) =>
       logger.error("ImpStream: CommitOffsetsSink done with error", t)
     case _ =>
-      logger.info("ImpStream: CommitOffstesSink done without error")
+      logger.info("ImpStream: CommitOffsetsSink done without error")
   }
 
   impControl._2.onComplete {
@@ -1079,7 +1055,9 @@ class ImpStream(partition: Int,
     if (!allDone.isCompleted)
       sharedKillSwitch.shutdown()
 
-    Try { Await.ready(allDone, 10.seconds) }.recover {
+    Try {
+      Await.ready(allDone, 10.seconds)
+    }.recover {
       case t: Throwable =>
         logger.error(
           s"Imp stream failed to shutdown after waiting for 10 seconds."
@@ -1089,11 +1067,11 @@ class ImpStream(partition: Int,
   }
 
   private def checkParent(
-    parentWithChildDate: (String, DateTime)
-  ): Future[(Boolean, (String, DateTime))] = {
+                           parentWithChildDate: (String, DateTime)
+                         ): Future[(Boolean, (String, DateTime))] = {
     if ((parentWithChildDate._1.trim != "$root") && (parentsCache.getIfPresent(
-          parentWithChildDate._1
-        ) eq null)) {
+      parentWithChildDate._1
+    ) eq null)) {
 
       val p = Promise[(Boolean, (String, DateTime))]()
 

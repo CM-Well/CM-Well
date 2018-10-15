@@ -141,13 +141,11 @@ package cmwell.util {
       *         or fail with a FutureTimeout exception that holds the original future
       */
     def timeoutFuture[T](future: Future[T], duration: FiniteDuration)(implicit ec: ExecutionContext): Future[T] = {
-
       val p = Promise[T]()
       p.tryCompleteWith(future)
 
-      SimpleScheduler.scheduleInstant(duration) {
-        p.tryFailure(FutureTimeout(future))
-      }
+      val (_,c) = SimpleScheduler.scheduleInstant(duration) { p.tryFailure(FutureTimeout(future)) }
+      future.andThen { case _ => c.cancel() }
 
       p.future
     }

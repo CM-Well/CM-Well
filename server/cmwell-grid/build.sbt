@@ -7,8 +7,7 @@ libraryDependencies ++= {
     dm("com.typesafe.akka", "akka-cluster-metrics"),
     dm("com.typesafe.akka", "akka-cluster-tools"),
 		dm("ch.qos.logback", "logback-classic") % "test",
-    dm("com.typesafe.akka", "akka-slf4j") % "test",
-		dm("org.codehaus.groovy", "groovy-all") % "test"
+    dm("com.typesafe.akka", "akka-slf4j") % "test"
   )
 }
 

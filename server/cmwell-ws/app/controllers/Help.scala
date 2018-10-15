@@ -34,6 +34,8 @@ class Help @Inject() extends InjectedController {
       case "cmd"    => Ok(views.txt._cmd(request))
       case "sp"     => Ok(views.txt._sp(request))
       case "sparql" => Ok(views.html._sparql(request))
+      case "zz"     => Ok(views.txt.zz(request))
+      case "kafka"  => Ok(views.txt._kafka(request))
       case _        => NotFound
     }
   }

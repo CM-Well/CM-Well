@@ -26,11 +26,16 @@ import cmwell.tools.data.utils.ArgsManipulations
 import cmwell.tools.data.utils.ArgsManipulations.HttpAddress
 import cmwell.tools.data.utils.akka.HeaderOps._
 import cmwell.tools.data.utils.logging.{DataToolsLogging, LabelId}
+import cmwell.util.akka.http.HttpZipDecoder
 
 import scala.collection.immutable
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
+import scala.language.implicitConversions
+
+import scala.reflect.runtime.universe._
+
 
 object Retry extends DataToolsLogging with DataToolsConfig {
 
@@ -53,24 +58,38 @@ object Retry extends DataToolsLogging with DataToolsConfig {
     * @tparam T context type, element paired with each request
     * @return flow which sends (and retries) HTTP requests and returns Try of results paired with request data and context
     */
-  def retryHttp[T](delay: FiniteDuration,
+  def retryHttp[T,S : TypeTag](delay: FiniteDuration,
                    parallelism: Int,
                    baseUrl: String,
-                   limit: Option[Int] = None)(
-                   createRequest: (Seq[ByteString]) => HttpRequest,
+                   limit: Option[Int] = None,
+                   delayFactor : Double = 1)(
+                   createRequest: (Seq[ByteString], Map[String,String]) => HttpRequest,
                    responseValidator: (ByteString, Seq[HttpHeader]) => Try[Unit] = (_, _) => Success(Unit))(
                    implicit system: ActorSystem,
                    mat: Materializer,
                    ec: ExecutionContext,
                    label: Option[LabelId] = None) = {
 
+    implicit def asFiniteDuration(d: Duration) = scala.concurrent.duration.Duration.fromNanos(d.toNanos);
+
     val labelValue = label.map { case LabelId(id) => s"[$id]" }.getOrElse("")
     val toStrictTimeout = 30.seconds
 
+    def headerString(header: HttpHeader): String = header.name + ":" + header.value
+
+    def headersString(headers: Seq[HttpHeader]): String = headers.map(headerString).mkString("[", ",", "]")
+
+    def delayWithFactor(delayFactor: Double, countRemaining: Int, initialDelay: FiniteDuration, retryLimit : Int)  = {
+      val isFirstIteration = countRemaining==retryLimit
+      if ((delayFactor > 0) && !isFirstIteration) delay * delayFactor else delay
+    }
+
     case class State(data: Seq[ByteString],
+                     vars: Map[String,String] = Map(),
                      context: Option[T] = None,
                      response: Option[HttpResponse] = None,
-                     count: Option[Int] = limit)
+                     count: Option[Int] = limit,
+                     delay: FiniteDuration = delay)
 
     def stringifyData(data: Seq[ByteString]) =
       concatByteStrings(data, ByteString(",")).utf8String
@@ -79,7 +98,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
       state: State
     ): Option[immutable.Iterable[(Future[Seq[ByteString]], State)]] =
       state match {
-        case State(data, _, Some(HttpResponse(s, h, e, _)), _)
+        case State(data, _, _, Some(HttpResponse(s, h, e, _)), _, _)
             if s == StatusCodes.TooManyRequests =>
           // api garden quota error
           e.toStrict(toStrictTimeout)
@@ -103,31 +122,62 @@ object Retry extends DataToolsLogging with DataToolsConfig {
           val future = after(delay, system.scheduler)(Future.successful(data))
           Some(immutable.Seq(future -> state))
 
-        case State(data, _, Some(HttpResponse(s: ServerError, h, e, _)), _) =>
+        case State(data, _, _, Some(res@HttpResponse(s: ServerError, h, e, _)), count, iterationDelay) =>
+
+          val errorID = res.##
+
+          e.dataBytes.runFold(ByteString.empty)(_ ++ _).map(_.utf8String).map{ entity=>
+            logger.warn(s"[$errorID] server error. Body of response: $entity, headers: ${headersString(h)}")
+          }
+
           // server error
           // special case: sparql-processor //todo: remove this in future
           if (e.toString contains "Fetching") {
             logger.warn(
               s"$labelValue will not schedule a retry on data ${concatByteStrings(data, endl).utf8String}"
             )
-            e.discardBytes()
+
             None
           } else {
-            e.discardBytes()
+            count match {
+              case Some(c) if c > 0 =>
 
-            // schedule a retry to http stream
-            logger.warn(
-              s"$labelValue server error: will retry again in $delay host=${getHostname(h)} status=$s entity=$e"
-            )
-            val future = after(delay, system.scheduler)(Future.successful(data))
-            Some(immutable.Seq(future -> state))
+                val retryBackoff = delayWithFactor(delayFactor,c,iterationDelay,limit.getOrElse(3))
+
+                logger.debug(
+                  s"$labelValue server error - received $s, count=$count will retry again in $retryBackoff" +
+                    s" host=${getHostnameValue(h)} data=${stringifyData(data)}, "
+                )
+
+                val future =
+                  after(retryBackoff, system.scheduler)(Future.successful(data))
+                Some(immutable.Seq(future -> state.copy(count = Some(c - 1), delay=retryBackoff)))
+              case Some(0) =>
+                logger.warn(
+                  s"$labelValue server error - received $s, count=$count will not not retry sending request," +
+                    s" host=${getHostnameValue(h)} data=${stringifyData(data)}"
+                )
+                badDataLogger.info(
+                  s"$labelValue data=${concatByteStrings(data, endl).utf8String}"
+                )
+                None
+              case None =>
+
+                logger.warn(
+                  s"$labelValue server error - received $s. host=${getHostnameValue(h)} data=${stringifyData(data)}. Will try again in ${delay}"
+                )
+
+                val future = after(delay, system.scheduler)(Future.successful(data))
+                Some(immutable.Seq(future -> state))
+            }
           }
 
         case State(
             data,
+            vars,
             context,
             Some(HttpResponse(s: ClientError, h, e, _)),
-            _
+            _, _
             ) =>
           // client error
           if (data.size > 1) {
@@ -156,6 +206,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                   dataElement =>
                     Future.successful(Seq(dataElement)) -> State(
                       Seq(dataElement),
+                      vars,
                       context
                   )
                 )
@@ -182,27 +233,25 @@ object Retry extends DataToolsLogging with DataToolsConfig {
             None // failed to send a single data element
           }
 
-        case State(data, _, Some(HttpResponse(s, h, e, _)), _)
-            if s.isSuccess() =>
-          // content error
-          logger.warn(
-            s"$labelValue received $s but response body is not valid, will retry again in $delay host=${getHostnameValue(h)} data=${stringifyData(data)}"
-          )
-          val future = after(delay, system.scheduler)(Future.successful(data))
-          Some(immutable.Seq(future -> state))
+        case State(data, _, _, Some(HttpResponse(s, h, e, _)), count, _) =>
 
-        case State(data, _, Some(HttpResponse(s, h, e, _)), count) =>
           redLogger.error(
             s"$labelValue error: host=${getHostnameValue(h)} status=$s entity=$e data=${stringifyData(data)}"
           )
-          logger.warn(
-            s"$labelValue error: host=${getHostnameValue(h)} status=$s data=${stringifyData(data)}"
-          )
+
+          s.isSuccess match {
+            case true =>
+              // 200 OK, but errors response validator returned false
+              logger.warn(s"$labelValue received $s but response body is not valid. " +
+                s"host=${getHostnameValue(h)} data=${stringifyData(data)}")
+            case _ => logger.warn(s"$labelValue error: host=${getHostnameValue(h)}" +
+                s" status=$s data=${stringifyData(data)}")
+          }
 
           count match {
             case Some(c) if c > 0 =>
               e.discardBytes()
-              logger.warn(
+              logger.debug(
                 s"$labelValue received $s, count=$count will retry again in $delay host=${getHostnameValue(h)} data=${stringifyData(data)}"
               )
               val future =
@@ -226,7 +275,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
               Some(immutable.Seq(future -> state))
           }
 
-        case State(data, _, None, count) =>
+        case State(data, _, _, None, count, _) =>
           count match {
             case Some(c) if c > 0 =>
               logger.warn(
@@ -275,13 +324,17 @@ object Retry extends DataToolsLogging with DataToolsConfig {
       .mapAsyncUnordered(httpParallelism) {
         case (data, state) => data.map(_ -> state)
       } // used for delay between executions
-      .map { case (data, state) => createRequest(data) -> state }
-      .via(conn)
+      .map { case (data, state) => createRequest(data, state.vars) -> state }
+      .via(conn).map {
+        case (tryResponse, state) =>
+          tryResponse.map(HttpZipDecoder.decodeResponse) -> state
+      }
       .mapAsyncUnordered(httpParallelism) {
         case (response @ Success(HttpResponse(s, _, e, _)), state)
             if !s.isSuccess() =>
           // consume HTTP response bytes
           e.discardBytes()
+          logger.error(s"$labelValue status is not success ($s) $e")
           Future.successful(Failure(new Exception(s"status is not success ($s) $e")) -> state.copy(response = response.toOption))
         case (response @ Success(res @ HttpResponse(s, headers, e, _)), state) =>
           // consume HTTP response bytes and later pack them in fake response
@@ -331,10 +384,12 @@ object Retry extends DataToolsLogging with DataToolsConfig {
           )
       }
 
-    Flow[(Seq[ByteString], Option[T])]
+    Flow[(S, Option[T])]
       .map {
-        case (data, context) =>
-          Future.successful(data) -> State(data = data, context = context)
+        case (data : Seq[ByteString], context) =>
+          Future.successful(data) -> State(data = data, context = context, vars=Map())
+        case ( (data : Seq[ByteString], vars : Map[String,String]), context) =>
+          Future.successful(data) -> State(data = data, context = context, vars=vars)
       }
       .via(GoodRetry.concat(Long.MaxValue, job)(retryWith))
       .map { case (result, state) => (result, state.data, state.context) }

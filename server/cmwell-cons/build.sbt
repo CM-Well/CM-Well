@@ -8,9 +8,25 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.sys.process._
 import cmwell.build.{Versions,CMWellBuild}
 
+libraryDependencies ++= {
+  val dm = dependenciesManager.value
+  Seq(
+      dm("net.leibman", "semverfi"))
+}
+
 name := "cmwell-cons"
 
 unmanagedResources := Seq()
+
+resourceGenerators in Compile += Def.task {
+  val file = baseDirectory.value / "app" / "cmwell.properties"
+  val gitCommitVersion = s""""git_commit_version": "${Process("git rev-parse HEAD").lineStream.head}""""
+  val buildRelease = s""""cm-well_release": "${cmwell.build.CMWellCommon.release}""""
+  val buildVersion = s""""cm-well_version": "${version.value}""""
+  val content = s"{$gitCommitVersion,\n$buildRelease,\n$buildVersion}"
+  IO.write(file, content)
+  Seq(file)
+}.taskValue
 
 getExternalComponents := {
   val logger = streams.value
@@ -256,7 +272,7 @@ getLib := {
   packProject("dc",(pack in LocalProject("dc") in pack).value,bd, bd / "app" / "conf" / "dc",logger)
   packProject("ws",(pack in LocalProject("ws") in pack).value,bd, bd / "app" / "conf" / "ws",logger)
   packProject("bg",(pack in LocalProject("bg") in pack).value,bd, bd / "app" / "conf" / "bg",logger)
-  packCons((pack in LocalProject("ctrl") in pack).value, getCons.value , bd)
+  packCons((pack in LocalProject("cons") in pack).value, getCons.value , bd)
 
   lib
 }

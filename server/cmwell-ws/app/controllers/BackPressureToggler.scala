@@ -16,13 +16,11 @@ package controllers
 
 import cmwell.ws.Settings
 import com.typesafe.scalalogging.LazyLogging
+import javax.inject._
 import k.grid.dmap.api.SettingsString
 import k.grid.dmap.impl.persistent.PersistentDMap
-import play.api.mvc.{Action, Controller, InjectedController}
+import play.api.mvc.InjectedController
 import security.AuthUtils
-import javax.inject._
-
-import filters.Attrs
 
 @Singleton
 class BackPressureToggler @Inject()(authUtils: AuthUtils) extends InjectedController with LazyLogging {
@@ -34,21 +32,15 @@ class BackPressureToggler @Inject()(authUtils: AuthUtils) extends InjectedContro
     if (authUtils.isOperationAllowedForUser(security.Admin, tokenOpt)) {
       val thresholdFactor = req.getQueryString("pbp")
       thresholdFactor.map(_.toLowerCase) match {
-        case Some("old") =>
-          PersistentDMap.set(BACKPRESSURE_TRIGGER, SettingsString("old"))
-          Ok(s"Changed backpressure trigger to old")
-        case Some("new") =>
-          PersistentDMap.set(BACKPRESSURE_TRIGGER, SettingsString("new"))
-          Ok(s"Changed backpressure trigger to new")
-        case Some("off") =>
-          PersistentDMap.set(BACKPRESSURE_TRIGGER, SettingsString("off"))
-          Ok(s"Changed backpressure trigger to off")
-        case Some("all") =>
-          PersistentDMap.set(BACKPRESSURE_TRIGGER, SettingsString("all"))
-          Ok(s"Changed backpressure trigger to all")
-        case Some("bar") =>
-          PersistentDMap.set(BACKPRESSURE_TRIGGER, SettingsString("bar"))
-          Ok(s"Changed backpressure trigger to bar")
+        case Some("enable") =>
+          PersistentDMap.set(BACKPRESSURE_TRIGGER, SettingsString("enable"))
+          Ok(s"Changed backpressure trigger to enable")
+        case Some("disable") =>
+          PersistentDMap.set(BACKPRESSURE_TRIGGER, SettingsString("disable"))
+          Ok(s"Changed backpressure trigger to disable")
+        case Some("block") =>
+          PersistentDMap.set(BACKPRESSURE_TRIGGER, SettingsString("block"))
+          Ok(s"Changed backpressure trigger to block")
         case None =>
           val curValOpt = PersistentDMap.get(BACKPRESSURE_TRIGGER).flatMap(_.as[String])
           curValOpt match {
@@ -56,7 +48,7 @@ class BackPressureToggler @Inject()(authUtils: AuthUtils) extends InjectedContro
             case None =>
               Ok(s"Please provide the parameter 'pbp'. No value is set; defaulting to ${Settings.pushbackpressure}")
           }
-        case Some(unknown) => BadRequest(s"value [$unknown] is invalid. valid values are: [old,new,off]")
+        case Some(unknown) => BadRequest(s"value [$unknown] is invalid. valid values are: [enable,disable,block]")
       }
     } else Forbidden("not authorized")
   }
