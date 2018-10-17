@@ -25,35 +25,41 @@ class HttpsTests extends AsyncFunSpec with Matchers with Helpers with Inspectors
 
   val path = cmw / "example.org"
 
-  val bName = """<http://example.org/B> <https://www.tr-lbd.com/bold#name> "My name is B" ."""
-  val aName = """<http://example.org/A> <https://www.tr-lbd.com/bold#name> "My name is A" ."""
+  val bName = """<https://example.org/B> <https://www.refinitiv-lbd.com/bold3/name> "My name is B" ."""
+  val aName = """<https://example.org/A> <https://www.refinitiv-lbd.com/bold3/name> "My name is A" ."""
   val AandB = List(bName, aName)
   val allASons = List(
-    """<http://example.org/A1> <https://www.tr-lbd.com/bold#name> "My name is A1" .""",
-    """<http://example.org/A2> <https://www.tr-lbd.com/bold#name> "My name is A2" .""",
-    """<http://example.org/A3> <https://www.tr-lbd.com/bold#name> "My name is A3" ."""
+    """<https://example.org/A1> <https://www.refinitiv-lbd.com/bold3/name> "My name is A1" .""",
+    """<https://example.org/A2> <https://www.refinitiv-lbd.com/bold3/name> "My name is A2" .""",
+    """<https://example.org/A3> <https://www.refinitiv-lbd.com/bold3/name> "My name is A3" ."""
   )
 
-  val inject = {
+  val dataIngest = {
     val data =
       """
-          <https://example.org/A> <https://purl.org/vocab/relationship/predicate> <http://example.org/A1> .
-          <https://example.org/A> <https://purl.org/vocab/relationship/predicate> <https://example.org/A2> .
-          <https://example.org/A> <https://purl.org/vocab/relationship/predicate> <https://example.org/A3> .
-          <https://example.org/A> <https://www.tr-lbd.com/bold#name> "My name is A" .
-          <https://example.org/A1> <https://www.tr-lbd.com/bold#name> "My name is A1" .
-          <https://example.org/A2> <https://www.tr-lbd.com/bold#name> "My name is A2" .
-          <https://example.org/A3> <https://www.tr-lbd.com/bold#name> "My name is A3" .
-          <https://example.org/B> <https://purl.org/vocab/relationship/predicate> <https://example.org/A> .
-          <https://example.org/B> <https://www.tr-lbd.com/bold#name> "My name is B" .
+          <https://example.org/A> <https://purl3.org/vocab/relationship3/predicate> <http://example.org/A1> .
+          <https://example.org/A> <https://purl3.org/vocab/relationship3/predicate> <https://example.org/A2> .
+          <https://example.org/A> <https://purl3.org/vocab/relationship3/predicate> <https://example.org/A3> .
+          <https://example.org/A> <https://www.refinitiv-lbd.com/bold3/name> "My name is A" .
+          <https://example.org/A1> <https://www.refinitiv-lbd.com/bold3/name> "My name is A1" .
+          <https://example.org/A2> <https://www.refinitiv-lbd.com/bold3/name> "My name is A2" .
+          <https://example.org/A3> <https://www.refinitiv-lbd.com/bold3/name> "My name is A3" .
+          <https://example.org/B> <https://purl3.org/vocab/relationship3/predicate> <https://example.org/A> .
+          <https://example.org/B> <https://www.refinitiv-lbd.com/bold3/name> "My name is B" .
       """.
         stripMargin
-    Http.post(_in, data, queryParams = List("format" -> "ntriples"), headers = tokenHeader)
+
+    Http.post(_in, data, queryParams = List("format" -> "ntriples"), headers = tokenHeader).flatMap { _ =>
+      import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+      spinCheck(100.millis, true)(Http.get(path, List("op" -> "stream")))(
+        _.payload.lines.count(path => path.contains("/A") || path.contains("/B")) >= 5
+      )
+    }
   }
 
-  val verifyYgForB = inject.flatMap{ _ =>
+  val verifyYgForB = dataIngest.flatMap{ _ =>
     import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
-    spinCheck(100.millis, true)(Http.get(path / "B", List("yg" -> ">predicate.relationship", "format" -> "ntriples"))){
+    spinCheck(100.millis, true)(Http.get(path / "B", List("yg" -> ">predicate.relationship3", "format" -> "ntriples"))){
         res => {
           val resList = res.payload.lines.toList
           (res.status == 200) && AandB.forall(resList.contains)
@@ -67,9 +73,9 @@ class HttpsTests extends AsyncFunSpec with Matchers with Helpers with Inspectors
       }
   }
 
-  val verifyYgForA = inject.flatMap{ _ =>
+  val verifyYgForA = dataIngest.flatMap{ _ =>
     import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
-    spinCheck(100.millis, true)(Http.get(path / "A", List("yg" -> "<predicate.relationship", "format" -> "ntriples"))){
+    spinCheck(100.millis, true)(Http.get(path / "A", List("yg" -> "<predicate.relationship3", "format" -> "ntriples"))){
       res => {
         val resList = res.payload.lines.toList
         (res.status == 200) && AandB.forall(resList.contains)
@@ -83,10 +89,10 @@ class HttpsTests extends AsyncFunSpec with Matchers with Helpers with Inspectors
     }
   }
 
-  val verifyXgForA = inject.flatMap{ _ =>
+  val verifyXgForA = dataIngest.flatMap{ _ =>
     import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
     spinCheck(100.millis, true)(
-      Http.get(cmw, List("op" -> "search", "qp" -> "name.bold::My name is A", "recursive" -> "", "with-data" -> "",
+      Http.get(cmw, List("op" -> "search", "qp" -> "name.bold3::My name is A", "recursive" -> "", "with-data" -> "",
       "format" -> "ntriples", "xg" -> ""))){
       res => {
         val resList = res.payload.lines.toList
@@ -101,11 +107,11 @@ class HttpsTests extends AsyncFunSpec with Matchers with Helpers with Inspectors
     }
   }
 
-  val verifyGqpForPointingAtA = inject.flatMap{ _ =>
+  val verifyGqpForPointingAtA = dataIngest.flatMap{ _ =>
     import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
     spinCheck(100.millis, true, 1.minute)(
-      Http.get(cmw, List("op" -> "search", "qp" -> "name.bold::My name is A", "recursive" -> "", "with-data" -> "",
-        "gqp" -> """<predicate.relationship[name.bold::My name is B]""", "format" -> "ntriples")))
+      Http.get(cmw, List("op" -> "search", "qp" -> "name.bold3::My name is A", "recursive" -> "", "with-data" -> "",
+        "gqp" -> """<predicate.relationship3[name.bold3::My name is B]""", "format" -> "ntriples")))
     { res =>
       val resList = res.payload.lines.toList
       (res.status == 200) && resList.contains(aName)
@@ -117,11 +123,11 @@ class HttpsTests extends AsyncFunSpec with Matchers with Helpers with Inspectors
     }
   }
 
-  val verifyGqpForAPointingAtHttp = inject.flatMap{ _ =>
+  val verifyGqpForAPointingAtHttp = dataIngest.flatMap{ _ =>
     import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
     spinCheck(100.millis, true, 1.minute)(
-      Http.get(cmw, List("op" -> "search", "qp" -> "name.bold::My name is A", "recursive" -> "", "with-data" -> "",
-        "gqp" -> """>predicate.relationship[name.bold::My name is A1]""", "format" -> "ntriples")))
+      Http.get(cmw, List("op" -> "search", "qp" -> "name.bold3::My name is A", "recursive" -> "", "with-data" -> "",
+        "gqp" -> """>predicate.relationship3[name.bold3::My name is A1]""", "format" -> "ntriples")))
     { res =>
       val resList = res.payload.lines.toList
       (res.status == 200) && resList.contains(aName)
@@ -133,11 +139,11 @@ class HttpsTests extends AsyncFunSpec with Matchers with Helpers with Inspectors
     }
   }
 
-  val verifyGqpForAPointingAtHttps = inject.flatMap{ _ =>
+  val verifyGqpForAPointingAtHttps = dataIngest.flatMap{ _ =>
     import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
     spinCheck(100.millis, true, 1.minute)(
-      Http.get(cmw, List("op" -> "search", "qp" -> "name.bold::My name is A", "recursive" -> "", "with-data" -> "",
-        "gqp" -> """>predicate.relationship[name.bold::My name is A2]""", "format" -> "ntriples")))
+      Http.get(cmw, List("op" -> "search", "qp" -> "name.bold3::My name is A", "recursive" -> "", "with-data" -> "",
+        "gqp" -> """>predicate.relationship3[name.bold3::My name is A2]""", "format" -> "ntriples")))
     { res =>
       val resList = res.payload.lines.toList
       (res.status == 200) && resList.contains(aName)
@@ -149,7 +155,6 @@ class HttpsTests extends AsyncFunSpec with Matchers with Helpers with Inspectors
     }
   }
 
-  it("Inject data to cmwell")(inject.map(_.status should be(200)))
   it("Verify YG > for B")(verifyYgForB)
   it("Verify YG < for A")(verifyYgForA)
   it("Verify XG for A")(verifyXgForA)

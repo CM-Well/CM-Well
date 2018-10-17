@@ -81,7 +81,10 @@ case class EsBadCurrentErrorFix(details: String, lclzdCmd: LocalizedCommand) ext
 
 object CrawlerStream extends LazyLogging {
   case class CrawlerMaterialization(control: Consumer.Control, doneState: Future[Done])
-  private val systemFieldsNames = Set("dc", "indexName", "indexTime", "lastModified", "path", "type")
+
+  private val requiredSystemFieldsNames = Set("dc", "indexName", "indexTime", "lastModified", "path", "type")
+  // "protocol" system field is optional; Crawler does not have to alert if it is missing.
+  // However, in case it has more than one value, Crawler will detect it and report accordingly.
 
   def createAndRunCrawlerStream(config: Config, topic: String, partition: Int)
                                (irwService: IRWService, ftsService: FTSServiceOps, zStore: ZStore, offsetsService: OffsetsService)
@@ -214,7 +217,7 @@ object CrawlerStream extends LazyLogging {
                 case (name, values) if values.length > 1 => s"field [$name] has too many values [${values.map(_.value).mkString(",")}]"
               }
               val analyzedFields = fields.map(_.name).toSet
-              val missingFields = systemFieldsNames.filterNot(analyzedFields)
+              val missingFields = requiredSystemFieldsNames.filterNot(analyzedFields)
               if (missingFields.nonEmpty)
                 CasError(s"system fields [${missingFields.mkString(",")}] are missing!", lclzdCmd)
               else if (badFields.nonEmpty) {

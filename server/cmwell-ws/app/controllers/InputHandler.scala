@@ -198,7 +198,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                   .recover {
                     case err: Throwable => {
                       logger.error(
-                        s"bad data received: ${err.getMessage}: ${req.body.asBytes().fold("NOTHING")(_.utf8String)}"
+                        s"bad data received: ${err.getMessage}: ${req.body.asBytes().fold("NOTHING")(_.utf8String)}", err
                       )
                       wsutil.exceptionToResponse(err)
                     }
@@ -208,13 +208,13 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
           }
           .recover {
             case err: Throwable => {
-              logger.error(s"bad data received: ${err.getMessage}: ${req.body.asBytes().fold("NOTHING")(_.utf8String)}")
+              logger.error(s"bad data received: ${err.getMessage}: ${req.body.asBytes().fold("NOTHING")(_.utf8String)}", err)
               wsutil.exceptionToResponse(err)
             }
           }
       }.recover {
         case err: Throwable => {
-          logger.error(s"bad data received: ${err.getMessage}: ${req.body.asBytes().fold("NOTHING")(_.utf8String)}")
+          logger.error(s"bad data received: ${err.getMessage}: ${req.body.asBytes().fold("NOTHING")(_.utf8String)}", err)
           Future.successful(wsutil.exceptionToResponse(err))
         }
       }.get
@@ -602,7 +602,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
         }
         .recover {
           case err: Throwable => {
-            logger.error(s"bad data received: ${req.body.asBytes().fold("NOTHING")(_.utf8String)}")
+            logger.error(s"bad data received: ${req.body.asBytes().fold("NOTHING")(_.utf8String)}", err)
             p.tryFailure(err)
             addDebugHeader(wsutil.exceptionToResponse(err))
           }

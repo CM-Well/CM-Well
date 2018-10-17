@@ -500,23 +500,23 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
 
 
     // Both indexTime and protocol are optional:
-    val nt = jsonParser.nextToken()
+    val maybeIndexTimeToken = jsonParser.nextToken()
 
-    val indexTime = if (nt == JsonToken.FIELD_NAME && "indexTime".equals(jsonParser.getCurrentName)) {
+    val (indexTime, maybeProtocolToken) = if (maybeIndexTimeToken == JsonToken.FIELD_NAME && "indexTime".equals(jsonParser.getCurrentName)) {
       assume(jsonParser.nextToken() == JsonToken.VALUE_NUMBER_INT, s"expected value for 'indexTime' field\n${jsonParser.getCurrentLocation.toString}")
-      Try(jsonParser.getLongValue).toOption
+      Try(jsonParser.getLongValue).toOption -> jsonParser.nextToken()
     } else {
-      None
+      None -> maybeIndexTimeToken
     }
 
-    val protocol = if (nt == JsonToken.FIELD_NAME && "protocol".equals(jsonParser.getCurrentName)) {
+    val protocol = if (maybeProtocolToken == JsonToken.FIELD_NAME && "protocol".equals(jsonParser.getCurrentName)) {
       assume(jsonParser.nextToken() == JsonToken.VALUE_STRING, s"expected value for 'protocol' field\n${jsonParser.getCurrentLocation.toString}")
       val protocol = jsonParser.getText()
       // End of system object
       assume(jsonParser.nextToken() == JsonToken.END_OBJECT, s"expected end of 'system' object\n${jsonParser.getCurrentLocation.toString}")
       Option(protocol)
     } else {
-      assume(nt == JsonToken.END_OBJECT, s"expected end of 'system' object\n${jsonParser.getCurrentLocation.toString}")
+      assume(maybeProtocolToken == JsonToken.END_OBJECT, s"expected end of 'system' object\n${jsonParser.getCurrentLocation.toString}")
       None
     }
 

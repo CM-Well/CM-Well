@@ -539,108 +539,106 @@ object InfotonSerializer extends LazyLogging {
   }
 
   def deserialize(data: mutable.Buffer[(String, Array[Byte])]): Infoton = {
-//    // partition into
-//    val (system_buffer, data_buffer) = data.partition(v => v._1.startsWith("$"))
-//
-//    var v = new mutable.HashMap[String, Array[Byte]]
-//    for (item <- system_buffer) {
-//      v += item
-//    }
-//    val path = v("$path")
-//    val uuid = v("$uuid")
-//    val dc = v.getOrElse("$dc", "na".getBytes("utf-8"))
-//    val infoType = new String(v("$type"), "UTF-8")
-//    val lastModified: DateTime = fmt.parseDateTime(new String(v("$lastModified"), "UTF-8"))
-//    val indexTime = v.get("$indexTime").map { v =>
-//      new String(v).toLong
-//    }
-//    //val lastModified : Long =  new String(v("$lastModified")).toLong
-////    val sysInfo = SysInfo(new lang.String(path, "utf-8"),lastModified)
-////    val sysFields = SystemFields(new lang.String(path, "utf-8"), lastModified, new lang.String(uuid, "utf-8"))
-//    val pathString = new String(path, "UTF-8")
-//    val uuidString = new String(uuid, "UTF-8")
-//    val dcString = new String(dc, "UTF-8")
-//
-//    // Very Very bad code
-//    val l = data_buffer.toSet
-//    val x = l.map { kv =>
-//      (clean_key(kv._1), getFieldValue(kv._1, new String(kv._2, "UTF-8")))
-//    }
-//    val g = x.groupBy(_._1) //{ kv => kv._1 }
-//    val t = g.map { k =>
-//      k._1 -> (for (v <- k._2) yield v._2)
-//    }
-//
-//    val fields = if (t.nonEmpty) Some(t) else None
-//    // get type
-//    val reply = infoType match {
-//      case "o" =>
-//        val i = ObjectInfoton(pathString, dcString, indexTime, lastModified, fields)
-//        i
-//
-//      case "f" =>
-//        val mimeType = v("$mimeType")
-//        if (v.contains("$content_pointer")) {
-//          val dataPointer = new String(v("$content_pointer"), "UTF-8")
-//          val dataLength = new String(v("$content_length"), "UTF-8").toInt
-//          val f = FileInfoton(pathString,
-//                              dcString,
-//                              indexTime,
-//                              lastModified,
-//                              fields,
-//                              Some(FileContent(None, new String(mimeType), dataLength, Option(dataPointer))))
-//          f
-//        } else if (v.contains("$content_count") == true) {
-//          val chunks_count = new String(v("$content_count"), "UTF-8").toInt
-//          val c: Array[Byte] = (0 to chunks_count)
-//            .map { f =>
-//              v("$content_%d".format(f))
-//            }
-//            .flatten
-//            .toArray
-//          //val c = v("$content")
-//          //val content = new sun.misc.BASE64Decoder().decodeBuffer(new String(c,"utf-8"))
-//          val content = new Base64().decode(c)
-//          //val content = new String(new sun.misc.BASE64Decoder().decodeBuffer(new String(c,"utf-8")))
-//          //val content = new String(c)
-//          //        val f = FileInfoton(sysInfo, fields, FileContent(content ,new String(mimeType)))
-//          val f = FileInfoton(pathString,
-//                              dcString,
-//                              indexTime,
-//                              lastModified,
-//                              fields,
-//                              Some(FileContent(content, new String(mimeType))))
-//          f
-//        } else {
-//          val fc = FileContent(new String(mimeType), 0)
-//          val f = FileInfoton(pathString, dcString, indexTime, lastModified, fields, Some(fc))
-//          f
-//        }
-//
-//      case "l" =>
-//        val to = v("$to")
-//        val lt = v("$lt")
-////        val i = LinkInfoton(sysInfo,fields ,new String(to) , new String(lt).toByte )
-//        val i = LinkInfoton(pathString,
-//                            dcString,
-//                            indexTime,
-//                            lastModified,
-//                            fields,
-//                            new String(to, "UTF-8"),
-//                            new String(lt, "UTF-8").toByte)
-//        i
-//      case "d" =>
-////        val d = DeletedInfoton(sysInfo)
-//        val d = DeletedInfoton(pathString, dcString, indexTime, lastModified)
-//        d
-//    }
-//
-//    if (!reply.uuid.equals(uuidString))
-//      logger.error(
-//        s"deserialize error for infoton path: $pathString original uuid: $uuidString new uuid: ${reply.uuid}"
-//      )
-//    reply
+    // partition into
+    val (system_buffer, data_buffer) = data.partition(v => v._1.startsWith("$"))
 
-    !!!
+    var v = new mutable.HashMap[String, Array[Byte]]
+    for (item <- system_buffer) {
+      v += item
+    }
+    val path = v("$path")
+    val uuid = v("$uuid")
+    val dc = v.getOrElse("$dc", "na".getBytes("utf-8"))
+    val infoType = new String(v("$type"), "UTF-8")
+    val lastModified: DateTime = fmt.parseDateTime(new String(v("$lastModified"), "UTF-8"))
+    val indexTime = v.get("$indexTime").map { v =>
+      new String(v).toLong
+    }
+    //val lastModified : Long =  new String(v("$lastModified")).toLong
+//    val sysInfo = SysInfo(new lang.String(path, "utf-8"),lastModified)
+//    val sysFields = SystemFields(new lang.String(path, "utf-8"), lastModified, new lang.String(uuid, "utf-8"))
+    val pathString = new String(path, "UTF-8")
+    val uuidString = new String(uuid, "UTF-8")
+    val dcString = new String(dc, "UTF-8")
+
+    // Very Very bad code
+    val l = data_buffer.toSet
+    val x = l.map { kv =>
+      (clean_key(kv._1), getFieldValue(kv._1, new String(kv._2, "UTF-8")))
+    }
+    val g = x.groupBy(_._1) //{ kv => kv._1 }
+    val t = g.map { k =>
+      k._1 -> (for (v <- k._2) yield v._2)
+    }
+
+    val fields = if (t.nonEmpty) Some(t) else None
+    // get type
+    val reply = infoType match {
+      case "o" =>
+        val i = ObjectInfoton(pathString, dcString, indexTime, lastModified, fields, "", None)
+        i
+
+      case "f" =>
+        val mimeType = v("$mimeType")
+        if (v.contains("$content_pointer")) {
+          val dataPointer = new String(v("$content_pointer"), "UTF-8")
+          val dataLength = new String(v("$content_length"), "UTF-8").toInt
+          val f = FileInfoton(pathString,
+                              dcString,
+                              indexTime,
+                              lastModified,
+                              fields,
+                              Some(FileContent(None, new String(mimeType), dataLength, Option(dataPointer))), "", None)
+          f
+        } else if (v.contains("$content_count") == true) {
+          val chunks_count = new String(v("$content_count"), "UTF-8").toInt
+          val c: Array[Byte] = (0 to chunks_count)
+            .map { f =>
+              v("$content_%d".format(f))
+            }
+            .flatten
+            .toArray
+          //val c = v("$content")
+          //val content = new sun.misc.BASE64Decoder().decodeBuffer(new String(c,"utf-8"))
+          val content = new Base64().decode(c)
+          //val content = new String(new sun.misc.BASE64Decoder().decodeBuffer(new String(c,"utf-8")))
+          //val content = new String(c)
+          //        val f = FileInfoton(sysInfo, fields, FileContent(content ,new String(mimeType)))
+          val f = FileInfoton(pathString,
+                              dcString,
+                              indexTime,
+                              lastModified,
+                              fields,
+                              Some(FileContent(content, new String(mimeType))), "", None)
+          f
+        } else {
+          val fc = FileContent(new String(mimeType), 0)
+          val f = FileInfoton(pathString, dcString, indexTime, lastModified, fields, Some(fc), "", None)
+          f
+        }
+
+      case "l" =>
+        val to = v("$to")
+        val lt = v("$lt")
+//        val i = LinkInfoton(sysInfo,fields ,new String(to) , new String(lt).toByte )
+        val i = LinkInfoton(pathString,
+                            dcString,
+                            indexTime,
+                            lastModified,
+                            fields,
+                            new String(to, "UTF-8"),
+                            new String(lt, "UTF-8").toByte, "", None)
+        i
+      case "d" =>
+//        val d = DeletedInfoton(sysInfo)
+        val d = DeletedInfoton(pathString, dcString, indexTime, lastModified)
+        d
+    }
+
+    if (!reply.uuid.equals(uuidString))
+      logger.error(
+        s"deserialize error for infoton path: $pathString original uuid: $uuidString new uuid: ${reply.uuid}"
+      )
+    reply
   }
 }

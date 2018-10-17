@@ -807,7 +807,7 @@ object LDFormatParser extends LazyLogging {
                   atomicUpdatesBuilder += subject -> uuid
                 }
               }
-              if(stmt.getSubject.getURI.startsWith("https")) {
+              if(stmt.getSubject.isURIResource && stmt.getSubject.getURI.startsWith("https")) {
                 updateMetaData(cmwMetaDataMap, subject, "protocol", FString("https"))
               }
             }
