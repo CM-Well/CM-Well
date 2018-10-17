@@ -124,6 +124,7 @@ object Settings {
 
   lazy val maxQueryResultsLength = config.getInt("crashableworker.results.maxLength")
   lazy val queryResultsTempFileBaseName = config.getString("crashableworker.results.baseFileName")
+  lazy val subjectsInSpAreHttps = config.getBoolean("crashableworker.subjectsAreHttps")
 
   lazy val dataCenter = config.getString("dataCenter.id")
   lazy val maxDataCenters = config.getInt("dataCenter.maxInstances")
