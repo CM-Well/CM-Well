@@ -20,8 +20,9 @@ import akka.pattern._
 import akka.util.Timeout
 import akka.stream.stage._
 import cmwell.tools.data.ingester.Ingester.IngestEvent
-import cmwell.tools.data.sparql.InfotonReporter.{RequestIngestStats, ResponseIngestStats}
+import cmwell.tools.data.sparql.InfotonReporter.{RequestDownloadStats, RequestIngestStats, ResponseDownloadStats, ResponseIngestStats}
 import cmwell.tools.data.utils.logging.DataToolsLogging
+
 import scala.concurrent.ExecutionContext
 import ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -51,13 +52,18 @@ class StpPeriodicLogger(infotonReporter: ActorRef, logFrequency: FiniteDuration,
     })
 
     override protected def onTimer(timerKey: Any): Unit = {
-      (infotonReporter ? RequestIngestStats).mapTo[ResponseIngestStats]
-        .map {
-          _.stats.foreach {
-            agentStats => logger.info(s" *** STP Agent ${agentStats._1}" +
-              s" *** Ingested: ${agentStats._2.ingestedInfotons}, Failed: ${agentStats._2.failedInfotons}")
-          }
-        }
+      for {
+        downloadStatsMap <- (infotonReporter ? RequestDownloadStats).mapTo[ResponseDownloadStats]
+        ingestStatsObj <- (infotonReporter ? RequestIngestStats).mapTo[ResponseIngestStats]
+        ingestStatsOption = ingestStatsObj.stats
+      } yield {
+        downloadStatsMap.stats.get(SparqlTriggeredProcessor.sparqlMaterializerLabel).foreach( materialized => {
+          ingestStatsOption.foreach(ingestStats => {
+            logger.info(s" *** STP Agent ${materialized.label}" +
+              s" *** Materialized ${materialized.receivedInfotons}, Ingested: ${ingestStats.ingestedInfotons}, Failed: ${ingestStats.failedInfotons}")
+          })
+        })
+      }
     }
 
   }
