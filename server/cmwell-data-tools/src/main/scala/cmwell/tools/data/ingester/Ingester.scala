@@ -17,8 +17,9 @@ package cmwell.tools.data.ingester
 import java.io._
 
 import akka.actor.{ActorRef, ActorSystem}
+import akka.http.scaladsl.coding.Gzip
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.RawHeader
+import akka.http.scaladsl.model.headers.{HttpEncodings, RawHeader, `Accept-Encoding`, `Content-Encoding`}
 import akka.stream._
 import akka.stream.scaladsl._
 import akka.util.ByteString
@@ -185,15 +186,19 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
       * @see [[akka.http.scaladsl.model.HttpRequest]]
       */
     def createRequest(data: Seq[ByteString], vars: Map[String,String]) = {
-      val entity = HttpEntity(concatByteStrings(data, endl).utf8String)
+      val entity = HttpEntity(Gzip.encode(concatByteStrings(data, endl)))
         .withContentType(ContentTypes.`text/plain(UTF-8)`)
 
       val replaceModeValue = if (replaceMode) "&replace-mode" else ""
       val forceValue = if (force) "&force" else ""
       val priorityValue = if (isPriority) "&priority" else ""
 
+      val gzipAcceptEncoding = `Accept-Encoding`(HttpEncodings.gzip)
+      val gzipContentEncoding = `Content-Encoding`(HttpEncodings.gzip)
+
       val uri = s"${formatHost(baseUrl)}/$method?format=$format$replaceModeValue$forceValue$priorityValue"
-      val req = HttpRequest(uri = uri, method = HttpMethods.POST, entity = entity)
+      val req = HttpRequest(uri = uri, method = HttpMethods.POST, entity = entity,
+        headers = scala.collection.immutable.Seq(gzipAcceptEncoding, gzipContentEncoding))
 
       writeToken match {
         case Some(token) => req.addHeader(RawHeader("X-CM-WELL-TOKEN", token))
