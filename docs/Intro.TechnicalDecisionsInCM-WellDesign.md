@@ -33,13 +33,13 @@ These are the most central principles that CM-Well implements, from which many o
 ## RDF and Triple Stores ##
 The standard way of encoding Linked Data is in Resource Description Format (RDF), which is a way of describing *subject-predicate-object* triples. These triples represent either attributes belonging to entities (e.g. CompanyX - FoundedOnDate - 03/28/1998), or relationships between two entities (e.g. JohnSmith - WorksAt - Intel).
 
-Since triples are the most basic unit of an RDF repository, the first requirement that CM-Well had to implement was to maintain a triple-store infrastructure that would be convenient, robust and scalable. 
+Since triples are the most basic unit of an RDF repository, the first requirement that CM-Well had to implement was to maintain a triple-store infrastructure that would be convenient, robust and scalable.
 
 Many triple-store products were assessed, including Oracle NoSQL, Apache JENA and BigData (now BlazeGraph). But none had the necessary scalability that was required for Thomson Reuters huge and ever-growing amount of data. It was decided to develop a thin proprietary layer to implement a scalable triple-store over 3rd-party storage packages (see [Storage and Search Modules](#hdr4)).
 
 <a name="hdr3"></a>
 ## Information Object (Infoton) ##
-Upon consideration of the type of data that would feed CM-Well (among other things, entities from the Thomson Reuters Knowledge Graph) it quickly became clear that a higher level of abstraction than the triple would be required. Most use cases focused on entities and their accompanying attributes and related entities. Thus the "information object" was born, and nicknamed "infoton". The infoton represents a single entity (such as an organization or person), and contains all the triples related to that entity.
+Upon consideration of the type of data that would feed CM-Well (among other things, entities from the Refintiv Knowledge Graph) it quickly became clear that a higher level of abstraction than the triple would be required. Most use cases focused on entities and their accompanying attributes and related entities. Thus the "information object" was born, and nicknamed "infoton". The infoton represents a single entity (such as an organization or person), and contains all the triples related to that entity.
 
 As dictated by Linked Data principles, infotons were designed to be accessible via URI (Universal Resource Identifier).
 
@@ -65,9 +65,9 @@ To support these functions, CM-Well has write functions in its API, which allow 
 
 <a name="hdr7"></a>
 ## Immutable Data and Deep History ##
-CM-Well supports an "immutable data" paradigm, meaning that even though infotons may be updated over time, any version of an infoton that you retrieve will always exist in the CM-Well repository, possibly as a "historical" version. The "main" version (the one retrieved by the entity's URI) is always the most current version. 
+CM-Well supports an "immutable data" paradigm, meaning that even though infotons may be updated over time, any version of an infoton that you retrieve will always exist in the CM-Well repository, possibly as a "historical" version. The "main" version (the one retrieved by the entity's URI) is always the most current version.
 
-This way, you have the option of both obtaining the up-to-the-minute information, while still being able to access historical versions for analytical purposes. 
+This way, you have the option of both obtaining the up-to-the-minute information, while still being able to access historical versions for analytical purposes.
 Historical versions allow you to examine changes in attribute values over time.
 
 ----
