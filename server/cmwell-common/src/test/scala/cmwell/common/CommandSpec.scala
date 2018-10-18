@@ -63,7 +63,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
 
     val updateF = Map("location" -> Set[FieldValue](FString("israel")), "company" -> Set[FieldValue](FString("GOOGLE")))
 
-    val cmdUpdate = UpdatePathCommand("/command-test/update", deleteF, updateF, updateDate)
+    val cmdUpdate = UpdatePathCommand("/command-test/update", deleteF, updateF, updateDate, Some("http"))
 
     val cmds = Vector(cmdWrite, cmdDeletePathAttributeValues, cmdDeletePath /*, cmdMerged1*/ , cmdUpdate)
 
@@ -94,7 +94,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
           infoton.lastModified.isEqual(objInfo.lastModified) should equal(true)
         case DeleteAttributesCommand(path, fields, lastModified, trackingID, prevUUID) => path should equal(cmdDeletePathAttributeValues.path)
         case DeletePathCommand(path, lastModified, trackingID, prevUUID) => path should equal(cmdDeletePath.path)
-        case UpdatePathCommand(path, d_f, u_f, lm, trackingID, prevUUID) =>
+        case UpdatePathCommand(path, d_f, u_f, lm, trackingID, prevUUID, protocol) =>
           path should equal(cmdUpdate.path)
           d_f.size should equal(cmdUpdate.deleteFields.size)
           u_f.size should equal(cmdUpdate.updateFields.size)

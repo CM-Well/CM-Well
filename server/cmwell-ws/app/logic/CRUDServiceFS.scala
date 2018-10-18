@@ -435,7 +435,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
             case Some(fields) => fields
             case None         => eMap //TODO: should we block this option? regular DELETE could have been used instead...
           }
-          UpdatePathCommand(i.path, del, ins, i.lastModified, validTid(i.path, tid), atomicUpdates.get(i.path))
+          UpdatePathCommand(i.path, del, ins, i.lastModified, validTid(i.path, tid), atomicUpdates.get(i.path), i.protocol)
         }
       }
 
@@ -456,7 +456,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
           if (regs.isEmpty) Future.successful(())
           else
             Future.traverse(regs) {
-              case cmd @ UpdatePathCommand(_, _, _, lastModified, _, _) if lastModified.getMillis == 0L =>
+              case cmd @ UpdatePathCommand(_, _, _, lastModified, _, _, _) if lastModified.getMillis == 0L =>
                 sendToKafka(cmd.copy(lastModified = DateTime.now(DateTimeZone.UTC)), isPriorityWrite)
               case cmd => sendToKafka(cmd, isPriorityWrite)
             }

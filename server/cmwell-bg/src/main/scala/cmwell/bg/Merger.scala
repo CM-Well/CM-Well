@@ -144,23 +144,21 @@ class Merger(config: Config) extends LazyLogging {
   private def update_merge(current_infoton: Infoton,
                            delete_fields: Map[String, Set[FieldValue]],
                            add_fields: Map[String, Set[FieldValue]],
-                           lastModified: DateTime): Infoton = {
-
-    val newInfotonProtocol: Option[String] = None // TODO UpdatePathCommand should be added with Protocol!!!
-
+                           lastModified: DateTime,
+                           protocol: Option[String]): Infoton = {
     val u_f = update_f(current_infoton.fields, delete_fields, add_fields)
     current_infoton match {
       case ObjectInfoton(path, dc, idxT, lm, current_fields, _, _) if u_f.exists(_.nonEmpty) =>
-        ObjectInfoton(path, defaultDC, None, lastModified, u_f, protocol = newInfotonProtocol)
+        ObjectInfoton(path, defaultDC, None, lastModified, u_f, protocol = protocol)
       case ObjectInfoton(path, dc, idxT, lm, current_fields, _, _) =>
         DeletedInfoton(path, defaultDC, None, lastModified)
       case FileInfoton(path, dc, idxT, lm, current_fields, c_fc, _, _) =>
-        FileInfoton(path, defaultDC, None, lastModified, u_f, c_fc, protocol = newInfotonProtocol)
+        FileInfoton(path, defaultDC, None, lastModified, u_f, c_fc, protocol = protocol)
       case LinkInfoton(path, dc, idxT, lm, current_fields, c_to, c_linkType, _, _) =>
-        LinkInfoton(path, defaultDC, None, lastModified, u_f, c_to, c_linkType, protocol = newInfotonProtocol)
+        LinkInfoton(path, defaultDC, None, lastModified, u_f, c_to, c_linkType, protocol = protocol)
       case DeletedInfoton(path, dc, idxT, lm, _) if u_f.exists(_.nonEmpty) =>
         // if we got update after a delete infoton we create a new one
-        ObjectInfoton(path, defaultDC, None, lastModified, u_f, protocol = newInfotonProtocol)
+        ObjectInfoton(path, defaultDC, None, lastModified, u_f, protocol = protocol)
       case _ =>
         // might happen when e.g: writing a "skeleton" on top of a deleted infoton.
         logger.warn(s"kind [${current_infoton.kind}] uuid [${current_infoton.uuid}] info [$current_infoton]")
@@ -257,14 +255,14 @@ class Merger(config: Config) extends LazyLogging {
               ensurePrevUUID(last_infoton, prevUUID)(i => Some(delete_merge(i, fields, lastModified)))
             case None => ensurePrevNone(prevUUID)(None)
           }
-        case UpdatePathCommand(path, deleteFields, updateFields, lastModified, _, prevUUID) =>
+        case UpdatePathCommand(path, deleteFields, updateFields, lastModified, _, prevUUID, protocol) =>
           base match {
             case Some(last_infoton) =>
               ensurePrevUUID(last_infoton, prevUUID)(
-                i => Some(update_merge(i, deleteFields, updateFields, lastModified))
+                i => Some(update_merge(i, deleteFields, updateFields, lastModified, protocol))
               )
             case None =>
-              ensurePrevNone(prevUUID)(Some(ObjectInfoton(path, defaultDC, None, lastModified, updateFields)))
+              ensurePrevNone(prevUUID)(Some(ObjectInfoton(path, defaultDC, None, lastModified, Some(updateFields), protocol = protocol)))
           }
         case DeletePathCommand(path, lastModified, _, prevUUID) =>
           base match {
