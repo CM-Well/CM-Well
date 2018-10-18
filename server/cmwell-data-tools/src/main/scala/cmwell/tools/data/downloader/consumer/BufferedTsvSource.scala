@@ -123,8 +123,8 @@ class BufferedTsvSource(initialToken: Future[String],
                 getHandler(out).onPull()
 
               case Failure(e)=>
-                logger.error(s"error consuming token: ${e.toString}, buffer-size: ${buf.size}. " +
-                  s"Scheduling retry in ${retryTimeout}")
+                logger.error(s"error consuming token ${token}, buffer-size: ${buf.size}. " +
+                  s"Scheduling retry in ${retryTimeout}", e)
 
                 materializer.scheduleOnce(retryTimeout, () =>
                   invokeBufferFillerCallback(sendNextChunkRequest(currentConsumeToken))
@@ -137,10 +137,9 @@ class BufferedTsvSource(initialToken: Future[String],
 
       initialToken.onComplete({
         case Success(token) => currentConsumeToken = token
-        case Failure(e) => logger.error(
-          s"failed to obtain token for=$label ${e.getMessage}",
+        case Failure(e) =>
+          logger.error(s"failed to obtain token for=$label",e)
           throw new RuntimeException(e)
-        )
       })
 
       callback = getAsyncCallback[ConsumeResponse](bufferFillerCallback)
@@ -298,9 +297,9 @@ class BufferedTsvSource(initialToken: Future[String],
       asyncCallInProgress = true
       future.onComplete{
         case Success(consumeResponse) => callback.invokeWithFeedback(consumeResponse)
-        case Failure(ex) =>
-          logger.error(s"TSV source future failed: ${ex.toString}")
-          throw ex
+        case Failure(e) =>
+          logger.error(s"TSV source future failed",e)
+          throw e
       }
     }
 
