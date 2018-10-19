@@ -213,7 +213,10 @@ class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Help
 
     val getRewrittenInfoton = rewriteDeletedInfoton.flatMap(_ => {
       spinCheck(100.millis,true)(Http.get(ioffd, List("format" -> "json"))){ res =>
-        Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get == jsonObjForDelete
+        val payloadStr = (res.payload.map(_.toChar)).mkString
+        if (payloadStr.startsWith("Infoton was deleted on")) false
+        else
+          Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get == jsonObjForDelete
       }.map { res =>
         withClue(res) {
           Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get  shouldEqual jsonObjForDelete

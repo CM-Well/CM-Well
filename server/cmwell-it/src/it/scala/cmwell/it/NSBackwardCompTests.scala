@@ -94,7 +94,10 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
       val executeAfterIndexing = indexingBugSampleIngest.zip(oldVcardOntologyDataIngest).flatMap(_ => {
         spinCheck(100.millis, true)(
           Http.get(cmw / "www.example.net" / "Individuals" / "JohnSmith", List("format" -> "json"))){ res =>
-          Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get == johnSmithExpectedJson
+          val payload = res.payload
+          if (payload.toString == "Infoton not found") false
+          else
+            Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get == johnSmithExpectedJson
         }}.map{
           res => Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get shouldEqual johnSmithExpectedJson}.flatMap {_ =>
         spinCheck(100.millis, true)(
@@ -182,7 +185,14 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
               "with-descendants" -> "true",
               "with-data" -> "true",
               "format" -> "n3"))
-        )(_.status).map { res =>
+        ){r =>
+          val status = r.status
+          if (status >= 200 && status < 400) {
+            val s = new String(r.payload, "UTF-8")
+            compareRDFwithoutSys(expectedN3BeforeRel2, s, "N3")
+          }
+          else false
+        }.map { res =>
           val s = new String(res.payload, "UTF-8")
           withClue(s) {
             res.status should be >= 200
@@ -202,7 +212,13 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
               "with-descendants" -> "true",
               "with-data" -> "true",
               "format" -> "n3"))
-        )(_.status).map{res =>
+        ){r =>
+          val status = r.status
+          if (status >= 200 && status < 400) {
+            compareRDFwithoutSys(expectedN3BeforeRel2, new String(r.payload, "UTF-8"), "N3")
+          }
+          else false
+        }.map{res =>
           res.status should be >= 200
           res.status should be < 400 //status should be OK
           compareRDFwithoutSys(expectedN3BeforeRel2, new String(res.payload, "UTF-8"), "N3") should be(true)
@@ -218,7 +234,7 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
             "$http://www.w3.org/2006/vcard/ns#COUNTRY-NAME$::USA]"),
           "with-descendants" -> "true",
           "with-data" -> "true",
-          "format" -> "n3")))(_.status)
+          "format" -> "n3")))(res => compareRDFwithoutSys(expectedN3BeforeRel2, new String(res.payload,"UTF-8"), "N3"))
 
         f.map(res => withClue(res){
           compareRDFwithoutSys(expectedN3BeforeRel2, new String(res.payload,"UTF-8"), "N3") should be(true)

@@ -23,7 +23,6 @@ import cmwell.util.http.{SimpleResponse, SimpleResponseHandler, StringPath}
 import com.ning.http.client
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.jena.rdf.model.{Model, ModelFactory, Statement}
-import org.scalatest
 import play.api.libs.json._
 
 import scala.collection.mutable.ArrayBuffer
@@ -73,6 +72,7 @@ trait Helpers { self: LazyLogging =>
         val sj = ((j \ "path.sys")(0) \ "value").as[String]
         si < sj
       })
+      case x @ JsArray(_) => logger.error(s"Unexpected input. Received: $x"); ???
     }
   )
   val bagUuidDateEraserAndSorter =  (__ \ "infotons").json.update(
@@ -84,6 +84,7 @@ trait Helpers { self: LazyLogging =>
         val sj = (j \ "system" \ "path").as[String]
         si < sj
       })
+      case x @ JsArray(_) => logger.error(s"Unexpected input. Received: $x"); ???
     }
   )
   val fieldsSorter = __.json.update(Reads.JsObjectReads.map{
@@ -230,6 +231,7 @@ trait Helpers { self: LazyLogging =>
     a.toArray
   }
 
+/*
   implicit class YamlWrapper[T](m: java.lang.Object) {
     /**
      * Method name is a special character since it's an implicit for java.lang.Object (i.e. anything), and we don't want ambiguities
@@ -239,11 +241,13 @@ trait Helpers { self: LazyLogging =>
      */
     def ⚡[T](key:T) = m.asInstanceOf[java.util.LinkedHashMap[T,java.lang.Object]].get(key)
   }
+*/
 
   object Http {
 
     import cmwell.util.concurrent.unsafeRetryUntil
-    import cmwell.util.http.{SimpleResponse, SimpleResponseHandler, SimpleHttpClient}, SimpleHttpClient.{Body, SimpleMessageHandler}
+    import cmwell.util.http.{SimpleHttpClient, SimpleResponse, SimpleResponseHandler}
+    import SimpleHttpClient.{Body, SimpleMessageHandler}
     val ec = scala.concurrent.ExecutionContext.global
 
     private def retryOn503Ingests[T](request: => Future[SimpleResponse[T]]): Future[SimpleResponse[T]] =

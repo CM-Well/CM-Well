@@ -544,6 +544,7 @@ package object wsutil extends LazyLogging {
           .map(hash => { (internalFieldName: String) =>
             internalFieldName.endsWith(s".$hash")
           } -> rffo)
+      case x @ FilteredField(_, _) => logger.error(s"Unexpected input. Received: $x"); ???
     }
     expansionFuncsFut.flatMap { funs =>
       // all the infotons' fields
@@ -629,7 +630,7 @@ package object wsutil extends LazyLogging {
 
     def mkFieldFilters2(ff: FilteredField[FieldKeyPattern],
                         outerFieldOperator: FieldOperator,
-                        urls: List[String]): Future[FieldFilter] = {
+                        paths: List[String]): Future[FieldFilter] = {
 
       val FilteredField(fkp, rffo) = ff
       val internalFieldNameFut = fkp match {
@@ -637,37 +638,30 @@ package object wsutil extends LazyLogging {
         case FieldKeyPattern(Left(unfk)) => FieldKey.resolve(unfk, cmwellRDFHelper, timeContext).map(_.internalKey)
       }
       val filterFut: Future[FieldFilter] = internalFieldNameFut.map { internalFieldName =>
-        urls match {
-          case Nil =>
-            val sb = new StringBuilder
-            sb ++= "empty urls in expandUp("
-            sb ++= filteredFields.toString
-            sb ++= ",population[size="
-            sb ++= population.size.toString
-            sb ++= "],cache[size="
-            sb ++= cache.size.toString
-            sb ++= "])\nfor pattern: "
-            sb ++= pattern
-            sb ++= "\nand infotons.take(3) = "
-            sb += '['
-            infotonsSample.headOption.foreach { i =>
-              sb ++= i.toString
-              infotonsSample.tail.foreach { j =>
-                sb += ','
-                sb ++= j.toString
-              }
+        if(paths.isEmpty) {
+          val sb = new StringBuilder
+          sb ++= "empty urls in expandUp("
+          sb ++= filteredFields.toString
+          sb ++= ",population[size="
+          sb ++= population.size.toString
+          sb ++= "],cache[size="
+          sb ++= cache.size.toString
+          sb ++= "])\nfor pattern: "
+          sb ++= pattern
+          sb ++= "\nand infotons.take(3) = "
+          sb += '['
+          infotonsSample.headOption.foreach { i =>
+            sb ++= i.toString
+            infotonsSample.tail.foreach { j =>
+              sb += ','
+              sb ++= j.toString
             }
-            sb += ']'
-            throw new IllegalStateException(sb.result())
-          case url :: Nil =>
-            SingleFieldFilter(rffo.fold[FieldOperator](outerFieldOperator)(_ => Must),
-                              Equals,
-                              internalFieldName,
-                              Some(url))
-          case _ => {
-            val shoulds = urls.map(url => SingleFieldFilter(Should, Equals, internalFieldName, Some(url)))
-            MultiFieldFilter(rffo.fold[FieldOperator](outerFieldOperator)(_ => Must), shoulds)
           }
+          sb += ']'
+          throw new IllegalStateException(sb.result())
+        } else {
+          val shoulds = paths.flatMap(pathToUris).map(url => SingleFieldFilter(Should, Equals, internalFieldName, Some(url)))
+          MultiFieldFilter(rffo.fold[FieldOperator](outerFieldOperator)(_ => Must), shoulds)
         }
       }
       rffo.fold[Future[FieldFilter]](filterFut) { rawFilter =>
@@ -679,7 +673,7 @@ package object wsutil extends LazyLogging {
 
     Future
       .traverse(population.grouped(chunkSize)) { infotonsChunk =>
-        val urls: List[String] = infotonsChunk.map(i => pathToUri(i.path))(breakOut)
+        val paths: List[String] = infotonsChunk.map(_.path)(breakOut)
 
         val fieldFilterFut = filteredFields match {
           case Nil =>
@@ -687,8 +681,8 @@ package object wsutil extends LazyLogging {
             val c = cache.size
             val p = population.size
             throw new IllegalStateException(s"expandUp($filteredFields,population[size=$p],cache[size=$c])\nfor pattern: $pattern\nand infotons.take(3) = $i")
-          case ff :: Nil => mkFieldFilters2(ff, Must, urls)
-          case _         => Future.traverse(filteredFields)(mkFieldFilters2(_, Should, urls)).map(MultiFieldFilter(Must, _))
+          case ff :: Nil => mkFieldFilters2(ff, Must, paths)
+          case _         => Future.traverse(filteredFields)(mkFieldFilters2(_, Should, paths)).map(MultiFieldFilter(Must, _))
         }
         fieldFilterFut.transformWith {
           case Failure(_: NoSuchElementException) => Future.successful(Nil -> Nil)
@@ -936,10 +930,9 @@ package object wsutil extends LazyLogging {
 
   def isPathADomain(path: String): Boolean = path.dropWhile(_ == '/').takeWhile(_ != '/').contains('.')
 
-  def pathToUri(path: String): String = {
-    if (path.startsWith("/https.")) s"https:/${path.drop("/https.".length)}"
-    else if (isPathADomain(path)) s"http:/$path"
-    else s"cmwell:/$path"
+  def pathToUris(path: String): Seq[String] = {
+    if(isPathADomain(path)) List(s"http:/$path", s"https:/$path")
+    else List(s"cmwell:/$path")
   }
 
   def exceptionToResponse(throwable: Throwable): Result = {

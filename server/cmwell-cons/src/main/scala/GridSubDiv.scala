@@ -35,7 +35,8 @@ case class GridSubDiv(user: String,
                       haProxy: Option[HaProxy] = None,
                       dcTarget: Option[String] = None,
                       minMembers: Option[Int] = None,
-                      withElk: Boolean = false)
+                      withElk: Boolean = false,
+                      subjectsInSpAreHttps: Boolean = false)
     extends Host(
       user,
       password,
@@ -55,7 +56,8 @@ case class GridSubDiv(user: String,
       ctrlService,
       minMembers = minMembers,
       haProxy,
-      withElk = withElk
+      withElk = withElk,
+      subjectsInSpAreHttps = subjectsInSpAreHttps
     ) {
   //var persistentAliases = false
   override def getElasticsearchMasters: Int = esMasters
@@ -354,7 +356,8 @@ case class GridSubDiv(user: String,
         hostIp = host,
         minMembers = getMinMembers,
         seeds = getSeedNodes.mkString(","),
-        seedPort = 9301
+        seedPort = 9301,
+        subjectsInSpAreHttps = subjectsInSpAreHttps
       )
 
       val ctrl = CtrlConf(

@@ -139,14 +139,14 @@ class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers wi
     Thread.sleep(10000)
     // scalastyle:on
 
-    for( i <- 0 to numOfCommands-1) {
+    for( i <- 0 until numOfCommands) {
       val nextResult = Await.result(irwService.readPathAsync(s"/cmt/cm/bg-test/circumvented_bg/info$i"), 5.seconds)
       withClue(nextResult, s"/cmt/cm/bg-test/circumvented_bg/info$i"){
         nextResult should not be empty
       }
     }
 
-    for( i <- 0 to numOfCommands-1) {
+    for( i <- 0 until numOfCommands) {
       val searchResponse = Await.result(
         ftsServiceES.search(
           pathFilter = None,

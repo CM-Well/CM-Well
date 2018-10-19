@@ -262,7 +262,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
     val writeCommand = WriteCommand(baseInfoton.copyInfoton(lastModified = baseInfoton.lastModified.minus(1)))
     val merged = merger.merge(Some(baseInfoton), Seq(writeCommand))
     withClue(merged){
-      merged.merged shouldBe defined
+      merged.merged shouldNot be (defined)
     }
   }
 

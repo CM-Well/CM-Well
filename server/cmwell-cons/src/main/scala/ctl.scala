@@ -21,7 +21,9 @@ import java.util.Date
 
 import cmwell.ctrl.client.CtrlClient
 import cmwell.ctrl.hc.{ActiveNodes, ClusterStatus}
+import cmwell.util.http.SimpleHttpClient
 import k.grid.{GridConnection, Grid => AkkaGrid}
+import play.api.libs.json.{JsValue, Json}
 
 import scala.collection.parallel.ParMap
 import scala.collection.{GenSeq, GenSet}
@@ -182,7 +184,10 @@ abstract class Host(user: String,
                     minMembers: Option[Int] = None,
                     haProxy: Option[HaProxy],
                     withElk: Boolean = false,
-                    isDebug: Boolean = false) {
+                    isDebug: Boolean = false,
+                    subjectsInSpAreHttps: Boolean = false) {
+
+  val cmwellPropertiesFile = "cmwell.properties"
 
   var sudoerCredentials: Option[Credentials] = None
 
@@ -653,15 +658,18 @@ abstract class Host(user: String,
       command("curl -sX GET http://" + host + ":9000/meta/sys?format=ntriples")
   }
 
-  def webServerStatus(host: String) = command("curl -Is http://" + host + ":9000/ | head -1")
+  def webServerStatus(host: String) = command("curl -Is http://" + host + ":9000/")
 
   case class WebServiceLock() extends ModuleLock {
     def name: String = "Web Service boot"
 
     def com(host: String): Try[String] = webServerStatus(host)
 
-    def continueCondition(v: String, waitFor: Int): Boolean =
-      !v.contains("200") && !v.contains("404") && !v.contains("503")
+    def continueCondition(v: String, waitFor: Int): Boolean = {
+      val containsCmwellHeader = v.contains("X-CMWELL-Hostname:")
+      val first = v.lineStream.head
+      !(containsCmwellHeader && (first.contains("200") || first.contains("404") || first.contains("503")))
+    }
   }
 
   val dataInitializer = new DataInitializer(this, jwt, rootDigest, rootDigest2)
@@ -2005,6 +2013,12 @@ abstract class Host(user: String,
               withUpdateSchemas: Boolean = false,
               hosts: GenSeq[String] = ips) {
 
+    val currentVersion = extractVersionFromProcNode(ips(0))
+    //If all 3 retries will fail, will wait for result. If fails, upgrade will be stopped.
+    Await.result(currentVersion, 10.seconds)
+
+    currentVersion.map(ver => info(s"Current version is $ver"))
+
     checkProduction
     refreshUserState(user, None, hosts)
 
@@ -2174,6 +2188,27 @@ abstract class Host(user: String,
 
     info("  updating version history")
     dataInitializer.logVersionUpgrade(hosts(0))
+
+    val upgradedVersion = extractVersionFromCmwellProperties
+    info(s"Upgrading to version: $upgradedVersion")
+
+    val completed = Upgrade.runPostUpgradeActions(currentVersion, upgradedVersion, hosts)
+    completed.onComplete(_ => info(s"Upgrade completed!"))
+
+  }
+
+  def extractVersionFromCmwellProperties : String = {
+    val cmwellProp = Source.fromURL(this.getClass.getResource(cmwellPropertiesFile)).mkString
+    (Json.parse(cmwellProp) \ "cm-well_version").as[String].replace("x-SNAPSHOT", "0")
+  }
+
+  def extractVersionFromProcNode(host : String) : Future[String] = cmwell.util.concurrent.retry(3, 1.seconds){
+    val procNode = SimpleHttpClient.get(s"http://${host}:9000/proc/node", Seq("format" -> "json"))
+    procNode.map{r =>
+      val jsonRes: JsValue = Json.parse(r.payload)
+      jsonRes.\("fields").\("cm-well_version")(0).as[String]
+    }
+
   }
 
   def reloadEsMappings: Unit = reloadEsMappings()

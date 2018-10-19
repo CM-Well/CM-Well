@@ -297,6 +297,10 @@ class BufferFillerActor(threshold: Int,
               }
 
               logger.debug(
+                s"remaining infotons=${remainingInfotons}"
+              )
+
+              logger.debug(
                 s"received consume answer from host=${getHostnameValue(h)}"
               )
 

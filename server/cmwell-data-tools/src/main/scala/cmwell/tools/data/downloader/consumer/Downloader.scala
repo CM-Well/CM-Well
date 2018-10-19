@@ -52,12 +52,20 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
     FiniteDuration(timeoutDuration.length, timeoutDuration.unit)
   }
 
-  val createConsumerRetryLimit = config.hasPath("cmwell.downloader.consumer.http-retry-limit") match {
+  val retryTimeout: FiniteDuration = {
+    val timeoutDuration = Duration(
+      config.getString("cmwell.downloader.consumer.http-retry-timeout")
+    ).toCoarsest
+    FiniteDuration(timeoutDuration.length, timeoutDuration.unit)
+  }
+
+
+  val retryLimit = config.hasPath("cmwell.downloader.consumer.http-retry-limit") match {
     case true => Some(config.getInt("cmwell.downloader.consumer.http-retry-limit"))
     case false => None
   }
 
-  val createConsumerDelayFactor = config.hasPath("cmwell.downloader.consumer.http-retry-delay-factor") match {
+  val delayFactor = config.hasPath("cmwell.downloader.consumer.http-retry-delay-factor") match {
     case true => config.getDouble("cmwell.downloader.consumer.http-retry-delay-factor")
     case false => 1
   }
@@ -114,8 +122,8 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
     val tokenFuture = Source
       .single(Seq(blank) -> None)
       .via(
-        Retry.retryHttp(createConsumerRetryTimeout, 1, formatHost(baseUrl), createConsumerRetryLimit, createConsumerDelayFactor)(
-          _ => HttpRequest(uri = uri)
+        Retry.retryHttp(retryTimeout, 1, formatHost(baseUrl), retryLimit, delayFactor)(
+          (_,_) => HttpRequest(uri = uri)
         )
       )
       .map {
@@ -436,7 +444,7 @@ class Downloader(
     * @return flow that gets uuids and download their data
     */
   private[data] def downloadDataFromPaths()(implicit ec: ExecutionContext) = {
-    def createDataRequest(paths: Seq[ByteString]) = {
+    def createDataRequest(paths: Seq[ByteString], vars: Map[String,String]) = {
       val paramsValue = if (params.isEmpty) "" else s"&$params"
 
       HttpRequest(
@@ -492,7 +500,7 @@ class Downloader(
     }
 
     def sendPathRequest(timeout: FiniteDuration, parallelism: Int, limit: Int = 0)(
-      createRequest: (Seq[Path]) => HttpRequest
+      createRequest: (Seq[Path],Map[String,String]) => HttpRequest
     )(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
 
       case class State(pathsToRequest: Seq[Path],
@@ -614,7 +622,7 @@ class Downloader(
     * @return flow that gets uuids and download their data
     */
   private[data] def downloadDataFromUuids()(implicit ec: ExecutionContext) = {
-    def createDataRequest(uuids: Seq[ByteString]) = {
+    def createDataRequest(uuids: Seq[ByteString], vars: Map[String,String]) = {
       val paramsValue = if (params.isEmpty) "" else s"&$params"
 
       HttpRequest(
@@ -671,7 +679,7 @@ class Downloader(
     }
 
     def sendUuidRequest(timeout: FiniteDuration, parallelism: Int, limit: Int = 0)(
-      createRequest: (Seq[Uuid]) => HttpRequest
+      createRequest: (Seq[Uuid], Map[String,String]) => HttpRequest
     )(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
 
       case class State(uuidsToRequest: Seq[Uuid],

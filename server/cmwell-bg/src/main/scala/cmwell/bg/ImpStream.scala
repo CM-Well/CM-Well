@@ -300,6 +300,20 @@ class ImpStream(partition: Int,
         bgMessage.copy(message = (baseInfoton -> mergedInfoton))
       }
   }
+
+  val persistNewLastModified = Flow[BGMessage[(Option[Infoton],MergeResponse)]].mapAsync(irwWriteConcurrency) {
+    case bm@BGMessage(offsets, (_, mr)) => mr.extra.fold(Future.successful(bm)) { extra =>
+      //TODO propagate offsets.retention.minutes's value to here
+      val ttlSeconds = 7.days.toSeconds.toInt
+      val offset = offsets.last
+      val key = s"imp.$partition${if (offset.topic == persistCommandsTopicPriority) ".p" else ""}_${offset.offset}"
+      val payload = extra.getBytes(StandardCharsets.UTF_8)
+      zStore.put(key, payload, ttlSeconds, batched = true).
+        recover { case t => logger.error(s"Could not write to zStore ($key,$extra)", t) }.
+        map(_ => bm)
+    }
+  }
+
   val filterDups = Flow[BGMessage[(Option[Infoton], Infoton)]].filterNot {
     bgMessage =>
       val isDup = bgMessage.message._1
@@ -539,7 +553,7 @@ class ImpStream(partition: Int,
     }
   val nullCommandsToKafkaRecords: Flow[BGMessage[(Option[Infoton], MergeResponse)], Message[Array[Byte], Array[Byte], Seq[Offset]], NotUsed] =
     Flow.fromFunction {
-      case msg@BGMessage(offsets, (_, NullUpdate(path, tids, evictions))) =>
+      case msg@BGMessage(offsets, (_, NullUpdate(path, tids, evictions, _))) =>
         logger.debug(s"converting null command to kafka records:\n path: $path, offsets: [$offsets]")
         val nullCmd = NullUpdateCommandForIndexer(path = path, persistOffsets = offsets)
         val topic =
@@ -607,7 +621,7 @@ class ImpStream(partition: Int,
 
         val reportNullUpdates = builder.add(
           Flow[BGMessage[(Option[Infoton], MergeResponse)]].mapAsync(1) {
-            case msg@BGMessage(offsets, (_, NullUpdate(path, tids, evictions))) =>
+            case msg@BGMessage(offsets, (_, NullUpdate(path, tids, evictions, _))) =>
               bGMetrics.nullUpdateCounter += 1
               val nullUpdatesReportedAsDone = {
                 if (tids.nonEmpty)
@@ -655,7 +669,7 @@ class ImpStream(partition: Int,
           PartitionWith[BGMessage[(Option[Infoton], MergeResponse)],
             BGMessage[(Option[Infoton], (Infoton, Seq[String]))],
             (String, Seq[(String, Option[String])])] {
-            case BGMessage(offset, (prev, RealUpdate(cur, tids, evicted))) =>
+            case BGMessage(offset, (prev, RealUpdate(cur, tids, evicted, _))) =>
               if (evicted.nonEmpty)
                 Right(cur.path -> evicted)
               else
@@ -973,7 +987,7 @@ class ImpStream(partition: Int,
 
         partitionOverrideInfotons.out1 ~> mergeCompletedOffsets.in(0)
 
-        singleCommandsPartitioner.out(1) ~> groupCommandsByPath ~> addLatestInfotons ~> addMerged ~> partitionMerged.in
+        singleCommandsPartitioner.out(1) ~> groupCommandsByPath ~> addLatestInfotons ~> addMerged ~> persistNewLastModified ~> partitionMerged.in
 
         partitionMerged.out(0) ~> partitionNonNullMerged.in
 

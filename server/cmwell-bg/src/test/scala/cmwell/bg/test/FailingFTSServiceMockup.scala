@@ -64,14 +64,14 @@ class FailingFTSServiceMockup(config: Config, esClasspathYaml: String, errorModu
                                        (implicit executionContext: ExecutionContext, logger:Logger = loger) = {
 
     errorModuloDividend += 1
-    logger error s"executeBulkIndexRequests: errorModuloDividend=$errorModuloDividend"
+    logger info s"executeBulkIndexRequests: errorModuloDividend=$errorModuloDividend"
     if(errorModuloDividend % errorModuloDivisor == 2 && errorCount <=2 ) {
       errorCount += 1
-      logger error s"delaying response"
+      logger info s"delaying response"
       throw new TimeoutException("fake")
     }
     else {
-        logger error "farwarding to real ftsservice"
+        logger info "forwarding to real ftsservice"
       super.executeBulkIndexRequests(indexRequests, numOfRetries, waitBetweenRetries)
     }
   }
