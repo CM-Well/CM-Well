@@ -420,11 +420,6 @@ class Downloader(
 
   implicit val labelId = label.map(LabelId.apply)
 
-  private val prefetchBufferSize = config.hasPath("cmwell.downloader.consumer.prefetch-buffer-size") match {
-    case true => config.getInt("cmwell.downloader.consumer.prefetch-buffer-size")
-    case false => 3000000L
-  }
-
   private[Downloader] val retryTimeout = {
     val timeoutDuration = Duration(
       config.getString("cmwell.downloader.consumer.http-retry-timeout")
