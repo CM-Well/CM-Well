@@ -900,6 +900,11 @@ class Downloader(
       case false => 300
     }
 
+    val consumeLengthHint = config.hasPath("infoton-source.buffer.consume-length-hint") match {
+      case true => Some(config.getInt("infoton-source.buffer.consume-length-hint"))
+      case false => Some(300)
+    }
+
     val initTokenFuture = token match {
       case Some(t) => Future.successful(t)
       case None =>
@@ -916,7 +921,7 @@ class Downloader(
       lowWaterMark,
       params,
       baseUrl,
-      Some(300),
+      consumeLengthHint,
       errorRetryTimeout,
       consumeCompleteRetryTimeout,
       false,
