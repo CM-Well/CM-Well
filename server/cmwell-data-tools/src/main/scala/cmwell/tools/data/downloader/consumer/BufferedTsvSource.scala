@@ -118,10 +118,6 @@ class BufferedTsvSource(initialToken: Future[String],
                       decodeToken(currentConsumeToken).getOrElse("")
                     } buffer-size: ${buf.size}")
                 }
-
-                asyncCallInProgress = false
-                getHandler(out).onPull()
-
               case Failure(e)=>
                 logger.error(s"error consuming token ${token}, buffer-size: ${buf.size}. " +
                   s"Scheduling retry in ${retryTimeout}", e)
@@ -296,12 +292,18 @@ class BufferedTsvSource(initialToken: Future[String],
     private def invokeBufferFillerCallback(future: Future[ConsumeResponse]): Unit = {
       asyncCallInProgress = true
       future.onComplete{
-        case Success(consumeResponse) => callback.invokeWithFeedback(consumeResponse)
+        case Success(consumeResponse) =>
+          callback.invokeWithFeedback(consumeResponse).map({
+            _ =>
+              asyncCallInProgress = false
+              getHandler(out).onPull()
+          })
         case Failure(e) =>
           logger.error(s"TSV source future failed",e)
           throw e
       }
     }
+
 
   }
 
