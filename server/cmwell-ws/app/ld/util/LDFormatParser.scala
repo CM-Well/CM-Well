@@ -256,6 +256,7 @@ object LDFormatParser extends LazyLogging {
     case "NQ"                         => Lang.NQ
     case "NQUADS"                     => Lang.NQUADS
     case "TRIG"                       => Lang.TRIG
+    case "TRIX"                       => Lang.TRIX
   }
 
   // scalastyle:off
