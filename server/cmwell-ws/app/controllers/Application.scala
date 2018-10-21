@@ -379,7 +379,8 @@ callback=< [URL] >
           Settings.dataCenter,
           None,
           Map[String, Set[FieldValue]]("alias" -> Set(FString(s"partition_$partition")),
-                                       "graph" -> Set(FReference(s"cmwell://meta/sys#partition_$partition")))
+                                       "graph" -> Set(FReference(s"cmwell://meta/sys#partition_$partition"))),
+          protocol = None
         )
       )
     )
@@ -2549,7 +2550,7 @@ callback=< [URL] >
                 case Success(fields) =>
                   InfotonValidator.validateValueSize(fields)
                   boolFutureToRespones(
-                    crudServiceFS.putInfoton(ObjectInfoton(normalizedPath, Settings.dataCenter, None, fields),
+                    crudServiceFS.putInfoton(ObjectInfoton(normalizedPath, Settings.dataCenter, None, fields, protocol = None),
                                              isPriorityWrite)
                   )
                 // TODO handle validation

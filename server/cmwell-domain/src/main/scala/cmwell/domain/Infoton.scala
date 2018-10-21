@@ -155,7 +155,7 @@ sealed trait Infoton extends Formattable { self =>
   final def weight = weight_
   final def parent = parent_
 
-  def replaceIndexTime(indextime: Long): Infoton = copyInfoton(indexTime = Some(indextime), protocol = protocol)
+  def replaceIndexTime(indextime: Long): Infoton = copyInfoton(indexTime = Some(indextime))
 
   /* calculate uuid and weight */
   def longToByteArray(l: Long): Array[Byte] = {
@@ -266,10 +266,10 @@ case class ObjectInfoton(path: String,
   }
 }
 object ObjectInfoton {
-  def apply(path: String, dc: String, indexTime: Option[Long], lastModified: DateTime, fields: Map[String, Set[FieldValue]]) =
-    new ObjectInfoton(path, dc = dc, indexTime, lastModified, Some(fields), protocol = None)
-  def apply(path: String, dc: String, indexTime: Option[Long], fields: Map[String, Set[FieldValue]]) =
-    new ObjectInfoton(path = path, dc = dc, indexTime, fields = Some(fields), protocol = None)
+  def apply(path: String, dc: String, indexTime: Option[Long], lastModified: DateTime, fields: Map[String, Set[FieldValue]], protocol: Option[String]) =
+    new ObjectInfoton(path, dc = dc, indexTime, lastModified, Some(fields), protocol = protocol)
+  def apply(path: String, dc: String, indexTime: Option[Long], fields: Map[String, Set[FieldValue]], protocol: Option[String]) =
+    new ObjectInfoton(path = path, dc = dc, indexTime, fields = Some(fields), protocol = protocol)
 }
 
 case class CompoundInfoton(path: String,
@@ -325,14 +325,15 @@ case class LinkInfoton(path: String,
 }
 
 object LinkInfoton {
-  def apply(path: String, dc: String, fields: Map[String, Set[FieldValue]], linkTo: String, linkType: Int) =
-    new LinkInfoton(path = path, dc = dc, indexTime = None, fields = Some(fields), linkTo = linkTo, linkType = linkType, protocol = None)
+  def apply(path: String, dc: String, fields: Map[String, Set[FieldValue]], linkTo: String, linkType: Int, protocol: Option[String]) =
+    new LinkInfoton(path = path, dc = dc, indexTime = None, fields = Some(fields), linkTo = linkTo, linkType = linkType, protocol = protocol)
   def apply(path: String,
             dc: String,
             lastModified: DateTime,
             fields: Map[String, Set[FieldValue]],
             linkTo: String,
-            linkType: Int) =
+            linkType: Int,
+            protocol: Option[String]) =
     new LinkInfoton(path = path,
                     dc = dc,
                     indexTime = None,
@@ -340,7 +341,7 @@ object LinkInfoton {
                     fields = Some(fields),
                     linkTo = linkTo,
                     linkType = linkType,
-                    protocol = None)
+                    protocol = protocol)
 }
 
 case class DeletedInfoton(path: String,
@@ -455,21 +456,23 @@ object FileInfoton {
             dc: String,
             indexTime: Option[Long],
             fields: Map[String, Set[FieldValue]],
-            content: FileContent) =
-    new FileInfoton(path = path, dc = dc, indexTime = indexTime, fields = Some(fields), content = Some(content), protocol = None)
+            content: FileContent,
+            protocol: Option[String]) =
+    new FileInfoton(path = path, dc = dc, indexTime = indexTime, fields = Some(fields), content = Some(content), protocol = protocol)
   def apply(path: String,
             dc: String,
             indexTime: Option[Long],
             lastModified: DateTime,
             fields: Map[String, Set[FieldValue]],
-            content: FileContent) =
+            content: FileContent,
+            protocol: Option[String]) =
     new FileInfoton(path = path,
                     dc = dc,
                     indexTime = indexTime,
                     lastModified = lastModified,
                     fields = Some(fields),
                     content = Some(content),
-                    protocol = None)
+      protocol = protocol)
 }
 
 case class FileContent(data: Option[Array[Byte]],
@@ -504,18 +507,18 @@ case class VirtualInfoton(infoton: Infoton) {
         override def kind = "VirtualObjectInfoton"
         override def uuid = "0"
       }
-    case CompoundInfoton(path, dc, indexTime, lastModified, fields, children, offset, length, total, _, protocol) =>
-      new CompoundInfoton(path, dc, indexTime, lastModified, fields, children, offset, length, total, protocol = protocol) {
+    case CompoundInfoton(path, dc, indexTime, lastModified, fields, children, offset, length, total, _, _) =>
+      new CompoundInfoton(path, dc, indexTime, lastModified, fields, children, offset, length, total, protocol = None) {
         override def kind = "VirtualCompoundInfoton"
         override def uuid = "0"
       }
-    case LinkInfoton(path, dc, indexTime, lastModified, fields, linkTo, linkType, _, protocol) =>
-      new LinkInfoton(path, dc, indexTime, lastModified, fields, linkTo, linkType, protocol = protocol) {
+    case LinkInfoton(path, dc, indexTime, lastModified, fields, linkTo, linkType, _, _) =>
+      new LinkInfoton(path, dc, indexTime, lastModified, fields, linkTo, linkType, protocol = None) {
         override def kind = "VirtualLinkInfoton"
         override def uuid = "0"
       }
-    case FileInfoton(path, dc, indexTime, lastModified, fields, content, _, protocol) =>
-      new FileInfoton(path, dc, indexTime, lastModified, fields, content, protocol = protocol) {
+    case FileInfoton(path, dc, indexTime, lastModified, fields, content, _, _) =>
+      new FileInfoton(path, dc, indexTime, lastModified, fields, content, protocol = None) {
         override def kind = "VirtualFileInfoton"
         override def uuid = "0"
       }

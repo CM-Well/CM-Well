@@ -967,7 +967,7 @@ ${lines.mkString("\n")}
       case "/proc/bg" =>
         generateBgData.map(
           fields =>
-            Some(VirtualInfoton(ObjectInfoton(path, dc, None, d, fields)))
+            Some(VirtualInfoton(ObjectInfoton(path, dc, None, d, fields, protocol = None)))
         )
       case "/proc/search-contexts.md" =>
         Some(

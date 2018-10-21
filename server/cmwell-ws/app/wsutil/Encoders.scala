@@ -124,16 +124,17 @@ object Encoders extends LazyLogging{
       * @param node
       * @return
       */
-    private def processSystem(node: JsValue): (String, DateTime, String) = {
+    private def processSystem(node: JsValue): (String, DateTime, String, Option[String]) = {
       val pathOpt = (node \ "path").asOpt[String]
       val lmOpt = (node \ "lastModified")
         .asOpt[String]
         .orElse((node \ "modifiedDate").asOpt[String])
         .flatMap(cmwell.util.string.parseDate)
       val dataCenter = (node \ "dataCenter").asOpt[String].getOrElse(Settings.dataCenter)
+      val protocol = (node \ "protocol").asOpt[String]
       pathOpt match {
         case None    => throw InfotonParsingException("No path specified in system")
-        case Some(p) => (p, lmOpt.getOrElse(new DateTime), dataCenter)
+        case Some(p) => (p, lmOpt.getOrElse(new DateTime), dataCenter, protocol)
       }
     }
 
@@ -186,12 +187,12 @@ object Encoders extends LazyLogging{
       (systemFieldOpt, fieldsOpt) match {
         case (None, _) => throw InfotonParsingException("System object is missing")
         case (Some(sf), Some(f)) =>
-          val (path, md, dc) = processSystem(sf)
+          val (path, md, dc, protocol) = processSystem(sf)
           val fields = processFields(f)
-          ObjectInfoton(path, dc, None, md, fields)
+          ObjectInfoton(path, dc, None, md, fields, protocol = protocol)
         case (Some(sf), None) =>
-          val (path, md, dc) = processSystem(sf)
-          ObjectInfoton(path, dc, None, md, None, "", None)
+          val (path, md, dc, protocol) = processSystem(sf)
+          ObjectInfoton(path, dc, None, md, None, "", protocol)
       }
     }
 
@@ -204,23 +205,23 @@ object Encoders extends LazyLogging{
 
       (systemFieldOpt, fieldsOpt, fileContentsOpt) match {
         case (Some(sf), None, None) =>
-          val (path, md, dc) = processSystem(sf)
-          FileInfoton(path, dc, None, md, None, None, "", None)
+          val (path, md, dc, p) = processSystem(sf)
+          FileInfoton(path, dc, None, md, None, None, "", p)
         case (None, _, _) => throw InfotonParsingException("System field is not present")
         case (Some(sf), Some(f), Some(fc)) =>
-          val (path, md, dc) = processSystem(sf)
+          val (path, md, dc, p) = processSystem(sf)
           val fields = processFields(f)
           val fileContent = processFileContent(fc)
-          FileInfoton(path, dc, None, md, fields, fileContent)
+          FileInfoton(path, dc, None, md, fields, fileContent, p)
         case (Some(sf), None, Some(fc)) =>
-          val (path, md, dc) = processSystem(sf)
+          val (path, md, dc, p) = processSystem(sf)
           val fields = None
           val fileContent = processFileContent(fc)
-          FileInfoton(path, dc, None, md, None, Some(fileContent), "", None)
+          FileInfoton(path, dc, None, md, None, Some(fileContent), "", p)
         case (Some(sf), Some(f), None) =>
-          val (path, md, dc) = processSystem(sf)
+          val (path, md, dc, p) = processSystem(sf)
           val fields = processFields(f)
-          FileInfoton(path, dc, None, md, Some(fields), None, "", None)
+          FileInfoton(path, dc, None, md, Some(fields), None, "", p)
       }
     }
 
@@ -235,12 +236,12 @@ object Encoders extends LazyLogging{
         case (_, _, _, None) => throw InfotonParsingException("LinkTo field is not present")
         case (_, _, None, _) => throw InfotonParsingException("LinkType field is not present")
         case (Some(s), Some(f), Some(lTo), Some(lType)) =>
-          val (path, md, dc) = processSystem(s)
+          val (path, md, dc, p) = processSystem(s)
           val fields = processFields(f)
-          LinkInfoton(path, dc, md, fields, lTo, lType)
+          LinkInfoton(path, dc, md, fields, lTo, lType, p)
         case (Some(s), None, Some(lTo), Some(lType)) =>
-          val (path, md, dc) = processSystem(s)
-          LinkInfoton(path = path, dc = dc, lastModified = md, linkTo = lTo, linkType = lType, protocol = None)
+          val (path, md, dc, p) = processSystem(s)
+          LinkInfoton(path = path, dc = dc, lastModified = md, linkTo = lTo, linkType = lType, protocol = p)
       }
     }
 

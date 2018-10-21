@@ -197,9 +197,9 @@ class HttpsTests extends AsyncFunSpec with Matchers with Helpers with Inspectors
 
     def versions(replaceMode: Boolean): Future[Assertion] = {
 
-      // version1: http
-      // version2: https
-      // version3: http
+      // version1: https
+      // version2: http
+      // version3: https
 
       val path = cmw / "example9.org" / (if(replaceMode) "protocol-versioning-rm" else "protocol-versioning")
       def version(protocol: String, version: Int) =
@@ -212,24 +212,24 @@ class HttpsTests extends AsyncFunSpec with Matchers with Helpers with Inspectors
           _.payload.trim.lines.nonEmpty
         ).map(_ => ()) else Future.successful(())
 
-      val firstVersion = post(version("http", 1)).flatMap { _ =>
+      val firstVersion = post(version("https", 1)).flatMap { _ =>
         validateMetaNs.flatMap { _ =>
           spinCheck(100.millis, true)(Http.get(path, queryParams = "format" -> "ntriples" :: Nil))(_.payload.contains("v1")).
-            map(_.payload should startWith("<http:"))
-        }
-      }
-
-      val secondVersion = firstVersion.flatMap{ _ =>
-        post(version("https", 2), replaceMode = replaceMode).flatMap{ _ =>
-          spinCheck(100.millis, true)(Http.get(path, queryParams = "format"->"ntriples" :: Nil))(_.payload.contains("v2")).
             map(_.payload should startWith("<https:"))
         }
       }
 
-      secondVersion.flatMap { _ =>
-        post(version("http", 3), replaceMode = replaceMode).flatMap{ _ =>
-          spinCheck(100.millis, true)(Http.get(path, queryParams = "format"->"ntriples" :: Nil))(_.payload.contains("v3")).
+      val secondVersion = firstVersion.flatMap{ _ =>
+        post(version("http", 2), replaceMode = replaceMode).flatMap{ _ =>
+          spinCheck(100.millis, true)(Http.get(path, queryParams = "format"->"ntriples" :: Nil))(_.payload.contains("v2")).
             map(_.payload should startWith("<http:"))
+        }
+      }
+
+      secondVersion.flatMap { _ =>
+        post(version("https", 3), replaceMode = replaceMode).flatMap{ _ =>
+          spinCheck(100.millis, true)(Http.get(path, queryParams = "format"->"ntriples" :: Nil))(_.payload.contains("v3")).
+            map(_.payload should startWith("<https:"))
         }
       }
     }
@@ -266,10 +266,20 @@ class HttpsTests extends AsyncFunSpec with Matchers with Helpers with Inspectors
       }
     }
 
+    val search = {
+      ingest.flatMap{ _ =>
+          spinCheck(100.millis, true)(Http.get(path, queryParams = Seq("op"->"stream", "qp"->"system.protocol::https")))(
+            _.payload.nonEmpty).flatMap(_.payload shouldNot be(empty)
+          )
+        }
+      }
+
+
     it("should preserve https protocol from ingest to _out")(inAndOut)
     it("should change protocol in each ingested version accordingly")(versions(replaceMode = false))
     it("should change protocol in each ingested version accordingly, but with replace-mode")(versions(replaceMode = true))
     it("should get https data when using _sp API")(_sp)
     it("should allow changing protocol upon a Null Update")(nullUpdate)
+    it("should support search protocol system field")(search)
   }
 }

@@ -155,7 +155,7 @@ object JsonSerializerForES extends AbstractJsonSerializer with NsSplitter with L
     if (current) jsonGenerator.writeBooleanField("current", true)
     else jsonGenerator.writeBooleanField("current", false)
 
-    infoton.protocol.foreach(jsonGenerator.writeStringField("protocol", _))
+    jsonGenerator.writeStringField("protocol", infoton.protocol.getOrElse("http"))
 
     jsonGenerator.writeEndObject() // end system object field
     // write field object, if not empty
