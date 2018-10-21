@@ -179,7 +179,7 @@ object CrawlerStream extends LazyLogging {
     def alterCommandLastModifiedDate(cmd: SingleCommand, newDate: DateTime) = {
       cmd match {
         case c@WriteCommand(infoton, _, _) => c.copy(infoton = infoton.copyInfoton(lastModified = newDate))
-        case c@DeleteAttributesCommand(_, _, _, _, _) => c.copy(lastModified = newDate)
+        case c@DeleteAttributesCommand(_, _, _, _, _, _) => c.copy(lastModified = newDate)
         case c@DeletePathCommand(_, _, _, _) => c.copy(lastModified = newDate)
         case c@UpdatePathCommand(_, _, _, _, _, _, _) => c.copy(lastModified = newDate)
         case c@OverwriteCommand(infoton, _) => c.copy(infoton = infoton.copyInfoton(lastModified = newDate))

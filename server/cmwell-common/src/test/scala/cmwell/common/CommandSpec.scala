@@ -50,7 +50,8 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
     val cmdDeletePathAttributeValues = DeleteAttributesCommand(
       "/command-test/deletePath",
       Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))),
-      new DateTime)
+      new DateTime,
+      protocol = None)
 
     // TODO : need to understand way the next test are having problem when adding the line to the test.
     //val cmdMerged1 = MergedInfotonCommand( None , "/command-test/mergedPath")
@@ -88,18 +89,18 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
       val cmpCommand = CommandSerializer.decode(payload)
 
       cmpCommand match {
-        case WriteCommand(infoton, trackingID, prevUUID) =>
+        case WriteCommand(infoton, _, _) =>
           infoton.path should equal(objInfo.path)
           infoton.fields.get("name").size should equal(objInfo.fields.get("name").size)
           infoton.lastModified.isEqual(objInfo.lastModified) should equal(true)
-        case DeleteAttributesCommand(path, fields, lastModified, trackingID, prevUUID) => path should equal(cmdDeletePathAttributeValues.path)
-        case DeletePathCommand(path, lastModified, trackingID, prevUUID) => path should equal(cmdDeletePath.path)
-        case UpdatePathCommand(path, d_f, u_f, lm, trackingID, prevUUID, protocol) =>
+        case DeleteAttributesCommand(path, _, _, _, _, _) => path should equal(cmdDeletePathAttributeValues.path)
+        case DeletePathCommand(path, _, _, _) => path should equal(cmdDeletePath.path)
+        case UpdatePathCommand(path, d_f, u_f, lm, _, _, _) =>
           path should equal(cmdUpdate.path)
           d_f.size should equal(cmdUpdate.deleteFields.size)
           u_f.size should equal(cmdUpdate.updateFields.size)
           lm.getMillis should equal(cmdUpdate.lastModified.getMillis)
-        case OverwriteCommand(_, trackingID) => ??? //TODO: add tests for OverwriteCommand
+        case OverwriteCommand(_, _) => ??? //TODO: add tests for OverwriteCommand
         case x @ (CommandRef(_) | HeartbitCommand | IndexExistingInfotonCommand(_, _, _, _, _) | IndexExistingInfotonCommandForIndexer(_, _, _, _, _, _) |
                   IndexNewInfotonCommand(_, _, _, _, _, _) | IndexNewInfotonCommandForIndexer(_, _, _, _, _, _, _) | NullUpdateCommandForIndexer(_, _, _, _, _))
           => logger.error(s"Unexpected cmpCommand. Received: $x"); ???

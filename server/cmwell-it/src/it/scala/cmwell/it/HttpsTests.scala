@@ -207,7 +207,7 @@ class HttpsTests extends AsyncFunSpec with Matchers with Helpers with Inspectors
 
       def validateMetaNs = if(replaceMode)
         spinCheck(100.millis, true)(
-          Http.get(cmw / "meta" / "ns", queryParams = Seq("op"->"stream", "qp"->"url::https://example9.org/ont999/prdct"))
+          Http.get(cmw / "meta" / "ns", queryParams = Seq("op"->"stream", "qp"->"url::https://example9.org/ont999/"))
         )(
           _.payload.trim.lines.nonEmpty
         ).map(_ => ()) else Future.successful(())
@@ -249,9 +249,27 @@ class HttpsTests extends AsyncFunSpec with Matchers with Helpers with Inspectors
       }
     }
 
+    val nullUpdate = {
+      val path = cmw / "example777.org" / "null-update"
+      val data = (protocol:String) => s"""<$protocol://example777.org/null-update> <https://example7.org/ont777/prdct> "same value" ."""
+      post(data("http")).flatMap { _ => spinCheck(100.millis, true)(Http.get(path))(_.status == 200) }.flatMap { _ =>
+       post(data("https")).flatMap { _ =>
+         spinCheck(100.millis, true)(Http.get(path, queryParams = Seq("with-history" -> "", "format" -> "ntriples")))(
+           _.payload.lines.count(line => !line.contains("meta/sys")) == 2
+         ).map { resp =>
+           val historicalVersions = resp.payload.lines.filterNot(_.contains("meta/sys")).toList
+           historicalVersions.length should be(2)
+           forExactly(1, historicalVersions)(_ should startWith("<http:"))
+           forExactly(1, historicalVersions)(_ should startWith("<https:"))
+         }
+       }
+      }
+    }
+
     it("should preserve https protocol from ingest to _out")(inAndOut)
     it("should change protocol in each ingested version accordingly")(versions(replaceMode = false))
     it("should change protocol in each ingested version accordingly, but with replace-mode")(versions(replaceMode = true))
     it("should get https data when using _sp API")(_sp)
+    it("should allow changing protocol upon a Null Update")(nullUpdate)
   }
 }

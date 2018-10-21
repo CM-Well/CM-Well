@@ -355,25 +355,25 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       }
   }
 
-  def deleteInfotons(deletes: List[(String, Option[Map[String, Set[FieldValue]]])],
+  def deleteInfotons(deletes: List[(String, Option[String], Option[Map[String, Set[FieldValue]]])],
                      tidOpt: Option[String] = None,
                      atomicUpdates: Map[String, String] = Map.empty,
                      isPriorityWrite: Boolean = false) = {
     val dt = new DateTime()
     val commands: List[SingleCommand] = deletes.map {
-      case (path, Some(fields)) =>
-        DeleteAttributesCommand(path, fields, dt, validTid(path, tidOpt), atomicUpdates.get(path))
-      case (path, None) => DeletePathCommand(path, dt, validTid(path, tidOpt), atomicUpdates.get(path))
+      case (path, protocol, Some(fields)) =>
+        DeleteAttributesCommand(path, fields, dt, validTid(path, tidOpt), atomicUpdates.get(path), protocol)
+      case (path, _, None) => DeletePathCommand(path, dt, validTid(path, tidOpt), atomicUpdates.get(path))
     }
 
     Future.traverse(commands)(sendToKafka(_, isPriorityWrite)).map(_ => true)
   }
 
-  def deleteInfoton(path: String, data: Option[Map[String, Set[FieldValue]]], isPriorityWrite: Boolean = false) = {
+  def deleteInfoton(path: String, protocol: Option[String], data: Option[Map[String, Set[FieldValue]]], isPriorityWrite: Boolean = false) = {
 
     val delCommand = data match {
       case None         => DeletePathCommand(path, new DateTime())
-      case Some(fields) => DeleteAttributesCommand(path, fields, new DateTime())
+      case Some(fields) => DeleteAttributesCommand(path, fields, new DateTime(), protocol = protocol)
     }
 
     val payload = CommandSerializer.encode(delCommand)

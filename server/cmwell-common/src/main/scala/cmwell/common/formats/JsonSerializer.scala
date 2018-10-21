@@ -196,10 +196,11 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
         jsonGenerator.writeStringField("indexName", indexName)
         jsonGenerator.writeFieldName("persistOffsets")
         encodeOffsetSeqWithGenerator(persistOffsets, jsonGenerator)
-      case DeleteAttributesCommand(path, fields, lastModified, trackingID, prevUUID) =>
+      case DeleteAttributesCommand(path, fields, lastModified, trackingID, prevUUID, protocol) =>
         jsonGenerator.writeStringField("path", path)
         encodeFieldsWithGenerator(fields, jsonGenerator)
         jsonGenerator.writeStringField("lastModified", dateFormatter.print(lastModified))
+        protocol.foreach(jsonGenerator.writeStringField("protocol", _))
       case DeletePathCommand(path, lastModified, trackingID, prevUUID) =>
         jsonGenerator.writeStringField("path", path)
         jsonGenerator.writeStringField("lastModified", dateFormatter.print(lastModified))

@@ -230,6 +230,7 @@ sealed trait Infoton extends Formattable { self =>
   def isSameAs(that: Infoton) = {
     this.uuid == that.uuid || (
       this.kind == that.kind &&
+      this.protocol == that.protocol &&
       this.fields == that.fields &&
       this.extraBytesForDigest == that.extraBytesForDigest
     )

@@ -600,7 +600,7 @@ callback=< [URL] >
             case Some(jsonStr) =>
               jsonToFields(jsonStr.getBytes("UTF-8")) match {
                 case Success(fields) =>
-                  crudServiceFS.deleteInfoton(normalizedPath, Some(fields), isPriorityWrite).map { _ =>
+                  crudServiceFS.deleteInfoton(normalizedPath, None, Some(fields), isPriorityWrite).map { _ =>
                     Ok(Json.obj("success" -> true))
                   }
                 case Failure(exception) => asyncErrorHandler(exception)
@@ -625,7 +625,7 @@ callback=< [URL] >
                 (fields.isDefined, either) match {
                   case (true, _) =>
                     crudServiceFS
-                      .deleteInfoton(normalizedPath, fields, isPriorityWrite)
+                      .deleteInfoton(normalizedPath, None, fields, isPriorityWrite)
                       .onComplete {
                         case Success(b) => p.success(Ok(Json.obj("success" -> b)))
                         case Failure(e) =>
@@ -633,7 +633,7 @@ callback=< [URL] >
                       }
                   case (false, Right(paths)) =>
                     crudServiceFS
-                      .deleteInfotons(paths.map(_ -> None).toList, isPriorityWrite = isPriorityWrite)
+                      .deleteInfotons(paths.map((_, None, None)).toList, isPriorityWrite = isPriorityWrite)
                       .onComplete {
                         case Success(b) => p.success(Ok(Json.obj("success" -> b)))
                         case Failure(e) =>

@@ -549,8 +549,8 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                     )
 
                     val to = tidOpt.map(_.token)
-                    val d1 = crudService.deleteInfotons(dontTrack.map(_ -> None), isPriorityWrite = isPriorityWrite)
-                    val d2 = crudService.deleteInfotons(track.map(_ -> None), to, atomicUpdates, isPriorityWrite)
+                    val d1 = crudService.deleteInfotons(dontTrack.map((_, None, None)), isPriorityWrite = isPriorityWrite)
+                    val d2 = crudService.deleteInfotons(track.map((_, None, None)), to, atomicUpdates, isPriorityWrite)
 
                     d1.zip(d2).flatMap {
                       case (b01, b02) =>
