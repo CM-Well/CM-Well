@@ -101,7 +101,7 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
 
   type ErrorMessage = String
 
-  def findValidRange(thinSearchParams: ThinSearchParams, from: Long, threshold: Long, timeout: FiniteDuration)(
+  def findValidRange(thinSearchParams: ThinSearchParams, from: Long, threshold: Long, timeout: FiniteDuration, debugInfo: Boolean)(
     implicit ec: ExecutionContext
   ): Future[CurrRangeForConsumption] = {
 
@@ -119,7 +119,8 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
           paginationParams = paginationParamsForSingleResultWithOffset,
           withHistory = h,
           fieldSortParams = SortParam.indexTimeAscending,
-          withDeleted = d
+          withDeleted = d,
+          debugInfo = debugInfo
         )
         .map {
           case SearchThinResults(_, _, _, results, _) =>
@@ -139,7 +140,8 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
             fieldFilters = Option(ffs),
             paginationParams = paginationParamsForSingleResult,
             withHistory = h,
-            withDeleted = d
+            withDeleted = d,
+            debugInfo = debugInfo
           )
           .map(_.total)
       }
@@ -161,7 +163,8 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
     withHistory: Boolean,
     withDeleted: Boolean,
     path: Option[String],
-    chunkSizeHint: Long
+    chunkSizeHint: Long,
+    debugInfo: Boolean
   )(implicit ec: ExecutionContext): Future[(BulkConsumeState, Option[Long])] = {
 
     val pf = createPathFilter(path, recursive)
@@ -173,7 +176,8 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
           paginationParams = paginationParamsForSingleResult,
           withHistory = withHistory,
           fieldSortParams = SortParam.indexTimeAscending,
-          withDeleted = withDeleted
+          withDeleted = withDeleted,
+          debugInfo = debugInfo
         )
         .flatMap {
           case SearchThinResults(_, _, _, results, _) => {
@@ -191,7 +195,8 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
               findValidRange(thinSearchParams,
                              i.indexTime,
                              threshold = chunkSizeHint,
-                             timeout = cmwell.ws.Settings.consumeBulkBinarySearchTimeout).map {
+                             timeout = cmwell.ws.Settings.consumeBulkBinarySearchTimeout,
+                             debugInfo = debugInfo).map {
                 case CurrRangeForConsumption(f, t, tOpt) =>
                   BulkConsumeState(f, Some(t), path, withHistory, withDeleted, recursive, chunkSizeHint, ff) -> tOpt
               }
@@ -212,7 +217,8 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
       findValidRange(thinSearchParams,
                      from,
                      threshold = chunkSizeHint,
-                     timeout = cmwell.ws.Settings.consumeBulkBinarySearchTimeout)
+                     timeout = cmwell.ws.Settings.consumeBulkBinarySearchTimeout,
+                     debugInfo = debugInfo)
         .map {
           case CurrRangeForConsumption(f, t, tOpt) =>
             BulkConsumeState(f, Some(t), path, withHistory, withDeleted, recursive, chunkSizeHint, ff) -> tOpt
@@ -284,6 +290,8 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
 
   def handle(request: Request[AnyContent]): Future[Result] = {
 
+    val debugInfo = request.queryString.keySet("debug-info")
+
     def wasSupplied(queryParamKey: String) = request.queryString.keySet(queryParamKey)
 
     val currStateEither = request
@@ -310,7 +318,7 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
             .decode[BulkConsumeState](pos)
             .map(bcs => bcs.copy(to = bcs.to.orElse(request.getQueryString("to-hint").flatMap(asLong)))) match {
             case Success(state @ BulkConsumeState(f, None, path, h, d, r, lengthHint, qpOpt)) =>
-              Right(retrieveNextState(qpOpt, f, r, h, d, path, lengthHint))
+              Right(retrieveNextState(qpOpt, f, r, h, d, path, lengthHint, debugInfo))
             case Success(state @ BulkConsumeState(_, Some(t), _, _, _, _, _, _)) =>
               Right(Future.successful(state -> None))
             case Failure(err) =>
@@ -325,7 +333,7 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
         stateFuture
           .flatMap {
             case (state @ BulkConsumeState(from, Some(to), path, h, d, r, threshold, ffOpt), nextTo) => {
-              if (request.queryString.keySet("debug-info")) {
+              if (debugInfo) {
                 logger.info(s"""The search params:
                            |path             = $path,
                            |from             = $from,

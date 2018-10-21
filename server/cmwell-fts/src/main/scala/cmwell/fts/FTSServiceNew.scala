@@ -464,7 +464,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
 
     applySortToRequest(sortParams, request)
 
-    applyFiltersToRequest(request, pathFilter, fieldsFilter, datesFilter, withDeleted)
+    applyFiltersToRequest(request, pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted)
 
     logRequest("fullSearch", pathFilter.toString, fieldsFilter.toString)
 
