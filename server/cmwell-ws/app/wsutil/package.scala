@@ -449,8 +449,8 @@ package object wsutil extends LazyLogging {
   case class PathsExpansion(paths: List[PathExpansion])
 
   //Some convenience methods & types
-  def getByPath(path: String, crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionContext): Future[Infoton] =
-    crudServiceFS.irwService.readPathAsync(path, crudServiceFS.level).map(_.getOrElse(GhostInfoton(path)))
+  def getByPath(protocol: String, path: String, crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionContext): Future[Infoton] =
+    crudServiceFS.irwService.readPathAsync(path, crudServiceFS.level).map(_.getOrElse(GhostInfoton.ghost(protocol, path)))
   type F[X] = (X, Option[List[RawFieldFilter]])
   type EFX = Either[F[Future[Infoton]], F[Infoton]]
 
@@ -566,11 +566,11 @@ package object wsutil extends LazyLogging {
             case (func, _) if !func(fieldName) => Nil
             case (_, rffo) =>
               values.collect {
-                case fr: FReference => normalizePath(fr.getCmwellPath) -> rffo
-              }(breakOut[Set[FieldValue], (String, Option[RawFieldFilter]), List[(String, Option[RawFieldFilter])]])
+                case fr: FReference => (fr.getProtocol -> normalizePath(fr.getCmwellPath)) -> rffo
+              }(breakOut[Set[FieldValue], ((String,String), Option[RawFieldFilter]), List[((String,String), Option[RawFieldFilter])]])
           }
       }(
-        breakOut[Map[String, Set[FieldValue]], (String, Option[RawFieldFilter]), List[(String, Option[RawFieldFilter])]]
+        breakOut[Map[String, Set[FieldValue]], ((String,String), Option[RawFieldFilter]), List[((String,String), Option[RawFieldFilter])]]
       )
 
       // value are `Option[List[...]]` because `None` means no filtering (pass all)
@@ -579,8 +579,8 @@ package object wsutil extends LazyLogging {
 
       // get infotons from either `infotonsRetrievedCache` or from cassandra, and pair with filters option
       val (l, r) = partitionWith(pathToFiltersMap) {
-        case (path, rffso) => {
-          infotonsRetrievedCache.get(path).fold[EFX](Left(getByPath(path, cmwellRDFHelper.crudServiceFS) -> rffso)) {
+        case ((protocol,path), rffso) => {
+          infotonsRetrievedCache.get(path).fold[EFX](Left(getByPath(protocol, path, cmwellRDFHelper.crudServiceFS) -> rffso)) {
             i =>
               Right(i -> rffso)
           }
@@ -630,7 +630,7 @@ package object wsutil extends LazyLogging {
 
     def mkFieldFilters2(ff: FilteredField[FieldKeyPattern],
                         outerFieldOperator: FieldOperator,
-                        paths: List[String]): Future[FieldFilter] = {
+                        pathsAndProtocols: List[(String,String)]): Future[FieldFilter] = {
 
       val FilteredField(fkp, rffo) = ff
       val internalFieldNameFut = fkp match {
@@ -638,7 +638,7 @@ package object wsutil extends LazyLogging {
         case FieldKeyPattern(Left(unfk)) => FieldKey.resolve(unfk, cmwellRDFHelper, timeContext).map(_.internalKey)
       }
       val filterFut: Future[FieldFilter] = internalFieldNameFut.map { internalFieldName =>
-        if(paths.isEmpty) {
+        if(pathsAndProtocols.isEmpty) {
           val sb = new StringBuilder
           sb ++= "empty urls in expandUp("
           sb ++= filteredFields.toString
@@ -660,7 +660,8 @@ package object wsutil extends LazyLogging {
           sb += ']'
           throw new IllegalStateException(sb.result())
         } else {
-          val shoulds = paths.flatMap(pathToUris).map(url => SingleFieldFilter(Should, Equals, internalFieldName, Some(url)))
+          val shoulds = pathsAndProtocols.flatMap { case (path,protocol) => pathToUris(protocol, path) }.
+            map(url => SingleFieldFilter(Should, Equals, internalFieldName, Some(url)))
           MultiFieldFilter(rffo.fold[FieldOperator](outerFieldOperator)(_ => Must), shoulds)
         }
       }
@@ -673,7 +674,7 @@ package object wsutil extends LazyLogging {
 
     Future
       .traverse(population.grouped(chunkSize)) { infotonsChunk =>
-        val paths: List[String] = infotonsChunk.map(_.path)(breakOut)
+        val pathsAndProtocols: List[(String,String)] = infotonsChunk.map(i => i.path -> i.protocol.getOrElse("http"))(breakOut)
 
         val fieldFilterFut = filteredFields match {
           case Nil =>
@@ -681,8 +682,8 @@ package object wsutil extends LazyLogging {
             val c = cache.size
             val p = population.size
             throw new IllegalStateException(s"expandUp($filteredFields,population[size=$p],cache[size=$c])\nfor pattern: $pattern\nand infotons.take(3) = $i")
-          case ff :: Nil => mkFieldFilters2(ff, Must, paths)
-          case _         => Future.traverse(filteredFields)(mkFieldFilters2(_, Should, paths)).map(MultiFieldFilter(Must, _))
+          case ff :: Nil => mkFieldFilters2(ff, Must, pathsAndProtocols)
+          case _         => Future.traverse(filteredFields)(mkFieldFilters2(_, Should, pathsAndProtocols)).map(MultiFieldFilter(Must, _))
         }
         fieldFilterFut.transformWith {
           case Failure(_: NoSuchElementException) => Future.successful(Nil -> Nil)
@@ -930,8 +931,9 @@ package object wsutil extends LazyLogging {
 
   def isPathADomain(path: String): Boolean = path.dropWhile(_ == '/').takeWhile(_ != '/').contains('.')
 
-  def pathToUris(path: String): Seq[String] = {
-    if(isPathADomain(path)) List(s"http:/$path", s"https:/$path")
+  def pathToUris(protocol: String, path: String): Seq[String] = {
+    if (isPathADomain(path))
+      List(s"http:/$path", s"https:/$path") //TODO When it is safe to undo WombatUpdate2, return this: s"$protocol:/$path"
     else List(s"cmwell:/$path")
   }
 

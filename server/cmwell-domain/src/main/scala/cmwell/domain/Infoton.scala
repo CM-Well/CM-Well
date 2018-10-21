@@ -148,7 +148,7 @@ sealed trait Infoton extends Formattable { self =>
                           ci.total,
                           ci.indexName,
                           ci.protocol) { override def uuid = forcedUuid }
-    case gi: GhostInfoton => new GhostInfoton(gi.path) { override def uuid = forcedUuid }
+    case gi: GhostInfoton => new GhostInfoton(gi.path, protocol = gi.protocol) { override def uuid = forcedUuid }
   }
 
   def uuid = uuid_
@@ -354,16 +354,16 @@ case class DeletedInfoton(path: String,
   override def protocol: Option[String] = None
 }
 
-case class GhostInfoton(path: String, indexName: String = "") extends Infoton {
+case class GhostInfoton(path: String, indexName: String = "", protocol: Option[String]) extends Infoton {
   override def lastModified: DateTime = GhostInfoton.zeroTime
   override def dc: String = "N/A"
   override def indexTime: Option[Long] = None
   override protected def getMasked(fieldsMask: Set[String]): Infoton = this
-  override def protocol: Option[String] = None
 }
 
 object GhostInfoton {
-  def ghost(path: String): Infoton = GhostInfoton(path)
+  def ghost(path: String): Infoton = GhostInfoton(path, "", None)
+  def ghost(protocol: String, path: String): Infoton = GhostInfoton(path, protocol = Some(protocol))
   val zeroTime = new DateTime(0L)
 }
 
@@ -744,6 +744,8 @@ case class FReference(value: String, quad: Option[String]) extends FieldValue wi
 
   override def compareToString(unparsedValue: String): Try[Int] =
     Try(Ordering.String.compare(value, unparsedValue))
+
+  def getProtocol: String = value.takeWhile(':'.!=)
 }
 
 object FReference {
