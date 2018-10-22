@@ -39,20 +39,20 @@ class FormatsSpec extends FunSpec with Matchers with Helpers {
         "dc_test",
         None,
         date,
-        defaultFields),
+        defaultFields, None),
       'objectInfotonWithQuads -> ObjectInfoton(
         "objectInfotonWithQuads",
         "dc_test",
         None,
         date,
-        Map("field1"->Set[FieldValue](FString("value1", None, Some("spiderman"))))),
+        Map("field1"->Set[FieldValue](FString("value1", None, Some("spiderman")))), None),
       'fileInfoton -> FileInfoton(
         "fileInfoton",
         "dc_test",
         None,
         date,
         defaultFields,
-        FileContent("CAFEBABE".getBytes("UTF8"), "application/java-byte-code")),
+        FileContent("CAFEBABE".getBytes("UTF8"), "application/java-byte-code"), None),
       'compoundInfoton -> CompoundInfoton(
         "compoundInfoton",
         "dc_test",

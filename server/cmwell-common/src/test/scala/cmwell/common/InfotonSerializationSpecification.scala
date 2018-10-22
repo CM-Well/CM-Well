@@ -59,7 +59,7 @@ object InfotonSerializationSpecification extends Properties("Infoton") {
       Map[String,Set[FieldValue]]() ++ m
     }
     iType match {
-      case 0 => ObjectInfoton(path.mkString("/", "/", ""),"dc_test", None, mkFields)
+      case 0 => ObjectInfoton(path.mkString("/", "/", ""),"dc_test", None, mkFields, None)
       case 1 => {
         val (content, mimeType): Tuple2[Array[Byte],String] = scala.util.Random.nextBoolean() match{
           case true => (txtVal.getBytes("UTF-8"),"text/plain")

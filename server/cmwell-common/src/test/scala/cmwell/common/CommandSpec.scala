@@ -37,12 +37,12 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
     System.setProperty("dataCenter.id", "dc_test")
     //Log.TRACE() turns on logging of chill
     // create object infoton
-    val objInfo = ObjectInfoton("/command-test/objinfo1", "dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))))
+    val objInfo = ObjectInfoton("/command-test/objinfo1", "dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), None)
     // create all commands case classes for serialization testing
     // scalastyle:off
-    val linkInfo01 = LinkInfoton("/command-test/objinfo1", "dc_test", Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), "/mark", LinkType.Forward)
-    val linkInfo02 = LinkInfoton("/command-test/objinfo1", "dc_test", Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), "/mark", LinkType.Permanent)
-    val linkInfo03 = LinkInfoton("/command-test/objinfo1", "dc_test", Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), "/mark", LinkType.Temporary)
+    val linkInfo01 = LinkInfoton("/command-test/objinfo1", "dc_test", Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), "/mark", LinkType.Forward, None)
+    val linkInfo02 = LinkInfoton("/command-test/objinfo1", "dc_test", Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), "/mark", LinkType.Permanent, None)
+    val linkInfo03 = LinkInfoton("/command-test/objinfo1", "dc_test", Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), "/mark", LinkType.Temporary, None)
     // scalastyle:on
 
     val cmdWrite = WriteCommand(objInfo)
@@ -124,7 +124,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
       "other-dc",
       Some(12345L),
       new DateTime("2015-02-25T16:03:57.216Z", DateTimeZone.UTC),
-      Map("enemyOf.rel" -> Set[FieldValue](FString("green-goblin")))))
+      Map("enemyOf.rel" -> Set[FieldValue](FString("green-goblin"))), None))
     val payload: Array[Byte] = CommandSerializer.encode(owcmd)
     val cmpCommand = CommandSerializer.decode(payload)
     val owc = cmpCommand.asInstanceOf[OverwriteCommand]
@@ -142,7 +142,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
       "dc",
       None,
       DateTime.now(DateTimeZone.UTC),
-      Map("a" -> Set[FieldValue](FString("b"))))
+      Map("a" -> Set[FieldValue](FString("b"))), protocol = None)
     val indexCommand = IndexNewInfotonCommand(infoton.uuid, true, infoton.path, Some(infoton), "someIndexName")
     val payload = CommandSerializer.encode(indexCommand)
     val decodedCommand = CommandSerializer.decode(payload).asInstanceOf[IndexNewInfotonCommand]
@@ -155,7 +155,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
       "dc",
       None,
       DateTime.now(DateTimeZone.UTC),
-      Map("a" -> Set[FieldValue](FString("b"))))
+      Map("a" -> Set[FieldValue](FString("b"))), protocol = None)
     val indexCommand = IndexNewInfotonCommand(infoton.uuid, true, infoton.path, None, "someIndexName")
     val payload = CommandSerializer.encode(indexCommand)
     val decodedCommand = CommandSerializer.decode(payload).asInstanceOf[IndexNewInfotonCommand]
@@ -168,7 +168,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
       "dc",
       None,
       DateTime.now(DateTimeZone.UTC),
-      Map("a" -> Set[FieldValue](FString("b"))))
+      Map("a" -> Set[FieldValue](FString("b"))), protocol = None)
     val offsets: Seq[Offset] = Seq(
       PartialOffset("blahTopic", 98253344, 3, 4),
       CompleteOffset("blahTopic2", 498273923)
@@ -185,7 +185,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
       "dc",
       None,
       DateTime.now(DateTimeZone.UTC),
-      Map("a" -> Set[FieldValue](FString("b"))))
+      Map("a" -> Set[FieldValue](FString("b"))), protocol = None)
     val offsets: Seq[Offset] = Seq(
       PartialOffset("blahTopic", 98253344, 3, 4),
       CompleteOffset("blahTopic2", 498273923)
@@ -233,7 +233,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
       "dc_test",
       None,
       DateTime.now(DateTimeZone.UTC),
-      Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))))
+      Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))), protocol = None)
     val wCommand = WriteCommand(objInfot, Some("sweet_kids"))
     val eCommand = CommandSerializer.encode(wCommand)
     val dCommand = CommandSerializer.decode(eCommand).asInstanceOf[WriteCommand]
@@ -246,7 +246,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
       "dc_test",
       None,
       DateTime.now(DateTimeZone.UTC),
-      Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))))
+      Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))), protocol = None)
     val iCommand = IndexNewInfotonCommand(objInfot.uuid, true, objInfot.path, None, "", Seq(StatusTracking("sweet", 2), StatusTracking("kids", 1)))
     val eCommand = CommandSerializer.encode(iCommand)
     val dCommand = CommandSerializer.decode(eCommand).asInstanceOf[IndexNewInfotonCommand]
@@ -259,7 +259,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
       "dc_test",
       None,
       DateTime.now(DateTimeZone.UTC),
-      Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))))
+      Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))), protocol = None)
     val wCommand = WriteCommand(objInfot, None, Some("0123456789abcdef0123456789abcdef"))
     val eCommand = CommandSerializer.encode(wCommand)
     val dCommand = CommandSerializer.decode(eCommand).asInstanceOf[WriteCommand]
@@ -272,7 +272,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
       "dc_test",
       None,
       DateTime.now(DateTimeZone.UTC),
-      Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))))
+      Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))), protocol = None)
     val wCommand = WriteCommand(objInfot, Some("cute_kids"), Some("0123456789abcdef0123456789abcdef"))
     val eCommand = CommandSerializer.encode(wCommand)
     val dCommand = CommandSerializer.decode(eCommand).asInstanceOf[WriteCommand]

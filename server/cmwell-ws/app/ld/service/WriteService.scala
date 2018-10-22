@@ -30,7 +30,7 @@ import scala.concurrent.Future
 object WriteService {
 
   val invalidFormatMessage = "Your request should contains either format param (rdfxml, n3, ntriples, turtle,jsonld, nquads,trig ) or content-type header" +
-    " (application/rdf+xml, text/n3, text/plain, " +
+    " (application/rdf+xml,0rewqa text/n3, text/plain, " +
     "text/turtle, application/ld+json,application/json, application/n-quads,text/x-nquads, application/trig)."
 
   def handleFormatByFormatParameter(cmwellRDFHelper: CMWellRDFHelper,

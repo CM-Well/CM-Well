@@ -81,7 +81,7 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
   "bulk write and read" should "be successful" in {
 
     val data = Vector.tabulate(10) { i =>
-      ObjectInfoton("/cmt/cm/bulk-test/objinfo_" + i, "dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))))
+      ObjectInfoton("/cmt/cm/bulk-test/objinfo_" + i, "dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), None)
     }
 
     irw.writeSeqAsync(data).flatMap { _ =>
@@ -138,7 +138,8 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
     // scalastyle:on
     val c = new Base64().decode(content)
     val fileContent = FileContent(c, "image/png")
-    val fileInfo = FileInfoton("/irw/command-test/file_1","dc_test", Some(666L), Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))) , fileContent)
+    val fileInfo = FileInfoton("/irw/command-test/file_1","dc_test", Some(666L),
+      Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))) , fileContent, None)
 
     for {
       _ <- irw.writeAsync(fileInfo)
@@ -173,7 +174,7 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
     val objInfo = ObjectInfoton(
       "/irw/utf8/objinfo_1","dc_test",
       None,
-      Map("name" -> Set[FieldValue](FString("罗湖区南湖路国贸商业大厦28-30楼\"@ese"), FString("罗湖区南湖路国贸商业大厦30楼a、B\"@ese"))))
+      Map("name" -> Set[FieldValue](FString("罗湖区南湖路国贸商业大厦28-30楼\"@ese"), FString("罗湖区南湖路国贸商业大厦30楼a、B\"@ese"))), None)
     for {
       _ <- irw.writeAsync(objInfo)
       cmpObjInfo <- irw.readUUIDAsync(objInfo.uuid)
@@ -188,7 +189,7 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
   }
 
   "object write and read" should "be successful" in {
-    val objInfo = ObjectInfoton("/irw/command-test/objinfo_1", "dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))))
+    val objInfo = ObjectInfoton("/irw/command-test/objinfo_1", "dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), None)
 
     val f1 = for {
       _ <- irw.writeAsync(objInfo)
@@ -214,7 +215,8 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
       "/irw/command-test/objinfo_1",
       "dc_test",
       None,
-      Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"), FString("rony"))))
+      Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"), FString("rony"))),
+      None)
 
     val f2 = for {
       _ <- f1
@@ -255,7 +257,7 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
       s"field$n" -> Set[FieldValue](FString(s"value$n"))
     }.toMap
 
-    val fatFoton = ObjectInfoton("/irw/xyz/fatfoton1", "dc_test", None, lotsOfFields)
+    val fatFoton = ObjectInfoton("/irw/xyz/fatfoton1", "dc_test", None, lotsOfFields, None)
 
     irw.writeAsync(fatFoton).flatMap{ _ =>
       scheduleFuture(10.seconds) {
@@ -270,7 +272,7 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
 
   "object write and update indexTime" should "be successful" in {
     import scala.concurrent.duration._
-    val objInfo = ObjectInfoton("/irw/command-test/JohnSmith","dc_test", None, Map("status" -> Set[FieldValue](FString("R.I.P"))))
+    val objInfo = ObjectInfoton("/irw/command-test/JohnSmith","dc_test", None, Map("status" -> Set[FieldValue](FString("R.I.P"))), None)
     val idxT = 1234567891011L
 
     for {

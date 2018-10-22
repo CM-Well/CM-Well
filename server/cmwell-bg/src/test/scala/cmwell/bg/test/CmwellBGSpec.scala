@@ -384,7 +384,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
 
     val markInfotonAsHistory = executeAfterCompletion(indexAllInfotons){
       val writeCommand =
-        WriteCommand(ObjectInfoton("/cmt/cm/bg-test1/info1", "dc", None, Map("i" -> Set(FieldValue("phone")))))
+        WriteCommand(ObjectInfoton("/cmt/cm/bg-test1/info1", "dc", None, Map("i" -> Set(FieldValue("phone"))), None))
       val pRecord = new ProducerRecord[Array[Byte], Array[Byte]]("persist_topic", CommandSerializer.encode(writeCommand))
       sendToKafkaProducer(pRecord).flatMap { recordMetadata =>
         scheduleFuture(5.seconds) {
@@ -564,7 +564,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
         s"field$n" -> Set[FieldValue](FString(s"value$n"))
       }.toMap
 
-      val fatFoton = ObjectInfoton("/cmt/cm/bg-test-fat/fatfoton1", "dcc", None, lotsOfFields)
+      val fatFoton = ObjectInfoton("/cmt/cm/bg-test-fat/fatfoton1", "dcc", None, lotsOfFields, None)
 
       // make kafka record out of the infoton
       val pRecord = {
