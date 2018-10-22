@@ -52,7 +52,8 @@ case class DeleteAttributesCommand(path: String,
                                    fields: Map[String, Set[FieldValue]],
                                    lastModified: DateTime,
                                    trackingID: Option[String] = None,
-                                   prevUUID: Option[String] = None)
+                                   prevUUID: Option[String] = None,
+                                   protocol: Option[String])
   extends SingleCommand
 
 case class DeletePathCommand(path: String,
@@ -69,7 +70,8 @@ case class UpdatePathCommand(path: String,
                              updateFields: Map[String, Set[FieldValue]],
                              lastModified: DateTime,
                              trackingID: Option[String] = None,
-                             prevUUID: Option[String] = None)
+                             prevUUID: Option[String] = None,
+                             protocol: Option[String] = None)
   extends SingleCommand
 
 case class OverwriteCommand(infoton: Infoton, trackingID: Option[String] = None) extends SingleCommand {

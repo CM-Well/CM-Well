@@ -798,7 +798,7 @@ ${lines.mkString("\n")}
             .map(
               dc =>
                 VirtualInfoton(
-                  ObjectInfoton(s"/proc/dc/$dc", dc, None, d, None)
+                  ObjectInfoton(s"/proc/dc/$dc", dc, None, d, None, protocol = None)
                 ).getInfoton
             )
         Some(
@@ -812,7 +812,8 @@ ${lines.mkString("\n")}
               dcKids.slice(offset, offset + length),
               offset,
               length,
-              dcKids.size
+              dcKids.size,
+              protocol = None
             )
           )
         )
@@ -824,7 +825,7 @@ ${lines.mkString("\n")}
       crudServiceFS
         .getInfotonByPathAsync(s"/meta/sys/dc/$dcId")
         .flatMap {
-          case FullBox(ObjectInfoton(_, _, _, _, Some(fields), _)) =>
+          case FullBox(ObjectInfoton(_, _, _, _, Some(fields), _, _)) =>
             // the user just gave the id (e.g. from the ui) and there should be an active sync of it.
             // Give the information according to the sync currently running.
             val id = fields("id").headOption.collect {
@@ -877,19 +878,20 @@ ${lines.mkString("\n")}
               pk.slice(offset, offset + length),
               offset,
               min(pk.drop(offset).size, length),
-              pk.size
+              pk.size,
+              protocol = None
             )
           )
         )
       }
       case "/proc/node" =>
-        Some(VirtualInfoton(ObjectInfoton(path, dc, None, d, nodeValFields)))
+        Some(VirtualInfoton(ObjectInfoton(path, dc, None, d, nodeValFields, protocol = None)))
       case "/proc/dc"                     => compoundDC
       case p if p.startsWith("/proc/dc/") => getDcInfo(p)
       case "/proc/fields"                 => crudServiceFS.getESFieldsVInfoton.map(Some.apply)
       case "/proc/health" =>
         Some(
-          VirtualInfoton(ObjectInfoton(path, dc, None, d, generateHealthFields))
+          VirtualInfoton(ObjectInfoton(path, dc, None, d, generateHealthFields, protocol = None))
         )
       case "/proc/health.md" =>
         Some(
@@ -903,14 +905,15 @@ ${lines.mkString("\n")}
                   generateHealthMarkdown(d).getBytes,
                   "text/x-markdown"
                 )
-              )
+              ),
+              protocol = None
             )
           )
         )
       case "/proc/health-detailed" =>
         Some(
           VirtualInfoton(
-            ObjectInfoton(path, dc, None, d, generateHealthDetailedFields)
+            ObjectInfoton(path, dc, None, d, generateHealthDetailedFields, protocol = None)
           )
         )
       case "/proc/health-detailed.md" =>
@@ -925,7 +928,8 @@ ${lines.mkString("\n")}
                   generateDetailedHealthMarkdown(d).getBytes,
                   "text/x-markdown"
                 )
-              )
+              ),
+              protocol = None
             )
           )
         )
@@ -941,7 +945,8 @@ ${lines.mkString("\n")}
                   generateDetailedHealthCsvPretty().getBytes,
                   "text/html"
                 )
-              )
+              ),
+              protocol = None
             )
           )
         )
@@ -954,14 +959,15 @@ ${lines.mkString("\n")}
               None,
               content = Some(
                 FileContent(generateBgMarkdown.getBytes, "text/x-markdown")
-              )
+              ),
+              protocol = None
             )
           )
         )
       case "/proc/bg" =>
         generateBgData.map(
           fields =>
-            Some(VirtualInfoton(ObjectInfoton(path, dc, None, d, fields)))
+            Some(VirtualInfoton(ObjectInfoton(path, dc, None, d, fields, protocol = None)))
         )
       case "/proc/search-contexts.md" =>
         Some(
@@ -975,7 +981,8 @@ ${lines.mkString("\n")}
                   generateIteratorMarkdown.getBytes,
                   "text/x-markdown"
                 )
-              )
+              ),
+              protocol = None
             )
           )
         )
@@ -1023,7 +1030,8 @@ ${lines.mkString("\n")}
                   "url" -> Set[FieldValue](FString(url)),
                   "url_hash" -> Set[FieldValue](FString(crc32(url)))
                 )
-              )
+              ),
+              protocol = None
             )
           )
         )
@@ -1035,9 +1043,9 @@ ${lines.mkString("\n")}
   private[this] def procKids: Vector[Infoton] = {
     val md = new DateTime()
     Vector(
-      VirtualInfoton(ObjectInfoton("/proc/node", dc, None, md)),
-      VirtualInfoton(ObjectInfoton("/proc/dc", dc, None, md)),
-      VirtualInfoton(ObjectInfoton("/proc/bg", dc, None, md)),
+      VirtualInfoton(ObjectInfoton("/proc/node", dc, None, md, protocol = None)),
+      VirtualInfoton(ObjectInfoton("/proc/dc", dc, None, md, protocol = None)),
+      VirtualInfoton(ObjectInfoton("/proc/bg", dc, None, md, protocol = None)),
       VirtualInfoton(
         FileInfoton(
           "/proc/bg.md",
@@ -1045,11 +1053,12 @@ ${lines.mkString("\n")}
           None,
           md,
           None,
-          Some(FileContent("text/x-markdown", -1L))
+          Some(FileContent("text/x-markdown", -1L)),
+          protocol = None
         )
       ),
-      VirtualInfoton(ObjectInfoton("/proc/fields", dc, None, md)),
-      VirtualInfoton(ObjectInfoton("/proc/health", dc, None, md)),
+      VirtualInfoton(ObjectInfoton("/proc/fields", dc, None, md, protocol = None)),
+      VirtualInfoton(ObjectInfoton("/proc/health", dc, None, md, protocol = None)),
       VirtualInfoton(
         FileInfoton(
           "/proc/health.md",
@@ -1057,10 +1066,11 @@ ${lines.mkString("\n")}
           None,
           md,
           None,
-          Some(FileContent("text/x-markdown", -1L))
+          Some(FileContent("text/x-markdown", -1L)),
+          protocol = None
         )
       ),
-      VirtualInfoton(ObjectInfoton("/proc/health-detailed", dc, None, md)),
+      VirtualInfoton(ObjectInfoton("/proc/health-detailed", dc, None, md, protocol = None)),
       VirtualInfoton(
         FileInfoton(
           "/proc/health-detailed.md",
@@ -1068,7 +1078,8 @@ ${lines.mkString("\n")}
           None,
           md,
           None,
-          Some(FileContent("text/x-markdown", -1L))
+          Some(FileContent("text/x-markdown", -1L)),
+          protocol = None
         )
       ),
       VirtualInfoton(
@@ -1078,7 +1089,8 @@ ${lines.mkString("\n")}
           None,
           md,
           None,
-          Some(FileContent("text/html", -1L))
+          Some(FileContent("text/html", -1L)),
+          protocol = None
         )
       ),
       VirtualInfoton(
@@ -1088,7 +1100,8 @@ ${lines.mkString("\n")}
           None,
           md,
           None,
-          Some(FileContent("text/x-markdown", -1L))
+          Some(FileContent("text/x-markdown", -1L)),
+          protocol = None
         )
       ),
       VirtualInfoton(
@@ -1098,7 +1111,8 @@ ${lines.mkString("\n")}
           None,
           md,
           None,
-          Some(FileContent("text/x-markdown", -1L))
+          Some(FileContent("text/x-markdown", -1L)),
+          protocol = None
         )
       ),
       VirtualInfoton(
@@ -1108,7 +1122,8 @@ ${lines.mkString("\n")}
           None,
           md,
           None,
-          Some(FileContent("text/x-markdown", -1L))
+          Some(FileContent("text/x-markdown", -1L)),
+          protocol = None
         )
       ),
       VirtualInfoton(
@@ -1118,7 +1133,8 @@ ${lines.mkString("\n")}
           None,
           md,
           None,
-          Some(FileContent("text/html", -1L))
+          Some(FileContent("text/html", -1L)),
+          protocol = None
         )
       ),
       VirtualInfoton(
@@ -1128,7 +1144,8 @@ ${lines.mkString("\n")}
           None,
           md,
           None,
-          Some(FileContent("text/x-markdown", -1L))
+          Some(FileContent("text/x-markdown", -1L)),
+          protocol = None
         )
       ),
       VirtualInfoton(
@@ -1138,7 +1155,8 @@ ${lines.mkString("\n")}
           None,
           md,
           None,
-          Some(FileContent("text/x-markdown", -1L))
+          Some(FileContent("text/x-markdown", -1L)),
+          protocol = None
         )
       ),
       VirtualInfoton(
@@ -1148,7 +1166,8 @@ ${lines.mkString("\n")}
           None,
           md,
           None,
-          Some(FileContent("text/x-markdown", -1L))
+          Some(FileContent("text/x-markdown", -1L)),
+          protocol = None
         )
       ),
       VirtualInfoton(
@@ -1158,7 +1177,8 @@ ${lines.mkString("\n")}
           None,
           md,
           None,
-          Some(FileContent("text/x-markdown", -1L))
+          Some(FileContent("text/x-markdown", -1L)),
+          protocol = None
         )
       ),
       VirtualInfoton(
@@ -1168,7 +1188,8 @@ ${lines.mkString("\n")}
           None,
           md,
           None,
-          Some(FileContent("text/x-markdown", -1L))
+          Some(FileContent("text/x-markdown", -1L)),
+          protocol = None
         )
       ),
       VirtualInfoton(
@@ -1178,7 +1199,8 @@ ${lines.mkString("\n")}
           None,
           md,
           None,
-          Some(FileContent("text/x-markdown", -1L))
+          Some(FileContent("text/x-markdown", -1L)),
+          protocol = None
         )
       ),
       VirtualInfoton(
@@ -1188,7 +1210,8 @@ ${lines.mkString("\n")}
           None,
           md,
           None,
-          Some(FileContent("text/x-markdown", -1L))
+          Some(FileContent("text/x-markdown", -1L)),
+          protocol = None
         )
       ),
       VirtualInfoton(
@@ -1198,7 +1221,8 @@ ${lines.mkString("\n")}
           None,
           md,
           None,
-          Some(FileContent("text/x-markdown", -1L))
+          Some(FileContent("text/x-markdown", -1L)),
+          protocol = None
         )
       )
     )

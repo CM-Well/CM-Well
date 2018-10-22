@@ -122,7 +122,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                 "can't use meta operations here! this API is used internaly, and only for overwrites!"
               )
               val (errs, _) = cmwell.util.collections.partitionWith(metaDataMap) {
-                case (path, MetaData(mdType, date, data, text, mimeType, linkType, linkTo, dataCenter, indexTime)) =>
+                case (path, MetaData(mdType, _, data, text, mimeType, linkType, linkTo, dataCenter, indexTime, _)) =>
                   var errors = List.empty[String]
                   if (indexTime.isEmpty) {
                     errors = "indexTime should be defined" :: errors
@@ -198,7 +198,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                   .recover {
                     case err: Throwable => {
                       logger.error(
-                        s"bad data received: ${err.getMessage}: ${req.body.asBytes().fold("NOTHING")(_.utf8String)}"
+                        s"bad data received: ${err.getMessage}: ${req.body.asBytes().fold("NOTHING")(_.utf8String)}", err
                       )
                       wsutil.exceptionToResponse(err)
                     }
@@ -208,13 +208,13 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
           }
           .recover {
             case err: Throwable => {
-              logger.error(s"bad data received: ${err.getMessage}: ${req.body.asBytes().fold("NOTHING")(_.utf8String)}")
+              logger.error(s"bad data received: ${err.getMessage}: ${req.body.asBytes().fold("NOTHING")(_.utf8String)}", err)
               wsutil.exceptionToResponse(err)
             }
           }
       }.recover {
         case err: Throwable => {
-          logger.error(s"bad data received: ${err.getMessage}: ${req.body.asBytes().fold("NOTHING")(_.utf8String)}")
+          logger.error(s"bad data received: ${err.getMessage}: ${req.body.asBytes().fold("NOTHING")(_.utf8String)}", err)
           Future.successful(wsutil.exceptionToResponse(err))
         }
       }.get
@@ -549,8 +549,8 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                     )
 
                     val to = tidOpt.map(_.token)
-                    val d1 = crudService.deleteInfotons(dontTrack.map(_ -> None), isPriorityWrite = isPriorityWrite)
-                    val d2 = crudService.deleteInfotons(track.map(_ -> None), to, atomicUpdates, isPriorityWrite)
+                    val d1 = crudService.deleteInfotons(dontTrack.map((_, None, None)), isPriorityWrite = isPriorityWrite)
+                    val d2 = crudService.deleteInfotons(track.map((_, None, None)), to, atomicUpdates, isPriorityWrite)
 
                     d1.zip(d2).flatMap {
                       case (b01, b02) =>
@@ -602,7 +602,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
         }
         .recover {
           case err: Throwable => {
-            logger.error(s"bad data received: ${req.body.asBytes().fold("NOTHING")(_.utf8String)}")
+            logger.error(s"bad data received: ${req.body.asBytes().fold("NOTHING")(_.utf8String)}", err)
             p.tryFailure(err)
             addDebugHeader(wsutil.exceptionToResponse(err))
           }

@@ -269,7 +269,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
       throw new IllegalArgumentException("at least one of the filters is needed in order to search")
     }
 
-    val fields = "system.kind" :: "system.path" :: "system.uuid" :: "system.lastModified" :: "content.length" ::
+    val fields = "system.kind" :: "system.path" :: "system.uuid" :: "system.lastModified" :: "system.protocol" :: "content.length" ::
       "content.mimeType" :: "link.to" :: "link.kind" :: "system.dc" :: "system.indexTime" :: "system.quad" :: "system.current" :: Nil
 
     val request = client
@@ -1452,13 +1452,14 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
         val lastModified = new DateTime(hit.field("system.lastModified").getValue.asInstanceOf[String])
         val id = hit.field("system.uuid").getValue.asInstanceOf[String]
         val dc = Try(hit.field("system.dc").getValue.asInstanceOf[String]).getOrElse(Settings.dataCenter)
+        val protocol = Try(hit.field("system.protocol").getValue.asInstanceOf[String]).toOption
         val indexTime = tryLongThenInt[Option[Long]](hit, "system.indexTime", Some.apply[Long], None, id, path)
         val score: Option[Map[String, Set[FieldValue]]] =
           if (includeScore) Some(Map("$score" -> Set(FExtra(hit.score(), sysQuad)))) else None
 
         hit.field("system.kind").getValue.asInstanceOf[String] match {
           case "ObjectInfoton" =>
-            new ObjectInfoton(path, dc, indexTime, lastModified, score) {
+            new ObjectInfoton(path, dc, indexTime, lastModified, score, protocol = protocol) {
               override def uuid = id
               override def kind = "ObjectInfoton"
             }
@@ -1471,8 +1472,8 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
               indexTime,
               lastModified,
               score,
-              Some(FileContent(hit.field("content.mimeType").getValue.asInstanceOf[String], contentLength))
-            ) {
+              Some(FileContent(hit.field("content.mimeType").getValue.asInstanceOf[String], contentLength)),
+              protocol = protocol) {
               override def uuid = id
               override def kind = "FileInfoton"
             }
@@ -1483,7 +1484,8 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
                             lastModified,
                             score,
                             hit.field("link.to").getValue.asInstanceOf[String],
-                            hit.field("link.kind").getValue[Int]) {
+                            hit.field("link.kind").getValue[Int],
+                            protocol = protocol) {
               override def uuid = id
               override def kind = "LinkInfoton"
             }
