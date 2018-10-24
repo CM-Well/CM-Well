@@ -29,10 +29,10 @@ import scala.concurrent.duration._
 
 object StpPeriodicLogger {
   def apply(infotonReporter: ActorRef, logFrequency: FiniteDuration) =
-    new StpPeriodicLogger(infotonReporter, logFrequency, 5.seconds)
+    new StpPeriodicLogger(infotonReporter, logFrequency)
 }
 
-class StpPeriodicLogger(infotonReporter: ActorRef, logFrequency: FiniteDuration, implicit val timeout: Timeout)
+class StpPeriodicLogger(infotonReporter: ActorRef, logFrequency: FiniteDuration)
   extends GraphStage[FlowShape[IngestEvent, IngestEvent]] with DataToolsLogging {
 
   val in = Inlet[IngestEvent]("StpPeriodicLogger.in")
@@ -52,6 +52,9 @@ class StpPeriodicLogger(infotonReporter: ActorRef, logFrequency: FiniteDuration,
     })
 
     override protected def onTimer(timerKey: Any): Unit = {
+
+      implicit val timeout : akka.util.Timeout = 5.seconds
+
       for {
         downloadStatsMap <- (infotonReporter ? RequestDownloadStats).mapTo[ResponseDownloadStats]
         ingestStatsObj <- (infotonReporter ? RequestIngestStats).mapTo[ResponseIngestStats]
