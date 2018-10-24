@@ -197,7 +197,7 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
 
       val uri = s"${formatHost(baseUrl)}/$method?format=$format$replaceModeValue$forceValue$priorityValue"
       val req = HttpRequest(uri = uri, method = HttpMethods.POST, entity = entity,
-        headers = scala.collection.immutable.Seq(gzipAcceptEncoding, gzipContentEncoding))
+        headers = scala.collection.immutable.Seq(gzipContentEncoding))
 
       writeToken match {
         case Some(token) => req.addHeader(RawHeader("X-CM-WELL-TOKEN", token))
