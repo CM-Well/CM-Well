@@ -2998,6 +2998,40 @@ callback=< [URL] >
     }
   }
 
+
+  def handleStpPost(agent: String) = Action.async(parse.raw) { implicit req =>
+    val allowed = isAdminEvenNonProd(req)
+
+    allowed match {
+      case true => {
+        val flag = req.getQueryString("enabled").flatMap(asBoolean).getOrElse(true)
+        import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+        import cmwell.util.http.SimpleResponse
+        val body=s"<cmwell://meta/sys/agents/sparql/${agent}> <cmwell://meta/nn#active> \"${flag}\"^^<http://www.w3.org/2001/XMLSchema#boolean> ."
+        cmwell.util.http.SimpleHttpClient
+          .post(uri=s"http://localhost:9000/_in?format=ntriples&replace-mode&priority", body=body).map {
+            case SimpleResponse(200, _, _) => Ok("""{"success":true}""")
+            case SimpleResponse(respCode, _, _) => Ok("""{"success":false}""")
+          case _ => Ok("""{"success":false}""")
+        }
+      }
+      case _ => Future.successful(Forbidden("Not allowed to use stp"))
+    }
+  }
+
+  def handleStpGet(agent: String) = Action.async(parse.raw) { implicit req =>
+
+    val agentStats = SparqlTriggeredProcessorMonitor.getAgentStats
+
+
+
+
+
+
+    Future.successful(Ok("""{"success":true}"""))
+  }
+
+
   def handleKafkaConsume(topic: String, partition: Int): Action[AnyContent] = Action { implicit req =>
     val isSysTopic = {
       val sysTopics = Set("persist_topic", "index_topic", "persist_topic.priority", "index_topic.priority")

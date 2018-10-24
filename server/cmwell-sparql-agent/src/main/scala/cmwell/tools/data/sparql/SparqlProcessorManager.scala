@@ -327,6 +327,14 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
       case (path, jobStatus @ (_: JobActive)) =>
         val jobConfig = jobStatus.job.config
 
+
+
+
+
+
+
+
+
         val hostUpdatesSource = jobConfig.hostUpdatesSource.getOrElse(settings.hostUpdatesSource)
 
         val title = Seq(
@@ -365,7 +373,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
                   val sensorStats = stats
                     .get(sensorName)
                     .map { s =>
-                      val statsTime = s.statsTime match {
+                    val statsTime = s.statsTime match {
                         case 0 => "Not Yet Updated"
                         case _ =>
                           LocalDateTime.ofInstant(Instant.ofEpochMilli(s.statsTime), ZoneId.systemDefault()).toString

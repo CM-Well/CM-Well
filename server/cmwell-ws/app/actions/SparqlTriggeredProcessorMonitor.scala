@@ -78,4 +78,8 @@ object SparqlTriggeredProcessorMonitor extends LazyLogging {
       )
     }
   }
+
+  def getAgentStats() : Future[ResponseStats] = (stpManager ? RequestStats)
+    .mapTo[ResponseStats]
+
 }
