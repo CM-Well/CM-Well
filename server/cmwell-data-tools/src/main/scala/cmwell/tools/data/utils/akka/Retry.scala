@@ -123,23 +123,22 @@ object Retry extends DataToolsLogging with DataToolsConfig {
 
           val errorID = res.##
 
-          e.dataBytes.runFold(ByteString.empty)(_ ++ _).map(_.utf8String).map{ entity=>
-            logger.warn(s"[$errorID] server error. Body of response: $entity, headers: ${headersString(h)}")
-          }
-
           if (data.size > 1) {
             // before retry a request we should consume previous entity bytes
             e.withoutSizeLimit()
               .dataBytes
               .runFold(blank)(_ ++ _)
               .map { entityBytes =>
+
+                logger.warn(s"[$errorID] server error. Body of response: ${entityBytes.utf8String}, headers: ${headersString(h)}")
+
                 logger.warn(
-                  s"$labelValue server error: will retry again in $delay to send a single request, host=${getHostnameValue(
+                  s"$labelValue server error:  will retry again in $delay to send a single request, host=${getHostnameValue(
                     h
                   )} status=$s, entity=${entityBytes.utf8String}, request data=${stringifyData(data)}"
                 )
                 redLogger.error(
-                  s"$labelValue client error: host=${getHostnameValue(h)} status=$s data=${stringifyData(data)} entity=${entityBytes.utf8String}"
+                  s"$labelValue server error: host=${getHostnameValue(h)} status=$s data=${stringifyData(data)} entity=${entityBytes.utf8String}"
                 )
                 badDataLogger.info(
                   s"$labelValue data=${concatByteStrings(data, endl).utf8String}"
