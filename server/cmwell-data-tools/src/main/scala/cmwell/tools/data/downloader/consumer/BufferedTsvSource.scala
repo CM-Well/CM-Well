@@ -84,19 +84,24 @@ class BufferedTsvSource(initialToken: Future[String],
     var callback : AsyncCallback[ConsumeResponse] = _
     var asyncCallInProgress = false
 
-    private val changeInProgressState = getAsyncCallback[Boolean](asyncCallInProgress = _)
-
     private var currentConsumeToken: Token = _
-    private var buf: mutable.Queue[Option[(Token, TsvData)]] = mutable.Queue()
     private var consumeComplete = false
     private var remainingInfotons : Option[Long] = None
+    private var buf: mutable.Queue[Option[(Token, TsvData)]] = mutable.Queue()
     private var currConsumeState: ConsumeState = SuccessState(0)
+
+    private val changeInProgressState = getAsyncCallback[Boolean](asyncCallInProgress = _)
+    private val changeCurrentConsumeTokenState = getAsyncCallback[Token](currentConsumeToken = _)
+    private val changeConsumeCompleteState = getAsyncCallback[Boolean](consumeComplete = _)
+    private val changeRemainingInfotonsState = getAsyncCallback[Option[Long]](remainingInfotons = _)
+    private val addToBuffer = getAsyncCallback[Option[(Token, TsvData)]](buf += _)
+    private val changeCurrConsumeState = getAsyncCallback[ConsumeState](currConsumeState = _)
 
     override def preStart(): Unit = {
 
       def bufferFillerCallback(tokenAndTsv : ConsumeResponse) : Unit = {
 
-        consumeComplete = tokenAndTsv.consumeComplete
+        changeConsumeCompleteState.invoke(tokenAndTsv.consumeComplete)
 
         tokenAndTsv match {
           case ConsumeResponse(_, true, _) =>
@@ -109,12 +114,12 @@ class BufferedTsvSource(initialToken: Future[String],
 
           case ConsumeResponse(token, false, dataSource) =>
             dataSource.runForeach {
-              case (token, tsvData: TsvData) => buf += (Some(token, tsvData))
+              case (token, tsvData: TsvData) => addToBuffer.invoke((Some(token, tsvData)))
             }.onComplete{
               case Success(_)=>
                 token.collect {
                   case token=>
-                    currentConsumeToken = token
+                    changeCurrentConsumeTokenState.invoke(token)
 
                     logger.debug(s"successfully consumed token: $currentConsumeToken point in time: ${
                       decodeToken(currentConsumeToken).getOrElse("")
@@ -213,10 +218,12 @@ class BufferedTsvSource(initialToken: Future[String],
               getPosition(h) match {
                 case Some(HttpHeader(_, pos)) =>
 
-                  remainingInfotons = getNLeft(h) match {
-                    case Some(HttpHeader(_, nLeft)) => Some(nLeft.toInt)
-                    case _ => None
-                  }
+                  changeRemainingInfotonsState.invoke(
+                    getNLeft(h) match {
+                      case Some(HttpHeader(_, nLeft)) => Some(nLeft.toInt)
+                      case _ => None
+                    }
+                  )
 
                   logger.debug(s"received consume answer from host=${getHostnameValue(h)}")
 
@@ -237,7 +244,8 @@ class BufferedTsvSource(initialToken: Future[String],
             case (Success(HttpResponse(s, h, e, _)), _) =>
               e.toStrict(1.minute).onComplete {
                 case Success(res: HttpEntity.Strict) =>
-                  currConsumeState = ConsumeStateHandler.nextSuccess(currConsumeState)
+
+                  changeCurrConsumeState.invoke(ConsumeStateHandler.nextSuccess(currConsumeState))
 
                   logger
                     .info(
@@ -246,7 +254,7 @@ class BufferedTsvSource(initialToken: Future[String],
                       )} status=$s token=$token entity=${res.data.utf8String}"
                     )
                 case Failure(err) =>
-                  currConsumeState = ConsumeStateHandler.nextFailure(currConsumeState)
+                  changeCurrConsumeState.invoke( ConsumeStateHandler.nextFailure(currConsumeState))
 
                   logger.error(
                     s"received consume answer from host=${getHostnameValue(h)} status=$s token=$token cannot extract entity",
