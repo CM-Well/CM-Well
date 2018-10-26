@@ -84,6 +84,8 @@ class BufferedTsvSource(initialToken: Future[String],
     var callback : AsyncCallback[ConsumeResponse] = _
     var asyncCallInProgress = false
 
+    private val changeInProgressState = getAsyncCallback[Boolean](asyncCallInProgress = _)
+
     private var currentConsumeToken: Token = _
     private var buf: mutable.Queue[Option[(Token, TsvData)]] = mutable.Queue()
     private var consumeComplete = false
@@ -295,7 +297,7 @@ class BufferedTsvSource(initialToken: Future[String],
         case Success(consumeResponse) =>
           callback.invokeWithFeedback(consumeResponse).map({
             _ =>
-              asyncCallInProgress = false
+              changeInProgressState.invoke(false)
               getHandler(out).onPull()
           })
         case Failure(e) =>
