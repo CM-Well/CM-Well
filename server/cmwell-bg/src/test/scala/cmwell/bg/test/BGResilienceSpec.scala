@@ -121,7 +121,8 @@ class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers wi
         path = s"/cmt/cm/bg-test/circumvented_bg/info$n",
         dc = "dc",
         indexTime = None,
-        fields = Some(Map("games" -> Set(FieldValue("Taki"), FieldValue("Race")))))
+        fields = Some(Map("games" -> Set(FieldValue("Taki"), FieldValue("Race")))),
+        protocol = None)
       WriteCommand(infoton)
     }
 

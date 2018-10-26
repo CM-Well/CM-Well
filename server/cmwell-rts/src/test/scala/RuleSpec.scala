@@ -27,15 +27,15 @@ class RuleSpec extends FlatSpec with Matchers {
     val r1 = Rule("/mark/test",false)
     val r2 = Rule("/mark/test",true)
 
-    false should equal (r1.path check ObjectInfoton("/mark","dc_test").path)
-    true should equal  (r1.path check ObjectInfoton("/mark/test","dc_test").path)
-    true should equal  (r1.path check ObjectInfoton("/mark/test/1","dc_test").path)
-    false should equal (r1.path check ObjectInfoton("/mark/test/1/2/","dc_test").path)
+    false should equal (r1.path check ObjectInfoton("/mark","dc_test",protocol=None).path)
+    true should equal  (r1.path check ObjectInfoton("/mark/test","dc_test",protocol=None).path)
+    true should equal  (r1.path check ObjectInfoton("/mark/test/1","dc_test",protocol=None).path)
+    false should equal (r1.path check ObjectInfoton("/mark/test/1/2/","dc_test",protocol=None).path)
 
-    false should equal(r2.path check ObjectInfoton("/mark","dc_test").path)
-    true should equal (r2.path check  ObjectInfoton("/mark/test","dc_test").path)
-    true should equal (r2.path check  ObjectInfoton("/mark/test/1","dc_test").path)
-    true should equal(r2.path check ObjectInfoton("/mark/test/1/2/","dc_test").path)
+    false should equal(r2.path check ObjectInfoton("/mark","dc_test",protocol=None).path)
+    true should equal (r2.path check  ObjectInfoton("/mark/test","dc_test",protocol=None).path)
+    true should equal (r2.path check  ObjectInfoton("/mark/test/1","dc_test",protocol=None).path)
+    true should equal(r2.path check ObjectInfoton("/mark/test/1/2/","dc_test",protocol=None).path)
   }
 
 

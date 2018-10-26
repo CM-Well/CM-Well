@@ -793,7 +793,7 @@ trait Importer[A] { this: LazyLogging =>
       .map(
         res =>
           (res: @unchecked) match {
-            case Some(Everything(FileInfoton(_, _, _, _, fields, Some(content), _))) =>
+            case Some(Everything(FileInfoton(_, _, _, _, fields, Some(content), _, _))) =>
               FileInfotonContent(content.data.get, fields.getOrElse(Map()))
             case x =>
               logger.debug(s"Could not fetch $path, got $x"); throw new RuntimeException(s"Could not fetch $path")

@@ -68,7 +68,7 @@ class CSVFormatter(fieldNameModifier: String => String) extends Formatter {
       case _: FileInfoton =>
         Seq("mimeType", "length") ++ {
           val mimes = infotons.collect {
-            case FileInfoton(_, _, _, _, _, Some(FileContent(_, mimeType, _, _)), _) => mimeType
+            case FileInfoton(_, _, _, _, _, Some(FileContent(_, mimeType, _, _)), _, _) => mimeType
           }
           if (mimes.forall(isTextual)) Seq("data")
           else if (mimes.exists(isTextual)) Seq("data", "base64-data")
@@ -126,7 +126,7 @@ class CSVFormatter(fieldNameModifier: String => String) extends Formatter {
       ) ++ i.indexTime.map(6 -> _.toString)
 
       ((i: @unchecked) match {
-        case CompoundInfoton(_, _, _, _, fields, children, offset, length, total, _) => {
+        case CompoundInfoton(_, _, _, _, fields, children, offset, length, total, _, _) => {
           val sys = shared ++ Seq(
             ssys("children") -> children.map(_.path).mkString("[", ",", "]"),
             ssys("offset") -> offset.toString,
@@ -135,15 +135,15 @@ class CSVFormatter(fieldNameModifier: String => String) extends Formatter {
           )
           prependToFields(sys, fields)
         }
-        case ObjectInfoton(_, _, _, _, fields, _) => prependToFields(shared, fields)
-        case LinkInfoton(_, _, _, _, fields, linkTo, linkType, _) => {
+        case ObjectInfoton(_, _, _, _, fields, _, _) => prependToFields(shared, fields)
+        case LinkInfoton(_, _, _, _, fields, linkTo, linkType, _, _) => {
           val sys = shared ++ Seq(
             ssys("linkTo") -> linkTo,
             ssys("linkType") -> linkType.toString
           )
           prependToFields(sys, fields)
         }
-        case FileInfoton(_, _, _, _, fields, content, _) => {
+        case FileInfoton(_, _, _, _, fields, content, _, _) => {
           val sys = content match {
             case None    => shared
             case Some(c) => shared ++ super.fileContent[Int, String](c, ssys, identity, _.toString, encodeBase64String)

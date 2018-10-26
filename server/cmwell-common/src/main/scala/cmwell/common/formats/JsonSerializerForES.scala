@@ -155,13 +155,15 @@ object JsonSerializerForES extends AbstractJsonSerializer with NsSplitter with L
     if (current) jsonGenerator.writeBooleanField("current", true)
     else jsonGenerator.writeBooleanField("current", false)
 
+    jsonGenerator.writeStringField("protocol", infoton.protocol.getOrElse("http"))
+
     jsonGenerator.writeEndObject() // end system object field
     // write field object, if not empty
     infoton.fields.foreach { fields =>
       encodeFieldsWithGenerator(fields, jsonGenerator)
     }
     infoton match {
-      case FileInfoton(_, _, _, _, _, Some(FileContent(dataOpt, mimeType, dl, dp)), _) =>
+      case FileInfoton(_, _, _, _, _, Some(FileContent(dataOpt, mimeType, dl, dp)), _, _) =>
         jsonGenerator.writeObjectFieldStart("content")
         jsonGenerator.writeStringField("mimeType", mimeType)
         dataOpt.foreach { data =>
@@ -178,7 +180,7 @@ object JsonSerializerForES extends AbstractJsonSerializer with NsSplitter with L
         }
         jsonGenerator.writeNumberField("length", dataOpt.fold(dl)(_.length))
         jsonGenerator.writeEndObject()
-      case LinkInfoton(_, _, _, _, _, linkTo, linkType, _) =>
+      case LinkInfoton(_, _, _, _, _, linkTo, linkType, _, _) =>
         jsonGenerator.writeObjectFieldStart("link")
         jsonGenerator.writeStringField("to", linkTo)
         jsonGenerator.writeNumberField("kind", linkType)

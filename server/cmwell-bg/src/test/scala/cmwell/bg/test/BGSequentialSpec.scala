@@ -101,7 +101,7 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
         path = s"/cmt/cm/bg-test-priority-before-batch/prio/info$n",
         dc = "dc",
         indexTime = None,
-        fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))))
+        fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))),protocol=None)
       WriteCommand(infoton)
     }
 
@@ -117,7 +117,7 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
         path = s"/cmt/cm/bg-test-priority-before-batch/batch/info$n",
         dc = "dc",
         indexTime = None,
-        fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))))
+        fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))),protocol=None)
       WriteCommand(infoton)
     }
 

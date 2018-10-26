@@ -168,7 +168,8 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                                       searchResponse.infotons,
                                       searchResponse.offset,
                                       searchResponse.length,
-                                      searchResponse.total)
+                                      searchResponse.total,
+                                      protocol = None)
                     )
                   )
                 } else Some(Everything(i))
@@ -273,7 +274,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       Future.failed(new IllegalArgumentException("too many fields"))
     } else {
       val payloadForIndirectLargeInfoton: Future[(Array[Byte], Array[Byte])] = infoton match {
-        case i @ FileInfoton(_, _, _, _, _, Some(FileContent(Some(data), _, _, _)), _)
+        case i @ FileInfoton(_, _, _, _, _, Some(FileContent(Some(data), _, _, _)), _, _)
             if data.length >= thresholdToUseZStore => {
           val fi = i.withoutData
           zStore.put(fi.content.flatMap(_.dataPointer).get, data).map { _ =>
@@ -354,25 +355,25 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       }
   }
 
-  def deleteInfotons(deletes: List[(String, Option[Map[String, Set[FieldValue]]])],
+  def deleteInfotons(deletes: List[(String, Option[String], Option[Map[String, Set[FieldValue]]])],
                      tidOpt: Option[String] = None,
                      atomicUpdates: Map[String, String] = Map.empty,
                      isPriorityWrite: Boolean = false) = {
     val dt = new DateTime()
     val commands: List[SingleCommand] = deletes.map {
-      case (path, Some(fields)) =>
-        DeleteAttributesCommand(path, fields, dt, validTid(path, tidOpt), atomicUpdates.get(path))
-      case (path, None) => DeletePathCommand(path, dt, validTid(path, tidOpt), atomicUpdates.get(path))
+      case (path, protocol, Some(fields)) =>
+        DeleteAttributesCommand(path, fields, dt, validTid(path, tidOpt), atomicUpdates.get(path), protocol)
+      case (path, _, None) => DeletePathCommand(path, dt, validTid(path, tidOpt), atomicUpdates.get(path))
     }
 
     Future.traverse(commands)(sendToKafka(_, isPriorityWrite)).map(_ => true)
   }
 
-  def deleteInfoton(path: String, data: Option[Map[String, Set[FieldValue]]], isPriorityWrite: Boolean = false) = {
+  def deleteInfoton(path: String, protocol: Option[String], data: Option[Map[String, Set[FieldValue]]], isPriorityWrite: Boolean = false) = {
 
     val delCommand = data match {
       case None         => DeletePathCommand(path, new DateTime())
-      case Some(fields) => DeleteAttributesCommand(path, fields, new DateTime())
+      case Some(fields) => DeleteAttributesCommand(path, fields, new DateTime(), protocol = protocol)
     }
 
     val payload = CommandSerializer.encode(delCommand)
@@ -434,7 +435,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
             case Some(fields) => fields
             case None         => eMap //TODO: should we block this option? regular DELETE could have been used instead...
           }
-          UpdatePathCommand(i.path, del, ins, i.lastModified, validTid(i.path, tid), atomicUpdates.get(i.path))
+          UpdatePathCommand(i.path, del, ins, i.lastModified, validTid(i.path, tid), atomicUpdates.get(i.path), i.protocol)
         }
       }
 
@@ -455,7 +456,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
           if (regs.isEmpty) Future.successful(())
           else
             Future.traverse(regs) {
-              case cmd @ UpdatePathCommand(_, _, _, lastModified, _, _) if lastModified.getMillis == 0L =>
+              case cmd @ UpdatePathCommand(_, _, _, lastModified, _, _, _) if lastModified.getMillis == 0L =>
                 sendToKafka(cmd.copy(lastModified = DateTime.now(DateTimeZone.UTC)), isPriorityWrite)
               case cmd => sendToKafka(cmd, isPriorityWrite)
             }
@@ -721,7 +722,8 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                         i.dc,
                         i.indexTime,
                         i.lastModified,
-                        i.fields.fold(extra)(f => extra.fold(i.fields)(e => Some(f ++ e)))) {
+                        i.fields.fold(extra)(f => extra.fold(i.fields)(e => Some(f ++ e))),
+                        protocol = i.protocol) {
         override def uuid = i.uuid
         override def kind = i.kind
       }
@@ -731,7 +733,8 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                       i.indexTime,
                       i.lastModified,
                       i.fields.fold(extra)(f => extra.fold(i.fields)(e => Some(f ++ e))),
-                      i.content) {
+                      i.content,
+                      protocol = i.protocol) {
         override def uuid = i.uuid
         override def kind = i.kind
       }
@@ -742,7 +745,8 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                       i.lastModified,
                       i.fields.fold(extra)(f => extra.fold(i.fields)(e => Some(f ++ e))),
                       i.linkTo,
-                      i.linkType) {
+                      i.linkType,
+                      protocol = i.protocol) {
         override def uuid = i.uuid
         override def kind = i.kind
       }
@@ -775,7 +779,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       val fieldsWithFilter =
         fieldFilters.fold(fields)(ff => fields + ("qp" -> Set[FieldValue](FString(Encoder.encodeFieldFilter(ff)))))
       val fieldsWithFilterAndWh = fieldsWithFilter + ("with-history" -> Set[FieldValue](FBoolean(withHistory)))
-      VirtualInfoton(ObjectInfoton(s"/proc/dc/$dc", Settings.dataCenter, None, fieldsWithFilterAndWh))
+      VirtualInfoton(ObjectInfoton(s"/proc/dc/$dc", Settings.dataCenter, None, fieldsWithFilterAndWh, protocol = None))
     }
 
     ftsService
@@ -789,7 +793,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
     fields.flatMap { f =>
       val predicates = metaNsCache.getAndUpdateIfNeeded.map(toFieldValues)
       predicates.map { p =>
-        VirtualInfoton(ObjectInfoton(s"/proc/fields", Settings.dataCenter, None, Map("fields" -> f, "predicates" -> p)))
+        VirtualInfoton(ObjectInfoton(s"/proc/fields", Settings.dataCenter, None, Map("fields" -> f, "predicates" -> p), protocol = None))
       }
     }
   }
