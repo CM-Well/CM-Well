@@ -674,7 +674,9 @@ package object wsutil extends LazyLogging {
 
     Future
       .traverse(population.grouped(chunkSize)) { infotonsChunk =>
-        val pathsAndProtocols: List[(String,String)] = infotonsChunk.map(i => i.path -> i.protocol.getOrElse("http"))(breakOut)
+        val pathsAndProtocols: List[(String,String)] = infotonsChunk.map { i =>
+          i.path -> i.protocol.getOrElse(cmwell.common.Settings.defaultProtocol)
+        }(breakOut)
 
         val fieldFilterFut = filteredFields match {
           case Nil =>
