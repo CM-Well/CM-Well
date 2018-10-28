@@ -10,7 +10,7 @@ This page briefly describes the conceptual and technical motivations that led to
 
 ## TMS - In the Beginning... ##
 
-CM-Well was developed as an initiative of Thomson Reuters's TMS (Text Management Services) division. TMS was once a startup company called ClearForest, which specialized in Natural Language Processing, text mining, data analysis and knowledge representation. Reuters (this preceded the merger with Thomson) acquired ClearForest in 2007, incorporating its highly relevant capabilities into its own products. 
+CM-Well was developed as an initiative of Thomson Reuters's (now Refinitiv) TMS (Text Management Services) division. TMS was once a startup company called ClearForest, which specialized in Natural Language Processing, text mining, data analysis and knowledge representation. Reuters (this preceded the merger with Thomson) acquired ClearForest in 2007, incorporating its highly relevant capabilities into its own products. 
 
 TMS already had expertise in tagging entities, events and relationships in free-form text, and had implemented various methods for storage and analysis of the tagged data. To begin with, these methods did not conform to any widely-accepted standard. The data was stored in standard relational databases, although conceptually it behaved more like a connected graph.
 
@@ -26,7 +26,7 @@ TMS wanted to create an information repository that would be:
 * A general, writable platform for data modeling.
 * A Linked Data repository.
 * Easily accessible to other TR applications.
-* Updated in real-time as well as maintaining historical information. 
+* Updated in real-time as well as maintaining historical information.
 * Scalable for huge amounts of data.
 
 CM-Well was developed to implement all of these requirements.

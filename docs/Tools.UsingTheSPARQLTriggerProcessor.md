@@ -8,11 +8,11 @@
 
 ## What is the SPARQL Triggered Processor? ##
 
-The SPARQL Triggered Processor is a CM-Well agent for running SPARQL queries and constructs periodically, for the purposes of creating materialized views of CM-Well infotons. A materialized view is a "flattened" version of data whose original source included high levels of pointer redirection before arriving at data. (The materialized view may also be enriched with data from other infotons.) 
+The SPARQL Triggered Processor is a CM-Well agent for running SPARQL queries and constructs periodically, for the purposes of creating materialized views of CM-Well infotons. A materialized view is a "flattened" version of data whose original source included high levels of pointer redirection before arriving at data. (The materialized view may also be enriched with data from other infotons.)
 
 The SPARQL Triggered Processor creates one or more **sensors**. Each sensor periodically runs a query on a specified path in CM-Well, to detect changes to infotons under that path that have changed since the previous query. When changes are detected, the sensor reads the changed infotons and creates the resulting materialized views. You configure both the change path and query and the SPARQL query that creates the materialized view.
 
-You define the SPARQL Triggered Processor's input and output by editing a [YAML-formatted configuration file](#config). 
+You define the SPARQL Triggered Processor's input and output by editing a [YAML-formatted configuration file](#config).
 
 >**Note:** The SPARQL Triggered Processor also exists an external utility that you can run as a stand-alone executable. This page describes the SPARQL Triggered Processor integrated agent that runs within CM-Well. All you need to do in order to activate the agent for your materialized view is to define and upload the appropriate YAML configuration file.
 
@@ -23,14 +23,14 @@ See [Using SPARQL on CM-Well Infotons](DevGuide.UsingSPARQLOnCM-WellInfotons.md)
 
 The SPARQL Triggered Processor's configuration file is in YAML format. It contains:
 
-* A query for detecting changes in specified infotons and collecting data to process. 
+* A query for detecting changes in specified infotons and collecting data to process.
 * A SPARQL query for processing the collected data and creating the materialized view.
 
 The following table describes the parameters that you can configure in the YAML file:
 
 Parameter | Description
 :---------|:-----------
-name | An informative name for this configuration. This should describe the materialized view you're creating. 
+name | An informative name for this configuration. This should describe the materialized view you're creating.
 sensors | In the **sensors** parameter, you can define one or more "sensors", that detect changes in fields that you define. For example, you may want to test for changes to organizations' names, then process those organizations whose names have changed. Multiple sensors are defined in the YAML list syntax (prefixed with a '-' character).
 sensors/name | An informative name for the sensor, used in SPARQL Triggered Processor logs.
 sensors/path | The path in CM-Well under which the sensor checks for changes.
@@ -60,15 +60,15 @@ Here is a (truncated) example of the YAML configuration file:
       sparqlToRoot: |
        PATHS
         /data.com/2-%PID%?yg=<organizationName.oa&with-data&length=1000
-    
+
        SPARQL
        PREFIX oa:  <http://oa.schemas.tfn.thomson.com/Organization/2010-05-01/>
-    
+
        SELECT DISTINCT ?orgId
        WHERE {
          ?orgId  oa:organizationName ?orgName .
        }
-    
+
     sparqlMaterializer: |
      PATHS
      /data.com/1-%PID%?xg&yg=<identifierEntityId.metadata&length=1000
@@ -76,7 +76,7 @@ Here is a (truncated) example of the YAML configuration file:
      /data.com/?op=search&qp=relatedFromEntityId.metadata:1-%PID%,relatedToEntityType.metadata:Geography&length=1000&with-data=true&yg=>relatedToEntityId.metadata<identifierEntityId.metadata
      /data.com/?op=search&qp=relationObjectId.metadata-new:1-%PID%,relationshipTypeId.metadata-new:310017&yg=>relatedObjectId.metadata-new<relationObjectId.metadata-new&with-data
      /data.com/1-%PID%?yg=<relatedObjectId.metadata-new[relationshipTypeId.metadata-new:310077]>relationObjectId.metadata-new<relatedFromEntityId.metadata[relationshipTypeCode.metadata:TRBCChildOf]>relatedToEntityId.metadata<relatedFromEntityId.metadata[relationshipTypeCode.metadata:TRBCChildOf]
-    
+
      SPARQL
      prefix tr-org: <http://permid.org/ontology/organization/>
      prefix owl: <http://www.w3.org/2002/07/owl#>
@@ -88,7 +88,7 @@ Here is a (truncated) example of the YAML configuration file:
      prefix ont:   <http://ont.thomsonreuters.com/>
      prefix tr-common:	<http://permid.org/ontology/common/>
      prefix md:	<http://data.schemas.financial.thomsonreuters.com/metadata/2009-09-01/>
-    
+
      CONSTRUCT {
      ?permId rdf:type tr-org:Organization .
      ?permId owl:sameAs ?cmpUri .
@@ -108,10 +108,10 @@ Here is a (truncated) example of the YAML configuration file:
        BIND(data:1-%PID% as ?cmpUri ) .
        ?cmpUri rdf:type oa:Organization .
        BIND(URI(REPLACE(STR(?cmpUri),"data.com","permid.org")) as ?permId) .
-    
+
        ?cmpUri ont:permId ?permIdNumeric .
        ?cmpUri oa:isOrganizationManaged ?isManaged .
-    
+
     ...
 ```
 
@@ -173,15 +173,15 @@ Statistics Updated | The time that the sensor made its latest update.
 
 ## DEPRECATED: Downloading and Compiling CM-Well Data Tools ##
 
-> **Notes:** 
-> * To access the CM-Well Git site, you will need a GitHub user. See the [CM-Well GitHub Repository](https://github.com/thomsonreuters/CM-Well).
+> **Notes:**
+> * To access the CM-Well Git site, you will need a GitHub user. See the [CM-Well GitHub Repository](https://github.com/CM-Well/CM-Well).
 > * To compile and run CM-Well data tools, you will need Java version 8.
 
 *To download and compile the CM-Well Data Tools source code:*
 
 1. Go to [http://www.scala-sbt.org/download.html](http://www.scala-sbt.org/download.html) and install the Scala Build Tool (SBT) version appropriate for your OS.
 2. Add the Scala sbt command to your PATH variable.
-3. Perform a Git clone of the CM-Well Data Tools source code from [https://github.com/thomsonreuters/CM-Well](https://github.com/thomsonreuters/CM-Well).
+3. Perform a Git clone of the CM-Well Data Tools source code from [https://github.com/CM-Well/CM-Well](https://github.com/CM-Well/CM-Well).
 4. Navigate to the `cm-well/cmwell-data-tools/tree/master` folder. It contains a file called **build.sbt**.
 5. Run the following command: ```sbt app/pack```. The resulting script executables are created in the ```cmwell-data-tools-app/target/pack/bin``` folder.
 
@@ -189,7 +189,7 @@ Statistics Updated | The time that the sensor made its latest update.
 
 ## DEPRECATED: Running the SPARQL Triggered Processor Utility ##
 
-You can still run the SPARQL Triggered Processor as a stand-alone executable. 
+You can still run the SPARQL Triggered Processor as a stand-alone executable.
 
 To run the SPARQL Triggered Processor, run **cmwell-data-tools\cmwell-data-tools-app\target\pack\bin\sparql-processor-agent** on a Unix machine or **cmwell-data-tools\cmwell-data-tools-app\target\pack\bin\sparql-processor-agent.bat** on a Windows machine.
 
@@ -207,13 +207,13 @@ Parameter | Description
 -s, --source-host <arg> | The source CM-Well host server, from which data is read
 -i, --ingest | A flag that indicates whether to ingest the processed data to a CM-Well instance
 -d, --dest-host <arg> | If **ingest** is indicated, the -d parameter defines the destination CM-Well instance, to which the processed data is written.
---state <arg> | A path to the token file that encodes the consume state for all sensors. To save the token file the first time you run the Triggered Processor, provide a path to the file. The Triggered Processor writes new state tokens to this file as chunks are consumed. To start the processing where you left off, you can use the state file saved from a previous run of the agent as input the next time you run it. 
+--state <arg> | A path to the token file that encodes the consume state for all sensors. To save the token file the first time you run the Triggered Processor, provide a path to the file. The Triggered Processor writes new state tokens to this file as chunks are consumed. To start the processing where you left off, you can use the state file saved from a previous run of the agent as input the next time you run it.
 -w, --write-token  <arg> | The CM-Well write permission token
 --help | Show the help message
 --version | Show the version of this application
 
->**Notes:** 
->* To display a description of the SPARQL Triggered Processor parameters, run `sparql-processor-agent --help`. 
+>**Notes:**
+>* To display a description of the SPARQL Triggered Processor parameters, run `sparql-processor-agent --help`.
 >* There are 3 ways you can provide a start time for the sensor queries. In descending order of precendence, these are:
 >     * The token file provided as the tool's **state** parameter.
 >     * The **sensors/token parameter** in the YAML configuration file.

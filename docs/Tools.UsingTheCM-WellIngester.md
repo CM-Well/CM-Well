@@ -14,15 +14,15 @@ The CM-Well Ingester is written in Scala and is packaged as a jar file (Java lib
 
 ## Downloading and Compiling CM-Well Source Code ##
 
-> **Notes:** 
-> * To access the CM-Well Git site, you will need a GitHub user. See the [CM-Well GitHub Repository](https://github.com/thomsonreuters/CM-Well).
+> **Notes:**
+> * To access the CM-Well Git site, you will need a GitHub user. See the [CM-Well GitHub Repository](https://github.com/CM-Well/CM-Well).
 > * To compile and run CM-Well data tools, you will need Java version 8.
 
 *To install the Scala Build Tool and download the CM-Well Ingester source code:*
 
 1. Go to [http://www.scala-sbt.org/download.html](http://www.scala-sbt.org/download.html) and install the Scala Build Tool (SBT) version appropriate for your OS.
 2. Add the Scala sbt command to your PATH variable.
-3. Download the CM-Well Downloader source code from [https://github.com/thomsonreuters/CM-Well](https://github.com/thomsonreuters/CM-Well).
+3. Download the CM-Well Downloader source code from [https://github.com/CM-Well/CM-Well](https://github.com/thomsonreuters/CM-Well).
 
 *To build all CM-Well utility executables:*
 
@@ -34,7 +34,7 @@ The resulting shell script executables are created in ```cmwell-data-tools-app/t
 *To build only the CM-Well Ingester library:*
 
 1. Navigate to the the **cmwell-ingester** directory under the tools root directory. It contains a file called **build.sbt**.
-2. Run the following command: ```sbt ingester/package```. 
+2. Run the following command: ```sbt ingester/package```.
 
 The resulting `cmwell-ingester_2.12-1.0.LOCAL.jar` file is created in `cmwell-data-tools/cmwell-ingester/target/scala-2.12/`.
 
@@ -56,7 +56,7 @@ Parameter | Description
 --version  | Show the version number of this program
 
 >**Notes:**
->* To display a description of the ingester parameters, run `ingester --help`. 
+>* To display a description of the ingester parameters, run `ingester --help`.
 >* Usually you will not have to change the **backpressure** value. But this may become advisable if, for example, you're receiving "busy" messages from CM-Well.
 >* See [Ingesting Each Infoton as an Atomic Operation](#hdrAtomic).
 
@@ -74,7 +74,7 @@ To use the Ingester class, you will need to add the following import statements 
     import cmwell-tools.data.utils.akka._
     import Implicits._
 
-To ingest data, call the static methods of the **cmwell.tools.data.ingester.Ingester** class. You can call  **Ingester.ingest(...)**, **Ingester.fromInputStream(...)** or **Ingester.fromPipe(...)**, depending on the input object you prefer. 
+To ingest data, call the static methods of the **cmwell.tools.data.ingester.Ingester** class. You can call  **Ingester.ingest(...)**, **Ingester.fromInputStream(...)** or **Ingester.fromPipe(...)**, depending on the input object you prefer.
 
 See the method definitions in **cmwell-downloader/src/main/scala/cmwell/tools/data/ingester/Ingester.scala**.
 
