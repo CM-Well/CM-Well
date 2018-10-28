@@ -29,9 +29,9 @@ import scala.concurrent.Future
   */
 object WriteService {
 
-  val invalidFormatMessage = "Your request should contains either format param (rdfxml, n3, ntriples, turtle,jsonld, nquads,trig ) or content-type header" +
-    " (application/rdf+xml, text/n3, text/plain, " +
-    "text/turtle, application/ld+json,application/json, application/n-quads,text/x-nquads, application/trig)."
+  val invalidFormatMessage = "Your request should contains either format param (rdfxml, n3, ntriples, turtle, jsonld, nquads, trig, trix ) " +
+    "or content-type header (application/rdf+xml, text/n3, text/plain, " +
+    "text/turtle, application/ld+json,application/json, application/n-quads,text/x-nquads, application/trig, application/trix)."
 
   def handleFormatByFormatParameter(cmwellRDFHelper: CMWellRDFHelper,
                                     crudServiceFS: CRUDServiceFS,
@@ -112,6 +112,16 @@ object WriteService {
                                             authUtils,
                                             body,
                                             "TRIG",
+                                            token,
+                                            skipValidation,
+                                            isOverwrite,
+                                            timeContext)
+          case "trix" =>
+            LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,
+                                            crudServiceFS,
+                                            authUtils,
+                                            body,
+                                            "TRIX",
                                             token,
                                             skipValidation,
                                             isOverwrite,
@@ -216,6 +226,16 @@ object WriteService {
                                         authUtils,
                                         body,
                                         "TRIG",
+                                        token,
+                                        skipValidation,
+                                        isOverwrite,
+                                        timeContext)
+      case Some("application/trix") =>
+        LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,
+                                        crudServiceFS,
+                                        authUtils,
+                                        body,
+                                        "TRIX",
                                         token,
                                         skipValidation,
                                         isOverwrite,
