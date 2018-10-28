@@ -36,12 +36,10 @@ You may be interested in exploring the following open-access linked data reposit
 * [GeoNames geographical data](http://www.geonames.org)
 * [WorldCat library catalogs](http://worldcat.org)
 * [Data.gov U.S. government data](https://www.data.gov/developers/semantic-web)
-
-Here are more dataset reference lists:
-
-* [https://en.wikipedia.org/wiki/Linked_data#Datasets](https://en.wikipedia.org/wiki/Linked_data#Datasets)
-* [https://www.w3.org/wiki/DataSetRDFDumps](https://www.w3.org/wiki/DataSetRDFDumps)
+* [Enumeration of datasets on wikipedia](https://en.wikipedia.org/wiki/Linked_data#Datasets)
+* [W3C RDF Catalog](https://www.w3.org/wiki/DataSetRDFDumps)
 * [Linked Open Data Laundromat](http://lodlaundromat.org)
+* [Web Data Commons](http://webdatacommons.org)
 
 ## Further Reading ##
 
