@@ -203,10 +203,11 @@ abstract class RDFFormatter(hostForNs: String,
     (isKnownAsADomain || isPathADomain(path)) && path.split('/').filterNot(_.isEmpty).size <= 1
 
   def uriFromPath(path: String, isADomainOpt: Option[Boolean] = None, protocol: Option[String] = None): String = {
+    val protocolOrDefault = protocol.getOrElse(cmwell.common.Settings.defaultProtocol)
     if ((isADomainOpt.isDefined && isADomainOpt.get) || (isADomainOpt.isEmpty && isPathADomain(path))) {
-      s"${protocol.getOrElse(cmwell.common.Settings.defaultProtocol)}:/$path"
+      s"$protocolOrDefault:/$path"
     } else
-      s"$host${path}"
+      s"$protocolOrDefault://$hostForNs$path"
   }
 
   private val memoizedBreakOut =

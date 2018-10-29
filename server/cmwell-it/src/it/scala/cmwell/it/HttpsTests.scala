@@ -313,6 +313,14 @@ class HttpsTests extends AsyncFunSpec with Matchers with Helpers with Inspectors
         }
       }
 
+    val nonTopDomain = {
+      post("""<https://rubber/duck/debugger> <https://purl73.org/vocab/relationship73/predicate> "BE HERE NOW". """).flatMap { _ =>
+        spinCheck(100.millis, true)(Http.get(cmw / "rubber" / "duck" / "debugger", "format" -> "ntriples" :: Nil))(_.status==200).map { r =>
+          forAtLeast(1, r.payload.lines.toList)(_ should startWith("<https:"))
+        }
+      }
+    }
+
 
     it("should preserve https protocol from ingest to _out")(inAndOut)
     it("should change protocol in each ingested version accordingly")(versions(replaceMode = false))
@@ -320,5 +328,6 @@ class HttpsTests extends AsyncFunSpec with Matchers with Helpers with Inspectors
     it("should get https data when using _sp API")(_sp)
     it("should allow changing protocol upon a Null Update")(nullUpdate)
     it("should support search protocol system field")(search)
+    it("should support https in non top-domain paths")(nonTopDomain)
   }
 }
