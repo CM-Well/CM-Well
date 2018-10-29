@@ -528,7 +528,8 @@ case class BgConf(home: String,
                   hostIp: String,
                   seeds: String,
                   seedPort: Int = 9301,
-                  dir: String = "bg")
+                  dir: String = "bg",
+                  defaultRdfProtocol: String)
     extends ComponentConf(hostIp, s"$home/app/bg", sName, s"$home/conf/bg", "bg.yml", 1) {
   override def mkScript: ConfFile = {
     def jvmArgs = {
@@ -595,7 +596,8 @@ case class BgConf(home: String,
       "irwServiceDao.clusterName" -> s"$clusterName",
       "irwServiceDao.hostName" -> s"$hostName",
       "ftsService.clusterName" -> s"$clusterName",
-      "ftsService.transportAddress" -> s"$hostName"
+      "ftsService.transportAddress" -> s"$hostName",
+      "cmwell.defaultRdfProtocol" -> defaultRdfProtocol
     )
     val m = Map[String, String](
       "clustername" -> clusterName,
@@ -714,7 +716,8 @@ case class WebConf(home: String,
                    debug: Boolean,
                    hostIp: String,
                    seeds: String,
-                   seedPort: Int)
+                   seedPort: Int,
+                   defaultRdfProtocol: String)
     extends ComponentConf(hostIp, s"$home/app/ws", sName, s"$home/conf/ws", "ws.yml", 1) {
   def genMemStr(mem: String): String = {
     if (!mem.isEmpty) s"-J$mem" else mem
@@ -778,7 +781,8 @@ case class WebConf(home: String,
       "ftsService.clusterName" -> s"$clusterName",
       "cmwell.home" -> s"$home",
       "irwServiceDao.hostName" -> s"$hostName",
-      "ftsService.transportAddress" -> s"$hostName"
+      "ftsService.transportAddress" -> s"$hostName",
+      "cmwell.defaultRdfProtocol" -> defaultRdfProtocol
     )
 
     val m = Map[String, String](

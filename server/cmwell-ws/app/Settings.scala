@@ -31,13 +31,6 @@ object Settings {
 
   val config = ConfigFactory.load()
 
-  // tLogs DAO
-  lazy val tLogsDaoHostName = config.getString("tLogs.hostName")
-  lazy val tLogsDaoClusterName = config.getString("tLogs.cluster.name")
-  lazy val tLogsDaoKeySpace = config.getString("tLogs.keyspace")
-  lazy val tLogsDaoColumnFamily = config.getString("tLogs.columnFamilyName")
-  lazy val tLogsDaoMaxConnections = config.getInt("tLogs.maxConnections")
-
   // kafka
   lazy val kafkaURL = config.getString("kafka.url")
   lazy val persistTopicName = config.getString("kafka.persist.topic.name")

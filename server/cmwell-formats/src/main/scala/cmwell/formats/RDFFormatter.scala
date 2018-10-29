@@ -204,7 +204,7 @@ abstract class RDFFormatter(hostForNs: String,
 
   def uriFromPath(path: String, isADomainOpt: Option[Boolean] = None, protocol: Option[String] = None): String = {
     if ((isADomainOpt.isDefined && isADomainOpt.get) || (isADomainOpt.isEmpty && isPathADomain(path))) {
-      s"${protocol.getOrElse("http")}:/$path"
+      s"${protocol.getOrElse(cmwell.common.Settings.defaultProtocol)}:/$path"
     } else
       s"$host${path}"
   }
