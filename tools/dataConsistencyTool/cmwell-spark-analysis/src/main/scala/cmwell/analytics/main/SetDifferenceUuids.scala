@@ -61,6 +61,7 @@ object SetDifferenceUuids {
         sparkShell = Opts.shell()
       ).withSparkSessionDo { implicit spark =>
 
+
         logger.info(s"Using a consistency threshold of ${instantToText(Opts.consistencyThreshold())}.")
         val datasetFilter = DatasetFilter(
           lastModifiedGte = Opts.lastModifiedGteFilter.toOption,

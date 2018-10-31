@@ -1,6 +1,7 @@
 package cmwell.analytics.main
 
 import cmwell.analytics.data.Spark
+import cmwell.analytics.util.TimestampConversion.timestampConverter
 import cmwell.analytics.util._
 import org.apache.log4j.LogManager
 import org.apache.spark.sql.Dataset
