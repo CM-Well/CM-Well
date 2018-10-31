@@ -449,8 +449,8 @@ package object wsutil extends LazyLogging {
   case class PathsExpansion(paths: List[PathExpansion])
 
   //Some convenience methods & types
-  def getByPath(path: String, crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionContext): Future[Infoton] =
-    crudServiceFS.irwService.readPathAsync(path, crudServiceFS.level).map(_.getOrElse(GhostInfoton(path)))
+  def getByPath(protocol: String, path: String, crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionContext): Future[Infoton] =
+    crudServiceFS.irwService.readPathAsync(path, crudServiceFS.level).map(_.getOrElse(GhostInfoton.ghost(protocol, path)))
   type F[X] = (X, Option[List[RawFieldFilter]])
   type EFX = Either[F[Future[Infoton]], F[Infoton]]
 
@@ -566,11 +566,11 @@ package object wsutil extends LazyLogging {
             case (func, _) if !func(fieldName) => Nil
             case (_, rffo) =>
               values.collect {
-                case fr: FReference => normalizePath(fr.getCmwellPath) -> rffo
-              }(breakOut[Set[FieldValue], (String, Option[RawFieldFilter]), List[(String, Option[RawFieldFilter])]])
+                case fr: FReference => (fr.getProtocol -> normalizePath(fr.getCmwellPath)) -> rffo
+              }(breakOut[Set[FieldValue], ((String,String), Option[RawFieldFilter]), List[((String,String), Option[RawFieldFilter])]])
           }
       }(
-        breakOut[Map[String, Set[FieldValue]], (String, Option[RawFieldFilter]), List[(String, Option[RawFieldFilter])]]
+        breakOut[Map[String, Set[FieldValue]], ((String,String), Option[RawFieldFilter]), List[((String,String), Option[RawFieldFilter])]]
       )
 
       // value are `Option[List[...]]` because `None` means no filtering (pass all)
@@ -579,8 +579,8 @@ package object wsutil extends LazyLogging {
 
       // get infotons from either `infotonsRetrievedCache` or from cassandra, and pair with filters option
       val (l, r) = partitionWith(pathToFiltersMap) {
-        case (path, rffso) => {
-          infotonsRetrievedCache.get(path).fold[EFX](Left(getByPath(path, cmwellRDFHelper.crudServiceFS) -> rffso)) {
+        case ((protocol,path), rffso) => {
+          infotonsRetrievedCache.get(path).fold[EFX](Left(getByPath(protocol, path, cmwellRDFHelper.crudServiceFS) -> rffso)) {
             i =>
               Right(i -> rffso)
           }
@@ -630,7 +630,7 @@ package object wsutil extends LazyLogging {
 
     def mkFieldFilters2(ff: FilteredField[FieldKeyPattern],
                         outerFieldOperator: FieldOperator,
-                        urls: List[String]): Future[FieldFilter] = {
+                        pathsAndProtocols: List[(String,String)]): Future[FieldFilter] = {
 
       val FilteredField(fkp, rffo) = ff
       val internalFieldNameFut = fkp match {
@@ -638,37 +638,31 @@ package object wsutil extends LazyLogging {
         case FieldKeyPattern(Left(unfk)) => FieldKey.resolve(unfk, cmwellRDFHelper, timeContext).map(_.internalKey)
       }
       val filterFut: Future[FieldFilter] = internalFieldNameFut.map { internalFieldName =>
-        urls match {
-          case Nil =>
-            val sb = new StringBuilder
-            sb ++= "empty urls in expandUp("
-            sb ++= filteredFields.toString
-            sb ++= ",population[size="
-            sb ++= population.size.toString
-            sb ++= "],cache[size="
-            sb ++= cache.size.toString
-            sb ++= "])\nfor pattern: "
-            sb ++= pattern
-            sb ++= "\nand infotons.take(3) = "
-            sb += '['
-            infotonsSample.headOption.foreach { i =>
-              sb ++= i.toString
-              infotonsSample.tail.foreach { j =>
-                sb += ','
-                sb ++= j.toString
-              }
+        if(pathsAndProtocols.isEmpty) {
+          val sb = new StringBuilder
+          sb ++= "empty urls in expandUp("
+          sb ++= filteredFields.toString
+          sb ++= ",population[size="
+          sb ++= population.size.toString
+          sb ++= "],cache[size="
+          sb ++= cache.size.toString
+          sb ++= "])\nfor pattern: "
+          sb ++= pattern
+          sb ++= "\nand infotons.take(3) = "
+          sb += '['
+          infotonsSample.headOption.foreach { i =>
+            sb ++= i.toString
+            infotonsSample.tail.foreach { j =>
+              sb += ','
+              sb ++= j.toString
             }
-            sb += ']'
-            throw new IllegalStateException(sb.result())
-          case url :: Nil =>
-            SingleFieldFilter(rffo.fold[FieldOperator](outerFieldOperator)(_ => Must),
-                              Equals,
-                              internalFieldName,
-                              Some(url))
-          case _ => {
-            val shoulds = urls.map(url => SingleFieldFilter(Should, Equals, internalFieldName, Some(url)))
-            MultiFieldFilter(rffo.fold[FieldOperator](outerFieldOperator)(_ => Must), shoulds)
           }
+          sb += ']'
+          throw new IllegalStateException(sb.result())
+        } else {
+          val shoulds = pathsAndProtocols.flatMap { case (path,protocol) => pathToUris(protocol, path) }.
+            map(url => SingleFieldFilter(Should, Equals, internalFieldName, Some(url)))
+          MultiFieldFilter(rffo.fold[FieldOperator](outerFieldOperator)(_ => Must), shoulds)
         }
       }
       rffo.fold[Future[FieldFilter]](filterFut) { rawFilter =>
@@ -680,7 +674,9 @@ package object wsutil extends LazyLogging {
 
     Future
       .traverse(population.grouped(chunkSize)) { infotonsChunk =>
-        val urls: List[String] = infotonsChunk.map(i => pathToUri(i.path))(breakOut)
+        val pathsAndProtocols: List[(String,String)] = infotonsChunk.map { i =>
+          i.path -> i.protocol.getOrElse(cmwell.common.Settings.defaultProtocol)
+        }(breakOut)
 
         val fieldFilterFut = filteredFields match {
           case Nil =>
@@ -688,8 +684,8 @@ package object wsutil extends LazyLogging {
             val c = cache.size
             val p = population.size
             throw new IllegalStateException(s"expandUp($filteredFields,population[size=$p],cache[size=$c])\nfor pattern: $pattern\nand infotons.take(3) = $i")
-          case ff :: Nil => mkFieldFilters2(ff, Must, urls)
-          case _         => Future.traverse(filteredFields)(mkFieldFilters2(_, Should, urls)).map(MultiFieldFilter(Must, _))
+          case ff :: Nil => mkFieldFilters2(ff, Must, pathsAndProtocols)
+          case _         => Future.traverse(filteredFields)(mkFieldFilters2(_, Should, pathsAndProtocols)).map(MultiFieldFilter(Must, _))
         }
         fieldFilterFut.transformWith {
           case Failure(_: NoSuchElementException) => Future.successful(Nil -> Nil)
@@ -937,10 +933,10 @@ package object wsutil extends LazyLogging {
 
   def isPathADomain(path: String): Boolean = path.dropWhile(_ == '/').takeWhile(_ != '/').contains('.')
 
-  def pathToUri(path: String): String = {
-    if (path.startsWith("/https.")) s"https:/${path.drop("/https.".length)}"
-    else if (isPathADomain(path)) s"http:/$path"
-    else s"cmwell:/$path"
+  def pathToUris(protocol: String, path: String): Seq[String] = {
+    if (isPathADomain(path))
+      List(s"http:/$path", s"https:/$path") //TODO When it is safe to undo WombatUpdate2, return this: s"$protocol:/$path"
+    else List(s"cmwell:/$path")
   }
 
   def exceptionToResponse(throwable: Throwable): Result = {
@@ -1141,7 +1137,7 @@ package object wsutil extends LazyLogging {
   def pathStatusAsInfoton(ps: PathStatus): Infoton = {
     val PathStatus(path, status) = ps
     val fields: Option[Map[String, Set[FieldValue]]] = Some(Map("trackingStatus" -> Set(FString(status.toString))))
-    VirtualInfoton(ObjectInfoton(path, Settings.dataCenter, None, fields = fields))
+    VirtualInfoton(ObjectInfoton(path, Settings.dataCenter, None, fields = fields, protocol = None))
   }
 
   def getFormatter(request: Request[_],
@@ -1175,6 +1171,7 @@ package object wsutil extends LazyLogging {
     case ("system", "indexTime")               => true
     case ("system", "current")                 => true
     case ("system", "parent")                  => true
+    case ("system", "protocol")                => true
     case ("link", "to")                        => true
     case ("link", "kind")                      => true
     case ("content", "data")                   => true

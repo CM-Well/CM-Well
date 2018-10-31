@@ -28,7 +28,9 @@ case class LocalHost(dataCenter: String = "lh",
                      newBg: Boolean = true,
                      oldBg: Boolean = true,
                      nbg: Boolean = false,
-                     isDebug: Boolean = false)
+                     isDebug: Boolean = false,
+                     subjectsInSpAreHttps: Boolean = false,
+                     defaultRdfProtocol: String = "http")
     extends Host(
       System.getProperty("user.name"),
       "",
@@ -48,7 +50,9 @@ case class LocalHost(dataCenter: String = "lh",
       minMembers = Some(1),
       haProxy = None,
       withElk = withElk,
-      isDebug = isDebug
+      isDebug = isDebug,
+      subjectsInSpAreHttps = subjectsInSpAreHttps,
+      defaultRdfProtocol = defaultRdfProtocol
     ) {
 
 //  LogLevel.debug
@@ -257,7 +261,8 @@ case class LocalHost(dataCenter: String = "lh",
       hostIp = ip,
       minMembers = getMinMembers,
       numOfPartitions = hosts.size,
-      seeds = getSeedNodes.mkString(",")
+      seeds = getSeedNodes.mkString(","),
+      defaultRdfProtocol = defaultRdfProtocol
     )
 
     val web = WebConf(
@@ -274,7 +279,8 @@ case class LocalHost(dataCenter: String = "lh",
       hostIp = ip,
       minMembers = getMinMembers,
       seedPort = 9301,
-      seeds = getSeedNodes.mkString(",")
+      seeds = getSeedNodes.mkString(","),
+      defaultRdfProtocol = defaultRdfProtocol
     )
 
     val cw = CwConf(
@@ -289,7 +295,8 @@ case class LocalHost(dataCenter: String = "lh",
       hostIp = ip,
       minMembers = getMinMembers,
       seeds = getSeedNodes.mkString(","),
-      seedPort = 9301
+      seedPort = 9301,
+      subjectsInSpAreHttps = subjectsInSpAreHttps
     )
 
     val ctrl = CtrlConf(

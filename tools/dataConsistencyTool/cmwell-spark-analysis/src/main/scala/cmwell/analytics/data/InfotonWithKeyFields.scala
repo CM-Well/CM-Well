@@ -1,6 +1,6 @@
 package cmwell.analytics.data
 
-import cmwell.analytics.util.{CassandraSystem, KeyFields}
+import cmwell.analytics.util.{CassandraSystem, DatasetFilter, KeyFields}
 import com.datastax.spark.connector._
 import org.apache.spark.sql.{Dataset, SparkSession}
 import org.joda.time.format.ISODateTimeFormat
@@ -15,11 +15,11 @@ object InfotonWithKeyFields extends EstimateDatasetSize {
     CassandraSystem.rowCount(table = "infoton") * BytesPerRow
 
   /**
-    * Get a Dataset[InfotonWithUuidLastModifiedPath].
+    * Get a Dataset[KeyFields] from the Infoton table.
     * This represents data from the path2.infoton table from Casssandra, including only the
     * uuid, lastModified and path.
     */
-  def apply()
+  def apply(datasetFilter: Option[DatasetFilter] = None)
            (implicit spark: SparkSession): Dataset[KeyFields] = {
 
     val infotonRdd = spark.sparkContext.cassandraTable("data2", "infoton")
@@ -49,7 +49,10 @@ object InfotonWithKeyFields extends EstimateDatasetSize {
         path = path)
     }
 
+
     import spark.implicits._
-    spark.createDataset(objectRDD)
+    val ds = spark.createDataset(objectRDD)
+
+    datasetFilter.fold(ds)(_.applyFilter(ds, forAnalysis = false))
   }
 }

@@ -53,13 +53,13 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     val objInfo = new ObjectInfoton(
       path = "/command-test/objinfo1",
       dc = "test",
-      fields = Option(Map[String,Set[FieldValue]]("g" -> Set(FString("h")),"last" -> Set(FString("zitnik")), "name" ->  x )))
+      fields = Option(Map[String,Set[FieldValue]]("g" -> Set(FString("h")),"last" -> Set(FString("zitnik")), "name" ->  x )), protocol = None)
     InfotonSerializer.deserialize(InfotonSerializer.serialize(objInfo)) shouldEqual objInfo
     serialize2Anddeserialize2(objInfo) shouldEqual objInfo
   }
 
   "object infoton serializer" should "be successful" in {
-    val objInfo = ObjectInfoton("/command-test/objinfo1","dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))))
+    val objInfo = ObjectInfoton("/command-test/objinfo1","dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), None)
     val objInfoCmp = InfotonSerializer.deserialize(InfotonSerializer.serialize(objInfo))
     // check system
     objInfo.path should equal(objInfoCmp.path)
@@ -71,7 +71,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
 
   "empty file infoton serializer" should "be successful" in {
     val fc = FileContent("text/plain",0)
-    val emptyInfo = FileInfoton("/command-test/objinfo1","dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))) , fc )
+    val emptyInfo = FileInfoton("/command-test/objinfo1","dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))) , fc, None)
     val emptyInfoCmp = InfotonSerializer.deserialize(InfotonSerializer.serialize(emptyInfo))
 
     emptyInfo.path should equal (emptyInfoCmp.path)
@@ -88,7 +88,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
 
     val s = byteArray
     val img : FileContent = FileContent(s, "image/jpeg;charset=iso-8859-1")
-    val imgInfo = FileInfoton("/command-test/objinfo1","dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))) , img )
+    val imgInfo = FileInfoton("/command-test/objinfo1","dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), img, None)
     val imgInfoCmp = InfotonSerializer.deserialize(InfotonSerializer.serialize(imgInfo))
     val imgInfoCmp2 = serialize2Anddeserialize2(imgInfo)
 
@@ -105,7 +105,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     imgInfo.fields.get("name").size should equal (imgInfoCmp2.fields.get("name").size)
 
     (imgInfoCmp: @unchecked) match {
-      case FileInfoton(_,_,_,_,fields , content, _ ) =>
+      case FileInfoton(_,_,_,_,fields , content, _ , _ ) =>
         content.get match {
           case FileContent(data,mimeType,_,_) =>
             val d = data.get
@@ -115,7 +115,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     }
 
     (imgInfoCmp2: @unchecked) match {
-      case FileInfoton(_,_,_,_,fields , content, _ ) =>
+      case FileInfoton(_,_,_,_,fields , content, _ , _ ) =>
         content.get match {
           case FileContent(data,mimeType,_,_) =>
             val d = data.get
@@ -133,7 +133,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
 
     val s = byteArray
     val text : FileContent = FileContent(s, "text/plain;charset=utf-8")
-    val textInfo = FileInfoton("/command-test/objinfo1","dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))) , text )
+    val textInfo = FileInfoton("/command-test/objinfo1","dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), text, None)
     val textInfoCmp = InfotonSerializer.deserialize(InfotonSerializer.serialize(textInfo))
     val textInfoCmp2 = serialize2Anddeserialize2(textInfo)
 
@@ -150,7 +150,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     textInfo.fields.get("name").size should equal (textInfoCmp2.fields.get("name").size)
 
     (textInfoCmp: @unchecked) match {
-      case FileInfoton(_,_,_,_,fields , content, _ ) =>
+      case FileInfoton(_,_,_,_,fields , content, _ , _ ) =>
         content.get match {
           case FileContent(data,mimeType,_,_) =>
             val d = data.get
@@ -160,7 +160,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     }
 
     (textInfoCmp2: @unchecked) match {
-      case FileInfoton(_,_,_,_,fields , content, _ ) =>
+      case FileInfoton(_,_,_,_,fields , content, _ , _ ) =>
         content.get match {
           case FileContent(data,mimeType,_,_) =>
             val d = data.get
@@ -176,7 +176,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
   "big file infoton with % chunkSize != 0" should "be successful" in {
     val bArr = Array.tabulate[Byte](chunkSize + chunkSize + 12345)(_.&(0xff).toByte)
     val data : FileContent = FileContent(bArr, "application/octet-stream")
-    val fInf = FileInfoton("/command-test/fileinfo1","dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), data)
+    val fInf = FileInfoton("/command-test/fileinfo1","dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), data, None)
     val dataInfoCmp = InfotonSerializer.deserialize(InfotonSerializer.serialize(fInf))
     val dataInfoCmp2 = serialize2Anddeserialize2(fInf)
 
@@ -193,7 +193,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     fInf.fields.get("name").size should equal (dataInfoCmp2.fields.get("name").size)
 
     (dataInfoCmp: @unchecked) match {
-      case FileInfoton(_,_,_,_,_,content,_) =>
+      case FileInfoton(_,_,_,_,_,content,_,_) =>
         content.get match {
           case FileContent(binData,mimeType,_,_) =>
             val d = binData.get
@@ -203,7 +203,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     }
 
     (dataInfoCmp2: @unchecked) match {
-      case FileInfoton(_,_,_,_,_,content,_) =>
+      case FileInfoton(_,_,_,_,_,content,_,_) =>
         content.get match {
           case FileContent(binData,mimeType,_,_) =>
             val d = binData.get
@@ -216,7 +216,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
   "big file infoton with % chunkSize == 0" should "be successful" in {
     val bArr = Array.tabulate[Byte](2*chunkSize)(_.&(0xff).toByte)
     val data : FileContent = FileContent(bArr, "application/octet-stream")
-    val fInf = FileInfoton("/command-test/fileinfo1","dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), data)
+    val fInf = FileInfoton("/command-test/fileinfo1","dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), data, None)
     val dataInfoCmp = InfotonSerializer.deserialize(InfotonSerializer.serialize(fInf))
     val dataInfoCmp2 = serialize2Anddeserialize2(fInf)
 
@@ -233,7 +233,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     fInf.fields.get("name").size should equal (dataInfoCmp2.fields.get("name").size)
 
     (dataInfoCmp: @unchecked) match {
-      case FileInfoton(_,_,_,_,_,content,_) =>
+      case FileInfoton(_,_,_,_,_,content,_,_) =>
         content.get match {
           case FileContent(binData,mimeType,_,_) =>
             val d = binData.get
@@ -243,7 +243,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     }
 
     (dataInfoCmp2: @unchecked) match {
-      case FileInfoton(_,_,_,_,_,content,_) =>
+      case FileInfoton(_,_,_,_,_,content,_,_) =>
         content.get match {
           case FileContent(binData,mimeType,_,_) =>
             val d = binData.get
@@ -259,7 +259,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
       "dc_test",
       Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))),
       "/mark",
-      LinkType.Forward)
+      LinkType.Forward, None)
 
     val forwardCmp = InfotonSerializer.deserialize(InfotonSerializer.serialize(forward))
     // check system
@@ -268,7 +268,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     forward.lastModified should equal (forwardCmp.lastModified)
     // check link
     (forwardCmp: @unchecked) match {
-      case LinkInfoton(_,_,_,_,_,t,lt,_) => {
+      case LinkInfoton(_,_,_,_,_,t,lt,_,_) => {
         forward.linkTo should equal (t)
         forward.linkType should equal (lt)
       }
@@ -276,7 +276,8 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     // check fields
     forward.fields.get("name").size should equal (forwardCmp.fields.get("name").size)
 
-    val per = LinkInfoton("/command-test/objinfo1","dc_test", Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))) , "/mark" , LinkType.Permanent )
+    val per = LinkInfoton("/command-test/objinfo1","dc_test",
+      Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))) , "/mark" , LinkType.Permanent, None)
 
     val perCmp = InfotonSerializer.deserialize(InfotonSerializer.serialize(per))
     // check system
@@ -285,7 +286,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     per.lastModified should equal (perCmp.lastModified)
     // check link
     (perCmp: @unchecked) match {
-      case LinkInfoton(_,_,_,_,_,t,lt,_ ) => {
+      case LinkInfoton(_,_,_,_,_,t,lt,_,_ ) => {
         per.linkTo should equal (t)
         per.linkType should equal (lt)
       }
@@ -294,7 +295,8 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     per.fields.get("name").size should equal (perCmp.fields.get("name").size)
 
 
-    val temp = LinkInfoton("/command-test/objinfo1","dc_test" , Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))) , "/mark" , LinkType.Temporary )
+    val temp = LinkInfoton("/command-test/objinfo1","dc_test",
+      Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))) , "/mark" , LinkType.Temporary, None)
 
     val tempCmp = InfotonSerializer.deserialize(InfotonSerializer.serialize(temp))
     // check system
@@ -303,7 +305,7 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
     temp.lastModified should equal (tempCmp.lastModified)
     // check link
     (tempCmp: @unchecked) match {
-      case LinkInfoton(_,_,_,_,_,t,lt,_ ) => {
+      case LinkInfoton(_,_,_,_,_,t,lt,_,_ ) => {
         temp.linkTo should equal (t)
         temp.linkType should equal (lt)
       }
@@ -327,13 +329,13 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
       "dc_test",
       None,
       new DateTime("2015-03-04T12:51:39.000Z"),
-      Map("Mark"->Set[FieldValue](FString("King"),FString("Awesome"))))
+      Map("Mark"->Set[FieldValue](FString("King"),FString("Awesome"))), None)
     val infoton2 = ObjectInfoton(
       "/pathOfInfoton2",
       "dc_test",
       None,
       new DateTime("2001-02-03T09:34:21.000Z"),
-      Map("Mark"->Set[FieldValue](FString("Awesome"),FString("King"))))
+      Map("Mark"->Set[FieldValue](FString("Awesome"),FString("King"))), None)
 
     (infoton1 isSameAs infoton2) should equal (true)
   }

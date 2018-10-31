@@ -37,7 +37,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       new DateTime(),
-      Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith")))
+      Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith"))),
+      None
     )
 
     val writeCommand = WriteCommand(infoton)
@@ -54,7 +55,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       now,
-      Map("first-name" -> Set(FieldValue("john")))
+      Map("first-name" -> Set(FieldValue("john"))),
+      None
     )
 
     val currentDateTime = now.plus(1L)
@@ -63,7 +65,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       currentDateTime,
-      Map("last-name" -> Set(FieldValue("smith")))
+      Map("last-name" -> Set(FieldValue("smith"))),
+      None
     )
 
     val expected = ObjectInfoton(
@@ -71,7 +74,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       merger.defaultDC,
       None,
       currentDateTime,
-      Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith")))
+      Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith"))),
+      None
     )
 
     val merged = merger.merge(Some(previous), Seq(WriteCommand(current))).merged
@@ -86,7 +90,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       now,
-      Map("first-name" -> Set(FieldValue("john")))
+      Map("first-name" -> Set(FieldValue("john"))),
+      None
     )
 
     val current = ObjectInfoton(
@@ -94,7 +99,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       now,
-      Map("last-name" -> Set(FieldValue("smith")))
+      Map("last-name" -> Set(FieldValue("smith"))),
+      None
     )
 
     val expected = ObjectInfoton(
@@ -102,7 +108,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       merger.defaultDC,
       None,
       now.plus(1L),
-      Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith")))
+      Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith"))),
+      None
     )
 
     val merged = merger.merge(Some(previous), Seq(WriteCommand(current))).merged
@@ -117,7 +124,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       now.plus(1L),
-      Map("first-name" -> Set(FieldValue("john")))
+      Map("first-name" -> Set(FieldValue("john"))),
+      None
     )
 
     val current = ObjectInfoton(
@@ -125,7 +133,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       now,
-      Map("last-name" -> Set(FieldValue("smith")))
+      Map("last-name" -> Set(FieldValue("smith"))),
+      None
     )
 
     val expected = ObjectInfoton(
@@ -133,7 +142,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       merger.defaultDC,
       None,
       now.plus(2L),
-      Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith")))
+      Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith"))),
+      None
     )
 
     val merged = merger.merge(Some(previous), Seq(WriteCommand(current))).merged
@@ -157,6 +167,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       new DateTime(0L),
+      None,
+      "",
       None
     )
 
@@ -176,6 +188,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       new DateTime(0L),
+      None,
+      "",
       None
     )
 
@@ -195,6 +209,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       Some(1L),
       new DateTime(0L),
+      None,
+      "",
       None
     )
 
@@ -214,6 +230,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       Some(2L),
       new DateTime(0L),
+      None,
+      "",
       None
     )
 
@@ -233,6 +251,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       now,
+      None,
+      "",
       None
     )
     val infoton2 = ObjectInfoton(
@@ -240,6 +260,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       now.plusMillis(20),
+      None,
+      "",
       None
     )
     val writeCommand1 = WriteCommand(infoton1)
@@ -257,12 +279,14 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       DateTime.now(),
+      None,
+      "",
       None
     )
     val writeCommand = WriteCommand(baseInfoton.copyInfoton(lastModified = baseInfoton.lastModified.minus(1)))
     val merged = merger.merge(Some(baseInfoton), Seq(writeCommand))
     withClue(merged){
-      merged.merged shouldBe defined
+      merged.merged shouldNot be (defined)
     }
   }
 
@@ -273,6 +297,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       Some(1L),
       now,
+      None,
+      "",
       None
     )
     val infoton1 = ObjectInfoton(
@@ -280,6 +306,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       now.minusMillis(161),
+      None,
+      "",
       None
     )
     val infoton2 = ObjectInfoton(
@@ -287,6 +315,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       now.plusMillis(53),
+      None,
+      "",
       None
     )
     val writeCommand1 = WriteCommand(infoton1)

@@ -196,17 +196,19 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
         jsonGenerator.writeStringField("indexName", indexName)
         jsonGenerator.writeFieldName("persistOffsets")
         encodeOffsetSeqWithGenerator(persistOffsets, jsonGenerator)
-      case DeleteAttributesCommand(path, fields, lastModified, trackingID, prevUUID) =>
+      case DeleteAttributesCommand(path, fields, lastModified, trackingID, prevUUID, protocol) =>
         jsonGenerator.writeStringField("path", path)
         encodeFieldsWithGenerator(fields, jsonGenerator)
         jsonGenerator.writeStringField("lastModified", dateFormatter.print(lastModified))
+        protocol.foreach(jsonGenerator.writeStringField("protocol", _))
       case DeletePathCommand(path, lastModified, trackingID, prevUUID) =>
         jsonGenerator.writeStringField("path", path)
         jsonGenerator.writeStringField("lastModified", dateFormatter.print(lastModified))
-      case UpdatePathCommand(path, deleteFields, updateFields, lastModified, trackingID, prevUUID) =>
+      case UpdatePathCommand(path, deleteFields, updateFields, lastModified, trackingID, prevUUID, protocol) =>
         jsonGenerator.writeStringField("path", path)
         encodeUpdateFieldsWithGenerator(deleteFields, updateFields, jsonGenerator)
         jsonGenerator.writeStringField("lastModified", dateFormatter.print(lastModified))
+        protocol.foreach(jsonGenerator.writeStringField("protocol", _))
       case OverwriteCommand(infoton, trackingID) =>
         jsonGenerator.writeFieldName("infoton")
         encodeInfotonWithGenerator(infoton, jsonGenerator)
@@ -400,13 +402,15 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
       jsonGenerator.writeNumberField("indexTime", idxT)
     }
 
+    infoton.protocol.foreach(jsonGenerator.writeStringField("protocol", _))
+
     jsonGenerator.writeEndObject() // end system object field
     // write field object, if not empty
     infoton.fields.foreach { fields =>
       encodeFieldsWithGenerator(fields, jsonGenerator, toEs = toEs)
     }
     infoton match {
-      case FileInfoton(_, _, _, _, _, Some(FileContent(dataOpt, mimeType, dl, dp)), _) =>
+      case FileInfoton(_, _, _, _, _, Some(FileContent(dataOpt, mimeType, dl, dp)), _, _) =>
         jsonGenerator.writeObjectFieldStart("content")
         jsonGenerator.writeStringField("mimeType", mimeType)
         dataOpt.foreach { data =>
@@ -425,7 +429,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
         }
         jsonGenerator.writeNumberField("length", dataOpt.fold(dl)(_.length))
         jsonGenerator.writeEndObject()
-      case LinkInfoton(_, _, _, _, _, linkTo, linkType, _) =>
+      case LinkInfoton(_, _, _, _, _, linkTo, linkType, _, _) =>
         jsonGenerator.writeStringField("linkTo", linkTo)
         jsonGenerator.writeNumberField("linkType", linkType)
       case _ =>

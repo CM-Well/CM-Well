@@ -75,3 +75,8 @@ All of the *dump-...-from-es.sh* scripts can be easily modified to extract only 
 This allows for a fast check that two indexes contain an identical set of documents. It does this by summarizing the
 hash of each document using XOR, which works regardless of the order that the documents are processed. It also means
 that we don't need to move any data around beyond retrieving the documents from ES.
+
+## Filtering
+
+The entry points for extracting from indexes implement options for filtering.
+See the README.md for the companion *cmwell-spark-analysis* project.

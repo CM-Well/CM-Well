@@ -336,7 +336,15 @@ object PopulateAndQuery extends LazyLogging {
   }
 
   def loadRdfToDataset(ntriplesOrNquads: InputStream, ds: Dataset = DatasetFactory.createGeneral()): Dataset = {
-    RDFDataMgr.read(ds, ntriplesOrNquads, Lang.NQUADS)
+
+    //FIXME This is a temporary ugly hack (&& a quick win for an important customer) - in near future we will preserve HTTPS per Infoton
+    def mapSubjectsToHttps(inputStream: InputStream): InputStream = {
+      val lines = scala.io.Source.fromInputStream(ntriplesOrNquads, "UTF-8").mkString.split('\n')
+      new ByteArrayInputStream(lines.map(_.replaceAll("""^s*<http://""", "<https://")).mkString("\n").getBytes("UTF-8"))
+    }
+
+    val modifiedInput = if(Settings.subjectsInSpAreHttps) mapSubjectsToHttps(ntriplesOrNquads) else ntriplesOrNquads
+    RDFDataMgr.read(ds, modifiedInput, Lang.NQUADS)
     ds
   }
 }
@@ -785,7 +793,7 @@ trait Importer[A] { this: LazyLogging =>
       .map(
         res =>
           (res: @unchecked) match {
-            case Some(Everything(FileInfoton(_, _, _, _, fields, Some(content), _))) =>
+            case Some(Everything(FileInfoton(_, _, _, _, fields, Some(content), _, _))) =>
               FileInfotonContent(content.data.get, fields.getOrElse(Map()))
             case x =>
               logger.debug(s"Could not fetch $path, got $x"); throw new RuntimeException(s"Could not fetch $path")

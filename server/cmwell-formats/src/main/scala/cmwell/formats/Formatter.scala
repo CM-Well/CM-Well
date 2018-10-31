@@ -36,13 +36,14 @@ trait Formatter extends LazyLogging {
                              mkLongVal: Long => V,
                              includeParent: Boolean = true): Seq[(K, V)] = {
     val indexTime = infoton.indexTime.map(it => Seq(mkKey("indexTime") -> mkLongVal(it))).getOrElse(Nil)
+    val protocol = Seq(mkKey("protocol") -> mkVal(infoton.protocol.getOrElse(cmwell.common.Settings.defaultProtocol)))
     val seq = Seq(
 //      mkKey("type") -> mkVal(infoton.kind), //TODO: add type to system instead of outer level
       mkKey("uuid") -> mkVal(infoton.uuid),
       mkKey("lastModified") -> mkDateVal(infoton.lastModified),
       mkKey("path") -> mkVal(infoton.path),
       mkKey("dataCenter") -> mkVal(infoton.dc)
-    ) ++ indexTime ++ Seq(mkKey("parent") -> mkVal(infoton.parent))
+    ) ++ indexTime ++ protocol ++ Seq(mkKey("parent") -> mkVal(infoton.parent))
     if (includeParent) seq
     else seq.init
   }
@@ -272,7 +273,7 @@ trait TreeLikeFormatter extends Formatter {
       .fold(Seq.empty[(String, Inner)])(_ => Seq("fields" -> fields(i)))
     val iExtra: Seq[(String, Inner)] = extra(i)
     (i: @unchecked) match {
-      case CompoundInfoton(_, _, _, _, _, children, offset, length, total, _) =>
+      case CompoundInfoton(_, _, _, _, _, children, offset, length, total, _, _) =>
         makeFromTuples(
           Seq(
             "type" -> single(i.kind),
@@ -283,14 +284,14 @@ trait TreeLikeFormatter extends Formatter {
             "total" -> single(total)
           ) ++ iExtra ++ iFields
         )
-      case ObjectInfoton(_, _, _, _, _, _) =>
+      case ObjectInfoton(_, _, _, _, _, _, _) =>
         makeFromTuples(
           Seq(
             "type" -> single(i.kind),
             "system" -> iSystem
           ) ++ iExtra ++ iFields
         )
-      case FileInfoton(_, _, _, _, _, Some(content), _) =>
+      case FileInfoton(_, _, _, _, _, Some(content), _, _) =>
         makeFromTuples(
           Seq(
             "type" -> single(i.kind),
@@ -298,14 +299,14 @@ trait TreeLikeFormatter extends Formatter {
             "content" -> fileContent(content)
           ) ++ iExtra ++ iFields
         )
-      case FileInfoton(_, _, _, _, _, None, _) =>
+      case FileInfoton(_, _, _, _, _, None, _, _) =>
         makeFromTuples(
           Seq(
             "type" -> single(i.kind),
             "system" -> iSystem
           ) ++ iExtra ++ iFields
         )
-      case LinkInfoton(_, _, _, _, _, linkTo, linkType, _) =>
+      case LinkInfoton(_, _, _, _, _, linkTo, linkType, _, _) =>
         makeFromTuples(
           Seq(
             "type" -> single(i.kind),

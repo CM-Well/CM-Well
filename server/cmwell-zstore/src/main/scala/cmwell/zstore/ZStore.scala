@@ -147,14 +147,14 @@ class ZStoreImpl(dao: Dao) extends ZStore with DaoExecution with LazyLogging {
     if (!dontRetry)
       get(uzid)
     else {
-      val stmt = getPStmt.bind(uzid).setConsistencyLevel(ConsistencyLevel.ONE)
+      val stmt = getPStmt.bind(uzid).setConsistencyLevel(ConsistencyLevel.QUORUM)
       exec(stmt).map((deserialize(uzid) _).andThen(_.fold(throw new NoSuchElementException)(_.value)))
     }
   }
 
   override def getOpt(uzid: String, dontRetry: Boolean): Future[Option[Array[Byte]]] = {
     require(dontRetry, "getOpt only works in dontRetry mode") // might be implemented, but YAGNI
-    val stmt = getPStmt.bind(uzid).setConsistencyLevel(ConsistencyLevel.ONE)
+    val stmt = getPStmt.bind(uzid).setConsistencyLevel(ConsistencyLevel.QUORUM)
     exec(stmt).map(deserialize(uzid)(_)).map(_.map(_.value)) // not throwing an exception, but returning an Option
   }
 

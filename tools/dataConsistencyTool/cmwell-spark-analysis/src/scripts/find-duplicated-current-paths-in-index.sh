@@ -23,7 +23,7 @@ $JAVA_HOME/bin/java \
  -XX:+UseG1GC \
  -Xmx31G \
  -cp "${EXTRACT_ES_UUIDS_JAR}" cmwell.analytics.main.DumpSystemFieldsFromEs \
- --current-only \
+ --current-filter true \
  --out "${WORKING_DIRECTORY}/${ES_SYSTEM_FIELDS_TEMP}" \
  --format parquet \
  "${CMWELL_INSTANCE}"

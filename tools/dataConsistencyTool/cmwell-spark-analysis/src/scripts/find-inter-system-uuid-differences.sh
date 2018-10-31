@@ -29,7 +29,7 @@ if [ ! -d "${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_SITE1}" ]; then
 fi
 
 if [ ! -d "${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_SITE2}" ]; then
-  echo "The key fields extract from site1 must be placed in ${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_SITE2}"
+  echo "The key fields extract from site2 must be placed in ${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_SITE2}"
   exit 1
 fi
 

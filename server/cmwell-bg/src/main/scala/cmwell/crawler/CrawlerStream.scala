@@ -26,6 +26,7 @@ import cmwell.fts.{ESIndexRequest, FTSServiceOps, FTSThinInfoton, SuccessfulBulk
 import cmwell.irw.IRWService
 import cmwell.util.concurrent.travector
 import cmwell.zstore.ZStore
+import com.datastax.driver.core.ConsistencyLevel
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord}
@@ -33,6 +34,7 @@ import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.action.update.UpdateRequest
+import org.joda.time.DateTime
 
 import scala.concurrent.duration.{DurationInt, DurationLong, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future}
@@ -54,7 +56,7 @@ case class PathsVersions(latest: Option[CasVersion], versions: Vector[CasVersion
 case class KafkaLocation(topic: String, partition: Int, offset: Long) {
   override def toString: String = s"[$topic, partition: $partition, offset: $offset]"
 }
-case class LocalizedCommand(cmd: SingleCommand, location: KafkaLocation)
+case class LocalizedCommand(cmd: SingleCommand, originalLastModified: Option[DateTime], location: KafkaLocation)
 
 sealed trait DetectionResult
 
@@ -79,7 +81,10 @@ case class EsBadCurrentErrorFix(details: String, lclzdCmd: LocalizedCommand) ext
 
 object CrawlerStream extends LazyLogging {
   case class CrawlerMaterialization(control: Consumer.Control, doneState: Future[Done])
-  private val systemFieldsNames = Set("dc", "indexName", "indexTime", "lastModified", "path", "type")
+
+  private val requiredSystemFieldsNames = Set("dc", "indexName", "indexTime", "lastModified", "path", "type")
+  // "protocol" system field is optional; Crawler does not have to alert if it is missing.
+  // However, in case it has more than one value, Crawler will detect it and report accordingly.
 
   def createAndRunCrawlerStream(config: Config, topic: String, partition: Int)
                                (irwService: IRWService, ftsService: FTSServiceOps, zStore: ZStore, offsetsService: OffsetsService)
@@ -115,17 +120,18 @@ object CrawlerStream extends LazyLogging {
     def kafkaMessageToSingleCommand(msg: ConsumerRecord[Array[Byte], Array[Byte]]) = {
       val kafkaLocation = KafkaLocation(topic, partition, msg.offset())
       CommandSerializer.decode(msg.value) match {
-        case CommandRef(ref) => zStore.get(ref).map(cmd => LocalizedCommand(CommandSerializer.decode(cmd).asInstanceOf[SingleCommand], kafkaLocation))(ec)
-        case singleCommand => Future.successful(LocalizedCommand(singleCommand.asInstanceOf[SingleCommand], kafkaLocation))
+        case CommandRef(ref) => zStore.get(ref).map(cmd => LocalizedCommand(CommandSerializer.decode(cmd).asInstanceOf[SingleCommand], None, kafkaLocation))(ec)
+        case singleCommand => Future.successful(LocalizedCommand(singleCommand.asInstanceOf[SingleCommand], None, kafkaLocation))
       }
     }
 
     def getVersionsFromPathsTable(cmdOffset: LocalizedCommand) = {
       implicit val localEc: ExecutionContext = ec
       val cmd = cmdOffset.cmd
-      val latestVersion = irwService.lastVersion(cmd.path).map(v1 => v1.map(v2 => BareCasVersion(v2._2, v2._1)))(ec)
+      val latestVersion = irwService.lastVersion(cmd.path, ConsistencyLevel.QUORUM).map(v1 => v1.map(v2 => BareCasVersion(v2._2, v2._1)))(ec)
       val neighbourhoodVersions =
-        irwService.historyNeighbourhood(cmd.path, cmd.lastModified.getMillis, desc = true, limit = 2).map(_.map(v => BareCasVersion(v._2, v._1)))(ec)
+        irwService.historyNeighbourhood(cmd.path, cmd.lastModified.getMillis, desc = true, limit = 2, ConsistencyLevel.QUORUM)
+          .map(_.map(v => BareCasVersion(v._2, v._1)))(ec)
       for {
         latest <- latestVersion
         versions <- neighbourhoodVersions
@@ -136,21 +142,33 @@ object CrawlerStream extends LazyLogging {
     }
 
     //checks that the given command is ok (either in paths table or null update or grouped command)
-    def checkInconsistencyOfPathTableOnly(pathslclzdCmd: (PathsVersions, LocalizedCommand)) = {
-      val (paths, lclzdCmd@LocalizedCommand(cmd, location)) = pathslclzdCmd
+    def checkInconsistencyOfPathTableOnly(pathslclzdCmd: (PathsVersions, LocalizedCommand)): Future[DetectionResult] = {
+      val (paths, lclzdCmd@LocalizedCommand(cmd, _, location)) = pathslclzdCmd
       if (paths.latest.isEmpty)
-        Future.successful[DetectionResult](CasError(s"No last version in paths table for path ${cmd.path}!", lclzdCmd))
+        cmd match {
+          case _: DeletePathCommand | _: DeleteAttributesCommand =>
+            logger.info(s"$crawlerId The checked command [$cmd] in location $location is a delete command but there is nothing of this path in Cassandra's " +
+              s"Path table. It's probably a delete command issued before any write command done.")
+            Future.successful(AllClear(lclzdCmd))
+          case _ => Future.successful[DetectionResult](CasError(s"No last version in paths table for path ${cmd.path}!", lclzdCmd))
+        }
       else {
         //in case initial version of an infoton that was written several times fast, there will be a grouped commands without anything before.
         //Crawler needs to check whether this is the case (e.g. empty versions and the command is grouped)
-        //todo: check the lastModified + 1 of BG. in some case there might be small shift of last modified and it will be ok.
         if (paths.versions.isEmpty || paths.versions.head.timestamp != cmd.lastModified.getMillis) {
-          zStore.getStringOpt(s"imp.${partitionId}_${location.offset}").map {
+          zStore.getStringOpt(s"imp.${partitionId}_${location.offset}").flatMap {
             //the current offset was null update of grouped command. Bg didn't change anything in the system due to it - The check is finished in this stage
             case Some("nu" | "grp") =>
-              AllClear(lclzdCmd)
-            case _ => CasError(s"command [path:${cmd.path}, last modified:${cmd.lastModified}] " +
-              s"is not in paths table and it isn't null update or grouped command!", lclzdCmd)
+              Future.successful(AllClear(lclzdCmd))
+            case Some(alteredLastModified) =>
+              val newDate = new DateTime(alteredLastModified)
+              val alteredCommand = alterCommandLastModifiedDate(cmd, newDate)
+              val newLocalizedCmd = LocalizedCommand(alteredCommand, Some(cmd.lastModified), location)
+              logger.info(s"$crawlerId The checked command [$cmd] in location $location had a time shift in BG side. " +
+                s"Checking again with date $newDate")
+              getVersionsFromPathsTable(newLocalizedCmd).flatMap(checkInconsistencyOfPathTableOnly)(ec)
+            case _ => Future.successful(CasError(s"command [path:${cmd.path}, last modified:${cmd.lastModified}] " +
+              s"is not in paths table and it isn't null update or grouped command!", lclzdCmd))
           }(ec)
         }
         //This offset's command exists. Still need to verify current and ES.
@@ -158,9 +176,20 @@ object CrawlerStream extends LazyLogging {
       }
     }
 
+    def alterCommandLastModifiedDate(cmd: SingleCommand, newDate: DateTime) = {
+      cmd match {
+        case c@WriteCommand(infoton, _, _) => c.copy(infoton = infoton.copyInfoton(lastModified = newDate))
+        case c@DeleteAttributesCommand(_, _, _, _, _, _) => c.copy(lastModified = newDate)
+        case c@DeletePathCommand(_, _, _, _) => c.copy(lastModified = newDate)
+        case c@UpdatePathCommand(_, _, _, _, _, _, _) => c.copy(lastModified = newDate)
+        case c@OverwriteCommand(infoton, _) => c.copy(infoton = infoton.copyInfoton(lastModified = newDate))
+      }
+    }
+
     lazy val fieldBreakOut = scala.collection.breakOut[Seq[(String, String, String)], SystemField, Vector[SystemField]]
     def getSystemFields(uuid: String) =
-      irwService.rawReadSystemFields(uuid).map(_.collect { case (_, field, value) if field != "data" => SystemField(field, value) }(fieldBreakOut))(ec)
+      irwService.rawReadSystemFields(uuid, ConsistencyLevel.QUORUM)
+        .map(_.collect { case (_, field, value) if field != "data" => SystemField(field, value) }(fieldBreakOut))(ec)
 
     def enrichVersionsWithSystemFields(previousResult: DetectionResult) = {
       previousResult match {
@@ -188,7 +217,7 @@ object CrawlerStream extends LazyLogging {
                 case (name, values) if values.length > 1 => s"field [$name] has too many values [${values.map(_.value).mkString(",")}]"
               }
               val analyzedFields = fields.map(_.name).toSet
-              val missingFields = systemFieldsNames.filterNot(analyzedFields)
+              val missingFields = requiredSystemFieldsNames.filterNot(analyzedFields)
               if (missingFields.nonEmpty)
                 CasError(s"system fields [${missingFields.mkString(",")}] are missing!", lclzdCmd)
               else if (badFields.nonEmpty) {
@@ -215,12 +244,19 @@ object CrawlerStream extends LazyLogging {
       val firstIndexName = first.fields.find(_.name == "indexName").get.value
       verifyEsCurrentState(first.uuid, firstIndexName, shouldFirstBeCurrent)(previousResult).map {
         case _: EsBadCurrentError if !shouldFirstBeCurrent =>
-          logger.info(s"The checked uuid [${first.uuid}] has current property of true but it's not the last version in CAS. " +
+          logger.info(s"$crawlerId The checked uuid [${first.uuid}] has current property of true but it's not the last version in CAS. " +
             s"It is probably that a newer version is being written to Cassandra and not yet updated in ES.")
           //The initial thought was to recheck it but in case of a long difference between imp and indexer it won't help.
           //And anyway it can't be an issue because an infoton is always written with current: true. Hence returning SoFarClear
           //val delayDuration = safetyNetTimeInMillis.millis
           //akka.pattern.after(delayDuration, sys.scheduler)(verifyEsCurrentState(first.uuid, firstIndexName, shouldFirstBeCurrent)(previousResult))(ec)
+          previousResult
+        case _: EsBadCurrentError if shouldFirstBeCurrent =>
+          logger.info(s"$crawlerId The checked uuid [${first.uuid}] has current property of false but it's the last version in CAS. " +
+            s"It is probably that a newer version has being written to ES and not yet written/available in Cassandra.")
+          //The initial version is always true. If the current version has properly of false it means a newer version has already been written.
+          //Crawler couldn't see this newer version in CAS, hence considering the current version as the latest.
+          //If the newer update will be missing when the crawler will check the newer update it will be found. No need to alarm now.
           previousResult
         case other => other
       }(ec)
@@ -266,10 +302,10 @@ object CrawlerStream extends LazyLogging {
       finalResult match {
         case fix: EsBadCurrentErrorFix =>
           logger.error(s"$crawlerId Inconsistency found: ${fix.details} for command in location ${fix.lclzdCmd.location}. " +
-            s"Original command: ${fix.lclzdCmd.cmd} and was fixed.")
+            s"Original command: ${fix.lclzdCmd.cmd}${fix.lclzdCmd.originalLastModified.fold("")(olm => s" [Original command date: $olm]")} and was fixed.")
         case err: DetectionError =>
           logger.error(s"$crawlerId Inconsistency found: ${err.details} for command in location ${err.lclzdCmd.location}. " +
-            s"Original command: ${err.lclzdCmd.cmd}")
+            s"Original command: ${err.lclzdCmd.cmd}${err.lclzdCmd.originalLastModified.fold("")(olm => s" [Original command date: $olm]")}")
         case _ => /* Do nothing */
       }
     }

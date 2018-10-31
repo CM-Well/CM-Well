@@ -148,7 +148,7 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
   val timeout =  FiniteDuration(10, SECONDS)
 
   val m : Map[String, Set[FieldValue]] = Map("name" -> Set(FString("yehuda"), FString("moshe")))
-  val infotonToIndex = ObjectInfoton("/fts-test/objinfo1/a/b/c","dc_test", Some(System.currentTimeMillis()), m)
+  val infotonToIndex = ObjectInfoton("/fts-test/objinfo1/a/b/c","dc_test", Some(System.currentTimeMillis()), m, None)
   "indexing new infoton" should "store it in current index" in {
     Await.result(ftsService.index(infotonToIndex, None, ftsService.defaultPartition), timeout)
     refreshAll()
@@ -159,7 +159,7 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
   "indexing existing infoton" should "store it in current index" in {
     val lastModified = new DateTime()
     val m : Map[String, Set[FieldValue]] = Map("name" -> Set(FString("yehuda"), FString("moshe")), "family" -> Set(FString("smith")))
-    val updatedInfotonToIndex = ObjectInfoton("/fts-test/objinfo1/a/b/c", "dc_test", Some(System.currentTimeMillis()),lastModified, m)
+    val updatedInfotonToIndex = ObjectInfoton("/fts-test/objinfo1/a/b/c", "dc_test", Some(System.currentTimeMillis()),lastModified, m, None)
     Await.result(ftsService.index(updatedInfotonToIndex,Some(infotonToIndex)), timeout)
     refreshAll()
     val result = Await.result(
@@ -197,7 +197,7 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
         "/fts-test/bulk/info" + i,
         "dc_test",
         Some(System.currentTimeMillis()),
-        Map("name" + i -> Set[FieldValue](FString("value" + i), FString("another value" + i))))
+        Map("name" + i -> Set[FieldValue](FString("value" + i), FString("another value" + i))), None)
     }
     b.result()
   }
@@ -217,7 +217,7 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
           "/fts-test/bulk/info" + i,
           "dc_test",
           Some(System.currentTimeMillis()),
-          Map("name" + i -> Set[FieldValue](FString("moshe" + i), FString("shirat" + i))))
+          Map("name" + i -> Set[FieldValue](FString("moshe" + i), FString("shirat" + i))), None)
       }
       b.result()
     }
@@ -246,7 +246,7 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
       "/fts-test/infoToDel",
       "dc_test",
       Some(System.currentTimeMillis()),
-      Map("country" -> Set[FieldValue](FString("israel"), FString("spain"))))
+      Map("country" -> Set[FieldValue](FString("israel"), FString("spain"))), None)
     Await.result(ftsService.index(infotonToDelete,None), timeout)
     refreshAll()
     val resultBeforeDelete = Await.result(
@@ -286,9 +286,9 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
   }
 
   "purging infoton" should "permanently delete infoton with given UUID from history index" in {
-    val infotonToPurge = ObjectInfoton("/fts-test/infoToPurge","dc_test",Some(System.currentTimeMillis()))
+    val infotonToPurge = ObjectInfoton("/fts-test/infoToPurge","dc_test",Some(System.currentTimeMillis()), protocol = None)
     Await.result(ftsService.index(infotonToPurge, None), timeout)
-    val updatedInfotonToPurge = ObjectInfoton("/fts-test/infoToPurge","dc_test",Some(System.currentTimeMillis()))
+    val updatedInfotonToPurge = ObjectInfoton("/fts-test/infoToPurge","dc_test",Some(System.currentTimeMillis()), protocol = None)
     Await.result(ftsService.index(updatedInfotonToPurge, Some(infotonToPurge)), timeout)
     refreshAll()
     val result = Await.result(
@@ -315,9 +315,9 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
   }
 
   "purgeAll infoton" should "permanently delete all infoton's versions with given path from all indices" in {
-    val infotonToPurgeAll = ObjectInfoton("/fts-test/infoToPurgeAll","dc_test")
+    val infotonToPurgeAll = ObjectInfoton("/fts-test/infoToPurgeAll","dc_test", protocol = None)
     Await.result(ftsService.index(infotonToPurgeAll, None), timeout)
-    val updatedInfotonToPurgeAll = ObjectInfoton("/fts-test/infoToPurgeAll","dc_test")
+    val updatedInfotonToPurgeAll = ObjectInfoton("/fts-test/infoToPurgeAll","dc_test", protocol = None)
     Await.result(ftsService.index(updatedInfotonToPurgeAll, Some(infotonToPurgeAll)), timeout)
     refreshAll()
     Await.result(
@@ -346,7 +346,7 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
     Await.result(f, timeout).length should equal (0)
   }
 
-  val existingInfoton = ObjectInfoton("/fts-test2/infotons/frozen-pear","dc_test", Some(System.currentTimeMillis()), m)
+  val existingInfoton = ObjectInfoton("/fts-test2/infotons/frozen-pear","dc_test", Some(System.currentTimeMillis()), m, None)
 
   "get an existing infoton" should "return the infoton" in {
     Await.result(ftsService.index(existingInfoton, None, ftsService.defaultPartition), timeout)
@@ -359,17 +359,17 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
     val infotonToList1 = ObjectInfoton(
       "/fts-test/infotons/infotonToList1",
       "dc_test",
-      Some(System.currentTimeMillis()))
+      Some(System.currentTimeMillis()), protocol = None)
     val infotonToList2 = ObjectInfoton(
       "/fts-test/infotons/infotonToList2",
       "dc_test",
       Some(System.currentTimeMillis()),
-      Map("city" -> Set[FieldValue](FString("Or-Yehuda"), FString("Modiin"))))
+      Map("city" -> Set[FieldValue](FString("Or-Yehuda"), FString("Modiin"))), None)
     val infotonToList3 = LinkInfoton(
       path= "/fts-test/infotons/infotonToList3",
       dc = "dc_test",
       linkTo = "/fts-test/infotons/infotonToList2",
-      linkType = LinkType.Temporary).copy(indexTime = Some(System.currentTimeMillis()))
+      linkType = LinkType.Temporary, protocol = None).copy(indexTime = Some(System.currentTimeMillis()))
     Await.result(ftsService.index(infotonToList1,None), timeout)
     Await.result(ftsService.index(infotonToList2,None), timeout)
     Await.result(ftsService.index(infotonToList3,None), timeout)
@@ -387,7 +387,7 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
       Map(
         "car" -> Set[FieldValue](FString("Mazda"), FString("Mitsubishi")),
         "food" -> Set[FieldValue](FString("Sushi"), FString("Falafel")),
-        "copyright" -> Set[FieldValue](FString("Cm well team ©"))))
+        "copyright" -> Set[FieldValue](FString("Cm well team ©"))), None)
 
     val objectInfotonToSearch2 = ObjectInfoton(
       "/fts-test/search/objectInfotonToSearch2",
@@ -397,7 +397,7 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
       Map(
         "os" -> Set[FieldValue](FString("osx")),
         "ver" -> Set[FieldValue](FString("9.2")),
-        "copyright" -> Set[FieldValue](FString("Cm well team ©"))))
+        "copyright" -> Set[FieldValue](FString("Cm well team ©"))), None)
 
     // This is for the withHistory flag test coming up in a few tests
     val updatedObjectInfotonToSearch = ObjectInfoton(
@@ -408,7 +408,7 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
       Map(
         "car" -> Set[FieldValue](FString("Mazda"), FString("Mitsubishi")),
         "food" -> Set[FieldValue](FString("Sushi"), FString("Falafel"), FString("Malabi")),
-        "copyright" -> Set[FieldValue](FString("Cm well team ©"))))
+        "copyright" -> Set[FieldValue](FString("Cm well team ©"))), None)
 
     val fileInfotonToSearch = FileInfoton(
       "/fts-test/search/objectInfotonToSearch/fileInfotonToSearch",
@@ -416,7 +416,7 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
       Some(System.currentTimeMillis()),
       isoDateFormatter.parseDateTime("2013-01-02T10:03:00Z"),
       Map("copyright" -> Set[FieldValue](FString("Cm-well team ©")), "since" -> Set[FieldValue](FString("2009"))),
-      FileContent("My test file content is great".getBytes, "text/plain"))
+      FileContent("My test file content is great".getBytes, "text/plain"), None)
 
     val linkInfotonToSearch = LinkInfoton(
       "/fts-test/search/linkInfotonToSearch",
@@ -424,7 +424,7 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
       isoDateFormatter.parseDateTime("2013-01-05T10:04:00Z"),
       Map("since" -> Set[FieldValue](FString("2009"))),
       "/fts-test/search/objectInfotonToSearch/fileInfotonToSearch",
-      LinkType.Temporary).copy(indexTime = Some(System.currentTimeMillis()))
+      LinkType.Temporary, None).copy(indexTime = Some(System.currentTimeMillis()))
 
     // index them
     Await.result(ftsService.index(objectInfotonToSearch,None), timeout)
@@ -526,10 +526,10 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
   it should "use exact value when sorting on string field" in {
 
     val i1 = ObjectInfoton(path = "/fts-test2/sort-by/1", indexTime = None, dc = "dc_test",
-      fields = Map("car" -> Set[FieldValue](FString("Mitsubishi Outlander"))))
+      fields = Map("car" -> Set[FieldValue](FString("Mitsubishi Outlander"))), protocol = None)
 
     val i2 = ObjectInfoton(path = "/fts-test2/sort-by/2", indexTime = None, dc = "dc_test",
-      fields = Map("car" -> Set[FieldValue](FString("Subaru Impreza"))))
+      fields = Map("car" -> Set[FieldValue](FString("Subaru Impreza"))), protocol = None)
 
     Await.result(ftsService.index(i1,None), timeout)
     Await.result(ftsService.index(i2,None), timeout)
@@ -552,7 +552,8 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
         s"/fts-test/scroll/info$i",
         "dc_test",
         Some(l + i),
-        Map("name" + i -> Set[FieldValue](FString("value" + i), FString("another value" + i)))
+        Map("name" + i -> Set[FieldValue](FString("value" + i), FString("another value" + i))),
+        None
       )
     }
    Await.result(ftsService.bulkIndex(infotons,Nil), timeout)

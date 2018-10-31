@@ -38,7 +38,9 @@ case class Grid(user: String,
                 withElk: Boolean = false,
                 newBg: Boolean = true,
                 oldBg: Boolean = true,
-                nbg: Boolean = false)
+                nbg: Boolean = false,
+                subjectsInSpAreHttps: Boolean = false,
+                defaultRdfProtocol: String = "http")
     extends Host(
       user,
       password,
@@ -58,7 +60,9 @@ case class Grid(user: String,
       ctrlService,
       minMembers,
       haProxy,
-      withElk = withElk
+      withElk = withElk,
+      subjectsInSpAreHttps = subjectsInSpAreHttps,
+      defaultRdfProtocol = defaultRdfProtocol
     ) {
 
   //if(!validateNumberOfMasterNodes(esMasters, ips.size)) throw new Exception("Bad number of Elasticsearch master nodes")
@@ -163,7 +167,8 @@ case class Grid(user: String,
         hostIp = host,
         minMembers = getMinMembers,
         numOfPartitions = hosts.size,
-        seeds = getSeedNodes.mkString(",")
+        seeds = getSeedNodes.mkString(","),
+        defaultRdfProtocol = defaultRdfProtocol
       )
 
       val web = WebConf(
@@ -181,7 +186,8 @@ case class Grid(user: String,
         hostIp = host,
         minMembers = getMinMembers,
         seeds = getSeedNodes.mkString(","),
-        seedPort = 9301
+        seedPort = 9301,
+        defaultRdfProtocol = defaultRdfProtocol
       )
 
       val cw = CwConf(
@@ -196,7 +202,8 @@ case class Grid(user: String,
         hostIp = host,
         minMembers = getMinMembers,
         seeds = getSeedNodes.mkString(","),
-        seedPort = 9301
+        seedPort = 9301,
+        subjectsInSpAreHttps = subjectsInSpAreHttps
       )
 
       val ctrl = CtrlConf(

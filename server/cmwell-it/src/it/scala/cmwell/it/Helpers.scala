@@ -57,10 +57,12 @@ trait Helpers { self: LazyLogging =>
   val jsonSuccessPruner: JsValue => JsValue = _.validate((__ \ 'message).json.prune).get.validate((__ \ 'messages).json.prune).get
   val jsonSimpleResponseSuccess = Json.parse("""{"success":true,"type":"SimpleResponse"}""")
   val uuidDateEraser = (__ \ 'system \ 'lastModified).json.prune andThen
+                       (__ \ 'system \ 'protocol).json.prune     andThen
                        (__ \ 'system \ 'uuid).json.prune         andThen
                        (__ \ 'system \ 'indexTime).json.prune
   val jsonlUuidDateIdEraser = (__ \ "lastModified.sys").json.prune andThen
                               (__ \ "uuid.sys").json.prune         andThen
+                              (__ \ "protocol.sys").json.prune     andThen
                               (__ \ "indexTime.sys").json.prune    andThen
                               (__ \ "@id.sys").json.prune
   val jsonlInfotonArraySorterAndUuidDateIdEraser = (__ \ "infotons").json.update(
@@ -231,6 +233,7 @@ trait Helpers { self: LazyLogging =>
     a.toArray
   }
 
+/*
   implicit class YamlWrapper[T](m: java.lang.Object) {
     /**
      * Method name is a special character since it's an implicit for java.lang.Object (i.e. anything), and we don't want ambiguities
@@ -240,6 +243,7 @@ trait Helpers { self: LazyLogging =>
      */
     def ⚡[T](key:T) = m.asInstanceOf[java.util.LinkedHashMap[T,java.lang.Object]].get(key)
   }
+*/
 
   object Http {
 

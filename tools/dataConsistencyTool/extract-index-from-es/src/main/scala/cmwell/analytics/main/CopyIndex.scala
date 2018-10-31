@@ -49,7 +49,6 @@ object CopyIndex {
       PartitionedDownloader.runDownload(
         esTopology = esTopology,
         parallelism = Opts.parallelism(),
-        currentOnly = false,
         objectExtractor = IndexWithCompleteDocument,
         dataWriterFactory = dataWriterFactory,
         sourceFilter = false)

@@ -517,9 +517,9 @@ class AuthTests extends FunSpec with Matchers with Helpers with LazyLogging {
 
     describe("Providing lastModified to _in") {
       // scalastyle:off
-      val daisyDuckWithLastModified = """<http://example.org/Individuals/DaisyDuck> <http://www.tr-lbd.com/bold#active> "false" .
+      val daisyDuckWithLastModified = s"""<http://example.org/Individuals/DaisyDuck> <http://www.tr-lbd.com/bold#active> "false" .
                                         |<http://example.org/Individuals/DaisyDuck> <http://purl.org/vocab/relationship/colleagueOf> <http://example.org/Individuals/BruceWayne> .
-                                        |<http://example.org/Individuals/DaisyDuck> <http://localhost:9000/meta/sys#lastModified> "2015-11-21T19:09:25.508Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .""".stripMargin
+                                        |<http://example.org/Individuals/DaisyDuck> <${cmw.url}/meta/sys#lastModified> "2015-11-21T19:09:25.508Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .""".stripMargin
       // scalastyle:on
       it("should allow with permission") {
         val resp = Json.parse(waitAndExtractBody(Http.post(_in, daisyDuckWithLastModified, None, Seq("format" -> "ntriples"), Seq(tokenForOverwriter))))
