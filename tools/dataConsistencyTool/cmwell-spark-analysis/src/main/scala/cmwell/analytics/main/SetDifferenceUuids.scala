@@ -1,14 +1,10 @@
 package cmwell.analytics.main
 
 import cmwell.analytics.data.Spark
-<<<<<<< HEAD
 import cmwell.analytics.util.ConsistencyThreshold.defaultConsistencyThreshold
 import cmwell.analytics.util.ISO8601.{instantToMillis, instantToText}
-import cmwell.analytics.util.{CmwellConnector, KeyFields, SetDifferenceAndFilter}
-=======
 import cmwell.analytics.util.TimestampConversion.timestampConverter
 import cmwell.analytics.util.{CmwellConnector, DatasetFilter, KeyFields, SetDifferenceAndFilter}
->>>>>>> master
 import org.apache.log4j.LogManager
 import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.functions.udf
@@ -65,13 +61,10 @@ object SetDifferenceUuids {
         sparkShell = Opts.shell()
       ).withSparkSessionDo { implicit spark =>
 
-<<<<<<< HEAD
         logger.info(s"Using a consistency threshold of ${instantToText(Opts.consistencyThreshold())}.")
-=======
         val datasetFilter = DatasetFilter(
           lastModifiedGte = Opts.lastModifiedGteFilter.toOption,
           pathPrefix = Opts.pathPrefixFilter.toOption)
->>>>>>> master
 
         import spark.implicits._
 
