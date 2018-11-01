@@ -26,6 +26,7 @@ import cmwell.fts.{ESIndexRequest, FTSServiceOps, FTSThinInfoton, SuccessfulBulk
 import cmwell.irw.IRWService
 import cmwell.util.concurrent.travector
 import cmwell.zstore.ZStore
+import com.datastax.driver.core.ConsistencyLevel
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord}
@@ -80,7 +81,10 @@ case class EsBadCurrentErrorFix(details: String, lclzdCmd: LocalizedCommand) ext
 
 object CrawlerStream extends LazyLogging {
   case class CrawlerMaterialization(control: Consumer.Control, doneState: Future[Done])
-  private val systemFieldsNames = Set("dc", "indexName", "indexTime", "lastModified", "path", "type")
+
+  private val requiredSystemFieldsNames = Set("dc", "indexName", "indexTime", "lastModified", "path", "type")
+  // "protocol" system field is optional; Crawler does not have to alert if it is missing.
+  // However, in case it has more than one value, Crawler will detect it and report accordingly.
 
   def createAndRunCrawlerStream(config: Config, topic: String, partition: Int)
                                (irwService: IRWService, ftsService: FTSServiceOps, zStore: ZStore, offsetsService: OffsetsService)
@@ -124,9 +128,10 @@ object CrawlerStream extends LazyLogging {
     def getVersionsFromPathsTable(cmdOffset: LocalizedCommand) = {
       implicit val localEc: ExecutionContext = ec
       val cmd = cmdOffset.cmd
-      val latestVersion = irwService.lastVersion(cmd.path).map(v1 => v1.map(v2 => BareCasVersion(v2._2, v2._1)))(ec)
+      val latestVersion = irwService.lastVersion(cmd.path, ConsistencyLevel.QUORUM).map(v1 => v1.map(v2 => BareCasVersion(v2._2, v2._1)))(ec)
       val neighbourhoodVersions =
-        irwService.historyNeighbourhood(cmd.path, cmd.lastModified.getMillis, desc = true, limit = 2).map(_.map(v => BareCasVersion(v._2, v._1)))(ec)
+        irwService.historyNeighbourhood(cmd.path, cmd.lastModified.getMillis, desc = true, limit = 2, ConsistencyLevel.QUORUM)
+          .map(_.map(v => BareCasVersion(v._2, v._1)))(ec)
       for {
         latest <- latestVersion
         versions <- neighbourhoodVersions
@@ -174,16 +179,17 @@ object CrawlerStream extends LazyLogging {
     def alterCommandLastModifiedDate(cmd: SingleCommand, newDate: DateTime) = {
       cmd match {
         case c@WriteCommand(infoton, _, _) => c.copy(infoton = infoton.copyInfoton(lastModified = newDate))
-        case c@DeleteAttributesCommand(_, _, _, _, _) => c.copy(lastModified = newDate)
+        case c@DeleteAttributesCommand(_, _, _, _, _, _) => c.copy(lastModified = newDate)
         case c@DeletePathCommand(_, _, _, _) => c.copy(lastModified = newDate)
-        case c@UpdatePathCommand(_, _, _, _, _, _) => c.copy(lastModified = newDate)
+        case c@UpdatePathCommand(_, _, _, _, _, _, _) => c.copy(lastModified = newDate)
         case c@OverwriteCommand(infoton, _) => c.copy(infoton = infoton.copyInfoton(lastModified = newDate))
       }
     }
 
     lazy val fieldBreakOut = scala.collection.breakOut[Seq[(String, String, String)], SystemField, Vector[SystemField]]
     def getSystemFields(uuid: String) =
-      irwService.rawReadSystemFields(uuid).map(_.collect { case (_, field, value) if field != "data" => SystemField(field, value) }(fieldBreakOut))(ec)
+      irwService.rawReadSystemFields(uuid, ConsistencyLevel.QUORUM)
+        .map(_.collect { case (_, field, value) if field != "data" => SystemField(field, value) }(fieldBreakOut))(ec)
 
     def enrichVersionsWithSystemFields(previousResult: DetectionResult) = {
       previousResult match {
@@ -211,7 +217,7 @@ object CrawlerStream extends LazyLogging {
                 case (name, values) if values.length > 1 => s"field [$name] has too many values [${values.map(_.value).mkString(",")}]"
               }
               val analyzedFields = fields.map(_.name).toSet
-              val missingFields = systemFieldsNames.filterNot(analyzedFields)
+              val missingFields = requiredSystemFieldsNames.filterNot(analyzedFields)
               if (missingFields.nonEmpty)
                 CasError(s"system fields [${missingFields.mkString(",")}] are missing!", lclzdCmd)
               else if (badFields.nonEmpty) {

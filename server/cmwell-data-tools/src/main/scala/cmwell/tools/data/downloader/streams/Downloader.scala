@@ -318,7 +318,7 @@ class Downloader(baseUrl: String,
     * @return flow that gets uuids and download their data
     */
   def downloadDataFromUuids() = {
-    def createDataRequest(uuids: Seq[ByteString]) = {
+    def createDataRequest(uuids: Seq[ByteString], vars: Map[String,String]) = {
       HttpRequest(
         uri = s"${formatHost(baseUrl)}/_out?format=$format",
         method = HttpMethods.POST,
@@ -414,7 +414,7 @@ class Downloader(baseUrl: String,
     * @return flow that gets paths and download their data
     */
   def downloadDataFromPaths() = {
-    def createDataRequest(paths: Seq[ByteString]) = {
+    def createDataRequest(paths: Seq[ByteString], vars: Map[String,String]) = {
       val paramsValue = if (params.isEmpty) "" else s"&$params"
 
       HttpRequest(

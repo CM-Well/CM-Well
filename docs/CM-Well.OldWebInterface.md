@@ -40,7 +40,7 @@ The CM-Well web interface is a graphical user interface for accessing CM-Well th
 
 <img src="./_Images/cm-well-web-interface.png"/>
 
-Using the CM-Well web interface, you can browse among the CM-Well folders and infotons, run queries and get results, and examine the query results. Anyone in the Thomson Reuters network has read access to CM-Well; this requires no special permissions.
+Using the CM-Well web interface, you can browse among the CM-Well folders and infotons, run queries and get results, and examine the query results.
 
 This page describes the features of the CM-Well web interface and how to use them.
 
@@ -125,14 +125,14 @@ Sometimes CM-Well may display a special message to its users, in the message ban
 
 You may want to examine an atom feed (a.k.a. RSS feed) of the latest infotons in a certain CM-Well path. There are two ways to do this:
 
-* Click the atom feed button at the top left to retrieve an atom feed of the infotons under the URI in the address bar.	
+* Click the atom feed button at the top left to retrieve an atom feed of the infotons under the URI in the address bar.
 
-<img src="./_Images/ui-main-atom-feed.png"/>	
-* Hover over a folder link on the left, then click the atom feed button that appears in the same line.	
+<img src="./_Images/ui-main-atom-feed.png"/>
+* Hover over a folder link on the left, then click the atom feed button that appears in the same line.
 
 <img src="./_Images/ui-folder-atom-feed.png"/>
 
-After you click on an atom feed button, the first 50 results in the feed are displayed. 
+After you click on an atom feed button, the first 50 results in the feed are displayed.
 
 >**Note:** To conveniently retrieve and handle an ongoing stream of infotons, use the [Consumer API](API.Stream.CreateConsumer.md).
 
@@ -156,7 +156,7 @@ You can view all historical versions of the infoton in the address bar, in the f
 <a name="hdr13"></a>
 ### History Button ###
 
-To view all historical versions of an infoton in the left-hand list, hover over the infoton link, then click the history button that appears in the same line.	
+To view all historical versions of an infoton in the left-hand list, hover over the infoton link, then click the history button that appears in the same line.
 
 <img src="./_Images/ui-infoton-history-button.png"/>
 
@@ -164,7 +164,7 @@ To view all historical versions of an infoton in the left-hand list, hover over 
 <a name="hdr14"></a>
 ### History Diff Button ###
 
-To compare historical versions of an infoton in the left-hand list, hover over the infoton link, then click the **History (Diff View)** button that appears in the same line.	
+To compare historical versions of an infoton in the left-hand list, hover over the infoton link, then click the **History (Diff View)** button that appears in the same line.
 
 <img src="./_Images/ui-infoton-diff-button.png"/>
 
@@ -263,7 +263,7 @@ The simplest kind of query is one that retrieves a single infoton (which could a
 
 <img src="./_Images/ui-single-infoton-query.png"/>
 
-You can also add query parameters to the address line, to retrieve several results while applying filters to their field values. For example, the following query searches for infotons under the permid.org folder (these are mainly Organization entities), which are located in New York state: 
+You can also add query parameters to the address line, to retrieve several results while applying filters to their field values. For example, the following query searches for infotons under the permid.org folder (these are mainly Organization entities), which are located in New York state:
 
 `http://cm-well-prod.int.thomsonreuters.com/permid.org?op=search&qp=organizationStateProvince.mdaas:New%20York`
 

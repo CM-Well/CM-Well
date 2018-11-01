@@ -94,7 +94,10 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
       val executeAfterIndexing = indexingBugSampleIngest.zip(oldVcardOntologyDataIngest).flatMap(_ => {
         spinCheck(100.millis, true)(
           Http.get(cmw / "www.example.net" / "Individuals" / "JohnSmith", List("format" -> "json"))){ res =>
-          Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get == johnSmithExpectedJson
+          val payload = res.payload
+          if (payload.toString == "Infoton not found") false
+          else
+            Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get == johnSmithExpectedJson
         }}.map{
           res => Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get shouldEqual johnSmithExpectedJson}.flatMap {_ =>
         spinCheck(100.millis, true)(
@@ -343,6 +346,7 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
       val i1 = Json.obj("type" -> "ObjectInfoton",
         "system" -> Json.obj("path" -> "/www.example.net/Addresses/c9ca3047",
           "parent" -> "/www.example.net/Addresses",
+          "protocol" -> "http",
           "dataCenter" -> dcName),
         "fields" -> Json.obj("type.rdf" -> Json.arr("http://www.w3.org/2006/vcard/ns#HOME"),
           "COUNTRY-NAME.vcard" -> Json.arr("USA"),
@@ -353,6 +357,7 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
       val i2 = Json.obj("type" -> "ObjectInfoton",
         "system" -> Json.obj("path" -> "/www.example.net/Individuals/JohnSmith",
           "parent" -> "/www.example.net/Individuals",
+          "protocol" -> "http",
           "dataCenter" -> dcName),
         "fields" -> Json.obj("type.rdf" -> Json.arr("http://www.w3.org/2006/vcard/ns#Individual"),
           "FN.vcard" -> Json.arr("John Smith"),

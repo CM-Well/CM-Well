@@ -71,7 +71,7 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
       val jpsData = ProcUtil.executeCommand("jps -l").toOption.getOrElse("<jps failed>")
       val contentData = Await.result(
         Http.get(
-          "http://localhost:9000/example.org",
+          s"${cmw.url}/example.org",
           Seq("op"->"search", "recursive"->"", "with-data"->"", "length"->"1000", "format"->"ntriples")
         )(Implicits.UTF8StringHandler), requestTimeout).payload
       s"jps data:\n$jpsData\n\nContent:\n$contentData"

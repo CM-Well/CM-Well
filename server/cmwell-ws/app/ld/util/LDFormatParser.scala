@@ -56,6 +56,7 @@ object LDFormatParser extends LazyLogging {
 
   private val http = "http://"
   private val https = "https://"
+  private val someHttps = Some("https://")
   private val cmwell = "cmwell://"
   private val blank = cmwell + "blank_node/"
   private lazy val cwd = new java.io.File("").toURI
@@ -256,6 +257,7 @@ object LDFormatParser extends LazyLogging {
     case "NQ"                         => Lang.NQ
     case "NQUADS"                     => Lang.NQUADS
     case "TRIG"                       => Lang.TRIG
+    case "TRIX"                       => Lang.TRIX
   }
 
   // scalastyle:off
@@ -806,6 +808,9 @@ object LDFormatParser extends LazyLogging {
                   atomicUpdatesBuilder += subject -> uuid
                 }
               }
+              if(stmt.getSubject.isURIResource && stmt.getSubject.getURI.startsWith("https")) {
+                updateMetaData(cmwMetaDataMap, subject, "protocol", FString("https"))
+              }
             }
           }
 
@@ -962,6 +967,7 @@ object LDFormatParser extends LazyLogging {
         md.copy(mdType = Some(LinkMetaData),
                 linkType = Some(Try(value.asInstanceOf[FInt].value).getOrElse(md.linkType.getOrElse(1))))
       case "dataCenter"               => md.copy(dataCenter = Some(value.toString))
+      case "protocol"                 => md.copy(protocol = Some(value.toString))
       case "indexTime"                => md.copy(indexTime = Try(value.asInstanceOf[FLong].value).toOption)
       case "uuid" | "parent" | "path" => md // these have no affect. better ignore without polluting the logs
       case _                          => logger.warn("attribute: " + predicate + ", is not treated in cmwell RDF imports."); md

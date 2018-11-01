@@ -47,7 +47,6 @@ object CalculateXORSummary {
       PartitionedDownloader.runDownload(
         esTopology = esTopology,
         parallelism = Opts.parallelism(),
-        currentOnly = false,
         objectExtractor = IndexWithSourceHash,
         dataWriterFactory = dataWriterFactory.apply,
         sourceFilter = false)

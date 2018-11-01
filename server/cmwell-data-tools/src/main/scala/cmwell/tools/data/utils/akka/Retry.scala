@@ -34,6 +34,8 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import scala.language.implicitConversions
 
+import scala.reflect.runtime.universe._
+
 
 object Retry extends DataToolsLogging with DataToolsConfig {
 
@@ -56,12 +58,12 @@ object Retry extends DataToolsLogging with DataToolsConfig {
     * @tparam T context type, element paired with each request
     * @return flow which sends (and retries) HTTP requests and returns Try of results paired with request data and context
     */
-  def retryHttp[T](delay: FiniteDuration,
+  def retryHttp[T,S : TypeTag](delay: FiniteDuration,
                    parallelism: Int,
                    baseUrl: String,
                    limit: Option[Int] = None,
                    delayFactor : Double = 1)(
-                   createRequest: (Seq[ByteString]) => HttpRequest,
+                   createRequest: (Seq[ByteString], Map[String,String]) => HttpRequest,
                    responseValidator: (ByteString, Seq[HttpHeader]) => Try[Unit] = (_, _) => Success(Unit))(
                    implicit system: ActorSystem,
                    mat: Materializer,
@@ -83,6 +85,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
     }
 
     case class State(data: Seq[ByteString],
+                     vars: Map[String,String] = Map(),
                      context: Option[T] = None,
                      response: Option[HttpResponse] = None,
                      count: Option[Int] = limit,
@@ -95,7 +98,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
       state: State
     ): Option[immutable.Iterable[(Future[Seq[ByteString]], State)]] =
       state match {
-        case State(data, _, Some(HttpResponse(s, h, e, _)), _, _)
+        case State(data, _, _, Some(HttpResponse(s, h, e, _)), _, _)
             if s == StatusCodes.TooManyRequests =>
           // api garden quota error
           e.toStrict(toStrictTimeout)
@@ -119,7 +122,8 @@ object Retry extends DataToolsLogging with DataToolsConfig {
           val future = after(delay, system.scheduler)(Future.successful(data))
           Some(immutable.Seq(future -> state))
 
-        case State(data, context, Some(res@HttpResponse(s: ServerError, h, e, _)), count, iterationDelay) =>
+
+          case State(data, context, _, Some(res@HttpResponse(s: ServerError, h, e, _)), count, iterationDelay) =>
 
           val errorID = res.##
 
@@ -206,6 +210,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
 
         case State(
             data,
+            vars,
             context,
             Some(HttpResponse(s: ClientError, h, e, _)),
             _, _
@@ -237,6 +242,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                   dataElement =>
                     Future.successful(Seq(dataElement)) -> State(
                       Seq(dataElement),
+                      vars,
                       context
                   )
                 )
@@ -263,7 +269,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
             None // failed to send a single data element
           }
 
-        case State(data, _, Some(HttpResponse(s, h, e, _)), count, _) =>
+        case State(data, _, _, Some(HttpResponse(s, h, e, _)), count, _) =>
 
           redLogger.error(
             s"$labelValue error: host=${getHostnameValue(h)} status=$s entity=$e data=${stringifyData(data)}"
@@ -305,7 +311,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
               Some(immutable.Seq(future -> state))
           }
 
-        case State(data, _, None, count, _) =>
+        case State(data, vars, _, None, count, _) =>
           count match {
             case Some(c) if c > 0 =>
               if(state.data.size > 1) {
@@ -322,6 +328,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                       dataElement =>
                         Future.successful(Seq(dataElement)) -> State(
                           Seq(dataElement),
+                          vars,
                           state.context
                         )
                     )
@@ -378,7 +385,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
       .mapAsyncUnordered(httpParallelism) {
         case (data, state) => data.map(_ -> state)
       } // used for delay between executions
-      .map { case (data, state) => createRequest(data) -> state }
+      .map { case (data, state) => createRequest(data, state.vars) -> state }
       .via(conn).map {
         case (tryResponse, state) =>
           tryResponse.map(HttpZipDecoder.decodeResponse) -> state
@@ -438,10 +445,12 @@ object Retry extends DataToolsLogging with DataToolsConfig {
           )
       }
 
-    Flow[(Seq[ByteString], Option[T])]
+    Flow[(S, Option[T])]
       .map {
-        case (data, context) =>
-          Future.successful(data) -> State(data = data, context = context)
+        case (data : Seq[ByteString], context) =>
+          Future.successful(data) -> State(data = data, context = context, vars=Map())
+        case ( (data : Seq[ByteString], vars : Map[String,String]), context) =>
+          Future.successful(data) -> State(data = data, context = context, vars=vars)
       }
       .via(GoodRetry.concat(Long.MaxValue, job)(retryWith))
       .map { case (result, state) => (result, state.data, state.context) }

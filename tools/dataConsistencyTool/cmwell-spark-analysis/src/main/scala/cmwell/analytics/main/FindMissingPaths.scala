@@ -1,7 +1,7 @@
 package cmwell.analytics.main
 
 import cmwell.analytics.data.InfotonWithKeyFields
-import cmwell.analytics.util.{CmwellConnector, KeyFields}
+import cmwell.analytics.util.{CmwellConnector, DatasetFilter, KeyFields}
 import org.apache.log4j.LogManager
 import org.apache.spark.sql.SparkSession
 import org.rogach.scallop.{ScallopConf, ScallopOption}
@@ -13,6 +13,9 @@ object FindMissingPaths {
   /**
     * Find missing paths using the contents of the infoton table.
     * This will only work correctly if the data is internally consistent.
+    *
+    * This includes the ability to use a path prefix filter, but doing could cause
+    * some parent to show up as missing. That can easily be verified manually.
     */
   def main(args: Array[String]): Unit = {
 
@@ -21,6 +24,8 @@ object FindMissingPaths {
     try {
 
       object Opts extends ScallopConf(args) {
+
+        val pathPrefixFilter: ScallopOption[String] = opt[String]("path-prefix-filter", descr = "Filter on the path prefix matching <value>", default = None)
 
         val out: ScallopOption[String] = opt[String]("out", short = 'o', descr = "The path to save the output to", required = true)
         val url: ScallopOption[String] = trailArg[String]("url", descr = "A CM-Well URL", required = true)
@@ -33,7 +38,9 @@ object FindMissingPaths {
         appName = "Find missing paths"
       ).withSparkSessionDo { spark: SparkSession =>
 
-        val ds = InfotonWithKeyFields()(spark).cache()
+        val datasetFilter = DatasetFilter(pathPrefix = Opts.pathPrefixFilter.toOption)
+
+        val ds = InfotonWithKeyFields(Some(datasetFilter))(spark).cache()
 
         import spark.implicits._
         // Find all the parent paths that should exist
@@ -52,7 +59,7 @@ object FindMissingPaths {
 
         val missingPaths = pathsThatShouldExist.join(ds, ds("path") === pathsThatShouldExist("parentPath"), "leftanti")
 
-        missingPaths.write.csv("missing-parents")
+        missingPaths.write.csv(Opts.out())
       }
     }
     catch {
@@ -61,5 +68,4 @@ object FindMissingPaths {
         System.exit(1)
     }
   }
-
 }

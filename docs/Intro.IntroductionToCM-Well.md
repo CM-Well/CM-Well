@@ -21,7 +21,7 @@
 ## What is CM-Well? ##
 CM-Well is a writable [Linked Data](https://en.wikipedia.org/wiki/Linked_data) repository, which can be used to model data from various datasets.
 
-CM-Well (Content Matrix Well) adheres to Open Data principles, meaning that its data is in a standard, machine-readable format. The CM-Well code is Open Source and available at [GitHub](https://github.com/thomsonreuters/CM-Well).
+CM-Well (Content Matrix Well) adheres to Open Data principles, meaning that its data is in a standard, machine-readable format. The CM-Well code is Open Source and available at [GitHub](https://github.com/CM-Well/CM-Well).
 
 CM-Well's data is represented as a graph database, which means that it contains both entities and relationships between pairs of entities. For instance, it  contains facts such as "CompanyA is a subsidiary of CompanyB", or "PersonX works at CompanyA". Conceptually, a graph database is a structure composed of nodes representing entities, and directed arrows representing relationships among them. See the image below for an example.
 
@@ -41,7 +41,7 @@ CM-Well has many advantages and convenient features, including:
 * Direct access to entity info via URI.
 * Does not require installation.
 * Does not require downloading large files and subsequent processing and database insertion.
-* Contains up-to-the-minute current info, as well as all historical versions of entities. 
+* Contains up-to-the-minute current info, as well as all historical versions of entities.
 * Supports retrieval, querying and filtering of content at different levels of granularity - from a single entity, to a stream of updates, to the entire repository.
 * Enables navigation among related entities via the links returned within an entity's info.
 * Allows you to create your own data repository.
@@ -63,5 +63,3 @@ Here are some more topics to help you get started with CM-Well:
 **Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Intro.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp;  [**Next Topic**](Intro.CM-WellDataParadigms.md)  
 
 ----
-
-

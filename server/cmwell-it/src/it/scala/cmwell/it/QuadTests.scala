@@ -19,7 +19,6 @@ package cmwell.it
 import java.io.ByteArrayInputStream
 
 import cmwell.it.fixture.NSHashesAndPrefixes
-import cmwell.util.concurrent.SimpleScheduler._
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.jena.query.DatasetFactory
 import org.apache.jena.riot.{Lang, RDFDataMgr}
@@ -67,6 +66,7 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
   def supermanWithQuad(quad: String) = Json.obj(
     "type.sys" -> Json.arr(Json.obj("value" -> "ObjectInfoton")),
     "path.sys" -> Json.arr(Json.obj("value" -> "/example.org/comics/characters/superman")),
+    "protocol.sys" -> Json.arr(Json.obj("value" -> "http")),
     "dataCenter.sys" -> Json.arr(Json.obj("value" -> dcName)),
     "parent.sys" -> Json.arr(Json.obj("value" -> "/example.org/comics/characters")),
     "enemyOf.rel" -> Json.arr(
@@ -232,10 +232,13 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
       }
     })
     val fSuperman3 = ingestingNquads.flatMap(_ => spinCheck(100.millis, true)(Http.get(superman, List("format" -> "jsonl", "pretty" -> ""))){
-      res => Json
-        .parse(res.payload)
-        .transform(jsonlSorter andThen jsonlUuidDateIdEraser)
-        .get == supermanWithQuad("http://example.org/graphs/superman")
+      res => val payload = res.payload
+        if (payload.toString == "Infoton not found") false
+        else
+          Json
+          .parse(res.payload)
+          .transform(jsonlSorter andThen jsonlUuidDateIdEraser)
+          .get == supermanWithQuad("http://example.org/graphs/superman")
     }.map { res =>
       withClue(res) {
         Json
@@ -324,7 +327,10 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
       }
     }
     val fBatman01 = ingestingNquads.flatMap(_ => spinCheck(100.millis, true)(Http.get(batman, List("format" -> "jsonl"))){
-      res => Json.parse(res.payload).transform(jsonlSorter andThen jsonlUuidDateIdEraser).get == batmanExpected
+      res => val payload = res.payload
+      if (payload.toString == "Infoton not found") false
+      else
+        Json.parse(res.payload).transform(jsonlSorter andThen jsonlUuidDateIdEraser).get == batmanExpected
     }.map { res =>
       withClue(res) {
         Json

@@ -141,7 +141,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
           path = s"/cmt/cm/bg-test/baseInfoton/info$n",
           dc = "dc",
           indexTime = None,
-          fields = Some(Map("a" -> Set(FieldValue("b"), FieldValue("c")))))
+          fields = Some(Map("a" -> Set(FieldValue("b"), FieldValue("c")))),protocol=None)
         val writeCommand = WriteCommand(infoton)
         val commandBytes = CommandSerializer.encode(writeCommand)
         new ProducerRecord[Array[Byte], Array[Byte]]("persist_topic", commandBytes)
@@ -150,7 +150,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
           path = s"/cmt/cm/bg-test/baseInfoton/info19",
           dc = "dc",
           indexTime = None,
-          fields = Some(Map("a1" -> Set(FieldValue("b1"), FieldValue("c1")))))
+          fields = Some(Map("a1" -> Set(FieldValue("b1"), FieldValue("c1")))),protocol=None)
         val writeCommand = WriteCommand(infoton)
         val commandBytes = CommandSerializer.encode(writeCommand)
         new ProducerRecord[Array[Byte], Array[Byte]]("persist_topic", commandBytes)
@@ -189,7 +189,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
           path = s"/cmt/cm/bg-test1/info$n",
           dc = "dc",
           indexTime = None,
-          fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))))
+          fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))),protocol=None)
         WriteCommand(infoton)
       }
 
@@ -299,7 +299,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
           dc = "dc",
           indexTime = None,
           lastModified = new org.joda.time.DateTime(currentTime + i),
-          fields = Some(Map(s"f$i" -> Set(FieldValue(s"v$i"))))
+          fields = Some(Map(s"f$i" -> Set(FieldValue(s"v$i")))),protocol=None
         )
         WriteCommand(infoton)
       }
@@ -342,7 +342,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
           path = s"/cmt/cm/bg-test/indexTime/info$n",
           dc = "dc",
           indexTime = None,
-          fields = Some(Map("a" -> Set(FieldValue("b"), FieldValue("c")))))
+          fields = Some(Map("a" -> Set(FieldValue("b"), FieldValue("c")))),protocol=None)
         WriteCommand(infoton)
       }
 
@@ -384,7 +384,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
 
     val markInfotonAsHistory = executeAfterCompletion(indexAllInfotons){
       val writeCommand =
-        WriteCommand(ObjectInfoton("/cmt/cm/bg-test1/info1", "dc", None, Map("i" -> Set(FieldValue("phone")))))
+        WriteCommand(ObjectInfoton("/cmt/cm/bg-test1/info1", "dc", None, Map("i" -> Set(FieldValue("phone"))), None))
       val pRecord = new ProducerRecord[Array[Byte], Array[Byte]]("persist_topic", CommandSerializer.encode(writeCommand))
       sendToKafkaProducer(pRecord).flatMap { recordMetadata =>
         scheduleFuture(5.seconds) {
@@ -436,7 +436,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
           dc = "dc",
           indexTime = Some(currentTime + n + 1),
           new org.joda.time.DateTime(currentTime + n),
-          fields = Some(Map("pearls" -> Set(FieldValue("Ubuntu"), FieldValue("shmubuntu")))))
+          fields = Some(Map("pearls" -> Set(FieldValue("Ubuntu"), FieldValue("shmubuntu")))),protocol=None)
         OverwriteCommand(infoton)
       }
 
@@ -477,7 +477,8 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
             indexTime = Some(currentTime + n*3),
             lastModified = new DateTime(currentTime +n),
             indexName = "cm_well_p0_0",
-            fields = Some(Map(s"a$n" -> Set(FieldValue(s"b$n"), FieldValue(s"c${n % 2}"))))
+            fields = Some(Map(s"a$n" -> Set(FieldValue(s"b$n"), FieldValue(s"c${n % 2}")))),
+            protocol=None
           )
       }
       val owCommands = infotons.map{ i => OverwriteCommand(i)}
@@ -527,7 +528,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
           path = s"/cmt/cm/bg-test/override_not_grouped/info_override",
           dc = "dc",
           indexTime = Some(Random.nextLong()),
-          fields = Some(Map(s"Version${n % 3}" -> Set(FieldValue(s"a$n"), FieldValue(s"b${n % 2}")))))
+          fields = Some(Map(s"Version${n % 3}" -> Set(FieldValue(s"a$n"), FieldValue(s"b${n % 2}")))),protocol=None)
         OverwriteCommand(infoton)
       }
 
@@ -563,7 +564,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
         s"field$n" -> Set[FieldValue](FString(s"value$n"))
       }.toMap
 
-      val fatFoton = ObjectInfoton("/cmt/cm/bg-test-fat/fatfoton1", "dcc", None, lotsOfFields)
+      val fatFoton = ObjectInfoton("/cmt/cm/bg-test-fat/fatfoton1", "dcc", None, lotsOfFields, None)
 
       // make kafka record out of the infoton
       val pRecord = {
@@ -602,7 +603,8 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
         dc = "dc",
         indexTime = Some(currentTime + 42),
         new org.joda.time.DateTime(currentTime),
-        fields = Some(Map("whereTo" -> Set(FieldValue("The"), FieldValue("ATM!")))))
+        fields = Some(Map("whereTo" -> Set(FieldValue("The"), FieldValue("ATM!")))),
+        protocol=None)
 
       // make kafka record out of the infoton
       val pRecord = {
@@ -710,7 +712,8 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
         dc = "dc",
         indexTime = Some(currentTime + 42),
         new org.joda.time.DateTime(currentTime),
-        fields = Some(Map("GoTo" -> Set(FieldValue("draw"), FieldValue("money")))))
+        fields = Some(Map("GoTo" -> Set(FieldValue("draw"), FieldValue("money")))),
+        protocol=None)
 
       sendIt(infoton).flatMap { recordMetaData =>
         waitForIt(1).flatMap { ftsRes =>
@@ -736,7 +739,8 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
         dc = "dc",
         indexTime = Some(currentTime),
         new org.joda.time.DateTime(currentTime - 20000),
-        fields = Some(Map("whereTo" -> Set(FieldValue("Techno"), FieldValue("Doron")))))
+        fields = Some(Map("whereTo" -> Set(FieldValue("Techno"), FieldValue("Doron")))),
+        protocol=None)
 
       sendIt(infoton).flatMap { recordMetaData =>
         waitForIt(2).flatMap { ftsRes =>
@@ -762,7 +766,8 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
         dc = "dc",
         indexTime = Some(currentTime + 128),
         new org.joda.time.DateTime(currentTime - 10000),
-        fields = Some(Map("OK" -> Set(FieldValue("TO"), FieldValue("ATM!")))))
+        fields = Some(Map("OK" -> Set(FieldValue("TO"), FieldValue("ATM!")))),
+        protocol=None)
 
       sendIt(infoton).flatMap { recordMetaData =>
         waitForIt(3).flatMap { ftsRes =>
@@ -789,7 +794,8 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
         indexTime = Some(currentTime + 23),
         new org.joda.time.DateTime(currentTime + 10000),
         fields = Some(Map("No" -> Set(FieldValue("U"), FieldValue("Go")),
-                          "But" -> Set(FieldValue("I don't need the ATM.")))))
+                          "But" -> Set(FieldValue("I don't need the ATM.")))),
+        protocol=None)
 
       sendIt(infoton).flatMap { recordMetaData =>
         scheduleFuture(5.seconds) {
@@ -818,7 +824,8 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
         indexTime = Some(currentTime + 1729),
         new org.joda.time.DateTime(currentTime + 20000),
         fields = Some(Map("So" -> Set(FieldValue("Why you asked?")),
-                          "Ummm" -> Set(FieldValue("I didn't...")))))
+                          "Ummm" -> Set(FieldValue("I didn't...")))),
+        protocol=None)
 
       sendIt(infoton).flatMap { recordMetaData =>
         waitForIt(5).flatMap { ftsRes =>

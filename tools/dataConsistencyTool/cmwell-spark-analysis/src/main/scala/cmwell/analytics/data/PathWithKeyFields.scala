@@ -1,7 +1,8 @@
 package cmwell.analytics.data
 
-import cmwell.analytics.util.{CassandraSystem, KeyFields}
+import cmwell.analytics.util.{CassandraSystem, DatasetFilter, KeyFields}
 import com.datastax.spark.connector._
+import com.datastax.spark.connector.rdd.CassandraTableScanRDD
 import org.apache.spark.sql.{Column, DataFrame, Dataset, SparkSession}
 
 object PathWithKeyFields extends EstimateDatasetSize {
@@ -31,14 +32,17 @@ object PathWithKeyFields extends EstimateDatasetSize {
       Constraints.isUuidWellFormed(columns.uuid)
   }
 
-
-  def apply()
+  def apply(datasetFilter: Option[DatasetFilter] = None)
            (implicit spark: SparkSession): Dataset[KeyFields] = {
 
-    val infotonRdd = spark.sparkContext.cassandraTable("data2", "path")
+    // We can push filters on last_modified down to Cassandra.
+    // CQL doesn't support filtering on path prefix.
+    def pushDownDatasetFilter(scan: CassandraTableScanRDD[CassandraRow]): CassandraTableScanRDD[CassandraRow] =
+      datasetFilter.fold(scan)(_.lastModifiedGte.fold(scan)(scan.where("last_modified >= ?", _)))
+
+    val infotonRdd = pushDownDatasetFilter(spark.sparkContext.cassandraTable("data2", "path"))
       .select("path", "last_modified", "uuid")
 
-    // Map the grouped data to Infoton objects containing only the system fields.
     val objectRDD = infotonRdd.map { cassandraRow =>
 
       KeyFields(
@@ -48,6 +52,8 @@ object PathWithKeyFields extends EstimateDatasetSize {
     }
 
     import spark.implicits._
-    spark.createDataset(objectRDD)
+    val ds = spark.createDataset(objectRDD)
+
+    datasetFilter.fold(ds)(_.applyFilter(ds, forAnalysis = false))
   }
 }

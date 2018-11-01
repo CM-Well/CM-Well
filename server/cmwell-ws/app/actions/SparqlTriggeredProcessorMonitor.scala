@@ -73,7 +73,7 @@ object SparqlTriggeredProcessorMonitor extends LazyLogging {
     future.map { content =>
       Some(
         VirtualInfoton(
-          FileInfoton(path, dc, None, content = Some(FileContent(content.getBytes("utf-8"), "text/x-markdown")))
+          FileInfoton(path, dc, None, content = Some(FileContent(content.getBytes("utf-8"), "text/x-markdown")), protocol = None)
         )
       )
     }

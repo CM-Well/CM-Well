@@ -114,7 +114,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
       .single(Seq(blank) -> None)
       .via(
         Retry.retryHttp(retryTimeout, 1, formatHost(baseUrl), retryLimit, delayFactor)(
-          _ => HttpRequest(uri = uri)
+          (_,_) => HttpRequest(uri = uri)
         )
       )
       .map {
@@ -435,7 +435,7 @@ class Downloader(
     * @return flow that gets uuids and download their data
     */
   private[data] def downloadDataFromPaths()(implicit ec: ExecutionContext) = {
-    def createDataRequest(paths: Seq[ByteString]) = {
+    def createDataRequest(paths: Seq[ByteString], vars: Map[String,String]) = {
       val paramsValue = if (params.isEmpty) "" else s"&$params"
 
       HttpRequest(
@@ -491,7 +491,7 @@ class Downloader(
     }
 
     def sendPathRequest(timeout: FiniteDuration, parallelism: Int, limit: Int = 0)(
-      createRequest: (Seq[Path]) => HttpRequest
+      createRequest: (Seq[Path],Map[String,String]) => HttpRequest
     )(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
 
       case class State(pathsToRequest: Seq[Path],
@@ -613,7 +613,7 @@ class Downloader(
     * @return flow that gets uuids and download their data
     */
   private[data] def downloadDataFromUuids()(implicit ec: ExecutionContext) = {
-    def createDataRequest(uuids: Seq[ByteString]) = {
+    def createDataRequest(uuids: Seq[ByteString], vars: Map[String,String]) = {
       val paramsValue = if (params.isEmpty) "" else s"&$params"
 
       HttpRequest(
@@ -670,7 +670,7 @@ class Downloader(
     }
 
     def sendUuidRequest(timeout: FiniteDuration, parallelism: Int, limit: Int = 0)(
-      createRequest: (Seq[Uuid]) => HttpRequest
+      createRequest: (Seq[Uuid], Map[String,String]) => HttpRequest
     )(implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
 
       case class State(uuidsToRequest: Seq[Uuid],
