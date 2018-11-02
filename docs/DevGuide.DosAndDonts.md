@@ -10,7 +10,7 @@
 
 ### Don't Use Queues to Store Requests to CM-Well ###
 
-We have encountered CM-Well clients that manage an internal queue for write requests to CM-Well. The internal queue often ends up being a performance bottleneck, especially for queue packages with persistent storage like Apache Kafka. Using a queue that's internal to the client is unnecessary, as CM-Well manages its own request queues. In the rare case where a write request receives a 504 HTTP error ("gateway timeout"), the best practice is to perform a brief sleep and retry the request. 
+We have encountered CM-Well clients that manage an internal queue for write requests to CM-Well. The internal queue often ends up being a performance bottleneck, especially for queue packages with persistent storage like Apache Kafka. Using a queue that's internal to the client is unnecessary, as CM-Well manages its own request queues. In the rare case where a write request receives a 504 HTTP error ("gateway timeout"), the best practice is to perform a brief sleep and retry the request.
 
 Similarly, there is no need to use a client queue to store read requests, and again, doing so may create a performance bottleneck. For bulk read operations, the best practice is to use CM-Well's **consume** or **bulk-consume** APIs. In case of an error during the read process, to ensure that no data was lost, simply resume reading while supplying the position token you received from the last successful read.
 
@@ -20,11 +20,11 @@ When you direct a query to CM-Well, you provide the HTTP address of the CM-Well 
 
     <cm-well-host>?op=search&qp=type.rdf:http://data.com/Person&recursive
 
-However, when you provide triple/quad data to upload to CM-Well, neither the explicit host name ("cm-well-ppe.int.thomsonreuters.com", "cm-well-prod.int.thomsonreuters.com", etc.) nor the "virtual" host name ("cmwell://") should appear **in the data** (although it still appears as the host name parameter). CM-Well infoton URIs shold be provided in their "relative path" form, which is "http://" followed by the path under the CM-Well root.
+However, when you provide triple/quad data to upload to CM-Well, neither the explicit host name (perhaps "cm-well-ppe.int.thomsonreuters.com", "cm-well-prod.int.thomsonreuters.com", etc.) nor the "virtual" host name ("cmwell://") should appear **in the data** (although it still appears as the host name parameter). CM-Well infoton URIs shold be provided in their "relative path" form, which is "http://" followed by the path under the CM-Well root.
 
 For example:
 
-    <http://example.org/Individuals/FredFredson> a <http://data.com/Person>. 
+    <http://example.org/Individuals/FredFredson> a <http://data.com/Person>.
 
 The path `http://example.org/Individuals/FredFredson` is then mapped to the full path, as appropriate for the specific CM-Well host, e.g. `<cm-well-host>/example.org/Individuals/FredFredson` for the production environment, `<cm-well-host>/example.org/Individuals/FredFredson` for the PPE environment, and so on.
 
@@ -32,8 +32,8 @@ Using an explicit or virtual CM-Well path in uploaded data may result in the cre
 
 **Don't** provide triples/quad data such as:
 
-    <cmwell://example.org/Individuals/FredFredson> a <http://data.com/Person>. 
-    <cmwell/example.org/Individuals/FredFredson> a <http://data.com/Person>. 
+    <cmwell://example.org/Individuals/FredFredson> a <http://data.com/Person>.
+    <cmwell/example.org/Individuals/FredFredson> a <http://data.com/Person>.
 
 ### Don't Mix URL-Encoded and Non-Encoded Characters in the Same SPARQL Query ###
 
@@ -45,7 +45,7 @@ Encode *all* non-English characters:
 
     curl -X POST <cm-well-host>/_sp?format=json -H "Content-Type:text/plain;charset=utf-8" --data-binary 'PATHS
     /data.com?op=search&qp=*[organizationNameLocalAka.fedapioa:%D0%9E%D0%A2%D0%9A%D0%A0%D0%AB%D0%A2%D0%9E%D0%95%20%D0%90%D0%9A%D0%A6%D0%98%D0%9E%D0%9D%D0%95%D0%A0%D0%9D%D0%9E%D0%95%20%D0%9E%D0%91%D0%A9%D0%95%D0%A1%D0%A2%D0%92%D0%9E]&xg=1&with-data&length=100
-     
+
     SPARQL
     SELECT * WHERE { ?s ?p ?o }'
 
@@ -53,7 +53,7 @@ Encode *no* non-English characters:
 
     curl -X POST <cm-well-host>/_sp?format=json -H "Content-Type:text/plain;charset=utf-8" --data-binary 'PATHS
     /data.com?op=search&qp=*[organizationNameLocalAka.fedapioa:ОТКРЫТОЕ АКЦИОНЕРНОЕ ОБЩЕСТВО]&xg=1&with-data&length=100
-     
+
     SPARQL
     SELECT * WHERE { ?s ?p ?o }'
 
@@ -78,7 +78,7 @@ This is better for CM-Well performance because:
 
 ### Leave %50-%60 of Disk Space Free on a CM-Well Node ###
 
-When using a CM-Well node in an operational or near-operational scenario, make sure that about %50-%60 of free disk space is maintained. This is because storage maintenance operations that CM-Well performs may temporarily use large amounts of disk space. 
+When using a CM-Well node in an operational or near-operational scenario, make sure that about %50-%60 of free disk space is maintained. This is because storage maintenance operations that CM-Well performs may temporarily use large amounts of disk space.
 
 This recommendation is also relevant for installations of CM-Well Docker that are run in near-operational conditions.  
 

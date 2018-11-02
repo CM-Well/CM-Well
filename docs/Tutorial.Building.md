@@ -13,7 +13,7 @@ This tutorial describes how to build CM-Well from scratch. It assumes you don't 
 
 ## Prerequisites ##
 
-CM-Well requires the following prerequisite software to install. 
+CM-Well requires the following prerequisite software to install.
 
 ### Scala ###
 
@@ -65,7 +65,7 @@ WARN: No sbt.version set in project/build.properties, base directory: /Users/TRn
 
 >**Note:** On the machine from which you're installing CM-Well, you'll first need to install [Python 2.7](https://www.python.org/download/releases/2.7).
 
-[Download](https://github.com/thomsonreuters/CM-Well/archive/master.zip) or clone the source from Github. Once you have the source, navigate into the server directory:
+[Download](https://github.com/CM-Well/CM-Well/archive/master.zip) or clone the source from Github. Once you have the source, navigate into the server directory:
 ```
 $ cd CM-Well/server/
 ```
@@ -102,11 +102,11 @@ Once you have the server compiled, navigate to the cmwell-cons/app directory and
 
 ```
 $ cd cmwell-cons/app/
-$ ./cmwell.sh 
--e 
+$ ./cmwell.sh
+-e
                          Welcome to CM-Well Console
-                                                                                 
-                                                                                
+
+
                              .-::/++ooooo++//:-.`                               
                          .:/oooooo+oo+++o++oooooo+/:.`                          
                       .:+oo+++++o+ooooooo++++++++++ooo/-`                       
@@ -142,7 +142,7 @@ $ ./cmwell.sh
                      `.::////+/+++++++ooooooooo++:.                             
                          `.--:/+++++ooooo++/:-.`                                
                                  ````````                                       
-                                                                                
+
 Welcome to Scala 2.12.4 (Java HotSpot(TM) 64-Bit Server VM, Java 1.8.0_45).
 Type in expressions for evaluation. Or try :help.
 ```
@@ -165,7 +165,7 @@ Info:   stopping processes
 Info:   clearing application data
 ...
 Info: finished initializing cm-well
-scala> 
+scala>
 ```
 Once the scala prompt returns, CM-Well is running, listening to port 9000. Navigate your browser to [http://localhost:9000](http://localhost:9000) and you should see the root UI.
 
@@ -175,7 +175,7 @@ From here on in, you can use curl to load data per the other tutorials. Note tha
 
 To shut CM-Well down, first shutdown CM-Well with pe.stop
 
-``` 
+```
 scala> pe.stop
 ```
 
@@ -190,4 +190,3 @@ scala> :quit
 **Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Topic TOC**](Tutorial.TOC.md) &nbsp;&nbsp;&nbsp;&nbsp; [**Previous Topic**](Tutorial.HandsOnExercisesTOC.md)  
 
 ----
-

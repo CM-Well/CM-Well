@@ -36,7 +36,8 @@ case class GridSubDiv(user: String,
                       dcTarget: Option[String] = None,
                       minMembers: Option[Int] = None,
                       withElk: Boolean = false,
-                      subjectsInSpAreHttps: Boolean = false)
+                      subjectsInSpAreHttps: Boolean = false,
+                      defaultRdfProtocol: String = "http")
     extends Host(
       user,
       password,
@@ -57,8 +58,8 @@ case class GridSubDiv(user: String,
       minMembers = minMembers,
       haProxy,
       withElk = withElk,
-      subjectsInSpAreHttps = subjectsInSpAreHttps
-    ) {
+      subjectsInSpAreHttps = subjectsInSpAreHttps,
+      defaultRdfProtocol = defaultRdfProtocol) {
   //var persistentAliases = false
   override def getElasticsearchMasters: Int = esMasters
   //def hosts = ips.map(ip => s"${user}@${ip}")
@@ -323,7 +324,8 @@ case class GridSubDiv(user: String,
         hostIp = host,
         minMembers = getMinMembers,
         numOfPartitions = ips.size,
-        seeds = getSeedNodes.mkString(",")
+        seeds = getSeedNodes.mkString(","),
+        defaultRdfProtocol = defaultRdfProtocol
       )
 
       val web = WebConf(
@@ -341,7 +343,8 @@ case class GridSubDiv(user: String,
         hostIp = host,
         minMembers = getMinMembers,
         seeds = getSeedNodes.mkString(","),
-        seedPort = 9301
+        seedPort = 9301,
+        defaultRdfProtocol = defaultRdfProtocol
       )
 
       val cw = CwConf(

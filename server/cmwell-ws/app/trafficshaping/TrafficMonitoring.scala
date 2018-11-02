@@ -85,7 +85,7 @@ object TrafficMonitoring {
       val content = statusText + "\n\n\n" + table.get
 
       Some(
-        VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(content.getBytes, "text/x-markdown"))))
+        VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(content.getBytes, "text/x-markdown")), protocol = None))
       )
     }
   }

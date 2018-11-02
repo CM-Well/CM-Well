@@ -2,7 +2,7 @@
 
 ----
 
-**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) 
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md)
 
 ----
 
@@ -25,10 +25,10 @@ These are the topics included in the CM-Well Developer Guide:
 1. [Dos and Don'ts](DevGuide.DosAndDonts.md)
 1. [Best Practices](DevGuide.BestPractices.TOC.md)
 
-Please note that we are refreshing the documentation to reflect CM-Well moving to open source. Some examples and URLs provided within may not be accessible outside of the Thomson Reuters network and these will be fixed as we go.
+Please note that we are refreshing the documentation to reflect CM-Well moving to open source. Some examples and URLs provided within may not be accessible outside of the Thomson Reuters or Refinitiv networks and these will be fixed as we go.
 
 ----
 
-**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md) 
+**Go to:** &nbsp;&nbsp;&nbsp;&nbsp; [**Root TOC**](CM-Well.RootTOC.md)
 
 ----

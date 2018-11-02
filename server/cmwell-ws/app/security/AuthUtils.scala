@@ -46,7 +46,8 @@ class AuthUtils @Inject()(authCache: EagerAuthCache, authorization: Authorizatio
               Settings.dataCenter,
               None,
               Map.empty[String, Set[FieldValue]],
-              FileContent(newUserInfoton.toString.getBytes, "application/json")
+              FileContent(newUserInfoton.toString.getBytes, "application/json"),
+              protocol = None
             )
           )
         }

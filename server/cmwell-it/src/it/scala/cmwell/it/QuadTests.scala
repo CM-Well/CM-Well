@@ -66,6 +66,7 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
   def supermanWithQuad(quad: String) = Json.obj(
     "type.sys" -> Json.arr(Json.obj("value" -> "ObjectInfoton")),
     "path.sys" -> Json.arr(Json.obj("value" -> "/example.org/comics/characters/superman")),
+    "protocol.sys" -> Json.arr(Json.obj("value" -> "http")),
     "dataCenter.sys" -> Json.arr(Json.obj("value" -> dcName)),
     "parent.sys" -> Json.arr(Json.obj("value" -> "/example.org/comics/characters")),
     "enemyOf.rel" -> Json.arr(

@@ -35,8 +35,11 @@ import cmwell.tools.data.utils.text.Tokens
 import cmwell.util.concurrent._
 import cmwell.util.http.SimpleResponse
 import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+
+import cmwell.util.stream.StreamEventInspector
 import cmwell.util.string.Hash
 import cmwell.zstore.ZStore
+
 import com.typesafe.scalalogging.LazyLogging
 import io.circe.Json
 import k.grid.GridReceives
@@ -463,6 +466,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
         force = job.config.force.getOrElse(false),
         label = label
       )
+      .via(StpPeriodicLogger(infotonReporter = tokenReporter, logFrequency = 5.minutes))
       .via(IngesterStats(isStderr = false, reporter = Some(tokenReporter), label = label,
         initialIngestStats =   initialTokensAndStatistics.fold(_ => None, r=>r.agentIngestStats) ))
       .viaMat(KillSwitches.single)(Keep.right)

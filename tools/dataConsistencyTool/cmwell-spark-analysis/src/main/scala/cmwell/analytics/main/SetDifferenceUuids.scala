@@ -1,7 +1,8 @@
 package cmwell.analytics.main
 
 import cmwell.analytics.data.Spark
-import cmwell.analytics.util.{CmwellConnector, KeyFields, SetDifferenceAndFilter}
+import cmwell.analytics.util.TimestampConversion.timestampConverter
+import cmwell.analytics.util.{CmwellConnector, DatasetFilter, KeyFields, SetDifferenceAndFilter}
 import org.apache.log4j.LogManager
 import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.functions.udf
@@ -39,6 +40,9 @@ object SetDifferenceUuids {
 
         val parallelism: ScallopOption[Int] = opt[Int]("parallelism", short = 'p', descr = "The parallelism level", default = Some(defaultParallelism))
 
+        val lastModifiedGteFilter: ScallopOption[java.sql.Timestamp] = opt[java.sql.Timestamp]("lastmodified-gte-filter", descr = "Filter on lastModified >= <value>, where value is an ISO8601 timestamp", default = None)(timestampConverter)
+        val pathPrefixFilter: ScallopOption[String] = opt[String]("path-prefix-filter", descr = "Filter on the path prefix matching <value>", default = None)
+
         val infoton: ScallopOption[String] = opt[String]("infoton", short = 'i', descr = "The path to the infoton {uuid,lastModified,path} in parquet format", required = true)
         val index: ScallopOption[String] = opt[String]("index", short = 'x', descr = "The path to the index {uuid,lastModified,path} in parquet format", required = true)
         val path: ScallopOption[String] = opt[String]("path", short = 'h', descr = "The path to the path {uuid,lastModified,path} in parquet format", required = true)
@@ -58,14 +62,20 @@ object SetDifferenceUuids {
         sparkShell = Opts.shell()
       ).withSparkSessionDo { implicit spark =>
 
+        val datasetFilter = DatasetFilter(
+          lastModifiedGte = Opts.lastModifiedGteFilter.toOption,
+          pathPrefix = Opts.pathPrefixFilter.toOption)
+
         import spark.implicits._
 
         // Since we will be doing multiple set differences with the same files, do an initial repartition and cache to
         // avoid repeating shuffles. We also want to calculate an ideal partition size to avoid OOM.
 
         def load(name: String): Dataset[KeyFields] = {
-          spark.read.parquet(name)
+          val ds = spark.read.parquet(name)
             .as[KeyFields]
+
+          datasetFilter.applyFilter(ds, forAnalysis = true)
         }
 
         // The extract from ES might contain system fields, so we want to avoid having to read those extra fields
@@ -79,9 +89,12 @@ object SetDifferenceUuids {
           val convertLongToTimestampUdf = udf(convertLongToTimestamp)
 
           val ds = spark.read.parquet(name)
-          ds
+
+          val dsWithLastModifiedConverted = ds
             .select(ds("uuid"), convertLongToTimestampUdf(ds("lastModified")).as("lastModified"), ds("path"))
             .as[KeyFields]
+
+          datasetFilter.applyFilter(dsWithLastModifiedConverted, forAnalysis = true)
         }
 
         val infotonRaw = load(Opts.infoton())
