@@ -148,6 +148,31 @@
         <discardingThreshold>0</discardingThreshold>
     </appender>
 
+    <appender name="BAD_INGESTS" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${application.home:-.}/logs/bad-ingests.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- daily rollover with compression -->
+            <fileNamePattern>${application.home:-.}/logs/bad-ingests-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
+            <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>20GB</totalSizeCap>
+            <!-- in case of process terminating too early for rollover - do the rollover during start -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date{ISO8601} %-44.44([%thread]) %-5level %-36.36logger{36} - %msg%n</pattern>
+        </encoder>
+        <!-- false quadruples logging throughput -->
+        <immediateFlush>true</immediateFlush>
+    </appender>
+
+    <appender name="ASYNC_BAD_INGESTS" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="BAD_INGESTS" />
+        <maxFlushTime>0</maxFlushTime>
+        <discardingThreshold>0</discardingThreshold>
+    </appender>
+
     <!--X-fix is a special operation that should always be logged. CM-Well root logger level can
     dynamically be changed. Setting the x-fix level to info fixes it to info always-->
     <logger name="cmwell.xfix" level="INFO" additivity="false">
@@ -164,6 +189,10 @@
 
     <logger name="akka" additivity="true">
         <appender-ref ref="ASYNC_AKKA_FILE" />
+    </logger>
+
+    <logger name="bad_ingests" additivity="false">
+        <appender-ref ref="ASYNC_BAD_INGESTS" />
     </logger>
 
     <root level="${log.level:-INFO}">
