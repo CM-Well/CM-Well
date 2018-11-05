@@ -3,13 +3,14 @@ package cmwell.analytics.main
 import cmwell.analytics.data.InfotonAndIndexWithSystemFields
 import cmwell.analytics.data.InfotonAndIndexWithSystemFields.{isConsistent, isWellFormed}
 import cmwell.analytics.util.CmwellConnector
+import cmwell.analytics.util.ConsistencyThreshold.defaultConsistencyThreshold
+import cmwell.analytics.util.ISO8601.{instantToMillis, instantToText}
 import org.apache.log4j.LogManager
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.functions._
 import org.joda.time.format.ISODateTimeFormat
 import org.rogach.scallop.{ScallopConf, ScallopOption, ValueConverter, singleArgConverter}
 
-import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
 
 object FindInfotonIndexInconsistencies {
@@ -22,12 +23,12 @@ object FindInfotonIndexInconsistencies {
 
       object Opts extends ScallopConf(args) {
 
-        val durationConverter: ValueConverter[Long] = singleArgConverter[Long](Duration(_).toMillis)
+        private val instantConverter: ValueConverter[Long] = singleArgConverter[Long](instantToMillis)
 
         // If this parameter is not supplied, the (unreliable) ES Spark connector is used to extract the data from the es index.
         val esExtract: ScallopOption[String] = opt[String]("es", short = 'e', descr = "The path where the (parquet) extract of system fields the es index are stored", required = false)
 
-        val currentThreshold: ScallopOption[Long] = opt[Long]("current-threshold", short = 'c', descr = "Filter out any inconsistencies that are more current than this duration (e.g., 1d, 24h", default = Some(Duration("1d").toMillis))(durationConverter)
+        val consistencyThreshold: ScallopOption[Long] = opt[Long]("consistency-threshold", short = 'c', descr = "Ignore any inconsistencies at or after this instant", default = Some(defaultConsistencyThreshold))(instantConverter)
 
         val outParquet: ScallopOption[String] = opt[String]("out-parquet", short = 'p', descr = "The path to save the output to (in parquet format)", required = false)
         val outCsv: ScallopOption[String] = opt[String]("out-csv", short = 'v', descr = "The path to save the output to (in CSV format)", required = false)
@@ -43,10 +44,11 @@ object FindInfotonIndexInconsistencies {
         sparkShell = Opts.shell()
       ).withSparkSessionDo { spark =>
 
+        logger.info(s"Using a consistency threshold of ${instantToText(Opts.consistencyThreshold())}.")
+
         val ds = InfotonAndIndexWithSystemFields(esExtractPath = Opts.esExtract.toOption)(spark)
 
         // Filter out any inconsistencies found if more current than this point in time.
-        val currentThreshold = System.currentTimeMillis - Opts.currentThreshold()
         val i = ds.schema.indexWhere(_.name == "infoton_lastModified")
         val filterCurrent: Row => Boolean = { row: Row =>
 
@@ -55,7 +57,7 @@ object FindInfotonIndexInconsistencies {
             true // Shouldn't be null, but don't filter out if we can't get a lastModified
           else
             try {
-              parser.parseMillis(row.getAs[String](i)) < currentThreshold
+              parser.parseMillis(row.getAs[String](i)) < Opts.consistencyThreshold()
             }
             catch {
               case NonFatal(_) => true // Don't filter out if lastModified couldn't be converted
