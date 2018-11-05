@@ -15,6 +15,7 @@
 package controllers
 
 import actions.RequestMonitor
+import akka.stream.Materializer
 import akka.util.ByteString
 import cmwell.domain._
 import cmwell.tracking._
@@ -35,9 +36,9 @@ import play.api.mvc._
 import security.{AuthUtils, PermissionLevel}
 import wsutil._
 import javax.inject._
-
 import filters.Attrs
 import org.joda.time.{DateTime, DateTimeZone}
+import org.slf4j.LoggerFactory
 import play.api.libs.json.Json.JsValueWrapper
 
 import scala.concurrent.duration._
@@ -51,6 +52,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                              authUtils: AuthUtils,
                              cmwellRDFHelper: CMWellRDFHelper,
                              formatterManager: FormatterManager)
+                            (implicit val mat: Materializer)
     extends InjectedController
     with LazyLogging
     with TypeHelpers { self =>
@@ -58,6 +60,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
   val typesCaches = crudService.passiveFieldTypesCache
   val bo1 = collection.breakOut[List[Infoton], String, Set[String]]
   val bo2 = collection.breakOut[Vector[Infoton], String, Set[String]]
+  val redlog = LoggerFactory.getLogger("bad_ingests")
 
   /**
     *
@@ -67,26 +70,46 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
   def handlePost(format: String = "") = ingestPushback.async(parse.raw) { implicit req =>
     import scala.concurrent.ExecutionContext.Implicits.global
     RequestMonitor.add("in",
-                       req.path,
-                       req.rawQueryString,
-                       req.body.asBytes().fold("")(_.utf8String),
-                       req.attrs(Attrs.RequestReceivedTimestamp))
+      req.path,
+      req.rawQueryString,
+      req.body.asBytes().fold("")(_.utf8String),
+      req.attrs(Attrs.RequestReceivedTimestamp))
     // first checking "priority" query string. Only if it is present we will consult the UserInfoton which is more expensive (order of && below matters):
     if (req.getQueryString("priority").isDefined && !authUtils.isOperationAllowedForUser(security.PriorityWrite,
-                                                                                         authUtils
-                                                                                           .extractTokenFrom(req),
-                                                                                         evenForNonProdEnv = true)) {
+      authUtils
+        .extractTokenFrom(req),
+      evenForNonProdEnv = true)) {
       Future.successful(Forbidden(Json.obj("success" -> false, "message" -> "User not authorized for priority write")))
     } else {
       val resp =
-        if ("jsonw" == format.toLowerCase) handlePostWrapped(req) -> Future.successful(Seq.empty[(String, String)])
+        if ("jsonw" == format.toLowerCase) handlePostWrapped(req) -> Future.successful(Iterable.empty -> Seq.empty[(String, String)])
         else handlePostRDF(req)
-      resp._2
-        .flatMap { headers =>
-          keepAliveByDrippingNewlines(resp._1, headers)
-        }
+      resp._2.flatMap { case (reqPaths, _) => timeoutFuture(resp._1, 27.seconds).andThen(printInLogs(reqPaths)) }
         .recover(errorHandler)
     }
+  }
+
+  private def printInLogs(requestPaths: Iterable[String])(implicit ec: ExecutionContext): PartialFunction[Try[Result], Unit] = {
+    case Failure(FutureTimeout(f)) =>
+      val givingUpTimestamp = System.currentTimeMillis()
+      val pathsStr = requestPaths.mkString(",")
+      val id = cmwell.util.numeric.Radix64.encodeUnsigned(givingUpTimestamp) + "_" + cmwell.util.numeric.Radix64
+        .encodeUnsigned(pathsStr.hashCode())
+      logger.error(s"_in ingest with id:[$id] got internal timeout. Request paths are:[$pathsStr]. The timestamp of the timeout is $givingUpTimestamp.")
+      f.onComplete {
+        case Success(Result(header,_,_,_,_)) if header.status == OK =>
+          logger.error(s"The _in internal processing for id:[$id] returned successfully ${System.currentTimeMillis() - givingUpTimestamp}ms after the timeout.")
+        case Success(Result(header, body, _, _, _)) =>
+          logger.error(s"The _in internal processing for id:[$id] returned bad response ${System.currentTimeMillis() - givingUpTimestamp}ms " +
+            s"after the timeout. The header: [status: ${header.status}, headers: ${header.headers}]. The body will be printed later with the same id.")
+          body.consumeData.onComplete {
+            case Success(value) => logger.error(s"The response body of id:[$id] is: ${value.utf8String}")
+            case Failure(e) => logger.error(s"There was an error getting the response body of id:[$id]. The exception was: ", e)
+          }
+        case Failure(t) =>
+          logger.error(s"The _in internal processing for id:[$id] returned with failure ${System.currentTimeMillis() - givingUpTimestamp}ms " +
+            s"after the timeout. The exception was: ", t)
+      }
   }
 
   /**
@@ -330,16 +353,22 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
     }
   }
 
+  def printFailedIngests(message: String, allReqPaths: => Iterable[String], paths: => Iterable[String]): PartialFunction[Try[Boolean], Unit] = {
+    case Failure(e) => redlog.info(s"$message. The whole paths of this request are: [${allReqPaths.mkString(",")}]. " +
+      s"The issue was with at least one of those paths [${paths.mkString(",")}]. The exception was: ", e)
+  }
+
   /**
     *
     * @return
     */
   def handlePostRDF(req: Request[RawBuffer],
-                    skipValidation: Boolean = false): (Future[Result], Future[Seq[(String, String)]]) = {
+                    skipValidation: Boolean = false): (Future[Result], Future[(Iterable[String], Seq[(String, String)])]) = {
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
-    val p = Promise[Seq[(String, String)]]()
+    //(parsed infotons paths, headers)
+    val p = Promise[(Iterable[String], Seq[(String, String)])]()
     lazy val id = cmwell.util.numeric.Radix64.encodeUnsigned(req.id)
     val debugLog = req.queryString.keySet("debug-log")
     val addDebugHeader: Result => Result = { res =>
@@ -367,8 +396,8 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
 
             if (pRes.isEmpty) {
               logger.warn(s"[$id] bad user ingest resulted in parsed response: ${pRes.toString}")
-              if (debugLog) p.success(Seq("X-CM-WELL-LOG-ID" -> id))
-              else p.success(Nil)
+              if (debugLog) p.success(infotonsMap.keys -> Seq("X-CM-WELL-LOG-ID" -> id))
+              else p.success(infotonsMap.keys -> Nil)
               Future.successful(
                 addDebugHeader(
                   UnprocessableEntity(
@@ -486,13 +515,13 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                 }
 
                 if (req.getQueryString("dry-run").isDefined) {
-                  p.success(Seq.empty)
+                  p.success(infotonsMap.keys -> Seq.empty)
                   val jres = feedback.fold(Json.obj("success" -> true, "dry-run" -> true))(
                     Json.obj("success" -> true, "dry-run" -> true, _)
                   )
                   Future(addDebugHeader(Ok(jres)))
                 } else if (deletePaths.contains("/") || deleteMap.keySet("/")) {
-                  p.success(Seq.empty)
+                  p.success(infotonsMap.keys -> Seq.empty)
                   Future.successful(
                     addDebugHeader(
                       BadRequest(
@@ -528,7 +557,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                     val (arOpt, tidOpt) = arAndTidOpt.map(_._1) -> arAndTidOpt.map(_._2)
 
                     val tidHeaderOpt = tidOpt.map("X-CM-WELL-TID" -> _.token)
-                    p.success(tidHeaderOpt.toSeq)
+                    p.success(infotonsMap.keys -> tidHeaderOpt.toSeq)
 
                     require(!infotonsToUpsert.exists(i => infotonsToPut.exists(_.path == i.path)),
                             s"write commands & upserts from same document cannot operate on the same path")
@@ -550,13 +579,17 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
 
                     val to = tidOpt.map(_.token)
                     val d1 = crudService.deleteInfotons(dontTrack.map((_, None, None)), isPriorityWrite = isPriorityWrite)
+                      .andThen(printFailedIngests("delete (dontTrack) infotons failed", infotonsMap.keys, dontTrack))
                     val d2 = crudService.deleteInfotons(track.map((_, None, None)), to, atomicUpdates, isPriorityWrite)
+                      .andThen(printFailedIngests("delete (track) failed", infotonsMap.keys, track))
 
                     d1.zip(d2).flatMap {
                       case (b01, b02) =>
                         val f1 =
                           crudService.upsertInfotons(infotonsToUpsert, deleteMap, to, atomicUpdates, isPriorityWrite)
+                            .andThen(printFailedIngests("upsert infotons failed", infotonsMap.keys, infotonsToUpsert.map(_.path)))
                         val f2 = crudService.putInfotons(infotonsToPut, to, atomicUpdates, isPriorityWrite)
+                            .andThen(printFailedIngests("put infotons failed", infotonsMap.keys, infotonsToPut.map(_.path)))
                         f1.zip(f2).flatMap {
                           case (b1, b2) =>
                             if (b01 && b02 && b1 && b2) {
@@ -602,7 +635,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
         }
         .recover {
           case err: Throwable => {
-            logger.error(s"bad data received: ${req.body.asBytes().fold("NOTHING")(_.utf8String)}", err)
+            logger.error(s"Bad data received or another error. The body is: ${req.body.asBytes().fold("NOTHING")(_.utf8String)}. The exception was: ", err)
             p.tryFailure(err)
             addDebugHeader(wsutil.exceptionToResponse(err))
           }
