@@ -84,7 +84,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
       val resp =
         if ("jsonw" == format.toLowerCase) handlePostWrapped(req) -> Future.successful(Iterable.empty -> Seq.empty[(String, String)])
         else handlePostRDF(req)
-      resp._2.flatMap { case (reqPaths, _) => timeoutFuture(resp._1, 27.seconds).andThen(printInLogs(reqPaths)) }
+      resp._2.flatMap { case (reqPaths, _) => timeoutFuture(resp._1, Settings.clientRequestTimeout).andThen(printInLogs(reqPaths)) }
         .recover(errorHandler)
     }
   }
