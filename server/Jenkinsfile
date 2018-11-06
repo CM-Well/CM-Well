@@ -1,27 +1,41 @@
 pipeline {
-  agent any
+  agent {
+    label 'dev-builds'
+  }
+  tools {
+    jdk 'jdk1.8'
+  }
+  environment {
+    sbt = "${tool name: 'sbt-1.2', type: 'org.jvnet.hudson.plugins.SbtPluginBuilder$SbtInstallation'}/bin/sbt"
+    SCALA_LOCATION = "$HOME/tools/scala-2.12.6/bin/"
+  }
   stages {
     stage('Build') {
       steps {
         ansiColor(colorMapName: 'xterm') {
           dir(path: 'server') {
             sh 'rm -rf project/target'
-            sh 'java -Xmx2G -jar /opt/sbt/bin/sbt-launch.jar "reload plugins" update "reload return" clean reload compile'
+            configFileProvider([configFile(fileId: 'sbt_repos', targetLocation: "$HOME/.sbt", variable: 'repositories')]) {
+                sh '${sbt} -mem 2048 "reload plugins" update "reload return" clean reload compile'
+            }
           }
-
         }
-
       }
     }
     stage('Test') {
       steps {
         ansiColor(colorMapName: 'xterm') {
           dir(path: 'server') {
-            sh 'java -Xmx2G -jar /opt/sbt/bin/sbt-launch.jar fullTest printDate'
+            sh 'PATH=${SCALA_LOCATION}:$PATH ${sbt} -mem 2048 fullTest printDate'
             junit(testResults: '**/target/test-reports/*.xml', allowEmptyResults: true)
           }
         }
       }
     }
   }
+    post{
+        always{
+            archive '**/target/**/logs/*'
+        }
+    }
 }
