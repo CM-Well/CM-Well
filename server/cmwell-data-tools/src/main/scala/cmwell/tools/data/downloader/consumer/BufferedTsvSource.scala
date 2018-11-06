@@ -300,20 +300,21 @@ class BufferedTsvSource(initialToken: Future[String],
     })
 
     private def invokeBufferFillerCallback(future: Future[ConsumeResponse]): Unit = {
-      asyncCallInProgress = true
-      future.onComplete{
-        case Success(consumeResponse) =>
-          callback.invokeWithFeedback(consumeResponse).map({
-            _ =>
-              changeInProgressState.invoke(false)
-              getHandler(out).onPull()
-          })
-        case Failure(e) =>
-          logger.error(s"TSV source future failed",e)
-          throw e
+      changeInProgressState.invokeWithFeedback(true).map {
+         _ =>
+          future.onComplete {
+            case Success(consumeResponse) =>
+              callback.invokeWithFeedback(consumeResponse).map({
+                _ =>
+                  changeInProgressState.invoke(false)
+                  getHandler(out).onPull()
+              })
+            case Failure(e) =>
+              logger.error(s"TSV source future failed", e)
+              throw e
+          }
       }
     }
-
 
   }
 

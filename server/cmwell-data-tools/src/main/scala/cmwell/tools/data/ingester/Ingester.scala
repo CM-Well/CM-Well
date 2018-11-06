@@ -192,7 +192,6 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
       val replaceModeValue = if (replaceMode) "&replace-mode" else ""
       val forceValue = if (force) "&force" else ""
       val priorityValue = if (isPriority) "&priority" else ""
-     
       val gzipContentEncoding = `Content-Encoding`(HttpEncodings.gzip)
 
       val uri = s"${formatHost(baseUrl)}/$method?format=$format$replaceModeValue$forceValue$priorityValue"
