@@ -29,11 +29,14 @@ if [ ! -d "${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_SITE1}" ]; then
 fi
 
 if [ ! -d "${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_SITE2}" ]; then
-  echo "The key fields extract from site1 must be placed in ${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_SITE2}"
+  echo "The key fields extract from site2 must be placed in ${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_SITE2}"
   exit 1
 fi
 
-CONSISTENCY_THRESHOLD="1d"
+# We don't have a good way to line up the timelines for the two systems, so the consistency threshold
+# is set to now minus one day. This could be reduced if we know that the extracts were started at the same time
+# and given the length of time it takes to do the extracts.
+CONSISTENCY_THRESHOLD=`date --date="1 day ago" -u +"%Y-%m-%dT%H:%M:%SZ"`
 
 set -e # bail out if any command fails
 
@@ -47,7 +50,7 @@ ${SPARK_HOME}/bin/spark-submit \
  --conf "spark.driver.extraJavaOptions=-XX:+UseG1GC" \
  --master ${SPARK_MASTER} --driver-memory ${SPARK_MEMORY} --conf "spark.local.dir=${SPARK_TMP}" \
  --class cmwell.analytics.main.InterSystemSetDifference "${SPARK_ANALYSIS_JAR}" \
- --current-threshold="${CONSISTENCY_THRESHOLD}" \
+ --consistency-threshold="${CONSISTENCY_THRESHOLD}" \
  --site1data "${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_SITE1}" \
  --site2data "${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_SITE2}" \
  --site1name "${SITE1_NAME}" \

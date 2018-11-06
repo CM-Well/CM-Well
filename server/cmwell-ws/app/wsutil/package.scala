@@ -22,7 +22,7 @@ import cmwell.formats.{FormatExtractor, Formatter}
 import cmwell.fts._
 import cmwell.tracking.PathStatus
 import cmwell.util.collections._
-import cmwell.util.concurrent.{SimpleScheduler, travset}
+import cmwell.util.concurrent.{FutureTimeout, SimpleScheduler, travset}
 import cmwell.web.ld.cmw.CMWellRDFHelper
 import cmwell.web.ld.exceptions.{UnretrievableIdentifierException, UnsupportedURIException}
 import cmwell.ws.Settings
@@ -674,7 +674,9 @@ package object wsutil extends LazyLogging {
 
     Future
       .traverse(population.grouped(chunkSize)) { infotonsChunk =>
-        val pathsAndProtocols: List[(String,String)] = infotonsChunk.map(i => i.path -> i.protocol.getOrElse("http"))(breakOut)
+        val pathsAndProtocols: List[(String,String)] = infotonsChunk.map { i =>
+          i.path -> i.protocol.getOrElse(cmwell.common.Settings.defaultProtocol)
+        }(breakOut)
 
         val fieldFilterFut = filteredFields match {
           case Nil =>
@@ -943,6 +945,8 @@ package object wsutil extends LazyLogging {
       case _: TooManyNsRequestsException                                => ServiceUnavailable -> { _.getMessage }
       case _: ConflictingNsEntriesException                             => ExpectationFailed -> { _.getMessage }
       case _: TimeoutException                                          => ServiceUnavailable -> { _.getMessage }
+      case _: FutureTimeout[_]                                          =>
+        ServiceUnavailable -> { _ => "An internal timeout happened. Please try again later." }
       case _: SpaMissingException                                       => ServiceUnavailable -> { _.getMessage }
       case _: UnretrievableIdentifierException                          => UnprocessableEntity -> { _.getMessage }
       case _: security.UnauthorizedException                            => Forbidden -> { _.getMessage }

@@ -2,8 +2,11 @@ package cmwell.analytics.main
 
 import cmwell.analytics.data.PathWithKeyFields
 import cmwell.analytics.util.CmwellConnector
+import cmwell.analytics.util.DatasetFilter
+import cmwell.analytics.util.TimestampConversion.timestampConverter
 import org.apache.log4j.LogManager
 import org.rogach.scallop.{ScallopConf, ScallopOption}
+
 
 object DumpPathWithKeyFields {
 
@@ -20,6 +23,9 @@ object DumpPathWithKeyFields {
       object Opts extends ScallopConf(args) {
 
         val parallelism: ScallopOption[Int] = opt[Int]("parallelism", short = 'p', descr = "The parallelism level", default = Some(defaultParallelism))
+
+        val lastModifiedGteFilter: ScallopOption[java.sql.Timestamp] = opt[java.sql.Timestamp]("lastmodified-gte-filter", descr = "Filter on lastModified >= <value>, where value is an ISO8601 timestamp", default = None)(timestampConverter)
+        val pathPrefixFilter: ScallopOption[String] = opt[String]("path-prefix-filter", descr = "Filter on the path prefix matching <value>", default = None)
 
         val out: ScallopOption[String] = opt[String]("out", short = 'o', descr = "The path to save the output to", required = true)
         val shell: ScallopOption[Boolean] = opt[Boolean]("spark-shell", short = 's', descr = "Run a Spark shell", required = false, default = Some(false))
@@ -41,7 +47,11 @@ object DumpPathWithKeyFields {
         sparkShell = Opts.shell()
       ).withSparkSessionDo { spark =>
 
-        val ds = PathWithKeyFields()(spark)
+        val datasetFilter = DatasetFilter(
+          lastModifiedGte = Opts.lastModifiedGteFilter.toOption,
+          pathPrefix = Opts.pathPrefixFilter.toOption)
+
+        val ds = PathWithKeyFields(Some(datasetFilter))(spark)
           .coalesce(Opts.parallelism() * CmwellConnector.coalesceParallelismMultiplier)
 
         Opts.format() match {

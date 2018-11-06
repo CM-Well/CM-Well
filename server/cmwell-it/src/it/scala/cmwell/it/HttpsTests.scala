@@ -155,12 +155,51 @@ class HttpsTests extends AsyncFunSpec with Matchers with Helpers with Inspectors
       }
     }
 
+    val ingestDataForGhostInfotonsTest = Http.post(_in,
+      """
+        |<https://example.org/Y1> <https://purl3.org/vocab/relationship3/predicate> <https://example.org/Casper> .
+        |<https://example.org/Y2> <https://purl3.org/vocab/relationship3/predicate> <https://example.org/Casper> .
+      """.stripMargin, queryParams = "format" -> "ntriples" :: Nil,
+      headers = tokenHeader).flatMap { _ =>
+        spinCheck(100.millis, true)(Http.get(cmw / "example.org" / "Y1"))(_.status==200).zip(
+        spinCheck(100.millis, true)(Http.get(cmw / "example.org" / "Y2"))(_.status==200))
+    }.flatMap { _ =>
+      spinCheck(100.millis, true)(
+        Http.get(cmw / "meta" / "ns", queryParams = Seq("op"->"stream", "qp"->"url::https://purl3.org/vocab/relationship3/"))
+      )(
+        _.payload.trim.lines.nonEmpty
+      )
+    }
+
+    val ghostInfotonInMiddle = ingestDataForGhostInfotonsTest.flatMap { _ =>
+      val p = "predicate.relationship3"
+      Http.get(cmw / "example.org" / "Y1", Seq("yg" -> s">$p<$p", "format" -> "text")).map { r =>
+        val results = r.payload.lines.toList
+        withClue(results){ results.length should be(2) }
+        forExactly(1, results)(_ should be("/example.org/Y1"))
+        forExactly(1, results)(_ should be("/example.org/Y2"))
+      }
+    }
+
+    val ghostInfotonInStart = ingestDataForGhostInfotonsTest.flatMap { _ =>
+      val p = "predicate.relationship3"
+      Http.get(cmw / "example.org" / "Casper", Seq("yg" -> s"<$p", "format" -> "text")).map { r =>
+        val results = r.payload.lines.toList
+        withClue(results){ results.length should be(2) }
+        forExactly(1, results)(_ should be("/example.org/Y1"))
+        forExactly(1, results)(_ should be("/example.org/Y2"))
+      }
+    }
+
+
     it("should verify YG > for B")(verifyYgForB)
     it("should verify YG < for A")(verifyYgForA)
     it("should verify XG for A")(verifyXgForA)
     it("should verify GQP > for A with HTTP relation")(verifyGqpForAPointingAtHttp)
     it("should verify GQP > for A with HTTPS relation")(verifyGqpForAPointingAtHttps)
     it("should verify GQP < for A")(verifyGqpForPointingAtA)
+    it("should test GhostInfoton in the middle")(ghostInfotonInMiddle)
+    it("should test starting with a GhostInfoton")(ghostInfotonInStart)
   }
 
   describe("https: RDF Preserves HTTPS protocol in Subjects") {
@@ -274,6 +313,14 @@ class HttpsTests extends AsyncFunSpec with Matchers with Helpers with Inspectors
         }
       }
 
+    val nonTopDomain = {
+      post("""<https://rubber/duck/debugger> <https://purl73.org/vocab/relationship73/predicate> "BE HERE NOW". """).flatMap { _ =>
+        spinCheck(100.millis, true)(Http.get(cmw / "rubber" / "duck" / "debugger", "format" -> "ntriples" :: Nil))(_.status==200).map { r =>
+          forAtLeast(1, r.payload.lines.toList)(_ should startWith("<https:"))
+        }
+      }
+    }
+
 
     it("should preserve https protocol from ingest to _out")(inAndOut)
     it("should change protocol in each ingested version accordingly")(versions(replaceMode = false))
@@ -281,5 +328,6 @@ class HttpsTests extends AsyncFunSpec with Matchers with Helpers with Inspectors
     it("should get https data when using _sp API")(_sp)
     it("should allow changing protocol upon a Null Update")(nullUpdate)
     it("should support search protocol system field")(search)
+    it("should support https in non top-domain paths")(nonTopDomain)
   }
 }

@@ -11,8 +11,8 @@ CM-Well Downloader is a CM-Well utility for downloading infotons from CM-Well in
 
 CM-Well Downloader is written in Scala and is packaged as a jar file. You can call the Downloader library from Scala or Java applications, or run the Downloader executable in a command line environment.
 
-> **Notes:** 
-> * To access the CM-Well Git site, you will need a GitHub user. See [CM-Well GitHub](https://github.com/thomsonreuters/CM-Well) to access a CM-Well Git repository.
+> **Notes:**
+> * To access the CM-Well Git site, you will need a GitHub user. See [CM-Well GitHub](https://github.com/CM-Well/CM-Well) to access a CM-Well Git repository.
 > * To compile and run CM-Well data tools, you will need Java version 8.
 > * Graph traversal is **not** supported in streaming operations. If a streaming query contains **xg**, **yg** or **gqp** operators, they will be ignored.
 
@@ -32,7 +32,7 @@ You can download and compile the Downloader source code, to build either the sta
 
 1. Go to [http://www.scala-sbt.org/download.html](http://www.scala-sbt.org/download.html) and install the Scala Build Tool (SBT) version appropriate for your OS.
 2. Add the Scala sbt command to your PATH variable.
-3. Download the CM-Well Downloader source code from [https://github.com/thomsonreuters/CM-Well](https://github.com/thomsonreuters/CM-Well).
+3. Download the CM-Well Downloader source code from [https://github.com/CM-Well/CM-Well](https://github.com/CM-Well/CM-Well).
 
 *To build all CM-Well utility executables:*
 

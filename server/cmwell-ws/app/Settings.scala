@@ -31,13 +31,6 @@ object Settings {
 
   val config = ConfigFactory.load()
 
-  // tLogs DAO
-  lazy val tLogsDaoHostName = config.getString("tLogs.hostName")
-  lazy val tLogsDaoClusterName = config.getString("tLogs.cluster.name")
-  lazy val tLogsDaoKeySpace = config.getString("tLogs.keyspace")
-  lazy val tLogsDaoColumnFamily = config.getString("tLogs.columnFamilyName")
-  lazy val tLogsDaoMaxConnections = config.getInt("tLogs.maxConnections")
-
   // kafka
   lazy val kafkaURL = config.getString("kafka.url")
   lazy val persistTopicName = config.getString("kafka.persist.topic.name")
@@ -110,6 +103,9 @@ object Settings {
 
   // default timeout for ElasticSearch calls
   lazy val esTimeout = config.getInt("ftsService.default.timeout").seconds
+
+  //maximum time a request can be "in air" - currently implemented in _in only
+  lazy val clientRequestTimeout = config.getDuration("cmwell.ws.clientRequestTimeout").toMillis.millis
 
   lazy val gridBindIP = config.getString("cmwell.grid.bindIP")
   lazy val gridBindPort = config.getInt("cmwell.grid.bindPort")

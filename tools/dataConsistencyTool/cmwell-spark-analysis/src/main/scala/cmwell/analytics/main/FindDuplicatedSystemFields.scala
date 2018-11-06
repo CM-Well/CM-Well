@@ -28,14 +28,9 @@ object FindDuplicatedSystemFields {
 
         import spark.implicits._
 
-        val ds = InfotonWithDuplicatedSystemFields()(spark)
-          .toDF()
-          .repartition(1) // expect a small number, so make the output easier to deal with.
-          .cache()
-
-        logger.info(s"There are ${ds.count()} infotons with duplicated system fields.")
-
-        ds.write.csv(Opts.out())
+        InfotonWithDuplicatedSystemFields()(spark)
+          .toDF
+          .write.csv(Opts.out())
       }
     }
     catch {

@@ -36,7 +36,7 @@ trait Formatter extends LazyLogging {
                              mkLongVal: Long => V,
                              includeParent: Boolean = true): Seq[(K, V)] = {
     val indexTime = infoton.indexTime.map(it => Seq(mkKey("indexTime") -> mkLongVal(it))).getOrElse(Nil)
-    val protocol = Seq(mkKey("protocol") -> mkVal(infoton.protocol.getOrElse("http")))
+    val protocol = Seq(mkKey("protocol") -> mkVal(infoton.protocol.getOrElse(cmwell.common.Settings.defaultProtocol)))
     val seq = Seq(
 //      mkKey("type") -> mkVal(infoton.kind), //TODO: add type to system instead of outer level
       mkKey("uuid") -> mkVal(infoton.uuid),

@@ -6,6 +6,7 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import cmwell.analytics.data.{DataWriterFactory, IndexWithCompleteDocument}
 import cmwell.analytics.downloader.PartitionedDownloader
+import cmwell.analytics.util.TimestampConversion.timestampConverter
 import cmwell.analytics.util.{DiscoverEsTopology, FindContactPoints}
 import org.apache.commons.io.FileUtils
 import org.apache.log4j.LogManager
@@ -34,7 +35,11 @@ object DumpCompleteDocumentFromEs {
 
         val readIndex: ScallopOption[String] = opt[String]("read-index", short = 'i', descr = "The name of the index to read from (default: cm_well_all)", required = false)
         val parallelism: ScallopOption[Int] = opt[Int]("parallelism", short = 'p', descr = "The parallelism level", default = Some(defaultParallelism))
-        val currentOnly: ScallopOption[Boolean] = opt[Boolean]("current-only", short = 'c', descr = "Only download current infotons", default = Some(false))
+
+        val currentOnly: ScallopOption[Boolean] = opt[Boolean]("current-filter", short = 'c', descr = "Filter on current status", default = None)
+        val lastModifiedGteFilter: ScallopOption[java.sql.Timestamp] = opt[java.sql.Timestamp]("lastmodified-gte-filter", descr = "Filter on lastModified >= <value>, where value is an ISO8601 timestamp", default = None)(timestampConverter)
+        val pathPrefixFilter: ScallopOption[String] = opt[String]("path-prefix-filter", descr = "Filter on the path prefix matching <value>", default = None)
+
         val out: ScallopOption[String] = opt[String]("out", short = 'o', descr = "The path to save the output to", required = true)
         val format: ScallopOption[String] = opt[String]("format", short = 'f', descr = "The data format: either 'parquet' or 'csv'", default = Some("parquet"))
         val url: ScallopOption[String] = trailArg[String]("url", descr = "A CM-Well URL", required = true)
@@ -54,7 +59,11 @@ object DumpCompleteDocumentFromEs {
       PartitionedDownloader.runDownload(
         esTopology = esTopology,
         parallelism = Opts.parallelism(),
+
         currentOnly = Opts.currentOnly(),
+        lastModifiedGteFilter = Opts.lastModifiedGteFilter.toOption,
+        pathPrefixFilter = Opts.pathPrefixFilter.toOption,
+
         objectExtractor = objectExtractor,
         dataWriterFactory = dataWriterFactory,
         sourceFilter = false)

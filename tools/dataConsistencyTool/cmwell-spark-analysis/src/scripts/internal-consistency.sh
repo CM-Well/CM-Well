@@ -35,12 +35,6 @@ EXTRACT_DIRECTORY_INDEX="index-system-fields"
 EXTRACT_DIRECTORY_INFOTON="infoton-key-fields"
 EXTRACT_DIRECTORY_PATH="path-key-fields"
 
-# If an inconsistency is detected, it is filtered out if it falls within this period.
-# This is a matter of quality of service policy, and might vary according to the system.
-# For cases where there are multiple extracts, the consistency threshold will be this value
-# plus the total time to extract all the data.
-CONSISTENCY_THRESHOLD=`expr 10 \* 60 \* 1000`  # 10 minutes in milliseconds
-
 set -e # bail out if any command fails
 
 rm -rf "${WORKING_DIRECTORY}"
@@ -66,18 +60,14 @@ rm -rf "${WORKING_DIRECTORY}"/infoton-data-integrity
 # Extract key fields from index, path and infoton.
 # For the index, we do additional analysis, so extract all system fields.
 # We want all of the retrieval operations to be grouped together do minimize the inconsistency window.
-# Disable source filtering because of Elastic index bug returning random 500 internal server errors.
+# Also note that the extract of the infoton tables is done first. When comparing uuids between systems,
+# we want to launch this script simultaneously (e.g., via cron), so this helps keep the time lines as
+# consistent as possible.
 
-extract_start=`date +%s`
-
-${JAVA_HOME}/bin/java \
- -Xmx31G \
- -XX:+UseG1GC \
- -cp "${EXTRACT_ES_UUIDS_JAR}" cmwell.analytics.main.DumpSystemFieldsFromEs \
- --out "${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_INDEX}" \
- "${SOURCE_FILTER}" \
- --format parquet \
- "${CMWELL_INSTANCE}"
+# The consistency threshold (the instant after which we will ignore inconsistencies) is set to
+# the point where we start extracting data, minus 10 minutes of slack to allow data to get to
+# a consistent state.
+CONSISTENCY_THRESHOLD=`date --date="10 minutes ago" -u +"%Y-%m-%dT%H:%M:%SZ"`
 
 ${SPARK_HOME}/bin/spark-submit \
  --conf "spark.driver.extraJavaOptions=-XX:+UseG1GC" \
@@ -93,10 +83,14 @@ ${SPARK_HOME}/bin/spark-submit \
  --out "${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_PATH}" \
  "${CMWELL_INSTANCE}"
 
- extract_end=`date +%s`
-
- # Calculate a new consistency threshold that CONSISTENCY_THRESHOLD plus the total extract time.
- OVERALL_CONSISTENCY_THRESHOLD=$[CONSISTENCY_THRESHOLD + (extract_end - extract_start) ]
+${JAVA_HOME}/bin/java \
+ -Xmx31G \
+ -XX:+UseG1GC \
+ -cp "${EXTRACT_ES_UUIDS_JAR}" cmwell.analytics.main.DumpSystemFieldsFromEs \
+ --out "${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_INDEX}" \
+ "${SOURCE_FILTER}" \
+ --format parquet \
+ "${CMWELL_INSTANCE}"
 
 
 # Exactly one version (uuid) for a path should be marked as current.
@@ -105,7 +99,7 @@ $SPARK_HOME/bin/spark-submit \
  --conf "spark.driver.extraJavaOptions=-XX:+UseG1GC" \
  --master "${SPARK_MASTER}" --driver-memory ${SPARK_MEMORY} --conf "spark.local.dir=${SPARK_TMP}" \
  --class "cmwell.analytics.main.FindDuplicatedCurrentPathsInIndex" "${SPARK_ANALYSIS_JAR}" \
- --current-threshold "${CONSISTENCY_THRESHOLD}ms" \
+ --consistency-threshold "${CONSISTENCY_THRESHOLD}" \
  --index "${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_INDEX}" \
  --out "${WORKING_DIRECTORY}/duplicated-current-index" \
  "${CMWELL_INSTANCE}"
@@ -121,7 +115,7 @@ ${SPARK_HOME}/bin/spark-submit \
  --conf "spark.driver.extraJavaOptions=-XX:+UseG1GC" \
  --master ${SPARK_MASTER} --driver-memory ${SPARK_MEMORY} --conf "spark.local.dir=${SPARK_TMP}" \
  --class cmwell.analytics.main.SetDifferenceUuids "${SPARK_ANALYSIS_JAR}" \
- --current-threshold "${OVERALL_CONSISTENCY_THRESHOLD}ms" \
+ --consistency-threshold "${CONSISTENCY_THRESHOLD}" \
  --infoton "${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_INFOTON}" \
  --path "${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_PATH}" \
  --index "${WORKING_DIRECTORY}/${EXTRACT_DIRECTORY_INDEX}" \

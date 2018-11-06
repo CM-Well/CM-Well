@@ -6,7 +6,7 @@
 
 ----
 
-As we have learned, an RDF repository is a graph structure. RDF field names are also defined in a hierarchical graph structure, called an "ontology". This could be an internal Thomson Reuters ontology or a 3rd-party ontology.
+As we have learned, an RDF repository is a graph structure. RDF field names are also defined in a hierarchical graph structure, called an "ontology". This could be an internal Thomson Reuters/Refinitiv ontology or a 3rd-party ontology.
 
 Thus, the "CommonName" field belonging to organizations is actually identified by its full path within the Thomson Reuters ontology:
 
@@ -17,23 +17,23 @@ The reason that you can't refer to fields only by their "terminal" name (e.g. "C
 There are several different formats you can use to identify CM-Well fields, each with pros and cons. The following sections describe these formats.
 
 ## "Prefix" Format ##
- 
+
 The "prefix" format in CM-Well uses the immediate parent of the field name, from the field's full ontology path.
 Thus, in the field "http://ont.com/mdaas/CommonName", CommonName is the field name, while "mdaas" is its prefix.
 
-In spite of its name, in CM-Well you add the prefix *after* the field name itself, as follows: *fieldname.prefix*. For example "CommonName.mdaas". 
+In spite of its name, in CM-Well you add the prefix *after* the field name itself, as follows: *fieldname.prefix*. For example "CommonName.mdaas".
 
 >**Note**: For the special metadata fields of type **system**, **content** and **link**, the opposite order (e.g. "system.indexTime" or "length.content") is currently also supported. This is deprecated and will stop being supported in the future.
 
 You may have noted that even adding the prefix to the field name does not guarantee uniqueness. If the same field name (with the same immediate parent name) is added to two different namespaces, the name becomes ambiguous and the query will fail.
 
-Although the prefix is more readable than the alternatives, it is less reliable because of the potential for ambiguity (and it may even cease to be supported in the future). 
+Although the prefix is more readable than the alternatives, it is less reliable because of the potential for ambiguity (and it may even cease to be supported in the future).
 
 >**Note:** The recommended best practice is to use the URI or hashed format (see below) for field identifiers, rather than the prefix format.
 
 ## URI Format ##
 
-A field name's URI is its full URI in its hosting ontology. 
+A field name's URI is its full URI in its hosting ontology.
 
 For example, the URI of organizationFoundedYear.mdaas is:
 
@@ -63,7 +63,7 @@ To find the hashed value for a certain namespace, you must search for it in CM-W
     <cm-well-host>/meta/ns?op=search&qp=url:http://www.w3.org/ns/prov
 
 The query returns the following namespace infoton:
-    
+
     <cm-well-host>/meta/ns/bE5hMw
 
 In your code, you can look up all the required hash values during initialization, and use them for querying at run-time.
