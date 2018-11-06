@@ -109,8 +109,10 @@ class BufferedTsvSource(initialToken: Future[String],
             logger.info(s"$label is at horizon. Will retry at consume position $currentConsumeToken " +
               s"in $horizonRetryTimeout")
 
+            val scheduleToken = currentConsumeToken
+
             materializer.scheduleOnce(horizonRetryTimeout, () =>
-              invokeBufferFillerCallback(sendNextChunkRequest(currentConsumeToken)))
+              invokeBufferFillerCallback(sendNextChunkRequest(scheduleToken)))
 
           case ConsumeResponse(token, false, dataSource) =>
             dataSource.runForeach {
@@ -129,8 +131,10 @@ class BufferedTsvSource(initialToken: Future[String],
                 logger.error(s"error consuming token ${token}, buffer-size: ${buf.size}. " +
                   s"Scheduling retry in ${retryTimeout}", e)
 
+                val scheduleToken = currentConsumeToken
+
                 materializer.scheduleOnce(retryTimeout, () =>
-                  invokeBufferFillerCallback(sendNextChunkRequest(currentConsumeToken))
+                  invokeBufferFillerCallback(sendNextChunkRequest(scheduleToken))
                 )
             }
 
