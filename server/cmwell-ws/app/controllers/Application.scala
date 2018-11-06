@@ -3003,19 +3003,26 @@ callback=< [URL] >
 
 
   def handleStpPost(agent: String) = Action.async(parse.raw) { implicit req =>
+
     val allowed = isAdminEvenNonProd(req)
+
+    val headers = req.headers.get("X-CM-WELL-TOKEN") match {
+      case Some(token) => Seq(("X-CM-WELL-TOKEN", token))
+      case _ => Nil
+    }
 
     allowed match {
       case true => {
         val flag = req.getQueryString("enabled").flatMap(asBoolean).getOrElse(true)
         import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
         import cmwell.util.http.SimpleResponse
-        val body=s"<cmwell://meta/sys/agents/sparql/${agent}> <cmwell://meta/nn#active> \"${flag}\"^^<http://www.w3.org/2001/XMLSchema#boolean> ."
+        val body="<cmwell://meta/sys/agents/sparql/${agent}> <cmwell://meta/nn#active> \\\"" + flag + "\\\"^^<http://www.w3.org/2001/XMLSchema#boolean> ."
+
         cmwell.util.http.SimpleHttpClient
-          .post(uri=s"http://localhost:9000/_in?format=ntriples&replace-mode&priority", body=body).map {
-            case SimpleResponse(200, _, _) => Ok("""{"success":true}""")
+          .post(uri=s"http://localhost:9000/_in?format=ntriples&replace-mode&priority", body=body, headers=headers).map {
+            case SimpleResponse(200, _, _) => Ok({"success:true"})
             case SimpleResponse(respCode, _, _) => Ok("""{"success":false}""")
-          case _ => Ok("""{"success":false}""")
+            case _ => Ok("""{"success":false}""")
         }
       }
       case _ => Future.successful(Forbidden("Not allowed to use stp"))

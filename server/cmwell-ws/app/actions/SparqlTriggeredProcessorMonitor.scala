@@ -41,7 +41,7 @@ object SparqlTriggeredProcessorMonitor extends LazyLogging {
 
   def jobsDataToTuple(lines: Iterable[Row]) = for (line <- lines) yield MarkdownTuple(line.toSeq: _*)
 
-  def generateTables(path: String, dc: String): Future[Option[VirtualInfoton]] = {
+  def generateTables(path: String, dc: String, isRoot: Boolean = false): Future[Option[VirtualInfoton]] = {
     val jobsDataFuture = (stpManager ? RequestStats)
       .mapTo[ResponseStats]
       .map { case ResponseStats(tables) => tables }
