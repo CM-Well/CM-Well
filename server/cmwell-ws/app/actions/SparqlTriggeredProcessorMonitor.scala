@@ -41,7 +41,7 @@ object SparqlTriggeredProcessorMonitor extends LazyLogging {
 
   def jobsDataToTuple(lines: Iterable[Row]) = for (line <- lines) yield MarkdownTuple(line.toSeq: _*)
 
-  def generateTables(path: String, dc: String, isRoot: Boolean = false): Future[Option[VirtualInfoton]] = {
+  def generateTables(path: String, dc: String, isRoot: Boolean): Future[Option[VirtualInfoton]] = {
     val jobsDataFuture = (stpManager ? RequestStats)
       .mapTo[ResponseStats]
       .map { case ResponseStats(tables) => tables }
@@ -53,18 +53,21 @@ object SparqlTriggeredProcessorMonitor extends LazyLogging {
     } yield {
       val title =
         s"""
-          |# Sparql Triggered Processor Monitor <br>
+          |# Sparql Triggered Processor Monitor<br>
           |## Current host: $address  <br>
         """.stripMargin
 
       val tablesFormattedData = tables.map { table =>
+
         val mdTable = MarkdownTable(
           header = MarkdownTuple(table.header.toSeq: _*),
           body = jobsDataToTuple(table.body).toSeq
         )
 
+        val headers = table.title + "Pause, Reset Tokensa"
+
         s"""
-         |${table.title.mkString("### ", "<br>\n### ", "<br>")}
+         |${headers.mkString("### ", "<br>\n### ", "<br>")}
          |${mdTable.get} <hr>""".stripMargin
       }
 
@@ -78,8 +81,4 @@ object SparqlTriggeredProcessorMonitor extends LazyLogging {
       )
     }
   }
-
-  def getAgentStats() : Future[ResponseStats] = (stpManager ? RequestStats)
-    .mapTo[ResponseStats]
-
 }

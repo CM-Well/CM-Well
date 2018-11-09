@@ -3031,7 +3031,7 @@ callback=< [URL] >
 
   def handleStpGet(agent: String) = Action.async(parse.raw) { implicit req =>
 
-    val agentStats = SparqlTriggeredProcessorMonitor.getAgentStats
+   // val agentStats = SparqlTriggeredProcessorMonitor.getAgentStats
 
 
 
