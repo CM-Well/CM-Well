@@ -16,7 +16,7 @@ sourceGenerators in Compile += Def.task {
      |package cmwell.build
      |
      |object Versions {
-     |  val cassandra = "2.1.18"
+     |  val cassandra = "3.11.3"
      |  val elasticsearch = "1.7.6"
      |  val kafka = "0.10.2.1"
      |  val play = "${PluginVersions.play}"

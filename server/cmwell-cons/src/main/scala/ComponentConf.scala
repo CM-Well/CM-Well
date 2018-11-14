@@ -265,9 +265,6 @@ case class CassandraConf(home: String,
     val rackConfContent =
       ResourceBuilder.getResource("scripts/templates/cassandra-rackdc.properties", Map("rack_id" -> rs.getRackId(this)))
 
-    val cqlInit = ResourceBuilder.getResource("scripts/templates/cassandra-cql-init-cluster",
-                                              Map("replication_factor" -> replicationFactor.toString))
-
     val cqlInit2 = ResourceBuilder.getResource("scripts/templates/cassandra-cql-init-cluster-new",
                                                Map("replication_factor" -> replicationFactor.toString))
 
@@ -282,7 +279,6 @@ case class CassandraConf(home: String,
       ConfFile("logback.xml", logBackContent),
       ConfFile("cassandra-rackdc.properties", rackConfContent, false),
       ConfFile("cassandra-status-viewer", cassandraStatus, true),
-      ConfFile("cassandra-cql-init-cluster", cqlInit),
       ConfFile("cassandra-cql-init-cluster-new", cqlInit2),
       ConfFile("zstore-cql-init-cluster", cqlInit3)
     )

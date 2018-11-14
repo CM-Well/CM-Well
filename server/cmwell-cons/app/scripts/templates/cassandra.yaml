@@ -17,6 +17,9 @@ data_file_directories:
     - {{root_dir}}/data/{{dir}}/data
 
 commitlog_directory: {{root_dir}}/data/{{ccl_dir}}/commitlog
+hints_directory: {{root_dir}}/data/{{ccl_dir}}/hints
+cdc_enabled: false
+cdc_raw_directory: {{root_dir}}/data/{{ccl_dir}}/cdc_raw
 
 disk_failure_policy: stop
 
