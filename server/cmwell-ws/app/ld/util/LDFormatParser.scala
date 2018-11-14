@@ -24,6 +24,7 @@ import cmwell.web.ld.cmw.CMWellRDFHelper.{Create, Exists, PrefixState}
 import cmwell.web.ld.cmw._
 import cmwell.web.ld.exceptions._
 import cmwell.ws.Settings
+import cmwell.common.{Settings => CSettings}
 import com.typesafe.scalalogging.LazyLogging
 import logic.{CRUDServiceFS, InfotonValidator}
 import org.apache.jena.datatypes.xsd.XSDDatatype
@@ -808,8 +809,10 @@ object LDFormatParser extends LazyLogging {
                   atomicUpdatesBuilder += subject -> uuid
                 }
               }
-              if(stmt.getSubject.isURIResource && stmt.getSubject.getURI.startsWith("https")) {
-                updateMetaData(cmwMetaDataMap, subject, "protocol", FString("https"))
+              if(stmt.getSubject.isURIResource) {
+                val protocol = stmt.getSubject.getURI.takeWhile(':'.!=)
+                if(protocol != "cmwell" && protocol != CSettings.defaultProtocol)
+                  updateMetaData(cmwMetaDataMap, subject, "protocol", FString(protocol))
               }
             }
           }
