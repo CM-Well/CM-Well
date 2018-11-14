@@ -301,7 +301,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
         val title = Seq(
           s"""<span style="color:${colour}"> **Non-Active - ${jobStatus.statusString} ** </span> ${path} <br/><span style="color:${colour}">${status}</span>"""
         )
-        val header = Seq("Sensor", "Token Time")
+        val header = Seq("Sensor", s"Token Time (<a href='/zz/stp-agent-$path?op=purge'>Reset Tokens</a>)")
 
         StpUtil.readPreviousTokens(settings.hostConfigFile, settings.pathAgentConfigs + "/" + path, zStore).map {
           result =>
@@ -320,7 +320,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
                     Seq(sensorName, decodedToken)
                 }
 
-                val controls = s"<a href='/zz/stp-agent-${path}?op=purge'>Reset Tokens</a>, <a href='/pause'>Resume</a>"
+                val controls = s"<a href='/stp/$path/?enabled=true'>Resume</a>"
 
                 Table(title = title :+ controls, header = header, body = body)
             }
@@ -412,7 +412,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
                 }
                 .getOrElse("")
 
-              val controls = s"<a href='/pause'>Pause</a>"
+              val controls = s"<a href='/stp/$path/?enabled=false'>Pause</a>"
 
               Table(title = title :+ sparqlMaterializerStats :+ sparqlIngestStats :+ controls, header = header, body = body)
 
