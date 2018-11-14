@@ -133,7 +133,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
   override def receive: Receive = {
     import akka.pattern._
     GridReceives.monitoring(sender).orElse {
-      case RequestStats                          => stringifyActiveJobs(currentJobs).map(ResponseStats.apply).pipeTo(sender())
+      case RequestStats(isRoot: Boolean)         => stringifyActiveJobs(currentJobs, isRoot).map(ResponseStats.apply).pipeTo(sender())
       case CheckConfig                           => getJobConfigsFromTheUser.map(AnalyzeReceivedJobs.apply).pipeTo(self)
       case AnalyzeReceivedJobs(jobsReceived)     => handleReceivedJobs(jobsReceived, currentJobs)
       case Status.Failure(e)                     => logger.warn("Received Status failure ", e)
@@ -284,7 +284,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
   /**
     * Generates data for tables in cm-well monitor page
     */
-  def stringifyActiveJobs(jobs: Jobs): Future[Iterable[Table]] = {
+  def stringifyActiveJobs(jobs: Jobs, isRoot: Boolean = false): Future[Iterable[Table]] = {
     implicit val timeout = Timeout(1.minute)
 
     def generateNonActiveTables(jobs: Jobs) = jobs.collect {
@@ -319,7 +319,10 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
 
                     Seq(sensorName, decodedToken)
                 }
-                Table(title = title, header = header, body = body)
+
+                val controls = s"<a href='/zz/stp-agent-${path}?op=purge'>Reset Tokens</a>, <a href='/pause'>Resume</a>"
+
+                Table(title = title :+ controls, header = header, body = body)
             }
         }.recover {
           case _ => Table(title = title, header = header, body = Seq(Seq("")))
@@ -331,19 +334,12 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
         val jobConfig = jobStatus.job.config
 
 
-
-
-
-
-
-
-
         val hostUpdatesSource = jobConfig.hostUpdatesSource.getOrElse(settings.hostUpdatesSource)
 
         val title = Seq(
           s"""<span style="color:green"> **${jobStatus.statusString}** </span> Agent: ${path} Source: ${hostUpdatesSource}"""
         )
-        val header = Seq("Sensor", "Token Time", "Received Infotonss", "Remaining Infotons", "Infoton Rate", "Statistics Updated")
+        val header = Seq("Sensor", "Token Time", "Received Infotons", "Remaining Infotons", "Infoton Rate", "Statistics Updated")
         val statsFuture = (jobStatus.reporter ? RequestDownloadStats).mapTo[ResponseDownloadStats]
         val storedTokensFuture = (jobStatus.reporter ? RequestPreviousTokens).mapTo[ResponseWithPreviousTokens]
 
@@ -416,7 +412,9 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
                 }
                 .getOrElse("")
 
-              Table(title = title :+ sparqlMaterializerStats :+ sparqlIngestStats, header = header, body = body)
+              val controls = s"<a href='/pause'>Pause</a>"
+
+              Table(title = title :+ sparqlMaterializerStats :+ sparqlIngestStats :+ controls, header = header, body = body)
 
             }
             case _ => Table(title = title, header = header, body = Seq(Seq("")))

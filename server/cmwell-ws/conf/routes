@@ -61,7 +61,7 @@ GET         /ws/_out                controllers.OutputHandler.handleWebSocket(fo
 GET         /ii/*uuid               controllers.Application.handleUuidGET(uuid)
 GET         /zz                     controllers.Help.handleHelp(page = "zz")
 GET         /zz/*key                controllers.Application.handleZzGET(key)
-GET         /stp/*agent             controllers.Application.handleStpGet(agent)
+GET         /stp/*agent             controllers.Application.handleStpPost(agent)
 POST        /stp/*agent             controllers.Application.handleStpPost(agent)
 GET         /proc                   controllers.Application.handleProcGET(path = "/proc")
 GET         /proc/                  controllers.Application.handleProcGET(path = "/proc")

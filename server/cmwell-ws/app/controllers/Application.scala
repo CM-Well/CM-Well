@@ -3006,8 +3006,8 @@ callback=< [URL] >
 
     val allowed = isAdminEvenNonProd(req)
 
-    val headers = req.headers.get("X-CM-WELL-TOKEN") match {
-      case Some(token) => Seq(("X-CM-WELL-TOKEN", token))
+    val headers = req.cookies.get("X-CM-WELL-TOKEN2") match {
+      case Some(cookie) => Seq(("X-CM-WELL-TOKEN", cookie.value))
       case _ => Nil
     }
 
@@ -3016,11 +3016,14 @@ callback=< [URL] >
         val flag = req.getQueryString("enabled").flatMap(asBoolean).getOrElse(true)
         import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
         import cmwell.util.http.SimpleResponse
-        val body="<cmwell://meta/sys/agents/sparql/${agent}> <cmwell://meta/nn#active> \\\"" + flag + "\\\"^^<http://www.w3.org/2001/XMLSchema#boolean> ."
+        val body="<cmwell://meta/sys/agents/sparql/" + agent + "> <cmwell://meta/nn#active> \"" + flag + "\"^^<http://www.w3.org/2001/XMLSchema#boolean> ."
+
+
+        val token = authUtils.extractTokenFrom(req).get
 
         cmwell.util.http.SimpleHttpClient
           .post(uri=s"http://localhost:9000/_in?format=ntriples&replace-mode&priority", body=body, headers=headers).map {
-            case SimpleResponse(200, _, _) => Ok({"success:true"})
+            case SimpleResponse(200, _, _) => Ok("""{"success":true}""")
             case SimpleResponse(respCode, _, _) => Ok("""{"success":false}""")
             case _ => Ok("""{"success":false}""")
         }
@@ -3029,17 +3032,6 @@ callback=< [URL] >
     }
   }
 
-  def handleStpGet(agent: String) = Action.async(parse.raw) { implicit req =>
-
-   // val agentStats = SparqlTriggeredProcessorMonitor.getAgentStats
-
-
-
-
-
-
-    Future.successful(Ok("""{"success":true}"""))
-  }
 
 
   def handleKafkaConsume(topic: String, partition: Int): Action[AnyContent] = Action { implicit req =>
