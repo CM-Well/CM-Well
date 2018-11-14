@@ -135,7 +135,7 @@ class DownloaderStats(isStderr: Boolean,
             val message =
               s"received=${toHumanReadable(totalDownloadedBytes.count)}".padTo(20, ' ') +
                 s"infotons=${formatter.format(totalReceivedInfotons.count)}".padTo(30, ' ') +
-                s"infoton rate=${formatter.format(totalReceivedInfotons.meanRate)}/sec".padTo(30, ' ') +
+                s"infoton rate=${formatter.format(totalReceivedInfotons.oneMinuteRate)}/sec".padTo(30, ' ') +
                 s"mean rate=${toHumanReadable(metricRateBytes.meanRate)}/sec".padTo(30, ' ') +
                 s"[${DurationFormatUtils.formatDurationWords(now - start, true, true)}]"
 
@@ -221,7 +221,7 @@ class DownloaderStats(isStderr: Boolean,
                 label = label,
                 receivedBytes = totalDownloadedBytes.count,
                 receivedInfotons = totalReceivedInfotons.count,
-                infotonRate = totalReceivedInfotons.meanRate,
+                infotonRate = totalReceivedInfotons.oneMinuteRate,
                 bytesRate = metricRateBytes.oneMinuteRate,
                 runningTime = executionTime,
                 totalRunningTime = totalRunningMillis,
