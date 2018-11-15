@@ -3001,29 +3001,25 @@ callback=< [URL] >
     }
   }
 
+  def handleStpControl(agent: String) = Action.async(parse.raw) { implicit req =>
 
-  def handleStpPost(agent: String) = Action.async(parse.raw) { implicit req =>
-
-    val allowed = isAdminEvenNonProd(req)
-
-    val headers = req.cookies.get("X-CM-WELL-TOKEN2") match {
-      case Some(cookie) => Seq(("X-CM-WELL-TOKEN", cookie.value))
-      case _ => Nil
-    }
-
-    allowed match {
+    isAdminEvenNonProd(req) match {
       case true => {
+
+        val headers = req.cookies.get("X-CM-WELL-TOKEN2") match {
+          case Some(cookie) => Seq(("X-CM-WELL-TOKEN", cookie.value))
+          case _ => Nil
+        }
+
         val flag = req.getQueryString("enabled").flatMap(asBoolean).getOrElse(true)
         import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
         import cmwell.util.http.SimpleResponse
         val body="<cmwell://meta/sys/agents/sparql/" + agent + "> <cmwell://meta/nn#active> \"" + flag + "\"^^<http://www.w3.org/2001/XMLSchema#boolean> ."
 
-
-        val token = authUtils.extractTokenFrom(req).get
-
         cmwell.util.http.SimpleHttpClient
-          .post(uri=s"http://localhost:9000/_in?format=ntriples&replace-mode&priority", body=body, headers=headers).map {
+          .post(uri=s"http://${req.host}/_in?format=ntriples&replace-mode&priority", body=body, headers=headers).map {
             case SimpleResponse(200, _, _) => Ok("""{"success":true}""")
+            case SimpleResponse(403, _, _) => Forbidden("Not allowed to priority write to agent infoton")
             case SimpleResponse(respCode, _, _) => Ok("""{"success":false}""")
             case _ => Ok("""{"success":false}""")
         }

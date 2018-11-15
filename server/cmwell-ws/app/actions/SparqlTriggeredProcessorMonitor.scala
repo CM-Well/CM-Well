@@ -53,7 +53,7 @@ object SparqlTriggeredProcessorMonitor extends LazyLogging {
     } yield {
       val title =
         s"""
-          |# Sparql Triggered Processor Monitoar<br>
+          |# Sparql Triggered Processor Monitor<br>
           |## Current host: $address  <br>
         """.stripMargin
 

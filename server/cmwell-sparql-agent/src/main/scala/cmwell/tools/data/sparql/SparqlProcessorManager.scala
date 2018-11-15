@@ -301,7 +301,13 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
         val title = Seq(
           s"""<span style="color:${colour}"> **Non-Active - ${jobStatus.statusString} ** </span> ${path} <br/><span style="color:${colour}">${status}</span>"""
         )
-        val header = Seq("Sensor", s"Token Time (<a href='/zz/stp-agent-$path?op=purge'>Reset Tokens</a>)")
+
+        val controls = isRoot match {
+          case true => s" (<a href='/zz/stp-agent-$path?op=purge'>Reset Tokens</a>)"
+          case false => ""
+        }
+
+        val header = Seq("Sensor", "Token Time" + controls)
 
         StpUtil.readPreviousTokens(settings.hostConfigFile, settings.pathAgentConfigs + "/" + path, zStore).map {
           result =>
@@ -412,7 +418,10 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
                 }
                 .getOrElse("")
 
-              val controls = s"<a href='/stp/$path/?enabled=false'>Pause</a>"
+              val controls = isRoot match {
+                case true => s"<a href='/stp/$path/?enabled=false'>Pause</a>"
+                case false => ""
+              }
 
               Table(title = title :+ sparqlMaterializerStats :+ sparqlIngestStats :+ controls, header = header, body = body)
 
