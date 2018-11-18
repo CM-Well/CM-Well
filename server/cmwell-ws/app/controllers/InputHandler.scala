@@ -82,33 +82,42 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
       Future.successful(Forbidden(Json.obj("success" -> false, "message" -> "User not authorized for priority write")))
     } else {
       val resp =
-        if ("jsonw" == format.toLowerCase) handlePostWrapped(req) -> Future.successful(Iterable.empty -> Seq.empty[(String, String)])
-        else handlePostRDF(req)
-      resp._2.flatMap { case (reqPaths, _) => timeoutFuture(resp._1, Settings.clientRequestTimeout).andThen(printInLogs(reqPaths)) }
+        if ("jsonw" == format.toLowerCase) handlePostWrapped(req).zip(Future.successful(Iterable.empty -> Seq.empty[(String, String)]))
+        else Future(handlePostRDF(req)).flatMap {
+          case (normalResult, parsedPathsAndHeaders) => normalResult.zip(parsedPathsAndHeaders)
+        }
+      timeoutFuture(resp, Settings.clientRequestTimeout).andThen(printInLogs(req.body))
+        .map(_._1)
         .recover(errorHandler)
     }
   }
 
-  private def printInLogs(requestPaths: Iterable[String])(implicit ec: ExecutionContext): PartialFunction[Try[Result], Unit] = {
+  private def printInLogs(rawRequestBody: RawBuffer)
+                         (implicit ec: ExecutionContext): PartialFunction[Try[(Result, (Iterable[String], Seq[(String, String)]))], Unit] = {
     case Failure(FutureTimeout(f)) =>
       val givingUpTimestamp = System.currentTimeMillis()
-      val pathsStr = requestPaths.mkString(",")
+      val requestBody = rawRequestBody.asBytes().fold("")(_.utf8String)
       val id = cmwell.util.numeric.Radix64.encodeUnsigned(givingUpTimestamp) + "_" + cmwell.util.numeric.Radix64
-        .encodeUnsigned(pathsStr.hashCode())
-      logger.error(s"_in ingest with id:[$id] got internal timeout. Request paths are:[$pathsStr]. The timestamp of the timeout is $givingUpTimestamp.")
+        .encodeUnsigned(requestBody.hashCode())
+      logger.error(s"_in ingest with id:[$id] got internal timeout. " +
+        s"Additional information will should be in the log with the same id. The timestamp of the timeout is $givingUpTimestamp.")
       f.onComplete {
-        case Success(Result(header,_,_,_,_)) if header.status == OK =>
-          logger.error(s"The _in internal processing for id:[$id] returned successfully ${System.currentTimeMillis() - givingUpTimestamp}ms after the timeout.")
-        case Success(Result(header, body, _, _, _)) =>
+        case Success((Result(header, _, _, _, _), (paths: Iterable[String], _))) if header.status == OK =>
+          val pathsStr = paths.mkString(",")
+          logger.error(s"The _in internal processing for id:[$id] returned successfully ${System.currentTimeMillis() - givingUpTimestamp}ms after " +
+            s"the timeout. Parsed request's paths are: [$pathsStr]")
+        case Success((Result(header, body, _, _, _), (paths: Iterable[String], _))) =>
+          val pathsStr = paths.mkString(",")
           logger.error(s"The _in internal processing for id:[$id] returned bad response ${System.currentTimeMillis() - givingUpTimestamp}ms " +
-            s"after the timeout. The header: [status: ${header.status}, headers: ${header.headers}]. The body will be printed later with the same id.")
+            s"after the timeout. Parsed request's paths are: [$pathsStr]. " +
+            s"The header: [status: ${header.status}, headers: ${header.headers}]. The response body will be printed later with the same id.")
           body.consumeData.onComplete {
             case Success(value) => logger.error(s"The response body of id:[$id] is: ${value.utf8String}")
             case Failure(e) => logger.error(s"There was an error getting the response body of id:[$id]. The exception was: ", e)
           }
         case Failure(t) =>
           logger.error(s"The _in internal processing for id:[$id] returned with failure ${System.currentTimeMillis() - givingUpTimestamp}ms " +
-            s"after the timeout. The exception was: ", t)
+            s"after the timeout. The request body was: $requestBody. The exception was: ", t)
       }
   }
 
