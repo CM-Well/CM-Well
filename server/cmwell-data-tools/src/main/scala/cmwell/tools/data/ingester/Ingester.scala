@@ -220,7 +220,7 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
 
         case (Success(res @ HttpResponse(s, h, e, p)), infotons, _) if s.isFailure() =>
           logger.error(s"$labelValue problem: host=${getHostname(h)} $e, $p")
-          badDataLogger.info(s"$labelValue data: ${infotons.map(_.utf8String).mkString("\n")}")
+          badDacould not send http requesttaLogger.info(s"$labelValue data: ${infotons.map(_.utf8String).mkString("\n")}")
           res.discardEntityBytes()
           IngestFailEvent(numInfotons = infotons.size)
 
