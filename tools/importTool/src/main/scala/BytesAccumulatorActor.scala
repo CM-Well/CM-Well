@@ -22,15 +22,12 @@ class BytesAccumulatorActor() extends Actor {
       offsetFileHandler.persistOffset(count)
       println("Actor counter=" + count)
 
-    case "test" => if(Files.exists(Paths.get("./Write.txt"))) {
+    case "lastOffsetByte" => if(Files.exists(Paths.get("./lastOffset"))) {
       count = offsetFileHandler.readOffset
       sender ! count
     } else sender ! 0
-//    case "test" => sender ! count
-
-    case "failed" => println("====================Boom=====================")
     case x =>
-      println("bye bye=" + x)
+      println("Not supported" + x)
   }
 
 }

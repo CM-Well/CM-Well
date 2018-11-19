@@ -12,7 +12,7 @@ class OffsetFileHandler {
   def persistOffset(lastSuccessfulOffset:Int) = {
 
     // FileWriter
-    val file = new File("Write.txt")
+    val file = new File("lastOffset")
     val bw = new BufferedWriter(new FileWriter(file))
     bw.write(lastSuccessfulOffset.toString)
     bw.close()
@@ -21,7 +21,7 @@ class OffsetFileHandler {
 
   def readOffset = {
 
-    Source.fromFile("./Write.txt").getLines.toList.head.toInt
+    Source.fromFile("./lastOffset").getLines.toList.head.toInt
   }
 
 }

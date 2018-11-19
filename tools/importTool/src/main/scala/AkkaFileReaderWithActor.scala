@@ -8,8 +8,6 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{FileIO, Flow, Framing, RestartSource, Sink, Source}
 import akka.{Done, NotUsed, http}
 import akka.util.{ByteString, Timeout}
-import java.nio.file.{Files, Paths}
-import java.util.concurrent.ConcurrentLinkedDeque
 
 import akka.pattern.ask
 import akka.actor.{Actor, ActorSystem, Props, Scheduler, Status}
@@ -18,16 +16,12 @@ import akka.stream.ActorMaterializer
 import HttpCharsets._
 import akka.http.scaladsl.client.RequestBuilding.Get
 import akka.http.scaladsl.model.headers.{ByteRange, RawHeader}
-import akka.http.scaladsl.model.sse.ServerSentEvent
-import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
 
 import scala.concurrent.duration._
-import akka.stream.StreamRefMessages.ActorRef
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success}
-import org.rogach.scallop._
 
 case class ActorInput(inputUrl: String, outputFormat:String)
 
@@ -35,48 +29,45 @@ class AkkaFileReaderWithActor extends Actor {
 
   import system.dispatcher
   implicit val system = ActorSystem("app")
-  implicit val s = system.scheduler
+  implicit val scheduler = system.scheduler
   implicit val timeout = Timeout(5 seconds)
 
   implicit val mat = ActorMaterializer()
-  val helloActor = system.actorOf(Props(new BytesAccumulatorActor()), name = "helloactor")
-  var outputFormat = ""
+  val bytesAccumulatorActor = system.actorOf(Props(new BytesAccumulatorActor()), name = "offsetActor")
+  var format = ""
 
 
   def receive: Receive = {
-    case ActorInput(inputUrl, outputFormat) => {
-      println("Starting flow")
-      parseAndIngestLargeFile(inputUrl)
-      this.outputFormat = outputFormat
+    case ActorInput(inputUrl, format) => {
+      println("Starting flow.....")
+      readAndImportFile(inputUrl)
+      this.format = format
 
     }
+
   }
 
-  def sendGetRequest(inputUrl:String) = {
+  def readFileFromServer(inputUrl:String) = {
     println("Going to send get request to inputUrl=" + inputUrl)
-      val future = helloActor ? "test"
+      val future = bytesAccumulatorActor ? "lastOffsetByte"
       future.flatMap(x => {
-//        println("YOOOOOOOOOOo, x=" + x)
         var ranges: String = "bytes=" + x + "-"
         println("Resending get request for ranges=" + ranges)
-//        val request = Get("http://localhost:8080/oa-ok.ntriples").addHeader(RawHeader.apply("Range", ranges))
         val request = Get(inputUrl).addHeader(RawHeader.apply("Range", ranges))
-        val responseFuture = Http().singleRequest(request)
-        responseFuture
+        Http().singleRequest(request)
       })
   }
 
-  def parseAndIngestLargeFile(inputUrl:String)= {
-    val res = sendGetRequest(inputUrl)
-//    val sourceHttp = Source.fromFuture(res)
-    res .onComplete(
+  def readAndImportFile(inputUrl:String)= {
+    val httpResponse = readFileFromServer(inputUrl)
+    httpResponse .onComplete(
       {
-        case Success(r) => {println("Success")}
+        case Success(r) => println("Read the whole file from server successfully")
         case Failure(e) => {
           println("oopss...Got a failure in get request")
-          system.scheduler.scheduleOnce(7000 milliseconds, self, ActorInput(inputUrl, outputFormat))
+          system.scheduler.scheduleOnce(7000 milliseconds, self, ActorInput(inputUrl, format))
         }})
-    val materializedFuture = res.map ({ response =>
+    val graphResult = httpResponse.map ({ response =>
       println("Get response status=" + response.status)
       val hashedBody = response.headers.find(_.name == "Content-Range").map(_.value).getOrElse("")
       response.entity.withSizeLimit(hashedBody.split("/")(1).toLong + 1).dataBytes
@@ -98,7 +89,7 @@ class AkkaFileReaderWithActor extends Actor {
         .statefulMapConcat {
           () => {
             x => {
-              helloActor ! Message(x._2)
+              bytesAccumulatorActor ! Message(x._2)
               List.empty
             }
           }
@@ -112,25 +103,24 @@ class AkkaFileReaderWithActor extends Actor {
             }
             case Failure(e) => {
               println("oopss...Got a failure in get request")
-              system.scheduler.scheduleOnce(7000 milliseconds, self, ActorInput(inputUrl, outputFormat))
+              system.scheduler.scheduleOnce(7000 milliseconds, self, ActorInput(inputUrl, format))
             }})
 
     })
-    materializedFuture
+    graphResult
   }
 
   def postWithRetry(batch: Seq[List[String]]): Future[(HttpResponse, Int)] = {
-    retry(10.seconds, 3){ post(batch) }
+    retry(10.seconds, 3){ ingest(batch) }
   }
 
 
-  def retry[T](/*f: Seq[String] => Future[T], batch: => Seq[String],*/ delay: FiniteDuration, retries: Int)(task: => Future[(T, Int)])(implicit ec: ExecutionContext, s: Scheduler): Future[(T, Int)] = {
+  def retry[T](/*f: Seq[String] => Future[T], batch: => Seq[String],*/ delay: FiniteDuration, retries: Int)(task: => Future[(T, Int)])(implicit ec: ExecutionContext, scheduler: Scheduler): Future[(T, Int)] = {
     task.recoverWith {
       case e: Throwable if retries > 0 =>
         println("Going to retry, retry count=" + retries)
-        //        post(batch)
         println("Failed to retry post request,", e.getMessage)
-        akka.pattern.after(delay, s)(retry(delay, retries - 1)(task))
+        akka.pattern.after(delay, scheduler)(retry(delay, retries - 1)(task))
     }
 
   }
@@ -139,27 +129,27 @@ class AkkaFileReaderWithActor extends Actor {
     triple.split(" ")(0)
   }
 
-  def post(batch: Seq[List[String]]): Future[(HttpResponse, Int)] = {
-    var flatList = batch.flatten
-    println("Infotons " + flatList)
-    println("great,infotons batch size= " + batch.size + ", batch count lines=" + flatList.size)
-    val batchSizeInBytes = flatList.mkString.getBytes.length + flatList.size
+  def ingest(batch: Seq[List[String]]): Future[(HttpResponse, Int)] = {
+    var infotonsList = batch.flatten
+    println("Infotons " + infotonsList)
+    println("great,infotons batch size= " + batch.size + ", batch count lines=" + infotonsList.size)
+    val batchSizeInBytes = infotonsList.mkString.getBytes.length + infotonsList.size
     var postRequest = HttpRequest(
       HttpMethods.POST,
-      "http://localhost:9000/_in?format=" + outputFormat,
-      entity = HttpEntity(`text/plain` withCharset `UTF-8`, flatList.mkString.getBytes),
+      "http://localhost:9000/_in?format=" + format,
+      entity = HttpEntity(`text/plain` withCharset `UTF-8`, infotonsList.mkString.getBytes),
       protocol = `HTTP/1.0`
     )
-    var postResponse = Http(system).singleRequest(postRequest)
-    println(postResponse.foreach(res=> println("post status code=" + res.status)))
-    var filteredResponse = postResponse.flatMap(res=> if (res.status.isSuccess()) Future.successful(res, batchSizeInBytes) else {
+    var postHttpResponse = Http(system).singleRequest(postRequest)
+    println(postHttpResponse.foreach(res=> println("post status code=" + res.status)))
+    var futureResponse = postHttpResponse.flatMap(res=> if (res.status.isSuccess()) Future.successful(res, batchSizeInBytes) else {
       Future.failed(new Throwable("Got post error code"))})
-    filteredResponse
+    futureResponse
   }
 
 }
 
-//
+
 //object AkkaActorMain extends App {
 //  val system = ActorSystem("MySystem")
 //  implicit val timeout = Timeout(5 seconds)
