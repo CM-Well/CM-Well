@@ -63,12 +63,7 @@ object SparqlTriggeredProcessorMonitor extends LazyLogging {
           header = MarkdownTuple(table.header.toSeq: _*),
           body = jobsDataToTuple(table.body).toSeq
         )
-/*
-        val headers = isRoot match {
-          case true => table.title ++ Seq(s"Pause, <a href='/zz/?hostReset Tokens")
-          case false => table.title
-        }
-*/
+
         s"""
          |${table.title.mkString("### ", "<br>\n### ", "<br>")}
          |${mdTable.get} <hr>""".stripMargin
