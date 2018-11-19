@@ -1,5 +1,6 @@
 Tool Description
-With this tool you can read a large file from a server and import the data to cm-well
+With this tool you can read a large file from a server and ingest the data to cm-well.
+The tool is resumable.
 
 Assumption
 The large file should be in a valid format that cm-well support such as: json, rdf, nquads etc
