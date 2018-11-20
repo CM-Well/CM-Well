@@ -34,17 +34,13 @@ class AkkaFileReaderWithActor extends Actor {
 
   implicit val mat = ActorMaterializer()
   val bytesAccumulatorActor = system.actorOf(Props(new BytesAccumulatorActor()), name = "offsetActor")
-  var format = ""
-  var cluster = ""
 
   case class TripleWithKey(subject: String, triple: String)
 
   def receive: Receive = {
     case ActorInput(inputUrl, format, cluster) => {
       println("Starting flow.....")
-      readAndImportFile(inputUrl)
-      this.format = format
-      this.cluster = cluster
+      readAndImportFile(inputUrl, format, cluster)
     }
 
   }
@@ -60,9 +56,9 @@ class AkkaFileReaderWithActor extends Actor {
       })
   }
 
-  def readAndImportFile(inputUrl:String)= {
+  def readAndImportFile(inputUrl:String, format:String, cluster:String)= {
     val httpResponse = readFileFromServer(inputUrl)
-    httpResponse .onComplete(
+    httpResponse.onComplete(
       {
         case Success(r) => println("Read the whole file from server successfully")
         case Failure(e) => {
@@ -89,7 +85,7 @@ class AkkaFileReaderWithActor extends Actor {
         .map(x => x._2)
         .mergeSubstreams
         .grouped(25)
-        .mapAsync(1)(postWithRetry)
+        .mapAsync(1)(batch=> postWithRetry(batch, format, cluster))
         .statefulMapConcat {
           () => {
             x => {
@@ -114,10 +110,9 @@ class AkkaFileReaderWithActor extends Actor {
     graphResult
   }
 
-  def postWithRetry(batch: Seq[List[String]]): Future[(HttpResponse, Int)] = {
-    retry(10.seconds, 3){ ingest(batch) }
+  def postWithRetry(batch: Seq[List[String]], format:String, cluster:String): Future[(HttpResponse, Int)] = {
+    retry(10.seconds, 3){ ingest(batch, format, cluster) }
   }
-
 
   def retry[T](delay: FiniteDuration, retries: Int)(task: => Future[(T, Int)])(implicit ec: ExecutionContext, scheduler: Scheduler): Future[(T, Int)] = {
     task.recoverWith {
@@ -134,7 +129,7 @@ class AkkaFileReaderWithActor extends Actor {
   }
 
 
-  def ingest(batch: Seq[List[String]]): Future[(HttpResponse, Int)] = {
+  def ingest(batch: Seq[List[String]], format:String, cluster:String): Future[(HttpResponse, Int)] = {
     var infotonsList = batch.flatten
     val batchSizeInBytes = infotonsList.mkString.getBytes.length + infotonsList.size
     var postRequest = HttpRequest(
@@ -144,10 +139,19 @@ class AkkaFileReaderWithActor extends Actor {
       protocol = `HTTP/1.0`
     )
     var postHttpResponse = Http(system).singleRequest(postRequest)
-    println(postHttpResponse.foreach(res=> println("Ingest more "+ batch.size +" infotons, status code=" + res.status)))
     var futureResponse = postHttpResponse.flatMap(res=> if (res.status.isSuccess()) Future.successful(res, batchSizeInBytes) else {
       Future.failed(new Throwable("Got post error code"))})
     futureResponse
   }
+
+}
+
+object AkkaActorMain extends App {
+  val system = ActorSystem("MySystem")
+  implicit val timeout = Timeout(5 seconds)
+  println("Hi")
+  val myActor = system.actorOf(Props(new AkkaFileReaderWithActor()), name = "myactor")
+  myActor ! ActorInput("http://localhost:8080/oa-ok.ntriples", "nquads", "localhost")
+
 
 }
