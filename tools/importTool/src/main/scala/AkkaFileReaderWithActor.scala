@@ -71,8 +71,10 @@ class AkkaFileReaderWithActor extends Actor {
         }})
     val graphResult = httpResponse.map ({ response =>
       println("Get response status=" + response.status)
-      val hashedBody = response.headers.find(_.name == "Content-Range").map(_.value).getOrElse("")
-      response.entity.withSizeLimit(hashedBody.split("/")(1).toLong + 1).dataBytes
+      val contentLengthHeader = response.headers.find(_.name == "Content-Range").map(_.value).getOrElse("")
+      val fileSize = contentLengthHeader.split("/")(1).toLong + 1
+      bytesAccumulatorActor ! FileSize(fileSize)
+      response.entity.withSizeLimit(fileSize).dataBytes
         .via(Framing.delimiter(ByteString(System.lineSeparator()), 100000, true))
         .map(_.utf8String)
         .map(getTripleKey)
@@ -120,8 +122,8 @@ class AkkaFileReaderWithActor extends Actor {
   def retry[T](delay: FiniteDuration, retries: Int)(task: => Future[(T, Int)])(implicit ec: ExecutionContext, scheduler: Scheduler): Future[(T, Int)] = {
     task.recoverWith {
       case e: Throwable if retries > 0 =>
+        println("Failed to ingest,", e.getMessage)
         println("Going to retry, retry count=" + retries)
-        println("Failed to retry post request,", e.getMessage)
         akka.pattern.after(delay, scheduler)(retry(delay, retries - 1)(task))
     }
 
@@ -134,7 +136,6 @@ class AkkaFileReaderWithActor extends Actor {
 
   def ingest(batch: Seq[List[String]]): Future[(HttpResponse, Int)] = {
     var infotonsList = batch.flatten
-    println("great,infotons batch size= " + batch.size + ", batch count lines=" + infotonsList.size)
     val batchSizeInBytes = infotonsList.mkString.getBytes.length + infotonsList.size
     var postRequest = HttpRequest(
       HttpMethods.POST,
@@ -143,7 +144,7 @@ class AkkaFileReaderWithActor extends Actor {
       protocol = `HTTP/1.0`
     )
     var postHttpResponse = Http(system).singleRequest(postRequest)
-    println(postHttpResponse.foreach(res=> println("Ingest status code=" + res.status)))
+    println(postHttpResponse.foreach(res=> println("Ingest more "+ batch.size +" infotons, status code=" + res.status)))
     var futureResponse = postHttpResponse.flatMap(res=> if (res.status.isSuccess()) Future.successful(res, batchSizeInBytes) else {
       Future.failed(new Throwable("Got post error code"))})
     futureResponse
