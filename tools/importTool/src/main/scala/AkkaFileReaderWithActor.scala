@@ -49,7 +49,7 @@ class AkkaFileReaderWithActor extends Actor {
     println("Going to send get request to inputUrl=" + inputUrl)
       val future = bytesAccumulatorActor ? LastOffset
       future.flatMap(x => {
-        var ranges: String = "bytes=" + x + "-"
+        val ranges: String = "bytes=" + x + "-"
         println("Resending get request for ranges=" + ranges)
         val request = Get(inputUrl).addHeader(RawHeader.apply("Range", ranges))
         Http().singleRequest(request)
@@ -130,28 +130,28 @@ class AkkaFileReaderWithActor extends Actor {
 
 
   def ingest(batch: Seq[List[String]], format:String, cluster:String): Future[(HttpResponse, Int)] = {
-    var infotonsList = batch.flatten
+    val infotonsList = batch.flatten
     val batchSizeInBytes = infotonsList.mkString.getBytes.length + infotonsList.size
-    var postRequest = HttpRequest(
+    val postRequest = HttpRequest(
       HttpMethods.POST,
       "http://"+ cluster + ":9000/_in?format=" + format,
       entity = HttpEntity(`text/plain` withCharset `UTF-8`, infotonsList.mkString.getBytes),
       protocol = `HTTP/1.0`
     )
-    var postHttpResponse = Http(system).singleRequest(postRequest)
-    var futureResponse = postHttpResponse.flatMap(res=> if (res.status.isSuccess()) Future.successful(res, batchSizeInBytes) else {
+    val postHttpResponse = Http(system).singleRequest(postRequest)
+    val futureResponse = postHttpResponse.flatMap(res=> if (res.status.isSuccess()) Future.successful(res, batchSizeInBytes) else {
       Future.failed(new Throwable("Got post error code"))})
     futureResponse
   }
 
 }
 
-object AkkaActorMain extends App {
-  val system = ActorSystem("MySystem")
-  implicit val timeout = Timeout(5 seconds)
-  println("Hi")
-  val myActor = system.actorOf(Props(new AkkaFileReaderWithActor()), name = "myactor")
-  myActor ! ActorInput("http://localhost:8080/oa-ok.ntriples", "nquads", "localhost")
-
-
-}
+//object AkkaActorMain extends App {
+//  val system = ActorSystem("MySystem")
+//  implicit val timeout = Timeout(5 seconds)
+//  println("Hi")
+//  val myActor = system.actorOf(Props(new AkkaFileReaderWithActor()), name = "myactor")
+//  myActor ! ActorInput("http://localhost:8080/oa-ok.ntriples", "nquads", "localhost")
+//
+//
+//}
