@@ -60,7 +60,7 @@ class AkkaFileReaderWithActor extends Actor {
     val httpResponse = readFileFromServer(inputUrl)
     httpResponse.onComplete(
       {
-        case Success(r) => println("Read the whole file from server successfully")
+        case Success(r) => println("Get file from server successfully")
         case Failure(e) => {
           println("Got a failure while reading the file, ", e.getMessage)
           system.scheduler.scheduleOnce(7000 milliseconds, self, ActorInput(inputUrl, format, cluster))
