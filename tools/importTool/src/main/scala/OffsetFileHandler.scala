@@ -6,7 +6,7 @@ import akka.util.Timeout
 import scala.io.Source
 
 
-class OffsetFileHandler {
+object OffsetFileHandler {
 
 
   def persistOffset(lastSuccessfulOffset:Int) = {

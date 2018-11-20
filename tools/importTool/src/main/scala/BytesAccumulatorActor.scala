@@ -9,25 +9,25 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 
 
 
-case class Message(msg: Int)
+case class Message(value: Int)
+case object LastOffset
 
 class BytesAccumulatorActor() extends Actor {
   var count = 0
-  val offsetFileHandler = new OffsetFileHandler
 
   def receive: Receive = {
     case Message(bytes) =>
-      println("Actor adding bytes=", bytes)
+      println("Ingest more " + bytes + " successfully")
       count += bytes
-      offsetFileHandler.persistOffset(count)
-      println("Actor counter=" + count)
+      OffsetFileHandler.persistOffset(count)
+      println("Ingest total bytes " + count)
 
-    case "lastOffsetByte" => if(Files.exists(Paths.get("./lastOffset"))) {
-      count = offsetFileHandler.readOffset
+    case LastOffset => if(Files.exists(Paths.get("./lastOffset"))) {
+      count = OffsetFileHandler.readOffset
       sender ! count
     } else sender ! 0
     case x =>
-      println("Not supported" + x)
+      println("Not supported action" + x)
   }
 
 }

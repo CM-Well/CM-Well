@@ -7,6 +7,7 @@ import scala.concurrent.duration._
   class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
     val sourceUrl = opt[String]("source-url", required = true)
     val format = opt[String]("format", required = true)
+    var cluster = opt[String]("cluster", required = true)
     verify()
   }
 
@@ -17,9 +18,9 @@ import scala.concurrent.duration._
       println("output format is: " + conf.format())
       val system = ActorSystem("MySystem")
         implicit val timeout = Timeout(5 seconds)
-        println("Hi")
+        println("About to Start import tool flow...")
         val myActor = system.actorOf(Props(new AkkaFileReaderWithActor()), name = "myactor")
-        myActor ! ActorInput(conf.sourceUrl(), conf.format())
+        myActor ! ActorInput(conf.sourceUrl(), conf.format(), conf.cluster())
     }
 
 }

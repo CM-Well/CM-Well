@@ -23,7 +23,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
-case class ActorInput(inputUrl: String, outputFormat:String)
+case class ActorInput(inputUrl: String, outputFormat:String, cluster:String)
 
 class AkkaFileReaderWithActor extends Actor {
 
@@ -35,21 +35,23 @@ class AkkaFileReaderWithActor extends Actor {
   implicit val mat = ActorMaterializer()
   val bytesAccumulatorActor = system.actorOf(Props(new BytesAccumulatorActor()), name = "offsetActor")
   var format = ""
+  var cluster = ""
 
+  case class TripleWithKey(subject: String, triple: String)
 
   def receive: Receive = {
-    case ActorInput(inputUrl, format) => {
+    case ActorInput(inputUrl, format, cluster) => {
       println("Starting flow.....")
       readAndImportFile(inputUrl)
       this.format = format
-
+      this.cluster = cluster
     }
 
   }
 
   def readFileFromServer(inputUrl:String) = {
     println("Going to send get request to inputUrl=" + inputUrl)
-      val future = bytesAccumulatorActor ? "lastOffsetByte"
+      val future = bytesAccumulatorActor ? LastOffset
       future.flatMap(x => {
         var ranges: String = "bytes=" + x + "-"
         println("Resending get request for ranges=" + ranges)
@@ -64,8 +66,8 @@ class AkkaFileReaderWithActor extends Actor {
       {
         case Success(r) => println("Read the whole file from server successfully")
         case Failure(e) => {
-          println("oopss...Got a failure in get request")
-          system.scheduler.scheduleOnce(7000 milliseconds, self, ActorInput(inputUrl, format))
+          println("Got a failure while reading the file, ", e.getMessage)
+          system.scheduler.scheduleOnce(7000 milliseconds, self, ActorInput(inputUrl, format, cluster))
         }})
     val graphResult = httpResponse.map ({ response =>
       println("Get response status=" + response.status)
@@ -73,14 +75,14 @@ class AkkaFileReaderWithActor extends Actor {
       response.entity.withSizeLimit(hashedBody.split("/")(1).toLong + 1).dataBytes
         .via(Framing.delimiter(ByteString(System.lineSeparator()), 100000, true))
         .map(_.utf8String)
-        .map(x => (getTripleKey(x), x))
+        .map(getTripleKey)
         .sliding(2, 1)
-        .splitAfter(pair => (pair.headOption, pair.lastOption) match {
-        case (Some((key1, _)), Some((key2, _))) => key1 != key2
+        .splitAfter(pair => (pair.head, pair.last) match {
+        case (TripleWithKey(sub1, triple1), TripleWithKey(sub2, triple2)) => sub1 != sub2
       })
         .mapConcat(_.headOption.toList)
         .fold("" -> List.empty[String]) {
-        case ((_, values), (key, value)) => key -> (value :: values)
+        case ((_, values), TripleWithKey(subject, triple)) => subject -> (triple :: values)
       }
         .map(x => x._2)
         .mergeSubstreams
@@ -102,8 +104,8 @@ class AkkaFileReaderWithActor extends Actor {
               system.terminate()
             }
             case Failure(e) => {
-              println("oopss...Got a failure in get request")
-              system.scheduler.scheduleOnce(7000 milliseconds, self, ActorInput(inputUrl, format))
+              println("Got a failure during the process, ", e.getMessage)
+              system.scheduler.scheduleOnce(7000 milliseconds, self, ActorInput(inputUrl, format, cluster))
             }})
 
     })
@@ -115,7 +117,7 @@ class AkkaFileReaderWithActor extends Actor {
   }
 
 
-  def retry[T](/*f: Seq[String] => Future[T], batch: => Seq[String],*/ delay: FiniteDuration, retries: Int)(task: => Future[(T, Int)])(implicit ec: ExecutionContext, scheduler: Scheduler): Future[(T, Int)] = {
+  def retry[T](delay: FiniteDuration, retries: Int)(task: => Future[(T, Int)])(implicit ec: ExecutionContext, scheduler: Scheduler): Future[(T, Int)] = {
     task.recoverWith {
       case e: Throwable if retries > 0 =>
         println("Going to retry, retry count=" + retries)
@@ -125,37 +127,26 @@ class AkkaFileReaderWithActor extends Actor {
 
   }
 
-  def getTripleKey(triple:String): String = {
-    triple.split(" ")(0)
+  def getTripleKey(triple:String): TripleWithKey = {
+    TripleWithKey(triple.split(" ")(0), triple)
   }
+
 
   def ingest(batch: Seq[List[String]]): Future[(HttpResponse, Int)] = {
     var infotonsList = batch.flatten
-    println("Infotons " + infotonsList)
     println("great,infotons batch size= " + batch.size + ", batch count lines=" + infotonsList.size)
     val batchSizeInBytes = infotonsList.mkString.getBytes.length + infotonsList.size
     var postRequest = HttpRequest(
       HttpMethods.POST,
-      "http://localhost:9000/_in?format=" + format,
+      "http://"+ cluster + ":9000/_in?format=" + format,
       entity = HttpEntity(`text/plain` withCharset `UTF-8`, infotonsList.mkString.getBytes),
       protocol = `HTTP/1.0`
     )
     var postHttpResponse = Http(system).singleRequest(postRequest)
-    println(postHttpResponse.foreach(res=> println("post status code=" + res.status)))
+    println(postHttpResponse.foreach(res=> println("Ingest status code=" + res.status)))
     var futureResponse = postHttpResponse.flatMap(res=> if (res.status.isSuccess()) Future.successful(res, batchSizeInBytes) else {
       Future.failed(new Throwable("Got post error code"))})
     futureResponse
   }
 
 }
-
-
-//object AkkaActorMain extends App {
-//  val system = ActorSystem("MySystem")
-//  implicit val timeout = Timeout(5 seconds)
-//  println("Hi")
-//  val myActor = system.actorOf(Props(new AkkaFileReaderWithActor()), name = "myactor")
-//  myActor ! ActorInput("http://localhost:8080/oa-ok.ntriples", "nquads")
-//
-//
-//}
