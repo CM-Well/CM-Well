@@ -8,9 +8,8 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{FileIO, Flow, Framing, RestartSource, Sink, Source}
 import akka.{Done, NotUsed, http}
 import akka.util.{ByteString, Timeout}
-
 import akka.pattern.ask
-import akka.actor.{Actor, ActorSystem, Props, Scheduler, Status}
+import akka.actor.{Actor, ActorSystem, DeadLetter, Props, Scheduler, Status}
 import akka.http.scaladsl.{Http, model}
 import akka.stream.ActorMaterializer
 import HttpCharsets._
@@ -18,7 +17,6 @@ import akka.http.scaladsl.client.RequestBuilding.Get
 import akka.http.scaladsl.model.headers.{ByteRange, RawHeader}
 
 import scala.concurrent.duration._
-
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success}
@@ -86,15 +84,8 @@ class AkkaFileReaderWithActor extends Actor {
         .mergeSubstreams
         .grouped(25)
         .mapAsync(1)(batch=> postWithRetry(batch, format, cluster))
-        .statefulMapConcat {
-          () => {
-            x => {
-              bytesAccumulatorActor ! Message(x._2)
-              List.empty
-            }
-          }
-        }
-        .runWith(Sink.head)
+        .map(x=> bytesAccumulatorActor ! Message(x._2))
+        .runWith(Sink.ignore)
         .onComplete(
           {
             case Success(r) => {
