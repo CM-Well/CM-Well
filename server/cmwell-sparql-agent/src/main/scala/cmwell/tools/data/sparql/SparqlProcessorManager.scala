@@ -440,11 +440,12 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
     val label = Some(s"ingester-${job.name}")
 
     val hostUpdatesSource = job.config.hostUpdatesSource.getOrElse(settings.hostUpdatesSource)
+    val useQuadsInSp = job.config.useQuadsInSp.getOrElse(settings.useQuadsInSp)
 
     val initialTokensAndStatistics = SparqlTriggeredProcessor.loadInitialTokensAndStatistics(Option(tokenReporter))
 
     val agent = SparqlTriggeredProcessor
-      .listen(job.config, hostUpdatesSource, false, Some(tokenReporter),
+      .listen(job.config, hostUpdatesSource, useQuadsInSp, false, Some(tokenReporter),
         initialTokensAndStatistics, Some(job.name), infotonGroupSize = settings.infotonGroupSize)
       .map { case (data, _) => data }
       .via(GroupChunker(formatToGroupExtractor(settings.materializedViewFormat)))
@@ -564,7 +565,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
       }
       implicit val sensorFormat = yamlFormat6(Sensor)
       implicit val sequenceFormat = seqFormat[Sensor](sensorFormat)
-      implicit val configFormat = yamlFormat6(Config)
+      implicit val configFormat = yamlFormat7(Config)
 
     }
     import SensorYamlProtocol._

@@ -23,6 +23,7 @@ class SparqlProcessorManagerSettings {
   val stpSettings: config.Config = ConfigFactory.load()
   val hostConfigFile: String = stpSettings.getString("cmwell.agents.sparql-triggered-processor.host-config-file")
   val hostUpdatesSource: String = stpSettings.getString("cmwell.agents.sparql-triggered-processor.host-updates-source")
+  val useQuadsInSp: Boolean = stpSettings.getBoolean("cmwell.agents.sparql-triggered-processor.use-quads-in-sp")
   val hostWriteOutput: String = stpSettings.getString("cmwell.agents.sparql-triggered-processor.host-write-output")
   val materializedViewFormat: String = stpSettings.getString("cmwell.agents.sparql-triggered-processor.format")
   val pathAgentConfigs: String = stpSettings.getString("cmwell.agents.sparql-triggered-processor.path-agent-configs")

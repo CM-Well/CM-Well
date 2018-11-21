@@ -45,7 +45,8 @@ case class Config(name: Option[String] = None,
                   updateFreq: FiniteDuration,
                   sparqlMaterializer: String,
                   hostUpdatesSource: Option[String],
-                  force: Option[Boolean] = Some(false))
+                  force: Option[Boolean] = Some(false),
+                  useQuadsInSp: Option[Boolean])
 
 object SparqlTriggeredProcessor extends DataToolsLogging {
 
@@ -70,6 +71,7 @@ object SparqlTriggeredProcessor extends DataToolsLogging {
   def listen(
               config: Config,
               baseUrl: String,
+              useQuadsInSp: Boolean,
               isBulk: Boolean = false,
               tokenReporter: Option[ActorRef] = None,
               initialTokensAndStatistics: Either[String,AgentTokensAndStatistics] =
@@ -81,6 +83,7 @@ object SparqlTriggeredProcessor extends DataToolsLogging {
 
     new SparqlTriggeredProcessor(config = config,
                                  baseUrl = baseUrl,
+                                 useQuadsInSp = useQuadsInSp,
                                  isBulk = isBulk,
                                  tokenReporter = tokenReporter,
                                  label = label,
@@ -92,6 +95,7 @@ object SparqlTriggeredProcessor extends DataToolsLogging {
 
 class SparqlTriggeredProcessor(config: Config,
                                baseUrl: String,
+                               useQuadsInSp: Boolean,
                                isBulk: Boolean = false,
                                tokenReporter: Option[ActorRef] = None,
                                override val label: Option[String] = None,
@@ -325,7 +329,11 @@ class SparqlTriggeredProcessor(config: Config,
                   case (string, (key, value)) => {
                     string + "sp." + key + "=" + value + "&"
                   }
-                }
+                } + (
+                useQuadsInSp match {
+                  case true => "&quads"
+                  case false => ""
+                })
             },
             source = sensorSource,
             isNeedWrapping = false,
