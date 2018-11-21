@@ -136,13 +136,3 @@ class AkkaFileReaderWithActor extends Actor {
   }
 
 }
-
-//object AkkaActorMain extends App {
-//  val system = ActorSystem("MySystem")
-//  implicit val timeout = Timeout(5 seconds)
-//  println("Hi")
-//  val myActor = system.actorOf(Props(new AkkaFileReaderWithActor()), name = "myactor")
-//  myActor ! ActorInput("http://localhost:8080/oa-ok.ntriples", "nquads", "localhost")
-//
-//
-//}
