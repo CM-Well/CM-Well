@@ -326,7 +326,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
                     Seq(sensorName, decodedToken)
                 }
 
-                val controls = s"<a href='/stp/$path/?enabled=true'>Resume</a>"
+                val controls = s"<a href='/_stp/$path/?enabled=true'>Resume</a>"
 
                 Table(title = title :+ controls, header = header, body = body)
             }
@@ -419,7 +419,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
                 .getOrElse("")
 
               val controls = isRoot match {
-                case true => s"<a href='/stp/$path/?enabled=false'>Pause</a>"
+                case true => s"<a href='/_stp/$path/?enabled=false'>Pause</a>"
                 case false => ""
               }
 
