@@ -15,7 +15,8 @@
 package cmwell.tools.data.sparql
 
 import java.nio.file.Paths
-import java.time.{Instant, LocalDateTime, ZoneId}
+import java.time.temporal.ChronoUnit
+import java.time.{Instant, LocalDateTime, ZoneId, temporal}
 
 import akka.actor.{Actor, ActorRef, ActorSystem, Cancellable, PoisonPill, Status}
 import akka.pattern._
@@ -35,11 +36,9 @@ import cmwell.tools.data.utils.text.Tokens
 import cmwell.util.concurrent._
 import cmwell.util.http.SimpleResponse
 import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
-
 import cmwell.util.stream.StreamEventInspector
 import cmwell.util.string.Hash
 import cmwell.zstore.ZStore
-
 import com.typesafe.scalalogging.LazyLogging
 import io.circe.Json
 import k.grid.GridReceives
@@ -369,9 +368,18 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
                     .get(sensorName)
                     .map { s =>
                       val statsTime = s.statsTime match {
-                        case 0 => "Not Yet Updated"
+                        case 0 => s"""<span style="color:red">Not Yet Updated</span>"""
                         case _ =>
-                          LocalDateTime.ofInstant(Instant.ofEpochMilli(s.statsTime), ZoneId.systemDefault()).toString
+
+                          val updateTime =  LocalDateTime.ofInstant(Instant.ofEpochMilli(s.statsTime), ZoneId.systemDefault())
+                          val currentTime = LocalDateTime.now(ZoneId.systemDefault())
+
+                          if (updateTime.until(currentTime, ChronoUnit.HOURS) > 24 && s.horizon == false) {
+                            s"""<span style="color:red">${updateTime.toString}</span>"""
+                          }
+                          else {
+                            updateTime.toString
+                          }
                       }
 
                       val infotonRate = s.horizon match {
