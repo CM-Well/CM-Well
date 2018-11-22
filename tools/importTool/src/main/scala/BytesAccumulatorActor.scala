@@ -17,7 +17,7 @@ class BytesAccumulatorActor() extends Actor {
   var count = 0
   var fileSizeInBytes = 0L
 
-  def receive: Receive = {
+  override def receive: Receive = {
     case Message(bytes) =>
       count += bytes
       OffsetFileHandler.persistOffset(count)

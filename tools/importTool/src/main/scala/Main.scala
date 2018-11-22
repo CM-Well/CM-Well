@@ -5,9 +5,9 @@ import scala.concurrent.duration._
 
 
   class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
-    val sourceUrl = opt[String]("source-url", required = true)
-    val format = opt[String]("format", required = true)
-    var cluster = opt[String]("cluster", required = true)
+    val sourceUrl = opt[String]("source-url", required = true, descr = "the source url which download rdf file")
+    val format = opt[String]("format", required = true, descr="the ofile format")
+    var cluster = opt[String]("cluster", required = true, descr="the target server which content is ingested to")
     verify()
   }
 
@@ -17,7 +17,6 @@ import scala.concurrent.duration._
       println("source file is: " + conf.sourceUrl())
       println("output format is: " + conf.format())
       val system = ActorSystem("MySystem")
-        implicit val timeout = Timeout(5 seconds)
         println("About to Start import tool flow...")
         val myActor = system.actorOf(Props(new AkkaFileReaderWithActor()), name = "myactor")
         myActor ! ActorInput(conf.sourceUrl(), conf.format(), conf.cluster())

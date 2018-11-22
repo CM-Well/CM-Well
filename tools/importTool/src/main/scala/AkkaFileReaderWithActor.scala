@@ -22,20 +22,21 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 case class ActorInput(inputUrl: String, outputFormat:String, cluster:String)
+case class TripleWithKey(subject: String, triple: String)
+
 
 class AkkaFileReaderWithActor extends Actor {
 
   import system.dispatcher
   implicit val system = ActorSystem("app")
   implicit val scheduler = system.scheduler
-  implicit val timeout = Timeout(5 seconds)
+  implicit val timeout = Timeout(5.seconds)
 
   implicit val mat = ActorMaterializer()
-  val bytesAccumulatorActor = system.actorOf(Props(new BytesAccumulatorActor()), name = "offsetActor")
+  val bytesAccumulatorActor = this.system.actorOf(Props(new BytesAccumulatorActor()), name = "offsetActor")
 
-  case class TripleWithKey(subject: String, triple: String)
 
-  def receive: Receive = {
+  override def receive: Receive = {
     case ActorInput(inputUrl, format, cluster) => {
       println("Starting flow.....")
       readAndImportFile(inputUrl, format, cluster)
@@ -58,12 +59,13 @@ class AkkaFileReaderWithActor extends Actor {
     val httpResponse = readFileFromServer(inputUrl)
     httpResponse.onComplete(
       {
-        case Success(r) => println("Get file from server successfully")
+        case Success(r) if  r.status.isSuccess() => println("Get file from server successfully")
+        case Success(r) if  r.status.isFailure() => println("Failed to read file, got status code:" + r.status)
         case Failure(e) => {
           println("Got a failure while reading the file, ", e.getMessage)
           system.scheduler.scheduleOnce(7000 milliseconds, self, ActorInput(inputUrl, format, cluster))
         }})
-    val graphResult = httpResponse.map ({ response =>
+    httpResponse.foreach({ response =>
       println("Get response status=" + response.status)
       val contentLengthHeader = response.headers.find(_.name == "Content-Range").map(_.value).getOrElse("")
       val fileSize = contentLengthHeader.split("/")(1).toLong + 1
@@ -94,11 +96,10 @@ class AkkaFileReaderWithActor extends Actor {
             }
             case Failure(e) => {
               println("Got a failure during the process, ", e.getMessage)
-              system.scheduler.scheduleOnce(7000 milliseconds, self, ActorInput(inputUrl, format, cluster))
+              system.scheduler.scheduleOnce(7000.milliseconds, self, ActorInput(inputUrl, format, cluster))
             }})
 
     })
-    graphResult
   }
 
   def postWithRetry(batch: Seq[List[String]], format:String, cluster:String): Future[(HttpResponse, Int)] = {
@@ -125,7 +126,7 @@ class AkkaFileReaderWithActor extends Actor {
     val batchSizeInBytes = infotonsList.mkString.getBytes.length + infotonsList.size
     val postRequest = HttpRequest(
       HttpMethods.POST,
-      "http://"+ cluster + ":9000/_in?format=" + format,
+      "http://"+ cluster + "/_in?format=" + format,
       entity = HttpEntity(`text/plain` withCharset `UTF-8`, infotonsList.mkString.getBytes),
       protocol = `HTTP/1.0`
     )
