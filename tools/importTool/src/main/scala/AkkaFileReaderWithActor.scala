@@ -9,12 +9,13 @@ import akka.stream.scaladsl.{FileIO, Flow, Framing, RestartSource, Sink, Source}
 import akka.{Done, NotUsed, http}
 import akka.util.{ByteString, Timeout}
 import akka.pattern.ask
-import akka.actor.{Actor, ActorSystem, DeadLetter, Props, Scheduler, Status}
+import akka.actor.{Actor, ActorSystem, DeadLetter, Props, Scheduler, Status, Terminated}
 import akka.http.scaladsl.{Http, model}
 import akka.stream.ActorMaterializer
 import HttpCharsets._
 import akka.http.scaladsl.client.RequestBuilding.Get
 import akka.http.scaladsl.model.headers.{ByteRange, RawHeader}
+import com.typesafe.config.ConfigFactory
 
 import scala.concurrent.duration._
 import scala.concurrent.duration.{Duration, FiniteDuration}
@@ -63,7 +64,7 @@ class AkkaFileReaderWithActor extends Actor {
         case Success(r) if  r.status.isFailure() => println("Failed to read file, got status code:" + r.status)
         case Failure(e) => {
           println("Got a failure while reading the file, ", e.getMessage)
-          system.scheduler.scheduleOnce(7000 milliseconds, self, ActorInput(inputUrl, format, cluster))
+          system.scheduler.scheduleOnce(7000.milliseconds, self, ActorInput(inputUrl, format, cluster))
         }})
     httpResponse.foreach({ response =>
       println("Get response status=" + response.status)
