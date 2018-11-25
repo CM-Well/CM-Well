@@ -1,7 +1,5 @@
 import akka.actor.{ActorSystem, Props}
-import akka.util.Timeout
 import org.rogach.scallop.ScallopConf
-import scala.concurrent.duration._
 
 
   class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
@@ -17,9 +15,9 @@ import scala.concurrent.duration._
       println("source file is: " + conf.sourceUrl())
       println("output format is: " + conf.format())
       val system = ActorSystem("MySystem")
-        println("About to Start import tool flow...")
-        val myActor = system.actorOf(Props(new AkkaFileReaderWithActor()), name = "myactor")
-        myActor ! ActorInput(conf.sourceUrl(), conf.format(), conf.cluster())
+      println("About to Start import tool flow...")
+      val mainActor = system.actorOf(Props(new AkkaFileReaderWithActor(conf.sourceUrl(), conf.format(), conf.cluster())), name = "myactor")
+      mainActor ! ActorInput
     }
 
 }
