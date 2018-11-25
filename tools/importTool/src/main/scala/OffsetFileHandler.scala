@@ -20,8 +20,9 @@ object OffsetFileHandler {
   }
 
   def readOffset = {
-
-    Source.fromFile("./lastOffset").getLines.toList.head.toInt
+    val source = Source.fromFile("./lastOffset")
+    try { source.getLines().toList.head.toInt }
+    finally { source.close() }
   }
 
 }
