@@ -3006,23 +3006,38 @@ callback=< [URL] >
     isAdminEvenNonProd(req) match {
       case true => {
 
-        val headers = req.cookies.get("X-CM-WELL-TOKEN2") match {
-          case Some(cookie) => Seq(("X-CM-WELL-TOKEN", cookie.value))
-          case _ => Nil
-        }
-
         val flag = req.getQueryString("enabled").flatMap(asBoolean).getOrElse(true)
-        import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
-        import cmwell.util.http.SimpleResponse
-        val body="<cmwell://meta/sys/agents/sparql/" + agent + "> <cmwell://meta/nn#active> \"" + flag + "\"^^<http://www.w3.org/2001/XMLSchema#boolean> ."
 
-        cmwell.util.http.SimpleHttpClient
-          .post(uri=s"http://${req.host}/_in?format=ntriples&replace-mode&priority", body=body, headers=headers).map {
-            case SimpleResponse(200, _, _) => Ok("""{"success":true}""")
-            case SimpleResponse(403, _, _) => Forbidden("Not allowed to priority write to agent infoton")
-            case SimpleResponse(respCode, _, _) => Ok("""{"success":false}""")
-            case _ => Ok("""{"success":false}""")
-        }
+        val infotons = crudServiceFS.getInfotonByPathAsync(s"/meta/sys/agents/sparql/$agent")
+
+        infotons.map({
+          p =>
+
+            val infoton = p.head
+
+            val fieldsOption = infoton.fields
+
+            val activeFlag = ("active" -> Set(FieldValue(flag)))
+
+            val newFields = fieldsOption match {
+              case Some(fields) => fields + activeFlag
+              case None => Map(activeFlag)
+            }
+
+            val newInfoton = infoton.copyInfoton(fields=Some(newFields))
+            crudServiceFS.putOverwrites(Vector(newInfoton)).onComplete({
+              case Success(d)=> d
+              case Failure (ex) => {
+                logger.debug(ex.getMessage)
+                throw ex
+              }
+            })
+
+            logger.debug(s"Infoton")
+        })
+
+        Future.successful(Ok("""{"success":true}"""))
+
       }
       case _ => Future.successful(Forbidden("Not allowed to use stp"))
     }
