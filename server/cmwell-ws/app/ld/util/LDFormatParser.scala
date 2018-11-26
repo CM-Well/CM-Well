@@ -811,7 +811,7 @@ object LDFormatParser extends LazyLogging {
               }
               if(stmt.getSubject.isURIResource) {
                 val protocol = stmt.getSubject.getURI.takeWhile(':'.!=)
-                if(protocol != "cmwell" && protocol != CSettings.defaultProtocol)
+                if(protocol != "cmwell" && protocol != CSettings.defaultProtocol && infotonsMap.keySet(subject))
                   updateMetaData(cmwMetaDataMap, subject, "protocol", FString(protocol))
               }
             }
