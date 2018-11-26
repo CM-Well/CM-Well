@@ -76,6 +76,7 @@ object SparqlTriggeredProcessorMain extends App with DataToolsLogging {
   val processor = SparqlTriggeredProcessor
     .listen(
       config = config,
+      useQuadsInSp = false,
       baseUrl = Opts.srcHost(),
       isBulk = Opts.bulk(),
       tokenReporter = Some(tokenFileReporter)
@@ -161,7 +162,7 @@ object SparqlTriggeredProcessorMain extends App with DataToolsLogging {
 
       implicit val sensorFormat = yamlFormat6(Sensor)
       implicit val sequenceFormat = seqFormat[Sensor](sensorFormat)
-      implicit val configFormat = yamlFormat6(Config)
+      implicit val configFormat = yamlFormat7(Config)
     }
 
     import SensorYamlProtocol._
