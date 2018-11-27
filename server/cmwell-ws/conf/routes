@@ -27,7 +27,7 @@ GET         /_csshx                   controllers.Application.handleCsshx
 GET         /_null                    controllers.NullHandler.handle
 POST        /_null                    controllers.NullHandler.handle
 GET         /_kafka/:topic/:partition controllers.Application.handleKafkaConsume(topic: String, partition: Int)
-
+GET         /_stp/*agent            controllers.Application.handleStpControl(agent)
 GET         /_track/*tid      controllers.Application.handleTrack(tid)
 
 #SAML POC
@@ -61,8 +61,6 @@ GET         /ws/_out                controllers.OutputHandler.handleWebSocket(fo
 GET         /ii/*uuid               controllers.Application.handleUuidGET(uuid)
 GET         /zz                     controllers.Help.handleHelp(page = "zz")
 GET         /zz/*key                controllers.Application.handleZzGET(key)
-GET         /stp/*agent            controllers.Application.handleStpControl(agent)
-POST        /stp/*agent            controllers.Application.handleStpControl(agent)
 GET         /proc                   controllers.Application.handleProcGET(path = "/proc")
 GET         /proc/                  controllers.Application.handleProcGET(path = "/proc")
 GET         /proc/*path             controllers.Application.handleProcGET(path)
