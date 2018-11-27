@@ -55,7 +55,7 @@ import ld.cmw.passiveFieldTypesCacheImpl
 import ld.exceptions.BadFieldTypeException
 import logic.{CRUDServiceFS, InfotonValidator}
 import markdown.MarkdownFormatter
-import org.joda.time.DateTimeZone
+import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.ISODateTimeFormat
 import play.api.http.{ContentTypes, MediaType}
 import play.api.libs.json.{JsArray, JsBoolean, JsNumber, JsObject, JsString, _}
@@ -3003,44 +3003,49 @@ callback=< [URL] >
 
   def handleStpControl(agent: String) = Action.async(parse.raw) { implicit req =>
 
+    val p = Promise[Result]()
+
+    val infotonPath = s"/meta/sys/agents/sparql/$agent"
+    val flag = req.getQueryString("enabled").flatMap(asBoolean).getOrElse(true)
+
     isAdminEvenNonProd(req) match {
       case true => {
+        val infotons = crudServiceFS.getInfotonByPathAsync(infotonPath)
 
-        val flag = req.getQueryString("enabled").flatMap(asBoolean).getOrElse(true)
+        infotons.onComplete{
+          case Success(infotonBox) => {
+            infotonBox.isEmpty match {
+              case false => {
+                val fieldsOption = infotonBox.head.fields
+                val activeFlag = ("active" -> Set(FieldValue(flag)))
 
-        val infotons = crudServiceFS.getInfotonByPathAsync(s"/meta/sys/agents/sparql/$agent")
+                val newFields = fieldsOption match {
+                  case Some(fields) => fields + activeFlag
+                  case None => Map(activeFlag)
+                }
 
-        infotons.map({
-          p =>
+                val newInfoton = infotonBox.head.copyInfoton(fields=Some(newFields), lastModified = new DateTime(System.currentTimeMillis))
+                val deletes = Map(infotonPath ->  Map("active" -> None))
 
-            val infoton = p.head
-
-            val fieldsOption = infoton.fields
-
-            val activeFlag = ("active" -> Set(FieldValue(flag)))
-
-            val newFields = fieldsOption match {
-              case Some(fields) => fields + activeFlag
-              case None => Map(activeFlag)
-            }
-
-            val newInfoton = infoton.copyInfoton(fields=Some(newFields))
-            crudServiceFS.putOverwrites(Vector(newInfoton)).onComplete({
-              case Success(d)=> d
-              case Failure (ex) => {
-                logger.debug(ex.getMessage)
-                throw ex
+                crudServiceFS.upsertInfotons(inserts = List(newInfoton), deletes = deletes).onComplete({
+                  case Success(_)=> p.completeWith(Future.successful(Ok("""{"success":true}""")))
+                  case Failure(ex) => {
+                    logger.debug(ex.getMessage)
+                    throw ex
+                  }
+                })
               }
-            })
-
-            logger.debug(s"Infoton")
-        })
-
-        Future.successful(Ok("""{"success":true}"""))
-
+              case _ =>  p.completeWith(Future.successful(NotFound(s"Config infoton: $infotonPath  not found")))
+            }
+          }
+          case Failure(ex) => p.completeWith(Future.successful(NotFound(s"Config infoton: $infotonPath not found")))
+        }
       }
-      case _ => Future.successful(Forbidden("Not allowed to use stp"))
+      case _ => p.completeWith(Future.successful(Forbidden("Not allowed to use stp")))
     }
+
+    p.future
+
   }
 
 
