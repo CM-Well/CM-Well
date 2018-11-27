@@ -2197,7 +2197,10 @@ abstract class Host(user: String,
   def reloadEsMappings(createNewIndices: Boolean = true) {
 
     info("reloading Elasticsearch mappings")
-    command(s"""curl -s -X POST http://${pingAddress}:$esMasterPort/_template/cmwell_index_template -H "Content-Type: application/json" --data-ascii @${absPath(instDirs.globalLocation)}/cm-well/conf/es/indices_template_new.json""", ips(0), false)
+    command(
+      s"""curl -s -X POST http://${pingAddress}:$esMasterPort/_template/cmwell_index_template
+         | -H "Content-Type: application/json"
+         |  --data-ascii @${absPath(instDirs.globalLocation)}/cm-well/conf/es/indices_template_new.json""".stripMargin, ips(0), false)
 
     if (createNewIndices) {
       Thread.sleep(5000)

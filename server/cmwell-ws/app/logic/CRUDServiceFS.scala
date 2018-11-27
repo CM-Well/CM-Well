@@ -66,7 +66,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
   lazy val irwService = IRWService.newIRW(Dao(irwServiceDaoClusterName, irwServiceDaoKeySpace2, irwServiceDaoHostName),
                                           disableReadCache = !Settings.irwReadCacheEnabled)
 
-  val ftsService = FTSService("ws.es.yml")
+  val ftsService = FTSService(config)
 
   val producerProperties = new Properties
   producerProperties.put("bootstrap.servers", kafkaURL)

@@ -88,6 +88,7 @@ dependenciesManager in Global := {
   case ("commons-lang","commons-lang")                             => "commons-lang" % "commons-lang" % "2.6"
   case ("eu.piotrbuda","scalawebsocket")                           => "eu.piotrbuda" %% "scalawebsocket" % "0.1.1"
   case ("io.netty","netty")                                        => "io.netty" % "netty" % "3.10.6.Final"
+  case ("io.netty", "netty-transport")                             => "io.netty" % "netty-transport" % "4.1.17.Final"    
   case ("io.circe", art)                                           => "io.circe" %% art % "0.9.3"
   case ("io.dropwizard.metrics",art)                               => "io.dropwizard.metrics" % art % "4.0.1" // make sure this is a compatible version with "nl.grons" metrics dependencies!
   case ("com.jcraft","jsch")                                       => "com.jcraft" % "jsch" % "0.1.54"

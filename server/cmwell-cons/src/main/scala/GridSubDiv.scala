@@ -113,7 +113,8 @@ case class GridSubDiv(user: String,
     command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start.sh")}", hosts, false)
     (2 to (dataDirs.esDataDirs.size - 1)).foreach{
       index =>
-        command(s"bash -c 'sleep $index ; cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript(s"./start$index.sh")}' > /dev/null 2> /dev/null &", hosts, false)
+        command(s"bash -c 'sleep $index ; cd ${instDirs.globalLocation}/cm-well/app/es/cur; " +
+          s"${startScript(s"./start$index.sh")}' > /dev/null 2> /dev/null &", hosts, false)
     }
   }
 
