@@ -116,16 +116,18 @@ object WriteService {
                                             skipValidation,
                                             isOverwrite,
                                             timeContext)
-          case "trix" =>
-            LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,
-                                            crudServiceFS,
-                                            authUtils,
-                                            body,
-                                            "TRIX",
-                                            token,
-                                            skipValidation,
-                                            isOverwrite,
-                                            timeContext)
+//TODO: We cannot support Data Ingest in TriX format, due to https://issues.apache.org/jira/browse/JENA-1567
+//TODO: A workaround is available but dangerous: System.setProperty(classOf[XMLInputFactory].getName, "com.sun.xml.internal.stream.XMLInputFactoryImpl" )
+//          case "trix" =>
+//            LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,
+//                                            crudServiceFS,
+//                                            authUtils,
+//                                            body,
+//                                            "TRIX",
+//                                            token,
+//                                            skipValidation,
+//                                            isOverwrite,
+//                                            timeContext)
           case _ =>
             handleFormatByContentType(cmwellRDFHelper,
                                       crudServiceFS,
@@ -230,16 +232,16 @@ object WriteService {
                                         skipValidation,
                                         isOverwrite,
                                         timeContext)
-      case Some("application/trix") =>
-        LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,
-                                        crudServiceFS,
-                                        authUtils,
-                                        body,
-                                        "TRIX",
-                                        token,
-                                        skipValidation,
-                                        isOverwrite,
-                                        timeContext)
+//      case Some("application/trix") =>
+//        LDFormatParser.rdfToInfotonsMap(cmwellRDFHelper,
+//                                        crudServiceFS,
+//                                        authUtils,
+//                                        body,
+//                                        "TRIX",
+//                                        token,
+//                                        skipValidation,
+//                                        isOverwrite,
+//                                        timeContext)
       case Some(ctype: String) => throw new RuntimeException(invalidFormatMessage)
       case None                => throw new RuntimeException(invalidFormatMessage)
     }
