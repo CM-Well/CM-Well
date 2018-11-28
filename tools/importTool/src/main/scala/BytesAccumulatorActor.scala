@@ -4,12 +4,12 @@ import akka.actor._
 
 
 
-case class Message(value: Int)
+case class Message(value: Long)
 case object LastOffset
 case class FileSize(value:Long)
 
 class BytesAccumulatorActor() extends Actor {
-  var count = 0
+  var count = 0L
   var fileSizeInBytes = 0L
 
   override def receive: Receive = {

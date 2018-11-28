@@ -9,10 +9,9 @@ import scala.io.Source
 object OffsetFileHandler {
 
 
-  def persistOffset(lastSuccessfulOffset:Int) = {
+  def persistOffset(lastSuccessfulOffset:Long) = {
 
-    // FileWriter
-    val file = new File("lastOffset")
+    val file = new File("./lastOffset")
     val bw = new BufferedWriter(new FileWriter(file))
     bw.write(lastSuccessfulOffset.toString)
     bw.close()
