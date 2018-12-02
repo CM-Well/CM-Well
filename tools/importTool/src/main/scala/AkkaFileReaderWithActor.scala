@@ -19,7 +19,7 @@ import scala.util.{Failure, Success}
 case class ActorInput(inputUrl: String, outputFormat:String, cluster:String)
 case class TripleWithKey(subject: String, triple: String)
 
-class AkkaFileReaderWithActor(inputUrl:String, format:String, cluster:String) extends Actor {
+class AkkaFileReaderWithActor(inputUrl:String, format:String, cluster:String, numConn:Integer) extends Actor {
 
   import system.dispatcher
   implicit val system = context.system
@@ -30,7 +30,7 @@ class AkkaFileReaderWithActor(inputUrl:String, format:String, cluster:String) ex
   override def receive: Receive = {
     case ActorInput => {
       println("Starting flow.....")
-      readAndImportFile(inputUrl, format, cluster)
+      readAndImportFile(inputUrl, format, cluster, numConn)
     }
   }
 
@@ -46,7 +46,7 @@ class AkkaFileReaderWithActor(inputUrl:String, format:String, cluster:String) ex
 
   }
 
-  def readAndImportFile(inputUrl:String, format:String, cluster:String)= {
+  def readAndImportFile(inputUrl:String, format:String, cluster:String, numConn:Integer)= {
     val httpResponse = readFileFromServer(inputUrl)
     httpResponse.onComplete(
       {
@@ -74,7 +74,7 @@ class AkkaFileReaderWithActor(inputUrl:String, format:String, cluster:String) ex
         .fold(List.empty[String]) { case (allTriples, TripleWithKey(_, triples)) => triples :: allTriples }
         .mergeSubstreams
         .grouped(25)
-        .mapAsync(1)(batch=> postWithRetry(batch, format, cluster))
+        .mapAsync(numConn)(batch=> postWithRetry(batch, format, cluster))
         .statefulMapConcat {
           var lastOffset = 0L
           if(Files.exists(Paths.get("./lastOffset")))
@@ -83,7 +83,8 @@ class AkkaFileReaderWithActor(inputUrl:String, format:String, cluster:String) ex
             httpResponse => {
               lastOffset += httpResponse._2
               OffsetFileHandler.persistOffset(lastOffset)
-              println("Progress of ingest infotons: " + (lastOffset * 100.0f) / fileSize + "%")
+              val progressPercentage = (lastOffset * 100.0f) / fileSize
+              println("Progress of ingest infotons: " + f"$progressPercentage%1.2f" + "%")
             }
               List.empty
           }
