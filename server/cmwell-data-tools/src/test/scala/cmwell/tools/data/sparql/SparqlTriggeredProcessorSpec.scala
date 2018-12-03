@@ -88,6 +88,7 @@ import collection.JavaConverters._
       sensors = Seq(
         Sensor(name = "sensor1", path ="/path1")
       ),
+      useQuadsInSp = Some(false),
       updateFreq = 10.seconds,
       sparqlMaterializer = "",
       hostUpdatesSource = Some("http://localhost:9000")
@@ -95,7 +96,7 @@ import collection.JavaConverters._
 
     val baseUrl = s"localhost:${wireMockServer.port}"
 
-    val (killSwitch, result) = SparqlTriggeredProcessor.listen(config = config, baseUrl = baseUrl)
+    val (killSwitch, result) = SparqlTriggeredProcessor.listen(config = config, baseUrl = baseUrl, useQuadsInSp = false)
       .viaMat(KillSwitches.single)(Keep.right)
       .toMat(Sink.fold(blank){case (agg, (line, _)) => agg ++ line ++ endl})(Keep.both)
       .run()
@@ -154,6 +155,7 @@ import collection.JavaConverters._
         Sensor(name = "sensor1", path ="/path1"),
         Sensor(name = "sensor2", path ="/path1")
       ),
+      useQuadsInSp = Some(false),
       updateFreq = 10.seconds,
       sparqlMaterializer = "",
       hostUpdatesSource = Some("http://localhost:9000")
@@ -161,7 +163,7 @@ import collection.JavaConverters._
 
     val baseUrl = s"localhost:${wireMockServer.port}"
 
-    val (killSwitch, result) = SparqlTriggeredProcessor.listen(config = config, baseUrl = baseUrl)
+    val (killSwitch, result) = SparqlTriggeredProcessor.listen(config = config, baseUrl = baseUrl, useQuadsInSp = false)
       .viaMat(KillSwitches.single)(Keep.right)
       .toMat(Sink.fold(blank){case (agg, (line, _)) => agg ++ line ++ endl})(Keep.both)
       .run()
@@ -236,6 +238,7 @@ import collection.JavaConverters._
       sensors = Seq(
         Sensor(name = "sensor1", path ="/path1")
       ),
+      useQuadsInSp = Some(false),
       updateFreq = 5.seconds,
       sparqlMaterializer = "",
       hostUpdatesSource = Some("http://localhost:9000")
@@ -243,7 +246,7 @@ import collection.JavaConverters._
 
     val baseUrl = s"localhost:${wireMockServer.port}"
 
-    val (killSwitch, result) = SparqlTriggeredProcessor.listen(config = config, baseUrl = baseUrl, distinctWindowSize = 2.seconds)
+    val (killSwitch, result) = SparqlTriggeredProcessor.listen(config = config, baseUrl = baseUrl, distinctWindowSize = 2.seconds, useQuadsInSp = false)
       .viaMat(KillSwitches.single)(Keep.right)
       .toMat(Sink.fold(blank){case (agg, (line, _)) => agg ++ line ++ endl})(Keep.both)
       .run()
