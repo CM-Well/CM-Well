@@ -185,7 +185,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
 
                   logger.debug(
                     s"$labelValue server error - received $s, count=$count will retry again in $retryBackoff" +
-                      s" host=${getHostnameValue(h)} data=${stringifyData(data)}, "
+                      s" host=${getHostnameValue(h)}"
                   )
 
                   val future =
@@ -194,7 +194,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                 case Some(0) =>
                   logger.warn(
                     s"$labelValue server error - received $s, count=$count will not not retry sending request," +
-                      s" host=${getHostnameValue(h)} data=${stringifyData(data)}"
+                      s" host=${getHostnameValue(h)}"
                   )
                   badDataLogger.info(
                     s"$labelValue data=${concatByteStrings(data, endl).utf8String}"
@@ -292,14 +292,14 @@ object Retry extends DataToolsLogging with DataToolsConfig {
             case Some(c) if c > 0 =>
               e.discardBytes()
               logger.debug(
-                s"$labelValue received $s, count=$count will retry again in $delay host=${getHostnameValue(h)} data=${stringifyData(data)}"
+                s"$labelValue received $s, count=$count will retry again in $delay host=${getHostnameValue(h)}"
               )
               val future =
                 after(delay, system.scheduler)(Future.successful(data))
               Some(immutable.Seq(future -> state.copy(count = Some(c - 1))))
             case Some(0) =>
               logger.warn(
-                s"$labelValue received $s, count=$count will not not retry sending request, host=${getHostnameValue(h)} data=${stringifyData(data)}"
+                s"$labelValue received $s, count=$count will not not retry sending request, host=${getHostnameValue(h)}"
               )
               badDataLogger.info(
                 s"$labelValue data=${concatByteStrings(data, endl).utf8String}"
