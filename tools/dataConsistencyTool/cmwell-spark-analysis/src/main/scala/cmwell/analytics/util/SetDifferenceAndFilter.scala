@@ -1,5 +1,7 @@
 package cmwell.analytics.util
 
+import java.sql.Timestamp
+
 import org.apache.spark.sql.{Dataset, SparkSession}
 
 /**
@@ -23,13 +25,9 @@ object SetDifferenceAndFilter {
 
   def apply(uuids1: Dataset[KeyFields],
             uuids2: Dataset[KeyFields],
-            allowableConsistencyLag: Long,
+            consistencyThreshold: Long,
             filterOutMeta: Boolean = false)
            (implicit spark: SparkSession): Dataset[KeyFields] = {
-
-    // Filter out any inconsistencies found if more current than this point in time.
-    // TODO: Should System.currentTimeMillis be used, and if so, when should it be observed?
-    val currentThreshold = new java.sql.Timestamp(System.currentTimeMillis - allowableConsistencyLag)
 
     import spark.implicits._
 
@@ -47,7 +45,7 @@ object SetDifferenceAndFilter {
     // The anti-join produces just the left side, and only the ones that are not in the right side.
     val positives = setDifference(uuids1, uuids2)
 
-    val timeToConsistencyFilter = positives("lastModified") < currentThreshold
+    val timeToConsistencyFilter = positives("lastModified") < new Timestamp(consistencyThreshold)
     val overallFilter = if (filterOutMeta)
       timeToConsistencyFilter &&
         (positives("path") =!= "/" && positives("path") =!= "/meta" && !positives("path").startsWith("/meta/"))

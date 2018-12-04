@@ -104,6 +104,9 @@ object Settings {
   // default timeout for ElasticSearch calls
   lazy val esTimeout = config.getInt("ftsService.default.timeout").seconds
 
+  //maximum time a request can be "in air" - currently implemented in _in only
+  lazy val clientRequestTimeout = config.getDuration("cmwell.ws.clientRequestTimeout").toMillis.millis
+
   lazy val gridBindIP = config.getString("cmwell.grid.bindIP")
   lazy val gridBindPort = config.getInt("cmwell.grid.bindPort")
   lazy val gridSeeds = Set.empty[String] ++ config.getString("cmwell.grid.seeds").split(";")

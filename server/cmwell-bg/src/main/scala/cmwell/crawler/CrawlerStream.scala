@@ -34,7 +34,7 @@ import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.elasticsearch.action.ActionRequest
 import org.elasticsearch.action.update.UpdateRequest
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, DateTimeZone}
 
 import scala.concurrent.duration.{DurationInt, DurationLong, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future}
@@ -161,7 +161,7 @@ object CrawlerStream extends LazyLogging {
             case Some("nu" | "grp") =>
               Future.successful(AllClear(lclzdCmd))
             case Some(alteredLastModified) =>
-              val newDate = new DateTime(alteredLastModified)
+              val newDate = new DateTime(alteredLastModified.toLong, DateTimeZone.UTC)
               val alteredCommand = alterCommandLastModifiedDate(cmd, newDate)
               val newLocalizedCmd = LocalizedCommand(alteredCommand, Some(cmd.lastModified), location)
               logger.info(s"$crawlerId The checked command [$cmd] in location $location had a time shift in BG side. " +

@@ -597,7 +597,7 @@ case class BgConf(home: String,
       "irwServiceDao.hostName" -> s"$hostName",
       "ftsService.clusterName" -> s"$clusterName",
       "ftsService.transportAddress" -> s"$hostName",
-      "cmwell.defaultRdfProtocol" -> defaultRdfProtocol
+      "cmwell.rdfDefaultProtocol" -> defaultRdfProtocol
     )
     val m = Map[String, String](
       "clustername" -> clusterName,
@@ -782,7 +782,7 @@ case class WebConf(home: String,
       "cmwell.home" -> s"$home",
       "irwServiceDao.hostName" -> s"$hostName",
       "ftsService.transportAddress" -> s"$hostName",
-      "cmwell.defaultRdfProtocol" -> defaultRdfProtocol
+      "cmwell.rdfDefaultProtocol" -> defaultRdfProtocol
     )
 
     val m = Map[String, String](
