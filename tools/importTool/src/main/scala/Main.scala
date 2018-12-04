@@ -6,7 +6,6 @@ import org.rogach.scallop.ScallopConf
     val sourceUrl = opt[String]("source-url", required = true, descr = "the source url which download rdf file")
     val format = opt[String]("format", required = true, descr="the ofile format")
     var cluster = opt[String]("cluster", required = true, descr="the target server which content is ingested to")
-    val numConn = opt[String]("numConn", required = true, descr="the number of connections to cm-well")
     verify()
   }
 
@@ -17,7 +16,7 @@ import org.rogach.scallop.ScallopConf
       println("output format is: " + conf.format())
       val system = ActorSystem("MySystem")
       println("About to Start import tool flow...")
-      val mainActor = system.actorOf(Props(new AkkaFileReaderWithActor(conf.sourceUrl(), conf.format(), conf.cluster(), conf.numConn().toInt)), name = "myactor")
+      val mainActor = system.actorOf(Props(new AkkaFileReaderWithActor(conf.sourceUrl(), conf.format(), conf.cluster())), name = "myactor")
       mainActor ! ActorInput
     }
 

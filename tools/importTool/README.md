@@ -12,11 +12,11 @@ from the importTool directory(root directory) run
 Consequently, a new jar will be created under target folder
 
 # How to Run the Tool
-`java -jar target/scala-2.12/<your_created_jar_name> --source-url <your_source_url> --format <your_format> --cluster <your_cluster> --numConn <your_number_of_connections> `
+`java -jar target/scala-2.12/<your_created_jar_name> --source-url <your_source_url> --format <your_format> --cluster <your_cluster> `
 
 For Example:
 
-`java -Xmx2000m -jar target/scala-2.12/Documents-assembly-0.1.jar --source-url "http://localhost:8080/oa-ok.ntriples" --format nquads --cluster localhost:9000 --numConn=3
+`java -Xmx2000m -jar target/scala-2.12/Documents-assembly-0.1.jar --source-url "http://localhost:8080/oa-ok.ntriples" --format nquads --cluster localhost:9000
 `
 
 

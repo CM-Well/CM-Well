@@ -19,7 +19,7 @@ import scala.util.{Failure, Success}
 case class ActorInput(inputUrl: String, outputFormat:String, cluster:String)
 case class TripleWithKey(subject: String, triple: String)
 
-class AkkaFileReaderWithActor(inputUrl:String, format:String, cluster:String, numConn:Integer) extends Actor {
+class AkkaFileReaderWithActor(inputUrl:String, format:String, cluster:String) extends Actor {
 
   import system.dispatcher
   implicit val system = context.system
@@ -30,15 +30,13 @@ class AkkaFileReaderWithActor(inputUrl:String, format:String, cluster:String, nu
   override def receive: Receive = {
     case ActorInput => {
       println("Starting flow.....")
-      readAndImportFile(inputUrl, format, cluster, numConn)
+      readAndImportFile(inputUrl, format, cluster)
     }
   }
 
   def readFileFromServer(inputUrl:String) = {
     println("Going to send get request to inputUrl=" + inputUrl)
-    var lastOffset = 0
-    if(Files.exists(Paths.get("./lastOffset")))
-      lastOffset = OffsetFileHandler.readOffset
+    val lastOffset = getLastOffset
     val ranges: String = "bytes=" + lastOffset + "-"
     println("Resending get request for ranges=" + ranges)
     val request = Get(inputUrl).addHeader(RawHeader.apply("Range", ranges))
@@ -46,7 +44,7 @@ class AkkaFileReaderWithActor(inputUrl:String, format:String, cluster:String, nu
 
   }
 
-  def readAndImportFile(inputUrl:String, format:String, cluster:String, numConn:Integer)= {
+  def readAndImportFile(inputUrl:String, format:String, cluster:String)= {
     val httpResponse = readFileFromServer(inputUrl)
     httpResponse.onComplete(
       {
@@ -57,7 +55,8 @@ class AkkaFileReaderWithActor(inputUrl:String, format:String, cluster:String, nu
           system.scheduler.scheduleOnce(7000.milliseconds, self, ActorInput)
         }
         case Failure(e) => {
-          println("Got a failure while reading the file, ", e.printStackTrace())
+          println("Got a failure while reading the file")
+          e.printStackTrace()
           system.scheduler.scheduleOnce(7000.milliseconds, self, ActorInput)
         }})
     httpResponse.foreach({ response =>
@@ -74,19 +73,24 @@ class AkkaFileReaderWithActor(inputUrl:String, format:String, cluster:String, nu
         .fold(List.empty[String]) { case (allTriples, TripleWithKey(_, triples)) => triples :: allTriples }
         .mergeSubstreams
         .grouped(25)
-        .mapAsync(numConn)(batch=> postWithRetry(batch, format, cluster))
+        //need to consider the default num of akka connection pool in order to increase the paralism of map async
+        .mapAsync(1)(batch=> postWithRetry(batch, format, cluster))
         .statefulMapConcat {
-          var lastOffset = 0L
-          if(Files.exists(Paths.get("./lastOffset")))
-            lastOffset = OffsetFileHandler.readOffset
+          val list = List.empty
+          var lastOffset = getLastOffset
+          var count = 0
           () => {
             httpResponse => {
               lastOffset += httpResponse._2
               OffsetFileHandler.persistOffset(lastOffset)
-              val progressPercentage = (lastOffset * 100.0f) / fileSize
-              println("Progress of ingest infotons: " + f"$progressPercentage%1.2f" + "%")
+              count+=1
+              if(count % 1000000 == 0) {
+                val progressPercentage = (lastOffset * 100.0f) / fileSize
+                print("Progress of ingest infotons: " + f"$progressPercentage%1.2f" + "%\r")
+                count=0
+              }
             }
-              List.empty
+              list
           }
         }
         .runWith(Sink.ignore)
@@ -98,11 +102,16 @@ class AkkaFileReaderWithActor(inputUrl:String, format:String, cluster:String, nu
             }
             case Failure(e) => {
 
-              println("Got a failure during the process, ", e.printStackTrace())
+              println("Got a failure during the process, ")
+              e.printStackTrace()
               system.scheduler.scheduleOnce(7000.milliseconds, self, ActorInput)
             }})
 
     })
+  }
+
+  private def getLastOffset = {
+    if (Files.exists(Paths.get("./lastOffset"))) OffsetFileHandler.readOffset else 0L
   }
 
   def postWithRetry(batch: Seq[List[String]], format:String, cluster:String): Future[(HttpResponse, Long)] = {
@@ -116,7 +125,6 @@ class AkkaFileReaderWithActor(inputUrl:String, format:String, cluster:String, nu
         println("Going to retry, retry count=" + retries)
         akka.pattern.after(delay, scheduler)(retry(delay, retries - 1)(task))
     }
-
   }
 
   def getTripleKey(triple:String): TripleWithKey = {
@@ -140,15 +148,14 @@ class AkkaFileReaderWithActor(inputUrl:String, format:String, cluster:String, nu
       else {
         val blank = ByteString("", "UTF-8")
         res.entity.dataBytes.runFold(blank)(_ ++ _).map(_.utf8String)
-          .onComplete(
+          .onComplete
           {
-            case Success(msg) => {
+            case Success(msg) =>
               println("Message body id=" + randomId + " message=" + msg)
-            }
-            case Failure(e) => {
-              println("Got a failure during print entity body, ", e.printStackTrace())
-            }
-          })
+            case Failure(e) =>
+              println("Got a failure during print entity body, Message body id=" + randomId)
+              e.printStackTrace()
+          }
         Future.failed(new Throwable("Got post error code," + res.status + ", headers=" + res.headers + ", message body will be displayed later, message id=" + randomId))
       }
     )
