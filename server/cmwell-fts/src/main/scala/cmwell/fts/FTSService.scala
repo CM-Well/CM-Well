@@ -232,7 +232,7 @@ class FTSService(config: Config) extends NsSplitter{
       throw new IllegalArgumentException("at least one of the filters is needed in order to search")
     }
 
-    val fields = "system.kind" :: "system.path" :: "system.uuid" :: "system.lastModified" :: "system.protocol" :: "content.length" ::
+    val fields = "system.kind" :: "system.path" :: "system.uuid" :: "system.lastModified" :: "content.length" ::
       "content.mimeType" :: "link.to" :: "link.kind" :: "system.dc" :: "system.indexTime" :: "system.quad" :: "system.current" :: Nil
 
     val request = client
