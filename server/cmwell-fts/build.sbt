@@ -23,13 +23,10 @@ libraryDependencies ++= {
 		dm("com.google.code.findbugs", "jsr305"),
 		dm("com.typesafe", "config"),
 		dm("com.spatial4j", "spatial4j"),
-		dm("org.slf4j","jcl-over-slf4j"))
+		dm("org.slf4j","jcl-over-slf4j"),
+    dm("pl.allergro.tech", "embedded-elasticsearch") % Test,
+    dm("net.lingala.zip4j", "zip4j") % Test)
 }
-
-libraryDependencies ++= Seq(
-	"net.lingala.zip4j" % "zip4j" % "1.3.2" % Test,
-	"pl.allergro.tech" % "embedded-elasticsearch" % "2.4.3" % Test from "https://github.com/israel/embedded-elasticsearch/releases/download/2.4.3/embedded-elasticsearch-2.4.3.jar"
-)
 
 test in Test := Def.task((test in Test).value).tag(cmwell.build.CMWellCommon.Tags.ES).value
 

@@ -150,7 +150,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
             fieldsFilter = None,
             datesFilter = None,
             paginationParams = DefaultPaginationParams,
-            sortParams = SortParam.indexTimeAscending,
+            sortParams = SortParam("system.indexTime" -> Asc),
             withHistory = false,
             withDeleted = false
           )
@@ -240,7 +240,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
       sendToKafkaProducer(pRecord).flatMap { recordMetaData =>
         scheduleFuture(3.seconds) {
           irwService.readPathAsync("/cmt/cm/bg-test1/info0", ConsistencyLevel.QUORUM).map {
-            case FullBox(i: DeletedInfoton) => succeed
+            case FullBox(_: DeletedInfoton) => succeed
             case somethingElse => fail(s"expected a deleted infoton, but got [$somethingElse] from irw (recoredMetaData: $recordMetaData).")
           }
         }
@@ -257,21 +257,23 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
       }
     }
 
-    val indexAllInfotons = executeAfterCompletion(processDeletePathCommands){
-      scheduleFuture(3.seconds){
+    val indexAllInfotons = processDeletePathCommands.flatMap { _ =>
+      cmwell.util.concurrent.spinCheck(250.millis, true, 30.seconds) {
         ftsServiceES.search(
-          pathFilter = Some(PathFilter("/cmt/cm/bg-test1", true)),
+          pathFilter = Some(PathFilter("/cmt/cm/bg-test1", descendants = true)),
           fieldsFilter = None,
           datesFilter = None,
           paginationParams = DefaultPaginationParams,
           sortParams = SortParam.empty
         )
-      }.map { x =>
+      }(_.total == 9)
+    }
+      .map { x =>
         withClue(s"$x") {
           x.total should equal(9)
         }
       }
-    }
+
 
     val groupedWriteCommands = afterFirst{
 
@@ -346,7 +348,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
             fieldsFilter = None,
             datesFilter = None,
             paginationParams = DefaultPaginationParams,
-            sortParams = SortParam.indexTimeAscending,
+            sortParams = SortParam("system.indexTime" -> Asc),
             withHistory = false,
             withDeleted = false
           )
@@ -452,20 +454,20 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
       }
     }
 
-    val reProcessNotIndexedOWCommands = afterFirst{
+    val reProcessNotIndexedOWCommands = afterFirst {
       val currentTime = System.currentTimeMillis()
-      val infotons = Seq.tabulate(5) {n =>
-          ObjectInfoton(
-            path = s"/cmt/cm/bg-test/re_process_ow/info_override",
-            dc = "dc",
-            indexTime = Some(currentTime + n*3),
-            lastModified = new DateTime(currentTime +n),
-            indexName = "cm_well_p0_0",
-            fields = Some(Map(s"a$n" -> Set(FieldValue(s"b$n"), FieldValue(s"c${n % 2}")))),
-            protocol=None
-          )
+      val infotons = Seq.tabulate(5) { n =>
+        ObjectInfoton(
+          path = s"/cmt/cm/bg-test/re_process_ow/info_override",
+          dc = "dc",
+          indexTime = Some(currentTime + n * 3),
+          lastModified = new DateTime(currentTime + n),
+          indexName = "cm_well_p0_0",
+          fields = Some(Map(s"a$n" -> Set(FieldValue(s"b$n"), FieldValue(s"c${n % 2}")))),
+          protocol = None
+        )
       }
-      val owCommands = infotons.map{ i => OverwriteCommand(i)}
+      val owCommands = infotons.map { i => OverwriteCommand(i) }
 
       // make kafka records out of the commands
       val pRecords = owCommands.map { writeCommand =>
@@ -475,44 +477,39 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
 
       // send them all
       val sendEm = Future.traverse(pRecords)(sendToKafkaProducer)
-
       sendEm.flatMap { _ =>
-        scheduleFuture(5.seconds) {
-          ftsServiceES.deleteInfotons(infotons).flatMap { _ =>
-            scheduleFuture(5.seconds) {
-              val sendAgain = Future.traverse(pRecords)(sendToKafkaProducer)
-              scheduleFuture(5.seconds) {
-                sendAgain.flatMap { _ =>
-                  ftsServiceES.search(
-                    pathFilter = Some(PathFilter("/cmt/cm/bg-test/re_process_ow", true)),
-                    fieldsFilter = None,
-                    datesFilter = None,
-                    paginationParams = DefaultPaginationParams,
-                    sortParams = FieldSortParams(List(("system.indexTime" -> Desc))),
-                    withHistory = false,
-                    debugInfo = true
-                  ).map { res =>
-                    withClue(res, res.infotons.head.lastModified.getMillis, currentTime) {
-                      res.infotons.size should equal(1)
-                      res.infotons.head.lastModified.getMillis should equal(currentTime + 4)
-                    }
-                  }
+        ftsServiceES.deleteInfotons(infotons).flatMap { _ =>
+          val sendAgain = Future.traverse(pRecords)(sendToKafkaProducer)
+          sendAgain.flatMap { _ =>
+            cmwell.util.concurrent.spinCheck(250.millis, true, 30.seconds) {
+              ftsServiceES.search(
+                pathFilter = Some(PathFilter("/cmt/cm/bg-test/re_process_ow", descendants = true)),
+                fieldsFilter = None,
+                datesFilter = None,
+                paginationParams = DefaultPaginationParams,
+                sortParams = FieldSortParams(List("system.indexTime" -> Desc)),
+                withHistory = false,
+                debugInfo = true)
+            }(res => res.infotons.size == 1 && res.infotons.head.lastModified.getMillis == currentTime + 4)
+              .map { res =>
+                withClue(res, res.infotons.headOption.fold(-1L)(_.lastModified.getMillis), currentTime) {
+                  res.infotons.size should equal(1)
+                  res.infotons.head.lastModified.getMillis should equal(currentTime + 4)
                 }
               }
-            }
           }
         }
       }
     }
 
-    val notGroupingOverrideCommands = afterFirst{
+    val notGroupingOverrideCommands = afterFirst {
       val numOfInfotons = 15
       val overrideCommands = Seq.tabulate(numOfInfotons) { n =>
         val infoton = ObjectInfoton(
           path = s"/cmt/cm/bg-test/override_not_grouped/info_override",
           dc = "dc",
           indexTime = Some(Random.nextLong()),
-          fields = Some(Map(s"Version${n % 3}" -> Set(FieldValue(s"a$n"), FieldValue(s"b${n % 2}")))),protocol=None)
+          fields = Some(Map(s"Version${n % 3}" -> Set(FieldValue(s"a$n"), FieldValue(s"b${n % 2}")))), protocol = None)
         OverwriteCommand(infoton)
       }
 
@@ -525,26 +522,28 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
       // send them all
       val sendEm = Future.traverse(pRecords)(sendToKafkaProducer)
 
-      sendEm.flatMap { recordMetaDataSeq =>
-        scheduleFuture(10.seconds) {
+      sendEm.flatMap { _ =>
+        cmwell.util.concurrent.spinCheck(250.millis, true, 30.seconds) {
           ftsServiceES.search(
             pathFilter = Some(PathFilter("/cmt/cm/bg-test/override_not_grouped", false)),
             fieldsFilter = None,
             datesFilter = None,
             paginationParams = DefaultPaginationParams,
             withHistory = true,
-            debugInfo = true).map { res =>
+            debugInfo = true)
+        }(_.total == numOfInfotons)
+          .map { res =>
             withClue(res) {
               res.total should equal(numOfInfotons)
             }
           }
-        }
       }
     }
 
-    val persistAndIndexLargeInfoton = afterFirst{
 
-      val lotsOfFields = Seq.tabulate(8000){ n =>
+    val persistAndIndexLargeInfoton = afterFirst {
+
+      val lotsOfFields = Seq.tabulate(8000) { n =>
         s"field$n" -> Set[FieldValue](FString(s"value$n"))
       }.toMap
 
@@ -558,25 +557,23 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
 
       val sendIt = sendToKafkaProducer(pRecord)
 
-      sendIt.flatMap { recordMetaData =>
-          scheduleFuture(10.seconds) {
+      sendIt.flatMap { _ =>
+        cmwell.util.concurrent.spinCheck(250.millis, true, 30.seconds) {
           val readReply = irwService.readPathAsync("/cmt/cm/bg-test-fat/fatfoton1")
           val searchReply = ftsServiceES.search(
             pathFilter = Some(PathFilter("/cmt/cm/bg-test-fat", true)),
             fieldsFilter = None,
             datesFilter = None,
-            paginationParams = DefaultPaginationParams
-          )
-
-          for{
-            r0 <- readReply
-            r1 <- searchReply
-          } yield withClue(r0, r1) {
-            r0 should not be empty
-            val paths = r1.infotons.map(_.path)
-            paths should contain("/cmt/cm/bg-test-fat/fatfoton1")
+            paginationParams = DefaultPaginationParams)
+          readReply.zip(searchReply)
+        } { case (readResult, searchResult) => readResult.nonEmpty && searchResult.infotons.exists(_.path == "/cmt/cm/bg-test-fat/fatfoton1") }
+          .map { case tuple@(readResult, searchResult) =>
+            withClue(tuple) {
+              readResult should not be empty
+              val paths = searchResult.infotons.map(_.path)
+              paths should contain("/cmt/cm/bg-test-fat/fatfoton1")
+            }
           }
-        }
       }
     }
 

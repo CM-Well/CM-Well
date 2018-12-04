@@ -19,7 +19,7 @@ package cmwell.bg.test
 import cmwell.bg.Merger
 import cmwell.domain.{FieldValue, ObjectInfoton}
 import cmwell.common.{DeletePathCommand, WriteCommand}
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, DateTimeZone}
 import org.scalatest.{DoNotDiscover, FlatSpec, Matchers, OptionValues}
 
 /**
@@ -84,7 +84,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
   }
 
   it should "merge WriteCommand with previous version correctly when new lastModified is equal" in {
-    val now = DateTime.now()
+    val now = DateTime.now(DateTimeZone.UTC)
     val previous  = ObjectInfoton(
       "/bg-test-merge/objinfo2",
       "dc1",
@@ -118,7 +118,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
   }
 
   it should "merge WriteCommand with previous version correctly when new lastModified is less than" in {
-    val now = DateTime.now()
+    val now = DateTime.now(DateTimeZone.UTC)
     val previous  = ObjectInfoton(
       "/bg-test-merge/objinfo2",
       "dc1",

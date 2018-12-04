@@ -18,7 +18,7 @@ package cmwell.common
 
 import org.scalacheck._
 import Prop.forAll
-import cmwell.common.formats.{JsonSerializer, JsonSerializer2, JsonSerializer5, JsonSerializer6}
+import cmwell.common.formats.{JsonSerializer, JsonSerializer6}
 import cmwell.domain._
 //import cmwell.common.build.{JsonSerializer => JS}
 

@@ -40,7 +40,8 @@ trait EmbeddedESSuite extends Suite with BeforeAndAfterAll { this: Suite =>
 
   override def beforeAll(): Unit = {
     if(nestedSuites.nonEmpty) {
-      println("Starting EmbeddedElasticSearch before all test suites")
+      print("Starting EmbeddedElasticSearch before all test suites")
+      print("\n")
       EmbeddedES.embeddedElastic.start()
     } else {
       EmbeddedES.embeddedElastic.recreateIndices()
@@ -50,7 +51,8 @@ trait EmbeddedESSuite extends Suite with BeforeAndAfterAll { this: Suite =>
 
   override def afterAll(): Unit = {
     if(nestedSuites.nonEmpty) {
-      println("Stopping EmbeddedElasticSearch")
+      print("Stopping EmbeddedElasticSearch")
+      print("\n")
       EmbeddedES.embeddedElastic.stop()
     }
     super.afterAll()

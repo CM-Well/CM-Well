@@ -90,7 +90,7 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
         path = s"/cmt/cm/bg-test-priority-before-batch/prio/info$n",
         dc = "dc",
         indexTime = None,
-        fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))),protocol=None)
+        fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))), protocol = None)
       WriteCommand(infoton)
     }
 
@@ -106,7 +106,7 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
         path = s"/cmt/cm/bg-test-priority-before-batch/batch/info$n",
         dc = "dc",
         indexTime = None,
-        fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))),protocol=None)
+        fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))), protocol = None)
       WriteCommand(infoton)
     }
 
@@ -116,39 +116,38 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
       new ProducerRecord[Array[Byte], Array[Byte]]("persist_topic", commandBytes)
     }
 
-    val f1 = Future{
-      records.foreach{ r =>
+    val f1 = Future {
+      records.foreach { r =>
         kafkaProducer.send(r)
       }
     }(scala.concurrent.ExecutionContext.Implicits.global)
-    val f2 = scheduleFuture(1000.millisecond){
-      Future{
-        pRecords.foreach{ r =>
+    val f2 = scheduleFuture(1000.millisecond) {
+      Future {
+        pRecords.foreach { r =>
           kafkaProducer.send(r)
         }
       }(scala.concurrent.ExecutionContext.Implicits.global)
     }
 
-    val assertFut = scheduleFuture(25.seconds) {
-      f2.flatMap { _ =>
-        logger error s"Finished sending"
-        val res = ftsServiceES.search(
+    val assertFut = f2.flatMap { _ =>
+      cmwell.util.concurrent.spinCheck(250.millis, true, 60.seconds) {
+        ftsServiceES.search(
           pathFilter = Some(PathFilter("/cmt/cm/bg-test-priority-before-batch/prio", true)),
           fieldsFilter = None,
           datesFilter = None,
           paginationParams = PaginationParams(0, 3000),
-          sortParams = SortParam.indexTimeDescending,
+          sortParams = SortParam("system.indexTime" -> Desc),
           withHistory = false,
           withDeleted = false
-        )(scala.concurrent.ExecutionContext.Implicits.global,logger)
-
-        withClue(res){
-          res.map{ _.infotons.size should equal(2000)}(scala.concurrent.ExecutionContext.Implicits.global)
-        }
-      }(scala.concurrent.ExecutionContext.Implicits.global)
-    }
-
-    Await.result(assertFut, 30.seconds)
+        )(scala.concurrent.ExecutionContext.Implicits.global, logger)
+      }(_.infotons.size == 2000)
+        .map { res =>
+          withClue(res) {
+            res.infotons.size should equal(2000)
+          }
+        }(scala.concurrent.ExecutionContext.Implicits.global)
+    }(scala.concurrent.ExecutionContext.Implicits.global)
+    Await.result(assertFut, 50.seconds)
   }
 
     override def afterAll() = {

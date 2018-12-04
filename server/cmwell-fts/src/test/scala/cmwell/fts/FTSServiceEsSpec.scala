@@ -18,9 +18,12 @@ package cmwell.fts
 
 import cmwell.common.formats.JsonSerializerForES
 import cmwell.domain._
-import com.typesafe.scalalogging.Logger
+import cmwell.util.build.BuildInfo
+import com.typesafe.scalalogging.{LazyLogging, Logger}
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
+import org.elasticsearch.client.Requests
 import org.elasticsearch.common.unit.TimeValue
+import org.elasticsearch.common.xcontent.XContentType
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 import org.scalatest._
@@ -110,11 +113,11 @@ trait FTSServiceTestTrait extends BeforeAndAfterAll with LazyLogging{ this: Suit
     val testIndicesTemplate = Source.fromURL(this.getClass.getResource("/test_indices_template_override.json")).getLines.reduceLeft(_ + _)
 
     embeddedElastic = EmbeddedElastic.builder()
-      .withElasticVersion(elasticsearchVersion)
+      .withElasticVersion(BuildInfo.elasticsearchVersion)
       .withSetting(PopularProperties.CLUSTER_NAME, "fts_test_cluster")
       .withTemplate("indices_template", indicesTemplate)
       .withTemplate("test_indices_template", testIndicesTemplate)
-      .withIndex("cm_well_p0_0")
+      .withIndex(testIndexName)
       .build()
       .start()
 
@@ -144,6 +147,7 @@ class FTSServiceEsSpec extends FlatSpec with Matchers with FTSServiceTestTrait w
   System.setProperty("dataCenter.id" , "dc_test")
   val isoDateFormatter = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
   val timeout =  FiniteDuration(10, SECONDS)
+  // scalastyle:off
 //
 //  val m : Map[String, Set[FieldValue]] = Map("name" -> Set(FString("yehuda"), FString("moshe")))
 //  val infotonToIndex = ObjectInfoton("/fts-test/objinfo1/a/b/c","dc_test", Some(System.currentTimeMillis()), m)
@@ -185,7 +189,7 @@ class FTSServiceEsSpec extends FlatSpec with Matchers with FTSServiceTestTrait w
 
   val bulkInfotons = Seq.tabulate(500){ i =>
     val infoton = ObjectInfoton("/fts-test/bulk1/info" + i, "dc_test", Some(System.currentTimeMillis()),
-      Map("name" + i -> Set[FieldValue](FString("value" + i), FString("another value" + i))))
+      Map("name" + i -> Set[FieldValue](FString("value" + i), FString("another value" + i))), Some("http"))
     ESIndexRequest(
       Requests.indexRequest(testIndexName).`type`("infoclone").id(infoton.uuid).create(true)
         .source(JsonSerializerForES.encodeInfoton(infoton), XContentType.JSON),
@@ -500,6 +504,7 @@ class FTSServiceEsSpec extends FlatSpec with Matchers with FTSServiceTestTrait w
 
   }
 */
+  // scalastyle:on
 }
 
 //class FTSoldTests extends FTSServiceEsSpec with FTSServiceESTest with FTSMixin
