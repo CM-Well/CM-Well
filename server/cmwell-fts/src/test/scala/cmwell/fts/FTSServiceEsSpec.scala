@@ -197,14 +197,14 @@ class FTSServiceEsSpec extends FlatSpec with Matchers with FTSServiceTestTrait w
     )
   }
 
-  "bulk indexing infotons" should "store them in current index" in {
-
-    Await.result(ftsService.executeIndexRequests(bulkInfotons, true), 20.seconds)
-//    embeddedElastic.refreshIndices()
-    Thread.sleep(15000)
-    val result = Await.result(ftsService.search(Some(PathFilter("/fts-test/bulk1", true)),None,None,DefaultPaginationParams), timeout)
-    result.total should equal (500)
-  }
+//  "bulk indexing infotons" should "store them in current index" in {
+//
+//    Await.result(ftsService.executeIndexRequests(bulkInfotons, true), 20.seconds)
+////    embeddedElastic.refreshIndices()
+//    Thread.sleep(15000)
+//    val result = Await.result(ftsService.search(Some(PathFilter("/fts-test/bulk1", true)),None,None,DefaultPaginationParams), timeout)
+//    result.total should equal (500)
+//  }
 
 //  "bulk indexing existing infotons" should "store their previous version in history index and current version in current index" in {
 //
