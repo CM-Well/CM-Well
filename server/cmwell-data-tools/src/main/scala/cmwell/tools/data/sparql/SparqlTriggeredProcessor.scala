@@ -314,7 +314,7 @@ class SparqlTriggeredProcessor(config: Config,
 
         processedConfig.sparqlMaterializer match {
 
-          case response if response.startsWith("Infoton not found") =>
+          case response if response.startsWith("Infoton not found") || response.startsWith("Infoton was deleted") =>
             Source.failed(new Exception(s"Could not load sparql infoton from configuration"))
           case "" =>
             Source.failed(new Exception(s"No sparql configuration was supplied"))
