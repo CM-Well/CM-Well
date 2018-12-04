@@ -55,7 +55,7 @@ import ld.cmw.passiveFieldTypesCacheImpl
 import ld.exceptions.BadFieldTypeException
 import logic.{CRUDServiceFS, InfotonValidator}
 import markdown.MarkdownFormatter
-import org.joda.time.DateTimeZone
+import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.ISODateTimeFormat
 import play.api.http.{ContentTypes, MediaType}
 import play.api.libs.json.{JsArray, JsBoolean, JsNumber, JsObject, JsString, _}
@@ -3000,6 +3000,55 @@ callback=< [URL] >
       case _               => Future.successful(Forbidden("Not allowed to use zz"))
     }
   }
+
+  def handleStpControl(agent: String) = Action.async(parse.raw) { implicit req =>
+
+    val p = Promise[Result]()
+
+    val infotonPath = s"/meta/sys/agents/sparql/$agent"
+    val flag = req.getQueryString("enabled").flatMap(asBoolean).getOrElse(true)
+
+    isAdminEvenNonProd(req) match {
+      case true => {
+        val infotons = crudServiceFS.getInfotonByPathAsync(infotonPath)
+
+        infotons.onComplete{
+          case Success(infotonBox) => {
+            infotonBox.isEmpty match {
+              case false => {
+                val fieldsOption = infotonBox.head.fields
+                val activeFlag = ("active" -> Set(FieldValue(flag)))
+
+                val newFields = fieldsOption match {
+                  case Some(fields) => fields + activeFlag
+                  case None => Map(activeFlag)
+                }
+
+                val newInfoton = infotonBox.head.copyInfoton(fields=Some(newFields), lastModified = new DateTime(System.currentTimeMillis))
+                val deletes = Map(infotonPath ->  Map("active" -> None))
+
+                crudServiceFS.upsertInfotons(inserts = List(newInfoton), deletes = deletes).onComplete({
+                  case Success(_)=> p.completeWith(Future.successful(Ok("""{"success":true}""")))
+                  case Failure(ex) => {
+                    logger.debug(ex.getMessage)
+                    throw ex
+                  }
+                })
+              }
+              case _ =>  p.completeWith(Future.successful(NotFound(s"Config infoton: $infotonPath  not found")))
+            }
+          }
+          case Failure(ex) => p.completeWith(Future.successful(NotFound(s"Config infoton: $infotonPath not found")))
+        }
+      }
+      case _ => p.completeWith(Future.successful(Forbidden("Not allowed to use stp")))
+    }
+
+    p.future
+
+  }
+
+
 
   def handleKafkaConsume(topic: String, partition: Int): Action[AnyContent] = Action { implicit req =>
     val isSysTopic = {

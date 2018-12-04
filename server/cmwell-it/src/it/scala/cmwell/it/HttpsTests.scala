@@ -330,4 +330,18 @@ class HttpsTests extends AsyncFunSpec with Matchers with Helpers with Inspectors
     it("should support search protocol system field")(search)
     it("should support https in non top-domain paths")(nonTopDomain)
   }
+
+  describe("Changing protocol without changing data") {
+    def blockingPost(ntriples: String) =
+      Http.post(_in, ntriples, queryParams = List("format" -> "ntriples", "blocking" -> ""), headers = tokenHeader)
+
+    val nonExistingInfoton: Future[Assertion] = {
+      val payload = """<https://example.org/no-such-infoton-in-the-world> <cmwell://meta/sys#path> "/example.org/no-such-infoton-in-the-world" . """
+      blockingPost(payload).flatMap { _ =>
+        Http.get(cmw / "example.org" / "no-such-infoton-in-the-world").flatMap(_.status should be(404))
+      }
+    }
+
+    it("should keep non-existing Infoton 404 even when changing its protocol")(nonExistingInfoton)
+  }
 }
