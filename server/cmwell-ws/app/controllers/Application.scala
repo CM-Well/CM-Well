@@ -1452,6 +1452,7 @@ callback=< [URL] >
       else {
         val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
         val sortedIteratorStateTry = ConsumeState.decode[SortedConsumeState](sortedIteratorID)
+        val hardLimit = if (isSimpleConsume) Settings.consumeSimpleChunkSize else Settings.consumeExpandableChunkSize
         val lengthHint = request
           .getQueryString("length-hint")
           .flatMap(asInt)
@@ -1462,11 +1463,8 @@ callback=< [URL] >
               .collect {
                 case b if b.threshold <= Settings.maxLength => b.threshold.toInt
               }
-              .getOrElse {
-                if (isSimpleConsume) Settings.consumeSimpleChunkSize
-                else Settings.consumeExpandableChunkSize
-              }
-          )
+              .getOrElse(hardLimit)
+          ).min(hardLimit)  //Making sure length hint is not bigger than max
 
         val debugInfo = request.queryString.keySet("debug-info")
 
