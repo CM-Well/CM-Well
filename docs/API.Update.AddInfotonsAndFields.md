@@ -86,6 +86,7 @@ The result of the call above will simply be a success code. We can see the new i
 * If you add a value for a field that already exists, the first value is *not* overwritten. Instead, a second triple relationship is created, or in other word, another field with the same name and a different value is created. To learn how to overwrite a field value, see [Replace Field Values](API.Update.ReplaceFieldValues.md).
 * When adding a new field value, you must use the full URI field name format, and not the prefix format (see [Field Name Formats](API.FieldNameFormats.md)).
 * Some RDF formats (such as N3 and Turtle) support the special "a" type predicate, which indicates that the subject "is a" typed entity (as defined by the third element in the triple). The "a" predicate is shorthand for `<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>`.
+* See [The Protocol System Field](API.ProtocolSystemField.md) to learn how the protocol value (**http** or **https**) of the infoton subject's URL is stored and handled.
 
 ## Related Topics ##
 [Replace Field Values](API.Update.ReplaceFieldValues.md)
