@@ -2,10 +2,10 @@
 
 When you ingest an infoton whose subject URL is ```<protocol>/<path>```, the ```<protocol>``` value is stored in the **protocol** system field, while the ```<path>``` value is stored in the **path** system field.
 
-For example, when an infoton whose URL is ```https:\\geo\countries``` is ingested, it will have the following system field values:
+For example, when an infoton whose URL is ```https://geo/countries``` is ingested, it will have the following system field values:
 
     protocol="https"
-    path="\geo\countries"
+    path="/geo/countries"
 
 The ingested infoton can have either **http** or **https** as its protocol value. If no protocol value is supplied, a default value of **http** is assumed.
 
