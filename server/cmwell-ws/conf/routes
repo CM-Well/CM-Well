@@ -27,7 +27,7 @@ GET         /_csshx                   controllers.Application.handleCsshx
 GET         /_null                    controllers.NullHandler.handle
 POST        /_null                    controllers.NullHandler.handle
 GET         /_kafka/:topic/:partition controllers.Application.handleKafkaConsume(topic: String, partition: Int)
-
+GET         /_stp/*agent            controllers.Application.handleStpControl(agent)
 GET         /_track/*tid      controllers.Application.handleTrack(tid)
 
 #SAML POC
@@ -80,6 +80,7 @@ POST        /                       controllers.Application.handlePost(path = ""
 PUT         /                       controllers.Application.handlePost(path = "")
 POST        /*path                  controllers.Application.handlePost(path)
 PUT         /*path                  controllers.Application.handlePost(path)
+
 
 DELETE      /*path                  controllers.Application.handleDELETE(path)
 
