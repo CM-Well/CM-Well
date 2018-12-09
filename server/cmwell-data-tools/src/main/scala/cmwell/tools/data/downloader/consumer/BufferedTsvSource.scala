@@ -33,7 +33,7 @@ import cmwell.util.akka.http.HttpZipDecoder
 
 import scala.concurrent.duration._
 import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 object BufferedTsvSource {
@@ -81,7 +81,7 @@ class BufferedTsvSource(initialToken: Future[String],
 
   override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
 
-    var callback : AsyncCallback[ConsumeResponse] = _
+    var callback : AsyncCallback[(Seq[(Token,Tsv)], Option[Token])] = _
     var asyncCallInProgress = false
 
     private var currentConsumeToken: Token = _
@@ -99,58 +99,25 @@ class BufferedTsvSource(initialToken: Future[String],
 
     override def preStart(): Unit = {
 
-      def bufferFillerCallback(tokenAndTsv : ConsumeResponse) : Unit = {
+      def bufferFillerCallback(infotonsAndNextToken :(Seq[(Token,Tsv)], Option[Token])) = infotonsAndNextToken match {
+        case (infotons, Some(nextToken)) =>
+          infotons.foreach {
+            case (token, tsvData: TsvData) => addToBuffer.invoke((Some(token, tsvData)))
+          }
 
-        changeConsumeCompleteState.invoke(tokenAndTsv.consumeComplete)
-
-        tokenAndTsv match {
-          case ConsumeResponse(_, true, _) =>
-            // We are at consume complete, so we can periodically retry
-            logger.info(s"$label is at horizon. Will retry at consume position $currentConsumeToken " +
-              s"in $horizonRetryTimeout")
-
-            val scheduleToken = currentConsumeToken
-
-            materializer.scheduleOnce(horizonRetryTimeout, () =>
-              invokeBufferFillerCallback(sendNextChunkRequest(scheduleToken)))
-
-          case ConsumeResponse(token, false, dataSource) =>
-            dataSource.runForeach {
-              case (token, tsvData: TsvData) => addToBuffer.invoke((Some(token, tsvData)))
-            }.onComplete{
-              case Success(_)=>
-                token.collect {
-                  case token=>
-                    changeCurrentConsumeTokenState.invoke(token)
-
-                    logger.debug(s"successfully consumed token: $currentConsumeToken point in time: ${
-                      decodeToken(currentConsumeToken).getOrElse("")
-                    } buffer-size: ${buf.size}")
-                }
-              case Failure(e)=>
-                logger.error(s"error consuming token ${token}, buffer-size: ${buf.size}. " +
-                  s"Scheduling retry in ${retryTimeout}", e)
-
-                val scheduleToken = currentConsumeToken
-
-                materializer.scheduleOnce(retryTimeout, () =>
-                  invokeBufferFillerCallback(sendNextChunkRequest(scheduleToken))
-                )
-            }
-
-        }
-
+          changeCurrentConsumeTokenState.invokeWithFeedback(nextToken).flatMap({ _ =>
+            changeInProgressState.invokeWithFeedback(false).map({ _ =>
+              logger.debug(s"successfully consumed token: $currentConsumeToken point in time: ${
+                decodeToken(currentConsumeToken).getOrElse("")
+              }  buffer-size: ${buf.size}")
+              getHandler(out).onPull()
+            })
+          })
       }
 
-      initialToken.onComplete({
-        case Success(token) => currentConsumeToken = token
-        case Failure(e) =>
-          logger.error(s"failed to obtain token for=$label",e)
-          throw new RuntimeException(e)
-      })
+      currentConsumeToken = Await.result(initialToken, 5.seconds)
 
-      callback = getAsyncCallback[ConsumeResponse](bufferFillerCallback)
-
+      callback = getAsyncCallback[(Seq[(Token,Tsv)], Option[Token])](bufferFillerCallback)
     }
 
     override def postStop(): Unit = {
@@ -285,7 +252,6 @@ class BufferedTsvSource(initialToken: Future[String],
     }
 
     setHandler(out, new OutHandler {
-
       override def onPull(): Unit = {
 
         if (buf.nonEmpty && isAvailable(out)){
@@ -296,7 +262,7 @@ class BufferedTsvSource(initialToken: Future[String],
           })
         }
 
-        if(buf.size < threshold && !asyncCallInProgress && currentConsumeToken !=null ){
+        if(buf.size < threshold && !asyncCallInProgress && isHorizon(consumeComplete,buf)==false){
           logger.debug(s"buffer size: ${buf.size} is less than threshold of $threshold. Requesting more tsvs")
           invokeBufferFillerCallback(sendNextChunkRequest(currentConsumeToken))
         }
@@ -304,22 +270,39 @@ class BufferedTsvSource(initialToken: Future[String],
     })
 
     private def invokeBufferFillerCallback(future: Future[ConsumeResponse]): Unit = {
-      changeInProgressState.invokeWithFeedback(true).map {
-         _ =>
-          future.onComplete {
-            case Success(consumeResponse) =>
-              callback.invokeWithFeedback(consumeResponse).map({
-                _ =>
-                  changeInProgressState.invoke(false)
-                  getHandler(out).onPull()
-              })
-            case Failure(e) =>
-              logger.error(s"TSV source future failed", e)
-              throw e
-          }
+      changeInProgressState.invokeWithFeedback(true).map { _ =>
+        future.onComplete {
+          case Success(consumeResponse) =>
+
+            changeConsumeCompleteState.invoke(consumeResponse.consumeComplete)
+
+            consumeResponse match {
+              case ConsumeResponse(_, true, _) =>
+
+                logger.info(s"$label is at horizon. Will retry at consume position $currentConsumeToken " +
+                  s"in $horizonRetryTimeout")
+
+                materializer.scheduleOnce(horizonRetryTimeout, () =>
+                  invokeBufferFillerCallback(sendNextChunkRequest(currentConsumeToken)))
+
+              case ConsumeResponse(nextToken ,false, infotonSource) =>
+                infotonSource.toMat(Sink.seq)(Keep.right).run
+                  .onComplete {
+                    case Success(consumedInfotons) =>
+                      callback.invoke((consumedInfotons, nextToken))
+                    case Failure(ex) =>
+                      logger.error(s"Received error. scheduling a retry in $retryTimeout", ex)
+                      materializer.scheduleOnce(retryTimeout, () =>
+                        invokeBufferFillerCallback(sendNextChunkRequest(currentConsumeToken))
+                      )
+                  }
+            }
+         case Failure(e) =>
+          logger.error(s"TSV source future failed", e)
+          throw e
+        }
       }
     }
-
   }
 
 }
