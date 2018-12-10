@@ -38,6 +38,39 @@ import scala.util.{Failure, Success, Try}
 
 object BufferedTsvSource {
 
+  def main(args: Array[String]): Unit = {
+
+
+    implicit val system: ActorSystem = ActorSystem.create("reactive-tools-system")
+    implicit val mat: Materializer = ActorMaterializer()
+    implicit val ex : ExecutionContext = mat.executionContext
+import akka.util.ByteString
+    val initTokenFuture = Future("ygAAMHwvZ3JhcGgubGluaw")
+
+
+    val list = Source.fromGraph(BufferedTsvSource(initTokenFuture,
+      3000,
+      "",
+      "http://api-dtc-prod-cmwell.int.thomsonreuters.com",
+      Some(200),
+      2.minute,
+      1.minute,
+      false,
+      label))
+      .filter(
+        downloadedInfotonData => downloadedInfotonData._1._1 !=null && downloadedInfotonData._1._2 !=null
+      ).throttle(1500,1.minute)
+      .map(d=>{
+      System.out.println(s"Received: ${d._1._2.path.utf8String}")
+    }).toMat(Sink.seq)(Keep.right).run()
+
+
+
+
+  }
+
+
+
   type SensorOutput = ((Token,TsvData), Boolean, Option[Long])
 
   case class ConsumeResponse(token: Option[String], consumeComplete: Boolean, infotonSource: Source[(Token, Tsv), Any])
