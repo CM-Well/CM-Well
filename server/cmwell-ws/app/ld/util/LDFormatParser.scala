@@ -719,7 +719,7 @@ object LDFormatParser extends LazyLogging {
 
               val allowWriteSysFields = (fieldName: String) =>
                 fieldName match {
-                  case "uuid" | "path" | "parent" | "lastModified" | "modifiedDate" | "indexTime" | "dataCenter" =>
+                  case "uuid" | "path" | "parent" | "lastModified" | "modifiedDate" | "indexTime" | "dataCenter" | "protocol" =>
                     authUtils.isOperationAllowedForUser(security.Overwrite, token, evenForNonProdEnv = true)
                   case _ => true
               }
