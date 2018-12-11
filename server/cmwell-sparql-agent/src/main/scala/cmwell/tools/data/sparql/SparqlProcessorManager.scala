@@ -384,7 +384,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
                           val updateTime =  LocalDateTime.ofInstant(Instant.ofEpochMilli(s.statsTime), ZoneId.systemDefault())
                           val currentTime = LocalDateTime.now(ZoneId.systemDefault())
 
-                          if (updateTime.until(currentTime, ChronoUnit.HOURS) > 24 && s.horizon == false) {
+                          if (updateTime.until(currentTime, ChronoUnit.MILLIS) > settings.sensorAlertDelay.toMillis && s.horizon == false) {
                             s"""<span style="color:red">${updateTime.toString}</span>"""
                           }
                           else {
