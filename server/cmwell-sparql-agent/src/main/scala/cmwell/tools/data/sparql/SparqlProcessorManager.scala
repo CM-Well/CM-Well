@@ -132,7 +132,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
   override def receive: Receive = {
     import akka.pattern._
     GridReceives.monitoring(sender).orElse {
-      case RequestStats(isRoot: Boolean)         => stringifyActiveJobs(currentJobs, isRoot).map(ResponseStats.apply).pipeTo(sender())
+      case RequestStats(isAdmin: Boolean)        => stringifyActiveJobs(currentJobs, isAdmin).map(ResponseStats.apply).pipeTo(sender())
       case CheckConfig                           => getJobConfigsFromTheUser.map(AnalyzeReceivedJobs.apply).pipeTo(self)
       case AnalyzeReceivedJobs(jobsReceived)     => handleReceivedJobs(jobsReceived, currentJobs)
       case Status.Failure(e)                     => logger.warn("Received Status failure ", e)
@@ -283,7 +283,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
   /**
     * Generates data for tables in cm-well monitor page
     */
-  def stringifyActiveJobs(jobs: Jobs, isRoot: Boolean = false): Future[Iterable[Table]] = {
+  def stringifyActiveJobs(jobs: Jobs, isAdmin: Boolean = false): Future[Iterable[Table]] = {
     implicit val timeout = Timeout(1.minute)
 
     def generateNonActiveTables(jobs: Jobs) = jobs.collect {
@@ -301,7 +301,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
           s"""<span style="color:${colour}"> **Non-Active - ${jobStatus.statusString} ** </span> ${path} <br/><span style="color:${colour}">${status}</span>"""
         )
 
-        val controls = isRoot match {
+        val controls = isAdmin match {
           case true => s" (<a href='/zz/stp-agent-$path?op=purge'>Reset Tokens</a>)"
           case false => ""
         }
@@ -426,7 +426,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
                 }
                 .getOrElse("")
 
-              val controls = isRoot match {
+              val controls = isAdmin match {
                 case true => s"<a href='/_stp/$path?enabled=false'>Pause</a>"
                 case false => ""
               }
