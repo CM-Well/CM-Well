@@ -59,7 +59,7 @@ import akka.util.ByteString
       label))
       .filter(
         downloadedInfotonData => downloadedInfotonData._1._1 !=null && downloadedInfotonData._1._2 !=null
-      ).throttle(1500,1.minute)
+      ).throttle(10000,1.minute)
       .map(d=>{
       System.out.println(s"Received: ${d._1._2.path.utf8String} from token ${d._1._1}")
     }).toMat(Sink.seq)(Keep.right).run()
@@ -138,12 +138,14 @@ class BufferedTsvSource(initialToken: Future[String],
             case (token, tsvData: TsvData) => addToBuffer.invoke((Some(token, tsvData)))
           }
 
+          //currentConsumeToken = nextToken
+
           changeCurrentConsumeTokenState.invokeWithFeedback(nextToken).flatMap({ _ =>
             changeInProgressState.invokeWithFeedback(false).map({ _ =>
               logger.debug(s"successfully consumed token: $currentConsumeToken point in time: ${
                 decodeToken(currentConsumeToken).getOrElse("")
               }  buffer-size: ${buf.size}")
-              logger.warn("OnPull Triggered")
+              //logger.warn("OnPull Triggered")
               getHandler(out).onPull()
             })
           })
@@ -288,15 +290,17 @@ class BufferedTsvSource(initialToken: Future[String],
     setHandler(out, new OutHandler {
       override def onPull(): Unit = {
         logger.warn("OnPull")
-        if (buf.nonEmpty && isAvailable(out)){
+        if (buf.nonEmpty /*&& isAvailable(out)*/){
           buf.dequeue().foreach(tokenAndData=>{
             val sensorOutput =  ((tokenAndData._1, tokenAndData._2), isHorizon(consumeComplete,buf), remainingInfotons)
             logger.debug(s"successfully de-queued tsv: $currentConsumeToken remaining buffer-size: ${buf.size}")
-            push(out,sensorOutput)
+            //push(out,sensorOutput)
+            emit(out,sensorOutput)
           })
         }
 
         if(buf.size < threshold && !asyncCallInProgress && isHorizon(consumeComplete,buf)==false){
+          asyncCallInProgress = true
           logger.debug(s"buffer size: ${buf.size} is less than threshold of $threshold. Requesting more tsvs")
           invokeBufferFillerCallback(sendNextChunkRequest(currentConsumeToken))
         }
@@ -304,7 +308,7 @@ class BufferedTsvSource(initialToken: Future[String],
     })
 
     private def invokeBufferFillerCallback(future: Future[ConsumeResponse]): Unit = {
-      asyncCallInProgress = true
+
       //changeInProgressState.invokeWithFeedback(true).map { _ =>
         future.onComplete {
           case Success(consumeResponse) =>
