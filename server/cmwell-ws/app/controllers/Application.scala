@@ -415,6 +415,10 @@ callback=< [URL] >
           rff => RawFieldFilter.eval(rff, typesCache, cmwellRDFHelper, timeContext).map(Some.apply)
         )
         fieldsFiltersFut.flatMap { fieldFilters =>
+
+          val tokenOpt = authUtils.extractTokenFrom(req)
+          val isAdmin = authUtils.isOperationAllowedForUser(security.Admin, tokenOpt)
+
           activeInfotonGenerator
             .generateInfoton(req.host,
                              path,
@@ -422,6 +426,7 @@ callback=< [URL] >
                              length,
                              offset,
                              isRoot,
+                             isAdmin,
                              withHistory,
                              fieldFilters,
                              timeContext)
@@ -3006,7 +3011,9 @@ callback=< [URL] >
     val infotonPath = s"/meta/sys/agents/sparql/$agent"
     val flag = req.getQueryString("enabled").flatMap(asBoolean).getOrElse(true)
 
-    isAdminEvenNonProd(req) match {
+    val tokenOpt = authUtils.extractTokenFrom(req)
+
+    (authUtils.isOperationAllowedForUser(security.Admin, tokenOpt)) match {
       case true => {
         val infotons = crudServiceFS.getInfotonByPathAsync(infotonPath)
 
