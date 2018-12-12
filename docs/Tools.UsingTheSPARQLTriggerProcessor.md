@@ -114,6 +114,21 @@ Here is a (truncated) example of the YAML configuration file:
 
     ...
 ```
+### Querying for Multiple Parameters in the sparqlToRoot Query ###
+
+In the **sparqlToRoot** SPARQL query defined in the STP sensor configuration, you can query for multiple parameters in the SELECT command. STP forwards the [key, value] pairs yielded by the **sparqlToRoot** query to the **_sp** materialization invocation as parameters.
+
+For example, the sparqlToRoot query could include the following SELECT command:
+
+    SELECT ?languge, ?orgId, ?country WHERE { … }
+
+Let’s say that for a certain path, the results were ```language=Japanese, orgId=613, country=Japan```. Then the **_sp** invocation for materialization will be with the following query parameters: 
+
+	/_sp?sp.language=Japanese&sp.orgId=613&sp.country=Japan
+
+The **sparqlMaterializer** query might also include those variables in the body of the SPARQL CONSTRUCT request, like so:
+
+	… WHERE { ?cmpUri ont:locatedIn %country% ; ont:speaksLanguage %language% . } ...
 
 ## Controlling the SPARQL Triggered Processor Job ##
 

@@ -21,6 +21,6 @@ object StpChecker {
   type Row = Iterable[String]
   case class Table(title: Iterable[String], header: Row, body: Iterable[Row])
 
-  case class RequestStats(isRoot: Boolean = false)
+  case class RequestStats(isAdmin: Boolean = false)
   case class ResponseStats(stats: Iterable[Table])
 }

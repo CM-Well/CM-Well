@@ -415,6 +415,10 @@ callback=< [URL] >
           rff => RawFieldFilter.eval(rff, typesCache, cmwellRDFHelper, timeContext).map(Some.apply)
         )
         fieldsFiltersFut.flatMap { fieldFilters =>
+
+          val tokenOpt = authUtils.extractTokenFrom(req)
+          val isAdmin = authUtils.isOperationAllowedForUser(security.Admin, tokenOpt)
+
           activeInfotonGenerator
             .generateInfoton(req.host,
                              path,
@@ -422,6 +426,7 @@ callback=< [URL] >
                              length,
                              offset,
                              isRoot,
+                             isAdmin,
                              withHistory,
                              fieldFilters,
                              timeContext)
@@ -1452,6 +1457,7 @@ callback=< [URL] >
       else {
         val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
         val sortedIteratorStateTry = ConsumeState.decode[SortedConsumeState](sortedIteratorID)
+        val hardLimit = if (isSimpleConsume) Settings.consumeSimpleChunkSize else Settings.consumeExpandableChunkSize
         val lengthHint = request
           .getQueryString("length-hint")
           .flatMap(asInt)
@@ -1462,11 +1468,8 @@ callback=< [URL] >
               .collect {
                 case b if b.threshold <= Settings.maxLength => b.threshold.toInt
               }
-              .getOrElse {
-                if (isSimpleConsume) Settings.consumeSimpleChunkSize
-                else Settings.consumeExpandableChunkSize
-              }
-          )
+              .getOrElse(hardLimit)
+          ).min(hardLimit)  //Making sure length hint is not bigger than max
 
         val debugInfo = request.queryString.keySet("debug-info")
 
@@ -3008,7 +3011,9 @@ callback=< [URL] >
     val infotonPath = s"/meta/sys/agents/sparql/$agent"
     val flag = req.getQueryString("enabled").flatMap(asBoolean).getOrElse(true)
 
-    isAdminEvenNonProd(req) match {
+    val tokenOpt = authUtils.extractTokenFrom(req)
+
+    (authUtils.isOperationAllowedForUser(security.Admin, tokenOpt)) match {
       case true => {
         val infotons = crudServiceFS.getInfotonByPathAsync(infotonPath)
 
