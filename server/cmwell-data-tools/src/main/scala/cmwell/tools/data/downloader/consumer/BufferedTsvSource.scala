@@ -51,7 +51,7 @@ import akka.util.ByteString
     val list = Source.fromGraph(BufferedTsvSource(initTokenFuture,
       3000,
       "",
-      "http://api-dtc-prod-cmwell.int.thomsonreuters.com",
+      "http://...",
       Some(200),
       2.minute,
       1.minute,
