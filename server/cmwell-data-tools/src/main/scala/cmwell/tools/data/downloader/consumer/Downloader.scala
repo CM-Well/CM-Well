@@ -45,12 +45,20 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
   private val bufferSize =
     config.getInt("akka.http.host-connection-pool.max-connections")
 
+  val createConsumerRetryTimeout: FiniteDuration = {
+    val timeoutDuration = Duration(
+      config.getString("cmwell.downloader.consumer.http-retry-timeout")
+    ).toCoarsest
+    FiniteDuration(timeoutDuration.length, timeoutDuration.unit)
+  }
+
   val retryTimeout: FiniteDuration = {
     val timeoutDuration = Duration(
       config.getString("cmwell.downloader.consumer.http-retry-timeout")
     ).toCoarsest
     FiniteDuration(timeoutDuration.length, timeoutDuration.unit)
   }
+
 
   val retryLimit = config.hasPath("cmwell.downloader.consumer.http-retry-limit") match {
     case true => Some(config.getInt("cmwell.downloader.consumer.http-retry-limit"))
@@ -61,6 +69,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
     case true => config.getDouble("cmwell.downloader.consumer.http-retry-delay-factor")
     case false => 1
   }
+
 
   type Token = String
   type Uuid = ByteString
@@ -410,11 +419,6 @@ class Downloader(
   import Downloader._
 
   implicit val labelId = label.map(LabelId.apply)
-
-  private val prefetchBufferSize = config.hasPath("cmwell.downloader.consumer.prefetch-buffer-size") match {
-    case true => config.getInt("cmwell.downloader.consumer.prefetch-buffer-size")
-    case false => 3000000L
-  }
 
   private[Downloader] val retryTimeout = {
     val timeoutDuration = Duration(
@@ -872,116 +876,55 @@ class Downloader(
     implicit ec: ExecutionContext
   ): Source[((Token, TsvData), Boolean, Option[Long]), NotUsed] = {
 
-    import akka.pattern._
+    val errorRetryTimeout: FiniteDuration = {
+      val timeoutDuration = Duration(
+        config.getString("infoton-source.buffer.http-error-retry-timeout")
+      ).toCoarsest
+      FiniteDuration(timeoutDuration.length, timeoutDuration.unit)
+    }
+
+    val consumeCompleteRetryTimeout: FiniteDuration = {
+      val timeoutDuration = Duration(
+        config.getString("infoton-source.buffer.http-horizon-retry-timeout")
+      ).toCoarsest
+      FiniteDuration(timeoutDuration.length, timeoutDuration.unit)
+    }
+
+    val lowWaterMark = config.hasPath("infoton-source.buffer.low-water-mark") match {
+      case true => config.getLong("infoton-source.buffer.low-water-mark")
+      case false => 300
+    }
+
+    val consumeLengthHint = config.hasPath("infoton-source.buffer.consume-length-hint") match {
+      case true => Some(config.getInt("infoton-source.buffer.consume-length-hint"))
+      case false => Some(300)
+    }
 
     val initTokenFuture = token match {
       case Some(t) => Future.successful(t)
       case None =>
         Downloader.getToken(baseUrl = baseUrl,
-                            path = path,
-                            params = params,
-                            qp = qp,
-                            recursive = recursive,
-                            indexTime = indexTime,
-                            isBulk = isBulk)
-    }
-
-    val bufferFillerActor = system.actorOf(
-      Props(
-        new BufferFillerActor(
-          threshold = (prefetchBufferSize * 0.1).toInt,
-          initToken = initTokenFuture,
-          baseUrl = baseUrl,
+          path = path,
           params = params,
-          isBulk = isBulk,
-          updateFreq = updateFreq,
-          label = label
-        )
-      )
-    )
-
-    class FakeState(initToken: Token) {
-
-      var currConsumeState: ConsumeState = SuccessState(0)
-
-      // indicates if no data is left to be consumed
-      var noDataLeft = false
-
-      // init of filling buffer with consumed data from token
-      //      Future { blocking { fillBuffer(initToken) } }
-
-      //      var consumerStatsActor = system.actorOf(Props(new ConsumerStatsActor(baseUrl, initToken, params)))
-
-      /**
-        * Gets next data element from buffer
-        *
-        * @return Option of position token -> Tsv data element
-        */
-      def next(): Future[Option[(Token, TsvData, Boolean, Option[Long])]] = {
-        implicit val timeout = akka.util.Timeout(5.seconds)
-
-        val elementFuture = (bufferFillerActor ? BufferFillerActor.GetData)
-          .mapTo[Option[(Token, TsvData, Boolean, Option[Long])]]
-
-        elementFuture
-          .flatMap(element => {
-
-            element match {
-              case Some((null, null, hz, remaining)) =>
-                val delay = 10.seconds
-                logger.info(
-                  s"Got empty result. Waiting for $delay before passing on the empty element."
-                )
-                akka.pattern.after(delay, system.scheduler)(
-                  Future.successful(Some((null, null, hz, remaining)))
-                )
-              case Some((token, tsvData, hz, remaining)) =>
-                Future.successful(Some(token, tsvData, hz, remaining))
-              case None =>
-                noDataLeft = true // received the signal of last element in buffer
-                Future.successful(None)
-              case null if noDataLeft =>
-                logger.debug("buffer is empty and noDataLeft=true")
-                Future.successful(None) // tried to get new data but no data available
-              case x =>
-                logger.error(s"unexpected message: $x")
-                Future.successful(None)
-            }
-
-          })
-          .recoverWith {
-            case ex =>
-              logger.error(
-                "Getting data from BufferFillerActor failed with an exception: ",
-                ex
-              )
-              akka.pattern.after(1.second, system.scheduler)(next())
-          }
-
-      }
-
+          qp = qp,
+          recursive = recursive,
+          indexTime = indexTime,
+          isBulk = isBulk)
     }
 
-    Source
-      .fromFuture(initTokenFuture)
-      .flatMapConcat { initToken =>
-        Source
-          .unfoldAsync(new FakeState(initToken)) { fs =>
-            fs.next().map {
-              case Some(tokenAndData) => {
-                Some(
-                  fs -> ((tokenAndData._1, tokenAndData._2), tokenAndData._3, tokenAndData._4)
-                )
-              }
-              case None => {
-                None
-              }
-            }
-          }
-          .filterNot(
-            downloadedInfotonData => downloadedInfotonData._1._1 == null && downloadedInfotonData._1._2 == null
-          )
-          .via(BufferFillerKiller(bufferFillerActor))
-      }
+    Source.fromGraph(BufferedTsvSource(initTokenFuture,
+      lowWaterMark,
+      params,
+      baseUrl,
+      consumeLengthHint,
+      errorRetryTimeout,
+      consumeCompleteRetryTimeout,
+      false,
+      label))
+      .filter(
+        downloadedInfotonData => downloadedInfotonData._1._1 !=null && downloadedInfotonData._1._2 !=null
+      )
+
+
   }
 }
