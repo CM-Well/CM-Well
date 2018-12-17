@@ -1278,6 +1278,14 @@ class FTSService(config: Config) extends NsSplitter{
     }(memoizedBreakoutForEsResponseToThinInfotons)
   }
 
+  private def esGetResponseToThinInfotons(esResponse: org.elasticsearch.action.get.GetResponse): FTSThinInfoton = {
+    val path = esResponse.getField("system.path").getValue[String]
+    val uuid = esResponse.getField("system.uuid").getValue[String]
+    val lastModified = esResponse.getField("system.lastModified").getValue[String]
+    val indexTime = esResponse.getField("system.indexTime").getValue[Long]
+    FTSThinInfoton(path, uuid, lastModified, indexTime, None)
+  }
+
   private def esResponseToInfotons(esResponse: org.elasticsearch.action.search.SearchResponse,
                                    includeScore: Boolean): Vector[Infoton] = {
 
@@ -1598,7 +1606,10 @@ class FTSService(config: Config) extends NsSplitter{
 
   def get(uuid: String
     , indexName: String
-    , partition: String = defaultPartition)(implicit executionContext: ExecutionContext): Future[Option[(FTSThinInfoton, Boolean)]] = ???
+    , partition: String = defaultPartition)(implicit executionContext: ExecutionContext): Future[Option[(FTSThinInfoton, Boolean)]] = {
+    val req = client.prepareGet(indexName, "infoclone", uuid).setStoredFields("system.path", "system.uuid", "system.lastModified", "system.indexTime")
+    injectFuture[GetResponse](req.execute).map(gr => Some(esGetResponseToThinInfotons(gr) -> !indexName.contains("history")))
+  }
 
   def countSearchOpenContexts(): Array[(String, Long)] = ???
 
