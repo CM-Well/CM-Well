@@ -169,6 +169,8 @@ abstract class RDFFormatter(hostForNs: String,
                 case FString(v, l, _) if v.startsWith("cmwell://") =>
                   (prop, refToLtrl(v.replaceFirst("cmwell:/", host)), model)
                 case FString(v, l, _) => (prop, stringToLtrl(v, l), model)
+                case FReference(v, _) if v.contains("//blank_node/") =>
+                  (prop, model.createResource(AnonId.create(v.drop(v.indexOf("//blank_node/")+13))), model)
                 case FReference(v, _) =>
                   (prop, refToLtrl({ if (v.startsWith("cmwell://")) v.replaceFirst("cmwell:/", host) else v }), model)
                 case FInt(v, _)        => (prop, intToLtrl(v), model)
@@ -213,9 +215,13 @@ abstract class RDFFormatter(hostForNs: String,
   private val memoizedBreakOut =
     scala.collection.breakOut[Map[String, Set[FieldValue]], (Property, RDFNode), Seq[(Property, RDFNode)]]
   def infoton(i: Infoton, distinctPathWithUuid: Boolean = false)(implicit ds: Dataset): Dataset = { //(implicit model: Model): Model = {
+
+    val m = ds.getDefaultModel
+
     val subject = {
       val s = if (distinctPathWithUuid || forceUniqueness) s"${i.path}#${i.uuid}" else i.path
-      ResourceFactory.createResource(uriFromPath(s, protocol = i.protocol))
+      if(s.startsWith("/blank_node/")) m.createResource(AnonId.create(s.drop("/blank_node/".length)))
+      else ResourceFactory.createResource(uriFromPath(s, protocol = i.protocol))
     }
     val fieldsData = fields(i.fields.map(_.filter(_._1.head != '$')))
     val extras = i.fields.fold(Seq.empty[(Property, RDFNode)])(_.collect {
@@ -298,7 +304,6 @@ abstract class RDFFormatter(hostForNs: String,
     {
       //TODO: make special internal graph for cm-well system properties. should be represented by a
       //TODO: VirtualInfoton under /meta/quad/ with a fixed alias (`cm-well`?)
-      val m = ds.getDefaultModel
       //val m = ds.getNamedModel("cmwell://meta/sys")
       selfAttributes.foreach {
         case (p, v) => {
