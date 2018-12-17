@@ -91,7 +91,7 @@
             "mapping": {
               "type": "text",
               "fields": {
-                "{name}%exact": {
+                "%exact": {
                   "type": "keyword",
                   "store": "false"
                 }

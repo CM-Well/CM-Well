@@ -578,7 +578,8 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                     debugInfoFlag: Boolean = false,
                     withDeleted: Boolean = false,
                     searchTimeout: Option[Duration] = None,
-                    fields: Seq[String])(
+                    storedFields: Seq[String],
+                    fieldsFromSource: Array[String])(
     render: (org.elasticsearch.action.search.SearchResponse, Boolean) => T
   )(implicit ec: ExecutionContext): Future[T] = {
     ftsService
@@ -592,7 +593,8 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
         withDeleted,
         debugInfo = debugInfoFlag,
         timeout = searchTimeout,
-        fields = fields
+        storedFields = storedFields,
+        fieldsFromSource = fieldsFromSource
       )(render)(ec)
       .map(_._2)(ec)
   }

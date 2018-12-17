@@ -20,7 +20,7 @@ import org.scalatest._
 import cmwell.domain._
 import cmwell.util.exceptions._
 import cmwell.driver.Dao
-import cmwell.util.{Box, FullBox, EmptyBox, BoxedFailure}
+import cmwell.util.{Box, BoxedFailure, EmptyBox, FullBox}
 import cmwell.util.concurrent.SimpleScheduler.scheduleFuture
 import org.apache.commons.codec.binary.Base64
 

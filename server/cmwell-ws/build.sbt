@@ -84,7 +84,11 @@ libraryDependencies ++= {
   dm("org.openrdf.sesame", "sesame-queryresultio-text"),
   dm("io.netty", "netty-transport"),
   dm("org.scala-lang", "scala-compiler"),
-  dm("org.openrdf.sesame", "sesame-sail-base")).map{_.exclude("io.netty", "netty")}
+  dm("org.openrdf.sesame", "sesame-sail-base"),
+  dm("io.circe","circe-core"),
+  dm("io.circe","circe-generic"),
+  dm("io.circe","circe-parser")
+  ).map{_.exclude("io.netty", "netty")}
 }
 
 testListeners := Seq.empty[TestReportListener]

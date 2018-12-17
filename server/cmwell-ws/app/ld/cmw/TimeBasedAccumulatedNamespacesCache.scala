@@ -180,7 +180,7 @@ class TimeBasedAccumulatedNsCache private (private[this] var mainCache: Map[NsID
       Future.successful(sb.append('}').result())
     } else (actor ? GetStatus).mapTo[String]
 
-  @inline override def init(time: Long): Unit = actor ! UpdateRequest(time)
+  @inline override def init(time: Long): Unit = {} //actor ! UpdateRequest(time)
 
   // private section
 
@@ -463,7 +463,7 @@ class TimeBasedAccumulatedNsCache private (private[this] var mainCache: Map[NsID
     }
 
     private[this] val pathFilter = Some(PathFilter("/meta/ns", false))
-    private[this] val fieldsForSearch = List("system.path", "fields.nn.prefix", "fields.nn.url")
+    private[this] val fieldsForSearch = Array("system.path", "fields.nn.prefix", "fields.nn.url")
     private[this] val bo =
       scala.collection.breakOut[Array[SearchHit], (NsID, (NsURL, NsPrefix)), Array[(NsID, (NsURL, NsPrefix))]]
     def nsSearchBy(fieldName: String, fieldValue: String): Future[Map[NsID, (NsURL, NsPrefix)]] = {
@@ -473,24 +473,31 @@ class TimeBasedAccumulatedNsCache private (private[this] var mainCache: Map[NsID
       crudService
         .fullSearch(pathFilter,
                     fieldFilters = Some(SingleFieldFilter(Must, Equals, fieldName, Some(fieldValue))),
-                    fields = fieldsForSearch) { (sr, _) =>
+                    storedFields = Seq.empty,
+                    fieldsFromSource = fieldsForSearch) { (sr, _) =>
           val hits = sr.getHits.getHits.toSeq
           Try
             .traverse(hits) { hit =>
-              if (hit
-                    .field("fields.nn.url")
-                    .getValues()
-                    .size() != 1 || hit.field("fields.nn.prefix").getValues().size() != 1) {
-                val path = Try(hit.field("system.path").getValue[String]).recover {
-                  case t => s"path not available due to [${t.getClass.getSimpleName}] with message [${t.getMessage}]"
-                }.get
+              import io.circe._
+              import io.circe.parser._
+              val source = parse(hit.getSourceAsString).right.get
+              val systemPart = source.hcursor.downField("system")
+              val fieldsPart = source.hcursor.downField("fields").downField("nn")
+              val prefixList = fieldsPart.get[List[String]]("prefix").right.get
+              val urlList = fieldsPart.get[List[String]]("url").right.get
+
+              if (prefixList.size != 1 || urlList.size != 1) {
+                val path = systemPart.get[String]("path") match {
+                  case Left(failure) => s"path not available due to $failure"
+                  case Right(pathTmp) => pathTmp
+                }
                 Failure(new RuntimeException(s"More than one prefix or URL values encountered when trying to resolve [" +
                                              fieldName+"] value for ["+fieldValue+"] in one of the ["+hits.size.toString+
                                              "] results found! (bad path is ["+path+"])"))
               } else {
-                val pathOpt = Option(hit.field("system.path").getValue[String])
-                val urlOpt = Option(hit.field("fields.nn.url").getValue[String])
-                val prefixOpt = Option(hit.field("fields.nn.prefix").getValue[String])
+                val pathOpt = systemPart.get[String]("path").toOption
+                val urlOpt = fieldsPart.downField("url").downArray.as[String].toOption
+                val prefixOpt = fieldsPart.downField("prefix").downArray.as[String].toOption
                 (for {
                   path <- pathOpt
                   url <- urlOpt
@@ -508,7 +515,7 @@ class TimeBasedAccumulatedNsCache private (private[this] var mainCache: Map[NsID
         .transform(_.flatMap(identity))
     }
 
-    private[this] val fieldsForIndexTimeSearch = "system.indexTime" :: fieldsForSearch
+    private[this] val fieldsForIndexTimeSearch = fieldsForSearch ++ Array("system.indexTime")
     private[this] val paginationParamsForIndexTimeSearch = PaginationParams(0, 512)
     private[this] val bo4err =
       scala.collection.breakOut[Seq[(Long, Try[(NsID, Long, NsURL, NsPrefix)])], Throwable, List[Throwable]]
@@ -520,30 +527,38 @@ class TimeBasedAccumulatedNsCache private (private[this] var mainCache: Map[NsID
         .fullSearch(
           pathFilter,
           fieldFilters = Some(SingleFieldFilter(Must, GreaterThan, "system.indexTime", Some(indexTime.toString))),
-          fields = fieldsForIndexTimeSearch,
+          storedFields = Seq.empty,
+          fieldsFromSource = fieldsForIndexTimeSearch,
           paginationParams = paginationParamsForIndexTimeSearch,
           fieldSortParams = SortParam("system.indexTime" -> Asc)
         ) { (sr, _) =>
+          logger.info(s"Eli: response is: $sr")
           val hits = sr.getHits.getHits
 
           val entries: Seq[(Long, Try[(NsID, Long, NsURL, NsPrefix)])] = hits.map { hit =>
-            val indexTimeOpt = Option(hit.field("system.indexTime").getValue[Long])
+            import io.circe._
+            import io.circe.parser._
+            val source = parse(hit.getSourceAsString).right.get
+            val systemPart = source.hcursor.downField("system")
+            val fieldsPart = source.hcursor.downField("fields").downField("nn")
+            val indexTimeOpt = systemPart.get[Long]("indexTime").toOption
             val timeToSortBy = indexTimeOpt.getOrElse(Long.MaxValue)
 
+            val prefixList = fieldsPart.get[List[String]]("prefix").right.get
+            val urlList = fieldsPart.get[List[String]]("url").right.get
+
             val tryValue =
-              if (hit
-                    .field("fields.nn.url")
-                    .getValues()
-                    .size() != 1 || hit.field("fields.nn.prefix").getValues().size() != 1) {
-                val path = Try(hit.field("system.path").getValue[String]).recover {
-                  case t => s"path not available due to [${t.getClass.getSimpleName}] with message [${t.getMessage}]"
-                }.get
+              if (prefixList.size != 1 || urlList.size != 1) {
+                val path = systemPart.get[String]("path") match {
+                  case Left(failure) => s"path not available due to $failure"
+                  case Right(path) => path
+                }
                 Failure(new RuntimeException("More than one prefix or URL values encountered when trying to consume latest changes in one of the [" +
                                              hits.size.toString + "] results found! (bad path is [" + path + "])"))
               } else {
-                val pathOpt = Option(hit.field("system.path").getValue[String])
-                val urlOpt = Option(hit.field("fields.nn.url").getValue[String])
-                val prefixOpt = Option(hit.field("fields.nn.prefix").getValue[String])
+                val pathOpt = systemPart.get[String]("path").toOption
+                val urlOpt = fieldsPart.downField("url").downArray.as[String].toOption
+                val prefixOpt = fieldsPart.downField("prefix").downArray.as[String].toOption
                 (for {
                   path <- pathOpt
                   infotonIndexTime <- indexTimeOpt

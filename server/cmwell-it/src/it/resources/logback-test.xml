@@ -34,7 +34,7 @@
 
     <root level="${log.level:-INFO}">
         <appender-ref ref="FILE" />
-        <appender-ref ref="STDOUT-ERROR" />
+        <!--<appender-ref ref="STDOUT-ERROR" />-->
     </root>
     <jmxConfigurator />
 </configuration>

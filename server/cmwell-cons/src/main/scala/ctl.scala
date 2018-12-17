@@ -1991,8 +1991,10 @@ abstract class Host(user: String,
               uploadUserInfotons: Boolean = true,
               withUpdateSchemas: Boolean = false,
               hosts: GenSeq[String] = ips) {
+/*
     info("upgrade is disable until further notice")
     sys.exit(1)
+*/
 
     val currentVersion = extractVersionFromProcNode(ips(0))
     //If all 3 retries will fail, will wait for result. If fails, upgrade will be stopped.

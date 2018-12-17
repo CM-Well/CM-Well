@@ -27,7 +27,6 @@ import com.typesafe.scalalogging.Logger
 import io.netty.util.{HashedWheelTimer, Timeout, TimerTask}
 import org.elasticsearch.action.DocWriteResponse.Result
 import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse
-import org.elasticsearch.action.admin.indices.alias.IndicesAliasesResponse
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse
 import org.elasticsearch.action.bulk.{BulkItemResponse, BulkResponse}
 import org.elasticsearch.action.delete.DeleteResponse
@@ -197,17 +196,6 @@ class FTSService(config: Config) extends NsSplitter{
     { logAdminCommand("createIndex")
       injectFuture[CreateIndexResponse](client.admin.indices().prepareCreate(indexName).execute(_))}
 
-  def updateAllAlias()(implicit executionContext: ExecutionContext): Future[IndicesAliasesResponse] = {
-    logAdminCommand("updateAllAlias")
-    injectFuture[IndicesAliasesResponse](
-      client
-        .admin()
-        .indices()
-        .prepareAliases()
-        .addAlias("cm_well_*", "cm_well_all")
-        .execute(_)
-    )}
-
   def listChildren(path: String, offset: Int, length: Int, descendants: Boolean = false,
                    partition: String = defaultPartition)
                   (implicit executionContext:ExecutionContext) : Future[FTSSearchResponse] = {
@@ -343,7 +331,8 @@ class FTSService(config: Config) extends NsSplitter{
       partition,
       debugInfo,
       timeout,
-      fields = "system.path" :: "system.uuid" :: "system.lastModified" :: "system.indexTime" :: Nil
+      storedFields = "system.path" :: "system.uuid" :: "system.lastModified" :: "system.indexTime" :: Nil,
+      fieldsFromSource = Array.empty
     )(esResponseToThinInfotons).map {
       case (response, thinSeq, searchQueryStr) =>
         FTSThinSearchResponse(response.getHits.getTotalHits,
@@ -367,7 +356,7 @@ class FTSService(config: Config) extends NsSplitter{
     * @param partition
     * @param debugInfo
     * @param timeout
-    * @param fields
+    * @param storedFields
     * @param render - function provided should take 2 arguments.
     *               The raw ES response, and a boolean indicating if score should (could) be included (i.e. no sorting)
     * @param executionContext
@@ -385,25 +374,29 @@ class FTSService(config: Config) extends NsSplitter{
                     partition: String = defaultPartition,
                     debugInfo: Boolean,
                     timeout: Option[Duration],
-                    fields: Seq[String])(render: (SearchResponse, Boolean) => T)(
+                    storedFields: Seq[String],
+                    fieldsFromSource: Array[String])(render: (SearchResponse, Boolean) => T)(
     implicit executionContext: ExecutionContext,
     logger: Logger = loger
   ): Future[(SearchResponse, T, Option[String])] = {
+    require(storedFields.isEmpty ^ fieldsFromSource.isEmpty, "Either ask stored fields or fields from source but not both or none.")
 
-    logger.debug(
-      s"Search request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $sortParams, $withHistory, $partition, $debugInfo"
+    logger.info(
+      s"Eli: Search request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $sortParams, $withHistory, $partition, $debugInfo"
     )
 
     if (pathFilter.isEmpty && fieldsFilter.isEmpty && datesFilter.isEmpty) {
       throw new IllegalArgumentException("at least one of the filters is needed in order to search")
     }
 
-    val request = client
+    val requestTmp = client
       .prepareSearch(s"${partition}_all")
       .setTypes("infoclone")
-      .storedFields(fields: _*)
       .setFrom(paginationParams.offset)
       .setSize(paginationParams.length)
+
+    val request = if (storedFields.nonEmpty) requestTmp.storedFields(storedFields: _*)
+    else requestTmp.setFetchSource(fieldsFromSource, Array.empty[String])
 
     applySortToRequest(sortParams, request)
 
@@ -435,9 +428,8 @@ class FTSService(config: Config) extends NsSplitter{
       }
       .andThen {
         case Failure(err) =>
-          logger.error(
-            s"thinSearch failed, time took: [$oldTimestamp - ${System.currentTimeMillis()}], request:\n${request.toString}"
-          )
+          logger.error(s"thinSearch failed, time took: [$oldTimestamp - ${System.currentTimeMillis()}], request:\n${request.toString}. The exception was: "
+            , err)
       }
   }
 
