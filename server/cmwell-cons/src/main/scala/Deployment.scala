@@ -165,7 +165,7 @@ abstract class ComponentProps(h: Host, name: String, location: String, hasDate: 
     Some(getTarResName(packageName, location))
 
   def getTarResName(path: String, location: String): String =
-    h.command("tar -tf " + s"$location/$path" + " | awk -F '/' '{print $1}' | head -1").get.trim
+    h.command("tar -tf " + s"$location/$path" + " | head -1 | awk -F '/' '{print $1}'").get.trim
 
   def getZipResName(path: String, location: String): String =
     h.command("unzip -l " + s"$location/$path" + " | awk '{print $4}' |  awk -F '/' '{print $1}' | head -4 | tail -1")
@@ -586,6 +586,9 @@ case class JavaProps(h: Host) extends ComponentProps(h, "jdk", "components-extra
   def targetLocation = "app"
   def unpackCommand: Option[String] = Some("tar -xf")
   def symLinkName: Option[String] = Some("java")
+  override def getTarResName(path: String, location: String): String =
+    h.command("tar -tf " + s"$location/$path" + " | head -1 | awk -F '/' '{print $2}'").get.trim
+
 }
 
 case class Mx4JProps(h: Host) extends ComponentProps(h, "mx4j", "components", false) {

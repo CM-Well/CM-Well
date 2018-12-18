@@ -102,7 +102,7 @@ case class LocalHost(dataCenter: String = "lh",
 
   override def command(com: String, sudo: Boolean = false): Try[String] = {
     // scalastyle:off
-    if (verbose) println(s"localhost: ${com}. ${Thread.currentThread().getStackTrace().mkString("\n")}")
+    if (verbose) println(s"localhost: ${com}.")
     // scalastyle:on
     Try(Seq("bash", "-c", s"$com").!!)
   }

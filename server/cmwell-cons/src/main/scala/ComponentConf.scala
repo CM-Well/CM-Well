@@ -310,9 +310,9 @@ case class ElasticsearchConf(clusterName: String,
 
   override def getPsIdentifier = {
     if (dir == "es-master")
-      s"/log/es-master/"
+      s"PsIdElasticMasterNode"
     else
-      s"/log/es${getIndexTxt}/"
+      s"PsIdElasticDataNode$getIndexTxt"
   }
   override def mkScript: ConfFile = {
     // Seq(s"-javaagent:$home/app/ctrl/cur", s"-Dctrl.listenAddress=$listenAddress", s"-Dctrl.seedNodes=${host}",
@@ -403,7 +403,9 @@ case class ElasticsearchConf(clusterName: String,
     val mappingContent = ResourceBuilder.getResource(s"scripts/templates/indices_template_new.json",m2)
 
     val loggerConf = ResourceBuilder.getResource("scripts/templates/es-log4j2.properties", Map.empty[String, String])
-    val jvmOpts = ResourceBuilder.getResource("scripts/templates/es-jvm.options", Map.empty[String, String])
+
+    val m3 = Map[String, String]("ps_id" -> getPsIdentifier)
+    val jvmOpts = ResourceBuilder.getResource("scripts/templates/es-jvm.options", m3)
 
     List(ConfFile("elasticsearch.yml", confContent, false, Some(s"$home/conf/$dir/config")),
          ConfFile("indices_template_new.json", mappingContent, false),

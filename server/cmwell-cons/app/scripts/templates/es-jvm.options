@@ -102,3 +102,7 @@
 #-XX:+UseGCLogFileRotation
 #-XX:NumberOfGCLogFiles=32
 #-XX:GCLogFileSize=128M
+
+#CM-Well specific
+#special id to make the process searchable using ps
+-D{{ps_id}}
