@@ -22,14 +22,14 @@ import cmwell.util.concurrent.SimpleScheduler._
 import cmwell.util.concurrent._
 import cmwell.util.http.SimpleResponse
 import com.typesafe.scalalogging.LazyLogging
-import org.scalatest.{AsyncFunSpec, Matchers}
+import org.scalatest.{AsyncFunSpec, Matchers, Inspectors}
 import play.api.libs.json._
 
 import scala.concurrent.duration._
 import scala.concurrent._
 import scala.util.Success
 
-class RDFTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAndPrefixes with LazyLogging {
+class RDFTests extends AsyncFunSpec with Matchers with Helpers with Inspectors with NSHashesAndPrefixes with LazyLogging {
 
   val clf = cmw / "clearforest.com"
 
@@ -199,6 +199,28 @@ class RDFTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAndP
     }
   }
 
+  val blankNodesIngestAndRender = {
+    import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+    val path = cmw / "refinitiv.com" / "eliel"
+    val qps = List("format" -> "ntriples", "xg" -> "1")
+    val data =
+      """<http://refinitiv.com/eliel> <http://refinitiv.com/ont/f1> _:CAFEBABE .
+        |_:CAFEBABE <http://refinitiv.com/ont/f2> "value" .""".stripMargin
+    Http.post(_in, data, queryParams = List("format" -> "ntriples"), headers = tokenHeader).flatMap { _ =>
+      spinCheck(100.millis, true)(Http.get(path, queryParams = qps))(_.status == 200).map { resp =>
+        val triples = resp.payload.lines.filterNot(_ contains "/meta/sys").map(_.split(' ')).toSeq
+        //
+        // Output should be something like that:
+        //
+        //   <http://refinitiv.com/eliel> <http://refinitiv.com/ont/f1> _:BA61b22281X2dX811bX2dX47c2X2dX9405X2dX5e65f992a599 .
+        //   _:BA61b22281X2dX811bX2dX47c2X2dX9405X2dX5e65f992a599 <http://refinitiv.com/ont/f2> "value" .
+        //
+        forExactly(1, triples)(_(2) should startWith("_:B"))
+        forExactly(1, triples)(_(0) should startWith("_:B"))
+      }
+    }
+  }
+
   describe("RDF API") {
     it("should upload turtle document with Yaakov's data")(uploadYaakov)
     it("should verify Yaakov's data has been ingested OK")(verifyIngest)
@@ -208,5 +230,6 @@ class RDFTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAndP
     it("should verify weird output is same as ingested")(verifyWeirdIngest)
     it("should upload empty typed value")(uploadEmptyType)
     it("should verify empty output is same as ingested")(verifyEmptyIngest)
+    it("should render blank nodes as blank nodes")(blankNodesIngestAndRender)
   }
 }
