@@ -324,10 +324,18 @@ abstract class Host(user: String,
                  hosts: GenSeq[String] = ips,
                  sudo: Boolean = false,
                  sudoer: Option[Credentials] = None) {
+    hosts.foreach(host => createFile(path, content, host, sudo, sudoer))
+  }
+
+  def createFile(path: String,
+                 content: String,
+                 host: String,
+                 sudo: Boolean,
+                 sudoer: Option[Credentials]) {
     if (sudo)
-      command(s"""echo -e '$content' | sudo tee $path > /dev/null""", hosts, true, sudoer)
+      command(s"""echo -e '$content' | sudo tee $path > /dev/null""", host, true, sudoer)
     else
-      command(s"""echo $$'$content' > $path""", hosts, false)
+      command(s"""echo $$'$content' > $path""", host, false)
   }
 
   val shipperConfLocation = s"${instDirs.globalLocation}/cm-well/conf/logstash"
@@ -1042,6 +1050,25 @@ abstract class Host(user: String,
     dirs.foreach(dir => command(s"sudo chmod +x $dir; sudo chown $user:$user $dir", hosts, true, Some(sudoer)))
   }
 
+  def changeKernelSettings(user: String, sudoer: Credentials, hosts: GenSeq[String]): Unit = {
+    hosts.foreach { host =>
+      val maxMapCount = command(s"sudo sysctl -n vm.max_map_count", host, true, Some(sudoer)).map(_.trim.toLong)
+      maxMapCount match {
+        case Success(currentMax) =>
+          val minimumRequiredByEs = 262144
+          if (currentMax < minimumRequiredByEs) {
+            val cmwellKernelConf = Source.fromFile("scripts/templates/60-cm-well.conf").mkString.replace("\n", "\\\\n")
+            createFile("/etc/sysctl.d/60-cm-well.conf", cmwellKernelConf, host, true, Some(sudoer))
+            command("sudo sysctl -p /etc/sysctl.d/60-cm-well.conf", host, true, Some(sudoer))
+          }
+        // scalastyle:off
+        case Failure(ex) => println(s"Failed getting vm.max_map_count from host $host. The execption message is: ${ex.getMessage}")
+        // scalastyle:on
+      }
+
+    }
+  }
+
   def prepareMachines(): Unit = prepareMachines(ips.par, "", "", "")
 
   def prepareMachines(hosts: String*): Unit = prepareMachines(hosts, "", "", "")
@@ -1070,6 +1097,7 @@ abstract class Host(user: String,
     gainTrust(user, pass, hosts)
     refreshUserState(user, Some(sudoer), hosts)
     changeOwnerAndAddExcutePermission(hosts, disksWithAncestors(disks).toSeq, user, sudoer)
+    changeKernelSettings(user, sudoer, hosts)
     createDataDirs(hosts)
     createCmwellSymLink(hosts, Some(sudoer))
     registerCtrlService(hosts, sudoer)
@@ -1084,12 +1112,13 @@ abstract class Host(user: String,
   private def copySshpass(hosts: GenSeq[String], sudoer: Credentials): Unit = {
     //only copy sshpass if it's an internal one
     if (UtilCommands.linuxSshpass == "bin/utils/sshpass") {
+      hosts.foreach(host => s"ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR ${sudoer.name}@$host mkdir -p ~/bin".!!)
       hosts.foreach(
         host =>
           Seq("rsync",
             "-z",
             "-e",
-            "ssh -o StrictHostKeyChecking=no ",
+            "ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR",
             UtilCommands.linuxSshpass,
             s"${sudoer.name}@$host:~/bin/") !!
       )
