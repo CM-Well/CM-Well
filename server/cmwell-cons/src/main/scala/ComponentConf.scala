@@ -465,15 +465,20 @@ case class ZookeeperConf(home: String, clusterName: String, servers: Seq[String]
   }
 
   override def mkScript: ConfFile = {
-    val exports = s"""export PATH=$home/app/java/bin:$home/bin/utils:$PATH\nexport ZOO_LOG_DIR=$home/log/zookeeper\nexport JVMFLAGS="-Xmx500m -Xms500m""""
+    val exports = s"""export PATH=$home/app/java/bin:$home/bin/utils:$PATH
+                     |export ZOO_LOG_DIR=$home/log/$dir
+                     |export ZOO_LOG4J_PROP="INFO, ROLLINGFILE"
+                     |export ZOOCFGDIR=$confDir
+                     |export JMXDISABLE=true
+                     |export JVMFLAGS="-Xmx500m -Xms500m -Dlog4j.configuration=file:$confDir/log4j.properties"""".stripMargin
     // scalastyle:off
     val cp = s"cur/lib/slf4j-log4j12-1.7.25.jar:cur/lib/slf4j-api-1.7.25.jar:cur/lib/netty-3.10.6.Final.jar:cur/lib/log4j-1.2.17.jar:cur/lib/jline-0.9.94.jar:cur/zookeeper-${cmwell.util.build.BuildInfo.zookeeperVersion}.jar:$home/conf/$dir"
     val scriptString =
       s"""
-         |$exports
+          |$exports
           |$CHKSTRT
           |$BMSG
-          |starter $home/app/zookeeper/cur/bin/zkServer.sh start $home/conf/$dir/zoo.cfg > $home/log/$dir/stdout.log 2>  $home/log/$dir/stderr.log &
+          |starter $home/app/zookeeper/cur/bin/zkServer.sh start-foreground > $home/log/$dir/stdout.log 2>  $home/log/$dir/stderr.log &
       """.stripMargin
     // scalastyle:on
     ConfFile("start.sh", scriptString, true)
@@ -491,11 +496,10 @@ case class ZookeeperConf(home: String, clusterName: String, servers: Seq[String]
     val myId = (servers.indexOf(hostIp) + 1).toString
 
     val loggerMap = Map[String, String]("zookeeperLogDir" -> s"$home/log/$dir")
-
     val loggerConf = ResourceBuilder.getResource("scripts/templates/log4j-zookeeper.properties", loggerMap)
 
     List(ConfFile("zoo.cfg", confContent, false),
-         ConfFile("log4j.properties", loggerConf, false, Some(s"$home/app/zookeeper/cur/conf")),
+         ConfFile("log4j.properties", loggerConf, false),
          ConfFile("myid", myId, false, Some(s"$home/data/$dir")))
   }
 }
