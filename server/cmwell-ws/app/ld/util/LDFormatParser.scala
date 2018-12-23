@@ -14,7 +14,7 @@
   */
 package cmwell.web.ld.util
 
-import java.io.InputStream
+import java.io.{ByteArrayInputStream, InputStream, OutputStream}
 
 import cmwell.domain._
 import cmwell.fts._
@@ -608,8 +608,10 @@ object LDFormatParser extends LazyLogging {
 
     require(dialectToLang.isDefinedAt(dialect), "the format " + dialect + " is unknown.")
 
+    val rdfDataWithBlankNodesPersistence = persistBlankNodesLabels(rdfData, dialect)
+
     val DataSetConstructs(models, urlToLast, metaInfotonsMap, partialFeedback) =
-      modelsFromRdfDataInputStream(cmwellRDFHelper, timeContext)(rdfData, dialect)
+      modelsFromRdfDataInputStream(cmwellRDFHelper, timeContext)(rdfDataWithBlankNodesPersistence, dialect)
 
     val globalParsingResponse =
       parseGlobalExpressionsAsync(cmwellRDFHelper, crudServiceFS)(models, urlToLast, metaInfotonsMap, timeContext)
@@ -1221,4 +1223,14 @@ object LDFormatParser extends LazyLogging {
           .exists(_.isEmpty)})"
       )
   }
+
+  def persistBlankNodesLabels(payload: InputStream, dialect: String): InputStream =
+    if(!Set("NQ","NQUADS","N-TRIPLE")(dialect)) payload else mapInputStreamLines(payload) { line =>
+      val cmwellAnonRegex = "_:B(A[a-f0-9X]{32,})".r
+      cmwellAnonRegex.findFirstMatchIn(line).fold(line){ m =>
+        val res = s"${m.before} <http://blank_node/${m.group(1)}> ${m.after}"
+        logger.info(s">>>>> $res")
+        res
+      }
+    }
 }

@@ -199,15 +199,16 @@ class RDFTests extends AsyncFunSpec with Matchers with Helpers with Inspectors w
     }
   }
 
+  val blankNodesPath = cmw / "refinitiv.com" / "eliel"
+
   val blankNodesIngestAndRender = {
     import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
-    val path = cmw / "refinitiv.com" / "eliel"
     val qps = List("format" -> "ntriples", "xg" -> "1")
     val data =
       """<http://refinitiv.com/eliel> <http://refinitiv.com/ont/f1> _:CAFEBABE .
         |_:CAFEBABE <http://refinitiv.com/ont/f2> "value" .""".stripMargin
     Http.post(_in, data, queryParams = List("format" -> "ntriples"), headers = tokenHeader).flatMap { _ =>
-      spinCheck(100.millis, true)(Http.get(path, queryParams = qps))(_.status == 200).map { resp =>
+      spinCheck(100.millis, true)(Http.get(blankNodesPath, queryParams = qps))(_.status == 200).map { resp =>
         val triples = resp.payload.lines.filterNot(_ contains "/meta/sys").map(_.split(' ')).toSeq
         //
         // Output should be something like that:
@@ -215,8 +216,69 @@ class RDFTests extends AsyncFunSpec with Matchers with Helpers with Inspectors w
         //   <http://refinitiv.com/eliel> <http://refinitiv.com/ont/f1> _:BA61b22281X2dX811bX2dX47c2X2dX9405X2dX5e65f992a599 .
         //   _:BA61b22281X2dX811bX2dX47c2X2dX9405X2dX5e65f992a599 <http://refinitiv.com/ont/f2> "value" .
         //
-        forExactly(1, triples)(_(2) should startWith("_:B"))
-        forExactly(1, triples)(_(0) should startWith("_:B"))
+        forExactly(1, triples)(_ (2) should startWith("_:B"))
+        forExactly(1, triples)(_ (0) should startWith("_:B"))
+      }
+    }
+  }
+
+  val blankNodesPersistS = {
+    import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+
+    // Making sure re-ingesting a blank node will keep its ID. e.g. blank nodes "survive" DC-Sync.
+    // Subject is Blank Node.
+
+    // It goes like this:
+    // Assuming previous test was completed (and we spinCheck for it), we have eliel -> _B, so we get it with xg.
+    // Once we have two lines in result, which means we have both Infotons,
+    // We ingest another value to the "blank" Infoton: value2.
+    // Then, we GET it directly, and expect both values to exist in response.
+    spinCheck(100.millis, true)(
+      Http.get(blankNodesPath, queryParams = List("format" -> "ntriples", "xg" -> "1"))
+    )(_.status == 200).flatMap { resp =>
+      val blankNodeLabel = resp.payload.lines.filter(l => l.startsWith("<http://refinitiv.com/eliel>") && !l.contains("/meta/sys")).
+        map(_.split(' ')(2)).mkString
+      val payload = s"""$blankNodeLabel <http://refinitiv.com/ont/f2> "value2" ."""
+      Http.post(_in, payload, queryParams = List("format" -> "ntriples"), headers = tokenHeader).flatMap { _ =>
+        spinCheck(100.millis, true)(
+          Http.get(cmw / "blank_node" / blankNodeLabel.replace("_:B", ""), queryParams = List("format" -> "ntriples"))
+        )(_.payload.lines.count(l => !l.contains("/meta/sys")) == 2).map { res =>
+          val values = res.payload.lines.filterNot(_.contains("/meta/sys")).map(_.split(' ')(2)).toSeq
+          forExactly(1, values)(_ should be("\"value\""))
+          forExactly(1, values)(_ should be("\"value2\""))
+        }
+      }
+    }
+  }
+
+  val blankNodesPersistO = {
+    import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+
+    // Making sure re-ingesting a blank node will keep its ID. e.g. blank nodes "survive" DC-Sync.
+    // This time, the Object is the Blank Node.
+
+
+    // It goes like this:
+    // Assuming previous test was completed (and we spinCheck for it), we have eliel -> _B, so we get it with xg.
+    // Once we have two lines in result, which means we have both Infotons,
+    // We ingest another Infoton (eliel2) to point to same blank node.
+    // Then, we GET eliel2 with xg, and expect to have the original "value" in response, as both eliel and eliel2
+    // should point at the same Blank Node ID.
+    spinCheck(100.millis, true)(
+      Http.get(blankNodesPath, queryParams = List("format" -> "ntriples", "xg" -> "1"))
+    )(_.status == 200).flatMap { resp =>
+      val blankNodeLabel = resp.payload.lines.filter(l => l.startsWith("<http://refinitiv.com/eliel>") && !l.contains("/meta/sys")).
+        map(_.split(' ')(2)).mkString
+      val payload = s"""<http://refinitiv.com/eliel2> <http://refinitiv.com/ont/f1> $blankNodeLabel ."""
+      Http.post(_in, payload, queryParams = List("format" -> "ntriples"), headers = tokenHeader).flatMap { _ =>
+        spinCheck(100.millis, true)(
+          Http.get(cmw / "refinitiv.com" / "eliel2", queryParams = List("format" -> "ntriples", "xg" -> "1"))
+        )(_.status == 200).map { res =>
+          val values = res.payload.lines.filterNot(_.contains("/meta/sys")).map(_.split(' ')(2)).toSeq
+          withClue(res.payload) {
+            forExactly(1, values)(_ should be("\"value\""))
+          }
+        }
       }
     }
   }
@@ -230,6 +292,11 @@ class RDFTests extends AsyncFunSpec with Matchers with Helpers with Inspectors w
     it("should verify weird output is same as ingested")(verifyWeirdIngest)
     it("should upload empty typed value")(uploadEmptyType)
     it("should verify empty output is same as ingested")(verifyEmptyIngest)
+  }
+
+  describe("Blank Nodes") {
     it("should render blank nodes as blank nodes")(blankNodesIngestAndRender)
+    it("should persist blank nodes with cm-well like labels (in Subject)")(blankNodesPersistS)
+    it("should persist blank nodes with cm-well like labels (in Object)")(blankNodesPersistO)
   }
 }

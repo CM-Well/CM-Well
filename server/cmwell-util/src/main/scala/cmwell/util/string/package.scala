@@ -14,6 +14,8 @@
   */
 package cmwell.util
 
+import java.io.InputStream
+
 import org.apache.commons.codec.binary.{Base64 => ApacheBase64}
 import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat}
@@ -264,4 +266,43 @@ package object string extends LazyLogging {
     * Like span, but discarding the separator. e.g. spanNoSep("Hello World", ' '.!=) == "Hello" -> "World"
     */
   def spanNoSep(s: String, p: Char => Boolean) = splitAtNoSep(s, s.prefixLength(p))
+
+
+  /**
+    * Map InputStream, using a function on elements.
+    * An element is defined as a chunk of bytes (as String) until the given delimiter.
+    */
+  def mapInputStreamLines(input: InputStream)(mapFunc: String => String): InputStream = {
+    val delimiter: Char = '\n' // can be factored out as a parameter
+
+    val buffSrc = scala.io.Source.fromInputStream(input, "UTF-8")
+    def readElement() = buffSrc.takeWhile(delimiter.!=).mkString
+
+    var position: Int = 0
+    var currentElement: Array[Byte] = null
+
+    def nextElement(): Unit = {
+      position = 0
+      val nextElem = readElement()
+      // we should not invoke mapFunc on an empty element (end of stream),
+      // as it may not preserve emptiness, which will lead to an infinite loop
+      currentElement = if(nextElem.isEmpty) Array.empty[Byte]
+                       else mapFunc(nextElem).getBytes("UTF-8")
+    }
+
+    nextElement()
+    () => {
+      if(currentElement.isEmpty) -1 else {
+        if (position < currentElement.length) {
+          val byte = currentElement(position)
+          position += 1
+          byte.toInt
+        } else {
+          nextElement()
+          if(currentElement.isEmpty) -1 else delimiter.toInt
+        }
+      }
+    }
+  }
+
 }
