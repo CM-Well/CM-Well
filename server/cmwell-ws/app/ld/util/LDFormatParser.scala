@@ -1224,11 +1224,15 @@ object LDFormatParser extends LazyLogging {
       )
   }
 
-  def persistBlankNodesLabels(payload: InputStream, dialect: String): InputStream =
-    if(!Set("NQ","NQUADS","N-TRIPLE")(dialect)) payload else mapInputStreamLines(payload) { line =>
-      val cmwellAnonRegex = "_:B(A[a-f0-9X]{32,})".r
-      cmwellAnonRegex.findFirstMatchIn(line).fold(line){ m =>
-        s"${m.before} <http://blank_node/${m.group(1)}> ${m.after}"
+  def persistBlankNodesLabels(payload: InputStream, dialect: String): InputStream = {
+    val supportedDialects = Set("NQ", "NQUADS", "N-TRIPLE")
+    // TODO Support all RDF dialects for completeness, (for now NQuads is sufficient to support survival of Blank Nodes in DC-Sync)
+    if (!supportedDialects(dialect)) payload else mapInputStreamLines(payload) { line =>
+      val cmwellAnonIdRegex = "_:B(A[a-f0-9X]{32,})".r
+      cmwellAnonIdRegex.findFirstMatchIn(line).fold(line) { m =>
+        val id = m.group(1)
+        s"${m.before} <http://blank_node/$id> ${m.after}"
       }
     }
+  }
 }
