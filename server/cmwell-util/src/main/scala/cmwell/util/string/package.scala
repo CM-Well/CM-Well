@@ -267,12 +267,10 @@ package object string extends LazyLogging {
     */
   def spanNoSep(s: String, p: Char => Boolean) = splitAtNoSep(s, s.prefixLength(p))
 
+  def mapInputStreamLines(input: InputStream)(lineMapF: String => String): InputStream = {
+    // Terminology: a line is an "element". '\n' is the "delimiter".
+    // This was in intent to allow extending to any other delimiter.
 
-  /**
-    * Map InputStream, using a function on elements.
-    * An element is defined as a chunk of bytes (as String) until the given delimiter.
-    */
-  def mapInputStreamLines(input: InputStream)(mapFunc: String => String): InputStream = {
     val delimiter: Char = '\n' // can be factored out as a parameter
 
     val buffSrc = scala.io.Source.fromInputStream(input, "UTF-8")
@@ -284,10 +282,10 @@ package object string extends LazyLogging {
     def nextElement(): Unit = {
       position = 0
       val nextElem = readElement()
-      // we should not invoke mapFunc on an empty element (end of stream),
+      // we should not invoke lineMapF on an empty element (end of stream),
       // as it may not preserve emptiness, which will lead to an infinite loop
       currentElement = if(nextElem.isEmpty) Array.empty[Byte]
-                       else mapFunc(nextElem).getBytes("UTF-8")
+                       else lineMapF(nextElem).getBytes("UTF-8")
     }
 
     nextElement()
