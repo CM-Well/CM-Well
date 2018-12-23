@@ -439,8 +439,7 @@ case class KafkaConf(home: String, logDirs: Seq[String], zookeeperServers: Seq[S
     val m = Map[String, String](
       "broker-id" -> brokerId.toString,
       "log-dirs" -> logDirs.mkString(","),
-      "zookeeper-connect" -> zookeeperServers.map(zkServer => s"$zkServer:2181").mkString(","),
-      "broker-ip" -> hostIp
+      "zookeeper-connect" -> zookeeperServers.map(zkServer => s"$zkServer:2181").mkString(",")
     )
 
     val confContent = ResourceBuilder.getResource(s"scripts/templates/kafka.server.properties", m)
@@ -590,7 +589,8 @@ case class BgConf(home: String,
       "irwServiceDao.hostName" -> s"$hostName",
       "ftsService.clusterName" -> s"$clusterName",
       "ftsService.transportAddress" -> s"$hostName",
-      "cmwell.rdfDefaultProtocol" -> defaultRdfProtocol
+      "cmwell.rdfDefaultProtocol" -> defaultRdfProtocol,
+      "kafka.bootstrap.servers" -> s"localhost:9092,${zookeeperServers.map(kafkaNode => s"$kafkaNode:9092").mkString(",")}"
     )
     val m = Map[String, String](
       "clustername" -> clusterName,

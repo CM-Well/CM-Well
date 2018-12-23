@@ -370,7 +370,7 @@ case class ElasticsearchProps(h: Host)
 //    "es-master" -> List(s"${h.getInstDirs.intallationDir}/data")
     "es-master" -> h.getDataDirs.esDataDirs.filter{_.endsWith("master")}
   )
-  override val componentMappings: Map[String, Int] = Map("es" -> (h.getDataDirs.esDataDirs.size - 1), "es-master" -> 1)
+  override val componentMappings: Map[String, Int] = Map("es" -> h.getDataDirs.esDataDirs.size, "es-master" -> 1)
 
   override def upgradeMethod: UpgradeMethod = PreUpgrade
 
