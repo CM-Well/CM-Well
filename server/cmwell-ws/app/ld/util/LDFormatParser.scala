@@ -1228,9 +1228,7 @@ object LDFormatParser extends LazyLogging {
     if(!Set("NQ","NQUADS","N-TRIPLE")(dialect)) payload else mapInputStreamLines(payload) { line =>
       val cmwellAnonRegex = "_:B(A[a-f0-9X]{32,})".r
       cmwellAnonRegex.findFirstMatchIn(line).fold(line){ m =>
-        val res = s"${m.before} <http://blank_node/${m.group(1)}> ${m.after}"
-        logger.info(s">>>>> $res")
-        res
+        s"${m.before} <http://blank_node/${m.group(1)}> ${m.after}"
       }
     }
 }
