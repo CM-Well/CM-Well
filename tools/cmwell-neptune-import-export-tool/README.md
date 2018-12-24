@@ -7,6 +7,8 @@ In order to run the toold you should have
 - A neptune instance
 - An ec2 instance which is in the same VPC of neptune.
 - An ssh tunneling between cm-well server -> ec2->neptune.
+- java 8 should be used in order ro run the tool (you can use export JAVA_HOME=/opt/cm-well/app/java; export PATH=$JAVA_HOME/bin:$PATH)
+- ssh version which is higher than 7.0
 
 # How to Package the Tool
 from the neptune-export-impot-tool directory(root directory) run

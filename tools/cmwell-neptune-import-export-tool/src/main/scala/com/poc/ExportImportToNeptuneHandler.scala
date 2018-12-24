@@ -47,15 +47,14 @@ class ExportImportToNeptuneHandler(ingestThreadsNum:Int){
     var res = bulkConsume(sourceCluster, position, "nquads")
     println("Cm-well bulk consume http status=" + res.getStatusLine.getStatusCode)
     if (res.getStatusLine.getStatusCode != 204) {
-      println("Bulk consume http status=" + res.getStatusLine.getStatusCode)
       val inputStream = res.getEntity.getContent
-      print("Going to ingest bulk to neptune...")
+      println("Going to ingest bulk to neptune...please wait...")
       val ingestFuturesList = buildCommandAndIngestToNeptune(neptuneCluster, inputStream)
       val nextPosition = res.getAllHeaders.find(_.getName == "X-CM-WELL-POSITION").map(_.getValue).getOrElse("")
       Future.sequence(ingestFuturesList).onComplete(_ => {
         val endTimeMillis = System.currentTimeMillis()
         val durationSeconds = (endTimeMillis - startTimeMillis) / 1000
-        println("Bulk Statistics: Duration for bulk consume and ingest to neptune:" + durationSeconds + "seconds")
+        println("Bulk Statistics: Duration for bulk consume and ingest to neptune:" + durationSeconds + " seconds")
         println("About to persist position=" + nextPosition)
         PositionFileHandler.persistPosition(nextPosition)
         println("Persist position successfully")
@@ -176,6 +175,7 @@ class ExportImportToNeptuneHandler(ingestThreadsNum:Int){
     httpPost.setHeader("Content-type", "application/x-www-form-urlencoded")
     val response = client.execute(httpPost)
     val statusCode = response.getStatusLine.getStatusCode
+    println("neptune status code=" + statusCode)
     if (statusCode == 200) {
       client.close()
       statusCode
