@@ -26,7 +26,6 @@ import cmwell.irw.IRWService
 import cmwell.common.OffsetsService
 import cmwell.common.ExitWithError
 import cmwell.zstore.ZStore
-import com.codahale.metrics.JmxReporter
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 import nl.grons.metrics4.scala.DefaultInstrumented
@@ -36,6 +35,7 @@ import org.elasticsearch.metrics.ElasticsearchReporter
 import cmwell.common.exception._
 import cmwell.crawler.CrawlerStream
 import cmwell.crawler.CrawlerStream.CrawlerMaterialization
+import com.codahale.metrics.jmx.JmxReporter
 import org.apache.kafka.common.TopicPartition
 import org.slf4j.LoggerFactory
 
