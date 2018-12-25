@@ -532,7 +532,6 @@ class TimeBasedAccumulatedNsCache private (private[this] var mainCache: Map[NsID
           paginationParams = paginationParamsForIndexTimeSearch,
           fieldSortParams = SortParam("system.indexTime" -> Asc)
         ) { (sr, _) =>
-          logger.info(s"Eli: response is: $sr")
           val hits = sr.getHits.getHits
 
           val entries: Seq[(Long, Try[(NsID, Long, NsURL, NsPrefix)])] = hits.map { hit =>

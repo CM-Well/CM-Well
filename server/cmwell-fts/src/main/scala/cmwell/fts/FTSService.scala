@@ -381,8 +381,8 @@ class FTSService(config: Config) extends NsSplitter{
   ): Future[(SearchResponse, T, Option[String])] = {
     require(storedFields.isEmpty ^ fieldsFromSource.isEmpty, "Either ask stored fields or fields from source but not both or none.")
 
-    logger.info(
-      s"Eli: Search request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $sortParams, $withHistory, $partition, $debugInfo"
+    logger.debug(
+      s"Search request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $sortParams, $withHistory, $partition, $debugInfo"
     )
 
     if (pathFilter.isEmpty && fieldsFilter.isEmpty && datesFilter.isEmpty) {

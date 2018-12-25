@@ -3,7 +3,7 @@ bash -c "
 
 mkdir -p components-extras;
 cd components-extras;
-rm -rf scala-2.11.*.tgz;
+rm -rf scala-2.*.tgz;
 rm -rf jdk*;
 rm -rf OpenJDK*;
 wget https://downloads.lightbend.com/scala/2.12.8/scala-2.12.8.tgz;
