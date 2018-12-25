@@ -144,10 +144,11 @@ dependenciesManager in Global := {
     "jena-tdb",
     "jena-text")(art))                                             => "org.apache.jena" % art % "3.3.0"
   case ("org.apache.jena",art) => throw new Exception(s"jena artifact: $art is not in the 3.1.0 version list")
-  case ("org.apache.tika",art)                                     => "org.apache.tika" % art % "1.20" jar()
-  case ("org.apache.thrift","libthrift")                           => "org.apache.thrift" % "libthrift" % "0.9.3"
   case ("org.apache.kafka", "kafka")                               => "org.apache.kafka" %% "kafka" % Versions.kafka
   case ("org.apache.kafka", "kafka-clients")                       => "org.apache.kafka" % "kafka-clients" % Versions.kafka
+  case ("org.apache.logging.log4j", "log4j-to-slf4j")              => "org.apache.logging.log4j" % "log4j-to-slf4j" % "2.11.1"
+  case ("org.apache.tika",art)                                     => "org.apache.tika" % art % "1.20" jar()
+  case ("org.apache.thrift","libthrift")                           => "org.apache.thrift" % "libthrift" % "0.9.3"
   case ("org.apache.zookeeper", "zookeeper")                       => "org.apache.zookeeper" % "zookeeper" % Versions.zookeeper
   case ("org.aspectj","aspectjweaver")                             => "org.aspectj" % "aspectjweaver" % "1.8.9"
   case ("org.codehaus.groovy",art)                                 => "org.codehaus.groovy" % art % "2.4.7"

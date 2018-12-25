@@ -6,8 +6,6 @@ libraryDependencies ++= {
 	val dm = dependenciesManager.value
 	Seq(
 		dm("org.elasticsearch", "elasticsearch")
-			.exclude("org.slf4j", "slf4j-log4j12")
-			.exclude("log4j", "log4j")
 			.exclude("com.fasterxml.jackson.core", "jackson-core")
 			.exclude("com.google.guava", "guava")
 			.exclude("org.apache.lucene", "lucene-queryparser")
@@ -24,6 +22,7 @@ libraryDependencies ++= {
 		dm("com.typesafe", "config"),
 		dm("com.spatial4j", "spatial4j"),
 		dm("org.slf4j","jcl-over-slf4j"),
+		dm("org.apache.logging.log4j", "log4j-to-slf4j"),
     dm("pl.allergro.tech", "embedded-elasticsearch") % Test,
     dm("net.lingala.zip4j", "zip4j") % Test)
 }
