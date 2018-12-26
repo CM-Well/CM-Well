@@ -364,6 +364,7 @@ case class ElasticsearchConf(clusterName: String,
     val scriptString =
       s"""export PATH=$home/app/java/bin:$home/bin/utils:$PATH
          |export ES_PATH_CONF=$home/conf/$dir/config
+         |export JAVA_HOME=$home/app/java
          |$CHKSTRT
          |$BMSG
          |starter bin/elasticsearch > $home/log/$dir/stdout.log 2> $home/log/$dir/stderr.log &""".stripMargin
