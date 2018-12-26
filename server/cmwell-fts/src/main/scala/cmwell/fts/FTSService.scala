@@ -1178,7 +1178,7 @@ class FTSService(config: Config) extends NsSplitter{
       .storedFields("system.uuid")
       .setFrom(paginationParams.offset).setSize(paginationParams.length)
 
-    val qb: QueryBuilder = QueryBuilders.matchQuery("path", path)
+    val qb: QueryBuilder = QueryBuilders.matchQuery("system.path", path)
 
     request.setQuery(qb)
 
