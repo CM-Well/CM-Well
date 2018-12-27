@@ -24,6 +24,7 @@ network:
 {{http_host}}
 
 http.cors.enabled: true
+http.cors.allow-origin: /https?:\/\/localhost(:[0-9]+)?|null/
 
 node.attr.rack_id: {{rack_id}} #put here something unique to this rack like the ip address.
 
