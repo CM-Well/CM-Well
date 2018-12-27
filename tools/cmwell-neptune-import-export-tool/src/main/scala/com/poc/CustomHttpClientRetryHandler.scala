@@ -1,7 +1,6 @@
 package com.poc
 
 import java.io.IOException
-import java.net.UnknownHostException
 
 import org.apache.http.impl.client.DefaultHttpRequestRetryHandler
 import org.apache.http.protocol.HttpContext
