@@ -3,7 +3,7 @@
 - The tool is resumable.
 
 # Assumption
-In order to run the toold you should have
+In order to run the tool you should have
 - A neptune instance
 - An ec2 instance which is in the same VPC of neptune.
 - An ssh tunneling between cm-well server -> ec2->neptune.
@@ -19,7 +19,7 @@ Consequently, a new jar will be created under target folder
 if you run the tool from a cm-well server you should configure ssh tunneling between cm-well server and neptune through ec2 instance.
 for example: 
 
-`ssh -i cmwell-research.pem -N -L 9999:cmwell-poc.c0zm6byrnnwp.us-east-1.neptune.amazonaws.com:8182 ec2-user@ec2-54-196-37-101.compute-1.amazonaws.com`
+`ssh -i cmwell-research.pem -N -L 9999:cmwell-poc.xxx.us-east-1.neptune.amazonaws.com:8182 ec2-user@ec2-54-85-12-200.compute-1.amazonaws.com`
 
 The tool persist the last cm-wel-position in a local directory: /tmp/cm-well
 In order to mount and persist the position in an aws s3 bucket, you should install s3fs and mount /tmp/cm-well position directory.
@@ -28,6 +28,6 @@ In order to mount and persist the position in an aws s3 bucket, you should insta
 
 For Example:
 
-`java -Xmx2000m -jar target/scala-2.12/neptune-export-import-tool-assembly-0.1.jar --source-cluster "10.204.192.134:9000" --neptune-cluster "localhost:9999" --ingest-threads 500`
+`java -Xmx2000m -jar target/scala-2.12/neptune-export-import-tool-assembly-0.1.jar --source-cluster "10.85.11.111:9000" --neptune-cluster "localhost:9999" --ingest-connection-pool-size 50`
 
 
