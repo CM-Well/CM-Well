@@ -16,9 +16,8 @@ import scala.concurrent.{ExecutionContext, Future}
 class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
 
   var position: String = _
-  var retryCount = 0
-  val maxRetry = 3
   val groupSize = 100
+  
   implicit val system = ActorSystem("MySystem")
   implicit val scheduler = system.scheduler
   val executor = Executors.newFixedThreadPool(ingestConnectionPoolSize)
