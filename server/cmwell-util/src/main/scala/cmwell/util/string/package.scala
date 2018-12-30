@@ -14,8 +14,6 @@
   */
 package cmwell.util
 
-import java.io.InputStream
-
 import org.apache.commons.codec.binary.{Base64 => ApacheBase64}
 import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat}

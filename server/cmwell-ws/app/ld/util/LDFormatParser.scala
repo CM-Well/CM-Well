@@ -14,7 +14,7 @@
   */
 package cmwell.web.ld.util
 
-import java.io.{ByteArrayInputStream, InputStream, OutputStream}
+import java.io.InputStream
 
 import cmwell.domain._
 import cmwell.fts._
