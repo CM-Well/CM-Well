@@ -266,41 +266,4 @@ package object string extends LazyLogging {
     * Like span, but discarding the separator. e.g. spanNoSep("Hello World", ' '.!=) == "Hello" -> "World"
     */
   def spanNoSep(s: String, p: Char => Boolean) = splitAtNoSep(s, s.prefixLength(p))
-
-  def mapInputStreamLines(input: InputStream)(lineMapF: String => String): InputStream = {
-    // Terminology: a line is an "element". '\n' is the "delimiter".
-    // This was in intent to allow extending to any other delimiter.
-
-    val delimiter: Char = '\n' // can be factored out as a parameter
-
-    val buffSrc = scala.io.Source.fromInputStream(input, "UTF-8")
-    def readElement() = buffSrc.takeWhile(delimiter.!=).mkString
-
-    var position: Int = 0
-    var currentElement: Array[Byte] = null
-
-    def nextElement(): Unit = {
-      position = 0
-      val nextElem = readElement()
-      // we should not invoke lineMapF on an empty element (end of stream),
-      // as it may not preserve emptiness, which will lead to an infinite loop
-      currentElement = if(nextElem.isEmpty) Array.empty[Byte]
-                       else lineMapF(nextElem).getBytes("UTF-8")
-    }
-
-    nextElement()
-    () => {
-      if(currentElement.isEmpty) -1 else {
-        if (position < currentElement.length) {
-          val byte = currentElement(position)
-          position += 1
-          byte.toInt
-        } else {
-          nextElement()
-          if(currentElement.isEmpty) -1 else delimiter.toInt
-        }
-      }
-    }
-  }
-
 }

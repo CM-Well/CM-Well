@@ -206,7 +206,7 @@ object InfotonRetriever extends LazyLogging {
   }
 
   def parseNquad(remoteUri: String, nquadLine: ByteString): Option[ParsedNquad] = {
-    val line = nquadLine.utf8String.replace(remoteUri, cmwellPrefix)
+    val line = qualifyBlankNodes(nquadLine.utf8String).replace(remoteUri, cmwellPrefix)
     val wrappedSubject = line.takeWhile(_ != space)
     if (wrappedSubject.length > 1 &&
         !wrappedSubject.startsWith("_:") &&
@@ -374,4 +374,7 @@ object InfotonRetriever extends LazyLogging {
             )
           }
     }
+
+    private def qualifyBlankNodes(line: String): String =
+      cmwellBlankNodeIdRegex.replaceAllIn(line, m => s"<http://blank_node/${m.group(1)}>")
 }

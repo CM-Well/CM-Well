@@ -608,10 +608,8 @@ object LDFormatParser extends LazyLogging {
 
     require(dialectToLang.isDefinedAt(dialect), "the format " + dialect + " is unknown.")
 
-    val rdfDataWithBlankNodesPersistence = persistBlankNodesLabels(rdfData, dialect)
-
     val DataSetConstructs(models, urlToLast, metaInfotonsMap, partialFeedback) =
-      modelsFromRdfDataInputStream(cmwellRDFHelper, timeContext)(rdfDataWithBlankNodesPersistence, dialect)
+      modelsFromRdfDataInputStream(cmwellRDFHelper, timeContext)(rdfData, dialect)
 
     val globalParsingResponse =
       parseGlobalExpressionsAsync(cmwellRDFHelper, crudServiceFS)(models, urlToLast, metaInfotonsMap, timeContext)
@@ -1222,17 +1220,5 @@ object LDFormatParser extends LazyLogging {
         s"URI must be http://* or https://* or cmwell://*. other formats are not supported. got: '$su' (isURI=${res.isURIResource}, isEmpty=${Option(res.getURI)
           .exists(_.isEmpty)})"
       )
-  }
-
-  def persistBlankNodesLabels(payload: InputStream, dialect: String): InputStream = {
-    val supportedDialects = Set("NQ", "NQUADS", "N-TRIPLE")
-    // TODO Support all RDF dialects for completeness, (for now NQuads is sufficient to support survival of Blank Nodes in DC-Sync)
-    if (!supportedDialects(dialect)) payload else mapInputStreamLines(payload) { line =>
-      val cmwellAnonIdRegex = "_:B(A[a-f0-9X]{32,})".r
-      cmwellAnonIdRegex.findFirstMatchIn(line).fold(line) { m =>
-        val id = m.group(1)
-        s"${m.before} <http://blank_node/$id> ${m.after}"
-      }
-    }
   }
 }
