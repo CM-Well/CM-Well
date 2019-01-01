@@ -34,6 +34,7 @@ import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.elasticsearch.action.{ActionRequest, DocWriteRequest}
 import org.elasticsearch.action.update.UpdateRequest
+import org.elasticsearch.common.xcontent.XContentType
 import org.joda.time.{DateTime, DateTimeZone}
 
 import scala.concurrent.duration.{DurationInt, DurationLong, FiniteDuration}
@@ -280,7 +281,7 @@ object CrawlerStream extends LazyLogging {
 
     def setCurrentFalse(uuid: String, indexName: String, lclzdCmd: LocalizedCommand, details: String): Future[Unit] = {
       val updateRequest = ESIndexRequest(new UpdateRequest(indexName, "infoclone", uuid).
-        doc(s"""{"system":{"current": false}}""").asInstanceOf[DocWriteRequest[_]], None)
+        doc(s"""{"system":{"current": false}}""", XContentType.JSON).asInstanceOf[DocWriteRequest[_]], None)
 
       val isOk = (bulkIndexResult: SuccessfulBulkIndexResult) => bulkIndexResult.failed.isEmpty && bulkIndexResult.successful.nonEmpty
 
