@@ -1114,7 +1114,7 @@ class FTSService(config: Config) extends NsSplitter{
     // TODO: fix should add indexTime, so why not pull it now?
     val fakeRequest = client.prepareSearch(alias).setTypes("infoclone").storedFields("system.uuid","system.lastModified")
 
-    fakeRequest.setQuery(QueryBuilders.matchQuery("path", path))
+    fakeRequest.setQuery(QueryBuilders.matchQuery("system.path", path))
 
     injectFuture[SearchResponse](al => fakeRequest.execute(al)).flatMap { fakeResponse =>
       val relevantShards = fakeResponse.getSuccessfulShards
@@ -1128,7 +1128,7 @@ class FTSService(config: Config) extends NsSplitter{
         .storedFields("system.uuid","system.lastModified")
         .setScroll(TimeValue.timeValueSeconds(scrollTTL))
         .setSize(infotonsPerShard)
-        .setQuery(QueryBuilders.matchQuery("path", path))
+        .setQuery(QueryBuilders.matchQuery("system.path", path))
 
       val scrollResponseFuture = injectFuture[SearchResponse](al => request.execute(al))
 
@@ -1193,10 +1193,10 @@ class FTSService(config: Config) extends NsSplitter{
   val bo = collection.breakOut[Array[SearchHit], (String, Long, String), Vector[(String, Long, String)]]
 
   def uinfo(uuid: String,
-            partition: String)(implicit executionContext: ExecutionContext): Future[Vector[(String, Long, String)]] = {
+            partition: String = defaultPartition)(implicit executionContext: ExecutionContext): Future[Vector[(String, Long, String)]] = {
 
     val request = client.prepareSearch(s"${partition}_all").setTypes("infoclone").setFetchSource(true).setVersion(true)
-    val qb: QueryBuilder = QueryBuilders.matchQuery("uuid", uuid)
+    val qb: QueryBuilder = QueryBuilders.matchQuery("system.uuid", uuid)
     request.setQuery(qb)
 
     logRequest("uinfo", s"uuid: $uuid")

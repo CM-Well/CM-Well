@@ -188,6 +188,7 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
   )(implicit ec: ExecutionContext): Future[(Source[IterationResults, NotUsed], Long)] = {
     val readyToRunScrollFunctions = applyScrollStarter(scrollStarter)
     if (readyToRunScrollFunctions.length <= maxParallelism) seqScrollSourceHandler(readyToRunScrollFunctions.map { f =>
+      logger.info("Eli: moshe")
       firstHitTupleApply(scrollStarter.withDeleted)(ec)(f())
     }, scrollStarter.withDeleted)
     else {

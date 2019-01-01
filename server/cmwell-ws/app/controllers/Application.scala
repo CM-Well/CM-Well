@@ -2854,7 +2854,7 @@ callback=< [URL] >
       .recoverWith {
         case err: Throwable => {
           logger.error(s"could not retrive uuid[$uuid] from cassandra", err)
-          crudServiceFS.ftsService.uinfo(uuid, partition = "blahblah").map { vec =>
+          crudServiceFS.ftsService.uinfo(uuid).map { vec =>
             val jArr = vec.map {
               case (index, version, source) =>
                 Json.obj("_index" -> index, "_version" -> JsNumber(version), "_source" -> Json.parse(source))
