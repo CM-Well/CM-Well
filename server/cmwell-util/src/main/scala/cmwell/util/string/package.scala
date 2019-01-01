@@ -288,16 +288,21 @@ package object string extends LazyLogging {
       else lineMapF(nextElem).getBytes("UTF-8")
     }
 
+    def done: Int = {
+      buffSrc.close()
+      -1
+    }
+
     nextElement()
     () => {
-      if(currentElement.isEmpty) -1 else {
+      if(currentElement.isEmpty) done else {
         if (position < currentElement.length) {
           val byte = currentElement(position)
           position += 1
           byte.toInt
         } else {
           nextElement()
-          if(currentElement.isEmpty) -1 else delimiter.toInt
+          if(currentElement.isEmpty) done else delimiter.toInt
         }
       }
     }
