@@ -182,7 +182,7 @@
             },
             "current": {
               "type": "boolean",
-              "store": false
+              "store": true
             }
           }
         }
