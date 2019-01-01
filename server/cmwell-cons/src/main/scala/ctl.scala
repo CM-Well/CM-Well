@@ -2012,11 +2012,12 @@ abstract class Host(user: String,
               uploadDocs: Boolean = true,
               uploadUserInfotons: Boolean = true,
               withUpdateSchemas: Boolean = false,
-              hosts: GenSeq[String] = ips) {
+              hosts: GenSeq[String] = ips,
+              skipVersionCheck: Boolean = false) {
 
-    val currentVersion = extractVersionFromProcNode(ips(0))
+    val currentVersion = if(skipVersionCheck) Future.failed(null) else extractVersionFromProcNode(ips(0))
     //If all 3 retries will fail, will wait for result. If fails, upgrade will be stopped.
-    Await.result(currentVersion, 10.seconds)
+    if(!skipVersionCheck) Await.result(currentVersion, 10.seconds)
 
     currentVersion.map(ver => info(s"Current version is $ver"))
 
