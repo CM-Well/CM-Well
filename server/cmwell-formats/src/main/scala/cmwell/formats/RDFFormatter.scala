@@ -34,6 +34,7 @@ abstract class RDFFormatter(hostForNs: String,
                             hashToPrefixAndUri: String => Option[(String, Option[String])],
                             withoutMeta: Boolean,
                             filterOutBlanks: Boolean,
+                            raw: Boolean,
                             forceUniqueness: Boolean)
     extends Formatter {
 
@@ -169,7 +170,7 @@ abstract class RDFFormatter(hostForNs: String,
                 case FString(v, l, _) if v.startsWith("cmwell://") =>
                   (prop, refToLtrl(v.replaceFirst("cmwell:/", host)), model)
                 case FString(v, l, _) => (prop, stringToLtrl(v, l), model)
-                case FReference(v, _) if v.contains("//blank_node/") =>
+                case FReference(v, _) if v.contains("//blank_node/") && !raw =>
                   (prop, model.createResource(AnonId.create(v.drop(v.indexOf("//blank_node/")+13))), model)
                 case FReference(v, _) =>
                   (prop, refToLtrl({ if (v.startsWith("cmwell://")) v.replaceFirst("cmwell:/", host) else v }), model)
@@ -220,7 +221,7 @@ abstract class RDFFormatter(hostForNs: String,
 
     val subject = {
       val s = if (distinctPathWithUuid || forceUniqueness) s"${i.path}#${i.uuid}" else i.path
-      if(s.startsWith("/blank_node/")) m.createResource(AnonId.create(s.drop("/blank_node/".length)))
+      if(s.startsWith("/blank_node/") && !raw) m.createResource(AnonId.create(s.drop("/blank_node/".length)))
       else ResourceFactory.createResource(uriFromPath(s, protocol = i.protocol))
     }
     val fieldsData = fields(i.fields.map(_.filter(_._1.head != '$')))
@@ -526,8 +527,9 @@ abstract class SimpleRDFFormatter(host: String,
                                   hashToPrefixAndUri: String => Option[(String, Option[String])],
                                   withoutMeta: Boolean,
                                   filterOutBlanks: Boolean,
+                                  raw: Boolean,
                                   forceUniqueness: Boolean)
-    extends RDFFormatter(host, hashToPrefixAndUri, withoutMeta, filterOutBlanks, forceUniqueness) {
+    extends RDFFormatter(host, hashToPrefixAndUri, withoutMeta, filterOutBlanks, raw, forceUniqueness) {
 
   protected def getFlavor: String
 
@@ -550,8 +552,9 @@ class N3Formatter(host: String,
                   hashToPrefixAndUri: String => Option[(String, Option[String])],
                   withoutMeta: Boolean,
                   filterOutBlanks: Boolean,
+                  raw: Boolean,
                   forceUniqueness: Boolean)
-    extends SimpleRDFFormatter(host, hashToPrefixAndUri, withoutMeta, filterOutBlanks, forceUniqueness) {
+    extends SimpleRDFFormatter(host, hashToPrefixAndUri, withoutMeta, filterOutBlanks, raw, forceUniqueness) {
   override val format: FormatType = RdfType(N3Flavor)
   override protected def getFlavor: String = "N3"
 }
@@ -559,8 +562,9 @@ class NTriplesFormatter(host: String,
                         hashToUri: String => Option[(String, Option[String])],
                         withoutMeta: Boolean,
                         filterOutBlanks: Boolean,
+                        raw: Boolean,
                         forceUniqueness: Boolean)
-    extends SimpleRDFFormatter(host, hashToUri, withoutMeta, filterOutBlanks, forceUniqueness) {
+    extends SimpleRDFFormatter(host, hashToUri, withoutMeta, filterOutBlanks, raw, forceUniqueness) {
   override val format: FormatType = RdfType(NTriplesFlavor)
   override protected def getFlavor: String = "N-TRIPLE"
 }
@@ -568,8 +572,9 @@ class RDFXmlFormatter(host: String,
                       hashToPrefixAndUri: String => Option[(String, Option[String])],
                       withoutMeta: Boolean,
                       filterOutBlanks: Boolean,
+                      raw: Boolean,
                       forceUniqueness: Boolean)
-    extends SimpleRDFFormatter(host, hashToPrefixAndUri, withoutMeta, filterOutBlanks, forceUniqueness) {
+    extends SimpleRDFFormatter(host, hashToPrefixAndUri, withoutMeta, filterOutBlanks, raw, forceUniqueness) {
   override val format: FormatType = RdfType(RdfXmlFlavor)
   override protected def getFlavor: String = "RDF/XML"
 }
@@ -577,8 +582,9 @@ class TurtleFormatter(host: String,
                       hashToPrefixAndUri: String => Option[(String, Option[String])],
                       withoutMeta: Boolean,
                       filterOutBlanks: Boolean,
+                      raw: Boolean,
                       forceUniqueness: Boolean)
-    extends SimpleRDFFormatter(host, hashToPrefixAndUri, withoutMeta, filterOutBlanks, forceUniqueness) {
+    extends SimpleRDFFormatter(host, hashToPrefixAndUri, withoutMeta, filterOutBlanks, raw, forceUniqueness) {
   override val format: FormatType = RdfType(TurtleFlavor)
   override protected def getFlavor: String = "TURTLE"
 }
@@ -588,8 +594,9 @@ class JsonLDFormatter private (host: String,
                                filterOutBlanks: Boolean,
                                forceUniqueness: Boolean,
                                val pretty: Boolean,
+                               raw: Boolean,
                                val callback: Option[String])
-    extends SimpleRDFFormatter(host, hashToPrefixAndUri, withoutMeta, filterOutBlanks, forceUniqueness) {
+    extends SimpleRDFFormatter(host, hashToPrefixAndUri, withoutMeta, filterOutBlanks, raw, forceUniqueness) {
   override def format: FormatType = RdfType(JsonLDFlavor)
   override protected def getFlavor: String = "JSON-LD"
 }
@@ -606,8 +613,9 @@ object JsonLDFormatter {
             filterOutBlanks: Boolean,
             forceUniqueness: Boolean,
             pretty: Boolean = true,
+            raw: Boolean,
             callback: Option[String] = None): JsonLDFormatter =
-    new JsonLDFormatter(host, hashToPrefixAndUri, withoutMeta, filterOutBlanks, forceUniqueness, pretty, callback)
+    new JsonLDFormatter(host, hashToPrefixAndUri, withoutMeta, filterOutBlanks, forceUniqueness, pretty, raw, callback)
     with UnPretty with JsonP
 }
 
@@ -616,8 +624,9 @@ abstract class QuadsFormatter(host: String,
                               quadToAlias: String => Option[String],
                               withoutMeta: Boolean,
                               filterOutBlanks: Boolean,
+                              raw: Boolean,
                               forceUniqueness: Boolean)
-    extends RDFFormatter(host, hashToPrefixAndUri, withoutMeta, filterOutBlanks, forceUniqueness) {
+    extends RDFFormatter(host, hashToPrefixAndUri, withoutMeta, filterOutBlanks, raw, forceUniqueness) {
 
   protected def getLang: Lang
 
@@ -645,10 +654,11 @@ class NQuadsFormatter(host: String,
                       hashToPrefixAndUri: String => Option[(String, Option[String])],
                       withoutMeta: Boolean,
                       filterOutBlanks: Boolean,
+                      raw: Boolean,
                       forceUniqueness: Boolean)
     extends QuadsFormatter(host, hashToPrefixAndUri, { _ =>
       None
-    }, withoutMeta, filterOutBlanks, forceUniqueness) {
+    }, withoutMeta, filterOutBlanks, raw, forceUniqueness) {
   override val format: FormatType = RdfType(NquadsFlavor)
   override protected def getLang: Lang = Lang.NQUADS
 }
@@ -657,8 +667,9 @@ class TriGFormatter(host: String,
                     quadToAlias: String => Option[String],
                     withoutMeta: Boolean,
                     filterOutBlanks: Boolean,
+                    raw: Boolean,
                     forceUniqueness: Boolean)
-    extends QuadsFormatter(host, hashToPrefixAndUri, quadToAlias, withoutMeta, filterOutBlanks, forceUniqueness) {
+    extends QuadsFormatter(host, hashToPrefixAndUri, quadToAlias, withoutMeta, filterOutBlanks, raw, forceUniqueness) {
   override val format: FormatType = RdfType(TriGFlavor)
   override protected def getLang: Lang = Lang.TRIG
 }
@@ -668,8 +679,9 @@ class TriXFormatter(host: String,
                     quadToAlias: String => Option[String],
                     withoutMeta: Boolean,
                     filterOutBlanks: Boolean,
+                    raw: Boolean,
                     forceUniqueness: Boolean)
-    extends QuadsFormatter(host, hashToPrefixAndUri, quadToAlias, withoutMeta, filterOutBlanks, forceUniqueness) {
+    extends QuadsFormatter(host, hashToPrefixAndUri, quadToAlias, withoutMeta, filterOutBlanks, raw, forceUniqueness) {
   override val format: FormatType = RdfType(TriXFlavor)
   override protected def getLang: Lang = Lang.TRIX
 }
@@ -681,8 +693,9 @@ class JsonLDQFormatter private (host: String,
                                 filterOutBlanks: Boolean,
                                 forceUniqueness: Boolean,
                                 val pretty: Boolean,
+                                raw: Boolean,
                                 val callback: Option[String])
-    extends QuadsFormatter(host, hashToPrefixAndUri, quadToAlias, withoutMeta, filterOutBlanks, forceUniqueness) {
+    extends QuadsFormatter(host, hashToPrefixAndUri, quadToAlias, withoutMeta, filterOutBlanks, raw, forceUniqueness) {
   override def format: FormatType = RdfType(JsonLDQFlavor)
   override protected def getLang: Lang = Lang.JSONLD
 }
@@ -700,6 +713,7 @@ object JsonLDQFormatter {
             filterOutBlanks: Boolean,
             forceUniqueness: Boolean,
             pretty: Boolean = true,
+            raw: Boolean,
             callback: Option[String] = None): JsonLDQFormatter =
     new JsonLDQFormatter(host,
                          hashToPrefixAndUri,
@@ -708,5 +722,6 @@ object JsonLDQFormatter {
                          filterOutBlanks,
                          forceUniqueness,
                          pretty,
+                          raw,
                          callback) with UnPretty with JsonP
 }

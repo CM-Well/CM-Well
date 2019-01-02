@@ -24,5 +24,4 @@ package object stream {
   val ii = ByteString("/ii/")
   val cmwellPrefix = "cmwell:/"
   val lessThan = ByteString("<")
-  val cmwellBlankNodeIdRegex = "_:B(A[a-f0-9X]{32,})".r
 }
