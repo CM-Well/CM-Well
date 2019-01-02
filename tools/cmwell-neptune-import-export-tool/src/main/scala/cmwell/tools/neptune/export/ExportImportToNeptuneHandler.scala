@@ -1,10 +1,24 @@
-package com.poc
+/**
+  * Copyright 2015 Thomson Reuters
+  *
+  * Licensed under the Apache License, Version 2.0 (the “License”); you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  *
+  *   http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+  * an “AS IS” BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  *
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+package cmwell.tools.neptune.export
 
 import java.io.InputStream
 import java.util.concurrent.Executors
 
 import akka.actor.{ActorSystem, Scheduler}
-import com.poc.NeptuneIngester.ConnectException
+import cmwell.tools.neptune.export.NeptuneIngester.ConnectException
 import org.apache.http.client.methods.CloseableHttpResponse
 import org.apache.jena.query.{Dataset, DatasetFactory}
 import org.apache.jena.riot.{Lang, RDFDataMgr}
@@ -25,10 +39,10 @@ class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
   protected lazy val logger = LoggerFactory.getLogger("import_export_tool")
 
 
-  def exportImport(sourceCluster: String, neptuneCluster: String, lengthHint: Int, updateInfotons: Boolean, qp: Option[String], withDeleted:Boolean) = {
+  def exportImport(sourceCluster: String, neptuneCluster: String, lengthHint: Int, updateInfotons: Boolean, qp: Option[String]) = {
     try {
-      val position = if (PositionFileHandler.isPositionPersist()) PositionFileHandler.readPosition else CmWellConsumeHandler.retrivePositionFromCreateConsumer(sourceCluster, lengthHint, qp, withDeleted)
-      consumeBulkAndIngest(position, sourceCluster, neptuneCluster, updateInfotons, withDeleted)
+      val position = if (PositionFileHandler.isPositionPersist()) PositionFileHandler.readPosition else CmWellConsumeHandler.retrivePositionFromCreateConsumer(sourceCluster, lengthHint, qp, updateInfotons)
+      consumeBulkAndIngest(position, sourceCluster, neptuneCluster, updateInfotons)
 
     } catch {
       case e: Throwable => logger.error("Got a failure during import-export after retrying 3 times")
@@ -38,15 +52,14 @@ class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
     }
   }
 
-  def consumeBulkAndIngest(position: String, sourceCluster: String, neptuneCluster: String, updateMode: Boolean, withDeleted:Boolean): CloseableHttpResponse = {
-    val startTimeMillis = System.currentTimeMillis()
-    val res = CmWellConsumeHandler.bulkConsume(sourceCluster, position, "nquads", withDeleted)
+  def consumeBulkAndIngest(position: String, sourceCluster: String, neptuneCluster: String, updateMode: Boolean): CloseableHttpResponse = {
+    val res = CmWellConsumeHandler.bulkConsume(sourceCluster, position, "nquads", updateMode)
     logger.info("Cm-well bulk consume http status=" + res.getStatusLine.getStatusCode)
     if (res.getStatusLine.getStatusCode != 204) {
       val inputStream = res.getEntity.getContent
       logger.info("Going to ingest bulk to neptune...please wait...")
       val startTimeMillis = System.currentTimeMillis()
-      val ingestFuturesList = buildCommandAndIngestToNeptune(neptuneCluster, inputStream, updateMode, withDeleted)
+      val ingestFuturesList = buildCommandAndIngestToNeptune(neptuneCluster, inputStream, updateMode)
       val nextPosition = res.getAllHeaders.find(_.getName == "X-CM-WELL-POSITION").map(_.getValue).getOrElse("")
       val totalBytes = res.getAllHeaders.find(_.getName == "X-CM-WELL-N").map(_.getValue).getOrElse("")
       Future.sequence(ingestFuturesList).onComplete(_ => {
@@ -56,20 +69,18 @@ class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
         logger.info("About to persist position=" + nextPosition)
         PositionFileHandler.persistPosition(nextPosition)
         logger.info("Persist position successfully")
-        consumeBulkAndIngest(nextPosition, sourceCluster, neptuneCluster, updateMode, withDeleted)
+        consumeBulkAndIngest(nextPosition, sourceCluster, neptuneCluster, updateMode)
       })
     }
     else {
       logger.info("Export-Import from cm-well completed successfully, no additional data to consume..trying to re-consume in 0.5 minute")
       Thread.sleep(30000)
-      consumeBulkAndIngest(position, sourceCluster, neptuneCluster, updateMode, withDeleted)
-      //      executor.shutdown()
-      //      system.terminate()
+      consumeBulkAndIngest(position, sourceCluster, neptuneCluster, updateMode)
     }
     res
   }
 
-  def buildCommandAndIngestToNeptune(neptuneCluster: String, inputStream: InputStream, updateMode: Boolean, withDeleted:Boolean): List[Future[Int]] = {
+  def buildCommandAndIngestToNeptune(neptuneCluster: String, inputStream: InputStream, updateMode: Boolean): List[Future[Int]] = {
     var ds: Dataset = DatasetFactory.createGeneral()
     RDFDataMgr.read(ds, inputStream, Lang.NQUADS)
     val graphDataSets = ds.asDatasetGraph()
@@ -78,8 +89,7 @@ class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
     //Default Graph
     val defaultGraphResponse = (if (!defaultGraphTriples.isEmpty) {
       var batchList = defaultGraphTriples.split("\n").toList
-      val seq = batchList.map(triple => SubjectGraphTriple(SparqlUtil.extractSubjectFromTriple(triple), None, triple))
-      seq
+      batchList.map(triple => SubjectGraphTriple(SparqlUtil.extractSubjectFromTriple(triple), None, triple))
     } else Nil).toList
     //Named Graph
     import scala.collection.JavaConverters._
@@ -88,13 +98,12 @@ class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
       var subGraph = graphDataSets.getGraph(graphNode)
       val results = SparqlUtil.getTriplesOfSubGraph(subGraph)
       var batchList = results.split("\n").toList
-      val seq2 = batchList.map(triple => SubjectGraphTriple(SparqlUtil.extractSubjectFromTriple(triple), Some(graphNode.toString), triple))
-      seq2
+      batchList.map(triple => SubjectGraphTriple(SparqlUtil.extractSubjectFromTriple(triple), Some(graphNode.toString), triple))
     }
     val allQuads = defaultGraphResponse ++ namedGraphsResponse
     val groupBySubjectList = allQuads.groupBy(subGraphTriple => subGraphTriple.subject)
     val groupedBySizeMap = groupBySubjectList.grouped(groupSize)
-    val neptuneFutureResults = groupedBySizeMap.map(subjectToTriples => SparqlUtil.buildGroupedSparqlCmd(subjectToTriples.keys, subjectToTriples.values, updateMode, withDeleted))
+    val neptuneFutureResults = groupedBySizeMap.map(subjectToTriples => SparqlUtil.buildGroupedSparqlCmd(subjectToTriples.keys, subjectToTriples.values, updateMode))
       .map(sparqlCmd => postWithRetry(neptuneCluster, sparqlCmd))
     neptuneFutureResults.toList
 
@@ -125,7 +134,6 @@ class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
   }
 
 }
-
 
 
 
