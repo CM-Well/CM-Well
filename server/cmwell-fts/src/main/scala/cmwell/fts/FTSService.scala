@@ -1622,8 +1622,29 @@ class FTSService(config: Config) extends NsSplitter{
 
   def getLastIndexTimeFor(dc: String
                                    , withHistory: Boolean
-                                   , partition: String
-                                   , fieldFilters: Option[FieldFilter])(implicit executionContext: ExecutionContext): Future[Option[Long]] = ???
+                                   , partition: String = defaultPartition
+                                   , fieldFilters: Option[FieldFilter])(implicit executionContext: ExecutionContext): Future[Option[Long]] = {
+    val request = client
+      .prepareSearch(s"${partition}_all")
+      .setTypes("infoclone")
+      .storedFields("system.indexTime")
+      .setSize(1)
+      .addSort("system.indexTime", SortOrder.DESC)
+
+    val filtersSeq: List[FieldFilter] = List(
+      SingleFieldFilter(Must, Equals, "system.dc", Some(dc)), //ONLY DC
+      SingleFieldFilter(MustNot, Contains, "system.parent.parent_hierarchy", Some("/meta/")) //NO META
+    )
+    applyFiltersToRequest(
+      request,
+      None,
+      Some(MultiFieldFilter(Must, fieldFilters.fold(filtersSeq)(filtersSeq.::))),
+      None,
+      withHistory = withHistory
+    )
+    logRequest("getLastIndexTimeFor", s"dc: $dc")
+    injectFuture[SearchResponse](request.execute).map(_.getHits.getHits.headOption.map(_.getFields.get("system.indexTime").getValue[Long]))
+  }
 
   def purgeByUuidsFromAllIndexes(uuids: Vector[String], partition: String)(implicit executionContext: ExecutionContext): Future[BulkResponse] = ???
 
