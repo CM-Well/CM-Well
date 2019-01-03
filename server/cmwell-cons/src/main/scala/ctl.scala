@@ -1660,6 +1660,13 @@ abstract class Host(user: String,
       Thread.sleep(5000)
       ret = command(s"$createTopicCommandPrefix index_topic.priority", hosts(0), false)
     }
+
+    ret = command(s"$createTopicCommandPrefix red_queue", hosts(0), false)
+    while (ret.isFailure || !ret.get.contains("Created topic") && tryNum < 6) {
+      tryNum += 1
+      Thread.sleep(5000)
+      ret = command(s"$createTopicCommandPrefix red_queue", hosts(0), false)
+    }
   }
 
   def avaiableHosts = {
@@ -1893,8 +1900,9 @@ abstract class Host(user: String,
     val createTopicCommandPrefix = s"cd ${absPath(instDirs.globalLocation)}/cm-well/app/kafka/cur; $exportCommand sh bin/kafka-topics.sh --create --zookeeper ${pingAddress}:2181 --replication-factor $replicationFactor --partitions ${ips.size} --topic"
 
     // scalastyle:on
-    command(s"$createTopicCommandPrefix persist_topic", ips(0), false)
-    command(s"$createTopicCommandPrefix index_topic", ips(0), false)
+    Seq("persist_topic", "persist_topic.priority", "index_topic", "index_topic.priority", "red_queue").foreach { topic =>
+      command(s"$createTopicCommandPrefix $topic", ips.head, sudo = false)
+    }
   }
 
   def checkPreUpgradeStatus(host: String): Unit = {
