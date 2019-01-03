@@ -255,6 +255,7 @@ class Application @Inject()(bulkScrollHandler: BulkScrollHandler,
                         req.host,
                         req.uri,
                         req.queryString.keySet("pretty"),
+                        req.queryString.keySet("raw"),
                         req.queryString.get("callback").flatMap(_.headOption)
                       )
 
@@ -2340,6 +2341,7 @@ callback=< [URL] >
                   request.host,
                   request.uri,
                   request.queryString.keySet("pretty"),
+                  request.queryString.keySet("raw"),
                   request.queryString.get("callback").flatMap(_.headOption)
                 )
               case unknown => {

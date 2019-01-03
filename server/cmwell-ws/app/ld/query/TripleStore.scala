@@ -124,7 +124,7 @@ class TripleStore(dataFetcher: DataFetcherImpl, cmwellRDFHelper: CMWellRDFHelper
     cmwellRDFHelper.hashToUrl(s, time)
   }
   private val nullFormatter =
-    new cmwell.formats.RDFFormatter("cmwell", f, withoutMeta = true, filterOutBlanks = false, forceUniqueness = false) {
+    new cmwell.formats.RDFFormatter("cmwell", f, withoutMeta = true, filterOutBlanks = false, raw = false, forceUniqueness = false) {
       override def format: cmwell.formats.FormatType = ???
       override def render(formattable: Formattable): String = ???
     }

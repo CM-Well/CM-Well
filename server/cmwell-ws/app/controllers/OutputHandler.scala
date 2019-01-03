@@ -198,6 +198,7 @@ class OutputHandler @Inject()(crudServiceFS: CRUDServiceFS,
         host = req.host,
         uri = req.uri,
         pretty = req.queryString.keySet("pretty"),
+        raw = req.queryString.keySet("raw"),
         callback = req.queryString.get("callback").flatMap(_.headOption),
         withData = req.getQueryString("with-data")
       )
