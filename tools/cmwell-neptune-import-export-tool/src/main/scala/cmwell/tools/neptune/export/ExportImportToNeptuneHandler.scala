@@ -15,6 +15,7 @@
 package cmwell.tools.neptune.export
 
 import java.io.InputStream
+import java.net.URLDecoder
 import java.util.concurrent.Executors
 
 import akka.actor.{ActorSystem, Scheduler}
@@ -30,7 +31,7 @@ import scala.concurrent.{ExecutionContext, Future}
 class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
 
   var position: String = _
-  val groupSize = 100
+  val groupSize = 500
   
   implicit val system = ActorSystem("MySystem")
   implicit val scheduler = system.scheduler
@@ -53,12 +54,12 @@ class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
   }
 
   def consumeBulkAndIngest(position: String, sourceCluster: String, neptuneCluster: String, updateMode: Boolean): CloseableHttpResponse = {
+    val startTimeMillis = System.currentTimeMillis()
     val res = CmWellConsumeHandler.bulkConsume(sourceCluster, position, "nquads", updateMode)
     logger.info("Cm-well bulk consume http status=" + res.getStatusLine.getStatusCode)
     if (res.getStatusLine.getStatusCode != 204) {
       val inputStream = res.getEntity.getContent
       logger.info("Going to ingest bulk to neptune...please wait...")
-      val startTimeMillis = System.currentTimeMillis()
       val ingestFuturesList = buildCommandAndIngestToNeptune(neptuneCluster, inputStream, updateMode)
       val nextPosition = res.getAllHeaders.find(_.getName == "X-CM-WELL-POSITION").map(_.getValue).getOrElse("")
       val totalBytes = res.getAllHeaders.find(_.getName == "X-CM-WELL-N").map(_.getValue).getOrElse("")
@@ -84,6 +85,7 @@ class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
     var ds: Dataset = DatasetFactory.createGeneral()
     RDFDataMgr.read(ds, inputStream, Lang.NQUADS)
     val graphDataSets = ds.asDatasetGraph()
+    println("total bytes = " + graphDataSets.toString.getBytes("UTF-8").length)
     val defaultGraph = graphDataSets.getDefaultGraph
     val defaultGraphTriples = SparqlUtil.getTriplesOfSubGraph(defaultGraph)
     //Default Graph
