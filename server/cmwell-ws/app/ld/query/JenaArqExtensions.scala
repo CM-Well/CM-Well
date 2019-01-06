@@ -231,7 +231,7 @@ trait DataFetcher {
 
   private def scroll(ff: FieldFilter) = {
     val first = Await.result(
-      crudServiceFS.startScroll(Some(PathFilter("/", descendants = true)),
+      crudServiceFS.startScrollEliNew(Some(PathFilter("/", descendants = true)),
                                 Some(ff),
                                 Some(DatesFilter(None, None)),
                                 PaginationParams(0, chunkSize),
@@ -449,7 +449,7 @@ class DatasetGraphCmWell(val host: String,
 //          logVerboseMsg("Fetch", fieldFilter)
 
             val startScrollRes = Await.result(
-              crudServiceFS.startScroll(Some(PathFilter("/", descendants = true)),
+              crudServiceFS.startScrollEliNew(Some(PathFilter("/", descendants = true)),
                                         Some(fieldFilter),
                                         Some(DatesFilter(None, None)),
                                         PaginationParams(0, 10),

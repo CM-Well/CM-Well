@@ -588,12 +588,13 @@ class FTSService(config: Config) extends NsSplitter{
     }.recover{case _ => false}
   }
 
-  private def startShardScroll(pathFilter: Option[PathFilter] = None, fieldsFilter: Option[FieldFilter] = None,
+  private def startShardScrollEliNew(pathFilter: Option[PathFilter] = None, fieldsFilter: Option[FieldFilter] = None,
                                datesFilter: Option[DatesFilter] = None,
                                withHistory: Boolean, withDeleted: Boolean,
                                offset:Int, length:Int, scrollTTL:Long = defaultScrollTTL,
-                               index:String, nodeId:String, shard:Int)
-                              (implicit executionContext:ExecutionContext) : Future[FTSStartScrollResponse] = {
+                               index:String, nodeId:String, shard:Int,
+                               debugInfo: Boolean = false)
+                              (implicit executionContext:ExecutionContext) : Future[FTSStartScrollResponseEliNew] = {
 
     val fields = "system.kind" :: "system.path" :: "system.uuid" :: "system.lastModified" :: "content.length" ::
       "content.mimeType" :: "link.to" :: "link.kind" :: "system.dc" :: "system.indexTime" :: "system.quad" :: "system.current" :: Nil
@@ -604,6 +605,7 @@ class FTSService(config: Config) extends NsSplitter{
       .setScroll(TimeValue.timeValueSeconds(scrollTTL))
       .setSize(length)
       .setFrom(offset)
+      .addSort("_doc", SortOrder.ASC)
       .setPreference(s"_shards:$shard;_only_node:$nodeId")
 
     if (pathFilter.isEmpty && fieldsFilter.isEmpty && datesFilter.isEmpty) {
@@ -612,14 +614,20 @@ class FTSService(config: Config) extends NsSplitter{
       applyFiltersToRequest(request, pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted)
     }
 
-    val scrollResponseFuture = injectFuture[SearchResponse](request.execute(_))
+    val scrollResponseFuture = injectFuture[SearchResponse](request.execute)
+
+    val searchQueryStr = if (debugInfo) Some(request.toString) else None
 
     scrollResponseFuture.map { scrollResponse =>
-      FTSStartScrollResponse(scrollResponse.getHits.totalHits, scrollResponse.getScrollId, Some(nodeId))
+      val ftsResponse = FTSScrollResponse(scrollResponse.getHits.totalHits,
+        scrollResponse.getScrollId,
+        esResponseToInfotons(scrollResponse, includeScore = false),
+        Some(nodeId))
+      FTSStartScrollResponseEliNew(ftsResponse, searchQueryStr = searchQueryStr)
     }
   }
 
-  def startSuperScroll(
+  def startSuperScrollEliNew(
     pathFilter: Option[PathFilter],
     fieldsFilter: Option[FieldFilter],
     datesFilter: Option[DatesFilter],
@@ -627,7 +635,7 @@ class FTSService(config: Config) extends NsSplitter{
     scrollTTL: Long,
     withHistory: Boolean,
     withDeleted: Boolean
-  )(implicit executionContext: ExecutionContext): Seq[() => Future[FTSStartScrollResponse]] = {
+  )(implicit executionContext: ExecutionContext): Seq[() => Future[FTSStartScrollResponseEliNew]] = {
 
     logRequest("startSuperScroll", pathFilter.toString, fieldsFilter.toString)
 
@@ -641,7 +649,7 @@ class FTSService(config: Config) extends NsSplitter{
     targetedShards.map {
       case (index, node, shard) =>
         () =>
-          startShardScroll(pathFilter,
+          startShardScrollEliNew(pathFilter,
                            fieldsFilter,
                            datesFilter,
                            withHistory,
@@ -667,7 +675,7 @@ class FTSService(config: Config) extends NsSplitter{
     * @param onlyNode ES NodeID to restrict search to ("local" means local node), or None for no restriction
     * @return
     */
-  def startScroll(pathFilter: Option[PathFilter],
+  def startScrollEliNew(pathFilter: Option[PathFilter],
                   fieldsFilter: Option[FieldFilter],
                   datesFilter: Option[DatesFilter],
                   paginationParams: PaginationParams,
@@ -678,17 +686,17 @@ class FTSService(config: Config) extends NsSplitter{
                   onlyNode: Option[String] = None,
                   partition: String = defaultPartition,
                   debugInfo: Boolean = false)
-                 (implicit executionContext:ExecutionContext, logger:Logger = loger) : Future[FTSStartScrollResponse] = {
+                 (implicit executionContext:ExecutionContext, logger:Logger = loger) : Future[FTSStartScrollResponseEliNew] = {
     logger.debug(s"StartScroll request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $withHistory")
 
     val fields = "system.kind" :: "system.path" :: "system.uuid" :: "system.lastModified" :: "content.length" ::
-      "content.mimeType" :: "link.to" :: "link.kind" :: "system.dc" :: "system.indexTime" :: "system.quad" :: Nil
+      "content.mimeType" :: "link.to" :: "link.kind" :: "system.dc" :: "system.indexTime" :: "system.quad" :: "system.current" :: Nil
 
     val indices = if (indexNames.nonEmpty) indexNames else Seq(s"${partition}_all")
 
     // since in ES scroll API, size is per shard, we need to convert our paginationParams.length parameter to be per shard
     // We need to find how many shards are relevant for this query. For that we'll issue a fake search request
-    val fakeRequest = client.prepareSearch(indices:_*).setTypes("infoclone").storedFields(fields:_*)
+    val fakeRequest = client.prepareSearch(indices: _*).setTypes("infoclone").storedFields(fields: _*)
 
     if (pathFilter.isEmpty && fieldsFilter.isEmpty && datesFilter.isEmpty) {
       fakeRequest.setQuery(matchAllQuery())
@@ -696,7 +704,7 @@ class FTSService(config: Config) extends NsSplitter{
       applyFiltersToRequest(fakeRequest, pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted)
     }
 
-    injectFuture[SearchResponse](fakeRequest.execute(_)).flatMap { fakeResponse =>
+    injectFuture[SearchResponse](fakeRequest.execute).flatMap { fakeResponse =>
       val relevantShards = fakeResponse.getSuccessfulShards
 
       // rounded to lowest multiplacations of shardsperindex or to mimimum of 1
@@ -708,6 +716,7 @@ class FTSService(config: Config) extends NsSplitter{
         .storedFields(fields: _*)
         .setScroll(TimeValue.timeValueSeconds(scrollTTL))
         .setSize(infotonsPerShard)
+        .addSort("_doc", SortOrder.ASC)
         .setFrom(paginationParams.offset)
 
       if (pathFilter.isEmpty && fieldsFilter.isEmpty && datesFilter.isEmpty) {
@@ -718,19 +727,21 @@ class FTSService(config: Config) extends NsSplitter{
 
       logRequest("startScroll", pathFilter.toString, fieldsFilter.toString, "also sent fake request")
 
-      val scrollResponseFuture = injectFuture[SearchResponse](request.execute(_))
+      val scrollResponseFuture = injectFuture[SearchResponse](request.execute)
 
       val searchQueryStr = if (debugInfo) Some(request.toString) else None
 
       scrollResponseFuture.map { scrollResponse =>
-        FTSStartScrollResponse(scrollResponse.getHits.totalHits,
-                               scrollResponse.getScrollId,
-                               searchQueryStr = searchQueryStr)
+        val ftsResponse = FTSScrollResponse(scrollResponse.getHits.totalHits,
+          scrollResponse.getScrollId,
+          esResponseToInfotons(scrollResponse, includeScore = false))
+        FTSStartScrollResponseEliNew(ftsResponse, searchQueryStr = searchQueryStr)
       }
     }
   }
 
 
+/*
   def startSuperMultiScroll(pathFilter: Option[PathFilter], fieldsFilter: Option[FieldFilter],
                             datesFilter: Option[DatesFilter],
                             paginationParams: PaginationParams, scrollTTL: Long = defaultScrollTTL,
@@ -771,15 +782,16 @@ class FTSService(config: Config) extends NsSplitter{
       }
     }
   }
+*/
 
-  def startMultiScroll(pathFilter: Option[PathFilter], fieldsFilter: Option[FieldFilter],
+  def startMultiScrollEliNew(pathFilter: Option[PathFilter], fieldsFilter: Option[FieldFilter],
                        datesFilter: Option[DatesFilter],
                        paginationParams: PaginationParams,
                        scrollTTL: Long = defaultScrollTTL,
                        withHistory: Boolean = false,
                        withDeleted: Boolean = false,
                        partition: String = defaultPartition)
-                      (implicit executionContext:ExecutionContext, logger:Logger = loger) : Seq[Future[FTSStartScrollResponse]] = {
+                      (implicit executionContext:ExecutionContext, logger:Logger = loger) : Seq[Future[FTSStartScrollResponseEliNew]] = {
 
     logger.debug(s"StartMultiScroll request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $withHistory")
 
@@ -791,7 +803,7 @@ class FTSService(config: Config) extends NsSplitter{
     }
 
     indices.map { indexName =>
-      startScroll(pathFilter,
+      startScrollEliNew(pathFilter,
                   fieldsFilter,
                   datesFilter,
                   paginationParams,
@@ -1905,9 +1917,9 @@ case class PaginationParams(offset: Int, length: Int)
 object DefaultPaginationParams extends PaginationParams(0, 100)
 
 case class FTSSearchResponse(total: Long, offset: Long, length: Long, infotons: Seq[Infoton], searchQueryStr: Option[String] = None)
-case class FTSStartScrollResponse(total: Long, scrollId: String, nodeId: Option[String] = None, searchQueryStr: Option[String] = None)
+case class FTSStartScrollResponseEliNew(response: FTSScrollResponse, searchQueryStr: Option[String] = None)
 case class FTSScrollResponse(total: Long, scrollId: String, infotons: Seq[Infoton], nodeId: Option[String] = None)
-case class FTSScrollThinResponse(total: Long, scrollId: String, thinInfotons: Seq[FTSThinInfoton], nodeId: Option[String] = None)
+//case class FTSScrollThinResponse(total: Long, scrollId: String, thinInfotons: Seq[FTSThinInfoton], nodeId: Option[String] = None)
 case object FTSTimeout
 
 case class FTSThinInfoton(path: String, uuid: String, lastModified: String, indexTime: Long, score: Option[Float])

@@ -783,7 +783,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
     }
 
     ftsService
-      .getLastIndexTimeFor(dc, withHistory = withHistory, fieldFilters = fieldFilters, partition = "blahblah")
+      .getLastIndexTimeFor(dc, withHistory = withHistory, fieldFilters = fieldFilters)
       .map(lOpt => Some(mkVirtualInfoton(lOpt.getOrElse(0L))))
   }
 
@@ -800,7 +800,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
 
   private def toFieldValues(ss: Set[String]): Set[FieldValue] = ss.map(FString.apply)
 
-  def startScroll(pathFilter: Option[PathFilter] = None,
+  def startScrollEliNew(pathFilter: Option[PathFilter] = None,
                   fieldsFilters: Option[FieldFilter] = None,
                   datesFilter: Option[DatesFilter] = None,
                   paginationParams: PaginationParams = DefaultPaginationParams,
@@ -809,17 +809,18 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                   withDeleted: Boolean = false,
                   debugInfo: Boolean = false): Future[IterationResults] = {
     ftsService
-      .startScroll(pathFilter,
-                   fieldsFilters,
-                   datesFilter,
-                   paginationParams,
-                   scrollTTL,
-                   withHistory,
-                   withDeleted,
-                   debugInfo = debugInfo)
+      .startScrollEliNew(pathFilter,
+        fieldsFilters,
+        datesFilter,
+        paginationParams,
+        scrollTTL,
+        withHistory,
+        withDeleted,
+        debugInfo = debugInfo)
       .map { ftsResults =>
-      IterationResults(ftsResults.scrollId, ftsResults.total, debugInfo = ftsResults.searchQueryStr)
-    }
+        val response = ftsResults.response
+        IterationResults(response.scrollId, response.total, Some(response.infotons), debugInfo = ftsResults.searchQueryStr)
+      }
   }
 
   def startSuperScroll(pathFilter: Option[PathFilter] = None,
@@ -830,11 +831,13 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                        withHistory: Boolean = false,
                        withDeleted: Boolean = false): Seq[() => Future[IterationResults]] = {
     ftsService
-      .startSuperScroll(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTTL, withHistory, withDeleted)
-      .map { fun => () =>
-        fun().map { ftsResults =>
-      IterationResults(ftsResults.scrollId, ftsResults.total)
-        }
+      .startSuperScrollEliNew(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTTL, withHistory, withDeleted)
+      .map { fun =>
+        () =>
+          fun().map { ftsResults =>
+            val response = ftsResults.response
+            IterationResults(response.scrollId, response.total, Some(response.infotons), debugInfo = ftsResults.searchQueryStr)
+          }
       }
   }
 
@@ -858,10 +861,11 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                        withHistory: Boolean = false,
                        withDeleted: Boolean = false): Seq[Future[IterationResults]] = {
     ftsService
-      .startMultiScroll(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTTL, withHistory, withDeleted)
+      .startMultiScrollEliNew(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTTL, withHistory, withDeleted)
       .map(_.map { ftsResults =>
-      IterationResults(ftsResults.scrollId, ftsResults.total)
-    })
+        val response = ftsResults.response
+        IterationResults(response.scrollId, response.total, Some(response.infotons), debugInfo = ftsResults.searchQueryStr)
+      })
   }
 
   def scroll(scrollId: String, scrollTTL: Long, withData: Boolean): Future[IterationResults] = {

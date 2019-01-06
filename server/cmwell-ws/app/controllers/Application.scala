@@ -702,7 +702,7 @@ callback=< [URL] >
 
               val fmFut = extractFieldsMask(request, typesCache, cmwellRDFHelper, timeContext)
               crudServiceFS
-                .startScroll(
+                .startScrollEliNew(
                   pathFilter,
                   fieldFilter,
                   Some(DatesFilter(from, to)),
