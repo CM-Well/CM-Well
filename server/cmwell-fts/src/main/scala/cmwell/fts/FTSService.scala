@@ -606,7 +606,7 @@ class FTSService(config: Config) extends NsSplitter{
       .setSize(length)
       .setFrom(offset)
       .addSort("_doc", SortOrder.ASC)
-      .setPreference(s"_shards:$shard;_only_node:$nodeId")
+      .setPreference(s"_shards:$shard|_only_nodes:$nodeId")
 
     if (pathFilter.isEmpty && fieldsFilter.isEmpty && datesFilter.isEmpty) {
       request.setQuery(matchAllQuery())
