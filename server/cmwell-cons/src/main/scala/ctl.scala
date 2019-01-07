@@ -1624,9 +1624,11 @@ abstract class Host(user: String,
     // scalastyle:off
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/cassandra-cql-init-cluster-new", hosts(0), false)
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/zstore-cql-init-cluster", hosts(0), false)
-    command(s"""curl -s -X POST http://${hosts(0)}:$esMasterPort/_template/cmwell_index_template -H "Content-Type: application/json" --data-ascii @${instDirs.globalLocation}/cm-well/conf/es/indices_template_new.json""", hosts(0), false)
+    val templateCreation = command(s"""curl -s -X POST http://${hosts(0)}:$esMasterPort/_template/cmwell_index_template -H "Content-Type: application/json" --data-ascii @${instDirs.globalLocation}/cm-well/conf/es/indices_template_new.json""", hosts(0), false)
+    templateCreation.fold (ex => println(s"Elasticsearch template creation failed with: $ex"), _ => ())
     //create the first index in advance. It resolves the issue of meta ns cache quering a non existant index
-    command(s"""curl -s -X PUT http://${hosts(0)}:$esMasterPort/cm_well_p0_0""", hosts(0), false)
+    val firstIndexCreation = command(s"""curl -s -X PUT http://${hosts(0)}:$esMasterPort/cm_well_p0_0""", hosts(0), false)
+    firstIndexCreation.fold (ex => println(s"Elasticsearch first index creation failed with: $ex"), _ => ())
 //    command(s"curl -s -X POST http://${pingAddress}:$esRegPort/cm_well_p0_0/", hosts(0), false)
     // create kafka topics
     val replicationFactor = math.min(hosts.size, 3)
