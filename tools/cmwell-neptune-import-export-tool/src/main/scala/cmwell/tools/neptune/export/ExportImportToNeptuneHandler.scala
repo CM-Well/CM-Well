@@ -39,6 +39,10 @@ class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
   implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.fromExecutor(executor)
   protected lazy val logger = LoggerFactory.getLogger("import_export_tool")
 
+  import java.util.concurrent.ArrayBlockingQueue
+  import java.util.concurrent.BlockingQueue
+
+  val blockingQueue = new ArrayBlockingQueue[Boolean](1)
 
   def exportImport(sourceCluster: String, neptuneCluster: String, lengthHint: Int, updateInfotons: Boolean, qp: Option[String]) = {
     try {
@@ -59,19 +63,18 @@ class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
     logger.info("Cm-well bulk consume http status=" + res.getStatusLine.getStatusCode)
     if (res.getStatusLine.getStatusCode != 204) {
       val inputStream = res.getEntity.getContent
+      var ds: Dataset = DatasetFactory.createGeneral()
+      RDFDataMgr.read(ds, inputStream, Lang.NQUADS)
+      val endTimeMillis = System.currentTimeMillis()
+      val readInputStreamDuration = (endTimeMillis - startTimeMillis) / 1000
+      //blocked until neptune ingester thread takes the message from qeuue, which means it's ready for next bulk.
+      // this happens only when neptune ingester completed processing the previous bulk successfully and persist the position.
+      blockingQueue.put(true)
       logger.info("Going to ingest bulk to neptune...please wait...")
-      val ingestFuturesList = buildCommandAndIngestToNeptune(neptuneCluster, inputStream, updateMode)
+      buildCommandAndIngestToNeptune(neptuneCluster, ds, position, updateMode, readInputStreamDuration)
       val nextPosition = res.getAllHeaders.find(_.getName == "X-CM-WELL-POSITION").map(_.getValue).getOrElse("")
       val totalBytes = res.getAllHeaders.find(_.getName == "X-CM-WELL-N").map(_.getValue).getOrElse("")
-      Future.sequence(ingestFuturesList).onComplete(_ => {
-        val endTimeMillis = System.currentTimeMillis()
-        val durationSeconds = (endTimeMillis - startTimeMillis) / 1000
-        logger.info("Bulk Statistics: Duration for bulk consume and ingest to neptune:" + durationSeconds + " seconds, total infotons :" + totalBytes)
-        logger.info("About to persist position=" + nextPosition)
-        PositionFileHandler.persistPosition(nextPosition)
-        logger.info("Persist position successfully")
-        consumeBulkAndIngest(nextPosition, sourceCluster, neptuneCluster, updateMode)
-      })
+      consumeBulkAndIngest(nextPosition, sourceCluster, neptuneCluster, updateMode)
     }
     else {
       logger.info("Export-Import from cm-well completed successfully, no additional data to consume..trying to re-consume in 0.5 minute")
@@ -81,11 +84,10 @@ class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
     res
   }
 
-  def buildCommandAndIngestToNeptune(neptuneCluster: String, inputStream: InputStream, updateMode: Boolean): List[Future[Int]] = {
-    var ds: Dataset = DatasetFactory.createGeneral()
-    RDFDataMgr.read(ds, inputStream, Lang.NQUADS)
+  def buildCommandAndIngestToNeptune(neptuneCluster: String, ds:Dataset, position:String, updateMode: Boolean, readInputStreamDuration:Long): Unit = {
+    val startTimeMillis = System.currentTimeMillis()
     val graphDataSets = ds.asDatasetGraph()
-    println("total bytes = " + graphDataSets.toString.getBytes("UTF-8").length)
+    val totalBytes = graphDataSets.toString.getBytes("UTF-8").length
     val defaultGraph = graphDataSets.getDefaultGraph
     val defaultGraphTriples = SparqlUtil.getTriplesOfSubGraph(defaultGraph)
     //Default Graph
@@ -107,7 +109,16 @@ class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
     val groupedBySizeMap = groupBySubjectList.grouped(groupSize)
     val neptuneFutureResults = groupedBySizeMap.map(subjectToTriples => SparqlUtil.buildGroupedSparqlCmd(subjectToTriples.keys, subjectToTriples.values, updateMode))
       .map(sparqlCmd => postWithRetry(neptuneCluster, sparqlCmd))
-    neptuneFutureResults.toList
+
+    Future.sequence(neptuneFutureResults.toList).onComplete(_ => {
+      val endTimeMillis = System.currentTimeMillis()
+      val durationSeconds = (endTimeMillis - startTimeMillis) / 1000
+      logger.info("Bulk Statistics: Duration of ingest to neptune:" + durationSeconds + " seconds, total bytes :" + totalBytes + "===total time===" + (readInputStreamDuration + durationSeconds))
+      blockingQueue.take()
+      logger.info("About to persist position=" + position)
+      PositionFileHandler.persistPosition(position)
+      logger.info("Persist position successfully")
+    })
 
   }
 

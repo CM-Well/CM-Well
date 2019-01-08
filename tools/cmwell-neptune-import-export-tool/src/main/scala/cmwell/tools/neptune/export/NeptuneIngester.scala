@@ -27,11 +27,12 @@ object NeptuneIngester {
   final case class ConnectException(private val message: String = "", private val cause: Throwable = None.orNull) extends Exception(message, cause)
   protected lazy val logger = LoggerFactory.getLogger("neptune_ingester")
 
-  def ingestToNeptune(neptuneCluster: String, sparqlCmd: String,  ec: ExecutionContext): Future[Int] = Future {
+  def ingestToNeptune(neptuneCluster: String, sparqlCmd: String, ec: ExecutionContext): Future[Int] = Future {
     val client = new ContentEncodingHttpClient
     val httpPost = new HttpPost("http://" + neptuneCluster + "/sparql")
     val entity = new StringEntity(sparqlCmd)
     httpPost.setEntity(entity)
+    client.setHttpRequestRetryHandler(new NeptuneIngesterHttpClientRetryHandler())
     httpPost.setHeader("Content-type", "application/x-www-form-urlencoded")
     val response = client.execute(httpPost)
     val statusCode = response.getStatusLine.getStatusCode
