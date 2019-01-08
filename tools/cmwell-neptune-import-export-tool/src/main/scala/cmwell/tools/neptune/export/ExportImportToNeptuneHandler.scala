@@ -125,10 +125,10 @@ class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
       val endTimeMillis = System.currentTimeMillis()
       val durationSeconds = (endTimeMillis - startTimeMillis) / 1000
       logger.info("Bulk Statistics: Duration of ingest to neptune:" + durationSeconds + " seconds, total bytes :" + totalBytes + "===total time===" + (readInputStreamDuration + durationSeconds))
-      blockingQueue.take()
       logger.info("About to persist position=" + position)
       PositionFileHandler.persistPosition(position)
       logger.info("Persist position successfully")
+      blockingQueue.take()
     })
 
   }
