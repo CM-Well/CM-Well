@@ -57,14 +57,25 @@ class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
     }
   }
 
-  def consumeBulkAndIngest(position: String, sourceCluster: String, neptuneCluster: String, updateMode: Boolean): CloseableHttpResponse = {
+  def consumeBulkAndIngest(position: String, sourceCluster: String, neptuneCluster: String, updateMode: Boolean, retryCount:Int = 5): CloseableHttpResponse = {
     val startTimeMillis = System.currentTimeMillis()
     val res = CmWellConsumeHandler.bulkConsume(sourceCluster, position, "nquads", updateMode)
     logger.info("Cm-well bulk consume http status=" + res.getStatusLine.getStatusCode)
     if (res.getStatusLine.getStatusCode != 204) {
       val inputStream = res.getEntity.getContent
       var ds: Dataset = DatasetFactory.createGeneral()
-      RDFDataMgr.read(ds, inputStream, Lang.NQUADS)
+      try {
+        RDFDataMgr.read(ds, inputStream, Lang.NQUADS)
+      }catch{
+        case e: Throwable if retryCount > 0 =>
+          logger.error("Failed to read input stream,", e.getMessage)
+          logger.error("Going to retry, retry count=" + retryCount)
+          Thread.sleep(5000)
+          consumeBulkAndIngest(position, sourceCluster, neptuneCluster, updateMode, retryCount - 1)
+        case e: Throwable if retryCount == 0 =>
+          logger.error("Failed to read input stream from cmwell after retry 3 times..going to shutdown the system")
+          sys.exit(0)
+      }
       val endTimeMillis = System.currentTimeMillis()
       val readInputStreamDuration = (endTimeMillis - startTimeMillis) / 1000
       //blocked until neptune ingester thread takes the message from qeuue, which means it's ready for next bulk.
