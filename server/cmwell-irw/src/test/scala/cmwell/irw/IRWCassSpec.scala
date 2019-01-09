@@ -22,7 +22,9 @@ import cmwell.util.exceptions._
 import cmwell.driver.Dao
 import cmwell.util.{Box, BoxedFailure, EmptyBox, FullBox}
 import cmwell.util.concurrent.SimpleScheduler.scheduleFuture
+import com.dimafeng.testcontainers.{ForAllTestContainer, GenericContainer}
 import org.apache.commons.codec.binary.Base64
+import org.testcontainers.containers.wait.strategy.Wait
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -49,7 +51,15 @@ class IRWCassSpecNew extends {
   }
 } with IRWCassSpec
 
-trait IRWServiceTest extends BeforeAndAfterAll { this:Suite =>
+trait IRWServiceTest extends BeforeAndAfterAll with ForAllTestContainer { this:Suite =>
+  override val container = {
+    val scalaContainer = GenericContainer("cassandra:3.11.3",
+      waitStrategy = Wait.forLogMessage(".*Starting listening for CQL clients.*\n", 1)
+    )
+    //It is left here for future reference on how to change the internal java container
+    //scalaContainer.configure(javaContainer => javaContainer.addExposedPort(1500))
+    scalaContainer
+  }
 
   def keyspace: String
   def mkIRW: Dao => IRWService
@@ -58,9 +68,16 @@ trait IRWServiceTest extends BeforeAndAfterAll { this:Suite =>
   var dao : Dao = _
 
   override protected def beforeAll() {
-    dao = Dao("Test",keyspace)
-    irw = mkIRW(dao)
     super.beforeAll()
+    // scalastyle:off
+    val initCommands = Some(List(
+    "CREATE KEYSPACE IF NOT EXISTS data2 WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor' : 1};",
+    "CREATE TABLE IF NOT EXISTS data2.Path ( path text, uuid text, last_modified timestamp, PRIMARY KEY ( path, last_modified, uuid ) ) WITH CLUSTERING ORDER BY (last_modified DESC, uuid ASC) AND compression = { 'sstable_compression' : 'LZ4Compressor' } AND caching = {'keys':'ALL', 'rows_per_partition':'1'};",
+    "CREATE TABLE IF NOT EXISTS data2.Infoton (uuid text, quad text, field text, value text, data blob, PRIMARY KEY (uuid,quad,field,value)) WITH compression = { 'sstable_compression' : 'LZ4Compressor' } AND caching = {'keys':'ALL', 'rows_per_partition':'1000'};"
+    ))
+    // scalastyle:on
+    dao = Dao("Test",keyspace, container.containerIpAddress, container.mappedPort(9042), initCommands = initCommands)
+    irw = mkIRW(dao)
   }
 
   override protected def afterAll() {
@@ -70,11 +87,6 @@ trait IRWServiceTest extends BeforeAndAfterAll { this:Suite =>
 }
 
 trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
-
-  val waitDuration = {
-    import scala.concurrent.duration._
-    2.seconds
-  }
 
   "test" should "be successful" in succeed
 

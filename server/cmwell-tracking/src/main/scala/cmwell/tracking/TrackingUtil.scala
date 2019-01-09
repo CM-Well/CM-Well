@@ -116,7 +116,7 @@ object TrackingUtil {
 object TrackingUtilImpl extends TrackingUtil with LazyLogging {
 
   private lazy val dao: Dao =
-    Dao(Settings.irwServiceDaoClusterName, Settings.irwServiceDaoKeySpace2, Settings.irwServiceDaoHostName)
+    Dao(Settings.irwServiceDaoClusterName, Settings.irwServiceDaoKeySpace2, Settings.irwServiceDaoHostName, 9042, initCommands = None)
   override lazy val zStore: ZStore = ZStore.apply(dao)
   override lazy val irw: IRWService = IRWService.newIRW(dao)
 

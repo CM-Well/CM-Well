@@ -117,7 +117,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
             "ActorSystem of materializer MUST be the same as the one used to create current actor")
   }
 
-  lazy val stpDao = Dao(settings.irwServiceDaoClusterName, settings.irwServiceDaoKeySpace2, settings.irwServiceDaoHostName)
+  lazy val stpDao = Dao(settings.irwServiceDaoClusterName, settings.irwServiceDaoKeySpace2, settings.irwServiceDaoHostName, 9042, initCommands = None)
   lazy val zStore : ZStore = ZStore.apply(stpDao)
 
   var currentJobs: Jobs = Map.empty

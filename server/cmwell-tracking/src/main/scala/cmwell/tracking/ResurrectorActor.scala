@@ -32,7 +32,7 @@ class ResurrectorActor extends Actor with LazyLogging {
   import TrackingUtilImpl.actorIdFromActorPath
 
   private lazy val dao =
-    Dao(Settings.irwServiceDaoClusterName, Settings.irwServiceDaoKeySpace2, Settings.irwServiceDaoHostName)
+    Dao(Settings.irwServiceDaoClusterName, Settings.irwServiceDaoKeySpace2, Settings.irwServiceDaoHostName, 9042, initCommands = None)
   private lazy val zStore: ZStore = ZStore.apply(dao)
 
   override def receive: Receive = activelyWatch(Map.empty, Map.empty, Map.empty)

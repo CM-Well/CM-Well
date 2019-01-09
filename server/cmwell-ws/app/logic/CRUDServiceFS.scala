@@ -60,10 +60,10 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
   val level: ConsistencyLevel = ONE
 
   lazy val defaultParallelism = cmwell.util.os.Props.os.getAvailableProcessors
-  lazy val zStore = ZStore(Dao(irwServiceDaoClusterName, irwServiceDaoKeySpace2, irwServiceDaoHostName))
+  lazy val zStore = ZStore(Dao(irwServiceDaoClusterName, irwServiceDaoKeySpace2, irwServiceDaoHostName, 9042, initCommands = None))
   lazy val zCache = new ZCache(zStore)
 
-  lazy val irwService = IRWService.newIRW(Dao(irwServiceDaoClusterName, irwServiceDaoKeySpace2, irwServiceDaoHostName),
+  lazy val irwService = IRWService.newIRW(Dao(irwServiceDaoClusterName, irwServiceDaoKeySpace2, irwServiceDaoHostName, 9042, initCommands = None),
                                           disableReadCache = !Settings.irwReadCacheEnabled)
 
   val ftsService = FTSService(config)

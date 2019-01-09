@@ -31,7 +31,7 @@ import scala.concurrent.duration._
   */
 class ZStoreSpec extends AsyncFunSpec with Matchers {
 
-  val _dao = Dao("Test", "data2")
+  val _dao = Dao("Test", "data2", "127.0.0.1", 9042, initCommands = None)
   val zStore = ZStore(_dao)
   val utf8 = "UTF-8"
   val indexingDuration = 1.second

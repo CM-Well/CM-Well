@@ -57,7 +57,7 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
     producerProperties.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
     kafkaProducer = new KafkaProducer[Array[Byte], Array[Byte]](producerProperties)
 
-    dao = Dao("Test","data2")
+    dao = Dao("Test","data2", "127.0.0.1", 9042, initCommands = None)
     irwService = IRWService.newIRW(dao, 25 , true, 120.seconds)
     // truncate all tables
     Await.ready(irwService.purgeAll(), 20.seconds)

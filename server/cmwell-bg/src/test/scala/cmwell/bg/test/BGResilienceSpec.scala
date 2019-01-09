@@ -61,7 +61,7 @@ class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers wi
     producerProperties.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
     kafkaProducer = new KafkaProducer[Array[Byte], Array[Byte]](producerProperties)
 
-    dao = Dao("Test","data2")
+    dao = Dao("Test","data2", "127.0.0.1", 9042, initCommands = None)
     testIRWMockupService = FailingIRWServiceMockup(dao, 13)
     zStore = ZStore(dao)
     irwService = IRWService.newIRW(dao, 25 , true, 0.seconds)

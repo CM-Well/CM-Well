@@ -92,7 +92,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
     Files.deleteIfExists(Paths.get("./target", "persist_topic-0.offset"))
     Files.deleteIfExists(Paths.get("./target", "index_topic-0.offset"))
 
-    dao = Dao("Test", "data2")
+    dao = Dao("Test", "data2", "127.0.0.1", 9042, initCommands = None)
     irwService = IRWService.newIRW(dao, 25, true, 120.seconds)
     zStore = ZStore(dao)
     offsetsService = new ZStoreOffsetsService(zStore)

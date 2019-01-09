@@ -18,8 +18,6 @@ libraryDependencies ++= {
     dm("com.google.guava", "guava"),
 //    dm("io.netty", "netty"),
     dm("org.slf4j", "log4j-over-slf4j") % "test")
-//    dm("com.whisk", "docker-testkit-scalatest") % "test",
-//    dm("com.whisk", "docker-testkit-impl-docker-java") % "test")
 }
 
 libraryDependencies += "com.dimafeng" %% "testcontainers-scala" % "0.22.0" % "test"
@@ -28,6 +26,7 @@ cassandraVersion := Versions.cassandra
 	
 cassandraCqlInit := ((resourceDirectory in Test).value / "cassandra-cql-test-commands.txt").getAbsolutePath
 
+/* - It was used when using the cassandra plugin - not needed anymore when using docker testing
 test in Test := Def.taskDyn {
   val a: Task[String] = startCassandra.taskValue
   val b: Task[Unit] = (test in Test).taskValue
@@ -36,5 +35,6 @@ test in Test := Def.taskDyn {
     ((a doFinally b) doFinally c).value
   }
 }.tag(Tags.Cassandra).value
+*/
 
 fullTest := (test in Test).value

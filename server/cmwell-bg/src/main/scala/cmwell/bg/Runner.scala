@@ -55,7 +55,7 @@ object Runner extends LazyLogging {
         val irwServiceDaoClusterName = config.getString("irwServiceDao.clusterName")
         val irwServiceDaoKeySpace = config.getString("irwServiceDao.keySpace")
         val irwServiceDaoHostName = config.getString("irwServiceDao.hostName")
-        Dao(irwServiceDaoClusterName, irwServiceDaoKeySpace, irwServiceDaoHostName)
+        Dao(irwServiceDaoClusterName, irwServiceDaoKeySpace, irwServiceDaoHostName, 9042, initCommands = None)
       }
 
       // casTimeout = Duration.Inf means not to use timeoutFuture in IRW.
