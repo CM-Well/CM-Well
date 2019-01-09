@@ -90,8 +90,7 @@ class ImpStream(partition: Int,
   val persistCommandsTopicPriority = persistCommandsTopic + ".priority"
   val indexCommandsTopic = config.getString("cmwell.bg.index.commands.topic")
   val indexCommandsTopicPriority = indexCommandsTopic + ".priority"
-  val maxInfotonWeightToIncludeInCommand =
-    config.getInt("cmwell.bg.maxInfotonWeightToIncludeInCommand")
+  val maxInfotonWeightToIncludeInCommand = config.getBytes("cmwell.bg.maxInfotonWeightToIncludeInCommand")
   val defaultDC = config.getString("cmwell.dataCenter.id")
   val esActionsBulkSize = config.getInt("cmwell.bg.esActionsBulkSize") // in bytes
   val esActionsGroupingTtl = config.getInt("cmwell.bg.esActionsGroupingTtl") // ttl for bulk es actions grouping in ms
