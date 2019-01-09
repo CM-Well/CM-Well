@@ -35,6 +35,7 @@ class SparqlProcessorManagerSettings {
   val interval: FiniteDuration =
     stpSettings.getDuration("cmwell.agents.sparql-triggered-processor.config-polling-interval").toMillis.millis
   val infotonGroupSize: Integer = stpSettings.getInt("cmwell.triggeredProcessor.infoton-group-size")
+  val sensorAlertDelay : java.time.Duration = stpSettings.getDuration("cmwell.agents.sparql-triggered-processor.sensor-alert-delay")
 
   val irwServiceDaoHostName = stpSettings.getString("irwServiceDao.hostName")
   val irwServiceDaoClusterName = stpSettings.getString("irwServiceDao.clusterName")

@@ -55,7 +55,7 @@ import ld.cmw.passiveFieldTypesCacheImpl
 import ld.exceptions.BadFieldTypeException
 import logic.{CRUDServiceFS, InfotonValidator}
 import markdown.MarkdownFormatter
-import org.joda.time.DateTimeZone
+import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.ISODateTimeFormat
 import play.api.http.{ContentTypes, MediaType}
 import play.api.libs.json.{JsArray, JsBoolean, JsNumber, JsObject, JsString, _}
@@ -255,6 +255,7 @@ class Application @Inject()(bulkScrollHandler: BulkScrollHandler,
                         req.host,
                         req.uri,
                         req.queryString.keySet("pretty"),
+                        req.queryString.keySet("raw"),
                         req.queryString.get("callback").flatMap(_.headOption)
                       )
 
@@ -415,6 +416,10 @@ callback=< [URL] >
           rff => RawFieldFilter.eval(rff, typesCache, cmwellRDFHelper, timeContext).map(Some.apply)
         )
         fieldsFiltersFut.flatMap { fieldFilters =>
+
+          val tokenOpt = authUtils.extractTokenFrom(req)
+          val isAdmin = authUtils.isOperationAllowedForUser(security.Admin, tokenOpt)
+
           activeInfotonGenerator
             .generateInfoton(req.host,
                              path,
@@ -422,6 +427,7 @@ callback=< [URL] >
                              length,
                              offset,
                              isRoot,
+                             isAdmin,
                              withHistory,
                              fieldFilters,
                              timeContext)
@@ -1452,6 +1458,7 @@ callback=< [URL] >
       else {
         val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
         val sortedIteratorStateTry = ConsumeState.decode[SortedConsumeState](sortedIteratorID)
+        val hardLimit = if (isSimpleConsume) Settings.consumeSimpleChunkSize else Settings.consumeExpandableChunkSize
         val lengthHint = request
           .getQueryString("length-hint")
           .flatMap(asInt)
@@ -1462,11 +1469,8 @@ callback=< [URL] >
               .collect {
                 case b if b.threshold <= Settings.maxLength => b.threshold.toInt
               }
-              .getOrElse {
-                if (isSimpleConsume) Settings.consumeSimpleChunkSize
-                else Settings.consumeExpandableChunkSize
-              }
-          )
+              .getOrElse(hardLimit)
+          ).min(hardLimit)  //Making sure length hint is not bigger than max
 
         val debugInfo = request.queryString.keySet("debug-info")
 
@@ -2337,6 +2341,7 @@ callback=< [URL] >
                   request.host,
                   request.uri,
                   request.queryString.keySet("pretty"),
+                  request.queryString.keySet("raw"),
                   request.queryString.get("callback").flatMap(_.headOption)
                 )
               case unknown => {
@@ -3000,6 +3005,57 @@ callback=< [URL] >
       case _               => Future.successful(Forbidden("Not allowed to use zz"))
     }
   }
+
+  def handleStpControl(agent: String) = Action.async(parse.raw) { implicit req =>
+
+    val p = Promise[Result]()
+
+    val infotonPath = s"/meta/sys/agents/sparql/$agent"
+    val flag = req.getQueryString("enabled").flatMap(asBoolean).getOrElse(true)
+
+    val tokenOpt = authUtils.extractTokenFrom(req)
+
+    (authUtils.isOperationAllowedForUser(security.Admin, tokenOpt)) match {
+      case true => {
+        val infotons = crudServiceFS.getInfotonByPathAsync(infotonPath)
+
+        infotons.onComplete{
+          case Success(infotonBox) => {
+            infotonBox.isEmpty match {
+              case false => {
+                val fieldsOption = infotonBox.head.fields
+                val activeFlag = ("active" -> Set(FieldValue(flag)))
+
+                val newFields = fieldsOption match {
+                  case Some(fields) => fields + activeFlag
+                  case None => Map(activeFlag)
+                }
+
+                val newInfoton = infotonBox.head.copyInfoton(fields=Some(newFields), lastModified = new DateTime(System.currentTimeMillis))
+                val deletes = Map(infotonPath ->  Map("active" -> None))
+
+                crudServiceFS.upsertInfotons(inserts = List(newInfoton), deletes = deletes).onComplete({
+                  case Success(_)=> p.completeWith(Future.successful(Ok("""{"success":true}""")))
+                  case Failure(ex) => {
+                    logger.debug(ex.getMessage)
+                    throw ex
+                  }
+                })
+              }
+              case _ =>  p.completeWith(Future.successful(NotFound(s"Config infoton: $infotonPath  not found")))
+            }
+          }
+          case Failure(ex) => p.completeWith(Future.successful(NotFound(s"Config infoton: $infotonPath not found")))
+        }
+      }
+      case _ => p.completeWith(Future.successful(Forbidden("Not allowed to use stp")))
+    }
+
+    p.future
+
+  }
+
+
 
   def handleKafkaConsume(topic: String, partition: Int): Action[AnyContent] = Action { implicit req =>
     val isSysTopic = {

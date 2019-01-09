@@ -62,6 +62,7 @@ object FormatterManager {
                                        filterOutBlanks: Boolean,
                                        forcrUniquness: Boolean,
                                        pretty: Boolean,
+                                       raw: Boolean,
                                        callback: Option[String]): String = {
 
     def bool2string(b: Boolean): String = if (b) "T" else "F"
@@ -69,9 +70,9 @@ object FormatterManager {
     if (Set[RdfFlavor](JsonLDFlavor, JsonLDQFlavor)(rdfFlavor)) {
       s"${rdfFlavor.key}\t$host\t${bool2string(withoutMeta)}\t${bool2string(filterOutBlanks)}\t${bool2string(
         forcrUniquness
-      )}\t${bool2string(pretty)}\t${callback.getOrElse("")}"
+      )}\t${bool2string(pretty)}\t${bool2string(raw)}\t${callback.getOrElse("")}"
     } else {
-      s"${rdfFlavor.key}\t$host\t${bool2string(withoutMeta)}\t${bool2string(filterOutBlanks)}\t${bool2string(forcrUniquness)}\t\t"
+      s"${rdfFlavor.key}\t$host\t${bool2string(withoutMeta)}\t${bool2string(filterOutBlanks)}\t${bool2string(raw)}\t${bool2string(forcrUniquness)}\t\t"
     }
   }
 }
@@ -115,6 +116,7 @@ class FormatterManager @Inject()(C: CMWellRDFHelper) extends LazyLogging {
     host: String = "http://cm-well",
     uri: String = "http://cm-well",
     pretty: Boolean = false,
+    raw: Boolean = false,
     callback: Option[String] = None,
     fieldFilters: Option[FieldFilter] = None,
     offset: Option[Long] = None,
@@ -144,7 +146,7 @@ class FormatterManager @Inject()(C: CMWellRDFHelper) extends LazyLogging {
       case YamlType  => yamlFormatter
       case RdfType(rdfFlavor) => {
         val key =
-          getKeyForRdfFormatterMap(rdfFlavor, host, withoutMeta, filterOutBlanks, forceUniqueness, pretty, callback)
+          getKeyForRdfFormatterMap(rdfFlavor, host, withoutMeta, filterOutBlanks, forceUniqueness, pretty, raw, callback)
         if (rdfFormatterMap.contains(key)) rdfFormatterMap(key)
         else {
           val newFormatter = rdfFlavor match {
@@ -153,24 +155,28 @@ class FormatterManager @Inject()(C: CMWellRDFHelper) extends LazyLogging {
                                   fieldTranslatorForRichRDF(timeContext),
                                   withoutMeta,
                                   filterOutBlanks,
+                                  raw,
                                   forceUniqueness)
             case TurtleFlavor =>
               new TurtleFormatter(host,
                                   fieldTranslatorForRichRDF(timeContext),
                                   withoutMeta,
                                   filterOutBlanks,
+                                  raw,
                                   forceUniqueness)
             case N3Flavor =>
               new N3Formatter(host,
                               fieldTranslatorForRichRDF(timeContext),
                               withoutMeta,
                               filterOutBlanks,
+                              raw,
                               forceUniqueness)
             case NTriplesFlavor =>
               new NTriplesFormatter(host,
                                     fieldTranslatorForPrefixlessRDF(timeContext),
                                     withoutMeta,
                                     filterOutBlanks,
+                                    raw,
                                     forceUniqueness)
             case JsonLDFlavor =>
               JsonLDFormatter(host,
@@ -179,12 +185,14 @@ class FormatterManager @Inject()(C: CMWellRDFHelper) extends LazyLogging {
                               filterOutBlanks,
                               forceUniqueness,
                               pretty,
+                              raw,
                               callback)
             case NquadsFlavor =>
               new NQuadsFormatter(host,
                                   fieldTranslatorForPrefixlessRDF(timeContext),
                                   withoutMeta,
                                   filterOutBlanks,
+                                  raw,
                                   forceUniqueness)
             case TriGFlavor =>
               new TriGFormatter(host,
@@ -192,6 +200,7 @@ class FormatterManager @Inject()(C: CMWellRDFHelper) extends LazyLogging {
                                 C.getAliasForQuadUrl,
                                 withoutMeta,
                                 filterOutBlanks,
+                                raw,
                                 forceUniqueness)
             case TriXFlavor =>
               new TriXFormatter(host,
@@ -199,6 +208,7 @@ class FormatterManager @Inject()(C: CMWellRDFHelper) extends LazyLogging {
                                 C.getAliasForQuadUrl,
                                 withoutMeta,
                                 filterOutBlanks,
+                                raw,
                                 forceUniqueness)
             case JsonLDQFlavor =>
               JsonLDQFormatter(host,
@@ -208,6 +218,7 @@ class FormatterManager @Inject()(C: CMWellRDFHelper) extends LazyLogging {
                                filterOutBlanks,
                                forceUniqueness,
                                pretty,
+                               raw,
                                callback)
           }
           rdfFormatterMap = rdfFormatterMap.updated(key, newFormatter)
@@ -218,7 +229,7 @@ class FormatterManager @Inject()(C: CMWellRDFHelper) extends LazyLogging {
 
         val innerFormatterOpt = withData.map(ft => FormatExtractor.withDefault(ft, RdfType(TriGFlavor))).map { ft =>
           if (ft eq AtomType) throw new IllegalArgumentException("you can't have atom format with inline atom data!")
-          else getFormatter(ft, timeContext, host, uri, pretty, callback, fieldFilters, offset, length, None)
+          else getFormatter(ft, timeContext, host, uri, pretty, raw, callback, fieldFilters, offset, length, None)
         }
         (offset, length) match {
           case (Some(o), Some(l)) => AtomFormatter(host, uri, fieldFilters, o, l, innerFormatterOpt)

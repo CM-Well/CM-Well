@@ -1,7 +1,7 @@
 [![Gitter chat](https://badges.gitter.im/CM-Well/CM-Well.svg)](https://gitter.im/CM-Well/CM-Well)
 
 # Introduction #
-CM-Well is a writable Linked Data repository, developed by [Thomson Reuters](www.thomsonreuters.com) & [Refinitiv](www.refinitiv.com) and used as its central Knowledge Graph database. CM-Well (Content Matrix Well) adheres to RDF principles, meaning that data is in a [standard](https://www.w3.org/RDF/), machine-readable format.
+CM-Well is a writable Linked Data repository, developed by [Thomson Reuters](http://www.thomsonreuters.com) & [Refinitiv](http://www.refinitiv.com) and used as its central Knowledge Graph database. CM-Well (Content Matrix Well) adheres to RDF principles, meaning that data is in a [standard](https://www.w3.org/RDF/), machine-readable format.
 
 CM-Well is _not_ a triple store! Our focus is on high scale, immutability of changes and downstream distribution of content. In BI terminology, CM-Well is a [data warehouse](https://en.wikipedia.org/wiki/Data_warehouse),  you might use a triple store downstream as a [data mart](https://en.wikipedia.org/wiki/Data_mart).
 

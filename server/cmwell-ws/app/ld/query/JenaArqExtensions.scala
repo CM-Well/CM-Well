@@ -538,6 +538,7 @@ class DatasetGraphCmWell(val host: String,
                                     hash => Some(JenaArqExtensionsUtils.cmwellInternalUriPrefix + hash + "#" -> None),
                                     false,
                                     false,
+                                    false,
                                     false) {
       override def format: cmwell.formats.FormatType = ???
       override def render(formattable: Formattable): String = ???

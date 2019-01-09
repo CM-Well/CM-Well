@@ -236,7 +236,7 @@ object InfotonRetriever extends LazyLogging {
       HttpEntity(ContentTypes.`text/plain(UTF-8)`, Gzip.encode(payload))
     HttpRequest(
       method = HttpMethods.POST,
-      uri = s"$dst/_out?format=nquads",
+      uri = s"$dst/_out?format=nquads&raw",
       entity = entity,
       headers = scala.collection.immutable.Seq(gzipAcceptEncoding, gzipContentEncoding)
     )

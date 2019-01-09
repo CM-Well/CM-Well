@@ -779,6 +779,7 @@ ${lines.mkString("\n")}
     length: Int = 0,
     offset: Int = 0,
     isRoot: Boolean = false,
+    isAdmin: Boolean = false,
     withHistory: Boolean,
     fieldFilters: Option[FieldFilter],
     timeContext: Option[Long]
@@ -1013,7 +1014,7 @@ ${lines.mkString("\n")}
       case "/proc/dc-distribution.md" =>
         DcMonitor.dcDistribution(path, dc, crudServiceFS)
       case "/proc/stp.md" =>
-        SparqlTriggeredProcessorMonitor.generateTables(path, dc)
+        SparqlTriggeredProcessorMonitor.generateTables(path, dc, isAdmin)
       case "/proc/traffic.md" => TrafficMonitoring.traffic(path, dc)
       case s if s.startsWith("/meta/ns/") => {
         val sysOrNn = s.drop("/meta/ns/".length)

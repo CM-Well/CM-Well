@@ -804,7 +804,7 @@ abstract class Host(user: String,
   }
 
   def _rsync(from: String, to: String, host: String, tries: Int = 10, sudo: Boolean): Try[String] = {
-    val seq = Seq("rsync", "-Paz", "--delete", from, host + ":" + to)
+    val seq = Seq("rsync", "-e", "ssh -o LogLevel=ERROR", "-Paz", "--delete", from, host + ":" + to)
 
     // scalastyle:off
     if (verbose) println("command: " + seq.mkString(" "))
@@ -1671,6 +1671,13 @@ abstract class Host(user: String,
       Thread.sleep(5000)
       ret = command(s"$createTopicCommandPrefix index_topic.priority", hosts(0), false)
     }
+
+    ret = command(s"$createTopicCommandPrefix red_queue", hosts(0), false)
+    while (ret.isFailure || !ret.get.contains("Created topic") && tryNum < 6) {
+      tryNum += 1
+      Thread.sleep(5000)
+      ret = command(s"$createTopicCommandPrefix red_queue", hosts(0), false)
+    }
   }
 
   def avaiableHosts = {
@@ -1904,8 +1911,9 @@ abstract class Host(user: String,
     val createTopicCommandPrefix = s"cd ${absPath(instDirs.globalLocation)}/cm-well/app/kafka/cur; $exportCommand sh bin/kafka-topics.sh --create --zookeeper ${pingAddress}:2181 --replication-factor $replicationFactor --partitions ${ips.size} --topic"
 
     // scalastyle:on
-    command(s"$createTopicCommandPrefix persist_topic", ips(0), false)
-    command(s"$createTopicCommandPrefix index_topic", ips(0), false)
+    Seq("persist_topic", "persist_topic.priority", "index_topic", "index_topic.priority", "red_queue").foreach { topic =>
+      command(s"$createTopicCommandPrefix $topic", ips.head, sudo = false)
+    }
   }
 
   def checkPreUpgradeStatus(host: String): Unit = {
@@ -2023,15 +2031,16 @@ abstract class Host(user: String,
               uploadDocs: Boolean = true,
               uploadUserInfotons: Boolean = true,
               withUpdateSchemas: Boolean = false,
-              hosts: GenSeq[String] = ips) {
+              hosts: GenSeq[String] = ips,
+              skipVersionCheck: Boolean = false) {
 /*
     info("upgrade is disable until further notice")
     sys.exit(1)
 */
 
-    val currentVersion = extractVersionFromProcNode(ips(0))
+    val currentVersion = if(skipVersionCheck) Future.failed(null) else extractVersionFromProcNode(ips(0))
     //If all 3 retries will fail, will wait for result. If fails, upgrade will be stopped.
-    Await.result(currentVersion, 10.seconds)
+    if(!skipVersionCheck) Await.result(currentVersion, 10.seconds)
 
     currentVersion.map(ver => info(s"Current version is $ver"))
 

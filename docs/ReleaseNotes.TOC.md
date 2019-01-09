@@ -10,10 +10,13 @@ Click on a version to see its release notes.
 
 **Latest version:**
 
-* [Version Wombat - August 2018](ReleaseNotes.Wombat.August.2018.md)
+* [Version Zebra - December 2018](ReleaseNotes.Zebra.December.2018.md)
 
 **Older versions:**
 
+* [Version Yak - November 2018](ReleaseNotes.Yak.November.2018.md)
+* [Version Xerus - October 2018](ReleaseNotes.Xerus.October.2018.md)
+* [Version Wombat - August 2018](ReleaseNotes.Wombat.August.2018.md)
 * [Version Viper - June 2018](ReleaseNotes.Viper.June.2018.md)
 * [Version Unicorn - June 2018](ReleaseNotes.Unicorn.June.2018.md)
 * [Version Turtle - May 2018](ReleaseNotes.Turtle.May.2018.md)

@@ -312,38 +312,50 @@ class SparqlTriggeredProcessor(config: Config,
               (ByteString(""), Map.empty[String,String]) -> None
           }
 
-        // execute sparql queries on populated paths
-        addStatsToSource(
-          id = SparqlTriggeredProcessor.sparqlMaterializerLabel,
-          initialDownloadStats = tokensAndStatistics.materializedStats,
-          source = SparqlProcessor.createSparqlSourceFromPaths(
-            baseUrl = baseUrl,
-            sparqlQuery = processedConfig.sparqlMaterializer,
-            spQueryParamsBuilder = (path: Seq[String], vars: Map[String,String]) => {
-              (if(path.head.length>0) {
-                 "sp.pid=" + path.head.substring(path.head.lastIndexOf('-') + 1) +
-                   "&sp.path=" + path.head.substring(path.head.lastIndexOf('/') + 1)
-               }
-               else{""}) +
-                vars.foldLeft("") {
-                  case (string, (key, value)) => {
-                    string + "sp." + key + "=" + value + "&"
+        processedConfig.sparqlMaterializer match {
+
+          case response if response.startsWith("Infoton not found") || response.startsWith("Infoton was deleted") =>
+            Source.failed(new Exception(s"Could not load sparql infoton from configuration"))
+          case "" =>
+            Source.failed(new Exception(s"No sparql configuration was supplied"))
+          case _ =>
+
+            // execute sparql queries on populated paths
+            addStatsToSource(
+              id = SparqlTriggeredProcessor.sparqlMaterializerLabel,
+              initialDownloadStats = tokensAndStatistics.materializedStats,
+              source = SparqlProcessor.createSparqlSourceFromPaths(
+                baseUrl = baseUrl,
+                sparqlQuery = processedConfig.sparqlMaterializer,
+                spQueryParamsBuilder = (path: Seq[String], vars: Map[String, String]) => {
+                  (if (path.head.length > 0) {
+                    "sp.pid=" + path.head.substring(path.head.lastIndexOf('-') + 1) +
+                      "&sp.path=" + path.head.substring(path.head.lastIndexOf('/') + 1)
                   }
-                } + (
-                useQuadsInSp match {
-                  case true => "&quads"
-                  case false => ""
-                })
-            },
-            source = sensorSource,
-            isNeedWrapping = false,
-            label = Some(
-              label
-                .map(l => s"$l-${SparqlTriggeredProcessor.sparqlMaterializerLabel}")
-                .getOrElse(SparqlTriggeredProcessor.sparqlMaterializerLabel)
+                  else {
+                    ""
+                  }) +
+                    vars.foldLeft("") {
+                      case (string, (key, value)) => {
+                        string + "sp." + key + "=" + value + "&"
+                      }
+                    } + (
+                    useQuadsInSp match {
+                      case true => "&quads"
+                      case false => ""
+                    })
+                },
+                source = sensorSource,
+                isNeedWrapping = false,
+                label = Some(
+                  label
+                    .map(l => s"$l-${SparqlTriggeredProcessor.sparqlMaterializerLabel}")
+                    .getOrElse(SparqlTriggeredProcessor.sparqlMaterializerLabel)
+                )
+              )
             )
-          )
-        )
+
+        }
       }
     }
   }

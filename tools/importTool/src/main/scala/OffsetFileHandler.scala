@@ -12,15 +12,30 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-package cmwell.ctrl.checkers
+import java.io.{BufferedWriter, File, FileWriter, PrintWriter}
 
-/**
-  * Created by matan on 14/5/17.
-  */
-object StpChecker {
-  type Row = Iterable[String]
-  case class Table(title: Iterable[String], header: Row, body: Iterable[Row])
+import akka.actor.{ActorSystem, Props}
+import akka.util.Timeout
 
-  case class RequestStats(isAdmin: Boolean = false)
-  case class ResponseStats(stats: Iterable[Table])
+import scala.io.Source
+
+
+object OffsetFileHandler {
+
+
+  def persistOffset(lastSuccessfulOffset:Long) = {
+
+    val file = new File("./lastOffset")
+    val bw = new BufferedWriter(new FileWriter(file))
+    bw.write(lastSuccessfulOffset.toString)
+    bw.close()
+
+  }
+
+  def readOffset:Long = {
+    val source = Source.fromFile("./lastOffset")
+    try { source.getLines().toList.head.toLong }
+    finally { source.close() }
+  }
+
 }

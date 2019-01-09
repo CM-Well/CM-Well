@@ -57,6 +57,21 @@ Encode *no* non-English characters:
     SPARQL
     SELECT * WHERE { ?s ?p ?o }'
 
+
+### Don't Use Blank Nodes ###
+
+Several types of RDF notation support **blank nodes** (also known as **bnodes**;  resources represented by blank nodes are also called **anonymous resources**). These are RDF nodes that have no defined URI. (see the [Wikipedia Blank Node entry](https://en.wikipedia.org/wiki/Blank_node) to learn more.) It's possible to define a temporary ID for the node such as **x**. However, such temporary identifiers are limited in scope only to a serialization of a particular RDF graph.
+
+While supported in certain notations (RDF/XML, RDFa, Turtle, N3 and N-Triples) and providing short term convenience for defining complex structures and for protecting sensitive information from browser access, as a rule **using blank nodes is considered bad practice when working with large linked data stores like CM-Well, and is therefore discouraged**. Best practice for linked data is to produce reusable, permanent URIs for objects.
+
+Disadvantages of using blank nodes include:
+
+* They're limited to the document in which they appear.
+* They reduce the potential for interlinking between different linked data sources.
+* They make it much more difficult to merge data from different sources.
+
+CM-Well does not support blank nodes in its own data, and therefore when it encounters one, it creates an arbitrary URI for it. Since this is the case, we recommend not using blank nodes in data you intend to upload to CM-Well, and instead creating an informative URI for the relevant node, such as one containing a hash of its field values.
+
 ## Dos ##
 
 ### Use Correct Syntax in Windows/Unix Command-Line ###
