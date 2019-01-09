@@ -43,10 +43,9 @@ object SparqlUtil {
     " GRAPH <" + encode(graph) + "> { " + triplesPerGraph.map(trio => encode(trio.triple)).mkString + "}"
   }
 
-
   def buildGroupedSparqlCmd(subjects: Iterable[String], allSubjGraphTriples: Iterable[List[SubjectGraphTriple]], updateMode: Boolean): String = {
     var sparqlCmd = "update="
-    val deleteSubj = if (updateMode) Some(subjects.map(subject => "delete where { " + encode(subject) + " ?anyPred ?anyObj};").mkString) else None
+    val deleteSubj = if (updateMode) Some("DELETE { ?s ?p ?o . } WHERE { VALUES ?s { " + subjects.map(subject => encode(subject) + " ").mkString + "} ?s ?p ?o };") else None
     val insertDefaultGraphSparqlCmd = "INSERT DATA {" + allSubjGraphTriples.flatten.filterNot(trio => predicateContainsMeta(trio)).groupBy(trio => trio.graph).map(graphWithTriples => graphWithTriples._1.fold(generateSparqlCmdForDefaultGraph(graphWithTriples._2))(graph => "")).mkString + "}"
     val insertNamedGraphSparqlCmd = "INSERT DATA {" + allSubjGraphTriples.flatten.filterNot(trio => predicateContainsMeta(trio)).groupBy(trio => trio.graph).map(graphWithTriples => graphWithTriples._1.fold("")(graphName => generateSparqlCmdForNamedGraph(graphName, graphWithTriples._2))).mkString + "}"
     sparqlCmd + deleteSubj.getOrElse("") + insertDefaultGraphSparqlCmd + ";" + insertNamedGraphSparqlCmd
