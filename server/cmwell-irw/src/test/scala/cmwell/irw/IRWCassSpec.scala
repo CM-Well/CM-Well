@@ -24,11 +24,15 @@ import cmwell.util.{Box, BoxedFailure, EmptyBox, FullBox}
 import cmwell.util.concurrent.SimpleScheduler.scheduleFuture
 import com.dimafeng.testcontainers.{ForAllTestContainer, GenericContainer}
 import org.apache.commons.codec.binary.Base64
+import org.testcontainers.containers.output.Slf4jLogConsumer
 import org.testcontainers.containers.wait.strategy.Wait
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Try
+import cmwell.util.build.BuildInfo.cassandraVersion
+import org.slf4j.LoggerFactory
+
 
 /**
  * Created with IntelliJ IDEA.
@@ -53,11 +57,12 @@ class IRWCassSpecNew extends {
 
 trait IRWServiceTest extends BeforeAndAfterAll with ForAllTestContainer { this:Suite =>
   override val container = {
-    val scalaContainer = GenericContainer("cassandra:3.11.3",
-      waitStrategy = Wait.forLogMessage(".*Starting listening for CQL clients.*\n", 1)
+    val scalaContainer = GenericContainer(s"cassandra:$cassandraVersion",
+      waitStrategy = Wait.forLogMessage(".*Starting listening for CQL clients.*\n", 1),
+      env = Map("JVM_OPTS" -> "-Xms1G -Xmx1G")
     )
-    //It is left here for future reference on how to change the internal java container
-    //scalaContainer.configure(javaContainer => javaContainer.addExposedPort(1500))
+    //It is left here for future reference on how to change the internal java container during initialization
+    //scalaContainer.configure(j => j.something)
     scalaContainer
   }
 
@@ -69,6 +74,8 @@ trait IRWServiceTest extends BeforeAndAfterAll with ForAllTestContainer { this:S
 
   override protected def beforeAll() {
     super.beforeAll()
+    val containerLogger = new Slf4jLogConsumer(LoggerFactory.getLogger(s"container[${container.containerInfo.getConfig.getImage}]"))
+    container.configure(j => j.followOutput(containerLogger))
     // scalastyle:off
     val initCommands = Some(List(
     "CREATE KEYSPACE IF NOT EXISTS data2 WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor' : 1};",
