@@ -15,6 +15,9 @@
   */
 package cmwell.tools.neptune.export
 
+import java.net.{URL, URLEncoder}
+import java.time.Instant
+
 import org.apache.http.client.methods.{CloseableHttpResponse, HttpGet}
 import org.apache.http.impl.client.DefaultHttpClient
 import org.apache.http.util.EntityUtils
@@ -53,11 +56,16 @@ object CmWellConsumeHandler {
     response
   }
 
-  def retrivePositionFromCreateConsumer(cluster: String, lengthHint: Int, qp: Option[String], updateMode:Boolean, retryCount:Int = 0): String = {
+  def retrivePositionFromCreateConsumer(cluster: String, lengthHint: Int, qp: Option[String], updateMode:Boolean, automaticUpdateMode:Boolean, toolStartTime:Instant, retryCount:Int = 0): String = {
     val withDeletedParam = if(updateMode) "&with-deleted" else ""
-    val createConsumerUrl = "http://" + cluster + "/?op=create-consumer&qp=-system.parent.parent_hierarchy:/meta/" + qp.getOrElse("") + "&recursive&length-hint=" + lengthHint + withDeletedParam
-    logger.info("create-consumer-url=" + createConsumerUrl)
-    val get = new HttpGet(createConsumerUrl)
+    //initial mode
+    val qpTillToolStartTime = if(!updateMode && !automaticUpdateMode)  URLEncoder.encode(",system.lastModified<<") + toolStartTime.toString else ""
+    //automatic update mode
+    val qpAfterToolStartTime = if(!updateMode && automaticUpdateMode) URLEncoder.encode(",system.lastModified>>" )+ toolStartTime.toString else ""
+    val createConsumerUrl = "http://" + cluster + "/?op=create-consumer&qp=-system.parent.parent_hierarchy:/meta/" + qp.getOrElse("") + qpTillToolStartTime + qpAfterToolStartTime + "&recursive&length-hint=" + lengthHint + withDeletedParam
+    val url = createConsumerUrl
+    logger.info("create-consumer-url=" + url)
+    val get = new HttpGet(url)
     val client = new DefaultHttpClient
     client.setHttpRequestRetryHandler(new CustomHttpClientRetryHandler())
     val response = client.execute(get)
@@ -68,12 +76,12 @@ object CmWellConsumeHandler {
       if(statusCode == 503){
         logger.error("Failed to retrieve position via create-consumer api,error status code=" + statusCode + ", response entity=" + EntityUtils.toString(response.getEntity) + ".Going to retry...")
         Thread.sleep(2000)
-        retrivePositionFromCreateConsumer(cluster, lengthHint, qp, updateMode)
+        retrivePositionFromCreateConsumer(cluster, lengthHint, qp, updateMode, automaticUpdateMode, toolStartTime)
       }else {
         if (retryCount < maxRetry) {
           logger.error("Failed to retrieve position via create-consumer api,error status code=" + statusCode + ", response entity=" + EntityUtils.toString(response.getEntity) + ".Going to retry..., retry count=" + retryCount)
           Thread.sleep(2000)
-          retrivePositionFromCreateConsumer(cluster, lengthHint, qp, updateMode, retryCount+1)
+          retrivePositionFromCreateConsumer(cluster, lengthHint, qp, updateMode, automaticUpdateMode, toolStartTime, retryCount+1)
         }
         else {
           throw new Throwable("Failed to consume from cm-well, error code status=" + statusCode + ", response entity=" + EntityUtils.toString(response.getEntity))
