@@ -165,7 +165,7 @@ sealed trait Infoton extends Formattable { self =>
     bb.array()
   }
 
-  /* internal variables and theiEncodersr counterparty methods for calculated fields*/
+  /* internal variables and their counterparty methods for calculated fields*/
   private var parent_ = ""
   private val (uuid_, weight_) = {
     var weight_ = 0L
@@ -177,7 +177,7 @@ sealed trait Infoton extends Formattable { self =>
     digest.update(lastModifiedBytes_)
     weight_ += lastModifiedBytes_.length
     fields.foreach { f =>
-      (f.map { case (k, v) => (k, SortedSet(v.map(_.toString).toSeq: _*)) }.toSeq.sortBy(_._1)).foreach {
+      f.map { case (k, v) => (k, SortedSet(v.map(_.payload).toSeq: _*)) }.toSeq.sortBy(_._1).foreach {
         case (k, v) =>
           val keyBytes_ = k.getBytes("UTF-8")
           digest.update(keyBytes_)
@@ -567,6 +567,7 @@ sealed trait FieldValue {
   def quad: Option[String]
   def sType: String = this.getClass.getSimpleName.substring(1)
   def compareToString(unparsedValue: String): Try[Int]
+  private[domain] def payload: String = s"${this.getClass.getName}$value${quad.getOrElse("")}"
 }
 
 case class FNull(quad: Option[String]) extends FieldValue {
