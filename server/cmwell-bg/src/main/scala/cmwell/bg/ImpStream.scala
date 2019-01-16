@@ -572,11 +572,18 @@ class ImpStream(partition: Int,
           offsets
         )
   }
-  val publishIndexCommandsFlow = Producer
-    .flow[Array[Byte], Array[Byte], Seq[Offset]](kafkaProducerSettings)
-    .map {
-    _.message.passThrough
-  }
+  val publishIndexCommandsFlow =
+    Flow[Message[Array[Byte], Array[Byte], Seq[Offset]]].map { beforeMsg =>
+      logger.info(s"Eli: before: message length is: ${beforeMsg.record.value.length}")
+      beforeMsg
+    }.via(
+      Producer
+        .flow[Array[Byte], Array[Byte], Seq[Offset]](kafkaProducerSettings)
+        .map { msg =>
+          logger.info(s"Eli: after: message is: ${msg.message.record.value.length}")
+          msg.message.passThrough
+        }
+        )
 
   // @formatter:off
   val impGraph = RunnableGraph.fromGraph(

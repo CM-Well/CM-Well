@@ -59,6 +59,7 @@ dependenciesManager in Global := {
   case ("com.avast","bytecompressor-jsnappy")                      => "com.avast" %% "bytecompressor-jsnappy" % "1.2.2"
   case ("com.avast","bytecompressor-zlib")                         => "com.avast" %% "bytecompressor-zlib"    % "1.2.2"
   case ("com.datastax.cassandra","cassandra-driver-core")          => "com.datastax.cassandra" % "cassandra-driver-core" % "3.6.0"
+  case ("com.dimafeng","testcontainers-scala")                     => "com.dimafeng" %% "testcontainers-scala" % "0.22.0"
   case ("com.ecyrd.speed4j","speed4j")                             => "com.ecyrd.speed4j" % "speed4j" % "0.18"
   case ("com.fasterxml.jackson.core", art)                         => "com.fasterxml.jackson.core" % art % "2.9.8"
   case ("com.github.andrewoma.dexx","collection")                  => "com.github.andrewoma.dexx" % "collection" % "0.7"
@@ -222,13 +223,13 @@ lazy val util          = (project in file("cmwell-util")).enablePlugins(CMWellBu
 lazy val kafkaAssigner = (project in file("cmwell-kafka-assigner")).enablePlugins(CMWellBuild)
 lazy val dao           = (project in file("cmwell-dao")).enablePlugins(CMWellBuild)
 lazy val domain        = (project in file("cmwell-domain")).enablePlugins(CMWellBuild)                              dependsOn(util)
-lazy val zstore        = (project in file("cmwell-zstore")).enablePlugins(CMWellBuild, CassandraPlugin)             dependsOn(dao, util)
+lazy val zstore        = (project in file("cmwell-zstore")).enablePlugins(CMWellBuild, CassandraPlugin)             dependsOn(dao, util % "compile->compile;test->test")
 lazy val common        = (project in file("cmwell-common")).enablePlugins(CMWellBuild, BuildInfoPlugin)             dependsOn(zstore, domain % "compile->compile;test->test")
 lazy val grid          = (project in file("cmwell-grid")).enablePlugins(CMWellBuild)                                dependsOn(util)
 lazy val rts           = (project in file("cmwell-rts")).enablePlugins(CMWellBuild)                                 dependsOn(domain, grid, formats)
 lazy val fts           = (project in file("cmwell-fts")).enablePlugins(CMWellBuild)                                 dependsOn(domain, common)
 lazy val formats       = (project in file("cmwell-formats")).enablePlugins(CMWellBuild)                             dependsOn(domain, common, fts)
-lazy val irw           = (project in file("cmwell-irw")).enablePlugins(CMWellBuild, CassandraPlugin)                dependsOn(dao, domain, common, zstore)
+lazy val irw           = (project in file("cmwell-irw")).enablePlugins(CMWellBuild, CassandraPlugin)                dependsOn(dao, domain, common, zstore, util % "compile->compile;test->test")
 lazy val stortill      = (project in file("cmwell-stortill")).enablePlugins(CMWellBuild)                            dependsOn(domain, irw, fts, formats)
 lazy val bg            = (project in file("cmwell-bg")).enablePlugins(CMWellBuild, SbtKafkaPlugin, CassandraPlugin) dependsOn(kafkaAssigner, irw, domain, fts, grid, zstore, tracking)
 lazy val consIt        = (project in file("cmwell-it")).enablePlugins(CMWellBuild).settings(
@@ -257,7 +258,10 @@ lazy val ws            = (project in file("cmwell-ws")).enablePlugins(CMWellBuil
                                                        .disablePlugins(PlayAkkaHttpServer)                          dependsOn(domain, common, formats, fts, irw, rts, ctrl, stortill, zstore, tracking)
 
 testOptions in Test in ThisBuild += Tests.Argument(TestFrameworks.ScalaTest, "-oD")
+testOptions in Test in ThisBuild += Tests.Argument(TestFrameworks.ScalaTest, "-W", "10", "2")
 testOptions in IntegrationTest in ThisBuild += Tests.Argument(TestFrameworks.ScalaTest, "-oD")
+testOptions in IntegrationTest in ThisBuild += Tests.Argument(TestFrameworks.ScalaTest, "-W", "10", "2")
+
 fullTest := {
   (fullTest in LocalProject("util")).value
   (fullTest in LocalProject("kafkaAssigner")).value

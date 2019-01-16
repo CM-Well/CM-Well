@@ -19,8 +19,9 @@ package cmwell.zstore
 import cmwell.driver.{Dao, DaoExecution}
 import cmwell.util.concurrent._
 import cmwell.util.exceptions._
+import cmwell.util.testSuitHelpers.test.CassandraDockerSuite
 import com.typesafe.config.ConfigFactory
-import org.scalatest.{AsyncFunSpec, Matchers, Succeeded}
+import org.scalatest.{AsyncFunSpec, BeforeAndAfterAll, Matchers, Succeeded}
 
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success, Try}
@@ -29,12 +30,28 @@ import scala.concurrent.duration._
 /**
   * Created by yaakov on 9/19/16.
   */
-class ZStoreSpec extends AsyncFunSpec with Matchers {
-
-  val _dao = Dao("Test", "data2", "127.0.0.1", 9042, initCommands = None)
-  val zStore = ZStore(_dao)
+class ZStoreSpec extends AsyncFunSpec with Matchers with BeforeAndAfterAll with CassandraDockerSuite {
+  override def cassandraVersion: String = "3.11.3" //cmwell.util.build.BuildInfo.cassandraVersion - should be used but it had circular dependency!!!
   val utf8 = "UTF-8"
   val indexingDuration = 1.second
+  var _dao : Dao = _
+  var zStore: ZStore = _
+
+  override protected def beforeAll() {
+    super.beforeAll()
+    // scalastyle:off
+    val initCommands = Some(List(
+      "CREATE KEYSPACE IF NOT EXISTS data2 WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor' : 1};"
+    ))
+    // scalastyle:on
+    _dao = Dao("Test", "data2", container.containerIpAddress, container.mappedPort(9042), initCommands = initCommands)
+    zStore = ZStore(_dao)
+  }
+
+  override protected def afterAll() {
+    super.afterAll()
+    _dao.shutdown()
+  }
 
   it("should get a NoSuchElementException when getting a non existing key") {
     mapToFailure(zStore.get("no-such-key")).map(assertIsNoSuchElementException)

@@ -20,8 +20,6 @@ libraryDependencies ++= {
     dm("org.slf4j", "log4j-over-slf4j") % "test")
 }
 
-libraryDependencies += "com.dimafeng" %% "testcontainers-scala" % "0.22.0" % "test"
-
 cassandraVersion := Versions.cassandra
 	
 cassandraCqlInit := ((resourceDirectory in Test).value / "cassandra-cql-test-commands.txt").getAbsolutePath

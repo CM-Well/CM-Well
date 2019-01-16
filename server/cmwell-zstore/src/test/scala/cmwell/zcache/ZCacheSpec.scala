@@ -19,8 +19,10 @@ package cmwell.zcache
 import java.util.concurrent.atomic.AtomicInteger
 
 import cmwell.util.concurrent.delayedTask
+import cmwell.util.testSuitHelpers.test.CassandraDockerSuite
 import cmwell.zstore.ZStoreMem
 import org.scalatest.{AsyncFunSpec, Matchers}
+
 import scala.concurrent.duration._
 import scala.concurrent.Future
 
@@ -28,6 +30,7 @@ import scala.concurrent.Future
   * Created by yaakov on 12/12/16.
   */
 class ZCacheSpec extends AsyncFunSpec with Matchers {
+
   val zCacheMem = new ZCache(new ZStoreMem)
 
   val ttl = 3

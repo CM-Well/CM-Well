@@ -27,6 +27,8 @@ object EmbeddedES {
   lazy val config = ConfigFactory.load()
   lazy val esClusterName = config.getString("ftsService.clusterName")
   lazy val indicesTemplate = Source.fromURL(this.getClass.getResource("/indices_template.json")).getLines.reduceLeft(_ + _)
+  print(s"indices template: $indicesTemplate")
+  print("\n")
   lazy val embeddedElastic:EmbeddedElastic = EmbeddedElastic.builder()
     .withElasticVersion(elasticsearchVersion)
     .withSetting(PopularProperties.CLUSTER_NAME, esClusterName)
