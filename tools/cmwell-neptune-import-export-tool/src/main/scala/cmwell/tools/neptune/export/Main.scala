@@ -21,7 +21,7 @@ class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
   val sourceCluster = opt[String]("source-cluster", required = true, descr = "the source cluster which data is being exported from")
   val neptuneCluster = opt[String]("neptune-cluster", required = true, descr="neptune cluster which data is being imported to")
   val ingestConnectionPoolSize = opt[Int]("ingest-connection-pool-size", required = true, descr="number of connection pool that should be created by the tool in order to ingest to neptune")
-  val lengthHint = opt[Int]("length-hint", default = Some(16000), validate = 16000.>=, descr="number of infotons that should be consumed in each bulk-consume call")
+  val lengthHint = opt[Int]("length-hint", default = Some(16000), validate = 300000.>=, descr="number of infotons that should be consumed in each bulk-consume call")
   val qp = opt[String](name="qp-param", default=None)
   val updateInfotons = opt[Boolean]("update-infotons")
 

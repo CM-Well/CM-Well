@@ -85,8 +85,8 @@ class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
       blockingQueue.put(true)
       logger.info("Going to ingest bulk to neptune...please wait...")
       val nextPosition = res.getAllHeaders.find(_.getName == "X-CM-WELL-POSITION").map(_.getValue).getOrElse("")
-      buildCommandAndIngestToNeptune(neptuneCluster, ds, nextPosition, updateMode, readInputStreamDuration)
-      val totalBytes = res.getAllHeaders.find(_.getName == "X-CM-WELL-N").map(_.getValue).getOrElse("")
+      val totalInfotons = res.getAllHeaders.find(_.getName == "X-CM-WELL-N").map(_.getValue).getOrElse("")
+      buildCommandAndIngestToNeptune(neptuneCluster, ds, nextPosition, updateMode, readInputStreamDuration, totalInfotons)
       consumeBulkAndIngest(nextPosition, sourceCluster, neptuneCluster, updateMode, lengthHint, qp, toolStartTime)
     }
     else {
@@ -100,11 +100,11 @@ class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
     res
   }
 
-  def buildCommandAndIngestToNeptune(neptuneCluster: String, ds:Dataset, nextPosition:String, updateMode: Boolean, readInputStreamDuration:Long): Unit = {
+  def buildCommandAndIngestToNeptune(neptuneCluster: String, ds:Dataset, nextPosition:String, updateMode: Boolean, readInputStreamDuration:Long, totalInfotons:String): Unit = {
     Future {
       val startTimeMillis = System.currentTimeMillis()
       val graphDataSets = ds.asDatasetGraph()
-      val totalBytes = graphDataSets.toString.getBytes("UTF-8").length
+//      val totalBytes = graphDataSets.toString.getBytes("UTF-8").length
       val defaultGraph = graphDataSets.getDefaultGraph
       val defaultGraphTriples = SparqlUtil.getTriplesOfSubGraph(defaultGraph)
       //Default Graph
@@ -130,7 +130,7 @@ class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
       Future.sequence(neptuneFutureResults.toList).onComplete(_ => {
         val endTimeMillis = System.currentTimeMillis()
         val durationSeconds = (endTimeMillis - startTimeMillis) / 1000
-        logger.info("Bulk Statistics: Duration of ingest to neptune:" + durationSeconds + " seconds, total bytes :" + totalBytes + "===total time===" + (readInputStreamDuration + durationSeconds))
+        logger.info("Bulk Statistics: Duration of ingest to neptune:" + durationSeconds + " seconds, total infotons :" + totalInfotons + ",total time = " + (readInputStreamDuration + durationSeconds))
         logger.info("About to persist position=" + nextPosition)
         PropertiesFileHandler.persistPosition(nextPosition)
         logger.info("Persist position successfully")
