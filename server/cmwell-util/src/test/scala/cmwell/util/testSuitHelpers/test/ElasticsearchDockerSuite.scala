@@ -15,27 +15,10 @@
 
 package cmwell.util.testSuitHelpers.test
 
-import com.dimafeng.testcontainers.{ForAllTestContainer, GenericContainer}
+import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.Suite
-import org.slf4j.LoggerFactory
-import org.testcontainers.containers.output.Slf4jLogConsumer
-import org.testcontainers.containers.wait.strategy.Wait
 
 trait ElasticsearchDockerSuite extends ForAllTestContainer { this:Suite =>
   def elasticsearchVersion: String
-  override val container = {
-    val scalaContainer = GenericContainer(s"docker.elastic.co/elasticsearch/elasticsearch-oss:$elasticsearchVersion",
-      exposedPorts = Seq(9200),
-      waitStrategy = Wait.forHttp("/").forPort(9200).forStatusCode(200),
-      env = Map("discovery.type" -> "single-node", "ES_JAVA_OPTS" -> "-Xms512m -Xmx512m")
-    )
-    //It is left here for future reference on how to change the internal java container during initialization
-    //scalaContainer.configure(j => j.something)
-    scalaContainer
-  }
-
-  override def afterStart() {
-    val containerLogger = new Slf4jLogConsumer(LoggerFactory.getLogger(s"elasticsearch-oss:$elasticsearchVersion"))
-    container.configure(j => j.followOutput(containerLogger))
-  }
+  override val container = ContainerHelpers.elasticsearch(elasticsearchVersion)
 }

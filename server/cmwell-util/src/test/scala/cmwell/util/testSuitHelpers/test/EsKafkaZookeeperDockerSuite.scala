@@ -15,24 +15,16 @@
 
 package cmwell.util.testSuitHelpers.test
 
-import com.dimafeng.testcontainers.{ForAllTestContainer, GenericContainer}
+import com.dimafeng.testcontainers.{ForAllTestContainer, MultipleContainers}
 import org.scalatest.Suite
-import org.testcontainers.containers.wait.strategy.Wait
 
-trait EsKafkaZookeeperDockerSuite extends ForAllTestContainer with ElasticsearchDockerSuite with KafkaZookeeperDockerSuite { this:Suite =>
+trait EsKafkaZookeeperDockerSuite extends ForAllTestContainer { this:Suite =>
+  def elasticsearchVersion: String
+  def zookeeperVersion: String
+  def kafkaVersion: String
 
-  override val container = {
-    val a = super.container
-    val scalaContainer = GenericContainer(s"docker.elastic.co/elasticsearch/elasticsearch-oss:$elasticsearchVersion",
-      exposedPorts = Seq(9200),
-      waitStrategy = Wait.forHttp("/").forPort(9200).forStatusCode(200),
-      env = Map("discovery.type" -> "single-node", "ES_JAVA_OPTS" -> "-Xms512m -Xmx512m")
-    )
-    //It is left here for future reference on how to change the internal java container during initialization
-    //scalaContainer.configure(j => j.something)
-    scalaContainer
-  }
+  val elasticContainer = ContainerHelpers.elasticsearch(elasticsearchVersion)
+  val KafkaZookeeperContainers(kafkaContainer, zookeeperContainer, kafkaZooCombined) = ContainerHelpers.kafkaAndZookeeper(kafkaVersion, zookeeperVersion)
 
-
-
+  override val container = MultipleContainersParallelExecution(elasticContainer, kafkaZooCombined)
 }

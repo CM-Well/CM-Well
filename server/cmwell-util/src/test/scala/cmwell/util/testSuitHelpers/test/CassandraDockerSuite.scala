@@ -15,27 +15,10 @@
 
 package cmwell.util.testSuitHelpers.test
 
-import com.dimafeng.testcontainers.{ForAllTestContainer, GenericContainer}
-import org.scalatest.{BeforeAndAfterAll, Suite}
-import org.slf4j.LoggerFactory
-import org.testcontainers.containers.output.Slf4jLogConsumer
-import org.testcontainers.containers.wait.strategy.Wait
+import com.dimafeng.testcontainers.ForAllTestContainer
+import org.scalatest.Suite
 
 trait CassandraDockerSuite extends ForAllTestContainer { this:Suite =>
   def cassandraVersion: String
-  override val container = {
-    val scalaContainer = GenericContainer(s"cassandra:$cassandraVersion",
-      waitStrategy = Wait.forLogMessage(".*Starting listening for CQL clients.*\n", 1),
-      env = Map("JVM_OPTS" -> "-Xms1G -Xmx1G")
-    )
-    //It is left here for future reference on how to change the internal java container during initialization
-    //scalaContainer.configure(j => j.something)
-    scalaContainer
-  }
-
-  override def afterStart() {
-    val containerLogger = new Slf4jLogConsumer(LoggerFactory.getLogger(s"${container.containerInfo.getConfig.getImage}"))
-    container.configure(j => j.followOutput(containerLogger))
-  }
+  override val container = ContainerHelpers.cassandra(cassandraVersion)
 }
-
