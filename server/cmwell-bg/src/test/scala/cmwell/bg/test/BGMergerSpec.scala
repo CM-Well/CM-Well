@@ -25,10 +25,7 @@ import org.scalatest.{DoNotDiscover, FlatSpec, Matchers, OptionValues}
 /**
   * Created by israel on 29/11/2016.
   */
-@DoNotDiscover
 class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
-
-
   val merger = Merger()
 
   "Merger" should "merge WriteCommand with no previous version correctly" in {
@@ -40,11 +37,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith"))),
       None
     )
-
     val writeCommand = WriteCommand(infoton)
-
     val merged = merger.merge(None, Seq(writeCommand)).merged
-
     merged.value shouldEqual infoton
   }
 
@@ -58,7 +52,6 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       Map("first-name" -> Set(FieldValue("john"))),
       None
     )
-
     val currentDateTime = now.plus(1L)
     val current = ObjectInfoton(
       "/bg-test-merge/objinfo2",
@@ -68,7 +61,6 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       Map("last-name" -> Set(FieldValue("smith"))),
       None
     )
-
     val expected = ObjectInfoton(
       "/bg-test-merge/objinfo2",
       merger.defaultDC,
@@ -77,9 +69,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith"))),
       None
     )
-
     val merged = merger.merge(Some(previous), Seq(WriteCommand(current))).merged
-
     merged.value shouldEqual expected
   }
 
@@ -93,7 +83,6 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       Map("first-name" -> Set(FieldValue("john"))),
       None
     )
-
     val current = ObjectInfoton(
       "/bg-test-merge/objinfo2",
       "dc1",
@@ -102,7 +91,6 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       Map("last-name" -> Set(FieldValue("smith"))),
       None
     )
-
     val expected = ObjectInfoton(
       "/bg-test-merge/objinfo2",
       merger.defaultDC,
@@ -111,9 +99,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith"))),
       None
     )
-
     val merged = merger.merge(Some(previous), Seq(WriteCommand(current))).merged
-
     merged.value shouldEqual expected
   }
 
@@ -127,7 +113,6 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       Map("first-name" -> Set(FieldValue("john"))),
       None
     )
-
     val current = ObjectInfoton(
       "/bg-test-merge/objinfo2",
       "dc1",
@@ -136,7 +121,6 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       Map("last-name" -> Set(FieldValue("smith"))),
       None
     )
-
     val expected = ObjectInfoton(
       "/bg-test-merge/objinfo2",
       merger.defaultDC,
@@ -145,9 +129,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith"))),
       None
     )
-
     val merged = merger.merge(Some(previous), Seq(WriteCommand(current))).merged
-
     merged.value shouldEqual expected
   }
 
@@ -161,7 +143,6 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
   }
 
   it should "merge odd number of virtual parents commands with no previous version correctly" in {
-
     val infoton = ObjectInfoton(
       "/bg-test-merge/virtualparentodd1",
       "dc1",
@@ -171,18 +152,13 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "",
       None
     )
-
     val infotons = Seq.tabulate(7)(_ => infoton)
-
     val writeCommands = infotons.map(WriteCommand(_))
-
     val merged = merger.merge(None, writeCommands).merged
-
     merged.value shouldEqual infoton.copyInfoton(lastModified = new DateTime(0L), dc = merger.defaultDC)
   }
 
   it should "merge even number of virtual parents commands with no previous version correctly" in {
-
     val infoton = ObjectInfoton(
       "/bg-test-merge/virtualparenteven1",
       "dc1",
@@ -192,18 +168,13 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "",
       None
     )
-
     val infotons = Seq.tabulate(10)(_ => infoton)
-
     val writeCommands = infotons.map(WriteCommand(_))
-
     val merged = merger.merge(None, writeCommands).merged
-
     merged.value shouldEqual infoton.copyInfoton(lastModified = new DateTime(0L), dc = merger.defaultDC)
   }
 
   it should "merge odd number of virtual parents commands with a previous version correctly" in {
-
     val infoton = ObjectInfoton(
       s"/bg-test-merge/virtualparentodd1",
       "dc1",
@@ -213,18 +184,13 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "",
       None
     )
-
     val infotons = Seq.tabulate(7){ _ => infoton}
-
     val writeCommands = infotons.map{WriteCommand(_)}
-
     val merged = merger.merge(Some(infoton), writeCommands).merged
-
     merged shouldBe empty
   }
 
   it should "merge even number of virtual parents commands with a previous version correctly" in {
-
     val infoton = ObjectInfoton(
       s"/bg-test-merge/virtualparenteven1",
       "dc1",
@@ -234,13 +200,9 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "",
       None
     )
-
     val infotons = Seq.tabulate(10){ _ => infoton}
-
     val writeCommands = infotons.map{WriteCommand(_)}
-
     val merged = merger.merge(Some(infoton), writeCommands).merged
-
     merged shouldBe empty
   }
 
@@ -267,10 +229,8 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
     val writeCommand1 = WriteCommand(infoton1)
     val writeCommand2 = WriteCommand(infoton2)
     val merged = merger.merge(None, Seq(writeCommand1, writeCommand2))
-
     //Taking care of dataCenter
     merged.merged shouldEqual(Some(infoton2.copy(dc=merger.defaultDC)))
-
   }
 
   it should "merge not-indexed base infoton with identical command correctly" in {
@@ -322,9 +282,6 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
     val writeCommand1 = WriteCommand(infoton1)
     val writeCommand2 = WriteCommand(infoton2)
     val merged = merger.merge(Some(baseInfoton), Seq(writeCommand2, writeCommand1))
-
     merged.merged shouldBe empty
-
   }
-
 }

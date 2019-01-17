@@ -18,13 +18,15 @@ package cmwell.util.testSuitHelpers.test
 import com.dimafeng.testcontainers.ForAllTestContainer
 import org.scalatest.Suite
 
-trait EsKafkaZookeeperDockerSuite extends ForAllTestContainer { this:Suite =>
-  def elasticsearchVersion: String
+trait EsCasKafkaZookeeperDockerSuite extends ForAllTestContainer { this:Suite =>
+  def cassandraVersion: String
   def zookeeperVersion: String
   def kafkaVersion: String
+  def elasticsearchVersion: String
 
-  val elasticContainer = ContainerHelpers.elasticsearch(elasticsearchVersion)
+  val elasticsearchContainer = ContainerHelpers.elasticsearch(elasticsearchVersion)
+  val cassandraContainer = ContainerHelpers.cassandra(cassandraVersion)
   val KafkaZookeeperContainers(kafkaContainer, zookeeperContainer, kafkaZooCombined) = ContainerHelpers.kafkaAndZookeeper(kafkaVersion, zookeeperVersion)
 
-  override val container = MultipleContainersParallelExecution(elasticContainer, kafkaZooCombined)
+  override val container = MultipleContainersParallelExecution(cassandraContainer, elasticsearchContainer, kafkaZooCombined)
 }

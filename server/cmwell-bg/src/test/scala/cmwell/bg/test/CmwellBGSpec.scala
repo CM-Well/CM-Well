@@ -97,7 +97,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
     zStore = ZStore(dao)
     offsetsService = new ZStoreOffsetsService(zStore)
 
-    ftsServiceES = FailingFTSServiceMockup(2)
+    ftsServiceES = FailingFTSServiceMockup(ConfigFactory.load() , 2)
 
     bgConfig = ConfigFactory.load
 

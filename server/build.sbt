@@ -231,7 +231,7 @@ lazy val fts           = (project in file("cmwell-fts")).enablePlugins(CMWellBui
 lazy val formats       = (project in file("cmwell-formats")).enablePlugins(CMWellBuild)                             dependsOn(domain, common, fts)
 lazy val irw           = (project in file("cmwell-irw")).enablePlugins(CMWellBuild, CassandraPlugin)                dependsOn(dao, domain, common, zstore, util % "compile->compile;test->test")
 lazy val stortill      = (project in file("cmwell-stortill")).enablePlugins(CMWellBuild)                            dependsOn(domain, irw, fts, formats)
-lazy val bg            = (project in file("cmwell-bg")).enablePlugins(CMWellBuild, SbtKafkaPlugin, CassandraPlugin) dependsOn(kafkaAssigner, irw, domain, fts, grid, zstore, tracking)
+lazy val bg            = (project in file("cmwell-bg")).enablePlugins(CMWellBuild, SbtKafkaPlugin, CassandraPlugin) dependsOn(kafkaAssigner, irw, domain, fts, grid, zstore, tracking, util % "compile->compile;test->test")
 lazy val consIt        = (project in file("cmwell-it")).enablePlugins(CMWellBuild).settings(
   // scalastyle settings to enable it for integration tests:
   // this is low-level and should be updated on every version upgrade of the plugin (if needed)

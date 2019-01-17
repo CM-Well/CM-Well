@@ -31,7 +31,7 @@ import scala.concurrent.{ExecutionContext, Future}
   */
 
 object FailingFTSServiceMockup {
-  def apply(errorModuloDivisor:Int) = new FailingFTSServiceMockup(ConfigFactory.load(), errorModuloDivisor)
+  def apply(config: Config, errorModuloDivisor:Int) = new FailingFTSServiceMockup(config, errorModuloDivisor)
 }
 
 class FailingFTSServiceMockup(config: Config, errorModuloDivisor:Int) extends FTSService(config) {

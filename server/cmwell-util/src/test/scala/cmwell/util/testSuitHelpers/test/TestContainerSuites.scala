@@ -33,7 +33,6 @@ class TestESSuite extends FlatSpec with ElasticsearchDockerSuite {
   "ElasticsearchDockerSuite" should "work" in {
     assert(true)
   }
-
 }
 
 class TestCasSuite extends FlatSpec with CassandraDockerSuite {
@@ -50,7 +49,18 @@ class TestESKafZooSuite extends FlatSpec with EsKafkaZookeeperDockerSuite {
   override def zookeeperVersion: String = "3.4.13"
   override def kafkaVersion: String = "2.12-2.1.0"
 
-  "ElasticsearchDockerSuite" should "work" in {
+  "EsKafkaZookeeperDockerSuite" should "work" in {
+    assert(true)
+  }
+}
+
+class TestESCasKafZooSuite extends FlatSpec with EsCasKafkaZookeeperDockerSuite {
+  override def elasticsearchVersion: String = "6.5.4"
+  override def zookeeperVersion: String = "3.4.13"
+  override def kafkaVersion: String = "2.12-2.1.0"
+  override def cassandraVersion: String = "3.11.3"
+
+  "EsCasKafkaZookeeperDockerSuite" should "work" in {
     assert(true)
   }
 }
