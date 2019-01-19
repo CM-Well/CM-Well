@@ -16,7 +16,6 @@ package controllers
 
 import actions.RequestMonitor
 import akka.stream.Materializer
-import akka.util.ByteString
 import cmwell.domain._
 import cmwell.tracking._
 import cmwell.util.concurrent._
@@ -256,15 +255,12 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
   private def parseRDF(req: Request[RawBuffer],
                        skipValidation: Boolean = false,
                        isOverwrite: Boolean = false): Future[ParsingResponse] = {
-    import java.io.ByteArrayInputStream
 
+    import java.io.{FileInputStream, InputStream}
     import cmwell.web.ld.service.WriteService._
 
-    val bais = req.body.asBytes() match {
-      //FIXME: quick inefficient hack (there should be a better way to consume body as InputStream)
-      case Some(bs) => new ByteArrayInputStream(bs.toArray[Byte]) //.asByteBuffer.array())
-      case _        => throw new RuntimeException("cant find valid content in body of request")
-    }
+    def viaTempFile: InputStream = new FileInputStream(req.body.asFile)
+    val inputStream = req.body.asBytes().fold(viaTempFile)(_.iterator.asInputStream)
 
     val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
 
@@ -274,7 +270,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
           cmwellRDFHelper,
           crudService,
           authUtils,
-          bais,
+          inputStream,
           Some(List[String](f)),
           req.contentType,
           authUtils.extractTokenFrom(req),
@@ -286,7 +282,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
         handleFormatByContentType(cmwellRDFHelper,
                                   crudService,
                                   authUtils,
-                                  bais,
+                                  inputStream,
                                   req.contentType,
                                   authUtils.extractTokenFrom(req),
                                   skipValidation,
