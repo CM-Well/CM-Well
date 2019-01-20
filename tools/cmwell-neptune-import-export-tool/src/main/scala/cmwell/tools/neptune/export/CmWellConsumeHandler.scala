@@ -70,6 +70,7 @@ object CmWellConsumeHandler {
     client.setHttpRequestRetryHandler(new CustomHttpClientRetryHandler())
     val response = client.execute(get)
     val res = response.getAllHeaders.find(_.getName == "X-CM-WELL-POSITION").map(_.getValue).getOrElse("")
+    println("in create consumer position=" + res)
     logger.info("create-Consumer http status=" + response.getStatusLine.getStatusCode)
     val statusCode = response.getStatusLine.getStatusCode
     if (statusCode != 200) {

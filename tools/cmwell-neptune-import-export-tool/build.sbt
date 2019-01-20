@@ -13,5 +13,6 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % "1.0.1",
   "ch.qos.logback" % "logback-core" % "1.0.1",
   "net.liftweb" %% "lift-json" % "3.3.0",
-  //"com.amazonaws" % "aws-java-sdk" % "1.11.466"
+  "com.amazonaws" % "aws-java-sdk-s3" % "1.11.483" excludeAll ExclusionRule(organization = "commons-logging"),
+  "net.liftweb" %% "lift-json" % "3.3.0"
 )

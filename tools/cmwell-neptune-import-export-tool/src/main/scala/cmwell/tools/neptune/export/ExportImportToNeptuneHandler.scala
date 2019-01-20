@@ -20,6 +20,7 @@ import java.util.concurrent.Executors
 import akka.actor.{ActorSystem, Scheduler}
 import cmwell.tools.neptune.export.NeptuneIngester.ConnectException
 import org.apache.http.client.methods.CloseableHttpResponse
+import org.apache.http.util.EntityUtils
 import org.apache.jena.query.{Dataset, DatasetFactory}
 import org.apache.jena.riot.{Lang, RDFDataMgr}
 import org.slf4j.LoggerFactory
@@ -42,14 +43,14 @@ class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
 
   val blockingQueue = new ArrayBlockingQueue[Boolean](1)
 
-  def exportImport(sourceCluster: String, neptuneCluster: String, lengthHint: Int, updateMode: Boolean, qp: Option[String]) = {
+  def exportImport(sourceCluster: String, neptuneCluster: String, lengthHint: Int, updateMode: Boolean, qp: Option[String], bulkLoader:Boolean, proxyHost:Option[String], proxyPort:Option[Int]) = {
     try {
       val toolStartTime = Instant.now()
       if(!updateMode && !PropertiesFileHandler.isPropertyPersist(PropertiesFileHandler.AUTOMATIC_UPDATE_MODE) && !PropertiesFileHandler.isPropertyPersist(PropertiesFileHandler.START_TIME))
         PropertiesFileHandler.persistStartTime(toolStartTime.toString)
       val position = if (PropertiesFileHandler.isPropertyPersist(PropertiesFileHandler.POSITION)) PropertiesFileHandler.readKey(PropertiesFileHandler.POSITION) else Some(CmWellConsumeHandler.retrivePositionFromCreateConsumer(sourceCluster, lengthHint, qp, updateMode, PropertiesFileHandler.isPropertyPersist(PropertiesFileHandler.AUTOMATIC_UPDATE_MODE), toolStartTime))
       val actualUpdateMode = if(PropertiesFileHandler.isPropertyPersist(PropertiesFileHandler.AUTOMATIC_UPDATE_MODE)) true else updateMode
-      consumeBulkAndIngest(position.get, sourceCluster, neptuneCluster, actualUpdateMode, lengthHint, qp, toolStartTime)
+      consumeBulkAndIngest(position.get, sourceCluster, neptuneCluster, actualUpdateMode, lengthHint, qp, toolStartTime, bulkLoader, proxyHost, proxyPort)
 
     } catch {
       case e: Throwable => logger.error("Got a failure during import-export after retrying 3 times")
@@ -59,25 +60,31 @@ class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
     }
   }
 
-  def consumeBulkAndIngest(position: String, sourceCluster: String, neptuneCluster: String, updateMode: Boolean, lengthHint: Int, qp: Option[String], toolStartTime:Instant, retryCount:Int = 5): CloseableHttpResponse = {
+  def consumeBulkAndIngest(position: String, sourceCluster: String, neptuneCluster: String, updateMode: Boolean, lengthHint: Int, qp: Option[String], toolStartTime:Instant, bulkLoader:Boolean, proxyHost:Option[String], proxyPort:Option[Int], retryCount:Int = 5): CloseableHttpResponse = {
     val startTimeMillis = System.currentTimeMillis()
     val res = CmWellConsumeHandler.bulkConsume(sourceCluster, position, "nquads", updateMode)
     logger.info("Cm-well bulk consume http status=" + res.getStatusLine.getStatusCode)
     if (res.getStatusLine.getStatusCode != 204) {
-      val inputStream = res.getEntity.getContent
       var ds: Dataset = DatasetFactory.createGeneral()
-      try {
-        RDFDataMgr.read(ds, inputStream, Lang.NQUADS)
-      }catch{
-        case e: Throwable if retryCount > 0 =>
-          logger.error("Failed to read input stream,", e.getMessage)
-          logger.error("Going to retry, retry count=" + retryCount)
-          Thread.sleep(5000)
-          consumeBulkAndIngest(position, sourceCluster, neptuneCluster, updateMode, lengthHint, qp, toolStartTime, retryCount - 1)
-        case e: Throwable if retryCount == 0 =>
-          logger.error("Failed to read input stream from cmwell after retry 3 times..going to shutdown the system")
-          sys.exit(0)
-      }
+      var bulkConsumeStrResponse = ""
+        try {
+          if(!updateMode && bulkLoader) {
+            val entity = res.getEntity
+            bulkConsumeStrResponse = EntityUtils.toString(entity, "UTF-8")
+          }else{
+            val inputStream = res.getEntity.getContent
+              RDFDataMgr.read(ds, inputStream, Lang.NQUADS)
+            }
+        } catch {
+          case e: Throwable if retryCount > 0 =>
+            logger.error("Failed to read input stream,", e.getMessage)
+            logger.error("Going to retry, retry count=" + retryCount)
+            Thread.sleep(5000)
+            consumeBulkAndIngest(position, sourceCluster, neptuneCluster, updateMode, lengthHint, qp, toolStartTime, bulkLoader, proxyHost, proxyPort, retryCount - 1)
+          case e: Throwable if retryCount == 0 =>
+            logger.error("Failed to read input stream from cmwell after retry 3 times..going to shutdown the system")
+            sys.exit(0)
+        }
       val endTimeMillis = System.currentTimeMillis()
       val readInputStreamDuration = (endTimeMillis - startTimeMillis) / 1000
       //blocked until neptune ingester thread takes the message from qeuue, which means it's ready for next bulk.
@@ -86,8 +93,12 @@ class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
       logger.info("Going to ingest bulk to neptune...please wait...")
       val nextPosition = res.getAllHeaders.find(_.getName == "X-CM-WELL-POSITION").map(_.getValue).getOrElse("")
       val totalInfotons = res.getAllHeaders.find(_.getName == "X-CM-WELL-N").map(_.getValue).getOrElse("")
-      buildCommandAndIngestToNeptune(neptuneCluster, ds, nextPosition, updateMode, readInputStreamDuration, totalInfotons)
-      consumeBulkAndIngest(nextPosition, sourceCluster, neptuneCluster, updateMode, lengthHint, qp, toolStartTime)
+      if(!updateMode && bulkLoader){
+        persistDataInS3AndIngestToNeptuneViaLoaderAPI(neptuneCluster, bulkConsumeStrResponse, nextPosition, updateMode, readInputStreamDuration, totalInfotons, proxyHost, proxyPort)
+      }else {
+        buildSparqlCommandAndIngestToNeptuneViaSparqlAPI(neptuneCluster, ds, nextPosition, updateMode, readInputStreamDuration, totalInfotons)
+      }
+      consumeBulkAndIngest(nextPosition, sourceCluster, neptuneCluster, updateMode, lengthHint, qp, toolStartTime, bulkLoader, proxyHost, proxyPort)
     }
     else {
       //This is an automatic update mode
@@ -95,16 +106,36 @@ class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
       PropertiesFileHandler.persistAutomaticUpdateMode(true)
       logger.info("Export-Import from cm-well completed successfully, no additional data to consume..trying to re-consume in 0.5 minute")
       Thread.sleep(30000)
-      consumeBulkAndIngest(nextPosition, sourceCluster, neptuneCluster, updateMode = true, lengthHint, qp, toolStartTime)
+      consumeBulkAndIngest(nextPosition, sourceCluster, neptuneCluster, updateMode = true, lengthHint, qp, toolStartTime, bulkLoader, proxyHost, proxyPort)
     }
     res
   }
 
-  def buildCommandAndIngestToNeptune(neptuneCluster: String, ds:Dataset, nextPosition:String, updateMode: Boolean, readInputStreamDuration:Long, totalInfotons:String): Unit = {
+  def persistDataInS3AndIngestToNeptuneViaLoaderAPI(neptuneCluster: String,bulkResponseAsString:String, nextPosition: String, updateMode: Boolean, readInputStreamDuration: Long, totalInfotons: String, proxyHost:Option[String], proxyPort:Option[Int]) = {
+    Future {
+      val startTimeMillis = System.currentTimeMillis()
+      val fileName = "cm-well-file-" + startTimeMillis + ".nq"
+      S3ObjectUploader.persistChunkToS3Bucket(bulkResponseAsString, fileName, proxyHost, proxyPort)
+      val endS3TimeMillis = System.currentTimeMillis()
+      val s3Duration = (endS3TimeMillis - startTimeMillis) / 1000
+      logger.info("Duration of writing to s3 = " + s3Duration)
+      val responseFuture = loaderPostWithRetry(neptuneCluster, fileName)
+      responseFuture.onComplete(_ => {
+        val endTimeMillis = System.currentTimeMillis()
+        val durationSeconds = (endTimeMillis - startTimeMillis) / 1000
+        logger.info("Bulk Statistics: Duration of ingest to neptune:" + durationSeconds + " seconds, total infotons :" + totalInfotons + "===total time===" + (readInputStreamDuration + durationSeconds))
+        logger.info("About to persist position=" + nextPosition)
+        PropertiesFileHandler.persistPosition(nextPosition)
+        logger.info("Persist position successfully")
+        blockingQueue.take()
+      })
+    }
+  }
+
+  def buildSparqlCommandAndIngestToNeptuneViaSparqlAPI(neptuneCluster: String, ds:Dataset, nextPosition:String, updateMode: Boolean, readInputStreamDuration:Long, totalInfotons:String): Unit = {
     Future {
       val startTimeMillis = System.currentTimeMillis()
       val graphDataSets = ds.asDatasetGraph()
-//      val totalBytes = graphDataSets.toString.getBytes("UTF-8").length
       val defaultGraph = graphDataSets.getDefaultGraph
       val defaultGraphTriples = SparqlUtil.getTriplesOfSubGraph(defaultGraph)
       //Default Graph
@@ -125,7 +156,7 @@ class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
       val groupBySubjectList = allQuads.groupBy(subGraphTriple => subGraphTriple.subject)
       val groupedBySizeMap = groupBySubjectList.grouped(groupSize)
       val neptuneFutureResults = groupedBySizeMap.map(subjectToTriples => SparqlUtil.buildGroupedSparqlCmd(subjectToTriples.keys, subjectToTriples.values, updateMode))
-        .map(sparqlCmd => postWithRetry(neptuneCluster, sparqlCmd))
+        .map(sparqlCmd => sparqlPostWithRetry(neptuneCluster, sparqlCmd))
 
       Future.sequence(neptuneFutureResults.toList).onComplete(_ => {
         val endTimeMillis = System.currentTimeMillis()
@@ -141,9 +172,15 @@ class ExportImportToNeptuneHandler(ingestConnectionPoolSize: Int) {
   }
 
 
-  def postWithRetry(neptuneCluster: String, sparqlCmd: String): Future[Int] = {
+  def sparqlPostWithRetry(neptuneCluster: String, sparqlCmd: String): Future[Int] = {
     retry(10.seconds, 3) {
-      NeptuneIngester.ingestToNeptune(neptuneCluster, sparqlCmd, ec)
+      NeptuneIngester.ingestToNeptuneViaSparqlAPI(neptuneCluster, sparqlCmd, ec)
+    }
+  }
+
+  def loaderPostWithRetry(neptuneCluster: String, fileName: String): Future[Int] = {
+    retry(10.seconds, 3) {
+      NeptuneIngester.ingestToNeptuneViaLoaderAPI(neptuneCluster, fileName, ec)
     }
   }
 

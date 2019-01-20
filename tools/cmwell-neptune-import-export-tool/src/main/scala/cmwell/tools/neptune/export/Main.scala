@@ -24,6 +24,10 @@ class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
   val lengthHint = opt[Int]("length-hint", default = Some(16000), validate = 300000.>=, descr="number of infotons that should be consumed in each bulk-consume call")
   val qp = opt[String](name="qp-param", default=None)
   val updateInfotons = opt[Boolean]("update-infotons")
+  val bulkLoader = opt[Boolean]("bulk-loader")
+  val proxyHost = opt[String]("proxy-host", default=None, descr = "please provide proxy host when you use bulk loader and your machine use proxy")
+  val proxyPort = opt[Int]("proxy-port", default=None, descr = "please provide proxy port when you use bulk loader and your machine use proxy")
+
 
   verify()
 }
@@ -37,10 +41,15 @@ object Main {
     println("length-hint: " + conf.lengthHint())
     println("update infotons: " + conf.updateInfotons())
     println("qp: " + conf.qp.getOrElse("(not provided)"))
+    println("bulk loader: " + conf.bulkLoader())
+    println("proxy host: " + conf.proxyHost.getOrElse("not provided"))
+    println("proxy port: " + conf.proxyPort.getOrElse(-1))
     val qpParam :Option[String]= conf.qp.toOption.map(s => s",$s")
+    val proxyHost :Option[String]= conf.proxyHost.toOption.map(s => s)
+    val proxyPort :Option[Int]= conf.proxyPort.toOption.map(s => s)
     println("About to Export-Import..")
     val exportImportHandler = new ExportImportToNeptuneHandler(conf.ingestConnectionPoolSize())
-    exportImportHandler.exportImport(conf.sourceCluster(), conf.neptuneCluster(), conf.lengthHint(), conf.updateInfotons(), qpParam)
+    exportImportHandler.exportImport(conf.sourceCluster(), conf.neptuneCluster(), conf.lengthHint(), conf.updateInfotons(), qpParam, conf.bulkLoader(), proxyHost, proxyPort)
   }
 
 }

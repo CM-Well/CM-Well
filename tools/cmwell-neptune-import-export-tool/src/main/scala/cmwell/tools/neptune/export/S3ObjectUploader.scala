@@ -14,57 +14,40 @@
   */
 package cmwell.tools.neptune.export
 
-object S3ObjectUploader{
-  val clientRegion = "us-east-1"
-  val bucketName = "cm-well/sync"
-  val stringObjKeyName = "cm-well-position.txt"
-//  var fullObject: S3Object = _
-//  val s3Client = AmazonS3ClientBuilder.standard()
-//    .withRegion(clientRegion)
-//    .withCredentials(new ProfileCredentialsProvider())
-//    .build()
-//
-//  def persistPositionToS3Bucket(position:String) = {
-//
-//    try {
-//      // Upload a text string as a new object.
-//      s3Client.putObject(bucketName, stringObjKeyName, position)
-//      // Get an object and print its contents.// Get an object and print its contents.
-//    }
-//    catch {
-//      // The call was transmitted successfully, but Amazon S3 couldn't process
-//      // it, so it returned an error response.
-//      case e: AmazonServiceException => e.printStackTrace()
-//      case e: SdkClientException => e.printStackTrace()
-//    }
-//
-//  }
-//
-//  def readPositionFromS3Bucket:String = {
-//    try {
-//      fullObject = s3Client.getObject(new GetObjectRequest(bucketName, stringObjKeyName))
-//      displayTextInputStream(fullObject.getObjectContent)
-//    }
-//    catch {
-//      // The call was transmitted successfully, but Amazon S3 couldn't process
-//      // it, so it returned an error response.
-//      case e: AmazonServiceException => throw new Throwable(e.getMessage)
-//      case e: SdkClientException => throw new Throwable(e.getMessage)
-//    }
-//  }
-//
-//  def ifFileExists() = {
-//    val exists = s3Client.doesObjectExist(bucketName, stringObjKeyName)
-//    println("Does " + bucketName + stringObjKeyName + "exists?" + exists)
-//    exists
-//  }
-//
-//
-//  @throws[IOException]
-//  private def displayTextInputStream(input: InputStream): String = { // Read the text input stream one line at a time and display each line.
-//    val inputStr = scala.io.Source.fromInputStream(input).mkString
-//    println(inputStr)
-//    inputStr
-//  }
+import com.amazonaws.{AmazonServiceException, ClientConfiguration, Protocol, SdkClientException}
+import com.amazonaws.auth.profile.ProfileCredentialsProvider
+import com.amazonaws.services.s3.AmazonS3ClientBuilder
+import com.amazonaws.services.s3.model.{GetObjectRequest, S3Object}
 
+object S3ObjectUploader{
+
+
+  def init(proxyHost:Option[String], proxyPort:Option[Int]) = {
+    val clientRegion = "us-east-1"
+    proxyHost
+    val config = new ClientConfiguration
+    config.setProtocol(Protocol.HTTPS)
+    proxyHost.foreach(host => config.setProxyHost(host))
+    proxyPort.foreach(port =>  config.setProxyPort(port))
+    val s3Client = AmazonS3ClientBuilder.standard()
+      .withRegion(clientRegion)
+      .withClientConfiguration(config)
+      .withCredentials(new ProfileCredentialsProvider())
+      .build()
+    s3Client
+  }
+
+
+  def persistChunkToS3Bucket(chunkData:String, fileName:String, proxyHost:Option[String], proxyPort:Option[Int]) = {
+
+    try {
+      val bucketName = "cm-well/sync"
+      init(proxyHost, proxyPort).putObject(bucketName, fileName, chunkData)
+    }
+    catch {
+      case e: AmazonServiceException => e.printStackTrace()
+      case e: SdkClientException => e.printStackTrace()
+    }
+
+  }
 }
