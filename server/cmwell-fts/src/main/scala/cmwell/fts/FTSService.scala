@@ -1661,7 +1661,6 @@ class FTSService(config: Config) extends NsSplitter{
 //  def purgeByUuidsFromAllIndexes(uuids: Vector[String], partition: String)(implicit executionContext: ExecutionContext): Future[BulkResponse] = ???
   def purgeByUuidsFromAllIndexes(uuids: Vector[String], partition: String = defaultPartition)
                                 (implicit executionContext: ExecutionContext): Future[BulkResponse] = {
-    logRequest("purgeByUuidsFromAllIndexes", "Hello, in purgeByUuidsFromAllIndexes")
     if (uuids.isEmpty)
       Future.successful(new BulkResponse(Array[BulkItemResponse](), 0))
     else {

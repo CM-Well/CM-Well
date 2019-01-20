@@ -80,7 +80,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
 
   val ESMappingsCache =
     new SingleElementLazyAsyncCache[Set[String]](Settings.fieldsNamesCacheTimeout.toMillis, Set.empty)(
-      ftsService.getMappings(withHistory = true, partition = "blahblah")
+      ftsService.getMappings(withHistory = true)
     )
 
   val metaNsCache =
@@ -935,7 +935,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
   }
 
   def purgeUuidFromIndex(uuid: String, index: String): Future[Unit] = {
-    ftsService.purgeByUuidsAndIndexes(Vector(uuid -> index), partition = "blahblah").map(_ => ()) //TODO also purge from ftsServiceNew
+    ftsService.purgeByUuidsAndIndexes(Vector(uuid -> index)).map(_ => ()) //TODO also purge from ftsServiceNew
   }
 
   def purgePath(path: String, includeLast: Boolean, limit: Int): Future[Unit] = {
@@ -1086,7 +1086,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       val uuids = casHistory.map(_._2)
 
       retry(3, 1.seconds) {
-        val purgeEsByUuids = ftsService.purgeByUuidsFromAllIndexes(uuids, partition = "blahblah")
+        val purgeEsByUuids = ftsService.purgeByUuidsFromAllIndexes(uuids)
         purgeEsByUuids.flatMap { bulkResponse =>
           if (bulkResponse.hasFailures) {
             throw new Exception("purge from es by uuids from all Indexes failed: " + bulkResponse.buildFailureMessage())
