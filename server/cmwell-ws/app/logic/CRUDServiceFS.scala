@@ -963,7 +963,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
 
             val purgeJustByUuids = {
               if (justUuids.nonEmpty)
-                ftsService.purgeByUuidsFromAllIndexes(justUuids.toVector, partition = "blahblah")
+                ftsService.purgeByUuidsFromAllIndexes(justUuids.toVector)
               else
                 Future.successful(new BulkResponse(Array(), 0))
             }
@@ -975,7 +975,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                 )
               } else {
                 if (uuidsWithIndexes.nonEmpty)
-                  ftsService.purgeByUuidsAndIndexes(uuidsWithIndexes.toVector, partition = "blahblah")
+                  ftsService.purgeByUuidsAndIndexes(uuidsWithIndexes.toVector)
                 else
                   Future.successful(new BulkResponse(Array(), 0))
               }.flatMap { bulkResponse =>
