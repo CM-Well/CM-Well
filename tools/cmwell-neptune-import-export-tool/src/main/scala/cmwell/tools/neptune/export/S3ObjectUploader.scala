@@ -23,7 +23,6 @@ object S3ObjectUploader{
 
   def init(proxyHost:Option[String], proxyPort:Option[Int]) = {
     val clientRegion = "us-east-1"
-    proxyHost
     val config = new ClientConfiguration
     config.setProtocol(Protocol.HTTPS)
     proxyHost.foreach(host => config.setProxyHost(host))
