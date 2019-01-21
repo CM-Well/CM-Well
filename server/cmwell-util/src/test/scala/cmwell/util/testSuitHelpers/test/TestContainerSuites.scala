@@ -15,8 +15,11 @@
 
 package cmwell.util.testSuitHelpers.test
 
-import org.scalatest.FlatSpec
+import org.scalatest.{DoNotDiscover, FlatSpec}
 
+//All tests here are annotated @DoNotDiscover so they won't run during normal tests.
+
+@DoNotDiscover
 class TestKZSuite extends FlatSpec with KafkaZookeeperDockerSuite {
   override def zookeeperVersion: String = "3.4.13"
   override def kafkaVersion: String = "2.12-2.1.0"
@@ -29,6 +32,7 @@ class TestKZSuite extends FlatSpec with KafkaZookeeperDockerSuite {
 
 }
 
+@DoNotDiscover
 class TestESSuite extends FlatSpec with ElasticsearchDockerSuite {
   override def elasticsearchVersion: String = "6.5.4"
 
@@ -37,6 +41,7 @@ class TestESSuite extends FlatSpec with ElasticsearchDockerSuite {
   }
 }
 
+@DoNotDiscover
 class TestCasSuite extends FlatSpec with CassandraDockerSuite {
   override def cassandraVersion: String = "3.11.3"
 
@@ -46,6 +51,7 @@ class TestCasSuite extends FlatSpec with CassandraDockerSuite {
 
 }
 
+@DoNotDiscover
 class TestESKafZooSuite extends FlatSpec with EsKafkaZookeeperDockerSuite {
   override def elasticsearchVersion: String = "6.5.4"
   override def zookeeperVersion: String = "3.4.13"
@@ -56,6 +62,7 @@ class TestESKafZooSuite extends FlatSpec with EsKafkaZookeeperDockerSuite {
   }
 }
 
+@DoNotDiscover
 class TestESCasKafZooSuite extends FlatSpec with EsCasKafkaZookeeperDockerSuite {
   override def elasticsearchVersion: String = "6.5.4"
   override def zookeeperVersion: String = "3.4.13"
