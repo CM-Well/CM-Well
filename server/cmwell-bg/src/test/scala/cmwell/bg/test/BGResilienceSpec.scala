@@ -100,7 +100,7 @@ class BGResilienceSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
 
     // scalastyle:off
     println("waiting for 10 seconds")
-    Thread.sleep(10000)
+    Thread.sleep(15000)
     // scalastyle:on
 
     for( i <- 0 until numOfCommands) {

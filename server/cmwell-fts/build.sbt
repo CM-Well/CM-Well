@@ -23,7 +23,6 @@ libraryDependencies ++= {
 		dm("com.spatial4j", "spatial4j"),
 		dm("org.slf4j","jcl-over-slf4j"),
 		dm("org.apache.logging.log4j", "log4j-to-slf4j"),
-    dm("pl.allergro.tech", "embedded-elasticsearch") % Test,
     dm("net.lingala.zip4j", "zip4j") % Test)
 }
 

@@ -27,7 +27,6 @@ libraryDependencies ++= {
       .exclude("log4j", "log4j"),
     dm("uk.org.lidalia","sysout-over-slf4j"),
 //    dm("io.netty", "netty-transport"),
-    dm("pl.allergro.tech", "embedded-elasticsearch") % Test,
     dm("net.lingala.zip4j", "zip4j") % Test
   )
 }

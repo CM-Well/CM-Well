@@ -27,7 +27,6 @@ import org.elasticsearch.common.xcontent.XContentType
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 import org.scalatest._
-import pl.allegro.tech.embeddedelasticsearch.{EmbeddedElastic, PopularProperties}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -103,25 +102,25 @@ import scala.io.Source
 
 trait FTSServiceTestTrait extends BeforeAndAfterAll with LazyLogging{ this: Suite =>
   var ftsService:FTSService = _
-  var embeddedElastic:EmbeddedElastic = _
+//  var embeddedElastic:EmbeddedElastic = _
   implicit val executionContext =  scala.concurrent.ExecutionContext.global
   implicit val loger = logger
 
   override protected def beforeAll() {
 
-    val indicesTemplate = Source.fromURL(this.getClass.getResource("/indices_template.json")).getLines.reduceLeft(_ + _)
-    val testIndicesTemplate = Source.fromURL(this.getClass.getResource("/test_indices_template_override.json")).getLines.reduceLeft(_ + _)
+//    val indicesTemplate = Source.fromURL(this.getClass.getResource("/indices_template.json")).getLines.reduceLeft(_ + _)
+//    val testIndicesTemplate = Source.fromURL(this.getClass.getResource("/test_indices_template_override.json")).getLines.reduceLeft(_ + _)
+//
+//    embeddedElastic = EmbeddedElastic.builder()
+//      .withElasticVersion(BuildInfo.elasticsearchVersion)
+//      .withSetting(PopularProperties.CLUSTER_NAME, "fts_test_cluster")
+//      .withTemplate("indices_template", indicesTemplate)
+//      .withTemplate("test_indices_template", testIndicesTemplate)
+//      .withIndex(testIndexName)
+//      .build()
+//      .start()
 
-    embeddedElastic = EmbeddedElastic.builder()
-      .withElasticVersion(BuildInfo.elasticsearchVersion)
-      .withSetting(PopularProperties.CLUSTER_NAME, "fts_test_cluster")
-      .withTemplate("indices_template", indicesTemplate)
-      .withTemplate("test_indices_template", testIndicesTemplate)
-      .withIndex(testIndexName)
-      .build()
-      .start()
-
-    embeddedElastic.recreateIndices()
+//    embeddedElastic.recreateIndices()
 
     ftsService = FTSService()
 
@@ -131,8 +130,6 @@ trait FTSServiceTestTrait extends BeforeAndAfterAll with LazyLogging{ this: Suit
   override protected def afterAll() {
     ftsService.shutdown()
     super.afterAll()
-    Thread.sleep(10000)
-    logger debug s"FTSSpec is over"
   }
 
   def refreshAll() = ftsService.client.admin().indices().prepareRefresh().execute().actionGet()

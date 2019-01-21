@@ -14,7 +14,6 @@
   */
 
 package cmwell.util.testSuitHelpers.test
-
 import com.dimafeng.testcontainers.{Container, GenericContainer, MultipleContainers}
 import org.slf4j.LoggerFactory
 import org.testcontainers.containers.Network
@@ -52,7 +51,7 @@ object ContainerHelpers {
           "KAFKA_LISTENER_SECURITY_PROTOCOL_MAP" -> s"INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT",
           "KAFKA_INTER_BROKER_LISTENER_NAME" -> s"INTERNAL",
           "KAFKA_CREATE_TOPICS" -> s"persist_topic:1:1,persist_topic.priority:1:1,index_topic:1:1,index_topic.priority:1:1",
-          "KAFKA_BROKER_ID" -> s"$brokerId",
+          "KAFKA_BROKER_ID" -> s"$brokerId"
         ),
         waitStrategy = Wait.forLogMessage(".*KafkaServer.*started.*\n", 1)
       )

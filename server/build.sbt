@@ -179,7 +179,6 @@ dependenciesManager in Global := {
   case ("org.slf4j",art)                                           => "org.slf4j" % art % "1.7.25"
   case ("org.xerial.snappy","snappy-java")                         => "org.xerial.snappy" % "snappy-java" % "1.1.2.4"
   case ("org.yaml","snakeyaml")                                    => "org.yaml" % "snakeyaml" % "1.23"
-  case ("pl.allergro.tech", "embedded-elasticsearch")              => "pl.allegro.tech" % "embedded-elasticsearch" % "2.8.0"
   case ("xerces","xercesImpl")                                     => "xerces" % "xercesImpl" % "2.12.0"
   case ("xml-apis","xml-apis")                                     => "xml-apis" % "xml-apis" % "1.4.01"
   case ("uk.org.lidalia","sysout-over-slf4j")                      => "uk.org.lidalia" % "sysout-over-slf4j" % "1.0.2"
