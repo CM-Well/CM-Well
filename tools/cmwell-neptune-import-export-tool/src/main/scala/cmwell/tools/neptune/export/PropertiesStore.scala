@@ -19,7 +19,7 @@ import java.nio.file.{Files, Paths}
 import java.util.Properties
 import net.liftweb.json.DefaultFormats
 
-object PropertiesFileHandler{
+object PropertiesStore{
   implicit val formats = DefaultFormats
   val directory = "/tmp/cm-well/"
   val fileName = "config.properties"
@@ -31,9 +31,9 @@ object PropertiesFileHandler{
     var prop: Properties = new Properties()
     var output: OutputStream = null
     try {
-      prop.setProperty(PropertiesFileHandler.POSITION, position)
+      prop.setProperty(PropertiesStore.POSITION, position)
       readKey(START_TIME).foreach(x => prop.setProperty(START_TIME, x))
-      readKey(PropertiesFileHandler.AUTOMATIC_UPDATE_MODE).foreach(x => prop.setProperty(PropertiesFileHandler.AUTOMATIC_UPDATE_MODE, x))
+      readKey(PropertiesStore.AUTOMATIC_UPDATE_MODE).foreach(x => prop.setProperty(PropertiesStore.AUTOMATIC_UPDATE_MODE, x))
       output = new FileOutputStream(fileName)
       prop.store(output, null)
     } catch {
@@ -56,8 +56,8 @@ object PropertiesFileHandler{
     var output: OutputStream = null
     try {
       prop.setProperty(START_TIME, startTime)
-      readKey(PropertiesFileHandler.POSITION).foreach(x => prop.setProperty(PropertiesFileHandler.POSITION, x))
-      readKey(PropertiesFileHandler.AUTOMATIC_UPDATE_MODE).foreach(x => prop.setProperty(PropertiesFileHandler.AUTOMATIC_UPDATE_MODE, x))
+      readKey(PropertiesStore.POSITION).foreach(x => prop.setProperty(PropertiesStore.POSITION, x))
+      readKey(PropertiesStore.AUTOMATIC_UPDATE_MODE).foreach(x => prop.setProperty(PropertiesStore.AUTOMATIC_UPDATE_MODE, x))
       output = new FileOutputStream(fileName)
       prop.store(output, null);
 
@@ -79,8 +79,8 @@ object PropertiesFileHandler{
     var output: OutputStream = null
 
     try {
-      prop.setProperty(PropertiesFileHandler.AUTOMATIC_UPDATE_MODE, automaticUpdateMode.toString)
-      readKey(PropertiesFileHandler.POSITION).foreach(x => prop.setProperty(PropertiesFileHandler.POSITION, x))
+      prop.setProperty(PropertiesStore.AUTOMATIC_UPDATE_MODE, automaticUpdateMode.toString)
+      readKey(PropertiesStore.POSITION).foreach(x => prop.setProperty(PropertiesStore.POSITION, x))
       readKey(START_TIME).foreach(x => prop.setProperty(START_TIME, x))
       output = new FileOutputStream(fileName)
       prop.store(output, null);
@@ -108,8 +108,28 @@ object PropertiesFileHandler{
     Option(prop.getProperty(key))
   }
 
+  def retreivePosition():Option[String] = {
+    readKey(POSITION)
+  }
+
+  def retrieveStartTime():Option[String] = {
+    readKey(START_TIME)
+  }
+
   def isPropertyPersist(property:String):Boolean ={
-      if(isPropertyFileExists && readKey(property).isDefined) true else false
+      isPropertyFileExists && readKey(property).isDefined
+  }
+
+  def isAutomaticUpdateModePersist():Boolean = {
+    isPropertyPersist(AUTOMATIC_UPDATE_MODE)
+  }
+
+  def isPositionPersist():Boolean = {
+    isPropertyPersist(POSITION)
+  }
+
+  def isStartTimePersist():Boolean = {
+    isPropertyPersist(START_TIME)
   }
 
   def isPropertyFileExists:Boolean ={

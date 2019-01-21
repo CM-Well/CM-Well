@@ -14,10 +14,9 @@
   */
 package cmwell.tools.neptune.export
 
-import com.amazonaws.{AmazonServiceException, ClientConfiguration, Protocol, SdkClientException}
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
-import com.amazonaws.services.s3.model.{GetObjectRequest, S3Object}
+import com.amazonaws.{AmazonServiceException, ClientConfiguration, Protocol, SdkClientException}
 
 object S3ObjectUploader{
 

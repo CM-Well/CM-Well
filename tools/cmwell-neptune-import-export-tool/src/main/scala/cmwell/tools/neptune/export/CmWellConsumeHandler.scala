@@ -59,10 +59,10 @@ object CmWellConsumeHandler {
   def retrivePositionFromCreateConsumer(cluster: String, lengthHint: Int, qp: Option[String], updateMode:Boolean, automaticUpdateMode:Boolean, toolStartTime:Instant, retryCount:Int = 0): String = {
     val withDeletedParam = if(updateMode) "&with-deleted" else ""
     //initial mode
-    val qpTillToolStartTime = if(!updateMode && !automaticUpdateMode)  URLEncoder.encode(",system.lastModified<<") + toolStartTime.toString else ""
+    val qpTillStartTime = if(!updateMode && !automaticUpdateMode)  URLEncoder.encode(",system.lastModified<") + toolStartTime.toString else ""
     //automatic update mode
-    val qpAfterToolStartTime = if(!updateMode && automaticUpdateMode) URLEncoder.encode(",system.lastModified>>" )+ toolStartTime.toString else ""
-    val createConsumerUrl = "http://" + cluster + "/?op=create-consumer&qp=-system.parent.parent_hierarchy:/meta/" + qp.getOrElse("") + qpTillToolStartTime + qpAfterToolStartTime + "&recursive&length-hint=" + lengthHint + withDeletedParam
+    val qpAfterStartTime = if(!updateMode && automaticUpdateMode) URLEncoder.encode(",system.lastModified>>" )+ toolStartTime.toString else ""
+    val createConsumerUrl = "http://" + cluster + "/?op=create-consumer&qp=-system.parent.parent_hierarchy:/meta/" + qp.getOrElse("") + qpTillStartTime + qpAfterStartTime + "&recursive&length-hint=" + lengthHint + withDeletedParam
     val url = createConsumerUrl
     logger.info("create-consumer-url=" + url)
     val get = new HttpGet(url)

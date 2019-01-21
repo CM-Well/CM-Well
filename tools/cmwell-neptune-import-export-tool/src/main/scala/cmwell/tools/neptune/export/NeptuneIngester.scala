@@ -81,7 +81,6 @@ object NeptuneIngester {
       val resBody = scala.io.Source.fromInputStream(response.getEntity.getContent).mkString
       val loadJobstatus = extractLoadJobstatus(resBody)
       if(statusCode == 200 && loadJobstatus == "LOAD_COMPLETED") {
-        println("cool, loaded completed")
         client.close()
         statusCode
       }

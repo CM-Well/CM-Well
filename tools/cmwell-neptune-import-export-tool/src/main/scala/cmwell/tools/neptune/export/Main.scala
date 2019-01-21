@@ -45,11 +45,11 @@ object Main {
     println("proxy host: " + conf.proxyHost.getOrElse("not provided"))
     println("proxy port: " + conf.proxyPort.getOrElse(-1))
     val qpParam :Option[String]= conf.qp.toOption.map(s => s",$s")
-    val proxyHost :Option[String]= conf.proxyHost.toOption.map(s => s)
-    val proxyPort :Option[Int]= conf.proxyPort.toOption.map(s => s)
-    println("About to Export-Import..")
-    val exportImportHandler = new ExportImportToNeptuneHandler(conf.ingestConnectionPoolSize())
-    exportImportHandler.exportImport(conf.sourceCluster(), conf.neptuneCluster(), conf.lengthHint(), conf.updateInfotons(), qpParam, conf.bulkLoader(), proxyHost, proxyPort)
+    val proxyHost :Option[String]= conf.proxyHost.toOption
+    val proxyPort :Option[Int]= conf.proxyPort.toOption
+    println("About to Export..")
+    val exportToNeptuneManager = new ExportToNeptuneManager(conf.ingestConnectionPoolSize())
+    exportToNeptuneManager.exportToNeptune(conf.sourceCluster(), conf.neptuneCluster(), conf.lengthHint(), conf.updateInfotons(), qpParam, conf.bulkLoader(), proxyHost, proxyPort)
   }
 
 }
