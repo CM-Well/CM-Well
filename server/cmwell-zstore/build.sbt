@@ -17,4 +17,4 @@ test in Test := Def.taskDyn {
 }.tag(cmwell.build.CMWellCommon.Tags.Cassandra).value
 */
 
-//fullTest := (test in Test).dependsOn(fullTest in LocalProject("irw")).value
+fullTest := (test in Test).value //dependsOn(fullTest in LocalProject("irw")).value
