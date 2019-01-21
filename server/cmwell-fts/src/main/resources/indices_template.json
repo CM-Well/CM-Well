@@ -16,8 +16,7 @@
     "index.mapping.total_fields.limit": 25000
   },
   "aliases": {
-    "cm_well_all": {
-    }
+    "cm_well_all": {}
   },
   "mappings": {
     "infoclone": {
@@ -92,7 +91,7 @@
             "mapping": {
               "type": "text",
               "fields": {
-                "{name}%exact": {
+                "%exact": {
                   "type": "keyword",
                   "store": "false"
                 }
@@ -183,7 +182,7 @@
             },
             "current": {
               "type": "boolean",
-              "store": false
+              "store": true
             }
           }
         }

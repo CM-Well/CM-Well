@@ -94,6 +94,7 @@ class BGResilienceSpec extends FlatSpec with BeforeAndAfterAll with EsCasKafkaZo
 
     bgConfig = ftsOverridesConfig
       .withValue("cmwell.bg.esActionsBulkSize", ConfigValueFactory.fromAnyRef(100))
+      .withValue("cmwell.bg.kafka.bootstrap.servers", ConfigValueFactory.fromAnyRef(s"${kafkaContainer.containerIpAddress}:${kafkaContainer.mappedPort(9092)}"))
 
     actorSystem = ActorSystem("cmwell-bg-test-system")
 

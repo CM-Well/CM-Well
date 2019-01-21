@@ -81,14 +81,14 @@ object CommandsSource extends LazyLogging {
     val priorityPersistCommandsSource =
       Consumer.plainSource[Array[Byte], Array[Byte]](persistCommandsConsumerSettings,prioritySubscription)
         .map { msg =>
-          logger.info(s"consuming next payload from priority persist commands topic @ ${msg.offset()}")
+          logger.debug(s"consuming next payload from priority persist commands topic @ ${msg.offset()}")
           val commandTry = Try(CommandSerializer.decode(msg.value()))
           commandTry.failed.foreach { err =>
             val s = new String(msg.value(), StandardCharsets.UTF_8)
             logger.error(s"deserialize command error for msg [$msg] and value: [$s]", err)
           }
           val command = commandTry.get
-          logger.info(s"consumed priority command: $command")
+          logger.debug(s"consumed priority command: $command")
           BGMessage[Command](CompleteOffset(msg.topic(), msg.offset()), command)
         }.via(sharedKillSwitch.flow)
 

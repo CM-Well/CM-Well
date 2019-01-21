@@ -29,4 +29,20 @@ trait EsCasKafkaZookeeperDockerSuite extends ForAllTestContainer { this:Suite =>
   val KafkaZookeeperContainers(kafkaContainer, zookeeperContainer, kafkaZooCombined) = ContainerHelpers.kafkaAndZookeeper(kafkaVersion, zookeeperVersion)
 
   override val container = MultipleContainersParallelExecution(cassandraContainer, elasticsearchContainer, kafkaZooCombined)
+
+  override def afterStart(): Unit = {
+    super.afterStart()
+    // scalastyle:off
+    kafkaContainer.configure{ container =>
+      val result = container.execInContainer("bash", "-c", "${KAFKA_HOME}/bin/kafka-configs.sh " +
+        "--bootstrap-server localhost:19092 --entity-type brokers --entity-name 1 --alter --add-config " +
+        s"advertised.listeners=[EXTERNAL://${kafkaContainer.containerIpAddress}:${kafkaContainer.mappedPort(9092)},INTERNAL://kafkaBroker-1:19092]")
+      val stdOut = result.getStdout.trim
+      if (stdOut != "Completed updating config for broker: 1.") {
+        val stdErr = result.getStderr.trim
+        throw new Exception(s"Couldn't change Kafka's advertised listeners config for broker 1. stdout: [$stdOut]. stderr: [$stdErr]")
+      }
+    }
+    // scalastyle:on
+  }
 }

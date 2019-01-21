@@ -22,6 +22,8 @@ class TestKZSuite extends FlatSpec with KafkaZookeeperDockerSuite {
   override def kafkaVersion: String = "2.12-2.1.0"
 
   "KafkaZookeeperDockerSuite" should "work" in {
+    //dummy line for breakpoint
+    val a = 10
     assert(true)
   }
 

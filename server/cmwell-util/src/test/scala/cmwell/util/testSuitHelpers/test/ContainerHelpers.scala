@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory
 import org.testcontainers.containers.Network
 import org.testcontainers.containers.output.Slf4jLogConsumer
 import org.testcontainers.containers.wait.strategy.Wait
-import org.testcontainers.utility.Base58
 
 case class KafkaZookeeperContainers(kafkaContainer: GenericContainer, zookeeperContainer: GenericContainer, combined: Container)
 
@@ -42,21 +41,27 @@ object ContainerHelpers {
       scalaContainer
     }
     lazy val kafkaContainer = {
+      val externalPort = 9092
+      val internalPort = 10000 + externalPort
+      val brokerId = 1
       val scalaContainer = GenericContainer(s"wurstmeister/kafka:$kafkaVersion",
-        exposedPorts = Seq(9092),
+        exposedPorts = Seq(externalPort),
         env = Map(
           "KAFKA_ZOOKEEPER_CONNECT" -> s"zookeeper:2181",
-          "KAFKA_LISTENERS" -> s"PLAINTEXT://:9092",
-          //        "KAFKA_CREATE_TOPICS" -> s"Topic1:1:1",
+          "KAFKA_LISTENERS" -> s"INTERNAL://0.0.0.0:$internalPort,EXTERNAL://0.0.0.0:$externalPort",
+          "KAFKA_LISTENER_SECURITY_PROTOCOL_MAP" -> s"INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT",
+          "KAFKA_INTER_BROKER_LISTENER_NAME" -> s"INTERNAL",
+          "KAFKA_CREATE_TOPICS" -> s"persist_topic:1:1,persist_topic.priority:1:1",
+          "KAFKA_BROKER_ID" -> s"$brokerId",
         ),
         waitStrategy = Wait.forLogMessage(".*KafkaServer.*started.*\n", 1)
       )
       scalaContainer.configure { container =>
         container.withNetwork(internalNetwork)
-        val networkAlias = "kafkaBroker-" + Base58.randomString(6)
+        val networkAlias = s"kafkaBroker-$brokerId"
         container.withNetworkAliases(networkAlias)
         //The network alias can be used the advertising listeners later (for multi brokers configuration)
-        container.addEnv("KAFKA_ADVERTISED_LISTENERS", s"PLAINTEXT://$networkAlias:9092")
+        container.addEnv("KAFKA_ADVERTISED_LISTENERS", s"INTERNAL://$networkAlias:$internalPort")
         val logger = new Slf4jLogConsumer(LoggerFactory.getLogger(container.getDockerImageName))
         container.withLogConsumer(logger)
       }

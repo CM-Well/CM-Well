@@ -24,20 +24,30 @@ import cmwell.driver.Dao
 import cmwell.fts._
 import cmwell.irw.IRWService
 import cmwell.util.concurrent.SimpleScheduler.scheduleFuture
+import cmwell.util.testSuitHelpers.test.EsCasKafkaZookeeperDockerSuite
 import cmwell.zstore.ZStore
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
+import org.elasticsearch.action.ActionListener
+import org.elasticsearch.action.admin.indices.create.{CreateIndexRequest, CreateIndexResponse}
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
+import org.elasticsearch.action.admin.indices.template.put.PutIndexTemplateRequest
+import org.elasticsearch.action.support.master.AcknowledgedResponse
 import org.elasticsearch.common.unit.TimeValue
+import org.elasticsearch.common.xcontent.XContentType
 import org.scalatest.{BeforeAndAfterAll, DoNotDiscover, FlatSpec, Matchers}
 
 import concurrent.duration._
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, Future, Promise}
 import scala.io.Source
 
-@DoNotDiscover
-class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers with LazyLogging {
+class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with EsCasKafkaZookeeperDockerSuite with Matchers with LazyLogging {
+  override def elasticsearchVersion: String = cmwell.util.build.BuildInfo.elasticsearchVersion
+  override def cassandraVersion: String = cmwell.util.build.BuildInfo.cassandraVersion
+  override def kafkaVersion: String = s"${cmwell.util.build.BuildInfo.scalaVersion.take(4)}-${cmwell.util.build.BuildInfo.kafkaVersion}"
+  override def zookeeperVersion: String = cmwell.util.build.BuildInfo.zookeeperVersion
+
 
   var kafkaProducer:KafkaProducer[Array[Byte], Array[Byte]] = _
   var cmwellBGActor:ActorRef = _
@@ -50,36 +60,63 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
   var actorSystem:ActorSystem = _
 
   override def beforeAll = {
+    //notify ES to not set Netty's available processors
+    System.setProperty("es.set.netty.runtime.available.processors", "false")
 
     val producerProperties = new Properties
-    producerProperties.put("bootstrap.servers", "localhost:9092")
+    producerProperties.put("bootstrap.servers", s"${kafkaContainer.containerIpAddress}:${kafkaContainer.mappedPort(9092)}")
     producerProperties.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
     producerProperties.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
     kafkaProducer = new KafkaProducer[Array[Byte], Array[Byte]](producerProperties)
 
-    dao = Dao("Test","data2", "127.0.0.1", 9042, initCommands = None)
+    // scalastyle:off
+    val initCommands = Some(List(
+      "CREATE KEYSPACE IF NOT EXISTS data2 WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor' : 1};",
+      "CREATE TABLE IF NOT EXISTS data2.Path ( path text, uuid text, last_modified timestamp, PRIMARY KEY ( path, last_modified, uuid ) ) WITH CLUSTERING ORDER BY (last_modified DESC, uuid ASC) AND compression = { 'sstable_compression' : 'LZ4Compressor' } AND caching = {'keys':'ALL', 'rows_per_partition':'1'};",
+      "CREATE TABLE IF NOT EXISTS data2.Infoton (uuid text, quad text, field text, value text, data blob, PRIMARY KEY (uuid,quad,field,value)) WITH compression = { 'sstable_compression' : 'LZ4Compressor' } AND caching = {'keys':'ALL', 'rows_per_partition':'1000'};"
+    ))
+    // scalastyle:on
+    dao = Dao("Test","data2", cassandraContainer.containerIpAddress, cassandraContainer.mappedPort(9042), initCommands = initCommands)
     irwService = IRWService.newIRW(dao, 25 , true, 120.seconds)
     // truncate all tables
     Await.ready(irwService.purgeAll(), 20.seconds)
 
     zStore = ZStore(dao)
     offsetsService = new ZStoreOffsetsService(zStore)
-    ftsServiceES = FTSService()
+    val ftsOverridesConfig = ConfigFactory.load()
+      .withValue("ftsService.clusterName", ConfigValueFactory.fromAnyRef("docker-cluster"))
+      .withValue("ftsService.transportAddress", ConfigValueFactory.fromAnyRef(elasticsearchContainer.containerIpAddress))
+      .withValue("ftsService.transportPort", ConfigValueFactory.fromAnyRef(elasticsearchContainer.mappedPort(9300)))
+    ftsServiceES = FTSService(ftsOverridesConfig)
 
-    // delete all existing indices
-    ftsServiceES.client.admin().indices().delete(new DeleteIndexRequest("_all"))
-
+    val putTemplateRequest = new PutIndexTemplateRequest("indices_template")
+    val indicesTemplateStr = {
+      val templateSource = Source.fromURL(this.getClass.getResource("/indices_template.json"))
+      try templateSource.getLines.mkString("\n") finally templateSource.close()
+    }
+    putTemplateRequest.source(indicesTemplateStr, XContentType.JSON)
+    val putTemplatePromise = Promise[AcknowledgedResponse]()
+    ftsServiceES.client.admin().indices().putTemplate(putTemplateRequest, new ActionListener[AcknowledgedResponse] {
+      override def onResponse(response: AcknowledgedResponse): Unit = putTemplatePromise.success(response)
+      override def onFailure(e: Exception): Unit = putTemplatePromise.failure(e)
+    })
+    val putTemplateAck = Await.result(putTemplatePromise.future, 1.minute)
+    if (!putTemplateAck.isAcknowledged)
+      throw new Exception("ES didn't acknowledge the put template request")
+    val createIndexPromise = Promise[AcknowledgedResponse]()
+    ftsServiceES.client.admin().indices().create(new CreateIndexRequest("cm_well_p0_0"), new ActionListener[CreateIndexResponse] {
+      override def onResponse(response: CreateIndexResponse): Unit = createIndexPromise.success(response)
+      override def onFailure(e: Exception): Unit = createIndexPromise.failure(e)
+    })
+    val createIndexResponse = Await.result(putTemplatePromise.future, 1.minute)
+    if (!createIndexResponse.isAcknowledged)
+      throw new Exception("ES didn't acknowledge the create index request")
     bgConfig = ConfigFactory.load
+      .withValue("cmwell.bg.kafka.bootstrap.servers", ConfigValueFactory.fromAnyRef(s"${kafkaContainer.containerIpAddress}:${kafkaContainer.mappedPort(9092)}"))
 
     actorSystem = ActorSystem("cmwell-bg-test-system")
 
     cmwellBGActor = actorSystem.actorOf(CMWellBGActor.props(0, bgConfig, irwService, ftsServiceES, zStore, offsetsService))
-
-    // scalastyle:off
-    println("waiting 10 seconds for all components to load")
-    Thread.sleep(10000)
-    // scalastyle:on
-
   }
 
 
@@ -152,7 +189,6 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
 
     override def afterAll() = {
       cmwellBGActor ! ShutDown
-      Thread.sleep(2000)
       ftsServiceES.shutdown()
       irwService = null
     }

@@ -47,7 +47,6 @@ import scala.util.Random
 /**
   * Created by israel on 15/02/2016.
   */
-@DoNotDiscover
 class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers with Inspectors with LazyLogging {
 
   var kafkaProducer: KafkaProducer[Array[Byte], Array[Byte]] = _
@@ -105,14 +104,8 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
 
     cmwellBGActor = actorSystem.actorOf(CMWellBGActor.props(0, bgConfig, irwService, ftsServiceES, zStore, offsetsService))
 
-    // scalastyle:off
-    println("waiting 10 seconds for all components to load")
-    // scalastyle:on
-    schedule(10.seconds){
-      okToStartPromise.success(())
-    }
+    okToStartPromise.success(())
     super.beforeAll
-
   }
 
 
@@ -903,7 +896,6 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
 
   override def afterAll() = {
     cmwellBGActor ! ShutDown
-    Thread.sleep(10000)
     ftsServiceES.shutdown()
     irwService = null
   }
