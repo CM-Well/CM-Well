@@ -51,7 +51,7 @@ object ContainerHelpers {
           "KAFKA_LISTENERS" -> s"INTERNAL://0.0.0.0:$internalPort,EXTERNAL://0.0.0.0:$externalPort",
           "KAFKA_LISTENER_SECURITY_PROTOCOL_MAP" -> s"INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT",
           "KAFKA_INTER_BROKER_LISTENER_NAME" -> s"INTERNAL",
-          "KAFKA_CREATE_TOPICS" -> s"persist_topic:1:1,persist_topic.priority:1:1",
+          "KAFKA_CREATE_TOPICS" -> s"persist_topic:1:1,persist_topic.priority:1:1,index_topic:1:1,index_topic.priority:1:1",
           "KAFKA_BROKER_ID" -> s"$brokerId",
         ),
         waitStrategy = Wait.forLogMessage(".*KafkaServer.*started.*\n", 1)
@@ -75,7 +75,7 @@ object ContainerHelpers {
     val scalaContainer = GenericContainer(s"docker.elastic.co/elasticsearch/elasticsearch-oss:$elasticsearchVersion",
       exposedPorts = Seq(9200),
       waitStrategy = Wait.forHttp("/").forPort(9200).forStatusCode(200),
-      env = Map("discovery.type" -> "single-node", "ES_JAVA_OPTS" -> "-Xms512m -Xmx512m")
+      env = Map("discovery.type" -> "single-node", "ES_JAVA_OPTS" -> "-Xms2000m -Xmx2000m")
     )
     scalaContainer.configure { container =>
       val logger = new Slf4jLogConsumer(LoggerFactory.getLogger(s"elasticsearch-oss:$elasticsearchVersion"))

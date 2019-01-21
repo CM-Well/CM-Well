@@ -28,9 +28,10 @@ import cmwell.fts._
 import cmwell.irw.IRWService
 import cmwell.util.FullBox
 import cmwell.util.concurrent.SimpleScheduler.{schedule, scheduleFuture}
+import cmwell.util.testSuitHelpers.test.EsCasKafkaZookeeperDockerSuite
 import cmwell.zstore.ZStore
 import com.datastax.driver.core.ConsistencyLevel
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
@@ -47,7 +48,7 @@ import scala.util.Random
 /**
   * Created by israel on 15/02/2016.
   */
-class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers with Inspectors with LazyLogging {
+class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafkaZookeeperDockerSuite with Matchers with Inspectors with LazyLogging {
 
   var kafkaProducer: KafkaProducer[Array[Byte], Array[Byte]] = _
   var cmwellBGActor: ActorRef = _
@@ -82,28 +83,22 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
   }
 
   override def beforeAll = {
-    val producerProperties = new Properties
-    producerProperties.put("bootstrap.servers", "localhost:9092")
-    producerProperties.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
-    producerProperties.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
-    kafkaProducer = new KafkaProducer[Array[Byte], Array[Byte]](producerProperties)
-
+    //notify ES to not set Netty's available processors
+    System.setProperty("es.set.netty.runtime.available.processors", "false")
+    kafkaProducer = BgTestHelpers.kafkaProducer(s"${kafkaContainer.containerIpAddress}:${kafkaContainer.mappedPort(9092)}")
     Files.deleteIfExists(Paths.get("./target", "persist_topic-0.offset"))
     Files.deleteIfExists(Paths.get("./target", "index_topic-0.offset"))
-
-    dao = Dao("Test", "data2", "127.0.0.1", 9042, initCommands = None)
+    dao = BgTestHelpers.dao(cassandraContainer.containerIpAddress, cassandraContainer.mappedPort(9042))
     irwService = IRWService.newIRW(dao, 25, true, 120.seconds)
     zStore = ZStore(dao)
     offsetsService = new ZStoreOffsetsService(zStore)
-
-    ftsServiceES = FailingFTSServiceMockup(ConfigFactory.load() , 2)
-
-    bgConfig = ConfigFactory.load
-
+    val ftsOverridesConfig = BgTestHelpers.ftsOverridesConfig(elasticsearchContainer.containerIpAddress, elasticsearchContainer.mappedPort(9300))
+    ftsServiceES = FailingFTSServiceMockup(ftsOverridesConfig , 2)
+    BgTestHelpers.initFTSService(ftsServiceES)
+    bgConfig = ftsOverridesConfig
+      .withValue("cmwell.bg.kafka.bootstrap.servers", ConfigValueFactory.fromAnyRef(s"${kafkaContainer.containerIpAddress}:${kafkaContainer.mappedPort(9092)}"))
     actorSystem = ActorSystem("cmwell-bg-test-system")
-
     cmwellBGActor = actorSystem.actorOf(CMWellBGActor.props(0, bgConfig, irwService, ftsServiceES, zStore, offsetsService))
-
     okToStartPromise.success(())
     super.beforeAll
   }
@@ -251,7 +246,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with Matchers wit
     }
 
     val indexAllInfotons = processDeletePathCommands.flatMap { _ =>
-      cmwell.util.concurrent.spinCheck(250.millis, true, 30.seconds) {
+      cmwell.util.concurrent.spinCheck(250.millis, true, 45.seconds) {
         ftsServiceES.search(
           pathFilter = Some(PathFilter("/cmt/cm/bg-test1", descendants = true)),
           fieldsFilter = None,

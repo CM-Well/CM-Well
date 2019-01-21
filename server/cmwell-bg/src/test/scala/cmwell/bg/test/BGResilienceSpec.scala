@@ -39,11 +39,7 @@ import scala.io.Source
 /**
   * Created by israel on 13/09/2016.
   */
-class BGResilienceSpec extends FlatSpec with BeforeAndAfterAll with EsCasKafkaZookeeperDockerSuite with Matchers with LazyLogging {
-  override def elasticsearchVersion: String = cmwell.util.build.BuildInfo.elasticsearchVersion
-  override def cassandraVersion: String = cmwell.util.build.BuildInfo.cassandraVersion
-  override def kafkaVersion: String = s"${cmwell.util.build.BuildInfo.scalaVersion.take(4)}-${cmwell.util.build.BuildInfo.kafkaVersion}"
-  override def zookeeperVersion: String = cmwell.util.build.BuildInfo.zookeeperVersion
+class BGResilienceSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafkaZookeeperDockerSuite with Matchers with LazyLogging {
 
   var kafkaProducer:KafkaProducer[Array[Byte], Array[Byte]] = _
   var cmwellBGActor:ActorRef = _
@@ -60,46 +56,23 @@ class BGResilienceSpec extends FlatSpec with BeforeAndAfterAll with EsCasKafkaZo
   override def beforeAll = {
     //notify ES to not set Netty's available processors
     System.setProperty("es.set.netty.runtime.available.processors", "false")
-
-    val producerProperties = new Properties
-    producerProperties.put("bootstrap.servers", s"${kafkaContainer.containerIpAddress}:${kafkaContainer.mappedPort(9092)}")
-    producerProperties.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
-    producerProperties.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
-    kafkaProducer = new KafkaProducer[Array[Byte], Array[Byte]](producerProperties)
-
-    // scalastyle:off
-    val initCommands = Some(List(
-      "CREATE KEYSPACE IF NOT EXISTS data2 WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor' : 1};",
-      "CREATE TABLE IF NOT EXISTS data2.Path ( path text, uuid text, last_modified timestamp, PRIMARY KEY ( path, last_modified, uuid ) ) WITH CLUSTERING ORDER BY (last_modified DESC, uuid ASC) AND compression = { 'sstable_compression' : 'LZ4Compressor' } AND caching = {'keys':'ALL', 'rows_per_partition':'1'};",
-      "CREATE TABLE IF NOT EXISTS data2.Infoton (uuid text, quad text, field text, value text, data blob, PRIMARY KEY (uuid,quad,field,value)) WITH compression = { 'sstable_compression' : 'LZ4Compressor' } AND caching = {'keys':'ALL', 'rows_per_partition':'1000'};"
-    ))
+    kafkaProducer = BgTestHelpers.kafkaProducer(s"${kafkaContainer.containerIpAddress}:${kafkaContainer.mappedPort(9092)}")
     // scalastyle:on
-    dao = Dao("Test","data2", cassandraContainer.containerIpAddress, cassandraContainer.mappedPort(9042), initCommands = initCommands)
+    dao = BgTestHelpers.dao(cassandraContainer.containerIpAddress, cassandraContainer.mappedPort(9042))
     testIRWMockupService = FailingIRWServiceMockup(dao, 13)
     zStore = ZStore(dao)
     irwService = IRWService.newIRW(dao, 25 , true, 0.seconds)
     offsetsService = new ZStoreOffsetsService(zStore)
-
-    val ftsOverridesConfig = ConfigFactory.load()
-        .withValue("ftsService.clusterName", ConfigValueFactory.fromAnyRef("docker-cluster"))
-        .withValue("ftsService.transportAddress", ConfigValueFactory.fromAnyRef(elasticsearchContainer.containerIpAddress))
-        .withValue("ftsService.transportPort", ConfigValueFactory.fromAnyRef(elasticsearchContainer.mappedPort(9300)))
+    val ftsOverridesConfig = BgTestHelpers.ftsOverridesConfig(elasticsearchContainer.containerIpAddress, elasticsearchContainer.mappedPort(9300))
     ftsServiceES = FailingFTSServiceMockup(ftsOverridesConfig, 5)
-
-    // delete all existing indices
-    ftsServiceES.client.admin().indices().delete(new DeleteIndexRequest("_all"))
-
-    // create current index
-    ftsServiceES.client.admin().indices().prepareCreate("cm_well_p0_0").execute().actionGet()
-
+    // delete all existing indices - not needed the docker is started fresh every time
+    //ftsServiceES.client.admin().indices().delete(new DeleteIndexRequest("_all"))
+    BgTestHelpers.initFTSService(ftsServiceES)
     bgConfig = ftsOverridesConfig
       .withValue("cmwell.bg.esActionsBulkSize", ConfigValueFactory.fromAnyRef(100))
       .withValue("cmwell.bg.kafka.bootstrap.servers", ConfigValueFactory.fromAnyRef(s"${kafkaContainer.containerIpAddress}:${kafkaContainer.mappedPort(9092)}"))
-
     actorSystem = ActorSystem("cmwell-bg-test-system")
-
     cmwellBGActor = actorSystem.actorOf(CMWellBGActor.props(0, bgConfig, testIRWMockupService, ftsServiceES, zStore, offsetsService))
-
   }
 
   "Resilient BG" should "process commands as usual on circumvented BGActor (periodically failing IRWService) after suspending and resuming" in {

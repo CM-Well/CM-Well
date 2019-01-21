@@ -52,14 +52,14 @@ val stopCassandraAndKafka = Def.task[Unit] {
   Def.task(stopKafka.value).value
 }
 
-test in Test := Def.taskDyn {
-  val a: Task[Unit] = startCassandraAndKafka.taskValue
-  val b: Task[Unit] = (test in Test).taskValue
-  val c: Task[Unit] = stopCassandraAndKafka.taskValue
-  Def.task {
-    ((a doFinally b) doFinally c).value
-  }
-}.tag(Tags.ES,Tags.Cassandra,Tags.Grid,Tags.Kafka).value
+//test in Test := Def.taskDyn {
+//  val a: Task[Unit] = startCassandraAndKafka.taskValue
+//  val b: Task[Unit] = (test in Test).taskValue
+//  val c: Task[Unit] = stopCassandraAndKafka.taskValue
+//  Def.task {
+//    ((a doFinally b) doFinally c).value
+//  }
+//}.tag(Tags.ES,Tags.Cassandra,Tags.Grid,Tags.Kafka).value
 
 fullTest := (test in Test).dependsOn(fullTest in LocalProject("fts"),fullTest in LocalProject("zstore")).value
 
