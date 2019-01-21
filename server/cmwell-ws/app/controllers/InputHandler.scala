@@ -256,11 +256,10 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                        skipValidation: Boolean = false,
                        isOverwrite: Boolean = false): Future[ParsingResponse] = {
 
-    import java.io.{FileInputStream, InputStream}
     import cmwell.web.ld.service.WriteService._
 
-    def viaTempFile: InputStream = new FileInputStream(req.body.asFile)
-    val inputStream = req.body.asBytes().fold(viaTempFile)(_.iterator.asInputStream)
+    val inputStream = req.body.asBytes().getOrElse(throw new RuntimeException("cant find valid content in body of request")).
+      iterator.asInputStream
 
     val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
 
