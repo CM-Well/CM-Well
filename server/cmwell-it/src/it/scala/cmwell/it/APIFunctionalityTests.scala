@@ -1467,9 +1467,9 @@ class APIFunctionalityTests extends AsyncFunSpec
           """.stripMargin)
         spinCheck(100.millis, true)(Http.get(cmt / "Araújo3", List("format" -> "json"))) {
           res =>
-            val payloadStr = (res.payload.map(_.toChar)).mkString
+            val payloadStr = res.payload.map(_.toChar).mkString
             if (payloadStr == "Infoton not found") false
-            else Json.parse(payloadStr).transform(uuidDateEraser).get == expected
+            else Json.parse(res.payload).transform(uuidDateEraser).get == expected
         }.map { res =>
           withClue(res) {
             Json.parse(res.payload).transform(uuidDateEraser).get should be(expected)
