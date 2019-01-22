@@ -183,7 +183,7 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSService)
           case (uuid, Vector(uuidInSingleIndex)) => Future.successful(uuidInSingleIndex)
           case (uuid, vec) => {
             val oldestIngest = vec.minBy(_._2)
-            ftsService.purgeByUuidsAndIndexes(vec.filterNot(oldestIngest.eq), partition = "blahblah").map { bulkRes =>
+            ftsService.purgeByUuidsAndIndexes(vec.filterNot(oldestIngest.eq)).map { bulkRes =>
               if (bulkRes.hasFailures) {
                 log.error(bulkRes.toString)
               }
@@ -280,7 +280,7 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSService)
                           )
                           // we are purging an infoton only because lastModified collision,
                           // but we should log the lost data (JsonFormatter which preserves the "last name" hash + quads data?)
-                          val f1 = retry(ftsService.purgeByUuidsAndIndexes(onlyES(i.uuid).map(i.uuid -> _), partition = "blahblah"))
+                          val f1 = retry(ftsService.purgeByUuidsAndIndexes(onlyES(i.uuid).map(i.uuid -> _)))
                             .map[Infoton] { br =>
                             if (br.hasFailures) logEsBulkResponseFailures(br); i
                           }
@@ -334,7 +334,7 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSService)
                       val purgeFromEsFut = Future.traverse(uFromEsThatAreFound) {
                         // todo .recover + check .hasFailures
                         case (uuid, index) =>
-                          retry(ftsService.purgeByUuidsAndIndexes(Vector(uuid -> index), partition = "blahblah"))
+                          retry(ftsService.purgeByUuidsAndIndexes(Vector(uuid -> index)))
                       }
 
                       purgeFromEsFut.flatMap { _ =>
@@ -421,7 +421,7 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSService)
         val f1 = {
           if (uuidsFromEs.isEmpty) Future.successful(())
           else
-            retry(ftsService.purgeByUuidsAndIndexes(uuidsFromEs, partition = "blahblah")).recover {
+            retry(ftsService.purgeByUuidsAndIndexes(uuidsFromEs)).recover {
               case e: Throwable =>
                 log.error(
                   s"error occured while purging=${uuidsFromEs.mkString("[", ",", "]")} for path=[$path] from ES",

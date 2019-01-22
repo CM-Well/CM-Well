@@ -1581,7 +1581,7 @@ class FTSService(config: Config) extends NsSplitter{
     }.toSet}
   }
 
-  def purgeByUuidsAndIndexes(uuidsAtIndexes: Vector[(String, String)], partition: String)
+  def purgeByUuidsAndIndexes(uuidsAtIndexes: Vector[(String, String)], partition: String = defaultPartition)
                                      (implicit executionContext: ExecutionContext): Future[BulkResponse] = {
 
     // empty request -> empty response
@@ -1658,7 +1658,26 @@ class FTSService(config: Config) extends NsSplitter{
     injectFuture[SearchResponse](request.execute).map(_.getHits.getHits.headOption.map(_.getFields.get("system.indexTime").getValue[Long]))
   }
 
-  def purgeByUuidsFromAllIndexes(uuids: Vector[String], partition: String)(implicit executionContext: ExecutionContext): Future[BulkResponse] = ???
+//  def purgeByUuidsFromAllIndexes(uuids: Vector[String], partition: String)(implicit executionContext: ExecutionContext): Future[BulkResponse] = ???
+  def purgeByUuidsFromAllIndexes(uuids: Vector[String], partition: String = defaultPartition)
+                                (implicit executionContext: ExecutionContext): Future[BulkResponse] = {
+    if (uuids.isEmpty)
+      Future.successful(new BulkResponse(Array[BulkItemResponse](), 0))
+    else {
+      val bulkRequest = client.prepareBulk()
+      val indices = getIndicesNames(partition)
+      for {
+        uuid <- uuids
+        index <- indices
+      } {
+        bulkRequest.add(client.prepareDelete(index, "infoclone", uuid))
+      }
+      logRequest("purgeByUuidsFromAllIndexes", s"uuids: ${uuids.mkString(",")}")
+
+      injectFuture[BulkResponse](bulkRequest.execute(_))
+    }
+  }
+
 
 }
 
