@@ -21,7 +21,7 @@ import akka.cluster.ClusterEvent.{MemberRemoved, MemberUp, UnreachableMember, _}
 import akka.cluster.{Cluster, Member}
 import akka.pattern.ask
 import akka.util.Timeout
-import cmwell.domain.Infoton
+import cmwell.util.string.sanitizeLogLine
 import cmwell.formats.FormatType
 import cmwell.util.string.Base64
 import com.typesafe.scalalogging.LazyLogging
@@ -58,15 +58,15 @@ class SubscriberPushActor(sendData: (Seq[String]) => Unit, bulkSize: Int = 100) 
   def receive = {
 
     case NotifyAddRule(publisherActorMap: Map[GridJvm, ActorSelection], subscriber: String, rule: Rule) =>
-      logger.info(
+      logger.info(sanitizeLogLine(
         s"NotifyAddRule($publisherActorMap : Map[Member , ActorSelection] , $subscriber : String , $rule : Rule)"
-      )
-      logger.info(s"publisherActorMap: $publisherActorMap")
+      ))
+      logger.info(sanitizeLogLine(s"publisherActorMap: $publisherActorMap"))
 
       publisherActorMap.foreach { case (m, a) => a ! AddSubscriber(subscriber, rule) }
 
     case NotifyRemoveRule(subscriberActorMap: Map[GridJvm, ActorSelection], subscriber: String) =>
-      logger.info(s"NotifyRemoveRule($subscriberActorMap : Map[Member , ActorSelection] , $subscriber : String)")
+      logger.info(sanitizeLogLine(s"NotifyRemoveRule($subscriberActorMap : Map[Member , ActorSelection] , $subscriber : String)"))
       subscriberActorMap.foreach { case (m, a) => a ! RemoveSubscriber(subscriber) }
 
     case ReceiveTimeout =>
@@ -77,7 +77,7 @@ class SubscriberPushActor(sendData: (Seq[String]) => Unit, bulkSize: Int = 100) 
       }
 
     case msg @ PublishOne(i: String) =>
-      logger.info(s"received $msg from $sender")
+      logger.info(sanitizeLogLine(s"received $msg from $sender"))
       // here we need to make the sensor
 //      val deltaTimestamp = System.currentTimeMillis() - timestamp
 //      if ( deltaTimestamp <= 1000 && count >= 100 )
@@ -124,13 +124,13 @@ class SubscriberPullActor(format: FormatType, bulkSize: Int = 100) extends Actor
   def receive = {
 
     case NotifyAddRule(publisherActorMap: Map[GridJvm, ActorSelection], subscriber: String, rule: Rule) =>
-      logger.info(
+      logger.info(sanitizeLogLine(
         s"NotifyAddRule($publisherActorMap : Map[Member , ActorSelection] , $subscriber : String , $rule : Rule)"
-      )
+      ))
       publisherActorMap.foreach { case (m, a) => a ! AddSubscriber(subscriber, rule) }
 
     case NotifyRemoveRule(subscriberActorMap: Map[GridJvm, ActorSelection], subscriber: String) =>
-      logger.info(s"NotifyRemoveRule($subscriberActorMap : Map[Member , ActorSelection] , $subscriber : String)")
+      logger.info(sanitizeLogLine(s"NotifyRemoveRule($subscriberActorMap : Map[Member , ActorSelection] , $subscriber : String)"))
       subscriberActorMap.foreach { case (m, a) => a ! RemoveSubscriber(subscriber) }
 
     case PublishOne(i: String) =>
@@ -138,7 +138,7 @@ class SubscriberPullActor(format: FormatType, bulkSize: Int = 100) extends Actor
       val deltaTimestamp = System.currentTimeMillis() - timestamp
       if (deltaTimestamp <= 1000 && count >= 100)
         // we need to call Unsubscribe.
-        logger.info(s"call Unsubscribe delta [${deltaTimestamp}] count [${count}}]")
+        logger.info(sanitizeLogLine(s"call Unsubscribe delta [${deltaTimestamp}] count [${count}}]"))
       else {
         if (deltaTimestamp > 1000) {
           // create new timestamp && zero count
@@ -196,18 +196,18 @@ class SubscriberAgent extends Actor with LazyLogging {
           val props = Props(new SubscriberPullActor(format))
           Grid.create(props, subscriber)
         case Push(sendData) =>
-          logger.info(s"Create a push actor [$sendData]")
+          logger.info(sanitizeLogLine(s"Create a push actor [$sendData]"))
           val props = Props(new SubscriberPushActor(sendData))
           Grid.create(props, subscriber)
       }
       // got new subscriber
-      logger.info(s"Subscribe [$ar]")
+      logger.info(sanitizeLogLine(s"Subscribe [$ar]"))
       rulesMap += (subscriber -> rule)
       localSubscriberActorMap += (subscriber -> ar)
       ar ! NotifyAddRule(publisherActorMap, subscriber, rule)
       // return actor string to creator
       val name = s"${Grid.me}/user/$subscriber"
-      logger.info(s"Subscribe Actor location [$name]")
+      logger.info(sanitizeLogLine(s"Subscribe Actor location [$name]"))
       sender ! name
 
     case NotifyUnSubscribe(subscriber: String) =>
@@ -215,7 +215,7 @@ class SubscriberAgent extends Actor with LazyLogging {
 
     case UnSubscribe(subscriber: String) =>
       // remove
-      logger.info(s"UnSubscribe msg ${localSubscriberActorMap}")
+      logger.info(sanitizeLogLine(s"UnSubscribe msg ${localSubscriberActorMap}"))
       localSubscriberActorMap.get(subscriber) match {
         case Some(ar) =>
           logger.info("subscriber found remove from all publishers")
@@ -236,19 +236,19 @@ class SubscriberAgent extends Actor with LazyLogging {
             val ar = localSubscriberActorMap.get(subscriber).get
             //TODO: send only the publisher that have joined now
             ar ! NotifyAddRule(publisherActorMap, subscriber, rule)
-            logger.info(s" publisherActorMap $publisherActorMap")
+            logger.info(sanitizeLogLine(s" publisherActorMap $publisherActorMap"))
         }
       }
 
       if (jvm.hasLabel("subscriber")) {
         val a = Grid.selectActor("subscriber", jvm)
         subscriberActorMap += (jvm -> a)
-        logger.info(s" subscriberActorMap $subscriberActorMap")
+        logger.info(sanitizeLogLine(s" subscriberActorMap $subscriberActorMap"))
       }
     }
 
     case JvmLeftEvent(jvm) => {
-      logger.info(s"$self jvm left $jvm")
+      logger.info(sanitizeLogLine(s"$self jvm left $jvm"))
       if (jvm.hasLabel("publisher")) {
         publisherActorMap -= jvm
       }
@@ -286,12 +286,12 @@ class Subscriber(val subscriberAgent: ActorRef) extends LazyLogging {
     // first lets lookup the subscriber agent
     val k = Base64.decodeBase64String(subscriber, "UTF-8")
     val l = k.split("/")
-    logger.info(s"unsubscribe [$subscriber] to [$k] splited $l")
+    logger.info(sanitizeLogLine(s"unsubscribe [$subscriber] to [$k] splited $l"))
     val sub = l(l.length - 1)
     val t = (l(l.length - 3)).split("@")
     val location = t(1)
     // lets locate
-    logger.info(s"location [$location] sub [$sub]")
+    logger.info(sanitizeLogLine(s"location [$location] sub [$sub]"))
     // TODO : need to build the actor and than send NotifyUnSubscribe
     val f = Grid.selectActor("subscriber", GridJvm(location))
     f ! NotifyUnSubscribe(sub)
