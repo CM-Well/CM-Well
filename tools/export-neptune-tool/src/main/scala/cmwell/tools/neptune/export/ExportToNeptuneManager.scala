@@ -113,10 +113,12 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
     res
   }
 
-  def persistDataInS3AndIngestToNeptuneViaLoaderAPI(neptuneCluster: String,bulkResponseAsString:String, nextPosition: String, updateMode: Boolean, readInputStreamDuration: Long, totalInfotons: String, proxyHost:Option[String], proxyPort:Option[Int]) = {
+  def persistDataInS3AndIngestToNeptuneViaLoaderAPI(neptuneCluster: String, bulkResponseAsString:String, nextPosition: String, updateMode: Boolean, readInputStreamDuration: Long, totalInfotons: String, proxyHost:Option[String], proxyPort:Option[Int]) = {
       val startTimeMillis = System.currentTimeMillis()
       val fileName = "cm-well-file-" + startTimeMillis + ".nq"
-      S3ObjectUploader.persistChunkToS3Bucket(bulkResponseAsString, fileName, proxyHost, proxyPort)
+      val allQuads = bulkResponseAsString.split("\n")
+      val bulkResWithoutMeta = allQuads.filterNot(quad => if(quad!= "") quad.split(" ")(1).contains("meta/sys") else false).mkString("\n")
+      S3ObjectUploader.persistChunkToS3Bucket(bulkResWithoutMeta, fileName, proxyHost, proxyPort)
       val endS3TimeMillis = System.currentTimeMillis()
       val s3Duration = (endS3TimeMillis - startTimeMillis) / 1000
       logger.info("Duration of writing to s3 = " + s3Duration)
@@ -200,6 +202,3 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
   }
 
 }
-
-
-
