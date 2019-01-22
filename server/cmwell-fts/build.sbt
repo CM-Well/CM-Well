@@ -1,6 +1,6 @@
 name := "cmwell-fts-ng"
 
-Keys.fork in Test := true //the test will run in a spawned JVM (default is to run in the same JVM) -> this is because the tests use cmwell.util.jmx.package$.jmxRegister
+//Keys.fork in Test := true //the test will run in a spawned JVM (default is to run in the same JVM) -> this is because the tests use cmwell.util.jmx.package$.jmxRegister
 
 libraryDependencies ++= {
 	val dm = dependenciesManager.value

@@ -127,9 +127,8 @@ test in IntegrationTest := Def.task {
 
 
 //FIXME: if https://github.com/sbt/sbt/issues/3250 is fixed, we should stop manually wiring the tests dependencies like that
-fullTest := (test in IntegrationTest).value /*dependsOn(
+fullTest := (test in IntegrationTest).dependsOn(
   fullTest in LocalProject("bg"),
   fullTest in LocalProject("irw"),
   fullTest in LocalProject("fts"),
   fullTest in LocalProject("zstore")).value
-*/
