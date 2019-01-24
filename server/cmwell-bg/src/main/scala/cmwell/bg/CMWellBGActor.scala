@@ -41,7 +41,7 @@ import org.slf4j.LoggerFactory
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 object CMWellBGActor {
   val name = "CMWellBGActor"
@@ -109,7 +109,7 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
   implicit val ec = context.dispatcher
 
   implicit val materializer = ActorMaterializer()
-
+  var isDied = false
   override def receive: Receive = {
     case Start =>
       logger.info("requested to start all streams")
@@ -139,7 +139,9 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
       logger.info("requested to shutdown")
       stopAll
       logger.info("stopped all streams. taking the last pill....")
+      sender ! true
       self ! PoisonPill
+
 //    case All503 =>
 //      logger.info("Got all503 message. becoming state503")
 //      context.become(state503)
@@ -241,15 +243,24 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
     if (crawlerMaterializations(topic) != null) {
       logger.info(s"Sending the stop signal to Crawler [$topic, partition: $partition]")
       val res = crawlerMaterializations(topic).control.shutdown()
-      res.onComplete {
-        case Success(_) => logger.info(s"The future of the crawler stream shutdown control of Crawler [$topic, partition: $partition] " +
-          s"finished with success. It will be marked as stopped only after the stream will totally finish.")
-        case Failure(ex) => logger.error(s"The future of the crawler stream shutdown control of Crawler [$topic, partition: $partition] " +
-          s"finished with exception. The crawler stream will be marked as stopped only after the stream will totally finish.The exception was: ", ex)
+      Try {
+        Await.ready(res, 10.seconds)
+      }.recover {
+        case t: Throwable =>
+          logger.error(
+            s"Crawler failed to shutdown after waiting for 10 seconds."
+          )
       }
+//      res.onComplete {
+//        case Success(_) => logger.info(s"The future of the crawler stream shutdown control of Crawler [$topic, partition: $partition] " +
+//          s"finished with success. It will be marked as stopped only after the stream will totally finish.")
+//        case Failure(ex) => logger.error(s"The future of the crawler stream shutdown control of Crawler [$topic, partition: $partition] " +
+//          s"finished with exception. The crawler stream will be marked as stopped only after the stream will totally finish.The exception was: ", ex)
+//      }
     } else
       logger.error(s"Crawler [$topic, partition: $partition] was already stopped and it was requested to finish it again. Not reasonable!")
   }
+
 
   private def checkPersistencyAndUpdateIfNeeded(): Unit = {
     val bootStrapServers = config.getString("cmwell.bg.kafka.bootstrap.servers")
@@ -331,6 +342,7 @@ case object Start
 //case object StopIndexer
 //case object IndexerStopped
 case object ShutDown
+case object Kill
 case class MarkCrawlerAsStopped(topic: String)
 case class StartCrawler(topic: String)
 //case object All503

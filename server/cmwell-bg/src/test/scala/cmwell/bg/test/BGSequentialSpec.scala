@@ -16,8 +16,8 @@ package cmwell.bg.test
 
 import java.util.Properties
 
-import akka.actor.{ActorRef, ActorSystem}
-import cmwell.bg.{CMWellBGActor, ShutDown}
+import akka.actor.{Actor, ActorRef, ActorSystem, Terminated}
+import cmwell.bg.{CMWellBGActor, Kill, ShutDown}
 import cmwell.common.{CommandSerializer, OffsetsService, WriteCommand, ZStoreOffsetsService}
 import cmwell.domain.{FieldValue, ObjectInfoton}
 import cmwell.driver.Dao
@@ -30,9 +30,11 @@ import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
+import akka.pattern.ask
+import akka.util.Timeout
 
 import concurrent.duration._
-import scala.concurrent.{Await, Future, Promise}
+import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.io.Source
 
 class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafkaZookeeperDockerSuite with Matchers with LazyLogging {
@@ -46,6 +48,8 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
   var ftsServiceES:FTSService = _
   var bgConfig:Config = _
   var actorSystem:ActorSystem = _
+  implicit val timeout = Timeout(30.seconds)
+
 
   override def beforeAll = {
     //notify ES to not set Netty's available processors
@@ -132,10 +136,16 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
     }(scala.concurrent.ExecutionContext.Implicits.global)
     Await.result(assertFut, 50.seconds)
   }
-
     override def afterAll() = {
-      cmwellBGActor ! ShutDown
+      val future = cmwellBGActor ? ShutDown
+      println("COOL!!!!!!!!!!!")
+      val result = Await.result(future, timeout.duration).asInstanceOf[Boolean]
       ftsServiceES.shutdown()
-      irwService = null
+      dao.shutdown()
+      kafkaProducer.close()
+      println("Boom 4 END, result=" + result)
     }
 }
+
+
+
