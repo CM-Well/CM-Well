@@ -20,13 +20,16 @@ import org.scalatest._
 import cmwell.domain._
 import cmwell.util.exceptions._
 import cmwell.driver.Dao
+import cmwell.util
 import cmwell.util.{Box, BoxedFailure, EmptyBox, FullBox}
 import cmwell.util.concurrent.SimpleScheduler.scheduleFuture
 import org.apache.commons.codec.binary.Base64
+
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Try
 import cmwell.util.testSuitHelpers.test.CassandraDockerSuite
+import play.api.libs.json.Json
 
 
 /**
@@ -257,22 +260,24 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
   }
 
   "write fat infoton (with more than 65K fields/values)" should "succeed" in {
-    val lotsOfFields = Seq.tabulate(0xFFFF * 2){ n =>
+    val lotsOfFields = Seq.tabulate(0xFFFF * 2) { n =>
       s"field$n" -> Set[FieldValue](FString(s"value$n"))
     }.toMap
 
     val fatFoton = ObjectInfoton("/irw/xyz/fatfoton1", "dc_test", None, lotsOfFields, None)
-
-    irw.writeAsync(fatFoton).flatMap{ _ =>
-      scheduleFuture(10.seconds) {
-        irw.readPathAsync("/irw/xyz/fatfoton1").map{
+    irw.writeAsync(fatFoton).flatMap{_ =>
+      cmwell.util.concurrent.spinCheck(100.millis, true)(irw.readPathAsync("/irw/xyz/fatfoton1")) {
+          case FullBox(readInfoton) => readInfoton == fatFoton
+          case _ => false
+      }}.map { res =>
+        withClue(res) (res match {
           case FullBox(readInfoton) => readInfoton shouldBe fatFoton
           case EmptyBox => fail("/irw/xyz/fatfoton1 was not found")
-          case BoxedFailure(e) => fail("error occured",e)
-        }
+          case BoxedFailure(e) => fail("error occured", e)
+        })
       }
     }
-  }
+
 
   "object write and update indexTime" should "be successful" in {
     import scala.concurrent.duration._
