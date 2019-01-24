@@ -267,10 +267,8 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
     val fatFoton = ObjectInfoton("/irw/xyz/fatfoton1", "dc_test", None, lotsOfFields, None)
     irw.writeAsync(fatFoton).flatMap{_ =>
       cmwell.util.concurrent.spinCheck(100.millis, true)(irw.readPathAsync("/irw/xyz/fatfoton1")) {
-        {
           case FullBox(readInfoton) => readInfoton == fatFoton
           case _ => false
-        }
       }}.map { res =>
         withClue(res) (res match {
           case FullBox(readInfoton) => readInfoton shouldBe fatFoton
