@@ -239,24 +239,17 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
       logger.error(s"It was requested to start Crawler [$topic, partition: $partition] but it is already running. doing nothing.")
   }
 
+
   private def stopCrawler(topic: String) = {
     if (crawlerMaterializations(topic) != null) {
       logger.info(s"Sending the stop signal to Crawler [$topic, partition: $partition]")
       val res = crawlerMaterializations(topic).control.shutdown()
-      Try {
-        Await.ready(res, 10.seconds)
-      }.recover {
-        case t: Throwable =>
-          logger.error(
-            s"Crawler failed to shutdown after waiting for 10 seconds."
-          )
+      res.onComplete {
+        case Success(_) => logger.info(s"The future of the crawler stream shutdown control of Crawler [$topic, partition: $partition] " +
+          s"finished with success. It will be marked as stopped only after the stream will totally finish.")
+        case Failure(ex) => logger.error(s"The future of the crawler stream shutdown control of Crawler [$topic, partition: $partition] " +
+          s"finished with exception. The crawler stream will be marked as stopped only after the stream will totally finish.The exception was: ", ex)
       }
-//      res.onComplete {
-//        case Success(_) => logger.info(s"The future of the crawler stream shutdown control of Crawler [$topic, partition: $partition] " +
-//          s"finished with success. It will be marked as stopped only after the stream will totally finish.")
-//        case Failure(ex) => logger.error(s"The future of the crawler stream shutdown control of Crawler [$topic, partition: $partition] " +
-//          s"finished with exception. The crawler stream will be marked as stopped only after the stream will totally finish.The exception was: ", ex)
-//      }
     } else
       logger.error(s"Crawler [$topic, partition: $partition] was already stopped and it was requested to finish it again. Not reasonable!")
   }

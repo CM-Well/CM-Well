@@ -138,12 +138,10 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
   }
     override def afterAll() = {
       val future = cmwellBGActor ? ShutDown
-      println("COOL!!!!!!!!!!!")
       val result = Await.result(future, timeout.duration).asInstanceOf[Boolean]
       ftsServiceES.shutdown()
       dao.shutdown()
       kafkaProducer.close()
-      println("Boom 4 END, result=" + result)
     }
 }
 
