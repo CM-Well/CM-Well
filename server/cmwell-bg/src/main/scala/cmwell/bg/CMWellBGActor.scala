@@ -109,7 +109,6 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
   implicit val ec = context.dispatcher
 
   implicit val materializer = ActorMaterializer()
-  var isDied = false
   override def receive: Receive = {
     case Start =>
       logger.info("requested to start all streams")
