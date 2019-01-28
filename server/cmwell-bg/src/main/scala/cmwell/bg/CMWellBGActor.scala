@@ -138,7 +138,7 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
       logger.info("requested to shutdown")
       stopAll
       logger.info("stopped all streams. taking the last pill....")
-      sender ! true
+      sender ! BgKilled
       self ! PoisonPill
 
 //    case All503 =>
@@ -334,7 +334,7 @@ case object Start
 //case object StopIndexer
 //case object IndexerStopped
 case object ShutDown
-case object Kill
+case object BgKilled
 case class MarkCrawlerAsStopped(topic: String)
 case class StartCrawler(topic: String)
 //case object All503

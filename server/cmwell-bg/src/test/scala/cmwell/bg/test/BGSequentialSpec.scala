@@ -17,7 +17,7 @@ package cmwell.bg.test
 import java.util.Properties
 
 import akka.actor.{Actor, ActorRef, ActorSystem, Terminated}
-import cmwell.bg.{CMWellBGActor, Kill, ShutDown}
+import cmwell.bg.{CMWellBGActor, ShutDown}
 import cmwell.common.{CommandSerializer, OffsetsService, WriteCommand, ZStoreOffsetsService}
 import cmwell.domain.{FieldValue, ObjectInfoton}
 import cmwell.driver.Dao
@@ -32,6 +32,7 @@ import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import akka.pattern.ask
 import akka.util.Timeout
+import cmwell.bg.{BgKilled}
 
 import concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
@@ -48,7 +49,6 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
   var ftsServiceES:FTSService = _
   var bgConfig:Config = _
   var actorSystem:ActorSystem = _
-  implicit val timeout = Timeout(30.seconds)
 
 
   override def beforeAll = {
@@ -137,8 +137,9 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
     Await.result(assertFut, 50.seconds)
   }
     override def afterAll() = {
-      val future = cmwellBGActor ? ShutDown
-      val result = Await.result(future, timeout.duration).asInstanceOf[Boolean]
+      val timeout = 30.seconds
+      val future = (cmwellBGActor ? ShutDown)(Timeout(timeout))
+      val result = Await.result(future, timeout)
       ftsServiceES.shutdown()
       dao.shutdown()
       kafkaProducer.close()
