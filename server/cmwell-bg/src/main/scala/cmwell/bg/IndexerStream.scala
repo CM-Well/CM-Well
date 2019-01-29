@@ -254,7 +254,6 @@ class IndexerStream(partition: Int,
                     .indexRequest(indexName)
                     .`type`("infoclone")
                     .id(infoton.uuid)
-                    .create(true)
                     .source(serializedInfoton, XContentType.JSON)
                 logger.debug(
                   s"creating es actions for indexNewInfotonCommand: $indexRequest"

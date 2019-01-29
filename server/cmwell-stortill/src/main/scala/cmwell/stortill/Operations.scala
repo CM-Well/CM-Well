@@ -451,7 +451,7 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSService)
       infoton.replaceIndexTime(infoton.lastModified.getMillis)
     }(_ => infoton)
     val serializedInfoton = JsonSerializerForES.encodeInfoton(infotonWithUpdatedIndexTime, isCurrent)
-    Requests.indexRequest(index).`type`("infoclone").id(infoton.uuid).create(true).source(serializedInfoton)
+    Requests.indexRequest(index).`type`("infoclone").id(infoton.uuid).source(serializedInfoton)
   }
 
   private def createEsIndexAction(infoton: Infoton, index: String) =
@@ -459,7 +459,6 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSService)
       .indexRequest(index)
       .`type`("infoclone")
       .id(infoton.uuid)
-      .create(true)
       .source(JsonSerializer.encodeInfoton(infoton, omitBinaryData = true, toEs = true)), None)
 
   private def purgeFromCas(path: String, uuid: String, timestamp: Long) =
