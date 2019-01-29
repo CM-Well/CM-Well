@@ -14,9 +14,9 @@
   */
 package cmwell.bg.test
 
-import java.util.Properties
-
-import akka.actor.{Actor, ActorRef, ActorSystem, Terminated}
+import akka.actor.{ActorRef, ActorSystem}
+import akka.pattern.ask
+import akka.util.Timeout
 import cmwell.bg.{CMWellBGActor, ShutDown}
 import cmwell.common.{CommandSerializer, OffsetsService, WriteCommand, ZStoreOffsetsService}
 import cmwell.domain.{FieldValue, ObjectInfoton}
@@ -24,19 +24,14 @@ import cmwell.driver.Dao
 import cmwell.fts._
 import cmwell.irw.IRWService
 import cmwell.util.concurrent.SimpleScheduler.scheduleFuture
-import cmwell.util.testSuitHelpers.test.EsCasKafkaZookeeperDockerSuite
 import cmwell.zstore.ZStore
-import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
+import com.typesafe.config.{Config, ConfigValueFactory}
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
-import akka.pattern.ask
-import akka.util.Timeout
-import cmwell.bg.{BgKilled}
 
-import concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext, Future, Promise}
-import scala.io.Source
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
 class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafkaZookeeperDockerSuite with Matchers with LazyLogging {
 

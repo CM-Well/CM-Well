@@ -17,9 +17,10 @@
 package cmwell.bg.test
 
 import java.nio.file.{Files, Paths}
-import java.util.Properties
 
 import akka.actor.{ActorRef, ActorSystem}
+import akka.pattern.ask
+import akka.util.Timeout
 import cmwell.bg.{CMWellBGActor, ShutDown}
 import cmwell.common._
 import cmwell.domain._
@@ -28,22 +29,19 @@ import cmwell.fts._
 import cmwell.irw.IRWService
 import cmwell.util.FullBox
 import cmwell.util.concurrent.SimpleScheduler.{schedule, scheduleFuture}
-import cmwell.util.testSuitHelpers.test.EsCasKafkaZookeeperDockerSuite
 import cmwell.zstore.ZStore
 import com.datastax.driver.core.ConsistencyLevel
-import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
+import com.typesafe.config.{Config, ConfigValueFactory}
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
-import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
-import org.elasticsearch.common.unit.TimeValue
 import org.joda.time.DateTime
 import org.scalatest.OptionValues._
 import org.scalatest._
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, _}
-import scala.io.Source
 import scala.util.Random
+
 
 /**
   * Created by israel on 15/02/2016.
@@ -890,8 +888,11 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
   }
 
   override def afterAll() = {
-    cmwellBGActor ! ShutDown
+    val timeout = 30.seconds
+    val future = (cmwellBGActor ? ShutDown)(Timeout(timeout))
+    val result = Await.result(future, timeout)
     ftsServiceES.shutdown()
-    irwService = null
+    dao.shutdown()
+    kafkaProducer.close()
   }
 }
