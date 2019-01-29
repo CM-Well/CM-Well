@@ -30,7 +30,8 @@
             "mapping": {
               "type": "date",
               "store": "false",
-              "norms": false
+              "norms": false,
+              "copy_to": "allFields"
             }
           }
         },
@@ -40,7 +41,8 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "integer",
-              "store": "false"
+              "store": "false",
+              "copy_to": "allFields"
             }
           }
         },
@@ -50,7 +52,8 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "long",
-              "store": "false"
+              "store": "false",
+              "copy_to": "allFields"
             }
           }
         },
@@ -60,7 +63,8 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "float",
-              "store": "false"
+              "store": "false",
+              "copy_to": "allFields"
             }
           }
         },
@@ -70,7 +74,8 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "double",
-              "store": "false"
+              "store": "false",
+              "copy_to": "allFields"
             }
           }
         },
@@ -80,7 +85,8 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "boolean",
-              "store": "false"
+              "store": "false",
+              "copy_to": "allFields"
             }
           }
         },
@@ -90,6 +96,7 @@
             "match_mapping_type": "string",
             "mapping": {
               "type": "text",
+              "copy_to": "allFields",
               "fields": {
                 "%exact": {
                   "type": "keyword",
@@ -101,6 +108,9 @@
         }
       ],
       "properties": {
+        "allFields": {
+          "type": "text"
+        },
         "content": {
           "properties": {
             "data": {

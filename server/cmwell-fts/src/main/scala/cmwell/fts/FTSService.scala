@@ -901,7 +901,7 @@ class FTSService(config: Config) extends NsSplitter{
         case SingleFieldFilter(fieldOperator, valueOperator, reversedNsTypedField, valueOpt) =>
           val name = {
             if (reversedNsTypedField.startsWith("system.") || reversedNsTypedField.startsWith("content.") || reversedNsTypedField
-                  .startsWith("link.")) reversedNsTypedField
+                  .startsWith("link.") || reversedNsTypedField == "allFields") reversedNsTypedField
             else reverseNsTypedField(reversedNsTypedField)
           }
 

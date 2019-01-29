@@ -15,8 +15,8 @@
     "index.unassigned.node_left.delayed_timeout": "15m",
     "index.mapping.total_fields.limit": 25000
   },
-  "aliases":{
-    "cm_well_all":{}
+  "aliases": {
+    "cm_well_all": {}
   },
   "mappings": {
     "infoclone": {
@@ -30,7 +30,8 @@
             "mapping": {
               "type": "date",
               "store": "false",
-              "norms": false
+              "norms": false,
+              "copy_to": "allFields"
             }
           }
         },
@@ -40,7 +41,8 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "integer",
-              "store": "false"
+              "store": "false",
+              "copy_to": "allFields"
             }
           }
         },
@@ -50,7 +52,8 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "long",
-              "store": "false"
+              "store": "false",
+              "copy_to": "allFields"
             }
           }
         },
@@ -60,7 +63,8 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "float",
-              "store": "false"
+              "store": "false",
+              "copy_to": "allFields"
             }
           }
         },
@@ -70,7 +74,8 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "double",
-              "store": "false"
+              "store": "false",
+              "copy_to": "allFields"
             }
           }
         },
@@ -80,7 +85,8 @@
             "match_mapping_type": "*",
             "mapping": {
               "type": "boolean",
-              "store": "false"
+              "store": "false",
+              "copy_to": "allFields"
             }
           }
         },
@@ -90,6 +96,7 @@
             "match_mapping_type": "string",
             "mapping": {
               "type": "text",
+              "copy_to": "allFields",
               "fields": {
                 "%exact": {
                   "type": "keyword",
@@ -101,6 +108,9 @@
         }
       ],
       "properties": {
+        "allFields": {
+          "type": "text"
+        },
         "content": {
           "properties": {
             "data": {
@@ -118,9 +128,9 @@
             }
           }
         },
-        "link":{
+        "link": {
           "properties": {
-            "to" : {
+            "to": {
               "type": "keyword",
               "store": true,
               "norms": false
@@ -138,13 +148,13 @@
               "store": "true",
               "format": "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
             },
-            "parent":{
-              "type":"keyword",
+            "parent": {
+              "type": "keyword",
               "fields": {
                 "parent_hierarchy": {
-                  "type":"text",
+                  "type": "text",
                   "store": "false",
-                  "index_options" : "docs",
+                  "index_options": "docs",
                   "norms": false,
                   "term_vector": "no",
                   "analyzer": "parent_hierarchy_analyzer"
@@ -175,7 +185,7 @@
               "type": "long",
               "store": true
             },
-            "quad" : {
+            "quad": {
               "type": "keyword",
               "store": false,
               "norms": false
