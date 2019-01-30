@@ -56,7 +56,7 @@ object SparqlUtil {
   }
 
    def predicateContainsMeta(trio: SubjectGraphTriple): Boolean = {
-    trio.triple.split(" ")(1).contains("meta/sys")
+    trio.triple.contains("cmwell://meta/sys")
   }
 
 }

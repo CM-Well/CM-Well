@@ -117,7 +117,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
       val startTimeMillis = System.currentTimeMillis()
       val fileName = "cm-well-file-" + startTimeMillis + ".nq"
       val allQuads = bulkResponseAsString.split("\n")
-      val bulkResWithoutMeta = allQuads.filterNot(quad => if(quad!= "") quad.split(" ")(1).contains("meta/sys") else false).mkString("\n")
+      val bulkResWithoutMeta = allQuads.filterNot(q => q.isEmpty || q.contains("cmwell://meta/sys")).mkString("\n")
       S3ObjectUploader.persistChunkToS3Bucket(bulkResWithoutMeta, fileName, proxyHost, proxyPort)
       val endS3TimeMillis = System.currentTimeMillis()
       val s3Duration = (endS3TimeMillis - startTimeMillis) / 1000
