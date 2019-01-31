@@ -114,28 +114,38 @@
 <tr>
     <td><a href="Tools.UsingTheCM-WellSparkConnector.md">Spark Connector</a></td>
   </tr>
-<tr>
-    <th rowspan="3" align=left>Admin</th><td><a href="Admin.TestAndFixCorruptedData.md">Testing and Fixing Corrupted Data</a></td></tr>
+<tr><th rowspan="4" align=left>Admin</th><td><a href="Admin.TestAndFixCorruptedData.md">Testing and Fixing Corrupted Data</a></td></tr>
 	<tr><td><a href="Admin.Backpressure.md">_backpressure API</a></td></tr>
 	<tr><td><a href="Admin.Kafka.md">_kafka API</a></td></tr>
+    <tr><td><a href="Architecture.DCC.md">Data Consistency Crawler</a></td></tr>
 <tr>
-    <th rowspan="2" align=left>Testing</a></th>
-  </tr>
-<tr>
+    <th align=left>Testing</a></th>
     <td><a href="Testing.TestingAndDebugging.md">Testing and Debugging Tips</a></td>
-  </tr>
+</tr>
 <tr>
     <th align=left>Monitoring</th>
     <td align=left><a href="Monitoring.HealthDashboards.md">Health Dashboards</a></td>
-  </tr>
-<tr>
-    <th align=left>Architecture</th>
-    <td><a href="Architecture.DCC.md">Data Consistency Crawler</a></td>
-  </tr>
+</tr>
+<tr><th rowspan="15" align=left>Architecture</th>
+    <td><a href="Arch.Preface.md">Preface to CM-Well Architecture Documentation</a></td></tr>
+<tr><td><a href="Arch.InfoArch.Part1.md">Information Architecture Part 1: Overview and Principles</a></td></tr>
+<tr><td><a href="Arch.InfoArch.Infotons.md">Information Architecture Part 2: Information Objects (“Infotons”)</a></td></tr>
+<tr><td><a href="Arch.InfoArch.InfoInMotion.md">Information Architecture Part 3: Information in Motion</a></td></tr>
+<tr><td><a href="Arch.SoftwareArch.Part1.md">Software Architecture Part 1: Overview and Diagrams</a></td></tr>
+<tr><td><a href="Arch.SoftwareArch.DesignPrinciples.md">Software Architecture Part 2: Design Principles</a></td></tr>
+<tr><td><a href="Arch.SoftwareArch.WebServiceAndGridStorage.md">Software Architecture Part 3: Web Service and Grid Storage</a></td></tr>
+<tr><td><a href="Arch.SoftwareArch.BG.md">Software Architecture Part 4: Background (BG) Processing Modul</a></td>e</tr>
+<tr><td><a href="Arch.SoftwareArch.STP.md">Software Architecture Part 5: SPARQL Trigger Processor (STP) Agent</a></td></tr>
+<tr><td><a href="Arch.SoftwareArch.ControlModules.md">Software Architecture Part 6: Control Modulesd</a></td></tr>
+<tr><td><a href="Arch.SoftwareArch.ThirdPartyPackages.mdd">Software Architecture Part 7: Third-Party Packages</a></td></tr>
+<tr><td><a href="Arch.SoftwareArch.WebApplication.md">Software Architecture Part 8: Web Application</a></td></tr>
+<tr><td><a href="Arch.PlatformArch.Part1.md">Platform Architecture Part 1: Overview and Design Principles</a></td></tr>
+<tr><td><a href="Arch.PlatformArch.DCSync.md">Platform Architecture Part 2: Data Center Synchronization (DC-Sync)</a></td></tr>
+<tr><td><a href="Arch.Collaboration.md">CM-Well Collaboration Use Case: Information Ecosystem</a></td></tr>
 <tr>
     <th align=left>Release Notes</th>
     <td align=left><a href="ReleaseNotes.TOC.md">Version Release Notes</a></td>
-  </tr>
+</tr>
 </table>
 
 _Please note that we are refreshing the documentation to reflect CM-Well moving to open source. Some examples and URLs provided within may not be accessible outside of the Thomson Reuters or Refinitiv networks and these will be fixed as we go._

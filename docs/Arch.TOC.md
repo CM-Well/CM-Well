@@ -3,7 +3,7 @@
 - [Preface to CM-Well Architecture Documentation](Arch.Preface.md)
 - [Information Architecture Part 1: Overview and Principles](Arch.InfoArch.Part1.md)
 - [Information Architecture Part 2: Information Objects (“Infotons”)](Arch.InfoArch.Infotons.md)
-- [Information Architecture Part 3: Information in Motion](Arch.InfoInMotion.md)
+- [Information Architecture Part 3: Information in Motion](Arch.InfoArch.InfoInMotion.md)
 - [Software Architecture Part 1: Overview and Diagrams](Arch.SoftwareArch.Part1.md)
 - [Software Architecture Part 2: Design Principles](Arch.SoftwareArch.DesignPrinciples.md)
 - [Software Architecture Part 3: Web Service and Grid Storage](Arch.SoftwareArch.WebServiceAndGridStorage.md)
