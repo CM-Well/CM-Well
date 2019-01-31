@@ -1,0 +1,17 @@
+# CM-Well Architecture: Table of Contents
+
+- [Preface to CM-Well Architecture Documentation](Arch.Preface.md)
+- [Information Architecture Part 1: Overview and Principles](Arch.InfoArch.Part1.md)
+- [Information Architecture Part 2: Information Objects (“Infotons”)](Arch.InfoArch.Infotons.md)
+- [Information Architecture Part 3: Information in Motion](Arch.InfoInMotion.md)
+- [Software Architecture Part 1: Overview and Diagrams](Arch.SoftwareArch.Part1.md)
+- [Software Architecture Part 2: Design Principles](Arch.SoftwareArch.DesignPrinciples.md)
+- [Software Architecture Part 3: Web Service and Grid Storage](Arch.SoftwareArch.WebServiceAndGridStorage.md)
+- [Software Architecture Part 4: Background (BG) Processing Module](Arch.SoftwareArch.BG.md)
+- [Software Architecture Part 5: SPARQL Trigger Processor (STP) Agent](Arch.SoftwareArch.STP.md)
+- [Software Architecture Part 6: Control Modules](Arch.SoftwareArch.ControlModules.md)
+- [Software Architecture Part 7: Third-Party Packages](Arch.SoftwareArch.ThirdPartyPackages.md)
+- [Software Architecture Part 8: Web Application](Arch.SoftwareArch.WebApplication.md)
+- [Platform Architecture Part 1: Overview and Design Principles](Arch.PlatformArch.Part1.md)
+- [Platform Architecture Part 2: Data Center Synchronization (DC-Sync)](Arch.PlatformArch.DCSync.md)
+- [CM-Well Collaboration Use Case: Information Ecosystem](Arch.Collaboration.md)
