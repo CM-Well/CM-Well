@@ -408,12 +408,12 @@ class IRWServiceNativeImpl2(
     readIndexTimeRowsForUuid(uuid, level).flatMap { indexTimes =>
       if (indexTimes.isEmpty) writeIndexTimeToUuid(uuid, indexTime, level)
       else if (indexTimes.head == indexTime && indexTimes.tail.isEmpty) {
-        logger.error(
+        logger.info(
           s"was asked to `addIndexTimeToUuid` for uuid [$uuid], but index time already written [$indexTime]: taking no action and returning Future.successful"
         )
         Future.successful(())
       } else {
-        logger.error(
+        logger.info(
           s"was asked to `addIndexTimeToUuid` for uuid [$uuid], but different indexTime(s) is already present ${indexTimes
             .mkString("[", ",", "]")}: will delete these, and write the new indexTime [$indexTime]"
         )
