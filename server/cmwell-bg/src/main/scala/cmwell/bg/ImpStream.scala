@@ -809,7 +809,7 @@ class ImpStream(partition: Int,
                   val serializedInfoton = JsonSerializerForES.encodeInfoton(infotonWithUpdatedIndexTime, isCurrent)
                   // TODO: remove after all envs upgraded
                   (ESIndexRequest(
-                    Requests.indexRequest(indexName).`type`("infoclone").id(infoton.uuid).create(true)
+                    Requests.indexRequest(indexName).`type`("infoclone").id(infoton.uuid)
                       .source(serializedInfoton, XContentType.JSON),
                     indexTime
                   ), infotonWithUpdatedIndexTime.weight)
