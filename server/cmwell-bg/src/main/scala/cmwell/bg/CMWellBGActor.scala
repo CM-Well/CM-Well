@@ -41,7 +41,7 @@ import org.slf4j.LoggerFactory
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 object CMWellBGActor {
   val name = "CMWellBGActor"
@@ -109,7 +109,6 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
   implicit val ec = context.dispatcher
 
   implicit val materializer = ActorMaterializer()
-
   override def receive: Receive = {
     case Start =>
       logger.info("requested to start all streams")
@@ -139,7 +138,9 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
       logger.info("requested to shutdown")
       stopAll
       logger.info("stopped all streams. taking the last pill....")
+      sender ! BgKilled
       self ! PoisonPill
+
 //    case All503 =>
 //      logger.info("Got all503 message. becoming state503")
 //      context.become(state503)
@@ -237,6 +238,7 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
       logger.error(s"It was requested to start Crawler [$topic, partition: $partition] but it is already running. doing nothing.")
   }
 
+
   private def stopCrawler(topic: String) = {
     if (crawlerMaterializations(topic) != null) {
       logger.info(s"Sending the stop signal to Crawler [$topic, partition: $partition]")
@@ -250,6 +252,7 @@ class CMWellBGActor(partition:Int, config:Config, irwService:IRWService, ftsServ
     } else
       logger.error(s"Crawler [$topic, partition: $partition] was already stopped and it was requested to finish it again. Not reasonable!")
   }
+
 
   private def checkPersistencyAndUpdateIfNeeded(): Unit = {
     val bootStrapServers = config.getString("cmwell.bg.kafka.bootstrap.servers")
@@ -331,6 +334,7 @@ case object Start
 //case object StopIndexer
 //case object IndexerStopped
 case object ShutDown
+case object BgKilled
 case class MarkCrawlerAsStopped(topic: String)
 case class StartCrawler(topic: String)
 //case object All503

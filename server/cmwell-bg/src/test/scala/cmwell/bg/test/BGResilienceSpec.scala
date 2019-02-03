@@ -17,7 +17,8 @@ package cmwell.bg.test
 import java.util.Properties
 
 import akka.actor.{ActorRef, ActorSystem}
-import cmwell.bg.{CMWellBGActor, ShutDown}
+import akka.util.Timeout
+import cmwell.bg.{BgKilled, CMWellBGActor, ShutDown}
 import cmwell.common.{CommandSerializer, OffsetsService, WriteCommand, ZStoreOffsetsService}
 import cmwell.domain.{FieldValue, ObjectInfoton}
 import cmwell.driver.Dao
@@ -32,7 +33,9 @@ import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
 import org.elasticsearch.common.unit.TimeValue
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 
-import scala.concurrent.Await
+import scala.concurrent.{Await, Future}
+import akka.pattern.ask
+
 import scala.concurrent.duration._
 import scala.io.Source
 
@@ -127,9 +130,11 @@ class BGResilienceSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
   }
 
   override def afterAll() = {
-    cmwellBGActor ! ShutDown
+    val timeout = 30.seconds
+    val future = (cmwellBGActor ? ShutDown)(Timeout(timeout))
+    val result = Await.result(future, timeout)
     ftsServiceES.shutdown()
-    testIRWMockupService = null
-    irwService = null
+    dao.shutdown()
+    kafkaProducer.close()
   }
 }

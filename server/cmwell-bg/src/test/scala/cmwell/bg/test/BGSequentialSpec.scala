@@ -14,9 +14,9 @@
   */
 package cmwell.bg.test
 
-import java.util.Properties
-
 import akka.actor.{ActorRef, ActorSystem}
+import akka.pattern.ask
+import akka.util.Timeout
 import cmwell.bg.{CMWellBGActor, ShutDown}
 import cmwell.common.{CommandSerializer, OffsetsService, WriteCommand, ZStoreOffsetsService}
 import cmwell.domain.{FieldValue, ObjectInfoton}
@@ -24,16 +24,14 @@ import cmwell.driver.Dao
 import cmwell.fts._
 import cmwell.irw.IRWService
 import cmwell.util.concurrent.SimpleScheduler.scheduleFuture
-import cmwell.util.testSuitHelpers.test.EsCasKafkaZookeeperDockerSuite
 import cmwell.zstore.ZStore
-import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
+import com.typesafe.config.{Config, ConfigValueFactory}
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 
-import concurrent.duration._
-import scala.concurrent.{Await, Future, Promise}
-import scala.io.Source
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
 class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafkaZookeeperDockerSuite with Matchers with LazyLogging {
 
@@ -46,6 +44,7 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
   var ftsServiceES:FTSService = _
   var bgConfig:Config = _
   var actorSystem:ActorSystem = _
+
 
   override def beforeAll = {
     //notify ES to not set Netty's available processors
@@ -132,10 +131,15 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
     }(scala.concurrent.ExecutionContext.Implicits.global)
     Await.result(assertFut, 50.seconds)
   }
-
     override def afterAll() = {
-      cmwellBGActor ! ShutDown
+      val timeout = 30.seconds
+      val future = (cmwellBGActor ? ShutDown)(Timeout(timeout))
+      val result = Await.result(future, timeout)
       ftsServiceES.shutdown()
-      irwService = null
+      dao.shutdown()
+      kafkaProducer.close()
     }
 }
+
+
+
