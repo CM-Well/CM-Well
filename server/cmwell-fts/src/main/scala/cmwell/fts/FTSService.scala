@@ -1871,12 +1871,17 @@ case class SingleFieldFilter(override val fieldOperator: FieldOperator = Must, v
       case _ => ???
     }
 
+    val unmangled = if(name.length > 2 && name.charAt(1) == '$') name.drop(2) else name
+
     fieldOperator match {
-      case Must => i.fields.flatMap(_.get(name).map(_.exists(fv => value.forall(v => valOp(fv.value.toString,v))))).fold[SoftBoolean](False)(SoftBoolean.hard)
+      case Must => i.fields.flatMap(_.get(unmangled).map(_.exists(fv => value.forall(v => valOp(fv.value.toString,v))))).
+        fold[SoftBoolean](False)(SoftBoolean.hard)
       case Should =>
-        i.fields.flatMap(_.get(name).map(_.exists(fv => value.forall(v => valOp(fv.value.toString,v))))).fold[SoftBoolean](SoftFalse)(SoftBoolean.soft)
+        i.fields.flatMap(_.get(unmangled).map(_.exists(fv => value.forall(v => valOp(fv.value.toString,v))))).
+          fold[SoftBoolean](SoftFalse)(SoftBoolean.soft)
       case MustNot =>
-        i.fields.flatMap(_.get(name).map(_.forall(fv => !value.exists(v => valOp(fv.value.toString,v))))).fold[SoftBoolean](True)(SoftBoolean.hard)
+        i.fields.flatMap(_.get(unmangled).map(_.forall(fv => !value.exists(v => valOp(fv.value.toString,v))))).
+          fold[SoftBoolean](True)(SoftBoolean.hard)
     }
   }
 }
