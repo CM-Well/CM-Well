@@ -46,10 +46,10 @@ object JsonSerializerForES extends AbstractJsonSerializer with NsSplitter with L
       case FExternal(value, _, _)     => jp.writeString(value)
       case FInt(int, _)               => jp.writeNumber(int)
       case FLong(long, _)             => jp.writeNumber(long)
-      case FBigInt(bigInt, _)         => jp.writeNumber(bigInt)
+      case FBigInt(bigInt, _)         => jp.writeNumber(bigInt.intValue)
       case FFloat(float, _)           => jp.writeNumber(float)
       case FDouble(double, _)         => jp.writeNumber(double)
-      case FBigDecimal(bigDecimal, _) => jp.writeNumber(bigDecimal)
+      case FBigDecimal(bigDecimal, _) => jp.writeNumber(bigDecimal.doubleValue)
       case _: FNull                   => !!! //this is just a marker for IMP, should not index it anywhere...
       case _: FExtra[_] =>
         !!! // FExtra is just a marker for outputting special properties, should not index it anywhere...
