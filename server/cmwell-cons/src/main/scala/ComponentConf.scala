@@ -405,7 +405,11 @@ case class ElasticsearchConf(clusterName: String,
 
     val loggerConf = ResourceBuilder.getResource("scripts/templates/es-log4j2.properties", Map.empty[String, String])
 
-    val m3 = Map[String, String]("ps_id" -> getPsIdentifier)
+    val m3 = Map[String, String](
+      "ps_id" -> getPsIdentifier,
+      "es_ms" -> s"${resourceManager.mxms}",
+      "es_mx" -> s"${resourceManager.mxmx}"
+    )
     val jvmOpts = ResourceBuilder.getResource("scripts/templates/es-jvm.options", m3)
 
     List(ConfFile("elasticsearch.yml", confContent, false, Some(s"$home/conf/$dir/config")),
