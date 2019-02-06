@@ -1625,10 +1625,28 @@ abstract class Host(user: String,
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/cassandra-cql-init-cluster-new", hosts(0), false)
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/zstore-cql-init-cluster", hosts(0), false)
     val templateCreation = command(s"""curl -s -X POST http://${hosts(0)}:$esMasterPort/_template/cmwell_index_template -H "Content-Type: application/json" --data-ascii @${instDirs.globalLocation}/cm-well/conf/es/indices_template_new.json""", hosts(0), false)
-    templateCreation.fold (ex => println(s"Elasticsearch template creation failed with: $ex"), _ => ())
+    templateCreation match {
+      case Success(res) =>
+        if (res.trim != """{"acknowledged":true}""") {
+          println(s"Elasticsearch template creation failed. The response was: $res")
+          sys.exit(1)
+        }
+      case Failure(ex) =>
+        println(s"Elasticsearch template creation failed with: $ex")
+        sys.exit(1)
+    }
     //create the first index in advance. It resolves the issue of meta ns cache quering a non existant index
     val firstIndexCreation = command(s"""curl -s -X PUT http://${hosts(0)}:$esMasterPort/cm_well_p0_0""", hosts(0), false)
-    firstIndexCreation.fold (ex => println(s"Elasticsearch first index creation failed with: $ex"), _ => ())
+    firstIndexCreation match {
+      case Success(res) =>
+        if (res.trim != """{"acknowledged":true,"shards_acknowledged":true,"index":"cm_well_p0_0"}""") {
+          println(s"Elasticsearch first index creation failed. The response was: $res")
+          sys.exit(1)
+        }
+      case Failure(ex) =>
+        println(s"Elasticsearch first index creation failed with: $ex")
+        sys.exit(1)
+    }
 //    command(s"curl -s -X POST http://${pingAddress}:$esRegPort/cm_well_p0_0/", hosts(0), false)
     // create kafka topics
     val replicationFactor = math.min(hosts.size, 3)
