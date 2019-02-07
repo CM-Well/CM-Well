@@ -69,7 +69,12 @@ class DataInitializer(h: Host, jwt: String, rootDigest: String, rootDigest2: Str
                                                                                   implicitly[ExecutionContext],
                                                                                   sys,
                                                                                   mat)
-      ).map(_ => ())
+      ).map { response =>
+        if (response.status != 200) {
+          print(s"Waiting for ws failed. Last response was: $response\n")
+          scala.sys.exit(1)
+        }
+      }
     )
   }
 
