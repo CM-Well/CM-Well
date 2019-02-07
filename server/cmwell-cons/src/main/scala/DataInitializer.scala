@@ -59,7 +59,7 @@ class DataInitializer(h: Host, jwt: String, rootDigest: String, rootDigest2: Str
     import SimpleResponse.Implicits.UTF8StringHandler
     import scala.concurrent.duration._
 
-    val totalWaitPeriod = 90.seconds
+    val totalWaitPeriod = 300.seconds
     val interval = 250.millis
 
     val numRetries = (totalWaitPeriod / interval).toInt
