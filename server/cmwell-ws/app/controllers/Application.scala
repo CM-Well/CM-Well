@@ -708,6 +708,7 @@ callback=< [URL] >
               }
 
               val fmFut = extractFieldsMask(request, typesCache, cmwellRDFHelper, timeContext)
+              val debugInfoParam = request.queryString.keySet("debug-info")
               crudServiceFS
                 .thinSearch(
                   pathFilter,
@@ -715,11 +716,11 @@ callback=< [URL] >
                   Some(DatesFilter(from, to)),
                   PaginationParams(offset, length),
                   withHistory,
-                  debugInfo = request.queryString.keySet("debug-info"),
+                  debugInfo = debugInfoParam,
                   withDeleted = withDeleted
                 ).map { ftsResults =>
-                IterationResults(md5(Random.alphanumeric.take(26).toString), ftsResults.total, Some(Vector.empty), debugInfo = ftsResults.debugInfo)
-              }.flatMap { startScrollResult =>
+                IterationResults("", ftsResults.total, Some(Vector.empty), debugInfo = ftsResults.debugInfo)
+              }.flatMap { thinSearchResult =>
                 val rv = createScrollIdDispatcherActorFromIteratorId(StartScrollInput(pathFilter,
                   fieldFilter,
                   Some(DatesFilter(from, to)),
@@ -727,9 +728,9 @@ callback=< [URL] >
                   scrollTtl,
                   withHistory,
                   withDeleted,
-                  request.queryString.keySet("debug-info")), withHistory, (scrollTtl + 5).seconds)
+                  debugInfoParam), withHistory, (scrollTtl + 5).seconds)
                 fmFut.map { fm =>
-                  Ok(formatter.render(startScrollResult.copy(iteratorId = rv).masked(fm))).as(formatter.mimetype)
+                  Ok(formatter.render(thinSearchResult.copy(iteratorId = rv).masked(fm))).as(formatter.mimetype)
                 }
               }
             }
@@ -739,13 +740,14 @@ callback=< [URL] >
       .recover(asyncErrorHandler)
       .get
 
-  private def createScrollIdDispatcherActorFromIteratorId(iterationStateInput: IterationStateInputTrait,
+  private def createScrollIdDispatcherActorFromIteratorId(iterationStateInput: IterationStateInput,
                                                           withHistory: Boolean,
                                                           ttl: FiniteDuration): String = {
     val ar = Grid.createAnon(classOf[IteratorIdDispatcher], iterationStateInput, withHistory, ttl)
     val path = ar.path.toSerializationFormatWithAddress(Grid.me)
     putInCache(path, ar)
     val rv = Base64.encodeBase64URLSafeString(path)
+    logger.debug(s"created actor with id = $rv")
     rv
   }
 
@@ -1833,7 +1835,7 @@ callback=< [URL] >
               val itStateEitherFuture: Future[Either[String, IterationState]] = {
                 actorRefsCachedFactory(Base64.decodeBase64String(encodedActorAddress, "UTF-8")).flatMap { ar =>
                   (ar ? GetID) (akka.util.Timeout(10.seconds)).mapTo[IterationState].map {
-                    case IterationState(iteratorInput, wh, _) if wh && (yg.isDefined || xg.isDefined) => {
+                    case IterationState(_, wh, _) if wh && (yg.isDefined || xg.isDefined) => {
                       Left(
                         "iterator is defined to contain history. you can't use `xg` or `yg` operations on histories."
                       )
@@ -1847,7 +1849,7 @@ callback=< [URL] >
                   itStateEitherFuture
                     .flatMap {
                       case Left(errMsg) => Future.successful(BadRequest(errMsg))
-                      case Right(IterationState(inputTrait, withHistory, ar)) => {
+                      case Right(IterationState(scrollInput, withHistory, ar)) => {
                         val formatter = formatterManager.getFormatter(
                           format = formatType,
                           timeContext = timeContext,
@@ -1858,7 +1860,7 @@ callback=< [URL] >
                           withData = withDataFormat,
                           forceUniqueness = withHistory
                         )
-                        val scrollIterationResults = ftsScroll(inputTrait, scrollTtl + 5, withData)
+                        val scrollIterationResults = ftsScroll(scrollInput, scrollTtl + 5, withData)
                         val futureThatMayHang: Future[String] =
                           scrollIterationResults.flatMap { tmpIterationResults =>
                             fieldsMaskFut.flatMap { fieldsMask =>
@@ -1956,7 +1958,7 @@ callback=< [URL] >
         }
     }.recover(asyncErrorHandler).get
 
-  private def ftsScroll(scrollInput: IterationStateInputTrait, scrollTTL: Long, withData: Boolean): Future[IterationResults] = {
+  private def ftsScroll(scrollInput: IterationStateInput, scrollTTL: Long, withData: Boolean): Future[IterationResults] = {
     scrollInput match {
       case ScrollInput(scrollId) => crudServiceFS.scroll(scrollId, scrollTTL, withData)
       case StartScrollInput(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTtl, withHistory, withDeleted, debugInfo) =>

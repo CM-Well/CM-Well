@@ -25,8 +25,8 @@ import scala.concurrent.duration.FiniteDuration
   */
 case object GetID
 case object GotIt
-sealed trait IterationStateInputTrait
-case class ScrollInput(actualEsScrollId: String) extends IterationStateInputTrait
+sealed trait IterationStateInput
+case class ScrollInput(actualEsScrollId: String) extends IterationStateInput
 case class StartScrollInput(pathFilter: Option[PathFilter],
                             fieldFilters: Option[FieldFilter],
                             datesFilter: Option[DatesFilter],
@@ -34,11 +34,11 @@ case class StartScrollInput(pathFilter: Option[PathFilter],
                             scrollTTL: Long,
                             withHistory: Boolean,
                             withDeleted: Boolean,
-                            debugInfo: Boolean)extends IterationStateInputTrait
+                            debugInfo: Boolean)extends IterationStateInput
 
-case class IterationState(iterationStateInput: IterationStateInputTrait, withHistory: Boolean, iteratorIdDispatcher: ActorRef)
+case class IterationState(iterationStateInput: IterationStateInput, withHistory: Boolean, iteratorIdDispatcher: ActorRef)
 
-class IteratorIdDispatcher(iterationStateInput: IterationStateInputTrait, withHistory: Boolean, ttl: FiniteDuration) extends Actor {
+class IteratorIdDispatcher(iterationStateInput: IterationStateInput, withHistory: Boolean, ttl: FiniteDuration) extends Actor {
 
   var cancelable = context.system.scheduler.scheduleOnce(ttl, self, PoisonPill)
 
