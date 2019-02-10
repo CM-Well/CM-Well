@@ -868,13 +868,12 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       })
   }
 
-  def scroll(scrollId: String, scrollTTL: Long, withData: Boolean): Future[IterationResults] = {
-
-    val searchResultFuture = ftsService.scroll(scrollId, scrollTTL)
+  def scroll(scrollId: String, scrollTTL: Long, withData: Boolean, debugInfo:Boolean = false): Future[IterationResults] = {
+    val searchResultFuture = ftsService.scroll(scrollId, scrollTTL, debugInfo = debugInfo)
     val results = withData match {
       case false =>
         searchResultFuture.map { ftsResults =>
-        IterationResults(ftsResults.scrollId, ftsResults.total, Some(ftsResults.infotons))
+        IterationResults(ftsResults.scrollId, ftsResults.total, Some(ftsResults.infotons), debugInfo = ftsResults.searchQueryStr)
       }
       case true =>
         searchResultFuture.flatMap { ftsResults =>
@@ -896,7 +895,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                 )
           }
           val infotons = addIndexTime(infotonsSeq.collect{case FullBox(i) => i}, ftsResults.infotons)
-          IterationResults(ftsResults.scrollId, ftsResults.total, Some(infotons))
+          IterationResults(ftsResults.scrollId, ftsResults.total, Some(infotons), debugInfo = ftsResults.searchQueryStr)
         }
       }
     }

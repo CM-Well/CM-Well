@@ -37,7 +37,6 @@ import cmwell.util.http.SimpleHttpClient
 import cmwell.util.loading.ScalaJsRuntimeCompiler
 import cmwell.util.stream.StreamEventInspector
 import cmwell.util.string.Base64
-import cmwell.util.string.Hash.md5
 import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
 import cmwell.web.ld.cmw.CMWellRDFHelper
 import cmwell.web.ld.exceptions.UnsupportedURIException
@@ -56,8 +55,8 @@ import ld.cmw.passiveFieldTypesCacheImpl
 import ld.exceptions.BadFieldTypeException
 import logic.{CRUDServiceFS, InfotonValidator}
 import markdown.MarkdownFormatter
-import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.ISODateTimeFormat
+import org.joda.time.{DateTime, DateTimeZone}
 import play.api.http.{ContentTypes, MediaType}
 import play.api.libs.json.{JsArray, JsBoolean, JsNumber, JsObject, JsString, _}
 import play.api.mvc.request.RequestTarget
@@ -72,7 +71,7 @@ import scala.collection.mutable.{HashMap, MultiMap}
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import scala.util.{Failure, Random, Success, Try}
+import scala.util.{Failure, Success, Try}
 import scala.xml.Utility
 
 object ApplicationUtils {
@@ -727,8 +726,7 @@ callback=< [URL] >
                   PaginationParams(offset, length),
                   scrollTtl,
                   withHistory,
-                  withDeleted,
-                  debugInfoParam), withHistory, (scrollTtl + 5).seconds)
+                  withDeleted), withHistory, (scrollTtl + 5).seconds)
                 fmFut.map { fm =>
                   Ok(formatter.render(thinSearchResult.copy(iteratorId = rv).masked(fm))).as(formatter.mimetype)
                 }
@@ -1860,7 +1858,8 @@ callback=< [URL] >
                           withData = withDataFormat,
                           forceUniqueness = withHistory
                         )
-                        val scrollIterationResults = ftsScroll(scrollInput, scrollTtl + 5, withData)
+                        val debugInfo = request.queryString.keySet("debug-info")
+                        val scrollIterationResults = ftsScroll(scrollInput, scrollTtl + 5, withData, debugInfo)
                         val futureThatMayHang: Future[String] =
                           scrollIterationResults.flatMap { tmpIterationResults =>
                             fieldsMaskFut.flatMap { fieldsMask =>
@@ -1868,7 +1867,6 @@ callback=< [URL] >
                                 withHistory,
                                 scrollTtl.seconds)
                               val iterationResults = tmpIterationResults.copy(iteratorId = rv).masked(fieldsMask)
-
                               val ygModified = yg match {
                                 case Some(ygp) if iterationResults.infotons.isDefined => {
                                   pathExpansionParser(ygp,
@@ -1958,10 +1956,10 @@ callback=< [URL] >
         }
     }.recover(asyncErrorHandler).get
 
-  private def ftsScroll(scrollInput: IterationStateInput, scrollTTL: Long, withData: Boolean): Future[IterationResults] = {
+  private def ftsScroll(scrollInput: IterationStateInput, scrollTTL: Long, withData: Boolean, debugInfo:Boolean = false): Future[IterationResults] = {
     scrollInput match {
-      case ScrollInput(scrollId) => crudServiceFS.scroll(scrollId, scrollTTL, withData)
-      case StartScrollInput(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTtl, withHistory, withDeleted, debugInfo) =>
+      case ScrollInput(scrollId) => crudServiceFS.scroll(scrollId, scrollTTL, withData, debugInfo)
+      case StartScrollInput(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTtl, withHistory, withDeleted) =>
         crudServiceFS.startScrollEliNew(
           pathFilter,
           fieldFilters,

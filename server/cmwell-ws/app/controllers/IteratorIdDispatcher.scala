@@ -33,8 +33,7 @@ case class StartScrollInput(pathFilter: Option[PathFilter],
                             paginationParams: PaginationParams,
                             scrollTTL: Long,
                             withHistory: Boolean,
-                            withDeleted: Boolean,
-                            debugInfo: Boolean)extends IterationStateInput
+                            withDeleted: Boolean)extends IterationStateInput
 
 case class IterationState(iterationStateInput: IterationStateInput, withHistory: Boolean, iteratorIdDispatcher: ActorRef)
 
