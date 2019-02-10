@@ -816,7 +816,7 @@ class FTSService(config: Config) extends NsSplitter{
     }
   }
 
-  def scroll(scrollId: String, scrollTTL: Long = defaultScrollTTL, nodeId: Option[String] = None, debugInfo:Boolean = false)
+  def scroll(scrollId: String, scrollTTL: Long = defaultScrollTTL, nodeId: Option[String] = None, debugInfo:Boolean)
             (implicit executionContext:ExecutionContext, logger:Logger = loger): Future[FTSScrollResponse] = {
 
     logger.debug(s"Scroll request: $scrollId, $scrollTTL")

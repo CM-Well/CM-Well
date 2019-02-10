@@ -1956,7 +1956,7 @@ callback=< [URL] >
         }
     }.recover(asyncErrorHandler).get
 
-  private def ftsScroll(scrollInput: IterationStateInput, scrollTTL: Long, withData: Boolean, debugInfo:Boolean = false): Future[IterationResults] = {
+  private def ftsScroll(scrollInput: IterationStateInput, scrollTTL: Long, withData: Boolean, debugInfo:Boolean): Future[IterationResults] = {
     scrollInput match {
       case ScrollInput(scrollId) => crudServiceFS.scroll(scrollId, scrollTTL, withData, debugInfo)
       case StartScrollInput(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTtl, withHistory, withDeleted) =>

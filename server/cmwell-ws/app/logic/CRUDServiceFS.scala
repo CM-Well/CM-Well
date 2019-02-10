@@ -868,7 +868,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       })
   }
 
-  def scroll(scrollId: String, scrollTTL: Long, withData: Boolean, debugInfo:Boolean = false): Future[IterationResults] = {
+  def scroll(scrollId: String, scrollTTL: Long, withData: Boolean, debugInfo:Boolean): Future[IterationResults] = {
     val searchResultFuture = ftsService.scroll(scrollId, scrollTTL, debugInfo = debugInfo)
     val results = withData match {
       case false =>
