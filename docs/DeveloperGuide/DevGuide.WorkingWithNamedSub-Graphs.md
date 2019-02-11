@@ -18,7 +18,7 @@ To create a field that belongs to a named sub-graph, create the field using a qu
 For example, let's add some movies to our repository:
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ttl" -H "Content-Type: text/plain" --data-binary 
+curl -X POST "<cm-well-host>/_in?format=ttl" -H "Content-Type: text/plain" --data-binary 
     '<http://example.org/movies/ET> a <http://dbpedia.org/ontology/Film>.
     <http://example.org/movies/GoneWithTheWind> a <http://dbpedia.org/ontology/Film>.
     <http://example.org/movies/TheAvenger> a <http://dbpedia.org/ontology/Film>.'
@@ -27,7 +27,7 @@ For example, let's add some movies to our repository:
 Now let's add some review scores to the movies, using quads:
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary 
+curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary 
     '<http://example.org/movies/ET> <http://MyOntology/Score> "8.3" <http://MyOntology/RottenTomatoes>.
     <http://example.org/movies/ET> <http://MyOntology/Score> "8.7" <http://MyOntology/NewYorkTimes>.
     <http://example.org/movies/GoneWithTheWind> <http://MyOntology/Score> "6.5" <http://MyOntology/RottenTomatoes>.
@@ -35,19 +35,19 @@ Now let's add some review scores to the movies, using quads:
     <http://example.org/movies/TheAvenger> <http://MyOntology/Score> "7.2" <http://MyOntology/RottenTomatoes>.
     <http://example.org/movies/TheAvenger> <http://MyOntology/Score> "7.7" <http://MyOntology/MovieGoers>.'
 ```
-    
+
 ## Retrieving Quads by their Label
 
 You can retrieve all quads with a certain label by running a command with the following template:
 
 ```
-    <cm-well-host>/<cm-well-path>?op=search&recursive&qp=quad.system::<quadValue>
+<cm-well-host>/<cm-well-path>?op=search&recursive&qp=quad.system::<quadValue>
 ```
 
 For example, the following command retrieves all quads under the PPE **example.org** folder, whose label (4th quad value) is **http://MyOrgs/Startups**:
 
 ```
-    <cm-well-host>/example.org?op=search&recursive&qp=quad.system::http://MyOrgs/Startups
+<cm-well-host>/example.org?op=search&recursive&qp=quad.system::http://MyOrgs/Startups
 ```
 
 ## Deleting/Replacing a Named Sub-Graph
@@ -55,13 +55,13 @@ For example, the following command retrieves all quads under the PPE **example.o
 You can delete an entire named sub-graph by using the following command syntax:
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ntriples" -H "Content-Type: text/plain" --data '<> <cmwell://meta/sys#replaceGraph> <http://MyOntology/MovieGoers>. '
+curl -X POST "<cm-well-host>/_in?format=ntriples" -H "Content-Type: text/plain" --data '<> <cmwell://meta/sys#replaceGraph> <http://MyOntology/MovieGoers>. '
 ```
 
 If the **replaceGraph** data is followed by one or more new quads, they will be inserted into the sub-graph, effectively performing a replacement rather than just a deletion, as follows:
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data 
+curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data 
     '<> <cmwell://meta/sys#replaceGraph> <http://MyOntology/MovieGoers>. 
     <http://example.org/movies/ET> <http://MyOntology/Score> "10" <http://MyOntology/MovieGoers>.
     <http://example.org/movies/GoneWithTheWind> <http://MyOntology/Score> "10" <http://MyOntology/MovieGoers>.
@@ -84,7 +84,7 @@ You can use the special wildcard indicator <*> to delete multiple fields in a si
 For example, let's add some data for a single infoton, that is associated with two different sub-graphs:
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary
+curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary
     '<http://example.org/parents/Dad> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://http://dbpedia.org/ontology/person> <http://example.org/males>.
     <http://example.org/parents/Dad> <http://http://dbpedia.org/ontology/wife> "Betty" <http://example.org/females>.
     <http://example.org/parents/Dad> <http://http://dbpedia.org/ontology/child> "Johnny" <http://example.org/males>.
@@ -98,7 +98,7 @@ We have created a "Dad" person, who has a wife and two children belonging to the
 If we now run this command, using <*> instead of a field name:
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary '<http://example.org/parents/Dad> <cmwell://meta/sys#markReplace> <*> <http://example.org/males>.'
+curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary '<http://example.org/parents/Dad> <cmwell://meta/sys#markReplace> <*> <http://example.org/males>.'
 ```
 
 \- all of Dad's fields belonging to the "male" sub-graph are deleted (in other words, all of Dad's male children).
@@ -106,7 +106,7 @@ If we now run this command, using <*> instead of a field name:
 If, on the other hand, we run this command, using <*> instead of a graph name:
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary '<http://example.org/parents/Dad> <cmwell://meta/sys#markReplace> <http://http://dbpedia.org/ontology/child> <*>.'
+curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary '<http://example.org/parents/Dad> <cmwell://meta/sys#markReplace> <http://http://dbpedia.org/ontology/child> <*>.'
 ```
 
 \- all of Dad's fields of the type "child" are deleted, regardless of whether they belong to the "male" or "female" sub-graph.
@@ -119,20 +119,20 @@ As mentioned above, the sub-graph name must be a valid URI. You can also add a s
 For example, to create the alias **"superman"** for the graph name ```<http://example.org/graphs/superman>```, you can run the following command:
 
 ```
-    curl <cm-well-host>/_in?format=nquads --data-binary '<> <cmwell://meta/sys#graphAlias> "superman" <http://example.org/graphs/superman> .'
+curl <cm-well-host>/_in?format=nquads --data-binary '<> <cmwell://meta/sys#graphAlias> "superman" <http://example.org/graphs/superman> .'
 ```
 
 You can then use the string label instead of the name URI in any API call that refers to named graphs. 
 For example, using the example label created above, this command:
 
 ```
-    <cm-well-host>/example.org?op=search&recursive&qp=quad.system::superman
+<cm-well-host>/example.org?op=search&recursive&qp=quad.system::superman
 ```
 
 \- is equivalent to this command:
 
 ```
-    <cm-well-host>/example.org?op=search&recursive&qp=quad.system::http://example.org/graphs/superman
+<cm-well-host>/example.org?op=search&recursive&qp=quad.system::http://example.org/graphs/superman
 ```
 
 !!! note

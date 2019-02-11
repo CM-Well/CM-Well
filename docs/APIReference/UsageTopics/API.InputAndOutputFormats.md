@@ -62,7 +62,7 @@ Here are some examples of RDF in different encoding formats:
 ## N3
 
 ```
-    @prefix : <http://www.w3.org/2000/10/swap/test/demo1/about-pat#> .
+@prefix : <http://www.w3.org/2000/10/swap/test/demo1/about-pat#> .
     @prefix bio: <http://www.w3.org/2000/10/swap/test/demo1/biology#> .
     @prefix per: <http://www.w3.org/2000/10/swap/test/demo1/friends-vocab#> .
     
@@ -77,7 +77,7 @@ Here are some examples of RDF in different encoding formats:
 ## N-Triples
 
 ```
-    @prefix : <http://www.w3.org/2000/10/swap/test/demo1/about-pat#> .
+@prefix : <http://www.w3.org/2000/10/swap/test/demo1/about-pat#> .
     @prefix bio: <http://www.w3.org/2000/10/swap/test/demo1/biology#> .
     @prefix per: <http://www.w3.org/2000/10/swap/test/demo1/friends-vocab#> .
     @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
@@ -89,11 +89,11 @@ Here are some examples of RDF in different encoding formats:
     _:genid1 rdf:type bio:Dog.
     _:genid1 per:name "Rover".
 ```
-     
+ 
 ## Turtle
 
 ```
-    @prefix ns0: <http://www.w3.org/2000/10/swap/test/demo1/friends-vocab#> .
+@prefix ns0: <http://www.w3.org/2000/10/swap/test/demo1/friends-vocab#> .
     
     <http://www.w3.org/2000/10/swap/test/demo1/about-pat#pat>
       a <http://www.w3.org/2000/10/swap/test/demo1/biology#Human> ;
@@ -103,11 +103,11 @@ Here are some examples of RDF in different encoding formats:
     		ns0:name "Rover"
       ] .
 ```
-     
+ 
 ## RDF-XML
 
 ```
-    <rdf:RDF xmlns="http://www.w3.org/2000/10/swap/test/demo1/about-pat#"
+<rdf:RDF xmlns="http://www.w3.org/2000/10/swap/test/demo1/about-pat#"
     	xmlns:bio="http://www.w3.org/2000/10/swap/test/demo1/biology#"
     	xmlns:per="http://www.w3.org/2000/10/swap/test/demo1/friends-vocab#"
     	xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
@@ -127,7 +127,7 @@ Here are some examples of RDF in different encoding formats:
 ## JSON-LD
 
 ```
-    [
+[
       {
     	"@id": "_:b0",
     	"@type": [

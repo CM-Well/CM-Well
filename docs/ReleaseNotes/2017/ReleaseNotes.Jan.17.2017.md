@@ -12,7 +12,7 @@ The changes in this release include bug fixes and infrastructure improvements on
 1. Bug fix #285: Some whole-graph SPARQL queries timed out due to errors in the optimization logic. Here is an example of a query that timed out:
 
     ```
-    SELECT ?x ?name
+SELECT ?x ?name
     WHERE {
      ?typebridge metadata:geographyType data:1-308005 .
      ?x metadata:geographyType ?typebridge .

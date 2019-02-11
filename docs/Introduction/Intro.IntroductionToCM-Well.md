@@ -8,7 +8,7 @@ CM-Well (Content Matrix Well) adheres to Open Data principles, meaning that its 
 
 CM-Well's data is represented as a graph database, which means that it contains both entities and relationships between pairs of entities. For instance, it  contains facts such as "CompanyA is a subsidiary of CompanyB", or "PersonX works at CompanyA". Conceptually, a graph database is a structure composed of nodes representing entities, and directed arrows representing relationships among them. See the image below for an example.
 
-<img src="../_Images/small-graph-database.png">
+![image](../_Images/small-graph-database.png)
 
 <a name="hdr3"></a>
 ## Platform for Data Modeling

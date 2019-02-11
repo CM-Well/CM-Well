@@ -11,7 +11,7 @@ Each infoton:
 
 The data is still logically structured as a set of separate triples, but the infoton is physically stored together with the set of its predicate-subject relationships, as illustrated below:
 
-<img src="../../_Images/Infoton.png" align="middle">
+![image](../../_Images/Infoton.png)
 
 By "flattening" the physical model in this way, CM-Well is able to more easily scale to very large numbers of triples, as it becomes easier to store the data horizontally across many more servers. This model is a combination of a traditional key-value database approach and a document-based approach (where the infoton is the "document").
 
@@ -90,7 +90,7 @@ Infotons have readable URIs, that consist of their hierarchical path within CM-W
 
 Below you can see an example of a Company infoton within the Thomson Reuters PermID site (whose underlying data is provided by CM-Well). Note that the entity's PermID (permanent identifier) is an explicit part of the infoton's URL.
 
-<img src="../../_Images/Readable-URI.png">
+![image](../../_Images/Readable-URI.png)
 
 ## Flexible Schema
 
@@ -115,7 +115,7 @@ Thus, as infotons are updated over time, each infoton accumulates an array of hi
 
 The image below illustrates how an infoton is stored with all of its previous versions.
 
-<img src="../../_Images/Infoton-with-historical-versions.png">
+![image](../../_Images/Infoton-with-historical-versions.png)
 
 ## Named Sub-Graphs (Quads)
 

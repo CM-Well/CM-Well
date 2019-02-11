@@ -5,7 +5,7 @@ As we have learned, an RDF repository is a graph structure. RDF field names are 
 Thus, the "CommonName" field belonging to organizations is actually identified by its full path within the Thomson Reuters ontology:
 
 ```
-    http://ont.com/mdaas/CommonName
+http://ont.com/mdaas/CommonName
 ```
 
 The reason that you can't refer to fields only by their "terminal" name (e.g. "CommonName") is that this name may potentially appear in more than one ontology. Therefore using only the name without its path could result in ambiguity.
@@ -36,13 +36,13 @@ A field name's URI is its full URI in its hosting ontology.
 For example, the URI of organizationFoundedYear.mdaas is:
 
 ```
-    http://ont.com/mdaas/organizationFoundedYear
+http://ont.com/mdaas/organizationFoundedYear
 ```
 
 To use the full URI for a given field, surround the predicate with $ symbols. So for example, here is a query that uses the full URI for organizationFoundedYear.mdaas:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=$http://ont.com/mdaas/organizationFoundedYear$>2014,type.rdf:Organization&with-data&format=ttl
+<cm-well-host>/permid.org?op=search&qp=$http://ont.com/mdaas/organizationFoundedYear$>2014,type.rdf:Organization&with-data&format=ttl
 ```
 
 ## Hashed Format
@@ -52,7 +52,7 @@ You can use the hash value instead of the unhashed (but potentially ambiguous) p
 
 See for example the following entry from /meta/ns:
 
-<img src="../../_Images/Hashed-namespace.png">
+![image](../../_Images/Hashed-namespace.png)
 
 In this example, `http://www.w3.org/ns/prov` is the original namespace, and `bE5hMw` is its hashed value.
 
@@ -64,13 +64,13 @@ So, for example, we could refer to the Agent entity in this ontology as `$http:/
 To find the hashed value for a certain namespace, you must search for it in CM-Well. So, for instance, to look up the namespace in the example above, you could run the following query:
 
 ```
-    <cm-well-host>/meta/ns?op=search&qp=url:http://www.w3.org/ns/prov
+<cm-well-host>/meta/ns?op=search&qp=url:http://www.w3.org/ns/prov
 ```
 
 The query returns the following namespace infoton:
 
 ```
-    <cm-well-host>/meta/ns/bE5hMw
+<cm-well-host>/meta/ns/bE5hMw
 ```
 
 In your code, you can look up all the required hash values during initialization, and use them for querying at run-time.

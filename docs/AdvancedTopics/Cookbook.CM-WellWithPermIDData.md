@@ -70,7 +70,7 @@ So your CM-Well is up-to-date right now, but what about the new updates that Per
 Let's see what a feed looks like. This is how you would access the Organization feed:
 
 ```
-    https://permid.org/atom/organization?access-token=<YourAccessToken>&format=ntriples
+https://permid.org/atom/organization?access-token=<YourAccessToken>&format=ntriples
 ```
 
 This returns an atom feed. It has many headers to make it human-readable in a browser, but ultimately you'll want what's in between the ```<summary>``` elements. You can extract this programmatically using your favorite XML Parser, or in bash using xml_grep (a tool in a package available via apt).
@@ -78,7 +78,7 @@ This returns an atom feed. It has many headers to make it human-readable in a br
 We can even pipe the atom stream directly through xml_grep and into the Ingester. The CM-Well data tools support the --file parameter, and when it is not supplied, they read input from STDIN. So our incremental update task can be this one-liner:
 
 ```
-    $ curl "https://permid.org/atom/organization?access-token=<YourAccessToken>&format=ntriples" | xml_grep summary --text_only |  ./ingester --format ntriples --host localhost:9000
+$ curl "https://permid.org/atom/organization?access-token=<YourAccessToken>&format=ntriples" | xml_grep summary --text_only |  ./ingester --format ntriples --host localhost:9000
 ```
 
 That's all it takes! Run this command as a scheduled task (e.g. once an hour) on your machine, and you will always be up-to-date with PermID.org data.>

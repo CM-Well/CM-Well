@@ -14,9 +14,9 @@ The following sections describe how to subscribe to push and pull real-time upda
 Here is a template for how to subscribe to pushed data. Items in < > brackets are placeholders for actual values.
 
 ```
-    curl -X GET '<cm-well-host>/<cm-well-path>?op=subscribe&method=push&format=<outputFormat>&qp=<fieldConditions>&callback=<http://some.host/some/path>'
+curl -X GET '<cm-well-host>/<cm-well-path>?op=subscribe&method=push&format=<outputFormat>&qp=<fieldConditions>&callback=<http://some.host/some/path>'
 ```
-    
+
 These are the elements of the request:
 
 Element | Description 
@@ -35,7 +35,7 @@ This request returns the subscription ID that you'll need in order to unsubscrib
 Here is a template for how to subscribe to pulled data. Items in < > brackets are placeholders for actual values.
 
 ```
-    curl -X GET '<cm-well-host>/<cm-well-path>?op=subscribe&method=pull&format=<outputFormat>&qp=<fieldConditions>&bulk-size=<nofInfotons>'
+curl -X GET '<cm-well-host>/<cm-well-path>?op=subscribe&method=pull&format=<outputFormat>&qp=<fieldConditions>&bulk-size=<nofInfotons>'
 ```
 
 These are the elements of the request:
@@ -52,7 +52,7 @@ bulk-size=<nofInfotons> | The number of infotons that you want to receive for yo
 This request blocks until the number of new infotons with the specified path and filter are available. When they are, the call returns a subscription id. You use this id to get the new infotons, as follows:
 
 ```
-    curl -X GET '<cm-well-host>/<cm-well-path>?op=pull&sub=<subscription key>
+curl -X GET '<cm-well-host>/<cm-well-path>?op=pull&sub=<subscription key>
 ```
 
 ## Unsubscribing from Updates
@@ -60,7 +60,7 @@ This request blocks until the number of new infotons with the specified path and
 When you no longer want to receive real-time updates, unsubscribe from updates using the ID you received from the **subscribe** call, as follows:
 
 ```
-    curl -X GET <cm-well-host>/<cm-well-path>?op=unsubscribe&sub=<subscriptionID>
+curl -X GET <cm-well-host>/<cm-well-path>?op=unsubscribe&sub=<subscriptionID>
 ```
 
 The call to **unsubscribe** is the same for both push and pull subscriptions.

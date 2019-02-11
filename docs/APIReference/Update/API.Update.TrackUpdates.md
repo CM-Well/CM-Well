@@ -10,7 +10,7 @@ By default, when you send an update request to CM-Well, it queues the request fo
 Here is an example of a call that uses the **tracking** flag:
 
 ```
-    <cm-well-host>/_in?format=ntriples&tracking ...
+<cm-well-host>/_in?format=ntriples&tracking ...
 ```
 
 If the request is valid, it returns an HTTP response code of 200 and a **X-CM-WELL-TRACKING** header, whose value is a unique ID for the request. You can use the tracking ID to call the **_track** API and poll for the status of your update request.
@@ -38,7 +38,7 @@ Evicted(*\<previous and current UUIDs\>*) | You requested a [conditional update]
 **Template:**
 
 ```
-    curl -X GET <cm-well-host>/_track/<Tracking ID>
+curl -X GET <cm-well-host>/_track/<Tracking ID>
 ```
 
 **URL example:** ```<cm-well-host>/_track/SGVsbG8gV29ybGQ```
@@ -46,7 +46,7 @@ Evicted(*\<previous and current UUIDs\>*) | You requested a [conditional update]
 **Curl example (REST API):**
 
 ```
-    curl -X GET "<cm-well-host>/_track/SGVsbG8gV29ybGQ"
+curl -X GET "<cm-well-host>/_track/SGVsbG8gV29ybGQ"
 ```
 
 ## Code Example
@@ -54,13 +54,13 @@ Evicted(*\<previous and current UUIDs\>*) | You requested a [conditional update]
 ### Call
 
 ```
-    curl -X GET "<cm-well-host>/_track/SGVsbG8gV29ybGQ"
+curl -X GET "<cm-well-host>/_track/SGVsbG8gV29ybGQ"
 ```
 
 ### Results
 
 ```
-    <http://permid.org/1-42965572445> <cmwell://meta/nn#trackingStatus> "Done" .
+<http://permid.org/1-42965572445> <cmwell://meta/nn#trackingStatus> "Done" .
     <http://permid.org/1-42963422545> <cmwell://meta/nn#trackingStatus> "In Progress" .
     <http://permid.org/1-22235545445> <cmwell://meta/nn#trackingStatus> "Failed" .
     <http://permid.org/1-54296574112> <cmwell://meta/nn#trackingStatus> "Evicted(expected:8029b2df973dd216375a7c5a7761a2be,actual:c94bf0de57f83874a6bb5983bdef4b8d)" .

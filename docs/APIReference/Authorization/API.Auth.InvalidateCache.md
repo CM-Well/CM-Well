@@ -21,13 +21,13 @@ CM-Well manages a cache with authorization information for better performance. I
 ### Call
 
 ```
-    <CMWellHost>/_auth?op=invalidate-cache -H "X-CM-Well-Token:<AdminToken>"
+<CMWellHost>/_auth?op=invalidate-cache -H "X-CM-Well-Token:<AdminToken>"
 ```
 
 ### Results
 
 ```
-    {"success":true}
+{"success":true}
 ```
 
 !!! note

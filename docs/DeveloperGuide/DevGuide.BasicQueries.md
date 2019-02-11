@@ -20,7 +20,7 @@ Let’s take a look at the URI's components:
 
 Viewing the CM-Well URI shown above in a web browser displays this page:
    
-<img src="../_Images/new-ui-single-infoton.png" height=550 width=650>
+![image](../_Images/new-ui-single-infoton.png)
 
 <a name="hdr2"></a>
 ## Specifying the Output Format
@@ -64,7 +64,7 @@ Browse to ```http://cm-well-host/permid.org/1-5035948006?format=turtle```  to se
 If you don’t already know the infoton's PermID, you can perform a simple search for it, using a search operation as follows:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership%20Resorts
+<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership%20Resorts
 ```
 
 These are the components of the search request:
@@ -85,12 +85,12 @@ See [Field Name Formats](..\APIReference\UsageTopics\API.FieldNameFormats.md) to
 
 Multiple query results are displayed as a list of links to the infotons that match the query, that looks like this:
 
-<img src="../_Images/new-ui-list-of-infotons.png"/>
+![image](../_Images/new-ui-list-of-infotons.png)
 
 Sometimes a list of links may be useful, but sometimes you want to see the actual contents of the results. You can get them by adding the parameter **with-data** to your request, as follows:
 
 ```
-    http://cm-well-host.com/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership%20Resorts&with-data
+http://cm-well-host.com/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership%20Resorts&with-data
 ```
 
 !!! note
@@ -98,5 +98,5 @@ Sometimes a list of links may be useful, but sometimes you want to see the actua
 
 When you add the with-data flag to your query, in the results you receive the entire object for each infoton, rather than its link, as follows:
 
-<img src="../_Images/new-ui-results-with-data.png">
+![image](../_Images/new-ui-results-with-data.png)
 

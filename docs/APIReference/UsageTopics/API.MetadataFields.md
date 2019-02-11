@@ -11,7 +11,7 @@ link | Link infotons   | **to** - the target infoton linked to<br>**kind** - kin
 Here is an example of an infoton with its **system** fields:
 
 ```
-    {
+{
       "type" : "ObjectInfoton",
       "system" : {
     	"uuid" : "64aba0e57e2670953024d59f3ecf275a",
@@ -38,5 +38,5 @@ Here is an example of an infoton with its **system** fields:
 Using the **qp** operator, you can perform search queries in metadata fields as well as in user-defined fields. For example, the following query searches for file infotons whose text body contains the string "configuration":
     
 ```
-    <cm-well-host>/meta?qp=content.data:configuration
+<cm-well-host>/meta?qp=content.data:configuration
 ```

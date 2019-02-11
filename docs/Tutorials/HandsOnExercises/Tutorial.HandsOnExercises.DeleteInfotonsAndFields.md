@@ -13,13 +13,13 @@
 **Curl command:**
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ntriples" --data-binary @input.txt
+curl -X POST "<cm-well-host>/_in?format=ntriples" --data-binary @input.txt
 ```
 
 **File contents:**
 
 ```
-    <http://example/Individuals/MamaBear> <http://purl.org/vocab/relationship/spouseOf> <http://example/Individuals/PapaBear> .
+<http://example/Individuals/MamaBear> <http://purl.org/vocab/relationship/spouseOf> <http://example/Individuals/PapaBear> .
     <http://example/Individuals/MamaBear> <http://ont.thomsonreuters.com/bermuda/hasName> "Betty".
     <http://example/Individuals/PapaBear> <http://purl.org/vocab/relationship/spouseOf> <http://example/Individuals/MamaBear> .
     <http://example/Individuals/PapaBear> <http://ont.thomsonreuters.com/bermuda/hasName> "Barney".
@@ -39,7 +39,7 @@
 **Response:**
 
 ```
-    {"success":true}
+{"success":true}
 ```
  
 <a name="hdr2"></a>
@@ -49,13 +49,13 @@
 **Curl command:**
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ntriples" --data-binary @input.txt
+curl -X POST "<cm-well-host>/_in?format=ntriples" --data-binary @input.txt
 ```
 
 **File contents:**
 
 ```
-    <http://example/Individuals/BabyBear1> <cmwell://meta/sys#fullDelete> "false" .
+<http://example/Individuals/BabyBear1> <cmwell://meta/sys#fullDelete> "false" .
     <http://example/Individuals/BabyBear2> <cmwell://meta/sys#fullDelete> "false" .
     <http://example/Individuals/BabyBear3> <cmwell://meta/sys#fullDelete> "false" .
     <http://example/Individuals/MamaBear> <cmwell://meta/sys#markReplace> <http://ont.thomsonreuters.com/bermuda/hasName> .
@@ -65,7 +65,7 @@
 **Response:**
 
 ```
-    {"success":true}
+{"success":true}
 ```
 
 ## API Reference

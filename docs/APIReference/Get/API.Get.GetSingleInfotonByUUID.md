@@ -19,7 +19,7 @@ You can retrieve all historical versions of an infoton by performing a GET actio
 **Template:**
 
 ```
-    <CMWellHost>/ii/<InfotonUUID>
+<CMWellHost>/ii/<InfotonUUID>
 ```
 
 **URL example:**
@@ -28,7 +28,7 @@ You can retrieve all historical versions of an infoton by performing a GET actio
 **Curl example (REST API):**
 
 ```
-    Curl -X GET <cm-well-host>/ii/c6d3d9acf8c174b9d1fdc8d16fc43fa6
+Curl -X GET <cm-well-host>/ii/c6d3d9acf8c174b9d1fdc8d16fc43fa6
 ```
 
 ## Code Example
@@ -36,13 +36,13 @@ You can retrieve all historical versions of an infoton by performing a GET actio
 ### Call
 
 ```
-    <cm-well-host>/ii/c6d3d9acf8c174b9d1fdc8d16fc43fa6?format=ttl
+<cm-well-host>/ii/c6d3d9acf8c174b9d1fdc8d16fc43fa6?format=ttl
 ```
 
 ### Results
 
 ```
-    @prefix nn:    <cm-well-host/meta/nn#> .
+@prefix nn:    <cm-well-host/meta/nn#> .
     @prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
     @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
     @prefix sys:   <cm-well-host/meta/sys#> .

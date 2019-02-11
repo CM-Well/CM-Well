@@ -22,7 +22,7 @@ The process requires two different API calls:
 **Template:**
 
 ```
-    <cm-well-host>/<cm-well-path>?op=next-chunk&format=<format>&iterator-id=<iteratorId>
+<cm-well-host>/<cm-well-path>?op=next-chunk&format=<format>&iterator-id=<iteratorId>
 ```
 
 **URL example:**
@@ -34,7 +34,7 @@ The process requires two different API calls:
 **Curl example (REST API):**
 
 ```
-    Curl -X GET <cm-well-host>/permid.org?op=next-chunk&format=json&iterator-id=YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjE3Ny43OjUzMDY3L3VzZXIvJENscCM4MjY5NjY1NzQ
+Curl -X GET <cm-well-host>/permid.org?op=next-chunk&format=json&iterator-id=YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjE3Ny43OjUzMDY3L3VzZXIvJENscCM4MjY5NjY1NzQ
 ```
 
 !!! note
@@ -56,13 +56,13 @@ format | The output format of the streamed chunks. The default value is **ntripl
 ### Call
 
 ```
-    curl <cm-well-host>/permid.org?op=next-chunk&iterator-id=YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjE3Ny43OjUzMDY3L3VzZXIvJENscCM4MjY5NjY1NzQ&format=json
+curl <cm-well-host>/permid.org?op=next-chunk&iterator-id=YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjE3Ny43OjUzMDY3L3VzZXIvJENscCM4MjY5NjY1NzQ&format=json
 ```
 
 ### Results
 
 ```
-    {
+{
       "type": "IterationResults",
       "iteratorId": "YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjE3Ny41OjQxNDAwL3VzZXIvJGdicCMxMjI5ODU0NDI2",
       "totalHits": 91053224,

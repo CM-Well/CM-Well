@@ -22,7 +22,7 @@ The process requires two different API calls:
 **Template:**
 
 ```
-    <cm-well-host>/<cm-well-path>?op=create-iterator&<parameters>
+<cm-well-host>/<cm-well-path>?op=create-iterator&<parameters>
 ```
 
 **URL example:**
@@ -34,7 +34,7 @@ The process requires two different API calls:
 **Curl example (REST API):**
 
 ```
-    Curl -X GET <cm-well-host>/permid.org?op=create-iterator&session-ttl=15&length=500
+Curl -X GET <cm-well-host>/permid.org?op=create-iterator&session-ttl=15&length=500
 ```
 
 ## Special Parameters
@@ -48,7 +48,7 @@ session-ttl | The time, in seconds, until the iteration session expires. The ite
 ### Call
 
 ```
-    <cm-well-host>/permid.org?op=create-iterator&length=5
+<cm-well-host>/permid.org?op=create-iterator&length=5
 ```
 
 ### Results

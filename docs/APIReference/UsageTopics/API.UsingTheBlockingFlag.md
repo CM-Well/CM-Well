@@ -9,7 +9,7 @@ Here is an example:
 **Request:**
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ttl&replace-mode&blocking" -H "Content-Type: text/plain" --data-binary @curlInput.txt
+curl -X POST "<cm-well-host>/_in?format=ttl&replace-mode&blocking" -H "Content-Type: text/plain" --data-binary @curlInput.txt
 ```
 
 **Response:**
@@ -19,7 +19,7 @@ HTTP 200 code.
 Response body:
 
 ```
-    <http://permid.org/1-42965572445> <cmwell://meta/nn#trackingStatus> "Done" .
+<http://permid.org/1-42965572445> <cmwell://meta/nn#trackingStatus> "Done" .
     <http://permid.org/1-42963422545> <cmwell://meta/nn#trackingStatus> "Done" .
     <http://permid.org/1-22235545445> <cmwell://meta/nn#trackingStatus> "Failed" .
     <http://permid.org/1-54296574112> <cmwell://meta/nn#trackingStatus> "Evicted(expected:8029b2df973dd216375a7c5a7761a2be,actual:c94bf0de57f83874a6bb5983bdef4b8d)" .

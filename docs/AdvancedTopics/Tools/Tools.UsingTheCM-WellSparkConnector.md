@@ -45,11 +45,11 @@ To run the Spark server and initialize the CM-Well Spark Connector, run the **st
 
 This is what the Spark Connector Scala shell looks like when you first run it:
 
-<img src="../../_Images/SparkScalaInit.png" />
+![image](../../_Images/SparkScalaInit.png)
 
 Here is an example of calling a **CMWell** object function to create an RDD from an infoton space:
 
-<img src="../../_Images/SparkCreateRDD.png" />
+![image](../../_Images/SparkCreateRDD.png)
 
 <div style="page-break-after: always;"></div>
 

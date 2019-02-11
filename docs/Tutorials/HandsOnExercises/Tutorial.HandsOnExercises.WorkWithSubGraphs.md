@@ -14,13 +14,13 @@
 **Curl command:**
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=nquads" --data-binary @input.txt
+curl -X POST "<cm-well-host>/_in?format=nquads" --data-binary @input.txt
 ```
 
 **File Contents:**
 
 ```
-    <http://example/movies/ET> <http://www.w3.org/2000/01/rdf-schema#type> <http://dbpedia.org/ontology/Film>.
+<http://example/movies/ET> <http://www.w3.org/2000/01/rdf-schema#type> <http://dbpedia.org/ontology/Film>.
     <http://example/movies/GoneWithTheWind> <http://www.w3.org/2000/01/rdf-schema#type> <http://dbpedia.org/ontology/Film>.
     <http://example/movies/TheAvenger> <http://www.w3.org/2000/01/rdf-schema#type> <http://dbpedia.org/ontology/Film>.
     <http://example/movies/ET> <http://MyOntology/Score> "8.3" <http://MyOntology/RottenTomatoes>.
@@ -34,7 +34,7 @@
 **Response:**
 
 ```
-    {"success":true}
+{"success":true}
 ```
    
 <a name="hdr2"></a>
@@ -45,13 +45,13 @@
 **Curl command:**
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=nquads" --data-binary @input.txt
+curl -X POST "<cm-well-host>/_in?format=nquads" --data-binary @input.txt
 ```
 
 **File Contents:**
 
 ```
-    <> <cmwell://meta/sys#replaceGraph> <http://MyOntology/NewYorkTimes>. 
+<> <cmwell://meta/sys#replaceGraph> <http://MyOntology/NewYorkTimes>. 
     <http://example.org/movies/ET> <http://MyOntology/Score> "10" <http://MyOntology/NewYorkTimes>.
     <http://example.org/movies/GoneWithTheWind> <http://MyOntology/Score> "10" <http://MyOntology/NewYorkTimes>.
     <http://example.org/movies/TheAvenger> <http://MyOntology/Score> "10" <http://MyOntology/NewYorkTimes>.
@@ -60,7 +60,7 @@
 **Response:**
 
 ```
-    {"success":true}
+{"success":true}
 ```
    
 <a name="hdr3"></a>
@@ -71,21 +71,21 @@
 **Curl command:**
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=nquads" --data-binary @input.txt
+curl -X POST "<cm-well-host>/_in?format=nquads" --data-binary @input.txt
 ```
 
 **File Contents:**
 
 ```
-    <http://example/movies/ET> <cmwell://meta/sys#markReplace> <*> <http://MyOntology/RottenTomatoes>.
+<http://example/movies/ET> <cmwell://meta/sys#markReplace> <*> <http://MyOntology/RottenTomatoes>.
     <http://example/movies/GoneWithTheWind> <cmwell://meta/sys#markReplace> <*> <http://MyOntology/RottenTomatoes>.
     <http://example/movies/TheAvenger> <cmwell://meta/sys#markReplace> <*> <http://MyOntology/RottenTomatoes>.
 ```
-    
+
 **Response:**
 
 ```
-    {"success":true}
+{"success":true}
 ```
 
 ## API Reference

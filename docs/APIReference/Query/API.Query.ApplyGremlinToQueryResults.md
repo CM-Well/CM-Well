@@ -26,7 +26,7 @@ Literal infoton field values are mapped to Vertex Properties as follows:
 **Template:**
 
 ```
-    <CMWellHost>/_sp? 
+<CMWellHost>/_sp? 
     PATHS
     <CMWellPath with query parameters, one per line>
     <CMWellPath with query parameters, one per line>
@@ -51,13 +51,13 @@ See Code Example.
 The query example refers to this input data:
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary @curlInput.txt
+curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary @curlInput.txt
 ```
 
 ### File Contents
 
 ```
-      <http://example.org/Individuals/DaisyDuck> <http://purl.org/vocab/relationship/colleagueOf> <http://example.org/Individuals/BruceWayne> .
+  <http://example.org/Individuals/DaisyDuck> <http://purl.org/vocab/relationship/colleagueOf> <http://example.org/Individuals/BruceWayne> .
       <http://example.org/Individuals/DaisyDuck> <http://www.lbd.com/bold#active> "false" .
       <http://example.org/Individuals/BruceWayne> <http://purl.org/vocab/relationship/employedBy> <http://example.org/Individuals/DonaldDuck> .
       <http://example.org/Individuals/BruceWayne> <http://www.lbd.com/bold#active> "true" .
@@ -89,13 +89,13 @@ The query example refers to this input data:
 ### Call
 
 ```
-    curl -X POST "<cm-well-host>/_sp" --data-binary @curlInput.txt
+curl -X POST "<cm-well-host>/_sp" --data-binary @curlInput.txt
 ```
 
 ### File Contents
 
 ```
-    PATHS
+PATHS
     /example.org/Individuals?op=search&length=1000&with-data
     /example.org/Individuals/RonaldKhun
     /example.org/Individuals/JohnSmith?xg=3

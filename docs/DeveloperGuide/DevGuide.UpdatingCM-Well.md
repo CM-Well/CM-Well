@@ -34,7 +34,7 @@ To create a new infoton in CM-Well:
 For example, here is a cURL command that creates the infoton [<data.com/1-12345678>](<data.com/1-12345678>) with two triples:
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ttl" -H "Content-Type: text/plain" --data-binary 
+curl -X POST "<cm-well-host>/_in?format=ttl" -H "Content-Type: text/plain" --data-binary 
     '<http://data.com/1-12345678> a <http://data.com/Person>; 
     <http://ont.thomsonreuters.com/bermuda/hasName> "Fred Fredson" .'
 ```
@@ -43,25 +43,25 @@ For example, here is a cURL command that creates the infoton [<data.com/1-123456
 	If you want to post a larger set of data for the infoton, it may be more convenient to use the -data @filename parameter instead of --data-binary. In this case, you enter the infoton's data in the file instead of in the command.
 
 After running the POST command above, you'll see this infoton in the graph:
-<img src="../_Images/inserted-infoton.png">
+![image](../_Images/inserted-infoton.png)
 
 To create several new infotons at once, simply add more entity-type definitions in the request payload, for example:
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ttl" 
+curl -X POST "<cm-well-host>/_in?format=ttl" 
     `-H "Content-Type: text/plain" --data-binary` 
     '<http://data.com/1-11111111> a <http://data.com/Person> .
      <http://data.com/1-22222222> a <http://data.com/Person> .
      <http://data.com/1-33333333> a <http://data.com/Person> .'
 ```
-    
+
 <a name="hdr2"></a>
 ## Deleting Infotons
 
 To delete the infoton you created in the previous section, you can issue this command:
 
 ```
-    curl -X DELETE <cm-well-host>/data.com/1-12345678
+curl -X DELETE <cm-well-host>/data.com/1-12345678
 ```
 
 If the DELETE operation succeeds, CM-Well returns a status code of 200, with a JSON payload of: {“success”: true}.  
@@ -72,7 +72,7 @@ If the DELETE operation succeeds, CM-Well returns a status code of 200, with a J
 Alternatively, you can use the following syntax to delete several infotons in one POST:
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ttl" -H "Content-Type: text/plain" --data-binary '
+curl -X POST "<cm-well-host>/_in?format=ttl" -H "Content-Type: text/plain" --data-binary '
     <http://data.com/1-11111111> <cmwell://meta/sys#fullDelete> "false" .
     <http://data.com/1-22222222> <cmwell://meta/sys#fullDelete> "false" .
     <http://data.com/1-33333333> <cmwell://meta/sys#fullDelete> "false" .
@@ -97,28 +97,28 @@ In order to update an existing infoton, you use the same API endpoint as for a c
 Using the example above, we’ll update the same infoton, while entering in a new **hasName** value:
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ttl" -H "Content-Type: text/plain" --data-binary '<http://data.com/1-12345678> <http://ont.thomsonreuters.com/bermuda/hasName> "John Smith" .'
+curl -X POST "<cm-well-host>/_in?format=ttl" -H "Content-Type: text/plain" --data-binary '<http://data.com/1-12345678> <http://ont.thomsonreuters.com/bermuda/hasName> "John Smith" .'
 ```
 
 Now, if we look at this infoton in CM-Well, we’ll see something interesting:
-<img src="../_Images/Infoton-with-two-names.png">
+![image](../_Images/Infoton-with-two-names.png)
 
 The infoton now has two entries for the name of the person.  Rather than overwrite the field, the new value was appended to the infoton. This is the default behavior, but we can override it by specifying the **replace-mode** flag as a parameter on our POST call. For example:
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ttl&replace-mode" -H "Content-Type: text/plain" --data-binary '<http://data.com/1-12345678> <http://ont.thomsonreuters.com/bermuda/hasName> "John Smith" .'
+curl -X POST "<cm-well-host>/_in?format=ttl&replace-mode" -H "Content-Type: text/plain" --data-binary '<http://data.com/1-12345678> <http://ont.thomsonreuters.com/bermuda/hasName> "John Smith" .'
 ```
 
 Now when we look in CM-Well, we see the following:
 
-<img src="../_Images/Infoton-with-one-name.png">
+![image](../_Images/Infoton-with-one-name.png)
  
 The **hasName** field was overwritten as expected.
 
 An alternate syntax for replacing field values (which allows multiple replacements in the same POST) is as follows:
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ttl " -H "Content-Type: text/plain" --data-binary '<http://data.com/1-12345678> <cmwell://meta/sys#markReplace> <http://ont.thomsonreuters.com/bermuda/hasName> . 
+curl -X POST "<cm-well-host>/_in?format=ttl " -H "Content-Type: text/plain" --data-binary '<http://data.com/1-12345678> <cmwell://meta/sys#markReplace> <http://ont.thomsonreuters.com/bermuda/hasName> . 
 	<http://data.com/1-12345678> <http://ont.thomsonreuters.com/bermuda/hasName> "John Doe" . '
 ```
 
@@ -134,7 +134,7 @@ An alternate syntax for replacing field values (which allows multiple replacemen
 To delete an infoton's field, you can use the following syntax (in this example, the **hasName** field is deleted):
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ttl " -H "Content-Type: text/plain" --data-binary '<http://data.com/1-12345678> <cmwell://meta/sys#markReplace> <http://ont.thomsonreuters.com/bermuda/hasName> .'
+curl -X POST "<cm-well-host>/_in?format=ttl " -H "Content-Type: text/plain" --data-binary '<http://data.com/1-12345678> <cmwell://meta/sys#markReplace> <http://ont.thomsonreuters.com/bermuda/hasName> .'
 ```
 
 You can delete multiple fields in the same POST by adding several **#markReplace** triples to the command.
@@ -144,7 +144,7 @@ In some cases, an infoton may have several values for the same field name. For e
 Using the **#markReplace** operator to delete a field deletes all of it values. If you only want to delete a subset of a field's multiple values, while retaining the other values, you can use the **#markDelete** operator, as in the example below.
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=turtle" --data-binary '
+curl -X POST "<cm-well-host>/_in?format=turtle" --data-binary '
     @prefix vcard: <http://www.w3.org/2006/vcard/ns#> .
     <http://example.org/Individuals/JohnSmith>
     <cmwell://meta/sys#markDelete> [

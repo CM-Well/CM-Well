@@ -20,9 +20,9 @@ These are the statuses you may see for components and nodes:
 
 Status | Description
 :-------|:------------
-<img src="../../_Images/green.png"> | OK
-<img src="../../_Images/yellow.png"> | Warning status but no operational impact
-<img src="../../_Images/red.png"> | Error status with operational impact
+![image](../_Images/green.png) | OK
+![image](../_Images/yellow.png) | Warning status but no operational impact
+![image](../_Images/red.png) | Error status with operational impact
 
 !!! note
 	* A red status does not necessarily mean complete failure; requests may still be processed.
@@ -40,7 +40,7 @@ To display the component view:
 4. Click the blue "markdown" icon. 
 
 
-<img src="../../_Images/health-md-icon.png">
+![image](../_Images/health-md-icon.png)
 
 ----------
 
@@ -49,7 +49,7 @@ The component view is displayed. It show the overall health status of the cluste
 
 ----------
 
-<img src="../_Images/health-md-page.png">
+![image](../_Images/health-md-page.png)
 
 ## Node View
 
@@ -62,14 +62,14 @@ To display the node view:
 3. Hover your cursor over the **health-detailed.md** item in the left-hand menu. The "plain text" and "markdown" icons are displayed.
 4. Click the blue "markdown" icon. 
 
-<img src="../../_Images/health-detailed.md.icon.png">
+![image](../_Images/health-detailed.md.icon.png)
 
 ----------
 The node view is displayed. It contains a table showing each node's IP address, the health status of each type of software component on that node, and any additional status or error messages.
 
 ----------
 
-<img src="../../_Images/health-detailed-new.png">
+![image](../_Images/health-detailed-new.png)
 
 <a name="hdr1"></a>
 ## JVM Views (for internal TMS use)

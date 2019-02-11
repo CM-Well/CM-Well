@@ -16,7 +16,7 @@ If you have an infoton's CM-Well URI (the path in CM-Well pointing to the infoto
 **Template:**
 
 ```
-    <CMWellHost>/<InfotonPath>
+<CMWellHost>/<InfotonPath>
 ```
 
 **URL example:**
@@ -25,7 +25,7 @@ If you have an infoton's CM-Well URI (the path in CM-Well pointing to the infoto
 **Curl example (REST API):**
 
 ```
-    Curl -X GET <cm-well-host>/permid.org/1-5050986961
+Curl -X GET <cm-well-host>/permid.org/1-5050986961
 ```
 
 ## Code Example
@@ -33,13 +33,13 @@ If you have an infoton's CM-Well URI (the path in CM-Well pointing to the infoto
 ### Call
 
 ```
-    <cm-well-host>/permid.org/1-5050986961?format=ttl
+<cm-well-host>/permid.org/1-5050986961?format=ttl
 ```
 
 ### Results
 
 ```
-    @prefix nn:<cm-well-host/meta/nn#> .
+@prefix nn:<cm-well-host/meta/nn#> .
     @prefix mdaas: <http://ont.com/mdaas/> .
     @prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
     @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .

@@ -25,13 +25,13 @@ After installing and running CM-Well Docker, run the following workflows:
 **Curl command:**
 
 ```
-    curl -X POST "http://localhost:8080/_in?format=ntriples" --data-binary @input.txt
+curl -X POST "http://localhost:8080/_in?format=ntriples" --data-binary @input.txt
 ```
 
 **File contents:**
 
 ```
-    <http://example/Individuals/MamaBear> <http://purl.org/vocab/relationship/spouseOf> <http://example/Individuals/PapaBear> .
+<http://example/Individuals/MamaBear> <http://purl.org/vocab/relationship/spouseOf> <http://example/Individuals/PapaBear> .
     <http://example/Individuals/MamaBear> <http://ont.thomsonreuters.com/bermuda/hasName> "Betty".
     <http://example/Individuals/PapaBear> <http://ont.thomsonreuters.com/bermuda/hasName> "Barney".
     <http://example/Individuals/BabyBear1> <http://purl.org/vocab/relationship/childOf> <http://example/Individuals/MamaBear>.
@@ -50,7 +50,7 @@ After installing and running CM-Well Docker, run the following workflows:
 **Response:**
 
 ```
-    {"success":true}
+{"success":true}
 ```
 
 <a name="hdr2"></a>
@@ -61,13 +61,13 @@ After installing and running CM-Well Docker, run the following workflows:
 **Curl command:**
 
 ```
-    curl "http://localhost:8080/example/Individuals?op=search&format=ttl&recursive&with-data" 
+curl "http://localhost:8080/example/Individuals?op=search&format=ttl&recursive&with-data" 
 ```
 
 **Response:**
 
 ```
-    @prefix nn:<http://localhost:8080/meta/nn#> .
+@prefix nn:<http://localhost:8080/meta/nn#> .
     @prefix bermuda: <http://ont.thomsonreuters.com/bermuda/> .
     @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
     @prefix rel:   <http://purl.org/vocab/relationship/> .
@@ -154,13 +154,13 @@ After installing and running CM-Well Docker, run the following workflows:
 **Curl command:**
 
 ```
-    curl "http://localhost:8080/example/Individuals?op=search&qp=childOf.rel:PapaBear&format=ttl&recursive"
+curl "http://localhost:8080/example/Individuals?op=search&qp=childOf.rel:PapaBear&format=ttl&recursive"
 ```
 
 **Response:**
 
 ```
-    @prefix nn:<http://localhost:8080/meta/nn#> .
+@prefix nn:<http://localhost:8080/meta/nn#> .
     @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
     @prefix sys:   <http://localhost:8080/meta/sys#> .
     
@@ -217,13 +217,13 @@ After installing and running CM-Well Docker, run the following workflows:
 **Curl command:**
 
 ```
-    curl -X POST "http://localhost:8080/_in?format=ntriples" --data-binary @input.txt
+curl -X POST "http://localhost:8080/_in?format=ntriples" --data-binary @input.txt
 ```
 
 **File contents:**
 
 ```
-    <http://example/Individuals/BabyBear1> <cmwell://meta/sys#markReplace> <http://ont.thomsonreuters.com/bermuda/hasName> . 
+<http://example/Individuals/BabyBear1> <cmwell://meta/sys#markReplace> <http://ont.thomsonreuters.com/bermuda/hasName> . 
     <http://example/Individuals/BabyBear1> <http://ont.thomsonreuters.com/bermuda/hasName> "Cathy" .
     <http://example/Individuals/BabyBear2> <cmwell://meta/sys#markReplace> <http://ont.thomsonreuters.com/bermuda/hasName> . 
     <http://example/Individuals/BabyBear2> <http://ont.thomsonreuters.com/bermuda/hasName> "Craig" .
@@ -234,7 +234,7 @@ After installing and running CM-Well Docker, run the following workflows:
 **Response:**
 
 ```
-    {"success":true}
+{"success":true}
 ```
 
 <a name="hdr5"></a>
@@ -245,13 +245,13 @@ After installing and running CM-Well Docker, run the following workflows:
 **Curl command:**
 
 ```
-    curl "http://localhost:8080/example/Individuals?op=search&qp=childOf.rel:PapaBear&format=ttl&recursive&with-data"
+curl "http://localhost:8080/example/Individuals?op=search&qp=childOf.rel:PapaBear&format=ttl&recursive&with-data"
 ```
 
 **Response:**
 
 ```
-    @prefix nn:<http://localhost:8080/meta/nn#> .
+@prefix nn:<http://localhost:8080/meta/nn#> .
     @prefix bermuda: <http://ont.thomsonreuters.com/bermuda/> .
     @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
     @prefix rel:   <http://purl.org/vocab/relationship/> .
@@ -316,20 +316,20 @@ After installing and running CM-Well Docker, run the following workflows:
 **Curl command:**
 
 ```
-    curl -X POST "http://localhost:8080/_in?format=ntriples" --data-binary @input.txt
+curl -X POST "http://localhost:8080/_in?format=ntriples" --data-binary @input.txt
 ```
 
 **File contents:**
 
 ```
-    <http://example/Individuals/BabyBear3> <cmwell://meta/sys#fullDelete> "false" .
+<http://example/Individuals/BabyBear3> <cmwell://meta/sys#fullDelete> "false" .
     <http://example/Individuals/BabyBear1> <cmwell://meta/sys#markReplace> <http://purl.org/vocab/relationship/siblingOf>.
 ```
 
 **Response:**
 
 ```
-    {"success":true}
+{"success":true}
 ```
 
 <a name="hdr7"></a>
@@ -340,13 +340,13 @@ After installing and running CM-Well Docker, run the following workflows:
 **Curl command:**
 
 ```
-    curl "http://localhost:8080/example/Individuals?op=search&qp=$http://purl.org/vocab/relationship/childOf$:PapaBear&format=ttl&recursive&with-data"
+curl "http://localhost:8080/example/Individuals?op=search&qp=$http://purl.org/vocab/relationship/childOf$:PapaBear&format=ttl&recursive&with-data"
 ```
 
 **Response:**
 
 ```
-    @prefix nn:<http://localhost:8080/meta/nn#> .
+@prefix nn:<http://localhost:8080/meta/nn#> .
     @prefix bermuda: <http://ont.thomsonreuters.com/bermuda/> .
     @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
     @prefix sys:   <http://localhost:8080/meta/sys#> .

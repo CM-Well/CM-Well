@@ -30,7 +30,7 @@ The **consume** API does not support a guaranteed chunk length (number of infoto
 **Template:**
 
 ```
-    <cm-well-host>/_consume?position=<position identifier>
+<cm-well-host>/_consume?position=<position identifier>
 ```
 
 **URL example:** N/A
@@ -38,7 +38,7 @@ The **consume** API does not support a guaranteed chunk length (number of infoto
 **Curl example (REST API):**
 
 ```
-    curl -vX GET <cm-well-host>/_consume?position=eQA5eJwzNDE1sDQ3NDI0tjQ2rjGoMTE0MDI1NjS0BIEa_dSKxNyCnFS9_KJ0fc-8lMyyzJTSxJzimpoa&format=json
+curl -vX GET <cm-well-host>/_consume?position=eQA5eJwzNDE1sDQ3NDI0tjQ2rjGoMTE0MDI1NjS0BIEa_dSKxNyCnFS9_KJ0fc-8lMyyzJTSxJzimpoa&format=json
 ```
 
 ## Special Parameters
@@ -52,7 +52,7 @@ position | Defines the position of the chunk in the stream |  Position ID return
 ### Call
 
 ```
-    curl -vX GET <cm-well-host>/_consume?position=eQA5eJwzNDE1sDQ3NDI0tjQ2rjGoMTE0MDI1NjS0BIEa_dSKxNyCnFS9_KJ0fc-8lMyyzJTSxJzimpoa&format=json
+curl -vX GET <cm-well-host>/_consume?position=eQA5eJwzNDE1sDQ3NDI0tjQ2rjGoMTE0MDI1NjS0BIEa_dSKxNyCnFS9_KJ0fc-8lMyyzJTSxJzimpoa&format=json
 ```
 
 ### Results
@@ -60,7 +60,7 @@ position | Defines the position of the chunk in the stream |  Position ID return
 The following results are truncated.
 
 ```
-    < HTTP/1.1 200 OK
+< HTTP/1.1 200 OK
     < X-CMWELL-BG: O
     < X-CMWELL-RT: 546ms
     < X-CM-WELL-N-LEFT: 162130

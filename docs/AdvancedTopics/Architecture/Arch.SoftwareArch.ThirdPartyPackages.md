@@ -12,7 +12,7 @@ For each segment on the virtual circle there is a primary machine responsible fo
 
 (See [Datastax article](https://docs.datastax.com/en/cassandra/3.0/cassandra/architecture/archDataDistributeDistribute.html) to learn more).
 
-<img src="../../_Images/cassandra-virtual-nodes.png" align="middle"> 
+![image](../../_Images/cassandra-virtual-nodes.png) 
 
 Theoretically, Cassandra's virtual circle could encompass nodes in more than one data center. This design capability is _not_ used by CM-Well, so as not to rely this feature, thereby ruling out using alternative packages that don't support it. Cross-data-center coordination is done in the CM-Well logic layer, which manages the abstraction of uniform storage over identical nodes.
 

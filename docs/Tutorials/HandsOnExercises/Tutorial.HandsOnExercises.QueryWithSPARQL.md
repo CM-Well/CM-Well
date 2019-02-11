@@ -5,13 +5,13 @@
 **Curl command:**
 
 ```
-    curl -X POST "<cm-well-host>/_sp?format=ascii" -H "Content-Type:text/plain" --data-binary @inputfile.txt
+curl -X POST "<cm-well-host>/_sp?format=ascii" -H "Content-Type:text/plain" --data-binary @inputfile.txt
 ```
 
 **Input file contents:**
 
 ```
-    PATHS
+PATHS
     /permid.org?op=search&qp=CommonName.mdaas:Systems&with-data
     
     SPARQL
@@ -32,7 +32,7 @@
     | <http://permid.org/1-5050714197> | "Keyless Systems Ltd" | "Israel\n"  | 
     --------------------------------------------------------------------------------------------------------------------------------------------------------------
 ```
-      
+  
 ## API Reference
 
 [Using SPARQL on Infotons](../../DeveloperGuide/DevGuide.UsingSPARQLOnCM-WellInfotons.md)

@@ -27,7 +27,7 @@ Both methods are described in the following sections.
 **Template:**
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=<format>&replace-mode" <triples with new field values>
+curl -X POST "<cm-well-host>/_in?format=<format>&replace-mode" <triples with new field values>
 ```
 
 **URL example:** N/A
@@ -35,13 +35,13 @@ Both methods are described in the following sections.
 **Curl example (REST API):**
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ttl&replace-mode" -H "Content-Type: text/plain" --data-binary @curlInput.txt
+curl -X POST "<cm-well-host>/_in?format=ttl&replace-mode" -H "Content-Type: text/plain" --data-binary @curlInput.txt
 ```
 
 ### File Contents
 
 ```
-    <http://data.com/1-12345678> 
+<http://data.com/1-12345678> 
     <http://ont.com/bermuda/hasName> "John Smith" .
 ```
 
@@ -95,20 +95,20 @@ Both methods are described in the following sections.
 ### Call
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ttl&replace-mode" -H "Content-Type: text/plain" --data-binary @curlInput.txt
+curl -X POST "<cm-well-host>/_in?format=ttl&replace-mode" -H "Content-Type: text/plain" --data-binary @curlInput.txt
 ```
 
 ### File Contents
 
 ```
-    <http://data.com/1-12345678> 
+<http://data.com/1-12345678> 
     <http://ont.com/bermuda/hasName> "John Smith" .
 ```
 
 ### Results
 
 ```
-    {"success":true}
+{"success":true}
 ```
 
 ## Syntax 2
@@ -124,7 +124,7 @@ Both methods are described in the following sections.
 **Template:**
 
 ```
-    curl -X POST <cm-well-host>/_in?format=<format> <triples with new field values>
+curl -X POST <cm-well-host>/_in?format=<format> <triples with new field values>
 ```
 
 **URL example:** N/A
@@ -132,13 +132,13 @@ Both methods are described in the following sections.
 **Curl example (REST API):**
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ttl " -H "Content-Type: text/plain" --data-binary @curlInput.txt
+curl -X POST "<cm-well-host>/_in?format=ttl " -H "Content-Type: text/plain" --data-binary @curlInput.txt
 ```
 
 ### File Contents
 
 ```
-    <http://data.com/1-12345678> 
+<http://data.com/1-12345678> 
     <cmwell://meta/sys#markReplace> <http://ont.com/bermuda/hasName> . 
     <http://data.com/1-12345678> <http://ont.com/bermuda/hasName> "John Doe" . 
 ```
@@ -157,20 +157,20 @@ format | The format in which the triples are provided | n3, rdfxml, ntriples, nq
 ### Call
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ttl&replace-mode" -H "Content-Type: text/plain" --data-binary @curlInput.txt
+curl -X POST "<cm-well-host>/_in?format=ttl&replace-mode" -H "Content-Type: text/plain" --data-binary @curlInput.txt
 ```
 
 ### File Contents
 
 ```
-    <http://data.com/1-12345678> 
+<http://data.com/1-12345678> 
     <http://ont.com/bermuda/hasName> "John Smith" .
 ```
 
 ### Results
 
 ```
-    {"success":true}
+{"success":true}
 ```
 
 !!! note

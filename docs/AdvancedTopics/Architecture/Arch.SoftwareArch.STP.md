@@ -11,11 +11,11 @@ The SPARQL Trigger Processor creates one or more  **sensors**. Each sensor perio
 
 The image below illustrates how a materialized view of a Company infoton "flattens" out levels of indirection to create a more compact representation of the data.
 
-<img src="../../_Images/materialized-view.png" align="middle">
+![image](../../_Images/materialized-view.png)
 
 The diagram below illustrates how the STP identifies updated infotons and creates their materialized views, using 2 sensors that "listen" to changes of specific object types.
 
-<img src="../../_Images/STP-process.png" align="middle"> 
+![image](../../_Images/STP-process.png) 
 
 ## STP Implementation Description
 

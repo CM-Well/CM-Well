@@ -19,14 +19,14 @@ The **gqp** flag can be used together with **xg** and **yg**. In this case, **gq
 
 Suppose you want to retrieve all persons of an age greater than 32, who live in New York. This condition must be applied to the following linked infotons:
 
-<img src="../../_Images/gqp-example-relation.png">
+![image](../../_Images/gqp-example-relation.png)
 
 We would like to retrieve only the Person infotons, while applying filters on the linked AddressRelation and Address infotons, but *without* retrieving those linked infotons.
 
  Here is an example of a search clause that uses **gqp** for the scenario described above:
 
 ```
-    <cm-well-host>/?op=search&qp=type.rdf:Person,age>32&gqp=<addressOfPerson>physicalAddress[city::New%20York]
+<cm-well-host>/?op=search&qp=type.rdf:Person,age>32&gqp=<addressOfPerson>physicalAddress[city::New%20York]
 ```
 
 This query only returns Person infotons for which the path defined in the **gqp** clause exists. It doesn't return the Address and AddressRelation infotons that were traversed during evaluation.

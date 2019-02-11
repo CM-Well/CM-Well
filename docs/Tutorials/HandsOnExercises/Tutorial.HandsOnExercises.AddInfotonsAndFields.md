@@ -5,13 +5,13 @@
 **Curl command:**
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ntriples" --data-binary @input.txt
+curl -X POST "<cm-well-host>/_in?format=ntriples" --data-binary @input.txt
 ```
 
 **File contents:**
 
 ```
-    <http://example/Individuals/MamaBear> <http://purl.org/vocab/relationship/spouseOf> <http://example/Individuals/PapaBear> .
+<http://example/Individuals/MamaBear> <http://purl.org/vocab/relationship/spouseOf> <http://example/Individuals/PapaBear> .
     <http://example/Individuals/MamaBear> <http://ont.thomsonreuters.com/bermuda/hasName> "Betty".
     <http://example/Individuals/PapaBear> <http://ont.thomsonreuters.com/bermuda/hasName> "Barney".
     <http://example/Individuals/BabyBear1> <http://purl.org/vocab/relationship/childOf> <http://example/Individuals/MamaBear>.
@@ -30,7 +30,7 @@
 **Response:**
 
 ```
-    {"success":true}
+{"success":true}
 ```
 
 ## API Reference

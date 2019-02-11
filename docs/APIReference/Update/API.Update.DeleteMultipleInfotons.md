@@ -17,7 +17,7 @@ You can delete multiple infotons by applying the special **#fullDelete** indicat
 **Template:**
 
 ```
-    curl -X POST <cm-well-host>/_in?format=<format> <triples to delete>
+curl -X POST <cm-well-host>/_in?format=<format> <triples to delete>
 ```
 
 **URL example:** N/A
@@ -25,13 +25,13 @@ You can delete multiple infotons by applying the special **#fullDelete** indicat
 **Curl example (REST API):**
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ttl" -H "Content-Type: text/plain" --data-binary @curlInput.txt
+curl -X POST "<cm-well-host>/_in?format=ttl" -H "Content-Type: text/plain" --data-binary @curlInput.txt
 ```
 
 ### File Contents
 
 ```
-    <http://data.com/1-11111111> <cmwell://meta/sys#fullDelete> "false" .
+<http://data.com/1-11111111> <cmwell://meta/sys#fullDelete> "false" .
     <http://data.com/1-22222222> <cmwell://meta/sys#fullDelete> "false" .
     <http://data.com/1-33333333> <cmwell://meta/sys#fullDelete> "false" .
 ```
@@ -50,13 +50,13 @@ priority | If this flag appears in an update call, that call receives priority r
 ### Call
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ttl" -H "Content-Type: text/plain" --data-binary @curlInput.txt
+curl -X POST "<cm-well-host>/_in?format=ttl" -H "Content-Type: text/plain" --data-binary @curlInput.txt
 ```
 
 ### File Contents
 
 ```
-    <http://data.com/1-11111111> <cmwell://meta/sys#fullDelete> "false" .
+<http://data.com/1-11111111> <cmwell://meta/sys#fullDelete> "false" .
     <http://data.com/1-22222222> <cmwell://meta/sys#fullDelete> "false" .
     <http://data.com/1-33333333> <cmwell://meta/sys#fullDelete> "false" .
 ```
@@ -64,7 +64,7 @@ priority | If this flag appears in an update call, that call receives priority r
 ### Results
 
 ```
-    {"success":true}
+{"success":true}
 ```
 
 !!! NOTE

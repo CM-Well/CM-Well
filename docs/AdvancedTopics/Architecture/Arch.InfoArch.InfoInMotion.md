@@ -15,4 +15,4 @@ This includes features such as:
 
 The following image illustrates CM-Well's "Not Only Copy" workflows:
 
-<img src="../../_Images/no-copy.png" align="middle">
+![image](../../_Images/no-copy.png)

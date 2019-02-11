@@ -10,7 +10,7 @@ CM-Well was developed as an initiative of Thomson Reuters's (now Refinitiv) TMS 
 
 TMS already had expertise in tagging entities, events and relationships in free-form text, and had implemented various methods for storage and analysis of the tagged data. To begin with, these methods did not conform to any widely-accepted standard. The data was stored in standard relational databases, although conceptually it behaved more like a connected graph.
 
-<img src="../_Images/Graph-database.jpg">
+![image](../_Images/Graph-database.jpg)
 
 ## The Rise of Semantic Web
 The newly emerging standards of Semantic Web and Linked Data seemed like a natural choice for the data modeling standards TMS was seeking. These standards define a way to represent information that's conceptually similar to how people perceive it, but such that it's as easily accessible as a web page, and as easy to extend as it is to click on a link. Another key principle that Linked Data supports is interoperability - the ability for different data repositories to refer to and interact with each other.

@@ -32,8 +32,8 @@ To run CM-Well Docker, you must install the Docker utility itself and the relate
 
 1. Download and run the Docker installation appropriate for your OS, from the [Docker installation page](https://docs.docker.com/engine/installation). 
 2. In the toolbar, right-click the Docker icon and click Settings.
-<br/><img src="../../_Images/DockerRightClickMenu.png"><br/>The Docker Settings dialog opens.
-1.  In the left-hand menu, click **Advanced**.<br/><img src="../../_Images/DockerAdvancedSettings.png">
+<br/>![image](../../_Images/DockerRightClickMenu.png)The Docker Settings dialog opens.
+1.  In the left-hand menu, click **Advanced**.<br/>![image](../../_Images/DockerAdvancedSettings.png)
 2.  Drag the Memory slider to the right to enlarge the memory size to be as close as possible to 6GB.
 3.  Docker restarts to implement the new memory setting.
 
@@ -55,7 +55,7 @@ Run the following command: `docker run --name cm-well -d -p 8080:9000 cmwell-dev
 Use the CM-Well API for adding data, while referring to the [http://localhost:8080/_in](http://localhost:8080/_in) endpoint. For example:
 
 ```
-    curl -X POST "http://localhost:8080/_in?format=ttl" -H "Content-Type: text/plain" --data-binary "<http://example.org/Individuals/JohnSmith> a <http://data.com/Person>;  <http://ont.thomsonreuters.com/bermuda/hasName> \"John Smith\" ."
+curl -X POST "http://localhost:8080/_in?format=ttl" -H "Content-Type: text/plain" --data-binary "<http://example.org/Individuals/JohnSmith> a <http://data.com/Person>;  <http://ont.thomsonreuters.com/bermuda/hasName> \"John Smith\" ."
 ```
 
 **To pause CM-Well Docker:**

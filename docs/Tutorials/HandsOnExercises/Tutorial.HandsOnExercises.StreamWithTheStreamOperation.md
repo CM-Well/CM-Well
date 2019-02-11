@@ -6,13 +6,13 @@
 **Curl command:**
 
 ```
-    curl "<cm-well-host>/permid.org?op=stream&format=ntriples&fields=CommonName.mdaas&qp=type.rdf::http://ont.thomsonreuters.com/mdaas/Organization"
+curl "<cm-well-host>/permid.org?op=stream&format=ntriples&fields=CommonName.mdaas&qp=type.rdf::http://ont.thomsonreuters.com/mdaas/Organization"
 ```
 
 **Response: (truncated)**
 
 ```
-    <http://permid.org/1-5037249647> <http://ont.thomsonreuters.com/mdaas/CommonName> "Sports Field Holdings Inc" .
+<http://permid.org/1-5037249647> <http://ont.thomsonreuters.com/mdaas/CommonName> "Sports Field Holdings Inc" .
     <http://permid.org/1-5040272935> <http://ont.thomsonreuters.com/mdaas/CommonName> "LOGIC INVEST, A.S." .
     <http://permid.org/1-4296216818> <http://ont.thomsonreuters.com/mdaas/CommonName> "VALUE CONTRARIAN CANADIAN EQUITY FUND" .
     <http://permid.org/1-4296057952> <http://ont.thomsonreuters.com/mdaas/CommonName> "UNIBANCORP INC-COMMERCIAL FIN" .
@@ -56,7 +56,7 @@
     
     ...
 ```
-       
+   
 ## API Reference
 
 [Stream Infotons](../../APIReference/Stream/API.Stream.StreamInfotons.md)

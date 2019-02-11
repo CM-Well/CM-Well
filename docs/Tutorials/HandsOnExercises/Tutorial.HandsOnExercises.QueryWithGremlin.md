@@ -14,13 +14,13 @@
 **Curl command:**
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary @inputfile.txt
+curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary @inputfile.txt
 ```
 
 **Input file contents:**
 
 ```
-    <http://example.org/Individuals/DaisyDuck> <http://purl.org/vocab/relationship/colleagueOf> <http://example.org/Individuals/BruceWayne> .
+<http://example.org/Individuals/DaisyDuck> <http://purl.org/vocab/relationship/colleagueOf> <http://example.org/Individuals/BruceWayne> .
       <http://example.org/Individuals/DaisyDuck> <http://www.tr-lbd.com/bold#active> "false" .
       <http://example.org/Individuals/BruceWayne> <http://purl.org/vocab/relationship/employedBy> <http://example.org/Individuals/DonaldDuck> .
       <http://example.org/Individuals/BruceWayne> <http://www.tr-lbd.com/bold#active> "true" .
@@ -64,13 +64,13 @@
 **Curl command:**
 
 ```
-    curl -X POST "<cm-well-host>/_sp" --data-binary @inputfile.txt
+curl -X POST "<cm-well-host>/_sp" --data-binary @inputfile.txt
 ```
 
 **Input file contents:**
 
 ```
-    PATHS
+PATHS
     /example.org/Individuals?op=search&length=1000&with-data
     
     Gremlin
@@ -80,9 +80,9 @@
 **Response:**
 
 ```
-	v[http://example.org/Individuals/RebbecaSmith]
+v[http://example.org/Individuals/RebbecaSmith]
 ```
-                
+            
 ## API Reference
 
 [Apply Gremlin to Query Results](../../APIReference/Query/API.Query.ApplyGremlinToQueryResults.md)

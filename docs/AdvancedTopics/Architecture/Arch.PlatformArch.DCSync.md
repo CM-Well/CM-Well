@@ -47,10 +47,10 @@ CM-Well provides a DC-Health dashboard for each DC, which reflects the state of 
 
 Below is an example of a sync process with the "Not syncing" status (in this case, due to no disk space).
 
-<img src="../../_Images/dc-health-page.png" align="middle">
+![image](../../_Images/dc-health-page.png)
 
 In addition, the health view shows the distribution of objects per source DC (capturing where infotons were originated), as in the image below:
 
-<img src="../../_Images/dc-distribution-page.png" align="middle">
+![image](../../_Images/dc-distribution-page.png)
 
 Health logs have a "yellow" status for a temporary inability to sync, and a "red" status for long-term failure to sync.

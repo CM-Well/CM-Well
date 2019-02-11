@@ -7,7 +7,7 @@ To sort results, add the **sort-by** parameter to the query, with a value of the
 For example, to sort by the CommonName field, you can run this query:
 
 ```
-    <cm-well-host>/permid.org?op=search&format=n3&length=30&sort-by=CommonName.mdaas
+<cm-well-host>/permid.org?op=search&format=n3&length=30&sort-by=CommonName.mdaas
 ```
 
 You can also sort by several field values. When you provide several comma-separated field names in the **sort-by** parameter, the results are sorted first by the first field in the list, then by the second field, and so on.
@@ -15,7 +15,7 @@ You can also sort by several field values. When you provide several comma-separa
 For example, to sort first by exchange code and then by CommonName, you can run this query:
 
 ```
-    <cm-well-host>/permid.org?op=search&format=n3&length=30&sort-by=IsTradingIn.mdaas,CommonName.mdaas
+<cm-well-host>/permid.org?op=search&format=n3&length=30&sort-by=IsTradingIn.mdaas,CommonName.mdaas
 ```
 
 ## Sort Order

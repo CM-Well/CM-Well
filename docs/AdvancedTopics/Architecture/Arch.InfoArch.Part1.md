@@ -38,7 +38,7 @@ In addition to allowing you to read entities, CM-Well's API also allows you to:
 
 The following figure illustrates how CM-Well's architecture differs from traditional triple store architecture.
 
-<img src="../../_Images/CM-WellVsTripleStore.png">
+![image](../../_Images/CM-WellVsTripleStore.png)
 
 
 ## Big Data
@@ -67,4 +67,4 @@ In addition, CM-Well supports:
 - Linear scalability
 - Representing Linked Data concepts and information objects using a RESTful API, with Web semantics
 
-<img src="../../_Images/WOA-LD-Powered-Services.png">
+![image](../../_Images/WOA-LD-Powered-Services.png)

@@ -5,7 +5,7 @@ If you want to perform a one-time retrieval of a large amount of CM-Well data, y
 For example, the following command streams all Organization infotons from the CM-Well pre-production environment:
 
 ```
-    curl -X GET '<cm-well-host>/data.com/?op=stream&format=ntriples&qp=type.rdf::http://ont.thomsonreuters.com/mdaas/Organization'
+curl -X GET '<cm-well-host>/data.com/?op=stream&format=ntriples&qp=type.rdf::http://ont.thomsonreuters.com/mdaas/Organization'
 ```
 
 !!! tip

@@ -10,7 +10,7 @@ CM-Well is a writable Linked Data repository, which you can use to model data. C
 
 CM-Well's data is represented as a graph database, which means that it contains entities and relationships between pairs of entities. For instance, it might contain facts such as &quot;CompanyA is a subsidiary of CompanyB&quot; or &quot;PersonX works at CompanyA&quot;. Conceptually, a graph database is a structure composed of nodes representing entities, and directed arrows representing relationships among them. See the image below for an example.
 
-<img src="../../_Images/small-graph-database.png">
+![image](../../_Images/small-graph-database.png)
 
 ## Terms and Abbreviations
 

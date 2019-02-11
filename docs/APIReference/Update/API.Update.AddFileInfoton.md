@@ -29,7 +29,7 @@ Both methods are described in the following sections.
 **Template:**
 
 ```
-    curl -X POST <cm-well-path> -H "X-CM-WELL-TYPE: FILE" -H "Content-Type: <contentType>" --data-binary @<localFilePath>
+curl -X POST <cm-well-path> -H "X-CM-WELL-TYPE: FILE" -H "Content-Type: <contentType>" --data-binary @<localFilePath>
 ```
 
 **URL example:** N/A
@@ -37,7 +37,7 @@ Both methods are described in the following sections.
 **Curl example (REST API):**
 
 ```
-    curl -X POST <cm-well-host>/example/files/f1.png -H "X-CM-WELL-TYPE: FILE" -H "Content-Type: image/png" --data-binary @image.file.png
+curl -X POST <cm-well-host>/example/files/f1.png -H "X-CM-WELL-TYPE: FILE" -H "Content-Type: image/png" --data-binary @image.file.png
 ```
 
 ## Parameters 1
@@ -52,13 +52,13 @@ Content-Type | HTTP header that indicates the file's MIME type. | See reference 
 ### Call
 
 ```
-    curl -X POST <cm-well-host>/example/files/f1.png -H "X-CM-WELL-TYPE: FILE" -H "Content-Type: image/png" --data-binary @image.file.png
+curl -X POST <cm-well-host>/example/files/f1.png -H "X-CM-WELL-TYPE: FILE" -H "Content-Type: image/png" --data-binary @image.file.png
 ```
 
 ### Results
 
 ```
-    {"success":true}
+{"success":true}
 ```
 
 ## Syntax 2
@@ -74,7 +74,7 @@ Content-Type | HTTP header that indicates the file's MIME type. | See reference 
 **Template:**
 
 ```
-    curl -X POST <cm-well-host>/_in?format=<format> <new file triple> <optional field value triples>
+curl -X POST <cm-well-host>/_in?format=<format> <new file triple> <optional field value triples>
 ```
 
 **URL example:** N/A
@@ -82,13 +82,13 @@ Content-Type | HTTP header that indicates the file's MIME type. | See reference 
 **Curl example (REST API):**
 
 ```
-    curl -X POST <cm-well-host>/_in?format=ntriples --data-binary @curlInput.txt
+curl -X POST <cm-well-host>/_in?format=ntriples --data-binary @curlInput.txt
 ```
 
 ### File Contents
 
 ```
-    <http://example/files/f3.txt> <cmwell://meta/sys#data> "plain text content" .
+<http://example/files/f3.txt> <cmwell://meta/sys#data> "plain text content" .
     <http://example/files/f3.txt> <cmwell://meta/sys#mimeType> "text/plain" .
     <http://example/files/f3.txt> <cmwell://meta/nn#someField> "some value" .
 ```
@@ -104,13 +104,13 @@ format | The format in which the triples are provided | json, jsonl, jsonld, n3,
 ### Call
 
 ```
-    curl -X POST <cm-well-host>/_in?format=ntriples --data-binary @curlInput.txt
+curl -X POST <cm-well-host>/_in?format=ntriples --data-binary @curlInput.txt
 ```
 
 ### File Contents
 
 ```
-    <http://example/files/f2.png> <cmwell://meta/sys#base64-data> "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAYJJREFUeNqkUztOAzEUnGd7d8NKSNyAO1AgcQ/K1Ei5AAXKOUgfpaahRsoduAH0FBEfxWv7Mc+rIFAqEq/W9rM943ljW1QVxxSHI0tYLpf3bGcH4hch5zybTqcHoVer1cwIanD9uEETKMkJWv6N8vdAw35nsXNsXY0Bxe1VA8OGlBLMyNYpPAQ+K8TAogji4AgwjCIjWkc8tJSKMayzyortao56tiKCbfGIJNMkGOygSCZFMeTEuVG1YcMwDJWtJ7mjZBFbXeBlJK5AmzNQMI3UUlAxhv0h6NpcVXh+TbAUPBUx58ahqONo5hqPnj6lqPsE533BKXM4ablb23GhYELCvnP4ShFFRl8mXYAMsk9wJhET7tNLQTDp2sLs+WDONAaOa5xPiO/mg5nYjQQ7E5+eX7A1g+jYJ4c2RWBWKStLJjP3Qg94WFQBrG8u/pr48EqZTKHESFCxRIF6R4iQejw8Qe7MoO1+eWCXwYK3u8t/3ULD7C7SYj6fH/wW5Njn/C3AAGZG6t+dQqFoAAAAAElFTkSuQmCC" .
+<http://example/files/f2.png> <cmwell://meta/sys#base64-data> "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAYJJREFUeNqkUztOAzEUnGd7d8NKSNyAO1AgcQ/K1Ei5AAXKOUgfpaahRsoduAH0FBEfxWv7Mc+rIFAqEq/W9rM943ljW1QVxxSHI0tYLpf3bGcH4hch5zybTqcHoVer1cwIanD9uEETKMkJWv6N8vdAw35nsXNsXY0Bxe1VA8OGlBLMyNYpPAQ+K8TAogji4AgwjCIjWkc8tJSKMayzyortao56tiKCbfGIJNMkGOygSCZFMeTEuVG1YcMwDJWtJ7mjZBFbXeBlJK5AmzNQMI3UUlAxhv0h6NpcVXh+TbAUPBUx58ahqONo5hqPnj6lqPsE533BKXM4ablb23GhYELCvnP4ShFFRl8mXYAMsk9wJhET7tNLQTDp2sLs+WDONAaOa5xPiO/mg5nYjQQ7E5+eX7A1g+jYJ4c2RWBWKStLJjP3Qg94WFQBrG8u/pr48EqZTKHESFCxRIF6R4iQejw8Qe7MoO1+eWCXwYK3u8t/3ULD7C7SYj6fH/wW5Njn/C3AAGZG6t+dQqFoAAAAAElFTkSuQmCC" .
     <http://example/files/f2.png> <cmwell://meta/sys#mimeType> "image/png" .
     <http://example/files/f2.png> <cmwell://meta/nn#someField> "some value" .
 ```
@@ -118,7 +118,7 @@ format | The format in which the triples are provided | json, jsonl, jsonld, n3,
 ### Results
 
 ```
-    {"success":true}
+{"success":true}
 ```
 
 !!! note

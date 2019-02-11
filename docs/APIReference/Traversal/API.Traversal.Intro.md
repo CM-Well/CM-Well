@@ -6,7 +6,7 @@ As you know by now, CM-Well is a linked data repository. This means that CM-Well
 
 Infoton field values can be links to infotons, or in other words, URIs of other infotons. For example, if an infoton represents CompanyA, and in its **hasImmediateParent** field there's a URI pointing to CompanyB, then CompanyA is said to have an outbound link to CompanyB, and CompanyB has an inbound link from CompanyA.
 
-<img src="../../_Images/Outbound-and-inbound-links.png">
+![image](../../_Images/Outbound-and-inbound-links.png)
 
 If we have the CompanyA infoton and we want to find its parent company, we can retrieve it by following the outbound link in CompanyA's **hasImmediateParent** field. On the other hand, if we want to find CompanyA's child companies, we could follow inbound links from other infotons' **hasImmediateParent** fields that point to CompanyA.
 
@@ -16,7 +16,7 @@ CM-Well's graph structure allows you to discover direct and indirect connections
 
 For example, in the following graph, circles represent infotons and black arrows represent their inbound and outbound links with each other. The green arrows show a directed path from A (the orange infoton) to B (the pink infoton).
 
-<img src="../../_Images/GraphTraversal.png">
+![image](../../_Images/GraphTraversal.png)
 
 To arrive from A to B we traverse:
 

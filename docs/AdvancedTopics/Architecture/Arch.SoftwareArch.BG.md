@@ -36,7 +36,7 @@ A CM-Well cluster with N nodes has N Kafka Partitions, and N BgActors. Each BgAc
 
 The following diagram illustrates the interactions that occur for read and write requests, among WS, BG and GS-Logic and their sub-modules (as described in the sections above).
 
-<img src="../../_Images/read-and-write-processes.png" align="middle">
+![image](../../_Images/read-and-write-processes.png)
 
 ### BG Process Internals
 
@@ -47,6 +47,6 @@ Note that:
 - Each BG instance processes ingest commands of a single partition of the Kafka queue (or "topic", as the queue is called in Kafka terminology). See Storage Architecture to learn more about storage architecture in detail.
 - On each CM-Well node, normally there is only one active BG service, with two more BG service instances in standby mode, for redundancy purposes. The two standby instances are allocated for processing the previous and next Kafka partitions, relative to the node's default partition. They only become active in case a BG service on another machine fails.
 
-<img src="../../_Images/bg-internal-processes.png" align="middle">
+![image](../../_Images/bg-internal-processes.png)
 
  

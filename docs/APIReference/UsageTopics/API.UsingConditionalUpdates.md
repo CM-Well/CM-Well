@@ -7,7 +7,7 @@ If you want to make sure that an infoton has not changed between the time that y
 To provide the infoton's UUID, you add a triple with the following format to your update request:
 
 ```
-    <Infoton URI> <cmwell://meta/sys#prevUUID> <Infoton UUID>
+<Infoton URI> <cmwell://meta/sys#prevUUID> <Infoton UUID>
 ```
 
 For example:
@@ -15,13 +15,13 @@ For example:
 **Request:**
 
 ```
-    <cm-well-host>/_in?format=ntriples
+<cm-well-host>/_in?format=ntriples
 ```
 
 **Input triples:**
 
 ```
-    <http://infoton.int.com/example/1> <cmwell://meta/sys#prevUUId> "afb215df2b6356d8801aq10a6c764d3a" .
+<http://infoton.int.com/example/1> <cmwell://meta/sys#prevUUId> "afb215df2b6356d8801aq10a6c764d3a" .
     <http://infoton.int.com/example/1> <http://infoton.int.com/object/name> "My New Name" .
 ```
 

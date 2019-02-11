@@ -26,7 +26,7 @@ In the call's payload, you first supply a triple that deletes the sub-graph, and
 **Template:**
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data 
+curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data 
     '<> <cmwell://meta/sys#replaceGraph> <graph to replace>.
     <quads to add>'
 ```
@@ -36,13 +36,13 @@ In the call's payload, you first supply a triple that deletes the sub-graph, and
 **Curl example (REST API):**
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary @curlInput.txt
+curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary @curlInput.txt
 ```
 
 ### File Contents
 
 ```
-    <> <cmwell://meta/sys#replaceGraph> <http://MyOntology/MovieGoers>. 
+<> <cmwell://meta/sys#replaceGraph> <http://MyOntology/MovieGoers>. 
     <http://example.org/movies/ET> <http://MyOntology/Score> "10" <http://MyOntology/MovieGoers>.
     <http://example.org/movies/GoneWithTheWind> <http://MyOntology/Score> "10" <http://MyOntology/MovieGoers>.
     <http://example.org/movies/TheAvenger> <http://MyOntology/Score> "10" <http://MyOntology/MovieGoers>.
@@ -59,13 +59,13 @@ priority | If this flag appears in an update call, that call receives priority r
 ### Call
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary @curlInput.txt
+curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary @curlInput.txt
 ```
 
 ### File Contents
 
 ```
-    <> <cmwell://meta/sys#replaceGraph> <http://MyOntology/MovieGoers>. 
+<> <cmwell://meta/sys#replaceGraph> <http://MyOntology/MovieGoers>. 
     <http://example.org/movies/ET> <http://MyOntology/Score> "10" <http://MyOntology/MovieGoers>.
     <http://example.org/movies/GoneWithTheWind> <http://MyOntology/Score> "10" <http://MyOntology/MovieGoers>.
     <http://example.org/movies/TheAvenger> <http://MyOntology/Score> "10" <http://MyOntology/MovieGoers>.

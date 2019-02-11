@@ -14,13 +14,13 @@
 **Curl command:**
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ntriples" -H "Content-Type: text/plain" --data-binary @inputfile.txt
+curl -X POST "<cm-well-host>/_in?format=ntriples" -H "Content-Type: text/plain" --data-binary @inputfile.txt
 ```
 
 **Input file contents:**
 
 ```
-    <http://exercise/JohnSmith> <http://www.w3.org/2006/vcard/ns#GENDER> "Male" .
+<http://exercise/JohnSmith> <http://www.w3.org/2006/vcard/ns#GENDER> "Male" .
     <http://exercise/JohnSmith> <http://www.w3.org/2006/vcard/ns#FN> "John Smith" .
     <http://exercise/JohnSmith> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2006/vcard/ns#Individual> .
     <http://exercise/JaneSmith> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2006/vcard/ns#Individual> .
@@ -31,7 +31,7 @@
 **Response:**
 
 ```
-    {"success":true}
+{"success":true}
 ```
 
 <a name="hdr2"></a>
@@ -42,13 +42,13 @@
 **Curl command:**
 
 ```
-    curl "<cm-well-host>/exercise/JaneSmith?format=json&pretty"
+curl "<cm-well-host>/exercise/JaneSmith?format=json&pretty"
 ```
 
 **Response:**
 
 ```
-    {
+{
       "type" : "ObjectInfoton",
       "system" : {
     	"uuid" : "8efaa16a187376ea6663b1882e371d5d",
@@ -74,20 +74,20 @@
 **Curl command:**
 
 ```
-    curl -X POST "<cm-well-host>/_out?format=json&pretty" -H "Content-Type: text/plain" --data-binary @inputfile.txt
+curl -X POST "<cm-well-host>/_out?format=json&pretty" -H "Content-Type: text/plain" --data-binary @inputfile.txt
 ```
-    
+
 **Input file contents:**
 
 ```
-    /exercise/JohnSmith
+/exercise/JohnSmith
     /exercise/JaneSmith
 ```
 
 **Response:**
 
 ```
-    {  
+{  
      "type":"RetrievablePaths",
      "infotons":[  
         {  

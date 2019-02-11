@@ -5,16 +5,16 @@ In CM-Well, it's legal for a single field to have more than one value.
 Here is an example where **someField** has 2 values:
 
 ```
-    <http://example.org/my/infoton> <http://ont.example.org/v1.0/ns#someField> "value#1" .
+<http://example.org/my/infoton> <http://ont.example.org/v1.0/ns#someField> "value#1" .
     <http://example.org/my/infoton> <http://ont.example.org/v1.0/ns#someField> "value#2" .
 ```
-    
+
 Suppose we want to preserve **value#1** and delete **value#2**.
 
 One way to do it is with the **markReplace** operator:
 
 ```
-    <http://example.org/my/infoton> <cmwell://meta/sys#markReplace> <http://ont.example.org/v1.0/ns#someField> .
+<http://example.org/my/infoton> <cmwell://meta/sys#markReplace> <http://ont.example.org/v1.0/ns#someField> .
     <http://example.org/my/infoton> <http://ont.example.org/v1.0/ns#someField> "value#1" .
 ```
 
@@ -24,7 +24,7 @@ This command deletes all the values in **someField** and writes **value#1** to *
 The other way is to use the **markDelete** operator to specifically delete the unwanted value:
 
 ```
-    <http://example.org/my/infoton> <cmwell://meta/sys#markDelete> _:anon .
+<http://example.org/my/infoton> <cmwell://meta/sys#markDelete> _:anon .
     _:anon <http://ont.example.org/v1.0/ns#someField> "value#2" .
 ```
 

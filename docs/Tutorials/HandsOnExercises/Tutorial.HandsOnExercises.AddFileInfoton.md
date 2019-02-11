@@ -9,13 +9,13 @@
 **Curl command:**
 
 ```
-    curl -X POST <cm-well-host>/exercise/files/test.png -H "X-CM-WELL-TYPE: FILE" -H "Content-Type: image/png" --data-binary @"c:\mypath\test.png"
+curl -X POST <cm-well-host>/exercise/files/test.png -H "X-CM-WELL-TYPE: FILE" -H "Content-Type: image/png" --data-binary @"c:\mypath\test.png"
 ```
 
 **Response:**
 
 ```
-    {"success":true}
+{"success":true}
 ```
 
 ## Host an HTML Page in CM-Well
@@ -36,12 +36,12 @@ The most basic HTML file is, of course, hello world. Create a new file on your f
 Publish to CM-Well
 
 ```
-    curl -X POST <cm-well-host>/exercise/files/hello.html -H "X-CM-WELL-TYPE: FILE" -H "Content-Type: text/html" --data-binary @"hello.html"
+curl -X POST <cm-well-host>/exercise/files/hello.html -H "X-CM-WELL-TYPE: FILE" -H "Content-Type: text/html" --data-binary @"hello.html"
 ```
 
 Now navigate to the page in your browser:
 
-<img src="../../_Images/hello_world.png"/>
+![image](../../_Images/hello_world.png)
 
 Two more complex examples, a [query builder](../../examples/search_builder.html), and a [D3 integration](../../examples/visualizer/index.html), can be found in the examples directory.
 

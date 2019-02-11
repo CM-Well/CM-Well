@@ -10,7 +10,7 @@ If a search operation is not behaving as expected, you may want to examine the p
 To do this, add the **debug-info** flag to the query, as follows:
 
 ```
-    curl "<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Disney&debug-info&format=yaml&pretty&length=1" 
+curl "<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Disney&debug-info&format=yaml&pretty&length=1" 
 ```
 
 !!! note
@@ -19,7 +19,7 @@ To do this, add the **debug-info** flag to the query, as follows:
 The response then contains the **searchQueryStr** attribute, as follows:
 
 ```
-    pagination:
+pagination:
     next: http://cm-well-prod.int.thomsonreuters.com/permid.org?op=search&format=yaml&from=2018-02-09T15%3A11%3A11.160Z&to=2018-02-09T15%3A11%3A11.160Z&qp=CommonName.mdaas%3ADisney&length=1&offset=1
     last: http://cm-well-prod.int.thomsonreuters.com/permid.org?op=search&format=yaml&from=2018-02-09T15%3A11%3A11.160Z&to=2018-02-09T15%3A11%3A11.160Z&qp=CommonName.mdaas%3ADisney&length=1&offset=15464
     self: http://cm-well-prod.int.thomsonreuters.com/permid.org?op=search&format=yaml&from=2018-02-09T15%3A11%3A11.160Z&to=2018-02-09T15%3A11%3A11.160Z&qp=CommonName.mdaas%3ADisney&length=1&offset=0
@@ -97,7 +97,7 @@ You can add the **verbose** flag to SPARQL queries, to see a timed breakdown of 
 For example, if you add the **verbose** flag to this query:
 
 ```
-    curl -X POST "<cm-well-host>/_sp?format=ascii&verbose" -H "Content-Type:text/plain" --data-binary '
+curl -X POST "<cm-well-host>/_sp?format=ascii&verbose" -H "Content-Type:text/plain" --data-binary '
     PATHS
     /permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&with-data&xg=hasImmediateParent.mdaas>_
 
@@ -111,7 +111,7 @@ For example, if you add the **verbose** flag to this query:
 You get this response:
 
 ```
-    Time metrics:
+Time metrics:
     Start        End          Duration     Type     Task                                                             # lines
     00:00:00.002 00:00:00.258 00:00:00.256 Subgraph /permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownershi... 141
     00:00:00.264 00:00:00.272 00:00:00.008 SPARQL   SELECT * WHERE { ?infoton <http://ont.thomsonreuters.com/mdaa... 3
@@ -145,7 +145,7 @@ You can add the **show-graph** parameter to SPARQL queries, in order to see the 
 For example, this call:
 
 ```
-    curl -X POST "<cm-well-host>/_sp?format=ascii&show-graph" --data-binary '
+curl -X POST "<cm-well-host>/_sp?format=ascii&show-graph" --data-binary '
     PATHS
     /example.org/Individuals?op=search&length=1000&with-data
     /example.org/Individuals/RonaldKhun
@@ -159,7 +159,7 @@ For example, this call:
 \- produces these results:
 
 ```
-    Graph:
+Graph:
     <http://example.org/Individuals/DonaldDuck> <http://purl.org/vocab/relationship/knowsByReputation> <http://example.org/Individuals/MartinOdersky> .
     <http://example.org/Individuals/DonaldDuck> <http://www.tr-lbd.com/bold#active> "true" .
     <http://example.org/Individuals/DonaldDuck> <http://purl.org/vocab/relationship/mentorOf> <http://example.org/Individuals/JohnSmith> .
@@ -214,25 +214,25 @@ You can test the validity of your RDF input's syntax by adding the **dry-run** f
 For example, if you add the **dry-run** flag to this call:
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ttl&dry-run" -H "Content-Type: text/plain" --data-binary "<http://example/Individuals/SantaClaus> a <http://data.com/Person>."
+curl -X POST "<cm-well-host>/_in?format=ttl&dry-run" -H "Content-Type: text/plain" --data-binary "<http://example/Individuals/SantaClaus> a <http://data.com/Person>."
 ```
    
 \- you get this response:
 
 ```
-    {"success":true,"dry-run":true}
+{"success":true,"dry-run":true}
 ```
 
 For this call:
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ttl&dry-run" -H "Content-Type: text/plain" --data-binary "<http://example/Individuals/SantaClaus> is_a <http://data.com/Person>."
+curl -X POST "<cm-well-host>/_in?format=ttl&dry-run" -H "Content-Type: text/plain" --data-binary "<http://example/Individuals/SantaClaus> is_a <http://data.com/Person>."
 ```
 
 \- you get this response:
 
 ```
-    {"success":false,"error":"[line: 1, col: 42] Unrecognized: is_a"}
+{"success":false,"error":"[line: 1, col: 42] Unrecognized: is_a"}
 ```
 
 <a name="hdr5"></a>
@@ -246,13 +246,13 @@ You can obtain the processing time for a call to CM-Well, by adding the **-v** f
 For example, this call:
 
 ```
-    curl -v "<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Coca%20Cola&length=1&format=ttl"
+curl -v "<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Coca%20Cola&length=1&format=ttl"
 ```
 
  \- returns this response:
 
 ```
-    *   Trying 163.231.74.90...
+*   Trying 163.231.74.90...
     * Connected to cm-well-host.com (163.231.74.90) port 80 (#0)
     > GET /permid.org?op=search&qp=CommonName.mdaas:Coca%20Cola&length=1&format=ttl HTTP/1.1
     > Host: cm-well-host.com

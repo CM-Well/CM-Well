@@ -29,13 +29,13 @@ Both methods are described in the following sections.
 **Template:**
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=<format>" --data-binary @curlInput.txt
+curl -X POST "<cm-well-host>/_in?format=<format>" --data-binary @curlInput.txt
 ```
 
 ### File Contents
 
 ```
-    <LinkPath> <cmwell://meta/sys#type> "LinkInfoton" .
+<LinkPath> <cmwell://meta/sys#type> "LinkInfoton" .
     <LinkPath> <cmwell://meta/sys#linkTo> <TargetInfotonPath> .
     <LinkPath> <cmwell://meta/sys#linkType> "<LinkType>"^^<http://www.w3.org/2001/XMLSchema#int> .
 ```
@@ -45,13 +45,13 @@ Both methods are described in the following sections.
 **Curl example (REST API):**
 
 ```
-    curl -X POST "<cm-well-host>/in?format=ttl" --data-binary @curlInput.txt
+curl -X POST "<cm-well-host>/in?format=ttl" --data-binary @curlInput.txt
 ```
 
 ### File Contents
 
 ```
-    <http://people/BillSmith> <cmwell://meta/sys#type> "LinkInfoton" .
+<http://people/BillSmith> <cmwell://meta/sys#type> "LinkInfoton" .
     <http://people/BillSmith> <cmwell://meta/sys#linkTo> <http://people/WilliamSmith> .
     <http://people/BillSmith> <cmwell://meta/sys#linkType> "1"^^<http://www.w3.org/2001/XMLSchema#int> .
 ```
@@ -69,13 +69,13 @@ Parameter | Description | Values
 ### Call
 
 ```
-    curl -X POST "<cm-well-host>/in?format=ttl" --data-binary @curlInput.txt
+curl -X POST "<cm-well-host>/in?format=ttl" --data-binary @curlInput.txt
 ```
 
 ### File Contents
 
 ```
-    <http://people/BillSmith> <cmwell://meta/sys#type> "LinkInfoton" .
+<http://people/BillSmith> <cmwell://meta/sys#type> "LinkInfoton" .
     <http://people/BillSmith> <cmwell://meta/sys#linkTo> <http://people/WilliamSmith> .
     <http://people/BillSmith> <cmwell://meta/sys#linkType> ""^^<http://www.w3.org/2001/XMLSchema#int> .
 ```
@@ -83,7 +83,7 @@ Parameter | Description | Values
 ### Results
 
 ```
-    {"success":true}
+{"success":true}
 ```
 
 ## Syntax 2
@@ -99,7 +99,7 @@ Parameter | Description | Values
 **Template:**
 
 ```
-    curl -X POST <cm-well-host>/linkInfotonPath -H "X-CM-WELL-TYPE:LN" -d <targetInfotonPath> -H "X-CM-WELL-LINK-TYPE:2"
+curl -X POST <cm-well-host>/linkInfotonPath -H "X-CM-WELL-TYPE:LN" -d <targetInfotonPath> -H "X-CM-WELL-LINK-TYPE:2"
 ```
 
 !!! note
@@ -110,7 +110,7 @@ Parameter | Description | Values
 **Curl example (REST API):**
 
 ```
-    curl -X POST <cm-well-host>/example.org/JohnnySmith -H "X-CM-WELL-TYPE:LN" -H "X-CM-WELL-LINK-TYPE:2" -d "http://example.org/JohnSmith"
+curl -X POST <cm-well-host>/example.org/JohnnySmith -H "X-CM-WELL-TYPE:LN" -H "X-CM-WELL-LINK-TYPE:2" -d "http://example.org/JohnSmith"
 ```
 
 ## Parameters 2
@@ -128,11 +128,11 @@ X-CM-WELL-LINK-TYPE | An optional header that specifies the link type. If not sp
 ### Call
 
 ```
-    curl -X POST <cm-well-host>/example.org/JohnnySmith -H "X-CM-WELL-TYPE:LN" -H "X-CM-WELL-LINK-TYPE:2" -d "http://example.org/JohnSmith"
+curl -X POST <cm-well-host>/example.org/JohnnySmith -H "X-CM-WELL-TYPE:LN" -H "X-CM-WELL-LINK-TYPE:2" -d "http://example.org/JohnSmith"
 ```
 
 ### Results
 
 ```
-    {"success":true}
+{"success":true}
 ```

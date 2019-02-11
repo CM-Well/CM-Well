@@ -30,13 +30,13 @@ There are three types of purge operations:
 **Template:**
 
 ```
-    curl -X GET <cm-well-host>/<InfotonPath>?op=<purge operation>
+curl -X GET <cm-well-host>/<InfotonPath>?op=<purge operation>
 ```
 
 **URL example:** 
 
 ```
-    <cm-well-host>/example.org/Individuals/JohnSmith?op=purge-all
+<cm-well-host>/example.org/Individuals/JohnSmith?op=purge-all
     <cm-well-host>/example.org/Individuals/JohnSmith?op=purge-history
     <cm-well-host>/example.org/Individuals/JohnSmith?op=purge-last
 ```
@@ -44,11 +44,11 @@ There are three types of purge operations:
 **Curl example (REST API):**
 
 ```
-    curl -X GET "<cm-well-host>/example.org/Individuals/JohnSmith?op=purge-all"
+curl -X GET "<cm-well-host>/example.org/Individuals/JohnSmith?op=purge-all"
     curl -X GET "<cm-well-host>/example.org/Individuals/JohnSmith?op=purge-history"
     curl -X GET "<cm-well-host>/example.org/Individuals/JohnSmith?op=purge-last"
 ```
-    
+
 ## Special Parameters
 
 Parameter | Description 
@@ -63,13 +63,13 @@ op=purge-last | Requests the purge-last operation
 ### Call
 
 ```
-    curl -X GET "<cm-well-host>/example.org/Individuals/JohnSmith?op=purge-all"
+curl -X GET "<cm-well-host>/example.org/Individuals/JohnSmith?op=purge-all"
 ```
 
 ### Results
 
 ```
-    {"success":true}
+{"success":true}
 ```
 
 ## Related Topics

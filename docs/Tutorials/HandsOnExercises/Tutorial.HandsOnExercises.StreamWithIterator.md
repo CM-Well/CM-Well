@@ -13,7 +13,7 @@
 **Curl command:**
 
 ```
-    Curl "<cm-well-host>/permid.org?op=create-iterator&session-ttl=60000"
+Curl "<cm-well-host>/permid.org?op=create-iterator&session-ttl=60000"
 ```
 
 **Response:**
@@ -31,13 +31,13 @@
 **Curl command:**
 
 ```
-    Curl "<cm-well-host>/permid.org?op=next-chunk&format=text&iterator-id=YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjE3Ny4xOjQ4ODMxL3VzZXIvJGJkYiMtMTc4MTcxOTQwMA"
+Curl "<cm-well-host>/permid.org?op=next-chunk&format=text&iterator-id=YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjE3Ny4xOjQ4ODMxL3VzZXIvJGJkYiMtMTc4MTcxOTQwMA"
 ```
 
 **Response: (truncated)**
 
 ```
-    /permid.org/1-21568482685
+/permid.org/1-21568482685
     /permid.org/1-21580881855
     /permid.org/1-21581865726
     /permid.org/1-21575060029

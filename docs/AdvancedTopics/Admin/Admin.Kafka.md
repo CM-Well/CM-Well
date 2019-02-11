@@ -41,7 +41,7 @@ If you are consuming a different topic, and you know that its messages are also 
 **Template:**
 
 ```
-    curl -X GET "<cm-well-host>/_kafka/<topicName>/<partitionNumber>" -H X-CM-Well-Token:<admin-token>
+curl -X GET "<cm-well-host>/_kafka/<topicName>/<partitionNumber>" -H X-CM-Well-Token:<admin-token>
 ```
 
 **URL example:** ```<cm-well-host>/_kafka/persist_topic/0?format=text```
@@ -49,7 +49,7 @@ If you are consuming a different topic, and you know that its messages are also 
 **Curl example (REST API):**
 
 ```
-    curl -X GET "<cm-well-host>/_kafka/persist_topic/0?format=text" -H X-CM-Well-Token:<admin-token>
+curl -X GET "<cm-well-host>/_kafka/persist_topic/0?format=text" -H X-CM-Well-Token:<admin-token>
 ```
 
 ## Parameters
@@ -65,13 +65,13 @@ format | Optional. The only valid value is **text**; i.e. the parameter must app
 ### Call
 
 ```
-    curl "http://<cm-well-host>/_kafka/persist_topic/0?offset=604&max-length=3" -H X-CM-Well-Token:<admin-token>
+curl "http://<cm-well-host>/_kafka/persist_topic/0?offset=604&max-length=3" -H X-CM-Well-Token:<admin-token>
 ```
 
 ### Results
 
 ```
-    WriteCommand(ObjectInfoton(/meta/auth/users,lh,None,2018-06-25T13:32:48.935Z,None,),None,None)
+WriteCommand(ObjectInfoton(/meta/auth/users,lh,None,2018-06-25T13:32:48.935Z,None,),None,None)
     WriteCommand(ObjectInfoton(/meta/logs/version-history,lh,None,2018-06-25T13:32:49.040Z,None,),None,None)
     WriteCommand(ObjectInfoton(/meta/auth,lh,None,2018-06-25T13:32:48.935Z,None,),None,None)
 ```

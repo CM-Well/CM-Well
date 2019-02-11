@@ -23,7 +23,7 @@ For example, you can search for all organizations under the permid.org branch of
 **Template:**
 
 ```
-    <cm-well-path>?op=search&qp=<fieldConditions>&<otherParameters...>
+<cm-well-path>?op=search&qp=<fieldConditions>&<otherParameters...>
 ```
 
 **URL example:**
@@ -33,7 +33,7 @@ For example, you can search for all organizations under the permid.org branch of
 **Curl example (REST API):**
 
 ```
-    Curl -X GET <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Coca%20Cola&length=1&format=n3&with-data
+Curl -X GET <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Coca%20Cola&length=1&format=n3&with-data
 ```
 
 ## Code Example
@@ -41,13 +41,13 @@ For example, you can search for all organizations under the permid.org branch of
 ### Call
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Coca%20Cola&length=1&format=n3&with-data
+<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Coca%20Cola&length=1&format=n3&with-data
 ```
 
 ### Results
 
 ```
-    @prefix nn:<cm-well-host/meta/nn#> .
+@prefix nn:<cm-well-host/meta/nn#> .
     @prefix mdaas: <http://ont.com/mdaas/> .
     @prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
     @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .

@@ -27,7 +27,7 @@ The **consume** API does not support a guaranteed chunk length (number of infoto
 **Template:**
 
 ```
-    <cm-well-host>/<cm-well-path>?op=create-consumer
+<cm-well-host>/<cm-well-path>?op=create-consumer
 ```
 
 **URL example:** N/A
@@ -35,7 +35,7 @@ The **consume** API does not support a guaranteed chunk length (number of infoto
 **Curl example (REST API):**
 
 ```
-    curl -vX GET '<cm-well-host>/example.org/Individuals?op=create-consumer'
+curl -vX GET '<cm-well-host>/example.org/Individuals?op=create-consumer'
 ```
 
 ## Syntax 2
@@ -51,7 +51,7 @@ The **consume** API does not support a guaranteed chunk length (number of infoto
 **Template:**
 
 ```
-    <cm-well-host>/<cm-well-path>?op=create-consumer
+<cm-well-host>/<cm-well-path>?op=create-consumer
 ```
 
 **URL example:** N/A
@@ -59,7 +59,7 @@ The **consume** API does not support a guaranteed chunk length (number of infoto
 **Curl example (REST API):**
 
 ```
-    curl -vX POST <cm-well-host>/permid.org?op=create-consumer -H "Content-Type:application/x-www-form-urlencoded" --data-binary "index-time=123456789&qp=\*type.rdf::http://permid.org/ontology/organization/Organization,\*type.rdf::http://ont.com/mdaas/Organization"
+curl -vX POST <cm-well-host>/permid.org?op=create-consumer -H "Content-Type:application/x-www-form-urlencoded" --data-binary "index-time=123456789&qp=\*type.rdf::http://permid.org/ontology/organization/Organization,\*type.rdf::http://ont.com/mdaas/Organization"
 ```
 
 !!! note
@@ -76,7 +76,7 @@ index-time | An optional parameter that contains the time from which you want to
 ### Call
 
 ```
-    curl -vX GET '<cm-well-host>/example.org/Individuals?op=create-consumer'
+curl -vX GET '<cm-well-host>/example.org/Individuals?op=create-consumer'
 ```
 
 !!! note
@@ -85,7 +85,7 @@ index-time | An optional parameter that contains the time from which you want to
 ### Results
 
 ```
-    < HTTP/1.1 200 OK
+< HTTP/1.1 200 OK
     < Content-Type: text/plain; charset=utf-8
     < X-CM-WELL-POSITION: -AAteJwzqDGoMTE0MDI1NjS0BIEa_dSKxNyCnFS9_KJ0fc-8lMyyzJTSxJzimpoa
     < X-CMWELL-Hostname: michael-laptop

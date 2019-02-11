@@ -24,13 +24,13 @@ versions-limit | You can provide a numeric value to this parameter, in order to 
 Request:
 
 ```
-    <cm-well-host>/example.com/2-9B50FC1DEBB771CABB59ADEA33CBA034F82435BA3D1FD6A6CFA97F2273172E54?op=x-verify
+<cm-well-host>/example.com/2-9B50FC1DEBB771CABB59ADEA33CBA034F82435BA3D1FD6A6CFA97F2273172E54?op=x-verify
 ```
 
 Response:
 
 ```
-    {"type":"SimpleResponse","success":true}
+{"type":"SimpleResponse","success":true}
 ```
 
 ## The x-info Function
@@ -46,7 +46,7 @@ You can examine this information to detect indexing and storage problems.
 Request:
 
 ```
-    <cm-well-host>/11-123RT12?op=x-info
+<cm-well-host>/11-123RT12?op=x-info
 ```
 
 Response:
@@ -116,7 +116,7 @@ versions-limit | You can provide a numeric value to this parameter, in order to 
 Request (using the **reactive** flag):
 
 ```
-    <cm-well-host>/example.com/2-9B50FC1DEBB771CABB59ADEA33CBA034F82435BA3D1FD6A6CFA97F2273172E54?op=x-fix&reactive
+<cm-well-host>/example.com/2-9B50FC1DEBB771CABB59ADEA33CBA034F82435BA3D1FD6A6CFA97F2273172E54?op=x-fix&reactive
 ```
 
 Response:

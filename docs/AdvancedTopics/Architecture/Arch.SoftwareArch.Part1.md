@@ -48,7 +48,7 @@ The following diagram shows a logical view of the CM-Well modules. (See the tabl
 	- There may be several Health Control (HC) modules.
 	- The underlying packages in the Grid Storage subsystem can be modified and added to in the future, without changing the subsystem's interface.
 
-<img src="../../_Images/logical-view.png" align="middle">
+![image](../../_Images/logical-view.png)
 
 #### Physical View
 
@@ -61,6 +61,6 @@ The following diagram shows a physical view of the CM-Well modules running on a 
 - JVMs of different modules are isolated to enhance robustness.
 - The nodes and the system as a whole are self-managed and self-healing, continually checking the health of all components and performing the required terminations, restarts and failovers in case of failures.
 
-<img src="../../_Images/physical-view.png" align="middle">
+![image](../../_Images/physical-view.png)
 
  

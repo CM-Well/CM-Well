@@ -27,7 +27,7 @@ CM-Well does not manage in-memory queues for infotons waiting to be processed. I
 
 The image below illustrates how virtual queues work. Each circle represents an infoton, while its number represents its timestamp (simplified to an integer for the illustration). Infotons are stored and indexed by timestamp. Queries by timestamp (and optionally other filters) return "chunks" of infotons, whose timestamp is smaller than or equal to the requested timestamp. (Note that each chunk is not necessarily sorted internally by timestamp.) If a batch process (such as streaming) is interrupted, all the client has to do is to resume the request, starting from the last timestamp that was successfully processed.
 
-<img src="../../_Images/virtual-queue.png" align="middle">
+![image](../../_Images/virtual-queue.png)
 
 ## Efficient Directory Structure
 

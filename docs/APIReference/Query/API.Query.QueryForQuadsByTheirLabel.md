@@ -21,7 +21,7 @@ You can retrieve all quads with a certain label with one query to CM-Well.
 **Template:**
 
 ```
-    <cm-well-path>?op=search&recursive&qp=quad.system::<quadValue>
+<cm-well-path>?op=search&recursive&qp=quad.system::<quadValue>
 ```
 
 **URL example:**
@@ -33,7 +33,7 @@ You can retrieve all quads with a certain label with one query to CM-Well.
 **Curl example (REST API):**
 
 ```
-    curl <cm-well-host>/example.org?op=search&recursive&qp=quad.system::http://MyOrgs/Startups
+curl <cm-well-host>/example.org?op=search&recursive&qp=quad.system::http://MyOrgs/Startups
 ```
 
 ## Code Example
@@ -41,13 +41,13 @@ You can retrieve all quads with a certain label with one query to CM-Well.
 ### Call
 
 ```
-    curl "<cm-well-host>/example.org/movies?op=search&recursive&format=ttl&qp=quad.system::http://MyOntology/NewYorkTimes"
+curl "<cm-well-host>/example.org/movies?op=search&recursive&format=ttl&qp=quad.system::http://MyOntology/NewYorkTimes"
 ```
 
 ### Results
 
 ```
-    @prefix nn:<cm-well-host/meta/nn#> .
+@prefix nn:<cm-well-host/meta/nn#> .
     @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
     @prefix sys:   <cm-well-host/meta/sys#> .
     

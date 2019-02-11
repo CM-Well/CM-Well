@@ -5,7 +5,7 @@
 
 The CM-Well web interface is a graphical user interface for accessing CM-Well through your browser. When you browse to the root URI of a CM-Well instance, you see this page:
 
-<img src="../../_Images/new-web-ui.png"/>
+![image](../_Images/new-web-ui.png)
 
 Using the CM-Well web interface, you can browse among the CM-Well folders and infotons, run queries and get results, and examine the query results. Anyone with network access to CM-Well can browse to its web UI; this requires no special permissions.
 
@@ -33,7 +33,7 @@ A path to an infoton contains the CM-Well host, the sub-folders and the infoton'
 
 You can browse to an infoton by entering its path in a browser address bar.
 
-<img src="../_Images/new-ui-address-bar.png"/>
+![image](../_Images/new-ui-address-bar.png)
 
 ---------------------------------
 <a name="hdr5"></a>
@@ -45,7 +45,7 @@ If the URI refers to a single infoton, the results page shows that infoton's fie
 
 If there are sub-folders or infotons under the URI in the address bar, they are displayed as a list on the left of the results page.
 
-<img src="../../_Images/new-ui-list-of-infotons.png"/>
+![image](../_Images/new-ui-list-of-infotons.png)
 
 Clicking on the URI of a folder or infoton displays the page for the selected folder or infoton.
 
@@ -58,7 +58,7 @@ Clicking on the URI of a folder or infoton displays the page for the selected fo
 
 When a single infoton's URI appears in the browser address bar, the CM-Well web interface shows that infoton's page.
 
-<img src="../../_Images/new-ui-single-infoton.png"/>
+![image](../_Images/new-ui-single-infoton.png)
 
 On this page, you can see the infoton's field names and values.
 
@@ -68,7 +68,7 @@ On this page, you can see the infoton's field names and values.
 
 For some infotons, you may notice that some fields have a blue graph icon. This indicates that these fields are part of a sub-graph, or in other words, have been given a label.  (See [Working with Named Sub-Graphs](../DeveloperGuide/DevGuide.WorkingWithNamedSub-Graphs.md) to learn more.) You can see the label value by hovering over this icon.
 
-<img src="../../_Images/new-ui-sub-graph.png"/>
+![image](../_Images/new-ui-sub-graph.png)
 
 ---------------------------------
 <a name="hdrFormat"></a>
@@ -76,13 +76,13 @@ For some infotons, you may notice that some fields have a blue graph icon. This 
 
 At the top of the infoton view, you can see the **View in format** dropdown menu. This allows you to see the infoton fields in the triples format of your choice.
 
-<img src="../../_Images/new-ui-format-dropdown.png"/>
+![image](../_Images/new-ui-format-dropdown.png)
 
 To view the infoton in one of the triples formats:
 
 Select one of the values from the **View in format** dropdown menu. A new browser tab opens, displaying the infoton triples in the format you selected.
 
-<img src="../../_Images/new-ui-ntriple-format.png"/>
+![image](../_Images/new-ui-ntriple-format.png)
 
 ---------------------------------
 <a name="hdrSysInfo"></a>
@@ -92,7 +92,7 @@ Infotons have two types of fields: user-defined data fields (also known as "obje
 
 By default, system field are hidden in the infoton view. You can show or hide these fields by clicking on the (i) button on the left of the page.
 
-<img src="../../_Images/new-ui-system-info.png"/>
+![image](../_Images/new-ui-system-info.png)
 
 ---------------------------------
 <a name="hdrFF"></a>
@@ -103,9 +103,9 @@ Using the favorite field controls in the infoton view, you can choose to display
 To display only your favorite fields:
 
 1. Click the stars to the left of the fields you want to display. Selected stars are highlighted in yellow.
-   <img src="../../_Images/new-ui-show-all.png"/>
+   ![image](../_Images/new-ui-show-all.png)
 2. Move the slider over the fields to the **Only Favorites** position. Only the selected fields are displayed.
-   <img src="../../_Images/new-ui-show-favorites.png"/>
+   ![image](../_Images/new-ui-show-favorites.png)
 
 !!! note
 	The favorite field settings apply to all infotons regardless of type, and are saved for your user and browser. They are retained for your user between browser sessions as long as you don't clear the browser data.
@@ -116,7 +116,7 @@ To display only your favorite fields:
 
 Clicking on the Home button at the top left navigates to the CM-Well root URI.
 
-<img src="../../_Images/new-ui-home-button.png"/>
+![image](../_Images/new-ui-home-button.png)
 
 ---------------------------------
 <a name="hdr7"></a>
@@ -124,7 +124,7 @@ Clicking on the Home button at the top left navigates to the CM-Well root URI.
 
 Clicking on the HELP link at the top right displays the Table of Contents page for the CM-Well help documentation.
 
-<img src="../../_Images/new-ui-help-button.png"/>
+![image](../_Images/new-ui-help-button.png)
 
 ---------------------------------
 <a name="hdrOldUI"></a>
@@ -132,7 +132,7 @@ Clicking on the HELP link at the top right displays the Table of Contents page f
 
 If you prefer to use the previous version of the CM-Well web UI, you can click on the **Use old UI** link at the top right of the page.
 
-<img src="../../_Images/new-ui-use-old-ui.png"/>
+![image](../_Images/new-ui-use-old-ui.png)
 
 !!! note
 	See [Old CM-Well Web Interface](CM-Well.OldWebInterface.md) to learn more about how to use the old UI.
@@ -143,11 +143,11 @@ If you prefer to use the previous version of the CM-Well web UI, you can click o
 
 When there is more than one sub-folder or infoton under the URI in the address bar, the results are displayed in a list on the left of the page. A message above the results list shows how many results are displayed on this page.
 
-<img src="../../_Images/new-ui-nof-results.png"/>
+![image](../_Images/new-ui-nof-results.png)
 
 If there are many results, you can use the scrollbar to the right of the list to scroll down. The UI loads additional infotons for viewing as you scroll down the list.
 
-<img src="../../_Images/new-ui-scrollbar.png"/>
+![image](../_Images/new-ui-scrollbar.png)
 
 ---------------------------------
 <a name="hdr17"></a>
@@ -155,12 +155,12 @@ If there are many results, you can use the scrollbar to the right of the list to
 
 The CM-Well search controls appear at the top of the page.
 
-<img src="../../_Images/new-ui-search-controls.png"/>
+![image](../_Images/new-ui-search-controls.png)
 
 To search for a value in all infoton fields:
 
 1. Select a folder to search in from the dropdown menu. You can also choose **Search all folders**.
-   <img src="../../_Images/new-ui-search-folder.png"/>
+   ![image](../_Images/new-ui-search-folder.png)
 1. Type the value you want to search for in the edit box on the left.
 2. Click the **Search** button. Search results are displayed in a list on the left.
 
@@ -172,21 +172,21 @@ Sometimes you may want to retrieve infotons according to their RDF type. For ins
 
 At the top of the page in the CM-Well web interface, you can see the type section. This displays all the RDF types of all the infotons retrieved by the current URL (which may or may not include query parameters). After each type, the number of infotons of that type is displayed in parentheses.
 
-<img src="../../_Images/new-ui-type-section.png"/>
+![image](../_Images/new-ui-type-section.png)
 
 To show only a specific type, click on the type name in the type section.
 
-<img src="../../_Images/new-ui-type-click-on-person.png"/>
+![image](../_Images/new-ui-type-click-on-person.png)
 
 The list of infotons is filtered to show only the selected type.
 
 To expand the type section to display all types, click the down arrow at the right-hand side of the type section.
 
-<img src="../../_Images/new-ui-type-down-arrow.png"/>
+![image](../_Images/new-ui-type-down-arrow.png)
 
 The type section expands to show all available types.
 
-<img src="../../_Images/new-ui-type-expanded.png"/>
+![image](../_Images/new-ui-type-expanded.png)
 
 You can click the up-arrow on the right to hide all type lines but the first.
 
@@ -200,7 +200,7 @@ You can run simple CM-Well queries by entering them in your browser's address ba
 
 The simplest kind of query is one that retrieves a single infoton (which could also be a folder infoton). The infoton is retrieved by its URI.
 
-<img src="../../_Images/new-ui-single-infoton.png"/>
+![image](../_Images/new-ui-single-infoton.png)
 
 You can also add query parameters to the address line, to retrieve several results while applying filters to their field values. For example, the following query searches for infotons under the permid.org folder (these are mainly Organization entities), which are located in New York state: 
 
@@ -235,7 +235,7 @@ The Display Name configuration infoton must be placed in **/meta/dn/\<HASH\>**, 
 In addition, it should have at least one field with the **displayName** prefix. The field values define the string that should be added to the displayed link for infotons of the given type. The values are either the name of a field that usually appears in the infoton, or a javascript snippet that defines a manipulation of such fields.
 
 For example:
-<img src="../../_Images/infoton-link-configuration-for-person.png"/>
+![image](../_Images/infoton-link-configuration-for-person.png)
 
 In this example, **displayName1** and **displayName2** refer to name fields that usually appear in Person infotons. **displayNameA** and **displayNameB** contain javascript snippets that define concatenations of such fields and string constants.
 
@@ -251,5 +251,5 @@ In the example that appears above, **displayNameA** would be the first to be cal
 
 This is what the configured Person links look like:
 
-<img src="../../_Images/configured-person-links.png"/>
+![image](../_Images/configured-person-links.png)
 

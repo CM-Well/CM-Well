@@ -9,7 +9,7 @@ CM-Well is part of Thomson Reuters' Big Open Linked Data initiative. For a break
 
 ## Big Data
 
-<img src="../_Images/bigdata.jpg">
+![image](../_Images/bigdata.jpg)
 
 Big data is just what it sounds like: very large data sets. These sets are so large or complex that traditional data processing applications have a hard time handling them. Big data sets pose challenges related to many aspects of data processing, including capture, storage, transfer, sharing, curation, search, query, analysis, visualization and privacy. 
 
@@ -24,7 +24,7 @@ Thomson Reuters is a staunch supporter of open data principles, as exemplified b
 
 ## Linked Data
 
-<img src="../_Images/LinkedData.jpg">
+![image](../_Images/LinkedData.jpg)
 
 Linked data is a method of publishing structured data so that it can be interlinked and become more useful through semantic queries. It utilizes standard Web technologies such as HTTP, RDF and URIs, but rather than using them to serve web pages for human readers, it extends them to share information in a way that can be read automatically by computers. 
 
@@ -37,7 +37,7 @@ CM-Well data is represented as a graph database. A graph database is modeled as 
 
 Here is an example of a simple graph that might be part of a larger graph database:
 
-<img src="../_Images/small-graph-database.png">
+![image](../_Images/small-graph-database.png)
 
 Some advantages of graph databases vs. relational databases are:
 
@@ -67,7 +67,7 @@ Here is an example of a CM-Well URI: [http://cm-well-host.com/permid.org/1-50359
 Here is an example of an RDF \<subject, predicate, object\> triple:
 
 ```
-    <http://example/superheroes/spiderman> <http://www.perceive.net/schemas/relationship/enemyOf> <http://example/superheroes/green-goblin>
+<http://example/superheroes/spiderman> <http://www.perceive.net/schemas/relationship/enemyOf> <http://example/superheroes/green-goblin>
 ```
 
 RDF is a logical standard, which can be implemented by several different syntactical formats. 
@@ -84,7 +84,7 @@ See [CM-Well Input and Output Formats](..\APIReference\UsageTopics\API.InputAndO
 ## CM-Well Infotons
 CM-Well uses a data structure nicknamed "infoton". An infoton is the set of all the triples associated with a single subject entity. The data is still logically structured as a set of separate triples, but the infoton is physically stored together with the set of its predicate-subject relationships, like this:
 
-<img src="../_Images/Infoton.png" align="middle">
+![image](../_Images/Infoton.png)
 
 By “flattening” the physical model in this way, CM-Well is able to more easily scale to very large numbers of triples, as it becomes easier to store the data horizontally across many more servers.
 

@@ -26,7 +26,7 @@ Both methods are described in the following sections.
 **Template:**
 
 ```
-    curl -X POST <cm-well-host>/<cm-well-path>?data=<field name and values to delete, in JSON format>
+curl -X POST <cm-well-host>/<cm-well-path>?data=<field name and values to delete, in JSON format>
 ```
 
 **URL example:** N/A
@@ -34,7 +34,7 @@ Both methods are described in the following sections.
 **Curl example (REST API):**
 
 ```
-    curl -X DELETE '<cm-well-host>/example.org/JohnSmith?data={"name":["John","Johnnie"]}'
+curl -X DELETE '<cm-well-host>/example.org/JohnSmith?data={"name":["John","Johnnie"]}'
 ```
    
 ## Parameters 1
@@ -49,13 +49,13 @@ priority | If this flag appears in an update call, that call receives priority r
 ### Call
 
 ```
-    curl -X DELETE '<cm-well-host>/example.org/JohnSmith?data={"name":["John","Johnnie"]}'
+curl -X DELETE '<cm-well-host>/example.org/JohnSmith?data={"name":["John","Johnnie"]}'
 ```
 
 ### Results
 
 ```
-    {"success":true}
+{"success":true}
 ```
 
 ## Syntax 2 (#markDelete Indicator)
@@ -71,7 +71,7 @@ priority | If this flag appears in an update call, that call receives priority r
 **Template:**
 
 ```
-    curl -X POST <cm-well-host>/_in?format=<format> <infotonURI> <cmwell://meta/sys#markDelete> [ <field name and value pairs> ]
+curl -X POST <cm-well-host>/_in?format=<format> <infotonURI> <cmwell://meta/sys#markDelete> [ <field name and value pairs> ]
 ```
 
 **URL example:** N/A
@@ -79,13 +79,13 @@ priority | If this flag appears in an update call, that call receives priority r
 **Curl example (REST API):**
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=turtle" --data-binary @curlInput.txt
+curl -X POST "<cm-well-host>/_in?format=turtle" --data-binary @curlInput.txt
 ```
 
 ### File Contents
 
 ```
-    @prefix vcard: <http://www.w3.org/2006/vcard/ns#> .
+@prefix vcard: <http://www.w3.org/2006/vcard/ns#> .
     <http://example.org/Individuals/JohnSmith>
     <cmwell://meta/sys#markDelete> [
       vcard:EMAIL <mailto:jane.smith@example.org> ;
@@ -105,7 +105,7 @@ priority | If this flag appears in an update call, that call receives priority r
 ### Call
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=turtle" --data-binary @curlInput.txt
+curl -X POST "<cm-well-host>/_in?format=turtle" --data-binary @curlInput.txt
 ```
 
 ### File Contents
@@ -113,7 +113,7 @@ priority | If this flag appears in an update call, that call receives priority r
 **Triples:**
 
 ```
-    @prefix vcard: <http://www.w3.org/2006/vcard/ns#> .
+@prefix vcard: <http://www.w3.org/2006/vcard/ns#> .
     <http://example.org/Individuals/JohnSmith>
     <cmwell://meta/sys#markDelete> [
       vcard:EMAIL <mailto:jane.smith@example.org> ;
@@ -123,7 +123,7 @@ priority | If this flag appears in an update call, that call receives priority r
 **Quads:**
 
 ```
-    @prefix vcard: <http://www.w3.org/2006/vcard/ns#> .
+@prefix vcard: <http://www.w3.org/2006/vcard/ns#> .
     <http://example.org/Individuals/JohnSmith>
     <cmwell://meta/sys#markDelete> [
       vcard:EMAIL <mailto:jane.smith@example.org> <http://mySubGraph>;
@@ -133,7 +133,7 @@ priority | If this flag appears in an update call, that call receives priority r
 ### Results
 
 ```
-    {"success":true}
+{"success":true}
 ```
 
 !!! note

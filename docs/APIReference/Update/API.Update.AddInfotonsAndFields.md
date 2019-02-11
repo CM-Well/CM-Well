@@ -7,7 +7,7 @@ CM-Well allows you to create your own infotons and triples as well as read exist
 When you add a field and its value, you add a triple with this format:
 
 ```
-    <infotonURI> <fieldID> <fieldValue>
+<infotonURI> <fieldID> <fieldValue>
 ```
 
 If the first value does not refer to an existing infoton, the call will create both a new infoton and its field value. The fieldID must be in URI format (see [Field Name Formats](../../APIReference/UsageTopics/API.FieldNameFormats.md)).
@@ -28,7 +28,7 @@ If the first value does not refer to an existing infoton, the call will create b
 **Template:**
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=<format>" --data-binary <triples to add>
+curl -X POST "<cm-well-host>/_in?format=<format>" --data-binary <triples to add>
 ```
 
 **URL example:** N/A
@@ -36,13 +36,13 @@ If the first value does not refer to an existing infoton, the call will create b
 **Curl example (REST API):**
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ttl" -H "Content-Type: text/plain" --data-binary @curlInput.txt
+curl -X POST "<cm-well-host>/_in?format=ttl" -H "Content-Type: text/plain" --data-binary @curlInput.txt
 ```
 
 ### File Contents
 
 ```
-    <http://data.com/1-12345678> a <http://data.com/Person>; 
+<http://data.com/1-12345678> a <http://data.com/Person>; 
     <http://ont.com/bermuda/hasName> "Fred Fredson" .
 ```
 
@@ -57,13 +57,13 @@ priority | If this flag appears in an update call, that call receives priority r
 ### Call
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ttl" -H "Content-Type: text/plain" --data-binary @curlInput.txt
+curl -X POST "<cm-well-host>/_in?format=ttl" -H "Content-Type: text/plain" --data-binary @curlInput.txt
 ```
 
 ### File Contents
 
 ```
-    <http://example.org/Individuals/FredFredson> a <http://data.com/Person>; 
+<http://example.org/Individuals/FredFredson> a <http://data.com/Person>; 
     <http://ont.com/bermuda/hasName> "Fred Fredson" .
 ```
 
@@ -72,7 +72,7 @@ priority | If this flag appears in an update call, that call receives priority r
 The result of the call above will simply be a success code. We can see the new infoton by running the following command:
 
 ```
-    curl -X GET "<cm-well-host>/example.org/Individuals/FredFredson?format=ttl"
+curl -X GET "<cm-well-host>/example.org/Individuals/FredFredson?format=ttl"
     
     @prefix nn:<cm-well-host>/meta/nn#> .
     @prefix bermuda: <http://ont.com/bermuda/> .

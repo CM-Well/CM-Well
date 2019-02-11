@@ -124,13 +124,13 @@ For example, the sparqlToRoot query could include the following SELECT command:
 Let’s say that for a certain path, the results were ```language=Japanese, orgId=613, country=Japan```. Then the **_sp** invocation for materialization will be with the following query parameters: 
 
 ```
-	/_sp?sp.language=Japanese&sp.orgId=613&sp.country=Japan
+/_sp?sp.language=Japanese&sp.orgId=613&sp.country=Japan
 ```
 
 The **sparqlMaterializer** query might also include those variables in the body of the SPARQL CONSTRUCT request, like so:
 
 ```sql
-	… WHERE { ?cmpUri ont:locatedIn %country% ; ont:speaksLanguage %language% . } ...
+… WHERE { ?cmpUri ont:locatedIn %country% ; ont:speaksLanguage %language% . } ...
 ```
 
 ## Controlling the SPARQL Triggered Processor Job
@@ -145,7 +145,7 @@ When you have created the YAML configuration file and are ready to apply it, you
 Here is an example of a command that uploads a SPARQL configuration file:
 
 ```
-    curl -X POST "<cm-well-host>/meta/sys/agents/sparql/MyCompanyMaterializedView" -H "X-CM-WELL-TYPE: FILE" -H "Content-Type: text/yaml" --data-binary @my-config.yaml -H X-CM-WELL-TOKEN:<accessToken>
+curl -X POST "<cm-well-host>/meta/sys/agents/sparql/MyCompanyMaterializedView" -H "X-CM-WELL-TYPE: FILE" -H "Content-Type: text/yaml" --data-binary @my-config.yaml -H X-CM-WELL-TOKEN:<accessToken>
 ```
 
 Uploading the configuration file causes CM-Well to read the file and run the SPARQL Triggered Processor agent on it. CM-Well polls periodically for changes to this file and applies the changes when they're detected.
@@ -153,7 +153,7 @@ Uploading the configuration file causes CM-Well to read the file and run the SPA
 If you want to stop the job and delete its configuration permanently, delete the configuration location, for example:
 
 ```
-    curl -X DELETE <cm-well-host>/meta/sys/agents/sparql/MyCompanyMaterializedView
+curl -X DELETE <cm-well-host>/meta/sys/agents/sparql/MyCompanyMaterializedView
 ```
 
 !!! note
@@ -168,7 +168,7 @@ To temporarily pause and restart the SPARQL job, you can toggle the value of thi
 **Pause the job:**
 
 ```
-    curl "<cm-well-host>/_in?format=ntriples&replace-mode" -H X-CM-WELL-TOKEN:<accessToken> --data-binary "
+curl "<cm-well-host>/_in?format=ntriples&replace-mode" -H X-CM-WELL-TOKEN:<accessToken> --data-binary "
     <cmwell://meta/sys/agents/sparql/MyCompanyMaterializedView> <cmwell://meta/nn#active> \"false\"^^<http://www.w3.org/2001/XMLSchema#boolean> .
     "
 ```
@@ -179,7 +179,7 @@ To temporarily pause and restart the SPARQL job, you can toggle the value of thi
 **Restart the job:**
 
 ```
-    curl "<cm-well-host>/_in?format=ntriples&replace-mode" -H X-CM-WELL-TOKEN:<accessToken> --data-binary "
+curl "<cm-well-host>/_in?format=ntriples&replace-mode" -H X-CM-WELL-TOKEN:<accessToken> --data-binary "
     <cmwell://meta/sys/agents/sparql/MyCompanyMaterializedView> <cmwell://meta/nn#active> \"true\"^^<http://www.w3.org/2001/XMLSchema#boolean> .
     "
 ```
@@ -188,7 +188,7 @@ To temporarily pause and restart the SPARQL job, you can toggle the value of thi
 
 In the SPARQL Triggered Processor monitoring page, you can view the status and processing metrics of all SPARQL agent jobs. To see the monitoring page, browse to `proc/stp.md` on the CM-Well host machine.
 
-<img src="../../_Images/SPARQLTriggerProcessorMonitoringPage.png">
+![image](../../_Images/SPARQLTriggerProcessorMonitoringPage.png)
 
 These are the details displayed in the table for each sensor:
 

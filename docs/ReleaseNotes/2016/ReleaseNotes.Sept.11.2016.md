@@ -173,11 +173,11 @@ A new feature has been added to the CM-Well Web UI, which allows you to easily r
 
 To activate the feature, click the **T** button to the right of the Home button.
 
-<img src="../../_Images/type-button.png"/>
+![image](../../_Images/type-button.png)
 
 This displays the RDF types that are found in the current CM-Well path, and their counts.
 
-<img src="../../_Images/types-and-counts.png"/>
+![image](../../_Images/types-and-counts.png)
 
 Clicking on a type name retrieves only infotons that have the chosen RDF type.
 

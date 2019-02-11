@@ -17,13 +17,13 @@ When creating a new CM-Well user, you can use the **generate-password** API to g
 ### Call
 
 ```
-    curl <cm-well-host>/_auth?op=generate-password
+curl <cm-well-host>/_auth?op=generate-password
 ```
 
 ### Results
 
 ```
-    {"password":"t0OlrZGEM9","encrypted":"$2a$10$7AnXsjks.IZXTbpRiAGN4OQItwiz4sgxM49lvTiCjWgOhbbOQkg2m"}
+{"password":"t0OlrZGEM9","encrypted":"$2a$10$7AnXsjks.IZXTbpRiAGN4OQItwiz4sgxM49lvTiCjWgOhbbOQkg2m"}
 ```
 
 ## Related Topics

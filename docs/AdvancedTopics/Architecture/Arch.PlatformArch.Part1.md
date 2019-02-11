@@ -21,7 +21,7 @@ COMING SOON (diagram of grid services and how they spawn and interact with each 
 
 CM-Well's management of infoton updates and storage is complex and involves several 3rd-party packages and distributed storage paradigms. The following diagram and table describe the architecture of these mechanisms.
 
-<img src="../../_Images/storage-architecture.png" align="middle">
+![image](../../_Images/storage-architecture.png)
 <br/>
 
 | **Element** | **Contents** | **Logical Representation** | **Physical Representation** |

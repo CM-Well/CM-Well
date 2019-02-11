@@ -16,7 +16,7 @@ Retrieve multiple infotons, by URI, in the same query.
 **Template:**
 
 ```
-    <CMWellHost>/_out?format=<format> -d <infoton path data>
+<CMWellHost>/_out?format=<format> -d <infoton path data>
 ```
 
 **URL example:** N/A
@@ -26,13 +26,13 @@ Retrieve multiple infotons, by URI, in the same query.
 Plain text input:
 
 ```
-    curl -X POST <cm-well-host>/_out?format=ntriples -H "Content-Type: text/plain" -d "/example.org/JohnSmith"
+curl -X POST <cm-well-host>/_out?format=ntriples -H "Content-Type: text/plain" -d "/example.org/JohnSmith"
 ```
 
 JSON input:
 
 ```
-    curl -X POST <cm-well-host>/_out?format=ntriples -H "Content-Type: application/json" -d ' { "type":"InfotonPaths", "paths":[ "/example.org/JohnSmith", "/example.org/JaneSmith" ] }'
+curl -X POST <cm-well-host>/_out?format=ntriples -H "Content-Type: application/json" -d ' { "type":"InfotonPaths", "paths":[ "/example.org/JohnSmith", "/example.org/JaneSmith" ] }'
 ```
 
 ## Code Example
@@ -40,20 +40,20 @@ JSON input:
 ### Call
 
 ```
-    curl -X POST <cm-well-host>/_out?format=ntriples -H "Content-Type: text/plain" --data-binary @curlInput.txt
+curl -X POST <cm-well-host>/_out?format=ntriples -H "Content-Type: text/plain" --data-binary @curlInput.txt
 ```
 
 ### File Contents
 
 ```
-    /example.org/JohnSmith
+/example.org/JohnSmith
     /example.org/JaneSmith
 ```
 
 ### Results
 
 ```
-    _:BretrievablePaths <cm-well-host/meta/sys#infotons> <http://example.org/Individuals/JohnSmith> .
+_:BretrievablePaths <cm-well-host/meta/sys#infotons> <http://example.org/Individuals/JohnSmith> .
     _:BretrievablePaths <cm-well-host/meta/sys#irretrievablePaths> "/example.org/Individuals/JaneSmith" .
     _:BretrievablePaths <cm-well-host/meta/sys#size> "1"^^<http://www.w3.org/2001/XMLSchema#int> .
     _:BretrievablePaths <cm-well-host/meta/sys#type> "RetrievablePaths" .

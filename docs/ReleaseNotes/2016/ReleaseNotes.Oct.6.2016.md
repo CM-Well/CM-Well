@@ -49,7 +49,7 @@ CM-Well documentation topics include:
 
 To access the CM-Well documentation root table-of-contents, click the HELP link at the top-right of the CM-Well web page.
 
-<img src="../../_Images/cm-well-help-link.png"/>
+![image](../../_Images/cm-well-help-link.png)
 
 
 **Documentation:** N/A.

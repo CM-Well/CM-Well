@@ -9,13 +9,13 @@ The CM-Well information is modeled as triples in an RDF repository. (See [CM-Wel
 
 The repository is conceptually a graph, with nodes representing subjects and objects, and edges representing predicates. Some of the graph nodes represent entities, such as organizations or people, while some are simple types such as a name string or date value.
 
-<img src="../_Images/small-graph-database.png">
+![image](../_Images/small-graph-database.png)
 
 To best serve CM-Well's use cases, information is not retrieved at the triple level, but rather at the **infoton** level. An infoton is an information object representing an entity (such as an organization, instrument, quote or person) and its attributes (the subject entity's predicates and objects). 
 
 (Infotons are similar to UML objects, or RDBMS Entity-Relationship models.)
 
-<img src="../_Images/Infoton-Architecture.png">
+![image](../_Images/Infoton-Architecture.png)
 
 <a name="hdr3"></a>
 ## The CM-Well Grid
@@ -24,7 +24,7 @@ Each CM-Well system is contained within a single data center, and has a grid arc
 
 Every data item has a replication factor of 3, that is, it is saved in 3 copies over different machines. If one machine fails, other machines take over seamlessly. Once the machine is back online, data is copied to it so that full replication is restored.
 
-<img src="../_Images/cmwell-grid.png">
+![image](../_Images/cmwell-grid.png)
 
 !!! note
 	There is no failover among data centers in case one center becomes inaccessible. The production environment at Eagan, MN performs an automatic copy of its data to the production environment at Plano, TX, providing a backup in case of critical failure.
@@ -34,7 +34,7 @@ Every data item has a replication factor of 3, that is, it is saved in 3 copies 
 
 The following diagram and table describe the modules running on each CM-Well node.
 
-<img src="../_Images/cmwell-architecture.png">
+![image](../_Images/cmwell-architecture.png)
 
 
 Module | Description

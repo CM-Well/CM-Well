@@ -15,7 +15,7 @@ To specify several field values as search filters, add all the name-value pairs 
 For example, to find companies in Open PermID with addresses in Rochester, NY, you could use the following query:
 
 ```
-    <cm-well-host>/permid.org/?op=search&qp=organizationCity.mdaas:Rochester,organizationStateProvince.mdaas:New%20York
+<cm-well-host>/permid.org/?op=search&qp=organizationCity.mdaas:Rochester,organizationStateProvince.mdaas:New%20York
 ```
 
 This will return organizations that are located both in a city named Rochester, and in the state of New York.
@@ -29,7 +29,7 @@ CM-Well query syntax does not support an "OR" operator, but instead it supports 
 For example, to search for companies that have an address in Rochester, NY, and optionally have an address in Las Vegas, NV, you can use this query:
 
 ```
-    <cm-well-host>/permid.org/?op=search&qp=[organizationCity.mdaas:Rochester,organizationStateProvince.mdaas:New%20York],*[organizationCity.mdaas:Las%20Vegas,organizationStateProvince.mdaas:Nevada]
+<cm-well-host>/permid.org/?op=search&qp=[organizationCity.mdaas:Rochester,organizationStateProvince.mdaas:New%20York],*[organizationCity.mdaas:Las%20Vegas,organizationStateProvince.mdaas:Nevada]
 ```
 
 !!! tip
@@ -42,7 +42,7 @@ This query returns all organizations that have an address in Rochester NY, and a
 If we make the Rochester address optional, and Las Vegas mandatory, the query looks like this:
 
 ```
-    <cm-well-host>/permid.org/?op=search
+<cm-well-host>/permid.org/?op=search
     &qp=*[organizationCity.mdaas:Rochester,organizationStateProvince.mdaas:New%20York],
     [organizationCity.mdaas:Las%20Vegas,organizationStateProvince.mdaas:Nevada]
 ```
@@ -52,7 +52,7 @@ Now the query returns all organizations that have an address in Las Vegas NV, an
 If we make both conditions optional, the query looks like this:
 
 ```
-    <cm-well-host>/permid.org/?op=search
+<cm-well-host>/permid.org/?op=search
     &qp=*[organizationCity.mdaas:Rochester,organizationStateProvince.mdaas:New%20York],*[organizationCity.mdaas:Las%20Vegas,organizationStateProvince.mdaas:Nevada]
 ```
 
@@ -67,13 +67,13 @@ Preceding a field condition with the - character creates a NOT condition; that i
 For example, the following query returns all organizations that have an address in New York state, but *not* in the city of Rochester:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=organizationStateProvince.mdaas:New%20York,-[organizationCity.mdaas:Rochester]
+<cm-well-host>/permid.org?op=search&qp=organizationStateProvince.mdaas:New%20York,-[organizationCity.mdaas:Rochester]
 ```
 
 The - operator can be also used to test for the non existence of a field. For example, the following query returns all organizations that have a province of New York but no city defined:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=organizationStateProvince.mdaas:New%20York,-organizationCity.mdaas:
+<cm-well-host>/permid.org?op=search&qp=organizationStateProvince.mdaas:New%20York,-organizationCity.mdaas:
 ```
  
 <a name="hdr2"></a>
@@ -85,7 +85,7 @@ All of the queries we’ve defined up to this point return results whose field v
 For example, let's try searching for the name string "Thomson Corp" as follows:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Thomson%20Corp,type.rdf:Organization
+<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Thomson%20Corp,type.rdf:Organization
 ```
 
 This returns several results whose CommonName field contains "Thomson Corp" as a sub-string. This includes "Thomson Corp", "Thomson Corp Delaware, Inc.", "Thomson Corp Medical Education", "Standard Thomson Corp" and so on.
@@ -95,7 +95,7 @@ This returns several results whose CommonName field contains "Thomson Corp" as a
 Suppose you're only interested in retrieving the Thomson Corp parent company, or in other words, you want to perform an **exact match** on the "Thomson Corp" value.  To do this, change the single colon '**:**' in the query parameter to a double colon '**::**' as follows:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas::Thomson%20Corp,type.rdf:Organization&with-data
+<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas::Thomson%20Corp,type.rdf:Organization&with-data
 ```
 
 The query returns only one result, with the CommonName value of “Thomson Corp”.  
@@ -109,7 +109,7 @@ Suppose you’re not entire sure how "Thomson" is spelled.  For instance, it cou
 To perform a fuzzy match search, replace the colon ':' with a tilde '~', as follows:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas~Thomson%20Corp,type.rdf:Organization&with-data
+<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas~Thomson%20Corp,type.rdf:Organization&with-data
 ```
 
 This returns results that are somewhat similar to your search string. For instance, the fuzzy-matched values could have additional characters to the query value, or less characters, or a few changed characters.
@@ -127,13 +127,13 @@ To narrow down the result set, you can specify a filter that lists the fields yo
 For example, let’s query for Thomson Reuters in Open Permid data, but specifiy that we only want to receive the name of the company, and the year it was founded. The query would look like this:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas::Thomson%20Corp,type.rdf:Organization&fields=CommonName.mdaas,organizationFoundedYear.mdaas&with-data 
+<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas::Thomson%20Corp,type.rdf:Organization&fields=CommonName.mdaas,organizationFoundedYear.mdaas&with-data 
 ```
 
 The results would then be:
 
 ```
-    @prefix mdaas: <http://ont.thomsonreuters.com/mdaas/> .
+@prefix mdaas: <http://ont.thomsonreuters.com/mdaas/> .
     @prefix sys:   <http://cm-well-ppe.int.thomsonreuters.com/meta/sys#> .
     @prefix nn:<http://cm-well-ppe.int.thomsonreuters.com/meta/nn#> .
     @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
@@ -163,7 +163,7 @@ So far our query examples have used field values of the string type. But CM-Well
 Suppose we want to search for all the organizations that were founded after the year 2014. We could use this query:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=organizationFoundedYear.mdaas>2014,type.rdf:Organization&with-data&format=ttl
+<cm-well-host>/permid.org?op=search&qp=organizationFoundedYear.mdaas>2014,type.rdf:Organization&with-data&format=ttl
 ```
 
 !!! note
@@ -191,9 +191,9 @@ You can choose to retrieve all historical versions of an infoton. To do this, in
 For example:
 
 ```
-    <cm-well-host>/data.com/2-a6165f1cadc6b7d592e27384ca5d58733b7a4a249b1d4bd935800ebfa59fae63?with-history&format=ttl 
+<cm-well-host>/data.com/2-a6165f1cadc6b7d592e27384ca5d58733b7a4a249b1d4bd935800ebfa59fae63?with-history&format=ttl 
 ```
-    
+
 This query returns at least two versions of the entity's infoton. 
 
 !!! note

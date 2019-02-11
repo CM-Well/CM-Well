@@ -31,7 +31,7 @@ Up to 1 million results are returned in each chunk. The **X-CM-WELL-N** header i
 **Template:**
 
 ```
-    <cm-well-host>/_bulk-consume?position=<position identifier>
+<cm-well-host>/_bulk-consume?position=<position identifier>
 ```
 
 **URL example:** N/A
@@ -39,7 +39,7 @@ Up to 1 million results are returned in each chunk. The **X-CM-WELL-N** header i
 **Curl example (REST API):**
 
 ```
-    curl -vX GET <cm-well-host>/_bulk-consume?position=eQA5eJwzNDE1sDQ3NDI0tjQ2rjGoMTE0MDI1NjS0BIEa_dSKxNyCnFS9_KJ0fc-8lMyyzJTSxJzimpoa&format=json
+curl -vX GET <cm-well-host>/_bulk-consume?position=eQA5eJwzNDE1sDQ3NDI0tjQ2rjGoMTE0MDI1NjS0BIEa_dSKxNyCnFS9_KJ0fc-8lMyyzJTSxJzimpoa&format=json
 ```
 
 ## Special Parameters
@@ -57,13 +57,13 @@ parallelism | The number of threads used for concurrent streaming. | Positive in
 ### Call
 
 ```
-    curl -vX GET <cm-well-host>/_bulk-consume?position=eQA5eJwzNDE1sDQ3NDI0tjQ2rjGoMTE0MDI1NjS0BIEa_dSKxNyCnFS9_KJ0fc-8lMyyzJTSxJzimpoa&format=json&to-hint=1425817923290
+curl -vX GET <cm-well-host>/_bulk-consume?position=eQA5eJwzNDE1sDQ3NDI0tjQ2rjGoMTE0MDI1NjS0BIEa_dSKxNyCnFS9_KJ0fc-8lMyyzJTSxJzimpoa&format=json&to-hint=1425817923290
 ```
 
 ### Results
 
 ```
-    < HTTP/1.1 200 OK
+< HTTP/1.1 200 OK
     < Transfer-Encoding: chunked
     < X-CM-WELL-N: 592421
     < X-CMWELL-BG: O

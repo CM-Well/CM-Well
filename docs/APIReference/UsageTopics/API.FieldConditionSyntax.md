@@ -3,7 +3,7 @@
 The following sections describe how to create simple and complex conditions on infoton field values. The conditions appear in the value of the **qp** parameter, as follows:
 
 ```
-    <cmwellhost>/<path>?op=search&qp=<field conditions>
+<cmwellhost>/<path>?op=search&qp=<field conditions>
 ```
 
 <a name="hdr1"></a>
@@ -12,7 +12,7 @@ The following sections describe how to create simple and complex conditions on i
 A single condition's syntax is:
 
 ```
-    (FieldOperator) FieldName ComparisonOperator FieldValue
+(FieldOperator) FieldName ComparisonOperator FieldValue
 ```
 
 These are the components of the condition:
@@ -89,7 +89,7 @@ To apply multiple field conditions, add several condition to the query, separate
 This query returns organization infotons with a city value of "Rochester" and a state value of "New York".
 
 ```
-    <cm-well-host>/permid.org/?op=search&qp=organizationCity.mdaas:Rochester,organizationStateProvince.mdaas:New%20York
+<cm-well-host>/permid.org/?op=search&qp=organizationCity.mdaas:Rochester,organizationStateProvince.mdaas:New%20York
 ```
 
 <a name="hdr5"></a>
@@ -100,13 +100,13 @@ CM-Well query syntax does not support an "OR" operator, but instead it supports 
 For example, to search for organizations that have an address in New York state, and *optionally* have an address in Nevada, you can use this query:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=organizationStateProvince.mdaas:New%20York,*organizationStateProvince.mdaas:Nevada
+<cm-well-host>/permid.org?op=search&qp=organizationStateProvince.mdaas:New%20York,*organizationStateProvince.mdaas:Nevada
 ```
 
 If you make *both* state conditions optional, the query will return organizations that have an address either in New York state or in Nevada:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=*organizationStateProvince.mdaas:New%20York,*organizationStateProvince.mdaas:Nevada
+<cm-well-host>/permid.org?op=search&qp=*organizationStateProvince.mdaas:New%20York,*organizationStateProvince.mdaas:Nevada
 ```
 
 The * operator does not precisely translate to "optional", as the query above means that *at least one* of the conditions must be met. Thus, the effect is the same as putting a Boolean OR operator between the two conditions.
@@ -119,7 +119,7 @@ To specify that a certain condition *should not* be met, you can precede the con
 For example, to retrieve all organizations that *do not* have an address in New York state, you could run the following query:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=-organizationStateProvince.mdaas:New%20York
+<cm-well-host>/permid.org?op=search&qp=-organizationStateProvince.mdaas:New%20York
 ```
 
 <a name="hdr7"></a>
@@ -130,7 +130,7 @@ You may want to apply a - or * operator to several conditions. To do this, surro
 For example, to retrieve all organizations whose address is neither in New York state nor in California, you could run the following query:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=-[organizationStateProvince.mdaas:New%20York,organizationStateProvince.mdaas:California]
+<cm-well-host>/permid.org?op=search&qp=-[organizationStateProvince.mdaas:New%20York,organizationStateProvince.mdaas:California]
 ```
 
 <a name="hdr8"></a>

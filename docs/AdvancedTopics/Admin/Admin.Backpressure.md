@@ -18,7 +18,7 @@ The **_backpressure** API allows admin users to control the backpressure of CM-W
 **Template:**
 
 ```
-    curl -X POST "<cm-well-host>/_backpressure?pbp=<backpressure mode>"
+curl -X POST "<cm-well-host>/_backpressure?pbp=<backpressure mode>"
 ```
 
 **URL example:** N/A
@@ -26,7 +26,7 @@ The **_backpressure** API allows admin users to control the backpressure of CM-W
 **Curl example (REST API):**
 
 ```
-    curl -X POST "<cm-well-host>/_backpressure?pbp=enable" 
+curl -X POST "<cm-well-host>/_backpressure?pbp=enable" 
 ```
 
 ## Parameters
@@ -40,13 +40,13 @@ pbp | Backpressure mode | **enable** - backpressure is enabled. Requests are rej
 ### Call
 
 ```
-    curl -X POST "<cm-well-host>/_backpressure?pbp=enable"
+curl -X POST "<cm-well-host>/_backpressure?pbp=enable"
 ```
 
 ### Results
 
 ```
-    {"success":true}
+{"success":true}
 ```
 
 

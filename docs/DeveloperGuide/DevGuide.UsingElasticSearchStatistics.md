@@ -27,13 +27,13 @@ Significant Terms | sig | Returns the top N most significant terms in a given fi
 Here is an example of a query that requests a cardinality metric:
 
 ```
-    <cm-well-host>/permid.org?op=stats&ap=type:card,name:MyCurrencyStats,field:iso4217.currency&format=json&pretty
+<cm-well-host>/permid.org?op=stats&ap=type:card,name:MyCurrencyStats,field:iso4217.currency&format=json&pretty
 ```
 
 The query conforms to the following template:
 
 ```
-    <cm-well-host>/<cm-well-path>?op=stats&ap=type:<statsType>,field:<statsField>,name:<outputName>&format=<outputFormat>
+<cm-well-host>/<cm-well-path>?op=stats&ap=type:<statsType>,field:<statsField>,name:<outputName>&format=<outputFormat>
 ```
 
 The placeholders in the template are as follows:
@@ -65,12 +65,12 @@ stats | type:stats[,name:MyName],field(:\|::)MyFieldName | N/A
 Here is an example of a query that requests a "significant terms" query, and then a "terms" query:
 
 ```
-    <cm-well-host>/permid.org?op=stats&ap=type:sig,field::organizationCountryCode.mdaas,size:5<type:term,field::isPublicFlag.mdaas>&format=csv
+<cm-well-host>/permid.org?op=stats&ap=type:sig,field::organizationCountryCode.mdaas,size:5<type:term,field::isPublicFlag.mdaas>&format=csv
 ```
 
 This query runs on the **permid.org** path in CM-Well, obtains the infotons with the top 5 most frequent country codes, and then examines the their **isPublicFlag** field values. The resulting csv file looks like this:
 
-<img src="../_Images/aggtable.png">
+![image](../_Images/aggtable.png)
 
 !!! note
 	When using sub-queries, you can only request a total of 2 queries with the csv format, as a table only has 2 dimensions. For larger numbers of queries, use the json format, which has no limit on its nesting levels.
@@ -84,13 +84,13 @@ This query runs on the **permid.org** path in CM-Well, obtains the infotons with
 **Call:**
 
 ```
-    curl "<cm-well-host>/permid.org?op=stats&ap=type:card,name:MyCurrencyStats,field:iso4217.currency&format=json&pretty"
+curl "<cm-well-host>/permid.org?op=stats&ap=type:card,name:MyCurrencyStats,field:iso4217.currency&format=json&pretty"
 ```
 
 **Response:**
 
 ```
-    {
+{
       "AggregationResponse" : [ {
     	"name" : "MyCurrencyStats",
     	"type" : "CardinalityAggregationResponse",
@@ -111,7 +111,7 @@ This query runs on the **permid.org** path in CM-Well, obtains the infotons with
 **Call:**
 
 ```
-    curl "<cm-well-host>/permid.org?op=stats&ap=type:term,name:MyIncorporatedStats,field::isIncorporatedIn.mdaas,size:10&pretty&format=json"
+curl "<cm-well-host>/permid.org?op=stats&ap=type:term,name:MyIncorporatedStats,field::isIncorporatedIn.mdaas,size:10&pretty&format=json"
 ```
 
 !!! note
@@ -121,7 +121,7 @@ This query runs on the **permid.org** path in CM-Well, obtains the infotons with
 **Response:**
 
 ```
-    {
+{
     "AggregationResponse" : [ {
     "name" : "MyIncorporatedStats",
     "type" : "TermsAggregationResponse",

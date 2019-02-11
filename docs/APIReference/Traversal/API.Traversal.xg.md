@@ -14,13 +14,13 @@ Let's look at an example of how to use the **xg** flag.
 The following query searches for Organization infotons whose name contains "Marriott Ownership" and whose city contains "Orlando":
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&with-data&format=ttl&length=1
+<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&with-data&format=ttl&length=1
 ```
 
 Running the query produces the following single infoton result (truncated for readability):
 
 ```
-    <http://permid.org/1-4294969614>
+<http://permid.org/1-4294969614>
         a                               mdaas:Organization , organization:Organization ;
         mdaas:CIK                       "0001541356" ;
         mdaas:CommonName                "Marriott Ownership Resorts Inc"@en ;
@@ -41,18 +41,18 @@ Running the query produces the following single infoton result (truncated for re
 
 In the infoton retrieved by the query, we can see 3 fields that contain links to other infotons: ```hasImmediateParent```, ```hasRegistrationAuthority``` and ```hasUltimateParent```.
 
-<img src="../../_Images/xg-marriott-outbound.png">
+![image](../../_Images/xg-marriott-outbound.png)
 
 If we wanted to retrieve these outbound link infotons as well, we could use the **xg** flag, as in the following modified query:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&with-data&format=ttl&xg
+<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&with-data&format=ttl&xg
 ```
 
 This produces the following (truncated) results:
 
 ```
-    <http://permid.org/1-4294969614>
+<http://permid.org/1-4294969614>
         a                               mdaas:Organization , organization:Organization ;
         mdaas:CIK                       "0001541356" ;
         mdaas:CommonName                "Marriott Ownership Resorts Inc"@en ;
@@ -148,15 +148,15 @@ Note that these results contain the original infoton result, the 3 Organization 
 Suppose we're only interested in Marriott Ownership Resorts' immediate parent. We can run the following query:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&with-data&format=ttl&xg=hasImmediateParent.mdaas
+<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&with-data&format=ttl&xg=hasImmediateParent.mdaas
 ```
-    
+
 By specifying the field name ```hasImmediateParent``` as the **xg** value, we now constrain the query to return only outbound links contained in the original infoton's ```hasImmediateParent``` field.
 
 If we're interested both in Marriott Ownership Resorts' immediate parent and its ultimate parent, we can specify two field names in the **xg** flag, as follows:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&with-data&format=ttl&xg=hasImmediateParent.mdaas,hasUltimateParent.mdaas
+<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&with-data&format=ttl&xg=hasImmediateParent.mdaas,hasUltimateParent.mdaas
 ```
 
 !!! note

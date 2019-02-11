@@ -87,7 +87,7 @@ You can use the old CM-Well UI to create a user with a convenient GUI.
 2. Enter Edit Mode by clicking on the pencil icon (under the well image to the right).
 3. Navigate to ```/meta/auth/users```.
 4. Click on the **+** sign at the end if the users list. The **Add User** dialog is displayed and a password is generated for the user.
-   <img src="../_Images/old-ui-add-user.png">
+   ![image](../_Images/old-ui-add-user.png)
 1. From the **Password** field, copy and save the password value for your own information.
 2. In the **Username** field, type the new username.
 2. In the **Permissions** field, edit the **paths** field as required.

@@ -67,13 +67,13 @@ You can get started with CM-Well by running some basic write and read operations
 **Curl command:**
 
 ```
-    curl -X POST "http://localhost:8080/_in?format=ntriples" --data-binary @input.txt
+curl -X POST "http://localhost:8080/_in?format=ntriples" --data-binary @input.txt
 ```
 
 **File contents:**
 
 ```
-    <http://example/Individuals/MamaBear> <http://purl.org/vocab/relationship/spouseOf> <http://example/Individuals/PapaBear> .
+<http://example/Individuals/MamaBear> <http://purl.org/vocab/relationship/spouseOf> <http://example/Individuals/PapaBear> .
     <http://example/Individuals/MamaBear> <http://xmlns.com/foaf/0.1/givenName> "Betty".
     <http://example/Individuals/PapaBear> <http://xmlns.com/foaf/0.1/givenName> "Barney".
     <http://example/Individuals/BabyBear1> <http://purl.org/vocab/relationship/childOf> <http://example/Individuals/MamaBear>.
@@ -92,7 +92,7 @@ You can get started with CM-Well by running some basic write and read operations
 **Response:**
 
 ```
-    {"success":true}
+{"success":true}
 ```
 
 ### Read Infotons
@@ -102,7 +102,7 @@ You can get started with CM-Well by running some basic write and read operations
 **Curl command:**
 
 ```
-    curl "http://localhost:8080/example/Individuals?op=search&format=ttl&recursive&with-data"
+curl "http://localhost:8080/example/Individuals?op=search&format=ttl&recursive&with-data"
 ```
 
 **Response:**
@@ -111,7 +111,7 @@ You can get started with CM-Well by running some basic write and read operations
 	The sys namespace and predicates in the response are metadata produced by CM-Well, not user-defined data.
 
 ```
-    @prefix nn:    <http://localhost:8080/meta/nn#> .
+@prefix nn:    <http://localhost:8080/meta/nn#> .
     @prefix foaf:  <http://xmlns.com/foaf/0.1/> .
     @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
     @prefix rel:   <http://purl.org/vocab/relationship/> .
@@ -297,7 +297,7 @@ To run your compiled version of CM-Well:
 1. To install a Personal Edition (single-node installation) instance of CM-Well, run the following commands:
 
     ```
-    :load pe
+:load pe
     pe.install
     ```
 

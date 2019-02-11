@@ -5,13 +5,13 @@ By default, when you query CM-Well under a certain path, CM-Well searches direct
 For example, if the Person infoton `<cm-well-host>/example/Individuals/JohnSmith` exists, and you perform the following query:
 
 ```
-    <cm-well-host>/example?op=search&qp=type.rdf:http://data.com/Person
+<cm-well-host>/example?op=search&qp=type.rdf:http://data.com/Person
 ```
 
 \- no results are returned. But if you add the **recursive** flag as follows:
 
 ```
-    <cm-well-host>/example?op=search&qp=type.rdf:http://data.com/Person&recursive
+<cm-well-host>/example?op=search&qp=type.rdf:http://data.com/Person&recursive
 ```
    
 \- the infoton is returned.

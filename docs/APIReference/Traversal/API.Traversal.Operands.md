@@ -30,19 +30,19 @@ When the **xg** flag appears with no operands, the query results will contain (i
 You can add a numeric traversal level operand to the **xg** flag, which is a value between 1 and 9.
 
 ```
-    xg=<integer>
+xg=<integer>
 ```
 
 For example:
 
 ```
-    <cm-well-host>/permid.org?op=search
+<cm-well-host>/permid.org?op=search
     &qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&with-data&format=ttl&xg=2
 ```
 
 The query above returns the matched infotons, their outbound links, and the outbound links of the "level 1" outbound links. In other words, **xg=2** retrieves both 1st and 2nd level outbound links, originating from the query matches.
 
-<img src="../../_Images/xg-second-level-outbound.png">
+![image](../../_Images/xg-second-level-outbound.png)
 
 !!! note
 	* **xg=1** is equivalent to **xg** with no operands.
@@ -54,20 +54,20 @@ The query above returns the matched infotons, their outbound links, and the outb
 Rather than requesting all outbound links, you can request only the outbound links that appear in a certain field or list of fields.  To do this, add **xg=** followed by a single field name or list of comma-separated field names.
 
 ```
-    xg=<fieldName>
+xg=<fieldName>
     xg=<fieldName>,<fieldName>,...,<fieldName>
 ```
 
 For example, if you're querying for organizations and you're only interested in retrieving their immediate parent organizations, you could run the following query:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&format=ttl&with-data&xg=hasImmediateParent.mdaas
+<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&format=ttl&with-data&xg=hasImmediateParent.mdaas
 ```
 
 If you wanted to retrieve both immediate parents and ultimate parents, you could run the following query:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&format=ttl&with-data&xg=hasImmediateParent.mdaas,hasUltimateParent.mdaas
+<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&format=ttl&with-data&xg=hasImmediateParent.mdaas,hasUltimateParent.mdaas
 ```
 
 <a name="hdrFieldLists"></a>
@@ -79,7 +79,7 @@ You can also use comma-separated field lists after the > and < operators.
 For example, the following query retrieves all infotons that point to the initial query's result set through the **hasImmediateParent** and **hasUltimateParent** fields:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&format=ttl&with-data&yg=<hasImmediateParent.mdaas,hasUltimateParent.mdaas
+<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&format=ttl&with-data&yg=<hasImmediateParent.mdaas,hasUltimateParent.mdaas
 ```
 
 <a name="hdrOutbound"></a>
@@ -88,13 +88,13 @@ For example, the following query retrieves all infotons that point to the initia
 Suppose you have defined an **xg** value that returns a certain set of outbound links. You can then further expand this set to refer to higher levels of outbound links, using the '>' operator.
 
 ```
-    xg=<outboundExpansion> > <fieldIdentifier>
+xg=<outboundExpansion> > <fieldIdentifier>
 ```
 
 For example:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&format=ttl&with-data&xg=hasImmediateParent.mdaas>hasUltimateParent.mdaas
+<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&format=ttl&with-data&xg=hasImmediateParent.mdaas>hasUltimateParent.mdaas
 ```
 
 This query retrieves the outbound links in the **hasImmediateParent** fields of the matched infotons, and in addition, the outbound links in the **hasUltimateParent** fields of the level 1 outbound links.
@@ -102,7 +102,7 @@ This query retrieves the outbound links in the **hasImmediateParent** fields of 
 You can add a "chain" of several outbound link operators with field identifiers, to retrieve more and more remote links, as follows:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&format=ttl&with-data&xg=hasImmediateParent.mdaas>hasImmediateParent.mdaas>hasImmediateParent.mdaas
+<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&format=ttl&with-data&xg=hasImmediateParent.mdaas>hasImmediateParent.mdaas>hasImmediateParent.mdaas
 ```
 
 <a name="hdrWildcard"></a>
@@ -113,7 +113,7 @@ Instead of adding a specific field name after the '>' operator, you can use the 
 For example:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&format=ttl&with-data&xg=hasImmediateParent.mdaas>_
+<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&format=ttl&with-data&xg=hasImmediateParent.mdaas>_
 ```
 
 This query retrieves the outbound links in the **hasImmediateParent** fields of the matched infotons, and in addition, the outbound links *all* fields of the level 1 outbound links.
@@ -124,7 +124,7 @@ This query retrieves the outbound links in the **hasImmediateParent** fields of 
 You can add field filters to constrain the additional infotons retrieved by the traversal flag. You do this by adding the field filters in [ ] brackets after the expansion definition.
 
 ```
-    xg=<traversalClause>[field filter]
+xg=<traversalClause>[field filter]
     yg=<traversalClause>[field filter]
     gqp=<traversalClause>[field filter]
 ```
@@ -136,7 +136,7 @@ You can add field filters to constrain the additional infotons retrieved by the 
 For example:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&format=ttl&with-data&xg=hasImmediateParent.mdaas[organizationCity.mdaas:New%20York]
+<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&format=ttl&with-data&xg=hasImmediateParent.mdaas[organizationCity.mdaas:New%20York]
 ```
 
 This query retrieves the outbound links in the **hasImmediateParent** fields of the matched infotons, but only those whose city field value is "New York".
@@ -151,7 +151,7 @@ In **yg** syntax, **>** indicates an outbound link and **<** indicates an inboun
 Here is an example of a query that traverses inbound links:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&format=ttl&with-data&yg=<hasImmediateParent.mdaas<hasImmediateParent.mdaas
+<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&format=ttl&with-data&yg=<hasImmediateParent.mdaas<hasImmediateParent.mdaas
 ```
 
 This query retrieves all infotons that point to the matched infotons through their **hasImmediateParent** field, and also all infotons that point to the level 1 inbound links through their **hasImmediateParent** field. In other words, it retrieves the child companies of the matched infotons, and also the child companies of those child companies. 
@@ -168,7 +168,7 @@ For example, supposed we've uploaded the following information to CM-Well, which
 <a name="hdrRdfData"></a>
 
 ```
-    @prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
     @prefix dc:   <http://purl.org/dc/terms/> .
     @prefix locn: <http://www.w3.org/ns/locn#> .
     @prefix madsrdf:  <http://www.loc.gov/mads/rdf/v1#> .
@@ -245,7 +245,7 @@ For example, supposed we've uploaded the following information to CM-Well, which
 In a single query, the following call retrieves both the place that ```MrPresident``` was born (via an outbound link), and all the places where ```MrPresident``` lived (via a combination of inbound and outbound links):
 
 ```
-    <cm-well-host>/example.org/Individuals/MrPresident?yg=<hasTenant.xmpl>location.locn|>birthPlace.madsrdf
+<cm-well-host>/example.org/Individuals/MrPresident?yg=<hasTenant.xmpl>location.locn|>birthPlace.madsrdf
 ```
 
 You can add as many pipe-separated expansion expressions to one query as you want. The results are the equivalent of running each expansion query separately and pooling all their results.
@@ -258,6 +258,6 @@ For example, if applied to the [RDF data above](#hdrRdfData), the following quer
 or were living in the White House before 2000:
 
 ```
-    <cm-well-host>/?op=search&qp=type.rdf:Person&gqp=<hasTenant.xmpl[hasBeginning.time<2000-01-01]>location.locn[name.geonames::The White House]|>birthPlace.madsrdf[-countryCode::US]
+<cm-well-host>/?op=search&qp=type.rdf:Person&gqp=<hasTenant.xmpl[hasBeginning.time<2000-01-01]>location.locn[name.geonames::The White House]|>birthPlace.madsrdf[-countryCode::US]
 ```
 

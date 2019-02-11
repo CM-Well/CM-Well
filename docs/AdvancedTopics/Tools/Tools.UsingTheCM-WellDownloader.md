@@ -82,7 +82,7 @@ Parameter (and \<arg\>) | Description | Default Value | Relevant to
 Here is an example of how to run the stream-based CM-Well Downloader to retrieve up to 10 infotons from the PPE environment, of type Organization, containing "Thomson" in their name, under the permid.org path, with their data:
 
 ```
-    cmwell-data-tools-app/target/pack/bin/downloader --host "cm-well-ppe.int.thomsonreuters.com" --path "/permid.org" --op stream --length 10 --qp "CommonName.mdaas:Thomson,type.rdf:Organization"
+cmwell-data-tools-app/target/pack/bin/downloader --host "cm-well-ppe.int.thomsonreuters.com" --path "/permid.org" --op stream --length 10 --qp "CommonName.mdaas:Thomson,type.rdf:Organization"
 ```
 
 ## Running CM-Well Downloader in Scala REPL Mode

@@ -21,13 +21,13 @@
 **Curl command:**
 
 ```
-    curl "<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Reuters&length=3&format=json&pretty"
+curl "<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Reuters&length=3&format=json&pretty"
 ```
 
 **Response:**
 
 ```
-    {
+{
       "type" : "SearchResponse",
       "pagination" : {
     	"type" : "PaginationInfo",
@@ -77,7 +77,7 @@
       }
     }
 ```
-    
+
 <a name="hdr2"></a>
 ## 2. Get Results with Data
 
@@ -86,13 +86,13 @@
 **Curl command:**
 
 ```
-    curl "<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Reuters&length=3&format=json&pretty&with-data"
+curl "<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Reuters&length=3&format=json&pretty&with-data"
 ```
 
 **Response:**
 
 ```
-    {
+{
       "type" : "SearchResponse",
       "pagination" : {
     "type" : "PaginationInfo",
@@ -183,13 +183,13 @@
 **Partial match Curl command:**    
 
 ```
-    curl "<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:qqqqq&format=json&pretty&with-data"
+curl "<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:qqqqq&format=json&pretty&with-data"
 ```
 
 **Partial match response:**
 
 ```
-    {
+{
       "type" : "SearchResponse",
       "pagination" : {
 	    "type" : "PaginationInfo",
@@ -215,13 +215,13 @@
 **Fuzzy match Curl command:**    
 
 ```
-    curl "<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas~qqqqq&format=json&pretty&with-data"
+curl "<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas~qqqqq&format=json&pretty&with-data"
 ```
 
 **Fuzzy match response:**
 
 ```
-    {
+{
       "type" : "SearchResponse",
       "pagination" : {
     "type" : "PaginationInfo",
@@ -450,7 +450,7 @@
       }
     }
 ```
-      
+  
 ### Numeric Comparison
 
 **Action:** Get up to 3 entities under permid.org, whose dsQuotationNumber value is greater than 950000. The field condition uses the `>` greater-than operator.
@@ -458,13 +458,13 @@
 **Numeric comparison Curl command:**
 
 ```
-    curl "<cm-well-host>/permid.org?op=search&qp=dsQuotationNumber.mdaas>950000&format=json&pretty&with-data&length=3"
+curl "<cm-well-host>/permid.org?op=search&qp=dsQuotationNumber.mdaas>950000&format=json&pretty&with-data&length=3"
 ```
 
 **Numeric comparison response:**
 
 ```
-    {
+{
       "type" : "SearchResponse",
       "pagination" : {
     "type" : "PaginationInfo",
@@ -553,7 +553,7 @@
       }
     }
 ```
-    
+
 <a name="hdr4"></a>
 ## 4. Specify Output Fields
 
@@ -562,13 +562,13 @@
 **Curl command:**
 
 ```
-    curl "<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Reuters&format=json&pretty&with-data=n3&fields=CommonName.mdaas,RCSAssetClass.mdaas&length=3"
+curl "<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Reuters&format=json&pretty&with-data=n3&fields=CommonName.mdaas,RCSAssetClass.mdaas&length=3"
 ```
 
 **Response:**
 
 ```
-    {
+{
       "type" : "SearchResponse",
       "pagination" : {
         "type" : "PaginationInfo",
@@ -641,13 +641,13 @@
 **Curl command:**
 
 ```
-    curl "<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Reuters,RCSAssetClass.mdaas:TRAD&format=json&pretty&length=3&with-data"
+curl "<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Reuters,RCSAssetClass.mdaas:TRAD&format=json&pretty&length=3&with-data"
 ```
 
 **Response:**
 
 ```
-    {
+{
       "type" : "SearchResponse",
       "pagination" : {
     "type" : "PaginationInfo",
@@ -735,13 +735,13 @@
 **Curl command:**
 
 ```
-    curl "<cm-well-host>/permid.org?op=search&qp=*organizationStateProvince.mdaas:Delaware,*organizationStateProvince.mdaas:Idaho&format=json&pretty&with-data&length=5&fields=organizationStateProvince.mdaas,organizationCity.mdaas"
+curl "<cm-well-host>/permid.org?op=search&qp=*organizationStateProvince.mdaas:Delaware,*organizationStateProvince.mdaas:Idaho&format=json&pretty&with-data&length=5&fields=organizationStateProvince.mdaas,organizationCity.mdaas"
 ```
 
 **Response:**
 
 ```
-    {
+{
       "type" : "SearchResponse",
       "pagination" : {
     "type" : "PaginationInfo",
@@ -840,13 +840,13 @@
 **Curl command:**
 
 ```
-    curl "<cm-well-host>/permid.org?op=search&qp=organizationStateProvince.mdaas:New%20York,-organizationCity.mdaas:new%20york&format=json&pretty&with-data&length=5&fields=organizationStateProvince.mdaas,organizationCity.mdaas"
+curl "<cm-well-host>/permid.org?op=search&qp=organizationStateProvince.mdaas:New%20York,-organizationCity.mdaas:new%20york&format=json&pretty&with-data&length=5&fields=organizationStateProvince.mdaas,organizationCity.mdaas"
 ```
 
 **Response:**
 
 ```
-    {
+{
       "type" : "SearchResponse",
       "pagination" : {
     "type" : "PaginationInfo",
@@ -945,13 +945,13 @@
 **Curl command:**
 
 ```
-    curl "<cm-well-host>/permid.org?op=search&qp=organizationStateProvince.mdaas:New%20York&format=json&pretty&with-data&offset=0&length=3&fields=organizationStateProvince.mdaas,organizationCity.mdaas"
+curl "<cm-well-host>/permid.org?op=search&qp=organizationStateProvince.mdaas:New%20York&format=json&pretty&with-data&offset=0&length=3&fields=organizationStateProvince.mdaas,organizationCity.mdaas"
 ```
 
 **Response:**
 
 ```
-    {
+{
       "type" : "SearchResponse",
       "pagination" : {
     "type" : "PaginationInfo",
@@ -1019,13 +1019,13 @@
 **Curl command:**
 
 ```
-    curl "<cm-well-host>/permid.org?op=search&qp=organizationStateProvince.mdaas:New%20York&format=json&pretty&with-data&offset=3&length=3&fields=organizationStateProvince.mdaas,organizationCity.mdaas"
+curl "<cm-well-host>/permid.org?op=search&qp=organizationStateProvince.mdaas:New%20York&format=json&pretty&with-data&offset=3&length=3&fields=organizationStateProvince.mdaas,organizationCity.mdaas"
 ```
 
 **Response:**
 
 ```
-    {
+{
       "type" : "SearchResponse",
       "pagination" : {
     "type" : "PaginationInfo",
@@ -1104,13 +1104,13 @@ The steps in the query are:
 **Curl command:**
 
 ```
-    curl "<cm-well-host>/permid.org?op=search&qp=RIC.mdaas::VAC&with-data&yg=>IsQuoteOf.mdaas<primaryInstrument.mdaas&format=json&pretty"
+curl "<cm-well-host>/permid.org?op=search&qp=RIC.mdaas::VAC&with-data&yg=>IsQuoteOf.mdaas<primaryInstrument.mdaas&format=json&pretty"
 ```
 
 **Response:**
 
 ```
-    {
+{
       "type" : "SearchResponse",
       "pagination" : {
     "type" : "PaginationInfo",

@@ -33,7 +33,7 @@ markReplace and markDelete now take quad values that allow you to delete only fi
 
 This feature was added in a previous release, but was undocumented until now. In the CM-Well UI, in the SPARQL Query page, you can now click the **SPARQL on whole graph link**. This displays a page that allows you to submit a query to the _sparql endpoint, which runs the query on the entire CM-Well graph rather than on a specific set of paths.
 
-<img src="../../_Images/ui-sparql-on-whole-graph.png"/>
+![image](../../_Images/ui-sparql-on-whole-graph.png)
 
 **Documentation:** 
 * [Apply SPARQL to the Entire Graph](../../APIReference/Query/API.Query.ApplySPARQLToEntireGraph.md)
@@ -48,7 +48,7 @@ This feature was added in a previous release, but was undocumented until now. In
 
 The two SPARQL edit boxes in the CM-Well UI (SPARQL on paths and SPARQL on entire graph) are now enhanced with usability features such as syntax highlighting, auto-completion, line numbering and so on. 
 
-<img src="../../_Images/ui-sparql-editor-features.png"/>
+![image](../../_Images/ui-sparql-editor-features.png)
 
 **Documentation:** N/A.
 
@@ -65,11 +65,11 @@ To configure the infoton link display for a specific type, you must upload a spe
 
 Here is an example of a configuration infoton for the Person type:
 
-<img src="../../_Images/infoton-link-configuration-for-person.png"/>
+![image](../../_Images/infoton-link-configuration-for-person.png)
 
 And this is what the configured Person links look like:
 
-<img src="../../_Images/configured-person-links.png"/>
+![image](../../_Images/configured-person-links.png)
 
 **Documentation:** [The CM-Well Web Interface](../../WebInterface/CM-WellWebInterface.md).
 

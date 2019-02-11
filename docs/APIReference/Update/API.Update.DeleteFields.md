@@ -7,13 +7,13 @@ You can delete one or more infoton fields by applying the special **#markReplace
 You specify the field to delete using this triple format:
 
 ```
-    <infotonURI> <cmwell://meta/sys#markReplace> <fieldID>
+<infotonURI> <cmwell://meta/sys#markReplace> <fieldID>
 ```
 
 You can also use the wildcard <*> instead of a field ID, as follows:
 
 ```
-    <infotonURI> <cmwell://meta/sys#markReplace> <*>
+<infotonURI> <cmwell://meta/sys#markReplace> <*>
 ```
 
 This will delete all the infoton's fields that belong to the default graph. Fields added with a specific sub-graph label will not be deleted by this command.
@@ -21,13 +21,13 @@ This will delete all the infoton's fields that belong to the default graph. Fiel
 You can also delete fields with specific sub-graph labels by supplying the label as the 4th value in a quad, as follows:
 
 ```
-    <infotonURI> <cmwell://meta/sys#markReplace> <fieldID> <graphLabel>
+<infotonURI> <cmwell://meta/sys#markReplace> <fieldID> <graphLabel>
 ```
 
 And you can delete all fields by supplying the <*> wildcard as the 4th value in the quad, as follows:
 
 ```
-    <infotonURI> <cmwell://meta/sys#markReplace> <fieldID> <*>
+<infotonURI> <cmwell://meta/sys#markReplace> <fieldID> <*>
 ```
 
 ## Syntax
@@ -43,7 +43,7 @@ And you can delete all fields by supplying the <*> wildcard as the 4th value in 
 **Template:**
 
 ```
-    curl -X POST <cm-well-host>/_in?format=<format> <triples or quads to delete>
+curl -X POST <cm-well-host>/_in?format=<format> <triples or quads to delete>
 ```
 
 **URL example:** N/A
@@ -53,21 +53,21 @@ And you can delete all fields by supplying the <*> wildcard as the 4th value in 
 **Triples:**
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ttl " -H "Content-Type: text/plain" --data-binary '<http://data.com/1-12345678> 
+curl -X POST "<cm-well-host>/_in?format=ttl " -H "Content-Type: text/plain" --data-binary '<http://data.com/1-12345678> 
     <cmwell://meta/sys#markReplace> <http://ont.com/bermuda/hasName> .'
 ```
 
 **Quads:**
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary '<http://data.com/1-12345678> 
+curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary '<http://data.com/1-12345678> 
     <cmwell://meta/sys#markReplace> <http://ont.com/bermuda/hasName> <http://mySubGraph>.'
 ```
 
 **All quad values with sub-graph labels:**
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary '<http://data.com/1-12345678> 
+curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary '<http://data.com/1-12345678> 
     <cmwell://meta/sys#markReplace> <http://ont.com/bermuda/hasName> <*>.'
 ```
 
@@ -82,14 +82,14 @@ priority | If this flag appears in an update call, that call receives priority r
 ### Call
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=ttl " -H "Content-Type: text/plain" --data-binary '<http://data.com/1-12345678> 
+curl -X POST "<cm-well-host>/_in?format=ttl " -H "Content-Type: text/plain" --data-binary '<http://data.com/1-12345678> 
     <cmwell://meta/sys#markReplace> <http://ont.com/bermuda/hasName> .'
 ```
 
 ### Results
 
 ```
-    {"success":true}
+{"success":true}
 ```
 
 !!! note

@@ -19,19 +19,19 @@ The call to unsubscribe is the same, regardless of whether you have requested pu
 **Template:**
 
 ```
-    curl -X GET <cm-well-host>/<cm-well-path>?op=unsubscribe&sub=<subscriptionToken>
+curl -X GET <cm-well-host>/<cm-well-path>?op=unsubscribe&sub=<subscriptionToken>
 ```
 
 **URL example:** 
 
 ```
-    <cm-well-host>/permid.org?op=unsubscribe&sub=YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjczLjE2ODo1NjA2MS91c2VyLzNkMDZjZWE1
+<cm-well-host>/permid.org?op=unsubscribe&sub=YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjczLjE2ODo1NjA2MS91c2VyLzNkMDZjZWE1
 ```
 
 **Curl example (REST API):**
 
 ```
-    curl -X GET "<cm-well-host>/permid.org?op=unsubscribe&sub=YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjczLjE2ODo1NjA2MS91c2VyLzNkMDZjZWE1"
+curl -X GET "<cm-well-host>/permid.org?op=unsubscribe&sub=YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjczLjE2ODo1NjA2MS91c2VyLzNkMDZjZWE1"
 ```
 
 ## Special Parameters
@@ -45,7 +45,7 @@ sub | The token you received from the subscription call| sub=YWtrYS50Y3A6Ly9jbS1
 ### Call
 
 ```
-    curl -X GET "<cm-well-host>/permid.org?op=unsubscribe&sub=YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjczLjE2ODo1NjA2MS91c2VyLzNkMDZjZWE1"
+curl -X GET "<cm-well-host>/permid.org?op=unsubscribe&sub=YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjczLjE2ODo1NjA2MS91c2VyLzNkMDZjZWE1"
 ```
 
 ### Results
@@ -53,7 +53,7 @@ sub | The token you received from the subscription call| sub=YWtrYS50Y3A6Ly9jbS1
 The call returns a subscription token:
 
 ```
-    unsubscribe YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjczLjE2ODo1NjA2MS91c2VyLzNkMDZjZWE1
+unsubscribe YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjczLjE2ODo1NjA2MS91c2VyLzNkMDZjZWE1
 ```
 
 

@@ -16,7 +16,7 @@ Curl is a commonly-used utility for submitting REST requests. All the code examp
 Here is an example of a call to CM-Well, which uploads a file infoton, using Curl:
 
 ```
-    curl -X POST <cm-well-host>/example/files/f1.png -H "X-CM-WELL-TYPE: FILE" -H "Content-Type: image/png" --data-binary @image.file.png
+curl -X POST <cm-well-host>/example/files/f1.png -H "X-CM-WELL-TYPE: FILE" -H "Content-Type: image/png" --data-binary @image.file.png
 ```
 
 You can learn more about Curl from online resources such as [Using curl to automate HTTP jobs](https://curl.haxx.se/docs/httpscripting.html).

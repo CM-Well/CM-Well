@@ -23,7 +23,7 @@ See [Using SPARQL on CM-Well Infotons](../../DeveloperGuide/DevGuide.UsingSPARQL
 **Template:**
 
 ```
-    <cm-well-host>/_sp 
+<cm-well-host>/_sp 
     PATHS
     <CMWellPath with query parameters, one per line>
     <CMWellPath with query parameters, one per line>
@@ -64,13 +64,13 @@ show-graph | Shows the list of infotons, which are the result of the initial CM-
 ### Call
 
 ```
-    curl -X POST "<cm-well-host>/_sp?format=ascii" @curlInput.txt
+curl -X POST "<cm-well-host>/_sp?format=ascii" @curlInput.txt
 ```
 
 ### File Contents
 
 ```
-    PATHS
+PATHS
     /example.org/Individuals?op=search&length=1000&with-data
     /example.org/Individuals/RonaldKhun
     /example.org/Individuals/JohnSmith?xg=3
@@ -85,7 +85,7 @@ show-graph | Shows the list of infotons, which are the result of the initial CM-
 ### Results
 
 ```
-    -------------------------------------------------------------
+-------------------------------------------------------------
     | name| active  |
     =============================================================
     | <http://example.org/Individuals/BruceWayne> | "true"  |

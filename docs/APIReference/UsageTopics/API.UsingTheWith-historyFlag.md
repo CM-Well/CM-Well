@@ -6,11 +6,11 @@ Each version of the infoton has a "point in time URL", which is a unique URL poi
 
 For example, this is what we see when retrieving the default (latest) version of an infoton:
 
-<img src="../../_Images/Infoton-no-history.png" width=950 height=600>
+![image](../../_Images/Infoton-no-history.png)
 
 And this is what we see when retrieving the same infoton, using the with-history flag:
 
-<img src="../../_Images/infoton-with-history.png" width=950 height=600>
+![image](../../_Images/infoton-with-history.png)
 
 Note that the infoton has 12 historical versions (the image shows only one page of results).
 

@@ -7,13 +7,13 @@ To do this, you use two parameters: the **offset** parameter and the **length** 
 For example, suppose you want to search for the string “Marriott”, and you want to receive the results in 40-infoton increments. You would request the first "page" using this query:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott&offset=0&length=40
+<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott&offset=0&length=40
 ```
 
 To get the second page, you use use this query:
 
 ```
-    <cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott&offset=40&length=40
+<cm-well-host>/permid.org?op=search&qp=CommonName.mdaas:Marriott&offset=40&length=40
 ```
 
 And so on. To retrieve the results of page N, you define the **offset** value as (N-1)*length.

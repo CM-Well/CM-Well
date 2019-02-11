@@ -14,13 +14,13 @@
 **Curl command:**
 
 ```
-    curl "<cm-well-host>/permid.org?op=subscribe&method=pull"
+curl "<cm-well-host>/permid.org?op=subscribe&method=pull"
 ```
 
 **Response:**
 
 ```
-	YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjczLjE2MDozNDA5NS91c2VyLzdlYWM2NzI3
+YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjczLjE2MDozNDA5NS91c2VyLzdlYWM2NzI3
 ```
 
 <a name="hdr2"></a>
@@ -31,13 +31,13 @@
 **Curl command:**
 
 ```
-    curl "<cm-well-host>/permid.org?op=pull&sub=YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjczLjE2MDozNDA5NS91c2VyLzdlYWM2NzI3&format=text"
+curl "<cm-well-host>/permid.org?op=pull&sub=YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjczLjE2MDozNDA5NS91c2VyLzdlYWM2NzI3&format=text"
 ```
 
 **Response:**
 
 ```
-    	o:nRSR4409Ea-2016-07-18
+	o:nRSR4409Ea-2016-07-18
         sys:data                       "<Document>\n<Source>RNS</Source>..." ;
         sys:dataCenter                 "dc1" ;
         sys:indexTime                  "1468833593106"^^xsd:long ;
@@ -67,13 +67,13 @@
 **Curl command:**
 
 ```
-    curl "<cm-well-host>/permid.org?op=unsubscribe&sub=YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjczLjE2MDozNDA5NS91c2VyLzdlYWM2NzI3"
+curl "<cm-well-host>/permid.org?op=unsubscribe&sub=YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjczLjE2MDozNDA5NS91c2VyLzdlYWM2NzI3"
 ```
 
 **Response:**
 
 ```
-    unsubscribe YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjczLjE2MDozNDA5NS91c2VyLzdlYWM2NzI3
+unsubscribe YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjczLjE2MDozNDA5NS91c2VyLzdlYWM2NzI3
 ```
 
 ## API Reference

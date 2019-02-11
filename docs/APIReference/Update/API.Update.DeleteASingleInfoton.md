@@ -17,7 +17,7 @@ You can delete a single infoton by applying the REST DELETE command to the infot
 **Template:**
 
 ```
-    curl -X DELETE <cm-well-host>/<cm-well-path>
+curl -X DELETE <cm-well-host>/<cm-well-path>
 ```
 
 **URL example:** N/A
@@ -25,7 +25,7 @@ You can delete a single infoton by applying the REST DELETE command to the infot
 **Curl example (REST API):**
 
 ```
-    curl -X DELETE <cm-well-host>/example.org/Individuals/JohnSmith
+curl -X DELETE <cm-well-host>/example.org/Individuals/JohnSmith
 ```
 
 ## Special Parameters
@@ -39,13 +39,13 @@ recursive | If true, queries and delete command are recursive, i.e. will apply t
 ### Call
 
 ```
-    curl -X DELETE <cm-well-host>/example.org/Individuals/JohnSmith
+curl -X DELETE <cm-well-host>/example.org/Individuals/JohnSmith
 ```
 
 ### Results
 
 ```
-    {"success":true}
+{"success":true}
 ```
 
 !!! note

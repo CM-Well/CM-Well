@@ -26,7 +26,7 @@ To create a field that belongs to a named sub-graph, create the field using a qu
 **Template:**
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=nquads" --data-binary <quads to add>
+curl -X POST "<cm-well-host>/_in?format=nquads" --data-binary <quads to add>
 ```
 
 **URL example:** N/A
@@ -34,13 +34,13 @@ To create a field that belongs to a named sub-graph, create the field using a qu
 **Curl example (REST API):**
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary @curlInput.txt
+curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary @curlInput.txt
 ```
 
 ### File Contents
 
 ```
-    <http://example.org/movies/ET> <http://MyOntology/Score> "8.3" <http://MyOntology/RottenTomatoes>.
+<http://example.org/movies/ET> <http://MyOntology/Score> "8.3" <http://MyOntology/RottenTomatoes>.
     <http://example.org/movies/ET> <http://MyOntology/Score> "8.7" <http://MyOntology/NewYorkTimes>.
     <http://example.org/movies/GoneWithTheWind> <http://MyOntology/Score> "6.5" <http://MyOntology/RottenTomatoes>.
     <http://example.org/movies/GoneWithTheWind> <http://MyOntology/Score> "8.9" <http://MyOntology/NewYorkTimes>.
@@ -59,13 +59,13 @@ priority | If this flag appears in an update call, that call receives priority r
 ### Call
 
 ```
-    curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary @curlInput.txt
+curl -X POST "<cm-well-host>/_in?format=nquads" -H "Content-Type: text/plain" --data-binary @curlInput.txt
 ```
 
 ### File Contents
 
 ```
-    <http://example.org/movies/ET> <http://MyOntology/Score> "8.3" <http://MyOntology/RottenTomatoes>.
+<http://example.org/movies/ET> <http://MyOntology/Score> "8.3" <http://MyOntology/RottenTomatoes>.
     <http://example.org/movies/ET> <http://MyOntology/Score> "8.7" <http://MyOntology/NewYorkTimes>.
     <http://example.org/movies/GoneWithTheWind> <http://MyOntology/Score> "6.5" <http://MyOntology/RottenTomatoes>.
     <http://example.org/movies/GoneWithTheWind> <http://MyOntology/Score> "8.9" <http://MyOntology/NewYorkTimes>.
@@ -76,7 +76,7 @@ priority | If this flag appears in an update call, that call receives priority r
 ### Results
     
 ```
-    {"success":true}
+{"success":true}
 ```
 
 !!! note

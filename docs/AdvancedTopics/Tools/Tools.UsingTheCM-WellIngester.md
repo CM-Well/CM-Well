@@ -65,7 +65,7 @@ cmwell-data-tools-app/target/pack/bin/ingester --host "cm-well-ph" --format ntri
 To use the Ingester class, you will need to add the following import statements to your code:
 
 ```
-    import cmwell-tools.data.ingester.Ingester.{IngestFailEvent, IngestSuccessEvent}
+import cmwell-tools.data.ingester.Ingester.{IngestFailEvent, IngestSuccessEvent}
     import cmwell-tools.data.utils.ArgsManipulations._
     import cmwell-tools.data.utils.akka._
     import Implicits._

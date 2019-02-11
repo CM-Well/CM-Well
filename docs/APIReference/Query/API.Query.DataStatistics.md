@@ -22,19 +22,19 @@ CM-Well passes the statistical query to Elastic Search, which performs the analy
 **Template:**
 
 ```
-    <cmwellPath>?op=stats&ap=type:<statsType>,field:<statsField>,name:<outputName>&format=<outputFormat>
+<cmwellPath>?op=stats&ap=type:<statsType>,field:<statsField>,name:<outputName>&format=<outputFormat>
 ```
 
 **URL example:**
 
 ```
-    <cm-well-host>/permid.org?op=stats&ap=type:card,name:MyCurrencyStats,field:iso4217.currency&format=json&pretty
+<cm-well-host>/permid.org?op=stats&ap=type:card,name:MyCurrencyStats,field:iso4217.currency&format=json&pretty
 ```
 
 **Curl example (REST API):**
 
 ```
-    Curl -X GET "<cm-well-host>/permid.org?op=stats&ap=type:card,name:MyCurrencyStats,field:iso4217.currency&format=json&pretty"
+Curl -X GET "<cm-well-host>/permid.org?op=stats&ap=type:card,name:MyCurrencyStats,field:iso4217.currency&format=json&pretty"
 ```
 
 ## Special Parameters
@@ -51,13 +51,13 @@ field | The name of the field on whose values you want to apply the query. | Any
 ### Call
 
 ```
-    curl "<cm-well-host>/permid.org?op=stats&ap=type:card,name:MyCurrencyStats,field:iso4217.currency&format=json&pretty"
+curl "<cm-well-host>/permid.org?op=stats&ap=type:card,name:MyCurrencyStats,field:iso4217.currency&format=json&pretty"
 ```
 
 ### Results
 
 ```
-    {
+{
       "AggregationResponse" : [ {
     	"name" : "MyCurrencyStats",
     	"type" : "CardinalityAggregationResponse",

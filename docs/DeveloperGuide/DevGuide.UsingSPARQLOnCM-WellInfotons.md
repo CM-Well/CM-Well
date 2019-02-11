@@ -21,11 +21,11 @@ You can learn more about SPARQL at:
 
 CM-Well provides a simple UI for submitting SPARQL queries. To access the SPARQL UI page, click the "secret" (S) button in the CM-Well home page, shown in the image below.
 
-<img src="../_Images/SPARQL-button.png">
+![image](../_Images/SPARQL-button.png)
 
 Clicking the (S) button displays the following page:
 
-<img src="../_Images/ui-sparql-query-page.png">
+![image](../_Images/ui-sparql-query-page.png)
 
 To submit a SPARQL query using this UI:
 
@@ -37,7 +37,7 @@ To submit a SPARQL query using this UI:
 
 From the SPARQL Query page, you can click on the **SPARQL on whole graph** link to display the page for submitting a SPARQL query that runs on the entire CM-Well graph. See [Apply SPARQL to the Entire Graph](../APIReference/Query/API.Query.ApplySPARQLToEntireGraph.md) to learn more.
 
-<img src="../_Images/ui-sparql-on-whole-graph.png"/>
+![image](../_Images/ui-sparql-on-whole-graph.png)
 
 To submit a SPARQL query on the whole CM-Well graph using this UI:
 
@@ -52,7 +52,7 @@ A SPARQL query to CM-Well has two parts. The second part is the SPARQL query its
 Here are some examples of paths to which you could apply a SPARQL query:
 
 ```
-    /permid.org/1-5035948006?xg=2
+/permid.org/1-5035948006?xg=2
     permid.org?op=search&qp=organizationFoundedYear.mdaas>2014,type.rdf:Organization
 ```
 
@@ -67,7 +67,7 @@ In the CM-Well GUI shown in the previous section, you would enter the paths in t
 Here is an example of a cURL call that applies a SPARQL query to CM-Well paths:
 
 ```
-    curl -X POST "<cm-well-host>/_sp?format=ascii" --data-binary '
+curl -X POST "<cm-well-host>/_sp?format=ascii" --data-binary '
     PATHS
     /example.org/Individuals?op=search&length=1000&with-data
     /example.org/Individuals/RonaldKhun
@@ -77,7 +77,7 @@ Here is an example of a cURL call that applies a SPARQL query to CM-Well paths:
     SELECT DISTINCT ?name ?active WHERE { ?name <http://www.tr-lbd.com/bold#active> ?active . } ORDER BY DESC(?active)
     '
 ```
-    
+
 Let's break this command down to its components:
 
 Query Part  |  Value in Example
@@ -97,7 +97,7 @@ SPARQL query | SELECT DISTINCT ?name ?active WHERE { ?name <http://www.tr-lbd.co
 You can also add several SPARQL queries to the same command, by separating them with lines of (at least 3) dashes, as follows:
 
 ```
-    curl -X POST "<cm-well-host>/_sp?verbose" --data-binary '
+curl -X POST "<cm-well-host>/_sp?verbose" --data-binary '
     PATHS
     /example.org/Individuals?op=search&length=1000&with-data
     /example.org/Individuals/RonaldKhun
@@ -119,7 +119,7 @@ In our [example of how to use the yg flag](../APIReference/Traversal/API.Travers
 To retrieve the mdaas:headquartersCommonAddress value, we can use this SPARQL query:
 
 ```
-    SELECT * WHERE {
+SELECT * WHERE {
     ?infoton <http://ont.thomsonreuters.com/mdaas/headquartersCommonAddress> ?addr. 
     }
 ```
@@ -129,7 +129,7 @@ Note that instead of using the prefix “mdaas:”, we used the full URL that de
 The cURL command, which uses the PATH from the “yg” example but also retrieves the CommonName field by applying SPARQL, looks like this:
 
 ```
-    $ curl -X POST "<cm-well-host>/_sp?format=ascii" -H "Content-Type:text/plain" --data-binary '
+$ curl -X POST "<cm-well-host>/_sp?format=ascii" -H "Content-Type:text/plain" --data-binary '
     PATHS
     /permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&with-data&xg=hasImmediateParent.mdaas>_
 
@@ -163,7 +163,7 @@ http://cm-well.com/example.org/Individuals/JohnSmith?xg=3                  | A s
 Let's run a SPARQL query that retrieves each person's **name** and **active** fields, and sorts the results by the **active** value:
 
 ```
-    curl -X POST "<cm-well-host>/_sp?format=ascii" --data-binary '
+curl -X POST "<cm-well-host>/_sp?format=ascii" --data-binary '
     PATHS
     /example.org/Individuals?op=search&length=1000&with-data
     /example.org/Individuals/RonaldKhun
@@ -177,7 +177,7 @@ Let's run a SPARQL query that retrieves each person's **name** and **active** fi
 The results are:
 
 ```
-    -------------------------------------------------------------
+-------------------------------------------------------------
     | name                                            | active  |
     =============================================================
     | <http://example.org/Individuals/BruceWayne>     | "true"  |
@@ -204,7 +204,7 @@ As you can see in the examples above, by default the SPARQL results are a text-r
 For example, we can specify the tsv (tab-separated values) output format as follows:
 
 ```
-    $ curl -X POST "<cm-well-host>/_sp?format=tsv" -H "Content-Type:text/plain" --data-binary '
+$ curl -X POST "<cm-well-host>/_sp?format=tsv" -H "Content-Type:text/plain" --data-binary '
     PATHS
     /permid.org?op=search&qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&with-data&xg=hasImmediateParent.mdaas>_
     SPARQL
@@ -217,7 +217,7 @@ For example, we can specify the tsv (tab-separated values) output format as foll
 The output now looks like this:
 
 ```
-    ?infoton?Addr
+?infoton?Addr
     <http://permid.org/1-5035948006>"6649 Westwood Blvd\nORLANDO\nFLORIDA\n32821-8029\nUnited States\n"@en
     <http://permid.org/1-4294969614>"6649 Westwood Blvd Ste 300\nORLANDO\nFLORIDA\n32821-6066\nUnited States\n"
 ```
@@ -240,7 +240,7 @@ This option returns RDF "quadruples" rather than "triples", meaning that in addi
 Here is an example of a query using the "quads" option:
 
 ```
-    curl -X POST "<cm-well-host>/_sp?format=ascii&quads" --data-binary '
+curl -X POST "<cm-well-host>/_sp?format=ascii&quads" --data-binary '
     PATHS
     /example.org/Individuals?op=search&length=1000&with-data
     /example.org/Individuals/RonaldKhun
@@ -256,12 +256,12 @@ Here is an example of a query using the "quads" option:
 Its results are:
 
 ```
-                        s                      |                     p                         |                     o                        |           g 
+                    s                      |                     p                         |                     o                        |           g 
     ===========================================|===============================================|==============================================|=====================================
     <http://example.org/Individuals/JohnSmith> | <http://purl.org/vocab/relationship/parentOf> | <http://example.org/Individuals/SaraSmith>   | <http://example.org/graphs/spiderman>
     <http://example.org/Individuals/JohnSmith> | <http://purl.org/vocab/relationship/friendOf> | <http://example.org/Individuals/PeterParker> | <http://example.org/graphs/spiderman>
 ```
-    
+
 ### The "verbose" option
 This option returns the time-metrics of data retrieval and processing operations, as well as the data itself.
 
@@ -270,7 +270,7 @@ You must use the ?format=ascii option if you want to receive verbose information
 Here is an example of a query using the "verbose" option:
 
 ```
-    curl -X POST "<cm-well-host>/_sp?format=ascii&verbose" --data-binary '
+curl -X POST "<cm-well-host>/_sp?format=ascii&verbose" --data-binary '
     PATHS
     /example.org/Individuals?op=search&length=1000&with-data
     /example.org/Individuals/RonaldKhun
@@ -284,7 +284,7 @@ Here is an example of a query using the "verbose" option:
 Its results are:
 
 ```
-    Time metrics:
+Time metrics:
     Start End Type Task
     00:00:00.489 00:00:00.556 Subgraph /example.org/Individuals?op=search&length=1000&with-data=&format=nquads
     00:00:00.490 00:00:00.505 Subgraph /example.org/Individuals/RonaldKhun?=&format=nquads
@@ -317,7 +317,7 @@ You must use the ?format=ascii option if you want to use the "show-graph" option
 Here is an example of a query using the "show-graph" option:
 
 ```
-    curl -X POST "<cm-well-host>/_sp?format=ascii&show-graph" --data-binary '
+curl -X POST "<cm-well-host>/_sp?format=ascii&show-graph" --data-binary '
     PATHS
     /example.org/Individuals?op=search&length=1000&with-data
     /example.org/Individuals/RonaldKhun
@@ -331,7 +331,7 @@ Here is an example of a query using the "show-graph" option:
 Its results are:
 
 ```
-    Graph:
+Graph:
     <http://example.org/Individuals/DonaldDuck> <http://purl.org/vocab/relationship/knowsByReputation> <http://example.org/Individuals/MartinOdersky> .
     <http://example.org/Individuals/DonaldDuck> <http://www.tr-lbd.com/bold#active> "true" .
     <http://example.org/Individuals/DonaldDuck> <http://purl.org/vocab/relationship/mentorOf> <http://example.org/Individuals/JohnSmith> .
@@ -391,7 +391,7 @@ You can define a placeholder parameter as one of the URI parameters, prefixed by
 Here is an example of a query with a placeholder parameter called **boldpred**:
 
 ```
-    curl -X POST "<cm-well-host>/_sp?sp.boldpred=active" --data-binary '
+curl -X POST "<cm-well-host>/_sp?sp.boldpred=active" --data-binary '
     PATHS
     /example.org/Individuals?op=search&length=1000&with-data
     
@@ -404,7 +404,7 @@ Here is an example of a query with a placeholder parameter called **boldpred**:
 The WHERE clause, after placeholder replacement, becomes:
 
 ```
-    WHERE { ?name <http://www.tr-lbd.com/bold#active> "true" . }
+WHERE { ?name <http://www.tr-lbd.com/bold#active> "true" . }
 ```
 
 !!! note
@@ -418,7 +418,7 @@ In addition to the SELECT command, you can use SPARQL's CONSTRUCT command. The C
 Here is an example of a query using CONSTRUCT, that derives an "UncleOf" relationship from information about people's parents and siblings:
 
 ```
-    curl -X POST "<cm-well-host>/_sp" --data-binary '
+curl -X POST "<cm-well-host>/_sp" --data-binary '
     PATHS
     /example.org/Individuals?op=search&length=1000&with-data
     
@@ -435,7 +435,7 @@ Here is an example of a query using CONSTRUCT, that derives an "UncleOf" relatio
 Its results are:
 
 ```
-    <http://example.org/Individuals/JohnSmith> <http://purl.org/vocab/relationship/demoUncleOf> <http://example.org/Individuals/TimSmith> .
+<http://example.org/Individuals/JohnSmith> <http://purl.org/vocab/relationship/demoUncleOf> <http://example.org/Individuals/TimSmith> .
 ```
 
 <a name="hdr8"></a>
@@ -454,7 +454,7 @@ To upload a file containing a CONSTRUCT command:
 2. Upload it to CM-Well using the following syntax:
 
 ```
-    curl <cm-well-host>/myQueryPath/myConstruct.sparql -H "X-CM-Well-Type:File" -H "Content-Type:text/plain" --data-binary @myConstruct.sparql
+curl <cm-well-host>/myQueryPath/myConstruct.sparql -H "X-CM-Well-Type:File" -H "Content-Type:text/plain" --data-binary @myConstruct.sparql
 ```
 
 ### SPARQL Query with IMPORT
@@ -589,7 +589,7 @@ Sometimes you may want to use "nested" constructs, that is, constructs that impo
 To use this directive, add a line starting with `#cmwell-import` to the beginning of the SPARQL construct, followed by one space character and a list of comma-separated absolute CM-Well paths of other CONSTRUCT queries, as follows:
 
 ```
-    #cmwell-import /queries2/a1,/queries2/a2
+#cmwell-import /queries2/a1,/queries2/a2
 ```
 
 Here is an example of how to use the `#cmwell-import` directive.
@@ -597,25 +597,25 @@ Here is an example of how to use the `#cmwell-import` directive.
 Upload construct **b**:
 
 ```
-    curl -X POST <cm-well-host>/queries/b -H "X-CM-WELL-Type:File" -H "Content-Type:text/plain" --data-binary @input.txt
+curl -X POST <cm-well-host>/queries/b -H "X-CM-WELL-Type:File" -H "Content-Type:text/plain" --data-binary @input.txt
 ```
 
 \- with this input data:
 
 ```
-    CONSTRUCT { ?s ?p "b". } WHERE { ?s ?p ?o }
+CONSTRUCT { ?s ?p "b". } WHERE { ?s ?p ?o }
 ```
 
 Upload construct **a**:
 
 ```
-    curl -X POST <cm-well-host>/queries/a -H "X-CM-WELL-Type:File" -H "Content-Type:text/plain" --data-binary @input.txt
+curl -X POST <cm-well-host>/queries/a -H "X-CM-WELL-Type:File" -H "Content-Type:text/plain" --data-binary @input.txt
 ```
 
 \- with this input data:
 
 ```
-    #cmwell-import /queries/b
+#cmwell-import /queries/b
     CONSTRUCT { ?s ?p "a". } WHERE { ?s ?p ?o }
 ```
 
@@ -624,13 +624,13 @@ Note that construct **a** imports construct **b**.
 Run a SPARQL query:
 
 ```
-    curl -X POST <cm-well-host>/_sp?x-no-cache --data-binary @input.txt
+curl -X POST <cm-well-host>/_sp?x-no-cache --data-binary @input.txt
 ```
 
 \- with this input data:
 
 ```
-    PATHS
+PATHS
     /example.org/Individuals/MartinOdersky
     
     IMPORT
@@ -643,7 +643,7 @@ Run a SPARQL query:
 The results are:
 
 ```
-    -----------------------------------------------------------
+-----------------------------------------------------------
     | s                                              | o      |
     ===========================================================
     | <http://example.org/Individuals/MartinOdersky> | "a"    |

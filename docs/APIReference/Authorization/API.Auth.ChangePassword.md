@@ -27,13 +27,13 @@ new       | The user's new password
 ### Call
 
 ```
-    <CMWellHost>/_auth?op=change-password&current=$2a$10$7AnXsjks.IZXTbpRiAGN4OQItwiz4sgxM49lvTiCjWgOhbbOQkg2m&new=12345678 -H "X-CM-Well-Token:<AccessToken>"
+<CMWellHost>/_auth?op=change-password&current=$2a$10$7AnXsjks.IZXTbpRiAGN4OQItwiz4sgxM49lvTiCjWgOhbbOQkg2m&new=12345678 -H "X-CM-Well-Token:<AccessToken>"
 ```
 
 ### Results
 
 ```
-    {"success":true}
+{"success":true}
 ```
 
 ## Related Topics

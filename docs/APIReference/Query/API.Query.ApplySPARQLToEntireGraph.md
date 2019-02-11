@@ -23,7 +23,7 @@ The `_sparql` endpoint initiates a query that is optimized to handle the **entir
 **Template:**
 
 ```
-    <CMWellHost>/_sparql <SPARQL query>
+<CMWellHost>/_sparql <SPARQL query>
 ```
 
 **URL example:** N/A
@@ -48,13 +48,13 @@ explain-only | You can use this flag to see CM-Well's query optimization and exe
 ### Call
 
 ```
-    curl -X POST "<cm-well-host>/_sparql?verbose&results-limit=5" --data-binary @curlInput.txt
+curl -X POST "<cm-well-host>/_sparql?verbose&results-limit=5" --data-binary @curlInput.txt
 ```
 
 ### File Contents
 
 ```
-    SELECT DISTINCT
+SELECT DISTINCT
     ?name ?active
     WHERE {
     ?name <http://www.tr-lbd.com/bold#active> ?active .
@@ -64,7 +64,7 @@ explain-only | You can use this flag to see CM-Well's query optimization and exe
 ### Results
 
 ```
-    [Plan 43] 00:00:00.093 Planning started.
+[Plan 43] 00:00:00.093 Planning started.
     [Plan 43] 00:00:05.399 Planning completed.
     [Exec 43] 00:00:05.400 Executing started.
     [Exec 43] 00:00:05.944 Executing completed.
@@ -97,7 +97,7 @@ Using the **explain-only** flag displays the following information for the query
 Here is an example of the output that is produced when you use the **explain-only** flag:
 
 ```
-    [Expl] 00:00:00.001 AST:
+[Expl] 00:00:00.001 AST:
     	(prefix 
 			((data: <http://data.com/>)
      		(metadata: <http://data.schemas.financial.com/metadata/2009-09-01/>))

@@ -23,7 +23,7 @@ parallelism (**NOTE**: *Only* for the **sstream** operation.)| The number of thr
 **Template:**
 
 ```
-    <cm-well-host>?op=stream&format=<format>&qp=<field conditions>
+<cm-well-host>?op=stream&format=<format>&qp=<field conditions>
 ```
 
 **URL example:** N/A
@@ -39,13 +39,13 @@ parallelism (**NOTE**: *Only* for the **sstream** operation.)| The number of thr
 ### Call
 
 ```
-    curl -X GET '<cm-well-host>/data.com?op=stream&format=ntriples&qp=type.rdf::http://ont.com/mdaas/Organization'
+curl -X GET '<cm-well-host>/data.com?op=stream&format=ntriples&qp=type.rdf::http://ont.com/mdaas/Organization'
 ```
 
 ### Results
 
 ```
-    /data.com/2-d9c64e914747b50cc0580159cafd672977f87a2d8f7c424cc0177d60699faa01
+/data.com/2-d9c64e914747b50cc0580159cafd672977f87a2d8f7c424cc0177d60699faa01
     /data.com/11-5040863809
     /data.com/2-66080e4c7e1711c91d26b608749e7c25a6add39595692be6d001604e2aac28ff
     /data.com/2-d82480d63501cecdd2b252087043e3a694c6cb1c20d126cbacfdc1aafa9478a0

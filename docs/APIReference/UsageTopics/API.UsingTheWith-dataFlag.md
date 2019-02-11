@@ -17,7 +17,7 @@ The **with-data** flag can be added with no value, in which case the data is ret
 For example, here are some query results (truncated) without data:
 
 ```
-    @prefix nn:<cm-well-host/meta/nn#> .
+@prefix nn:<cm-well-host/meta/nn#> .
     @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
     @prefix sys:   <cm-well-host/meta/sys#> .
     
@@ -62,7 +62,7 @@ For example, here are some query results (truncated) without data:
 And here are the same results (truncated) with data:
 
 ```
-    @prefix nn:<cm-well-host/meta/nn#> .
+@prefix nn:<cm-well-host/meta/nn#> .
     @prefix mdaas: <http://ont.com/mdaas/> .
     @prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
     @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .

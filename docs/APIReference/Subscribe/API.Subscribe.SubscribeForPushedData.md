@@ -24,19 +24,19 @@ The subscribe call returns a token that you use when terminating the subscriptio
 **Template:**
 
 ```
-    curl -X GET <cm-well-host>/<cm-well-path>?op=subscribe&method=push&qp=<query parameters>&format=<format>&callback=<callbackURL>
+curl -X GET <cm-well-host>/<cm-well-path>?op=subscribe&method=push&qp=<query parameters>&format=<format>&callback=<callbackURL>
 ```
 
 **URL example:** 
 
 ```
-    <cm-well-host>/permid.org?op=subscribe&method=push&qp=CommonName.mdaas=Intel&format=ttl&callback=http://mycallback/path
+<cm-well-host>/permid.org?op=subscribe&method=push&qp=CommonName.mdaas=Intel&format=ttl&callback=http://mycallback/path
 ```
 
 **Curl example (REST API):**
 
 ```
-    curl -X GET <cm-well-host>/permid.org?op=subscribe&method=push&qp=CommonName.mdaas=Intel&format=ttl&callback=http://mycallback/path
+curl -X GET <cm-well-host>/permid.org?op=subscribe&method=push&qp=CommonName.mdaas=Intel&format=ttl&callback=http://mycallback/path
 ```
 
 ## Special Parameters
@@ -50,7 +50,7 @@ method=push | Indicates that the subscription is in push mode
 ### Call
 
 ```
-    curl -X GET <cm-well-host>/permid.org?op=subscribe&method=push&qp=CommonName.mdaas=Intel&format=ttl&callback=http://mycallback/path
+curl -X GET <cm-well-host>/permid.org?op=subscribe&method=push&qp=CommonName.mdaas=Intel&format=ttl&callback=http://mycallback/path
 ```
 
 ### Results

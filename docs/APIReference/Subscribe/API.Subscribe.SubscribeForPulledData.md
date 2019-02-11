@@ -24,19 +24,19 @@ When you no longer need the real-time updates, terminate the subscription (by ca
 **Template:**
 
 ```
-    curl -X GET "<cm-well-host>/<cm-well-path>?op=subscribe&method=pull&format=<format>&qp=<query parameters>&bulk-size=<nofInfotons>"
+curl -X GET "<cm-well-host>/<cm-well-path>?op=subscribe&method=pull&format=<format>&qp=<query parameters>&bulk-size=<nofInfotons>"
 ```
 
 **URL example:** 
 
 ```
-    <cm-well-host>/permid.org?op=subscribe&method=pull&qp=CommonName.mdaas:Intel&format=ttl&bulk-size=1
+<cm-well-host>/permid.org?op=subscribe&method=pull&qp=CommonName.mdaas:Intel&format=ttl&bulk-size=1
 ```
 
 **Curl example (REST API):**
 
 ```
-    curl -X GET "<cm-well-host>/permid.org?op=subscribe&method=pull&qp=CommonName.mdaas:Intel&format=ttl&bulk-size=1"
+curl -X GET "<cm-well-host>/permid.org?op=subscribe&method=pull&qp=CommonName.mdaas:Intel&format=ttl&bulk-size=1"
 ```
 
 ## Special Parameters
@@ -51,7 +51,7 @@ bulk-size | The number of infotons you want to pull | Integer value >=1 | bulk-s
 ### Call
 
 ```
-    curl -X GET "<cm-well-host>/permid.org?op=subscribe&method=pull&qp=CommonName.mdaas:Intel&format=ttl&bulk-size=1"
+curl -X GET "<cm-well-host>/permid.org?op=subscribe&method=pull&qp=CommonName.mdaas:Intel&format=ttl&bulk-size=1"
 ```
 
 ### Results

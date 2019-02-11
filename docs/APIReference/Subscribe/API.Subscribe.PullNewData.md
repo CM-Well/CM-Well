@@ -23,19 +23,19 @@ When you no longer need the real-time updates, terminate the subscription (by ca
 **Template:**
 
 ```
-    curl "<cm-well-host>/<cm-well-path>?op=pull&sub=<token>"
+curl "<cm-well-host>/<cm-well-path>?op=pull&sub=<token>"
 ```
 
 **URL example:** 
 
 ```
-    <cm-well-host>/permid.org?op=pull&sub=YWtrYS50Y3A6Ly9jbS13ZWxsLXBwZUAxMC4yMDQuNzMuMTQ0OjM5NzQwL3VzZXIvYzU3MTY1MTE
+<cm-well-host>/permid.org?op=pull&sub=YWtrYS50Y3A6Ly9jbS13ZWxsLXBwZUAxMC4yMDQuNzMuMTQ0OjM5NzQwL3VzZXIvYzU3MTY1MTE
 ```
 
 **Curl example (REST API):**
 
 ```
-    curl "<cm-well-host>/permid.org?op=pull&sub=YWtrYS50Y3A6Ly9jbS13ZWxsLXBwZUAxMC4yMDQuNzMuMTQ0OjM5NzQwL3VzZXIvYzU3MTY1MTE"
+curl "<cm-well-host>/permid.org?op=pull&sub=YWtrYS50Y3A6Ly9jbS13ZWxsLXBwZUAxMC4yMDQuNzMuMTQ0OjM5NzQwL3VzZXIvYzU3MTY1MTE"
 ```
 
 ## Special Parameters
@@ -49,13 +49,13 @@ Parameter | Description&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Example
 ### Call
 
 ```
-    curl "<cm-well-host>/permid.org?op=pull&sub=YWtrYS50Y3A6Ly9jbS13ZWxsLXBwZUAxMC4yMDQuNzMuMTQ0OjM5NzQwL3VzZXIvYzU3MTY1MTE&format=text"
+curl "<cm-well-host>/permid.org?op=pull&sub=YWtrYS50Y3A6Ly9jbS13ZWxsLXBwZUAxMC4yMDQuNzMuMTQ0OjM5NzQwL3VzZXIvYzU3MTY1MTE&format=text"
 ```
 
 ### Results
 
 ```
-        o:nRSR4409Ea-2016-07-18
+    o:nRSR4409Ea-2016-07-18
         sys:data                       "<Document>\n<Source>RNS</Source>..." ;
         sys:dataCenter                 "dc1" ;
         sys:indexTime                  "1468833593106"^^xsd:long ;

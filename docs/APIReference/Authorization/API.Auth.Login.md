@@ -33,13 +33,13 @@ The **digest** authentication method is a more complex (and more secure) multipl
 **Template:**
 
 ```
-    <CMWellHost>/_login
+<CMWellHost>/_login
 ```
 
 Or:
 
 ```
-	<CMWellHost>/_login?exp=<expiration period>
+<CMWellHost>/_login?exp=<expiration period>
 ```
 
 **URL example:**
@@ -50,13 +50,13 @@ Or:
 For Basic authentication:
 
 ```
-    curl -u myUser:myPassword <cm-well-host>/_login
+curl -u myUser:myPassword <cm-well-host>/_login
 ```
 
 For Digest authentication:
 
 ```
-    curl -u myUser:myPassword --digest <cm-well-host>/_login
+curl -u myUser:myPassword --digest <cm-well-host>/_login
 ```
 
 ## Special Parameters ##
@@ -73,7 +73,7 @@ exp | The time period before the token expires. Maximum allowed is 60 days. | Ti
 ### Call ###
 
 ```
-    curl -u myUser:myPassword <cm-well-host>/_login
+curl -u myUser:myPassword <cm-well-host>/_login
 ```
 
 ### Results ###
@@ -81,13 +81,13 @@ exp | The time period before the token expires. Maximum allowed is 60 days. | Ti
 Success:
 
 ```
-    200 OK {"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJteVVzZXJuYW1lIiwiZXhwIjoxNDY2NTg5NzYzMDMzLCJyZXYiOjB9.17s3USkZaZYbifXsgmm8eaEmr66SP6udbuUQCLwcWKY"}
+200 OK {"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJteVVzZXJuYW1lIiwiZXhwIjoxNDY2NTg5NzYzMDMzLCJyZXYiOjB9.17s3USkZaZYbifXsgmm8eaEmr66SP6udbuUQCLwcWKY"}
 ```
 
 Failure (the user does not exist or the given password doesn't match the user):
 
 ```
-    401 Unauthorized Not authenticated.
+401 Unauthorized Not authenticated.
 
     401 - User/Pass don't match.
 ```
