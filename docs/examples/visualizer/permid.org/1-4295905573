@@ -1,0 +1,440 @@
+{
+    "@id.sys": [{
+        "value": "/permid.org/1-4295905573"
+    }],
+    "type.sys": [{
+        "value": "ObjectInfoton"
+    }],
+    "uuid.sys": [{
+        "value": "c213fb764de4e59e996156868d9490b6"
+    }],
+    "lastModified.sys": [{
+        "value": "2017-09-28T05:50:09.172Z"
+    }],
+    "path.sys": [{
+        "value": "/permid.org/1-4295905573"
+    }],
+    "dataCenter.sys": [{
+        "value": "dc1"
+    }],
+    "parent.sys": [{
+        "value": "/permid.org"
+    }],
+    "hasHeadquartersPhoneNumber.organization": [{
+        "value": "14089961010",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "isIncorporatedInCountry.organization": [{
+        "value": "http://sws.geonames.org/6252001/",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "hasCIK.organization": [{
+        "value": "0000320193",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasAKAName.organization": [{
+        "value": "Apple Inc.",
+        "lang": "en",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }, {
+        "value": "Apple Computer, Inc.",
+        "lang": "en",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }, {
+        "value": "è‹¹æžœå…¬å¸",
+        "lang": "zh-Hans",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }, {
+        "value": "Apple",
+        "lang": "en",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }, {
+        "value": "è‹¹æžœ",
+        "lang": "zh-Hans",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }, {
+        "value": "è‹¹æžœç”µè„‘å…¬å¸",
+        "lang": "zh-Hans",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "RIC.mdaas": [{
+        "value": "AAPL.OQ",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasOrganizationType.organization": [{
+        "value": "http://permid.org/ontology/organization/organizationTypeCorporate",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "legalRegistrationCommonAddress.mdaas": [{
+        "value": "818 W 7th St Ste 930\nLOS ANGELES\nCALIFORNIA\n90017-3476\nUnited States\n",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "primaryInstrument.mdaas": [{
+        "value": "http://permid.org/1-8590932301",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "type.rdf": [{
+        "value": "http://ont.thomsonreuters.com/mdaas/Organization",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "hasUltimateParent.organization": [{
+        "value": "http://permid.org/1-4295905573",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "hasActivityStatus.organization": [{
+        "value": "http://permid.org/ontology/organization/statusActive",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "organizationAddressLine1.mdaas": [{
+        "value": "1 Infinite Loop",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }, {
+        "value": "818 W 7th St Ste 930",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasHoldingClassification.organization": [{
+        "value": "http://permid.org/ontology/organization/publiclyHeld",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "hasHeadquartersAddress.organization": [{
+        "value": "http://permid.org/2-7300f96193fde280f25e8a0a2aa2f71e6881194dc61608572d9a8d8481cb015a",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "MXID.mdaas": [{
+        "value": "100087573",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasPrimaryVentureEconomicsID.organization": [{
+        "value": "12919",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "organizationCity.mdaas": [{
+        "value": "LOS ANGELES",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }, {
+        "value": "CUPERTINO",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasAKANameTransliterated.organization": [{
+        "value": "Ping Guo Gong Si",
+        "lang": "zh-Latn",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }, {
+        "value": "Ping Guo",
+        "lang": "zh-Latn",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }, {
+        "value": "Ping Guo Dian Nao Gong Si",
+        "lang": "zh-Latn",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "organizationFoundedDay.mdaas": [{
+        "value": "3",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "WorldscopeCompanyPermID.mdaas": [{
+        "value": "C840O2890",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasSubTypeCode.organization": [{
+        "value": "COR",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "ipoDate.mdaas": [{
+        "value": "1980-12-12T05:00:00Z",
+        "type": "http://www.w3.org/2001/XMLSchema#dateTime"
+    }],
+    "hasDateOfIncorporation.organization": [{
+        "value": "1977-01-03",
+        "type": "xsd#date"
+    }],
+    "organizationCountryCode.mdaas": [{
+        "value": "100319",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "instrumentCount.mdaas": [{
+        "value": "850",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "akaName.mdaas": [{
+        "value": "è‹¹æžœå…¬å¸",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }, {
+        "value": "è‹¹æžœ",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }, {
+        "value": "è‹¹æžœç”µè„‘å…¬å¸",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "organizationFoundedYear.mdaas": [{
+        "value": "1977",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasFKAName.organization": [{
+        "value": "Apple Computer, Inc.",
+        "lang": "en",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasURL.vcard": [{
+        "value": "https://www.apple.com/",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasRegistrationAuthority.mdaas": [{
+        "value": "http://permid.org/1-5000057859",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "entityLastReviewedDate.mdaas": [{
+        "value": "2017-06-29T16:47:32Z",
+        "type": "http://www.w3.org/2001/XMLSchema#dateTime"
+    }],
+    "OrganizationProviderTypeCode.mdaas": [{
+        "value": "1",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "isVerified.organization": [{
+        "value": "true",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasVentureEconomicsID.organization": [{
+        "value": "12919",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "VEFirmID.mdaas": [{
+        "value": "20129",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "organizationWebsite.mdaas": [{
+        "value": "https://www.apple.com/",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "LEI.mdaas": [{
+        "value": "HWUPKR0MPOU8FGXBT394",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasFKANameNormalized.organization": [{
+        "value": "Apple Computer Inc",
+        "lang": "en",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "officialLatinName.mdaas": [{
+        "value": "APPLE INC.",
+        "lang": "en",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "isDomiciledIn.organization": [{
+        "value": "http://sws.geonames.org/6252001/",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "hasPrimaryIndustryActivity.organization": [{
+        "value": "http://permid.org/1-4294951243",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "CommonName.mdaas": [{
+        "value": "Apple Inc",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "headquartersCommonAddress.mdaas": [{
+        "value": "1 Infinite Loop\nCUPERTINO\nCALIFORNIA\n95014-2083\nUnited States\n",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "organizationStateProvinceOfficialCode.mdaas": [{
+        "value": "CA",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasRegisteredAddress.organization": [{
+        "value": "http://permid.org/2-c2216bdd99fcdbee2b59b25de69d81e66a0d343ac075733edf8ccc192a30d7ad",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "organizationStatusCode.mdaas": [{
+        "value": "Active",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "akaNameTransliterated.mdaas": [{
+        "value": "Ping Guo Dian Nao Gong Si",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }, {
+        "value": "Ping Guo Gong Si",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }, {
+        "value": "Ping Guo",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "organizationFoundedMonth.mdaas": [{
+        "value": "1",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasLEI.organization": [{
+        "value": "HWUPKR0MPOU8FGXBT394",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasOfficialNameNormalized.organization": [{
+        "value": "Apple Inc",
+        "lang": "en",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "isManaged.organization": [{
+        "value": "true",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasOfficialName.organization": [{
+        "value": "APPLE INC.",
+        "lang": "en",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "officialName.mdaas": [{
+        "value": "APPLE INC.",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "headquartersPhone.mdaas": [{
+        "value": "14089961010",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasNDAOrgID.organization": [{
+        "value": "19775",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+     "headquartersAddress.mdaas": [{
+        "value": "CUPERTINO\nCALIFORNIA\n95014-2083\nUnited States\n",
+        "lang": "en",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }, {
+        "value": "1 Infinite Loop\nCUPERTINO\nCALIFORNIA\n95014-2083\nUnited States\n",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "sameAs.owl": [{
+        "value": "http://data.thomsonreuters.com/1-4295905573",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "hasShortName.organization": [{
+        "value": "Apple",
+        "lang": "en",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasPermId.tr-common": [{
+        "value": "4295905573",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasPrimaryIndustryGroup.organization": [{
+        "value": "http://permid.org/1-4294952719",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "isDomiciledIn.mdaas": [{
+        "value": "United States",
+        "lang": "en",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasIPODate.organization": [{
+        "value": "1980-12-12T05:00:00",
+        "type": "http://www.w3.org/2001/XMLSchema#dateTime"
+    }],
+    "organizationCountry.mdaas": [{
+        "value": "United States",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasMXID.organization": [{
+        "value": "100087573",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasRCPID.organization": [{
+        "value": "300019775",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "SDCID.mdaas": [{
+        "value": "7069003             ",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "isPublicFlag.mdaas": [{
+        "value": "true",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasEdcoID.organization": [{
+        "value": "AAPL.OQ",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "isAffiliatedWith.organization": [{
+        "value": "http://permid.org/1-4295887372",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }, {
+        "value": "http://permid.org/1-4295908552",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }, {
+        "value": "http://permid.org/1-4295900990",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }, {
+        "value": "http://permid.org/1-4297651992",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "hasPrimaryTMTCompanyID.organization": [{
+        "value": "C000000378",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "TaxID.mdaas": [{
+        "value": "942404110",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "organizationStateProvince.mdaas": [{
+        "value": "CALIFORNIA",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "legalRegistrationAddress.mdaas": [{
+        "value": "LOS ANGELES\nCALIFORNIA\n90017-3476\nUnited States\n",
+        "lang": "en",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }, {
+        "value": "818 W 7th St Ste 930\nLOS ANGELES\nCALIFORNIA\n90017-3476\nUnited States\n",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasLegacyPI.organization": [{
+        "value": "41815",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "organizationTypeCode.mdaas": [{
+        "value": "Business Organization",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "organizationAddressPostalCode.mdaas": [{
+        "value": "95014-2083",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }, {
+        "value": "90017-3476",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "organizationSubtypeCode.mdaas": [{
+        "value": "Company",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "ExchangeTicker.mdaas": [{
+        "value": "AAPL",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "equityInstrumentCount.mdaas": [{
+        "value": "5",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "isIncorporatedIn.mdaas": [{
+        "value": "United States",
+        "lang": "en",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "RCPID.mdaas": [{
+        "value": "300019775",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "VentureEconomicsID.mdaas": [{
+        "value": "12919",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasAKANameNormalized.organization": [{
+        "value": "Apple Computer Inc",
+        "lang": "en",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }, {
+        "value": "Apple Inc",
+        "lang": "en",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }, {
+        "value": "Apple",
+        "lang": "en",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }]
+}
