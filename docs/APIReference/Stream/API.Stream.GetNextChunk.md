@@ -7,7 +7,7 @@ If you wish to retrieve a large number of infotons, but you want to iterate over
 The process requires two different API calls:
 
 1. Call **create-iterator** to receive an iterator ID (in the **iteratorId** field) for the query.
-2. Repeatedly call **next-chunk**, specifying a **length** value, to receive that number of infotons. When you call **next-chunk**, you pass the iterator ID that you received in the **iteratorId** field in the previous chunk results. The process ends when CM-Well returns an empty list.
+2. Repeatedly call **next-chunk**, while passing the iterator ID that you received in the **iteratorId** field in the previous chunk results. The process ends when CM-Well returns an empty list.
 
 ## Syntax
 
@@ -22,19 +22,19 @@ The process requires two different API calls:
 **Template:**
 
 ```
-    <cm-well-host>/<cm-well-path>?op=next-chunk&length=<chunk size>&format=<format>&iterator-id=<iteratorId>
+    <cm-well-host>/<cm-well-path>?op=next-chunk&format=<format>&iterator-id=<iteratorId>
 ```
 
 **URL example:**
 
 ```
-   <cm-well-host>/permid.org?op=next-chunk&length=50&format=json&iterator-id=YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjE3Ny43OjUzMDY3L3VzZXIvJENscCM4MjY5NjY1NzQ
+   <cm-well-host>/permid.org?op=next-chunk&format=json&iterator-id=YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjE3Ny43OjUzMDY3L3VzZXIvJENscCM4MjY5NjY1NzQ
 ```
 
 **Curl example (REST API):**
 
 ```
-    Curl -X GET <cm-well-host>/permid.org?op=next-chunk&length=50&format=json&iterator-id=YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjE3Ny43OjUzMDY3L3VzZXIvJENscCM4MjY5NjY1NzQ
+    Curl -X GET <cm-well-host>/permid.org?op=next-chunk&format=json&iterator-id=YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjE3Ny43OjUzMDY3L3VzZXIvJENscCM4MjY5NjY1NzQ
 ```
 
 !!! note
@@ -56,7 +56,7 @@ format | The output format of the streamed chunks. The default value is **ntripl
 ### Call
 
 ```
-    curl <cm-well-host>/permid.org?op=next-chunk&iterator-id=YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjE3Ny43OjUzMDY3L3VzZXIvJENscCM4MjY5NjY1NzQ&length=3&format=json
+    curl <cm-well-host>/permid.org?op=next-chunk&iterator-id=YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjE3Ny43OjUzMDY3L3VzZXIvJENscCM4MjY5NjY1NzQ&format=json
 ```
 
 ### Results
