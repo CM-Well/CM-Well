@@ -1360,7 +1360,8 @@ class FTSServiceES private (classPathConfigFile: String, waitForGreen: Boolean)
     paginationParams: PaginationParams = DefaultPaginationParams,
     scrollTTL: Long = scrollTTL,
     withHistory: Boolean,
-    withDeleted: Boolean
+    withDeleted: Boolean,
+    withoutLastModified:Boolean = false
   )(implicit executionContext: ExecutionContext): Seq[() => Future[FTSStartScrollResponse]] = {
 
     val aliases = if (withHistory) List("cmwell_current", "cmwell_history") else List("cmwell_current")
@@ -1567,7 +1568,7 @@ class FTSServiceES private (classPathConfigFile: String, waitForGreen: Boolean)
     }
   }
 
-  def scroll(scrollId: String, scrollTTL: Long, nodeId: Option[String])(
+  def scroll(scrollId: String, scrollTTL: Long, withoutLastModified:Boolean = false , nodeId: Option[String])(
     implicit executionContext: ExecutionContext,
     logger: Logger = loger
   ): Future[FTSScrollResponse] = {

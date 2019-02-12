@@ -170,7 +170,8 @@ trait FTSServiceOps {
     paginationParams: PaginationParams,
     scrollTTL: Long = defaultScrollTTL,
     withHistory: Boolean = false,
-    withDeleted: Boolean = false
+    withDeleted: Boolean = false,
+    withoutLastModified:Boolean = false
   )(implicit executionContext: ExecutionContext): Seq[() => Future[FTSStartScrollResponse]]
 
   def startScroll(
@@ -209,7 +210,7 @@ trait FTSServiceOps {
     partition: String = defaultPartition
   )(implicit executionContext: ExecutionContext, logger: Logger = loger): Seq[Future[FTSStartScrollResponse]]
 
-  def scroll(scrollId: String, scrollTTL: Long = defaultScrollTTL, nodeId: Option[String] = None)(
+  def scroll(scrollId: String, scrollTTL: Long = defaultScrollTTL, withoutLastModified:Boolean, nodeId: Option[String] = None)(
     implicit executionContext: ExecutionContext,
     logger: Logger = loger
   ): Future[FTSScrollResponse]

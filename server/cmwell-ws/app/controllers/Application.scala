@@ -989,7 +989,8 @@ callback=< [URL] >
                       paginationParams = PaginationParams(offset, 500),
                       withHistory = withHistory,
                       withDeleted = withDeleted,
-                      parallelism = parallelism
+                      parallelism = parallelism,
+                      withoutLastModified = false
                     )
                     .map {
                       case (src, hits) =>

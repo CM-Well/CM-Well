@@ -15,6 +15,7 @@
 package cmwell.fts
 
 import java.net.InetAddress
+import java.time.Instant
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.{TimeUnit, TimeoutException}
 
@@ -58,6 +59,7 @@ import org.elasticsearch.search.aggregations.metrics.stats.InternalStats
 import org.elasticsearch.search.sort.SortBuilders._
 import org.elasticsearch.search.sort.SortOrder
 import org.joda.time.DateTime
+
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -296,7 +298,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
         response.getHits.getTotalHits,
         paginationParams.offset,
         response.getHits.getHits.size,
-        esResponseToInfotons(response, sortParams eq NullSortParam),
+        esResponseToInfotons(response, sortParams eq NullSortParam, false),
         searchQueryStr
       )
     }
@@ -666,12 +668,15 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
     scrollTTL: Long = defaultScrollTTL,
     index: String,
     nodeId: String,
-    shard: Int
+    shard: Int,
+    withoutLastModified:Boolean
   )(implicit executionContext: ExecutionContext): Future[FTSStartScrollResponse] = {
-
-    val fields = "system.kind" :: "system.path" :: "system.uuid" :: "system.lastModified" :: "content.length" ::
-      "content.mimeType" :: "link.to" :: "link.kind" :: "system.dc" :: "system.indexTime" :: "system.quad" :: "system.current" :: Nil
-
+    loger.info("lala, in startshardscroll, withoutLastModified = " + withoutLastModified)
+    val fields = if(withoutLastModified) "system.kind" :: "system.path" :: "system.uuid" ::  "content.length" ::
+      "content.mimeType" :: "link.to" :: "link.kind" :: "system.dc" :: "system.indexTime" :: Nil
+    else "system.kind" :: "system.path" :: "system.uuid" :: "system.lastModified" :: "content.length" ::
+      "content.mimeType" :: "link.to" :: "link.kind" :: "system.dc" ::
+      "system.indexTime" :: "system.quad" :: "system.current" :: Nil
     val request = clients
       .getOrElse(nodeId, client)
       .prepareSearch(index)
@@ -703,7 +708,8 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
     paginationParams: PaginationParams,
     scrollTTL: Long,
     withHistory: Boolean,
-    withDeleted: Boolean
+    withDeleted: Boolean,
+    withoutLastModified:Boolean
   )(implicit executionContext: ExecutionContext): Seq[() => Future[FTSStartScrollResponse]] = {
 
     logRequest("startSuperScroll", pathFilter.toString, fieldsFilter.toString)
@@ -734,7 +740,8 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
                            scrollTTL,
                            index,
                            node,
-                           shard)
+                           shard,
+                          withoutLastModified)
     }
   }
 
@@ -894,7 +901,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
     }
   }
 
-  def scroll(scrollId: String, scrollTTL: Long, nodeId: Option[String])(
+  def scroll(scrollId: String, scrollTTL: Long, withoutLastModified:Boolean, nodeId: Option[String])(
     implicit executionContext: ExecutionContext,
     logger: Logger = loger
   ): Future[FTSScrollResponse] = {
@@ -917,7 +924,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
           if (status != 200)
             logger.warn(s"scroll($scrollId, $scrollTTL, $nodeId) resulted with status[$status] != 200: $scrollResponse")
 
-          p.complete(Try(esResponseToInfotons(scrollResponse, includeScore = false)).map { infotons =>
+          p.complete(Try(esResponseToInfotons(scrollResponse, includeScore = false, withoutLastModified)).map { infotons =>
             FTSScrollResponse(scrollResponse.getHits.getTotalHits, scrollResponse.getScrollId, infotons)
           })
         }
@@ -1443,13 +1450,15 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
   }
 
   private def esResponseToInfotons(esResponse: org.elasticsearch.action.search.SearchResponse,
-                                   includeScore: Boolean): Vector[Infoton] = {
+                                   includeScore: Boolean, withoutLastModified:Boolean): Vector[Infoton] = {
 
     if (esResponse.getHits.hits().nonEmpty) {
       val hits = esResponse.getHits.hits()
       hits.map { hit =>
         val path = hit.field("system.path").getValue.asInstanceOf[String]
-        val lastModified = new DateTime(hit.field("system.lastModified").getValue.asInstanceOf[String])
+        val lastModified = if(!withoutLastModified) new DateTime(hit.field("system.lastModified").getValue.asInstanceOf[String])
+        else new DateTime(Instant.now)
+        loger.info("lala, lastModified = " + lastModified)
         val id = hit.field("system.uuid").getValue.asInstanceOf[String]
         val dc = Try(hit.field("system.dc").getValue.asInstanceOf[String]).getOrElse(Settings.dataCenter)
         val protocol = Try(hit.field("system.protocol").getValue.asInstanceOf[String]).toOption

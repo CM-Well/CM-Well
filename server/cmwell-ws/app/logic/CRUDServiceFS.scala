@@ -828,9 +828,10 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                        paginationParams: PaginationParams = DefaultPaginationParams,
                        scrollTTL: Long,
                        withHistory: Boolean = false,
-                       withDeleted: Boolean = false): Seq[() => Future[IterationResults]] = {
+                       withDeleted: Boolean = false,
+                       withoutLastModified:Boolean): Seq[() => Future[IterationResults]] = {
     ftsService
-      .startSuperScroll(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTTL, withHistory, withDeleted)
+      .startSuperScroll(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTTL, withHistory, withDeleted, withoutLastModified)
       .map { fun => () =>
         fun().map { ftsResults =>
           IterationResults(ftsResults.scrollId, ftsResults.total)
@@ -864,9 +865,10 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       })
   }
 
-  def scroll(scrollId: String, scrollTTL: Long, withData: Boolean): Future[IterationResults] = {
+  def scroll(scrollId: String, scrollTTL: Long, withData: Boolean,
+             withoutLastModified:Boolean = false): Future[IterationResults] = {
 
-    val searchResultFuture = ftsService.scroll(scrollId, scrollTTL)
+    val searchResultFuture = ftsService.scroll(scrollId, scrollTTL, withoutLastModified)
     val results = withData match {
       case false =>
         searchResultFuture.map { ftsResults =>

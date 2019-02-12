@@ -183,12 +183,13 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
     )(applyScrollStarter)(ec)
   }
 
-  def lazySeqScrollSource(scrollStarter: ScrollStarter, maxParallelism: Int)(
+  def lazySeqScrollSource(scrollStarter: ScrollStarter, maxParallelism: Int, withoutLastModified:Boolean)(
     applyScrollStarter: ScrollStarter => Seq[() => Future[IterationResults]]
   )(implicit ec: ExecutionContext): Future[(Source[IterationResults, NotUsed], Long)] = {
     val readyToRunScrollFunctions = applyScrollStarter(scrollStarter)
+    logger.info("lala, in lazySeqScrollSource")
     if (readyToRunScrollFunctions.length <= maxParallelism) seqScrollSourceHandler(readyToRunScrollFunctions.map { f =>
-      firstHitTupleApply(scrollStarter.withDeleted)(ec)(f())
+      firstHitTupleApply(scrollStarter.withDeleted, withoutLastModified)(ec)(f())
     }, scrollStarter.withDeleted)
     else {
       val ScrollStarter(pf, ff, df, pagination, ttl, withHistory, withDeleted) = scrollStarter
@@ -197,6 +198,7 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
       // NOTE: this is not an exact number, and can't be,
       // since new infotons can be indexed in a shard in the time passed between performing the search,
       // and until the shard is actually being queried for the scroll results.
+      logger.info("lala, going to thin search")
       val totalsF = crudServiceFS
         .thinSearch(pf, ff, df, pagination.copy(length = 1), withHistory, withDeleted = withDeleted)
         .map(_.total)
@@ -218,12 +220,13 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
   }
 
   private def firstHitTupleApply(
-    withDeleted: Boolean
+    withDeleted: Boolean,
+    withoutLastModified:Boolean = false
   )(implicit ec: ExecutionContext): Future[IterationResults] => Future[(Future[IterationResults], Long)] = _.map {
     startScrollResult =>
       // map the `Future[IterationResults]` (empty initial results) to a tuple of another `Future[IterationResults]`
       // (this time with data) and the number of total hits for that index
-      crudServiceFS.scroll(startScrollResult.iteratorId, 360, false) -> startScrollResult.totalHits
+      crudServiceFS.scroll(startScrollResult.iteratorId, 360, false, withoutLastModified) -> startScrollResult.totalHits
   }
 
   private def singleScrollSourceHandler(withDeleted: Boolean, ec: ExecutionContext)(
@@ -368,14 +371,16 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
     paginationParams: PaginationParams = DefaultPaginationParams,
     withHistory: Boolean = false,
     withDeleted: Boolean = false,
-    parallelism: Int = Settings.sstreamParallelism
+    parallelism: Int = Settings.sstreamParallelism,
+    withoutLastModified:Boolean
   )(implicit ec: ExecutionContext): Future[(Source[IterationResults, NotUsed], Long)] = {
     lazySeqScrollSource(
       ScrollStarter(pathFilter, fieldFilter, datesFilter, paginationParams, 120, withHistory, withDeleted),
-      parallelism
+      parallelism,
+      withoutLastModified
     ) {
       case ScrollStarter(pf, ff, df, pp, ttl, h, d) =>
-        val functions = crudServiceFS.startSuperScroll(pf, ff, df, pp, ttl, h, d)
+        val functions = crudServiceFS.startSuperScroll(pf, ff, df, pp, ttl, h, d, withoutLastModified)
         functions
     }
   }
