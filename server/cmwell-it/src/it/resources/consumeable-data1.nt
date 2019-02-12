@@ -4,4 +4,4 @@
 <http://example.net/Consumeable/IK> <http://purl.org/vocab/relationship/employedBy> <http://example.net/Consumeable/DL> .
 <http://example.net/Consumeable/MI> <http://purl.org/vocab/relationship/worksWith> <http://example.net/Consumeable/GH> .
 <http://example.net/Consumeable/MI> <http://purl.org/vocab/relationship/neighborOf> <http://example.net/Consumeable/Gilad_Zafran> .
-<http://example.net/Consumeable/YB> <http://purl.org/vocab/relationship/collaboratesWith> "6910380467618081400000"^^<http://www.w3.org/2001/XMLSchema#decimal> .
+<http://example.net/Consumeable/MO> <http://purl.org/vocab/relationship/collaboratesWith> <http://example.net/Consumeable/RK> .

@@ -16,6 +16,8 @@ package cmwell.fts
 
 import java.net.InetAddress
 import java.time.Instant
+import java.time.format.DateTimeFormatter
+import java.util.Date
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.{TimeUnit, TimeoutException}
 
@@ -58,7 +60,7 @@ import org.elasticsearch.search.aggregations.metrics.cardinality.InternalCardina
 import org.elasticsearch.search.aggregations.metrics.stats.InternalStats
 import org.elasticsearch.search.sort.SortBuilders._
 import org.elasticsearch.search.sort.SortOrder
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, DateTimeZone}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -1456,8 +1458,12 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
       val hits = esResponse.getHits.hits()
       hits.map { hit =>
         val path = hit.field("system.path").getValue.asInstanceOf[String]
+        import java.text.SimpleDateFormat
+        import java.util.TimeZone
+        val myTz = DateTimeZone.getDefault()
+        val now = new Date()
         val lastModified = if(!withoutLastModified) new DateTime(hit.field("system.lastModified").getValue.asInstanceOf[String])
-        else new DateTime(Instant.now)
+        else new DateTime(now).withZone(DateTimeZone.UTC)
         loger.info("lala, lastModified = " + lastModified)
         val id = hit.field("system.uuid").getValue.asInstanceOf[String]
         val dc = Try(hit.field("system.dc").getValue.asInstanceOf[String]).getOrElse(Settings.dataCenter)
