@@ -1490,7 +1490,7 @@ callback=< [URL] >
                                                             request.attrs(Attrs.RequestReceivedTimestamp))
               val pp = PaginationParams(0, lengthHint)
               val fsp = FieldSortParams(List("system.indexTime" -> Asc))
-
+              val withoutLastModified = request.queryString.keySet("without-last-modified")
               val future = crudServiceFS.thinSearch(
                 pathFilter = pf,
                 fieldFilters = Some(ffs),
@@ -1499,7 +1499,7 @@ callback=< [URL] >
                 withHistory = history,
                 withDeleted = deleted,
                 fieldSortParams = fsp,
-                debugInfo = debugInfo
+                debugInfo = debugInfo,
               )
 
               val (contentType, formatter) = requestedFormat match {
