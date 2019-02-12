@@ -9,6 +9,9 @@ The process requires two different API calls:
 1. Call **create-iterator** to receive an iterator ID (in the **iteratorId** field) for the query.
 2. Repeatedly call **next-chunk**, specifying a **length** value, to receive that number of infotons. When you call **next-chunk**, you pass the iterator ID you received when you called **create-iterator**. The process ends when CM-Well returns an empty list.
 
+!!! note
+	When creating the iterator, you can add all valid query parameters to the command, so as to filter the streamed infotons by conditions of your choice (field values etc.). See [Query Parameters](../UsageTopics/API.QueryParameters.md) for more details.
+
 ## Syntax
 
 **URL:** ```<cm-well-host>/<cm-well-path>```
