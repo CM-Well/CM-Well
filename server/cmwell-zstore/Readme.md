@@ -4,8 +4,8 @@ zStore is a library CM-Well uses in several modules, to keep generic key-value d
 
 zStore features are:
 - [Self contained CQL setup](#Self-contained-CQL-setup)
-- [Simple put/get API](#Simple-put/get-API)
-- [Caching layer](#Caching-layer:-zCache)
+- [Simple put/get API](#Simple-putget-API)
+- [Caching layer](#Caching-layer-zCache)
 
 ## Usages
 CM-Well uses zStore for several tasks, such as
