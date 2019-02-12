@@ -48,7 +48,7 @@ Since faults may happen at the machine level, the storage layers (ES and CAS) ar
 
 ## Resilience and Self-Healing
 
-The HC module monitors JVM issues and can elect to kill a faulty JVM without damage due to the inherent redundancy. HC activities are logged, so there is full report of error situations for the admin personnel, and a feature could be added to connect to an alerting system. HC repair activities are coordinated across the grid, and elective restarts of JVMs are managed such that they aren't done in parallel on several nodes.
+The HC module monitors JVM issues and can elect to kill a faulty JVM without damage due to the inherent redundancy. HC activities are logged, so there is full report of error situations for the admin personnel. HC repair activities are coordinated across the grid, and elective restarts of JVMs are managed such that they aren't done in parallel on several nodes.
 
 If the WS and BG JVMs crash or if they're killed, the Health Control agent restarts them.
 

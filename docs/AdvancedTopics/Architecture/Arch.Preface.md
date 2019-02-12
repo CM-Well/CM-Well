@@ -6,7 +6,7 @@ This page is your entry point for learning about the CM-Well internal architectu
 
 ## What is CM-Well?
 
-CM-Well is a writable Linked Data repository, which you can use to model data. CM-Well adheres to Open Data principles, meaning that its data is in a standard, machine-readable format. The CM-Well code is open source and is available at [GitHub](https://github.com/thomsonreuters/CM-Well).
+CM-Well is a writable Linked Data repository, which you can use to model data. CM-Well adheres to Open Data principles, meaning that its data is in a standard, machine-readable format. The CM-Well code is open source and is available at [GitHub](https://github.com/CM-Well/CM-Well).
 
 CM-Well's data is represented as a graph database, which means that it contains entities and relationships between pairs of entities. For instance, it might contain facts such as &quot;CompanyA is a subsidiary of CompanyB&quot; or &quot;PersonX works at CompanyA&quot;. Conceptually, a graph database is a structure composed of nodes representing entities, and directed arrows representing relationships among them. See the image below for an example.
 

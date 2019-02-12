@@ -34,7 +34,7 @@ The following table summarizes CM-Well's software components.
 | Health Control (HC) | Monitors the health of CM-Well nodes. |
 | Inter-DC Sync Agent | Synchronizes data by pulling from other CM-Well grids. |
 | Kafka (KF) | A 3rd-party package that manages internal queues for ingest processing in CM-Well. |
-| SPARQL Triggered Processor (STP) Agent | An agent that monitors changes in CM-Well and runs SPARQL queries to construct new inferred triples, for the purpose of creating materialized views of infotons. |
+| SPARQL Trigger Processor (STP) Agent | An agent that monitors changes in CM-Well and runs SPARQL queries to construct new inferred triples, for the purpose of creating materialized views of infotons. |
 | Web Service (WS) | The web service layer that handles read/write requests for users and external agents. |
 | Zookeeper (ZK) | A 3rd-party package that manages leader-election, distributed consensus and configuration of Kafka. |
 

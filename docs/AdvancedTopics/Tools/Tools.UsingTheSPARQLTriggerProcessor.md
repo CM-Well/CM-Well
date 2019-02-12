@@ -1,22 +1,22 @@
-# SPARQL Triggered Processor
+# SPARQL Trigger Processor
 
-## What is the SPARQL Triggered Processor?
+## What is the SPARQL Trigger Processor?
 
-The SPARQL Triggered Processor is a CM-Well agent for running SPARQL queries and constructs periodically, for the purposes of creating materialized views of CM-Well infotons. A materialized view is a "flattened" version of data whose original source included high levels of pointer redirection before arriving at data. (The materialized view may also be enriched with data from other infotons.)
+The SPARQL Trigger Processor is a CM-Well agent for running SPARQL queries and constructs periodically, for the purposes of creating materialized views of CM-Well infotons. A materialized view is a "flattened" version of data whose original source included high levels of pointer redirection before arriving at data. (The materialized view may also be enriched with data from other infotons.)
 
-The SPARQL Triggered Processor creates one or more **sensors**. Each sensor periodically runs a query on a specified path in CM-Well, to detect changes to infotons under that path that have changed since the previous query. When changes are detected, the sensor reads the changed infotons and creates the resulting materialized views. You configure both the change path and query and the SPARQL query that creates the materialized view.
+The SPARQL Trigger Processor creates one or more **sensors**. Each sensor periodically runs a query on a specified path in CM-Well, to detect changes to infotons under that path that have changed since the previous query. When changes are detected, the sensor reads the changed infotons and creates the resulting materialized views. You configure both the change path and query and the SPARQL query that creates the materialized view.
 
-You define the SPARQL Triggered Processor's input and output by editing a [YAML-formatted configuration file](#config).
+You define the SPARQL Trigger Processor's input and output by editing a [YAML-formatted configuration file](#config).
 
 !!! note
-	The SPARQL Triggered Processor also exists an external utility that you can run as a stand-alone executable. This page describes the SPARQL Triggered Processor integrated agent that runs within CM-Well. All you need to do in order to activate the agent for your materialized view is to define and upload the appropriate YAML configuration file.
+	The SPARQL Trigger Processor also exists an external utility that you can run as a stand-alone executable. This page describes the SPARQL Trigger Processor integrated agent that runs within CM-Well. All you need to do in order to activate the agent for your materialized view is to define and upload the appropriate YAML configuration file.
 
 See [Using SPARQL on CM-Well Infotons](../../DeveloperGuide/DevGuide.UsingSPARQLOnCM-WellInfotons.md) to learn more about SPARQL queries.
 
 <a name="config"></a>
 ## Creating the YAML Configuration File
 
-The SPARQL Triggered Processor's configuration file is in YAML format. It contains:
+The SPARQL Trigger Processor's configuration file is in YAML format. It contains:
 
 * A query for detecting changes in specified infotons and collecting data to process.
 * A SPARQL query for processing the collected data and creating the materialized view.
@@ -27,7 +27,7 @@ Parameter | Description
 :---------|:-----------
 name | An informative name for this configuration. This should describe the materialized view you're creating.
 sensors | In the **sensors** parameter, you can define one or more "sensors", that detect changes in fields that you define. For example, you may want to test for changes to organizations' names, then process those organizations whose names have changed. Multiple sensors are defined in the YAML list syntax (prefixed with a '-' character).
-sensors/name | An informative name for the sensor, used in SPARQL Triggered Processor logs.
+sensors/name | An informative name for the sensor, used in SPARQL Trigger Processor logs.
 sensors/path | The path in CM-Well under which the sensor checks for changes.
 sensors/qp | The query that the sensor runs to detect changes.
 sensors/fromIndexTime | *Optional*. The Triggered Processor only looks at updates that were made after **fromIndexTime**.
@@ -133,7 +133,7 @@ The **sparqlMaterializer** query might also include those variables in the body 
 … WHERE { ?cmpUri ont:locatedIn %country% ; ont:speaksLanguage %language% . } ...
 ```
 
-## Controlling the SPARQL Triggered Processor Job
+## Controlling the SPARQL Trigger Processor Job
 
 ### Activating and Deactivating the Job
 
@@ -148,7 +148,7 @@ Here is an example of a command that uploads a SPARQL configuration file:
 curl -X POST "<cm-well-host>/meta/sys/agents/sparql/MyCompanyMaterializedView" -H "X-CM-WELL-TYPE: FILE" -H "Content-Type: text/yaml" --data-binary @my-config.yaml -H X-CM-WELL-TOKEN:<accessToken>
 ```
 
-Uploading the configuration file causes CM-Well to read the file and run the SPARQL Triggered Processor agent on it. CM-Well polls periodically for changes to this file and applies the changes when they're detected.
+Uploading the configuration file causes CM-Well to read the file and run the SPARQL Trigger Processor agent on it. CM-Well polls periodically for changes to this file and applies the changes when they're detected.
 
 If you want to stop the job and delete its configuration permanently, delete the configuration location, for example:
 
@@ -184,9 +184,9 @@ curl "<cm-well-host>/_in?format=ntriples&replace-mode" -H X-CM-WELL-TOKEN:<acces
     "
 ```
 
-## The SPARQL Triggered Processor Monitoring Page
+## The SPARQL Trigger Processor Monitoring Page
 
-In the SPARQL Triggered Processor monitoring page, you can view the status and processing metrics of all SPARQL agent jobs. To see the monitoring page, browse to `proc/stp.md` on the CM-Well host machine.
+In the SPARQL Trigger Processor monitoring page, you can view the status and processing metrics of all SPARQL agent jobs. To see the monitoring page, browse to `proc/stp.md` on the CM-Well host machine.
 
 ![image](../../_Images/SPARQLTriggerProcessorMonitoringPage.png)
 
@@ -217,11 +217,11 @@ Statistics Updated | The time that the sensor made its latest update.
 !!! note
 	To compile and run the CM-Well data tools, you will need Java version 8.
 
-## DEPRECATED: Running the SPARQL Triggered Processor Utility
+## DEPRECATED: Running the SPARQL Trigger Processor Utility
 
-You can still run the SPARQL Triggered Processor as a stand-alone executable.
+You can still run the SPARQL Trigger Processor as a stand-alone executable.
 
-To run the SPARQL Triggered Processor, run **cmwell-data-tools\cmwell-data-tools-app\target\pack\bin\sparql-processor-agent** on a Unix machine or **cmwell-data-tools\cmwell-data-tools-app\target\pack\bin\sparql-processor-agent.bat** on a Windows machine.
+To run the SPARQL Trigger Processor, run **cmwell-data-tools\cmwell-data-tools-app\target\pack\bin\sparql-processor-agent** on a Unix machine or **cmwell-data-tools\cmwell-data-tools-app\target\pack\bin\sparql-processor-agent.bat** on a Windows machine.
 
 **Example:**
 
@@ -229,7 +229,7 @@ To run the SPARQL Triggered Processor, run **cmwell-data-tools\cmwell-data-tools
 cmwell-data-tools-app/target/pack/bin/sparql-processor-agent --source-host cm-well-prod.int.thomsonreuters.com --config sensors.yaml --state state.dat --bulk
 ```
 
-The following table describes the SPARQL Triggered Processor's input parameters:
+The following table describes the SPARQL Trigger Processor's input parameters:
 
 Parameter | Description
 :---------|:-------------
@@ -244,7 +244,7 @@ Parameter | Description
 --version | Show the version of this application
 
 !!! note
-	* To display a description of the SPARQL Triggered Processor parameters, run `sparql-processor-agent --help`.
+	* To display a description of the SPARQL Trigger Processor parameters, run `sparql-processor-agent --help`.
 	* There are 3 ways you can provide a start time for the sensor queries. In descending order of precendence, these are:
 	* The token file provided as the tool's **state** parameter.
 	* The **sensors/token parameter** in the YAML configuration file.

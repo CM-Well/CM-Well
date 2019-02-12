@@ -6,6 +6,9 @@ A common usage of this feature is to create materialized views of CM-Well infoto
 
 The SPARQL Trigger Processor creates one or more  **sensors**. Each sensor periodically runs a query on a specified path in CM-Well, to detect changes to infotons under that path that have changed since the previous query. When changes are detected, the sensor reads the changed infotons and creates the resulting materialized views. Users can configure both the change path and query and the SPARQL query that creates the materialized view. Users define the SPARQL Trigger Processor's input and output by editing a YAML-formatted configuration file.
 
+!!! note
+	The STP's YAML configuration file is stored as a file infoton in a special admin path on CM-Well. See [SPARQL Trigger Processor](../Tools/Tools.UsingTheSPARQLTriggerProcessor.html) to learn more about how to configure the YAML file.
+
 <a name="MaterializedViews"></a>
 ## STP Use Case: Creating Materialized Views
 

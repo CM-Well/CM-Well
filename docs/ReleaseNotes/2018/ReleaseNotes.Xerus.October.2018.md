@@ -8,7 +8,7 @@ Change Cassandra strategy to NetworkTopologyStrategy | [871](https://github.com/
 SBT build of CM-Well now produces a meaningful version label | [878](https://github.com/thomsonreuters/CM-Well/pull/878) | The version label now includes the Git tag.
 Support versioning in SBT build | [897](https://github.com/thomsonreuters/CM-Well/pull/897) | SBT is now aware of the specific CM-Well build version. This allows performing customized actions during upgrades, according to the version.
 Custom upgrade actions per version | [914](https://github.com/thomsonreuters/CM-Well/pull/914) | In the CM-Well installation package, support custom upgrade actions according to the specific version.
-Support multiple parameters in the **sparqlToRoot** query | [940](https://github.com/thomsonreuters/CM-Well/pull/940) | The **sparqlToRoot** query in the STP sensor definition, which is run on the data that is input to the **sparqlMaterializer** command, can now query several parameters. Previously it could only query the **orgId** paramter. See [Using the SPARQL Triggered Processor](../../AdvancedTopics/Tools/Tools.UsingTheSPARQLTriggerProcessor.md) for more details.
+Support multiple parameters in the **sparqlToRoot** query | [940](https://github.com/thomsonreuters/CM-Well/pull/940) | The **sparqlToRoot** query in the STP sensor definition, which is run on the data that is input to the **sparqlMaterializer** command, can now query several parameters. Previously it could only query the **orgId** paramter. See [Using the SPARQL Trigger Processor](../../AdvancedTopics/Tools/Tools.UsingTheSPARQLTriggerProcessor.md) for more details.
 
 
 ## Bug Fixes

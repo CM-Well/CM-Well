@@ -7,7 +7,7 @@
 
  Title | Git Issue | Description 
 :------|:----------|:------------
-SPARQL Triggered Processor (STP) performance improvements | [640](https://github.com/thomsonreuters/CM-Well/pull/640) | The values of the arguments for Consume and Bulk Consume (called by the STP) were fine-tuned. Should result in a major performance boost.
+SPARQL Trigger Processor (STP) performance improvements | [640](https://github.com/thomsonreuters/CM-Well/pull/640) | The values of the arguments for Consume and Bulk Consume (called by the STP) were fine-tuned. Should result in a major performance boost.
 STP: New ```sp.path``` parameter | [652](https://github.com/thomsonreuters/CM-Well/pull/652) | A new ```sp.path``` parameter is supported for the **_sp** endpoint, allowing the currently processed path to be used in SPARQL queries. See more details below. 
 New health view showing Elastic Search thread pool info | [643](https://github.com/thomsonreuters/CM-Well/pull/643) | Usage: ```GET /health/es_thread_pool```. (The result is equivalent to querying the internal ES cluster that CM-Well is using with ```/_cat/thread_pool?v```). This view shows the state of threads processing search and indexing requests to ES.
 Improvements to robustness of the BG process | [651](https://github.com/thomsonreuters/CM-Well/pull/651) | Each Background (BG) Process can now host 0 to 3 BG Actors, rather than 1. Each BG Actor is in charge of one Partition, as before. If one BG Process crashes (e.g. due to a physical node failure), another BG Process automatically takes the lead on those Partitions. 

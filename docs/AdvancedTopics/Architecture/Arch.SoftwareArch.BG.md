@@ -44,7 +44,7 @@ The following diagrams zooms in to examine the interactions that occur among int
 
 Note that:
 
-- Each BG instance processes ingest commands of a single partition of the Kafka queue (or "topic", as the queue is called in Kafka terminology). See Storage Architecture to learn more about storage architecture in detail.
+- Each BG instance processes ingest commands of a single partition of the Kafka queue (or "topic", as the queue is called in Kafka terminology). See [Storage Architecture](Arch.PlatformArch.Part1.html#ingest-queues-and-storage-architecture) to learn more about storage architecture in detail.
 - On each CM-Well node, normally there is only one active BG service, with two more BG service instances in standby mode, for redundancy purposes. The two standby instances are allocated for processing the previous and next Kafka partitions, relative to the node's default partition. They only become active in case a BG service on another machine fails.
 
 ![image](../../_Images/bg-internal-processes.png)

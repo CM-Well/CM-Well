@@ -24,41 +24,24 @@ Here is an example of a Turtle formatted infoton (truncated for brevity). Note t
 
 ```
 	@prefix mdaas: <http://ont.thomsonreuters.com/mdaas/> .
-	
 	@prefix sys:   <http://cm-well-host.com/meta/sys#> .
-	
 	@prefix nn:<http://cm-well-host.com/meta/nn#> .
-	
 	@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
-	
 	@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-	
 	@prefix o: <http://permid.org/> .
 
     o:1-5035948006  a   mdaas:Organization ;
-
     sys:dataCenter  "na" ;
-
     sys:lastModified"2015-06-08T21:09:45.855Z"^^xsd:dateTime ;
-
     sys:parent  "/permid.org" ;
-
     sys:path"/permid.org/1-5035948006" ;
-
     sys:type"ObjectInfoton" ;
-
     sys:uuid"3205fef15f8bfda48bd1d44da2b6cb7a" ;
-
     mdaas:CIK   "0001524358" ;
-
     mdaas:CommonName"Marriott Vacations Worldwide Corp"@en ;
-
     mdaas:InvestextID   "VAC" ;
-
     mdaas:LEI   "549300WA6BT5H4F7IO94" ;
-
     mdaas:MXID  "111800547" ;
-
     ...
 
     mdaas:subsidiariesCount "109" .
@@ -69,7 +52,7 @@ Here is an example of a Turtle formatted infoton (truncated for brevity). Note t
 Infotons can have the following types:
 
 - **Object** – the most common type of infoton, described above; contains a collection of triples.
-- **File** – an all-purpose text file.
+- **File** – an all-purpose text or binary file.
 - **Link** – points to another infoton (similar to a redirected URL).
 - **Directory** – an infoton can be just a container for other infotons. Directory infotons may (but don't have to) have user-defined field values. Entity infotons and Directory infotons "look the same". The only difference is that Directory infotons can be created implicitly by creating another infoton with a path composed of '/'-separated parent directories.
 
