@@ -323,7 +323,7 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
               .fold(Future.successful(Option.empty[(IterationResults, IterationResults)])) { _ =>
                 debugLogID.foreach(id => logger.info(s"[$id] scroll request: $iteratorId"))
                 crudServiceFS
-                  .scroll(iteratorId, scrollTTL, withData = false, debugInfo = false)
+                  .scroll(iteratorId, scrollTTL, withData = false, debugLogID.isDefined)
                   .andThen {
                     case Success(res) =>
                       debugLogID.foreach(id => logger.info(s"[$id] scroll response: ${res.infotons.fold("empty")(i => s"${i.size} results")}"))
