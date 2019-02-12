@@ -2,11 +2,6 @@
 
 zStore is a library CM-Well uses in several modules, to keep generic key-value data in a persistent (optionally temporal), distributed manner. Underlying implementation is Cassandra.
 
-zStore features are:
-- [Self contained CQL setup](#Self-contained-CQL-setup)
-- [Simple put/get API](#Simple-putget-API)
-- [Caching layer](#Caching-layer-zCache)
-
 ## Usages
 CM-Well uses zStore for several tasks, such as
 - Keeping large FileInfotons
