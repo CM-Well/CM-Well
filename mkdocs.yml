@@ -7,7 +7,7 @@ site_author: CM-Well contibutors
 #remote_name
 copyright: CM-Well copyright
 #You want to set it to true after the documentation will stabilize (fails on warnings)
-#strict: true
+strict: true
 #It's needed in order to create proper html links instead of directories. Only this way CM-Well can properly handle the links.
 use_directory_urls: false
 theme: 
