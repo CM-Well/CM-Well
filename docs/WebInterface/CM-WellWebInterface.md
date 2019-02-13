@@ -218,8 +218,8 @@ In addition to folders and infotons that users create on CM-Well, there are seve
 
 The following special folders, files and infotons may be of interest to users and operations personnel:
 
-* **Health pages** - under the **proc** folder, there are several pages that reflect the health of CM-Well nodes and sub-systems. See [Health Dashboards](..\TestingAndMonitoring\Monitoring.HealthDashboards.md) to learn more.
-* **meta/lib** - you can copy your own Java library files (jar files) under this folder, and call their functions from within SPARQL queries. See [Calling Java Functions from SPARQL Queries](..\DeveloperGuide\DevGuide.CallingJavaScalaFunctionsFromSPARQLQueries.md) to learn more.
+* **Health pages** - under the **proc** folder, there are several pages that reflect the health of CM-Well nodes and sub-systems. See [Health Dashboards](../TestingAndMonitoring/Monitoring.HealthDashboards.md) to learn more.
+* **meta/lib** - you can copy your own Java library files (jar files) under this folder, and call their functions from within SPARQL queries. See [Calling Java Functions from SPARQL Queries](../DeveloperGuide/DevGuide.CallingJavaScalaFunctionsFromSPARQLQueries.md) to learn more.
 * **proc/node** - in this infoton you can see version numbers of CM-Well components.
 * **proc/fields** - in this infoton you can see a list of all field names from all infotons on the specific CM-Well platform.
 

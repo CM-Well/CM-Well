@@ -24,7 +24,7 @@ Viewing the CM-Well URI shown above in a web browser displays this page:
 
 <a name="hdr2"></a>
 ## Specifying the Output Format
-If you're accessing the URI programatically, you will usually want to specify the output format in which you want to receive the results. You do this by adding the **format** parameter to the URI. See [CM-Well Input and Output Formats](..\APIReference\UsageTopics\API.InputAndOutputFormats.md) to learn more about the formats that CM-Well supports.
+If you're accessing the URI programatically, you will usually want to specify the output format in which you want to receive the results. You do this by adding the **format** parameter to the URI. See [CM-Well Input and Output Formats](../APIReference/UsageTopics/API.InputAndOutputFormats.md) to learn more about the formats that CM-Well supports.
 
 !!! note
 	You can also specify the output format by adding an HTTP Accept header to the request. If both an Accept header and a **format** parameter appear in the request, the **format** parameter takes precedence.
@@ -75,10 +75,10 @@ These are the components of the search request:
 !!! note
 	* Special characters must be escaped in the usual way for URIs. For example, spaces are escaped via %20, # characters are encoded using %23, and so on.
 	* It is possible to search in all fields rather than in a specific field, as follows:  *qp=_all:Marriott%20Ownership%20Resorts*. However, this is discouraged, as it can result in prohibitively long processing time for the query.
-	* You can also search for values in infotons' [metadata fields](..\APIReference\UsageTopics\API.MetadataFields.md).
+	* You can also search for values in infotons' [metadata fields](../APIReference/UsageTopics/API.MetadataFields.md).
 
 
-See [Field Name Formats](..\APIReference\UsageTopics\API.FieldNameFormats.md) to learn about field name notation.
+See [Field Name Formats](../APIReference/UsageTopics/API.FieldNameFormats.md) to learn about field name notation.
 
 <a name="hdr4"></a>
 ## Query Results: Links vs. Data

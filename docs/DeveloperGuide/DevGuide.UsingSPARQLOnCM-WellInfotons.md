@@ -662,4 +662,4 @@ Note that both construct **a** and construct **b** are applied.
 <a name="hdr9"></a>
 ## Using the SPARQL Trigger Processor Agent
 
-You may want to create a materialized view of certain infotons in an ongoing fashion, by running SPARQL queries and uploading their results. To do this, you can create a custom configuration file that is read and processed by the CM-Well SPARQL Trigger Processor Agent. See [Using the SPARQL Trigger Processor](..\AdvancedTopics\Tools\Tools.UsingTheSPARQLTriggerProcessor.md) to learn more.
+You may want to create a materialized view of certain infotons in an ongoing fashion, by running SPARQL queries and uploading their results. To do this, you can create a custom configuration file that is read and processed by the CM-Well SPARQL Trigger Processor Agent. See [Using the SPARQL Trigger Processor](../AdvancedTopics/Tools/Tools.UsingTheSPARQLTriggerProcessor.md) to learn more.

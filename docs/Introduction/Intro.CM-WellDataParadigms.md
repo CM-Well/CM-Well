@@ -79,7 +79,7 @@ CM-Well supports the following RDF encoding formats:
 * Turtle
 * N3
 
-See [CM-Well Input and Output Formats](..\APIReference\UsageTopics\API.InputAndOutputFormats.md) to learn more about these formats.
+See [CM-Well Input and Output Formats](../APIReference/UsageTopics/API.InputAndOutputFormats.md) to learn more about these formats.
 
 ## CM-Well Infotons
 CM-Well uses a data structure nicknamed "infoton". An infoton is the set of all the triples associated with a single subject entity. The data is still logically structured as a set of separate triples, but the infoton is physically stored together with the set of its predicate-subject relationships, like this:
