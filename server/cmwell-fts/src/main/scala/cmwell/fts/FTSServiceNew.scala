@@ -92,6 +92,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
   val transportSniff = config.getBoolean("ftsService.sniff")
   override val defaultScrollTTL = config.getLong("ftsService.scrollTTL")
   override val defaultPartition = config.getString("ftsService.defaultPartitionNew")
+  val defaultLastModified = "1970-01-01T01:01:00.000Z"
 
   var client: Client = _
   var node: Node = null
@@ -381,6 +382,41 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
     }
   }
 
+
+  def thinSearch2(
+                  pathFilter: Option[PathFilter],
+                  fieldsFilter: Option[FieldFilter],
+                  datesFilter: Option[DatesFilter],
+                  paginationParams: PaginationParams,
+                  sortParams: SortParam,
+                  withHistory: Boolean,
+                  withDeleted: Boolean = false,
+                  partition: String,
+                  debugInfo: Boolean,
+                  timeout: Option[Duration]
+                )(implicit executionContext: ExecutionContext, logger: Logger = loger): Future[FTSThinSearchResponse] = {
+    fullSearch(
+      pathFilter,
+      fieldsFilter,
+      datesFilter,
+      paginationParams,
+      withHistory,
+      sortParams,
+      withDeleted,
+      partition,
+      debugInfo,
+      timeout,
+      fields = "system.path" :: "system.uuid" :: "system.indexTime" :: Nil
+    )(esResponseToThinInfotons2).map {
+      case (response, thinSeq, searchQueryStr) =>
+        FTSThinSearchResponse(response.getHits.getTotalHits,
+          paginationParams.offset,
+          response.getHits.getHits.length,
+          thinSeq,
+          searchQueryStr = searchQueryStr)
+    }
+  }
+
   def thinSearch(
     pathFilter: Option[PathFilter],
     fieldsFilter: Option[FieldFilter],
@@ -414,6 +450,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
                               searchQueryStr = searchQueryStr)
     }
   }
+
 
   // INTERNAL API - use this when you want to fetch specific fields from _source
   /**
@@ -551,14 +588,13 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
     logger: Logger = loger
   ): Future[SuccessfulBulkIndexResult] = {
 
-    logger.debug(s"indexRequests:$indexRequests")
+    logger.info(s"indexRequestsLala:$indexRequests")
 
     val promise = Promise[SuccessfulBulkIndexResult]
     val bulkRequest = client.prepareBulk()
     bulkRequest
       .request()
       .add(indexRequests.map { _.esAction.asInstanceOf[ActionRequest[_ <: ActionRequest[_ <: AnyRef]]] }.asJava)
-
 
     logRequest("executeBulkIndexRequests", s"number of index requests: ${indexRequests.size}")
 
@@ -1451,6 +1487,20 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
       }(memoizedBreakoutForEsResponseToThinInfotons)
   }
 
+  private def esResponseToThinInfotons2(esResponse: org.elasticsearch.action.search.SearchResponse,
+                                       includeScore: Boolean): Seq[FTSThinInfoton] = {
+    loger.info("baba, in esResponseToThinInfotons2")
+    esResponse.getHits
+      .hits()
+      .map { hit =>
+        val path = hit.field("system.path").value.asInstanceOf[String]
+        val uuid = hit.field("system.uuid").value.asInstanceOf[String]
+        val indexTime = tryLongThenInt[Long](hit, "system.indexTime", identity, -1L, uuid, path)
+        val score = if (includeScore) Some(hit.score()) else None
+        FTSThinInfoton(path, uuid, defaultLastModified, indexTime, score)
+      }(memoizedBreakoutForEsResponseToThinInfotons)
+  }
+
   private def esResponseToInfotons(esResponse: org.elasticsearch.action.search.SearchResponse,
                                    includeScore: Boolean, withoutLastModified:Boolean): Vector[Infoton] = {
 
@@ -1462,9 +1512,9 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
         import java.util.TimeZone
         val myTz = DateTimeZone.getDefault()
         val now = new Date()
-        val lastModified = if(!withoutLastModified) new DateTime(hit.field("system.lastModified").getValue.asInstanceOf[String])
-        else new DateTime(now).withZone(DateTimeZone.UTC)
-        loger.info("lala, lastModified = " + lastModified)
+        val lastModified = if(withoutLastModified)new DateTime(defaultLastModified)
+        else new DateTime(hit.field("system.lastModified").getValue.asInstanceOf[String])
+        loger.info("lala, lastModified for bulk conusme= " + lastModified)
         val id = hit.field("system.uuid").getValue.asInstanceOf[String]
         val dc = Try(hit.field("system.dc").getValue.asInstanceOf[String]).getOrElse(Settings.dataCenter)
         val protocol = Try(hit.field("system.protocol").getValue.asInstanceOf[String]).toOption

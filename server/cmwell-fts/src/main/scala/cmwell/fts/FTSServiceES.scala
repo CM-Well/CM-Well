@@ -1273,6 +1273,81 @@ class FTSServiceES private (classPathConfigFile: String, waitForGreen: Boolean)
       }
   }
 
+  def thinSearch2(
+                  pathFilter: Option[PathFilter] = None,
+                  fieldsFilter: Option[FieldFilter] = None,
+                  datesFilter: Option[DatesFilter] = None,
+                  paginationParams: PaginationParams = DefaultPaginationParams,
+                  sortParams: SortParam = SortParam.empty,
+                  withHistory: Boolean = false,
+                  withDeleted: Boolean,
+                  partition: String = defaultPartition,
+                  debugInfo: Boolean = false,
+                  timeout: Option[Duration] = None
+                )(implicit executionContext: ExecutionContext, logger: Logger = loger): Future[FTSThinSearchResponse] = {
+    logger.info("lala, in FTSServiceES!!!!!!!!!!!!!!!!!!")
+
+    logger.debug(
+      s"Search request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $sortParams, $withHistory, $partition, $debugInfo"
+    )
+
+    if (pathFilter.isEmpty && fieldsFilter.isEmpty && datesFilter.isEmpty) {
+      throw new IllegalArgumentException("at least one of the filters is needed in order to search")
+    }
+
+    val indices = (partition + "_current") :: (withHistory match {
+      case true  => partition + "_history" :: Nil
+      case false => Nil
+    })
+
+    val fields = "system.path" :: "system.uuid" ::  "system.indexTime" :: Nil
+
+    val request = client
+      .prepareSearch(indices: _*)
+      .setTypes("infoclone")
+      .addFields(fields: _*)
+      .setFrom(paginationParams.offset)
+      .setSize(paginationParams.length)
+
+
+    applyFiltersToRequest(request, pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted)
+
+    var oldTimestamp = 0L
+    if (debugInfo) {
+      oldTimestamp = System.currentTimeMillis()
+      logger.debug(s"thinSearch2 debugInfo request ($oldTimestamp): ${request.toString}")
+    }
+
+    val resFuture = timeout match {
+      case Some(t) => injectFuture[SearchResponse](request.execute, t)
+      case None    => injectFuture[SearchResponse](request.execute)
+    }
+
+    val searchQueryStr = if (debugInfo) Some(request.toString) else None
+
+    resFuture
+      .map { response =>
+        if (debugInfo)
+          logger.debug(
+            s"thinSearch2 debugInfo response: ($oldTimestamp - ${System.currentTimeMillis()}): ${response.toString}"
+          )
+
+        FTSThinSearchResponse(
+          response.getHits.getTotalHits,
+          paginationParams.offset,
+          response.getHits.getHits.size,
+          esResponseToThinInfotons(response, sortParams eq NullSortParam),
+          searchQueryStr = searchQueryStr
+        )
+      }
+      .andThen {
+        case Failure(err) =>
+          logger.error(
+            s"thinSearch2 failed, time took: [$oldTimestamp - ${System.currentTimeMillis()}], request:\n${request.toString}"
+          )
+      }
+  }
+
   override def getLastIndexTimeFor(
     dc: String,
     withHistory: Boolean,

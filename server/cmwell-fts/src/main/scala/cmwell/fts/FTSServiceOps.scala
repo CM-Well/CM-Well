@@ -156,6 +156,20 @@ trait FTSServiceOps {
     timeout: Option[Duration] = None
   )(implicit executionContext: ExecutionContext, logger: Logger = loger): Future[FTSThinSearchResponse]
 
+
+  def thinSearch2(
+                  pathFilter: Option[PathFilter],
+                  fieldsFilter: Option[FieldFilter],
+                  datesFilter: Option[DatesFilter],
+                  paginationParams: PaginationParams,
+                  sortParams: SortParam = SortParam.empty,
+                  withHistory: Boolean = false,
+                  withDeleted: Boolean = false,
+                  partition: String = defaultPartition,
+                  debugInfo: Boolean = false,
+                  timeout: Option[Duration] = None
+                )(implicit executionContext: ExecutionContext, logger: Logger = loger): Future[FTSThinSearchResponse]
+
   def getLastIndexTimeFor(
     dc: String,
     withHistory: Boolean,
