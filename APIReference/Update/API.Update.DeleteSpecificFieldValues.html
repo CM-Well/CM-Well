@@ -1,0 +1,3406 @@
+
+
+
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      <meta http-equiv="x-ua-compatible" content="ie=edge">
+      
+        <meta name="description" content="CM-Well Documentation">
+      
+      
+      
+        <meta name="author" content="CM-Well contibutors">
+      
+      
+        <meta name="lang:clipboard.copy" content="Copy to clipboard">
+      
+        <meta name="lang:clipboard.copied" content="Copied to clipboard">
+      
+        <meta name="lang:search.language" content="en">
+      
+        <meta name="lang:search.pipeline.stopwords" content="True">
+      
+        <meta name="lang:search.pipeline.trimmer" content="True">
+      
+        <meta name="lang:search.result.none" content="No matching documents">
+      
+        <meta name="lang:search.result.one" content="1 matching document">
+      
+        <meta name="lang:search.result.other" content="# matching documents">
+      
+        <meta name="lang:search.tokenizer" content="[\s]+">
+      
+      <link rel="shortcut icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.0.4, mkdocs-material-3.2.0">
+    
+    
+      
+        <title>Delete Specific Field Values - CM-Well</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/application.572ca0f0.css">
+      
+      
+    
+    
+      <script src="../../assets/javascripts/modernizr.8c900955.js"></script>
+    
+    
+      
+        <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700|Roboto+Mono">
+        <style>body,input{font-family:"Roboto","Helvetica Neue",Helvetica,Arial,sans-serif}code,kbd,pre{font-family:"Roboto Mono","Courier New",Courier,monospace}</style>
+      
+    
+    <link rel="stylesheet" href="../../assets/fonts/material-icons.css">
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    
+  </head>
+  
+    <body dir="ltr">
+  
+    <svg class="md-svg">
+      <defs>
+        
+        
+          <svg xmlns="http://www.w3.org/2000/svg" width="416" height="448"
+    viewBox="0 0 416 448" id="__github">
+  <path fill="currentColor" d="M160 304q0 10-3.125 20.5t-10.75 19-18.125
+        8.5-18.125-8.5-10.75-19-3.125-20.5 3.125-20.5 10.75-19 18.125-8.5
+        18.125 8.5 10.75 19 3.125 20.5zM320 304q0 10-3.125 20.5t-10.75
+        19-18.125 8.5-18.125-8.5-10.75-19-3.125-20.5 3.125-20.5 10.75-19
+        18.125-8.5 18.125 8.5 10.75 19 3.125 20.5zM360
+        304q0-30-17.25-51t-46.75-21q-10.25 0-48.75 5.25-17.75 2.75-39.25
+        2.75t-39.25-2.75q-38-5.25-48.75-5.25-29.5 0-46.75 21t-17.25 51q0 22 8
+        38.375t20.25 25.75 30.5 15 35 7.375 37.25 1.75h42q20.5 0
+        37.25-1.75t35-7.375 30.5-15 20.25-25.75 8-38.375zM416 260q0 51.75-15.25
+        82.75-9.5 19.25-26.375 33.25t-35.25 21.5-42.5 11.875-42.875 5.5-41.75
+        1.125q-19.5 0-35.5-0.75t-36.875-3.125-38.125-7.5-34.25-12.875-30.25-20.25-21.5-28.75q-15.5-30.75-15.5-82.75
+        0-59.25 34-99-6.75-20.5-6.75-42.5 0-29 12.75-54.5 27 0 47.5 9.875t47.25
+        30.875q36.75-8.75 77.25-8.75 37 0 70 8 26.25-20.5
+        46.75-30.25t47.25-9.75q12.75 25.5 12.75 54.5 0 21.75-6.75 42 34 40 34
+        99.5z" />
+</svg>
+        
+      </defs>
+    </svg>
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" data-md-component="overlay" for="__drawer"></label>
+    
+      <a href="#delete-specific-field-values" tabindex="1" class="md-skip">
+        Skip to content
+      </a>
+    
+    
+      <header class="md-header" data-md-component="header">
+  <nav class="md-header-nav md-grid">
+    <div class="md-flex">
+      <div class="md-flex__cell md-flex__cell--shrink">
+        <a href="../../index.html" title="CM-Well" class="md-header-nav__button md-logo">
+          
+            <i class="md-icon"></i>
+          
+        </a>
+      </div>
+      <div class="md-flex__cell md-flex__cell--shrink">
+        <label class="md-icon md-icon--menu md-header-nav__button" for="__drawer"></label>
+      </div>
+      <div class="md-flex__cell md-flex__cell--stretch">
+        <div class="md-flex__ellipsis md-header-nav__title" data-md-component="title">
+          
+            
+              <span class="md-header-nav__topic">
+                CM-Well
+              </span>
+              <span class="md-header-nav__topic">
+                Delete Specific Field Values
+              </span>
+            
+          
+        </div>
+      </div>
+      <div class="md-flex__cell md-flex__cell--shrink">
+        
+          
+            <label class="md-icon md-icon--search md-header-nav__button" for="__search"></label>
+            
+<div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="query" data-md-state="active">
+      <label class="md-icon md-search__icon" for="__search"></label>
+      <button type="reset" class="md-icon md-search__icon" data-md-component="reset" tabindex="-1">
+        &#xE5CD;
+      </button>
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="result">
+          <div class="md-search-result__meta">
+            Type to start searching
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+          
+        
+      </div>
+      
+        <div class="md-flex__cell md-flex__cell--shrink">
+          <div class="md-header-nav__source">
+            
+
+
+  
+
+
+  <a href="https://github.com/CM-Well/CM-Well/" title="Go to repository" class="md-source" data-md-source="github">
+    
+      <div class="md-source__icon">
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <use xlink:href="#__github" width="24" height="24"></use>
+        </svg>
+      </div>
+    
+    <div class="md-source__repository">
+      GitHub
+    </div>
+  </a>
+
+          </div>
+        </div>
+      
+    </div>
+  </nav>
+</header>
+    
+    <div class="md-container">
+      
+        
+      
+      
+        
+
+  
+
+<nav class="md-tabs md-tabs--active" data-md-component="tabs">
+  <div class="md-tabs__inner md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  <li class="md-tabs__item">
+    
+      <a href="../../index.html" title="Home" class="md-tabs__link">
+        Home
+      </a>
+    
+  </li>
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../../Introduction/Intro.IntroductionToCM-Well.html" title="Introduction" class="md-tabs__link">
+          Introduction
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../../DeveloperGuide/DevGuide.GettingStarted.html" title="Developer Guide" class="md-tabs__link">
+          Developer Guide
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    
+    
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../Authorization/API.Auth.GeneratePassword.html" title="API Reference" class="md-tabs__link">
+          API Reference
+        </a>
+      
+    </li>
+  
+
+  
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../../Tutorials/Tutorial.Docker.html" title="Tutorials" class="md-tabs__link">
+          Tutorials
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../../WebInterface/CM-WellWebInterface.html" title="Web Interface" class="md-tabs__link">
+          Web Interface
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../../TestingAndMonitoring/Testing.TestingAndDebugging.html" title="Testing & Monitoring" class="md-tabs__link">
+          Testing & Monitoring
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    
+    
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../../AdvancedTopics/Tools/Tools.UsingCM-WellDocker.html" title="Advanced Topics" class="md-tabs__link">
+          Advanced Topics
+        </a>
+      
+    </li>
+  
+
+  
+
+      
+        
+  
+  
+    
+    
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../../ReleaseNotes/2018/ReleaseNotes.Piranha.January.2018.html" title="Release Notes" class="md-tabs__link">
+          Release Notes
+        </a>
+      
+    </li>
+  
+
+  
+
+      
+        
+      
+    </ul>
+  </div>
+</nav>
+      
+      <main class="md-main">
+        <div class="md-main__inner md-grid" data-md-component="container">
+          
+            
+              <div class="md-sidebar md-sidebar--primary" data-md-component="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    <nav class="md-nav md-nav--primary" data-md-level="0">
+  <label class="md-nav__title md-nav__title--site" for="__drawer">
+    <a href="../../index.html" title="CM-Well" class="md-nav__button md-logo">
+      
+        <i class="md-icon"></i>
+      
+    </a>
+    CM-Well
+  </label>
+  
+    <div class="md-nav__source">
+      
+
+
+  
+
+
+  <a href="https://github.com/CM-Well/CM-Well/" title="Go to repository" class="md-source" data-md-source="github">
+    
+      <div class="md-source__icon">
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <use xlink:href="#__github" width="24" height="24"></use>
+        </svg>
+      </div>
+    
+    <div class="md-source__repository">
+      GitHub
+    </div>
+  </a>
+
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../index.html" title="Home" class="md-nav__link">
+      Home
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-2" type="checkbox" id="nav-2">
+    
+    <label class="md-nav__link" for="nav-2">
+      Introduction
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-2">
+        Introduction
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Introduction/Intro.IntroductionToCM-Well.html" title="Introduction to CM-Well" class="md-nav__link">
+      Introduction to CM-Well
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Introduction/Intro.CM-WellDataParadigms.html" title="Data Paradigms" class="md-nav__link">
+      Data Paradigms
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Introduction/Intro.OverviewOfTheCM-WellAPI.html" title="API Overview" class="md-nav__link">
+      API Overview
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Introduction/Intro.TechnicalAspectsOfCM-Well.html" title="Technical Aspects" class="md-nav__link">
+      Technical Aspects
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Introduction/Intro.CM-WellHigh-LevelArchitecture.html" title="High-Level Architecture" class="md-nav__link">
+      High-Level Architecture
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Introduction/Intro.BriefHistoryOfCM-Well.html" title="A Brief History" class="md-nav__link">
+      A Brief History
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Introduction/Intro.TechnicalDecisionsInCM-WellDesign.html" title="Technical Design Decisions" class="md-nav__link">
+      Technical Design Decisions
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-3" type="checkbox" id="nav-3">
+    
+    <label class="md-nav__link" for="nav-3">
+      Developer Guide
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-3">
+        Developer Guide
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.GettingStarted.html" title="Getting Started with CM-Well" class="md-nav__link">
+      Getting Started with CM-Well
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.CurlUtility.html" title="Calling CM-Well with Curl" class="md-nav__link">
+      Calling CM-Well with Curl
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.BasicQueries.html" title="Basic Queries" class="md-nav__link">
+      Basic Queries
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.AdvancedQueries.html" title="Advanced Queries" class="md-nav__link">
+      Advanced Queries
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.UpdatingCM-Well.html" title="Updating CM-Well" class="md-nav__link">
+      Updating CM-Well
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.StreamingDataFromCM-Well.html" title="Streaming Data from CM-Well" class="md-nav__link">
+      Streaming Data from CM-Well
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.SubscribingToReal-TimeUpdates.html" title="Subscribing to Updates" class="md-nav__link">
+      Subscribing to Updates
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.UsingSPARQLOnCM-WellInfotons.html" title="Using SPARQL on Infotons" class="md-nav__link">
+      Using SPARQL on Infotons
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.CallingJavaScalaFunctionsFromSPARQLQueries.html" title="Calling Custom Java/Scala Functions from SPARQL Queries" class="md-nav__link">
+      Calling Custom Java/Scala Functions from SPARQL Queries
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.UsingElasticSearchStatistics.html" title="Using Elastic Search Statistics" class="md-nav__link">
+      Using Elastic Search Statistics
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.WorkingWithNamedSub-Graphs.html" title="Working with Named Sub-Graphs" class="md-nav__link">
+      Working with Named Sub-Graphs
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.CM-WellSecurityFeatures.html" title="CM-Well Security Features" class="md-nav__link">
+      CM-Well Security Features
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.ManagingUsers.html" title="Managing CM-Well Users" class="md-nav__link">
+      Managing CM-Well Users
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.DosAndDonts.html" title="CM-Well Dos and Don'ts" class="md-nav__link">
+      CM-Well Dos and Don'ts
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-3-15" type="checkbox" id="nav-3-15">
+    
+    <label class="md-nav__link" for="nav-3-15">
+      Best Practices
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-3-15">
+        Best Practices
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/BestPractices/DevGuide.BestPractices.ConditionalUpdates.html" title="Avoiding Write Clashes with Conditional Updates" class="md-nav__link">
+      Avoiding Write Clashes with Conditional Updates
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/BestPractices/DevGuide.BestPractices.DeletingKnownFieldValues.html" title="Deleting Known Field Values" class="md-nav__link">
+      Deleting Known Field Values
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/BestPractices/DevGuide.BestPractices.ManagingRetries.html" title="Managing Retries" class="md-nav__link">
+      Managing Retries
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/BestPractices/DevGuide.BestPractices.StreamingMethods.html" title="Streaming Methods" class="md-nav__link">
+      Streaming Methods
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+  
+
+
+  <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4" type="checkbox" id="nav-4" checked>
+    
+    <label class="md-nav__link" for="nav-4">
+      API Reference
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-4">
+        API Reference
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4-1" type="checkbox" id="nav-4-1">
+    
+    <label class="md-nav__link" for="nav-4-1">
+      Authorization
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-4-1">
+        Authorization
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Authorization/API.Auth.GeneratePassword.html" title="Generate Password" class="md-nav__link">
+      Generate Password
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Authorization/API.Auth.ChangePassword.html" title="Change Password" class="md-nav__link">
+      Change Password
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Authorization/API.Auth.InvalidateCache.html" title="Invalidate Cache" class="md-nav__link">
+      Invalidate Cache
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Authorization/API.Auth.Login.html" title="Login" class="md-nav__link">
+      Login
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4-2" type="checkbox" id="nav-4-2">
+    
+    <label class="md-nav__link" for="nav-4-2">
+      Get
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-4-2">
+        Get
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Get/API.Get.GetSingleInfotonByURI.html" title="Get Single Infoton by URI" class="md-nav__link">
+      Get Single Infoton by URI
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Get/API.Get.GetSingleInfotonByUUID.html" title="Get Single Infoton by UUID" class="md-nav__link">
+      Get Single Infoton by UUID
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Get/API.Get.GetMultipleInfotonsByURI.html" title="Get Multiple Infotons by URI" class="md-nav__link">
+      Get Multiple Infotons by URI
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4-3" type="checkbox" id="nav-4-3">
+    
+    <label class="md-nav__link" for="nav-4-3">
+      Query
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-4-3">
+        Query
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Query/API.Query.QueryForInfotonsUsingFieldConditions.html" title="Query with Field Conditions" class="md-nav__link">
+      Query with Field Conditions
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Query/API.Query.QueryForQuadsByTheirLabel.html" title="Query for Quads by their Label" class="md-nav__link">
+      Query for Quads by their Label
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Query/API.Query.ApplySPARQLToQueryResults.html" title="Apply SPARQL to Query Results" class="md-nav__link">
+      Apply SPARQL to Query Results
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Query/API.Query.ApplySPARQLToEntireGraph.html" title="Apply SPARQL to the Entire Graph" class="md-nav__link">
+      Apply SPARQL to the Entire Graph
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Query/API.Query.ApplyGremlinToQueryResults.html" title="Apply Gremlin to Query Results" class="md-nav__link">
+      Apply Gremlin to Query Results
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Query/API.Query.DataStatistics.html" title="Query with Data Statistics" class="md-nav__link">
+      Query with Data Statistics
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4-4" type="checkbox" id="nav-4-4">
+    
+    <label class="md-nav__link" for="nav-4-4">
+      Stream
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-4-4">
+        Stream
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Stream/API.Stream.CreateConsumer.html" title="Create Consumer" class="md-nav__link">
+      Create Consumer
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Stream/API.Stream.GetNextChunk.html" title="Get Next Chunk" class="md-nav__link">
+      Get Next Chunk
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Stream/API.Stream.ConsumeNextChunk.html" title="Consume Next Chunk" class="md-nav__link">
+      Consume Next Chunk
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Stream/API.Stream.ConsumeNextBulk.html" title="Consume Next Bulk" class="md-nav__link">
+      Consume Next Bulk
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Stream/API.Stream.CreateIterator.html" title="Create Iterator" class="md-nav__link">
+      Create Iterator
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Stream/API.Stream.StreamInfotons.html" title="Stream Infotons" class="md-nav__link">
+      Stream Infotons
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4-5" type="checkbox" id="nav-4-5">
+    
+    <label class="md-nav__link" for="nav-4-5">
+      Subscribe
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-4-5">
+        Subscribe
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Subscribe/API.Subscribe.SubscribeForPulledData.html" title="Subscribe for Pulled Data" class="md-nav__link">
+      Subscribe for Pulled Data
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Subscribe/API.Subscribe.PullNewData.html" title="Pull New Data" class="md-nav__link">
+      Pull New Data
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Subscribe/API.Subscribe.SubscribeForPushedData.html" title="Subscribe for Pushed Data" class="md-nav__link">
+      Subscribe for Pushed Data
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Subscribe/API.Subscribe.Unsubscribe.html" title="Unsubscribe from Updates" class="md-nav__link">
+      Unsubscribe from Updates
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4-6" type="checkbox" id="nav-4-6">
+    
+    <label class="md-nav__link" for="nav-4-6">
+      Traversal
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-4-6">
+        Traversal
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Traversal/API.Traversal.Intro.html" title="Introduction to Graph Traversal" class="md-nav__link">
+      Introduction to Graph Traversal
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Traversal/API.Traversal.xg.html" title="Traversing Outbound Links (xg)" class="md-nav__link">
+      Traversing Outbound Links (xg)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Traversal/API.Traversal.yg.html" title="Traversing Inbound and Outbound Links (yg)" class="md-nav__link">
+      Traversing Inbound and Outbound Links (yg)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Traversal/API.Traversal.gqp.html" title="Filtering Results by Inbound and Outbound Links (gqp)" class="md-nav__link">
+      Filtering Results by Inbound and Outbound Links (gqp)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Traversal/API.Traversal.Operands.html" title="Traversal Operands" class="md-nav__link">
+      Traversal Operands
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+  
+
+
+  <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4-7" type="checkbox" id="nav-4-7" checked>
+    
+    <label class="md-nav__link" for="nav-4-7">
+      Update
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-4-7">
+        Update
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="API.Update.AddFileInfoton.html" title="Add a File Infoton" class="md-nav__link">
+      Add a File Infoton
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="API.Update.AddInfotonsAndFields.html" title="Add Infotons and Fields" class="md-nav__link">
+      Add Infotons and Fields
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="API.Update.AddInfotonsAndFieldsToSubGraph.html" title="Add Infotons and Fields to a Sub-Graph" class="md-nav__link">
+      Add Infotons and Fields to a Sub-Graph
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="API.Update.AddLinkInfoton.html" title="Add a Link Infoton" class="md-nav__link">
+      Add a Link Infoton
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="API.Update.DeleteASingleInfoton.html" title="Delete a Single Infoton" class="md-nav__link">
+      Delete a Single Infoton
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="API.Update.DeleteFields.html" title="Delete Fields" class="md-nav__link">
+      Delete Fields
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="API.Update.DeleteMultipleInfotons.html" title="Delete Multiple Infotons" class="md-nav__link">
+      Delete Multiple Infotons
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="API.Update.DeleteOrReplaceValuesInNamedSubGraph.html" title="Delete or Replace Values in a Named Sub-Graph" class="md-nav__link">
+      Delete or Replace Values in a Named Sub-Graph
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+  
+
+
+  <li class="md-nav__item md-nav__item--active">
+    
+    <input class="md-toggle md-nav__toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+    
+      
+    
+    
+      <label class="md-nav__link md-nav__link--active" for="__toc">
+        Delete Specific Field Values
+      </label>
+    
+    <a href="API.Update.DeleteSpecificFieldValues.html" title="Delete Specific Field Values" class="md-nav__link md-nav__link--active">
+      Delete Specific Field Values
+    </a>
+    
+      
+<nav class="md-nav md-nav--secondary">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">Table of contents</label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#description" title="Description" class="md-nav__link">
+    Description
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#syntax-1-json-format" title="Syntax 1 (JSON Format)" class="md-nav__link">
+    Syntax 1 (JSON Format)
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parameters-1" title="Parameters 1" class="md-nav__link">
+    Parameters 1
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#code-example-1" title="Code Example 1" class="md-nav__link">
+    Code Example 1
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#call" title="Call" class="md-nav__link">
+    Call
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#results" title="Results" class="md-nav__link">
+    Results
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#syntax-2-markdelete-indicator" title="Syntax 2 (#markDelete Indicator)" class="md-nav__link">
+    Syntax 2 (#markDelete Indicator)
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#file-contents" title="File Contents" class="md-nav__link">
+    File Contents
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parameters-2" title="Parameters 2" class="md-nav__link">
+    Parameters 2
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#code-example-2" title="Code Example 2" class="md-nav__link">
+    Code Example 2
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#call_1" title="Call" class="md-nav__link">
+    Call
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#file-contents_1" title="File Contents" class="md-nav__link">
+    File Contents
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#results_1" title="Results" class="md-nav__link">
+    Results
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-topics" title="Related Topics" class="md-nav__link">
+    Related Topics
+  </a>
+  
+</li>
+      
+      
+      
+      
+      
+    </ul>
+  
+</nav>
+    
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="API.Update.Purge.html" title="Purge a Single Infoton's Versions" class="md-nav__link">
+      Purge a Single Infoton's Versions
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="API.Update.ReplaceFieldValues.html" title="Replace Field Values" class="md-nav__link">
+      Replace Field Values
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="API.Update.TrackUpdates.html" title="Track Updates" class="md-nav__link">
+      Track Updates
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4-8" type="checkbox" id="nav-4-8">
+    
+    <label class="md-nav__link" for="nav-4-8">
+      Usage Topics
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-4-8">
+        Usage Topics
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../UsageTopics/API.FieldConditionSyntax.html" title="Field Condition Syntax" class="md-nav__link">
+      Field Condition Syntax
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../UsageTopics/API.FieldNameFormats.html" title="Field Name Formats" class="md-nav__link">
+      Field Name Formats
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../UsageTopics/API.FromAndToDatetimeFormatting.html" title="From/To Datetime Formatting" class="md-nav__link">
+      From/To Datetime Formatting
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../UsageTopics/API.InputAndOutputFormats.html" title="Input and Output Formats" class="md-nav__link">
+      Input and Output Formats
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../UsageTopics/API.MetadataFields.html" title="Metadata Fields" class="md-nav__link">
+      Metadata Fields
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../UsageTopics/API.PagingThroughResultsWithOffsetAndLengthParameters.html" title="Paging through Results" class="md-nav__link">
+      Paging through Results
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../UsageTopics/API.ProtocolSystemField.html" title="The Protocol System Field" class="md-nav__link">
+      The Protocol System Field
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../UsageTopics/API.QueryParameters.html" title="CM-Well Query Parameters" class="md-nav__link">
+      CM-Well Query Parameters
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../UsageTopics/API.ReturnCodes.html" title="CM-Well API Return Codes" class="md-nav__link">
+      CM-Well API Return Codes
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../UsageTopics/API.SortingResultsWithTheSort-byFlag.html" title="Sorting Results with sort-by" class="md-nav__link">
+      Sorting Results with sort-by
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../UsageTopics/API.UsingConditionalUpdates.html" title="Using Conditional Updates" class="md-nav__link">
+      Using Conditional Updates
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../UsageTopics/API.UsingTheBlockingFlag.html" title="Using the blocking Flag" class="md-nav__link">
+      Using the blocking Flag
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../UsageTopics/API.UsingTheRecursiveFlag.html" title="Using the recursive Flag" class="md-nav__link">
+      Using the recursive Flag
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../UsageTopics/API.UsingTheWith-dataFlag.html" title="Using the with-data Flag" class="md-nav__link">
+      Using the with-data Flag
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../UsageTopics/API.UsingTheWith-deletedFlag.html" title="Using the with-deleted Flag" class="md-nav__link">
+      Using the with-deleted Flag
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../UsageTopics/API.UsingTheWith-historyFlag.html" title="Using the with-history Flag" class="md-nav__link">
+      Using the with-history Flag
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-5" type="checkbox" id="nav-5">
+    
+    <label class="md-nav__link" for="nav-5">
+      Tutorials
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-5">
+        Tutorials
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Tutorials/Tutorial.Docker.html" title="A Brief CM-Well Docker Tutorial" class="md-nav__link">
+      A Brief CM-Well Docker Tutorial
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-5-2" type="checkbox" id="nav-5-2">
+    
+    <label class="md-nav__link" for="nav-5-2">
+      Hands-On Exercises
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-5-2">
+        Hands-On Exercises
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.AddFileInfoton.html" title="Add a File Infoton" class="md-nav__link">
+      Add a File Infoton
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.AddInfotonsAndFields.html" title="Add Infotons and Fields" class="md-nav__link">
+      Add Infotons and Fields
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.DeleteInfotonsAndFields.html" title="Delete Infotons and Fields" class="md-nav__link">
+      Delete Infotons and Fields
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.GetInfotonsByURI.html" title="Get Infotons by URI" class="md-nav__link">
+      Get Infotons by URI
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.QueryForInfotons.html" title="Query for Infotons" class="md-nav__link">
+      Query for Infotons
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.QueryWithGremlin.html" title="Query with Gremlin" class="md-nav__link">
+      Query with Gremlin
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.QueryWithSPARQL.html" title="Query with SPARQL" class="md-nav__link">
+      Query with SPARQL
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.StreamWithIterator.html" title="Stream with Iterator" class="md-nav__link">
+      Stream with Iterator
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.StreamWithTheStreamOperation.html" title="Stream with the Stream Operation" class="md-nav__link">
+      Stream with the Stream Operation
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.SubscribeForPulledData.html" title="Subscribe for Pulled Data" class="md-nav__link">
+      Subscribe for Pulled Data
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.UpdateFields.html" title="Update Fields" class="md-nav__link">
+      Update Fields
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.WorkWithSubGraphs.html" title="Work with Sub-Graphs" class="md-nav__link">
+      Work with Sub-Graphs
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6">
+    
+    <label class="md-nav__link" for="nav-6">
+      Web Interface
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-6">
+        Web Interface
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../WebInterface/CM-WellWebInterface.html" title="The CM-Well Web Interface" class="md-nav__link">
+      The CM-Well Web Interface
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../WebInterface/CM-Well.OldWebInterface.html" title="The Previous CM-Well Web Interface" class="md-nav__link">
+      The Previous CM-Well Web Interface
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-7" type="checkbox" id="nav-7">
+    
+    <label class="md-nav__link" for="nav-7">
+      Testing & Monitoring
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-7">
+        Testing & Monitoring
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../TestingAndMonitoring/Testing.TestingAndDebugging.html" title="Tips for Testing and Debugging" class="md-nav__link">
+      Tips for Testing and Debugging
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../TestingAndMonitoring/Monitoring.HealthDashboards.html" title="Health Dashboards" class="md-nav__link">
+      Health Dashboards
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-8" type="checkbox" id="nav-8">
+    
+    <label class="md-nav__link" for="nav-8">
+      Advanced Topics
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-8">
+        Advanced Topics
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-8-1" type="checkbox" id="nav-8-1">
+    
+    <label class="md-nav__link" for="nav-8-1">
+      Tools
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-8-1">
+        Tools
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Tools/Tools.UsingCM-WellDocker.html" title="CM-Well Docker" class="md-nav__link">
+      CM-Well Docker
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Tools/Tools.UsingTheCM-WellDownloader.html" title="CM-Well Downloader" class="md-nav__link">
+      CM-Well Downloader
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Tools/Tools.UsingTheCM-WellIngester.html" title="CM-Well Ingester" class="md-nav__link">
+      CM-Well Ingester
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Tools/Tools.UsingTheCM-WellSparkConnector.html" title="CM-Well Spark Connector" class="md-nav__link">
+      CM-Well Spark Connector
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Tools/Tools.UsingTheSPARQLTriggerProcessor.html" title="SPARQL Trigger Processor" class="md-nav__link">
+      SPARQL Trigger Processor
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Advanced.BuildingCM-Well.html" title="Building CM-Well" class="md-nav__link">
+      Building CM-Well
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Cookbook.CM-WellWithPermIDData.html" title="Cookbook" class="md-nav__link">
+      Cookbook
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-8-4" type="checkbox" id="nav-8-4">
+    
+    <label class="md-nav__link" for="nav-8-4">
+      Admin
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-8-4">
+        Admin
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Admin/Admin.Backpressure.html" title="_backpressure API" class="md-nav__link">
+      _backpressure API
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Admin/Admin.Kafka.html" title="_kafka API" class="md-nav__link">
+      _kafka API
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Admin/Admin.TestAndFixCorruptedData.html" title="Testing & Fixing Corrupt Data" class="md-nav__link">
+      Testing & Fixing Corrupt Data
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Admin/Admin.DCC.html" title="Data Consistency Crawler" class="md-nav__link">
+      Data Consistency Crawler
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-8-5" type="checkbox" id="nav-8-5">
+    
+    <label class="md-nav__link" for="nav-8-5">
+      Architecture
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-8-5">
+        Architecture
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.Preface.html" title="Preface" class="md-nav__link">
+      Preface
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.InfoArch.Part1.html" title="Overview and Principles" class="md-nav__link">
+      Overview and Principles
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.InfoArch.Infotons.html" title="Information Objects (“Infotons”)" class="md-nav__link">
+      Information Objects (“Infotons”)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.InfoArch.InfoInMotion.html" title="Information in Motion" class="md-nav__link">
+      Information in Motion
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.SoftwareArch.Part1.html" title="SW Architecture Overview & Diagrams" class="md-nav__link">
+      SW Architecture Overview & Diagrams
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.SoftwareArch.DesignPrinciples.html" title="Design Principles" class="md-nav__link">
+      Design Principles
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.SoftwareArch.WebServiceAndGridStorage.html" title="Web Service and Grid Storage" class="md-nav__link">
+      Web Service and Grid Storage
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.SoftwareArch.BG.html" title="Background (BG) Processing Module" class="md-nav__link">
+      Background (BG) Processing Module
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.SoftwareArch.STP.html" title="SPARQL Trigger Processor (STP) Agent" class="md-nav__link">
+      SPARQL Trigger Processor (STP) Agent
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.SoftwareArch.ControlModules.html" title="Control Modules" class="md-nav__link">
+      Control Modules
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.SoftwareArch.ThirdPartyPackages.html" title="Third-Party Packages" class="md-nav__link">
+      Third-Party Packages
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.SoftwareArch.WebApplication.html" title="Web Application" class="md-nav__link">
+      Web Application
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.PlatformArch.Part1.html" title="Platform Overview & Design Principles" class="md-nav__link">
+      Platform Overview & Design Principles
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.PlatformArch.DCSync.html" title="Data Center Synchronization" class="md-nav__link">
+      Data Center Synchronization
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.Collaboration.html" title="CM-Well Collaboration Use Case: Information Ecosystem" class="md-nav__link">
+      CM-Well Collaboration Use Case: Information Ecosystem
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-9" type="checkbox" id="nav-9">
+    
+    <label class="md-nav__link" for="nav-9">
+      Release Notes
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-9">
+        Release Notes
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-9-1" type="checkbox" id="nav-9-1">
+    
+    <label class="md-nav__link" for="nav-9-1">
+      2018
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-9-1">
+        2018
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2018/ReleaseNotes.Piranha.January.2018.html" title="Piranha (January 2018)" class="md-nav__link">
+      Piranha (January 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2018/ReleaseNotes.Quetzal.February.2018.html" title="Quetzal (February 2018)" class="md-nav__link">
+      Quetzal (February 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2018/ReleaseNotes.Rhino.March.2018.html" title="Rhino (March 2018)" class="md-nav__link">
+      Rhino (March 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2018/ReleaseNotes.Swan.April.2018.html" title="Swan (April 2018)" class="md-nav__link">
+      Swan (April 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2018/ReleaseNotes.Turtle.May.2018.html" title="Turtle (May 2018)" class="md-nav__link">
+      Turtle (May 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2018/ReleaseNotes.Unicorn.June.2018.html" title="Unicorn (June 2018)" class="md-nav__link">
+      Unicorn (June 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2018/ReleaseNotes.Viper.June.2018.html" title="Viper (June 2018)" class="md-nav__link">
+      Viper (June 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2018/ReleaseNotes.Wombat.August.2018.html" title="Wombat (August 2018)" class="md-nav__link">
+      Wombat (August 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2018/ReleaseNotes.Xerus.October.2018.html" title="Xerus (October 2018)" class="md-nav__link">
+      Xerus (October 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2018/ReleaseNotes.Yak.November.2018.html" title="Yak (November 2018)" class="md-nav__link">
+      Yak (November 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2018/ReleaseNotes.Zebra.December.2018.html" title="Zebra (December 2018)" class="md-nav__link">
+      Zebra (December 2018)
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-9-2" type="checkbox" id="nav-9-2">
+    
+    <label class="md-nav__link" for="nav-9-2">
+      2017
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-9-2">
+        2017
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Amoeba.Feb.2017.html" title="Amoeba (Feb. 2017)" class="md-nav__link">
+      Amoeba (Feb. 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Beowulf.Feb.2017.html" title="Beowulf (Feb. 2017)" class="md-nav__link">
+      Beowulf (Feb. 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.CElegans.Mar.2017.html" title="C.Elegans (Mar. 2017)" class="md-nav__link">
+      C.Elegans (Mar. 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Dolphin.Mar.2017.html" title="Dolphin (Mar. 2017)" class="md-nav__link">
+      Dolphin (Mar. 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Firebird.May.2017.html" title="Firebird (May 2017)" class="md-nav__link">
+      Firebird (May 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Gopher.May.2017.html" title="Gopher (May 2017)" class="md-nav__link">
+      Gopher (May 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Hydra.June.2017.html" title="Hydra (June 2017)" class="md-nav__link">
+      Hydra (June 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Iguana.July.2017.html" title="Iguana (July 2017)" class="md-nav__link">
+      Iguana (July 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Jaguar.August.2017.html" title="Jaguar (August 2017)" class="md-nav__link">
+      Jaguar (August 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Jan.17.2017.html" title="Jan. 17 2017" class="md-nav__link">
+      Jan. 17 2017
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Jan.4.2017.html" title="Jan. 4 2017" class="md-nav__link">
+      Jan. 4 2017
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Kingbird.September.2017.html" title="Kingbird (September 2017)" class="md-nav__link">
+      Kingbird (September 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Lynx.September.2017.html" title="Lynx (September 2017)" class="md-nav__link">
+      Lynx (September 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Mono.November.2017.html" title="Mono (November 2017)" class="md-nav__link">
+      Mono (November 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Nautilus.November.2017.html" title="Nautilus (November 2017)" class="md-nav__link">
+      Nautilus (November 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Octopus.December.2017.html" title="Octopus (December 2017)" class="md-nav__link">
+      Octopus (December 2017)
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-9-3" type="checkbox" id="nav-9-3">
+    
+    <label class="md-nav__link" for="nav-9-3">
+      2016
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-9-3">
+        2016
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2016/ReleaseNotes.Dec.15.2016.html" title="Dec. 15 2016" class="md-nav__link">
+      Dec. 15 2016
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2016/ReleaseNotes.Dec.7.2016.html" title="Dec. 7 2016" class="md-nav__link">
+      Dec. 7 2016
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2016/ReleaseNotes.Nov.10.2016.html" title="Nov. 10 2016" class="md-nav__link">
+      Nov. 10 2016
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2016/ReleaseNotes.Oct.6.2016.html" title="Oct. 6th 2016" class="md-nav__link">
+      Oct. 6th 2016
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2016/ReleaseNotes.Sept.11.2016.html" title="Sept. 11th 2016" class="md-nav__link">
+      Sept. 11th 2016
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="https://github.com/CM-Well/CM-Well/issues" title="Bug Tracker" class="md-nav__link">
+      Bug Tracker
+    </a>
+  </li>
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+<nav class="md-nav md-nav--secondary">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">Table of contents</label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#description" title="Description" class="md-nav__link">
+    Description
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#syntax-1-json-format" title="Syntax 1 (JSON Format)" class="md-nav__link">
+    Syntax 1 (JSON Format)
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parameters-1" title="Parameters 1" class="md-nav__link">
+    Parameters 1
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#code-example-1" title="Code Example 1" class="md-nav__link">
+    Code Example 1
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#call" title="Call" class="md-nav__link">
+    Call
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#results" title="Results" class="md-nav__link">
+    Results
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#syntax-2-markdelete-indicator" title="Syntax 2 (#markDelete Indicator)" class="md-nav__link">
+    Syntax 2 (#markDelete Indicator)
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#file-contents" title="File Contents" class="md-nav__link">
+    File Contents
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parameters-2" title="Parameters 2" class="md-nav__link">
+    Parameters 2
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#code-example-2" title="Code Example 2" class="md-nav__link">
+    Code Example 2
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#call_1" title="Call" class="md-nav__link">
+    Call
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#file-contents_1" title="File Contents" class="md-nav__link">
+    File Contents
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#results_1" title="Results" class="md-nav__link">
+    Results
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#related-topics" title="Related Topics" class="md-nav__link">
+    Related Topics
+  </a>
+  
+</li>
+      
+      
+      
+      
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content">
+            <article class="md-content__inner md-typeset">
+              
+                
+                  <a href="https://github.com/CM-Well/CM-Well/edit/master/docs/APIReference/Update/API.Update.DeleteSpecificFieldValues.md" title="Edit this page" class="md-icon md-content__icon">&#xE3C9;</a>
+                
+                
+                <h1 id="delete-specific-field-values">Delete Specific Field Values<a class="headerlink" href="#delete-specific-field-values" title="Permanent link">&para;</a></h1>
+<h2 id="description">Description<a class="headerlink" href="#description" title="Permanent link">&para;</a></h2>
+<p>In some cases, an infoton may have several values for the same field name. For example, a Person infoton might have several Telephone or Email field values.</p>
+<p>Using the <a href="API.Update.DeleteFields.html">#markReplace operator</a> to delete a field will delete all of its values. </p>
+<p>If you only want to delete a subset of a field's multiple values, while retaining the other values, there are two ways to do this: </p>
+<ol>
+<li>Use the JSON format to define values to delete.</li>
+<li>Use the special <strong>#markDelete</strong> indicator.</li>
+</ol>
+<p>Both methods are described in the following sections.</p>
+<h2 id="syntax-1-json-format">Syntax 1 (JSON Format)<a class="headerlink" href="#syntax-1-json-format" title="Permanent link">&para;</a></h2>
+<p><strong>URL:</strong> <code>&lt;cm-well-host&gt;/&lt;cm-well-path&gt;</code></p>
+<p><strong>REST verb:</strong> POST</p>
+<p><strong>Mandatory parameters:</strong> data</p>
+<hr />
+<p><strong>Template:</strong></p>
+<div class="codehilite"><pre><span></span>curl -X POST &lt;cm-well-host&gt;/&lt;cm-well-path&gt;?data=&lt;field name and values to delete, in JSON format&gt;
+</pre></div>
+
+
+<p><strong>URL example:</strong> N/A</p>
+<p><strong>Curl example (REST API):</strong></p>
+<div class="codehilite"><pre><span></span>curl -X DELETE &#39;&lt;cm-well-host&gt;/example.org/JohnSmith?data={&quot;name&quot;:[&quot;John&quot;,&quot;Johnnie&quot;]}&#39;
+</pre></div>
+
+
+<h2 id="parameters-1">Parameters 1<a class="headerlink" href="#parameters-1" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th align="left">Parameter</th>
+<th align="left">Description</th>
+<th align="left">Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">data</td>
+<td align="left">The field name and values to delete, in JSON format. Values are comma-separated.</td>
+<td align="left">{"name":["John","Johnnie"]}</td>
+</tr>
+<tr>
+<td align="left">priority</td>
+<td align="left">If this flag appears in an update call, that call receives priority relative to non-priority calls. To use this flag, you must also pass the X-CM-WELL-TOKEN request header, with a token that grants access to the priority feature. This feature should be used with discretion so as not to flood the priority queue.</td>
+<td align="left"><cm-well-host>/_in?format=ttl&amp;priority...</td>
+</tr>
+</tbody>
+</table>
+<h2 id="code-example-1">Code Example 1<a class="headerlink" href="#code-example-1" title="Permanent link">&para;</a></h2>
+<h3 id="call">Call<a class="headerlink" href="#call" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span>curl -X DELETE &#39;&lt;cm-well-host&gt;/example.org/JohnSmith?data={&quot;name&quot;:[&quot;John&quot;,&quot;Johnnie&quot;]}&#39;
+</pre></div>
+
+
+<h3 id="results">Results<a class="headerlink" href="#results" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span>{&quot;success&quot;:true}
+</pre></div>
+
+
+<h2 id="syntax-2-markdelete-indicator">Syntax 2 (#markDelete Indicator)<a class="headerlink" href="#syntax-2-markdelete-indicator" title="Permanent link">&para;</a></h2>
+<p><strong>URL:</strong> <code>&lt;CMWellHost&gt;/_in</code></p>
+<p><strong>REST verb:</strong> POST</p>
+<p><strong>Mandatory parameters:</strong> N/A</p>
+<hr />
+<p><strong>Template:</strong></p>
+<div class="codehilite"><pre><span></span>curl -X POST &lt;cm-well-host&gt;/_in?format=&lt;format&gt; &lt;infotonURI&gt; &lt;cmwell://meta/sys#markDelete&gt; [ &lt;field name and value pairs&gt; ]
+</pre></div>
+
+
+<p><strong>URL example:</strong> N/A</p>
+<p><strong>Curl example (REST API):</strong></p>
+<div class="codehilite"><pre><span></span>curl -X POST &quot;&lt;cm-well-host&gt;/_in?format=turtle&quot; --data-binary @curlInput.txt
+</pre></div>
+
+
+<h3 id="file-contents">File Contents<a class="headerlink" href="#file-contents" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span><span class="p">@</span><span class="k">prefix</span> <span class="nt">vcard</span><span class="o">:</span> <span class="o">&lt;</span><span class="nt">http</span><span class="o">://</span><span class="nt">www</span><span class="p">.</span><span class="nc">w3</span><span class="p">.</span><span class="nc">org</span><span class="o">/</span><span class="nt">2006</span><span class="o">/</span><span class="nt">vcard</span><span class="o">/</span><span class="nt">ns</span><span class="err">#</span><span class="o">&gt;</span> <span class="o">.</span>
+    <span class="o">&lt;</span><span class="nt">http</span><span class="o">://</span><span class="nt">example</span><span class="p">.</span><span class="nc">org</span><span class="o">/</span><span class="nt">Individuals</span><span class="o">/</span><span class="nt">JohnSmith</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="nt">cmwell</span><span class="o">://</span><span class="nt">meta</span><span class="o">/</span><span class="nt">sys</span><span class="p">#</span><span class="nn">markDelete</span><span class="o">&gt;</span> <span class="cp">[</span>
+      <span class="nx">vcard</span><span class="p">:</span><span class="nx">EMAIL</span> <span class="o">&lt;</span><span class="nx">mailto</span><span class="p">:</span><span class="nx">jane.smith</span><span class="p">@</span><span class="nx">example.org</span><span class="o">&gt;</span> <span class="p">;</span>
+      <span class="nx">vcard</span><span class="p">:</span><span class="nx">EMAIL</span> <span class="o">&lt;</span><span class="nx">mailto</span><span class="p">:</span><span class="nx">jenny.smith</span><span class="p">@</span><span class="nx">example.org</span><span class="o">&gt;</span> <span class="cp">]</span>
+</pre></div>
+
+
+<h2 id="parameters-2">Parameters 2<a class="headerlink" href="#parameters-2" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th align="left">Parameter</th>
+<th align="left">Description</th>
+<th align="left">Values</th>
+<th align="left">Example</th>
+<th align="left">Reference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">format</td>
+<td align="left">The format in which the triples are provided</td>
+<td align="left">n3, rdfxml, ntriples, nquads, turtle/ttl, trig, trix</td>
+<td align="left">format=n3</td>
+<td align="left"><a href="../UsageTopics/API.InputAndOutputFormats.html">CM-Well Input and Output Formats</a></td>
+</tr>
+<tr>
+<td align="left">priority</td>
+<td align="left">If this flag appears in an update call, that call receives priority relative to non-priority calls. To use this flag, you must also pass the X-CM-WELL-TOKEN request header, with a token that grants access to the priority feature. This feature should be used with discretion so as not to flood the priority queue.</td>
+<td align="left">None</td>
+<td align="left"><cm-well-host>/_in?format=ttl&amp;priority...</td>
+<td align="left"><a href="../UsageTopics/API.QueryParameters.html">Query Parameters</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="code-example-2">Code Example 2<a class="headerlink" href="#code-example-2" title="Permanent link">&para;</a></h2>
+<h3 id="call_1">Call<a class="headerlink" href="#call_1" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span>curl -X POST &quot;&lt;cm-well-host&gt;/_in?format=turtle&quot; --data-binary @curlInput.txt
+</pre></div>
+
+
+<h3 id="file-contents_1">File Contents<a class="headerlink" href="#file-contents_1" title="Permanent link">&para;</a></h3>
+<p><strong>Triples:</strong></p>
+<div class="codehilite"><pre><span></span><span class="p">@</span><span class="k">prefix</span> <span class="nt">vcard</span><span class="o">:</span> <span class="o">&lt;</span><span class="nt">http</span><span class="o">://</span><span class="nt">www</span><span class="p">.</span><span class="nc">w3</span><span class="p">.</span><span class="nc">org</span><span class="o">/</span><span class="nt">2006</span><span class="o">/</span><span class="nt">vcard</span><span class="o">/</span><span class="nt">ns</span><span class="err">#</span><span class="o">&gt;</span> <span class="o">.</span>
+    <span class="o">&lt;</span><span class="nt">http</span><span class="o">://</span><span class="nt">example</span><span class="p">.</span><span class="nc">org</span><span class="o">/</span><span class="nt">Individuals</span><span class="o">/</span><span class="nt">JohnSmith</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="nt">cmwell</span><span class="o">://</span><span class="nt">meta</span><span class="o">/</span><span class="nt">sys</span><span class="p">#</span><span class="nn">markDelete</span><span class="o">&gt;</span> <span class="cp">[</span>
+      <span class="nx">vcard</span><span class="p">:</span><span class="nx">EMAIL</span> <span class="o">&lt;</span><span class="nx">mailto</span><span class="p">:</span><span class="nx">jane.smith</span><span class="p">@</span><span class="nx">example.org</span><span class="o">&gt;</span> <span class="p">;</span>
+      <span class="nx">vcard</span><span class="p">:</span><span class="nx">EMAIL</span> <span class="o">&lt;</span><span class="nx">mailto</span><span class="p">:</span><span class="nx">jenny.smith</span><span class="p">@</span><span class="nx">example.org</span><span class="o">&gt;</span> <span class="cp">]</span>
+</pre></div>
+
+
+<p><strong>Quads:</strong></p>
+<div class="codehilite"><pre><span></span><span class="p">@</span><span class="k">prefix</span> <span class="nt">vcard</span><span class="o">:</span> <span class="o">&lt;</span><span class="nt">http</span><span class="o">://</span><span class="nt">www</span><span class="p">.</span><span class="nc">w3</span><span class="p">.</span><span class="nc">org</span><span class="o">/</span><span class="nt">2006</span><span class="o">/</span><span class="nt">vcard</span><span class="o">/</span><span class="nt">ns</span><span class="err">#</span><span class="o">&gt;</span> <span class="o">.</span>
+    <span class="o">&lt;</span><span class="nt">http</span><span class="o">://</span><span class="nt">example</span><span class="p">.</span><span class="nc">org</span><span class="o">/</span><span class="nt">Individuals</span><span class="o">/</span><span class="nt">JohnSmith</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="nt">cmwell</span><span class="o">://</span><span class="nt">meta</span><span class="o">/</span><span class="nt">sys</span><span class="p">#</span><span class="nn">markDelete</span><span class="o">&gt;</span> <span class="cp">[</span>
+      <span class="nx">vcard</span><span class="p">:</span><span class="nx">EMAIL</span> <span class="o">&lt;</span><span class="nx">mailto</span><span class="p">:</span><span class="nx">jane.smith</span><span class="p">@</span><span class="nx">example.org</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="nx">http</span><span class="p">:</span><span class="c1">//mySubGraph&gt;;</span>
+      <span class="nx">vcard</span><span class="p">:</span><span class="nx">EMAIL</span> <span class="o">&lt;</span><span class="nx">mailto</span><span class="p">:</span><span class="nx">jenny.smith</span><span class="p">@</span><span class="nx">example.org</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="nx">http</span><span class="p">:</span><span class="c1">//mySubGraph&gt;]</span>
+</pre></div>
+
+
+<h3 id="results_1">Results<a class="headerlink" href="#results_1" title="Permanent link">&para;</a></h3>
+<div class="codehilite"><pre><span></span>{&quot;success&quot;:true}
+</pre></div>
+
+
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul>
+<li>You can delete only values with specific sub-graph labels by providing the label value as the 4th value of a field quad (see <strong>Quads</strong> example above).</li>
+<li>If you specify a quad format (e.g. format=nquads) but provide triples data, CM-Well infers &lt;*&gt; as the missing quad value, and therefore will delete all specified fields that have any quad value.</li>
+<li>The <a href="API.Update.ReplaceFieldValues.html"><strong>replace-mode</strong> flag</a> and the <strong>#markDelete</strong> indicator should not be used in the same command. If they are, <strong>replace-mode</strong> overrides <strong>#markDelete</strong>.</li>
+</ul>
+</div>
+<h2 id="related-topics">Related Topics<a class="headerlink" href="#related-topics" title="Permanent link">&para;</a></h2>
+<p><a href="API.Update.DeleteASingleInfoton.html">Delete a Single Infoton</a></p>
+<p><a href="API.Update.DeleteFields.html">Delete Fields</a></p>
+<p><a href="API.Update.ReplaceFieldValues.html">Replace Field Values</a></p>
+                
+                  
+                
+              
+              
+                
+
+
+              
+            </article>
+          </div>
+        </div>
+      </main>
+      
+        
+<footer class="md-footer">
+  
+    <div class="md-footer-nav">
+      <nav class="md-footer-nav__inner md-grid">
+        
+          <a href="API.Update.DeleteOrReplaceValuesInNamedSubGraph.html" title="Delete or Replace Values in a Named Sub-Graph" class="md-flex md-footer-nav__link md-footer-nav__link--prev" rel="prev">
+            <div class="md-flex__cell md-flex__cell--shrink">
+              <i class="md-icon md-icon--arrow-back md-footer-nav__button"></i>
+            </div>
+            <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title">
+              <span class="md-flex__ellipsis">
+                <span class="md-footer-nav__direction">
+                  Previous
+                </span>
+                Delete or Replace Values in a Named Sub-Graph
+              </span>
+            </div>
+          </a>
+        
+        
+          <a href="API.Update.Purge.html" title="Purge a Single Infoton's Versions" class="md-flex md-footer-nav__link md-footer-nav__link--next" rel="next">
+            <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title">
+              <span class="md-flex__ellipsis">
+                <span class="md-footer-nav__direction">
+                  Next
+                </span>
+                Purge a Single Infoton's Versions
+              </span>
+            </div>
+            <div class="md-flex__cell md-flex__cell--shrink">
+              <i class="md-icon md-icon--arrow-forward md-footer-nav__button"></i>
+            </div>
+          </a>
+        
+      </nav>
+    </div>
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-footer-copyright">
+        
+          <div class="md-footer-copyright__highlight">
+            CM-Well copyright
+          </div>
+        
+        powered by
+        <a href="https://www.mkdocs.org">MkDocs</a>
+        and
+        <a href="https://squidfunk.github.io/mkdocs-material/">
+          Material for MkDocs</a>
+      </div>
+      
+        
+  <div class="md-footer-social">
+    <link rel="stylesheet" href="../../assets/fonts/font-awesome.css">
+    
+      <a href="https://github.com/CM-Well/CM-Well" class="md-footer-social__link fa fa-github"></a>
+    
+  </div>
+
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    
+      <script src="../../assets/javascripts/application.b41f3d20.js"></script>
+      
+      <script>app.initialize({version:"1.0.4",url:{base:"../.."}})</script>
+      
+    
+    
+      
+    
+  </body>
+</html>

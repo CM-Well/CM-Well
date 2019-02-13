@@ -1,0 +1,4451 @@
+
+
+
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      <meta http-equiv="x-ua-compatible" content="ie=edge">
+      
+        <meta name="description" content="CM-Well Documentation">
+      
+      
+      
+        <meta name="author" content="CM-Well contibutors">
+      
+      
+        <meta name="lang:clipboard.copy" content="Copy to clipboard">
+      
+        <meta name="lang:clipboard.copied" content="Copied to clipboard">
+      
+        <meta name="lang:search.language" content="en">
+      
+        <meta name="lang:search.pipeline.stopwords" content="True">
+      
+        <meta name="lang:search.pipeline.trimmer" content="True">
+      
+        <meta name="lang:search.result.none" content="No matching documents">
+      
+        <meta name="lang:search.result.one" content="1 matching document">
+      
+        <meta name="lang:search.result.other" content="# matching documents">
+      
+        <meta name="lang:search.tokenizer" content="[\s]+">
+      
+      <link rel="shortcut icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.0.4, mkdocs-material-3.2.0">
+    
+    
+      
+        <title>Query for Infotons - CM-Well</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/application.572ca0f0.css">
+      
+      
+    
+    
+      <script src="../../assets/javascripts/modernizr.8c900955.js"></script>
+    
+    
+      
+        <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700|Roboto+Mono">
+        <style>body,input{font-family:"Roboto","Helvetica Neue",Helvetica,Arial,sans-serif}code,kbd,pre{font-family:"Roboto Mono","Courier New",Courier,monospace}</style>
+      
+    
+    <link rel="stylesheet" href="../../assets/fonts/material-icons.css">
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    
+  </head>
+  
+    <body dir="ltr">
+  
+    <svg class="md-svg">
+      <defs>
+        
+        
+          <svg xmlns="http://www.w3.org/2000/svg" width="416" height="448"
+    viewBox="0 0 416 448" id="__github">
+  <path fill="currentColor" d="M160 304q0 10-3.125 20.5t-10.75 19-18.125
+        8.5-18.125-8.5-10.75-19-3.125-20.5 3.125-20.5 10.75-19 18.125-8.5
+        18.125 8.5 10.75 19 3.125 20.5zM320 304q0 10-3.125 20.5t-10.75
+        19-18.125 8.5-18.125-8.5-10.75-19-3.125-20.5 3.125-20.5 10.75-19
+        18.125-8.5 18.125 8.5 10.75 19 3.125 20.5zM360
+        304q0-30-17.25-51t-46.75-21q-10.25 0-48.75 5.25-17.75 2.75-39.25
+        2.75t-39.25-2.75q-38-5.25-48.75-5.25-29.5 0-46.75 21t-17.25 51q0 22 8
+        38.375t20.25 25.75 30.5 15 35 7.375 37.25 1.75h42q20.5 0
+        37.25-1.75t35-7.375 30.5-15 20.25-25.75 8-38.375zM416 260q0 51.75-15.25
+        82.75-9.5 19.25-26.375 33.25t-35.25 21.5-42.5 11.875-42.875 5.5-41.75
+        1.125q-19.5 0-35.5-0.75t-36.875-3.125-38.125-7.5-34.25-12.875-30.25-20.25-21.5-28.75q-15.5-30.75-15.5-82.75
+        0-59.25 34-99-6.75-20.5-6.75-42.5 0-29 12.75-54.5 27 0 47.5 9.875t47.25
+        30.875q36.75-8.75 77.25-8.75 37 0 70 8 26.25-20.5
+        46.75-30.25t47.25-9.75q12.75 25.5 12.75 54.5 0 21.75-6.75 42 34 40 34
+        99.5z" />
+</svg>
+        
+      </defs>
+    </svg>
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" data-md-component="overlay" for="__drawer"></label>
+    
+      <a href="#query-for-infotons" tabindex="1" class="md-skip">
+        Skip to content
+      </a>
+    
+    
+      <header class="md-header" data-md-component="header">
+  <nav class="md-header-nav md-grid">
+    <div class="md-flex">
+      <div class="md-flex__cell md-flex__cell--shrink">
+        <a href="../../index.html" title="CM-Well" class="md-header-nav__button md-logo">
+          
+            <i class="md-icon"></i>
+          
+        </a>
+      </div>
+      <div class="md-flex__cell md-flex__cell--shrink">
+        <label class="md-icon md-icon--menu md-header-nav__button" for="__drawer"></label>
+      </div>
+      <div class="md-flex__cell md-flex__cell--stretch">
+        <div class="md-flex__ellipsis md-header-nav__title" data-md-component="title">
+          
+            
+              <span class="md-header-nav__topic">
+                CM-Well
+              </span>
+              <span class="md-header-nav__topic">
+                Query for Infotons
+              </span>
+            
+          
+        </div>
+      </div>
+      <div class="md-flex__cell md-flex__cell--shrink">
+        
+          
+            <label class="md-icon md-icon--search md-header-nav__button" for="__search"></label>
+            
+<div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="query" data-md-state="active">
+      <label class="md-icon md-search__icon" for="__search"></label>
+      <button type="reset" class="md-icon md-search__icon" data-md-component="reset" tabindex="-1">
+        &#xE5CD;
+      </button>
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="result">
+          <div class="md-search-result__meta">
+            Type to start searching
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+          
+        
+      </div>
+      
+        <div class="md-flex__cell md-flex__cell--shrink">
+          <div class="md-header-nav__source">
+            
+
+
+  
+
+
+  <a href="https://github.com/CM-Well/CM-Well/" title="Go to repository" class="md-source" data-md-source="github">
+    
+      <div class="md-source__icon">
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <use xlink:href="#__github" width="24" height="24"></use>
+        </svg>
+      </div>
+    
+    <div class="md-source__repository">
+      GitHub
+    </div>
+  </a>
+
+          </div>
+        </div>
+      
+    </div>
+  </nav>
+</header>
+    
+    <div class="md-container">
+      
+        
+      
+      
+        
+
+  
+
+<nav class="md-tabs md-tabs--active" data-md-component="tabs">
+  <div class="md-tabs__inner md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  <li class="md-tabs__item">
+    
+      <a href="../../index.html" title="Home" class="md-tabs__link">
+        Home
+      </a>
+    
+  </li>
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../../Introduction/Intro.IntroductionToCM-Well.html" title="Introduction" class="md-tabs__link">
+          Introduction
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../../DeveloperGuide/DevGuide.GettingStarted.html" title="Developer Guide" class="md-tabs__link">
+          Developer Guide
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    
+    
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../../APIReference/Authorization/API.Auth.GeneratePassword.html" title="API Reference" class="md-tabs__link">
+          API Reference
+        </a>
+      
+    </li>
+  
+
+  
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../Tutorial.Docker.html" title="Tutorials" class="md-tabs__link md-tabs__link--active">
+          Tutorials
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../../WebInterface/CM-WellWebInterface.html" title="Web Interface" class="md-tabs__link">
+          Web Interface
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../../TestingAndMonitoring/Testing.TestingAndDebugging.html" title="Testing & Monitoring" class="md-tabs__link">
+          Testing & Monitoring
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    
+    
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../../AdvancedTopics/Tools/Tools.UsingCM-WellDocker.html" title="Advanced Topics" class="md-tabs__link">
+          Advanced Topics
+        </a>
+      
+    </li>
+  
+
+  
+
+      
+        
+  
+  
+    
+    
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../../ReleaseNotes/2018/ReleaseNotes.Piranha.January.2018.html" title="Release Notes" class="md-tabs__link">
+          Release Notes
+        </a>
+      
+    </li>
+  
+
+  
+
+      
+        
+      
+    </ul>
+  </div>
+</nav>
+      
+      <main class="md-main">
+        <div class="md-main__inner md-grid" data-md-component="container">
+          
+            
+              <div class="md-sidebar md-sidebar--primary" data-md-component="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    <nav class="md-nav md-nav--primary" data-md-level="0">
+  <label class="md-nav__title md-nav__title--site" for="__drawer">
+    <a href="../../index.html" title="CM-Well" class="md-nav__button md-logo">
+      
+        <i class="md-icon"></i>
+      
+    </a>
+    CM-Well
+  </label>
+  
+    <div class="md-nav__source">
+      
+
+
+  
+
+
+  <a href="https://github.com/CM-Well/CM-Well/" title="Go to repository" class="md-source" data-md-source="github">
+    
+      <div class="md-source__icon">
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <use xlink:href="#__github" width="24" height="24"></use>
+        </svg>
+      </div>
+    
+    <div class="md-source__repository">
+      GitHub
+    </div>
+  </a>
+
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../../index.html" title="Home" class="md-nav__link">
+      Home
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-2" type="checkbox" id="nav-2">
+    
+    <label class="md-nav__link" for="nav-2">
+      Introduction
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-2">
+        Introduction
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Introduction/Intro.IntroductionToCM-Well.html" title="Introduction to CM-Well" class="md-nav__link">
+      Introduction to CM-Well
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Introduction/Intro.CM-WellDataParadigms.html" title="Data Paradigms" class="md-nav__link">
+      Data Paradigms
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Introduction/Intro.OverviewOfTheCM-WellAPI.html" title="API Overview" class="md-nav__link">
+      API Overview
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Introduction/Intro.TechnicalAspectsOfCM-Well.html" title="Technical Aspects" class="md-nav__link">
+      Technical Aspects
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Introduction/Intro.CM-WellHigh-LevelArchitecture.html" title="High-Level Architecture" class="md-nav__link">
+      High-Level Architecture
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Introduction/Intro.BriefHistoryOfCM-Well.html" title="A Brief History" class="md-nav__link">
+      A Brief History
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../Introduction/Intro.TechnicalDecisionsInCM-WellDesign.html" title="Technical Design Decisions" class="md-nav__link">
+      Technical Design Decisions
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-3" type="checkbox" id="nav-3">
+    
+    <label class="md-nav__link" for="nav-3">
+      Developer Guide
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-3">
+        Developer Guide
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.GettingStarted.html" title="Getting Started with CM-Well" class="md-nav__link">
+      Getting Started with CM-Well
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.CurlUtility.html" title="Calling CM-Well with Curl" class="md-nav__link">
+      Calling CM-Well with Curl
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.BasicQueries.html" title="Basic Queries" class="md-nav__link">
+      Basic Queries
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.AdvancedQueries.html" title="Advanced Queries" class="md-nav__link">
+      Advanced Queries
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.UpdatingCM-Well.html" title="Updating CM-Well" class="md-nav__link">
+      Updating CM-Well
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.StreamingDataFromCM-Well.html" title="Streaming Data from CM-Well" class="md-nav__link">
+      Streaming Data from CM-Well
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.SubscribingToReal-TimeUpdates.html" title="Subscribing to Updates" class="md-nav__link">
+      Subscribing to Updates
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.UsingSPARQLOnCM-WellInfotons.html" title="Using SPARQL on Infotons" class="md-nav__link">
+      Using SPARQL on Infotons
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.CallingJavaScalaFunctionsFromSPARQLQueries.html" title="Calling Custom Java/Scala Functions from SPARQL Queries" class="md-nav__link">
+      Calling Custom Java/Scala Functions from SPARQL Queries
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.UsingElasticSearchStatistics.html" title="Using Elastic Search Statistics" class="md-nav__link">
+      Using Elastic Search Statistics
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.WorkingWithNamedSub-Graphs.html" title="Working with Named Sub-Graphs" class="md-nav__link">
+      Working with Named Sub-Graphs
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.CM-WellSecurityFeatures.html" title="CM-Well Security Features" class="md-nav__link">
+      CM-Well Security Features
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.ManagingUsers.html" title="Managing CM-Well Users" class="md-nav__link">
+      Managing CM-Well Users
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/DevGuide.DosAndDonts.html" title="CM-Well Dos and Don'ts" class="md-nav__link">
+      CM-Well Dos and Don'ts
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-3-15" type="checkbox" id="nav-3-15">
+    
+    <label class="md-nav__link" for="nav-3-15">
+      Best Practices
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-3-15">
+        Best Practices
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/BestPractices/DevGuide.BestPractices.ConditionalUpdates.html" title="Avoiding Write Clashes with Conditional Updates" class="md-nav__link">
+      Avoiding Write Clashes with Conditional Updates
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/BestPractices/DevGuide.BestPractices.DeletingKnownFieldValues.html" title="Deleting Known Field Values" class="md-nav__link">
+      Deleting Known Field Values
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/BestPractices/DevGuide.BestPractices.ManagingRetries.html" title="Managing Retries" class="md-nav__link">
+      Managing Retries
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../DeveloperGuide/BestPractices/DevGuide.BestPractices.StreamingMethods.html" title="Streaming Methods" class="md-nav__link">
+      Streaming Methods
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4" type="checkbox" id="nav-4">
+    
+    <label class="md-nav__link" for="nav-4">
+      API Reference
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-4">
+        API Reference
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4-1" type="checkbox" id="nav-4-1">
+    
+    <label class="md-nav__link" for="nav-4-1">
+      Authorization
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-4-1">
+        Authorization
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Authorization/API.Auth.GeneratePassword.html" title="Generate Password" class="md-nav__link">
+      Generate Password
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Authorization/API.Auth.ChangePassword.html" title="Change Password" class="md-nav__link">
+      Change Password
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Authorization/API.Auth.InvalidateCache.html" title="Invalidate Cache" class="md-nav__link">
+      Invalidate Cache
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Authorization/API.Auth.Login.html" title="Login" class="md-nav__link">
+      Login
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4-2" type="checkbox" id="nav-4-2">
+    
+    <label class="md-nav__link" for="nav-4-2">
+      Get
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-4-2">
+        Get
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Get/API.Get.GetSingleInfotonByURI.html" title="Get Single Infoton by URI" class="md-nav__link">
+      Get Single Infoton by URI
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Get/API.Get.GetSingleInfotonByUUID.html" title="Get Single Infoton by UUID" class="md-nav__link">
+      Get Single Infoton by UUID
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Get/API.Get.GetMultipleInfotonsByURI.html" title="Get Multiple Infotons by URI" class="md-nav__link">
+      Get Multiple Infotons by URI
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4-3" type="checkbox" id="nav-4-3">
+    
+    <label class="md-nav__link" for="nav-4-3">
+      Query
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-4-3">
+        Query
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Query/API.Query.QueryForInfotonsUsingFieldConditions.html" title="Query with Field Conditions" class="md-nav__link">
+      Query with Field Conditions
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Query/API.Query.QueryForQuadsByTheirLabel.html" title="Query for Quads by their Label" class="md-nav__link">
+      Query for Quads by their Label
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Query/API.Query.ApplySPARQLToQueryResults.html" title="Apply SPARQL to Query Results" class="md-nav__link">
+      Apply SPARQL to Query Results
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Query/API.Query.ApplySPARQLToEntireGraph.html" title="Apply SPARQL to the Entire Graph" class="md-nav__link">
+      Apply SPARQL to the Entire Graph
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Query/API.Query.ApplyGremlinToQueryResults.html" title="Apply Gremlin to Query Results" class="md-nav__link">
+      Apply Gremlin to Query Results
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Query/API.Query.DataStatistics.html" title="Query with Data Statistics" class="md-nav__link">
+      Query with Data Statistics
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4-4" type="checkbox" id="nav-4-4">
+    
+    <label class="md-nav__link" for="nav-4-4">
+      Stream
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-4-4">
+        Stream
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Stream/API.Stream.CreateConsumer.html" title="Create Consumer" class="md-nav__link">
+      Create Consumer
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Stream/API.Stream.GetNextChunk.html" title="Get Next Chunk" class="md-nav__link">
+      Get Next Chunk
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Stream/API.Stream.ConsumeNextChunk.html" title="Consume Next Chunk" class="md-nav__link">
+      Consume Next Chunk
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Stream/API.Stream.ConsumeNextBulk.html" title="Consume Next Bulk" class="md-nav__link">
+      Consume Next Bulk
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Stream/API.Stream.CreateIterator.html" title="Create Iterator" class="md-nav__link">
+      Create Iterator
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Stream/API.Stream.StreamInfotons.html" title="Stream Infotons" class="md-nav__link">
+      Stream Infotons
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4-5" type="checkbox" id="nav-4-5">
+    
+    <label class="md-nav__link" for="nav-4-5">
+      Subscribe
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-4-5">
+        Subscribe
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Subscribe/API.Subscribe.SubscribeForPulledData.html" title="Subscribe for Pulled Data" class="md-nav__link">
+      Subscribe for Pulled Data
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Subscribe/API.Subscribe.PullNewData.html" title="Pull New Data" class="md-nav__link">
+      Pull New Data
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Subscribe/API.Subscribe.SubscribeForPushedData.html" title="Subscribe for Pushed Data" class="md-nav__link">
+      Subscribe for Pushed Data
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Subscribe/API.Subscribe.Unsubscribe.html" title="Unsubscribe from Updates" class="md-nav__link">
+      Unsubscribe from Updates
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4-6" type="checkbox" id="nav-4-6">
+    
+    <label class="md-nav__link" for="nav-4-6">
+      Traversal
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-4-6">
+        Traversal
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Traversal/API.Traversal.Intro.html" title="Introduction to Graph Traversal" class="md-nav__link">
+      Introduction to Graph Traversal
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Traversal/API.Traversal.xg.html" title="Traversing Outbound Links (xg)" class="md-nav__link">
+      Traversing Outbound Links (xg)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Traversal/API.Traversal.yg.html" title="Traversing Inbound and Outbound Links (yg)" class="md-nav__link">
+      Traversing Inbound and Outbound Links (yg)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Traversal/API.Traversal.gqp.html" title="Filtering Results by Inbound and Outbound Links (gqp)" class="md-nav__link">
+      Filtering Results by Inbound and Outbound Links (gqp)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Traversal/API.Traversal.Operands.html" title="Traversal Operands" class="md-nav__link">
+      Traversal Operands
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4-7" type="checkbox" id="nav-4-7">
+    
+    <label class="md-nav__link" for="nav-4-7">
+      Update
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-4-7">
+        Update
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Update/API.Update.AddFileInfoton.html" title="Add a File Infoton" class="md-nav__link">
+      Add a File Infoton
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Update/API.Update.AddInfotonsAndFields.html" title="Add Infotons and Fields" class="md-nav__link">
+      Add Infotons and Fields
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Update/API.Update.AddInfotonsAndFieldsToSubGraph.html" title="Add Infotons and Fields to a Sub-Graph" class="md-nav__link">
+      Add Infotons and Fields to a Sub-Graph
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Update/API.Update.AddLinkInfoton.html" title="Add a Link Infoton" class="md-nav__link">
+      Add a Link Infoton
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Update/API.Update.DeleteASingleInfoton.html" title="Delete a Single Infoton" class="md-nav__link">
+      Delete a Single Infoton
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Update/API.Update.DeleteFields.html" title="Delete Fields" class="md-nav__link">
+      Delete Fields
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Update/API.Update.DeleteMultipleInfotons.html" title="Delete Multiple Infotons" class="md-nav__link">
+      Delete Multiple Infotons
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Update/API.Update.DeleteOrReplaceValuesInNamedSubGraph.html" title="Delete or Replace Values in a Named Sub-Graph" class="md-nav__link">
+      Delete or Replace Values in a Named Sub-Graph
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Update/API.Update.DeleteSpecificFieldValues.html" title="Delete Specific Field Values" class="md-nav__link">
+      Delete Specific Field Values
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Update/API.Update.Purge.html" title="Purge a Single Infoton's Versions" class="md-nav__link">
+      Purge a Single Infoton's Versions
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Update/API.Update.ReplaceFieldValues.html" title="Replace Field Values" class="md-nav__link">
+      Replace Field Values
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/Update/API.Update.TrackUpdates.html" title="Track Updates" class="md-nav__link">
+      Track Updates
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4-8" type="checkbox" id="nav-4-8">
+    
+    <label class="md-nav__link" for="nav-4-8">
+      Usage Topics
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-4-8">
+        Usage Topics
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/UsageTopics/API.FieldConditionSyntax.html" title="Field Condition Syntax" class="md-nav__link">
+      Field Condition Syntax
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/UsageTopics/API.FieldNameFormats.html" title="Field Name Formats" class="md-nav__link">
+      Field Name Formats
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/UsageTopics/API.FromAndToDatetimeFormatting.html" title="From/To Datetime Formatting" class="md-nav__link">
+      From/To Datetime Formatting
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/UsageTopics/API.InputAndOutputFormats.html" title="Input and Output Formats" class="md-nav__link">
+      Input and Output Formats
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/UsageTopics/API.MetadataFields.html" title="Metadata Fields" class="md-nav__link">
+      Metadata Fields
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/UsageTopics/API.PagingThroughResultsWithOffsetAndLengthParameters.html" title="Paging through Results" class="md-nav__link">
+      Paging through Results
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/UsageTopics/API.ProtocolSystemField.html" title="The Protocol System Field" class="md-nav__link">
+      The Protocol System Field
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/UsageTopics/API.QueryParameters.html" title="CM-Well Query Parameters" class="md-nav__link">
+      CM-Well Query Parameters
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/UsageTopics/API.ReturnCodes.html" title="CM-Well API Return Codes" class="md-nav__link">
+      CM-Well API Return Codes
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/UsageTopics/API.SortingResultsWithTheSort-byFlag.html" title="Sorting Results with sort-by" class="md-nav__link">
+      Sorting Results with sort-by
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/UsageTopics/API.UsingConditionalUpdates.html" title="Using Conditional Updates" class="md-nav__link">
+      Using Conditional Updates
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/UsageTopics/API.UsingTheBlockingFlag.html" title="Using the blocking Flag" class="md-nav__link">
+      Using the blocking Flag
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/UsageTopics/API.UsingTheRecursiveFlag.html" title="Using the recursive Flag" class="md-nav__link">
+      Using the recursive Flag
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/UsageTopics/API.UsingTheWith-dataFlag.html" title="Using the with-data Flag" class="md-nav__link">
+      Using the with-data Flag
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/UsageTopics/API.UsingTheWith-deletedFlag.html" title="Using the with-deleted Flag" class="md-nav__link">
+      Using the with-deleted Flag
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../APIReference/UsageTopics/API.UsingTheWith-historyFlag.html" title="Using the with-history Flag" class="md-nav__link">
+      Using the with-history Flag
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+  
+
+
+  <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-5" type="checkbox" id="nav-5" checked>
+    
+    <label class="md-nav__link" for="nav-5">
+      Tutorials
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-5">
+        Tutorials
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Tutorial.Docker.html" title="A Brief CM-Well Docker Tutorial" class="md-nav__link">
+      A Brief CM-Well Docker Tutorial
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+  
+
+
+  <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-5-2" type="checkbox" id="nav-5-2" checked>
+    
+    <label class="md-nav__link" for="nav-5-2">
+      Hands-On Exercises
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-5-2">
+        Hands-On Exercises
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="Tutorial.HandsOnExercises.AddFileInfoton.html" title="Add a File Infoton" class="md-nav__link">
+      Add a File Infoton
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="Tutorial.HandsOnExercises.AddInfotonsAndFields.html" title="Add Infotons and Fields" class="md-nav__link">
+      Add Infotons and Fields
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="Tutorial.HandsOnExercises.DeleteInfotonsAndFields.html" title="Delete Infotons and Fields" class="md-nav__link">
+      Delete Infotons and Fields
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="Tutorial.HandsOnExercises.GetInfotonsByURI.html" title="Get Infotons by URI" class="md-nav__link">
+      Get Infotons by URI
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+  
+
+
+  <li class="md-nav__item md-nav__item--active">
+    
+    <input class="md-toggle md-nav__toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+    
+      
+    
+    
+      <label class="md-nav__link md-nav__link--active" for="__toc">
+        Query for Infotons
+      </label>
+    
+    <a href="Tutorial.HandsOnExercises.QueryForInfotons.html" title="Query for Infotons" class="md-nav__link md-nav__link--active">
+      Query for Infotons
+    </a>
+    
+      
+<nav class="md-nav md-nav--secondary">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">Table of contents</label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#step-outline" title="Step Outline" class="md-nav__link">
+    Step Outline
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-query-by-one-field-value" title="1. Query by One Field Value" class="md-nav__link">
+    1. Query by One Field Value
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-get-results-with-data" title="2. Get Results with Data" class="md-nav__link">
+    2. Get Results with Data
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-use-various-comparison-operators" title="3. Use Various Comparison Operators" class="md-nav__link">
+    3. Use Various Comparison Operators
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#partial-match" title="Partial Match" class="md-nav__link">
+    Partial Match
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fuzzy-match" title="Fuzzy Match" class="md-nav__link">
+    Fuzzy Match
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#numeric-comparison" title="Numeric Comparison" class="md-nav__link">
+    Numeric Comparison
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-specify-output-fields" title="4. Specify Output Fields" class="md-nav__link">
+    4. Specify Output Fields
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-implement-and-or-not" title="5. Implement AND, OR, NOT" class="md-nav__link">
+    5. Implement AND, OR, NOT
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#multiple-conditions-and" title="Multiple Conditions ("AND")" class="md-nav__link">
+    Multiple Conditions ("AND")
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optional-conditions-or" title="Optional Conditions ("OR")" class="md-nav__link">
+    Optional Conditions ("OR")
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#negative-conditions-not" title="Negative Conditions ("NOT")" class="md-nav__link">
+    Negative Conditions ("NOT")
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-page-through-results" title="6. Page through Results" class="md-nav__link">
+    6. Page through Results
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-traverse-inbound-and-outbound-links" title="7. Traverse Inbound and Outbound Links" class="md-nav__link">
+    7. Traverse Inbound and Outbound Links
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api-reference" title="API Reference" class="md-nav__link">
+    API Reference
+  </a>
+  
+</li>
+      
+      
+      
+      
+      
+    </ul>
+  
+</nav>
+    
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="Tutorial.HandsOnExercises.QueryWithGremlin.html" title="Query with Gremlin" class="md-nav__link">
+      Query with Gremlin
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="Tutorial.HandsOnExercises.QueryWithSPARQL.html" title="Query with SPARQL" class="md-nav__link">
+      Query with SPARQL
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="Tutorial.HandsOnExercises.StreamWithIterator.html" title="Stream with Iterator" class="md-nav__link">
+      Stream with Iterator
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="Tutorial.HandsOnExercises.StreamWithTheStreamOperation.html" title="Stream with the Stream Operation" class="md-nav__link">
+      Stream with the Stream Operation
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="Tutorial.HandsOnExercises.SubscribeForPulledData.html" title="Subscribe for Pulled Data" class="md-nav__link">
+      Subscribe for Pulled Data
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="Tutorial.HandsOnExercises.UpdateFields.html" title="Update Fields" class="md-nav__link">
+      Update Fields
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="Tutorial.HandsOnExercises.WorkWithSubGraphs.html" title="Work with Sub-Graphs" class="md-nav__link">
+      Work with Sub-Graphs
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6">
+    
+    <label class="md-nav__link" for="nav-6">
+      Web Interface
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-6">
+        Web Interface
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../WebInterface/CM-WellWebInterface.html" title="The CM-Well Web Interface" class="md-nav__link">
+      The CM-Well Web Interface
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../WebInterface/CM-Well.OldWebInterface.html" title="The Previous CM-Well Web Interface" class="md-nav__link">
+      The Previous CM-Well Web Interface
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-7" type="checkbox" id="nav-7">
+    
+    <label class="md-nav__link" for="nav-7">
+      Testing & Monitoring
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-7">
+        Testing & Monitoring
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../TestingAndMonitoring/Testing.TestingAndDebugging.html" title="Tips for Testing and Debugging" class="md-nav__link">
+      Tips for Testing and Debugging
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../TestingAndMonitoring/Monitoring.HealthDashboards.html" title="Health Dashboards" class="md-nav__link">
+      Health Dashboards
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-8" type="checkbox" id="nav-8">
+    
+    <label class="md-nav__link" for="nav-8">
+      Advanced Topics
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-8">
+        Advanced Topics
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-8-1" type="checkbox" id="nav-8-1">
+    
+    <label class="md-nav__link" for="nav-8-1">
+      Tools
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-8-1">
+        Tools
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Tools/Tools.UsingCM-WellDocker.html" title="CM-Well Docker" class="md-nav__link">
+      CM-Well Docker
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Tools/Tools.UsingTheCM-WellDownloader.html" title="CM-Well Downloader" class="md-nav__link">
+      CM-Well Downloader
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Tools/Tools.UsingTheCM-WellIngester.html" title="CM-Well Ingester" class="md-nav__link">
+      CM-Well Ingester
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Tools/Tools.UsingTheCM-WellSparkConnector.html" title="CM-Well Spark Connector" class="md-nav__link">
+      CM-Well Spark Connector
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Tools/Tools.UsingTheSPARQLTriggerProcessor.html" title="SPARQL Trigger Processor" class="md-nav__link">
+      SPARQL Trigger Processor
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Advanced.BuildingCM-Well.html" title="Building CM-Well" class="md-nav__link">
+      Building CM-Well
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Cookbook.CM-WellWithPermIDData.html" title="Cookbook" class="md-nav__link">
+      Cookbook
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-8-4" type="checkbox" id="nav-8-4">
+    
+    <label class="md-nav__link" for="nav-8-4">
+      Admin
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-8-4">
+        Admin
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Admin/Admin.Backpressure.html" title="_backpressure API" class="md-nav__link">
+      _backpressure API
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Admin/Admin.Kafka.html" title="_kafka API" class="md-nav__link">
+      _kafka API
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Admin/Admin.TestAndFixCorruptedData.html" title="Testing & Fixing Corrupt Data" class="md-nav__link">
+      Testing & Fixing Corrupt Data
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Admin/Admin.DCC.html" title="Data Consistency Crawler" class="md-nav__link">
+      Data Consistency Crawler
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-8-5" type="checkbox" id="nav-8-5">
+    
+    <label class="md-nav__link" for="nav-8-5">
+      Architecture
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-8-5">
+        Architecture
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.Preface.html" title="Preface" class="md-nav__link">
+      Preface
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.InfoArch.Part1.html" title="Overview and Principles" class="md-nav__link">
+      Overview and Principles
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.InfoArch.Infotons.html" title="Information Objects (“Infotons”)" class="md-nav__link">
+      Information Objects (“Infotons”)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.InfoArch.InfoInMotion.html" title="Information in Motion" class="md-nav__link">
+      Information in Motion
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.SoftwareArch.Part1.html" title="SW Architecture Overview & Diagrams" class="md-nav__link">
+      SW Architecture Overview & Diagrams
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.SoftwareArch.DesignPrinciples.html" title="Design Principles" class="md-nav__link">
+      Design Principles
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.SoftwareArch.WebServiceAndGridStorage.html" title="Web Service and Grid Storage" class="md-nav__link">
+      Web Service and Grid Storage
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.SoftwareArch.BG.html" title="Background (BG) Processing Module" class="md-nav__link">
+      Background (BG) Processing Module
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.SoftwareArch.STP.html" title="SPARQL Trigger Processor (STP) Agent" class="md-nav__link">
+      SPARQL Trigger Processor (STP) Agent
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.SoftwareArch.ControlModules.html" title="Control Modules" class="md-nav__link">
+      Control Modules
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.SoftwareArch.ThirdPartyPackages.html" title="Third-Party Packages" class="md-nav__link">
+      Third-Party Packages
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.SoftwareArch.WebApplication.html" title="Web Application" class="md-nav__link">
+      Web Application
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.PlatformArch.Part1.html" title="Platform Overview & Design Principles" class="md-nav__link">
+      Platform Overview & Design Principles
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.PlatformArch.DCSync.html" title="Data Center Synchronization" class="md-nav__link">
+      Data Center Synchronization
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../AdvancedTopics/Architecture/Arch.Collaboration.html" title="CM-Well Collaboration Use Case: Information Ecosystem" class="md-nav__link">
+      CM-Well Collaboration Use Case: Information Ecosystem
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-9" type="checkbox" id="nav-9">
+    
+    <label class="md-nav__link" for="nav-9">
+      Release Notes
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-9">
+        Release Notes
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-9-1" type="checkbox" id="nav-9-1">
+    
+    <label class="md-nav__link" for="nav-9-1">
+      2018
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-9-1">
+        2018
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2018/ReleaseNotes.Piranha.January.2018.html" title="Piranha (January 2018)" class="md-nav__link">
+      Piranha (January 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2018/ReleaseNotes.Quetzal.February.2018.html" title="Quetzal (February 2018)" class="md-nav__link">
+      Quetzal (February 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2018/ReleaseNotes.Rhino.March.2018.html" title="Rhino (March 2018)" class="md-nav__link">
+      Rhino (March 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2018/ReleaseNotes.Swan.April.2018.html" title="Swan (April 2018)" class="md-nav__link">
+      Swan (April 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2018/ReleaseNotes.Turtle.May.2018.html" title="Turtle (May 2018)" class="md-nav__link">
+      Turtle (May 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2018/ReleaseNotes.Unicorn.June.2018.html" title="Unicorn (June 2018)" class="md-nav__link">
+      Unicorn (June 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2018/ReleaseNotes.Viper.June.2018.html" title="Viper (June 2018)" class="md-nav__link">
+      Viper (June 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2018/ReleaseNotes.Wombat.August.2018.html" title="Wombat (August 2018)" class="md-nav__link">
+      Wombat (August 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2018/ReleaseNotes.Xerus.October.2018.html" title="Xerus (October 2018)" class="md-nav__link">
+      Xerus (October 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2018/ReleaseNotes.Yak.November.2018.html" title="Yak (November 2018)" class="md-nav__link">
+      Yak (November 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2018/ReleaseNotes.Zebra.December.2018.html" title="Zebra (December 2018)" class="md-nav__link">
+      Zebra (December 2018)
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-9-2" type="checkbox" id="nav-9-2">
+    
+    <label class="md-nav__link" for="nav-9-2">
+      2017
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-9-2">
+        2017
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Amoeba.Feb.2017.html" title="Amoeba (Feb. 2017)" class="md-nav__link">
+      Amoeba (Feb. 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Beowulf.Feb.2017.html" title="Beowulf (Feb. 2017)" class="md-nav__link">
+      Beowulf (Feb. 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.CElegans.Mar.2017.html" title="C.Elegans (Mar. 2017)" class="md-nav__link">
+      C.Elegans (Mar. 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Dolphin.Mar.2017.html" title="Dolphin (Mar. 2017)" class="md-nav__link">
+      Dolphin (Mar. 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Firebird.May.2017.html" title="Firebird (May 2017)" class="md-nav__link">
+      Firebird (May 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Gopher.May.2017.html" title="Gopher (May 2017)" class="md-nav__link">
+      Gopher (May 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Hydra.June.2017.html" title="Hydra (June 2017)" class="md-nav__link">
+      Hydra (June 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Iguana.July.2017.html" title="Iguana (July 2017)" class="md-nav__link">
+      Iguana (July 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Jaguar.August.2017.html" title="Jaguar (August 2017)" class="md-nav__link">
+      Jaguar (August 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Jan.17.2017.html" title="Jan. 17 2017" class="md-nav__link">
+      Jan. 17 2017
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Jan.4.2017.html" title="Jan. 4 2017" class="md-nav__link">
+      Jan. 4 2017
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Kingbird.September.2017.html" title="Kingbird (September 2017)" class="md-nav__link">
+      Kingbird (September 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Lynx.September.2017.html" title="Lynx (September 2017)" class="md-nav__link">
+      Lynx (September 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Mono.November.2017.html" title="Mono (November 2017)" class="md-nav__link">
+      Mono (November 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Nautilus.November.2017.html" title="Nautilus (November 2017)" class="md-nav__link">
+      Nautilus (November 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2017/ReleaseNotes.Octopus.December.2017.html" title="Octopus (December 2017)" class="md-nav__link">
+      Octopus (December 2017)
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-9-3" type="checkbox" id="nav-9-3">
+    
+    <label class="md-nav__link" for="nav-9-3">
+      2016
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-9-3">
+        2016
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2016/ReleaseNotes.Dec.15.2016.html" title="Dec. 15 2016" class="md-nav__link">
+      Dec. 15 2016
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2016/ReleaseNotes.Dec.7.2016.html" title="Dec. 7 2016" class="md-nav__link">
+      Dec. 7 2016
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2016/ReleaseNotes.Nov.10.2016.html" title="Nov. 10 2016" class="md-nav__link">
+      Nov. 10 2016
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2016/ReleaseNotes.Oct.6.2016.html" title="Oct. 6th 2016" class="md-nav__link">
+      Oct. 6th 2016
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../../ReleaseNotes/2016/ReleaseNotes.Sept.11.2016.html" title="Sept. 11th 2016" class="md-nav__link">
+      Sept. 11th 2016
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="https://github.com/CM-Well/CM-Well/issues" title="Bug Tracker" class="md-nav__link">
+      Bug Tracker
+    </a>
+  </li>
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+<nav class="md-nav md-nav--secondary">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">Table of contents</label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#step-outline" title="Step Outline" class="md-nav__link">
+    Step Outline
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-query-by-one-field-value" title="1. Query by One Field Value" class="md-nav__link">
+    1. Query by One Field Value
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-get-results-with-data" title="2. Get Results with Data" class="md-nav__link">
+    2. Get Results with Data
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-use-various-comparison-operators" title="3. Use Various Comparison Operators" class="md-nav__link">
+    3. Use Various Comparison Operators
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#partial-match" title="Partial Match" class="md-nav__link">
+    Partial Match
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fuzzy-match" title="Fuzzy Match" class="md-nav__link">
+    Fuzzy Match
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#numeric-comparison" title="Numeric Comparison" class="md-nav__link">
+    Numeric Comparison
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-specify-output-fields" title="4. Specify Output Fields" class="md-nav__link">
+    4. Specify Output Fields
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-implement-and-or-not" title="5. Implement AND, OR, NOT" class="md-nav__link">
+    5. Implement AND, OR, NOT
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#multiple-conditions-and" title="Multiple Conditions ("AND")" class="md-nav__link">
+    Multiple Conditions ("AND")
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optional-conditions-or" title="Optional Conditions ("OR")" class="md-nav__link">
+    Optional Conditions ("OR")
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#negative-conditions-not" title="Negative Conditions ("NOT")" class="md-nav__link">
+    Negative Conditions ("NOT")
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-page-through-results" title="6. Page through Results" class="md-nav__link">
+    6. Page through Results
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-traverse-inbound-and-outbound-links" title="7. Traverse Inbound and Outbound Links" class="md-nav__link">
+    7. Traverse Inbound and Outbound Links
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api-reference" title="API Reference" class="md-nav__link">
+    API Reference
+  </a>
+  
+</li>
+      
+      
+      
+      
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content">
+            <article class="md-content__inner md-typeset">
+              
+                
+                  <a href="https://github.com/CM-Well/CM-Well/edit/master/docs/Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.QueryForInfotons.md" title="Edit this page" class="md-icon md-content__icon">&#xE3C9;</a>
+                
+                
+                <h1 id="query-for-infotons">Query for Infotons<a class="headerlink" href="#query-for-infotons" title="Permanent link">&para;</a></h1>
+<h2 id="step-outline">Step Outline<a class="headerlink" href="#step-outline" title="Permanent link">&para;</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>These steps are not dependent on each other and do not have to be completed in order.</p>
+</div>
+<ol>
+<li><a href="#hdr1">Query by One Field Value</a>.</li>
+<li><a href="#hdr2">Get Results with Data</a></li>
+<li><a href="#hdr3">Use Various Comparison Operators</a>.</li>
+<li><a href="#hdr4">Specify Output Fields</a>.</li>
+<li><a href="#hdr5">Implement AND, OR, NOT</a>.</li>
+<li><a href="#hdr6">Page through Results</a>.</li>
+<li><a href="#hdr7">Traverse Inbound and Outbound Links</a>.</li>
+</ol>
+<p><a name="hdr1"></a></p>
+<h2 id="1-query-by-one-field-value">1. Query by One Field Value<a class="headerlink" href="#1-query-by-one-field-value" title="Permanent link">&para;</a></h2>
+<p><strong>Action:</strong> Get up to 3 entities under permid.org, whose CommonName value contains the string "Reuters".</p>
+<p><strong>Curl command:</strong></p>
+<div class="codehilite"><pre><span></span>curl &quot;&lt;cm-well-host&gt;/permid.org?op=search&amp;qp=CommonName.mdaas:Reuters&amp;length=3&amp;format=json&amp;pretty&quot;
+</pre></div>
+
+
+<p><strong>Response:</strong></p>
+<div class="codehilite"><pre><span></span>{
+      &quot;type&quot; : &quot;SearchResponse&quot;,
+      &quot;pagination&quot; : {
+        &quot;type&quot; : &quot;PaginationInfo&quot;,
+        &quot;first&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T15%3A40%3A01.740Z&amp;to=2016-07-08T15%3A40%3A01.979Z&amp;qp=CommonName.mdaas%3AReuters&amp;length=3&amp;offset=0&quot;,
+        &quot;self&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T15%3A40%3A01.740Z&amp;to=2016-07-08T15%3A40%3A01.979Z&amp;qp=CommonName.mdaas%3AReuters&amp;length=3&amp;offset=0&quot;,
+        &quot;next&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T15%3A40%3A01.740Z&amp;to=2016-07-08T15%3A40%3A01.979Z&amp;qp=CommonName.mdaas%3AReuters&amp;length=3&amp;offset=3&quot;,
+        &quot;last&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T15%3A40%3A01.740Z&amp;to=2016-07-08T15%3A40%3A01.979Z&amp;qp=CommonName.mdaas%3AReuters&amp;length=3&amp;offset=70914&quot;
+      },
+      &quot;results&quot; : {
+        &quot;type&quot; : &quot;SearchResults&quot;,
+        &quot;fromDate&quot; : &quot;2016-07-08T15:40:01.740Z&quot;,
+        &quot;toDate&quot; : &quot;2016-07-08T15:40:01.979Z&quot;,
+        &quot;total&quot; : 70914,
+        &quot;offset&quot; : 0,
+        &quot;length&quot; : 3,
+    &quot;infotons&quot; : [ {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;08e369b8d4660826eb9494810e0af09b&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T15:40:01.979Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21591377740&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467992402553,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;c8fc5e38b51892b529caa66646d6a56a&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T15:40:01.940Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21591377619&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467992403912,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;f188963093cd7b90a169c81bb8973daf&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T15:40:01.740Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21591374238&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467992402499,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      }
+    } ]
+      }
+    }
+</pre></div>
+
+
+<p><a name="hdr2"></a></p>
+<h2 id="2-get-results-with-data">2. Get Results with Data<a class="headerlink" href="#2-get-results-with-data" title="Permanent link">&para;</a></h2>
+<p><strong>Action:</strong> Get up to 3 entities under permid.org, whose CommonName value contains the string "Reuters", with their data, i.e. with all fields and not just system fields.</p>
+<p><strong>Curl command:</strong></p>
+<div class="codehilite"><pre><span></span>curl &quot;&lt;cm-well-host&gt;/permid.org?op=search&amp;qp=CommonName.mdaas:Reuters&amp;length=3&amp;format=json&amp;pretty&amp;with-data&quot;
+</pre></div>
+
+
+<p><strong>Response:</strong></p>
+<div class="codehilite"><pre><span></span>{
+      &quot;type&quot; : &quot;SearchResponse&quot;,
+      &quot;pagination&quot; : {
+    &quot;type&quot; : &quot;PaginationInfo&quot;,
+    &quot;first&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T15%3A40%3A01.740Z&amp;to=2016-07-08T15%3A40%3A01.979Z&amp;qp=CommonName.mdaas%3AReuters&amp;length=3&amp;offset=0&quot;,
+    &quot;self&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T15%3A40%3A01.740Z&amp;to=2016-07-08T15%3A40%3A01.979Z&amp;qp=CommonName.mdaas%3AReuters&amp;length=3&amp;offset=0&quot;,
+    &quot;next&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T15%3A40%3A01.740Z&amp;to=2016-07-08T15%3A40%3A01.979Z&amp;qp=CommonName.mdaas%3AReuters&amp;length=3&amp;offset=3&quot;,
+    &quot;last&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T15%3A40%3A01.740Z&amp;to=2016-07-08T15%3A40%3A01.979Z&amp;qp=CommonName.mdaas%3AReuters&amp;length=3&amp;offset=70914&quot;
+      },
+      &quot;results&quot; : {
+        &quot;type&quot; : &quot;SearchResults&quot;,
+    &quot;fromDate&quot; : &quot;2016-07-08T15:40:01.740Z&quot;,
+    &quot;toDate&quot; : &quot;2016-07-08T15:40:01.979Z&quot;,
+    &quot;total&quot; : 70914,
+    &quot;offset&quot; : 0,
+    &quot;length&quot; : 3,
+    &quot;infotons&quot; : [ {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;08e369b8d4660826eb9494810e0af09b&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T15:40:01.979Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21591377740&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467992402553,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;type.rdf&quot; : [ &quot;http://ont.thomsonreuters.com/mdaas/Instrument&quot; ],
+        &quot;instrumentExpiryDate.mdaas&quot; : [ &quot;2050-12-31&quot; ],
+        &quot;isIssuedBy.mdaas&quot; : [ &quot;http://permid.org/1-4296733007&quot; ],
+        &quot;CommonName.mdaas&quot; : [ &quot;Goldman Sachs &amp; Co Wertpapier GMBH Call 1313.7255 USD Thomson Reuters: Gold / US Dollar FX Spot Rate 31Dec99&quot; ],
+        &quot;instrumentCurrencyName.mdaas&quot; : [ &quot;EUR&quot; ],
+        &quot;instrumentStatus.mdaas&quot; : [ &quot;Active&quot; ],
+        &quot;RCSAssetClass.mdaas&quot; : [ &quot;BARWNT&quot; ],
+        &quot;instrumentAssetClass.mdaas&quot; : [ &quot;Barrier Warrants&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;c8fc5e38b51892b529caa66646d6a56a&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T15:40:01.940Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21591377619&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467992403912,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;type.rdf&quot; : [ &quot;http://ont.thomsonreuters.com/mdaas/Instrument&quot; ],
+        &quot;instrumentExpiryDate.mdaas&quot; : [ &quot;2050-12-31&quot; ],
+        &quot;isIssuedBy.mdaas&quot; : [ &quot;http://permid.org/1-4296733007&quot; ],
+        &quot;CommonName.mdaas&quot; : [ &quot;Goldman Sachs &amp; Co Wertpapier GMBH Call 1240 USD Thomson Reuters: Gold / US Dollar FX Spot Rate 31Dec99&quot; ],
+        &quot;instrumentCurrencyName.mdaas&quot; : [ &quot;EUR&quot; ],
+        &quot;instrumentStatus.mdaas&quot; : [ &quot;Active&quot; ],
+        &quot;RCSAssetClass.mdaas&quot; : [ &quot;BARWNT&quot; ],
+        &quot;instrumentAssetClass.mdaas&quot; : [ &quot;Barrier Warrants&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;f188963093cd7b90a169c81bb8973daf&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T15:40:01.740Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21591374238&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467992402499,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;type.rdf&quot; : [ &quot;http://ont.thomsonreuters.com/mdaas/Instrument&quot; ],
+        &quot;instrumentExpiryDate.mdaas&quot; : [ &quot;2016-12-13&quot; ],
+        &quot;isIssuedBy.mdaas&quot; : [ &quot;http://permid.org/1-8589934314&quot; ],
+        &quot;CommonName.mdaas&quot; : [ &quot;COMMERZBANK AG Put 0.0001 USD Thomson Reuters: Gold / US Dollar FX Spot Rate 13Dec16&quot; ],
+        &quot;instrumentCurrencyName.mdaas&quot; : [ &quot;EUR&quot; ],
+        &quot;instrumentStatus.mdaas&quot; : [ &quot;Active&quot; ],
+        &quot;RCSAssetClass.mdaas&quot; : [ &quot;BARWNT&quot; ],
+        &quot;instrumentAssetClass.mdaas&quot; : [ &quot;Barrier Warrants&quot; ]
+      }
+    } ]
+      }
+    } 
+</pre></div>
+
+
+<p><a name="hdr3"></a></p>
+<h2 id="3-use-various-comparison-operators">3. Use Various Comparison Operators<a class="headerlink" href="#3-use-various-comparison-operators" title="Permanent link">&para;</a></h2>
+<h3 id="partial-match">Partial Match<a class="headerlink" href="#partial-match" title="Permanent link">&para;</a></h3>
+<p><strong>Action:</strong> Get all entities under permid.org, whose CommonName value contains the string "qqqqq" (there are no infotons that match this query). The field condition uses the <code>:</code> partial match operator.</p>
+<p><strong>Partial match Curl command:</strong>    </p>
+<div class="codehilite"><pre><span></span>curl &quot;&lt;cm-well-host&gt;/permid.org?op=search&amp;qp=CommonName.mdaas:qqqqq&amp;format=json&amp;pretty&amp;with-data&quot;
+</pre></div>
+
+
+<p><strong>Partial match response:</strong></p>
+<div class="codehilite"><pre><span></span>{
+      &quot;type&quot; : &quot;SearchResponse&quot;,
+      &quot;pagination&quot; : {
+        &quot;type&quot; : &quot;PaginationInfo&quot;,
+        &quot;first&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;qp=CommonName.mdaas%3Aqqqqq&amp;length=0&amp;offset=0&quot;,
+        &quot;previous&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;qp=CommonName.mdaas%3Aqqqqq&amp;length=0&amp;offset=0&quot;,
+        &quot;self&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;qp=CommonName.mdaas%3Aqqqqq&amp;length=0&amp;offset=0&quot;,
+        &quot;last&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;qp=CommonName.mdaas%3Aqqqqq&amp;length=0&amp;offset=0&quot;
+      },
+      &quot;results&quot; : {
+        &quot;type&quot; : &quot;SearchResults&quot;,
+        &quot;total&quot; : 0,
+        &quot;offset&quot; : 0,
+        &quot;length&quot; : 0,
+        &quot;infotons&quot; : [ ]
+      }
+    }
+</pre></div>
+
+
+<h3 id="fuzzy-match">Fuzzy Match<a class="headerlink" href="#fuzzy-match" title="Permanent link">&para;</a></h3>
+<p><strong>Action:</strong> Get all entities under permid.org, whose CommonName value is a "fuzzy" (approximate) match of the string "qqqqq". The field condition uses the <code>~</code> fuzzy match operator.</p>
+<p><strong>Fuzzy match Curl command:</strong>    </p>
+<div class="codehilite"><pre><span></span>curl &quot;&lt;cm-well-host&gt;/permid.org?op=search&amp;qp=CommonName.mdaas~qqqqq&amp;format=json&amp;pretty&amp;with-data&quot;
+</pre></div>
+
+
+<p><strong>Fuzzy match response:</strong></p>
+<div class="codehilite"><pre><span></span>{
+      &quot;type&quot; : &quot;SearchResponse&quot;,
+      &quot;pagination&quot; : {
+    &quot;type&quot; : &quot;PaginationInfo&quot;,
+    &quot;first&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-01T03%3A10%3A07.160Z&amp;to=2016-07-08T03%3A53%3A52.418Z&amp;qp=CommonName.mdaas%7Eqqqqq&amp;length=10&amp;offset=0&quot;,
+    &quot;self&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-01T03%3A10%3A07.160Z&amp;to=2016-07-08T03%3A53%3A52.418Z&amp;qp=CommonName.mdaas%7Eqqqqq&amp;length=10&amp;offset=0&quot;,
+    &quot;next&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-01T03%3A10%3A07.160Z&amp;to=2016-07-08T03%3A53%3A52.418Z&amp;qp=CommonName.mdaas%7Eqqqqq&amp;length=10&amp;offset=10&quot;,
+    &quot;last&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-01T03%3A10%3A07.160Z&amp;to=2016-07-08T03%3A53%3A52.418Z&amp;qp=CommonName.mdaas%7Eqqqqq&amp;length=10&amp;offset=350&quot;
+      },
+      &quot;results&quot; : {
+        &quot;type&quot; : &quot;SearchResults&quot;,
+    &quot;fromDate&quot; : &quot;2016-07-01T03:10:07.160Z&quot;,
+    &quot;toDate&quot; : &quot;2016-07-08T03:53:52.418Z&quot;,
+    &quot;total&quot; : 354,
+    &quot;offset&quot; : 0,
+    &quot;length&quot; : 10,
+    &quot;infotons&quot; : [ {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;c780fe7c4a835a36ce386bbd81be0240&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T03:53:52.418Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21591414360&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467950034046,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;RIC.mdaas&quot; : [ &quot;QQQD1W2HN6:OX&quot; ],
+        &quot;type.rdf&quot; : [ &quot;http://ont.thomsonreuters.com/mdaas/Quote&quot; ],
+        &quot;IlxID.mdaas&quot; : [ &quot;2QQQ1DH/N6-OC,USD,NORM&quot; ],
+        &quot;IsTradingIn.mdaas&quot; : [ &quot;USD&quot; ],
+        &quot;CommonName.mdaas&quot; : [ &quot;QQQPo ND WK JUL6&quot; ],
+        &quot;RCSAssetClass.mdaas&quot; : [ &quot;FUT&quot; ],
+        &quot;TRCSAssetClass.mdaas&quot; : [ &quot;Equity Futures&quot; ],
+        &quot;ExchangeTicker.mdaas&quot; : [ &quot;QQQ2H&quot; ],
+        &quot;QuoteExchangeCode.mdaas&quot; : [ &quot;ONE&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;5fdbe8ee644edceaf364a296659482be&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T00:24:10.707Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21591535341&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467937451672,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;RIC.mdaas&quot; : [ &quot;QQQD1W3FN6:OX&quot; ],
+        &quot;type.rdf&quot; : [ &quot;http://ont.thomsonreuters.com/mdaas/Quote&quot; ],
+        &quot;IsTradingIn.mdaas&quot; : [ &quot;USD&quot; ],
+        &quot;CommonName.mdaas&quot; : [ &quot;QQQPo ND WK JUL6&quot; ],
+        &quot;RCSAssetClass.mdaas&quot; : [ &quot;FUT&quot; ],
+        &quot;TRCSAssetClass.mdaas&quot; : [ &quot;Equity Futures&quot; ],
+        &quot;ExchangeTicker.mdaas&quot; : [ &quot;QQQ3F&quot; ],
+        &quot;QuoteExchangeCode.mdaas&quot; : [ &quot;ONE&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;d378e665e282dc62bcdff76747c64a5a&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-07T04:14:42.847Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21591343981&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467864883985,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;RIC.mdaas&quot; : [ &quot;QQQD1W2WN6:OX&quot; ],
+        &quot;type.rdf&quot; : [ &quot;http://ont.thomsonreuters.com/mdaas/Quote&quot; ],
+        &quot;IlxID.mdaas&quot; : [ &quot;2QQQ1DW/N6-OC,USD,NORM&quot; ],
+        &quot;IsTradingIn.mdaas&quot; : [ &quot;USD&quot; ],
+        &quot;CommonName.mdaas&quot; : [ &quot;QQQPo ND WK JUL6&quot; ],
+        &quot;RCSAssetClass.mdaas&quot; : [ &quot;FUT&quot; ],
+        &quot;TRCSAssetClass.mdaas&quot; : [ &quot;Equity Futures&quot; ],
+        &quot;ExchangeTicker.mdaas&quot; : [ &quot;QQQ2W&quot; ],
+        &quot;QuoteExchangeCode.mdaas&quot; : [ &quot;ONE&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;49ebf361fcae4d04af02df231e383deb&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-06T03:19:41.203Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21591285520&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467775238523,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;RIC.mdaas&quot; : [ &quot;QQQD1W2MN6:OX&quot; ],
+        &quot;type.rdf&quot; : [ &quot;http://ont.thomsonreuters.com/mdaas/Quote&quot; ],
+        &quot;IlxID.mdaas&quot; : [ &quot;2QQQ1DM/N6-OC,USD,NORM&quot; ],
+        &quot;IsTradingIn.mdaas&quot; : [ &quot;USD&quot; ],
+        &quot;CommonName.mdaas&quot; : [ &quot;QQQPo ND WK JUL6&quot; ],
+        &quot;RCSAssetClass.mdaas&quot; : [ &quot;FUT&quot; ],
+        &quot;TRCSAssetClass.mdaas&quot; : [ &quot;Equity Futures&quot; ],
+        &quot;ExchangeTicker.mdaas&quot; : [ &quot;QQQ2M&quot; ],
+        &quot;QuoteExchangeCode.mdaas&quot; : [ &quot;ONE&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;edb0aef87075bad3d8c6e8767e1cbbf9&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-06T03:19:40.964Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21591285350&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467775187102,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;RIC.mdaas&quot; : [ &quot;QQQD1W2TN6:OX&quot; ],
+        &quot;type.rdf&quot; : [ &quot;http://ont.thomsonreuters.com/mdaas/Quote&quot; ],
+        &quot;IlxID.mdaas&quot; : [ &quot;2QQQ1DT/N6-OC,USD,NORM&quot; ],
+        &quot;IsTradingIn.mdaas&quot; : [ &quot;USD&quot; ],
+        &quot;CommonName.mdaas&quot; : [ &quot;QQQPo ND WK JUL6&quot; ],
+        &quot;RCSAssetClass.mdaas&quot; : [ &quot;FUT&quot; ],
+        &quot;TRCSAssetClass.mdaas&quot; : [ &quot;Equity Futures&quot; ],
+        &quot;ExchangeTicker.mdaas&quot; : [ &quot;QQQ2T&quot; ],
+        &quot;QuoteExchangeCode.mdaas&quot; : [ &quot;ONE&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;3d00c221fa4cc4036efa00bcfec33f59&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-05T02:43:57.872Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21590488985&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467686639607,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;RIC.mdaas&quot; : [ &quot;QQQD1W1FN6:OX^1&quot; ],
+        &quot;type.rdf&quot; : [ &quot;http://ont.thomsonreuters.com/mdaas/Quote&quot; ],
+        &quot;IlxID.mdaas&quot; : [ &quot;1QQQ1DF/N6-OC,USD,NORM&quot; ],
+        &quot;IsTradingIn.mdaas&quot; : [ &quot;USD&quot; ],
+        &quot;CommonName.mdaas&quot; : [ &quot;QQQPo ND WK JUL6&quot; ],
+        &quot;RCSAssetClass.mdaas&quot; : [ &quot;FUT&quot; ],
+        &quot;TRCSAssetClass.mdaas&quot; : [ &quot;Equity Futures&quot; ],
+        &quot;ExchangeTicker.mdaas&quot; : [ &quot;QQQ1F&quot; ],
+        &quot;QuoteExchangeCode.mdaas&quot; : [ &quot;ONE&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;19547d71542eaa8cd3c55c38e8065a5e&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-04T02:23:47.608Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21590381247&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467599028822,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;RIC.mdaas&quot; : [ &quot;QQQD1W5HM6:OX^1&quot; ],
+        &quot;type.rdf&quot; : [ &quot;http://ont.thomsonreuters.com/mdaas/Quote&quot; ],
+        &quot;IlxID.mdaas&quot; : [ &quot;5QQQ1DH/M6-OC,USD,NORM&quot; ],
+        &quot;IsTradingIn.mdaas&quot; : [ &quot;USD&quot; ],
+        &quot;CommonName.mdaas&quot; : [ &quot;QQQPo ND WK JUN6&quot; ],
+        &quot;RCSAssetClass.mdaas&quot; : [ &quot;FUT&quot; ],
+        &quot;TRCSAssetClass.mdaas&quot; : [ &quot;Equity Futures&quot; ],
+        &quot;ExchangeTicker.mdaas&quot; : [ &quot;QQQ5H&quot; ],
+        &quot;QuoteExchangeCode.mdaas&quot; : [ &quot;ONE&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;6e3449bc916a5b9112e2971b2848d696&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-03T06:45:38.168Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21590310413&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467528339678,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;RIC.mdaas&quot; : [ &quot;QQQD1W5WM6:OX^1&quot; ],
+        &quot;type.rdf&quot; : [ &quot;http://ont.thomsonreuters.com/mdaas/Quote&quot; ],
+        &quot;IlxID.mdaas&quot; : [ &quot;5QQQ1DW/M6-OC,USD,NORM&quot; ],
+        &quot;IsTradingIn.mdaas&quot; : [ &quot;USD&quot; ],
+        &quot;CommonName.mdaas&quot; : [ &quot;QQQPo ND WK JUN6&quot; ],
+        &quot;RCSAssetClass.mdaas&quot; : [ &quot;FUT&quot; ],
+        &quot;TRCSAssetClass.mdaas&quot; : [ &quot;Equity Futures&quot; ],
+        &quot;ExchangeTicker.mdaas&quot; : [ &quot;QQQ5W&quot; ],
+        &quot;QuoteExchangeCode.mdaas&quot; : [ &quot;ONE&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;eccf30dbdf6d72fd74fd3fc94bc62434&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-02T01:28:52.291Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21590268843&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467422934086,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;RIC.mdaas&quot; : [ &quot;QQQD1W4TM6:OX^1&quot; ],
+        &quot;type.rdf&quot; : [ &quot;http://ont.thomsonreuters.com/mdaas/Quote&quot; ],
+        &quot;IlxID.mdaas&quot; : [ &quot;4QQQ1DT/M6-OC,USD,NORM&quot; ],
+        &quot;IsTradingIn.mdaas&quot; : [ &quot;USD&quot; ],
+        &quot;CommonName.mdaas&quot; : [ &quot;QQQPo ND WK JUN6&quot; ],
+        &quot;RCSAssetClass.mdaas&quot; : [ &quot;FUT&quot; ],
+        &quot;TRCSAssetClass.mdaas&quot; : [ &quot;Equity Futures&quot; ],
+        &quot;ExchangeTicker.mdaas&quot; : [ &quot;QQQ4T&quot; ],
+        &quot;QuoteExchangeCode.mdaas&quot; : [ &quot;ONE&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;b1902ece02d0184c39bac93fc36cbff0&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-01T03:10:07.160Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21590006231&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467342607863,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;RIC.mdaas&quot; : [ &quot;QQQD1W4MM6:OX^1&quot; ],
+        &quot;type.rdf&quot; : [ &quot;http://ont.thomsonreuters.com/mdaas/Quote&quot; ],
+        &quot;IlxID.mdaas&quot; : [ &quot;4QQQ1DM/M6-OC,USD,NORM&quot; ],
+        &quot;IsTradingIn.mdaas&quot; : [ &quot;USD&quot; ],
+        &quot;CommonName.mdaas&quot; : [ &quot;QQQPo ND WK JUN6&quot; ],
+        &quot;RCSAssetClass.mdaas&quot; : [ &quot;FUT&quot; ],
+        &quot;TRCSAssetClass.mdaas&quot; : [ &quot;Equity Futures&quot; ],
+        &quot;ExchangeTicker.mdaas&quot; : [ &quot;QQQ4M&quot; ],
+        &quot;QuoteExchangeCode.mdaas&quot; : [ &quot;ONE&quot; ]
+      }
+    } ]
+      }
+    }
+</pre></div>
+
+
+<h3 id="numeric-comparison">Numeric Comparison<a class="headerlink" href="#numeric-comparison" title="Permanent link">&para;</a></h3>
+<p><strong>Action:</strong> Get up to 3 entities under permid.org, whose dsQuotationNumber value is greater than 950000. The field condition uses the <code>&gt;</code> greater-than operator.</p>
+<p><strong>Numeric comparison Curl command:</strong></p>
+<div class="codehilite"><pre><span></span>curl &quot;&lt;cm-well-host&gt;/permid.org?op=search&amp;qp=dsQuotationNumber.mdaas&gt;950000&amp;format=json&amp;pretty&amp;with-data&amp;length=3&quot;
+</pre></div>
+
+
+<p><strong>Numeric comparison response:</strong></p>
+<div class="codehilite"><pre><span></span>{
+      &quot;type&quot; : &quot;SearchResponse&quot;,
+      &quot;pagination&quot; : {
+    &quot;type&quot; : &quot;PaginationInfo&quot;,
+    &quot;first&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T09%3A39%3A09.320Z&amp;to=2016-07-08T11%3A54%3A49.121Z&amp;qp=dsQuotationNumber.mdaas%3E950000&amp;length=3&amp;offset=0&quot;,
+    &quot;self&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T09%3A39%3A09.320Z&amp;to=2016-07-08T11%3A54%3A49.121Z&amp;qp=dsQuotationNumber.mdaas%3E950000&amp;length=3&amp;offset=0&quot;,
+    &quot;next&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T09%3A39%3A09.320Z&amp;to=2016-07-08T11%3A54%3A49.121Z&amp;qp=dsQuotationNumber.mdaas%3E950000&amp;length=3&amp;offset=3&quot;,
+    &quot;last&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T09%3A39%3A09.320Z&amp;to=2016-07-08T11%3A54%3A49.121Z&amp;qp=dsQuotationNumber.mdaas%3E950000&amp;length=3&amp;offset=17736&quot;
+      },
+      &quot;results&quot; : {
+    &quot;type&quot; : &quot;SearchResults&quot;,
+    &quot;fromDate&quot; : &quot;2016-07-08T09:39:09.320Z&quot;,
+    &quot;toDate&quot; : &quot;2016-07-08T11:54:49.121Z&quot;,
+    &quot;total&quot; : 17737,
+    &quot;offset&quot; : 0,
+    &quot;length&quot; : 3,
+    &quot;infotons&quot; : [ {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;2afef8830546e1330ce2d6e8bd9b9527&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T11:54:49.121Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21509276862&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467978889973,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;RIC.mdaas&quot; : [ &quot;IE0082945.I&quot; ],
+        &quot;type.rdf&quot; : [ &quot;http://ont.thomsonreuters.com/mdaas/Quote&quot; ],
+        &quot;IsQuoteOf.mdaas&quot; : [ &quot;http://permid.org/1-8590050227&quot; ],
+        &quot;IsTradingIn.mdaas&quot; : [ &quot;USD&quot; ],
+        &quot;MIC.mdaas&quot; : [ &quot;XDUB&quot; ],
+        &quot;CommonName.mdaas&quot; : [ &quot;BARING AUSTRALIA A OF&quot; ],
+        &quot;RCSAssetClass.mdaas&quot; : [ &quot;OPF&quot; ],
+        &quot;TRCSAssetClass.mdaas&quot; : [ &quot;Open-End Funds&quot; ],
+        &quot;dsQuotationNumber.mdaas&quot; : [ &quot;966075&quot; ],
+        &quot;QuoteExchangeCode.mdaas&quot; : [ &quot;ISE&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;4ae7630a8100b67984a56c848c26e49b&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T11:54:49.121Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21509276861&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467978889974,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;RIC.mdaas&quot; : [ &quot;IE0082923.I&quot; ],
+        &quot;type.rdf&quot; : [ &quot;http://ont.thomsonreuters.com/mdaas/Quote&quot; ],
+        &quot;IsQuoteOf.mdaas&quot; : [ &quot;http://permid.org/1-8590293290&quot; ],
+        &quot;IsTradingIn.mdaas&quot; : [ &quot;USD&quot; ],
+        &quot;MIC.mdaas&quot; : [ &quot;XDUB&quot; ],
+        &quot;CommonName.mdaas&quot; : [ &quot;BARING HONG KONG IT A OF&quot; ],
+        &quot;RCSAssetClass.mdaas&quot; : [ &quot;OPF&quot; ],
+        &quot;TRCSAssetClass.mdaas&quot; : [ &quot;Open-End Funds&quot; ],
+        &quot;dsQuotationNumber.mdaas&quot; : [ &quot;966489&quot; ],
+        &quot;QuoteExchangeCode.mdaas&quot; : [ &quot;ISE&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;eff4fe6512ade35469157be12250c19e&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T09:39:09.320Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21567567815&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467970750181,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;RIC.mdaas&quot; : [ &quot;2H6.F^G16&quot; ],
+        &quot;type.rdf&quot; : [ &quot;http://ont.thomsonreuters.com/mdaas/Quote&quot; ],
+        &quot;IsQuoteOf.mdaas&quot; : [ &quot;http://permid.org/1-21566148656&quot; ],
+        &quot;IlxID.mdaas&quot; : [ &quot;2H6-FF,EUR,NORM&quot; ],
+        &quot;dsQuotationMnemonic.mdaas&quot; : [ &quot;D:2H6&quot; ],
+        &quot;IsTradingIn.mdaas&quot; : [ &quot;EUR&quot; ],
+        &quot;MIC.mdaas&quot; : [ &quot;XFRA&quot; ],
+        &quot;CommonName.mdaas&quot; : [ &quot;HORIZON GLOBAL ORD&quot; ],
+        &quot;RCSAssetClass.mdaas&quot; : [ &quot;ORD&quot; ],
+        &quot;TRCSAssetClass.mdaas&quot; : [ &quot;Ordinary Shares&quot; ],
+        &quot;dsQuotationNumber.mdaas&quot; : [ &quot;9818F6&quot; ],
+        &quot;ExchangeTicker.mdaas&quot; : [ &quot;2H6&quot; ],
+        &quot;QuoteExchangeCode.mdaas&quot; : [ &quot;FRA&quot; ]
+      }
+    } ]
+      }
+    }
+</pre></div>
+
+
+<p><a name="hdr4"></a></p>
+<h2 id="4-specify-output-fields">4. Specify Output Fields<a class="headerlink" href="#4-specify-output-fields" title="Permanent link">&para;</a></h2>
+<p><strong>Action:</strong> Get only the CommonName and RCSAssetClass fields for up to 3 entities under permid.org, whose CommonName value contains the string "Reuters".</p>
+<p><strong>Curl command:</strong></p>
+<div class="codehilite"><pre><span></span>curl &quot;&lt;cm-well-host&gt;/permid.org?op=search&amp;qp=CommonName.mdaas:Reuters&amp;format=json&amp;pretty&amp;with-data=n3&amp;fields=CommonName.mdaas,RCSAssetClass.mdaas&amp;length=3&quot;
+</pre></div>
+
+
+<p><strong>Response:</strong></p>
+<div class="codehilite"><pre><span></span>{
+      &quot;type&quot; : &quot;SearchResponse&quot;,
+      &quot;pagination&quot; : {
+        &quot;type&quot; : &quot;PaginationInfo&quot;,
+    &quot;first&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T15%3A40%3A01.740Z&amp;to=2016-07-08T15%3A40%3A01.979Z&amp;qp=CommonName.mdaas%3AReuters&amp;length=3&amp;offset=0&quot;,
+    &quot;self&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T15%3A40%3A01.740Z&amp;to=2016-07-08T15%3A40%3A01.979Z&amp;qp=CommonName.mdaas%3AReuters&amp;length=3&amp;offset=0&quot;,
+    &quot;next&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T15%3A40%3A01.740Z&amp;to=2016-07-08T15%3A40%3A01.979Z&amp;qp=CommonName.mdaas%3AReuters&amp;length=3&amp;offset=3&quot;,
+    &quot;last&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T15%3A40%3A01.740Z&amp;to=2016-07-08T15%3A40%3A01.979Z&amp;qp=CommonName.mdaas%3AReuters&amp;length=3&amp;offset=70914&quot;
+      },
+      &quot;results&quot; : {
+        &quot;type&quot; : &quot;SearchResults&quot;,
+    &quot;fromDate&quot; : &quot;2016-07-08T15:40:01.740Z&quot;,
+    &quot;toDate&quot; : &quot;2016-07-08T15:40:01.979Z&quot;,
+    &quot;total&quot; : 70914,
+    &quot;offset&quot; : 0,
+    &quot;length&quot; : 3,
+    &quot;infotons&quot; : [ {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;08e369b8d4660826eb9494810e0af09b&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T15:40:01.979Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21591377740&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467992402553,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;CommonName.mdaas&quot; : [ &quot;Goldman Sachs &amp; Co Wertpapier GMBH Call 1313.7255 USD Thomson Reuters: Gold / US Dollar FX Spot Rate 31Dec99&quot; ],
+        &quot;RCSAssetClass.mdaas&quot; : [ &quot;BARWNT&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;c8fc5e38b51892b529caa66646d6a56a&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T15:40:01.940Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21591377619&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467992403912,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;CommonName.mdaas&quot; : [ &quot;Goldman Sachs &amp; Co Wertpapier GMBH Call 1240 USD Thomson Reuters: Gold / US Dollar FX Spot Rate 31Dec99&quot; ],
+        &quot;RCSAssetClass.mdaas&quot; : [ &quot;BARWNT&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;f188963093cd7b90a169c81bb8973daf&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T15:40:01.740Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21591374238&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467992402499,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;CommonName.mdaas&quot; : [ &quot;COMMERZBANK AG Put 0.0001 USD Thomson Reuters: Gold / US Dollar FX Spot Rate 13Dec16&quot; ],
+        &quot;RCSAssetClass.mdaas&quot; : [ &quot;BARWNT&quot; ]
+      }
+    } ]
+      }
+    }
+</pre></div>
+
+
+<p><a name="hdr5"></a></p>
+<h2 id="5-implement-and-or-not">5. Implement AND, OR, NOT<a class="headerlink" href="#5-implement-and-or-not" title="Permanent link">&para;</a></h2>
+<h3 id="multiple-conditions-and">Multiple Conditions ("AND")<a class="headerlink" href="#multiple-conditions-and" title="Permanent link">&para;</a></h3>
+<p><strong>Action:</strong> Get up to 3 entities under permid.org, whose CommonName value contains the string "Reuters", and whose RCSAssetClass value contains the string "TRAD".</p>
+<p><strong>Curl command:</strong></p>
+<div class="codehilite"><pre><span></span>curl &quot;&lt;cm-well-host&gt;/permid.org?op=search&amp;qp=CommonName.mdaas:Reuters,RCSAssetClass.mdaas:TRAD&amp;format=json&amp;pretty&amp;length=3&amp;with-data&quot;
+</pre></div>
+
+
+<p><strong>Response:</strong></p>
+<div class="codehilite"><pre><span></span>{
+      &quot;type&quot; : &quot;SearchResponse&quot;,
+      &quot;pagination&quot; : {
+    &quot;type&quot; : &quot;PaginationInfo&quot;,
+    &quot;first&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T15%3A25%3A07.856Z&amp;to=2016-07-08T15%3A25%3A07.856Z&amp;qp=CommonName.mdaas%3AReuters%2CRCSAssetClass.mdaas%3ATRAD&amp;length=3&amp;offset=0&quot;,
+    &quot;self&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T15%3A25%3A07.856Z&amp;to=2016-07-08T15%3A25%3A07.856Z&amp;qp=CommonName.mdaas%3AReuters%2CRCSAssetClass.mdaas%3ATRAD&amp;length=3&amp;offset=0&quot;,
+    &quot;next&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T15%3A25%3A07.856Z&amp;to=2016-07-08T15%3A25%3A07.856Z&amp;qp=CommonName.mdaas%3AReuters%2CRCSAssetClass.mdaas%3ATRAD&amp;length=3&amp;offset=3&quot;,
+    &quot;last&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T15%3A25%3A07.856Z&amp;to=2016-07-08T15%3A25%3A07.856Z&amp;qp=CommonName.mdaas%3AReuters%2CRCSAssetClass.mdaas%3ATRAD&amp;length=3&amp;offset=8592&quot;
+      },
+      &quot;results&quot; : {
+    &quot;type&quot; : &quot;SearchResults&quot;,
+    &quot;fromDate&quot; : &quot;2016-07-08T15:25:07.856Z&quot;,
+    &quot;toDate&quot; : &quot;2016-07-08T15:25:07.856Z&quot;,
+    &quot;total&quot; : 8593,
+    &quot;offset&quot; : 0,
+    &quot;length&quot; : 3,
+    &quot;infotons&quot; : [ {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;83d204f7495ebef595724af60bdcd83d&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T15:25:07.856Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21591362718&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467991508847,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;type.rdf&quot; : [ &quot;http://ont.thomsonreuters.com/mdaas/Instrument&quot; ],
+        &quot;instrumentExpiryDate.mdaas&quot; : [ &quot;2017-06-16&quot; ],
+        &quot;isIssuedBy.mdaas&quot; : [ &quot;http://permid.org/1-5000008825&quot; ],
+        &quot;CommonName.mdaas&quot; : [ &quot;Vontobel Financial Products Call 31 USD Thomson Reuters: Silver / US Dollar FX Spot Rate 16Jun17&quot; ],
+        &quot;instrumentCurrencyName.mdaas&quot; : [ &quot;EUR&quot; ],
+        &quot;instrumentStatus.mdaas&quot; : [ &quot;Active&quot; ],
+        &quot;RCSAssetClass.mdaas&quot; : [ &quot;TRAD&quot; ],
+        &quot;instrumentAssetClass.mdaas&quot; : [ &quot;Traditional Warrants&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;c2c05f8e258c6b33fcb6e53c84e93d2c&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T15:25:07.856Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21591362720&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467991508849,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;type.rdf&quot; : [ &quot;http://ont.thomsonreuters.com/mdaas/Instrument&quot; ],
+        &quot;instrumentExpiryDate.mdaas&quot; : [ &quot;2016-08-19&quot; ],
+        &quot;isIssuedBy.mdaas&quot; : [ &quot;http://permid.org/1-5000008825&quot; ],
+        &quot;CommonName.mdaas&quot; : [ &quot;Vontobel Financial Products Call 24.5 USD Thomson Reuters: Silver / US Dollar FX Spot Rate 19Aug16&quot; ],
+        &quot;instrumentCurrencyName.mdaas&quot; : [ &quot;EUR&quot; ],
+        &quot;instrumentStatus.mdaas&quot; : [ &quot;Active&quot; ],
+        &quot;RCSAssetClass.mdaas&quot; : [ &quot;TRAD&quot; ],
+        &quot;instrumentAssetClass.mdaas&quot; : [ &quot;Traditional Warrants&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;84e8ea6d184fb1b68d88eba85e6ba031&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T15:25:07.856Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21591362722&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467991508846,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;type.rdf&quot; : [ &quot;http://ont.thomsonreuters.com/mdaas/Instrument&quot; ],
+        &quot;instrumentExpiryDate.mdaas&quot; : [ &quot;2016-09-16&quot; ],
+        &quot;isIssuedBy.mdaas&quot; : [ &quot;http://permid.org/1-5000008825&quot; ],
+        &quot;CommonName.mdaas&quot; : [ &quot;Vontobel Financial Products Call 26 USD Thomson Reuters: Silver / US Dollar FX Spot Rate 16Sep16&quot; ],
+        &quot;instrumentCurrencyName.mdaas&quot; : [ &quot;EUR&quot; ],
+        &quot;instrumentStatus.mdaas&quot; : [ &quot;Active&quot; ],
+        &quot;RCSAssetClass.mdaas&quot; : [ &quot;TRAD&quot; ],
+        &quot;instrumentAssetClass.mdaas&quot; : [ &quot;Traditional Warrants&quot; ]
+      }
+    } ]
+      }
+    }
+</pre></div>
+
+
+<h3 id="optional-conditions-or">Optional Conditions ("OR")<a class="headerlink" href="#optional-conditions-or" title="Permanent link">&para;</a></h3>
+<p><strong>Action:</strong> Get up to 5 entities under permid.org, whose organizationStateProvince value contains either "Delaware" or "Idaho".</p>
+<p><strong>Curl command:</strong></p>
+<div class="codehilite"><pre><span></span>curl &quot;&lt;cm-well-host&gt;/permid.org?op=search&amp;qp=*organizationStateProvince.mdaas:Delaware,*organizationStateProvince.mdaas:Idaho&amp;format=json&amp;pretty&amp;with-data&amp;length=5&amp;fields=organizationStateProvince.mdaas,organizationCity.mdaas&quot;
+</pre></div>
+
+
+<p><strong>Response:</strong></p>
+<div class="codehilite"><pre><span></span>{
+      &quot;type&quot; : &quot;SearchResponse&quot;,
+      &quot;pagination&quot; : {
+    &quot;type&quot; : &quot;PaginationInfo&quot;,
+    &quot;first&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T12%3A55%3A25.659Z&amp;to=2016-07-08T16%3A10%3A15.331Z&amp;qp=*organizationStateProvince.mdaas%3ADelaware%2C*organizationStateProvince.mdaas%3AIdaho&amp;length=5&amp;offset=0&quot;,
+    &quot;self&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T12%3A55%3A25.659Z&amp;to=2016-07-08T16%3A10%3A15.331Z&amp;qp=*organizationStateProvince.mdaas%3ADelaware%2C*organizationStateProvince.mdaas%3AIdaho&amp;length=5&amp;offset=0&quot;,
+    &quot;next&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T12%3A55%3A25.659Z&amp;to=2016-07-08T16%3A10%3A15.331Z&amp;qp=*organizationStateProvince.mdaas%3ADelaware%2C*organizationStateProvince.mdaas%3AIdaho&amp;length=5&amp;offset=5&quot;,
+    &quot;last&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T12%3A55%3A25.659Z&amp;to=2016-07-08T16%3A10%3A15.331Z&amp;qp=*organizationStateProvince.mdaas%3ADelaware%2C*organizationStateProvince.mdaas%3AIdaho&amp;length=5&amp;offset=129660&quot;
+      },
+      &quot;results&quot; : {
+    &quot;type&quot; : &quot;SearchResults&quot;,
+    &quot;fromDate&quot; : &quot;2016-07-08T12:55:25.659Z&quot;,
+    &quot;toDate&quot; : &quot;2016-07-08T16:10:15.331Z&quot;,
+    &quot;total&quot; : 129664,
+    &quot;offset&quot; : 0,
+    &quot;length&quot; : 5,
+    &quot;infotons&quot; : [ {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;ede36a0643a6273085cc782d861a811a&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T16:10:15.331Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-5046728258&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467994216087,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;organizationCity.mdaas&quot; : [ &quot;HANOVER&quot; ],
+        &quot;organizationStateProvince.mdaas&quot; : [ &quot;DELAWARE&quot;, &quot;NEW HAMPSHIRE&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;5518ea6ac23692ce30caa24b9c868ea6&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T15:25:13.079Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-5049099159&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467991566404,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;organizationCity.mdaas&quot; : [ &quot;SAN FRANCISCO&quot; ],
+        &quot;organizationStateProvince.mdaas&quot; : [ &quot;CALIFORNIA&quot;, &quot;DELAWARE&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;65582f41fd62f409d3f6c4990c7af844&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T15:25:12.687Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-5001360647&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467991566572,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;organizationCity.mdaas&quot; : [ &quot;MOUNTAIN HOME&quot; ],
+        &quot;organizationStateProvince.mdaas&quot; : [ &quot;IDAHO&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;eaa7fe2bff508f77e203816c03f2d952&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T15:25:12.427Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-4297939554&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467991513916,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;organizationCity.mdaas&quot; : [ &quot;IDAHO FALLS&quot; ],
+        &quot;organizationStateProvince.mdaas&quot; : [ &quot;IDAHO&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;cc60f9c1ccf71019861f7277abcfd3ed&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T12:55:25.659Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-5051394129&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467982577997,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;organizationCity.mdaas&quot; : [ &quot;EMMETT&quot; ],
+        &quot;organizationStateProvince.mdaas&quot; : [ &quot;IDAHO&quot; ]
+      }
+    } ]
+      }
+    }  
+</pre></div>
+
+
+<h3 id="negative-conditions-not">Negative Conditions ("NOT")<a class="headerlink" href="#negative-conditions-not" title="Permanent link">&para;</a></h3>
+<p><strong>Action:</strong> Get up to 5 entities under permid.org, whose organizationStateProvince value contains "New York", but whose organizationCity value does not contain "New York" (i.e. the entity is located in New York state but not in New York city).</p>
+<p><strong>Curl command:</strong></p>
+<div class="codehilite"><pre><span></span>curl &quot;&lt;cm-well-host&gt;/permid.org?op=search&amp;qp=organizationStateProvince.mdaas:New%20York,-organizationCity.mdaas:new%20york&amp;format=json&amp;pretty&amp;with-data&amp;length=5&amp;fields=organizationStateProvince.mdaas,organizationCity.mdaas&quot;
+</pre></div>
+
+
+<p><strong>Response:</strong></p>
+<div class="codehilite"><pre><span></span>{
+      &quot;type&quot; : &quot;SearchResponse&quot;,
+      &quot;pagination&quot; : {
+    &quot;type&quot; : &quot;PaginationInfo&quot;,
+    &quot;first&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T10%3A39%3A27.444Z&amp;to=2016-07-08T15%3A25%3A13.470Z&amp;qp=organizationStateProvince.mdaas%3ANew+York%2C-organizationCity.mdaas%3Anew+york&amp;length=5&amp;offset=0&quot;,
+    &quot;self&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T10%3A39%3A27.444Z&amp;to=2016-07-08T15%3A25%3A13.470Z&amp;qp=organizationStateProvince.mdaas%3ANew+York%2C-organizationCity.mdaas%3Anew+york&amp;length=5&amp;offset=0&quot;,
+    &quot;next&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T10%3A39%3A27.444Z&amp;to=2016-07-08T15%3A25%3A13.470Z&amp;qp=organizationStateProvince.mdaas%3ANew+York%2C-organizationCity.mdaas%3Anew+york&amp;length=5&amp;offset=5&quot;,
+    &quot;last&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T10%3A39%3A27.444Z&amp;to=2016-07-08T15%3A25%3A13.470Z&amp;qp=organizationStateProvince.mdaas%3ANew+York%2C-organizationCity.mdaas%3Anew+york&amp;length=5&amp;offset=68905&quot;
+      },
+      &quot;results&quot; : {
+    &quot;type&quot; : &quot;SearchResults&quot;,
+    &quot;fromDate&quot; : &quot;2016-07-08T10:39:27.444Z&quot;,
+    &quot;toDate&quot; : &quot;2016-07-08T15:25:13.470Z&quot;,
+    &quot;total&quot; : 68905,
+    &quot;offset&quot; : 0,
+    &quot;length&quot; : 5,
+    &quot;infotons&quot; : [ {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;b54c657343f7146989a6cda1fcdc6f64&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T15:25:13.470Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-5051394161&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467991566029,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;organizationCity.mdaas&quot; : [ &quot;GLENDALE&quot; ],
+        &quot;organizationStateProvince.mdaas&quot; : [ &quot;NEW YORK&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;cbed49332e66edd289da9481f8f3ac83&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T14:10:04.847Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-5051394157&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467987058263,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;organizationCity.mdaas&quot; : [ &quot;BROOKLYN&quot; ],
+        &quot;organizationStateProvince.mdaas&quot; : [ &quot;NEW YORK&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;6d9600d422e7130b4309205af7f0f456&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T14:10:04.319Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-5034764167&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467987005379,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;organizationCity.mdaas&quot; : [ &quot;BROOKLYN&quot; ],
+        &quot;organizationStateProvince.mdaas&quot; : [ &quot;NEW YORK&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;5c7476f29384a2f680e87ec95a8c2b9f&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T12:55:25.206Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-5006279969&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467982578452,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;organizationCity.mdaas&quot; : [ &quot;WHITE PLAINS&quot; ],
+        &quot;organizationStateProvince.mdaas&quot; : [ &quot;NEW YORK&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;740bb1c6ea1f85e169f96edb2cdd3567&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T10:39:27.444Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-5051393857&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467974417952,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;organizationCity.mdaas&quot; : [ &quot;RIDGEWOOD&quot; ],
+        &quot;organizationStateProvince.mdaas&quot; : [ &quot;NEW YORK&quot; ]
+      }
+    } ]
+      }
+    }  
+</pre></div>
+
+
+<p><a name="hdr6"></a></p>
+<h2 id="6-page-through-results">6. Page through Results<a class="headerlink" href="#6-page-through-results" title="Permanent link">&para;</a></h2>
+<p><strong>Action:</strong> Get the first 3 entities (offset=0, length=3) under permid.org, whose organizationStateProvince value contains "New York" .</p>
+<p><strong>Curl command:</strong></p>
+<div class="codehilite"><pre><span></span>curl &quot;&lt;cm-well-host&gt;/permid.org?op=search&amp;qp=organizationStateProvince.mdaas:New%20York&amp;format=json&amp;pretty&amp;with-data&amp;offset=0&amp;length=3&amp;fields=organizationStateProvince.mdaas,organizationCity.mdaas&quot;
+</pre></div>
+
+
+<p><strong>Response:</strong></p>
+<div class="codehilite"><pre><span></span>{
+      &quot;type&quot; : &quot;SearchResponse&quot;,
+      &quot;pagination&quot; : {
+    &quot;type&quot; : &quot;PaginationInfo&quot;,
+    &quot;first&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T14%3A10%3A04.439Z&amp;to=2016-07-08T15%3A25%3A13.470Z&amp;qp=organizationStateProvince.mdaas%3ANew+York&amp;length=3&amp;offset=0&quot;,
+    &quot;self&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T14%3A10%3A04.439Z&amp;to=2016-07-08T15%3A25%3A13.470Z&amp;qp=organizationStateProvince.mdaas%3ANew+York&amp;length=3&amp;offset=0&quot;,
+    &quot;next&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T14%3A10%3A04.439Z&amp;to=2016-07-08T15%3A25%3A13.470Z&amp;qp=organizationStateProvince.mdaas%3ANew+York&amp;length=3&amp;offset=3&quot;,
+    &quot;last&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T14%3A10%3A04.439Z&amp;to=2016-07-08T15%3A25%3A13.470Z&amp;qp=organizationStateProvince.mdaas%3ANew+York&amp;length=3&amp;offset=123936&quot;
+      },
+      &quot;results&quot; : {
+    &quot;type&quot; : &quot;SearchResults&quot;,
+    &quot;fromDate&quot; : &quot;2016-07-08T14:10:04.439Z&quot;,
+    &quot;toDate&quot; : &quot;2016-07-08T15:25:13.470Z&quot;,
+    &quot;total&quot; : 123938,
+    &quot;offset&quot; : 0,
+    &quot;length&quot; : 3,
+    &quot;infotons&quot; : [ {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;b54c657343f7146989a6cda1fcdc6f64&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T15:25:13.470Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-5051394161&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467991566029,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;organizationCity.mdaas&quot; : [ &quot;GLENDALE&quot; ],
+        &quot;organizationStateProvince.mdaas&quot; : [ &quot;NEW YORK&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;cbed49332e66edd289da9481f8f3ac83&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T14:10:04.847Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-5051394157&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467987058263,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;organizationCity.mdaas&quot; : [ &quot;BROOKLYN&quot; ],
+        &quot;organizationStateProvince.mdaas&quot; : [ &quot;NEW YORK&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;4055b393538b016e7a05457301ea669b&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T14:10:04.439Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-5038060478&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467987006101,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;organizationCity.mdaas&quot; : [ &quot;NEW YORK&quot; ],
+        &quot;organizationStateProvince.mdaas&quot; : [ &quot;NEW YORK&quot; ]
+      }
+    } ]
+      }
+    }   
+</pre></div>
+
+
+<p><strong>Action:</strong> Get the next 3 entities (offset=3, length=3) under permid.org, whose organizationStateProvince value contains "New York".</p>
+<p><strong>Curl command:</strong></p>
+<div class="codehilite"><pre><span></span>curl &quot;&lt;cm-well-host&gt;/permid.org?op=search&amp;qp=organizationStateProvince.mdaas:New%20York&amp;format=json&amp;pretty&amp;with-data&amp;offset=3&amp;length=3&amp;fields=organizationStateProvince.mdaas,organizationCity.mdaas&quot;
+</pre></div>
+
+
+<p><strong>Response:</strong></p>
+<div class="codehilite"><pre><span></span>{
+      &quot;type&quot; : &quot;SearchResponse&quot;,
+      &quot;pagination&quot; : {
+    &quot;type&quot; : &quot;PaginationInfo&quot;,
+    &quot;first&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T10%3A39%3A27.503Z&amp;to=2016-07-08T14%3A10%3A04.319Z&amp;qp=organizationStateProvince.mdaas%3ANew+York&amp;length=3&amp;offset=0&quot;,
+    &quot;previous&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T10%3A39%3A27.503Z&amp;to=2016-07-08T14%3A10%3A04.319Z&amp;qp=organizationStateProvince.mdaas%3ANew+York&amp;length=3&amp;offset=0&quot;,
+    &quot;self&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T10%3A39%3A27.503Z&amp;to=2016-07-08T14%3A10%3A04.319Z&amp;qp=organizationStateProvince.mdaas%3ANew+York&amp;length=3&amp;offset=3&quot;,
+    &quot;next&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T10%3A39%3A27.503Z&amp;to=2016-07-08T14%3A10%3A04.319Z&amp;qp=organizationStateProvince.mdaas%3ANew+York&amp;length=3&amp;offset=6&quot;,
+    &quot;last&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2016-07-08T10%3A39%3A27.503Z&amp;to=2016-07-08T14%3A10%3A04.319Z&amp;qp=organizationStateProvince.mdaas%3ANew+York&amp;length=3&amp;offset=123936&quot;
+      },
+      &quot;results&quot; : {
+    &quot;type&quot; : &quot;SearchResults&quot;,
+    &quot;fromDate&quot; : &quot;2016-07-08T10:39:27.503Z&quot;,
+    &quot;toDate&quot; : &quot;2016-07-08T14:10:04.319Z&quot;,
+    &quot;total&quot; : 123938,
+    &quot;offset&quot; : 3,
+    &quot;length&quot; : 3,
+    &quot;infotons&quot; : [ {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;6d9600d422e7130b4309205af7f0f456&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T14:10:04.319Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-5034764167&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467987005379,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;organizationCity.mdaas&quot; : [ &quot;BROOKLYN&quot; ],
+        &quot;organizationStateProvince.mdaas&quot; : [ &quot;NEW YORK&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;5c7476f29384a2f680e87ec95a8c2b9f&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T12:55:25.206Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-5006279969&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467982578452,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;organizationCity.mdaas&quot; : [ &quot;WHITE PLAINS&quot; ],
+        &quot;organizationStateProvince.mdaas&quot; : [ &quot;NEW YORK&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;73cead0a965c98ea9e801fcf021284bc&quot;,
+        &quot;lastModified&quot; : &quot;2016-07-08T10:39:27.503Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-5051394063&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1467974418394,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;organizationCity.mdaas&quot; : [ &quot;NEW YORK&quot; ],
+        &quot;organizationStateProvince.mdaas&quot; : [ &quot;NEW YORK&quot; ]
+      }
+    } ]
+      }
+    }
+</pre></div>
+
+
+<p><a name="hdr7"></a></p>
+<h2 id="7-traverse-inbound-and-outbound-links">7. Traverse Inbound and Outbound Links<a class="headerlink" href="#7-traverse-inbound-and-outbound-links" title="Permanent link">&para;</a></h2>
+<p><strong>Action:</strong> Find the address of the company that issues a quote with a RIC code of "VAC". 
+The query uses the <strong>yg</strong> flag that enables traversing inbound and outbound links.</p>
+<p>The steps in the query are:</p>
+<ol>
+<li>Find quotes with a RIC code of "VAC".</li>
+<li>Follow the quote's outbound links to find out what instrument issues the quote.</li>
+<li>Follow the instrument's inbound links to find out which company points to the instrument in its primaryInstrument field.</li>
+</ol>
+<p><strong>Curl command:</strong></p>
+<div class="codehilite"><pre><span></span>curl &quot;&lt;cm-well-host&gt;/permid.org?op=search&amp;qp=RIC.mdaas::VAC&amp;with-data&amp;yg=&gt;IsQuoteOf.mdaas&lt;primaryInstrument.mdaas&amp;format=json&amp;pretty&quot;
+</pre></div>
+
+
+<p><strong>Response:</strong></p>
+<div class="codehilite"><pre><span></span>{
+      &quot;type&quot; : &quot;SearchResponse&quot;,
+      &quot;pagination&quot; : {
+    &quot;type&quot; : &quot;PaginationInfo&quot;,
+    &quot;first&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2015-03-24T11%3A39%3A46.462Z&amp;to=2015-03-24T11%3A39%3A46.462Z&amp;qp=RIC.mdaas%3A%3AVAC&amp;length=3&amp;offset=0&quot;,
+    &quot;self&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2015-03-24T11%3A39%3A46.462Z&amp;to=2015-03-24T11%3A39%3A46.462Z&amp;qp=RIC.mdaas%3A%3AVAC&amp;length=3&amp;offset=0&quot;,
+    &quot;last&quot; : &quot;http://cm-well-host.com/permid.org?format=json?&amp;op=search&amp;from=2015-03-24T11%3A39%3A46.462Z&amp;to=2015-03-24T11%3A39%3A46.462Z&amp;qp=RIC.mdaas%3A%3AVAC&amp;length=3&amp;offset=0&quot;
+      },
+      &quot;results&quot; : {
+    &quot;type&quot; : &quot;SearchResults&quot;,
+    &quot;fromDate&quot; : &quot;2015-03-24T11:39:46.462Z&quot;,
+    &quot;toDate&quot; : &quot;2015-03-24T11:39:46.462Z&quot;,
+    &quot;total&quot; : 1,
+    &quot;offset&quot; : 0,
+    &quot;length&quot; : 3,
+    &quot;infotons&quot; : [ {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;0dcfaba91276c59c448bad93cc7e232e&quot;,
+        &quot;lastModified&quot; : &quot;2015-03-24T11:39:46.462Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21478428449&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1460125129760,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;RIC.mdaas&quot; : [ &quot;VAC&quot; ],
+        &quot;type.rdf&quot; : [ &quot;http://ont.thomsonreuters.com/mdaas/Quote&quot; ],
+        &quot;IsQuoteOf.mdaas&quot; : [ &quot;http://permid.org/1-21478428282&quot; ],
+        &quot;IlxID.mdaas&quot; : [ &quot;VAC-US,USD,NORM&quot; ],
+        &quot;dsQuotationMnemonic.mdaas&quot; : [ &quot;U:VAC&quot; ],
+        &quot;IsTradingIn.mdaas&quot; : [ &quot;USD&quot; ],
+        &quot;MIC.mdaas&quot; : [ &quot;XXXX&quot; ],
+        &quot;CommonName.mdaas&quot; : [ &quot;MARRIOTT VACATIONS WORLDWIDE ORD&quot; ],
+        &quot;RCSAssetClass.mdaas&quot; : [ &quot;ORD&quot; ],
+        &quot;TRCSAssetClass.mdaas&quot; : [ &quot;Ordinary Shares&quot; ],
+        &quot;dsQuotationNumber.mdaas&quot; : [ &quot;77857E&quot; ],
+        &quot;ExchangeTicker.mdaas&quot; : [ &quot;VAC&quot; ],
+        &quot;QuoteExchangeCode.mdaas&quot; : [ &quot;NYQ&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;af45a50bfe5645b16ef1ccccd2ab3006&quot;,
+        &quot;lastModified&quot; : &quot;2015-03-08T12:38:04.543Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-21478428282&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1460133028465,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;WorldscopeID.mdaas&quot; : [ &quot;57164Y107&quot; ],
+        &quot;type.rdf&quot; : [ &quot;http://ont.thomsonreuters.com/mdaas/Instrument&quot; ],
+        &quot;WorldScopePermId.mdaas&quot; : [ &quot;C840UV2P0&quot; ],
+        &quot;mainQuoteId.mdaas&quot; : [ &quot;21478428456&quot; ],
+        &quot;isIssuedBy.mdaas&quot; : [ &quot;http://permid.org/1-5035948006&quot; ],
+        &quot;CommonName.mdaas&quot; : [ &quot;Marriott Vacations Worldwide Ord Shs&quot; ],
+        &quot;instrumentCurrencyName.mdaas&quot; : [ &quot;USD&quot; ],
+        &quot;instrumentStatus.mdaas&quot; : [ &quot;Active&quot; ],
+        &quot;RCSAssetClass.mdaas&quot; : [ &quot;ORD&quot; ],
+        &quot;instrumentAssetClass.mdaas&quot; : [ &quot;Ordinary Shares&quot; ]
+      }
+    }, {
+      &quot;type&quot; : &quot;ObjectInfoton&quot;,
+      &quot;system&quot; : {
+        &quot;uuid&quot; : &quot;901803c75dd49427a4cba92878095e4b&quot;,
+        &quot;lastModified&quot; : &quot;2016-04-06T07:15:07.612Z&quot;,
+        &quot;path&quot; : &quot;/permid.org/1-5035948006&quot;,
+        &quot;dataCenter&quot; : &quot;dc1&quot;,
+        &quot;indexTime&quot; : 1460098385554,
+        &quot;parent&quot; : &quot;/permid.org&quot;
+      },
+      &quot;fields&quot; : {
+        &quot;legalRegistrationCommonAddress.mdaas&quot; : [ &quot;2711 Centerville Rd\nWILMINGTON\nDELAWARE\n19808-1660\nUnited States\n&quot; ],
+        &quot;primaryInstrument.mdaas&quot; : [ &quot;http://permid.org/1-21478428282&quot; ],
+        &quot;type.rdf&quot; : [ &quot;http://ont.thomsonreuters.com/mdaas/Organization&quot; ],
+        &quot;organizationAddressLine1.mdaas&quot; : [ &quot;6649 Westwood Blvd&quot;, &quot;6649 Westwood Blvd&quot;, &quot;2711 Centerville Rd&quot; ],
+        &quot;organizationAddressLine2.mdaas&quot; : [ &quot;2711 Centerville Road&quot; ],
+        &quot;MXID.mdaas&quot; : [ &quot;111800547&quot; ],
+        &quot;PrimaryReportingEntityCode.mdaas&quot; : [ &quot;D9F64&quot; ],
+        &quot;organizationCity.mdaas&quot; : [ &quot;ORLANDO&quot;, &quot;WILMINGTON&quot; ],
+        &quot;organizationFoundedDay.mdaas&quot; : [ &quot;21&quot; ],
+        &quot;WorldscopeCompanyPermID.mdaas&quot; : [ &quot;C840UV2P0&quot; ],
+        &quot;organizationCountryCode.mdaas&quot; : [ &quot;100319&quot; ],
+        &quot;instrumentCount.mdaas&quot; : [ &quot;1&quot; ],
+        &quot;organizationFoundedYear.mdaas&quot; : [ &quot;2011&quot; ],
+        &quot;mainQuoteId.mdaas&quot; : [ &quot;21478428456&quot; ],
+        &quot;CIK.mdaas&quot; : [ &quot;0001524358&quot; ],
+        &quot;hasRegistrationAuthority.mdaas&quot; : [ &quot;http://permid.org/1-5000008957&quot; ],
+        &quot;entityLastReviewedDate.mdaas&quot; : [ &quot;2016-03-02 05:00:00&quot; ],
+        &quot;hasUltimateParent.mdaas&quot; : [ &quot;http://permid.org/1-5035948006&quot; ],
+        &quot;OrganizationProviderTypeCode.mdaas&quot; : [ &quot;1&quot; ],
+        &quot;organizationWebsite.mdaas&quot; : [ &quot;http://www.marriottvacationsworldwide.com/&quot; ],
+        &quot;hasImmediateParent.mdaas&quot; : [ &quot;http://permid.org/1-5035948006&quot; ],
+        &quot;LEI.mdaas&quot; : [ &quot;549300WA6BT5H4F7IO94&quot; ],
+        &quot;CommonName.mdaas&quot; : [ &quot;Marriott Vacations Worldwide Corp&quot; ],
+        &quot;headquartersCommonAddress.mdaas&quot; : [ &quot;6649 Westwood Blvd\nORLANDO\nFLORIDA\n32821-8029\nUnited States\n&quot; ],
+        &quot;registeredFax.mdaas&quot; : [ &quot;13026365454&quot; ],
+        &quot;organizationStateProvinceOfficialCode.mdaas&quot; : [ &quot;DE&quot;, &quot;FL&quot; ],
+        &quot;organizationStatusCode.mdaas&quot; : [ &quot;Active&quot; ],
+        &quot;InvestextID.mdaas&quot; : [ &quot;VAC&quot; ],
+        &quot;organizationFoundedMonth.mdaas&quot; : [ &quot;6&quot; ],
+        &quot;officialName.mdaas&quot; : [ &quot;MARRIOTT VACATIONS WORLDWIDE CORPORATION&quot; ],
+        &quot;headquartersPhone.mdaas&quot; : [ &quot;14072066000&quot; ],
+        &quot;headquartersAddress.mdaas&quot; : [ &quot;ORLANDO\nFLORIDA\n32821-8029\nUnited States\n&quot;, &quot;6649 Westwood Blvd\nORLANDO\nFLORIDA\n32821-8029\nUnited States\n&quot; ],
+        &quot;isDomiciledIn.mdaas&quot; : [ &quot;United States&quot; ],
+        &quot;organizationCountry.mdaas&quot; : [ &quot;United States&quot; ],
+        &quot;SDCID.mdaas&quot; : [ &quot;1218547002          &quot; ],
+        &quot;isPublicFlag.mdaas&quot; : [ &quot;true&quot; ],
+        &quot;registeredPhone.mdaas&quot; : [ &quot;13026365400&quot; ],
+        &quot;TaxID.mdaas&quot; : [ &quot;452598330&quot; ],
+        &quot;organizationStateProvince.mdaas&quot; : [ &quot;DELAWARE&quot;, &quot;FLORIDA&quot; ],
+        &quot;legalRegistrationAddress.mdaas&quot; : [ &quot;WILMINGTON\nDELAWARE\n19808-1660\nUnited States\n&quot;, &quot;2711 Centerville Rd\nWILMINGTON\nDELAWARE\n19808-1660\nUnited States\n&quot; ],
+        &quot;subsidiariesCount.mdaas&quot; : [ &quot;109&quot; ],
+        &quot;organizationTypeCode.mdaas&quot; : [ &quot;Business Organization&quot; ],
+        &quot;organizationAddressPostalCode.mdaas&quot; : [ &quot;32821-8029&quot;, &quot;19808-1660&quot; ],
+        &quot;organizationSubtypeCode.mdaas&quot; : [ &quot;Company&quot; ],
+        &quot;SDCusip.mdaas&quot; : [ &quot;56655E&quot; ],
+        &quot;shortName.mdaas&quot; : [ &quot;Marriott Vaca&quot; ],
+        &quot;equityInstrumentCount.mdaas&quot; : [ &quot;1&quot; ],
+        &quot;organizationAddressLine3.mdaas&quot; : [ &quot;New Castle County&quot; ],
+        &quot;isIncorporatedIn.mdaas&quot; : [ &quot;United States&quot; ],
+        &quot;WorldscopeCompanyID.mdaas&quot; : [ &quot;57164Y107&quot; ],
+        &quot;primaryIndustry.mdaas&quot; : [ &quot;Hotels, Motels &amp; Cruise Lines (NEC)&quot; ],
+        &quot;RCPID.mdaas&quot; : [ &quot;600304172&quot; ]
+      }
+    } ]
+      }
+    }
+</pre></div>
+
+
+<h2 id="api-reference">API Reference<a class="headerlink" href="#api-reference" title="Permanent link">&para;</a></h2>
+<p><a href="../../APIReference/Query/API.Query.QueryForInfotonsUsingFieldConditions.html">Query for Infotons Using Field Conditions</a></p>
+<p><a href="../../APIReference/UsageTopics/API.QueryParameters.html">CM-Well Query Parameters</a></p>
+<p><a href="../../APIReference/UsageTopics/API.FieldConditionSyntax.html">Field Condition Syntax</a></p>
+                
+                  
+                
+              
+              
+                
+
+
+              
+            </article>
+          </div>
+        </div>
+      </main>
+      
+        
+<footer class="md-footer">
+  
+    <div class="md-footer-nav">
+      <nav class="md-footer-nav__inner md-grid">
+        
+          <a href="Tutorial.HandsOnExercises.GetInfotonsByURI.html" title="Get Infotons by URI" class="md-flex md-footer-nav__link md-footer-nav__link--prev" rel="prev">
+            <div class="md-flex__cell md-flex__cell--shrink">
+              <i class="md-icon md-icon--arrow-back md-footer-nav__button"></i>
+            </div>
+            <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title">
+              <span class="md-flex__ellipsis">
+                <span class="md-footer-nav__direction">
+                  Previous
+                </span>
+                Get Infotons by URI
+              </span>
+            </div>
+          </a>
+        
+        
+          <a href="Tutorial.HandsOnExercises.QueryWithGremlin.html" title="Query with Gremlin" class="md-flex md-footer-nav__link md-footer-nav__link--next" rel="next">
+            <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title">
+              <span class="md-flex__ellipsis">
+                <span class="md-footer-nav__direction">
+                  Next
+                </span>
+                Query with Gremlin
+              </span>
+            </div>
+            <div class="md-flex__cell md-flex__cell--shrink">
+              <i class="md-icon md-icon--arrow-forward md-footer-nav__button"></i>
+            </div>
+          </a>
+        
+      </nav>
+    </div>
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-footer-copyright">
+        
+          <div class="md-footer-copyright__highlight">
+            CM-Well copyright
+          </div>
+        
+        powered by
+        <a href="https://www.mkdocs.org">MkDocs</a>
+        and
+        <a href="https://squidfunk.github.io/mkdocs-material/">
+          Material for MkDocs</a>
+      </div>
+      
+        
+  <div class="md-footer-social">
+    <link rel="stylesheet" href="../../assets/fonts/font-awesome.css">
+    
+      <a href="https://github.com/CM-Well/CM-Well" class="md-footer-social__link fa fa-github"></a>
+    
+  </div>
+
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    
+      <script src="../../assets/javascripts/application.b41f3d20.js"></script>
+      
+      <script>app.initialize({version:"1.0.4",url:{base:"../.."}})</script>
+      
+    
+    
+      
+    
+  </body>
+</html>

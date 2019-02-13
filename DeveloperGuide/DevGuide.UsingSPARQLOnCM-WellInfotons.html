@@ -1,0 +1,3986 @@
+
+
+
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      <meta http-equiv="x-ua-compatible" content="ie=edge">
+      
+        <meta name="description" content="CM-Well Documentation">
+      
+      
+      
+        <meta name="author" content="CM-Well contibutors">
+      
+      
+        <meta name="lang:clipboard.copy" content="Copy to clipboard">
+      
+        <meta name="lang:clipboard.copied" content="Copied to clipboard">
+      
+        <meta name="lang:search.language" content="en">
+      
+        <meta name="lang:search.pipeline.stopwords" content="True">
+      
+        <meta name="lang:search.pipeline.trimmer" content="True">
+      
+        <meta name="lang:search.result.none" content="No matching documents">
+      
+        <meta name="lang:search.result.one" content="1 matching document">
+      
+        <meta name="lang:search.result.other" content="# matching documents">
+      
+        <meta name="lang:search.tokenizer" content="[\s]+">
+      
+      <link rel="shortcut icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.0.4, mkdocs-material-3.2.0">
+    
+    
+      
+        <title>Using SPARQL on Infotons - CM-Well</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/application.572ca0f0.css">
+      
+      
+    
+    
+      <script src="../assets/javascripts/modernizr.8c900955.js"></script>
+    
+    
+      
+        <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700|Roboto+Mono">
+        <style>body,input{font-family:"Roboto","Helvetica Neue",Helvetica,Arial,sans-serif}code,kbd,pre{font-family:"Roboto Mono","Courier New",Courier,monospace}</style>
+      
+    
+    <link rel="stylesheet" href="../assets/fonts/material-icons.css">
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    
+  </head>
+  
+    <body dir="ltr">
+  
+    <svg class="md-svg">
+      <defs>
+        
+        
+          <svg xmlns="http://www.w3.org/2000/svg" width="416" height="448"
+    viewBox="0 0 416 448" id="__github">
+  <path fill="currentColor" d="M160 304q0 10-3.125 20.5t-10.75 19-18.125
+        8.5-18.125-8.5-10.75-19-3.125-20.5 3.125-20.5 10.75-19 18.125-8.5
+        18.125 8.5 10.75 19 3.125 20.5zM320 304q0 10-3.125 20.5t-10.75
+        19-18.125 8.5-18.125-8.5-10.75-19-3.125-20.5 3.125-20.5 10.75-19
+        18.125-8.5 18.125 8.5 10.75 19 3.125 20.5zM360
+        304q0-30-17.25-51t-46.75-21q-10.25 0-48.75 5.25-17.75 2.75-39.25
+        2.75t-39.25-2.75q-38-5.25-48.75-5.25-29.5 0-46.75 21t-17.25 51q0 22 8
+        38.375t20.25 25.75 30.5 15 35 7.375 37.25 1.75h42q20.5 0
+        37.25-1.75t35-7.375 30.5-15 20.25-25.75 8-38.375zM416 260q0 51.75-15.25
+        82.75-9.5 19.25-26.375 33.25t-35.25 21.5-42.5 11.875-42.875 5.5-41.75
+        1.125q-19.5 0-35.5-0.75t-36.875-3.125-38.125-7.5-34.25-12.875-30.25-20.25-21.5-28.75q-15.5-30.75-15.5-82.75
+        0-59.25 34-99-6.75-20.5-6.75-42.5 0-29 12.75-54.5 27 0 47.5 9.875t47.25
+        30.875q36.75-8.75 77.25-8.75 37 0 70 8 26.25-20.5
+        46.75-30.25t47.25-9.75q12.75 25.5 12.75 54.5 0 21.75-6.75 42 34 40 34
+        99.5z" />
+</svg>
+        
+      </defs>
+    </svg>
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" data-md-component="overlay" for="__drawer"></label>
+    
+      <a href="#using-sparql-on-infotons" tabindex="1" class="md-skip">
+        Skip to content
+      </a>
+    
+    
+      <header class="md-header" data-md-component="header">
+  <nav class="md-header-nav md-grid">
+    <div class="md-flex">
+      <div class="md-flex__cell md-flex__cell--shrink">
+        <a href="../index.html" title="CM-Well" class="md-header-nav__button md-logo">
+          
+            <i class="md-icon"></i>
+          
+        </a>
+      </div>
+      <div class="md-flex__cell md-flex__cell--shrink">
+        <label class="md-icon md-icon--menu md-header-nav__button" for="__drawer"></label>
+      </div>
+      <div class="md-flex__cell md-flex__cell--stretch">
+        <div class="md-flex__ellipsis md-header-nav__title" data-md-component="title">
+          
+            
+              <span class="md-header-nav__topic">
+                CM-Well
+              </span>
+              <span class="md-header-nav__topic">
+                Using SPARQL on Infotons
+              </span>
+            
+          
+        </div>
+      </div>
+      <div class="md-flex__cell md-flex__cell--shrink">
+        
+          
+            <label class="md-icon md-icon--search md-header-nav__button" for="__search"></label>
+            
+<div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="query" data-md-state="active">
+      <label class="md-icon md-search__icon" for="__search"></label>
+      <button type="reset" class="md-icon md-search__icon" data-md-component="reset" tabindex="-1">
+        &#xE5CD;
+      </button>
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="result">
+          <div class="md-search-result__meta">
+            Type to start searching
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+          
+        
+      </div>
+      
+        <div class="md-flex__cell md-flex__cell--shrink">
+          <div class="md-header-nav__source">
+            
+
+
+  
+
+
+  <a href="https://github.com/CM-Well/CM-Well/" title="Go to repository" class="md-source" data-md-source="github">
+    
+      <div class="md-source__icon">
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <use xlink:href="#__github" width="24" height="24"></use>
+        </svg>
+      </div>
+    
+    <div class="md-source__repository">
+      GitHub
+    </div>
+  </a>
+
+          </div>
+        </div>
+      
+    </div>
+  </nav>
+</header>
+    
+    <div class="md-container">
+      
+        
+      
+      
+        
+
+  
+
+<nav class="md-tabs md-tabs--active" data-md-component="tabs">
+  <div class="md-tabs__inner md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  <li class="md-tabs__item">
+    
+      <a href="../index.html" title="Home" class="md-tabs__link">
+        Home
+      </a>
+    
+  </li>
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../Introduction/Intro.IntroductionToCM-Well.html" title="Introduction" class="md-tabs__link">
+          Introduction
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="DevGuide.GettingStarted.html" title="Developer Guide" class="md-tabs__link md-tabs__link--active">
+          Developer Guide
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    
+    
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../APIReference/Authorization/API.Auth.GeneratePassword.html" title="API Reference" class="md-tabs__link">
+          API Reference
+        </a>
+      
+    </li>
+  
+
+  
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../Tutorials/Tutorial.Docker.html" title="Tutorials" class="md-tabs__link">
+          Tutorials
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../WebInterface/CM-WellWebInterface.html" title="Web Interface" class="md-tabs__link">
+          Web Interface
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../TestingAndMonitoring/Testing.TestingAndDebugging.html" title="Testing & Monitoring" class="md-tabs__link">
+          Testing & Monitoring
+        </a>
+      
+    </li>
+  
+
+      
+        
+  
+  
+    
+    
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../AdvancedTopics/Tools/Tools.UsingCM-WellDocker.html" title="Advanced Topics" class="md-tabs__link">
+          Advanced Topics
+        </a>
+      
+    </li>
+  
+
+  
+
+      
+        
+  
+  
+    
+    
+  
+  
+    <li class="md-tabs__item">
+      
+        <a href="../ReleaseNotes/2018/ReleaseNotes.Piranha.January.2018.html" title="Release Notes" class="md-tabs__link">
+          Release Notes
+        </a>
+      
+    </li>
+  
+
+  
+
+      
+        
+      
+    </ul>
+  </div>
+</nav>
+      
+      <main class="md-main">
+        <div class="md-main__inner md-grid" data-md-component="container">
+          
+            
+              <div class="md-sidebar md-sidebar--primary" data-md-component="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    <nav class="md-nav md-nav--primary" data-md-level="0">
+  <label class="md-nav__title md-nav__title--site" for="__drawer">
+    <a href="../index.html" title="CM-Well" class="md-nav__button md-logo">
+      
+        <i class="md-icon"></i>
+      
+    </a>
+    CM-Well
+  </label>
+  
+    <div class="md-nav__source">
+      
+
+
+  
+
+
+  <a href="https://github.com/CM-Well/CM-Well/" title="Go to repository" class="md-source" data-md-source="github">
+    
+      <div class="md-source__icon">
+        <svg viewBox="0 0 24 24" width="24" height="24">
+          <use xlink:href="#__github" width="24" height="24"></use>
+        </svg>
+      </div>
+    
+    <div class="md-source__repository">
+      GitHub
+    </div>
+  </a>
+
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="../index.html" title="Home" class="md-nav__link">
+      Home
+    </a>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-2" type="checkbox" id="nav-2">
+    
+    <label class="md-nav__link" for="nav-2">
+      Introduction
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-2">
+        Introduction
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Introduction/Intro.IntroductionToCM-Well.html" title="Introduction to CM-Well" class="md-nav__link">
+      Introduction to CM-Well
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Introduction/Intro.CM-WellDataParadigms.html" title="Data Paradigms" class="md-nav__link">
+      Data Paradigms
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Introduction/Intro.OverviewOfTheCM-WellAPI.html" title="API Overview" class="md-nav__link">
+      API Overview
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Introduction/Intro.TechnicalAspectsOfCM-Well.html" title="Technical Aspects" class="md-nav__link">
+      Technical Aspects
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Introduction/Intro.CM-WellHigh-LevelArchitecture.html" title="High-Level Architecture" class="md-nav__link">
+      High-Level Architecture
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Introduction/Intro.BriefHistoryOfCM-Well.html" title="A Brief History" class="md-nav__link">
+      A Brief History
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Introduction/Intro.TechnicalDecisionsInCM-WellDesign.html" title="Technical Design Decisions" class="md-nav__link">
+      Technical Design Decisions
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+  
+
+
+  <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-3" type="checkbox" id="nav-3" checked>
+    
+    <label class="md-nav__link" for="nav-3">
+      Developer Guide
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-3">
+        Developer Guide
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="DevGuide.GettingStarted.html" title="Getting Started with CM-Well" class="md-nav__link">
+      Getting Started with CM-Well
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="DevGuide.CurlUtility.html" title="Calling CM-Well with Curl" class="md-nav__link">
+      Calling CM-Well with Curl
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="DevGuide.BasicQueries.html" title="Basic Queries" class="md-nav__link">
+      Basic Queries
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="DevGuide.AdvancedQueries.html" title="Advanced Queries" class="md-nav__link">
+      Advanced Queries
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="DevGuide.UpdatingCM-Well.html" title="Updating CM-Well" class="md-nav__link">
+      Updating CM-Well
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="DevGuide.StreamingDataFromCM-Well.html" title="Streaming Data from CM-Well" class="md-nav__link">
+      Streaming Data from CM-Well
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="DevGuide.SubscribingToReal-TimeUpdates.html" title="Subscribing to Updates" class="md-nav__link">
+      Subscribing to Updates
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+  
+
+
+  <li class="md-nav__item md-nav__item--active">
+    
+    <input class="md-toggle md-nav__toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+    
+      
+    
+    
+      <label class="md-nav__link md-nav__link--active" for="__toc">
+        Using SPARQL on Infotons
+      </label>
+    
+    <a href="DevGuide.UsingSPARQLOnCM-WellInfotons.html" title="Using SPARQL on Infotons" class="md-nav__link md-nav__link--active">
+      Using SPARQL on Infotons
+    </a>
+    
+      
+<nav class="md-nav md-nav--secondary">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">Table of contents</label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-sparql" title="What is SPARQL?" class="md-nav__link">
+    What is SPARQL?
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#submit-sparql-queries-via-ui" title="Submit SPARQL Queries via UI" class="md-nav__link">
+    Submit SPARQL Queries via UI
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#paths-for-sparql-queries" title="Paths for SPARQL Queries" class="md-nav__link">
+    Paths for SPARQL Queries
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cm-well-sparql-query-syntax" title="CM-Well SPARQL Query Syntax" class="md-nav__link">
+    CM-Well SPARQL Query Syntax
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-1-retrieving-one-field" title="Example 1: Retrieving One Field" class="md-nav__link">
+    Example 1: Retrieving One Field
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-2-retrieving-two-fields-and-sorting-results" title="Example 2: Retrieving Two Fields and Sorting Results" class="md-nav__link">
+    Example 2: Retrieving Two Fields and Sorting Results
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#specifying-the-output-format-for-sparql-results" title="Specifying the Output Format for SPARQL Results" class="md-nav__link">
+    Specifying the Output Format for SPARQL Results
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sparql-query-options" title="SPARQL Query Options" class="md-nav__link">
+    SPARQL Query Options
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-quads-option" title="The "quads" option" class="md-nav__link">
+    The "quads" option
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-verbose-option" title="The "verbose" option" class="md-nav__link">
+    The "verbose" option
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-show-graph-option" title="The "show-graph" option" class="md-nav__link">
+    The "show-graph" option
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#placeholder-parameters" title=""Placeholder" Parameters" class="md-nav__link">
+    "Placeholder" Parameters
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-construct-command" title="The CONSTRUCT Command" class="md-nav__link">
+    The CONSTRUCT Command
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-import-directive" title="The IMPORT Directive" class="md-nav__link">
+    The IMPORT Directive
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#uploading-a-construct-file" title="Uploading a CONSTRUCT File" class="md-nav__link">
+    Uploading a CONSTRUCT File
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sparql-query-with-import" title="SPARQL Query with IMPORT" class="md-nav__link">
+    SPARQL Query with IMPORT
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-using-absolute-and-relative-paths" title="Example: Using Absolute and Relative Paths" class="md-nav__link">
+    Example: Using Absolute and Relative Paths
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-complete-usage-scenario-for-import" title="Example: Complete Usage Scenario for IMPORT" class="md-nav__link">
+    Example: Complete Usage Scenario for IMPORT
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-the-cmwell-import-directive-for-nested-imports" title="Using the cmwell-import Directive for Nested Imports" class="md-nav__link">
+    Using the cmwell-import Directive for Nested Imports
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-the-sparql-trigger-processor-agent" title="Using the SPARQL Trigger Processor Agent" class="md-nav__link">
+    Using the SPARQL Trigger Processor Agent
+  </a>
+  
+</li>
+      
+      
+      
+      
+      
+    </ul>
+  
+</nav>
+    
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="DevGuide.CallingJavaScalaFunctionsFromSPARQLQueries.html" title="Calling Custom Java/Scala Functions from SPARQL Queries" class="md-nav__link">
+      Calling Custom Java/Scala Functions from SPARQL Queries
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="DevGuide.UsingElasticSearchStatistics.html" title="Using Elastic Search Statistics" class="md-nav__link">
+      Using Elastic Search Statistics
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="DevGuide.WorkingWithNamedSub-Graphs.html" title="Working with Named Sub-Graphs" class="md-nav__link">
+      Working with Named Sub-Graphs
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="DevGuide.CM-WellSecurityFeatures.html" title="CM-Well Security Features" class="md-nav__link">
+      CM-Well Security Features
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="DevGuide.ManagingUsers.html" title="Managing CM-Well Users" class="md-nav__link">
+      Managing CM-Well Users
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="DevGuide.DosAndDonts.html" title="CM-Well Dos and Don'ts" class="md-nav__link">
+      CM-Well Dos and Don'ts
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-3-15" type="checkbox" id="nav-3-15">
+    
+    <label class="md-nav__link" for="nav-3-15">
+      Best Practices
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-3-15">
+        Best Practices
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="BestPractices/DevGuide.BestPractices.ConditionalUpdates.html" title="Avoiding Write Clashes with Conditional Updates" class="md-nav__link">
+      Avoiding Write Clashes with Conditional Updates
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="BestPractices/DevGuide.BestPractices.DeletingKnownFieldValues.html" title="Deleting Known Field Values" class="md-nav__link">
+      Deleting Known Field Values
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="BestPractices/DevGuide.BestPractices.ManagingRetries.html" title="Managing Retries" class="md-nav__link">
+      Managing Retries
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="BestPractices/DevGuide.BestPractices.StreamingMethods.html" title="Streaming Methods" class="md-nav__link">
+      Streaming Methods
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4" type="checkbox" id="nav-4">
+    
+    <label class="md-nav__link" for="nav-4">
+      API Reference
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-4">
+        API Reference
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4-1" type="checkbox" id="nav-4-1">
+    
+    <label class="md-nav__link" for="nav-4-1">
+      Authorization
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-4-1">
+        Authorization
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Authorization/API.Auth.GeneratePassword.html" title="Generate Password" class="md-nav__link">
+      Generate Password
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Authorization/API.Auth.ChangePassword.html" title="Change Password" class="md-nav__link">
+      Change Password
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Authorization/API.Auth.InvalidateCache.html" title="Invalidate Cache" class="md-nav__link">
+      Invalidate Cache
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Authorization/API.Auth.Login.html" title="Login" class="md-nav__link">
+      Login
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4-2" type="checkbox" id="nav-4-2">
+    
+    <label class="md-nav__link" for="nav-4-2">
+      Get
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-4-2">
+        Get
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Get/API.Get.GetSingleInfotonByURI.html" title="Get Single Infoton by URI" class="md-nav__link">
+      Get Single Infoton by URI
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Get/API.Get.GetSingleInfotonByUUID.html" title="Get Single Infoton by UUID" class="md-nav__link">
+      Get Single Infoton by UUID
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Get/API.Get.GetMultipleInfotonsByURI.html" title="Get Multiple Infotons by URI" class="md-nav__link">
+      Get Multiple Infotons by URI
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4-3" type="checkbox" id="nav-4-3">
+    
+    <label class="md-nav__link" for="nav-4-3">
+      Query
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-4-3">
+        Query
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Query/API.Query.QueryForInfotonsUsingFieldConditions.html" title="Query with Field Conditions" class="md-nav__link">
+      Query with Field Conditions
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Query/API.Query.QueryForQuadsByTheirLabel.html" title="Query for Quads by their Label" class="md-nav__link">
+      Query for Quads by their Label
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Query/API.Query.ApplySPARQLToQueryResults.html" title="Apply SPARQL to Query Results" class="md-nav__link">
+      Apply SPARQL to Query Results
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Query/API.Query.ApplySPARQLToEntireGraph.html" title="Apply SPARQL to the Entire Graph" class="md-nav__link">
+      Apply SPARQL to the Entire Graph
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Query/API.Query.ApplyGremlinToQueryResults.html" title="Apply Gremlin to Query Results" class="md-nav__link">
+      Apply Gremlin to Query Results
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Query/API.Query.DataStatistics.html" title="Query with Data Statistics" class="md-nav__link">
+      Query with Data Statistics
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4-4" type="checkbox" id="nav-4-4">
+    
+    <label class="md-nav__link" for="nav-4-4">
+      Stream
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-4-4">
+        Stream
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Stream/API.Stream.CreateConsumer.html" title="Create Consumer" class="md-nav__link">
+      Create Consumer
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Stream/API.Stream.GetNextChunk.html" title="Get Next Chunk" class="md-nav__link">
+      Get Next Chunk
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Stream/API.Stream.ConsumeNextChunk.html" title="Consume Next Chunk" class="md-nav__link">
+      Consume Next Chunk
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Stream/API.Stream.ConsumeNextBulk.html" title="Consume Next Bulk" class="md-nav__link">
+      Consume Next Bulk
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Stream/API.Stream.CreateIterator.html" title="Create Iterator" class="md-nav__link">
+      Create Iterator
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Stream/API.Stream.StreamInfotons.html" title="Stream Infotons" class="md-nav__link">
+      Stream Infotons
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4-5" type="checkbox" id="nav-4-5">
+    
+    <label class="md-nav__link" for="nav-4-5">
+      Subscribe
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-4-5">
+        Subscribe
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Subscribe/API.Subscribe.SubscribeForPulledData.html" title="Subscribe for Pulled Data" class="md-nav__link">
+      Subscribe for Pulled Data
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Subscribe/API.Subscribe.PullNewData.html" title="Pull New Data" class="md-nav__link">
+      Pull New Data
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Subscribe/API.Subscribe.SubscribeForPushedData.html" title="Subscribe for Pushed Data" class="md-nav__link">
+      Subscribe for Pushed Data
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Subscribe/API.Subscribe.Unsubscribe.html" title="Unsubscribe from Updates" class="md-nav__link">
+      Unsubscribe from Updates
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4-6" type="checkbox" id="nav-4-6">
+    
+    <label class="md-nav__link" for="nav-4-6">
+      Traversal
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-4-6">
+        Traversal
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Traversal/API.Traversal.Intro.html" title="Introduction to Graph Traversal" class="md-nav__link">
+      Introduction to Graph Traversal
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Traversal/API.Traversal.xg.html" title="Traversing Outbound Links (xg)" class="md-nav__link">
+      Traversing Outbound Links (xg)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Traversal/API.Traversal.yg.html" title="Traversing Inbound and Outbound Links (yg)" class="md-nav__link">
+      Traversing Inbound and Outbound Links (yg)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Traversal/API.Traversal.gqp.html" title="Filtering Results by Inbound and Outbound Links (gqp)" class="md-nav__link">
+      Filtering Results by Inbound and Outbound Links (gqp)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Traversal/API.Traversal.Operands.html" title="Traversal Operands" class="md-nav__link">
+      Traversal Operands
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4-7" type="checkbox" id="nav-4-7">
+    
+    <label class="md-nav__link" for="nav-4-7">
+      Update
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-4-7">
+        Update
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Update/API.Update.AddFileInfoton.html" title="Add a File Infoton" class="md-nav__link">
+      Add a File Infoton
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Update/API.Update.AddInfotonsAndFields.html" title="Add Infotons and Fields" class="md-nav__link">
+      Add Infotons and Fields
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Update/API.Update.AddInfotonsAndFieldsToSubGraph.html" title="Add Infotons and Fields to a Sub-Graph" class="md-nav__link">
+      Add Infotons and Fields to a Sub-Graph
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Update/API.Update.AddLinkInfoton.html" title="Add a Link Infoton" class="md-nav__link">
+      Add a Link Infoton
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Update/API.Update.DeleteASingleInfoton.html" title="Delete a Single Infoton" class="md-nav__link">
+      Delete a Single Infoton
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Update/API.Update.DeleteFields.html" title="Delete Fields" class="md-nav__link">
+      Delete Fields
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Update/API.Update.DeleteMultipleInfotons.html" title="Delete Multiple Infotons" class="md-nav__link">
+      Delete Multiple Infotons
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Update/API.Update.DeleteOrReplaceValuesInNamedSubGraph.html" title="Delete or Replace Values in a Named Sub-Graph" class="md-nav__link">
+      Delete or Replace Values in a Named Sub-Graph
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Update/API.Update.DeleteSpecificFieldValues.html" title="Delete Specific Field Values" class="md-nav__link">
+      Delete Specific Field Values
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Update/API.Update.Purge.html" title="Purge a Single Infoton's Versions" class="md-nav__link">
+      Purge a Single Infoton's Versions
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Update/API.Update.ReplaceFieldValues.html" title="Replace Field Values" class="md-nav__link">
+      Replace Field Values
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/Update/API.Update.TrackUpdates.html" title="Track Updates" class="md-nav__link">
+      Track Updates
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-4-8" type="checkbox" id="nav-4-8">
+    
+    <label class="md-nav__link" for="nav-4-8">
+      Usage Topics
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-4-8">
+        Usage Topics
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/UsageTopics/API.FieldConditionSyntax.html" title="Field Condition Syntax" class="md-nav__link">
+      Field Condition Syntax
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/UsageTopics/API.FieldNameFormats.html" title="Field Name Formats" class="md-nav__link">
+      Field Name Formats
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/UsageTopics/API.FromAndToDatetimeFormatting.html" title="From/To Datetime Formatting" class="md-nav__link">
+      From/To Datetime Formatting
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/UsageTopics/API.InputAndOutputFormats.html" title="Input and Output Formats" class="md-nav__link">
+      Input and Output Formats
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/UsageTopics/API.MetadataFields.html" title="Metadata Fields" class="md-nav__link">
+      Metadata Fields
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/UsageTopics/API.PagingThroughResultsWithOffsetAndLengthParameters.html" title="Paging through Results" class="md-nav__link">
+      Paging through Results
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/UsageTopics/API.ProtocolSystemField.html" title="The Protocol System Field" class="md-nav__link">
+      The Protocol System Field
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/UsageTopics/API.QueryParameters.html" title="CM-Well Query Parameters" class="md-nav__link">
+      CM-Well Query Parameters
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/UsageTopics/API.ReturnCodes.html" title="CM-Well API Return Codes" class="md-nav__link">
+      CM-Well API Return Codes
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/UsageTopics/API.SortingResultsWithTheSort-byFlag.html" title="Sorting Results with sort-by" class="md-nav__link">
+      Sorting Results with sort-by
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/UsageTopics/API.UsingConditionalUpdates.html" title="Using Conditional Updates" class="md-nav__link">
+      Using Conditional Updates
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/UsageTopics/API.UsingTheBlockingFlag.html" title="Using the blocking Flag" class="md-nav__link">
+      Using the blocking Flag
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/UsageTopics/API.UsingTheRecursiveFlag.html" title="Using the recursive Flag" class="md-nav__link">
+      Using the recursive Flag
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/UsageTopics/API.UsingTheWith-dataFlag.html" title="Using the with-data Flag" class="md-nav__link">
+      Using the with-data Flag
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/UsageTopics/API.UsingTheWith-deletedFlag.html" title="Using the with-deleted Flag" class="md-nav__link">
+      Using the with-deleted Flag
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../APIReference/UsageTopics/API.UsingTheWith-historyFlag.html" title="Using the with-history Flag" class="md-nav__link">
+      Using the with-history Flag
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-5" type="checkbox" id="nav-5">
+    
+    <label class="md-nav__link" for="nav-5">
+      Tutorials
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-5">
+        Tutorials
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Tutorials/Tutorial.Docker.html" title="A Brief CM-Well Docker Tutorial" class="md-nav__link">
+      A Brief CM-Well Docker Tutorial
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-5-2" type="checkbox" id="nav-5-2">
+    
+    <label class="md-nav__link" for="nav-5-2">
+      Hands-On Exercises
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-5-2">
+        Hands-On Exercises
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.AddFileInfoton.html" title="Add a File Infoton" class="md-nav__link">
+      Add a File Infoton
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.AddInfotonsAndFields.html" title="Add Infotons and Fields" class="md-nav__link">
+      Add Infotons and Fields
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.DeleteInfotonsAndFields.html" title="Delete Infotons and Fields" class="md-nav__link">
+      Delete Infotons and Fields
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.GetInfotonsByURI.html" title="Get Infotons by URI" class="md-nav__link">
+      Get Infotons by URI
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.QueryForInfotons.html" title="Query for Infotons" class="md-nav__link">
+      Query for Infotons
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.QueryWithGremlin.html" title="Query with Gremlin" class="md-nav__link">
+      Query with Gremlin
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.QueryWithSPARQL.html" title="Query with SPARQL" class="md-nav__link">
+      Query with SPARQL
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.StreamWithIterator.html" title="Stream with Iterator" class="md-nav__link">
+      Stream with Iterator
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.StreamWithTheStreamOperation.html" title="Stream with the Stream Operation" class="md-nav__link">
+      Stream with the Stream Operation
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.SubscribeForPulledData.html" title="Subscribe for Pulled Data" class="md-nav__link">
+      Subscribe for Pulled Data
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.UpdateFields.html" title="Update Fields" class="md-nav__link">
+      Update Fields
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../Tutorials/HandsOnExercises/Tutorial.HandsOnExercises.WorkWithSubGraphs.html" title="Work with Sub-Graphs" class="md-nav__link">
+      Work with Sub-Graphs
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-6" type="checkbox" id="nav-6">
+    
+    <label class="md-nav__link" for="nav-6">
+      Web Interface
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-6">
+        Web Interface
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../WebInterface/CM-WellWebInterface.html" title="The CM-Well Web Interface" class="md-nav__link">
+      The CM-Well Web Interface
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../WebInterface/CM-Well.OldWebInterface.html" title="The Previous CM-Well Web Interface" class="md-nav__link">
+      The Previous CM-Well Web Interface
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-7" type="checkbox" id="nav-7">
+    
+    <label class="md-nav__link" for="nav-7">
+      Testing & Monitoring
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-7">
+        Testing & Monitoring
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../TestingAndMonitoring/Testing.TestingAndDebugging.html" title="Tips for Testing and Debugging" class="md-nav__link">
+      Tips for Testing and Debugging
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../TestingAndMonitoring/Monitoring.HealthDashboards.html" title="Health Dashboards" class="md-nav__link">
+      Health Dashboards
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-8" type="checkbox" id="nav-8">
+    
+    <label class="md-nav__link" for="nav-8">
+      Advanced Topics
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-8">
+        Advanced Topics
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-8-1" type="checkbox" id="nav-8-1">
+    
+    <label class="md-nav__link" for="nav-8-1">
+      Tools
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-8-1">
+        Tools
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Tools/Tools.UsingCM-WellDocker.html" title="CM-Well Docker" class="md-nav__link">
+      CM-Well Docker
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Tools/Tools.UsingTheCM-WellDownloader.html" title="CM-Well Downloader" class="md-nav__link">
+      CM-Well Downloader
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Tools/Tools.UsingTheCM-WellIngester.html" title="CM-Well Ingester" class="md-nav__link">
+      CM-Well Ingester
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Tools/Tools.UsingTheCM-WellSparkConnector.html" title="CM-Well Spark Connector" class="md-nav__link">
+      CM-Well Spark Connector
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Tools/Tools.UsingTheSPARQLTriggerProcessor.html" title="SPARQL Trigger Processor" class="md-nav__link">
+      SPARQL Trigger Processor
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Advanced.BuildingCM-Well.html" title="Building CM-Well" class="md-nav__link">
+      Building CM-Well
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Cookbook.CM-WellWithPermIDData.html" title="Cookbook" class="md-nav__link">
+      Cookbook
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-8-4" type="checkbox" id="nav-8-4">
+    
+    <label class="md-nav__link" for="nav-8-4">
+      Admin
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-8-4">
+        Admin
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Admin/Admin.Backpressure.html" title="_backpressure API" class="md-nav__link">
+      _backpressure API
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Admin/Admin.Kafka.html" title="_kafka API" class="md-nav__link">
+      _kafka API
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Admin/Admin.TestAndFixCorruptedData.html" title="Testing & Fixing Corrupt Data" class="md-nav__link">
+      Testing & Fixing Corrupt Data
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Admin/Admin.DCC.html" title="Data Consistency Crawler" class="md-nav__link">
+      Data Consistency Crawler
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-8-5" type="checkbox" id="nav-8-5">
+    
+    <label class="md-nav__link" for="nav-8-5">
+      Architecture
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-8-5">
+        Architecture
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Architecture/Arch.Preface.html" title="Preface" class="md-nav__link">
+      Preface
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Architecture/Arch.InfoArch.Part1.html" title="Overview and Principles" class="md-nav__link">
+      Overview and Principles
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Architecture/Arch.InfoArch.Infotons.html" title="Information Objects (“Infotons”)" class="md-nav__link">
+      Information Objects (“Infotons”)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Architecture/Arch.InfoArch.InfoInMotion.html" title="Information in Motion" class="md-nav__link">
+      Information in Motion
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Architecture/Arch.SoftwareArch.Part1.html" title="SW Architecture Overview & Diagrams" class="md-nav__link">
+      SW Architecture Overview & Diagrams
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Architecture/Arch.SoftwareArch.DesignPrinciples.html" title="Design Principles" class="md-nav__link">
+      Design Principles
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Architecture/Arch.SoftwareArch.WebServiceAndGridStorage.html" title="Web Service and Grid Storage" class="md-nav__link">
+      Web Service and Grid Storage
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Architecture/Arch.SoftwareArch.BG.html" title="Background (BG) Processing Module" class="md-nav__link">
+      Background (BG) Processing Module
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Architecture/Arch.SoftwareArch.STP.html" title="SPARQL Trigger Processor (STP) Agent" class="md-nav__link">
+      SPARQL Trigger Processor (STP) Agent
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Architecture/Arch.SoftwareArch.ControlModules.html" title="Control Modules" class="md-nav__link">
+      Control Modules
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Architecture/Arch.SoftwareArch.ThirdPartyPackages.html" title="Third-Party Packages" class="md-nav__link">
+      Third-Party Packages
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Architecture/Arch.SoftwareArch.WebApplication.html" title="Web Application" class="md-nav__link">
+      Web Application
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Architecture/Arch.PlatformArch.Part1.html" title="Platform Overview & Design Principles" class="md-nav__link">
+      Platform Overview & Design Principles
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Architecture/Arch.PlatformArch.DCSync.html" title="Data Center Synchronization" class="md-nav__link">
+      Data Center Synchronization
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../AdvancedTopics/Architecture/Arch.Collaboration.html" title="CM-Well Collaboration Use Case: Information Ecosystem" class="md-nav__link">
+      CM-Well Collaboration Use Case: Information Ecosystem
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-9" type="checkbox" id="nav-9">
+    
+    <label class="md-nav__link" for="nav-9">
+      Release Notes
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="1">
+      <label class="md-nav__title" for="nav-9">
+        Release Notes
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-9-1" type="checkbox" id="nav-9-1">
+    
+    <label class="md-nav__link" for="nav-9-1">
+      2018
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-9-1">
+        2018
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2018/ReleaseNotes.Piranha.January.2018.html" title="Piranha (January 2018)" class="md-nav__link">
+      Piranha (January 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2018/ReleaseNotes.Quetzal.February.2018.html" title="Quetzal (February 2018)" class="md-nav__link">
+      Quetzal (February 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2018/ReleaseNotes.Rhino.March.2018.html" title="Rhino (March 2018)" class="md-nav__link">
+      Rhino (March 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2018/ReleaseNotes.Swan.April.2018.html" title="Swan (April 2018)" class="md-nav__link">
+      Swan (April 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2018/ReleaseNotes.Turtle.May.2018.html" title="Turtle (May 2018)" class="md-nav__link">
+      Turtle (May 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2018/ReleaseNotes.Unicorn.June.2018.html" title="Unicorn (June 2018)" class="md-nav__link">
+      Unicorn (June 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2018/ReleaseNotes.Viper.June.2018.html" title="Viper (June 2018)" class="md-nav__link">
+      Viper (June 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2018/ReleaseNotes.Wombat.August.2018.html" title="Wombat (August 2018)" class="md-nav__link">
+      Wombat (August 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2018/ReleaseNotes.Xerus.October.2018.html" title="Xerus (October 2018)" class="md-nav__link">
+      Xerus (October 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2018/ReleaseNotes.Yak.November.2018.html" title="Yak (November 2018)" class="md-nav__link">
+      Yak (November 2018)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2018/ReleaseNotes.Zebra.December.2018.html" title="Zebra (December 2018)" class="md-nav__link">
+      Zebra (December 2018)
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-9-2" type="checkbox" id="nav-9-2">
+    
+    <label class="md-nav__link" for="nav-9-2">
+      2017
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-9-2">
+        2017
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2017/ReleaseNotes.Amoeba.Feb.2017.html" title="Amoeba (Feb. 2017)" class="md-nav__link">
+      Amoeba (Feb. 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2017/ReleaseNotes.Beowulf.Feb.2017.html" title="Beowulf (Feb. 2017)" class="md-nav__link">
+      Beowulf (Feb. 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2017/ReleaseNotes.CElegans.Mar.2017.html" title="C.Elegans (Mar. 2017)" class="md-nav__link">
+      C.Elegans (Mar. 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2017/ReleaseNotes.Dolphin.Mar.2017.html" title="Dolphin (Mar. 2017)" class="md-nav__link">
+      Dolphin (Mar. 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2017/ReleaseNotes.Firebird.May.2017.html" title="Firebird (May 2017)" class="md-nav__link">
+      Firebird (May 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2017/ReleaseNotes.Gopher.May.2017.html" title="Gopher (May 2017)" class="md-nav__link">
+      Gopher (May 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2017/ReleaseNotes.Hydra.June.2017.html" title="Hydra (June 2017)" class="md-nav__link">
+      Hydra (June 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2017/ReleaseNotes.Iguana.July.2017.html" title="Iguana (July 2017)" class="md-nav__link">
+      Iguana (July 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2017/ReleaseNotes.Jaguar.August.2017.html" title="Jaguar (August 2017)" class="md-nav__link">
+      Jaguar (August 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2017/ReleaseNotes.Jan.17.2017.html" title="Jan. 17 2017" class="md-nav__link">
+      Jan. 17 2017
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2017/ReleaseNotes.Jan.4.2017.html" title="Jan. 4 2017" class="md-nav__link">
+      Jan. 4 2017
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2017/ReleaseNotes.Kingbird.September.2017.html" title="Kingbird (September 2017)" class="md-nav__link">
+      Kingbird (September 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2017/ReleaseNotes.Lynx.September.2017.html" title="Lynx (September 2017)" class="md-nav__link">
+      Lynx (September 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2017/ReleaseNotes.Mono.November.2017.html" title="Mono (November 2017)" class="md-nav__link">
+      Mono (November 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2017/ReleaseNotes.Nautilus.November.2017.html" title="Nautilus (November 2017)" class="md-nav__link">
+      Nautilus (November 2017)
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2017/ReleaseNotes.Octopus.December.2017.html" title="Octopus (December 2017)" class="md-nav__link">
+      Octopus (December 2017)
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item md-nav__item--nested">
+    
+      <input class="md-toggle md-nav__toggle" data-md-toggle="nav-9-3" type="checkbox" id="nav-9-3">
+    
+    <label class="md-nav__link" for="nav-9-3">
+      2016
+    </label>
+    <nav class="md-nav" data-md-component="collapsible" data-md-level="2">
+      <label class="md-nav__title" for="nav-9-3">
+        2016
+      </label>
+      <ul class="md-nav__list" data-md-scrollfix>
+        
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2016/ReleaseNotes.Dec.15.2016.html" title="Dec. 15 2016" class="md-nav__link">
+      Dec. 15 2016
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2016/ReleaseNotes.Dec.7.2016.html" title="Dec. 7 2016" class="md-nav__link">
+      Dec. 7 2016
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2016/ReleaseNotes.Nov.10.2016.html" title="Nov. 10 2016" class="md-nav__link">
+      Nov. 10 2016
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2016/ReleaseNotes.Oct.6.2016.html" title="Oct. 6th 2016" class="md-nav__link">
+      Oct. 6th 2016
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
+    <a href="../ReleaseNotes/2016/ReleaseNotes.Sept.11.2016.html" title="Sept. 11th 2016" class="md-nav__link">
+      Sept. 11th 2016
+    </a>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+        
+      </ul>
+    </nav>
+  </li>
+
+    
+      
+      
+      
+
+
+  <li class="md-nav__item">
+    <a href="https://github.com/CM-Well/CM-Well/issues" title="Bug Tracker" class="md-nav__link">
+      Bug Tracker
+    </a>
+  </li>
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="toc">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+<nav class="md-nav md-nav--secondary">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">Table of contents</label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-sparql" title="What is SPARQL?" class="md-nav__link">
+    What is SPARQL?
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#submit-sparql-queries-via-ui" title="Submit SPARQL Queries via UI" class="md-nav__link">
+    Submit SPARQL Queries via UI
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#paths-for-sparql-queries" title="Paths for SPARQL Queries" class="md-nav__link">
+    Paths for SPARQL Queries
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cm-well-sparql-query-syntax" title="CM-Well SPARQL Query Syntax" class="md-nav__link">
+    CM-Well SPARQL Query Syntax
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-1-retrieving-one-field" title="Example 1: Retrieving One Field" class="md-nav__link">
+    Example 1: Retrieving One Field
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-2-retrieving-two-fields-and-sorting-results" title="Example 2: Retrieving Two Fields and Sorting Results" class="md-nav__link">
+    Example 2: Retrieving Two Fields and Sorting Results
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#specifying-the-output-format-for-sparql-results" title="Specifying the Output Format for SPARQL Results" class="md-nav__link">
+    Specifying the Output Format for SPARQL Results
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sparql-query-options" title="SPARQL Query Options" class="md-nav__link">
+    SPARQL Query Options
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-quads-option" title="The "quads" option" class="md-nav__link">
+    The "quads" option
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-verbose-option" title="The "verbose" option" class="md-nav__link">
+    The "verbose" option
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-show-graph-option" title="The "show-graph" option" class="md-nav__link">
+    The "show-graph" option
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#placeholder-parameters" title=""Placeholder" Parameters" class="md-nav__link">
+    "Placeholder" Parameters
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-construct-command" title="The CONSTRUCT Command" class="md-nav__link">
+    The CONSTRUCT Command
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-import-directive" title="The IMPORT Directive" class="md-nav__link">
+    The IMPORT Directive
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#uploading-a-construct-file" title="Uploading a CONSTRUCT File" class="md-nav__link">
+    Uploading a CONSTRUCT File
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sparql-query-with-import" title="SPARQL Query with IMPORT" class="md-nav__link">
+    SPARQL Query with IMPORT
+  </a>
+  
+    <nav class="md-nav">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-using-absolute-and-relative-paths" title="Example: Using Absolute and Relative Paths" class="md-nav__link">
+    Example: Using Absolute and Relative Paths
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-complete-usage-scenario-for-import" title="Example: Complete Usage Scenario for IMPORT" class="md-nav__link">
+    Example: Complete Usage Scenario for IMPORT
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-the-cmwell-import-directive-for-nested-imports" title="Using the cmwell-import Directive for Nested Imports" class="md-nav__link">
+    Using the cmwell-import Directive for Nested Imports
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-the-sparql-trigger-processor-agent" title="Using the SPARQL Trigger Processor Agent" class="md-nav__link">
+    Using the SPARQL Trigger Processor Agent
+  </a>
+  
+</li>
+      
+      
+      
+      
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content">
+            <article class="md-content__inner md-typeset">
+              
+                
+                  <a href="https://github.com/CM-Well/CM-Well/edit/master/docs/DeveloperGuide/DevGuide.UsingSPARQLOnCM-WellInfotons.md" title="Edit this page" class="md-icon md-content__icon">&#xE3C9;</a>
+                
+                
+                <h1 id="using-sparql-on-infotons">Using SPARQL on Infotons<a class="headerlink" href="#using-sparql-on-infotons" title="Permanent link">&para;</a></h1>
+<p><a name="hdr1"></a></p>
+<h2 id="what-is-sparql">What is SPARQL?<a class="headerlink" href="#what-is-sparql" title="Permanent link">&para;</a></h2>
+<p>SPARQL (SPARQL Protocol and RDF Query Language - pronounced "sparkle") is an industry-standard query language designed to work with graph databases. It is similar in syntax to SQL.</p>
+<p>You can use SPARQL queries on CM-Well in order to apply database operations to infotons, which are the type of "database records" that CM-Well supports. The supported SPARQL version in CM-Well is SPARQL 1.1.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Currently, the only SPARQL operations that CM-Well supports are SELECT and CONSTRUCT.</p>
+</div>
+<p>A comprehensive description of SPARQL is beyond the scope of this document.  </p>
+<p>You can learn more about SPARQL at:
+-   <a href="http://jena.apache.org/tutorials/sparql.html">Apache Jena tutorial</a>
+-   <a href="http://www.w3.org/2009/sparql/wiki/Main_Page">W3C specifications</a></p>
+<p><a name="hdrUI"></a></p>
+<h2 id="submit-sparql-queries-via-ui">Submit SPARQL Queries via UI<a class="headerlink" href="#submit-sparql-queries-via-ui" title="Permanent link">&para;</a></h2>
+<p>CM-Well provides a simple UI for submitting SPARQL queries. To access the SPARQL UI page, click the "secret" (S) button in the CM-Well home page, shown in the image below.</p>
+<p><img alt="image" src="../_Images/SPARQL-button.png" /></p>
+<p>Clicking the (S) button displays the following page:</p>
+<p><img alt="image" src="../_Images/ui-sparql-query-page.png" /></p>
+<p>To submit a SPARQL query using this UI:</p>
+<ol>
+<li>Enter the paths part of the query (without the "PATHS" header) in the first edit box.</li>
+<li>Enter the SPARQL part of the query (without the "SPARQL" header) in the second edit box.</li>
+<li>Select the output format you want from the <strong>Results Format</strong> dropdown menu.</li>
+<li>Click <strong>POST</strong>. The query is submitted to the _sp endpoint of the CM-Well host you're accessing.</li>
+<li></li>
+</ol>
+<p>From the SPARQL Query page, you can click on the <strong>SPARQL on whole graph</strong> link to display the page for submitting a SPARQL query that runs on the entire CM-Well graph. See <a href="../APIReference/Query/API.Query.ApplySPARQLToEntireGraph.html">Apply SPARQL to the Entire Graph</a> to learn more.</p>
+<p><img alt="image" src="../_Images/ui-sparql-on-whole-graph.png" /></p>
+<p>To submit a SPARQL query on the whole CM-Well graph using this UI:</p>
+<ol>
+<li>Enter the SPARQL query in the edit box.</li>
+<li>Click <strong>POST!</strong>. The query is submitted to the _sparql endpoint of the CM-Well host you're accessing.</li>
+</ol>
+<p><a name="hdr3"></a></p>
+<h2 id="paths-for-sparql-queries">Paths for SPARQL Queries<a class="headerlink" href="#paths-for-sparql-queries" title="Permanent link">&para;</a></h2>
+<p>A SPARQL query to CM-Well has two parts. The second part is the SPARQL query itself. The first part is a set of paths within CM-Well on which you want to run the SPARQL query. The "paths" are in fact regular queries to CM-Well, which produce a list of infotons. After retrieving this list, CM-Well applies the SPARQL query to the list.</p>
+<p>Here are some examples of paths to which you could apply a SPARQL query:</p>
+<div class="codehilite"><pre><span></span>/permid.org/1-5035948006?xg=2
+    permid.org?op=search&amp;qp=organizationFoundedYear.mdaas&gt;2014,type.rdf:Organization
+</pre></div>
+
+
+<p>In the CM-Well GUI shown in the previous section, you would enter the paths in the top text box, and the query in the lower text box.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The need to provide an initial path is not part of standard SPARQL syntax; it is unique to CM-Well. It is required in order to prevent the SPARQL query from running on the entire CM-Well graph, which could cause performance problems, due to the massive amount of data in CM-Well. </p>
+</div>
+<p><a name="hdr4"></a></p>
+<h2 id="cm-well-sparql-query-syntax">CM-Well SPARQL Query Syntax<a class="headerlink" href="#cm-well-sparql-query-syntax" title="Permanent link">&para;</a></h2>
+<p>Here is an example of a cURL call that applies a SPARQL query to CM-Well paths:</p>
+<div class="codehilite"><pre><span></span>curl -X POST &quot;&lt;cm-well-host&gt;/_sp?format=ascii&quot; --data-binary &#39;
+    PATHS
+    /example.org/Individuals?op=search&amp;length=1000&amp;with-data
+    /example.org/Individuals/RonaldKhun
+    /example.org/Individuals/JohnSmith?xg=3
+
+    SPARQL
+    SELECT DISTINCT ?name ?active WHERE { ?name &lt;http://www.tr-lbd.com/bold#active&gt; ?active . } ORDER BY DESC(?active)
+    &#39;
+</pre></div>
+
+
+<p>Let's break this command down to its components:</p>
+<table>
+<thead>
+<tr>
+<th align="left">Query Part</th>
+<th align="left">Value in Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">POST command to CM-Well's _sp endpoint</td>
+<td align="left">curl -X POST "http://cm-well-host.com/_sp"</td>
+</tr>
+<tr>
+<td align="left">format parameter</td>
+<td align="left">?format=ascii</td>
+</tr>
+<tr>
+<td align="left">PATHS header</td>
+<td align="left">PATHS</td>
+</tr>
+<tr>
+<td align="left">List of paths, one per line</td>
+<td align="left">/example.org/Individuals?op=search&amp;length=1000&amp;with-data<br>/example.org/Individuals/RonaldKhun<br>/example.org/Individuals/JohnSmith?xg=3</td>
+</tr>
+<tr>
+<td align="left">Empty line</td>
+<td align="left">There <em>must</em> be an empty line before the SPARQL header</td>
+</tr>
+<tr>
+<td align="left">SPARQL header</td>
+<td align="left">SPARQL</td>
+</tr>
+<tr>
+<td align="left">SPARQL query</td>
+<td align="left">SELECT DISTINCT ?name ?active WHERE { ?name <a href="http://www.tr-lbd.com/bold#active">http://www.tr-lbd.com/bold#active</a> ?active . } ORDER BY DESC(?active)</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul>
+<li>The <strong>--data-binary</strong> flag causes cURL to encode the subsequent string (surrounded by ' ') in binary format.</li>
+<li>The empty line before the SPARQL header is mandatory.</li>
+</ul>
+</div>
+<p>You can also add several SPARQL queries to the same command, by separating them with lines of (at least 3) dashes, as follows:</p>
+<div class="codehilite"><pre><span></span>curl -X POST &quot;&lt;cm-well-host&gt;/_sp?verbose&quot; --data-binary &#39;
+    PATHS
+    /example.org/Individuals?op=search&amp;length=1000&amp;with-data
+    /example.org/Individuals/RonaldKhun
+    /example.org/Individuals/JohnSmith?xg=3
+
+    SPARQL
+    SELECT DISTINCT ?name ?active
+    WHERE { ?name &lt;http://www.tr-lbd.com/bold#active&gt; ?active . } ORDER BY DESC(?active)
+    --------------------------
+    SELECT DISTINCT ?name
+    WHERE { ?name &lt;http://www.tr-lbd.com/bold#active&gt; &quot;false&quot; . }
+    &#39;
+</pre></div>
+
+
+<h3 id="example-1-retrieving-one-field">Example 1: Retrieving One Field<a class="headerlink" href="#example-1-retrieving-one-field" title="Permanent link">&para;</a></h3>
+<p>In our <a href="../APIReference/Traversal/API.Traversal.yg.html">example of how to use the yg flag</a>, we were looking for the corporate address for a given RIC code. What we actually got in response to our regular CM-Well query was the infotons that were related to the RIC code. We still had to retrieve the corporate address information ourselves from the relevant field. By using SPARQL, we can cause CM-Well to handle that step. </p>
+<p>To retrieve the mdaas:headquartersCommonAddress value, we can use this SPARQL query:</p>
+<div class="codehilite"><pre><span></span>SELECT * WHERE {
+    ?infoton &lt;http://ont.thomsonreuters.com/mdaas/headquartersCommonAddress&gt; ?addr. 
+    }
+</pre></div>
+
+
+<p>Note that instead of using the prefix “mdaas:”, we used the full URL that defines the field. This is necessary in order for SPARQL to recognize the field we’re looking for.</p>
+<p>The cURL command, which uses the PATH from the “yg” example but also retrieves the CommonName field by applying SPARQL, looks like this:</p>
+<div class="codehilite"><pre><span></span>$ curl -X POST <span class="s2">&quot;&lt;cm-well-host&gt;/_sp?format=ascii&quot;</span> -H <span class="s2">&quot;Content-Type:text/plain&quot;</span> --data-binary <span class="s1">&#39;</span>
+<span class="s1">    PATHS</span>
+<span class="s1">    /permid.org?op=search&amp;qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&amp;with-data&amp;xg=hasImmediateParent.mdaas&gt;_</span>
+
+<span class="s1">    SPARQL</span>
+<span class="s1">    SELECT * WHERE {</span>
+<span class="s1">    ?infoton &lt;http://ont.thomsonreuters.com/mdaas/headquartersCommonAddress&gt; ?Addr.</span>
+<span class="s1">    }</span>
+<span class="s1">    &#39;</span>
+</pre></div>
+
+
+<p>The output of the command above looks like this:</p>
+<div class="codehilite"><pre><span></span>    | infoton                          | Addr                                                                        |
+    ==================================================================================================================
+    | &lt;http://permid.org/1-5035948006&gt; | &quot;6649 Westwood Blvd\nORLANDO\nFLORIDA\n32821-8029\nUnited States\n&quot;@en      |
+    | &lt;http://permid.org/1-4294969614&gt; | &quot;6649 Westwood Blvd Ste 300\nORLANDO\nFLORIDA\n32821-6066\nUnited States\n&quot; |  
+     -----------------------------------------------------------------------------------------------------------------
+</pre></div>
+
+
+<h3 id="example-2-retrieving-two-fields-and-sorting-results">Example 2: Retrieving Two Fields and Sorting Results<a class="headerlink" href="#example-2-retrieving-two-fields-and-sorting-results" title="Permanent link">&para;</a></h3>
+<p>Here are some CM-Well paths (in a custom-made repository) to which we can apply a SPARQL query:</p>
+<table>
+<thead>
+<tr>
+<th align="left">Path</th>
+<th align="left">Retrieves</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">http://cm-well-host.com/example.org/Individuals?op=search&amp;length=1000&amp;with-data</td>
+<td align="left">The first 1000 people under Individuals</td>
+</tr>
+<tr>
+<td align="left">http://cm-well.com/example.org/Individuals/RonaldKhun</td>
+<td align="left">A specific person's infoton</td>
+</tr>
+<tr>
+<td align="left">http://cm-well.com/example.org/Individuals/JohnSmith?xg=3</td>
+<td align="left">A specific person's outbound links</td>
+</tr>
+</tbody>
+</table>
+<p>Let's run a SPARQL query that retrieves each person's <strong>name</strong> and <strong>active</strong> fields, and sorts the results by the <strong>active</strong> value:</p>
+<div class="codehilite"><pre><span></span>curl -X POST &quot;&lt;cm-well-host&gt;/_sp?format=ascii&quot; --data-binary &#39;
+    PATHS
+    /example.org/Individuals?op=search&amp;length=1000&amp;with-data
+    /example.org/Individuals/RonaldKhun
+    /example.org/Individuals/JohnSmith?xg=3
+
+    SPARQL
+    SELECT DISTINCT ?name ?active WHERE { ?name &lt;http://www.tr-lbd.com/bold#active&gt; ?active . } ORDER BY DESC(?active)
+    &#39;
+</pre></div>
+
+
+<p>The results are:</p>
+<div class="codehilite"><pre><span></span>-------------------------------------------------------------
+    | name                                            | active  |
+    =============================================================
+    | &lt;http://example.org/Individuals/BruceWayne&gt;     | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/DonaldDuck&gt;     | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/HarryMiller&gt;    | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/JohnSmith&gt;      | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/MartinOdersky&gt;  | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/NatalieMiller&gt;  | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/PeterParker&gt;    | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/RonaldKhun&gt;     | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/SaraSmith&gt;      | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/DaisyDuck&gt;      | &quot;false&quot; |
+    | &lt;http://example.org/Individuals/RebbecaSmith&gt;   | &quot;false&quot; |
+    -------------------------------------------------------------
+</pre></div>
+
+
+<h3 id="specifying-the-output-format-for-sparql-results">Specifying the Output Format for SPARQL Results<a class="headerlink" href="#specifying-the-output-format-for-sparql-results" title="Permanent link">&para;</a></h3>
+<p>As you can see in the examples above, by default the SPARQL results are a text-rendered table. They might be "scrambled" in your command window, depending on the length of its lines. This format is not convenient for machine-readability. However, you can specify different output formats with the _sp endpoint, just as for regular CM-Well queries. </p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Only the following output formats are supported for SPARQL queries: ascii, json, rdf, tsv, xml. </p>
+</div>
+<p>For example, we can specify the tsv (tab-separated values) output format as follows:</p>
+<div class="codehilite"><pre><span></span>$ curl -X POST <span class="s2">&quot;&lt;cm-well-host&gt;/_sp?format=tsv&quot;</span> -H <span class="s2">&quot;Content-Type:text/plain&quot;</span> --data-binary <span class="s1">&#39;</span>
+<span class="s1">    PATHS</span>
+<span class="s1">    /permid.org?op=search&amp;qp=CommonName.mdaas:Marriott%20Ownership,organizationCity.mdaas:Orlando&amp;with-data&amp;xg=hasImmediateParent.mdaas&gt;_</span>
+<span class="s1">    SPARQL</span>
+<span class="s1">    SELECT * WHERE {</span>
+<span class="s1">    ?infoton &lt;http://ont.thomsonreuters.com/mdaas/headquartersCommonAddress&gt; ?Addr.</span>
+<span class="s1">    }</span>
+<span class="s1">    &#39;</span>
+</pre></div>
+
+
+<p>The output now looks like this:</p>
+<div class="codehilite"><pre><span></span>?infoton?Addr
+    &lt;http://permid.org/1-5035948006&gt;&quot;6649 Westwood Blvd\nORLANDO\nFLORIDA\n32821-8029\nUnited States\n&quot;@en
+    &lt;http://permid.org/1-4294969614&gt;&quot;6649 Westwood Blvd Ste 300\nORLANDO\nFLORIDA\n32821-6066\nUnited States\n&quot;
+</pre></div>
+
+
+<p><a name="hdr5"></a></p>
+<h2 id="sparql-query-options">SPARQL Query Options<a class="headerlink" href="#sparql-query-options" title="Permanent link">&para;</a></h2>
+<p>You can use the followings special options (or any combination of them) with SPARQL queries:</p>
+<ul>
+<li><strong>quads</strong> - this option returns RDF "quadruples" rather than "triples", meaning that in addition to the subject, predicate and object, it also returns the graph name for each triple.</li>
+<li><strong>verbose</strong> - this option returns the time-metrics of data retrieval and processing operations, as well as the data itself.</li>
+<li><strong>show-graph</strong> - this option shows the list of infotons, which are the result of the initial CM-Well query, and the input to the SPARQL query.</li>
+</ul>
+<p>The following sections show examples of the usage of each special option.</p>
+<h3 id="the-quads-option">The "quads" option<a class="headerlink" href="#the-quads-option" title="Permanent link">&para;</a></h3>
+<p>This option returns RDF "quadruples" rather than "triples", meaning that in addition to the subject, predicate and object, it also returns the graph name for each triple.</p>
+<p>Here is an example of a query using the "quads" option:</p>
+<div class="codehilite"><pre><span></span>curl -X POST &quot;&lt;cm-well-host&gt;/_sp?format=ascii&amp;quads&quot; --data-binary &#39;
+    PATHS
+    /example.org/Individuals?op=search&amp;length=1000&amp;with-data
+    /example.org/Individuals/RonaldKhun
+    /example.org/Individuals/JohnSmith?xg=3
+
+    SPARQL
+    SELECT *
+    FROM NAMED &lt;http://example.org/graphs/spiderman&gt;
+    WHERE { GRAPH ?g { ?s ?p ?o . } }
+    &#39;
+</pre></div>
+
+
+<p>Its results are:</p>
+<div class="codehilite"><pre><span></span>                    s                      |                     p                         |                     o                        |           g 
+    ===========================================|===============================================|==============================================|=====================================
+    &lt;http://example.org/Individuals/JohnSmith&gt; | &lt;http://purl.org/vocab/relationship/parentOf&gt; | &lt;http://example.org/Individuals/SaraSmith&gt;   | &lt;http://example.org/graphs/spiderman&gt;
+    &lt;http://example.org/Individuals/JohnSmith&gt; | &lt;http://purl.org/vocab/relationship/friendOf&gt; | &lt;http://example.org/Individuals/PeterParker&gt; | &lt;http://example.org/graphs/spiderman&gt;
+</pre></div>
+
+
+<h3 id="the-verbose-option">The "verbose" option<a class="headerlink" href="#the-verbose-option" title="Permanent link">&para;</a></h3>
+<p>This option returns the time-metrics of data retrieval and processing operations, as well as the data itself.</p>
+<p>You must use the ?format=ascii option if you want to receive verbose information. </p>
+<p>Here is an example of a query using the "verbose" option:</p>
+<div class="codehilite"><pre><span></span>curl -X POST &quot;&lt;cm-well-host&gt;/_sp?format=ascii&amp;verbose&quot; --data-binary &#39;
+    PATHS
+    /example.org/Individuals?op=search&amp;length=1000&amp;with-data
+    /example.org/Individuals/RonaldKhun
+    /example.org/Individuals/JohnSmith?xg=3
+
+    SPARQL
+    SELECT DISTINCT ?name ?active WHERE { ?name &lt;http://www.tr-lbd.com/bold#active&gt; ?active . } ORDER BY DESC(?active)
+    &#39;
+</pre></div>
+
+
+<p>Its results are:</p>
+<div class="codehilite"><pre><span></span>Time metrics:
+    Start End Type Task
+    00:00:00.489 00:00:00.556 Subgraph /example.org/Individuals?op=search&amp;length=1000&amp;with-data=&amp;format=nquads
+    00:00:00.490 00:00:00.505 Subgraph /example.org/Individuals/RonaldKhun?=&amp;format=nquads
+    00:00:00.499 00:00:00.552 Subgraph /example.org/Individuals/JohnSmith?xg=3&amp;format=nquads
+    00:00:00.561 00:00:00.566 SPARQL   SELECT DISTINCT ?name ?active WHERE { ?name &lt;http://www.tr-lbd.c...
+
+    Results:
+    ------------------------------------------------------------
+    | name                                           | active  |
+    ============================================================
+    | &lt;http://example.org/Individuals/BruceWayne&gt;    | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/DonaldDuck&gt;    | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/HarryMiller&gt;   | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/JohnSmith&gt;     | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/MartinOdersky&gt; | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/NatalieMiller&gt; | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/PeterParker&gt;   | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/RonaldKhun&gt;    | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/SaraSmith&gt;     | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/DaisyDuck&gt;     | &quot;false&quot; |
+    | &lt;http://example.org/Individuals/RebbecaSmith&gt;  | &quot;false&quot; |
+    ------------------------------------------------------------
+</pre></div>
+
+
+<h3 id="the-show-graph-option">The "show-graph" option<a class="headerlink" href="#the-show-graph-option" title="Permanent link">&para;</a></h3>
+<p>This option shows the list of infotons, which are the result of the initial CM-Well query, and the input to the SPARQL query.</p>
+<p>You must use the ?format=ascii option if you want to use the "show-graph" option. </p>
+<p>Here is an example of a query using the "show-graph" option:</p>
+<div class="codehilite"><pre><span></span>curl -X POST &quot;&lt;cm-well-host&gt;/_sp?format=ascii&amp;show-graph&quot; --data-binary &#39;
+    PATHS
+    /example.org/Individuals?op=search&amp;length=1000&amp;with-data
+    /example.org/Individuals/RonaldKhun
+    /example.org/Individuals/JohnSmith?xg=3
+
+    SPARQL
+    SELECT DISTINCT ?name ?active WHERE { ?name &lt;http://www.tr-lbd.com/bold#active&gt; ?active . } ORDER BY DESC(?active)
+    &#39;
+</pre></div>
+
+
+<p>Its results are:</p>
+<div class="codehilite"><pre><span></span>Graph:
+    &lt;http://example.org/Individuals/DonaldDuck&gt; &lt;http://purl.org/vocab/relationship/knowsByReputation&gt; &lt;http://example.org/Individuals/MartinOdersky&gt; .
+    &lt;http://example.org/Individuals/DonaldDuck&gt; &lt;http://www.tr-lbd.com/bold#active&gt; &quot;true&quot; .
+    &lt;http://example.org/Individuals/DonaldDuck&gt; &lt;http://purl.org/vocab/relationship/mentorOf&gt; &lt;http://example.org/Individuals/JohnSmith&gt; .
+    &lt;http://example.org/Individuals/RebbecaSmith&gt; &lt;http://www.tr-lbd.com/bold#active&gt; &quot;false&quot; .
+    &lt;http://example.org/Individuals/RebbecaSmith&gt; &lt;http://purl.org/vocab/relationship/siblingOf&gt; &lt;http://example.org/Individuals/SaraSmith&gt; .
+    &lt;http://example.org/Individuals/MartinOdersky&gt; &lt;http://purl.org/vocab/relationship/collaboratesWith&gt; &lt;http://example.org/Individuals/RonaldKhun&gt; .
+    &lt;http://example.org/Individuals/MartinOdersky&gt; &lt;http://www.tr-lbd.com/bold#active&gt; &quot;true&quot; .
+    &lt;http://example.org/Individuals/BruceWayne&gt; &lt;http://purl.org/vocab/relationship/employedBy&gt; &lt;http://example.org/Individuals/DonaldDuck&gt; .
+    &lt;http://example.org/Individuals/BruceWayne&gt; &lt;http://www.tr-lbd.com/bold#active&gt; &quot;true&quot; .
+    &lt;http://example.org/Individuals/PeterParker&gt; &lt;http://www.tr-lbd.com/bold#active&gt; &quot;true&quot; .
+    &lt;http://example.org/Individuals/PeterParker&gt; &lt;http://purl.org/vocab/relationship/worksWith&gt; &lt;http://example.org/Individuals/HarryMiller&gt; .
+    &lt;http://example.org/Individuals/PeterParker&gt; &lt;http://purl.org/vocab/relationship/neighborOf&gt; &lt;http://example.org/Individuals/ClarkKent&gt; .
+    &lt;http://example.org/Individuals/SaraSmith&gt; &lt;http://www.tr-lbd.com/bold#active&gt; &quot;true&quot; .
+    &lt;http://example.org/Individuals/SaraSmith&gt; &lt;http://purl.org/vocab/relationship/siblingOf&gt; &lt;http://example.org/Individuals/RebbecaSmith&gt; .
+    &lt;http://example.org/Individuals/RonaldKhun&gt; &lt;http://www.tr-lbd.com/bold#category&gt; &quot;deals&quot; .
+    &lt;http://example.org/Individuals/RonaldKhun&gt; &lt;http://www.tr-lbd.com/bold#category&gt; &quot;news&quot; .
+    &lt;http://example.org/Individuals/RonaldKhun&gt; &lt;http://www.tr-lbd.com/bold#active&gt; &quot;true&quot; .
+    &lt;http://example.org/Individuals/RonaldKhun&gt; &lt;http://purl.org/vocab/relationship/collaboratesWith&gt; &lt;http://example.org/Individuals/MartinOdersky&gt; .
+    &lt;http://example.org/Individuals/JohnSmith&gt; &lt;http://www.tr-lbd.com/bold#active&gt; &quot;true&quot; .
+    &lt;http://example.org/Individuals/NatalieMiller&gt; &lt;http://www.tr-lbd.com/bold#active&gt; &quot;true&quot; .
+    &lt;http://example.org/Individuals/NatalieMiller&gt; &lt;http://purl.org/vocab/relationship/childOf&gt; &lt;http://example.org/Individuals/HarryMiller&gt; .
+    &lt;http://example.org/Individuals/HarryMiller&gt; &lt;http://purl.org/vocab/relationship/parentOf&gt; &lt;http://example.org/Individuals/NatalieMiller&gt; .
+    &lt;http://example.org/Individuals/HarryMiller&gt; &lt;http://www.tr-lbd.com/bold#active&gt; &quot;true&quot; .
+    &lt;http://example.org/Individuals/DaisyDuck&gt; &lt;http://purl.org/vocab/relationship/colleagueOf&gt; &lt;http://example.org/Individuals/BruceWayne&gt; .
+    &lt;http://example.org/Individuals/DaisyDuck&gt; &lt;http://www.tr-lbd.com/bold#active&gt; &quot;false&quot; .
+    &lt;http://example.org/Individuals/JohnSmith&gt; &lt;http://purl.org/vocab/relationship/parentOf&gt; &lt;http://example.org/Individuals/SaraSmith&gt; .
+    &lt;http://example.org/Individuals/JohnSmith&gt; &lt;http://purl.org/vocab/relationship/friendOf&gt; &lt;http://example.org/Individuals/PeterParker&gt; .
+
+    Results:
+    ------------------------------------------------------------
+    | name                                           | active  |
+    ============================================================
+    | &lt;http://example.org/Individuals/BruceWayne&gt;    | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/DonaldDuck&gt;    | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/HarryMiller&gt;   | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/JohnSmith&gt;     | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/MartinOdersky&gt; | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/NatalieMiller&gt; | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/PeterParker&gt;   | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/RonaldKhun&gt;    | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/SaraSmith&gt;     | &quot;true&quot;  |
+    | &lt;http://example.org/Individuals/DaisyDuck&gt;     | &quot;false&quot; |
+    | &lt;http://example.org/Individuals/RebbecaSmith&gt;  | &quot;false&quot; |
+    ------------------------------------------------------------
+</pre></div>
+
+
+<p><a name="hdr6"></a></p>
+<h2 id="placeholder-parameters">"Placeholder" Parameters<a class="headerlink" href="#placeholder-parameters" title="Permanent link">&para;</a></h2>
+<p>Sometimes it can be useful to be able to insert "macro-like" placeholders in your SPARQL query, i.e. named parameters whose instances within the query are replaced with a string value that you define. CM-Well supports this option. </p>
+<p>You can define a placeholder parameter as one of the URI parameters, prefixed by "sp." and followed by the value you want to use in the specific call. You can then reference this parameter by placing it anywhere in the SPARQL query (including the PATHS section and the SPARQL section), surrounded by the '%' character on either side, as many times as you want. The parameter is replaced with the value you defined before the SPARQL query is applied.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Parameter names may contain only letter characters.</p>
+</div>
+<p>Here is an example of a query with a placeholder parameter called <strong>boldpred</strong>:</p>
+<div class="codehilite"><pre><span></span>curl -X POST &quot;&lt;cm-well-host&gt;/_sp?sp.boldpred=active&quot; --data-binary &#39;
+    PATHS
+    /example.org/Individuals?op=search&amp;length=1000&amp;with-data
+
+    SPARQL
+    SELECT DISTINCT ?name
+    WHERE { ?name &lt;http://www.tr-lbd.com/bold#%BOLDPRED%&gt; &quot;true&quot; . }
+    &#39;
+</pre></div>
+
+
+<p>The WHERE clause, after placeholder replacement, becomes:</p>
+<div class="codehilite"><pre><span></span>WHERE { ?name &lt;http://www.tr-lbd.com/bold#active&gt; &quot;true&quot; . }
+</pre></div>
+
+
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The matching between placeholder name and its instances within the query is case insensitive.</p>
+</div>
+<p><a name="hdr7"></a></p>
+<h2 id="the-construct-command">The CONSTRUCT Command<a class="headerlink" href="#the-construct-command" title="Permanent link">&para;</a></h2>
+<p>In addition to the SELECT command, you can use SPARQL's CONSTRUCT command. The CONSTRUCT command allows you to formulate your own RDF triples by manipulating query results. You can perform changes such as creating new entities and relationships, or performing transformations on values. You can then use the new triples you created as input to CM-Well, or for any other purpose.</p>
+<p>Here is an example of a query using CONSTRUCT, that derives an "UncleOf" relationship from information about people's parents and siblings:</p>
+<div class="codehilite"><pre><span></span>curl -X POST &quot;&lt;cm-well-host&gt;/_sp&quot; --data-binary &#39;
+    PATHS
+    /example.org/Individuals?op=search&amp;length=1000&amp;with-data
+
+    SPARQL
+    PREFIX rel: &lt;http://purl.org/vocab/relationship/&gt;
+
+    CONSTRUCT { ?uncle rel:demoUncleOf ?nephew . }
+    WHERE {
+      ?uncle rel:siblingOf ?x .
+      ?x rel:ParentOf ?nephew .
+    }&#39;
+</pre></div>
+
+
+<p>Its results are:</p>
+<div class="codehilite"><pre><span></span>&lt;http://example.org/Individuals/JohnSmith&gt; &lt;http://purl.org/vocab/relationship/demoUncleOf&gt; &lt;http://example.org/Individuals/TimSmith&gt; .
+</pre></div>
+
+
+<p><a name="hdr8"></a></p>
+<h2 id="the-import-directive">The IMPORT Directive<a class="headerlink" href="#the-import-directive" title="Permanent link">&para;</a></h2>
+<p>CM-Well allows you to upload SPARQL CONSTRUCT commands, save them as "file infotons" and use them in subsequent CM-Well queries. This is conceptually similar to creating "stored procedures" for an SQL database. This feature allows you to reuse long/complex CONSTRUCT commands rather than having to recreate them every time you use them.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>In addition to infotons related to an RDF subject, CM-Well supports file infotons, which are simply files that are stored on CM-Well for various purposes.  </p>
+</div>
+<h3 id="uploading-a-construct-file">Uploading a CONSTRUCT File<a class="headerlink" href="#uploading-a-construct-file" title="Permanent link">&para;</a></h3>
+<p>To upload a file containing a CONSTRUCT command:</p>
+<ol>
+<li>Create a text file containing a valid CONSTRUCT command.</li>
+<li>Upload it to CM-Well using the following syntax:</li>
+</ol>
+<div class="codehilite"><pre><span></span>curl &lt;cm-well-host&gt;/myQueryPath/myConstruct.sparql -H &quot;X-CM-Well-Type:File&quot; -H &quot;Content-Type:text/plain&quot; --data-binary @myConstruct.sparql
+</pre></div>
+
+
+<h3 id="sparql-query-with-import">SPARQL Query with IMPORT<a class="headerlink" href="#sparql-query-with-import" title="Permanent link">&para;</a></h3>
+<p>You can use the following syntax to submit a SPARQL query, while importing an uploaded construct file:</p>
+<div class="codehilite"><pre><span></span>PATHS
+&lt;data path 1&gt;
+&lt;data path 2&gt;
+...
+
+IMPORT
+&lt;query path 1&gt;
+&lt;query path 2&gt;
+...
+
+SPARQL
+&lt;sparql query&gt;
+</pre></div>
+
+
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul>
+<li>Each query path can be absolute or relative. A query path that starts with a <code>/</code> is absolute. A query path that does not start with a <code>/</code> is relative, and will be retrieved from under <code>/meta/sp/</code>.</li>
+<li>Each query path can refer to a specific endpoint, or end with a wildcard. The wildcard characters are <code>*</code> and <code>_</code>. They both have the same meaning: retrieve all construct files under the given path (non-recursive; does not extend to sub-paths).</li>
+<li>The order of the imports does not matter, because each imported construct is only applied to the given PATHS, and not to other constructs' output.</li>
+<li>The "placeholder parameters" feature works for imported queries as well as regular queries.</li>
+</ul>
+</div>
+<h4 id="example-using-absolute-and-relative-paths">Example: Using Absolute and Relative Paths<a class="headerlink" href="#example-using-absolute-and-relative-paths" title="Permanent link">&para;</a></h4>
+<p>Let's assume the following construct files were pre-uploaded as file infotons:</p>
+<ul>
+<li>/meta/sp/quote/foo.sparql</li>
+<li>/meta/sp/quote/bar.sparql</li>
+<li>/meta/sp/foobar.sparql</li>
+<li>/myQueries/xyz/baz.sparql</li>
+<li>/myQueries/abc/1.sp</li>
+<li>/myQueries/abc/2.sp</li>
+</ul>
+<p>This would be a valid SPARQL query POST:</p>
+<div class="codehilite"><pre><span></span>PATHS
+/data?op=search&amp;with-data
+
+IMPORT
+foobar.sparql
+quote/*
+/myQueries/xyz/baz.sparql
+/myQueries/abc/_
+
+SPARQL
+SELECT * WHERE { ?s ?p ?o }
+</pre></div>
+
+
+<p>Note the different types of import path (in order of appearance): </p>
+<ol>
+<li>foobar.sparql - relative (implicitly to /meta/sp).</li>
+<li>quote/* - relative; uses a wildcard to refer to all files under the path.</li>
+<li>/myQueries/xyz/baz.sparql - absolute; refers to a specific file.</li>
+<li>/myQueries/abc/_ - absolute; uses a wildcard to refer to all files under the path.</li>
+</ol>
+<h3 id="example-complete-usage-scenario-for-import">Example: Complete Usage Scenario for IMPORT<a class="headerlink" href="#example-complete-usage-scenario-for-import" title="Permanent link">&para;</a></h3>
+<p>The following sequence of commands does the following:</p>
+<ul>
+<li>Creates a small repository of people. </li>
+<li>Uploads a file containing a CONSTRUCT command to CM-Well.</li>
+<li>Applies a construct to add a sibling called "his sister" to each person with an <strong>active</strong> value of "true".</li>
+<li>Queries for all people with siblings, thereby retrieving all the people in the repository.</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The "siblings" are only added in the construct; they are not written to CM-Well.</p>
+</div>
+<p>First, let's upload some data:</p>
+<div class="codehilite"><pre><span></span>$ curl -X POST <span class="s2">&quot;&lt;cm-well-host&gt;/_in?format=ntriples&quot;</span> -H <span class="s2">&quot;Content-Type: text/plain&quot;</span> --data-binary <span class="s1">&#39;</span>
+<span class="s1">  &lt;http://example.org/Individuals/DaisyDuck&gt; &lt;http://purl.org/vocab/relationship/colleagueOf&gt; &lt;http://example.org/Individuals/BruceWayne&gt; .</span>
+<span class="s1">  &lt;http://example.org/Individuals/BruceWayne&gt; &lt;http://purl.org/vocab/relationship/employedBy&gt; &lt;http://example.org/Individuals/DonaldDuck&gt; .</span>
+<span class="s1">  &lt;http://example.org/Individuals/DaisyDuck&gt; &lt;http://www.tr-lbd.com/bold#active&gt; &quot;false&quot; .</span>
+<span class="s1">  &lt;http://example.org/Individuals/DonaldDuck&gt; &lt;http://www.tr-lbd.com/bold#active&gt; &quot;true&quot; .</span>
+<span class="s1">  &lt;http://example.org/Individuals/BruceWayne&gt; &lt;http://www.tr-lbd.com/bold#active&gt; &quot;true&quot; .</span>
+<span class="s1">&#39;</span>
+</pre></div>
+
+
+<p>Now, let's upload a SPARQL construct file:</p>
+<div class="codehilite"><pre><span></span>$ curl &lt;cm-well-host&gt;/myQueries/xyz/baz.sparql -H <span class="s2">&quot;X-CM-Well-Type:File&quot;</span> <span class="se">\</span>
+-H <span class="s2">&quot;Content-Type:text/plain&quot;</span> --data-binary @baz.sparql
+</pre></div>
+
+
+<p>Where the contents of baz.sparql are:</p>
+<div class="codehilite"><pre><span></span>CONSTRUCT { ?s &lt;http://purl.org/vocab/relationship/siblingOf&gt; &quot;his sister&quot; . }
+WHERE { ?s &lt;http://www.tr-lbd.com/bold#active&gt; &quot;true&quot; }
+</pre></div>
+
+
+<p>Now, let's POST a SPARQL query, while importing the construct file we uploaded:</p>
+<div class="codehilite"><pre><span></span>$ curl -X POST <span class="s2">&quot;&lt;cm-well-host&gt;/_sp?format=ascii&quot;</span> --data-binary <span class="s1">&#39;</span>
+<span class="s1">PATHS</span>
+<span class="s1">/example.org/Individuals?op=search&amp;length=1000&amp;with-data</span>
+
+<span class="s1">IMPORT</span>
+<span class="s1">/myQueries/xyz/baz.sparql</span>
+
+<span class="s1">SPARQL</span>
+<span class="s1">PREFIX rel: &lt;http://purl.org/vocab/relationship/&gt;</span>
+<span class="s1">SELECT ?name WHERE { ?name rel:siblingOf &quot;his sister&quot; . }</span>
+<span class="s1">&#39;</span>
+</pre></div>
+
+
+<p>The results are:</p>
+<div class="codehilite"><pre><span></span>--------------------------------------------------
+| name                                           |
+==================================================
+| &lt;http://example.org/Individuals/BruceWayne&gt;    |
+| &lt;http://example.org/Individuals/DonaldDuck&gt;    |
+--------------------------------------------------
+</pre></div>
+
+
+<p>Note that Daisy Duck does not appear in the output, as her <strong>active</strong> value is "false", and therefore no sibling was added for her by the construct.</p>
+<h3 id="using-the-cmwell-import-directive-for-nested-imports">Using the cmwell-import Directive for Nested Imports<a class="headerlink" href="#using-the-cmwell-import-directive-for-nested-imports" title="Permanent link">&para;</a></h3>
+<p>Sometimes you may want to use "nested" constructs, that is, constructs that import other constructs. You can do this by creating constructs that use the <code>#cmwell-import</code> directive.</p>
+<p>To use this directive, add a line starting with <code>#cmwell-import</code> to the beginning of the SPARQL construct, followed by one space character and a list of comma-separated absolute CM-Well paths of other CONSTRUCT queries, as follows:</p>
+<div class="codehilite"><pre><span></span><span class="c1">#cmwell-import /queries2/a1,/queries2/a2</span>
+</pre></div>
+
+
+<p>Here is an example of how to use the <code>#cmwell-import</code> directive.</p>
+<p>Upload construct <strong>b</strong>:</p>
+<div class="codehilite"><pre><span></span>curl -X POST &lt;cm-well-host&gt;/queries/b -H &quot;X-CM-WELL-Type:File&quot; -H &quot;Content-Type:text/plain&quot; --data-binary @input.txt
+</pre></div>
+
+
+<p>- with this input data:</p>
+<div class="codehilite"><pre><span></span>CONSTRUCT { ?s ?p &quot;b&quot;. } WHERE { ?s ?p ?o }
+</pre></div>
+
+
+<p>Upload construct <strong>a</strong>:</p>
+<div class="codehilite"><pre><span></span>curl -X POST &lt;cm-well-host&gt;/queries/a -H &quot;X-CM-WELL-Type:File&quot; -H &quot;Content-Type:text/plain&quot; --data-binary @input.txt
+</pre></div>
+
+
+<p>- with this input data:</p>
+<div class="codehilite"><pre><span></span><span class="c1">#cmwell-import /queries/b</span>
+    <span class="n">CONSTRUCT</span> <span class="p">{</span> <span class="err">?</span><span class="n">s</span> <span class="err">?</span><span class="n">p</span> <span class="s2">&quot;a&quot;</span><span class="o">.</span> <span class="p">}</span> <span class="n">WHERE</span> <span class="p">{</span> <span class="err">?</span><span class="n">s</span> <span class="err">?</span><span class="n">p</span> <span class="err">?</span><span class="n">o</span> <span class="p">}</span>
+</pre></div>
+
+
+<p>Note that construct <strong>a</strong> imports construct <strong>b</strong>.</p>
+<p>Run a SPARQL query:</p>
+<div class="codehilite"><pre><span></span>curl -X POST &lt;cm-well-host&gt;/_sp?x-no-cache --data-binary @input.txt
+</pre></div>
+
+
+<p>- with this input data:</p>
+<div class="codehilite"><pre><span></span>PATHS
+    /example.org/Individuals/MartinOdersky
+
+    IMPORT
+    /queries/a
+
+    SPARQL
+    SELECT * WHERE { ?s &lt;http://www.tr-lbd.com/bold#active&gt; ?o } ORDER BY ?o
+</pre></div>
+
+
+<p>The results are:</p>
+<div class="codehilite"><pre><span></span>-----------------------------------------------------------
+    | s                                              | o      |
+    ===========================================================
+    | &lt;http://example.org/Individuals/MartinOdersky&gt; | &quot;a&quot;    |
+    | &lt;http://example.org/Individuals/MartinOdersky&gt; | &quot;b&quot;    |
+    | &lt;http://example.org/Individuals/MartinOdersky&gt; | &quot;true&quot; |
+    -----------------------------------------------------------
+</pre></div>
+
+
+<p>Note that both construct <strong>a</strong> and construct <strong>b</strong> are applied.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul>
+<li>CM-Well imports each recursively imported CONSTRUCT exactly once (you don't have to worry about circular references).</li>
+<li>In SPARQL, a line that starts with a # is considered a comment, so adding the #cmwell-import directive keeps the SPARQL valid.</li>
+<li>You cannot use relative paths or wildcards in recursive imports; use absolute paths.</li>
+</ul>
+</div>
+<p><a name="hdr9"></a></p>
+<h2 id="using-the-sparql-trigger-processor-agent">Using the SPARQL Trigger Processor Agent<a class="headerlink" href="#using-the-sparql-trigger-processor-agent" title="Permanent link">&para;</a></h2>
+<p>You may want to create a materialized view of certain infotons in an ongoing fashion, by running SPARQL queries and uploading their results. To do this, you can create a custom configuration file that is read and processed by the CM-Well SPARQL Trigger Processor Agent. See <a href="../AdvancedTopics/Tools/Tools.UsingTheSPARQLTriggerProcessor.html">Using the SPARQL Trigger Processor</a> to learn more.</p>
+                
+                  
+                
+              
+              
+                
+
+
+              
+            </article>
+          </div>
+        </div>
+      </main>
+      
+        
+<footer class="md-footer">
+  
+    <div class="md-footer-nav">
+      <nav class="md-footer-nav__inner md-grid">
+        
+          <a href="DevGuide.SubscribingToReal-TimeUpdates.html" title="Subscribing to Updates" class="md-flex md-footer-nav__link md-footer-nav__link--prev" rel="prev">
+            <div class="md-flex__cell md-flex__cell--shrink">
+              <i class="md-icon md-icon--arrow-back md-footer-nav__button"></i>
+            </div>
+            <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title">
+              <span class="md-flex__ellipsis">
+                <span class="md-footer-nav__direction">
+                  Previous
+                </span>
+                Subscribing to Updates
+              </span>
+            </div>
+          </a>
+        
+        
+          <a href="DevGuide.CallingJavaScalaFunctionsFromSPARQLQueries.html" title="Calling Custom Java/Scala Functions from SPARQL Queries" class="md-flex md-footer-nav__link md-footer-nav__link--next" rel="next">
+            <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title">
+              <span class="md-flex__ellipsis">
+                <span class="md-footer-nav__direction">
+                  Next
+                </span>
+                Calling Custom Java/Scala Functions from SPARQL Queries
+              </span>
+            </div>
+            <div class="md-flex__cell md-flex__cell--shrink">
+              <i class="md-icon md-icon--arrow-forward md-footer-nav__button"></i>
+            </div>
+          </a>
+        
+      </nav>
+    </div>
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-footer-copyright">
+        
+          <div class="md-footer-copyright__highlight">
+            CM-Well copyright
+          </div>
+        
+        powered by
+        <a href="https://www.mkdocs.org">MkDocs</a>
+        and
+        <a href="https://squidfunk.github.io/mkdocs-material/">
+          Material for MkDocs</a>
+      </div>
+      
+        
+  <div class="md-footer-social">
+    <link rel="stylesheet" href="../assets/fonts/font-awesome.css">
+    
+      <a href="https://github.com/CM-Well/CM-Well" class="md-footer-social__link fa fa-github"></a>
+    
+  </div>
+
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    
+      <script src="../assets/javascripts/application.b41f3d20.js"></script>
+      
+      <script>app.initialize({version:"1.0.4",url:{base:".."}})</script>
+      
+    
+    
+      
+    
+  </body>
+</html>
