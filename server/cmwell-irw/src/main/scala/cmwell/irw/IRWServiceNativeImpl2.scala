@@ -409,8 +409,10 @@ class IRWServiceNativeImpl2(
       if (indexTimes.isEmpty) {
         val indexTimeToWrite =
           if (!disableReadCache) Option(dataCahce.getIfPresent(uuid)).flatMap { infoton =>
-            logger.info(s"was asked to `addIndexTimeToUuid` with indexTime=$indexTime for uuid [$uuid], " +
-              s"but index time [${infoton.indexTime}] was already in cache. Writing again the indexTime that was in the cache.")
+            if (infoton.indexTime.fold(false)(_ != indexTime)) {
+              logger.warn(s"was asked to `addIndexTimeToUuid` with indexTime=$indexTime for uuid [$uuid], " +
+                s"but index time [${infoton.indexTime}] was already in cache. Writing again the indexTime that was in the cache.")
+            }
             infoton.indexTime
           }.getOrElse(indexTime)
           else indexTime
