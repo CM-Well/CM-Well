@@ -816,17 +816,18 @@ class FTSService(config: Config) extends NsSplitter{
     }
   }
 
-  def scroll(scrollId: String, scrollTTL: Long = defaultScrollTTL, nodeId: Option[String] = None)
+  def scroll(scrollId: String, scrollTTL: Long = defaultScrollTTL, nodeId: Option[String] = None, debugInfo:Boolean)
             (implicit executionContext:ExecutionContext, logger:Logger = loger): Future[FTSScrollResponse] = {
 
     logger.debug(s"Scroll request: $scrollId, $scrollTTL")
 
     val clint = nodeId.map { clients(_) }.getOrElse(client)
+    val request = clint.prepareSearchScroll(scrollId).setScroll(TimeValue.timeValueSeconds(scrollTTL))
     val scrollResponseFuture = injectFuture[SearchResponse] {
       logRequest("scroll", s"scrollId is: $scrollId")
-      clint.prepareSearchScroll(scrollId).setScroll(TimeValue.timeValueSeconds(scrollTTL)).execute(_)
+      request.execute(_)
     }
-
+    val searchQueryStr = if (debugInfo) Some(request.request().toString) else None
     val p = Promise[FTSScrollResponse]()
     scrollResponseFuture.onComplete {
       case Failure(exception) => p.failure(exception)
@@ -838,7 +839,7 @@ class FTSService(config: Config) extends NsSplitter{
             logger.warn(s"scroll($scrollId, $scrollTTL, $nodeId) resulted with status[$status] != 200: $scrollResponse")
 
           p.complete(Try(esResponseToInfotons(scrollResponse, includeScore = false)).map { infotons =>
-            FTSScrollResponse(scrollResponse.getHits.getTotalHits, scrollResponse.getScrollId, infotons)
+            FTSScrollResponse(scrollResponse.getHits.getTotalHits, scrollResponse.getScrollId, infotons, searchQueryStr = searchQueryStr)
           })
         }
       }
@@ -1942,7 +1943,7 @@ object DefaultPaginationParams extends PaginationParams(0, 100)
 
 case class FTSSearchResponse(total: Long, offset: Long, length: Long, infotons: Seq[Infoton], searchQueryStr: Option[String] = None)
 case class FTSStartScrollResponseEliNew(response: FTSScrollResponse, searchQueryStr: Option[String] = None)
-case class FTSScrollResponse(total: Long, scrollId: String, infotons: Seq[Infoton], nodeId: Option[String] = None)
+case class FTSScrollResponse(total: Long, scrollId: String, infotons: Seq[Infoton], nodeId: Option[String] = None, searchQueryStr: Option[String] = None)
 //case class FTSScrollThinResponse(total: Long, scrollId: String, thinInfotons: Seq[FTSThinInfoton], nodeId: Option[String] = None)
 case object FTSTimeout
 

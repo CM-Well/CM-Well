@@ -228,7 +228,7 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
       infotonsOpt
         .collect { case xs if xs.nonEmpty => ir }
         .fold(Future.successful(Option.empty[(IterationResults, IterationResults)])) { ir =>
-          crudServiceFS.scroll(iteratorId, 60, withData = false).map(iir => Some(iir -> ir))(ec)
+          crudServiceFS.scroll(iteratorId, 60, withData = false, debugInfo = false).map(iir => Some(iir -> ir))(ec)
         }
     }
   }
@@ -245,7 +245,7 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
             infotonsOpt
               .collect { case xs if xs.nonEmpty => ir }
               .fold(Future.successful(Option.empty[(IterationResults, IterationResults)])) { ir =>
-                crudServiceFS.scroll(iteratorId, 60, withData = false).map(iir => Some(iir -> ir))
+                crudServiceFS.scroll(iteratorId, 60, withData = false, debugInfo = false).map(iir => Some(iir -> ir))
               }
         } -> hits
     })
@@ -323,7 +323,7 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
               .fold(Future.successful(Option.empty[(IterationResults, IterationResults)])) { _ =>
                 debugLogID.foreach(id => logger.info(s"[$id] scroll request: $iteratorId"))
                 crudServiceFS
-                  .scroll(iteratorId, scrollTTL, withData = false)
+                  .scroll(iteratorId, scrollTTL, withData = false, debugLogID.isDefined)
                   .andThen {
                     case Success(res) =>
                       debugLogID.foreach(id => logger.info(s"[$id] scroll response: ${res.infotons.fold("empty")(i => s"${i.size} results")}"))
