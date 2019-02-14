@@ -56,7 +56,8 @@ session-ttl | The time, in seconds, until the iteration session expires. The ite
 
 ### Results
        
-```{"type":"IterationResults","iteratorId":"YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjE3Ny40OjM5MjczL3VzZXIvJHVEaSMtMTEzMjgyNDQ5OA","totalHits":90964672,"infotons":[]}
+```
+{"type":"IterationResults","iteratorId":"YWtrYS50Y3A6Ly9jbS13ZWxsLXByb2RAMTAuMjA0LjE3Ny40OjM5MjczL3VzZXIvJHVEaSMtMTEzMjgyNDQ5OA","totalHits":90964672,"infotons":[]}
 ```
 
 !!! note
