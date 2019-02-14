@@ -51,7 +51,6 @@ object Streams extends LazyLogging {
 
     def infotonToByteString(formatter: Formatter): Flow[Infoton, ByteString, NotUsed] =
       Flow.fromFunction[Infoton, ByteString] { infoton =>
-        logger.info("baba, infoton final =" + infoton)
         val formatted = formatter.render(infoton)
         val trimmed = dropRightWhile(formatted)(_.isWhitespace)
         ByteString(trimmed) ++ endln
@@ -188,7 +187,6 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
     applyScrollStarter: ScrollStarter => Seq[() => Future[IterationResults]]
   )(implicit ec: ExecutionContext): Future[(Source[IterationResults, NotUsed], Long)] = {
     val readyToRunScrollFunctions = applyScrollStarter(scrollStarter)
-    logger.info("lala, in lazySeqScrollSource")
     if (readyToRunScrollFunctions.length <= maxParallelism) seqScrollSourceHandler(readyToRunScrollFunctions.map { f =>
       firstHitTupleApply(scrollStarter.withDeleted, withoutLastModified)(ec)(f())
     }, scrollStarter.withDeleted)
@@ -199,9 +197,8 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
       // NOTE: this is not an exact number, and can't be,
       // since new infotons can be indexed in a shard in the time passed between performing the search,
       // and until the shard is actually being queried for the scroll results.
-      logger.info("lala, going to thin search")
       val totalsF = if(withoutLastModified)crudServiceFS
-        .thinSearch2(pf, ff, df, pagination.copy(length = 1), withHistory, withDeleted = withDeleted)
+        .thinSearchWithDefaultLastModified(pf, ff, df, pagination.copy(length = 1), withHistory, withDeleted = withDeleted)
         .map(_.total)
       else
         crudServiceFS

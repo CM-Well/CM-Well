@@ -383,7 +383,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
   }
 
 
-  def thinSearch2(
+  def thinSearchWithDefaultLastModified(
                   pathFilter: Option[PathFilter],
                   fieldsFilter: Option[FieldFilter],
                   datesFilter: Option[DatesFilter],
@@ -588,7 +588,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
     logger: Logger = loger
   ): Future[SuccessfulBulkIndexResult] = {
 
-    logger.info(s"indexRequestsLala:$indexRequests")
+    logger.info(s"indexRequests:$indexRequests")
 
     val promise = Promise[SuccessfulBulkIndexResult]
     val bulkRequest = client.prepareBulk()
@@ -709,7 +709,6 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
     shard: Int,
     withoutLastModified:Boolean
   )(implicit executionContext: ExecutionContext): Future[FTSStartScrollResponse] = {
-    loger.info("lala, in startshardscroll, withoutLastModified = " + withoutLastModified)
     val fields = if(withoutLastModified) "system.kind" :: "system.path" :: "system.uuid" ::  "content.length" ::
       "content.mimeType" :: "link.to" :: "link.kind" :: "system.dc" :: "system.indexTime" :: Nil
     else "system.kind" :: "system.path" :: "system.uuid" :: "system.lastModified" :: "content.length" ::
@@ -1489,7 +1488,6 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
 
   private def esResponseToThinInfotons2(esResponse: org.elasticsearch.action.search.SearchResponse,
                                        includeScore: Boolean): Seq[FTSThinInfoton] = {
-    loger.info("baba, in esResponseToThinInfotons2")
     esResponse.getHits
       .hits()
       .map { hit =>
@@ -1514,7 +1512,6 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
         val now = new Date()
         val lastModified = if(withoutLastModified)new DateTime(defaultLastModified)
         else new DateTime(hit.field("system.lastModified").getValue.asInstanceOf[String])
-        loger.info("lala, lastModified for bulk conusme= " + lastModified)
         val id = hit.field("system.uuid").getValue.asInstanceOf[String]
         val dc = Try(hit.field("system.dc").getValue.asInstanceOf[String]).getOrElse(Settings.dataCenter)
         val protocol = Try(hit.field("system.protocol").getValue.asInstanceOf[String]).toOption

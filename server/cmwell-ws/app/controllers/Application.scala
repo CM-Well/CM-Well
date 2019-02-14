@@ -1491,8 +1491,7 @@ callback=< [URL] >
               val pp = PaginationParams(0, lengthHint)
               val fsp = FieldSortParams(List("system.indexTime" -> Asc))
               val withoutLastModified = request.queryString.keySet("without-last-modified")
-              logger.info("baba, withoutLastModified=" + withoutLastModified)
-              val future = if(withoutLastModified)crudServiceFS.thinSearch2(
+              val future = if(withoutLastModified)crudServiceFS.thinSearchWithDefaultLastModified(
                 pathFilter = pf,
                 fieldFilters = Some(ffs),
                 datesFilter = None,
@@ -1512,7 +1511,6 @@ callback=< [URL] >
                   fieldSortParams = fsp,
                   debugInfo = debugInfo
                 )
-              logger.info("baba, crud service res=" + future)
 
               val (contentType, formatter) = requestedFormat match {
                 case FormatExtractor(formatType) =>
@@ -1552,7 +1550,6 @@ callback=< [URL] >
                     Future.successful(result)
                   }
                   case SearchThinResults(total, _, _, results, _) if results.nonEmpty => {
-                    logger.info("baba, thin results=" + results)
                     val idxT = results.maxBy(_.indexTime).indexTime //infotons.maxBy(_.indexTime.getOrElse(0L)).indexTime.getOrElse(0L)
 
                     // last chunk

@@ -157,7 +157,7 @@ trait FTSServiceOps {
   )(implicit executionContext: ExecutionContext, logger: Logger = loger): Future[FTSThinSearchResponse]
 
 
-  def thinSearch2(
+  def thinSearchWithDefaultLastModified(
                   pathFilter: Option[PathFilter],
                   fieldsFilter: Option[FieldFilter],
                   datesFilter: Option[DatesFilter],

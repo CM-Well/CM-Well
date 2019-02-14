@@ -352,16 +352,13 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
                   // Gets a scroll source according to received HTTP request parameters
                   def getScrollSource() = {
                     val withoutLastModified = request.queryString.keySet("without-last-modified")
-                    logger.info("lala, Cool!!!!!,withoutLastModified=" + withoutLastModified)
                     (if (wasSupplied("slow-bulk")) {
-                      logger.info("lala, going to scroll source")
                        streams.scrollSource(pathFilter = createPathFilter(path, r),
                                             fieldFilters =
                                               Option(fieldsFiltersFromTimeframeAndOptionalFilters(from, to, ffOpt)),
                                             withHistory = h,
                                             withDeleted = d)
                      } else {
-                      logger.info("lala, going to super scroll")
                        streams.superScrollSource(
                          pathFilter = createPathFilter(path, r),
                          fieldFilter = Option(fieldsFiltersFromTimeframeAndOptionalFilters(from, to, ffOpt)),
@@ -373,7 +370,6 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
                        )
                      }).map {
                       case (src, hits) =>
-                        logger.info("lala, src=" + src)
                         val s: Source[Infoton, NotUsed] = {
                           if (withData) src.via(Flows.iterationResultsToFatInfotons(crudServiceFS))
                           else src.via(Flows.iterationResultsToInfotons)

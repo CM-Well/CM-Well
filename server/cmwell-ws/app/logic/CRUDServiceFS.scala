@@ -571,7 +571,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
     }
   }
 
-  def thinSearch2(
+  def thinSearchWithDefaultLastModified(
                   pathFilter: Option[PathFilter] = None,
                   fieldFilters: Option[FieldFilter] = None,
                   datesFilter: Option[DatesFilter] = None,
@@ -583,8 +583,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                 )(implicit searchTimeout: Option[Duration] = None): Future[SearchThinResults] = {
 
     val searchResultsFuture = {
-      logger.info("baba, in thinsearch2")
-      ftsService.thinSearch2(pathFilter,
+      ftsService.thinSearchWithDefaultLastModified(pathFilter,
         fieldFilters,
         datesFilter,
         paginationParams,
@@ -601,7 +600,6 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
         ftr.offset,
         ftr.length,
         ftr.thinInfotons.map { ti =>
-          logger.info("boom, ti.lastModified=" + ti.lastModified)
           SearchThinResult(ti.path, ti.uuid, ti.lastModified, ti.indexTime, ti.score)
         }(thinSearchResultsBreakout),
         debugInfo = ftr.searchQueryStr

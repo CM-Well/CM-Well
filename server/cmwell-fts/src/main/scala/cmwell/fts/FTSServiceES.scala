@@ -1273,7 +1273,7 @@ class FTSServiceES private (classPathConfigFile: String, waitForGreen: Boolean)
       }
   }
 
-  def thinSearch2(
+  def thinSearchWithDefaultLastModified(
                   pathFilter: Option[PathFilter] = None,
                   fieldsFilter: Option[FieldFilter] = None,
                   datesFilter: Option[DatesFilter] = None,
@@ -1285,7 +1285,6 @@ class FTSServiceES private (classPathConfigFile: String, waitForGreen: Boolean)
                   debugInfo: Boolean = false,
                   timeout: Option[Duration] = None
                 )(implicit executionContext: ExecutionContext, logger: Logger = loger): Future[FTSThinSearchResponse] = {
-    logger.info("lala, in FTSServiceES!!!!!!!!!!!!!!!!!!")
 
     logger.debug(
       s"Search request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $sortParams, $withHistory, $partition, $debugInfo"
