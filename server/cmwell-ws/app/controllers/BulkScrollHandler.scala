@@ -101,7 +101,8 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
 
   type ErrorMessage = String
 
-  def findValidRange(thinSearchParams: ThinSearchParams, from: Long, threshold: Long, timeout: FiniteDuration, debugInfo: Boolean)(
+  def findValidRange(thinSearchParams: ThinSearchParams, from: Long, threshold: Long, timeout: FiniteDuration, debugInfo: Boolean,
+                     withoutLastModified:Boolean)(
     implicit ec: ExecutionContext
   ): Future[CurrRangeForConsumption] = {
 
@@ -112,6 +113,18 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
 
     def toSeed: Future[Long] = {
       val ffs = fieldsFiltersFromTimeframeAndOptionalFilters(from, now, ffsOpt)
+      val thinSearchResults =  if(withoutLastModified)
+        crudServiceFS
+          .thinSearchWithDefaultLastModified(
+            pathFilter = pf,
+            fieldFilters = Option(ffs),
+            paginationParams = paginationParamsForSingleResultWithOffset,
+            withHistory = h,
+            fieldSortParams = SortParam.indexTimeAscending,
+            withDeleted = d,
+            debugInfo = debugInfo
+          )
+      else
       crudServiceFS
         .thinSearch(
           pathFilter = pf,
@@ -122,28 +135,37 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
           withDeleted = d,
           debugInfo = debugInfo
         )
-        .map {
+      thinSearchResults.map {
           case SearchThinResults(_, _, _, results, _) =>
             //In case that there are more than the initial seed infotons (=1000) with the same index time the "from" will be equal to the "to"
             //This will fail the FieldFilter requirements (see getFieldFilterSeq) and thus approx. 1 second is added to the "from" as the new "to"
             results.headOption.fold(now)(i => math.max(i.indexTime, math.min(now, from + 1729L))) //https://en.wikipedia.org/wiki/1729_(number)
         }
     }
-
     toSeed.flatMap { to =>
       logger.debug(s"findValidRange: toSeed[$to], from[$from], tsp[$thinSearchParams]")
       val searchFunction = (to: Long) => {
         val ffs = fieldsFiltersFromTimeframeAndOptionalFilters(from, to, ffsOpt)
-        crudServiceFS
-          .thinSearch(
-            pathFilter = pf,
-            fieldFilters = Option(ffs),
-            paginationParams = paginationParamsForSingleResult,
-            withHistory = h,
-            withDeleted = d,
-            debugInfo = debugInfo
-          )
-          .map(_.total)
+        val thinSearch = if(withoutLastModified)
+          crudServiceFS
+            .thinSearchWithDefaultLastModified(
+              pathFilter = pf,
+              fieldFilters = Option(ffs),
+              paginationParams = paginationParamsForSingleResult,
+              withHistory = h,
+              withDeleted = d,
+              debugInfo = debugInfo
+            )else
+          crudServiceFS
+            .thinSearch(
+              pathFilter = pf,
+              fieldFilters = Option(ffs),
+              paginationParams = paginationParamsForSingleResult,
+              withHistory = h,
+              withDeleted = d,
+              debugInfo = debugInfo
+            )
+        thinSearch.map(_.total)
       }
       cmwell.util.algorithms.binRangeSearch(from, to, now, threshold, 0.5, timeout)(searchFunction).map {
         case (f, t, nextTo) => CurrRangeForConsumption(f, t, nextTo)
@@ -164,22 +186,31 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
     withDeleted: Boolean,
     path: Option[String],
     chunkSizeHint: Long,
-    debugInfo: Boolean
+    debugInfo: Boolean,
+    withoutLastModified:Boolean
   )(implicit ec: ExecutionContext): Future[(BulkConsumeState, Option[Long])] = {
-
     val pf = createPathFilter(path, recursive)
+    val thinSearchResults = if(withoutLastModified) crudServiceFS
+      .thinSearchWithDefaultLastModified(
+        pathFilter = pf,
+        fieldFilters = ff,
+        paginationParams = paginationParamsForSingleResult,
+        withHistory = withHistory,
+        fieldSortParams = SortParam.indexTimeAscending,
+        withDeleted = withDeleted,
+        debugInfo = debugInfo
+      )else
+      crudServiceFS.thinSearch(
+        pathFilter = pf,
+        fieldFilters = ff,
+        paginationParams = paginationParamsForSingleResult,
+        withHistory = withHistory,
+        fieldSortParams = SortParam.indexTimeAscending,
+        withDeleted = withDeleted,
+        debugInfo = debugInfo
+      )
     if (from == 0) {
-      crudServiceFS
-        .thinSearch(
-          pathFilter = pf,
-          fieldFilters = ff,
-          paginationParams = paginationParamsForSingleResult,
-          withHistory = withHistory,
-          fieldSortParams = SortParam.indexTimeAscending,
-          withDeleted = withDeleted,
-          debugInfo = debugInfo
-        )
-        .flatMap {
+      thinSearchResults.flatMap {
           case SearchThinResults(_, _, _, results, _) => {
             lazy val consumeEverythingWithoutNarrowingSearch = {
               val now = org.joda.time.DateTime.now().minusSeconds(30).getMillis
@@ -196,7 +227,8 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
                              i.indexTime,
                              threshold = chunkSizeHint,
                              timeout = cmwell.ws.Settings.consumeBulkBinarySearchTimeout,
-                             debugInfo = debugInfo).map {
+                             debugInfo = debugInfo,
+                      withoutLastModified = withoutLastModified).map {
                 case CurrRangeForConsumption(f, t, tOpt) =>
                   BulkConsumeState(f, Some(t), path, withHistory, withDeleted, recursive, chunkSizeHint, ff) -> tOpt
               }
@@ -218,7 +250,8 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
                      from,
                      threshold = chunkSizeHint,
                      timeout = cmwell.ws.Settings.consumeBulkBinarySearchTimeout,
-                     debugInfo = debugInfo)
+                     debugInfo = debugInfo,
+                    withoutLastModified = withoutLastModified)
         .map {
           case CurrRangeForConsumption(f, t, tOpt) =>
             BulkConsumeState(f, Some(t), path, withHistory, withDeleted, recursive, chunkSizeHint, ff) -> tOpt
@@ -289,11 +322,10 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
   }
 
   def handle(request: Request[AnyContent]): Future[Result] = {
-
+    val withoutLastModified = request.queryString.keySet("without-last-modified")
     val debugInfo = request.queryString.keySet("debug-info")
 
     def wasSupplied(queryParamKey: String) = request.queryString.keySet(queryParamKey)
-
     val currStateEither = request
       .getQueryString("position")
       .fold[Either[ErrorMessage, Future[(BulkConsumeState, Option[Long])]]] {
@@ -318,7 +350,7 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
             .decode[BulkConsumeState](pos)
             .map(bcs => bcs.copy(to = bcs.to.orElse(request.getQueryString("to-hint").flatMap(asLong)))) match {
             case Success(state @ BulkConsumeState(f, None, path, h, d, r, lengthHint, qpOpt)) =>
-              Right(retrieveNextState(qpOpt, f, r, h, d, path, lengthHint, debugInfo))
+              Right(retrieveNextState(qpOpt, f, r, h, d, path, lengthHint, debugInfo, withoutLastModified))
             case Success(state @ BulkConsumeState(_, Some(t), _, _, _, _, _, _)) =>
               Right(Future.successful(state -> None))
             case Failure(err) =>

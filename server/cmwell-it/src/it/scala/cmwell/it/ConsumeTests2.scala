@@ -62,7 +62,6 @@ class ConsumeTests2 extends AsyncFunSpec with Inspectors with Matchers with Help
     val waitForIngestPlus40Seconds: Future[Unit] = secondConsumableChunk.flatMap(_ => schedule(40.seconds)(()))
 
     val path = cmw / "example.net" / "Consumeable"
-    val badReq2 = Http.get(path, List("op" -> "bulk-consume")).map(_.status should be(400))
 
     // scalastyle:off
     val f1 = waitForIngestPlus40Seconds.flatMap(_ => Http.get(path, List("op" -> "create-consumer")).map(requestHandler))
@@ -138,7 +137,6 @@ class ConsumeTests2 extends AsyncFunSpec with Inspectors with Matchers with Help
         }
       }
 
-      it("should receive BAD REQUEST if no position is supplied")(badReq2)
 
       it("should stream the first and only chunk") {
         h2.map {
