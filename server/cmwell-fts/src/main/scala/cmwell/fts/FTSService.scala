@@ -693,53 +693,29 @@ class FTSService(config: Config) extends NsSplitter{
       "content.mimeType" :: "link.to" :: "link.kind" :: "system.dc" :: "system.indexTime" :: "system.quad" :: "system.current" :: Nil
 
     val indices = if (indexNames.nonEmpty) indexNames else Seq(s"${partition}_all")
-
-    // since in ES scroll API, size is per shard, we need to convert our paginationParams.length parameter to be per shard
-    // We need to find how many shards are relevant for this query. For that we'll issue a fake search request
-    val fakeRequest = client.prepareSearch(indices: _*).setTypes("infoclone").storedFields(fields: _*)
-
+    val request = client
+      .prepareSearch(indices: _*)
+      .setTypes("infoclone")
+      .storedFields(fields: _*)
+      .setScroll(TimeValue.timeValueSeconds(scrollTTL))
+      .setSize(paginationParams.length)
+      .addSort("_doc", SortOrder.ASC)
+      .setFrom(paginationParams.offset)
     if (pathFilter.isEmpty && fieldsFilter.isEmpty && datesFilter.isEmpty) {
-      fakeRequest.setQuery(matchAllQuery())
+      request.setQuery(matchAllQuery())
     } else {
-      applyFiltersToRequest(fakeRequest, pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted)
+      applyFiltersToRequest(request, pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted)
     }
-
-    injectFuture[SearchResponse](fakeRequest.execute).flatMap { fakeResponse =>
-      val relevantShards = fakeResponse.getSuccessfulShards
-
-      // rounded to lowest multiplacations of shardsperindex or to mimimum of 1
-      val infotonsPerShard = (paginationParams.length / relevantShards).max(1)
-
-      val request = client
-        .prepareSearch(indices: _*)
-        .setTypes("infoclone")
-        .storedFields(fields: _*)
-        .setScroll(TimeValue.timeValueSeconds(scrollTTL))
-        .setSize(infotonsPerShard)
-        .addSort("_doc", SortOrder.ASC)
-        .setFrom(paginationParams.offset)
-
-      if (pathFilter.isEmpty && fieldsFilter.isEmpty && datesFilter.isEmpty) {
-        request.setQuery(matchAllQuery())
-      } else {
-        applyFiltersToRequest(request, pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted)
-      }
-
-      logRequest("startScroll", pathFilter.toString, fieldsFilter.toString, "also sent fake request")
-
-      val scrollResponseFuture = injectFuture[SearchResponse](request.execute)
-
-      val searchQueryStr = if (debugInfo) Some(request.toString) else None
-
-      scrollResponseFuture.map { scrollResponse =>
-        val ftsResponse = FTSScrollResponse(scrollResponse.getHits.totalHits,
-          scrollResponse.getScrollId,
-          esResponseToInfotons(scrollResponse, includeScore = false))
-        FTSStartScrollResponseEliNew(ftsResponse, searchQueryStr = searchQueryStr)
-      }
+    logRequest("startScroll", pathFilter.toString, fieldsFilter.toString, "also sent fake request")
+    val scrollResponseFuture = injectFuture[SearchResponse](request.execute)
+    val searchQueryStr = if (debugInfo) Some(request.toString) else None
+    scrollResponseFuture.map { scrollResponse =>
+      val ftsResponse = FTSScrollResponse(scrollResponse.getHits.totalHits,
+        scrollResponse.getScrollId,
+        esResponseToInfotons(scrollResponse, includeScore = false))
+      FTSStartScrollResponseEliNew(ftsResponse, searchQueryStr = searchQueryStr)
     }
   }
-
 
 /*
   def startSuperMultiScroll(pathFilter: Option[PathFilter], fieldsFilter: Option[FieldFilter],
@@ -1122,6 +1098,7 @@ class FTSService(config: Config) extends NsSplitter{
 
     val alias = partition + "_all"
 
+    //THE BELOW COMMENT IS NOT CORRECT ANYMORE FOR ES6!!!!!!!!!!!!!
     // since in ES scroll API, size is per shard, we need to convert our paginationParams.length parameter to be per shard
     // We need to find how many shards are relevant for this query. For that we'll issue a fake search request
     // TODO: fix should add indexTime, so why not pull it now?
