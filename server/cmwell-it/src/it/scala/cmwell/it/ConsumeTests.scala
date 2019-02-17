@@ -126,7 +126,6 @@ class ConsumeTests extends AsyncFunSpec with Inspectors with Matchers with Helpe
           case t@(sta, pos, bod) => withClue(t) {
             sta should be(200)
             pos.isDefined should be(true)
-            println("consume body = " + bod)
             val indexTimes = bod.trim.lines.map { s =>
               (Json.parse(s) \ "system" \ "indexTime").as[Long]
             }.toVector
@@ -250,7 +249,6 @@ class ConsumeTests extends AsyncFunSpec with Inspectors with Matchers with Helpe
           } {
             sta should be(200)
             pos.isDefined should be(true)
-            println("bod=" + bod)
             bod.trim.lines.count(_.trim.nonEmpty) should be(11)
           }
         }
