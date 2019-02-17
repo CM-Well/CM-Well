@@ -13,7 +13,7 @@ CM-Well uses zStore for several tasks, such as
 ## Features
 
 ### Self contained CQL setup
-Besides `path` and `infoton` tables CM-Well has, there's another `zstore` table in the "data2" keyspace. It's columns are `uzid`, `field` and `value` where the latter is blob. zStore object runs the `CREATE IF NOT EXISTS` CQL statement when used from any module. 
+Besides `path` and `infoton` tables CM-Well has, there's a `zstore` table in the "data2" keyspace. Its columns are `uzid`, `field` and `value` where the latter is blob. zStore object runs the `CREATE IF NOT EXISTS` CQL statement when used from any module. 
 
 > Note: Cassandra recommends against running multiple "CREATE IF NOT EXISTS" statements on the same table in parallel. That can lead to schema version errors. Because of that, CM-Well initialization contains the zstore table creation, so it will be created when a cluster is created. Nonetheless, we keep the CQL statements self-contained in zStore object so it can be reused in other projects.   
 
