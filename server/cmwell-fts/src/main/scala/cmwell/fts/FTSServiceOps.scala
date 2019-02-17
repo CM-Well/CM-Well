@@ -156,6 +156,20 @@ trait FTSServiceOps {
     timeout: Option[Duration] = None
   )(implicit executionContext: ExecutionContext, logger: Logger = loger): Future[FTSThinSearchResponse]
 
+
+  def thinSearchWithDefaultLastModified(
+                  pathFilter: Option[PathFilter],
+                  fieldsFilter: Option[FieldFilter],
+                  datesFilter: Option[DatesFilter],
+                  paginationParams: PaginationParams,
+                  sortParams: SortParam = SortParam.empty,
+                  withHistory: Boolean = false,
+                  withDeleted: Boolean = false,
+                  partition: String = defaultPartition,
+                  debugInfo: Boolean = false,
+                  timeout: Option[Duration] = None
+                )(implicit executionContext: ExecutionContext, logger: Logger = loger): Future[FTSThinSearchResponse]
+
   def getLastIndexTimeFor(
     dc: String,
     withHistory: Boolean,
@@ -170,7 +184,8 @@ trait FTSServiceOps {
     paginationParams: PaginationParams,
     scrollTTL: Long = defaultScrollTTL,
     withHistory: Boolean = false,
-    withDeleted: Boolean = false
+    withDeleted: Boolean = false,
+    withoutLastModified:Boolean = false
   )(implicit executionContext: ExecutionContext): Seq[() => Future[FTSStartScrollResponse]]
 
   def startScroll(
@@ -209,7 +224,7 @@ trait FTSServiceOps {
     partition: String = defaultPartition
   )(implicit executionContext: ExecutionContext, logger: Logger = loger): Seq[Future[FTSStartScrollResponse]]
 
-  def scroll(scrollId: String, scrollTTL: Long = defaultScrollTTL, nodeId: Option[String] = None)(
+  def scroll(scrollId: String, scrollTTL: Long = defaultScrollTTL, withoutLastModified:Boolean, nodeId: Option[String] = None)(
     implicit executionContext: ExecutionContext,
     logger: Logger = loger
   ): Future[FTSScrollResponse]

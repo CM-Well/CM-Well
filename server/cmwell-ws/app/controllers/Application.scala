@@ -989,7 +989,8 @@ callback=< [URL] >
                       paginationParams = PaginationParams(offset, 500),
                       withHistory = withHistory,
                       withDeleted = withDeleted,
-                      parallelism = parallelism
+                      parallelism = parallelism,
+                      withoutLastModified = false
                     )
                     .map {
                       case (src, hits) =>
@@ -1489,8 +1490,8 @@ callback=< [URL] >
                                                             request.attrs(Attrs.RequestReceivedTimestamp))
               val pp = PaginationParams(0, lengthHint)
               val fsp = FieldSortParams(List("system.indexTime" -> Asc))
-
-              val future = crudServiceFS.thinSearch(
+              val withoutLastModified = request.queryString.keySet("without-last-modified")
+              val future = if(withoutLastModified)crudServiceFS.thinSearchWithDefaultLastModified(
                 pathFilter = pf,
                 fieldFilters = Some(ffs),
                 datesFilter = None,
@@ -1499,7 +1500,17 @@ callback=< [URL] >
                 withDeleted = deleted,
                 fieldSortParams = fsp,
                 debugInfo = debugInfo
-              )
+              )else
+                crudServiceFS.thinSearch(
+                  pathFilter = pf,
+                  fieldFilters = Some(ffs),
+                  datesFilter = None,
+                  paginationParams = pp,
+                  withHistory = history,
+                  withDeleted = deleted,
+                  fieldSortParams = fsp,
+                  debugInfo = debugInfo
+                )
 
               val (contentType, formatter) = requestedFormat match {
                 case FormatExtractor(formatType) =>
@@ -1539,7 +1550,6 @@ callback=< [URL] >
                     Future.successful(result)
                   }
                   case SearchThinResults(total, _, _, results, _) if results.nonEmpty => {
-
                     val idxT = results.maxBy(_.indexTime).indexTime //infotons.maxBy(_.indexTime.getOrElse(0L)).indexTime.getOrElse(0L)
 
                     // last chunk

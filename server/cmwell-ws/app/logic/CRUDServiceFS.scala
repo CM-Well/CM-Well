@@ -571,6 +571,42 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
     }
   }
 
+  def thinSearchWithDefaultLastModified(
+                  pathFilter: Option[PathFilter] = None,
+                  fieldFilters: Option[FieldFilter] = None,
+                  datesFilter: Option[DatesFilter] = None,
+                  paginationParams: PaginationParams = DefaultPaginationParams,
+                  withHistory: Boolean = false,
+                  fieldSortParams: SortParam = SortParam.empty,
+                  debugInfo: Boolean = false,
+                  withDeleted: Boolean = false
+                )(implicit searchTimeout: Option[Duration] = None): Future[SearchThinResults] = {
+
+    val searchResultsFuture = {
+      ftsService.thinSearchWithDefaultLastModified(pathFilter,
+        fieldFilters,
+        datesFilter,
+        paginationParams,
+        fieldSortParams,
+        withHistory,
+        withDeleted = withDeleted,
+        debugInfo = debugInfo,
+        timeout = searchTimeout)
+    }
+
+    searchResultsFuture.map { ftr =>
+      SearchThinResults(
+        ftr.total,
+        ftr.offset,
+        ftr.length,
+        ftr.thinInfotons.map { ti =>
+          SearchThinResult(ti.path, ti.uuid, ti.lastModified, ti.indexTime, ti.score)
+        }(thinSearchResultsBreakout),
+        debugInfo = ftr.searchQueryStr
+      )
+    }
+  }
+
   def fullSearch[T](pathFilter: Option[PathFilter] = None,
                     fieldFilters: Option[FieldFilter] = None,
                     datesFilter: Option[DatesFilter] = None,
@@ -828,9 +864,10 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                        paginationParams: PaginationParams = DefaultPaginationParams,
                        scrollTTL: Long,
                        withHistory: Boolean = false,
-                       withDeleted: Boolean = false): Seq[() => Future[IterationResults]] = {
+                       withDeleted: Boolean = false,
+                       withoutLastModified:Boolean): Seq[() => Future[IterationResults]] = {
     ftsService
-      .startSuperScroll(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTTL, withHistory, withDeleted)
+      .startSuperScroll(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTTL, withHistory, withDeleted, withoutLastModified)
       .map { fun => () =>
         fun().map { ftsResults =>
           IterationResults(ftsResults.scrollId, ftsResults.total)
@@ -864,9 +901,10 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       })
   }
 
-  def scroll(scrollId: String, scrollTTL: Long, withData: Boolean): Future[IterationResults] = {
+  def scroll(scrollId: String, scrollTTL: Long, withData: Boolean,
+             withoutLastModified:Boolean = false): Future[IterationResults] = {
 
-    val searchResultFuture = ftsService.scroll(scrollId, scrollTTL)
+    val searchResultFuture = ftsService.scroll(scrollId, scrollTTL, withoutLastModified)
     val results = withData match {
       case false =>
         searchResultFuture.map { ftsResults =>
