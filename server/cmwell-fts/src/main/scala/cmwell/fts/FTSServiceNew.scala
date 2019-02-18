@@ -1506,10 +1506,6 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
       val hits = esResponse.getHits.hits()
       hits.map { hit =>
         val path = hit.field("system.path").getValue.asInstanceOf[String]
-        import java.text.SimpleDateFormat
-        import java.util.TimeZone
-        val myTz = DateTimeZone.getDefault()
-        val now = new Date()
         val lastModified = if(withoutLastModified)new DateTime(defaultLastModified)
         else new DateTime(hit.field("system.lastModified").getValue.asInstanceOf[String])
         val id = hit.field("system.uuid").getValue.asInstanceOf[String]
