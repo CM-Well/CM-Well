@@ -383,7 +383,6 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
 
                   // Gets a scroll source according to received HTTP request parameters
                   def getScrollSource() = {
-                    val withoutLastModified = request.queryString.keySet("without-last-modified")
                     (if (wasSupplied("slow-bulk")) {
                        streams.scrollSource(pathFilter = createPathFilter(path, r),
                                             fieldFilters =
