@@ -38,13 +38,7 @@ object S3ObjectUploader{
 
   def persistChunkToS3Bucket(chunkData:String, fileName:String, proxyHost:Option[String], proxyPort:Option[Int], s3Directory:String) = {
 
-    try {
       init(proxyHost, proxyPort).putObject(s3Directory, fileName, chunkData)
-    }
-    catch {
-      case e: AmazonServiceException => e.printStackTrace()
-      case e: SdkClientException => e.printStackTrace()
-    }
 
   }
 }

@@ -55,7 +55,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
       consumeBulkAndIngest(position, sourceCluster, neptuneCluster, actualUpdateMode, lengthHint, qp, toolStartTime, bulkLoader, proxyHost, proxyPort, s3Directory = s3Directory)
 
     } catch {
-      case e: Throwable => logger.error("Got a failure during  export after retrying 3 times")
+      case e: Throwable => logger.error("Got a failure during  export after retrying 3 times", e)
         e.printStackTrace()
         executor.shutdown()
         system.terminate()
@@ -195,11 +195,12 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
   def retry[T](delay: FiniteDuration, retries: Int = -1)(task: => Future[Int])(implicit ec: ExecutionContext, scheduler: Scheduler): Future[Int] = {
     task.recoverWith {
       case e: ConnectException =>
-        logger.error("Failed to ingest,", e.getMessage)
+        logger.error("Failed to ingest,", e.printStackTrace())
         logger.error("Going to retry till neptune will be available")
         akka.pattern.after(delay, scheduler)(retry(delay)(task))
       case e: Throwable if retries > 0 =>
-        logger.error("Failed to ingest,", e.getMessage)
+        println(e)
+        logger.error("Failed to ingest,",  e)
         logger.error("Going to retry, retry count=" + retries)
         akka.pattern.after(delay, scheduler)(retry(delay, retries - 1)(task))
       case e: Throwable if retries == 0 =>
