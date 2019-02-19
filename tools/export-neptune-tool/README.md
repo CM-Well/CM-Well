@@ -62,7 +62,7 @@ in order to see the list of parameters and their meaning
 |-proxy-port|proxy port is provided when you use bulk loader and your machine use proxy| no|                                           
 |q, --qp-param |cm well qp param|no|             
 |-u, --update-infotons|enable this parameter when you use an update mode or delete of infotons| no|        
-| --s3-directory|a path to s3 directory which neptune cosume data from.this param is used only in bulk loader mode| no  |          
+| --s3-bucket|a path to s3 directory which neptune cosume data from.this param is used only in bulk loader mode| no  |          
                                              
                         
 
