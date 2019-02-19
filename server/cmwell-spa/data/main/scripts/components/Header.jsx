@@ -33,7 +33,7 @@ class Header extends React.Component {
                 <Link to="/"><img className="logo" src="/meta/app/main/images/logo-flat-inverted.svg"/></Link>
                 <span className="version-info">{this.state.releaseName}</span>
                 <a href={`${location.pathname}?old-ui`} className="old-ui-link" onClick={this.handleOldUiClick.bind(this)}>Use old UI</a>
-                <a target="_blank" href="/meta/docs/CM-Well.RootTOC.md" className="help-link"><img src="/meta/app/main/images/help-icon.svg"/>HELP</a>
+                <a target="_blank" href="https://cm-well.github.io/CM-Well/" className="help-link"><img src="/meta/app/main/images/help-icon.svg"/>HELP</a>
             </div>
         )
     }
