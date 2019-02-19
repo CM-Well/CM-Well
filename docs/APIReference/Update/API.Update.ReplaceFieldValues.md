@@ -47,7 +47,7 @@ curl -X POST "<cm-well-host>/_in?format=ttl&replace-mode" -H "Content-Type: text
 
 ## Parameters 1
 
-```
+
 <table>
   <tr>
     <th align=left><h3><i>Parameter</i></h3></th>
@@ -88,7 +88,6 @@ curl -X POST "<cm-well-host>/_in?format=ttl&replace-mode" -H "Content-Type: text
 		<td>N/A</td>
 	</tr>
 </table>
-```
 
 ## Code Example 1
 
