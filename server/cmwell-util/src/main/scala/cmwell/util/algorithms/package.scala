@@ -115,6 +115,7 @@ package object algorithms extends LazyLogging {
     val consts = implicitly[IntegralConsts[N]]
     val math = consts.tc
     require(math.compare(from, math.zero) >= 0, "from must be positive or zero")
+    logger.info("")
     require(math.compare(from, toSeed) < 0, "from must be smaller than toSeed")
     require(math.compare(toSeed, upperBound) <= 0, "toSeed must be smaller or equal to upperBound")
     require(thresholdFactor < 1.0 && thresholdFactor > 0.0, "thresholdFactor must be greater than 0, but less than 1")

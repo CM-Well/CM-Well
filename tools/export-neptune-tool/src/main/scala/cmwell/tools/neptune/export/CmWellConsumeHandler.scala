@@ -15,7 +15,7 @@
   */
 package cmwell.tools.neptune.export
 
-import java.net.{URL, URLEncoder}
+import java.net.{URL, URLDecoder, URLEncoder}
 import java.time.Instant
 
 import org.apache.http.client.methods.{CloseableHttpResponse, HttpGet}
@@ -57,15 +57,14 @@ object CmWellConsumeHandler {
   }
 
   def retrivePositionFromCreateConsumer(cluster: String, lengthHint: Int, qp: Option[String], updateMode:Boolean, automaticUpdateMode:Boolean, toolStartTime:Instant, retryCount:Int = 0): String = {
-    val withDeletedParam = if(updateMode) "&with-deleted" else ""
+    val withDeletedParam = if(updateMode || automaticUpdateMode) "&with-deleted" else ""
     //initial mode
     val qpTillStartTime = if(!updateMode && !automaticUpdateMode)  URLEncoder.encode(",system.lastModified<") + toolStartTime.toString else ""
     //automatic update mode
     val qpAfterStartTime = if(!updateMode && automaticUpdateMode) URLEncoder.encode(",system.lastModified>>" )+ toolStartTime.toString else ""
     val createConsumerUrl = "http://" + cluster + "/?op=create-consumer&qp=-system.parent.parent_hierarchy:/meta/" + qp.getOrElse("") + qpTillStartTime + qpAfterStartTime + "&recursive&length-hint=" + lengthHint + withDeletedParam
-    val url = createConsumerUrl
-    logger.info("create-consumer-url=" + url)
-    val get = new HttpGet(url)
+    logger.info("create-consumer-url=" + createConsumerUrl)
+    val get = new HttpGet(createConsumerUrl)
     val client = new DefaultHttpClient
     client.setHttpRequestRetryHandler(new CustomHttpClientRetryHandler())
     val response = client.execute(get)
