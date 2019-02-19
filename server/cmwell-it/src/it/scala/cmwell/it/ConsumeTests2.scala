@@ -61,7 +61,7 @@ class ConsumeTests2 extends AsyncFunSpec with Inspectors with Matchers with Help
     // and 10 extra seconds to be sure indexing in ES occurred >30 seconds ago
     val waitForIngestPlus40Seconds: Future[Unit] = secondConsumableChunk.flatMap(_ => schedule(40.seconds)(()))
 
-    val path = cmw / "example.net" / "Consumeable"
+    val path = cmw / "mytest.net" / "Consumeable1"
 
     // scalastyle:off
     val f1 = waitForIngestPlus40Seconds.flatMap(_ => Http.get(path, List("op" -> "create-consumer")).map(requestHandler))
@@ -147,7 +147,7 @@ class ConsumeTests2 extends AsyncFunSpec with Inspectors with Matchers with Help
           } {
             sta should be(200)
             pos.isDefined should be(true)
-            bod.replace("\t", "").take(51) should be("/example.net/Consumeable/DL1970-01-01T01:01:00.000Z")
+            bod.replace("\t", "").take(52) should be("/mytest.net/Consumeable1/D1L1970-01-01T01:01:00.000Z")
           }
         }
       }
