@@ -107,14 +107,14 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
         buildSparqlCommandAndIngestToNeptuneViaSparqlAPI(neptuneCluster, ds, nextPosition, updateMode, readInputStreamDuration, totalInfotons)
       }
       consumeBulkAndIngest(nextPosition, sourceCluster, neptuneCluster, updateMode, lengthHint, qp, toolStartTime, bulkLoader,
-        proxyHost, proxyPort, automaticUpdateMode = true, s3Directory = s3Directory)
+        proxyHost, proxyPort, s3Directory = s3Directory)
     }
     else {
       //This is an automatic update mode
       val nextPosition = if (!updateMode && !PropertiesStore.isAutomaticUpdateModePersist()) CmWellConsumeHandler.retrivePositionFromCreateConsumer(sourceCluster, lengthHint, qp, updateMode, true, Instant.parse(PropertiesStore.retrieveStartTime().get)) else position
       logger.info("Export from cm-well completed successfully, no additional data to consume..trying to re-consume in 0.5 minute")
       Thread.sleep(30000)
-      consumeBulkAndIngest(nextPosition, sourceCluster, neptuneCluster, updateMode = true, lengthHint, qp, toolStartTime, bulkLoader, proxyHost, proxyPort, s3Directory = s3Directory)
+      consumeBulkAndIngest(nextPosition, sourceCluster, neptuneCluster, updateMode = true, lengthHint, qp, toolStartTime, bulkLoader, proxyHost, proxyPort, automaticUpdateMode = true, s3Directory = s3Directory)
     }
     res
   }
