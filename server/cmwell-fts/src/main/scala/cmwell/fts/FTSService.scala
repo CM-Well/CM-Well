@@ -1559,6 +1559,11 @@ class FTSService(config: Config) extends NsSplitter{
     }.toSet}
   }
 
+  def purge(uuid: String)(implicit executionContext: ExecutionContext): Future[DeleteResponse] = {
+    val deleteRequest = client.prepareDelete("cm_well_all", "infoclone", uuid)
+    injectFuture[DeleteResponse](deleteRequest.execute)
+  }
+
   def purgeByUuidsAndIndexes(uuidsAtIndexes: Vector[(String, String)], partition: String = defaultPartition)
                                      (implicit executionContext: ExecutionContext): Future[BulkResponse] = {
 
@@ -1571,7 +1576,6 @@ class FTSService(config: Config) extends NsSplitter{
       uuidsAtIndexes.foreach { case (uuid, index) =>
         bulkRequest.add(client
           .prepareDelete(index, "infoclone", uuid)
-          .setVersion(1L)
         )
       }
 
