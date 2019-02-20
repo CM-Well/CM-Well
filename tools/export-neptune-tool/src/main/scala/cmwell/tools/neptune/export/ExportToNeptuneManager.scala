@@ -96,15 +96,13 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
       // this happens only when neptune ingester completed processing the previous bulk successfully and persist the position.
       blockingQueue.put(true)
       logger.info("Going to ingest bulk to neptune...please wait...")
-      if(!PropertiesStore.isAutomaticUpdateModePersist() && automaticUpdateMode)
-        PropertiesStore.persistAutomaticUpdateMode(true)
       val nextPosition = res.getAllHeaders.find(_.getName == "X-CM-WELL-POSITION").map(_.getValue).getOrElse("")
       val totalInfotons = res.getAllHeaders.find(_.getName == "X-CM-WELL-N").map(_.getValue).getOrElse("")
       if(!updateMode && bulkLoader){
         persistDataInS3AndIngestToNeptuneViaLoaderAPI(neptuneCluster, bulkConsumeStrResponse, nextPosition, updateMode,
           readInputStreamDuration, totalInfotons, proxyHost, proxyPort, s3Directory)
       }else {
-        buildSparqlCommandAndIngestToNeptuneViaSparqlAPI(neptuneCluster, ds, nextPosition, updateMode, readInputStreamDuration, totalInfotons)
+        buildSparqlCommandAndIngestToNeptuneViaSparqlAPI(neptuneCluster, ds, nextPosition, updateMode, readInputStreamDuration, totalInfotons, automaticUpdateMode)
       }
       consumeBulkAndIngest(nextPosition, sourceCluster, neptuneCluster, updateMode, lengthHint, qp, toolStartTime, bulkLoader,
         proxyHost, proxyPort, s3Directory = s3Directory, retryToolCycle = retryToolCycle)
@@ -123,7 +121,8 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
   }
 
   def persistDataInS3AndIngestToNeptuneViaLoaderAPI(neptuneCluster: String, bulkResponseAsString:String, nextPosition: String, updateMode: Boolean,
-                                                    readInputStreamDuration: Long, totalInfotons: String, proxyHost:Option[String], proxyPort:Option[Int], s3Directory:String) = {
+                                                    readInputStreamDuration: Long, totalInfotons: String, proxyHost:Option[String],
+                                                    proxyPort:Option[Int], s3Directory:String) = {
       val startTimeMillis = System.currentTimeMillis()
       val fileName = "cm-well-file-" + startTimeMillis + ".nq"
       val allQuads = bulkResponseAsString.split("\n")
@@ -144,7 +143,8 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
       })
   }
 
-  def buildSparqlCommandAndIngestToNeptuneViaSparqlAPI(neptuneCluster: String, ds:Dataset, nextPosition:String, updateMode: Boolean, readInputStreamDuration:Long, totalInfotons:String): Unit = {
+  def buildSparqlCommandAndIngestToNeptuneViaSparqlAPI(neptuneCluster: String, ds:Dataset, nextPosition:String, updateMode: Boolean,
+                                                       readInputStreamDuration:Long, totalInfotons:String, automaticUpdateMode:Boolean): Unit = {
       val startTimeMillis = System.currentTimeMillis()
       val graphDataSets = ds.asDatasetGraph()
       val defaultGraph = graphDataSets.getDefaultGraph
@@ -174,6 +174,8 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
         val neptuneDurationSec = (endTimeMillis - startTimeMillis) / 1000
         PropertiesStore.persistPosition(nextPosition)
         logger.info("Bulk has been ingested successfully")
+        if(!PropertiesStore.isAutomaticUpdateModePersist() && automaticUpdateMode)
+          PropertiesStore.persistAutomaticUpdateMode(true)
         val totalTime = readInputStreamDuration + neptuneDurationSec
         printBulkStatistics(readInputStreamDuration, totalInfotons, neptuneDurationSec, totalTime)
         blockingQueue.take()
