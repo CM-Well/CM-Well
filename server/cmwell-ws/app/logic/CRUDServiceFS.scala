@@ -928,8 +928,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
   // assuming not the only version of the infoton!
   def purgeUuid(infoton: Infoton): Future[Unit] = {
     irwService.purgeHistorical(infoton, isOnlyVersion = false, QUORUM).flatMap { _ =>
-//        ftsService.purge(infoton.uuid).map(_ => Unit)
-      ???
+        ftsService.purge(infoton.uuid).map(_ => Unit)
     }
   }
 
