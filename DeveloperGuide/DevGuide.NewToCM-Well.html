@@ -40,7 +40,7 @@
     
     
       
-        <title>Calling CM-Well with Curl - CM-Well</title>
+        <title>New to CM-Well? - CM-Well</title>
       
     
     
@@ -97,7 +97,7 @@
     <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
     <label class="md-overlay" data-md-component="overlay" for="__drawer"></label>
     
-      <a href="#calling-cm-well-with-curl" tabindex="1" class="md-skip">
+      <a href="#new-to-cm-well" tabindex="1" class="md-skip">
         Skip to content
       </a>
     
@@ -123,7 +123,7 @@
                 CM-Well
               </span>
               <span class="md-header-nav__topic">
-                Calling CM-Well with Curl
+                New to CM-Well?
               </span>
             
           
@@ -1048,11 +1048,63 @@
           
           
 
+  
 
-  <li class="md-nav__item">
-    <a href="DevGuide.NewToCM-Well.html" title="New to CM-Well?" class="md-nav__link">
+
+  <li class="md-nav__item md-nav__item--active">
+    
+    <input class="md-toggle md-nav__toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+    
+      
+    
+    
+      <label class="md-nav__link md-nav__link--active" for="__toc">
+        New to CM-Well?
+      </label>
+    
+    <a href="DevGuide.NewToCM-Well.html" title="New to CM-Well?" class="md-nav__link md-nav__link--active">
       New to CM-Well?
     </a>
+    
+      
+<nav class="md-nav md-nav--secondary">
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">Table of contents</label>
+    <ul class="md-nav__list" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-cm-well" title="What is CM-Well?" class="md-nav__link">
+    What is CM-Well?
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-features-and-technology" title="Key Features and Technology" class="md-nav__link">
+    Key Features and Technology
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#learn-more-about-cm-well" title="Learn More About CM-Well" class="md-nav__link">
+    Learn More About CM-Well
+  </a>
+  
+</li>
+      
+      
+      
+      
+      
+    </ul>
+  
+</nav>
+    
   </li>
 
         
@@ -1072,56 +1124,11 @@
           
           
 
-  
 
-
-  <li class="md-nav__item md-nav__item--active">
-    
-    <input class="md-toggle md-nav__toggle" data-md-toggle="toc" type="checkbox" id="__toc">
-    
-      
-    
-    
-      <label class="md-nav__link md-nav__link--active" for="__toc">
-        Calling CM-Well with Curl
-      </label>
-    
-    <a href="DevGuide.CurlUtility.html" title="Calling CM-Well with Curl" class="md-nav__link md-nav__link--active">
+  <li class="md-nav__item">
+    <a href="DevGuide.CurlUtility.html" title="Calling CM-Well with Curl" class="md-nav__link">
       Calling CM-Well with Curl
     </a>
-    
-      
-<nav class="md-nav md-nav--secondary">
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">Table of contents</label>
-    <ul class="md-nav__list" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#downloading-curl" title="Downloading Curl" class="md-nav__link">
-    Downloading Curl
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#curl-on-windows-vs-unix" title="Curl on Windows vs. Unix" class="md-nav__link">
-    Curl on Windows vs. Unix
-  </a>
-  
-</li>
-      
-      
-      
-      
-      
-    </ul>
-  
-</nav>
-    
   </li>
 
         
@@ -2999,15 +3006,22 @@
     <ul class="md-nav__list" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#downloading-curl" title="Downloading Curl" class="md-nav__link">
-    Downloading Curl
+  <a href="#what-is-cm-well" title="What is CM-Well?" class="md-nav__link">
+    What is CM-Well?
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#curl-on-windows-vs-unix" title="Curl on Windows vs. Unix" class="md-nav__link">
-    Curl on Windows vs. Unix
+  <a href="#key-features-and-technology" title="Key Features and Technology" class="md-nav__link">
+    Key Features and Technology
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#learn-more-about-cm-well" title="Learn More About CM-Well" class="md-nav__link">
+    Learn More About CM-Well
   </a>
   
 </li>
@@ -3028,39 +3042,71 @@
             <article class="md-content__inner md-typeset">
               
                 
-                  <a href="https://github.com/CM-Well/CM-Well/edit/master/docs/DeveloperGuide/DevGuide.CurlUtility.md" title="Edit this page" class="md-icon md-content__icon">&#xE3C9;</a>
+                  <a href="https://github.com/CM-Well/CM-Well/edit/master/docs/DeveloperGuide/DevGuide.NewToCM-Well.md" title="Edit this page" class="md-icon md-content__icon">&#xE3C9;</a>
                 
                 
-                <h1 id="calling-cm-well-with-curl">Calling CM-Well with Curl<a class="headerlink" href="#calling-cm-well-with-curl" title="Permanent link">&para;</a></h1>
-<p>The CM-Well API uses the REST protocol, which runs over HTTP. When running a REST GET command (one that retrieves or searches for infotons), you can simply paste the query into a browser address bar, press enter and see the query results in the browser window. </p>
-<p>However, PUT, POST and DELETE commands (which update CM-Well's data) cannot be submitted in a browser. There are several ways that you can submit such calls:</p>
+                <h1 id="new-to-cm-well">New to CM-Well?<a class="headerlink" href="#new-to-cm-well" title="Permanent link">&para;</a></h1>
+<p>If you're new to CM-Well, this page is a good place to familiarize yourself with some basic concepts about CM-Well.</p>
+<h2 id="what-is-cm-well">What is CM-Well?<a class="headerlink" href="#what-is-cm-well" title="Permanent link">&para;</a></h2>
+<p>CM-Well is a writable Linked Data repository, developed by <a href="http://www.thomsonreuters.com">Thomson Reuters</a> &amp; <a href="http://www.refinitiv.com">Refinitiv</a> and used as its central Knowledge Graph database. CM-Well (Content Matrix Well) adheres to RDF principles, meaning that data is in a <a href="https://www.w3.org/RDF/">standard</a>, machine-readable format.</p>
+<p>CM-Well is <em>not</em> a triple store! Our focus is on high scale, immutability of changes and downstream distribution of content. In BI terminology, CM-Well is a <a href="https://en.wikipedia.org/wiki/Data_warehouse">data warehouse</a>,  you might use a triple store downstream as a <a href="https://en.wikipedia.org/wiki/Data_mart">data mart</a>.</p>
+<p>You can read more about the key differentiating features of CM-Well in our <a href="https://iswc2017.semanticweb.org/paper-518/">paper</a> accepted to <a href="https://iswc2017.semanticweb.org">2017 International Semantic Web Conference</a>.</p>
+<p>The Refinitiv Knowledge Graph contains information about organizations, instruments and people in the world of finance, but you can use CM-Well for any kind of linked data. Thomson Reuters &amp; Refinitiv are now offering CM-Well as an Open Source platform for the developer community to use and enrich.</p>
+<h2 id="key-features-and-technology">Key Features and Technology<a class="headerlink" href="#key-features-and-technology" title="Permanent link">&para;</a></h2>
+<p>CM-Well is based on a clustered architecture, with durable storage into <a href="http://cassandra.apache.org">Apache Cassandra</a> and indexing via <a href="https://github.com/elastic/elasticsearch">Elastic Search</a>. Key features include:
+<em> Horizontal scaling to support billions of triples
+</em> Cross site replication
+<em> REST based APIs
+</em> All writes treated as immutable, storing previous versions
+<em> Named graph (quad) support
+</em> Fast (~10ms by subject, ~50ms for search) retrieval by subject and predicate query
+<em> Support for SPARQL on sub-graph and a beta of full graph SPARQL
+</em> Subscription by query for downstream consumers</p>
+<p>Other key technologies used under the covers include:
+<em> <a href="https://angular.io">Angular</a> and <a href="https://facebook.github.io/react/">React</a> for the UIs
+</em> <a href="http://akka.io/">Akka</a> for cluster management
+<em> <a href="https://jena.apache.org/">Jena</a> for Sparql and RDF conversions
+</em> <a href="https://netty.io">Netty</a> for network comms
+* <a href="https://zookeeper.apache.org">Zookeeper</a> for cluster configuration</p>
+<h2 id="learn-more-about-cm-well">Learn More About CM-Well<a class="headerlink" href="#learn-more-about-cm-well" title="Permanent link">&para;</a></h2>
+<p>Here are some introductory topics you can read if you're new to CM-Well:</p>
+<table>
+<thead>
+<tr>
+<th align="left">Topic</th>
+<th align="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left"><a href="../Introduction/Intro.IntroductionToCM-Well.html">Introduction to CM-Well</a></td>
+<td align="left">An overview of CM-Well and the business need it meets</td>
+</tr>
+<tr>
+<td align="left"><a href="../Introduction/Intro.CM-WellDataParadigms.html">CM-Well Data Paradigms</a></td>
+<td align="left">RDF, graph databases and other data paradigms related to CM-Well</td>
+</tr>
+<tr>
+<td align="left"><a href="../Introduction/Intro.OverviewOfTheCM-WellAPI.html">Overview of the CM-Well API</a></td>
+<td align="left">A brief functional overview of the CM-Well API</td>
+</tr>
+<tr>
+<td align="left"><a href="../Introduction/Intro.TechnicalAspectsOfCM-Well.html">Technical Aspects of CM-Well</a></td>
+<td align="left">A technical overview of the CM-Well API and platform, and what you'll need in order to develop a client application</td>
+</tr>
+</tbody>
+</table>
+<p>To learn about the CM-Well API, read <strong>at least</strong> these chapters of the CM-Well Developer Guide: </p>
 <ul>
-<li>From your own application, using a 3rd-party library that supports REST calls.</li>
-<li>Using an online utility such as <a href="https://resttesttest.com">REST Test</a>.</li>
-<li>Using a client application such as <a href="https://www.getpostman.com">Postman</a>.</li>
-<li>Using a command-line utility such as Curl.</li>
+<li><a href="DevGuide.CurlUtility.html">Using the Curl Utility to Call CM-Well</a></li>
+<li><a href="DevGuide.BasicQueries.html">Basic Queries</a> </li>
+<li><a href="DevGuide.AdvancedQueries.html">Advanced Queries</a></li>
 </ul>
-<p>Curl is a commonly-used utility for submitting REST requests. All the code examples that appear in CM-Well documentation use the Curl utility. </p>
-<p>Here is an example of a call to CM-Well, which uploads a file infoton, using Curl:</p>
-<div class="codehilite"><pre><span></span>curl -X POST &lt;cm-well-host&gt;/example/files/f1.png -H &quot;X-CM-WELL-TYPE: FILE&quot; -H &quot;Content-Type: image/png&quot; --data-binary @image.file.png
-</pre></div>
-
-
-<p>You can learn more about Curl from online resources such as <a href="https://curl.haxx.se/docs/httpscripting.html">Using curl to automate HTTP jobs</a>.</p>
-<h2 id="downloading-curl">Downloading Curl<a class="headerlink" href="#downloading-curl" title="Permanent link">&para;</a></h2>
-<p>You can download Curl from several sites, for example: <a href="https://curl.haxx.se/download.html">Curl Releases and Downloads</a>. 
-Choose the package for your operating system (note that curl is already installed on Macs)</p>
-<h2 id="curl-on-windows-vs-unix">Curl on Windows vs. Unix<a class="headerlink" href="#curl-on-windows-vs-unix" title="Permanent link">&para;</a></h2>
-<p>If you're running Curl in a command-line window, you should be aware of some syntactical differences between the Windows and Unix command-lines:</p>
-<ul>
-<li>The line-continuation character in Unix is '\', while in Windows it's '^'. When entering multi-line commands, remember to use the correct character for your OS.</li>
-<li>Unix supports single quotes as string delimiters ('string'), while Windows requires double-quotes ("string"). This can cause problems when using the JSON format, as cURL statements use single quotes to specify JSON data.</li>
-</ul>
+<p>To start getting some hands-on experience with CM-Well, work through one of the <a href="../Tutorials/Tutorial.Docker.html">CM-Well Tutorials</a>. You can install CM-Well on your laptop.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>You can avoid many syntax errors arising from these differences by providing the data for the Curl command in a <strong>file</strong> rather than on the command line. Many code examples in this documentation use files as input.</p>
+<p>We recommend completing all introductory material described above, including working through tutorials, before attempting a proof-of-concept project.</p>
 </div>
-<p>You can learn more at <a href="https://help.zendesk.com/hc/en-us/articles/229136847-Installing-and-using-cURL#curl_win">Using cURL in Windows</a>.</p>
                 
                   
                 
@@ -3081,7 +3127,7 @@ Choose the package for your operating system (note that curl is already installe
     <div class="md-footer-nav">
       <nav class="md-footer-nav__inner md-grid">
         
-          <a href="DevGuide.QuickStart.html" title="Quick Start" class="md-flex md-footer-nav__link md-footer-nav__link--prev" rel="prev">
+          <a href="../Introduction/Intro.TechnicalDecisionsInCM-WellDesign.html" title="Technical Design Decisions" class="md-flex md-footer-nav__link md-footer-nav__link--prev" rel="prev">
             <div class="md-flex__cell md-flex__cell--shrink">
               <i class="md-icon md-icon--arrow-back md-footer-nav__button"></i>
             </div>
@@ -3090,19 +3136,19 @@ Choose the package for your operating system (note that curl is already installe
                 <span class="md-footer-nav__direction">
                   Previous
                 </span>
-                Quick Start
+                Technical Design Decisions
               </span>
             </div>
           </a>
         
         
-          <a href="DevGuide.BasicQueries.html" title="Basic Queries" class="md-flex md-footer-nav__link md-footer-nav__link--next" rel="next">
+          <a href="DevGuide.QuickStart.html" title="Quick Start" class="md-flex md-footer-nav__link md-footer-nav__link--next" rel="next">
             <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title">
               <span class="md-flex__ellipsis">
                 <span class="md-footer-nav__direction">
                   Next
                 </span>
-                Basic Queries
+                Quick Start
               </span>
             </div>
             <div class="md-flex__cell md-flex__cell--shrink">
