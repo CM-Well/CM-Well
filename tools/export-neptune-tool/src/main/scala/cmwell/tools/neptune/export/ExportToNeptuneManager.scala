@@ -66,9 +66,9 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
                            toolStartTime:Instant, bulkLoader:Boolean, proxyHost:Option[String], proxyPort:Option[Int], automaticUpdateMode:Boolean = false,
                            retryCount:Int = 5, s3Directory:String, retryToolCycle:Int): CloseableHttpResponse = {
     val startTimeMillis = System.currentTimeMillis()
-    val res = CmWellConsumeHandler.bulkConsume(sourceCluster, position, "nquads", updateMode)
+    var res = CmWellConsumeHandler.bulkConsume(sourceCluster, position, "nquads", updateMode)
     logger.info("Cm-well bulk consume http status=" + res.getStatusLine.getStatusCode)
-    if (res.getStatusLine.getStatusCode != 204) {
+    while (res.getStatusLine.getStatusCode != 204) {
       var ds: Dataset = DatasetFactory.createGeneral()
       var bulkConsumeStrResponse = ""
         try {
@@ -104,20 +104,19 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
       }else {
         buildSparqlCommandAndIngestToNeptuneViaSparqlAPI(neptuneCluster, ds, nextPosition, updateMode, readInputStreamDuration, totalInfotons, automaticUpdateMode)
       }
-      consumeBulkAndIngest(nextPosition, sourceCluster, neptuneCluster, updateMode, lengthHint, qp, toolStartTime, bulkLoader,
-        proxyHost, proxyPort, s3Directory = s3Directory, retryToolCycle = retryToolCycle)
+      res = CmWellConsumeHandler.bulkConsume(sourceCluster, position, "nquads", updateMode)
+      logger.info("Cm-well bulk consume http status=" + res.getStatusLine.getStatusCode)
     }
-    else {
       //This is an automatic update mode
-      val nextPosition = if (!updateMode && !PropertiesStore.isAutomaticUpdateModePersist()) CmWellConsumeHandler.retrivePositionFromCreateConsumer(sourceCluster, lengthHint, qp, updateMode, true, Instant.parse(PropertiesStore.retrieveStartTime().get)) else position
+      val nextPosition = if (!updateMode && !PropertiesStore.isAutomaticUpdateModePersist())
+        CmWellConsumeHandler.retrivePositionFromCreateConsumer(sourceCluster, lengthHint, qp, updateMode, true, Instant.parse(PropertiesStore.retrieveStartTime().get))
+      else position
       if(retryToolCycle == 1)
         println("\nExport from cm-well completed successfully, tool wait till new infotons be inserted to cmwell")
       logger.info("Export from cm-well completed successfully, no additional data to consume..trying to re-consume in 0.5 minute")
       Thread.sleep(30000)
       consumeBulkAndIngest(nextPosition, sourceCluster, neptuneCluster, updateMode = true, lengthHint, qp, toolStartTime, bulkLoader, proxyHost,
         proxyPort, automaticUpdateMode = true, s3Directory = s3Directory, retryToolCycle = retryToolCycle+1)
-    }
-    res
   }
 
   def persistDataInS3AndIngestToNeptuneViaLoaderAPI(neptuneCluster: String, bulkResponseAsString:String, nextPosition: String, updateMode: Boolean,
@@ -125,8 +124,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
                                                     proxyPort:Option[Int], s3Directory:String) = {
       val startTimeMillis = System.currentTimeMillis()
       val fileName = "cm-well-file-" + startTimeMillis + ".nq"
-      val allQuads = bulkResponseAsString.split("\n")
-      val bulkResWithoutMeta = allQuads.filterNot(q => q.isEmpty || q.contains("meta/sys")).mkString("\n")
+      val bulkResWithoutMeta = bulkResponseAsString.split("\n").filterNot(q => q.isEmpty || q.contains("meta/sys")).mkString("\n")
       S3ObjectUploader.persistChunkToS3Bucket(bulkResWithoutMeta, fileName, proxyHost, proxyPort, s3Directory)
       val endS3TimeMillis = System.currentTimeMillis()
       val s3Duration = (endS3TimeMillis - startTimeMillis) / 1000
