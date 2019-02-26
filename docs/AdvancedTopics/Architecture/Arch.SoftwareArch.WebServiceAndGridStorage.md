@@ -2,7 +2,12 @@
 
 ## Web Service (WS) Module
 
-CM-Well supports a REST API for reading, writing, streaming and querying infotons, and more. The WS component is responsible for managing API requests and responses. The WS uses the 3rd-part Netty package and asynchronous I/O to manage requests and responses. Requests are served by a small thread pool, whose size is adjusted according to the machine's parallelism capability. Read and write operations are handled separately asynchronously, due to their different costs in processing time. Read requests are served directly by the WS JVM. Write requests undergo minimal analysis and verification, and are then transferred to the BG JVM for background processing. Some lengthier/more-complex processes, e.g. SPARQL queries, are handled by the Analytics JVM.
+CM-Well supports a REST API for reading, writing, streaming and querying infotons, and more. The WS component is responsible for managing API requests and responses. The WS uses the 3rd-part Netty package and asynchronous IO to manage requests and responses. 
+
+!!! note
+	The Netty package is used for IO instead of the more standard Akka HTTP package, because Netty handles the scenario of many short-term connections better than Akka (whose connection setup time is too long for this case).
+
+Requests to the WS module are served by a small thread pool, whose size is adjusted according to the machine's parallelism capability. Read and write operations are handled separately asynchronously, due to their different costs in processing time. Read requests are served directly by the WS JVM. Write requests undergo minimal analysis and verification, and are then transferred to the BG JVM for background processing. Some lengthier/more-complex processes, e.g. SPARQL queries, are handled by the Analytics JVM.
 
 ## Grid Storage (GS) Logic Layer
 

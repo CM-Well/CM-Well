@@ -18,9 +18,22 @@ The RTS is responsible for pushing changes to API clients who have subscribed fo
 
 After the IMP has written a new or updated infoton to CM-Well, the Indexer sends the infoton to be indexed by ES, while maintaining the abstraction of the directory structure. New versions are indexed and if necessary, the previous version is made "not current".
 
-## Analytics Processing Module
+## Analytics Processing Module ("Crashable Worker")
 
-The Analytics Processing Module is responsible for running heavy (and relatively long-running) queries in a controlled manner. For example, running a SPARQL or Gremlin query on a subgraph (or the full graph). This module is run in a separate JVM (also known by the nickname "Crashable Worker" or CW, because if it crashes or is killed, it doesn't harm mainstream CM-Well operation, and can be safely killed for using excess resources or becoming unresponsive). The processing pipeline of creating an in-memory subgraph, followed by execution of the SPARQL query itself is handled within this JVM. Creating a separate JVM process provides a quarantined environment where memory, CPU cycles and priority are controlled and isolated from other CM-Well components. Processes that are hung or are taking too many resources can be killed and restarted with no loss of data.
+The Analytics Processing Module is responsible for running heavy (and relatively long-running) queries in a controlled manner. For example, running a SPARQL or Gremlin query on a subgraph (or the full graph). This module is run in a separate JVM (also known by the nickname "Crashable Worker" or CW, because if it crashes or is killed, it doesn't harm mainstream CM-Well operation, and can be safely killed for using excess resources or becoming unresponsive). 
+
+The processing pipeline of creating an in-memory subgraph, followed by execution of the SPARQL query itself is handled within this JVM. Creating a separate JVM process provides a quarantined environment where memory, CPU cycles and priority are controlled and isolated from other CM-Well components. Processes that are hung or are taking too many resources can be killed and restarted with no loss of data.
+
+Crashable workers perform the following tasks:
+
+* SPARQL queries on sub-graphs and on the entire graph
+* Gremlin queries
+* Health Control monitoring
+* Backpressure management - mechanisms that respond to the load on the system and the length of the Kafka queues, and introduce response delays and Service Unavailable errors as necessary to limit system load.
+
+The following diagram shows the Crashable Workers and their interaction with the Web Service module.
+
+![image](../../_Images/crashable-workers.png)
 
 ## Data Consistency Crawler Module
 
