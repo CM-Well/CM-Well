@@ -66,7 +66,8 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
                            toolStartTime:Instant, bulkLoader:Boolean, proxyHost:Option[String], proxyPort:Option[Int], automaticUpdateMode:Boolean = false,
                            retryCount:Int = 5, s3Directory:String, retryToolCycle:Boolean): CloseableHttpResponse = {
     val startTimeMillis = System.currentTimeMillis()
-    var res = CmWellConsumeHandler.bulkConsume(sourceCluster, position, "nquads", updateMode)
+    var currentPosition = position
+    var res = CmWellConsumeHandler.bulkConsume(sourceCluster, currentPosition, "nquads", updateMode)
     logger.info("Cm-well bulk consume http status=" + res.getStatusLine.getStatusCode)
     while (res.getStatusLine.getStatusCode != 204) {
       var ds: Dataset = DatasetFactory.createGeneral()
@@ -84,7 +85,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
             logger.error("Failed to read input stream,", e.getMessage)
             logger.error("Going to retry, retry count=" + retryCount)
             Thread.sleep(5000)
-            consumeBulkAndIngest(position, sourceCluster, neptuneCluster, updateMode, lengthHint, qp, toolStartTime, bulkLoader,
+            consumeBulkAndIngest(currentPosition, sourceCluster, neptuneCluster, updateMode, lengthHint, qp, toolStartTime, bulkLoader,
               proxyHost, proxyPort, automaticUpdateMode, retryCount - 1, s3Directory, retryToolCycle)
           case e: Throwable if retryCount == 0 =>
             logger.error("Failed to read input stream from cmwell after retry 5 times..going to shutdown the system")
@@ -104,13 +105,14 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
       }else {
         buildSparqlCommandAndIngestToNeptuneViaSparqlAPI(neptuneCluster, ds, nextPosition, updateMode, readInputStreamDuration, totalInfotons, automaticUpdateMode)
       }
-      res = CmWellConsumeHandler.bulkConsume(sourceCluster, position, "nquads", updateMode)
+      currentPosition = nextPosition
+      res = CmWellConsumeHandler.bulkConsume(sourceCluster, nextPosition, "nquads", updateMode)
       logger.info("Cm-well bulk consume http status=" + res.getStatusLine.getStatusCode)
     }
       //This is an automatic update mode
       val nextPosition = if (!updateMode && !PropertiesStore.isAutomaticUpdateModePersist())
         CmWellConsumeHandler.retrivePositionFromCreateConsumer(sourceCluster, lengthHint, qp, updateMode, true, Instant.parse(PropertiesStore.retrieveStartTime().get))
-      else position
+      else currentPosition
       if(retryToolCycle)
         println("\nExport from cm-well completed successfully, tool wait till new infotons be inserted to cmwell")
       logger.info("Export from cm-well completed successfully, no additional data to consume..trying to re-consume in 0.5 minute")
