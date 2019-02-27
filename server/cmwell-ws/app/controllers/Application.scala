@@ -220,7 +220,6 @@ class Application @Inject()(bulkScrollHandler: BulkScrollHandler,
           case Operation.fix() => handleFix(request)
           case Operation.info() => handleInfo(request)
           case Operation.verify() => handleVerify(request)
-          case Operation.fixDc() => handleFixDc(request)
           case Operation.purgeAll() => handlePurgeAll(request)
           case Operation.purgeHistory() => handlePurgeHistory(request)
           case Operation.purgeLast() | Operation.rollback() => handlePurgeLast(request)
@@ -2787,19 +2786,6 @@ callback=< [URL] >
       }
   }
 
-  def handleFixDc(req: Request[AnyContent]): Future[Result] = {
-    if (!authUtils.isOperationAllowedForUser(security.Overwrite, authUtils.extractTokenFrom(req)))
-      Future.successful(Forbidden("not authorized to overwrite"))
-    else {
-      val f = crudServiceFS.fixDc(normalizePath(req.path), Settings.dataCenter)
-      val formatter = getFormatter(req, formatterManager, "json")
-      f.map { bs =>
-          Ok(formatter.render(SimpleResponse(bs, None))).as(overrideMimetype(formatter.mimetype, req)._2)
-        }
-        .recoverWith(asyncErrorHandler)
-    }
-  }
-
   def handlePurgeAll(req: Request[AnyContent]) = handlePurge(req, includeLast = true)
 
   def handlePurgeHistory(req: Request[AnyContent]) = handlePurge(req, includeLast = false)
@@ -3179,7 +3165,6 @@ object Operation {
   val fix               = ParamExtractor("op", func("x-fix")(_))
   val info              = ParamExtractor("op", func("x-info")(_))
   val verify            = ParamExtractor("op", func("x-verify")(_))
-  val fixDc             = ParamExtractor("op", func("x-fix-dc")(_))
   val purgeAll          = ParamExtractor("op", func("purge-all")(_))
   val purgeLast         = ParamExtractor("op", func("purge-last")(_))
   val rollback          = ParamExtractor("op", func("rollback")(_)) // alias for purge-last

@@ -916,10 +916,6 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
 
   def info(path: String, limit: Int): Future[(CasInfo, EsExtendedInfo, ZStoreInfo)] = proxyOps.info(path, limit)
 
-  def fixDc(path: String, actualDc: String): Future[Boolean] = {
-    proxyOps.fixDc(path, actualDc, cmwell.ws.Settings.xFixNumRetries)
-  }
-
   def getRawCassandra(uuid: String): Future[(String, String)] =
     irwService.getRawRow(uuid).map(_ -> "text/csv;charset=UTF-8")
 

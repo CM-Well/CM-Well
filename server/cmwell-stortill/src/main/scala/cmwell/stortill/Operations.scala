@@ -15,33 +15,28 @@
 package cmwell.stortill
 
 import akka.NotUsed
-import akka.stream.impl.fusing.MapAsyncUnordered
-import akka.stream.{ClosedShape, Materializer, SourceShape}
-import akka.stream.scaladsl.{Flow, GraphDSL, Keep, RunnableGraph, Sink, Source}
-import cmwell.common.formats.{JsonSerializer, JsonSerializerForES}
-import cmwell.domain.{FileContent, FileInfoton, Infoton, autoFixDcAndIndexTime, _}
-import cmwell.driver.Dao
+import akka.stream.SourceShape
+import akka.stream.scaladsl.{Flow, GraphDSL, Source}
+import cmwell.common.formats.JsonSerializerForES
+import cmwell.domain.{FileContent, FileInfoton, Infoton, autoFixDcAndIndexTime}
 import cmwell.formats.JsonFormatter
 import cmwell.fts._
-import cmwell.irw.{IRWService, IRWServiceNativeImpl2}
+import cmwell.irw.IRWService
 import cmwell.stortill.Strotill._
-import cmwell.common.formats.JsonSerializer
-import com.typesafe.scalalogging.{LazyLogging, Logger}
-import org.elasticsearch.action.bulk.BulkResponse
-import org.elasticsearch.client.Requests
-import org.elasticsearch.index.VersionType
-import org.slf4j.LoggerFactory
-
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Future, Promise}
 import cmwell.syntaxutils._
 import cmwell.util.BoxedFailure
 import cmwell.util.stream.{MapInitAndLast, SortedStreamsMergeBy}
-import org.elasticsearch.action.{ActionRequest, DocWriteRequest}
+import com.typesafe.scalalogging.{LazyLogging, Logger}
+import org.elasticsearch.action.DocWriteRequest
+import org.elasticsearch.action.bulk.BulkResponse
+import org.elasticsearch.client.Requests
+import org.elasticsearch.common.xcontent.XContentType
 import org.joda.time.DateTime
+import org.slf4j.LoggerFactory
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-import scala.util.Try
+import scala.concurrent.{Future, Promise}
 
 /**
   * Created by markz on 3/4/15.
@@ -51,7 +46,6 @@ abstract class Operations(irw: IRWService, ftsService: FTSService) {
   def fix(path: String, retries: Int, limit: Int): Future[(Boolean, String)]
   def rFix(path: String, retries: Int, parallelism: Int = 1): Future[Source[(Boolean, String), NotUsed]]
   def info(path: String, limit: Int): Future[(CasInfo, EsExtendedInfo, ZStoreInfo)]
-  def fixDc(path: String, dc: String, retries: Int = 1, indexTimeOpt: Option[Long] = None): Future[Boolean]
   def shutdown: Unit
 }
 
@@ -70,7 +64,6 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSService)
     extends Operations(irw, ftsService)
     with LazyLogging {
 
-  val isNewBg = true
   val s = Strotill(irw, ftsService)
   import ProxyOperations.{specialInconsistenciesLogger => log}
 
@@ -339,25 +332,8 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSService)
 
                       purgeFromEsFut.flatMap { _ =>
                         //lastly, write infocolones for the good infotons
-                        if (isNewBg) {
-                          //TODO: if indexed in cm_well_latest, should we also take care of the update in cassandra for indexName?
-                          val actions = foundAndFixed.map(
-                            i =>
-                              ESIndexRequest(createEsIndexActionForNewBG(i,
-                                if (i.indexName.isEmpty) "cm_well_latest"
-                                else i.indexName,
-                                i eq cur),
-                                None)
-                          )
-                          retry(ftsService.executeBulkIndexRequests(actions)).map(_ => (true, ""))
-                        } else {
-                          val actions = foundAndFixed.map {
-                            case i if isContainsCurrent && (i eq cur) => createEsIndexAction(i, "cmwell_current_latest")
-                            case i => createEsIndexAction(i, "cmwell_history_latest")
-                          }
-                          // todo .recover + check .hasFailures
-                          retry(ftsService.executeBulkIndexRequests(actions)).map(_ => (true, ""))
-                        }
+                        val actions = foundAndFixed.map(i => ESIndexRequest(createEsIndexAction(i, i.indexName, i eq cur), None))
+                        retry(ftsService.executeBulkIndexRequests(actions)).map(_ => (true, ""))
                       }
                     }
                   }
@@ -444,22 +420,15 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSService)
     p.future
   }
 
-  private def createEsIndexActionForNewBG(infoton: Infoton,
+  private def createEsIndexAction(infoton: Infoton,
                                           index: String,
                                           isCurrent: Boolean): DocWriteRequest[_] = {
     val infotonWithUpdatedIndexTime = infoton.indexTime.fold {
       infoton.replaceIndexTime(infoton.lastModified.getMillis)
     }(_ => infoton)
     val serializedInfoton = JsonSerializerForES.encodeInfoton(infotonWithUpdatedIndexTime, isCurrent)
-    Requests.indexRequest(index).`type`("infoclone").id(infoton.uuid).source(serializedInfoton)
+    Requests.indexRequest(index).`type`("infoclone").id(infoton.uuid).source(serializedInfoton, XContentType.JSON)
   }
-
-  private def createEsIndexAction(infoton: Infoton, index: String) =
-    ESIndexRequest(Requests
-      .indexRequest(index)
-      .`type`("infoclone")
-      .id(infoton.uuid)
-      .source(JsonSerializer.encodeInfoton(infoton, omitBinaryData = true, toEs = true)), None)
 
   private def purgeFromCas(path: String, uuid: String, timestamp: Long) =
     irw.purgeUuid(path, uuid, timestamp, isOnlyVersion = false, cmwell.irw.QUORUM)
@@ -493,71 +462,6 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSService)
       }.distinct
       esinfo.map((v, _, zsKeys))
     }
-  }
-
-  override def fixDc(path: String, dc: String, retries: Int, indexTimeOpt: Option[Long] = None): Future[Boolean] = {
-    import cmwell.domain.{addDc, addIndexInfo}
-    import com.datastax.driver.core.ConsistencyLevel._
-
-    import scala.concurrent.duration._
-
-    require(dc != "na", "fix-dc with \"na\"?")
-    require(!isNewBg, "fixDc not implemented for nbg path")
-    ???
-/*
-    val task = cmwell.util.concurrent.retry(retries, 1.seconds) {
-      s.extractLastCas(path).flatMap { infoton =>
-        val dummyFut = Future.successful(())
-
-        val (infotonWithFixedIndexTime, addIdxTInCasFut) = {
-          val iIdxTOpt = infoton.indexTime
-          lazy val lmMillis = infoton.lastModified.getMillis
-          indexTimeOpt match {
-            case Some(t) if iIdxTOpt.isDefined && t == iIdxTOpt.get => infoton -> dummyFut
-            case None if iIdxTOpt.isDefined                         => infoton -> dummyFut
-            case Some(t) =>
-              addIndexTime(infoton, indexTimeOpt, force = true) ->
-                s.irwProxy.addIndexTimeToUuid(infoton.uuid, t, level = QUORUM)
-            case None =>
-              addIndexTime(infoton, Some(lmMillis), force = true) ->
-                s.irwProxy.addIndexTimeToUuid(infoton.uuid, lmMillis, level = QUORUM)
-          }
-        }
-
-        val (infotonWithFixedIndexTimeAndDc, addDcInCasFut) = infoton.dc match {
-          case dc2 if dc2 == dc => infotonWithFixedIndexTime -> dummyFut
-          case _ =>
-            addDc(infotonWithFixedIndexTime, dc, force = true) ->
-              s.irwProxy.addDcToUuid(infoton.uuid, dc, level = QUORUM)
-        }
-
-        Future.sequence(Seq(addIdxTInCasFut, addDcInCasFut)).map { _ => () =>
-          {
-            val esIndexAction = {
-              Requests
-                .indexRequest("cmwell_current_latest")
-                .`type`("infoclone")
-                .id(infotonWithFixedIndexTimeAndDc.uuid)
-                .create(true)
-                .source(JsonSerializer.encodeInfoton(infotonWithFixedIndexTimeAndDc, true, true))
-            }
-            s.ftsProxy.purgeByUuids(Seq(), Some(infotonWithFixedIndexTimeAndDc.uuid)).flatMap {
-              case br if br.hasFailures => Future.failed(new Exception("purging indexes failed"))
-              case _ =>
-                s.ftsProxy.executeBulkActionRequests(Seq(esIndexAction)).flatMap {
-                  case br if br.hasFailures => Future.failed(new Exception("re-indexing failed"))
-                  case _                    => Future.successful(true)
-                }
-            }
-          }
-        }
-      }
-    }
-
-    task.flatMap { t =>
-      cmwell.util.concurrent.retry(retries, 1.seconds)(t())
-    }
-*/
   }
 
   override def shutdown: Unit = {
