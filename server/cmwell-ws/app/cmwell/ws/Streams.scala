@@ -126,12 +126,23 @@ object Streams extends LazyLogging {
     def searchThinResultsToFatInfotons(crudServiceFS: CRUDServiceFS): Flow[SearchThinResults, Infoton, NotUsed] =
       searchThinResultsFlattened.via(searchThinResultToFatInfoton(crudServiceFS))
 
-    def iterationResultsToFatInfotons(crudServiceFS: CRUDServiceFS): Flow[IterationResults, Infoton, NotUsed] =
+    def iterationResultsToFatInfotons(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionContext): Flow[IterationResults, Infoton, NotUsed] =
       Flow[IterationResults]
         .collect { case IterationResults(_, _, Some(iSeq), _, _) => iSeq }
         .mapConcat(_.map(_.uuid)(bo1))
-        .mapAsyncUnordered(parallelism)(crudServiceFS.getInfotonByUuidAsync)
-        .collect { case FullBox(i) => i }
+        .mapAsyncUnordered(parallelism){ uuid =>
+          crudServiceFS.getInfotonByUuidAsync(uuid).map(_ -> uuid)
+        }
+      .map {
+        case (FullBox(i), _) => i
+        case (emptyBox@EmptyBox, uuid) =>
+          logger.error(s"Got emtpy box for uuid $uuid")
+          emptyBox.get
+        case (failure@BoxedFailure(ex), uuid) =>
+          logger.error(s"Got BoxedFailure when trying to get uuid $uuid. The exception was:", ex)
+          failure.get
+      }
+//        .collect { case FullBox(i) => i } - removed! don't ignore errors!
 
     val iterationResultsToInfotons: Flow[IterationResults, Infoton, NotUsed] = Flow[IterationResults]
       .collect { case IterationResults(_, _, Some(iSeq), _, _) => iSeq }
@@ -148,7 +159,7 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
                                withData: Boolean = false,
                                withHistory: Boolean = false,
                                length: Option[Long] = None,
-                               fieldsMask: Set[String] = Set.empty): Source[ByteString, NotUsed] = {
+                               fieldsMask: Set[String] = Set.empty)(implicit ec: ExecutionContext): Source[ByteString, NotUsed] = {
     if (!withData) src.via(Flows.formattableToByteString(formatter, length))
     else {
 
