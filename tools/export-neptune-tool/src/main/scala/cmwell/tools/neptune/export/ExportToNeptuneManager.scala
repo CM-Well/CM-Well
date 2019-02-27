@@ -52,7 +52,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
       val persistedPosition = PropertiesStore.retreivePosition()
       val position = persistedPosition.getOrElse(CmWellConsumeHandler.retrivePositionFromCreateConsumer(sourceCluster, lengthHint, qp, updateMode, PropertiesStore.isAutomaticUpdateModePersist(), toolStartTime))
       val actualUpdateMode = PropertiesStore.isAutomaticUpdateModePersist() || updateMode
-      consumeBulkAndIngest(position, sourceCluster, neptuneCluster, actualUpdateMode, lengthHint, qp, toolStartTime, bulkLoader, proxyHost, proxyPort, s3Directory = s3Directory, retryToolCycle = 0)
+      consumeBulkAndIngest(position, sourceCluster, neptuneCluster, actualUpdateMode, lengthHint, qp, toolStartTime, bulkLoader, proxyHost, proxyPort, s3Directory = s3Directory, retryToolCycle = false)
 
     } catch {
       case e: Throwable => logger.error("Got a failure during  export after retrying 3 times", e)
@@ -64,7 +64,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
 
   def consumeBulkAndIngest(position: String, sourceCluster: String, neptuneCluster: String, updateMode: Boolean, lengthHint: Int, qp: Option[String],
                            toolStartTime:Instant, bulkLoader:Boolean, proxyHost:Option[String], proxyPort:Option[Int], automaticUpdateMode:Boolean = false,
-                           retryCount:Int = 5, s3Directory:String, retryToolCycle:Int): CloseableHttpResponse = {
+                           retryCount:Int = 5, s3Directory:String, retryToolCycle:Boolean): CloseableHttpResponse = {
     val startTimeMillis = System.currentTimeMillis()
     var res = CmWellConsumeHandler.bulkConsume(sourceCluster, position, "nquads", updateMode)
     logger.info("Cm-well bulk consume http status=" + res.getStatusLine.getStatusCode)
@@ -111,12 +111,12 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
       val nextPosition = if (!updateMode && !PropertiesStore.isAutomaticUpdateModePersist())
         CmWellConsumeHandler.retrivePositionFromCreateConsumer(sourceCluster, lengthHint, qp, updateMode, true, Instant.parse(PropertiesStore.retrieveStartTime().get))
       else position
-      if(retryToolCycle == 1)
+      if(retryToolCycle)
         println("\nExport from cm-well completed successfully, tool wait till new infotons be inserted to cmwell")
       logger.info("Export from cm-well completed successfully, no additional data to consume..trying to re-consume in 0.5 minute")
       Thread.sleep(30000)
       consumeBulkAndIngest(nextPosition, sourceCluster, neptuneCluster, updateMode = true, lengthHint, qp, toolStartTime, bulkLoader, proxyHost,
-        proxyPort, automaticUpdateMode = true, s3Directory = s3Directory, retryToolCycle = retryToolCycle+1)
+        proxyPort, automaticUpdateMode = true, s3Directory = s3Directory, retryToolCycle = true)
   }
 
   def persistDataInS3AndIngestToNeptuneViaLoaderAPI(neptuneCluster: String, bulkResponseAsString:String, nextPosition: String, updateMode: Boolean,
