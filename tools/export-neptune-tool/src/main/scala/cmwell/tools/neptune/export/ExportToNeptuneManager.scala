@@ -19,6 +19,7 @@ import java.util.concurrent.Executors
 
 import akka.actor.{ActorSystem, Scheduler}
 import cmwell.tools.neptune.export.NeptuneIngester.ConnectException
+import org.apache.commons.lang3.time.DurationFormatUtils
 import org.apache.http.client.methods.CloseableHttpResponse
 import org.apache.http.util.EntityUtils
 import org.apache.jena.query.{Dataset, DatasetFactory}
@@ -41,7 +42,6 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
   var totalInfotons = 0L
   var bulkConsumeTotalTime = 0L
   var neptuneTotalTime = 0L
-  var overallTime = 0L
 
   import java.util.concurrent.ArrayBlockingQueue
 
@@ -96,7 +96,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
             sys.exit(0)
         }
       val endTimeBulkConsumeMilis = System.currentTimeMillis()
-      val readInputStreamDuration = (endTimeBulkConsumeMilis - startTimeBulkConsumeMillis) / 1000
+      val readInputStreamDuration = endTimeBulkConsumeMilis - startTimeBulkConsumeMillis
       //blocked until neptune ingester thread takes the message from qeuue, which means it's ready for next bulk.
       // this happens only when neptune ingester completed processing the previous bulk successfully and persist the position.
       blockingQueue.put(true)
@@ -139,7 +139,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
       val responseFuture = loaderPostWithRetry(neptuneCluster, fileName)
       responseFuture.onComplete(_ => {
         val endTimeMillis = System.currentTimeMillis()
-        val neptuneDurationSec = (endTimeMillis - startTimeMillis) / 1000
+        val neptuneDurationSec = endTimeMillis - startTimeMillis
         PropertiesStore.persistPosition(nextPosition)
         logger.info("Bulk has been ingested successfully")
         val totalTime = readInputStreamDuration + neptuneDurationSec
@@ -176,7 +176,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
 
       Future.sequence(neptuneFutureResults.toList).onComplete(_ => {
         val endTimeMillis = System.currentTimeMillis()
-        val neptuneDurationSec = (endTimeMillis - startTimeMillis) / 1000
+        val neptuneDurationSec = endTimeMillis - startTimeMillis
         PropertiesStore.persistPosition(nextPosition)
         logger.info("Bulk has been ingested successfully")
         if(!PropertiesStore.isAutomaticUpdateModePersist() && automaticUpdateMode)
@@ -222,13 +222,17 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
     }
   }
 
-  private def printBulkStatistics(readInputStreamDuration: Long, totalInfotons: String, neptuneDurationSec: Long, totalTime: Long) = {
+  private def printBulkStatistics(readInputStreamDuration: Long, totalInfotons: String, neptuneDurationMilis: Long, totalTime: Long) = {
     this.totalInfotons+=totalInfotons.toLong
-    this.neptuneTotalTime+=neptuneDurationSec
-    this.bulkConsumeTotalTime+=readInputStreamDuration
-    this.overallTime+= (bulkConsumeTotalTime + neptuneTotalTime)
-    var avgInfotons = if(totalTime > 0)this.totalInfotons / overallTime else this.totalInfotons
-    val summaryLogMsg = "Total Infotons: " + totalInfotons + "\tConsume Duration: " + bulkConsumeTotalTime + "\tNeptune Ingest Duration: " + neptuneTotalTime + "\ttotal time: " + overallTime + "\tAvg Infotons/sec: " + avgInfotons
+    neptuneTotalTime+=neptuneDurationMilis
+    val neptunetime = DurationFormatUtils.formatDurationWords(neptuneTotalTime, true, true)
+    bulkConsumeTotalTime+=readInputStreamDuration
+    val bulkConsume = DurationFormatUtils.formatDurationWords(bulkConsumeTotalTime, true, true)
+    val totalTime = bulkConsumeTotalTime + neptuneTotalTime
+    val overallTime = DurationFormatUtils.formatDurationWords(totalTime, true, true)
+    val avgInfotonsPerSec = this.totalInfotons / (totalTime / 1000)
+    val summaryLogMsg = "Total Infotons: " + this.totalInfotons.toString.padTo(15, ' ') + "Consume Duration: " + bulkConsume.padTo(25, ' ') +
+      "Neptune Ingest Duration: " + neptunetime.padTo(25, ' ') + "total time: " + overallTime.padTo(25, ' ') + "avg Infotons/sec:" + avgInfotonsPerSec
     logger.info(summaryLogMsg)
     print(summaryLogMsg + "\r")
   }
