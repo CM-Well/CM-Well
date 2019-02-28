@@ -15,7 +15,7 @@
   */
 package cmwell.tools.neptune.export
 
-import java.net.{URL, URLEncoder}
+import java.net.{URL, URLDecoder, URLEncoder}
 import java.time.Instant
 
 import org.apache.http.client.methods.{CloseableHttpResponse, HttpGet}
@@ -26,7 +26,9 @@ import org.slf4j.LoggerFactory
 object CmWellConsumeHandler {
 
   protected lazy val logger = LoggerFactory.getLogger("cm_well_consumer")
-  val maxRetry = 3
+  val maxRetry = 5
+
+  private val sleepTimeout = 10000
 
   def bulkConsume(cluster: String, position: String, format: String, updateMode:Boolean, retryCount:Int= 0): CloseableHttpResponse = {
     val withMeta = if(updateMode) "&with-meta" else ""
@@ -40,13 +42,13 @@ object CmWellConsumeHandler {
     if (statusCode != 200 && statusCode != 204) {
       if(statusCode == 503) {
         logger.error("Failed to bulk consume, error status code=" + statusCode + "response entity=" + EntityUtils.toString(response.getEntity) + ".Going to retry...")
-        Thread.sleep(2000)
+        Thread.sleep(sleepTimeout)
         bulkConsume(cluster, position, format, updateMode)
       }
       else{
         if (retryCount < maxRetry) {
           logger.error("Failed to bulk consume, error status code=" + statusCode + "response entity=" + EntityUtils.toString(response.getEntity) + ".Going to retry...,retry count=" + retryCount)
-          Thread.sleep(2000)
+          Thread.sleep(sleepTimeout)
           bulkConsume(cluster, position, format, updateMode, retryCount + 1)
         } else {
           throw new Throwable("Failed to consume from cm-well, error code status=" + statusCode + ", response entity=" + EntityUtils.toString(response.getEntity))
@@ -57,31 +59,29 @@ object CmWellConsumeHandler {
   }
 
   def retrivePositionFromCreateConsumer(cluster: String, lengthHint: Int, qp: Option[String], updateMode:Boolean, automaticUpdateMode:Boolean, toolStartTime:Instant, retryCount:Int = 0): String = {
-    val withDeletedParam = if(updateMode) "&with-deleted" else ""
+    val withDeletedParam = if(updateMode || automaticUpdateMode) "&with-deleted" else ""
     //initial mode
     val qpTillStartTime = if(!updateMode && !automaticUpdateMode)  URLEncoder.encode(",system.lastModified<") + toolStartTime.toString else ""
     //automatic update mode
     val qpAfterStartTime = if(!updateMode && automaticUpdateMode) URLEncoder.encode(",system.lastModified>>" )+ toolStartTime.toString else ""
     val createConsumerUrl = "http://" + cluster + "/?op=create-consumer&qp=-system.parent.parent_hierarchy:/meta/" + qp.getOrElse("") + qpTillStartTime + qpAfterStartTime + "&recursive&length-hint=" + lengthHint + withDeletedParam
-    val url = createConsumerUrl
-    logger.info("create-consumer-url=" + url)
-    val get = new HttpGet(url)
+    logger.info("create-consumer-url=" + createConsumerUrl)
+    val get = new HttpGet(createConsumerUrl)
     val client = new DefaultHttpClient
     client.setHttpRequestRetryHandler(new CustomHttpClientRetryHandler())
     val response = client.execute(get)
     val res = response.getAllHeaders.find(_.getName == "X-CM-WELL-POSITION").map(_.getValue).getOrElse("")
-    println("in create consumer position=" + res)
     logger.info("create-Consumer http status=" + response.getStatusLine.getStatusCode)
     val statusCode = response.getStatusLine.getStatusCode
     if (statusCode != 200) {
       if(statusCode == 503){
         logger.error("Failed to retrieve position via create-consumer api,error status code=" + statusCode + ", response entity=" + EntityUtils.toString(response.getEntity) + ".Going to retry...")
-        Thread.sleep(2000)
+        Thread.sleep(sleepTimeout)
         retrivePositionFromCreateConsumer(cluster, lengthHint, qp, updateMode, automaticUpdateMode, toolStartTime)
       }else {
         if (retryCount < maxRetry) {
           logger.error("Failed to retrieve position via create-consumer api,error status code=" + statusCode + ", response entity=" + EntityUtils.toString(response.getEntity) + ".Going to retry..., retry count=" + retryCount)
-          Thread.sleep(2000)
+          Thread.sleep(sleepTimeout)
           retrivePositionFromCreateConsumer(cluster, lengthHint, qp, updateMode, automaticUpdateMode, toolStartTime, retryCount+1)
         }
         else {

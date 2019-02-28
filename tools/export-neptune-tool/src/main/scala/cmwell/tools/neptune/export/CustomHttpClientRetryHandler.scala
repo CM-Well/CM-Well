@@ -27,11 +27,11 @@ class CustomHttpClientRetryHandler extends DefaultHttpRequestRetryHandler{
   @Override
    override def retryRequest(exception: IOException, executionCount: Int, context: HttpContext) :Boolean = {
     logger.info("Going to retry http request...")
-    if (executionCount >= 3) { // Do not retry if over max retry count
+    if (executionCount >= 5) { // Do not retry if over max retry count
       false
     } else {
       logger.error("Exception=" + exception)
-      Thread.sleep(5000)
+      Thread.sleep(10000)
       true
     }
   }
