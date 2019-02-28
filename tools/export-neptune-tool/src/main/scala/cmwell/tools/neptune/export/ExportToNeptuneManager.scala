@@ -38,6 +38,10 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
   val executor = Executors.newFixedThreadPool(ingestConnectionPoolSize)
   implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.fromExecutor(executor)
   protected lazy val logger = LoggerFactory.getLogger("export_tool")
+  var totalInfotons = 0L
+  var bulkConsumeTotalTime = 0L
+  var neptuneTotalTime = 0L
+  var overallTime = 0L
 
   import java.util.concurrent.ArrayBlockingQueue
 
@@ -65,7 +69,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
   def consumeBulkAndIngest(position: String, sourceCluster: String, neptuneCluster: String, updateMode: Boolean, lengthHint: Int, qp: Option[String],
                            toolStartTime:Instant, bulkLoader:Boolean, proxyHost:Option[String], proxyPort:Option[Int], automaticUpdateMode:Boolean = false,
                            retryCount:Int = 5, s3Directory:String, retryToolCycle:Boolean): CloseableHttpResponse = {
-    val startTimeMillis = System.currentTimeMillis()
+    var startTimeBulkConsumeMillis = System.currentTimeMillis()
     var currentPosition = position
     var res = CmWellConsumeHandler.bulkConsume(sourceCluster, currentPosition, "nquads", updateMode)
     logger.info("Cm-well bulk consume http status=" + res.getStatusLine.getStatusCode)
@@ -84,15 +88,15 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
           case e: Throwable if retryCount > 0 =>
             logger.error("Failed to read input stream,", e.getMessage)
             logger.error("Going to retry, retry count=" + retryCount)
-            Thread.sleep(5000)
+            Thread.sleep(10000)
             consumeBulkAndIngest(currentPosition, sourceCluster, neptuneCluster, updateMode, lengthHint, qp, toolStartTime, bulkLoader,
               proxyHost, proxyPort, automaticUpdateMode, retryCount - 1, s3Directory, retryToolCycle)
           case e: Throwable if retryCount == 0 =>
             logger.error("Failed to read input stream from cmwell after retry 5 times..going to shutdown the system")
             sys.exit(0)
         }
-      val endTimeMillis = System.currentTimeMillis()
-      val readInputStreamDuration = (endTimeMillis - startTimeMillis) / 1000
+      val endTimeBulkConsumeMilis = System.currentTimeMillis()
+      val readInputStreamDuration = (endTimeBulkConsumeMilis - startTimeBulkConsumeMillis) / 1000
       //blocked until neptune ingester thread takes the message from qeuue, which means it's ready for next bulk.
       // this happens only when neptune ingester completed processing the previous bulk successfully and persist the position.
       blockingQueue.put(true)
@@ -106,6 +110,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
         buildSparqlCommandAndIngestToNeptuneViaSparqlAPI(neptuneCluster, ds, nextPosition, updateMode, readInputStreamDuration, totalInfotons, automaticUpdateMode)
       }
       currentPosition = nextPosition
+      startTimeBulkConsumeMillis = System.currentTimeMillis()
       res = CmWellConsumeHandler.bulkConsume(sourceCluster, nextPosition, "nquads", updateMode)
       logger.info("Cm-well bulk consume http status=" + res.getStatusLine.getStatusCode)
     }
@@ -183,15 +188,18 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
 
   }
 
+  val retryIngest = 5
+
+  private val secondsToWait: FiniteDuration = 10.seconds
 
   def sparqlPostWithRetry(neptuneCluster: String, sparqlCmd: String): Future[Int] = {
-    retry(10.seconds, 3) {
+    retry(secondsToWait, retryIngest) {
       NeptuneIngester.ingestToNeptuneViaSparqlAPI(neptuneCluster, sparqlCmd, ec)
     }
   }
 
   def loaderPostWithRetry(neptuneCluster: String, fileName: String): Future[Int] = {
-    retry(10.seconds, 3) {
+    retry(secondsToWait, retryIngest) {
       NeptuneIngester.ingestToNeptuneViaLoaderAPI(neptuneCluster, fileName, ec)
     }
   }
@@ -215,8 +223,12 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
   }
 
   private def printBulkStatistics(readInputStreamDuration: Long, totalInfotons: String, neptuneDurationSec: Long, totalTime: Long) = {
-    var avgInfotons = if(totalTime > 0) totalInfotons.toLong / totalTime else totalInfotons.toLong
-    val summaryLogMsg = "Total Infotons: " + totalInfotons + "\tConsume Duration: " + readInputStreamDuration + "\tNeptune Ingest Duration: " + neptuneDurationSec + "\ttotal time: " + totalTime + "\tAvg Infotons/sec: " + avgInfotons
+    this.totalInfotons+=totalInfotons.toLong
+    this.neptuneTotalTime+=neptuneDurationSec
+    this.bulkConsumeTotalTime+=readInputStreamDuration
+    this.overallTime+= (bulkConsumeTotalTime + neptuneTotalTime)
+    var avgInfotons = if(totalTime > 0)this.totalInfotons / overallTime else this.totalInfotons
+    val summaryLogMsg = "Total Infotons: " + totalInfotons + "\tConsume Duration: " + bulkConsumeTotalTime + "\tNeptune Ingest Duration: " + neptuneTotalTime + "\ttotal time: " + overallTime + "\tAvg Infotons/sec: " + avgInfotons
     logger.info(summaryLogMsg)
     print(summaryLogMsg + "\r")
   }
