@@ -1122,7 +1122,21 @@ callback=< [URL] >
                     .map {
                       case (src, hits) =>
                         val s: Source[ByteString, NotUsed] = {
-                          val scrollSourceToByteString = streams.scrollSourceToByteString(src,
+                          val srcWithDebug = if (debugLog) src.via {
+                            new StreamEventInspector(
+                              onUpstreamFinishInspection = () => logger.info(s"scrollSource<->scrollSourceToByteString [$id] onUpstreamFinish"),
+                              onUpstreamFailureInspection = error => logger.error(s"scrollSource<->scrollSourceToByteString [$id] onUpstreamFailure", error),
+                              onDownstreamFinishInspection = () => logger.info(s"scrollSource<->scrollSourceToByteString [$id] onDownstreamFinish"),
+                              onPullInspection = () => logger.info(s"scrollSource<->scrollSourceToByteString [$id] onPull"),
+                              onPushInspection = {
+                                case IterationResults(_, totalHits, iSeqOpt, _, _) =>
+                                  val infotonData = iSeqOpt.fold("infoton sequence is None")(iSeq =>
+                                    s"infoton count: ${iSeq.size}, first uuid: ${iSeq.headOption.fold("none")(_.uuid)}")
+                                  logger.info(s"scrollSource<->scrollSourceToByteString [$id] onPush(totalHits: $totalHits, $infotonData)")
+                              }
+                            )
+                          } else src
+                          val scrollSourceToByteString = streams.scrollSourceToByteString(srcWithDebug,
                             formatter,
                             withData.isDefined,
                             withHistory,
@@ -1130,10 +1144,10 @@ callback=< [URL] >
                             fieldsMask)
                           if (debugLog) scrollSourceToByteString.via {
                             new StreamEventInspector(
-                              onUpstreamFinishInspection = () => logger.info(s"[$id] onUpstreamFinish"),
-                              onUpstreamFailureInspection = error => logger.error(s"[$id] onUpstreamFailure", error),
-                              onDownstreamFinishInspection = () => logger.info(s"[$id] onDownstreamFinish"),
-                              onPullInspection = () => logger.info(s"[$id] onPull"),
+                              onUpstreamFinishInspection = () => logger.info(s"scrollSourceToByteString<->Play [$id] onUpstreamFinish"),
+                              onUpstreamFailureInspection = error => logger.error(s"scrollSourceToByteString<->Play [$id] onUpstreamFailure", error),
+                              onDownstreamFinishInspection = () => logger.info(s"scrollSourceToByteString<->Play [$id] onDownstreamFinish"),
+                              onPullInspection = () => logger.info(s"scrollSourceToByteString<->Play [$id] onPull"),
                               onPushInspection = bytes => {
                                 val all = bytes.utf8String
                                 val elem = {
@@ -1141,8 +1155,8 @@ callback=< [URL] >
                                   else all.lines.next()
                                 }
                                 logger.info(
-                                  s"""[$id] onPush(first line: "$elem", num of lines: ${all.lines.size}, num of chars: ${all.length})"""
-                                )
+                                  s"""scrollSourceToByteString<->Play [$id] onPush(first line: "$elem", num of lines: ${all.lines.size},"""
+                                    + s" num of chars: ${all.length})")
                               }
                             )
                           } else scrollSourceToByteString

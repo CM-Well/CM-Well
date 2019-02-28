@@ -136,7 +136,7 @@ object Streams extends LazyLogging {
       .map {
         case (FullBox(i), _) => i
         case (emptyBox@EmptyBox, uuid) =>
-          logger.error(s"Got emtpy box for uuid $uuid")
+          logger.error(s"Got empty box for uuid $uuid")
           emptyBox.get
         case (failure@BoxedFailure(ex), uuid) =>
           logger.error(s"Got BoxedFailure when trying to get uuid $uuid. The exception was:", ex)
