@@ -145,8 +145,7 @@
           "properties": {
             "lastModified": {
               "type": "date",
-              "store": "true",
-              "format": "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+              "store": "true"
             },
             "parent": {
               "type": "keyword",
