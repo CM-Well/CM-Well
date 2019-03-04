@@ -188,7 +188,7 @@ class FTSServiceEsSpec extends FlatSpec with Matchers with FTSServiceTestTrait w
     val infoton = ObjectInfoton("/fts-test/bulk1/info" + i, "dc_test", Some(System.currentTimeMillis()),
       Map("name" + i -> Set[FieldValue](FString("value" + i), FString("another value" + i))), Some("http"))
     ESIndexRequest(
-      Requests.indexRequest(testIndexName).`type`("infoclone").id(infoton.uuid)
+      Requests.indexRequest(testIndexName).`type`("infoclone").id(infoton.uuid).create(true)
         .source(JsonSerializerForES.encodeInfoton(infoton), XContentType.JSON),
       None
     )
