@@ -523,13 +523,13 @@ class FTSService(config: Config) extends NsSplitter{
             _._1
           })
           val versionConflictBulkIndexResults = createBulkIndexForVersionConflict(versionConflictErrors)
-          //recoverable
-          logger.warn(s"will retry recoverable failures after waiting for $waitBetweenRetries milliseconds")
-          val updatedIndexRequests = updateIndexRequests(recoverableFailures.map {
-            _._2
-          }, new DateTime().getMillis)
           val reResponse =
             if(recoverableFailures.length > 0) {
+              //recoverable
+              logger.warn(s"will retry recoverable failures after waiting for $waitBetweenRetries milliseconds")
+              val updatedIndexRequests = updateIndexRequests(recoverableFailures.map {
+                _._2
+              }, new DateTime().getMillis)
               retryRecoverableErrors(numOfRetries, waitBetweenRetries, recoverableFailures, updatedIndexRequests)
             }else{
               Future(SuccessfulBulkIndexResult(Nil, Nil))
