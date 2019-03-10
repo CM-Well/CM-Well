@@ -62,7 +62,6 @@ class ConsumeTests extends AsyncFunSpec with Inspectors with Matchers with Helpe
     val waitForIngestPlus40Seconds: Future[Unit] = secondConsumableChunk.flatMap(_ => schedule(40.seconds)(()))
 
     val path = cmw / "example.net" / "Consumeable"
-    val path2 = cmw / "test.net" /"Consumeable"
     val badReq1 = Http.get(path, List("op" -> "consume")).map(_.status should be(400))
     val badReq2 = Http.get(path, List("op" -> "bulk-consume")).map(_.status should be(400))
 
@@ -71,8 +70,7 @@ class ConsumeTests extends AsyncFunSpec with Inspectors with Matchers with Helpe
     val f2 = f1.flatMap(t => Http.get(path, List("op" -> "consume", "position" -> t._2.get, "length-hint" -> "7")).map(requestHandler))
     val f3 = f2.flatMap(t => Http.get(path, List("op" -> "consume", "position" -> t._2.get, "length-hint" -> "613")).map(requestHandler))
     val f4 = f3.flatMap(t => Http.get(path, List("op" -> "consume", "position" -> t._2.get)).map(requestHandler))
-    val f5 = waitForIngestPlus40Seconds.flatMap(_ => Http.get(path2, List("op" -> "create-consumer", "qp" -> ("system.lastModified<<" + System.currentTimeMillis()))).map(requestHandler))
-    val f6 = f5.flatMap(t => Http.get(path2, List("op" -> "consume", "position" -> t._2.get)).map(requestHandler))
+
     val g0 = waitForIngestPlus40Seconds.flatMap(_ => Http.post(path, "qp=collaboratesWith.rel::http://example.net/Consumeable/RK",Some("application/x-www-form-urlencoded"),queryParams = List("op" -> "create-consumer"),headers = tokenHeader).map(requestHandler))
     val g1 = waitForIngestPlus40Seconds.flatMap(_ => Http.get(path, List("op" -> "create-consumer", "qp" -> "collaboratesWith.rel::http://example.net/Consumeable/RK")).map(requestHandler))
     val g2 = g1.flatMap(t => Http.get(path, List("op" -> "consume", "position" -> t._2.get)).map(requestHandler))
@@ -187,16 +185,6 @@ class ConsumeTests extends AsyncFunSpec with Inspectors with Matchers with Helpe
             pos.isDefined should be(true)
             bod.trim.lines.count(_.trim.nonEmpty) should be(1)
           }
-        }
-      }
-    }
-
-    it("should receive the last modified") {
-      f6.map {
-        case (sta, pos, bod) => withClue(s"body: '${bod.take(25)}...'") {
-          sta should be(200)
-           pos.isDefined should be(true)
-          bod.trim.lines.count(_.trim.nonEmpty) should be(1)
         }
       }
     }
