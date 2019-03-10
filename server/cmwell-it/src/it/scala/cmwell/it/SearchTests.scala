@@ -221,7 +221,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
       }
     }
 
-    val lastModifiedSearch = executeAfterCompletion(f1){
+    val lastModifiedSearch = executeAfterCompletion(ingestGeonames){
       spinCheck(100.millis,true)(Http.get(
         uri = path,
         queryParams = List("op" -> "search","format" -> "json","pretty" -> "","debug-info" -> "",
