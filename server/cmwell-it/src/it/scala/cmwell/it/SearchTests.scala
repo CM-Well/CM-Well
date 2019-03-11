@@ -222,10 +222,11 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
     }
 
     val lastModifiedSearch = executeAfterCompletion(ingestGeonames){
+      val currentTime = System.currentTimeMillis()
       spinCheck(100.millis,true)(Http.get(
         uri = path,
         queryParams = List("op" -> "search","format" -> "json","pretty" -> "","debug-info" -> "",
-          "recursive"-> "", "qp" -> ("system.lastModified<<" + System.currentTimeMillis())))){ r =>
+          "recursive"-> "", "qp" -> ("system.lastModified<<" + currentTime)))){ r =>
         (Json.parse(r.payload) \ "results" \ "total": @unchecked) match {
           case JsDefined(JsNumber(n)) => n.intValue() == 14
         }
