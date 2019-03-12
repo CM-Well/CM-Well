@@ -985,13 +985,8 @@ class FTSService(config: Config) extends NsSplitter{
         case AnalyzedField =>  reverseNsTypedField(fieldValue.value)
         case NonAnalyzedField=>
           val fType = fieldType(fieldValue.value)
-          loger.info("lala, in analyze fieldVal=" + fieldValue.value)
-          loger.info("lala, in anaylazefile, ftype=" + fType)
           var reversed = reverseNsTypedField(fieldValue.value)
-          loger.info("lala, reversed=" + reversed)
-          val res = if (fType eq StringType) reversed + ".%exact" else reversed
-          loger.info("lala, res=" + res)
-          res
+          if (fType eq StringType) reversed + ".%exact" else reversed
       }
 
       val name = filter.name + "_" + counter
@@ -1119,11 +1114,9 @@ class FTSService(config: Config) extends NsSplitter{
     resFuture.transform {
       case Success(res) if res.getAggregations eq null =>
         Failure(new Exception(s"inner aggregations is null: $buildErrString"))
-      case Failure(err) if(err.getCause.getCause.getCause.getMessage.contains("Fielddata is disabled on text fields by default")) =>
-        loger.info("lala you are very cool, err=" + err.getCause.getCause.getMessage)
+      case Failure(err) if err.getCause.getCause.getCause.getMessage.contains("Fielddata is disabled on text fields by default") =>
         Failure(new IllegalArgumentException(s"aggregations failure due to fielddata disabled: $buildErrString", err))
       case Failure(err) =>
-        loger.info("lala, very bad,err=" + err.getCause.getCause.getMessage)
         Failure(new Exception(s"aggregations failure: $buildErrString", err))
       case Success(res) =>
         Try(esAggsToOurAggs(res.getAggregations, searchQueryStr)).recoverWith {

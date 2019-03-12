@@ -2068,7 +2068,7 @@ callback=< [URL] >
         e
       )case e:IllegalArgumentException
       if e.getMessage.contains("aggregations failure due to fielddata disabled")
-      => new IllegalArgumentException("Stats API does not support non-exact value operator. Please use :: instead of :\n" + e.getMessage, e)
+      => new IllegalArgumentException("Stats API does not support non-exact value operator. Please use :: instead of :" + e.getMessage, e)
     case e => e
   }
 

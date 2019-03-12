@@ -523,15 +523,12 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                 withHistory: Boolean = false,
                 aggregationFilters: Seq[AggregationFilter],
                 debugInfo: Boolean = false): Future[AggregationsResponse] = {
-    logger.info("lala, going to call aggregate")
-    val x = ftsService.aggregate(pathFilter,
+    ftsService.aggregate(pathFilter,
                          fieldsFilters,
                          datesFilter,
                          paginationParams,
                          aggregationFilters,
                          debugInfo = debugInfo)
-    logger.info("lala, x=" + x)
-    x
   }
 
   val thinSearchResultsBreakout =

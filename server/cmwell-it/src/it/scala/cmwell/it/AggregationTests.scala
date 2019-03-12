@@ -1,0 +1,129 @@
+/**
+  * Copyright 2015 Thomson Reuters
+  *
+  * Licensed under the Apache License, Version 2.0 (the “License”); you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  *
+  *   http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+  * an “AS IS” BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  *
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+
+
+package cmwell.it
+
+import com.typesafe.scalalogging.LazyLogging
+import org.scalatest.{AsyncFunSpec, Inspectors, Matchers}
+import play.api.libs.json.{JsValue, _}
+
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
+import scala.util.{Failure, Success, Try}
+
+class AggregationTests extends AsyncFunSpec with Matchers with Inspectors with Helpers with fixture.NSHashesAndPrefixes with LazyLogging {
+
+  def orderingFor[A : Numeric](rootSegment: String)(field: String, ascending: Boolean)(implicit rds: Reads[A]): Ordering[JsValue] = new Ordering[JsValue] {
+    override def compare(x: JsValue, y: JsValue): Int = {
+      val num = implicitly[Numeric[A]]
+      val xf = Try((x \ rootSegment \ field).head.as[A])
+      val yf = Try((y \ rootSegment \ field).head.as[A])
+      (xf,yf) match {
+        case (Failure(_), Failure(_)) => 0
+        case (Failure(_), _) => -1
+        case (_, Failure(_)) => 1
+        case (Success(xv), Success(yv)) =>
+          if (ascending) num.compare(xv, yv)
+          else num.compare(yv, xv)
+      }
+    }
+  }
+
+  def orderingForField[A : Numeric](field: String, ascending: Boolean)(implicit rds: Reads[A]): Ordering[JsValue] = orderingFor("fields")(field,ascending)
+
+  val orderingForScore = orderingFor[Float]("extra")("score",ascending=false)
+
+
+  describe("Agg API should") {
+    //Assertions
+    val ingestGeonames = Future.traverse(Seq(293846)) { n =>
+      val agg = scala.io.Source.fromURL(this.getClass.getResource(s"/agg/aggnames_$n.nq")).mkString
+      Http.post(_in, agg, Some("text/nquads;charset=UTF-8"), List("format" -> "nquads"), tokenHeader)
+    }.map { results =>
+      forAll(results) { res =>
+        withClue(res) {
+          res.status should be(200)
+          jsonSuccessPruner(Json.parse(res.payload)) shouldEqual jsonSuccess
+        }
+      }
+    }
+
+
+    val path = cmw / "test.agg.org" / "Test201903_05_1501_11" / "testStatsApiTerms"
+
+//    val aggForIntField = executeAfterCompletion(ingestGeonames) {
+//      spinCheck(100.millis, true)(Http.get(
+//        uri = path,
+//        queryParams = List("op" -> "stats", "format" -> "json", "debug-info" -> "", "ap" -> "type:term,field::num.testns,size:3"))) { r =>
+//        println("r.status=" + r.status)
+//        println("json parse=" + (Json.parse(r.payload) \ "AggregationResponse" \\ "buckets": @unchecked))
+//        (Json.parse(r.payload) \ "AggregationResponse" \\ "buckets": @unchecked).size match {
+//          case n: Int => (r.status == 200) && (n == 3)
+//        }
+//      }.map { res =>
+//        withClue(res) {
+//          res.status should be(200)
+//          val total = (Json.parse(res.payload) \ "AggregationResponse" \\ "buckets").size
+//          total should be(3)
+//        }
+//      }
+//    }
+
+
+//    val recursiveSearch2 = executeAfterCompletion(ingestGeonames) {
+//      spinCheck(100.millis, true)(Http.get(
+//        uri = path,
+//        queryParams = List("op" -> "stats", "format" -> "json", "debug-info" -> "", "ap" -> "type:term,field::Test_Data.testns,size:2"))) { r =>
+//        (Json.parse(r.payload) \ "AggregationResponse" \ "buckets": @unchecked) match {
+//          case JsDefined(JsNumber(n)) => (r.status == 200) && (n.intValue() == 2)
+//        }
+//      }.map { res =>
+//        withClue(res) {
+//          res.status should be(200)
+//          val total = (Json.parse(res.payload) \ "results" \ "total").as[Int]
+//          total should be(2)
+//        }
+//      }
+//    }
+
+
+    val badQueryNonExactStrMatch = executeAfterCompletion(ingestGeonames) {
+      spinCheck(100.millis, true)(Http.get(
+        uri = path,
+        queryParams = List("op" -> "stats", "format" -> "json", "debug-info" -> "", "ap" -> "type:term,field:Test_Data.testns,size:2"))) { r =>
+        Json.parse(r.payload).toString().contains("Stats API does not support non-exact value operator. Please use :: instead of :") && r.status == 400
+      }.map { res =>
+        withClue(res) {
+          res.status should be(400)
+          val result = (Json.parse(res.payload) \ "error").as[String]
+          result should include ("Stats API does not support non-exact value operator. Please use :: instead of :")
+        }
+      }
+    }
+
+
+    val ex2unitPF: PartialFunction[Throwable, Unit] = {
+      case _: Throwable => ()
+    }
+
+
+    it("ingest aggnames data successfully")(ingestGeonames)
+    //    it("get stats for int field")(aggForIntField)
+    //    it("get exact stats for string field")(recursiveSearch2)
+    it("get stats for non exact string field should be bad response")(badQueryNonExactStrMatch)
+  }
+
+}
