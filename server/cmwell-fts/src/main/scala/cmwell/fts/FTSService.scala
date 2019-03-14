@@ -963,7 +963,7 @@ class FTSService(config: Config) extends NsSplitter{
 
   }
 
-  def isStrSystemField(fieldName: String, fieldType: FieldType with Product with Serializable): Boolean = {
+  def isStrSystemField(fieldName: String, fieldType: FieldType): Boolean = {
     (fieldType eq StringType) && (fieldName.startsWith("system.") || fieldName.startsWith("content.") || fieldName.startsWith("link."))
 
   }
@@ -987,16 +987,15 @@ class FTSService(config: Config) extends NsSplitter{
     def filterToBuilder(filter:AggregationFilter):AggregationBuilder = {
 
       implicit def fieldValueToValue(fieldValue: Field): String = {
-        if (isStrSystemField(fieldValue.value, fieldType(fieldValue.value)))
+        val fType = fieldType(fieldValue.value)
+        if (isStrSystemField(fieldValue.value, fType))
           throw new IllegalArgumentException("aggregations failure due to text system field")
         fieldValue.operator match {
           case AnalyzedField =>
-            val fType = fieldType(fieldValue.value)
             if (fType eq StringType)
               throw new IllegalArgumentException("aggregations failure due to fielddata disabled")
             else reverseNsTypedField(fieldValue.value)
           case NonAnalyzedField =>
-            val fType = fieldType(fieldValue.value)
             val reversed = reverseNsTypedField(fieldValue.value)
             if (fType eq StringType) reversed + ".%exact" else reversed
         }
