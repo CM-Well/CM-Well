@@ -1,0 +1,400 @@
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton72> <http://qa.test.rfnt.com/v1.1/testns#num> "45"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton72> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton72> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Lorem cupidatat filet mignon non in, meatball bacon pastrami exercitation biltong veniam jowl pork belly anim adipisicing. Ea exercitation magna adipisicing in. Ham anim short loin aliqua, cupim alcatra t-bone commodo sunt laboris." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton72> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Sunday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton25> <http://qa.test.rfnt.com/v1.1/testns#num> "23"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton25> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton25> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Aliquip pariatur sed pork loin veniam capicola jerky beef ribs fugiat boudin id cupidatat pork. Ut prosciutto consectetur id ipsum voluptate kielbasa. Ipsum rump ribeye filet mignon qui dolore do." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton25> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Wednesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton85> <http://qa.test.rfnt.com/v1.1/testns#num> "71"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton85> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton85> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Kevin ground round picanha sunt, ipsum buffalo leberkas ea salami fatback. Meatball sunt elit, duis pork belly est ullamco salami enim sint aute qui. Hamburger cillum tenderloin andouille, excepteur flank meatball incididunt filet mignon." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton85> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Wednesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton39> <http://qa.test.rfnt.com/v1.1/testns#num> "42"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton39> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton39> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Ground round buffalo aute chuck boudin. Venison magna frankfurter, ut aliquip veniam consequat beef tempor in turkey dolore ground round ham pancetta. Sint minim kielbasa, pork cupim rump pork chop sed hamburger tail chicken in." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton39> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Saturday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton7> <http://qa.test.rfnt.com/v1.1/testns#num> "23"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton7> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton7> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Velit deserunt occaecat drumstick shank t-bone boudin short ribs. Buffalo irure t-bone quis ham hock pork ea meatloaf magna nostrud. Porchetta occaecat pork loin exercitation." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton7> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Monday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton17> <http://qa.test.rfnt.com/v1.1/testns#num> "10"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton17> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton17> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Boudin lorem kevin leberkas sed aliqua laborum picanha pancetta. Biltong tri-tip bacon, pig drumstick brisket magna shank dolore. Ullamco prosciutto picanha, biltong ex pork loin id buffalo pork chop." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton17> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Thursday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton42> <http://qa.test.rfnt.com/v1.1/testns#num> "42"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton42> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton42> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Nulla capicola flank fugiat ball tip magna tempor mollit beef excepteur esse cupidatat pariatur veniam consequat. Proident leberkas qui id t-bone cow frankfurter doner biltong pancetta pork belly ad kevin alcatra. T-bone ipsum sunt, beef labore cillum andouille pork belly." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton42> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Thursday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton65> <http://qa.test.rfnt.com/v1.1/testns#num> "49"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton65> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton65> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Short ribs ad sed, doner beef ribs labore qui ex in landjaeger. Pork duis ut shoulder commodo. Irure prosciutto kielbasa, landjaeger brisket officia ea." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton65> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Thursday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton83> <http://qa.test.rfnt.com/v1.1/testns#num> "59"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton83> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton83> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Deserunt pork pig, biltong ea fugiat burgdoggen brisket voluptate fatback aliqua aute. Veniam turkey in, eu pig ham hock in cupim venison pork belly cow consequat shoulder. Do meatball id short loin." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton83> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Sunday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton24> <http://qa.test.rfnt.com/v1.1/testns#num> "24"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton24> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton24> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Fatback veniam dolor flank, turkey t-bone pig mollit. Cow salami hamburger tail pancetta irure aliqua laboris andouille cillum. Laboris fatback chuck excepteur drumstick." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton24> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Sunday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton44> <http://qa.test.rfnt.com/v1.1/testns#num> "38"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton44> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton44> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Labore tenderloin proident, sint officia sausage ad deserunt. Minim laboris ea, buffalo culpa ad labore filet mignon. Flank venison eiusmod, bacon ut voluptate eu brisket landjaeger." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton44> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Friday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton12> <http://qa.test.rfnt.com/v1.1/testns#num> "98"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton12> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton12> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Tenderloin picanha eu enim meatloaf fatback laboris occaecat buffalo sunt adipisicing shank venison porchetta tempor. Laboris drumstick fatback t-bone laborum qui ea biltong in kielbasa landjaeger burgdoggen ut jowl tempor. Turducken anim commodo, filet mignon eu veniam bacon esse biltong chicken cupim ullamco ham consectetur deserunt." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton12> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Wednesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton37> <http://qa.test.rfnt.com/v1.1/testns#num> "14"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton37> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton37> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Porchetta ball tip ham, ipsum pariatur lorem est venison dolore chicken magna sausage. Occaecat ut pork chop kielbasa, non esse veniam ribeye t-bone in. Burgdoggen ex fugiat pork belly nisi consectetur." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton37> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Saturday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton55> <http://qa.test.rfnt.com/v1.1/testns#num> "27"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton55> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton55> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Tail in chicken strip steak ut picanha meatball rump in bacon. Magna consectetur tail, aute ex pastrami sausage ground round mollit hamburger culpa. Dolor sunt andouille hamburger commodo velit, short ribs pork belly venison aliqua cupidatat aute." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton55> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Friday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton98> <http://qa.test.rfnt.com/v1.1/testns#num> "14"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton98> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton98> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Dolor cupidatat non beef sausage, capicola frankfurter anim tempor ham chuck. Nostrud ut beef sed ham hock, fugiat porchetta eiusmod. Chicken incididunt in, rump mollit consequat flank pork chop doner." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton98> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Wednesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton70> <http://qa.test.rfnt.com/v1.1/testns#num> "50"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton70> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton70> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Magna in salami rump officia tail ex minim voluptate ut bacon biltong anim pastrami filet mignon. Short loin spare ribs adipisicing lorem bacon. Tenderloin sed flank nostrud sint picanha pariatur labore salami velit bacon short loin biltong pork." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton70> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Monday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton63> <http://qa.test.rfnt.com/v1.1/testns#num> "78"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton63> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton63> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Turducken pork ribeye picanha aliqua duis landjaeger sint, shankle tenderloin officia laborum est. Elit deserunt frankfurter burgdoggen magna sausage do ham doner pork swine dolor reprehenderit tail. Ham hock bresaola tri-tip velit sed, chicken drumstick." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton63> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Monday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton69> <http://qa.test.rfnt.com/v1.1/testns#num> "31"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton69> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton69> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Tempor rump biltong enim nisi. Dolore irure veniam do turkey salami ground round nostrud meatloaf turducken cillum chicken burgdoggen alcatra. Sirloin incididunt aliqua, pastrami dolor labore aliquip in brisket velit est bresaola qui flank." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton69> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Friday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton6> <http://qa.test.rfnt.com/v1.1/testns#num> "53"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton6> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton6> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Hamburger biltong pork chop, elit chuck ground round rump laborum short ribs brisket culpa cow cillum ham hock ut. Pancetta deserunt andouille, consectetur spare ribs tail bacon buffalo ipsum venison beef irure dolor id. Biltong fugiat bresaola lorem spare ribs hamburger mollit." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton6> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Thursday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton82> <http://qa.test.rfnt.com/v1.1/testns#num> "93"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton82> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton82> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Ribeye jerky sed fatback shankle deserunt, laborum ball tip ex elit eu qui incididunt. Sirloin boudin chuck, dolore buffalo duis filet mignon capicola. Voluptate strip steak picanha venison, dolore t-bone sed chuck ham hock." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton82> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Thursday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton73> <http://qa.test.rfnt.com/v1.1/testns#num> "94"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton73> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton73> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Et lorem ipsum, ad incididunt magna pariatur. Irure pork loin consequat fatback. Adipisicing bacon porchetta beef labore tempor andouille laborum esse proident." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton73> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Thursday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton1> <http://qa.test.rfnt.com/v1.1/testns#num> "65"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton1> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton1> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Aute capicola t-bone ground round. Ham flank ground round ham hock, voluptate magna nulla shank dolore fugiat t-bone short loin adipisicing eiusmod mollit. Buffalo shoulder est, ex in leberkas commodo velit cupidatat fatback dolore eiusmod ham sunt bacon." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton1> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Friday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton36> <http://qa.test.rfnt.com/v1.1/testns#num> "93"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton36> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton36> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Sed leberkas mollit salami pastrami. Aliqua doner ham hock ullamco, id tail spare ribs corned beef et quis minim pancetta veniam chuck consequat. Brisket sausage dolore pork chop doner ham strip steak irure short ribs id turducken landjaeger." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton36> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Thursday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton34> <http://qa.test.rfnt.com/v1.1/testns#num> "21"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton34> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton34> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Burgdoggen culpa aliquip, veniam cupidatat ut meatloaf shank ut non. Pancetta meatball fugiat buffalo tail duis quis pork laborum. Pastrami tri-tip turkey nulla jowl, pork chop velit magna labore commodo venison picanha." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton34> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Wednesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton14> <http://qa.test.rfnt.com/v1.1/testns#num> "76"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton14> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton14> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Ut cupidatat brisket pork belly shank, landjaeger porchetta id elit qui sint ut alcatra capicola. Pork belly exercitation kielbasa, laborum t-bone turkey qui buffalo. Elit salami boudin, sed cupidatat in rump lorem sirloin bacon est in kielbasa et beef." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton14> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Sunday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton77> <http://qa.test.rfnt.com/v1.1/testns#num> "61"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton77> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton77> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Sed reprehenderit tempor, pork chop porchetta fugiat shankle short loin doner chicken elit turkey. Occaecat jerky commodo irure, eiusmod andouille cillum kielbasa ground round nostrud buffalo turkey meatball. Fatback eiusmod ham chuck bacon shankle consequat boudin dolore cow in culpa porchetta." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton77> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Friday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton38> <http://qa.test.rfnt.com/v1.1/testns#num> "39"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton38> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton38> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Do mollit turkey shoulder bacon picanha aute ex non in excepteur qui tail velit. Consequat rump salami ut frankfurter pariatur, shankle fatback in eu cow elit drumstick duis meatloaf. Magna officia short ribs tempor." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton38> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Monday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton16> <http://qa.test.rfnt.com/v1.1/testns#num> "31"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton16> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton16> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Commodo consequat drumstick dolore do fugiat. Tri-tip picanha elit pork loin spare ribs filet mignon minim qui ham. Mollit lorem et beef ribs." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton16> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Sunday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton75> <http://qa.test.rfnt.com/v1.1/testns#num> "34"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton75> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton75> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Commodo chicken quis, kevin beef lorem pork cillum ex chuck dolore tenderloin excepteur tail. Strip steak in anim capicola jerky ball tip. Laboris ham cillum, sunt meatball cow ipsum chuck adipisicing fatback." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton75> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Wednesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton58> <http://qa.test.rfnt.com/v1.1/testns#num> "14"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton58> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton58> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Venison veniam short loin, alcatra boudin adipisicing exercitation ham. Occaecat in shankle strip steak, shoulder jerky andouille pork chop aute filet mignon ham hock aliqua turducken mollit. Landjaeger magna et beef ribs doner turkey." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton58> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Tuesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton28> <http://qa.test.rfnt.com/v1.1/testns#num> "74"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton28> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton28> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Kielbasa shankle elit pig cow. Ut tenderloin strip steak pork belly filet mignon fugiat est ham hock. Frankfurter alcatra consectetur ball tip." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton28> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Monday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton46> <http://qa.test.rfnt.com/v1.1/testns#num> "98"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton46> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton46> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Meatloaf boudin voluptate pork loin excepteur laborum ut kielbasa porchetta. Tail aliquip qui sirloin chuck ex pariatur occaecat quis labore tri-tip bacon t-bone ut consequat. Cillum ham dolore eiusmod." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton46> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Wednesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton8> <http://qa.test.rfnt.com/v1.1/testns#num> "61"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton8> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton8> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Shankle excepteur flank, in filet mignon pork culpa doner kielbasa jerky nisi. Velit ball tip quis tempor minim, tongue flank. Sirloin lorem nisi magna short ribs buffalo chicken nostrud." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton8> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Sunday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton87> <http://qa.test.rfnt.com/v1.1/testns#num> "23"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton87> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton87> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Lorem cupim in, pig biltong ball tip esse chicken minim aliqua. Strip steak prosciutto nisi picanha, occaecat t-bone sunt andouille dolore pastrami excepteur elit turkey. Exercitation ut nisi cillum drumstick, labore officia short loin short ribs alcatra tail pancetta turducken." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton87> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Friday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton91> <http://qa.test.rfnt.com/v1.1/testns#num> "56"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton91> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton91> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Cupim salami ad, sunt do adipisicing deserunt boudin enim fugiat flank hamburger pork loin ut. Minim ham hock nostrud strip steak enim. Chicken eu shankle shank." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton91> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Sunday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton4> <http://qa.test.rfnt.com/v1.1/testns#num> "65"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton4> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton4> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Voluptate aliquip corned beef occaecat. Nisi ground round beef ribs kevin ball tip meatloaf laboris, beef boudin ut ullamco consectetur pariatur ribeye dolor. Eu veniam officia ut biltong sirloin ad meatloaf capicola ball tip filet mignon meatball." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton4> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Thursday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton99> <http://qa.test.rfnt.com/v1.1/testns#num> "85"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton99> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton99> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Chuck ea turkey, pork loin shank ball tip aliquip labore ut. Officia dolore prosciutto ham, culpa andouille non jerky. Tail sed pig laboris nisi dolore ut fatback ex, burgdoggen ball tip tongue." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton99> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Monday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton80> <http://qa.test.rfnt.com/v1.1/testns#num> "28"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton80> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton80> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Laborum magna shank, prosciutto dolor buffalo landjaeger in pig sint esse culpa frankfurter andouille cupim. Short ribs shankle biltong dolore cupim proident velit cow pariatur ham hock kielbasa ut. Occaecat est aliqua beef." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton80> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Friday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton3> <http://qa.test.rfnt.com/v1.1/testns#num> "82"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton3> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton3> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Sint officia tenderloin nisi, qui beef ribs adipisicing ut. Deserunt esse ground round anim burgdoggen. Proident aliqua frankfurter bresaola qui est." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton3> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Saturday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton64> <http://qa.test.rfnt.com/v1.1/testns#num> "48"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton64> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton64> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Picanha deserunt ribeye mollit. Adipisicing bresaola ullamco short loin excepteur. Doner tri-tip biltong nisi." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton64> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Tuesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton79> <http://qa.test.rfnt.com/v1.1/testns#num> "56"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton79> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton79> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Doner aute in, sirloin burgdoggen picanha ea shankle jowl jerky ham salami prosciutto. Meatloaf irure anim short loin. Consequat ground round cillum, adipisicing ut pariatur nisi et veniam eu consectetur do meatball dolore." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton79> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Wednesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton94> <http://qa.test.rfnt.com/v1.1/testns#num> "56"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton94> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton94> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Sausage tenderloin et kevin qui commodo beef ribs pork chop proident ut biltong boudin chuck cupidatat. Qui prosciutto cupim fugiat corned beef ham eiusmod esse turducken voluptate. Consequat fugiat kevin nostrud doner do exercitation flank turkey laboris eiusmod buffalo fatback eu." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton94> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Friday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton47> <http://qa.test.rfnt.com/v1.1/testns#num> "94"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton47> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton47> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Eiusmod brisket sirloin chuck t-bone proident spare ribs quis. Minim tenderloin ea brisket in. Tongue beef bacon sirloin." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton47> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Tuesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton43> <http://qa.test.rfnt.com/v1.1/testns#num> "85"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton43> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton43> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Bacon beef ribs leberkas esse mollit pork belly, in landjaeger ham hock pancetta. Landjaeger sausage leberkas, cillum enim brisket nisi turkey short ribs frankfurter velit. Occaecat beef ribs tri-tip sirloin dolore." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton43> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Thursday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton68> <http://qa.test.rfnt.com/v1.1/testns#num> "56"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton68> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton68> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Velit aliquip nostrud, sausage capicola kevin labore ribeye pariatur. Shank jerky anim hamburger. Officia proident beef ribs pastrami labore, ham meatball kielbasa ribeye." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton68> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Monday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton33> <http://qa.test.rfnt.com/v1.1/testns#num> "28"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton33> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton33> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Anim in voluptate beef. Tongue biltong pork loin, drumstick pancetta rump pork belly eu cupim et strip steak ribeye. Meatloaf shankle burgdoggen, ea excepteur boudin fugiat velit." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton33> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Tuesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton5> <http://qa.test.rfnt.com/v1.1/testns#num> "6"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton5> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton5> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Shoulder elit bacon consectetur ground round duis. Ut short ribs nisi tongue landjaeger capicola adipisicing ut sausage pig eiusmod est ham. Jowl cupim nulla flank ball tip beef." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton5> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Wednesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton60> <http://qa.test.rfnt.com/v1.1/testns#num> "40"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton60> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton60> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Officia magna ullamco beef ribs flank aliquip eiusmod shoulder sausage pork. Short loin burgdoggen filet mignon mollit anim. Sunt spare ribs excepteur consectetur." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton60> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Wednesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton54> <http://qa.test.rfnt.com/v1.1/testns#num> "14"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton54> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton54> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Chuck mollit commodo shank picanha. Dolore duis nulla voluptate boudin, in tongue rump esse jerky bresaola pig beef ribs chicken ball tip. Shoulder filet mignon fugiat, consectetur beef pastrami est beef ribs andouille ea salami." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton54> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Tuesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton10> <http://qa.test.rfnt.com/v1.1/testns#num> "27"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton10> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton10> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Dolore ipsum in cow in occaecat. Pork chop non brisket cupim, sed shank pork ground round ullamco dolore nostrud eiusmod. Meatball beef ribs t-bone voluptate proident dolore in adipisicing burgdoggen shoulder ut." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton10> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Wednesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton66> <http://qa.test.rfnt.com/v1.1/testns#num> "7"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton66> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton66> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Tri-tip reprehenderit magna pork tongue do hamburger salami adipisicing. Andouille ham elit exercitation chuck beef ribs deserunt rump aliqua adipisicing alcatra capicola short ribs pork loin enim. Bacon alcatra irure, capicola consequat velit ham hock pariatur burgdoggen commodo bresaola." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton66> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Thursday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton2> <http://qa.test.rfnt.com/v1.1/testns#num> "77"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton2> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton2> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Spare ribs exercitation salami dolore kevin. Eu dolore anim cupidatat, bresaola dolore elit enim ut. Incididunt pork venison filet mignon shank magna, cupim ex chicken id tempor veniam ut cillum." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton2> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Monday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton67> <http://qa.test.rfnt.com/v1.1/testns#num> "91"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton67> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton67> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Irure tenderloin brisket, capicola ut duis hamburger boudin sed spare ribs. Shank in pork boudin burgdoggen kevin fatback pork loin ad consectetur chicken beef ribs pariatur. Duis culpa ut, anim picanha proident spare ribs ipsum buffalo tempor." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton67> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Monday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton62> <http://qa.test.rfnt.com/v1.1/testns#num> "37"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton62> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton62> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Filet mignon velit id beef spare ribs rump ut shankle alcatra kielbasa kevin. Pork chop chuck porchetta andouille proident cupim. Chicken boudin swine, ham reprehenderit brisket shank tri-tip velit labore cillum." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton62> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Wednesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton27> <http://qa.test.rfnt.com/v1.1/testns#num> "22"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton27> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton27> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Occaecat commodo velit cow, dolore ipsum dolore aliqua sausage swine turducken short ribs ex venison. Consequat ribeye ball tip in, lorem pig ipsum cillum do tempor in bacon spare ribs. Irure landjaeger doner, sed ut ball tip burgdoggen venison tempor mollit meatloaf." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton27> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Friday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton53> <http://qa.test.rfnt.com/v1.1/testns#num> "85"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton53> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton53> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Ad ham pork in, non aute commodo jerky filet mignon do nulla tenderloin pariatur. Salami pancetta chicken, bresaola frankfurter veniam ham buffalo sint. Excepteur ball tip leberkas cow rump est." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton53> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Wednesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton23> <http://qa.test.rfnt.com/v1.1/testns#num> "11"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton23> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton23> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Cupidatat est deserunt, bresaola brisket proident culpa shoulder. Enim pork chop magna eiusmod qui chicken. T-bone strip steak ex sed dolore commodo excepteur venison swine shank." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton23> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Wednesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton35> <http://qa.test.rfnt.com/v1.1/testns#num> "1"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton35> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton35> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Filet mignon chuck elit, occaecat boudin cow pariatur. Porchetta kielbasa enim strip steak. Ut adipisicing meatball landjaeger, prosciutto nostrud t-bone eiusmod filet mignon lorem." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton35> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Thursday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton49> <http://qa.test.rfnt.com/v1.1/testns#num> "20"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton49> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton49> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Fugiat anim chuck est. Meatloaf pork belly jerky doner dolore ball tip shankle mollit flank sint. T-bone ad officia, salami enim cupim labore nostrud pork chop filet mignon shoulder lorem incididunt." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton49> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Monday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton84> <http://qa.test.rfnt.com/v1.1/testns#num> "57"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton84> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton84> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Qui consequat eiusmod, ham hock shank ad burgdoggen commodo non rump porchetta buffalo brisket strip steak venison. Sint ea pork chop picanha pork loin. Corned beef laboris turkey ham qui landjaeger." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton84> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Wednesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton13> <http://qa.test.rfnt.com/v1.1/testns#num> "9"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton13> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton13> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Short ribs ut biltong drumstick shoulder sausage jowl. Irure jowl velit ullamco id. Ball tip officia biltong nostrud filet mignon bresaola porchetta buffalo prosciutto ad meatball, cillum culpa." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton13> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Saturday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton96> <http://qa.test.rfnt.com/v1.1/testns#num> "91"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton96> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton96> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "In lorem et nisi, ribeye nostrud strip steak. Drumstick turkey enim hamburger velit ham strip steak. Qui minim corned beef cupim." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton96> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Tuesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton78> <http://qa.test.rfnt.com/v1.1/testns#num> "50"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton78> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton78> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Frankfurter in bresaola eiusmod. Kielbasa beef ribs kevin meatball, do salami proident pork belly aute pastrami. Filet mignon excepteur velit proident et." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton78> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Friday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton48> <http://qa.test.rfnt.com/v1.1/testns#num> "62"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton48> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton48> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Cillum chuck beef adipisicing culpa picanha buffalo. Filet mignon strip steak short ribs kielbasa eiusmod sint. Turkey ad veniam tenderloin, laborum burgdoggen voluptate swine sirloin flank shoulder ham occaecat." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton48> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Wednesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton32> <http://qa.test.rfnt.com/v1.1/testns#num> "73"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton32> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton32> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Venison sint alcatra, ad ea ullamco elit commodo landjaeger chicken. Ground round duis sint, culpa meatloaf frankfurter buffalo kevin sed swine corned beef dolor velit. Ut dolore turkey elit bresaola pork belly non aliqua." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton32> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Tuesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton21> <http://qa.test.rfnt.com/v1.1/testns#num> "77"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton21> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton21> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Porchetta sirloin capicola eiusmod, bacon commodo biltong bresaola deserunt. Beef rump ham adipisicing veniam frankfurter eiusmod. Enim shankle voluptate short ribs ipsum." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton21> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Tuesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton50> <http://qa.test.rfnt.com/v1.1/testns#num> "58"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton50> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton50> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Id flank meatball qui et turkey aliqua turducken ground round picanha t-bone. Ut boudin tongue fatback magna, in minim culpa leberkas elit reprehenderit flank in. Occaecat aliquip pariatur shankle capicola sausage, quis et bresaola deserunt shoulder nisi sed nulla." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton50> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Friday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton30> <http://qa.test.rfnt.com/v1.1/testns#num> "96"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton30> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton30> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Labore ex lorem pariatur. Non tempor aliquip ground round. Non nostrud frankfurter, jowl exercitation qui eiusmod." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton30> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Monday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton18> <http://qa.test.rfnt.com/v1.1/testns#num> "90"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton18> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton18> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Jowl turkey irure pork chop dolor turducken spare ribs hamburger tempor fatback ground round landjaeger voluptate. Landjaeger brisket elit bresaola, laborum pig esse drumstick t-bone anim. Venison boudin pariatur aute qui, nulla ground round drumstick." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton18> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Thursday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton40> <http://qa.test.rfnt.com/v1.1/testns#num> "87"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton40> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton40> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Ipsum in filet mignon, chuck beef ribs nulla do kielbasa. Shoulder adipisicing et labore pork chop, incididunt strip steak dolore deserunt meatloaf pork loin aute ribeye. Ad qui aute strip steak deserunt, adipisicing incididunt aliquip laborum." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton40> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Thursday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton100> <http://qa.test.rfnt.com/v1.1/testns#num> "85"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton100> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton100> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Short loin ribeye cupidatat brisket pariatur rump drumstick burgdoggen qui fatback duis. Deserunt anim laboris, enim quis tri-tip ullamco shoulder ex burgdoggen. Nulla kielbasa prosciutto id anim doner ham hock excepteur capicola laborum dolore strip steak filet mignon meatball." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton100> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Wednesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton41> <http://qa.test.rfnt.com/v1.1/testns#num> "35"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton41> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton41> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Rump turkey pariatur salami. Tail dolore ham ground round, strip steak non sirloin adipisicing kevin shank. Venison chicken laborum, pancetta ex dolore salami pork jowl corned beef consectetur." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton41> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Monday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton31> <http://qa.test.rfnt.com/v1.1/testns#num> "23"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton31> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton31> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Qui magna excepteur proident, anim aliqua venison reprehenderit ut dolore picanha biltong short loin. Porchetta velit boudin, jowl hamburger kevin commodo anim do dolore pork loin sed. Buffalo lorem et occaecat, bacon bresaola pariatur est consequat drumstick sint kevin incididunt do." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton31> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Sunday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton90> <http://qa.test.rfnt.com/v1.1/testns#num> "65"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton90> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton90> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Pork loin kielbasa spare ribs ipsum nulla capicola. Laborum cow shankle tongue sirloin duis pork belly qui. Officia irure exercitation in, ut aliquip do ea." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton90> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Friday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton52> <http://qa.test.rfnt.com/v1.1/testns#num> "79"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton52> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton52> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Ullamco ham doner meatloaf bacon labore cupim boudin, mollit sint cupidatat laborum. Burgdoggen consectetur fatback, pancetta strip steak in pig corned beef. Qui et spare ribs turducken." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton52> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Saturday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton11> <http://qa.test.rfnt.com/v1.1/testns#num> "58"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton11> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton11> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Picanha doner anim cupim. Shoulder swine landjaeger, bacon jerky irure pariatur pork pig lorem. Aute dolor pastrami, biltong hamburger cupim cow kielbasa pork belly magna." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton11> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Tuesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton61> <http://qa.test.rfnt.com/v1.1/testns#num> "57"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton61> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton61> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Dolor incididunt ball tip picanha. Leberkas chuck spare ribs cupidatat excepteur dolore voluptate doner culpa mollit fugiat filet mignon. Cupidatat alcatra occaecat cillum." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton61> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Friday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton95> <http://qa.test.rfnt.com/v1.1/testns#num> "13"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton95> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton95> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Nulla pork ribeye, nostrud officia dolor quis. Ham hock dolor irure pork belly, pork loin minim cow laboris bacon pastrami elit leberkas in. Irure aliquip nostrud, elit tail non brisket eu spare ribs ut fatback minim sausage." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton95> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Monday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton89> <http://qa.test.rfnt.com/v1.1/testns#num> "36"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton89> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton89> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Quis spare ribs dolor strip steak ground round cupim aliquip. Biltong ribeye kevin sunt magna burgdoggen laboris, picanha flank dolore aliquip beef ribs aliqua sausage exercitation. Deserunt ribeye pork, quis laboris shoulder fugiat tempor." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton89> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Thursday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton81> <http://qa.test.rfnt.com/v1.1/testns#num> "35"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton81> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton81> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Elit chicken ex, brisket reprehenderit tenderloin sirloin beef ribs short ribs salami. Leberkas chicken do proident. Leberkas occaecat ut, dolore spare ribs pariatur landjaeger drumstick." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton81> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Sunday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton29> <http://qa.test.rfnt.com/v1.1/testns#num> "25"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton29> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton29> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Ipsum eu chuck esse aute sed ullamco. Lorem id labore magna swine excepteur culpa dolore. Pork sint short ribs, flank mollit velit in duis." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton29> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Monday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton92> <http://qa.test.rfnt.com/v1.1/testns#num> "22"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton92> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton92> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Voluptate burgdoggen bacon nisi flank, leberkas ad commodo eu consectetur ipsum non. Shank quis aliquip proident, veniam irure jowl ipsum frankfurter pork belly. Landjaeger chuck pig, lorem id capicola alcatra incididunt ground round t-bone porchetta nulla proident." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton92> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Monday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton45> <http://qa.test.rfnt.com/v1.1/testns#num> "33"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton45> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton45> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Magna cillum veniam do shankle mollit in reprehenderit. Tail landjaeger non picanha hamburger jowl ut tempor spare ribs ball tip minim veniam anim est quis. Irure jerky adipisicing andouille tail cupidatat porchetta sint bresaola cupim in qui." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton45> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Saturday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton88> <http://qa.test.rfnt.com/v1.1/testns#num> "32"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton88> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton88> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Jowl culpa prosciutto nulla proident nostrud qui lorem reprehenderit ea dolore t-bone brisket eiusmod. Sunt veniam alcatra, jowl beef est minim. Magna deserunt anim, filet mignon beef ribs ad veniam exercitation lorem." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton88> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Saturday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton15> <http://qa.test.rfnt.com/v1.1/testns#num> "88"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton15> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton15> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Pork biltong fatback sed, labore do ut shankle jowl laboris cow beef ribs short ribs rump. Kevin jerky hamburger fatback, laboris pork chop eu sint rump boudin irure picanha. Pastrami ex do incididunt nostrud anim minim sint pork belly capicola." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton15> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Saturday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton22> <http://qa.test.rfnt.com/v1.1/testns#num> "6"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton22> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton22> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Ea ut eiusmod lorem, dolore elit venison culpa beef fatback bresaola shoulder prosciutto shank. Shankle tri-tip short loin t-bone andouille strip steak pancetta rump. Chicken boudin leberkas rump ribeye picanha magna." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton22> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Saturday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton86> <http://qa.test.rfnt.com/v1.1/testns#num> "1"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton86> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton86> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Meatball hamburger minim biltong, landjaeger sint adipisicing tail occaecat tenderloin. Non cupim short ribs, sausage ullamco ipsum strip steak in magna meatloaf enim. Cupidatat filet mignon jowl pork velit aute." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton86> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Monday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton20> <http://qa.test.rfnt.com/v1.1/testns#num> "1"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton20> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton20> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Magna in salami, fatback alcatra fugiat biltong nulla consectetur ea cow. Qui pig voluptate filet mignon ribeye doner turducken tongue adipisicing rump sint proident chuck. Irure short loin in consectetur, cupidatat jerky salami pancetta voluptate non mollit meatloaf minim shoulder ut." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton20> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Thursday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton26> <http://qa.test.rfnt.com/v1.1/testns#num> "6"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton26> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton26> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Pork loin meatloaf boudin hamburger jowl, venison sint beef nostrud. Pork frankfurter salami kevin. Corned beef buffalo frankfurter picanha pork loin mollit quis." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton26> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Tuesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton93> <http://qa.test.rfnt.com/v1.1/testns#num> "21"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton93> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton93> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Cupidatat corned beef doner, andouille sed ham excepteur sausage. Reprehenderit cow anim, ham buffalo venison meatloaf landjaeger salami. Velit sint labore eiusmod laborum aute id consectetur hamburger turducken leberkas eu." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton93> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Monday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton74> <http://qa.test.rfnt.com/v1.1/testns#num> "95"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton74> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton74> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Occaecat nostrud non sed dolor pork loin sunt ex enim meatloaf deserunt alcatra corned beef meatball. Shankle corned beef ball tip, in andouille boudin pariatur adipisicing ex in filet mignon rump ham. Duis jowl turkey pork belly consectetur, leberkas tempor meatloaf in shoulder sirloin." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton74> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Sunday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton56> <http://qa.test.rfnt.com/v1.1/testns#num> "14"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton56> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton56> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Pig proident andouille pastrami dolore picanha. Picanha strip steak filet mignon ad, ut short loin salami turducken. Jowl strip steak et, sint ribeye dolor leberkas occaecat." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton56> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Saturday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton76> <http://qa.test.rfnt.com/v1.1/testns#num> "22"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton76> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton76> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Cupidatat pork loin duis, corned beef enim sausage in velit. Pastrami flank commodo, est cow jowl aute incididunt sirloin drumstick t-bone consequat consectetur beef. Porchetta velit swine est dolore pork belly." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton76> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Friday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton51> <http://qa.test.rfnt.com/v1.1/testns#num> "85"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton51> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton51> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Ea incididunt ut, chicken jowl magna kielbasa minim. Bresaola picanha sunt cupim, shoulder consequat corned beef pastrami sirloin. In doner irure, enim brisket swine rump pork loin duis lorem ut exercitation voluptate spare ribs." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton51> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Friday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton97> <http://qa.test.rfnt.com/v1.1/testns#num> "10"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton97> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton97> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Ball tip cow pork loin alcatra tongue prosciutto fugiat elit shank id landjaeger. Frankfurter mollit occaecat shank aliqua deserunt t-bone porchetta dolore sint. Nisi dolore shankle esse enim swine fatback pariatur ullamco buffalo eiusmod corned beef aute sirloin." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton97> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Wednesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton57> <http://qa.test.rfnt.com/v1.1/testns#num> "27"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton57> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton57> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Jerky aliquip corned beef in flank sint cillum minim venison filet mignon short ribs hamburger porchetta. Adipisicing tail excepteur nostrud. Bacon ut velit pig." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton57> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Tuesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton71> <http://qa.test.rfnt.com/v1.1/testns#num> "56"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton71> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton71> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Meatloaf ut flank in eu short loin. Prosciutto in ad cupim mollit. Shoulder qui culpa eiusmod laborum, ullamco prosciutto in aliqua et veniam pork belly ipsum." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton71> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Friday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton59> <http://qa.test.rfnt.com/v1.1/testns#num> "15"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton59> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton59> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Ex pork loin ut kevin. Cupidatat ball tip ut swine, cow laborum ribeye. Ribeye leberkas ad, ea commodo laborum cow." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton59> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Tuesday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton9> <http://qa.test.rfnt.com/v1.1/testns#num> "98"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton9> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton9> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Pork chop salami porchetta pork tri-tip reprehenderit lorem consequat sirloin ground round. Anim picanha turkey, qui eiusmod boudin andouille landjaeger drumstick reprehenderit strip steak velit. Rump do duis ex sunt chuck brisket magna beef ribs ground round est picanha boudin venison." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton9> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Saturday" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton19> <http://qa.test.rfnt.com/v1.1/testns#num> "66"^^<http://www.w3.org/2001/XMLSchema#long> .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton19> <http://qa.test.rfnt.com/v1.1/testns#Test_Step> "ingest infotons and query using stats api" .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton19> <http://qa.test.rfnt.com/v1.1/testns#Test_Data> "Leberkas tenderloin laborum veniam ex beef ribs. Deserunt venison rump sirloin ham hock ex. Filet mignon meatloaf kielbasa ea prosciutto eu culpa officia brisket venison duis flank." .
+<http://test.agg.org/Test201903_05_1501_11/testStatsApiTerms/Infoton19> <http://qa.test.rfnt.com/v1.1/testns#Weekday> "Monday" .
