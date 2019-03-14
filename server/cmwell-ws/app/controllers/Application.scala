@@ -2060,15 +2060,14 @@ callback=< [URL] >
   private[this] def translateAggregateException: PartialFunction[Throwable, Throwable] = {
     case e: org.elasticsearch.transport.RemoteTransportException
         if e.getCause.isInstanceOf[org.elasticsearch.action.search.SearchPhaseExecutionException]
-          && e.getCause.getMessage.contains(
-            "cannot be cast to org.elasticsearch.index.fielddata.IndexNumericFieldData"
-          ) =>
+          && e.getCause.getMessage.contains("cannot be cast to org.elasticsearch.index.fielddata.IndexNumericFieldData") =>
       new BadFieldTypeException(
-        "Cannot cast field to numeric value. Did you try to use stats or histogram aggregations on non numeric field?",
-        e
-      )case e:IllegalArgumentException
-      if e.getMessage.contains("aggregations failure due to fielddata disabled")
-      => new IllegalArgumentException("Stats API does not support non-exact value operator. Please use :: instead of :" + e.getMessage, e)
+        "Cannot cast field to numeric value. Did you try to use stats or histogram aggregations on non numeric field?", e)
+    case e:IllegalArgumentException
+      if e.getMessage.contains("aggregations failure due to text system field")
+    => new IllegalArgumentException("Stats API does not support non-exact value operator for text system fields. Please use :: instead of :", e)
+    case e:IllegalArgumentException if e.getMessage.contains("aggregations failure due to fielddata disabled")
+      => new IllegalArgumentException("Stats API does not support non-exact value operator for text fields. Please use :: instead of :", e)
     case e => e
   }
 

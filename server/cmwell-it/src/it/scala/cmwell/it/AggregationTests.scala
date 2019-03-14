@@ -26,27 +26,6 @@ import scala.util.{Failure, Success, Try}
 
 class AggregationTests extends AsyncFunSpec with Matchers with Inspectors with Helpers with fixture.NSHashesAndPrefixes with LazyLogging {
 
-  def orderingFor[A : Numeric](rootSegment: String)(field: String, ascending: Boolean)(implicit rds: Reads[A]): Ordering[JsValue] = new Ordering[JsValue] {
-    override def compare(x: JsValue, y: JsValue): Int = {
-      val num = implicitly[Numeric[A]]
-      val xf = Try((x \ rootSegment \ field).head.as[A])
-      val yf = Try((y \ rootSegment \ field).head.as[A])
-      (xf,yf) match {
-        case (Failure(_), Failure(_)) => 0
-        case (Failure(_), _) => -1
-        case (_, Failure(_)) => 1
-        case (Success(xv), Success(yv)) =>
-          if (ascending) num.compare(xv, yv)
-          else num.compare(yv, xv)
-      }
-    }
-  }
-
-  def orderingForField[A : Numeric](field: String, ascending: Boolean)(implicit rds: Reads[A]): Ordering[JsValue] = orderingFor("fields")(field,ascending)
-
-  val orderingForScore = orderingFor[Float]("extra")("score",ascending=false)
-
-
   describe("Agg API should") {
     //Assertions
     val ingestGeonames = Future.traverse(Seq(293846)) { n =>
@@ -64,66 +43,62 @@ class AggregationTests extends AsyncFunSpec with Matchers with Inspectors with H
 
     val path = cmw / "test.agg.org" / "Test201903_05_1501_11" / "testStatsApiTerms"
 
-//    val aggForIntField = executeAfterCompletion(ingestGeonames) {
-//      spinCheck(100.millis, true)(Http.get(
-//        uri = path,
-//        queryParams = List("op" -> "stats", "format" -> "json", "debug-info" -> "", "ap" -> "type:term,field::num.testns,size:3"))) { r =>
-//        println("r.status=" + r.status)
-//        println("json parse=" + (Json.parse(r.payload) \ "AggregationResponse" \\ "buckets": @unchecked))
-//        (Json.parse(r.payload) \ "AggregationResponse" \\ "buckets": @unchecked).size match {
-//          case n: Int => (r.status == 200) && (n == 3)
-//        }
-//      }.map { res =>
-//        withClue(res) {
-//          res.status should be(200)
-//          val total = (Json.parse(res.payload) \ "AggregationResponse" \\ "buckets").size
-//          total should be(3)
-//        }
-//      }
-//    }
-
-
-//    val recursiveSearch2 = executeAfterCompletion(ingestGeonames) {
-//      spinCheck(100.millis, true)(Http.get(
-//        uri = path,
-//        queryParams = List("op" -> "stats", "format" -> "json", "debug-info" -> "", "ap" -> "type:term,field::Test_Data.testns,size:2"))) { r =>
-//        (Json.parse(r.payload) \ "AggregationResponse" \ "buckets": @unchecked) match {
-//          case JsDefined(JsNumber(n)) => (r.status == 200) && (n.intValue() == 2)
-//        }
-//      }.map { res =>
-//        withClue(res) {
-//          res.status should be(200)
-//          val total = (Json.parse(res.payload) \ "results" \ "total").as[Int]
-//          total should be(2)
-//        }
-//      }
-//    }
-
-
-    val badQueryNonExactStrMatch = executeAfterCompletion(ingestGeonames) {
+    val aggForIntField = executeAfterCompletion(ingestGeonames) {
       spinCheck(100.millis, true)(Http.get(
         uri = path,
-        queryParams = List("op" -> "stats", "format" -> "json", "debug-info" -> "", "ap" -> "type:term,field:Test_Data.testns,size:2"))) { r =>
-        Json.parse(r.payload).toString().contains("Stats API does not support non-exact value operator. Please use :: instead of :") && r.status == 400
+        queryParams = List("op" -> "stats", "format" -> "json", "debug-info" -> "", "ap" -> "type:term,field::num.testns,size:3"))) { r =>
+        (Json.parse(r.payload) \ "AggregationResponse" \\ "buckets": @unchecked) match {
+          case n: Seq[JsValue] => (r.status == 200) && n.forall(jsonval=> jsonval.as[JsArray].value.size == 3)
+        }
       }.map { res =>
         withClue(res) {
-          res.status should be(400)
-          val result = (Json.parse(res.payload) \ "error").as[String]
-          result should include ("Stats API does not support non-exact value operator. Please use :: instead of :")
+          res.status should be(200)
+          val total = (Json.parse(res.payload) \ "AggregationResponse" \\ "buckets").map(jsonval=> jsonval.as[JsArray].value.size)
+          total should contain(3)
         }
       }
     }
 
 
-    val ex2unitPF: PartialFunction[Throwable, Unit] = {
-      case _: Throwable => ()
+    val aggForExactTextField = executeAfterCompletion(ingestGeonames) {
+      spinCheck(100.millis, true)(Http.get(
+        uri = path,
+        queryParams = List("op" -> "stats", "format" -> "json", "debug-info" -> "", "ap" -> "type:term,field::Test_Data.testns,size:2"))) { r =>
+        (Json.parse(r.payload) \ "AggregationResponse" \\ "buckets": @unchecked) match {
+          case n: Seq[JsValue] => (r.status == 200) && n.forall(jsonval=> jsonval.as[JsArray].value.size == 2)
+        }
+      }.map { res =>
+        withClue(res) {
+          res.status should be(200)
+          val total = (Json.parse(res.payload) \ "AggregationResponse" \\ "buckets").map(jsonval=> jsonval.as[JsArray].value.size)
+          total should contain(2)
+        }
+      }
     }
 
 
+    val badQueryNonExactTextMatch = executeAfterCompletion(ingestGeonames) {
+      spinCheck(100.millis, true)(Http.get(
+        uri = path,
+        queryParams = List("op" -> "stats", "format" -> "json", "debug-info" -> "", "ap" -> "type:term,field:Test_Data.testns,size:2"))) { r =>
+        Json.parse(r.payload).toString()
+          .contains("Stats API does not support non-exact value operator for text fields. Please use :: instead of :") && r.status == 400
+      }.map { res =>
+        withClue(res) {
+          res.status should be(400)
+          val result = (Json.parse(res.payload) \ "error").as[String]
+          result should include ("Stats API does not support non-exact value operator for text fields. Please use :: instead of :")
+        }
+      }
+    }
+
+
+
     it("ingest aggnames data successfully")(ingestGeonames)
-    //    it("get stats for int field")(aggForIntField)
-    //    it("get exact stats for string field")(recursiveSearch2)
-    it("get stats for non exact string field should be bad response")(badQueryNonExactStrMatch)
+    it("get stats for int field")(aggForIntField)
+    it("get exact stats for string field")(aggForExactTextField)
+    it("get stats for non exact string field should be bad response")(badQueryNonExactTextMatch)
+
   }
 
 }

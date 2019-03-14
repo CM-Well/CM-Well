@@ -300,6 +300,14 @@ class FTSService(config: Config) extends NsSplitter{
     }
   }
 
+  private def isStrSystemField(fieldName: String):Boolean = {
+    fieldName match {
+      case "system.parent" |"system.path" | "system.kind" | "system.uuid" | "system.dc" | "system.quad" |
+           "content.data" | "content.mimeType" | "link.to" => true
+      case _=> false
+    }
+  }
+
   private def applySortToRequest(sortParams: SortParam, request: SearchRequestBuilder): Unit = sortParams match {
     case NullSortParam                       => // don't sort.
     case FieldSortParams(fsp) if fsp.isEmpty => request.addSort("system.lastModified", SortOrder.DESC)
@@ -982,10 +990,17 @@ class FTSService(config: Config) extends NsSplitter{
     def filterToBuilder(filter:AggregationFilter):AggregationBuilder = {
 
       implicit def fieldValueToValue(fieldValue: Field): String = fieldValue.operator match {
-        case AnalyzedField =>  reverseNsTypedField(fieldValue.value)
+        case AnalyzedField =>
+          if(isStrSystemField(fieldValue.value))
+            throw new IllegalArgumentException("aggregations failure due to text system field")
+          val fType = fieldType(fieldValue.value)
+          if(fType eq StringType) {
+            throw new IllegalArgumentException("aggregations failure due to fielddata disabled")
+          }
+          else reverseNsTypedField(fieldValue.value)
         case NonAnalyzedField=>
           val fType = fieldType(fieldValue.value)
-          var reversed = reverseNsTypedField(fieldValue.value)
+          val reversed = reverseNsTypedField(fieldValue.value)
           if (fType eq StringType) reversed + ".%exact" else reversed
       }
 
@@ -1114,8 +1129,6 @@ class FTSService(config: Config) extends NsSplitter{
     resFuture.transform {
       case Success(res) if res.getAggregations eq null =>
         Failure(new Exception(s"inner aggregations is null: $buildErrString"))
-      case Failure(err) if err.getCause.getCause.getCause.getMessage.contains("Fielddata is disabled on text fields by default") =>
-        Failure(new IllegalArgumentException(s"aggregations failure due to fielddata disabled: $buildErrString", err))
       case Failure(err) =>
         Failure(new Exception(s"aggregations failure: $buildErrString", err))
       case Success(res) =>
@@ -1459,11 +1472,6 @@ class FTSService(config: Config) extends NsSplitter{
       } else
         new ActionListener[A] {
           def onFailure(t: Exception): Unit = {
-            if(t.getCause.getCause.getCause.getMessage.contains("Fielddata is disabled on text fields by default"))
-              logger.warn(
-                s"Exception from ElasticSearch (no timeout, response returned in [${System.currentTimeMillis() - timestamp}ms])",
-                t
-              )else
             logger.error(
               s"Exception from ElasticSearch (no timeout, response returned in [${System.currentTimeMillis() - timestamp}ms])",
               t
