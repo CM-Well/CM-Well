@@ -2065,7 +2065,7 @@ callback=< [URL] >
         "Cannot cast field to numeric value. Did you try to use stats or histogram aggregations on non numeric field?", e)
     case e:IllegalArgumentException
       if e.getMessage.contains("aggregations failure due to text system field")
-    => new IllegalArgumentException("Stats API does not support non-exact value operator for text system fields. Please use :: instead of :", e)
+    => new IllegalArgumentException("Stats API is not supported for text system fields.", e)
     case e:IllegalArgumentException if e.getMessage.contains("aggregations failure due to fielddata disabled")
       => new IllegalArgumentException("Stats API does not support non-exact value operator for text fields. Please use :: instead of :", e)
     case e => e

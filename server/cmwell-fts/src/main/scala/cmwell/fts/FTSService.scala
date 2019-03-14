@@ -300,14 +300,6 @@ class FTSService(config: Config) extends NsSplitter{
     }
   }
 
-  private def isStrSystemField(fieldName: String):Boolean = {
-    fieldName match {
-      case "system.parent" |"system.path" | "system.kind" | "system.uuid" | "system.dc" | "system.quad" |
-           "content.data" | "content.mimeType" | "link.to" => true
-      case _=> false
-    }
-  }
-
   private def applySortToRequest(sortParams: SortParam, request: SearchRequestBuilder): Unit = sortParams match {
     case NullSortParam                       => // don't sort.
     case FieldSortParams(fsp) if fsp.isEmpty => request.addSort("system.lastModified", SortOrder.DESC)
@@ -971,6 +963,11 @@ class FTSService(config: Config) extends NsSplitter{
 
   }
 
+  def isStrSystemField(fieldName: String, fieldType: FieldType with Product with Serializable): Boolean = {
+    (fieldType eq StringType) && (fieldName.startsWith("system.") || fieldName.startsWith("content.") || fieldName.startsWith("link."))
+
+  }
+
   def aggregate(pathFilter: Option[PathFilter], fieldFilter: Option[FieldFilter],
                 datesFilter: Option[DatesFilter] = None, paginationParams: PaginationParams,
                 aggregationFilters: Seq[AggregationFilter], withHistory: Boolean = false,
@@ -989,19 +986,20 @@ class FTSService(config: Config) extends NsSplitter{
 
     def filterToBuilder(filter:AggregationFilter):AggregationBuilder = {
 
-      implicit def fieldValueToValue(fieldValue: Field): String = fieldValue.operator match {
-        case AnalyzedField =>
-          if(isStrSystemField(fieldValue.value))
-            throw new IllegalArgumentException("aggregations failure due to text system field")
-          val fType = fieldType(fieldValue.value)
-          if(fType eq StringType) {
-            throw new IllegalArgumentException("aggregations failure due to fielddata disabled")
-          }
-          else reverseNsTypedField(fieldValue.value)
-        case NonAnalyzedField=>
-          val fType = fieldType(fieldValue.value)
-          val reversed = reverseNsTypedField(fieldValue.value)
-          if (fType eq StringType) reversed + ".%exact" else reversed
+      implicit def fieldValueToValue(fieldValue: Field): String = {
+        if (isStrSystemField(fieldValue.value, fieldType(fieldValue.value)))
+          throw new IllegalArgumentException("aggregations failure due to text system field")
+        fieldValue.operator match {
+          case AnalyzedField =>
+            val fType = fieldType(fieldValue.value)
+            if (fType eq StringType)
+              throw new IllegalArgumentException("aggregations failure due to fielddata disabled")
+            else reverseNsTypedField(fieldValue.value)
+          case NonAnalyzedField =>
+            val fType = fieldType(fieldValue.value)
+            val reversed = reverseNsTypedField(fieldValue.value)
+            if (fType eq StringType) reversed + ".%exact" else reversed
+        }
       }
 
       val name = filter.name + "_" + counter
