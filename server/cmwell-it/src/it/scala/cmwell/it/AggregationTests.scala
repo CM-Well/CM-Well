@@ -16,14 +16,14 @@
 
 package cmwell.it
 
+import java.net.URLEncoder
+
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.{AsyncFunSpec, Inspectors, Matchers}
 import play.api.libs.json.{JsValue, _}
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
-import scala.util.{Failure, Success, Try}
 
 class AggregationTests extends AsyncFunSpec with Matchers with Inspectors with Helpers with LazyLogging {
 
@@ -44,9 +44,10 @@ class AggregationTests extends AsyncFunSpec with Matchers with Inspectors with H
     val path = cmw / "test.agg.org" / "Test201903_05_1501_11" / "testStatsApiTerms"
 
     val aggForIntField = executeAfterCompletion(ingestAgg) {
+      val fieldVal = URLEncoder.encode("$http://qa.test.rfnt.com/v1.1/testns#num$")
       spinCheck(100.millis, true)(Http.get(
         uri = path,
-        queryParams = List("op" -> "stats", "format" -> "json", "ap" -> "type:term,field::num.testns,size:3")))
+        queryParams = List("op" -> "stats", "format" -> "json", "ap" -> "type:term,field::$http://qa.test.rfnt.com/v1.1/testns/num$,size:3")))
       { r =>
         (Json.parse(r.payload) \ "AggregationResponse" \\ "buckets": @unchecked) match {
           case n: Seq[JsValue] => (r.status == 200) && n.forall(jsonval=> jsonval.as[JsArray].value.size == 3)
@@ -64,7 +65,8 @@ class AggregationTests extends AsyncFunSpec with Matchers with Inspectors with H
     val aggForExactTextField = executeAfterCompletion(ingestAgg) {
       spinCheck(100.millis, true)(Http.get(
         uri = path,
-        queryParams = List("op" -> "stats", "format" -> "json", "debug-info" -> "", "ap" -> "type:term,field::Test_Data.testns,size:2"))) { r =>
+        queryParams = List("op" -> "stats", "format" -> "json", "ap" -> "type:term,field::$http://qa.test.rfnt.com/v1.1/testns/Test_Data$,size:2")))
+      { r =>
         (Json.parse(r.payload) \ "AggregationResponse" \\ "buckets": @unchecked) match {
           case n: Seq[JsValue] => (r.status == 200) && n.forall(jsonval=> jsonval.as[JsArray].value.size == 2)
         }
@@ -81,7 +83,8 @@ class AggregationTests extends AsyncFunSpec with Matchers with Inspectors with H
     val badQueryNonExactTextMatch = executeAfterCompletion(ingestAgg) {
       spinCheck(100.millis, true)(Http.get(
         uri = path,
-        queryParams = List("op" -> "stats", "format" -> "json", "debug-info" -> "", "ap" -> "type:term,field:Test_Data.testns,size:2"))) { r =>
+        queryParams = List("op" -> "stats", "format" -> "json", "ap" -> "type:term,field:$http://qa.test.rfnt.com/v1.1/testns/Test_Data$,size:2")))
+      { r =>
         Json.parse(r.payload).toString()
           .contains("Stats API does not support non-exact value operator for text fields. Please use :: instead of :") && r.status == 400
       }.map { res =>
