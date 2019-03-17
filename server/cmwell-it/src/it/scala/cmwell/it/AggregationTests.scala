@@ -20,33 +20,34 @@ import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.{AsyncFunSpec, Inspectors, Matchers}
 import play.api.libs.json.{JsValue, _}
 
+import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success, Try}
 
-class AggregationTests extends AsyncFunSpec with Matchers with Inspectors with Helpers with fixture.NSHashesAndPrefixes with LazyLogging {
+class AggregationTests extends AsyncFunSpec with Matchers with Inspectors with Helpers with LazyLogging {
 
   describe("Agg API should") {
-    //Assertions
-    val ingestGeonames = Future.traverse(Seq(293846)) { n =>
-      val agg = scala.io.Source.fromURL(this.getClass.getResource(s"/agg/aggnames_$n.nq")).mkString
-      Http.post(_in, agg, Some("text/nquads;charset=UTF-8"), List("format" -> "nquads"), tokenHeader)
-    }.map { results =>
-      forAll(results) { res =>
+    val agg = scala.io.Source.fromURL(this.getClass.getResource("/agg/aggnames_293846.nq"))
+    val ingestAgg = {
+      Http.post(_in, agg.mkString, Some("text/nquads;charset=UTF-8"), List("format" -> "nquads"), tokenHeader)
+    }.map { res =>
         withClue(res) {
           res.status should be(200)
           jsonSuccessPruner(Json.parse(res.payload)) shouldEqual jsonSuccess
         }
-      }
     }
+
+    agg.close()
 
 
     val path = cmw / "test.agg.org" / "Test201903_05_1501_11" / "testStatsApiTerms"
 
-    val aggForIntField = executeAfterCompletion(ingestGeonames) {
+    val aggForIntField = executeAfterCompletion(ingestAgg) {
       spinCheck(100.millis, true)(Http.get(
         uri = path,
-        queryParams = List("op" -> "stats", "format" -> "json", "debug-info" -> "", "ap" -> "type:term,field::num.testns,size:3"))) { r =>
+        queryParams = List("op" -> "stats", "format" -> "json", "ap" -> "type:term,field::num.testns,size:3")))
+      { r =>
         (Json.parse(r.payload) \ "AggregationResponse" \\ "buckets": @unchecked) match {
           case n: Seq[JsValue] => (r.status == 200) && n.forall(jsonval=> jsonval.as[JsArray].value.size == 3)
         }
@@ -54,13 +55,13 @@ class AggregationTests extends AsyncFunSpec with Matchers with Inspectors with H
         withClue(res) {
           res.status should be(200)
           val total = (Json.parse(res.payload) \ "AggregationResponse" \\ "buckets").map(jsonval=> jsonval.as[JsArray].value.size)
-          total should contain(3)
+          total should equal (ArrayBuffer(3))
         }
       }
     }
 
 
-    val aggForExactTextField = executeAfterCompletion(ingestGeonames) {
+    val aggForExactTextField = executeAfterCompletion(ingestAgg) {
       spinCheck(100.millis, true)(Http.get(
         uri = path,
         queryParams = List("op" -> "stats", "format" -> "json", "debug-info" -> "", "ap" -> "type:term,field::Test_Data.testns,size:2"))) { r =>
@@ -71,13 +72,13 @@ class AggregationTests extends AsyncFunSpec with Matchers with Inspectors with H
         withClue(res) {
           res.status should be(200)
           val total = (Json.parse(res.payload) \ "AggregationResponse" \\ "buckets").map(jsonval=> jsonval.as[JsArray].value.size)
-          total should contain(2)
+          total should equal (ArrayBuffer(2))
         }
       }
     }
 
 
-    val badQueryNonExactTextMatch = executeAfterCompletion(ingestGeonames) {
+    val badQueryNonExactTextMatch = executeAfterCompletion(ingestAgg) {
       spinCheck(100.millis, true)(Http.get(
         uri = path,
         queryParams = List("op" -> "stats", "format" -> "json", "debug-info" -> "", "ap" -> "type:term,field:Test_Data.testns,size:2"))) { r =>
@@ -94,7 +95,7 @@ class AggregationTests extends AsyncFunSpec with Matchers with Inspectors with H
 
 
 
-    it("ingest aggnames data successfully")(ingestGeonames)
+    it("ingest aggnames data successfully")(ingestAgg)
     it("get stats for int field")(aggForIntField)
     it("get exact stats for string field")(aggForExactTextField)
     it("get stats for non exact string field should be bad response")(badQueryNonExactTextMatch)
