@@ -31,7 +31,7 @@ import scala.concurrent.duration._
   * Created by yaakov on 9/19/16.
   */
 class ZStoreSpec extends AsyncFunSpec with Matchers with BeforeAndAfterAll with CassandraDockerSuite {
-  override def cassandraVersion: String = "3.11.3" //cmwell.util.build.BuildInfo.cassandraVersion - should be used but it had circular dependency!!!
+  override def cassandraVersion: String = "3.11.4" //cmwell.util.build.BuildInfo.cassandraVersion - should be used but it had circular dependency!!!
   val utf8 = "UTF-8"
   val indexingDuration = 1.second
   var _dao : Dao = _
