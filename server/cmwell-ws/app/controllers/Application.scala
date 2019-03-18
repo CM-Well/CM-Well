@@ -665,7 +665,7 @@ callback=< [URL] >
         val normalizedPath = normalizePath(request.path)
         val from = DateParser.parseDate(request.getQueryString("from").getOrElse(""), FromDate).toOption
         val to = DateParser.parseDate(request.getQueryString("to").getOrElse(""), ToDate).toOption
-        val length = request.getQueryString("length").flatMap(asInt).getOrElse(10)
+        val length = request.getQueryString("length").flatMap(asInt).getOrElse(500)
         val offset = request.getQueryString("offset").flatMap(asInt).getOrElse(0)
         val scrollTtl = request.getQueryString("session-ttl").flatMap(asInt).getOrElse(15).min(60)
         val withDescendants = request.queryString.keySet("with-descendants") || request.queryString.keySet("recursive")
@@ -712,7 +712,7 @@ callback=< [URL] >
                   pathFilter,
                   fieldFilter,
                   Some(DatesFilter(from, to)),
-                  PaginationParams(offset, length),
+                  PaginationParams(offset, 1),
                   withHistory,
                   debugInfo = debugInfoParam,
                   withDeleted = withDeleted

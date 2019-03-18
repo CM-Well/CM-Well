@@ -5,12 +5,6 @@ name := "cmwell-fts-ng"
 libraryDependencies ++= {
 	val dm = dependenciesManager.value
 	Seq(
-		dm("org.elasticsearch", "elasticsearch")
-			.exclude("com.fasterxml.jackson.core", "jackson-core")
-			.exclude("com.google.guava", "guava")
-			.exclude("org.apache.lucene", "lucene-queryparser")
-			.exclude("org.apache.lucene", "lucene-analyzers-common")
-			.exclude("org.apache.lucene", "lucene-core") jar(),
 		dm("org.elasticsearch.client", "transport"),
 		dm("org.slf4j", "log4j-over-slf4j"),
 		dm("com.fasterxml.jackson.core", "jackson-core"),

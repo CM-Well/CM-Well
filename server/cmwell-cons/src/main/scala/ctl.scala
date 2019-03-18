@@ -1647,7 +1647,6 @@ abstract class Host(user: String,
         println(s"Elasticsearch first index creation failed with: $ex")
         sys.exit(1)
     }
-//    command(s"curl -s -X POST http://${pingAddress}:$esRegPort/cm_well_p0_0/", hosts(0), false)
     // create kafka topics
     val replicationFactor = math.min(hosts.size, 3)
 

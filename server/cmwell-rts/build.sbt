@@ -5,7 +5,6 @@ libraryDependencies ++= {
   Seq(
     dm("com.typesafe.akka", "akka-cluster"),
     dm("com.typesafe.akka", "akka-cluster-tools"),
-    //  dm("com.typesafe.akka","akka-contrib"),
   )
 }
 

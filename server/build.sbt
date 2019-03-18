@@ -44,11 +44,7 @@ initialize := {
   if (Version(sys.props("java.specification.version")) < Version("1.8"))
     sys.error("Java 8 or higher is required for CM-Well!")
 }
-//resolvers in Global += "CM-WELL public" at "http://builder.clearforest.com:8081/nexus/content/groups/public"
-//resolvers in ThisBuild += "Local Maven" at Path.userHome.asFile.toURI.toURL + ".m2/repository"
 updateOptions in Global := updateOptions.in(Global).value.withCachedResolution(true).withCircularDependencyLevel(CircularDependencyLevel.Error)
-//updateOptions := updateOptions.value.withCachedResolution(true)
-//updateOptions := updateOptions.value.withCircularDependencyLevel(CircularDependencyLevel.Error)
 scalacOptions in Global ++= Seq("-unchecked", "-feature", "-deprecation", "-target:jvm-1.8")
 cancelable in Global := true
 

@@ -104,24 +104,20 @@ class ImpStream(partition: Int,
   val startingOffsetPriority = offsetsService.read(s"${streamId}.p_offset").getOrElse(0L)
   @volatile var (startingIndexName, startingIndexCount) =
     ftsService.latestIndexNameAndCount(s"cm_well_p${partition}_*") match {
-    case Some((name, count)) => (name -> count)
-    case None =>
+      case Some((name, count)) => (name -> count)
+      case None =>
         logger.info(
           s"no indexes found for partition $partition, creating first one"
         )
-      Try {
-        Await.result(
+        Try {
+          Await.result(
             ftsService.createIndex(s"cm_well_p${partition}_0").flatMap {
               createResponse =>
-            if (createResponse.isAcknowledged) {
+                if (createResponse.isAcknowledged) {
                   logger.info(
                     s"successfully created first index for partition $partition"
                   )
-              Future.successful(true)
-//              scheduleFuture(5.seconds) {
-//                logger info "updating all aliases"
-//                ftsService.updateAllAlias()
-//              }
+                  Future.successful(true)
                 } else
                   Future.failed(
                     new RuntimeException(
@@ -130,15 +126,15 @@ class ImpStream(partition: Int,
                   )
             },
             10.seconds
-        )
-      }.recover {
-        case t: Throwable =>
+          )
+        }.recover {
+          case t: Throwable =>
             logger.error("failed to init ES index/alias, aborting !!!", t)
-          throw t
-      }
+            throw t
+        }
 
-      (s"cm_well_p${partition}_0" -> 0L)
-  }
+        (s"cm_well_p${partition}_0" -> 0L)
+    }
   @volatile var currentIndexName = startingIndexName
   @volatile var fuseOn = config.getBoolean("cmwell.bg.fuseOn")
   @volatile var isRecoveryMode = true
@@ -807,7 +803,6 @@ class ImpStream(partition: Int,
                     else
                       infoton
                   val serializedInfoton = JsonSerializerForES.encodeInfoton(infotonWithUpdatedIndexTime, isCurrent)
-                  // TODO: remove after all envs upgraded
                   (ESIndexRequest(
                     Requests.indexRequest(indexName).`type`("infoclone").id(infoton.uuid).create(true)
                       .source(serializedInfoton, XContentType.JSON),

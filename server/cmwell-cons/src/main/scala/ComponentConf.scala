@@ -315,51 +315,6 @@ case class ElasticsearchConf(clusterName: String,
       s"PsIdElasticDataNode$getIndexTxt"
   }
   override def mkScript: ConfFile = {
-    // Seq(s"-javaagent:$home/app/ctrl/cur", s"-Dctrl.listenAddress=$listenAddress", s"-Dctrl.seedNodes=${host}",
-    // s"-Dctrl.clusterName=$clusterName", s"-Dctrl.roles=Metrics,ElasticsearchNode")
-    val agentLibArgs = Seq.empty
-    val cmsGc = Seq(
-      "-XX:+UseCondCardMark",
-      "-XX:+UseParNewGC",
-      "-XX:+UseConcMarkSweepGC",
-      "-XX:CMSInitiatingOccupancyFraction=75",
-      "-XX:+UseCMSInitiatingOccupancyOnly")
-
-    val g1Gc = Seq("-XX:+UseG1GC", "-XX:SurvivorRatio=8")
-
-    def jvmArgs = {
-      val mXmx = resourceManager.getMxmx
-      val mXms = resourceManager.getMxms
-      val mXmn = resourceManager.getMxmn
-      val mXss = resourceManager.getMxss
-      Seq("-Duser.timezone=GMT0",
-        mXmx,
-        mXms,
-        mXmn,
-        mXss,
-        "-Djava.awt.headless=true") ++
-        (if(g1) g1Gc else cmsGc) ++
-        Seq(s"-Dcom.sun.management.jmxremote.port=${PortManagers.es.jmxPortManager.getPort(index)}",
-        "-Dcom.sun.management.jmxremote.ssl=false",
-        "-Dcom.sun.management.jmxremote.authenticate=false",
-        s"-Des.path.home=$home/app/es/cur",
-        "-Delasticsearch",
-        "-server",
-          "-Dfile.encoding=UTF-8",
-          "-Djna.nosys=true",
-          "-Djdk.io.permissionsUseCanonicalPath=true",
-          "-Dio.netty.noUnsafe=true",
-          "-Dio.netty.noKeySetOptimization=true",
-          "-Dio.netty.recycler.maxCapacityPerThread=0",
-          "-Dlog4j.shutdownHookEnabled=false",
-          "-Dlog4j2.disable.jmx=true",
-          "-Dlog4j.skipJansi=true"
-          )
-    }
-
-    val args = Seq("starter", "java") ++ agentLibArgs ++ jvmArgs ++ JVMOptimizer.gcLoggingJVM(
-      s"$home/log/${dir}/gc.log"
-    ) ++ Seq("-cp", classpath, "org.elasticsearch.bootstrap.Elasticsearch")
 
     val scriptString =
       s"""export PATH=$home/app/java/bin:$home/bin/utils:$PATH

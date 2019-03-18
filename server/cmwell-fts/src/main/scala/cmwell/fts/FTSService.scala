@@ -749,49 +749,6 @@ class FTSService(config: Config) extends NsSplitter{
     }
   }
 
-/*
-  def startSuperMultiScroll(pathFilter: Option[PathFilter], fieldsFilter: Option[FieldFilter],
-                            datesFilter: Option[DatesFilter],
-                            paginationParams: PaginationParams, scrollTTL: Long = defaultScrollTTL,
-                            withHistory: Boolean = false, withDeleted:Boolean = false,
-                            partition: String = defaultPartition)
-                           (implicit executionContext:ExecutionContext, logger:Logger = loger): Seq[Future[FTSStartScrollResponse]] = {
-
-    logger.debug(s"StartMultiScroll request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $withHistory")
-
-    def dataNodeIDs = {
-      client
-        .admin()
-        .cluster()
-        .prepareNodesInfo()
-        .execute()
-        .actionGet()
-        .getNodesMap
-        .asScala
-        .collect {
-          case (id, n) if n.getNode.isDataNode => id
-        }
-        .toSeq
-    }
-
-    val indices = indicesNames(s"${partition}_all")
-
-    indices.flatMap { indexName =>
-      dataNodeIDs.map { nodeId =>
-        startScroll(pathFilter,
-                    fieldsFilter,
-                    datesFilter,
-                    paginationParams,
-                    scrollTTL,
-                    withHistory,
-                    withDeleted,
-                    Seq(indexName),
-                    Some(nodeId))
-      }
-    }
-  }
-*/
-
   def startMultiScrollEliNew(pathFilter: Option[PathFilter], fieldsFilter: Option[FieldFilter],
                        datesFilter: Option[DatesFilter],
                        paginationParams: PaginationParams,
@@ -1527,42 +1484,6 @@ class FTSService(config: Config) extends NsSplitter{
     }
   }
 
-/*
-  def getMappings(withHistory: Boolean, partition: String)
-                          (implicit executionContext:ExecutionContext) : Future[Set[String]] = {
-    import org.elasticsearch.cluster.ClusterState
-
-    implicit class AsLinkedHashMap[K](lhm: Option[AnyRef]) {
-      def extract(k: K) = lhm match {
-        case Some(m) => Option(m.asInstanceOf[java.util.Map[K,AnyRef]].get(k))
-        case None => None
-      }
-      def extractKeys: Set[K] = lhm.map(_.asInstanceOf[java.util.Map[K,Any]].keySet().asScala.toSet).getOrElse(Set.empty[K])
-      def extractOneValueBy[V](selector: K): Map[K,V] = lhm.map(_.asInstanceOf[java.util.Map[K,Any]]
- .asScala.map{ case (k,vs) => k -> vs.asInstanceOf[java.util.Map[K,V]].get(selector) }.toMap).getOrElse(Map[K,V]())
-    }
-
-    val req = client.admin().cluster().prepareState()
-    val f = injectFuture[ClusterStateResponse](req.execute)
-    val csf: Future[ClusterState] = f.map(_.getState)
-    csf.map { cs =>
-      val b = Set.newBuilder[String]
-      cs.getMetaData.iterator.asScala.filter{ x => x.getIndex.getName.startsWith("cm")}.foreach { imd =>
-        val nested = imd.mapping("infoclone").getSourceAsMap.get("properties").asInstanceOf[java.util.Map[String, Object]]
-        val nsHash = nested.get("fields").asInstanceOf[java.util.Map[String, Object]].get("properties").asInstanceOf[java.util.Map[String, Object]]
-        val fields = nsHash.keySet().asScala.foreach { h =>
-          val inner = nsHash.get(h).asInstanceOf[java.util.Map[String, Object]].get("properties").asInstanceOf[java.util.Map[String, Object]]
-          b ++= inner.extractOneValueBy[String]("type").map {
-            case (k, v) if h == "nn" => s"$k:$v"
-            case (k, v) => s"$k.$h:$v"
-          }
-        }
-      }
-      b.result()
-    }
-  }
-*/
-
   def getMappings(withHistory: Boolean = false, partition: String = defaultPartition)
                  (implicit executionContext: ExecutionContext): Future[Set[String]] = {
     import org.elasticsearch.cluster.ClusterState
@@ -1672,7 +1593,6 @@ class FTSService(config: Config) extends NsSplitter{
     injectFuture[SearchResponse](request.execute).map(_.getHits.getHits.headOption.map(_.getFields.get("system.indexTime").getValue[Long]))
   }
 
-//  def purgeByUuidsFromAllIndexes(uuids: Vector[String], partition: String)(implicit executionContext: ExecutionContext): Future[BulkResponse] = ???
   def purgeByUuidsFromAllIndexes(uuids: Vector[String], partition: String = defaultPartition)
                                 (implicit executionContext: ExecutionContext): Future[BulkResponse] = {
     if (uuids.isEmpty)
@@ -1957,7 +1877,6 @@ object DefaultPaginationParams extends PaginationParams(0, 100)
 case class FTSSearchResponse(total: Long, offset: Long, length: Long, infotons: Seq[Infoton], searchQueryStr: Option[String] = None)
 case class FTSStartScrollResponseEliNew(response: FTSScrollResponse, searchQueryStr: Option[String] = None)
 case class FTSScrollResponse(total: Long, scrollId: String, infotons: Seq[Infoton], nodeId: Option[String] = None, searchQueryStr: Option[String] = None)
-//case class FTSScrollThinResponse(total: Long, scrollId: String, thinInfotons: Seq[FTSThinInfoton], nodeId: Option[String] = None)
 case object FTSTimeout
 
 case class FTSThinInfoton(path: String, uuid: String, lastModified: String, indexTime: Long, score: Option[Float])

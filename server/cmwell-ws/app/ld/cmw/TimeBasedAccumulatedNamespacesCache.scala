@@ -180,7 +180,7 @@ class TimeBasedAccumulatedNsCache private (private[this] var mainCache: Map[NsID
       Future.successful(sb.append('}').result())
     } else (actor ? GetStatus).mapTo[String]
 
-  @inline override def init(time: Long): Unit = {} //actor ! UpdateRequest(time)
+  @inline override def init(time: Long): Unit = actor ! UpdateRequest(time)
 
   // private section
 

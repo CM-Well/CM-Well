@@ -180,22 +180,6 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
     }
   }
 
-/*
-  def seqScrollSource(pathFilter: Option[PathFilter],
-                      fieldFilter: Option[FieldFilter],
-                      datesFilter: Option[DatesFilter],
-                      paginationParams: PaginationParams,
-                      scrollTTL: Long,
-                      withHistory: Boolean,
-                      withDeleted: Boolean)(
-    applyScrollStarter: ScrollStarter => Seq[Future[IterationResults]]
-  )(implicit ec: ExecutionContext): Future[(Source[IterationResults, NotUsed], Long)] = {
-    seqScrollSource(
-      ScrollStarter(pathFilter, fieldFilter, datesFilter, paginationParams, scrollTTL, withHistory, withDeleted)
-    )(applyScrollStarter)(ec)
-  }
-*/
-
   def lazySeqScrollSource(scrollStarter: ScrollStarter, maxParallelism: Int)(
     applyScrollStarter: ScrollStarter => Seq[() => Future[IterationResults]]
   )(implicit ec: ExecutionContext): Future[(Source[IterationResults, NotUsed], Long)] = {
