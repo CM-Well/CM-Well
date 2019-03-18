@@ -16,8 +16,6 @@
 
 package cmwell.it
 
-import java.net.URLEncoder
-
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.{AsyncFunSpec, Inspectors, Matchers}
 import play.api.libs.json.{JsValue, _}
@@ -44,7 +42,6 @@ class AggregationTests extends AsyncFunSpec with Matchers with Inspectors with H
     val path = cmw / "test.agg.org" / "Test201903_05_1501_11" / "testStatsApiTerms"
 
     val aggForIntField = executeAfterCompletion(ingestAgg) {
-      val fieldVal = URLEncoder.encode("$http://qa.test.rfnt.com/v1.1/testns#num$")
       spinCheck(100.millis, true)(Http.get(
         uri = path,
         queryParams = List("op" -> "stats", "format" -> "json", "ap" -> "type:term,field::$http://qa.test.rfnt.com/v1.1/testns/num$,size:3")))
