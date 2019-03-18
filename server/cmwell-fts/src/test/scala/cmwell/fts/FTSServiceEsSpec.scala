@@ -563,10 +563,10 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
     startScrollResult.total should equal (500)
 
     var count = 0
-    var scrollResult =Await.result(ftsService.scroll(startScrollResult.scrollId, withoutLastModified = false), timeout)
+    var scrollResult =Await.result(ftsService.scroll(startScrollResult.scrollId), timeout)
     while(scrollResult.infotons.nonEmpty) {
       count += scrollResult.infotons.length
-      scrollResult =Await.result(ftsService.scroll(scrollResult.scrollId, withoutLastModified = false), timeout)
+      scrollResult =Await.result(ftsService.scroll(scrollResult.scrollId), timeout)
     }
 
     count should equal (500)

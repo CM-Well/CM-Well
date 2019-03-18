@@ -77,7 +77,7 @@ class ConsumeTests extends AsyncFunSpec with Inspectors with Matchers with Helpe
 
     val h1 = waitForIngestPlus40Seconds.flatMap(_ => Http.get(path, List("op" -> "create-consumer")).map(requestHandler))
     val h2 = h1.flatMap {
-      case (_,Some(p),_) => Http.get(cmw / "_bulk-consume", List("format" -> "tsv", "position" -> p, "without-last-modified" -> "")).map(requestHandler)
+      case (_,Some(p),_) => Http.get(cmw / "_bulk-consume", List("format" -> "tsv", "position" -> p)).map(requestHandler)
       case (_, None, _) => Future.failed[(Int,Option[String],String)](new IllegalStateException("No Position supplied from previous session"))
     }
 
