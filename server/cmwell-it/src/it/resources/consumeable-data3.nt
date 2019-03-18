@@ -1,2 +1,0 @@
-<http://mytest.net/Consumeable1/D1L> <http://purl.org/vocab/relationship/knowsByReputation1> "500"^^<http://www.w3.org/2001/XMLSchema#decimal> .
-<http://mytest.net/Consumeable1/DL1> <http://purl.org/vocab/relationship/knowsByReputation1> "50000000000000000000000"^^<http://www.w3.org/2001/XMLSchema#decimal> .
