@@ -852,9 +852,9 @@ class FTSService(config: Config) extends NsSplitter{
     }
 
     datesFilter.foreach {
-      case DatesFilter(Some(from), Some(to)) => boolQueryBuilder.must(rangeQuery("lastModified").from(from.getMillis).to(to.getMillis))
-      case DatesFilter(None, Some(to)) => boolQueryBuilder.must(rangeQuery("lastModified").to(to.getMillis))
-      case DatesFilter(Some(from), None) => boolQueryBuilder.must(rangeQuery("lastModified").from(from.getMillis))
+      case DatesFilter(Some(from), Some(to)) => boolQueryBuilder.must(rangeQuery("system.lastModified").from(from.getMillis).to(to.getMillis))
+      case DatesFilter(None, Some(to)) => boolQueryBuilder.must(rangeQuery("system.lastModified").to(to.getMillis))
+      case DatesFilter(Some(from), None) => boolQueryBuilder.must(rangeQuery("system.lastModified").from(from.getMillis))
       case _                             => //do nothing, don't add date filter
     }
 
