@@ -1,6 +1,6 @@
 pipeline {
   agent {
-    label 'scala'
+    label 'dev-builds'
   }
   environment {
     sbt = "${tool name: 'sbt-1.2', type: 'org.jvnet.hudson.plugins.SbtPluginBuilder$SbtInstallation'}/bin/sbt"
