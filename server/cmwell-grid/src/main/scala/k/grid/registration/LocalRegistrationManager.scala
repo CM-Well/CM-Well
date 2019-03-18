@@ -60,8 +60,9 @@ class LocalRegistrationManager extends Actor with LazyLogging {
 
       // send the data to the client actor so it can forward it to its subscribers.
       Grid.selectActor(ClientActor.name, Grid.thisMember) ! JvmMembershipReport(jvmsJoined, jvmsLeft)
+      import cmwell.util.string.sanitizeLogLine
 
-      logger.debug(s"Current jvms: $jvms")
+      logger.debug(sanitizeLogLine(s"Current jvms: $jvms"))
     case IncreaseRegFails =>
       LocalRegistrationManager._regFails = Math.min(LocalRegistrationManager._regFails + 1, Config.possibleRegFails)
   }

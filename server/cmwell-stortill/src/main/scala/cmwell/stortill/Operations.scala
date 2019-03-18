@@ -284,6 +284,7 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSServiceOps)
               foundAndFixedFut.flatMap { foundAndFixed =>
                 //all infotons have valid indexTime since we already fixed it in `fixAndUpdateInfotonInCas`
                 lazy val cur = foundAndFixed.maxBy(_.indexTime.get)
+                import cmwell.util.string.sanitizeLogLine
 
                 Future
                   .traverse(foundAndFixed.groupBy(_.lastModified.getMillis)) {
@@ -292,9 +293,9 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSServiceOps)
                       val maxiton = is.maxBy(_.indexTime.getOrElse(0L))
                       Future
                         .traverse(is.filterNot(_ == maxiton)) { i =>
-                          log.debug(
+                          log.debug(sanitizeLogLine(
                             s"purging  an infoton only because lastModified collision: ${ProxyOperations.jsonFormatter.render(i)}"
-                          )
+                          ))
                           // we are purging an infoton only because lastModified collision,
                           // but we should log the lost data (JsonFormatter which preserves the "last name" hash + quads data?)
                           val f1 = retry(ftsService.purgeByUuidsAndIndexes(onlyES(i.uuid).map(i.uuid -> _)))

@@ -38,12 +38,14 @@ abstract class RDFFormatter(hostForNs: String,
                             forceUniqueness: Boolean)
     extends Formatter {
 
+  import cmwell.util.string.sanitizeLogLine
+
   lazy val host = {
     if (hostForNs.startsWith("http")) hostForNs
     else {
-      logger.warn(
+      logger.warn(sanitizeLogLine(
         s"host provided for RDF formatter ($hostForNs) does not contain a known protocol ('http://' or 'https://'), assigned with 'http://' as default."
-      )
+      ))
       s"http://$hostForNs"
     }
   }
