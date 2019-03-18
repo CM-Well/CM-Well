@@ -920,6 +920,11 @@ class FTSService(config: Config) extends NsSplitter{
 
   }
 
+  def isStrSystemField(fieldName: String, fieldType: FieldType): Boolean = {
+    (fieldType eq StringType) && (fieldName.startsWith("system.") || fieldName.startsWith("content.") || fieldName.startsWith("link."))
+
+  }
+
   def aggregate(pathFilter: Option[PathFilter], fieldFilter: Option[FieldFilter],
                 datesFilter: Option[DatesFilter] = None, paginationParams: PaginationParams,
                 aggregationFilters: Seq[AggregationFilter], withHistory: Boolean = false,
@@ -938,9 +943,19 @@ class FTSService(config: Config) extends NsSplitter{
 
     def filterToBuilder(filter:AggregationFilter):AggregationBuilder = {
 
-      implicit def fieldValueToValue(fieldValue: Field): String = fieldValue.operator match {
-        case AnalyzedField    => reverseNsTypedField(fieldValue.value)
-        case NonAnalyzedField => s"infoclone.${reverseNsTypedField(fieldValue.value)}.%exact"
+      implicit def fieldValueToValue(fieldValue: Field): String = {
+        val fType = fieldType(fieldValue.value)
+        if (isStrSystemField(fieldValue.value, fType))
+          throw new IllegalArgumentException("aggregations failure due to text system field")
+        fieldValue.operator match {
+          case AnalyzedField =>
+            if (fType eq StringType)
+              throw new IllegalArgumentException("aggregations failure due to fielddata disabled")
+            else reverseNsTypedField(fieldValue.value)
+          case NonAnalyzedField =>
+            val reversed = reverseNsTypedField(fieldValue.value)
+            if (fType eq StringType) reversed + ".%exact" else reversed
+        }
       }
 
       val name = filter.name + "_" + counter
@@ -993,7 +1008,6 @@ class FTSService(config: Config) extends NsSplitter{
     val searchQueryStr = if (debugInfo) Some(request.toString) else None
 
     val resFuture = injectFuture[SearchResponse](request.execute(_))
-
     def esAggsToOurAggs(aggregations: Aggregations, debugInfo: Option[String] = None): AggregationsResponse = {
       AggregationsResponse(
         aggregations.asScala.map {
@@ -1069,7 +1083,8 @@ class FTSService(config: Config) extends NsSplitter{
     resFuture.transform {
       case Success(res) if res.getAggregations eq null =>
         Failure(new Exception(s"inner aggregations is null: $buildErrString"))
-      case Failure(err) => Failure(new Exception(s"aggregations failure: $buildErrString", err))
+      case Failure(err) =>
+        Failure(new Exception(s"aggregations failure: $buildErrString", err))
       case Success(res) =>
         Try(esAggsToOurAggs(res.getAggregations, searchQueryStr)).recoverWith {
           case ex: Throwable => Failure(new Exception(s"aggregations converting failure: $buildErrString", ex))
