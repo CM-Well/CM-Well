@@ -800,7 +800,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
 
   private def toFieldValues(ss: Set[String]): Set[FieldValue] = ss.map(FString.apply)
 
-  def startScrollEliNew(pathFilter: Option[PathFilter] = None,
+  def startScroll(pathFilter: Option[PathFilter] = None,
                   fieldsFilters: Option[FieldFilter] = None,
                   datesFilter: Option[DatesFilter] = None,
                   paginationParams: PaginationParams = DefaultPaginationParams,
@@ -809,7 +809,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                   withDeleted: Boolean = false,
                   debugInfo: Boolean = false): Future[IterationResults] = {
     ftsService
-      .startScrollEliNew(pathFilter,
+      .startScroll(pathFilter,
         fieldsFilters,
         datesFilter,
         paginationParams,
@@ -831,7 +831,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                        withHistory: Boolean = false,
                        withDeleted: Boolean = false): Seq[() => Future[IterationResults]] = {
     ftsService
-      .startSuperScrollEliNew(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTTL, withHistory, withDeleted)
+      .startSuperScroll(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTTL, withHistory, withDeleted)
       .map { fun =>
         () =>
           fun().map { ftsResults =>
@@ -861,7 +861,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                        withHistory: Boolean = false,
                        withDeleted: Boolean = false): Seq[Future[IterationResults]] = {
     ftsService
-      .startMultiScrollEliNew(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTTL, withHistory, withDeleted)
+      .startMultiScroll(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTTL, withHistory, withDeleted)
       .map(_.map { ftsResults =>
         val response = ftsResults.response
         IterationResults(response.scrollId, response.total, Some(response.infotons), debugInfo = ftsResults.searchQueryStr)

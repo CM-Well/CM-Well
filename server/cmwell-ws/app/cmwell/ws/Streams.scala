@@ -291,7 +291,7 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
   )(implicit ec: ExecutionContext): Future[(Source[IterationResults, NotUsed], Long)] = {
 
     val firstHitsTuple = crudServiceFS
-      .startScrollEliNew(
+      .startScroll(
         pathFilter = pathFilter,
         fieldsFilters = fieldFilters,
         datesFilter = datesFilter,

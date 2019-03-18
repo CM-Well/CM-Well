@@ -1974,7 +1974,7 @@ callback=< [URL] >
     scrollInput match {
       case ScrollInput(scrollId) => crudServiceFS.scroll(scrollId, scrollTTL, withData, debugInfo)
       case StartScrollInput(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTtl, withHistory, withDeleted) =>
-        crudServiceFS.startScrollEliNew(
+        crudServiceFS.startScroll(
           pathFilter,
           fieldFilters,
           datesFilter,
