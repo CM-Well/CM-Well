@@ -2,6 +2,9 @@ pipeline {
   agent {
     label 'dev-builds'
   }
+  tools {
+    jdk 'jdk1.8'
+  }
   environment {
     sbt = "${tool name: 'sbt-1.2', type: 'org.jvnet.hudson.plugins.SbtPluginBuilder$SbtInstallation'}/bin/sbt"
     SCALA_LOCATION = "$HOME/tools/scala-2.12.6/bin/"
