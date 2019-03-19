@@ -7,7 +7,7 @@ libraryDependencies ++=  Seq(
 
 val s = Seq(
   shellPrompt := { s => Project.extract(s).currentProject.id + " > " },
-  scalaVersion := "2.12.6"
+  scalaVersion := "2.12.8"
 )
 
 sourceGenerators in Compile += Def.task {
@@ -16,11 +16,11 @@ sourceGenerators in Compile += Def.task {
      |package cmwell.build
      |
      |object Versions {
-     |  val cassandra = "2.1.18"
-     |  val elasticsearch = "1.7.6"
-     |  val kafka = "0.10.2.1"
+     |  val cassandra = "3.11.4"
+     |  val elasticsearch = "6.6.2"
+     |  val kafka = "2.1.1"
      |  val play = "${PluginVersions.play}"
-     |  val zookeeper = "3.4.11"
+     |  val zookeeper = "3.4.13"
      |}
      """.stripMargin)
   Seq(file

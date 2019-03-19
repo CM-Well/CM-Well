@@ -406,14 +406,25 @@ class IRWServiceNativeImpl2(
     }
 
     readIndexTimeRowsForUuid(uuid, level).flatMap { indexTimes =>
-      if (indexTimes.isEmpty) writeIndexTimeToUuid(uuid, indexTime, level)
+      if (indexTimes.isEmpty) {
+        val indexTimeToWrite =
+          if (!disableReadCache) Option(dataCahce.getIfPresent(uuid)).flatMap { infoton =>
+            if (infoton.indexTime.fold(false)(_ != indexTime)) {
+              logger.warn(s"was asked to `addIndexTimeToUuid` with indexTime=$indexTime for uuid [$uuid], " +
+                s"but index time [${infoton.indexTime}] was already in cache. Writing again the indexTime that was in the cache.")
+            }
+            infoton.indexTime
+          }.getOrElse(indexTime)
+          else indexTime
+        writeIndexTimeToUuid(uuid, indexTimeToWrite, level)
+      }
       else if (indexTimes.head == indexTime && indexTimes.tail.isEmpty) {
-        logger.error(
+        logger.info(
           s"was asked to `addIndexTimeToUuid` for uuid [$uuid], but index time already written [$indexTime]: taking no action and returning Future.successful"
         )
         Future.successful(())
       } else {
-        logger.error(
+        logger.info(
           s"was asked to `addIndexTimeToUuid` for uuid [$uuid], but different indexTime(s) is already present ${indexTimes
             .mkString("[", ",", "]")}: will delete these, and write the new indexTime [$indexTime]"
         )

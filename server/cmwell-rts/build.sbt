@@ -5,10 +5,6 @@ libraryDependencies ++= {
   Seq(
     dm("com.typesafe.akka", "akka-cluster"),
     dm("com.typesafe.akka", "akka-cluster-tools"),
-    //  dm("com.typesafe.akka","akka-contrib"),
-    dm("org.apache.lucene", "lucene-core"),
-    dm("org.apache.lucene", "lucene-analyzers-common"),
-    dm("org.apache.lucene", "lucene-queryparser")
   )
 }
 

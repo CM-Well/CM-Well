@@ -165,7 +165,7 @@ abstract class ComponentProps(h: Host, name: String, location: String, hasDate: 
     Some(getTarResName(packageName, location))
 
   def getTarResName(path: String, location: String): String =
-    h.command("tar -tf " + s"$location/$path" + " | awk -F '/' '{print $1}' | head -1").get.trim
+    h.command("tar -tf " + s"$location/$path" + " | head -1 | awk -F '/' '{print $1}'").get.trim
 
   def getZipResName(path: String, location: String): String =
     h.command("unzip -l " + s"$location/$path" + " | awk '{print $4}' |  awk -F '/' '{print $1}' | head -4 | tail -1")
@@ -366,16 +366,19 @@ case class ElasticsearchProps(h: Host)
     with RunnableComponent {
   override val componentName: String = "elasticsearch"
   override val componentDataDirs: Map[String, GenSeq[String]] = Map(
-    "es" -> h.getDataDirs.esDataDirs,
-    "es-master" -> List(s"${h.getInstDirs.intallationDir}/data")
+    "es" -> h.getDataDirs.esDataDirs.filterNot(_.endsWith("master")),
+    "es-master" -> h.getDataDirs.esDataDirs.filter{_.endsWith("master")}
   )
   override val componentMappings: Map[String, Int] = Map("es" -> h.getDataDirs.esDataDirs.size, "es-master" -> 1)
 
   override def upgradeMethod: UpgradeMethod = PreUpgrade
 
+
+  override def getUnpackedName(packageName: String, location: String): Option[String] = Some(getZipResName(packageName, location))
+
   def targetLocation = "app/es"
-  def unpackCommand: Option[String] = Some("tar -xf")
-  def symLinkName: Option[String] = Some("cur")
+  def unpackCommand : Option[String] = Some("unzip")
+  def symLinkName : Option[String] = Some("cur")
 
   def start(hosts: GenSeq[String]): Unit = {
     h.startElasticsearch(hosts)
@@ -582,6 +585,9 @@ case class JavaProps(h: Host) extends ComponentProps(h, "jdk", "components-extra
   def targetLocation = "app"
   def unpackCommand: Option[String] = Some("tar -xf")
   def symLinkName: Option[String] = Some("java")
+  override def getTarResName(path: String, location: String): String =
+    h.command("tar -tf " + s"$location/$path" + " | head -1 | awk -F '/' '{print $2}'").get.trim
+
 }
 
 case class Mx4JProps(h: Host) extends ComponentProps(h, "mx4j", "components", false) {
@@ -684,7 +690,8 @@ class Deployment(h: Host) {
     val writer = new PrintWriter(f)
     writer.write(content)
     writer.close
-    h.rsync(tmpName, s"$location/$fileName", hosts)
+    h.command(s"mkdir -p $location", hosts, false)
+    h.rsync(tmpName, s"$location/$fileName" , hosts)
     f.delete()
   }
 

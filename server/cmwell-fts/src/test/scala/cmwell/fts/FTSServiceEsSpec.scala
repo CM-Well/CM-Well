@@ -16,14 +16,17 @@
 
 package cmwell.fts
 
+import cmwell.common.formats.JsonSerializerForES
 import cmwell.domain._
-import com.typesafe.scalalogging.Logger
+import cmwell.util.build.BuildInfo
+import com.typesafe.scalalogging.{LazyLogging, Logger}
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
+import org.elasticsearch.client.Requests
 import org.elasticsearch.common.unit.TimeValue
+import org.elasticsearch.common.xcontent.XContentType
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 import org.scalatest._
-import org.slf4j.LoggerFactory
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -35,349 +38,255 @@ import scala.io.Source
  * Time: 6:15 PM
  */
 
-sealed trait FTSMixin extends BeforeAndAfterAll { this: Suite =>
-  def ftsService: FTSServiceOps
-  def refreshAll(): Unit
-  def getUUID(uuid: String, isCurrent: Boolean = true) = ftsService match {
-    case es: FTSServiceNew => es.client.prepareGet("cm_well_p0_0","infoclone", uuid).execute().actionGet()
-    case es: FTSServiceES => {
-      val index = if(isCurrent) "cmwell_current" else "cmwell_history"
-      es.client.prepareGet(index, "infoclone", uuid).execute().actionGet()
-    }
-  }
-  val isoDateFormatter = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
-  implicit val executionContext =  scala.concurrent.ExecutionContext.global
-  implicit val logger = Logger(LoggerFactory.getLogger(getClass.getName))
-}
+//sealed trait FTSMixin extends BeforeAndAfterAll { this: Suite =>
+//  def ftsService: FTSServiceOps
+//  def refreshAll(): Unit
+//  def getUUID(uuid: String, isCurrent: Boolean = true) = ftsService match {
+//    case es: FTSService => es.client.prepareGet("cm_well_p0_0","infoclone", uuid).execute().actionGet()
+//    case es: FTSServiceES => {
+//      val index = if(isCurrent) "cmwell_current" else "cmwell_history"
+//      es.client.prepareGet(index, "infoclone", uuid).execute().actionGet()
+//    }
+//  }
+//  val isoDateFormatter = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
+//  implicit val executionContext =  scala.concurrent.ExecutionContext.global
+//  implicit val logger = Logger(LoggerFactory.getLogger(getClass.getName))
+//}
 
-trait FTSServiceESTest extends FTSMixin { this: Suite =>
-  var ftsServiceES:FTSServiceES = _
-
-  override def ftsService: FTSServiceOps = ftsServiceES
-
-  override protected def beforeAll() {
-    ftsServiceES = FTSServiceES.getOne("FTSServiceESTest.yml")
-
-    // wait for green status
-    ftsServiceES.client.admin().cluster()
-      .prepareHealth()
-      .setWaitForGreenStatus()
-      .setTimeout(TimeValue.timeValueMinutes(5))
-      .execute()
-      .actionGet()
-
-
-    // delete all existing indices
-    ftsServiceES.client.admin().indices().delete(new DeleteIndexRequest("_all"))
-
-    // load indices template
-    val indicesTemplate = Source.fromURL(this.getClass.getResource("/indices_template.json")).getLines.reduceLeft(_ + _)
-    ftsServiceES.client.admin().indices().preparePutTemplate("indices_template").setSource(indicesTemplate).execute().actionGet()
-
-    // override with test-only settings
-    val testOnlyTemplate = Source.fromURL(this.getClass.getResource("/test_indices_template_override.json")).getLines.reduceLeft(_ + _)
-    ftsServiceES.client.admin().indices().preparePutTemplate("test_indices_template").setSource(testOnlyTemplate).execute().actionGet()
-
-    // create current index
-    ftsServiceES.client.admin().indices().prepareCreate("cmwell_current").execute().actionGet()
-
-    // create history index
-    ftsServiceES.client.admin().indices().prepareCreate("cmwell_history").execute().actionGet()
-
-    super.beforeAll()
-  }
-
-  override protected def afterAll() {
-    ftsServiceES.close()
-    super.afterAll()
-    Thread.sleep(10000)
-    logger debug s"FTSSpec is over"
-  }
-
-  override def refreshAll() = ftsServiceES.client.admin().indices().prepareRefresh("*").execute().actionGet()
-}
-
-trait FTSServiceNewTest extends FTSMixin { this: Suite =>
-  var ftsServiceNew: FTSServiceNew = _
-
-  override def ftsService: FTSServiceOps = ftsServiceNew
-
-  override protected def beforeAll() {
-    ftsServiceNew = FTSServiceNew("FTSServiceESTest.yml")
-
-    // wait for green status
-    ftsServiceNew.client.admin().cluster()
-      .prepareHealth()
-      .setWaitForGreenStatus()
-      .setTimeout(TimeValue.timeValueMinutes(5))
-      .execute()
-      .actionGet()
-
+//trait FTSServiceESTest extends FTSMixin { this: Suite =>
+//  var ftsServiceES:FTSServiceES = _
+//
+//  override def ftsService: FTSServiceOps = ftsServiceES
+//
+//  override protected def beforeAll() {
+//    ftsServiceES = FTSServiceES.getOne("FTSServiceESTest.yml")
+//
+//    // wait for green status
+//    ftsServiceES.client.admin().cluster()
+//      .prepareHealth()
+//      .setWaitForGreenStatus()
+//      .setTimeout(TimeValue.timeValueMinutes(5))
+//      .execute()
+//      .actionGet()
+//
 //
 //    // delete all existing indices
-//    ftsServiceNew.client.admin().indices().delete(new DeleteIndexRequest("_all"))
+//    ftsServiceES.client.admin().indices().delete(new DeleteIndexRequest("_all"))
+//
+//    // load indices template
+//    val indicesTemplate = Source.fromURL(this.getClass.getResource("/indices_template.json")).getLines.reduceLeft(_ + _)
+//    ftsServiceES.client.admin().indices().preparePutTemplate("indices_template").setSource(indicesTemplate).execute().actionGet()
+//
+//    // override with test-only settings
+//    val testOnlyTemplate = Source.fromURL(this.getClass.getResource("/test_indices_template_override.json")).getLines.reduceLeft(_ + _)
+//    ftsServiceES.client.admin().indices().preparePutTemplate("test_indices_template").setSource(testOnlyTemplate).execute().actionGet()
+//
+//    // create current index
+//    ftsServiceES.client.admin().indices().prepareCreate("cmwell_current").execute().actionGet()
+//
+//    // create history index
+//    ftsServiceES.client.admin().indices().prepareCreate("cmwell_history").execute().actionGet()
+//
+//    super.beforeAll()
+//  }
+//
+//  override protected def afterAll() {
+//    ftsServiceES.close()
+//    super.afterAll()
+//    Thread.sleep(10000)
+//    logger debug s"FTSSpec is over"
+//  }
+//
+//  override def refreshAll() = ftsServiceES.client.admin().indices().prepareRefresh("*").execute().actionGet()
+//}
 
-    // load indices template
-    val indicesTemplate = Source.fromURL(this.getClass.getResource("/indices_template_new.json")).getLines.reduceLeft(_ + _)
-    ftsServiceNew.client.admin().indices().preparePutTemplate("indices_template_new").setSource(indicesTemplate).execute().actionGet()
+trait FTSServiceTestTrait extends BeforeAndAfterAll with LazyLogging{ this: Suite =>
+  var ftsService:FTSService = _
+//  var embeddedElastic:EmbeddedElastic = _
+  implicit val executionContext =  scala.concurrent.ExecutionContext.global
+  implicit val loger = logger
 
-    // override with test-only settings
-    val testOnlyTemplate = Source.fromURL(this.getClass.getResource("/test_indices_template_override.json")).getLines.reduceLeft(_ + _)
-    ftsServiceNew.client.admin().indices().preparePutTemplate("test_indices_template").setSource(testOnlyTemplate).execute().actionGet()
+  override protected def beforeAll() {
 
-    // create index
-    Await.ready(ftsServiceNew.createIndex("cm_well_p0_0"),5.minutes)
+//    val indicesTemplate = Source.fromURL(this.getClass.getResource("/indices_template.json")).getLines.reduceLeft(_ + _)
+//    val testIndicesTemplate = Source.fromURL(this.getClass.getResource("/test_indices_template_override.json")).getLines.reduceLeft(_ + _)
+//
+//    embeddedElastic = EmbeddedElastic.builder()
+//      .withElasticVersion(BuildInfo.elasticsearchVersion)
+//      .withSetting(PopularProperties.CLUSTER_NAME, "fts_test_cluster")
+//      .withTemplate("indices_template", indicesTemplate)
+//      .withTemplate("test_indices_template", testIndicesTemplate)
+//      .withIndex(testIndexName)
+//      .build()
+//      .start()
+
+//    embeddedElastic.recreateIndices()
+
+    ftsService = FTSService()
 
     super.beforeAll()
   }
 
   override protected def afterAll() {
-    ftsServiceNew.close()
+    ftsService.shutdown()
     super.afterAll()
-    Thread.sleep(10000)
-    logger debug s"FTSSpec is over"
   }
 
-  def refreshAll() = ftsServiceNew.client.admin().indices().prepareRefresh("*").execute().actionGet()
+  def refreshAll() = ftsService.client.admin().indices().prepareRefresh().execute().actionGet()
+
+  val testIndexName = "cm_well_p0_0"
+  def getUUID(uuid:String) = ftsService.client.prepareGet(testIndexName,"infoclone", uuid).execute().actionGet()
 
 }
 
-trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNode with FTSServiceESTest */ { this: FTSMixin =>
+class FTSServiceEsSpec extends FlatSpec with Matchers with FTSServiceTestTrait with LazyLogging{
 
   System.setProperty("dataCenter.id" , "dc_test")
+  val isoDateFormatter = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss'Z'")
   val timeout =  FiniteDuration(10, SECONDS)
+  // scalastyle:off
+//
+//  val m : Map[String, Set[FieldValue]] = Map("name" -> Set(FString("yehuda"), FString("moshe")))
+//  val infotonToIndex = ObjectInfoton("/fts-test/objinfo1/a/b/c","dc_test", Some(System.currentTimeMillis()), m)
+//  "indexing new infoton" should "store it in current index" in {
+//    Await.result(ftsService.executeIndexRequests(Iterable(ESIndexRequest(
+//      Requests.indexRequest(testIndexName).`type`("infoclone").id(infotonToIndex.uuid).create(true)
+//        .source(JsonSerializerForES.encodeInfoton(infotonToIndex), XContentType.JSON),
+//      None
+//    )) ), timeout)
+//    refreshAll()
+//    val result = getUUID(infotonToIndex.uuid)
+//    // result: ftsServiceES.search(Some(PathFilter("/fts-test/objinfo1/a/b", false)),FieldFilter(Must, Contains, "name", "moshe") :: Nil, None, DefaultPaginationParams,false, "cmwell")
+//    result.isExists should equal (true)
+//  }
 
-  val m : Map[String, Set[FieldValue]] = Map("name" -> Set(FString("yehuda"), FString("moshe")))
-  val infotonToIndex = ObjectInfoton("/fts-test/objinfo1/a/b/c","dc_test", Some(System.currentTimeMillis()), m, None)
-  "indexing new infoton" should "store it in current index" in {
-    Await.result(ftsService.index(infotonToIndex, None, ftsService.defaultPartition), timeout)
-    refreshAll()
-    val result = getUUID(infotonToIndex.uuid)
-    result.isExists should equal (true)
+//  "indexing existing infoton" should "store it in current index" in {
+//    val lastModified = new DateTime()
+//    val m : Map[String, Set[FieldValue]] = Map("name" -> Set(FString("yehuda"), FString("moshe")), "family" -> Set(FString("smith")))
+//    val updatedInfotonToIndex = ObjectInfoton("/fts-test/objinfo1/a/b/c", "dc_test", Some(System.currentTimeMillis()),lastModified, m)
+//    Await.result(ftsService.executeIndexRequests(Iterable(ESIndexRequest(
+//      Requests.indexRequest(testIndexName).`type`("infoclone").id(updatedInfotonToIndex.uuid).create(true)
+//        .source(JsonSerializerForES.encodeInfoton(updatedInfotonToIndex), XContentType.JSON),
+//      None
+//    )) ), timeout)
+//    refreshAll()
+//    val result = Await.result(ftsService.search(None, Some(FieldFilter(Must, Equals, "system.path","/fts-test/objinfo1/a/b/c")), None, DefaultPaginationParams), timeout)
+//    result.infotons.size should equal (1)
+//    result.infotons(0).lastModified should equal (lastModified)
+//  }
+//
+//  it should "store its previous version in the history index" in {
+//    val result = Await.result(ftsService.search(None, Some(FieldFilter(Must, Equals, "system.path","/fts-test/objinfo1/a/b/c")), None,DefaultPaginationParams, SortParam.empty, true), timeout)
+//    result.infotons.size should equal (2)
+//    val res = getUUID(infotonToIndex.uuid)
+//    withClue(s"${res.getIndex}, ${res.getSource}, ${res.getType}, ${res.getVersion}, ${res.isSourceEmpty}") {
+//      res.isExists should equal(true)
+//    }
+//  }
+
+  val bulkInfotons = Seq.tabulate(500){ i =>
+    val infoton = ObjectInfoton("/fts-test/bulk1/info" + i, "dc_test", Some(System.currentTimeMillis()),
+      Map("name" + i -> Set[FieldValue](FString("value" + i), FString("another value" + i))), Some("http"))
+    ESIndexRequest(
+      Requests.indexRequest(testIndexName).`type`("infoclone").id(infoton.uuid).create(true)
+        .source(JsonSerializerForES.encodeInfoton(infoton), XContentType.JSON),
+      None
+    )
   }
 
-  "indexing existing infoton" should "store it in current index" in {
-    val lastModified = new DateTime()
-    val m : Map[String, Set[FieldValue]] = Map("name" -> Set(FString("yehuda"), FString("moshe")), "family" -> Set(FString("smith")))
-    val updatedInfotonToIndex = ObjectInfoton("/fts-test/objinfo1/a/b/c", "dc_test", Some(System.currentTimeMillis()),lastModified, m, None)
-    Await.result(ftsService.index(updatedInfotonToIndex,Some(infotonToIndex)), timeout)
-    refreshAll()
-    val result = Await.result(
-      ftsService.search(
-        None,
-        Some(FieldFilter(Must, Equals, "system.path","/fts-test/objinfo1/a/b/c")),
-        None,
-        DefaultPaginationParams),
-      timeout)
-    result.infotons.size should equal (1)
-    result.infotons(0).lastModified should equal (lastModified)
-  }
+//  "bulk indexing infotons" should "store them in current index" in {
+//
+//    Await.result(ftsService.executeIndexRequests(bulkInfotons, true), 20.seconds)
+////    embeddedElastic.refreshIndices()
+//    Thread.sleep(15000)
+//    val result = Await.result(ftsService.search(Some(PathFilter("/fts-test/bulk1", true)),None,None,DefaultPaginationParams), timeout)
+//    result.total should equal (500)
+//  }
 
-  it should "store its previous version in the history index" in {
-    val result = Await.result(
-      ftsService.search(
-        None,
-        Some(FieldFilter(Must, Equals, "system.path","/fts-test/objinfo1/a/b/c")),
-        None,
-        DefaultPaginationParams,
-        SortParam.empty,
-        true),
-      timeout)
-    result.infotons.size should equal (2)
-    val res = getUUID(infotonToIndex.uuid,false)
-    withClue(s"${res.getIndex}, ${res.getSource}, ${res.getType}, ${res.getVersion}, ${res.isSourceEmpty}") {
-      res.isExists should equal(true)
-    }
-  }
+//  "bulk indexing existing infotons" should "store their previous version in history index and current version in current index" in {
+//
+//    val bulkUpdatedInfotons = Seq.tabulate(500){ i =>
+//      val infoton = ObjectInfoton("/fts-test/bulk/info" + i,"dc_test", Some(System.currentTimeMillis()),
+//        Map("name" + i -> Set[FieldValue](FString("moshe" + i), FString("shirat" + i))))
+//      ESIndexRequest(
+//        Requests.indexRequest(testIndexName).`type`("infoclone").id(infoton.uuid).create(true)
+//          .source(JsonSerializerForES.encodeInfoton(infoton), XContentType.JSON),
+//        None
+//      )
+//    }
+//    Await.result(ftsService.executeIndexRequests(bulkUpdatedInfotons), timeout)
+//    refreshAll()
+//
+//    Await.result(ftsService.search(Some(PathFilter("/fts-test/bulk", true)),None,None,DefaultPaginationParams), timeout).total should equal (500)
+//    Await.result(ftsService.search(pathFilter = Some(PathFilter("/fts-test/bulk", true)),None,None,DefaultPaginationParams, withHistory = true), timeout).total should equal (1000)
+//  }
 
-  val bulkInfotons = {
-    val b = Vector.newBuilder[ObjectInfoton]
-    (1 to 500).foreach { i =>
-      b += ObjectInfoton(
-        "/fts-test/bulk/info" + i,
-        "dc_test",
-        Some(System.currentTimeMillis()),
-        Map("name" + i -> Set[FieldValue](FString("value" + i), FString("another value" + i))), None)
-    }
-    b.result()
-  }
-  "bulk indexing infotons" should "store them in current index" in {
+//  "deleting infoton" should "remove it from current index" in {
+//    val infotonToDelete = ObjectInfoton("/fts-test/infoToDel","dc_test", Some(System.currentTimeMillis()), Map("country" -> Set[FieldValue](FString("israel"), FString("spain"))))
+//    Await.result(ftsService.executeIndexRequests(Iterable(ESIndexRequest(
+//      Requests.indexRequest(testIndexName).`type`("infoclone").id(infotonToDelete.uuid).create(true)
+//        .source(JsonSerializerForES.encodeInfoton(infotonToDelete), XContentType.JSON),
+//      None
+//    ))), timeout)
+//    refreshAll()
+//    val resultBeforeDelete = Await.result(ftsService.search(None, Some(FieldFilter(Must, Equals, "system.path","/fts-test/infoToDel")), None, DefaultPaginationParams), timeout)
+//    resultBeforeDelete.total should equal (1)
+//    val deletedInfoton = DeletedInfoton("/fts-test/infoToDel","dc_test",Some(System.currentTimeMillis()))
+//    Await.result(ftsService.delete(infotonToDelete.uuid), timeout)
+//    refreshAll()
+//    val resultAfterDelete = Await.result(ftsService.search(None, Some(FieldFilter(Must, Equals, "system.path","/fts-test/infoToDel")), None, DefaultPaginationParams), timeout)
+//    resultAfterDelete.total should equal (0)
+//
+//  }
+//
+//  it should "move it to history index and add tombstone" in {
+//    val resultWithHistory = Await.result(ftsService.search(None, Some(FieldFilter(Must, Equals, "system.path","/fts-test/infoToDel")), None,DefaultPaginationParams, SortParam.empty, true), timeout)
+//    resultWithHistory.total should  equal (2)
+//    resultWithHistory.infotons.exists(_.isInstanceOf[DeletedInfoton])  should equal (true)
+//  }
 
-    Await.result(ftsService.bulkIndex(bulkInfotons,Nil,ftsService.defaultPartition), timeout)
-    refreshAll()
-    val result = Await.result(ftsService.search(Some(PathFilter("/fts-test/bulk", true)),None,None,DefaultPaginationParams), timeout)
-    result.total should equal (500)
-  }
+//  "purging infoton" should "permanently delete infoton with given UUID from history index" in {
+//    val infotonToPurge = ObjectInfoton("/fts-test/infoToPurge","dc_test",Some(System.currentTimeMillis()))
+//    Await.result(ftsService.index(infotonToPurge, None), timeout)
+//    val updatedInfotonToPurge = ObjectInfoton("/fts-test/infoToPurge","dc_test",Some(System.currentTimeMillis()))
+//    Await.result(ftsService.index(updatedInfotonToPurge, Some(infotonToPurge)), timeout)
+//    refreshAll()
+//    val result = Await.result(ftsService.search(None, Some(FieldFilter(Must, Equals, "system.uuid",infotonToPurge.uuid)), None, DefaultPaginationParams, SortParam.empty, true), timeout)
+//    result.length should equal(1)
+//    Await.result(ftsService.purge(infotonToPurge.uuid), timeout)
+//    refreshAll()
+//    Await.result(ftsService.search(None, Some(FieldFilter(Must, Equals, "system.uuid",infotonToPurge.uuid)), None, DefaultPaginationParams, SortParam.empty, true), timeout).length should equal(0)
+//  }
+//
+//  "purgeAll infoton" should "permanently delete all infoton's versions with given path from all indices" in {
+//    val infotonToPurgeAll = ObjectInfoton("/fts-test/infoToPurgeAll","dc_test")
+//    Await.result(ftsService.index(infotonToPurgeAll, None), timeout)
+//    val updatedInfotonToPurgeAll = ObjectInfoton("/fts-test/infoToPurgeAll","dc_test")
+//    Await.result(ftsService.index(updatedInfotonToPurgeAll, Some(infotonToPurgeAll)), timeout)
+//    refreshAll()
+//    Await.result(ftsService.search(None, Some(FieldFilter(Must, Equals, "system.path", infotonToPurgeAll.path)), None, DefaultPaginationParams, SortParam.empty, true), timeout).length should equal (2)
+//    Await.result(ftsService.purgeAll(infotonToPurgeAll.path,true,ftsService.defaultPartition), timeout)
+//    refreshAll()
+//    val f = ftsService.search(None, Some(FieldFilter(Must, Equals, "system.path", infotonToPurgeAll.path)), None, DefaultPaginationParams, SortParam.empty, true)
+//    f.onSuccess{
+//      case FTSSearchResponse(total, offset, length, infotons, None) =>
+//        logger.debug(s"before failing: total: $total, offset: $offset, length: $length and infotons:\n${infotons.map(_.path).mkString("\t","\n\t","\n")} ")
+//    }(scala.concurrent.ExecutionContext.Implicits.global)
+//    Await.result(f, timeout).length should equal (0)
+//  }
+//
+//  "listChildren" should "return a list of given infoton's current version children" in {
+//    val infotonToList1 = ObjectInfoton("/fts-test/infotons/infotonToList1","dc_test",Some(System.currentTimeMillis()))
+//    val infotonToList2 = ObjectInfoton("/fts-test/infotons/infotonToList2","dc_test", Some(System.currentTimeMillis()), Map("city" -> Set[FieldValue](FString("Or-Yehuda"), FString("Modiin"))))
+//    val infotonToList3 = LinkInfoton(path= "/fts-test/infotons/infotonToList3" ,dc = "dc_test",linkTo = "/fts-test/infotons/infotonToList2", linkType = LinkType.Temporary).copy(indexTime = Some(System.currentTimeMillis()))
+//    Await.result(ftsService.index(infotonToList1,None), timeout)
+//    Await.result(ftsService.index(infotonToList2,None), timeout)
+//    Await.result(ftsService.index(infotonToList3,None), timeout)
+//    refreshAll()
+//    Await.result(ftsService.listChildren("/fts-test/infotons",0,20,false,ftsService.defaultPartition), timeout).infotons.length should equal (3)
+//  }
 
-  "bulk indexing existing infotons" should "store their previous version in history index and current version in current index" in {
-    val updatedBulkInfotons = {
-      val b = Vector.newBuilder[ObjectInfoton]
-      (1 to 500).foreach { i =>
-        b += ObjectInfoton(
-          "/fts-test/bulk/info" + i,
-          "dc_test",
-          Some(System.currentTimeMillis()),
-          Map("name" + i -> Set[FieldValue](FString("moshe" + i), FString("shirat" + i))), None)
-      }
-      b.result()
-    }
-    Await.result(ftsService.bulkIndex(updatedBulkInfotons, bulkInfotons), timeout)
-    refreshAll()
-
-    Await.result(
-      ftsService.search(
-        Some(PathFilter("/fts-test/bulk", true)),
-        None,
-        None,
-        DefaultPaginationParams),
-      timeout).total should equal (500)
-    Await.result(
-      ftsService.search(
-        pathFilter = Some(PathFilter("/fts-test/bulk", true)),
-        None,
-        None,
-        DefaultPaginationParams,
-        withHistory = true),
-      timeout).total should equal (1000)
-  }
-
-  "deleting infoton" should "remove it from current index" in {
-    val infotonToDelete = ObjectInfoton(
-      "/fts-test/infoToDel",
-      "dc_test",
-      Some(System.currentTimeMillis()),
-      Map("country" -> Set[FieldValue](FString("israel"), FString("spain"))), None)
-    Await.result(ftsService.index(infotonToDelete,None), timeout)
-    refreshAll()
-    val resultBeforeDelete = Await.result(
-      ftsService.search(
-        None,
-        Some(FieldFilter(Must, Equals, "system.path","/fts-test/infoToDel")),
-        None,
-        DefaultPaginationParams),
-      timeout)
-    resultBeforeDelete.total should equal (1)
-    val deletedInfoton = DeletedInfoton("/fts-test/infoToDel","dc_test",Some(System.currentTimeMillis()))
-    Await.result(ftsService.delete(deletedInfoton, infotonToDelete), timeout)
-    refreshAll()
-    val resultAfterDelete = Await.result(
-      ftsService.search(
-        None,
-        Some(FieldFilter(Must, Equals, "system.path","/fts-test/infoToDel")),
-        None,
-        DefaultPaginationParams),
-      timeout)
-    resultAfterDelete.total should equal (0)
-
-  }
-
-  it should "move it to history index and add tombstone" in {
-    val resultWithHistory = Await.result(
-      ftsService.search(
-        None,
-        Some(FieldFilter(Must, Equals, "system.path","/fts-test/infoToDel")),
-        None,
-        DefaultPaginationParams,
-        SortParam.empty,
-        true),
-      timeout)
-    resultWithHistory.total should  equal (2)
-    resultWithHistory.infotons.exists(_.isInstanceOf[DeletedInfoton])  should equal (true)
-  }
-
-  "purging infoton" should "permanently delete infoton with given UUID from history index" in {
-    val infotonToPurge = ObjectInfoton("/fts-test/infoToPurge","dc_test",Some(System.currentTimeMillis()), protocol = None)
-    Await.result(ftsService.index(infotonToPurge, None), timeout)
-    val updatedInfotonToPurge = ObjectInfoton("/fts-test/infoToPurge","dc_test",Some(System.currentTimeMillis()), protocol = None)
-    Await.result(ftsService.index(updatedInfotonToPurge, Some(infotonToPurge)), timeout)
-    refreshAll()
-    val result = Await.result(
-      ftsService.search(
-        None,
-        Some(FieldFilter(Must, Equals, "system.uuid",infotonToPurge.uuid)),
-        None,
-        DefaultPaginationParams,
-        SortParam.empty,
-        true),
-      timeout)
-    result.length should equal(1)
-    Await.result(ftsService.purge(infotonToPurge.uuid), timeout)
-    refreshAll()
-    Await.result(
-      ftsService.search(
-        None,
-        Some(FieldFilter(Must, Equals, "system.uuid",infotonToPurge.uuid)),
-        None,
-        DefaultPaginationParams,
-        SortParam.empty,
-        true),
-      timeout).length should equal(0)
-  }
-
-  "purgeAll infoton" should "permanently delete all infoton's versions with given path from all indices" in {
-    val infotonToPurgeAll = ObjectInfoton("/fts-test/infoToPurgeAll","dc_test", protocol = None)
-    Await.result(ftsService.index(infotonToPurgeAll, None), timeout)
-    val updatedInfotonToPurgeAll = ObjectInfoton("/fts-test/infoToPurgeAll","dc_test", protocol = None)
-    Await.result(ftsService.index(updatedInfotonToPurgeAll, Some(infotonToPurgeAll)), timeout)
-    refreshAll()
-    Await.result(
-      ftsService.search(
-        None,
-        Some(FieldFilter(Must, Equals, "system.path", infotonToPurgeAll.path)),
-        None,
-        DefaultPaginationParams,
-        SortParam.empty,
-        true),
-      timeout).length should equal (2)
-    Await.result(ftsService.purgeAll(infotonToPurgeAll.path,true,ftsService.defaultPartition), timeout)
-    refreshAll()
-    val f = ftsService.search(
-      None,
-      Some(FieldFilter(Must, Equals, "system.path", infotonToPurgeAll.path)),
-      None,
-      DefaultPaginationParams,
-      SortParam.empty,
-      true)
-    f.foreach{
-      case FTSSearchResponse(total, offset, length, infotons, None) =>
-        logger.debug(s"before failing: total: $total, offset: $offset, length: $length and infotons:\n${infotons.map(_.path).mkString("\t","\n\t","\n")} ")
-      case x @ FTSSearchResponse(_, _, _, _, Some(_)) => logger.error(s"Unexpected SearchResponse. Received: $x"); ???
-    }(scala.concurrent.ExecutionContext.Implicits.global)
-    Await.result(f, timeout).length should equal (0)
-  }
-
-  val existingInfoton = ObjectInfoton("/fts-test2/infotons/frozen-pear","dc_test", Some(System.currentTimeMillis()), m, None)
-
-  "get an existing infoton" should "return the infoton" in {
-    Await.result(ftsService.index(existingInfoton, None, ftsService.defaultPartition), timeout)
-    refreshAll()
-    Await.result(ftsService.get(existingInfoton.uuid, "cmwell_current")(
-      scala.concurrent.ExecutionContext.Implicits.global), timeout).get._1.path should be(existingInfoton.path)
-  }
-
-  "listChildren" should "return a list of given infoton's current version children" in {
-    val infotonToList1 = ObjectInfoton(
-      "/fts-test/infotons/infotonToList1",
-      "dc_test",
-      Some(System.currentTimeMillis()), protocol = None)
-    val infotonToList2 = ObjectInfoton(
-      "/fts-test/infotons/infotonToList2",
-      "dc_test",
-      Some(System.currentTimeMillis()),
-      Map("city" -> Set[FieldValue](FString("Or-Yehuda"), FString("Modiin"))), None)
-    val infotonToList3 = LinkInfoton(
-      path= "/fts-test/infotons/infotonToList3",
-      dc = "dc_test",
-      linkTo = "/fts-test/infotons/infotonToList2",
-      linkType = LinkType.Temporary, protocol = None).copy(indexTime = Some(System.currentTimeMillis()))
-    Await.result(ftsService.index(infotonToList1,None), timeout)
-    Await.result(ftsService.index(infotonToList2,None), timeout)
-    Await.result(ftsService.index(infotonToList3,None), timeout)
-    refreshAll()
-    Await.result(ftsService.listChildren("/fts-test/infotons",0,20,false,ftsService.defaultPartition), timeout).infotons.length should equal (3)
-  }
-
-
+/*
   "search API" should "find infotons using path filter with descendants sorted by lastModified (desc)" in {
     //prepare infotons to index
     val objectInfotonToSearch = ObjectInfoton(
@@ -426,12 +335,20 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
       "/fts-test/search/objectInfotonToSearch/fileInfotonToSearch",
       LinkType.Temporary, None).copy(indexTime = Some(System.currentTimeMillis()))
 
+    val infotonsToIndex = Iterable(
+      objectInfotonToSearch,
+      objectInfotonToSearch2,
+      updatedObjectInfotonToSearch,
+      fileInfotonToSearch
+    ).map{ i =>
+      ESIndexRequest(
+        Requests.indexRequest(testIndexName).`type`("infoclone").id(i.uuid).create(true)
+          .source(JsonSerializerForES.encodeInfoton(i), XContentType.JSON),
+        None
+      )
+    }
     // index them
-    Await.result(ftsService.index(objectInfotonToSearch,None), timeout)
-    Await.result(ftsService.index(objectInfotonToSearch2,None), timeout)
-    Await.result(ftsService.index(updatedObjectInfotonToSearch, Some(objectInfotonToSearch)), timeout)
-    Await.result(ftsService.index(fileInfotonToSearch,None), timeout)
-    Await.result(ftsService.index(linkInfotonToSearch,None), timeout)
+    Await.result(ftsService.executeIndexRequests(infotonsToIndex), timeout)
 
     refreshAll()
 
@@ -531,8 +448,15 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
     val i2 = ObjectInfoton(path = "/fts-test2/sort-by/2", indexTime = None, dc = "dc_test",
       fields = Map("car" -> Set[FieldValue](FString("Subaru Impreza"))), protocol = None)
 
-    Await.result(ftsService.index(i1,None), timeout)
-    Await.result(ftsService.index(i2,None), timeout)
+    val infotonsToIndex = Iterable(i1, i2).map{ i =>
+      ESIndexRequest(
+        Requests.indexRequest(testIndexName).`type`("infoclone").id(i.uuid).create(true)
+          .source(JsonSerializerForES.encodeInfoton(i), XContentType.JSON),
+        None
+      )
+    }
+
+    Await.result(ftsService.executeIndexRequests(infotonsToIndex), timeout)
     refreshAll()
 
     val response = Await.result(ftsService.search(pathFilter = Some(PathFilter("/fts-test2/sort-by", true)),
@@ -547,16 +471,20 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
 
   "Scroll API" should "allow start scrolling and continue scrolling" in {
     val l = System.currentTimeMillis()
-    val infotons = Seq.tabulate(500){ i =>
-      ObjectInfoton(
-        s"/fts-test/scroll/info$i",
+    val infotons = Seq.tabulate(500){ n =>
+      val i = ObjectInfoton(
+        s"/fts-test/scroll/info$n",
         "dc_test",
-        Some(l + i),
-        Map("name" + i -> Set[FieldValue](FString("value" + i), FString("another value" + i))),
+        Some(l + n),
+        Map("name" + n -> Set[FieldValue](FString("value" + n), FString("another value" + n)))
+      )
+      ESIndexRequest(
+        Requests.indexRequest(testIndexName).`type`("infoclone").id(i.uuid).create(true)
+          .source(JsonSerializerForES.encodeInfoton(i), XContentType.JSON),
         None
       )
     }
-   Await.result(ftsService.bulkIndex(infotons,Nil), timeout)
+    Await.result(ftsService.executeIndexRequests(infotons), timeout)
     refreshAll()
     val startScrollResult =Await.result(
       ftsService.startScroll(pathFilter=Some(PathFilter("/fts-test/scroll", false)),None,None, paginationParams = PaginationParams(0, 60)), timeout)
@@ -572,9 +500,10 @@ trait FTSServiceEsSpec extends FlatSpec with Matchers /*with ElasticSearchTestNo
     count should equal (500)
 
   }
-
+*/
+  // scalastyle:on
 }
 
-class FTSoldTests extends FTSServiceEsSpec with FTSServiceESTest with FTSMixin
+//class FTSoldTests extends FTSServiceEsSpec with FTSServiceESTest with FTSMixin
 //TODO: uncomment, and make fts tests to run on new FTS as well
-//class FTSnewTests extends FTSServiceEsSpec with FTSServiceNewTest with FTSMixin
+//class FTSnewTests extends FTSServiceEsSpec with FTSServiceTest with FTSMixin

@@ -633,9 +633,9 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
             .runFold(empty)(_ ++ _)
             .map(parseProcDcJsonAndGetLastIndexTime)
         }
-        case (Success(HttpResponse(s, _, entity, _)), _) => {
+        case (Success(HttpResponse(s, headers, entity, _)), _) => {
           val body = Await.result(entity.dataBytes.runFold(empty)(_ ++ _), Duration.Inf).utf8String
-          val e = new Exception(s"Cm-Well returned bad response: status: ${s.intValue} reason: ${s.reason} body: $body")
+          val e = new Exception(s"Cm-Well returned bad response: status: ${s.intValue} headers: $headers reason: ${s.reason} body: $body")
           val ex = GetIndexTimeException(s"Get index time failed. Data center ID $dataCenterId, using local machine $h:$p", e)
           Future.failed[Option[Long]](ex)
         }

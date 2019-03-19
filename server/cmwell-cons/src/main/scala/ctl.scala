@@ -324,10 +324,18 @@ abstract class Host(user: String,
                  hosts: GenSeq[String] = ips,
                  sudo: Boolean = false,
                  sudoer: Option[Credentials] = None) {
+    hosts.foreach(host => createFile(path, content, host, sudo, sudoer))
+  }
+
+  def createFile(path: String,
+                 content: String,
+                 host: String,
+                 sudo: Boolean,
+                 sudoer: Option[Credentials]) {
     if (sudo)
-      command(s"""echo -e '$content' | sudo tee $path > /dev/null""", hosts, true, sudoer)
+      command(s"""echo -e '$content' | sudo tee $path > /dev/null""", host, true, sudoer)
     else
-      command(s"""echo $$'$content' > $path""", hosts, false)
+      command(s"""echo $$'$content' > $path""", host, false)
   }
 
   val shipperConfLocation = s"${instDirs.globalLocation}/cm-well/conf/logstash"
@@ -554,7 +562,7 @@ abstract class Host(user: String,
       // scalastyle:off
       if (verbose) println("command: " + cmd.mkString(" "))
       // scalastyle:on
-      (s"echo -e -n $pass\\n" #| cmd).!!
+      (Seq("bash", "-c", s"echo -e -n $pass\\\\n") #| cmd).!!
     }
   }
 
@@ -593,8 +601,6 @@ abstract class Host(user: String,
   def pingAddress = ips(0)
 
   def esHealthAddress = ":9200/_cluster/health?pretty=true"
-
-  var mappingFile = "mapping.json"
 
   def cassandraStatus(host: String): Try[String] = {
     command(
@@ -747,7 +753,7 @@ abstract class Host(user: String,
       throw new Exception(s"The host $host is not part of this cluster")
     val (readVarsLine, varValues) = variables.fold(("", "")) {
       case ((readVarsStr, varValuesForEcho), (varName, value)) =>
-        (s"$readVarsStr read $varName;", s"$varValuesForEcho$value\\n")
+        (s"$readVarsStr read $varName;", s"$varValuesForEcho$value\\\\n")
     }
     val (commandLine, process) = if (sudo && isSu) {
 
@@ -755,14 +761,14 @@ abstract class Host(user: String,
       //old version that get stuck sometimes - val command = s"""ssh -o StrictHostKeyChecking=no ${sudoer.get.name}@$host bash -c $$'{ export PATH=$path; read PASS; ./sshpass -p $$PASS bash -c "${escapedCommand(com)}"; }'"""
       val cmd = s"""ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR ${sudoer.get.name}@$host export PATH=$path;$readVarsLine read PASS; sshpass -p $$PASS bash -c "${escapedCommand(com)}""""
       // scalastyle:on
-      (cmd, s"echo -e -n $varValues${sudoer.get.pass}\\n" #| cmd)
+      (cmd, Seq("bash", "-c", s"echo -e $varValues${sudoer.get.pass}") #| cmd)
     } else {
       if (variables.nonEmpty) {
         val cmd =
           s"""ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR $user@$host export PATH=$path;$readVarsLine bash -c "${escapedCommand(
             com
           )}""""
-        (cmd, s"echo -e -n $varValues" #| cmd)
+        (cmd, Seq("bash", "-c", s"echo -e ${varValues.dropRight(1)}") #| cmd)
       } else {
         val cmd =
           Seq("ssh", "-o", "StrictHostKeyChecking=no", "-o", "LogLevel=ERROR", s"$user@$host", s"PATH=$path $com")
@@ -784,7 +790,7 @@ abstract class Host(user: String,
     else {
       val seq = Seq("bash", "-c", com)
       // scalastyle:off
-      if (verbose) println("command: " + seq.mkString(" "))
+      if (verbose) println("local command: " + seq.mkString(" "))
       // scalastyle:on
       Try(seq.!!)
     }
@@ -874,7 +880,7 @@ abstract class Host(user: String,
 
     // scalastyle:off
     command(s"mkdir ${instDirs.intallationDir}/app ${instDirs.intallationDir}/conf ${instDirs.intallationDir}/data ${instDirs.intallationDir}/bin", hosts, false)
-    command(s"mkdir ${instDirs.intallationDir}/app/batch ${instDirs.intallationDir}/app/bg ${instDirs.intallationDir}/app/ctrl ${instDirs.intallationDir}/app/dc ${instDirs.intallationDir}/app/cas ${instDirs.intallationDir}/app/es ${instDirs.intallationDir}/app/ws ${instDirs.intallationDir}/app/scripts ${instDirs.intallationDir}/app/tools", hosts, false)
+    command(s"mkdir ${instDirs.intallationDir}/app/bg ${instDirs.intallationDir}/app/ctrl ${instDirs.intallationDir}/app/dc ${instDirs.intallationDir}/app/cas ${instDirs.intallationDir}/app/es ${instDirs.intallationDir}/app/ws ${instDirs.intallationDir}/app/scripts ${instDirs.intallationDir}/app/tools", hosts, false)
     // scalastyle:on
     command(s"ln -s ${dataDirs.logsDataDir} ${instDirs.intallationDir}/log", hosts, false)
     info("  deploying components")
@@ -909,9 +915,7 @@ abstract class Host(user: String,
   }
 
   private def createAppLinks(hosts: GenSeq[String]) = {
-
     // scalastyle:off
-    command(s"test -L ${instDirs.globalLocation}/cm-well/app/batch/logs || ln -s ${instDirs.globalLocation}/cm-well/log/batch/ ${instDirs.globalLocation}/cm-well/app/batch/logs", hosts, false)
     command(s"test -L ${instDirs.globalLocation}/cm-well/app/bg/logs || ln -s ${instDirs.globalLocation}/cm-well/log/bg/ ${instDirs.globalLocation}/cm-well/app/bg/logs", hosts, false)
     command(s"test -L ${instDirs.globalLocation}/cm-well/app/ws/logs || ln -s ${instDirs.globalLocation}/cm-well/log/ws/ ${instDirs.globalLocation}/cm-well/app/ws/logs", hosts, false)
     command(s"mkdir -p ${instDirs.globalLocation}/cm-well/log/cw/", hosts, false)
@@ -919,8 +923,6 @@ abstract class Host(user: String,
     command(s"test -L ${instDirs.globalLocation}/cm-well/app/ctrl/logs || ln -s ${instDirs.globalLocation}/cm-well/log/ctrl/ ${instDirs.globalLocation}/cm-well/app/ctrl/logs", hosts, false)
     command(s"test -L ${instDirs.globalLocation}/cm-well/app/dc/logs || ln -s ${instDirs.globalLocation}/cm-well/log/dc/ ${instDirs.globalLocation}/cm-well/app/dc/logs", hosts, false)
 
-    command(s"mkdir -p ${instDirs.globalLocation}/cm-well/conf/batch/", hosts, false)
-    command(s"test -L ${instDirs.globalLocation}/cm-well/app/batch/conf || ln -s ${instDirs.globalLocation}/cm-well/conf/batch/ ${instDirs.globalLocation}/cm-well/app/batch/conf", hosts, false)
     command(s"test -L ${instDirs.globalLocation}/cm-well/app/bg/conf || ln -s ${instDirs.globalLocation}/cm-well/conf/bg/ ${instDirs.globalLocation}/cm-well/app/bg/conf", hosts, false)
     command(s"test -L ${instDirs.globalLocation}/cm-well/app/ws/conf || ln -s ${instDirs.globalLocation}/cm-well/conf/ws/ ${instDirs.globalLocation}/cm-well/app/ws/conf", hosts, false)
     command(s"mkdir -p ${instDirs.globalLocation}/cm-well/conf/cw/", hosts, false)
@@ -1048,6 +1050,25 @@ abstract class Host(user: String,
     dirs.foreach(dir => command(s"sudo chmod +x $dir; sudo chown $user:$user $dir", hosts, true, Some(sudoer)))
   }
 
+  def changeKernelSettings(user: String, sudoer: Credentials, hosts: GenSeq[String]): Unit = {
+    hosts.foreach { host =>
+      val maxMapCount = command(s"sudo sysctl -n vm.max_map_count", host, true, Some(sudoer)).map(_.trim.toLong)
+      maxMapCount match {
+        case Success(currentMax) =>
+          val minimumRequiredByEs = 262144
+          if (currentMax < minimumRequiredByEs) {
+            val cmwellKernelConf = Source.fromFile("scripts/templates/60-cm-well.conf").mkString.replace("\n", "\\\\n")
+            createFile("/etc/sysctl.d/60-cm-well.conf", cmwellKernelConf, host, true, Some(sudoer))
+            command("sudo sysctl -p /etc/sysctl.d/60-cm-well.conf", host, true, Some(sudoer))
+          }
+        // scalastyle:off
+        case Failure(ex) => println(s"Failed getting vm.max_map_count from host $host. The execption message is: ${ex.getMessage}")
+        // scalastyle:on
+      }
+
+    }
+  }
+
   def prepareMachines(): Unit = prepareMachines(ips.par, "", "", "")
 
   def prepareMachines(hosts: String*): Unit = prepareMachines(hosts, "", "", "")
@@ -1076,6 +1097,7 @@ abstract class Host(user: String,
     gainTrust(user, pass, hosts)
     refreshUserState(user, Some(sudoer), hosts)
     changeOwnerAndAddExcutePermission(hosts, disksWithAncestors(disks).toSeq, user, sudoer)
+    changeKernelSettings(user, sudoer, hosts)
     createDataDirs(hosts)
     createCmwellSymLink(hosts, Some(sudoer))
     registerCtrlService(hosts, sudoer)
@@ -1090,12 +1112,13 @@ abstract class Host(user: String,
   private def copySshpass(hosts: GenSeq[String], sudoer: Credentials): Unit = {
     //only copy sshpass if it's an internal one
     if (UtilCommands.linuxSshpass == "bin/utils/sshpass") {
+      hosts.foreach(host => s"ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR ${sudoer.name}@$host mkdir -p ~/bin".!!)
       hosts.foreach(
         host =>
           Seq("rsync",
             "-z",
             "-e",
-            "ssh -o StrictHostKeyChecking=no ",
+            "ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR",
             UtilCommands.linuxSshpass,
             s"${sudoer.name}@$host:~/bin/") !!
       )
@@ -1598,27 +1621,32 @@ abstract class Host(user: String,
   def initSchemes: Unit = initSchemes()
 
   def initSchemes(hosts: GenSeq[String] = ips.par) {
-    val aliases =
-      """{
-                     "actions" : [
-                            { "add" : { "index" : "cmwell_current_0", "alias" : "cmwell_current" } },
-                            { "add" : { "index" : "cmwell_history_0", "alias" : "cmwell_history" } },
-                            { "add" : { "index" : "cmwell_current_0", "alias" : "cmwell_current_latest" } },
-                            { "add" : { "index" : "cmwell_history_0", "alias" : "cmwell_history_latest" } },
-                            { "add" : { "index" : "cm_well_p0_0", "alias" : "cm_well_all" } }
-                        ]
-                    }""".replace("\n", "")
     // scalastyle:off
-    command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/cassandra-cql-init-cluster", hosts(0), false)
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/cassandra-cql-init-cluster-new", hosts(0), false)
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/zstore-cql-init-cluster", hosts(0), false)
-    command(s"""curl -s -X POST http://${pingAddress}:$esRegPort/_template/cmwell_indices_template -H "Content-Type: application/json" --data-ascii @${instDirs.globalLocation}/cm-well/conf/es/mapping.json""", hosts(0), false)
-    command(s"""curl -s -X POST http://${pingAddress}:$esRegPort/_template/cmwell_index_template -H "Content-Type: application/json" --data-ascii @${instDirs.globalLocation}/cm-well/conf/es/indices_template_new.json""", hosts(0), false)
-    command(s"curl -s -X POST http://${pingAddress}:$esRegPort/cmwell_current_0/;curl -s -X POST http://${pingAddress}:$esRegPort/cmwell_history_0/", hosts(0), false)
-    // scalastyle:on
-    command(s"curl -s -X POST http://${pingAddress}:$esRegPort/cm_well_p0_0/", hosts(0), false)
-    //    command(s"curl -s -X POST http://${pingAddress}:$esRegPort/cm_well_0/", hosts(0), false)
-    command(s"""curl -s -X POST http://${pingAddress}:$esRegPort/_aliases -H "Content-Type: application/json" --data-ascii '${aliases}'""", hosts(0), false)
+    val templateCreation = command(s"""curl -s -X POST http://${hosts(0)}:$esMasterPort/_template/cmwell_index_template -H "Content-Type: application/json" --data-ascii @${instDirs.globalLocation}/cm-well/conf/es/indices_template_new.json""", hosts(0), false)
+    templateCreation match {
+      case Success(res) =>
+        if (res.trim != """{"acknowledged":true}""") {
+          println(s"Elasticsearch template creation failed. The response was: $res")
+          sys.exit(1)
+        }
+      case Failure(ex) =>
+        println(s"Elasticsearch template creation failed with: $ex")
+        sys.exit(1)
+    }
+    //create the first index in advance. It resolves the issue of meta ns cache quering a non existant index
+    val firstIndexCreation = command(s"""curl -s -X PUT http://${hosts(0)}:$esMasterPort/cm_well_p0_0""", hosts(0), false)
+    firstIndexCreation match {
+      case Success(res) =>
+        if (res.trim != """{"acknowledged":true,"shards_acknowledged":true,"index":"cm_well_p0_0"}""") {
+          println(s"Elasticsearch first index creation failed. The response was: $res")
+          sys.exit(1)
+        }
+      case Failure(ex) =>
+        println(s"Elasticsearch first index creation failed with: $ex")
+        sys.exit(1)
+    }
     // create kafka topics
     val replicationFactor = math.min(hosts.size, 3)
 
@@ -2022,6 +2050,10 @@ abstract class Host(user: String,
               withUpdateSchemas: Boolean = false,
               hosts: GenSeq[String] = ips,
               skipVersionCheck: Boolean = false) {
+/*
+    info("upgrade is disable until further notice")
+    sys.exit(1)
+*/
 
     val currentVersion = if(skipVersionCheck) Future.failed(null) else extractVersionFromProcNode(ips(0))
     //If all 3 retries will fail, will wait for result. If fails, upgrade will be stopped.
@@ -2227,12 +2259,9 @@ abstract class Host(user: String,
 
     info("reloading Elasticsearch mappings")
     command(
-      s"""curl -s -X POST http://${pingAddress}:$esRegPort/_template/cmwell_index_template -H "Content-Type: application/json" --data-ascii @${absPath(
-        instDirs.globalLocation
-      )}/cm-well/conf/es/indices_template_new.json""",
-      ips(0),
-      false
-    )
+      s"""curl -s -X POST http://${pingAddress}:$esMasterPort/_template/cmwell_index_template
+         | -H "Content-Type: application/json"
+         |  --data-ascii @${absPath(instDirs.globalLocation)}/cm-well/conf/es/indices_template_new.json""".stripMargin, ips(0), false)
 
     if (createNewIndices) {
       Thread.sleep(5000)

@@ -15,6 +15,7 @@
 package controllers
 
 import akka.actor.{Actor, ActorRef, PoisonPill}
+import cmwell.fts._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.FiniteDuration
@@ -24,15 +25,25 @@ import scala.concurrent.duration.FiniteDuration
   */
 case object GetID
 case object GotIt
-case class IterationState(actualEsScrollId: String, withHistory: Boolean, iteratorIdDispatcher: ActorRef)
+sealed trait IterationStateInput
+case class ScrollInput(actualEsScrollId: String) extends IterationStateInput
+case class StartScrollInput(pathFilter: Option[PathFilter],
+                            fieldFilters: Option[FieldFilter],
+                            datesFilter: Option[DatesFilter],
+                            paginationParams: PaginationParams,
+                            scrollTTL: Long,
+                            withHistory: Boolean,
+                            withDeleted: Boolean)extends IterationStateInput
 
-class IteratorIdDispatcher(actualEsScrollId: String, withHistory: Boolean, ttl: FiniteDuration) extends Actor {
+case class IterationState(iterationStateInput: IterationStateInput, withHistory: Boolean, iteratorIdDispatcher: ActorRef)
+
+class IteratorIdDispatcher(iterationStateInput: IterationStateInput, withHistory: Boolean, ttl: FiniteDuration) extends Actor {
 
   var cancelable = context.system.scheduler.scheduleOnce(ttl, self, PoisonPill)
 
   override def receive: Receive = {
     case GetID => {
-      sender() ! IterationState(actualEsScrollId, withHistory, self)
+      sender() ! IterationState(iterationStateInput, withHistory, self)
       cancelable.cancel()
       cancelable = context.system.scheduler.scheduleOnce(ttl * 2, self, PoisonPill)
     }

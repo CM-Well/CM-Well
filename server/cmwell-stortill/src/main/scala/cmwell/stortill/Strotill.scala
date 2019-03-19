@@ -22,7 +22,7 @@ import cmwell.util.{BoxedFailure, FullBox}
 import cmwell.common.formats.JsonSerializer
 import com.datastax.driver.core.ConsistencyLevel
 import com.typesafe.scalalogging.LazyLogging
-import org.elasticsearch.action.ActionRequest
+import org.elasticsearch.action.{ActionRequest, DocWriteRequest}
 import org.elasticsearch.action.bulk.BulkResponse
 import org.elasticsearch.client.Requests
 import org.elasticsearch.index.VersionType
@@ -41,14 +41,14 @@ object Strotill {
   type EsExtendedInfo = Vector[(String, String, Long, String)] //uuid,indexName,version,esSource
   type ZStoreInfo = Vector[String]
 
-  def apply(irw: IRWService, ftsService: FTSServiceOps): Strotill = new Strotill(irw, ftsService)
+  def apply(irw: IRWService, ftsService: FTSService): Strotill = new Strotill(irw, ftsService)
 }
 
-class Strotill(irw: IRWService, ftsService: FTSServiceOps) extends LazyLogging {
+class Strotill(irw: IRWService, ftsService: FTSService) extends LazyLogging {
   import Strotill._
 
   def irwProxy: IRWService = irw
-  def ftsProxy: FTSServiceOps = ftsService
+  def ftsProxy: FTSService = ftsService
 
   def extractHistoryCas(path: String, limit: Int): Future[CasInfo] = {
     irw.historyAsync(path, limit).flatMap { casHistory =>
@@ -70,9 +70,9 @@ class Strotill(irw: IRWService, ftsService: FTSServiceOps) extends LazyLogging {
   def extractHistoryEs(path: String, limit: Int = 100): Future[EsInfo] =
     ftsService.info(path, PaginationParams(0, limit), withHistory = true)
 
-  def fixEs(v: Vector[Infoton]): Future[BulkResponse] = {
+  def fixEs(v: Vector[Infoton]): Future[SuccessfulBulkIndexResult] = {
     val esActions = createActionsToFixEs(v)
-    ftsService.executeBulkActionRequests(esActions)
+    ftsService.executeBulkIndexRequests(esActions)
   }
 
   @deprecated("wrong usage in irw2, and seems unused anyway...", "1.5.x")
@@ -102,7 +102,7 @@ class Strotill(irw: IRWService, ftsService: FTSServiceOps) extends LazyLogging {
     }
   }
 
-  def createActionsToFixEs(v: Vector[Infoton]): Seq[ActionRequest[_ <: ActionRequest[_ <: AnyRef]]] = {
+  def createActionsToFixEs(v: Vector[Infoton]): Seq[ESIndexRequest] = {
 
     def modifyInfoton(i: Infoton) = {
       /*
@@ -126,8 +126,8 @@ class Strotill(irw: IRWService, ftsService: FTSServiceOps) extends LazyLogging {
       cmwell.domain.addDcAndIndexTimeForced(i, newDc, newIndexTime)
     }
 
-    val actions: ArrayBuffer[ActionRequest[_ <: ActionRequest[_ <: AnyRef]]] =
-      new ArrayBuffer[ActionRequest[_ <: ActionRequest[_ <: AnyRef]]](v.size)
+    val actions: ArrayBuffer[DocWriteRequest[_]] =
+      new ArrayBuffer[DocWriteRequest[_]](v.size)
     val cur = v.lastOption
     val history = v.init
     cur.foreach { i =>
@@ -151,6 +151,6 @@ class Strotill(irw: IRWService, ftsService: FTSServiceOps) extends LazyLogging {
           .source(JsonSerializer.encodeInfoton(modifyInfoton(i), true, true))
       )
     }
-    actions
+    actions.map(ESIndexRequest(_, None))
   }
 }

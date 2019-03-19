@@ -187,7 +187,7 @@ class ZStoreImpl(dao: Dao) extends ZStore with DaoExecution with LazyLogging {
        |   PRIMARY KEY (uzid, field)
        |) WITH CLUSTERING ORDER BY (field ASC)
        |AND compression = {'sstable_compression': 'LZ4Compressor'}
-       |AND caching = '{"keys":"ALL", "rows_per_partition":"ALL"}' ;
+       |AND caching = {'keys':'ALL', 'rows_per_partition':'ALL'} ;
      """.stripMargin
 
     prepare(createTableCql).bind

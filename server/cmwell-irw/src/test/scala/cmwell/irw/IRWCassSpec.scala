@@ -20,13 +20,17 @@ import org.scalatest._
 import cmwell.domain._
 import cmwell.util.exceptions._
 import cmwell.driver.Dao
-import cmwell.util.{Box, FullBox, EmptyBox, BoxedFailure}
+import cmwell.util
+import cmwell.util.{Box, BoxedFailure, EmptyBox, FullBox}
 import cmwell.util.concurrent.SimpleScheduler.scheduleFuture
 import org.apache.commons.codec.binary.Base64
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Try
+import cmwell.util.testSuitHelpers.test.CassandraDockerSuite
+import play.api.libs.json.Json
+
 
 /**
  * Created with IntelliJ IDEA.
@@ -49,7 +53,8 @@ class IRWCassSpecNew extends {
   }
 } with IRWCassSpec
 
-trait IRWServiceTest extends BeforeAndAfterAll { this:Suite =>
+trait IRWServiceTest extends BeforeAndAfterAll with CassandraDockerSuite { this:Suite =>
+  override def cassandraVersion: String = cmwell.util.build.BuildInfo.cassandraVersion
 
   def keyspace: String
   def mkIRW: Dao => IRWService
@@ -58,9 +63,16 @@ trait IRWServiceTest extends BeforeAndAfterAll { this:Suite =>
   var dao : Dao = _
 
   override protected def beforeAll() {
-    dao = Dao("Test",keyspace)
-    irw = mkIRW(dao)
     super.beforeAll()
+    // scalastyle:off
+    val initCommands = Some(List(
+    "CREATE KEYSPACE IF NOT EXISTS data2 WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor' : 1};",
+    "CREATE TABLE IF NOT EXISTS data2.Path ( path text, uuid text, last_modified timestamp, PRIMARY KEY ( path, last_modified, uuid ) ) WITH CLUSTERING ORDER BY (last_modified DESC, uuid ASC) AND compression = { 'sstable_compression' : 'LZ4Compressor' } AND caching = {'keys':'ALL', 'rows_per_partition':'1'};",
+    "CREATE TABLE IF NOT EXISTS data2.Infoton (uuid text, quad text, field text, value text, data blob, PRIMARY KEY (uuid,quad,field,value)) WITH compression = { 'sstable_compression' : 'LZ4Compressor' } AND caching = {'keys':'ALL', 'rows_per_partition':'1000'};"
+    ))
+    // scalastyle:on
+    dao = Dao("Test",keyspace, container.containerIpAddress, container.mappedPort(9042), initCommands = initCommands)
+    irw = mkIRW(dao)
   }
 
   override protected def afterAll() {
@@ -70,11 +82,6 @@ trait IRWServiceTest extends BeforeAndAfterAll { this:Suite =>
 }
 
 trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
-
-  val waitDuration = {
-    import scala.concurrent.duration._
-    2.seconds
-  }
 
   "test" should "be successful" in succeed
 
@@ -253,22 +260,24 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
   }
 
   "write fat infoton (with more than 65K fields/values)" should "succeed" in {
-    val lotsOfFields = Seq.tabulate(0xFFFF * 2){ n =>
+    val lotsOfFields = Seq.tabulate(0xFFFF * 2) { n =>
       s"field$n" -> Set[FieldValue](FString(s"value$n"))
     }.toMap
 
     val fatFoton = ObjectInfoton("/irw/xyz/fatfoton1", "dc_test", None, lotsOfFields, None)
-
-    irw.writeAsync(fatFoton).flatMap{ _ =>
-      scheduleFuture(10.seconds) {
-        irw.readPathAsync("/irw/xyz/fatfoton1").map{
+    irw.writeAsync(fatFoton).flatMap{_ =>
+      cmwell.util.concurrent.spinCheck(100.millis, true)(irw.readPathAsync("/irw/xyz/fatfoton1")) {
+          case FullBox(readInfoton) => readInfoton == fatFoton
+          case _ => false
+      }}.map { res =>
+        withClue(res) (res match {
           case FullBox(readInfoton) => readInfoton shouldBe fatFoton
           case EmptyBox => fail("/irw/xyz/fatfoton1 was not found")
-          case BoxedFailure(e) => fail("error occured",e)
-        }
+          case BoxedFailure(e) => fail("error occured", e)
+        })
       }
     }
-  }
+
 
   "object write and update indexTime" should "be successful" in {
     import scala.concurrent.duration._

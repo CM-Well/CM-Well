@@ -17,29 +17,32 @@ package cmwell.bg.test
 import java.util.Properties
 
 import akka.actor.{ActorRef, ActorSystem}
-import cmwell.bg.{CMWellBGActor, ShutDown}
+import akka.util.Timeout
+import cmwell.bg.{BgKilled, CMWellBGActor, ShutDown}
 import cmwell.common.{CommandSerializer, OffsetsService, WriteCommand, ZStoreOffsetsService}
 import cmwell.domain.{FieldValue, ObjectInfoton}
 import cmwell.driver.Dao
 import cmwell.fts._
 import cmwell.irw.IRWService
+import cmwell.util.testSuitHelpers.test.EsCasKafkaZookeeperDockerSuite
 import cmwell.zstore.ZStore
 import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
 import org.elasticsearch.common.unit.TimeValue
-import org.scalatest.{BeforeAndAfterAll, DoNotDiscover, FlatSpec, Matchers}
+import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 
-import scala.concurrent.Await
+import scala.concurrent.{Await, Future}
+import akka.pattern.ask
+
 import scala.concurrent.duration._
 import scala.io.Source
 
 /**
   * Created by israel on 13/09/2016.
   */
-@DoNotDiscover
-class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers with LazyLogging {
+class BGResilienceSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafkaZookeeperDockerSuite with Matchers with LazyLogging {
 
   var kafkaProducer:KafkaProducer[Array[Byte], Array[Byte]] = _
   var cmwellBGActor:ActorRef = _
@@ -48,71 +51,34 @@ class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers wi
   var irwService:IRWService = _
   var zStore:ZStore = _
   var offsetsService:OffsetsService = _
-  var ftsServiceES:FTSServiceNew = _
+  var ftsServiceES:FTSService = _
   var bgConfig:Config = _
   var actorSystem:ActorSystem = _
   import concurrent.ExecutionContext.Implicits.global
 
   override def beforeAll = {
-
-    val producerProperties = new Properties
-    producerProperties.put("bootstrap.servers", "localhost:9092")
-    producerProperties.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
-    producerProperties.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
-    kafkaProducer = new KafkaProducer[Array[Byte], Array[Byte]](producerProperties)
-
-    dao = Dao("Test","data2")
+    //notify ES to not set Netty's available processors
+    System.setProperty("es.set.netty.runtime.available.processors", "false")
+    kafkaProducer = BgTestHelpers.kafkaProducer(s"${kafkaContainer.containerIpAddress}:${kafkaContainer.mappedPort(9092)}")
+    // scalastyle:on
+    dao = BgTestHelpers.dao(cassandraContainer.containerIpAddress, cassandraContainer.mappedPort(9042))
     testIRWMockupService = FailingIRWServiceMockup(dao, 13)
     zStore = ZStore(dao)
     irwService = IRWService.newIRW(dao, 25 , true, 0.seconds)
     offsetsService = new ZStoreOffsetsService(zStore)
-    ftsServiceES = FailingFTSServiceMockup("es.test.yml", 5)
-
-
-    // wait for green status
-    ftsServiceES.client.admin().cluster()
-      .prepareHealth()
-      .setWaitForGreenStatus()
-      .setTimeout(TimeValue.timeValueMinutes(5))
-      .execute()
-      .actionGet()
-
-    // delete all existing indices
-    ftsServiceES.client.admin().indices().delete(new DeleteIndexRequest("_all"))
-
-    // load indices template
-    val indicesTemplate = Source.fromURL(this.getClass.getResource("/indices_template_new.json")).getLines.reduceLeft(_ + _)
-    ftsServiceES.client.admin().indices().preparePutTemplate("indices_template").setSource(indicesTemplate).execute().actionGet()
-
-    // create current index
-    ftsServiceES.client.admin().indices().prepareCreate("cm_well_0").execute().actionGet()
-
-    ftsServiceES.client.admin().indices().prepareAliases()
-      .addAlias("cm_well_0", "cm_well_all")
-      .addAlias("cm_well_0", "cm_well_latest")
-      .execute().actionGet()
-
-
-
-    bgConfig = ConfigFactory.load
-    bgConfig.withValue("cmwell.bg.esActionsBulkSize", ConfigValueFactory.fromAnyRef(100))
-
+    val ftsOverridesConfig = BgTestHelpers.ftsOverridesConfig(elasticsearchContainer.containerIpAddress, elasticsearchContainer.mappedPort(9300))
+    ftsServiceES = FailingFTSServiceMockup(ftsOverridesConfig, 5)
+    // delete all existing indices - not needed the docker is started fresh every time
+    //ftsServiceES.client.admin().indices().delete(new DeleteIndexRequest("_all"))
+    BgTestHelpers.initFTSService(ftsServiceES)
+    bgConfig = ftsOverridesConfig
+      .withValue("cmwell.bg.esActionsBulkSize", ConfigValueFactory.fromAnyRef(100))
+      .withValue("cmwell.bg.kafka.bootstrap.servers", ConfigValueFactory.fromAnyRef(s"${kafkaContainer.containerIpAddress}:${kafkaContainer.mappedPort(9092)}"))
     actorSystem = ActorSystem("cmwell-bg-test-system")
-
     cmwellBGActor = actorSystem.actorOf(CMWellBGActor.props(0, bgConfig, testIRWMockupService, ftsServiceES, zStore, offsetsService))
-
-    // scalastyle:off
-    println("waiting 10 seconds for all components to load")
-    Thread.sleep(10000)
-    // scalastyle:on
-
   }
 
   "Resilient BG" should "process commands as usual on circumvented BGActor (periodically failing IRWService) after suspending and resuming" in {
-
-    logger info "waiting 10 seconds for circumvented BGActor to start"
-
-    Thread.sleep(10000)
 
     val numOfCommands = 1500
     // prepare sequence of writeCommands
@@ -136,8 +102,8 @@ class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers wi
     pRecords.foreach { kafkaProducer.send(_)}
 
     // scalastyle:off
-    println("waiting for 10 seconds")
-    Thread.sleep(10000)
+    println("waiting for 20 seconds")
+    Thread.sleep(20000)
     // scalastyle:on
 
     for( i <- 0 until numOfCommands) {
@@ -164,12 +130,11 @@ class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers wi
   }
 
   override def afterAll() = {
-    logger debug "afterAll: sending Shutdown"
-    cmwellBGActor ! ShutDown
-    Thread.sleep(10000)
+    val timeout = 30.seconds
+    val future = (cmwellBGActor ? ShutDown)(Timeout(timeout))
+    val result = Await.result(future, timeout)
     ftsServiceES.shutdown()
-    testIRWMockupService = null
-    irwService = null
+    dao.shutdown()
+    kafkaProducer.close()
   }
-
 }

@@ -12,18 +12,13 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-package cmwell.bg.test
 
-import org.scalatest.{DoNotDiscover, SequentialNestedSuiteExecution, Suites}
+package cmwell.util.testSuitHelpers.test
 
-class BGSpecs extends Suites (
-  new BGMergerSpec,
-  new BGSeqSpecs
-)
+import com.dimafeng.testcontainers.ForAllTestContainer
+import org.scalatest.Suite
 
-@DoNotDiscover
-class BGSeqSpecs extends Suites(
-  new CmwellBGSpec,
-  new BGResilienceSpec,
-  new BGSequentialSpec
-) with SequentialNestedSuiteExecution
+trait ElasticsearchDockerSuite extends ForAllTestContainer { this:Suite =>
+  def elasticsearchVersion: String
+  override val container = ContainerHelpers.elasticsearch(elasticsearchVersion)
+}

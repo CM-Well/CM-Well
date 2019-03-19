@@ -14,6 +14,8 @@
   */
 package cmwell.driver
 
+import java.net.InetSocketAddress
+
 import com.datastax.driver.core._
 import com.datastax.driver.core.policies.DefaultRetryPolicy
 import com.google.common.util.concurrent.{FutureCallback, Futures, MoreExecutors}
@@ -38,7 +40,7 @@ trait Dao extends LazyLogging {
   def shutdown()
 }
 
-class NativeDriver(clusterName: String, keyspaceName: String, host: String = "127.0.0.1", maxConnections: Int = 10)
+class NativeDriver(clusterName: String, keyspaceName: String, host: String, port: Int, maxConnections: Int = 10, initCommands: Option[List[String]])
     extends Dao {
 
   private val pools: PoolingOptions = new PoolingOptions();
@@ -54,7 +56,7 @@ class NativeDriver(clusterName: String, keyspaceName: String, host: String = "12
   val hosts = host.split(",")
 
   private val cluster = new Cluster.Builder()
-    .addContactPoints(host)
+    .addContactPointsWithPorts(new InetSocketAddress(host, port))
     .withPoolingOptions(pools)
     .withSocketOptions(new SocketOptions().setTcpNoDelay(true))
     .withoutJMXReporting() // datastax client depends on old io.dropwizard.metrics (3.2.2),
@@ -63,6 +65,20 @@ class NativeDriver(clusterName: String, keyspaceName: String, host: String = "12
                            // and package (com.codahale.metrics.jmx). while this is true,
                            // we are better off without JMX reporting of the client.
                            // In future: consider to re-enable this.
+
+
+  initCommands.foreach { commands =>
+    Try {
+      val initSession: Session = cluster.connect()
+      commands.foreach(initSession.execute)
+    }
+    match {
+      case Success(_) =>
+      case Failure(err) =>
+        logger.error("Initial session (needed for keyspace creation and initial tables) creation failed. Killing the process. The exception was: ", err)
+        sys.exit(1)
+    }
+  }
 
   private val session: Session = Try(cluster.connect(keyspaceName)) match {
     case Success(s) => s
@@ -91,8 +107,8 @@ class NativeDriver(clusterName: String, keyspaceName: String, host: String = "12
 }
 
 object Dao {
-  def apply(clusterName: String, keyspaceName: String, host: String = "127.0.0.1", maxConnections: Int = 10) =
-    new NativeDriver(clusterName, keyspaceName, host, maxConnections)
+  def apply(clusterName: String, keyspaceName: String, host: String, port: Int, maxConnections: Int = 10, initCommands: Option[List[String]]) =
+    new NativeDriver(clusterName, keyspaceName, host, port, maxConnections, initCommands)
 }
 
 trait DaoExecution {

@@ -16,9 +16,10 @@
 
 package cmwell.common
 
-import org.scalacheck._ ,Prop.forAll
+import org.scalacheck._
+import Prop.forAll
+import cmwell.common.formats.{JsonSerializer, JsonSerializer6}
 import cmwell.domain._
-import cmwell.common.build.{JsonSerializer => JS}
 
 /**
  * Created by gilad on 7/29/14.
@@ -110,14 +111,6 @@ object InfotonSerializationSpecification extends Properties("Infoton") {
     case (f1:FileInfoton, f2:FileInfoton) => sCmp(f1,f2) && fCmp(f1.fields,f2.fields) && cCmp(f1.content,f2.content)
     case (l1:LinkInfoton, l2:LinkInfoton) => sCmp(l1, l2) && l1.linkTo == l2.linkTo && l1.linkType == l2.linkType
     case _ => false
-  }
-
-  property("encodeAndDecode") = forAll(infotons) {
-    i: Infoton => {
-      val e = JS.encodeInfoton(i)
-      val d = JS.decodeInfoton(e)
-      iCmp(i, d)
-    }
   }
 
   property("serializeAndDeserialize") = forAll(infotons) {

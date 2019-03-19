@@ -125,6 +125,7 @@ test in IntegrationTest := Def.task {
   (test in IntegrationTest).value
 }.tag(Tags.ES,Tags.Cassandra,Tags.Kafka,Tags.Grid).value
 
+
 //FIXME: if https://github.com/sbt/sbt/issues/3250 is fixed, we should stop manually wiring the tests dependencies like that
 fullTest := (test in IntegrationTest).dependsOn(
   fullTest in LocalProject("bg"),

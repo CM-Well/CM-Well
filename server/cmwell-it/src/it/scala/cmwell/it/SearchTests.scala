@@ -221,6 +221,23 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
       }
     }
 
+    val lastModifiedSearch = executeAfterCompletion(ingestGeonames){
+      val currentTime = System.currentTimeMillis()
+      spinCheck(100.millis,true)(Http.get(
+        uri = path,
+        queryParams = List("op" -> "search","format" -> "json","pretty" -> "","debug-info" -> "",
+          "recursive"-> "", "qp" -> ("system.lastModified<<" + currentTime)))){ r =>
+        (Json.parse(r.payload) \ "results" \ "total": @unchecked) match {
+          case JsDefined(JsNumber(n)) => n.intValue() == 14
+        }
+      }.map { res =>
+        withClue(res) {
+          val total = (Json.parse(res.payload) \ "results" \ "total").as[Int]
+          total should be(14)
+        }
+      }
+    }
+
     ///sws.geonames.org/?op=search&recursive&qp=type.rdf::http://xmlns.com/foaf/0.1/Document&gqp=<isDefinedBy.rdfs[countryCode.geonames::US]
     val gqpFiltering = executeAfterCompletion(f1){
       spinCheck(100.millis,true)(Http.get(
@@ -474,6 +491,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
     it("filter person results by 'homeType' indirect property")(gqpFilterByHomeType)
     it("filter person results with 'ghost skipping' an intermediate missing infoton")(gqpFilterBySkippingGhostNed)
     it("filter all person results with 'ghost skipping' an intermediate missing infoton if it also contains a filter")(gqpFilterAllAlthoughSkippingGhostNed)
+    it("search by timestamp last modified")(lastModifiedSearch)
 // TODO: uncomment when implemented:
     // scalastyle:off
 //  it("filter all person results with 'ghost skipping' an intermediate missing infoton if it also contains an empty filter")(gqpFilterAllAlthoughSkippingGhostNedWithEmptyFilter)

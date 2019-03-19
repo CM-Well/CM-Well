@@ -281,8 +281,8 @@ package object wsutil extends LazyLogging {
                                            field: RawField[FieldValeOperator],
                                            interval: Int,
                                            minDocCount: Int,
-                                           extMin: Option[Long],
-                                           extMax: Option[Long],
+                                           extMin: Option[Double],
+                                           extMax: Option[Double],
                                            subFilters: Seq[RawAggregationFilter] = Seq.empty)
       extends RawAggregationFilter
 
@@ -952,6 +952,8 @@ package object wsutil extends LazyLogging {
       case _: security.UnauthorizedException                            => Forbidden -> { _.getMessage }
       case _: org.apache.jena.shared.JenaException                      => BadRequest -> { _.getMessage }
       case _: cmwell.web.ld.exceptions.ParsingException                 => BadRequest -> { _.getMessage }
+      case _: NumberFormatException                                     =>
+        BadRequest -> { e => s"Bad number format: ${e.getMessage}" }
       case _: IllegalArgumentException                                  => BadRequest -> { _.getMessage }
       case _: UnsupportedURIException                                   => BadRequest -> { _.getMessage }
       case _: InvalidUriEncodingException                               => BadRequest -> { _.getMessage }

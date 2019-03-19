@@ -40,7 +40,8 @@ trait NsSplitter {
   }
 
   def reverseNsTypedField(field: String) = {
-    if (field.startsWith("system.") || field.startsWith("content.") || field.startsWith("link.") || field == "_all") field
+    if (field == "_all") "allFields"
+    else if (field.startsWith("system.") || field.startsWith("content.") || field.startsWith("link.")) field
     else {
       val (ns, typedField) = splitNamespaceField(field)
       "fields." + ns + "." + typedField.replace('.', '_')

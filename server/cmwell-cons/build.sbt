@@ -37,7 +37,7 @@ getExternalComponents := {
     CMWellBuild.fetchMvnArtifact(casM,scalaVersion.value,scalaBinaryVersion.value,logger.log)
   }
 
-  val esM = dm("org.elasticsearch", "elasticsearch") artifacts (Artifact("elasticsearch", "tar.gz", "tar.gz")) intransitive()
+  val esM = dm("org.elasticsearch.distribution.zip", "elasticsearch-oss") artifacts (Artifact("elasticsearch-oss", "zip", "zip")) intransitive()
   val esF: scala.concurrent.Future[Seq[java.io.File]] = {
     CMWellBuild.fetchMvnArtifact(esM,scalaVersion.value,scalaBinaryVersion.value,logger.log)
   }

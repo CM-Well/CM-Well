@@ -79,7 +79,7 @@ class ActiveInfotonGenerator @Inject()(
         "sbt_version" -> Set(FString(BuildInfo.sbtVersion)),
         "cassandra_version" -> Set(FString(BuildInfo.cassandraVersion)),
         "elasticsearch_version" -> Set(FString(BuildInfo.elasticsearchVersion)),
-        "es_cluster_name" -> Set(FString(cmwell.fts.Settings.clusterName)),
+//        "es_cluster_name" -> Set(FString(cmwell.fts.Settings.clusterName)),
         "build_machine" -> Set(FString(BuildInfo.buildMachine)),
         "build_time" -> Set(FDate(BuildInfo.buildTime)),
         "encoding_version" -> Set(FString(BuildInfo.encodingVersion)),

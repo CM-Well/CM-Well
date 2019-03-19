@@ -265,9 +265,6 @@ case class CassandraConf(home: String,
     val rackConfContent =
       ResourceBuilder.getResource("scripts/templates/cassandra-rackdc.properties", Map("rack_id" -> rs.getRackId(this)))
 
-    val cqlInit = ResourceBuilder.getResource("scripts/templates/cassandra-cql-init-cluster",
-                                              Map("replication_factor" -> replicationFactor.toString))
-
     val cqlInit2 = ResourceBuilder.getResource("scripts/templates/cassandra-cql-init-cluster-new",
                                                Map("replication_factor" -> replicationFactor.toString))
 
@@ -282,7 +279,6 @@ case class CassandraConf(home: String,
       ConfFile("logback.xml", logBackContent),
       ConfFile("cassandra-rackdc.properties", rackConfContent, false),
       ConfFile("cassandra-status-viewer", cassandraStatus, true),
-      ConfFile("cassandra-cql-init-cluster", cqlInit),
       ConfFile("cassandra-cql-init-cluster-new", cqlInit2),
       ConfFile("zstore-cql-init-cluster", cqlInit3)
     )
@@ -300,7 +296,7 @@ case class ElasticsearchConf(clusterName: String,
                              home: String,
                              resourceManager: JvmMemoryAllocations,
                              dir: String = "es",
-                             template: String = "es.yml",
+                             template: String = "elasticsearch.yml",
                              listenAddress: String = "127.0.0.1",
                              masterNodes: Int,
                              sName: String,
@@ -309,89 +305,36 @@ case class ElasticsearchConf(clusterName: String,
                              autoCreateIndex: Boolean,
                              g1: Boolean,
                              hostIp: String)
-    extends ComponentConf(hostIp, s"$home/app/es/cur", sName, s"$home/conf/$dir", "es.yml", index) {
-  val classpath = s"""'$home/app/es/cur/lib/*:$home/app/es/cur/lib/sigar/*'"""
+    extends ComponentConf(hostIp, s"$home/app/es/cur", sName, s"$home/conf/$dir", "elasticsearch.yml", index) {
+  val classpath = s"""'$home/app/es/cur/lib/*:'"""
 
   override def getPsIdentifier = {
     if (dir == "es-master")
-      s"/log/es-master/"
+      s"PsIdElasticMasterNode"
     else
-      s"/log/es${getIndexTxt}/"
+      s"PsIdElasticDataNode$getIndexTxt"
   }
   override def mkScript: ConfFile = {
-    /*def jvmArgs = {
-      import scala.math._
-      val mXmx = resourceManager.getMxmx
-      val mXms = resourceManager.getMxms
-      val mXmn = resourceManager.getMxmn
-      val mXss = resourceManager.getMxss
-      Seq("-XX:+UseCondCardMark",
-        "-Duser.timezone=GMT0",
-        mXmx,
-        mXms,
-        mXmn,
-        mXss,
-        "-Djava.awt.headless=true",
-        "-XX:+UseG1GC",
-        "-XX:+HeapDumpOnOutOfMemoryError",
-        s"-Dcom.sun.management.jmxremote.port=${jmxremotePort}",
-        "-Dcom.sun.management.jmxremote.ssl=false",
-        "-Dcom.sun.management.jmxremote.authenticate=false",
-        "-Delasticsearch",
-        s"-Des.path.home=$home/app/es/cur",
-        s"-Des.config=$home/conf/${dir}/es.yml")
-    }*/
-    // Seq(s"-javaagent:$home/app/ctrl/cur", s"-Dctrl.listenAddress=$listenAddress", s"-Dctrl.seedNodes=${host}",
-    // s"-Dctrl.clusterName=$clusterName", s"-Dctrl.roles=Metrics,ElasticsearchNode")
-    val agentLibArgs = Seq.empty
-    val cmsGc = Seq(
-      "-XX:+UseCondCardMark",
-      "-XX:+UseParNewGC",
-      "-XX:+UseConcMarkSweepGC",
-      "-XX:CMSInitiatingOccupancyFraction=75",
-      "-XX:+UseCMSInitiatingOccupancyOnly")
-
-    val g1Gc = Seq("-XX:+UseG1GC", "-XX:SurvivorRatio=8")
-
-    def jvmArgs = {
-      val mXmx = resourceManager.getMxmx
-      val mXms = resourceManager.getMxms
-      val mXmn = resourceManager.getMxmn
-      val mXss = resourceManager.getMxss
-      Seq("-Duser.timezone=GMT0", mXmx, mXms, mXmn, mXss, "-Djava.awt.headless=true") ++
-        (if (g1) g1Gc else cmsGc) ++
-        Seq(
-          s"-Dcom.sun.management.jmxremote.port=${PortManagers.es.jmxPortManager.getPort(index)}",
-          "-Dcom.sun.management.jmxremote.ssl=false",
-          "-Dcom.sun.management.jmxremote.authenticate=false",
-          "-Delasticsearch",
-          s"-Des.path.home=$home/app/es/cur",
-          s"-Des.config=$home/conf/${dir}/es.yml"
-        )
-    }
-
-    val args = Seq("starter", "java") ++ agentLibArgs ++ jvmArgs ++ JVMOptimizer.gcLoggingJVM(
-      s"$home/log/${dir}/gc.log"
-    ) ++ Seq("-cp", classpath, "org.elasticsearch.bootstrap.Elasticsearch")
 
     val scriptString =
       s"""export PATH=$home/app/java/bin:$home/bin/utils:$PATH
-         |export ES_HOME=$home/app/es/cur
+         |export ES_PATH_CONF=$home/conf/$dir/config
+         |export JAVA_HOME=$home/app/java
          |$CHKSTRT
          |$BMSG
-         |${args.mkString(" ")} > $home/log/$dir/stdout.log 2> $home/log/$dir/stderr.log &""".stripMargin
+         |starter bin/elasticsearch > $home/log/$dir/stdout.log 2> $home/log/$dir/stderr.log &""".stripMargin
 
     ConfFile(sName, scriptString, true)
   }
 
   override def mkConfig: List[ConfFile] = {
-    val httpHost = if (masterNode && !dataNode) s"http.host: $host" else ""
-    val httpPort = if (masterNode && !dataNode) 9200 else PortManagers.es.httpPortManager.getPort(index)
-    val transportPort = if (masterNode && !dataNode) 9300 else PortManagers.es.transportPortManager.getPort(index)
+    val httpHost = if(masterNode) s"http.host: $host" else ""
+    val httpPort = if(masterNode) 9200 else PortManagers.es.httpPortManager.getPort(index)
+    val transportPort = if(masterNode) 9300 else PortManagers.es.transportPortManager.getPort(index)
 
     val m = Map[String, String](
       "clustername" -> clusterName,
-      "nodename" -> listenAddress,
+      "nodename" -> nodeName,
       "node-master" -> masterNode.toString,
       "node-data" -> dataNode.toString,
       "recoverafternodes" -> { if (expectedNodes > 3) expectedNodes - 2 else expectedNodes - 1 }.toString,
@@ -413,17 +356,21 @@ case class ElasticsearchConf(clusterName: String,
 
     val m2 = Map[String, String]("number_of_shards" -> Math.min(expectedNodes, 10).toString,
                                  "number_of_replicas" -> numberOfReplicas.toString)
-    val mappingContent = ResourceBuilder.getResource(s"scripts/templates/mapping.json", m2)
-    val mappingContentNew = ResourceBuilder.getResource(s"scripts/templates/indices_template_new.json", m2)
+    val mappingContent = ResourceBuilder.getResource(s"scripts/templates/indices_template_new.json",m2)
 
-    val loggerConf = ResourceBuilder.getResource("scripts/templates/es-logger.yml", Map.empty[String, String])
+    val loggerConf = ResourceBuilder.getResource("scripts/templates/es-log4j2.properties", Map.empty[String, String])
 
-    List(
-      ConfFile("es.yml", confContent, false),
-      ConfFile("mapping.json", mappingContent, false),
-      ConfFile("indices_template_new.json", mappingContentNew, false),
-      ConfFile("logging.yml", loggerConf, false, Some(s"$home/app/es/cur/config"))
+    val m3 = Map[String, String](
+      "ps_id" -> getPsIdentifier,
+      "es_ms" -> s"${resourceManager.mxms}",
+      "es_mx" -> s"${resourceManager.mxmx}"
     )
+    val jvmOpts = ResourceBuilder.getResource("scripts/templates/es-jvm.options", m3)
+
+    List(ConfFile("elasticsearch.yml", confContent, false, Some(s"$home/conf/$dir/config")),
+         ConfFile("indices_template_new.json", mappingContent, false),
+         ConfFile("log4j2.properties", loggerConf, false, Some(s"$home/conf/$dir/config")),
+         ConfFile("jvm.options", jvmOpts, false, Some(s"$home/conf/$dir/config")))
   }
 }
 
@@ -477,15 +424,20 @@ case class ZookeeperConf(home: String, clusterName: String, servers: Seq[String]
   }
 
   override def mkScript: ConfFile = {
-    val exports = s"export PATH=$home/app/java/bin:$home/bin/utils:$PATH"
+    val exports = s"""export PATH=$home/app/java/bin:$home/bin/utils:$PATH
+                     |export ZOO_LOG_DIR=$home/log/$dir
+                     |export ZOO_LOG4J_PROP="INFO, ROLLINGFILE"
+                     |export ZOOCFGDIR=$confDir
+                     |export JMXDISABLE=true
+                     |export JVMFLAGS="-Xmx500m -Xms500m -Dlog4j.configuration=file:$confDir/log4j.properties"""".stripMargin
     // scalastyle:off
-    val cp = s"cur/lib/slf4j-log4j12-1.6.1.jar:cur/lib/slf4j-api-1.6.1.jar:cur/lib/netty-3.7.0.Final.jar:cur/lib/log4j-1.2.16.jar:cur/lib/jline-0.9.94.jar:cur/zookeeper-${cmwell.util.build.BuildInfo.zookeeperVersion}.jar:$home/conf/$dir"
+    val cp = s"cur/lib/slf4j-log4j12-1.7.25.jar:cur/lib/slf4j-api-1.7.25.jar:cur/lib/netty-3.10.6.Final.jar:cur/lib/log4j-1.2.17.jar:cur/lib/jline-0.9.94.jar:cur/zookeeper-${cmwell.util.build.BuildInfo.zookeeperVersion}.jar:$home/conf/$dir"
     val scriptString =
       s"""
-         |$exports
+          |$exports
           |$CHKSTRT
           |$BMSG
-          |starter java -Xmx300m -Xms300m -XX:+UseG1GC -cp $cp -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.local.only=false org.apache.zookeeper.server.quorum.QuorumPeerMain $home/conf/$dir/zoo.cfg > $home/log/$dir/stdout.log 2>  $home/log/$dir/stderr.log &
+          |starter $home/app/zookeeper/cur/bin/zkServer.sh start-foreground > $home/log/$dir/stdout.log 2>  $home/log/$dir/stderr.log &
       """.stripMargin
     // scalastyle:on
     ConfFile("start.sh", scriptString, true)
@@ -503,7 +455,6 @@ case class ZookeeperConf(home: String, clusterName: String, servers: Seq[String]
     val myId = (servers.indexOf(hostIp) + 1).toString
 
     val loggerMap = Map[String, String]("zookeeperLogDir" -> s"$home/log/$dir")
-
     val loggerConf = ResourceBuilder.getResource("scripts/templates/log4j-zookeeper.properties", loggerMap)
 
     List(ConfFile("zoo.cfg", confContent, false),
@@ -548,6 +499,7 @@ case class BgConf(home: String,
       Seq(
         "-XX:+UseCondCardMark",
         "-Duser.timezone=GMT0",
+        "-Des.set.netty.runtime.available.processors=false",
         aspectj,
         "-Dfile.encoding=UTF-8",
         s"-Dlog.level=$logLevel",
@@ -597,7 +549,8 @@ case class BgConf(home: String,
       "irwServiceDao.hostName" -> s"$hostName",
       "ftsService.clusterName" -> s"$clusterName",
       "ftsService.transportAddress" -> s"$hostName",
-      "cmwell.rdfDefaultProtocol" -> defaultRdfProtocol
+      "cmwell.rdfDefaultProtocol" -> defaultRdfProtocol,
+      "kafka.bootstrap.servers" -> s"localhost:9092,${zookeeperServers.map(kafkaNode => s"$kafkaNode:9092").mkString(",")}"
     )
     val m = Map[String, String](
       "clustername" -> clusterName,
@@ -741,6 +694,7 @@ case class WebConf(home: String,
         s"-Dcom.sun.management.jmxremote.port=${PortManagers.ws.jmxPortManager.getPort(1)}",
         "-Dcom.sun.management.jmxremote.ssl=false",
         "-Dcom.sun.management.jmxremote.authenticate=false",
+        "-Des.set.netty.runtime.available.processors=false",
         s"-Dcmwell.home=$home",
         s"-Dlog.level=$logLevel",
         "-Dfile.encoding=UTF-8",

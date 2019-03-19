@@ -250,7 +250,7 @@ trait DataFetcher {
                 State(intermediateLimit, first.infotons.getOrElse(Seq.empty[Infoton]).length, first.totalHits))
         ) {
           case Chunk(iid, data, State(intermediateLimit, c, t)) =>
-            val ir = Await.result(crudServiceFS.scroll(iid, 60, withData = true), 9.seconds)
+            val ir = Await.result(crudServiceFS.scroll(iid, 60, withData = true, debugInfo = false), 9.seconds)
             val data = ir.infotons.getOrElse(Seq.empty[Infoton])
             Chunk(ir.iteratorId, data, State(config.intermediateLimit, c + data.length, t))
         }
@@ -462,7 +462,7 @@ class DatasetGraphCmWell(val host: String,
 
           def scroll(iteratorId: Option[String] = None) = {
             val scrollRes = Await.result(
-              crudServiceFS.scroll(iteratorId.getOrElse(currentChunk.iteratorId), 60, withData = true),
+              crudServiceFS.scroll(iteratorId.getOrElse(currentChunk.iteratorId), 60, withData = true, debugInfo = false),
               9.seconds
             )
             val quads = infotonsToQuadIterator(scrollRes.infotons.getOrElse(Seq.empty[Infoton]))
