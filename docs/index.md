@@ -9,6 +9,7 @@ We hope you enjoy exploring this documentation site to learn more about CM-Well 
 Here are some useful links to help you get started:
 
 * [Introduction to CM-Well](Introduction/Intro.IntroductionToCM-Well.md)
+* [CM-Well vs. Other Information Repositories](Introduction/Intro.CM-WellVsOtherInfoRepositories.md)
 * [API Overview](Introduction/Intro.OverviewOfTheCM-WellAPI.md)
 * [New to CM-Well? (for Developers)](DeveloperGuide/DevGuide.NewToCM-Well.md)
 * [Quick Start (for Developers)](DeveloperGuide/DevGuide.QuickStart.md)
