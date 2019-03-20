@@ -26,6 +26,7 @@ CM-Well is based on a clustered architecture, with durable storage into [Apache 
 Other key technologies used under the covers include:
 * [Angular](https://angular.io) and [React](https://facebook.github.io/react/) for the UIs
 * [Akka](http://akka.io/) for cluster management
+* [Kafka](https://kafka.apache.org/) for managing queues of infoton write requests
 * [Jena](https://jena.apache.org/) for Sparql and RDF conversions
 * [Netty](https://netty.io) for network comms
 * [Zookeeper](https://zookeeper.apache.org) for cluster configuration
