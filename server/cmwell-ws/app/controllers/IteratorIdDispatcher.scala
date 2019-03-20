@@ -49,7 +49,7 @@ class IteratorIdDispatcher(iterationStateInput: IterationStateInput, withHistory
     }
     case GotIt => {
       cancelable.cancel()
-      cancelable = context.system.scheduler.scheduleOnce(ttl, self, PoisonPill)
+      self ! PoisonPill
     }
   }
 }
