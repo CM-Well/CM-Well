@@ -96,15 +96,15 @@ case class GridSubDiv(user: String,
   def interNetAddress(x: Int, y: Int) = topology.getTopologyMap(ipMappings).get(ips(x)).get(y)
 
   //if(!validateNumberOfMasterNodes(esMasters, ips.size)) throw new Exception("Bad number of Elasticsearch master nodes")
-  override def nodeToolPath = s"${super.nodeToolPath} -h ${interNetAddress(0, 0)}"
+//  override def nodeToolPath = s"${super.nodeToolPath} -h ${interNetAddress(0, 0)}"
 
-  override def pingAddress = interNetAddress(0, 0)
+//  override def pingAddress = interNetAddress(0, 0)
   override def getMode: String = "gridSubDiv"
 
-  override def getSeedNodes: List[String] = {
-    val m = topology.getTopologyMap(ipMappings)
-    List(m.get(ips(0)).get(0), m.get(ips(1)).get(0), m.get(ips(2)).get(0))
-  }
+//  override def getSeedNodes: List[String] = {
+//    val m = topology.getTopologyMap(ipMappings)
+//    List(m.get(ips(0)).get(0), m.get(ips(1)).get(0), m.get(ips(2)).get(0))
+//  }
 
   override def startElasticsearch(hosts: GenSeq[String]): Unit = {
     command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start-master.sh")}",
@@ -121,18 +121,16 @@ case class GridSubDiv(user: String,
   override def startCassandra(hosts: GenSeq[String]): Unit = {
     var s = 1
     for (host <- hosts) {
-      for (index <- 1 to dataDirs.casDataDirs.size) {
         val sb = new StringBuilder
         sb ++= "bash -c 'sleep "
         sb ++= s.toString
         sb ++= " ; cd "
         sb ++= instDirs.globalLocation
         sb ++= "/cm-well/app/cas/cur/; "
-        sb ++= startScript(s"./start${Host.getIndexTxt(index)}.sh")
+        sb ++= startScript("./start.sh")
         sb ++= "' > /dev/null 2> /dev/null &"
         command(sb.result(), Seq(host), false)
         s += 1
-      }
     }
   }
 
@@ -152,17 +150,6 @@ case class GridSubDiv(user: String,
         false
       )
       s += 1
-    }
-
-    for (host <- hosts) {
-      for (index <- 2 to dataDirs.casDataDirs.size) {
-        command(
-          s"bash -c 'sleep ${s} ; cd ${instDirs.globalLocation}/cm-well/app/cas/cur/; ${startScript(s"./start$index.sh")}' > /dev/null 2> /dev/null &",
-          Seq(host),
-          false
-        )
-        s += 1
-      }
     }
 
   }
@@ -187,14 +174,14 @@ case class GridSubDiv(user: String,
     //createCassandraRackProperties(hosts)
   }
 
-  override def prepareMachines(hosts: GenSeq[String] = ips.par,
-                               sudoerName: String,
-                               sudoerPass: String,
-                               userPass: String) {
-    super.prepareMachines(hosts, sudoerName, sudoerPass, userPass)
-    createNetwork(topology, topology.persistent, hosts, sudoerCredentials.get)
-    super.finishPrepareMachines(hosts, sudoerCredentials.get)
-  }
+//  override def prepareMachines(hosts: GenSeq[String] = ips.par,
+//                               sudoerName: String,
+//                               sudoerPass: String,
+//                               userPass: String) {
+//    super.prepareMachines(hosts, sudoerName, sudoerPass, userPass)
+//    createNetwork(topology, topology.persistent, hosts, sudoerCredentials.get)
+//    super.finishPrepareMachines(hosts, sudoerCredentials.get)
+//  }
 
   override protected def finishPrepareMachines(hosts: GenSeq[String], sudoer: Credentials): Unit = {}
 
@@ -208,6 +195,8 @@ case class GridSubDiv(user: String,
     super.unprepareMachines(hosts)
     removeNetwork(hosts, sudoer)
   }
+
+  override def getSeedNodes: List[String] = ips.take(3)
 
   override def getNewHostInstance(ipms: IpMappings): Host = {
     this.copy(ipMappings = ipms)
@@ -231,37 +220,31 @@ case class GridSubDiv(user: String,
     val topologyMap = topology.getTopologyMap(ipMappings)
     val homeDir = s"${instDirs.globalLocation}/cm-well"
     hosts.flatMap { host =>
-      val aliases = topologyMap(host)
-
-      val casSubDivs = for (i <- 1 to dataDirs.casDataDirs.size)
-        yield {
-          CassandraConf(
-            home = homeDir,
-            seeds = getSeedNodes.mkString(","),
-            clusterName = clusterName,
-            resourceManager = casAllocations,
-            snitchType = "GossipingPropertyFileSnitch",
-            ccl_dir = ResourceBuilder.getIndexedName("ccl", i),
-            dir = ResourceBuilder.getIndexedName("cas", i),
-            rowCacheSize = casRowCacheSize,
-            replicationFactor = 3,
-            template = "cassandra.yaml",
-            listenAddress = aliases(i - 1),
-            rpcAddress = aliases(i - 1),
-            sName = s"${ResourceBuilder.getIndexedName("start", i)}.sh",
-            index = i,
-            rs = IpRackSelector(),
-            g1 = g1,
-            hostIp = host
-          )
-
-        }
+      val cas = CassandraConf(
+        home = homeDir,
+        seeds = getSeedNodes.mkString(","),
+        clusterName = clusterName,
+        resourceManager = casAllocations,
+        snitchType = "GossipingPropertyFileSnitch",
+        ccl_dir = "ccl",
+        dir = "cas",
+        rowCacheSize = casRowCacheSize,
+        replicationFactor = 3,
+        template = "cassandra.yaml",
+        listenAddress = host,
+        rpcAddress = host,
+        sName = "start.sh",
+        index = 1,
+        rs = IpRackSelector(),
+        g1 = g1,
+        hostIp = host
+      )
 
         val esSubDivs = for(i <- 1 to dataDirs.esDataDirs.size)
         yield {
           ElasticsearchConf(
             clusterName = clusterName,
-            nodeName = aliases(i - 1),
+            nodeName = host,
             masterNode = false,
             dataNode = true,
             expectedNodes = getSize,
@@ -271,7 +254,7 @@ case class GridSubDiv(user: String,
             resourceManager = esAllocations,
             dir = ResourceBuilder.getIndexedName("es", i),
             template = "elasticsearch.yml",
-            listenAddress = aliases(i - 1),
+            listenAddress = host,
             masterNodes = esMasters,
             sName = s"${ResourceBuilder.getIndexedName("start", i)}.sh",
             index = i,
@@ -284,7 +267,7 @@ case class GridSubDiv(user: String,
 
         val esMaster = ElasticsearchConf(
           clusterName = clusterName,
-          nodeName = s"${aliases(0)}-master",
+          nodeName = s"$host-master",
           masterNode = true,
           dataNode = false,
           expectedNodes = getSize ,
@@ -294,7 +277,7 @@ case class GridSubDiv(user: String,
           resourceManager = esAllocations,
           dir = "es-master",
           template = "elasticsearch.yml",
-          listenAddress = aliases(0),
+          listenAddress = host,
           masterNodes = esMasters,
           sName = "start-master.sh",
           index = dataDirs.esDataDirs.size + 1,
@@ -309,7 +292,7 @@ case class GridSubDiv(user: String,
         zookeeperServers = ips.take(3),
         clusterName = clusterName,
         dataCenter = dataCenter,
-        hostName = aliases(0),
+        hostName = host,
         resourceManager = bgAllocations,
         sName = "start.sh",
         isMaster = host == ips(0),
@@ -323,12 +306,13 @@ case class GridSubDiv(user: String,
         defaultRdfProtocol = defaultRdfProtocol
       )
 
+
       val web = WebConf(
         home = homeDir,
         zookeeperServers = ips.take(3),
         clusterName = clusterName,
         dataCenter = dataCenter,
-        hostName = aliases(0),
+        hostName = host,
         resourceManager = wsAllocations,
         sName = "start.sh",
         useAuthorization = useAuthorization,
@@ -342,11 +326,12 @@ case class GridSubDiv(user: String,
         defaultRdfProtocol = defaultRdfProtocol
       )
 
+
       val cw = CwConf(
         home = homeDir,
         clusterName = clusterName,
         dataCenter = dataCenter,
-        hostName = aliases(0),
+        hostName = host,
         resourceManager = wsAllocations,
         sName = "cw-start.sh",
         logLevel = WebserviceProps(this).LogLevel.getLogLevel,
@@ -358,6 +343,7 @@ case class GridSubDiv(user: String,
         subjectsInSpAreHttps = subjectsInSpAreHttps
       )
 
+
       val ctrl = CtrlConf(
         home = homeDir,
         sName = "start.sh",
@@ -365,7 +351,7 @@ case class GridSubDiv(user: String,
         clusterName = clusterName,
         resourceManager = ctrlAllocations,
         singletonStarter = true,
-        pingIp = aliases(0),
+        pingIp = host,
         user = user,
         logLevel = CtrlProps(this).LogLevel.getLogLevel,
         debug = deb,
@@ -381,7 +367,7 @@ case class GridSubDiv(user: String,
         target = dcTarget.getOrElse(ips.map(ip => s"$ip:9000").mkString(",")),
         debug = deb,
         logLevel = DcProps(this).LogLevel.getLogLevel,
-        pingIp = aliases(0),
+        pingIp = host,
         hostIp = host,
         minMembers = getMinMembers
       )
@@ -406,12 +392,12 @@ case class GridSubDiv(user: String,
         home = homeDir,
         listenPort = "9090",
         listenAddress = host,
-        elasticsearchUrl = s"${aliases(0)}:9201"
+        elasticsearchUrl = s"${host}:9201"
       )
 
       val logstash = LogstashConf(
         clusterName = cn,
-        elasticsearchUrl = s"${aliases(0)}:9201",
+        elasticsearchUrl = s"${host}:9201",
         home = homeDir,
         dir = "logstash",
         sName = "start.sh",
@@ -428,7 +414,7 @@ case class GridSubDiv(user: String,
         zookeeper,
         kafka,
         bg
-      ) ++ casSubDivs ++ esSubDivs ++ (if (withElk) List(logstash, kibana) else List.empty[ComponentConf])
+      ) ++ List(cas) ++ esSubDivs ++ (if (withElk) List(logstash, kibana) else List.empty[ComponentConf])
     }
   }
 
