@@ -173,16 +173,7 @@ case class GridSubDiv(user: String,
     super.deployApplication(hosts)
     //createCassandraRackProperties(hosts)
   }
-
-//  override def prepareMachines(hosts: GenSeq[String] = ips.par,
-//                               sudoerName: String,
-//                               sudoerPass: String,
-//                               userPass: String) {
-//    super.prepareMachines(hosts, sudoerName, sudoerPass, userPass)
-//    createNetwork(topology, topology.persistent, hosts, sudoerCredentials.get)
-//    super.finishPrepareMachines(hosts, sudoerCredentials.get)
-//  }
-
+  
   override protected def finishPrepareMachines(hosts: GenSeq[String], sudoer: Credentials): Unit = {}
 
   override def unprepareMachines(hosts: GenSeq[String]): Unit = {
