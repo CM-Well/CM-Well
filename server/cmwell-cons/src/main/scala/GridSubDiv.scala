@@ -24,7 +24,6 @@ case class GridSubDiv(user: String,
                       dataDirs: DataDirs,
                       instDirs: InstDirs,
                       esMasters: Int,
-                      topology: NetTopology,
                       allocationPlan: ModuleAllocations,
                       useAuthorization: Boolean,
                       deployJava: Boolean,
@@ -64,36 +63,6 @@ case class GridSubDiv(user: String,
   override def getElasticsearchMasters: Int = esMasters
   //def hosts = ips.map(ip => s"${user}@${ip}")
   override def getCassandraHostIDs(host: String): String = ???
-
-  /*  def addInerNetwork(hosts : GenSeq[String] = ips.par, persistent : Boolean = false) = {
-      createNetwork(topology.getTopologyMap(hosts), topology.getCidr, persistent)
-    }*/
-
-  def removeNetwork(sudoer: Credentials): Unit = removeNetwork(ips.par, sudoer)
-  def removeNetwork(hosts: GenSeq[String], sudoer: Credentials) {
-    topology match {
-      case n: VLanTopology =>
-        val tag = n.tag
-        val path = "/etc/sysconfig/network-scripts"
-        val fileName = s"ifcfg-$inet.$tag"
-        command(s"sudo rm $path/$fileName", hosts, true, Some(sudoer))
-        command(s"sudo ifconfig $inet.$tag down", hosts, true, Some(sudoer))
-        for (i <- 0 to n.amountPerMachine - 1) {
-          val fileName = s"ifcfg-$inet.$tag:$i"
-          command(s"sudo rm $path/$fileName", hosts, true, Some(sudoer))
-          command(s"sudo ifconfig $inet.$tag:$i down", hosts, true, Some(sudoer))
-        }
-        command("sudo service network restart", hosts, true, Some(sudoer))
-    }
-  }
-
-  def removeInetAliases(r: Range, i: GenSeq[String] = ips.par, sudoer: Credentials) {
-    r.foreach { index =>
-      command(s"sudo ifconfig $inet:$index down", i, true, Some(sudoer))
-    }
-  }
-
-  def interNetAddress(x: Int, y: Int) = topology.getTopologyMap(ipMappings).get(ips(x)).get(y)
 
   override def getMode: String = "gridSubDiv"
 
@@ -173,10 +142,6 @@ case class GridSubDiv(user: String,
     )
   }
 
-  def unprepareMachines(hosts: GenSeq[String], sudoer: Credentials) {
-    super.unprepareMachines(hosts)
-    removeNetwork(hosts, sudoer)
-  }
 
   override def getSeedNodes: List[String] = ips.take(3)
 
@@ -199,7 +164,6 @@ case class GridSubDiv(user: String,
     val wsAllocations = aloc.ws
     val ctrlAllocations = aloc.ctrl
 
-    val topologyMap = topology.getTopologyMap(ipMappings)
     val homeDir = s"${instDirs.globalLocation}/cm-well"
     hosts.flatMap { host =>
       val cas = CassandraConf(
