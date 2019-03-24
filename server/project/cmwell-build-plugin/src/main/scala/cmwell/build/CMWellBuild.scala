@@ -153,7 +153,7 @@ object CMWellBuild extends AutoPlugin {
 		import scalaz.concurrent.Task
 
 		val (module, version) = FromSbt.moduleVersion(moduleID, scalaVersion, scalaBinaryVersion)
-		val repositories: Seq[coursier.Repository] = Seq(MavenRepository("https://repo1.maven.org/maven2"))
+		val repositories: Seq[coursier.Repository] = (sys.env.get("INT_MAVEN_REPO").toIterable ++ "https://repo1.maven.org/maven2").map(MavenRepository(_))
 		val fetch = Cache.fetch()
 
 		val tasks = FromSbt.dependencies(moduleID, scalaVersion, scalaBinaryVersion).map {
