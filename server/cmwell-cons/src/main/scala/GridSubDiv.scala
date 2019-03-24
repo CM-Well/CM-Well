@@ -95,16 +95,7 @@ case class GridSubDiv(user: String,
 
   def interNetAddress(x: Int, y: Int) = topology.getTopologyMap(ipMappings).get(ips(x)).get(y)
 
-  //if(!validateNumberOfMasterNodes(esMasters, ips.size)) throw new Exception("Bad number of Elasticsearch master nodes")
-//  override def nodeToolPath = s"${super.nodeToolPath} -h ${interNetAddress(0, 0)}"
-
-//  override def pingAddress = interNetAddress(0, 0)
   override def getMode: String = "gridSubDiv"
-
-//  override def getSeedNodes: List[String] = {
-//    val m = topology.getTopologyMap(ipMappings)
-//    List(m.get(ips(0)).get(0), m.get(ips(1)).get(0), m.get(ips(2)).get(0))
-//  }
 
   override def startElasticsearch(hosts: GenSeq[String]): Unit = {
     command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start-master.sh")}",
@@ -173,7 +164,7 @@ case class GridSubDiv(user: String,
     super.deployApplication(hosts)
     //createCassandraRackProperties(hosts)
   }
-  
+
   override protected def finishPrepareMachines(hosts: GenSeq[String], sudoer: Credentials): Unit = {}
 
   override def unprepareMachines(hosts: GenSeq[String]): Unit = {
