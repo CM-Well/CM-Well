@@ -116,7 +116,9 @@ case class CassandraConf(home: String,
                          index: Int,
                          rs: RackSelector,
                          g1: Boolean,
-                         hostIp: String)
+                         hostIp: String,
+                         casDataDirs:IndexedSeq[String],
+                         casDurableWrites:Boolean)
     extends ComponentConf(hostIp, s"$home/app/cas/cur", sName, s"$home/conf/$dir", "cassandra.yaml", index) {
   override def getPsIdentifier = s"/log/cas${getIndexTxt}/"
 
@@ -253,7 +255,8 @@ case class CassandraConf(home: String,
         "dir" -> dir,
         "root_dir" -> home,
         "endpoint_snitch" -> snitchType,
-        "row_cache_size" -> rowCacheSize.toString
+        "row_cache_size" -> rowCacheSize.toString,
+        "cas_data_dirs" -> casDataDirs.map(dir=> s"$home/data/$dir/data").mkString("\n    - ")
       )
     )
 
@@ -266,7 +269,7 @@ case class CassandraConf(home: String,
       ResourceBuilder.getResource("scripts/templates/cassandra-rackdc.properties", Map("rack_id" -> rs.getRackId(this)))
 
     val cqlInit2 = ResourceBuilder.getResource("scripts/templates/cassandra-cql-init-cluster-new",
-                                               Map("replication_factor" -> replicationFactor.toString))
+                                               Map("replication_factor" -> replicationFactor.toString, "durable_writes" -> casDurableWrites.toString))
 
     val cqlInit3 = ResourceBuilder.getResource("scripts/templates/zstore-cql-init-cluster",
                                                Map("replication_factor" -> replicationFactor.toString))

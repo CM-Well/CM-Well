@@ -168,7 +168,8 @@ case object Ubuntu extends OsType
 abstract class Host(user: String,
                     password: String,
                     ipMappings: IpMappings,
-                    size: Int,
+                    esSize: Int,
+                    casSize:Int,
                     inet: String,
                     val cn: String,
                     val dc: String,
@@ -317,7 +318,7 @@ abstract class Host(user: String,
 
   def ips = ipMappings.getIps
 
-  def getSize = size
+  def getSize = esSize
 
   def createFile(path: String,
                  content: String,
@@ -1488,8 +1489,8 @@ abstract class Host(user: String,
     startCassandra(hosts)
     startElasticsearch(hosts)
 
-    Try(CassandraLock().waitForModule(hosts(0), size))
-    Try(ElasticsearchLock().waitForModule(hosts(0), size))
+    Try(CassandraLock().waitForModule(hosts(0), casSize))
+    Try(ElasticsearchLock().waitForModule(hosts(0), esSize))
     startZookeeper
     startKafka(hosts)
 
@@ -1545,7 +1546,7 @@ abstract class Host(user: String,
 
     Retry {
       try {
-        CassandraLock().waitForModule(hosts(0), size)
+        CassandraLock().waitForModule(hosts(0), casSize)
       } catch {
         case t: Throwable =>
           info("Trying to reinit Cassandra")
@@ -1556,7 +1557,7 @@ abstract class Host(user: String,
 
     Retry {
       try {
-        ElasticsearchLock().waitForModule(hosts(0), size)
+        ElasticsearchLock().waitForModule(hosts(0), esSize)
       } catch {
         case t: Throwable =>
           info("Trying to reinit Elasticsearch")
@@ -1953,9 +1954,9 @@ abstract class Host(user: String,
 
     casStatusTry match {
       case Success(uns) =>
-        if (uns < size) {
+        if (uns < casSize) {
           hasProblem = true
-          warn(s"Number of Cassandra up nodes is $uns/$size.")
+          warn(s"Number of Cassandra up nodes is $uns/$casSize.")
         }
       case Failure(err) =>
         hasProblem = true
@@ -2133,7 +2134,7 @@ abstract class Host(user: String,
         val javaUpdated = updatedComponents.contains(JavaProps(this))
 
         //if(esUpdated || javaUpdated) {
-        Try(ElasticsearchLock().waitForModule(esMasterNode, size))
+        Try(ElasticsearchLock().waitForModule(esMasterNode, esSize))
         Try(ElasticsearchStatusLock("green", "yellow").waitForModuleIndefinitely(esMasterNode))
         // if we encounter status yellow lets sleep for 10 minutes.
         //if(elasticsearchStatus(ips(0)).getOrElse("N/A") == "yellow") Thread.sleep(10 * 1000 * 60)
@@ -2162,7 +2163,7 @@ abstract class Host(user: String,
 
         // wait for cassandra and elasticsearch to be stable before starting cmwell components.
         if (javaUpdated || casUpdated) {
-          Try(CassandraLock().waitForModule(ips(0), size))
+          Try(CassandraLock().waitForModule(ips(0), casSize))
         }
 
       }
@@ -2191,7 +2192,7 @@ abstract class Host(user: String,
 
       // starting all the components that are not upgraded in rolling style.
 
-      Try(ElasticsearchLock(esMasterNode).waitForModule(esMasterNode, size))
+      Try(ElasticsearchLock(esMasterNode).waitForModule(esMasterNode, esSize))
       Try(ElasticsearchStatusLock("green", "yellow").waitForModuleIndefinitely(esMasterNode))
 
       if (withUpdateSchemas) {
@@ -2435,7 +2436,7 @@ abstract class Host(user: String,
       info(s"Restarting Cassandra on $ip")
       stopCassandra(Seq(ip))
       startCassandra(Seq(ip))
-      Try(CassandraLock().waitForModule(ips(0), size))
+      Try(CassandraLock().waitForModule(ips(0), casSize))
     }
   }
 

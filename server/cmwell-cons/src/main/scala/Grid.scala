@@ -46,6 +46,7 @@ case class Grid(user: String,
       password,
       ipMappings,
       ipMappings.getIps.size,
+      ipMappings.getIps.size,
       inet,
       clusterName,
       dataCenter,
@@ -105,7 +106,9 @@ case class Grid(user: String,
         index = 1,
         rs = IpRackSelector(),
         g1 = g1,
-        hostIp = host
+        hostIp = host,
+        casDataDirs = IndexedSeq("cas"),
+        casDurableWrites = false
       )
 
         val es = ElasticsearchConf(

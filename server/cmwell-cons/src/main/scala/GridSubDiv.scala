@@ -41,7 +41,8 @@ case class GridSubDiv(user: String,
       user,
       password,
       ipMappings,
-      ipMappings.getIps.size * dataDirs.casDataDirs.size,
+      ipMappings.getIps.size * dataDirs.esDataDirs.size,
+      ipMappings.getIps.size,
       inet,
       clusterName,
       dataCenter,
@@ -163,8 +164,10 @@ case class GridSubDiv(user: String,
     val bgAllocations = aloc.bg //DefaultAlocations(1000,1000,512,0)
     val wsAllocations = aloc.ws
     val ctrlAllocations = aloc.ctrl
-
     val homeDir = s"${instDirs.globalLocation}/cm-well"
+    val casDataDirs = for (i <- 1 to dataDirs.casDataDirs.size)
+      yield {ResourceBuilder.getIndexedName("cas", i)}
+
     hosts.flatMap { host =>
       val cas = CassandraConf(
         home = homeDir,
@@ -183,7 +186,9 @@ case class GridSubDiv(user: String,
         index = 1,
         rs = IpRackSelector(),
         g1 = g1,
-        hostIp = host
+        hostIp = host,
+        casDataDirs = casDataDirs,
+        casDurableWrites = false
       )
 
         val esSubDivs = for(i <- 1 to dataDirs.esDataDirs.size)

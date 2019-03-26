@@ -36,6 +36,7 @@ case class LocalHost(dataCenter: String = "lh",
       "",
       IpMappings(List(IpMapping("127.0.0.1", None))),
       1,
+      1,
       "lo",
       "cm-well-p",
       dataCenter,
@@ -201,7 +202,9 @@ case class LocalHost(dataCenter: String = "lh",
       index = 1,
       rs = IpRackSelector(),
       g1 = false,
-      hostIp = ip
+      hostIp = ip,
+      casDataDirs = IndexedSeq("cas"),
+      casDurableWrites = true
     )
 
     val es = ElasticsearchConf(
