@@ -49,7 +49,7 @@ class IteratorIdDispatcher(iterationStateInput: IterationStateInput, withHistory
     }
     case GotIt => {
       cancelable.cancel()
-      self ! PoisonPill
+      context.stop(self)
     }
   }
 }
