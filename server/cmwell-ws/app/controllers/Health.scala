@@ -107,7 +107,7 @@ class Health @Inject()(crudServiceFS: CRUDServiceFS, ws: WSClient) extends Injec
   }
 
   def getElasticsearchStatus = {
-    esRequestHelper(s"http://$ip:9201/_status?pretty")
+    esRequestHelper(s"http://$ip:9201/_stats?pretty")
   }
 
   def getElasticsearchThreadPool =  {
