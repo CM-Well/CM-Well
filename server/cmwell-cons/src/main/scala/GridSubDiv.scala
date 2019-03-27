@@ -165,8 +165,7 @@ case class GridSubDiv(user: String,
     val wsAllocations = aloc.ws
     val ctrlAllocations = aloc.ctrl
     val homeDir = s"${instDirs.globalLocation}/cm-well"
-    val casDataDirs = for (i <- 1 to dataDirs.casDataDirs.size)
-      yield {ResourceBuilder.getIndexedName("cas", i)}
+    val casDataDirs = (1 to dataDirs.casDataDirs.size).map(ResourceBuilder.getIndexedName("cas", _))
 
     hosts.flatMap { host =>
       val cas = CassandraConf(
@@ -188,7 +187,8 @@ case class GridSubDiv(user: String,
         g1 = g1,
         hostIp = host,
         casDataDirs = casDataDirs,
-        casDurableWrites = false
+        // we refrain from using Cas Commitlog on cluster, to save disk space and performance, given we always write in Quorum so there will be no data loss
+        casUseCommitLog = false
       )
 
         val esSubDivs = for(i <- 1 to dataDirs.esDataDirs.size)

@@ -357,7 +357,7 @@ case class CassandraProps(h: Host)
   override def upgradeDependency: Set[ComponentProps] = Set(JavaProps(h))
 
   override def createLoggingDirectories(hosts: GenSeq[String]) {
-    h.info(s"  creating $componentName log directories lala")
+    h.info(s"  creating $componentName log directories")
     componentMappings.foreach { componentMapping =>
         h.command(
           s"mkdir -p ${h.getInstDirs.intallationDir}/log/${componentMapping._1}",

@@ -203,8 +203,8 @@ case class LocalHost(dataCenter: String = "lh",
       rs = IpRackSelector(),
       g1 = false,
       hostIp = ip,
-      casDataDirs = IndexedSeq("cas"),
-      casDurableWrites = true
+      casDataDirs = Seq("cas"),
+      casUseCommitLog = true
     )
 
     val es = ElasticsearchConf(

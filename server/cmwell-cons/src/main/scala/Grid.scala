@@ -107,8 +107,9 @@ case class Grid(user: String,
         rs = IpRackSelector(),
         g1 = g1,
         hostIp = host,
-        casDataDirs = IndexedSeq("cas"),
-        casDurableWrites = false
+        casDataDirs = Seq("cas"),
+        // we refrain from using Cas Commitlog on cluster, to save disk space and performance, given we always write in Quorum so there will be no data loss
+        casUseCommitLog = false
       )
 
         val es = ElasticsearchConf(

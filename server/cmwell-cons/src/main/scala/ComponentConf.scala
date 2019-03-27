@@ -117,8 +117,8 @@ case class CassandraConf(home: String,
                          rs: RackSelector,
                          g1: Boolean,
                          hostIp: String,
-                         casDataDirs:IndexedSeq[String],
-                         casDurableWrites:Boolean)
+                         casDataDirs:Seq[String],
+                         casUseCommitLog:Boolean)
     extends ComponentConf(hostIp, s"$home/app/cas/cur", sName, s"$home/conf/$dir", "cassandra.yaml", index) {
   override def getPsIdentifier = s"/log/cas${getIndexTxt}/"
 
@@ -269,7 +269,7 @@ case class CassandraConf(home: String,
       ResourceBuilder.getResource("scripts/templates/cassandra-rackdc.properties", Map("rack_id" -> rs.getRackId(this)))
 
     val cqlInit2 = ResourceBuilder.getResource("scripts/templates/cassandra-cql-init-cluster-new",
-                                               Map("replication_factor" -> replicationFactor.toString, "durable_writes" -> casDurableWrites.toString))
+                                               Map("replication_factor" -> replicationFactor.toString, "durable_writes" -> casUseCommitLog.toString))
 
     val cqlInit3 = ResourceBuilder.getResource("scripts/templates/zstore-cql-init-cluster",
                                                Map("replication_factor" -> replicationFactor.toString))
