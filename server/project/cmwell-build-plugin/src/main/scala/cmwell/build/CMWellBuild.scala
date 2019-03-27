@@ -16,7 +16,7 @@
 package cmwell.build
 
 import com.github.tkawachi.doctest.DoctestPlugin
-import org.scalafmt.sbt.ScalafmtPlugin
+//import org.scalafmt.sbt.ScalafmtPlugin
 import org.scalastyle.sbt.ScalastylePlugin
 import sbtdynver.DynVerPlugin
 import coursier.CoursierPlugin
@@ -63,7 +63,7 @@ object CMWellBuild extends AutoPlugin {
 	import autoImport._
 	import DoctestPlugin.autoImport._
 	import CoursierPlugin.autoImport._
-	import ScalafmtPlugin.autoImport._
+//import ScalafmtPlugin.autoImport._
 	import ScalastylePlugin.autoImport._
 	import DynVerPlugin.autoImport._
 
@@ -235,7 +235,7 @@ object CMWellBuild extends AutoPlugin {
 		CMWellCommon.scalazTaskAsScalaFuture(task)
 	}
 
-	override def requires = CoursierPlugin && ScalastylePlugin && ScalafmtPlugin && DoctestPlugin && DependencyGraphPlugin
+	override def requires = CoursierPlugin && ScalastylePlugin /*&& ScalafmtPlugin*/ && DoctestPlugin && DependencyGraphPlugin
 
 	override def projectSettings = Seq(
 		scalastyleFailOnError := true,
