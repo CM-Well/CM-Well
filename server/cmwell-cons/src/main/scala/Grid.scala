@@ -17,7 +17,7 @@ import scala.util.Try
 
 case class Grid(user: String,
                 password: String,
-                ipMappings: IpMappings,
+                clusterIps: Seq[String],
                 inet: String,
                 clusterName: String,
                 dataCenter: String,
@@ -44,9 +44,9 @@ case class Grid(user: String,
     extends Host(
       user,
       password,
-      ipMappings,
-      ipMappings.getIps.size,
-      ipMappings.getIps.size,
+      clusterIps,
+      clusterIps.size,
+      clusterIps.size,
       inet,
       clusterName,
       dataCenter,
@@ -288,7 +288,7 @@ case class Grid(user: String,
 
   override def getMode: String = "grid"
 
-  override def getSeedNodes: List[String] = ips.take(3)
+  override def getSeedNodes: List[String] = ips.take(3).toList
 
   override def startElasticsearch(hosts: GenSeq[String]): Unit = {
     command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start-master.sh")}",
@@ -320,7 +320,7 @@ case class Grid(user: String,
     command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start.sh")}", hosts, false)
   }
 
-  override def getNewHostInstance(ipms: IpMappings): Host = {
-    this.copy(ipMappings = ipms)
+  override def getNewHostInstance(ipms: Seq[String]): Host = {
+    this.copy(clusterIps = ipms)
   }
 }

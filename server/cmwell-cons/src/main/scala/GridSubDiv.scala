@@ -17,7 +17,7 @@ import scala.util.Try
 
 case class GridSubDiv(user: String,
                       password: String,
-                      ipMappings: IpMappings,
+                      clusterIps: Seq[String],
                       inet: String,
                       clusterName: String,
                       dataCenter: String,
@@ -40,9 +40,9 @@ case class GridSubDiv(user: String,
     extends Host(
       user,
       password,
-      ipMappings,
-      ipMappings.getIps.size * dataDirs.esDataDirs.size,
-      ipMappings.getIps.size,
+      clusterIps,
+      clusterIps.size * dataDirs.esDataDirs.size,
+      clusterIps.size,
       inet,
       clusterName,
       dataCenter,
@@ -130,10 +130,6 @@ case class GridSubDiv(user: String,
     }
   }
 
-  override def deployApplication(hosts: GenSeq[String] = ips.par) {
-    super.deployApplication(hosts)
-    //createCassandraRackProperties(hosts)
-  }
 
   override protected def finishPrepareMachines(hosts: GenSeq[String], sudoer: Credentials): Unit = {}
 
@@ -144,15 +140,12 @@ case class GridSubDiv(user: String,
   }
 
 
-  override def getSeedNodes: List[String] = ips.take(3)
+  override def getSeedNodes: List[String] = ips.take(3).toList
 
-  override def getNewHostInstance(ipms: IpMappings): Host = {
-    this.copy(ipMappings = ipms)
+  override def getNewHostInstance(ipms: Seq[String]): Host = {
+    this.copy(clusterIps = ipms)
   }
 
-  override def getCassandraAddresses(host: String): Seq[String] = {
-    ipMappings.getMap(host)
-  }
 
   override def mkScripts(hosts: GenSeq[String]): GenSeq[ComponentConf] = {
     val aloc = allocationPlan.getJvmAllocations
