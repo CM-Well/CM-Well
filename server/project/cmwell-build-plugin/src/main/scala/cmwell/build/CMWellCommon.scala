@@ -82,6 +82,7 @@ object CMWellCommon {
     xmlFile.getAbsolutePath
   }
 
+/*
   //TODO: should use delorean? ( https://github.com/Verizon/delorean )
   def scalazTaskAsScalaFuture[T](task: scalaz.concurrent.Task[scala.util.Try[T]]): scala.concurrent.Future[T] = {
     import scala.concurrent._
@@ -98,6 +99,7 @@ object CMWellCommon {
     })
     p.future
   }
+*/
 
   def combineThrowablesAsCause(t1: Throwable, t2: Throwable)(f: Throwable => Throwable): Throwable =
     f(Option(t1.getCause).fold(t1.initCause(t2)){ _ =>

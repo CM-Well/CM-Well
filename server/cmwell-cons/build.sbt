@@ -32,20 +32,30 @@ getExternalComponents := {
   val logger = streams.value
   val dm = dependenciesManager.value
 
+/*
   val casM = dm("org.apache.cassandra", "apache-cassandra") artifacts (Artifact("apache-cassandra", "tar.gz", "tar.gz", "bin")) intransitive()
   val casF: scala.concurrent.Future[Seq[java.io.File]] = {
     CMWellBuild.fetchMvnArtifact(casM,scalaVersion.value,scalaBinaryVersion.value,logger.log)
   }
+*/
 
+  val casF = CMWellBuild.fetchCassandra(Versions.cassandra, logger.log)
+
+/*
   val esM = dm("org.elasticsearch.distribution.zip", "elasticsearch-oss") artifacts (Artifact("elasticsearch-oss", "zip", "zip")) intransitive()
   val esF: scala.concurrent.Future[Seq[java.io.File]] = {
     CMWellBuild.fetchMvnArtifact(esM,scalaVersion.value,scalaBinaryVersion.value,logger.log)
   }
+*/
 
+  val esF = CMWellBuild.fetchElasticSearch(Versions.elasticsearch)
+
+/*
   val mx4jM = dm("mx4j", "mx4j-tools")
   val mx4jF: scala.concurrent.Future[Seq[java.io.File]] = {
     CMWellBuild.fetchMvnArtifact(mx4jM,scalaVersion.value,scalaBinaryVersion.value,logger.log)
   }
+*/
 
   val kafkaF = CMWellBuild.fetchKafka(scalaBinaryVersion.value,Versions.kafka)
 
@@ -56,14 +66,14 @@ getExternalComponents := {
   val vecF: scala.concurrent.Future[Vector[(String,java.io.File)]] = for {
     cas   <- casF
     es    <- esF
-    mx4j  <- mx4jF
+//    mx4j  <- mx4jF
     kafka <- kafkaF
     zk    <- zkF
   } yield {
     val b = Vector.newBuilder[(String,File)]
-    b ++= cas.map(file  => file.name -> file)
-    b ++= es.map(file   => file.name -> file)
-    b ++= mx4j.collect{ case file if file.getName.endsWith(".jar") => file.name -> file}
+    b += cas
+    b += es
+//    b ++= mx4j.collect{ case file if file.getName.endsWith(".jar") => file.name -> file}
     b +=  s"kafka-dist-${Versions.kafka}.tgz"       -> kafka
     b +=  s"zookeeper-${Versions.zookeeper}.tar.gz" -> zk
     b.result()

@@ -16,10 +16,11 @@
 package cmwell.build
 
 import com.github.tkawachi.doctest.DoctestPlugin
+import coursier.{Fetch, Resolve}
 //import org.scalafmt.sbt.ScalafmtPlugin
 import org.scalastyle.sbt.ScalastylePlugin
 import sbtdynver.DynVerPlugin
-import coursier.CoursierPlugin
+import coursier.sbtcoursier.CoursierPlugin
 import net.virtualvoid.sbt.graph.DependencyGraphPlugin
 import sbt.Keys._
 import sbt._
@@ -33,7 +34,8 @@ object CMWellBuild extends AutoPlugin {
 
 	object autoImport {
 //  val configSettingsResource = TaskKey[Seq[sbt.File]]("config-settings-resource", "gets the .conf resource")
-		val dependenciesManager = settingKey[PartialFunction2[String, String, ModuleID]]("a setting containing versions for dependencies. if we only use it to declare dependencies, we can avoid a lot of version collisions.")
+		val dependenciesManager = settingKey[PartialFunction2[String, String, ModuleID]]("a setting containing versions for dependencies. if we only use it to declare " +
+			"dependencies, we can avoid a lot of version collisions.")
 		// scalastyle:off
     val iTestsLightMode = settingKey[Boolean]("a flag, which if turns on, does not take cm-well down after integration tests, but rather purge everything in it, so it will be ready for next time. on startup, it checks if there is an instance running, and if so, does not re-install cm-well.")
 		// scalastyle:on
@@ -62,7 +64,7 @@ object CMWellBuild extends AutoPlugin {
 
 	import autoImport._
 	import DoctestPlugin.autoImport._
-	import CoursierPlugin.autoImport._
+	import coursier.sbtcoursier.CoursierPlugin.autoImport._
 //import ScalafmtPlugin.autoImport._
 	import ScalastylePlugin.autoImport._
 	import DynVerPlugin.autoImport._
@@ -76,19 +78,19 @@ object CMWellBuild extends AutoPlugin {
 		else "eu"
   }
 
-	def fetchZookeeperApacheMirror(version: String): Future[File] = {
+	def fetchZookeeperApacheMirror(version: String)(implicit ec: ExecutionContext): Future[File] = {
 		val ext = "tar.gz"
 		val url = s"http://www-$apacheMirror.apache.org/dist/zookeeper/zookeeper-$version/zookeeper-$version.$ext"
-		fetchArtifact(url, ext)
+		fetchArtifact(url)
 	}
 
-	def fetchZookeeperApacheArchive(version: String): Future[File] = {
+	def fetchZookeeperApacheArchive(version: String)(implicit ec: ExecutionContext): Future[File] = {
 		val ext = "tar.gz"
 		val url = s"https://archive.apache.org/dist/zookeeper/zookeeper-$version/zookeeper-$version.$ext"
-		fetchArtifact(url, ext)
+		fetchArtifact(url)
 	}
 
-	def fetchZookeeperSourcesFromGithub(version: String, ext: String): Future[File] = {
+	def fetchZookeeperSourcesFromGithub(version: String, ext: String)(implicit ec: ExecutionContext): Future[File] = {
 		require(ext == "zip" || ext == "tar.gz", s"invalid sources extension [$ext]")
 		alternateUnvalidatedFetchArtifact(s"https://github.com/apache/zookeeper/archive/release-$version.$ext", ext)
 	}
@@ -110,19 +112,19 @@ object CMWellBuild extends AutoPlugin {
 		}
 	}
 
-	def fetchKafkaApacheMirror(scalaVersion: String, version: String): Future[File] = {
+	def fetchKafkaApacheMirror(scalaVersion: String, version: String)(implicit ec: ExecutionContext): Future[File] = {
 		val ext = "tgz"
     val url = s"http://www-$apacheMirror.apache.org/dist/kafka/$version/kafka_$scalaVersion-$version.$ext"
-		fetchArtifact(url, ext)
+		fetchArtifact(url)
 	}
 
-	def fetchKafkaApacheArchive(scalaVersion: String, version: String): Future[File] = {
+	def fetchKafkaApacheArchive(scalaVersion: String, version: String)(implicit ec: ExecutionContext): Future[File] = {
 		val ext = "tgz"
     val url = s"https://archive.apache.org/dist/kafka/$version/kafka_$scalaVersion-$version.$ext"
-		fetchArtifact(url, ext)
+		fetchArtifact(url)
 	}
 
-	def fetchKafkaSourcesFromGithub(version: String, ext: String): Future[File] = {
+	def fetchKafkaSourcesFromGithub(version: String, ext: String)(implicit ec: ExecutionContext): Future[File] = {
 		require(ext == "zip" || ext == "tar.gz", s"invalid sources extension [$ext]")
 		alternateUnvalidatedFetchArtifact(s"https://github.com/apache/kafka/archive/$version.$ext", ext)
 	}
@@ -144,7 +146,57 @@ object CMWellBuild extends AutoPlugin {
 		}
 	}
 
+	def fetchCassandraApacheMirror(version: String, fileName: String)(implicit ec: ExecutionContext): Future[File] = {
+    val url = s"http://www-$apacheMirror.apache.org/dist/cassandra/$version/$fileName"
+		fetchArtifact(url)
+	}
+
+	def fetchCassandraApacheArchive(version: String, fileName: String)(implicit ec: ExecutionContext): Future[File] = {
+    val url = s"https://archive.apache.org/dist/cassandra/$version/$fileName"
+		fetchArtifact(url)
+	}
+
+  def fetchCassandra(version: String, logger: Logger)(implicit ec: ExecutionContext): Future[(String, File)] = {
+		val ext = "tar.gz"
+		val fileName = s"apache-cassandra-$version-bin.$ext"
+		fetchCassandraApacheMirror(version, fileName).recoverWith {
+			case ex: Throwable =>
+				logger.error(s"Fetching cassandra from the main mirror failed due to ${ex.getMessage} going to fetch it from apache archive.")
+				fetchCassandraApacheArchive(version, fileName)
+		}
+			.map(fileName -> _)
+	}
+
+	def fetchElasticSearch(version: String)(implicit ec: ExecutionContext): Future[(String, File)] = {
+		val ext = "zip"
+		val fileName = s"elasticsearch-oss-$version.$ext"
+		val url = s"https://artifacts.elastic.co/downloads/elasticsearch/$fileName"
+		fetchArtifact(url).map(fileName -> _)
+	}
+
+/*
 	def fetchMvnArtifact(moduleID: ModuleID, scalaVersion: String, scalaBinaryVersion: String, logger: Logger): Future[Seq[java.io.File]] = {
+		import coursier._
+//val dependency: Dependency = dep"org.elasticsearch.distribution.zip:elasticsearch-oss:6.7.0,classifier=zip"
+    val mod = Module(Organization("org.elasticsearch.distribution.zip"), ModuleName("elasticsearch-oss"))
+		val dependency: Dependency = Dependency(mod, "6.6.2", attributes = Attributes(Type("zip"),Classifier("zip")),optional =  false,transitive =  false)
+		println(s"Eli: depenency created is: $dependency")
+//		val dependency: Dependency = Dependency()
+
+		val a = Fetch()
+			.addDependencies(dependency)
+  		.allArtifactTypes()
+//			.addDependencies(dep"org.tpolecat:doobie-core_2.12:0.6.0")
+			.future()
+		implicit val ec = ExecutionContext.global
+		a.onComplete {
+			case Success(blaa) => println(s"Eli: finished successfully with $blaa")
+				case Failure(ex) => println(s"Eli: finished with error $ex")
+		}
+
+
+		a
+		/*
 		import coursier._
 		import java.io.File
 		import scala.concurrent.Future
@@ -186,17 +238,19 @@ object CMWellBuild extends AutoPlugin {
 		}
 
 		farts.map(_.flatten)
+*/
 	}
+*/
 
-	def fetchArtifact(url: String, ext: String) = {
+	def fetchArtifact(url: String)(implicit es: ExecutionContext): Future[java.io.File] = {
 		import coursier.core.{Artifact, Attributes}
 		val sig = Artifact(
-
 			url + ".asc",
 			Map.empty,
 			Map.empty,
-			Attributes("asc", ""),
+			//Attributes("asc", ""),
 			changing = false,
+			optional = false,
 			authentication = None
 		)
 
@@ -206,33 +260,49 @@ object CMWellBuild extends AutoPlugin {
 				"MD5" -> (url + ".md5"),
 				"SHA-1" -> (url + ".sha1")),
 			Map("sig" -> sig),
-			Attributes(ext, ""),
+			//Attributes(ext, ""),
 			changing = false,
+			optional = false,
 			None)
 
-		val task = coursier.Cache.file(art).fold({ err =>
+		/*
+		val task = coursier.cache.Cache.default.file(art).run.future.fold({ err =>
 			Failure[java.io.File](new Exception(err.message + ": " + err.describe))
 		},Success.apply)
 
 		CMWellCommon.scalazTaskAsScalaFuture(task)
+*/
+		coursier.cache.Cache.default.file(art).run.future.transform {
+			case Success(Left(artifactError)) => Failure(new Exception(artifactError.message + ": " + artifactError.describe))
+			case Success(Right(file)) => Success(file)
+			case Failure(exception) => Failure(exception)
+		}
 	}
 
-	def alternateUnvalidatedFetchArtifact(url: String, ext: String) = {
+	def alternateUnvalidatedFetchArtifact(url: String, ext: String)(implicit es: ExecutionContext): Future[java.io.File] = {
 		import coursier.core.{Artifact, Attributes}
 
 		val art = Artifact(
 			url,
 			Map.empty,
 			Map.empty,
-			Attributes(ext, ""),
+//Attributes(ext, ""),
 			changing = false,
+			optional = false,
 			None)
 
+/*
 		val task = coursier.Cache.file(art).fold({ err =>
 			Failure[java.io.File](new Exception(err.message + ": " + err.describe))
 		},Success.apply)
 
 		CMWellCommon.scalazTaskAsScalaFuture(task)
+*/
+		coursier.cache.Cache.default.file(art).run.future.transform {
+			case Success(Left(artifactError)) => Failure(new Exception(artifactError.message + ": " + artifactError.describe))
+			case Success(Right(file)) => Success(file)
+			case Failure(exception) => Failure(exception)
+		}
 	}
 
 	override def requires = CoursierPlugin && ScalastylePlugin /*&& ScalafmtPlugin*/ && DoctestPlugin && DependencyGraphPlugin
@@ -247,7 +317,7 @@ object CMWellBuild extends AutoPlugin {
 		logLevel in (scalastyle in Compile) := Level.Warn,
 		//scalafmtOnCompile := true,
 		//doctestWithDependencies := false,
-		coursierMaxIterations := 200,
+    coursierMaxIterations := 200,
 		Keys.fork in Test := true,
 		libraryDependencies ++= {
 			val dm = dependenciesManager.value
