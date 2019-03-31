@@ -14,15 +14,15 @@
   */
 package filters
 
-import javax.inject._
-
 import akka.stream.Materializer
+import com.typesafe.scalalogging.LazyLogging
+import javax.inject._
 import play.api.http.MediaType
 import play.api.mvc.{Filter, RequestHeader, Result}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
-class AddFormatParameterIfOnlyAcceptHeaderProvidedFilter @Inject()(implicit val mat: Materializer) extends Filter {
+class AddFormatParameterIfOnlyAcceptHeaderProvidedFilter @Inject()(implicit val mat: Materializer) extends Filter with LazyLogging {
   //MediaType2Format
   private[this] val mt2f: PartialFunction[String, PartialFunction[String, String]] = (mt: String) =>
     mt match {
@@ -59,11 +59,16 @@ class AddFormatParameterIfOnlyAcceptHeaderProvidedFilter @Inject()(implicit val 
     val withFormat =
       if ((request.getQueryString("format").isDefined || request.acceptedTypes.isEmpty) && Set("post", "get")(
             request.method.toLowerCase
-          )) request
+          )) {logger.info("CHANGE! MORIA WITH-FORMAT"); request}
       else
         request.acceptedTypes.find(isCMWellAccepted(_)) match {
-          case Some(mt) => request.copy(queryString = request.queryString + ("format" -> Seq(formatToValidType(mt))))
-          case None     => request
+          //Moria - HTTPS
+          case Some(mt) =>
+            val newTarget = request.target.withQueryString(request.target.queryMap + ("format" -> Seq(formatToValidType(mt))))
+            logger.info("CHANGE! MORIA")
+            request.withTarget(newTarget)
+          case None     => { logger.info(s"CHANGE! MORIA NONE"); logger.info(s"request.acceptedTypes.acceptedTypes:  " +
+            s"${request.acceptedTypes} \n request.contentType: ${request.contentType}")  ; request }
         }
     next(withFormat)
   }
