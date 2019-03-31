@@ -1923,7 +1923,6 @@ callback=< [URL] >
                         }
                         val injectInterval = 3.seconds
                         val backOnTime: String => Result = { str =>
-                          ar ! GotIt
                           Ok(str).as(overrideMimetype(formatter.mimetype, request)._2)
                         }
                         val prependInjections: () => ByteString = formatter match {
@@ -1940,7 +1939,6 @@ callback=< [URL] >
                         }
                         val injectOriginalFutureWith: String => ByteString = ByteString(_, StandardCharsets.UTF_8)
                         val continueWithSource: Source[ByteString, NotUsed] => Result = { src =>
-                          ar ! GotIt
                           Ok.chunked(src).as(overrideMimetype(formatter.mimetype, request)._2)
                         }
 
