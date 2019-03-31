@@ -167,7 +167,7 @@ case object Ubuntu extends OsType
 
 abstract class Host(user: String,
                     password: String,
-                    clusterIps: Seq[String],
+                    hostIps: Seq[String],
                     esSize: Int,
                     casSize:Int,
                     inet: String,
@@ -195,7 +195,7 @@ abstract class Host(user: String,
 
   def getUser = user
 
-  def getClusterIps = clusterIps
+  def getClusterIps = hostIps
 
   def getInet = inet
 
@@ -316,7 +316,7 @@ abstract class Host(user: String,
     // scalastyle:on
   }
 
-  def ips = clusterIps.toList
+  def ips = hostIps.toList
 
   def getSize = esSize
 
