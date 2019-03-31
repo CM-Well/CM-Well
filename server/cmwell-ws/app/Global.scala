@@ -104,7 +104,7 @@ class Global @Inject()(crudServiceFS: CRUDServiceFS,
 
   def onStop {
     Grid.shutdown
-    Logger.info("Application has stopped")
+    logger.info("Application has stopped")
   }
 
   def scheduleAfterStart(duration: FiniteDuration)(task: => Unit): Unit =
