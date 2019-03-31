@@ -66,6 +66,8 @@ case class Grid(user: String,
       defaultRdfProtocol = defaultRdfProtocol
     ) {
 
+  require(clusterIps.distinct equals  clusterIps, "must be unique")
+
   //if(!validateNumberOfMasterNodes(esMasters, ips.size)) throw new Exception("Bad number of Elasticsearch master nodes")
 
   override def getElasticsearchMasters: Int = esMasters

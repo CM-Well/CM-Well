@@ -60,6 +60,8 @@ case class GridSubDiv(user: String,
       withElk = withElk,
       subjectsInSpAreHttps = subjectsInSpAreHttps,
       defaultRdfProtocol = defaultRdfProtocol) {
+
+  require(clusterIps.distinct equals  clusterIps, "must be unique")
   //var persistentAliases = false
   override def getElasticsearchMasters: Int = esMasters
   //def hosts = ips.map(ip => s"${user}@${ip}")
@@ -191,7 +193,7 @@ case class GridSubDiv(user: String,
             nodeName = host,
             masterNode = false,
             dataNode = true,
-            expectedNodes = getSize,
+            expectedNodes = getEsSize,
             numberOfReplicas = 2,
             seeds = getSeedNodes.mkString(","),
             home = homeDir,
@@ -214,7 +216,7 @@ case class GridSubDiv(user: String,
           nodeName = s"$host-master",
           masterNode = true,
           dataNode = false,
-          expectedNodes = getSize ,
+          expectedNodes = getEsSize ,
           numberOfReplicas = 2,
           seeds = getSeedNodes.mkString(","),
           home = homeDir,

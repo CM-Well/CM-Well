@@ -195,7 +195,7 @@ abstract class Host(user: String,
 
   def getUser = user
 
-  def getClusterIps = hostIps
+  def getHostIps = hostIps
 
   def getInet = inet
 
@@ -318,7 +318,7 @@ abstract class Host(user: String,
 
   def ips = hostIps.toList
 
-  def getSize = esSize
+  def getEsSize = esSize
 
   def createFile(path: String,
                  content: String,
@@ -2290,7 +2290,7 @@ abstract class Host(user: String,
 
   def createNewEsIndices: Unit = {
     info("creating new indices")
-    val numberOfShards = getSize
+    val numberOfShards = getEsSize
     val numberOfReplicas = 2
 
     val settingsJson =
