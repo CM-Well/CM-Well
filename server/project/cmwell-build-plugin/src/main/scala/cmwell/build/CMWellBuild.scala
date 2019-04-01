@@ -174,81 +174,12 @@ object CMWellBuild extends AutoPlugin {
 		fetchArtifact(url).map(fileName -> _)
 	}
 
-/*
-	def fetchMvnArtifact(moduleID: ModuleID, scalaVersion: String, scalaBinaryVersion: String, logger: Logger): Future[Seq[java.io.File]] = {
-		import coursier._
-//val dependency: Dependency = dep"org.elasticsearch.distribution.zip:elasticsearch-oss:6.7.0,classifier=zip"
-    val mod = Module(Organization("org.elasticsearch.distribution.zip"), ModuleName("elasticsearch-oss"))
-		val dependency: Dependency = Dependency(mod, "6.6.2", attributes = Attributes(Type("zip"),Classifier("zip")),optional =  false,transitive =  false)
-		println(s"Eli: depenency created is: $dependency")
-//		val dependency: Dependency = Dependency()
-
-		val a = Fetch()
-			.addDependencies(dependency)
-  		.allArtifactTypes()
-//			.addDependencies(dep"org.tpolecat:doobie-core_2.12:0.6.0")
-			.future()
-		implicit val ec = ExecutionContext.global
-		a.onComplete {
-			case Success(blaa) => println(s"Eli: finished successfully with $blaa")
-				case Failure(ex) => println(s"Eli: finished with error $ex")
-		}
-
-
-		a
-		/*
-		import coursier._
-		import java.io.File
-		import scala.concurrent.Future
-		import scala.concurrent.ExecutionContext.Implicits.global
-		import scalaz.EitherT
-		import scalaz.concurrent.Task
-
-		val (module, version) = FromSbt.moduleVersion(moduleID, scalaVersion, scalaBinaryVersion)
-		val repositories: Seq[coursier.Repository] = Seq(MavenRepository("https://repo1.maven.org/maven2"))
-		val fetch = Cache.fetch()
-
-		val tasks = FromSbt.dependencies(moduleID, scalaVersion, scalaBinaryVersion).map {
-			case (_, dep) =>
-				coursier.Fetch.find(repositories, module, version, fetch)
-					.fold[Seq[Artifact]](
-					{ errorString =>
-						logger.error(s"coursier fetch mvn artifact delegation encountered an error (skipping task): $errorString")
-						Seq.empty[Artifact]
-					}, { case (src, p) => src.artifacts(dep, p, None) })
-		}
-
-		val farts: Future[Seq[List[File]]] = Future.traverse(tasks) { task =>
-			CMWellCommon.scalazTaskAsScalaFuture(task.flatMap { arts =>
-				val x = arts.map { art =>
-					Cache.file(art).bimap(e => List(e), f => List(f))
-				}
-				if(x.isEmpty) Task[Try[List[File]]](Failure(new IllegalStateException("empty sequence")))
-				else {
-					val y = x.reduce[EitherT[Task, List[FileError], List[File]]] {
-						case (a, b) =>
-							a.flatMap(files => b.map(_ ::: files).orElse(a)).orElse(b)
-					}
-
-					y.fold({ errs =>
-						Failure[List[File]](new Exception(errs.map(err => err.message + ": " + err.describe).mkString("[\n\t", ",\n\t", "\n]")))
-					}, Success.apply)
-				}
-			})
-		}
-
-		farts.map(_.flatten)
-*/
-	}
-*/
-
 	def fetchArtifact(url: String)(implicit es: ExecutionContext): Future[java.io.File] = {
 		import coursier.core.{Artifact, Attributes}
 		val sig = Artifact(
 			url + ".asc",
 			Map.empty,
 			Map.empty,
-			//Attributes("asc", ""),
 			changing = false,
 			optional = false,
 			authentication = None
@@ -260,18 +191,10 @@ object CMWellBuild extends AutoPlugin {
 				"MD5" -> (url + ".md5"),
 				"SHA-1" -> (url + ".sha1")),
 			Map("sig" -> sig),
-			//Attributes(ext, ""),
 			changing = false,
 			optional = false,
 			None)
 
-		/*
-		val task = coursier.cache.Cache.default.file(art).run.future.fold({ err =>
-			Failure[java.io.File](new Exception(err.message + ": " + err.describe))
-		},Success.apply)
-
-		CMWellCommon.scalazTaskAsScalaFuture(task)
-*/
 		coursier.cache.Cache.default.file(art).run.future.transform {
 			case Success(Left(artifactError)) => Failure(new Exception(artifactError.message + ": " + artifactError.describe))
 			case Success(Right(file)) => Success(file)
@@ -286,18 +209,10 @@ object CMWellBuild extends AutoPlugin {
 			url,
 			Map.empty,
 			Map.empty,
-//Attributes(ext, ""),
 			changing = false,
 			optional = false,
 			None)
 
-/*
-		val task = coursier.Cache.file(art).fold({ err =>
-			Failure[java.io.File](new Exception(err.message + ": " + err.describe))
-		},Success.apply)
-
-		CMWellCommon.scalazTaskAsScalaFuture(task)
-*/
 		coursier.cache.Cache.default.file(art).run.future.transform {
 			case Success(Left(artifactError)) => Failure(new Exception(artifactError.message + ": " + artifactError.describe))
 			case Success(Right(file)) => Success(file)

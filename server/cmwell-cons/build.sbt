@@ -32,36 +32,17 @@ getExternalComponents := {
   val logger = streams.value
   val dm = dependenciesManager.value
 
-/*
-  val casM = dm("org.apache.cassandra", "apache-cassandra") artifacts (Artifact("apache-cassandra", "tar.gz", "tar.gz", "bin")) intransitive()
-  val casF: scala.concurrent.Future[Seq[java.io.File]] = {
-    CMWellBuild.fetchMvnArtifact(casM,scalaVersion.value,scalaBinaryVersion.value,logger.log)
-  }
-*/
-
   val casF = CMWellBuild.fetchCassandra(Versions.cassandra, logger.log)
-
-/*
-  val esM = dm("org.elasticsearch.distribution.zip", "elasticsearch-oss") artifacts (Artifact("elasticsearch-oss", "zip", "zip")) intransitive()
-  val esF: scala.concurrent.Future[Seq[java.io.File]] = {
-    CMWellBuild.fetchMvnArtifact(esM,scalaVersion.value,scalaBinaryVersion.value,logger.log)
-  }
-*/
 
   val esF = CMWellBuild.fetchElasticSearch(Versions.elasticsearch)
 
-  /*
-    val mx4jM = dm("mx4j", "mx4j-tools")
-    val mx4jF: scala.concurrent.Future[Seq[java.io.File]] = {
-      CMWellBuild.fetchMvnArtifact(mx4jM,scalaVersion.value,scalaBinaryVersion.value,logger.log)
-    }
-  */
   val mx4jM = dm("mx4j", "mx4j-tools")
   val mx4jCoursierModule = coursier.Module(coursier.Organization(mx4jM.organization), coursier.ModuleName(mx4jM.name))
   val mx4jDependency = coursier.Dependency(mx4jCoursierModule, mx4jM.revision)
   val mx4jF = coursier.Fetch()
     .addDependencies(mx4jDependency)
     .future()
+
   val kafkaF = CMWellBuild.fetchKafka(scalaBinaryVersion.value,Versions.kafka)
 
   val zkF = CMWellBuild.fetchZookeeper(Versions.zookeeper)
