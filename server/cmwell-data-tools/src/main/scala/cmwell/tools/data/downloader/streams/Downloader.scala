@@ -23,10 +23,11 @@ import akka.stream.scaladsl._
 import akka.util.ByteString
 import cmwell.tools.data.downloader.DataPostProcessor
 import cmwell.tools.data.utils.ArgsManipulations._
-import cmwell.tools.data.utils.akka.{Retry, lineSeparatorFrame, _}
+import cmwell.tools.data.utils.akka.{DataToolsConfig, HttpConnections, Retry, lineSeparatorFrame}
 import cmwell.tools.data.utils.logging.DataToolsLogging
 import cmwell.tools.data.utils.ops.VersionChecker
 import org.slf4j.LoggerFactory
+import cmwell.tools.data.utils.akka.{concatByteStrings, _}
 
 import scala.concurrent.duration._
 import scala.util._
@@ -318,7 +319,7 @@ class Downloader(baseUrl: String,
     * @return flow that gets uuids and download their data
     */
   def downloadDataFromUuids() = {
-    def createDataRequest(uuids: Seq[ByteString], vars: Map[String,String]) = {
+    def createDataRequest(uuids: Seq[ByteString], vars: Map[String,String], context: Option[String]) = {
       HttpRequest(
         uri = s"${formatHost(baseUrl)}/_out?format=$format",
         method = HttpMethods.POST,
@@ -329,8 +330,8 @@ class Downloader(baseUrl: String,
     Flow[ByteString]
       .grouped(numInfotonsPerRequest)
       .buffer(bufferSize, OverflowStrategy.backpressure)
-      .map(uuids => uuids -> None)
-      .via(Retry.retryHttp(retryTimeout, bufferSize, baseUrl)(createDataRequest))
+      .map(uuids => uuids -> (None : Option[String]))
+      .via(Retry.retryHttp(retryTimeout, bufferSize)(createDataRequest))
       .flatMapConcat {
         case (Success(HttpResponse(s, h, e, p)), _, _) if s.isSuccess() =>
           DataPostProcessor.postProcessByFormat(format, e.withoutSizeLimit().dataBytes)
@@ -414,7 +415,7 @@ class Downloader(baseUrl: String,
     * @return flow that gets paths and download their data
     */
   def downloadDataFromPaths() = {
-    def createDataRequest(paths: Seq[ByteString], vars: Map[String,String]) = {
+    def createDataRequest(paths: Seq[ByteString], vars: Map[String,String], ctx: Option[String] = None) = {
       val paramsValue = if (params.isEmpty) "" else s"&$params"
 
       HttpRequest(
@@ -426,8 +427,8 @@ class Downloader(baseUrl: String,
 
     Flow[ByteString]
       .groupedWithin(numInfotonsPerRequest, 3.seconds)
-      .map(paths => paths -> None)
-      .via(Retry.retryHttp(retryTimeout, bufferSize, baseUrl)(createDataRequest))
+      .map(paths => paths -> (None : Option[String]))
+      .via(Retry.retryHttp(retryTimeout, bufferSize)(createDataRequest))
       .flatMapConcat {
         case (Success(HttpResponse(s, h, e, p)), _, _) if s.isSuccess() =>
           DataPostProcessor.postProcessByFormat(format, e.withoutSizeLimit().dataBytes)
