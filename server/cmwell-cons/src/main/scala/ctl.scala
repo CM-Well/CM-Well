@@ -1125,8 +1125,10 @@ abstract class Host(user: String,
     }
   }
 
-  private def deleteSshpass(hosts: GenSeq[String], sudoer: Credentials): Unit = {
-    command("sudo rm sshpass", hosts, true, Some(sudoer))
+  private def deleteSshpass(hosts: GenSeq[String]): Unit = {
+    info("delete ssh pass")
+    val homeDir = s"${instDirs.globalLocation}/cm-well"
+    command(s"rm ${homeDir}/${UtilCommands.linuxSshpass}", hosts, false)
   }
 
   def prepareMachinesNonInteractive: Unit = prepareMachinesNonInteractive()
@@ -1806,6 +1808,7 @@ abstract class Host(user: String,
     purge(hosts)
     deploy(hosts)
     init(hosts)
+    deleteSshpass(hosts)
     //setElasticsearchUnassignedTimeout()
   }
 
