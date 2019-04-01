@@ -49,10 +49,10 @@ object NeptuneIngester {
     }
   }(ec)
 
-    def ingestToNeptuneViaLoaderAPI(neptuneCluster: String, fileName:String, ec: ExecutionContext): Future[Int] = Future {
+    def ingestToNeptuneViaLoaderAPI(neptuneCluster: String, fileS3Path:String, ec: ExecutionContext): Future[Int] = Future {
       val client = new ContentEncodingHttpClient
       val httpPost = new HttpPost("http://" + neptuneCluster + "/loader")
-      val entity = new StringEntity("{\"source\" : \"https://s3.amazonaws.com/cm-well/sync/" + fileName + "\", \"format\" : \"nquads\", \"iamRoleArn\" :\"arn:aws:iam::113379206287:role/NeptuneLoadFromS3\",  \"mode\": \"NEW\", \"region\" : \"us-east-1\", \"failOnError\" : \"TRUE\"}")
+      val entity = new StringEntity("{\"source\" : \"https://s3.amazonaws.com/" + fileS3Path + "\", \"format\" : \"nquads\", \"iamRoleArn\" :\"arn:aws:iam::113379206287:role/NeptuneLoadFromS3\",  \"mode\": \"NEW\", \"region\" : \"us-east-1\", \"failOnError\" : \"TRUE\"}")
       httpPost.setEntity(entity)
       client.setHttpRequestRetryHandler(new NeptuneIngesterHttpClientRetryHandler())
       httpPost.setHeader("Content-type", "application/json")
