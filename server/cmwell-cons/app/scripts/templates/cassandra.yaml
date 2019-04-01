@@ -14,7 +14,7 @@ permissions_validity_in_ms: 2000
 partitioner: org.apache.cassandra.dht.Murmur3Partitioner
 
 data_file_directories:
-    - {{root_dir}}/data/{{dir}}/data
+    - {{cas_data_dirs}}
 
 commitlog_directory: {{root_dir}}/data/{{ccl_dir}}/commitlog
 hints_directory: {{root_dir}}/data/{{ccl_dir}}/hints

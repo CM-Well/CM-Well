@@ -167,8 +167,9 @@ case object Ubuntu extends OsType
 
 abstract class Host(user: String,
                     password: String,
-                    ipMappings: IpMappings,
-                    size: Int,
+                    hostIps: Seq[String],
+                    esSize: Int,
+                    casSize:Int,
                     inet: String,
                     val cn: String,
                     val dc: String,
@@ -194,7 +195,7 @@ abstract class Host(user: String,
 
   def getUser = user
 
-  def getIpMappings = ipMappings
+  def getHostIps = hostIps
 
   def getInet = inet
 
@@ -315,9 +316,9 @@ abstract class Host(user: String,
     // scalastyle:on
   }
 
-  def ips = ipMappings.getIps
+  def ips = hostIps.toList
 
-  def getSize = size
+  def getEsSize = esSize
 
   def createFile(path: String,
                  content: String,
@@ -1156,7 +1157,7 @@ abstract class Host(user: String,
     deployApplication(hosts)
   }
 
-  def getNewHostInstance(ipms: IpMappings): Host
+  def getNewHostInstance(ipms: Seq[String]): Host
 
   def cassandraNetstats = {
     // scalastyle:off
@@ -1164,7 +1165,7 @@ abstract class Host(user: String,
     // scalastyle:on
   }
 
-  def removeNode(host: String): Host = {
+  def removeNode(host: String): Unit = {
     checkProduction
     connectToGrid
     if (CtrlClient.currentHost == host) CtrlClient.init((ips.toSet - host).head)
@@ -1175,18 +1176,10 @@ abstract class Host(user: String,
     info("Removing node from Grid")
     Host.ctrl.removeNode(host)
 
-    ipMappings.filePath match {
-      case Some(fp) =>
-        IpMappingController.writeMapping(ipMappings.remove(List(host)), fp)
-        IpMappingController.writeMapping(ipMappings.remove(ips.diff(List(host))), s"${fp}_$host")
-      case None => // Do nothing.
-    }
-
-    getNewHostInstance(ipMappings.remove(List(host)))
   }
 
-  def addNodesSH(path: String) {
-    addNodes(path)
+  def addNodesSH(hosts: Seq[String]) {
+    addNodes(hosts)
     sys.exit(0)
   }
 
@@ -1195,11 +1188,7 @@ abstract class Host(user: String,
     sys.exit(0)
   }
 
-  def addNodes(path: String): Host = {
-    addNodes(IpMappingController.readMapping(path))
-  }
-
-  def addNodes(ipms: IpMappings, sudoerName: String = "", sudoerPass: String = "", userPass: String = ""): Host = {
+  def addNodes(ipms: Seq[String], sudoerName: String = "", sudoerPass: String = "", userPass: String = ""): Host = {
     connectToGrid
     val activeNodes = Try(Await.result(Host.ctrl.getActiveNodes, 10 seconds)).getOrElse(ActiveNodes(Set.empty[String]))
     val addedInstances = getNewHostInstance(ipms)
@@ -1210,18 +1199,14 @@ abstract class Host(user: String,
 
     val hostsToRemove = Set.empty[String] //ipMappings.m.map(_.ip).toSet -- activeNodes.an
 
-    val withoutDownNodesMapping = ipMappings.remove(hostsToRemove.toList)
-    val combinedMappings = withoutDownNodesMapping.combine(ipms)
-    val combinedInstances = getNewHostInstance(combinedMappings)
-
-    combinedInstances.deploy(addedInstances.ips)
-    combinedInstances.startCtrl(addedInstances.ips)
+    addedInstances.deploy(addedInstances.ips)
+    addedInstances.startCtrl(addedInstances.ips)
 
     Thread.sleep(20000)
 
-    ipms.getIps.foreach(Host.ctrl.addNode)
+    ipms.foreach(Host.ctrl.addNode)
 
-    combinedInstances.startDcForced(addedInstances.ips)
+    addedInstances.startDcForced(addedInstances.ips)
 
     //    combinedInstances.startCassandra(addedInstances.ips)
     //    combinedInstances.startElasticsearch(addedInstances.ips)
@@ -1256,14 +1241,8 @@ abstract class Host(user: String,
     //    combinedInstances.startDc(addedInstances.ips)
     //
 
-    // update the ip mappings file.
-    ipMappings.filePath match {
-      case Some(fp) => IpMappingController.writeMapping(combinedMappings, fp)
-      case None     => // Do nothing.
-    }
     //combinedInstances.dataInitializer.updateKnownHosts
-    combinedInstances
-  }
+    addedInstances  }
 
   def killProcess(name: String, flag: String, hosts: GenSeq[String] = ips.par, tries: Int = 5) {
     if (tries > 0) {
@@ -1423,7 +1402,9 @@ abstract class Host(user: String,
     command(s"curl -sX POST 'http://$host:$port/_all/_flush/synced'")
   }
 
-  def stopElasticsearch: Unit = stopElasticsearch(ips.par)
+  def stopElasticsearch: Unit = {
+    stopElasticsearch(ips.par)
+  }
 
   def stopElasticsearch(hosts: String*): Unit = stopElasticsearch(hosts.par)
 
@@ -1488,8 +1469,8 @@ abstract class Host(user: String,
     startCassandra(hosts)
     startElasticsearch(hosts)
 
-    Try(CassandraLock().waitForModule(hosts(0), size))
-    Try(ElasticsearchLock().waitForModule(hosts(0), size))
+    Try(CassandraLock().waitForModule(hosts(0), casSize))
+    Try(ElasticsearchLock().waitForModule(hosts(0), esSize))
     startZookeeper
     startKafka(hosts)
 
@@ -1545,7 +1526,7 @@ abstract class Host(user: String,
 
     Retry {
       try {
-        CassandraLock().waitForModule(hosts(0), size)
+        CassandraLock().waitForModule(hosts(0), casSize)
       } catch {
         case t: Throwable =>
           info("Trying to reinit Cassandra")
@@ -1556,7 +1537,7 @@ abstract class Host(user: String,
 
     Retry {
       try {
-        ElasticsearchLock().waitForModule(hosts(0), size)
+        ElasticsearchLock().waitForModule(hosts(0), esSize)
       } catch {
         case t: Throwable =>
           info("Trying to reinit Elasticsearch")
@@ -1758,7 +1739,9 @@ abstract class Host(user: String,
 
   def startElasticsearch(hosts: GenSeq[String]): Unit
 
-  def startCassandra: Unit = startCassandra(ips.par)
+  def startCassandra: Unit = {
+    startCassandra(ips.par)
+  }
 
   def startCassandra(hosts: String*): Unit = startCassandra(hosts.par)
 
@@ -1953,9 +1936,9 @@ abstract class Host(user: String,
 
     casStatusTry match {
       case Success(uns) =>
-        if (uns < size) {
+        if (uns < casSize) {
           hasProblem = true
-          warn(s"Number of Cassandra up nodes is $uns/$size.")
+          warn(s"Number of Cassandra up nodes is $uns/$casSize.")
         }
       case Failure(err) =>
         hasProblem = true
@@ -2133,7 +2116,7 @@ abstract class Host(user: String,
         val javaUpdated = updatedComponents.contains(JavaProps(this))
 
         //if(esUpdated || javaUpdated) {
-        Try(ElasticsearchLock().waitForModule(esMasterNode, size))
+        Try(ElasticsearchLock().waitForModule(esMasterNode, esSize))
         Try(ElasticsearchStatusLock("green", "yellow").waitForModuleIndefinitely(esMasterNode))
         // if we encounter status yellow lets sleep for 10 minutes.
         //if(elasticsearchStatus(ips(0)).getOrElse("N/A") == "yellow") Thread.sleep(10 * 1000 * 60)
@@ -2162,7 +2145,7 @@ abstract class Host(user: String,
 
         // wait for cassandra and elasticsearch to be stable before starting cmwell components.
         if (javaUpdated || casUpdated) {
-          Try(CassandraLock().waitForModule(ips(0), size))
+          Try(CassandraLock().waitForModule(ips(0), casSize))
         }
 
       }
@@ -2191,7 +2174,7 @@ abstract class Host(user: String,
 
       // starting all the components that are not upgraded in rolling style.
 
-      Try(ElasticsearchLock(esMasterNode).waitForModule(esMasterNode, size))
+      Try(ElasticsearchLock(esMasterNode).waitForModule(esMasterNode, esSize))
       Try(ElasticsearchStatusLock("green", "yellow").waitForModuleIndefinitely(esMasterNode))
 
       if (withUpdateSchemas) {
@@ -2307,7 +2290,7 @@ abstract class Host(user: String,
 
   def createNewEsIndices: Unit = {
     info("creating new indices")
-    val numberOfShards = getSize
+    val numberOfShards = getEsSize
     val numberOfReplicas = 2
 
     val settingsJson =
@@ -2435,7 +2418,7 @@ abstract class Host(user: String,
       info(s"Restarting Cassandra on $ip")
       stopCassandra(Seq(ip))
       startCassandra(Seq(ip))
-      Try(CassandraLock().waitForModule(ips(0), size))
+      Try(CassandraLock().waitForModule(ips(0), casSize))
     }
   }
 
@@ -2450,75 +2433,6 @@ abstract class Host(user: String,
       stopElasticsearch(Seq(host))
       startElasticsearch(Seq(host))
       enableElasticsearchUpdate(ips((ips.indexOf(host) + 1) % ips.size))
-    }
-  }
-
-  //def createNetwork : Unit = createNetwork(ips.par,topology, persistentAliases)
-  def createNetwork(topology: NetTopology, persistent: Boolean, hosts: GenSeq[String], sudoer: Credentials) {
-    val ipMappingsOfPreparedOnly = ipMappings.remove(ipMappings.getIps.filterNot(hosts.seq.contains))
-    topology match {
-      case n: VLanTopology =>
-        val tag = n.tag
-        val m = topology.getTopologyMap(ipMappingsOfPreparedOnly)
-        m.foreach { tuple =>
-          var index = 0
-          command(s"echo '/sbin/modprobe 8021q' | sudo tee /etc/sysconfig/modules/vlan.modules > /dev/null",
-            tuple._1,
-            true,
-            Some(sudoer))
-          command(s"sudo chmod +x /etc/sysconfig/modules/vlan.modules", tuple._1, true, Some(sudoer))
-          command(s"sudo modprobe 8021q", tuple._1, true, Some(sudoer))
-
-          command(s"sudo ip link add link $inet name $inet.$tag type vlan id $tag", tuple._1, true, Some(sudoer))
-          command(s"sudo ifconfig $inet.$tag up", tuple._1, true, Some(sudoer))
-
-          val fileName = s"ifcfg-$inet.$tag"
-          val path = "/etc/sysconfig/network-scripts"
-          val fileContent =
-            s"""
-               |DEVICE=$inet.$tag
-               |BOOTPROTO=none
-               |ONBOOT=yes
-               |VLAN=yes
-              """.stripMargin
-          command(s"echo '$fileContent' | sudo tee $path/$fileName > /dev/null", tuple._1, true, Some(sudoer))
-          tuple._2.foreach { ip =>
-            val mask = topology.getNetMask
-            val fileName = s"ifcfg-$inet.$tag:$index"
-            val path = "/etc/sysconfig/network-scripts"
-            val fileContent =
-              s"""
-                 |DEVICE=${inet}.${tag}:${index}
-                 |IPADDR=${ip}
-                 |NETMASK=$mask
-                 |ONBOOT=yes
-                  """.stripMargin
-            command(s"echo '$fileContent' | sudo tee $path/$fileName > /dev/null", tuple._1, true, Some(sudoer))
-            command(s"sudo ifconfig $inet.$tag:$index $ip netmask $mask", tuple._1, true, Some(sudoer))
-            index += 1
-          }
-        }
-      case _ =>
-        val m = topology.getTopologyMap(ipMappingsOfPreparedOnly)
-        m.foreach { tuple =>
-          var index = 0
-          tuple._2.foreach { ip =>
-            command(s"sudo ifconfig $inet:$index $ip/${topology.getCidr} up", tuple._1, true, Some(sudoer))
-            if (persistent) {
-              val path = "/etc/sysconfig/network-scripts"
-              val fileName = s"ifcfg-$inet:$index"
-              val fileContent =
-                s"""
-                   |DEVICE=$inet:$index
-                   |IPADDR=$ip
-                   |NETMASK=${topology.getNetMask}
-                   |ONBOOT=yes
-                 """.stripMargin
-              command(s"echo '$fileContent' | sudo tee $path/$fileName > /dev/null", tuple._1, true, Some(sudoer))
-            }
-            index += 1
-          }
-        }
     }
   }
 
