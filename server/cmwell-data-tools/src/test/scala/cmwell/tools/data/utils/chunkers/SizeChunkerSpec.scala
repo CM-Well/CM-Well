@@ -22,7 +22,7 @@ import akka.util.ByteString
 import cmwell.tools.data.helpers.BaseStreamSpec
 
 import scala.concurrent.duration._
-
+/*
 class SizeChunkerSpecAutoFusingOn  extends { val autoFusing = true  } with SizeChunkerSpec
 class SizeChunkerSpecAutoFusingOff extends { val autoFusing = false } with SizeChunkerSpec
 
@@ -69,3 +69,4 @@ trait SizeChunkerSpec extends BaseStreamSpec {
     sub.expectComplete()
   }
 }
+*/

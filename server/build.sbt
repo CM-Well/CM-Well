@@ -75,7 +75,11 @@ dependenciesManager in Global := {
   case ("com.typesafe.akka", "akka-stream-kafka")                  => "com.typesafe.akka" %% "akka-stream-kafka" % "1.0.1"
   case ("com.typesafe.akka", "akka-stream-contrib")                => "com.typesafe.akka" %% "akka-stream-contrib" % "0.9"
   case ("com.typesafe.akka", "akka-http")                          => "com.typesafe.akka" %% "akka-http" % "10.1.7"
+<<<<<<< HEAD
   case ("com.typesafe.akka",art)                                   => "com.typesafe.akka" %% art % "2.5.21"
+=======
+  case ("com.typesafe.akka",art)                                   => "com.typesafe.akka" %% art % "2.5.20"
+>>>>>>> 0911fea5... Upgraded akka http
   case ("com.typesafe.play", "twirl-api")                          => "com.typesafe.play" %% "twirl-api" % "1.3.13"
   case ("com.typesafe.play", "play-json")                          => "com.typesafe.play" %% "play-json" % "2.7.2"
   case ("com.typesafe.play", art)                                  => "com.typesafe.play" %% art % Versions.play
