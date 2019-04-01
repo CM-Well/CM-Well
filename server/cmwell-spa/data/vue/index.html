@@ -1,0 +1,38 @@
+<html>
+<head>
+<title>CM-Well (Experimental UI)</title>
+<script>
+    // minimal impl. of dependecies loader
+    window.load = srcs => cb => {
+        var c = 0
+        srcs.forEach(src => {
+            let el = document.createElement("script")
+            if(cb) el.onload = () => { if(++c == srcs.length) cb() }
+            document.head.appendChild(el)
+            el.setAttribute("src", src)
+        })
+    }
+    
+    let min = location.host==='localhost:9000' ? '' : '.min'
+    load([`lib/vue${min}.js`])(()=> {
+        load([`lib/vue-router${min}.js`])(()=>{
+            load(['app.js'])()
+        })
+     })
+</script>
+<link rel="stylesheet" href="css/cmwell.css" />
+</head>
+    
+<body>
+    <div id="app">
+        <router-view/>
+    </div>
+    <footer>
+        <div><a href="http://www.refinitiv.com" target="_blank"><img src="img/Refinitiv-logo-primary-white-rgb.svg" Alt="Refinitiv"/></a></div>
+        <div class="links">
+            <span><a href="https://cm-well.github.io/CM-Well/" target="_blank">Documentation</a></span>
+            <span><a href="https://github.com/CM-Well/CM-Well" target="_blank">GitHub</a></span>
+        </div>
+    </footer>
+</body>
+</html>
