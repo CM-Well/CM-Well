@@ -24,7 +24,6 @@ import scala.concurrent.duration.FiniteDuration
   * Created by gilad on 6/2/15.
   */
 case object GetID
-case object GotIt
 sealed trait IterationStateInput
 case class ScrollInput(actualEsScrollId: String) extends IterationStateInput
 case class StartScrollInput(pathFilter: Option[PathFilter],
@@ -45,11 +44,7 @@ class IteratorIdDispatcher(iterationStateInput: IterationStateInput, withHistory
     case GetID => {
       sender() ! IterationState(iterationStateInput, withHistory, self)
       cancelable.cancel()
-      cancelable = context.system.scheduler.scheduleOnce(ttl * 2, self, PoisonPill)
-    }
-    case GotIt => {
-      cancelable.cancel()
-      self ! PoisonPill
+      context.stop(self)
     }
   }
 }
