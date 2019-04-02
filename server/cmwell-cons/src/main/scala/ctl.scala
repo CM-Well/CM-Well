@@ -1106,7 +1106,7 @@ abstract class Host(user: String,
   }
 
   protected def finishPrepareMachines(hosts: GenSeq[String], sudoer: Credentials) = {
-    //    deleteSshpass(hosts, sudoer)
+     deleteSshpass(hosts, sudoer)
     info("Machine preparation was done. Please look at the console output to see if there were any errors.")
   }
 
@@ -1126,10 +1126,9 @@ abstract class Host(user: String,
     }
   }
 
-  private def deleteSshpass(hosts: GenSeq[String]): Unit = {
+  private def deleteSshpass(hosts: GenSeq[String], sudoer: Credentials): Unit = {
     info("delete ssh pass")
-    val homeDir = s"${instDirs.globalLocation}/cm-well"
-    command(s"rm ${homeDir}/${UtilCommands.linuxSshpass}", hosts, false)
+    hosts.foreach(host => s"ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR ${sudoer.name}@$host rm ~/bin/sshpass".!!)
   }
 
   def prepareMachinesNonInteractive: Unit = prepareMachinesNonInteractive()
@@ -1791,7 +1790,6 @@ abstract class Host(user: String,
     purge(hosts)
     deploy(hosts)
     init(hosts)
-    deleteSshpass(hosts)
     //setElasticsearchUnassignedTimeout()
   }
 
