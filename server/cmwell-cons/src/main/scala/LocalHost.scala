@@ -34,7 +34,8 @@ case class LocalHost(dataCenter: String = "lh",
     extends Host(
       System.getProperty("user.name"),
       "",
-      IpMappings(List(IpMapping("127.0.0.1", None))),
+      Seq("127.0.0.1"),
+      1,
       1,
       "lo",
       "cm-well-p",
@@ -77,7 +78,7 @@ case class LocalHost(dataCenter: String = "lh",
     command(s"cd ${instDirs.globalLocation}/ ; ln -s ${instDirs.intallationDir} cm-well", hosts, false)
   }
 
-  override def getSeedNodes: List[String] = ips
+  override def getSeedNodes: List[String] = ips.toList
   override val esMasterPort = 9200
 
   override def getMode: String = "local"
@@ -201,7 +202,9 @@ case class LocalHost(dataCenter: String = "lh",
       index = 1,
       rs = IpRackSelector(),
       g1 = false,
-      hostIp = ip
+      hostIp = ip,
+      casDataDirs = Seq("cas"),
+      casUseCommitLog = true
     )
 
     val es = ElasticsearchConf(
@@ -384,5 +387,5 @@ case class LocalHost(dataCenter: String = "lh",
       super.syncLib(hosts)
   }
 
-  override def getNewHostInstance(ipms: IpMappings): Host = ???
+  override def getNewHostInstance(ipms: Seq[String]): Host = ???
 }

@@ -17,7 +17,7 @@ import scala.util.Try
 
 case class Grid(user: String,
                 password: String,
-                ipMappings: IpMappings,
+                clusterIps: Seq[String],
                 inet: String,
                 clusterName: String,
                 dataCenter: String,
@@ -44,8 +44,9 @@ case class Grid(user: String,
     extends Host(
       user,
       password,
-      ipMappings,
-      ipMappings.getIps.size,
+      clusterIps,
+      clusterIps.size,
+      clusterIps.size,
       inet,
       clusterName,
       dataCenter,
@@ -64,6 +65,8 @@ case class Grid(user: String,
       subjectsInSpAreHttps = subjectsInSpAreHttps,
       defaultRdfProtocol = defaultRdfProtocol
     ) {
+
+  require(clusterIps.distinct equals  clusterIps, "must be unique")
 
   //if(!validateNumberOfMasterNodes(esMasters, ips.size)) throw new Exception("Bad number of Elasticsearch master nodes")
 
@@ -105,7 +108,10 @@ case class Grid(user: String,
         index = 1,
         rs = IpRackSelector(),
         g1 = g1,
-        hostIp = host
+        hostIp = host,
+        casDataDirs = Seq("cas"),
+        // we refrain from using Cas Commitlog on cluster, to save disk space and performance, given we always write in Quorum so there will be no data loss
+        casUseCommitLog = false
       )
 
         val es = ElasticsearchConf(
@@ -284,7 +290,7 @@ case class Grid(user: String,
 
   override def getMode: String = "grid"
 
-  override def getSeedNodes: List[String] = ips.take(3)
+  override def getSeedNodes: List[String] = ips.take(3).toList
 
   override def startElasticsearch(hosts: GenSeq[String]): Unit = {
     command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start-master.sh")}",
@@ -316,7 +322,7 @@ case class Grid(user: String,
     command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start.sh")}", hosts, false)
   }
 
-  override def getNewHostInstance(ipms: IpMappings): Host = {
-    this.copy(ipMappings = ipms)
+  override def getNewHostInstance(ipms: Seq[String]): Host = {
+    this.copy(clusterIps = ipms)
   }
 }

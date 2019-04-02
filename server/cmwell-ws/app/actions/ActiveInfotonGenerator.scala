@@ -302,7 +302,7 @@ class ActiveInfotonGenerator @Inject()(
           }
 
           def generateCasLine(casIns: (String, String)) : String = {
-            val msg = s"${casIns._1} -> ${casIns._2}"
+            val msg = s"${casIns._2}"
             if (casIns._2 == "UN") msg
             else s"""<font color="red"><b>$msg</b></font>"""
           }
