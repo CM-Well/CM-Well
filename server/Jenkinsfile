@@ -9,6 +9,12 @@ pipeline {
     sbt = "${tool name: 'sbt-1.2', type: 'org.jvnet.hudson.plugins.SbtPluginBuilder$SbtInstallation'}/bin/sbt"
     SCALA_LOCATION = "$HOME/tools/scala-2.12.6/bin/"
   }
+  options{
+    ansiColor('xterm')
+    buildDiscarder(logRotator(numToKeepStr: '10'))
+    timestamps()
+    timeout(30)
+  }
   stages {
     stage('Build') {
       steps {
