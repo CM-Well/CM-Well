@@ -1128,7 +1128,8 @@ abstract class Host(user: String,
 
   private def deleteSshpass(hosts: GenSeq[String], sudoer: Credentials): Unit = {
     info("delete ssh pass")
-    hosts.foreach(host => s"ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR ${sudoer.name}@$host rm ~/bin/sshpass".!!)
+    command("sudo rm ~/bin/sshpass", hosts, true, Some(sudoer))
+
   }
 
   def prepareMachinesNonInteractive: Unit = prepareMachinesNonInteractive()
