@@ -85,9 +85,9 @@ object S3ObjectUploader{
   }
 
   def persistChunkToS3Bucket(inputStream:InputStream, fileName:String, proxyHost:Option[String], proxyPort:Option[Int], s3Directory:String) = {
-      val metaData = new ObjectMetadata()
-      metaData.setContentLength(IOUtils.toByteArray(inputStream).length)
-      init(proxyHost, proxyPort).putObject(s3Directory, fileName, inputStream, metaData)
+//      val metaData = new ObjectMetadata()
+//      metaData.setContentLength(IOUtils.toByteArray(inputStream).length)
+      init(proxyHost, proxyPort).putObject(s3Directory, fileName, inputStream, new ObjectMetadata())
       inputStream.close()
 
   }
