@@ -14,6 +14,7 @@
   */
 package cmwell.tools.neptune.export
 
+import java.io.InputStream
 import java.time.Instant
 import java.util.concurrent.Executors
 
@@ -56,7 +57,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
       val persistedPosition = PropertiesStore.retreivePosition()
       val position = persistedPosition.getOrElse(CmWellConsumeHandler.retrivePositionFromCreateConsumer(sourceCluster, lengthHint, qp, updateMode, PropertiesStore.isAutomaticUpdateModePersist(), toolStartTime))
       val actualUpdateMode = PropertiesStore.isAutomaticUpdateModePersist() || updateMode
-      consumeBulkAndIngest(position, sourceCluster, neptuneCluster, actualUpdateMode, lengthHint, qp, toolStartTime, bulkLoader, proxyHost, proxyPort, s3Directory = s3Directory, retryToolCycle = false)
+      consumeBulkAndIngest(position, sourceCluster, neptuneCluster, actualUpdateMode, lengthHint, qp, toolStartTime, bulkLoader, proxyHost, proxyPort, s3Directory = s3Directory, retryToolCycle = true)
 
     } catch {
       case e: Throwable => logger.error("Got a failure during  export after retrying 3 times", e)
@@ -75,15 +76,11 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
     logger.info("Cm-well bulk consume http status=" + res.getStatusLine.getStatusCode)
     while (res.getStatusLine.getStatusCode != 204) {
       var ds: Dataset = DatasetFactory.createGeneral()
-      var bulkConsumeStrResponse = ""
+      var bulkConsumeData:InputStream = null
         try {
-          if(!updateMode && bulkLoader) {
-            val entity = res.getEntity
-            bulkConsumeStrResponse = EntityUtils.toString(entity, "UTF-8")
-          }else{
-            val inputStream = res.getEntity.getContent
-              RDFDataMgr.read(ds, inputStream, Lang.NQUADS)
-            }
+          bulkConsumeData = res.getEntity.getContent
+            if(updateMode || !bulkLoader)
+              RDFDataMgr.read(ds, bulkConsumeData, Lang.NQUADS)
         } catch {
           case e: Throwable if retryCount > 0 =>
             logger.error("Failed to read input stream,", e.getMessage)
@@ -104,7 +101,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
       val nextPosition = res.getAllHeaders.find(_.getName == "X-CM-WELL-POSITION").map(_.getValue).getOrElse("")
       val totalInfotons = res.getAllHeaders.find(_.getName == "X-CM-WELL-N").map(_.getValue).getOrElse("")
       if(!updateMode && bulkLoader){
-        persistDataInS3AndIngestToNeptuneViaLoaderAPI(neptuneCluster, bulkConsumeStrResponse, nextPosition, updateMode,
+        persistDataInS3AndIngestToNeptuneViaLoaderAPI(neptuneCluster, bulkConsumeData, nextPosition, updateMode,
           readInputStreamDuration, totalInfotons, proxyHost, proxyPort, s3Directory)
       }else {
         buildSparqlCommandAndIngestToNeptuneViaSparqlAPI(neptuneCluster, ds, nextPosition, updateMode, readInputStreamDuration, totalInfotons, automaticUpdateMode)
@@ -123,16 +120,15 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
       logger.info("Export from cm-well completed successfully, no additional data to consume..trying to re-consume in 0.5 minute")
       Thread.sleep(30000)
       consumeBulkAndIngest(nextPosition, sourceCluster, neptuneCluster, updateMode = true, lengthHint, qp, toolStartTime, bulkLoader, proxyHost,
-        proxyPort, automaticUpdateMode = true, s3Directory = s3Directory, retryToolCycle = true)
+        proxyPort, automaticUpdateMode = true, s3Directory = s3Directory, retryToolCycle = false)
   }
 
-  def persistDataInS3AndIngestToNeptuneViaLoaderAPI(neptuneCluster: String, bulkResponseAsString:String, nextPosition: String, updateMode: Boolean,
+  def persistDataInS3AndIngestToNeptuneViaLoaderAPI(neptuneCluster: String, bulkResponseAsString:InputStream, nextPosition: String, updateMode: Boolean,
                                                     readInputStreamDuration: Long, totalInfotons: String, proxyHost:Option[String],
                                                     proxyPort:Option[Int], s3Directory:String) = {
       val startTimeMillis = System.currentTimeMillis()
       val fileName = "cm-well-file-" + startTimeMillis + ".nq"
-      val bulkResWithoutMeta = bulkResponseAsString.split("\n").filterNot(q => q.isEmpty || q.contains("meta/sys")).mkString("\n")
-      S3ObjectUploader.persistChunkToS3Bucket(bulkResWithoutMeta, fileName, proxyHost, proxyPort, s3Directory)
+      S3ObjectUploader.persistChunkToS3Bucket(bulkResponseAsString, fileName, proxyHost, proxyPort, s3Directory)
       val endS3TimeMillis = System.currentTimeMillis()
       val s3Duration = (endS3TimeMillis - startTimeMillis) / 1000
       logger.info("Duration of writing to s3 = " + s3Duration)

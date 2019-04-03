@@ -14,9 +14,15 @@
   */
 package cmwell.tools.neptune.export
 
+import java.io._
+import java.util
+import java.util.Vector
+
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
-import com.amazonaws.{ClientConfiguration, Protocol}
+import com.amazonaws.services.s3.model.ObjectMetadata
+import com.amazonaws.{AmazonServiceException, ClientConfiguration, Protocol, SdkClientException}
+import org.apache.commons.io.IOUtils
 
 object S3ObjectUploader{
 
@@ -37,8 +43,56 @@ object S3ObjectUploader{
 
 
   def persistChunkToS3Bucket(chunkData:String, fileName:String, proxyHost:Option[String], proxyPort:Option[Int], s3Directory:String) = {
+        try{
+          init(proxyHost, proxyPort).putObject(s3Directory, fileName, chunkData)
+      }
+      catch {
+        case e: AmazonServiceException =>
+          e.printStackTrace()
+          throw e
+        case e: SdkClientException =>
+          e.printStackTrace()
+          throw e
+      }
+  }
 
-      init(proxyHost, proxyPort).putObject(s3Directory, fileName, chunkData)
 
+  def persistChunkToS3Bucket2(inputStream:InputStream, fileName:String, proxyHost:Option[String], proxyPort:Option[Int], s3Directory:String) = {
+/*
+    var inputStreamWithoutMeta:InputStream = new ByteArrayInputStream("".getBytes)
+*/
+    val v: util.Vector[InputStream] = new util.Vector[InputStream](2)
+
+    try {
+      val reader = new BufferedReader(new InputStreamReader(inputStream))
+      var line = reader.readLine()
+      while (line != null) {
+        if (!line.isEmpty && !line.contains("meta/sys")) {
+          val cuttrentLineInputStream = new ByteArrayInputStream((line + "\n").getBytes)
+          v.addElement(cuttrentLineInputStream)
+          cuttrentLineInputStream.close()
+        }
+        line = reader.readLine()
+      }
+      val inputStreamWithoutMeta  = new SequenceInputStream(v.elements())
+      init(proxyHost, proxyPort).putObject(s3Directory, fileName, inputStreamWithoutMeta, new ObjectMetadata())
+      inputStreamWithoutMeta.close()
+    }
+    finally {
+//      inputStreamWithoutMeta.close()
+      inputStream.close()
+    }
+  }
+
+  def persistChunkToS3Bucket(inputStream:InputStream, fileName:String, proxyHost:Option[String], proxyPort:Option[Int], s3Directory:String) = {
+      val metaData = new ObjectMetadata()
+      metaData.setContentLength(IOUtils.toByteArray(inputStream).length)
+      init(proxyHost, proxyPort).putObject(s3Directory, fileName, inputStream, metaData)
+      inputStream.close()
+
+  }
+
+  private def concatInputStreams(inputStreamWithoutMeta: InputStream, testPageInputStream: ByteArrayInputStream) = {
+    new SequenceInputStream(inputStreamWithoutMeta, testPageInputStream)
   }
 }
