@@ -30,7 +30,9 @@ case class LocalHost(dataCenter: String = "lh",
                      nbg: Boolean = false,
                      isDebug: Boolean = false,
                      subjectsInSpAreHttps: Boolean = false,
-                     defaultRdfProtocol: String = "http")
+                     defaultRdfProtocol: String = "http",
+                     casUseCommitLog:Boolean
+                    )
     extends Host(
       System.getProperty("user.name"),
       "",
@@ -53,7 +55,8 @@ case class LocalHost(dataCenter: String = "lh",
       withElk = withElk,
       isDebug = isDebug,
       subjectsInSpAreHttps = subjectsInSpAreHttps,
-      defaultRdfProtocol = defaultRdfProtocol
+      defaultRdfProtocol = defaultRdfProtocol,
+      casUseCommitLog = casUseCommitLog
     ) {
 
 //  LogLevel.debug
@@ -204,7 +207,7 @@ case class LocalHost(dataCenter: String = "lh",
       g1 = false,
       hostIp = ip,
       casDataDirs = Seq("cas"),
-      casUseCommitLog = true
+      casUseCommitLog = casUseCommitLog
     )
 
     val es = ElasticsearchConf(
