@@ -133,8 +133,6 @@ case class GridSubDiv(user: String,
   }
 
 
-  override protected def finishPrepareMachines(hosts: GenSeq[String], sudoer: Credentials): Unit = {}
-
   override def unprepareMachines(hosts: GenSeq[String]): Unit = {
     throw new Exception(
       "Nothing was done! Please use unprepareMachines with sudoer only this way the network configuration will be changed"
