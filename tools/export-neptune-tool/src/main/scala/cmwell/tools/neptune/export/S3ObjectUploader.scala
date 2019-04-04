@@ -57,38 +57,9 @@ object S3ObjectUploader{
   }
 
 
-  def persistChunkToS3Bucket2(inputStream:InputStream, fileName:String, proxyHost:Option[String], proxyPort:Option[Int], s3Directory:String) = {
-/*
-    var inputStreamWithoutMeta:InputStream = new ByteArrayInputStream("".getBytes)
-*/
-    val v: util.Vector[InputStream] = new util.Vector[InputStream](2)
-
-    try {
-      val reader = new BufferedReader(new InputStreamReader(inputStream))
-      var line = reader.readLine()
-      while (line != null) {
-        if (!line.isEmpty && !line.contains("meta/sys")) {
-          val cuttrentLineInputStream = new ByteArrayInputStream((line + "\n").getBytes)
-          v.addElement(cuttrentLineInputStream)
-          cuttrentLineInputStream.close()
-        }
-        line = reader.readLine()
-      }
-      val inputStreamWithoutMeta  = new SequenceInputStream(v.elements())
-      init(proxyHost, proxyPort).putObject(s3Directory, fileName, inputStreamWithoutMeta, new ObjectMetadata())
-      inputStreamWithoutMeta.close()
-    }
-    finally {
-//      inputStreamWithoutMeta.close()
-      inputStream.close()
-    }
-  }
-
   def persistChunkToS3Bucket(inputStream:InputStream, fileName:String, proxyHost:Option[String], proxyPort:Option[Int], s3Directory:String) = {
-//      val metaData = new ObjectMetadata()
-//      metaData.setContentLength(IOUtils.toByteArray(inputStream).length)
-      init(proxyHost, proxyPort).putObject(s3Directory, fileName, inputStream, new ObjectMetadata())
-      inputStream.close()
+    init(proxyHost, proxyPort).putObject(s3Directory, fileName, inputStream, new ObjectMetadata())
+    inputStream.close()
 
   }
 

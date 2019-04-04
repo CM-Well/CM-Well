@@ -14,12 +14,15 @@
   */
 package cmwell.tools.neptune.export
 
-import java.io.InputStream
+import java.io._
 import java.time.Instant
+import java.util
 import java.util.concurrent.Executors
 
 import akka.actor.{ActorSystem, Scheduler}
 import cmwell.tools.neptune.export.NeptuneIngester.ConnectException
+import cmwell.tools.neptune.export.S3ObjectUploader.init
+import com.amazonaws.services.s3.model.ObjectMetadata
 import org.apache.commons.lang3.time.DurationFormatUtils
 import org.apache.http.client.methods.CloseableHttpResponse
 import org.apache.http.util.EntityUtils
@@ -79,10 +82,14 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
       var bulkConsumeData:InputStream = null
         try {
           bulkConsumeData = res.getEntity.getContent
-            if(updateMode || !bulkLoader)
+          if(!updateMode && bulkLoader) {
+            bulkConsumeData = readInputStreamAndFilterMeta(bulkConsumeData)
+          }
+          else
               RDFDataMgr.read(ds, bulkConsumeData, Lang.NQUADS)
         } catch {
           case e: Throwable if retryCount > 0 =>
+            bulkConsumeData.close()
             logger.error("Failed to read input stream,", e.getMessage)
             logger.error("Going to retry, retry count=" + retryCount)
             Thread.sleep(10000)
@@ -90,6 +97,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
               proxyHost, proxyPort, automaticUpdateMode, retryCount - 1, s3Directory, retryToolCycle)
           case e: Throwable if retryCount == 0 =>
             logger.error("Failed to read input stream from cmwell after retry 5 times..going to shutdown the system")
+              bulkConsumeData.close()
             sys.exit(0)
         }
       val endTimeBulkConsumeMilis = System.currentTimeMillis()
@@ -123,26 +131,27 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
         proxyPort, automaticUpdateMode = true, s3Directory = s3Directory, retryToolCycle = false)
   }
 
-  def persistDataInS3AndIngestToNeptuneViaLoaderAPI(neptuneCluster: String, bulkResponseAsString:InputStream, nextPosition: String, updateMode: Boolean,
+  def persistDataInS3AndIngestToNeptuneViaLoaderAPI(neptuneCluster: String, bulkResponse:InputStream, nextPosition: String, updateMode: Boolean,
                                                     readInputStreamDuration: Long, totalInfotons: String, proxyHost:Option[String],
                                                     proxyPort:Option[Int], s3Directory:String) = {
       val startTimeMillis = System.currentTimeMillis()
       val fileName = "cm-well-file-" + startTimeMillis + ".nq"
-      S3ObjectUploader.persistChunkToS3Bucket(bulkResponseAsString, fileName, proxyHost, proxyPort, s3Directory)
+      S3ObjectUploader.persistChunkToS3Bucket(bulkResponse, fileName, proxyHost, proxyPort, s3Directory)
       val endS3TimeMillis = System.currentTimeMillis()
-      val s3Duration = (endS3TimeMillis - startTimeMillis) / 1000
-      logger.info("Duration of writing to s3 = " + s3Duration)
+      val s3Duration = endS3TimeMillis - startTimeMillis
+      logger.info("Duration of writing to s3 = " + (s3Duration / 1000))
+      val startTimeMillis1 = System.currentTimeMillis()
       val responseFuture = loaderPostWithRetry(neptuneCluster, s"$s3Directory/$fileName")
       responseFuture.onComplete(_ => {
         val endTimeMillis = System.currentTimeMillis()
-        val neptuneDurationSec = endTimeMillis - startTimeMillis
+        val neptuneDurationSec = endTimeMillis - startTimeMillis1
         PropertiesStore.persistPosition(nextPosition)
         logger.info("Bulk has been ingested successfully")
-        val totalTime = readInputStreamDuration + neptuneDurationSec
-        printBulkStatistics(readInputStreamDuration, totalInfotons, neptuneDurationSec, totalTime)
+        printBulkStatistics(readInputStreamDuration, totalInfotons, neptuneDurationSec + s3Duration)
         blockingQueue.take()
       })
   }
+
 
   def buildSparqlCommandAndIngestToNeptuneViaSparqlAPI(neptuneCluster: String, ds:Dataset, nextPosition:String, updateMode: Boolean,
                                                        readInputStreamDuration:Long, totalInfotons:String, automaticUpdateMode:Boolean): Unit = {
@@ -177,8 +186,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
         logger.info("Bulk has been ingested successfully")
         if(!PropertiesStore.isAutomaticUpdateModePersist() && automaticUpdateMode)
           PropertiesStore.persistAutomaticUpdateMode(true)
-        val totalTime = readInputStreamDuration + neptuneDurationSec
-        printBulkStatistics(readInputStreamDuration, totalInfotons, neptuneDurationSec, totalTime)
+        printBulkStatistics(readInputStreamDuration, totalInfotons, neptuneDurationSec)
         blockingQueue.take()
       })
 
@@ -218,7 +226,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
     }
   }
 
-  private def printBulkStatistics(readInputStreamDuration: Long, totalInfotons: String, neptuneDurationMilis: Long, totalTime: Long) = {
+  private def printBulkStatistics(readInputStreamDuration: Long, totalInfotons: String, neptuneDurationMilis: Long) = {
     this.totalInfotons+=totalInfotons.toLong
     neptuneTotalTime+=neptuneDurationMilis
     val neptunetime = DurationFormatUtils.formatDurationWords(neptuneTotalTime, true, true)
@@ -232,5 +240,26 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
     logger.info(summaryLogMsg)
     print(summaryLogMsg + "\r")
   }
+
+  def readInputStreamAndFilterMeta(inputStream:InputStream) = {
+    /*
+        var inputStreamWithoutMeta:InputStream = new ByteArrayInputStream("".getBytes)
+    */
+    val v: util.Vector[InputStream] = new util.Vector[InputStream]()
+      val reader = new BufferedReader(new InputStreamReader(inputStream))
+      var line = reader.readLine()
+      while (line != null) {
+        if (!line.isEmpty && !line.contains("meta/sys")) {
+          val cuttrentLineInputStream = new ByteArrayInputStream((line + "\n").getBytes)
+          v.addElement(cuttrentLineInputStream)
+          cuttrentLineInputStream.close()
+          //          val testPageInputStream = new ByteArrayInputStream((line + "\n").getBytes)
+          //          finalInputStream  = concatInputStream(finalInputStream, testPageInputStream)
+
+        }
+        line = reader.readLine()
+      }
+      new SequenceInputStream(v.elements())
+    }
 
 }
