@@ -1128,7 +1128,7 @@ abstract class Host(user: String,
 
   private def deleteSshpass(hosts: GenSeq[String], sudoer: Credentials): Unit = {
     info("delete ssh pass")
-    command("sudo rm ~/bin/sshpass", hosts, true, Some(sudoer))
+    command("rm ~/bin/sshpass", hosts, true, Some(sudoer))
 
   }
 
