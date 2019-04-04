@@ -39,7 +39,7 @@ case class GridSubDiv(user: String,
                       defaultRdfProtocol: String = "http",
                       // we refrain from using Cas Commitlog on cluster, to save disk space and performance,
                       // given we always write in Quorum so there will be no data loss
-                      casUseCommitLog:Boolean)
+                      casUseCommitLog:Boolean = false)
     extends Host(
       user,
       password,

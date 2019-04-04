@@ -31,7 +31,7 @@ case class LocalHost(dataCenter: String = "lh",
                      isDebug: Boolean = false,
                      subjectsInSpAreHttps: Boolean = false,
                      defaultRdfProtocol: String = "http",
-                     casUseCommitLog:Boolean
+                     casUseCommitLog:Boolean = true
                     )
     extends Host(
       System.getProperty("user.name"),
