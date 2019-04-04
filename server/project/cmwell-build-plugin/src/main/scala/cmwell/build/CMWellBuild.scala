@@ -194,6 +194,7 @@ object CMWellBuild extends AutoPlugin {
 				"SHA-1" -> (url + ".sha1"),
 				"SHA-256" -> (url + ".sha256")
 				//SHA-512 is disabled until https://github.com/coursier/coursier/issues/1108 will be fixed
+				//(coursier parser doesn't recognize sha512 hash length, see above issue)
 				//This means that fetching ES currently doesn't have any checksum check!
 				//"SHA-512" -> (url + ".sha512")
 			),
