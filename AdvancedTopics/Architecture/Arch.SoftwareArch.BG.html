@@ -952,6 +952,18 @@
 
 
   <li class="md-nav__item">
+    <a href="../../Introduction/Intro.CM-WellVsOtherInfoRepositories.html" title="CM-Well vs. Other Information Repositories" class="md-nav__link">
+      CM-Well vs. Other Information Repositories
+    </a>
+  </li>
+
+        
+          
+          
+          
+
+
+  <li class="md-nav__item">
     <a href="../../Introduction/Intro.CM-WellDataParadigms.html" title="Data Paradigms" class="md-nav__link">
       Data Paradigms
     </a>
@@ -2847,8 +2859,8 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#analytics-processing-module" title="Analytics Processing Module" class="md-nav__link">
-    Analytics Processing Module
+  <a href="#analytics-processing-module-crashable-worker" title="Analytics Processing Module ("Crashable Worker")" class="md-nav__link">
+    Analytics Processing Module ("Crashable Worker")
   </a>
   
 </li>
@@ -3070,8 +3082,8 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#analytics-processing-module" title="Analytics Processing Module" class="md-nav__link">
-    Analytics Processing Module
+  <a href="#analytics-processing-module-crashable-worker" title="Analytics Processing Module ("Crashable Worker")" class="md-nav__link">
+    Analytics Processing Module ("Crashable Worker")
   </a>
   
 </li>
@@ -3139,8 +3151,18 @@
 <p>The RTS is responsible for pushing changes to API clients who have subscribed for streamed updates. The clients have pre-defined CM-Well queries, and when new infotons are ingested, RTS checks to see whether they match the queries, and if so streams the new infotons to the subscribed clients.</p>
 <h2 id="indexer">Indexer<a class="headerlink" href="#indexer" title="Permanent link">&para;</a></h2>
 <p>After the IMP has written a new or updated infoton to CM-Well, the Indexer sends the infoton to be indexed by ES, while maintaining the abstraction of the directory structure. New versions are indexed and if necessary, the previous version is made "not current".</p>
-<h2 id="analytics-processing-module">Analytics Processing Module<a class="headerlink" href="#analytics-processing-module" title="Permanent link">&para;</a></h2>
-<p>The Analytics Processing Module is responsible for running heavy (and relatively long-running) queries in a controlled manner. For example, running a SPARQL or Gremlin query on a subgraph (or the full graph). This module is run in a separate JVM (also known by the nickname "Crashable Worker" or CW, because if it crashes or is killed, it doesn't harm mainstream CM-Well operation, and can be safely killed for using excess resources or becoming unresponsive). The processing pipeline of creating an in-memory subgraph, followed by execution of the SPARQL query itself is handled within this JVM. Creating a separate JVM process provides a quarantined environment where memory, CPU cycles and priority are controlled and isolated from other CM-Well components. Processes that are hung or are taking too many resources can be killed and restarted with no loss of data.</p>
+<h2 id="analytics-processing-module-crashable-worker">Analytics Processing Module ("Crashable Worker")<a class="headerlink" href="#analytics-processing-module-crashable-worker" title="Permanent link">&para;</a></h2>
+<p>The Analytics Processing Module is responsible for running heavy (and relatively long-running) queries in a controlled manner. For example, running a SPARQL or Gremlin query on a subgraph (or the full graph). This module is run in a separate JVM (also known by the nickname "Crashable Worker" or CW, because if it crashes or is killed, it doesn't harm mainstream CM-Well operation, and can be safely killed for using excess resources or becoming unresponsive). </p>
+<p>The processing pipeline of creating an in-memory subgraph, followed by execution of the SPARQL query itself is handled within this JVM. Creating a separate JVM process provides a quarantined environment where memory, CPU cycles and priority are controlled and isolated from other CM-Well components. Processes that are hung or are taking too many resources can be killed and restarted with no loss of data.</p>
+<p>Crashable workers perform the following tasks:</p>
+<ul>
+<li>SPARQL queries on sub-graphs and on the entire graph</li>
+<li>Gremlin queries</li>
+<li>Health Control monitoring</li>
+<li>Backpressure management - mechanisms that respond to the load on the system and the length of the Kafka queues, and introduce response delays and Service Unavailable errors as necessary to limit system load.</li>
+</ul>
+<p>The following diagram shows the Crashable Workers and their interaction with the Web Service module.</p>
+<p><img alt="image" src="../../_Images/crashable-workers.png" /></p>
 <h2 id="data-consistency-crawler-module">Data Consistency Crawler Module<a class="headerlink" href="#data-consistency-crawler-module" title="Permanent link">&para;</a></h2>
 <p>The Data Consistency Crawler (DCC) module tests proactively for inconsistent data in the infotons written to CM-Well, and fixes inconsistencies. The DCC's effect on performance is negligible.</p>
 <p>The DCC runs within BG process, and is transparent to CM-Well users. It uses the  <strong>_kafka</strong>  API to consume a copy of the Kafka  <strong>persist_topic</strong>  queue (the queue filled with ingest messages by the Web Service process). Infotons are reviewed shortly after being processed (ingested) by BG. DCC tests each infoton in the queue for data inconsistencies.</p>
