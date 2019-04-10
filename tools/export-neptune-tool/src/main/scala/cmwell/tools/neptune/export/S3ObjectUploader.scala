@@ -57,9 +57,10 @@ object S3ObjectUploader{
       }
   }
 
-  def persistChunkToS3Bucket(tmpFile:File, fileName:String, proxyHost:Option[String], proxyPort:Option[Int], s3Directory:String) = {
+  def persistChunkToS3Bucket(tmpFile:File, proxyHost:Option[String], proxyPort:Option[Int], s3Directory:String) = {
     try{
-      init(proxyHost, proxyPort).putObject(s3Directory, fileName, tmpFile)
+      init(proxyHost, proxyPort).putObject(s3Directory, tmpFile.getName, tmpFile)
+      tmpFile.delete()
     }
     catch {
       case e: AmazonServiceException =>
