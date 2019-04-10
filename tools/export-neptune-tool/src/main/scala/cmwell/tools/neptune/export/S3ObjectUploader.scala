@@ -16,13 +16,14 @@ package cmwell.tools.neptune.export
 
 import java.io._
 import java.util
-import java.util.Vector
+import java.util.stream.Collectors
+import java.util.{Collections, Vector}
 
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
-import com.amazonaws.services.s3.model.ObjectMetadata
+import com.amazonaws.services.s3.model.{ObjectMetadata, PutObjectRequest}
 import com.amazonaws.{AmazonServiceException, ClientConfiguration, Protocol, SdkClientException}
-import org.apache.commons.io.IOUtils
+import org.apache.commons.io.{FileUtils, IOUtils}
 
 object S3ObjectUploader{
 
@@ -56,14 +57,18 @@ object S3ObjectUploader{
       }
   }
 
-
-  def persistChunkToS3Bucket(inputStream:InputStream, fileName:String, proxyHost:Option[String], proxyPort:Option[Int], s3Directory:String) = {
-    init(proxyHost, proxyPort).putObject(s3Directory, fileName, inputStream, new ObjectMetadata())
-    inputStream.close()
-
+  def persistChunkToS3Bucket(tmpFile:File, fileName:String, proxyHost:Option[String], proxyPort:Option[Int], s3Directory:String) = {
+    try{
+      init(proxyHost, proxyPort).putObject(s3Directory, fileName, tmpFile)
+    }
+    catch {
+      case e: AmazonServiceException =>
+        e.printStackTrace()
+        throw e
+      case e: SdkClientException =>
+        e.printStackTrace()
+        throw e
+    }
   }
 
-  private def concatInputStreams(inputStreamWithoutMeta: InputStream, testPageInputStream: ByteArrayInputStream) = {
-    new SequenceInputStream(inputStreamWithoutMeta, testPageInputStream)
-  }
 }

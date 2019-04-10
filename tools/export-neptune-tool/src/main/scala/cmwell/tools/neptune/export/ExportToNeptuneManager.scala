@@ -14,26 +14,27 @@
   */
 package cmwell.tools.neptune.export
 
-import java.io._
+import java.io.{FileWriter, _}
+import java.nio.file.{Files, Paths, StandardCopyOption}
 import java.time.Instant
-import java.util
+import java.util.Collections
 import java.util.concurrent.Executors
 
 import akka.actor.{ActorSystem, Scheduler}
 import cmwell.tools.neptune.export.NeptuneIngester.ConnectException
-import cmwell.tools.neptune.export.S3ObjectUploader.init
-import com.amazonaws.services.s3.model.ObjectMetadata
+import org.apache.commons.io.FileUtils
+import org.apache.commons.io.filefilter.WildcardFileFilter
 import org.apache.commons.lang3.time.DurationFormatUtils
 import org.apache.http.client.methods.CloseableHttpResponse
-import org.apache.http.util.EntityUtils
 import org.apache.jena.query.{Dataset, DatasetFactory}
 import org.apache.jena.riot.{Lang, RDFDataMgr}
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration.{FiniteDuration, _}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.collection.JavaConverters._
 
-class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
+class ExportToNeptuneManager(ingestConnectionPoolSize: Int){
 
   var position: String = _
   val groupSize = 500
@@ -60,10 +61,13 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
       val persistedPosition = PropertiesStore.retreivePosition()
       val position = persistedPosition.getOrElse(CmWellConsumeHandler.retrivePositionFromCreateConsumer(sourceCluster, lengthHint, qp, updateMode, PropertiesStore.isAutomaticUpdateModePersist(), toolStartTime))
       val actualUpdateMode = PropertiesStore.isAutomaticUpdateModePersist() || updateMode
-      consumeBulkAndIngest(position, sourceCluster, neptuneCluster, actualUpdateMode, lengthHint, qp, toolStartTime, bulkLoader, proxyHost, proxyPort, s3Directory = s3Directory, retryToolCycle = true)
+      consumeBulkAndIngest(position, sourceCluster, neptuneCluster, actualUpdateMode, lengthHint, qp, toolStartTime, bulkLoader,
+        proxyHost, proxyPort, s3Directory = s3Directory, retryToolCycle = true)
 
     } catch {
-      case e: Throwable => logger.error("Got a failure during  export after retrying 3 times", e)
+      case e: Throwable =>
+        println("Got a failure during  export after retrying 3 times,error:" + e)
+        logger.error("Got a failure during  export after retrying 3 times", e)
         e.printStackTrace()
         executor.shutdown()
         system.terminate()
@@ -80,10 +84,11 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
     while (res.getStatusLine.getStatusCode != 204) {
       var ds: Dataset = DatasetFactory.createGeneral()
       var bulkConsumeData:InputStream = null
+      var tempfile:File = null
         try {
           bulkConsumeData = res.getEntity.getContent
           if(!updateMode && bulkLoader) {
-            bulkConsumeData = readInputStreamAndFilterMeta(bulkConsumeData)
+            tempfile = readInputStreamAndFilterMeta(bulkConsumeData)
           }
           else
               RDFDataMgr.read(ds, bulkConsumeData, Lang.NQUADS)
@@ -100,6 +105,10 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
               bulkConsumeData.close()
             sys.exit(0)
         }
+        finally {
+          deleteTempCmwellFiles(new File(".").getCanonicalPath, "cm-well-*.nq")
+          bulkConsumeData.close()
+        }
       val endTimeBulkConsumeMilis = System.currentTimeMillis()
       val readInputStreamDuration = endTimeBulkConsumeMilis - startTimeBulkConsumeMillis
       //blocked until neptune ingester thread takes the message from qeuue, which means it's ready for next bulk.
@@ -109,7 +118,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
       val nextPosition = res.getAllHeaders.find(_.getName == "X-CM-WELL-POSITION").map(_.getValue).getOrElse("")
       val totalInfotons = res.getAllHeaders.find(_.getName == "X-CM-WELL-N").map(_.getValue).getOrElse("")
       if(!updateMode && bulkLoader){
-        persistDataInS3AndIngestToNeptuneViaLoaderAPI(neptuneCluster, bulkConsumeData, nextPosition, updateMode,
+        persistDataInS3AndIngestToNeptuneViaLoaderAPI(neptuneCluster, tempfile, nextPosition,
           readInputStreamDuration, totalInfotons, proxyHost, proxyPort, s3Directory)
       }else {
         buildSparqlCommandAndIngestToNeptuneViaSparqlAPI(neptuneCluster, ds, nextPosition, updateMode, readInputStreamDuration, totalInfotons, automaticUpdateMode)
@@ -123,7 +132,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
       val nextPosition = if (!updateMode && !PropertiesStore.isAutomaticUpdateModePersist())
         CmWellConsumeHandler.retrivePositionFromCreateConsumer(sourceCluster, lengthHint, qp, updateMode, true, Instant.parse(PropertiesStore.retrieveStartTime().get))
       else currentPosition
-      if(retryToolCycle)
+      if (retryToolCycle)
         println("\nExport from cm-well completed successfully, tool wait till new infotons be inserted to cmwell")
       logger.info("Export from cm-well completed successfully, no additional data to consume..trying to re-consume in 0.5 minute")
       Thread.sleep(30000)
@@ -131,12 +140,12 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
         proxyPort, automaticUpdateMode = true, s3Directory = s3Directory, retryToolCycle = false)
   }
 
-  def persistDataInS3AndIngestToNeptuneViaLoaderAPI(neptuneCluster: String, bulkResponse:InputStream, nextPosition: String, updateMode: Boolean,
+  def persistDataInS3AndIngestToNeptuneViaLoaderAPI(neptuneCluster: String, tmpfile:File, nextPosition: String,
                                                     readInputStreamDuration: Long, totalInfotons: String, proxyHost:Option[String],
                                                     proxyPort:Option[Int], s3Directory:String) = {
       val startTimeMillis = System.currentTimeMillis()
       val fileName = "cm-well-file-" + startTimeMillis + ".nq"
-      S3ObjectUploader.persistChunkToS3Bucket(bulkResponse, fileName, proxyHost, proxyPort, s3Directory)
+      S3ObjectUploader.persistChunkToS3Bucket(tmpfile, fileName, proxyHost, proxyPort, s3Directory)
       val endS3TimeMillis = System.currentTimeMillis()
       val s3Duration = endS3TimeMillis - startTimeMillis
       logger.info("Duration of writing to s3 = " + (s3Duration / 1000))
@@ -151,7 +160,6 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
         blockingQueue.take()
       })
   }
-
 
   def buildSparqlCommandAndIngestToNeptuneViaSparqlAPI(neptuneCluster: String, ds:Dataset, nextPosition:String, updateMode: Boolean,
                                                        readInputStreamDuration:Long, totalInfotons:String, automaticUpdateMode:Boolean): Unit = {
@@ -241,25 +249,29 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
     print(summaryLogMsg + "\r")
   }
 
-  def readInputStreamAndFilterMeta(inputStream:InputStream) = {
-    /*
-        var inputStreamWithoutMeta:InputStream = new ByteArrayInputStream("".getBytes)
-    */
-    val v: util.Vector[InputStream] = new util.Vector[InputStream]()
-      val reader = new BufferedReader(new InputStreamReader(inputStream))
-      var line = reader.readLine()
-      while (line != null) {
-        if (!line.isEmpty && !line.contains("meta/sys")) {
-          val cuttrentLineInputStream = new ByteArrayInputStream((line + "\n").getBytes)
-          v.addElement(cuttrentLineInputStream)
-          cuttrentLineInputStream.close()
-          //          val testPageInputStream = new ByteArrayInputStream((line + "\n").getBytes)
-          //          finalInputStream  = concatInputStream(finalInputStream, testPageInputStream)
+  def readInputStreamAndFilterMeta(inputStream:InputStream):File = {
+    val targetFile = new File("./cm-well-file-" + System.currentTimeMillis() + ".nq")
+    val fw = new FileWriter(targetFile, true)
+    val reader = new BufferedReader(new InputStreamReader(inputStream))
+    reader.lines().filter(line => !line.contains("meta/sys")).iterator.asScala.foreach(line => fw.write(line + "\n"))
+    targetFile
+  }
 
-        }
-        line = reader.readLine()
-      }
-      new SequenceInputStream(v.elements())
-    }
+
+  def deleteTempCmwellFiles(directoryName: String, extension: String): Unit = {
+    println("hello")
+    val directory = new File(directoryName)
+    FileUtils.listFiles(directory, new WildcardFileFilter(extension), null).asScala.foreach(_.delete())
+  }
 
 }
+
+//object ExportImportMain extends App {
+//  import java.io.InputStream
+//  val source = "<http://lish1> <meta/sys> <o1> .\n<http://s18888888888> <e1> <meta/sys/lalalallalal> <g1> .\n<http://lish2> <p2> <o2> <g2> .\n<http://lish1> <p11> <o11> .\n<http://s4> <p4> <o4> <g1> .\n<http://lish300> <p23> <o1> .\n<http://lishSH> <p2> <o2> <g2> .\n<http://shra> <p99> <o1> ."
+//  val in: InputStream = org.apache.commons.io.IOUtils.toInputStream(source, "UTF-8")
+//  val exportImportHandler = new ExportToNeptuneManager(4)
+//  exportImportHandler.deleteTempCmwellFiles(new File(".").getCanonicalPath, "cm-well-*.nq")
+//
+//}
+
