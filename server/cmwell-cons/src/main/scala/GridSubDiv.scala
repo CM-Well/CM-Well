@@ -37,7 +37,10 @@ case class GridSubDiv(user: String,
                       withElk: Boolean = false,
                       subjectsInSpAreHttps: Boolean = false,
                       defaultRdfProtocol: String = "http",
-                      diskOptimizationStrategy:String = "ssd")
+                      diskOptimizationStrategy:String = "ssd",
+                      // we refrain from using Cas Commitlog on cluster, to save disk space and performance,
+                      // given we always write in Quorum so there will be no data loss
+                      casUseCommitLog:Boolean = false)
     extends Host(
       user,
       password,
@@ -61,7 +64,8 @@ case class GridSubDiv(user: String,
       withElk = withElk,
       subjectsInSpAreHttps = subjectsInSpAreHttps,
       defaultRdfProtocol = defaultRdfProtocol,
-      diskOptimizationStrategy = diskOptimizationStrategy) {
+      diskOptimizationStrategy = diskOptimizationStrategy,
+      casUseCommitLog = casUseCommitLog) {
 
   require(clusterIps.distinct equals  clusterIps, "must be unique")
   //var persistentAliases = false
@@ -181,10 +185,9 @@ case class GridSubDiv(user: String,
         g1 = g1,
         hostIp = host,
         casDataDirs = casDataDirs,
-        // we refrain from using Cas Commitlog on cluster, to save disk space and performance, given we always write in Quorum so there will be no data loss
-        casUseCommitLog = false,
         numOfCores = calculateCpuAmount,
-        diskOptimizationStrategy = diskOptimizationStrategy
+        diskOptimizationStrategy = diskOptimizationStrategy,
+        casUseCommitLog = casUseCommitLog
       )
 
         val esSubDivs = for(i <- 1 to dataDirs.esDataDirs.size)

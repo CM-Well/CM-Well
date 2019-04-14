@@ -15,5 +15,6 @@ val pe = LocalHost(dataCenter = "lh",
                    dataDirs = dataDirs,
                    instDirs = InstDirs(s"$location/cm-well", s"$location"),
                    useAuthorization = useAuthorization,
-                   withElk = false)
+                   withElk = false,
+                   casUseCommitLog = true)
 

@@ -31,7 +31,9 @@ case class LocalHost(dataCenter: String = "lh",
                      isDebug: Boolean = false,
                      subjectsInSpAreHttps: Boolean = false,
                      defaultRdfProtocol: String = "http",
-                     diskOptimizationStrategy:String = "ssd")
+                     diskOptimizationStrategy:String = "ssd",
+                     casUseCommitLog:Boolean = true
+                    )
     extends Host(
       System.getProperty("user.name"),
       "",
@@ -55,7 +57,8 @@ case class LocalHost(dataCenter: String = "lh",
       isDebug = isDebug,
       subjectsInSpAreHttps = subjectsInSpAreHttps,
       defaultRdfProtocol = defaultRdfProtocol,
-      diskOptimizationStrategy = diskOptimizationStrategy
+      diskOptimizationStrategy = diskOptimizationStrategy,
+      casUseCommitLog = casUseCommitLog
     ) {
 
 //  LogLevel.debug
@@ -205,7 +208,7 @@ case class LocalHost(dataCenter: String = "lh",
       g1 = false,
       hostIp = ip,
       casDataDirs = Seq("cas"),
-      casUseCommitLog = true,
+      casUseCommitLog = casUseCommitLog,
       numOfCores = calculateCpuAmount,
       diskOptimizationStrategy = diskOptimizationStrategy
     )

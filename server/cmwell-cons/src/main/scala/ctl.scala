@@ -189,8 +189,8 @@ abstract class Host(user: String,
                     isDebug: Boolean = false,
                     subjectsInSpAreHttps: Boolean = false,
                     defaultRdfProtocol: String = "http",
-                    diskOptimizationStrategy:String) {
-
+                    diskOptimizationStrategy:String,
+                    casUseCommitLog:Boolean) {
   val cmwellPropertiesFile = "cmwell.properties"
 
   var sudoerCredentials: Option[Credentials] = None
@@ -229,6 +229,7 @@ abstract class Host(user: String,
    */
 
   def getMinMembers = minMembers.getOrElse(ips.size / 2 + 1)
+  def getCasUseCommitLog = casUseCommitLog
 
   val esRegPort = 9201
   val esMasterPort = 9200

@@ -41,8 +41,10 @@ case class Grid(user: String,
                 nbg: Boolean = false,
                 subjectsInSpAreHttps: Boolean = false,
                 defaultRdfProtocol: String = "http",
-                diskOptimizationStrategy:String = "ssd"
-               )
+                diskOptimizationStrategy:String = "ssd",
+                // we refrain from using Cas Commitlog on cluster, to save disk space and performance,
+                // given we always write in Quorum so there will be no data loss
+                casUseCommitLog:Boolean = false)
     extends Host(
       user,
       password,
@@ -66,8 +68,8 @@ case class Grid(user: String,
       withElk = withElk,
       subjectsInSpAreHttps = subjectsInSpAreHttps,
       defaultRdfProtocol = defaultRdfProtocol,
-      diskOptimizationStrategy = diskOptimizationStrategy
-
+      diskOptimizationStrategy = diskOptimizationStrategy,
+      casUseCommitLog = casUseCommitLog
     ) {
 
   require(clusterIps.distinct equals  clusterIps, "must be unique")
@@ -113,8 +115,7 @@ case class Grid(user: String,
         g1 = g1,
         hostIp = host,
         casDataDirs = Seq("cas"),
-        // we refrain from using Cas Commitlog on cluster, to save disk space and performance, given we always write in Quorum so there will be no data loss
-        casUseCommitLog = false,
+        casUseCommitLog = casUseCommitLog,
         numOfCores = calculateCpuAmount,
         diskOptimizationStrategy = diskOptimizationStrategy
       )
