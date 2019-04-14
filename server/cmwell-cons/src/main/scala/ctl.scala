@@ -165,10 +165,7 @@ case object Oracle extends OsType
 
 case object Ubuntu extends OsType
 
-//object DiskType extends Enumeration {
-//  type WeekDay = Value
-//  val SSD, Spinning = Value
-//}
+
 abstract class Host(user: String,
                     password: String,
                     hostIps: Seq[String],
