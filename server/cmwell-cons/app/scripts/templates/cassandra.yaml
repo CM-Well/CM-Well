@@ -6,6 +6,10 @@ max_hints_delivery_threads: 2
 
 max_hint_window_in_ms: 10800000 # 3 hours
 num_tokens: 256
+hints_compression:
+    - class_name: LZ4Compressor
+      parameters:
+          -
 
 authenticator: AllowAllAuthenticator
 authorizer: AllowAllAuthorizer
@@ -17,6 +21,11 @@ data_file_directories:
     - {{cas_data_dirs}}
 
 commitlog_directory: {{root_dir}}/data/{{ccl_dir}}/commitlog
+commitlog_compression:
+    - class_name: LZ4Compressor
+      parameters:
+          -
+
 hints_directory: {{root_dir}}/data/{{ccl_dir}}/hints
 cdc_enabled: false
 cdc_raw_directory: {{root_dir}}/data/{{ccl_dir}}/cdc_raw
@@ -32,7 +41,7 @@ row_cache_save_period: 0
 saved_caches_directory: {{root_dir}}/data/{{dir}}/saved_caches
 
 commitlog_sync: periodic
-commitlog_sync_period_in_ms: 10000
+commitlog_sync_period_in_ms: 60000
 
 commitlog_segment_size_in_mb: 32
 
@@ -43,10 +52,15 @@ seed_provider:
       parameters:
           - seeds: "{{seeds}}"
 
-concurrent_reads: 32
-concurrent_writes: 32
-concurrent_counter_writes: 32
+concurrent_reads: {{concurrent_reads}}
+concurrent_writes: {{concurrent_writes}}
+concurrent_counter_writes: {{concurrent_counter_writes}}
 
+# If your data directories are backed by SSD, you should increase this
+# to the number of cores.
+concurrent_compactors: {{concurrent_compactors}}
+
+disk_optimization_strategy: {{disk_optimization_strategy}}
 
 trickle_fsync: false
 trickle_fsync_interval_in_kb: 10240
@@ -63,7 +77,7 @@ listen_address: {{listen_address}}
 start_native_transport: true
 native_transport_port: 9042
 
-start_rpc: true
+start_rpc: false
 
 
 rpc_address: {{rpc_address}}
