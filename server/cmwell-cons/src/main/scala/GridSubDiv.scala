@@ -37,6 +37,7 @@ case class GridSubDiv(user: String,
                       withElk: Boolean = false,
                       subjectsInSpAreHttps: Boolean = false,
                       defaultRdfProtocol: String = "http",
+                      diskOptimizationStrategy:String = "ssd",
                       // we refrain from using Cas Commitlog on cluster, to save disk space and performance,
                       // given we always write in Quorum so there will be no data loss
                       casUseCommitLog:Boolean = false)
@@ -63,6 +64,7 @@ case class GridSubDiv(user: String,
       withElk = withElk,
       subjectsInSpAreHttps = subjectsInSpAreHttps,
       defaultRdfProtocol = defaultRdfProtocol,
+      diskOptimizationStrategy = diskOptimizationStrategy,
       casUseCommitLog = casUseCommitLog) {
 
   require(clusterIps.distinct equals  clusterIps, "must be unique")
@@ -163,7 +165,6 @@ case class GridSubDiv(user: String,
     val ctrlAllocations = aloc.ctrl
     val homeDir = s"${instDirs.globalLocation}/cm-well"
     val casDataDirs = (1 to dataDirs.casDataDirs.size).map(ResourceBuilder.getIndexedName("cas", _))
-
     hosts.flatMap { host =>
       val cas = CassandraConf(
         home = homeDir,
@@ -184,6 +185,8 @@ case class GridSubDiv(user: String,
         g1 = g1,
         hostIp = host,
         casDataDirs = casDataDirs,
+        numOfCores = calculateCpuAmount,
+        diskOptimizationStrategy = diskOptimizationStrategy,
         casUseCommitLog = casUseCommitLog
       )
 

@@ -165,6 +165,7 @@ case object Oracle extends OsType
 
 case object Ubuntu extends OsType
 
+
 abstract class Host(user: String,
                     password: String,
                     hostIps: Seq[String],
@@ -188,8 +189,8 @@ abstract class Host(user: String,
                     isDebug: Boolean = false,
                     subjectsInSpAreHttps: Boolean = false,
                     defaultRdfProtocol: String = "http",
+                    diskOptimizationStrategy:String,
                     casUseCommitLog:Boolean) {
-
   val cmwellPropertiesFile = "cmwell.properties"
 
   var sudoerCredentials: Option[Credentials] = None
@@ -319,6 +320,8 @@ abstract class Host(user: String,
   }
 
   def ips = hostIps.toList
+
+  def calculateCpuAmount = command("lscpu", false).get.split('\n').map(_.split(':')).map(a => a(0) -> a(1)).toMap.getOrElse("CPU(s)", "0").trim.toInt
 
   def getEsSize = esSize
 

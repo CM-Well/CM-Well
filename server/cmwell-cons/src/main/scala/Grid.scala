@@ -41,6 +41,7 @@ case class Grid(user: String,
                 nbg: Boolean = false,
                 subjectsInSpAreHttps: Boolean = false,
                 defaultRdfProtocol: String = "http",
+                diskOptimizationStrategy:String = "ssd",
                 // we refrain from using Cas Commitlog on cluster, to save disk space and performance,
                 // given we always write in Quorum so there will be no data loss
                 casUseCommitLog:Boolean = false)
@@ -67,6 +68,7 @@ case class Grid(user: String,
       withElk = withElk,
       subjectsInSpAreHttps = subjectsInSpAreHttps,
       defaultRdfProtocol = defaultRdfProtocol,
+      diskOptimizationStrategy = diskOptimizationStrategy,
       casUseCommitLog = casUseCommitLog
     ) {
 
@@ -92,7 +94,6 @@ case class Grid(user: String,
     val bgAllocations = aloc.bg //DefaultAlocations(1000,1000,512,0)
     val wsAllocations = aloc.ws
     val ctrlAllocations = aloc.ctrl
-
     val homeDir = s"${instDirs.globalLocation}/cm-well"
     hosts.flatMap { host =>
       val cas = CassandraConf(
@@ -114,7 +115,9 @@ case class Grid(user: String,
         g1 = g1,
         hostIp = host,
         casDataDirs = Seq("cas"),
-        casUseCommitLog = casUseCommitLog
+        casUseCommitLog = casUseCommitLog,
+        numOfCores = calculateCpuAmount,
+        diskOptimizationStrategy = diskOptimizationStrategy
       )
 
         val es = ElasticsearchConf(

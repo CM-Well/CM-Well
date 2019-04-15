@@ -118,7 +118,9 @@ case class CassandraConf(home: String,
                          g1: Boolean,
                          hostIp: String,
                          casDataDirs:Seq[String],
-                         casUseCommitLog:Boolean)
+                         casUseCommitLog:Boolean,
+                         numOfCores:Integer,
+                         diskOptimizationStrategy:String)
     extends ComponentConf(hostIp, s"$home/app/cas/cur", sName, s"$home/conf/$dir", "cassandra.yaml", index) {
   override def getPsIdentifier = s"/log/cas${getIndexTxt}/"
 
@@ -256,7 +258,12 @@ case class CassandraConf(home: String,
         "root_dir" -> home,
         "endpoint_snitch" -> snitchType,
         "row_cache_size" -> rowCacheSize.toString,
-        "cas_data_dirs" -> casDataDirs.map(dir=> s"$home/data/$dir/data").mkString("\n    - ")
+        "cas_data_dirs" -> casDataDirs.map(dir=> s"$home/data/$dir/data").mkString("\n    - "),
+        "concurrent_reads" -> (16 * casDataDirs.size).toString,
+        "concurrent_writes" -> (numOfCores / 2).toString,
+        "concurrent_counter_writes" -> (16 * casDataDirs.size).toString,
+        "disk_optimization_strategy" -> diskOptimizationStrategy,
+        "concurrent_compactors" -> (if (diskOptimizationStrategy == "SSD") numOfCores / 2 else 1).toString
       )
     )
 

@@ -31,6 +31,7 @@ case class LocalHost(dataCenter: String = "lh",
                      isDebug: Boolean = false,
                      subjectsInSpAreHttps: Boolean = false,
                      defaultRdfProtocol: String = "http",
+                     diskOptimizationStrategy:String = "ssd",
                      casUseCommitLog:Boolean = true
                     )
     extends Host(
@@ -56,6 +57,7 @@ case class LocalHost(dataCenter: String = "lh",
       isDebug = isDebug,
       subjectsInSpAreHttps = subjectsInSpAreHttps,
       defaultRdfProtocol = defaultRdfProtocol,
+      diskOptimizationStrategy = diskOptimizationStrategy,
       casUseCommitLog = casUseCommitLog
     ) {
 
@@ -187,7 +189,6 @@ case class LocalHost(dataCenter: String = "lh",
 
     val homeDir = s"${instDirs.globalLocation}/cm-well"
     val ip = "127.0.0.1"
-
     val cas = CassandraConf(
       home = homeDir,
       seeds = getSeedNodes.mkString(","),
@@ -207,7 +208,9 @@ case class LocalHost(dataCenter: String = "lh",
       g1 = false,
       hostIp = ip,
       casDataDirs = Seq("cas"),
-      casUseCommitLog = casUseCommitLog
+      casUseCommitLog = casUseCommitLog,
+      numOfCores = calculateCpuAmount,
+      diskOptimizationStrategy = diskOptimizationStrategy
     )
 
     val es = ElasticsearchConf(
