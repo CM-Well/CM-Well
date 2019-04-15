@@ -40,7 +40,10 @@ case class Grid(user: String,
                 oldBg: Boolean = true,
                 nbg: Boolean = false,
                 subjectsInSpAreHttps: Boolean = false,
-                defaultRdfProtocol: String = "http")
+                defaultRdfProtocol: String = "http",
+                // we refrain from using Cas Commitlog on cluster, to save disk space and performance,
+                // given we always write in Quorum so there will be no data loss
+                casUseCommitLog:Boolean = false)
     extends Host(
       user,
       password,
@@ -63,7 +66,8 @@ case class Grid(user: String,
       haProxy,
       withElk = withElk,
       subjectsInSpAreHttps = subjectsInSpAreHttps,
-      defaultRdfProtocol = defaultRdfProtocol
+      defaultRdfProtocol = defaultRdfProtocol,
+      casUseCommitLog = casUseCommitLog
     ) {
 
   require(clusterIps.distinct equals  clusterIps, "must be unique")
@@ -110,8 +114,7 @@ case class Grid(user: String,
         g1 = g1,
         hostIp = host,
         casDataDirs = Seq("cas"),
-        // we refrain from using Cas Commitlog on cluster, to save disk space and performance, given we always write in Quorum so there will be no data loss
-        casUseCommitLog = false
+        casUseCommitLog = casUseCommitLog
       )
 
         val es = ElasticsearchConf(

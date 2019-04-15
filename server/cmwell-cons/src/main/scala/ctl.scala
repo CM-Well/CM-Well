@@ -187,7 +187,8 @@ abstract class Host(user: String,
                     withElk: Boolean = false,
                     isDebug: Boolean = false,
                     subjectsInSpAreHttps: Boolean = false,
-                    defaultRdfProtocol: String = "http") {
+                    defaultRdfProtocol: String = "http",
+                    casUseCommitLog:Boolean) {
 
   val cmwellPropertiesFile = "cmwell.properties"
 
@@ -227,6 +228,7 @@ abstract class Host(user: String,
    */
 
   def getMinMembers = minMembers.getOrElse(ips.size / 2 + 1)
+  def getCasUseCommitLog = casUseCommitLog
 
   val esRegPort = 9201
   val esMasterPort = 9200
@@ -1106,7 +1108,7 @@ abstract class Host(user: String,
   }
 
   protected def finishPrepareMachines(hosts: GenSeq[String], sudoer: Credentials) = {
-    //    deleteSshpass(hosts, sudoer)
+     deleteSshpass(hosts, sudoer)
     info("Machine preparation was done. Please look at the console output to see if there were any errors.")
   }
 
@@ -1127,7 +1129,9 @@ abstract class Host(user: String,
   }
 
   private def deleteSshpass(hosts: GenSeq[String], sudoer: Credentials): Unit = {
-    command("sudo rm sshpass", hosts, true, Some(sudoer))
+    info("delete ssh pass")
+    command("rm ~/bin/sshpass", hosts, true, Some(sudoer))
+
   }
 
   def prepareMachinesNonInteractive: Unit = prepareMachinesNonInteractive()
