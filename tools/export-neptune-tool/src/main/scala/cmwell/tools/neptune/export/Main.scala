@@ -50,7 +50,8 @@ object Main {
     val proxyPort :Option[Int]= conf.proxyPort.toOption
     println("About to Export..")
     val exportToNeptuneManager = new ExportToNeptuneManager(conf.ingestConnectionPoolSize())
-    exportToNeptuneManager.exportToNeptune(conf.sourceCluster(), conf.neptuneCluster(), conf.lengthHint(), conf.updateInfotons(), qpParam, conf.bulkLoader(), proxyHost, proxyPort, conf.s3Bucket())
+    exportToNeptuneManager.exportToNeptune(conf.sourceCluster(), conf.neptuneCluster(), conf.lengthHint(), conf.updateInfotons(), qpParam,
+      conf.bulkLoader(), proxyHost, proxyPort, conf.s3Bucket(), None)
   }
 
 }

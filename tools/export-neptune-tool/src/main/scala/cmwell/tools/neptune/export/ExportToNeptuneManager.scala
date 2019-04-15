@@ -53,7 +53,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int){
   val blockingQueue = new ArrayBlockingQueue[Boolean](1)
 
   def exportToNeptune(sourceCluster: String, neptuneCluster: String, lengthHint: Int, updateMode: Boolean, qp: Option[String], bulkLoader:Boolean,
-                      proxyHost:Option[String], proxyPort:Option[Int], s3Directory:String) = {
+                      proxyHost:Option[String], proxyPort:Option[Int], s3Directory:String, localDirectory:Option[String]) = {
     try {
       val toolStartTime = Instant.now()
       if(!updateMode && !PropertiesStore.isAutomaticUpdateModePersist() && !PropertiesStore.isStartTimePersist())
@@ -62,7 +62,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int){
       val position = persistedPosition.getOrElse(CmWellConsumeHandler.retrivePositionFromCreateConsumer(sourceCluster, lengthHint, qp, updateMode, PropertiesStore.isAutomaticUpdateModePersist(), toolStartTime))
       val actualUpdateMode = PropertiesStore.isAutomaticUpdateModePersist() || updateMode
       consumeBulkAndIngest(position, sourceCluster, neptuneCluster, actualUpdateMode, lengthHint, qp, toolStartTime, bulkLoader,
-        proxyHost, proxyPort, s3Directory = s3Directory, retryToolCycle = true)
+        proxyHost, proxyPort, s3Directory = s3Directory, retryToolCycle = true, localDirectory = localDirectory)
 
     } catch {
       case e: Throwable =>
@@ -76,7 +76,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int){
 
   def consumeBulkAndIngest(position: String, sourceCluster: String, neptuneCluster: String, updateMode: Boolean, lengthHint: Int, qp: Option[String],
                            toolStartTime:Instant, bulkLoader:Boolean, proxyHost:Option[String], proxyPort:Option[Int], automaticUpdateMode:Boolean = false,
-                           retryCount:Int = 5, s3Directory:String, retryToolCycle:Boolean): CloseableHttpResponse = {
+                           retryCount:Int = 5, s3Directory:String, retryToolCycle:Boolean, localDirectory:Option[String]): Unit = {
     var startTimeBulkConsumeMillis = System.currentTimeMillis()
     var currentPosition = position
     var res = CmWellConsumeHandler.bulkConsume(sourceCluster, currentPosition, "nquads", updateMode)
@@ -87,8 +87,12 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int){
       var tempFile:File = null
         try {
           bulkConsumeData = res.getEntity.getContent
-          if(!updateMode && bulkLoader) {
-            tempFile = readInputStreamAndFilterMeta(bulkConsumeData)
+          if(localDirectory.isDefined){
+            readInputStreamAndFilterMeta(bulkConsumeData, "./cm-well-file-" + System.currentTimeMillis() + ".nq")
+            bulkConsumeData.close()
+          }
+          else if(!updateMode && bulkLoader) {
+            tempFile = readInputStreamAndFilterMeta(bulkConsumeData, "./temp-cm-well-file-" + System.currentTimeMillis() + ".nq")
             bulkConsumeData.close()
           }
           else
@@ -101,7 +105,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int){
             logger.error("Going to retry, retry count=" + retryCount)
             Thread.sleep(10000)
             consumeBulkAndIngest(currentPosition, sourceCluster, neptuneCluster, updateMode, lengthHint, qp, toolStartTime, bulkLoader,
-              proxyHost, proxyPort, automaticUpdateMode, retryCount - 1, s3Directory, retryToolCycle)
+              proxyHost, proxyPort, automaticUpdateMode, retryCount - 1, s3Directory, retryToolCycle, localDirectory)
           case e: Throwable if retryCount == 0 =>
             logger.error("Failed to read input stream from cmwell after retry 5 times..going to shutdown the system")
             bulkConsumeData.close()
@@ -127,6 +131,11 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int){
       res = CmWellConsumeHandler.bulkConsume(sourceCluster, nextPosition, "nquads", updateMode)
       logger.info("Cm-well bulk consume http status=" + res.getStatusLine.getStatusCode)
     }
+    //Complete to consume data so shutdown the system in case of export to file
+    if(localDirectory.isDefined){
+      executor.shutdown()
+      system.terminate()
+    }else {
       //This is an automatic update mode
       val nextPosition = if (!updateMode && !PropertiesStore.isAutomaticUpdateModePersist())
         CmWellConsumeHandler.retrivePositionFromCreateConsumer(sourceCluster, lengthHint, qp, updateMode, true, Instant.parse(PropertiesStore.retrieveStartTime().get))
@@ -136,7 +145,8 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int){
       logger.info("Export from cm-well completed successfully, no additional data to consume..trying to re-consume in 0.5 minute")
       Thread.sleep(30000)
       consumeBulkAndIngest(nextPosition, sourceCluster, neptuneCluster, updateMode = true, lengthHint, qp, toolStartTime, bulkLoader, proxyHost,
-        proxyPort, automaticUpdateMode = true, s3Directory = s3Directory, retryToolCycle = false)
+        proxyPort, automaticUpdateMode = true, s3Directory = s3Directory, retryToolCycle = false, localDirectory = localDirectory)
+    }
   }
 
   def persistDataInS3AndIngestToNeptuneViaLoaderAPI(neptuneCluster: String, tmpfile:File, nextPosition: String,
@@ -248,8 +258,8 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int){
     print(summaryLogMsg + "\r")
   }
 
-  def readInputStreamAndFilterMeta(inputStream:InputStream):File = {
-    val targetFile = new File("./temp-cm-well-file-" + System.currentTimeMillis() + ".nq")
+  def readInputStreamAndFilterMeta(inputStream:InputStream, fileName:String):File = {
+    val targetFile = new File(fileName)
     val fw = new FileWriter(targetFile, true)
     val reader = new BufferedReader(new InputStreamReader(inputStream))
     reader.lines().filter(line => !line.contains("meta/sys")).iterator.asScala.foreach(line => fw.write(line + "\n"))
