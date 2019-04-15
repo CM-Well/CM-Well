@@ -1571,7 +1571,8 @@ class FTSService(config: Config) extends NsSplitter{
     , partition: String = defaultPartition)(implicit executionContext: ExecutionContext): Future[Option[(FTSThinInfoton, Boolean)]] = {
     val fields = Seq("path", "uuid", "lastModified", "indexTime", "current").map(f => s"system.$f")
     val req = client.prepareGet(indexName, "infoclone", uuid).setStoredFields(fields: _*)
-    injectFuture[GetResponse](req.execute).map { gr =>
+    injectFuture[GetResponse](req.execute).map { g110
+      r =>
       if (gr.isExists) {
         val isCurrent = gr.getField("system.current").getValue[Boolean]
         Some(esGetResponseToThinInfotons(gr) -> isCurrent)

@@ -83,53 +83,56 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int){
     logger.info("Cm-well bulk consume http status=" + res.getStatusLine.getStatusCode)
     while (res.getStatusLine.getStatusCode != 204) {
       var ds: Dataset = DatasetFactory.createGeneral()
-      var bulkConsumeData:InputStream = null
-      var tempFile:File = null
-        try {
-          bulkConsumeData = res.getEntity.getContent
-          if(localDirectory.isDefined){
-            readInputStreamAndFilterMeta(bulkConsumeData, "./cm-well-file-" + System.currentTimeMillis() + ".nq")
-            bulkConsumeData.close()
-          }
-          else if(!updateMode && bulkLoader) {
-            tempFile = readInputStreamAndFilterMeta(bulkConsumeData, "./temp-cm-well-file-" + System.currentTimeMillis() + ".nq")
-            bulkConsumeData.close()
-          }
-          else
-              RDFDataMgr.read(ds, bulkConsumeData, Lang.NQUADS)
-        } catch {
-          case e: Throwable if retryCount > 0 =>
-            bulkConsumeData.close()
-            deleteTempCmwellFiles(new File(".").getCanonicalPath, "temp-cm-well-*.nq")
-            logger.error("Failed to read input stream,", e.getMessage)
-            logger.error("Going to retry, retry count=" + retryCount)
-            Thread.sleep(10000)
-            consumeBulkAndIngest(currentPosition, sourceCluster, neptuneCluster, updateMode, lengthHint, qp, toolStartTime, bulkLoader,
-              proxyHost, proxyPort, automaticUpdateMode, retryCount - 1, s3Directory, retryToolCycle, localDirectory)
-          case e: Throwable if retryCount == 0 =>
-            logger.error("Failed to read input stream from cmwell after retry 5 times..going to shutdown the system")
-            bulkConsumeData.close()
-            deleteTempCmwellFiles(new File(".").getCanonicalPath, "temp-cm-well-*.nq")
-            sys.exit(0)
+      var bulkConsumeData: InputStream = null
+      var tempFile: File = null
+      try {
+        bulkConsumeData = res.getEntity.getContent
+        val fileName = if (localDirectory.isDefined) localDirectory + "/cm-well-file-" + System.currentTimeMillis() + ".nq" else "./temp-cm-well-file-" + System.currentTimeMillis() + ".nq"
+        if (localDirectory.isDefined || !updateMode && bulkLoader) {
+          tempFile = readInputStreamAndFilterMeta(bulkConsumeData, fileName)
+          bulkConsumeData.close()
         }
-      val endTimeBulkConsumeMilis = System.currentTimeMillis()
-      val readInputStreamDuration = endTimeBulkConsumeMilis - startTimeBulkConsumeMillis
-      //blocked until neptune ingester thread takes the message from qeuue, which means it's ready for next bulk.
-      // this happens only when neptune ingester completed processing the previous bulk successfully and persist the position.
-      blockingQueue.put(true)
-      logger.info("Going to ingest bulk to neptune...please wait...")
+        else
+          RDFDataMgr.read(ds, bulkConsumeData, Lang.NQUADS)
+      } catch {
+        case e: Throwable if retryCount > 0 =>
+          bulkConsumeData.close()
+          deleteTempCmwellFiles(new File(".").getCanonicalPath, "temp-cm-well-*.nq")
+          logger.error("Failed to read input stream,", e.getMessage)
+          logger.error("Going to retry, retry count=" + retryCount)
+          Thread.sleep(10000)
+          consumeBulkAndIngest(currentPosition, sourceCluster, neptuneCluster, updateMode, lengthHint, qp, toolStartTime, bulkLoader,
+            proxyHost, proxyPort, automaticUpdateMode, retryCount - 1, s3Directory, retryToolCycle, localDirectory)
+        case e: Throwable if retryCount == 0 =>
+          logger.error("Failed to read input stream from cmwell after retry 5 times..going to shutdown the system")
+          bulkConsumeData.close()
+          deleteTempCmwellFiles(new File(".").getCanonicalPath, "temp-cm-well-*.nq")
+          sys.exit(0)
+      }
       val nextPosition = res.getAllHeaders.find(_.getName == "X-CM-WELL-POSITION").map(_.getValue).getOrElse("")
       val totalInfotons = res.getAllHeaders.find(_.getName == "X-CM-WELL-N").map(_.getValue).getOrElse("")
-      if(!updateMode && bulkLoader){
-        persistDataInS3AndIngestToNeptuneViaLoaderAPI(neptuneCluster, tempFile, nextPosition,
-          readInputStreamDuration, totalInfotons, proxyHost, proxyPort, s3Directory)
-      }else {
-        buildSparqlCommandAndIngestToNeptuneViaSparqlAPI(neptuneCluster, ds, nextPosition, updateMode, readInputStreamDuration, totalInfotons, automaticUpdateMode)
+      val endTimeBulkConsumeMilis = System.currentTimeMillis()
+      val readInputStreamDuration = endTimeBulkConsumeMilis - startTimeBulkConsumeMillis
+      if(localDirectory.isDefined){
+        printBulkStatistics(readInputStreamDuration, totalInfotons.toString)
+        PropertiesStore.persistPosition(nextPosition)
       }
-      currentPosition = nextPosition
-      startTimeBulkConsumeMillis = System.currentTimeMillis()
-      res = CmWellConsumeHandler.bulkConsume(sourceCluster, nextPosition, "nquads", updateMode)
-      logger.info("Cm-well bulk consume http status=" + res.getStatusLine.getStatusCode)
+     else {
+        //blocked until neptune ingester thread takes the message from qeuue, which means it's ready for next bulk.
+        // this happens only when neptune ingester completed processing the previous bulk successfully and persist the position.
+        blockingQueue.put(true)
+        logger.info("Going to ingest bulk to neptune...please wait...")
+        if (!updateMode && bulkLoader) {
+          persistDataInS3AndIngestToNeptuneViaLoaderAPI(neptuneCluster, tempFile, nextPosition,
+            readInputStreamDuration, totalInfotons, proxyHost, proxyPort, s3Directory)
+        } else {
+          buildSparqlCommandAndIngestToNeptuneViaSparqlAPI(neptuneCluster, ds, nextPosition, updateMode, readInputStreamDuration, totalInfotons, automaticUpdateMode)
+        }
+        currentPosition = nextPosition
+        startTimeBulkConsumeMillis = System.currentTimeMillis()
+        res = CmWellConsumeHandler.bulkConsume(sourceCluster, nextPosition, "nquads", updateMode)
+        logger.info("Cm-well bulk consume http status=" + res.getStatusLine.getStatusCode)
+      }
     }
     //Complete to consume data so shutdown the system in case of export to file
     if(localDirectory.isDefined){
@@ -242,6 +245,19 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int){
         sys.exit(0)
     }
   }
+
+
+  private def printBulkStatistics(readInputStreamDuration: Long, totalInfotons: String) = {
+    this.totalInfotons+=totalInfotons.toLong
+    bulkConsumeTotalTime+=readInputStreamDuration
+    val bulkConsume = DurationFormatUtils.formatDurationWords(bulkConsumeTotalTime, true, true)
+    val avgInfotonsPerSec = this.totalInfotons / (bulkConsumeTotalTime / 1000)
+    val summaryLogMsg = "Total Infotons: " + this.totalInfotons.toString.padTo(15, ' ') + "Consume Duration: " + bulkConsume.padTo(25, ' ') +
+       "avg Infotons/sec:" + avgInfotonsPerSec
+    logger.info(summaryLogMsg)
+    print(summaryLogMsg + "\r")
+  }
+
 
   private def printBulkStatistics(readInputStreamDuration: Long, totalInfotons: String, neptuneDurationMilis: Long) = {
     this.totalInfotons+=totalInfotons.toLong
