@@ -321,7 +321,12 @@ abstract class Host(user: String,
 
   def ips = hostIps.toList
 
-  def calculateCpuAmount = command("lscpu", false).get.split('\n').map(_.split(':')).map(a => a(0) -> a(1)).toMap.getOrElse("CPU(s)", "0").trim.toInt
+  def calculateCpuAmount = {
+    if(UtilCommands.isOSX)
+      command("sysctl hw.physicalcpu", false).get.split(":")(1).trim.toInt
+    else
+      command("lscpu", false).get.split('\n').map(_.split(':')).map(a => a(0) -> a(1)).toMap.getOrElse("CPU(s)", "0").trim.toInt
+  }
 
   def getEsSize = esSize
 
