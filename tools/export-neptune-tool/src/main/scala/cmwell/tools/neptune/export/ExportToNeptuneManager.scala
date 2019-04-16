@@ -14,18 +14,12 @@
   */
 package cmwell.tools.neptune.export
 
-import java.io.{FileWriter, _}
-import java.nio.file.{Files, Paths, StandardCopyOption}
+import java.io._
 import java.time.Instant
-import java.util.Collections
 import java.util.concurrent.Executors
 
 import akka.actor.{ActorSystem, Scheduler}
 import cmwell.tools.neptune.export.NeptuneIngester.ConnectException
-import org.apache.commons.io.FileUtils
-import org.apache.commons.io.filefilter.WildcardFileFilter
-import org.apache.commons.lang3.time.DurationFormatUtils
-import org.apache.http.client.methods.CloseableHttpResponse
 import org.apache.jena.query.{Dataset, DatasetFactory}
 import org.apache.jena.riot.{Lang, RDFDataMgr}
 import org.slf4j.LoggerFactory
@@ -44,9 +38,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int){
   val executor = Executors.newFixedThreadPool(ingestConnectionPoolSize)
   implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.fromExecutor(executor)
   protected lazy val logger = LoggerFactory.getLogger("export_tool")
-  var totalInfotons = 0L
-  var bulkConsumeTotalTime = 0L
-  var neptuneTotalTime = 0L
+
 
   import java.util.concurrent.ArrayBlockingQueue
 
@@ -71,6 +63,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int){
         e.printStackTrace()
         executor.shutdown()
         system.terminate()
+        sys.exit(0)
     }
   }
 
@@ -87,9 +80,9 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int){
       var tempFile: File = null
       try {
         bulkConsumeData = res.getEntity.getContent
-        val fileName = if (localDirectory.isDefined) localDirectory + "/cm-well-file-" + System.currentTimeMillis() + ".nq" else "./temp-cm-well-file-" + System.currentTimeMillis() + ".nq"
+        val fileName = localDirectory.fold("./temp-cm-well-file-" + System.currentTimeMillis() + ".nq")(_ + "/cm-well-file-" + PropertiesStore.retrieveStartTime().get + ".nq")
         if (localDirectory.isDefined || !updateMode && bulkLoader) {
-          tempFile = readInputStreamAndFilterMeta(bulkConsumeData, fileName)
+          tempFile = FileHandler.readInputStreamAndFilterMeta(bulkConsumeData, fileName)
           bulkConsumeData.close()
         }
         else
@@ -97,8 +90,9 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int){
       } catch {
         case e: Throwable if retryCount > 0 =>
           bulkConsumeData.close()
-          deleteTempCmwellFiles(new File(".").getCanonicalPath, "temp-cm-well-*.nq")
-          logger.error("Failed to read input stream,", e.getMessage)
+          FileHandler.deleteTempCmwellFiles(new File(".").getCanonicalPath, "temp-cm-well-*.nq")
+          logger.error("Failed to read input stream,", e)
+          e.printStackTrace()
           logger.error("Going to retry, retry count=" + retryCount)
           Thread.sleep(10000)
           consumeBulkAndIngest(currentPosition, sourceCluster, neptuneCluster, updateMode, lengthHint, qp, toolStartTime, bulkLoader,
@@ -106,15 +100,14 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int){
         case e: Throwable if retryCount == 0 =>
           logger.error("Failed to read input stream from cmwell after retry 5 times..going to shutdown the system")
           bulkConsumeData.close()
-          deleteTempCmwellFiles(new File(".").getCanonicalPath, "temp-cm-well-*.nq")
-          sys.exit(0)
+          FileHandler.deleteTempCmwellFiles(new File(".").getCanonicalPath, "temp-cm-well-*.nq")
+          throw e
       }
       val nextPosition = res.getAllHeaders.find(_.getName == "X-CM-WELL-POSITION").map(_.getValue).getOrElse("")
       val totalInfotons = res.getAllHeaders.find(_.getName == "X-CM-WELL-N").map(_.getValue).getOrElse("")
-      val endTimeBulkConsumeMilis = System.currentTimeMillis()
-      val readInputStreamDuration = endTimeBulkConsumeMilis - startTimeBulkConsumeMillis
+      val readInputStreamDuration = System.currentTimeMillis() - startTimeBulkConsumeMillis
       if(localDirectory.isDefined){
-        printBulkStatistics(readInputStreamDuration, totalInfotons.toString)
+        StatisticsPrinter.printBulkStatistics(readInputStreamDuration, totalInfotons.toString)
         PropertiesStore.persistPosition(nextPosition)
       }
      else {
@@ -128,28 +121,34 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int){
         } else {
           buildSparqlCommandAndIngestToNeptuneViaSparqlAPI(neptuneCluster, ds, nextPosition, updateMode, readInputStreamDuration, totalInfotons, automaticUpdateMode)
         }
-        currentPosition = nextPosition
-        startTimeBulkConsumeMillis = System.currentTimeMillis()
-        res = CmWellConsumeHandler.bulkConsume(sourceCluster, nextPosition, "nquads", updateMode)
-        logger.info("Cm-well bulk consume http status=" + res.getStatusLine.getStatusCode)
       }
+      currentPosition = nextPosition
+      startTimeBulkConsumeMillis = System.currentTimeMillis()
+      res = CmWellConsumeHandler.bulkConsume(sourceCluster, nextPosition, "nquads", updateMode)
+      logger.info("Cm-well bulk consume http status=" + res.getStatusLine.getStatusCode)
     }
     //Complete to consume data so shutdown the system in case of export to file
     if(localDirectory.isDefined){
       executor.shutdown()
       system.terminate()
     }else {
-      //This is an automatic update mode
-      val nextPosition = if (!updateMode && !PropertiesStore.isAutomaticUpdateModePersist())
-        CmWellConsumeHandler.retrivePositionFromCreateConsumer(sourceCluster, lengthHint, qp, updateMode, true, Instant.parse(PropertiesStore.retrieveStartTime().get))
-      else currentPosition
-      if (retryToolCycle)
-        println("\nExport from cm-well completed successfully, tool wait till new infotons be inserted to cmwell")
-      logger.info("Export from cm-well completed successfully, no additional data to consume..trying to re-consume in 0.5 minute")
-      Thread.sleep(30000)
-      consumeBulkAndIngest(nextPosition, sourceCluster, neptuneCluster, updateMode = true, lengthHint, qp, toolStartTime, bulkLoader, proxyHost,
-        proxyPort, automaticUpdateMode = true, s3Directory = s3Directory, retryToolCycle = false, localDirectory = localDirectory)
+      handleAutomaticUpdateMode(sourceCluster, neptuneCluster, updateMode, lengthHint, qp, toolStartTime,
+        bulkLoader, proxyHost, proxyPort, s3Directory, retryToolCycle, localDirectory, currentPosition)
     }
+  }
+
+
+  private def handleAutomaticUpdateMode(sourceCluster: String, neptuneCluster: String, updateMode: Boolean, lengthHint: Int, qp: Option[String], toolStartTime: Instant, bulkLoader: Boolean, proxyHost: Option[String], proxyPort: Option[Int], s3Directory: String, retryToolCycle: Boolean, localDirectory: Option[String], currentPosition: String) = {
+    //This is an automatic update mode
+    val nextPosition = if (!updateMode && !PropertiesStore.isAutomaticUpdateModePersist())
+      CmWellConsumeHandler.retrivePositionFromCreateConsumer(sourceCluster, lengthHint, qp, updateMode, true, Instant.parse(PropertiesStore.retrieveStartTime().get))
+    else currentPosition
+    if (retryToolCycle)
+      println("\nExport from cm-well completed successfully, tool wait till new infotons be inserted to cmwell")
+    logger.info("Export from cm-well completed successfully, no additional data to consume..trying to re-consume in 0.5 minute")
+    Thread.sleep(30000)
+    consumeBulkAndIngest(nextPosition, sourceCluster, neptuneCluster, updateMode = true, lengthHint, qp, toolStartTime, bulkLoader, proxyHost,
+      proxyPort, automaticUpdateMode = true, s3Directory = s3Directory, retryToolCycle = false, localDirectory = localDirectory)
   }
 
   def persistDataInS3AndIngestToNeptuneViaLoaderAPI(neptuneCluster: String, tmpfile:File, nextPosition: String,
@@ -168,7 +167,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int){
         val neptuneDurationSec = endTimeMillis - startTimeMillis1
         PropertiesStore.persistPosition(nextPosition)
         logger.info("Bulk has been ingested successfully")
-        printBulkStatistics(readInputStreamDuration, totalInfotons, neptuneDurationSec + s3Duration)
+        StatisticsPrinter.printBulkStatistics(readInputStreamDuration, totalInfotons, neptuneDurationSec + s3Duration)
         blockingQueue.take()
       })
   }
@@ -206,7 +205,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int){
         logger.info("Bulk has been ingested successfully")
         if(!PropertiesStore.isAutomaticUpdateModePersist() && automaticUpdateMode)
           PropertiesStore.persistAutomaticUpdateMode(true)
-        printBulkStatistics(readInputStreamDuration, totalInfotons, neptuneDurationSec)
+        StatisticsPrinter.printBulkStatistics(readInputStreamDuration, totalInfotons, neptuneDurationSec)
         blockingQueue.take()
       })
 
@@ -244,49 +243,6 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int){
         logger.error("Failed to ingest to neptune after retry 3 times..going to shutdown the system")
         sys.exit(0)
     }
-  }
-
-
-  private def printBulkStatistics(readInputStreamDuration: Long, totalInfotons: String) = {
-    this.totalInfotons+=totalInfotons.toLong
-    bulkConsumeTotalTime+=readInputStreamDuration
-    val bulkConsume = DurationFormatUtils.formatDurationWords(bulkConsumeTotalTime, true, true)
-    val avgInfotonsPerSec = this.totalInfotons / (bulkConsumeTotalTime / 1000)
-    val summaryLogMsg = "Total Infotons: " + this.totalInfotons.toString.padTo(15, ' ') + "Consume Duration: " + bulkConsume.padTo(25, ' ') +
-       "avg Infotons/sec:" + avgInfotonsPerSec
-    logger.info(summaryLogMsg)
-    print(summaryLogMsg + "\r")
-  }
-
-
-  private def printBulkStatistics(readInputStreamDuration: Long, totalInfotons: String, neptuneDurationMilis: Long) = {
-    this.totalInfotons+=totalInfotons.toLong
-    neptuneTotalTime+=neptuneDurationMilis
-    val neptunetime = DurationFormatUtils.formatDurationWords(neptuneTotalTime, true, true)
-    bulkConsumeTotalTime+=readInputStreamDuration
-    val bulkConsume = DurationFormatUtils.formatDurationWords(bulkConsumeTotalTime, true, true)
-    val totalTime = bulkConsumeTotalTime + neptuneTotalTime
-    val overallTime = DurationFormatUtils.formatDurationWords(totalTime, true, true)
-    val avgInfotonsPerSec = this.totalInfotons / (totalTime / 1000)
-    val summaryLogMsg = "Total Infotons: " + this.totalInfotons.toString.padTo(15, ' ') + "Consume Duration: " + bulkConsume.padTo(25, ' ') +
-      "Neptune Ingest Duration: " + neptunetime.padTo(25, ' ') + "total time: " + overallTime.padTo(25, ' ') + "avg Infotons/sec:" + avgInfotonsPerSec
-    logger.info(summaryLogMsg)
-    print(summaryLogMsg + "\r")
-  }
-
-  def readInputStreamAndFilterMeta(inputStream:InputStream, fileName:String):File = {
-    val targetFile = new File(fileName)
-    val fw = new FileWriter(targetFile, true)
-    val reader = new BufferedReader(new InputStreamReader(inputStream))
-    reader.lines().filter(line => !line.contains("meta/sys")).iterator.asScala.foreach(line => fw.write(line + "\n"))
-    fw.close()
-    targetFile
-  }
-
-
-  def deleteTempCmwellFiles(directoryName: String, extension: String): Unit = {
-    val directory = new File(directoryName)
-    FileUtils.listFiles(directory, new WildcardFileFilter(extension), null).asScala.foreach(_.delete())
   }
 
 }
