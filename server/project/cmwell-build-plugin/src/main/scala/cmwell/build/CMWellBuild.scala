@@ -16,6 +16,8 @@
 package cmwell.build
 
 import com.github.tkawachi.doctest.DoctestPlugin
+import coursier.cache.Cache
+import coursier.util.Task
 import coursier.{Fetch, Resolve}
 //import org.scalafmt.sbt.ScalafmtPlugin
 import org.scalastyle.sbt.ScalastylePlugin
@@ -189,13 +191,21 @@ object CMWellBuild extends AutoPlugin {
 			url,
 			Map(
 				"MD5" -> (url + ".md5"),
-				"SHA-1" -> (url + ".sha1")),
+				"SHA-1" -> (url + ".sha1"),
+				"SHA-256" -> (url + ".sha256")
+				//SHA-512 is disabled until https://github.com/coursier/coursier/issues/1108 will be fixed
+				//(coursier parser doesn't recognize sha512 hash length, see above issue)
+				//This means that fetching ES currently doesn't have any checksum check!
+				//"SHA-512" -> (url + ".sha512")
+			),
 			Map("sig" -> sig),
 			changing = false,
 			optional = false,
 			None)
 
-		coursier.cache.Cache.default.file(art).run.future.transform {
+		val checksums = Seq(Some("MD5"),Some("SHA-1"),Some("SHA-256"),Some("SHA-512"), None)
+		val fileCache: Cache[Task] = coursier.cache.FileCache().withChecksums(checksums)
+		fileCache.file(art).run.future.transform {
 			case Success(Left(artifactError)) => Failure(new Exception(artifactError.message + ": " + artifactError.describe))
 			case Success(Right(file)) => Success(file)
 			case Failure(exception) => Failure(exception)
