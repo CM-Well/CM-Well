@@ -38,6 +38,8 @@ import scala.io.Source
  * Time: 6:15 PM
  */
 
+// !!!!!!!!!! REMOVE INFOCLONE ANYWHERE IN THIS FILE. TYPE IS DEPRECATED !!!!!!!!!!!
+
 //sealed trait FTSMixin extends BeforeAndAfterAll { this: Suite =>
 //  def ftsService: FTSServiceOps
 //  def refreshAll(): Unit
@@ -135,8 +137,13 @@ trait FTSServiceTestTrait extends BeforeAndAfterAll with LazyLogging{ this: Suit
   def refreshAll() = ftsService.client.admin().indices().prepareRefresh().execute().actionGet()
 
   val testIndexName = "cm_well_p0_0"
-  def getUUID(uuid:String) = ftsService.client.prepareGet(testIndexName,"infoclone", uuid).execute().actionGet()
-
+  def getUUID(uuid:String) = ftsService
+    .client
+    .prepareGet()
+    .setIndex(testIndexName)
+    .setId(uuid)
+    .execute()
+    .actionGet()
 }
 
 class FTSServiceEsSpec extends FlatSpec with Matchers with FTSServiceTestTrait with LazyLogging{
@@ -188,7 +195,7 @@ class FTSServiceEsSpec extends FlatSpec with Matchers with FTSServiceTestTrait w
     val infoton = ObjectInfoton("/fts-test/bulk1/info" + i, "dc_test", Some(System.currentTimeMillis()),
       Map("name" + i -> Set[FieldValue](FString("value" + i), FString("another value" + i))), Some("http"))
     ESIndexRequest(
-      Requests.indexRequest(testIndexName).`type`("infoclone").id(infoton.uuid).create(true)
+      Requests.indexRequest(testIndexName).id(infoton.uuid).create(true)
         .source(JsonSerializerForES.encodeInfoton(infoton), XContentType.JSON),
       None
     )

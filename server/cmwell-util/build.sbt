@@ -30,9 +30,11 @@ libraryDependencies ++= {
     dm("org.apache.jena", "jena-arq")
       .exclude("commons-logging", "commons-logging"),
     dm("org.apache.tika", "tika-parsers")
+      .exclude("javax.ws.rs", "javax.ws.rs-api") //this exclude solves the "packaging.type" error. Use the new jakarta artifact instead.
       .exclude("org.jdom", "jdom")
       .exclude("commons-logging", "commons-logging")
       .exclude("commons-logging", "commons-logging-api"),
+    dm("jakarta.ws.rs","jakarta.ws.rs-api"), //instead of javax.ws.rs-api
     dm("org.codehaus.plexus", "plexus-archiver")
       .exclude("org.codehaus.plexus", "plexus-container-default")
       .exclude("commons-logging", "commons-logging-api")

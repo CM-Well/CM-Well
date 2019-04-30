@@ -330,7 +330,6 @@ case class ElasticsearchConf(clusterName: String,
     val scriptString =
       s"""export PATH=$home/app/java/bin:$home/bin/utils:$PATH
          |export ES_PATH_CONF=$home/conf/$dir/config
-         |export JAVA_HOME=$home/app/java
          |$CHKSTRT
          |$BMSG
          |starter bin/elasticsearch > $home/log/$dir/stdout.log 2> $home/log/$dir/stderr.log &""".stripMargin
@@ -349,7 +348,8 @@ case class ElasticsearchConf(clusterName: String,
       "node-data" -> dataNode.toString,
       "recoverafternodes" -> { if (expectedNodes > 3) expectedNodes - 2 else expectedNodes - 1 }.toString,
       "expectednodes" -> expectedNodes.toString,
-      "hosts" -> seeds.split(',').mkString("", s":$seedPort,", s":$seedPort"),
+      "seed_hosts" -> seeds.split(',').mkString("", s":$seedPort,", s":$seedPort"),
+      "initial_master_nodes" -> seeds.split(',').mkString("", "-master,", "-master"),
       "dir" -> dir,
       "listen_address" -> listenAddress,
       "root_dir" -> home,
@@ -375,7 +375,7 @@ case class ElasticsearchConf(clusterName: String,
 
     val map = getTemplateMap
 
-    val confContent = ResourceBuilder.getResource(s"scripts/templates/${template}", map)
+    val confContent = ResourceBuilder.getResource(s"scripts/templates/$template", map)
 
     val mappingContent = ResourceBuilder.getResource(s"scripts/templates/indices_template_new.json",map)
 

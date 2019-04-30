@@ -11,12 +11,7 @@ gateway:
   recover_after_time: 5m
   expected_nodes: {{expectednodes}}
 
-discovery.zen.ping.unicast:
-  hosts: {{hosts}}
-
 transport.tcp.connect_timeout: 10s
-
-discovery.zen.minimum_master_nodes: {{min_masters}}
 
 network:
   host: {{listen_address}}
@@ -33,3 +28,6 @@ cluster.routing.allocation.awareness.attributes: rack_id
 http.port: {{http_port}}
 
 transport.tcp.port: {{transport_port}}
+
+discovery.seed_hosts: {{seed_hosts}}
+cluster.initial_master_nodes: {{initial_master_nodes}}

@@ -316,7 +316,7 @@ package object collections {
     * scala> import cmwell.util.collections._
     * import cmwell.util.collections._
     *
-    * scala> Unfolder.unfold(Array.newBuilder[Int])(0 → 1){
+    * scala> cmwell.util.collections.Unfolder.unfold(Array.newBuilder[Int])(0 → 1){
     *      |   case (a,b) if a > 1000 ⇒ None
     *      |   case (a,b) ⇒ Some((b→(a+b))→a)
     *      | }
