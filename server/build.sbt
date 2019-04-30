@@ -90,6 +90,7 @@ dependenciesManager in Global := {
   case ("io.circe", art)                                           => "io.circe" %% art % "0.11.1"
   case ("io.dropwizard.metrics",art)                               => "io.dropwizard.metrics" % art % "4.0.5" // make sure this is a compatible version with "nl.grons" metrics dependencies!
   case ("com.jcraft","jsch")                                       => "com.jcraft" % "jsch" % "0.1.55"
+  case ("jakarta.ws.rs","jakarta.ws.rs-api")                       => "jakarta.ws.rs" % "jakarta.ws.rs-api" % "2.1.5"
   case ("joda-time","joda-time")                                   => "joda-time" % "joda-time" % "2.10.1"
   case ("junit","junit")                                           => "junit" % "junit" % "4.12"
   case ("mx4j","mx4j-tools")                                       => "mx4j" % "mx4j-tools" % "3.0.1"
