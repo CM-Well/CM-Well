@@ -17,12 +17,14 @@
 // comment
 
 import java.io.File
+import java.nio.file.Paths
 import java.util.Date
 
 import cmwell.ctrl.client.CtrlClient
 import cmwell.ctrl.hc.{ActiveNodes, ClusterStatus}
 import cmwell.util.http.SimpleHttpClient
 import k.grid.{GridConnection, Grid => AkkaGrid}
+import org.apache.commons.io.FileUtils
 import play.api.libs.json.{JsValue, Json}
 
 import scala.collection.parallel.ParMap
@@ -914,7 +916,6 @@ abstract class Host(user: String,
 
     info("  creating links in app directory")
     createAppLinks(hosts)
-
     rsync(s"./components/mx4j-tools-3.0.1.jar", s"${instDirs.intallationDir}/app/cas/cur/lib/", hosts)
     info("  creating scripts")
     genResources(hosts)
@@ -923,6 +924,11 @@ abstract class Host(user: String,
     info("  linking libs")
     linkLibs(hosts)
     info("finished deploying application")
+  }
+
+   def verifyCasConfigNotChanged = {
+     info("verify that cas yaml config not changed")
+     CassandraConf.checksum
   }
 
   private def createAppLinks(hosts: GenSeq[String]) = {
@@ -1799,6 +1805,7 @@ abstract class Host(user: String,
     checkProduction
     refreshUserState(user, None, hosts)
     purge(hosts)
+    verifyCasConfigNotChanged
     deploy(hosts)
     init(hosts)
     //setElasticsearchUnassignedTimeout()
@@ -2058,7 +2065,7 @@ abstract class Host(user: String,
 
     checkProduction
     refreshUserState(user, None, hosts)
-
+    verifyCasConfigNotChanged
     //checkPreUpgradeStatus(hosts(0))
     val esMasterNode = findEsMasterNode(hosts) match {
       case Some(emn) =>

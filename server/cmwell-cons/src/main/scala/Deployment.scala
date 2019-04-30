@@ -752,6 +752,7 @@ class Deployment(h: Host) {
 
   def createResources(modules: GenSeq[ComponentConf]) {
     modules.toList.foreach(m => make(m))
+
   }
 
   /*

@@ -12,9 +12,20 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+import java.io.{BufferedInputStream, File, IOException}
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
+import java.nio.file.{Files, Path, Paths}
+import java.security.MessageDigest
+
 import cmwell.ctrl.config.Jvms
+import javax.xml.bind.DatatypeConverter
+import org.apache.commons.compress.archivers.ArchiveEntry
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
+import org.apache.commons.io.FileUtils
 
 import scala.collection.GenSeq
+import scala.io.Source
 
 /**
   * Created by michael on 8/27/14.
@@ -267,6 +278,7 @@ case class CassandraConf(home: String,
       )
     )
 
+
 //    val log4jContent = templateToFile(s"scripts/templates/log4j-server.properties",
 //      Map("file_path" -> s"$home/log/$dir/system.log"))
 
@@ -293,6 +305,12 @@ case class CassandraConf(home: String,
       ConfFile("zstore-cql-init-cluster", cqlInit3)
     )
   }
+}
+
+object CassandraConf{
+  def checksum  =
+    UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "conf/cassandra.yaml", "13EDA21C959FE5985A17385A64DE5817")
+
 }
 
 case class ElasticsearchConf(clusterName: String,
