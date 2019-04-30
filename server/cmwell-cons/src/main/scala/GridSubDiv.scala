@@ -194,7 +194,7 @@ case class GridSubDiv(user: String,
         yield {
           ElasticsearchConf(
             clusterName = clusterName,
-            nodeName = host,
+            nodeName = s"$host-$i",
             masterNode = false,
             dataNode = true,
             expectedNodes = getEsSize,

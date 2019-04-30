@@ -47,8 +47,9 @@ import org.elasticsearch.search.aggregations._
 import org.elasticsearch.search.aggregations.bucket.histogram.Histogram
 import org.elasticsearch.search.aggregations.bucket.significant.InternalSignificantTerms
 import org.elasticsearch.search.aggregations.bucket.terms.InternalTerms
-import org.elasticsearch.search.aggregations.metrics.cardinality.InternalCardinality
-import org.elasticsearch.search.aggregations.metrics.stats.InternalStats
+import org.elasticsearch.search.aggregations.metrics.{InternalCardinality, InternalStats}
+//import org.elasticsearch.search.aggregations.metrics.cardinality.InternalCardinality
+//import org.elasticsearch.search.aggregations.metrics.stats.InternalStats
 import org.elasticsearch.search.sort.SortBuilders._
 import org.elasticsearch.search.sort.SortOrder
 import org.elasticsearch.transport.client.PreBuiltTransportClient
@@ -225,7 +226,6 @@ class FTSService(config: Config) extends NsSplitter{
 
     val request = client
       .prepareSearch(s"${partition}_all")
-      .setTypes("infoclone")
       .storedFields(fields:_*)
       .setFrom(paginationParams.offset)
       .setSize(paginationParams.length)
@@ -244,7 +244,7 @@ class FTSService(config: Config) extends NsSplitter{
 
     resFuture.map { response =>
       FTSSearchResponse(
-        response.getHits.getTotalHits,
+        response.getHits.getTotalHits.value,
         paginationParams.offset,
         response.getHits.getHits.size,
         esResponseToInfotons(response, sortParams eq NullSortParam),
@@ -335,7 +335,7 @@ class FTSService(config: Config) extends NsSplitter{
       fieldsFromSource = Array.empty
     )(esResponseToThinInfotons).map {
       case (response, thinSeq, searchQueryStr) =>
-        FTSThinSearchResponse(response.getHits.getTotalHits,
+        FTSThinSearchResponse(response.getHits.getTotalHits.value,
                               paginationParams.offset,
                               response.getHits.getHits.length,
                               thinSeq,
@@ -391,7 +391,6 @@ class FTSService(config: Config) extends NsSplitter{
 
     val requestTmp = client
       .prepareSearch(s"${partition}_all")
-      .setTypes("infoclone")
       .setFrom(paginationParams.offset)
       .setSize(paginationParams.length)
 
@@ -607,13 +606,17 @@ class FTSService(config: Config) extends NsSplitter{
   }
 
   def delete(uuid:String, indexName:String)(implicit executionContext:ExecutionContext):Future[Boolean] = {
-    injectFuture[DeleteResponse](client.prepareDelete(indexName, "infoclone", uuid).execute(_)).map{ res =>
+    val deleteRequestBuilder = client
+      .prepareDelete()
+      .setIndex(indexName)
+      .setId(uuid)
+    injectFuture[DeleteResponse](deleteRequestBuilder.execute).map { res =>
       res.getResult == Result.DELETED
     }
   }
 
   def delete(uuid:String)(implicit executionContext:ExecutionContext):Future[Boolean] = {
-    injectFuture[SearchResponse](client.prepareSearch().setQuery(idsQuery("infoclone").addIds(uuid)).execute(_)).collect[String]{
+    injectFuture[SearchResponse](client.prepareSearch().setQuery(idsQuery().addIds(uuid)).execute(_)).collect[String]{
       case res if res.getHits.getHits.nonEmpty => res.getHits.getHits.head.getIndex
     }.flatMap{ indexName =>
       delete(uuid, indexName)
@@ -632,7 +635,6 @@ class FTSService(config: Config) extends NsSplitter{
       "content.mimeType" :: "link.to" :: "link.kind" :: "system.dc" :: "system.indexTime" :: "system.quad" :: "system.current" :: Nil
 
     val request = clients.getOrElse(nodeId,client).prepareSearch(index)
-      .setTypes("infoclone")
       .storedFields(fields:_*)
       .setScroll(TimeValue.timeValueSeconds(scrollTTL))
       .setSize(length)
@@ -651,7 +653,7 @@ class FTSService(config: Config) extends NsSplitter{
     val searchQueryStr = if (debugInfo) Some(request.toString) else None
 
     scrollResponseFuture.map { scrollResponse =>
-      val ftsResponse = FTSScrollResponse(scrollResponse.getHits.totalHits,
+      val ftsResponse = FTSScrollResponse(scrollResponse.getHits.getTotalHits.value,
         scrollResponse.getScrollId,
         esResponseToInfotons(scrollResponse, includeScore = false),
         Some(nodeId))
@@ -727,7 +729,6 @@ class FTSService(config: Config) extends NsSplitter{
     val indices = if (indexNames.nonEmpty) indexNames else Seq(s"${partition}_all")
     val request = client
       .prepareSearch(indices: _*)
-      .setTypes("infoclone")
       .storedFields(fields: _*)
       .setScroll(TimeValue.timeValueSeconds(scrollTTL))
       .setSize(paginationParams.length)
@@ -742,7 +743,7 @@ class FTSService(config: Config) extends NsSplitter{
     val scrollResponseFuture = injectFuture[SearchResponse](request.execute)
     val searchQueryStr = if (debugInfo) Some(request.toString) else None
     scrollResponseFuture.map { scrollResponse =>
-      val ftsResponse = FTSScrollResponse(scrollResponse.getHits.totalHits,
+      val ftsResponse = FTSScrollResponse(scrollResponse.getHits.getTotalHits.value,
         scrollResponse.getScrollId,
         esResponseToInfotons(scrollResponse, includeScore = false))
       FTSStartScrollResponse(ftsResponse, searchQueryStr = searchQueryStr)
@@ -804,7 +805,7 @@ class FTSService(config: Config) extends NsSplitter{
             logger.warn(s"scroll($scrollId, $scrollTTL, $nodeId) resulted with status[$status] != 200: $scrollResponse")
 
           p.complete(Try(esResponseToInfotons(scrollResponse, includeScore = false)).map { infotons =>
-            FTSScrollResponse(scrollResponse.getHits.getTotalHits, scrollResponse.getScrollId, infotons, searchQueryStr = searchQueryStr)
+            FTSScrollResponse(scrollResponse.getHits.getTotalHits.value, scrollResponse.getScrollId, infotons, searchQueryStr = searchQueryStr)
           })
         }
       }
@@ -931,7 +932,7 @@ class FTSService(config: Config) extends NsSplitter{
                 partition: String = defaultPartition, debugInfo: Boolean = false)
                (implicit executionContext:ExecutionContext) : Future[AggregationsResponse] = {
 
-    val request = client.prepareSearch(s"${partition}_all").setTypes("infoclone").setFrom(paginationParams.offset).setSize(paginationParams.length)
+    val request = client.prepareSearch(s"${partition}_all").setFrom(paginationParams.offset).setSize(paginationParams.length)
     logRequest("aggregate", pathFilter.toString, fieldFilter.toString)
 
     if (pathFilter.isDefined || fieldFilter.nonEmpty || datesFilter.isDefined) {
@@ -1106,7 +1107,7 @@ class FTSService(config: Config) extends NsSplitter{
     // since in ES scroll API, size is per shard, we need to convert our paginationParams.length parameter to be per shard
     // We need to find how many shards are relevant for this query. For that we'll issue a fake search request
     // TODO: fix should add indexTime, so why not pull it now?
-    val fakeRequest = client.prepareSearch(alias).setTypes("infoclone").storedFields("system.uuid","system.lastModified")
+    val fakeRequest = client.prepareSearch(alias).storedFields("system.uuid","system.lastModified")
 
     fakeRequest.setQuery(QueryBuilders.matchQuery("system.path", path))
 
@@ -1118,7 +1119,6 @@ class FTSService(config: Config) extends NsSplitter{
 
       val request = client
         .prepareSearch(alias)
-        .setTypes("infoclone")
         .storedFields("system.uuid","system.lastModified")
         .setScroll(TimeValue.timeValueSeconds(scrollTTL))
         .setSize(infotonsPerShard)
@@ -1129,7 +1129,7 @@ class FTSService(config: Config) extends NsSplitter{
       logRequest("rInfo", path.toString, "", "also sent fake request")
 
       scrollResponseFuture.map { scrollResponse =>
-        if (scrollResponse.getHits.totalHits == 0) Source.empty[Vector[(Long, String, String)]]
+        if (scrollResponse.getHits.getTotalHits.value == 0) Source.empty[Vector[(Long, String, String)]]
         else
           Source.unfoldAsync(scrollResponse.getScrollId) { scrollID =>
             injectFuture[SearchResponse]({ al =>
@@ -1168,7 +1168,6 @@ class FTSService(config: Config) extends NsSplitter{
 
     val request = client
       .prepareSearch(s"${partition}_all")
-      .setTypes("infoclone")
       .storedFields("system.uuid")
       .setFrom(paginationParams.offset).setSize(paginationParams.length)
 
@@ -1189,7 +1188,7 @@ class FTSService(config: Config) extends NsSplitter{
   def uinfo(uuid: String,
             partition: String = defaultPartition)(implicit executionContext: ExecutionContext): Future[Vector[(String, Long, String)]] = {
 
-    val request = client.prepareSearch(s"${partition}_all").setTypes("infoclone").setFetchSource(true).setVersion(true)
+    val request = client.prepareSearch(s"${partition}_all").setFetchSource(true).setVersion(true)
     val qb: QueryBuilder = QueryBuilders.matchQuery("system.uuid", uuid)
     request.setQuery(qb)
 
@@ -1494,7 +1493,11 @@ class FTSService(config: Config) extends NsSplitter{
   def extractSource[T : EsSourceExtractor](uuid: String, index: String)
                             (implicit executionContext:ExecutionContext) : Future[(T,Long)] = {
     logRequest("extractSource", s"uuid: $uuid")
-    injectFuture[GetResponse](client.prepareGet(index, "infoclone", uuid).execute(_)).map{ hit =>
+    val getRequestBuilder = client
+      .prepareGet()
+      .setIndex(index)
+      .setId(uuid)
+    injectFuture[GetResponse](getRequestBuilder.execute).map { hit =>
       implicitly[EsSourceExtractor[T]].extract(hit) -> hit.getVersion
     }
   }
@@ -1521,14 +1524,17 @@ class FTSService(config: Config) extends NsSplitter{
     val f = injectFuture[ClusterStateResponse](req.execute)
     val csf: Future[ClusterState] = f.map(_.getState)
     csf.map{ _.getMetaData.asScala.filter( _.getIndex().getName.startsWith("cm")).flatMap{imd =>
-      val nested = Some(imd.mapping("infoclone").getSourceAsMap.get("properties"))
+      val nested = Some(imd.mapping.getSourceAsMap.get("properties"))
       val flds = nested.extract("fields").extract("properties")
       flds.extractOneValueBy[String]("type").map { case (k,v) => s"$k:$v" }
     }.toSet}
   }
 
   def purge(uuid: String)(implicit executionContext: ExecutionContext): Future[DeleteResponse] = {
-    val deleteRequest = client.prepareDelete("cm_well_all", "infoclone", uuid)
+    val deleteRequest = client
+      .prepareDelete()
+      .setIndex("cm_well_all")
+      .setId(uuid)
     injectFuture[DeleteResponse](deleteRequest.execute)
   }
 
@@ -1542,9 +1548,11 @@ class FTSService(config: Config) extends NsSplitter{
       val bulkRequest = client.prepareBulk()
 
       uuidsAtIndexes.foreach { case (uuid, index) =>
-        bulkRequest.add(client
-          .prepareDelete(index, "infoclone", uuid)
-        )
+        val deleteRequestBuilder = client
+          .prepareDelete()
+          .setIndex(index)
+          .setId(uuid)
+        bulkRequest.add(deleteRequestBuilder)
       }
 
       logRequest("purgeByUuidsAndIndexes", s"uuidsAtIndexes: ${uuidsAtIndexes.mkString(",")}")
@@ -1557,20 +1565,25 @@ class FTSService(config: Config) extends NsSplitter{
     assert(infotons.size > 0, "infotons to delete must not be empty")
     val bulkRequest = client.prepareBulk()
     infotons.foreach { infoton =>
-      bulkRequest.add(
-        client.prepareDelete(infoton.indexName, "infoclone", infoton.uuid)
-      )
+      val deleteRequestBuilder = client
+        .prepareDelete()
+        .setIndex(infoton.indexName)
+        .setId(infoton.uuid)
+      bulkRequest.add(deleteRequestBuilder)
     }
 
     logRequest("deleteInfotons", s"infotons path: ${infotons.map(_.path).mkString(", ")}")
-    injectFuture[BulkResponse](bulkRequest.execute(_)).map(_ => true)
+    injectFuture[BulkResponse](bulkRequest.execute).map(_ => true)
   }
 
   def get(uuid: String
     , indexName: String
     , partition: String = defaultPartition)(implicit executionContext: ExecutionContext): Future[Option[(FTSThinInfoton, Boolean)]] = {
     val fields = Seq("path", "uuid", "lastModified", "indexTime", "current").map(f => s"system.$f")
-    val req = client.prepareGet(indexName, "infoclone", uuid).setStoredFields(fields: _*)
+    val req = client.prepareGet()
+      .setIndex(indexName)
+      .setId(uuid)
+      .setStoredFields(fields: _*)
     injectFuture[GetResponse](req.execute).map { gr =>
       if (gr.isExists) {
         val isCurrent = gr.getField("system.current").getValue[Boolean]
@@ -1588,7 +1601,6 @@ class FTSService(config: Config) extends NsSplitter{
                                    , fieldFilters: Option[FieldFilter])(implicit executionContext: ExecutionContext): Future[Option[Long]] = {
     val request = client
       .prepareSearch(s"${partition}_all")
-      .setTypes("infoclone")
       .storedFields("system.indexTime")
       .setSize(1)
       .addSort("system.indexTime", SortOrder.DESC)
@@ -1619,7 +1631,11 @@ class FTSService(config: Config) extends NsSplitter{
         uuid <- uuids
         index <- indices
       } {
-        bulkRequest.add(client.prepareDelete(index, "infoclone", uuid))
+        val deleteRequestBuilder = client
+          .prepareDelete()
+          .setIndex(index)
+          .setId(uuid)
+        bulkRequest.add(deleteRequestBuilder)
       }
       logRequest("purgeByUuidsFromAllIndexes", s"uuids: ${uuids.mkString(",")}")
 

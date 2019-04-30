@@ -280,7 +280,7 @@ object CrawlerStream extends LazyLogging {
     }
 
     def setCurrentFalse(uuid: String, indexName: String, lclzdCmd: LocalizedCommand, details: String): Future[Unit] = {
-      val updateRequest = ESIndexRequest(new UpdateRequest(indexName, "infoclone", uuid).
+      val updateRequest = ESIndexRequest(new UpdateRequest(indexName, uuid).
         doc(s"""{"system":{"current": false}}""", XContentType.JSON).asInstanceOf[DocWriteRequest[_]], None)
 
       val isOk = (bulkIndexResult: SuccessfulBulkIndexResult) => bulkIndexResult.failed.isEmpty && bulkIndexResult.successful.nonEmpty

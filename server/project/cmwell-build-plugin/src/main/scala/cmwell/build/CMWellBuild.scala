@@ -170,8 +170,8 @@ object CMWellBuild extends AutoPlugin {
 	}
 
 	def fetchElasticSearch(version: String)(implicit ec: ExecutionContext): Future[(String, File)] = {
-		val ext = "zip"
-		val fileName = s"elasticsearch-oss-$version.$ext"
+		val ext = "tar.gz"
+		val fileName = s"elasticsearch-oss-$version-linux-x86_64.$ext"
 		val url = s"https://artifacts.elastic.co/downloads/elasticsearch/$fileName"
 		fetchArtifact(url).map(fileName -> _)
 	}

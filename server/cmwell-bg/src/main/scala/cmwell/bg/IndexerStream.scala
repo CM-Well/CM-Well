@@ -252,7 +252,6 @@ class IndexerStream(partition: Int,
                 val indexRequest: DocWriteRequest[_] =
                   Requests
                     .indexRequest(indexName)
-                    .`type`("infoclone")
                     .id(infoton.uuid)
                     .create(true)
                     .source(serializedInfoton, XContentType.JSON)
@@ -330,7 +329,7 @@ class IndexerStream(partition: Int,
                     logger.debug(s"creating es actions for indexExistingInfotonCommand: $ieic")
                     indexExistingCommandCounter += 1
                     val updateRequest =
-                      new UpdateRequest(indexName, "infoclone", uuid)
+                      new UpdateRequest(indexName, uuid)
                         .doc(s"""{"system":{"current": false}}""", XContentType.JSON)
                         .asInstanceOf[DocWriteRequest[_]]
                     Success(bgMessage.copy(message = (InfoAction(updateRequest, weight, None), ieic.asInstanceOf[IndexCommand])))

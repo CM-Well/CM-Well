@@ -578,7 +578,7 @@ class TimeBasedAccumulatedNsCache private (private[this] var mainCache: Map[NsID
             case (_, tryQuadruple) => tryQuadruple.toOption
           }
 
-          val shouldContinue = sr.getHits.totalHits > hits.length && ko.isEmpty
+          val shouldContinue = sr.getHits.getTotalHits.value > hits.length && ko.isEmpty
           val err: Throwable = {
             if (ko.nonEmpty) {
               val errors = ko.collect {
