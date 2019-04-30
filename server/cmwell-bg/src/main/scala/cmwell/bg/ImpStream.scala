@@ -804,7 +804,7 @@ class ImpStream(partition: Int,
                       infoton
                   val serializedInfoton = JsonSerializerForES.encodeInfoton(infotonWithUpdatedIndexTime, isCurrent)
                   (ESIndexRequest(
-                    Requests.indexRequest(indexName).`type`("infoclone").id(infoton.uuid).create(true)
+                    Requests.indexRequest(indexName).id(infoton.uuid).create(true)
                       .source(serializedInfoton, XContentType.JSON),
                     indexTime
                   ), infotonWithUpdatedIndexTime.weight)
@@ -821,7 +821,7 @@ class ImpStream(partition: Int,
               //count it for metrics
                 bGMetrics.indexExistingCommandCounter += 1
               List((ESIndexRequest(
-                  new UpdateRequest(indexName, "infoclone", uuid).doc(s"""{"system":{"current": false}}""", XContentType.JSON),
+                  new UpdateRequest(indexName, uuid).doc(s"""{"system":{"current": false}}""", XContentType.JSON),
                 None
               ), weight))
             case _ => ???

@@ -396,10 +396,10 @@ case class ElasticsearchProps(h: Host)
   override def upgradeMethod: UpgradeMethod = PreUpgrade
 
 
-  override def getUnpackedName(packageName: String, location: String): Option[String] = Some(getZipResName(packageName, location))
+  override def getUnpackedName(packageName: String, location: String): Option[String] = Some(getTarResName(packageName, location))
 
   def targetLocation = "app/es"
-  def unpackCommand : Option[String] = Some("unzip")
+  def unpackCommand : Option[String] = Some("tar -xf")
   def symLinkName : Option[String] = Some("cur")
 
   def start(hosts: GenSeq[String]): Unit = {
