@@ -14,10 +14,5 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-core" % "1.0.1",
   "net.liftweb" %% "lift-json" % "3.3.0",
   "com.amazonaws" % "aws-java-sdk-s3" % "1.11.483" excludeAll ExclusionRule(organization = "commons-logging"),
-  "net.liftweb" %% "lift-json" % "3.3.0",
-  "io.circe" %% "circe-yaml" % "0.8.0",
-  "org.yaml" % "snakeyaml" % "1.8",
-  "com.google.guava" % "guava" % "12.0"
-  //"org.apache.commons" % "commons-compress" % "1.5"
-
+  "net.liftweb" %% "lift-json" % "3.3.0"
 )

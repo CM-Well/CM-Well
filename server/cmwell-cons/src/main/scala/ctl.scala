@@ -17,14 +17,12 @@
 // comment
 
 import java.io.File
-import java.nio.file.Paths
 import java.util.Date
 
 import cmwell.ctrl.client.CtrlClient
 import cmwell.ctrl.hc.{ActiveNodes, ClusterStatus}
 import cmwell.util.http.SimpleHttpClient
 import k.grid.{GridConnection, Grid => AkkaGrid}
-import org.apache.commons.io.FileUtils
 import play.api.libs.json.{JsValue, Json}
 
 import scala.collection.parallel.ParMap
