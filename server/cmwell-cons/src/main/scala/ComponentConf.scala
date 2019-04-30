@@ -480,14 +480,13 @@ case class ZookeeperConf(home: String, clusterName: String, servers: Seq[String]
     Map(
       "dataDir" -> s"$home/data/$dir",
       "servers" -> genServersStr,
-      "zookeeperLogDir" -> s"$home/log/$dir",
-      "myId" -> (servers.indexOf(hostIp) + 1).toString
+      "zookeeperLogDir" -> s"$home/log/$dir"
     )
 
   }
 
   def getNodeTemplateMap: Map[String, String] = {
-    Map.empty[String, String]
+    Map("myId" -> (servers.indexOf(hostIp) + 1).toString)
   }
 
   def mkConfig: List[ConfFile] = {
