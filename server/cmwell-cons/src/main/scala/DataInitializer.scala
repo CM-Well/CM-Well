@@ -147,6 +147,21 @@ class DataInitializer(h: Host, jwt: String, rootDigest: String, rootDigest2: Str
     )
   }
 
+  def uploadconfigurationData(lb : scala.collection.mutable.ListBuffer[String]): Unit = withTry("upload configuration data") {
+
+    awaitSeq(
+      lb.sliding(chunkSize, chunkSize)
+        .map { l =>
+          httpPost(s"http://${h.ips.head}:9000/_in",
+            l.mkString("").replace("\n", "\\n"),
+            NoType,
+            TextPlain,
+            Seq("format" -> "ntriples"))
+        }
+        .toSeq
+    )
+  }
+
   def uploadSampleData(): Unit = withTry("upload sample data") {
     await(
       httpPost(s"http://${h.ips.head}:9000/_in",
