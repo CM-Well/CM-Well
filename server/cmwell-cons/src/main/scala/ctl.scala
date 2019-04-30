@@ -1575,6 +1575,8 @@ abstract class Host(user: String,
     info("  starting web service")
     startWebservice(hosts)
     uploadInitialContent(hosts(0))
+    uploadConfigurationContent(hosts(0))
+
     info("  starting dc controller")
     startDc(hosts)
 
@@ -1601,6 +1603,34 @@ abstract class Host(user: String,
     dataInitializer.uploadBasicUserInfotons(host)
     info("  updating version history")
     dataInitializer.logVersionUpgrade(host)
+  }
+
+  def uploadConfigurationContent(host: String = ips(0)): Unit = {
+
+    def createNtriple(component: String, key: String, value: String): String = {
+      s"""<cmwell://meta/configuration> <cmwell://meta/sys/conf/$component> "$key=$value" . """
+    }
+
+    checkProduction
+    Try(WebServiceLock().waitForModule(host, 1))
+
+    info("  waiting for ws...")
+    dataInitializer.waitForWs()
+
+    val lb = new scala.collection.mutable.ListBuffer[String]()
+
+    val componentConf = mkScripts(ips.par)
+    componentConf.foreach{ comp =>
+      val componentName = comp.getComponentName
+      val templateMap = comp.getClusterTemplateMap
+      if (componentName != "") {
+        val componentMap = templateMap.map { case (key, value) => createNtriple(componentName, key, value) }.mkString(" ")
+        lb.append(componentMap)
+      }
+    }
+
+    dataInitializer.uploadconfigurationData(lb)
+
   }
 
   def initCassandra: Unit = initCassandra()

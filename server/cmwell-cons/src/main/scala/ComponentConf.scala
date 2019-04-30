@@ -74,26 +74,17 @@ abstract class ComponentConf(var host: String,
 
   class IllegalFileException(msg: String) extends Exception(msg) {}
 
-  /*def buildClasspathFromDirJars(dir: java.io.File): String = buildClasspathFromDirJars(dir, _ => true)
-
-  def buildClasspathFromDirJars(dir: java.io.File, jarFilter: (String) => Boolean): String = {
-    if(!dir.exists) throw new IllegalFileException("Dir " + dir.getAbsolutePath + " was not found.")
-    else if(!dir.isDirectory) throw new IllegalFileException("File " + dir.getAbsolutePath + " is not a directory.")
-
-    dir.getAbsolutePath + "/" + dir.list.filter(_.endsWith(".jar")).filter(jarFilter(_)).mkString(":" + dir.getAbsolutePath + "/")
-  }*/
-
   def sleepScript = "sleep ${1:-0}"
 
+  def getTemplateMap: Map[String, String] = getClusterTemplateMap ++ getNodeTemplateMap
+
+  def getClusterTemplateMap: Map[String, String]
+
+  def getNodeTemplateMap: Map[String, String]
+
+  def getComponentName: String
+
   def mkScript: ConfFile
-
-//  def templateToFile(src: String, valueMap: Map[String, String]): String = {
-//    val st = scala.io.Source.fromFile(src,"UTF-8").mkString
-//    replaceTemplates(st, valueMap)
-//  }
-
-//  def replaceTemplates(text: String, templates: Map[String, String]): String =
-//    """\{\{([^{}]*)\}\}""".r replaceSomeIn ( text,  { case scala.util.matching.Regex.Groups(name) => templates get name } )
 
   def mkConfig: List[ConfFile]
 
@@ -124,8 +115,9 @@ case class CassandraConf(home: String,
     extends ComponentConf(hostIp, s"$home/app/cas/cur", sName, s"$home/conf/$dir", "cassandra.yaml", index) {
   override def getPsIdentifier = s"/log/cas${getIndexTxt}/"
 
+  override def getComponentName: String = "Cassandra"
+
   override def mkScript: ConfFile = {
-    //import scala.math._
 
     def getJarAbsPath(dir: java.io.File, prefix: String): String = {
       if (!dir.exists) throw new IllegalFileException("Dir " + dir.getAbsolutePath + " was not found.")
@@ -245,44 +237,50 @@ case class CassandraConf(home: String,
     ConfFile(sName, scriptString, true)
   }
 
-  override def mkConfig: List[ConfFile] = {
-    val confContent = ResourceBuilder.getResource(
-      s"scripts/templates/${template}",
-      Map(
-        "clustername" -> clusterName,
-        "seeds" -> seeds,
-        "listen_address" -> listenAddress,
-        "rpc_address" -> rpcAddress,
-        "ccl_dir" -> ccl_dir,
-        "dir" -> dir,
-        "root_dir" -> home,
-        "endpoint_snitch" -> snitchType,
-        "row_cache_size" -> rowCacheSize.toString,
-        "cas_data_dirs" -> casDataDirs.map(dir=> s"$home/data/$dir/data").mkString("\n    - "),
-        "concurrent_reads" -> (16 * casDataDirs.size).toString,
-        "concurrent_writes" ->  (8 * Math.max(1, numOfCores / 2)).toString,
-        "concurrent_counter_writes" -> (16 * casDataDirs.size).toString,
-        "disk_optimization_strategy" -> diskOptimizationStrategy,
-        "concurrent_compactors" -> (if (diskOptimizationStrategy == "SSD") Math.max(1, numOfCores / 2) else 1).toString
-      )
+  def getClusterTemplateMap: Map[String, String] = {
+    Map("clustername" -> clusterName,
+      "ccl_dir" -> ccl_dir,
+      "dir" -> dir,
+      "root_dir" -> home,
+      "endpoint_snitch" -> snitchType,
+      "cas_data_dirs" -> casDataDirs.map(dir=> s"$home/data/$dir/data").mkString("\n    - "),
+      "concurrent_reads" -> (16 * casDataDirs.size).toString,
+      "concurrent_writes" ->  (8 * Math.max(1, numOfCores / 2)).toString,
+      "concurrent_counter_writes" -> (16 * casDataDirs.size).toString,
+      "disk_optimization_strategy" -> diskOptimizationStrategy,
+      "concurrent_compactors" -> (if (diskOptimizationStrategy == "SSD") Math.max(1, numOfCores / 2) else 1).toString,
+      "replication_factor" -> replicationFactor.toString,
+      "durable_writes" -> casUseCommitLog.toString,
+      "replication_factor" -> replicationFactor.toString,
+      "home" -> home
     )
+  }
 
-//    val log4jContent = templateToFile(s"scripts/templates/log4j-server.properties",
-//      Map("file_path" -> s"$home/log/$dir/system.log"))
+  def getNodeTemplateMap: Map[String, String] = {
+    Map("rack_id" -> rs.getRackId(this),
+      "host" -> hostIp,
+      "seeds" -> seeds,
+      "listen_address" -> listenAddress,
+      "rpc_address" -> rpcAddress,
+      "row_cache_size" -> rowCacheSize.toString)
+  }
+
+
+  def mkConfig: List[ConfFile] = {
+
+    val map = getTemplateMap
+
+    val confContent = ResourceBuilder.getResource(s"scripts/templates/${template}", map)
 
     val logBackContent = ResourceBuilder.getResource(s"scripts/templates/logback-cassandra.xml", Map.empty)
 
-    val rackConfContent =
-      ResourceBuilder.getResource("scripts/templates/cassandra-rackdc.properties", Map("rack_id" -> rs.getRackId(this)))
+    val rackConfContent = ResourceBuilder.getResource("scripts/templates/cassandra-rackdc.properties", map)
 
-    val cqlInit2 = ResourceBuilder.getResource("scripts/templates/cassandra-cql-init-cluster-new",
-                                               Map("replication_factor" -> replicationFactor.toString, "durable_writes" -> casUseCommitLog.toString))
+    val cqlInit2 = ResourceBuilder.getResource("scripts/templates/cassandra-cql-init-cluster-new", map)
 
-    val cqlInit3 = ResourceBuilder.getResource("scripts/templates/zstore-cql-init-cluster",
-                                               Map("replication_factor" -> replicationFactor.toString))
+    val cqlInit3 = ResourceBuilder.getResource("scripts/templates/zstore-cql-init-cluster", map)
 
-    val cassandraStatus = ResourceBuilder.getResource("scripts/templates/cassandra-status-viewer-template",
-                                                      Map("home" -> home, "host" -> hostIp))
+    val cassandraStatus = ResourceBuilder.getResource("scripts/templates/cassandra-status-viewer-template", map)
 
     List(
       ConfFile("cassandra.yaml", confContent, false),
@@ -324,6 +322,9 @@ case class ElasticsearchConf(clusterName: String,
     else
       s"PsIdElasticDataNode$getIndexTxt"
   }
+
+  override def getComponentName: String = "Elasticsearch"
+
   override def mkScript: ConfFile = {
 
     val scriptString =
@@ -337,14 +338,13 @@ case class ElasticsearchConf(clusterName: String,
     ConfFile(sName, scriptString, true)
   }
 
-  override def mkConfig: List[ConfFile] = {
+  def getClusterTemplateMap: Map[String, String] = {
     val httpHost = if(masterNode) s"http.host: $host" else ""
     val httpPort = if(masterNode) 9200 else PortManagers.es.httpPortManager.getPort(index)
     val transportPort = if(masterNode) 9300 else PortManagers.es.transportPortManager.getPort(index)
 
-    val m = Map[String, String](
+    Map(
       "clustername" -> clusterName,
-      "nodename" -> nodeName,
       "node-master" -> masterNode.toString,
       "node-data" -> dataNode.toString,
       "recoverafternodes" -> { if (expectedNodes > 3) expectedNodes - 2 else expectedNodes - 1 }.toString,
@@ -353,39 +353,48 @@ case class ElasticsearchConf(clusterName: String,
       "dir" -> dir,
       "listen_address" -> listenAddress,
       "root_dir" -> home,
-      "rack_id" -> rs.getRackId(this),
       "http_host" -> httpHost,
       "min_masters" -> (Math.round(masterNodes / 2) + 1).toString,
       "http_port" -> httpPort.toString,
       "transport_port" -> transportPort.toString,
-      "num_of_shards" -> expectedNodes.toString,
-      "num_of_replicas" -> { if (expectedNodes > 2) 2 else 0 }.toString
+      "number_of_shards" -> Math.min(expectedNodes, 10).toString,
+      "number_of_replicas" -> numberOfReplicas.toString
     )
 
-    val confContent = ResourceBuilder.getResource(s"scripts/templates/${template}", m)
+  }
 
-    val m2 = Map[String, String]("number_of_shards" -> Math.min(expectedNodes, 10).toString,
-                                 "number_of_replicas" -> numberOfReplicas.toString)
-    val mappingContent = ResourceBuilder.getResource(s"scripts/templates/indices_template_new.json",m2)
+  def getNodeTemplateMap: Map[String, String] = {
+    Map("rack_id" -> rs.getRackId(this),
+      "ps_id" -> getPsIdentifier,
+      "es_ms" -> s"${resourceManager.mxms}",
+      "es_mx" -> s"${resourceManager.mxmx}",
+      "nodename" -> nodeName)
+  }
+
+  def mkConfig: List[ConfFile] = {
+
+    val map = getTemplateMap
+
+    val confContent = ResourceBuilder.getResource(s"scripts/templates/${template}", map)
+
+    val mappingContent = ResourceBuilder.getResource(s"scripts/templates/indices_template_new.json",map)
 
     val loggerConf = ResourceBuilder.getResource("scripts/templates/es-log4j2.properties", Map.empty[String, String])
 
-    val m3 = Map[String, String](
-      "ps_id" -> getPsIdentifier,
-      "es_ms" -> s"${resourceManager.mxms}",
-      "es_mx" -> s"${resourceManager.mxmx}"
-    )
-    val jvmOpts = ResourceBuilder.getResource("scripts/templates/es-jvm.options", m3)
+    val jvmOpts = ResourceBuilder.getResource("scripts/templates/es-jvm.options", map)
 
     List(ConfFile("elasticsearch.yml", confContent, false, Some(s"$home/conf/$dir/config")),
-         ConfFile("indices_template_new.json", mappingContent, false),
-         ConfFile("log4j2.properties", loggerConf, false, Some(s"$home/conf/$dir/config")),
-         ConfFile("jvm.options", jvmOpts, false, Some(s"$home/conf/$dir/config")))
+      ConfFile("indices_template_new.json", mappingContent, false),
+      ConfFile("log4j2.properties", loggerConf, false, Some(s"$home/conf/$dir/config")),
+      ConfFile("jvm.options", jvmOpts, false, Some(s"$home/conf/$dir/config")))
   }
 }
 
 case class KafkaConf(home: String, logDirs: Seq[String], zookeeperServers: Seq[String], brokerId: Int, hostIp: String)
     extends ComponentConf(hostIp, s"$home/app/kafka", "start.sh", s"$home/conf/kafka", "server.properties", 1) {
+
+  override def getComponentName: String = "Kafka"
+
   override def mkScript: ConfFile = {
     val dir = "kafka"
     val exports = s"export PATH=$home/app/java/bin:$home/bin/utils:$PATH"
@@ -405,18 +414,28 @@ case class KafkaConf(home: String, logDirs: Seq[String], zookeeperServers: Seq[S
 
   override def getPsIdentifier: String = "kafka.Kafka"
 
-  override def mkConfig: List[ConfFile] = {
-    val m = Map[String, String](
-      "broker-id" -> brokerId.toString,
+  def getClusterTemplateMap: Map[String, String] = {
+    Map[String, String](
       "log-dirs" -> logDirs.mkString(","),
       "zookeeper-connect" -> zookeeperServers.map(zkServer => s"$zkServer:2181").mkString(",")
     )
 
-    val confContent = ResourceBuilder.getResource(s"scripts/templates/kafka.server.properties", m)
+  }
 
-    val loggerConf = ResourceBuilder.getResource("scripts/templates/log4j-kafka.properties", Map[String, String]())
+  def getNodeTemplateMap: Map[String, String] = {
+    Map("broker-id" -> brokerId.toString)
+  }
 
-    List(ConfFile("server.properties", confContent, false), ConfFile("log4j.properties", loggerConf, false))
+  def mkConfig: List[ConfFile] = {
+
+    val map = getTemplateMap
+
+    val confContent = ResourceBuilder.getResource(s"scripts/templates/kafka.server.properties", map)
+
+    val loggerConf = ResourceBuilder.getResource("scripts/templates/log4j-kafka.properties", Map.empty)
+
+    List(ConfFile("server.properties", confContent, false),
+      ConfFile("log4j.properties", loggerConf, false))
   }
 }
 
@@ -432,6 +451,8 @@ case class ZookeeperConf(home: String, clusterName: String, servers: Seq[String]
       }
       .mkString("\n")
   }
+
+  override def getComponentName: String = "Zookeeper"
 
   override def mkScript: ConfFile = {
     val exports = s"""export PATH=$home/app/java/bin:$home/bin/utils:$PATH
@@ -455,21 +476,31 @@ case class ZookeeperConf(home: String, clusterName: String, servers: Seq[String]
 
   override def getPsIdentifier: String = "QuorumPeerMain"
 
-  override def mkConfig: List[ConfFile] = {
-    val m = Map[String, String](
+  def getClusterTemplateMap: Map[String, String] = {
+    Map(
       "dataDir" -> s"$home/data/$dir",
-      "servers" -> genServersStr
+      "servers" -> genServersStr,
+      "zookeeperLogDir" -> s"$home/log/$dir",
+      "myId" -> (servers.indexOf(hostIp) + 1).toString
     )
 
-    val confContent = ResourceBuilder.getResource(s"scripts/templates/zoo.cfg", m)
-    val myId = (servers.indexOf(hostIp) + 1).toString
+  }
 
-    val loggerMap = Map[String, String]("zookeeperLogDir" -> s"$home/log/$dir")
-    val loggerConf = ResourceBuilder.getResource("scripts/templates/log4j-zookeeper.properties", loggerMap)
+  def getNodeTemplateMap: Map[String, String] = {
+    Map.empty[String, String]
+  }
+
+  def mkConfig: List[ConfFile] = {
+
+    val map = getTemplateMap
+
+    val confContent = ResourceBuilder.getResource(s"scripts/templates/zoo.cfg", map)
+
+    val loggerConf = ResourceBuilder.getResource("scripts/templates/log4j-zookeeper.properties", map)
 
     List(ConfFile("zoo.cfg", confContent, false),
          ConfFile("log4j.properties", loggerConf, false),
-         ConfFile("myid", myId, false, Some(s"$home/data/$dir")))
+         ConfFile("myid", map("myId"), false, Some(s"$home/data/$dir")))
   }
 }
 
@@ -492,6 +523,9 @@ case class BgConf(home: String,
                   dir: String = "bg",
                   defaultRdfProtocol: String)
     extends ComponentConf(hostIp, s"$home/app/bg", sName, s"$home/conf/bg", "bg.yml", 1) {
+
+  override def getComponentName: String = "BG"
+
   override def mkScript: ConfFile = {
     def jvmArgs = {
       val aspectj = if (/*hasOption("useAspectj")*/ false) s"$home/app/tools/aspectjweaver.jar" else ""
@@ -540,10 +574,9 @@ case class BgConf(home: String,
 
   override def getPsIdentifier: String = "/log/bg/"
 
-  override def mkConfig: List[ConfFile] = {
-    val applicationConfMap = Map[String, String](
+  def getClusterTemplateMap: Map[String, String] = {
+    Map(
       "cmwell.grid.dmap.persistence.data-dir" -> s"$home/log/bg/dmap/",
-      "cmwell.grid.bind.host" -> s"$hostIp",
       "cmwell.grid.bind.port" -> s"${Jvms.BG.systemPort}",
       "cmwell.grid.seeds" -> s"$hostIp:7777",
       "cmwell.grid.min-members" -> s"$minMembers",
@@ -560,17 +593,26 @@ case class BgConf(home: String,
       "ftsService.clusterName" -> s"$clusterName",
       "ftsService.transportAddress" -> s"$hostName",
       "cmwell.rdfDefaultProtocol" -> defaultRdfProtocol,
-      "kafka.bootstrap.servers" -> s"localhost:9092,${zookeeperServers.map(kafkaNode => s"$kafkaNode:9092").mkString(",")}"
-    )
-    val m = Map[String, String](
+      "kafka.bootstrap.servers" -> s"localhost:9092,${zookeeperServers.map(kafkaNode => s"$kafkaNode:9092").mkString(",")}",
       "clustername" -> clusterName,
       "hosts" -> seeds.split(',').mkString("", s":$seedPort,", s":$seedPort"),
       "dir" -> dir,
       "root_dir" -> home
     )
-    val logbackConf = ResourceBuilder.getResource("conf/bg/logback.xml", Map[String, String]())
-    val confContent = ResourceBuilder.getResource(s"scripts/templates/es.node.client.yml", m)
-    val applicationConfConf = ResourceBuilder.getResource("conf/bg/application.conf", applicationConfMap)
+
+  }
+
+  def getNodeTemplateMap: Map[String, String] = {
+    Map("cmwell.grid.bind.host" -> s"$hostIp")
+  }
+
+  def mkConfig: List[ConfFile] = {
+
+    val map = getTemplateMap
+
+    val logbackConf = ResourceBuilder.getResource("conf/bg/logback.xml", Map.empty)
+    val confContent = ResourceBuilder.getResource(s"scripts/templates/es.node.client.yml", map)
+    val applicationConfConf = ResourceBuilder.getResource("conf/bg/application.conf", map)
 
     List(ConfFile("logback.xml", logbackConf, false),
          ConfFile("bg.es.yml", confContent, false),
@@ -592,6 +634,9 @@ case class CwConf(home: String,
                   seedPort: Int,
                   subjectsInSpAreHttps: Boolean)
     extends ComponentConf(hostIp, s"$home/app/ws", sName, s"$home/conf/cw", "ws.yml", 1) {
+
+  override def getComponentName: String = "CW"
+
   override def mkScript: ConfFile = {
     {
       val mXmx = resourceManager.getMxmx
@@ -626,12 +671,10 @@ case class CwConf(home: String,
 
   override def getPsIdentifier: String = s"crashableworker"
 
-  override def mkConfig: List[ConfFile] = {
-    val applicationConfMap = Map[String, String](
+  def getClusterTemplateMap: Map[String, String] = {
+    Map(
       "cmwell.grid.dmap.persistence.data-dir" -> s"$home/log/ws/dmap-cw",
-      "cmwell.grid.bind.host" -> s"$hostIp",
       "cmwell.grid.bind.port" -> s"${Jvms.CW.systemPort}",
-      "cmwell.grid.seeds" -> s"$hostIp:7777",
       "cmwell.grid.min-members" -> s"$minMembers",
       "cmwell.grid.monitor.port" -> s"${PortManagers.cw.monitorPortManager.getPort(1)}",
       "cmwell.clusterName" -> s"$clusterName",
@@ -645,19 +688,27 @@ case class CwConf(home: String,
       "quads.globalOperations.results.maxLength" -> s"10000",
       "crashableworker.results.maxLength" -> s"1400000",
       "arq.extensions.embedLimit" -> s"10000",
-      "crashableworker.results.baseFileName" -> s"tmpSpResults"
-    )
-
-    val m = Map[String, String](
+      "crashableworker.results.baseFileName" -> s"tmpSpResults",
       "clustername" -> clusterName,
       "hosts" -> seeds.split(',').mkString("", s":$seedPort,", s":$seedPort"),
       "dir" -> "cw",
       "root_dir" -> home
     )
 
-    val confContent = ResourceBuilder.getResource(s"scripts/templates/es.node.client.yml", m)
-    val logbackConf = ResourceBuilder.getResource("conf/ws/cw-logback.xml", Map[String, String]())
-    val applicationConfConf = ResourceBuilder.getResource("conf/ws/cw-application.conf", applicationConfMap)
+  }
+
+  def getNodeTemplateMap: Map[String, String] = {
+    Map("cmwell.grid.seeds" -> s"$hostIp:7777",
+      "cmwell.grid.bind.host" -> s"$hostIp")
+  }
+
+  def mkConfig: List[ConfFile] = {
+
+    val map = getTemplateMap
+
+    val confContent = ResourceBuilder.getResource(s"scripts/templates/es.node.client.yml", map)
+    val logbackConf = ResourceBuilder.getResource("conf/ws/cw-logback.xml", Map.empty)
+    val applicationConfConf = ResourceBuilder.getResource("conf/ws/cw-application.conf", map)
 
     List(ConfFile("ws.es.yml", confContent, false),
          ConfFile("logback.xml", logbackConf, false),
@@ -687,6 +738,9 @@ case class WebConf(home: String,
   }
 
   override def getPsIdentifier = s"Webserver"
+
+  override def getComponentName: String = "WebServer"
+
   override def mkScript: ConfFile = {
     val auth = if (useAuthorization) "-Duse.authorization=true" else ""
     val mXmx = resourceManager.getMxmx
@@ -727,13 +781,11 @@ case class WebConf(home: String,
     ConfFile("start.sh", scriptString, true)
   }
 
-  override def mkConfig: List[ConfFile] = {
-
-    val applicationConfMap = Map[String, String](
+  def getClusterTemplateMap: Map[String, String] = {
+    Map(
       "http.port" -> s"${PortManagers.ws.playHttpPortManager.getPort(1)}",
       "kafka.numOfPartitions" -> s"$numOfPartitions",
       "cmwell.grid.dmap.persistence.data-dir" -> s"$home/log/ws/dmap-ws",
-      "cmwell.grid.bind.host" -> s"$hostIp",
       "cmwell.grid.bind.port" -> s"${Jvms.WS.systemPort}",
       "cmwell.grid.seeds" -> s"$hostIp:7777",
       "cmwell.grid.min-members" -> s"$minMembers",
@@ -746,19 +798,26 @@ case class WebConf(home: String,
       "cmwell.home" -> s"$home",
       "irwServiceDao.hostName" -> s"$hostName",
       "ftsService.transportAddress" -> s"$hostName",
-      "cmwell.rdfDefaultProtocol" -> defaultRdfProtocol
-    )
-
-    val m = Map[String, String](
+      "cmwell.rdfDefaultProtocol" -> defaultRdfProtocol,
       "clustername" -> clusterName,
       "hosts" -> seeds.split(',').mkString("", s":$seedPort,", s":$seedPort"),
       "dir" -> "ws",
       "root_dir" -> home
     )
 
-    val confContent = ResourceBuilder.getResource(s"scripts/templates/es.node.client.yml", m)
-    val logbackConf = ResourceBuilder.getResource("conf/ws/logback.xml", Map[String, String]())
-    val applicationConfConf = ResourceBuilder.getResource("conf/ws/application.conf", applicationConfMap)
+  }
+
+  def getNodeTemplateMap: Map[String, String] = {
+    Map("cmwell.grid.bind.host" -> s"$hostIp")
+  }
+
+  def mkConfig: List[ConfFile] = {
+
+    val map = getTemplateMap
+
+    val confContent = ResourceBuilder.getResource(s"scripts/templates/es.node.client.yml", map)
+    val logbackConf = ResourceBuilder.getResource("conf/ws/logback.xml", Map.empty)
+    val applicationConfConf = ResourceBuilder.getResource("conf/ws/application.conf", map)
 
     List(ConfFile("ws.es.yml", confContent, false),
          ConfFile("logback.xml", logbackConf, false),
@@ -781,6 +840,9 @@ case class CtrlConf(home: String,
     extends ComponentConf(hostIp, s"$home/app/ctrl", sName, s"$home/conf/ctrl", "ctrl.yml", 1) {
   val port = 7777
   override def getPsIdentifier = s"CtrlServer"
+
+  override def getComponentName: String = "Controller"
+
   override def mkScript: ConfFile = {
     val mXmx = resourceManager.getMxmx
     val mXms = resourceManager.getMxms
@@ -811,10 +873,9 @@ case class CtrlConf(home: String,
     ConfFile(sName, scriptString, true)
   }
 
-  override def mkConfig: List[ConfFile] = {
-    val m = Map[String, String]("user" -> user)
-    val confContent = ResourceBuilder.getResource(s"scripts/templates/ctrl", m)
-    val applicationConfMap = Map[String, String](
+  def getClusterTemplateMap: Map[String, String] = {
+    Map(
+      "user" -> user,
       "cmwell.grid.dmap.persistence.data-dir" -> s"$home/log/ctrl/dmap",
       "cmwell.grid.bind.host" -> s"$hostIp",
       "cmwell.grid.bind.port" -> s"$port",
@@ -823,13 +884,23 @@ case class CtrlConf(home: String,
       "cmwell.grid.monitor.port" -> s"${PortManagers.ctrl.monitorPortManager.getPort(1)}",
       "cmwell.clusterName" -> s"$clusterName",
       "ctrl.home" -> s"$home",
-      "ctrl.pingIp" -> s"$pingIp",
       "ctrl.externalHostName" -> s"$hostIp",
       "ctrl.singletonStarter" -> s"$singletonStarter"
     )
 
-    val logbackConf = ResourceBuilder.getResource("conf/ctrl/logback.xml", Map[String, String]())
-    val applicationConfConf = ResourceBuilder.getResource("conf/ctrl/application.conf", applicationConfMap)
+  }
+
+  def getNodeTemplateMap: Map[String, String] = {
+    Map("ctrl.pingIp" -> s"$pingIp")
+  }
+
+  def mkConfig: List[ConfFile] = {
+
+    val map = getTemplateMap
+
+    val confContent = ResourceBuilder.getResource(s"scripts/templates/ctrl", map)
+    val logbackConf = ResourceBuilder.getResource("conf/ctrl/logback.xml", Map.empty)
+    val applicationConfConf = ResourceBuilder.getResource("conf/ctrl/application.conf", map)
 
     List(ConfFile("ctrl", confContent, true),
          ConfFile("logback.xml", logbackConf, false),
@@ -849,6 +920,9 @@ case class DcConf(home: String,
                   hostIp: String)
     extends ComponentConf(hostIp, s"$home/app/dc", sName, s"$home/conf/dc", "dc.yml", 1) {
   val port = 7777
+
+  override def getComponentName: String = "DC"
+
   override def mkScript: ConfFile = {
     val mXmx = resourceManager.getMxmx
     val mXms = resourceManager.getMxms
@@ -915,26 +989,35 @@ case class DcConf(home: String,
     ConfFile(sName, scriptString, true)
   }
 
-  override def mkConfig: List[ConfFile] = {
-
-    val applicationConfMap = Map[String, String](
+  def getClusterTemplateMap: Map[String, String] = {
+    Map(
       "cmwell.grid.dmap.persistence.data-dir" -> s"$home/log/dc/dmap/",
-      "cmwell.grid.bind.host" -> s"$hostIp",
       "cmwell.grid.bind.port" -> s"${Jvms.DC.systemPort}",
-      "cmwell.grid.seeds" -> s"$hostIp:7777",
       "cmwell.grid.min-members" -> s"$minMembers",
       "cmwell.grid.monitor.port" -> s"${PortManagers.dc.monitorPortManager.getPort(1)}",
       "cmwell.clusterName" -> s"$clusterName",
       "irwServiceDao.clusterName" -> s"$clusterName",
       "irwServiceDao.hostName" -> s"$pingIp",
       "ctrl.home" -> s"$home",
-      "ctrl.pingIp" -> s"$pingIp",
       "ctrl.externalHostName" -> s"$hostIp",
       "cmwell.dc.target" -> s"$target"
+
     )
 
-    val logbackConf = ResourceBuilder.getResource("conf/dc/logback.xml", Map[String, String]())
-    val applicationConfConf = ResourceBuilder.getResource("conf/dc/application.conf", applicationConfMap)
+  }
+
+  def getNodeTemplateMap: Map[String, String] = {
+    Map("cmwell.grid.seeds" -> s"$hostIp:7777",
+      "cmwell.grid.bind.host" -> s"$hostIp",
+      "ctrl.pingIp" -> s"$pingIp")
+  }
+
+  def mkConfig: List[ConfFile] = {
+
+    val map = getTemplateMap
+
+    val logbackConf = ResourceBuilder.getResource("conf/dc/logback.xml", Map.empty)
+    val applicationConfConf = ResourceBuilder.getResource("conf/dc/application.conf", map)
     List(ConfFile("logback.xml", logbackConf, false), ConfFile("application.conf", applicationConfConf, false))
   }
 
@@ -1076,6 +1159,9 @@ case class LogstashConf(clusterName: String,
                         subdivision: Int,
                         hostIp: String)
     extends ComponentConf(hostIp, s"$home/app/logstash", sName, s"$home/conf/logstash", "logstash.yml", 1) {
+
+  override def getComponentName: String = "Logstash"
+
   override def mkScript: ConfFile = {
     val scriptContent = {
       val sb = new StringBuilder
@@ -1106,10 +1192,21 @@ case class LogstashConf(clusterName: String,
 
   override def getPsIdentifier: String = "logstash/logstash"
 
-  override def mkConfig: List[ConfFile] = {
+  def getClusterTemplateMap: Map[String, String] = {
+    Map.empty[String, String]
+  }
+
+  def getNodeTemplateMap: Map[String, String] = {
+    Map.empty[String, String]
+  }
+
+  def mkConfig: List[ConfFile] = {
+
+    val map = getTemplateMap
+
     val confContent = LogstashConf.genLogstashConfFile(clusterName,
                                                        elasticsearchUrl,
-                                                       Map.empty[String, String],
+                                                        map,
                                                        s"$home/log",
                                                        subdivision)
     List(ConfFile("logstash.conf", confContent, false))
@@ -1118,6 +1215,9 @@ case class LogstashConf(clusterName: String,
 
 case class KibanaConf(hostIp: String, home: String, listenPort: String, listenAddress: String, elasticsearchUrl: String)
     extends ComponentConf(hostIp, s"$home/app/kibana", "start.sh", s"$home/conf/kibana", "kibana.yml", 1) {
+
+  override def getComponentName: String = "Kibana"
+
   override def mkScript: ConfFile = {
     val scriptContent =
       s"""
@@ -1130,11 +1230,22 @@ case class KibanaConf(hostIp: String, home: String, listenPort: String, listenAd
 
   override def getPsIdentifier: String = "bin/kibana"
 
-  override def mkConfig: List[ConfFile] = {
-    val m = Map[String, String]("port" -> listenPort,
-                                "host" -> listenAddress,
-                                "elasticsearch_url" -> s"http://$elasticsearchUrl")
-    val confContent = ResourceBuilder.getResource(s"scripts/templates/kibana.yml", m)
+  def getClusterTemplateMap: Map[String, String] = {
+    Map(
+      "port" -> listenPort,
+      "elasticsearch_url" -> s"http://$elasticsearchUrl")
+
+  }
+
+  def getNodeTemplateMap: Map[String, String] = {
+    Map("host" -> listenAddress)
+  }
+
+  def mkConfig: List[ConfFile] = {
+
+    val map = getTemplateMap
+
+    val confContent = ResourceBuilder.getResource(s"scripts/templates/kibana.yml", map)
 
     List(ConfFile("kibana.yml", confContent, false))
   }
