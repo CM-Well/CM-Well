@@ -118,9 +118,11 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
   implicit val system: ActorSystem = context.system
   implicit val mat = ActorMaterializer()
 
+  // HTTP Connection Pool, specific to particular HTTP endpoint
   type ConnectionPool = Flow[(HttpRequest,State[(Option[StpMetadata],Long)]),
     (Try[HttpResponse], State[(Option[StpMetadata],Long)]), Http.HostConnectionPool]
 
+  // A (pool) of reusable HTTP connection pools for a number of HTTP endpoints
   var connectionPools : Map[String,ConnectionPool] = Map.empty
 
   if (mat.isInstanceOf[ActorMaterializer]) {
