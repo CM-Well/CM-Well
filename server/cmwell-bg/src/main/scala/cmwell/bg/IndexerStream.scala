@@ -82,6 +82,7 @@ class IndexerStream(partition: Int,
   val maxAggregatedWeight = config.getInt("cmwell.bg.maxAggWeight")
   val esActionsBulkSize = config.getInt("cmwell.bg.esActionsBulkSize") // in bytes
   val esActionsGroupingTtl = config.getInt("cmwell.bg.esActionsGroupingTtl") // ttl for bulk es actions grouping in ms
+  val esActionsParallelism = config.getInt("cmwell.bg.esActionsParallelism")
 
   /** *** Metrics *****/
   val existingMetrics = metricRegistry.getMetrics.asScala
@@ -351,7 +352,7 @@ class IndexerStream(partition: Int,
 
             val indexInfoActionsFlow =
               builder.add(
-                Flow[Seq[BGMessage[(InfoAction, IndexCommand)]]].mapAsync(1) {
+                Flow[Seq[BGMessage[(InfoAction, IndexCommand)]]].mapAsync(esActionsParallelism) {
                   bgMessages =>
                     val esIndexRequests = bgMessages.map {
                       case BGMessage(
