@@ -260,10 +260,10 @@ case class CassandraConf(home: String,
         "row_cache_size" -> rowCacheSize.toString,
         "cas_data_dirs" -> casDataDirs.map(dir=> s"$home/data/$dir/data").mkString("\n    - "),
         "concurrent_reads" -> (16 * casDataDirs.size).toString,
-        "concurrent_writes" -> (numOfCores / 2).toString,
+        "concurrent_writes" ->  (8 * Math.max(2, numOfCores / 2)).toString,
         "concurrent_counter_writes" -> (16 * casDataDirs.size).toString,
         "disk_optimization_strategy" -> diskOptimizationStrategy,
-        "concurrent_compactors" -> (if (diskOptimizationStrategy == "SSD") numOfCores / 2 else 1).toString
+        "concurrent_compactors" -> (if (diskOptimizationStrategy == "SSD") Math.max(1, numOfCores / 2) else 1).toString
       )
     )
 

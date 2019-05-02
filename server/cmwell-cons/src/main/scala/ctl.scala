@@ -63,7 +63,7 @@ object ResourceBuilder {
   }
 }
 
-abstract class ModuleLock(checkCount: Int = 50) extends Info {
+abstract class ModuleLock(checkCount: Int = 100) extends Info {
   val delay = 5
 
   def name: String
@@ -321,7 +321,17 @@ abstract class Host(user: String,
 
   def ips = hostIps.toList
 
-  def calculateCpuAmount = command("lscpu", false).get.split('\n').map(_.split(':')).map(a => a(0) -> a(1)).toMap.getOrElse("CPU(s)", "0").trim.toInt
+  def calculateCpuAmount = {
+    if(UtilCommands.isOSX) {
+      val x = command("sysctl hw.physicalcpu", false).get.split(":")(1).trim.toInt
+      info("mac cpu=" + x)
+      x
+    }
+    else {
+      command("lscpu", false).get.split('\n').map(_.split(':')).map(a => a(0) -> a(1)).toMap.getOrElse("CPU(s)", "0").trim.toInt
+    }
+
+  }
 
   def getEsSize = esSize
 
@@ -1478,6 +1488,7 @@ abstract class Host(user: String,
 
     Try(CassandraLock().waitForModule(hosts(0), casSize))
     Try(ElasticsearchLock().waitForModule(hosts(0), esSize))
+    Thread.sleep(60000)
     startZookeeper
     startKafka(hosts)
 
@@ -1557,6 +1568,8 @@ abstract class Host(user: String,
     startZookeeper
     info("  starting kafka")
     startKafka
+
+    Thread.sleep(60000)
 
     info("  inserting schemas")
     initSchemes(hosts)
