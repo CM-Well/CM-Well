@@ -15,16 +15,15 @@
 /**
   * Created by matan on 1/8/16.
   */
-import java.io.{BufferedInputStream, File, IOException}
-import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import java.nio.file.{Files, Path, Paths}
+import java.io.{BufferedInputStream, File}
+import java.nio.file.{Files, Paths}
 import java.security.MessageDigest
 
 import javax.xml.bind.DatatypeConverter
 import org.apache.commons.compress.archivers.ArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
-import org.apache.commons.io.FileUtils
+import org.apache.commons.io.IOUtils
 object UtilCommands {
   val OSX_NAME = "Mac OS X"
 
@@ -36,39 +35,51 @@ object UtilCommands {
   def isOSX = System.getProperty("os.name") == OSX_NAME
 
   def verifyComponentConfNotChanged(componentName:String, configFilePath:String, expectedHash:String) = {
-    val extractedFolder = UtilCommands.unTarGz(componentName, Paths.get("./components"))
-    UtilCommands.checksum(s"$extractedFolder/$configFilePath", expectedHash)
-    FileUtils.deleteDirectory(new File(extractedFolder))
+    val confContent = UtilCommands.unTarGz("./components", componentName, configFilePath)
+    UtilCommands.checksum(confContent, expectedHash)
   }
 
-  def checksum(componentPath:String, expectedHash:String) = {
-    val actualConf = Files.readAllBytes(Paths.get(componentPath))
-    val actualHash = MessageDigest.getInstance("MD5").digest(actualConf)
+  def checksum(confContent:TarArchiveInputStream, expectedHash:String) = {
+    val actualHash = MessageDigest.getInstance("MD5").digest(IOUtils.toByteArray(confContent))
     val actualHashStr =  DatatypeConverter.printHexBinary(actualHash)
-    if (!expectedHash.equalsIgnoreCase(actualHashStr))
-      throw new Exception(s"yaml configuration $componentPath has been changed, please change template accordingly")
+    confContent.close()
+    if (!expectedHash.equals(actualHashStr))
+      throw new Exception("Cas yaml configuration has been changed, please change template accordingly")
   }
-  @throws[IOException]
-  def unTarGz(componentPath: String, pathOutput: Path): String = {
-    val libDir = new File("./components")
-    val pathInput = libDir.listFiles().filter(file => file.getName.contains(componentPath))
-    val path = Paths.get(pathInput(0).getAbsolutePath)
-    val tarArchiveInputStream = new TarArchiveInputStream(new GzipCompressorInputStream(new BufferedInputStream(Files.newInputStream(path))))
-    var archiveEntry:ArchiveEntry = null
-    archiveEntry = tarArchiveInputStream.getNextEntry
-    val extractFolder = s"./components/${archiveEntry.getName.split("/")(0)}"
-    Files.createDirectory(Paths.get(extractFolder))
-    while (archiveEntry != null) {
-      val pathEntryOutput = pathOutput.resolve(archiveEntry.getName)
-      if(archiveEntry.isDirectory) {
-        if(!Files.exists( pathEntryOutput)) {
-          Files.createDirectory(pathEntryOutput)
-        }
-      }else
-        Files.copy(tarArchiveInputStream, pathEntryOutput, REPLACE_EXISTING)
+
+  def unTarGz(rootFolder:String, componentName: String, configFilePath:String): TarArchiveInputStream = {
+    var tarArchiveInputStream:TarArchiveInputStream = null
+    var bufferInputstream:BufferedInputStream = null
+    val gzipCompressor:GzipCompressorInputStream = null
+    var confContent: TarArchiveInputStream = null
+    try {
+      val libDir = new File(rootFolder)
+      val pathInput = libDir.listFiles().filter(file => file.getName.contains(componentName))
+      val path = Paths.get(pathInput(0).getAbsolutePath)
+      val bufferInputstream = new BufferedInputStream(Files.newInputStream(path))
+      val gzipCompressor = new GzipCompressorInputStream(bufferInputstream)
+      tarArchiveInputStream = new TarArchiveInputStream(gzipCompressor)
+      var archiveEntry: ArchiveEntry = null
       archiveEntry = tarArchiveInputStream.getNextEntry
+      val extractFolder = {
+        archiveEntry.getName.split("/")(0)
+      }
+      while (archiveEntry != null) {
+        if (archiveEntry.getName == s"$extractFolder/$configFilePath") {
+          confContent = tarArchiveInputStream
+        }
+        archiveEntry = tarArchiveInputStream.getNextEntry
+      }
     }
-    tarArchiveInputStream.close()
-    extractFolder
+    finally {
+      if(tarArchiveInputStream != null)
+        tarArchiveInputStream.close()
+      if(bufferInputstream != null)
+        bufferInputstream.close()
+      if(gzipCompressor != null)
+        gzipCompressor.close()
+
+    }
+    confContent
   }
 }
