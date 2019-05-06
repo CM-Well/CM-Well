@@ -267,6 +267,7 @@ case class CassandraConf(home: String,
       )
     )
 
+
 //    val log4jContent = templateToFile(s"scripts/templates/log4j-server.properties",
 //      Map("file_path" -> s"$home/log/$dir/system.log"))
 
@@ -293,6 +294,14 @@ case class CassandraConf(home: String,
       ConfFile("zstore-cql-init-cluster", cqlInit3)
     )
   }
+}
+
+object CassandraConf{
+  //The idea is to notify the user when the original cassandra config has been changed, so the user need to change the templates in cons accordingly
+  //Therefore, a hash of cassandra version 3.11.4 is calculated
+  def checksum  =
+    UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "conf/cassandra.yaml", "D41D8CD98F00B204E9800998ECF8427E")
+
 }
 
 case class ElasticsearchConf(clusterName: String,
