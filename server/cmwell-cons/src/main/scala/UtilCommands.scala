@@ -18,6 +18,7 @@
 import java.io.{BufferedInputStream, File}
 import java.nio.file.{Files, Paths}
 import java.security.MessageDigest
+import scala.util.control.Breaks._
 
 import javax.xml.bind.DatatypeConverter
 import org.apache.commons.compress.archivers.ArchiveEntry
@@ -39,15 +40,14 @@ object UtilCommands {
     UtilCommands.checksum(confContent, expectedHash)
   }
 
-  def checksum(confContent:TarArchiveInputStream, expectedHash:String) = {
-    val actualHash = MessageDigest.getInstance("MD5").digest(IOUtils.toByteArray(confContent))
+  def checksum(confContent:Array[Byte], expectedHash:String) = {
+    val actualHash = MessageDigest.getInstance("MD5").digest(confContent)
     val actualHashStr =  DatatypeConverter.printHexBinary(actualHash)
-    confContent.close()
     if (!expectedHash.equals(actualHashStr))
       throw new Exception("Cas yaml configuration has been changed, please change template accordingly")
   }
 
-  def unTarGz(rootFolder:String, componentName: String, configFilePath:String): TarArchiveInputStream = {
+  def unTarGz(rootFolder:String, componentName: String, configFilePath:String):Array[Byte] = {
     var tarArchiveInputStream:TarArchiveInputStream = null
     var bufferInputstream:BufferedInputStream = null
     val gzipCompressor:GzipCompressorInputStream = null
@@ -61,12 +61,13 @@ object UtilCommands {
       tarArchiveInputStream = new TarArchiveInputStream(gzipCompressor)
       var archiveEntry: ArchiveEntry = null
       archiveEntry = tarArchiveInputStream.getNextEntry
-      val extractFolder = {
-        archiveEntry.getName.split("/")(0)
-      }
+      val extractFolder = archiveEntry.getName.split("/")(0)
       while (archiveEntry != null) {
+        breakable {
         if (archiveEntry.getName == s"$extractFolder/$configFilePath") {
-          confContent = tarArchiveInputStream
+            confContent = tarArchiveInputStream
+            break
+          }
         }
         archiveEntry = tarArchiveInputStream.getNextEntry
       }
@@ -78,8 +79,10 @@ object UtilCommands {
         bufferInputstream.close()
       if(gzipCompressor != null)
         gzipCompressor.close()
+      if(confContent != null)
+        confContent.close()
 
     }
-    confContent
+    IOUtils.toByteArray(confContent)
   }
 }
