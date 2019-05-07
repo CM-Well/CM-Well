@@ -588,7 +588,7 @@ class FTSServiceNew(config: Config, esClasspathYaml: String)
     logger: Logger = loger
   ): Future[SuccessfulBulkIndexResult] = {
 
-    logger.info(s"indexRequests:$indexRequests")
+    logger.debug(s"indexRequests:$indexRequests")
 
     val promise = Promise[SuccessfulBulkIndexResult]
     val bulkRequest = client.prepareBulk()
