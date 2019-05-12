@@ -116,6 +116,8 @@ object OffsetUtils extends LazyLogging {
     logger.debug(
       s"commit offset sink of $streamId: completedOffsests:\n $completedOffsets \n partialOffsets:\n$partialOffsets"
     )
+    //the equals method of the Offset class is based only on the offset member. In order to change PartialOffset to CompleteOffset it should be deleted before.
+    doneOffsets.removeIf(completedOffsets.contains)
     doneOffsets.addAll(completedOffsets.asJava)
     logger.debug(
       s"commit offset sink of $streamId: doneOffsets after adding all completed new offsets:\n$doneOffsets"
@@ -127,7 +129,10 @@ object OffsetUtils extends LazyLogging {
           logger.debug(
             s"commit offset sink of $streamId: two new partial offsets become one completed, adding to doneOffsets"
           )
-          doneOffsets.add(CompleteOffset(o.head.topic, o.head.offset))
+          val toAdd = CompleteOffset(o.head.topic, o.head.offset)
+          //See below for the complete offsets case. In order to change PartialOffset to CompleteOffset it should be deleted before.
+          doneOffsets.remove(toAdd)
+          doneOffsets.add(toAdd)
         } else if (doneOffsets.contains(o.head)) {
           logger.debug(
             s"commit offset sink of $streamId: doneOffsets already contained 1 partial offset for ${o.head} removing it and adding completed instead"
