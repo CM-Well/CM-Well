@@ -382,7 +382,8 @@ case class ElasticsearchConf(clusterName: String,
     val m3 = Map[String, String](
       "ps_id" -> getPsIdentifier,
       "es_ms" -> s"${resourceManager.mxms}",
-      "es_mx" -> s"${resourceManager.mxmx}"
+      "es_mx" -> s"${resourceManager.mxmx}",
+      "log_dir" -> s"$home/log/$dir"
     )
     val jvmOpts = ResourceBuilder.getResource("scripts/templates/es-jvm.options", m3)
 
