@@ -229,6 +229,7 @@ class FTSService(config: Config) extends NsSplitter{
       .storedFields(fields:_*)
       .setFrom(paginationParams.offset)
       .setSize(paginationParams.length)
+      .setTrackTotalHits(true)
 
     applySortToRequest(sortParams, request)
 
@@ -393,6 +394,7 @@ class FTSService(config: Config) extends NsSplitter{
       .prepareSearch(s"${partition}_all")
       .setFrom(paginationParams.offset)
       .setSize(paginationParams.length)
+      .setTrackTotalHits(true)
 
     val request = if (storedFields.nonEmpty) requestTmp.storedFields(storedFields: _*)
     else requestTmp.setFetchSource(fieldsFromSource, Array.empty[String])
@@ -616,7 +618,7 @@ class FTSService(config: Config) extends NsSplitter{
   }
 
   def delete(uuid:String)(implicit executionContext:ExecutionContext):Future[Boolean] = {
-    injectFuture[SearchResponse](client.prepareSearch().setQuery(idsQuery().addIds(uuid)).execute(_)).collect[String]{
+    injectFuture[SearchResponse](client.prepareSearch().setQuery(idsQuery().addIds(uuid)).setTrackTotalHits(true).execute(_)).collect[String]{
       case res if res.getHits.getHits.nonEmpty => res.getHits.getHits.head.getIndex
     }.flatMap{ indexName =>
       delete(uuid, indexName)
@@ -641,6 +643,7 @@ class FTSService(config: Config) extends NsSplitter{
       .setFrom(offset)
       .addSort("_doc", SortOrder.ASC)
       .setPreference(s"_shards:$shard|_only_nodes:$nodeId")
+      .setTrackTotalHits(true)
 
     if (pathFilter.isEmpty && fieldsFilter.isEmpty && datesFilter.isEmpty) {
       request.setQuery(matchAllQuery())
@@ -734,6 +737,7 @@ class FTSService(config: Config) extends NsSplitter{
       .setSize(paginationParams.length)
       .addSort("_doc", SortOrder.ASC)
       .setFrom(paginationParams.offset)
+      .setTrackTotalHits(true)
     if (pathFilter.isEmpty && fieldsFilter.isEmpty && datesFilter.isEmpty) {
       request.setQuery(matchAllQuery())
     } else {
@@ -932,7 +936,7 @@ class FTSService(config: Config) extends NsSplitter{
                 partition: String = defaultPartition, debugInfo: Boolean = false)
                (implicit executionContext:ExecutionContext) : Future[AggregationsResponse] = {
 
-    val request = client.prepareSearch(s"${partition}_all").setFrom(paginationParams.offset).setSize(paginationParams.length)
+    val request = client.prepareSearch(s"${partition}_all").setFrom(paginationParams.offset).setSize(paginationParams.length).setTrackTotalHits(true)
     logRequest("aggregate", pathFilter.toString, fieldFilter.toString)
 
     if (pathFilter.isDefined || fieldFilter.nonEmpty || datesFilter.isDefined) {
@@ -1107,7 +1111,7 @@ class FTSService(config: Config) extends NsSplitter{
     // since in ES scroll API, size is per shard, we need to convert our paginationParams.length parameter to be per shard
     // We need to find how many shards are relevant for this query. For that we'll issue a fake search request
     // TODO: fix should add indexTime, so why not pull it now?
-    val fakeRequest = client.prepareSearch(alias).storedFields("system.uuid","system.lastModified")
+    val fakeRequest = client.prepareSearch(alias).storedFields("system.uuid","system.lastModified").setTrackTotalHits(true)
 
     fakeRequest.setQuery(QueryBuilders.matchQuery("system.path", path))
 
@@ -1123,6 +1127,7 @@ class FTSService(config: Config) extends NsSplitter{
         .setScroll(TimeValue.timeValueSeconds(scrollTTL))
         .setSize(infotonsPerShard)
         .setQuery(QueryBuilders.matchQuery("system.path", path))
+        .setTrackTotalHits(true)
 
       val scrollResponseFuture = injectFuture[SearchResponse](al => request.execute(al))
 
@@ -1170,6 +1175,7 @@ class FTSService(config: Config) extends NsSplitter{
       .prepareSearch(s"${partition}_all")
       .storedFields("system.uuid")
       .setFrom(paginationParams.offset).setSize(paginationParams.length)
+      .setTrackTotalHits(true)
 
     val qb: QueryBuilder = QueryBuilders.matchQuery("system.path", path)
 
@@ -1188,7 +1194,7 @@ class FTSService(config: Config) extends NsSplitter{
   def uinfo(uuid: String,
             partition: String = defaultPartition)(implicit executionContext: ExecutionContext): Future[Vector[(String, Long, String)]] = {
 
-    val request = client.prepareSearch(s"${partition}_all").setFetchSource(true).setVersion(true)
+    val request = client.prepareSearch(s"${partition}_all").setFetchSource(true).setVersion(true).setTrackTotalHits(true)
     val qb: QueryBuilder = QueryBuilders.matchQuery("system.uuid", uuid)
     request.setQuery(qb)
 
@@ -1604,6 +1610,7 @@ class FTSService(config: Config) extends NsSplitter{
       .storedFields("system.indexTime")
       .setSize(1)
       .addSort("system.indexTime", SortOrder.DESC)
+      .setTrackTotalHits(true)
 
     val filtersSeq: List[FieldFilter] = List(
       SingleFieldFilter(Must, Equals, "system.dc", Some(dc)), //ONLY DC
