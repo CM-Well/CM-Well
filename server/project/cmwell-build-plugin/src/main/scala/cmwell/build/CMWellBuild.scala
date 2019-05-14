@@ -171,7 +171,12 @@ object CMWellBuild extends AutoPlugin {
 
 	def fetchElasticSearch(version: String)(implicit ec: ExecutionContext): Future[(String, File)] = {
 		val ext = "tar.gz"
-		val fileName = s"elasticsearch-oss-$version-linux-x86_64.$ext"
+		val osType = OsCheck.getOperatingSystemType match {
+			case OSType.Linux => "linux"
+			case OSType.MacOS => "darwin"
+			case other => throw new Exception(s"Operating system $other is not supported")
+		}
+		val fileName = s"elasticsearch-oss-$version-$osType-x86_64.$ext"
 		val url = s"https://artifacts.elastic.co/downloads/elasticsearch/$fileName"
 		fetchArtifact(url).map(fileName -> _)
 	}
