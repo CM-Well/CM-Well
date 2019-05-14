@@ -71,6 +71,7 @@ sealed trait Infoton extends Formattable { self =>
   def path: String
   def name = path.drop(path.lastIndexOf("/") + 1)
   def lastModified: DateTime
+//  def lastModifiedBy: Option[String]
   def fields: Option[Map[String, Set[FieldValue]]] = None
   def dc: String
   def indexTime: Option[Long]

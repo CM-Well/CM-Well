@@ -54,6 +54,24 @@ class AuthFilter @Inject()(authCache: EagerAuthCache, authUtils: AuthUtils, auth
   private def isAuthenticatedAndAuthorized(requestHeader: RequestHeader): (Boolean, String) = {
     def isRequestWriteToMeta = authUtils.isWriteToMeta(PermissionLevel(requestHeader.method), requestHeader.path)
 
+    val tokenOpt = requestHeader.headers
+      .get("X-CM-WELL-TOKEN2")
+      . // todo TOKEN2 is only supported for backward compatibility. one day we should stop supporting it
+      orElse(requestHeader.headers.get("X-CM-WELL-TOKEN"))
+      .orElse(requestHeader.getQueryString("token"))
+      .orElse(requestHeader.cookies.get("X-CM-WELL-TOKEN2").map(_.value))
+      . // todo TOKEN2 is only supported for backward compatibility. one day we should stop supporting it
+      orElse(requestHeader.cookies.get("X-CM-WELL-TOKEN").map(_.value))
+      .flatMap(Token(_, authCache))
+
+    // Side effect: Attaching the username to request.
+    val userName = {
+      val anon = "anon" + requestHeader.attrs.get(Attrs.UserIP).fold("")("@".+)
+      val modifier  =  requestHeader.getQueryString("modifier").fold("")("/".+)
+      tokenOpt.fold(anon)(_.username) + modifier
+    }
+    requestHeader.addAttr(Attrs.UserName, userName)
+
     if ((!useAuthorizationParam && !isRequestWriteToMeta) || irrelevantPaths.exists(requestHeader.path.startsWith))
       (true, "")
     else {
@@ -61,16 +79,6 @@ class AuthFilter @Inject()(authCache: EagerAuthCache, authUtils: AuthUtils, auth
 
       val request =
         (normalizePath(requestHeader.path), PermissionLevel(requestHeader.method, requestHeader.getQueryString("op")))
-
-      val tokenOpt = requestHeader.headers
-        .get("X-CM-WELL-TOKEN2")
-        . // todo TOKEN2 is only supported for backward compatibility. one day we should stop supporting it
-        orElse(requestHeader.headers.get("X-CM-WELL-TOKEN"))
-        .orElse(requestHeader.getQueryString("token"))
-        .orElse(requestHeader.cookies.get("X-CM-WELL-TOKEN2").map(_.value))
-        . // todo TOKEN2 is only supported for backward compatibility. one day we should stop supporting it
-        orElse(requestHeader.cookies.get("X-CM-WELL-TOKEN").map(_.value))
-        .flatMap(Token(_, authCache))
 
       tokenOpt match {
         case Some(token) if token.isValid => {
