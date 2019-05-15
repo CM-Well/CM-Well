@@ -34,7 +34,7 @@ import cmwell.tools.data.utils.akka.Retry.State
 import cmwell.tools.data.utils.akka.stats.DownloaderStats.DownloadStats
 import cmwell.tools.data.utils.akka.stats.IngesterStats.IngestStats
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 import scala.reflect.runtime.universe._
@@ -128,9 +128,12 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
           (IngestFailEvent(numInfotons = infotons.size), stpMetadata)
 
         case (Success(res @ HttpResponse(s, h, e, p)), infotons, stpMetadata) if s.isFailure() =>
-          logger.error(s"${getLabel(stpMetadata)} problem: host=${getHostname(h)} $e, $p")
-          badDataLogger.info(s"${getLabel(stpMetadata)} data: ${infotons.map(_.utf8String).mkString("\n")}")
-          res.discardEntityBytes()
+          e.toStrict(1.minute).map { strict =>
+            logger.error(s"${getLabel(stpMetadata)} problem: host=${getHostname(h)} ${strict.data}, $p")
+            badDataLogger.info(s"${getLabel(stpMetadata)} data: ${infotons.map(_.utf8String).mkString("\n")}")
+            res.discardEntityBytes()
+          }
+
           (IngestFailEvent(numInfotons = infotons.size), stpMetadata)
 
         case (Success(res @ HttpResponse(s, h, e, p)), infotons, stpMetadata) =>
@@ -242,7 +245,7 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
         extractContext = (_) => IngesterRuntimeConfig(false, label))
       )
       // Drop the context
-      .map { d=> d._1}
+      .map { d => d._1}
 
   }
 

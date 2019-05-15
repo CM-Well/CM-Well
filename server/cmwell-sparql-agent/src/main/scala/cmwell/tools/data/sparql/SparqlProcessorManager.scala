@@ -618,7 +618,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
         logger.error(s"Parsing the agent config files failed with message: $message. Cancelling this configs check. " +
           s"It will be checked on the next iteration. The exception was: ", ex)
         throw parseFailure
-      Ingestercase Right(json) => {
+      case Right(json) => {
         try {
           val infotons = json.hcursor.downField("results").downField("infotons").values.get
           infotons.map { infotonJson =>
