@@ -19,11 +19,11 @@ None.
 
 ### Migrating Data to Atom Format by DC-Sync
 
-To perform a DC-Sync process as a means of migrating your data to the new Atom release, you will need a temporary cluster with no data on it. If, for example, you're upgrading from the Zebra version, the process would be as follows:
+To perform a DC-Sync process as a means of migrating your data to the new Atom release, you will need a temporary cluster with no data on it, in addition to your operational cluster. The process would be as follows:
 
-1. Perform DC-Sync from the Zebra cluster to the temporary cluster.
-2. Perform a wipe-and-install of the Atom release on the Zebra cluster.
-3. Perform DC-Sync from the temporary cluster to the Zebra cluster.
+1. Perform DC-Sync from the operational cluster to the temporary cluster.
+2. Perform a wipe-and-install of the Atom release on the operational cluster.
+3. Perform DC-Sync from the temporary cluster to the operational cluster.
 
 ### Changes to Cassandra Management Architecture
 
