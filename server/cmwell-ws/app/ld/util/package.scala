@@ -64,6 +64,11 @@ package object util {
                       metaData: Option[MetaData],
                       currentTime: DateTime,
                       modifier: String): Infoton = {
+
+    //scalastyle:off
+    println(s">>> Creating infoton of path $ipath and it is lastModified by $modifier")
+    //scalastyle:on
+
     val path = removeCmwHostAndPrependSlash(cmwHostsSet, ipath)
     metaData match {
       case Some(MetaData(mdt, date, data, text, ctype, linktype, linkto, dataCenter, indexTime, protocol)) => {
@@ -127,9 +132,6 @@ package object util {
           case None =>
             (data, text, ctype) match {
               case (None, None, None) =>
-                //scalastyle:off
-                println(s">>> Creating infoton of path $path and it is lastModified in ${_date} by $modifier")
-                //scalastyle:on
                 ObjectInfoton(path = path, lastModified = _date, fields = fields, dc = dc, indexTime = indexTime, protocol = protocol)
               case _ =>
                 infotonFromMaps(
