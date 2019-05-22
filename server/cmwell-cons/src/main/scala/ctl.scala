@@ -924,10 +924,15 @@ abstract class Host(user: String,
     info("finished deploying application")
   }
 
-   def verifyCasConfigNotChanged = {
-     info("verify that cas yaml config not changed")
-     CassandraConf.checksum
-  }
+   def verifyConfigsNotChanged = {
+     info("verify that configuration files have not been changed")
+     //It is taken from cassandra version 3.11.4
+     UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "conf/cassandra.yaml", "13eda21c959fe5985a17385a64de5817")
+     //elasticsearch checksums were taken from version 7.1.0
+     UtilCommands.verifyComponentConfNotChanged("elasticsearch", "config/elasticsearch.yml", "4f96a88585ab67663ccbca1c43649ed5")
+     UtilCommands.verifyComponentConfNotChanged("elasticsearch", "config/jvm.options", "d204b04d3fe8bea0b556b9d7c744cbcc")
+     UtilCommands.verifyComponentConfNotChanged("elasticsearch", "config/log4j2.properties", "d469bde82786d1bdb578e6688470e60c")
+   }
 
   private def createAppLinks(hosts: GenSeq[String]) = {
     // scalastyle:off
@@ -1803,7 +1808,7 @@ abstract class Host(user: String,
     checkProduction
     refreshUserState(user, None, hosts)
     purge(hosts)
-    verifyCasConfigNotChanged
+    verifyConfigsNotChanged
     deploy(hosts)
     init(hosts)
     //setElasticsearchUnassignedTimeout()
@@ -2063,7 +2068,7 @@ abstract class Host(user: String,
 
     checkProduction
     refreshUserState(user, None, hosts)
-    verifyCasConfigNotChanged
+    verifyConfigsNotChanged
     //checkPreUpgradeStatus(hosts(0))
     val esMasterNode = findEsMasterNode(hosts) match {
       case Some(emn) =>
