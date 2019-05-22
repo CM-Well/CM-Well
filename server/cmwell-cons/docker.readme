@@ -1,7 +1,7 @@
 To build a docker image:
 
 1: Use sbt and run packageCmwell
-2: Execute the sollowing command in this directory:
+2: Execute the following command in this directory:
 	docker build -m 4GB --build-arg useAuthorization=false -t <image-name>:latest .
 
 Running the image:
