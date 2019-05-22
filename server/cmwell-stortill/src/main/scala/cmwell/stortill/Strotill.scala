@@ -134,7 +134,6 @@ class Strotill(irw: IRWService, ftsService: FTSService) extends LazyLogging {
       actions.append(
         Requests
           .indexRequest("cmwell_current_latest")
-          .`type`("infoclone")
           .id(i.uuid)
           .create(true)
           .source(JsonSerializer.encodeInfoton(modifyInfoton(i), true, true))
@@ -145,7 +144,6 @@ class Strotill(irw: IRWService, ftsService: FTSService) extends LazyLogging {
       actions.append(
         Requests
           .indexRequest("cmwell_history_latest")
-          .`type`("infoclone")
           .id(i.uuid)
           .create(true)
           .source(JsonSerializer.encodeInfoton(modifyInfoton(i), true, true))

@@ -15,7 +15,16 @@
 /**
   * Created by matan on 1/8/16.
   */
+import java.io.{BufferedInputStream, File}
 import java.nio.file.{Files, Paths}
+import java.security.MessageDigest
+import scala.util.control.Breaks._
+
+import javax.xml.bind.DatatypeConverter
+import org.apache.commons.compress.archivers.ArchiveEntry
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
+import org.apache.commons.io.IOUtils
 object UtilCommands {
   val OSX_NAME = "Mac OS X"
 
@@ -25,4 +34,55 @@ object UtilCommands {
   val sshpass = if (isOSX) osxSshpass else linuxSshpass
 
   def isOSX = System.getProperty("os.name") == OSX_NAME
+
+  def verifyComponentConfNotChanged(componentName:String, configFilePath:String, expectedHash:String) = {
+    val confContent = UtilCommands.unTarGz("./components", componentName, configFilePath)
+    UtilCommands.checksum(confContent, expectedHash)
+  }
+
+  def checksum(confContent:Array[Byte], expectedHash:String) = {
+    val actualHash = MessageDigest.getInstance("MD5").digest(confContent)
+    val actualHashStr =  DatatypeConverter.printHexBinary(actualHash)
+    if (!expectedHash.equals(actualHashStr))
+      throw new Exception("Cas yaml configuration has been changed, please change template accordingly")
+  }
+
+  def unTarGz(rootFolder:String, componentName: String, configFilePath:String):Array[Byte] = {
+    var tarArchiveInputStream:TarArchiveInputStream = null
+    var bufferInputstream:BufferedInputStream = null
+    val gzipCompressor:GzipCompressorInputStream = null
+    var confContent: TarArchiveInputStream = null
+    try {
+      val libDir = new File(rootFolder)
+      val pathInput = libDir.listFiles().filter(file => file.getName.contains(componentName))
+      val path = Paths.get(pathInput(0).getAbsolutePath)
+      val bufferInputstream = new BufferedInputStream(Files.newInputStream(path))
+      val gzipCompressor = new GzipCompressorInputStream(bufferInputstream)
+      tarArchiveInputStream = new TarArchiveInputStream(gzipCompressor)
+      var archiveEntry: ArchiveEntry = null
+      archiveEntry = tarArchiveInputStream.getNextEntry
+      val extractFolder = archiveEntry.getName.split("/")(0)
+      while (archiveEntry != null) {
+        breakable {
+        if (archiveEntry.getName == s"$extractFolder/$configFilePath") {
+            confContent = tarArchiveInputStream
+            break
+          }
+        }
+        archiveEntry = tarArchiveInputStream.getNextEntry
+      }
+    }
+    finally {
+      if(tarArchiveInputStream != null)
+        tarArchiveInputStream.close()
+      if(bufferInputstream != null)
+        bufferInputstream.close()
+      if(gzipCompressor != null)
+        gzipCompressor.close()
+      if(confContent != null)
+        confContent.close()
+
+    }
+    IOUtils.toByteArray(confContent)
+  }
 }
