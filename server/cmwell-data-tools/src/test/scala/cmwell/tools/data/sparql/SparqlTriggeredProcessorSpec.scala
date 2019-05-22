@@ -30,7 +30,7 @@ import org.scalatest.Ignore
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
-
+/*
 @Ignore class SparqlTriggeredProcessorSpec extends BaseWiremockSpec {
   val scenario = "scenario"
   val `no-content` = "no-content"
@@ -266,3 +266,4 @@ import scala.concurrent.duration._
   }
 }
 
+*/
