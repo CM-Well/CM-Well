@@ -113,9 +113,11 @@ object InfotonRetriever extends LazyLogging {
                   totals.parsed.get(p.path) match {
                     case None =>
                       throw WrongPathGotException(
-                        s"Got path ${p.path} from _out that was not in the uuids request bulk: ${state._1
-                          .map(i => i.meta.uuid.utf8String + ":" + i.meta.path)
-                          .mkString(",")}"
+                        s"Got path ${p.path} from _out that was not in the uuids request bulk: ${
+                          state._1
+                            .map(i => i.meta.uuid.utf8String + ":" + i.meta.path)
+                            .mkString(",")
+                        }"
                       )
                     case Some((builder, _)) => {
                       builder ++= (p.nquad ++ endln)
@@ -130,12 +132,11 @@ object InfotonRetriever extends LazyLogging {
               .map { totals =>
                 val parsedResult: Try[RetrieveOutput] = Success(state._1.map {
                   //todo: validity checks that the data arrived correctly. e.g. that the path could be retrieved from _out etc.
-                  im =>
-                    {
-                      val parsed: (ByteStringBuilder, Option[Long]) =
-                        totals.parsed(im.meta.path)
-                      (InfotonData(im.meta, parsed._1.result), parsed._2)
-                    }
+                  im => {
+                    val parsed: (ByteStringBuilder, Option[Long]) =
+                      totals.parsed(im.meta.path)
+                    (InfotonData(im.meta, parsed._1.result), parsed._2)
+                  }
                 }(breakOut))
                 (parsedResult, state, Option(totals.unParsed.result))
               }
@@ -145,18 +146,22 @@ object InfotonRetriever extends LazyLogging {
                   (Failure[RetrieveOutput](ex), (state._1, RetrieveStateStatus(state._2.retriesLeft, Some(ex))), None)
               }
           }
-          case (res @ Success(HttpResponse(s, h, entity, _)), state) => {
+          case (res@Success(HttpResponse(s, h, entity, _)), state) => {
             val errorID = res.##
             val e = new Exception(
-              s"Error ![$errorID]. Cm-Well returned bad response: status: ${s.intValue} headers: ${Util
-                .headersString(h)} reason: ${s.reason}."
+              s"Error ![$errorID]. Cm-Well returned bad response: status: ${s.intValue} headers: ${
+                Util
+                  .headersString(h)
+              } reason: ${s.reason}."
             )
             val bodyFut =
               entity.dataBytes.runFold(empty)(_ ++ _).map(_.utf8String)
             val ex = RetrieveBadResponseException(
-              s"Retrieve infotons failed. Data center ID ${dcInfo.id}, using remote location ${dcInfo.location} uuids: ${state._1
-                .map(i => i.meta.uuid.utf8String)
-                .mkString(",")}.",
+              s"Retrieve infotons failed. Data center ID ${dcInfo.id}, using remote location ${dcInfo.location} uuids: ${
+                state._1
+                  .map(i => i.meta.uuid.utf8String)
+                  .mkString(",")
+              }.",
               bodyFut,
               e
             )
@@ -169,9 +174,11 @@ object InfotonRetriever extends LazyLogging {
           }
           case (Failure(e), state) => {
             val ex = RetrieveException(
-              s"Retrieve infotons failed. Data center ID ${dcInfo.id}, using remote location ${dcInfo.location} uuids: ${state._1
-                .map(i => i.meta.uuid.utf8String)
-                .mkString(",")}",
+              s"Retrieve infotons failed. Data center ID ${dcInfo.id}, using remote location ${dcInfo.location} uuids: ${
+                state._1
+                  .map(i => i.meta.uuid.utf8String)
+                  .mkString(",")
+              }",
               e
             )
             //              logger.warn("Retrieve infotons failed.", ex)
@@ -185,23 +192,13 @@ object InfotonRetriever extends LazyLogging {
         .map(checkResponse)
 
     Flow[RetrieveInput]
-      .map(
-        input => Future.successful(input) -> (input -> initialRetrieveBulkStatus)
-      )
-      .via(
-        Retry.concat(Settings.retrieveRetryQueueSize, retrieveFlow)(
-          retryDecider(dcInfo.id, dcInfo.location)
-        )
-      )
+      .map(input => Future.successful(input) -> (input -> initialRetrieveBulkStatus))
+      .via(Retry.concat(Settings.retrieveRetryQueueSize, retrieveFlow)(retryDecider(dcInfo.id, dcInfo.location)))
       .map {
         case (Success(data), _) => data.map(_._1)
-        case (Failure(e), _) => {
-          logger.error(
-            s"Data Center ID ${dcInfo.id} from location ${dcInfo.location}. Retrieve should never fail after retry.",
-            e
-          )
+        case (Failure(e), _) =>
+          logger.error(s"Data Center ID ${dcInfo.id} from location ${dcInfo.location}. Retrieve should never fail after retry.", e)
           throw e
-        }
       }
   }
 
