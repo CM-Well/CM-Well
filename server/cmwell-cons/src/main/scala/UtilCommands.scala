@@ -37,27 +37,28 @@ object UtilCommands {
 
   def verifyComponentConfNotChanged(componentName:String, configFilePath:String, expectedHash:String) = {
     val confContent = UtilCommands.unTarGz("./components", componentName, configFilePath)
-    UtilCommands.checksum(confContent, expectedHash)
+    UtilCommands.checksum(componentName, configFilePath, confContent, expectedHash)
   }
 
-  def checksum(confContent:Array[Byte], expectedHash:String) = {
+  def checksum(componentName:String, configFilePath:String, confContent:Array[Byte], expectedHash:String) = {
     val actualHash = MessageDigest.getInstance("MD5").digest(confContent)
-    val actualHashStr =  DatatypeConverter.printHexBinary(actualHash)
-    if (!expectedHash.equals(actualHashStr))
-      throw new Exception("Cas yaml configuration has been changed, please change template accordingly")
+    val actualHashStr = DatatypeConverter.printHexBinary(actualHash)
+    if (!expectedHash.equalsIgnoreCase(actualHashStr))
+      throw new Exception(s"$componentName configuration file $configFilePath has been changed, please change the template accordingly " +
+        s"(the new digest is $actualHashStr)")
   }
 
   def unTarGz(rootFolder:String, componentName: String, configFilePath:String):Array[Byte] = {
     var tarArchiveInputStream:TarArchiveInputStream = null
     var bufferInputstream:BufferedInputStream = null
     val gzipCompressor:GzipCompressorInputStream = null
-    var confContent: TarArchiveInputStream = null
+    var confContent: Array[Byte] = null
     try {
       val libDir = new File(rootFolder)
       val pathInput = libDir.listFiles().filter(file => file.getName.contains(componentName))
       val path = Paths.get(pathInput(0).getAbsolutePath)
-      val bufferInputstream = new BufferedInputStream(Files.newInputStream(path))
-      val gzipCompressor = new GzipCompressorInputStream(bufferInputstream)
+      val bufferInputStream = new BufferedInputStream(Files.newInputStream(path))
+      val gzipCompressor = new GzipCompressorInputStream(bufferInputStream)
       tarArchiveInputStream = new TarArchiveInputStream(gzipCompressor)
       var archiveEntry: ArchiveEntry = null
       archiveEntry = tarArchiveInputStream.getNextEntry
@@ -65,7 +66,7 @@ object UtilCommands {
       while (archiveEntry != null) {
         breakable {
         if (archiveEntry.getName == s"$extractFolder/$configFilePath") {
-            confContent = tarArchiveInputStream
+            confContent = IOUtils.toByteArray(tarArchiveInputStream)
             break
           }
         }
@@ -79,10 +80,7 @@ object UtilCommands {
         bufferInputstream.close()
       if(gzipCompressor != null)
         gzipCompressor.close()
-      if(confContent != null)
-        confContent.close()
-
     }
-    IOUtils.toByteArray(confContent)
+    confContent
   }
 }
