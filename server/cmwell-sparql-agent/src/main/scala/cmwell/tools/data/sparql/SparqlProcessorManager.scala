@@ -493,7 +493,8 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
     * @param job
     * @param defaultConnectionPoolHost
     */
-  def getOrCreateConnectionPool(job: Job, defaultConnectionPoolHost : String = "localhost") = {
+  /*
+  def getOrCreateConnectionPool3(job: Job, defaultConnectionPoolHost : String = "localhost") : Option[ConnectionPool] = {
     connectionPools.get(job.config.hostUpdatesSource.getOrElse(defaultConnectionPoolHost)) match {
       case Some(pool) => Some(pool)
       case _ => {
@@ -502,6 +503,34 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
         Some(conn)
       }
     }
+  }
+*/
+
+  /**
+    * Gets or creates a reference to a connection Pool Flow
+    * for a given destination host
+    * @param host
+    */
+  def getOrCreateConnectionPool(host: Option[String], defaultConnectionPoolHost : String = "localhost") : Some[ConnectionPool] = {
+    connectionPools.get(host.getOrElse(defaultConnectionPoolHost)) match {
+      case Some(pool) => Some(pool)
+      case _ => {
+        val conn = Retry.createNewHostConnectionPool[(Option[StpMetadata], Long)](host.getOrElse(defaultConnectionPoolHost))
+        connectionPools += host.getOrElse(defaultConnectionPoolHost) -> conn
+        Some(conn)
+      }
+    }
+  }
+
+
+  /**
+    * Gets or creates a reference to a connection Pool Flow
+    * for a given destination host
+    * @param job
+    * @param defaultConnectionPoolHost
+    */
+  def getOrCreateConnectionPool(job: Job, defaultConnectionPoolHost : String = "localhost") = {
+    getOrCreateConnectionPool(job.config.hostUpdatesSource)
   }
 
   /**
