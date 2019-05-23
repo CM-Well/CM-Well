@@ -53,7 +53,7 @@ object BgTestHelpers {
   def ftsOverridesConfig(address: String, port: Int) = {
     ConfigFactory.load()
       .withValue("ftsService.clusterName", ConfigValueFactory.fromAnyRef("docker-cluster"))
-      .withValue("ftsService.transportAddress", ConfigValueFactory.fromIterable(List(address)))
+      .withValue("ftsService.transportAddress", ConfigValueFactory.fromIterable(java.util.Arrays.asList(address)))
       .withValue("ftsService.transportPort", ConfigValueFactory.fromAnyRef(port))
   }
 
