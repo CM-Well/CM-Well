@@ -93,7 +93,7 @@ class BGMonitorActor(zkServers: String,
 
   import java.util.concurrent.ConcurrentHashMap
 
-  val redSince: collection.concurrent.Map[String, Long] = new ConcurrentHashMap[String, Long]().asScala
+  val redSince: collection.concurrent.Map[Int, Long] = new ConcurrentHashMap[Int, Long]().asScala
 
   self ! CalculateOffsetInfo
 
@@ -139,13 +139,12 @@ class BGMonitorActor(zkServers: String,
 
     calculateOffsetInfo().onComplete {
       case Success((info, duration)) =>
-        logger.info(s"calculate offset info successful: \nInfo:$info\nDuration:$duration")
+        logger.debug(s"calculate offset info successful: \nInfo:$info\nDuration:$duration")
         val now = System.currentTimeMillis()
         if (now - statusesCheckedTime > 1 * 60 * 1000) {
           logger.debug(s"more than 1 minute has past since last checked statuses, let's check")
           statusesCheckedTime = now
           previousOffsetInfo = currentOffsetInfo
-          logger.info(s"moriaDebug after upgrade!!!!!!!!!!!")
           try {
             val partitionsOffsetInfoUpdated = info.partitionsOffsetInfo.map {
               case (key, partitionInfo) =>
@@ -156,46 +155,32 @@ class BGMonitorActor(zkServers: String,
                   }
                   .getOrElse(0L)
                 val partitionStatus = {
-                  if (readDiff > 0) {
-                    //Remove the bg from red map if was there
-                    logger.info(s"moriaDebug [GREEN] > 0 . removing ${key}")
-                    redSince.remove(key)
+                  if (readDiff > 0)
                     Green
-                  }
                   else if (partitionInfo.readOffset - partitionInfo.writeOffset == 0) {
-                      //Remove the bg from red map if was there
-                      logger.info(s"moriaDebug [GREEN] == 0. removing ${key}")
-                      redSince.remove(key)
-                      Green
+                    Green
                   } else if ((previousOffsetInfo).partitionsOffsetInfo
                                .get(key)
                                .map { _.partitionStatus }
                                .getOrElse(Green) == Green) {
-                    logger.info(s"moriaDebug [YELLOW]")
                     Yellow
                   } else {
-                    logger.info(s"moriaDebug [RED]")
                     Red
                   }
                 }
                 if (partitionStatus == Red) {
                   val currentTime = System.currentTimeMillis()
-                  logger.info("moriaDebug in RED part")
-                  redSince.get(key) match {
+                  redSince.get(partitionInfo.partition) match {
                     case None =>
                       logger.warn(s"BG status for partition ${partitionInfo.partition} turned RED")
-                      logger.info(s"moriaDebug [RED] got NONE. add ${key} to $currentTime")
-                      redSince.putIfAbsent(key, currentTime)
+                      redSince.putIfAbsent(partitionInfo.partition, currentTime)
                     case Some(since) if ((currentTime - since) > 15 * 60 * 1000) =>
-                      logger.info(s"moriaDebug [RED] ${key} currentTime: $currentTime \t since: $since")
                       logger.error(
-                        s"BG status for partition ${key} is RED for more than 15 minutes. sending it an exit message"
+                        s"BG status for partition ${partitionInfo.partition} is RED for more than 15 minutes. sending it an exit message"
                       )
                       Grid.serviceRef(s"BGActor${partitionInfo.partition}") ! ExitWithError
-                      redSince.replace(key, currentTime)
-                      logger.info(s"moriaDebug [RED] replacing date. ${key} currentTime: $currentTime ")
+                      redSince.replace(partitionInfo.partition, currentTime)
                     case Some(since) =>
-                      logger.info(s"moriaDebug [RED] ${key} time has not yet passed ")
                       logger.warn(
                         s"BG for partition ${partitionInfo.partition} is RED since ${(currentTime - since) / 1000} seconds ago"
                       )
@@ -224,7 +209,6 @@ class BGMonitorActor(zkServers: String,
         logger.error("failed to calculate offset info", exception)
         context.system.scheduler
           .scheduleOnce(math.max(10000, lastFetchDuration).milliseconds, self, CalculateOffsetInfo)
-        logger.info("**********************************************8")
     }
   }
 
