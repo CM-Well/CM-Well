@@ -2,4 +2,4 @@ http.cors.enabled: true
 
 http.port: 9220
 
-transport.tcp.port: 9320
+transport.port: 9320
