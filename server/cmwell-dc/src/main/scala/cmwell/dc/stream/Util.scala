@@ -118,7 +118,7 @@ object Util extends LazyLogging {
           val predicate = line.substring(subjectEndPos + 1, predicateEndPos + 1)
           val oldValue = line.substring(predicateEndPos + 1, valueEndPos + 1)
           val newValue = if (isValueReference) transform(transformations, oldValue) else oldValue
-          val newQuad = if (isQuad) transform(transformations, line.substring(valueEndPos + 1)) else line.substring(valueEndPos + 1)
+          val newQuad = if (isQuad) transform(transformations, line.substring(valueEndPos + 1)) else "."
           total ++= newSubject ++= predicate ++= newValue ++= newQuad += '\n'
         }
         InfotonData(newMeta, ByteString(newData.result()))
