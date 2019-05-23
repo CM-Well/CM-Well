@@ -60,14 +60,14 @@ object DataCenterSyncManager extends LazyLogging {
   case class SyncerWarmUp(dataCenterId: String, location: String)
       extends SyncerStatus
 
-  //A specific syncer for specific ID is running. the result is contained in the materialized value. Also the cencel mechanism is in the materialized value.
+  //A specific syncer for specific ID is running. the result is contained in the materialized value. Also the cancel mechanism is in the materialized value.
   case class SyncerRunning(dataCenterId: String,
                            location: String,
                            control: SyncerMaterialization,
                            isCancelled: Boolean)
       extends SyncerStatus
 
-  //A specidif syncer is done. The position key that should be used for the next sync is kept here.
+  //A specific syncer is done. The position key that should be used for the next sync is kept here.
   case class SyncerDone(dataCenterId: String,
                         location: String,
                         nextUnSyncedPositionKey: String)
@@ -304,23 +304,18 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
     //It checks only the id not the actual location the data was taken from, so it can continue sync of an id even from different location.
     val dcsToStart: Seq[DcInfo] = newDcInfoList.collect {
       //no previous run - use the dcInfo from the user
-      case dcInfo if !previousSyncs.contains(dcInfo.id) => {
-        logger.info(
-          s"Got sync request for data center id: ${dcInfo.id} from location ${dcInfo.location}${dcInfo.tsvFile
-            .fold("")(f => s" using local file $f")} from the user."
-        )
+      case dcInfo if !previousSyncs.contains(dcInfo.id) =>
+        logger.info(s"Got sync request for data center id: ${dcInfo.id} from location " +
+          s"${dcInfo.location}${dcInfo.tsvFile.fold("")(f => s" using local file $f")} from the user.")
         dcInfo
-      }
       // previous run exists - use the position key from the last successful run
       case dcInfo
-          if previousSyncs.exists(
-            t => dcInfo.id == t._1 && t._2.isInstanceOf[SyncerDone]
-          ) => {
+        if previousSyncs.exists(t => dcInfo.id == t._1 && t._2.isInstanceOf[SyncerDone]) => {
         val positionKey = previousSyncs(dcInfo.id)
           .asInstanceOf[SyncerDone]
           .nextUnSyncedPositionKey
         logger.info(s"Got sync request for data center id: ${dcInfo.id} from location ${dcInfo.location} from the user. " +
-                    s"Using position key $positionKey from previous sync")
+          s"Using position key $positionKey from previous sync")
         dcInfo.copy(positionKey = Some(positionKey))
       }
     }
@@ -358,13 +353,14 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
 
   private def handleDcsToStart(dcsToStart: Seq[DcInfo]): Unit = {
     dcsToStart.foreach {
-      case dcInfo @ DcInfo(
-            dataCenterId,
-            location,
-            idxTimeFromUser,
-            keyFromFinishedRun,
-            tsvFile
-          ) => {
+      case dcInfo@DcInfo(
+      dataCenterId,
+      location,
+      idxTimeFromUser,
+      keyFromFinishedRun,
+      tsvFile,
+      transformations
+      ) => {
         // if next unsynced position is available from previous sync run take it
         keyFromFinishedRun match {
           // We already have the key, send the start sync message immediately
@@ -383,7 +379,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
           case None => {
             //first flag this sync as a warming up (due to futures processing until actually starting up)
             logger.info(s"Warming up (getting position key and if needed also last synced index time) sync engine for " +
-                        s"data center id: $dataCenterId, position key to start from not found.")
+              s"data center id: $dataCenterId, position key to start from not found.")
             self ! WarmUpDcSync(dcInfo)
             // take the index time (from parameter and if not get the last one from the data itself,
             // if this is the first time syncing take larger than epoch) and create position key from it
@@ -398,7 +394,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
                           dataCenterId,
                           time,
                           location
-                      )
+                        )
                     )
                   }
             }
@@ -535,6 +531,13 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
                 Option(seq.head.as[String])
               case _ => None
             }
+            val transformations = f \ "transformations" match {
+              case JsDefined(JsArray(seq)) =>
+                seq.collect {
+                  case JsString(rule) => rule.split("->") match { case Array(source, target) => (source, target)}
+                }.toMap
+              case _ => Map.empty[String, String]
+            }
             val qpStr = userQp.fold("")(qp => s"qp=$qp")
             val whStr = userWh.fold("with-history")(
               wh => if (wh == "true") "with-history" else ""
@@ -547,7 +550,8 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
               s"$dataCenterId$qpAndWhStrFinal",
               location,
               fromIndexTime,
-              tsvFile = tsvFile
+              tsvFile = tsvFile,
+              transformations = transformations
             )
           }
         case _ => Seq.empty
@@ -847,20 +851,17 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
   }
 
   def runSyncingEngine(dcInfo: DcInfo): SyncerMaterialization = {
+    val transformationsStr = if (dcInfo.transformations.nonEmpty) s" with transformations: ${dcInfo.transformations.mkString("[", ",", "]")}" else ""
     logger.info(
-      s"Starting sync engine for data center id ${dcInfo.id} from location ${dcInfo.location}${dcInfo.positionKey
-        .fold("")(key => s" using position key $key")}${dcInfo.tsvFile
-        .fold("")(f => " and file " + f)}"
+      s"Starting sync engine for data center id ${dcInfo.id} from location " +
+        s"${dcInfo.location}${dcInfo.positionKey.fold("")(key => s" using position key $key")}${dcInfo.tsvFile.fold("")(f => " and file " + f)}" +
+        s"$transformationsStr"
     )
-    val syncerMaterialization @ SyncerMaterialization(
-      cancelSyncing,
-      nextUnSyncedPositionFuture
-    ) =
-      createSyncingEngine(dcInfo).run()
+    val syncerMaterialization@SyncerMaterialization(_, nextUnSyncedPositionFuture) = createSyncingEngine(dcInfo).run()
     nextUnSyncedPositionFuture.onComplete {
       case Success(nextPositionKeyToSync) => {
         logger.info(s"The sync engine for data center id: ${dcInfo.id} from location ${dcInfo.location} stopped with " +
-                    s"success. The position key for next sync is: $nextPositionKeyToSync.")
+          s"success. The position key for next sync is: $nextPositionKeyToSync.")
         self ! SaveDcSyncDoneInfo(
           DcInfo(dcInfo.id, dcInfo.location, None, Some(nextPositionKeyToSync))
         )
@@ -883,67 +884,27 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
       // The decider is not used anymore the restart is done by watching the Future[Done] of the stream - no need for
       // the log print (It's left for completeness until the decider is totally removed.
       logger.debug(s"The stream of data center id ${dcInfo.id} from location ${dcInfo.location} got an exception caught" +
-                   s" in local decider. It inner stream will be stopped (the whole one may continue). The exception is:", e)
+        s" in local decider. It inner stream will be stopped (the whole one may continue). The exception is:", e)
       Supervision.Stop
     }
     val tsvSource = dcInfo.tsvFile.fold(
       TsvRetriever(dcInfo, localDecider).mapConcat(identity)
     )(_ => TsvRetrieverFromFile(dcInfo))
+    val infotonDataTransformer: InfotonData => InfotonData = Util.createInfotonDataTransformer(dcInfo)
     val syncingEngine: RunnableGraph[SyncerMaterialization] =
       tsvSource
-      //        .buffer(Settings.tsvBufferSize, OverflowStrategy.backpressure)
-      .async
-        .via(
-          RatePrinter(
-            dcInfo,
-            _ => 1,
-            "elements",
-            "infoton TSVs from TSV source",
-            500
-          )
-        )
-        .via(
-          InfotonAggregator(
-            Settings.maxRetrieveInfotonCount,
-            Settings.maxRetrieveByteSize,
-            Settings.maxTotalInfotonCountAggregatedForRetrieve
-          )
-        )
+        //        .buffer(Settings.tsvBufferSize, OverflowStrategy.backpressure)
+        .async
+        .via(RatePrinter(dcInfo, _ => 1, "elements", "infoton TSVs from TSV source", 500))
+        .via(InfotonAggregator(Settings.maxRetrieveInfotonCount, Settings.maxRetrieveByteSize, Settings.maxTotalInfotonCountAggregatedForRetrieve))
         //        .async
-        .via(
-          RatePrinter(
-            dcInfo,
-            bucket => bucket.size,
-            "elements",
-            "infoton TSVs from InfotonAggregator",
-            500
-          )
-        )
-        .via(
-          ConcurrentFlow(Settings.retrieveParallelism)(
-            InfotonRetriever(dcInfo, localDecider)
-          )
-        )
+        .via(RatePrinter(dcInfo, bucket => bucket.size, "elements", "infoton TSVs from InfotonAggregator", 500))
+        .via(ConcurrentFlow(Settings.retrieveParallelism)(InfotonRetriever(dcInfo, localDecider)))
         .mapConcat(identity)
         .async
-        .via(
-          RatePrinter(
-            dcInfo,
-            _.data.size / 1000D,
-            "KB",
-            "KB infoton Data from InfotonRetriever",
-            5000
-          )
-        )
-        .via(
-          ConcurrentFlow(Settings.ingestParallelism)(
-            InfotonAllMachinesDistributerAndIngester(
-              dcInfo.id,
-              dstServersVec,
-              localDecider
-            )
-          )
-        )
+        .via(RatePrinter(dcInfo, _.data.size / 1000D, "KB", "KB infoton Data from InfotonRetriever", 5000))
+        .map(infotonDataTransformer)
+        .via(ConcurrentFlow(Settings.ingestParallelism)(InfotonAllMachinesDistributerAndIngester(dcInfo.id, dstServersVec, localDecider)))
         .toMat(Sink.ignore) {
           case (left, right) =>
             SyncerMaterialization(
@@ -951,12 +912,12 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
               right
                 .flatMap { _ =>
                   logger.info(s"The Future of the sink of the stream of data center id ${dcInfo.id} from location " +
-                              s"${dcInfo.location} finished with success. Still waiting for the position key.")
+                    s"${dcInfo.location} finished with success. Still waiting for the position key.")
                   left._2
                 }
                 .map { posKeys =>
                   logger.info(s"The Future of the TSV retriever of the stream of data center id ${dcInfo.id} from " +
-                              s"location ${dcInfo.location} finished with success. The position keys got are: $posKeys")
+                    s"location ${dcInfo.location} finished with success. The position keys got are: $posKeys")
                   posKeys.last.getOrElse(posKeys.head.get)
                 }
             )
