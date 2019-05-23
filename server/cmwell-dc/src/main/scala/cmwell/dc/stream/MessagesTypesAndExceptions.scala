@@ -28,7 +28,8 @@ object MessagesTypesAndExceptions {
                     location: String,
                     idxTime: Option[Long] = None,
                     positionKey: Option[String] = None,
-                    tsvFile: Option[String] = None)
+                    tsvFile: Option[String] = None,
+                    transformations: Map[String, String] = Map.empty)
 
   case class WarmUpDcSync(dcInfo: DcInfo)
   case class StartDcSync(dcInfo: DcInfo)
