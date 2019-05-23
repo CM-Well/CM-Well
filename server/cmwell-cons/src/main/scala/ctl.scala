@@ -63,7 +63,7 @@ object ResourceBuilder {
   }
 }
 
-abstract class ModuleLock(checkCount: Int = 100) extends Info {
+abstract class ModuleLock(checkCount: Int = 50) extends Info {
   val delay = 5
 
   def name: String
@@ -1624,7 +1624,7 @@ abstract class Host(user: String,
 
   def initSchemes(hosts: GenSeq[String] = ips.par) {
     // scalastyle:off
-    command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/cassandra-cql-init-cluster-new", hosts(0), false)
+    commanMd(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/cassandra-cql-init-cluster-new", hosts(0), false)
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/zstore-cql-init-cluster", hosts(0), false)
     val templateCreation = command(s"""curl -s -X POST http://${hosts(0)}:$esMasterPort/_template/cmwell_index_template -H "Content-Type: application/json" --data-ascii @${instDirs.globalLocation}/cm-well/conf/es/indices_template_new.json""", hosts(0), false)
     templateCreation match {
