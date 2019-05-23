@@ -102,7 +102,7 @@ class FTSService(config: Config) extends NsSplitter{
 
   var client : Client= new PreBuiltTransportClient(esSettings).addTransportAddresses(transportAddresses:_*)
 
-  loger.info(s"starting es transport client [/$transportAddresses:$transportPort]")
+  loger.info(s"starting es transport clients: ${transportAddresses.mkString(", ")} with port: $transportPort]")
 
   val localHostName = InetAddress.getLocalHost.getHostName
 
