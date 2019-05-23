@@ -93,7 +93,7 @@ class BGMonitorActor(zkServers: String,
 
   import java.util.concurrent.ConcurrentHashMap
 
-  val redSince: collection.concurrent.Map[Int, Long] = new ConcurrentHashMap[Int, Long]().asScala
+  val redSince: collection.concurrent.Map[String, Long] = new ConcurrentHashMap[String, Long]().asScala
 
   self ! CalculateOffsetInfo
 
@@ -155,10 +155,17 @@ class BGMonitorActor(zkServers: String,
                   }
                   .getOrElse(0L)
                 val partitionStatus = {
-                  if (readDiff > 0)
+                  if (readDiff > 0) {
+                    //Remove the bg from red map if was there
+                    logger.debug(s"readDiff > 0. removing ${key}")
+                    redSince.remove(key)
                     Green
+                  }
                   else if (partitionInfo.readOffset - partitionInfo.writeOffset == 0) {
-                    Green
+                      //Remove the bg from red map if was there
+                      logger.debug(s"diff == 0. removing ${key}")
+                      redSince.remove(key)
+                      Green
                   } else if ((previousOffsetInfo).partitionsOffsetInfo
                                .get(key)
                                .map { _.partitionStatus }
@@ -170,16 +177,16 @@ class BGMonitorActor(zkServers: String,
                 }
                 if (partitionStatus == Red) {
                   val currentTime = System.currentTimeMillis()
-                  redSince.get(partitionInfo.partition) match {
+                  redSince.get(key) match {
                     case None =>
                       logger.warn(s"BG status for partition ${partitionInfo.partition} turned RED")
-                      redSince.putIfAbsent(partitionInfo.partition, currentTime)
+                      redSince.putIfAbsent(key, currentTime)
                     case Some(since) if ((currentTime - since) > 15 * 60 * 1000) =>
                       logger.error(
-                        s"BG status for partition ${partitionInfo.partition} is RED for more than 15 minutes. sending it an exit message"
+                        s"BG status for partition ${key} is RED for more than 15 minutes. sending it an exit message"
                       )
                       Grid.serviceRef(s"BGActor${partitionInfo.partition}") ! ExitWithError
-                      redSince.replace(partitionInfo.partition, currentTime)
+                      redSince.replace(key, currentTime)
                     case Some(since) =>
                       logger.warn(
                         s"BG for partition ${partitionInfo.partition} is RED since ${(currentTime - since) / 1000} seconds ago"
