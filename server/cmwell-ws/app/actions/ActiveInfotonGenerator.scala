@@ -143,11 +143,11 @@ class ActiveInfotonGenerator @Inject()(
   private[this] def getElasticsearchHealth(cr: ComponentState) = {
     val dt = new DateTime(cr.genTime * 1000L)
     cr match {
-      case ElasticsearchGreen(n, d, p, s, _, _) =>
+      case ElasticsearchGreen(n, d, p, s, _, _, _) =>
         ((Green, s"n:$n,d:$d,p:$p,s:$s"), dt)
-      case ElasticsearchYellow(n, d, p, s, _, _) =>
+      case ElasticsearchYellow(n, d, p, s, _, _, _) =>
         ((Yellow, s"n:$n,d:$d,p:$p,s:$s"), dt)
-      case ElasticsearchRed(n, d, p, s, _, _) =>
+      case ElasticsearchRed(n, d, p, s, _, _, _) =>
         ((Red, s"n:$n,d:$d,p:$p,s:$s"), dt)
       case ElasticsearchDown(_, _) =>
         ((Red, s"Elasticsearch is down"), dt)
@@ -346,13 +346,17 @@ class ActiveInfotonGenerator @Inject()(
 
           val esMessage = cs.esStat.getOrElse(k, ElasticsearchDown()) match {
             case er: ElasticsearchGreen =>
-              val txt = if (er.hasMaster) "*" else ""
+              val master = if (er.hasMaster) "*" else ""
+              val coor = if (er.isCoorUp) "" else "Coordinator is down"
+              val txt = s"$master \n$coor"
               (txt, colorAdapter(er.getColor))
             case er: ElasticsearchYellow =>
               val txt = if (er.hasMaster) "*" else ""
               (txt, colorAdapter(er.getColor))
             case er: ElasticsearchRed =>
-              val txt = if (er.hasMaster) "*" else ""
+              val master = if (er.hasMaster) "*" else ""
+              val coor = if (er.isCoorUp) "" else "Coordinator is down"
+              val txt = s"$master \n$coor"
               (txt, colorAdapter(er.getColor))
             case er: ElasticsearchDown =>
               val txt = if (er.hasMaster) "*" else ""

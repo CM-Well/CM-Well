@@ -389,9 +389,10 @@ case class ElasticsearchProps(h: Host)
   override val componentName: String = "elasticsearch"
   override val componentDataDirs: Map[String, GenSeq[String]] = Map(
     "es" -> h.getDataDirs.esDataDirs.filterNot(_.endsWith("master")),
-    "es-master" -> h.getDataDirs.esDataDirs.filter{_.endsWith("master")}
+    "es-master" -> h.getDataDirs.esDataDirs.filter{_.endsWith("master")},
+    "es-coordinator" -> h.getDataDirs.esDataDirs.filter{_.endsWith("coordinator")}
   )
-  override val componentMappings: Map[String, Int] = Map("es" -> h.getDataDirs.esDataDirs.size, "es-master" -> 1)
+  override val componentMappings: Map[String, Int] = Map("es" -> h.getDataDirs.esDataDirs.size, "es-master" -> 1, "es-coordinator" -> 1)
 
   override def upgradeMethod: UpgradeMethod = PreUpgrade
 

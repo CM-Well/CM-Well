@@ -114,6 +114,7 @@ case class ElasticsearchGreen(n: Int,
                               p: Int,
                               s: Int,
                               hasMaster: Boolean = false,
+                              isCoorUp: Boolean = false,
                               genTime: Long = ComponentState.currentTimestamp)
     extends ElasticsearchState {
   override def getColor: StatusColor = GreenStatus
@@ -124,6 +125,7 @@ case class ElasticsearchYellow(n: Int,
                                p: Int,
                                s: Int,
                                hasMaster: Boolean = false,
+                               isCoorUp: Boolean = false,
                                genTime: Long = ComponentState.currentTimestamp)
     extends ElasticsearchState {
   override def getColor: StatusColor = YellowStatus
@@ -134,6 +136,7 @@ case class ElasticsearchRed(n: Int,
                             p: Int,
                             s: Int,
                             hasMaster: Boolean = false,
+                            isCoorUp: Boolean = false,
                             genTime: Long = ComponentState.currentTimestamp)
     extends ElasticsearchState {
   override def getColor: StatusColor = RedStatus

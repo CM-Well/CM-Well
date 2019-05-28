@@ -38,6 +38,7 @@ object ElasticsearchController
 
   def startMaster {
     ProcUtil.executeCommand(s"HAL=9000 ${super.getStartScriptLocation}/start-master.sh")
+    ProcUtil.executeCommand(s"HAL=9000 ${super.getStartScriptLocation}/start-coordinator.sh")
   }
 
   def stopMaster {
