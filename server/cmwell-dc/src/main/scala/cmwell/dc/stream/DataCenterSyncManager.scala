@@ -339,7 +339,8 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
               .flatMap(indexTimeToPositionKey(dcKey.id, dcKey.location, _))
               .onComplete {
                 case Failure(e) =>
-                  logger.warn("Getting index time or position key failed. Cancelling the sync start. It will be started again on the next schedule check", e)
+                  logger.warn(s"Sync $dcKey. Getting index time or position key failed. Cancelling the sync start. " +
+                    s"It will be started again on the next schedule check", e)
                   self ! RemoveDcSync(dcInfo)
                 case Success(positionKey) =>
                   logger.info(s"Starting sync for: $dcKey using position key $positionKey")
@@ -552,7 +553,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
     //The below request supports qp also (the qp it the last part of the ID and will be sent to the local server)
     val transformedId = Util.transform(dcKey.transformations.toList, dcKey.id)
     val requestUri = s"http://$dst/proc/dc/$transformedId${if (transformedId.contains("?")) "&" else "?"}format=json"
-    logger.info(s"The get last index time request for: $dcKey is: $requestUri")
+    logger.info(s"Requesting last index time for: $dcKey. Request URI: $requestUri")
     val request = HttpRequest(uri = requestUri) -> ProcDcViewer
     val flow = {
       Http().superPool[ReqType]().map {
