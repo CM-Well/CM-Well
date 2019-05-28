@@ -263,28 +263,6 @@ abstract class Host(user: String,
     }
   }
 
-  def jstat = {
-    ips.par.map { ip =>
-      // scalastyle:off
-      ip -> command(s"ps aux | grep java | egrep -v 'starter|grep' | awk '{print $$2}' | xargs -I zzz ${getInstDirs.globalLocation}/cm-well/app/java/bin/jstat -gcutil zzz", ip, false).map(_.trim)
-      // scalastyle:on
-    }.toMap
-  }
-
-  def jstat(comp: String) = {
-    ips.par.map { ip =>
-      // scalastyle:off
-      ip -> command(s"ps aux | grep java | egrep -v 'starter|grep' | grep $comp | awk '{print $$2}' | xargs -I zzz ${getInstDirs.globalLocation}/cm-well/app/java/bin/jstat -gcutil zzz", ip, false).map(_.trim)
-      // scalastyle:on
-    }.toMap
-  }
-
-  def jstat(comp: String, ip: String): Unit = {
-    // scalastyle:off
-    ParMap(ip -> command(s"ps aux | grep java | egrep -v 'starter|grep' | grep $comp | awk '{print $$2}' | xargs -I zzz ${getInstDirs.globalLocation}/cm-well/app/java/bin/jstat -gcutil zzz", ip, false).map(_.trim))
-    // scalastyle:on
-  }
-
   private val componentToJmxMapping = Map(
     "ws" -> PortManagers.ws.jmxPortManager.initialPort,
     "bg" -> PortManagers.bg.jmxPortManager.initialPort,
