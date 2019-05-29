@@ -157,7 +157,7 @@ case class Grid(user: String,
           listenAddress = host,
           masterNodes = esMasters,
           sName = "start-master.sh",
-          index = 2,
+          index = -1,
           rs = IpRackSelector(),
           g1 = true,
           hostIp = host,
@@ -346,13 +346,8 @@ case class Grid(user: String,
             hosts.take(esMasters),
             false)
     Try(ElasticsearchLock().waitForModule(ips(0), esMasters))
-    //    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ./start-master.sh", hosts(1), false)
-    //    ElasticsearchLock().waitForModule(ips(0), 2)
-    //    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ./start-master.sh", hosts.drop(2).take(esMasters - 2), false)
 
     command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start-coordinator.sh")}", hosts, false)
-
-    Try(ElasticsearchLock().waitForModule(ips(0), esMasters + 1))
     command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start.sh")}", hosts, false)
 
     Try(ElasticsearchLock().waitForModule(ips(0), esMasters + 2))

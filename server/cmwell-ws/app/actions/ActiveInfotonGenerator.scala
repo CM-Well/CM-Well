@@ -348,15 +348,17 @@ class ActiveInfotonGenerator @Inject()(
             case er: ElasticsearchGreen =>
               val master = if (er.hasMaster) "*" else ""
               val coor = if (er.isCoorUp) "" else "Coordinator is down"
-              val txt = s"$master \n$coor"
+              val txt = s"$master<br>$coor"
               (txt, colorAdapter(er.getColor))
             case er: ElasticsearchYellow =>
-              val txt = if (er.hasMaster) "*" else ""
+              val master = if (er.hasMaster) "*" else ""
+              val coor = if (er.isCoorUp) "" else "Coordinator is down"
+              val txt = s"$master<br>$coor"
               (txt, colorAdapter(er.getColor))
             case er: ElasticsearchRed =>
               val master = if (er.hasMaster) "*" else ""
               val coor = if (er.isCoorUp) "" else "Coordinator is down"
-              val txt = s"$master \n$coor"
+              val txt = s"$master<br>$coor"
               (txt, colorAdapter(er.getColor))
             case er: ElasticsearchDown =>
               val txt = if (er.hasMaster) "*" else ""

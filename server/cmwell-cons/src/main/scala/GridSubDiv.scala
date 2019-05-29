@@ -130,9 +130,7 @@ case class GridSubDiv(user: String,
             hosts.take(esMasters),
             false)
     Try(ElasticsearchLock().waitForModule(ips(0), esMasters))
-    //    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ./start-master.sh", hosts(1), false)
-    //    ElasticsearchLock().waitForModule(ips(0), 2)
-    //    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ./start-master.sh", hosts.drop(2).take(esMasters - 2), false)
+
     command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start.sh")}", hosts, false)
     (2 to dataDirs.esDataDirs.size).foreach{
       index =>
@@ -234,7 +232,7 @@ case class GridSubDiv(user: String,
           listenAddress = host,
           masterNodes = esMasters,
           sName = "start-master.sh",
-          index = dataDirs.esDataDirs.size + 1,
+          index = -1,
           rs = IpRackSelector(),
           g1 = true,
           hostIp = host,

@@ -16,7 +16,6 @@ package cmwell.ctrl.checkers
 
 import cmwell.ctrl.config.Config
 import cmwell.ctrl.utils.ProcUtil
-import cmwell.util.http
 import cmwell.util.http.{SimpleResponse, SimpleHttpClient => Http}
 import com.typesafe.scalalogging.LazyLogging
 
@@ -36,11 +35,20 @@ object ElasticsearchChecker extends Checker with LazyLogging {
     val url = s"http://${Config.pingIp}:$port/_cluster/health"
     val esRes = Http.get(url)
 
-    esRes.flatMap{res =>
-      if ((res.status==200) || (port > 9203))
-        esRes
-      else
-        getHealth(port + 1)
+    esRes.flatMap{res => res match {
+      case r if r.status == 200 => esRes
+      case _ if port > 9203 => {logger.error(s"Status was ${res.status} and not 200 for port: $port. Stop retrying."); esRes}
+      case _ => logger.warn(s"Status was ${res.status} and not 200 for port: $port. Increasing port by 1."); getHealth(port + 1)
+    }}.recoverWith{
+      case exception : Exception => {
+        logger.error(s"Get health failed. Exception: $exception")
+        if(port > 9203) {
+          logger.error(s"Reached port $port Stop retrying.")
+          Future.failed(exception)
+        }
+        else
+          getHealth(port + 1)
+      }
     }
 
   }
