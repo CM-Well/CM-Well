@@ -175,7 +175,7 @@ class BGMonitorActor(zkServers: String,
                 val currentTime = System.currentTimeMillis()
                 redSince.get(key) match {
                   case None =>
-                    logger.warn(s"BG status for partition ${partitionInfo.partition} turned RED")
+                    logger.warn(s"BG status for partition ${key} turned RED")
                     redSince.putIfAbsent(key, currentTime)
                   case Some(since) if ((currentTime - since) > 15 * 60 * 1000) =>
                     logger.error(
@@ -185,7 +185,7 @@ class BGMonitorActor(zkServers: String,
                     redSince.replace(key, currentTime)
                   case Some(since) =>
                     logger.warn(
-                      s"BG for partition ${partitionInfo.partition} is RED since ${(currentTime - since) / 1000} seconds ago"
+                      s"BG for partition ${key} is RED since ${(currentTime - since) / 1000} seconds ago"
                     )
                 }
               }
