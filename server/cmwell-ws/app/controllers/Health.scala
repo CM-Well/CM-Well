@@ -36,9 +36,13 @@ import scala.util._
 /**
  * Created by michael on 8/11/14.
  */
+import collection.JavaConverters._
+
 object HealthUtils {
   val config = ConfigFactory.load()
-  val ip = config.getString("ftsService.transportAddress")
+  val ipList = config.getStringList("ftsService.transportAddress").asScala
+  val ip = ipList(0)
+
   val path = config.getString("user.dir")
 
   /**
