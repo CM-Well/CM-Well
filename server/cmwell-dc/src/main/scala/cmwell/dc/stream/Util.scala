@@ -99,9 +99,9 @@ object Util extends LazyLogging {
     headers.map(headerString).mkString("[", ",", "]")
 
   def createInfotonDataTransformer(dcInfo: DcInfo): InfotonData => InfotonData = {
-    if (dcInfo.transformations.isEmpty) identity
+    if (dcInfo.key.transformations.isEmpty) identity
     else {
-      val transformations = dcInfo.transformations.toList
+      val transformations = dcInfo.key.transformations.toList
       infotonData => {
         val oldMeta = infotonData.meta
         val newMeta = oldMeta.copy(path = transform(transformations, oldMeta.path))
