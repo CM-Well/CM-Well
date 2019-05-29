@@ -137,7 +137,7 @@ object RawFieldFilter extends PrefixRequirement {
     valueOp match {
       case Equals
           if fieldName.indexOf('$') == 1 ||
-            fieldName.startsWith("system.") ||
+            fieldName.startsWith("system.") && fieldName != "system.parent.parent_hierarchy" ||
             fieldName.startsWith("content.") =>
         SingleFieldFilter(fieldOp, Contains, fieldName, value)
       case _ => SingleFieldFilter(fieldOp, valueOp, fieldName, value)
