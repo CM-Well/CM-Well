@@ -48,11 +48,11 @@ object SingleMachineInfotonIngester extends LazyLogging {
   private val dcaToken = Settings.dcaUserToken
   type IngestState = (IngestInput, IngestStateStatus)
 
-  def apply(dataCenterId: String, location: String, decider: Decider)(
+  def apply(dcKey: DcInfoKey, location: String, decider: Decider)(
     implicit sys: ActorSystem,
     mat: Materializer
   ): Flow[(Future[IngestInput], IngestState), (Try[IngestOutput], IngestState), NotUsed] = {
-    val checkResponse = checkResponseCreator(dataCenterId, location, decider) _
+    val checkResponse = checkResponseCreator(dcKey, location, decider) _
     Flow[(Future[IngestInput], IngestState)]
       .mapAsync(1) { case (input, state) => input.map(_ -> state) }
       .map {
@@ -90,7 +90,7 @@ object SingleMachineInfotonIngester extends LazyLogging {
     )
   }
 
-  def checkResponseCreator(dataCenterId: String, location: String, decider: Decider)(
+  def checkResponseCreator(dcKey: DcInfoKey, location: String, decider: Decider)(
     response: (Try[HttpResponse], IngestState)
   )(implicit sys: ActorSystem, mat: Materializer): (Try[HttpResponse], IngestState) =
     response match {
@@ -123,7 +123,7 @@ object SingleMachineInfotonIngester extends LazyLogging {
         val ex =
           if (s == StatusCodes.ServiceUnavailable)
             IngestServiceUnavailableException(
-              s"Ingest infotons failed. Data center ID $dataCenterId, using local location $location uuids: ${state._1
+              s"Ingest infotons failed. Sync $dcKey, using local location $location uuids: ${state._1
                 .map(i => i.meta.uuid.utf8String)
                 .mkString(",")}.",
               bodyFut,
@@ -131,7 +131,7 @@ object SingleMachineInfotonIngester extends LazyLogging {
             )
           else
             IngestBadResponseException(
-              s"Ingest infotons failed. Data center ID $dataCenterId, using local location $location uuids: ${state._1
+              s"Ingest infotons failed. Sync $dcKey, using local location $location uuids: ${state._1
                 .map(i => i.meta.uuid.utf8String)
                 .mkString(",")}.",
               bodyFut,
@@ -143,7 +143,7 @@ object SingleMachineInfotonIngester extends LazyLogging {
       }
       case (Failure(e), state) => {
         val ex = IngestException(
-          s"Ingest infotons failed. Data center ID $dataCenterId, using local location $location uuids: ${state._1
+          s"Ingest infotons failed. Sync $dcKey, using local location $location uuids: ${state._1
             .map(i => i.meta.uuid.utf8String)
             .mkString(",")}",
           e

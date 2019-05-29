@@ -49,7 +49,7 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
   val initialBulkStatus =
     IngestStateStatus(Settings.initialBulkIngestRetryCount, 0, None)
 
-  def apply(dataCenterId: String,
+  def apply(dckey: DcInfoKey,
             hosts: Vector[(String, Option[Int])],
             decider: Decider)(implicit sys: ActorSystem, mat: Materializer) = {
     val size = hosts.length
@@ -65,7 +65,7 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
           val (host, portOpt) = hosts(i)
           val location = s"$host:${portOpt.getOrElse(80)}"
           val ingestFlow =
-            SingleMachineInfotonIngester(dataCenterId, location, decider)
+            SingleMachineInfotonIngester(dckey, location, decider)
           val infotonAggregator = b.add(
             InfotonAggregator(
               Settings.maxIngestInfotonCount,
@@ -82,7 +82,7 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
           )
           val ingestRetrier =
             Retry.concat(Settings.ingestRetryQueueSize, ingestFlow)(
-              retryDecider(dataCenterId, location)
+              retryDecider(dckey, location)
             )
           o ~> infotonAggregator ~> initialStateAdder ~> ingestRetrier ~> mergeIngests
             .in(i)
@@ -92,10 +92,7 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
     })
   }
 
-  def retryDecider(
-    dataCenterId: String,
-    location: String
-  )(implicit sys: ActorSystem, mat: Materializer) =
+  def retryDecider(dcKey: DcInfoKey, location: String)(implicit sys: ActorSystem, mat: Materializer) =
     (state: IngestState) =>
       state match {
         case (
@@ -106,7 +103,7 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
               Some(ex: IngestServiceUnavailableException)
             )
             ) => {
-          logger.warn(s"Data Center ID $dataCenterId: Ingest to machine $location failed (Service Unavailable). " +
+          logger.warn(s"Sync $dcKey: Ingest to machine $location failed (Service Unavailable). " +
                       s"Will keep trying again until the service will be available. The exception is: ${ex.getMessage} ${ex.getCause.getMessage}")
           Util.warnPrintFuturedBodyException(ex)
           val ingestState =
@@ -142,7 +139,7 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
               val idxTimeQuad = s"""$subject <cmwell://meta/sys#indexTime> "$idxTime"^^<http://www.w3.org/2001/XMLSchema#long> ."""
               val u = originalInfotonData.meta.uuid.utf8String
               val q = "\""+idxTimeQuad+"\""
-              logger.warn(s"Data Center ID $dataCenterId: Ingest of uuid $u to machine $location didn't have index time. Adding $q from metadata manually")
+              logger.warn(s"Sync $dcKey: Ingest of uuid $u to machine $location didn't have index time. Adding $q from metadata manually")
               val ingestData = Seq(
                 InfotonData(
                   originalInfotonData.meta,
@@ -170,19 +167,15 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
                   Util.errorPrintFuturedBodyException(e)
                 case e =>
                   val u = ingestSeq.head.meta.uuid.utf8String
-                  logger.error(s"Data Center ID $dataCenterId: Ingest of uuid $u to machine $location failed. No more reties will be done. " +
+                  logger.error(s"Sync $dcKey: Ingest of uuid $u to machine $location failed. No more reties will be done. " +
                                "Please use the red log to see the list of all the failed ingests. The exception is: ", e)
               }
-              logger.trace(
-                s"Original Ingest request for uuid ${ingestSeq.head.meta.uuid.utf8String} was: $originalRequest"
-              )
-              redlog.info(
-                s"Data Center ID $dataCenterId: Ingest of uuid ${ingestSeq.head.meta.uuid.utf8String} to machine $location failed"
-              )
+              logger.trace(s"Original Ingest request for uuid ${ingestSeq.head.meta.uuid.utf8String} was: $originalRequest")
+              redlog.info(s"Sync $dcKey: Ingest of uuid ${ingestSeq.head.meta.uuid.utf8String} to machine $location failed")
               Some(Nil)
             }
           } else if (ingestSeq.size == 1) {
-            logger.trace(s"Data Center ID $dataCenterId: Ingest of uuid ${ingestSeq.head.meta.uuid.utf8String} to " +
+            logger.trace(s"Sync $dcKey: Ingest of uuid ${ingestSeq.head.meta.uuid.utf8String} to " +
                          s"machine $location failed. Retries left $retriesLeft. Will try again. The exception is: ", ex.get)
             Util.tracePrintFuturedBodyException(ex.get)
             val ingestState =
@@ -198,7 +191,7 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
               )
             )
           } else if (retriesLeft == 0) {
-            logger.trace(s"Data Center ID $dataCenterId: Ingest of bulk uuids to machine $location failed. No more bulk retries left. " +
+            logger.trace(s"Sync $dcKey: Ingest of bulk uuids to machine $location failed. No more bulk retries left. " +
                          s"Will split to request for each uuid and try again. The exception is: ", ex.get)
             Util.tracePrintFuturedBodyException(ex.get)
             Some(ingestSeq.map { infotonMetaAndData =>
@@ -214,7 +207,7 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
             }(breakOut))
           } else {
             logger.trace(
-              s"Data Center ID $dataCenterId: Ingest of bulk uuids to machine $location failed. Retries left $retriesLeft. Will try again. The exception is: ",
+              s"Sync $dcKey: Ingest of bulk uuids to machine $location failed. Retries left $retriesLeft. Will try again. The exception is: ",
               ex.get
             )
             Util.tracePrintFuturedBodyException(ex.get)
