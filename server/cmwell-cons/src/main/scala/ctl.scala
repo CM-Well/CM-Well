@@ -1489,7 +1489,7 @@ abstract class Host(user: String,
 
     Try(CassandraLock().waitForModule(hosts(0), casSize))
     Try(ElasticsearchLock().waitForModule(hosts(0), esSize))
-    Thread.sleep(60000)
+    //Thread.sleep(60000)
     startZookeeper
     startKafka(hosts)
 
@@ -1570,7 +1570,7 @@ abstract class Host(user: String,
     info("  starting kafka")
     startKafka
 
-    Thread.sleep(60000)
+    //Thread.sleep(60000)
 
     info("  inserting schemas")
     initSchemes(hosts)
@@ -1624,7 +1624,7 @@ abstract class Host(user: String,
 
   def initSchemes(hosts: GenSeq[String] = ips.par) {
     // scalastyle:off
-    commanMd(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/cassandra-cql-init-cluster-new", hosts(0), false)
+    command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/cassandra-cql-init-cluster-new", hosts(0), false)
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/zstore-cql-init-cluster", hosts(0), false)
     val templateCreation = command(s"""curl -s -X POST http://${hosts(0)}:$esMasterPort/_template/cmwell_index_template -H "Content-Type: application/json" --data-ascii @${instDirs.globalLocation}/cm-well/conf/es/indices_template_new.json""", hosts(0), false)
     templateCreation match {

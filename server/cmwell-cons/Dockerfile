@@ -24,7 +24,7 @@ FROM base-os as java
 RUN apt install -y openjdk-8-jre
 
 # How we "cache" this download
-ADD https://downloads.lightbend.com/scala/2.12.6/scala-2.12.6.tgz /home/u/cmwell/components-extras/scala-2.12.6.tgz
+ADD http://downloads.lightbend.com/scala/2.12.6/scala-2.12.6.tgz /home/u/cmwell/components-extras/scala-2.12.6.tgz
 
 ADD extract-scala.sh /home/u/extract-scala.sh
 
