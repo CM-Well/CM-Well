@@ -1489,7 +1489,6 @@ abstract class Host(user: String,
 
     Try(CassandraLock().waitForModule(hosts(0), casSize))
     Try(ElasticsearchLock().waitForModule(hosts(0), esSize))
-    //Thread.sleep(60000)
     startZookeeper
     startKafka(hosts)
 
@@ -1569,8 +1568,6 @@ abstract class Host(user: String,
     startZookeeper
     info("  starting kafka")
     startKafka
-
-    //Thread.sleep(60000)
 
     info("  inserting schemas")
     initSchemes(hosts)

@@ -19,7 +19,7 @@ import java.net.{URL, URLClassLoader}
 
 // scalastyle:off
 import sun.misc.CompoundEnumeration
-// scalastyle:on
+// scalastyle:onc
 import scala.util.{Failure, Success, Try}
 
 /**
