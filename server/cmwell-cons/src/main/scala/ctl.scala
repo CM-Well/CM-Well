@@ -231,8 +231,8 @@ abstract class Host(user: String,
   def getMinMembers = minMembers.getOrElse(ips.size / 2 + 1)
   def getCasUseCommitLog = casUseCommitLog
 
-  def getThreesome(list: List[String], num: String): String = {
-    val from = list.indexOf(num)
+  def getThreesome(list: List[String], host: String): String = {
+    val from = list.indexOf(host)
     val to = (from + 3) % list.size
     val threesome = if (from < to)
       list.slice(from, to)
