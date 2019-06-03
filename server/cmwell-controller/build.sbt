@@ -17,7 +17,8 @@ libraryDependencies ++= {
     dm("com.typesafe", "config"),
     dm("com.typesafe.play", "play-json"),
     dm("org.hdrhistogram", "HdrHistogram"),
-    dm("uk.org.lidalia","sysout-over-slf4j"))
+    dm("uk.org.lidalia", "sysout-over-slf4j")
+  )
 }
 
 fullTest := (test in Test).value

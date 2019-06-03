@@ -7,5 +7,5 @@ package cmwell.build
   * Time: 11:15 AM
   */
 object PluginVersions {
-  val play = "2.7.0"
+  val play = "2.7.2"
 }

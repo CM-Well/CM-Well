@@ -21,7 +21,7 @@ libraryDependencies ++= {
     dm("com.typesafe.akka", "akka-http"),
     dm("com.typesafe.akka", "akka-stream"),
     dm("commons-io", "commons-io"),
-    dm("io.netty", "netty"),
+//    dm("io.netty", "netty-common"),
     dm("io.dropwizard.metrics","metrics-jmx"),
     dm("nl.grons", "metrics4-scala"),
     dm("nl.grons", "metrics4-akka_a25"),
