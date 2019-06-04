@@ -116,7 +116,7 @@ object Ingester extends DataToolsLogging with DataToolsConfig {
       }
     }
 
-    val parallelism = config.getInt("data-tools.akka.http.host-connection-pool.max-connections")
+    val parallelism = config.getInt("akka.http.host-connection-pool.max-connections")
 
     Flow[Seq[(ByteString, Option[T])]]
       .map { elem => (elem.map(_._1), elem.head._2)}
