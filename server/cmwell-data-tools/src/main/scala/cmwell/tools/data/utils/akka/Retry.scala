@@ -415,7 +415,12 @@ object Retry extends DataToolsLogging with DataToolsConfig {
       .mapAsyncUnordered(httpParallelism) {
         case (data, state) => data.map(_ -> state)
       } // used for delay between executions
-      .map { case (data, state) => createRequest(data, state.vars, state.context) -> state }
+      .map { case (data, state) => {
+      val req = createRequest(data, state.vars, state.context) -> state
+      req
+    }
+
+    }
       .via(conn).map {
         case (tryResponse, state) =>
           tryResponse.map(HttpZipDecoder.decodeResponse) -> state

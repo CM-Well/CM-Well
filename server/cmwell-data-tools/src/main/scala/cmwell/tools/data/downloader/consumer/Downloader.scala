@@ -123,7 +123,10 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
       .single(Seq(blank) -> None)
       .via(
         Retry.retryHttp(retryTimeout, 1, retryLimit, delayFactor)(
-          (_,_,ctx:Option[_]) => HttpRequest(uri = uri)
+          (_,_,ctx:Option[_]) => {
+            val req =HttpRequest(uri = uri)
+            req
+          }
         )
       )
       .map {
