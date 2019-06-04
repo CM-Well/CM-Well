@@ -19,7 +19,7 @@ cmwell.utils = {
                     , isCmwellProtocol = url.indexOf('cmwell://')>-1
                     , resultUrl = found ? '/'+withoutProtocol : url;
 
-                resultUrl = (isCmwellProtocol ? url.replace('cmwell://','/') : resultUrl).replace('#','%23');
+                resultUrl = (isCmwellProtocol ? url.replace('cmwell://','/') : resultUrl).replace('%','%25').replace('#','%23');
 
                 return {
                     isBendback: found,
