@@ -8,6 +8,7 @@
 ### Running the image:
 1. docker run -dit -p 8085:9000 --mount type=volume,destination=/home/u/app/cm-well-data,source=cm-well-data
 <image-name>
+        
 ### Get a shell to the running image:
 1. docker exec -it <docker-container-hash> bash
 
