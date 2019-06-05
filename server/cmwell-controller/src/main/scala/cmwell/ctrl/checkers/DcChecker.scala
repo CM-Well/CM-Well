@@ -99,8 +99,9 @@ object DcChecker extends Checker with RestarterChecker with LazyLogging {
       .map(jvm => Grid.selectActor(ClientActor.name, jvm) ! RestartJvm)
   }
 
-  private def transform(transformations: List[(String, String)], str: String): String = {
-    transformations.foldLeft(str)((result, kv) => result.replace(kv._1, kv._2))
+  private def transform(transformations: List[String], str: String): String = {
+    val parsedTransformations = transformations.map(_.split("->") match { case Array(source, target) => (source, target)})
+    parsedTransformations.foldLeft(str)((result, kv) => result.replace(kv._1, kv._2))
   }
 
   override def check: Future[ComponentState] = {
@@ -110,7 +111,6 @@ object DcChecker extends Checker with RestarterChecker with LazyLogging {
         val qpStr = dc.qp.fold("")(qp => s"qp=$qp")
         val whStr = if (dc.wh) "with-history" else ""
         val qpAndWhStr = (for (str <- List(qpStr, whStr) if str.nonEmpty) yield str).mkString("&")
-        val t = dc.transformations.map(_.split("->") match { case Array(source, target) => (source, target)})
         val qpAndWhStrFinal = if (qpAndWhStr.length == 0) "" else "?" + qpAndWhStr
         val transStr = if (dc.transformations.isEmpty) "" else s"&trans:${dc.transformations.mkString("[", ",", "]")}"
         val id = s"${dc.id}$qpAndWhStrFinal$transStr"
@@ -118,7 +118,7 @@ object DcChecker extends Checker with RestarterChecker with LazyLogging {
         val remoteLastIndexTimeF = getLastIndexTime(remoteHost, dc.id, dc.qp, dc.wh).recover {
           case err: Throwable => -1L
         }
-        val localLastIndexTimeF = getLastIndexTime(host, dc.id, dc.qp.map(transform(t, _)), dc.wh).recover { case err: Throwable => -1L }
+        val localLastIndexTimeF = getLastIndexTime(host, dc.id, dc.qp.map(transform(dc.transformations, _)), dc.wh).recover { case err: Throwable => -1L }
         val aggregated = for {
           remoteLastIndexTime <- remoteLastIndexTimeF
           localLastIndexTime <- localLastIndexTimeF
@@ -133,7 +133,7 @@ object DcChecker extends Checker with RestarterChecker with LazyLogging {
               getLastStates(1).headOption match {
                 case Some(sb: DcStatesBag) =>
                   val lastState = sb.states.get(id)
-                  logger.debug(s"DcChecker: Last state was $lastState, remote index time: ${dcDiff.indextimeDiff.remote}")
+                  logger.debug(s"DcChecker: Last state for id [$id] was $lastState, remote index time: ${dcDiff.indextimeDiff.remote}")
                   val newState = lastState match {
                     case Some(DcSyncing(dcId, _dcDiff, ch, _)) =>
                       if (dcDiff.indextimeDiff.isEqual) DcSyncing(id, dcDiff, Config.listenAddress)
