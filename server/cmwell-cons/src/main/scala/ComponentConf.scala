@@ -443,7 +443,6 @@ case class ZookeeperConf(home: String, clusterName: String, servers: Seq[String]
                      |export JMXDISABLE=true
                      |export JVMFLAGS="-Xmx500m -Xms500m -Dlog4j.configuration=file:$confDir/log4j.properties"""".stripMargin
     // scalastyle:off
-    val cp = s"cur/lib/slf4j-log4j12-1.7.25.jar:cur/lib/slf4j-api-1.7.25.jar:cur/lib/netty-3.10.6.Final.jar:cur/lib/log4j-1.2.17.jar:cur/lib/jline-0.9.94.jar:cur/zookeeper-${cmwell.util.build.BuildInfo.zookeeperVersion}.jar:$home/conf/$dir"
     val scriptString =
       s"""
           |$exports
