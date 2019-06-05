@@ -1628,7 +1628,7 @@ abstract class Host(user: String,
     // scalastyle:off
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/cassandra-cql-init-cluster-new", hosts(0), false)
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/zstore-cql-init-cluster", hosts(0), false)
-    val templateCreation = command(s"""curl -s -X POST http://${hosts(0)}:$esMasterPort/_template/cmwell_index_template -H "Content-Type: application/json" --data-ascii @${instDirs.globalLocation}/cm-well/conf/es/indices_template_new.json""", hosts(0), false)
+    val templateCreation = command(s"""unset http_proxy;curl -s -X POST http://${hosts(0)}:$esMasterPort/_template/cmwell_index_template -H "Content-Type: application/json" --data-ascii @${instDirs.globalLocation}/cm-well/conf/es/indices_template_new.json""", hosts(0), false)
     templateCreation match {
       case Success(res) =>
         if (res.trim != """{"acknowledged":true}""") {
@@ -1640,7 +1640,7 @@ abstract class Host(user: String,
         sys.exit(1)
     }
     //create the first index in advance. It resolves the issue of meta ns cache quering a non existant index
-    val firstIndexCreation = command(s"""curl -s -X PUT http://${hosts(0)}:$esMasterPort/cm_well_p0_0""", hosts(0), false)
+    val firstIndexCreation = command(s"""unset http_proxy;curl -s -X PUT http://${hosts(0)}:$esMasterPort/cm_well_p0_0""", hosts(0), false)
     firstIndexCreation match {
       case Success(res) =>
         if (res.trim != """{"acknowledged":true,"shards_acknowledged":true,"index":"cm_well_p0_0"}""") {
