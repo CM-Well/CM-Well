@@ -38,7 +38,7 @@ import scala.util.{Failure, Success}
 class BGMonitorActor(zkServers: String,
                      offsetService: OffsetsService,
                      implicit val ec: ExecutionContext = concurrent.ExecutionContext.Implicits.global)
-    extends Actor
+  extends Actor
     with LazyLogging {
 
   val zkClient = new ZkClient(zkServers, 10000, 10000, ZKLikeStringSerializer)
@@ -86,14 +86,14 @@ class BGMonitorActor(zkServers: String,
 
   val topicsPartitions = topicsPartitionsAndConsumers.keys
 
-  var previousOffsetInfo: OffsetsInfo = OffsetsInfo(Map.empty[String, PartitionOffsetsInfo], DateTime.now())
+  @volatile var previousOffsetInfo: OffsetsInfo = OffsetsInfo(Map.empty[String, PartitionOffsetsInfo], DateTime.now())
   @volatile var currentOffsetInfo: OffsetsInfo = OffsetsInfo(Map.empty[String, PartitionOffsetsInfo], DateTime.now())
 
-  var lastFetchDuration: Long = 0
+  @volatile var lastFetchDuration: Long = 30L
 
   import java.util.concurrent.ConcurrentHashMap
 
-  val redSince: collection.concurrent.Map[Int, Long] = new ConcurrentHashMap[Int, Long]().asScala
+  val redSince: collection.concurrent.Map[String, Long] = new ConcurrentHashMap[String, Long]().asScala
 
   self ! CalculateOffsetInfo
 
@@ -105,8 +105,6 @@ class BGMonitorActor(zkServers: String,
       logger.debug(s"got inner request to generate new offsets info")
       generateOffsetsInfo
   }
-
-  @volatile var statusesCheckedTime: Long = System.currentTimeMillis()
 
   private def generateOffsetsInfo = {
 
@@ -122,14 +120,14 @@ class BGMonitorActor(zkServers: String,
           val partitionsOffsetsInfo: Map[String, PartitionOffsetsInfo] = topicPartitionsWriteOffsets.asScala.map {
             case (topicPartition, writeOffset) =>
               val streamId = topicPartition.topic() match {
-                case "persist_topic"          => s"imp.${topicPartition.partition()}_offset"
+                case "persist_topic" => s"imp.${topicPartition.partition()}_offset"
                 case "persist_topic.priority" => s"imp.${topicPartition.partition()}.p_offset"
-                case "index_topic"            => s"indexer.${topicPartition.partition()}_offset"
-                case "index_topic.priority"   => s"indexer.${topicPartition.partition()}.p_offset"
+                case "index_topic" => s"indexer.${topicPartition.partition()}_offset"
+                case "index_topic.priority" => s"indexer.${topicPartition.partition()}.p_offset"
               }
               val readOffset = offsetService.read(streamId).getOrElse(0L)
-              ((topicPartition.topic() + topicPartition.partition()),
-               PartitionOffsetsInfo(topicPartition.topic(), topicPartition.partition(), readOffset, writeOffset))
+              (topicPartition.topic() + topicPartition.partition(),
+                PartitionOffsetsInfo(topicPartition.topic(), topicPartition.partition(), readOffset, writeOffset))
           }.toMap
           val end = System.currentTimeMillis()
           (OffsetsInfo(partitionsOffsetsInfo, new DateTime()), end - start)
@@ -140,75 +138,72 @@ class BGMonitorActor(zkServers: String,
     calculateOffsetInfo().onComplete {
       case Success((info, duration)) =>
         logger.debug(s"calculate offset info successful: \nInfo:$info\nDuration:$duration")
-        val now = System.currentTimeMillis()
-        if (now - statusesCheckedTime > 1 * 60 * 1000) {
-          logger.debug(s"more than 1 minute has past since last checked statuses, let's check")
-          statusesCheckedTime = now
-          previousOffsetInfo = currentOffsetInfo
-          try {
-            val partitionsOffsetInfoUpdated = info.partitionsOffsetInfo.map {
-              case (key, partitionInfo) =>
-                val readDiff = partitionInfo.readOffset - previousOffsetInfo.partitionsOffsetInfo
+        previousOffsetInfo = currentOffsetInfo
+        try {
+          val partitionsOffsetInfoUpdated = info.partitionsOffsetInfo.map {
+            case (key, partitionInfo) =>
+              val readDiff = partitionInfo.readOffset - previousOffsetInfo.partitionsOffsetInfo
+                .get(key)
+                .map {
+                  _.readOffset
+                }
+                .getOrElse(0L)
+              val partitionStatus = {
+                if (readDiff > 0) {
+                  //Remove the bg from red map if was there
+                  logger.debug(s"readDiff > 0. removing ${key}")
+                  redSince.remove(key)
+                  Green
+                }
+                else if (partitionInfo.readOffset - partitionInfo.writeOffset == 0) {
+                  //Remove the bg from red map if was there
+                  logger.debug(s"diff == 0. removing ${key}")
+                  redSince.remove(key)
+                  Green
+                } else if (previousOffsetInfo.partitionsOffsetInfo
                   .get(key)
                   .map {
-                    _.readOffset
+                    _.partitionStatus
                   }
-                  .getOrElse(0L)
-                val partitionStatus = {
-                  if (readDiff > 0)
-                    Green
-                  else if (partitionInfo.readOffset - partitionInfo.writeOffset == 0) {
-                    Green
-                  } else if ((previousOffsetInfo).partitionsOffsetInfo
-                               .get(key)
-                               .map { _.partitionStatus }
-                               .getOrElse(Green) == Green) {
-                    Yellow
-                  } else {
-                    Red
-                  }
+                  .getOrElse(Green) == Green) {
+                  Yellow
+                } else {
+                  Red
                 }
-                if (partitionStatus == Red) {
-                  val currentTime = System.currentTimeMillis()
-                  redSince.get(partitionInfo.partition) match {
-                    case None =>
-                      logger.warn(s"BG status for partition ${partitionInfo.partition} turned RED")
-                      redSince.putIfAbsent(partitionInfo.partition, currentTime)
-                    case Some(since) if ((currentTime - since) > 15 * 60 * 1000) =>
-                      logger.error(
-                        s"BG status for partition ${partitionInfo.partition} is RED for more than 15 minutes. sending it an exit message"
-                      )
-                      Grid.serviceRef(s"BGActor${partitionInfo.partition}") ! ExitWithError
-                      redSince.replace(partitionInfo.partition, currentTime)
-                    case Some(since) =>
-                      logger.warn(
-                        s"BG for partition ${partitionInfo.partition} is RED since ${(currentTime - since) / 1000} seconds ago"
-                      )
-                  }
+              }
+              if (partitionStatus == Red) {
+                val currentTime = System.currentTimeMillis()
+                redSince.get(key) match {
+                  case None =>
+                    logger.warn(s"BG status for partition ${key} turned RED")
+                    redSince.putIfAbsent(key, currentTime)
+                  case Some(since) if ((currentTime - since) > 15 * 60 * 1000) =>
+                    logger.error(
+                      s"BG status for partition ${key} is RED for more than 15 minutes. sending it an exit message"
+                    )
+                    Grid.serviceRef(s"BGActor${partitionInfo.partition}") ! ExitWithError
+                    redSince.replace(key, currentTime)
+                  case Some(since) =>
+                    logger.warn(
+                      s"BG for partition ${key} is RED since ${(currentTime - since) / 1000} seconds ago"
+                    )
                 }
-                key -> partitionInfo.copy(partitionStatus = partitionStatus)
-            }
-
-            currentOffsetInfo = info.copy(partitionsOffsetInfo = partitionsOffsetInfoUpdated)
-          } catch {
-            case t: Throwable => logger.error("exception ingesting offset info", t)
+              }
+              key -> partitionInfo.copy(partitionStatus = partitionStatus)
           }
-        } else if (currentOffsetInfo.partitionsOffsetInfo.nonEmpty) {
-          currentOffsetInfo = info.copy(partitionsOffsetInfo = info.partitionsOffsetInfo.map {
-            case (topic, info) =>
-              (topic, info.copy(partitionStatus = currentOffsetInfo.partitionsOffsetInfo(topic).partitionStatus))
-          })
-        } else {
-          currentOffsetInfo = info
+
+          currentOffsetInfo = info.copy(partitionsOffsetInfo = partitionsOffsetInfoUpdated)
+        } catch {
+          case t: Throwable => logger.error("exception ingesting offset info", t)
         }
         lastFetchDuration = duration
         logger.debug(s"updated currentOffsetInfo: $currentOffsetInfo")
         context.system.scheduler
-          .scheduleOnce(math.max(10000, lastFetchDuration).milliseconds, self, CalculateOffsetInfo)
+          .scheduleOnce(math.max(30000, lastFetchDuration).milliseconds, self, CalculateOffsetInfo)
       case Failure(exception) =>
         logger.error("failed to calculate offset info", exception)
         context.system.scheduler
-          .scheduleOnce(math.max(10000, lastFetchDuration).milliseconds, self, CalculateOffsetInfo)
+          .scheduleOnce(math.max(30000, lastFetchDuration).milliseconds, self, CalculateOffsetInfo)
     }
   }
 
@@ -231,12 +226,19 @@ object ZKLikeStringSerializer extends ZkSerializer {
 }
 
 case object GetOffsetInfo
+
 case object CalculateOffsetInfo
+
 case class OffsetsInfo(partitionsOffsetInfo: Map[String, PartitionOffsetsInfo], timeStamp: DateTime)
+
 trait PartitionStatus
+
 case object Green extends PartitionStatus
+
 case object Yellow extends PartitionStatus
+
 case object Red extends PartitionStatus
+
 case class PartitionOffsetsInfo(topic: String,
                                 partition: Int,
                                 readOffset: Long,

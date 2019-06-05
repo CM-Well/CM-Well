@@ -6,7 +6,7 @@ You can report CM-Well issues at the [CM-Well GitHub Issues Page](https://github
 
 ## Discuss
 
-We use [Gitter](https://gitter.im/CM-Well/CM-Well) to talk about CM-Well. Feel free to come join us!
+We use [Gitter](https://gitter.im/CM-Wells/CM-Well) to talk about CM-Well. Feel free to come join us!
 
 ## Code Contributions
 

@@ -136,7 +136,7 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
       val endS3TimeMillis = System.currentTimeMillis()
       val s3Duration = (endS3TimeMillis - startTimeMillis) / 1000
       logger.info("Duration of writing to s3 = " + s3Duration)
-      val responseFuture = loaderPostWithRetry(neptuneCluster, fileName)
+      val responseFuture = loaderPostWithRetry(neptuneCluster, s"$s3Directory/$fileName")
       responseFuture.onComplete(_ => {
         val endTimeMillis = System.currentTimeMillis()
         val neptuneDurationSec = endTimeMillis - startTimeMillis
@@ -198,9 +198,9 @@ class ExportToNeptuneManager(ingestConnectionPoolSize: Int) {
     }
   }
 
-  def loaderPostWithRetry(neptuneCluster: String, fileName: String): Future[Int] = {
+  def loaderPostWithRetry(neptuneCluster: String, fileS3Path: String): Future[Int] = {
     retry(secondsToWait, retryIngest) {
-      NeptuneIngester.ingestToNeptuneViaLoaderAPI(neptuneCluster, fileName, ec)
+      NeptuneIngester.ingestToNeptuneViaLoaderAPI(neptuneCluster, fileS3Path, ec)
     }
   }
 

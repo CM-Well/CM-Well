@@ -1,4 +1,4 @@
-[![Gitter chat](https://badges.gitter.im/CM-Well/CM-Well.svg)](https://gitter.im/CM-Well/CM-Well)
+[![Gitter chat](https://badges.gitter.im/CM-Well/CM-Well.svg)](https://gitter.im/CM-Wells/CM-Well)
 
 # Introduction
 

@@ -41,6 +41,7 @@ nav:
     - index.md
     - License.md
     - Release Notes:
+      - ReleaseNotes/ReleaseNotes.Atom.May.2019.md
       - ReleaseNotes/ReleaseNotes.Zebra2.February.2019.md
       - 2018:
         - ReleaseNotes/2018/ReleaseNotes.Piranha.January.2018.md

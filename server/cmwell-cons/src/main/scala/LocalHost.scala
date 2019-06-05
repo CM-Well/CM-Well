@@ -30,7 +30,10 @@ case class LocalHost(dataCenter: String = "lh",
                      nbg: Boolean = false,
                      isDebug: Boolean = false,
                      subjectsInSpAreHttps: Boolean = false,
-                     defaultRdfProtocol: String = "http")
+                     defaultRdfProtocol: String = "http",
+                     diskOptimizationStrategy:String = "ssd",
+                     casUseCommitLog:Boolean = true
+                    )
     extends Host(
       System.getProperty("user.name"),
       "",
@@ -53,7 +56,9 @@ case class LocalHost(dataCenter: String = "lh",
       withElk = withElk,
       isDebug = isDebug,
       subjectsInSpAreHttps = subjectsInSpAreHttps,
-      defaultRdfProtocol = defaultRdfProtocol
+      defaultRdfProtocol = defaultRdfProtocol,
+      diskOptimizationStrategy = diskOptimizationStrategy,
+      casUseCommitLog = casUseCommitLog
     ) {
 
 //  LogLevel.debug
@@ -184,7 +189,6 @@ case class LocalHost(dataCenter: String = "lh",
 
     val homeDir = s"${instDirs.globalLocation}/cm-well"
     val ip = "127.0.0.1"
-
     val cas = CassandraConf(
       home = homeDir,
       seeds = getSeedNodes.mkString(","),
@@ -204,7 +208,9 @@ case class LocalHost(dataCenter: String = "lh",
       g1 = false,
       hostIp = ip,
       casDataDirs = Seq("cas"),
-      casUseCommitLog = true
+      casUseCommitLog = casUseCommitLog,
+      numOfCores = calculateCpuAmount,
+      diskOptimizationStrategy = diskOptimizationStrategy
     )
 
     val es = ElasticsearchConf(

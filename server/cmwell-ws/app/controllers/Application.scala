@@ -1563,35 +1563,46 @@ callback=< [URL] >
 
                     val idxT = results.maxBy(_.indexTime).indexTime //infotons.maxBy(_.indexTime.getOrElse(0L)).indexTime.getOrElse(0L)
 
+                    val fieldsMaskFut = extractFieldsMask(request.getQueryString("fields"),
+                      typesCache,
+                      cmwellRDFHelper,
+                      request.attrs.get(Attrs.RequestReceivedTimestamp))
+
                     // last chunk
                     if (results.length >= total)
-                      expandSearchResultsForSortedIteration(results,
-                        sortedConsumeState.copy(from = idxT),
-                        total,
-                        formatter,
-                        contentType,
-                        xg,
-                        yg,
-                        gqp,
-                        ygChunkSize,
-                        gqpChunkSize,
-                        timeContext)
+                      fieldsMaskFut.flatMap { fieldsMask =>
+                        expandSearchResultsForSortedIteration(results,
+                          sortedConsumeState.copy(from = idxT),
+                          total,
+                          formatter,
+                          contentType,
+                          xg,
+                          yg,
+                          gqp,
+                          ygChunkSize,
+                          gqpChunkSize,
+                          timeContext,
+                          fieldsMask)
+                      }
                     //regular chunk with more than 1 indexTime
                     else if (results.exists(_.indexTime != idxT)) {
-                      val newResults = results.filter(_.indexTime < idxT)
-                      val id = sortedConsumeState.copy(from = idxT - 1)
-                      //expand the infotons with yg/xg, but only after filtering out the infotons with the max indexTime
-                      expandSearchResultsForSortedIteration(newResults,
-                        id,
-                        total,
-                        formatter,
-                        contentType,
-                        xg,
-                        yg,
-                        gqp,
-                        ygChunkSize,
-                        gqpChunkSize,
-                        timeContext)
+                      fieldsMaskFut.flatMap { fieldsMask =>
+                        val newResults = results.filter(_.indexTime < idxT)
+                        val id = sortedConsumeState.copy(from = idxT - 1)
+                        //expand the infotons with yg/xg, but only after filtering out the infotons with the max indexTime
+                        expandSearchResultsForSortedIteration(newResults,
+                          id,
+                          total,
+                          formatter,
+                          contentType,
+                          xg,
+                          yg,
+                          gqp,
+                          ygChunkSize,
+                          gqpChunkSize,
+                          timeContext,
+                          fieldsMask)
+                      }
                     }
                     //all the infotons in current chunk have the same indexTime
                     else {
@@ -1612,17 +1623,20 @@ callback=< [URL] >
                         .flatMap {
                           //if by pure luck, the chunk length is exactly equal to the number of infotons in cm-well containing this same indexTime
                           case (_, hits) if hits <= results.size =>
-                            expandSearchResultsForSortedIteration(results,
-                              sortedConsumeState.copy(from = idxT),
-                              total,
-                              formatter,
-                              contentType,
-                              xg,
-                              yg,
-                              gqp,
-                              ygChunkSize,
-                              gqpChunkSize,
-                              timeContext)
+                            fieldsMaskFut.flatMap { fieldsMask =>
+                              expandSearchResultsForSortedIteration(results,
+                                sortedConsumeState.copy(from = idxT),
+                                total,
+                                formatter,
+                                contentType,
+                                xg,
+                                yg,
+                                gqp,
+                                ygChunkSize,
+                                gqpChunkSize,
+                                timeContext,
+                                fieldsMask)
+                            }
                           // if we were asked to expand chunk, but need to respond with a chunked response
                           // (workaround: try increasing length or search directly with adding `system.indexTime::${idxT}`)
                           case _ if xg.isDefined || yg.isDefined =>
@@ -1636,19 +1650,21 @@ callback=< [URL] >
                             logger.info(s"sorted iteration encountered a large chunk [indexTime = $idxT]")
 
                             val id = ConsumeState.encode(sortedConsumeState.copy(from = idxT))
-                            val src =
-                              streams.scrollSourceToByteString(iterationResultsEnum,
-                                formatter,
-                                withData,
-                                history,
-                                None,
-                                Set.empty) // TODO: get fieldsMask instead of Set.empty
 
-                            val result = Ok
-                              .chunked(src)
-                              .as(contentType)
-                              .withHeaders("X-CM-WELL-POSITION" -> id, "X-CM-WELL-N-LEFT" -> (total - hits).toString)
-                            Future.successful(result)
+                            fieldsMaskFut.map { fieldsMask =>
+                              val src =
+                                streams.scrollSourceToByteString(iterationResultsEnum,
+                                  formatter,
+                                  withData,
+                                  history,
+                                  None,
+                                  fieldsMask)
+
+                              Ok
+                                .chunked(src)
+                                .as(contentType)
+                                .withHeaders("X-CM-WELL-POSITION" -> id, "X-CM-WELL-N-LEFT" -> (total - hits).toString)
+                            }
                           }
                         }
                         .recover(errorHandler)
@@ -1673,7 +1689,8 @@ callback=< [URL] >
                                             gqp: Option[String],
                                             ygChunkSize: Int,
                                             gqpChunkSize: Int,
-                                            timeContext: Option[Long]): Future[Result] = {
+                                            timeContext: Option[Long],
+                                            fieldsMask: Set[String]): Future[Result] = {
 
     val id = ConsumeState.encode(sortedIteratorState)
 
@@ -1693,6 +1710,7 @@ callback=< [URL] >
         Ok.chunked(
           Source(newResults)
             .via(Streams.Flows.searchThinResultToFatInfoton(crudServiceFS))
+            .map(_.masked(fieldsMask))
             .via(Streams.Flows.infotonToByteString(formatter))
         )
           .as(contentType)
@@ -1732,7 +1750,9 @@ callback=< [URL] >
               case _ => Future.successful(true -> infotonsAfterGQP)
             }
 
-            ygModified.flatMap {
+            val maskedYgModified = ygModified.map { case (ok, infotons) => ok -> infotons.map(_.masked(fieldsMask)) }
+
+            maskedYgModified.flatMap {
               case (false, infotonsAfterYg) => {
                 val body = FormatterManager.formatFormattableSeq(infotonsAfterYg, formatter)
                 val result = InsufficientStorage(body)
@@ -1923,7 +1943,6 @@ callback=< [URL] >
                         }
                         val injectInterval = 3.seconds
                         val backOnTime: String => Result = { str =>
-                          ar ! GotIt
                           Ok(str).as(overrideMimetype(formatter.mimetype, request)._2)
                         }
                         val prependInjections: () => ByteString = formatter match {
@@ -1940,7 +1959,6 @@ callback=< [URL] >
                         }
                         val injectOriginalFutureWith: String => ByteString = ByteString(_, StandardCharsets.UTF_8)
                         val continueWithSource: Source[ByteString, NotUsed] => Result = { src =>
-                          ar ! GotIt
                           Ok.chunked(src).as(overrideMimetype(formatter.mimetype, request)._2)
                         }
 

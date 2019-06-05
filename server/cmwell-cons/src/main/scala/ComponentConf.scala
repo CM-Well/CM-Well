@@ -118,7 +118,9 @@ case class CassandraConf(home: String,
                          g1: Boolean,
                          hostIp: String,
                          casDataDirs:Seq[String],
-                         casUseCommitLog:Boolean)
+                         casUseCommitLog:Boolean,
+                         numOfCores:Integer,
+                         diskOptimizationStrategy:String)
     extends ComponentConf(hostIp, s"$home/app/cas/cur", sName, s"$home/conf/$dir", "cassandra.yaml", index) {
   override def getPsIdentifier = s"/log/cas${getIndexTxt}/"
 
@@ -256,9 +258,15 @@ case class CassandraConf(home: String,
         "root_dir" -> home,
         "endpoint_snitch" -> snitchType,
         "row_cache_size" -> rowCacheSize.toString,
-        "cas_data_dirs" -> casDataDirs.map(dir=> s"$home/data/$dir/data").mkString("\n    - ")
+        "cas_data_dirs" -> casDataDirs.map(dir=> s"$home/data/$dir/data").mkString("\n    - "),
+        "concurrent_reads" -> (16 * casDataDirs.size).toString,
+        "concurrent_writes" ->  (8 * Math.max(1, numOfCores / 2)).toString,
+        "concurrent_counter_writes" -> (16 * casDataDirs.size).toString,
+        "disk_optimization_strategy" -> diskOptimizationStrategy,
+        "concurrent_compactors" -> (if (diskOptimizationStrategy == "SSD") Math.max(1, numOfCores / 2) else 1).toString
       )
     )
+
 
 //    val log4jContent = templateToFile(s"scripts/templates/log4j-server.properties",
 //      Map("file_path" -> s"$home/log/$dir/system.log"))
@@ -322,7 +330,6 @@ case class ElasticsearchConf(clusterName: String,
     val scriptString =
       s"""export PATH=$home/app/java/bin:$home/bin/utils:$PATH
          |export ES_PATH_CONF=$home/conf/$dir/config
-         |export JAVA_HOME=$home/app/java
          |$CHKSTRT
          |$BMSG
          |starter bin/elasticsearch > $home/log/$dir/stdout.log 2> $home/log/$dir/stderr.log &""".stripMargin
@@ -342,7 +349,8 @@ case class ElasticsearchConf(clusterName: String,
       "node-data" -> dataNode.toString,
       "recoverafternodes" -> { if (expectedNodes > 3) expectedNodes - 2 else expectedNodes - 1 }.toString,
       "expectednodes" -> expectedNodes.toString,
-      "hosts" -> seeds.split(',').mkString("", s":$seedPort,", s":$seedPort"),
+      "seed_hosts" -> seeds.split(',').mkString("", s":$seedPort,", s":$seedPort"),
+      "initial_master_nodes" -> seeds.split(',').mkString("", "-master,", "-master"),
       "dir" -> dir,
       "listen_address" -> listenAddress,
       "root_dir" -> home,
@@ -355,7 +363,7 @@ case class ElasticsearchConf(clusterName: String,
       "num_of_replicas" -> { if (expectedNodes > 2) 2 else 0 }.toString
     )
 
-    val confContent = ResourceBuilder.getResource(s"scripts/templates/${template}", m)
+    val confContent = ResourceBuilder.getResource(s"scripts/templates/$template", m)
 
     val m2 = Map[String, String]("number_of_shards" -> Math.min(expectedNodes, 10).toString,
                                  "number_of_replicas" -> numberOfReplicas.toString)
@@ -366,7 +374,8 @@ case class ElasticsearchConf(clusterName: String,
     val m3 = Map[String, String](
       "ps_id" -> getPsIdentifier,
       "es_ms" -> s"${resourceManager.mxms}",
-      "es_mx" -> s"${resourceManager.mxmx}"
+      "es_mx" -> s"${resourceManager.mxmx}",
+      "log_dir" -> s"$home/log/$dir"
     )
     val jvmOpts = ResourceBuilder.getResource("scripts/templates/es-jvm.options", m3)
 

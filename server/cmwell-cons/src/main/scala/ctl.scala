@@ -165,6 +165,7 @@ case object Oracle extends OsType
 
 case object Ubuntu extends OsType
 
+
 abstract class Host(user: String,
                     password: String,
                     hostIps: Seq[String],
@@ -187,8 +188,9 @@ abstract class Host(user: String,
                     withElk: Boolean = false,
                     isDebug: Boolean = false,
                     subjectsInSpAreHttps: Boolean = false,
-                    defaultRdfProtocol: String = "http") {
-
+                    defaultRdfProtocol: String = "http",
+                    diskOptimizationStrategy:String,
+                    casUseCommitLog:Boolean) {
   val cmwellPropertiesFile = "cmwell.properties"
 
   var sudoerCredentials: Option[Credentials] = None
@@ -227,6 +229,7 @@ abstract class Host(user: String,
    */
 
   def getMinMembers = minMembers.getOrElse(ips.size / 2 + 1)
+  def getCasUseCommitLog = casUseCommitLog
 
   val esRegPort = 9201
   val esMasterPort = 9200
@@ -317,6 +320,15 @@ abstract class Host(user: String,
   }
 
   def ips = hostIps.toList
+
+  def calculateCpuAmount = {
+
+    if(UtilCommands.isOSX)
+      command("sysctl hw.physicalcpu", false).get.split(":")(1).trim.toInt
+    else
+      command("lscpu", false).get.split('\n').map(_.split(':')).map(a => a(0) -> a(1)).toMap.getOrElse("CPU(s)", "0").trim.toInt
+
+  }
 
   def getEsSize = esSize
 
@@ -904,7 +916,6 @@ abstract class Host(user: String,
 
     info("  creating links in app directory")
     createAppLinks(hosts)
-
     rsync(s"./components/mx4j-tools-3.0.1.jar", s"${instDirs.intallationDir}/app/cas/cur/lib/", hosts)
     info("  creating scripts")
     genResources(hosts)
@@ -914,6 +925,16 @@ abstract class Host(user: String,
     linkLibs(hosts)
     info("finished deploying application")
   }
+
+   def verifyConfigsNotChanged = {
+     info("verify that configuration files have not been changed")
+     //It is taken from cassandra version 3.11.4
+     UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "conf/cassandra.yaml", "13eda21c959fe5985a17385a64de5817")
+     //elasticsearch checksums were taken from version 7.1.0
+     UtilCommands.verifyComponentConfNotChanged("elasticsearch", "config/elasticsearch.yml", "4f96a88585ab67663ccbca1c43649ed5")
+     UtilCommands.verifyComponentConfNotChanged("elasticsearch", "config/jvm.options", "d204b04d3fe8bea0b556b9d7c744cbcc")
+     UtilCommands.verifyComponentConfNotChanged("elasticsearch", "config/log4j2.properties", "d469bde82786d1bdb578e6688470e60c")
+   }
 
   private def createAppLinks(hosts: GenSeq[String]) = {
     // scalastyle:off
@@ -1106,7 +1127,7 @@ abstract class Host(user: String,
   }
 
   protected def finishPrepareMachines(hosts: GenSeq[String], sudoer: Credentials) = {
-    //    deleteSshpass(hosts, sudoer)
+     deleteSshpass(hosts, sudoer)
     info("Machine preparation was done. Please look at the console output to see if there were any errors.")
   }
 
@@ -1127,7 +1148,9 @@ abstract class Host(user: String,
   }
 
   private def deleteSshpass(hosts: GenSeq[String], sudoer: Credentials): Unit = {
-    command("sudo rm sshpass", hosts, true, Some(sudoer))
+    info("delete ssh pass")
+    command("rm ~/bin/sshpass", hosts, true, Some(sudoer))
+
   }
 
   def prepareMachinesNonInteractive: Unit = prepareMachinesNonInteractive()
@@ -1787,6 +1810,7 @@ abstract class Host(user: String,
     checkProduction
     refreshUserState(user, None, hosts)
     purge(hosts)
+    verifyConfigsNotChanged
     deploy(hosts)
     init(hosts)
     //setElasticsearchUnassignedTimeout()
@@ -2046,7 +2070,7 @@ abstract class Host(user: String,
 
     checkProduction
     refreshUserState(user, None, hosts)
-
+    verifyConfigsNotChanged
     //checkPreUpgradeStatus(hosts(0))
     val esMasterNode = findEsMasterNode(hosts) match {
       case Some(emn) =>

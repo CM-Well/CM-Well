@@ -19,7 +19,7 @@
     "cm_well_all": {}
   },
   "mappings": {
-    "infoclone": {
+    "_doc": {
       "date_detection": false,
       "numeric_detection": false,
       "dynamic_templates": [

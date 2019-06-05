@@ -36,7 +36,11 @@ case class GridSubDiv(user: String,
                       minMembers: Option[Int] = None,
                       withElk: Boolean = false,
                       subjectsInSpAreHttps: Boolean = false,
-                      defaultRdfProtocol: String = "http")
+                      defaultRdfProtocol: String = "http",
+                      diskOptimizationStrategy:String = "ssd",
+                      // we refrain from using Cas Commitlog on cluster, to save disk space and performance,
+                      // given we always write in Quorum so there will be no data loss
+                      casUseCommitLog:Boolean = false)
     extends Host(
       user,
       password,
@@ -59,7 +63,9 @@ case class GridSubDiv(user: String,
       haProxy,
       withElk = withElk,
       subjectsInSpAreHttps = subjectsInSpAreHttps,
-      defaultRdfProtocol = defaultRdfProtocol) {
+      defaultRdfProtocol = defaultRdfProtocol,
+      diskOptimizationStrategy = diskOptimizationStrategy,
+      casUseCommitLog = casUseCommitLog) {
 
   require(clusterIps.distinct equals  clusterIps, "must be unique")
   //var persistentAliases = false
@@ -133,8 +139,6 @@ case class GridSubDiv(user: String,
   }
 
 
-  override protected def finishPrepareMachines(hosts: GenSeq[String], sudoer: Credentials): Unit = {}
-
   override def unprepareMachines(hosts: GenSeq[String]): Unit = {
     throw new Exception(
       "Nothing was done! Please use unprepareMachines with sudoer only this way the network configuration will be changed"
@@ -161,7 +165,6 @@ case class GridSubDiv(user: String,
     val ctrlAllocations = aloc.ctrl
     val homeDir = s"${instDirs.globalLocation}/cm-well"
     val casDataDirs = (1 to dataDirs.casDataDirs.size).map(ResourceBuilder.getIndexedName("cas", _))
-
     hosts.flatMap { host =>
       val cas = CassandraConf(
         home = homeDir,
@@ -182,15 +185,16 @@ case class GridSubDiv(user: String,
         g1 = g1,
         hostIp = host,
         casDataDirs = casDataDirs,
-        // we refrain from using Cas Commitlog on cluster, to save disk space and performance, given we always write in Quorum so there will be no data loss
-        casUseCommitLog = false
+        numOfCores = calculateCpuAmount,
+        diskOptimizationStrategy = diskOptimizationStrategy,
+        casUseCommitLog = casUseCommitLog
       )
 
         val esSubDivs = for(i <- 1 to dataDirs.esDataDirs.size)
         yield {
           ElasticsearchConf(
             clusterName = clusterName,
-            nodeName = host,
+            nodeName = s"$host-$i",
             masterNode = false,
             dataNode = true,
             expectedNodes = getEsSize,
