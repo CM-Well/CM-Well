@@ -86,7 +86,8 @@ object LDFormatParser extends LazyLogging {
       (45 to 57).contains(i)  ||     // (-, ., /, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
       (65 to 90).contains(i)  ||     // (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z)
       (97 to 122).contains(i) ||     // (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z)
-      i == 35 || i == 37 || i == 44 || i == 58 || i == 95 || i > 126  // 35 = '#', 37 = '%', 44 = ',', 58 = ':', 95 = '_', 123 to 126 are: ({, |, }, ~)
+      i == 35 || i == 37 || i == 43 || i == 44 || i == 58 || i == 95 || i > 126
+      // 35 = '#', 37 = '%', 43 = '+', 44 = ',', 58 = ':', 95 = '_', 123 to 126 are: ({, |, }, ~)
     }
     // format: on
   }
