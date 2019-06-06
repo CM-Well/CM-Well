@@ -10,7 +10,7 @@ The **gqp** flag can be used together with **xg** and **yg**. In this case, **gq
 
 !!! note
 	* See [Traversal Operands](API.Traversal.Operands.md) to learn about **gqp** operands.
-	* The [ghost skips](API.Traversal.yg.md#hdrGhostSkips) behavior applies to **qgp** as well as **yg**.
+	* The [ghost skips](API.Traversal.yg.md#hdrGhostSkips) behavior applies to **gqp** as well as **yg**.
 	* The **gqp** flag can be applied to both **consume** and **search** operations. Note that when using **gqp** with consume, it's possible to filter out the entire chunk and therefore to receive no results for some iterations. If in this case you receive a 204 return code, but the position token in the header is different than the one sent, you still need to keep consuming.
 	* The **total** value returned with results of a gqp-filtered query reflects the number of infotons retrieved *before* the filtering process.
 
