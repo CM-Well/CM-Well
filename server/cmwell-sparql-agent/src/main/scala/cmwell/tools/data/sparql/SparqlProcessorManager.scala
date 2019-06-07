@@ -163,6 +163,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
     .mergeSubstreams
     .toMat(BroadcastHub.sink(bufferSize = 256))(Keep.both).run
 
+
   val pubSubChannel = Flow.fromSinkAndSource(stpAgentSink, postIngestSource)
     .joinMat(KillSwitches.singleBidi[(Ingester.IngestEvent, Option[StpMetadata]),(ByteString, Option[StpMetadata]) ])(Keep.right)
 
@@ -490,28 +491,9 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
   /**
     * Gets or creates a reference to a connection Pool Flow
     * for a given destination host
-    * @param job
-    * @param defaultConnectionPoolHost
-    */
-  /*
-  def getOrCreateConnectionPool3(job: Job, defaultConnectionPoolHost : String = "localhost") : Option[ConnectionPool] = {
-    connectionPools.get(job.config.hostUpdatesSource.getOrElse(defaultConnectionPoolHost)) match {
-      case Some(pool) => Some(pool)
-      case _ => {
-        val conn = Retry.createNewHostConnectionPool[(Option[StpMetadata],Long)](job.config.hostUpdatesSource.getOrElse(defaultConnectionPoolHost))
-        connectionPools += job.config.hostUpdatesSource.getOrElse(defaultConnectionPoolHost) -> conn
-        Some(conn)
-      }
-    }
-  }
-*/
-
-  /**
-    * Gets or creates a reference to a connection Pool Flow
-    * for a given destination host
     * @param host
     */
-  def getOrCreateConnectionPool(host: Option[String], defaultConnectionPoolHost : String = "localhost") : Some[ConnectionPool] = {
+  def getOrCreateConnectionPool(host: Option[String], defaultConnectionPoolHost : String) : Some[ConnectionPool] = {
     connectionPools.get(host.getOrElse(defaultConnectionPoolHost)) match {
       case Some(pool) => Some(pool)
       case _ => {
@@ -529,8 +511,8 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
     * @param job
     * @param defaultConnectionPoolHost
     */
-  def getOrCreateConnectionPool(job: Job, defaultConnectionPoolHost : String = "localhost") = {
-    getOrCreateConnectionPool(job.config.hostUpdatesSource)
+  def getOrCreateConnectionPool(job: Job, defaultConnectionPoolHost : String = "localhost") : Some[ConnectionPool] = {
+    getOrCreateConnectionPool(job.config.hostUpdatesSource, defaultConnectionPoolHost)
   }
 
   /**
