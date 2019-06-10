@@ -273,7 +273,8 @@ case class LocalHost(dataCenter: String = "lh",
       minMembers = getMinMembers,
       numOfPartitions = hosts.size,
       seeds = getSeedNodes.mkString(","),
-      defaultRdfProtocol = defaultRdfProtocol
+      defaultRdfProtocol = defaultRdfProtocol,
+      transportAddress = this.getThreesome(ips, ip)
     )
 
     val web = WebConf(
@@ -291,7 +292,8 @@ case class LocalHost(dataCenter: String = "lh",
       minMembers = getMinMembers,
       seedPort = 9300,
       seeds = getSeedNodes.mkString(","),
-      defaultRdfProtocol = defaultRdfProtocol
+      defaultRdfProtocol = defaultRdfProtocol,
+      transportAddress = this.getThreesome(ips, ip)
     )
 
     val cw = CwConf(
@@ -307,7 +309,8 @@ case class LocalHost(dataCenter: String = "lh",
       minMembers = getMinMembers,
       seeds = getSeedNodes.mkString(","),
       seedPort = 9300,
-      subjectsInSpAreHttps = subjectsInSpAreHttps
+      subjectsInSpAreHttps = subjectsInSpAreHttps,
+      transportAddress = this.getThreesome(ips, ip)
     )
 
     val ctrl = CtrlConf(

@@ -253,7 +253,8 @@ case class GridSubDiv(user: String,
         minMembers = getMinMembers,
         numOfPartitions = ips.size,
         seeds = getSeedNodes.mkString(","),
-        defaultRdfProtocol = defaultRdfProtocol
+        defaultRdfProtocol = defaultRdfProtocol,
+        transportAddress = this.getThreesome(ips, host)
       )
 
 
@@ -273,7 +274,8 @@ case class GridSubDiv(user: String,
         minMembers = getMinMembers,
         seeds = getSeedNodes.mkString(","),
         seedPort = 9300,
-        defaultRdfProtocol = defaultRdfProtocol
+        defaultRdfProtocol = defaultRdfProtocol,
+        transportAddress = this.getThreesome(ips, host)
       )
 
 
@@ -290,7 +292,8 @@ case class GridSubDiv(user: String,
         minMembers = getMinMembers,
         seeds = getSeedNodes.mkString(","),
         seedPort = 9300,
-        subjectsInSpAreHttps = subjectsInSpAreHttps
+        subjectsInSpAreHttps = subjectsInSpAreHttps,
+        transportAddress = this.getThreesome(ips, host)
       )
 
 

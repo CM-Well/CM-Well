@@ -491,7 +491,8 @@ case class BgConf(home: String,
                   seeds: String,
                   seedPort: Int = 9301,
                   dir: String = "bg",
-                  defaultRdfProtocol: String)
+                  defaultRdfProtocol: String,
+                  transportAddress: String)
     extends ComponentConf(hostIp, s"$home/app/bg", sName, s"$home/conf/bg", "bg.yml", 1) {
   override def mkScript: ConfFile = {
     def jvmArgs = {
@@ -559,7 +560,7 @@ case class BgConf(home: String,
       "irwServiceDao.clusterName" -> s"$clusterName",
       "irwServiceDao.hostName" -> s"$hostName",
       "ftsService.clusterName" -> s"$clusterName",
-      "ftsService.transportAddress" -> s"$hostName",
+      "ftsService.transportAddress" -> s"$transportAddress",
       "cmwell.rdfDefaultProtocol" -> defaultRdfProtocol,
       "kafka.bootstrap.servers" -> s"localhost:9092,${zookeeperServers.map(kafkaNode => s"$kafkaNode:9092").mkString(",")}"
     )
@@ -591,7 +592,8 @@ case class CwConf(home: String,
                   hostIp: String,
                   seeds: String,
                   seedPort: Int,
-                  subjectsInSpAreHttps: Boolean)
+                  subjectsInSpAreHttps: Boolean,
+                  transportAddress: String)
     extends ComponentConf(hostIp, s"$home/app/ws", sName, s"$home/conf/cw", "ws.yml", 1) {
   override def mkScript: ConfFile = {
     {
@@ -640,7 +642,7 @@ case class CwConf(home: String,
       "ftsService.clusterName" -> s"$clusterName",
       "cmwell.home" -> s"$home",
       "irwServiceDao.hostName" -> s"$hostName",
-      "ftsService.transportAddress" -> s"$hostName",
+      "ftsService.transportAddress" -> s"$transportAddress",
       "ftsService.defaultPartitionNew" -> s"cm_well",
       "quads.cache.size" -> s"1000",
       "quads.globalOperations.results.maxLength" -> s"10000",
@@ -681,7 +683,8 @@ case class WebConf(home: String,
                    hostIp: String,
                    seeds: String,
                    seedPort: Int,
-                   defaultRdfProtocol: String)
+                   defaultRdfProtocol: String,
+                   transportAddress: String)
     extends ComponentConf(hostIp, s"$home/app/ws", sName, s"$home/conf/ws", "ws.yml", 1) {
   def genMemStr(mem: String): String = {
     if (!mem.isEmpty) s"-J$mem" else mem
@@ -746,7 +749,7 @@ case class WebConf(home: String,
       "ftsService.clusterName" -> s"$clusterName",
       "cmwell.home" -> s"$home",
       "irwServiceDao.hostName" -> s"$hostName",
-      "ftsService.transportAddress" -> s"$hostName",
+      "ftsService.transportAddress" -> s"$transportAddress",
       "cmwell.rdfDefaultProtocol" -> defaultRdfProtocol
     )
 
