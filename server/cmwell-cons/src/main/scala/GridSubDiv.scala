@@ -85,6 +85,8 @@ case class GridSubDiv(user: String,
         command(s"bash -c 'sleep $index ; cd ${instDirs.globalLocation}/cm-well/app/es/cur; " +
           s"${startScript(s"./start$index.sh")}' > /dev/null 2> /dev/null &", hosts, false)
     }
+
+    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start-coordinator.sh")}", hosts, false)
   }
 
   override def startCassandra(hosts: GenSeq[String]): Unit = {
@@ -128,14 +130,14 @@ case class GridSubDiv(user: String,
             hosts.take(esMasters),
             false)
     Try(ElasticsearchLock().waitForModule(ips(0), esMasters))
-    //    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ./start-master.sh", hosts(1), false)
-    //    ElasticsearchLock().waitForModule(ips(0), 2)
-    //    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ./start-master.sh", hosts.drop(2).take(esMasters - 2), false)
+
     command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start.sh")}", hosts, false)
     (2 to dataDirs.esDataDirs.size).foreach{
       index =>
         command(s"bash -c 'sleep $index ; cd ${instDirs.globalLocation}/cm-well/app/es/cur ; ${startScript(s"./start$index.sh")}'&", hosts, false)
     }
+
+    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start-coordinator.sh")}", hosts, false)
   }
 
 
@@ -207,7 +209,7 @@ case class GridSubDiv(user: String,
             listenAddress = host,
             masterNodes = esMasters,
             sName = s"${ResourceBuilder.getIndexedName("start", i)}.sh",
-            index = i,
+            index = i + 1,
             rs = IpRackSelector(),
             g1 = g1,
             hostIp = host,
@@ -230,12 +232,34 @@ case class GridSubDiv(user: String,
           listenAddress = host,
           masterNodes = esMasters,
           sName = "start-master.sh",
-          index = dataDirs.esDataDirs.size + 1,
+          index = -1,
           rs = IpRackSelector(),
           g1 = true,
           hostIp = host,
           autoCreateIndex = withElk
         )
+
+      val esCoor = ElasticsearchConf(
+        clusterName = clusterName,
+        nodeName = s"$host-coordinator",
+        masterNode = false,
+        dataNode = false,
+        expectedNodes = getEsSize ,
+        numberOfReplicas = 2,
+        seeds = getSeedNodes.mkString(","),
+        home = homeDir,
+        resourceManager = esAllocations,
+        dir = "es-coordinator",
+        template = "elasticsearch.yml",
+        listenAddress = host,
+        masterNodes = esMasters,
+        sName = "start-coordinator.sh",
+        index = 1,
+        rs = IpRackSelector(),
+        g1 = true,
+        hostIp = host,
+        autoCreateIndex = withElk
+      )
 
       val bg = BgConf(
         home = homeDir,
@@ -357,6 +381,7 @@ case class GridSubDiv(user: String,
 
       List(
         esMaster,
+        esCoor,
         web,
         cw,
         ctrl,

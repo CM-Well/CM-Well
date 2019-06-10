@@ -135,7 +135,7 @@ case class Grid(user: String,
           listenAddress = host,
           masterNodes = esMasters,
           sName = "start.sh",
-          index = 1,
+          index = 2,
           rs = IpRackSelector(),
           g1 = g1,
           hostIp = host,
@@ -157,12 +157,34 @@ case class Grid(user: String,
           listenAddress = host,
           masterNodes = esMasters,
           sName = "start-master.sh",
-          index = 2,
+          index = -1,
           rs = IpRackSelector(),
           g1 = true,
           hostIp = host,
           autoCreateIndex = withElk
         )
+
+      val esCoor = ElasticsearchConf(
+        clusterName = clusterName,
+        nodeName = s"$host-coordinator",
+        masterNode = false,
+        dataNode = false,
+        expectedNodes = getEsSize ,
+        numberOfReplicas = 2,
+        seeds = getSeedNodes.mkString(","),
+        home = homeDir,
+        resourceManager = esAllocations,
+        dir = "es-coordinator",
+        template = "elasticsearch.yml",
+        listenAddress = host,
+        masterNodes = esMasters,
+        sName = "start-coordinator.sh",
+        index = 1,
+        rs = IpRackSelector(),
+        g1 = true,
+        hostIp = host,
+        autoCreateIndex = withElk
+      )
 
       val bg = BgConf(
         home = homeDir,
@@ -283,6 +305,7 @@ case class Grid(user: String,
         cas,
         es,
         esMaster,
+        esCoor,
         web,
         cw,
         ctrl,
@@ -303,6 +326,7 @@ case class Grid(user: String,
             ips.par.take(esMasters).intersect(hosts),
             false)
     command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start.sh")}", hosts, false)
+    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start-coordinator.sh")}", hosts, false)
   }
 
   override def startCassandra(hosts: GenSeq[String]): Unit = {
@@ -322,10 +346,11 @@ case class Grid(user: String,
             hosts.take(esMasters),
             false)
     Try(ElasticsearchLock().waitForModule(ips(0), esMasters))
-    //    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ./start-master.sh", hosts(1), false)
-    //    ElasticsearchLock().waitForModule(ips(0), 2)
-    //    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ./start-master.sh", hosts.drop(2).take(esMasters - 2), false)
+
+    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start-coordinator.sh")}", hosts, false)
     command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start.sh")}", hosts, false)
+
+    Try(ElasticsearchLock().waitForModule(ips(0), esMasters + 2))
   }
 
   override def getNewHostInstance(ipms: Seq[String]): Host = {

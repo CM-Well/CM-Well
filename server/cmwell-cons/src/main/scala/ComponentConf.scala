@@ -322,8 +322,10 @@ case class ElasticsearchConf(clusterName: String,
   override def getPsIdentifier = {
     if (dir == "es-master")
       s"PsIdElasticMasterNode"
-    else
-      s"PsIdElasticDataNode$getIndexTxt"
+    else if (dir == "es-coordinator")
+        s"PsIdElasticCoordinatorNode"
+      else
+        s"PsIdElasticDataNode$getIndexTxt"
   }
   override def mkScript: ConfFile = {
 
@@ -339,8 +341,10 @@ case class ElasticsearchConf(clusterName: String,
 
   override def mkConfig: List[ConfFile] = {
     val httpHost = if(masterNode) s"http.host: $host" else ""
-    val httpPort = if(masterNode) 9200 else PortManagers.es.httpPortManager.getPort(index)
-    val transportPort = if(masterNode) 9300 else PortManagers.es.transportPortManager.getPort(index)
+    val httpPort = if(masterNode) 9200 else
+      if (!dataNode) 9201 else PortManagers.es.httpPortManager.getPort(index)
+    val transportPort = if(masterNode) 9300 else
+      if (!dataNode) 9301 else PortManagers.es.transportPortManager.getPort(index)
 
     val m = Map[String, String](
       "clustername" -> clusterName,

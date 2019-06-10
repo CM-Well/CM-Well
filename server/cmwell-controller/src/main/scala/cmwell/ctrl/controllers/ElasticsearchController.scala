@@ -24,6 +24,9 @@ import scala.concurrent.ExecutionContext.Implicits.global
   */
 object ElasticsearchController
     extends ComponentController(s"${Config.cmwellHome}/app/es/cur", "/log/es[0-9]*", Set("es")) {
+
+  override val startScriptPattern: String = """-E 'start([0-9]*|-coordinator)\.sh'"""
+
   def stopElasticsearchRebalancing {
     //logger.info("[Elasticsearch controller] stopping ES rebalance")
     Http.put(s"http://${Config.pingIp}:9201/_cluster/settings",
