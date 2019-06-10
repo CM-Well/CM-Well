@@ -41,7 +41,7 @@ object ElasticsearchChecker extends Checker with LazyLogging {
       case _ => logger.warn(s"Status was ${res.status} and not 200 for port: $port. Increasing port by 1."); getHealth(port + 1)
     }}.recoverWith{
       case exception : Exception => {
-        logger.error(s"Get health failed. Exception: $exception")
+        logger.error(s"Get Elasticsearch health failed." , exception)
         if(port > 9203) {
           logger.error(s"Reached port $port Stop retrying.")
           Future.failed(exception)
