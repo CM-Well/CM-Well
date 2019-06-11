@@ -17,11 +17,14 @@ package cmwell.tools.data.sparql
 import java.nio.file.{Files, Paths}
 import java.util.Calendar
 
-import akka.actor.Props
+import akka.actor.{ActorRef, Props}
 import akka.stream.KillSwitches
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.util.ByteString
+import cmwell.tools.data.ingester.Ingester.IngesterRuntimeConfig
 import cmwell.tools.data.ingester._
+import cmwell.tools.data.sparql.SparqlProcessorMain.Opts
+import cmwell.tools.data.sparql.SparqlTriggeredProcessor.preProcessConfig
 import cmwell.tools.data.utils.akka.{concatByteStrings, _}
 import cmwell.tools.data.utils.chunkers.GroupChunker
 import cmwell.tools.data.utils.logging.DataToolsLogging
@@ -31,6 +34,7 @@ import cmwell.tools.data.utils.akka.stats.{DownloaderStats, IngesterStats}
 import net.jcazevedo.moultingyaml._
 import org.rogach.scallop.ScallopConf
 
+import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
@@ -73,31 +77,45 @@ object SparqlTriggeredProcessorMain extends App with DataToolsLogging {
 
   var lastTimeOfDataUpdate = System.currentTimeMillis()
 
-  val processor = SparqlTriggeredProcessor
-    .listen(
-      config = config,
-      useQuadsInSp = false,
+  val processedConfig = Await.result(preProcessConfig(config, Some(tokenFileReporter)), 3.minutes)
+
+  val processor = SparqlProcessor.createSparqlSourceFromPaths(
+    baseUrl = Opts.srcHost(),
+    sparqlQuery = processedConfig.sparqlMaterializer,
+    spQueryParamsBuilder = SparqlTriggeredProcessor.stpSpQueryBuilder,
+    source = SparqlTriggeredProcessor.createSensorSource(
+      config = processedConfig,
+      initialTokensAndStatistics = Right(AgentTokensAndStatistics(Map.empty[String, TokenAndStatistics],None,None)),
+      tokenReporter = Some(tokenFileReporter),
       baseUrl = Opts.srcHost(),
       isBulk = Opts.bulk(),
-      tokenReporter = Some(tokenFileReporter)
+      distinctWindowSize = 10.seconds,
+      infotonGroupSize = 100
+    ),
+    isNeedWrapping = false,
+    label = Some(
+      label
+        .map(l => s"$l-${SparqlTriggeredProcessor.sparqlMaterializerLabel}")
+        .getOrElse(SparqlTriggeredProcessor.sparqlMaterializerLabel)
     )
-    .map { case (data, _) => data }
-    .via(GroupChunker(GroupChunker.formatToGroupExtractor("ntriples")))
-    .filter { lines =>
-      val isNeedValidation = Opts.validationTrigger
-        .map { trigger =>
-          trigger.forall { predicate =>
-            lines.exists(_ containsSlice predicate)
-          }
+  )
+  .map { case (data, _) => data }
+  .via(GroupChunker(GroupChunker.formatToGroupExtractor("ntriples")))
+  .filter { lines =>
+    val isNeedValidation = Opts.validationTrigger
+      .map { trigger =>
+        trigger.forall { predicate =>
+          lines.exists(_ containsSlice predicate)
         }
-        .getOrElse(true)
+      }
+      .getOrElse(true)
 
 //      logger.info(s"${lines(0).utf8String.takeWhile(_ != ' ')} needs validation=$isNeedValidation")
 
-      if (isNeedValidation) {
-        Opts.validationFilter
-          .map { validator =>
-            val isValidInfoton = validator.forall(predicate => lines.exists(_ containsSlice ByteString(predicate)))
+    if (isNeedValidation) {
+      Opts.validationFilter
+        .map { validator =>
+          val isValidInfoton = validator.forall(predicate => lines.exists(_ containsSlice ByteString(predicate)))
 
 //          if (!isValidInfoton) {
 //            redLogger.error("infoton is not valid for ingest: {}", concatByteStrings(lines, endl).utf8String)
@@ -105,29 +123,33 @@ object SparqlTriggeredProcessorMain extends App with DataToolsLogging {
 //            logger.info(s"${lines(0).utf8String.takeWhile(_ != ' ')} is valid for ingest")
 //          }
 
-            isValidInfoton
-          }
-          .getOrElse(true)
-      } else {
+          isValidInfoton
+        }
+        .getOrElse(true)
+    } else {
 //        logger.info(s"infoton ${lines(0).utf8String.takeWhile(_ != ' ')} does not need validation")
-        true
-      }
+      true
     }
-    .map(concatByteStrings(_, endl))
+  }
+  .map(concatByteStrings(_, endl))
 //    .map { s => logger.info(s"lines ${s.utf8String} are valid!"); s}
 
   // check if need to ingest result infotons
   val processResult = if (Opts.ingest()) {
-    Ingester
-      .ingest(
-        baseUrl = Opts.dstHost(),
-        format = "ntriples",
+
+    processor.map(_ -> None).via(DownloaderStats(format = "ntriples")).map( _._1 -> None)
+      .groupedWeightedWithin((25*1024), 10.seconds)(_._1.size)
+      .via(Ingester.ingesterFlow(baseUrl = Opts.dstHost(),
+        format = SparqlProcessor.format,
         writeToken = Opts.writeToken.toOption,
-        source = processor,
-        within = 3.seconds
-      )
+        extractContext = (_: Any) => IngesterRuntimeConfig(true)
+      ))
+      .map { d => d._1}
+      .async
       .via(IngesterStats(isStderr = true))
       .runWith(Sink.ignore)
+
+
   } else {
     processor
       .map { infoton =>

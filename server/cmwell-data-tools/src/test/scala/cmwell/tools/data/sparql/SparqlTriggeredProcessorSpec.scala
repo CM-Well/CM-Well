@@ -19,22 +19,20 @@ package cmwell.tools.data.sparql
 
 import akka.actor._
 import akka.http.scaladsl.model.StatusCodes
-import akka.stream.scaladsl.{GraphDSL, Keep, Sink, Source}
+import akka.stream.scaladsl.{Keep, Sink}
 import akka.stream.{ActorMaterializer, KillSwitches, Materializer}
-import cmwell.tools.data.downloader.consumer.Downloader.Token
 import cmwell.tools.data.helpers.BaseWiremockSpec
 import cmwell.tools.data.utils.akka.HeaderOps.CMWELL_POSITION
 import cmwell.tools.data.utils.akka._
+import cmwell.util.string.Hash
 import com.github.tomakehurst.wiremock.client.WireMock._
-import com.github.tomakehurst.wiremock.matching._
-import com.github.tomakehurst.wiremock.matching.EqualToPattern
 import com.github.tomakehurst.wiremock.stubbing.Scenario
-import org.scalatest.{Ignore, Matchers}
+import org.scalatest.Ignore
 
-import scala.concurrent.Future
+import scala.collection.JavaConverters._
+import scala.concurrent.Await
 import scala.concurrent.duration._
-import collection.JavaConverters._
-
+/*
 @Ignore class SparqlTriggeredProcessorSpec extends BaseWiremockSpec {
   val scenario = "scenario"
   val `no-content` = "no-content"
@@ -269,3 +267,5 @@ import collection.JavaConverters._
 
   }
 }
+
+*/
