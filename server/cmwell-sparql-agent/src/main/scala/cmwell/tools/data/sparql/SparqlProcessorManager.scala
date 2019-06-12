@@ -555,7 +555,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
       10.seconds,
       settings.infotonGroupSize)
       .map { case ((path,vars),_) =>  Seq(path) -> vars}
-      .startContextPropagation(_ => Some(StpMetadata(agentConfig,tokenReporter))).endContextPropagation
+      .asSourceWithContext(_ => Some(StpMetadata(agentConfig,tokenReporter)))
       .via(
         SparqlProcessor.sparqlFlow(extractSparqlContext,
           sparqlConnectionPool,
@@ -567,7 +567,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
           format = "ntriples",
           sensorName = SparqlTriggeredProcessor.sparqlMaterializerLabel,
           initialTokensAndStatistics.fold(_ => None, _.materializedStats))
-      )
+      ).asSource
 
     val uniqueKillSwitch = consumerSource.watchTermination() { (_, done) =>
       done.onComplete {
