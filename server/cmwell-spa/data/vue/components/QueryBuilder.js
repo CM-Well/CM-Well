@@ -105,23 +105,31 @@ Vue.component('query-builder', {
         queryParts: [],
         query: '',
         isValid: true,
+        recursive: false,
     }),
     template: `
                 <span v-if="collapsed" class="qb-btn">
                     <router-link to v-on:click.native="loadMetaNs(); collapsed=false">&#128269;</router-link>
                 </span>
+                
+
                 <div v-else class="qb-container">
 
                     <span v-on:click="collapsed=true" class="close-button">X</span>
                     <h2>Query Builder</h2>
 
                     <div :class="'the-query'+(isValid?'':' invalid')">
-                        ?qp={{ this.query }}
+                        ?qp={{ query }}
                     </div>
+
+                    <input type="checkbox" id="checkbox" v-model="recursive">
+                    <label for="checkbox"> recursive? </label>
 
                     <selector-group v-for="g in groups" :key="g" :groupId="g" v-on:changed="changed" v-on:remove="removeGroup" :fields="fields" />
                     <div v-on:click="add" class="plus-btn">+</div>
 
+
+                    <router-link tag="button" class="control" id="button" :to="$route.path + '?qp=' + query" style="float: right">Apply</router-link>
                 </div>
               `,
     methods: {
@@ -145,7 +153,7 @@ Vue.component('query-builder', {
               let prefix = wrap ? '*[-[' : (not ? '-' : '') + (quantifier === 'should' ? '*[' : '[')
               let suffix = wrap ? ']]' : ']'
               return prefix + groupQuery + suffix
-          }).join(',')
+          }).join(',') + ((this.recursive) ? '&recursive' : '')
           this.isValid = isValid
       },
       loadMetaNs() {
