@@ -10,11 +10,11 @@ const SystemFields = {
 
 //todo quad icon
 const FieldValue = {
-    props: ['value', 'quadFilter'],
+    props: ['value', 'quadFilter', 'fieldName'],
     data() { return { isURL: this.value.type === 'http://www.w3.org/2001/XMLSchema#anyURI', isInternal: false } },
     template: `<div>
                     <a v-if="this.isURL && !this.isInternal" :href="value.value" target="_blank">{{ value.value }} <img class="link-out" src='data:image/svg+xml;utf8,<svg height="1024" width="768" xmlns="http://www.w3.org/2000/svg"><path d="M640 768H128V257.90599999999995L256 256V128H0v768h768V576H640V768zM384 128l128 128L320 448l128 128 192-192 128 128V128H384z"/></svg>'/></a>
-                    <router-link v-if="this.isURL && this.isInternal" :to="value.value | asPath">{{ value.value }}</router-link>
+                    <router-link v-if="this.isURL && this.isInternal" v-on:click.native="addToTraversalGraph(fieldName, value.value)" :to="value.value | asPath">{{ value.value }}</router-link>
                     <span v-if="!this.isURL">{{ value.value }}</span>
                     <span class="quad" v-if="value.quad" :title="value.quad">
                         <a :href="'/?op=search&recursive&qp=system.quad::' + value.quad" target="_blank">{{ value.quad | lastPartOf }}</a>
@@ -29,6 +29,11 @@ const FieldValue = {
     filters: {
         asPath: AppUtils.pathFromURL,
         lastPartOf: p => p.substring(p.lastIndexOf('/')+1)
+    },
+    methods: {
+        addToTraversalGraph: function(fieldName, path) {
+            this.$root.$emit('addToTraversal', path, path.substring(path.lastIndexOf('/')+1), fieldName)
+        }
     }
 }
 
@@ -39,7 +44,7 @@ const DataFields = {
     template: `<table class="data">
                     <tr v-for="field in filterFields(fields)" :key="field[0]">
                         <td>{{ field[0] | noNn }}</td>
-                        <td><field-value v-for="value in filterValues(field[1])" :value="value" :key="value.hash" /></td>
+                        <td><field-value v-for="value in filterValues(field[1])" :value="value" :key="value.hash" :fieldName="field[0]"/></td>
                     </tr>
                 </table>`,
     props: ['fields', 'quadFilter'],

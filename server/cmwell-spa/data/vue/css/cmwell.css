@@ -313,7 +313,7 @@ font-size: 9px;
 .flexy-container {
     display: flex;
     width: 100%;
-    height: calc(100% - 51px); /* Header is 91px, Footer is 40px */
+    height: calc(100% - 91px); /* Header is 91px, Footer is 40px , Traversal is 40px*/
     overflow: scroll;
 }
 
@@ -844,7 +844,17 @@ input[type=range].history-slider:focus::-ms-fill-upper {
     margin-top: 5px;
 }
 
-
+.traversal {
+    position: fixed;
+    display: table;
+    bottom: 40px;
+    left: 0;
+    background: #bc47bc;
+    width: 100%;
+    height: 40px;
+    font-size: 0.8em;
+    overflow: hidden;
+}
 
 footer {
     position: fixed;

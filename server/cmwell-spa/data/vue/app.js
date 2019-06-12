@@ -83,7 +83,7 @@ window.Settings = new Proxy({}, { get: (_,k) => localStorage.getItem(k), set: (_
 // native sort syntactic sugar:
 Array.prototype.sortBy = function(predicate) { return this.sort((el1,el2) => predicate(el1) - predicate(el2)) } // assuming numerial comparison (not lexical!)
 
-let components = ['Header','InfotonList','Infoton','Msg','Breadcrumbs','HomePage','QueryBuilder'].map(comp => `components/${comp}.js`)
+let components = ['Header','InfotonList','Infoton','Msg','Breadcrumbs','Traversal', 'HomePage','QueryBuilder'].map(comp => `components/${comp}.js`)
 load(components)(()=>{
 
 const RouterViewContainer = {
@@ -94,6 +94,7 @@ const RouterViewContainer = {
                     <infoton-list/>
                     <infoton/>
                 </div>
+                <traversal/>
               </div>`
 }
     
