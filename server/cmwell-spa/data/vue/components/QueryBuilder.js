@@ -62,7 +62,8 @@ const SelectorGroup = {
         nextSelId: 2,
         query: []
     }),
-    template: `<div class="group-container">
+    template: `
+                <div class="group-container">
                     <div class="group-meta">
                         <span v-on:click="remove" class="plus-btn" title="remove">-</span>
                         <select v-model="quantifier" v-on:change="changed">
@@ -75,7 +76,8 @@ const SelectorGroup = {
                         <field-selector v-for="s in selectors" :key="s" :selId="s" v-on:changed="changed" v-on:remove="removeSelector" :fields="fields" />
                         <div v-on:click="add" class="plus-btn">+</div>
                     </div>
-               </div>`,
+               </div>
+               `,
     methods: {
         add() {
           this.selectors = [...this.selectors, this.nextSelId++]
@@ -98,6 +100,13 @@ Vue.component('query-builder', {
     components: { 'selector-group': SelectorGroup, 'autocomplete': AutoComplete },
     data: () => ({
         collapsed: true,
+        qpVisible: false,
+        xgVisible: false,
+        xgString: '',
+        ygVisible: false,
+        ygString: '',
+        gqpVisible: false,
+        gqpString: '',
         namespaces: {},
         fields: [],
         groups: [1],
@@ -119,15 +128,41 @@ Vue.component('query-builder', {
                     <h2>Query Builder</h2>
 
                     <div :class="'the-query'+(isValid?'':' invalid')">
-                        ?qp={{ query }}
+                        ?{{ query }}
+                    </div>
+
+                    <div v-on:click="qpVisible=!qpVisible" class="plus-btn" title="Add QP">{{ qpVisible? '-' : '+' }}</div>
+                    <label>add QP</label>
+                    <div v-if="qpVisible" class="qp-section">
+                        <selector-group v-for="g in groups" :key="g" :groupId="g" v-on:changed="changed" v-on:remove="removeGroup" :fields="fields" />
+                        <div v-on:click="add" class="plus-btn">+</div>
+                    </div>
+
+                    <br>
+                    <div v-on:click="xgVisible=!xgVisible; updateQuery(this.isValid)" class="plus-btn" title="Add XG">
+                        {{ xgVisible? '-' : '+' }}
+                    </div>
+                    <label>add XG</label>
+                    <div v-if="xgVisible" class="input-section">
+                        <input v-model="xgString" @change="updateQuery(this.isValid)" placeholder="enter the xg string">
+                    </div>
+
+                    <br>
+                    <div v-on:click="ygVisible=!ygVisible; updateQuery(this.isValid)" class="plus-btn" title="Add YG">{{ ygVisible? '-' : '+' }}</div>
+                    <label>add YG</label>
+                    <div v-if="ygVisible" class="input-section">
+                        <input v-model="ygString" @change="updateQuery(this.isValid)" placeholder="enter the yg string">
+                    </div>
+
+                    <br>
+                    <div v-on:click="gqpVisible=!gqpVisible; updateQuery(this.isValid)" class="plus-btn" title="Add GQP">{{ gqpVisible? '-' : '+' }}</div>
+                    <label>add GQP</label>
+                    <div v-if="gqpVisible" class="input-section">
+                        <input v-model="gqpString" @change="updateQuery(this.isValid)" placeholder="enter the gqp string">
                     </div>
 
                     <input type="checkbox" id="checkbox" v-model="recursive">
                     <label for="checkbox"> recursive? </label>
-
-                    <selector-group v-for="g in groups" :key="g" :groupId="g" v-on:changed="changed" v-on:remove="removeGroup" :fields="fields" />
-                    <div v-on:click="add" class="plus-btn">+</div>
-
 
                     <router-link tag="button" class="control" id="button" :to="$route.path + '?qp=' + query" style="float: right">Apply</router-link>
                 </div>
@@ -147,13 +182,22 @@ Vue.component('query-builder', {
           this.updateQuery(isValid)
       },
       updateQuery(isValid) {
-          this.query = this.queryParts.filter(Boolean).map(i => {
+          var qpPart = this.queryParts.filter(Boolean).map(i => {
               let { quantifier, not, groupQuery } = i
               let wrap = quantifier === 'should' && not
               let prefix = wrap ? '*[-[' : (not ? '-' : '') + (quantifier === 'should' ? '*[' : '[')
               let suffix = wrap ? ']]' : ']'
               return prefix + groupQuery + suffix
-          }).join(',') + ((this.recursive) ? '&recursive' : '')
+          }).join(',')
+          qpPart = qpPart.length > 0? "qp=" + qpPart : ''
+          var xgPart = this.xgVisible && this.xgString.length > 0? "xg=" + this.xgString: ''
+          xgPart = qpPart.length > 0 && xgPart.length > 0? "&" + xgPart : xgPart
+          var ygPart = this.ygVisible && this.ygString.length > 0? "yg=" + this.ygString: ''
+          ygPart = qpPart.length+xgPart.length > 0 && ygPart.length > 0? "&" + ygPart : ygPart
+          var gqpPart = this.gqpVisible && this.gqpString.length > 0? "gqp=" + this.gqpString: ''
+          gqpPart = qpPart.length+xgPart.length+ygPart.length > 0 && gqpPart.length > 0? "&" + gqpPart : gqpPart
+          
+          this.query = qpPart + xgPart + ygPart + gqpPart + ((this.recursive) ? '&recursive' : '')
           this.isValid = isValid
       },
       loadMetaNs() {

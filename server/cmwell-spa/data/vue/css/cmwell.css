@@ -387,6 +387,10 @@ font-size: 9px;
     margin: 10px 5px;
 }
 
+.qb-container .qp-section {
+    border: 2px solid #011EFF;
+}
+
 .qb-container .field-selector {
     display: flex;
 }
