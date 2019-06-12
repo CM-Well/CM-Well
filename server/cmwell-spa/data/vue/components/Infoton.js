@@ -261,7 +261,7 @@ Vue.component('infoton', {
             this.isFileInfoton = infoton.system.type === 'FileInfoton'
             this.content = infoton.content
             this.mimeType = infoton.mimeType
-            this.title = this.lastPartOf(this.$route.fullPath)
+            this.title = this.lastPartOf(this.$route.path)
             this.sysFieldsState = +Settings['sysfields-state']
             this.updateShownSysFields()
             this.currentFormat = ''
