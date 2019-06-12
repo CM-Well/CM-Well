@@ -212,7 +212,7 @@ Vue.component('infoton-list', {
                             <span class="method-selector">Showing <button :disabled="isLoading" v-on:click="toggleMethod()">{{ methodSelectors[methodSelector].buttonTitle }}</button> {{ methodSelectors[methodSelector].titleSuffix }}</span>
                         </span>
                         <span v-else>Types Distribution</span>
-                        <span class="types-handle" v-on:click="toggleTypes" title="toggle Types dist."><img src='data:image/svg+xml;utf8,<svg ersion="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" height="16" fill="%23011EFF" viewBox="0 0 1792 1792" width="16"><path d="M512 896v512h-256v-512h256zm384-512v1024h-256v-1024h256zm1024 1152v128h-2048v-1536h128v1408h1920zm-640-896v768h-256v-768h256zm384-384v1152h-256v-1152h256z"/></svg>'/></span>
+                        <span class="types-handle" v-on:click="toggleTypes" title="toggle Types dist."><img src='data:image/svg+xml;utf8,<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" height="16" fill="%23011EFF" viewBox="0 0 1792 1792" width="16"><path d="M512 896v512h-256v-512h256zm384-512v1024h-256v-1024h256zm1024 1152v128h-2048v-1536h128v1408h1920zm-640-896v768h-256v-768h256zm384-384v1152h-256v-1152h256z"/></svg>'/></span>
                     </div>
                     <msg :show="showMenu" v-on:close="showMenu=false" clazz="download-menu">
                         <div v-on:click="showMenu=false; togglePin()"><router-link to>{{ pinned ? "Unpin" : "Pin" }} {{ lastPartOf(path) }}</router-link></div>
