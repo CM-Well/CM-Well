@@ -299,7 +299,7 @@ object LDFormatParser extends LazyLogging {
       //meaning subject is: `<>`
       val uri = subj.getURI
       val encoded = if (uri == null || uri.isEmpty) null else URLEncoder.encode(uri, "UTF-8")
-      subj.isURIResource && (encoded != null && new java.net.URI(encoded) == cwd)
+      subj.isURIResource && (subj.getURI.isEmpty || new java.net.URI(encoded) == cwd)
     }
 
     val isMetaOp = {
