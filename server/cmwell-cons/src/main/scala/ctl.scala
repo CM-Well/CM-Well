@@ -185,7 +185,6 @@ abstract class Host(user: String,
                     ctrlService: Boolean = false,
                     minMembers: Option[Int] = None,
                     haProxy: Option[HaProxy],
-                    withElk: Boolean = false,
                     isDebug: Boolean = false,
                     subjectsInSpAreHttps: Boolean = false,
                     defaultRdfProtocol: String = "http",
@@ -218,8 +217,6 @@ abstract class Host(user: String,
   def getCtrlSerice = ctrlService
 
   def getHaProxy = haProxy
-
-  def getWithElk = withElk
 
   /*
     var useAuthorization = false
@@ -360,50 +357,6 @@ abstract class Host(user: String,
     else
       command(s"""echo $$'$content' > $path""", host, false)
   }
-
-  val shipperConfLocation = s"${instDirs.globalLocation}/cm-well/conf/logstash"
-  val logstashJarLocation = s"${instDirs.globalLocation}/cm-well/app/logstash"
-  val logstashConfName = "logstash.conf"
-  val logstashJarName = "logstash-1.2.2-flatjar.jar"
-
-  def addLogstash(esHost: String, hosts: GenSeq[String] = ips) {
-    createLogstashConfFile(esHost, hosts)
-    deployLogstash(hosts)
-    startSendingLogsToLogstash(hosts)
-  }
-
-  def createLogstashConfFile(esHost: String, hosts: GenSeq[String] = ips) {
-    val str = genLogstashConfFile(
-      esHost,
-      Map("BU" -> "TMS", "serviceID" -> "cm-well", "environmentID" -> "cm-well", "appID" -> "cm-well", "cluster" -> cn)
-    )
-    command(s"mkdir -p $shipperConfLocation", hosts, false)
-    createFile(s"$shipperConfLocation/$logstashConfName", str, hosts)
-  }
-
-  def deployLogstash(hosts: GenSeq[String] = ips) {
-    command(s"mkdir -p ${instDirs.globalLocation}/cm-well/app/logstash", hosts, false)
-    rsync(s"components-extras/$logstashJarName", logstashJarLocation, hosts)
-    val startFile =
-      s"java -jar $logstashJarName agent -f $shipperConfLocation/$logstashConfName > /dev/null 2> /dev/null &"
-    createFile(s"$logstashJarLocation/start.sh", startFile, hosts)
-    command(s"cd $logstashJarLocation; chmod +x start.sh", hosts, false)
-  }
-
-  def startSendingLogsToLogstash(hosts: GenSeq[String] = ips) {
-    command(s"cd $logstashJarLocation; ./start.sh", hosts, false)
-  }
-
-  def stopSendingLogsToLogstash(hosts: GenSeq[String] = ips) {
-    killProcess("logstash", "")
-  }
-
-  def genLogstashConfFile(esHost: String, globalFields: Map[String, String]): String =
-    LogstashConf.genLogstashConfFile(cn,
-      esHost,
-      globalFields,
-      s"${instDirs.globalLocation}/cm-well/log",
-      dataDirs.esDataDirs.size)
 
   private def resolveIndex(index: Int): String = {
     index match {
@@ -1315,8 +1268,6 @@ abstract class Host(user: String,
     stopDc(hosts, tries)
     stopKafka(hosts, tries)
     stopZookeeper(hosts, tries)
-    stopLogstash(hosts, tries)
-    stopKibana(hosts, tries)
   }
 
   def clearData: Unit = clearData()
@@ -1512,10 +1463,6 @@ abstract class Host(user: String,
     startCW(hosts)
     startWebservice(hosts)
     startDc(hosts)
-    if (withElk) {
-      startLogstash(hosts)
-      startKibana(hosts)
-    }
   }
 
   def startCtrl: Unit = startCtrl(ips)
@@ -1600,10 +1547,6 @@ abstract class Host(user: String,
     startDc(hosts)
 
     info("finished initializing cm-well")
-    if (withElk) {
-      startLogstash(hosts)
-      startKibana(hosts)
-    }
   }
 
   def uploadInitialContent(host: String = ips(0)): Unit = {
@@ -1779,34 +1722,6 @@ abstract class Host(user: String,
   def startCassandra(hosts: String*): Unit = startCassandra(hosts.par)
 
   def startCassandra(hosts: GenSeq[String])
-
-  def startKibana: Unit = startKibana()
-
-  def startKibana(hosts: GenSeq[String] = ips.par): Unit = {
-    checkProduction
-    command(s"cd ${instDirs.globalLocation}/cm-well/app/kibana; ${startScript("./start.sh")}", hosts, false)
-  }
-
-  def stopKibana: Unit = stopKibana()
-
-  def stopKibana(hosts: GenSeq[String] = ips.par, tries: Int = 5): Unit = {
-    checkProduction
-    killProcess("kibana", "", hosts, tries = tries)
-  }
-
-  def startLogstash: Unit = startLogstash()
-
-  def startLogstash(hosts: GenSeq[String] = ips.par): Unit = {
-    checkProduction
-    command(s"cd ${instDirs.globalLocation}/cm-well/app/logstash; ${startScript("./start.sh")}", hosts, false)
-  }
-
-  def stopLogstash: Unit = stopLogstash()
-
-  def stopLogstash(hosts: GenSeq[String] = ips.par, tries: Int = 5): Unit = {
-    checkProduction
-    killProcess("logstash", "", hosts, tries = tries)
-  }
 
   def quickInstall: Unit = {
     checkProduction
@@ -2093,7 +2008,6 @@ abstract class Host(user: String,
     var props = baseProps
 
     if (deployJava) props = props ++ List(JavaProps(this))
-    if (withElk) props = props ++ List(LogstashProps(this), KibanaProps(this))
 
     info("deploying components and checking what should be upgraded.")
     syncLib(hosts)
@@ -2589,81 +2503,6 @@ abstract class Host(user: String,
   def getClusterStatus: ClusterStatus = {
     connectToGrid
     Await.result(Host.ctrl.getClusterStatus, 30 seconds)
-  }
-
-  private val elkImageName = "cmwell-elk"
-  private val elkContainerName = "cmwell-elk-container"
-  private val elkClusterNameSuffix = "elk"
-  private val elkDirName = "elk"
-  private val elkEsWebPort = 9220
-  private val elkEsTransportPort = 9320
-  private val elkWebPort = 8080
-
-  def deployElk: Unit = {
-    ???
-    info(s"copying files to remote hosts.")
-    ips.par.foreach { ip =>
-      info(s"copying files to $ip")
-      command(s"rsync -Paz scripts/docker-elk $user@$ip:${instDirs.intallationDir}/app/")
-    }
-
-    info(s"creating docker image")
-    ips.par.foreach { ip =>
-      val res =
-        command(s"sudo cd ${instDirs.intallationDir}/app/docker-elk/; sudo docker build -t $elkImageName .", ip, true)
-      if (res.isSuccess)
-        info(s"image was created at $ip")
-      else
-        info(s"failed to create image at $ip")
-    }
-
-    info("creating elk log directory")
-    command(s"mkdir -p ${instDirs.intallationDir}/log/$elkDirName", ips, false)
-  }
-
-  def createLogstashConfig: Unit = {
-    info("creating logstash config file")
-    ips.par.foreach { ip =>
-      createLogstashConfFile(s"$ip:$elkEsWebPort", Seq(ip))
-    }
-  }
-
-  def startElk: Unit = {
-    def getSeeds: String = {
-      ips.take(3).map(ip => s"$ip:$elkEsTransportPort").mkString(",")
-    }
-
-    //docker run -e elk_cluster='docker-elk' -v /home/michael/me/projects/elk-docker/conf:/etc/logstash -v
-    // /home/michael/app/cm-well/log:/cm-well/log  -p 8080:80 -p 9200:9220 -p 9300:9320 elk
-    //command(s"docker run -d --net=host --name=$elkContainerName -e elk_cluster='$cn-$elkClusterNameSuffix'
-    // -e elk_hosts='$getSeeds' -v ${instDirs.intallationDir}/conf/logstash/:/etc/logstash -v
-    // ${instDirs.intallationDir}/log:/opt/cm-well/log -v
-    // ${instDirs.intallationDir}/log/$elkDirName:/usr/share/elasticsearch/data
-    // -p $elkWebPort:80 -p $elkEsWebPort:$elkEsWebPort -p $elkEsTransportPort:$elkEsTransportPort $elkImageName", ips, true)
-    ???
-  }
-
-  def stopElk: Unit = {
-    //command(s"docker rm -f $elkContainerName", ips, true)
-    ???
-  }
-
-  def removeOldPackages(hosts: GenSeq[String] = ips): Unit = {
-    val packs = deployment.componentProps.filter(_.symLinkName.isDefined)
-    val loc = instDirs.globalLocation
-
-    for {
-      host <- hosts
-      pack <- packs
-    } {
-      val target = pack.targetLocation
-      val compName = pack.getName
-      val symLinkName = pack.symLinkName.get
-      val currentPack = command(s"readlink -e $loc/cm-well/$target/$symLinkName | xargs basename", host, false).get.trim
-      val com =
-        s"ls -1 $loc/cm-well/$target | grep $compName | grep -v $currentPack | xargs -I zzz rm -rf $loc/cm-well/$target/zzz"
-      command(com, host, false)
-    }
   }
 
   def syncLib(hosts: GenSeq[String] = ips) = {
