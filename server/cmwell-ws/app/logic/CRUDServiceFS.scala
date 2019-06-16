@@ -829,7 +829,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
         searchResultFuture.flatMap { ftsResults =>
           val infotons = enrichInfotonsData(ftsResults.response.infotons)
           val response = ftsResults.response
-          infotons.map{infoton => IterationResults(response.scrollId, response.total, Some(infoton), debugInfo = ftsResults.searchQueryStr)}
+          infotons.map{infotonSeq => IterationResults(response.scrollId, response.total, Some(infotonSeq), debugInfo = ftsResults.searchQueryStr)}
         }
     }
     results
@@ -890,7 +890,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       case true =>
         searchResultFuture.flatMap { ftsResults =>
           val infotons = enrichInfotonsData(ftsResults.infotons)
-          infotons.map{infoton => IterationResults(ftsResults.scrollId, ftsResults.total, Some(infoton), debugInfo = ftsResults.searchQueryStr)}
+          infotons.map{infotonSeq => IterationResults(ftsResults.scrollId, ftsResults.total, Some(infotonSeq), debugInfo = ftsResults.searchQueryStr)}
         }
       }
     results
