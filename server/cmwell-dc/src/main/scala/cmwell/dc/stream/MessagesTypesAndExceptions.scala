@@ -24,8 +24,11 @@ import scala.util.{Failure, Success}
   */
 object MessagesTypesAndExceptions {
 
-  case class DcInfo(id: String,
-                    location: String,
+  case class DcInfoKey(id: String, location: String, transformations: Map[String, String]) {
+    override def toString: String =
+      s"[id: $id, location: $location, transformations: ${transformations.mkString("(", ",", ")")}]"
+  }
+  case class DcInfo(key: DcInfoKey,
                     idxTime: Option[Long] = None,
                     positionKey: Option[String] = None,
                     tsvFile: Option[String] = None)
@@ -36,8 +39,8 @@ object MessagesTypesAndExceptions {
   // 1. failed warm up (one of the futures in the warm up chain failed)
   // 2. the stream failed
   case class RemoveDcSync(dcInfo: DcInfo)
-  case class SetDcSyncAsCancelled(dcInfo: DcInfo)
-  case class StopDcSync(dcInfo: DcInfo)
+  case class SetDcSyncAsCancelled(dcInfoKey: DcInfoKey)
+  case class StopDcSync(dcInfoKey: DcInfoKey)
   case class SaveDcSyncDoneInfo(dcInfo: DcInfo)
   case object CheckDcInfotonList
   case class RetrievedDcInfoList(dcInfoSeq: Seq[DcInfo])

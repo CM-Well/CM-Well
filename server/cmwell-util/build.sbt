@@ -21,7 +21,7 @@ libraryDependencies ++= {
     dm("com.typesafe.akka", "akka-testkit") % "test",
     dm("com.typesafe.akka", "akka-stream-testkit") % "test",
     dm("commons-io", "commons-io"),
-    dm("io.netty", "netty"),
+//    dm("io.netty", "netty"),
 //    dm("nl.grons", "metrics4-scala"),
 //    dm("nl.grons", "metrics4-akka_a25"),
 //    dm("nl.grons", "metrics4-scala-hdr"),

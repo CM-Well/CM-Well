@@ -34,7 +34,6 @@ case class GridSubDiv(user: String,
                       haProxy: Option[HaProxy] = None,
                       dcTarget: Option[String] = None,
                       minMembers: Option[Int] = None,
-                      withElk: Boolean = false,
                       subjectsInSpAreHttps: Boolean = false,
                       defaultRdfProtocol: String = "http",
                       diskOptimizationStrategy:String = "ssd",
@@ -61,7 +60,6 @@ case class GridSubDiv(user: String,
       ctrlService,
       minMembers = minMembers,
       haProxy,
-      withElk = withElk,
       subjectsInSpAreHttps = subjectsInSpAreHttps,
       defaultRdfProtocol = defaultRdfProtocol,
       diskOptimizationStrategy = diskOptimizationStrategy,
@@ -210,8 +208,7 @@ case class GridSubDiv(user: String,
             index = i,
             rs = IpRackSelector(),
             g1 = g1,
-            hostIp = host,
-            autoCreateIndex = withElk
+            hostIp = host
           )
         }
 
@@ -233,8 +230,7 @@ case class GridSubDiv(user: String,
           index = dataDirs.esDataDirs.size + 1,
           rs = IpRackSelector(),
           g1 = true,
-          hostIp = host,
-          autoCreateIndex = withElk
+          hostIp = host
         )
 
       val bg = BgConf(
@@ -253,7 +249,8 @@ case class GridSubDiv(user: String,
         minMembers = getMinMembers,
         numOfPartitions = ips.size,
         seeds = getSeedNodes.mkString(","),
-        defaultRdfProtocol = defaultRdfProtocol
+        defaultRdfProtocol = defaultRdfProtocol,
+        transportAddress = this.getThreesome(ips, host)
       )
 
 
@@ -273,7 +270,8 @@ case class GridSubDiv(user: String,
         minMembers = getMinMembers,
         seeds = getSeedNodes.mkString(","),
         seedPort = 9300,
-        defaultRdfProtocol = defaultRdfProtocol
+        defaultRdfProtocol = defaultRdfProtocol,
+        transportAddress = this.getThreesome(ips, host)
       )
 
 
@@ -290,7 +288,8 @@ case class GridSubDiv(user: String,
         minMembers = getMinMembers,
         seeds = getSeedNodes.mkString(","),
         seedPort = 9300,
-        subjectsInSpAreHttps = subjectsInSpAreHttps
+        subjectsInSpAreHttps = subjectsInSpAreHttps,
+        transportAddress = this.getThreesome(ips, host)
       )
 
 
@@ -337,24 +336,6 @@ case class GridSubDiv(user: String,
         hostIp = host
       )
 
-      val kibana = KibanaConf(
-        hostIp = host,
-        home = homeDir,
-        listenPort = "9090",
-        listenAddress = host,
-        elasticsearchUrl = s"${host}:9201"
-      )
-
-      val logstash = LogstashConf(
-        clusterName = cn,
-        elasticsearchUrl = s"${host}:9201",
-        home = homeDir,
-        dir = "logstash",
-        sName = "start.sh",
-        subdivision = dataDirs.esDataDirs.size,
-        hostIp = host
-      )
-
       List(
         esMaster,
         web,
@@ -364,7 +345,7 @@ case class GridSubDiv(user: String,
         zookeeper,
         kafka,
         bg
-      ) ++ List(cas) ++ esSubDivs ++ (if (withElk) List(logstash, kibana) else List.empty[ComponentConf])
+      )
     }
   }
 

@@ -15,6 +15,7 @@
 package cmwell.web.ld.util
 
 import java.io.InputStream
+import java.net.URLEncoder
 
 import cmwell.domain._
 import cmwell.fts._
@@ -84,9 +85,10 @@ object LDFormatParser extends LazyLogging {
     def isLegal: Boolean = {
       val i = ch.toInt
       (45 to 57).contains(i)  ||     // (-, ., /, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
-      (65 to 90).contains(i)  ||     // (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z)
-      (97 to 122).contains(i) ||     // (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z)
-      i == 95 || i == 35 || i > 126  // 95 = '_', 35 = '#', 123 to 126 are: ({, |, }, ~)
+        (65 to 90).contains(i)  ||     // (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z)
+        (97 to 122).contains(i) ||     // (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z)
+        i == 35 || i == 37 || i==43 || i == 44 || i == 58 || i == 95 || i > 126
+      // 35 = '#', 37 = '%', 43 = '+', 44 = ',', 58 = ':', 95 = '_', 123 to 126 are: ({, |, }, ~)
     }
     // format: on
   }
@@ -120,58 +122,58 @@ object LDFormatParser extends LazyLogging {
       FDouble(l.getDouble, quad) //convertXSD(l.getDouble, XSDDatatype.XSDdouble, l.getLexicalForm,lang,quad)
     case "int"  => FInt(l.getInt, quad) //convertXSD(l.getInt ,XSDDatatype.XSDint, l.getLexicalForm,lang,quad)
     case "long" => FLong(l.getLong, quad) //convertXSD(l.getLong, XSDDatatype.XSDlong, l.getLexicalForm,lang,quad)
-//    case "short" => convertXSD(l.getShort, XSDDatatype.XSDshort, l.getLexicalForm)
-//    case "byte" => convertXSD(l.getByte, XSDDatatype.XSDbyte, l.getLexicalForm)
-//    case "unsignedByte" => convertXSD(l.getLexicalForm, XSDDatatype.XSDunsignedByte, l.getLexicalForm)
-//    case "unsignedShort" => convertXSD(l.getLexicalForm, XSDDatatype.XSDunsignedShort, l.getLexicalForm)
-//    case "unsignedInt" => convertXSD(l.getLexicalForm, XSDDatatype.XSDunsignedInt, l.getLexicalForm)
-//    case "unsignedLong" => convertXSD(l.getLexicalForm, XSDDatatype.XSDunsignedLong, l.getLexicalForm)
+    //    case "short" => convertXSD(l.getShort, XSDDatatype.XSDshort, l.getLexicalForm)
+    //    case "byte" => convertXSD(l.getByte, XSDDatatype.XSDbyte, l.getLexicalForm)
+    //    case "unsignedByte" => convertXSD(l.getLexicalForm, XSDDatatype.XSDunsignedByte, l.getLexicalForm)
+    //    case "unsignedShort" => convertXSD(l.getLexicalForm, XSDDatatype.XSDunsignedShort, l.getLexicalForm)
+    //    case "unsignedInt" => convertXSD(l.getLexicalForm, XSDDatatype.XSDunsignedInt, l.getLexicalForm)
+    //    case "unsignedLong" => convertXSD(l.getLexicalForm, XSDDatatype.XSDunsignedLong, l.getLexicalForm)
     case "decimal" =>
       FBigDecimal(BigDecimal(l.getLexicalForm).underlying(), quad)
     //convertXSD(BigDecimal(l.getLexicalForm).underlying(),XSDDatatype.XSDdecimal,l.getLexicalForm,lang,quad)
     case "integer" =>
       FBigInt(BigInt(l.getLexicalForm).underlying(),quad)
     //convertXSD(BigInt(l.getLexicalForm).underlying(),XSDDatatype.XSDinteger,l.getLexicalForm,lang,quad)
-//    case "nonPositiveInteger" => convertXSD(l.getLexicalForm, XSDDatatype.XSDnonPositiveInteger, l.getLexicalForm)
-//    case "nonNegativeInteger" => convertXSD(l.getLexicalForm, XSDDatatype.XSDnonNegativeInteger, l.getLexicalForm)
-//    case "positiveInteger" => convertXSD(l.getLexicalForm, XSDDatatype.XSDpositiveInteger, l.getLexicalForm)
-//    case "negativeInteger" => convertXSD(l.getLexicalForm, XSDDatatype.XSDnegativeInteger, l.getLexicalForm)
+    //    case "nonPositiveInteger" => convertXSD(l.getLexicalForm, XSDDatatype.XSDnonPositiveInteger, l.getLexicalForm)
+    //    case "nonNegativeInteger" => convertXSD(l.getLexicalForm, XSDDatatype.XSDnonNegativeInteger, l.getLexicalForm)
+    //    case "positiveInteger" => convertXSD(l.getLexicalForm, XSDDatatype.XSDpositiveInteger, l.getLexicalForm)
+    //    case "negativeInteger" => convertXSD(l.getLexicalForm, XSDDatatype.XSDnegativeInteger, l.getLexicalForm)
     case "boolean" =>
       FBoolean(l.getBoolean, quad) //convertXSD(l.getBoolean, XSDDatatype.XSDboolean, l.getLexicalForm,lang,quad)
     case "string" =>
       FString(l.getString, lang, quad) //convertXSD(l.getString, XSDDatatype.XSDstring, l.getLexicalForm,lang,quad)
-//    case "normalizedString" => convertXSD(l.getLexicalForm, XSDDatatype.XSDnormalizedString, l.getLexicalForm)
-//    case "anyURI" => convertXSD(l.getLexicalForm, XSDDatatype.XSDanyURI, l.getLexicalForm)
-//    case "token" => convertXSD(l.getLexicalForm, XSDDatatype.XSDtoken, l.getLexicalForm)
-//    case "Name" => convertXSD(l.getLexicalForm, XSDDatatype.XSDName, l.getLexicalForm)
-//    case "QName" => convertXSD(l.getLexicalForm, XSDDatatype.XSDQName, l.getLexicalForm)
-//    case "language" => convertXSD(l.getLexicalForm, XSDDatatype.XSDlanguage, l.getLexicalForm)
-//    case "NMTOKEN" => convertXSD(l.getLexicalForm, XSDDatatype.XSDNMTOKEN, l.getLexicalForm)
-//    case "ENTITY" => convertXSD(l.getLexicalForm, XSDDatatype.XSDENTITY, l.getLexicalForm)
-//    case "ID" => convertXSD(l.getLexicalForm, XSDDatatype.XSDID, l.getLexicalForm)
-//    case "NCName" => convertXSD(l.getLexicalForm, XSDDatatype.XSDNCName, l.getLexicalForm)
-//    case "IDREF" => convertXSD(l.getLexicalForm, XSDDatatype.XSDIDREF, l.getLexicalForm)
-//    case "NOTATION" => convertXSD(l.getLexicalForm, XSDDatatype.XSDNOTATION, l.getLexicalForm)
-//    case "hexBinary" => convertXSD(l.getLexicalForm, XSDDatatype.XSDhexBinary, l.getLexicalForm)
-//    case "base64Binary" => convertXSD(l.getLexicalForm, XSDDatatype.XSDbase64Binary, l.getLexicalForm)
-//    case "date" => convertXSD(l.getLexicalForm, XSDDatatype.XSDdate, l.getLexicalForm)
-//    case "time" => convertXSD(l.getLexicalForm, XSDDatatype.XSDtime, l.getLexicalForm)
+    //    case "normalizedString" => convertXSD(l.getLexicalForm, XSDDatatype.XSDnormalizedString, l.getLexicalForm)
+    //    case "anyURI" => convertXSD(l.getLexicalForm, XSDDatatype.XSDanyURI, l.getLexicalForm)
+    //    case "token" => convertXSD(l.getLexicalForm, XSDDatatype.XSDtoken, l.getLexicalForm)
+    //    case "Name" => convertXSD(l.getLexicalForm, XSDDatatype.XSDName, l.getLexicalForm)
+    //    case "QName" => convertXSD(l.getLexicalForm, XSDDatatype.XSDQName, l.getLexicalForm)
+    //    case "language" => convertXSD(l.getLexicalForm, XSDDatatype.XSDlanguage, l.getLexicalForm)
+    //    case "NMTOKEN" => convertXSD(l.getLexicalForm, XSDDatatype.XSDNMTOKEN, l.getLexicalForm)
+    //    case "ENTITY" => convertXSD(l.getLexicalForm, XSDDatatype.XSDENTITY, l.getLexicalForm)
+    //    case "ID" => convertXSD(l.getLexicalForm, XSDDatatype.XSDID, l.getLexicalForm)
+    //    case "NCName" => convertXSD(l.getLexicalForm, XSDDatatype.XSDNCName, l.getLexicalForm)
+    //    case "IDREF" => convertXSD(l.getLexicalForm, XSDDatatype.XSDIDREF, l.getLexicalForm)
+    //    case "NOTATION" => convertXSD(l.getLexicalForm, XSDDatatype.XSDNOTATION, l.getLexicalForm)
+    //    case "hexBinary" => convertXSD(l.getLexicalForm, XSDDatatype.XSDhexBinary, l.getLexicalForm)
+    //    case "base64Binary" => convertXSD(l.getLexicalForm, XSDDatatype.XSDbase64Binary, l.getLexicalForm)
+    //    case "date" => convertXSD(l.getLexicalForm, XSDDatatype.XSDdate, l.getLexicalForm)
+    //    case "time" => convertXSD(l.getLexicalForm, XSDDatatype.XSDtime, l.getLexicalForm)
     case "dateTime" =>
       FDate(l.getLexicalForm, quad) //convertXSD(l.getLexicalForm, XSDDatatype.XSDdateTime, l.getLexicalForm,lang,quad)
-//    case "duration" => convertXSD(l.getLexicalForm, XSDDatatype.XSDduration, l.getLexicalForm)
-//    case "gDay" => convertXSD(l.getLexicalForm, XSDDatatype.XSDgDay, l.getLexicalForm)
-//    case "gMonth" => convertXSD(l.getLexicalForm, XSDDatatype.XSDgMonth, l.getLexicalForm)
-//    case "gYear" => convertXSD(l.getLexicalForm, XSDDatatype.XSDgYear, l.getLexicalForm)
-//    case "gYearMonth" => convertXSD(l.getLexicalForm, XSDDatatype.XSDgYearMonth, l.getLexicalForm)
-//    case "gMonthDay" => convertXSD(l.getLexicalForm, XSDDatatype.XSDgMonthDay, l.getLexicalForm)
+    //    case "duration" => convertXSD(l.getLexicalForm, XSDDatatype.XSDduration, l.getLexicalForm)
+    //    case "gDay" => convertXSD(l.getLexicalForm, XSDDatatype.XSDgDay, l.getLexicalForm)
+    //    case "gMonth" => convertXSD(l.getLexicalForm, XSDDatatype.XSDgMonth, l.getLexicalForm)
+    //    case "gYear" => convertXSD(l.getLexicalForm, XSDDatatype.XSDgYear, l.getLexicalForm)
+    //    case "gYearMonth" => convertXSD(l.getLexicalForm, XSDDatatype.XSDgYearMonth, l.getLexicalForm)
+    //    case "gMonthDay" => convertXSD(l.getLexicalForm, XSDDatatype.XSDgMonthDay, l.getLexicalForm)
     case s: String => FExternal(l.getLexicalForm, s"xsd#$s", quad)
   }
 
-//  def convertXSD(default: Any, xsd: XSDDatatype, lexicalForm: String,lang: Option[String],quad: Option[String]): FieldValue =
-//    Try(FieldValue(default,lang,quad)) match {
-//      case Success(obj) => obj
-//      case Failure(_) => FieldValue(xsd.parse(lexicalForm),lang,quad)
-//    }
+  //  def convertXSD(default: Any, xsd: XSDDatatype, lexicalForm: String,lang: Option[String],quad: Option[String]): FieldValue =
+  //    Try(FieldValue(default,lang,quad)) match {
+  //      case Success(obj) => obj
+  //      case Failure(_) => FieldValue(xsd.parse(lexicalForm),lang,quad)
+  //    }
 
   case class ParsingResponse(infotons: Map[String, Map[DirectFieldKey, Set[FieldValue]]],
                              metaData: Map[String, MetaData],
@@ -184,10 +186,10 @@ object LDFormatParser extends LazyLogging {
 
     def isEmpty: Boolean = {
       metaData.valuesIterator.forall(_.isEmpty) &&
-      infotons.isEmpty &&
-      deleteMap.isEmpty &&
-      deleteVal.isEmpty &&
-      deletePaths.isEmpty
+        infotons.isEmpty &&
+        deleteMap.isEmpty &&
+        deleteVal.isEmpty &&
+        deletePaths.isEmpty
     }
 
     private def merge[K](im1: Map[String, Map[K, Set[FieldValue]]], im2: Map[String, Map[K, Set[FieldValue]]]) = {
@@ -238,13 +240,13 @@ object LDFormatParser extends LazyLogging {
       }
 
       ParsingResponse(infotons,
-                      metaData,
-                      knownCmwellHosts,
-                      deleteMap,
-                      deleteVal,
-                      deletePaths,
-                      atomicUpdatesBuilder.result(),
-                      this.feedbackMessages ++ that.feedbackMessages)
+        metaData,
+        knownCmwellHosts,
+        deleteMap,
+        deleteVal,
+        deletePaths,
+        atomicUpdatesBuilder.result(),
+        this.feedbackMessages ++ that.feedbackMessages)
     }
   }
 
@@ -295,7 +297,9 @@ object LDFormatParser extends LazyLogging {
     val thisDocSub = {
       val subj = stmt.getSubject
       //meaning subject is: `<>`
-      subj.isURIResource && (subj.getURI.isEmpty || new java.net.URI(subj.getURI) == cwd)
+      val uri = subj.getURI
+      val encoded = if (uri == null || uri.isEmpty) null else URLEncoder.encode(uri, "UTF-8")
+      subj.isURIResource && (subj.getURI.isEmpty || new java.net.URI(encoded) == cwd)
     }
 
     val isMetaOp = {
@@ -401,14 +405,14 @@ object LDFormatParser extends LazyLogging {
         val quadsToDeleteImmutable = ISet.empty[String] ++ quadsToDelete
         val fuzzyQuadsToDeleteImmutable = ISet.empty[String] ++ fuzzyQuadsToDelete
 
-//        val fieldFiltersForQuadsSearch = quadsToDeleteImmutable.map { q =>
-//          (Should: FieldOperator) -> List(FieldFilter(Must, Equals, "system.quad", Some(q)))
-//        }.toList ::: fuzzyQuadsToDeleteImmutable.flatMap { q =>
-//          List(
-//            (Should: FieldOperator) -> List(FieldFilter(Must, Contains, "quad", Some(q))),
-//            (Should: FieldOperator) -> List(FieldFilter(Must, Contains, "system.quad", Some(q)))
-//          )
-//        }.toList
+        //        val fieldFiltersForQuadsSearch = quadsToDeleteImmutable.map { q =>
+        //          (Should: FieldOperator) -> List(FieldFilter(Must, Equals, "system.quad", Some(q)))
+        //        }.toList ::: fuzzyQuadsToDeleteImmutable.flatMap { q =>
+        //          List(
+        //            (Should: FieldOperator) -> List(FieldFilter(Must, Contains, "quad", Some(q))),
+        //            (Should: FieldOperator) -> List(FieldFilter(Must, Contains, "system.quad", Some(q)))
+        //          )
+        //        }.toList
 
         val fieldFiltersForQuadsSearch = quadsToDeleteImmutable.map { q =>
           FieldFilter(Should, Equals, "system.quad", q)
@@ -493,9 +497,9 @@ object LDFormatParser extends LazyLogging {
                                feedbacks: List[String])
 
   def modelsFromRdfDataInputStream(
-    cmwellRDFHelper: CMWellRDFHelper,
-    timeContext: Option[Long]
-  )(rdfData: InputStream, dialect: String): DataSetConstructs = {
+                                    cmwellRDFHelper: CMWellRDFHelper,
+                                    timeContext: Option[Long]
+                                  )(rdfData: InputStream, dialect: String): DataSetConstructs = {
     val ds = DatasetFactory.createGeneral()
     RDFDataMgr.read(ds, rdfData, dialectToLang(dialect))
 
@@ -542,8 +546,8 @@ object LDFormatParser extends LazyLogging {
       val x = all.values.flatMap(_.getOrElse(prefixFKey, Set.empty)).groupBy(_.value).values.filterNot(_.size == 1)
       require(x.isEmpty,
         "Uploaded RDF contained conflicting namespace prefixes. This might be due to inference. please be specific, " +
-        "and set sensible prefixes for your namespace instead of letting CM-Well infer using arbitrary heuristics. conflicts: " +
-        x.flatMap(_.toSet).toSet.mkString("[", ",", "]"))
+          "and set sensible prefixes for your namespace instead of letting CM-Well infer using arbitrary heuristics. conflicts: " +
+          x.flatMap(_.toSet).toSet.mkString("[", ",", "]"))
       all
     }
     newMetaNsInfotons.foreach {
@@ -587,14 +591,14 @@ object LDFormatParser extends LazyLogging {
                        isOverwrite: Boolean,
                        timeContext: Option[Long]): Future[ParsingResponse] =
     rdfToInfotonsMap(cmwellRDFHelper,
-                     crudServiceFS,
-                     authUtils,
-                     stringToInputStream(rdfData),
-                     dialect,
-                     token,
-                     skipValidation,
-                     isOverwrite,
-                     timeContext)
+      crudServiceFS,
+      authUtils,
+      stringToInputStream(rdfData),
+      dialect,
+      token,
+      skipValidation,
+      isOverwrite,
+      timeContext)
 
   def rdfToInfotonsMap(cmwellRDFHelper: CMWellRDFHelper,
                        crudServiceFS: CRUDServiceFS,
@@ -648,7 +652,7 @@ object LDFormatParser extends LazyLogging {
             if (metaNamespaces != 0 || subGraph.isEmpty) {
               require(metaNamespaces == 1,
                 "must use exactly one `/meta/sys#` namespace in document when forcing uniquness, namespaces found:" +
-                model.listNameSpaces().mkString("[", ",", "]"))
+                  model.listNameSpaces().mkString("[", ",", "]"))
               val metaNs = model.listNameSpaces().find(_.contains("/meta/sys#")).get
               val props: Seq[Property] =
                 Seq("type", "lastModified", "dataCenter", "indexTime").map(model.createProperty(metaNs, _))
@@ -680,7 +684,7 @@ object LDFormatParser extends LazyLogging {
           val cmwMetaDataMap = MMap[String, MetaData]()
           val cmwHosts = MSet[String]()
           val deleteFieldsMap = MMap[String, Set[(String, Option[String])]]() // {infoton path -> [field1, ..., fieldN]}
-          val deleteValuesMap = MMap[String, Map[String, Set[FieldValue]]]()
+        val deleteValuesMap = MMap[String, Map[String, Set[FieldValue]]]()
           val deletePathsList = ListBuffer[String]()
           val atomicUpdatesBuilder = Map.newBuilder[String, String]
 
@@ -722,7 +726,7 @@ object LDFormatParser extends LazyLogging {
                   case "uuid" | "path" | "parent" | "lastModified" | "modifiedDate" | "indexTime" | "dataCenter" | "protocol" =>
                     authUtils.isOperationAllowedForUser(security.Overwrite, token, evenForNonProdEnv = true)
                   case _ => true
-              }
+                }
 
               val obj = stmt.getObject
 
@@ -752,11 +756,11 @@ object LDFormatParser extends LazyLogging {
                     v = delStmt.getObject
                   } yield p -> v
                   updateDeleteValuesMap(cmwellRDFHelper,
-                                        timeContext,
-                                        deleteValuesMap,
-                                        subject,
-                                        pvit.toList,
-                                        changeQuadAccordingToDialect(subGraph, dialect))
+                    timeContext,
+                    deleteValuesMap,
+                    subject,
+                    pvit.toList,
+                    changeQuadAccordingToDialect(subGraph, dialect))
                 }
                 case Left(MarkDelete) =>
                   throw new IllegalArgumentException(
@@ -803,7 +807,7 @@ object LDFormatParser extends LazyLogging {
                 case Left(PrevUUID) => {
                   val uuid = obj.toString
                   require(uuid.isEmpty || uuid.matches("^[a-f0-9]{32}$"),
-                          s"invalid uuid supplied for path: [$subject] and predicate prevUUID")
+                    s"invalid uuid supplied for path: [$subject] and predicate prevUUID")
                   require(!stmt.getSubject.isAnon, "prevUUID predicates can't operate on anonymous subjects.")
                   feedbacks += s"Conditional update for all statements with subject [$subject] has been emitted"
                   atomicUpdatesBuilder += subject -> uuid
@@ -820,12 +824,12 @@ object LDFormatParser extends LazyLogging {
           val immutableInfotonsMap: IMap[String, IMap[DirectFieldKey, Set[FieldValue]]] = IMap[String, Map[
             DirectFieldKey,
             Set[FieldValue]
-          ]]() ++ infotonsMap
+            ]]() ++ infotonsMap
 
           //make sure all the infotons are valid!
           if (!skipValidation) {
             require(immutableInfotonsMap.keys.forall(k => InfotonValidator.isInfotonNameValid(normalizePath(k))),
-                    "one or more subjects in the document are not valid")
+              "one or more subjects in the document are not valid")
           } else {
             feedbacks += s"skipping validation for all ingested subjects"
           }
@@ -837,13 +841,13 @@ object LDFormatParser extends LazyLogging {
           val deletePaths = deletePathsList.toList
 
           ParsingResponse(immutableInfotonsMap,
-                          metaData,
-                          knownCmwellHosts,
-                          deleteMap,
-                          deleteVal,
-                          deletePaths,
-                          atomicUpdatesBuilder.result(),
-                          feedbacks.result())
+            metaData,
+            knownCmwellHosts,
+            deleteMap,
+            deleteVal,
+            deletePaths,
+            atomicUpdatesBuilder.result(),
+            feedbacks.result())
       }
       .reduce(_ ⑃ _)
 
@@ -891,7 +895,7 @@ object LDFormatParser extends LazyLogging {
       case (p, v) => {
         val predicateUrl = p.getNameSpace
         require(!predicateUrl.matches(metaOpRegex("(sys|ns)")),
-                s"sys fields not allowed for markDelete failed for: [$predicateUrl${p.getLocalName}]")
+          s"sys fields not allowed for markDelete failed for: [$predicateUrl${p.getLocalName}]")
         val cmwAttribute =
           getCmwellFieldNameForUrl(cmwellRDFHelper, timeContext, predicateUrl, Some(p.getLocalName)).get //TODO: protect against empty Option
         val validValue: FieldValue = fieldValueFromObject(v, quad)
@@ -968,7 +972,7 @@ object LDFormatParser extends LazyLogging {
       case "linkTo" => md.copy(mdType = Some(LinkMetaData), linkTo = Some(value.toString))
       case "linkType" =>
         md.copy(mdType = Some(LinkMetaData),
-                linkType = Some(Try(value.asInstanceOf[FInt].value).getOrElse(md.linkType.getOrElse(1))))
+          linkType = Some(Try(value.asInstanceOf[FInt].value).getOrElse(md.linkType.getOrElse(1))))
       case "dataCenter"               => md.copy(dataCenter = Some(value.toString))
       case "protocol"                 => md.copy(protocol = Some(value.toString))
       case "indexTime"                => md.copy(indexTime = Try(value.asInstanceOf[FLong].value).toOption)
@@ -1114,37 +1118,37 @@ object LDFormatParser extends LazyLogging {
     }
   }
 
-//  /**
-//   *
-//   * @param url
-//   * @return
-//   */
-//  @tailrec
-//  def inferQuadNameFromUrl(url: String, pilledSuffix: String = ""): String = {
-//    if(url.isEmpty) {
-//      val domain = pilledSuffix.split('.')
-//      val chosenPartOrInitials = domain.find(!blackList(_)).getOrElse(domain.flatMap(_.headOption).mkString)
-//      val (start,rest): Tuple2[String,String] =
-//        if(chosenPartOrInitials.headOption.isDefined && XMLChar.isNCNameStart(chosenPartOrInitials.head))
-//          chosenPartOrInitials.splitAt(1)
-//        else ("q-",chosenPartOrInitials)
-//      start + rest
-//    }
-//    else {
-//      val candidate = {
-//        val it = url.reverseIterator
-//        (it.next, it.takeWhile(XMLChar.isNCName(_)).mkString.reverse) match {
-//          case (char,rest) if XMLChar.isNCName(char) => s"$rest$char"
-//          case (_, name) => name
-//        }
-//      }
-//      if (XMLChar.isValidNCName(candidate)) candidate.map{
-//        case '.' => '-'
-//        case ch => ch
-//      }
-//      else inferQuadNameFromUrl(url.dropRight(candidate.length + 1), candidate)
-//    }
-//  }
+  //  /**
+  //   *
+  //   * @param url
+  //   * @return
+  //   */
+  //  @tailrec
+  //  def inferQuadNameFromUrl(url: String, pilledSuffix: String = ""): String = {
+  //    if(url.isEmpty) {
+  //      val domain = pilledSuffix.split('.')
+  //      val chosenPartOrInitials = domain.find(!blackList(_)).getOrElse(domain.flatMap(_.headOption).mkString)
+  //      val (start,rest): Tuple2[String,String] =
+  //        if(chosenPartOrInitials.headOption.isDefined && XMLChar.isNCNameStart(chosenPartOrInitials.head))
+  //          chosenPartOrInitials.splitAt(1)
+  //        else ("q-",chosenPartOrInitials)
+  //      start + rest
+  //    }
+  //    else {
+  //      val candidate = {
+  //        val it = url.reverseIterator
+  //        (it.next, it.takeWhile(XMLChar.isNCName(_)).mkString.reverse) match {
+  //          case (char,rest) if XMLChar.isNCName(char) => s"$rest$char"
+  //          case (_, name) => name
+  //        }
+  //      }
+  //      if (XMLChar.isValidNCName(candidate)) candidate.map{
+  //        case '.' => '-'
+  //        case ch => ch
+  //      }
+  //      else inferQuadNameFromUrl(url.dropRight(candidate.length + 1), candidate)
+  //    }
+  //  }
 
   def blackList(s: String): Boolean = s.length < 3 || s.matches("""(www\d*)|static|org|net|com|biz|gov|edu|https?""")
 
@@ -1166,25 +1170,25 @@ object LDFormatParser extends LazyLogging {
     name.mkString
   }
 
-//  /**
-//   *
-//   * @param url
-//   * @return
-//   */
-//  def getNsShortName(url: String): String = {
-//    val noProtocol = if(url.startsWith(http)) url.drop(http.length)
-//    else if(url.startsWith(https)) url.drop(https.length)
-//    else if(url.matches("\\w+://.+")){ //some other weird protocol... regex matches <protocol>://whatever...
-//      var drops = 0
-//      while(url.drop(drops).matches("\\w+://.+"))
-//        drops = drops + 1
-//      url.drop(drops+3)
-//    }
-//    else url //is this even a valid url?
-//
-//      val short = inferShortNameFromUrl(noProtocol)
-//      CMWellRDFHelper.nsUrlToHash(short, url)
-//}
+  //  /**
+  //   *
+  //   * @param url
+  //   * @return
+  //   */
+  //  def getNsShortName(url: String): String = {
+  //    val noProtocol = if(url.startsWith(http)) url.drop(http.length)
+  //    else if(url.startsWith(https)) url.drop(https.length)
+  //    else if(url.matches("\\w+://.+")){ //some other weird protocol... regex matches <protocol>://whatever...
+  //      var drops = 0
+  //      while(url.drop(drops).matches("\\w+://.+"))
+  //        drops = drops + 1
+  //      url.drop(drops+3)
+  //    }
+  //    else url //is this even a valid url?
+  //
+  //      val short = inferShortNameFromUrl(noProtocol)
+  //      CMWellRDFHelper.nsUrlToHash(short, url)
+  //}
 
   /**
     *

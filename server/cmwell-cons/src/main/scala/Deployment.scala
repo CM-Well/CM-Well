@@ -579,30 +579,6 @@ case class WebserviceProps(h: Host)
   }
 }
 
-case class KibanaProps(h: Host)
-    extends ComponentProps(h, "kibana", "components-extras", false)
-    with LoggingComponent
-    with ConfigurableComponent
-    with RunnableComponent {
-  /*      def packageLocation : String = location*/
-  override def targetLocation: String = "app/kibana"
-
-  override def unpackCommand: Option[String] = Some("tar -xf")
-
-  override def symLinkName: Option[String] = Some("cur")
-
-  override val componentName: String = "kibana"
-  override val componentMappings: Map[String, Int] = Map("kibana" -> 1)
-
-  def start(hosts: GenSeq[String]): Unit = {
-    h.startKibana(hosts)
-  }
-
-  def stop(hosts: GenSeq[String]): Unit = {
-    h.stopKibana(hosts)
-  }
-}
-
 case class JavaProps(h: Host) extends ComponentProps(h, "jdk", "components-extras", false) {
   def targetLocation = "app"
   def unpackCommand: Option[String] = Some("tar -xf")
@@ -632,27 +608,6 @@ case class BinsProps(h: Host) extends ComponentProps(h, "bin", ".", false) {
   override def getUnpackedName(packageName: String, location: String): Option[String] = None
 }
 
-case class LogstashProps(h: Host)
-    extends ComponentProps(h, "logstash", "components-extras", false)
-    with ConfigurableComponent
-    with LoggingComponent
-    with RunnableComponent {
-  override val componentName: String = "logstash"
-  override val componentMappings: Map[String, Int] = Map("logstash" -> 1)
-  override def targetLocation: String = "app/logstash"
-  override def unpackCommand: Option[String] = Some("tar -xf")
-  override def symLinkName: Option[String] = Some("cur")
-  override def isDir = true
-  //override def getUnpackedName(packageName : String, location : String) : Option[String] = None
-  def start(hosts: GenSeq[String]): Unit = {
-    h.startLogstash(hosts)
-  }
-
-  def stop(hosts: GenSeq[String]): Unit = {
-    h.stopLogstash(hosts)
-  }
-}
-
 class Deployment(h: Host) {
 
   def getCurrentDateStr = {
@@ -671,14 +626,10 @@ class Deployment(h: Host) {
     Mx4JProps(h),
     CtrlProps(h),
     DcProps(h)
-  ) ++ (if (h.getWithElk) List(LogstashProps(h), KibanaProps(h)) else Vector.empty[ComponentProps]) ++ (if (h.getDeployJava)
-                                                                                                          Vector(
-                                                                                                            JavaProps(h)
-                                                                                                          )
-                                                                                                        else
-                                                                                                          Vector.empty[
-                                                                                                            ComponentProps
-                                                                                                          ])
+  ) ++ (if (h.getDeployJava)
+          Vector(JavaProps(h))
+        else
+          Vector.empty[ComponentProps])
   //val componentProps : Vector[ComponentProps] = Vector(ElasticsearchProps)
 
   def createDirs(hosts: GenSeq[String], components: Seq[Any]): Unit = {

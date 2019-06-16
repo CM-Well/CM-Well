@@ -14,8 +14,8 @@ libraryDependencies ++= {
       .exclude("org.slf4j", "slf4j-api")
       .exclude("com.google.guava", "guava"),
     dm("com.google.code.findbugs", "jsr305"),
-    dm("com.google.guava", "guava"),
-    dm("io.netty", "netty"))
+    dm("com.google.guava", "guava")
+  )
 }
 
 fullTest := (test in Test).value

@@ -231,7 +231,7 @@ object SimpleHttpClient extends LazyLogging {
   private def cType(ct: Option[String]) = ct match {
     case None => ContentTypes.NoContentType
     case Some("application/x-www-form-urlencoded") =>
-      ContentType.WithCharset(MediaTypes.`application/x-www-form-urlencoded`, HttpCharsets.`UTF-8`)
+      ContentType.WithFixedCharset(MediaTypes.`application/x-www-form-urlencoded`)
     case Some(x) =>
       ContentType.parse(x) match {
         case Right(r) => r

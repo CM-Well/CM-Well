@@ -296,14 +296,6 @@ case class CassandraConf(home: String,
   }
 }
 
-object CassandraConf{
-  //The idea is to notify the user when the original cassandra config has been changed, so the user need to change the templates in cons accordingly
-  //Therefore, a hash of cassandra version 3.11.4 is calculated
-  def checksum  =
-    UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "conf/cassandra.yaml", "D41D8CD98F00B204E9800998ECF8427E")
-
-}
-
 case class ElasticsearchConf(clusterName: String,
                              nodeName: String,
                              dataNode: Boolean,
@@ -321,7 +313,6 @@ case class ElasticsearchConf(clusterName: String,
                              sName: String,
                              index: Int,
                              rs: RackSelector,
-                             autoCreateIndex: Boolean,
                              g1: Boolean,
                              hostIp: String)
     extends ComponentConf(hostIp, s"$home/app/es/cur", sName, s"$home/conf/$dir", "elasticsearch.yml", index) {
@@ -451,7 +442,6 @@ case class ZookeeperConf(home: String, clusterName: String, servers: Seq[String]
                      |export JMXDISABLE=true
                      |export JVMFLAGS="-Xmx500m -Xms500m -Dlog4j.configuration=file:$confDir/log4j.properties"""".stripMargin
     // scalastyle:off
-    val cp = s"cur/lib/slf4j-log4j12-1.7.25.jar:cur/lib/slf4j-api-1.7.25.jar:cur/lib/netty-3.10.6.Final.jar:cur/lib/log4j-1.2.17.jar:cur/lib/jline-0.9.94.jar:cur/zookeeper-${cmwell.util.build.BuildInfo.zookeeperVersion}.jar:$home/conf/$dir"
     val scriptString =
       s"""
           |$exports
@@ -500,7 +490,8 @@ case class BgConf(home: String,
                   seeds: String,
                   seedPort: Int = 9301,
                   dir: String = "bg",
-                  defaultRdfProtocol: String)
+                  defaultRdfProtocol: String,
+                  transportAddress: String)
     extends ComponentConf(hostIp, s"$home/app/bg", sName, s"$home/conf/bg", "bg.yml", 1) {
   override def mkScript: ConfFile = {
     def jvmArgs = {
@@ -568,7 +559,7 @@ case class BgConf(home: String,
       "irwServiceDao.clusterName" -> s"$clusterName",
       "irwServiceDao.hostName" -> s"$hostName",
       "ftsService.clusterName" -> s"$clusterName",
-      "ftsService.transportAddress" -> s"$hostName",
+      "ftsService.transportAddress" -> s"$transportAddress",
       "cmwell.rdfDefaultProtocol" -> defaultRdfProtocol,
       "kafka.bootstrap.servers" -> s"localhost:9092,${zookeeperServers.map(kafkaNode => s"$kafkaNode:9092").mkString(",")}"
     )
@@ -600,7 +591,8 @@ case class CwConf(home: String,
                   hostIp: String,
                   seeds: String,
                   seedPort: Int,
-                  subjectsInSpAreHttps: Boolean)
+                  subjectsInSpAreHttps: Boolean,
+                  transportAddress: String)
     extends ComponentConf(hostIp, s"$home/app/ws", sName, s"$home/conf/cw", "ws.yml", 1) {
   override def mkScript: ConfFile = {
     {
@@ -649,7 +641,7 @@ case class CwConf(home: String,
       "ftsService.clusterName" -> s"$clusterName",
       "cmwell.home" -> s"$home",
       "irwServiceDao.hostName" -> s"$hostName",
-      "ftsService.transportAddress" -> s"$hostName",
+      "ftsService.transportAddress" -> s"$transportAddress",
       "ftsService.defaultPartitionNew" -> s"cm_well",
       "quads.cache.size" -> s"1000",
       "quads.globalOperations.results.maxLength" -> s"10000",
@@ -690,7 +682,8 @@ case class WebConf(home: String,
                    hostIp: String,
                    seeds: String,
                    seedPort: Int,
-                   defaultRdfProtocol: String)
+                   defaultRdfProtocol: String,
+                   transportAddress: String)
     extends ComponentConf(hostIp, s"$home/app/ws", sName, s"$home/conf/ws", "ws.yml", 1) {
   def genMemStr(mem: String): String = {
     if (!mem.isEmpty) s"-J$mem" else mem
@@ -755,7 +748,7 @@ case class WebConf(home: String,
       "ftsService.clusterName" -> s"$clusterName",
       "cmwell.home" -> s"$home",
       "irwServiceDao.hostName" -> s"$hostName",
-      "ftsService.transportAddress" -> s"$hostName",
+      "ftsService.transportAddress" -> s"$transportAddress",
       "cmwell.rdfDefaultProtocol" -> defaultRdfProtocol
     )
 
@@ -949,203 +942,4 @@ case class DcConf(home: String,
   }
 
   override def getPsIdentifier: String = "log/dc"
-}
-
-//TODO: remove LogstashConf
-// scalastyle:off
-object LogstashConf {
-  def genLogstashConfFile(clusterName: String,
-                          esHost: String,
-                          globalFields: Map[String, String],
-                          logslocation: String,
-                          subDivision: Int): String = {
-    val logsDir = logslocation //s"${instDirs.globalLocation}/cm-well/log"
-
-    def getFileInput(pathToLog: String, fields: Map[String, String] = Map.empty) =
-      s"""
-         |file {
-         | path => "$pathToLog"
-         | add_field => {${(globalFields ++ fields).map(m => s""" "${m._1}" => "${m._2}" """).mkString("\n")}}
-         |}
-      """.stripMargin
-
-    def getRemoteElasticsearchOutput =
-      s"""
-         | elasticsearch {
-         |   hosts => ["$esHost"]
-         |   flush_size => 5000
-         |   idle_flush_time => 30
-         | }
-      """.stripMargin
-
-    def getComponentFieldsMap(component: String, logName: String, componentIndex: Int) =
-      Map("component" -> component, "logName" -> logName, "componentIndex" -> componentIndex.toString)
-
-    def createComponentEntries(component: String, dir: String, amount: Int, logs: List[String]): GenSeq[String] = {
-      (for (i <- 1 to amount)
-        yield {
-          val logDirName = ResourceBuilder.getIndexedName(dir, i)
-          val logDirFullPath = s"$logsDir/$logDirName"
-          logs.map(log => getFileInput(s"$logDirFullPath/$log", getComponentFieldsMap(component, log.split('.')(0), i)))
-        }).flatten
-    }
-
-    val casLogs = createComponentEntries("Cassandra",
-                                         "cas",
-                                         subDivision,
-                                         List("gc.log.*", "stdout.log", "stderr.log", "system.log"))
-    val esLogs = createComponentEntries(
-      "Elasticsearch",
-      "es",
-      subDivision,
-      List(s"${clusterName}_index_indexing_slowlog.log",
-           s"${clusterName}_index_search_slowlog.log",
-           s"${clusterName}.log",
-           "gc.log.*",
-           "stderr.log",
-           "stdout.log")
-    )
-    val esMasterLogs = createComponentEntries(
-      "ElasticsearchMaster",
-      "es-master",
-      1,
-      List(s"${clusterName}_index_indexing_slowlog.log",
-           s"${clusterName}_index_search_slowlog.log",
-           s"${clusterName}.log",
-           "gc.log.*",
-           "stderr.log",
-           "stdout.log")
-    )
-    val wsLogs = createComponentEntries("Ws",
-                                        "ws",
-                                        1,
-                                        List("access.log", "application.log", "gc.log.*", "stderr.log", "stdout.log"))
-    val bgLogs = createComponentEntries(
-      "Bg",
-      "bg",
-      1,
-      List("application.log", "gc.log.*", "heartbeat.log", "stderr.log", "stdout.log")
-    )
-    val ctrlLogs = createComponentEntries(
-      "Ctrl",
-      "ctrl",
-      1,
-      List("application.log", "stderr.log", "stdout.log", "cluster_state.log", "alerts.log", "gc.log.*")
-    )
-    val dcLogs = createComponentEntries("DC", "dc", 1, List("application.log", "stderr.log", "stdout.log", "gc.log.*"))
-
-    s"""
-       |input {
-       |  ${casLogs.mkString("\n")}
-       |  ${esLogs.mkString("\n")}
-       |  ${esMasterLogs.mkString("\n")}
-       |  ${bgLogs.mkString("\n")}
-       |  ${wsLogs.mkString("\n")}
-       |  ${ctrlLogs.mkString("\n")}
-       |  ${dcLogs.mkString("\n")}
-       |}
-       |
-       |filter {
-       | if [component] == "Ctrl" {
-       |   # 18:32:58.198 TKD [cm-well-p-akka.actor.default-dispatcher-3] INFO  cmwell.ctrl.hc.HealthActor - GotHeakupLatencyStats 127.0.0.1 27010 ElasticsearchNode 0 0 0 0 1 23 979
-       |   grok {
-       |     match => [ "message", "%{IPORHOST:ip} %{NUMBER:pid} %{WORD:component} %{NUMBER:p25} %{NUMBER:p50} %{NUMBER:p75} %{NUMBER:p90} %{NUMBER:p99} %{NUMBER:p995} %{NUMBER:max}" ]
-       |   }
-       | }
-       |
-       | if [component] == "Ctrl" {
-       |   grok {
-       |     match => [ "message", "DiskUsage: %{NOTSPACE:device_name} %{NUMBER:device_usage:int}" ]
-       |   }
-       | }
-       |
-       | if [logName] == "access" {
-       |   grok {
-       |    match => ["message", "%{NOTSPACE:date} %{NOTSPACE:time} +%{NOTSPACE:zeros} method=%{WORD:method} uri=%{NOTSPACE:uri} remote-address=%{IPORHOST:ip} status=%{NUMBER:status:int} process-time=%{NUMBER:processTime:int}ms x-forwarded-for=%{NOTSPACE:forward}"]
-       |   }
-       | }
-       | if [logName] == "gc" {
-       |   grok {
-       |     match => ["message", "%{WORD:date}: %{NUMBER:num}: Total time for which application threads were stopped: %{NUMBER:duration:float} %{WORD:seconds}"]
-       |   }
-       | }
-       |}
-       |
-       |output {
-       |  $getRemoteElasticsearchOutput
-       |}
-    """.stripMargin
-  }
-}
-// scalastyle:on
-case class LogstashConf(clusterName: String,
-                        elasticsearchUrl: String,
-                        home: String,
-                        dir: String = "logstash",
-                        sName: String,
-                        subdivision: Int,
-                        hostIp: String)
-    extends ComponentConf(hostIp, s"$home/app/logstash", sName, s"$home/conf/logstash", "logstash.yml", 1) {
-  override def mkScript: ConfFile = {
-    val scriptContent = {
-      val sb = new StringBuilder
-      sb ++= "export PATH="
-      sb ++= home
-      sb ++= "/app/java/bin:"
-      sb ++= home
-      sb ++= "/bin/utils:"
-      sb ++= PATH
-      sb += '\n'
-      sb ++= CHKSTRT
-      sb += '\n'
-      sb ++= BMSG
-      sb += '\n'
-      sb ++= "starter "
-      sb ++= home
-      sb ++= "/app/logstash/cur/bin/logstash agent -f "
-      sb ++= home
-      sb ++= "/conf/logstash/ > "
-      sb ++= home
-      sb ++= "/log/logstash/stdout.log 2> "
-      sb ++= home
-      sb ++= "/log/logstash/stderr.log &"
-      sb.result()
-    }
-    ConfFile("start.sh", scriptContent, true)
-  }
-
-  override def getPsIdentifier: String = "logstash/logstash"
-
-  override def mkConfig: List[ConfFile] = {
-    val confContent = LogstashConf.genLogstashConfFile(clusterName,
-                                                       elasticsearchUrl,
-                                                       Map.empty[String, String],
-                                                       s"$home/log",
-                                                       subdivision)
-    List(ConfFile("logstash.conf", confContent, false))
-  }
-}
-
-case class KibanaConf(hostIp: String, home: String, listenPort: String, listenAddress: String, elasticsearchUrl: String)
-    extends ComponentConf(hostIp, s"$home/app/kibana", "start.sh", s"$home/conf/kibana", "kibana.yml", 1) {
-  override def mkScript: ConfFile = {
-    val scriptContent =
-      s"""
-         |export PATH=$home/bin/utils:$PATH
-         |$CHKSTRT
-         |$BMSG
-         |starter $home/app/kibana/cur/bin/kibana -c $home/conf/kibana/kibana.yml > $home/log/kibana/stdout.log 2> $home/log/kibana/stderr.log &""".stripMargin
-    ConfFile("start.sh", scriptContent, true)
-  }
-
-  override def getPsIdentifier: String = "bin/kibana"
-
-  override def mkConfig: List[ConfFile] = {
-    val m = Map[String, String]("port" -> listenPort,
-                                "host" -> listenAddress,
-                                "elasticsearch_url" -> s"http://$elasticsearchUrl")
-    val confContent = ResourceBuilder.getResource(s"scripts/templates/kibana.yml", m)
-
-    List(ConfFile("kibana.yml", confContent, false))
-  }
 }

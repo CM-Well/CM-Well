@@ -16,27 +16,26 @@ package cmwell.tools.data.sparql
 
 import java.nio.file.Paths
 import java.time.temporal.ChronoUnit
-import java.time.{Instant, LocalDateTime, ZoneId, temporal}
+import java.time.{Instant, LocalDateTime, ZoneId}
 
 import akka.actor.{Actor, ActorRef, ActorSystem, Cancellable, PoisonPill, Status}
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.pattern._
 import akka.stream._
 import akka.stream.scaladsl._
-import akka.util.Timeout
+import akka.util.{ByteString, Timeout}
 import cmwell.ctrl.checkers.StpChecker.{RequestStats, ResponseStats, Row, Table}
 import cmwell.driver.Dao
 import cmwell.tools.data.ingester._
 import cmwell.tools.data.sparql.InfotonReporter.{RequestDownloadStats, RequestIngestStats, ResponseDownloadStats, ResponseIngestStats}
 import cmwell.tools.data.sparql.SparqlProcessorManager._
 import cmwell.tools.data.utils.akka._
-import cmwell.tools.data.utils.akka.stats.IngesterStats
-import cmwell.tools.data.utils.chunkers.GroupChunker
-import cmwell.tools.data.utils.chunkers.GroupChunker._
+import cmwell.tools.data.utils.akka.stats.{DownloaderStats, IngesterStats}
 import cmwell.tools.data.utils.text.Tokens
 import cmwell.util.concurrent._
 import cmwell.util.http.SimpleResponse
 import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
-import cmwell.util.stream.StreamEventInspector
 import cmwell.util.string.Hash
 import cmwell.zstore.ZStore
 import com.typesafe.scalalogging.LazyLogging
@@ -44,9 +43,13 @@ import io.circe.Json
 import k.grid.GridReceives
 import net.jcazevedo.moultingyaml._
 import org.apache.commons.lang3.time.DurationFormatUtils
+import akka.stream.scaladsl.Flow
+import cmwell.tools.data.ingester.Ingester.IngesterRuntimeConfig
+import cmwell.tools.data.sparql.SparqlProcessor.SparqlRuntimeConfig
+import cmwell.tools.data.utils.akka.Retry.State
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.{FiniteDuration, _}
 import scala.util.{Failure, Success, Try}
 
@@ -108,21 +111,61 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
 
   type Jobs = Map[String, JobStatus]
 
+  var currentJobs: Jobs = Map.empty
+  var configMonitor: Cancellable = _
+
   //todo: should we use injected ec??? implicit val ec = context.dispatcher
   implicit val system: ActorSystem = context.system
   implicit val mat = ActorMaterializer()
 
+  // HTTP Connection Pool, specific to particular HTTP endpoint
+  type ConnectionPool = Flow[(HttpRequest,State[(Option[StpMetadata],Long)]),
+    (Try[HttpResponse], State[(Option[StpMetadata],Long)]), Http.HostConnectionPool]
+
+  // A (pool) of reusable HTTP connection pools for a number of HTTP endpoints
+  var connectionPools : Map[String,ConnectionPool] = Map.empty
+
   if (mat.isInstanceOf[ActorMaterializer]) {
     require(mat.asInstanceOf[ActorMaterializer].system eq context.system,
-            "ActorSystem of materializer MUST be the same as the one used to create current actor")
+      "ActorSystem of materializer MUST be the same as the one used to create current actor")
   }
 
   lazy val stpDao = Dao(settings.irwServiceDaoClusterName, settings.irwServiceDaoKeySpace2, settings.irwServiceDaoHostName, 9042, initCommands = None)
   lazy val zStore : ZStore = ZStore.apply(stpDao)
 
-  var currentJobs: Jobs = Map.empty
+  def extractSparqlContext(context: Option[(Option[StpMetadata], Long)]) = context match {
+    case Some((Some(metadata), _)) => {
+      SparqlRuntimeConfig(
+        hostUpdatesSource = metadata.agentConfig.hostUpdatesSource.get,
+        useQuadsInSp = metadata.agentConfig.useQuadsInSp.getOrElse(settings.useQuadsInSp),
+        label = metadata.agentConfig.name,
+        sparqlMaterializer =  metadata.agentConfig.sparqlMaterializer
+      )
+    }
+  }
 
-  var configMonitor: Cancellable = _
+  val (stpAgentSink, postIngestSource) =
+    MergeHub.source[(ByteString,Option[StpMetadata])](perProducerBufferSize = 256)
+      .groupBy(2, { case (_, Some(stpMetadata)) =>
+        stpMetadata.agentConfig.force.getOrElse(false) } )
+    .groupedWeightedWithin((25*1024), 10.seconds)(_._1.size)
+    .via(
+      Ingester.ingesterFlow(baseUrl = settings.hostWriteOutput,
+        format = settings.materializedViewFormat,
+        writeToken = Option(settings.writeToken),
+        extractContext = (context: Option[StpMetadata]) => context match {
+          case Some(stpMetadata) => IngesterRuntimeConfig(stpMetadata.agentConfig.force.getOrElse(false),
+            stpMetadata.agentConfig.name)
+        },
+        connectionPool = Some(Retry.createNewHostConnectionPool[StpMetadata](settings.hostWriteOutput))
+      )
+    )
+    .mergeSubstreams
+    .toMat(BroadcastHub.sink(bufferSize = 256))(Keep.both).run
+
+
+  val pubSubChannel = Flow.fromSinkAndSource(stpAgentSink, postIngestSource)
+    .joinMat(KillSwitches.singleBidi[(Ingester.IngestEvent, Option[StpMetadata]),(ByteString, Option[StpMetadata]) ])(Keep.right)
 
   override def preStart(): Unit = {
     logger.info("starting sparql-processor manager instance on this machine")
@@ -270,7 +313,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
     //jobs to pause or to totally remove
     currentJobs.foreach {
       case (currentJobName, currentJob @ (_: JobRunning | _: JobFailed | _: JobPaused))
-          if !jobsRead.exists(_.job.name == currentJobName) =>
+        if !jobsRead.exists(_.job.name == currentJobName) =>
         logger.info(s"Got stop and remove request for job ${currentJob.job} from the user")
         self ! StopAndRemoveJob(currentJob.job)
       case (currentJobName, jobRunning: JobRunning) if !jobsRead.find(_.job.name == currentJobName).get.active =>
@@ -446,6 +489,33 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
   }
 
   /**
+    * Gets or creates a reference to a connection Pool Flow
+    * for a given destination host
+    * @param host
+    */
+  def getOrCreateConnectionPool(host: Option[String], defaultConnectionPoolHost : String) : Some[ConnectionPool] = {
+    connectionPools.get(host.getOrElse(defaultConnectionPoolHost)) match {
+      case Some(pool) => Some(pool)
+      case _ => {
+        val conn = Retry.createNewHostConnectionPool[(Option[StpMetadata], Long)](host.getOrElse(defaultConnectionPoolHost))
+        connectionPools += host.getOrElse(defaultConnectionPoolHost) -> conn
+        Some(conn)
+      }
+    }
+  }
+
+
+  /**
+    * Gets or creates a reference to a connection Pool Flow
+    * for a given destination host
+    * @param job
+    * @param defaultConnectionPoolHost
+    */
+  def getOrCreateConnectionPool(job: Job, defaultConnectionPoolHost : String = "localhost") : Some[ConnectionPool] = {
+    getOrCreateConnectionPool(job.config.hostUpdatesSource, defaultConnectionPoolHost)
+  }
+
+  /**
     * This method MUST be run from the actor's thread (it changes the actor state)!
     * @param jobRead
     */
@@ -461,52 +531,67 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
     )
 
     val label = Some(s"ingester-${job.name}")
-
     val hostUpdatesSource = job.config.hostUpdatesSource.getOrElse(settings.hostUpdatesSource)
-    val useQuadsInSp = job.config.useQuadsInSp.getOrElse(settings.useQuadsInSp)
 
     val initialTokensAndStatistics = SparqlTriggeredProcessor.loadInitialTokensAndStatistics(Option(tokenReporter))
+    val agentConfig = Await.result(SparqlTriggeredProcessor.preProcessConfig(job.config, Some(tokenReporter)), 3.minutes)
 
-    val agent = SparqlTriggeredProcessor
-      .listen(job.config, hostUpdatesSource, useQuadsInSp, false, Some(tokenReporter),
-        initialTokensAndStatistics, Some(job.name), infotonGroupSize = settings.infotonGroupSize)
-      .map { case (data, _) => data }
-      .via(GroupChunker(formatToGroupExtractor(settings.materializedViewFormat)))
-      .map(concatByteStrings(_, endl))
-    val (killSwitch, jobDone) = Ingester
-      .ingest(
-        baseUrl = settings.hostWriteOutput,
-        format = settings.materializedViewFormat,
-        source = agent,
-        writeToken = Option(settings.writeToken),
-        force = job.config.force.getOrElse(false),
-        label = label
-      )
+    val sparqlConnectionPool = getOrCreateConnectionPool(job)
+
+    val ingestLoggingFlow = Flow[(Ingester.IngestEvent, Option[StpMetadata])]
+      .filter(_._2.get.agentConfig.name.get.equals(job.name)).map(_._1)
       .via(StpPeriodicLogger(infotonReporter = tokenReporter, logFrequency = 5.minutes))
-      .via(IngesterStats(isStderr = false, reporter = Some(tokenReporter), label = label,
-        initialIngestStats =   initialTokensAndStatistics.fold(_ => None, r=>r.agentIngestStats) ))
-      .viaMat(KillSwitches.single)(Keep.right)
-      .toMat(Sink.ignore)(Keep.both)
-      .run()
-    currentJobs = currentJobs + (job.name -> JobRunning(job, killSwitch, tokenReporter))
-    logger.info(s"starting job $job")
-    jobDone.onComplete {
-      case Success(_) => {
-        logger.info(s"job: $job finished successfully")
-        //The stream has already finished - kill the token actor
-        tokenReporter ! PoisonPill
-        self ! JobHasFinished(job)
-      }
-      case Failure(ex) => {
-        logger.error(
-          s"job: $job finished with error (In case this job should be running it will be restarted on the next periodic check):",
-          ex
+      .via(Ingester.ingestStatsFlow(
+        tokenReporterOpt = Some(tokenReporter),
+        agentName = label.get,
+        initialIngestStatsOpt = initialTokensAndStatistics.fold(_ => None, _.agentIngestStats))
+      )
+
+    val consumerSource = SparqlTriggeredProcessor.createSensorSource(agentConfig,
+      initialTokensAndStatistics,
+      Some(tokenReporter),
+      hostUpdatesSource,
+      false,
+      10.seconds,
+      settings.infotonGroupSize)
+      .map { case ((path,vars),_) =>  Seq(path) -> vars}
+      .asSourceWithContext(_ => Some(StpMetadata(agentConfig,tokenReporter)))
+      .via(
+        SparqlProcessor.sparqlFlow(extractSparqlContext,
+          sparqlConnectionPool,
+          spQueryParamsBuilder = SparqlTriggeredProcessor.stpSpQueryBuilder
         )
-        //The stream has already finished - kill the token actor
-        tokenReporter ! PoisonPill
-        self ! JobHasFailed(job, ex)
+      )
+      .via(
+        SparqlProcessor.materializedStatsFlow(Some(tokenReporter),
+          format = "ntriples",
+          sensorName = SparqlTriggeredProcessor.sparqlMaterializerLabel,
+          initialTokensAndStatistics.fold(_ => None, _.materializedStats))
+      ).asSource
+
+    val uniqueKillSwitch = consumerSource.watchTermination() { (_, done) =>
+      done.onComplete {
+        case Success(_) =>
+          logger.info(s"job: $job finished successfully")
+          //The stream has already finished - kill the token actor
+          tokenReporter ! PoisonPill
+          self ! JobHasFinished(job)
+        case Failure(ex) =>
+          logger.error(
+            s"job: $job finished with error (In case this job should be running it will be restarted on the next periodic check):",
+            ex
+          )
+          //The stream has already finished - kill the token actor
+          tokenReporter ! PoisonPill
+          self ! JobHasFailed(job, ex)
       }
     }
+    .viaMat(pubSubChannel)(Keep.right)
+    .via(ingestLoggingFlow)
+    .to(Sink.ignore).run()
+
+    currentJobs = currentJobs + (job.name -> JobRunning(job, uniqueKillSwitch, tokenReporter))
+    logger.info(s"starting job $job")
 
   }
 
@@ -517,7 +602,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
     //retryUntil(initialRetryState)(shouldRetry("Getting config information from local cm-well")) {
     safeFuture(
       client.get(s"http://${settings.hostConfigFile}${settings.pathAgentConfigs}",
-                 queryParams = List("op" -> "search", "with-data" -> "", "format" -> "json", "length" -> "100"))
+        queryParams = List("op" -> "search", "with-data" -> "", "format" -> "json", "length" -> "100"))
     ).map{
       case response@SimpleResponse(respCode,_,_) if respCode < 300 =>
         parseJobsJson(response.payload)
@@ -542,7 +627,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
     parsedJson match {
       case Left(parseFailure @ ParsingFailure(message, ex)) =>
         logger.error(s"Parsing the agent config files failed with message: $message. Cancelling this configs check. " +
-                     s"It will be checked on the next iteration. The exception was: ", ex)
+          s"It will be checked on the next iteration. The exception was: ", ex)
         throw parseFailure
       case Right(json) => {
         try {

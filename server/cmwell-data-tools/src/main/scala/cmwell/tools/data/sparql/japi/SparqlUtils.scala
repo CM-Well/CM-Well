@@ -40,7 +40,7 @@ object SparqlUtils {
     SparqlProcessor
       .createSourceFromPathsInputStream(
         baseUrl = baseUrl,
-        spQueryParamsBuilder = (p: Seq[String], v: Map[String,String]) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
+        spQueryParamsBuilder = (p: Seq[String], v: Map[String,String], q: Boolean) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
         parallelism = parallelism,
         isNeedWrapping = isNeedWrapping,
         sparqlQuery = sparqlQuery,
@@ -64,7 +64,7 @@ object SparqlUtils {
     SparqlProcessor
       .createSourceFromPathsInputStream(
         baseUrl = baseUrl,
-        spQueryParamsBuilder = (p: Seq[String], v: Map[String,String]) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
+        spQueryParamsBuilder = (p: Seq[String], v: Map[String,String], q: Boolean) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
         parallelism = parallelism,
         isNeedWrapping = isNeedWrapping,
         sparqlQuery = sparqlQuery,

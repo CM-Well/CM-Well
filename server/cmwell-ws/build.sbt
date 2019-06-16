@@ -27,7 +27,6 @@ libraryDependencies ++= {
       .exclude("com.typesafe.akka","akka-slf4j")
       .exclude("org.slf4j","slf4j-api")
       .exclude("com.fasterxml.jackson.core","jackson-core")
-      .exclude("io.netty","netty")
       .exclude("com.ning","async-http-client")
       .exclude("commons-logging","commons-logging")
       .exclude("org.apache.httpcomponents","httpclient")
@@ -48,9 +47,7 @@ libraryDependencies ++= {
     dm("com.typesafe.play","play-cache")
       .exclude("com.typesafe.akka","akka-slf4j"), // required for pac4j
     dm("com.fasterxml.jackson.core","jackson-core"),
-//    dm("io.netty","netty"),
     dm("joda-time","joda-time"),
-    dm("net.logstash.logback","logstash-logback-encoder"),
     dm("org.apache.httpcomponents","httpclient")
       .exclude("commons-logging","commons-logging"),
     dm("org.apache.httpcomponents","httpcore"),
@@ -63,7 +60,6 @@ libraryDependencies ++= {
     dm("org.slf4j","jul-to-slf4j"),
     dm("org.yaml","snakeyaml"),
     dm("xml-apis","xml-apis"),
-    dm("net.logstash.logback", "logstash-logback-encoder"),
     dm("com.github.t3hnar", "scala-bcrypt"),
     dm("com.jason-goodwin", "authentikat-jwt"),
     dm("org.apache.kafka", "kafka-clients"),
@@ -82,7 +78,7 @@ libraryDependencies ++= {
   dm("org.openrdf.sesame", "sesame-sail-memory"),
   dm("org.openrdf.sesame", "sesame-queryresultio-sparqljson"),
   dm("org.openrdf.sesame", "sesame-queryresultio-text"),
-//  dm("io.netty", "netty-transport"),
+  dm("io.netty", "netty-transport-native-unix-common"),
   dm("org.scala-lang", "scala-compiler"),
   dm("org.openrdf.sesame", "sesame-sail-base"),
   dm("io.circe","circe-core"),

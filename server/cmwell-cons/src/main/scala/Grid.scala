@@ -35,7 +35,6 @@ case class Grid(user: String,
                 haProxy: Option[HaProxy] = None,
                 dcTarget: Option[String] = None,
                 minMembers: Option[Int] = None,
-                withElk: Boolean = false,
                 newBg: Boolean = true,
                 oldBg: Boolean = true,
                 nbg: Boolean = false,
@@ -65,7 +64,6 @@ case class Grid(user: String,
       ctrlService,
       minMembers,
       haProxy,
-      withElk = withElk,
       subjectsInSpAreHttps = subjectsInSpAreHttps,
       defaultRdfProtocol = defaultRdfProtocol,
       diskOptimizationStrategy = diskOptimizationStrategy,
@@ -138,8 +136,7 @@ case class Grid(user: String,
           index = 1,
           rs = IpRackSelector(),
           g1 = g1,
-          hostIp = host,
-          autoCreateIndex = withElk
+          hostIp = host
         )
 
         val esMaster = ElasticsearchConf(
@@ -160,8 +157,7 @@ case class Grid(user: String,
           index = 2,
           rs = IpRackSelector(),
           g1 = true,
-          hostIp = host,
-          autoCreateIndex = withElk
+          hostIp = host
         )
 
       val bg = BgConf(
@@ -180,7 +176,8 @@ case class Grid(user: String,
         minMembers = getMinMembers,
         numOfPartitions = hosts.size,
         seeds = getSeedNodes.mkString(","),
-        defaultRdfProtocol = defaultRdfProtocol
+        defaultRdfProtocol = defaultRdfProtocol,
+        transportAddress = this.getThreesome(ips, host)
       )
 
       val web = WebConf(
@@ -199,7 +196,8 @@ case class Grid(user: String,
         minMembers = getMinMembers,
         seeds = getSeedNodes.mkString(","),
         seedPort = 9300,
-        defaultRdfProtocol = defaultRdfProtocol
+        defaultRdfProtocol = defaultRdfProtocol,
+        transportAddress = this.getThreesome(ips, host)
       )
 
       val cw = CwConf(
@@ -215,7 +213,8 @@ case class Grid(user: String,
         minMembers = getMinMembers,
         seeds = getSeedNodes.mkString(","),
         seedPort = 9300,
-        subjectsInSpAreHttps = subjectsInSpAreHttps
+        subjectsInSpAreHttps = subjectsInSpAreHttps,
+        transportAddress = this.getThreesome(ips, host)
       )
 
       val ctrl = CtrlConf(
@@ -246,24 +245,6 @@ case class Grid(user: String,
         minMembers = getMinMembers
       )
 
-      val kibana = KibanaConf(
-        hostIp = host,
-        home = homeDir,
-        listenPort = "9090",
-        listenAddress = host,
-        elasticsearchUrl = s"$host:9201"
-      )
-
-      val logstash = LogstashConf(
-        clusterName = cn,
-        elasticsearchUrl = s"$host:9201",
-        home = homeDir,
-        dir = "logstash",
-        sName = "start.sh",
-        subdivision = 1,
-        hostIp = host
-      )
-
       val zookeeper = ZookeeperConf(
         home = homeDir,
         clusterName = cn,
@@ -290,7 +271,7 @@ case class Grid(user: String,
         zookeeper,
         kafka,
         bg
-      ) ++ (if (withElk) List(logstash, kibana) else List.empty[ComponentConf])
+      )
     }
   }
 

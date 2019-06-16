@@ -18,7 +18,6 @@ import akka.actor.{ActorRef, _}
 import akka.stream._
 import akka.stream.stage._
 import akka.util.ByteString
-import cmwell.tools.data.sparql.SensorContext
 import cmwell.tools.data.utils.akka.stats.DownloaderStats.DownloadStats
 import cmwell.tools.data.utils.logging.DataToolsLogging
 import cmwell.tools.data.utils.text.Files.toHumanReadable
@@ -29,6 +28,7 @@ import play.api.libs.json.{JsArray, Json}
 import scala.concurrent.duration._
 
 object DownloaderStats {
+
   case class DownloadStats(label: Option[String] = None,
                            receivedBytes: Long = 0,
                            receivedInfotons: Long = 0,
@@ -40,7 +40,33 @@ object DownloaderStats {
                            remaining: Option[Long] = None,
                            totalRunningTime: Long = 0)
 
-  def apply(isStderr: Boolean = false,
+  object DownloadStats {
+
+    def initialStats[T](initialDownloadStatsOpt : Option[DownloadStats], sensorName: String, elem: T) = initialDownloadStatsOpt match {
+      case Some(stats) => (stats.copy(label = Some(sensorName)), elem)
+      case None => (DownloadStats(label = Some(sensorName)), elem)
+    }
+
+    def bytesRead[T](elem: (ByteString,T)) = elem._1.size
+
+    def countInfotonsInChunk[T](elem: (ByteString,T), format: String) = {
+      def countInfotonsInJson(data: ByteString) = {
+        val infotons = Json.parse(data.toArray) \\ "infotons"
+        infotons.head match {
+          case JsArray(arr) => arr.size
+          case _            => 1
+        }
+      }
+
+      format match {
+        case "json" => countInfotonsInJson(elem._1)
+        case _      => 1
+      }
+    }
+  }
+
+
+  def apply[T](isStderr: Boolean = false,
             format: String,
             label: Option[String] = None,
             reporter: Option[ActorRef] = None,
@@ -48,23 +74,23 @@ object DownloaderStats {
             interval: FiniteDuration = 1.second,
             initialDownloadStats: Option[DownloadStats] = None) = {
 
-    new DownloaderStats(isStderr, format, label, reporter, initDelay, interval, initialDownloadStats)
+    new DownloaderStats[T](isStderr, format, label, reporter, initDelay, interval, initialDownloadStats)
 
   }
 }
 
-class DownloaderStats(isStderr: Boolean,
+class DownloaderStats[T](isStderr: Boolean,
                       format: String,
                       label: Option[String] = None,
                       reporter: Option[ActorRef] = None,
                       initDelay: FiniteDuration = 1.second,
                       interval: FiniteDuration = 1.second,
                       initialDownloadStats: Option[DownloadStats] = None)
-    extends GraphStage[FlowShape[(ByteString, Option[SensorContext]), (ByteString, Option[SensorContext])]]
+    extends GraphStage[FlowShape[(ByteString, T), (ByteString, T)]]
     with DataToolsLogging {
 
-  val in = Inlet[(ByteString, Option[SensorContext])]("download-stats.in")
-  val out = Outlet[(ByteString, Option[SensorContext])]("download-stats.out")
+  val in = Inlet[(ByteString, T)]("download-stats.in")
+  val out = Outlet[(ByteString, T)]("download-stats.out")
   override val shape = FlowShape.of(in, out)
 
   override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = {
@@ -119,8 +145,8 @@ class DownloaderStats(isStderr: Boolean,
           override def onPush(): Unit = {
             val element = grab(in)
             aggregateStats(element._1)
-            setSensorHorizon(element._2)
-            setRemainingInfotons(element._2)
+            //setSensorHorizon(element._2)
+            //setRemainingInfotons(element._2)
             push(out, element)
           }
 
@@ -174,7 +200,7 @@ class DownloaderStats(isStderr: Boolean,
         }
       }
 
-
+          /*
       def setRemainingInfotons(contextOption: Option[SensorContext]) = {
         contextOption.foreach(context => {
           remainingInfotons = context.remainingInfotons
@@ -186,6 +212,7 @@ class DownloaderStats(isStderr: Boolean,
           horizon = context.horizon
         })
       }
+      */
 
       def aggregateStats(data: ByteString) = {
         val bytesRead = data.size
