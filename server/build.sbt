@@ -96,7 +96,6 @@ dependenciesManager in Global := {
   case ("net.jcazevedo", "moultingyaml")                           => "net.jcazevedo" %% "moultingyaml" % "0.4.0"
   case ("org.lz4","lz4-java")                                      => "org.lz4" % "lz4-java" % "1.6.0"
   case ("net.lingala.zip4j", "zip4j")                              => "net.lingala.zip4j" % "zip4j" % "1.3.3"
-  case ("net.logstash.logback", "logstash-logback-encoder")        => "net.logstash.logback" % "logstash-logback-encoder" % "6.0"
   case ("net.sf.ehcache","ehcache")                                => "net.sf.ehcache" % "ehcache" % "2.10.2"
   case ("nl.grons", art)                                           => "nl.grons" %% art % "4.0.5" // make sure to update also "io.dropwizard.metrics" dependencies
   //  case ("nl.grons", "metrics-scala")                               => "nl.grons" %% "metrics-scala" % "3.5.7"

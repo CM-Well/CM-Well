@@ -23,7 +23,6 @@ case class LocalHost(dataCenter: String = "lh",
                      deployJava: Boolean = false,
                      casRowCacheSize: Int = 0,
                      allocationPlan: ModuleAllocations = DevAllocations(),
-                     withElk: Boolean = false,
                      symLinkLib: Boolean = true,
                      newBg: Boolean = true,
                      oldBg: Boolean = true,
@@ -53,7 +52,6 @@ case class LocalHost(dataCenter: String = "lh",
       false,
       minMembers = Some(1),
       haProxy = None,
-      withElk = withElk,
       isDebug = isDebug,
       subjectsInSpAreHttps = subjectsInSpAreHttps,
       defaultRdfProtocol = defaultRdfProtocol,
@@ -232,8 +230,7 @@ case class LocalHost(dataCenter: String = "lh",
       index = 1,
       rs = IpRackSelector(),
       g1 = false,
-      hostIp = ip,
-      autoCreateIndex = withElk
+      hostIp = ip
     )
 
     val esMaster = ElasticsearchConf(
@@ -254,8 +251,7 @@ case class LocalHost(dataCenter: String = "lh",
       index = 2,
       rs = IpRackSelector(),
       g1 = false,
-      hostIp = ip,
-      autoCreateIndex = withElk
+      hostIp = ip
     )
 
     val bg = BgConf(
@@ -341,24 +337,6 @@ case class LocalHost(dataCenter: String = "lh",
       minMembers = getMinMembers
     )
 
-    val kibana = KibanaConf(
-      hostIp = ip,
-      home = homeDir,
-      listenPort = "9090",
-      listenAddress = ip,
-      elasticsearchUrl = "localhost:9201"
-    )
-
-    val logstash = LogstashConf(
-      clusterName = cn,
-      elasticsearchUrl = "localhost:9201",
-      home = homeDir,
-      dir = "logstash",
-      sName = "start.sh",
-      subdivision = 1,
-      hostIp = ip
-    )
-
     val zookeeper = ZookeeperConf(
       home = homeDir,
       clusterName = cn,
@@ -385,7 +363,7 @@ case class LocalHost(dataCenter: String = "lh",
       dcConf,
       zookeeper,
       kafka
-    ) ++ (if (withElk) List(logstash, kibana) else List.empty[ComponentConf])
+    )
 
   }
 
