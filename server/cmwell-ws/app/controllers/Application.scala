@@ -719,13 +719,15 @@ callback=< [URL] >
                 ).map { ftsResults =>
                 IterationResults("", ftsResults.total, Some(Vector.empty), debugInfo = ftsResults.debugInfo)
               }.flatMap { thinSearchResult =>
+                val withDataB = withData.fold(false)(_.toLowerCase() == "true")
                 val rv = createScrollIdDispatcherActorFromIteratorId(StartScrollInput(pathFilter,
                   fieldFilter,
                   Some(DatesFilter(from, to)),
                   PaginationParams(offset, length),
                   scrollTtl,
                   withHistory,
-                  withDeleted), withHistory, (scrollTtl + 5).seconds)
+                  withDeleted,
+                  withDataB), withHistory, (scrollTtl + 5).seconds)
                 fmFut.map { fm =>
                   Ok(formatter.render(thinSearchResult.copy(iteratorId = rv).masked(fm))).as(formatter.mimetype)
                 }
@@ -1991,7 +1993,7 @@ callback=< [URL] >
   private def ftsScroll(scrollInput: IterationStateInput, scrollTTL: Long, withData: Boolean, debugInfo:Boolean): Future[IterationResults] = {
     scrollInput match {
       case ScrollInput(scrollId) => crudServiceFS.scroll(scrollId, scrollTTL, withData, debugInfo)
-      case StartScrollInput(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTtl, withHistory, withDeleted) =>
+      case StartScrollInput(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTtl, withHistory, withDeleted, withData) =>
         crudServiceFS.startScroll(
           pathFilter,
           fieldFilters,
@@ -2000,7 +2002,8 @@ callback=< [URL] >
           scrollTtl,
           withHistory,
           withDeleted,
-          debugInfo)
+          debugInfo,
+          withData)
       }
   }
 
