@@ -584,7 +584,7 @@ case class JavaProps(h: Host) extends ComponentProps(h, "jdk", "components-extra
   def unpackCommand: Option[String] = Some("tar -xf")
   def symLinkName: Option[String] = Some("java")
   override def getTarResName(path: String, location: String): String =
-    h.command("tar -tf " + s"$location/$path" + " | head -1 | awk -F '/' '{print $2}'").get.trim
+    h.command("tar -tf " + s"$location/$path" + " | head -1 | awk -F '/' '{print $1}'").get.trim
 
 }
 
