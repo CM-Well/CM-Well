@@ -719,7 +719,7 @@ callback=< [URL] >
                 ).map { ftsResults =>
                 IterationResults("", ftsResults.total, Some(Vector.empty), debugInfo = ftsResults.debugInfo)
               }.flatMap { thinSearchResult =>
-                val withDataB = withData.fold(false)(_.toLowerCase() == "true")
+                val withDataB = withData.fold(false)(_.toLowerCase() != "false")
                 val rv = createScrollIdDispatcherActorFromIteratorId(StartScrollInput(pathFilter,
                   fieldFilter,
                   Some(DatesFilter(from, to)),
