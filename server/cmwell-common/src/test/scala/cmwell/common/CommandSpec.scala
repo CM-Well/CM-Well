@@ -32,25 +32,29 @@ import org.scalatest._
 
 class CommandSpec extends FlatSpec with Matchers with LazyLogging {
 
-
   "command encode decode" should "be successful" in {
     System.setProperty("dataCenter.id", "dc_test")
     //Log.TRACE() turns on logging of chill
     // create object infoton
-    val objInfo = ObjectInfoton("/command-test/objinfo1", "dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), None)
+    val objInfo = ObjectInfoton("/command-test/objinfo1", "dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), None,
+      lastModifiedBy = "Baruch")
     // create all commands case classes for serialization testing
     // scalastyle:off
-    val linkInfo01 = LinkInfoton("/command-test/objinfo1", "dc_test", Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), "/mark", LinkType.Forward, None)
-    val linkInfo02 = LinkInfoton("/command-test/objinfo1", "dc_test", Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), "/mark", LinkType.Permanent, None)
-    val linkInfo03 = LinkInfoton("/command-test/objinfo1", "dc_test", Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), "/mark", LinkType.Temporary, None)
+    val linkInfo01 = LinkInfoton("/command-test/objinfo1", "dc_test", "Baruch",
+      Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), "/mark", LinkType.Forward, None)
+    val linkInfo02 = LinkInfoton("/command-test/objinfo1", "dc_test", "Baruch",
+      Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), "/mark", LinkType.Permanent, None)
+    val linkInfo03 = LinkInfoton("/command-test/objinfo1", "dc_test", "Baruch",
+      Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), "/mark", LinkType.Temporary, None)
     // scalastyle:on
 
     val cmdWrite = WriteCommand(objInfo)
-    val cmdDeletePath = DeletePathCommand("/command-test/deletePath", new DateTime)
+    val cmdDeletePath = DeletePathCommand("/command-test/deletePath", new DateTime, lastModifiedBy = "Baruch")
     val cmdDeletePathAttributeValues = DeleteAttributesCommand(
       "/command-test/deletePath",
       Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))),
       new DateTime,
+      "Baruch",
       protocol = None)
 
     // TODO : need to understand way the next test are having problem when adding the line to the test.
@@ -64,7 +68,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
 
     val updateF = Map("location" -> Set[FieldValue](FString("israel")), "company" -> Set[FieldValue](FString("GOOGLE")))
 
-    val cmdUpdate = UpdatePathCommand("/command-test/update", deleteF, updateF, updateDate, Some("http"))
+    val cmdUpdate = UpdatePathCommand("/command-test/update", deleteF, updateF, updateDate, "Baruch", Some("http"))
 
     val cmds = Vector(cmdWrite, cmdDeletePathAttributeValues, cmdDeletePath /*, cmdMerged1*/ , cmdUpdate)
 
@@ -83,7 +87,6 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
 
     }
 
-
     for (item <- cmds) {
       val payload: Array[Byte] = CommandSerializer.encode(item)
       val cmpCommand = CommandSerializer.decode(payload)
@@ -93,16 +96,19 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
           infoton.path should equal(objInfo.path)
           infoton.fields.get("name").size should equal(objInfo.fields.get("name").size)
           infoton.lastModified.isEqual(objInfo.lastModified) should equal(true)
-        case DeleteAttributesCommand(path, _, _, _, _, _) => path should equal(cmdDeletePathAttributeValues.path)
-        case DeletePathCommand(path, _, _, _) => path should equal(cmdDeletePath.path)
-        case UpdatePathCommand(path, d_f, u_f, lm, _, _, _) =>
+          infoton.lastModifiedBy should equal(objInfo.lastModifiedBy)
+        case DeleteAttributesCommand(path, _, _, _, _, _, _) => path should equal(cmdDeletePathAttributeValues.path)
+        case DeletePathCommand(path, _, _, _, _) => path should equal(cmdDeletePath.path)
+        case UpdatePathCommand(path, d_f, u_f, lm, lmb, _, _, _) =>
           path should equal(cmdUpdate.path)
           d_f.size should equal(cmdUpdate.deleteFields.size)
           u_f.size should equal(cmdUpdate.updateFields.size)
           lm.getMillis should equal(cmdUpdate.lastModified.getMillis)
+          lmb should equal(cmdUpdate.lastModifiedBy)
         case OverwriteCommand(_, _) => ??? //TODO: add tests for OverwriteCommand
-        case x @ (CommandRef(_) | HeartbitCommand | IndexExistingInfotonCommand(_, _, _, _, _) | IndexExistingInfotonCommandForIndexer(_, _, _, _, _, _) |
-                  IndexNewInfotonCommand(_, _, _, _, _, _) | IndexNewInfotonCommandForIndexer(_, _, _, _, _, _, _) | NullUpdateCommandForIndexer(_, _, _, _, _))
+        case x @ (CommandRef(_) | HeartbitCommand | IndexExistingInfotonCommand(_, _, _, _, _) |
+                  IndexExistingInfotonCommandForIndexer(_, _, _, _, _, _) | IndexNewInfotonCommand(_, _, _, _, _, _) |
+                  IndexNewInfotonCommandForIndexer(_, _, _, _, _, _, _) | NullUpdateCommandForIndexer(_, _, _, _, _))
           => logger.error(s"Unexpected cmpCommand. Received: $x"); ???
       }
     }
@@ -110,7 +116,8 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
 
   "file infoton decode" should "be successful" in {
     System.setProperty("dataCenter.id", "dc_test")
-    val fInfoton = FileInfoton(path = "/stam/kacha", dc = "dc_test", content = Some(FileContent("test text".getBytes("UTF-8"), "text/plain")), protocol = None)
+    val fInfoton = FileInfoton(path = "/stam/kacha", dc = "dc_test", content = Some(FileContent("test text".getBytes("UTF-8"), "text/plain")), protocol = None,
+      lastModifiedBy = "Baruch")
     val payload: Array[Byte] = CommandSerializer.encode(WriteCommand(fInfoton))
     val cmpCommand = CommandSerializer.decode(payload)
     val wc = cmpCommand.asInstanceOf[WriteCommand]
@@ -124,6 +131,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
       "other-dc",
       Some(12345L),
       new DateTime("2015-02-25T16:03:57.216Z", DateTimeZone.UTC),
+      "Baruch",
       Map("enemyOf.rel" -> Set[FieldValue](FString("green-goblin"))), None))
     val payload: Array[Byte] = CommandSerializer.encode(owcmd)
     val cmpCommand = CommandSerializer.decode(payload)
@@ -142,6 +150,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
       "dc",
       None,
       DateTime.now(DateTimeZone.UTC),
+      "Baruch",
       Map("a" -> Set[FieldValue](FString("b"))), protocol = None)
     val indexCommand = IndexNewInfotonCommand(infoton.uuid, true, infoton.path, Some(infoton), "someIndexName")
     val payload = CommandSerializer.encode(indexCommand)
@@ -155,6 +164,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
       "dc",
       None,
       DateTime.now(DateTimeZone.UTC),
+      "Baruch",
       Map("a" -> Set[FieldValue](FString("b"))), protocol = None)
     val indexCommand = IndexNewInfotonCommand(infoton.uuid, true, infoton.path, None, "someIndexName")
     val payload = CommandSerializer.encode(indexCommand)
@@ -168,6 +178,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
       "dc",
       None,
       DateTime.now(DateTimeZone.UTC),
+      "Baruch",
       Map("a" -> Set[FieldValue](FString("b"))), protocol = None)
     val offsets: Seq[Offset] = Seq(
       PartialOffset("blahTopic", 98253344, 3, 4),
@@ -185,6 +196,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
       "dc",
       None,
       DateTime.now(DateTimeZone.UTC),
+      "Brauch",
       Map("a" -> Set[FieldValue](FString("b"))), protocol = None)
     val offsets: Seq[Offset] = Seq(
       PartialOffset("blahTopic", 98253344, 3, 4),
@@ -233,6 +245,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
       "dc_test",
       None,
       DateTime.now(DateTimeZone.UTC),
+      "Brauch",
       Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))), protocol = None)
     val wCommand = WriteCommand(objInfot, Some("sweet_kids"))
     val eCommand = CommandSerializer.encode(wCommand)
@@ -246,6 +259,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
       "dc_test",
       None,
       DateTime.now(DateTimeZone.UTC),
+      "Brauch",
       Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))), protocol = None)
     val iCommand = IndexNewInfotonCommand(objInfot.uuid, true, objInfot.path, None, "", Seq(StatusTracking("sweet", 2), StatusTracking("kids", 1)))
     val eCommand = CommandSerializer.encode(iCommand)
@@ -259,6 +273,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
       "dc_test",
       None,
       DateTime.now(DateTimeZone.UTC),
+      "Baruch",
       Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))), protocol = None)
     val wCommand = WriteCommand(objInfot, None, Some("0123456789abcdef0123456789abcdef"))
     val eCommand = CommandSerializer.encode(wCommand)
@@ -272,6 +287,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
       "dc_test",
       None,
       DateTime.now(DateTimeZone.UTC),
+      "Baruch",
       Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))), protocol = None)
     val wCommand = WriteCommand(objInfot, Some("cute_kids"), Some("0123456789abcdef0123456789abcdef"))
     val eCommand = CommandSerializer.encode(wCommand)

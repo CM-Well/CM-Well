@@ -71,6 +71,7 @@ sealed trait Infoton extends Formattable { self =>
   def path: String
   def name = path.drop(path.lastIndexOf("/") + 1)
   def lastModified: DateTime
+  def lastModifiedBy: String
   def fields: Option[Map[String, Set[FieldValue]]] = None
   def dc: String
   def indexTime: Option[Long]
@@ -81,6 +82,7 @@ sealed trait Infoton extends Formattable { self =>
 
   def copyInfoton(path: String = this.path,
                   lastModified: DateTime = this.lastModified,
+                  lastModifiedBy: String = this.lastModifiedBy,
                   fields: Option[Map[String, Set[FieldValue]]] = this.fields,
                   dc: String = this.dc,
                   indexTime: Option[Long] = this.indexTime,
@@ -89,6 +91,7 @@ sealed trait Infoton extends Formattable { self =>
     case oi: ObjectInfoton =>
       oi.copy(path = path,
               lastModified = lastModified,
+              lastModifiedBy = lastModifiedBy,
               fields = fields,
               dc = dc,
               indexTime = indexTime,
@@ -97,6 +100,7 @@ sealed trait Infoton extends Formattable { self =>
     case fi: FileInfoton =>
       fi.copy(path = path,
               lastModified = lastModified,
+              lastModifiedBy = lastModifiedBy,
               fields = fields,
               dc = dc,
               indexTime = indexTime,
@@ -105,16 +109,18 @@ sealed trait Infoton extends Formattable { self =>
     case li: LinkInfoton =>
       li.copy(path = path,
               lastModified = lastModified,
+              lastModifiedBy = lastModifiedBy,
               fields = fields,
               dc = dc,
               indexTime = indexTime,
               indexName = indexName,
               protocol = protocol)
     case di: DeletedInfoton =>
-      di.copy(path = path, lastModified = lastModified, dc = dc, indexTime = indexTime, indexName = indexName)
+      di.copy(path = path, lastModified = lastModified, lastModifiedBy = lastModifiedBy, dc = dc, indexTime = indexTime, indexName = indexName)
     case ci: CompoundInfoton =>
       ci.copy(path = path,
               lastModified = lastModified,
+              lastModifiedBy = lastModifiedBy,
               fields = fields,
               dc = dc,
               indexTime = indexTime,
@@ -125,22 +131,25 @@ sealed trait Infoton extends Formattable { self =>
 
   def overrideUuid(forcedUuid: String) = this match {
     case oi: ObjectInfoton =>
-      new ObjectInfoton(oi.path, oi.dc, oi.indexTime, oi.lastModified, oi.fields, oi.indexName, oi.protocol) { override def uuid = forcedUuid }
+      new ObjectInfoton(oi.path, oi.dc, oi.indexTime, oi.lastModified, oi.lastModifiedBy, oi.fields, oi.indexName, oi.protocol) {
+        override def uuid = forcedUuid
+      }
     case fi: FileInfoton =>
-      new FileInfoton(fi.path, fi.dc, fi.indexTime, fi.lastModified, fi.fields, fi.content, fi.indexName, fi.protocol) {
+      new FileInfoton(fi.path, fi.dc, fi.indexTime, fi.lastModified, fi.lastModifiedBy, fi.fields, fi.content, fi.indexName, fi.protocol) {
         override def uuid = forcedUuid
       }
     case li: LinkInfoton =>
-      new LinkInfoton(li.path, li.dc, li.indexTime, li.lastModified, li.fields, li.linkTo, li.linkType, li.indexName, li.protocol) {
+      new LinkInfoton(li.path, li.dc, li.indexTime, li.lastModified, li.lastModifiedBy, li.fields, li.linkTo, li.linkType, li.indexName, li.protocol) {
         override def uuid = forcedUuid
       }
     case di: DeletedInfoton =>
-      new DeletedInfoton(di.path, di.dc, di.indexTime, di.lastModified) { override def uuid = forcedUuid }
+      new DeletedInfoton(di.path, di.dc, di.indexTime, di.lastModified, di.lastModifiedBy) { override def uuid = forcedUuid }
     case ci: CompoundInfoton =>
       new CompoundInfoton(ci.path,
                           ci.dc,
                           ci.indexTime,
                           ci.lastModified,
+                          ci.lastModifiedBy,
                           ci.fields,
                           ci.children,
                           ci.offset,
@@ -253,29 +262,32 @@ case class ObjectInfoton(path: String,
                          dc: String,
                          indexTime: Option[Long] = None,
                          lastModified: DateTime = new DateTime, // TODO: `DateTime.now(DateTimeZone.UTC),` instead
+                         lastModifiedBy: String,
                          override val fields: Option[Map[String, Set[FieldValue]]] = None,
                          indexName: String = "",
                          protocol: Option[String])
     extends Infoton {
   override def getMasked(fieldsMask: Set[String]): Infoton = {
     val originalUuid = uuid
-    new ObjectInfoton(path, dc, indexTime, lastModified, maskedFields(fieldsMask), indexName, protocol) {
+    new ObjectInfoton(path, dc, indexTime, lastModified, lastModifiedBy, maskedFields(fieldsMask), indexName, protocol) {
       override val uuid = originalUuid
       override def kind = "ObjectInfoton"
     }
   }
 }
 object ObjectInfoton {
-  def apply(path: String, dc: String, indexTime: Option[Long], lastModified: DateTime, fields: Map[String, Set[FieldValue]], protocol: Option[String]) =
-    new ObjectInfoton(path, dc = dc, indexTime, lastModified, Some(fields), protocol = protocol)
-  def apply(path: String, dc: String, indexTime: Option[Long], fields: Map[String, Set[FieldValue]], protocol: Option[String]) =
-    new ObjectInfoton(path = path, dc = dc, indexTime, fields = Some(fields), protocol = protocol)
+  def apply(path: String, dc: String, indexTime: Option[Long], lastModified: DateTime, lastModifiedBy: String, fields: Map[String, Set[FieldValue]],
+            protocol: Option[String]) =
+    new ObjectInfoton(path, dc = dc, indexTime, lastModified, lastModifiedBy, Some(fields), protocol = protocol)
+  def apply(path: String, dc: String, indexTime: Option[Long], fields: Map[String, Set[FieldValue]], protocol: Option[String], lastModifiedBy: String) =
+    new ObjectInfoton(path = path, dc = dc, indexTime, lastModifiedBy = lastModifiedBy, fields = Some(fields), protocol = protocol)
 }
 
 case class CompoundInfoton(path: String,
                            dc: String,
                            indexTime: Option[Long] = None,
                            lastModified: DateTime = new DateTime,
+                           lastModifiedBy: String,
                            override val fields: Option[Map[String, Set[FieldValue]]] = None,
                            children: Seq[Infoton],
                            offset: Long,
@@ -286,7 +298,7 @@ case class CompoundInfoton(path: String,
     extends Infoton {
   override def getMasked(fieldsMask: Set[String]): Infoton = {
     val originalUuid = uuid
-    new CompoundInfoton(path, dc, indexTime, lastModified, maskedFields(fieldsMask), children, offset, length, total, indexName, protocol) {
+    new CompoundInfoton(path, dc, indexTime, lastModified, lastModifiedBy, maskedFields(fieldsMask), children, offset, length, total, indexName, protocol) {
       override val uuid = originalUuid
       override def kind = "CompoundInfoton"
     }
@@ -303,6 +315,7 @@ case class LinkInfoton(path: String,
                        dc: String,
                        indexTime: Option[Long] = None,
                        lastModified: DateTime = new DateTime,
+                       lastModifiedBy: String,
                        override val fields: Option[Map[String, Set[FieldValue]]] = None,
                        linkTo: String,
                        linkType: Int,
@@ -317,7 +330,7 @@ case class LinkInfoton(path: String,
 
   override def getMasked(fieldsMask: Set[String]): Infoton = {
     val originalUuid = uuid
-    new LinkInfoton(path, dc, indexTime, lastModified, maskedFields(fieldsMask), linkTo, linkType, indexName, protocol) {
+    new LinkInfoton(path, dc, indexTime, lastModified, lastModifiedBy, maskedFields(fieldsMask), linkTo, linkType, indexName, protocol) {
       override val uuid = originalUuid
       override def kind = "LinkInfoton"
     }
@@ -325,11 +338,13 @@ case class LinkInfoton(path: String,
 }
 
 object LinkInfoton {
-  def apply(path: String, dc: String, fields: Map[String, Set[FieldValue]], linkTo: String, linkType: Int, protocol: Option[String]) =
-    new LinkInfoton(path = path, dc = dc, indexTime = None, fields = Some(fields), linkTo = linkTo, linkType = linkType, protocol = protocol)
+  def apply(path: String, dc: String, lastModifiedBy: String, fields: Map[String, Set[FieldValue]], linkTo: String, linkType: Int, protocol: Option[String]) =
+    new LinkInfoton(path = path, dc = dc, indexTime = None,  lastModifiedBy = lastModifiedBy,
+      fields = Some(fields), linkTo = linkTo, linkType = linkType, protocol = protocol)
   def apply(path: String,
             dc: String,
             lastModified: DateTime,
+            lastModifiedBy: String,
             fields: Map[String, Set[FieldValue]],
             linkTo: String,
             linkType: Int,
@@ -338,6 +353,7 @@ object LinkInfoton {
                     dc = dc,
                     indexTime = None,
                     lastModified = lastModified,
+                    lastModifiedBy = lastModifiedBy,
                     fields = Some(fields),
                     linkTo = linkTo,
                     linkType = linkType,
@@ -348,6 +364,7 @@ case class DeletedInfoton(path: String,
                           dc: String,
                           indexTime: Option[Long] = None,
                           lastModified: DateTime = new DateTime,
+                          lastModifiedBy: String,
                           indexName: String = "")
     extends Infoton {
   override def getMasked(fieldsMask: Set[String]): Infoton = this
@@ -356,6 +373,7 @@ case class DeletedInfoton(path: String,
 
 case class GhostInfoton(path: String, indexName: String = "", protocol: Option[String]) extends Infoton {
   override def lastModified: DateTime = GhostInfoton.zeroTime
+  override def lastModifiedBy = ""
   override def dc: String = "N/A"
   override def indexTime: Option[Long] = None
   override protected def getMasked(fieldsMask: Set[String]): Infoton = this
@@ -371,6 +389,7 @@ case class FileInfoton(path: String,
                        dc: String,
                        indexTime: Option[Long] = None,
                        lastModified: DateTime = new DateTime,
+                       lastModifiedBy: String,
                        override val fields: Option[Map[String, Set[FieldValue]]] = None,
                        content: Option[FileContent] = None,
                        indexName: String = "",
@@ -403,7 +422,7 @@ case class FileInfoton(path: String,
 
   override def getMasked(fieldsMask: Set[String]): Infoton = {
     val originalUuid = uuid
-    new FileInfoton(path, dc, indexTime, lastModified, maskedFields(fieldsMask), content, indexName, protocol) {
+    new FileInfoton(path, dc, indexTime, lastModified, lastModifiedBy, maskedFields(fieldsMask), content, indexName, protocol) {
       override val uuid = originalUuid
       override def kind = "FileInfoton"
     }
@@ -418,6 +437,7 @@ case class FileInfoton(path: String,
                     dc,
                     indexTime,
                     lastModified,
+                    lastModifiedBy,
                     fields,
                     content.map(c => FileContent(None, c.mimeType, content.get.dataLength, hash)),
                     indexName,
@@ -440,6 +460,7 @@ case class FileInfoton(path: String,
                         dc,
                         indexTime,
                         lastModified,
+                        lastModifiedBy,
                         fields,
                         content.map(c => FileContent(Some(data), c.mimeType, data.length, hashOpt)),
                         indexName,
@@ -455,14 +476,17 @@ object FileInfoton {
   def apply(path: String,
             dc: String,
             indexTime: Option[Long],
+            lastModifiedBy : String,
             fields: Map[String, Set[FieldValue]],
             content: FileContent,
             protocol: Option[String]) =
-    new FileInfoton(path = path, dc = dc, indexTime = indexTime, fields = Some(fields), content = Some(content), protocol = protocol)
+    new FileInfoton(path = path, dc = dc, indexTime = indexTime,  lastModifiedBy = lastModifiedBy, fields = Some(fields),
+      content = Some(content), protocol = protocol)
   def apply(path: String,
             dc: String,
             indexTime: Option[Long],
             lastModified: DateTime,
+            lastModifiedBy: String,
             fields: Map[String, Set[FieldValue]],
             content: FileContent,
             protocol: Option[String]) =
@@ -470,9 +494,10 @@ object FileInfoton {
                     dc = dc,
                     indexTime = indexTime,
                     lastModified = lastModified,
+                    lastModifiedBy = lastModifiedBy,
                     fields = Some(fields),
                     content = Some(content),
-      protocol = protocol)
+                    protocol = protocol)
 }
 
 case class FileContent(data: Option[Array[Byte]],
@@ -502,23 +527,23 @@ case class VirtualInfoton(infoton: Infoton) {
   require(!infoton.isInstanceOf[VirtualInfoton], "youtube.com/watch?v=v2FMqtC1x9Y")
 
   def getInfoton = infoton match {
-    case ObjectInfoton(path, dc, indexTime, lastModified, fields, _, _) =>
-      new ObjectInfoton(path, dc, indexTime, lastModified, fields, protocol = None) {
+    case ObjectInfoton(path, dc, indexTime, lastModified, lastModifiedBy, fields, _, _) =>
+      new ObjectInfoton(path, dc, indexTime, lastModified, lastModifiedBy, fields, protocol = None) {
         override def kind = "VirtualObjectInfoton"
         override def uuid = "0"
       }
-    case CompoundInfoton(path, dc, indexTime, lastModified, fields, children, offset, length, total, _, _) =>
-      new CompoundInfoton(path, dc, indexTime, lastModified, fields, children, offset, length, total, protocol = None) {
+    case CompoundInfoton(path, dc, indexTime, lastModified, lastModifiedBy, fields, children, offset, length, total, _, _) =>
+      new CompoundInfoton(path, dc, indexTime, lastModified, lastModifiedBy, fields, children, offset, length, total, protocol = None) {
         override def kind = "VirtualCompoundInfoton"
         override def uuid = "0"
       }
-    case LinkInfoton(path, dc, indexTime, lastModified, fields, linkTo, linkType, _, _) =>
-      new LinkInfoton(path, dc, indexTime, lastModified, fields, linkTo, linkType, protocol = None) {
+    case LinkInfoton(path, dc, indexTime, lastModified, lastModifiedBy, fields, linkTo, linkType, _, _) =>
+      new LinkInfoton(path, dc, indexTime, lastModified, lastModifiedBy, fields, linkTo, linkType, protocol = None) {
         override def kind = "VirtualLinkInfoton"
         override def uuid = "0"
       }
-    case FileInfoton(path, dc, indexTime, lastModified, fields, content, _, _) =>
-      new FileInfoton(path, dc, indexTime, lastModified, fields, content, protocol = None) {
+    case FileInfoton(path, dc, indexTime, lastModified, lastModifiedBy, fields, content, _, _) =>
+      new FileInfoton(path, dc, indexTime, lastModified, lastModifiedBy, fields, content, protocol = None) {
         override def kind = "VirtualFileInfoton"
         override def uuid = "0"
       }

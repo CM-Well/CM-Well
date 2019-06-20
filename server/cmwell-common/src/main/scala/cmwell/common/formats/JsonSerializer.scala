@@ -145,12 +145,12 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
         sc.prevUUID.foreach(jsonGenerator.writeStringField("prevUUID", _))
       }
       case ic: IndexCommand if ic.trackingIDs.nonEmpty =>
-        jsonGenerator.writeArrayFieldStart("tid")
-        ic.trackingIDs.foreach {
-          case StatusTracking(tid, 1) => jsonGenerator.writeString(tid)
-          case StatusTracking(t, n)   => jsonGenerator.writeString(s"$n,$t")
-        }
-        jsonGenerator.writeEndArray()
+          jsonGenerator.writeArrayFieldStart("tid")
+          ic.trackingIDs.foreach {
+            case StatusTracking(tid, 1) => jsonGenerator.writeString(tid)
+            case StatusTracking(t, n) => jsonGenerator.writeString(s"$n,$t")
+          }
+          jsonGenerator.writeEndArray()
       case _ => //Do Nothing!
     }
     jsonGenerator.writeStringField("type", command.getClass.getSimpleName)
@@ -196,18 +196,21 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
         jsonGenerator.writeStringField("indexName", indexName)
         jsonGenerator.writeFieldName("persistOffsets")
         encodeOffsetSeqWithGenerator(persistOffsets, jsonGenerator)
-      case DeleteAttributesCommand(path, fields, lastModified, trackingID, prevUUID, protocol) =>
+      case DeleteAttributesCommand(path, fields, lastModified, lastModifiedBy, trackingID, prevUUID, protocol) =>
         jsonGenerator.writeStringField("path", path)
         encodeFieldsWithGenerator(fields, jsonGenerator)
         jsonGenerator.writeStringField("lastModified", dateFormatter.print(lastModified))
+        jsonGenerator.writeStringField("lastModifiedBy", lastModifiedBy)
         protocol.foreach(jsonGenerator.writeStringField("protocol", _))
-      case DeletePathCommand(path, lastModified, trackingID, prevUUID) =>
+      case DeletePathCommand(path, lastModified, lastModifiedBy, trackingID, prevUUID) =>
         jsonGenerator.writeStringField("path", path)
         jsonGenerator.writeStringField("lastModified", dateFormatter.print(lastModified))
-      case UpdatePathCommand(path, deleteFields, updateFields, lastModified, trackingID, prevUUID, protocol) =>
+        jsonGenerator.writeStringField("lastModifiedBy", lastModifiedBy)
+      case UpdatePathCommand(path, deleteFields, updateFields, lastModified, lastModifiedBy, trackingID, prevUUID, protocol) =>
         jsonGenerator.writeStringField("path", path)
         encodeUpdateFieldsWithGenerator(deleteFields, updateFields, jsonGenerator)
         jsonGenerator.writeStringField("lastModified", dateFormatter.print(lastModified))
+        jsonGenerator.writeStringField("lastModifiedBy", lastModifiedBy)
         protocol.foreach(jsonGenerator.writeStringField("protocol", _))
       case OverwriteCommand(infoton, trackingID) =>
         jsonGenerator.writeFieldName("infoton")
@@ -342,9 +345,11 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
     }
     jsonGenerator.writeStringField("path", infoton.path)
     jsonGenerator.writeStringField("lastModified", dateFormatter.print(infoton.lastModified))
+    jsonGenerator.writeStringField("lastModifiedBy", infoton.lastModifiedBy)
     jsonGenerator.writeStringField("uuid", infoton.uuid)
     jsonGenerator.writeStringField("parent", infoton.parent)
     jsonGenerator.writeStringField("dc", infoton.dc)
+
 
     //will add quad under system containing all the quads available in the fields
     if (toEs) {
@@ -410,7 +415,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
       encodeFieldsWithGenerator(fields, jsonGenerator, toEs = toEs)
     }
     infoton match {
-      case FileInfoton(_, _, _, _, _, Some(FileContent(dataOpt, mimeType, dl, dp)), _, _) =>
+      case FileInfoton(_, _, _, _, _, _, Some(FileContent(dataOpt, mimeType, dl, dp)), _, _) =>
         jsonGenerator.writeObjectFieldStart("content")
         jsonGenerator.writeStringField("mimeType", mimeType)
         dataOpt.foreach { data =>
@@ -429,7 +434,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
         }
         jsonGenerator.writeNumberField("length", dataOpt.fold(dl)(_.length))
         jsonGenerator.writeEndObject()
-      case LinkInfoton(_, _, _, _, _, linkTo, linkType, _, _) =>
+      case LinkInfoton(_, _, _, _, _, _, linkTo, linkType, _, _) =>
         jsonGenerator.writeStringField("linkTo", linkTo)
         jsonGenerator.writeNumberField("linkType", linkType)
       case _ =>

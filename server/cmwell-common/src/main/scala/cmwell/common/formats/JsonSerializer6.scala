@@ -39,6 +39,7 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
           s"expected 'infoton' field name\n${jsonParser.getCurrentLocation.toString}"
         )
         val infoton = decodeInfotonWithParser(jsonParser)
+
         //expecting end of command object
         assume(jsonParser.nextToken() == JsonToken.END_OBJECT,
           s"expected end of command object\n${jsonParser.getCurrentLocation.toString}")
@@ -144,9 +145,9 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
           case "IndexExistingInfotonCommand" =>
             IndexExistingInfotonCommand(uuid, weight, path, indexName, tidOpt.fold(Seq.empty[StatusTracking])(_.left.get))
           case "IndexExistingInfotonCommandForIndexer" =>
-            IndexExistingInfotonCommandForIndexer(uuid, weight, path, indexName, offsets,tidOpt.fold(Seq.empty[StatusTracking])(_.left.get))
+            IndexExistingInfotonCommandForIndexer(uuid, weight, path, indexName, offsets, tidOpt.fold(Seq.empty[StatusTracking])(_.left.get))
           case "NullUpdateCommandForIndexer" =>
-            NullUpdateCommandForIndexer(uuid, path, indexName, offsets,tidOpt.fold(Seq.empty[StatusTracking])(_.left.get))
+            NullUpdateCommandForIndexer(uuid, path, indexName, offsets, tidOpt.fold(Seq.empty[StatusTracking])(_.left.get))
         }
       case "OverwriteCommand" | "OverWriteCommand" =>
         assume(
@@ -181,6 +182,16 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
         assume(jsonParser.nextToken() == JsonToken.VALUE_STRING,
           s"expected value for 'lastModified' field\n${jsonParser.getCurrentLocation.toString}")
         val lastModified = dateFormatter.parseDateTime(jsonParser.getText())
+
+        assume(
+          jsonParser.nextToken() == JsonToken.FIELD_NAME && "lastModifiedBy".equals(jsonParser.getCurrentName()),
+          s"expected 'lastModifiedBy' field name, but got: ${jsonParser.getCurrentName()}\n${jsonParser.getCurrentLocation.toString}"
+        )
+
+        assume(jsonParser.nextToken() == JsonToken.VALUE_STRING,
+          s"expected value for 'lastModifiedBy' field\n${jsonParser.getCurrentLocation.toString}")
+        val lastModifiedBy = jsonParser.getText()
+
         val ntProtocol = jsonParser.nextToken()
         val protocol = if(ntProtocol == JsonToken.FIELD_NAME && "protocol".equals(jsonParser.getCurrentName))
           Option {
@@ -192,7 +203,7 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
         //expecting end of command object
         val ntEnd = protocol.fold(ntProtocol)(_ => jsonParser.nextToken)
         assume(ntEnd == JsonToken.END_OBJECT,  s"expected end of command object\n${jsonParser.getCurrentLocation.toString}")
-        DeleteAttributesCommand(path, fields, lastModified, tidOpt.flatMap(_.right.toOption), prevUUIDOpt, protocol)
+        DeleteAttributesCommand(path, fields, lastModified, lastModifiedBy, tidOpt.flatMap(_.right.toOption), prevUUIDOpt, protocol)
       case "DeletePathCommand" =>
         // expecting 'path' field
         assume(
@@ -210,10 +221,20 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
         assume(jsonParser.nextToken() == JsonToken.VALUE_STRING,
           s"expected value for 'lastModified' field\n${jsonParser.getCurrentLocation.toString}")
         val lastModified = dateFormatter.parseDateTime(jsonParser.getText())
+
+        assume(
+          jsonParser.nextToken() == JsonToken.FIELD_NAME && "lastModifiedBy".equals(jsonParser.getCurrentName()),
+          s"expected 'lastModifiedBy' field name, but got: ${jsonParser.getCurrentName()}\n${jsonParser.getCurrentLocation.toString}"
+        )
+
+        assume(jsonParser.nextToken() == JsonToken.VALUE_STRING,
+          s"expected value for 'lastModifiedBy' field\n${jsonParser.getCurrentLocation.toString}")
+        val lastModifiedBy = jsonParser.getText()
+
         //expecting end of command object
         assume(jsonParser.nextToken() == JsonToken.END_OBJECT,
           s"expected end of command object\n${jsonParser.getCurrentLocation.toString}")
-        DeletePathCommand(path, lastModified, tidOpt.flatMap(_.right.toOption), prevUUIDOpt)
+        DeletePathCommand(path, lastModified, lastModifiedBy, tidOpt.flatMap(_.right.toOption), prevUUIDOpt)
       case "UpdatePathCommand" =>
         assume(
           jsonParser.nextToken() == JsonToken.FIELD_NAME && "path".equals(jsonParser.getCurrentName()),
@@ -243,6 +264,15 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
           s"expected value for 'lastModified' field\n${jsonParser.getCurrentLocation.toString}")
         val lastModified = dateFormatter.parseDateTime(jsonParser.getText())
 
+        assume(
+          jsonParser.nextToken() == JsonToken.FIELD_NAME && "lastModifiedBy".equals(jsonParser.getCurrentName()),
+          s"expected 'lastModifiedBy' field name, but got: ${jsonParser.getCurrentName()}\n${jsonParser.getCurrentLocation.toString}"
+        )
+
+        assume(jsonParser.nextToken() == JsonToken.VALUE_STRING,
+          s"expected value for 'lastModifiedBy' field\n${jsonParser.getCurrentLocation.toString}")
+        val lastModifiedBy = jsonParser.getText()
+
         val ntProtocol = jsonParser.nextToken()
         val protocol = if(ntProtocol == JsonToken.FIELD_NAME && "protocol".equals(jsonParser.getCurrentName))
           Option {
@@ -259,6 +289,7 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
           deleteFields,
           updateFields,
           lastModified,
+          lastModifiedBy,
           tidOpt.flatMap(_.right.toOption),
           prevUUIDOpt,
           protocol)
@@ -494,6 +525,14 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
     val lastModified = dateFormatter.parseDateTime(jsonParser.getText())
 
     assume(
+      jsonParser.nextToken() == JsonToken.FIELD_NAME && "lastModifiedBy".equals(jsonParser.getCurrentName()),
+      s"expected 'lastModifiedBy' field name, but got: ${jsonParser.getCurrentName()}\n${jsonParser.getCurrentLocation.toString}"
+    )
+    assume(jsonParser.nextToken() == JsonToken.VALUE_STRING,
+      s"expected value for 'lastModifiedBy' field\n${jsonParser.getCurrentLocation.toString}")
+    val lastModifiedBy = jsonParser.getText()
+
+    assume(
       jsonParser.nextToken() == JsonToken.FIELD_NAME && "uuid".equals(jsonParser.getCurrentName()),
       s"expected 'uuid' field name\n${jsonParser.getCurrentLocation.toString}"
     )
@@ -532,10 +571,12 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
       assume(jsonParser.nextToken() == JsonToken.VALUE_STRING, s"expected value for 'protocol' field\n${jsonParser.getCurrentLocation.toString}")
       val protocol = jsonParser.getText()
       // End of system object
-      assume(jsonParser.nextToken() == JsonToken.END_OBJECT, s"expected end of 'system' object\n${jsonParser.getCurrentLocation.toString}")
+      assume(jsonParser.nextToken() == JsonToken.END_OBJECT, s"expected end of 'system' object, but got: ${jsonParser.getText()}\n" +
+        s"${jsonParser.getCurrentLocation.toString}")
       Option(protocol)
     } else {
-      assume(maybeProtocolToken == JsonToken.END_OBJECT, s"expected end of 'system' object\n${jsonParser.getCurrentLocation.toString}")
+      assume(maybeProtocolToken == JsonToken.END_OBJECT, s"expected end of 'system' object, but got: ${jsonParser.getText()}\n"+
+        s"${jsonParser.getCurrentLocation.toString}")
       None
     }
 
@@ -558,7 +599,7 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
         //expecting end of json object
         assume(nextToken == JsonToken.END_OBJECT,
           s"expected end of json object\n${jsonParser.getCurrentLocation.toString}")
-        ObjectInfoton(path, dataCenter, indexTime, lastModified, fields, protocol = protocol)
+        ObjectInfoton(path, dataCenter, indexTime, lastModified, lastModifiedBy, fields, protocol = protocol)
       case "LinkInfoton" =>
         assume(
           nextToken == JsonToken.FIELD_NAME && "linkTo".equals(jsonParser.getCurrentName()),
@@ -579,7 +620,7 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
         //expecting end of json object
         assume(jsonParser.nextToken() == JsonToken.END_OBJECT,
           s"expected end of json object\n${jsonParser.getCurrentLocation.toString}")
-        LinkInfoton(path, dataCenter, indexTime, lastModified, fields, linkTo, linkType, protocol = protocol)
+        LinkInfoton(path, dataCenter, indexTime, lastModified, lastModifiedBy, fields, linkTo, linkType, protocol = protocol)
       case "FileInfoton" =>
         var fileContent: Option[FileContent] = None
         if (nextToken.id == JsonTokenId.ID_FIELD_NAME) {
@@ -656,11 +697,11 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
             s"expected end of json object\n${jsonParser.getCurrentLocation.toString}")
         }
 
-        FileInfoton(path, dataCenter, indexTime, lastModified, fields, fileContent, protocol = protocol)
+        FileInfoton(path, dataCenter, indexTime, lastModified,  lastModifiedBy, fields, fileContent, protocol = protocol)
       case "DeletedInfoton" =>
         assume(nextToken == JsonToken.END_OBJECT,
           s"expected end of json object\n${jsonParser.getCurrentLocation.toString}")
-        DeletedInfoton(path, dataCenter, indexTime, lastModified)
+        DeletedInfoton(path, dataCenter, indexTime, lastModified, lastModifiedBy = lastModifiedBy)
     }
   }
 }
