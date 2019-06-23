@@ -344,8 +344,9 @@ case class GridSubDiv(user: String,
         dcConf,
         zookeeper,
         kafka,
-        bg
-      )
+        bg,
+        cas
+      ) ++ esSubDivs
     }
   }
 
