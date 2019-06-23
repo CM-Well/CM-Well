@@ -43,4 +43,5 @@ class GeneralAttributesFilter @Inject()(implicit val mat: Materializer, ec: Exec
 object Attrs {
   val RequestReceivedTimestamp: TypedKey[Long] = TypedKey.apply[Long]("RequestReceivedTimestamp")
   val UserIP: TypedKey[String] = TypedKey.apply[String]("UserIP")
+  val UserName: TypedKey[String] = TypedKey.apply[String]("UserName")
 }

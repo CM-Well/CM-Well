@@ -191,10 +191,11 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
 
               val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
               val currentTime = timeContext.fold(DateTime.now(DateTimeZone.UTC))(tc => new DateTime(tc))
-              enforceForceIfNeededAndReturnMetaFieldsInfotons(infotonsMap, currentTime, true).flatMap { metaFields =>
+              val modifier = req.attrs.get(Attrs.UserName).getOrElse("")
+              enforceForceIfNeededAndReturnMetaFieldsInfotons(infotonsMap, currentTime, modifier, forceEnabled = true).flatMap { metaFields =>
                 val infotonsWithoutFields = metaDataMap.keySet.filterNot(infotonsMap.keySet.apply) //meaning FileInfotons without extra data...
 
-                val allInfotons = (infotonsMap.toVector.map {
+                val allInfotons = infotonsMap.toVector.map {
                   case (path, fields) => {
                     require(path.nonEmpty, "path cannot be empty!")
                     val escapedPath = escapePath(path)
@@ -202,10 +203,10 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                     val fs = fields.map {
                       case (fk, vs) => fk.internalKey -> vs
                     }
-                    infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath), currentTime)
+                    infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath), currentTime, modifier)
                   }
-                }) ++ infotonsWithoutFields.map(
-                  p => infotonFromMaps(cmwHostsSet, p, None, metaDataMap.get(p), currentTime)
+                }  ++ infotonsWithoutFields.map(
+                  p => infotonFromMaps(cmwHostsSet, p, None, metaDataMap.get(p), currentTime, modifier)
                 ) ++ metaFields
 
                 //logger.info(s"infotonsToPut: ${allInfotons.collect { case o: ObjectInfoton => o.toString }.mkString("[", ",", "]")}")
@@ -293,6 +294,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
   def enforceForceIfNeededAndReturnMetaFieldsInfotons(
     allInfotons: Map[String, Map[DirectFieldKey, Set[FieldValue]]],
     currentTime: DateTime,
+    modifier: String,
     forceEnabled: Boolean = false,
     debugLog: Boolean = false
   )(implicit ec: ExecutionContext): Future[Vector[Infoton]] = {
@@ -324,7 +326,8 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                                 fk.infoPath,
                                 Some(Map("mang" -> chars.map(c => FString(c.toString, None, None): FieldValue))),
                                 None,
-                                currentTime)
+                                currentTime,
+                                modifier)
               )
             }
           }
@@ -371,6 +374,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
+    val modifier = req.attrs.get(Attrs.UserName).getOrElse("")
     //(parsed infotons paths, headers)
     val p = Promise[(Iterable[String], Seq[(String, String)])]()
     lazy val id = cmwell.util.numeric.Radix64.encodeUnsigned(req.id)
@@ -416,6 +420,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
               if (debugLog) logger.info(s"[$id] ParsingResponse: ${pRes.toString}")
               enforceForceIfNeededAndReturnMetaFieldsInfotons(infotonsMap,
                                                               currentTime,
+                                                              modifier,
                                                               req.getQueryString("force").isDefined,
                                                               debugLog).flatMap { metaFields =>
                 if (debugLog) {
@@ -500,10 +505,10 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                     val fs = fields.map {
                       case (fk, vs) => fk.internalKey -> vs
                     }
-                    infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath), currentTime)
+                    infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath), currentTime, modifier)
                   }
                 }) ++ infotonsWithoutFields.map(
-                  p => infotonFromMaps(cmwHostsSet, p, None, metaDataMap.get(p), currentTime)
+                  p => infotonFromMaps(cmwHostsSet, p, None, metaDataMap.get(p), currentTime, modifier)
                 ) ++ metaFields
 
                 val infotonsToUpsert = upserts.toList.map {
@@ -514,7 +519,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                     val fs = fields.map {
                       case (fk, vs) => fk.internalKey -> vs
                     }
-                    infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath), currentTime)
+                    infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath), currentTime, modifier)
                   }
                 }
 
@@ -681,6 +686,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
         case _ => "utf-8"
       }
       val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
+      val modifier = req.attrs.get(Attrs.UserName).getOrElse("")
 
       req.body.asBytes() match {
         case Some(bs) => {
@@ -735,6 +741,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                       val currentTime = timeContext.fold(DateTime.now(DateTimeZone.UTC))(tc => new DateTime(tc))
                       enforceForceIfNeededAndReturnMetaFieldsInfotons(infotonsMap,
                                                                       currentTime,
+                                                                      modifier,
                                                                       req.getQueryString("force").isDefined).flatMap {
                         metaFields =>
                           val infotonsToPut = (if (setZeroTime) v.map {
