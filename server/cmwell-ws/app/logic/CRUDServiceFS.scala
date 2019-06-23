@@ -807,8 +807,9 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                   scrollTTL: Long,
                   withHistory: Boolean = false,
                   withDeleted: Boolean = false,
-                  debugInfo: Boolean = false): Future[IterationResults] = {
-    ftsService
+                  debugInfo: Boolean = false,
+                  withData: Boolean = false): Future[IterationResults] = {
+    val searchResultFuture = ftsService
       .startScroll(pathFilter,
         fieldsFilters,
         datesFilter,
@@ -817,10 +818,21 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
         withHistory,
         withDeleted,
         debugInfo = debugInfo)
-      .map { ftsResults =>
-        val response = ftsResults.response
-        IterationResults(response.scrollId, response.total, Some(response.infotons), debugInfo = ftsResults.searchQueryStr)
-      }
+
+    val results = withData match {
+      case false =>
+        searchResultFuture.map { ftsResults =>
+          val response = ftsResults.response
+          IterationResults(response.scrollId, response.total, Some(response.infotons), debugInfo = ftsResults.searchQueryStr)
+        }
+      case true =>
+        searchResultFuture.flatMap { ftsResults =>
+          val infotons = enrichInfotonsData(ftsResults.response.infotons)
+          val response = ftsResults.response
+          infotons.map{infotonSeq => IterationResults(response.scrollId, response.total, Some(infotonSeq), debugInfo = ftsResults.searchQueryStr)}
+        }
+    }
+    results
   }
 
   def startSuperScroll(pathFilter: Option[PathFilter] = None,
@@ -877,29 +889,34 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       }
       case true =>
         searchResultFuture.flatMap { ftsResults =>
-          irwService
-            .readUUIDSAsync(ftsResults.infotons.map {
-          _.uuid
-            }.toVector, level)
-            .map { infotonsSeq =>
-          if(infotonsSeq.exists(_.isEmpty)) {
-                val esUuidsSet: Set[String] =
-                  ftsResults.infotons.map(_.uuid)(scala.collection.breakOut[Seq[Infoton], String, Set[String]])
-                val casUuidsSet: Set[String] = infotonsSeq.collect { case FullBox(i) => i.uuid }(
-                  scala.collection.breakOut[Seq[Box[Infoton]], String, Set[String]]
-                )
-                logger.error(
-                  "some uuids retrieved from ES, could not be retrieved from cassandra: " + esUuidsSet
-                    .diff(casUuidsSet)
-                    .mkString("[", ",", "]")
-                )
-          }
-          val infotons = addIndexTime(infotonsSeq.collect{case FullBox(i) => i}, ftsResults.infotons)
-          IterationResults(ftsResults.scrollId, ftsResults.total, Some(infotons), debugInfo = ftsResults.searchQueryStr)
+          val infotons = enrichInfotonsData(ftsResults.infotons)
+          infotons.map{infotonSeq => IterationResults(ftsResults.scrollId, ftsResults.total, Some(infotonSeq), debugInfo = ftsResults.searchQueryStr)}
         }
       }
-    }
     results
+  }
+
+  def enrichInfotonsData (infotons: Seq[Infoton]): Future[Seq[Infoton]] = {
+    irwService
+      .readUUIDSAsync(infotons.map {
+        _.uuid
+      }.toVector, level)
+      .map { infotonsSeq =>
+        if(infotonsSeq.exists(_.isEmpty)) {
+          val esUuidsSet: Set[String] =
+            infotons.map(_.uuid)(scala.collection.breakOut[Seq[Infoton], String, Set[String]])
+          val casUuidsSet: Set[String] = infotonsSeq.collect { case FullBox(i) => i.uuid }(
+            scala.collection.breakOut[Seq[Box[Infoton]], String, Set[String]]
+          )
+          logger.error(
+            "some uuids retrieved from ES, could not be retrieved from cassandra: " + esUuidsSet
+              .diff(casUuidsSet)
+              .mkString("[", ",", "]")
+          )
+        }
+        addIndexTime(infotonsSeq.collect{case FullBox(i) => i}, infotons)
+      }
+
   }
 
   def verify(path: String, limit: Int): Future[Boolean] = proxyOps.verify(path, limit)

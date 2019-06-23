@@ -70,6 +70,7 @@ object InfotonSerializer extends LazyLogging {
     private[this] var indexTime: Option[Long] = None
     private[this] var indexName: String = ""
     private[this] var protocol: Option[String] = None
+    private[this] var lastModifiedBy: String = _
     private[this] var fields: Option[MMap[String, Set[FieldValue]]] = None
     private[this] var fileContentBuildPosition = 0
     private[this] var fileContentBuilder = null.asInstanceOf[Array[Byte]]
