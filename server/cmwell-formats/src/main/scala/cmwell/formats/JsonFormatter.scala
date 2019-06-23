@@ -198,7 +198,7 @@ abstract class AbstractJsonlFormatter(hashToUrlAndPrefix: String => Option[(Stri
       }
       .getOrElse(empty)
     (i: @unchecked) match {
-      case CompoundInfoton(_, _, _, _, _, children, offset, length, total, _, _) =>
+      case CompoundInfoton(_, _, _, _, _, _, children, offset, length, total, _, _) =>
         iSystem ++ iFields ++
           JsObject(
             Seq(
@@ -208,13 +208,13 @@ abstract class AbstractJsonlFormatter(hashToUrlAndPrefix: String => Option[(Stri
               "total.sys" -> mkValWrappedInArray(total)
             )
           )
-      case ObjectInfoton(_, _, _, _, _, _, _) => iSystem ++ iFields
-      case FileInfoton(_, _, _, _, _, content, _, _) =>
+      case ObjectInfoton(_, _, _, _, _, _, _, _) => iSystem ++ iFields
+      case FileInfoton(_, _, _, _, _, _, content, _, _) =>
         iSystem ++ iFields ++ (content match {
           case Some(c) => fileContent(c)
           case None    => JsObject(Seq())
         })
-      case LinkInfoton(_, _, _, _, _, linkTo, linkType, _, _) =>
+      case LinkInfoton(_, _, _, _, _, linkTo, linkType, _, _, _) =>
         iSystem ++ iFields ++ JsObject(
           Seq("linkTo" -> mkValWrappedInArray(linkTo), "linkType" -> mkValWrappedInArray(linkType))
         )

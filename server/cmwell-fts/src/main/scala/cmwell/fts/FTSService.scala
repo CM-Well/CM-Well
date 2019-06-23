@@ -58,8 +58,8 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.implicitConversions
 import scala.util._
 import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
-import collection.JavaConverters._
 
+import collection.JavaConverters._
 /**
   * Created by israel on 30/06/2016.
   */
@@ -200,13 +200,14 @@ class FTSService(config: Config) extends NsSplitter{
                   (implicit executionContext:ExecutionContext) : Future[FTSSearchResponse] = {
     search(
       pathFilter = Some(PathFilter(path, descendants)),
+      lastModifiedBy = None,
       fieldsFilter = None,
       datesFilter = None,
       paginationParams = PaginationParams(offset, length))
   }
 
   def search(pathFilter: Option[PathFilter], fieldsFilter: Option[FieldFilter], datesFilter: Option[DatesFilter],
-             paginationParams: PaginationParams, sortParams: SortParam = SortParam.empty,
+             lastModifiedBy: Option[ModifierFilter], paginationParams: PaginationParams, sortParams: SortParam = SortParam.empty,
              withHistory: Boolean = false, withDeleted: Boolean = false, partition:String = defaultPartition,
              debugInfo:Boolean = false, timeout : Option[Duration] = None)
             (implicit executionContext:ExecutionContext, logger:Logger = loger): Future[FTSSearchResponse] = {
@@ -219,7 +220,7 @@ class FTSService(config: Config) extends NsSplitter{
       throw new IllegalArgumentException("at least one of the filters is needed in order to search")
     }
 
-    val fields = "system.kind" :: "system.path" :: "system.uuid" :: "system.lastModified" :: "content.length" ::
+    val fields = "system.kind" :: "system.path" :: "system.uuid" :: "system.lastModified" :: "system.lastModifiedBy" :: "content.length" ::
       "content.mimeType" :: "link.to" :: "link.kind" :: "system.dc" :: "system.indexTime" :: "system.quad" :: "system.current" :: Nil
 
     val request = client
@@ -231,7 +232,7 @@ class FTSService(config: Config) extends NsSplitter{
 
     applySortToRequest(sortParams, request)
 
-    applyFiltersToRequest(request, pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted)
+    applyFiltersToRequest(request, pathFilter, lastModifiedBy, fieldsFilter, datesFilter, withHistory, withDeleted)
 
     val searchQueryStr = if (debugInfo) Some(request.toString) else None
     logRequest("search", pathFilter.toString, fieldsFilter.toString)
@@ -280,8 +281,8 @@ class FTSService(config: Config) extends NsSplitter{
   private def fieldType(fieldName: String) = {
     fieldName match {
       case "system.lastModified" => DateType
-      case "system.parent" | "system.path" | "system.kind" | "system.uuid" | "system.dc" | "system.quad" |
-           "content.data" | "content.mimeType" | "link.to" =>
+      case "system.parent" | "system.path" | "system.kind" | "system.uuid" | "system.dc" | "system.lastModifiedBy" |
+           "system.quad" | "content.data" | "content.mimeType" | "link.to" =>
         StringType
       case "content.length" | "system.indexTime" => LongType
       case "link.kind"                           => IntType
@@ -313,7 +314,7 @@ class FTSService(config: Config) extends NsSplitter{
       }
   }
 
-  def thinSearch(pathFilter: Option[PathFilter], fieldsFilter: Option[FieldFilter],
+  def thinSearch(pathFilter: Option[PathFilter], fieldsFilter: Option[FieldFilter], lastModifiedBy:Option[ModifierFilter],
                  datesFilter: Option[DatesFilter], paginationParams: PaginationParams,
                  sortParams: SortParam = SortParam.empty, withHistory: Boolean = false, withDeleted: Boolean = false,
                  partition:String = defaultPartition, debugInfo:Boolean = false,
@@ -321,6 +322,7 @@ class FTSService(config: Config) extends NsSplitter{
                 (implicit executionContext:ExecutionContext, logger:Logger = loger) : Future[FTSThinSearchResponse] = {
     fullSearch(
       pathFilter,
+      lastModifiedBy,
       fieldsFilter,
       datesFilter,
       paginationParams,
@@ -330,7 +332,7 @@ class FTSService(config: Config) extends NsSplitter{
       partition,
       debugInfo,
       timeout,
-      storedFields = "system.path" :: "system.uuid" :: "system.lastModified" :: "system.indexTime" :: Nil,
+      storedFields = "system.path" :: "system.uuid" :: "system.lastModified" :: "system.lastModifiedBy" :: "system.indexTime" :: Nil,
       fieldsFromSource = Array.empty
     )(esResponseToThinInfotons).map {
       case (response, thinSeq, searchQueryStr) =>
@@ -364,6 +366,7 @@ class FTSService(config: Config) extends NsSplitter{
     * @return
     */
   def fullSearch[T](pathFilter: Option[PathFilter] = None,
+                    lastModifiedBy: Option[ModifierFilter],
                     fieldsFilter: Option[FieldFilter] = None,
                     datesFilter: Option[DatesFilter] = None,
                     paginationParams: PaginationParams = DefaultPaginationParams,
@@ -399,7 +402,7 @@ class FTSService(config: Config) extends NsSplitter{
 
     applySortToRequest(sortParams, request)
 
-    applyFiltersToRequest(request, pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted)
+    applyFiltersToRequest(request, pathFilter, lastModifiedBy, fieldsFilter, datesFilter, withHistory, withDeleted)
 
     logRequest("fullSearch", pathFilter.toString, fieldsFilter.toString)
 
@@ -624,14 +627,14 @@ class FTSService(config: Config) extends NsSplitter{
   }
 
   private def startShardScroll(pathFilter: Option[PathFilter] = None, fieldsFilter: Option[FieldFilter] = None,
-                               datesFilter: Option[DatesFilter] = None,
+                               lastModifiedBy: Option[ModifierFilter], datesFilter: Option[DatesFilter] = None,
                                withHistory: Boolean, withDeleted: Boolean,
                                offset:Int, length:Int, scrollTTL:Long = defaultScrollTTL,
                                index:String, nodeId:String, shard:Int,
                                debugInfo: Boolean = false)
                               (implicit executionContext:ExecutionContext) : Future[FTSStartScrollResponse] = {
 
-    val fields = "system.kind" :: "system.path" :: "system.uuid" :: "system.lastModified" :: "content.length" ::
+    val fields = "system.kind" :: "system.path" :: "system.uuid" :: "system.lastModified" :: "system.lastModifiedBy" :: "content.length" ::
       "content.mimeType" :: "link.to" :: "link.kind" :: "system.dc" :: "system.indexTime" :: "system.quad" :: "system.current" :: Nil
 
     val request = clients.getOrElse(nodeId,client).prepareSearch(index)
@@ -646,7 +649,7 @@ class FTSService(config: Config) extends NsSplitter{
     if (pathFilter.isEmpty && fieldsFilter.isEmpty && datesFilter.isEmpty) {
       request.setQuery(matchAllQuery())
     } else {
-      applyFiltersToRequest(request, pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted)
+      applyFiltersToRequest(request, pathFilter, lastModifiedBy, fieldsFilter, datesFilter, withHistory, withDeleted)
     }
 
     val scrollResponseFuture = injectFuture[SearchResponse](request.execute)
@@ -664,6 +667,7 @@ class FTSService(config: Config) extends NsSplitter{
 
   def startSuperScroll(
                         pathFilter: Option[PathFilter],
+                        lastModifiedBy: Option[ModifierFilter],
                         fieldsFilter: Option[FieldFilter],
                         datesFilter: Option[DatesFilter],
                         paginationParams: PaginationParams,
@@ -686,6 +690,7 @@ class FTSService(config: Config) extends NsSplitter{
         () =>
           startShardScroll(pathFilter,
             fieldsFilter,
+            lastModifiedBy,
             datesFilter,
             withHistory,
             withDeleted,
@@ -712,6 +717,7 @@ class FTSService(config: Config) extends NsSplitter{
     */
   def startScroll(pathFilter: Option[PathFilter],
                   fieldsFilter: Option[FieldFilter],
+                  lastModifiedBy: Option[ModifierFilter],
                   datesFilter: Option[DatesFilter],
                   paginationParams: PaginationParams,
                   scrollTTL :Long = defaultScrollTTL,
@@ -724,7 +730,7 @@ class FTSService(config: Config) extends NsSplitter{
                  (implicit executionContext:ExecutionContext, logger:Logger = loger) : Future[FTSStartScrollResponse] = {
     logger.debug(s"StartScroll request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $withHistory")
 
-    val fields = "system.kind" :: "system.path" :: "system.uuid" :: "system.lastModified" :: "content.length" ::
+    val fields = "system.kind" :: "system.path" :: "system.uuid" :: "system.lastModified" :: "system.lastModifiedBy" :: "content.length" ::
       "content.mimeType" :: "link.to" :: "link.kind" :: "system.dc" :: "system.indexTime" :: "system.quad" :: "system.current" :: Nil
 
     val indices = if (indexNames.nonEmpty) indexNames else Seq(s"${partition}_all")
@@ -739,7 +745,7 @@ class FTSService(config: Config) extends NsSplitter{
     if (pathFilter.isEmpty && fieldsFilter.isEmpty && datesFilter.isEmpty) {
       request.setQuery(matchAllQuery())
     } else {
-      applyFiltersToRequest(request, pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted)
+      applyFiltersToRequest(request, pathFilter, lastModifiedBy, fieldsFilter, datesFilter, withHistory, withDeleted)
     }
     logRequest("startScroll", pathFilter.toString, fieldsFilter.toString, "also sent fake request")
     val scrollResponseFuture = injectFuture[SearchResponse](request.execute)
@@ -752,7 +758,8 @@ class FTSService(config: Config) extends NsSplitter{
     }
   }
 
-  def startMultiScroll(pathFilter: Option[PathFilter], fieldsFilter: Option[FieldFilter],
+  def startMultiScroll(pathFilter: Option[PathFilter], lastModifiedBy: Option[ModifierFilter],
+                       fieldsFilter: Option[FieldFilter],
                        datesFilter: Option[DatesFilter],
                        paginationParams: PaginationParams,
                        scrollTTL: Long = defaultScrollTTL,
@@ -773,6 +780,7 @@ class FTSService(config: Config) extends NsSplitter{
     indices.map { indexName =>
       startScroll(pathFilter,
         fieldsFilter,
+        lastModifiedBy,
         datesFilter,
         paginationParams,
         scrollTTL,
@@ -830,6 +838,7 @@ class FTSService(config: Config) extends NsSplitter{
 
   private def applyFiltersToRequest(request: SearchRequestBuilder,
                                     pathFilter: Option[PathFilter] = None,
+                                    modifierFilter: Option[ModifierFilter] = None,
                                     fieldFilterOpt: Option[FieldFilter] = None,
                                     datesFilter: Option[DatesFilter] = None,
                                     withHistory: Boolean = false,
@@ -852,6 +861,10 @@ class FTSService(config: Config) extends NsSplitter{
       } else {
         boolQueryBuilder.must( termQuery(if(pf.descendants)"system.parent.parent_hierarchy" else "system.parent", pf.path))
       }
+    }
+
+    modifierFilter.foreach { mf =>
+      boolQueryBuilder.must(termQuery("system.lastModifiedBy", mf.lastModifier))
     }
 
     datesFilter.foreach {
@@ -928,7 +941,7 @@ class FTSService(config: Config) extends NsSplitter{
 
   }
 
-  def aggregate(pathFilter: Option[PathFilter], fieldFilter: Option[FieldFilter],
+  def aggregate(pathFilter: Option[PathFilter], fieldFilter: Option[FieldFilter], lastModifiedBy: Option[ModifierFilter],
                 datesFilter: Option[DatesFilter] = None, paginationParams: PaginationParams,
                 aggregationFilters: Seq[AggregationFilter], withHistory: Boolean = false,
                 partition: String = defaultPartition, debugInfo: Boolean = false)
@@ -938,7 +951,7 @@ class FTSService(config: Config) extends NsSplitter{
     logRequest("aggregate", pathFilter.toString, fieldFilter.toString)
 
     if (pathFilter.isDefined || fieldFilter.nonEmpty || datesFilter.isDefined) {
-      applyFiltersToRequest(request, pathFilter, fieldFilter, datesFilter)
+      applyFiltersToRequest(request, pathFilter, lastModifiedBy, fieldFilter, datesFilter)
     }
 
     var counter = 0
@@ -1269,9 +1282,10 @@ class FTSService(config: Config) extends NsSplitter{
       val path = hit.field("system.path").getValue[String]
       val uuid = hit.field("system.uuid").getValue[String]
       val lastModified = hit.field("system.lastModified").getValue[String]
+      val lastModifiedBy = hit.field("system.lastModifiedBy").getValue[String]
       val indexTime = tryLongThenInt[Long](hit,"system.indexTime",identity,-1L,uuid,path)
       val score = if(includeScore) Some(hit.getScore()) else None
-      FTSThinInfoton(path, uuid, lastModified, indexTime, score)
+      FTSThinInfoton(path, uuid, lastModified, lastModifiedBy, indexTime, score)
     }(memoizedBreakoutForEsResponseToThinInfotons)
   }
 
@@ -1279,8 +1293,9 @@ class FTSService(config: Config) extends NsSplitter{
     val path = esResponse.getField("system.path").getValue[String]
     val uuid = esResponse.getField("system.uuid").getValue[String]
     val lastModified = esResponse.getField("system.lastModified").getValue[String]
+    val lastModifiedBy = esResponse.getField("system.lastModifiedBy").getValue[String]
     val indexTime = esResponse.getField("system.indexTime").getValue[Long]
-    FTSThinInfoton(path, uuid, lastModified, indexTime, None)
+    FTSThinInfoton(path, uuid, lastModified, lastModifiedBy, indexTime, None)
   }
 
   private def esResponseToInfotons(esResponse: org.elasticsearch.action.search.SearchResponse,
@@ -1299,10 +1314,11 @@ class FTSService(config: Config) extends NsSplitter{
         val indexTime = tryLongThenInt[Option[Long]](hit, "system.indexTime", Some.apply[Long], None, id, path)
         val score: Option[Map[String, Set[FieldValue]]] =
           if (includeScore) Some(Map("$score" -> Set(FExtra(hit.getScore(), sysQuad)))) else None
+        val lastModifiedBy = hit.field("system.lastModifiedBy").getValue[String]
 
         hit.field("system.kind").getValue[String] match {
           case "ObjectInfoton" =>
-            new ObjectInfoton(path, dc, indexTime, lastModified, score, protocol = protocol) {
+            new ObjectInfoton(path, dc, indexTime, lastModified, lastModifiedBy, score, protocol = protocol) {
               override def uuid = id
               override def kind = "ObjectInfoton"
             }
@@ -1314,6 +1330,7 @@ class FTSService(config: Config) extends NsSplitter{
               dc,
               indexTime,
               lastModified,
+              lastModifiedBy,
               score,
               Some(FileContent(hit.field("content.mimeType").getValue[String], contentLength)),
               protocol = protocol) {
@@ -1325,6 +1342,7 @@ class FTSService(config: Config) extends NsSplitter{
               dc,
               indexTime,
               lastModified,
+              lastModifiedBy,
               score,
               hit.field("link.to").getValue[String],
               hit.field("link.kind").getValue[Int],
@@ -1333,7 +1351,7 @@ class FTSService(config: Config) extends NsSplitter{
               override def kind = "LinkInfoton"
             }
           case "DeletedInfoton" =>
-            new DeletedInfoton(path, dc, indexTime, lastModified) {
+            new DeletedInfoton(path, dc, indexTime, lastModified, lastModifiedBy) {
               override def uuid = id
               override def kind = "DeletedInfoton"
             }
@@ -1583,7 +1601,7 @@ class FTSService(config: Config) extends NsSplitter{
   def get(uuid: String
           , indexName: String
           , partition: String = defaultPartition)(implicit executionContext: ExecutionContext): Future[Option[(FTSThinInfoton, Boolean)]] = {
-    val fields = Seq("path", "uuid", "lastModified", "indexTime", "current").map(f => s"system.$f")
+    val fields = Seq("path", "uuid", "lastModified", "lastModifiedBy", "indexTime", "current").map(f => s"system.$f")
     val req = client.prepareGet()
       .setIndex(indexName)
       .setId(uuid)
@@ -1616,6 +1634,7 @@ class FTSService(config: Config) extends NsSplitter{
     )
     applyFiltersToRequest(
       request,
+      None,
       None,
       Some(MultiFieldFilter(Must, fieldFilters.fold(filtersSeq)(filtersSeq.::))),
       None,
@@ -1824,6 +1843,7 @@ case object LessThan extends ValueOperator
 case object LessThanOrEquals extends ValueOperator
 case object Like extends ValueOperator
 case class PathFilter(path: String, descendants: Boolean)
+case class ModifierFilter(lastModifier: String, descendants: Boolean)
 
 sealed trait FieldFilter {
   def fieldOperator: FieldOperator
@@ -1915,5 +1935,5 @@ case class FTSStartScrollResponse(response: FTSScrollResponse, searchQueryStr: O
 case class FTSScrollResponse(total: Long, scrollId: String, infotons: Seq[Infoton], nodeId: Option[String] = None, searchQueryStr: Option[String] = None)
 case object FTSTimeout
 
-case class FTSThinInfoton(path: String, uuid: String, lastModified: String, indexTime: Long, score: Option[Float])
+case class FTSThinInfoton(path: String, uuid: String, lastModified: String, lastModifiedBy: String, indexTime: Long, score: Option[Float])
 case class FTSThinSearchResponse(total: Long, offset: Long, length: Long, thinInfotons: Seq[FTSThinInfoton], searchQueryStr: Option[String] = None)
