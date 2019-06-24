@@ -25,6 +25,8 @@ Since the number of primary shards can't be changed, a different approach is req
 
 CM-Well's ES setup has a set of "master nodes" (a dedicated JVM with no data) and "data nodes". The master nodes manage the cluster, including distribution of data, replication and repair. The "data nodes" are responsible for storage and query processing. ElasticSearch has the concept of a "leader", which is one of the "master" nodes. The setup uses either 3 or 5 such nodes spread into different machines. It is also set up to require a majority (2,3 respectively) of followers to become a leader (to disallow "split brain" partitioning situation).  Data nodes are distributed amongst all the machines. This isolation setup (segregation of ES control JVMs) copes with split brains and fluctuations related to stress and JVM instability on data-nodes.
 
+In addition, on each machine there is a data-less ES process called a "coordinator", which is the entry point for search queries, and which merges search results from the different ES shards.
+
 ## Kafka
 
 The 3rd-party Kafka package is used to manage queues for infoton write requests.
