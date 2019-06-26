@@ -59,6 +59,8 @@ ENV CONS /home/u/cmwell/components/cmwell-cons*
 ARG useAuthorization
 RUN bash -c "./cmwell-pe.sh '/home/u/app' $useAuthorization false false true false true; sleep 60"
 
+RUN rm -rf /home/u/cmwell
+
 EXPOSE 22
 EXPOSE 9000
 
