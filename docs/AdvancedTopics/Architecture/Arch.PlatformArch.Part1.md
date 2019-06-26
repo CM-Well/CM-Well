@@ -38,7 +38,7 @@ CM-Well's management of infoton updates and storage is complex and involves seve
 
 ### Modules Using the Subdivision Concept
 
-For certain modules that require large amounts of memory, we use a "subdivision concept" to assign different disks on the same machine to different JVMs. The subdivision concept was previously applied to both CAS modules and ES modules. Now, due to improvements to Cassandra and the use of the improved G1GC mode of JVM garbage collection, it is now applied only to ES and not to CAS.
+For certain modules that require large amounts of memory, we use a "subdivision concept" to assign different disks on the same machine to different JVMs. The subdivision concept was previously applied to both CAS modules and ES modules. Now, due to improvements to Cassandra that include the ability to manage several disks and to manage off-heap memory (and also due to the improved G1GC mode of JVM garbage collection), the sub-division concept is applied only to ES and not to CAS.
 
 The subdivision approach is not used for the WS and BG modules. These two processes use reactive patterns to drive best performance without requiring multiple JVMs (effective thread-pools, reactive & delegation to other components).
 
