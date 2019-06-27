@@ -51,7 +51,8 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
 
   def apply(dckey: DcInfoKey,
             hosts: Vector[(String, Option[Int])],
-            decider: Decider)(implicit sys: ActorSystem, mat: Materializer) = {
+            decider: Decider,
+            ingestOperation:String)(implicit sys: ActorSystem, mat: Materializer) = {
     val size = hosts.length
     Flow.fromGraph(GraphDSL.create() { implicit b =>
       import GraphDSL.Implicits._
@@ -65,7 +66,7 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
           val (host, portOpt) = hosts(i)
           val location = s"$host:${portOpt.getOrElse(80)}"
           val ingestFlow =
-            SingleMachineInfotonIngester(dckey, location, decider)
+            SingleMachineInfotonIngester(dckey, location, decider, ingestOperation)
           val infotonAggregator = b.add(
             InfotonAggregator(
               Settings.maxIngestInfotonCount,
@@ -133,11 +134,11 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
               ingestSeq.foldLeft(empty)(_ ++ _.data).utf8String
             if (!originalRequest.contains("meta/sys#indexTime")) {
               val originalInfotonData = state._1.head
-              val idxTime = originalInfotonData.meta.indexTime
+              val idxTime = originalInfotonData.meta.indexTime.getOrElse(-1)
               val subject =
                 originalInfotonData.data.takeWhile(_ != space).utf8String
               val idxTimeQuad = s"""$subject <cmwell://meta/sys#indexTime> "$idxTime"^^<http://www.w3.org/2001/XMLSchema#long> ."""
-              val u = originalInfotonData.meta.uuid.utf8String
+              val u = originalInfotonData.meta.uuid.fold("no-uuid")(_.utf8String)
               val q = "\""+idxTimeQuad+"\""
               logger.warn(s"Sync $dcKey: Ingest of uuid $u to machine $location didn't have index time. Adding $q from metadata manually")
               val ingestData = Seq(
@@ -166,16 +167,16 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
                   )
                   Util.errorPrintFuturedBodyException(e)
                 case e =>
-                  val u = ingestSeq.head.meta.uuid.utf8String
+                  val u = ingestSeq.head.meta.uuid.fold("no-uuid")(_.utf8String)
                   logger.error(s"Sync $dcKey: Ingest of uuid $u to machine $location failed. No more reties will be done. " +
                                "Please use the red log to see the list of all the failed ingests. The exception is: ", e)
               }
-              logger.trace(s"Original Ingest request for uuid ${ingestSeq.head.meta.uuid.utf8String} was: $originalRequest")
-              redlog.info(s"Sync $dcKey: Ingest of uuid ${ingestSeq.head.meta.uuid.utf8String} to machine $location failed")
+              logger.trace(s"Original Ingest request for uuid ${ingestSeq.head.meta.uuid.fold("no-uuid")(_.utf8String)} was: $originalRequest")
+              redlog.info(s"Sync $dcKey: Ingest of uuid ${ingestSeq.head.meta.uuid.fold("no-uuid")(_.utf8String)} to machine $location failed")
               Some(Nil)
             }
           } else if (ingestSeq.size == 1) {
-            logger.trace(s"Sync $dcKey: Ingest of uuid ${ingestSeq.head.meta.uuid.utf8String} to " +
+            logger.trace(s"Sync $dcKey: Ingest of uuid ${ingestSeq.head.meta.uuid.fold("no-uuid")(_.utf8String)} to " +
                          s"machine $location failed. Retries left $retriesLeft. Will try again. The exception is: ", ex.get)
             Util.tracePrintFuturedBodyException(ex.get)
             val ingestState =

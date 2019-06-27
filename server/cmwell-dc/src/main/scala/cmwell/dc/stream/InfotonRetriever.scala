@@ -81,7 +81,7 @@ object InfotonRetriever extends LazyLogging {
         .map {
           case (infotonData, state) =>
             val payload = infotonData.foldLeft(ByteString(""))(
-              _ ++ endln ++ ii ++ _.meta.uuid
+              _ ++ endln ++ ii ++ _.meta.uuid.get
             )
             createRequest(remoteUri, payload) -> state
         }
@@ -114,7 +114,7 @@ object InfotonRetriever extends LazyLogging {
                       throw WrongPathGotException(
                         s"Got path ${p.path} from _out that was not in the uuids request bulk: ${
                           state._1
-                            .map(i => i.meta.uuid.utf8String + ":" + i.meta.path)
+                            .map(i => i.meta.uuid.get.utf8String + ":" + i.meta.path)
                             .mkString(",")
                         }"
                       )
@@ -158,7 +158,7 @@ object InfotonRetriever extends LazyLogging {
             val ex = RetrieveBadResponseException(
               s"Retrieve infotons failed. Sync $dcKey uuids: ${
                 state._1
-                  .map(i => i.meta.uuid.utf8String)
+                  .map(i => i.meta.uuid.get.utf8String)
                   .mkString(",")
               }.",
               bodyFut,
@@ -175,7 +175,7 @@ object InfotonRetriever extends LazyLogging {
             val ex = RetrieveException(
               s"Retrieve infotons failed. Sync $dcKey uuids: ${
                 state._1
-                  .map(i => i.meta.uuid.utf8String)
+                  .map(i => i.meta.uuid.get.utf8String)
                   .mkString(",")
               }",
               e
@@ -248,7 +248,7 @@ object InfotonRetriever extends LazyLogging {
         }
         //uuids that the index time from cassandra is different from the one got from ES
         val uuidsWithBadIndexTime = res.collect {
-          case (id, casIndexTime) if casIndexTime.isDefined && id.meta.indexTime != casIndexTime.get =>
+          case (id, casIndexTime) if casIndexTime.isDefined && id.meta.indexTime.get != casIndexTime.get =>
             id
         }
         if (missingUuids.isEmpty && uuidsWithBadIndexTime.isEmpty) {
@@ -263,21 +263,21 @@ object InfotonRetriever extends LazyLogging {
                 Settings.initialSingleRetrieveRetryCount - status.retriesLeft + 1
             yellowlog.info(
               s"Retrieve succeeded only after $bulkCount bulk retrieves and $singleCount single infoton retrieves. uuids: ${input
-                .map(i => i.meta.uuid.utf8String)
+                .map(i => i.meta.uuid.get.utf8String)
                 .mkString(",")}."
             )
           }
           (response, state)
         } else if (missingUuids.nonEmpty) {
           val errorID = response.##
-          val u = missingUuids.map(i => i.meta.uuid.utf8String).mkString(",")
+          val u = missingUuids.map(i => i.meta.uuid.get.utf8String).mkString(",")
           val ex = RetrieveMissingUuidException(s"Error ![$errorID]. Retrieve infotons failed. Some infotons don't have data. " +
                                                 s"Sync $dcKey missing uuids: $u.")
           logger.debug(s"Error ![$errorID]. Full response body was: $body")
           (Failure(ex), (state._1, RetrieveStateStatus(state._2.retriesLeft, Some(ex))))
         } else {
           val errorID = response.##
-          val u = uuidsWithBadIndexTime.map(i => i.meta.uuid.utf8String).mkString(",")
+          val u = uuidsWithBadIndexTime.map(i => i.meta.uuid.get.utf8String).mkString(",")
           val ex = RetrieveBadIndexTimeException(s"Error ![$errorID]. Retrieve infotons failed. Some infotons' indexTime has cas/es inconsistencies. " +
                                                  s"Sync $dcKey bad uuids: $u.")
           logger.debug(s"Error ![$errorID]. Full response body was: $body")
@@ -297,29 +297,29 @@ object InfotonRetriever extends LazyLogging {
                 logger.error(s"${e.getMessage} ${e.getCause.getMessage} No more retries will be done. Please use the red " +
                              s"log to see the list of all the failed retrievals.")
                 Util.errorPrintFuturedBodyException(e)
-                redlog.info(s"Sync $dcKey: Retrieve of uuid ${ingestSeq.head.meta.uuid.utf8String} of " +
+                redlog.info(s"Sync $dcKey: Retrieve of uuid ${ingestSeq.head.meta.uuid.get.utf8String} of " +
                             s"path ${ingestSeq.head.meta.path} failed.")
               case e: RetrieveMissingUuidException =>
-                logger.error(s"Sync $dcKey: Retrieve of uuid ${ingestSeq.head.meta.uuid.utf8String} " +
+                logger.error(s"Sync $dcKey: Retrieve of uuid ${ingestSeq.head.meta.uuid.get.utf8String} " +
                              s"failed. No more reties will be done. Please use the red log to see the list " +
                              s"of all the failed retrievals. The exception is:\n${e.getMessage}")
-                redlog.info(s"Sync $dcKey: Retrieve of uuid ${ingestSeq.head.meta.uuid.utf8String} of " +
+                redlog.info(s"Sync $dcKey: Retrieve of uuid ${ingestSeq.head.meta.uuid.get.utf8String} of " +
                             s"path ${ingestSeq.head.meta.path} failed. No uuid got from _out.")
               case e: RetrieveBadIndexTimeException =>
-                logger.error(s"Sync $dcKey: Retrieve of uuid ${ingestSeq.head.meta.uuid.utf8String} " +
+                logger.error(s"Sync $dcKey: Retrieve of uuid ${ingestSeq.head.meta.uuid.get.utf8String} " +
                              s"failed. No more reties will be done. Please use the red log to see the list of all " +
                              s"the failed retrievals. The exception is:\n${e.getMessage}")
-                redlog.info(s"Sync $dcKey: Retrieve of uuid ${ingestSeq.head.meta.uuid.utf8String} of " +
+                redlog.info(s"Sync $dcKey: Retrieve of uuid ${ingestSeq.head.meta.uuid.get.utf8String} of " +
                             s"path ${ingestSeq.head.meta.path} failed. IndexTime has cas/es inconsistency.")
               case e =>
-                logger.error(s"Sync $dcKey: Retrieve of uuid ${ingestSeq.head.meta.uuid.utf8String} failed. " +
+                logger.error(s"Sync $dcKey: Retrieve of uuid ${ingestSeq.head.meta.uuid.get.utf8String} failed. " +
                              s"No more reties will be done. Please use the red log to see the list of all the failed retrievals. The exception is: ", e)
-                redlog.info(s"Sync $dcKey: Retrieve of uuid ${ingestSeq.head.meta.uuid.utf8String} of " +
+                redlog.info(s"Sync $dcKey: Retrieve of uuid ${ingestSeq.head.meta.uuid.get.utf8String} of " +
                             s"path ${ingestSeq.head.meta.path} failed.")
             }
             Some(List.empty[(Future[RetrieveInput], RetrieveState)])
           } else if (ingestSeq.size == 1) {
-            logger.trace(s"Sync $dcKey: Retrieve of uuid ${ingestSeq.head.meta.uuid.utf8String} failed. " +
+            logger.trace(s"Sync $dcKey: Retrieve of uuid ${ingestSeq.head.meta.uuid.get.utf8String} failed. " +
                          s"Retries left $retriesLeft. Will try again. The exception is: ", ex.get)
             Util.tracePrintFuturedBodyException(ex.get)
             val ingestState =
