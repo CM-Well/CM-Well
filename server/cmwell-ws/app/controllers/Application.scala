@@ -1861,6 +1861,8 @@ callback=< [URL] >
 
             val fieldsMaskFut = extractFieldsMask(request, typesCache, cmwellRDFHelper, timeContext)
 
+            logger.info(s"Get chunk request received with: xg=$xg yg=$yg scrollTtl=$scrollTtl withData=$withData")
+
             if (!withData && xg.isDefined)
               Future.successful(BadRequest("you can't use `xg` without also specifying `with-data`!"))
             else {

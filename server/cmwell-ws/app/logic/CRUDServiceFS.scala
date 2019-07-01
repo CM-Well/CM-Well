@@ -809,6 +809,9 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                   withDeleted: Boolean = false,
                   debugInfo: Boolean = false,
                   withData: Boolean = false): Future[IterationResults] = {
+    logger.info("Creating iterator in ES (first get-chunk request) with: "+
+      s"pathFilter=$pathFilter fieldsFilters=$fieldsFilters datesFilter=$datesFilter paginationParams=$paginationParams" +
+      s"scrollTTL=$scrollTTL withHistory=$withHistory withDeleted=$withDeleted debugInfo=$debugInfo withData=$withData" )
     val searchResultFuture = ftsService
       .startScroll(pathFilter,
         fieldsFilters,
@@ -881,6 +884,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
   }
 
   def scroll(scrollId: String, scrollTTL: Long, withData: Boolean, debugInfo:Boolean): Future[IterationResults] = {
+    logger.info(s"Getting next chunk request received with: scrollId=$scrollId scrollTTL=$scrollTTL withData=$withData debugInfo=$debugInfo")
     val searchResultFuture = ftsService.scroll(scrollId, scrollTTL, debugInfo = debugInfo)
     val results = withData match {
       case false =>
