@@ -884,7 +884,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
   }
 
   def scroll(scrollId: String, scrollTTL: Long, withData: Boolean, debugInfo:Boolean): Future[IterationResults] = {
-    logger.info(s"Getting next chunk request received with: scrollId=$scrollId scrollTTL=$scrollTTL withData=$withData debugInfo=$debugInfo")
+    logger.debug(s"Getting next chunk request received with: scrollId=$scrollId scrollTTL=$scrollTTL withData=$withData debugInfo=$debugInfo")
     val searchResultFuture = ftsService.scroll(scrollId, scrollTTL, debugInfo = debugInfo)
     val results = withData match {
       case false =>
