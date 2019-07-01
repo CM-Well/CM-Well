@@ -87,7 +87,7 @@ case class Grid(user: String,
     val casAllocations = aloc.cas //DefaultAlocations(4000,4000,1000,0)
     val esAllocations = aloc.es //DefaultAlocations(6000,6000,400,0)
 
-    val esMasterAllocations = allocationPlan.getElasticsearchMasterAllocations
+    val esMasterAllocations = JvmMemoryAllocations(2048, 2048, 0, 256)
 
     val bgAllocations = aloc.bg //DefaultAlocations(1000,1000,512,0)
     val wsAllocations = aloc.ws
@@ -148,7 +148,7 @@ case class Grid(user: String,
           numberOfReplicas = 2,
           seeds = getSeedNodes.mkString(","),
           home = homeDir,
-          resourceManager = esAllocations,
+          resourceManager = esMasterAllocations,
           dir = "es-master",
           template = "elasticsearch.yml",
           listenAddress = host,
