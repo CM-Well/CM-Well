@@ -346,6 +346,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
     jsonGenerator.writeStringField("path", infoton.path)
     jsonGenerator.writeStringField("lastModified", dateFormatter.print(infoton.lastModified))
     jsonGenerator.writeStringField("lastModifiedBy", infoton.lastModifiedBy)
+    jsonGenerator.writeStringField("indexName", infoton.indexName)
     jsonGenerator.writeStringField("uuid", infoton.uuid)
     jsonGenerator.writeStringField("parent", infoton.parent)
     jsonGenerator.writeStringField("dc", infoton.dc)

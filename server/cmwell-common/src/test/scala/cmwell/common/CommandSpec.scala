@@ -70,10 +70,23 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
 
     val cmdUpdate = UpdatePathCommand("/command-test/update", deleteF, updateF, updateDate, "Baruch", Some("http"))
 
-    val cmds = Vector(cmdWrite, cmdDeletePathAttributeValues, cmdDeletePath /*, cmdMerged1*/ , cmdUpdate)
+    val currentTime = System.currentTimeMillis()
+    val overrideInfoton = new ObjectInfoton(
+      path = s"/cmt/cm/bg-test/re_process_ow/info_override",
+      dc = "dc",
+      indexTime = Some(currentTime),
+      lastModified = new DateTime(currentTime),
+      "Ori",
+      indexName = "cm_well_p0_0",
+      fields = Some(Map("a" -> Set(FieldValue("b"), FieldValue("c")))),
+      protocol = None
+    )
+
+    val cmdOverride = OverwriteCommand(overrideInfoton)
+
+    val cmds = Vector(cmdWrite, cmdDeletePathAttributeValues, cmdDeletePath /*, cmdMerged1*/ , cmdUpdate, cmdOverride)
 
     val c = Vector(WriteCommand(linkInfo01), WriteCommand(linkInfo02), WriteCommand(linkInfo03))
-
 
     // check encode decode of LinkInfoton
     for (item <- c) {
@@ -105,7 +118,15 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
           u_f.size should equal(cmdUpdate.updateFields.size)
           lm.getMillis should equal(cmdUpdate.lastModified.getMillis)
           lmb should equal(cmdUpdate.lastModifiedBy)
-        case OverwriteCommand(_, _) => ??? //TODO: add tests for OverwriteCommand
+        case OverwriteCommand(infoton, _) =>
+          infoton.path should equal(overrideInfoton.path)
+          infoton.dc should equal(overrideInfoton.dc)
+          infoton.indexTime should equal(overrideInfoton.indexTime)
+          infoton.lastModified.getMillis should equal(overrideInfoton.lastModified.getMillis)
+          infoton.lastModifiedBy should equal(overrideInfoton.lastModifiedBy)
+          infoton.fields should equal(overrideInfoton.fields)
+          infoton.indexName should equal(overrideInfoton.indexName)
+          infoton.protocol should equal(overrideInfoton.protocol)
         case x @ (CommandRef(_) | HeartbitCommand | IndexExistingInfotonCommand(_, _, _, _, _) |
                   IndexExistingInfotonCommandForIndexer(_, _, _, _, _, _) | IndexNewInfotonCommand(_, _, _, _, _, _) |
                   IndexNewInfotonCommandForIndexer(_, _, _, _, _, _, _) | NullUpdateCommandForIndexer(_, _, _, _, _))

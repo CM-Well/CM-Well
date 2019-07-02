@@ -533,6 +533,15 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
     val lastModifiedBy = jsonParser.getText()
 
     assume(
+      jsonParser.nextToken() == JsonToken.FIELD_NAME && "indexName".equals(jsonParser.getCurrentName()),
+      s"expected 'indexName' field name, but got: ${jsonParser.getCurrentName()}\n${jsonParser.getCurrentLocation.toString}"
+    )
+
+    assume(jsonParser.nextToken() == JsonToken.VALUE_STRING,
+      s"expected value for 'indexName' field\n${jsonParser.getCurrentLocation.toString}")
+    val indexName = jsonParser.getText()
+
+    assume(
       jsonParser.nextToken() == JsonToken.FIELD_NAME && "uuid".equals(jsonParser.getCurrentName()),
       s"expected 'uuid' field name\n${jsonParser.getCurrentLocation.toString}"
     )
@@ -599,7 +608,7 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
         //expecting end of json object
         assume(nextToken == JsonToken.END_OBJECT,
           s"expected end of json object\n${jsonParser.getCurrentLocation.toString}")
-        ObjectInfoton(path, dataCenter, indexTime, lastModified, lastModifiedBy, fields, protocol = protocol)
+        ObjectInfoton(path, dataCenter, indexTime, lastModified, lastModifiedBy, fields, indexName, protocol)
       case "LinkInfoton" =>
         assume(
           nextToken == JsonToken.FIELD_NAME && "linkTo".equals(jsonParser.getCurrentName()),
@@ -620,7 +629,7 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
         //expecting end of json object
         assume(jsonParser.nextToken() == JsonToken.END_OBJECT,
           s"expected end of json object\n${jsonParser.getCurrentLocation.toString}")
-        LinkInfoton(path, dataCenter, indexTime, lastModified, lastModifiedBy, fields, linkTo, linkType, protocol = protocol)
+        LinkInfoton(path, dataCenter, indexTime, lastModified, lastModifiedBy, fields, linkTo, linkType, indexName, protocol = protocol)
       case "FileInfoton" =>
         var fileContent: Option[FileContent] = None
         if (nextToken.id == JsonTokenId.ID_FIELD_NAME) {
@@ -697,11 +706,11 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
             s"expected end of json object\n${jsonParser.getCurrentLocation.toString}")
         }
 
-        FileInfoton(path, dataCenter, indexTime, lastModified,  lastModifiedBy, fields, fileContent, protocol = protocol)
+        FileInfoton(path, dataCenter, indexTime, lastModified,  lastModifiedBy, fields, fileContent, indexName, protocol)
       case "DeletedInfoton" =>
         assume(nextToken == JsonToken.END_OBJECT,
           s"expected end of json object\n${jsonParser.getCurrentLocation.toString}")
-        DeletedInfoton(path, dataCenter, indexTime, lastModified, lastModifiedBy = lastModifiedBy)
+        DeletedInfoton(path, dataCenter, indexTime, lastModified, lastModifiedBy = lastModifiedBy, indexName = indexName)
     }
   }
 }

@@ -355,20 +355,21 @@ class ImpStream(partition: Int,
                   dc = defaultDC,
                   lastModified = childLastModified,
                   indexName = currentIndexName,
-                  protocol = None
+                  protocol = None,
+                  lastModifiedBy = "Unknown"//code-review: do we want child modifier?
                 )
-        val writeCommand = WriteCommand(infoton)
-        val payload = CommandSerializer.encode(writeCommand)
-        val topic =
-          if(offsets.exists(_.topic.endsWith("priority")))
-            persistCommandsTopicPriority
-          else
-            persistCommandsTopic
-                new ProducerRecord[Array[Byte], Array[Byte]](
-                  topic,
-                  infoton.path.getBytes,
-                  payload
-      )
+                val writeCommand = WriteCommand(infoton)
+                val payload = CommandSerializer.encode(writeCommand)
+                val topic =
+                  if(offsets.exists(_.topic.endsWith("priority")))
+                    persistCommandsTopicPriority
+                  else
+                    persistCommandsTopic
+                        new ProducerRecord[Array[Byte], Array[Byte]](
+                          topic,
+                          infoton.path.getBytes,
+                          payload
+              )
             }(breakOut3))
       }
       .mapConcat(identity)
@@ -492,8 +493,8 @@ class ImpStream(partition: Int,
                 IndexNewInfotonCommandForIndexer(cmd.uuid, cmd.isCurrent, cmd.path, cmd.infotonOpt, cmd.indexName, offsets, cmd.trackingIDs)
               case cmd: IndexExistingInfotonCommand =>
                 IndexExistingInfotonCommandForIndexer(cmd.uuid, cmd.weight, cmd.path, cmd.indexName, offsets, cmd.trackingIDs)
-              case x @ (IndexExistingInfotonCommandForIndexer(_, _, _, _, _, _) | IndexNewInfotonCommandForIndexer(_, _, _, _, _, _, _) |
-                   NullUpdateCommandForIndexer(_, _, _, _, _)) => logger.error(s"Unexpected input. Received: $x"); ???
+              case x @ (IndexExistingInfotonCommandForIndexer(_, _, _, _, _,_) | IndexNewInfotonCommandForIndexer(_, _, _, _, _,_,_) |
+                   NullUpdateCommandForIndexer(_, _, _, _,_)) => logger.error(s"Unexpected input. Received: $x"); ???
         }
         val topic =
             if (offsets.exists(_.topic.endsWith("priority")))
@@ -682,8 +683,8 @@ class ImpStream(partition: Int,
           case bgMessage@BGMessage(_, (path, commands)) =>
               bgMessage.copy(message = (path, commands.map {
                 case OverwriteCommand(infoton, trackingID) => (infoton, trackingID)
-                case x @ (DeleteAttributesCommand(_, _, _, _, _, _) | DeletePathCommand(_, _, _, _) |
-                          UpdatePathCommand(_, _, _, _, _, _, _) | WriteCommand(_, _, _))
+                case x @ (DeleteAttributesCommand(_, _, _, _, _, _, _) | DeletePathCommand(_, _, _, _, _) |
+                          UpdatePathCommand(_, _, _, _, _, _, _,_) | WriteCommand(_, _, _))
                   => logger.error(s"Unexpected input. Received: $x"); ???
               }))
         }
