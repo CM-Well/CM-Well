@@ -160,6 +160,11 @@
                 }
               }
             },
+            "lastModifiedBy": {
+              "type": "keyword",
+              "store": true,
+              "norms": false
+            },
             "kind": {
               "type": "keyword",
               "store": true,

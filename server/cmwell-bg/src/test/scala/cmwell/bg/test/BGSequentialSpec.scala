@@ -72,7 +72,7 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
         path = s"/cmt/cm/bg-test-priority-before-batch/prio/info$n",
         dc = "dc",
         indexTime = None,
-        fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))), protocol = None)
+        fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))), protocol = None, lastModifiedBy = "Baruch")
       WriteCommand(infoton)
     }
 
@@ -88,7 +88,7 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
         path = s"/cmt/cm/bg-test-priority-before-batch/batch/info$n",
         dc = "dc",
         indexTime = None,
-        fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))), protocol = None)
+        fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))), protocol = None, lastModifiedBy = "Baruch")
       WriteCommand(infoton)
     }
 
@@ -115,6 +115,7 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
       cmwell.util.concurrent.spinCheck(250.millis, true, 60.seconds) {
         ftsServiceES.search(
           pathFilter = Some(PathFilter("/cmt/cm/bg-test-priority-before-batch/prio", true)),
+          lastModifiedBy = Some(ModifierFilter("Baruch", true)),
           fieldsFilter = None,
           datesFilter = None,
           paginationParams = PaginationParams(0, 3000),
