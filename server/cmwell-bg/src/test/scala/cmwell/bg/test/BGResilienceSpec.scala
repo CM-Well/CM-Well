@@ -118,8 +118,9 @@ class BGResilienceSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
       val searchResponse = Await.result(
         ftsServiceES.search(
           pathFilter = None,
-          lastModifiedBy = Some(ModifierFilter("Baruch", true)),
-          fieldsFilter = Some(SingleFieldFilter(Must, Equals, "system.path", Some(s"/cmt/cm/bg-test/circumvented_bg/info$i"))),
+          fieldsFilter = Some(MultiFieldFilter(Must, Seq(
+            FieldFilter(Must, Equals, "system.path", s"/cmt/cm/bg-test/circumvented_bg/info$i"),
+            FieldFilter(Must, Equals, "system.lastModifiedBy", "Baruch")))),
           datesFilter = None,
           paginationParams = PaginationParams(0, 200)
         ),

@@ -133,8 +133,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
         cmwell.util.concurrent.spinCheck(250.millis,true,30.seconds){
           ftsServiceES.search(
             pathFilter = Some(PathFilter("/cmt/cm/bg-test/baseInfoton", true)),
-            lastModifiedBy = Some(ModifierFilter("Baruch", true)),
-            fieldsFilter = None,
+            fieldsFilter = Some(FieldFilter(Must, Equals, "system.lastModifiedBy", "Baruch")),
             datesFilter = None,
             paginationParams = DefaultPaginationParams,
             sortParams = SortParam("system.indexTime" -> Asc),
@@ -248,7 +247,6 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
       cmwell.util.concurrent.spinCheck(250.millis, true, 45.seconds) {
         ftsServiceES.search(
           pathFilter = Some(PathFilter("/cmt/cm/bg-test1", descendants = true)),
-          lastModifiedBy = None,
           fieldsFilter = None,
           datesFilter = None,
           paginationParams = DefaultPaginationParams,
@@ -334,8 +332,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
         scheduleFuture(5.seconds) {
           ftsServiceES.search(
             pathFilter = Some(PathFilter("/cmt/cm/bg-test/indexTime", true)),
-            lastModifiedBy = Some(ModifierFilter("Baruch", true)),
-            fieldsFilter = None,
+            fieldsFilter = Some(FieldFilter(Must, Equals, "system.lastModifiedBy", "Baruch")),
             datesFilter = None,
             paginationParams = DefaultPaginationParams,
             sortParams = SortParam("system.indexTime" -> Asc),
@@ -367,7 +364,6 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
 
           val f1 = ftsServiceES.search(
             pathFilter = None,
-            lastModifiedBy = None,
             fieldsFilter = Some(MultiFieldFilter(Must, Seq(
               FieldFilter(Must, Equals, "system.path", "/cmt/cm/bg-test1/info1"),
               FieldFilter(Must, Equals, "system.current", "false"),
@@ -379,8 +375,9 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
 
           val f2 = ftsServiceES.search(
             pathFilter = None,
-            lastModifiedBy = Some(ModifierFilter("Baruch,Hanna", true)),//code-review - understand the merge ImpStream:281
-            fieldsFilter = Some(FieldFilter(Must, Equals, "system.path", "/cmt/cm/bg-test1/info1")),
+            fieldsFilter = Some(MultiFieldFilter(Must, Seq(
+              FieldFilter(Must, Equals, "system.path", "/cmt/cm/bg-test1/info1"),
+              FieldFilter(Must, Equals, "system.lastModifiedBy", "Baruch,Hanna")))),//code-review - understand the merge ImpStream:281
             datesFilter = None,
             paginationParams = DefaultPaginationParams
           )
@@ -432,8 +429,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
       sendEm.flatMap { recordMetaDataSeq =>
         scheduleFuture(3000.millis)(ftsServiceES.search(
           pathFilter = Some(PathFilter("/cmt/cm/bg-test3", true)),
-          lastModifiedBy = Some(ModifierFilter("Ori", true)),
-          fieldsFilter = None,
+          fieldsFilter = Some(FieldFilter(Must, Equals, "system.lastModifiedBy", "Ori")),
           datesFilter = None,
           paginationParams = DefaultPaginationParams)).map { response =>
 
@@ -480,8 +476,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
             cmwell.util.concurrent.spinCheck(250.millis, true, 30.seconds) {
               ftsServiceES.search(
                 pathFilter = Some(PathFilter("/cmt/cm/bg-test/re_process_ow", descendants = true)),
-                lastModifiedBy = Some(ModifierFilter("Nahum", true)),
-                fieldsFilter = None,
+                fieldsFilter = Some(FieldFilter(Must, Equals, "system.lastModifiedBy", "Nahum")),
                 datesFilter = None,
                 paginationParams = DefaultPaginationParams,
                 sortParams = FieldSortParams(List("system.indexTime" -> Desc)),
@@ -523,8 +518,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
         cmwell.util.concurrent.spinCheck(250.millis, true, 30.seconds) {
           ftsServiceES.search(
             pathFilter = Some(PathFilter("/cmt/cm/bg-test/override_not_grouped", false)),
-            lastModifiedBy = Some(ModifierFilter("Ohad", true)),
-            fieldsFilter = None,
+            fieldsFilter = Some(FieldFilter(Must, Equals, "system.lastModifiedBy", "Ohad")),
             datesFilter = None,
             paginationParams = DefaultPaginationParams,
             withHistory = true,
@@ -560,8 +554,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
           val readReply = irwService.readPathAsync("/cmt/cm/bg-test-fat/fatfoton1")
           val searchReply = ftsServiceES.search(
             pathFilter = Some(PathFilter("/cmt/cm/bg-test-fat", true)),
-            lastModifiedBy = Some(ModifierFilter("Faruk", true)),
-            fieldsFilter = None,
+            fieldsFilter = Some(FieldFilter(Must, Equals, "system.lastModifiedBy", "Faruk")),
             datesFilter = None,
             paginationParams = DefaultPaginationParams)
           readReply.zip(searchReply)
@@ -600,8 +593,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
 
           val f0 = ftsServiceES.search(
             pathFilter = Some(PathFilter("/cmt/cm/bg-test4", descendants =  true)),
-            lastModifiedBy = Some(ModifierFilter("Noga", true)),
-            fieldsFilter = None,
+            fieldsFilter = Some(FieldFilter(Must, Equals, "system.lastModifiedBy", "Noga")),
             datesFilter = None,
             paginationParams = DefaultPaginationParams)
 
@@ -646,15 +638,15 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
     def verifyBgTest5(modifier: String) = {
       val f0 = ftsServiceES.search(
         pathFilter = None,
-        lastModifiedBy = Some(ModifierFilter(modifier, true)),
-        fieldsFilter = Some(FieldFilter(Must, Equals, "system.path", "/cmt/cm/bg-test5/infobj")),
+        fieldsFilter = Some(MultiFieldFilter(Must, Seq(
+          FieldFilter(Must, Equals, "system.path", "/cmt/cm/bg-test5/infobj"),
+          FieldFilter(Must, Equals, "system.lastModifiedBy", modifier)))),
         datesFilter = None,
         paginationParams = DefaultPaginationParams,
         withHistory = false
       )
       val f1 = ftsServiceES.search(
         pathFilter = None,
-        lastModifiedBy = None,
         fieldsFilter = Some(MultiFieldFilter(Must, Seq(
           FieldFilter(Must, Equals, "system.path", "/cmt/cm/bg-test5/infobj"),
           FieldFilter(Must, Equals, "system.current", "false")))),
@@ -678,7 +670,6 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
       def waitForItInner(): Future[FTSSearchResponse] = {
         ftsServiceES.search(
           pathFilter = None,
-          lastModifiedBy = None,
           fieldsFilter = Some(FieldFilter(Must, Equals, "system.path", "/cmt/cm/bg-test5/infobj")),
           datesFilter = None,
           paginationParams = DefaultPaginationParams,

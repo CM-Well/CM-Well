@@ -1923,3 +1923,5 @@ case object FTSTimeout
 
 case class FTSThinInfoton(path: String, uuid: String, lastModified: String, lastModifiedBy: String, indexTime: Long, score: Option[Float])
 case class FTSThinSearchResponse(total: Long, offset: Long, length: Long, thinInfotons: Seq[FTSThinInfoton], searchQueryStr: Option[String] = None)
+
+

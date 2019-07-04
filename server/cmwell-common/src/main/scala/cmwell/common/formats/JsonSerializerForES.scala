@@ -107,7 +107,7 @@ JsonSerializerForES extends AbstractJsonSerializer with NsSplitter with LazyLogg
     jsonGenerator.writeStringField("path", infoton.path)
     jsonGenerator.writeStringField("lastModified", dateFormatter.print(infoton.lastModified))
     if (infoton.lastModifiedBy == null)
-      jsonGenerator.writeStringField("lastModifiedBy", "Unknown")
+      jsonGenerator.writeStringField("lastModifiedBy", "anonymous")
     else
       jsonGenerator.writeStringField("lastModifiedBy", infoton.lastModifiedBy)
     jsonGenerator.writeStringField("uuid", infoton.uuid)
