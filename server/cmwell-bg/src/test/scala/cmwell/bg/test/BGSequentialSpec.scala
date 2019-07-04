@@ -115,8 +115,7 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
       cmwell.util.concurrent.spinCheck(250.millis, true, 60.seconds) {
         ftsServiceES.search(
           pathFilter = Some(PathFilter("/cmt/cm/bg-test-priority-before-batch/prio", true)),
-          lastModifiedBy = Some(ModifierFilter("Baruch", true)),
-          fieldsFilter = None,
+          fieldsFilter = Some(FieldFilter(Must, Equals, "system.lastModifiedBy", "Baruch")),
           datesFilter = None,
           paginationParams = PaginationParams(0, 3000),
           sortParams = SortParam("system.indexTime" -> Desc),
