@@ -81,7 +81,6 @@ class Strotill(irw: IRWService, ftsService: FTSService) extends LazyLogging {
       .search(None,
               Some(FieldFilter(Must, Equals, "system.path", path)),
               None,
-              None,
               DefaultPaginationParams,
               withHistory = true)
       .map { searchResp =>

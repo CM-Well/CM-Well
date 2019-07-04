@@ -200,14 +200,13 @@ class FTSService(config: Config) extends NsSplitter{
                   (implicit executionContext:ExecutionContext) : Future[FTSSearchResponse] = {
     search(
       pathFilter = Some(PathFilter(path, descendants)),
-      lastModifiedBy = None,
       fieldsFilter = None,
       datesFilter = None,
       paginationParams = PaginationParams(offset, length))
   }
 
   def search(pathFilter: Option[PathFilter], fieldsFilter: Option[FieldFilter], datesFilter: Option[DatesFilter],
-             lastModifiedBy: Option[ModifierFilter], paginationParams: PaginationParams, sortParams: SortParam = SortParam.empty,
+             paginationParams: PaginationParams, sortParams: SortParam = SortParam.empty,
              withHistory: Boolean = false, withDeleted: Boolean = false, partition:String = defaultPartition,
              debugInfo:Boolean = false, timeout : Option[Duration] = None)
             (implicit executionContext:ExecutionContext, logger:Logger = loger): Future[FTSSearchResponse] = {
@@ -232,7 +231,7 @@ class FTSService(config: Config) extends NsSplitter{
 
     applySortToRequest(sortParams, request)
 
-    applyFiltersToRequest(request, pathFilter, lastModifiedBy, fieldsFilter, datesFilter, withHistory, withDeleted)
+    applyFiltersToRequest(request, pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted)
 
     val searchQueryStr = if (debugInfo) Some(request.toString) else None
     logRequest("search", pathFilter.toString, fieldsFilter.toString)
@@ -314,7 +313,7 @@ class FTSService(config: Config) extends NsSplitter{
       }
   }
 
-  def thinSearch(pathFilter: Option[PathFilter], fieldsFilter: Option[FieldFilter], lastModifiedBy:Option[ModifierFilter],
+  def thinSearch(pathFilter: Option[PathFilter], fieldsFilter: Option[FieldFilter],
                  datesFilter: Option[DatesFilter], paginationParams: PaginationParams,
                  sortParams: SortParam = SortParam.empty, withHistory: Boolean = false, withDeleted: Boolean = false,
                  partition:String = defaultPartition, debugInfo:Boolean = false,
@@ -322,7 +321,6 @@ class FTSService(config: Config) extends NsSplitter{
                 (implicit executionContext:ExecutionContext, logger:Logger = loger) : Future[FTSThinSearchResponse] = {
     fullSearch(
       pathFilter,
-      lastModifiedBy,
       fieldsFilter,
       datesFilter,
       paginationParams,
@@ -366,7 +364,6 @@ class FTSService(config: Config) extends NsSplitter{
     * @return
     */
   def fullSearch[T](pathFilter: Option[PathFilter] = None,
-                    lastModifiedBy: Option[ModifierFilter],
                     fieldsFilter: Option[FieldFilter] = None,
                     datesFilter: Option[DatesFilter] = None,
                     paginationParams: PaginationParams = DefaultPaginationParams,
@@ -402,7 +399,7 @@ class FTSService(config: Config) extends NsSplitter{
 
     applySortToRequest(sortParams, request)
 
-    applyFiltersToRequest(request, pathFilter, lastModifiedBy, fieldsFilter, datesFilter, withHistory, withDeleted)
+    applyFiltersToRequest(request, pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted)
 
     logRequest("fullSearch", pathFilter.toString, fieldsFilter.toString)
 
@@ -627,7 +624,7 @@ class FTSService(config: Config) extends NsSplitter{
   }
 
   private def startShardScroll(pathFilter: Option[PathFilter] = None, fieldsFilter: Option[FieldFilter] = None,
-                               lastModifiedBy: Option[ModifierFilter], datesFilter: Option[DatesFilter] = None,
+                               datesFilter: Option[DatesFilter] = None,
                                withHistory: Boolean, withDeleted: Boolean,
                                offset:Int, length:Int, scrollTTL:Long = defaultScrollTTL,
                                index:String, nodeId:String, shard:Int,
@@ -649,7 +646,7 @@ class FTSService(config: Config) extends NsSplitter{
     if (pathFilter.isEmpty && fieldsFilter.isEmpty && datesFilter.isEmpty) {
       request.setQuery(matchAllQuery())
     } else {
-      applyFiltersToRequest(request, pathFilter, lastModifiedBy, fieldsFilter, datesFilter, withHistory, withDeleted)
+      applyFiltersToRequest(request, pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted)
     }
 
     val scrollResponseFuture = injectFuture[SearchResponse](request.execute)
@@ -667,7 +664,6 @@ class FTSService(config: Config) extends NsSplitter{
 
   def startSuperScroll(
                         pathFilter: Option[PathFilter],
-                        lastModifiedBy: Option[ModifierFilter],
                         fieldsFilter: Option[FieldFilter],
                         datesFilter: Option[DatesFilter],
                         paginationParams: PaginationParams,
@@ -690,7 +686,6 @@ class FTSService(config: Config) extends NsSplitter{
         () =>
           startShardScroll(pathFilter,
             fieldsFilter,
-            lastModifiedBy,
             datesFilter,
             withHistory,
             withDeleted,
@@ -717,7 +712,6 @@ class FTSService(config: Config) extends NsSplitter{
     */
   def startScroll(pathFilter: Option[PathFilter],
                   fieldsFilter: Option[FieldFilter],
-                  lastModifiedBy: Option[ModifierFilter],
                   datesFilter: Option[DatesFilter],
                   paginationParams: PaginationParams,
                   scrollTTL :Long = defaultScrollTTL,
@@ -745,7 +739,7 @@ class FTSService(config: Config) extends NsSplitter{
     if (pathFilter.isEmpty && fieldsFilter.isEmpty && datesFilter.isEmpty) {
       request.setQuery(matchAllQuery())
     } else {
-      applyFiltersToRequest(request, pathFilter, lastModifiedBy, fieldsFilter, datesFilter, withHistory, withDeleted)
+      applyFiltersToRequest(request, pathFilter, fieldsFilter, datesFilter, withHistory, withDeleted)
     }
     logRequest("startScroll", pathFilter.toString, fieldsFilter.toString, "also sent fake request")
     val scrollResponseFuture = injectFuture[SearchResponse](request.execute)
@@ -758,7 +752,7 @@ class FTSService(config: Config) extends NsSplitter{
     }
   }
 
-  def startMultiScroll(pathFilter: Option[PathFilter], lastModifiedBy: Option[ModifierFilter],
+  def startMultiScroll(pathFilter: Option[PathFilter],
                        fieldsFilter: Option[FieldFilter],
                        datesFilter: Option[DatesFilter],
                        paginationParams: PaginationParams,
@@ -780,7 +774,6 @@ class FTSService(config: Config) extends NsSplitter{
     indices.map { indexName =>
       startScroll(pathFilter,
         fieldsFilter,
-        lastModifiedBy,
         datesFilter,
         paginationParams,
         scrollTTL,
@@ -838,7 +831,6 @@ class FTSService(config: Config) extends NsSplitter{
 
   private def applyFiltersToRequest(request: SearchRequestBuilder,
                                     pathFilter: Option[PathFilter] = None,
-                                    modifierFilter: Option[ModifierFilter] = None,
                                     fieldFilterOpt: Option[FieldFilter] = None,
                                     datesFilter: Option[DatesFilter] = None,
                                     withHistory: Boolean = false,
@@ -861,10 +853,6 @@ class FTSService(config: Config) extends NsSplitter{
       } else {
         boolQueryBuilder.must( termQuery(if(pf.descendants)"system.parent.parent_hierarchy" else "system.parent", pf.path))
       }
-    }
-
-    modifierFilter.foreach { mf =>
-      boolQueryBuilder.must(termQuery("system.lastModifiedBy", mf.lastModifier))
     }
 
     datesFilter.foreach {
@@ -941,7 +929,7 @@ class FTSService(config: Config) extends NsSplitter{
 
   }
 
-  def aggregate(pathFilter: Option[PathFilter], fieldFilter: Option[FieldFilter], lastModifiedBy: Option[ModifierFilter],
+  def aggregate(pathFilter: Option[PathFilter], fieldFilter: Option[FieldFilter],
                 datesFilter: Option[DatesFilter] = None, paginationParams: PaginationParams,
                 aggregationFilters: Seq[AggregationFilter], withHistory: Boolean = false,
                 partition: String = defaultPartition, debugInfo: Boolean = false)
@@ -951,7 +939,7 @@ class FTSService(config: Config) extends NsSplitter{
     logRequest("aggregate", pathFilter.toString, fieldFilter.toString)
 
     if (pathFilter.isDefined || fieldFilter.nonEmpty || datesFilter.isDefined) {
-      applyFiltersToRequest(request, pathFilter, lastModifiedBy, fieldFilter, datesFilter)
+      applyFiltersToRequest(request, pathFilter, fieldFilter, datesFilter)
     }
 
     var counter = 0
@@ -1635,7 +1623,6 @@ class FTSService(config: Config) extends NsSplitter{
     applyFiltersToRequest(
       request,
       None,
-      None,
       Some(MultiFieldFilter(Must, fieldFilters.fold(filtersSeq)(filtersSeq.::))),
       None,
       withHistory = withHistory
@@ -1843,7 +1830,6 @@ case object LessThan extends ValueOperator
 case object LessThanOrEquals extends ValueOperator
 case object Like extends ValueOperator
 case class PathFilter(path: String, descendants: Boolean)
-case class ModifierFilter(lastModifier: String, descendants: Boolean)
 
 sealed trait FieldFilter {
   def fieldOperator: FieldOperator
