@@ -174,7 +174,7 @@ case class Grid(user: String,
         debug = deb,
         hostIp = host,
         minMembers = getMinMembers,
-        numOfPartitions = hosts.size,
+        numOfPartitions = ips.size,
         seeds = getSeedNodes.mkString(","),
         defaultRdfProtocol = defaultRdfProtocol,
         transportAddress = this.getThreesome(ips, host)
