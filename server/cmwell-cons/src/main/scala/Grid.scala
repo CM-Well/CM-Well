@@ -138,7 +138,7 @@ case class Grid(user: String,
           rs = IpRackSelector(),
           g1 = g1,
           hostIp = host,
-          useMultipleDisks = true
+          dirsPerEs = if (useMultipleDisks) Some(dataDirs.esDataDirs.size) else None
         )
 
         val esMaster = ElasticsearchConf(

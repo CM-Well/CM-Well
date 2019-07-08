@@ -228,7 +228,7 @@ case class ElasticsearchConf(clusterName: String,
                              rs: RackSelector,
                              g1: Boolean,
                              hostIp: String,
-                             useMultipleDisks: Boolean = false)
+                             dirsPerEs: Option[Int] = None)
     extends ComponentConf(hostIp, s"$home/app/es/cur", sName, s"$home/conf/$dir", "elasticsearch.yml", index) {
 
   val classpath = s"""'$home/app/es/cur/lib/*:'"""
@@ -275,8 +275,7 @@ case class ElasticsearchConf(clusterName: String,
       "transport_port" -> transportPort.toString,
       "num_of_shards" -> expectedNodes.toString,
       "num_of_replicas" -> { if (expectedNodes > 2) 2 else 0 }.toString,
-      "path_data" -> {if (!useMultipleDisks) s"$home/data/$dir"
-            else (2 to expectedNodes).map(_.toString).fold(s"$home/data/es")((acc, x) => s"$home/data/es$x,$acc")}
+      "path_data" -> dirsPerEs.fold(s"$home/data/$dir"){x => (2 to x).map(_.toString).fold(s"$home/data/es")((acc, x) => s"$home/data/es$x,$acc")}
     )
 
     val confContent = ResourceBuilder.getResource(s"scripts/templates/$template", m)
