@@ -58,8 +58,8 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.implicitConversions
 import scala.util._
 import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
-import collection.JavaConverters._
 
+import collection.JavaConverters._
 /**
   * Created by israel on 30/06/2016.
   */
@@ -219,7 +219,7 @@ class FTSService(config: Config) extends NsSplitter{
       throw new IllegalArgumentException("at least one of the filters is needed in order to search")
     }
 
-    val fields = "system.kind" :: "system.path" :: "system.uuid" :: "system.lastModified" :: "content.length" ::
+    val fields = "system.kind" :: "system.path" :: "system.uuid" :: "system.lastModified" :: "system.lastModifiedBy" :: "content.length" ::
       "content.mimeType" :: "link.to" :: "link.kind" :: "system.dc" :: "system.indexTime" :: "system.quad" :: "system.current" :: Nil
 
     val request = client
@@ -280,8 +280,8 @@ class FTSService(config: Config) extends NsSplitter{
   private def fieldType(fieldName: String) = {
     fieldName match {
       case "system.lastModified" => DateType
-      case "system.parent" | "system.path" | "system.kind" | "system.uuid" | "system.dc" | "system.quad" |
-           "content.data" | "content.mimeType" | "link.to" =>
+      case "system.parent" | "system.path" | "system.kind" | "system.uuid" | "system.dc" | "system.lastModifiedBy" |
+           "system.quad" | "content.data" | "content.mimeType" | "link.to" =>
         StringType
       case "content.length" | "system.indexTime" => LongType
       case "link.kind"                           => IntType
@@ -330,7 +330,7 @@ class FTSService(config: Config) extends NsSplitter{
       partition,
       debugInfo,
       timeout,
-      storedFields = "system.path" :: "system.uuid" :: "system.lastModified" :: "system.indexTime" :: Nil,
+      storedFields = "system.path" :: "system.uuid" :: "system.lastModified" :: "system.lastModifiedBy" :: "system.indexTime" :: Nil,
       fieldsFromSource = Array.empty
     )(esResponseToThinInfotons).map {
       case (response, thinSeq, searchQueryStr) =>
@@ -631,7 +631,7 @@ class FTSService(config: Config) extends NsSplitter{
                                debugInfo: Boolean = false)
                               (implicit executionContext:ExecutionContext) : Future[FTSStartScrollResponse] = {
 
-    val fields = "system.kind" :: "system.path" :: "system.uuid" :: "system.lastModified" :: "content.length" ::
+    val fields = "system.kind" :: "system.path" :: "system.uuid" :: "system.lastModified" :: "system.lastModifiedBy" :: "content.length" ::
       "content.mimeType" :: "link.to" :: "link.kind" :: "system.dc" :: "system.indexTime" :: "system.quad" :: "system.current" :: Nil
 
     val request = clients.getOrElse(nodeId,client).prepareSearch(index)
@@ -724,7 +724,7 @@ class FTSService(config: Config) extends NsSplitter{
                  (implicit executionContext:ExecutionContext, logger:Logger = loger) : Future[FTSStartScrollResponse] = {
     logger.debug(s"StartScroll request: $pathFilter, $fieldsFilter, $datesFilter, $paginationParams, $withHistory")
 
-    val fields = "system.kind" :: "system.path" :: "system.uuid" :: "system.lastModified" :: "content.length" ::
+    val fields = "system.kind" :: "system.path" :: "system.uuid" :: "system.lastModified" :: "system.lastModifiedBy" :: "content.length" ::
       "content.mimeType" :: "link.to" :: "link.kind" :: "system.dc" :: "system.indexTime" :: "system.quad" :: "system.current" :: Nil
 
     val indices = if (indexNames.nonEmpty) indexNames else Seq(s"${partition}_all")
@@ -752,7 +752,8 @@ class FTSService(config: Config) extends NsSplitter{
     }
   }
 
-  def startMultiScroll(pathFilter: Option[PathFilter], fieldsFilter: Option[FieldFilter],
+  def startMultiScroll(pathFilter: Option[PathFilter],
+                       fieldsFilter: Option[FieldFilter],
                        datesFilter: Option[DatesFilter],
                        paginationParams: PaginationParams,
                        scrollTTL: Long = defaultScrollTTL,
@@ -1269,9 +1270,10 @@ class FTSService(config: Config) extends NsSplitter{
       val path = hit.field("system.path").getValue[String]
       val uuid = hit.field("system.uuid").getValue[String]
       val lastModified = hit.field("system.lastModified").getValue[String]
+      val lastModifiedBy = hit.field("system.lastModifiedBy").getValue[String]
       val indexTime = tryLongThenInt[Long](hit,"system.indexTime",identity,-1L,uuid,path)
       val score = if(includeScore) Some(hit.getScore()) else None
-      FTSThinInfoton(path, uuid, lastModified, indexTime, score)
+      FTSThinInfoton(path, uuid, lastModified, lastModifiedBy, indexTime, score)
     }(memoizedBreakoutForEsResponseToThinInfotons)
   }
 
@@ -1279,8 +1281,9 @@ class FTSService(config: Config) extends NsSplitter{
     val path = esResponse.getField("system.path").getValue[String]
     val uuid = esResponse.getField("system.uuid").getValue[String]
     val lastModified = esResponse.getField("system.lastModified").getValue[String]
+    val lastModifiedBy = esResponse.getField("system.lastModifiedBy").getValue[String]
     val indexTime = esResponse.getField("system.indexTime").getValue[Long]
-    FTSThinInfoton(path, uuid, lastModified, indexTime, None)
+    FTSThinInfoton(path, uuid, lastModified, lastModifiedBy, indexTime, None)
   }
 
   private def esResponseToInfotons(esResponse: org.elasticsearch.action.search.SearchResponse,
@@ -1299,10 +1302,11 @@ class FTSService(config: Config) extends NsSplitter{
         val indexTime = tryLongThenInt[Option[Long]](hit, "system.indexTime", Some.apply[Long], None, id, path)
         val score: Option[Map[String, Set[FieldValue]]] =
           if (includeScore) Some(Map("$score" -> Set(FExtra(hit.getScore(), sysQuad)))) else None
+        val lastModifiedBy = hit.field("system.lastModifiedBy").getValue[String]
 
         hit.field("system.kind").getValue[String] match {
           case "ObjectInfoton" =>
-            new ObjectInfoton(path, dc, indexTime, lastModified, score, protocol = protocol) {
+            new ObjectInfoton(path, dc, indexTime, lastModified, lastModifiedBy, score, protocol = protocol) {
               override def uuid = id
               override def kind = "ObjectInfoton"
             }
@@ -1314,6 +1318,7 @@ class FTSService(config: Config) extends NsSplitter{
               dc,
               indexTime,
               lastModified,
+              lastModifiedBy,
               score,
               Some(FileContent(hit.field("content.mimeType").getValue[String], contentLength)),
               protocol = protocol) {
@@ -1325,6 +1330,7 @@ class FTSService(config: Config) extends NsSplitter{
               dc,
               indexTime,
               lastModified,
+              lastModifiedBy,
               score,
               hit.field("link.to").getValue[String],
               hit.field("link.kind").getValue[Int],
@@ -1333,7 +1339,7 @@ class FTSService(config: Config) extends NsSplitter{
               override def kind = "LinkInfoton"
             }
           case "DeletedInfoton" =>
-            new DeletedInfoton(path, dc, indexTime, lastModified) {
+            new DeletedInfoton(path, dc, indexTime, lastModified, lastModifiedBy) {
               override def uuid = id
               override def kind = "DeletedInfoton"
             }
@@ -1583,7 +1589,7 @@ class FTSService(config: Config) extends NsSplitter{
   def get(uuid: String
           , indexName: String
           , partition: String = defaultPartition)(implicit executionContext: ExecutionContext): Future[Option[(FTSThinInfoton, Boolean)]] = {
-    val fields = Seq("path", "uuid", "lastModified", "indexTime", "current").map(f => s"system.$f")
+    val fields = Seq("path", "uuid", "lastModified", "lastModifiedBy", "indexTime", "current").map(f => s"system.$f")
     val req = client.prepareGet()
       .setIndex(indexName)
       .setId(uuid)
@@ -1915,5 +1921,5 @@ case class FTSStartScrollResponse(response: FTSScrollResponse, searchQueryStr: O
 case class FTSScrollResponse(total: Long, scrollId: String, infotons: Seq[Infoton], nodeId: Option[String] = None, searchQueryStr: Option[String] = None)
 case object FTSTimeout
 
-case class FTSThinInfoton(path: String, uuid: String, lastModified: String, indexTime: Long, score: Option[Float])
+case class FTSThinInfoton(path: String, uuid: String, lastModified: String, lastModifiedBy: String, indexTime: Long, score: Option[Float])
 case class FTSThinSearchResponse(total: Long, offset: Long, length: Long, thinInfotons: Seq[FTSThinInfoton], searchQueryStr: Option[String] = None)

@@ -60,15 +60,15 @@ class CSVFormatter(fieldNameModifier: String => String) extends Formatter {
         }
       }
     val modifiedFieldsMap = internalFields.map(f => f -> fieldNameModifier(f)).toMap
-    //                      0       1               2       3       4         5             6
-    val regularSystem = Seq("path", "lastModified", "type", "uuid", "parent", "dataCenter", "indexTime")
+    //                      0       1               2                  3       4       5         6            7
+    val regularSystem = Seq("path", "lastModified", "lastModifiedBy", "type", "uuid", "parent", "dataCenter", "indexTime")
     val specialSystem = distinctBy(infotons)(_.kind).collect {
       case _: CompoundInfoton => Seq("children", "offset", "length", "total")
       case _: LinkInfoton     => Seq("linkTo", "linkType")
       case _: FileInfoton =>
         Seq("mimeType", "length") ++ {
           val mimes = infotons.collect {
-            case FileInfoton(_, _, _, _, _, Some(FileContent(_, mimeType, _, _)), _, _) => mimeType
+            case FileInfoton(_, _, _, _, _, _, Some(FileContent(_, mimeType, _, _)), _, _) => mimeType
           }
           if (mimes.forall(isTextual)) Seq("data")
           else if (mimes.exists(isTextual)) Seq("data", "base64-data")
@@ -119,14 +119,15 @@ class CSVFormatter(fieldNameModifier: String => String) extends Formatter {
       val shared = Seq(
         0 -> i.path,
         1 -> dateStringify(i.lastModified),
-        2 -> i.kind,
-        3 -> i.uuid,
-        4 -> i.parent,
-        5 -> i.dc
-      ) ++ i.indexTime.map(6 -> _.toString)
+        2 -> i.lastModifiedBy,
+        3 -> i.kind,
+        4 -> i.uuid,
+        5 -> i.parent,
+        6 -> i.dc
+      ) ++ i.indexTime.map(7 -> _.toString)
 
       ((i: @unchecked) match {
-        case CompoundInfoton(_, _, _, _, fields, children, offset, length, total, _, _) => {
+        case CompoundInfoton(_, _, _, _, _, fields, children, offset, length, total, _, _) => {
           val sys = shared ++ Seq(
             ssys("children") -> children.map(_.path).mkString("[", ",", "]"),
             ssys("offset") -> offset.toString,
@@ -135,15 +136,15 @@ class CSVFormatter(fieldNameModifier: String => String) extends Formatter {
           )
           prependToFields(sys, fields)
         }
-        case ObjectInfoton(_, _, _, _, fields, _, _) => prependToFields(shared, fields)
-        case LinkInfoton(_, _, _, _, fields, linkTo, linkType, _, _) => {
+        case ObjectInfoton(_, _, _, _, _, fields, _, _) => prependToFields(shared, fields)
+        case LinkInfoton(_, _, _, _, _, fields, linkTo, linkType, _, _) => {
           val sys = shared ++ Seq(
             ssys("linkTo") -> linkTo,
             ssys("linkType") -> linkType.toString
           )
           prependToFields(sys, fields)
         }
-        case FileInfoton(_, _, _, _, fields, content, _, _) => {
+        case FileInfoton(_, _, _, _, _, fields, content, _, _) => {
           val sys = content match {
             case None    => shared
             case Some(c) => shared ++ super.fileContent[Int, String](c, ssys, identity, _.toString, encodeBase64String)
