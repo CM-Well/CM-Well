@@ -43,7 +43,8 @@ case class Grid(user: String,
                 diskOptimizationStrategy:String = "ssd",
                 // we refrain from using Cas Commitlog on cluster, to save disk space and performance,
                 // given we always write in Quorum so there will be no data loss
-                casUseCommitLog:Boolean = false)
+                casUseCommitLog:Boolean = false,
+                useMultipleDisks: Boolean = false)
     extends Host(
       user,
       password,
@@ -136,7 +137,8 @@ case class Grid(user: String,
           index = 1,
           rs = IpRackSelector(),
           g1 = g1,
-          hostIp = host
+          hostIp = host,
+          useMultipleDisks = true
         )
 
         val esMaster = ElasticsearchConf(

@@ -227,8 +227,10 @@ case class ElasticsearchConf(clusterName: String,
                              index: Int,
                              rs: RackSelector,
                              g1: Boolean,
-                             hostIp: String)
+                             hostIp: String,
+                             useMultipleDisks: Boolean = false)
     extends ComponentConf(hostIp, s"$home/app/es/cur", sName, s"$home/conf/$dir", "elasticsearch.yml", index) {
+
   val classpath = s"""'$home/app/es/cur/lib/*:'"""
 
   override def getPsIdentifier = {
@@ -272,7 +274,9 @@ case class ElasticsearchConf(clusterName: String,
       "http_port" -> httpPort.toString,
       "transport_port" -> transportPort.toString,
       "num_of_shards" -> expectedNodes.toString,
-      "num_of_replicas" -> { if (expectedNodes > 2) 2 else 0 }.toString
+      "num_of_replicas" -> { if (expectedNodes > 2) 2 else 0 }.toString,
+      "path_data" -> {if (!useMultipleDisks) s"$home/data/$dir"
+            else (2 to expectedNodes).map(_.toString).fold(s"$home/data/es")((acc, x) => s"$home/data/es$x,$acc")}
     )
 
     val confContent = ResourceBuilder.getResource(s"scripts/templates/$template", m)
