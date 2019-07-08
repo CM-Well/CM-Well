@@ -125,122 +125,17 @@ case class CassandraConf(home: String,
   override def getPsIdentifier = s"/log/cas${getIndexTxt}/"
 
   override def mkScript: ConfFile = {
-    //import scala.math._
-
-    def getJarAbsPath(dir: java.io.File, prefix: String): String = {
-      if (!dir.exists) throw new IllegalFileException("Dir " + dir.getAbsolutePath + " was not found.")
-      else if (!dir.isDirectory) throw new IllegalFileException("File " + dir.getAbsolutePath + " is not a directory.")
-
-      val files = dir.list.filter(f => f.startsWith(prefix))
-
-      if (files.length > 1) throw new Exception("multiple jars were found: " + files.mkString(", "))
-      else if (files.length == 0) throw new Exception("no jars were found (prefix = " + prefix + ").")
-      else dir.getAbsolutePath + "/" + files.head
-    }
-    val pidFile = s"$home/app/cas/cur/cassandra.pid"
-    val mXmx = resourceManager.getMxmx
-    //val mXms = "-Xms" + heapSize + "M"
-    val mXms = resourceManager.getMxms
-
-    //Young gen: min(max_sensible_per_modern_cpu_core * num_cores, 1/4 * heap size)
-    val mXmn = resourceManager.getMxmn
-
-    // reduce the per-thread stack size to minimize the impact of Thrift
-    // thread-per-client.  (Best practice is for client connections to
-    // be pooled anyway.) Only do so on Linux where it is known to be
-    // supported.
-    val mXss = resourceManager.getMxss
-
-    /*lazy val jamm = {
-      val f = new java.io.File(home+"/app/cas/cur/lib")
-      val arr = f.listFiles(new FilenameFilter {
-        override def accept(dir: File, name: String): Boolean = name.startsWith("jamm")
-      })
-      require(arr.size == 1)
-      Seq(s"-javaagent:${arr.head.getAbsolutePath}")
-    }*/
-
-    val jamm = Seq(s"-javaagent:$home/app/cas/cur/lib/$$JAMMJAR")
-
-    /*val jvmArgs = JVMOptimizer.java7ExtraArgs ++ Seq("-ea") ++ jamm ++ Seq(
-      "-XX:+UseThreadPriorities",
-      "-XX:ThreadPriorityPolicy=42",
-      mXmx,
-      mXms,
-      mXmn,
-      "-XX:+HeapDumpOnOutOfMemoryError",
-      mXss,
-      "-XX:+UseG1GC",
-      "-XX:SurvivorRatio=8",
-      "-XX:MaxTenuringThreshold=1",
-      "-Djava.net.preferIPv4Stack=true",
-      "-Dcom.sun.management.jmxremote.port=" + jmxremotePort,
-      "-Dcom.sun.management.jmxremote.ssl=false",
-      "-Dcom.sun.management.jmxremote.authenticate=false",
-      "-Dlog4j.configuration=log4j-server.properties",
-      "-Dlog4j.defaultInitOverride=true",
-      s"-Dlog4j.appender.R.File=$home/log/$dir/system.log",
-      "-Dmx4jaddress=0.0.0.0",
-      "-Dmx4jport=" + dmx4jport,
-      "-Dcassandra-foreground=yes",
-      s"-Dcassandra-pidfile=$pidFile")*/
-    //"-Dcassandra.config=file://${path}/conf/cas/cassandra.yaml")
-
-    val cmsGc = Seq(
-      "-XX:+UseParNewGC",
-      "-XX:+UseConcMarkSweepGC",
-      "-XX:+CMSParallelRemarkEnabled",
-      "-XX:SurvivorRatio=8",
-      "-XX:MaxTenuringThreshold=1",
-      "-XX:CMSInitiatingOccupancyFraction=75",
-      "-XX:+UseCMSInitiatingOccupancyOnly"
-    )
-
-    val g1Gc = Seq("-XX:+UseG1GC", "-XX:SurvivorRatio=8")
-
-    val jvmArgs = JVMOptimizer.java7ExtraArgs ++ Seq("-ea") ++ jamm ++ Seq("-XX:+UseThreadPriorities",
-                                                                           "-XX:ThreadPriorityPolicy=42",
-                                                                           mXmx,
-                                                                           mXms,
-                                                                           mXmn,
-                                                                           mXss) ++
-      (if (g1) g1Gc else cmsGc) ++
-      Seq(
-        "-Djava.net.preferIPv4Stack=true",
-        "-Dcom.sun.management.jmxremote.port=" + PortManagers.cas.jmxPortManager.getPort(index),
-        "-Dcom.sun.management.jmxremote.ssl=false",
-        "-Dcom.sun.management.jmxremote.authenticate=false",
-        "-Dlog4j.configuration=log4j-server.properties",
-        "-Dlog4j.defaultInitOverride=true",
-        "-Dmx4jaddress=0.0.0.0",
-        "-Dmx4jport=" + PortManagers.cas.dmx4jPortManager.getPort(index),
-        "-Dcassandra-foreground=yes",
-        /*"-Dconsistent.rangemovement=false",*/
-        s"-Dcassandra-pidfile=$pidFile",
-        s"-Dcassandra.logdir=$home/log/$dir/"
-      )
-    def classpath =
-      s"$home/conf/" + dir + ":" +
-        home + "/build/classes/main:" +
-        home + "/build/classes/thrift:" +
-        s"$home/app/cas/cur/lib/*"
-
-    // Seq(s"-javaagent:$home/app/ctrl/cur", s"-Dctrl.listenAddress=$listenAddress", s"-Dctrl.seedNodes=${host}",
-    // s"-Dctrl.clusterName=$clusterName", s"-Dctrl.roles=Metrics,CassandraNode")
-    val agentLibArgs = Seq.empty
-
-    val args = Seq("starter", "java") ++ agentLibArgs ++ jvmArgs ++ JVMOptimizer.gcLoggingJVM(
-      s"$home/log/" + dir + "/gc.log"
-    ) ++ Seq("-cp", classpath, "org.apache.cassandra.service.CassandraDaemon")
 
     val scriptString =
       s"""export PATH=$home/app/java/bin:$home/bin/utils:$PATH
        |export CASSANDRA_HOME=$home/app/cas/cur
        |export CASSANDRA_CONF=$home/conf/${dir}
-       |export JAMMJAR=`ls -1 $home/app/cas/cur/lib/ | grep jamm`
+       |export CASSANDRA_INCLUDE=$home/conf/${dir}/cassandra.in.sh
+       |export CASSANDRA_HEAPDUMP_DIR=$home/log/${dir}
+       |export CASSANDRA_LOG_DIR=$home/log/${dir}
        |$CHKSTRT
        |$BMSG
-       |${args.mkString(" ")} > $home/log/$dir/stdout.log 2> $home/log/$dir/stderr.log &""".stripMargin
+       |starter bin/cassandra -f > $home/log/$dir/stdout.log 2> $home/log/$dir/stderr.log &""".stripMargin
 
     ConfFile(sName, scriptString, true)
   }
@@ -273,6 +168,20 @@ case class CassandraConf(home: String,
 
     val logBackContent = ResourceBuilder.getResource(s"scripts/templates/logback-cassandra.xml", Map.empty)
 
+    val jvmOptionsMap = Map[String, String](
+      "ps_id" -> getPsIdentifier,
+      "cas_ms" -> s"${resourceManager.mxms}",
+      "cas_mx" -> s"${resourceManager.mxmx}"
+    )
+    val jvmOptContent = ResourceBuilder.getResource(s"scripts/templates/cas-jvm.options", jvmOptionsMap)
+
+    val cassandraEnvContent = ResourceBuilder.getResource(s"scripts/templates/cassandra-env.sh", Map.empty)
+
+    val casIncludeContent = ResourceBuilder.getResource(s"scripts/templates/cassandra.in.sh", Map.empty)
+
+    //until https://issues.apache.org/jira/browse/CASSANDRA-15090 will be merged
+    val casBinContent = ResourceBuilder.getResource(s"scripts/templates/cassandraBin", Map.empty)
+
     val rackConfContent =
       ResourceBuilder.getResource("scripts/templates/cassandra-rackdc.properties", Map("rack_id" -> rs.getRackId(this)))
 
@@ -286,8 +195,12 @@ case class CassandraConf(home: String,
                                                       Map("home" -> home, "host" -> hostIp))
 
     List(
+      ConfFile("cassandra", casBinContent, true, Some(s"$home/app/cas/cur/bin")),
       ConfFile("cassandra.yaml", confContent, false),
       ConfFile("logback.xml", logBackContent),
+      ConfFile("cassandra-env.sh", cassandraEnvContent),
+      ConfFile("cassandra.in.sh", casIncludeContent),
+      ConfFile("jvm.options", jvmOptContent),
       ConfFile("cassandra-rackdc.properties", rackConfContent, false),
       ConfFile("cassandra-status-viewer", cassandraStatus, true),
       ConfFile("cassandra-cql-init-cluster-new", cqlInit2),

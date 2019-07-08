@@ -893,6 +893,11 @@ abstract class Host(user: String,
      info("verify that configuration files have not been changed")
      //It is taken from cassandra version 3.11.4
      UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "conf/cassandra.yaml", "13eda21c959fe5985a17385a64de5817")
+     UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "conf/cassandra-env.sh", "82edf660ebbdd8430538b519ca9b11c3")
+     UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "conf/jvm.options", "3fc118b8d5d3b24331b205e2a2d24cb0")
+     UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "conf/logback.xml", "cc17f60a18c6b7b5a797d2edd2c91119")
+     UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "bin/cassandra", "c061bf15ce4b185fb8424fd1c12c1b41")
+     UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "bin/cassandra.in.sh", "851a2a0514826162682a25953e710493")
      //elasticsearch checksums were taken from version 7.1.0
      UtilCommands.verifyComponentConfNotChanged("elasticsearch", "config/elasticsearch.yml", "4f96a88585ab67663ccbca1c43649ed5")
      UtilCommands.verifyComponentConfNotChanged("elasticsearch", "config/jvm.options", "d204b04d3fe8bea0b556b9d7c744cbcc")
@@ -1037,11 +1042,17 @@ abstract class Host(user: String,
 
   def changeKernelSettings(user: String, sudoer: Credentials, hosts: GenSeq[String]): Unit = {
     hosts.foreach { host =>
+      val cassandraKernelConf = Source.fromFile("scripts/templates/60-cassandra.conf").mkString.replace("\n", "\\\\n")
+      createFile("/etc/security/limits.d/60-cassandra.conf", cassandraKernelConf, host, true, Some(sudoer))
+      command("sudo sysctl -p /etc/security/limits.d/60-cassandra.conf", host, true, Some(sudoer))
       val maxMapCount = command(s"sudo sysctl -n vm.max_map_count", host, true, Some(sudoer)).map(_.trim.toLong)
       maxMapCount match {
         case Success(currentMax) =>
+          //Make sure to change 60-cm-well.conf accordingly
           val minimumRequiredByEs = 262144
-          if (currentMax < minimumRequiredByEs) {
+          val minimumRequiredByCas = 1048575
+          val minimumRequired = Math.max(minimumRequiredByCas, minimumRequiredByEs)
+          if (currentMax < minimumRequired) {
             val cmwellKernelConf = Source.fromFile("scripts/templates/60-cm-well.conf").mkString.replace("\n", "\\\\n")
             createFile("/etc/sysctl.d/60-cm-well.conf", cmwellKernelConf, host, true, Some(sudoer))
             command("sudo sysctl -p /etc/sysctl.d/60-cm-well.conf", host, true, Some(sudoer))
@@ -1050,9 +1061,10 @@ abstract class Host(user: String,
         case Failure(ex) => println(s"Failed getting vm.max_map_count from host $host. The execption message is: ${ex.getMessage}")
         // scalastyle:on
       }
-
     }
   }
+
+
 
   def prepareMachines(): Unit = prepareMachines(ips.par, "", "", "")
 
