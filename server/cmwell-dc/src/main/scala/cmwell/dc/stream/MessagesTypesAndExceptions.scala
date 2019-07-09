@@ -29,21 +29,15 @@ object MessagesTypesAndExceptions {
       s"[id: $id, location: $location, transformations: ${transformations.mkString("(", ",", ")")}]"
   }
 
-  abstract sealed class DcInfoExtra
-  case class FingerPrintData(webServiceCluster: String, destinationCluster:String) extends DcInfoExtra
+  sealed trait DcInfoExtra
+  case class FingerPrintData(webServiceCluster: String) extends DcInfoExtra
 
   case class DcInfo(key: DcInfoKey,
-                    dcInfoExtraType: Option[String],
+                    dcInfoExtraType: String,
                     dcInfoExtra: Option[DcInfoExtra],
                     idxTime: Option[Long] = None,
                     positionKey: Option[String] = None,
                     tsvFile: Option[String] = None)
-
-
-//  case class DcInfo(key: DcInfoKey,
-//                    idxTime: Option[Long] = None,
-//                    positionKey: Option[String] = None,
-//                    tsvFile: Option[String] = None)
 
   case class WarmUpDcSync(dcInfo: DcInfo)
   case class StartDcSync(dcInfo: DcInfo)
@@ -57,8 +51,10 @@ object MessagesTypesAndExceptions {
   case object CheckDcInfotonList
   case class RetrievedDcInfoList(dcInfoSeq: Seq[DcInfo])
 
-  case class InfotonMeta(path: String, uuid: Option[ByteString] = None, indexTime: Option[Long] = None)
-  case class InfotonData(meta: InfotonMeta, data: ByteString)
+  sealed trait InfotonMeta
+  case class InfotonFullMeta(path: String, uuid: ByteString, indexTime: Long) extends InfotonMeta
+  case class InfotonThinMeta(path:String) extends InfotonMeta
+  case class InfotonData(meta: InfotonFullMeta, data: ByteString)
 
   case class GetIndexTimeException(message: String, ex: Throwable = null) extends Exception(message, ex)
   case class GetInfotonListException(message: String, ex: Throwable = null) extends Exception(message, ex)

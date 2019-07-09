@@ -24,10 +24,10 @@ object FingerPrintJsonParser {
     f \ "dcInfoExtra" match {
       case JsDefined(JsArray(seq)) =>
         seq.headOption.collect {
-          case JsObject(extraInfo) => FingerPrintData(extraInfo("webServiceCluster").as[String], extraInfo("destinationCluster").as[String])
-          case _ => throw new IllegalArgumentException("missing dcInfoExtra for finger print")
+          case JsObject(extraInfo) => FingerPrintData(extraInfo("webServiceCluster").as[String])
+          case _ => throw new IllegalArgumentException("missing web service cluster for finger print")
         }
-      case _ => None
+      case _ => throw new IllegalArgumentException("missing dcInfoExtra for finger print")
     }
   }
 

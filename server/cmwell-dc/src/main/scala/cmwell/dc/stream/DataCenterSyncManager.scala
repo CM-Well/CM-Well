@@ -117,7 +117,7 @@ object DataCenterSyncManager extends LazyLogging {
     logger.trace(
       s"parseTSVAndCreateInfotonDataFromIt: [path='$path',uuid='${uuid.utf8String}',idxt='$idxt']"
     )
-    InfotonData(InfotonMeta(path, Some(uuid), Some(idxt)), empty)
+    InfotonData(InfotonFullMeta(path, uuid, idxt), empty)
   }
 
   def props(dstServersVec: Vector[(String, Option[Int])],
@@ -138,9 +138,8 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
   //context.system
   implicit val sys = ActorSystem("stream-dc")
   implicit val mat = ActorMaterializer(ActorMaterializerSettings(sys))
-  implicit val scheduler = sys.scheduler
   lazy val dao = Dao(Settings.irwServiceDaoClusterName, Settings.irwServiceDaoKeySpace2, Settings.irwServiceDaoHostName, 9042, initCommands = None)
-  lazy val zStore : ZStore = ZStore.apply(dao)
+  lazy val zStore : ZStore = ZStore(dao)
 
 
   var cancelDcInfotonChangeCheck: Cancellable = _
@@ -217,9 +216,8 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
         //The sync was completed successfully. Save the position key for the next sync to start.
         val newSyncMap: SyncMap = currentSyncs - dcInfo.key + (dcInfo.key -> SyncerDone(dcInfo.positionKey.get))
         currentSyncs = newSyncMap
-        if(dcInfo.dcInfoExtraType.isDefined && dcInfo.dcInfoExtraType.get == "fingerprint")
+        if(dcInfo.dcInfoExtraType == "fingerprint")
           zStore.putString("fp-position", dcInfo.positionKey.get)
-
 
       }
     }
@@ -311,10 +309,9 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
     }
   }
 
-  private def retrievePosition(dcType:Option[String], position:String) = {
-    logger.info("lala, web service thread=" + Settings.fingerprintParallelism)
+  private def retrievePosition(dcType:String, position:String) = {
     dcType match{
-      case Some(dType) if dType == "fingerprint" =>
+      case "fingerprint" =>
         zStore.getStringOpt("fp-key").map(key => key.fold(position)(_.toString))
       case _ => Future.successful[String](position)
     }
@@ -328,10 +325,8 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
         keyFromFinishedRun match {
           // We already have the key, send the start sync message immediately
           case Some(positionKey) =>
-            retrievePosition(dcType, positionKey).foreach{pos =>
               logger.info(s"Starting sync for: $dcKey using position key $positionKey got from previous successful sync.")
-              self ! StartDcSync(dcInfo.copy(positionKey = Some(pos)))
-            }
+              self ! StartDcSync(dcInfo.copy(positionKey = Some(positionKey)))
           case None if tsvFile.nonEmpty =>
             logger.info(s"Starting sync for: $dcKey using local file ${tsvFile.get} got from the user")
             self ! StartDcSync(dcInfo)
@@ -358,10 +353,8 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
                     s"It will be started again on the next schedule check", e)
                   self ! RemoveDcSync(dcInfo)
                 case Success(positionKey) =>
-                  retrievePosition(dcType, positionKey).foreach {positionKey =>
                   logger.info(s"Starting sync for: $dcKey using position key $positionKey")
                   self ! StartDcSync(dcInfo.copy(positionKey = Some(positionKey)))
-                }
               }
           }
         }
@@ -468,11 +461,9 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
               case _ => None
             }
             val dcInfoExtraType = f \ "type" match {
-              case JsDefined(JsArray(seq)) =>
-                seq.headOption.collect {
-                  case JsString(wh) => wh
-                }
-              case _ => None
+              case JsDefined(JsArray(seq))
+                if seq.length == 1 && seq.head.isInstanceOf[JsString] =>
+                seq.head.as[String]
             }
             val fromIndexTime = f \ "fromIndexTime" match {
               case JsDefined(JsArray(seq))
@@ -504,7 +495,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
             val qpAndWhStrFinal =
               if (qpAndWhStr.length == 0) "" else "?" + qpAndWhStr
             val (dcInfoExtra, ingestOp) = dcInfoExtraType match {
-              case Some(t) if t == "fingerprint" => (FingerPrintJsonParser.extractFingerPrintInfo(f), "_in")
+              case "fingerprint" => (FingerPrintJsonParser.extractFingerPrintInfo(f), "_in")
               case _ => (None, "_ow")
           }
             val dcKey = DcInfoKey(s"$dataCenterId$qpAndWhStrFinal", location, transformations, ingestOp)
@@ -642,13 +633,13 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
           retrieveTsvListFromIndexTime(
             dataCenterId,
             localDst,
-            remoteList.head.meta.indexTime.get,
+            remoteList.head.meta.indexTime,
             infotonsToGoBack
           )
         localTsvSet.map { localSet =>
           val idxTimeToStartWith = remoteList
             .find(infotonData => !localSet.contains(infotonData))
-            .fold(localIndexTime)(_.meta.indexTime.get)
+            .fold(localIndexTime)(_.meta.indexTime)
           Some(idxTimeToStartWith - 1)
         }
       }
@@ -815,7 +806,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
         s"$transformationsStr"
     )
     val syncerMaterialization@SyncerMaterialization(_, nextUnSyncedPositionFuture) = dcInfo.dcInfoExtraType match{
-      case Some(dcType) if dcType == "fingerprint" => new FingerPrintEngine(dstServersVec, manualSyncList).createSyncingEngine(dcInfo).run()
+      case "fingerprint" => new FingerPrintEngine(dstServersVec).createSyncingEngine(dcInfo).run()
       case _ => createSyncingEngine(dcInfo).run()
     }
     nextUnSyncedPositionFuture.onComplete {
@@ -859,7 +850,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
         .via(RatePrinter(dcInfo.key, _.data.size / 1000D, "KB", "KB infoton Data from InfotonRetriever", 5000))
         .map(infotonDataTransformer)
         .via(ConcurrentFlow(Settings.ingestParallelism)(InfotonAllMachinesDistributerAndIngester(dcInfo.key, dstServersVec,
-          localDecider, dcInfo.key.ingestOperation)))
+          localDecider)))
         .toMat(Sink.ignore) {
           case (left, right) =>
             SyncerMaterialization(
@@ -882,12 +873,3 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
   }
 
 }
-
-
-//TODO:
-//scheduler
-//refactor index time
-
-//Yaron to remove NaN
-//parse extra info.consider using map instead of DcExtraInfo
-

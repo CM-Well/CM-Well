@@ -48,7 +48,7 @@ object SingleMachineInfotonIngester extends LazyLogging {
   private val dcaToken = Settings.dcaUserToken
   type IngestState = (IngestInput, IngestStateStatus)
 
-  def apply(dcKey: DcInfoKey, location: String, decider: Decider, ingestOperation:String)(
+  def apply(dcKey: DcInfoKey, location: String, decider: Decider)(
     implicit sys: ActorSystem,
     mat: Materializer
   ): Flow[(Future[IngestInput], IngestState), (Try[IngestOutput], IngestState), NotUsed] = {
@@ -61,7 +61,7 @@ object SingleMachineInfotonIngester extends LazyLogging {
           // no need for end line because each line in already suffixed with it
           infotonSeq.foreach(payloadBuilder ++= _.data)
           val payload = payloadBuilder.result
-          (createRequest(location, payload, ingestOperation), state)
+          (createRequest(location, payload, dcKey.ingestOperation), state)
         }
       }
       .via(Http().superPool[IngestState]())
@@ -108,7 +108,7 @@ object SingleMachineInfotonIngester extends LazyLogging {
           val singleCount = status.singleRetryCount + 1 //if (state._1.size > 1) 0 else Settings.initialSingleIngestRetryCount - state._2.retriesLeft + 1
           yellowlog.info(
             s"Ingest succeeded only after $bulkCount bulk ingests and $singleCount single infoton ingests. uuids: ${input
-              .map(i => i.meta.uuid.fold("no-uuid")(_.utf8String))
+              .map(i => i.meta.uuid.utf8String)
               .mkString(",")}."
           )
         }
@@ -124,7 +124,7 @@ object SingleMachineInfotonIngester extends LazyLogging {
           if (s == StatusCodes.ServiceUnavailable)
             IngestServiceUnavailableException(
               s"Ingest infotons failed. Sync $dcKey, using local location $location uuids: ${state._1
-                .map(i => i.meta.uuid.fold("no-uuid")(_.utf8String))
+                .map(i => i.meta.uuid.utf8String)
                 .mkString(",")}.",
               bodyFut,
               e
@@ -132,7 +132,7 @@ object SingleMachineInfotonIngester extends LazyLogging {
           else
             IngestBadResponseException(
               s"Ingest infotons failed. Sync $dcKey, using local location $location uuids: ${state._1
-                .map(i => i.meta.uuid.fold("no-uuid")(_.utf8String))
+                .map(i => i.meta.uuid.utf8String)
                 .mkString(",")}.",
               bodyFut,
               e
@@ -144,7 +144,7 @@ object SingleMachineInfotonIngester extends LazyLogging {
       case (Failure(e), state) => {
         val ex = IngestException(
           s"Ingest infotons failed. Sync $dcKey, using local location $location uuids: ${state._1
-            .map(i => i.meta.uuid.fold("no-uuid")(_.utf8String))
+            .map(i => i.meta.uuid.utf8String)
             .mkString(",")}",
           e
         )

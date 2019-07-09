@@ -22,24 +22,16 @@ import cmwell.dc.stream.akkautils.ConcurrentFlow
 import cmwell.dc.stream.fingerprint.FingerPrintFlow
 import cmwell.dc.{LazyLogging, Settings}
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.language.reflectiveCalls
+import scala.concurrent.ExecutionContext
 
 
-class FingerPrintEngine(dstServersVec: Vector[(String, Option[Int])],
-                            manualSyncList: Option[String])
+class FingerPrintEngine(dstServersVec: Vector[(String, Option[Int])])
     extends LazyLogging {
 
   import DataCenterSyncManager._
-
-  //todo: should I use the same ActorSystem or create a new one?
-
-  //map: data center ID -> syncer status (warm up, done or running with the materialized value)
-  type SyncMap = Map[DcInfoKey, SyncerStatus]
-
   def createSyncingEngine(
     dcInfo: DcInfo
-  )(implicit sys:ActorSystem, mat:ActorMaterializer, scheduler:Scheduler): RunnableGraph[SyncerMaterialization] = {
+  )(implicit sys:ActorSystem, mat:ActorMaterializer, ec:ExecutionContext): RunnableGraph[SyncerMaterialization] = {
     val localDecider: Supervision.Decider = { e: Throwable =>
       // The decider is not used anymore the restart is done by watching the Future[Done] of the stream - no need for
       // the log print (It's left for completeness until the decider is totally removed.
@@ -66,7 +58,7 @@ class FingerPrintEngine(dstServersVec: Vector[(String, Option[Int])],
         .via(RatePrinter(dcInfo.key, _.data.size / 1000D, "KB", "KB infoton Data from InfotonRetriever", 5000))
         .map(infotonDataTransformer)
         .via(ConcurrentFlow(Settings.ingestParallelism)(InfotonAllMachinesDistributerAndIngester(dcInfo.key, dstServersVec,
-          localDecider, dcInfo.key.ingestOperation)))
+          localDecider)))
         .toMat(Sink.ignore) {
           case (left, right) =>
             SyncerMaterialization(
@@ -90,11 +82,4 @@ class FingerPrintEngine(dstServersVec: Vector[(String, Option[Int])],
 
 }
 
-
-//TODO:
-//refactor index time
-//persist position in ztore
-
-//Yaron to remove NaN
-//scheduler for 24 hours
 

@@ -14,98 +14,73 @@
   */
 package cmwell.dc.stream.fingerprint
 
+import java.util.concurrent.Executors
+
 import akka.actor.{ActorSystem, Scheduler}
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Framing, Source}
+import akka.stream.scaladsl.Framing
 import akka.util.ByteString
-import cmwell.dc.LazyLogging
+import cmwell.util.http.{SimpleHttpClient, SimpleResponse, SimpleResponseHandler}
+import com.typesafe.scalalogging.LazyLogging
 import play.api.libs.json.Json
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success}
 
-case class WebServiceConnectException(message: String) extends  Exception(message)
 object FingerPrintWebService extends LazyLogging{
 
   val endl = ByteString("\n", "UTF-8")
   case class FingerPrintData(uuid:String, data:String)
   val lineSeparatorFrame = Framing.delimiter(delimiter = endl,
     200000,
-    allowTruncation = true)
+    allowTruncation = false)
 
 
 
-  def generateFingerPrint(url:String, cluster:String)(implicit ec:ExecutionContext, scheduler:Scheduler,
+  def generateFingerPrint(url:String)(implicit ec:ExecutionContext,
                                       mat:ActorMaterializer, system:ActorSystem) = {
-    sendHttpRequest(url)
-    .map(res=> toRDF(res.entity.withSizeLimit(1000000).dataBytes, cluster)).flatten
+    logger.info("lala ws url="  + url)
+    implicit val scheduler = system.scheduler
+    import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+    val res = retry(10.seconds, 5){ SimpleHttpClient.get(url) }
+    res.flatMap(res => toRDF(res.body._2))
   }
 
-  def sendHttpRequest(url:String)(implicit ec:ExecutionContext, scheduler:Scheduler,
-                                           mat:ActorMaterializer, system:ActorSystem) :Future[HttpResponse] = {
-    logger.info("lala url=" + url)
-    retry(10.seconds, 5){ sendRequest(url) }
-//    cmwell.util.concurrent.retry(5, 10.seconds)(sendRequest(url))(ec)
-  }
-
-
-  private def sendRequest(url: String)(implicit ec:ExecutionContext, mat:ActorMaterializer, system:ActorSystem) = {
-    val webServiceRes = Http(system).singleRequest(HttpRequest(uri = url))
-    val randomId = java.util.UUID.randomUUID.toString
-    val futureResponse = webServiceRes.flatMap(res =>
-      if (res.status.isSuccess()) Future.successful(res)
-      else if(res.status.intValue() == 503) Future.failed(WebServiceConnectException(s"Got 503 error status code, headers=${res.headers}"))
-      else {
-        val blank = ByteString("", "UTF-8")
-        res.entity.dataBytes.runFold(blank)(_ ++ _).map(_.utf8String)
-          .onComplete {
-            case Success(msg) =>
-              logger.error("Message body id=" + randomId + " message=" + msg)
-            case Failure(e) =>
-              logger.error("Got a failure during print entity body, Message body id=" + randomId, e)
-          }
-        Future.failed(new Throwable(s"Got post error code," + res.status + ", headers=" + res.headers +
-          ", message body will be displayed later, message id=" + randomId))
-      }
-    )
-    futureResponse
-  }
-
-  private def retry[T](delay: FiniteDuration, retries: Int = -1)(task: => Future[HttpResponse])(implicit ec: ExecutionContext, scheduler: Scheduler):
-  Future[HttpResponse] = {
+  private def retry[T](delay: FiniteDuration, retries: Int = -1)(task: => Future[SimpleResponse[String]])(implicit ec: ExecutionContext, scheduler: Scheduler):
+  Future[SimpleResponse[String]] = {
     task.recoverWith {
-      case e: WebServiceConnectException =>
-        logger.error("Failed to request fingerprint web service,", e.printStackTrace())
-        logger.error("Going to retry till web service will be available")
-        akka.pattern.after(delay, scheduler)(retry(delay)(task))
       case e: Throwable if retries > 0 =>
-        logger.error("Failed to request web service, need to write to RED log the bulk", e)
-        logger.error("Going to retry, retry count=" + retries)
+        logger.error("Failed to request fp web service, going to retry, retry count=" + retries, e)
         akka.pattern.after(delay, scheduler)(retry(delay, retries - 1)(task))
     }
   }
 
-  def toRDF(data:Source[ByteString, _], cluster:String)(implicit ec: ExecutionContext,mat:ActorMaterializer) = {
-    //TODO:remove the filter of "Nan after Yaron's fix
-    data
-      .via(lineSeparatorFrame)
-      .map(fp => fp.utf8String)
-      .map(fp => fp.replace("\\", "\\\\"))
-      .filterNot(x => x.contains("NaN"))
-      .map(fp => FingerPrintData((Json.parse(fp) \ "account_info" \ "UUID").as[String], fp.replace("\"", "\\\"")))
-      .map(fpData => {
-        val subject = s"<http://$cluster/graph.link/ees/FP-${fpData.uuid}>"
-        val fpInfotonMetaData = subject + " <http://" + cluster + "/meta/sys#type> \"FileInfoton\" .\n" +
-          subject + " <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://graph.link/ees/type/FingerPrint> .\n" +
-          subject + " <http://" + cluster + "/meta/sys#data> \""
-       fpInfotonMetaData + fpData.data + "\" ."
-      })
-      .map(rdfStr => ByteString(rdfStr))
-      .runFold(ByteString.empty){case (acc, fp) => acc ++ fp}
+
+  def toRDF(data:String)(implicit ec:ExecutionContext) = {
+    Future {
+      //TODO:remove the filter of "Nan after Yaron's fix
+      val data2 = data.split("\n")(0).replace("\\", "\\\\")
+      val uuid = (Json.parse(data2) \ "account_info" \ "UUID").as[String]
+      val subject = s"<http://graph.link/ees/FP-$uuid>"
+      val rdf2 =
+        s"""$subject <cmwell://meta/sys#type> \"FileInfoton\" .
+           |$subject  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://graph.link/ees/type/FingerPrint> .
+           |$subject  <cmwell://meta/sys#data> \"${data2.replace("\"", "\\\"")}\" .
+       """.stripMargin
+      ByteString(rdf2)
+    }
 
   }
 
 }
+
+//object FingerPrintWebServiceMain extends App{
+//
+//  implicit val system = ActorSystem("MySystem")
+//  implicit val scheduler = system.scheduler
+//  val executor = Executors.newFixedThreadPool(5)
+// implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.fromExecutor(executor)
+//  implicit val mat = ActorMaterializer()
+//
+//  val f = FingerPrintWebService.generateFingerPrint("http://xch0:9090/user/SL1-78ZZM2D")
+//}

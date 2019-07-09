@@ -19,39 +19,32 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Framing}
 import akka.util.ByteString
 import cmwell.dc.Settings
-import cmwell.dc.stream.MessagesTypesAndExceptions.{DcInfo, FingerPrintData, InfotonData, InfotonMeta}
+import cmwell.dc.stream.MessagesTypesAndExceptions.{DcInfo, FingerPrintData, InfotonData, InfotonFullMeta}
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 object FingerPrintFlow {
 
    def fingerprintFlow(dcInfo: DcInfo)
-                      (implicit ec:ExecutionContext, scheduler:Scheduler, mat:ActorMaterializer, system:ActorSystem) = {
+                      (implicit ec:ExecutionContext,  mat:ActorMaterializer, system:ActorSystem) = {
     Flow[InfotonData]
       .map(infoton => infoton.data)
-      .via(Framing.delimiter(delimiter = ByteString("\n", "UTF-8"), 20000,
+      .via(Framing.delimiter(delimiter = ByteString("\n", "UTF-8"), Settings.maxEventFrameSize,
         allowTruncation = false))
       .map(_.utf8String)
       .filter(_.contains("<http://graph.link/ees/Uuid>"))
       .map(triple => triple.split(" ")(2).dropRight(1).drop(1))
       .scan(Set.empty[String])((total, element) => total.+(element))
-      .mapConcat(identity)
-       .mapAsync(Settings.fingerprintParallelism)(uuid => FingerPrintWebService.generateFingerPrint(fpUrl(dcInfo, uuid), getDestinationCluster(dcInfo)))
       .filter(_.nonEmpty)
-      .map(rdf => InfotonData(InfotonMeta(rdf.utf8String.split(" ")(0)), rdf))
+      .mapConcat(identity)
+       .mapAsync(Settings.fingerprintParallelism)(uuid => fpUrl(dcInfo, uuid).flatMap(url => FingerPrintWebService.generateFingerPrint(url)))
+      .map(rdf => InfotonData(InfotonFullMeta(rdf.utf8String.split(" ")(0), ByteString("no-uuid", "UTF-8"), -1), rdf))
   }
 
-  def fpUrl(dcInfo: DcInfo, uuid: String):String = {
+  def fpUrl(dcInfo: DcInfo, uuid: String)(implicit ec:ExecutionContext):Future[String] = {
     dcInfo.dcInfoExtra match {
-      case Some(FingerPrintData(wsCluster, _)) => s"http://$wsCluster/user/$uuid"
-      case _ => throw new IllegalArgumentException("Web service url for fingerprint was not provided")
-    }
-  }
-
-  def getDestinationCluster(dcInfo: DcInfo):String = {
-    dcInfo.dcInfoExtra match {
-      case Some(FingerPrintData(_, dest)) => dest
-      case _ => throw new IllegalArgumentException("Destination cluster for fingerprint was not provided")
+      case Some(FingerPrintData(wsCluster)) => Future.successful(s"http://$wsCluster/user/$uuid")
+      case _ => Future.failed(new IllegalArgumentException("Web service url for fingerprint was not provided"))
     }
   }
 

@@ -65,7 +65,7 @@ object TsvRetriever extends LazyLogging {
     logger.trace(
       s"parseTSVAndCreateInfotonDataFromIt: [path='$path',uuid='${uuid.utf8String}',idxt='$idxt']"
     )
-    InfotonData(InfotonMeta(path, Some(uuid), Some(idxt)), empty)
+    InfotonData(InfotonFullMeta(path, uuid, idxt), empty)
   }
 
   sealed trait ConsumeType
@@ -230,7 +230,7 @@ object TsvRetriever extends LazyLogging {
               (total, bs) => parseTSVAndCreateInfotonDataFromIt(bs) :: total
             )
             .map { data =>
-              val sortedData = data.sortBy(_.meta.indexTime.get)
+              val sortedData = data.sortBy(_.meta.indexTime)
               if (state.retriesLeft < Settings.initialTsvRetryCount) {
                 val consumeCount = Settings.initialTsvRetryCount - state.retriesLeft + 1
                 yellowlog.info(

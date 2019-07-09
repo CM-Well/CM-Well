@@ -19,7 +19,7 @@ import akka.stream.scaladsl.Flow
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.util.ByteString
 import cmwell.dc.stream.InfotonAggregator.InfotonBucket
-import cmwell.dc.stream.MessagesTypesAndExceptions.{InfotonData, InfotonMeta}
+import cmwell.dc.stream.MessagesTypesAndExceptions.{InfotonData, InfotonFullMeta}
 
 import scala.collection.immutable.Queue
 import scala.collection.mutable
