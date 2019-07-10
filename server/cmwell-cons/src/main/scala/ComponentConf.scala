@@ -171,7 +171,8 @@ case class CassandraConf(home: String,
     val jvmOptionsMap = Map[String, String](
       "ps_id" -> getPsIdentifier,
       "cas_ms" -> s"${resourceManager.mxms}",
-      "cas_mx" -> s"${resourceManager.mxmx}"
+      "cas_mx" -> s"${resourceManager.mxmx}",
+      "cas_mn" -> s"${resourceManager.mxmn}"
     )
     val jvmOptContent = ResourceBuilder.getResource(s"scripts/templates/cas-jvm.options", jvmOptionsMap)
 
