@@ -181,7 +181,7 @@
 # The example below assumes a modern 8-core+ machine for decent
 # times. If in doubt, and if you do not particularly want to tweak, go
 # 100 MB per physical CPU core.
--Xmn800M
+-Xmn{{cas_mn}}M
 
 ###################################
 # EXPIRATION DATE OVERFLOW POLICY #
