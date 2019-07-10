@@ -280,6 +280,17 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
       //no previous run - use the dcInfo from the user
       case dcInfo if !previousSyncs.contains(dcInfo.key) =>
         logger.info(s"Got sync request for: ${dcInfo.key}${dcInfo.tsvFile.fold("")(f => s" using local file $f")} from the user.")
+        val position = retrievePositionFromZstore(dcInfo)
+        position.onComplete{
+            case Success(Some(nextPositionKeyToSync)) =>
+              logger.info(s"Lala, get key from zstore.The sync engine for: ${dcInfo.key} stopped with " +
+                s"success. The position key for next sync is: $nextPositionKeyToSync.")
+              dcInfo.copy(positionKey = Some(nextPositionKeyToSync))
+            case Success(None) => logger.info("first running")
+            case Failure(e) =>
+              logger.error(s"Sync ${dcInfo.key} failed with exception: ", e)
+              self ! RemoveDcSync(dcInfo)
+    }
         dcInfo
       // previous run exists - use the position key from the last successful run
       case dcInfo if previousSyncs.exists(t => dcInfo.key == t._1 && t._2.isInstanceOf[SyncerDone]) =>
@@ -309,11 +320,13 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
     }
   }
 
-  private def retrievePosition(dcType:String, position:String) = {
-    dcType match{
+
+  private def retrievePositionFromZstore(dcInfo:DcInfo) = {
+    dcInfo.dcInfoExtraType match {
       case "fingerprint" =>
-        zStore.getStringOpt("fp-key").map(key => key.fold(position)(_.toString))
-      case _ => Future.successful[String](position)
+        self ! WarmUpDcSync
+        zStore.getStringOpt("fp-key")
+      case _ => Future.successful(None)
     }
   }
 

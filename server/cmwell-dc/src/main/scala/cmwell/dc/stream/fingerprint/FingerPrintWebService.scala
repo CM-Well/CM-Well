@@ -20,7 +20,9 @@ import akka.actor.{ActorSystem, Scheduler}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Framing
 import akka.util.ByteString
-import cmwell.util.http.{SimpleHttpClient, SimpleResponse, SimpleResponseHandler}
+import cmwell.dc.Settings
+import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+import cmwell.util.http.{SimpleHttpClient, SimpleResponse}
 import com.typesafe.scalalogging.LazyLogging
 import play.api.libs.json.Json
 
@@ -31,56 +33,48 @@ object FingerPrintWebService extends LazyLogging{
 
   val endl = ByteString("\n", "UTF-8")
   case class FingerPrintData(uuid:String, data:String)
-  val lineSeparatorFrame = Framing.delimiter(delimiter = endl,
-    200000,
-    allowTruncation = false)
 
-
-
+case class ConnectException(msg:String) extends Exception
   def generateFingerPrint(url:String)(implicit ec:ExecutionContext,
                                       mat:ActorMaterializer, system:ActorSystem) = {
     logger.info("lala ws url="  + url)
     implicit val scheduler = system.scheduler
-    import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
-    val res = retry(10.seconds, 5){ SimpleHttpClient.get(url) }
-    res.flatMap(res => toRDF(res.body._2))
+    val res = retry(10.seconds, 5){handleGet(url)}
+    res.map(res => toRDF(res.body._2))
   }
 
+  private def handleGet(url:String)(implicit ec:ExecutionContext, system:ActorSystem, mat:ActorMaterializer) = {
+    SimpleHttpClient.get(url)(UTF8StringHandler, implicitly[ExecutionContext], system, mat)
+      .map(x=> x.status match{
+        case 200 | 201 => x
+        case 503 => throw ConnectException("Got 503 error code during calling fingerprint web service")
+        case _ => throw new Exception(s"Failure during call fingerprint web service, statuscode=${x.status}, erroMsg=${x.body}")
+      })
+  }
   private def retry[T](delay: FiniteDuration, retries: Int = -1)(task: => Future[SimpleResponse[String]])(implicit ec: ExecutionContext, scheduler: Scheduler):
   Future[SimpleResponse[String]] = {
     task.recoverWith {
-      case e: Throwable if retries > 0 =>
-        logger.error("Failed to request fp web service, going to retry, retry count=" + retries, e)
+      case e:ConnectException =>
+        logger.error("Failed to request fp web service, going to retry", e)
+        akka.pattern.after(delay, scheduler)(retry(delay)(task))
+      case e: Exception if retries > 0 =>
+        logger.error(s"Failed to request fp web service, going to retry, retry count=$retries", e)
         akka.pattern.after(delay, scheduler)(retry(delay, retries - 1)(task))
     }
   }
 
 
   def toRDF(data:String)(implicit ec:ExecutionContext) = {
-    Future {
-      //TODO:remove the filter of "Nan after Yaron's fix
-      val data2 = data.split("\n")(0).replace("\\", "\\\\")
-      val uuid = (Json.parse(data2) \ "account_info" \ "UUID").as[String]
+      val fpJsonData = data.split("\n")(0).replace("\\", "\\\\")
+      val uuid = (Json.parse(fpJsonData) \ "account_info" \ "UUID").as[String]
       val subject = s"<http://graph.link/ees/FP-$uuid>"
-      val rdf2 =
-        s"""$subject <cmwell://meta/sys#type> \"FileInfoton\" .
+      val rdf =
+        s"""$subject <cmwell://meta/sys#type> "FileInfoton" .
            |$subject  <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://graph.link/ees/type/FingerPrint> .
-           |$subject  <cmwell://meta/sys#data> \"${data2.replace("\"", "\\\"")}\" .
+           |$subject  <cmwell://meta/sys#data> "${fpJsonData.replace("\"", "\\\"")}" .
        """.stripMargin
-      ByteString(rdf2)
-    }
+      ByteString(rdf)
 
   }
 
 }
-
-//object FingerPrintWebServiceMain extends App{
-//
-//  implicit val system = ActorSystem("MySystem")
-//  implicit val scheduler = system.scheduler
-//  val executor = Executors.newFixedThreadPool(5)
-// implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.fromExecutor(executor)
-//  implicit val mat = ActorMaterializer()
-//
-//  val f = FingerPrintWebService.generateFingerPrint("http://xch0:9090/user/SL1-78ZZM2D")
-//}
