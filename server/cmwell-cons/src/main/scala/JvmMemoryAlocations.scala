@@ -60,7 +60,7 @@ case class FixedAllocations() extends ModuleAllocations {
 case class DevAllocations() extends ModuleAllocations {
   override def getJvmAllocations: ModuleJvmSettings = {
     ModuleJvmSettings(JvmMemoryAllocations(1024, 400, 256, 256),
-                      JvmMemoryAllocations(1024, 400, 256, 256),
+                      JvmMemoryAllocations(1024, 400, -1, 256),
                       JvmMemoryAllocations(1024, 0, 0, 0),
                       JvmMemoryAllocations(1024, 0, 0, 0))
   }
