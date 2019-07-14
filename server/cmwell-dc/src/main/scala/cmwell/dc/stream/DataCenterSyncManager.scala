@@ -217,10 +217,10 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
         val newSyncMap: SyncMap = currentSyncs - dcInfo.key + (dcInfo.key -> SyncerDone(dcInfo.positionKey.get))
         currentSyncs = newSyncMap
         if(dcInfo.dcInfoExtraType == "fingerprint")
-          zStore.putString("fp-position", dcInfo.positionKey.get).onComplete({
+          zStore.putString("fp-position", dcInfo.positionKey.get).onComplete{
             case Success(res) =>
-            case Failure(ex) => logger.error("Failed to persist fingerprint position")
-          })
+            case Failure(ex) => logger.error("Failed to persist fingerprint position", ex)
+          }
 
       }
     }
@@ -350,8 +350,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
     val position = zStore.getStringOpt("fp-key")
     position.onComplete {
       case Success(Some(zstorePosition)) =>
-        logger.info(s"Lala, get key from zstore.The sync engine for: ${dcInfo.key} stopped with " +
-          s"success. The position key for next sync is: $zstorePosition.")
+        logger.info(s"Got key $zstorePosition from zstore for dc info key $dcKey")
         self ! StartDcSync(dcInfo.copy(positionKey = Some(zstorePosition)))
       case Success(None) => logger.info("first running")
         val idxTime = retrieveIndexTimeFromRemote(dcKey, idxTimeFromUser)
