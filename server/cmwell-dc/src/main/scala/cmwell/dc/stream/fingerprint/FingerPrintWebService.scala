@@ -44,21 +44,22 @@ case class ConnectException(msg:String) extends Exception
   }
 
   private def handleGet(url:String)(implicit ec:ExecutionContext, system:ActorSystem, mat:ActorMaterializer) = {
+    logger.info("lala ws url=" + url)
     SimpleHttpClient.get(url)(UTF8StringHandler, implicitly[ExecutionContext], system, mat)
       .map(x=> x.status match{
-        case 200 | 201 => x
-        case 503 => throw ConnectException("Got 503 error code during calling fingerprint web service")
-        case _ => throw new Exception(s"Failure during call fingerprint web service, statuscode=${x.status}, erroMsg=${x.body}")
+        case 200 => x
+        case 503 => throw ConnectException(s"Got 503 error code during calling fingerprint web service, headers=${x.headers}, erroMsg=${x.body}")
+        case _ => throw new Exception(s"Failure during call fingerprint web service, statuscode=${x.status}, headers=${x.headers}, erroMsg=${x.body}")
       })
   }
   private def retry[T](delay: FiniteDuration, retries: Int = -1)(task: => Future[SimpleResponse[String]])(implicit ec: ExecutionContext, scheduler: Scheduler):
   Future[SimpleResponse[String]] = {
     task.recoverWith {
       case e:ConnectException =>
-        logger.error("Failed to request fp web service, going to retry", e)
+        logger.warn("Failed to request fp web service, going to retry", e)
         akka.pattern.after(delay, scheduler)(retry(delay)(task))
       case e: Exception if retries > 0 =>
-        logger.error(s"Failed to request fp web service, going to retry, retry count=$retries", e)
+        logger.warn(s"Failed to request fp web service, going to retry, retry count=$retries", e)
         akka.pattern.after(delay, scheduler)(retry(delay, retries - 1)(task))
     }
   }

@@ -217,7 +217,10 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
         val newSyncMap: SyncMap = currentSyncs - dcInfo.key + (dcInfo.key -> SyncerDone(dcInfo.positionKey.get))
         currentSyncs = newSyncMap
         if(dcInfo.dcInfoExtraType == "fingerprint")
-          zStore.putString("fp-position", dcInfo.positionKey.get)
+          zStore.putString("fp-position", dcInfo.positionKey.get).onComplete({
+            case Success(res) =>
+            case Failure(ex) => logger.error("Failed to persist fingerprint position")
+          })
 
       }
     }
@@ -280,17 +283,6 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
       //no previous run - use the dcInfo from the user
       case dcInfo if !previousSyncs.contains(dcInfo.key) =>
         logger.info(s"Got sync request for: ${dcInfo.key}${dcInfo.tsvFile.fold("")(f => s" using local file $f")} from the user.")
-        val position = retrievePositionFromZstore(dcInfo)
-        position.onComplete{
-            case Success(Some(nextPositionKeyToSync)) =>
-              logger.info(s"Lala, get key from zstore.The sync engine for: ${dcInfo.key} stopped with " +
-                s"success. The position key for next sync is: $nextPositionKeyToSync.")
-              dcInfo.copy(positionKey = Some(nextPositionKeyToSync))
-            case Success(None) => logger.info("first running")
-            case Failure(e) =>
-              logger.error(s"Sync ${dcInfo.key} failed with exception: ", e)
-              self ! RemoveDcSync(dcInfo)
-    }
         dcInfo
       // previous run exists - use the position key from the last successful run
       case dcInfo if previousSyncs.exists(t => dcInfo.key == t._1 && t._2.isInstanceOf[SyncerDone]) =>
@@ -320,16 +312,6 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
     }
   }
 
-
-  private def retrievePositionFromZstore(dcInfo:DcInfo) = {
-    dcInfo.dcInfoExtraType match {
-      case "fingerprint" =>
-        self ! WarmUpDcSync
-        zStore.getStringOpt("fp-key")
-      case _ => Future.successful(None)
-    }
-  }
-
   private def handleDcsToStart(dcsToStart: Seq[DcInfo]): Unit = {
     dcsToStart.foreach {
       case dcInfo@DcInfo(dcKey, dcType, dcInfoExtra, idxTimeFromUser, keyFromFinishedRun, tsvFile) => {
@@ -348,31 +330,61 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
             logger.info(s"Warming up (getting position key and if needed also last synced index time) sync engine for " +
               s"$dcKey, position key to start from not found.")
             self ! WarmUpDcSync(dcInfo)
-            // take the index time (from parameter and if not get the last one from the data itself,
-            // if this is the first time syncing take larger than epoch) and create position key from it
-            val idxTime = idxTimeFromUser match {
-              case Some(l) => Future.successful(Some(l))
-              case None =>
-                retrieveLocalLastIndexTimeForDataCenterId(dcKey)
-                  .flatMap { idxTime =>
-                    idxTime.fold(Future.successful(Option.empty[Long]))(time => retrieveIndexTimeInThePastToStartWith(dcKey.id, time, dcKey.location))
-                  }
+            //////////////////////*******************
+            dcInfo.dcInfoExtraType match{
+              case "fingerprint" =>
+                retievePositionFromZstoreAndStartDc(dcInfo, dcKey, idxTimeFromUser)
+              case _ =>
+                // take the index time (from parameter and if not get the last one from the data itself,
+                // if this is the first time syncing take larger than epoch) and create position key from it
+                val idxTime = retrieveIndexTimeFromRemote(dcKey, idxTimeFromUser)
+                startDcFromIndexTime(dcInfo, dcKey, idxTime)
             }
-            idxTime
-              .flatMap(indexTimeToPositionKey(dcKey.id, dcKey.location, _))
-              .onComplete {
-                case Failure(e) =>
-                  logger.warn(s"Sync $dcKey. Getting index time or position key failed. Cancelling the sync start. " +
-                    s"It will be started again on the next schedule check", e)
-                  self ! RemoveDcSync(dcInfo)
-                case Success(positionKey) =>
-                  logger.info(s"Starting sync for: $dcKey using position key $positionKey")
-                  self ! StartDcSync(dcInfo.copy(positionKey = Some(positionKey)))
-              }
           }
         }
       }
     }
+  }
+
+  private def retievePositionFromZstoreAndStartDc(dcInfo: DcInfo, dcKey:DcInfoKey, idxTimeFromUser:Option[Long]) = {
+    val position = zStore.getStringOpt("fp-key")
+    position.onComplete {
+      case Success(Some(zstorePosition)) =>
+        logger.info(s"Lala, get key from zstore.The sync engine for: ${dcInfo.key} stopped with " +
+          s"success. The position key for next sync is: $zstorePosition.")
+        self ! StartDcSync(dcInfo.copy(positionKey = Some(zstorePosition)))
+      case Success(None) => logger.info("first running")
+        val idxTime = retrieveIndexTimeFromRemote(dcKey, idxTimeFromUser)
+        startDcFromIndexTime(dcInfo, dcKey, idxTime)
+      case Failure(e) =>
+        logger.error(s"Sync ${dcInfo.key} failed with exception: ", e)
+        self ! RemoveDcSync(dcInfo)
+    }
+  }
+
+  private def retrieveIndexTimeFromRemote(dcKey: DcInfoKey, idxTimeFromUser: Option[Long]) = {
+    idxTimeFromUser match {
+      case Some(l) => Future.successful(Some(l))
+      case None =>
+        retrieveLocalLastIndexTimeForDataCenterId(dcKey)
+          .flatMap { idxTime =>
+            idxTime.fold(Future.successful(Option.empty[Long]))(time => retrieveIndexTimeInThePastToStartWith(dcKey.id, time, dcKey.location))
+          }
+    }
+  }
+
+  private def startDcFromIndexTime(dcInfo:DcInfo, dcKey: DcInfoKey, idxTime: Future[Option[Long]]) = {
+    idxTime
+      .flatMap(indexTimeToPositionKey(dcKey.id, dcKey.location, _))
+      .onComplete {
+        case Failure(e) =>
+          logger.warn(s"Sync $dcKey. Getting index time or position key failed. Cancelling the sync start. " +
+            s"It will be started again on the next schedule check", e)
+          self ! RemoveDcSync(dcInfo)
+        case Success(positionKey) =>
+          logger.info(s"Starting sync for: $dcKey using position key $positionKey")
+          self ! StartDcSync(dcInfo.copy(positionKey = Some(positionKey)))
+      }
   }
 
   def parseProcDcJsonAndGetLastIndexTime(body: ByteString): Option[Long] = {
