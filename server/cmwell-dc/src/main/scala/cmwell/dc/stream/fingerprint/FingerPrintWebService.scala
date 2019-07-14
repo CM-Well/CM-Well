@@ -14,14 +14,9 @@
   */
 package cmwell.dc.stream.fingerprint
 
-import java.util.concurrent.Executors
-
 import akka.actor.{ActorSystem, Scheduler}
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.Framing
 import akka.util.ByteString
-import cmwell.dc.Settings
-import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
 import cmwell.util.http.{SimpleHttpClient, SimpleResponse}
 import com.typesafe.scalalogging.LazyLogging
 import play.api.libs.json.Json
@@ -44,6 +39,7 @@ case class ConnectException(msg:String) extends Exception
   }
 
   private def handleGet(url:String)(implicit ec:ExecutionContext, system:ActorSystem, mat:ActorMaterializer) = {
+    import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
     logger.info("lala ws url=" + url)
     SimpleHttpClient.get(url)(UTF8StringHandler, implicitly[ExecutionContext], system, mat)
       .map(x=> x.status match{
