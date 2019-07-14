@@ -24,11 +24,17 @@ import scala.util.{Failure, Success}
   */
 object MessagesTypesAndExceptions {
 
-  case class DcInfoKey(id: String, location: String, transformations: Map[String, String]) {
+  case class DcInfoKey(id: String, location: String, transformations: Map[String, String], ingestOperation:String) {
     override def toString: String =
       s"[id: $id, location: $location, transformations: ${transformations.mkString("(", ",", ")")}]"
   }
+
+  sealed trait DcInfoExtra
+  case class FingerPrintData(webServiceCluster: String) extends DcInfoExtra
+
   case class DcInfo(key: DcInfoKey,
+                    dcInfoExtraType: String,
+                    dcInfoExtra: Option[DcInfoExtra],
                     idxTime: Option[Long] = None,
                     positionKey: Option[String] = None,
                     tsvFile: Option[String] = None)
@@ -45,8 +51,10 @@ object MessagesTypesAndExceptions {
   case object CheckDcInfotonList
   case class RetrievedDcInfoList(dcInfoSeq: Seq[DcInfo])
 
-  case class InfotonMeta(path: String, uuid: ByteString, indexTime: Long)
-  case class InfotonData(meta: InfotonMeta, data: ByteString)
+  sealed trait InfotonMeta
+  case class InfotonFullMeta(path: String, uuid: ByteString, indexTime: Long) extends InfotonMeta
+  case class InfotonThinMeta(path:String) extends InfotonMeta
+  case class InfotonData(meta: InfotonFullMeta, data: ByteString)
 
   case class GetIndexTimeException(message: String, ex: Throwable = null) extends Exception(message, ex)
   case class GetInfotonListException(message: String, ex: Throwable = null) extends Exception(message, ex)

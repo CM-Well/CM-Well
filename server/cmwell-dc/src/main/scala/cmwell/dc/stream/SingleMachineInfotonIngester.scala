@@ -61,7 +61,7 @@ object SingleMachineInfotonIngester extends LazyLogging {
           // no need for end line because each line in already suffixed with it
           infotonSeq.foreach(payloadBuilder ++= _.data)
           val payload = payloadBuilder.result
-          (createRequest(location, payload), state)
+          (createRequest(location, payload, dcKey.ingestOperation), state)
         }
       }
       .via(Http().superPool[IngestState]())
@@ -71,20 +71,20 @@ object SingleMachineInfotonIngester extends LazyLogging {
   private[this] val createRequest = if (Settings.gzippedIngest) createRequestWithGzip _ else createRequestNoGzip _
   private val tokenHeader: HttpHeader = RawHeader("X-CM-WELL-TOKEN", dcaToken)
 
-  private[this] def createRequestNoGzip(location: String, payload: ByteString) = {
+  private[this] def createRequestNoGzip(location: String, payload: ByteString, op:String) = {
     val entity = HttpEntity(ContentTypes.`text/plain(UTF-8)`, payload)
     HttpRequest(method = HttpMethods.POST,
-                uri = s"http://$location/_ow?format=nquads",
+                uri = s"http://$location/$op?format=nquads",
                 entity = entity,
                 headers = scala.collection.immutable.Seq(tokenHeader))
   }
 
   val gzipContentEncoding = `Content-Encoding`(HttpEncodings.gzip)
-  private[this] def createRequestWithGzip(location: String, payload: ByteString) = {
+  private[this] def createRequestWithGzip(location: String, payload: ByteString, op:String) = {
     val entity = HttpEntity(ContentTypes.`text/plain(UTF-8)`, Gzip.encode(payload))
     HttpRequest(
       method = HttpMethods.POST,
-      uri = s"http://$location/_ow?format=nquads",
+      uri = s"http://$location/$op?format=nquads",
       entity = entity,
       headers = scala.collection.immutable.Seq(tokenHeader, gzipContentEncoding)
     )

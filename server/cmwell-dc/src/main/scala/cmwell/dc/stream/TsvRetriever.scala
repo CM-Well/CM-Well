@@ -65,7 +65,7 @@ object TsvRetriever extends LazyLogging {
     logger.trace(
       s"parseTSVAndCreateInfotonDataFromIt: [path='$path',uuid='${uuid.utf8String}',idxt='$idxt']"
     )
-    InfotonData(InfotonMeta(path, uuid, idxt), empty)
+    InfotonData(InfotonFullMeta(path, uuid, idxt), empty)
   }
 
   sealed trait ConsumeType
