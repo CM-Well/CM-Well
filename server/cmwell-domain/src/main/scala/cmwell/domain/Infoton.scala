@@ -156,8 +156,7 @@ sealed trait Infoton extends Formattable { self =>
                           ci.length,
                           ci.total,
                           ci.indexName,
-                          ci.protocol,
-                          ci.lastModifiedBy) { override def uuid = forcedUuid }
+                          ci.protocol) { override def uuid = forcedUuid }
     case gi: GhostInfoton => new GhostInfoton(gi.path, protocol = gi.protocol) { override def uuid = forcedUuid }
   }
 
@@ -266,8 +265,7 @@ case class ObjectInfoton(path: String,
                          lastModifiedBy: String,
                          override val fields: Option[Map[String, Set[FieldValue]]] = None,
                          indexName: String = "",
-                         protocol: Option[String],
-                         lastModifiedBy: String)
+                         protocol: Option[String])
     extends Infoton {
   override def getMasked(fieldsMask: Set[String]): Infoton = {
     val originalUuid = uuid
@@ -296,8 +294,7 @@ case class CompoundInfoton(path: String,
                            length: Long,
                            total: Long,
                            indexName: String = "",
-                           protocol: Option[String],
-                           lastModifiedBy: String)
+                           protocol: Option[String])
     extends Infoton {
   override def getMasked(fieldsMask: Set[String]): Infoton = {
     val originalUuid = uuid
@@ -323,8 +320,7 @@ case class LinkInfoton(path: String,
                        linkTo: String,
                        linkType: Int,
                        indexName: String = "",
-                       protocol: Option[String],
-                       lastModifiedBy: String)
+                       protocol: Option[String])
     extends Infoton {
   override def extraBytesForDigest: Seq[Array[Byte]] = {
     Seq(linkTo.getBytes("UTF-8"), linkType.toString.getBytes("UTF-8"))
@@ -352,8 +348,7 @@ object LinkInfoton {
             fields: Map[String, Set[FieldValue]],
             linkTo: String,
             linkType: Int,
-            protocol: Option[String],
-            lastModifiedBy: String) =
+            protocol: Option[String]) =
     new LinkInfoton(path = path,
                     dc = dc,
                     indexTime = None,
@@ -362,8 +357,7 @@ object LinkInfoton {
                     fields = Some(fields),
                     linkTo = linkTo,
                     linkType = linkType,
-                    protocol = protocol,
-                    lastModifiedBy = lastModifiedBy)
+                    protocol = protocol)
 }
 
 case class DeletedInfoton(path: String,
@@ -383,7 +377,6 @@ case class GhostInfoton(path: String, indexName: String = "", protocol: Option[S
   override def dc: String = "N/A"
   override def indexTime: Option[Long] = None
   override protected def getMasked(fieldsMask: Set[String]): Infoton = this
-  override val lastModifiedBy = ""
 }
 
 object GhostInfoton {
@@ -400,8 +393,7 @@ case class FileInfoton(path: String,
                        override val fields: Option[Map[String, Set[FieldValue]]] = None,
                        content: Option[FileContent] = None,
                        indexName: String = "",
-                       protocol: Option[String],
-                       lastModifiedBy: String)
+                       protocol: Option[String])
     extends Infoton {
   def hasData = content.exists(_.data.isDefined)
   def hasDataPointer = content.exists(_.dataPointer.isDefined)
@@ -449,8 +441,7 @@ case class FileInfoton(path: String,
                     fields,
                     content.map(c => FileContent(None, c.mimeType, content.get.dataLength, hash)),
                     indexName,
-                    protocol,
-                    lastModifiedBy) {
+                    protocol) {
       override val uuid = originalUuid
       override def kind = "FileInfoton"
     }
@@ -473,8 +464,7 @@ case class FileInfoton(path: String,
                         fields,
                         content.map(c => FileContent(Some(data), c.mimeType, data.length, hashOpt)),
                         indexName,
-                        protocol,
-                        lastModifiedBy) {
+                        protocol) {
           override val uuid = originalUuid
           override def kind = "FileInfoton"
       }
@@ -499,8 +489,7 @@ object FileInfoton {
             lastModifiedBy: String,
             fields: Map[String, Set[FieldValue]],
             content: FileContent,
-            protocol: Option[String],
-            lastModifiedBy: String) =
+            protocol: Option[String]) =
     new FileInfoton(path = path,
                     dc = dc,
                     indexTime = indexTime,
