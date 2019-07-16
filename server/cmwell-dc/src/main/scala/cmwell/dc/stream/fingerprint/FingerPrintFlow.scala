@@ -28,13 +28,13 @@ object FingerPrintFlow {
    def fingerprintFlow(dcInfo: DcInfo)
                       (implicit ec:ExecutionContext,  mat:ActorMaterializer, system:ActorSystem) = {
     Flow[InfotonData]
-      .map(infoton => infoton.data)
+      .map(_.data)
       .via(Framing.delimiter(delimiter = ByteString("\n", "UTF-8"), Settings.maxEventFrameSize,
         allowTruncation = false))
       .map(_.utf8String)
       .filter(_.contains("<http://graph.link/ees/Uuid>"))
       .map(triple => triple.split(" ")(2).dropRight(1).drop(1))
-      .scan(Set.empty[String])((total, element) => total.+(element))
+      .scan(Set.empty[String])((total, element) => total + element)
       .filter(_.nonEmpty)
       .mapConcat(identity)
        .mapAsync(Settings.fingerprintParallelism)(uuid => fpUrl(dcInfo, uuid).flatMap(url => FingerPrintWebService.generateFingerPrint(url)))
