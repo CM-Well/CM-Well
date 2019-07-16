@@ -353,8 +353,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
         logger.info(s"Got key $zstorePosition from zstore for dc info key $dcKey")
         self ! StartDcSync(dcInfo.copy(positionKey = Some(zstorePosition)))
       case Success(None) => logger.info("first running")
-        val idxTime = retrieveIndexTimeFromRemote(dcKey, idxTimeFromUser)
-        startDcFromIndexTime(dcInfo, dcKey, idxTime)
+        startDcFromIndexTime(dcInfo, dcKey, Future.successful(None))
       case Failure(e) =>
         logger.error(s"Sync ${dcInfo.key} failed with exception: ", e)
         self ! RemoveDcSync(dcInfo)
