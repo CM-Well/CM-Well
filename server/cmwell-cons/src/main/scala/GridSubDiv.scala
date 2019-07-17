@@ -253,8 +253,7 @@ case class GridSubDiv(user: String,
         index = 1,
         rs = IpRackSelector(),
         g1 = true,
-        hostIp = host,
-        autoCreateIndex = withElk
+        hostIp = host
       )
 
       val bg = BgConf(
