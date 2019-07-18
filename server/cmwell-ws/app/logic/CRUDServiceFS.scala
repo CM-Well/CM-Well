@@ -162,6 +162,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                                       i.dc,
                                       i.indexTime,
                                       i.lastModified,
+                                      i.lastModifiedBy,
                                       i.fields,
                                       searchResponse.infotons,
                                       searchResponse.offset,
@@ -272,7 +273,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       Future.failed(new IllegalArgumentException("too many fields"))
     } else {
       val payloadForIndirectLargeInfoton: Future[(Array[Byte],Array[Byte])] = infoton match {
-        case i @ FileInfoton(_, _, _, _, _, Some(FileContent(Some(data), _, _, _)), _, _)
+        case i @ FileInfoton(_, _, _, _, _, _, Some(FileContent(Some(data), _, _, _)), _, _)
             if data.length >= thresholdToUseZStore => {
           val fi = i.withoutData
           zStore.put(fi.content.flatMap(_.dataPointer).get, data).map { _ =>
@@ -311,7 +312,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       infotons.forall(_.kind != "DeletedInfoton"),
       s"Writing a DeletedInfoton does not make sense. use proper delete API instead. malformed paths: ${infotons
         .collect {
-          case DeletedInfoton(path, _, _, _, _) => path
+          case DeletedInfoton(path, _, _, _, _, _) => path
   }
         .mkString("[", ",", "]")}"
     )
@@ -354,24 +355,25 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
   }
 
   def deleteInfotons(deletes: List[(String, Option[String], Option[Map[String, Set[FieldValue]]])],
+                     modifier: String,
                      tidOpt: Option[String] = None,
                      atomicUpdates: Map[String, String] = Map.empty,
                      isPriorityWrite: Boolean = false) = {
     val dt = new DateTime()
     val commands: List[SingleCommand] = deletes.map {
       case (path, protocol, Some(fields)) =>
-        DeleteAttributesCommand(path, fields, dt, validTid(path, tidOpt), atomicUpdates.get(path), protocol)
-      case (path, _, None) => DeletePathCommand(path, dt, validTid(path, tidOpt), atomicUpdates.get(path))
+        DeleteAttributesCommand(path, fields, dt, modifier, validTid(path, tidOpt), atomicUpdates.get(path), protocol)
+      case (path, _, None) => DeletePathCommand(path, dt, modifier, validTid(path, tidOpt), atomicUpdates.get(path))
     }
 
     Future.traverse(commands)(sendToKafka(_,isPriorityWrite)).map(_ => true)
   }
 
-  def deleteInfoton(path: String, protocol: Option[String], data: Option[Map[String, Set[FieldValue]]], isPriorityWrite: Boolean = false) = {
+  def deleteInfoton(path: String, modifier: String, protocol: Option[String], data: Option[Map[String, Set[FieldValue]]], isPriorityWrite: Boolean = false) = {
 
     val delCommand = data match {
-      case None => DeletePathCommand(path, new DateTime())
-      case Some(fields) => DeleteAttributesCommand(path, fields, new DateTime(), protocol = protocol)
+      case None => DeletePathCommand(path, new DateTime(), modifier)
+      case Some(fields) => DeleteAttributesCommand(path, fields, new DateTime(), modifier, protocol = protocol)
     }
 
     val payload = CommandSerializer.encode(delCommand)
@@ -386,6 +388,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
    */
   def upsertInfotons(inserts: List[Infoton],
                      deletes: Map[String, Map[String, Option[Set[FieldValue]]]],
+                     deletesModifier: String,
                      tid: Option[String] = None,
                      atomicUpdates: Map[String, String] = Map.empty,
                      isPriorityWrite: Boolean = false): Future[Boolean] = {
@@ -393,7 +396,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       inserts.forall(_.kind != "DeletedInfoton"),
       s"Writing a DeletedInfoton does not make sense. use proper delete API instead. malformed paths: ${inserts
         .collect {
-          case DeletedInfoton(path, _, _, _, _) => path
+          case DeletedInfoton(path, _, _, _, _, _) => path
         }
         .mkString("[", ",", "]")}"
     )
@@ -419,7 +422,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
             case (f, None) => f -> eSet
             case (f, Some(s)) => f -> s
           }
-          UpdatePathCommand(path, m, eMap, dt, validTid(path,tid), atomicUpdates.get(path))
+          UpdatePathCommand(path, m, eMap, dt, deletesModifier, validTid(path,tid), atomicUpdates.get(path))
         }
       }.toList
 
@@ -433,7 +436,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
             case Some(fields) => fields
             case None => eMap //TODO: should we block this option? regular DELETE could have been used instead...
           }
-          UpdatePathCommand(i.path, del, ins, i.lastModified, validTid(i.path, tid), atomicUpdates.get(i.path), i.protocol)
+          UpdatePathCommand(i.path, del, ins, i.lastModified, i.lastModifiedBy, validTid(i.path, tid), atomicUpdates.get(i.path), i.protocol)
         }
       }
 
@@ -454,9 +457,10 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
           if (regs.isEmpty) Future.successful(())
           else
             Future.traverse(regs) {
-              case cmd @ UpdatePathCommand(_, _, _, lastModified, _, _, _) if lastModified.getMillis == 0L =>
+              case cmd @ UpdatePathCommand(_, _, _, lastModified, _, _, _, _) if lastModified.getMillis == 0L =>
                 sendToKafka(cmd.copy(lastModified = DateTime.now(DateTimeZone.UTC)), isPriorityWrite)
-          case cmd => sendToKafka(cmd, isPriorityWrite)
+          case cmd =>
+              sendToKafka(cmd, isPriorityWrite)
             }
         }
         .map { _ =>
@@ -562,7 +566,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
         ftr.offset,
         ftr.length,
         ftr.thinInfotons.map { ti =>
-        SearchThinResult(ti.path, ti.uuid, ti.lastModified, ti.indexTime, ti.score)
+        SearchThinResult(ti.path, ti.uuid, ti.lastModified, ti.lastModifiedBy ,ti.indexTime, ti.score)
         }(thinSearchResultsBreakout),
         debugInfo = ftr.searchQueryStr
       )
@@ -722,6 +726,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                         i.dc,
                         i.indexTime,
                         i.lastModified,
+                        i.lastModifiedBy,
                         i.fields.fold(extra)(f => extra.fold(i.fields)(e => Some(f ++ e))),
                         protocol = i.protocol) {
       override def uuid = i.uuid
@@ -732,6 +737,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                       i.dc,
                       i.indexTime,
                       i.lastModified,
+                      i.lastModifiedBy,
                       i.fields.fold(extra)(f => extra.fold(i.fields)(e => Some(f ++ e))),
                       i.content,
                       protocol = i.protocol) {
@@ -743,6 +749,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                       i.dc,
                       i.indexTime,
                       i.lastModified,
+                      i.lastModifiedBy,
                       i.fields.fold(extra)(f => extra.fold(i.fields)(e => Some(f ++ e))),
                       i.linkTo,
                       i.linkType,
@@ -779,7 +786,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       val fieldsWithFilter =
         fieldFilters.fold(fields)(ff => fields + ("qp" -> Set[FieldValue](FString(Encoder.encodeFieldFilter(ff)))))
       val fieldsWithFilterAndWh = fieldsWithFilter + ("with-history" -> Set[FieldValue](FBoolean(withHistory)))
-      VirtualInfoton(ObjectInfoton(s"/proc/dc/$dc", Settings.dataCenter, None, fieldsWithFilterAndWh, protocol = None))
+      VirtualInfoton(ObjectInfoton(s"/proc/dc/$dc", Settings.dataCenter, None, fieldsWithFilterAndWh, None, "VirtualInfoton"))
     }
 
     ftsService
@@ -793,7 +800,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
     fields.flatMap { f =>
       val predicates = metaNsCache.getAndUpdateIfNeeded.map(toFieldValues)
       predicates.map { p =>
-        VirtualInfoton(ObjectInfoton(s"/proc/fields", Settings.dataCenter, None, Map("fields" -> f, "predicates" -> p), protocol = None))
+        VirtualInfoton(ObjectInfoton(s"/proc/fields", Settings.dataCenter, None, Map("fields" -> f, "predicates" -> p), None, "VirtualInfoton"))
       }
     }
   }

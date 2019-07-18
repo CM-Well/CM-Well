@@ -15,10 +15,10 @@
 package security
 
 import javax.inject.Inject
-
 import cmwell.domain.{FieldValue, FileContent, FileInfoton, Infoton}
 import cmwell.ws.Settings
 import com.github.t3hnar.bcrypt._
+import filters.Attrs
 import logic.CRUDServiceFS
 import play.api.libs.json.{JsObject, JsString}
 import play.api.mvc.Request
@@ -45,6 +45,7 @@ class AuthUtils @Inject()(authCache: EagerAuthCache, authorization: Authorizatio
               s"/meta/auth/users/${token.username}",
               Settings.dataCenter,
               None,
+              token.username,
               Map.empty[String, Set[FieldValue]],
               FileContent(newUserInfoton.toString.getBytes, "application/json"),
               protocol = None

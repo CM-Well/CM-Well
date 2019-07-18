@@ -50,11 +50,11 @@ package object util {
     case _              => "utf-8"
   }
 
-  private[this] def makeMetaWithZero(path: String, fields: Option[Map[String, Set[FieldValue]]]): ObjectInfoton = {
+  private[this] def makeMetaWithZero(path: String, modifier:String, fields: Option[Map[String, Set[FieldValue]]]): ObjectInfoton = {
     if (path.startsWith("/meta/")) {
-      ObjectInfoton(path, Settings.dataCenter, None, zeroTime, fields, protocol = None)
+      ObjectInfoton(path, Settings.dataCenter, None, zeroTime, modifier, fields, protocol = None)
     } else {
-      ObjectInfoton(path = path, fields = fields, dc = Settings.dataCenter, protocol = None)
+      ObjectInfoton(path = path, fields = fields, dc = Settings.dataCenter, protocol = None, lastModifiedBy = modifier)
     }
   }
 
@@ -76,9 +76,9 @@ package object util {
           if (path.startsWith("/meta/")) DateTime.now(DateTimeZone.UTC) -> Settings.dataCenter
           else date.getOrElse(DateTime.now(DateTimeZone.UTC)) -> dataCenter.getOrElse(Settings.dataCenter)
         mdt match {
-          case Some(ObjectMetaData) if path.startsWith("/meta/") => makeMetaWithZero(path, fields)
+          case Some(ObjectMetaData) if path.startsWith("/meta/") => makeMetaWithZero(path, modifier, fields)
           case Some(ObjectMetaData) => {
-            ObjectInfoton(path, dc, indexTime, _date, fields, protocol = protocol)
+            ObjectInfoton(path, dc, indexTime, _date, modifier, fields, protocol = protocol)
           }
           case Some(FileMetaData) => {
             val contentTypeFromByteArray = ctype match {
@@ -94,6 +94,7 @@ package object util {
               case (Some(ba), None) =>
                 FileInfoton(path = path,
                             lastModified = _date,
+                            lastModifiedBy = modifier,
                             fields = fields,
                             content = Some(FileContent(ba, contentTypeFromByteArray(ba))),
                             dc = dc,
@@ -103,6 +104,7 @@ package object util {
                 FileInfoton(
                   path = path,
                   lastModified = _date,
+                  lastModifiedBy = modifier,
                   fields = fields,
                   content = Some(FileContent(txt.getBytes(Charset.forName("UTF-8")), "text/plain; utf-8")),
                   dc = dc,
@@ -120,6 +122,7 @@ package object util {
                   path = path,
                   fields = fields,
                   lastModified = _date,
+                  lastModifiedBy = modifier,
                   linkTo = lto,
                   linkType = ltype,
                   dc = dc,
@@ -128,11 +131,12 @@ package object util {
                 )
               case _ => ??? //TODO: case is untreated yet
             }
-          case Some(DeletedMetaData) => DeletedInfoton(path, dc, indexTime, _date)
+          case Some(DeletedMetaData) => DeletedInfoton(path, dc, indexTime, _date, modifier)
           case None =>
             (data, text, ctype) match {
               case (None, None, None) =>
-                ObjectInfoton(path = path, lastModified = _date, fields = fields, dc = dc, indexTime = indexTime, protocol = protocol)
+                ObjectInfoton(path = path, lastModified = _date, lastModifiedBy = modifier, fields = fields, dc = dc,
+                  indexTime = indexTime, protocol = protocol)
               case _ =>
                 infotonFromMaps(
                   cmwHostsSet,
@@ -145,7 +149,7 @@ package object util {
             }
         }
       }
-      case None => makeMetaWithZero(path = path, fields = fields)
+      case None => makeMetaWithZero(path = path, modifier, fields = fields)
     }
   }
 

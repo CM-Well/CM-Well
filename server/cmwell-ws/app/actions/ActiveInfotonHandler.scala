@@ -42,14 +42,14 @@ object ActiveInfotonHandler {
 
   // todo why do we have to invoke v2i explicitly if it's an implicit def ?!
   private[this] def wrap(infoton: Infoton): Infoton = infoton match {
-    case cp @ CompoundInfoton("/", _, _, _, _, children, _, length, total, _, _) =>
-      cp.copy(children = v2i(VirtualInfoton(ObjectInfoton("/proc", Settings.dataCenter, protocol = None))) +: children,
+    case cp @ CompoundInfoton("/", _, _, _, _, _, children, _, length, total, _, _) =>
+      cp.copy(children = v2i(VirtualInfoton(ObjectInfoton("/proc", Settings.dataCenter, lastModifiedBy = "VirtualInfoton", protocol = None))) +: children,
               total = total + 1,
               length = length + 1)
-    case cp @ CompoundInfoton("/meta/ns", _, _, _, _, children, _, length, total, _, _) =>
+    case cp @ CompoundInfoton("/meta/ns", _, _, _, _, _, children, _, length, total, _, _) =>
       cp.copy(
-        children = v2i(VirtualInfoton(ObjectInfoton("/meta/ns/sys", Settings.dataCenter, protocol = None))) +: v2i(
-          VirtualInfoton(ObjectInfoton("/meta/ns/nn", Settings.dataCenter, protocol = None))
+        children = v2i(VirtualInfoton(ObjectInfoton("/meta/ns/sys", Settings.dataCenter, lastModifiedBy = "VirtualInfoton", protocol = None))) +: v2i(
+          VirtualInfoton(ObjectInfoton("/meta/ns/nn", Settings.dataCenter,lastModifiedBy = "VirtualInfoton",  protocol = None))
         ) +: children,
         total = total + 2,
         length = length + 2

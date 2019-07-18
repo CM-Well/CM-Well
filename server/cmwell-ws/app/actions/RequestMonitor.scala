@@ -116,7 +116,8 @@ object RequestMonitor extends LazyLogging {
             ).get
         }
         .mkString("\n\n\n")
-      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(bd.getBytes, "text/x-markdown")), protocol = None)))
+      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(bd.getBytes, "text/x-markdown")),
+        lastModifiedBy = "VirtualInfoton", protocol = None)))
     }
     res
   }
