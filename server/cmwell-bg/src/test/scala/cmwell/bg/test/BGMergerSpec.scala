@@ -69,7 +69,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       merger.defaultDC,
       None,
       currentDateTime,
-      "Baruch,Baruch2",
+      "Baruch2",
       Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith"))),
       None
     )
@@ -102,7 +102,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       merger.defaultDC,
       None,
       now.plus(1L),
-      "Baruch,Baruch2",
+      "Baruch2",
       Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith"))),
       None
     )
@@ -135,12 +135,122 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       merger.defaultDC,
       None,
       now.plus(2L),
-      "Baruch,Baruch2",
+      "Baruch2",
       Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith"))),
       None
     )
     val merged = merger.merge(Some(previous), Seq(WriteCommand(current))).merged
     merged.value shouldEqual expected
+  }
+
+  it should "merge lastModifiedBy when 2 different users add fields at the same time" in {
+    val now = DateTime.now(DateTimeZone.UTC)
+    val previous  = ObjectInfoton(
+      "/bg-test-merge/objinfo2",
+      "dc1",
+      None,
+      now.plus(1L),
+      "Baruch",
+      Map("first-name" -> Set(FieldValue("john"))),
+      None
+    )
+    val change1 = ObjectInfoton(
+      "/bg-test-merge/objinfo2",
+      "dc1",
+      None,
+      now,
+      "Baruch2",
+      Map("last-name" -> Set(FieldValue("smith"))),
+      None
+    )
+    val change2 = ObjectInfoton(
+      "/bg-test-merge/objinfo2",
+      "dc1",
+      None,
+      now,
+      "Baruch3",
+      Map("address" -> Set(FieldValue("Petach Tikva"))),
+      None
+    )
+    val expected = ObjectInfoton(
+      "/bg-test-merge/objinfo2",
+      merger.defaultDC,
+      None,
+      now.plus(2L),
+      "Baruch2,Baruch3",
+      Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith")),
+        "address" -> Set(FieldValue("Petach Tikva"))),
+      None
+    )
+    val merged = merger.merge(Some(previous), Seq(WriteCommand(change1), WriteCommand(change2))).merged
+    merged.value shouldEqual expected
+  }
+
+  it should "merge lastModifiedBy when same user add more than 1 field at the same time" in {
+    val now = DateTime.now(DateTimeZone.UTC)
+    val previous  = ObjectInfoton(
+      "/bg-test-merge/objinfo2",
+      "dc1",
+      None,
+      now.plus(1L),
+      "Baruch",
+      Map("first-name" -> Set(FieldValue("john"))),
+      None
+    )
+    val change1 = ObjectInfoton(
+      "/bg-test-merge/objinfo2",
+      "dc1",
+      None,
+      now,
+      "Baruch2",
+      Map("last-name" -> Set(FieldValue("smith"))),
+      None
+    )
+    val change2 = ObjectInfoton(
+      "/bg-test-merge/objinfo2",
+      "dc1",
+      None,
+      now,
+      "Baruch2",
+      Map("address" -> Set(FieldValue("Petach Tikva"))),
+      None
+    )
+    val expected = ObjectInfoton(
+      "/bg-test-merge/objinfo2",
+      merger.defaultDC,
+      None,
+      now.plus(2L),
+      "Baruch2",
+      Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith")),
+        "address" -> Set(FieldValue("Petach Tikva"))),
+      None
+    )
+    val merged = merger.merge(Some(previous), Seq(WriteCommand(change1), WriteCommand(change2))).merged
+    merged.value shouldEqual expected
+  }
+
+  it should "Null update case should not change the user name" in {
+    val now = DateTime.now(DateTimeZone.UTC)
+    val previous  = ObjectInfoton(
+      "/bg-test-merge/objinfo2",
+      "dc1",
+      None,
+      now.plus(1L),
+      "Baruch",
+      Map("first-name" -> Set(FieldValue("john"))),
+      None
+    )
+    val change1 = ObjectInfoton(
+      "/bg-test-merge/objinfo2",
+      "dc1",
+      None,
+      now.plus(5L),
+      "Baruch2",
+      Map("first-name" -> Set(FieldValue("john"))),
+      None
+    )
+    val merged = merger.merge(Some(previous), Seq(WriteCommand(change1))).merged
+    merged should be(None)
   }
 
 //  it should "merge DeletePathCommand with no previous version correctly" in {
