@@ -377,7 +377,8 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
             pathFilter = None,
             fieldsFilter = Some(MultiFieldFilter(Must, Seq(
               FieldFilter(Must, Equals, "system.path", "/cmt/cm/bg-test1/info1"),
-              FieldFilter(Must, Equals, "system.lastModifiedBy", "Baruch,Hanna")))),//code-review - understand the merge ImpStream:281
+              FieldFilter(Must, Equals, "system.current", "true"),
+              FieldFilter(Must, Equals, "system.lastModifiedBy", "Hanna")))),
             datesFilter = None,
             paginationParams = DefaultPaginationParams
           )

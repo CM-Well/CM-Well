@@ -356,7 +356,7 @@ class ImpStream(partition: Int,
                   lastModified = childLastModified,
                   indexName = currentIndexName,
                   protocol = None,
-                  lastModifiedBy = "Unknown"//code-review: do we want child modifier?
+                  lastModifiedBy = "AUTO CREATED"
                 )
                 val writeCommand = WriteCommand(infoton)
                 val payload = CommandSerializer.encode(writeCommand)
