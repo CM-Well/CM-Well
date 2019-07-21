@@ -78,6 +78,7 @@ object CommandsSource extends LazyLogging {
           command match {
             case SingleCommand(_, _, _, _, lastModifiedBy) =>
               if (lastModifiedBy == "") logger.error("SingleCommand was written without lastModifiedBy field! command: ",command)
+            case _ =>
           }
 
           logger.debug(s"consumed command: $command")
