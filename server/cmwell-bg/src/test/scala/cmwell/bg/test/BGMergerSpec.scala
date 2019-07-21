@@ -149,7 +149,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "/bg-test-merge/objinfo2",
       "dc1",
       None,
-      now.plus(1L),
+      now,
       "Baruch",
       Map("first-name" -> Set(FieldValue("john"))),
       None
@@ -158,7 +158,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "/bg-test-merge/objinfo2",
       "dc1",
       None,
-      now,
+      now.plus(5L),
       "Baruch2",
       Map("last-name" -> Set(FieldValue("smith"))),
       None
@@ -167,7 +167,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "/bg-test-merge/objinfo2",
       "dc1",
       None,
-      now,
+      now.plus(10L),
       "Baruch3",
       Map("address" -> Set(FieldValue("Petach Tikva"))),
       None
@@ -176,7 +176,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "/bg-test-merge/objinfo2",
       merger.defaultDC,
       None,
-      now.plus(2L),
+      now.plus(10L),
       "Baruch2,Baruch3",
       Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith")),
         "address" -> Set(FieldValue("Petach Tikva"))),
@@ -192,7 +192,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "/bg-test-merge/objinfo2",
       "dc1",
       None,
-      now.plus(1L),
+      now,
       "Baruch",
       Map("first-name" -> Set(FieldValue("john"))),
       None
@@ -201,7 +201,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "/bg-test-merge/objinfo2",
       "dc1",
       None,
-      now,
+      now.plus(5L),
       "Baruch2",
       Map("last-name" -> Set(FieldValue("smith"))),
       None
@@ -210,7 +210,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "/bg-test-merge/objinfo2",
       "dc1",
       None,
-      now,
+      now.plus(10L),
       "Baruch2",
       Map("address" -> Set(FieldValue("Petach Tikva"))),
       None
@@ -219,7 +219,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "/bg-test-merge/objinfo2",
       merger.defaultDC,
       None,
-      now.plus(2L),
+      now.plus(10L),
       "Baruch2",
       Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith")),
         "address" -> Set(FieldValue("Petach Tikva"))),

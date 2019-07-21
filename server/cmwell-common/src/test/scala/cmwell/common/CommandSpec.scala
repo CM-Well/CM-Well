@@ -75,7 +75,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
       path = s"/cmt/cm/bg-test/re_process_ow/info_override",
       dc = "dc",
       indexTime = Some(currentTime),
-      lastModified = new DateTime(currentTime),
+      lastModified = new DateTime(currentTime, DateTimeZone.UTC),
       "Ori",
       indexName = "cm_well_p0_0",
       fields = Some(Map("a" -> Set(FieldValue("b"), FieldValue("c")))),
@@ -119,14 +119,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
           lm.getMillis should equal(cmdUpdate.lastModified.getMillis)
           lmb should equal(cmdUpdate.lastModifiedBy)
         case OverwriteCommand(infoton, _) =>
-          infoton.path should equal(overrideInfoton.path)
-          infoton.dc should equal(overrideInfoton.dc)
-          infoton.indexTime should equal(overrideInfoton.indexTime)
-          infoton.lastModified.getMillis should equal(overrideInfoton.lastModified.getMillis)
-          infoton.lastModifiedBy should equal(overrideInfoton.lastModifiedBy)
-          infoton.fields should equal(overrideInfoton.fields)
-          infoton.indexName should equal(overrideInfoton.indexName)
-          infoton.protocol should equal(overrideInfoton.protocol)
+          infoton should equal(overrideInfoton)
         case x @ (CommandRef(_) | HeartbitCommand | IndexExistingInfotonCommand(_, _, _, _, _) |
                   IndexExistingInfotonCommandForIndexer(_, _, _, _, _, _) | IndexNewInfotonCommand(_, _, _, _, _, _) |
                   IndexNewInfotonCommandForIndexer(_, _, _, _, _, _, _) | NullUpdateCommandForIndexer(_, _, _, _, _))
