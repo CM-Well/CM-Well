@@ -41,6 +41,13 @@ sealed abstract class SingleCommand extends Command {
   def lastModifiedBy: String
 }
 
+object SingleCommand{
+  def unapply(c: SingleCommand): Option[(String, Option[String], Option[String], DateTime, String)] =
+    Option(c) map { c =>
+      (c.path, c.trackingID, c.prevUUID, c.lastModified, c.lastModifiedBy)
+    }
+}
+
 case class CommandRef(ref: String) extends Command
 
 case class WriteCommand(infoton: Infoton, trackingID: Option[String] = None, prevUUID: Option[String] = None)
