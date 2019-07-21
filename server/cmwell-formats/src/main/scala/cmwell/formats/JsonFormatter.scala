@@ -214,7 +214,7 @@ abstract class AbstractJsonlFormatter(hashToUrlAndPrefix: String => Option[(Stri
           case Some(c) => fileContent(c)
           case None    => JsObject(Seq())
         })
-      case LinkInfoton(_, _, _, _, _, linkTo, linkType, _, _, _) =>
+      case LinkInfoton(_, _, _, _, _, _, linkTo, linkType, _, _) =>
         iSystem ++ iFields ++ JsObject(
           Seq("linkTo" -> mkValWrappedInArray(linkTo), "linkType" -> mkValWrappedInArray(linkType))
         )

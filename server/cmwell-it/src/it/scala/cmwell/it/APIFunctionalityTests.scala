@@ -147,7 +147,8 @@ class APIFunctionalityTests extends AsyncFunSpec
           "system" -> JsObject(
             Seq("path" -> JsString("/cmt/cm/test/InfoObj2"),
               "parent" -> JsString("/cmt/cm/test"),
-              "dataCenter" -> JsString(dcName))),
+              "dataCenter" -> JsString(dcName),
+              "lastModifiedBy" -> JsString("pUser"))),
           "fields" -> JsObject(
             Seq("title" -> JsArray(Seq(JsString("TestTitle"))),
               "header" -> JsArray(Seq(JsString("TestHeader")))))))
