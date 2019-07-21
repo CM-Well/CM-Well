@@ -322,8 +322,6 @@ class Merger(config: Config) extends LazyLogging {
 
     val lastModifiedBy = (SortedSet[String](cmds.map(_.lastModifiedBy):_*)).mkString(",")
 
-    logger.info(s"MORIATEST lastModifiedBy: $lastModifiedBy")
-
     val (merged, evictionsAndTIDs) = merge_recurse(baseInfoton, cmds)
 
     val (evictions, trackingIds) = cmwell.util.collections.partitionWith(evictionsAndTIDs)(identity)
@@ -331,16 +329,14 @@ class Merger(config: Config) extends LazyLogging {
     merged match {
       case Some(i) if !baseInfoton.exists(_.isSameAs(i)) =>
         val (infoton, extraData) = baseInfoton.fold(i -> Option.empty[String]) { j =>
-          if (j.lastModified.getMillis < i.lastModified.getMillis) i.copyInfoton(lastModifiedBy = lastModifiedBy) -> {logger.info(s"MORIATEST option 4"); None}
+          if (j.lastModified.getMillis < i.lastModified.getMillis) i.copyInfoton(lastModifiedBy = lastModifiedBy) -> None
           else {
             logger.info(s"PlusDebug: There was an infoton [$j] in the system that is not the same as the merged one [$i] but has earlier lastModified. " +
               s"Adding 1 milli")
-            logger.info(s"MORIATEST option 1")
             val newLastModified = new DateTime(j.lastModified.getMillis + 1L, DateTimeZone.UTC)
             i.copyInfoton(lastModified = newLastModified, lastModifiedBy = lastModifiedBy) -> Some(newLastModified.getMillis.toString)
           }
         }
-        logger.info(s"MORIATEST option 5 REAL UPDATE: $infoton")
         RealUpdate(infoton, trackingIds, evictions, extraData)
       case Some(i) if baseInfoton.exists(bi => bi.isSameAs(i)
         && bi.indexTime.isEmpty
@@ -350,10 +346,9 @@ class Merger(config: Config) extends LazyLogging {
         //If the merged infoton is the same as the the base one but the "should be" lastModified is different it means it's a null update
         //and not a replay after crash (it happens a lot with parents in clustered env.). This is the reason the the last command modified check
         logger.warn(s"Merged infoton [$i] is the same as the base infoton [${baseInfoton.get}] but the base infoton doesn't have index time!")
-        logger.info(s"MORIATEST option 2")
         RealUpdate(i.copyInfoton(lastModified = baseInfoton.get.lastModified, lastModifiedBy = baseInfoton.get.lastModifiedBy),
           trackingIds, evictions, extra = None)
-      case _ => logger.info(s"MORIATEST option 3")
+      case _ =>
         NullUpdate(baseInfoton.fold(cmds.head.path)(_.path), trackingIds, evictions, extra = None)
     }
   }
