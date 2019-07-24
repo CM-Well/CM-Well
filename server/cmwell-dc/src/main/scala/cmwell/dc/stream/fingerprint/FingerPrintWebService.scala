@@ -32,20 +32,23 @@ object FingerPrintWebService extends LazyLogging{
 case class ConnectException(msg:String) extends Exception
   def generateFingerPrint(url:String)(implicit ec:ExecutionContext,
                                       mat:ActorMaterializer, system:ActorSystem) = {
-    logger.info("lala ws url="  + url)
     implicit val scheduler = system.scheduler
-    val res = retry(10.seconds, 5){handleGet(url)}
+    val res = retry(5.seconds, 3){handleGet(url)}
     res.map(res => toRDF(res.body._2))
+      .recoverWith{
+      case e:Exception =>
+          logger.error(s"Failed create fingerprint for url=$url", e)
+          Future.successful(ByteString(""))
+    }
   }
 
   private def handleGet(url:String)(implicit ec:ExecutionContext, system:ActorSystem, mat:ActorMaterializer) = {
     import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
-    logger.info("lala ws url=" + url)
     SimpleHttpClient.get(url)(UTF8StringHandler, implicitly[ExecutionContext], system, mat)
       .map(x=> x.status match{
         case 200 => x
-        case 503 => throw ConnectException(s"Got 503 error code during calling fingerprint web service, headers=${x.headers}, erroMsg=${x.body}")
-        case _ => throw new Exception(s"Failure during call fingerprint web service, statuscode=${x.status}, headers=${x.headers}, erroMsg=${x.body}")
+        case 503 => throw ConnectException(s"Got 503 error code during calling fingerprint web service,url=$url headers=${x.headers}, erroMsg=${x.body}")
+        case _ => throw new Exception(s"Failure during call fingerprint web service,, url=$url statuscode=${x.status}, headers=${x.headers}, erroMsg=${x.body}")
       })
   }
   private def retry[T](delay: FiniteDuration, retries: Int = -1)(task: => Future[SimpleResponse[String]])(implicit ec: ExecutionContext, scheduler: Scheduler):
@@ -64,6 +67,7 @@ case class ConnectException(msg:String) extends Exception
   def toRDF(data:String)(implicit ec:ExecutionContext) = {
       val fpJsonData = data.split("\n")(0).replace("\\", "\\\\")
       val uuid = (Json.parse(fpJsonData) \ "account_info" \ "UUID").as[String]
+    logger.info(s"lala uuid=$uuid")
       val subject = s"<http://graph.link/ees/FP-$uuid>"
       val rdf =
         s"""$subject <cmwell://meta/sys#type> "FileInfoton" .
@@ -75,3 +79,5 @@ case class ConnectException(msg:String) extends Exception
   }
 
 }
+
+

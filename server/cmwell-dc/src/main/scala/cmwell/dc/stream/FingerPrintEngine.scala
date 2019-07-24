@@ -15,6 +15,7 @@
 package cmwell.dc.stream
 
 import akka.actor.{ActorSystem, Scheduler}
+import akka.event.Logging
 import akka.stream._
 import akka.stream.scaladsl.{RunnableGraph, Sink}
 import cmwell.dc.stream.MessagesTypesAndExceptions._
@@ -57,8 +58,7 @@ class FingerPrintEngine(dstServersVec: Vector[(String, Option[Int])])
         .async
         .via(RatePrinter(dcInfo.key, _.data.size / 1000D, "KB", "KB infoton Data from InfotonRetriever", 5000))
         .map(infotonDataTransformer)
-        .via(ConcurrentFlow(Settings.ingestParallelism)(InfotonAllMachinesDistributerAndIngester(dcInfo.key, dstServersVec,
-          localDecider)))
+        .via(ConcurrentFlow(Settings.ingestParallelism)(InfotonAllMachinesDistributerAndIngester(dcInfo.key, dstServersVec, localDecider)))
         .toMat(Sink.ignore) {
           case (left, right) =>
             SyncerMaterialization(

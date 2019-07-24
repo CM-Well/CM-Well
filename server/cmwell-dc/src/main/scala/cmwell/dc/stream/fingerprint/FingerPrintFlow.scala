@@ -15,7 +15,8 @@
 package cmwell.dc.stream.fingerprint
 
 import akka.actor.{ActorSystem, Scheduler}
-import akka.stream.ActorMaterializer
+import akka.event.Logging
+import akka.stream.{ActorMaterializer, Attributes}
 import akka.stream.scaladsl.{Flow, Framing}
 import akka.util.ByteString
 import cmwell.dc.Settings
@@ -34,10 +35,22 @@ object FingerPrintFlow {
       .map(_.utf8String)
       .filter(_.contains("<http://graph.link/ees/Uuid>"))
       .map(triple => triple.split(" ")(2).dropRight(1).drop(1))
-      .scan(Set.empty[String])((total, element) => total + element)
-      .filter(_.nonEmpty)
-      .mapConcat(identity)
+      .statefulMapConcat{ () =>
+        var uuidsSet = Set.empty[String]
+        uuid =>
+          if (uuidsSet.contains(uuid)) {
+            List("")
+          }
+         else {
+           uuidsSet = uuidsSet + uuid
+           List(uuid)
+         }
+      }
+       .filter(_.nonEmpty)
+      .log("afterScan")
+      .withAttributes(Attributes.logLevels(onElement = Logging.InfoLevel, onFinish = Logging.InfoLevel, onFailure = Logging.InfoLevel))
        .mapAsync(Settings.fingerprintParallelism)(uuid => fpUrl(dcInfo, uuid).flatMap(url => FingerPrintWebService.generateFingerPrint(url)))
+       .filter(_.nonEmpty)
       .map(rdf => InfotonData(InfotonFullMeta(rdf.utf8String.split(" ")(0), ByteString("no-uuid", "UTF-8"), -1), rdf))
   }
 
