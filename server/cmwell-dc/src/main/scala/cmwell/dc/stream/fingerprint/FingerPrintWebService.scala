@@ -48,7 +48,7 @@ case class ConnectException(msg:String) extends Exception
       .map(x=> x.status match{
         case 200 => x
         case 503 => throw ConnectException(s"Got 503 error code during calling fingerprint web service,url=$url headers=${x.headers}, erroMsg=${x.body}")
-        case _ => throw new Exception(s"Failure during call fingerprint web service, statuscode=${x.status}, headers=${x.headers}, erroMsg=${x.body}")
+        case _ => throw new Exception(s"Failure during call fingerprint web service,, url=$url statuscode=${x.status}, headers=${x.headers}, erroMsg=${x.body}")
       })
   }
   private def retry[T](delay: FiniteDuration, retries: Int = -1)(task: => Future[SimpleResponse[String]])(implicit ec: ExecutionContext, scheduler: Scheduler):

@@ -35,17 +35,15 @@ object FingerPrintFlow {
       .map(_.utf8String)
       .filter(_.contains("<http://graph.link/ees/Uuid>"))
       .map(triple => triple.split(" ")(2).dropRight(1).drop(1))
-//      .log("beforeScan").withAttributes(Attributes.logLevels(onElement = Logging.InfoLevel, onFinish = Logging.InfoLevel, onFailure = Logging.InfoLevel))
       .statefulMapConcat{ () =>
-        //state with already processed uuids
-        var ids = Set.empty[String]
-        identValue =>
-          if (ids.contains(identValue)) {
+        var uuidsSet = Set.empty[String]
+        uuid =>
+          if (uuidsSet.contains(uuid)) {
             List("")
           }
          else {
-           ids = ids + identValue
-           List(identValue)
+           uuidsSet = uuidsSet + uuid
+           List(uuid)
          }
       }
        .filter(_.nonEmpty)

@@ -407,12 +407,10 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
   def retrieveMonitoredDcList = {
     logger.info("Checking the current status of the syncing requests infotons")
     if (manualSyncList.nonEmpty) {
-      logger.info("Boom, after checking 1")
       Future.successful(
         parseMetaDcJsonAndGetDcInfoSeq(ByteString(manualSyncList.get))
       )
     } else {
-      logger.info("Boom, after checking else")
       val (h, p) = randomFrom(dstServersVec)
       val request = HttpRequest(
         uri =
