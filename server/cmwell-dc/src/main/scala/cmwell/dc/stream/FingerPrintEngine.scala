@@ -57,8 +57,6 @@ class FingerPrintEngine(dstServersVec: Vector[(String, Option[Int])])
         .via(FingerPrintFlow.fingerprintFlow(dcInfo))
         .async
         .via(RatePrinter(dcInfo.key, _.data.size / 1000D, "KB", "KB infoton Data from InfotonRetriever", 5000))
-        .log("eli:", e => e.meta.path)
-        .withAttributes(Attributes.logLevels(onElement = Logging.InfoLevel, onFinish = Logging.InfoLevel, onFailure = Logging.InfoLevel))
         .map(infotonDataTransformer)
         .via(ConcurrentFlow(Settings.ingestParallelism)(InfotonAllMachinesDistributerAndIngester(dcInfo.key, dstServersVec, localDecider)))
         .toMat(Sink.ignore) {
