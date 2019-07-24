@@ -157,8 +157,8 @@ class APIFunctionalityTests extends AsyncFunSpec
         val payloadStr = (res.payload.map(_.toChar)).mkString
         if (payloadStr == "Infoton not found") false
         else Json.parse(payloadStr)
-            .transform(uuidDateEraser)
-            .get == expected
+          .transform(uuidDateEraser)
+          .get == expected
       }.map { res =>
         Json.parse(res.payload)
           .transform(uuidDateEraser)
@@ -237,7 +237,8 @@ class APIFunctionalityTests extends AsyncFunSpec
             "system": {
               "path":"/cmt/cm/test/wrapped/ObjectInfoton1",
               "parent":"/cmt/cm/test/wrapped",
-              "dataCenter":"$dcName"
+              "dataCenter":"$dcName",
+              "lastModifiedBy":"pUser"
             },
             "fields": {
                 "title": [
@@ -254,7 +255,9 @@ class APIFunctionalityTests extends AsyncFunSpec
             }
           }""").transform(fieldsSorter).get
 
-        val f = Http.post(_in, Json.stringify(jsonw), None, List("format" -> "jsonw"), tokenHeader)
+        val ingest = jsonw.validate((__ \ 'system \ 'lastModifiedBy).json.prune).get
+
+        val f = Http.post(_in, Json.stringify(ingest), None, List("format" -> "jsonw"), tokenHeader)
 
         it("should post the infoton") {
           f.map(res => Json.parse(res.payload) should be(jsonSuccess))
@@ -278,14 +281,15 @@ class APIFunctionalityTests extends AsyncFunSpec
       }
 
       describe("in put/get Link Infoton") {
-        val obj = Json.parse(
+        val expected = Json.parse(
           s"""
           {
             "type":"ObjectInfoton",
             "system": {
               "path":"/cmt/cm/test/wrapped/ObjToBeLinkedTo",
               "parent":"/cmt/cm/test/wrapped",
-              "dataCenter":"$dcName"
+              "dataCenter":"$dcName",
+              "lastModifiedBy":"pUser"
             },
             "fields": {
                 "title": [
@@ -297,6 +301,8 @@ class APIFunctionalityTests extends AsyncFunSpec
             }
           }
         """)
+
+        val obj = expected.validate((__ \ 'system \ 'lastModifiedBy).json.prune).get
 
         val lnk = Json.parse(
           s"""
@@ -342,14 +348,14 @@ class APIFunctionalityTests extends AsyncFunSpec
                 val loc = res.headers.find(_._1 == "Location").map(_._2.split('/').filter(_.nonEmpty).foldLeft(cmw)(_ / _))
                 loc shouldBe defined
                 spinCheck(100.millis, true)(Http.get(loc.get, queryParams = List("format" -> "json"))){ result =>
-                  result.status == 200 && Json.parse(result.payload).transform(uuidDateEraser).get == obj
+                  result.status == 200 && Json.parse(result.payload).transform(uuidDateEraser).get == expected
                 }.map { result =>
                   withClue(s"response for GET '${loc.get.url}': $result") {
                     result.status should be(200)
                     Json
                       .parse(result.payload)
                       .transform(uuidDateEraser)
-                      .get shouldEqual obj
+                      .get shouldEqual expected
                   }
                 }
               }
@@ -361,10 +367,12 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       describe("in put get Text File Infoton in jsonw") {
         val data = "Hello!! this is text content"
-        val json = Json.parse(s"""
+
+        val expected = Json.parse(s"""
           {
             "type":"FileInfoton",
             "system": {
+              "lastModifiedBy":"pUser",
               "path":"/cmt/cm/test/wrapped/FileInfoton.txt",
               "parent":"/cmt/cm/test/wrapped",
               "dataCenter":"$dcName"
@@ -375,6 +383,8 @@ class APIFunctionalityTests extends AsyncFunSpec
             }
           }""")
 
+        val json = expected.validate((__ \ 'system \ 'lastModifiedBy).json.prune).get
+
         val f = Http.post(_in, Json.stringify(json), None, List("format" -> "jsonw"), tokenHeader)
 
         it("should post the file") {
@@ -382,20 +392,20 @@ class APIFunctionalityTests extends AsyncFunSpec
         }
 
         it("should get the file") {
-          val expected = json.transform((__ \ 'content).json.update {
+          val expected2 = expected.transform((__ \ 'content).json.update {
             Reads.JsObjectReads.map { case JsObject(xs) => JsObject(xs + ("length" -> JsNumber(data.length))) }
           }).get
 
           f.flatMap(_ => spinCheck(100.millis, true)(Http.get(wrapped./("FileInfoton.txt"), List("format" -> "json"))){res =>
             Json.parse(res.payload)
               .transform(uuidDateEraser)
-              .get == expected
+              .get == expected2
           }.map { res =>
             withClue(res) {
               Json
                 .parse(res.payload)
                 .transform(uuidDateEraser)
-                .get shouldEqual expected
+                .get shouldEqual expected2
             }
           }
           )
@@ -404,10 +414,11 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       describe("in put get Binary File Infoton") {
         // scalastyle:off
-        val json = Json.parse(s"""
+        val expected = Json.parse(s"""
           {
             "type": "FileInfoton",
             "system": {
+                "lastModifiedBy": "pUser",
                 "path": "/cmt/cm/test/wrapped/BinaryFileInfoton.png",
                 "parent":"/cmt/cm/test/wrapped",
                 "dataCenter":"$dcName"
@@ -418,6 +429,8 @@ class APIFunctionalityTests extends AsyncFunSpec
                 "length": 711
             }
            }""")
+
+        val json = expected.validate((__ \ 'system \ 'lastModifiedBy).json.prune).get
         // scalastyle:on
         val f = Http.post(_in, Json.stringify(json), None, List("format" -> "jsonw"), tokenHeader)
 
@@ -430,13 +443,13 @@ class APIFunctionalityTests extends AsyncFunSpec
             Json
               .parse(res.payload)
               .transform(uuidDateEraser)
-              .get == json
+              .get == expected
           }.map { res =>
             withClue(res) {
               Json
                 .parse(res.payload)
                 .transform(uuidDateEraser)
-                .get shouldEqual json
+                .get shouldEqual expected
             }
           }
           )
@@ -503,7 +516,8 @@ class APIFunctionalityTests extends AsyncFunSpec
             "/cmt/cm/test/bag/InfoObj2",
             "/cmt/cm/test/bag/InfoTextFile1"))
         postReq.flatMap { _ =>
-          spinCheck(100.millis, true)(Http.post(_out, Json.stringify(bulkReq), Some("application/json;charset=UTF-8"), List("format" -> "json"), tokenHeader))
+          spinCheck(100.millis, true)(Http.post(_out, Json.stringify(bulkReq),
+            Some("application/json;charset=UTF-8"), List("format" -> "json"), tokenHeader))
           {res =>
             val resStatus = res.status
             resStatus >=200 && resStatus < 400 && JsonEncoder.decodeBagOfInfotons(res.payload).value.infotons.length == 3
@@ -523,12 +537,13 @@ class APIFunctionalityTests extends AsyncFunSpec
             "/cmt/cm/test/bag/InfoObj2",
             "/cmt/cm/test/bag/InfoTextFile1"))
         val expectedHeaderPattern =
-          """path,lastModified,type,uuid,parent,dataCenter,indexTime,mimeType,length,data,(name,title|title,name)"""
+          """path,lastModified,lastModifiedBy,type,uuid,parent,dataCenter,indexTime,mimeType,length,data,(name,title|title,name)"""
         val expectedHeaderPattern_reg =
           Pattern.compile(expectedHeaderPattern)
         val expectedContentPattern = {
           val pathRegex = """(/cmt/cm/test/bag/Info(Obj1|Obj2|TextFile1))"""
           val lastModifiedRegex = """([0-9]{4}\-[0-9]{2}\-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]{0,3})?Z)"""
+          val lastModifiedByRegex = "(pUser)"
           val typeRegex = """(ObjectInfoton|FileInfoton)"""
           val uuidRegex = """([0-9a-f]{32})"""
           val parent = "(/cmt/cm/test/bag)"
@@ -543,6 +558,8 @@ class APIFunctionalityTests extends AsyncFunSpec
           sb ++= pathRegex
           sb += ','
           sb ++= lastModifiedRegex
+          sb += ','
+          sb ++= lastModifiedByRegex
           sb += ','
           sb ++= typeRegex
           sb += ','
@@ -653,6 +670,7 @@ class APIFunctionalityTests extends AsyncFunSpec
              |{
              |  "type":"ObjectInfoton",
              |  "system":{
+             |    "lastModifiedBy":"pUser",
              |    "path":"/clearforest.com/ce/GH",
              |    "parent":"/clearforest.com/ce",
              |    "dataCenter" : "$dcName"
@@ -720,6 +738,7 @@ class APIFunctionalityTests extends AsyncFunSpec
              |{
              |  "type":"ObjectInfoton",
              |  "system":{
+             |    "lastModifiedBy":"pUser",
              |    "path":"/meta/ns/$hash",
              |    "parent":"/meta/ns",
              |    "dataCenter" : "$dcName"
@@ -746,6 +765,7 @@ class APIFunctionalityTests extends AsyncFunSpec
                |{
                |  "type":"ObjectInfoton",
                |  "system":{
+               |    "lastModifiedBy":"pUser",
                |    "path":"/clearforest.com/ce/IK",
                |    "parent":"/clearforest.com/ce",
                |    "dataCenter" : "$dcName"
@@ -807,6 +827,7 @@ class APIFunctionalityTests extends AsyncFunSpec
                                        |{
                                        |  "type": "FileInfoton",
                                        |  "system": {
+                                       |    "lastModifiedBy":"pUser",
                                        |    "path": "/test/imgs/icon.png",
                                        |    "parent": "/test/imgs",
                                        |    "dataCenter" : "$dcName"
@@ -837,6 +858,7 @@ class APIFunctionalityTests extends AsyncFunSpec
                             |
                             |o:icon.png
                             |      sys:base64-data "iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAYAAACpSkzOAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2lpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wUmlnaHRzPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvcmlnaHRzLyIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcFJpZ2h0czpNYXJrZWQ9IkZhbHNlIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOkM3MUJFMDdFOEU4QzExREZCMjU5OEFEMjE5QjA1MDRDIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOkM3MUJFMDdEOEU4QzExREZCMjU5OEFEMjE5QjA1MDRDIiB4bXA6Q3JlYXRvclRvb2w9IkFkb2JlIFBob3Rvc2hvcCBDUzIgV2luZG93cyI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ1dWlkOjgyRTY0QjM0QzU5QkRGMTFBODA4OTIwNUU4Mjg0ODVBIiBzdFJlZjpkb2N1bWVudElEPSJ1dWlkOkI2NjNCOUQyOTk5OERGMTE4MzE1RDE2MUYyMTQyRDUxIi8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+4K+uiwAABPFJREFUeNq0lQ1MlVUYx//vey8X7gcfl9D4agjdqIjbkumtUTA+drlQsZRqy6YL52wa4ow0ZqKORRHCamprS5ljQS3D5pBcCrKgXftyc+VMEVACkpRvhAvcj/d9O+e87wXcbl228tkeODvnPL//ec7z3PNykiTBa9mHdGjbPoPFRuZMPKfqhh9rLZ7i/m1dDf8WSv+8m9+I0ake8DwHjpMQqAIZ8wgMSMCeUwV+IUsRYjY9/Rs6B45Db1BBGyjgkft4BAXoEBNetKR4JnSj/kl2f0eNZjq+a0NZiAnvT/VicmYQI9PX4eTV0IsezLp4smqAy3MLixm+LGHDz5z6el2K1DMcDOuLhT43uSf7AXuN3xOveHqL79p9XQeJaPAQ3LCuWY/WE8fAhSSh7AOy4Bic977RziVdzeIYyqAsyqRsqsFLHhckMsi2ZqHlyJuoqKgEm1P88njf0oQWxVAGZVEmZdM5ng0ED/Z+3IqsnAy01JaAj7bOuznOtiShxTGUQVmUSdlUQ+3NqHxzKlO2bqzC6bK15AQzUJFWuR1EKA/yfoXO7rOB9AikoHDklTVA6GuWmUpGakkgQiLNyqXcgYgHolwIfzQdAToj/nDfAf7q8Cv0RF4+XNMjmOy9whjzPIVNMnISRarqVHQEaPRaaLUqaIJ1CHJ62LzTPeVTQJQc7L/WoAXv4TGjkRjDy4PCZlcHJT0POUn+ybWAjmwYkLOIDAzBa5a3MDze5lNo1nUN+cmFePn3enmCxlIGsVNJL4HzXp3onIPomoXodIBWoi77MLa3bsOBV39Ax5VKROiTcXP0PIbv9PgUmnFexhpzKjITDyBcn42zVxtw6cY3KDfGMyY0lD0HnhZQJKoiUaW+LNCIIncYShozkZW8F/auKvSO2skL4PAp5BEn4HBeRFSIiPbuE+j45SOUr94FtSDITMYGbW960XILUqeFjBQ4WHTLsenzVXjDdh7m2AKo+UCfQipej1CdDe09c6j7qQIZbg30qqAFHmOTt05gJXJCcM3JxSUnkUQRWyMexzTHYfMXqTjyyveY80ygb8xO22Xht8PrYNQ/i4s3jfjUXop1oSZY+m8zhpcHxlYykgTajgJzmhFpJUyOjGNb2FNI0ITj9S/TkflYKWKNKXdlY9Tb0D2SgIPflSLHYEKmK4zEikp7C4qLLCOezZORKMpOP4TUI8w2LDfn4mBODWL092PrVzmwmvcvZMNpMORIQfW5HUiLtmBHWimLEZX4BZ7AtHmJHUBi1yXJqmyj688fmYuDF/DhQ/kw6SKw5Xgu1lsasTIyiWRTgP2ni5FmfBhvR1nm97MvtrTAk9lEyEPSEgQJHsXpiUSyIpAiekjXCOQHF0A27ovPQ5QmmDTIC1i54hhKmhqQEhyDoph0tkcgb5pAO4zAKcPLk9mkGUS5JCw99jKQ8cCQA5OXOqE2DJPP9sJHeB3iUKu+ioKjFsSKWjw3tgydY7/KcaTirqkhTAyLSFzE87JlIeJVJ/vxXmU1mg/txPPFtf/4psXP3MIn1z7D7uQiGAL0PvfIjBrs2b0L72w0MT7XvglSYu4G6BPz0Hx4J55ZHYf/w+wX+pBPxBxd36LrTD3pOpoaWWgip0hdFYfqpn453f/glEFZlCkq18edK4Q0yEUjIzcb98Laz7QhWhoER9uxpZCTcA8tp07i/hZgAMNRD8XVs1vdAAAAAElFTkSuQmCC"^^xsd:base64Binary ;
+                            |      sys:lastModifiedBy  "pUser" ;
                             |      sys:length      "2244"^^xsd:long ;
                             |      sys:mimeType    "image/png" ;
                             |      sys:parent      "/test/imgs" ;
@@ -870,6 +892,7 @@ class APIFunctionalityTests extends AsyncFunSpec
                             |  <rdf:Description rdf:about="${cmw.url}/test/imgs/icon.png">
                             |    <sys:type>FileInfoton</sys:type>
                             |    <sys:path>/test/imgs/icon.png</sys:path>
+                            |    <sys:lastModifiedBy>pUser</sys:lastModifiedBy>
                             |    <sys:parent>/test/imgs</sys:parent>
                             |    <sys:dataCenter>$dcName</sys:dataCenter>
                             |    <sys:mimeType>image/png</sys:mimeType>
@@ -909,6 +932,7 @@ class APIFunctionalityTests extends AsyncFunSpec
                                          |    "infotons": [{
                                          |        "type": "FileInfoton",
                                          |        "system": {
+                                         |            "lastModifiedBy":"pUser",
                                          |            "path": "/test/imgs/icon.png",
                                          |            "parent": "/test/imgs",
                                          |            "dataCenter" : "$dcName"
@@ -944,6 +968,7 @@ class APIFunctionalityTests extends AsyncFunSpec
                             |<${cmw.url}/test/imgs/icon.png>
                               |      sys:base64-data   "iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAYAAACpSkzOAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2lpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wUmlnaHRzPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvcmlnaHRzLyIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcFJpZ2h0czpNYXJrZWQ9IkZhbHNlIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOkM3MUJFMDdFOEU4QzExREZCMjU5OEFEMjE5QjA1MDRDIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOkM3MUJFMDdEOEU4QzExREZCMjU5OEFEMjE5QjA1MDRDIiB4bXA6Q3JlYXRvclRvb2w9IkFkb2JlIFBob3Rvc2hvcCBDUzIgV2luZG93cyI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ1dWlkOjgyRTY0QjM0QzU5QkRGMTFBODA4OTIwNUU4Mjg0ODVBIiBzdFJlZjpkb2N1bWVudElEPSJ1dWlkOkI2NjNCOUQyOTk5OERGMTE4MzE1RDE2MUYyMTQyRDUxIi8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+4K+uiwAABPFJREFUeNq0lQ1MlVUYx//vey8X7gcfl9D4agjdqIjbkumtUTA+drlQsZRqy6YL52wa4ow0ZqKORRHCamprS5ljQS3D5pBcCrKgXftyc+VMEVACkpRvhAvcj/d9O+e87wXcbl228tkeODvnPL//ec7z3PNykiTBa9mHdGjbPoPFRuZMPKfqhh9rLZ7i/m1dDf8WSv+8m9+I0ake8DwHjpMQqAIZ8wgMSMCeUwV+IUsRYjY9/Rs6B45Db1BBGyjgkft4BAXoEBNetKR4JnSj/kl2f0eNZjq+a0NZiAnvT/VicmYQI9PX4eTV0IsezLp4smqAy3MLixm+LGHDz5z6el2K1DMcDOuLhT43uSf7AXuN3xOveHqL79p9XQeJaPAQ3LCuWY/WE8fAhSSh7AOy4Bic977RziVdzeIYyqAsyqRsqsFLHhckMsi2ZqHlyJuoqKgEm1P88njf0oQWxVAGZVEmZdM5ng0ED/Z+3IqsnAy01JaAj7bOuznOtiShxTGUQVmUSdlUQ+3NqHxzKlO2bqzC6bK15AQzUJFWuR1EKA/yfoXO7rOB9AikoHDklTVA6GuWmUpGakkgQiLNyqXcgYgHolwIfzQdAToj/nDfAf7q8Cv0RF4+XNMjmOy9whjzPIVNMnISRarqVHQEaPRaaLUqaIJ1CHJ62LzTPeVTQJQc7L/WoAXv4TGjkRjDy4PCZlcHJT0POUn+ybWAjmwYkLOIDAzBa5a3MDze5lNo1nUN+cmFePn3enmCxlIGsVNJL4HzXp3onIPomoXodIBWoi77MLa3bsOBV39Ax5VKROiTcXP0PIbv9PgUmnFexhpzKjITDyBcn42zVxtw6cY3KDfGMyY0lD0HnhZQJKoiUaW+LNCIIncYShozkZW8F/auKvSO2skL4PAp5BEn4HBeRFSIiPbuE+j45SOUr94FtSDITMYGbW960XILUqeFjBQ4WHTLsenzVXjDdh7m2AKo+UCfQipej1CdDe09c6j7qQIZbg30qqAFHmOTt05gJXJCcM3JxSUnkUQRWyMexzTHYfMXqTjyyveY80ygb8xO22Xht8PrYNQ/i4s3jfjUXop1oSZY+m8zhpcHxlYykgTajgJzmhFpJUyOjGNb2FNI0ITj9S/TkflYKWKNKXdlY9Tb0D2SgIPflSLHYEKmK4zEikp7C4qLLCOezZORKMpOP4TUI8w2LDfn4mBODWL092PrVzmwmvcvZMNpMORIQfW5HUiLtmBHWimLEZX4BZ7AtHmJHUBi1yXJqmyj688fmYuDF/DhQ/kw6SKw5Xgu1lsasTIyiWRTgP2ni5FmfBhvR1nm97MvtrTAk9lEyEPSEgQJHsXpiUSyIpAiekjXCOQHF0A27ovPQ5QmmDTIC1i54hhKmhqQEhyDoph0tkcgb5pAO4zAKcPLk9mkGUS5JCw99jKQ8cCQA5OXOqE2DJPP9sJHeB3iUKu+ioKjFsSKWjw3tgydY7/KcaTirqkhTAyLSFzE87JlIeJVJ/vxXmU1mg/txPPFtf/4psXP3MIn1z7D7uQiGAL0PvfIjBrs2b0L72w0MT7XvglSYu4G6BPz0Hx4J55ZHYf/w+wX+pBPxBxd36LrTD3pOpoaWWgip0hdFYfqpn453f/glEFZlCkq18edK4Q0yEUjIzcb98Laz7QhWhoER9uxpZCTcA8tp07i/hZgAMNRD8XVs1vdAAAAAElFTkSuQmCC"^^xsd:base64Binary ;
                               |      sys:length        "2244"^^xsd:long ;
+                              |      sys:lastModifiedBy  "pUser" ;
                               |      sys:mimeType      "image/png" ;
                               |      sys:parent        "/test/imgs" ;
                               |      sys:path          "/test/imgs/icon.png" ;
@@ -985,6 +1010,7 @@ class APIFunctionalityTests extends AsyncFunSpec
                               |      <rdf:Description rdf:about="${cmw.url}/test/imgs/icon.png">
                               |        <sys:type>FileInfoton</sys:type>
                               |        <sys:path>/test/imgs/icon.png</sys:path>
+                              |        <sys:lastModifiedBy>pUser</sys:lastModifiedBy>
                               |        <sys:parent>/test/imgs</sys:parent>
                               |        <sys:protocol>http</sys:protocol>
                               |        <sys:dataCenter>$dcName</sys:dataCenter>
@@ -1034,6 +1060,7 @@ class APIFunctionalityTests extends AsyncFunSpec
              |      <vcard:Individual rdf:about="http://example.org/JohnSmith">
              |        <sys:type>ObjectInfoton</sys:type>
              |        <sys:path>/example.org/JohnSmith</sys:path>
+             |        <sys:lastModifiedBy>pUser</sys:lastModifiedBy>
              |        <sys:protocol>http</sys:protocol>
              |        <sys:parent>/example.org</sys:parent>
              |        <sys:dataCenter>$dcName</sys:dataCenter>
@@ -1068,6 +1095,7 @@ class APIFunctionalityTests extends AsyncFunSpec
              |{
              |  "type":"ObjectInfoton",
              |  "system":{
+             |    "lastModifiedBy":"pUser",
              |    "path":"/clearforest.com/ce/MZ",
              |    "parent":"/clearforest.com/ce",
              |    "dataCenter":"$dcName"
@@ -1096,6 +1124,7 @@ class APIFunctionalityTests extends AsyncFunSpec
                |{
                |  "type":"ObjectInfoton",
                |  "system":{
+               |    "lastModifiedBy":"pUser",
                |    "path":"/meta/ns/$hash",
                |    "parent":"/meta/ns",
                |    "dataCenter":"$dcName"
@@ -1192,7 +1221,7 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       it("should expand 6 levels deep with explicit $ namespace") {
         // scalastyle:off
-        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/G_H","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.net/Individuals/N-l_H"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/I_K","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"employedBy.rel":["http://testExample.net/Individuals/D_L"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/M_I","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"worksWith.rel":["http://testExample.net/Individuals/G_H"],"neighborOf.rel":["http://testExample.net/Individuals/Gilad_Zafran"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/N-l_H","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"childOf.rel":["http://testExample.net/Individuals/G_H"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/D_L","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://testExample.net/Individuals/M_O"],"mentorOf.rel":["http://testExample.net/Individuals/Y_B"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/Y_B","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.net/Individuals/T-S_B"],"friendOf.rel":["http://testExample.net/Individuals/M_I"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/M_Z","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://testExample.net/Individuals/I_K"]}}]}"""
+        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.net/Individuals/G_H","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.net/Individuals/N-l_H"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.net/Individuals/I_K","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"employedBy.rel":["http://testExample.net/Individuals/D_L"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.net/Individuals/M_I","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"worksWith.rel":["http://testExample.net/Individuals/G_H"],"neighborOf.rel":["http://testExample.net/Individuals/Gilad_Zafran"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.net/Individuals/N-l_H","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"childOf.rel":["http://testExample.net/Individuals/G_H"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.net/Individuals/D_L","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://testExample.net/Individuals/M_O"],"mentorOf.rel":["http://testExample.net/Individuals/Y_B"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.net/Individuals/Y_B","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.net/Individuals/T-S_B"],"friendOf.rel":["http://testExample.net/Individuals/M_I"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.net/Individuals/M_Z","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://testExample.net/Individuals/I_K"]}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
         f00.flatMap{_ => spinCheck(100.millis, true)(f08()){ res =>
@@ -1218,7 +1247,7 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       it("should expand 6 levels deep using full NS URI") {
         // scalastyle:off
-        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/G_H","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.net/Individuals/N-l_H"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/I_K","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"employedBy.rel":["http://testExample.net/Individuals/D_L"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/M_I","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"worksWith.rel":["http://testExample.net/Individuals/G_H"],"neighborOf.rel":["http://testExample.net/Individuals/Gilad_Zafran"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/N-l_H","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"childOf.rel":["http://testExample.net/Individuals/G_H"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/D_L","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://testExample.net/Individuals/M_O"],"mentorOf.rel":["http://testExample.net/Individuals/Y_B"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/Y_B","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.net/Individuals/T-S_B"],"friendOf.rel":["http://testExample.net/Individuals/M_I"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/M_Z","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://testExample.net/Individuals/I_K"]}}]}"""
+        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.net/Individuals/G_H","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.net/Individuals/N-l_H"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.net/Individuals/I_K","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"employedBy.rel":["http://testExample.net/Individuals/D_L"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.net/Individuals/M_I","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"worksWith.rel":["http://testExample.net/Individuals/G_H"],"neighborOf.rel":["http://testExample.net/Individuals/Gilad_Zafran"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.net/Individuals/N-l_H","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"childOf.rel":["http://testExample.net/Individuals/G_H"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.net/Individuals/D_L","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://testExample.net/Individuals/M_O"],"mentorOf.rel":["http://testExample.net/Individuals/Y_B"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.net/Individuals/Y_B","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.net/Individuals/T-S_B"],"friendOf.rel":["http://testExample.net/Individuals/M_I"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.net/Individuals/M_Z","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://testExample.net/Individuals/I_K"]}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
         f00.flatMap{_ => spinCheck(100.millis, true)(f09()){ res =>
@@ -1244,7 +1273,7 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       it("should expand 6 levels deep with implicit namespace") {
         // scalastyle:off
-        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/G_H","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.net/Individuals/N-l_H"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/I_K","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"employedBy.rel":["http://testExample.net/Individuals/D_L"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/M_I","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"worksWith.rel":["http://testExample.net/Individuals/G_H"],"neighborOf.rel":["http://testExample.net/Individuals/Gilad_Zafran"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/N-l_H","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"childOf.rel":["http://testExample.net/Individuals/G_H"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/D_L","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://testExample.net/Individuals/M_O"],"mentorOf.rel":["http://testExample.net/Individuals/Y_B"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/Y_B","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.net/Individuals/T-S_B"],"friendOf.rel":["http://testExample.net/Individuals/M_I"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/M_Z","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://testExample.net/Individuals/I_K"]}}]}"""
+        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.net/Individuals/G_H","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.net/Individuals/N-l_H"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.net/Individuals/I_K","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"employedBy.rel":["http://testExample.net/Individuals/D_L"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.net/Individuals/M_I","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"worksWith.rel":["http://testExample.net/Individuals/G_H"],"neighborOf.rel":["http://testExample.net/Individuals/Gilad_Zafran"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.net/Individuals/N-l_H","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"childOf.rel":["http://testExample.net/Individuals/G_H"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.net/Individuals/D_L","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://testExample.net/Individuals/M_O"],"mentorOf.rel":["http://testExample.net/Individuals/Y_B"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.net/Individuals/Y_B","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.net/Individuals/T-S_B"],"friendOf.rel":["http://testExample.net/Individuals/M_I"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.net/Individuals/M_Z","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://testExample.net/Individuals/I_K"]}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
         f00.flatMap{_ => spinCheck(100.millis, true)(f10()){ res =>
@@ -1270,7 +1299,7 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       it("should NOT to expand 6 levels deep if guarded by a non existed filter") {
         // scalastyle:off
-        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/M_Z","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://testExample.net/Individuals/I_K"]}}]}"""
+        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.net/Individuals/M_Z","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://testExample.net/Individuals/I_K"]}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
         f00.flatMap{_ => spinCheck(100.millis, true)(f11()){ res =>
@@ -1288,7 +1317,7 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       it("should NOT expand 6 levels deep if guarded by a filter") {
         // scalastyle:off
-        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/testExample.net/Individuals/M_Z","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://testExample.net/Individuals/I_K"]}}]}"""
+        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.net/Individuals/M_Z","parent":"/testExample.net/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"colleagueOf.rel":["http://testExample.net/Individuals/I_K"]}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
         f00.flatMap{ _ => spinCheck(100.millis, true)(f12()){ res =>
@@ -1306,7 +1335,7 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       it("should allow paths expansion with yg flag with explicit $ namespace") {
         // scalastyle:off
-        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/JohnSmith","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.org/Individuals/SaraSmith"],"friendOf.rel":["http://testExample.org/Individuals/PeterParker"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/RonaldKhun","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://testExample.org/Individuals/MartinOdersky"],"category.bold":["deals","news"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/HarryMiller","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.org/Individuals/NatalieMiller"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/DonaldDuck","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://testExample.org/Individuals/MartinOdersky"],"active.bold":["true"],"mentorOf.rel":["http://testExample.org/Individuals/JohnSmith"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/ClarkKent","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"neighborOf.rel":["http://testExample.org/Individuals/PeterParker"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/PeterParker","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"active.bold":["true"],"worksWith.rel":["http://testExample.org/Individuals/HarryMiller"],"neighborOf.rel":["http://testExample.org/Individuals/ClarkKent"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/MartinOdersky","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://testExample.org/Individuals/RonaldKhun"],"active.bold":["true"]}}]}"""
+        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/JohnSmith","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.org/Individuals/SaraSmith"],"friendOf.rel":["http://testExample.org/Individuals/PeterParker"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/RonaldKhun","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://testExample.org/Individuals/MartinOdersky"],"category.bold":["deals","news"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/HarryMiller","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.org/Individuals/NatalieMiller"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/DonaldDuck","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://testExample.org/Individuals/MartinOdersky"],"active.bold":["true"],"mentorOf.rel":["http://testExample.org/Individuals/JohnSmith"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/ClarkKent","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"neighborOf.rel":["http://testExample.org/Individuals/PeterParker"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/PeterParker","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"active.bold":["true"],"worksWith.rel":["http://testExample.org/Individuals/HarryMiller"],"neighborOf.rel":["http://testExample.org/Individuals/ClarkKent"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/MartinOdersky","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://testExample.org/Individuals/RonaldKhun"],"active.bold":["true"]}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
         f00.flatMap{_ => spinCheck(100.millis, true, 30.seconds)(f13()) { res =>
@@ -1323,7 +1352,7 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       it("should allow paths expansion with yg flag using full NS URI") {
         // scalastyle:off
-        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/JohnSmith","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.org/Individuals/SaraSmith"],"friendOf.rel":["http://testExample.org/Individuals/PeterParker"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/RonaldKhun","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://testExample.org/Individuals/MartinOdersky"],"category.bold":["deals","news"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/HarryMiller","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.org/Individuals/NatalieMiller"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/DonaldDuck","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://testExample.org/Individuals/MartinOdersky"],"active.bold":["true"],"mentorOf.rel":["http://testExample.org/Individuals/JohnSmith"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/ClarkKent","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"neighborOf.rel":["http://testExample.org/Individuals/PeterParker"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/PeterParker","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"active.bold":["true"],"worksWith.rel":["http://testExample.org/Individuals/HarryMiller"],"neighborOf.rel":["http://testExample.org/Individuals/ClarkKent"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/MartinOdersky","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://testExample.org/Individuals/RonaldKhun"],"active.bold":["true"]}}]}"""
+        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/JohnSmith","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.org/Individuals/SaraSmith"],"friendOf.rel":["http://testExample.org/Individuals/PeterParker"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/RonaldKhun","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://testExample.org/Individuals/MartinOdersky"],"category.bold":["deals","news"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/HarryMiller","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.org/Individuals/NatalieMiller"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/DonaldDuck","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://testExample.org/Individuals/MartinOdersky"],"active.bold":["true"],"mentorOf.rel":["http://testExample.org/Individuals/JohnSmith"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/ClarkKent","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"neighborOf.rel":["http://testExample.org/Individuals/PeterParker"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/PeterParker","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"active.bold":["true"],"worksWith.rel":["http://testExample.org/Individuals/HarryMiller"],"neighborOf.rel":["http://testExample.org/Individuals/ClarkKent"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/MartinOdersky","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://testExample.org/Individuals/RonaldKhun"],"active.bold":["true"]}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
         f00.flatMap{_ => spinCheck(100.millis, true, 30.seconds)(f14()){ res =>
@@ -1338,7 +1367,7 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       it("should allow paths expansion with yg flag with implicit namespace") {
         // scalastyle:off
-        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/JohnSmith","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.org/Individuals/SaraSmith"],"friendOf.rel":["http://testExample.org/Individuals/PeterParker"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/RonaldKhun","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://testExample.org/Individuals/MartinOdersky"],"category.bold":["deals","news"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/HarryMiller","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.org/Individuals/NatalieMiller"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/DonaldDuck","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://testExample.org/Individuals/MartinOdersky"],"active.bold":["true"],"mentorOf.rel":["http://testExample.org/Individuals/JohnSmith"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/ClarkKent","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"neighborOf.rel":["http://testExample.org/Individuals/PeterParker"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/PeterParker","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"active.bold":["true"],"worksWith.rel":["http://testExample.org/Individuals/HarryMiller"],"neighborOf.rel":["http://testExample.org/Individuals/ClarkKent"]}},{"type":"ObjectInfoton","system":{"path":"/testExample.org/Individuals/MartinOdersky","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://testExample.org/Individuals/RonaldKhun"],"active.bold":["true"]}}]}"""
+        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/JohnSmith","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.org/Individuals/SaraSmith"],"friendOf.rel":["http://testExample.org/Individuals/PeterParker"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/RonaldKhun","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://testExample.org/Individuals/MartinOdersky"],"category.bold":["deals","news"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/HarryMiller","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"parentOf.rel":["http://testExample.org/Individuals/NatalieMiller"],"active.bold":["true"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/DonaldDuck","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"knowsByReputation.rel":["http://testExample.org/Individuals/MartinOdersky"],"active.bold":["true"],"mentorOf.rel":["http://testExample.org/Individuals/JohnSmith"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/ClarkKent","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"neighborOf.rel":["http://testExample.org/Individuals/PeterParker"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/PeterParker","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"active.bold":["true"],"worksWith.rel":["http://testExample.org/Individuals/HarryMiller"],"neighborOf.rel":["http://testExample.org/Individuals/ClarkKent"]}},{"type":"ObjectInfoton","system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/MartinOdersky","parent":"/testExample.org/Individuals","protocol":"http","dataCenter":"$dcName"},"fields":{"collaboratesWith.rel":["http://testExample.org/Individuals/RonaldKhun"],"active.bold":["true"]}}]}"""
 
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
         f00.flatMap{_ => spinCheck(100.millis, true)(f15()) { res =>
@@ -1356,7 +1385,7 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       it("should NOT allow limited paths expansion if guarded by non existed filters") {
         // scalastyle:off
-        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","fields":{"neighborOf.rel":["http://testExample.org/Individuals/PeterParker"]},"system":{"path":"/testExample.org/Individuals/ClarkKent","protocol":"http","dataCenter":"$dcName","parent":"/testExample.org/Individuals"}},{"type":"ObjectInfoton","fields":{"worksWith.rel":["http://testExample.org/Individuals/HarryMiller"],"neighborOf.rel":["http://testExample.org/Individuals/ClarkKent"],"active.bold":["true"]},"system":{"path":"/testExample.org/Individuals/PeterParker","protocol":"http","dataCenter":"$dcName","parent":"/testExample.org/Individuals"}}]}"""
+        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","fields":{"neighborOf.rel":["http://testExample.org/Individuals/PeterParker"]},"system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/ClarkKent","protocol":"http","dataCenter":"$dcName","parent":"/testExample.org/Individuals"}},{"type":"ObjectInfoton","fields":{"worksWith.rel":["http://testExample.org/Individuals/HarryMiller"],"neighborOf.rel":["http://testExample.org/Individuals/ClarkKent"],"active.bold":["true"]},"system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/PeterParker","protocol":"http","dataCenter":"$dcName","parent":"/testExample.org/Individuals"}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
         f00.flatMap{_ => spinCheck(100.millis, true, 30.seconds)(f16()){ res =>
@@ -1374,7 +1403,7 @@ class APIFunctionalityTests extends AsyncFunSpec
 
       it("should allow limited paths expansion if guarded by filters") {
         // scalastyle:off
-        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","fields":{"neighborOf.rel":["http://testExample.org/Individuals/PeterParker"]},"system":{"path":"/testExample.org/Individuals/ClarkKent","protocol":"http","dataCenter":"$dcName","parent":"/testExample.org/Individuals"}},{"type":"ObjectInfoton","fields":{"worksWith.rel":["http://testExample.org/Individuals/HarryMiller"],"neighborOf.rel":["http://testExample.org/Individuals/ClarkKent"],"active.bold":["true"]},"system":{"path":"/testExample.org/Individuals/PeterParker","protocol":"http","dataCenter":"$dcName","parent":"/testExample.org/Individuals"}}]}"""
+        val j = s"""{"type":"BagOfInfotons","infotons":[{"type":"ObjectInfoton","fields":{"neighborOf.rel":["http://testExample.org/Individuals/PeterParker"]},"system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/ClarkKent","protocol":"http","dataCenter":"$dcName","parent":"/testExample.org/Individuals"}},{"type":"ObjectInfoton","fields":{"worksWith.rel":["http://testExample.org/Individuals/HarryMiller"],"neighborOf.rel":["http://testExample.org/Individuals/ClarkKent"],"active.bold":["true"]},"system":{"lastModifiedBy":"pUser","path":"/testExample.org/Individuals/PeterParker","protocol":"http","dataCenter":"$dcName","parent":"/testExample.org/Individuals"}}]}"""
         // scalastyle:on
         val expected = Json.parse(j.getBytes("UTF-8")).transform(bagUuidDateEraserAndSorter).get
         f00.flatMap{_ => spinCheck(100.millis, true, 30.seconds)(f17()) { res =>
@@ -1455,6 +1484,7 @@ class APIFunctionalityTests extends AsyncFunSpec
             |{
             |  "type": "ObjectInfoton",
             |  "system": {
+            |    "lastModifiedBy": "pUser",
             |    "path": "/cmt/cm/test/Araújo3",
             |    "dataCenter": "lh",
             |    "parent": "/cmt/cm/test"
