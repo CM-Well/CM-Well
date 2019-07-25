@@ -1001,6 +1001,7 @@ class ImpStream(partition: Int,
 
       indexCommandsMerge.out ~> fusePartition
 
+        //Note: below stream is dead code!
         fusePartition.out(0) ~> indexCommandsToESActions ~> groupEsActions ~> filterNonEmpty ~>
           sendActionsToES ~> manageIndices ~> updateIndexInfoInCas ~> partitionIndexResult.in
 
