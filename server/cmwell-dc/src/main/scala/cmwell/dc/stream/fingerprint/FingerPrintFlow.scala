@@ -34,7 +34,7 @@ object FingerPrintFlow {
         allowTruncation = false))
       .map(_.utf8String)
       .filter(_.contains("<http://graph.link/ees/Uuid>"))
-      .map(triple => triple.split(" ")(2).dropRight(1).drop(1))
+      .map(extractUuid)
       .statefulMapConcat{ () =>
         var uuidsSet = Set.empty[String]
         uuid =>
@@ -61,4 +61,12 @@ object FingerPrintFlow {
     }
   }
 
+  def extractUuid(triple: String) :String= {
+    val tripleObject = triple.split(" ")(2)
+    if(tripleObject.startsWith("<http://graph.link/ees/U"))
+      tripleObject.substring(25, tripleObject.length - 1)
+    else
+      tripleObject.dropRight(1).drop(1)
+  }
 }
+
