@@ -268,7 +268,7 @@ class Merger(config: Config) extends LazyLogging {
               ensurePrevUUID(last_infoton, prevUUID)(i => Some(delete_merge(i, fields, lastModified, protocol)))
             case None => ensurePrevNone(prevUUID)(None)
           }
-        case UpdatePathCommand(path, deleteFields, updateFields, lastModified, _, prevUUID, protocol, _) =>
+        case UpdatePathCommand(path, deleteFields, updateFields, lastModified, _, _, prevUUID, protocol) =>
           base match {
             case Some(last_infoton) =>
               ensurePrevUUID(last_infoton, prevUUID)(
@@ -322,14 +322,19 @@ class Merger(config: Config) extends LazyLogging {
 
     val lastModifiedBy = (SortedSet[String](cmds.map(_.lastModifiedBy):_*)).mkString(",")
 
+    //Not in production
+    logger.info(s"MergerDetails: baseInfoton: $baseInfoton\ncmds: $cmds\nlastModifiedBy: $lastModifiedBy")
+
     val (merged, evictionsAndTIDs) = merge_recurse(baseInfoton, cmds)
 
     val (evictions, trackingIds) = cmwell.util.collections.partitionWith(evictionsAndTIDs)(identity)
 
     merged match {
       case Some(i) if !baseInfoton.exists(_.isSameAs(i)) =>
-        val (infoton, extraData) = baseInfoton.fold(i -> Option.empty[String]) { j =>
-          if (j.lastModified.getMillis < i.lastModified.getMillis) i.copyInfoton(lastModifiedBy = lastModifiedBy) -> None
+        val (infoton, extraData) = baseInfoton.fold(i.copyInfoton(lastModifiedBy = lastModifiedBy) -> Option.empty[String])
+        { j =>
+          if (j.lastModified.getMillis < i.lastModified.getMillis)
+            i.copyInfoton(lastModifiedBy = lastModifiedBy) -> None
           else {
             logger.info(s"PlusDebug: There was an infoton [$j] in the system that is not the same as the merged one [$i] but has earlier lastModified. " +
               s"Adding 1 milli")
@@ -337,6 +342,8 @@ class Merger(config: Config) extends LazyLogging {
             i.copyInfoton(lastModified = newLastModified, lastModifiedBy = lastModifiedBy) -> Some(newLastModified.getMillis.toString)
           }
         }
+        //Not in production
+        logger.info(s"MergerDetails: passing infoton(1): $infoton")
         RealUpdate(infoton, trackingIds, evictions, extraData)
       case Some(i) if baseInfoton.exists(bi => bi.isSameAs(i)
         && bi.indexTime.isEmpty
@@ -346,6 +353,9 @@ class Merger(config: Config) extends LazyLogging {
         //If the merged infoton is the same as the the base one but the "should be" lastModified is different it means it's a null update
         //and not a replay after crash (it happens a lot with parents in clustered env.). This is the reason the the last command modified check
         logger.warn(s"Merged infoton [$i] is the same as the base infoton [${baseInfoton.get}] but the base infoton doesn't have index time!")
+        //Not in production
+        logger.info(s"MergerDetails: passing infoton(2): ${i.copyInfoton(lastModified = baseInfoton.get.lastModified,
+          lastModifiedBy = baseInfoton.get.lastModifiedBy)}")
         RealUpdate(i.copyInfoton(lastModified = baseInfoton.get.lastModified, lastModifiedBy = baseInfoton.get.lastModifiedBy),
           trackingIds, evictions, extra = None)
       case _ =>
