@@ -34,7 +34,7 @@ case class ConnectException(msg:String) extends Exception
                                       mat:ActorMaterializer, system:ActorSystem) = {
     implicit val scheduler = system.scheduler
     val res = retry(5.seconds, 3){handleGet(url)}
-    res.map(res => toRDF(res.body._2))
+    res.map(res => toRDF(url, res.body._2))
       .recoverWith{
       case e:Exception =>
           logger.error(s"Failed create fingerprint for url=$url", e)
@@ -64,9 +64,9 @@ case class ConnectException(msg:String) extends Exception
   }
 
 
-  def toRDF(data:String)(implicit ec:ExecutionContext) = {
-      val fpJsonData = data.split("\n")(0).replace("\\", "\\\\")
-      val uuid = (Json.parse(fpJsonData) \ "account_info" \ "UUID").as[String]
+  def toRDF(url:String, data:String)(implicit ec:ExecutionContext) = {
+    val fpJsonData = data.split("\n")(0).replace("\\", "\\\\")
+    val uuid = url.split("/")(4)
     logger.info(s"lala uuid=$uuid")
       val subject = s"<http://graph.link/ees/FP-$uuid>"
       val rdf =
