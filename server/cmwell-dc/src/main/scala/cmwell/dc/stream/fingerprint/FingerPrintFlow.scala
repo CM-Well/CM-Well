@@ -49,7 +49,7 @@ object FingerPrintFlow {
        .filter(_.nonEmpty)
       .log("afterScan")
       .withAttributes(Attributes.logLevels(onElement = Logging.InfoLevel, onFinish = Logging.InfoLevel, onFailure = Logging.InfoLevel))
-       .mapAsync(Settings.fingerprintParallelism)(uuid => fpUrl(dcInfo, uuid).flatMap(url => FingerPrintWebService.generateFingerPrint(url)))
+       .mapAsync(Settings.fingerprintParallelism)(uuid => fpUrl(dcInfo, uuid).flatMap(url => FingerPrintWebService.generateFingerPrint(url, uuid)))
        .filter(_.nonEmpty)
       .map(rdf => InfotonData(InfotonFullMeta(rdf.utf8String.split(" ")(0), ByteString("no-uuid", "UTF-8"), -1), rdf))
   }

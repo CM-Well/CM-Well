@@ -19,7 +19,6 @@ import akka.stream.ActorMaterializer
 import akka.util.ByteString
 import cmwell.util.http.{SimpleHttpClient, SimpleResponse}
 import com.typesafe.scalalogging.LazyLogging
-import play.api.libs.json.Json
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
@@ -30,11 +29,11 @@ object FingerPrintWebService extends LazyLogging{
   case class FingerPrintData(uuid:String, data:String)
 
 case class ConnectException(msg:String) extends Exception
-  def generateFingerPrint(url:String)(implicit ec:ExecutionContext,
+  def generateFingerPrint(url:String, uuid:String)(implicit ec:ExecutionContext,
                                       mat:ActorMaterializer, system:ActorSystem) = {
     implicit val scheduler = system.scheduler
     val res = retry(5.seconds, 3){handleGet(url)}
-    res.map(res => toRDF(res.body._2))
+    res.map(res => toRDF(uuid, res.body._2))
       .recoverWith{
       case e:Exception =>
           logger.error(s"Failed create fingerprint for url=$url", e)
@@ -64,9 +63,8 @@ case class ConnectException(msg:String) extends Exception
   }
 
 
-  def toRDF(data:String)(implicit ec:ExecutionContext) = {
-      val fpJsonData = data.split("\n")(0).replace("\\", "\\\\")
-      val uuid = (Json.parse(fpJsonData) \ "account_info" \ "UUID").as[String]
+  def toRDF(uuid:String, data:String)(implicit ec:ExecutionContext) = {
+    val fpJsonData = data.split("\n")(0).replace("\\", "\\\\")
     logger.info(s"lala uuid=$uuid")
       val subject = s"<http://graph.link/ees/FP-$uuid>"
       val rdf =
