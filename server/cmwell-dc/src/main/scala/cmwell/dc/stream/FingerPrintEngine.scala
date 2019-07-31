@@ -20,7 +20,7 @@ import akka.stream._
 import akka.stream.scaladsl.{RunnableGraph, Sink}
 import cmwell.dc.stream.MessagesTypesAndExceptions._
 import cmwell.dc.stream.akkautils.ConcurrentFlow
-import cmwell.dc.stream.fingerprint.FingerPrintFlow
+import cmwell.dc.stream.algo.AlgoFlow
 import cmwell.dc.{LazyLogging, Settings}
 
 import scala.concurrent.ExecutionContext
@@ -54,7 +54,7 @@ class FingerPrintEngine(dstServersVec: Vector[(String, Option[Int])])
         .via(RatePrinter(dcInfo.key, bucket => bucket.size, "elements", "infoton TSVs from InfotonAggregator", 500))
         .via(ConcurrentFlow(Settings.retrieveParallelism)(InfotonRetriever(dcInfo.key, localDecider)))
         .mapConcat(identity)
-        .via(FingerPrintFlow.fingerprintFlow(dcInfo))
+        .via(AlgoFlow.algoFlow(dcInfo))
         .async
         .via(RatePrinter(dcInfo.key, _.data.size / 1000D, "KB", "KB infoton Data from InfotonRetriever", 5000))
         .map(infotonDataTransformer)

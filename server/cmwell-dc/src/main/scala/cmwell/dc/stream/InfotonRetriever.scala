@@ -18,7 +18,7 @@ import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.coding.Gzip
-import akka.http.scaladsl.model.headers.{`Accept-Encoding`, `Content-Encoding`, HttpEncodings}
+import akka.http.scaladsl.model.headers.{HttpEncodings, `Accept-Encoding`, `Content-Encoding`}
 import akka.http.scaladsl.model.{ContentTypes, _}
 import akka.stream.Supervision.Decider
 import akka.stream.contrib.Retry
@@ -27,7 +27,9 @@ import akka.stream.scaladsl.{Flow, Framing, Keep, Sink, Source}
 import akka.util.{ByteString, ByteStringBuilder}
 import cmwell.dc.{LazyLogging, Settings}
 import cmwell.dc.Settings._
+import cmwell.dc.stream.InfotonAllMachinesDistributerAndIngester.logger
 import cmwell.dc.stream.MessagesTypesAndExceptions._
+import cmwell.dc.stream.SingleMachineInfotonIngester.IngestStateStatus
 import cmwell.util.akka.http.HttpZipDecoder
 
 import scala.concurrent.duration.Duration
@@ -243,6 +245,39 @@ object InfotonRetriever extends LazyLogging {
   ): (Try[RetrieveOutput], RetrieveState) =
     response match {
       case (response @ Success(res), state @ (input, status), body) => {
+        res.collect {
+          case (id, _) if id.data == empty => id
+        }
+//        if (!originalRequest.contains("meta/sys#indexTime")) {
+//          val originalInfotonData = state._1.head
+//          //TODO:Liel to move to _out
+//          val idxTime = -1
+//          val subject =
+//            originalInfotonData.data.takeWhile(_ != space).utf8String
+//          val idxTimeQuad = s"""$subject <cmwell://meta/sys#indexTime> "$idxTime"^^<http://www.w3.org/2001/XMLSchema#long> ."""
+//          val u = Util.extractUuid(originalInfotonData)
+//          val q = "\""+idxTimeQuad+"\""
+//          logger.warn(s"Sync $dcKey: Ingest of uuid $u to machine $location didn't have index time. Adding $q from metadata manually")
+//          //TODO:liel to move to _out
+//          val ingestData = Seq(
+//            InfotonData(
+//              originalInfotonData.meta,
+//              originalInfotonData.data ++ ByteString(idxTimeQuad) ++ endln
+//            )
+//          )
+//          val ingestState = ingestData -> IngestStateStatus(
+//            Settings.initialSingleIngestRetryCount,
+//            singleRetryCount + 1,
+//            ex
+//          )
+//          Some(
+//            List(
+//              akka.pattern.after(Settings.ingestRetryDelay, sys.scheduler)(
+//                Future.successful(ingestData)
+//              ) -> ingestState
+//            )
+//          )
+//        }
         val missingUuids = res.collect {
           case (id, _) if id.data == empty => id
         }
@@ -251,7 +286,33 @@ object InfotonRetriever extends LazyLogging {
           case (id, casIndexTime) if casIndexTime.isDefined && id.meta.indexTime != casIndexTime.get =>
             id
         }
-        if (missingUuids.isEmpty && uuidsWithBadIndexTime.isEmpty) {
+        val uuidsWithMissingIndextime = res.collect{
+          case(id, None) => id
+        }
+
+        if(uuidsWithMissingIndextime.nonEmpty){
+          val originalInfotonData = state._1.head
+          //TODO:Liel to move to _out
+          val idxTime = originalInfotonData.meta.indexTime
+          val subject =
+            originalInfotonData.data.takeWhile(_ != space).utf8String
+          val idxTimeQuad = s"""$subject <cmwell://meta/sys#indexTime> "$idxTime"^^<http://www.w3.org/2001/XMLSchema#long> ."""
+          val u = Util.extractUuid(originalInfotonData)
+          val q = "\""+idxTimeQuad+"\""
+          logger.warn(s"Sync $dcKey: Ingest of uuid $u didn't have index time. Adding $q from metadata manually")
+          //TODO:liel to move to _out
+          val ingestData = scala.collection.immutable.Seq(
+            (InfotonData(
+              originalInfotonData.meta,
+              originalInfotonData.data ++ ByteString(idxTimeQuad) ++ endln
+            ),
+            Option(idxTime))
+          )
+          (Success(ingestData), state)
+
+
+        }
+        else if (missingUuids.isEmpty && uuidsWithBadIndexTime.isEmpty) {
           status.lastException.foreach { e =>
             val bulkCount =
               if (input.size > 1)

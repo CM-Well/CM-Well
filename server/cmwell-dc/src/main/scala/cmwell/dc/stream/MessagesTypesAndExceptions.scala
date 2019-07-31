@@ -29,12 +29,11 @@ object MessagesTypesAndExceptions {
       s"[id: $id, location: $location, transformations: ${transformations.mkString("(", ",", ")")}]"
   }
 
-  sealed trait DcInfoExtra
-  case class FingerPrintData(webServiceCluster: String) extends DcInfoExtra
+  case class AlgoData(algoClass:String, algoJarUrl:String, algoParams: Map[String, String])
 
   case class DcInfo(key: DcInfoKey,
                     dcInfoExtraType: String,
-                    dcInfoExtra: Option[DcInfoExtra],
+                    dcInfoExtra: Option[AlgoData],
                     idxTime: Option[Long] = None,
                     positionKey: Option[String] = None,
                     tsvFile: Option[String] = None)
@@ -51,10 +50,22 @@ object MessagesTypesAndExceptions {
   case object CheckDcInfotonList
   case class RetrievedDcInfoList(dcInfoSeq: Seq[DcInfo])
 
-  sealed trait InfotonMeta
-  case class InfotonFullMeta(path: String, uuid: ByteString, indexTime: Long) extends InfotonMeta
-  case class InfotonThinMeta(path:String) extends InfotonMeta
-  case class InfotonData(meta: InfotonFullMeta, data: ByteString)
+  sealed trait InfotonMeta{
+    def path:String
+    def indexTime:Long
+    def uuid:ByteString
+  }
+  case class InfotonFullMeta(iPath: String, iuuid: ByteString, idxTime: Long) extends InfotonMeta  {
+    def path:String = iPath
+    def indexTime:Long = idxTime
+    def uuid :ByteString = iuuid
+  }
+  case class InfotonThinMeta(iPath:String) extends InfotonMeta{
+    def path:String = iPath
+    def indexTime:Long = throw new IllegalArgumentException("No indextime for InfotonThinMeta")
+    def uuid:ByteString = throw new IllegalArgumentException("No uuid for InfotonThinMeta")
+  }
+  case class InfotonData(meta: InfotonMeta, data: ByteString)
 
   case class GetIndexTimeException(message: String, ex: Throwable = null) extends Exception(message, ex)
   case class GetInfotonListException(message: String, ex: Throwable = null) extends Exception(message, ex)

@@ -131,34 +131,6 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
           if (ingestSeq.size == 1 && retriesLeft == 0) {
             val originalRequest =
               ingestSeq.foldLeft(empty)(_ ++ _.data).utf8String
-            if (!originalRequest.contains("meta/sys#indexTime")) {
-              val originalInfotonData = state._1.head
-              val idxTime = originalInfotonData.meta.indexTime
-              val subject =
-                originalInfotonData.data.takeWhile(_ != space).utf8String
-              val idxTimeQuad = s"""$subject <cmwell://meta/sys#indexTime> "$idxTime"^^<http://www.w3.org/2001/XMLSchema#long> ."""
-              val u = originalInfotonData.meta.uuid.utf8String
-              val q = "\""+idxTimeQuad+"\""
-              logger.warn(s"Sync $dcKey: Ingest of uuid $u to machine $location didn't have index time. Adding $q from metadata manually")
-              val ingestData = Seq(
-                InfotonData(
-                  originalInfotonData.meta,
-                  originalInfotonData.data ++ ByteString(idxTimeQuad) ++ endln
-                )
-              )
-              val ingestState = ingestData -> IngestStateStatus(
-                Settings.initialSingleIngestRetryCount,
-                singleRetryCount + 1,
-                ex
-              )
-              Some(
-                List(
-                  akka.pattern.after(Settings.ingestRetryDelay, sys.scheduler)(
-                    Future.successful(ingestData)
-                  ) -> ingestState
-                )
-              )
-            } else {
               ex.get match {
                 case e: FuturedBodyException =>
                   logger.error(
@@ -166,16 +138,16 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
                   )
                   Util.errorPrintFuturedBodyException(e)
                 case e =>
-                  val u = ingestSeq.head.meta.uuid.utf8String
+                  val u = Util.extractUuid(ingestSeq.head)
                   logger.error(s"Sync $dcKey: Ingest of uuid $u to machine $location failed. No more reties will be done. " +
                                "Please use the red log to see the list of all the failed ingests. The exception is: ", e)
               }
-              logger.trace(s"Original Ingest request for uuid ${ingestSeq.head.meta.uuid.utf8String} was: $originalRequest")
-              redlog.info(s"Sync $dcKey: Ingest of uuid ${ingestSeq.head.meta.uuid.utf8String} to machine $location failed")
+              logger.trace(s"Original Ingest request for uuid ${Util.extractUuid(ingestSeq.head)} was: $originalRequest")
+              redlog.info(s"Sync $dcKey: Ingest of uuid ${Util.extractUuid(ingestSeq.head)} to machine $location failed")
               Some(Nil)
-            }
+
           } else if (ingestSeq.size == 1) {
-            logger.trace(s"Sync $dcKey: Ingest of uuid ${ingestSeq.head.meta.uuid.utf8String} to " +
+            logger.trace(s"Sync $dcKey: Ingest of uuid ${Util.extractUuid(ingestSeq.head)} to " +
                          s"machine $location failed. Retries left $retriesLeft. Will try again. The exception is: ", ex.get)
             Util.tracePrintFuturedBodyException(ex.get)
             val ingestState =

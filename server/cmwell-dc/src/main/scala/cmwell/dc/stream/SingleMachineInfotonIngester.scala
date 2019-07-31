@@ -111,7 +111,7 @@ object SingleMachineInfotonIngester extends LazyLogging {
           val singleCount = status.singleRetryCount + 1 //if (state._1.size > 1) 0 else Settings.initialSingleIngestRetryCount - state._2.retriesLeft + 1
           yellowlog.info(
             s"Ingest succeeded only after $bulkCount bulk ingests and $singleCount single infoton ingests. uuids: ${input
-              .map(i => i.meta.uuid.utf8String)
+              .map(i => Util.extractUuid(i))
               .mkString(",")}."
           )
         }
@@ -127,7 +127,7 @@ object SingleMachineInfotonIngester extends LazyLogging {
           if (s == StatusCodes.ServiceUnavailable)
             IngestServiceUnavailableException(
               s"Ingest infotons failed. Sync $dcKey, using local location $location uuids: ${state._1
-                .map(i => i.meta.uuid.utf8String)
+                .map(i => Util.extractUuid(i))
                 .mkString(",")}.",
               bodyFut,
               e
@@ -135,7 +135,7 @@ object SingleMachineInfotonIngester extends LazyLogging {
           else
             IngestBadResponseException(
               s"Ingest infotons failed. Sync $dcKey, using local location $location uuids: ${state._1
-                .map(i => i.meta.uuid.utf8String)
+                .map(i => Util.extractUuid(i))
                 .mkString(",")}.",
               bodyFut,
               e
@@ -147,7 +147,7 @@ object SingleMachineInfotonIngester extends LazyLogging {
       case (Failure(e), state) => {
         val ex = IngestException(
           s"Ingest infotons failed. Sync $dcKey, using local location $location uuids: ${state._1
-            .map(i => i.meta.uuid.utf8String)
+            .map(i => Util.extractUuid(i))
             .mkString(",")}",
           e
         )
@@ -156,4 +156,6 @@ object SingleMachineInfotonIngester extends LazyLogging {
          (state._1, IngestStateStatus(state._2.retriesLeft, state._2.singleRetryCount, Some(ex))))
       }
     }
+
+
 }

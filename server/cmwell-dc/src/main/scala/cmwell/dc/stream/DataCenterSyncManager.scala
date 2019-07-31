@@ -23,7 +23,7 @@ import akka.stream.scaladsl.{Flow, Framing, Keep, RunnableGraph, Sink, Source}
 import akka.util.ByteString
 import cmwell.dc.stream.MessagesTypesAndExceptions._
 import cmwell.dc.stream.akkautils.ConcurrentFlow
-import cmwell.dc.stream.fingerprint.{FingerPrintFlow, FingerPrintJsonParser, FingerPrintWebService}
+import cmwell.dc.stream.algo.{AlgoFlow, DDPCAlgorithmJsonParser}
 import cmwell.dc.{LazyLogging, Settings}
 import cmwell.driver.Dao
 import cmwell.util.collections._
@@ -483,7 +483,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
                 }
               case _ => None
             }
-            val dcInfoExtraType = f \ "type" match {
+            val dcType = f \ "type" match {
               case JsDefined(JsArray(seq))
                 if seq.length == 1 && seq.head.isInstanceOf[JsString] =>
                 seq.head.as[String]
@@ -517,12 +517,12 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
               yield str).mkString("&")
             val qpAndWhStrFinal =
               if (qpAndWhStr.length == 0) "" else "?" + qpAndWhStr
-            val (dcInfoExtra, ingestOp) = dcInfoExtraType match {
-              case "fingerprint" => (FingerPrintJsonParser.extractFingerPrintInfo(f), "_in")
-              case _ => (None, "_ow")
-          }
+            val (dcInfoExtra, ingestOp) = dcType match {
+              case "remote" => (None, "_ow")
+              case _ => (Some(DDPCAlgorithmJsonParser.extractAlgoInfo(f)), "_in")
+            }
             val dcKey = DcInfoKey(s"$dataCenterId$qpAndWhStrFinal", location, transformations, ingestOp)
-            DcInfo(dcKey, dcInfoExtraType, dcInfoExtra, idxTime = fromIndexTime, tsvFile = tsvFile)
+            DcInfo(dcKey, dcType, dcInfoExtra, idxTime = fromIndexTime, tsvFile = tsvFile)
           }
         case _ => Seq.empty
       }
@@ -869,6 +869,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
         .via(RatePrinter(dcInfo.key, bucket => bucket.size, "elements", "infoton TSVs from InfotonAggregator", 500))
         .via(ConcurrentFlow(Settings.retrieveParallelism)(InfotonRetriever(dcInfo.key, localDecider)))
         .mapConcat(identity)
+        .via(AlgoFlow.algoFlow(dcInfo))
         .async
         .via(RatePrinter(dcInfo.key, _.data.size / 1000D, "KB", "KB infoton Data from InfotonRetriever", 5000))
         .map(infotonDataTransformer)

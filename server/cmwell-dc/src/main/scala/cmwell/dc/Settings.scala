@@ -62,7 +62,5 @@ object Settings {
   val irwServiceDaoHostName = config.getString("irwServiceDao.hostName")
   val irwServiceDaoClusterName = config.getString("irwServiceDao.clusterName")
   val irwServiceDaoKeySpace2 = config.getString("irwServiceDao.keySpace2")
-  val fingerprintParallelism = config.getInt("fingerprint.webServiceParallelism")
-  val maxEventFrameSize = config.getInt("fingerprint.maxEventFrameSize")
 
 }

@@ -14,12 +14,10 @@
   */
 package cmwell.dc.stream
 
-import akka.http.scaladsl.model.{HttpHeader, HttpResponse}
-import akka.http.scaladsl.coding.{Deflate, Gzip, NoCoding}
-import akka.http.scaladsl.model.headers.HttpEncodings
+import akka.http.scaladsl.model.HttpHeader
 import akka.util.ByteString
 import cmwell.dc.LazyLogging
-import cmwell.dc.stream.MessagesTypesAndExceptions.{DcInfo, FuturedBodyException, InfotonData}
+import cmwell.dc.stream.MessagesTypesAndExceptions.{DcInfo, FuturedBodyException, InfotonData, InfotonThinMeta}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
@@ -104,7 +102,7 @@ object Util extends LazyLogging {
       val transformations = dcInfo.key.transformations.toList
       infotonData => {
         val oldMeta = infotonData.meta
-        val newMeta = oldMeta.copy(path = transform(transformations, oldMeta.path))
+        val newPath = transform(transformations, oldMeta.path)
         val infotonQuads = infotonData.data.utf8String.split('\n')
         val newData = infotonQuads.foldLeft(StringBuilder.newBuilder) { (total, line) =>
           val subjectEndPos = line.indexOf(' ')
@@ -121,13 +119,18 @@ object Util extends LazyLogging {
           val newQuad = if (isQuad) transform(transformations, line.substring(valueEndPos + 1)) else "."
           total ++= newSubject ++= predicate ++= newValue ++= newQuad += '\n'
         }
-        InfotonData(newMeta, ByteString(newData.result()))
+        InfotonData(InfotonThinMeta(newPath), ByteString(newData.result()))
       }
     }
   }
 
   def transform(transformations: List[(String, String)], str: String): String = {
     transformations.foldLeft(str)((result, kv) => result.replace(kv._1, kv._2))
+  }
+
+  def extractUuid(infoton:InfotonData):String = {
+    val uuidTriple = infoton.data.utf8String.split("\n").filter(_.contains("meta/sys#uuid"))
+    if(uuidTriple.isEmpty) "no-uuid" else uuidTriple(0).split(" ")(2)
   }
 
 }
