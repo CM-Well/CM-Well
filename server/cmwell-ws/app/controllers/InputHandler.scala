@@ -703,7 +703,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
           vec match {
             case Some(infotonVec) => {
 
-              val v = infotonVec.map(infoton => if (infoton.lastModifiedBy == "") infoton.copyInfoton(lastModifiedBy = modifier) else infoton)
+              val v = infotonVec.map(_.copyInfoton(lastModifiedBy = modifier))
 
               if (skipValidation || v.forall(i => InfotonValidator.isInfotonNameValid(normalizePath(i.path)))) {
                 val unauthorizedPaths =

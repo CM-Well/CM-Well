@@ -18,7 +18,6 @@ import javax.inject.Inject
 import cmwell.domain.{FieldValue, FileContent, FileInfoton, Infoton}
 import cmwell.ws.Settings
 import com.github.t3hnar.bcrypt._
-import filters.Attrs
 import logic.CRUDServiceFS
 import play.api.libs.json.{JsObject, JsString}
 import play.api.mvc.Request
