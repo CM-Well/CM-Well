@@ -162,7 +162,7 @@ object TsvFormatter extends SimpleFormater {
   override protected def thinResultToString(r: SearchThinResult): String =
     s"${r.path}\t${r.lastModified}\t${r.uuid}\t${r.indexTime}" + r.score.fold("")(score => s"\t$score")
   override protected def infotonToString(i: Infoton): String =
-    s"${i.path}\t${cmwell.util.string.dateStringify(i.lastModified)}\t${i.lastModifiedBy}\t${i.uuid}\t${i.indexTime.fold("")(_.toString)}${i.fields
+    s"${i.path}\t${cmwell.util.string.dateStringify(i.lastModified)}\t${i.uuid}\t${i.indexTime.fold("")(_.toString)}${i.fields
       .flatMap(_.get("$score").flatMap(_.headOption.map("\t" + _.value.toString)))
       .getOrElse("")}"
 }
