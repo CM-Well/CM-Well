@@ -154,7 +154,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                 "can't use meta operations here! this API is used internaly, and only for overwrites!"
               )
               val (errs, _) = cmwell.util.collections.partitionWith(metaDataMap) {
-                case (path, MetaData(mdType, _, data, text, mimeType, linkType, linkTo, dataCenter, indexTime, _)) =>
+                case (path, MetaData(mdType, _, data, text, mimeType, linkType, linkTo, dataCenter, indexTime, _ ,lastModifiedBy)) =>
                   var errors = List.empty[String]
                   if (indexTime.isEmpty) {
                     errors = "indexTime should be defined" :: errors
@@ -183,6 +183,8 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                     }
                   } else if (mdType.get != ObjectMetaData && mdType.get != DeletedMetaData) {
                     errors = s"infoton's kind (type) isn't recognized" :: errors
+                  } else if (lastModifiedBy.isEmpty) {
+                    errors = "lastModifiedBy should be defined" :: errors
                   }
 
                   if (errors.isEmpty) Right(())
