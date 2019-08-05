@@ -245,39 +245,6 @@ object InfotonRetriever extends LazyLogging {
   ): (Try[RetrieveOutput], RetrieveState) =
     response match {
       case (response @ Success(res), state @ (input, status), body) => {
-        res.collect {
-          case (id, _) if id.data == empty => id
-        }
-//        if (!originalRequest.contains("meta/sys#indexTime")) {
-//          val originalInfotonData = state._1.head
-//          //TODO:Liel to move to _out
-//          val idxTime = -1
-//          val subject =
-//            originalInfotonData.data.takeWhile(_ != space).utf8String
-//          val idxTimeQuad = s"""$subject <cmwell://meta/sys#indexTime> "$idxTime"^^<http://www.w3.org/2001/XMLSchema#long> ."""
-//          val u = Util.extractUuid(originalInfotonData)
-//          val q = "\""+idxTimeQuad+"\""
-//          logger.warn(s"Sync $dcKey: Ingest of uuid $u to machine $location didn't have index time. Adding $q from metadata manually")
-//          //TODO:liel to move to _out
-//          val ingestData = Seq(
-//            InfotonData(
-//              originalInfotonData.meta,
-//              originalInfotonData.data ++ ByteString(idxTimeQuad) ++ endln
-//            )
-//          )
-//          val ingestState = ingestData -> IngestStateStatus(
-//            Settings.initialSingleIngestRetryCount,
-//            singleRetryCount + 1,
-//            ex
-//          )
-//          Some(
-//            List(
-//              akka.pattern.after(Settings.ingestRetryDelay, sys.scheduler)(
-//                Future.successful(ingestData)
-//              ) -> ingestState
-//            )
-//          )
-//        }
         val missingUuids = res.collect {
           case (id, _) if id.data == empty => id
         }
@@ -291,26 +258,22 @@ object InfotonRetriever extends LazyLogging {
         }
 
         if(uuidsWithMissingIndextime.nonEmpty){
-          val originalInfotonData = state._1.head
-          //TODO:Liel to move to _out
-          val idxTime = originalInfotonData.meta.indexTime
-          val subject =
-            originalInfotonData.data.takeWhile(_ != space).utf8String
-          val idxTimeQuad = s"""$subject <cmwell://meta/sys#indexTime> "$idxTime"^^<http://www.w3.org/2001/XMLSchema#long> ."""
-          val u = Util.extractUuid(originalInfotonData)
-          val q = "\""+idxTimeQuad+"\""
-          logger.warn(s"Sync $dcKey: Ingest of uuid $u didn't have index time. Adding $q from metadata manually")
-          //TODO:liel to move to _out
-          val ingestData = scala.collection.immutable.Seq(
-            (InfotonData(
-              originalInfotonData.meta,
-              originalInfotonData.data ++ ByteString(idxTimeQuad) ++ endln
-            ),
-            Option(idxTime))
-          )
-          (Success(ingestData), state)
-
-
+          val res = uuidsWithMissingIndextime.map {i =>
+            //TODO:Liel to move to _out
+            val idxTime = i.meta.indexTime
+            val subject =
+              i.data.takeWhile(_ != space).utf8String
+            val idxTimeQuad = s"""$subject <cmwell://meta/sys#indexTime> "$idxTime"^^<http://www.w3.org/2001/XMLSchema#long> ."""
+            val u = Util.extractUuid(i)
+            val q = "\"" + idxTimeQuad + "\""
+            logger.warn(s"Sync $dcKey: Retrieve of uuid $u didn't have index time. Adding $q from metadata manually")
+            val ingestData =
+              (InfotonData(
+                i.meta,
+                i.data ++ ByteString(idxTimeQuad) ++ endln), Option(idxTime))
+            ingestData
+          }
+          (Success(res), state)
         }
         else if (missingUuids.isEmpty && uuidsWithBadIndexTime.isEmpty) {
           status.lastException.foreach { e =>
