@@ -21,7 +21,6 @@ import security.PermissionLevel._
 import security._
 import wsutil._
 import javax.inject._
-
 import cmwell.ws.Settings
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -58,7 +57,7 @@ class AuthFilter @Inject()(authCache: EagerAuthCache, authUtils: AuthUtils, auth
       orElse(requestHeader.cookies.get("X-CM-WELL-TOKEN").map(_.value))
       .flatMap(Token(_, authCache))
 
-    val modifier = tokenOpt.fold("anon")(_.username) + requestHeader.getQueryString("modifier").fold("")("/".+)
+    val modifier = tokenOpt.fold("anonymous")(_.username) + requestHeader.getQueryString("modifier").fold("")("/".+)
 
     if ((!useAuthorizationParam && !isRequestWriteToMeta) || irrelevantPaths.exists(requestHeader.path.startsWith))
       Allowed(modifier)
