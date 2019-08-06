@@ -48,9 +48,9 @@ object AlgoFlow extends LazyLogging{
 
 //TODO:
 
-//smart key
-//move index time from ingest to _out
+//thin and full infoton
 //zstore
+//union the graphs
+//smart key
 //persist poisiton per bulk
 //load application.conf
-

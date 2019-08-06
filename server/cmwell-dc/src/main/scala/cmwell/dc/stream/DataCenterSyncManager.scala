@@ -216,10 +216,10 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
         //The sync was completed successfully. Save the position key for the next sync to start.
         val newSyncMap: SyncMap = currentSyncs - dcInfo.key + (dcInfo.key -> SyncerDone(dcInfo.positionKey.get))
         currentSyncs = newSyncMap
-        if(dcInfo.dcInfoExtraType == "fingerprint")
-          zStore.putString("fp-position", dcInfo.positionKey.get).onComplete{
+        if(dcInfo.dcInfoExtraType != "remote")
+          zStore.putString(dcInfo.dcInfoExtraType , dcInfo.positionKey.get).onComplete{
             case Success(res) =>
-            case Failure(ex) => logger.error("Failed to persist fingerprint position", ex)
+            case Failure(ex) => logger.error(s"Failed to persist ${dcInfo.dcInfoExtraType } position", ex)
           }
 
       }
@@ -332,13 +332,13 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
             self ! WarmUpDcSync(dcInfo)
             //////////////////////*******************
             dcInfo.dcInfoExtraType match{
-              case "fingerprint" =>
-                retievePositionFromZstoreAndStartDc(dcInfo, dcKey, idxTimeFromUser)
-              case _ =>
+              case "remote" =>
                 // take the index time (from parameter and if not get the last one from the data itself,
                 // if this is the first time syncing take larger than epoch) and create position key from it
                 val idxTime = retrieveIndexTimeFromRemote(dcKey, idxTimeFromUser)
                 startDcFromIndexTime(dcInfo, dcKey, idxTime)
+              case _ =>
+                retievePositionFromZstoreAndStartDc(dcInfo, dcKey, idxTimeFromUser)
             }
           }
         }
@@ -347,7 +347,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
   }
 
   private def retievePositionFromZstoreAndStartDc(dcInfo: DcInfo, dcKey:DcInfoKey, idxTimeFromUser:Option[Long]) = {
-    val position = zStore.getStringOpt("fp-key")
+    val position = zStore.getStringOpt(dcInfo.dcInfoExtraType)
     position.onComplete {
       case Success(Some(zstorePosition)) =>
         logger.info(s"Got key $zstorePosition from zstore for dc info key $dcKey")
@@ -828,10 +828,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
         s"${dcInfo.positionKey.fold("")(key => s" using position key $key")}${dcInfo.tsvFile.fold("")(f => " and file " + f)}" +
         s"$transformationsStr"
     )
-    val syncerMaterialization@SyncerMaterialization(_, nextUnSyncedPositionFuture) = dcInfo.dcInfoExtraType match{
-      case "fingerprint" => new FingerPrintEngine(dstServersVec).createSyncingEngine(dcInfo).run()
-      case _ => createSyncingEngine(dcInfo).run()
-    }
+    val syncerMaterialization@SyncerMaterialization(_, nextUnSyncedPositionFuture) = createSyncingEngine(dcInfo).run()
     nextUnSyncedPositionFuture.onComplete {
       case Success(nextPositionKeyToSync) =>
         logger.info(s"The sync engine for: ${dcInfo.key} stopped with " +
