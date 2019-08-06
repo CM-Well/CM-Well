@@ -43,12 +43,6 @@ object DDPCAlgorithmJsonParser extends LazyLogging{
         }.toMap
       case _ => Map.empty[String, String]
     }
-    logger.info(s"lala, algoClass=$algoClass")
-    logger.info(s"lala, algoUrl=$algoJarUrl")
-    logger.info(s"lala params keys=${params.keySet}")
-    logger.info(s"lala params=${params}")
-
-
     AlgoData(algoClass, algoJarUrl, params)
   }
 

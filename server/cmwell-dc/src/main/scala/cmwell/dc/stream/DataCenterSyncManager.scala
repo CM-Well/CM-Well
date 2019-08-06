@@ -72,17 +72,19 @@ object DataCenterSyncManager extends LazyLogging {
     slashHttpsDotPossiblePrefix + maxUrlLength + dateLength + uuidLength + indexTimeLength + indexTimeLength + 1
   }
 
-  case class DataCenterToken(id: String, qp: String, withHistory: Boolean) {
-    def formatWith(f: (String, String, String) => String) =
+  case class DataCenterToken(id: String, dcType:String, qp: String, withHistory: Boolean) {
+    def formatWith(f: (String, String, String, String) => String) =
       f(
         id,
+        dcType,
         if (qp.isEmpty) "" else s",[$qp]",
         if (withHistory) "&with-history" else ""
       )
   }
 
   val dataCenterIdTokenParser = new JavaTokenParsers {
-    val id: Parser[String] = "[^?]+".r
+    val id: Parser[String] = "[^&]+".r
+    val dcType :Parser[String] = "&type=" ~> "[^?]+".r
     val qp: Parser[String] = "qp=" ~> "[^&]+".r
     val wh: Parser[String] = "with-history"
     val startsWithQp: Parser[(String, Boolean)] = (qp ~ ("&" ~ wh).?) ^^ {
@@ -93,8 +95,8 @@ object DataCenterSyncManager extends LazyLogging {
       : Parser[(String, Boolean)] = ("?" ~> (startsWithQp | wh ^^ (
       _ => "" -> true
     ))).? ^^ (_.getOrElse("" -> false))
-    val tokenParser: Parser[DataCenterToken] = (id ~ optionalPart) ^^ {
-      case i ~ ((q, w)) => DataCenterToken(i, q, w)
+    val tokenParser: Parser[DataCenterToken] = (id ~ dcType ~ optionalPart) ^^ {
+      case i ~ t ~ ((q, w)) => DataCenterToken(i, t, q, w)
     }
 
     def parse(dataCenterId: String): Try[DataCenterToken] = {
@@ -521,7 +523,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
               case "remote" => (None, "_ow")
               case _ => (Some(DDPCAlgorithmJsonParser.extractAlgoInfo(f)), "_in")
             }
-            val dcKey = DcInfoKey(s"$dataCenterId$qpAndWhStrFinal", location, transformations, ingestOp)
+            val dcKey = DcInfoKey(s"$dataCenterId&type=$dcType$qpAndWhStrFinal", location, transformations, ingestOp)
             DcInfo(dcKey, dcType, dcInfoExtra, idxTime = fromIndexTime, tsvFile = tsvFile)
           }
         case _ => Seq.empty
@@ -542,7 +544,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
     dataCenterIdTokenParser
       .parse(dataCenterId)
       .map { dataCenterToken =>
-        val requestUri = dataCenterToken.formatWith { (id, qp, wh) =>
+        val requestUri = dataCenterToken.formatWith { (id, dcType, qp, wh) =>
           val sb = new StringBuilder
           sb ++= "http://"
           sb ++= remoteLocation
@@ -681,7 +683,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
     dataCenterIdTokenParser
       .parse(dataCenterId)
       .map { dataCenterToken =>
-        val requestUri = dataCenterToken.formatWith { (id, qp, wh) =>
+        val requestUri = dataCenterToken.formatWith { (id, dcType, qp, wh) =>
           val sb = new StringBuilder
           sb ++= "http://"
           sb ++= location
@@ -757,7 +759,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
     dataCenterIdTokenParser
       .parse(dataCenterId)
       .map { dataCenterToken =>
-        val requestUri = dataCenterToken.formatWith { (id, qp, wh) =>
+        val requestUri = dataCenterToken.formatWith { (id, dcType, qp, wh) =>
           val sb = new StringBuilder
           sb ++= "http://"
           sb ++= location
