@@ -33,23 +33,11 @@ object InfotonAggregator extends LazyLogging{
                            var weight: Long,
                            var infotonCount: Long = 0)
 
-  def apply[T](maxInfotonsPerBucket: Int, maxBucketByteSize: Long, maxTotalCount: Long) =
-    new InfotonAggregator[T](maxInfotonsPerBucket, maxBucketByteSize, maxTotalCount, convertToBaseInfoton)
-
-  def convertToBaseInfoton[T](infoton:T):BaseInfotonData = {
-//    logger.info(s"liel, infoton=$infoton")
-    infoton match{
-      case null => null
-      case x:BaseInfotonData => x
-      case y:InfotonData => BaseInfotonData(y.base.path, y.base.data)
-
-
-    }
-  }
-
+  def apply[T](maxInfotonsPerBucket: Int, maxBucketByteSize: Long, maxTotalCount: Long, converter: T => BaseInfotonData) =
+    new InfotonAggregator[T](maxInfotonsPerBucket, maxBucketByteSize, maxTotalCount, converter)
 }
 
-class InfotonAggregator[T](maxInfotonsPerBucket: Int, maxBucketByteSize: Long, maxTotalInfotons: Long, func: T => BaseInfotonData)
+class InfotonAggregator[T](maxInfotonsPerBucket: Int, maxBucketByteSize: Long, maxTotalInfotons: Long, converter: T => BaseInfotonData)
     extends GraphStage[FlowShape[T, scala.collection.immutable.Seq[T]]] {
   val in = Inlet[T]("InfotonAggregator.in")
   val out = Outlet[scala.collection.immutable.Seq[T]]("InfotonAggregator.out")
@@ -58,6 +46,7 @@ class InfotonAggregator[T](maxInfotonsPerBucket: Int, maxBucketByteSize: Long, m
   override def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
     private var bucketQueue: Queue[InfotonBucket[T]] = Queue.empty[InfotonBucket[T]]
     private var pending: T = _
+    private var pendingBaseInfoton: BaseInfotonData = _
     private var totalInfotonsInBuckets: Long = 0
     private var firstBucketIndexToSearchFrom: Int = 0
 
@@ -66,9 +55,8 @@ class InfotonAggregator[T](maxInfotonsPerBucket: Int, maxBucketByteSize: Long, m
       new InHandler {
         override def onPush(): Unit = {
           //at this point pending was already used and can be freely overwritten
-          // scalastyle:off
           pending = grab(in)
-          println("lala, in onPush, pending=")
+          pendingBaseInfoton = converter(pending)
           putPendingElementIntoBucketQueueIfPossible()
           if (isAvailable(out)) pushBucketIfAvailable()
           RequestAnotherInfotonIfNeededAndCompleteStageIfNeeded()
@@ -81,7 +69,7 @@ class InfotonAggregator[T](maxInfotonsPerBucket: Int, maxBucketByteSize: Long, m
         }
 
         override def onUpstreamFinish(): Unit = {
-          if (bucketQueue.isEmpty && (func(pending) eq null)) completeStage()
+          if (bucketQueue.isEmpty && (pendingBaseInfoton eq null)) completeStage()
         }
       }
     )
@@ -109,11 +97,11 @@ class InfotonAggregator[T](maxInfotonsPerBucket: Int, maxBucketByteSize: Long, m
     }
 
     private def putPendingElementIntoBucketQueueIfPossible(): Unit = {
-      if (func(pending) ne null) {
+      if (pendingBaseInfoton ne null) {
         val correctBucketIdx = bucketQueue.indexWhere(
           { bucket =>
-            !bucket.paths.contains(func(pending).path) &&
-            bucket.weight + func(pending).data.size.toLong <= maxBucketByteSize &&
+            !bucket.paths.contains(pendingBaseInfoton.path) &&
+            bucket.weight + pendingBaseInfoton.data.size.toLong <= maxBucketByteSize &&
             bucket.infotonCount < maxInfotonsPerBucket
           },
           firstBucketIndexToSearchFrom
@@ -126,27 +114,27 @@ class InfotonAggregator[T](maxInfotonsPerBucket: Int, maxBucketByteSize: Long, m
             infotonBuilder.sizeHint(maxInfotonsPerBucket)
             infotonBuilder += pending
             bucketQueue = bucketQueue.enqueue(
-              InfotonBucket[T](mutable.Set(func(pending).path), infotonBuilder, func(pending).data.size.toLong, 1)
+              InfotonBucket[T](mutable.Set(pendingBaseInfoton.path), infotonBuilder, pendingBaseInfoton.data.size.toLong, 1)
             )
             totalInfotonsInBuckets += 1
             if (maxInfotonsPerBucket == 1) firstBucketIndexToSearchFrom += 1
-//             pending = null
+            pendingBaseInfoton = null
           }
         } else {
           val bucket = bucketQueue(correctBucketIdx)
-          bucket.paths += func(pending).path
+          bucket.paths += pendingBaseInfoton.path
           bucket.infotons += pending
-          bucket.weight = bucket.weight + func(pending).data.size.toLong
+          bucket.weight = bucket.weight + pendingBaseInfoton.data.size.toLong
           bucket.infotonCount += 1
           totalInfotonsInBuckets += 1
           if (bucket.infotonCount == maxInfotonsPerBucket) firstBucketIndexToSearchFrom += 1
-//          pending = null
+          pendingBaseInfoton = null
         }
       }
     }
 
     def RequestAnotherInfotonIfNeededAndCompleteStageIfNeeded(): Unit = {
-      if (pending == null && !hasBeenPulled(in)) {
+      if (pendingBaseInfoton == null && !hasBeenPulled(in)) {
         if (!isClosed(in)) pull(in) else if (bucketQueue.isEmpty) completeStage()
       }
     }

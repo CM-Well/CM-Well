@@ -70,7 +70,8 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
             InfotonAggregator[BaseInfotonData](
               Settings.maxIngestInfotonCount,
               Settings.maxIngestByteSize,
-              Settings.maxTotalInfotonCountAggregatedForIngest
+              Settings.maxTotalInfotonCountAggregatedForIngest,
+              identity
             )
           )
           val initialStateAdder = b.add(
