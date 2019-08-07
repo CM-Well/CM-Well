@@ -162,6 +162,9 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                   if (dataCenter.isEmpty) {
                     errors = "dataCenter should be defined" :: errors
                   }
+                  if (lastModifiedBy.isEmpty) {
+                    errors = "lastModifiedBy should be defined" :: errors
+                  }
 //                  else if (dataCenter.get == Settings.dataCenter) {
 //                    errors = "dataCenter cannot be equal to current ID" :: errors
 //                  }
@@ -183,8 +186,6 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                     }
                   } else if (mdType.get != ObjectMetaData && mdType.get != DeletedMetaData) {
                     errors = s"infoton's kind (type) isn't recognized" :: errors
-                  } else if (lastModifiedBy.isEmpty) {
-                    errors = "lastModifiedBy should be defined" :: errors
                   }
 
                   if (errors.isEmpty) Right(())
