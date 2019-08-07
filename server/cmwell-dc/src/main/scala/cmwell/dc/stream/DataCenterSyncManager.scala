@@ -119,7 +119,7 @@ object DataCenterSyncManager extends LazyLogging {
     logger.trace(
       s"parseTSVAndCreateInfotonDataFromIt: [path='$path',uuid='${uuid.utf8String}',idxt='$idxt']"
     )
-    InfotonData(InfotonFullMeta(path, uuid, idxt), empty)
+    InfotonData(BaseInfotonData(path, empty), uuid, idxt)
   }
 
   def props(dstServersVec: Vector[(String, Option[Int])],
@@ -658,13 +658,13 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
           retrieveTsvListFromIndexTime(
             dataCenterId,
             localDst,
-            remoteList.head.meta.indexTime,
+            remoteList.head.indexTime,
             infotonsToGoBack
           )
         localTsvSet.map { localSet =>
           val idxTimeToStartWith = remoteList
             .find(infotonData => !localSet.contains(infotonData))
-            .fold(localIndexTime)(_.meta.indexTime)
+            .fold(localIndexTime)(_.indexTime)
           Some(idxTimeToStartWith - 1)
         }
       }
@@ -857,13 +857,14 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
       TsvRetriever(dcInfo, localDecider).mapConcat(identity)
     )(_ => TsvRetrieverFromFile(dcInfo))
 
-    val infotonDataTransformer: InfotonData => InfotonData = Util.createInfotonDataTransformer(dcInfo)
+    val infotonDataTransformer: BaseInfotonData => BaseInfotonData = Util.createInfotonDataTransformer(dcInfo)
     val syncingEngine: RunnableGraph[SyncerMaterialization] =
       tsvSource
         //        .buffer(Settings.tsvBufferSize, OverflowStrategy.backpressure)
         .async
         .via(RatePrinter(dcInfo.key, _ => 1, "elements", "infoton TSVs from TSV source", 500))
-        .via(InfotonAggregator(Settings.maxRetrieveInfotonCount, Settings.maxRetrieveByteSize, Settings.maxTotalInfotonCountAggregatedForRetrieve))
+        .via(InfotonAggregator[InfotonData](Settings.maxRetrieveInfotonCount, Settings.maxRetrieveByteSize,
+          Settings.maxTotalInfotonCountAggregatedForRetrieve))
         //        .async
         .via(RatePrinter(dcInfo.key, bucket => bucket.size, "elements", "infoton TSVs from InfotonAggregator", 500))
         .via(ConcurrentFlow(Settings.retrieveParallelism)(InfotonRetriever(dcInfo.key, localDecider)))

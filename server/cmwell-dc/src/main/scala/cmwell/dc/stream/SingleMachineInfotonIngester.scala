@@ -39,7 +39,7 @@ import scala.concurrent.duration.Duration
   */
 object SingleMachineInfotonIngester extends LazyLogging {
 
-  type IngestInput = Seq[InfotonData]
+  type IngestInput = Seq[BaseInfotonData]
   type IngestOutput = HttpResponse
 
   case class IngestStateStatus(retriesLeft: Int, singleRetryCount: Int, lastException: Option[Throwable])
@@ -100,7 +100,7 @@ object SingleMachineInfotonIngester extends LazyLogging {
         // https://github.com/akka/akka/issues/18716
         // we must consume the empty entity body
         input.foreach{
-          infoton => logger.info(s"liel 200 ok , path=${infoton.meta.path}")
+          infoton => logger.info(s"liel 200 ok , path=${infoton.path}")
         }
         res.entity.dataBytes.withAttributes(ActorAttributes.supervisionStrategy(decider)).runWith(Sink.ignore)
         //the Option with the exception will be only if ingest has already failed at least once.

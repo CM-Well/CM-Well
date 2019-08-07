@@ -55,17 +55,8 @@ object MessagesTypesAndExceptions {
     def indexTime:Long
     def uuid:ByteString
   }
-  case class InfotonFullMeta(iPath: String, iuuid: ByteString, idxTime: Long) extends InfotonMeta  {
-    def path:String = iPath
-    def indexTime:Long = idxTime
-    def uuid :ByteString = iuuid
-  }
-  case class InfotonThinMeta(iPath:String) extends InfotonMeta{
-    def path:String = iPath
-    def indexTime:Long = throw new IllegalArgumentException("No indextime for InfotonThinMeta")
-    def uuid:ByteString = throw new IllegalArgumentException("No uuid for InfotonThinMeta")
-  }
-  case class InfotonData(meta: InfotonMeta, data: ByteString)
+  case class BaseInfotonData(path:String, data:ByteString) extends AnyRef
+  case class InfotonData(base: BaseInfotonData, uuid: ByteString, indexTime: Long) extends AnyRef
 
   case class GetIndexTimeException(message: String, ex: Throwable = null) extends Exception(message, ex)
   case class GetInfotonListException(message: String, ex: Throwable = null) extends Exception(message, ex)
@@ -98,5 +89,6 @@ object MessagesTypesAndExceptions {
                                              override val body: Future[String],
                                              override val ex: Throwable = null)
       extends FuturedBodyException(messageWithoutBody, body, ex)
+
 
 }

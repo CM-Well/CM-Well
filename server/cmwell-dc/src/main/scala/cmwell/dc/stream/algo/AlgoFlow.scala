@@ -18,7 +18,7 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Flow
 import cmwell.dc.LazyLogging
-import cmwell.dc.stream.MessagesTypesAndExceptions.{DcInfo, InfotonData, InfotonThinMeta}
+import cmwell.dc.stream.MessagesTypesAndExceptions.{BaseInfotonData, DcInfo, InfotonData}
 import cmwell.util.loading.URLClassLoader
 import ddpc.data.{AlgoFlow, IndentityFlow}
 
@@ -39,9 +39,9 @@ object AlgoFlow extends LazyLogging{
         algoFlowInstance.runAlgo(algoInfo.algoParams)
         }
     Flow[InfotonData]
-      .map(_.data)
+      .map(_.base.data)
       .via(algoFlow)
-      .map(rdf => InfotonData(InfotonThinMeta(rdf.utf8String.split(" ")(0)), rdf))
+      .map(rdf => BaseInfotonData(rdf.utf8String.split(" ")(0), rdf))
   }
 }
 
@@ -49,6 +49,8 @@ object AlgoFlow extends LazyLogging{
 //TODO:
 
 //thin and full infoton
+//zstore
+//union the graphs
 //smart key
 //persist poisiton per bulk
 //load application.conf

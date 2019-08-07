@@ -52,10 +52,10 @@ object TsvRetrieverFromFile extends LazyLogging {
     }(pos => pos.toLong)
     val positionKeySink = Flow[InfotonData]
       .recover {
-        case e: Throwable => InfotonData(null, null)
+        case e: Throwable => InfotonData(null, null, -1)
       }
       .scan(linesToDrop) {
-        case (count, InfotonData(null, null)) => {
+        case (count, InfotonData(null, null, -1)) => {
           appendToPersistFile("crash at: " + count + "\n" + count.toString + "\n")
           count
         }

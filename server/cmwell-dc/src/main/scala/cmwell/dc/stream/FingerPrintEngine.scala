@@ -43,13 +43,14 @@ class FingerPrintEngine(dstServersVec: Vector[(String, Option[Int])])
     val tsvSource = dcInfo.tsvFile.fold(
       TsvRetriever(dcInfo, localDecider).mapConcat(identity)
     )(_ => TsvRetrieverFromFile(dcInfo))
-    val infotonDataTransformer: InfotonData => InfotonData = Util.createInfotonDataTransformer(dcInfo)
+    val infotonDataTransformer: BaseInfotonData => BaseInfotonData = Util.createInfotonDataTransformer(dcInfo)
     val syncingEngine: RunnableGraph[SyncerMaterialization] =
       tsvSource
         //        .buffer(Settings.tsvBufferSize, OverflowStrategy.backpressure)
         .async
         .via(RatePrinter(dcInfo.key, _ => 1, "elements", "infoton TSVs from TSV source", 500))
-        .via(InfotonAggregator(Settings.maxRetrieveInfotonCount, Settings.maxRetrieveByteSize, Settings.maxTotalInfotonCountAggregatedForRetrieve))
+        .via(InfotonAggregator.apply[InfotonData](Settings.maxRetrieveInfotonCount,
+          Settings.maxRetrieveByteSize, Settings.maxTotalInfotonCountAggregatedForRetrieve))
         //        .async
         .via(RatePrinter(dcInfo.key, bucket => bucket.size, "elements", "infoton TSVs from InfotonAggregator", 500))
         .via(ConcurrentFlow(Settings.retrieveParallelism)(InfotonRetriever(dcInfo.key, localDecider)))

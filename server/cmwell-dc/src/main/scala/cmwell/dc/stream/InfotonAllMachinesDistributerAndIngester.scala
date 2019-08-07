@@ -55,26 +55,26 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
     val size = hosts.length
     Flow.fromGraph(GraphDSL.create() { implicit b =>
       import GraphDSL.Implicits._
-      val part = b.add(Partition[InfotonData](size, {
-        case InfotonData(im, _) =>
-          (cmwell.util.string.Hash.adler32long(im.path) % size).toInt
+      val part = b.add(Partition[BaseInfotonData](size, {
+        case BaseInfotonData(path, _) =>
+          (cmwell.util.string.Hash.adler32long(path) % size).toInt
       }))
       val mergeIngests = b.add(Merge[(Try[IngestOutput], IngestState)](size))
       part.outlets.zipWithIndex.foreach {
-        case (o: Outlet[InfotonData @unchecked], i) => {
+        case (o: Outlet[BaseInfotonData @unchecked], i) => {
           val (host, portOpt) = hosts(i)
           val location = s"$host:${portOpt.getOrElse(80)}"
           val ingestFlow =
             SingleMachineInfotonIngester(dckey, location, decider)
           val infotonAggregator = b.add(
-            InfotonAggregator(
+            InfotonAggregator[BaseInfotonData](
               Settings.maxIngestInfotonCount,
               Settings.maxIngestByteSize,
               Settings.maxTotalInfotonCountAggregatedForIngest
             )
           )
           val initialStateAdder = b.add(
-            Flow[scala.collection.immutable.Seq[InfotonData]].map(
+            Flow[scala.collection.immutable.Seq[BaseInfotonData]].map(
               ingestData =>
                 Future
                   .successful(ingestData) -> (ingestData -> initialBulkStatus)
