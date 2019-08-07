@@ -864,7 +864,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
         .async
         .via(RatePrinter(dcInfo.key, _ => 1, "elements", "infoton TSVs from TSV source", 500))
         .via(InfotonAggregator[InfotonData](Settings.maxRetrieveInfotonCount, Settings.maxRetrieveByteSize,
-          Settings.maxTotalInfotonCountAggregatedForRetrieve))
+          Settings.maxTotalInfotonCountAggregatedForRetrieve, _.base))
         //        .async
         .via(RatePrinter(dcInfo.key, bucket => bucket.size, "elements", "infoton TSVs from InfotonAggregator", 500))
         .via(ConcurrentFlow(Settings.retrieveParallelism)(InfotonRetriever(dcInfo.key, localDecider)))
