@@ -50,11 +50,6 @@ object MessagesTypesAndExceptions {
   case object CheckDcInfotonList
   case class RetrievedDcInfoList(dcInfoSeq: Seq[DcInfo])
 
-  sealed trait InfotonMeta{
-    def path:String
-    def indexTime:Long
-    def uuid:ByteString
-  }
   case class BaseInfotonData(path:String, data:ByteString) extends AnyRef
   case class InfotonData(base: BaseInfotonData, uuid: ByteString, indexTime: Long) extends AnyRef
 

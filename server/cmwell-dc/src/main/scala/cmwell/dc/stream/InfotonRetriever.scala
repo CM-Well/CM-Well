@@ -22,20 +22,16 @@ import akka.http.scaladsl.model.headers.{HttpEncodings, `Accept-Encoding`, `Cont
 import akka.http.scaladsl.model.{ContentTypes, _}
 import akka.stream.Supervision.Decider
 import akka.stream.contrib.Retry
-import akka.stream.{ActorAttributes, Materializer, Supervision}
-import akka.stream.scaladsl.{Flow, Framing, Keep, Sink, Source}
+import akka.stream.scaladsl.{Flow, Framing, Source}
+import akka.stream.{ActorAttributes, Materializer}
 import akka.util.{ByteString, ByteStringBuilder}
-import cmwell.dc.{LazyLogging, Settings}
 import cmwell.dc.Settings._
-import cmwell.dc.stream.InfotonAllMachinesDistributerAndIngester.logger
 import cmwell.dc.stream.MessagesTypesAndExceptions._
-import cmwell.dc.stream.SingleMachineInfotonIngester.IngestStateStatus
+import cmwell.dc.{LazyLogging, Settings}
 import cmwell.util.akka.http.HttpZipDecoder
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -256,10 +252,9 @@ object InfotonRetriever extends LazyLogging {
         val uuidsWithMissingIndextime = res.collect{
           case(id, None) => id
         }
-
+        //uuids that doens't have index time in cassandra. fill it via ES
         if(uuidsWithMissingIndextime.nonEmpty){
           val res = uuidsWithMissingIndextime.map {i =>
-            //TODO:Liel to move to _out
             val idxTime = i.indexTime
             val subject =
               i.base.data.takeWhile(_ != space).utf8String

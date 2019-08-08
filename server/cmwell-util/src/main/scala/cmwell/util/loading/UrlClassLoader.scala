@@ -16,14 +16,6 @@ package cmwell.util.loading
 
 import java.net.{URL, URLClassLoader}
 
-import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Framing, Source}
-import akka.util.ByteString
-import ChildFirstURLClassLoader.Loader
-
-import scala.concurrent.ExecutionContext
-
 object URLClassLoader {
   def loadClassFromJar[T](className: String, jarPath: String, excludes: Seq[String] = Seq()): T =
     Loader(jarPath, excludes).load(className)
@@ -31,7 +23,6 @@ object URLClassLoader {
   case class Loader(jarPath: String, excludes: Seq[String] = Seq()) {
     val classLoaderUrls: Array[URL] = Array[URL](new URL(jarPath))
     private val cl = new URLClassLoader(classLoaderUrls, this.getClass.getClassLoader)
-    //      new ChildFirstURLClassLoader(Array(new File(jarPath).toURI.toURL), this.getClass.getClassLoader, excludes)
     def load[T](className: String) = cl.loadClass(className).newInstance.asInstanceOf[T]
   }
 }

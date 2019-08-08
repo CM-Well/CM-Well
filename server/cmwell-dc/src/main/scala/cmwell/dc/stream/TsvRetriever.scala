@@ -65,7 +65,6 @@ object TsvRetriever extends LazyLogging {
     logger.trace(
       s"parseTSVAndCreateInfotonDataFromIt: [path='$path',uuid='${uuid.utf8String}',idxt='$idxt']"
     )
-    logger.info(s"lala, path in tsv=$path")
     InfotonData(BaseInfotonData(path, empty), uuid, idxt)
   }
 
