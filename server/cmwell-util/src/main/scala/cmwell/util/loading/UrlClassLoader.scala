@@ -18,11 +18,9 @@ import java.net.{URL, URLClassLoader}
 
 object URLClassLoader {
   def loadClassFromJar[T](className: String, jarPath: String, excludes: Seq[String] = Seq()): T =
-    Loader(jarPath, excludes).load(className)
-
-  case class Loader(jarPath: String, excludes: Seq[String] = Seq()) {
+  {
     val classLoaderUrls: Array[URL] = Array[URL](new URL(jarPath))
-    private val cl = new URLClassLoader(classLoaderUrls, this.getClass.getClassLoader)
-    def load[T](className: String) = cl.loadClass(className).newInstance.asInstanceOf[T]
+    val cl = new URLClassLoader(classLoaderUrls, this.getClass.getClassLoader)
+    cl.loadClass(className).newInstance.asInstanceOf[T]
   }
 }

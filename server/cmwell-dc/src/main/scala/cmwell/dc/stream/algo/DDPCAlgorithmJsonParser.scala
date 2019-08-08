@@ -14,11 +14,13 @@
   */
 package cmwell.dc.stream.algo
 
+import java.net.URL
+
 import cmwell.dc.LazyLogging
 import cmwell.dc.stream.MessagesTypesAndExceptions.AlgoData
 import play.api.libs.json.{JsArray, JsDefined, JsLookupResult, JsObject, JsString}
 
-object DDPCAlgorithmJsonParser extends LazyLogging{
+object DDPCAlgorithmJsonParser extends LazyLogging {
 
 
   def extractAlgoInfo(f: JsLookupResult):AlgoData = {
@@ -43,7 +45,9 @@ object DDPCAlgorithmJsonParser extends LazyLogging{
         }.toMap
       case _ => Map.empty[String, String]
     }
+    val url = new URL(algoJarUrl)
+    if(url.getHost != "localhost" || !url.getPath.startsWith("/meta"))
+      throw new IllegalArgumentException(s"Host is not localhost or url doesn't in /meta, url=$algoJarUrl")
     AlgoData(algoClass, algoJarUrl, params)
   }
-
 }

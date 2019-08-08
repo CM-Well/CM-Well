@@ -130,9 +130,15 @@ object InfotonRetriever extends LazyLogging {
                 val parsedResult: Try[RetrieveOutput] = Success(state._1.map {
                   //todo: validity checks that the data arrived correctly. e.g. that the path could be retrieved from _out etc.
                   im => {
-                    val parsed: (ByteStringBuilder, Option[Long]) =
-                      totals.parsed(im.base.path)
-                    (InfotonData(BaseInfotonData(im.base.path, parsed._1.result), im.uuid, im.indexTime), parsed._2)
+                    val parsed: (ByteStringBuilder, Option[Long]) = totals.parsed(im.base.path)
+                    val parsedData = if(parsed._2.isEmpty) {
+                      //uuids that don't have index time in cassandra. populate it using ES indexTime
+                      val idxTimeQuad = s"""${im.base.path} <cmwell://meta/sys#indexTime> "${im.indexTime}"^^<http://www.w3.org/2001/XMLSchema#long> ."""
+                      val q = "\"" + idxTimeQuad + "\""
+                      logger.warn(s"Sync $dcKey: Retrieve of uuid ${im.uuid.utf8String} didn't have index time. Adding $q from metadata manually")
+                      parsed._1.result ++ ByteString(idxTimeQuad)
+                    } else parsed._1.result
+                    (InfotonData(BaseInfotonData(im.base.path, parsedData), im.uuid, im.indexTime), parsed._2)
                   }
                 }(breakOut))
                 (parsedResult, state, Option(totals.unParsed.result))
@@ -249,28 +255,7 @@ object InfotonRetriever extends LazyLogging {
           case (id, casIndexTime) if casIndexTime.isDefined && id.indexTime != casIndexTime.get =>
             id
         }
-        val uuidsWithMissingIndextime = res.collect{
-          case(id, None) => id
-        }
-        //uuids that doens't have index time in cassandra. fill it via ES
-        if(uuidsWithMissingIndextime.nonEmpty){
-          val res = uuidsWithMissingIndextime.map {i =>
-            val idxTime = i.indexTime
-            val subject =
-              i.base.data.takeWhile(_ != space).utf8String
-            val idxTimeQuad = s"""$subject <cmwell://meta/sys#indexTime> "$idxTime"^^<http://www.w3.org/2001/XMLSchema#long> ."""
-            val u = i.uuid.utf8String
-            val q = "\"" + idxTimeQuad + "\""
-            logger.warn(s"Sync $dcKey: Retrieve of uuid $u didn't have index time. Adding $q from metadata manually")
-            val ingestData =
-              (InfotonData(
-                i.base,
-                i.base.data ++ ByteString(idxTimeQuad) ++ endln, idxTime), Option(idxTime))
-            ingestData
-          }
-          (Success(res), state)
-        }
-        else if (missingUuids.isEmpty && uuidsWithBadIndexTime.isEmpty) {
+        if (missingUuids.isEmpty && uuidsWithBadIndexTime.isEmpty) {
           status.lastException.foreach { e =>
             val bulkCount =
               if (input.size > 1)
