@@ -1801,50 +1801,6 @@ abstract class Host(user: String,
     ).get.trim
   }
 
-  def rebalanceCassandraDownNodes {
-    // grep DN | awk '{print $2 " " $7}'
-    Retry {
-      val downNodes = command(
-        s"""JAVA_HOME=${instDirs.globalLocation}/cm-well/app/java/bin $nodeToolPath status 2> /dev/null | grep DN | awk '{print $$2 " " $$7}'""",
-        ips(0),
-        false
-      ).get.trim.split("\n").toList.map { dn =>
-        val dnsplt = dn.split(" ")
-        dnsplt(0) -> dnsplt(1)
-      }
-
-      downNodes.par.foreach(
-        dn =>
-          command(
-            s"JAVA_HOME=${instDirs.globalLocation}/cm-well/app/java/bin $nodeToolPath removenode ${dn._2} 2> /dev/null",
-            ips(0),
-            false
-          )
-      )
-      if (command(s"""JAVA_HOME=${instDirs.globalLocation}/cm-well/app/java/bin $nodeToolPath status 2> /dev/null | grep DN | awk '{print $$2 " " $$7}'""",
-        ips(0),
-        false).get.trim.split("\n").toList.size > 0)
-        throw new Exception("Failed to remove down nodes")
-
-      info(s"Cassandra nodes were removed from the cluster. The cluster now will rebalance its data.")
-    }
-  }
-
-  def getCassandraAddresses(host: String): Seq[String] = Seq(host)
-
-  def decommissionCassandraNodes(hosts: GenSeq[String]) {
-    hosts.foreach { host =>
-      getCassandraAddresses(host).foreach { ip =>
-        command(
-          s"""JAVA_HOME=${instDirs.globalLocation}/cm-well/app/java/bin $nodeToolLocation -h $ip decommission 2> /dev/null""",
-          host,
-          false
-        )
-      }
-
-    }
-  }
-
   def shutdown: Unit = shutdown()
 
   def shutdown(hosts: GenSeq[String] = ips): Unit = {
