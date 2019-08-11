@@ -71,15 +71,15 @@ package object util {
 
     val path = removeCmwHostAndPrependSlash(cmwHostsSet, ipath)
     metaData match {
-      case Some(MetaData(mdt, date, data, text, ctype, linktype, linkto, dataCenter, indexTime, protocol)) => {
+      case Some(MetaData(mdt, date, data, text, ctype, linktype, linkto, dataCenter, indexTime, protocol, lastModifiedBy)) => {
         lazy val (_date, dc) =
           if (path.startsWith("/meta/")) DateTime.now(DateTimeZone.UTC) -> Settings.dataCenter
           else date.getOrElse(DateTime.now(DateTimeZone.UTC)) -> dataCenter.getOrElse(Settings.dataCenter)
         mdt match {
-          case Some(ObjectMetaData) if path.startsWith("/meta/") => makeMetaWithZero(path, modifier, fields)
-          case Some(ObjectMetaData) => {
-            ObjectInfoton(path, dc, indexTime, _date, modifier, fields, protocol = protocol)
-          }
+          case Some(ObjectMetaData) if path.startsWith("/meta/") =>
+            makeMetaWithZero(path, if (lastModifiedBy.isEmpty) modifier else lastModifiedBy.get, fields)
+          case Some(ObjectMetaData) =>
+            ObjectInfoton(path, dc, indexTime, _date, if (lastModifiedBy.isEmpty) modifier else lastModifiedBy.get, fields, protocol = protocol)
           case Some(FileMetaData) => {
             val contentTypeFromByteArray = ctype match {
               case Some(ct) =>
@@ -94,7 +94,7 @@ package object util {
               case (Some(ba), None) =>
                 FileInfoton(path = path,
                             lastModified = _date,
-                            lastModifiedBy = modifier,
+                            lastModifiedBy = if (lastModifiedBy.isEmpty) modifier else lastModifiedBy.get,
                             fields = fields,
                             content = Some(FileContent(ba, contentTypeFromByteArray(ba))),
                             dc = dc,
@@ -104,7 +104,7 @@ package object util {
                 FileInfoton(
                   path = path,
                   lastModified = _date,
-                  lastModifiedBy = modifier,
+                  lastModifiedBy = if (lastModifiedBy.isEmpty) modifier else lastModifiedBy.get,
                   fields = fields,
                   content = Some(FileContent(txt.getBytes(Charset.forName("UTF-8")), "text/plain; utf-8")),
                   dc = dc,
@@ -122,7 +122,7 @@ package object util {
                   path = path,
                   fields = fields,
                   lastModified = _date,
-                  lastModifiedBy = modifier,
+                  lastModifiedBy = if (lastModifiedBy.isEmpty) modifier else lastModifiedBy.get,
                   linkTo = lto,
                   linkType = ltype,
                   dc = dc,
@@ -131,11 +131,13 @@ package object util {
                 )
               case _ => ??? //TODO: case is untreated yet
             }
-          case Some(DeletedMetaData) => DeletedInfoton(path, dc, indexTime, _date, modifier)
+          case Some(DeletedMetaData) => DeletedInfoton(path, dc, indexTime, _date, if (lastModifiedBy.isEmpty) modifier else lastModifiedBy.get)
           case None =>
             (data, text, ctype) match {
               case (None, None, None) =>
-                ObjectInfoton(path = path, lastModified = _date, lastModifiedBy = modifier, fields = fields, dc = dc,
+                ObjectInfoton(path = path, lastModified = _date,
+                  lastModifiedBy = if (lastModifiedBy.isEmpty) modifier else lastModifiedBy.get,
+                  fields = fields, dc = dc,
                   indexTime = indexTime, protocol = protocol)
               case _ =>
                 infotonFromMaps(
@@ -144,7 +146,7 @@ package object util {
                   fields,
                   Some(metaData.get.copy(mdType = Some(FileMetaData))),
                   currentTime,
-                  modifier
+                  if (lastModifiedBy.isEmpty) modifier else lastModifiedBy.get
                 ) //TODO: better inference of types. needs to be refactored when link infotons will be used.
             }
         }
@@ -179,7 +181,8 @@ package util {
     linkTo: Option[String],
     dataCenter: Option[String],
     indexTime: Option[Long],
-    protocol: Option[String]
+    protocol: Option[String],
+    lastModifiedBy: Option[String]
   ) {
 
     // format: off
@@ -193,7 +196,8 @@ package util {
       linkTo.isEmpty     &&
       dataCenter.isEmpty &&
       indexTime.isEmpty  &&
-      protocol.isEmpty
+      protocol.isEmpty   &&
+      lastModifiedBy.isEmpty
     }
     // format: on
 
@@ -208,10 +212,11 @@ package util {
       val dataCenter = Try(this.dataCenter.getOrElse(that.dataCenter.get)).toOption
       val indexTime = Try(this.indexTime.getOrElse(that.indexTime.get)).toOption
       val protocol = Try(this.protocol.getOrElse(that.protocol.get)).toOption
-      MetaData(mdType, date, data, text, mimeType, linkType, linkTo, dataCenter, indexTime, protocol)
+      val lastModifiedBy = Try(this.lastModifiedBy.getOrElse(that.lastModifiedBy.get)).toOption
+      MetaData(mdType, date, data, text, mimeType, linkType, linkTo, dataCenter, indexTime, protocol, lastModifiedBy)
     }
   }
   object MetaData {
-    val empty = MetaData(None, None, None, None, None, None, None, None, None, None)
+    val empty = MetaData(None, None, None, None, None, None, None, None, None, None, None)
   }
 }
