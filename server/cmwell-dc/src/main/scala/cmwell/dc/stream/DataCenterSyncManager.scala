@@ -807,13 +807,14 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
         s" in local decider. It inner stream will be stopped (the whole one may continue). The exception is:", e)
       Supervision.Stop
     }
-    val tsvSource = dcInfo.tsvFile.fold(
-      TsvRetriever(dcInfo, localDecider).mapConcat(identity)
-    )(_ => TsvRetrieverFromFile(dcInfo))
+    val tsvSourceWithBuffer = dcInfo.tsvFile.fold {
+      val tsvSource = TsvRetriever(dcInfo, localDecider)
+      val bufferedTsvSource = if (Settings.tsvBufferSize < 1) tsvSource else tsvSource.buffer(Settings.tsvBufferSize, OverflowStrategy.backpressure)
+      bufferedTsvSource.mapConcat(identity)
+    }(_ => TsvRetrieverFromFile(dcInfo))
     val infotonDataTransformer: InfotonData => InfotonData = Util.createInfotonDataTransformer(dcInfo)
     val syncingEngine: RunnableGraph[SyncerMaterialization] =
-      tsvSource
-        //        .buffer(Settings.tsvBufferSize, OverflowStrategy.backpressure)
+      tsvSourceWithBuffer
         .async
         .via(RatePrinter(dcInfo.key, _ => 1, "elements", "infoton TSVs from TSV source", 500))
         .via(InfotonAggregator(Settings.maxRetrieveInfotonCount, Settings.maxRetrieveByteSize, Settings.maxTotalInfotonCountAggregatedForRetrieve))
