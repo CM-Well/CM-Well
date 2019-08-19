@@ -24,11 +24,16 @@ import scala.util.{Failure, Success}
   */
 object MessagesTypesAndExceptions {
 
-  case class DcInfoKey(id: String, location: String, transformations: Map[String, String]) {
+  case class DcInfoKey(id: String, location: String, transformations: Map[String, String], ingestOperation:String) {
     override def toString: String =
       s"[id: $id, location: $location, transformations: ${transformations.mkString("(", ",", ")")}]"
   }
+
+  case class AlgoData(algoClass:String, algoJarUrl:String, algoParams: Map[String, String])
+
   case class DcInfo(key: DcInfoKey,
+                    dcInfoExtraType: String,
+                    dcInfoExtra: Option[AlgoData],
                     idxTime: Option[Long] = None,
                     positionKey: Option[String] = None,
                     tsvFile: Option[String] = None)
@@ -45,8 +50,8 @@ object MessagesTypesAndExceptions {
   case object CheckDcInfotonList
   case class RetrievedDcInfoList(dcInfoSeq: Seq[DcInfo])
 
-  case class InfotonMeta(path: String, uuid: ByteString, indexTime: Long)
-  case class InfotonData(meta: InfotonMeta, data: ByteString)
+  case class BaseInfotonData(path:String, data:ByteString) extends AnyRef
+  case class InfotonData(base: BaseInfotonData, uuid: ByteString, indexTime: Long) extends AnyRef
 
   case class GetIndexTimeException(message: String, ex: Throwable = null) extends Exception(message, ex)
   case class GetInfotonListException(message: String, ex: Throwable = null) extends Exception(message, ex)
@@ -79,5 +84,6 @@ object MessagesTypesAndExceptions {
                                              override val body: Future[String],
                                              override val ex: Throwable = null)
       extends FuturedBodyException(messageWithoutBody, body, ex)
+
 
 }
