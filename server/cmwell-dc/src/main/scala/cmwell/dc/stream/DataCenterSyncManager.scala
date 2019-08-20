@@ -19,7 +19,7 @@ import akka.actor.{Actor, ActorSystem, Cancellable, OneForOneStrategy, Props, St
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
 import akka.stream._
-import akka.stream.scaladsl.{Flow, Framing, Keep, RunnableGraph, Sink, Source}
+import akka.stream.scaladsl.{Framing, Keep, RunnableGraph, Sink, Source}
 import akka.util.ByteString
 import cmwell.dc.stream.MessagesTypesAndExceptions._
 import cmwell.dc.stream.akkautils.ConcurrentFlow
@@ -28,9 +28,8 @@ import cmwell.dc.{LazyLogging, Settings}
 import cmwell.driver.Dao
 import cmwell.util.collections._
 import cmwell.zstore.ZStore
-import com.typesafe.config.ConfigFactory
 import k.grid.GridReceives
-import play.api.libs.json.{JsValue, _}
+import play.api.libs.json._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
@@ -218,10 +217,11 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
         //The sync was completed successfully. Save the position key for the next sync to start.
         val newSyncMap: SyncMap = currentSyncs - dcInfo.key + (dcInfo.key -> SyncerDone(dcInfo.positionKey.get))
         currentSyncs = newSyncMap
-        if(dcInfo.dcInfoExtraType != "remote")
-          zStore.putString(dcInfo.dcInfoExtraType , dcInfo.positionKey.get).onComplete{
+        val dcType = Util.extractDcType(dcInfo.key.id)
+        if(dcType != "remote")
+          zStore.putString(dcType , dcInfo.positionKey.get).onComplete{
             case Success(res) =>
-            case Failure(ex) => logger.error(s"Failed to persist ${dcInfo.dcInfoExtraType } position", ex)
+            case Failure(ex) => logger.error(s"Failed to persist ${dcType} position", ex)
           }
 
       }
@@ -316,8 +316,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
 
   private def handleDcsToStart(dcsToStart: Seq[DcInfo]): Unit = {
     dcsToStart.foreach {
-      case dcInfo@DcInfo(dcKey, dcType, dcInfoExtra, idxTimeFromUser, keyFromFinishedRun, tsvFile) => {
-//      case dcInfo@DcInfo(dcKey, idxTimeFromUser, keyFromFinishedRun, tsvFile) => {
+      case dcInfo@DcInfo(dcKey, dcInfoExtra, idxTimeFromUser, keyFromFinishedRun, tsvFile) => {
         // if next unsynced position is available from previous sync run take it
         keyFromFinishedRun match {
           // We already have the key, send the start sync message immediately
@@ -332,15 +331,14 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
             logger.info(s"Warming up (getting position key and if needed also last synced index time) sync engine for " +
               s"$dcKey, position key to start from not found.")
             self ! WarmUpDcSync(dcInfo)
-            //////////////////////*******************
-            dcInfo.dcInfoExtraType match{
+            Util.extractDcType(dcKey.id) match{
               case "remote" =>
                 // take the index time (from parameter and if not get the last one from the data itself,
                 // if this is the first time syncing take larger than epoch) and create position key from it
                 val idxTime = retrieveIndexTimeFromRemote(dcKey, idxTimeFromUser)
                 startDcFromIndexTime(dcInfo, dcKey, idxTime)
               case _ =>
-                retievePositionFromZstoreAndStartDc(dcInfo, dcKey, idxTimeFromUser)
+                retrievePositionFromZstoreAndStartDc(dcInfo, idxTimeFromUser)
             }
           }
         }
@@ -348,16 +346,16 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
     }
   }
 
-  private def retievePositionFromZstoreAndStartDc(dcInfo: DcInfo, dcKey:DcInfoKey, idxTimeFromUser:Option[Long]) = {
-    val position = zStore.getStringOpt(dcInfo.dcInfoExtraType)
+  private def retrievePositionFromZstoreAndStartDc(dcInfo: DcInfo, idxTimeFromUser:Option[Long]) = {
+    val position = zStore.getStringOpt(Util.extractDcType(dcInfo.key.id))
     position.onComplete {
       case Success(Some(zstorePosition)) =>
-        logger.info(s"Got key $zstorePosition from zstore for dc info key $dcKey")
+        logger.info(s"Got key $zstorePosition from zstore for dc info key ${dcInfo.key}")
         self ! StartDcSync(dcInfo.copy(positionKey = Some(zstorePosition)))
-      case Success(None) => logger.info("first running")
-        startDcFromIndexTime(dcInfo, dcKey, Future.successful(None))
+      case Success(None) => logger.info(s"Starting DDPC process for key:${dcInfo.key.id}")
+        startDcFromIndexTime(dcInfo, dcInfo.key, Future.successful(None))
       case Failure(e) =>
-        logger.error(s"Sync ${dcInfo.key} failed with exception: ", e)
+        logger.error(s"Warming up for dc key ${dcInfo.key} failed to retrieve position from zstore with exception: ", e)
         self ! RemoveDcSync(dcInfo)
     }
   }
@@ -524,7 +522,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
               case _ => (Some(DDPCAlgorithmJsonParser.extractAlgoInfo(f)), "_in")
             }
             val dcKey = DcInfoKey(s"$dataCenterId&type=$dcType$qpAndWhStrFinal", location, transformations, ingestOp)
-            DcInfo(dcKey, dcType, dcInfoExtra, idxTime = fromIndexTime, tsvFile = tsvFile)
+            DcInfo(dcKey, dcInfoExtra, idxTime = fromIndexTime, tsvFile = tsvFile)
           }
         case _ => Seq.empty
       }
@@ -544,7 +542,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
     dataCenterIdTokenParser
       .parse(dataCenterId)
       .map { dataCenterToken =>
-        val requestUri = dataCenterToken.formatWith { (id, dcType, qp, wh) =>
+        val requestUri = dataCenterToken.formatWith { (id, _, qp, wh) =>
           val sb = new StringBuilder
           sb ++= "http://"
           sb ++= remoteLocation
@@ -683,7 +681,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
     dataCenterIdTokenParser
       .parse(dataCenterId)
       .map { dataCenterToken =>
-        val requestUri = dataCenterToken.formatWith { (id, dcType, qp, wh) =>
+        val requestUri = dataCenterToken.formatWith { (id, _, qp, wh) =>
           val sb = new StringBuilder
           sb ++= "http://"
           sb ++= location
@@ -835,7 +833,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
       case Success(nextPositionKeyToSync) =>
         logger.info(s"The sync engine for: ${dcInfo.key} stopped with " +
           s"success. The position key for next sync is: $nextPositionKeyToSync.")
-        self ! SaveDcSyncDoneInfo(DcInfo(dcInfo.key, dcInfo.dcInfoExtraType, dcInfo.dcInfoExtra, positionKey = Some(nextPositionKeyToSync)))
+        self ! SaveDcSyncDoneInfo(DcInfo(dcInfo.key, dcInfo.dcAlgoData, positionKey = Some(nextPositionKeyToSync)))
       case Failure(e) =>
         logger.error(s"Sync ${dcInfo.key} failed with exception: ", e)
         self ! RemoveDcSync(dcInfo)

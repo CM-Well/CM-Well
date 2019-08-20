@@ -28,4 +28,5 @@ trait AlgoFlow {
   def runAlgo(configMap: Map[String, String])
              (implicit ec:ExecutionContext,  mat:ActorMaterializer, system:ActorSystem):Flow[ByteString, ByteString, NotUsed]
 
+
 }

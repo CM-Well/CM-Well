@@ -18,8 +18,9 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Flow
 import cmwell.dc.stream.MessagesTypesAndExceptions.{BaseInfotonData, DcInfo, InfotonData}
+import cmwell.dc.stream.Util
 import cmwell.dc.{LazyLogging, stream}
-import cmwell.util.loading.URLClassLoader
+import cmwell.util.loading.ChildFirstURLClassLoader
 import ddpc.data.{AlgoFlow, IndentityFlow}
 
 import scala.concurrent.ExecutionContext
@@ -28,23 +29,21 @@ object AlgoFlow extends LazyLogging{
 
   def algoFlow(dcInfo: DcInfo)
               (implicit ec:ExecutionContext,  mat:ActorMaterializer, system:ActorSystem) = {
-    logger.info("HI lala, in algoFlow")
-
-    val algoFlow = dcInfo.dcInfoExtraType match {
+    val algoFlow = Util.extractDcType(dcInfo.key.id) match {
       case "remote" =>
         new IndentityFlow().runAlgo(Map.empty[String, String])
       case _ =>
-        val algoInfo = dcInfo.dcInfoExtra.get
-        val algoFlowInstance = URLClassLoader.loadClassFromJar[AlgoFlow](algoInfo.algoClass, algoInfo.algoJarUrl)
+        val algoInfo = dcInfo.dcAlgoData.get
+        val algoFlowInstance = ChildFirstURLClassLoader.loadClassFromJar[AlgoFlow](algoInfo.algoClass, algoInfo.algoJarUrl
+          , "ddpc.data", Seq("scala", "akka", "org.slf4j"))
         algoFlowInstance.runAlgo(algoInfo.algoParams)
         }
     Flow[InfotonData]
       .map(_.base.data)
       .via(algoFlow)
       .map(rdf => BaseInfotonData(rdf.takeWhile(_ != stream.space).utf8String, rdf))
+
   }
 }
-
-
 //TODO:
 //persist poisiton per bulk
