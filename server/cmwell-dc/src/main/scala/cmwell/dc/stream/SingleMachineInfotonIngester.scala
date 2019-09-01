@@ -73,20 +73,21 @@ object SingleMachineInfotonIngester extends LazyLogging {
 
   private[this] def createRequestNoGzip(location: String, payload: ByteString, op:String) = {
     val entity = HttpEntity(ContentTypes.`text/plain(UTF-8)`, payload)
-    var request = HttpRequest(method = HttpMethods.POST, uri = s"http://$location/$op?format=nquads", entity = entity)
-    if(op == "_ow")
-      request = request.addHeader(tokenHeader)
-    request
+    HttpRequest(method = HttpMethods.POST,
+                uri = s"http://$location/$op?format=nquads",
+                entity = entity,
+                headers = scala.collection.immutable.Seq(tokenHeader))
   }
 
   val gzipContentEncoding = `Content-Encoding`(HttpEncodings.gzip)
   private[this] def createRequestWithGzip(location: String, payload: ByteString, op:String) = {
     val entity = HttpEntity(ContentTypes.`text/plain(UTF-8)`, Gzip.encode(payload))
-    var request = HttpRequest(method = HttpMethods.POST, uri = s"http://$location/$op?format=nquads", entity = entity,
-      headers = scala.collection.immutable.Seq(gzipContentEncoding))
-      if(op == "_ow")
-        request = request.addHeader(tokenHeader)
-    request
+    HttpRequest(
+      method = HttpMethods.POST,
+      uri = s"http://$location/$op?format=nquads",
+      entity = entity,
+      headers = scala.collection.immutable.Seq(tokenHeader, gzipContentEncoding)
+    )
   }
 
   def checkResponseCreator(dcKey: DcInfoKey, location: String, decider: Decider)(

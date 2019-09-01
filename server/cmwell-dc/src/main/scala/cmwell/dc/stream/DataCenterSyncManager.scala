@@ -352,7 +352,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
       case Success(Some(zstorePosition)) =>
         logger.info(s"Got key $zstorePosition from zstore for dc info key ${dcInfo.key}")
         self ! StartDcSync(dcInfo.copy(positionKey = Some(zstorePosition)))
-      case Success(None) => logger.info(s"Starting DDPC process for key:${dcInfo.key.id}")
+      case Success(None) => logger.info(s"Starting DDPC stream for key:${dcInfo.key.id}")
         startDcFromIndexTime(dcInfo, dcInfo.key, Future.successful(None))
       case Failure(e) =>
         logger.error(s"Warming up for dc key ${dcInfo.key} failed to retrieve position from zstore with exception: ", e)
