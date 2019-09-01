@@ -32,8 +32,7 @@ object MessagesTypesAndExceptions {
   case class AlgoData(algoClass:String, algoJarUrl:String, algoParams: Map[String, String])
 
   case class DcInfo(key: DcInfoKey,
-                    dcInfoExtraType: String,
-                    dcInfoExtra: Option[AlgoData],
+                    dcAlgoData: Option[AlgoData],
                     idxTime: Option[Long] = None,
                     positionKey: Option[String] = None,
                     tsvFile: Option[String] = None)

@@ -17,6 +17,7 @@ package cmwell.dc.stream
 import akka.http.scaladsl.model.HttpHeader
 import akka.util.ByteString
 import cmwell.dc.LazyLogging
+import cmwell.dc.stream.DataCenterSyncManager.dataCenterIdTokenParser
 import cmwell.dc.stream.MessagesTypesAndExceptions.{BaseInfotonData, DcInfo, FuturedBodyException}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -55,6 +56,13 @@ object Util extends LazyLogging {
             )
         }
       case _ =>
+    }
+  }
+
+  def extractDcType(dcKey:String):String = {
+    dataCenterIdTokenParser.parse(dcKey) match{
+      case Success(dcToken) => dcToken.dcType
+      case Failure(err) => throw new IllegalArgumentException(s"Failed to extract dctype from dc token for dc key$dcKey", err)
     }
   }
 

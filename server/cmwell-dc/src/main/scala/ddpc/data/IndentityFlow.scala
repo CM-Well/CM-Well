@@ -24,7 +24,7 @@ import scala.concurrent.ExecutionContext
 
 class IndentityFlow extends AlgoFlow {
 
-  def runAlgo(configMap: Map[String, String])
+  override def runAlgo(configMap: Map[String, String])
              (implicit ec:ExecutionContext,  mat:ActorMaterializer, system:ActorSystem):Flow[ByteString, ByteString, NotUsed] = {
     Flow[ByteString].map(identity)
   }
