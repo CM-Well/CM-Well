@@ -97,7 +97,7 @@ class CSVFormatter(fieldNameModifier: String => String) extends Formatter {
       }.toMap -> index
     }
 
-    val ssys = specialSystem.zipWithIndex.toMap.mapValues(7.+)
+    val ssys = specialSystem.zipWithIndex.toMap.mapValues(8.+)
 
     val columnMapper: Infoton => Map[Int, String] = { i =>
       def flattenFields(fields: Map[String, Set[FieldValue]]): Seq[(Int, String)] = {

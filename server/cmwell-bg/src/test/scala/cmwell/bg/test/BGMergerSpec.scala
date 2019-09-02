@@ -17,8 +17,8 @@
 package cmwell.bg.test
 
 import cmwell.bg.Merger
-import cmwell.domain.{FieldValue, ObjectInfoton}
-import cmwell.common.{DeletePathCommand, WriteCommand}
+import cmwell.domain.{FNull, FieldValue, ObjectInfoton}
+import cmwell.common.{DeletePathCommand, UpdatePathCommand, WriteCommand}
 import org.joda.time.{DateTime, DateTimeZone}
 import org.scalatest.{DoNotDiscover, FlatSpec, Matchers, OptionValues}
 
@@ -253,10 +253,10 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
     merged should be(None)
   }
 
-//  it should "merge DeletePathCommand with no previous version correctly" in {
-//    val previous = ObjectInfoton()
-//    merger.merge(None, Seq(DeletePathCommand("/be-test-merge/delpathnoprev"))) shouldEqual(None)
-//  }
+  //  it should "merge DeletePathCommand with no previous version correctly" in {
+  //    val previous = ObjectInfoton()
+  //    merger.merge(None, Seq(DeletePathCommand("/be-test-merge/delpathnoprev"))) shouldEqual(None)
+  //  }
 
   it should "merge DeletePathCommand with previous version correctly" in {
     merger.merge(None, Seq(DeletePathCommand("/be-test-merge/delpathnoprev", lastModifiedBy="Baruch"))).merged shouldBe empty
@@ -374,6 +374,40 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
     val merged = merger.merge(Some(baseInfoton), Seq(writeCommand))
     withClue(merged){
       merged.merged shouldNot be (defined)
+    }
+  }
+
+  it should "merge correctly infoton with updatePathCommand" in {
+    val now = DateTime.now()
+    val baseInfoton = ObjectInfoton(
+      "/bg-test-merge/infonotindexed1",
+      "dc",
+      None,
+      now,
+      "Baruch",
+      Some(Map("prdct.JeRn0A" -> Set(FieldValue("v3")))),
+      "",
+      None
+    )
+    val updateCommand = UpdatePathCommand(path = baseInfoton.path, deleteFields = Map("prdct.JeRn0A" -> Set(FNull(None))),
+      updateFields = Map("prdct.JeRn0A" -> Set(FieldValue("v3"))), lastModified = now.plus(5L),
+      lastModifiedBy = "Updater", protocol = Some("https"))
+
+    val expected = ObjectInfoton(
+      "/bg-test-merge/infonotindexed1",
+      "dc",
+      None,
+      now.plus(5L),
+      "Updater",
+      Some(Map("prdct.JeRn0A" -> Set(FieldValue("v3")))),
+      "",
+      Some("https")
+    )
+
+    val merged = merger.merge(Some(baseInfoton), Seq(updateCommand))
+
+    withClue(merged){
+      merged.merged shouldEqual(Some(expected))
     }
   }
 

@@ -307,7 +307,7 @@ trait TreeLikeFormatter extends Formatter {
             "system" -> iSystem
           ) ++ iExtra ++ iFields
         )
-      case LinkInfoton(_, _, _, _, _, linkTo, linkType, _, _, _) =>
+      case LinkInfoton(_, _, _, _, _, _, linkTo, linkType, _, _) =>
         makeFromTuples(
           Seq(
             "type" -> single(i.kind),

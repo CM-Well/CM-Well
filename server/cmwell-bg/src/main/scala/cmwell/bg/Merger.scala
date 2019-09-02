@@ -268,7 +268,7 @@ class Merger(config: Config) extends LazyLogging {
               ensurePrevUUID(last_infoton, prevUUID)(i => Some(delete_merge(i, fields, lastModified, protocol)))
             case None => ensurePrevNone(prevUUID)(None)
           }
-        case UpdatePathCommand(path, deleteFields, updateFields, lastModified, _, prevUUID, protocol, _) =>
+        case UpdatePathCommand(path, deleteFields, updateFields, lastModified, _, _, prevUUID, protocol) =>
           base match {
             case Some(last_infoton) =>
               ensurePrevUUID(last_infoton, prevUUID)(
@@ -328,8 +328,10 @@ class Merger(config: Config) extends LazyLogging {
 
     merged match {
       case Some(i) if !baseInfoton.exists(_.isSameAs(i)) =>
-        val (infoton, extraData) = baseInfoton.fold(i -> Option.empty[String]) { j =>
-          if (j.lastModified.getMillis < i.lastModified.getMillis) i.copyInfoton(lastModifiedBy = lastModifiedBy) -> None
+        val (infoton, extraData) = baseInfoton.fold(i.copyInfoton(lastModifiedBy = lastModifiedBy) -> Option.empty[String])
+        { j =>
+          if (j.lastModified.getMillis < i.lastModified.getMillis)
+            i.copyInfoton(lastModifiedBy = lastModifiedBy) -> None
           else {
             logger.info(s"PlusDebug: There was an infoton [$j] in the system that is not the same as the merged one [$i] but has earlier lastModified. " +
               s"Adding 1 milli")

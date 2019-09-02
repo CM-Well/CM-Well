@@ -365,7 +365,7 @@ object InfotonSerializer extends LazyLogging {
             builder += "contentLength" -> Vector(dl.toString)
           }
         }
-        case LinkInfoton(_, _, _, _, _, linkTo, linkType, _, _, _) => {
+        case LinkInfoton(_, _, _, _, _, _, linkTo, linkType, _, _) => {
           builder += "linkTo" -> Vector(linkTo.toString)
           builder += "linkType" -> Vector(linkType.toString)
         }
