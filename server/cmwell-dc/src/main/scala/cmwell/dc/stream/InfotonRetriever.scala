@@ -131,15 +131,16 @@ object InfotonRetriever extends LazyLogging {
                   //todo: validity checks that the data arrived correctly. e.g. that the path could be retrieved from _out etc.
                   im => {
                     val parsed: (ByteStringBuilder, Option[Long]) = totals.parsed(im.base.path)
-                    if(parsed._2.isEmpty) {
+                    val data = parsed._1.result()
+                    val fullData = if(parsed._2.isEmpty) {
                       //uuids that don't have index time in cassandra. populate it using ES indexTime
-                      val subject = im.base.data.takeWhile(_ != space).utf8String
+                      val subject = data.takeWhile(_ != space).utf8String
                       val idxTimeQuad = s"""$subject <cmwell://meta/sys#indexTime> "${im.indexTime}"^^<http://www.w3.org/2001/XMLSchema#long> ."""
                       val q = "\"" + idxTimeQuad + "\""
                       logger.warn(s"Sync $dcKey: Retrieve of uuid ${im.uuid.utf8String} didn't have index time. Adding $q from metadata manually")
-                      parsed._1 ++= ByteString(idxTimeQuad)
-                    }
-                    (InfotonData(BaseInfotonData(im.base.path, parsed._1.result()), im.uuid, im.indexTime), parsed._2)
+                      data ++ ByteString(idxTimeQuad)
+                    }else data
+                    (InfotonData(BaseInfotonData(im.base.path, fullData), im.uuid, im.indexTime), parsed._2)
                   }
                 }(breakOut))
                 (parsedResult, state, Option(totals.unParsed.result))
