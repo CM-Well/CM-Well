@@ -68,7 +68,8 @@ object DcMonitor {
           |***Data center distribution*** <br>
           |**Current Data center host: $dcAddress** <br>
           |""".stripMargin + markdownTable.get
-      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(body.getBytes, "text/x-markdown")), protocol = None)))
+      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(body.getBytes, "text/x-markdown")),
+        lastModifiedBy = "VirtualInfoton", protocol = None)))
     }
   }
 
@@ -120,7 +121,8 @@ object DcMonitor {
           |**Current Data center host: $dcAddress** <br>
           |""".stripMargin + table.get
 
-      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(body.getBytes, "text/x-markdown")), protocol = None)))
+      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(body.getBytes, "text/x-markdown")),
+        lastModifiedBy = "VirtualInfoton", protocol = None)))
     }
   }
 

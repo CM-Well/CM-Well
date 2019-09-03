@@ -458,7 +458,7 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSService)
 
     s.extractHistoryCas(path, limit).flatMap { v =>
       val zsKeys = v.collect {
-        case (_, Some(FileInfoton(_, _, _, _, _, Some(FileContent(_, _, _, Some(dp))), _, _))) => dp
+        case (_, Some(FileInfoton(_, _, _, _, _, _, Some(FileContent(_, _, _, Some(dp))), _, _))) => dp
       }.distinct
       esinfo.map((v, _, zsKeys))
     }

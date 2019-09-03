@@ -37,6 +37,15 @@ sealed abstract class SingleCommand extends Command {
   def prevUUID: Option[String]
 
   def lastModified: DateTime
+
+  def lastModifiedBy: String
+}
+
+object SingleCommand{
+  def unapply(c: SingleCommand): Option[(String, Option[String], Option[String], DateTime, String)] =
+    Option(c) map { c =>
+      (c.path, c.trackingID, c.prevUUID, c.lastModified, c.lastModifiedBy)
+    }
 }
 
 case class CommandRef(ref: String) extends Command
@@ -46,11 +55,14 @@ case class WriteCommand(infoton: Infoton, trackingID: Option[String] = None, pre
   override def path = infoton.path
 
   override def lastModified: DateTime = infoton.lastModified
+
+  override def lastModifiedBy: String = infoton.lastModifiedBy
 }
 
 case class DeleteAttributesCommand(path: String,
                                    fields: Map[String, Set[FieldValue]],
                                    lastModified: DateTime,
+                                   lastModifiedBy: String,
                                    trackingID: Option[String] = None,
                                    prevUUID: Option[String] = None,
                                    protocol: Option[String])
@@ -58,6 +70,7 @@ case class DeleteAttributesCommand(path: String,
 
 case class DeletePathCommand(path: String,
                              lastModified: DateTime = new DateTime(),
+                             lastModifiedBy: String,
                              trackingID: Option[String] = None,
                              prevUUID: Option[String] = None)
   extends SingleCommand
@@ -69,6 +82,7 @@ case class UpdatePathCommand(path: String,
                              deleteFields: Map[String, Set[FieldValue]],
                              updateFields: Map[String, Set[FieldValue]],
                              lastModified: DateTime,
+                             lastModifiedBy: String,
                              trackingID: Option[String] = None,
                              prevUUID: Option[String] = None,
                              protocol: Option[String] = None)
@@ -84,6 +98,8 @@ case class OverwriteCommand(infoton: Infoton, trackingID: Option[String] = None)
   override def path = infoton.path
 
   override def lastModified: DateTime = infoton.lastModified
+
+  override def lastModifiedBy: String = infoton.lastModifiedBy
 }
 
 case class StatusTracking(tid: String, numOfParts: Int)
@@ -96,6 +112,7 @@ sealed trait IndexCommand extends Command {
   def uuid: String
 
   def indexName: String
+
 }
 
 /**

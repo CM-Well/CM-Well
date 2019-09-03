@@ -655,7 +655,7 @@ object LDFormatParser extends LazyLogging {
                   model.listNameSpaces().mkString("[", ",", "]"))
               val metaNs = model.listNameSpaces().find(_.contains("/meta/sys#")).get
               val props: Seq[Property] =
-                Seq("type", "lastModified", "dataCenter", "indexTime").map(model.createProperty(metaNs, _))
+                Seq("type", "lastModified", "lastModifiedBy", "dataCenter", "indexTime").map(model.createProperty(metaNs, _))
               val subIt = model.listSubjects()
               var subPred: String = ""
               var l: java.util.List[RDFNode] = null
@@ -723,7 +723,7 @@ object LDFormatParser extends LazyLogging {
 
               val allowWriteSysFields = (fieldName: String) =>
                 fieldName match {
-                  case "uuid" | "path" | "parent" | "lastModified" | "modifiedDate" | "indexTime" | "dataCenter" | "protocol" =>
+                  case "uuid" | "path" | "parent" | "lastModified" | "lastModifiedBy" | "modifiedDate" | "indexTime" | "dataCenter" | "protocol" =>
                     authUtils.isOperationAllowedForUser(security.Overwrite, token, evenForNonProdEnv = true)
                   case _ => true
                 }
@@ -975,6 +975,7 @@ object LDFormatParser extends LazyLogging {
           linkType = Some(Try(value.asInstanceOf[FInt].value).getOrElse(md.linkType.getOrElse(1))))
       case "dataCenter"               => md.copy(dataCenter = Some(value.toString))
       case "protocol"                 => md.copy(protocol = Some(value.toString))
+      case "lastModifiedBy"           => md.copy(lastModifiedBy = Some(value.toString))
       case "indexTime"                => md.copy(indexTime = Try(value.asInstanceOf[FLong].value).toOption)
       case "uuid" | "parent" | "path" => md // these have no affect. better ignore without polluting the logs
       case _                          => logger.warn("attribute: " + predicate + ", is not treated in cmwell RDF imports."); md

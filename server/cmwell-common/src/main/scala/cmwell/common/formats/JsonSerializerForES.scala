@@ -22,7 +22,8 @@ import cmwell.common.file.MimeTypeIdentifier
 import com.fasterxml.jackson.core._
 import com.typesafe.scalalogging.LazyLogging
 
-object JsonSerializerForES extends AbstractJsonSerializer with NsSplitter with LazyLogging {
+object
+JsonSerializerForES extends AbstractJsonSerializer with NsSplitter with LazyLogging {
 
   val typeChars = List(/*'s',*/ 'i', 'l', 'w', 'b', 'd', 'f')
 
@@ -105,6 +106,10 @@ object JsonSerializerForES extends AbstractJsonSerializer with NsSplitter with L
     jsonGenerator.writeStringField("kind", infoton.kind)
     jsonGenerator.writeStringField("path", infoton.path)
     jsonGenerator.writeStringField("lastModified", dateFormatter.print(infoton.lastModified))
+    if (infoton.lastModifiedBy == null)
+      jsonGenerator.writeStringField("lastModifiedBy", "anonymous")
+    else
+      jsonGenerator.writeStringField("lastModifiedBy", infoton.lastModifiedBy)
     jsonGenerator.writeStringField("uuid", infoton.uuid)
     jsonGenerator.writeStringField("parent", infoton.parent)
     jsonGenerator.writeStringField("dc", infoton.dc)
@@ -163,7 +168,7 @@ object JsonSerializerForES extends AbstractJsonSerializer with NsSplitter with L
       encodeFieldsWithGenerator(fields, jsonGenerator)
     }
     infoton match {
-      case FileInfoton(_, _, _, _, _, Some(FileContent(dataOpt, mimeType, dl, dp)), _, _) =>
+      case FileInfoton(_, _, _, _, _, _, Some(FileContent(dataOpt, mimeType, dl, dp)), _, _) =>
         jsonGenerator.writeObjectFieldStart("content")
         jsonGenerator.writeStringField("mimeType", mimeType)
         dataOpt.foreach { data =>
@@ -180,7 +185,7 @@ object JsonSerializerForES extends AbstractJsonSerializer with NsSplitter with L
         }
         jsonGenerator.writeNumberField("length", dataOpt.fold(dl)(_.length))
         jsonGenerator.writeEndObject()
-      case LinkInfoton(_, _, _, _, _, linkTo, linkType, _, _) =>
+      case LinkInfoton(_, _, _, _, _, _, linkTo, linkType, _, _) =>
         jsonGenerator.writeObjectFieldStart("link")
         jsonGenerator.writeStringField("to", linkTo)
         jsonGenerator.writeNumberField("kind", linkType)

@@ -17,8 +17,8 @@
 package cmwell.bg.test
 
 import cmwell.bg.Merger
-import cmwell.domain.{FieldValue, ObjectInfoton}
-import cmwell.common.{DeletePathCommand, WriteCommand}
+import cmwell.domain.{FNull, FieldValue, ObjectInfoton}
+import cmwell.common.{DeletePathCommand, UpdatePathCommand, WriteCommand}
 import org.joda.time.{DateTime, DateTimeZone}
 import org.scalatest.{DoNotDiscover, FlatSpec, Matchers, OptionValues}
 
@@ -34,6 +34,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       new DateTime(),
+      "Baruch",
       Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith"))),
       None
     )
@@ -49,6 +50,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       now,
+      "Baruch",
       Map("first-name" -> Set(FieldValue("john"))),
       None
     )
@@ -58,6 +60,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       currentDateTime,
+      "Baruch2",
       Map("last-name" -> Set(FieldValue("smith"))),
       None
     )
@@ -66,6 +69,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       merger.defaultDC,
       None,
       currentDateTime,
+      "Baruch2",
       Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith"))),
       None
     )
@@ -80,6 +84,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       now,
+      "Baruch",
       Map("first-name" -> Set(FieldValue("john"))),
       None
     )
@@ -88,6 +93,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       now,
+      "Baruch2",
       Map("last-name" -> Set(FieldValue("smith"))),
       None
     )
@@ -96,6 +102,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       merger.defaultDC,
       None,
       now.plus(1L),
+      "Baruch2",
       Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith"))),
       None
     )
@@ -110,6 +117,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       now.plus(1L),
+      "Baruch",
       Map("first-name" -> Set(FieldValue("john"))),
       None
     )
@@ -118,6 +126,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       now,
+      "Baruch2",
       Map("last-name" -> Set(FieldValue("smith"))),
       None
     )
@@ -126,6 +135,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       merger.defaultDC,
       None,
       now.plus(2L),
+      "Baruch2",
       Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith"))),
       None
     )
@@ -133,13 +143,123 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
     merged.value shouldEqual expected
   }
 
-//  it should "merge DeletePathCommand with no previous version correctly" in {
-//    val previous = ObjectInfoton()
-//    merger.merge(None, Seq(DeletePathCommand("/be-test-merge/delpathnoprev"))) shouldEqual(None)
-//  }
+  it should "merge lastModifiedBy when 2 different users add fields at the same time" in {
+    val now = DateTime.now(DateTimeZone.UTC)
+    val previous  = ObjectInfoton(
+      "/bg-test-merge/objinfo2",
+      "dc1",
+      None,
+      now,
+      "Baruch",
+      Map("first-name" -> Set(FieldValue("john"))),
+      None
+    )
+    val change1 = ObjectInfoton(
+      "/bg-test-merge/objinfo2",
+      "dc1",
+      None,
+      now.plus(5L),
+      "Baruch2",
+      Map("last-name" -> Set(FieldValue("smith"))),
+      None
+    )
+    val change2 = ObjectInfoton(
+      "/bg-test-merge/objinfo2",
+      "dc1",
+      None,
+      now.plus(10L),
+      "Baruch3",
+      Map("address" -> Set(FieldValue("Petach Tikva"))),
+      None
+    )
+    val expected = ObjectInfoton(
+      "/bg-test-merge/objinfo2",
+      merger.defaultDC,
+      None,
+      now.plus(10L),
+      "Baruch2,Baruch3",
+      Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith")),
+        "address" -> Set(FieldValue("Petach Tikva"))),
+      None
+    )
+    val merged = merger.merge(Some(previous), Seq(WriteCommand(change1), WriteCommand(change2))).merged
+    merged.value shouldEqual expected
+  }
+
+  it should "merge lastModifiedBy when same user add more than 1 field at the same time" in {
+    val now = DateTime.now(DateTimeZone.UTC)
+    val previous  = ObjectInfoton(
+      "/bg-test-merge/objinfo2",
+      "dc1",
+      None,
+      now,
+      "Baruch",
+      Map("first-name" -> Set(FieldValue("john"))),
+      None
+    )
+    val change1 = ObjectInfoton(
+      "/bg-test-merge/objinfo2",
+      "dc1",
+      None,
+      now.plus(5L),
+      "Baruch2",
+      Map("last-name" -> Set(FieldValue("smith"))),
+      None
+    )
+    val change2 = ObjectInfoton(
+      "/bg-test-merge/objinfo2",
+      "dc1",
+      None,
+      now.plus(10L),
+      "Baruch2",
+      Map("address" -> Set(FieldValue("Petach Tikva"))),
+      None
+    )
+    val expected = ObjectInfoton(
+      "/bg-test-merge/objinfo2",
+      merger.defaultDC,
+      None,
+      now.plus(10L),
+      "Baruch2",
+      Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith")),
+        "address" -> Set(FieldValue("Petach Tikva"))),
+      None
+    )
+    val merged = merger.merge(Some(previous), Seq(WriteCommand(change1), WriteCommand(change2))).merged
+    merged.value shouldEqual expected
+  }
+
+  it should "Null update case should not change the user name" in {
+    val now = DateTime.now(DateTimeZone.UTC)
+    val previous  = ObjectInfoton(
+      "/bg-test-merge/objinfo2",
+      "dc1",
+      None,
+      now.plus(1L),
+      "Baruch",
+      Map("first-name" -> Set(FieldValue("john"))),
+      None
+    )
+    val change1 = ObjectInfoton(
+      "/bg-test-merge/objinfo2",
+      "dc1",
+      None,
+      now.plus(5L),
+      "Baruch2",
+      Map("first-name" -> Set(FieldValue("john"))),
+      None
+    )
+    val merged = merger.merge(Some(previous), Seq(WriteCommand(change1))).merged
+    merged should be(None)
+  }
+
+  //  it should "merge DeletePathCommand with no previous version correctly" in {
+  //    val previous = ObjectInfoton()
+  //    merger.merge(None, Seq(DeletePathCommand("/be-test-merge/delpathnoprev"))) shouldEqual(None)
+  //  }
 
   it should "merge DeletePathCommand with previous version correctly" in {
-    merger.merge(None, Seq(DeletePathCommand("/be-test-merge/delpathnoprev"))).merged shouldBe empty
+    merger.merge(None, Seq(DeletePathCommand("/be-test-merge/delpathnoprev", lastModifiedBy="Baruch"))).merged shouldBe empty
   }
 
   it should "merge odd number of virtual parents commands with no previous version correctly" in {
@@ -148,6 +268,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       new DateTime(0L),
+      "Baruch",
       None,
       "",
       None
@@ -164,6 +285,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       new DateTime(0L),
+      "Baruch",
       None,
       "",
       None
@@ -180,6 +302,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       Some(1L),
       new DateTime(0L),
+      "Baruch",
       None,
       "",
       None
@@ -196,6 +319,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       Some(2L),
       new DateTime(0L),
+      "Baruch",
       None,
       "",
       None
@@ -213,6 +337,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       now,
+      "Baruch",
       None,
       "",
       None
@@ -222,6 +347,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       now.plusMillis(20),
+      "Baruch",
       None,
       "",
       None
@@ -239,6 +365,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       DateTime.now(),
+      "Baruch",
       None,
       "",
       None
@@ -250,6 +377,40 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
     }
   }
 
+  it should "merge correctly infoton with updatePathCommand" in {
+    val now = DateTime.now()
+    val baseInfoton = ObjectInfoton(
+      "/bg-test-merge/infonotindexed1",
+      "dc",
+      None,
+      now,
+      "Baruch",
+      Some(Map("prdct.JeRn0A" -> Set(FieldValue("v3")))),
+      "",
+      None
+    )
+    val updateCommand = UpdatePathCommand(path = baseInfoton.path, deleteFields = Map("prdct.JeRn0A" -> Set(FNull(None))),
+      updateFields = Map("prdct.JeRn0A" -> Set(FieldValue("v3"))), lastModified = now.plus(5L),
+      lastModifiedBy = "Updater", protocol = Some("https"))
+
+    val expected = ObjectInfoton(
+      "/bg-test-merge/infonotindexed1",
+      "dc",
+      None,
+      now.plus(5L),
+      "Updater",
+      Some(Map("prdct.JeRn0A" -> Set(FieldValue("v3")))),
+      "",
+      Some("https")
+    )
+
+    val merged = merger.merge(Some(baseInfoton), Seq(updateCommand))
+
+    withClue(merged){
+      merged.merged shouldEqual(Some(expected))
+    }
+  }
+
   it should "merge null update commands with different base correctly" in {
     val now = DateTime.now
     val baseInfoton = ObjectInfoton(
@@ -257,6 +418,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       Some(1L),
       now,
+      "Baruch",
       None,
       "",
       None
@@ -266,6 +428,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       now.minusMillis(161),
+      "Baruch",
       None,
       "",
       None
@@ -275,6 +438,7 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
       "dc1",
       None,
       now.plusMillis(53),
+      "Baruch",
       None,
       "",
       None

@@ -1141,7 +1141,7 @@ package object wsutil extends LazyLogging {
   def pathStatusAsInfoton(ps: PathStatus): Infoton = {
     val PathStatus(path, status) = ps
     val fields: Option[Map[String, Set[FieldValue]]] = Some(Map("trackingStatus" -> Set(FString(status.toString))))
-    VirtualInfoton(ObjectInfoton(path, Settings.dataCenter, None, fields = fields, protocol = None))
+    VirtualInfoton(ObjectInfoton(path, Settings.dataCenter, None, lastModifiedBy = "VirtualInfoton", fields = fields, protocol = None))
   }
 
   def getFormatter(request: Request[_],

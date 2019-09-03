@@ -251,11 +251,11 @@ abstract class RDFFormatter(hostForNs: String,
 
       // ObjectInfoton
 
-      case ObjectInfoton(path, _, _, lastModified, iFields, _, _) => systemData
+      case ObjectInfoton(path, _, _, lastModified, lastModifiedBy, iFields, _, _) => systemData
 
       // CompoundInfoton
 
-      case CompoundInfoton(_, _, _, _, _, children, offset, length, total, _, _) => {
+      case CompoundInfoton(_, _, _, _, _, _, children, offset, length, total, _, _) => {
         val childrenProp = stringToSysProp("children")
         val props = systemData ++:
           Seq(stringToSysProp("offset") -> longToLtrl(offset),
@@ -272,7 +272,7 @@ abstract class RDFFormatter(hostForNs: String,
 
       // FileInfoton
 
-      case FileInfoton(_, _, _, _, _, content, _, _) => {
+      case FileInfoton(_, _, _, _, _, _, content, _, _) => {
         val t = content.map(
           fileContent[Property, RDFNode](_, stringToSysProp, stringToLtrl(_, None), longToLtrl, bytesToLtrl)
         )
@@ -283,7 +283,7 @@ abstract class RDFFormatter(hostForNs: String,
 
       // LinkInfoton
 
-      case LinkInfoton(_, _, _, _, _, linkTo, linkType, _, _) => {
+      case LinkInfoton(_, _, _, _, _, _, linkTo, linkType, _, _) => {
         systemData ++:
           Seq(stringToSysProp("linkTo") -> stringToLtrl(linkTo, None),
               stringToSysProp("linkType") -> intToLtrl(linkType))

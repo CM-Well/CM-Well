@@ -21,6 +21,7 @@ import com.typesafe.scalalogging.LazyLogging
 import org.joda.time.{DateTime, DateTimeZone}
 
 import scala.annotation.tailrec
+import scala.collection.immutable.SortedSet
 
 /**
   * Created by israel on 12/8/15.
@@ -128,13 +129,14 @@ class Merger(config: Config) extends LazyLogging {
                            lastModified: DateTime,
                            protocol: Option[String]): Infoton = {
     prev_infoton match {
-      case ObjectInfoton(path, _, _, _, current_fields, _, _) =>
+      case ObjectInfoton(path, _, _, _, lastModifiedBy, current_fields, _, _) =>
         val newFields = delete_f(current_fields, fields)
-        if (newFields.nonEmpty) ObjectInfoton(path, defaultDC, None, lastModified, newFields, protocol = protocol)
-        else DeletedInfoton(path, defaultDC, None, lastModified)
-      case f @ FileInfoton(_, _, _, _, current_fields, _, _, _) =>
+        if (newFields.nonEmpty)
+            ObjectInfoton(path, defaultDC, None, lastModified, lastModifiedBy , newFields, protocol = protocol)
+          else DeletedInfoton(path, defaultDC, None, lastModified, lastModifiedBy)
+      case f @ FileInfoton(_, _, _, _, _, current_fields, _, _, _) =>
         f.copy(indexTime = None, lastModified = lastModified, fields = delete_f(current_fields, fields), protocol = protocol)
-      case l @ LinkInfoton(_, _, _, _, current_fields, _, _, _, _) =>
+      case l @ LinkInfoton(_, _, _, _, _, current_fields, _, _, _, _) =>
         l.copy(indexTime = None, lastModified = lastModified, fields = delete_f(current_fields, fields), protocol = protocol)
       case i: DeletedInfoton => i // if we got a delete on delete we need ignore the create of delete
       case j =>
@@ -149,17 +151,17 @@ class Merger(config: Config) extends LazyLogging {
                            protocol: Option[String]): Infoton = {
     val u_f = update_f(current_infoton.fields, delete_fields, add_fields)
     current_infoton match {
-      case ObjectInfoton(path, dc, idxT, lm, current_fields, _, _) if u_f.exists(_.nonEmpty) =>
-        ObjectInfoton(path, defaultDC, None, lastModified, u_f, protocol = protocol)
-      case ObjectInfoton(path, dc, idxT, lm, current_fields, _, _) =>
-        DeletedInfoton(path, defaultDC, None, lastModified)
-      case FileInfoton(path, dc, idxT, lm, current_fields, c_fc, _, _) =>
-        FileInfoton(path, defaultDC, None, lastModified, u_f, c_fc, protocol = protocol)
-      case LinkInfoton(path, dc, idxT, lm, current_fields, c_to, c_linkType, _, _) =>
-        LinkInfoton(path, defaultDC, None, lastModified, u_f, c_to, c_linkType, protocol = protocol)
-      case DeletedInfoton(path, dc, idxT, lm, _) if u_f.exists(_.nonEmpty) =>
+      case ObjectInfoton(path, dc, idxT, lm, lastModifiedBy, current_fields, _, _) if u_f.exists(_.nonEmpty) =>
+        ObjectInfoton(path, defaultDC, None, lastModified, lastModifiedBy, u_f, protocol = protocol)
+      case ObjectInfoton(path, dc, idxT, lm, lastModifiedBy, current_fields, _, _) =>
+        DeletedInfoton(path, defaultDC, None, lastModified, lastModifiedBy)
+      case FileInfoton(path, dc, idxT, lm, lastModifiedBy, current_fields, c_fc, _, _) =>
+        FileInfoton(path, defaultDC, None, lastModified, lastModifiedBy , u_f, c_fc, protocol = protocol)
+      case LinkInfoton(path, dc, idxT, lm, lastModifiedBy, current_fields, c_to, c_linkType, _, _) =>
+        LinkInfoton(path, defaultDC, None, lastModified, lastModifiedBy, u_f, c_to, c_linkType, protocol = protocol)
+      case DeletedInfoton(path, dc, idxT, lm, lastModifiedBy, _) if u_f.exists(_.nonEmpty) =>
         // if we got update after a delete infoton we create a new one
-        ObjectInfoton(path, defaultDC, None, lastModified, u_f, protocol = protocol)
+        ObjectInfoton(path, defaultDC, None, lastModified, lastModifiedBy, u_f, protocol = protocol)
       case _ =>
         // might happen when e.g: writing a "skeleton" on top of a deleted infoton.
         logger.warn(s"kind [${current_infoton.kind}] uuid [${current_infoton.uuid}] info [$current_infoton]")
@@ -170,47 +172,57 @@ class Merger(config: Config) extends LazyLogging {
   private def write_merge(prev_infoton: Infoton, current_infoton: Infoton): Infoton = {
     // we build the new infoton based on the old one first we need to merge the fields
     current_infoton match {
-      case ObjectInfoton(path, dc, _, lastModified, current_fields, _, protocol) =>
+      case ObjectInfoton(path, dc, _, lastModified, lastModifiedBy, current_fields, _, protocol) =>
         prev_infoton match {
-          case ObjectInfoton(_, _, _, _, prev_fields, _, _) =>
-            ObjectInfoton(path, defaultDC, None, lastModified, merge_f(prev_fields, current_fields), protocol = protocol)
-          case FileInfoton(_, _, _, _, prev_fields, perv_fc, _, protocol) =>
-            FileInfoton(path, defaultDC, None, lastModified, merge_f(prev_fields, current_fields), perv_fc, protocol = protocol)
-          case LinkInfoton(_, _, _, _, prev_fields, prev_to, prev_linkType, _, protocol) =>
-            LinkInfoton(path, defaultDC, None, lastModified, merge_f(prev_fields, current_fields), prev_to, prev_linkType, protocol = protocol)
-          case DeletedInfoton(_, _, _, _, _) =>
+          case ObjectInfoton(_, _, _, _, _, prev_fields, _, _) =>
+            ObjectInfoton(path, defaultDC, None, lastModified, lastModifiedBy,
+              merge_f(prev_fields, current_fields), protocol = protocol)
+          case FileInfoton(_, _, _, _, _, prev_fields, perv_fc, _, protocol) =>
+            FileInfoton(path, defaultDC, None, lastModified, lastModifiedBy,
+              merge_f(prev_fields, current_fields), perv_fc, protocol = protocol)
+          case LinkInfoton(_, _, _, _, _, prev_fields, prev_to, prev_linkType, _, protocol) =>
+            LinkInfoton(path, defaultDC, None, lastModified, lastModifiedBy,
+              merge_f(prev_fields, current_fields), prev_to, prev_linkType, protocol = protocol)
+          case DeletedInfoton(_, _, _, _, _, _) =>
             current_infoton
           case _ =>
             throw new NotImplementedError(s"was trying to write_merge o[ $current_infoton ] on top of[ $prev_infoton ]")
         }
-      case FileInfoton(path, dc, _, lastModified, current_fields, c_fc, _, protocol) =>
+      case FileInfoton(path, dc, _, lastModified, lastModifiedBy, current_fields, c_fc, _, protocol) =>
         prev_infoton match {
-          case ObjectInfoton(_, _, _, _, prev_fields, _, _) =>
-            FileInfoton(path, defaultDC, None, lastModified, merge_f(prev_fields, current_fields), c_fc, protocol = protocol)
-          case FileInfoton(_, _, _, _, prev_fields, prev_fc, _, _) =>
+          case ObjectInfoton(_, _, _, _, _, prev_fields, _, _) =>
+            FileInfoton(path, defaultDC, None, lastModified, lastModifiedBy,
+              merge_f(prev_fields, current_fields), c_fc, protocol = protocol)
+          case FileInfoton(_, _, _, _, _, prev_fields, prev_fc, _, _) =>
             FileInfoton(path,
               defaultDC,
               None,
               lastModified,
+              lastModifiedBy,
               merge_f(if (prev_fields.exists(_.nonEmpty)) prev_fields else None, current_fields),
               c_fc.orElse(prev_fc),
-              protocol = protocol)
-          case LinkInfoton(_, _, _, _, prev_fields, _, _, _, _) if prev_fields.exists(_.nonEmpty) =>
-            FileInfoton(path, defaultDC, None, lastModified, merge_f(prev_fields, current_fields), c_fc, protocol = protocol)
+              protocol = protocol
+            )
+          case LinkInfoton(_, _, _, _, _, prev_fields, _, _, _, _) if prev_fields.exists(_.nonEmpty) =>
+            FileInfoton(path, defaultDC, None, lastModified, lastModifiedBy,
+              merge_f(prev_fields, current_fields), c_fc, protocol = protocol)
           case _: LinkInfoton | _: DeletedInfoton =>
             current_infoton
           case _ =>
             throw new NotImplementedError(s"was trying to write_merge f[ $current_infoton ] on top of[ $prev_infoton ]")
 
         }
-      case LinkInfoton(path, dc, _, lastModified, current_fields, c_to, c_linkType, _, protocol) =>
+      case LinkInfoton(path, _, _, lastModified, lastModifiedBy, current_fields, c_to, c_linkType, _, protocol) =>
         prev_infoton match {
-          case ObjectInfoton(_, _, _, _, prev_fields, _, _) =>
-            LinkInfoton(path, defaultDC, None, lastModified, merge_f(prev_fields, current_fields), c_to, c_linkType, protocol = protocol)
-          case LinkInfoton(_, _, _, _, prev_fields, _, _, _, _) =>
-            LinkInfoton(path, defaultDC, None, lastModified, merge_f(prev_fields, current_fields), c_to, c_linkType, protocol = protocol)
-          case FileInfoton(_, _, _, _, prev_fields, _, _, _) if prev_fields.exists(_.nonEmpty) =>
-            LinkInfoton(path, defaultDC, None, lastModified, merge_f(prev_fields, current_fields), c_to, c_linkType, protocol = protocol)
+          case ObjectInfoton(_, _, _, _, _, prev_fields, _, _) =>
+            LinkInfoton(path, defaultDC, None, lastModified, lastModifiedBy,
+              merge_f(prev_fields, current_fields), c_to, c_linkType, protocol = protocol)
+          case LinkInfoton(_, _, _, _, _, prev_fields, _, _, _, _) =>
+            LinkInfoton(path, defaultDC, None, lastModified, lastModifiedBy,
+              merge_f(prev_fields, current_fields), c_to, c_linkType, protocol = protocol)
+          case FileInfoton(_, _, _, _, _, prev_fields, _, _, _) if prev_fields.exists(_.nonEmpty) =>
+            LinkInfoton(path, defaultDC, None, lastModified, lastModifiedBy,
+              merge_f(prev_fields, current_fields), c_to, c_linkType, protocol = protocol)
           case _: DeletedInfoton | _: FileInfoton =>
             current_infoton
           case _ =>
@@ -250,26 +262,26 @@ class Merger(config: Config) extends LazyLogging {
             case Some(last_infoton) => ensurePrevUUID(last_infoton, prevUUID)(i => Some(write_merge(i, currInfoton)))
             case None               => ensurePrevNone(prevUUID)(Some(currInfoton))
           }
-        case DeleteAttributesCommand(_, fields, lastModified, _, prevUUID, protocol) =>
+        case DeleteAttributesCommand(_, fields, lastModified, _, prevUUID, protocol, _) =>
           base match {
             case Some(last_infoton) =>
               ensurePrevUUID(last_infoton, prevUUID)(i => Some(delete_merge(i, fields, lastModified, protocol)))
             case None => ensurePrevNone(prevUUID)(None)
           }
-        case UpdatePathCommand(path, deleteFields, updateFields, lastModified, _, prevUUID, protocol) =>
+        case UpdatePathCommand(path, deleteFields, updateFields, lastModified, _, _, prevUUID, protocol) =>
           base match {
             case Some(last_infoton) =>
               ensurePrevUUID(last_infoton, prevUUID)(
                 i => Some(update_merge(i, deleteFields, updateFields, lastModified, protocol))
               )
             case None =>
-              ensurePrevNone(prevUUID)(Some(ObjectInfoton(path, defaultDC, None, lastModified, Some(updateFields), protocol = protocol)))
+              ensurePrevNone(prevUUID)(Some(ObjectInfoton(path, defaultDC, None, lastModified, cmd.lastModifiedBy, Some(updateFields), protocol = protocol)))
           }
-        case DeletePathCommand(path, lastModified, _, prevUUID) =>
+        case DeletePathCommand(path, lastModified, _, _, prevUUID) =>
           base match {
             case sdi @ Some(di: DeletedInfoton) => ensurePrevUUID(di, prevUUID)(_ => sdi)
             case Some(infoton) =>
-              ensurePrevUUID(infoton, prevUUID)(_ => Some(DeletedInfoton(path, defaultDC, None, lastModified)))
+              ensurePrevUUID(infoton, prevUUID)(_ => Some(DeletedInfoton(path, defaultDC, None, lastModified, lastModifiedBy = cmd.lastModifiedBy)))
             case None => ensurePrevNone(prevUUID)(None)
           }
         case _ => throw new NotImplementedError(s"no impl for [ $cmd ]")
@@ -301,10 +313,14 @@ class Merger(config: Config) extends LazyLogging {
         val (merged, eviction) = do_merge(prev, cmds.head)
         val tid = cmds.head.trackingID
         val evAcc = eviction.fold(tid.fold(evictionsAcc)(Right(_) :: evictionsAcc))(e => Left((e, tid)) :: evictionsAcc)
-        if (cmds.size == 1) merged -> evAcc
-        else merge_recurse(merged, cmds.tail, evAcc)
+        if (cmds.size == 1)
+          merged -> evAcc
+        else
+          merge_recurse(merged, cmds.tail, evAcc)
       }
     }
+
+    val lastModifiedBy = (SortedSet[String](cmds.map(_.lastModifiedBy):_*)).mkString(",")
 
     val (merged, evictionsAndTIDs) = merge_recurse(baseInfoton, cmds)
 
@@ -312,13 +328,15 @@ class Merger(config: Config) extends LazyLogging {
 
     merged match {
       case Some(i) if !baseInfoton.exists(_.isSameAs(i)) =>
-        val (infoton, extraData) = baseInfoton.fold(i -> Option.empty[String]) { j =>
-          if (j.lastModified.getMillis < i.lastModified.getMillis) i -> None
+        val (infoton, extraData) = baseInfoton.fold(i.copyInfoton(lastModifiedBy = lastModifiedBy) -> Option.empty[String])
+        { j =>
+          if (j.lastModified.getMillis < i.lastModified.getMillis)
+            i.copyInfoton(lastModifiedBy = lastModifiedBy) -> None
           else {
             logger.info(s"PlusDebug: There was an infoton [$j] in the system that is not the same as the merged one [$i] but has earlier lastModified. " +
               s"Adding 1 milli")
             val newLastModified = new DateTime(j.lastModified.getMillis + 1L, DateTimeZone.UTC)
-            i.copyInfoton(lastModified = newLastModified) -> Some(newLastModified.getMillis.toString)
+            i.copyInfoton(lastModified = newLastModified, lastModifiedBy = lastModifiedBy) -> Some(newLastModified.getMillis.toString)
           }
         }
         RealUpdate(infoton, trackingIds, evictions, extraData)
@@ -330,8 +348,10 @@ class Merger(config: Config) extends LazyLogging {
         //If the merged infoton is the same as the the base one but the "should be" lastModified is different it means it's a null update
         //and not a replay after crash (it happens a lot with parents in clustered env.). This is the reason the the last command modified check
         logger.warn(s"Merged infoton [$i] is the same as the base infoton [${baseInfoton.get}] but the base infoton doesn't have index time!")
-        RealUpdate(i.copyInfoton(lastModified = baseInfoton.get.lastModified), trackingIds, evictions, extra = None)
-      case _ => NullUpdate(baseInfoton.fold(cmds.head.path)(_.path), trackingIds, evictions, extra = None)
+        RealUpdate(i.copyInfoton(lastModified = baseInfoton.get.lastModified, lastModifiedBy = baseInfoton.get.lastModifiedBy),
+          trackingIds, evictions, extra = None)
+      case _ =>
+        NullUpdate(baseInfoton.fold(cmds.head.path)(_.path), trackingIds, evictions, extra = None)
     }
   }
 }
