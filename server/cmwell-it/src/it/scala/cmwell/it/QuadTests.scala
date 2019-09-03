@@ -42,6 +42,7 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
     Json.obj(
       "type.sys" -> Json.arr(Json.obj("value" -> "ObjectInfoton")),
       "path.sys" -> Json.arr(Json.obj("value" -> s"/example.org/comics/characters/$name")),
+      "lastModifiedBy.sys" -> Json.arr(Json.obj("value" -> "pUser")),
       "dataCenter.sys" -> Json.arr(Json.obj("value" -> dcName)),
       "parent.sys" -> Json.arr(Json.obj("value" -> "/example.org/comics/characters")))
   }
@@ -60,6 +61,7 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
     "type.sys"             -> arr(Json.obj("value" -> "ObjectInfoton")),
     "path.sys"             -> arr(Json.obj("value" -> "/example.org/comics/characters/batman")),
     "parent.sys"           -> arr(Json.obj("value" -> "/example.org/comics/characters")),
+    "lastModifiedBy.sys" -> Json.arr(Json.obj("value" -> "pUser")),
     "dataCenter.sys"       -> arr(Json.obj("value" -> dcName)),
     "enemyOf.rel" -> enemies.seq
   ).transform(jsonlSorter).get
@@ -728,6 +730,7 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
         "type.sys"             -> arr(Json.obj("value" -> "ObjectInfoton")),
         "path.sys"             -> arr(Json.obj("value" -> "/example.org/comics/characters/batman")),
         "parent.sys"           -> arr(Json.obj("value" -> "/example.org/comics/characters")),
+        "lastModifiedBy.sys" -> Json.arr(Json.obj("value" -> "pUser")),
         "dataCenter.sys"       -> arr(Json.obj("value" -> dcName)),
         "collaboratesWith.rel" -> Json.arr(
           Json.obj(
