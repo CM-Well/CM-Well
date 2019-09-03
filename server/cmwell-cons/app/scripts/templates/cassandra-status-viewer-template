@@ -4,4 +4,4 @@ export PATH=$PATH:{{home}}/app/java/bin
 defaultHost={{host}}
 HOST=${1:-$defaultHost}
 
-JAVA_HOME={{home}}/app/java {{home}}/app/cas/cur/bin/nodetool -h $HOST status | grep -E 'UN|UL|UJ|UM|DN|DL|DJ|DM' | awk '{print $1 " " $2 " " $NF}'
+JAVA_HOME={{home}}/app/java {{home}}/app/cas/cur/bin/nodetool status | grep -E 'UN|UL|UJ|UM|DN|DL|DJ|DM' | awk '{print $1 " " $2 " " $NF}'
