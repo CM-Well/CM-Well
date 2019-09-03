@@ -99,10 +99,12 @@ class OWTests extends AsyncFunSpec with Matchers with Inspectors with Helpers wi
         |<http://feed.tms> <cmwell://meta/sys#indexTime> "1489414332875"^^<http://www.w3.org/2001/XMLSchema#long> .
         |<http://feed.tms> <cmwell://meta/sys#dataCenter> "vg" .
         |<http://feed.tms> <cmwell://meta/sys#lastModified> "1970-01-01T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+        |<http://feed.tms> <cmwell://meta/sys#lastModifiedBy> "Baruch" .
         |<http://feed.tms> <cmwell://meta/sys#type> "ObjectInfoton" .
         |<http://feed.tms/1.0> <cmwell://meta/sys#indexTime> "1489414332875"^^<http://www.w3.org/2001/XMLSchema#long> .
         |<http://feed.tms/1.0> <cmwell://meta/sys#dataCenter> "vg" .
         |<http://feed.tms/1.0> <cmwell://meta/sys#lastModified> "1970-01-01T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+        |<http://feed.tms/1.0> <cmwell://meta/sys#lastModifiedBy> "Baruch" .
         |<http://feed.tms/1.0> <cmwell://meta/sys#type> "ObjectInfoton" .
       """.stripMargin
     Http.post(_ow, payload, Some("text/nquads;charset=UTF-8"), List("format" -> "nquads"), tokenHeader).map{ res =>
@@ -129,6 +131,7 @@ class OWTests extends AsyncFunSpec with Matchers with Inspectors with Helpers wi
         |<http://la.grading.dev.thomsonreuters.com/badfile> <cmwell://meta/sys#indexTime> "1489414332875"^^<http://www.w3.org/2001/XMLSchema#long> .
         |<http://la.grading.dev.thomsonreuters.com/badfile> <cmwell://meta/sys#dataCenter> "blahlah" .
         |<http://la.grading.dev.thomsonreuters.com/badfile> <cmwell://meta/sys#lastModified> "1970-01-01T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+        |<http://la.grading.dev.thomsonreuters.com/badfile> <cmwell://meta/sys#lastModifiedBy> "Baruch" .
         |<http://la.grading.dev.thomsonreuters.com/badfile> <cmwell://meta/sys#type> "FileInfoton" .
       """.stripMargin
     // scalastyle:on
