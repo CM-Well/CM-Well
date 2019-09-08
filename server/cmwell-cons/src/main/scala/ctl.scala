@@ -171,7 +171,6 @@ abstract class Host(user: String,
                     hostIps: Seq[String],
                     esSize: Int,
                     casSize:Int,
-                    inet: String,
                     val cn: String,
                     val dc: String,
                     dataDirs: DataDirs,
@@ -197,8 +196,6 @@ abstract class Host(user: String,
   def getUser = user
 
   def getHostIps = hostIps
-
-  def getInet = inet
 
   def getDataDirs = dataDirs
 
