@@ -65,12 +65,8 @@ object InfotonRetriever extends LazyLogging {
     }
 
     def getQuads(indexTimeN: Long, modifierN: String) = {
-      val res = indexTime.fold(s"""<$subject> <cmwell://meta/sys#indexTime> "${indexTimeN}"^^<http://www.w3.org/2001/XMLSchema#long> .""")(_ => "") ++
+      indexTime.fold(s"""<$subject> <cmwell://meta/sys#indexTime> "${indexTimeN}"^^<http://www.w3.org/2001/XMLSchema#long> .""")(_ => "") ++
       lastModifiedBy.fold(s"""<$subject> <cmwell://meta/sys#lastModifiedBy> "$modifierN" .""" )(_ => "")
-
-      logger.info(s"MORIA EnrichedResult for ExtraData: subject=$subject  indexTime=$indexTime  lastModifiedBy=$lastModifiedBy  res=$res")
-
-      res
     }
   }
 
