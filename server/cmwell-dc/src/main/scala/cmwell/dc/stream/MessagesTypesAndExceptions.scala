@@ -24,9 +24,9 @@ import scala.util.{Failure, Success}
   */
 object MessagesTypesAndExceptions {
 
-  case class DcInfoKey(id: String, location: String, transformations: Map[String, String]) {
+  case class DcInfoKey(id: String, location: String, transformations: Map[String, String], modifier: String) {
     override def toString: String =
-      s"[id: $id, location: $location, transformations: ${transformations.mkString("(", ",", ")")}]"
+      s"[id: $id, location: $location, transformations: ${transformations.mkString("(", ",", ")")}, modifier: $modifier]"
   }
   case class DcInfo(key: DcInfoKey,
                     idxTime: Option[Long] = None,

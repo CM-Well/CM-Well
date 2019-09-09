@@ -477,7 +477,12 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
               yield str).mkString("&")
             val qpAndWhStrFinal =
               if (qpAndWhStr.length == 0) "" else "?" + qpAndWhStr
-            val dcKey = DcInfoKey(s"$dataCenterId$qpAndWhStrFinal", location, transformations)
+            val modifier = f \ "modifier" match {
+              case JsDefined(JsArray(seq))
+                if seq.length == 1 && seq.head.isInstanceOf[JsString] =>
+                seq.head.as[String]
+            }
+            val dcKey = DcInfoKey(s"$dataCenterId$qpAndWhStrFinal", location, transformations, modifier)
             DcInfo(dcKey, fromIndexTime, tsvFile = tsvFile)
           }
         case _ => Seq.empty
