@@ -102,8 +102,8 @@ class BGResilienceSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
     pRecords.foreach { kafkaProducer.send(_)}
 
     // scalastyle:off
-    println("waiting for 60 seconds")
-    Thread.sleep(60000)
+    println("waiting for 30 seconds")
+    Thread.sleep(30000)
     // scalastyle:on
 
     for( i <- 0 until numOfCommands) {
