@@ -11,7 +11,8 @@
 // cluster.prepareMachines()
 // cluster.install
 
-val hostnames = (1 to 10).map("cmw" + _)
+val hostnames = (1 to 10).map("cmw" + _) // or just List("10.0.0.1","10.0.0.2","10.0.0.3" etc)
+
 val casdirs = Vector("/mnt/d1/cas","mnt/d2/cas")
 val ccldirs = Vector("/mnt/d3/ccl")
 val esdirs = Vector("/mnt/d4/es")
@@ -34,7 +35,6 @@ val ws = JvmMemoryAllocations(mxmx = 1024, mxms = 1024, mxmn = 256, mxss = 256)
 val cluster = Grid(user = "cmuser" ,
               password = "" ,
               clusterIps = hostnames,
-              inet = "eth0",
               clusterName = "my-cm-well-cluster",
               dataCenter = "my-dc",
               dataDirs = dataDirs,
