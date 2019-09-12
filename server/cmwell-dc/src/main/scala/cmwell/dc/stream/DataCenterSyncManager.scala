@@ -481,6 +481,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
               case JsDefined(JsArray(seq))
                 if seq.length == 1 && seq.head.isInstanceOf[JsString] =>
                 seq.head.as[String]
+              case _ => ""
             }
             val dcKey = DcInfoKey(s"$dataCenterId$qpAndWhStrFinal", location, transformations, modifier)
             DcInfo(dcKey, fromIndexTime, tsvFile = tsvFile)

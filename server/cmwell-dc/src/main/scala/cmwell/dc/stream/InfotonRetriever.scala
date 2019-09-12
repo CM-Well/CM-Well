@@ -55,18 +55,20 @@ object InfotonRetriever extends LazyLogging {
 
   case class ExtraData(subject: String, indexTime: Option[Long], lastModifiedBy: Option[String]){
     def shouldMerge (other: ExtraData): Option[ExtraData] = {
+      require(other.subject != "", "Subject in ExtraData cannot be empty!")
+      require(!(subject!="" && other.subject != subject), "Same path cannot have different subjects!")
+
       other match {
-        case ExtraData("", None, None) => None
         case ExtraData(newSubject, None, None) if this.subject == "" => Some(this.copy(subject = newSubject))
         case ExtraData(_, None, None) => None
-        case ExtraData(newSubject, Some(_), None) => Some(this.copy(subject = newSubject, indexTime = other.indexTime))
-        case ExtraData(newSubject, None, Some(_)) => Some(this.copy(subject = newSubject, lastModifiedBy = other.lastModifiedBy))
+        case ExtraData(newSubject, indTime @ Some(_), None) => Some(this.copy(subject = newSubject, indexTime = indTime))
+        case ExtraData(newSubject, None, lmb @ Some(_)) => Some(this.copy(subject = newSubject, lastModifiedBy = lmb))
       }
     }
 
     def getQuads(indexTimeN: Long, modifierN: String) = {
-      indexTime.fold(s"""<$subject> <cmwell://meta/sys#indexTime> "${indexTimeN}"^^<http://www.w3.org/2001/XMLSchema#long> .""")(_ => "") ++
-      lastModifiedBy.fold(s"""<$subject> <cmwell://meta/sys#lastModifiedBy> "$modifierN" .""" )(_ => "")
+      indexTime.fold(s"""<$subject> <cmwell://meta/sys#indexTime> "$indexTimeN"^^<http://www.w3.org/2001/XMLSchema#long> .""")(_ => "") ++
+        lastModifiedBy.fold(s"""<$subject> <cmwell://meta/sys#lastModifiedBy> "$modifierN"^^<http://www.w3.org/2001/XMLSchema#string> .""")(_ => "")
     }
   }
 
@@ -83,6 +85,8 @@ object InfotonRetriever extends LazyLogging {
     .breakOut[RetrieveInput, (Future[RetrieveInput], RetrieveState), List[
       (Future[RetrieveInput], RetrieveState)
     ]]
+  val hashMapBreakout = scala.collection
+    .breakOut[RetrieveInput, (String, (ByteStringBuilder, ExtraData)), HashMap[String, (ByteStringBuilder, ExtraData)]]
 
   //The path will be unique for each bulk infoton got into the flow
   def apply(dcKey: DcInfoKey, decider: Decider)(implicit sys: ActorSystem, mat: Materializer): Flow[Seq[
@@ -111,26 +115,20 @@ object InfotonRetriever extends LazyLogging {
               .via(
                 Framing.delimiter(endln, maximumFrameLength = maxStatementLength)
               )
-              .fold(RetrieveTotals(HashMap(state._1 map{im => im.meta.path -> (new ByteStringBuilder, ExtraData("", None, None))}: _*), new ByteStringBuilder))
+              .fold(RetrieveTotals(state._1.map{im => im.meta.path -> (new ByteStringBuilder, ExtraData("", None, None))}(hashMapBreakout),
+                new ByteStringBuilder))
               { (totals, nquad) =>
                 totals.unParsed ++= nquad
-                val parsed: ParsedNquad = parseNquad(remoteUri, nquad)
-                parsed match {
-                  case ParsedNquad("", _, _) => RetrieveTotals(totals.parsed, totals.unParsed)
-                  case ParsedNquad(path, nquad, extraData) =>
-                    totals.parsed.get(path) match {
+                val parsed: Option[ParsedNquad] = parseNquad(remoteUri, nquad)
+                parsed.fold(RetrieveTotals(totals.parsed, totals.unParsed)){case ParsedNquad(path, nquad, extraData) =>
+                  totals.parsed.get(path) match {
                     case None =>
                       throw WrongPathGotException(s"Got path ${path} from _out that was not in the uuids request bulk: ${
                         state._1.map(i => i.meta.uuid.utf8String + ":" + i.meta.path).mkString(",")}")
                     case Some((builder, curExtraData)) => {
                       builder ++= (nquad ++ endln)
-                      val parsedTotals = {
-                        val merged = curExtraData.shouldMerge(extraData)
-                        merged.fold(totals.parsed)
-                        {merged => totals.parsed.put(path, (builder, merged))
-                          totals.parsed}
-                      }
-                      RetrieveTotals(parsedTotals, totals.unParsed)
+                      curExtraData.shouldMerge(extraData).foreach(ex => totals.parsed.put(path, (builder, ex)))
+                      RetrieveTotals(totals.parsed, totals.unParsed)
                     }
                   }
                 }
@@ -208,7 +206,7 @@ object InfotonRetriever extends LazyLogging {
       }
   }
 
-  def parseNquad(remoteUri: String, nquadLine: ByteString): ParsedNquad = {
+  def parseNquad(remoteUri: String, nquadLine: ByteString): Option[ParsedNquad] = {
     val line = nquadLine.utf8String.replace(remoteUri, cmwellPrefix)
     val wrappedSubject = line.takeWhile(_ != space)
     if (wrappedSubject.length > 1 &&
@@ -241,8 +239,8 @@ object InfotonRetriever extends LazyLogging {
       }
 
       val nquad = ByteString(line)
-      ParsedNquad(path, nquad, extraData)
-    } else ParsedNquad("", ByteString(""), ExtraData("", None, None))
+      Some(ParsedNquad(path, nquad, extraData))
+    } else None
   }
 
   val gzipAcceptEncoding = `Accept-Encoding`(HttpEncodings.gzip)
