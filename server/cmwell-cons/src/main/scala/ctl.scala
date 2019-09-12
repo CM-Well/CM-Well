@@ -1185,58 +1185,21 @@ abstract class Host(user: String,
 
   def addNodes(ipms: Seq[String], sudoerName: String = "", sudoerPass: String = "", userPass: String = ""): Host = {
     connectToGrid
-    val activeNodes = Try(Await.result(Host.ctrl.getActiveNodes, 10 seconds)).getOrElse(ActiveNodes(Set.empty[String]))
     val addedInstances = getNewHostInstance(ipms)
 
     //Due to Dudi's request prepare machine isn't run by default and must be run manually (to spare the need for passwords)
     //addedInstances.prepareMachines(addedInstances.ips.par, sudoerName = sudoerName, sudoerPass = sudoerPass, userPass = userPass)
     addedInstances.purge()
 
-    val hostsToRemove = Set.empty[String] //ipMappings.m.map(_.ip).toSet -- activeNodes.an
-
-    addedInstances.deploy(addedInstances.ips)
-    addedInstances.startCtrl(addedInstances.ips)
+    this.deploy(addedInstances.ips)
+    this.startCtrl(addedInstances.ips)
 
     Thread.sleep(20000)
 
     ipms.foreach(Host.ctrl.addNode)
 
-    addedInstances.startDcForced(addedInstances.ips)
+    this.startDcForced(addedInstances.ips)
 
-    //    combinedInstances.startCassandra(addedInstances.ips)
-    //    combinedInstances.startElasticsearch(addedInstances.ips)
-    //
-    //
-    //    Retry{
-    //      try{
-    //        combinedInstances.CassandraLock().waitForModule(combinedInstances.ips(0), combinedInstances.getSize)
-    //      } catch {
-    //        case t : Throwable =>
-    //          info("Trying to reinit Cassandra")
-    //          combinedInstances.startCassandra(addedInstances.ips)
-    //          throw t
-    //      }
-    //    }
-    //
-    //    Retry{
-    //      try{
-    //        combinedInstances.ElasticsearchLock().waitForModule(combinedInstances.ips(0), combinedInstances.getSize)
-    //      } catch {
-    //        case t : Throwable =>
-    //          info("Trying to reinit Elasticsearch")
-    //          combinedInstances.startElasticsearch(addedInstances.ips)
-    //          throw t
-    //      }
-    //    }
-    //
-    //    combinedInstances.startCtrl(addedInstances.ips)
-    //    combinedInstances.startBatch(addedInstances.ips)
-    //    combinedInstances.startWebservice(addedInstances.ips)
-    //    combinedInstances.startCW(addedInstances.ips)
-    //    combinedInstances.startDc(addedInstances.ips)
-    //
-
-    //combinedInstances.dataInitializer.updateKnownHosts
     addedInstances  }
 
   def killProcess(name: String, flag: String, hosts: GenSeq[String] = ips.par, tries: Int = 5) {
