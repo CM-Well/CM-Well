@@ -26,7 +26,7 @@ object MessagesTypesAndExceptions {
 
   case class DcInfoKey(id: String, location: String, transformations: Map[String, String], modifier: Option[String]) {
     override def toString: String =
-      s"[id: $id, location: $location, transformations: ${transformations.mkString("(", ",", ")")}, modifier: ${modifier.fold("None")(identity}]"
+      s"[id: $id, location: $location, transformations: ${transformations.mkString("(", ",", ")")}, modifier: ${modifier.fold("None")(identity)}]"
   }
   case class DcInfo(key: DcInfoKey,
                     idxTime: Option[Long] = None,
