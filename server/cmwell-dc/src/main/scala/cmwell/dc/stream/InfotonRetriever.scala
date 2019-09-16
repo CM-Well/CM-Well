@@ -66,9 +66,11 @@ object InfotonRetriever extends LazyLogging {
       }
     }
 
-    def getQuads(indexTimeN: Long, modifierN: String) = {
+    def getQuads(indexTimeN: Long, modifierN: Option[String]) = {
+      def modifier = modifierN.fold(throw ModifierMissingException(subject))(identity)
+
       indexTime.fold(s"""<$subject> <cmwell://meta/sys#indexTime> "$indexTimeN"^^<http://www.w3.org/2001/XMLSchema#long> .""")(_ => "") ++
-        lastModifiedBy.fold(s"""<$subject> <cmwell://meta/sys#lastModifiedBy> "$modifierN"^^<http://www.w3.org/2001/XMLSchema#string> .""")(_ => "")
+      lastModifiedBy.fold(s"""<$subject> <cmwell://meta/sys#lastModifiedBy> "$modifier"^^<http://www.w3.org/2001/XMLSchema#string> .""")(_ => "")
     }
   }
 
