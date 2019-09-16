@@ -227,7 +227,11 @@ object TsvRetriever extends LazyLogging {
                 .delimiter(endln, maximumFrameLength = maxTsvLineLength * 2)
             )
             .fold(List[InfotonData]())(
-              (total, bs) => parseTSVAndCreateInfotonDataFromIt(bs) :: total
+              (total, bs) => {
+                val parsed = parseTSVAndCreateInfotonDataFromIt(bs)
+                if (parsed.meta.path != "/") parsed :: total
+                else total
+              }
             )
             .map { data =>
               val sortedData = data.sortBy(_.meta.indexTime)

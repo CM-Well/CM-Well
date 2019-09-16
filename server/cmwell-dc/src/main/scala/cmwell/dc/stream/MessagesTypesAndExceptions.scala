@@ -24,9 +24,9 @@ import scala.util.{Failure, Success}
   */
 object MessagesTypesAndExceptions {
 
-  case class DcInfoKey(id: String, location: String, transformations: Map[String, String]) {
+  case class DcInfoKey(id: String, location: String, transformations: Map[String, String], modifier: Option[String]) {
     override def toString: String =
-      s"[id: $id, location: $location, transformations: ${transformations.mkString("(", ",", ")")}]"
+      s"[id: $id, location: $location, transformations: ${transformations.mkString("(", ",", ")")}, modifier: ${modifier.fold("None")(identity)}]"
   }
   case class DcInfo(key: DcInfoKey,
                     idxTime: Option[Long] = None,
@@ -51,6 +51,9 @@ object MessagesTypesAndExceptions {
   case class GetIndexTimeException(message: String, ex: Throwable = null) extends Exception(message, ex)
   case class GetInfotonListException(message: String, ex: Throwable = null) extends Exception(message, ex)
   case class RetrieveSyncInfotonsException(message: String, ex: Throwable = null) extends Exception(message, ex)
+  //scalastyle:off
+  case class ModifierMissingException(path: String) extends Exception(s"Modifier is missing for path: $path. Please add modifier to DC-Sync infoton or check your source environment.")
+  //scalastyle:on
   case class CreateConsumeException(message: String, ex: Throwable = null) extends Exception(message, ex)
   case class WrongPathGotException(message: String) extends Exception(message)
   case class RetrieveException(message: String, ex: Throwable = null) extends Exception(message, ex)
