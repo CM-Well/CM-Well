@@ -131,6 +131,8 @@ object TsvRetriever extends LazyLogging {
     retrieveTsvsWithRetry(dcKey, decider).alsoToMat(positionKeySink)(Keep.both)
   }
 
+  val bulkConsumeIfAvailable = if (Settings.lockedOnConsume) Consume else BulkConsume
+
   def retrieveTsvsWithRetry(dcKey: DcInfoKey, decider: Decider)(
     implicit mat: Materializer,
     system: ActorSystem
@@ -144,7 +146,7 @@ object TsvRetriever extends LazyLogging {
             positionKey,
             Settings.initialTsvRetryCount,
             None,
-            ConsumeState(BulkConsume, System.currentTimeMillis)
+            ConsumeState(bulkConsumeIfAvailable, System.currentTimeMillis)
         )
       )
       .via(Retry(retrieveTsvFlow(dcKey, decider))(retryDecider(dcKey)))
@@ -168,7 +170,7 @@ object TsvRetriever extends LazyLogging {
         case state @ ConsumeState(BulkConsume, _) => state
         case state @ ConsumeState(Consume, start) =>
           if (stayInThisState(start)) state
-          else ConsumeState(BulkConsume, System.currentTimeMillis)
+          else ConsumeState(bulkConsumeIfAvailable, System.currentTimeMillis)
       }
 
   def retrieveTsvFlow(dcKey: DcInfoKey, decider: Decider)(
@@ -194,7 +196,7 @@ object TsvRetriever extends LazyLogging {
     Flow[(Future[TsvRetrieveInput], TsvRetrieveState)]
       .mapAsync(1) { case (input, state) => input.map(_ -> state) }
       .statefulMapConcat { () =>
-        var currentState = ConsumeState(BulkConsume, System.currentTimeMillis);
+        var currentState = ConsumeState(bulkConsumeIfAvailable, System.currentTimeMillis);
         {
           case (positionKey, state) =>
             currentState = getNewState(state, currentState)
@@ -327,9 +329,7 @@ object TsvRetriever extends LazyLogging {
               ??? // Shouldn't get here. The retry decider is called only when there is an exception and the ex should be in the state
           }
           val newConsumeOp = consumeState.op match {
-            case BulkConsume
-                if Settings.initialTsvRetryCount - retriesLeft < Settings.bulkTsvRetryCount =>
-              BulkConsume
+            case BulkConsume if Settings.initialTsvRetryCount - retriesLeft < Settings.bulkTsvRetryCount => bulkConsumeIfAvailable
             case _ => Consume
           }
           logger.warn(s"Sync $dcKey: Retrieve TSVs failed. Retries left $retriesLeft. Will try again in $waitSeconds seconds.")
