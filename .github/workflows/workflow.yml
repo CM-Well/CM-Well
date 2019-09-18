@@ -1,6 +1,6 @@
 name: CI
 
-on: [push, pull_request]
+on: [pull_request]
 
 jobs:
   build:
@@ -15,5 +15,8 @@ jobs:
       run: |
         echo pwd
         cd server
-        sbt util/compile
-        sbt util/test
+        sbt
+        util/compile
+        util/test
+        kafkaAssigner/compile
+        kafkaAssigner/test
