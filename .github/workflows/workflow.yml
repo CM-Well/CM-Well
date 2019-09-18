@@ -15,4 +15,5 @@ jobs:
       run: |
         echo pwd
         cd server
-        sbt compile
+        sbt utils/compile
+        sbt utils/test
