@@ -30,3 +30,5 @@ jobs:
         cd server
         sbt util/test
         sbt kafkaAssigner/test
+        sbt dao/test
+        sbt domain/test
