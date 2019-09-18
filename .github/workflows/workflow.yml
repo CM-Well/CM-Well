@@ -49,3 +49,19 @@ jobs:
         sbt zstore/test
         sbt common/test
   
+  test_3:
+
+    runs-on: ubuntu-latest
+    needs: compile
+    
+    steps:
+    - uses: actions/checkout@v1
+    - name: Run a one-line script
+      run: echo this is one line
+    - name: Run sbt compile
+      run: |
+        echo pwd
+        cd server
+        sbt grid/test
+        sbt rts/test
+        sbt fts/test
