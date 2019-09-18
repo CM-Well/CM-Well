@@ -19,9 +19,9 @@ jobs:
   test:
 
     runs-on: ubuntu-latest
+    needs: compile
     
     steps:
-    - needs: compile
     - uses: actions/checkout@v1
     - name: Run a one-line script
       run: echo this is one line
