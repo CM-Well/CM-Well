@@ -3,11 +3,25 @@ name: CI
 on: [pull_request]
 
 jobs:
-  build:
+  compile:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v1
+    - name: Run sbt compile
+      run: |
+        echo pwd
+        cd server
+        sbt
+        util/compile
+        kafkaAssigner/compile
+        
+  test:
 
     runs-on: ubuntu-latest
     
     steps:
+    - needs: compile
     - uses: actions/checkout@v1
     - name: Run a one-line script
       run: echo this is one line
@@ -16,7 +30,5 @@ jobs:
         echo pwd
         cd server
         sbt
-        util/compile
         util/test
-        kafkaAssigner/compile
         kafkaAssigner/test
