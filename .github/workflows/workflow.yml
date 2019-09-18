@@ -49,7 +49,7 @@ jobs:
         sbt zstore/test
         sbt common/test
   
-  test_3:
+  test_3_FAIL:
 
     runs-on: ubuntu-latest
     needs: compile
@@ -65,3 +65,102 @@ jobs:
         sbt grid/test
         sbt rts/test
         sbt fts/test
+
+  test_4:
+
+    runs-on: ubuntu-latest
+    needs: compile
+    
+    steps:
+    - uses: actions/checkout@v1
+    - name: Run a one-line script
+      run: echo this is one line
+    - name: Run sbt compile
+      run: |
+        echo pwd
+        cd server
+        sbt formats/test
+        sbt irw/test
+        sbt stortill/test
+        
+  test_bg:
+
+    runs-on: ubuntu-latest
+    needs: compile
+    
+    steps:
+    - uses: actions/checkout@v1
+    - name: Run a one-line script
+      run: echo this is one line
+    - name: Run sbt compile
+      run: |
+        echo pwd
+        cd server
+        sbt bg/test
+
+  test_it:
+
+    runs-on: ubuntu-latest
+    needs: compile
+    
+    steps:
+    - uses: actions/checkout@v1
+    - name: Run a one-line script
+      run: echo this is one line
+    - name: Run sbt compile
+      run: |
+        echo pwd
+        cd server
+        sbt consIt/test
+        
+  test_6:
+
+    runs-on: ubuntu-latest
+    needs: compile
+    
+    steps:
+    - uses: actions/checkout@v1
+    - name: Run a one-line script
+      run: echo this is one line
+    - name: Run sbt compile
+      run: |
+        echo pwd
+        cd server
+        sbt ctrl/test
+        sbt dc/test
+        sbt cons/test
+        sbt pluginGremlin/test
+        
+  test_7:
+
+    runs-on: ubuntu-latest
+    needs: compile
+    
+    steps:
+    - uses: actions/checkout@v1
+    - name: Run a one-line script
+      run: echo this is one line
+    - name: Run sbt compile
+      run: |
+        echo pwd
+        cd server
+        sbt spa/test
+        sbt dataTools/test
+        sbt dataToolsApp/test
+   
+  test_8:
+
+    runs-on: ubuntu-latest
+    needs: compile
+    
+    steps:
+    - uses: actions/checkout@v1
+    - name: Run a one-line script
+      run: echo this is one line
+    - name: Run sbt compile
+      run: |
+        echo pwd
+        cd server
+        sbt sparqlAgent/test
+        sbt tracking/test
+        sbt ws/test
