@@ -83,7 +83,7 @@ case class EsBadCurrentErrorFix(details: String, lclzdCmd: LocalizedCommand) ext
 object CrawlerStream extends LazyLogging {
   case class CrawlerMaterialization(control: Consumer.Control, doneState: Future[Done])
 
-  private val requiredSystemFieldsNames = Set("dc", "indexName", "indexTime", "lastModified", "path", "type")
+  private val requiredSystemFieldsNames = Set("dc", "indexName", "indexTime", "lastModified", "lastModifiedBy", "path", "type")
   // "protocol" system field is optional; Crawler does not have to alert if it is missing.
   // However, in case it has more than one value, Crawler will detect it and report accordingly.
 
@@ -121,7 +121,8 @@ object CrawlerStream extends LazyLogging {
     def kafkaMessageToSingleCommand(msg: ConsumerRecord[Array[Byte], Array[Byte]]) = {
       val kafkaLocation = KafkaLocation(topic, partition, msg.offset())
       CommandSerializer.decode(msg.value) match {
-        case CommandRef(ref) => zStore.get(ref).map(cmd => LocalizedCommand(CommandSerializer.decode(cmd).asInstanceOf[SingleCommand], None, kafkaLocation))(ec)
+        case CommandRef(ref) => zStore.get(ref).map(cmd =>
+          LocalizedCommand(CommandSerializer.decode(cmd).asInstanceOf[SingleCommand], None, kafkaLocation))(ec)
         case singleCommand => Future.successful(LocalizedCommand(singleCommand.asInstanceOf[SingleCommand], None, kafkaLocation))
       }
     }
@@ -180,9 +181,9 @@ object CrawlerStream extends LazyLogging {
     def alterCommandLastModifiedDate(cmd: SingleCommand, newDate: DateTime) = {
       cmd match {
         case c@WriteCommand(infoton, _, _) => c.copy(infoton = infoton.copyInfoton(lastModified = newDate))
-        case c@DeleteAttributesCommand(_, _, _, _, _, _) => c.copy(lastModified = newDate)
-        case c@DeletePathCommand(_, _, _, _) => c.copy(lastModified = newDate)
-        case c@UpdatePathCommand(_, _, _, _, _, _, _) => c.copy(lastModified = newDate)
+        case c@DeleteAttributesCommand(_, _,_, _, _, _, _) => c.copy(lastModified = newDate)
+        case c@DeletePathCommand(_, _, _, _,_) => c.copy(lastModified = newDate)
+        case c@UpdatePathCommand(_, _, _, _,_ , _, _, _) => c.copy(lastModified = newDate)
         case c@OverwriteCommand(infoton, _) => c.copy(infoton = infoton.copyInfoton(lastModified = newDate))
       }
     }

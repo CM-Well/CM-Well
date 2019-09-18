@@ -380,7 +380,8 @@ callback=< [URL] >
           None,
           Map[String, Set[FieldValue]]("alias" -> Set(FString(s"partition_$partition")),
             "graph" -> Set(FReference(s"cmwell://meta/sys#partition_$partition"))),
-          protocol = None
+          protocol = None,
+          lastModifiedBy = "VirtualInfoton"
         )
       )
     )
@@ -584,6 +585,7 @@ callback=< [URL] >
       case Failure(e) => asyncErrorHandler(e)
       case Success(request) => {
         val normalizedPath = normalizePath(request.path)
+        val modifier = request.attrs(Attrs.UserName)
         val isPriorityWrite = originalRequest.getQueryString("priority").isDefined
         if (!InfotonValidator.isInfotonNameValid(normalizedPath))
           Future.successful(
@@ -606,7 +608,7 @@ callback=< [URL] >
             case Some(jsonStr) =>
               jsonToFields(jsonStr.getBytes("UTF-8")) match {
                 case Success(fields) =>
-                  crudServiceFS.deleteInfoton(normalizedPath, None, Some(fields), isPriorityWrite).map { _ =>
+                  crudServiceFS.deleteInfoton(normalizedPath, modifier, None, Some(fields), isPriorityWrite).map { _ =>
                     Ok(Json.obj("success" -> true))
                   }
                 case Failure(exception) => asyncErrorHandler(exception)
@@ -631,7 +633,7 @@ callback=< [URL] >
                 (fields.isDefined, either) match {
                   case (true, _) =>
                     crudServiceFS
-                      .deleteInfoton(normalizedPath, None, fields, isPriorityWrite)
+                      .deleteInfoton(normalizedPath, modifier, None, fields, isPriorityWrite)
                       .onComplete {
                         case Success(b) => p.success(Ok(Json.obj("success" -> b)))
                         case Failure(e) =>
@@ -639,7 +641,7 @@ callback=< [URL] >
                       }
                   case (false, Right(paths)) =>
                     crudServiceFS
-                      .deleteInfotons(paths.map((_, None, None)).toList, isPriorityWrite = isPriorityWrite)
+                      .deleteInfotons(paths.map((_, None, None)).toList, modifier, isPriorityWrite = isPriorityWrite)
                       .onComplete {
                         case Success(b) => p.success(Ok(Json.obj("success" -> b)))
                         case Failure(e) =>
@@ -2486,9 +2488,9 @@ callback=< [URL] >
       val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
       (if (offset.isEmpty) actions.ActiveInfotonHandler.wrapInfotonReply(infoton) else infoton) match {
         case None => Future.successful(NotFound("Infoton not found"))
-        case Some(DeletedInfoton(p, _, _, lm, _)) =>
+        case Some(DeletedInfoton(p, _, _, lm, _, _)) =>
           Future.successful(NotFound(s"Infoton was deleted on ${fullDateFormatter.print(lm)}"))
-        case Some(LinkInfoton(_, _, _, _, _, to, lType, _, _)) =>
+        case Some(LinkInfoton(_, _, _, _, _, _, to, lType, _, _)) =>
           lType match {
             case LinkType.Permanent => Future.successful(Redirect(to, request.queryString, MOVED_PERMANENTLY))
             case LinkType.Temporary => Future.successful(Redirect(to, request.queryString, TEMPORARY_REDIRECT))
@@ -2592,6 +2594,7 @@ callback=< [URL] >
       .map { request =>
         val normalizedPath = normalizePath(request.path)
         val isPriorityWrite = originalRequest.getQueryString("priority").isDefined
+        val modifier = request.attrs(Attrs.UserName)
 
         if (!InfotonValidator.isInfotonNameValid(normalizedPath)) {
           Future.successful(
@@ -2616,7 +2619,7 @@ callback=< [URL] >
                 case Success(fields) =>
                   InfotonValidator.validateValueSize(fields)
                   boolFutureToRespones(
-                    crudServiceFS.putInfoton(ObjectInfoton(normalizedPath, Settings.dataCenter, None, fields, protocol = None),
+                    crudServiceFS.putInfoton(ObjectInfoton(normalizedPath, Settings.dataCenter, None, fields, None, modifier),
                                              isPriorityWrite)
                   )
                 // TODO handle validation
@@ -2639,6 +2642,7 @@ callback=< [URL] >
                   crudServiceFS.putInfoton(FileInfoton(path = normalizedPath,
                                                        dc = Settings.dataCenter,
                                                        content = Some(FileContent(content, contentType)),
+                                                       lastModifiedBy = modifier,
                                                        protocol = None),
                                            isPriorityWrite)
                 )
@@ -2651,8 +2655,8 @@ callback=< [URL] >
                   InfotonValidator.validateValueSize(fields)
                   boolFutureToRespones(
                     crudServiceFS
-                      .putInfoton(FileInfoton(path = normalizedPath, dc = Settings.dataCenter, fields = Some(fields), protocol = None),
-                                  isPriorityWrite)
+                      .putInfoton(FileInfoton(path = normalizedPath, dc = Settings.dataCenter, fields = Some(fields), protocol = None,
+                        lastModifiedBy = modifier), isPriorityWrite)
                   )
                 case Failure(exception) =>
                   Future.successful(BadRequest(Json.obj("success" -> false, "cause" -> exception.getMessage)))
@@ -2672,7 +2676,8 @@ callback=< [URL] >
                                                      fields = Some(Map[String, Set[FieldValue]]()),
                                                      linkTo = linkTo,
                                                      linkType = linkType,
-                                                     protocol = None),
+                                                     protocol = None,
+                                                     lastModifiedBy = modifier),
                                          isPriorityWrite)
               )
             }
@@ -3062,6 +3067,7 @@ callback=< [URL] >
     val flag = req.getQueryString("enabled").flatMap(asBoolean).getOrElse(true)
 
     val tokenOpt = authUtils.extractTokenFrom(req)
+    val modifier = req.attrs(Attrs.UserName)
 
     (authUtils.isOperationAllowedForUser(security.Admin, tokenOpt)) match {
       case true => {
@@ -3079,10 +3085,11 @@ callback=< [URL] >
                   case None => Map(activeFlag)
                 }
 
-                val newInfoton = infotonBox.head.copyInfoton(fields=Some(newFields), lastModified = new DateTime(System.currentTimeMillis))
+                val newInfoton = infotonBox.head.copyInfoton(fields=Some(newFields), lastModified = new DateTime(System.currentTimeMillis),
+                  lastModifiedBy = modifier)
                 val deletes = Map(infotonPath ->  Map("active" -> None))
 
-                crudServiceFS.upsertInfotons(inserts = List(newInfoton), deletes = deletes).onComplete({
+                crudServiceFS.upsertInfotons(inserts = List(newInfoton), deletes = deletes, deletesModifier = modifier).onComplete({
                   case Success(_)=> p.completeWith(Future.successful(Ok("""{"success":true}""")))
                   case Failure(ex) => {
                     logger.debug(ex.getMessage)
@@ -3234,7 +3241,7 @@ class CachedSpa @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
   private def doFetchContent(isOldUi: Boolean): Future[String] = {
     val path = if (isOldUi) contentPath else newContentPath
     crudServiceFS.getInfotonByPathAsync(path).collect {
-      case FullBox(FileInfoton(_, _, _, _, _, Some(c), _, _)) => new String(c.data.get, "UTF-8")
+      case FullBox(FileInfoton(_,_, _, _, _, _, Some(c), _, _)) => new String(c.data.get, "UTF-8")
       case somethingElse => {
         logger.error("got something else: " + somethingElse)
         throw new SpaMissingException("SPA Content is currently unreachable")

@@ -24,65 +24,92 @@ import scala.util.{Failure, Success}
   */
 object MessagesTypesAndExceptions {
 
-  case class DcInfoKey(id: String, location: String, transformations: Map[String, String], ingestOperation:String) {
-    override def toString: String =
-      s"[id: $id, location: $location, transformations: ${transformations.mkString("(", ",", ")")}]"
-  }
+    case class DcInfoKey(id: String, location: String, transformations: Map[String, String], ingestOperation: String, modifier: Option[String]) {
 
-  case class AlgoData(algoClass:String, algoJarUrl:String, algoParams: Map[String, String])
+        override def toString: String =
+          s"[id: $id, location: $location, transformations: ${transformations.mkString("(", ",", ")")}, modifier: ${modifier.fold("None")(identity)}]"
+      }
 
-  case class DcInfo(key: DcInfoKey,
-                    dcAlgoData: Option[AlgoData],
-                    idxTime: Option[Long] = None,
-                    positionKey: Option[String] = None,
-                    tsvFile: Option[String] = None)
+      case class AlgoData(algoClass: String, algoJarUrl: String, algoParams: Map[String, String])
 
-  case class WarmUpDcSync(dcInfo: DcInfo)
-  case class StartDcSync(dcInfo: DcInfo)
-  // A message to remove the sync from the sync map. Possible reasons:
-  // 1. failed warm up (one of the futures in the warm up chain failed)
-  // 2. the stream failed
-  case class RemoveDcSync(dcInfo: DcInfo)
-  case class SetDcSyncAsCancelled(dcInfoKey: DcInfoKey)
-  case class StopDcSync(dcInfoKey: DcInfoKey)
-  case class SaveDcSyncDoneInfo(dcInfo: DcInfo)
-  case object CheckDcInfotonList
-  case class RetrievedDcInfoList(dcInfoSeq: Seq[DcInfo])
+      case class DcInfo(key: DcInfoKey,
+                        dcAlgoData: Option[AlgoData],
+                        idxTime: Option[Long] = None,
+                        positionKey: Option[String] = None,
+                        tsvFile: Option[String] = None)
 
-  case class BaseInfotonData(path:String, data:ByteString) extends AnyRef
-  case class InfotonData(base: BaseInfotonData, uuid: ByteString, indexTime: Long) extends AnyRef
+      case class WarmUpDcSync(dcInfo: DcInfo)
 
-  case class GetIndexTimeException(message: String, ex: Throwable = null) extends Exception(message, ex)
-  case class GetInfotonListException(message: String, ex: Throwable = null) extends Exception(message, ex)
-  case class RetrieveSyncInfotonsException(message: String, ex: Throwable = null) extends Exception(message, ex)
-  case class CreateConsumeException(message: String, ex: Throwable = null) extends Exception(message, ex)
-  case class WrongPathGotException(message: String) extends Exception(message)
-  case class RetrieveException(message: String, ex: Throwable = null) extends Exception(message, ex)
-  case class RetrieveMissingUuidException(message: String, ex: Throwable = null) extends Exception(message, ex)
-  case class RetrieveBadIndexTimeException(message: String, ex: Throwable = null) extends Exception(message, ex)
-  case class RetrieveTsvException(message: String, ex: Throwable = null) extends Exception(message, ex)
-  case class IngestException(message: String, ex: Throwable = null) extends Exception(message, ex)
+      case class StartDcSync(dcInfo: DcInfo)
 
-  abstract class FuturedBodyException(val messageWithoutBody: String,
-                                      val body: Future[String],
-                                      val ex: Throwable = null)
-      extends Exception(messageWithoutBody + " (complete error later with the same error id)", ex)
-  case class IngestBadResponseException(override val messageWithoutBody: String,
-                                        override val body: Future[String],
-                                        override val ex: Throwable = null)
-      extends FuturedBodyException(messageWithoutBody, body, ex)
-  case class IngestServiceUnavailableException(override val messageWithoutBody: String,
-                                               override val body: Future[String],
-                                               override val ex: Throwable = null)
-      extends FuturedBodyException(messageWithoutBody, body, ex)
-  case class RetrieveBadResponseException(override val messageWithoutBody: String,
-                                          override val body: Future[String],
-                                          override val ex: Throwable = null)
-      extends FuturedBodyException(messageWithoutBody, body, ex)
-  case class RetrieveTsvBadResponseException(override val messageWithoutBody: String,
-                                             override val body: Future[String],
-                                             override val ex: Throwable = null)
-      extends FuturedBodyException(messageWithoutBody, body, ex)
+      // A message to remove the sync from the sync map. Possible reasons:
+      // 1. failed warm up (one of the futures in the warm up chain failed)
+      // 2. the stream failed
+      case class RemoveDcSync(dcInfo: DcInfo)
+
+      case class SetDcSyncAsCancelled(dcInfoKey: DcInfoKey)
+
+      case class StopDcSync(dcInfoKey: DcInfoKey)
+
+      case class SaveDcSyncDoneInfo(dcInfo: DcInfo)
+
+      case object CheckDcInfotonList
+
+      case class RetrievedDcInfoList(dcInfoSeq: Seq[DcInfo])
+
+      case class BaseInfotonData(path: String, data: ByteString) extends AnyRef
+
+      case class InfotonData(base: BaseInfotonData, uuid: ByteString, indexTime: Long) extends AnyRef
+
+      case class GetIndexTimeException(message: String, ex: Throwable = null) extends Exception(message, ex)
+
+      case class GetInfotonListException(message: String, ex: Throwable = null) extends Exception(message, ex)
+
+      case class RetrieveSyncInfotonsException(message: String, ex: Throwable = null) extends Exception(message, ex)
+
+      //scalastyle:off
+      case class ModifierMissingException(path: String) extends Exception(s"Modifier is missing for path: $path. Please add modifier to DC-Sync infoton or check your source environment.")
+
+      //scalastyle:on
+      case class CreateConsumeException(message: String, ex: Throwable = null) extends Exception(message, ex)
+
+      case class WrongPathGotException(message: String) extends Exception(message)
+
+      case class RetrieveException(message: String, ex: Throwable = null) extends Exception(message, ex)
+
+      case class RetrieveMissingUuidException(message: String, ex: Throwable = null) extends Exception(message, ex)
+
+      case class RetrieveBadIndexTimeException(message: String, ex: Throwable = null) extends Exception(message, ex)
+
+      case class RetrieveTsvException(message: String, ex: Throwable = null) extends Exception(message, ex)
+
+      case class IngestException(message: String, ex: Throwable = null) extends Exception(message, ex)
+
+      abstract class FuturedBodyException(val messageWithoutBody: String,
+                                          val body: Future[String],
+                                          val ex: Throwable = null)
+        extends Exception(messageWithoutBody + " (complete error later with the same error id)", ex)
+
+      case class IngestBadResponseException(override val messageWithoutBody: String,
+                                            override val body: Future[String],
+                                            override val ex: Throwable = null)
+        extends FuturedBodyException(messageWithoutBody, body, ex)
+
+      case class IngestServiceUnavailableException(override val messageWithoutBody: String,
+                                                   override val body: Future[String],
+                                                   override val ex: Throwable = null)
+        extends FuturedBodyException(messageWithoutBody, body, ex)
+
+      case class RetrieveBadResponseException(override val messageWithoutBody: String,
+                                              override val body: Future[String],
+                                              override val ex: Throwable = null)
+        extends FuturedBodyException(messageWithoutBody, body, ex)
+
+      case class RetrieveTsvBadResponseException(override val messageWithoutBody: String,
+                                                 override val body: Future[String],
+                                                 override val ex: Throwable = null)
+        extends FuturedBodyException(messageWithoutBody, body, ex)
 
 
-}
+    }
+

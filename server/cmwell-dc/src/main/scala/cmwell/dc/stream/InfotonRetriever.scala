@@ -29,10 +29,10 @@ import cmwell.dc.Settings._
 import cmwell.dc.stream.MessagesTypesAndExceptions._
 import cmwell.dc.{LazyLogging, Settings}
 import cmwell.util.akka.http.HttpZipDecoder
-
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
+import scala.collection.mutable.HashMap
 
 /**
   * Created by eli on 23/06/16.
@@ -42,7 +42,7 @@ object InfotonRetriever extends LazyLogging {
   type RetrieveInput = Seq[InfotonData]
   //Sequence of (InfotonData, Option[Read indexTime from cassandra(_out) )
   type RetrieveOutput =
-    scala.collection.immutable.Seq[(InfotonData, Option[Long])]
+    scala.collection.immutable.Seq[(InfotonData, ExtraData)]
 
   case class RetrieveStateStatus(retriesLeft: Int, lastException: Option[Throwable])
 
@@ -53,19 +53,42 @@ object InfotonRetriever extends LazyLogging {
   val initialRetrieveSingleStatus =
     RetrieveStateStatus(Settings.initialSingleRetrieveRetryCount, None)
 
-  case class ParsedNquad(path: String, nquad: ByteString, indexTime: Option[Long])
+  case class ExtraData(subject: String, indexTime: Option[Long], lastModifiedBy: Option[String]){
+    def shouldMerge (other: ExtraData): Option[ExtraData] = {
+      require(other.subject != "", "Subject in ExtraData cannot be empty!")
+      require(!(subject!="" && other.subject != subject), "Same path cannot have different subjects!")
+
+      other match {
+        case ExtraData(newSubject, None, None) if this.subject == "" => Some(this.copy(subject = newSubject))
+        case ExtraData(_, None, None) => None
+        case ExtraData(newSubject, indTime @ Some(_), None) => Some(this.copy(subject = newSubject, indexTime = indTime))
+        case ExtraData(newSubject, None, lmb @ Some(_)) => Some(this.copy(subject = newSubject, lastModifiedBy = lmb))
+      }
+    }
+
+    def getQuads(indexTimeN: Long, modifierN: Option[String]) = {
+      def modifier = modifierN.fold(throw ModifierMissingException(subject))(identity)
+
+      indexTime.fold(s"""<$subject> <cmwell://meta/sys#indexTime> "$indexTimeN"^^<http://www.w3.org/2001/XMLSchema#long> .\n""")(_ => "") ++
+      lastModifiedBy.fold(s"""<$subject> <cmwell://meta/sys#lastModifiedBy> "$modifier"^^<http://www.w3.org/2001/XMLSchema#string> .\n""")(_ => "")
+    }
+  }
+
+  case class ParsedNquad(path: String, nquad: ByteString, extraData: ExtraData)
 
   case class RetrieveTotals(
-    parsed: Map[String, (ByteStringBuilder, Option[Long])],
+    parsed: HashMap[String, (ByteStringBuilder, ExtraData)],
     unParsed: ByteStringBuilder
   )
 
   val breakOut = scala.collection
-    .breakOut[RetrieveInput, (InfotonData, Option[Long]), RetrieveOutput]
+    .breakOut[RetrieveInput, (InfotonData, ExtraData), RetrieveOutput]
   val breakOut2 = scala.collection
     .breakOut[RetrieveInput, (Future[RetrieveInput], RetrieveState), List[
       (Future[RetrieveInput], RetrieveState)
     ]]
+  val hashMapBreakout = scala.collection
+    .breakOut[RetrieveInput, (String, (ByteStringBuilder, ExtraData)), HashMap[String, (ByteStringBuilder, ExtraData)]]
 
   //The path will be unique for each bulk infoton got into the flow
   def apply(dcKey: DcInfoKey, decider: Decider)(implicit sys: ActorSystem, mat: Materializer): Flow[Seq[
@@ -94,34 +117,20 @@ object InfotonRetriever extends LazyLogging {
               .via(
                 Framing.delimiter(endln, maximumFrameLength = maxStatementLength)
               )
-              .fold(
-                RetrieveTotals(
-                  state._1
-                    .map(im => (im.base.path, (new ByteStringBuilder, None)))
-                    .toMap,
-                  new ByteStringBuilder
-                )
-              ) { (totals, nquad) =>
+              .fold(RetrieveTotals(state._1.map{im => im.base.path -> (new ByteStringBuilder, ExtraData("", None, None))}(hashMapBreakout),
+                new ByteStringBuilder))
+              { (totals, nquad) =>
                 totals.unParsed ++= nquad
                 val parsed: Option[ParsedNquad] = parseNquad(remoteUri, nquad)
-                parsed.fold {
-                  RetrieveTotals(totals.parsed, totals.unParsed)
-                } { p =>
-                  totals.parsed.get(p.path) match {
+                parsed.fold(RetrieveTotals(totals.parsed, totals.unParsed)){case ParsedNquad(path, nquad, extraData) =>
+                  totals.parsed.get(path) match {
                     case None =>
-                      throw WrongPathGotException(
-                        s"Got path ${p.path} from _out that was not in the uuids request bulk: ${
-                          state._1
-                            .map(i => i.uuid.utf8String + ":" + i.base.path)
-                            .mkString(",")
-                        }"
-                      )
-                    case Some((builder, _)) => {
-                      builder ++= (p.nquad ++ endln)
-                      val parsedTotals = p.indexTime.fold(totals.parsed)(
-                        _ => totals.parsed + (p.path -> (builder, p.indexTime))
-                      )
-                      RetrieveTotals(parsedTotals, totals.unParsed)
+                      throw WrongPathGotException(s"Got path ${path} from _out that was not in the uuids request bulk: ${
+                        state._1.map(i => i.uuid.utf8String + ":" + i.base.path).mkString(",")}")
+                    case Some((builder, curExtraData)) => {
+                      builder ++= (nquad ++ endln)
+                      curExtraData.shouldMerge(extraData).foreach(ex => totals.parsed.put(path, (builder, ex)))
+                      RetrieveTotals(totals.parsed, totals.unParsed)
                     }
                   }
                 }
@@ -130,16 +139,10 @@ object InfotonRetriever extends LazyLogging {
                 val parsedResult: Try[RetrieveOutput] = Success(state._1.map {
                   //todo: validity checks that the data arrived correctly. e.g. that the path could be retrieved from _out etc.
                   im => {
-                    val parsed: (ByteStringBuilder, Option[Long]) = totals.parsed(im.base.path)
-                    if(parsed._2.isEmpty) {
-                      //uuids that don't have index time in cassandra. populate it using ES indexTime
-                      val subject = im.base.data.takeWhile(_ != space).utf8String
-                      val idxTimeQuad = s"""$subject <cmwell://meta/sys#indexTime> "${im.indexTime}"^^<http://www.w3.org/2001/XMLSchema#long> ."""
-                      val q = "\"" + idxTimeQuad + "\""
-                      logger.warn(s"Sync $dcKey: Retrieve of uuid ${im.uuid.utf8String} didn't have index time. Adding $q from metadata manually")
-                      parsed._1 ++= ByteString(idxTimeQuad)
-                    }
-                    (InfotonData(BaseInfotonData(im.base.path, parsed._1.result()), im.uuid, im.indexTime), parsed._2)
+                    val parsed: (ByteStringBuilder, ExtraData) = totals.parsed(im.base.path)
+                    val enrichResult = ByteString(parsed._2.getQuads(im.indexTime, dcKey.modifier))
+                    (InfotonData(BaseInfotonData(im.base.path, parsed._1.result ++ enrichResult), im.uuid, im.indexTime), parsed._2)
+
                   }
                 }(breakOut))
                 (parsedResult, state, Option(totals.unParsed.result))
@@ -216,17 +219,30 @@ object InfotonRetriever extends LazyLogging {
         !line.contains("/meta/sys#path")) {
       val uri = wrappedSubject.tail.init
       val path = cmwell.domain.FReference(uri).getCmwellPath
-      val indexTime = {
+      val extraData = {
+        //Start with looking for indexTime
         val pos = line.indexOf("/meta/sys#indexTime") + 22
         //-1 + 22 == 21 - no match is found
-        if (pos == 21) None
-        else {
+        if (pos != 21) {
           val untilPos = line.indexOf('"', pos)
-          Some(line.substring(pos, untilPos).toLong)
+          ExtraData (uri, Some(line.substring(pos, untilPos).toLong), None)
+        }
+        else {
+          //look for lastModifiedBy
+          val pos = line.indexOf("/meta/sys#lastModifiedBy") + 27
+          //-1 + 27 == 26 - no match is found
+          if (pos != 26) {
+            val untilPos = line.indexOf('"', pos)
+            ExtraData (uri, None, Some(line.substring(pos, untilPos)))
+          }
+          else {
+            ExtraData (uri, None, None)
+          }
         }
       }
+
       val nquad = ByteString(line)
-      Some(ParsedNquad(path, nquad, indexTime))
+      Some(ParsedNquad(path, nquad, extraData))
     } else None
   }
 
@@ -253,7 +269,7 @@ object InfotonRetriever extends LazyLogging {
         }
         //uuids that the index time from cassandra is different from the one got from ES
         val uuidsWithBadIndexTime = res.collect {
-          case (id, casIndexTime) if casIndexTime.isDefined && id.indexTime != casIndexTime.get =>
+          case (id, extraData) if extraData.indexTime.isDefined && id.indexTime != extraData.indexTime.get =>
             id
         }
         if (missingUuids.isEmpty && uuidsWithBadIndexTime.isEmpty) {

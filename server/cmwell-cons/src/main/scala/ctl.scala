@@ -171,7 +171,6 @@ abstract class Host(user: String,
                     hostIps: Seq[String],
                     esSize: Int,
                     casSize:Int,
-                    inet: String,
                     val cn: String,
                     val dc: String,
                     dataDirs: DataDirs,
@@ -197,8 +196,6 @@ abstract class Host(user: String,
   def getUser = user
 
   def getHostIps = hostIps
-
-  def getInet = inet
 
   def getDataDirs = dataDirs
 
@@ -1188,58 +1185,21 @@ abstract class Host(user: String,
 
   def addNodes(ipms: Seq[String], sudoerName: String = "", sudoerPass: String = "", userPass: String = ""): Host = {
     connectToGrid
-    val activeNodes = Try(Await.result(Host.ctrl.getActiveNodes, 10 seconds)).getOrElse(ActiveNodes(Set.empty[String]))
     val addedInstances = getNewHostInstance(ipms)
 
     //Due to Dudi's request prepare machine isn't run by default and must be run manually (to spare the need for passwords)
     //addedInstances.prepareMachines(addedInstances.ips.par, sudoerName = sudoerName, sudoerPass = sudoerPass, userPass = userPass)
     addedInstances.purge()
 
-    val hostsToRemove = Set.empty[String] //ipMappings.m.map(_.ip).toSet -- activeNodes.an
-
-    addedInstances.deploy(addedInstances.ips)
-    addedInstances.startCtrl(addedInstances.ips)
+    this.deploy(addedInstances.ips)
+    this.startCtrl(addedInstances.ips)
 
     Thread.sleep(20000)
 
     ipms.foreach(Host.ctrl.addNode)
 
-    addedInstances.startDcForced(addedInstances.ips)
+    this.startDcForced(addedInstances.ips)
 
-    //    combinedInstances.startCassandra(addedInstances.ips)
-    //    combinedInstances.startElasticsearch(addedInstances.ips)
-    //
-    //
-    //    Retry{
-    //      try{
-    //        combinedInstances.CassandraLock().waitForModule(combinedInstances.ips(0), combinedInstances.getSize)
-    //      } catch {
-    //        case t : Throwable =>
-    //          info("Trying to reinit Cassandra")
-    //          combinedInstances.startCassandra(addedInstances.ips)
-    //          throw t
-    //      }
-    //    }
-    //
-    //    Retry{
-    //      try{
-    //        combinedInstances.ElasticsearchLock().waitForModule(combinedInstances.ips(0), combinedInstances.getSize)
-    //      } catch {
-    //        case t : Throwable =>
-    //          info("Trying to reinit Elasticsearch")
-    //          combinedInstances.startElasticsearch(addedInstances.ips)
-    //          throw t
-    //      }
-    //    }
-    //
-    //    combinedInstances.startCtrl(addedInstances.ips)
-    //    combinedInstances.startBatch(addedInstances.ips)
-    //    combinedInstances.startWebservice(addedInstances.ips)
-    //    combinedInstances.startCW(addedInstances.ips)
-    //    combinedInstances.startDc(addedInstances.ips)
-    //
-
-    //combinedInstances.dataInitializer.updateKnownHosts
     addedInstances  }
 
   def killProcess(name: String, flag: String, hosts: GenSeq[String] = ips.par, tries: Int = 5) {
@@ -1799,50 +1759,6 @@ abstract class Host(user: String,
       ips(0),
       false
     ).get.trim
-  }
-
-  def rebalanceCassandraDownNodes {
-    // grep DN | awk '{print $2 " " $7}'
-    Retry {
-      val downNodes = command(
-        s"""JAVA_HOME=${instDirs.globalLocation}/cm-well/app/java/bin $nodeToolPath status 2> /dev/null | grep DN | awk '{print $$2 " " $$7}'""",
-        ips(0),
-        false
-      ).get.trim.split("\n").toList.map { dn =>
-        val dnsplt = dn.split(" ")
-        dnsplt(0) -> dnsplt(1)
-      }
-
-      downNodes.par.foreach(
-        dn =>
-          command(
-            s"JAVA_HOME=${instDirs.globalLocation}/cm-well/app/java/bin $nodeToolPath removenode ${dn._2} 2> /dev/null",
-            ips(0),
-            false
-          )
-      )
-      if (command(s"""JAVA_HOME=${instDirs.globalLocation}/cm-well/app/java/bin $nodeToolPath status 2> /dev/null | grep DN | awk '{print $$2 " " $$7}'""",
-        ips(0),
-        false).get.trim.split("\n").toList.size > 0)
-        throw new Exception("Failed to remove down nodes")
-
-      info(s"Cassandra nodes were removed from the cluster. The cluster now will rebalance its data.")
-    }
-  }
-
-  def getCassandraAddresses(host: String): Seq[String] = Seq(host)
-
-  def decommissionCassandraNodes(hosts: GenSeq[String]) {
-    hosts.foreach { host =>
-      getCassandraAddresses(host).foreach { ip =>
-        command(
-          s"""JAVA_HOME=${instDirs.globalLocation}/cm-well/app/java/bin $nodeToolLocation -h $ip decommission 2> /dev/null""",
-          host,
-          false
-        )
-      }
-
-    }
   }
 
   def shutdown: Unit = shutdown()

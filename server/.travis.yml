@@ -1,0 +1,8 @@
+# Needed for scala to work
+jdk: oraclejdk8
+# todo: Change to version 2.12.8
+language: scala
+scala:
+  - 2.12.2
+script:
+  - sbt compile

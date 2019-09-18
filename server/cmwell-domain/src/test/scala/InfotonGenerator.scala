@@ -54,7 +54,7 @@ object InfotonGenerator {
       Map[String,Set[FieldValue]]() ++ m
     }
     iType match {
-      case 0 => ObjectInfoton(path.mkString("/", "/", ""), "dc_test", None, mkFields, None)
+      case 0 => ObjectInfoton(path.mkString("/", "/", ""), "dc_test", None, mkFields, None, "Baruch")
       case 1 => {
         val (content, mimeType): Tuple2[Array[Byte],String] = scala.util.Random.nextBoolean() match{
           case true => (txtVal.getBytes("UTF-8"),"text/plain")
@@ -68,7 +68,8 @@ object InfotonGenerator {
           case false => None
           case true => Some(mkFields)
         }
-        FileInfoton(path=path.mkString("/", "/", ""),"dc_test", fields=f, content=Some(FileContent(content, mimeType)),protocol = None)
+        FileInfoton(path=path.mkString("/", "/", ""),"dc_test", fields=f, content=Some(FileContent(content, mimeType)),protocol = None,
+          lastModifiedBy = "Baruch")
       }
       case 2 => ??? //unreacable for now, TODO: add LinkInfoton Generation
       case _ => ??? //should never get here

@@ -15,7 +15,6 @@
 package security
 
 import javax.inject.Inject
-
 import cmwell.domain.{FieldValue, FileContent, FileInfoton, Infoton}
 import cmwell.ws.Settings
 import com.github.t3hnar.bcrypt._
@@ -45,6 +44,7 @@ class AuthUtils @Inject()(authCache: EagerAuthCache, authorization: Authorizatio
               s"/meta/auth/users/${token.username}",
               Settings.dataCenter,
               None,
+              token.username,
               Map.empty[String, Set[FieldValue]],
               FileContent(newUserInfoton.toString.getBytes, "application/json"),
               protocol = None

@@ -517,11 +517,17 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
               yield str).mkString("&")
             val qpAndWhStrFinal =
               if (qpAndWhStr.length == 0) "" else "?" + qpAndWhStr
+            val modifier = f \ "modifier" match {
+              case JsDefined(JsArray(seq))
+                if seq.length == 1 && seq.head.isInstanceOf[JsString] =>
+                Some(seq.head.as[String])
+              case _ => None
+            }
             val (dcInfoExtra, ingestOp) = dcType match {
               case "remote" => (None, "_ow")
               case _ => (Some(DDPCAlgorithmJsonParser.extractAlgoInfo(f)), "_in")
             }
-            val dcKey = DcInfoKey(s"$dataCenterId&type=$dcType$qpAndWhStrFinal", location, transformations, ingestOp)
+            val dcKey = DcInfoKey(s"$dataCenterId&type=$dcType$qpAndWhStrFinal", location, transformations, ingestOp, modifier)
             DcInfo(dcKey, dcInfoExtra, idxTime = fromIndexTime, tsvFile = tsvFile)
           }
         case _ => Seq.empty
@@ -851,14 +857,15 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
         s" in local decider. It inner stream will be stopped (the whole one may continue). The exception is:", e)
       Supervision.Stop
     }
-    val tsvSource = dcInfo.tsvFile.fold(
-      TsvRetriever(dcInfo, localDecider).mapConcat(identity)
-    )(_ => TsvRetrieverFromFile(dcInfo))
+    val tsvSourceWithBuffer = dcInfo.tsvFile.fold {
+      val tsvSource = TsvRetriever(dcInfo, localDecider)
+      val bufferedTsvSource = if (Settings.tsvBufferSize < 1) tsvSource else tsvSource.buffer(Settings.tsvBufferSize, OverflowStrategy.backpressure)
+      bufferedTsvSource.mapConcat(identity)
+    }(_ => TsvRetrieverFromFile(dcInfo))
 
     val infotonDataTransformer: BaseInfotonData => BaseInfotonData = Util.createInfotonDataTransformer(dcInfo)
     val syncingEngine: RunnableGraph[SyncerMaterialization] =
-      tsvSource
-        //        .buffer(Settings.tsvBufferSize, OverflowStrategy.backpressure)
+      tsvSourceWithBuffer
         .async
         .via(RatePrinter(dcInfo.key, _ => 1, "elements", "infoton TSVs from TSV source", 500))
         .via(InfotonAggregator[InfotonData](Settings.maxRetrieveInfotonCount, Settings.maxRetrieveByteSize,

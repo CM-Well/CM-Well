@@ -21,7 +21,6 @@ import security.PermissionLevel._
 import security._
 import wsutil._
 import javax.inject._
-
 import cmwell.ws.Settings
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -34,58 +33,61 @@ class AuthFilter @Inject()(authCache: EagerAuthCache, authUtils: AuthUtils, auth
   private val useAuthorizationParam = java.lang.Boolean.getBoolean("use.authorization")
   private val irrelevantPaths = Set("/ii/", "/_")
 
-  def apply(nextFilter: (RequestHeader) => Future[Result])(requestHeader: RequestHeader): Future[Result] = {
-    Settings.authSystemVersion match {
-      case 2 =>
-        val (allowed, msg) = isAuthenticatedAndAuthorized(requestHeader)
-
-        if (allowed) {
-          nextFilter(requestHeader)
-        } else {
-          if (PermissionLevel(requestHeader.method) == PermissionLevel.Read)
-            Future(Results.Forbidden(msg))
-          else
-            Future(Results.Forbidden(Json.obj("success" -> false, "message" -> msg)))
-        }
-      case _ => nextFilter(requestHeader)
+  def apply(nextFilter: RequestHeader => Future[Result])(requestHeader: RequestHeader): Future[Result] = {
+    isAuthenticatedAndAuthorized(requestHeader) match {
+      case Allowed(username) =>
+        nextFilter(requestHeader.addAttr(Attrs.UserName, username))
+      case NotAllowed(msg) if PermissionLevel(requestHeader.method) == PermissionLevel.Read =>
+        Future(Results.Forbidden(msg))
+      case NotAllowed(msg) =>
+        Future(Results.Forbidden(Json.obj("success" -> false, "message" -> msg)))
     }
   }
 
-  private def isAuthenticatedAndAuthorized(requestHeader: RequestHeader): (Boolean, String) = {
+  private def isAuthenticatedAndAuthorized(requestHeader: RequestHeader): AuthResponse = {
     def isRequestWriteToMeta = authUtils.isWriteToMeta(PermissionLevel(requestHeader.method), requestHeader.path)
 
-    if ((!useAuthorizationParam && !isRequestWriteToMeta) || irrelevantPaths.exists(requestHeader.path.startsWith))
-      (true, "")
-    else {
-      def withMsg(allowed: Boolean, msg: String) = (allowed, if (allowed) "" else msg)
+    val tokenOpt = requestHeader.headers
+      .get("X-CM-WELL-TOKEN2")
+      . // todo TOKEN2 is only supported for backward compatibility. one day we should stop supporting it
+      orElse(requestHeader.headers.get("X-CM-WELL-TOKEN"))
+      .orElse(requestHeader.getQueryString("token"))
+      .orElse(requestHeader.cookies.get("X-CM-WELL-TOKEN2").map(_.value))
+      . // todo TOKEN2 is only supported for backward compatibility. one day we should stop supporting it
+      orElse(requestHeader.cookies.get("X-CM-WELL-TOKEN").map(_.value))
+      .flatMap(Token(_, authCache))
 
+    val modifier = tokenOpt.fold("anonymous")(_.username) + requestHeader.getQueryString("modifier").fold("")("/".+)
+
+    if ((!useAuthorizationParam && !isRequestWriteToMeta) || irrelevantPaths.exists(requestHeader.path.startsWith))
+      Allowed(modifier)
+    else {
       val request =
         (normalizePath(requestHeader.path), PermissionLevel(requestHeader.method, requestHeader.getQueryString("op")))
-
-      val tokenOpt = requestHeader.headers
-        .get("X-CM-WELL-TOKEN2")
-        . // todo TOKEN2 is only supported for backward compatibility. one day we should stop supporting it
-        orElse(requestHeader.headers.get("X-CM-WELL-TOKEN"))
-        .orElse(requestHeader.getQueryString("token"))
-        .orElse(requestHeader.cookies.get("X-CM-WELL-TOKEN2").map(_.value))
-        . // todo TOKEN2 is only supported for backward compatibility. one day we should stop supporting it
-        orElse(requestHeader.cookies.get("X-CM-WELL-TOKEN").map(_.value))
-        .flatMap(Token(_, authCache))
 
       tokenOpt match {
         case Some(token) if token.isValid => {
           authCache.getUserInfoton(token.username) match {
             case Some(user) =>
-              withMsg(authorization.isAllowedForUser(request, user, Some(token.username)),
-                "Authenticated but not authorized")
+              AuthResponse(authorization.isAllowedForUser(request, user, Some(token.username)),
+                "Authenticated but not authorized", modifier)
             case None if token.username == "root" || token.username == "pUser" =>
-              (true, "") // special case only required for cases when CRUD is not yet ready
-            case None => (false, s"Username ${token.username} was not found in CM-Well")
+              Allowed(modifier) // special case only required for cases when CRUD is not yet ready
+            case None => NotAllowed(s"Username ${token.username} was not found in CM-Well")
           }
         }
-        case Some(_) => (false, "given token is not valid (not signed or expired)")
-        case None => withMsg(authorization.isAllowedForAnonymousUser(request), "Not authorized, please login first")
+        case Some(_) => NotAllowed("given token is not valid (not signed or expired)")
+        case None => AuthResponse(authorization.isAllowedForAnonymousUser(request), "Not authorized, please login first", modifier)
       }
     }
+  }
+
+  sealed trait AuthResponse
+  case class Allowed(modifier: String) extends AuthResponse
+  case class NotAllowed(msg: String) extends AuthResponse
+
+  object AuthResponse {
+    def apply(allowed: Boolean, msg: String, modifier: String): AuthResponse =
+      if(allowed) Allowed(modifier) else NotAllowed(msg)
   }
 }

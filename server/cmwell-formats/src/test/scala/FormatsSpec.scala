@@ -39,18 +39,21 @@ class FormatsSpec extends FunSpec with Matchers with Helpers {
         "dc_test",
         None,
         date,
+        "Baruch",
         defaultFields, None),
       'objectInfotonWithQuads -> ObjectInfoton(
         "objectInfotonWithQuads",
         "dc_test",
         None,
         date,
+        "Baruch",
         Map("field1"->Set[FieldValue](FString("value1", None, Some("spiderman")))), None),
       'fileInfoton -> FileInfoton(
         "fileInfoton",
         "dc_test",
         None,
         date,
+        "Baruch",
         defaultFields,
         FileContent("CAFEBABE".getBytes("UTF8"), "application/java-byte-code"), None),
       'compoundInfoton -> CompoundInfoton(
@@ -58,13 +61,15 @@ class FormatsSpec extends FunSpec with Matchers with Helpers {
         "dc_test",
         None,
         date,
+        "Baruch",
         Some(defaultFields),
-        Seq(ObjectInfoton("first-child","dc_test",None,date, protocol = None)), 0, 1, 1, protocol = None)
+        Seq(ObjectInfoton("first-child","dc_test",None,date, protocol = None, lastModifiedBy = "Baruch")), 0, 1, 1, protocol = None)
     )
 
     def assertSystemFields(i: Infoton, jsonl: JsValue) = {
-      Seq("@id"->i.path, "type" -> i.kind, "uuid" -> i.uuid, "path" -> i.path, "parent" -> i.parent, "lastModified" -> dateStringify(i.lastModified)).foreach {
-        case (key, expectedValue) => jsonl.getValueOfFirst(s"$key.sys") should be(expectedValue)
+      Seq("@id"->i.path, "type" -> i.kind, "uuid" -> i.uuid, "path" -> i.path, "parent" -> i.parent,
+        "lastModified" -> dateStringify(i.lastModified), "lastModifiedBy" -> i.lastModifiedBy).foreach {
+          case (key, expectedValue) => jsonl.getValueOfFirst(s"$key.sys") should be(expectedValue)
       }
     }
 

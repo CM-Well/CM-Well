@@ -427,6 +427,7 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
                           SearchThinResult(i.path,
                                            i.uuid,
                                            DateParser.fdf(i.lastModified),
+                                           lastModifiedBy = i.lastModifiedBy,
                                            i.indexTime.getOrElse(i.lastModified.getMillis))
                         }(bo3))
                       }

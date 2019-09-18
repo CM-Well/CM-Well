@@ -65,6 +65,7 @@ object InfotonSerializer extends LazyLogging {
     private[this] var kind: String = _
     private[this] var path: String = _
     private[this] var lastModified: DateTime = _
+    private[this] var lastModifiedBy: String = _
     private[this] var dc: String = _
     private[this] var indexTime: Option[Long] = None
     private[this] var indexName: String = ""
@@ -100,6 +101,20 @@ object InfotonSerializer extends LazyLogging {
         else
           throw new IllegalStateException(
             s"lastModified was already set for uuid [$uuidHint] [${this.lastModified.toString(fmt)},$lastModified]"
+          )
+      }
+    }
+
+    def setLastModifiedBy(newLastModifiedBy: String): Unit = {
+      if (this.lastModifiedBy eq null) this.lastModifiedBy = newLastModifiedBy
+      else {
+        if (this.lastModifiedBy == newLastModifiedBy)
+          logger.warn(
+            s"Been called twice on lastModifiedBy with same value [${this.lastModifiedBy},$newLastModifiedBy]"
+          )
+        else
+          throw new IllegalStateException(
+            s"lastModifiedBy was already set for uuid [$uuidHint] [${this.lastModifiedBy},$newLastModifiedBy]"
           )
       }
     }
@@ -191,10 +206,11 @@ object InfotonSerializer extends LazyLogging {
         require(kind ne null, s"must have kind initialized [$uuidHint]")
         require(path ne null, s"must have path initialized [$uuidHint]")
         require(lastModified ne null, s"must have lastModified initialized [$uuidHint]")
+        require(lastModifiedBy ne null, s"must have lastModifiedBy initialized [$uuidHint]")
         require(dc ne null, s"must have dc initialized [$uuidHint]")
 
         infoton = kind match {
-          case "o" => new ObjectInfoton(path, dc, indexTime, lastModified, fields.map(_.toMap), indexName, protocol)
+          case "o" => new ObjectInfoton(path, dc, indexTime, lastModified, lastModifiedBy, fields.map(_.toMap), indexName, protocol)
           case "f" => {
             val fileContent = {
               if (mimeType eq null) None
@@ -215,16 +231,16 @@ object InfotonSerializer extends LazyLogging {
                 Some(FileContent(Option(fileContentBuilder), mimeType, fileContentLength, dataPointerOpt))
               }
             }
-            new FileInfoton(path, dc, indexTime, lastModified, fields.map(_.toMap), fileContent, indexName, protocol)
+            new FileInfoton(path, dc, indexTime, lastModified, lastModifiedBy, fields.map(_.toMap), fileContent, indexName, protocol)
           }
           case "l" => {
             if ((linkTo eq null) || (linkType == -1))
               throw new IllegalStateException(
                 s"cannot create a LinkInfoton for uuid [$uuidHint] if linkTo [$linkTo] or linkType [$linkType] is not initialized."
               )
-            else new LinkInfoton(path, dc, indexTime, lastModified, fields.map(_.toMap), linkTo, linkType, indexName, protocol)
+            else new LinkInfoton(path, dc, indexTime, lastModified, lastModifiedBy, fields.map(_.toMap), linkTo, linkType, indexName, protocol)
           }
-          case "d" => new DeletedInfoton(path, dc, indexTime, lastModified, indexName)
+          case "d" => new DeletedInfoton(path, dc, indexTime, lastModified, indexName, lastModifiedBy)
           case _   => throw new IllegalStateException(s"unrecognized type was inserted [$kind] for uuid [$uuidHint]")
         }
 
@@ -232,6 +248,7 @@ object InfotonSerializer extends LazyLogging {
         kind = null
         path = null
         lastModified = null
+        lastModifiedBy = null
         dc = null
         indexTime = null
         indexName = null
@@ -253,6 +270,7 @@ object InfotonSerializer extends LazyLogging {
       case "type"           => infotonBuilder.setKind(value._1)
       case "path"           => infotonBuilder.setPath(value._1)
       case "lastModified"   => infotonBuilder.setLastModified(value._1)
+      case "lastModifiedBy"   => infotonBuilder.setLastModifiedBy(value._1)
       case "dc"             => infotonBuilder.setDc(value._1)
       case "indexTime"      => infotonBuilder.setIndexTime(value._1.toLong)
       case "indexName"      => infotonBuilder.setIndexName(value._1)
@@ -314,10 +332,11 @@ object InfotonSerializer extends LazyLogging {
         b += "indexName" -> Vector(i.indexName)
         i.indexTime.fold(b) { indexTime => b += "indexTime" -> Vector(indexTime.toString) }
         i.protocol.fold(b) { protocol => b += "protocol" -> Vector(protocol) }
+        b += "lastModifiedBy" -> Vector(i.lastModifiedBy)
       }
 
       i match {
-        case FileInfoton(_, _, _, _, _, Some(FileContent(data, mime, dl, dp)), _, _) => {
+        case FileInfoton(_, _, _, _, _, _, Some(FileContent(data, mime, dl, dp)), _, _) => {
           builder += "mimeType" -> Vector(mime)
           data.foreach { d =>
             def padWithZeros(num: String, padToLength: Int): String = {
@@ -346,7 +365,7 @@ object InfotonSerializer extends LazyLogging {
             builder += "contentLength" -> Vector(dl.toString)
           }
         }
-        case LinkInfoton(_, _, _, _, _, linkTo, linkType, _, _) => {
+        case LinkInfoton(_, _, _, _, _, _, linkTo, linkType, _, _) => {
           builder += "linkTo" -> Vector(linkTo.toString)
           builder += "linkType" -> Vector(linkType.toString)
         }
@@ -433,6 +452,7 @@ object InfotonSerializer extends LazyLogging {
     val uuid = infoton.uuid
     val path = infoton.path
     val dc = infoton.dc
+    val lastModifiedBy = infoton.lastModifiedBy
 
     val l: DateTime = infoton.lastModified
     //val l : Long = infoton.lastModified.get
@@ -444,6 +464,7 @@ object InfotonSerializer extends LazyLogging {
     infoton.indexTime.foreach { it =>
       data += ("$indexTime" -> it.toString.getBytes)
     }
+    data += (("$lastModifiedBy", lastModifiedBy.getBytes))
 
     //data += ( ("$lastModified" , l.toString.getBytes() ) )
     // add data attributes
@@ -459,10 +480,10 @@ object InfotonSerializer extends LazyLogging {
 
     // lets save specific data for each infoton
     infoton match {
-      case ObjectInfoton(_, _, _, _, _, _, _) =>
+      case ObjectInfoton(_, _, _, _, _, _, _, _) =>
         data += (("$type", "o".getBytes("UTF-8")))
 
-      case FileInfoton(_, _, _, _, _, c, _, _) =>
+      case FileInfoton(_, _, _, _, _, _, c, _, _) =>
         data += (("$type", "f".getBytes("UTF-8")))
         c match {
           case Some(FileContent(d, mimeType, dl, dp)) =>
@@ -486,12 +507,12 @@ object InfotonSerializer extends LazyLogging {
           case None =>
         }
 
-      case LinkInfoton(_, _, _, _, _, t, lt, _, _) =>
+      case LinkInfoton(_, _, _, _, _, _, t, lt, _, _) =>
         data += (("$type", "l".getBytes("UTF-8")))
         data += (("$to", t.getBytes("UTF-8")))
         data += (("$lt", lt.toString.getBytes("UTF-8")))
 
-      case DeletedInfoton(_, _, _, _, _) =>
+      case DeletedInfoton(_, _, _, _, _, _) =>
         data += (("$type", "d".getBytes("UTF-8")))
 //
 //      case EmptyInfoton(_) =>
@@ -551,6 +572,8 @@ object InfotonSerializer extends LazyLogging {
     val dc = v.getOrElse("$dc", "na".getBytes("utf-8"))
     val infoType = new String(v("$type"), "UTF-8")
     val lastModified: DateTime = fmt.parseDateTime(new String(v("$lastModified"), "UTF-8"))
+    val lastModifiedBy = v("$lastModifiedBy")
+    val lastModifiedByString = new String(lastModifiedBy, "UTF-8")
     val indexTime = v.get("$indexTime").map { v =>
       new String(v).toLong
     }
@@ -575,7 +598,7 @@ object InfotonSerializer extends LazyLogging {
     // get type
     val reply = infoType match {
       case "o" =>
-        val i = ObjectInfoton(pathString, dcString, indexTime, lastModified, fields, "", None)
+        val i = ObjectInfoton(pathString, dcString, indexTime, lastModified, lastModifiedByString, fields, "", None)
         i
 
       case "f" =>
@@ -587,6 +610,7 @@ object InfotonSerializer extends LazyLogging {
                               dcString,
                               indexTime,
                               lastModified,
+                              lastModifiedByString,
                               fields,
                               Some(FileContent(None, new String(mimeType), dataLength, Option(dataPointer))), "", None)
           f
@@ -608,12 +632,13 @@ object InfotonSerializer extends LazyLogging {
                               dcString,
                               indexTime,
                               lastModified,
+                              lastModifiedByString,
                               fields,
                               Some(FileContent(content, new String(mimeType))), "", None)
           f
         } else {
           val fc = FileContent(new String(mimeType), 0)
-          val f = FileInfoton(pathString, dcString, indexTime, lastModified, fields, Some(fc), "", None)
+          val f = FileInfoton(pathString, dcString, indexTime, lastModified, lastModifiedByString, fields, Some(fc), "", None)
           f
         }
 
@@ -625,13 +650,14 @@ object InfotonSerializer extends LazyLogging {
                             dcString,
                             indexTime,
                             lastModified,
+                            lastModifiedByString,
                             fields,
                             new String(to, "UTF-8"),
                             new String(lt, "UTF-8").toByte, "", None)
         i
       case "d" =>
 //        val d = DeletedInfoton(sysInfo)
-        val d = DeletedInfoton(pathString, dcString, indexTime, lastModified)
+        val d = DeletedInfoton(pathString, dcString, indexTime = indexTime, lastModified = lastModified, lastModifiedBy = lastModifiedByString)
         d
     }
 

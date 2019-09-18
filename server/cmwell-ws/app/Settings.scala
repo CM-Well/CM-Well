@@ -112,7 +112,6 @@ object Settings {
   lazy val gridSeeds = Set.empty[String] ++ config.getString("cmwell.grid.seeds").split(";")
   lazy val clusterName = config.getString("cmwell.clusterName")
 
-  lazy val authSystemVersion = config.getInt("auth.system.version")
   lazy val expansionLimit = config.getInt("webservice.xg.limit")
   lazy val chunkSize = config.getBytes("webservice.max.chunk.size")
   lazy val maxOffset = config.getInt("webservice.max-offset")
