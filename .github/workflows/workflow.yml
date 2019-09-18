@@ -12,9 +12,8 @@ jobs:
       run: |
         echo pwd
         cd server
-        sbt
-        util/compile
-        kafkaAssigner/compile
+        sbt util/compile
+        sbt kafkaAssigner/compile
         
   test:
 
@@ -29,6 +28,5 @@ jobs:
       run: |
         echo pwd
         cd server
-        sbt
-        util/test
-        kafkaAssigner/test
+        sbt util/test
+        sbt kafkaAssigner/test
