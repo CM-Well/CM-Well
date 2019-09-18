@@ -60,4 +60,8 @@ object Settings {
   val ingestParallelism = config.getInt("cmwell.dc.push.ingestParallelism")
   val ingestRetryQueueSize = config.getInt("cmwell.dc.push.ingestRetryQueueSize")
   val dcaUserToken = config.getString("dcaUser.token")
+  val irwServiceDaoHostName = config.getString("irwServiceDao.hostName")
+  val irwServiceDaoClusterName = config.getString("irwServiceDao.clusterName")
+  val irwServiceDaoKeySpace2 = config.getString("irwServiceDao.keySpace2")
+
 }
