@@ -21,6 +21,9 @@ jobs:
         path: cmwell-grid/target/logs
 
   artifactDownload:
+  
+    runs-on: ubuntu-latest
+  
     steps:
     - uses: actions/checkout@master
 
