@@ -19,4 +19,14 @@ jobs:
       with:
         name: my-artifacts
         path: cmwell-grid/target/logs
-        
+
+  artifactDownload:
+    steps:
+    - uses: actions/checkout@master
+
+    - uses: actions/download-artifact@master
+      with:
+        name: my-artifact
+        path: cmwell-grid/target/logs
+
+    - run: cat cmwell-grid/target/logs
