@@ -46,7 +46,7 @@ jobs:
     - uses: actions/upload-artifact@master
       with:
         name: my-artifacts
-        path: **/target/**/logs/*
+        path: '**/target/**/logs/*'
   
   test_3_FAIL:
 
