@@ -23,13 +23,14 @@ jobs:
   artifactDownload:
   
     runs-on: ubuntu-latest
-  
+    needs: Run sbt test
+    
     steps:
     - uses: actions/checkout@master
 
     - uses: actions/download-artifact@master
       with:
         name: my-artifact
-        path: cmwell-grid/target/logs
+        path: artifacts
 
-    - run: cat cmwell-grid/target/logs
+    - run: cat artifacts
