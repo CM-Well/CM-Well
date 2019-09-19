@@ -12,8 +12,7 @@ jobs:
       run: |
         echo pwd
         cd server
-        sbt util/compile
-        sbt kafkaAssigner/compile
+        sbt compile
         
   test_1:
 
@@ -22,9 +21,7 @@ jobs:
     
     steps:
     - uses: actions/checkout@v1
-    - name: Run a one-line script
-      run: echo this is one line
-    - name: Run sbt compile
+    - name: Run sbt test
       run: |
         echo pwd
         cd server
@@ -40,14 +37,16 @@ jobs:
     
     steps:
     - uses: actions/checkout@v1
-    - name: Run a one-line script
-      run: echo this is one line
-    - name: Run sbt compile
+    - name: Run sbt test
       run: |
         echo pwd
         cd server
         sbt zstore/test
         sbt common/test
+    - uses: actions/upload-artifact@master
+      with:
+        name: my-artifacts
+        path: **/target/**/logs/*
   
   test_3_FAIL:
 
@@ -56,9 +55,7 @@ jobs:
     
     steps:
     - uses: actions/checkout@v1
-    - name: Run a one-line script
-      run: echo this is one line
-    - name: Run sbt compile
+    - name: Run sbt test
       run: |
         echo pwd
         cd server
@@ -73,9 +70,7 @@ jobs:
     
     steps:
     - uses: actions/checkout@v1
-    - name: Run a one-line script
-      run: echo this is one line
-    - name: Run sbt compile
+    - name: Run sbt test
       run: |
         echo pwd
         cd server
@@ -90,9 +85,7 @@ jobs:
     
     steps:
     - uses: actions/checkout@v1
-    - name: Run a one-line script
-      run: echo this is one line
-    - name: Run sbt compile
+    - name: Run sbt test
       run: |
         echo pwd
         cd server
@@ -105,9 +98,7 @@ jobs:
     
     steps:
     - uses: actions/checkout@v1
-    - name: Run a one-line script
-      run: echo this is one line
-    - name: Run sbt compile
+    - name: Run sbt test
       run: |
         echo pwd
         cd server
@@ -120,9 +111,7 @@ jobs:
     
     steps:
     - uses: actions/checkout@v1
-    - name: Run a one-line script
-      run: echo this is one line
-    - name: Run sbt compile
+    - name: Run sbt test
       run: |
         echo pwd
         cd server
@@ -138,9 +127,7 @@ jobs:
     
     steps:
     - uses: actions/checkout@v1
-    - name: Run a one-line script
-      run: echo this is one line
-    - name: Run sbt compile
+    - name: Run sbt test
       run: |
         echo pwd
         cd server
@@ -155,9 +142,7 @@ jobs:
     
     steps:
     - uses: actions/checkout@v1
-    - name: Run a one-line script
-      run: echo this is one line
-    - name: Run sbt compile
+    - name: Run sbt test
       run: |
         echo pwd
         cd server
