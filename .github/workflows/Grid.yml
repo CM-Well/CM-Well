@@ -6,7 +6,6 @@ jobs:
   test_GRID:
 
     runs-on: ubuntu-latest
-    needs: compile
     
     steps:
     - uses: actions/checkout@v1
