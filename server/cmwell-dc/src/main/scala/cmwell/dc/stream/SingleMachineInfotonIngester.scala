@@ -99,9 +99,6 @@ object SingleMachineInfotonIngester extends LazyLogging {
         // https://github.com/akka/akka/issues/18540
         // https://github.com/akka/akka/issues/18716
         // we must consume the empty entity body
-        input.foreach{
-          infoton => logger.info(s"liel 200 ok , path=${infoton.path}")
-        }
         res.entity.dataBytes.withAttributes(ActorAttributes.supervisionStrategy(decider)).runWith(Sink.ignore)
         //the Option with the exception will be only if ingest has already failed at least once.
         status.lastException.foreach { e =>
