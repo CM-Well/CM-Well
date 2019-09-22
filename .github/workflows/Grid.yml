@@ -14,16 +14,16 @@ jobs:
         echo pwd:
         pwd
         cd server
-        ll .
+        ls -l .
         echo ooooooooooooooooo
-        ll server/cmwell-grid/target/logs
-        ll cmwell-grid/target/logs
+        ls -l server/cmwell-grid/target/logs
+        ls -l cmwell-grid/target/logs
         echo ooooooooooooooooo
-        ll server/cmwell-grid/target
-        ll cmwell-grid/target
+        ls -l server/cmwell-grid/target
+        ls -l cmwell-grid/target
         echo ooooooooooooooooo
-        ll server/cmwell-grid
-        ll cmwell-grid
+        ls -l server/cmwell-grid
+        ls -l cmwell-grid
         echo ooooooooooooooooo
         echo pwd:
         pwd
@@ -31,9 +31,9 @@ jobs:
         sbt grid/test
         echo pwd:
         echo pwd
-        ll server/cmwell-grid/target/logs
-        ll server/cmwell-grid/target
-        ll server/cmwell-grid/
+        ls -l server/cmwell-grid/target/logs
+        ls -l server/cmwell-grid/target
+        ls -l server/cmwell-grid/
     - uses: actions/upload-artifact@master
       with:
         name: my-artifacts
