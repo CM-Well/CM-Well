@@ -10,9 +10,9 @@ jobs:
     steps:
     - uses: actions/checkout@v1
 
-    - run: mkdir -p cmwell-irw/target/logs
+    - run: mkdir -p server/cmwell-irw/target/logs
 
-    - run: echo hello > cmwell-irw/target/logs/world.txt
+    - run: echo hello > server/cmwell-irw/target/logs/world.txt
     
     - run: |
         cd server
@@ -21,4 +21,4 @@ jobs:
     - uses: actions/upload-artifact@master
       with:
         name: my-artifact
-        path: cmwell-irw/target/logs
+        path: server/cmwell-irw/target/logs
