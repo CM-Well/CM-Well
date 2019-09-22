@@ -9,7 +9,7 @@ jobs:
     
     steps:
     - uses: actions/checkout@v1
-    - continue-on-error: true
+    - continue_on_error: true
     - name: Run sbt test
       run: |
         echo pwd:
