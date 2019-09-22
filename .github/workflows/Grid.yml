@@ -23,7 +23,7 @@ jobs:
   artifactDownload:
   
     runs-on: ubuntu-latest
-    needs: Run sbt test
+    needs: test_GRID
     
     steps:
     - uses: actions/checkout@master
