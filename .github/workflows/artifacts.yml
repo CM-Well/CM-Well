@@ -10,11 +10,13 @@ jobs:
     steps:
     - uses: actions/checkout@v1
 
-    - run: mkdir -p path/to/artifact
+    - run: mkdir -p cmwell-fts/target/logs
 
-    - run: echo hello > path/to/artifact/world.txt
+    - run: echo hello > cmwell-fts/target/logs/world.txt
+    
+    - run: sbt grid/test
 
     - uses: actions/upload-artifact@master
       with:
         name: my-artifact
-        path: path/to/artifact
+        path: cmwell-fts/target/logs
