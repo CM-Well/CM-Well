@@ -10,8 +10,8 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Run sbt test
+      continue-on-error: true
       run: |
-        continue-on-error: true
         echo pwd:
         pwd
         cd server
