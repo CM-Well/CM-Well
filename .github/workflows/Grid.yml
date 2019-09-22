@@ -17,10 +17,8 @@ jobs:
         echo aaaaa
         ls -l .
         echo ooooooooooooooooo
-        ls -l server/cmwell-grid/target
-        ls -l cmwell-grid/target
-        echo ooooooooooooooooo
         ls -l server/cmwell-grid
+        echo aaaaaaaaaaaaa
         ls -l cmwell-grid
         echo ooooooooooooooooo
         echo pwd:
