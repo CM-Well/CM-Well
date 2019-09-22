@@ -14,10 +14,8 @@ jobs:
         echo pwd:
         pwd
         cd server
+        echo aaaaa
         ls -l .
-        echo ooooooooooooooooo
-        ls -l server/cmwell-grid/target/logs
-        ls -l cmwell-grid/target/logs
         echo ooooooooooooooooo
         ls -l server/cmwell-grid/target
         ls -l cmwell-grid/target
