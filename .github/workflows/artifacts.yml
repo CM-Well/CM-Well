@@ -1,0 +1,20 @@
+name: Artifacts
+
+on: [pull_request]
+
+jobs:
+  upload_art:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+
+    - run: mkdir -p path/to/artifact
+
+    - run: echo hello > path/to/artifact/world.txt
+
+    - uses: actions/upload-artifact@master
+      with:
+        name: my-artifact
+        path: path/to/artifact
