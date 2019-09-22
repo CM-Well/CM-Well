@@ -13,10 +13,12 @@ jobs:
       run: |
         echo pwd
         cd server
+        echo pwd
         mkdir -p cmwell-grid/target/logs
         sbt grid/test
+        echo pwd
         ll cmwell-grid/target/logs
     - uses: actions/upload-artifact@master
       with:
         name: my-artifacts
-        path: cmwell-grid/target/logs
+        path: server/cmwell-grid/target/logs
