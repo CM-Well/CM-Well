@@ -10,7 +10,6 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Run sbt test
-      continue-on-error: true
       run: |
         cd server
         ls -l .
@@ -25,3 +24,13 @@ jobs:
       with:
         name: client1.out
         path: server/cmwell-grid/target/client1.out
+    - uses: actions/upload-artifact@master
+      if: always()
+      with:
+        name: client2.out
+        path: server/cmwell-grid/target/client2.out
+    - uses: actions/upload-artifact@master
+      if: always()
+      with:
+        name: node.out
+        path: server/cmwell-grid/target/node.out
