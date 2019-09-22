@@ -18,6 +18,10 @@ jobs:
     - uses: actions/upload-artifact@master
       if: always()
       with:
-        name: my-artifacts
-        path: server/cmwell-grid/target/logs
+        name: application.log
+        path: server/cmwell-grid/target/logs/application.log
+    - uses: actions/upload-artifact@master
+      if: always()
+      with:
+        name: client1.out
         path: server/cmwell-grid/target/client1.out
