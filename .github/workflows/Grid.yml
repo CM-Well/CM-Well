@@ -12,24 +12,10 @@ jobs:
     - name: Run sbt test
       continue-on-error: true
       run: |
-        echo pwd:
-        pwd
         cd server
         ls -l .
-        echo ooooooooooooooooo
-        ls -l server/cmwell-grid
-        echo aaaaaaaaaaaaa
-        ls -l cmwell-grid
-        echo ooooooooooooooooo
-        echo pwd:
-        pwd
-        mkdir -p server/cmwell-grid/target/logs
+        mkdir -p cmwell-grid/target/logs
         sbt grid/test
-        echo pwd:
-        echo pwd
-        ls -l server/cmwell-grid/target/logs
-        ls -l server/cmwell-grid/target
-        ls -l server/cmwell-grid/
     - uses: actions/upload-artifact@master
       if: always()
       with:
