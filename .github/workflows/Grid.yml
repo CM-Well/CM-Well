@@ -19,6 +19,5 @@ jobs:
       if: always()
       with:
         name: my-artifacts
-        path: |
-          server/cmwell-grid/target/logs
-          server/cmwell-grid/target/client1.out
+        path: server/cmwell-grid/target/logs
+        path: server/cmwell-grid/target/client1.out
