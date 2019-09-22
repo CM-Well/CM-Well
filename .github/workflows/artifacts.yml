@@ -14,8 +14,6 @@ jobs:
 
     - run: echo hello > cmwell-fts/target/logs/world.txt
     
-    - run: sbt grid/test
-
     - uses: actions/upload-artifact@master
       with:
         name: my-artifact
