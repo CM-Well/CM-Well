@@ -11,13 +11,29 @@ jobs:
     - uses: actions/checkout@v1
     - name: Run sbt test
       run: |
-        echo pwd
+        echo pwd:
+        pwd
         cd server
-        echo pwd
-        mkdir -p cmwell-grid/target/logs
-        sbt grid/test
-        echo pwd
+        ll .
+        echo ooooooooooooooooo
+        ll server/cmwell-grid/target/logs
         ll cmwell-grid/target/logs
+        echo ooooooooooooooooo
+        ll server/cmwell-grid/target
+        ll cmwell-grid/target
+        echo ooooooooooooooooo
+        ll server/cmwell-grid
+        ll cmwell-grid
+        echo ooooooooooooooooo
+        echo pwd:
+        pwd
+        mkdir -p server/cmwell-grid/target/logs
+        sbt grid/test
+        echo pwd:
+        echo pwd
+        ll server/cmwell-grid/target/logs
+        ll server/cmwell-grid/target
+        ll server/cmwell-grid/
     - uses: actions/upload-artifact@master
       with:
         name: my-artifacts
