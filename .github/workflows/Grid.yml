@@ -31,6 +31,6 @@ jobs:
     - uses: actions/download-artifact@master
       with:
         name: my-artifact
-        path: artifacts
+        path: cmwell-grid/target/logs
 
-    - run: cat artifacts
+    - run: cat cmwell-grid/target/logs
