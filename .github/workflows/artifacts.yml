@@ -10,15 +10,15 @@ jobs:
     steps:
     - uses: actions/checkout@v1
 
-    - run: mkdir -p cmwell-fts/target/logs
+    - run: mkdir -p cmwell-irw/target/logs
 
-    - run: echo hello > cmwell-fts/target/logs/world.txt
+    - run: echo hello > cmwell-irw/target/logs/world.txt
     
     - run: |
         cd server
-        sbt fts/test
+        sbt irw/test
     
     - uses: actions/upload-artifact@master
       with:
         name: my-artifact
-        path: cmwell-fts/target/logs
+        path: cmwell-irw/target/logs
