@@ -9,9 +9,9 @@ jobs:
     
     steps:
     - uses: actions/checkout@v1
-    - continue-on-error: true
     - name: Run sbt test
       run: |
+        continue-on-error: true
         echo pwd:
         pwd
         cd server
