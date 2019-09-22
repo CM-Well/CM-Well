@@ -14,10 +14,9 @@ jobs:
       run: |
         cd server
         ls -l .
-        mkdir -p cmwell-grid/target/logs
         sbt grid/test
     - uses: actions/upload-artifact@master
       if: always()
       with:
         name: my-artifacts
-        path: server/cmwell-grid/target/logs
+        path: server/cmwell-grid/target
