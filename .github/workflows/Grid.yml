@@ -31,6 +31,7 @@ jobs:
         ls -l server/cmwell-grid/target
         ls -l server/cmwell-grid/
     - uses: actions/upload-artifact@master
+      if: always()
       with:
         name: my-artifacts
         path: server/cmwell-grid/target/logs
