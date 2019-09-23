@@ -105,7 +105,13 @@ class GridSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
   }
 
 
-
+  "moria" should s"check processes" in {
+    Seq("ps", "aux") #| Seq("grep", "TestService") !
+    val a = 4+5
+    Seq("ps", "aux") #| Seq("grep", "TestService") #| Seq("awk", "{print $2}") !
+    val x = 4
+    x should equal (4)
+  }
 
   "member" should s"see all $expectedMembers grid members" in {
     Grid.jvmsAll.size should equal(expectedMembers)
