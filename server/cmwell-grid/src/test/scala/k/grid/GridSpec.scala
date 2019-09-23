@@ -17,7 +17,8 @@
 package k.grid
 
 import java.io.File
-import java.nio.file.{Paths, Path, Files}
+import java.nio.file.{Files, Path, Paths}
+import java.util.concurrent.Executors
 
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
@@ -25,16 +26,17 @@ import k.grid.dmap.api._
 import k.grid.dmap.impl.inmem.InMemDMap
 import k.grid.dmap.impl.persistent.PersistentDMap
 import k.grid.service.{KillService, LocalServiceManager, ServiceTypes}
-import k.grid.testgrid.{WriteToPersistentDMap, DummyMessage, DummyService}
+import k.grid.testgrid.{DummyMessage, DummyService, WriteToPersistentDMap}
 import org.scalatest._
 
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
+//import scala.concurrent.ExecutionContext.Implicits.global
 import akka.pattern.ask
 import akka.actor.Actor
 import akka.pattern.ask
+
 import scala.sys.process._
-import scala.concurrent.{Future, Await}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 /**
  * Created by markz on 5/14/14.
@@ -51,6 +53,7 @@ object TestConfig {
 class GridSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
   implicit val timeout = Timeout(40 seconds)
+  implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(50))
   val expectedMembers = 4
   var serviceJvmName : String = _
   var serviceJvm : Option[GridJvm] = None
@@ -66,9 +69,9 @@ class GridSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
   def spawnProcesses: Unit = {
     // scalastyle:off
-    val client2Res = Future{println(s"going to run: 8003") ; s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/client2-data -Dcmwell.grid.monitor.port=8003 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceClient" #> new File(s"${TestConfig.rootDir}/client2.out") !}
-    Future{println(s"going to run: 8001") ; s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/node-data -Dcmwell.grid.monitor.port=8001 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceNode" #> new File(s"${TestConfig.rootDir}/node.out") !}
-    Future{println(s"going to run: 8002") ; s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/client1-data -Dcmwell.grid.monitor.port=8002 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceClient" #> new File(s"${TestConfig.rootDir}/client1.out") !}
+    val client2Res = Future{println(s"going to run: 8003") ; println(implicitly[ExecutionContext].toString); s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/client2-data -Dcmwell.grid.monitor.port=8003 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceClient" #> new File(s"${TestConfig.rootDir}/client2.out") !}
+    Future{println(s"going to run: 8001") ; println(implicitly[ExecutionContext].toString); s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/node-data -Dcmwell.grid.monitor.port=8001 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceNode" #> new File(s"${TestConfig.rootDir}/node.out") !}
+    Future{println(s"going to run: 8002") ; println(implicitly[ExecutionContext]); s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/client1-data -Dcmwell.grid.monitor.port=8002 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceClient" #> new File(s"${TestConfig.rootDir}/client1.out") !}
     client2Res.foreach(x => println(s"client2Res: $x"))
     Thread.sleep(30000)
     // scalastyle:on
