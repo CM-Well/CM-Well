@@ -1,0 +1,36 @@
+name: GRID
+
+on: [pull_request]
+
+jobs:
+  test_GRID:
+
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v1
+    - name: Run sbt test
+      run: |
+        cd server
+        ls -l .
+        sbt grid/test
+    - uses: actions/upload-artifact@master
+      if: always()
+      with:
+        name: application.log
+        path: server/cmwell-grid/target/logs/application.log
+    - uses: actions/upload-artifact@master
+      if: always()
+      with:
+        name: client1.out
+        path: server/cmwell-grid/target/client1.out
+    - uses: actions/upload-artifact@master
+      if: always()
+      with:
+        name: client2.out
+        path: server/cmwell-grid/target/client2.out
+    - uses: actions/upload-artifact@master
+      if: always()
+      with:
+        name: node.out
+        path: server/cmwell-grid/target/node.out
