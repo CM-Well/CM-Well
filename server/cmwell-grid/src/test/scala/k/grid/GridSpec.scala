@@ -66,13 +66,9 @@ class GridSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
   def spawnProcesses: Unit = {
     // scalastyle:off
-    val client2Res = Future{
-      val a = s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/client2-data -Dcmwell.grid.monitor.port=8003 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceClient" #> new File(s"${TestConfig.rootDir}/client2.out") !
-      val b = s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/client1-data -Dcmwell.grid.monitor.port=8002 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceClient" #> new File(s"${TestConfig.rootDir}/client1.out") !
-
-      (a, b)
-    }
-    Future{s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/node-data -Dcmwell.grid.monitor.port=8001 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceNode" #> new File(s"${TestConfig.rootDir}/node.out") !}
+    val client2Res = Future{println(s"going to run: 8003") ; s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/client2-data -Dcmwell.grid.monitor.port=8003 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceClient" #> new File(s"${TestConfig.rootDir}/client2.out") !}
+    Future{println(s"going to run: 8001") ; s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/node-data -Dcmwell.grid.monitor.port=8001 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceNode" #> new File(s"${TestConfig.rootDir}/node.out") !}
+    Future{println(s"going to run: 8002") ; s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/client1-data -Dcmwell.grid.monitor.port=8002 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceClient" #> new File(s"${TestConfig.rootDir}/client1.out") !}
     client2Res.foreach(x => println(s"client2Res: $x"))
     Thread.sleep(30000)
     // scalastyle:on
