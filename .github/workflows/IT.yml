@@ -1,0 +1,22 @@
+name: IT
+
+on: [pull_request]
+
+jobs:
+  test_it:
+
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v1
+    - name: Run sbt test
+      run: |
+        cd server
+        ls -l .
+        sbt consIt/it:test
+    - uses: actions/upload-artifact@master
+      if: always()
+      with:
+        name: logs
+        path: server/cmwell-grid/target/logs
+    
