@@ -8,7 +8,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v1
-      - name: Run sbt compile
+      - name: Compile
         run: |
           echo pwd
           cd server
@@ -44,6 +44,7 @@ jobs:
           sbt rts/test fts/test
 
       - name: Test format irw stortill
+        if: Compile.status == 'success'
         run: |
           echo pwd
           cd server
