@@ -15,8 +15,10 @@
 package cmwell.bg.test
 
 import java.util.Properties
+import java.util.concurrent.Executors
 
 import akka.actor.{ActorRef, ActorSystem}
+import akka.http.scaladsl.Http
 import akka.util.Timeout
 import cmwell.bg.{BgKilled, CMWellBGActor, ShutDown}
 import cmwell.common.{CommandSerializer, OffsetsService, WriteCommand, ZStoreOffsetsService}
@@ -31,18 +33,17 @@ import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
 import org.elasticsearch.common.unit.TimeValue
-import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
+import org.scalatest.{Assertions, AsyncFlatSpec, BeforeAndAfterAll, Inspectors, Matchers}
 
 import scala.concurrent.{Await, Future}
 import akka.pattern.ask
 
 import scala.concurrent.duration._
-import scala.io.Source
 
 /**
   * Created by israel on 13/09/2016.
   */
-class BGResilienceSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafkaZookeeperDockerSuite with Matchers with LazyLogging {
+class BGResilienceSpec extends AsyncFlatSpec with BeforeAndAfterAll with BgEsCasKafkaZookeeperDockerSuite with Matchers with LazyLogging with Inspectors {
 
   var kafkaProducer:KafkaProducer[Array[Byte], Array[Byte]] = _
   var cmwellBGActor:ActorRef = _
@@ -54,7 +55,6 @@ class BGResilienceSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
   var ftsServiceES:FTSService = _
   var bgConfig:Config = _
   var actorSystem:ActorSystem = _
-  import concurrent.ExecutionContext.Implicits.global
 
   override def beforeAll = {
     //notify ES to not set Netty's available processors
@@ -101,32 +101,27 @@ class BGResilienceSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
     // send them all
     pRecords.foreach { kafkaProducer.send(_)}
 
-    // scalastyle:off
-    println("waiting for 20 seconds")
-    Thread.sleep(20000)
-    // scalastyle:on
-
-    for( i <- 0 until numOfCommands) {
-      val nextResult = Await.result(irwService.readPathAsync(s"/cmt/cm/bg-test/circumvented_bg/info$i"), 5.seconds)
-      withClue(nextResult, s"/cmt/cm/bg-test/circumvented_bg/info$i"){
-        nextResult should not be empty
-      }
-    }
-
-    for( i <- 0 until numOfCommands) {
-      val searchResponse = Await.result(
-        ftsServiceES.search(
+    val myList = (0 until numOfCommands).toList
+    val traverse = Future.traverse(myList) {i =>
+      cmwell.util.concurrent.spinCheck(500.millis, true, 60.seconds) {
+        val readReply = irwService.readPathAsync(s"/cmt/cm/bg-test/circumvented_bg/info$i")
+        val searchReply = ftsServiceES.search(
           pathFilter = None,
           fieldsFilter = Some(SingleFieldFilter(Must, Equals, "system.path", Some(s"/cmt/cm/bg-test/circumvented_bg/info$i"))),
           datesFilter = None,
           paginationParams = PaginationParams(0, 200)
-        ),
-        10.seconds
-      )
-      withClue(s"/cmt/cm/bg-test/circumvented_bg/info$i"){
-        searchResponse.infotons.size should equal(1)
-      }
+        )
+        readReply.zip(searchReply)
+      } { case (readResult, searchResult) => readResult.nonEmpty && (searchResult.infotons.size == 1) }
+        .map { case tuple@(readResult, searchResult) =>
+          withClue(tuple) {
+            readResult should not be empty
+            searchResult.infotons.size should equal(1)
+          }
+        }
     }
+
+    traverse.map{forAll(_)(_ should be (Assertions.succeed))}
   }
 
   override def afterAll() = {
