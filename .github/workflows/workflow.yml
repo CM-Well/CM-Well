@@ -8,12 +8,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v1
-# No
-#      - name: Run sbt compile
-#        run: |
-#          echo pwd
-#          cd server
-#          sbt compile
+      - name: Run sbt compile
+        run: |
+          echo pwd
+          cd server
+          sbt compile
 
       - name: Run sbt test - version1
         run: |
