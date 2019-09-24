@@ -14,14 +14,15 @@ jobs:
           cd server
           sbt compile
 
-      - name: Run sbt test - version1
-        run: |
-          echo pwd
-          cd server
-          sbt util/test
-          sbt kafkaAssigner/test
-          sbt dao/test
-          sbt domain/test
+# Took 2:43 instead of 1:01 at the other version! 
+##      - name: Run sbt test - version1
+##        run: |
+##          echo pwd
+##          cd server
+##          sbt util/test
+##          sbt kafkaAssigner/test
+##          sbt dao/test
+#          sbt domain/test
 
       - name: Run sbt test - version2
         run: |
@@ -29,36 +30,38 @@ jobs:
           cd server
           sbt util/test kafkaAssigner/test dao/test domain/test
           
-  test_2:
-
-    runs-on: ubuntu-latest
-    needs: compile
-
-    steps:
       - uses: actions/checkout@v1
       - name: Run sbt test
         run: |
           echo pwd
           cd server
-          sbt zstore/test
-          sbt common/test
+          sbt zstore/test common/test grid/test
 
-  test_3_GRID:
-
-    runs-on: ubuntu-latest
-    needs: compile
-
-    steps:
-      - uses: actions/checkout@v1
-      - name: Run sbt test
-        run: |
-          echo pwd
-          cd server
-          sbt grid/test
       - uses: actions/upload-artifact@master
         with:
           name: my-artifacts
           path: cmwell-grid/target/logs
+      - uses: actions/upload-artifact@master
+        if: always()
+        with:
+          name: application.log
+          path: server/cmwell-grid/target/logs/application.log
+      - uses: actions/upload-artifact@master
+        if: always()
+        with:
+          name: client1.out
+          path: server/cmwell-grid/target/client1.out
+      - uses: actions/upload-artifact@master
+        if: always()
+        with:
+          name: client2.out
+          path: server/cmwell-grid/target/client2.out
+      - uses: actions/upload-artifact@master
+        if: always()
+        with:
+          name: node.out
+          path: server/cmwell-grid/target/node.out
+
 
   test_3_FTS_RTS:
 
