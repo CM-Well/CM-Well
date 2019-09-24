@@ -49,19 +49,19 @@ jobs:
           cd server
           sbt formats/test irw/test stortill/test          
 
-       - name: Test ctrl dc cons pluginGremlin
+      - name: Test ctrl dc cons pluginGremlin
         run: |
           echo pwd
           cd server
           sbt ctrl/test dc/test cons/test pluginGremlin/test
 
-       - name: Test spa dataTools dataToolsApp
+      - name: Test spa dataTools dataToolsApp
         run: |
           echo pwd
           cd server
           sbt spa/test dataTools/test dataToolsApp/test
 
-        - name: Test sparqlAgent tracking ws
+      - name: Test sparqlAgent tracking ws
         run: |
           echo pwd
           cd server
