@@ -25,19 +25,21 @@ jobs:
 #          sbt domain/test
 
       - name: Test util, kafkaAssigner, dao, domain
+        if: job.steps.Compile.status == success()
         run: |
           echo pwd
           cd server
           sbt util/test kafkaAssigner/test dao/test domain/test
           
       - name: Test zstore, common, grid
+        if: job.steps.Compile.status == success()
         run: |
           echo pwd
           cd server
           sbt zstore/test common/test grid/test
 
       - name: Test rts fts
-        if: always()
+        if: job.steps.Compile.status == success()
         run: |
           echo pwd
           cd server
@@ -51,18 +53,21 @@ jobs:
           sbt formats/test irw/test stortill/test          
 
       - name: Test ctrl dc cons pluginGremlin
+        if: job.steps.Compile.status == success()
         run: |
           echo pwd
           cd server
           sbt ctrl/test dc/test cons/test pluginGremlin/test
 
       - name: Test spa dataTools dataToolsApp
+        if: job.steps.Compile.status == success()
         run: |
           echo pwd
           cd server
           sbt spa/test dataTools/test dataToolsApp/test
 
       - name: Test sparqlAgent tracking ws
+        if: job.steps.Compile.status == success()
         run: |
           echo pwd
           cd server
@@ -76,6 +81,7 @@ jobs:
     steps:
       - uses: actions/checkout@v1
       - name: Run sbt test
+        if: job.steps.Compile.status == success()
         run: |
           echo pwd
           cd server
@@ -89,6 +95,7 @@ jobs:
     steps:
       - uses: actions/checkout@v1
       - name: Run sbt test
+        if: job.steps.Compile.status == success()
         run: |
           echo pwd
           cd server
