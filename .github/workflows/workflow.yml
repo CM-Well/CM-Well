@@ -37,6 +37,7 @@ jobs:
           sbt zstore/test common/test grid/test
 
       - name: Test rts fts
+        if: always()
         run: |
           echo pwd
           cd server
@@ -118,6 +119,5 @@ jobs:
         with:
           name: node.out
           path: server/cmwell-grid/target/node.out
-
 
 
