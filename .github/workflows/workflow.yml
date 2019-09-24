@@ -24,19 +24,30 @@ jobs:
 ##          sbt dao/test
 #          sbt domain/test
 
-      - name: Run sbt test - version2
+      - name: Test util, kafkaAssigner, dao, domain
         run: |
           echo pwd
           cd server
           sbt util/test kafkaAssigner/test dao/test domain/test
           
-      - uses: actions/checkout@v1
-      - name: Run sbt test
+      - name: Test zstore, common, grid
         run: |
           echo pwd
           cd server
           sbt zstore/test common/test grid/test
 
+      - name: Run sbt test
+        run: |
+          echo pwd
+          cd server
+          sbt rts/test fts/test
+
+      - name: Run sbt test
+        run: |
+          echo pwd
+          cd server
+          sbt formats/test irw/test stortill/test          
+          
       - uses: actions/upload-artifact@master
         with:
           name: my-artifacts
@@ -62,35 +73,6 @@ jobs:
           name: node.out
           path: server/cmwell-grid/target/node.out
 
-
-  test_3_FTS_RTS:
-
-    runs-on: ubuntu-latest
-    needs: compile
-
-    steps:
-      - uses: actions/checkout@v1
-      - name: Run sbt test
-        run: |
-          echo pwd
-          cd server
-          sbt rts/test
-          sbt fts/test
-
-  test_4:
-
-    runs-on: ubuntu-latest
-    needs: compile
-
-    steps:
-      - uses: actions/checkout@v1
-      - name: Run sbt test
-        run: |
-          echo pwd
-          cd server
-          sbt formats/test
-          sbt irw/test
-          sbt stortill/test
 
   test_bg:
 
