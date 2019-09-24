@@ -8,13 +8,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v1
-      - name: Run sbt compile
-        run: |
-          echo pwd
-          cd server
-          sbt compile
+# No
+#      - name: Run sbt compile
+#        run: |
+#          echo pwd
+#          cd server
+#          sbt compile
 
-      - name: Run sbt test
+      - name: Run sbt test - version1
         run: |
           echo pwd
           cd server
@@ -23,6 +24,12 @@ jobs:
           sbt dao/test
           sbt domain/test
 
+      - name: Run sbt test - version2
+        run: |
+          echo pwd
+          cd server
+          sbt util/test kafkaAssigner/test dao/test domain/test
+          
   test_2:
 
     runs-on: ubuntu-latest
