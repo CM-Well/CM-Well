@@ -44,7 +44,7 @@ jobs:
           sbt rts/test fts/test
 
       - name: Test format irw stortill
-        if: Compile.status == 'success'
+        if: $Compile.status == 'success'
         run: |
           echo pwd
           cd server
