@@ -1,0 +1,43 @@
+name: Test
+
+on: [pull_request]
+
+jobs:
+  mystep:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: thisIsMust
+        run: |
+          echo pwd
+          ls
+          
+      - name: step1
+        if: job.steps.thisIsMust.status == success()
+        run: |
+          echo pwd
+          ls
+
+      - name: step2
+        if: job.steps.thisIsMust.status == success()
+        run: |
+          echo pwd
+          ls
+
+      - name: step3
+        if: job.steps.thisIsMust.status == success()
+        run: |
+          echo pwd
+          ls
+
+      - name: step4
+        if: job.steps.thisIsMust.status == success()
+        run: |
+          echo pwd
+          ls
+
+      - name: step5
+        if: job.steps.thisIsMust.status == success()
+        run: |
+          echo pwd
+          ls
