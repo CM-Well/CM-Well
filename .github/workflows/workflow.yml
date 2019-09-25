@@ -15,7 +15,6 @@ jobs:
           sbt compile
           
       - name: Test rts fts
-        if: job.steps.Compile.status == success()
         run: |
           echo pwd
           cd server
