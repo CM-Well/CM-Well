@@ -14,7 +14,7 @@ jobs:
         cd server
         ls -l .
         sudo apt-get install scala
-        scala --version
+        scala -version
         python --version
 #        sbt consIt/it:test
 #    - uses: actions/upload-artifact@master
