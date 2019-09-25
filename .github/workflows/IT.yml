@@ -13,10 +13,12 @@ jobs:
       run: |
         cd server
         ls -l .
-        sbt consIt/it:test
-    - uses: actions/upload-artifact@master
-      if: always()
-      with:
-        name: logs
-        path: server/cmwell-grid/target/logs
-    
+        scala --version
+        python --version
+#        sbt consIt/it:test
+#    - uses: actions/upload-artifact@master
+#      if: always()
+#      with:
+#        name: logs
+#        path: server/cmwell-grid/target/logs
+#    
