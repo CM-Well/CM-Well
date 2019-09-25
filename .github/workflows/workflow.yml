@@ -31,7 +31,7 @@ jobs:
           sbt util/test kafkaAssigner/test dao/test domain/test
           
       - name: Test zstore, common, grid
-	  	if: job.steps.Compile.status == success()
+        if: job.steps.Compile.status == success()
         run: |
           echo pwd
           cd server
