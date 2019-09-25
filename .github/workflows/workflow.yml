@@ -13,15 +13,6 @@ jobs:
           echo pwd
           cd server
           sbt compile
-# Took 2:43 instead of 1:01 at the other version! 
-##      - name: Run sbt test - version1
-##        run: |
-##          echo pwd
-##          cd server
-##          sbt util/test
-##          sbt kafkaAssigner/test
-##          sbt dao/test
-#          sbt domain/test
 
       - name: Test util, kafkaAssigner, dao, domain
         if: job.steps.Compile.status == success()
@@ -119,3 +110,12 @@ jobs:
           cd server
           sbt consIt/test
           
+# Took 2:43 instead of 1:01 at the other version! 
+##      - name: Run sbt test - version1
+##        run: |
+##          echo pwd
+##          cd server
+##          sbt util/test
+##          sbt kafkaAssigner/test
+##          sbt dao/test
+#          sbt domain/test
