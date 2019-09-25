@@ -45,13 +45,6 @@ jobs:
           cd server
           sbt sparqlAgent/test tracking/test ws/test
           
-      - name: Test util, kafkaAssigner, dao, domain
-        if: job.steps.Compile.status == success()
-        run: |
-          echo pwd
-          cd server
-          sbt util/test kafkaAssigner/test dao/test domain/test
-          
       - name: Test zstore, common, grid
         if: job.steps.Compile.status == success()
         run: |
@@ -84,6 +77,14 @@ jobs:
         with:
           name: node.out
           path: server/cmwell-grid/target/node.out
+        
+      - name: Test util, kafkaAssigner, dao, domain
+        if: job.steps.Compile.status == success()
+        run: |
+          echo pwd
+          cd server
+          sbt util/test kafkaAssigner/test dao/test domain/test
+          
         
   test_bg:
 
