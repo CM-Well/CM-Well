@@ -10,9 +10,10 @@ jobs:
     steps:
     - name: Run sbt test
       run: |
+        cd /
         echo $PATH
         lsb_release -a
-        locate scala
+        find -name 'scala'
         scala -version
         python --version
 #        sbt consIt/it:test
