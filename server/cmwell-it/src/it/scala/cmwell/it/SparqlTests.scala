@@ -47,7 +47,6 @@ class SparqlTests extends FunSpec with Matchers with Helpers with BeforeAndAfter
 
   // todo generalize and move to Helpers
   def waitForData(path: StringPath, expectedDataLength: Int, maxRetries: Int = 32, sleepTime: FiniteDuration = 1.second) = {
-    import scala.concurrent.ExecutionContext.Implicits.global
 
     var (length, retry) = (0, 0)
     do {

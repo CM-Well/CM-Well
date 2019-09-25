@@ -16,6 +16,8 @@
 
 package cmwell.it
 
+import java.util.concurrent.Executors
+
 import cmwell.util.http.SimpleResponse
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.{AsyncFunSpec, Matchers}
@@ -65,7 +67,7 @@ class ManglingTests extends AsyncFunSpec with Matchers with Helpers with LazyLog
             case JsDefined(JsArray(mangs)) if mangs.length == 1 => Future.successful(res)
             case _ => Future.failed(new IllegalStateException(s"got a bad response: $res"))
           }
-        }(ExecutionContext.Implicits.global)
+        }(ExecutionContext.fromExecutor(Executors.newFixedThreadPool(50)))
       }
 
       wait()

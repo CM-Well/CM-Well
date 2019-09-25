@@ -16,6 +16,8 @@
 
 package cmwell.it
 
+import java.util.concurrent.Executors
+
 import cmwell.util.http.SimpleResponse
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.commons.codec.binary.Base64
@@ -23,14 +25,14 @@ import org.scalatest.{FunSpec, Matchers}
 import play.api.libs.json.{JsArray, JsValue, Json}
 
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 /**
  * Created by yaakov on 2/1/15.
  */
 class AuthTests extends FunSpec with Matchers with Helpers with LazyLogging {
 
+  implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(50))
   val _login = cmw / "_login"
   val exampleObj = Json.obj("header" -> "TestHeader", "title" -> "TestTitle").toString
 
