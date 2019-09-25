@@ -10,7 +10,6 @@ jobs:
     steps:
     - name: Run sbt test
       run: |
-        cd server
         echo $PATH
         lsb_release -a
         locate scala
