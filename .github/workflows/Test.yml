@@ -3,56 +3,9 @@ name: Test
 on: [pull_request]
 
 jobs:
-  jobA:
+  aJob:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v1
-      - name: thisIsMust
-        run: |
-          sbt compile
-          echo pwd
-          ls
-          
-      - name: step 1
- #       if: job.steps.thisIsMust.status == success()
-        run: |
-          sbt compile
-          echo pwd
-          ls
-
-      - name: step 2
- #       if: job.steps.thisIsMust.status == success()
-        run: |
-          echo pwd
-          ls
-
-      - name: step 3
- #       if: job.steps.thisIsMust.status == success()
-        run: |
-          echo pwd
-          ls
-
-      - name: step 4
-        if: job.steps.thisIsMust.status == success()
-        run: |
-          echo pwd
-          ls
-
-      - name: step 5
-        if: job.steps.thisIsMust.status == success()
-        run: |
-          echo pwd
-          ls
-
-  jobB:
-
-    runs-on: ubuntu-latest
-    needs: jobA
-
-    steps:
-      - uses: actions/checkout@v1
-      - name: some step
-        run: |
-          ls -rt
-          echo $PATH
+      - name: scalaVe
+        run: scala -version
