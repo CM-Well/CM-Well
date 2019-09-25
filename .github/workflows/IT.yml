@@ -13,7 +13,7 @@ jobs:
         cd /
         echo $PATH
         lsb_release -a
-        find -name 'scala'
+        sudo find -name 'scala'
         scala -version
         python --version
 #        sbt consIt/it:test
