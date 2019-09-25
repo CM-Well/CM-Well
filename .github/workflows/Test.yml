@@ -46,7 +46,7 @@ jobs:
   jobB:
 
     runs-on: ubuntu-latest
-    needs: thisIsMust
+    needs: jobA
 
     steps:
       - uses: actions/checkout@v1
