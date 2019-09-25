@@ -24,14 +24,14 @@ jobs:
 #          sbt domain/test
 
       - name: Test util, kafkaAssigner, dao, domain
-#        if: job.steps.Compile.status == success()
+	  	if: job.steps.Compile.status == success()
         run: |
           echo pwd
           cd server
           sbt util/test kafkaAssigner/test dao/test domain/test
           
       - name: Test zstore, common, grid
- #       if: job.steps.Compile.status == success()
+	  	if: job.steps.Compile.status == success()
         run: |
           echo pwd
           cd server
@@ -64,31 +64,31 @@ jobs:
           path: server/cmwell-grid/target/node.out
           
       - name: Test rts fts
-        if: job.steps.Compile.status == success()
+ #       if: job.steps.Compile.status == success()
         run: |
           echo pwd
           cd server
           sbt rts/test fts/test
       - name: Test format irw stortill
-        if: job.steps.Compile.status == success()
+ #       if: job.steps.Compile.status == success()
         run: |
           echo pwd
           cd server
           sbt formats/test irw/test stortill/test          
       - name: Test ctrl dc cons pluginGremlin
-        if: job.steps.Compile.status == success()
+  #      if: job.steps.Compile.status == success()
         run: |
           echo pwd
           cd server
           sbt ctrl/test dc/test cons/test pluginGremlin/test
       - name: Test spa dataTools dataToolsApp
-        if: job.steps.Compile.status == success()
+ #       if: job.steps.Compile.status == success()
         run: |
           echo pwd
           cd server
           sbt spa/test dataTools/test dataToolsApp/test
       - name: Test sparqlAgent tracking ws
-        if: job.steps.Compile.status == success()
+  #      if: job.steps.Compile.status == success()
         run: |
           echo pwd
           cd server
