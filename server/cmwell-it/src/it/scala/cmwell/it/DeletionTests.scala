@@ -16,17 +16,21 @@
 
 package cmwell.it
 
+import java.util.concurrent.Executors
+
 import cmwell.util.concurrent.SimpleScheduler._
 import cmwell.util.http.SimpleResponse
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.{AsyncFunSpec, Inspectors, Matchers}
 import play.api.libs.json._
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 
 class DeletionTests extends AsyncFunSpec with Matchers with Inspectors with Helpers with LazyLogging {
   describe("delete object infoton") {
+
+    implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(50))
 
     val iofd = cmt / "InfoObjForDelete"
     val ioffd = cmt / "InfoObjForFullDelete"
