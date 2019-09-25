@@ -25,7 +25,7 @@ jobs:
           ls
 
       - name: step3
-        if: job.steps.thisIsMust.status == success()
+ #       if: job.steps.thisIsMust.status == success()
         run: |
           echo pwd
           ls
