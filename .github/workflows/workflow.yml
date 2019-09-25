@@ -24,7 +24,7 @@ jobs:
 #          sbt domain/test
 
       - name: Test util, kafkaAssigner, dao, domain
-#        if: job.steps.Compile.status == success()
+        if: job.steps.Compile.status == success()
         run: |
           echo pwd
           cd server
@@ -64,7 +64,7 @@ jobs:
           path: server/cmwell-grid/target/node.out
           
       - name: Test rts fts
-        if: job.steps.Compile.status == success()
+#        if: job.steps.Compile.status == success()
         run: |
           echo pwd
           cd server
