@@ -13,7 +13,38 @@ jobs:
           echo pwd
           cd server
           sbt compile
-
+          
+      - name: Test rts fts
+        if: job.steps.Compile.status == success()
+        run: |
+          echo pwd
+          cd server
+          sbt rts/test fts/test
+      - name: Test format irw stortill
+        if: job.steps.Compile.status == success()
+        run: |
+          echo pwd
+          cd server
+          sbt formats/test irw/test stortill/test          
+      - name: Test ctrl dc cons pluginGremlin
+        if: job.steps.Compile.status == success()
+        run: |
+          echo pwd
+          cd server
+          sbt ctrl/test dc/test cons/test pluginGremlin/test
+      - name: Test spa dataTools dataToolsApp
+        if: job.steps.Compile.status == success()
+        run: |
+          echo pwd
+          cd server
+          sbt spa/test dataTools/test dataToolsApp/test
+      - name: Test sparqlAgent tracking ws
+        if: job.steps.Compile.status == success()
+        run: |
+          echo pwd
+          cd server
+          sbt sparqlAgent/test tracking/test ws/test
+          
       - name: Test util, kafkaAssigner, dao, domain
         if: job.steps.Compile.status == success()
         run: |
@@ -53,37 +84,6 @@ jobs:
         with:
           name: node.out
           path: server/cmwell-grid/target/node.out
-          
-      - name: Test rts fts
- #       if: job.steps.Compile.status == success()
-        run: |
-          echo pwd
-          cd server
-          sbt rts/test fts/test
-      - name: Test format irw stortill
- #       if: job.steps.Compile.status == success()
-        run: |
-          echo pwd
-          cd server
-          sbt formats/test irw/test stortill/test          
-      - name: Test ctrl dc cons pluginGremlin
-  #      if: job.steps.Compile.status == success()
-        run: |
-          echo pwd
-          cd server
-          sbt ctrl/test dc/test cons/test pluginGremlin/test
-      - name: Test spa dataTools dataToolsApp
- #       if: job.steps.Compile.status == success()
-        run: |
-          echo pwd
-          cd server
-          sbt spa/test dataTools/test dataToolsApp/test
-      - name: Test sparqlAgent tracking ws
-  #      if: job.steps.Compile.status == success()
-        run: |
-          echo pwd
-          cd server
-          sbt sparqlAgent/test tracking/test ws/test
         
   test_bg:
 
