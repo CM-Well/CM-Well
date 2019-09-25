@@ -8,12 +8,12 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v1
     - name: Run sbt test
       run: |
         cd server
         echo $PATH
         lsb_release -a
+        locate scala
         scala -version
         python --version
 #        sbt consIt/it:test
