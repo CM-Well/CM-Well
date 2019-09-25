@@ -10,12 +10,14 @@ jobs:
       - uses: actions/checkout@v1
       - name: thisIsMust
         run: |
+          sbt compile
           echo pwd
           ls
           
       - name: step 1
  #       if: job.steps.thisIsMust.status == success()
         run: |
+          sbt compile
           echo pwd
           ls
 
