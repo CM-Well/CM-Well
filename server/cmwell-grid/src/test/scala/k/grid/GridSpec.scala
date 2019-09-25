@@ -66,9 +66,14 @@ class GridSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
   def spawnProcesses: Unit = {
     // scalastyle:off
+    val client2Res = Future{
+      val a = s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/client2-data -Dcmwell.grid.monitor.port=8003 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceClient" #> new File(s"${TestConfig.rootDir}/client2.out") !
+      val b = s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/client1-data -Dcmwell.grid.monitor.port=8002 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceClient" #> new File(s"${TestConfig.rootDir}/client1.out") !
+
+      (a, b)
+    }
     Future{s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/node-data -Dcmwell.grid.monitor.port=8001 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceNode" #> new File(s"${TestConfig.rootDir}/node.out") !}
-    Future{s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/client1-data -Dcmwell.grid.monitor.port=8002 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceClient" #> new File(s"${TestConfig.rootDir}/client1.out") !}
-    Future{s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/client2-data -Dcmwell.grid.monitor.port=8003 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceClient" #> new File(s"${TestConfig.rootDir}/client2.out") !}
+    client2Res.foreach(x => println(s"client2Res: $x"))
     Thread.sleep(30000)
     // scalastyle:on
   }
@@ -105,7 +110,13 @@ class GridSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
   }
 
 
-
+  "moria" should s"check processes" in {
+    Seq("ps", "aux") #| Seq("grep", "TestService") !
+    val a = 4+5
+    Seq("ps", "aux") #| Seq("grep", "TestService") #| Seq("awk", "{print $2}") !
+    val x = 4
+    x should equal (4)
+  }
 
   "member" should s"see all $expectedMembers grid members" in {
     Grid.jvmsAll.size should equal(expectedMembers)
