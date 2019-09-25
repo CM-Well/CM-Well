@@ -12,8 +12,9 @@ jobs:
     - name: Run sbt test
       run: |
         cd server
-        ls -l .
-        sudo apt-get install scala
+        echo $PATH
+        lsb_release -a
+#        sudo apt-get install scala
         scala -version
         python --version
 #        sbt consIt/it:test
