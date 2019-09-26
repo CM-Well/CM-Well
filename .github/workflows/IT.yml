@@ -11,10 +11,11 @@ jobs:
     - name: Run sbt test
       run: |
         wget https://downloads.lightbend.com/scala/2.12.8/scala-2.12.8.tgz
-        sudo echo $PATH
         sudo tar -xf scala-2.12.8.tgz
         sudo ln -s scala-2.12.8/bin/scala /usr/local/bin/scala
-        sudo ls -l /usr/local/bin
+        sleep 5
+        sudo echo $PATH
+        sudo ls -l /usr/local/bin | grep scala
         scala -version
         python --version
         cd server
