@@ -10,16 +10,15 @@ jobs:
     steps:
     - name: Run sbt test
       run: |
-        cd /
-        echo $PATH
-        lsb_release -a
-        sudo find -name 'scala'
+        wget https://downloads.lightbend.com/scala/2.12.8/scala-2.12.8.tgz
+        tar -xf scala-2.12.8.tgz --directory=/usr/local/bin
         scala -version
         python --version
-#        sbt consIt/it:test
-#    - uses: actions/upload-artifact@master
-#      if: always()
-#      with:
-#        name: logs
-#        path: server/cmwell-grid/target/logs
-#    
+        cd server
+        sbt it:testOnly cmwell.it.QuadTests
+    - uses: actions/upload-artifact@master
+      if: always()
+      with:
+        name: logs
+        path: server/cmwell-it/target/logs
+    
