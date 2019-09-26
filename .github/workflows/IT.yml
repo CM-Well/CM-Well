@@ -17,12 +17,7 @@ jobs:
         sudo echo $PATH
         sudo ls -l /usr/local/bin | grep scala
         scala -version
-    - uses: actions/upload-artifact@master
-      if: always()
-      with:
-        name: logs
-        path: server/cmwell-it/target/logs
-    
+
     - name: Run First Test
       run: |
         cd server
