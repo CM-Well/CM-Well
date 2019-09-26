@@ -12,7 +12,6 @@ jobs:
       run: |
         wget https://downloads.lightbend.com/scala/2.12.8/scala-2.12.8.tgz
         sudo tar -xf scala-2.12.8.tgz
-        sudo cd 
         sudo ln -s `pwd`/scala-2.12.8/bin/scala /usr/local/bin/scala
         sleep 5
         sudo echo $PATH
