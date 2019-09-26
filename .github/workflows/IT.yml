@@ -13,7 +13,7 @@ jobs:
         wget https://downloads.lightbend.com/scala/2.12.8/scala-2.12.8.tgz
         sudo echo $PATH
         sudo tar -xf scala-2.12.8.tgz --directory=/usr/local/bin
-        sudo echo /usr/local/bin
+        sudo ls /usr/local/bin
         scala -version
         python --version
         cd server
