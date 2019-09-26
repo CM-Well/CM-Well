@@ -19,7 +19,7 @@ jobs:
         sudo ls -l /usr/local/bin | grep scala
         scala -version
         cd server
-        sbt it:testOnly cmwell.it.QuadTests
+        sbt consIt/it:test
     - uses: actions/upload-artifact@master
       if: always()
       with:
