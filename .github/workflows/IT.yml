@@ -18,14 +18,9 @@ jobs:
         sudo echo $PATH
         sudo ls -l /usr/local/bin | grep scala
         scala -version
-
-    - name: Run First Test
-      needs: Install Scala
-      run: |
         cd server
         sbt it:testOnly cmwell.it.QuadTests
     - uses: actions/upload-artifact@master
-      needs: Run First Test
       if: always()
       with:
         name: logs
