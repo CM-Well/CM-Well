@@ -8,6 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+    - uses: actions/checkout@v1
     - name: Install Scala
       run: |
         wget https://downloads.lightbend.com/scala/2.12.8/scala-2.12.8.tgz
@@ -19,10 +20,12 @@ jobs:
         scala -version
 
     - name: Run First Test
+      needs: Install Scala
       run: |
         cd server
         sbt it:testOnly cmwell.it.QuadTests
     - uses: actions/upload-artifact@master
+      needs: Run First Test
       if: always()
       with:
         name: logs
