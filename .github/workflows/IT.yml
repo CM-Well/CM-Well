@@ -19,7 +19,7 @@ jobs:
         sudo ls -l /usr/local/bin | grep scala
         scala -version
         cd server
-        sbt consIt/it:test
+        sbt -mem 2048 consIt/it:test
     - uses: actions/upload-artifact@master
       if: always()
       with:
