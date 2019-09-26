@@ -11,7 +11,7 @@ jobs:
     - name: Run sbt test
       run: |
         wget https://downloads.lightbend.com/scala/2.12.8/scala-2.12.8.tgz
-        tar -xf scala-2.12.8.tgz --directory=/usr/local/bin
+        sudo tar -xf scala-2.12.8.tgz --directory=/usr/local/bin
         scala -version
         python --version
         cd server
