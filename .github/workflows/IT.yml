@@ -19,7 +19,7 @@ jobs:
         sudo ls -l /usr/local/bin | grep scala
         scala -version
         cd server
-        SBT_OPTS="-Xms2048M -Xmx2048M" sbt consIt/it:test
+        sbt consIt/it:test
     - uses: actions/upload-artifact@master
       if: always()
       with:
