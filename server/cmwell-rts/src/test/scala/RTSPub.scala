@@ -43,7 +43,7 @@ object RTSPub extends App {
   // scalastyle:on
   (1 to 9).foreach{ i =>
     val m : Map[String , Set[FieldValue]]= Map("name" -> Set(FString("gal"), FString("yoav")), "types" -> Set(FString("123"), FInt(123)))
-    val ii = ObjectInfoton("/cmt/cm/command-test/objinfo_" + i,"dc_test", None, m, None)
+    val ii = ObjectInfoton("/cmt/cm/command-test/objinfo_" + i,"dc_test", None, m, None, "Baruch")
     Publisher.publish(Vector(ii))
   }
   // scalastyle:off

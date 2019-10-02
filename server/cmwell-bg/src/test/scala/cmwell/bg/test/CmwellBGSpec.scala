@@ -111,7 +111,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
           path = s"/cmt/cm/bg-test/baseInfoton/info$n",
           dc = "dc",
           indexTime = None,
-          fields = Some(Map("a" -> Set(FieldValue("b"), FieldValue("c")))),protocol=None)
+          fields = Some(Map("a" -> Set(FieldValue("b"), FieldValue("c")))),protocol=None, lastModifiedBy = "Baruch")
         val writeCommand = WriteCommand(infoton)
         val commandBytes = CommandSerializer.encode(writeCommand)
         new ProducerRecord[Array[Byte], Array[Byte]]("persist_topic", commandBytes)
@@ -120,7 +120,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
           path = s"/cmt/cm/bg-test/baseInfoton/info19",
           dc = "dc",
           indexTime = None,
-          fields = Some(Map("a1" -> Set(FieldValue("b1"), FieldValue("c1")))),protocol=None)
+          fields = Some(Map("a1" -> Set(FieldValue("b1"), FieldValue("c1")))),protocol=None, lastModifiedBy = "Baruch")
         val writeCommand = WriteCommand(infoton)
         val commandBytes = CommandSerializer.encode(writeCommand)
         new ProducerRecord[Array[Byte], Array[Byte]]("persist_topic", commandBytes)
@@ -133,7 +133,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
         cmwell.util.concurrent.spinCheck(250.millis,true,30.seconds){
           ftsServiceES.search(
             pathFilter = Some(PathFilter("/cmt/cm/bg-test/baseInfoton", true)),
-            fieldsFilter = None,
+            fieldsFilter = Some(FieldFilter(Must, Equals, "system.lastModifiedBy", "Baruch")),
             datesFilter = None,
             paginationParams = DefaultPaginationParams,
             sortParams = SortParam("system.indexTime" -> Asc),
@@ -159,7 +159,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
           path = s"/cmt/cm/bg-test1/info$n",
           dc = "dc",
           indexTime = None,
-          fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))),protocol=None)
+          fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))),protocol=None, lastModifiedBy = "Baruch")
         WriteCommand(infoton)
       }
 
@@ -220,7 +220,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
 //    }
 //
     val processDeletePathCommands = executeAfterCompletion(writeCommandsProccessing){
-      val deletePathCommand = DeletePathCommand("/cmt/cm/bg-test1/info0")
+      val deletePathCommand = DeletePathCommand("/cmt/cm/bg-test1/info0", lastModifiedBy = "Danny")
       val serializedCommand = CommandSerializer.encode(deletePathCommand)
       val pRecord = new ProducerRecord[Array[Byte], Array[Byte]]("persist_topic", serializedCommand)
       sendToKafkaProducer(pRecord).flatMap { recordMetaData =>
@@ -271,6 +271,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
           dc = "dc",
           indexTime = None,
           lastModified = new org.joda.time.DateTime(currentTime + i),
+          lastModifiedBy = "Baruch",
           fields = Some(Map(s"f$i" -> Set(FieldValue(s"v$i")))),protocol=None
         )
         WriteCommand(infoton)
@@ -314,7 +315,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
           path = s"/cmt/cm/bg-test/indexTime/info$n",
           dc = "dc",
           indexTime = None,
-          fields = Some(Map("a" -> Set(FieldValue("b"), FieldValue("c")))),protocol=None)
+          fields = Some(Map("a" -> Set(FieldValue("b"), FieldValue("c")))),protocol=None, lastModifiedBy = "Baruch")
         WriteCommand(infoton)
       }
 
@@ -331,7 +332,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
         scheduleFuture(5.seconds) {
           ftsServiceES.search(
             pathFilter = Some(PathFilter("/cmt/cm/bg-test/indexTime", true)),
-            fieldsFilter = None,
+            fieldsFilter = Some(FieldFilter(Must, Equals, "system.lastModifiedBy", "Baruch")),
             datesFilter = None,
             paginationParams = DefaultPaginationParams,
             sortParams = SortParam("system.indexTime" -> Asc),
@@ -354,9 +355,9 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
       }
     }
 
-    val markInfotonAsHistory = executeAfterCompletion(indexAllInfotons){
+    val markInfotonAsHistory = executeAfterCompletion(indexAllInfotons) {
       val writeCommand =
-        WriteCommand(ObjectInfoton("/cmt/cm/bg-test1/info1", "dc", None, Map("i" -> Set(FieldValue("phone"))), None))
+        WriteCommand(ObjectInfoton("/cmt/cm/bg-test1/info1", "dc", None, Map("i" -> Set(FieldValue("phone"))), None, "Hanna"))
       val pRecord = new ProducerRecord[Array[Byte], Array[Byte]]("persist_topic", CommandSerializer.encode(writeCommand))
       sendToKafkaProducer(pRecord).flatMap { recordMetadata =>
         scheduleFuture(5.seconds) {
@@ -365,7 +366,8 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
             pathFilter = None,
             fieldsFilter = Some(MultiFieldFilter(Must, Seq(
               FieldFilter(Must, Equals, "system.path", "/cmt/cm/bg-test1/info1"),
-              FieldFilter(Must, Equals, "system.current", "false")))),
+              FieldFilter(Must, Equals, "system.current", "false"),
+              FieldFilter(MustNot, Equals, "system.lastModifiedBy", "Hanna")))),
             datesFilter = None,
             paginationParams = DefaultPaginationParams,
             withHistory = true
@@ -373,7 +375,10 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
 
           val f2 = ftsServiceES.search(
             pathFilter = None,
-            fieldsFilter = Some(FieldFilter(Must, Equals, "system.path", "/cmt/cm/bg-test1/info1")),
+            fieldsFilter = Some(MultiFieldFilter(Must, Seq(
+              FieldFilter(Must, Equals, "system.path", "/cmt/cm/bg-test1/info1"),
+              FieldFilter(Must, Equals, "system.current", "true"),
+              FieldFilter(Must, Equals, "system.lastModifiedBy", "Hanna")))),
             datesFilter = None,
             paginationParams = DefaultPaginationParams
           )
@@ -384,7 +389,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
             ftsSearchResponse1 <- f1
             ftsSearchResponse2 <- f2
             irwHistoryResponse <- f3
-          } yield withClue(ftsSearchResponse1,ftsSearchResponse2,irwHistoryResponse) {
+          } yield withClue(ftsSearchResponse1, ftsSearchResponse2, irwHistoryResponse) {
 
             ftsSearchResponse1.infotons should have size 1
             ftsSearchResponse2.infotons should have size 1
@@ -408,6 +413,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
           dc = "dc",
           indexTime = Some(currentTime + n + 1),
           new org.joda.time.DateTime(currentTime + n),
+          "Ori",
           fields = Some(Map("pearls" -> Set(FieldValue("Ubuntu"), FieldValue("shmubuntu")))),protocol=None)
         OverwriteCommand(infoton)
       }
@@ -424,7 +430,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
       sendEm.flatMap { recordMetaDataSeq =>
         scheduleFuture(3000.millis)(ftsServiceES.search(
           pathFilter = Some(PathFilter("/cmt/cm/bg-test3", true)),
-          fieldsFilter = None,
+          fieldsFilter = Some(FieldFilter(Must, Equals, "system.lastModifiedBy", "Ori")),
           datesFilter = None,
           paginationParams = DefaultPaginationParams)).map { response =>
 
@@ -448,6 +454,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
           dc = "dc",
           indexTime = Some(currentTime + n * 3),
           lastModified = new DateTime(currentTime + n),
+          "Nahum",
           indexName = "cm_well_p0_0",
           fields = Some(Map(s"a$n" -> Set(FieldValue(s"b$n"), FieldValue(s"c${n % 2}")))),
           protocol = None
@@ -470,7 +477,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
             cmwell.util.concurrent.spinCheck(250.millis, true, 30.seconds) {
               ftsServiceES.search(
                 pathFilter = Some(PathFilter("/cmt/cm/bg-test/re_process_ow", descendants = true)),
-                fieldsFilter = None,
+                fieldsFilter = Some(FieldFilter(Must, Equals, "system.lastModifiedBy", "Nahum")),
                 datesFilter = None,
                 paginationParams = DefaultPaginationParams,
                 sortParams = FieldSortParams(List("system.indexTime" -> Desc)),
@@ -495,7 +502,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
           path = s"/cmt/cm/bg-test/override_not_grouped/info_override",
           dc = "dc",
           indexTime = Some(Random.nextLong()),
-          fields = Some(Map(s"Version${n % 3}" -> Set(FieldValue(s"a$n"), FieldValue(s"b${n % 2}")))), protocol = None)
+          fields = Some(Map(s"Version${n % 3}" -> Set(FieldValue(s"a$n"), FieldValue(s"b${n % 2}")))), protocol = None, lastModifiedBy = "Ohad")
         OverwriteCommand(infoton)
       }
 
@@ -512,7 +519,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
         cmwell.util.concurrent.spinCheck(250.millis, true, 30.seconds) {
           ftsServiceES.search(
             pathFilter = Some(PathFilter("/cmt/cm/bg-test/override_not_grouped", false)),
-            fieldsFilter = None,
+            fieldsFilter = Some(FieldFilter(Must, Equals, "system.lastModifiedBy", "Ohad")),
             datesFilter = None,
             paginationParams = DefaultPaginationParams,
             withHistory = true,
@@ -533,7 +540,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
         s"field$n" -> Set[FieldValue](FString(s"value$n"))
       }.toMap
 
-      val fatFoton = ObjectInfoton("/cmt/cm/bg-test-fat/fatfoton1", "dcc", None, lotsOfFields, None)
+      val fatFoton = ObjectInfoton("/cmt/cm/bg-test-fat/fatfoton1", "dcc", None, lotsOfFields, None, "Faruk")
 
       // make kafka record out of the infoton
       val pRecord = {
@@ -548,7 +555,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
           val readReply = irwService.readPathAsync("/cmt/cm/bg-test-fat/fatfoton1")
           val searchReply = ftsServiceES.search(
             pathFilter = Some(PathFilter("/cmt/cm/bg-test-fat", true)),
-            fieldsFilter = None,
+            fieldsFilter = Some(FieldFilter(Must, Equals, "system.lastModifiedBy", "Faruk")),
             datesFilter = None,
             paginationParams = DefaultPaginationParams)
           readReply.zip(searchReply)
@@ -570,6 +577,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
         dc = "dc",
         indexTime = Some(currentTime + 42),
         new org.joda.time.DateTime(currentTime),
+        "Noga",
         fields = Some(Map("whereTo" -> Set(FieldValue("The"), FieldValue("ATM!")))),
         protocol=None)
 
@@ -586,7 +594,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
 
           val f0 = ftsServiceES.search(
             pathFilter = Some(PathFilter("/cmt/cm/bg-test4", descendants =  true)),
-            fieldsFilter = None,
+            fieldsFilter = Some(FieldFilter(Must, Equals, "system.lastModifiedBy", "Noga")),
             datesFilter = None,
             paginationParams = DefaultPaginationParams)
 
@@ -628,10 +636,12 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
       }
       sendToKafkaProducer(pRecord)
     }
-    def verifyBgTest5() = {
+    def verifyBgTest5(modifier: String) = {
       val f0 = ftsServiceES.search(
         pathFilter = None,
-        fieldsFilter = Some(FieldFilter(Must, Equals, "system.path", "/cmt/cm/bg-test5/infobj")),
+        fieldsFilter = Some(MultiFieldFilter(Must, Seq(
+          FieldFilter(Must, Equals, "system.path", "/cmt/cm/bg-test5/infobj"),
+          FieldFilter(Must, Equals, "system.lastModifiedBy", modifier)))),
         datesFilter = None,
         paginationParams = DefaultPaginationParams,
         withHistory = false
@@ -645,6 +655,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
         paginationParams = DefaultPaginationParams,
         withHistory = true
       )
+
       val f2 = irwService.readPathAsync("/cmt/cm/bg-test5/infobj", ConsistencyLevel.QUORUM)
       val f3= irwService.historyAsync("/cmt/cm/bg-test5/infobj", 10)
       for {
@@ -679,12 +690,13 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
         dc = "dc",
         indexTime = Some(currentTime + 42),
         new org.joda.time.DateTime(currentTime),
+        "Vicki3",
         fields = Some(Map("GoTo" -> Set(FieldValue("draw"), FieldValue("money")))),
         protocol=None)
 
       sendIt(infoton).flatMap { recordMetaData =>
         waitForIt(1).flatMap { ftsRes =>
-          verifyBgTest5().map {
+          verifyBgTest5("Vicki3").map {
             case t@(currFTSRes, histFTSRes, currPathIRWBox, historiesIRW) => withClue(t -> ftsRes) {
               val currPathIRW = currPathIRWBox.toOption
               currFTSRes.total should be(1)
@@ -706,12 +718,13 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
         dc = "dc",
         indexTime = Some(currentTime),
         new org.joda.time.DateTime(currentTime - 20000),
+        "Vicki5",
         fields = Some(Map("whereTo" -> Set(FieldValue("Techno"), FieldValue("Doron")))),
         protocol=None)
 
       sendIt(infoton).flatMap { recordMetaData =>
         waitForIt(2).flatMap { ftsRes =>
-          verifyBgTest5().map {
+          verifyBgTest5("Vicki3").map {
             case t@(currFTSRes, histFTSRes, currPathIRWBox, historiesIRW) => withClue(t -> ftsRes) {
               val currPathIRW = currPathIRWBox.toOption
               currFTSRes.total should be(1)
@@ -733,12 +746,13 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
         dc = "dc",
         indexTime = Some(currentTime + 128),
         new org.joda.time.DateTime(currentTime - 10000),
+        "Vicki2",
         fields = Some(Map("OK" -> Set(FieldValue("TO"), FieldValue("ATM!")))),
         protocol=None)
 
       sendIt(infoton).flatMap { recordMetaData =>
         waitForIt(3).flatMap { ftsRes =>
-          verifyBgTest5().map {
+          verifyBgTest5("Vicki3").map {
             case t@(currFTSRes,histFTSRes,currPathIRWBox,historiesIRW) => withClue(t -> ftsRes) {
               val currPathIRW = currPathIRWBox.toOption
               currFTSRes.total should be(1)
@@ -760,6 +774,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
         dc = "dc",
         indexTime = Some(currentTime + 23),
         new org.joda.time.DateTime(currentTime + 10000),
+        "Vicki4",
         fields = Some(Map("No" -> Set(FieldValue("U"), FieldValue("Go")),
                           "But" -> Set(FieldValue("I don't need the ATM.")))),
         protocol=None)
@@ -767,7 +782,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
       sendIt(infoton).flatMap { recordMetaData =>
         scheduleFuture(5.seconds) {
           waitForIt(4).flatMap { ftsRes =>
-            verifyBgTest5().map {
+            verifyBgTest5("Vicki4").map {
               case t@(currFTSRes, histFTSRes, currPathIRWBox, historiesIRW) => withClue(t -> ftsRes) {
                 val currPathIRW = currPathIRWBox.toOption
                 currFTSRes.total should be(1)
@@ -790,13 +805,14 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
         dc = "dc",
         indexTime = Some(currentTime + 1729),
         new org.joda.time.DateTime(currentTime + 20000),
+        "Vicki5",
         fields = Some(Map("So" -> Set(FieldValue("Why you asked?")),
                           "Ummm" -> Set(FieldValue("I didn't...")))),
         protocol=None)
 
       sendIt(infoton).flatMap { recordMetaData =>
         waitForIt(5).flatMap { ftsRes =>
-          verifyBgTest5().map {
+          verifyBgTest5("Vicki5").map {
             case t@(currFTSRes,histFTSRes,currPathIRWBox,historiesIRW) => withClue(t -> ftsRes) {
               val currPathIRW = currPathIRWBox.toOption
               currFTSRes.total should be(1)

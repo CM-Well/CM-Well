@@ -769,8 +769,8 @@ object SgEngines extends LazyLogging {
   private def loadSgEngine(jarPath: String, langName: String): Option[SgEngineClient] = {
     Try {
       val className = s"cmwell.plugins.impl.${langName}Parser"
-      val excludes = Seq("cmwell.plugins.spi", "org.apache.jena.")
-      ChildFirstURLClassLoader.loadClassFromJar[SgEngineClient](className, jarPath, excludes)
+      val excludes = Seq("org.apache.jena.")
+      ChildFirstURLClassLoader.loadClassFromJar[SgEngineClient](className, jarPath, "cmwell.plugins.spi", excludes)
     }.toOption
   }
 }
@@ -793,7 +793,7 @@ trait Importer[A] { this: LazyLogging =>
       .map(
         res =>
           (res: @unchecked) match {
-            case Some(Everything(FileInfoton(_, _, _, _, fields, Some(content), _, _))) =>
+            case Some(Everything(FileInfoton(_, _, _, _, _, fields, Some(content), _, _))) =>
               FileInfotonContent(content.data.get, fields.getOrElse(Map()))
             case x =>
               logger.debug(s"Could not fetch $path, got $x"); throw new RuntimeException(s"Could not fetch $path")

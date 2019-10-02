@@ -47,16 +47,17 @@ object JsonEncoder {
     val cmwellDefaultBase = "cmwell:/"
 
     infoton match {
-      case oi @ ObjectInfoton(path, dc, idxT, lastModified, Some(fields), _, protocol) =>
-        new ObjectInfoton(path, dc, idxT, lastModified, Some(alterFieldsBase(fields, cmwellDefaultBase, newBase)), protocol = protocol) {
+      case oi @ ObjectInfoton(path, dc, idxT, lastModified, lastModifiedBy, Some(fields), _, protocol) =>
+        new ObjectInfoton(path, dc, idxT, lastModified, lastModifiedBy, Some(alterFieldsBase(fields, cmwellDefaultBase, newBase)), protocol = protocol) {
           override def kind = "ObjectInfoton"
           override def uuid = oi.uuid
         }
-      case ci @ CompoundInfoton(path, dc, idxT, lastModified, Some(fields), children, offset, length, total, _, protocol) =>
+      case ci @ CompoundInfoton(path, dc, idxT, lastModified, lastModifiedBy, Some(fields), children, offset, length, total, _, protocol) =>
         new CompoundInfoton(path,
                             dc,
                             idxT,
                             lastModified,
+                            lastModifiedBy,
                             Some(alterFieldsBase(fields, cmwellDefaultBase, newBase)),
                             children,
                             offset,
@@ -66,22 +67,24 @@ object JsonEncoder {
           override def kind = "CompoundInfoton"
           override def uuid = ci.uuid
         }
-      case fi @ FileInfoton(path, dc, idxT, lastModified, Some(fields), content, _, protocol) =>
+      case fi @ FileInfoton(path, dc, idxT, lastModified, lastModifiedBy, Some(fields), content, _, protocol) =>
         new FileInfoton(path,
                         dc,
                         idxT,
                         lastModified,
+                        lastModifiedBy,
                         Some(alterFieldsBase(fields, cmwellDefaultBase, newBase)),
                         content,
                         protocol = protocol) {
           override def kind = "FileInfoton"
           override def uuid = fi.uuid
         }
-      case li @ LinkInfoton(path, dc, idxT, lastModified, Some(fields), linkTo, linkType, _, protocol) =>
+      case li @ LinkInfoton(path, dc, idxT, lastModified, lastModifiedBy, Some(fields), linkTo, linkType, _, protocol) =>
         new LinkInfoton(path,
                         dc,
                         idxT,
                         lastModified,
+                        lastModifiedBy,
                         Some(alterFieldsBase(fields, cmwellDefaultBase, newBase)),
                         linkTo,
                         linkType,

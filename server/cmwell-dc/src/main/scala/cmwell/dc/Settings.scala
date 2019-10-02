@@ -37,8 +37,9 @@ object Settings {
   val maxRetrieveByteSize = config.getBytes("cmwell.dc.pull.maxRetrieveByteSize")
   val maxTotalInfotonCountAggregatedForRetrieve =
     config.getInt("cmwell.dc.pull.maxTotalInfotonCountAggregatedForRetrieve")
-//  val tsvBufferSize = config.getInt("cmwell.dc.pull.tsvBufferSize")
+  val tsvBufferSize = config.getInt("cmwell.dc.pull.tsvBufferSize")
   val initialTsvRetryCount = config.getInt("cmwell.dc.pull.initialTsvRetryCount")
+  val lockedOnConsume = config.getBoolean("cmwell.dc.pull.lockedOnConsume")
   val bulkTsvRetryCount = config.getInt("cmwell.dc.pull.bulkTsvRetryCount")
   val consumeFallbackDuration = config.getDuration("cmwell.dc.pull.consumeFallbackDuration").toMillis
 //  val delayInSecondsBetweenNoContentRetries = config.getInt("cmwell.dc.pull.delayInSecondsBetweenNoContentRetries")
@@ -59,4 +60,8 @@ object Settings {
   val ingestParallelism = config.getInt("cmwell.dc.push.ingestParallelism")
   val ingestRetryQueueSize = config.getInt("cmwell.dc.push.ingestRetryQueueSize")
   val dcaUserToken = config.getString("dcaUser.token")
+  val irwServiceDaoHostName = config.getString("irwServiceDao.hostName")
+  val irwServiceDaoClusterName = config.getString("irwServiceDao.clusterName")
+  val irwServiceDaoKeySpace2 = config.getString("irwServiceDao.keySpace2")
+
 }

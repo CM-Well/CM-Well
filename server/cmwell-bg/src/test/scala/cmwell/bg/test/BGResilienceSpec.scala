@@ -84,7 +84,8 @@ class BGResilienceSpec extends AsyncFlatSpec with BeforeAndAfterAll with BgEsCas
         dc = "dc",
         indexTime = None,
         fields = Some(Map("games" -> Set(FieldValue("Taki"), FieldValue("Race")))),
-        protocol = None)
+        protocol = None,
+        lastModifiedBy = "Baruch")
       WriteCommand(infoton)
     }
 
@@ -105,11 +106,13 @@ class BGResilienceSpec extends AsyncFlatSpec with BeforeAndAfterAll with BgEsCas
     val esCheck = cmwell.util.concurrent.spinCheck(1.second, true, 60.seconds) {
       try{
         ftsServiceES.search(
-        pathFilter = None,
-        fieldsFilter = Some(SingleFieldFilter(Must, Equals, "system.parent.parent_hierarchy", Some(s"/cmt/cm/bg-test/circumvented_bg"))),
-        datesFilter = None,
-        paginationParams = PaginationParams(0, 1)
-      )
+          pathFilter = None,
+          fieldsFilter = Some(MultiFieldFilter(Must, Seq(
+              FieldFilter(Must, Equals, "system.parent.parent_hierarchy", Some(s"/cmt/cm/bg-test/circumvented_bg")),
+              FieldFilter(Must, Equals, "system.lastModifiedBy", "Baruch")))),
+          datesFilter = None,
+          paginationParams = PaginationParams(0, 1)
+        )
       } catch {case _ => Future.failed(new RuntimeException)}
     } (_.total == 1500)
 

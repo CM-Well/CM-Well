@@ -63,7 +63,7 @@ object HealthUtils {
     }
 
     private[this] def getStatus: Future[String] = {
-      val f = Future(ProcUtil.executeCommand(s"JAVA_HOME=$path/../java/bin $path/../cas/cur/bin/nodetool -h $ip status").get)
+      val f = Future(ProcUtil.executeCommand(s"JAVA_HOME=$path/../java/bin $path/../cas/cur/bin/nodetool status").get)
       val p = Promise[String]()
       f.onComplete{
         case Failure(e) => p.failure(e)

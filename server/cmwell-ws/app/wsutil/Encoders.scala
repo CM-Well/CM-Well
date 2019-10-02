@@ -124,17 +124,18 @@ object Encoders extends LazyLogging{
       * @param node
       * @return
       */
-    private def processSystem(node: JsValue): (String, DateTime, String, Option[String]) = {
+    private def processSystem(node: JsValue): (String, DateTime, String, String, Option[String]) = {
       val pathOpt = (node \ "path").asOpt[String]
       val lmOpt = (node \ "lastModified")
         .asOpt[String]
         .orElse((node \ "modifiedDate").asOpt[String])
         .flatMap(cmwell.util.string.parseDate)
+      val modifier = (node \ "lastModifiedBy").asOpt[String]
       val dataCenter = (node \ "dataCenter").asOpt[String].getOrElse(Settings.dataCenter)
       val protocol = (node \ "protocol").asOpt[String]
       pathOpt match {
         case None    => throw InfotonParsingException("No path specified in system")
-        case Some(p) => (p, lmOpt.getOrElse(new DateTime), dataCenter, protocol)
+        case Some(p) => (p, lmOpt.getOrElse(new DateTime), modifier.getOrElse(""), dataCenter, protocol)
       }
     }
 
@@ -187,12 +188,12 @@ object Encoders extends LazyLogging{
       (systemFieldOpt, fieldsOpt) match {
         case (None, _) => throw InfotonParsingException("System object is missing")
         case (Some(sf), Some(f)) =>
-          val (path, md, dc, protocol) = processSystem(sf)
+          val (path, md, modifier, dc, protocol) = processSystem(sf)
           val fields = processFields(f)
-          ObjectInfoton(path, dc, None, md, fields, protocol = protocol)
+          ObjectInfoton(path, dc, None, md, modifier, fields, protocol = protocol)
         case (Some(sf), None) =>
-          val (path, md, dc, protocol) = processSystem(sf)
-          ObjectInfoton(path, dc, None, md, None, "", protocol)
+          val (path, md, modifier, dc, protocol) = processSystem(sf)
+          ObjectInfoton(path, dc, None, md, modifier, None, "", protocol)
       }
     }
 
@@ -205,23 +206,23 @@ object Encoders extends LazyLogging{
 
       (systemFieldOpt, fieldsOpt, fileContentsOpt) match {
         case (Some(sf), None, None) =>
-          val (path, md, dc, p) = processSystem(sf)
-          FileInfoton(path, dc, None, md, None, None, "", p)
+          val (path, md, modifier, dc, p) = processSystem(sf)
+          FileInfoton(path, dc, None, md, modifier, None, None, "", p)
         case (None, _, _) => throw InfotonParsingException("System field is not present")
         case (Some(sf), Some(f), Some(fc)) =>
-          val (path, md, dc, p) = processSystem(sf)
+          val (path, md, modifier, dc, p) = processSystem(sf)
           val fields = processFields(f)
           val fileContent = processFileContent(fc)
-          FileInfoton(path, dc, None, md, fields, fileContent, p)
+          FileInfoton(path, dc, None, md, modifier, fields, fileContent, p)
         case (Some(sf), None, Some(fc)) =>
-          val (path, md, dc, p) = processSystem(sf)
+          val (path, md, modifier, dc, p) = processSystem(sf)
           val fields = None
           val fileContent = processFileContent(fc)
-          FileInfoton(path, dc, None, md, None, Some(fileContent), "", p)
+          FileInfoton(path, dc, None, md, modifier, None, Some(fileContent), "", p)
         case (Some(sf), Some(f), None) =>
-          val (path, md, dc, p) = processSystem(sf)
+          val (path, md, modifier, dc, p) = processSystem(sf)
           val fields = processFields(f)
-          FileInfoton(path, dc, None, md, Some(fields), None, "", p)
+          FileInfoton(path, dc, None, md, modifier, Some(fields), None, "", p)
       }
     }
 
@@ -230,18 +231,19 @@ object Encoders extends LazyLogging{
       val fieldsOpt = (node \ "fields").asOpt[JsValue]
       val linkTo = (node \ "linkTo").asOpt[String]
       val linkType = (node \ "linkType").asOpt[Int]
+      val modifier = (node \ "lastModifiedBy").asOpt[String]
 
       (systemFieldOpt, fieldsOpt, linkTo, linkType) match {
         case (None, _, _, _) => throw InfotonParsingException("System field is not present")
         case (_, _, _, None) => throw InfotonParsingException("LinkTo field is not present")
         case (_, _, None, _) => throw InfotonParsingException("LinkType field is not present")
         case (Some(s), Some(f), Some(lTo), Some(lType)) =>
-          val (path, md, dc, p) = processSystem(s)
+          val (path, md, modBy, dc, p) = processSystem(s)
           val fields = processFields(f)
-          LinkInfoton(path, dc, md, fields, lTo, lType, p)
+          LinkInfoton(path, dc, md, modBy, fields, lTo, lType, p)
         case (Some(s), None, Some(lTo), Some(lType)) =>
-          val (path, md, dc, p) = processSystem(s)
-          LinkInfoton(path = path, dc = dc, lastModified = md, linkTo = lTo, linkType = lType, protocol = p)
+          val (path, md, modBy, dc, p) = processSystem(s)
+          LinkInfoton(path = path, dc = dc, lastModified = md, lastModifiedBy = modBy, linkTo = lTo, linkType = lType, protocol = p)
       }
     }
 
