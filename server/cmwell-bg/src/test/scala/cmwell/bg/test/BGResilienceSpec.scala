@@ -14,35 +14,30 @@
   */
 package cmwell.bg.test
 
-import java.util.Properties
-
+import java.util.concurrent.Executors
 import akka.actor.{ActorRef, ActorSystem}
 import akka.util.Timeout
-import cmwell.bg.{BgKilled, CMWellBGActor, ShutDown}
+import cmwell.bg.{CMWellBGActor, ShutDown}
 import cmwell.common.{CommandSerializer, OffsetsService, WriteCommand, ZStoreOffsetsService}
 import cmwell.domain.{FieldValue, ObjectInfoton}
 import cmwell.driver.Dao
 import cmwell.fts._
 import cmwell.irw.IRWService
-import cmwell.util.testSuitHelpers.test.EsCasKafkaZookeeperDockerSuite
 import cmwell.zstore.ZStore
-import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
+import com.typesafe.config.{Config, ConfigValueFactory}
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
-import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
-import org.elasticsearch.common.unit.TimeValue
-import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
+import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll,Inspectors, Matchers}
 
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import akka.pattern.ask
 
 import scala.concurrent.duration._
-import scala.io.Source
 
 /**
   * Created by israel on 13/09/2016.
   */
-class BGResilienceSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafkaZookeeperDockerSuite with Matchers with LazyLogging {
+class BGResilienceSpec extends AsyncFlatSpec with BeforeAndAfterAll with BgEsCasKafkaZookeeperDockerSuite with Matchers with LazyLogging with Inspectors {
 
   var kafkaProducer:KafkaProducer[Array[Byte], Array[Byte]] = _
   var cmwellBGActor:ActorRef = _
@@ -54,7 +49,8 @@ class BGResilienceSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
   var ftsServiceES:FTSService = _
   var bgConfig:Config = _
   var actorSystem:ActorSystem = _
-  import concurrent.ExecutionContext.Implicits.global
+
+  implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(50))
 
   override def beforeAll = {
     //notify ES to not set Netty's available processors
@@ -100,36 +96,34 @@ class BGResilienceSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
     }
 
     // send them all
-    pRecords.foreach { kafkaProducer.send(_)}
+    pRecords.foreach {kafkaProducer.send(_)}
 
-    // scalastyle:off
-    println("waiting for 20 seconds")
-    Thread.sleep(20000)
-    // scalastyle:on
-
-    for( i <- 0 until numOfCommands) {
-      val nextResult = Await.result(irwService.readPathAsync(s"/cmt/cm/bg-test/circumvented_bg/info$i"), 5.seconds)
-      withClue(nextResult, s"/cmt/cm/bg-test/circumvented_bg/info$i"){
-        nextResult should not be empty
-      }
+    val casCheck = Future.traverse((0 until numOfCommands).toList) {i =>
+      cmwell.util.concurrent.spinCheck(1.second, true, 60.seconds) {
+        irwService.readPathAsync(s"/cmt/cm/bg-test/circumvented_bg/info$i")} ( _.nonEmpty )
     }
 
-    for( i <- 0 until numOfCommands) {
-      val searchResponse = Await.result(
+    val esCheck = cmwell.util.concurrent.spinCheck(1.second, true, 60.seconds) {
+      try{
         ftsServiceES.search(
           pathFilter = None,
           fieldsFilter = Some(MultiFieldFilter(Must, Seq(
-            FieldFilter(Must, Equals, "system.path", s"/cmt/cm/bg-test/circumvented_bg/info$i"),
-            FieldFilter(Must, Equals, "system.lastModifiedBy", "Baruch")))),
+              FieldFilter(Must, Equals, "system.parent.parent_hierarchy", Some(s"/cmt/cm/bg-test/circumvented_bg")),
+              FieldFilter(Must, Equals, "system.lastModifiedBy", "Baruch")))),
           datesFilter = None,
-          paginationParams = PaginationParams(0, 200)
-        ),
-        10.seconds
-      )
-      withClue(s"/cmt/cm/bg-test/circumvented_bg/info$i"){
-        searchResponse.infotons.size should equal(1)
-      }
+          paginationParams = PaginationParams(0, 1)
+        )
+      } catch {case _ => Future.failed(new RuntimeException)}
+    } (_.total == 1500)
+
+    for {
+      es <- esCheck
+      cas <- casCheck
+    } yield {
+      es.total should equal(1500)
+      forAll(cas) ( _ should not be empty)
     }
+
   }
 
   override def afterAll() = {
