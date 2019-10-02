@@ -22,7 +22,7 @@ jobs:
         if: always()
         run: |
           mkdir logsArtifacts
-          cp -r --parents */*/logs logsArtifacts
+          cp -r --parents **/**/logs logsArtifacts
           
 ###  Save Artifacts                    
       - uses: actions/upload-artifact@master
