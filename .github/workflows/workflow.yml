@@ -50,6 +50,8 @@ jobs:
           cd server
           sbt zstore/test common/test grid/test
 
+
+
 ###  Save Artifacts                    
       - uses: actions/upload-artifact@master
         with:
@@ -83,6 +85,9 @@ jobs:
           cd server
           sbt util/test kafkaAssigner/test dao/test domain/test
           
+        
+        
+        
         
   test_bg:
 
