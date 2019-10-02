@@ -108,7 +108,7 @@ class BGResilienceSpec extends AsyncFlatSpec with BeforeAndAfterAll with BgEsCas
         ftsServiceES.search(
           pathFilter = None,
           fieldsFilter = Some(MultiFieldFilter(Must, Seq(
-              FieldFilter(Must, Equals, "system.parent.parent_hierarchy", Some(s"/cmt/cm/bg-test/circumvented_bg")),
+              FieldFilter(Must, Equals, "system.parent.parent_hierarchy", s"/cmt/cm/bg-test/circumvented_bg"),
               FieldFilter(Must, Equals, "system.lastModifiedBy", "Baruch")))),
           datesFilter = None,
           paginationParams = PaginationParams(0, 1)
