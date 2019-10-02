@@ -21,6 +21,7 @@ jobs:
           mkdir logsArtifacts
           cp -r --parents */*/logs logsArtifacts
       - name: Save logs
+        if: always()
         run: |
           mkdir logsArtifacts
           cp -r --parents */*/logs logsArtifacts
