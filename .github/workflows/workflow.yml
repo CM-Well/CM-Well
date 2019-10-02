@@ -57,7 +57,7 @@ jobs:
     - name: Test
       run: |
         cd server
-        sbt consIt/it:test
+        sbt it:test
     - uses: actions/upload-artifact@master
       if: always()
       with:
