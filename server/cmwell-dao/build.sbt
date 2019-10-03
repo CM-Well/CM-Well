@@ -17,5 +17,3 @@ libraryDependencies ++= {
     dm("com.google.guava", "guava")
   )
 }
-
-fullTest := (test in Test).value

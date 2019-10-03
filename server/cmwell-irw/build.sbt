@@ -27,5 +27,3 @@ test in Test := Def.taskDyn {
   }
 }.tag(Tags.Cassandra).value
 */
-
-fullTest := (test in Test).value

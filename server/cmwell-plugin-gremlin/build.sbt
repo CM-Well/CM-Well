@@ -16,5 +16,3 @@ assemblyMergeStrategy in assembly := {
   case "META-INF/MANIFEST.MF" => MergeStrategy.discard
   case _ => MergeStrategy.first
 }
-
-fullTest := (test in Test).value

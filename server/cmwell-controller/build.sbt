@@ -20,5 +20,3 @@ libraryDependencies ++= {
     dm("uk.org.lidalia", "sysout-over-slf4j")
   )
 }
-
-fullTest := (test in Test).value

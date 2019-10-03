@@ -83,6 +83,4 @@ val jvmOptsForDcStandAloneUsingNativePackager = Seq(
 )
 javaOptions in Universal ++= jvmOptsForDcStandAloneUsingNativePackager
 
-fullTest := (test in Test).value
-
 unmanagedResources in Test += packResourceDir.value.keys.head / "application.conf"

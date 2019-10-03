@@ -59,5 +59,3 @@ libraryDependencies ++= {
 
 //we need tools.jar on classpath, since we use jps...
 unmanagedJars in Compile ~= (_ :+ Attributed.blank(file(System.getProperty("java.home").dropRight(3)+"lib/tools.jar")))
-
-fullTest := (test in Test).value

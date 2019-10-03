@@ -255,38 +255,11 @@ testOptions in Test in ThisBuild += Tests.Argument(TestFrameworks.ScalaTest, "-W
 testOptions in IntegrationTest in ThisBuild += Tests.Argument(TestFrameworks.ScalaTest, "-oD")
 testOptions in IntegrationTest in ThisBuild += Tests.Argument(TestFrameworks.ScalaTest, "-W", "10", "2")
 
-fullTest := {
-  (fullTest in LocalProject("util")).value
-  (fullTest in LocalProject("kafkaAssigner")).value
-  (fullTest in LocalProject("dao")).value
-  (fullTest in LocalProject("domain")).value
-  (fullTest in LocalProject("zstore")).value
-  (fullTest in LocalProject("common")).value
-  (fullTest in LocalProject("grid")).value
-  (fullTest in LocalProject("rts")).value
-  (fullTest in LocalProject("fts")).value
-  (fullTest in LocalProject("formats")).value
-  (fullTest in LocalProject("irw")).value
-  (fullTest in LocalProject("stortill")).value
-  (fullTest in LocalProject("bg")).value
-  (fullTest in LocalProject("ws")).value
-  (fullTest in LocalProject("consIt")).value
-  (fullTest in LocalProject("ctrl")).value
-  (fullTest in LocalProject("dc")).value
-  (fullTest in LocalProject("cons")).value
-  (fullTest in LocalProject("pluginGremlin")).value
-  (fullTest in LocalProject("spa")).value
-  (fullTest in LocalProject("dataTools")).value
-  (fullTest in LocalProject("dataToolsApp")).value
-  (fullTest in LocalProject("sparqlAgent")).value
-  (fullTest in LocalProject("tracking")).value
-}
-
-addCommandAlias("full-test","fullTest")
-
 val ccft = Command.command("ccft") {
-  state => "clean" :: "compile" :: "fullTest" :: state
+  state => "clean" :: "compile" :: "Test/test" :: "IntegrationTest/test" :: state
 }
+
+addCommandAlias("full-test","; test ; it:test")
 
 commands += ccft
 

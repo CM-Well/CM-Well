@@ -96,6 +96,4 @@ mappings in Universal += {
   f -> "/plugins/sg-engines/gremlin.jar"
 }
 
-fullTest := (test in Test).value
-
 fullClasspath in (Compile,console) += Attributed.blank(sourceDirectory.value / "cws" / "resources")

@@ -19,5 +19,3 @@ libraryDependencies ++= {
       .exclude("log4j", "log4j")
   )
 }
-
-fullTest := (test in Test).value

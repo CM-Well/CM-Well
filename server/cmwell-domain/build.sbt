@@ -13,5 +13,3 @@ libraryDependencies ++= {
     dm("org.scalacheck", "scalacheck") % "test",
     dm("org.slf4j", "jcl-over-slf4j"))
 }
-
-fullTest := (test in Test).value

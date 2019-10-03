@@ -18,5 +18,3 @@ libraryDependencies ++= {
     dm("com.github.tomakehurst", "wiremock") % "test" jar()
   )
 }
-
-fullTest := (test in Test).value
