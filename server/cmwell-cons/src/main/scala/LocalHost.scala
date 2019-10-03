@@ -182,6 +182,7 @@ case class LocalHost(dataCenter: String = "lh",
     val ctrlAllocations = aloc.ctrl
 
     val homeDir = s"${instDirs.globalLocation}/cm-well"
+    val casDataDirs = (1 to dataDirs.casDataDirs.size).map(ResourceBuilder.getIndexedName("cas", _))
     val ip = "127.0.0.1"
     val cas = CassandraConf(
       home = homeDir,
@@ -201,7 +202,7 @@ case class LocalHost(dataCenter: String = "lh",
       rs = IpRackSelector(),
       g1 = false,
       hostIp = ip,
-      casDataDirs = Seq("cas"),
+      casDataDirs = casDataDirs,
       casUseCommitLog = casUseCommitLog,
       numOfCores = calculateCpuAmount,
       diskOptimizationStrategy = diskOptimizationStrategy
