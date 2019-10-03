@@ -18,11 +18,12 @@ import java.nio.charset.StandardCharsets
 
 import akka.NotUsed
 import akka.actor.{ActorRef, ActorSystem}
+import akka.event.Logging
 import akka.kafka.scaladsl.Consumer
 import akka.kafka.{ConsumerSettings, Subscriptions}
 import akka.stream.ActorAttributes.supervisionStrategy
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, Merge, MergePreferred, Partition, RunnableGraph, Sink}
-import akka.stream.{ActorMaterializer, ClosedShape, KillSwitches, Supervision}
+import akka.stream.{ActorMaterializer, Attributes, ClosedShape, KillSwitches, Supervision}
 import cmwell.common.formats.JsonSerializerForES
 import cmwell.common.formats.{BGMessage, CompleteOffset, Offset}
 import cmwell.fts._
@@ -270,16 +271,29 @@ class IndexerStream(partition: Int,
               }
             }
 
+            implicit val log = Logging(actorSystem.eventStream, "debug.indexerStream")
+            val logAttr = Attributes.logLevels(
+              onElement = Attributes.LogLevels.Info,
+              onFailure = Attributes.LogLevels.Info,
+              onFinish = Attributes.LogLevels.Info)
+            def idxCmdStr[T](bgMessage: BGMessage[T])(convertToIdxCmd: T => IndexCommand) = {
+              val idxCmd = convertToIdxCmd(bgMessage.message)
+              s"path:[${idxCmd.path}]. offsets: [${bgMessage.offsets}]"
+            }
+
             val mergePrefferedSources =
               builder.add(MergePreferred[BGMessage[IndexCommand]](1, true))
 
-            val convertToIndexerCommands: Flow[BGMessage[IndexCommand], BGMessage[IndexCommand], NotUsed] = Flow.fromFunction {
+            val convertToIndexerCommandsWithoutLogs: Flow[BGMessage[IndexCommand], BGMessage[IndexCommand], NotUsed] = Flow.fromFunction {
               case bgMsg@BGMessage(_, IndexNewInfotonCommand(uuid, isCurrent, path, infotonOpt, indexName, trackingIDs)) =>
                 bgMsg.copy(message = IndexNewInfotonCommandForIndexer(uuid, isCurrent, path, infotonOpt, indexName, Seq(), trackingIDs))
               case bgMsg@BGMessage(_, IndexExistingInfotonCommand(uuid, weight, path, indexName, trackingIDs)) =>
                 bgMsg.copy(message = IndexExistingInfotonCommandForIndexer(uuid, weight, path, indexName, Seq(), trackingIDs))
               case other => other
             }
+
+            val convertToIndexerCommands =
+              convertToIndexerCommandsWithoutLogs.log("convertToIndexerCommands", msg => idxCmdStr(msg)(identity)).withAttributes(logAttr)
 
             val getInfotonIfNeeded = builder.add(
               Flow[BGMessage[IndexCommand]]
@@ -313,9 +327,11 @@ class IndexerStream(partition: Int,
                     }
                   case bgMessage => Future.successful(Success(bgMessage))
                 }
+                .log("getInfotonIfNeededBeforeCollect").withAttributes(logAttr)
                 .collect {
                   case Success(x) => x
                 }
+                .log("getInfotonIfNeededAfterCollect", msg => idxCmdStr(msg)(identity)).withAttributes(logAttr)
             )
 
             val indexCommandToEsActions = builder.add(
@@ -338,9 +354,11 @@ class IndexerStream(partition: Int,
                             BGMessage(_, IndexNewInfotonCommandForIndexer(_, _, _, None, _, _, _)) | BGMessage(_, NullUpdateCommandForIndexer(_, _, _, _, _)))
                       => logger.error(s"Unexpected input. Received: $x"); ???
                 }
+                .log("indexCommandToEsActionsBeforeCollect").withAttributes(logAttr)
                 .collect {
                   case Success(x) => x
                 }
+                .log("indexCommandToEsActionsAfterCollect").withAttributes(logAttr)
             )
 
             val groupEsActions = builder.add(
@@ -382,6 +400,7 @@ class IndexerStream(partition: Int,
                         BGMessage(bgMessages.flatMap(_.offsets), (bulkIndexResult, bgMessages.map(_.message._2)))
                       }
                 }
+                  .log("indexInfoActionsFlow").withAttributes(logAttr)
               )
 
             val updateIndexInfoInCas = builder.add(
@@ -409,6 +428,7 @@ class IndexerStream(partition: Int,
                         bgMessage.copy(message = indexCommands)
                       }
                 }
+                .log("updateIndexInfoInCas").withAttributes(logAttr)
             )
 
             val reportProcessTracking =
