@@ -14,6 +14,8 @@
   */
 package cmwell.bg.test
 
+import java.util.concurrent.Executors
+
 import akka.actor.{ActorRef, ActorSystem}
 import akka.pattern.ask
 import akka.util.Timeout
@@ -31,7 +33,7 @@ import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafkaZookeeperDockerSuite with Matchers with LazyLogging {
 
@@ -66,6 +68,8 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
   }
 
   "BG" should "process priority commands" in {
+    implicit val ex = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
+
     // prepare sequence of priority writeCommands
     val pWriteCommands = Seq.tabulate(2000) { n =>
       val infoton = ObjectInfoton(
@@ -102,13 +106,13 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
       records.foreach { r =>
         kafkaProducer.send(r)
       }
-    }(scala.concurrent.ExecutionContext.Implicits.global)
+    }
     val f2 = scheduleFuture(1000.millisecond) {
       Future {
         pRecords.foreach { r =>
           kafkaProducer.send(r)
         }
-      }(scala.concurrent.ExecutionContext.Implicits.global)
+      }
     }
 
     val assertFut = f2.flatMap { _ =>
@@ -121,14 +125,14 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
           sortParams = SortParam("system.indexTime" -> Desc),
           withHistory = false,
           withDeleted = false
-        )(scala.concurrent.ExecutionContext.Implicits.global, logger)
+        )
       }(_.infotons.size == 2000)
         .map { res =>
           withClue(res) {
             res.infotons.size should equal(2000)
           }
-        }(scala.concurrent.ExecutionContext.Implicits.global)
-    }(scala.concurrent.ExecutionContext.Implicits.global)
+        }
+    }
     Await.result(assertFut, 50.seconds)
   }
     override def afterAll() = {
