@@ -4,7 +4,7 @@ val locParam = System.getProperties.getProperty("location")
 val location = if(locParam == null || locParam == "") s"""${System.getenv("HOME")}/app""" else locParam
 val useAuthorization = false
 val dataDirs = DataDirs(
-                            casDataDirs = List(s"$location/cm-well-data/cas", "/home/liel/Desktop/cas"),
+                            casDataDirs = List(s"$location/cm-well-data/cas"),
                             casCommitLogDirs = List(s"$location/cm-well-data/ccl") ,
                             esDataDirs = List(s"$location/cm-well-data/es", s"$location/cm-well-data/es-master"),
                             kafkaDataDirs = List(s"$location/cm-well-data/kafka"),
