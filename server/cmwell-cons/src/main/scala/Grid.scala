@@ -89,6 +89,7 @@ case class Grid(user: String,
     val wsAllocations = aloc.ws
     val ctrlAllocations = aloc.ctrl
     val homeDir = s"${instDirs.globalLocation}/cm-well"
+    val casDataDirs = (1 to dataDirs.casDataDirs.size).map(ResourceBuilder.getIndexedName("cas", _))
     hosts.flatMap { host =>
       val cas = CassandraConf(
         home = homeDir,
@@ -108,13 +109,12 @@ case class Grid(user: String,
         rs = IpRackSelector(),
         g1 = g1,
         hostIp = host,
-        casDataDirs = Seq("cas"),
+        casDataDirs = casDataDirs,
         casUseCommitLog = casUseCommitLog,
         numOfCores = calculateCpuAmount,
         diskOptimizationStrategy = diskOptimizationStrategy
       )
-
-        val es = ElasticsearchConf(
+      val es = ElasticsearchConf(
           clusterName = clusterName,
           nodeName = host,
           masterNode = false,
