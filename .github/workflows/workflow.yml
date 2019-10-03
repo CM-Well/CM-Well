@@ -48,7 +48,7 @@ jobs:
        
   integrationTests:
     runs-on: ubuntu-latest
-    needs: unitTests
+#    needs: unitTests
 
     steps:
     - uses: actions/checkout@v1
