@@ -200,9 +200,10 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
       }
 
     val parentsCreation = executeAfterCompletion(writeCommandsProccessing){
-      Future.traverse(Seq("/cmt/cm/bg-test1", "/cmt/cm", "/cmt")) { path =>
+      cmwell.util.concurrent.spinCheck(250.millis, true, 30.seconds) {
+        Future.traverse(Seq("/cmt/cm/bg-test1", "/cmt/cm", "/cmt")) { path =>
         irwService.readPathAsync(path, ConsistencyLevel.QUORUM)
-      }.map { infopts =>
+      }}(_.forall(!_.isEmpty)).map { infopts =>
         forAll(infopts) { infopt =>
           infopt should not be empty
         }
@@ -210,7 +211,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
     }
 
     val indexAllInfotons = processDeletePathCommands.flatMap { _ =>
-      cmwell.util.concurrent.spinCheck(250.millis, true, 45.seconds) {
+      cmwell.util.concurrent.spinCheck(250.millis, true, 2.minutes) {
         ftsServiceES.search(
           pathFilter = Some(PathFilter("/cmt/cm/bg-test1", descendants = true)),
           fieldsFilter = None,
