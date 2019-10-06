@@ -1,6 +1,6 @@
 name: CI
 
-on: [push, pull_request]
+on: [pull_request]
 
 jobs:
 ##################################
@@ -26,7 +26,7 @@ jobs:
         if: always()
         run: |
           mkdir logsArtifacts
-          find . -name logs | xargs -I LOG cp -r --parents LOG logsArtifacts/
+          bash -c "cp -r --parents */*/logs logsArtifacts"
 
 #####################################
 ##        Save Artifacts           ##
