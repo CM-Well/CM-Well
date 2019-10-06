@@ -10,7 +10,9 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Install Scala
-      working-directory: server
-      run: pwd
+      run: |
+        pwd
+        cd server
+        pwd
     - name: Checking directory
       run: pwd
