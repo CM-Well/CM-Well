@@ -18,14 +18,14 @@ import akka.{Done, NotUsed}
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.coding.Gzip
-import akka.http.scaladsl.model.headers.{`Accept-Encoding`, `Content-Encoding`, HttpEncodings, RawHeader}
+import akka.http.scaladsl.model.headers.{HttpEncodings, RawHeader, `Accept-Encoding`, `Content-Encoding`}
 import akka.http.scaladsl.model.{HttpEntity, _}
 import akka.stream.Supervision._
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.stream.stage.{GraphStage, GraphStageLogic, GraphStageWithMaterializedValue, InHandler}
 import akka.stream._
 import akka.util.{ByteString, ByteStringBuilder}
-import cmwell.dc.{LazyLogging, Settings}
+import cmwell.dc.{LazyLogging, Settings, stream}
 import cmwell.dc.stream.MessagesTypesAndExceptions._
 import cmwell.dc.stream.SingleMachineInfotonIngester.IngestInput
 
@@ -59,9 +59,12 @@ object SingleMachineInfotonIngester extends LazyLogging {
         case (infotonSeq, state) => {
           val payloadBuilder = new ByteStringBuilder
           // no need for end line because each line in already suffixed with it
-          infotonSeq.foreach{
-            infoton => val filteredData = infoton.data.utf8String.split("\n").filterNot(_.contains("meta/sys#uuid")).mkString
-            payloadBuilder ++= ByteString(filteredData)
+          infotonSeq.foreach{i=>
+            val firstLine = i.data.takeWhile(_ != stream.newLine)
+            if(i.data.takeWhile(_ != stream.newLine).contains(ByteString("meta/sys#uuid")))
+              payloadBuilder ++= i.data.take(firstLine.length)
+            else
+              payloadBuilder ++= i.data
           }
           val payload = payloadBuilder.result
           (createRequest(location, payload, dcKey.ingestOperation), state)

@@ -53,22 +53,24 @@ object InfotonRetriever extends LazyLogging {
   val initialRetrieveSingleStatus =
     RetrieveStateStatus(Settings.initialSingleRetrieveRetryCount, None)
 
-  case class ExtraData(subject: String, indexTime: Option[Long], lastModifiedBy: Option[String]){
+  case class ExtraData(subject: String, indexTime: Option[Long], lastModifiedBy: Option[String], uuid:Option[String]){
     def shouldMerge (other: ExtraData): Option[ExtraData] = {
       require(other.subject != "", "Subject in ExtraData cannot be empty!")
       require(!(subject!="" && other.subject != subject), "Same path cannot have different subjects!")
 
       other match {
-        case ExtraData(newSubject, None, None) if this.subject == "" => Some(this.copy(subject = newSubject))
-        case ExtraData(_, None, None) => None
-        case ExtraData(newSubject, indTime @ Some(_), None) => Some(this.copy(subject = newSubject, indexTime = indTime))
-        case ExtraData(newSubject, None, lmb @ Some(_)) => Some(this.copy(subject = newSubject, lastModifiedBy = lmb))
+        case ExtraData(newSubject, None, None, None) if this.subject == "" => Some(this.copy(subject = newSubject))
+        case ExtraData(_, None, None, None) => None
+        case ExtraData(newSubject, indTime @ Some(_), None, None) => Some(this.copy(subject = newSubject, indexTime = indTime))
+        case ExtraData(newSubject, None, lmb @ Some(_), None) => Some(this.copy(subject = newSubject, lastModifiedBy = lmb))
+        case ExtraData(newSubject, None, None, uuid @ Some(_)) => Some(this.copy(subject = newSubject, uuid = uuid))
+
       }
     }
 
     def getQuads(indexTimeN: Long, modifierN: Option[String]) = {
       def modifier = modifierN.fold(throw ModifierMissingException(subject))(identity)
-
+      uuid.fold("")(u => s"""<$subject> <cmwell://meta/sys#uuid> "$u"^^<http://www.w3.org/2001/XMLSchema#string> .\n""") ++
       indexTime.fold(s"""<$subject> <cmwell://meta/sys#indexTime> "$indexTimeN"^^<http://www.w3.org/2001/XMLSchema#long> .\n""")(_ => "") ++
       lastModifiedBy.fold(s"""<$subject> <cmwell://meta/sys#lastModifiedBy> "$modifier"^^<http://www.w3.org/2001/XMLSchema#string> .\n""")(_ => "")
     }
@@ -117,7 +119,7 @@ object InfotonRetriever extends LazyLogging {
               .via(
                 Framing.delimiter(endln, maximumFrameLength = maxStatementLength)
               )
-              .fold(RetrieveTotals(state._1.map{im => im.base.path -> (new ByteStringBuilder, ExtraData("", None, None))}(hashMapBreakout),
+              .fold(RetrieveTotals(state._1.map{im => im.base.path -> (new ByteStringBuilder, ExtraData("", None, None, None))}(hashMapBreakout),
                 new ByteStringBuilder))
               { (totals, nquad) =>
                 totals.unParsed ++= nquad
@@ -141,7 +143,7 @@ object InfotonRetriever extends LazyLogging {
                   im => {
                     val parsed: (ByteStringBuilder, ExtraData) = totals.parsed(im.base.path)
                     val enrichResult = ByteString(parsed._2.getQuads(im.indexTime, dcKey.modifier))
-                    (InfotonData(BaseInfotonData(im.base.path, parsed._1.result ++ enrichResult), im.uuid, im.indexTime), parsed._2)
+                    (InfotonData(BaseInfotonData(im.base.path, enrichResult ++ parsed._1.result), im.uuid, im.indexTime), parsed._2)
 
                   }
                 }(breakOut))
@@ -224,7 +226,7 @@ object InfotonRetriever extends LazyLogging {
         //-1 + 22 == 21 - no match is found
         if (pos != 21) {
           val untilPos = line.indexOf('"', pos)
-          ExtraData (uri, Some(line.substring(pos, untilPos).toLong), None)
+          ExtraData (uri, Some(line.substring(pos, untilPos).toLong), None, None)
         }
         else {
           //look for lastModifiedBy
@@ -232,10 +234,18 @@ object InfotonRetriever extends LazyLogging {
           //-1 + 27 == 26 - no match is found
           if (pos != 26) {
             val untilPos = line.indexOf('"', pos)
-            ExtraData (uri, None, Some(line.substring(pos, untilPos)))
-          }
-          else {
-            ExtraData (uri, None, None)
+            ExtraData (uri, None, Some(line.substring(pos, untilPos)), None)
+          } else {
+            //look for uuid
+            val pos = line.indexOf("/meta/sys#uuid") + 17
+            //-1 + 17 == 16 - no match is found
+            if (pos != 16) {
+              val untilPos = line.indexOf('"', pos)
+              ExtraData(uri, None, None, Some(line.substring(pos, untilPos)))
+            }
+            else {
+              ExtraData(uri, None, None, None)
+            }
           }
         }
       }

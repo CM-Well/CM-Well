@@ -21,6 +21,7 @@ package object stream {
   val endln = ByteString("\n")
   val tab = ByteString("\t")
   val space: Char = 32
+  val newLine: Char = 10
   val ii = ByteString("/ii/")
   val cmwellPrefix = "cmwell:/"
   val lessThan = ByteString("<")
