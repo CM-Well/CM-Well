@@ -7,19 +7,19 @@ jobs:
 ##    Running all unit tests    ##
 ##################################
   unitTests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
 
     steps:
       - uses: actions/checkout@v1
       - name: Compile
-        run: |
-          cd server
-          sbt compile
+        timeout-minutes: 10
+        working-directory: server
+        run: sbt compile
 
       - name: Test
-        run: |
-          cd server
-          sbt test
+        working-directory: server
+        timeout-minutes: 30
+        run: sbt test
 
 # Copy logs to 1 directory, since upload-artifact doesnt support multiple directories or regular expressions
       - name: Save logs
@@ -31,22 +31,22 @@ jobs:
 #####################################
 ##        Save Artifacts           ##
 #####################################
-      - uses: actions/upload-artifact@master
+      - uses: actions/upload-artifact@v1
         if: always()
         with:
           name: logsArtifacts
           path: logsArtifacts
-      - uses: actions/upload-artifact@master
+      - uses: actions/upload-artifact@v1
         if: always()
         with:
           name: client1.out
           path: server/cmwell-grid/target/client1.out
-      - uses: actions/upload-artifact@master
+      - uses: actions/upload-artifact@v1
         if: always()
         with:
           name: client2.out
           path: server/cmwell-grid/target/client2.out
-      - uses: actions/upload-artifact@master
+      - uses: actions/upload-artifact@v1
         if: always()
         with:
           name: node.out
@@ -56,7 +56,7 @@ jobs:
 ##  Running all integration tests  ##
 ##################################### 
   integrationTests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
 
     steps:
     - uses: actions/checkout@v1
@@ -65,21 +65,21 @@ jobs:
         wget https://downloads.lightbend.com/scala/2.12.8/scala-2.12.8.tgz
         sudo tar -xf scala-2.12.8.tgz
         sudo ln -s `pwd`/scala-2.12.8/bin/scala /usr/local/bin/scala
-    - name: Test
-      run: |
-        cd server
-        sbt it:test
-        
+    - name: Integration Tests
+      timeout-minutes: 30
+      working-directory: server
+      run: IntegrationTest/test
+
 #####################################
 ##       Save IT Artifacts         ##
 ##################################### 
-    - uses: actions/upload-artifact@master
+    - uses: actions/upload-artifact@v1
       if: always()
       with:
         name: itLogs
         path: server/cmwell-it/target/logs
 
-    - uses: actions/upload-artifact@master
+    - uses: actions/upload-artifact@v1
       if: always()
       with:
         name: cmwellItLogs
