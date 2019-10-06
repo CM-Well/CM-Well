@@ -10,7 +10,8 @@ jobs:
     runs-on: ubuntu-18.04
 
     steps:
-      - uses: actions/checkout@v1
+      - name: Checkout code
+        uses: actions/checkout@v1
       - name: Compile
         timeout-minutes: 10
         working-directory: server
@@ -22,7 +23,7 @@ jobs:
         run: sbt test
 
 # Copy logs to 1 directory, since upload-artifact doesnt support multiple directories or regular expressions
-      - name: Save logs
+      - name: Aggregate logs (to be saved in later steps)
         if: always()
         run: |
           mkdir logsArtifacts
@@ -31,22 +32,26 @@ jobs:
 #####################################
 ##        Save Artifacts           ##
 #####################################
-      - uses: actions/upload-artifact@v1
+      - name: Save Unit Tests Logs
+        uses: actions/upload-artifact@v1
         if: always()
         with:
           name: logsArtifacts
           path: logsArtifacts
-      - uses: actions/upload-artifact@v1
+      - name: Save Grid Unit Tests Logs 1
+        uses: actions/upload-artifact@v1
         if: always()
         with:
           name: client1.out
           path: server/cmwell-grid/target/client1.out
-      - uses: actions/upload-artifact@v1
+      - name: Save Grid Unit Tests Logs 2
+        uses: actions/upload-artifact@v1
         if: always()
         with:
           name: client2.out
           path: server/cmwell-grid/target/client2.out
-      - uses: actions/upload-artifact@v1
+      - name: Save Grid Unit Tests Logs 3
+        uses: actions/upload-artifact@v1
         if: always()
         with:
           name: node.out
@@ -59,7 +64,8 @@ jobs:
     runs-on: ubuntu-18.04
 
     steps:
-    - uses: actions/checkout@v1
+    - name: Checkout code
+      uses: actions/checkout@v1
     - name: Install Scala
       run: |
         wget https://downloads.lightbend.com/scala/2.12.8/scala-2.12.8.tgz
@@ -73,13 +79,15 @@ jobs:
 #####################################
 ##       Save IT Artifacts         ##
 ##################################### 
-    - uses: actions/upload-artifact@v1
+    - name: Save Integration Tests Logs (test logs)
+      uses: actions/upload-artifact@v1
       if: always()
       with:
         name: itLogs
         path: server/cmwell-it/target/logs
 
-    - uses: actions/upload-artifact@v1
+    - name: Save Integration Tests Logs (server logs)
+      uses: actions/upload-artifact@v1
       if: always()
       with:
         name: cmwellItLogs
