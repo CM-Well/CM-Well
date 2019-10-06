@@ -77,7 +77,6 @@ class ZCacheSpec extends AsyncFunSpec with Matchers {
     fetchData)(
     digest = identity, deserializer = btos, serializer = stob)(
     ttl, pollingMaxRetries, pollingInterval)(
-    //ExecutionContext.fromExecutor(Executors.newWorkStealingPool(10))
     ExecutionContext.fromExecutor(Executors.newWorkStealingPool(10)))
 
   val fetchViaL1L2 = l1l2(fetchData)(identity, btos, stob)(ttl, pollingMaxRetries, pollingInterval)(zCacheMem)
