@@ -10,6 +10,6 @@ jobs:
     steps:
     - name: Install Scala
       working-directory: server
-      run: sudo echo $PATH
+      run: pwd
     - name: Checking directory
-      run: sudo echo $PATH
+      run: pwd
