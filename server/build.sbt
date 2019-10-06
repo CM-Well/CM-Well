@@ -255,13 +255,9 @@ testOptions in Test in ThisBuild += Tests.Argument(TestFrameworks.ScalaTest, "-W
 testOptions in IntegrationTest in ThisBuild += Tests.Argument(TestFrameworks.ScalaTest, "-oD")
 testOptions in IntegrationTest in ThisBuild += Tests.Argument(TestFrameworks.ScalaTest, "-W", "10", "2")
 
-val ccft = Command.command("ccft") {
-  state => "clean" :: "compile" :: "Test/test" :: "IntegrationTest/test" :: state
-}
+addCommandAlias("fullTest","; Test/test ; IntegrationTest/test")
 
-addCommandAlias("full-test","; test ; it:test")
-
-commands += ccft
+addCommandAlias("ccft","; clean ; compile ; Test/test ; IntegrationTest/test")
 
 credentials in Global ~= {
   seq => {

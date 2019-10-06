@@ -55,7 +55,7 @@ object CMWellBuild extends AutoPlugin {
 		val install = TaskKey[Map[Artifact, File]]("install", "build + test, much like 'mvn install'")
 		val dataFolder = TaskKey[File]("data-folder", "returns the directory of static data to be uploaded")
 		val printDate = TaskKey[Unit]("print-date", "prints the date")
-		val fullTest = TaskKey[Unit]("full-test", "executes all tests in project in parallel (with respect to dependent tests)")
+		val fullTest = TaskKey[Unit]("fullTest", "executes all tests in project in parallel (with respect to dependent tests)")
 		val getData = TaskKey[Seq[java.io.File]]("get-data", "get data to upload to cm-well")
 		val getExternalComponents = TaskKey[Iterable[File]]("get-external-components", "get external dependencies binaries")
 		val testScalastyle = taskKey[Unit]("testScalastyle")
