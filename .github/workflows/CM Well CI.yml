@@ -1,0 +1,86 @@
+name: CI
+
+on: [pull_request]
+
+jobs:
+##################################
+##    Running all unit tests    ##
+##################################
+  unitTests:
+    runs-on: ubuntu-18.04
+
+    steps:
+      - uses: actions/checkout@v1
+      - name: Compile
+        timeout-minutes: 10
+        working-directory: server
+        run: sbt compile
+
+      - name: Test
+        working-directory: server
+        timeout-minutes: 30
+        run: sbt test
+
+# Copy logs to 1 directory, since upload-artifact doesnt support multiple directories or regular expressions
+      - name: Save logs
+        if: always()
+        run: |
+          mkdir logsArtifacts
+          find . -name logs | xargs -I LOG cp -r --parents LOG logsArtifacts/
+
+#####################################
+##        Save Artifacts           ##
+#####################################
+      - uses: actions/upload-artifact@v1
+        if: always()
+        with:
+          name: logsArtifacts
+          path: logsArtifacts
+      - uses: actions/upload-artifact@v1
+        if: always()
+        with:
+          name: client1.out
+          path: server/cmwell-grid/target/client1.out
+      - uses: actions/upload-artifact@v1
+        if: always()
+        with:
+          name: client2.out
+          path: server/cmwell-grid/target/client2.out
+      - uses: actions/upload-artifact@v1
+        if: always()
+        with:
+          name: node.out
+          path: server/cmwell-grid/target/node.out
+
+#####################################
+##  Running all integration tests  ##
+##################################### 
+  integrationTests:
+    runs-on: ubuntu-18.04
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Install Scala
+      run: |
+        wget https://downloads.lightbend.com/scala/2.12.8/scala-2.12.8.tgz
+        sudo tar -xf scala-2.12.8.tgz
+        sudo ln -s `pwd`/scala-2.12.8/bin/scala /usr/local/bin/scala
+    - name: Integration Tests
+      timeout-minutes: 30
+      working-directory: server
+      run: sbt IntegrationTest/test
+
+#####################################
+##       Save IT Artifacts         ##
+##################################### 
+    - uses: actions/upload-artifact@v1
+      if: always()
+      with:
+        name: itLogs
+        path: server/cmwell-it/target/logs
+
+    - uses: actions/upload-artifact@v1
+      if: always()
+      with:
+        name: cmwellItLogs
+        path: server/cmwell-it/target/cm-well/log
