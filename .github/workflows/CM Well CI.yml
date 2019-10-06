@@ -23,7 +23,7 @@ jobs:
         run: sbt test
 
 # Copy logs to 1 directory, since upload-artifact doesnt support multiple directories or regular expressions
-      - name: Save logs
+      - name: Aggregate logs (to be saved in later steps)
         if: always()
         run: |
           mkdir logsArtifacts
