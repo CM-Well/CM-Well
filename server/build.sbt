@@ -257,7 +257,7 @@ testOptions in IntegrationTest in ThisBuild += Tests.Argument(TestFrameworks.Sca
 
 addCommandAlias("fullTest","; Test/test ; IntegrationTest/test")
 
-addCommandAlias("ccft","; clean ; compile ; Test/test ; IntegrationTest/test")
+addCommandAlias("ccft","; clean ; compile ; fullTest")
 
 credentials in Global ~= {
   seq => {
