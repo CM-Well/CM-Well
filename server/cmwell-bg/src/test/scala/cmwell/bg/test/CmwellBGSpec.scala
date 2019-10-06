@@ -174,7 +174,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
 
       sendEm.flatMap { recordMetaDataSeq =>
 //        logger.info(s"waiting for 5 seconds for $recordMetaDataSeq")
-        cmwell.util.concurrent.spinCheck(250.millis, false, 30.seconds){
+        cmwell.util.concurrent.spinCheck(250.millis, true, 30.seconds){
           irwService.readPathAsync("/cmt/cm/bg-test1/info1", ConsistencyLevel.QUORUM)
         } (!_.isEmpty).map { infopt =>
             infopt should not be empty
@@ -187,7 +187,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
       val serializedCommand = CommandSerializer.encode(deletePathCommand)
       val pRecord = new ProducerRecord[Array[Byte], Array[Byte]]("persist_topic", serializedCommand)
       sendToKafkaProducer(pRecord).flatMap { recordMetaData =>
-        cmwell.util.concurrent.spinCheck(250.millis, false, 30.seconds) {
+        cmwell.util.concurrent.spinCheck(250.millis, true, 30.seconds) {
           irwService.readPathAsync("/cmt/cm/bg-test1/info0", ConsistencyLevel.QUORUM)
         } {
           case FullBox(_: DeletedInfoton) => true
@@ -295,9 +295,10 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
       // send them all
       val sendEm = Future.traverse(pRecords)(sendToKafkaProducer)
 
-      sendEm.flatMap { recordeMetadataSeq =>
-        cmwell.util.concurrent.spinCheck(250.millis, true, 30.seconds) {
-          val searchRes = ftsServiceES.search(
+      sendEm.flatMap { _ =>
+
+        val searchQuery = cmwell.util.concurrent.spinCheck(250.millis, true, 1.minute) {
+          ftsServiceES.search(
             pathFilter = Some(PathFilter("/cmt/cm/bg-test/indexTime", true)),
             fieldsFilter = Some(FieldFilter(Must, Equals, "system.lastModifiedBy", "Baruch")),
             datesFilter = None,
@@ -305,35 +306,37 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
             sortParams = SortParam("system.indexTime" -> Asc),
             withHistory = false,
             withDeleted = false
-          )
-          searchRes.flatMap{
-            searchResults =>
-              val ftsSortedPaths = searchResults.infotons.map(_.path)
-              val irwRes = Future.traverse(searchResults.infotons) { i =>
-                irwService.readUUIDAsync(i.uuid)
-              }
-              irwRes.map{x => (x, ftsSortedPaths)}
-          }}{
-          case (irwResults, ftsSortedPaths) =>
-              val irwSortedPaths = irwResults.sortBy(_.get.indexTime.get).map(_.get.path)
-              ftsSortedPaths == irwSortedPaths
-          }.map { case (irwResults, ftsSortedPaths) =>
-            withClue((irwResults, ftsSortedPaths)) {
-              val irwSortedPaths = irwResults.sortBy(_.get.indexTime.get).map(_.get.path)
-              ftsSortedPaths should contain theSameElementsInOrderAs irwSortedPaths
-            }
+          )}{_.infotons.size == 10}
+
+        def getQuery(infotons : Seq[Infoton]) = {
+          Future.traverse(infotons) { i =>
+            cmwell.util.concurrent.spinCheck(250.millis, true, 1.minute) {
+              irwService.readUUIDAsync(i.uuid)
+            }{!_.isEmpty}
           }
+        }
+
+        for {
+          searchRes <- searchQuery
+          getRes <- getQuery(searchRes.infotons)
+        } yield {
+          withClue((searchRes, getRes)) {
+            val ftsSortedPaths = searchRes.infotons.map(_.path)
+            val irwSortedPaths = getRes.sortBy(_.get.indexTime.get).map(_.get.path)
+            ftsSortedPaths should contain theSameElementsInOrderAs irwSortedPaths
+          }
+        }
       }
     }
 
     val markInfotonAsHistory = executeAfterCompletion(indexAllInfotons) {
       val writeCommand =
         WriteCommand(ObjectInfoton("/cmt/cm/bg-test1/info1", "dc", None, Map("i" -> Set(FieldValue("phone"))), None, "Hanna"))
+
       val pRecord = new ProducerRecord[Array[Byte], Array[Byte]]("persist_topic", CommandSerializer.encode(writeCommand))
       sendToKafkaProducer(pRecord).flatMap { recordMetadata =>
-        val searchResult = cmwell.util.concurrent.spinCheck(250.millis, false, 30.seconds) {
 
-          val f1 = ftsServiceES.search(
+        val f1 = cmwell.util.concurrent.spinCheck(250.millis, true, 30.seconds) (ftsServiceES.search(
             pathFilter = None,
             fieldsFilter = Some(MultiFieldFilter(Must, Seq(
               FieldFilter(Must, Equals, "system.path", "/cmt/cm/bg-test1/info1"),
@@ -342,35 +345,31 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
             datesFilter = None,
             paginationParams = DefaultPaginationParams,
             withHistory = true
-          )
+          )){_.infotons.size == 1}
 
-          val f2 = ftsServiceES.search(
-            pathFilter = None,
-            fieldsFilter = Some(MultiFieldFilter(Must, Seq(
-              FieldFilter(Must, Equals, "system.path", "/cmt/cm/bg-test1/info1"),
-              FieldFilter(Must, Equals, "system.current", "true"),
-              FieldFilter(Must, Equals, "system.lastModifiedBy", "Hanna")))),
-            datesFilter = None,
-            paginationParams = DefaultPaginationParams
-          )
+        val f2 = cmwell.util.concurrent.spinCheck(250.millis, true, 30.seconds) (ftsServiceES.search(
+          pathFilter = None,
+          fieldsFilter = Some(MultiFieldFilter(Must, Seq(
+            FieldFilter(Must, Equals, "system.path", "/cmt/cm/bg-test1/info1"),
+            FieldFilter(Must, Equals, "system.current", "true"),
+            FieldFilter(Must, Equals, "system.lastModifiedBy", "Hanna")))),
+          datesFilter = None,
+          paginationParams = DefaultPaginationParams
+        )){_.infotons.size == 1}
 
-          val f3 = irwService.historyAsync("/cmt/cm/bg-test1/info1", 1000)
+        val f3 = cmwell.util.concurrent.spinCheck(250.millis, true, 30.seconds) (irwService.historyAsync("/cmt/cm/bg-test1/info1", 1000)
+          ){_.size == 2}
 
-          for {
-            ftsSearchResponse1 <- f1
-            ftsSearchResponse2 <- f2
-            irwHistoryResponse <- f3
-          } yield (ftsSearchResponse1, ftsSearchResponse2, irwHistoryResponse)
-        }{
-          case (ftsSearchResponse1, ftsSearchResponse2, irwHistoryResponse) =>
-          (ftsSearchResponse1.infotons.size == 1) && (ftsSearchResponse2.infotons.size == 1) && (irwHistoryResponse.size == 2)
-        }
-
-        searchResult.flatMap{ case (ftsSearchResponse1, ftsSearchResponse2, irwHistoryResponse) =>
+        for {
+          ftsSearchResponse1 <- f1
+          ftsSearchResponse2 <- f2
+          irwHistoryResponse <- f3
+        } yield withClue(ftsSearchResponse1, ftsSearchResponse2, irwHistoryResponse){
             ftsSearchResponse1.infotons should have size 1
             ftsSearchResponse2.infotons should have size 1
             irwHistoryResponse should have size 2
         }
+
       }
     }
 
@@ -402,7 +401,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
       val sendEm = Future.traverse(pRecords)(sendToKafkaProducer)
 
       sendEm.flatMap { recordMetaDataSeq =>
-        cmwell.util.concurrent.spinCheck(250.millis, false, 30.seconds)
+        cmwell.util.concurrent.spinCheck(250.millis, true, 30.seconds)
         {ftsServiceES.search(
           pathFilter = Some(PathFilter("/cmt/cm/bg-test3", true)),
           fieldsFilter = Some(FieldFilter(Must, Equals, "system.lastModifiedBy", "Ori")),
@@ -571,18 +570,45 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
       val sendIt = sendToKafkaProducer(pRecord)
 
       sendIt.flatMap { recordMetaData=>
-        cmwell.util.concurrent.spinCheck(250.millis, false, 30.seconds) {
-          val f0 = ftsServiceES.search(
-            pathFilter = Some(PathFilter("/cmt/cm/bg-test4", descendants =  true)),
+          val f0 = cmwell.util.concurrent.spinCheck(250.millis, true, 30.seconds)(ftsServiceES.search(
+            pathFilter = Some(PathFilter("/cmt/cm/bg-test4", descendants = true)),
             fieldsFilter = Some(FieldFilter(Must, Equals, "system.lastModifiedBy", "Noga")),
             datesFilter = None,
-            paginationParams = DefaultPaginationParams)
+            paginationParams = DefaultPaginationParams)) { res =>
+            val paths = res.infotons.map(_.path)
+            (paths.size == 1) && (!paths.contains("/cmt/cm/bg-test4/deeply")) && (!paths.contains("/cmt/cm/bg-test4/deeply/nested")) &&
+              (!paths.contains("/cmt/cm/bg-test4/deeply/nested/overwrite")) && paths.contains("/cmt/cm/bg-test4/deeply/nested/overwrite/infobj")
+          }
 
-          val f1 = irwService.readPathAsync("/cmt/cm/bg-test4", ConsistencyLevel.QUORUM)
-          val f2 = irwService.readPathAsync("/cmt/cm/bg-test4/deeply", ConsistencyLevel.QUORUM)
-          val f3 = irwService.readPathAsync("/cmt/cm/bg-test4/deeply/nested", ConsistencyLevel.QUORUM)
-          val f4 = irwService.readPathAsync("/cmt/cm/bg-test4/deeply/nested/overwrite", ConsistencyLevel.QUORUM)
-          val f5 = irwService.readPathAsync("/cmt/cm/bg-test4/deeply/nested/overwrite/infobj", ConsistencyLevel.QUORUM)
+          val f1 = cmwell.util.concurrent.spinCheck(250.millis, true, 30.seconds)(
+            irwService.readPathAsync("/cmt/cm/bg-test4", ConsistencyLevel.QUORUM)
+          ) {
+            _.isEmpty
+          }
+
+          val f2 = cmwell.util.concurrent.spinCheck(250.millis, true, 30.seconds)(
+            irwService.readPathAsync("/cmt/cm/bg-test4/deeply", ConsistencyLevel.QUORUM)
+          ) {
+            _.isEmpty
+          }
+
+          val f3 = cmwell.util.concurrent.spinCheck(250.millis, true, 30.seconds)(
+            irwService.readPathAsync("/cmt/cm/bg-test4/deeply/nested", ConsistencyLevel.QUORUM)
+          ) {
+            _.isEmpty
+          }
+
+          val f4 = cmwell.util.concurrent.spinCheck(250.millis, true, 30.seconds)(
+            irwService.readPathAsync("/cmt/cm/bg-test4/deeply/nested/overwrite", ConsistencyLevel.QUORUM)
+          ) {
+            _.isEmpty
+          }
+
+          val f5 = cmwell.util.concurrent.spinCheck(250.millis, true, 30.seconds)(
+            irwService.readPathAsync("/cmt/cm/bg-test4/deeply/nested/overwrite/infobj", ConsistencyLevel.QUORUM)
+          ) {
+            !_.isEmpty
+          }
 
           for {
             r0 <- f0
@@ -591,15 +617,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
             r3 <- f3
             r4 <- f4
             r5 <- f5
-          } yield (r0,r1,r2,r3,r4,r5,recordMetaData)
-        }{case (r0,r1,r2,r3,r4,r5,recordMetaData) =>
-          val paths = r0.infotons.map(_.path)
-          (paths.size == 1) && (!paths.contains("/cmt/cm/bg-test4/deeply")) && (!paths.contains("/cmt/cm/bg-test4/deeply/nested")) &&
-          (!paths.contains("/cmt/cm/bg-test4/deeply/nested/overwrite")) && (paths.contains("/cmt/cm/bg-test4/deeply/nested/overwrite/infobj")) &&
-          r1.isEmpty && r2.isEmpty && r3.isEmpty && r4.isEmpty && !(r5.isEmpty)
-        }.map{
-          case (r0,r1,r2,r3,r4,r5,recordMetaData) =>
-          withClue(r0,r1,r2,r3,r4,r5,recordMetaData) {
+          } yield withClue(r0, r1, r2, r3, r4, r5, recordMetaData) {
             val paths = r0.infotons.map(_.path)
             paths shouldNot contain("/cmt/cm/bg-test4/deeply")
             paths shouldNot contain("/cmt/cm/bg-test4/deeply/nested")
@@ -612,7 +630,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
             r4 shouldBe empty
             r5 should not be empty
           }
-        }
+
       }
     }
 
