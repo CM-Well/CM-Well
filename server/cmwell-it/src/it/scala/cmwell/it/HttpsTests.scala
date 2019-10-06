@@ -18,6 +18,7 @@ package cmwell.it
 
 import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.{Assertion, AsyncFunSpec, Inspectors, Matchers}
+import play.api.libs.json.{JsDefined, JsNumber, Json}
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -162,7 +163,21 @@ class HttpsTests extends AsyncFunSpec with Matchers with Helpers with Inspectors
       """.stripMargin, queryParams = "format" -> "ntriples" :: Nil,
       headers = tokenHeader).flatMap { _ =>
         spinCheck(100.millis, true)(Http.get(cmw / "example.org" / "Y1"))(_.status==200).zip(
-        spinCheck(100.millis, true)(Http.get(cmw / "example.org" / "Y2"))(_.status==200))
+        spinCheck(100.millis, true)(Http.get(cmw / "example.org" / "Y2"))(_.status==200)).zip(
+        spinCheck(500.millis, true)(Http.get(cmw, List(
+              "op"          -> "search",
+              "qp"          -> "*path.system:/example.org/Y1,*path.system:/example.org/Y2",
+              "recursive"   -> "",
+              "format" -> "json"))){ r =>
+            r.status == 200 && {
+              val j = Json.parse(r.payload)
+              (j \ "results" \ "total" : @unchecked) match {
+                case JsDefined(JsNumber(bigDec)) => bigDec.intValue() == 2
+              }
+            }
+          }
+        )
+
     }.flatMap { _ =>
       spinCheck(100.millis, true)(
         Http.get(cmw / "meta" / "ns", queryParams = Seq("op"->"stream", "qp"->"url::https://purl3.org/vocab/relationship3/"))
