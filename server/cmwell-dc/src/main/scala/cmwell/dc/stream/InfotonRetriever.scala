@@ -214,7 +214,6 @@ object InfotonRetriever extends LazyLogging {
     val wrappedSubject = line.takeWhile(_ != space)
     if (wrappedSubject.length > 1 &&
         !wrappedSubject.startsWith("_:") &&
-        !line.contains("/meta/sys#uuid") &&
         !line.contains("/meta/sys#parent") &&
         !line.contains("/meta/sys#path")) {
       val uri = wrappedSubject.tail.init

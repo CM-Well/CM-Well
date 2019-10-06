@@ -59,7 +59,10 @@ object SingleMachineInfotonIngester extends LazyLogging {
         case (infotonSeq, state) => {
           val payloadBuilder = new ByteStringBuilder
           // no need for end line because each line in already suffixed with it
-          infotonSeq.foreach(payloadBuilder ++= _.data)
+          infotonSeq.foreach{
+            infoton => val filteredData = infoton.data.utf8String.split("\n").filterNot(_.contains("meta/sys#uuid")).mkString
+            payloadBuilder ++= ByteString(filteredData)
+          }
           val payload = payloadBuilder.result
           (createRequest(location, payload, dcKey.ingestOperation), state)
         }
