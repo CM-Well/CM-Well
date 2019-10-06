@@ -8,25 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v1
     - name: Install Scala
-      run: |
-        wget https://downloads.lightbend.com/scala/2.12.8/scala-2.12.8.tgz
-        sudo tar -xf scala-2.12.8.tgz
-        sudo ln -s `pwd`/scala-2.12.8/bin/scala /usr/local/bin/scala
-        sleep 5
-        sudo echo $PATH
-        sudo ls -l /usr/local/bin | grep scala
-        scala -version
-        cd server
-        sbt consIt/it:test
-    - uses: actions/upload-artifact@master
-      if: always()
-      with:
-        name: logs
-        path: server/cmwell-it/target/logs
-    - uses: actions/upload-artifact@master
-      if: always()
-      with:
-        name: cmwell-logs
-        path: server/cmwell-it/target/cm-well/log
+      working-directory: server
+      run: sudo echo $PATH
+    - name: Checking directory
+      run: sudo echo $PATH
