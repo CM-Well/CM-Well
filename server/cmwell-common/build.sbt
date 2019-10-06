@@ -108,5 +108,3 @@ sourceGenerators in Test += Def.task {
 }.taskValue
 
 buildInfoPackage := "cmwell.util.build"
-
-fullTest := (test in Test).value

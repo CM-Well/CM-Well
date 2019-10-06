@@ -8,5 +8,3 @@ libraryDependencies += {
   dm("io.circe","circe-parser")
 //  dm("io.circe","circe-optics")
 }
-
-fullTest := (test in Test).value

@@ -317,5 +317,3 @@ test in Test := {
 fork in Test := true
 
 baseDirectory in Test := file("cmwell-cons/app")
-
-fullTest := {}

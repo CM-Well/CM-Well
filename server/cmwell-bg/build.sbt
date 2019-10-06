@@ -58,6 +58,4 @@ val stopCassandraAndKafka = Def.task[Unit] {
 //  }
 //}.tag(Tags.ES,Tags.Cassandra,Tags.Grid,Tags.Kafka).value
 
-fullTest := (test in Test).value //dependsOn(fullTest in LocalProject("fts"),fullTest in LocalProject("zstore")).value
-
 unmanagedResources in Test += packResourceDir.value.keys.head / "logback.xml"
