@@ -68,7 +68,7 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
   }
 
   "BG" should "process priority commands" in {
-    implicit val ex = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
+    implicit val ex = ExecutionContext.fromExecutor(Executors.newWorkStealingPool(10))
 
     // prepare sequence of priority writeCommands
     val pWriteCommands = Seq.tabulate(2000) { n =>

@@ -35,7 +35,7 @@ import scala.io.Source
   */
 class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with BeforeAndAfterAll with Inspectors with LazyLogging {
 
-  implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
+  implicit val ec = ExecutionContext.fromExecutor(Executors.newWorkStealingPool(10))
   val _sp = cmw / "_sp"
   val sparqlIdentity = "CONSTRUCT { ?s ?p ?o . } WHERE { ?s ?p ?o }"
 

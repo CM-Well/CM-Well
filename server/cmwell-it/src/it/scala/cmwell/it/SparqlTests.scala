@@ -49,7 +49,7 @@ class SparqlTests extends FunSpec with Matchers with Helpers with BeforeAndAfter
 
   // todo generalize and move to Helpers
   def waitForData(path: StringPath, expectedDataLength: Int, maxRetries: Int = 32, sleepTime: FiniteDuration = 1.second) = {
-    implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
+    implicit val ec = ExecutionContext.fromExecutor(Executors.newWorkStealingPool(10))
 
     var (length, retry) = (0, 0)
     do {

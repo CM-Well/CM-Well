@@ -32,7 +32,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
  */
 class AuthTests extends FunSpec with Matchers with Helpers with LazyLogging {
 
-  implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(10))
+  implicit val ec = ExecutionContext.fromExecutor(Executors.newWorkStealingPool(10))
   val _login = cmw / "_login"
   val exampleObj = Json.obj("header" -> "TestHeader", "title" -> "TestTitle").toString
 
