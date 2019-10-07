@@ -895,10 +895,10 @@ abstract class Host(user: String,
      UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "conf/logback.xml", "cc17f60a18c6b7b5a797d2edd2c91119")
      UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "bin/cassandra", "c061bf15ce4b185fb8424fd1c12c1b41")
      UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "bin/cassandra.in.sh", "851a2a0514826162682a25953e710493")
-     //elasticsearch checksums were taken from version 7.1.0
+     //elasticsearch checksums were taken from version 7.4.0
      UtilCommands.verifyComponentConfNotChanged("elasticsearch", "config/elasticsearch.yml", "4f96a88585ab67663ccbca1c43649ed5")
-     UtilCommands.verifyComponentConfNotChanged("elasticsearch", "config/jvm.options", "d204b04d3fe8bea0b556b9d7c744cbcc")
-     UtilCommands.verifyComponentConfNotChanged("elasticsearch", "config/log4j2.properties", "d469bde82786d1bdb578e6688470e60c")
+     UtilCommands.verifyComponentConfNotChanged("elasticsearch", "config/jvm.options", "a80a0a9b5e95d5cdc5f4c3088f0d801e")
+     UtilCommands.verifyComponentConfNotChanged("elasticsearch", "config/log4j2.properties", "dbb23d025177409bdb734f3ad3efd147")
    }
 
   private def createAppLinks(hosts: GenSeq[String]) = {
