@@ -496,7 +496,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
       val sendEm = Future.traverse(pRecords)(sendToKafkaProducer)
 
       sendEm.flatMap { _ =>
-        cmwell.util.concurrent.spinCheck(250.millis, true, 30.seconds) {
+        cmwell.util.concurrent.spinCheck(250.millis, true, 2.minutes) {
           ftsServiceES.search(
             pathFilter = Some(PathFilter("/cmt/cm/bg-test/override_not_grouped", false)),
             fieldsFilter = Some(FieldFilter(Must, Equals, "system.lastModifiedBy", "Ohad")),
