@@ -16,6 +16,8 @@
 
 package cmwell.it
 
+import java.util.concurrent.Executors
+
 import cmwell.ctrl.utils.ProcUtil
 import cmwell.util.http.SimpleResponse.Implicits
 import cmwell.util.http.{SimpleResponse, StringPath}
@@ -24,9 +26,8 @@ import org.scalatest
 import org.scalatest.{BeforeAndAfterAll, FunSpec, Inspectors, Matchers}
 import play.api.libs.json.{JsArray, JsValue, Json}
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.io.Source
 
 /**
@@ -34,6 +35,7 @@ import scala.io.Source
   */
 class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with BeforeAndAfterAll with Inspectors with LazyLogging {
 
+  implicit val ec = ExecutionContext.fromExecutor(Executors.newWorkStealingPool(10))
   val _sp = cmw / "_sp"
   val sparqlIdentity = "CONSTRUCT { ?s ?p ?o . } WHERE { ?s ?p ?o }"
 
@@ -88,7 +90,6 @@ class PluginsFunctionalityTests extends FunSpec with Matchers with Helpers with 
     describe("should run SPARQL queries") {
       def testErr(something: String) = s"should run a SPARQL query with $something and get an error"
       def assertJsonFailure(req: Future[SimpleResponse[Array[Byte]]]) = {
-        import scala.concurrent.ExecutionContext.Implicits.global
         (Await.result(req.map(r => Json.parse(r.payload)), requestTimeout) \ "success").asOpt[Boolean] should be(Some(false))
       }
 

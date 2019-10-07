@@ -16,21 +16,18 @@
 
 package cmwell.fts
 
+import java.util.concurrent.Executors
+
 import cmwell.common.formats.JsonSerializerForES
 import cmwell.domain._
-import cmwell.util.build.BuildInfo
-import com.typesafe.scalalogging.{LazyLogging, Logger}
-import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
+import com.typesafe.scalalogging.LazyLogging
 import org.elasticsearch.client.Requests
-import org.elasticsearch.common.unit.TimeValue
 import org.elasticsearch.common.xcontent.XContentType
-import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
 import org.scalatest._
 
-import scala.concurrent.Await
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-import scala.io.Source
 
 /**
  * User: Israel
@@ -105,7 +102,7 @@ import scala.io.Source
 trait FTSServiceTestTrait extends BeforeAndAfterAll with LazyLogging{ this: Suite =>
   var ftsService:FTSService = _
 //  var embeddedElastic:EmbeddedElastic = _
-  implicit val executionContext =  scala.concurrent.ExecutionContext.global
+  implicit val executionContext =  ExecutionContext.fromExecutor(Executors.newWorkStealingPool(10))
   implicit val loger = logger
 
   override protected def beforeAll() {

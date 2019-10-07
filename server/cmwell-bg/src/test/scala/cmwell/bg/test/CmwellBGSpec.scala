@@ -312,7 +312,7 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
           Future.traverse(infotons) { i =>
             cmwell.util.concurrent.spinCheck(250.millis, true, 1.minute) {
               irwService.readUUIDAsync(i.uuid)
-            }{!_.isEmpty}
+            }{res => res.nonEmpty && res.get.indexName.nonEmpty}
           }
         }
 
