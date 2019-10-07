@@ -78,12 +78,12 @@ class CSVFormatter(fieldNameModifier: String => String) extends Formatter {
 
     val systemHeader = regularSystem ++ specialSystem
     val (internalFieldsMap, totalLength) = {
-      val intMap = (Map.empty[String, Int].withDefaultValue(0) /: infotons) { (m, i) =>
+      val intMap = infotons.foldLeft(Map.empty[String, Int].withDefaultValue(0)) { (m, i) =>
         {
           i.fields match {
             case None => m
             case Some(fields) =>
-              (m /: fields) {
+              fields.foldLeft(m) {
                 case (mm, (field, valueSet)) => mm.updated(field, max(mm(field), valueSet.size))
               }
           }

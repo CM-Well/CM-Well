@@ -49,9 +49,9 @@ abstract class RDFFormatter(hostForNs: String,
   }
 
   protected implicit class DatasetExtension(ds: Dataset) {
-    import scala.collection.JavaConversions._
+    import scala.collection.JavaConverters._
     def foreachNamedModel(f: Model => Unit): Dataset = {
-      ds.listNames.foreach(name => f(ds.getNamedModel(name)))
+      ds.listNames.asScala.foreach(name => f(ds.getNamedModel(name)))
       ds
     }
     def foreachModel(f: Model => Unit): Dataset = {
@@ -145,7 +145,7 @@ abstract class RDFFormatter(hostForNs: String,
     theFields match {
       case None => mEmptySeq
       case Some(m) =>
-        (mEmptySeq /: m) {
+        m.foldLeft(mEmptySeq) {
           case (seq, (f, set)) => {
             val (prop: Property, nsOpt: Option[(String, String)]) = f.lastIndexOf('.') match {
               case -1 => stringToNnProp(f) -> None
@@ -262,7 +262,7 @@ abstract class RDFFormatter(hostForNs: String,
               stringToSysProp("length") -> longToLtrl(length),
               stringToSysProp("total") -> longToLtrl(total))
 
-        (props /: children) {
+        children.foldLeft(props) {
           case (s, i) => {
             infoton(i)
             s :+ (childrenProp -> refToLtrl(uriFromPath(i.path, protocol = i.protocol)))
@@ -321,7 +321,7 @@ abstract class RDFFormatter(hostForNs: String,
   def thinResult(r: SearchThinResult)(implicit ds: Dataset): Dataset = {
     val model = ds.getDefaultModel
     val subject = model.createResource(AnonId.create("ThinResult"))
-    (model /: super.thinResult(r, stringToSysProp, stringToLtrl(_, None), longToLtrl, floatToLtrl)) {
+    super.thinResult(r, stringToSysProp, stringToLtrl(_, None), longToLtrl, floatToLtrl).foldLeft(model) {
       case (m, (p, l)) => m.add(ResourceFactory.createStatement(subject, p, l))
     }
     ds
@@ -330,7 +330,7 @@ abstract class RDFFormatter(hostForNs: String,
   def simpleResponse(sr: SimpleResponse)(implicit ds: Dataset): Dataset = {
     val model = ds.getDefaultModel
     val subject = model.createResource(AnonId.create("simpleResponse"))
-    (model /: super.simpleResponse(sr, stringToSysProp, stringToLtrl(_, None), boolToLtrl)) {
+    super.simpleResponse(sr, stringToSysProp, stringToLtrl(_, None), boolToLtrl).foldLeft(model) {
       case (m, (p, l)) => m.add(ResourceFactory.createStatement(subject, p, l))
     }
     ds
@@ -350,7 +350,7 @@ abstract class RDFFormatter(hostForNs: String,
           .add(ResourceFactory.createStatement(subject, stringToSysProp("size"), intToLtrl(bag.infotons.size)))
 
       }
-      (model /: bag.infotons) {
+      bag.infotons.foldLeft(model) {
         case (m, i) => {
           if (!filterOutBlanks) {
             m.add(ResourceFactory.createStatement(subject, infotons, refToLtrl(uriFromPath(i.path, protocol = i.protocol))))
@@ -377,7 +377,7 @@ abstract class RDFFormatter(hostForNs: String,
         )
       }
 
-      (model /: ihv.versions) {
+      ihv.versions.foldLeft(model) {
         case (m, i) => {
           if (!filterOutBlanks) {
             m.add(ResourceFactory.createStatement(subject, versions, refToLtrl(uriFromPath(i.path, protocol = i.protocol))))
@@ -406,12 +406,12 @@ abstract class RDFFormatter(hostForNs: String,
           )
           .add(ResourceFactory.createStatement(subject, stringToSysProp("size"), intToLtrl(rp.infotons.size)))
 
-        (model /: rp.irretrievablePaths) {
+        rp.irretrievablePaths.foldLeft(model) {
           case (m, p) => m.add(ResourceFactory.createStatement(subject, irretrievablePaths, stringToLtrl(p, None)))
         }
       }
 
-      (model /: rp.infotons) {
+      rp.infotons.foldLeft(model) {
         case (m, i) => {
           if (!filterOutBlanks) {
             m.add(ResourceFactory.createStatement(subject, infotons, refToLtrl(uriFromPath(i.path, protocol = i.protocol))))
@@ -425,7 +425,7 @@ abstract class RDFFormatter(hostForNs: String,
   def pagination(pi: PaginationInfo,
                  subject: Resource = ResourceFactory.createResource())(implicit ds: Dataset): Dataset = {
     val model = ds.getDefaultModel
-    (model /: super.pagination(pi, stringToSysProp, stringToLtrl(_, None), refToLtrl)) {
+    super.pagination(pi, stringToSysProp, stringToLtrl(_, None), refToLtrl).foldLeft(model) {
       case (m, (p, l)) => m.add(ResourceFactory.createStatement(subject, p, l))
     }
     ds
@@ -452,7 +452,7 @@ abstract class RDFFormatter(hostForNs: String,
         model.add(ResourceFactory.createStatement(subject, stringToSysProp("length"), longToLtrl(sr.length)))
       }
 
-      (model /: sr.infotons) {
+      sr.infotons.foldLeft(model) {
         case (m, i) => {
           if (!filterOutBlanks) {
             m.add(ResourceFactory.createStatement(subject, stringToSysProp("infotons"), refToLtrl(uriFromPath(i.path, protocol = i.protocol))))
@@ -493,7 +493,7 @@ abstract class RDFFormatter(hostForNs: String,
       ir.infotons
         .map(
           infotons =>
-            (model /: infotons) {
+            infotons.foldLeft(model) {
               case (m, i) => {
                 infoton(i)(ds)
                 m.add(
@@ -631,10 +631,10 @@ abstract class QuadsFormatter(host: String,
   protected def getLang: Lang
 
   override def render(formattable: Formattable): String = {
-    import scala.collection.JavaConversions._
+    import scala.collection.JavaConverters._
 
     val dataset = formattableToDataset(formattable)
-    dataset.listNames.foreach { name =>
+    dataset.listNames.asScala.foreach { name =>
       {
         val alias = quadToAlias(name)
         alias.foreach { prefix =>
