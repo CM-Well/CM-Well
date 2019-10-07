@@ -15,13 +15,15 @@
 
 package cmwell.util.testSuitHelpers.test
 
+import java.util.concurrent.Executors
+
 import com.dimafeng.testcontainers.{Container, LazyContainer}
 import org.junit.runner.Description
 
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 class MultipleContainersParallelExecution private(containers: Seq[LazyContainer[_]]) extends Container {
-  import scala.concurrent.ExecutionContext.Implicits.global
+  implicit val ec = ExecutionContext.fromExecutor(Executors.newWorkStealingPool(10))
   import scala.concurrent.duration._
 
   override def finished()(implicit description: Description): Unit = {

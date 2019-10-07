@@ -17,6 +17,7 @@
 package cmwell.it
 
 import java.io.{ByteArrayInputStream, StringWriter}
+import java.util.concurrent.Executors
 
 import cmwell.util.concurrent.SimpleScheduler.scheduleFuture
 import cmwell.util.http.{SimpleResponse, SimpleResponseHandler, StringPath}
@@ -250,7 +251,7 @@ trait Helpers { self: LazyLogging =>
     import cmwell.util.concurrent.unsafeRetryUntil
     import cmwell.util.http.{SimpleHttpClient, SimpleResponse, SimpleResponseHandler}
     import SimpleHttpClient.{Body, SimpleMessageHandler}
-    val ec = scala.concurrent.ExecutionContext.global
+    val ec = ExecutionContext.fromExecutor(Executors.newWorkStealingPool(10))
 
     private def retryOn503Ingests[T](request: => Future[SimpleResponse[T]]): Future[SimpleResponse[T]] =
       unsafeRetryUntil[SimpleResponse[T]](_.status != 503, 23, 42.millis, 2)(request)(ec)
