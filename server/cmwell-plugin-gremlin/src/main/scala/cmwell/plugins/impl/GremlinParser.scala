@@ -63,7 +63,8 @@ class GremlinParser extends SgEngineClient {
       val iterator = p.iterator()
       val stringBuilder = StringBuilder.newBuilder
       while (iterator.hasNext())
-       stringBuilder.append(iterator.next() + "\n");
+       stringBuilder.append(iterator.next() + "\n")
+      stringBuilder.toString()
     }
 
     val firstNode = extractStartElementFromQuery.map(e => Try(graph.getVertex(e)).getOrElse(graph.getEdge(e)))
