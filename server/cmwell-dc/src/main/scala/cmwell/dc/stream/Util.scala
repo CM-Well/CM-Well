@@ -60,6 +60,7 @@ object Util extends LazyLogging {
   }
 
   def extractDcType(dcKey:String):String = {
+    import scala.language.reflectiveCalls
     dataCenterIdTokenParser.parse(dcKey) match{
       case Success(dcToken) => dcToken.dcType
       case Failure(err) => throw new IllegalArgumentException(s"Failed to extract dctype from dc token for dc key$dcKey", err)
