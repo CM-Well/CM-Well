@@ -142,12 +142,17 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
         sparqlMaterializer =  metadata.agentConfig.sparqlMaterializer
       )
     }
+    case Some((None, _)) => logger.error("metadata is None!"); ???
+    case None => logger.error("Context(metadata) is None!"); ???
   }
 
   val (stpAgentSink, postIngestSource) =
     MergeHub.source[(ByteString,Option[StpMetadata])](perProducerBufferSize = 256)
-      .groupBy(2, { case (_, Some(stpMetadata)) =>
-        stpMetadata.agentConfig.force.getOrElse(false) } )
+      .groupBy(2, {
+        case (_, Some(stpMetadata)) =>
+          stpMetadata.agentConfig.force.getOrElse(false)
+        case (_, None) => logger.error("stpMetadata is None"); ???
+      } )
     .groupedWeightedWithin((25*1024), 10.seconds)(_._1.size)
     .via(
       Ingester.ingesterFlow(baseUrl = settings.hostWriteOutput,
@@ -156,6 +161,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
         extractContext = (context: Option[StpMetadata]) => context match {
           case Some(stpMetadata) => IngesterRuntimeConfig(stpMetadata.agentConfig.force.getOrElse(false),
             stpMetadata.agentConfig.name)
+          case None => logger.error("Context(stpMetadata) is None!"); ???
         },
         connectionPool = Some(Retry.createNewHostConnectionPool[StpMetadata](settings.hostWriteOutput))
       )
