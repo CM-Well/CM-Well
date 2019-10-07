@@ -573,8 +573,8 @@ class ImpStream(partition: Int,
     Flow[Message[Array[Byte], Array[Byte], Seq[Offset]]]
       .via(
       Producer
-        .flow[Array[Byte], Array[Byte], Seq[Offset]](kafkaProducerSettings)
-        .map { _.message.passThrough }
+        .flexiFlow[Array[Byte], Array[Byte], Seq[Offset]](kafkaProducerSettings)
+        .map { _.passThrough }
         )
 
   // @formatter:off
