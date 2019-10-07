@@ -213,7 +213,7 @@ package object collections {
                                                       ev1: Outer[Inner] <:< TraversableLike[Inner, Outer[Inner]],
                                                       cbf: CanBuildFrom[Inner, T, Inner]): Inner = {
 
-    val size: Int = (0 /: xs)((ac, in) => ac + in.size)
+    val size: Int = xs.foldLeft(0)((ac, in) => ac + in.size)
     val builder = cbf()
     builder.sizeHint(size)
 
