@@ -2350,10 +2350,9 @@ abstract class Host(user: String,
     import java.net.NetworkInterface
     import java.util
 
-    import scala.collection.JavaConversions._
     import scala.collection.JavaConverters._
 
-    val interfaces: Seq[java.net.NetworkInterface] = util.Collections.list(NetworkInterface.getNetworkInterfaces())
+    val interfaces: Seq[java.net.NetworkInterface] = util.Collections.list(NetworkInterface.getNetworkInterfaces()).asScala
     val validInterfaceOpt = interfaces.collectFirst {
       case i
         if (command(s"ping -c 1 -I ${i.getName} $ipToCheckAgainst ; echo $$?").get
