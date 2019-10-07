@@ -127,6 +127,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
             case Failure(exception) => logger.error(
               s"$labelValue api garden mis-configured, call Yaniv to increase! host=${getHostname(h)} status=$s cannot read entity", exception
             )
+            case Success(_) =>
           }
 
           // schedule a retry to http stream
@@ -278,6 +279,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
               }.onComplete{
               case Failure(err) => logger.warn(s"$labelValue client error: will retry again in $delay to send a single request, " +
                 s"host=${getHostnameValue(h)} status=$s, cannot read entity, request data=${stringifyData(data)}", err)
+              case Success(_) =>
             }
 
             None // failed to send a single data element
