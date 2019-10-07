@@ -39,7 +39,7 @@ import security.{AuthUtils, PermissionLevel, Token}
 import wsutil._
 
 import scala.annotation.tailrec
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.immutable.{Map => IMap, Set => ISet}
 import scala.collection.mutable.{ListBuffer, Map => MMap, Set => MSet}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -470,7 +470,7 @@ object LDFormatParser extends LazyLogging {
 
   def validateAuth(authUtils: AuthUtils)(model: Model, dels: Resource => Boolean, token: Option[Token]): Unit = {
     val paths = ListBuffer[String]()
-    val it = model.listStatements()
+    val it = model.listStatements().asScala
     it.foreach { stmt =>
       val s = stmt.getSubject
       if (!((s.isAnon && dels(s)) || isGlobalMetaOp(stmt))) {
@@ -507,7 +507,7 @@ object LDFormatParser extends LazyLogging {
     val metaNsInfotonsAcc = MMap.empty[String, Map[DirectFieldKey, Set[FieldValue]]]
     val urlToLastAcc = MMap.empty[String, String]
     val modelsSeqWithdefaultModel: Seq[(Option[String], Model)] = Seq(None -> defaultModel)
-    val graphModelsTuplesSeq = (modelsSeqWithdefaultModel /: ds.listNames) {
+    val graphModelsTuplesSeq = ds.listNames.asScala.foldLeft(modelsSeqWithdefaultModel) {
       case (acc, name) => {
         val m = ds.getNamedModel(name)
         val (u2lMap, nsiMap) =
@@ -522,7 +522,7 @@ object LDFormatParser extends LazyLogging {
       convertMetaMapToInfotonFormatMap(cmwellRDFHelper, timeContext, defaultModel, urlToLastAcc.keySet.toSet)
 
     val feedbacks = List.newBuilder[String]
-    val metaQuadsMap = (IMap.empty[String, Map[DirectFieldKey, Set[FieldValue]]] /: graphModelsTuplesSeq) {
+    val metaQuadsMap = graphModelsTuplesSeq.foldLeft(IMap.empty[String, Map[DirectFieldKey, Set[FieldValue]]]) {
       case (m, (subGraph, model)) => {
         val quadOpt = subGraph.flatMap(uri => Option(model.getNsURIPrefix(uri)).map(_ -> uri))
         quadOpt match {
@@ -624,7 +624,7 @@ object LDFormatParser extends LazyLogging {
           val feedbacks = List.newBuilder[String] ++= partialFeedback
           val dels: Set[Resource] = {
             val p = model.createProperty("cmwell://meta/sys#", "markDelete")
-            val it = model.listStatements(null, p, null)
+            val it = model.listStatements(null, p, null).asScala
             val all = for {
               stmt <- it
               o = stmt.getObject
@@ -633,7 +633,7 @@ object LDFormatParser extends LazyLogging {
           }
 
           val (delSubs, regular) = {
-            val (delSubs, regular) = model.listStatements().partition(s => dels(s.getSubject.asResource))
+            val (delSubs, regular) = model.listStatements().asScala.partition(s => dels(s.getSubject.asResource))
             val filteredRegular = regular.filterNot(stmt => {
               val sub = stmt.getSubject
               //i.e: this is `this document's subject`, which is used for global operations
@@ -646,17 +646,17 @@ object LDFormatParser extends LazyLogging {
 
           if (isOverwrite) {
 
-            logger.debug(model.listStatements().toIterable.mkString("\n"))
+            logger.debug(model.listStatements().asScala.mkString("\n"))
 
-            val metaNamespaces = model.listNameSpaces().count(_.contains("/meta/sys#"))
+            val metaNamespaces = model.listNameSpaces().asScala.count(_.contains("/meta/sys#"))
             if (metaNamespaces != 0 || subGraph.isEmpty) {
               require(metaNamespaces == 1,
                 "must use exactly one `/meta/sys#` namespace in document when forcing uniquness, namespaces found:" +
-                  model.listNameSpaces().mkString("[", ",", "]"))
-              val metaNs = model.listNameSpaces().find(_.contains("/meta/sys#")).get
+                  model.listNameSpaces().asScala.mkString("[", ",", "]"))
+              val metaNs = model.listNameSpaces().asScala.find(_.contains("/meta/sys#")).get
               val props: Seq[Property] =
                 Seq("type", "lastModified", "lastModifiedBy", "dataCenter", "indexTime").map(model.createProperty(metaNs, _))
-              val subIt = model.listSubjects()
+              val subIt = model.listSubjects().asScala
               var subPred: String = ""
               var l: java.util.List[RDFNode] = null
               require(
@@ -666,7 +666,7 @@ object LDFormatParser extends LazyLogging {
                     val rv = l.size == 1
                     if (!rv) {
                       subPred =
-                        l.map(o => s"<${s.toString}> <${p.toString}> <${o.toString}> .").mkString("[ ", " , ", " ]")
+                        l.asScala.map(o => s"<${s.toString}> <${p.toString}> <${o.toString}> .").mkString("[ ", " , ", " ]")
                     }
                     rv
                   }
@@ -751,7 +751,7 @@ object LDFormatParser extends LazyLogging {
                 case Left(MarkDelete) if obj.isAnon => {
                   //predicate-value iterator
                   val pvit = for {
-                    delStmt <- model.listStatements(obj.asResource, null, null)
+                    delStmt <- model.listStatements(obj.asResource, null, null).asScala
                     p = delStmt.getPredicate
                     v = delStmt.getObject
                   } yield p -> v
@@ -1003,14 +1003,14 @@ object LDFormatParser extends LazyLogging {
                                        model: Model,
                                        urlExcludes: Set[String]): (Map[String, String], InfotonRepr) = {
 
-    val noJenaMap = model.getNsPrefixMap.toSeq.collect {
+    val noJenaMap = model.getNsPrefixMap.asScala.toSeq.collect {
       case (shortName, uriValue) if !shortName.matches("""[Jj].\d+""") && shortName != "" =>
         uriValue -> shortName
     }.toMap
 
     val all = {
       val it = model
-        .listStatements()
+        .listStatements().asScala
         .map(_.getPredicate.getNameSpace)
         .filterNot(_.matches(metaOpRegex("(sys|ns|nn)")))
 

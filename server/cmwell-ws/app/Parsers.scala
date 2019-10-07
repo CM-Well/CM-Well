@@ -179,6 +179,9 @@ package util {
     def rawFieldParser: Parser[RawField[FieldValeOperator]] = ",field" ~> ("::" | ":") ~ fieldParser ^^ {
       case "::" ~ f => NonAnalyzedField -> f
       case ":" ~ f  => AnalyzedField -> f
+      case other =>
+        logger.error(s"$other is not implemented!")
+        ???
     }
 
     def sizeParser: Parser[Int] = ",size:" ~ pNumber ^^ {
