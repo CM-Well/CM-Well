@@ -21,7 +21,7 @@ import java.io.File
 import java.nio.file._
 import java.nio.file.StandardWatchEventKinds._
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
 
@@ -53,7 +53,7 @@ case class DirWatcher(dirPath: String, events: Seq[java.nio.file.WatchEvent.Kind
             key = watcher.take
 
             val events = key.pollEvents
-            events.foreach { event =>
+            events.asScala.foreach { event =>
               val path = event.context().asInstanceOf[Path]
               callBack(path.toString, event.kind())
             }

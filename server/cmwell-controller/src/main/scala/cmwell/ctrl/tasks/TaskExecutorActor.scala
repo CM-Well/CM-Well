@@ -17,7 +17,6 @@ package cmwell.ctrl.tasks
 import akka.actor.{Actor, ActorRef}
 import akka.actor.Actor.Receive
 import akka.util.Timeout
-import cmwell.ctrl.tasks.TaskSuccessful
 import com.typesafe.scalalogging.LazyLogging
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
