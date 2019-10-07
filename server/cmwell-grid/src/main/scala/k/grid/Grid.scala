@@ -263,7 +263,7 @@ object Grid extends LazyLogging {
                       args: Any*): ActorRef = g.createSomewhere(white, black, clazz, name, args: _*)
 
   // TODO: remove this ASAP.
-  @deprecated
+  @deprecated("marked by Gilad", "long ago")
   def selectByPath(path: String): ActorSelection = g.selectByPath(path)
 
   def selectActorAnywhere(name: String): ActorSelection = g.selectActorAnywhere(name)
