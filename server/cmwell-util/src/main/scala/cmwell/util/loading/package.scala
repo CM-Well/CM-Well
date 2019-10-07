@@ -15,13 +15,13 @@
 package cmwell.util
 
 import java.util.zip.{ZipEntry, ZipFile}
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 package object loading {
   def extractClassNamesFromJarFile(jarFilePath: String): Seq[String] = {
     def isNamedClass(entry: ZipEntry): Boolean = !entry.isDirectory && !entry.getName.contains('$')
     def normalize(fileLikeClassname: String): String = fileLikeClassname.replaceAll("/", ".").replaceAll(".class", "")
 
-    new ZipFile(jarFilePath).entries().filter(isNamedClass).map(ent => normalize(ent.getName)).toSeq
+    new ZipFile(jarFilePath).entries().asScala.filter(isNamedClass).map(ent => normalize(ent.getName)).toSeq
   }
 }

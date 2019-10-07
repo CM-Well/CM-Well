@@ -59,11 +59,8 @@ object SimpleScheduler extends LazyLogging {
       }
     }
 
-    //prepare returns `this` anyway in all seen cases... (can't see why NOT do this)
-    val ec = executionContext.prepare()
-
     val cancellable = timer.scheduleAtFixedRate(new Runnable {
-      override def run(): Unit = ec.execute(runnable)
+      override def run(): Unit = executionContext.execute(runnable)
     }, initialDelay.toMillis, period.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
 
     Cancellable(cancellable, mayInterruptIfRunning)
