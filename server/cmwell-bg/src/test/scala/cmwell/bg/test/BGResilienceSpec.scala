@@ -113,7 +113,7 @@ class BGResilienceSpec extends AsyncFlatSpec with BeforeAndAfterAll with BgEsCas
           datesFilter = None,
           paginationParams = PaginationParams(0, 1)
         )
-      } catch {case _ => Future.failed(new RuntimeException)}
+      } catch {case _ : Throwable => Future.failed(new RuntimeException)}
     } (_.total == 1500)
 
     for {
