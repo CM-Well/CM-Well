@@ -341,6 +341,7 @@ object SparqlProcessor extends DataToolsLogging with DataToolsConfig {
       case (Some((context, startTime)), dataLines) =>
         logger.debug("received response from sparql and startTime={}", startTime)
         Future.successful(dataLines -> context)
+      case (None, dataLines) => logger.error(s"Didn't receive response from sparql or startTime for dataLines: $dataLines"); ???
     }
     .mapAsyncUnordered(httpParallelism) {
       case (dataLines, context) =>

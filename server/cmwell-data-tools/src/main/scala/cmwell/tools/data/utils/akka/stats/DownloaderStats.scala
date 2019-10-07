@@ -261,7 +261,7 @@ class DownloaderStats[T](isStderr: Boolean,
             lastTime = now
             lastMessageSize = message.size
           } catch {
-            case x => logger.error(s"error: $x", x)
+            case x : Throwable => logger.error(s"error: $x", x)
           }
         }
       }
