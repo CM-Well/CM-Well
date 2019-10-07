@@ -85,7 +85,7 @@ object GridMonitoring {
 
   private def getRoleSymbol(jvmInfo: JvmInfo): String = {
     jvmInfo.role match {
-      case k.grid.Member       => "△"
+      case k.grid.GridMember   => "△"
       case k.grid.Controller   => "▲"
       case k.grid.ClientMember => "◯"
     }

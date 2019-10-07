@@ -18,7 +18,7 @@ import akka.actor.Actor.Receive
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
 import java.lang.management.ManagementFactory
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 /**
   * Created by michael on 2/7/16.
@@ -40,16 +40,16 @@ case class NodeLeft(host: String)
 
 trait GridRole
 case object ClientMember extends GridRole
-case object Member extends GridRole
+case object GridMember extends GridRole
 case object Controller extends GridRole
 
-trait MemberStatus
-case object Running extends MemberStatus
-case object Stopped extends MemberStatus
+trait GridMemberStatus
+case object Running extends GridMemberStatus
+case object Stopped extends GridMemberStatus
 
 case object GetClientInfo
 case class JvmInfo(role: GridRole,
-                   status: MemberStatus,
+                   status: GridMemberStatus,
                    pid: Int,
                    uptime: Long,
                    memInfo: Set[MemoryInfo],
@@ -59,7 +59,7 @@ case class JvmInfo(role: GridRole,
                    sampleTime: Long = System.currentTimeMillis())
 
 case class MemoryInfo(name: String, used: Long, max: Long) {
-  def usedPercent: Int = (used.toDouble / max.toDouble) * 100.0 toInt
+  def usedPercent: Int = (used.toDouble / max.toDouble * 100.0).toInt
 }
 case class GcInfo(name: String, gcCount: Long, gcTime: Long)
 
@@ -80,13 +80,13 @@ class ClientActor extends Actor with LazyLogging {
   override def preStart(): Unit = {}
 
   private def getGcInfo: Set[GcInfo] = {
-    gcbeans.map { gc =>
+    gcbeans.asScala.map { gc =>
       GcInfo(gc.getName, gc.getCollectionCount, gc.getCollectionTime)
     }.toSet
   }
 
   private def getMemUsage: Set[MemoryInfo] = {
-    mpools.map { pool =>
+    mpools.asScala.map { pool =>
       val usage = pool.getUsage
       MemoryInfo(pool.getName, usage.getUsed, if (usage.getMax <= 0) usage.getCommitted else usage.getMax)
     }.toSet
@@ -155,7 +155,7 @@ class ClientActor extends Actor with LazyLogging {
 
       val role = {
         if (Grid.isController && Grid.isSingletonJvm) Controller
-        else if (Grid.isController && !Grid.isSingletonJvm) Member
+        else if (Grid.isController && !Grid.isSingletonJvm) GridMember
         else ClientMember
       }
 
