@@ -27,6 +27,8 @@ import scala.util.{Failure, Success, Try}
 
 class GremlinParser extends SgEngineClient {
 
+  import scala.collection.JavaConverters._
+
   override def eval(ds: Dataset, query: String): String = {
     val graph: com.tinkerpop.blueprints.Graph = new JenaGraph(ds.getDefaultModel) // todo figure out if Quads cannot be supported on Gremlin!!!
     val engine: ScriptEngine = new GremlinGroovyScriptEngine()
@@ -59,13 +61,7 @@ class GremlinParser extends SgEngineClient {
       typedPipe
     }
 
-    def read(p: Pipe[_, _]) = {
-      val iterator = p.iterator()
-      val stringBuilder = StringBuilder.newBuilder
-      while (iterator.hasNext())
-       stringBuilder.append(iterator.next() + "\n")
-      stringBuilder.toString()
-    }
+    def read(p: Pipe[_, _]) = p.iterator().asScala.mkString("\n")
 
     val firstNode = extractStartElementFromQuery.map(e => Try(graph.getVertex(e)).getOrElse(graph.getEdge(e)))
 
