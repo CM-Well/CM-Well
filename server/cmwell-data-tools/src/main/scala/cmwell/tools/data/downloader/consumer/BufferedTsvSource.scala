@@ -104,6 +104,7 @@ class BufferedTsvSource(initialToken: Future[String],
         case (infotons, Some(nextToken)) =>
           infotons.foreach {
             case (token, tsvData: TsvData) => addToBuffer.invoke((Some(token, tsvData)))
+            case (token, TsvEmpty) => logger.error(s"Got TsvEmpty for: $token"); ???
           }
 
           changeCurrentConsumeTokenState.invokeWithFeedback(nextToken).flatMap({ _ =>
@@ -115,6 +116,8 @@ class BufferedTsvSource(initialToken: Future[String],
               getHandler(out).onPull()
             })
           })
+
+        case (infotons, None) => logger.error(s"Token is None for: $infotons"); ???
       }
 
       currentConsumeToken = Await.result(initialToken, 5.seconds)

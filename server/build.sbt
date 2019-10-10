@@ -36,7 +36,7 @@ def stripTime(version: String) = version match {
 ThisBuild / version ~= stripTime
 ThisBuild / dynver ~= stripTime
 
-scalaVersion in Global := "2.12.8"
+scalaVersion in Global := "2.12.10"
 //javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint")
 initialize := {
   import semverfi._

@@ -15,7 +15,6 @@
 package cmwell.irw
 
 import java.nio.ByteBuffer
-import java.util.NoSuchElementException
 import java.util.concurrent.TimeUnit
 
 import akka.NotUsed
@@ -27,16 +26,15 @@ import cmwell.driver.{Dao, DaoExecution}
 import cmwell.util.collections.partitionWith
 import cmwell.util.concurrent.{FutureTimeout, travector}
 import cmwell.util.jmx._
-import cmwell.util.{Box, BoxedFailure, EmptyBox, FullBox}
+import cmwell.util.{Box, BoxedFailure, FullBox}
 import cmwell.zstore.ZStore
 import com.datastax.driver.core._
-import com.datastax.driver.core.querybuilder.Truncate
 import com.datastax.driver.core.utils.Bytes
 import com.google.common.cache.{Cache, CacheBuilder}
 import com.typesafe.scalalogging.LazyLogging
 import org.joda.time.DateTime
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.concurrent._
 import scala.concurrent.duration.{Duration => SDuration, _}
 import scala.util.{Failure, Success}
@@ -363,7 +361,7 @@ class IRWServiceNativeImpl2(
           h.result
         }
       }
-      executeAsync(new BatchStatement(BatchStatement.Type.UNLOGGED).addAll(stmts), failStringFunc())
+      executeAsync(new BatchStatement(BatchStatement.Type.UNLOGGED).addAll(stmts.asJava), failStringFunc())
     }
 
     Future.sequence(futureResults).onComplete {

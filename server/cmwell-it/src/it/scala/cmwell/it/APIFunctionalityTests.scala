@@ -788,10 +788,10 @@ class APIFunctionalityTests extends AsyncFunSpec
           Http.get(ik, List("format" -> "ntriples")).map{ res =>
             res.status should be >=200
             res.status should be <400 //status should be OK
-            import scala.collection.JavaConversions._
+            import scala.collection.JavaConverters._
             val m = ModelFactory.createDefaultModel()
             m.read(new ByteArrayInputStream(res.payload),null,"N-TRIPLE")
-            val it = m.listStatements()
+            val it = m.listStatements().asScala
             it.collect{
               case stmt if stmt.getPredicate.getLocalName.toUpperCase == "NOTE" => {
                 stmt.getObject.asLiteral.getLanguage

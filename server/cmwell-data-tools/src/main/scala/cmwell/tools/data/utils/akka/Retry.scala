@@ -123,14 +123,12 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                   h
                 )} status=$s entity=${strictEntity.data.utf8String} data=${concatByteStrings(data, endl).utf8String}"
               )
-            }
-            .onFailure {
-              case err =>
-                logger.error(
-                  s"$labelValue api garden mis-configured, call Yaniv to increase! host=${getHostname(h)} status=$s cannot read entity",
-                  err
-                )
-            }
+            }.onComplete{
+            case Failure(exception) => logger.error(
+              s"$labelValue api garden mis-configured, call Yaniv to increase! host=${getHostname(h)} status=$s cannot read entity", exception
+            )
+            case Success(_) =>
+          }
 
           // schedule a retry to http stream
 //        e.discardBytes()
@@ -278,12 +276,11 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                 badDataLogger.info(
                   s"$labelValue data=${concatByteStrings(data, endl).utf8String}"
                 )
-              }
-              .onFailure {
-                case err =>
-                  logger.warn(s"$labelValue client error: will retry again in $delay to send a single request, " +
-                              s"host=${getHostnameValue(h)} status=$s, cannot read entity, request data=${stringifyData(data)}", err)
-              }
+              }.onComplete{
+              case Failure(err) => logger.warn(s"$labelValue client error: will retry again in $delay to send a single request, " +
+                s"host=${getHostnameValue(h)} status=$s, cannot read entity, request data=${stringifyData(data)}", err)
+              case Success(_) =>
+            }
 
             None // failed to send a single data element
           }
@@ -486,6 +483,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
           Future.successful(data) -> State(data = data, context = context, vars=Map())
         case ( (data : Seq[ByteString], vars : Map[String,String]), context) =>
           Future.successful(data) -> State(data = data, context = context, vars=vars)
+        case e => logger.error(s"Unexpected state. got: $e"); ???
       }
       .via(GoodRetry.concat(Long.MaxValue, job)(retryWith))
       .map { case (result, state) => (result, state.data, state.context) }

@@ -757,7 +757,7 @@ ${csvToMarkdownTableRows(csvData)}
     val hostsToSessions = crudServiceFS.countSearchOpenContexts
     val lines = hostsToSessions.map {
       case (host, sessions) => s"|$host|$sessions|"
-    } :+ s"| **Total** | ${(0L /: hostsToSessions) {
+    } :+ s"| **Total** | ${hostsToSessions.foldLeft(0L) {
       case (sum, (_, add)) => sum + add
     }} |"
     s"""

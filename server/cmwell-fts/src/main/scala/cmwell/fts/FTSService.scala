@@ -1662,7 +1662,7 @@ case class ESIndexRequest(esAction:DocWriteRequest[_], newIndexTime:Option[Long]
   override def toString() = {
     if (esAction.isInstanceOf[UpdateRequest]) {
       val updateRequest = esAction.asInstanceOf[UpdateRequest]
-      s"UpdateRequest: ${updateRequest.doc.index(updateRequest.index).id(updateRequest.id).`type`(updateRequest.`type`())}"
+      s"UpdateRequest: ${updateRequest.doc.index(updateRequest.index).id(updateRequest.id)}"
     } else {
       esAction.toString
     }

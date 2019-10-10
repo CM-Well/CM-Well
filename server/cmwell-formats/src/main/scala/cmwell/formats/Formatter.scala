@@ -132,7 +132,7 @@ trait Formatter extends LazyLogging {
 //  }
 
   def cleanDuplicatesPreserveOrder[T](values: Seq[T]): Seq[T] =
-    ((Seq.empty[T] -> Set.empty[T]) /: values) {
+    values.foldLeft((Seq.empty[T] -> Set.empty[T])) {
       case (tup @ (seq, set), v) if set(v) => tup
       case ((seq, set), v)                 => (seq :+ v) -> set
     }._1

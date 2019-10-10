@@ -7,7 +7,7 @@ libraryDependencies ++=  Seq(
 
 val s = Seq(
   shellPrompt := { s => Project.extract(s).currentProject.id + " > " },
-  scalaVersion := "2.12.8"
+  scalaVersion := "2.12.10"
 )
 
 sourceGenerators in Compile += Def.task {
@@ -17,8 +17,8 @@ sourceGenerators in Compile += Def.task {
      |
      |object Versions {
      |  val cassandra = "3.11.4"
-     |  val elasticsearch = "7.1.1"
-     |  val kafka = "2.2.1"
+     |  val elasticsearch = "7.4.0"
+     |  val kafka = "2.3.0"
      |  val play = "${PluginVersions.play}"
      |  val zookeeper = "3.4.13"
      |}
