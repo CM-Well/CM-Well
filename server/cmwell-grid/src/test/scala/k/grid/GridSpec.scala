@@ -49,7 +49,7 @@ object TestConfig {
 
 class GridSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
 
-  implicit val timeout = Timeout(40 seconds)
+  implicit val timeout = Timeout(40.seconds)
   implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(5))
   val expectedMembers = 4
   var serviceJvmName : String = _
@@ -65,6 +65,7 @@ class GridSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
   }
 
   def spawnProcesses: Unit = {
+    import scala.language.postfixOps
     // scalastyle:off
     Future{s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/node-data -Dcmwell.grid.monitor.port=8001 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceNode" #> new File(s"${TestConfig.rootDir}/node.out") !}
     Future{s"java -Dcmwell.grid.dmap.persistence.data-dir=${TestConfig.rootDir}/client1-data -Dcmwell.grid.monitor.port=8002 -cp ${TestConfig.jarName} k.grid.testgrid.TestServiceClient" #> new File(s"${TestConfig.rootDir}/client1.out") !}
@@ -74,6 +75,7 @@ class GridSpec extends FlatSpec with Matchers with BeforeAndAfterAll {
   }
 
   def killProcesses: Unit = {
+    import scala.language.postfixOps
     Seq("ps", "aux") #| Seq("grep", "TestService") #| Seq("awk", "{print $2}") #| Seq("xargs", "kill", "-9") !
   }
 
