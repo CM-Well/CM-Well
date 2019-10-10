@@ -162,8 +162,8 @@ trait Helpers { self: LazyLogging =>
     val selector = new org.apache.jena.rdf.model.SimpleSelector(null,null, null.asInstanceOf[org.apache.jena.rdf.model.RDFNode]) {
       override def selects(s: Statement): Boolean = s.getSubject.isAnon
     }
-    model1.listStatements(selector).asScala.foreach(model1.remove)
-    model2.listStatements(selector).asScala.foreach(model2.remove)
+    model1.listStatements(selector).asScala.toList.foreach(model1.remove)
+    model2.listStatements(selector).asScala.toList.foreach(model2.remove)
 
     // remove the values that varies according to time.
     model2.remove(getStatementsExcludes(model2, excludes))
