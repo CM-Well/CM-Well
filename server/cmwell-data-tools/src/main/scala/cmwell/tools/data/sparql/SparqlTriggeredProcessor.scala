@@ -74,6 +74,7 @@ object SparqlTriggeredProcessor extends DataToolsLogging {
           horizon = horizon,
           remaining = remainingInfotons,
           label = downloadStats.label)
+      case (elem, None) => logger.error(s"downloadStats is None for element: $elem"); ???
     }
 
     Flow[DownloadElement]
