@@ -510,7 +510,7 @@ case class SparqlQuery(sources: Seq[String], imports: Seq[String], queries: Seq[
       }
     }
 
-    val populateResultsFut = (ntriplesFutures.head.map(convert) /: ntriplesFutures.tail) {
+    val populateResultsFut = ntriplesFutures.tail.foldLeft(ntriplesFutures.head.map(convert)) {
       case (fm, fs) =>
         fm.flatMap { m =>
           fs.map(t => m.merge(convert(t)))
@@ -691,7 +691,7 @@ case class GremlinQuery(sources: Seq[String], imports: Seq[String], queries: Seq
       case Left(_)   => DatasetFactory.create()
       case Right(ds) => ds
     }
-    val modelFuture = (first /: ntriplesFutures.tail) {
+    val modelFuture = ntriplesFutures.tail.foldLeft(first) {
       case (fm, fs) =>
         fm.flatMap(
           m =>
@@ -976,8 +976,8 @@ class SourcesImporter(override val crudServiceFS: CRUDServiceFS)
 
 object JenaUtils {
   def getNamedModels(ds: Dataset): Map[String, Model] = {
-    import scala.collection.JavaConversions._
-    ds.listNames().map(name => name -> ds.getNamedModel(name)).toMap
+    import scala.collection.JavaConverters._
+    ds.listNames().asScala.map(name => name -> ds.getNamedModel(name)).toMap
   }
 
   def expandDataset(dataset: Dataset, constructQuery: String) = {
@@ -1005,9 +1005,9 @@ object JenaUtils {
   }
 
   def filter(m: Model)(predicate: Statement => Boolean): Model = {
-    import scala.collection.JavaConversions._
+    import scala.collection.JavaConverters._
     val filteredModel = ModelFactory.createDefaultModel()
-    m.listStatements().filter(predicate).foreach(filteredModel.add)
+    m.listStatements().asScala.filter(predicate).foreach(filteredModel.add)
     filteredModel
   }
 
@@ -1019,9 +1019,9 @@ object JenaUtils {
   }
 
   def discardQuadsAndFlattenAsTriples(ds: Dataset): Model = {
-    import scala.collection.JavaConversions._
+    import scala.collection.JavaConverters._
     val model = ModelFactory.createDefaultModel()
-    val allTriples = ds.getDefaultModel.listStatements ++ getNamedModels(ds).values.flatMap(_.listStatements)
+    val allTriples = ds.getDefaultModel.listStatements.asScala ++ getNamedModels(ds).values.flatMap(_.listStatements.asScala)
     allTriples.foreach(model.add)
     model
   }
