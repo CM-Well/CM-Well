@@ -152,7 +152,7 @@ trait Helpers { self: LazyLogging =>
 
   // compare two rdf strings.
   def compareRDF(s1 : String , s2 : String , format : String, excludes : Array[String]) : Either[String, Unit] = {
-    import scala.collection.JavaConversions._
+    import scala.collection.JavaConverters._
     val model1: Model = ModelFactory.createDefaultModel
     val model2: Model = ModelFactory.createDefaultModel
     model1.read(new ByteArrayInputStream(s1.getBytes("UTF-8")), null, format)
@@ -162,8 +162,8 @@ trait Helpers { self: LazyLogging =>
     val selector = new org.apache.jena.rdf.model.SimpleSelector(null,null, null.asInstanceOf[org.apache.jena.rdf.model.RDFNode]) {
       override def selects(s: Statement): Boolean = s.getSubject.isAnon
     }
-    model1.listStatements(selector).toList.foreach(model1.remove)
-    model2.listStatements(selector).toList.foreach(model2.remove)
+    model1.listStatements(selector).asScala.foreach(model1.remove)
+    model2.listStatements(selector).asScala.foreach(model2.remove)
 
     // remove the values that varies according to time.
     model2.remove(getStatementsExcludes(model2, excludes))
