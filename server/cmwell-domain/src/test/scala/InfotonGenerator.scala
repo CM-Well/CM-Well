@@ -15,6 +15,7 @@
 
 
 import cmwell.domain._
+import org.joda.time.DateTime
 import org.scalacheck.Gen
 
 /**
@@ -53,8 +54,11 @@ object InfotonGenerator {
       })
       Map[String,Set[FieldValue]]() ++ m
     }
+    val currTime = new DateTime
+    val systemFields = SystemFields(path.mkString("/", "/", ""), currTime, "Baruch", "dc_test", None, "indexName", "https")
+
     iType match {
-      case 0 => ObjectInfoton(path.mkString("/", "/", ""), "dc_test", None, mkFields, None, "Baruch")
+      case 0 => ObjectInfoton(systemFields, mkFields)
       case 1 => {
         val (content, mimeType): Tuple2[Array[Byte],String] = scala.util.Random.nextBoolean() match{
           case true => (txtVal.getBytes("UTF-8"),"text/plain")
@@ -68,8 +72,7 @@ object InfotonGenerator {
           case false => None
           case true => Some(mkFields)
         }
-        FileInfoton(path=path.mkString("/", "/", ""),"dc_test", fields=f, content=Some(FileContent(content, mimeType)),protocol = None,
-          lastModifiedBy = "Baruch")
+        FileInfoton(systemFields, fields=f, content=Some(FileContent(content, mimeType)))
       }
       case 2 => ??? //unreacable for now, TODO: add LinkInfoton Generation
       case _ => ??? //should never get here
@@ -77,11 +80,11 @@ object InfotonGenerator {
   }
 
   val sCmp: Function2[Infoton,Infoton,Boolean] = (i,j) =>  {
-    i.path == j.path && {
-      List(i.lastModified, j.lastModified).size match {
+    i.systemFields.path == j.systemFields.path && {
+      List(i.systemFields.lastModified, j.systemFields.lastModified).size match {
         case 0 => true
         case 1 => false
-        case _ => i.lastModified.compareTo(j.lastModified) == 0
+        case _ => i.systemFields.lastModified.compareTo(j.systemFields.lastModified) == 0
       }
     } && {
       List(i.uuid, j.uuid).flatten.size match {
