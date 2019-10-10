@@ -252,15 +252,28 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
     }
 
     f2.flatMap { _ =>
+      //checking Async version
       val vecSizeTry = Try {
+        // lets check history method
+        val vec = irw.historyAsync(objInfo.path, 100000)
+        vec.map(_.size)
+      }
+
+      withClue(vecSizeTry.transform(i => Try(s"got $i"), e => Try(stackTraceToString(e)))) {
+        vecSizeTry.isSuccess should be(true)
+        vecSizeTry.get.map(_ should equal(2))
+      }
+
+      //checking Sync version
+      val vecSizeTry2 = Try {
         // lets check history method
         val vec = irw.history(objInfo.path, 100000)
         vec.size
       }
 
-      withClue(vecSizeTry.transform(i => Try(s"got $i"), e => Try(stackTraceToString(e)))) {
-        vecSizeTry.isSuccess should be(true)
-        vecSizeTry.get should equal(2)
+      withClue(vecSizeTry2.transform(i => Try(s"got $i"), e => Try(stackTraceToString(e)))) {
+        vecSizeTry2.isSuccess should be(true)
+        vecSizeTry2.get should equal(2)
       }
     }
   }
