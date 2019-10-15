@@ -13,9 +13,9 @@
   * limitations under the License.
   */
 
-
+package cmwell.domainTest
 import cmwell.domain._
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, DateTimeZone}
 import org.scalacheck.Gen
 
 /**
@@ -23,8 +23,11 @@ import org.scalacheck.Gen
  */
 object InfotonGenerator {
 
+  val currTime = new DateTime(DateTimeZone.UTC)
+  val genericSystemFields = SystemFields("some/meaningless/path", currTime, "Baruch", "dc_test", None, "indexName", "https")
+
   val infotons: Gen[Infoton] = for {
-    iType <- Gen.choose(0,1) //TODO: extend to (0,2) to have also LinkInfoton generation
+                         iType <- Gen.choose(0,1) //TODO: extend to (0,2) to have also LinkInfoton generation
     path <- Gen.resize(7, Gen.nonEmptyListOf[String](Gen.resize(5, Gen.identifier)))
     fields <- Gen.resize(4, Gen.nonEmptyListOf[String](Gen.resize(5, Gen.identifier)))
     strVals <- Gen.resize(4, Gen.nonEmptyContainerOf[Set, String](Gen.identifier))
@@ -36,8 +39,8 @@ object InfotonGenerator {
     decVals <- Gen.resize(4, Gen.nonEmptyContainerOf[Set, java.math.BigDecimal](Gen.choose(-100.0, 100.0).map(BigDecimal(_).underlying)))
     txtVal <- Gen.resize(50, Gen.identifier)
     blnVal <- Gen.oneOf(true,false)
-  //    binVal <- Gen.resize(50, Gen.nonEmptyContainerOf[Array,Byte](Gen.choose(0.toByte,255.toByte)))
-  //    extVals <- Gen.resize(4, Gen.nonEmptyContainerOf[Set, String](Gen.identifier)) //TODO: FExtenal, FDate, FReference
+    //    binVal <- Gen.resize(50, Gen.nonEmptyContainerOf[Array,Byte](Gen.choose(0.toByte,255.toByte)))
+    //    extVals <- Gen.resize(4, Gen.nonEmptyContainerOf[Set, String](Gen.identifier)) //TODO: FExtenal, FDate, FReference
   } yield {
     def mkFields = {
       val m = scala.collection.mutable.Map[String, Set[FieldValue]]()
@@ -54,8 +57,7 @@ object InfotonGenerator {
       })
       Map[String,Set[FieldValue]]() ++ m
     }
-    val currTime = new DateTime
-    val systemFields = SystemFields(path.mkString("/", "/", ""), currTime, "Baruch", "dc_test", None, "indexName", "https")
+    val systemFields = genericSystemFields.copy(path = path.mkString("/", "/", ""))
 
     iType match {
       case 0 => ObjectInfoton(systemFields, mkFields)

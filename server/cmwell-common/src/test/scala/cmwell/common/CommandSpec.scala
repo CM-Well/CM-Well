@@ -16,7 +16,7 @@
 
 package cmwell.common
 
-import cmwell.common.InfotonSerializationSpecification.dateTime
+import cmwell.domainTest.InfotonGenerator.genericSystemFields
 import cmwell.common.formats.{CompleteOffset, Offset, PartialOffset}
 import cmwell.domain.{FString, _}
 import com.typesafe.scalalogging.LazyLogging
@@ -32,19 +32,19 @@ import org.scalatest._
   */
 
 class CommandSpec extends FlatSpec with Matchers with LazyLogging {
-  val systemFieldsWithoutPath = SystemFields("", dateTime, "Baruch", "dc_test", None, "indexName", "http")
+
   "command encode decode" should "be successful" in {
     System.setProperty("dataCenter.id", "dc_test")
     //Log.TRACE() turns on logging of chill
     // create object infoton
-    val objInfo = ObjectInfoton(systemFieldsWithoutPath.copy(path = "/command-test/objinfo1"), Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))))
+    val objInfo = ObjectInfoton(genericSystemFields.copy(path = "/command-test/objinfo1"), Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))))
     // create all commands case classes for serialization testing
     // scalastyle:off
-    val linkInfo01 = LinkInfoton(systemFieldsWithoutPath.copy(path = "/command-test/objinfo1"),
+    val linkInfo01 = LinkInfoton(genericSystemFields.copy(path = "/command-test/objinfo1"),
       Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), "/mark", LinkType.Forward)
-    val linkInfo02 = LinkInfoton(systemFieldsWithoutPath.copy(path = "/command-test/objinfo1"),
+    val linkInfo02 = LinkInfoton(genericSystemFields.copy(path = "/command-test/objinfo1"),
       Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), "/mark", LinkType.Permanent)
-    val linkInfo03 = LinkInfoton(systemFieldsWithoutPath.copy(path = "/command-test/objinfo1"),
+    val linkInfo03 = LinkInfoton(genericSystemFields.copy(path = "/command-test/objinfo1"),
       Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), "/mark", LinkType.Temporary)
     // scalastyle:on
 
@@ -71,14 +71,9 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
     val cmdUpdate = UpdatePathCommand("/command-test/update", deleteF, updateF, updateDate, "Baruch", protocol = "http")
 
     val currentTime = System.currentTimeMillis()
-    val overrideInfoton = new ObjectInfoton(SystemFields(
-      path = s"/cmt/cm/bg-test/re_process_ow/info_override",
+    val overrideInfoton = new ObjectInfoton(genericSystemFields.copy(path =s"/cmt/cm/bg-test/re_process_ow/info_override",
       lastModified = new DateTime(currentTime, DateTimeZone.UTC),
-      "Ori",
-      dc = "dc",
-      indexTime = Some(currentTime),
-      indexName = "cm_well_p0_0",
-      protocol = "http"),
+      "Ori"),
       fields = Some(Map("a" -> Set(FieldValue("b"), FieldValue("c"))))
     )
 
@@ -130,7 +125,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
 
   "file infoton decode" should "be successful" in {
     System.setProperty("dataCenter.id", "dc_test")
-    val fInfoton = FileInfoton(systemFieldsWithoutPath.copy(path = "/stam/kacha"), content = Some(FileContent("test text".getBytes("UTF-8"), "text/plain")))
+    val fInfoton = FileInfoton(genericSystemFields.copy(path = "/stam/kacha"), content = Some(FileContent("test text".getBytes("UTF-8"), "text/plain")))
     val payload: Array[Byte] = CommandSerializer.encode(WriteCommand(fInfoton))
     val cmpCommand = CommandSerializer.decode(payload)
     val wc = cmpCommand.asInstanceOf[WriteCommand]
@@ -139,14 +134,11 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
   }
 
   "OverWrite encode and decode" should "be successful" in {
-    val owcmd = OverwriteCommand(ObjectInfoton(SystemFields(
-      "/exmaple.org/spiderman",
-      new DateTime("2015-02-25T16:03:57.216Z", DateTimeZone.UTC),
-      "Baruch",
-      "other-dc",
-      Some(12345L),
-      "indexName",
-      "http"),
+    val owcmd = OverwriteCommand(ObjectInfoton(genericSystemFields.copy(
+      path = "/exmaple.org/spiderman",
+      lastModified = new DateTime("2015-02-25T16:03:57.216Z", DateTimeZone.UTC),
+      lastModifiedBy = "Baruch",
+      indexTime = Some(12345L)),
       Map("enemyOf.rel" -> Set[FieldValue](FString("green-goblin")))))
     val payload: Array[Byte] = CommandSerializer.encode(owcmd)
     val cmpCommand = CommandSerializer.decode(payload)
@@ -160,15 +152,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
   }
 
   "IndexNewInfotonCommand with infoton" should "be successfully encoded/decoded" in {
-    val infoton = ObjectInfoton(SystemFields(
-      "/cmt/cm/news/1",
-      DateTime.now(DateTimeZone.UTC),
-      "Baruch",
-      "dc",
-      None,
-      "indexName",
-      "http"),
-      Map("a" -> Set[FieldValue](FString("b"))))
+    val infoton = ObjectInfoton(genericSystemFields, Map("a" -> Set[FieldValue](FString("b"))))
     val indexCommand = IndexNewInfotonCommand(infoton.uuid, true, infoton.systemFields.path, Some(infoton), "someIndexName")
     val payload = CommandSerializer.encode(indexCommand)
     val decodedCommand = CommandSerializer.decode(payload).asInstanceOf[IndexNewInfotonCommand]
@@ -176,15 +160,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
   }
 
   "IndexNewInfotonCommand without infoton" should "be successfully encoded/decoded" in {
-    val infoton = ObjectInfoton(SystemFields(
-      "/cmt/cm/news/1",
-      DateTime.now(DateTimeZone.UTC),
-      "Baruch",
-      "dc",
-      None,
-      "IndexName",
-      "http"),
-      Map("a" -> Set[FieldValue](FString("b"))))
+    val infoton = ObjectInfoton(genericSystemFields, Map("a" -> Set[FieldValue](FString("b"))))
     val indexCommand = IndexNewInfotonCommand(infoton.uuid, true, infoton.systemFields.path, None, "someIndexName")
     val payload = CommandSerializer.encode(indexCommand)
     val decodedCommand = CommandSerializer.decode(payload).asInstanceOf[IndexNewInfotonCommand]
@@ -192,15 +168,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
   }
 
   "IndexNewInfotonCommandForIndexer with infoton" should "be successfully encoded/decoded" in {
-    val infoton = ObjectInfoton(SystemFields(
-      "/cmt/cm/news/1",
-      DateTime.now(DateTimeZone.UTC),
-      "Baruch",
-      "dc",
-      None,
-      "IndexName",
-      "http"),
-      Map("a" -> Set[FieldValue](FString("b"))))
+    val infoton = ObjectInfoton(genericSystemFields, Map("a" -> Set[FieldValue](FString("b"))))
     val offsets: Seq[Offset] = Seq(
       PartialOffset("blahTopic", 98253344, 3, 4),
       CompleteOffset("blahTopic2", 498273923)
@@ -212,15 +180,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
   }
 
   "IndexNewInfotonCommandForIndexer without infoton" should "be successfully encoded/decoded" in {
-    val infoton = ObjectInfoton(SystemFields(
-      "/cmt/cm/news/1",
-      DateTime.now(DateTimeZone.UTC),
-      "Brauch",
-      "dc",
-      None,
-      "indexName",
-      "http"),
-      Map("a" -> Set[FieldValue](FString("b"))))
+    val infoton = ObjectInfoton(genericSystemFields, Map("a" -> Set[FieldValue](FString("b"))))
     val offsets: Seq[Offset] = Seq(
       PartialOffset("blahTopic", 98253344, 3, 4),
       CompleteOffset("blahTopic2", 498273923)
@@ -263,14 +223,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
   }
 
   "TrackingID de/serialization" should "be enabled for any SingleCommand" in {
-    val objInfot = ObjectInfoton(SystemFields(
-      "/command-test/objinfo1",
-      DateTime.now(DateTimeZone.UTC),
-      "Brauch",
-      "dc_test",
-      None,
-      "indexName",
-      "http"),
+    val objInfot = ObjectInfoton(genericSystemFields,
       Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))))
     val wCommand = WriteCommand(objInfot, Some("sweet_kids"))
     val eCommand = CommandSerializer.encode(wCommand)
@@ -279,15 +232,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
   }
 
   "TrackingID de/serialization" should "be enabled for any IndexCommand" in {
-    val objInfot = ObjectInfoton(SystemFields(
-      "/command-test/objinfo1",
-      DateTime.now(DateTimeZone.UTC),
-      "Brauch",
-      "dc_test",
-      None,
-      "indexName",
-      "http"),
-      Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))))
+    val objInfot = ObjectInfoton(genericSystemFields, Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))))
     val iCommand = IndexNewInfotonCommand(objInfot.uuid, true, objInfot.systemFields.path, None, "", Seq(StatusTracking("sweet", 2), StatusTracking("kids", 1)))
     val eCommand = CommandSerializer.encode(iCommand)
     val dCommand = CommandSerializer.decode(eCommand).asInstanceOf[IndexNewInfotonCommand]
@@ -295,15 +240,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
   }
 
   "prevUUID de/serialization" should "be enabled for any SingleCommand" in {
-    val objInfot = ObjectInfoton(SystemFields(
-      "/command-test/objinfo1",
-      DateTime.now(DateTimeZone.UTC),
-      "Baruch",
-      "dc_test",
-      None,
-      "IndexName",
-      "http"),
-      Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))))
+    val objInfot = ObjectInfoton(genericSystemFields, Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))))
     val wCommand = WriteCommand(objInfot, None, Some("0123456789abcdef0123456789abcdef"))
     val eCommand = CommandSerializer.encode(wCommand)
     val dCommand = CommandSerializer.decode(eCommand).asInstanceOf[WriteCommand]
@@ -311,15 +248,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
   }
 
   "TrackingID and prevUUID de/serialization" should "be enabled for any SingleCommand" in {
-    val objInfot = ObjectInfoton(SystemFields(
-      "/command-test/objinfo1",
-      DateTime.now(DateTimeZone.UTC),
-      "Baruch",
-      "dc_test",
-      None,
-      "IndexName",
-      "http"),
-      Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))))
+    val objInfot = ObjectInfoton(genericSystemFields, Map("name" -> Set[FieldValue](FString("Neta-li"), FString("Shalev"))))
     val wCommand = WriteCommand(objInfot, Some("cute_kids"), Some("0123456789abcdef0123456789abcdef"))
     val eCommand = CommandSerializer.encode(wCommand)
     val dCommand = CommandSerializer.decode(eCommand).asInstanceOf[WriteCommand]

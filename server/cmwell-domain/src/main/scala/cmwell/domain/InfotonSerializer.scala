@@ -14,13 +14,16 @@
   */
 package cmwell.domain
 
+import java.util.TimeZone
+
 import collection.{breakOut, mutable}
 import scala.Predef._
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.{DateTimeFormatter, ISODateTimeFormat}
 import org.apache.commons.codec.binary._
 import com.typesafe.scalalogging.LazyLogging
 import cmwell.syntaxutils._
+
 import scala.util.{Success, Try}
 import scala.collection.mutable.{Map => MMap}
 
@@ -91,7 +94,7 @@ object InfotonSerializer extends LazyLogging {
     }
 
     def setLastModified(lastModified: String): Unit = {
-      if (this.lastModified eq null) this.lastModified = fmt.parseDateTime(lastModified)
+      if (this.lastModified eq null) this.lastModified = fmt.withZone(DateTimeZone.UTC).parseDateTime(lastModified)
       else {
         val newLastModified = fmt.parseDateTime(lastModified)
         if (this.lastModified.compareTo(newLastModified) == 0)

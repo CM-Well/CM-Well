@@ -18,17 +18,13 @@ package cmwell.common
 
 import org.scalacheck._
 import Prop.forAll
-import cmwell.common.formats.{JsonSerializer, JsonSerializer6}
 import cmwell.domain._
-import org.joda.time.DateTime
+import cmwell.domainTest.InfotonGenerator.genericSystemFields
 
 /**
  * Created by gilad on 7/29/14.
  */
 object InfotonSerializationSpecification extends Properties("Infoton") {
-
-  val dateTime = new DateTime
-  val systemFieldsWithoutPath = SystemFields("", dateTime, "Baruch", "dc_test", None, "indexName", "http")
 
   val infotons: Gen[Infoton] = for {
     iType <- Gen.choose(0,1) //TODO: extend to (0,2) to have also LinkInfoton generation
@@ -64,7 +60,7 @@ object InfotonSerializationSpecification extends Properties("Infoton") {
       Map[String,Set[FieldValue]]() ++ m
     }
     iType match {
-      case 0 => ObjectInfoton(systemFieldsWithoutPath.copy(path = path.mkString("/", "/", "")), mkFields)
+      case 0 => ObjectInfoton(genericSystemFields.copy(path = path.mkString("/", "/", "")), mkFields)
       case 1 => {
         val (content, mimeType): Tuple2[Array[Byte],String] = scala.util.Random.nextBoolean() match{
           case true => (txtVal.getBytes("UTF-8"),"text/plain")
@@ -78,7 +74,7 @@ object InfotonSerializationSpecification extends Properties("Infoton") {
           case false => None
           case true => Some(mkFields)
         }
-        FileInfoton(systemFieldsWithoutPath.copy(path = path.mkString("/", "/", "")), f, Some(FileContent(content, mimeType)))
+        FileInfoton(genericSystemFields.copy(path = path.mkString("/", "/", "")), f, Some(FileContent(content, mimeType)))
       }
       case 2 => ??? //unreacable for now, TODO: add LinkInfoton Generation
       case _ => ??? //should never get here
