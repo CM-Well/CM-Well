@@ -24,7 +24,7 @@ import org.scalacheck.Gen
 object InfotonGenerator {
 
   val currTime = new DateTime(DateTimeZone.UTC)
-  val genericSystemFields = SystemFields("some/meaningless/path", currTime, "Baruch", "dc_test", None, "indexName", "https")
+  val genericSystemFields = SystemFields("some/meaningless/path", currTime, "Baruch", "dc_test", None, "indexName", "http")
 
   val infotons: Gen[Infoton] = for {
                          iType <- Gen.choose(0,1) //TODO: extend to (0,2) to have also LinkInfoton generation
