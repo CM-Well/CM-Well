@@ -61,8 +61,8 @@ object SingleMachineInfotonIngester extends LazyLogging {
           // no need for end line because each line in already suffixed with it
           infotonSeq.foreach{i=>
             val firstLine = i.data.takeWhile(_ != stream.newLine)
-            if(i.data.takeWhile(_ != stream.newLine).contains(ByteString("meta/sys#uuid")))
-              payloadBuilder ++= i.data.take(firstLine.length)
+            if(firstLine.utf8String.contains("meta/sys#uuid"))
+              payloadBuilder ++= i.data.drop(firstLine.length)
             else
               payloadBuilder ++= i.data
           }

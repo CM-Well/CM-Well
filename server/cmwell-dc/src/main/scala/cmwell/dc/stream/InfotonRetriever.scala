@@ -14,7 +14,7 @@
   */
 package cmwell.dc.stream
 
-import akka.NotUsed
+import akka.{NotUsed, util}
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.coding.Gzip
@@ -29,6 +29,7 @@ import cmwell.dc.Settings._
 import cmwell.dc.stream.MessagesTypesAndExceptions._
 import cmwell.dc.{LazyLogging, Settings}
 import cmwell.util.akka.http.HttpZipDecoder
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
@@ -70,7 +71,7 @@ object InfotonRetriever extends LazyLogging {
 
     def getQuads(indexTimeN: Long, modifierN: Option[String]) = {
       def modifier = modifierN.fold(throw ModifierMissingException(subject))(identity)
-      uuid.fold("")(u => s"""<$subject> <cmwell://meta/sys#uuid> "$u"^^<http://www.w3.org/2001/XMLSchema#string> .\n""") ++
+      uuid.fold(throw UuidMissingException(subject))(u => s"""<$subject> <cmwell://meta/sys#uuid> "$u"^^<http://www.w3.org/2001/XMLSchema#string> .\n""") ++
       indexTime.fold(s"""<$subject> <cmwell://meta/sys#indexTime> "$indexTimeN"^^<http://www.w3.org/2001/XMLSchema#long> .\n""")(_ => "") ++
       lastModifiedBy.fold(s"""<$subject> <cmwell://meta/sys#lastModifiedBy> "$modifier"^^<http://www.w3.org/2001/XMLSchema#string> .\n""")(_ => "")
     }
@@ -250,7 +251,7 @@ object InfotonRetriever extends LazyLogging {
         }
       }
 
-      val nquad = ByteString(line)
+      val nquad = if(line.contains("/meta/sys#uuid")) ByteString("") else ByteString(line)
       Some(ParsedNquad(path, nquad, extraData))
     } else None
   }

@@ -69,8 +69,9 @@ object MessagesTypesAndExceptions {
 
       //scalastyle:off
       case class ModifierMissingException(path: String) extends Exception(s"Modifier is missing for path: $path. Please add modifier to DC-Sync infoton or check your source environment.")
+      case class UuidMissingException(path: String) extends Exception(s"Uuid is missing for path: $path")
 
-      //scalastyle:on
+  //scalastyle:on
       case class CreateConsumeException(message: String, ex: Throwable = null) extends Exception(message, ex)
 
       case class WrongPathGotException(message: String) extends Exception(message)
