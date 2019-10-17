@@ -14,6 +14,7 @@
   */
 package cmwell.bg.test
 
+import cmwell.domainTest.InfotonGenerator.genericSystemFields
 import java.util.concurrent.Executors
 
 import akka.actor.{ActorRef, ActorSystem}
@@ -72,11 +73,8 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
 
     // prepare sequence of priority writeCommands
     val pWriteCommands = Seq.tabulate(2000) { n =>
-      val infoton = ObjectInfoton(
-        path = s"/cmt/cm/bg-test-priority-before-batch/prio/info$n",
-        dc = "dc",
-        indexTime = None,
-        fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))), protocol = None, lastModifiedBy = "Baruch")
+      val infoton = ObjectInfoton(genericSystemFields.copy(path = s"/cmt/cm/bg-test-priority-before-batch/prio/info$n", lastModifiedBy = "Baruch"),
+        fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))))
       WriteCommand(infoton)
     }
 
@@ -88,11 +86,8 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafka
 
     // prepare sequence of priority writeCommands
     val writeCommands = Seq.tabulate(15000) { n =>
-      val infoton = ObjectInfoton(
-        path = s"/cmt/cm/bg-test-priority-before-batch/batch/info$n",
-        dc = "dc",
-        indexTime = None,
-        fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))), protocol = None, lastModifiedBy = "Baruch")
+      val infoton = ObjectInfoton(genericSystemFields.copy(path = s"/cmt/cm/bg-test-priority-before-batch/batch/info$n", lastModifiedBy = "Baruch"),
+        fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))))
       WriteCommand(infoton)
     }
 

@@ -65,11 +65,11 @@ case class FailingIRWServiceMockup(storageDao:Dao, errorModuloDivisor:Int) exten
                          (implicit ec: ExecutionContext): Future[Infoton] = {
 
     errorModuloDividend += 1
-    logger debug s"writeAsync for path:${infoton.path}. errorModuloDividend=$errorModuloDividend"
+    logger debug s"writeAsync for path:${infoton.systemFields.path}. errorModuloDividend=$errorModuloDividend"
     if(errorCount < 3 && errorModuloDividend % errorModuloDivisor == 0){
       logger debug s"errorModuloDividend:$errorModuloDividend % errorModuloDivisor:$errorModuloDivisor = ${errorModuloDividend % errorModuloDivisor}"
       errorCount += 1
-      logger debug s"throwing DriverException in writeAsync for infoton path:${infoton.path}, uuid:${infoton.uuid}"
+      logger debug s"throwing DriverException in writeAsync for infoton path:${infoton.systemFields.path}, uuid:${infoton.uuid}"
       throw new DriverException("test exception")
     } else
       super.writeAsync(infoton, level, skipSetPathLast)
