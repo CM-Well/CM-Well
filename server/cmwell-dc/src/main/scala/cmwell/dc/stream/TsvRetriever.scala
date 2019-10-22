@@ -24,7 +24,7 @@ import akka.stream.{ActorAttributes, KillSwitch, KillSwitches, Materializer}
 import akka.stream.Supervision.Decider
 import akka.stream.contrib.{Retry, SourceGen}
 import akka.stream.scaladsl.{Flow, Framing, Keep, Sink, Source}
-import akka.util.ByteString
+import akka.util.{ByteString, Timeout}
 import cmwell.dc.{LazyLogging, Settings}
 import cmwell.dc.Settings._
 import cmwell.dc.stream.MessagesTypesAndExceptions._
@@ -112,7 +112,7 @@ object TsvRetriever extends LazyLogging {
         logger.error(s"Sync ${dcInfo.key}: Retrieve TSVs failed. " +
                      s"Completing the stream (current got TSVs should be ok unless another exception is caught later). The exception is:", ex)
         None
-    }
+    }(Timeout(1.minute))
   }
 
   def retrieveTsvsWithRetryAndLastPositionKey(dcKey: DcInfoKey, decider: Decider)

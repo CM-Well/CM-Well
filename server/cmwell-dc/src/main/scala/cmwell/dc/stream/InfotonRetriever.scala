@@ -200,7 +200,8 @@ object InfotonRetriever extends LazyLogging {
 
     Flow[RetrieveInput]
       .map(input => Future.successful(input) -> (input -> initialRetrieveBulkStatus))
-      .via(Retry.concat(Settings.retrieveRetryQueueSize, retrieveFlow)(retryDecider(dcKey)))
+      //todo: discuss with Moria the implication of this
+      .via(Retry.concat(100, Settings.retrieveRetryQueueSize, retrieveFlow)(retryDecider(dcKey)))
       .map {
         case (Success(data), _) => data.map(_._1)
         case (Failure(e), _) =>
