@@ -52,9 +52,9 @@ package object util {
 
   private[this] def makeMetaWithZero(path: String, modifier:String, fields: Option[Map[String, Set[FieldValue]]]): ObjectInfoton = {
     if (path.startsWith("/meta/")) {
-      ObjectInfoton(path, Settings.dataCenter, None, zeroTime, modifier, fields, protocol = None)
+      ObjectInfoton(SystemFields(path, zeroTime, modifier, Settings.dataCenter, None, "", "http"))
     } else {
-      ObjectInfoton(path = path, fields = fields, dc = Settings.dataCenter, protocol = None, lastModifiedBy = modifier)
+      ObjectInfoton(SystemFields(path, zeroTime, modifier, Settings.dataCenter, None, "", "http"), fields)
     }
   }
 
@@ -79,7 +79,7 @@ package object util {
           case Some(ObjectMetaData) if path.startsWith("/meta/") =>
             makeMetaWithZero(path, if (lastModifiedBy.isEmpty) modifier else lastModifiedBy.get, fields)
           case Some(ObjectMetaData) =>
-            ObjectInfoton(path, dc, indexTime, _date, if (lastModifiedBy.isEmpty) modifier else lastModifiedBy.get, fields, protocol = protocol)
+            ObjectInfoton(SystemFields(path,  _date, if (lastModifiedBy.isEmpty) modifier else lastModifiedBy.get, dc, indexTime, "", protocol.get), fields)
           case Some(FileMetaData) => {
             val contentTypeFromByteArray = ctype match {
               case Some(ct) =>
@@ -92,24 +92,13 @@ package object util {
 
             (data, text) match {
               case (Some(ba), None) =>
-                FileInfoton(path = path,
-                            lastModified = _date,
-                            lastModifiedBy = if (lastModifiedBy.isEmpty) modifier else lastModifiedBy.get,
+                FileInfoton(SystemFields(path,  _date, if (lastModifiedBy.isEmpty) modifier else lastModifiedBy.get, dc, indexTime, "", protocol.get),
                             fields = fields,
-                            content = Some(FileContent(ba, contentTypeFromByteArray(ba))),
-                            dc = dc,
-                            indexTime = indexTime,
-                            protocol = protocol)
+                            content = Some(FileContent(ba, contentTypeFromByteArray(ba))))
               case (None, Some(txt)) =>
-                FileInfoton(
-                  path = path,
-                  lastModified = _date,
-                  lastModifiedBy = if (lastModifiedBy.isEmpty) modifier else lastModifiedBy.get,
+                FileInfoton(SystemFields(path,  _date, if (lastModifiedBy.isEmpty) modifier else lastModifiedBy.get, dc, indexTime, "", protocol.get),
                   fields = fields,
-                  content = Some(FileContent(txt.getBytes(Charset.forName("UTF-8")), "text/plain; utf-8")),
-                  dc = dc,
-                  indexTime = indexTime,
-                  protocol = protocol
+                  content = Some(FileContent(txt.getBytes(Charset.forName("UTF-8")), "text/plain; utf-8"))
                 )
               case _ => ??? //TODO: case is untreated yet
             }
@@ -118,27 +107,20 @@ package object util {
             (linktype, linkto) match {
               //??? //TODO: case is untreated yet
               case (Some(ltype), Some(lto)) =>
-                LinkInfoton(
-                  path = path,
+                LinkInfoton(SystemFields(path,  _date, if (lastModifiedBy.isEmpty) modifier else lastModifiedBy.get, dc, indexTime, "", protocol.get),
                   fields = fields,
-                  lastModified = _date,
-                  lastModifiedBy = if (lastModifiedBy.isEmpty) modifier else lastModifiedBy.get,
                   linkTo = lto,
-                  linkType = ltype,
-                  dc = dc,
-                  indexTime = indexTime,
-                  protocol = protocol
+                  linkType = ltype
                 )
               case _ => ??? //TODO: case is untreated yet
             }
-          case Some(DeletedMetaData) => DeletedInfoton(path, dc, indexTime, _date, if (lastModifiedBy.isEmpty) modifier else lastModifiedBy.get)
+          case Some(DeletedMetaData) => DeletedInfoton(SystemFields(path,  _date, if (lastModifiedBy.isEmpty) modifier else lastModifiedBy.get, dc, indexTime,
+            "", protocol.get))
           case None =>
             (data, text, ctype) match {
               case (None, None, None) =>
-                ObjectInfoton(path = path, lastModified = _date,
-                  lastModifiedBy = if (lastModifiedBy.isEmpty) modifier else lastModifiedBy.get,
-                  fields = fields, dc = dc,
-                  indexTime = indexTime, protocol = protocol)
+                ObjectInfoton(SystemFields(path,  _date, if (lastModifiedBy.isEmpty) modifier else lastModifiedBy.get, dc, indexTime, "", protocol.get),
+                  fields = fields)
               case _ =>
                 infotonFromMaps(
                   cmwHostsSet,

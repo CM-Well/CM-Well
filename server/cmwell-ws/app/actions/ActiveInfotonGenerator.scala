@@ -51,11 +51,11 @@ object BgMonitoring {
 
 @Singleton
 class ActiveInfotonGenerator @Inject()(
-  backPressureToggler: controllers.BackPressureToggler,
-  crudServiceFS: CRUDServiceFS,
-  dashBoard: DashBoard,
-  cmwellRDFHelper: CMWellRDFHelper
-) extends LazyLogging {
+                                        backPressureToggler: controllers.BackPressureToggler,
+                                        crudServiceFS: CRUDServiceFS,
+                                        dashBoard: DashBoard,
+                                        cmwellRDFHelper: CMWellRDFHelper
+                                      ) extends LazyLogging {
 
   import BgMonitoring.{monitor => bgMonitor}
   import dashBoard._
@@ -79,7 +79,7 @@ class ActiveInfotonGenerator @Inject()(
         "sbt_version" -> Set(FString(BuildInfo.sbtVersion)),
         "cassandra_version" -> Set(FString(BuildInfo.cassandraVersion)),
         "elasticsearch_version" -> Set(FString(BuildInfo.elasticsearchVersion)),
-//        "es_cluster_name" -> Set(FString(cmwell.fts.Settings.clusterName)),
+        //        "es_cluster_name" -> Set(FString(cmwell.fts.Settings.clusterName)),
         "build_machine" -> Set(FString(BuildInfo.buildMachine)),
         "build_time" -> Set(FDate(BuildInfo.buildTime)),
         "encoding_version" -> Set(FString(BuildInfo.encodingVersion)),
@@ -247,9 +247,9 @@ class ActiveInfotonGenerator @Inject()(
         (if (k == cs.healthHost) s"${k}*" else k) -> (colorAdapter(
           cs.wsStat.getOrElse(k, WebDown()).getColor
         ),
-        colorAdapter(cs.bgStat.getOrElse(k, BgNotOk()).getColor),
-        colorAdapter(cs.casStat.getOrElse(k, CassandraDown()).getColor),
-        colorAdapter(cs.esStat.getOrElse(k, ElasticsearchDown()).getColor))
+          colorAdapter(cs.bgStat.getOrElse(k, BgNotOk()).getColor),
+          colorAdapter(cs.casStat.getOrElse(k, CassandraDown()).getColor),
+          colorAdapter(cs.esStat.getOrElse(k, ElasticsearchDown()).getColor))
       }.toMap
       (m, new DateTime(cs.wsStat.head._2.genTime * 1000L))
     }
@@ -261,12 +261,12 @@ class ActiveInfotonGenerator @Inject()(
   }
 
   private[this] def getClusterDetailedHealthNew: Map[String,
-                                                     ((String, Color),
-                                                      (String, Color),
-                                                      (String, Color),
-                                                      (String, Color),
-                                                      (String, Color),
-                                                      (String, Color))] = {
+    ((String, Color),
+      (String, Color),
+      (String, Color),
+      (String, Color),
+      (String, Color),
+      (String, Color))] = {
     val bgStatsFut = getDetailedBgStatus()
 
     val r = CtrlClient.getClusterDetailedStatus.flatMap { cs =>
@@ -378,7 +378,7 @@ class ActiveInfotonGenerator @Inject()(
   }
 
   private[this] def getDetailedBgStatus()
-    : Future[Map[String, Set[(String, Iterable[PartitionOffsetsInfo])]]] = {
+  : Future[Map[String, Set[(String, Iterable[PartitionOffsetsInfo])]]] = {
     val offsetInfoFut =
       ask(bgMonitor, GetOffsetInfo)(10.seconds).mapTo[OffsetsInfo]
     val partitionsByLocations = Grid.getSingletonsInfo
@@ -401,8 +401,8 @@ class ActiveInfotonGenerator @Inject()(
   }
 
   private[this] def aggrPartitionColorToColor(
-    ps: Seq[PartitionStatus]
-  ): Color = {
+                                               ps: Seq[PartitionStatus]
+                                             ): Color = {
     if (ps.forall(_ == cmwell.ws.Green)) Green
     else if (ps.forall(_ == cmwell.ws.Red)) Red
     else Yellow
@@ -454,11 +454,11 @@ class ActiveInfotonGenerator @Inject()(
       (kf, kfTime),
       controlNode,
       masters
-    ) = getClusterHealth
+      ) = getClusterHealth
 
     def determineCmwellColorBasedOnComponentsColor(
-      components: Seq[Color]
-    ): Color = {
+                                                    components: Seq[Color]
+                                                  ): Color = {
       val all = components.filter(_ != Grey)
       if (all.forall(_ == Green)) Green
       else if (all.contains(Red)) Red
@@ -497,12 +497,12 @@ class ActiveInfotonGenerator @Inject()(
   private[this] val ghdfBreakout =
     scala.collection.breakOut[Seq[
       (String,
-       ((String, Color.Color),
-        (String, Color.Color),
-        (String, Color.Color),
-        (String, Color.Color),
-        (String, Color.Color),
-        (String, Color.Color)))
+        ((String, Color.Color),
+          (String, Color.Color),
+          (String, Color.Color),
+          (String, Color.Color),
+          (String, Color.Color),
+          (String, Color.Color)))
     ], (String, Set[FieldValue]), Map[String, Set[FieldValue]]]
   private[this] def generateHealthDetailedFields: FieldsOpt = {
     //val (xs, timeStamp) = DashBoardCache.cacheAndGetDetailedHealthData
@@ -773,53 +773,55 @@ ${lines.mkString("\n")}
   import scala.language.implicitConversions
 
   def generateInfoton(
-    host: String,
-    path: String,
-    now: Long,
-    length: Int = 0,
-    offset: Int = 0,
-    isRoot: Boolean = false,
-    isAdmin: Boolean = false,
-    withHistory: Boolean,
-    fieldFilters: Option[FieldFilter],
-    timeContext: Option[Long]
-  ): Future[Option[VirtualInfoton]] = {
+                       host: String,
+                       path: String,
+                       now: Long,
+                       length: Int = 0,
+                       offset: Int = 0,
+                       isRoot: Boolean = false,
+                       isAdmin: Boolean = false,
+                       withHistory: Boolean,
+                       fieldFilters: Option[FieldFilter],
+                       timeContext: Option[Long]
+                     ): Future[Option[VirtualInfoton]] = {
 
     val d: DateTime = new DateTime(now)
 
     implicit def iOptAsFuture(
-      iOpt: Option[VirtualInfoton]
-    ): Future[Option[VirtualInfoton]] =
+                               iOpt: Option[VirtualInfoton]
+                             ): Future[Option[VirtualInfoton]] =
       Future.successful(iOpt)
 
     def compoundDC = crudServiceFS.getListOfDC.map { seq =>
-      {
-        val dcKids: Seq[Infoton] =
-          seq
-            .map(
-              dc =>
-                VirtualInfoton(
-                  ObjectInfoton(s"/proc/dc/$dc", dc, None, d, "VirtualInfoton", None, protocol = None)
-                ).getInfoton
-            )
-        Some(
-          VirtualInfoton(
-            CompoundInfoton(
-              "/proc/dc",
-              dc,
-              None,
-              d,
-              "VirtualInfoton",
-              None,
-              dcKids.slice(offset, offset + length),
-              offset,
-              length,
-              dcKids.size,
-              protocol = None
-            )
+    {
+      val dcKids: Seq[Infoton] =
+        seq
+          .map(
+            dc =>
+              VirtualInfoton(
+                ObjectInfoton(SystemFields(s"/proc/dc/$dc", d, "VirtualInfoton", dc, None, "", "http"))
+              ).getInfoton
+          )
+      Some(
+        VirtualInfoton(
+          CompoundInfoton(SystemFields(
+            "/proc/dc",
+            d,
+            "VirtualInfoton",
+            dc,
+            None,
+            "",
+            "http"
+          ),
+            None,
+            dcKids.slice(offset, offset + length),
+            offset,
+            length,
+            dcKids.size
           )
         )
-      }
+      )
+    }
     }
 
     def getDcInfo(path: String) = {
@@ -827,7 +829,7 @@ ${lines.mkString("\n")}
       crudServiceFS
         .getInfotonByPathAsync(s"/meta/sys/dc/$dcId")
         .flatMap {
-          case FullBox(ObjectInfoton(_, _, _, _, _, Some(fields), _, _)) =>
+          case FullBox(ObjectInfoton(_,Some(fields))) =>
             // the user just gave the id (e.g. from the ui) and there should be an active sync of it.
             // Give the information according to the sync currently running.
             val id = fields("id").headOption.collect {
@@ -841,8 +843,8 @@ ${lines.mkString("\n")}
               .get("qp")
               .flatMap(_.headOption.collect { case FString(x, _, _) => x })
             qp.fold(Success(None): Try[Option[RawFieldFilter]])(
-                FieldFilterParser.parseQueryParams(_).map(Some.apply)
-              )
+              FieldFilterParser.parseQueryParams(_).map(Some.apply)
+            )
               .map { qpOpt =>
                 val fieldsFiltersFut = qpOpt.fold[Future[Option[FieldFilter]]](
                   Future.successful(Option.empty[FieldFilter])
@@ -871,126 +873,111 @@ ${lines.mkString("\n")}
         val pk = procKids
         Some(
           VirtualInfoton(
-            CompoundInfoton(
+            CompoundInfoton(SystemFields(
               path,
-              dc,
-              None,
               d,
               "VirtualInfoton",
+              dc,
+              None,
+              "",
+              "http"),
               None,
               pk.slice(offset, offset + length),
               offset,
               min(pk.drop(offset).size, length),
-              pk.size,
-              protocol = None
+              pk.size
             )
           )
         )
       }
       case "/proc/node" =>
-        Some(VirtualInfoton(ObjectInfoton(path, dc, None, d, "VirtualInfoton", nodeValFields, protocol = None)))
+        Some(VirtualInfoton(ObjectInfoton(SystemFields(path, d, "VirtualInfoton", dc, None, "", "http"), nodeValFields)))
       case "/proc/dc"                     => compoundDC
       case p if p.startsWith("/proc/dc/") => getDcInfo(p)
       case "/proc/fields"                 => crudServiceFS.getESFieldsVInfoton.map(Some.apply)
       case "/proc/health" =>
         Some(
-          VirtualInfoton(ObjectInfoton(path, dc, None, d, "VirtualInfoton", generateHealthFields, protocol = None))
+          VirtualInfoton(ObjectInfoton(SystemFields(path, d, "VirtualInfoton", dc, None, "", "http"), generateHealthFields))
         )
       case "/proc/health.md" =>
         Some(
           VirtualInfoton(
-            FileInfoton(
-              path,
-              dc,
-              None,
-              lastModifiedBy = "VirtualInfoton",
+            FileInfoton(SystemFields(path, d, "VirtualInfoton", dc, None, "", "http"),
               content = Some(
                 FileContent(
                   generateHealthMarkdown(d).getBytes,
                   "text/x-markdown"
                 )
-              ),
-              protocol = None
+              )
             )
           )
         )
       case "/proc/health-detailed" =>
         Some(
-          VirtualInfoton(
-            ObjectInfoton(path, dc, None, d, "VirtualInfoton",generateHealthDetailedFields, protocol = None)
-          )
+          VirtualInfoton(FileInfoton(SystemFields(path, d, "VirtualInfoton", dc, None, "", "http"),
+            None,
+            Some(
+              FileContent(
+                generateHealthMarkdown(d).getBytes,
+                "text/x-markdown"
+              )
+            )))
         )
       case "/proc/health-detailed.md" =>
         Some(
           VirtualInfoton(
-            FileInfoton(
-              path,
-              dc,
+            FileInfoton(SystemFields(path, d, "VirtualInfoton", dc, None, "", "http"),
               None,
-              lastModifiedBy = "VirtualInfoton",
               content = Some(
                 FileContent(
                   generateDetailedHealthMarkdown(d).getBytes,
                   "text/x-markdown"
                 )
-              ),
-              protocol = None
+              )
             )
           )
         )
       case "/proc/health-detailed.csv" =>
         Some(
           VirtualInfoton(
-            FileInfoton(
-              path,
-              dc,
+            FileInfoton(SystemFields(path, d, "VirtualInfoton", dc, None, "", "http"),
               None,
-              lastModifiedBy = "VirtualInfoton",
               content = Some(
                 FileContent(
                   generateDetailedHealthCsvPretty().getBytes,
                   "text/html"
                 )
-              ),
-              protocol = None
+              )
             )
           )
         )
       case "/proc/bg.md" =>
         Some(
           VirtualInfoton(
-            FileInfoton(
-              path,
-              dc,
+            FileInfoton(SystemFields(path, d, "VirtualInfoton", dc, None, "", "http"),
               None,
-              lastModifiedBy = "VirtualInfoton",
               content = Some(
                 FileContent(generateBgMarkdown.getBytes, "text/x-markdown")
-              ),
-              protocol = None
+              )
             )
           )
         )
       case "/proc/bg" =>
         generateBgData.map(
           fields =>
-            Some(VirtualInfoton(ObjectInfoton(path, dc, None, d, "VirtualInfoton", fields, protocol = None)))
+            Some(VirtualInfoton(ObjectInfoton(SystemFields(path, d, "VirtualInfoton", dc, None, "", "http"), fields)))
         )
       case "/proc/search-contexts.md" =>
         Some(
           VirtualInfoton(
-            FileInfoton(
-              path,
-              dc,
+            FileInfoton(SystemFields(path, d, "VirtualInfoton", dc, None, "", "http"),
               None,
-              lastModifiedBy = "VirtualInfoton",
               content = Some(
                 FileContent(
                   generateIteratorMarkdown.getBytes,
                   "text/x-markdown"
                 )
-              ),
-              protocol = None
+              )
             )
           )
         )
@@ -1028,19 +1015,13 @@ ${lines.mkString("\n")}
         val url = s"http://$host/meta/$sysOrNn#"
         Some(
           VirtualInfoton(
-            ObjectInfoton(
-              "/meta/ns/sys",
-              dc,
-              None,
-              new DateTime(),
-              "VirtualInfoton",
+            ObjectInfoton(SystemFields("/meta/ns/sys", d, "VirtualInfoton", dc, None, "", "http"),
               Some(
                 Map(
                   "url" -> Set[FieldValue](FString(url)),
                   "url_hash" -> Set[FieldValue](FString(crc32(url)))
                 )
-              ),
-              protocol = None
+              )
             )
           )
         )
@@ -1052,202 +1033,106 @@ ${lines.mkString("\n")}
   private[this] def procKids: Vector[Infoton] = {
     val md = new DateTime()
     Vector(
-      VirtualInfoton(ObjectInfoton("/proc/node", dc, None, md, "VirtualInfoton", protocol = None)),
-      VirtualInfoton(ObjectInfoton("/proc/dc", dc, None, md, "VirtualInfoton", protocol = None)),
-      VirtualInfoton(ObjectInfoton("/proc/bg", dc, None, md, "VirtualInfoton", protocol = None)),
+      VirtualInfoton(ObjectInfoton(SystemFields("/proc/node", md, "VirtualInfoton", dc, None, "", "http"))),
+      VirtualInfoton(ObjectInfoton(SystemFields("/proc/dc", md, "VirtualInfoton", dc, None, "", "http"))),
+      VirtualInfoton(ObjectInfoton(SystemFields("/proc/bg", md, "VirtualInfoton", dc, None, "", "http"))),
       VirtualInfoton(
-        FileInfoton(
-          "/proc/bg.md",
-          dc,
+        FileInfoton(SystemFields("/proc/bg.md", md, "VirtualInfoton", dc, None, "", "http"),
           None,
-          md,
-          "VirtualInfoton",
-          None,
-          Some(FileContent("text/x-markdown", -1L)),
-          protocol = None
+          Some(FileContent("text/x-markdown", -1L))
         )
       ),
-      VirtualInfoton(ObjectInfoton("/proc/fields", dc, None, md, "VirtualInfoton", protocol = None)),
-      VirtualInfoton(ObjectInfoton("/proc/health", dc, None, md, "VirtualInfoton", protocol = None)),
+      VirtualInfoton(ObjectInfoton(SystemFields("/proc/fields", md, "VirtualInfoton", dc, None, "", "http"))),
+      VirtualInfoton(ObjectInfoton(SystemFields("/proc/health", md, "VirtualInfoton", dc, None, "", "http"))),
       VirtualInfoton(
-        FileInfoton(
-          "/proc/health.md",
-          dc,
+        FileInfoton(SystemFields("/proc/health.md", md, "VirtualInfoton", dc, None, "", "http"),
           None,
-          md,
-          "VirtualInfoton",
-          None,
-          Some(FileContent("text/x-markdown", -1L)),
-          protocol = None
+          Some(FileContent("text/x-markdown", -1L))
         )
       ),
-      VirtualInfoton(ObjectInfoton("/proc/health-detailed", dc, None, md, "VirtualInfoton", protocol = None)),
+      VirtualInfoton(ObjectInfoton(SystemFields("/proc/health-detailed", md, "VirtualInfoton", dc, None, "", "http"))),
       VirtualInfoton(
-        FileInfoton(
-          "/proc/health-detailed.md",
-          dc,
+        FileInfoton(SystemFields("/proc/health-detailed.md", md, "VirtualInfoton", dc, None, "", "http"),
           None,
-          md,
-          "VirtualInfoton",
-          None,
-          Some(FileContent("text/x-markdown", -1L)),
-          protocol = None
+          Some(FileContent("text/x-markdown", -1L))
         )
       ),
       VirtualInfoton(
-        FileInfoton(
-          "/proc/health-detailed.csv",
-          dc,
+        FileInfoton(SystemFields("/proc/health-detailed.csv", md, "VirtualInfoton", dc, None, "", "http"),
           None,
-          md,
-          "VirtualInfoton",
-          None,
-          Some(FileContent("text/html", -1L)),
-          protocol = None
+          Some(FileContent("text/html", -1L))
         )
       ),
       VirtualInfoton(
-        FileInfoton(
-          "/proc/search-contexts.md",
-          dc,
+        FileInfoton(SystemFields("/proc/search-contexts.md", md, "VirtualInfoton", dc, None, "", "http"),
           None,
-          md,
-          "VirtualInfoton",
-          None,
-          Some(FileContent("text/x-markdown", -1L)),
-          protocol = None
+          Some(FileContent("text/x-markdown", -1L))
         )
       ),
       VirtualInfoton(
-        FileInfoton(
-          "/proc/members-active.md",
-          dc,
+        FileInfoton(SystemFields("/proc/members-active.md", md, "VirtualInfoton", dc, None, "", "http"),
           None,
-          md,
-          "VirtualInfoton",
-          None,
-          Some(FileContent("text/x-markdown", -1L)),
-          protocol = None
+          Some(FileContent("text/x-markdown", -1L))
         )
       ),
       VirtualInfoton(
-        FileInfoton(
-          "/proc/members-all.md",
-          dc,
+        FileInfoton(SystemFields("/proc/members-all.md", md, "VirtualInfoton", dc, None, "", "http"),
           None,
-          md,
-          "VirtualInfoton",
-          None,
-          Some(FileContent("text/x-markdown", -1L)),
-          protocol = None
+          Some(FileContent("text/x-markdown", -1L))
         )
       ),
       VirtualInfoton(
-        FileInfoton(
-          "/proc/members-all.csv",
-          dc,
+        FileInfoton(SystemFields("/proc/members-all.csv", md, "VirtualInfoton", dc, None, "", "http"),
           None,
-          md,
-          "VirtualInfoton",
-          None,
-          Some(FileContent("text/html", -1L)),
-          protocol = None
+          Some(FileContent("text/html", -1L))
         )
       ),
       VirtualInfoton(
-        FileInfoton(
-          "/proc/singletons.md",
-          dc,
+        FileInfoton(SystemFields("/proc/singletons.md", md, "VirtualInfoton", dc, None, "", "http"),
           None,
-          md,
-          "VirtualInfoton",
-          None,
-          Some(FileContent("text/x-markdown", -1L)),
-          protocol = None
+          Some(FileContent("text/x-markdown", -1L))
         )
       ),
       VirtualInfoton(
-        FileInfoton(
-          "/proc/actors.md",
-          dc,
+        FileInfoton(SystemFields("/proc/actors.md", md, "VirtualInfoton", dc, None, "", "http"),
           None,
-          md,
-          "VirtualInfoton",
-          None,
-          Some(FileContent("text/x-markdown", -1L)),
-          protocol = None
+          Some(FileContent("text/x-markdown", -1L))
         )
       ),
       VirtualInfoton(
-        FileInfoton(
-          "/proc/actors-diff.md",
-          dc,
+        FileInfoton(SystemFields("/proc/actors-diff.md", md, "VirtualInfoton", dc, None, "", "http"),
           None,
-          md,
-          "VirtualInfoton",
-          None,
-          Some(FileContent("text/x-markdown", -1L)),
-          protocol = None
+          Some(FileContent("text/x-markdown", -1L))
         )
       ),
       VirtualInfoton(
-        FileInfoton(
-          "/proc/requests.md",
-          dc,
+        FileInfoton(SystemFields("/proc/requests.md", md, "VirtualInfoton", dc, None, "", "http"),
           None,
-          md,
-          "VirtualInfoton",
-          None,
-          Some(FileContent("text/x-markdown", -1L)),
-          protocol = None
+          Some(FileContent("text/x-markdown", -1L))
         )
       ),
       VirtualInfoton(
-        FileInfoton(
-          "/proc/dc-health.md",
-          dc,
+        FileInfoton(SystemFields("/proc/dc-health.md", md, "VirtualInfoton", dc, None, "", "http"),
           None,
-          md,
-          "VirtualInfoton",
-          None,
-          Some(FileContent("text/x-markdown", -1L)),
-          protocol = None
+          Some(FileContent("text/x-markdown", -1L))
         )
       ),
       VirtualInfoton(
-        FileInfoton(
-          "/proc/dc-distribution.md",
-          dc,
+        FileInfoton(SystemFields("/proc/dc-distribution.md", md, "VirtualInfoton", dc, None, "", "http"),
           None,
-          md,
-          "VirtualInfoton",
-          None,
-          Some(FileContent("text/x-markdown", -1L)),
-          protocol = None
+          Some(FileContent("text/x-markdown", -1L))
         )
       ),
       VirtualInfoton(
-        FileInfoton(
-          "/proc/stp.md",
-          dc,
+        FileInfoton(SystemFields("/proc/stp.md", md, "VirtualInfoton", dc, None, "", "http"),
           None,
-          md,
-          "VirtualInfoton",
-          None,
-          Some(FileContent("text/x-markdown", -1L)),
-          protocol = None
+          Some(FileContent("text/x-markdown", -1L))
         )
       ),
       VirtualInfoton(
-        FileInfoton(
-          "/proc/traffic.md",
-          dc,
+        FileInfoton(SystemFields("/proc/traffic.md", md, "VirtualInfoton", dc, None, "", "http"),
           None,
-          md,
-          "VirtualInfoton",
-          None,
-          Some(FileContent("text/x-markdown", -1L)),
-          protocol = None
+          Some(FileContent("text/x-markdown", -1L))
         )
       )
     )

@@ -424,11 +424,11 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
                     val strs = s.mapConcat {
                       case IterationResults(_, _, infoptons, _, _) => {
                         infoptons.fold(List.empty[SearchThinResult])(_.map { i =>
-                          SearchThinResult(i.path,
+                          SearchThinResult(i.systemFields.path,
                                            i.uuid,
-                                           DateParser.fdf(i.lastModified),
-                                           lastModifiedBy = i.lastModifiedBy,
-                                           i.indexTime.getOrElse(i.lastModified.getMillis))
+                                           DateParser.fdf(i.systemFields.lastModified),
+                                           lastModifiedBy = i.systemFields.lastModifiedBy,
+                                           i.systemFields.indexTime.getOrElse(i.systemFields.lastModified.getMillis))
                         }(bo3))
                       }
                     }
