@@ -242,7 +242,7 @@ class IndexerStream(partition: Int,
                   else Some(System.currentTimeMillis())
                 val infotonWithUpdatedIndexTime =
                   if (indexTime.isDefined)
-                    infoton.replaceIndexTime(Some(indexTime.get))
+                    infoton.replaceIndexTime(indexTime)
                   else
                     infoton
                 val serializedInfoton =
