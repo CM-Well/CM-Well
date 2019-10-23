@@ -1295,7 +1295,7 @@ class FTSService(config: Config) extends NsSplitter{
         val lastModified = new DateTime(hit.field("system.lastModified").getValue[String])
         val id = hit.field("system.uuid").getValue[String]
         val dc = Try(hit.field("system.dc").getValue[String]).getOrElse(dataCenter)
-        val protocol = hit.field("system.protocol").getValue[String]
+        val protocol = Try(hit.field("system.protocol").getValue[String]).getOrElse("")
         val indexTime = tryLongThenInt[Option[Long]](hit, "system.indexTime", Some.apply[Long], None, id, path)
         val score: Option[Map[String, Set[FieldValue]]] =
           if (includeScore) Some(Map("$score" -> Set(FExtra(hit.getScore(), sysQuad)))) else None

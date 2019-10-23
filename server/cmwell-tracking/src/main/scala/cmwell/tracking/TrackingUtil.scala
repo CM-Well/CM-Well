@@ -182,7 +182,7 @@ object TrackingUtilImpl extends TrackingUtil with LazyLogging {
   }
 
   def cleanDirtyData(data: Seq[PathStatus], createTime: Long): Future[Seq[PathStatus]] = {
-    def isNew(i: Infoton) = (i.lastModified.isAfter(createTime)) && i.indexTime.isDefined
+    def isNew(i: Infoton) = (i.systemFields.lastModified.isAfter(createTime)) && i.systemFields.indexTime.isDefined
 
     val (inProgress, notInProgress) = data.partition(_.status == InProgress)
     if (inProgress.isEmpty) Future.successful(data)
@@ -192,7 +192,7 @@ object TrackingUtilImpl extends TrackingUtil with LazyLogging {
       val infotonsFut = travector(inProgressPaths)(irw.readPathAsync(_))
       val alreadyDonePathsFut = infotonsFut.map { infotons =>
         infotons.collect {
-          case FullBox(infoton) if isNew(infoton) => infoton.path
+          case FullBox(infoton) if isNew(infoton) => infoton.systemFields.path
         }.toSet
       }
       alreadyDonePathsFut.map { alreadyDonePaths =>
