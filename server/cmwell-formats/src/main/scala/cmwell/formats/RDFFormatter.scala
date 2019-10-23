@@ -73,12 +73,12 @@ abstract class RDFFormatter(hostForNs: String,
           {
             //TODO: will call isPathADomain & excludeParent inside 'infoton' method. probably can optimize.
             //at this level we only set the prefixes. 'infoton' method can be called from other methods like 'bagOfInfotons'
-            if (excludeParent(i.path)) {
-              model.setNsPrefix("o", s"${uriFromPath(i.path)}/")
+            if (excludeParent(i.systemFields.path)) {
+              model.setNsPrefix("o", s"${uriFromPath(i.systemFields.path, i.systemFields.protocol)}/")
             } else {
-              model.setNsPrefix("o", s"${uriFromPath(i.parent)}/")
+              model.setNsPrefix("o", s"${uriFromPath(i.parent, i.systemFields.protocol)}/")
               if (i.isInstanceOf[CompoundInfoton]) {
-                model.setNsPrefix("o2", s"${uriFromPath(i.path)}/")
+                model.setNsPrefix("o2", s"${uriFromPath(i.systemFields.path, i.systemFields.protocol)}/")
               }
             }
           }
@@ -205,11 +205,10 @@ abstract class RDFFormatter(hostForNs: String,
   def excludeParent(path: String, isKnownAsADomain: Boolean = false): Boolean =
     (isKnownAsADomain || isPathADomain(path)) && path.split('/').filterNot(_.isEmpty).size <= 1
 
-  def uriFromPath(path: String, isADomainOpt: Option[Boolean] = None, protocol: Option[String] = None): String = {
-    val protocolOrDefault = protocol.getOrElse(cmwell.common.Settings.defaultProtocol)
+  def uriFromPath(path: String, protocol: String, isADomainOpt: Option[Boolean] = None): String = {
     (isADomainOpt, isPathADomain(path)) match {
-      case (Some(true), _) | (None, true) => s"$protocolOrDefault:/$path"
-      case _ => s"$protocolOrDefault://$hostForNs$path"
+      case (Some(true), _) | (None, true) => s"$protocol:/$path"
+      case _ => s"$protocol://$hostForNs$path"
     }
   }
 
@@ -218,9 +217,9 @@ abstract class RDFFormatter(hostForNs: String,
     val m = ds.getDefaultModel
 
     val subject = {
-      val s = if (distinctPathWithUuid || forceUniqueness) s"${i.path}#${i.uuid}" else i.path
+      val s = if (distinctPathWithUuid || forceUniqueness) s"${i.systemFields.path}#${i.uuid}" else i.systemFields.path
       if(s.startsWith("/blank_node/") && !raw) m.createResource(AnonId.create(s.drop("/blank_node/".length)))
-      else ResourceFactory.createResource(uriFromPath(s, protocol = i.protocol))
+      else ResourceFactory.createResource(uriFromPath(s, i.systemFields.protocol))
     }
     val fieldsData = fields(i.fields.map(_.filter(_._1.head != '$')))
     val extras = i.fields.fold(Seq.empty[(Property, RDFNode)])(_.view.collect {
@@ -240,7 +239,7 @@ abstract class RDFFormatter(hostForNs: String,
                                                                                          stringToLtrl(_, None),
                                                                                          dateToLtrl,
                                                                                          longToLtrl,
-                                                                                         !excludeParent(i.path))
+                                                                                         !excludeParent(i.systemFields.path))
     val selfAttributes: Seq[(Property, RDFNode)] = i match {
 
       // no system blanks
@@ -249,11 +248,11 @@ abstract class RDFFormatter(hostForNs: String,
 
       // ObjectInfoton
 
-      case ObjectInfoton(path, _, _, lastModified, lastModifiedBy, iFields, _, _) => systemData
+      case ObjectInfoton( _, _) => systemData
 
       // CompoundInfoton
 
-      case CompoundInfoton(_, _, _, _, _, _, children, offset, length, total, _, _) => {
+      case CompoundInfoton( _, _, children, offset, length, total) => {
         val childrenProp = stringToSysProp("children")
         val props = systemData ++:
           Seq(stringToSysProp("offset") -> longToLtrl(offset),
@@ -263,14 +262,14 @@ abstract class RDFFormatter(hostForNs: String,
         children.foldLeft(props) {
           case (s, i) => {
             infoton(i)
-            s :+ (childrenProp -> refToLtrl(uriFromPath(i.path, protocol = i.protocol)))
+            s :+ (childrenProp -> refToLtrl(uriFromPath(i.systemFields.path, i.systemFields.protocol)))
           }
         }
       }
 
       // FileInfoton
 
-      case FileInfoton(_, _, _, _, _, _, content, _, _) => {
+      case FileInfoton(_, _, content) => {
         val t = content.map(
           fileContent[Property, RDFNode](_, stringToSysProp, stringToLtrl(_, None), longToLtrl, bytesToLtrl)
         )
@@ -281,7 +280,7 @@ abstract class RDFFormatter(hostForNs: String,
 
       // LinkInfoton
 
-      case LinkInfoton(_, _, _, _, _, _, linkTo, linkType, _, _) => {
+      case LinkInfoton(_, _, linkTo, linkType) => {
         systemData ++:
           Seq(stringToSysProp("linkTo") -> stringToLtrl(linkTo, None),
               stringToSysProp("linkType") -> intToLtrl(linkType))
@@ -351,7 +350,7 @@ abstract class RDFFormatter(hostForNs: String,
       bag.infotons.foldLeft(model) {
         case (m, i) => {
           if (!filterOutBlanks) {
-            m.add(ResourceFactory.createStatement(subject, infotons, refToLtrl(uriFromPath(i.path, protocol = i.protocol))))
+            m.add(ResourceFactory.createStatement(subject, infotons, refToLtrl(uriFromPath(i.systemFields.path, i.systemFields.protocol))))
           }
           infoton(i)(ds).getDefaultModel
         }
@@ -378,7 +377,7 @@ abstract class RDFFormatter(hostForNs: String,
       ihv.versions.foldLeft(model) {
         case (m, i) => {
           if (!filterOutBlanks) {
-            m.add(ResourceFactory.createStatement(subject, versions, refToLtrl(uriFromPath(i.path, protocol = i.protocol))))
+            m.add(ResourceFactory.createStatement(subject, versions, refToLtrl(uriFromPath(i.systemFields.path, i.systemFields.protocol))))
           }
           infoton(i, true)(ds).getDefaultModel
         }
@@ -412,7 +411,7 @@ abstract class RDFFormatter(hostForNs: String,
       rp.infotons.foldLeft(model) {
         case (m, i) => {
           if (!filterOutBlanks) {
-            m.add(ResourceFactory.createStatement(subject, infotons, refToLtrl(uriFromPath(i.path, protocol = i.protocol))))
+            m.add(ResourceFactory.createStatement(subject, infotons, refToLtrl(uriFromPath(i.systemFields.path, i.systemFields.protocol))))
           }
           infoton(i)(ds).getDefaultModel
         }
@@ -453,7 +452,7 @@ abstract class RDFFormatter(hostForNs: String,
       sr.infotons.foldLeft(model) {
         case (m, i) => {
           if (!filterOutBlanks) {
-            m.add(ResourceFactory.createStatement(subject, stringToSysProp("infotons"), refToLtrl(uriFromPath(i.path, protocol = i.protocol))))
+            m.add(ResourceFactory.createStatement(subject, stringToSysProp("infotons"), refToLtrl(uriFromPath(i.systemFields.path, i.systemFields.protocol))))
           }
           infoton(i)(ds).getDefaultModel
         }
@@ -495,7 +494,7 @@ abstract class RDFFormatter(hostForNs: String,
               case (m, i) => {
                 infoton(i)(ds)
                 m.add(
-                  ResourceFactory.createStatement(subject, stringToSysProp("infotons"), refToLtrl(uriFromPath(i.path, protocol = i.protocol)))
+                  ResourceFactory.createStatement(subject, stringToSysProp("infotons"), refToLtrl(uriFromPath(i.systemFields.path, i.systemFields.protocol)))
                 )
               }
           }
