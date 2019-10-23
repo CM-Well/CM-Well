@@ -23,11 +23,13 @@ import cmwell.domain._
 import com.typesafe.scalalogging.LazyLogging
 import org.elasticsearch.client.Requests
 import org.elasticsearch.common.xcontent.XContentType
+import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.DateTimeFormat
 import org.scalatest._
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+import cmwell.domainTest.InfotonGenerator.genericSystemFields
 
 /**
  * User: Israel
@@ -188,9 +190,10 @@ class FTSServiceEsSpec extends FlatSpec with Matchers with FTSServiceTestTrait w
 //    }
 //  }
 
+  val dateTimeAsMillies = (new DateTime(DateTimeZone.UTC)).getMillis
   val bulkInfotons = Seq.tabulate(500){ i =>
-    val infoton = ObjectInfoton("/fts-test/bulk1/info" + i, "dc_test", Some(System.currentTimeMillis()),
-      Map("name" + i -> Set[FieldValue](FString("value" + i), FString("another value" + i))), Some("http"), "Baruch")
+    val infoton = ObjectInfoton(genericSystemFields.copy(path = s"/fts-test/bulk1/info$i", indexTime = Some(dateTimeAsMillies)),
+      Map("name" + i -> Set[FieldValue](FString("value" + i), FString("another value" + i))))
     ESIndexRequest(
       Requests.indexRequest(testIndexName).id(infoton.uuid).create(true)
         .source(JsonSerializerForES.encodeInfoton(infoton), XContentType.JSON),
