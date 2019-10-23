@@ -52,11 +52,11 @@ case class CommandRef(ref: String) extends Command
 
 case class WriteCommand(infoton: Infoton, trackingID: Option[String] = None, prevUUID: Option[String] = None)
   extends SingleCommand {
-  override def path = infoton.path
+  override def path = infoton.systemFields.path
 
-  override def lastModified: DateTime = infoton.lastModified
+  override def lastModified: DateTime = infoton.systemFields.lastModified
 
-  override def lastModifiedBy: String = infoton.lastModifiedBy
+  override def lastModifiedBy: String = infoton.systemFields.lastModifiedBy
 }
 
 case class DeleteAttributesCommand(path: String,
@@ -65,7 +65,7 @@ case class DeleteAttributesCommand(path: String,
                                    lastModifiedBy: String,
                                    trackingID: Option[String] = None,
                                    prevUUID: Option[String] = None,
-                                   protocol: Option[String])
+                                   protocol: String)
   extends SingleCommand
 
 case class DeletePathCommand(path: String,
@@ -85,7 +85,7 @@ case class UpdatePathCommand(path: String,
                              lastModifiedBy: String,
                              trackingID: Option[String] = None,
                              prevUUID: Option[String] = None,
-                             protocol: Option[String] = None)
+                             protocol: String)
   extends SingleCommand
 
 case class OverwriteCommand(infoton: Infoton, trackingID: Option[String] = None) extends SingleCommand {
@@ -95,11 +95,11 @@ case class OverwriteCommand(infoton: Infoton, trackingID: Option[String] = None)
 
   override def prevUUID: Option[String] = None
 
-  override def path = infoton.path
+  override def path = infoton.systemFields.path
 
-  override def lastModified: DateTime = infoton.lastModified
+  override def lastModified: DateTime = infoton.systemFields.lastModified
 
-  override def lastModifiedBy: String = infoton.lastModifiedBy
+  override def lastModifiedBy: String = infoton.systemFields.lastModifiedBy
 }
 
 case class StatusTracking(tid: String, numOfParts: Int)

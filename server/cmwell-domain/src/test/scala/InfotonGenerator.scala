@@ -13,8 +13,9 @@
   * limitations under the License.
   */
 
-
+package cmwell.domainTest
 import cmwell.domain._
+import org.joda.time.{DateTime, DateTimeZone}
 import org.scalacheck.Gen
 
 /**
@@ -22,8 +23,11 @@ import org.scalacheck.Gen
  */
 object InfotonGenerator {
 
+  val currTime = new DateTime(DateTimeZone.UTC)
+  val genericSystemFields = SystemFields("some/meaningless/path", currTime, "Baruch", "dc_test", None, "indexName", "http")
+
   val infotons: Gen[Infoton] = for {
-    iType <- Gen.choose(0,1) //TODO: extend to (0,2) to have also LinkInfoton generation
+                         iType <- Gen.choose(0,1) //TODO: extend to (0,2) to have also LinkInfoton generation
     path <- Gen.resize(7, Gen.nonEmptyListOf[String](Gen.resize(5, Gen.identifier)))
     fields <- Gen.resize(4, Gen.nonEmptyListOf[String](Gen.resize(5, Gen.identifier)))
     strVals <- Gen.resize(4, Gen.nonEmptyContainerOf[Set, String](Gen.identifier))
@@ -35,8 +39,8 @@ object InfotonGenerator {
     decVals <- Gen.resize(4, Gen.nonEmptyContainerOf[Set, java.math.BigDecimal](Gen.choose(-100.0, 100.0).map(BigDecimal(_).underlying)))
     txtVal <- Gen.resize(50, Gen.identifier)
     blnVal <- Gen.oneOf(true,false)
-  //    binVal <- Gen.resize(50, Gen.nonEmptyContainerOf[Array,Byte](Gen.choose(0.toByte,255.toByte)))
-  //    extVals <- Gen.resize(4, Gen.nonEmptyContainerOf[Set, String](Gen.identifier)) //TODO: FExtenal, FDate, FReference
+    //    binVal <- Gen.resize(50, Gen.nonEmptyContainerOf[Array,Byte](Gen.choose(0.toByte,255.toByte)))
+    //    extVals <- Gen.resize(4, Gen.nonEmptyContainerOf[Set, String](Gen.identifier)) //TODO: FExtenal, FDate, FReference
   } yield {
     def mkFields = {
       val m = scala.collection.mutable.Map[String, Set[FieldValue]]()
@@ -53,8 +57,10 @@ object InfotonGenerator {
       })
       Map[String,Set[FieldValue]]() ++ m
     }
+    val systemFields = genericSystemFields.copy(path = path.mkString("/", "/", ""))
+
     iType match {
-      case 0 => ObjectInfoton(path.mkString("/", "/", ""), "dc_test", None, mkFields, None, "Baruch")
+      case 0 => ObjectInfoton(systemFields, mkFields)
       case 1 => {
         val (content, mimeType): Tuple2[Array[Byte],String] = scala.util.Random.nextBoolean() match{
           case true => (txtVal.getBytes("UTF-8"),"text/plain")
@@ -68,8 +74,7 @@ object InfotonGenerator {
           case false => None
           case true => Some(mkFields)
         }
-        FileInfoton(path=path.mkString("/", "/", ""),"dc_test", fields=f, content=Some(FileContent(content, mimeType)),protocol = None,
-          lastModifiedBy = "Baruch")
+        FileInfoton(systemFields, fields=f, content=Some(FileContent(content, mimeType)))
       }
       case 2 => ??? //unreacable for now, TODO: add LinkInfoton Generation
       case _ => ??? //should never get here
@@ -77,11 +82,11 @@ object InfotonGenerator {
   }
 
   val sCmp: Function2[Infoton,Infoton,Boolean] = (i,j) =>  {
-    i.path == j.path && {
-      List(i.lastModified, j.lastModified).size match {
+    i.systemFields.path == j.systemFields.path && {
+      List(i.systemFields.lastModified, j.systemFields.lastModified).size match {
         case 0 => true
         case 1 => false
-        case _ => i.lastModified.compareTo(j.lastModified) == 0
+        case _ => i.systemFields.lastModified.compareTo(j.systemFields.lastModified) == 0
       }
     } && {
       List(i.uuid, j.uuid).flatten.size match {

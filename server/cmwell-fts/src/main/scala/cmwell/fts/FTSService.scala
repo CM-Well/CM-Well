@@ -1306,40 +1306,42 @@ class FTSService(config: Config) extends NsSplitter{
 
         hit.field("system.kind").getValue[String] match {
           case "ObjectInfoton" =>
-            new ObjectInfoton(path, dc, indexTime, lastModified, lastModifiedBy, score, protocol = protocol) {
+            new ObjectInfoton(SystemFields(path, lastModified, lastModifiedBy, dc, indexTime, "", protocol), score) {
               override def uuid = id
               override def kind = "ObjectInfoton"
             }
           case "FileInfoton" =>
             val contentLength = tryLongThenInt[Long](hit, "content.length", identity, -1L, id, path)
 
-            new FileInfoton(
-              path,
-              dc,
-              indexTime,
-              lastModified,
-              lastModifiedBy,
+            new FileInfoton(SystemFields(
+                path,
+                lastModified,
+                lastModifiedBy,
+                dc,
+                indexTime,
+                "",
+                protocol),
               score,
-              Some(FileContent(hit.field("content.mimeType").getValue[String], contentLength)),
-              protocol = protocol) {
+              Some(FileContent(hit.field("content.mimeType").getValue[String], contentLength))) {
               override def uuid = id
               override def kind = "FileInfoton"
             }
           case "LinkInfoton" =>
-            new LinkInfoton(path,
-              dc,
-              indexTime,
-              lastModified,
-              lastModifiedBy,
+            new LinkInfoton(SystemFields(path,
+                lastModified,
+                lastModifiedBy,
+                dc,
+                indexTime,
+                "",
+                protocol),
               score,
               hit.field("link.to").getValue[String],
-              hit.field("link.kind").getValue[Int],
-              protocol = protocol) {
+              hit.field("link.kind").getValue[Int]) {
               override def uuid = id
               override def kind = "LinkInfoton"
             }
           case "DeletedInfoton" =>
-            new DeletedInfoton(path, dc, indexTime, lastModified, lastModifiedBy) {
+            new DeletedInfoton(SystemFields(path, lastModified, lastModifiedBy, dc, indexTime, "", protocol)) {
               override def uuid = id
               override def kind = "DeletedInfoton"
             }
@@ -1577,12 +1579,12 @@ class FTSService(config: Config) extends NsSplitter{
     infotons.foreach { infoton =>
       val deleteRequestBuilder = client
         .prepareDelete()
-        .setIndex(infoton.indexName)
+        .setIndex(infoton.systemFields.indexName)
         .setId(infoton.uuid)
       bulkRequest.add(deleteRequestBuilder)
     }
 
-    logRequest("deleteInfotons", s"infotons path: ${infotons.map(_.path).mkString(", ")}")
+    logRequest("deleteInfotons", s"infotons path: ${infotons.map(_.systemFields.path).mkString(", ")}")
     injectFuture[BulkResponse](bulkRequest.execute).map(_ => true)
   }
 

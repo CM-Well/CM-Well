@@ -35,15 +35,15 @@ trait Formatter extends LazyLogging {
                              mkDateVal: DateTime => V,
                              mkLongVal: Long => V,
                              includeParent: Boolean = true): Seq[(K, V)] = {
-    val indexTime = infoton.indexTime.map(it => Seq(mkKey("indexTime") -> mkLongVal(it))).getOrElse(Nil)
-    val protocol = Seq(mkKey("protocol") -> mkVal(infoton.protocol.getOrElse(cmwell.common.Settings.defaultProtocol)))
+    val indexTime = infoton.systemFields.indexTime.map(it => Seq(mkKey("indexTime") -> mkLongVal(it))).getOrElse(Nil)
+    val protocol = Seq(mkKey("protocol") -> mkVal(infoton.systemFields.protocol))
     val seq = Seq(
 //      mkKey("type") -> mkVal(infoton.kind), //TODO: add type to system instead of outer level
       mkKey("uuid") -> mkVal(infoton.uuid),
-      mkKey("lastModified") -> mkDateVal(infoton.lastModified),
-      mkKey("lastModifiedBy") -> mkVal(infoton.lastModifiedBy),
-      mkKey("path") -> mkVal(infoton.path),
-      mkKey("dataCenter") -> mkVal(infoton.dc)
+      mkKey("lastModified") -> mkDateVal(infoton.systemFields.lastModified),
+      mkKey("lastModifiedBy") -> mkVal(infoton.systemFields.lastModifiedBy),
+      mkKey("path") -> mkVal(infoton.systemFields.path),
+      mkKey("dataCenter") -> mkVal(infoton.systemFields.dc)
     ) ++ indexTime ++ protocol ++ Seq(mkKey("parent") -> mkVal(infoton.parent))
     if (includeParent) seq
     else seq.init
@@ -162,7 +162,8 @@ object TsvFormatter extends SimpleFormater {
   override protected def thinResultToString(r: SearchThinResult): String =
     s"${r.path}\t${r.lastModified}\t${r.uuid}\t${r.indexTime}" + r.score.fold("")(score => s"\t$score")
   override protected def infotonToString(i: Infoton): String =
-    s"${i.path}\t${cmwell.util.string.dateStringify(i.lastModified)}\t${i.uuid}\t${i.indexTime.fold("")(_.toString)}${i.fields
+    s"${i.systemFields.path}\t${cmwell.util.string.dateStringify(i.systemFields.lastModified)}\t${i.uuid}\t${i.systemFields.indexTime.fold("")(
+      _.toString)}${i.fields
       .flatMap(_.get("$score").flatMap(_.headOption.map("\t" + _.value.toString)))
       .getOrElse("")}"
 }
@@ -170,7 +171,7 @@ object TsvFormatter extends SimpleFormater {
 object PathFormatter extends SimpleFormater {
   override def format: FormatType = TextType
   override protected def thinResultToString(r: SearchThinResult): String = r.path
-  override protected def infotonToString(i: Infoton): String = i.path
+  override protected def infotonToString(i: Infoton): String = i.systemFields.path
 }
 
 trait TreeLikeFormatter extends Formatter {
@@ -274,7 +275,7 @@ trait TreeLikeFormatter extends Formatter {
       .fold(Seq.empty[(String, Inner)])(_ => Seq("fields" -> fields(i)))
     val iExtra: Seq[(String, Inner)] = extra(i)
     (i: @unchecked) match {
-      case CompoundInfoton(_, _, _, _, _, _, children, offset, length, total, _, _) =>
+      case CompoundInfoton(_, _, children, offset, length, total) =>
         makeFromTuples(
           Seq(
             "type" -> single(i.kind),
@@ -285,14 +286,14 @@ trait TreeLikeFormatter extends Formatter {
             "total" -> single(total)
           ) ++ iExtra ++ iFields
         )
-      case ObjectInfoton(_, _, _, _, _, _, _, _) =>
+      case ObjectInfoton(_, _) =>
         makeFromTuples(
           Seq(
             "type" -> single(i.kind),
             "system" -> iSystem
           ) ++ iExtra ++ iFields
         )
-      case FileInfoton(_, _, _, _, _, _, Some(content), _, _) =>
+      case FileInfoton(_, _, Some(content)) =>
         makeFromTuples(
           Seq(
             "type" -> single(i.kind),
@@ -300,14 +301,14 @@ trait TreeLikeFormatter extends Formatter {
             "content" -> fileContent(content)
           ) ++ iExtra ++ iFields
         )
-      case FileInfoton(_, _, _, _, _, None, _, _, _) =>
+      case FileInfoton(_, None, _) =>
         makeFromTuples(
           Seq(
             "type" -> single(i.kind),
             "system" -> iSystem
           ) ++ iExtra ++ iFields
         )
-      case LinkInfoton(_, _, _, _, _, _, linkTo, linkType, _, _) =>
+      case LinkInfoton(_, _, linkTo, linkType) =>
         makeFromTuples(
           Seq(
             "type" -> single(i.kind),
