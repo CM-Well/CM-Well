@@ -3,7 +3,8 @@ import cmwell.build.PluginVersions
 libraryDependencies ++=  Seq(
   "joda-time" % "joda-time" % "2.3",
   "org.joda" % "joda-convert" % "1.6",
-  "net.leibman" %% "semverfi" % "0.2.0")
+  "net.leibman" %% "semverfi" % "0.2.0",
+  "io.get-coursier" %% "coursier" % PluginVersions.coursier)
 
 val s = Seq(
   shellPrompt := { s => Project.extract(s).currentProject.id + " > " },
