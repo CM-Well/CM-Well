@@ -313,10 +313,10 @@ package object collections {
     * e.g:
     *
     * {{{
-    * scala> import cmwell.util.collections._
-    * import cmwell.util.collections._
+    * scala> import cmwell.util.collections.Unfolder._
+    * import cmwell.util.collections.Unfolder._
     *
-    * scala> cmwell.util.collections.Unfolder.unfold(Array.newBuilder[Int])(0 → 1){
+    * scala> unfold(Array.newBuilder[Int])(0 → 1){
     *      |   case (a,b) if a > 1000 ⇒ None
     *      |   case (a,b) ⇒ Some((b→(a+b))→a)
     *      | }
@@ -344,8 +344,8 @@ package object collections {
     * can be used with the companion object like:
     *
     * {{{
-    * scala> import cmwell.util.collections._
-    * import cmwell.util.collections._
+    * scala> import cmwell.util.collections.Unfolder._
+    * import cmwell.util.collections.Unfolder._
     *
     * scala> Set.unfold(0 → 1){
     *      |   case (a,b) if a > 1000 ⇒ None
@@ -372,7 +372,7 @@ package object collections {
     * scala> import cmwell.util.collections._
     * import cmwell.util.collections._
     *
-    * scala> Array .unfold(1){ i ⇒
+    * scala> Array.unfold(1){ i ⇒
     *      |   if(i > 10) None
     *      |   else Some((i+1,i*i))
     *      | }
