@@ -52,7 +52,7 @@ package object util {
 
   private[this] def makeMetaWithZero(path: String, modifier:String, fields: Option[Map[String, Set[FieldValue]]]): ObjectInfoton = {
     if (path.startsWith("/meta/")) {
-      ObjectInfoton(SystemFields(path, zeroTime, modifier, Settings.dataCenter, None, "", "http"))
+      ObjectInfoton(SystemFields(path, zeroTime, modifier, Settings.dataCenter, None, "", "http"), fields)
     } else {
       ObjectInfoton(SystemFields(path, zeroTime, modifier, Settings.dataCenter, None, "", "http"), fields)
     }
@@ -65,11 +65,8 @@ package object util {
                       currentTime: DateTime,
                       modifier: String): Infoton = {
 
-    //scalastyle:off
-    println(s">>> Creating infoton of path $ipath and it is lastModified by $modifier")
-    //scalastyle:on
-
     val path = removeCmwHostAndPrependSlash(cmwHostsSet, ipath)
+
     metaData match {
       case Some(MetaData(mdt, date, data, text, ctype, linktype, linkto, dataCenter, indexTime, protocol, lastModifiedBy)) => {
         lazy val (_date, dc) =
@@ -79,7 +76,8 @@ package object util {
           case Some(ObjectMetaData) if path.startsWith("/meta/") =>
             makeMetaWithZero(path, if (lastModifiedBy.isEmpty) modifier else lastModifiedBy.get, fields)
           case Some(ObjectMetaData) =>
-            ObjectInfoton(SystemFields(path,  _date, if (lastModifiedBy.isEmpty) modifier else lastModifiedBy.get, dc, indexTime, "", protocol.get), fields)
+            ObjectInfoton(SystemFields(path,  _date, if (lastModifiedBy.isEmpty) modifier else lastModifiedBy.get,
+              dc, indexTime, "", protocol.get), fields)
           case Some(FileMetaData) => {
             val contentTypeFromByteArray = ctype match {
               case Some(ct) =>
@@ -178,7 +176,8 @@ package util {
       linkTo.isEmpty     &&
       dataCenter.isEmpty &&
       indexTime.isEmpty  &&
-      protocol.isEmpty   &&
+      //we don't check if protocol is empty, since it will always be full
+      //protocol.isEmpty   &&
       lastModifiedBy.isEmpty
     }
     // format: on

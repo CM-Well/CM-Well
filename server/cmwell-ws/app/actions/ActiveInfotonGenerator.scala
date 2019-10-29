@@ -914,14 +914,9 @@ ${lines.mkString("\n")}
         )
       case "/proc/health-detailed" =>
         Some(
-          VirtualInfoton(FileInfoton(SystemFields(path, d, "VirtualInfoton", dc, None, "", "http"),
-            None,
-            Some(
-              FileContent(
-                generateHealthMarkdown(d).getBytes,
-                "text/x-markdown"
-              )
-            )))
+          VirtualInfoton(
+            ObjectInfoton(SystemFields(path, d, "VirtualInfoton", dc, None, "", "http"),generateHealthDetailedFields)
+          )
         )
       case "/proc/health-detailed.md" =>
         Some(
@@ -1015,7 +1010,7 @@ ${lines.mkString("\n")}
         val url = s"http://$host/meta/$sysOrNn#"
         Some(
           VirtualInfoton(
-            ObjectInfoton(SystemFields("/meta/ns/sys", d, "VirtualInfoton", dc, None, "", "http"),
+            ObjectInfoton(SystemFields("/meta/ns/sys", new DateTime(), "VirtualInfoton", dc, None, "", "http"),
               Some(
                 Map(
                   "url" -> Set[FieldValue](FString(url)),

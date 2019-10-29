@@ -450,7 +450,7 @@ package object wsutil extends LazyLogging {
 
   //Some convenience methods & types
   def getByPath(protocol: String, path: String, crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionContext): Future[Infoton] =
-    crudServiceFS.irwService.readPathAsync(path, crudServiceFS.level).map(_.getOrElse(GhostInfoton.ghost(protocol, path)))
+    crudServiceFS.irwService.readPathAsync(path, crudServiceFS.level).map(_.getOrElse(GhostInfoton.ghost(path, protocol)))
   type F[X] = (X, Option[List[RawFieldFilter]])
   type EFX = Either[F[Future[Infoton]], F[Infoton]]
 

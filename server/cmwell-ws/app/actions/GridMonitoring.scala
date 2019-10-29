@@ -147,7 +147,7 @@ object GridMonitoring {
       }
       Some(
         VirtualInfoton(
-          FileInfoton(SystemFields("/proc/dc-health.md", new DateTime(DateTimeZone.UTC), "VirtualInfoton", dc, None, "", "http"),
+          FileInfoton(SystemFields(path, new DateTime(DateTimeZone.UTC), "VirtualInfoton", dc, None, "", "http"),
             content = Some(FileContent(contentTranformator(payload).getBytes, mimeType)))
         )
       )
