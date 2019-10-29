@@ -64,8 +64,7 @@ case class DeleteAttributesCommand(path: String,
                                    lastModified: DateTime,
                                    lastModifiedBy: String,
                                    trackingID: Option[String] = None,
-                                   prevUUID: Option[String] = None,
-                                   protocol: String)
+                                   prevUUID: Option[String] = None)
   extends SingleCommand
 
 case class DeletePathCommand(path: String,

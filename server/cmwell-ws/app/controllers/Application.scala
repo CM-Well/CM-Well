@@ -103,7 +103,7 @@ object ApplicationUtils {
     } else if (recursive) numOfChildren(path).map {
       case sr if sr.total > 500 =>
         Left("recursive DELETE is forbidden for large (>500 descendants) infotons. DELETE descendants first.")
-      case sr => Right(sr.infotons.map(_.path) :+ path)
+      case sr => Right(sr.infotons.map(_.systemFields.path) :+ path)
     } else Future.successful(Right(Seq(path)))
   }
 
@@ -374,15 +374,16 @@ callback=< [URL] >
   val partition = underscorePartition.tail.toInt
     val iOpt = Some(
       VirtualInfoton(
-        ObjectInfoton(
-          s"/meta/quad/Y213ZWxsOi8vbWV0YS9zeXMjcGFydGl0aW9u$base64OfPartition",
-          Settings.dataCenter,
-          None,
+        ObjectInfoton(SystemFields(
+            s"/meta/quad/Y213ZWxsOi8vbWV0YS9zeXMjcGFydGl0aW9u$base64OfPartition",
+            new DateTime(DateTimeZone.UTC),
+            "VirtualInfoton",
+            Settings.dataCenter,
+            None,
+            "http",
+            ""),
           Map[String, Set[FieldValue]]("alias" -> Set(FString(s"partition_$partition")),
-            "graph" -> Set(FReference(s"cmwell://meta/sys#partition_$partition"))),
-          protocol = None,
-          lastModifiedBy = "VirtualInfoton"
-        )
+            "graph" -> Set(FReference(s"cmwell://meta/sys#partition_$partition"))))
       )
     )
     infotonOptionToReply(req, iOpt.map(VirtualInfoton.v2i))
@@ -490,7 +491,7 @@ callback=< [URL] >
 
   def handleUuidGET(uuid: String) = Action.async { implicit req => {
     def allowed(infoton: Infoton, level: PermissionLevel = PermissionLevel.Read) =
-      authUtils.filterNotAllowedPaths(Seq(infoton.path), level, authUtils.extractTokenFrom(req)).isEmpty
+      authUtils.filterNotAllowedPaths(Seq(infoton.systemFields.path), level, authUtils.extractTokenFrom(req)).isEmpty
 
     val isPurgeOp = req.getQueryString("op").contains("purge")
 
@@ -518,7 +519,7 @@ callback=< [URL] >
                     ).as(overrideMimetype(formatter.mimetype, req)._2)
                 )
             case None =>
-              crudServiceFS.getInfotons(Seq(infoton.path)).flatMap { boi =>
+              crudServiceFS.getInfotons(Seq(infoton.systemFields.path)).flatMap { boi =>
                 if (infoton.uuid == boi.infotons.head.uuid)
                   Future.successful(
                     BadRequest(
@@ -608,7 +609,7 @@ callback=< [URL] >
             case Some(jsonStr) =>
               jsonToFields(jsonStr.getBytes("UTF-8")) match {
                 case Success(fields) =>
-                  crudServiceFS.deleteInfoton(normalizedPath, modifier, None, Some(fields), isPriorityWrite).map { _ =>
+                  crudServiceFS.deleteInfoton(normalizedPath, modifier, Some(fields), isPriorityWrite).map { _ =>
                     Ok(Json.obj("success" -> true))
                   }
                 case Failure(exception) => asyncErrorHandler(exception)
@@ -633,7 +634,7 @@ callback=< [URL] >
                 (fields.isDefined, either) match {
                   case (true, _) =>
                     crudServiceFS
-                      .deleteInfoton(normalizedPath, modifier, None, fields, isPriorityWrite)
+                      .deleteInfoton(normalizedPath, modifier, fields, isPriorityWrite)
                       .onComplete {
                         case Success(b) => p.success(Ok(Json.obj("success" -> b)))
                         case Failure(e) =>
@@ -641,7 +642,7 @@ callback=< [URL] >
                       }
                   case (false, Right(paths)) =>
                     crudServiceFS
-                      .deleteInfotons(paths.map((_, None, None)).toList, modifier, isPriorityWrite = isPriorityWrite)
+                      .deleteInfotons(paths.map((_, None)).toList, modifier, isPriorityWrite = isPriorityWrite)
                       .onComplete {
                         case Success(b) => p.success(Ok(Json.obj("success" -> b)))
                         case Failure(e) =>
@@ -761,10 +762,10 @@ callback=< [URL] >
    */
   private def addIndexTime(fromCassandra: Seq[Infoton], uuidToindexTime: Map[String, Long]): Seq[Infoton] =
   fromCassandra.map {
-    case i: ObjectInfoton if i.indexTime.isEmpty => i.copy(indexTime = uuidToindexTime.get(i.uuid))
-    case i: FileInfoton if i.indexTime.isEmpty => i.copy(indexTime = uuidToindexTime.get(i.uuid))
-    case i: LinkInfoton if i.indexTime.isEmpty => i.copy(indexTime = uuidToindexTime.get(i.uuid))
-    case i: DeletedInfoton if i.indexTime.isEmpty => i.copy(indexTime = uuidToindexTime.get(i.uuid))
+    case i: ObjectInfoton if i.systemFields.indexTime.isEmpty => i.copy(i.systemFields.copy(indexTime = uuidToindexTime.get(i.uuid)))
+    case i: FileInfoton if i.systemFields.indexTime.isEmpty => i.copy(i.systemFields.copy(indexTime = uuidToindexTime.get(i.uuid)))
+    case i: LinkInfoton if i.systemFields.indexTime.isEmpty => i.copy(i.systemFields.copy(indexTime = uuidToindexTime.get(i.uuid)))
+    case i: DeletedInfoton if i.systemFields.indexTime.isEmpty => i.copy(i.systemFields.copy(indexTime = uuidToindexTime.get(i.uuid)))
     case i => i
   }
 
@@ -2420,7 +2421,7 @@ callback=< [URL] >
                   PartialContent(formatter.render(i)).as(overrideMimetype(formatter.mimetype, request)._2)
                 )
               case infopt => {
-                val i = infopt.fold(GhostInfoton.ghost(path)) {
+                val i = infopt.fold(GhostInfoton.ghost(path, "http")) {
                   case Everything(j)           => j
                   case _: UnknownNestedContent => !!!
                 }
@@ -2488,9 +2489,9 @@ callback=< [URL] >
       val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
       (if (offset.isEmpty) actions.ActiveInfotonHandler.wrapInfotonReply(infoton) else infoton) match {
         case None => Future.successful(NotFound("Infoton not found"))
-        case Some(DeletedInfoton(p, _, _, lm, _, _)) =>
-          Future.successful(NotFound(s"Infoton was deleted on ${fullDateFormatter.print(lm)}"))
-        case Some(LinkInfoton(_, _, _, _, _, _, to, lType, _, _)) =>
+        case Some(DeletedInfoton(systemFields)) =>
+          Future.successful(NotFound(s"Infoton was deleted on ${fullDateFormatter.print(systemFields.lastModified)}"))
+        case Some(LinkInfoton(_, _, to, lType)) =>
           lType match {
             case LinkType.Permanent => Future.successful(Redirect(to, request.queryString, MOVED_PERMANENTLY))
             case LinkType.Temporary => Future.successful(Redirect(to, request.queryString, TEMPORARY_REDIRECT))
@@ -2551,7 +2552,7 @@ callback=< [URL] >
                   ScalaJsRuntimeCompiler
                     .compile(scalaJsSource)
                     .flatMap(
-                      c => treatContentAsAsset(request, c.getBytes("UTF-8"), mime, i.path, i.uuid, i.lastModified)
+                      c => treatContentAsAsset(request, c.getBytes("UTF-8"), mime, i.systemFields.path, i.uuid, i.systemFields.lastModified)
                     )
                 case f: FileInfoton => {
                   val mt = f.content.get.mimeType
@@ -2560,10 +2561,10 @@ callback=< [URL] >
                       (MarkdownFormatter.asHtmlString(f).getBytes, "text/html")
                     } else (f.content.get.data.get, mt)
                   }
-                  treatContentAsAsset(request, content, mime, i.path, i.uuid, i.lastModified)
+                  treatContentAsAsset(request, content, mime, i.systemFields.path, i.uuid, i.systemFields.lastModified)
                 }
-                case c: CompoundInfoton if c.children.exists(_.name.equalsIgnoreCase("index.html")) =>
-                  Future.successful(Redirect(routes.Application.handleGET(s"${c.path}/index.html".substring(1))))
+                case c: CompoundInfoton if c.children.exists(_.systemFields.name.equalsIgnoreCase("index.html")) =>
+                  Future.successful(Redirect(routes.Application.handleGET(s"${c.systemFields.path}/index.html".substring(1))))
                 // ui
                 case _ => {
                   val isOldUi = request.queryString.keySet("old-ui")
@@ -2619,8 +2620,8 @@ callback=< [URL] >
                 case Success(fields) =>
                   InfotonValidator.validateValueSize(fields)
                   boolFutureToRespones(
-                    crudServiceFS.putInfoton(ObjectInfoton(normalizedPath, Settings.dataCenter, None, fields, None, modifier),
-                                             isPriorityWrite)
+                    crudServiceFS.putInfoton(ObjectInfoton(SystemFields(normalizedPath, new DateTime(DateTimeZone.UTC), modifier, Settings.dataCenter, None, "",
+                      "http"), fields), isPriorityWrite)
                   )
                 // TODO handle validation
                 case Failure(exception) => asyncErrorHandler(exception)
@@ -2639,12 +2640,8 @@ callback=< [URL] >
                   )
                   .getOrElse("text/plain")
                 boolFutureToRespones(
-                  crudServiceFS.putInfoton(FileInfoton(path = normalizedPath,
-                                                       dc = Settings.dataCenter,
-                                                       content = Some(FileContent(content, contentType)),
-                                                       lastModifiedBy = modifier,
-                                                       protocol = None),
-                                           isPriorityWrite)
+                  crudServiceFS.putInfoton(FileInfoton(SystemFields(path = normalizedPath, new DateTime(DateTimeZone.UTC), lastModifiedBy = modifier,
+                      dc = Settings.dataCenter, None, "", "http"), content = Some(FileContent(content, contentType))), isPriorityWrite)
                 )
               }
             }
@@ -2655,9 +2652,9 @@ callback=< [URL] >
                   InfotonValidator.validateValueSize(fields)
                   boolFutureToRespones(
                     crudServiceFS
-                      .putInfoton(FileInfoton(path = normalizedPath, dc = Settings.dataCenter, fields = Some(fields), protocol = None,
-                        lastModifiedBy = modifier), isPriorityWrite)
-                  )
+                      .putInfoton(FileInfoton(SystemFields(normalizedPath, new DateTime(DateTimeZone.UTC), modifier, Settings.dataCenter, None, "", "http"),
+                        fields = Some(fields)), isPriorityWrite)
+                    )
                 case Failure(exception) =>
                   Future.successful(BadRequest(Json.obj("success" -> false, "cause" -> exception.getMessage)))
               }
@@ -2671,14 +2668,9 @@ callback=< [URL] >
                 case "2" => LinkType.Forward
               }
               boolFutureToRespones(
-                crudServiceFS.putInfoton(LinkInfoton(path = normalizedPath,
-                                                     dc = Settings.dataCenter,
-                                                     fields = Some(Map[String, Set[FieldValue]]()),
-                                                     linkTo = linkTo,
-                                                     linkType = linkType,
-                                                     protocol = None,
-                                                     lastModifiedBy = modifier),
-                                         isPriorityWrite)
+                crudServiceFS.putInfoton(LinkInfoton(SystemFields(normalizedPath, new DateTime(DateTimeZone.UTC), modifier, Settings.dataCenter, None, "",
+                  "http"), fields = Some(Map[String, Set[FieldValue]]()), linkTo = linkTo, linkType = linkType),
+                  isPriorityWrite)
               )
             }
             case _ => Future.successful(BadRequest(Json.obj("success" -> false, "cause" -> "unrecognized type")))
@@ -2902,7 +2894,7 @@ callback=< [URL] >
       .getInfotonByUuidAsync(uuid)
       .flatMap {
         case FullBox(i) => {
-          val index = i.indexName
+          val index = i.systemFields.indexName
           val a = handleRawDocWithIndex(index, uuid)
           a(req)
         }
@@ -3085,8 +3077,9 @@ callback=< [URL] >
                   case None => Map(activeFlag)
                 }
 
-                val newInfoton = infotonBox.head.copyInfoton(fields=Some(newFields), lastModified = new DateTime(System.currentTimeMillis),
-                  lastModifiedBy = modifier)
+                val firstInfoton = infotonBox.head
+                val newInfoton = firstInfoton.copyInfoton(firstInfoton.systemFields.copy(lastModified = new DateTime(System.currentTimeMillis),
+                  lastModifiedBy = modifier), fields=Some(newFields))
                 val deletes = Map(infotonPath ->  Map("active" -> None))
 
                 crudServiceFS.upsertInfotons(inserts = List(newInfoton), deletes = deletes, deletesModifier = modifier).onComplete({
@@ -3241,7 +3234,7 @@ class CachedSpa @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
   private def doFetchContent(isOldUi: Boolean): Future[String] = {
     val path = if (isOldUi) contentPath else newContentPath
     crudServiceFS.getInfotonByPathAsync(path).collect {
-      case FullBox(FileInfoton(_,_, _, _, _, _, Some(c), _, _)) => new String(c.data.get, "UTF-8")
+      case FullBox(FileInfoton(_,_, Some(c))) => new String(c.data.get, "UTF-8")
       case somethingElse => {
         logger.error("got something else: " + somethingElse)
         throw new SpaMissingException("SPA Content is currently unreachable")

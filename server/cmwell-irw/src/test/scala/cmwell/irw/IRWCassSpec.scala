@@ -219,8 +219,14 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
     val f2 = for {
       _ <- f1
       _ <- irw.writeAsync(objInfo_v2)
-      cmpObjInfo_v2 <- irw.readUUIDAsync(objInfo_v2.uuid)
-      cmpByPathObjInfo_v2 <- irw.readPathAsync(objInfo_v2.systemFields.path)
+      cmpObjInfo_v2 <- cmwell.util.concurrent.spinCheck(100.millis, true, 3 minutes)(irw.readUUIDAsync(objInfo_v2.uuid)) {
+        case FullBox(i) => (i.systemFields == objInfo_v2.systemFields) && (i.uuid == objInfo_v2.uuid) && (i.fields.size == objInfo_v2.fields.size)
+        case _ => false
+      }
+      cmpByPathObjInfo_v2 <- cmwell.util.concurrent.spinCheck(100.millis, true, 3 minutes)(irw.readPathAsync(objInfo_v2.systemFields.path)) {
+        case FullBox(i) => (i.systemFields == objInfo_v2.systemFields) && (i.uuid == objInfo_v2.uuid) && (i.fields.size === objInfo_v2.fields.size)
+        case _ => false
+      }
     } yield withClue((cmpObjInfo_v2, cmpByPathObjInfo_v2)) {
 
       val FullBox(i) = cmpObjInfo_v2
