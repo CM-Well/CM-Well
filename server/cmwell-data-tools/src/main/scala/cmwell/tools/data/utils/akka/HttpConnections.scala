@@ -18,6 +18,7 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl._
 import akka.http.scaladsl.settings.{ClientConnectionSettings, ConnectionPoolSettings}
 import akka.stream.Materializer
+import cmwell.tools.data.utils.akka.Retry.config
 import cmwell.tools.data.utils.logging.LabelId
 import com.typesafe.config.ConfigFactory
 
@@ -28,11 +29,26 @@ object HttpConnections extends DataToolsConfig {
     val userAgent = label.fold(s"cmwell-data-tools using akka-http/${config.getString("akka.version")}")(
       l => s"cmwell-data-tools ${l.id}"
     )
-    val settings = ClientConnectionSettings(
-      ConfigFactory
-        .parseString(s"akka.http.host-connection-pool.client.user-agent-header=$userAgent")
-        .withFallback(config)
-    )
+
+    val settings =
+      if (config.getString("akka.http.client.proxy.https.host")!="" &&
+        config.getString("akka.http.client.proxy.https.port")!="")
+      {
+        val httpsProxyTransport = ClientTransport.httpsProxy
+        ClientConnectionSettings(
+          ConfigFactory
+            .parseString(s"akka.http.host-connection-pool.client.user-agent-header=$userAgent")
+            .withFallback(config)
+        ).withTransport(httpsProxyTransport)
+      }
+      else
+      {
+        ClientConnectionSettings(
+          ConfigFactory
+            .parseString(s"akka.http.host-connection-pool.client.user-agent-header=$userAgent")
+            .withFallback(config)
+        )
+      }
 
     protocol match {
       case "https" => Http().outgoingConnectionHttps(host, port, settings = settings)
@@ -46,11 +62,26 @@ object HttpConnections extends DataToolsConfig {
     val userAgent = label.fold(s"cmwell-data-tools using akka-http/${config.getString("akka.version")}")(
       l => s"cmwell-data-tools ${l.id}"
     )
-    val settings = ConnectionPoolSettings(
-      ConfigFactory
-        .parseString(s"akka.http.host-connection-pool.client.user-agent-header=$userAgent")
-        .withFallback(config)
-    )
+
+    val settings =
+      if (config.getString("akka.http.client.proxy.https.host")!="" &&
+        config.getString("akka.http.client.proxy.https.port")!="")
+      {
+        val httpsProxyTransport = ClientTransport.httpsProxy
+        ConnectionPoolSettings(
+          ConfigFactory
+            .parseString(s"akka.http.host-connection-pool.client.user-agent-header=$userAgent")
+            .withFallback(config)
+        ).withTransport(httpsProxyTransport)
+      }
+      else
+      {
+        ConnectionPoolSettings(
+          ConfigFactory
+            .parseString(s"akka.http.host-connection-pool.client.user-agent-header=$userAgent")
+            .withFallback(config)
+        )
+      }
 
     protocol match {
       case "https" => Http().newHostConnectionPoolHttps[T](host, port, settings = settings)
@@ -64,11 +95,26 @@ object HttpConnections extends DataToolsConfig {
     val userAgent = label.fold(s"cmwell-data-tools using akka-http/${config.getString("akka.version")}")(
       l => s"cmwell-data-tools ${l.id}"
     )
-    val settings = ConnectionPoolSettings(
-      ConfigFactory
-        .parseString(s"data-tools.akka.http.host-connection-pool.client.user-agent-header=$userAgent")
-        .withFallback(config)
-    )
+
+    val settings =
+      if (config.getString("akka.http.client.proxy.https.host")!="" &&
+        config.getString("akka.http.client.proxy.https.port")!="")
+      {
+        val httpsProxyTransport = ClientTransport.httpsProxy
+        ConnectionPoolSettings(
+          ConfigFactory
+            .parseString(s"data-tools.akka.http.host-connection-pool.client.user-agent-header=$userAgent")
+            .withFallback(config)
+        ).withTransport(httpsProxyTransport)
+      }
+      else
+      {
+        ConnectionPoolSettings(
+          ConfigFactory
+            .parseString(s"data-tools.akka.http.host-connection-pool.client.user-agent-header=$userAgent")
+            .withFallback(config)
+        )
+      }
 
     protocol match {
       case "https" => Http().cachedHostConnectionPoolHttps[T](host, port, settings = settings)

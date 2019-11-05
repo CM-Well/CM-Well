@@ -15,9 +15,11 @@
 package cmwell.tools.data.utils.ops
 
 import cmwell.tools.data.utils.ops
-import akka.http.scaladsl.Http
+import akka.http.scaladsl.{ClientTransport, Http}
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
+import akka.http.scaladsl.settings.{ClientConnectionSettings, ConnectionPoolSettings}
 import akka.stream.scaladsl.{Sink, Source}
+import cmwell.tools.data.utils.akka.Retry.config
 import cmwell.tools.data.utils.akka._
 import cmwell.tools.data.utils.logging.DataToolsLogging
 import com.typesafe.config.ConfigFactory
@@ -39,7 +41,23 @@ object VersionChecker extends DataToolsLogging with DataToolsConfig {
 
     logger.info("checking if new cmwell-data-tools version is available")
 
-    val conn = Http().newHostConnectionPool[Option[_]](host = remoteVersionHost)
+    val settings =
+      if (config.getString("akka.http.client.proxy.https.host")!="" &&
+        config.getString("akka.http.client.proxy.https.port")!="")
+      {
+        val httpsProxyTransport = ClientTransport.httpsProxy
+        ConnectionPoolSettings(system)
+          .withConnectionSettings(ClientConnectionSettings(system)
+          .withTransport(httpsProxyTransport))
+      }
+      else
+      {
+        ConnectionPoolSettings(system)
+          .withConnectionSettings(ClientConnectionSettings(system))
+      }
+
+
+    val conn = Http().newHostConnectionPool[Option[_]](host = remoteVersionHost, settings= settings)
 
     Source
       .single(HttpRequest(uri = s"http://$remoteVersionHost$remoteVersionPath?format=ntriples") -> None)

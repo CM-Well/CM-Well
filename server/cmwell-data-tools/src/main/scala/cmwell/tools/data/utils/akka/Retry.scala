@@ -15,14 +15,16 @@
 package cmwell.tools.data.utils.akka
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
+import akka.http.scaladsl.{ClientTransport, Http}
 import akka.http.scaladsl.model.HttpEntity.{Chunked, LastChunk}
 import akka.http.scaladsl.model.StatusCodes.{ClientError, ServerError}
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.settings.{ClientConnectionSettings, ConnectionPoolSettings}
 import akka.pattern._
 import akka.stream._
 import akka.stream.scaladsl._
 import akka.util.ByteString
+import cmwell.tools.data.downloader.consumer.Downloader.{config, logger}
 import cmwell.tools.data.sparql.StpMetadata
 import cmwell.tools.data.utils.ArgsManipulations
 import cmwell.tools.data.utils.ArgsManipulations.HttpAddress
@@ -382,26 +384,26 @@ object Retry extends DataToolsLogging with DataToolsConfig {
           None
       }
 
+    val settings =
+      if (config.getString("akka.http.client.proxy.https.host")!="" &&
+          config.getString("akka.http.client.proxy.https.port")!="")
+      {
+        val httpsProxyTransport = ClientTransport.httpsProxy
+        ConnectionPoolSettings(system)
+          .withConnectionSettings(ClientConnectionSettings(system)
+          .withTransport(httpsProxyTransport))
+      }
+      else
+      {
+        ConnectionPoolSettings(system)
+          .withConnectionSettings(ClientConnectionSettings(system))
+      }
+
     val conn = managedConnection match {
       case Some(connection) => connection
-      case _ => Http().superPool[State[T]]()
-
+      case _ => Http().superPool[State[T]](settings = settings)
     }
 
-    //managedConnection match {
-    //  case Some(connection) => connection
-    //  case _ => Http().superPool[State[T]]()
-    //}
-
-    //val conn = Http().superPool[State[T]]() // http connection flow
-//    val conn = Http().newHostConnectionPool[State](host = baseUrl, port = port) // http connection flow
-    /*val HttpAddress(protocol, host, port, uriPrefix) =
-      ArgsManipulations.extractBaseUrl(baseUrl)
-    val conn = HttpConnections.newHostConnectionPool[State](
-      host,
-      port,
-      protocol
-    ) // http connection flow*/
     val maxConnections =
       config.getInt("akka.http.host-connection-pool.max-connections")
     val httpPipelineSize =
