@@ -23,7 +23,6 @@ import akka.pattern._
 import akka.stream._
 import akka.stream.scaladsl._
 import akka.util.ByteString
-import cmwell.tools.data.sparql.StpMetadata
 import cmwell.tools.data.utils.ArgsManipulations
 import cmwell.tools.data.utils.ArgsManipulations.HttpAddress
 import cmwell.tools.data.utils.akka.HeaderOps._
@@ -384,24 +383,9 @@ object Retry extends DataToolsLogging with DataToolsConfig {
 
     val conn = managedConnection match {
       case Some(connection) => connection
-      case _ => Http().superPool[State[T]]()
-
+      case _ => Http().superPool[State[T]](settings = AkkaUtils.generateConnectionPoolSettings())
     }
 
-    //managedConnection match {
-    //  case Some(connection) => connection
-    //  case _ => Http().superPool[State[T]]()
-    //}
-
-    //val conn = Http().superPool[State[T]]() // http connection flow
-//    val conn = Http().newHostConnectionPool[State](host = baseUrl, port = port) // http connection flow
-    /*val HttpAddress(protocol, host, port, uriPrefix) =
-      ArgsManipulations.extractBaseUrl(baseUrl)
-    val conn = HttpConnections.newHostConnectionPool[State](
-      host,
-      port,
-      protocol
-    ) // http connection flow*/
     val maxConnections =
       config.getInt("akka.http.host-connection-pool.max-connections")
     val httpPipelineSize =
