@@ -10,8 +10,7 @@ import cmwell.build.{Versions,CMWellBuild}
 
 libraryDependencies ++= {
   val dm = dependenciesManager.value
-  Seq(
-      dm("net.leibman", "semverfi"))
+  Seq(dm("nl.gn0s1s", "bump"))
 }
 
 name := "cmwell-cons"

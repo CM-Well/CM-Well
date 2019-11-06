@@ -10,6 +10,6 @@ libraryDependencies ++= Seq("org.apache.thrift" % "libthrift" % "0.9.2" exclude(
                             "org.slf4j" % "slf4j-api" % "1.7.12",
                             "org.slf4j" % "jcl-over-slf4j" % "1.7.12",
                             "org.yaml" % "snakeyaml" % "1.15",
-                            "net.leibman" %% "semverfi" % "0.2.0")
+                            "nl.gn0s1s" %% "bump" % "0.1.3")
 
 scalacOptions ++= Seq("-deprecation", "-feature", "-unchecked", "-language:postfixOps")

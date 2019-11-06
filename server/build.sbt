@@ -39,9 +39,9 @@ ThisBuild / dynver ~= stripTime
 scalaVersion in Global := "2.12.10"
 //javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint")
 initialize := {
-  import semverfi._
+  import nl.gn0s1s.bump.SemVer
   val _ = initialize.value
-  if (Version(sys.props("java.specification.version")) < Version("1.8"))
+  if (SemVer(sys.props("java.specification.version")) < SemVer("1.8"))
     sys.error("Java 8 or higher is required for CM-Well!")
 }
 updateOptions in Global := updateOptions.in(Global).value.withCachedResolution(true).withCircularDependencyLevel(CircularDependencyLevel.Error)
@@ -176,7 +176,7 @@ dependenciesManager in Global := {
   case ("xerces","xercesImpl")                                     => "xerces" % "xercesImpl" % "2.12.0"
   case ("xml-apis","xml-apis")                                     => "xml-apis" % "xml-apis" % "1.4.01"
   case ("uk.org.lidalia","sysout-over-slf4j")                      => "uk.org.lidalia" % "sysout-over-slf4j" % "1.0.2"
-  case ("net.leibman", "semverfi")                                 => "net.leibman" %% "semverfi" % "0.2.0"
+  case ("nl.gn0s1s", "bump")                                       => "nl.gn0s1s" %% "bump" % "0.1.3"
 }
 
 //dependencyOverrides in Global ++= {
