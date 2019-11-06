@@ -45,10 +45,10 @@ object AkkaUtils {
     val settings = userAgent.fold{
       ConnectionPoolSettings(config)
       .withConnectionSettings(ClientConnectionSettings(config))
-    }{_ =>
+    }{userAgentV =>
       ConnectionPoolSettings(
         ConfigFactory
-          .parseString(s"akka.http.host-connection-pool.client.user-agent-header=$userAgent")
+          .parseString(s"akka.http.host-connection-pool.client.user-agent-header=$userAgentV")
           .withFallback(config)
       )
     }
