@@ -17,14 +17,13 @@ package security
 
 import cmwell.ws.Settings
 import com.typesafe.config.ConfigFactory
-import com.typesafe.scalalogging.LazyLogging
 import org.joda.time.DateTime
 import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim, JwtOptions}
 import security.Token.{secret, secret2}
 
 import scala.util.Try
 
-class Token(jwt: String, authCache: EagerAuthCache) extends LazyLogging{
+class Token(jwt: String, authCache: EagerAuthCache) {
   private val requiredClaims = Set("sub", "exp")
 
   private val claimsSet = {
