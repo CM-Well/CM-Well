@@ -16,11 +16,8 @@ package cmwell.tools.data.utils.akka
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl._
-import akka.http.scaladsl.settings.{ClientConnectionSettings, ConnectionPoolSettings}
 import akka.stream.Materializer
-import cmwell.tools.data.utils.akka.Retry.config
 import cmwell.tools.data.utils.logging.LabelId
-import com.typesafe.config.ConfigFactory
 
 object HttpConnections extends DataToolsConfig {
 
@@ -30,25 +27,7 @@ object HttpConnections extends DataToolsConfig {
       l => s"cmwell-data-tools ${l.id}"
     )
 
-    val settings =
-      if (config.getString("akka.http.client.proxy.https.host")!="" &&
-        config.getString("akka.http.client.proxy.https.port")!="")
-      {
-        val httpsProxyTransport = ClientTransport.httpsProxy
-        ClientConnectionSettings(
-          ConfigFactory
-            .parseString(s"akka.http.host-connection-pool.client.user-agent-header=$userAgent")
-            .withFallback(config)
-        ).withTransport(httpsProxyTransport)
-      }
-      else
-      {
-        ClientConnectionSettings(
-          ConfigFactory
-            .parseString(s"akka.http.host-connection-pool.client.user-agent-header=$userAgent")
-            .withFallback(config)
-        )
-      }
+    val settings = AkkaUtils.generateClientConnectionSettings(userAgent)
 
     protocol match {
       case "https" => Http().outgoingConnectionHttps(host, port, settings = settings)
@@ -63,25 +42,7 @@ object HttpConnections extends DataToolsConfig {
       l => s"cmwell-data-tools ${l.id}"
     )
 
-    val settings =
-      if (config.getString("akka.http.client.proxy.https.host")!="" &&
-        config.getString("akka.http.client.proxy.https.port")!="")
-      {
-        val httpsProxyTransport = ClientTransport.httpsProxy
-        ConnectionPoolSettings(
-          ConfigFactory
-            .parseString(s"akka.http.host-connection-pool.client.user-agent-header=$userAgent")
-            .withFallback(config)
-        ).withTransport(httpsProxyTransport)
-      }
-      else
-      {
-        ConnectionPoolSettings(
-          ConfigFactory
-            .parseString(s"akka.http.host-connection-pool.client.user-agent-header=$userAgent")
-            .withFallback(config)
-        )
-      }
+    val settings = AkkaUtils.generateConnectionPoolSettings(Some(userAgent))
 
     protocol match {
       case "https" => Http().newHostConnectionPoolHttps[T](host, port, settings = settings)
@@ -96,25 +57,7 @@ object HttpConnections extends DataToolsConfig {
       l => s"cmwell-data-tools ${l.id}"
     )
 
-    val settings =
-      if (config.getString("akka.http.client.proxy.https.host")!="" &&
-        config.getString("akka.http.client.proxy.https.port")!="")
-      {
-        val httpsProxyTransport = ClientTransport.httpsProxy
-        ConnectionPoolSettings(
-          ConfigFactory
-            .parseString(s"data-tools.akka.http.host-connection-pool.client.user-agent-header=$userAgent")
-            .withFallback(config)
-        ).withTransport(httpsProxyTransport)
-      }
-      else
-      {
-        ConnectionPoolSettings(
-          ConfigFactory
-            .parseString(s"data-tools.akka.http.host-connection-pool.client.user-agent-header=$userAgent")
-            .withFallback(config)
-        )
-      }
+    val settings = AkkaUtils.generateConnectionPoolSettings(Some(userAgent))
 
     protocol match {
       case "https" => Http().cachedHostConnectionPoolHttps[T](host, port, settings = settings)

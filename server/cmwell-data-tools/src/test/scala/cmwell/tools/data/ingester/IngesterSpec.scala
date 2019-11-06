@@ -20,17 +20,16 @@ import java.io._
 import java.util.zip.GZIPOutputStream
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.{ClientTransport, Http}
+import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, StatusCodes}
-import akka.http.scaladsl.settings.{ClientConnectionSettings, ConnectionPoolSettings}
 import akka.stream.scaladsl.{Sink, Source, StreamConverters}
 import akka.stream.{ActorMaterializer, Materializer}
 import akka.util.ByteString
 import cmwell.tools.data.helpers.BaseWiremockSpec
 import cmwell.tools.data.utils.akka.HeaderOps
-import cmwell.tools.data.utils.akka.Retry.config
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.stubbing.Scenario
+import org.scalatest.Ignore
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -85,22 +84,7 @@ class IngesterSpec extends BaseWiremockSpec  {
   private def numInfotonsInServer = {
     val port = wireMockServer.port
     val req = HttpRequest(uri = s"http://$host:$port/$path/?op=stream&length=1")
-    val settings =
-      if (config.getString("akka.http.client.proxy.https.host")!="" &&
-        config.getString("akka.http.client.proxy.https.port")!="")
-      {
-        val httpsProxyTransport = ClientTransport.httpsProxy
-        ConnectionPoolSettings(system)
-          .withConnectionSettings(ClientConnectionSettings(system)
-          .withTransport(httpsProxyTransport))
-      }
-      else
-      {
-        ConnectionPoolSettings(system)
-          .withConnectionSettings(ClientConnectionSettings(system))
-      }
-
-    val numRecordsFuture = Http().singleRequest(req, settings = settings)
+    val numRecordsFuture = Http().singleRequest(req)
       .map(response => HeaderOps.getNumInfotons(response.headers))
 
     val headerFuture = numRecordsFuture.map ( _ match {

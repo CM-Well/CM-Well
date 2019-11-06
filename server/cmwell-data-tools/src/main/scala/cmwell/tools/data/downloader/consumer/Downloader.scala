@@ -14,14 +14,10 @@
   */
 package cmwell.tools.data.downloader.consumer
 
-import java.net.InetSocketAddress
-
 import akka.NotUsed
 import akka.actor.{ActorSystem, Props}
-import akka.http.scaladsl.{ClientTransport, Http}
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.RawHeader
-import akka.http.scaladsl.settings.{ClientConnectionSettings, ConnectionPoolSettings}
 import akka.stream._
 import akka.stream.scaladsl._
 import akka.util.ByteString
@@ -73,6 +69,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
     case true => config.getDouble("cmwell.downloader.consumer.http-retry-delay-factor")
     case false => 1
   }
+
 
   type Token = String
   type Uuid = ByteString
@@ -126,7 +123,6 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
       .single(Seq(blank) -> None)
       .via(
         Retry.retryHttp(retryTimeout, 1, retryLimit, delayFactor)(
-
           (_,_,ctx:Option[_]) => {
             val req =HttpRequest(uri = uri)
             req
@@ -448,6 +444,7 @@ class Downloader(
   private[data] def downloadDataFromPaths()(implicit ec: ExecutionContext) = {
     def createDataRequest(paths: Seq[ByteString], vars: Map[String,String], ctx: Option[State] = None) = {
       val paramsValue = if (params.isEmpty) "" else s"&$params"
+
       HttpRequest(
         uri = s"${formatHost(baseUrl)}/_out?format=$format$paramsValue",
         method = HttpMethods.POST,

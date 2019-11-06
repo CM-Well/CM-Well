@@ -15,17 +15,14 @@
 package cmwell.tools.data.utils.akka
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.{ClientTransport, Http}
+import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpEntity.{Chunked, LastChunk}
 import akka.http.scaladsl.model.StatusCodes.{ClientError, ServerError}
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.settings.{ClientConnectionSettings, ConnectionPoolSettings}
 import akka.pattern._
 import akka.stream._
 import akka.stream.scaladsl._
 import akka.util.ByteString
-import cmwell.tools.data.downloader.consumer.Downloader.{config, logger}
-import cmwell.tools.data.sparql.StpMetadata
 import cmwell.tools.data.utils.ArgsManipulations
 import cmwell.tools.data.utils.ArgsManipulations.HttpAddress
 import cmwell.tools.data.utils.akka.HeaderOps._
@@ -384,24 +381,9 @@ object Retry extends DataToolsLogging with DataToolsConfig {
           None
       }
 
-    val settings =
-      if (config.getString("akka.http.client.proxy.https.host")!="" &&
-          config.getString("akka.http.client.proxy.https.port")!="")
-      {
-        val httpsProxyTransport = ClientTransport.httpsProxy
-        ConnectionPoolSettings(system)
-          .withConnectionSettings(ClientConnectionSettings(system)
-          .withTransport(httpsProxyTransport))
-      }
-      else
-      {
-        ConnectionPoolSettings(system)
-          .withConnectionSettings(ClientConnectionSettings(system))
-      }
-
     val conn = managedConnection match {
       case Some(connection) => connection
-      case _ => Http().superPool[State[T]](settings = settings)
+      case _ => Http().superPool[State[T]](settings = AkkaUtils.generateConnectionPoolSettings())
     }
 
     val maxConnections =

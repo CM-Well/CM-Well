@@ -25,7 +25,6 @@ import cmwell.tools.data.downloader.DataPostProcessor
 import cmwell.tools.data.utils.ArgsManipulations._
 import cmwell.tools.data.utils.akka.{DataToolsConfig, HttpConnections, Retry, lineSeparatorFrame}
 import cmwell.tools.data.utils.logging.DataToolsLogging
-import cmwell.tools.data.utils.ops.VersionChecker
 import org.slf4j.LoggerFactory
 import cmwell.tools.data.utils.akka.{concatByteStrings, _}
 
