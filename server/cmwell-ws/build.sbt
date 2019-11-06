@@ -61,7 +61,8 @@ libraryDependencies ++= {
     dm("org.yaml","snakeyaml"),
     dm("xml-apis","xml-apis"),
     dm("com.github.t3hnar", "scala-bcrypt"),
-    dm("com.jason-goodwin", "authentikat-jwt"),
+    dm("com.lihaoyi", "ujson"),
+    dm("com.pauldijou", "jwt-core"),
     dm("org.apache.kafka", "kafka-clients"),
     dm("org.apache.kafka", "kafka")
       .exclude("org.slf4j","slf4j-log4j12")
