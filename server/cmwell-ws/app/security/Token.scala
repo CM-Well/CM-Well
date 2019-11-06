@@ -29,16 +29,11 @@ class Token(jwt: String, authCache: EagerAuthCache) extends LazyLogging{
 
   private val claimsSet = {
     val decodedJ = Jwt.decodeRaw(jwt, JwtOptions(signature = false))
-    val decodedJ2 = Jwt.decodeRaw(jwt, JwtOptions(signature = false))
 
-    if (decodedJ.isFailure && decodedJ2.isFailure)
+    if (decodedJ.isFailure)
       throw new IllegalArgumentException("Given string was not in JWT format")
 
-    val decoded =
-      if (decodedJ.isSuccess)
-        ujson.read(decodedJ.get)
-      else
-        ujson.read(decodedJ2.get)
+    val decoded = ujson.read(decodedJ.get)
 
     if (!(requiredClaims.map(c => Try(decoded(c))).forall(_.isSuccess)))
       throw new IllegalArgumentException("Mandatory claims are missing from token")
