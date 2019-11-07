@@ -40,13 +40,11 @@ class MultipleContainersParallelExecution private(containers: Seq[LazyContainer[
   override def start(): Unit = {
     val f = Future.traverse(containers)(lazyContainer => Future(lazyContainer.start()))
     Await.ready(f, 5.minutes)
-    containers.foreach(_.start())
   }
 
   override def stop(): Unit = {
     val f = Future.traverse(containers)(lazyContainer => Future(lazyContainer.stop()))
     Await.ready(f, 5.minutes)
-    containers.foreach(_.stop())
   }
 }
 
