@@ -41,8 +41,8 @@ object Upgrade {
   def runPostUpgradeActions(currentVersionF : Future[String], upgraded : String, hosts: GenSeq[String]): Future[Boolean]= {
     /**
       *  Note! According to semantic versions rules, what will be taken into account is only <major>.<minor>.<patch>
-      *    all test after + sign will not affect precedence!
-      *    Examples:  1.2.5  >  1.2.5
+      *    all text after + sign will not affect precedence!
+      *    Examples:  1.2.5  >  1.2.3
       *       but     1.2.5  ==   1.2.5+167
       */
     def shouldRun(test : SemVer, curr : SemVer, upgrade : SemVer) : Boolean = (test > curr) && (test <= upgrade)
