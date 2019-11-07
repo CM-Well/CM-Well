@@ -56,11 +56,13 @@ object Upgrade {
             currentVersion.fold(s"current: $current")(_ => "")} ${
             upgradedVersion.fold(s"upgraded: $upgraded")(_ => "")
           }. Stoping upgrade process!")
+      else
+      {
+        val relevantUpgradeFunctions = postUpgradeList.filter(f => shouldRun(SemVer(f.applyToVersion).get, currentVersion.get, upgradedVersion.get))
+        info(s"Going to run ${relevantUpgradeFunctions.size} upgrade functions")
 
-      val relevantUpgradeFunctions = postUpgradeList.filter(f => shouldRun(SemVer(f.applyToVersion).get, currentVersion.get, upgradedVersion.get))
-      info(s"Going to run ${relevantUpgradeFunctions.size} upgrade functions")
-
-      relevantUpgradeFunctions.sortBy(f => SemVer(f.applyToVersion)).foreach(_.executeUpgrade(hosts))
+        relevantUpgradeFunctions.sortBy(f => SemVer(f.applyToVersion)).foreach(_.executeUpgrade(hosts))
+      }
     }
 
     Future(true)
