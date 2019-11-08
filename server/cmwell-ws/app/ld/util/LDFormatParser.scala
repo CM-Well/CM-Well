@@ -834,7 +834,7 @@ object LDFormatParser extends LazyLogging {
             feedbacks += s"skipping validation for all ingested subjects"
           }
 
-          val metaData = IMap[String, MetaData]() ++ cmwMetaDataMap
+          val metaData = IMap[String, MetaData]() ++ cmwMetaDataMap.filter{pair => (infotonsMap.keySet.contains(pair._1))||(!pair._2.isEmpty)}
           val knownCmwellHosts = ISet[String]() ++ cmwHosts
           val deleteMap = IMap[String, Set[(String, Option[String])]]() ++ deleteFieldsMap
           val deleteVal = IMap[String, Map[String, Set[FieldValue]]]() ++ deleteValuesMap
