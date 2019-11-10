@@ -14,6 +14,12 @@ jobs:
     runs-on: ubuntu-18.04
 
     steps:
+      - name: Cache ivy2
+        uses: actions/cache@v1
+        with:
+          path: ~/.ivy2
+          key: cmwell-cache
+        
       - name: Checkout code
         uses: actions/checkout@v1
       - name: Compile
@@ -68,6 +74,12 @@ jobs:
     runs-on: ubuntu-18.04
 
     steps:
+    - name: Cache ivy2
+      uses: actions/cache@v1
+      with:
+        path: ~/.ivy2
+        key: cmwell-cache
+          
     - name: Checkout code
       uses: actions/checkout@v1
     - name: Install Scala
