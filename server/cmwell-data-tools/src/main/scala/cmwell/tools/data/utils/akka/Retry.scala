@@ -27,7 +27,6 @@ import cmwell.tools.data.utils.ArgsManipulations
 import cmwell.tools.data.utils.ArgsManipulations.HttpAddress
 import cmwell.tools.data.utils.akka.HeaderOps._
 import cmwell.tools.data.utils.logging.{DataToolsLogging, LabelId}
-import cmwell.util.akka.http.HttpZipDecoder
 
 import scala.collection.immutable
 import scala.concurrent.duration._
@@ -404,7 +403,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
     }
       .via(conn).map {
         case (tryResponse, state) =>
-          tryResponse.map(HttpZipDecoder.decodeResponse) -> state
+          tryResponse.map(AkkaUtils.decodeResponse) -> state
       }
       .mapAsyncUnordered(httpParallelism) {
         case (response @ Success(HttpResponse(s, _, e, _)), state)
