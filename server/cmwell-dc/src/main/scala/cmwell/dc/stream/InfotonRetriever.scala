@@ -131,7 +131,8 @@ object InfotonRetriever extends LazyLogging {
                       throw WrongPathGotException(s"Got path ${path} from _out that was not in the uuids request bulk: ${
                         state._1.map(i => i.uuid.utf8String + ":" + i.base.path).mkString(",")}")
                     case Some((builder, curExtraData)) => {
-                      builder ++= (nquad ++ endln)
+                      val finalNquad = if(nquad.utf8String.isEmpty) nquad else nquad ++ endln
+                      builder ++= finalNquad
                       curExtraData.shouldMerge(extraData).foreach(ex => totals.parsed.put(path, (builder, ex)))
                       RetrieveTotals(totals.parsed, totals.unParsed)
                     }

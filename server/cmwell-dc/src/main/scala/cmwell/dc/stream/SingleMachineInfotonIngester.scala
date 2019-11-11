@@ -62,7 +62,7 @@ object SingleMachineInfotonIngester extends LazyLogging {
           infotonSeq.foreach{i=>
             val firstLine = i.data.takeWhile(_ != stream.newLine)
             if(firstLine.utf8String.contains("meta/sys#uuid"))
-              payloadBuilder ++= i.data.drop(firstLine.length)
+              payloadBuilder ++= i.data.drop(firstLine.length + 1)
             else
               payloadBuilder ++= i.data
           }
