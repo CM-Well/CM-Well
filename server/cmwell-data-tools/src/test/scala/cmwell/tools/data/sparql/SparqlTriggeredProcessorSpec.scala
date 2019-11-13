@@ -24,7 +24,6 @@ import akka.stream.{ActorMaterializer, KillSwitches, Materializer}
 import cmwell.tools.data.helpers.BaseWiremockSpec
 import cmwell.tools.data.utils.akka.HeaderOps.CMWELL_POSITION
 import cmwell.tools.data.utils.akka._
-import cmwell.util.string.Hash
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.stubbing.Scenario
 import org.scalatest.Ignore
