@@ -180,9 +180,6 @@ case class CassandraConf(home: String,
 
     val casIncludeContent = ResourceBuilder.getResource(s"scripts/templates/cassandra.in.sh", Map.empty)
 
-    //until https://issues.apache.org/jira/browse/CASSANDRA-15090 will be merged
-    val casBinContent = ResourceBuilder.getResource(s"scripts/templates/cassandraBin", Map.empty)
-
     val rackConfContent =
       ResourceBuilder.getResource("scripts/templates/cassandra-rackdc.properties", Map("rack_id" -> rs.getRackId(this)))
 
@@ -196,7 +193,6 @@ case class CassandraConf(home: String,
                                                       Map("home" -> home, "host" -> hostIp))
 
     List(
-      ConfFile("cassandra", casBinContent, true, Some(s"$home/app/cas/cur/bin")),
       ConfFile("cassandra.yaml", confContent, false),
       ConfFile("logback.xml", logBackContent),
       ConfFile("cassandra-env.sh", cassandraEnvContent),
