@@ -96,6 +96,9 @@ class BufferedTsvSource(initialToken: Future[String],
     private val changeRemainingInfotonsState = getAsyncCallback[Option[Long]](remainingInfotons = _)
     private val addToBuffer = getAsyncCallback[Option[(Token, TsvData)]](buf += _)
     private val changeCurrConsumeState = getAsyncCallback[ConsumeState](currConsumeState = _)
+    private var stopStream: AsyncCallback[Unit] = _
+
+    val keepAlive = config.getBoolean("downloader.keepAlive")
 
     override def preStart(): Unit = {
 
@@ -118,6 +121,8 @@ class BufferedTsvSource(initialToken: Future[String],
 
         case (infotons, None) => logger.error(s"Token is None for: $infotons"); ???
       }
+
+      stopStream = getAsyncCallback[Unit] ( _ => completeStage() )
 
       currentConsumeToken = Await.result(initialToken, 5.seconds)
 
@@ -292,11 +297,16 @@ class BufferedTsvSource(initialToken: Future[String],
           consumeResponse match {
             case ConsumeResponse(_, true, _) =>
 
-              logger.info(s"$label is at horizon. Will retry at consume position $currentConsumeToken " +
+              if (keepAlive)
+              {
+                logger.info(s"$label is at horizon. Will retry at consume position $currentConsumeToken " +
                 s"in $horizonRetryTimeout")
 
               materializer.scheduleOnce(horizonRetryTimeout, () =>
                 invokeBufferFillerCallback(sendNextChunkRequest(currentConsumeToken)))
+              }
+              else
+                stopStream.invoke()
 
             case ConsumeResponse(nextToken ,false, infotonSource) =>
               infotonSource.toMat(Sink.seq)(Keep.right).run
