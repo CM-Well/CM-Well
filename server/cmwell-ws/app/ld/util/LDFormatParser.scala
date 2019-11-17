@@ -834,6 +834,9 @@ object LDFormatParser extends LazyLogging {
             feedbacks += s"skipping validation for all ingested subjects"
           }
 
+          //We keep the meta data value IFF the infoton has:
+          //1. Any fields to update (ObjectInfoton f.e)
+          //2. No fields, but system fields (FileInfoton f.e)
           val metaData = IMap[String, MetaData]() ++ cmwMetaDataMap.filter{pair => (infotonsMap.keySet.contains(pair._1))||(!pair._2.isEmpty)}
           val knownCmwellHosts = ISet[String]() ++ cmwHosts
           val deleteMap = IMap[String, Set[(String, Option[String])]]() ++ deleteFieldsMap
