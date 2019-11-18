@@ -133,8 +133,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
           val future = after(delay, system.scheduler)(Future.successful(data))
           Some(immutable.Seq(future -> state))
 
-
-        case State(data, context, _, Some(res@HttpResponse(s: ServerError, h, e, _)), count, iterationDelay) =>
+        case State(data, vars, context, Some(res@HttpResponse(s: ServerError, h, e, _)), count, iterationDelay) =>
 
           val errorID = res.##
 
@@ -167,6 +166,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                   dataElement =>
                     Future.successful(Seq(dataElement)) -> State[T](
                       Seq(dataElement),
+                      vars,
                       context
                     )
                 )
@@ -325,7 +325,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
               Some(immutable.Seq(future -> state))
           }
 
-        case State(data, vars, _, None, count, _) =>
+        case State(data, vars, context, None, count, _) =>
           count match {
             case Some(c) if c > 0 =>
               if(state.data.size > 1) {
@@ -343,7 +343,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                         Future.successful(Seq(dataElement)) -> State(
                           Seq(dataElement),
                           vars,
-                          state.context
+                          context
                         )
                     )
                     .to[immutable.Iterable]
