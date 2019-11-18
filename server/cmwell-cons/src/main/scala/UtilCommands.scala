@@ -67,11 +67,6 @@ object UtilCommands {
         archiveEntry = tarArchiveInputStream.getNextEntry
 
       val extractFolder = archiveEntry.getName.replaceAll("^\\./","").split("/")(0)
-
-      //scalastyle:off
-      println(s">>> [[[ENTRY]]] $extractFolder")
-      //scalastyle:on
-
       while (archiveEntry != null) {
         breakable {
         if (archiveEntry.getName.replaceAll("^\\./","") == s"$extractFolder/$configFilePath") {

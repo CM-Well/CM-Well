@@ -1707,7 +1707,7 @@ abstract class Host(user: String,
     checkProduction
     refreshUserState(user, None, hosts)
     purge(hosts)
-    //verifyConfigsNotChanged
+    verifyConfigsNotChanged
     deploy(hosts)
     init(hosts)
     //setElasticsearchUnassignedTimeout()
