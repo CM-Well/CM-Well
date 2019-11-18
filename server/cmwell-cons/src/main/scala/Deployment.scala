@@ -164,8 +164,8 @@ abstract class ComponentProps(h: Host, name: String, location: String, hasDate: 
   def getUnpackedName(packageName: String, location: String): Option[String] =
     Some(getTarResName(packageName, location))
 
-  def getTarResName(path: String, location: String): String =
-    h.command("tar -tf " + s"$location/$path" + " | head -1 | awk -F '/' '{print $1}'").get.trim
+  def getTarResName(path: String, location: String): String = // head -2 tail -1 because sometimes the first line is only "./"
+    h.command("tar -tf " + s"$location/$path" + " | head -2 | tail -1 | sed 's/\\.\\///' | awk -F '/' '{print $1}'").get.trim
 
   def getZipResName(path: String, location: String): String =
     h.command("unzip -l " + s"$location/$path" + " | awk '{print $4}' |  awk -F '/' '{print $1}' | head -4 | tail -1")
@@ -394,7 +394,6 @@ case class ElasticsearchProps(h: Host)
   override val componentMappings: Map[String, Int] = Map("es" -> h.getDataDirs.esDataDirs.size, "es-master" -> 1)
 
   override def upgradeMethod: UpgradeMethod = PreUpgrade
-
 
   override def getUnpackedName(packageName: String, location: String): Option[String] = Some(getTarResName(packageName, location))
 
