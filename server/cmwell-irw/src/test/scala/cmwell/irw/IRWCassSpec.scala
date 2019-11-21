@@ -30,7 +30,7 @@ import scala.concurrent.duration._
 import scala.util.Try
 import cmwell.util.testSuitHelpers.test.CassandraDockerSuite
 import play.api.libs.json.Json
-import cmwell.domainTest.InfotonGenerator.genericSystemFields
+import domain.testUtil.InfotonGenerator.genericSystemFields
 
 
 /**
@@ -193,7 +193,6 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
   }
 
   "object write and read" should "be successful" in {
-    //scalastyle:off
     val sysFields = genericSystemFields.copy(path = "/irw/command-test/objinfo_1")
     val objInfo = ObjectInfoton(sysFields, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))))
 
@@ -215,7 +214,8 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
     }
 
 
-    val objInfo_v2 = ObjectInfoton(sysFields, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"), FString("rony"))))
+    val objInfo_v2 = ObjectInfoton(sysFields.copy(lastModified = sysFields.lastModified.plus(5L) ),
+      Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"), FString("rony"))))
     val f2 = for {
       _ <- f1
       _ <- irw.writeAsync(objInfo_v2)
@@ -234,7 +234,6 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
       j.fields.size should equal(objInfo_v2.fields.size)
     }
 
-    //scalastyle:on
     f2.flatMap { _ =>
       //checking Async version
       val vecSizeTry = Try {

@@ -13,7 +13,7 @@
   * limitations under the License.
   */
 
-import cmwell.domainTest.InfotonGenerator.genericSystemFields
+import domain.testUtil.InfotonGenerator.genericSystemFields
 import cmwell.domain._
 import cmwell.domain.FString
 import cmwell.rts.Publisher

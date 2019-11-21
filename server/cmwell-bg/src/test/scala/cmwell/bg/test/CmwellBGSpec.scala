@@ -16,7 +16,7 @@
 
 package cmwell.bg.test
 
-import cmwell.domainTest.InfotonGenerator.genericSystemFields
+import domain.testUtil.InfotonGenerator.genericSystemFields
 import java.nio.file.{Files, Paths}
 
 import akka.actor.{ActorRef, ActorSystem}
@@ -107,14 +107,16 @@ class CmwellBGSpec extends AsyncFunSpec with BeforeAndAfterAll with BgEsCasKafka
 
     val useNewlyCreatedAsBaseInfoton = okToStartPromise.future.flatMap { _ =>
 
+      val systemFields = genericSystemFields.copy(lastModifiedBy = "Baruch")
+
       val pRecords = Seq.tabulate(20) { n =>
-        val infoton = ObjectInfoton(genericSystemFields.copy(path = s"/cmt/cm/bg-test/baseInfoton/info$n"),
+        val infoton = ObjectInfoton(systemFields.copy(path = s"/cmt/cm/bg-test/baseInfoton/info$n"),
           fields = Some(Map("a" -> Set(FieldValue("b"), FieldValue("c")))))
         val writeCommand = WriteCommand(infoton)
         val commandBytes = CommandSerializer.encode(writeCommand)
         new ProducerRecord[Array[Byte], Array[Byte]]("persist_topic", commandBytes)
       } :+ {
-        val infoton = ObjectInfoton(genericSystemFields.copy(path = s"/cmt/cm/bg-test/baseInfoton/info19"),
+        val infoton = ObjectInfoton(systemFields.copy(path = s"/cmt/cm/bg-test/baseInfoton/info19"),
           fields = Some(Map("a1" -> Set(FieldValue("b1"), FieldValue("c1")))))
         val writeCommand = WriteCommand(infoton)
         val commandBytes = CommandSerializer.encode(writeCommand)

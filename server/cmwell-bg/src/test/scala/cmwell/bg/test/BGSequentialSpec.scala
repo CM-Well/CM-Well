@@ -14,7 +14,7 @@
   */
 package cmwell.bg.test
 
-import cmwell.domainTest.InfotonGenerator.genericSystemFields
+import domain.testUtil.InfotonGenerator.genericSystemFields
 import java.util.concurrent.Executors
 
 import akka.actor.{ActorRef, ActorSystem}

@@ -15,7 +15,7 @@
 
 
 import cmwell.domain._
-import cmwell.domainTest.InfotonGenerator.genericSystemFields
+import domain.testUtil.InfotonGenerator.genericSystemFields
 import org.joda.time.DateTime
 import org.scalatest.{FlatSpec, Matchers}
 
@@ -254,9 +254,10 @@ class InfotonSerializerSpec extends FlatSpec with Matchers {
   }
 
   "diffetent infotons with same fields" should "return isSameAs==true" in {
+    val systemFields = genericSystemFields
     val fieldsMap = Map("Mark"->Set[FieldValue](FString("King"),FString("Awesome")))
-    val infoton1 = ObjectInfoton(genericSystemFields, fieldsMap)
-    val infoton2 = ObjectInfoton(genericSystemFields.copy(path = "/pathOfInfoton2", lastModified = new DateTime("2001-02-03T09:34:21.000Z")), fieldsMap)
+    val infoton1 = ObjectInfoton(systemFields, fieldsMap)
+    val infoton2 = ObjectInfoton(systemFields.copy(path = "/pathOfInfoton2", lastModified = new DateTime("2001-02-03T09:34:21.000Z")), fieldsMap)
     (infoton1 isSameAs infoton2) should equal (true)
   }
 
