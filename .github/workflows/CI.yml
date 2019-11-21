@@ -74,7 +74,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v1
     - name: Install sbt
-      if: ${{ matrix.os }} == "macOS-latest"
+      if: ${{ os }} == "macOS-latest"
       run: |
         wget https://piccolo.link/sbt-1.3.3.tgz
         sudo tar -xf sbt-1.3.3.tgz
