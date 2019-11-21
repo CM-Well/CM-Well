@@ -888,14 +888,14 @@ abstract class Host(user: String,
 
    def verifyConfigsNotChanged = {
      info("verify that configuration files have not been changed")
-     //It is taken from cassandra version 3.11.4
+     //It is taken from cassandra version 3.11.5
      UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "conf/cassandra.yaml", "9682ae0951f560a8480c1ebb656caae7")
      UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "conf/cassandra-env.sh", "f0b72c8f2301d815acea81bd6633aa3a")
      UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "conf/jvm.options", "3fc118b8d5d3b24331b205e2a2d24cb0")
      UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "conf/logback.xml", "cc17f60a18c6b7b5a797d2edd2c91119")
      UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "bin/cassandra", "5d8bba323cb91c3deb8c140cdbd34d5d")
      UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "bin/cassandra.in.sh", "851a2a0514826162682a25953e710493")
-     //elasticsearch checksums were taken from version 7.4.0
+     //elasticsearch checksums were taken from version 7.4.2
      UtilCommands.verifyComponentConfNotChanged("elasticsearch", "config/elasticsearch.yml", "4f96a88585ab67663ccbca1c43649ed5")
      UtilCommands.verifyComponentConfNotChanged("elasticsearch", "config/jvm.options", "a80a0a9b5e95d5cdc5f4c3088f0d801e")
      UtilCommands.verifyComponentConfNotChanged("elasticsearch", "config/log4j2.properties", "dbb23d025177409bdb734f3ad3efd147")
