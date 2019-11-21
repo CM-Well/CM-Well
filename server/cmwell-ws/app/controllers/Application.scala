@@ -2590,7 +2590,7 @@ callback=< [URL] >
     }.recover(asyncErrorHandler).get
 
 
-    def recurseRead(request: Request[AnyContent], newPath: String, recursiveCalls: Int = 30) = handleRead(
+    def recurseRead(request: Request[AnyContent], newPath: String, recursiveCalls: Int) = handleRead(
       request.withTarget(RequestTarget(
         uriString = newPath + request.uri.drop(request.path.length),
         path = newPath,

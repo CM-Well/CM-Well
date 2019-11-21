@@ -20,12 +20,15 @@ sealed trait ServiceDefinition {
 
 case class RedirectionService(override val route: String, srcPattern: String, replaceFunc: String => String) extends ServiceDefinition
 
-sealed abstract class LogicService(override val route: String, logicPath: String,
-                                   args: Array[String], returnType: ServiceReturnType) extends ServiceDefinition
 
-case class Source(override val route: String, logicPath: String,
-                  args: Array[String], returnType: ServiceReturnType) extends LogicService(route, logicPath, args, returnType)
-case class Binary(override val route: String, logicPath: String,
-                  args: Array[String], returnType: ServiceReturnType) extends LogicService(route, logicPath, args, returnType)
+// For future use. See: https://github.com/CM-Well/CM-Well/tree/master/blps/blp-703-servies.md
 
-case class ServiceReturnType(infotonType: String, mimeType: Option[String])
+//sealed abstract class LogicService(override val route: String, logicPath: String,
+//                                   args: Array[String], returnType: ServiceReturnType) extends ServiceDefinition
+//
+//case class Source(override val route: String, logicPath: String,
+//                  args: Array[String], returnType: ServiceReturnType) extends LogicService(route, logicPath, args, returnType)
+//case class Binary(override val route: String, logicPath: String,
+//                  args: Array[String], returnType: ServiceReturnType) extends LogicService(route, logicPath, args, returnType)
+//
+//case class ServiceReturnType(infotonType: String, mimeType: Option[String])

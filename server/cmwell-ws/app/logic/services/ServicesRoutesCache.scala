@@ -76,10 +76,8 @@ class ServicesRoutesCache @Inject()(crudService: CRUDServiceFS)(implicit ec: Exe
 
     override def receive: Receive = {
       case Populate =>
-        val s = sender()
         populate().andThen { case _ =>
             context.system.scheduler.scheduleOnce(Settings.servicesRoutesCacheRefreshInterval, self, Populate)
-            s ! ()
         }
 
       case PopulateOnce =>

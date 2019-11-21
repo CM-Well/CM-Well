@@ -19,13 +19,7 @@ import com.typesafe.scalalogging.LazyLogging
 import org.scalatest.{AsyncFunSpec, EitherValues, Inspectors, Matchers, OptionValues}
 import scala.concurrent.duration.DurationInt
 
-class ServicesRoutesTests extends AsyncFunSpec
-  with Matchers
-  with Inspectors
-  with OptionValues
-  with EitherValues
-  with Helpers
-  with LazyLogging {
+class ServicesRoutesTests extends AsyncFunSpec with Matchers with Helpers with LazyLogging {
 
   import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
 
