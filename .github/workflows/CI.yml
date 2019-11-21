@@ -79,6 +79,10 @@ jobs:
         wget https://piccolo.link/sbt-1.3.3.tgz
         sudo tar -xf sbt-1.3.3.tgz
         sudo ln -s `pwd`/sbt-1.3.3/bin/sbt /usr/local/bin/sbt
+        ls -l `pwd`/sbt-1.3.3
+        ls -l `pwd`/sbt-1.3.3/bin
+        ls -l `pwd`/sbt-1.3.3/bin/sbt
+        ls -l /usr/local/bin/sbt
     - name: Install Scala
       run: |
         wget https://downloads.lightbend.com/scala/2.12.8/scala-2.12.8.tgz
