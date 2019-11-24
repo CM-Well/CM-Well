@@ -155,4 +155,7 @@ object Settings {
   lazy val zCachePollingMaxRetries = config.getInt("cmwell.ws.zcache.pollingMaxRetries")
   lazy val zCachePollingIntervalSeconds = config.getInt("cmwell.ws.zcache.pollingIntervalSeconds")
   lazy val zCacheL1Size = config.getInt("cmwell.ws.zcache.L1Size")
+
+  lazy val servicesRoutesCacheInitialDelay = config.getInt("cmwell.ws.services-routes-cache.initial-delay-seconds").seconds
+  lazy val servicesRoutesCacheRefreshInterval = config.getInt("cmwell.ws.services-routes-cache.refresh-interval-seconds").seconds
 }

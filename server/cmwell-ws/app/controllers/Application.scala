@@ -53,6 +53,7 @@ import javax.inject._
 import k.grid.{ClientActor, Grid, GridJvm, RestartJvm}
 import ld.cmw.passiveFieldTypesCacheImpl
 import ld.exceptions.BadFieldTypeException
+import logic.services.{RedirectionService, ServicesRoutesCache}
 import logic.{CRUDServiceFS, InfotonValidator}
 import markdown.MarkdownFormatter
 import org.joda.time.{DateTime, DateTimeZone}
@@ -123,7 +124,8 @@ class Application @Inject()(bulkScrollHandler: BulkScrollHandler,
                             cmwellRDFHelper: CMWellRDFHelper,
                             formatterManager: FormatterManager,
                             assetsMetadataProvider: AssetsMetadataProvider,
-                            assetsConfigurationProvider: AssetsConfigurationProvider)(implicit ec: ExecutionContext)
+                            assetsConfigurationProvider: AssetsConfigurationProvider,
+                            servicesRoutesCache: ServicesRoutesCache)(implicit ec: ExecutionContext)
     extends FileInfotonCaching(assetsMetadataProvider.get, assetsConfigurationProvider.get)
     with InjectedController
     with LazyLogging {
@@ -151,6 +153,13 @@ class Application @Inject()(bulkScrollHandler: BulkScrollHandler,
       Request(requestHeader, request.body)
     }
   }
+
+  def handleServicesRoutesCacheGet = Action.async (req => {
+    if (req.getQueryString("op").fold(false)(_ == "refresh"))
+      servicesRoutesCache.refresh().map(_ => Ok("""{"success":true}"""))
+    else
+      Future.successful(Ok(servicesRoutesCache.list.mkString("\n")))
+  })
 
   def handleTypesCacheGet = Action(_ => Ok(typesCache.getState).as(ContentTypes.JSON))
 
@@ -2276,6 +2285,7 @@ callback=< [URL] >
       val limit =
         request.getQueryString("versions-limit").flatMap(asInt).getOrElse(Settings.defaultLimitForHistoryVersions)
       val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
+      val serviceOpt = servicesRoutesCache.find(path)
 
       if (offset > Settings.maxOffset) {
         Future.successful(BadRequest(s"Even Google doesn't handle offsets larger than ${Settings.maxOffset}!"))
@@ -2283,6 +2293,14 @@ callback=< [URL] >
         Future.successful(BadRequest(s"Length is larger than ${Settings.maxOffset}!"))
       } else if (Set("/meta/ns/sys", "/meta/ns/nn")(path)) {
         handleGetForActiveInfoton(request, path)
+      } else if (serviceOpt.isDefined) {
+        serviceOpt.get match {
+          case redirection: RedirectionService if recursiveCalls > 0 =>
+            val to = redirection.replaceFunc(path)
+            recurseRead(request, to, recursiveCalls - 1)
+          case _: RedirectionService => Future.successful(BadRequest("too deep redirection service chain detected!"))
+          case _ => ???
+        }
       } else {
         val reply = {
           if (withHistory && (xg.isDefined || yg.isDefined))
@@ -2441,17 +2459,7 @@ callback=< [URL] >
           lType match {
             case LinkType.Permanent => Future.successful(Redirect(to, request.queryString, MOVED_PERMANENTLY))
             case LinkType.Temporary => Future.successful(Redirect(to, request.queryString, TEMPORARY_REDIRECT))
-            case LinkType.Forward if recursiveCalls > 0 =>
-              handleRead(
-                request
-                  .withTarget(
-                    RequestTarget(uriString = to + request.uri.drop(request.path.length),
-                                  path = to,
-                                  queryString = request.queryString)
-                  )
-                  .withBody(request.body),
-                recursiveCalls - 1
-              )
+            case LinkType.Forward if recursiveCalls > 0 => recurseRead(request, to, recursiveCalls - 1)
             case LinkType.Forward => Future.successful(BadRequest("too deep forward link chain detected!"))
           }
         case Some(i) =>
@@ -2527,6 +2535,16 @@ callback=< [URL] >
           }
       }
     }.recover(asyncErrorHandler).get
+
+
+    def recurseRead(request: Request[AnyContent], newPath: String, recursiveCalls: Int) = handleRead(
+      request.withTarget(RequestTarget(
+        uriString = newPath + request.uri.drop(request.path.length),
+        path = newPath,
+        queryString = request.queryString)
+        ).withBody(request.body),
+      recursiveCalls - 1
+    )
 
   def isMarkdown(mime: String): Boolean =
     mime.startsWith("text/x-markdown") || mime.startsWith("text/vnd.daringfireball.markdown")
