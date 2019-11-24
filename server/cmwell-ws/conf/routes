@@ -8,6 +8,7 @@ GET         /_backpressure    controllers.BackPressureToggler.handleBackpressure
 GET         /_timeout         trafficshaping.TrafficHandler.handleTimeout
 GET         /_types-cache     controllers.Application.handleTypesCacheGet
 GET         /_ns-cache        controllers.Application.handleNsCacheGet
+GET         /_services-cache  controllers.Application.handleServicesRoutesCacheGet
 GET         /_login           controllers.LoginHandler.login
 
 # SAML POC
