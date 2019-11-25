@@ -156,7 +156,7 @@ class Application @Inject()(bulkScrollHandler: BulkScrollHandler,
 
   def handleServicesRoutesCacheGet = Action.async (req => {
     if (req.getQueryString("op").fold(false)(_ == "refresh"))
-      servicesRoutesCache.refresh().map(_ => Ok("""{"success":true}"""))
+      servicesRoutesCache.populate().map(_ => Ok("""{"success":true}"""))
     else
       Future.successful(Ok(servicesRoutesCache.list.mkString("\n")))
   })
