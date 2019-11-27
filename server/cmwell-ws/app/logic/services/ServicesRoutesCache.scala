@@ -15,7 +15,7 @@
 package logic.services
 
 import akka.actor.ActorSystem
-import cmwell.domain.Infoton
+import cmwell.domain.{DeletedInfoton, Infoton, ObjectInfoton}
 import cmwell.fts.PathFilter
 import cmwell.ws.Settings
 import com.typesafe.scalalogging.LazyLogging
@@ -33,22 +33,28 @@ class ServicesRoutesCache @Inject()(crudService: CRUDServiceFS)(implicit ec: Exe
   sys.scheduler.schedule(initialDelay, interval)(populate())
 
   def find(path: String): Option[ServiceDefinition] =
-    services.find { case (route, _) => path.startsWith(route) }.map(_._2)
+    services.values.find(sd => path.startsWith(sd.route))
 
-  def list: Set[String] = services.keySet
+  def list: Set[String] = services.values.map(_.route).toSet
 
   def populate(): Future[Unit] = {
     //TODO use consume API, don't get everything each time
-    crudService.search(Some(PathFilter("/meta/services", descendants = false)), withData = true).andThen {
-      case Success(sr) => sr.infotons.
-        map(desrialize).
-        collect { case Success(sd) => sd }.
-        foreach { sd => services += sd.route -> sd }
+    crudService.search(Some(PathFilter("/meta/services", descendants = false)), withData = true, withDeleted = true).andThen {
+      case Success(sr) =>
+        val toAddOrUpdate = sr.infotons.collect { case oi: ObjectInfoton => oi }
+        val toRemove = sr.infotons.collect { case di: DeletedInfoton => di }
+
+        toAddOrUpdate.map(desrialize).
+          collect { case Success(se) => se }.
+          foreach { se => services += se.infotonPath -> se.serviceDefinition }
+
+        toRemove.foreach(services -= _.path)
+
       case Failure(t) => logger.error("Could not load Services from /meta/services", t)
     }.map(_ => ())
   }
 
-  private def desrialize(infoton: Infoton): Try[ServiceDefinition] = Try {
+  private def desrialize(infoton: Infoton): Try[ServiceEntry] = Try {
     val fields = infoton.fields.getOrElse(throw new RuntimeException(s"Infoton with no fields was not expected (path=${infoton.path})"))
 
     def field(name: String): String = fields(name).head.value.toString
@@ -59,10 +65,12 @@ class ServicesRoutesCache @Inject()(crudService: CRUDServiceFS)(implicit ec: Exe
         val sourcePattern = field("sourcePattern")
         val replacement = field("replacement")
         val replceFunc = (input: String) => sourcePattern.r.replaceAllIn(input, replacement)
-        RedirectionService(route, sourcePattern, replceFunc)
+        ServiceEntry(infoton.path, RedirectionService(route, sourcePattern, replceFunc))
       case "cmwell://meta/sys#Source" => ??? //TODO implement the unimplemented
       case "cmwell://meta/sys#Binary" => ??? //TODO implement the unimplemented
       case other => throw new RuntimeException(s"Infoton with type $other was not expected (path=${infoton.path})")
     }
   }
+
+  case class ServiceEntry(infotonPath: String, serviceDefinition: ServiceDefinition)
 }
