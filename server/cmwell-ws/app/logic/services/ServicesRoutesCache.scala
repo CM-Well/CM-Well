@@ -45,8 +45,8 @@ class ServicesRoutesCache @Inject()(crudService: CRUDServiceFS)(implicit ec: Exe
         val toRemove = sr.infotons.collect { case di: DeletedInfoton => di }
 
         toAddOrUpdate.map(desrialize).
-          collect { case Success(si) => si }.
-          foreach { si => services += si.infotonPath -> si.serviceDefinition }
+          collect { case Success(se) => se }.
+          foreach { se => services += se.infotonPath -> se.serviceDefinition }
 
         toRemove.foreach(services -= _.path)
 
