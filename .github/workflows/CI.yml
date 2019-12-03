@@ -5,6 +5,7 @@ on:
     branches:
       - master
   repository_dispatch:
+    types: [build-prs]
   pull_request:
 
 jobs:
