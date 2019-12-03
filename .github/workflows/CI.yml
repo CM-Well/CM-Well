@@ -4,9 +4,8 @@ on:
   push:
     branches:
       - master
-  repository_dispatch:
-    types: [build-prs]
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 jobs:
 ##################################
