@@ -13,20 +13,19 @@ jobs:
   unitTests:
     runs-on: ubuntu-18.04
 
-    steps:
-      - name: Cache ivy2
-        uses: actions/cache@v1
-        with:
-          path: ~/.ivy2
-          key: cmwell-cache_${{ hashFiles('**/build.sbt') }}
-        
+    steps:  
       - name: Checkout code
         uses: actions/checkout@v1
       - name: Compile
         timeout-minutes: 10
         working-directory: server
         run: sbt compile
-
+      - name: Cache ivy2
+        uses: actions/cache@v1
+        with:
+          path: ~/.ivy2
+          key: cmwell-cache_${{ hashFiles('**/build.sbt') }}
+      
       - name: Test
         working-directory: server
         timeout-minutes: 30
@@ -73,15 +72,14 @@ jobs:
   integrationTests:
     runs-on: ubuntu-18.04
 
-    steps:
+    steps:         
+    - name: Checkout code
+      uses: actions/checkout@v1
     - name: Cache ivy2
       uses: actions/cache@v1
       with:
         path: ~/.ivy2
         key: cmwell-cache_${{ hashFiles('**/build.sbt') }}
-          
-    - name: Checkout code
-      uses: actions/checkout@v1
     - name: Install Scala
       run: |
         wget https://downloads.lightbend.com/scala/2.12.8/scala-2.12.8.tgz
