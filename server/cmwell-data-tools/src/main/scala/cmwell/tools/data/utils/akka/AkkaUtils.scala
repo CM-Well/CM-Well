@@ -17,6 +17,9 @@ package cmwell.tools.data.utils.akka
 import java.net.InetSocketAddress
 
 import akka.http.scaladsl.ClientTransport
+import akka.http.scaladsl.coding.{Deflate, Gzip, NoCoding}
+import akka.http.scaladsl.model.HttpResponse
+import akka.http.scaladsl.model.headers.{HttpEncoding, HttpEncodings}
 import akka.http.scaladsl.settings.{ClientConnectionSettings, ConnectionPoolSettings}
 import com.typesafe.config.ConfigFactory
 
@@ -64,4 +67,18 @@ object AkkaUtils {
     else
       settings
   }
+
+  def decodeResponse(response: HttpResponse) = {
+    val decoder = response.encoding match {
+      case HttpEncodings.gzip ⇒
+        Gzip
+      case HttpEncodings.deflate ⇒
+        Deflate
+      case HttpEncodings.identity ⇒
+        NoCoding
+      case HttpEncoding(_) ⇒ ???
+    }
+    decoder.decodeMessage(response)
+  }
+
 }

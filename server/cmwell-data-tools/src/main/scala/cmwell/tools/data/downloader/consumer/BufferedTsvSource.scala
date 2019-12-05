@@ -26,10 +26,9 @@ import cmwell.tools.data.downloader.consumer.BufferedTsvSource.{ConsumeResponse,
 import cmwell.tools.data.utils.ArgsManipulations
 import cmwell.tools.data.utils.ArgsManipulations.{HttpAddress, formatHost}
 import cmwell.tools.data.utils.akka.HeaderOps.{getHostnameValue, getNLeft, getPosition}
-import cmwell.tools.data.utils.akka.{DataToolsConfig, HttpConnections, lineSeparatorFrame}
+import cmwell.tools.data.utils.akka.{AkkaUtils, DataToolsConfig, HttpConnections, lineSeparatorFrame}
 import cmwell.tools.data.utils.logging.DataToolsLogging
 import cmwell.tools.data.utils.text.Tokens
-import cmwell.util.akka.http.HttpZipDecoder
 
 import scala.concurrent.duration._
 import scala.collection.mutable
@@ -97,6 +96,9 @@ class BufferedTsvSource(initialToken: Future[String],
     private val changeRemainingInfotonsState = getAsyncCallback[Option[Long]](remainingInfotons = _)
     private val addToBuffer = getAsyncCallback[Option[(Token, TsvData)]](buf += _)
     private val changeCurrConsumeState = getAsyncCallback[ConsumeState](currConsumeState = _)
+    private var stopStream: AsyncCallback[Unit] = _
+
+    val keepAlive = config.getBoolean("downloader.keepAlive")
 
     override def preStart(): Unit = {
 
@@ -119,6 +121,15 @@ class BufferedTsvSource(initialToken: Future[String],
 
         case (infotons, None) => logger.error(s"Token is None for: $infotons"); ???
       }
+
+      stopStream = getAsyncCallback[Unit] ( _ =>
+        while (!buf.isEmpty) {
+          val elem = buf.dequeue()
+          emit(out, (elem.get, true, None))
+          if (buf.isEmpty)
+            complete(out)
+        }
+      )
 
       currentConsumeToken = Await.result(initialToken, 5.seconds)
 
@@ -174,7 +185,7 @@ class BufferedTsvSource(initialToken: Future[String],
           .via(conn)
           .map {
             case (tryResponse, state) =>
-              tryResponse.map(HttpZipDecoder.decodeResponse) -> state
+              tryResponse.map(AkkaUtils.decodeResponse) -> state
           }
           .map {
             case (Success(HttpResponse(s, h, e, _)), _) if s == StatusCodes.TooManyRequests =>
@@ -293,11 +304,16 @@ class BufferedTsvSource(initialToken: Future[String],
           consumeResponse match {
             case ConsumeResponse(_, true, _) =>
 
-              logger.info(s"$label is at horizon. Will retry at consume position $currentConsumeToken " +
+              if (keepAlive)
+              {
+                logger.info(s"$label is at horizon. Will retry at consume position $currentConsumeToken " +
                 s"in $horizonRetryTimeout")
 
               materializer.scheduleOnce(horizonRetryTimeout, () =>
                 invokeBufferFillerCallback(sendNextChunkRequest(currentConsumeToken)))
+              }
+              else
+                stopStream.invoke()
 
             case ConsumeResponse(nextToken ,false, infotonSource) =>
               infotonSource.toMat(Sink.seq)(Keep.right).run

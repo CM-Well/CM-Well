@@ -27,7 +27,6 @@ import cmwell.tools.data.utils.ArgsManipulations
 import cmwell.tools.data.utils.ArgsManipulations.HttpAddress
 import cmwell.tools.data.utils.akka.HeaderOps._
 import cmwell.tools.data.utils.logging.{DataToolsLogging, LabelId}
-import cmwell.util.akka.http.HttpZipDecoder
 
 import scala.collection.immutable
 import scala.concurrent.duration._
@@ -134,8 +133,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
           val future = after(delay, system.scheduler)(Future.successful(data))
           Some(immutable.Seq(future -> state))
 
-
-        case State(data, context, _, Some(res@HttpResponse(s: ServerError, h, e, _)), count, iterationDelay) =>
+        case State(data, vars, context, Some(res@HttpResponse(s: ServerError, h, e, _)), count, iterationDelay) =>
 
           val errorID = res.##
 
@@ -168,6 +166,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                   dataElement =>
                     Future.successful(Seq(dataElement)) -> State[T](
                       Seq(dataElement),
+                      vars,
                       context
                     )
                 )
@@ -326,7 +325,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
               Some(immutable.Seq(future -> state))
           }
 
-        case State(data, vars, _, None, count, _) =>
+        case State(data, vars, context, None, count, _) =>
           count match {
             case Some(c) if c > 0 =>
               if(state.data.size > 1) {
@@ -344,7 +343,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                         Future.successful(Seq(dataElement)) -> State(
                           Seq(dataElement),
                           vars,
-                          state.context
+                          context
                         )
                     )
                     .to[immutable.Iterable]
@@ -404,7 +403,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
     }
       .via(conn).map {
         case (tryResponse, state) =>
-          tryResponse.map(HttpZipDecoder.decodeResponse) -> state
+          tryResponse.map(AkkaUtils.decodeResponse) -> state
       }
       .mapAsyncUnordered(httpParallelism) {
         case (response @ Success(HttpResponse(s, _, e, _)), state)
