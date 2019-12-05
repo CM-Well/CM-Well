@@ -177,7 +177,6 @@ dependenciesManager in Global := {
   case ("xml-apis","xml-apis")                                     => "xml-apis" % "xml-apis" % "1.4.01"
   case ("uk.org.lidalia","sysout-over-slf4j")                      => "uk.org.lidalia" % "sysout-over-slf4j" % "1.0.2"
   case ("net.leibman", "semverfi")                                 => "net.leibman" %% "semverfi" % "0.2.0"
-  case ("com.github.alexarchambault", "scalacheck-shapeless_1.14") => "com.github.alexarchambault" %% "scalacheck-shapeless_1.14" % "1.2.3"
 }
 
 //dependencyOverrides in Global ++= {
@@ -220,9 +219,8 @@ lazy val kafkaAssigner = (project in file("cmwell-kafka-assigner")).enablePlugin
 lazy val dao           = (project in file("cmwell-dao")).enablePlugins(CMWellBuild)
 lazy val domain       = (project in file("cmwell-domain")).enablePlugins(CMWellBuild).configs(DomainUtil)
   .settings(
-    inConfig(DomainUtil)(Defaults.configSettings ++ (sourceDirectories ++= (Compile / sourceDirectories).value)),
+    inConfig(DomainUtil)(Defaults.configSettings),
     (Test / managedSources) += baseDirectory.value / "src" / "domainUtil" / "scala" / "domain" /"testUtil" / "InfotonGenerator.scala",
-    libraryDependencies ++= Seq("org.scalacheck" %% "scalacheck" % "1.14.0"),
   ) dependsOn(util)
 lazy val zstore        = (project in file("cmwell-zstore")).enablePlugins(CMWellBuild, CassandraPlugin)             dependsOn(dao, util % "compile->compile;test->test")
 lazy val common        = (project in file("cmwell-common")).enablePlugins(CMWellBuild, BuildInfoPlugin)             dependsOn(zstore, domain % "compile->compile;test->domainUtil")
