@@ -18,7 +18,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: ~/.ivy2
-          key: cmwell-cache
+          key: cmwell-cache_${{ hashFiles('**/build.sbt') }}
         
       - name: Checkout code
         uses: actions/checkout@v1
@@ -78,7 +78,7 @@ jobs:
       uses: actions/cache@v1
       with:
         path: ~/.ivy2
-        key: cmwell-cache
+        key: cmwell-cache_${{ hashFiles('**/build.sbt') }}
           
     - name: Checkout code
       uses: actions/checkout@v1
