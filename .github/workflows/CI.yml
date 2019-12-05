@@ -21,6 +21,7 @@ jobs:
       - name: Compile
         timeout-minutes: 10
         run: |
+          ls -l
           cd server
           sbt compile
       - name: Save cache as artifacts
