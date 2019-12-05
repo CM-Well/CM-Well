@@ -21,7 +21,9 @@ jobs:
       - name: Compile
         timeout-minutes: 10
         working-directory: server
-        run: sbt compile
+        run: |
+          sbt compile
+          ls -la /home/runner
       - name: Save cache as artifacts
         uses: actions/upload-artifact@v1
         if: always()
@@ -43,7 +45,7 @@ jobs:
         uses: actions/download-artifact@v1
         with:
           name: cmwellCache_ivy2
-          path: ~/.ivy2
+          path: /home/runner/.ivy2
       - name: Compile
         timeout-minutes: 10
         working-directory: server
@@ -103,7 +105,7 @@ jobs:
       uses: actions/download-artifact@v1
       with:
         name: cmwellCache_ivy2
-        path: ~/.ivy2
+        path: /home/runner/.ivy2
     - name: Install Scala
       run: |
         wget https://downloads.lightbend.com/scala/2.12.8/scala-2.12.8.tgz
