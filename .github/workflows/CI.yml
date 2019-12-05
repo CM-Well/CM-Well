@@ -7,45 +7,27 @@ on:
   pull_request:
 
 jobs:
-  cacheLoading:
-    runs-on: ubuntu-18.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v1
-      - name: Cache ivy2
-        uses: actions/cache@v1
-        with:
-          path: /home/runner/.ivy2
-          key: cmwell-cache-${{ hashFiles('**/build.sbt') }}
-          restore-keys: cmwell-cache-
-      - name: Compile
-        timeout-minutes: 10
-        working-directory: server
-        run: |
-          sbt compile
-          ls -la /home/runner
-      - name: Save cache as artifacts
-        uses: actions/upload-artifact@v1
-        if: always()
-        with:
-          name: cmwellCache_ivy2
-          path: /home/runner/.ivy2
-        
 ##################################
 ##    Running all unit tests    ##
 ##################################
   unitTests:
     runs-on: ubuntu-18.04
-    needs: cacheLoading
 
     steps:  
       - name: Checkout code
         uses: actions/checkout@v1
-      - name: Retrieve cache
-        uses: actions/download-artifact@v1
+      - name: Cache .ivy2
+        uses: actions/cache@v1
         with:
-          name: cmwellCache_ivy2
           path: /home/runner/.ivy2
+          key: cmwell-unitTests-cache-${{ hashFiles('**/build.sbt') }}
+          restore-keys: cmwell-unitTests-cache-
+      - name: Cache .cache
+        uses: actions/cache@v1
+        with:
+          path: /home/runner/.cache
+          key: cmwell-unitTests-cache-${{ hashFiles('**/build.sbt') }}
+          restore-keys: cmwell-unitTests-cache-
       - name: Compile
         timeout-minutes: 10
         working-directory: server
@@ -96,16 +78,22 @@ jobs:
 ##################################### 
   integrationTests:
     runs-on: ubuntu-18.04
-    needs: cacheLoading
 
     steps:         
     - name: Checkout code
       uses: actions/checkout@v1
-    - name: Retrieve cache
-      uses: actions/download-artifact@v1
+    - name: Cache ivy2
+      uses: actions/cache@v1
       with:
-        name: cmwellCache_ivy2
         path: /home/runner/.ivy2
+        key: cmwell-it-cache-${{ hashFiles('**/build.sbt') }}
+        restore-keys: cmwell-it-cache-
+    - name: Cache .cache
+      uses: actions/cache@v1
+      with:
+        path: /home/runner/.cache
+        key: cmwell-it-cache-${{ hashFiles('**/build.sbt') }}
+        restore-keys: cmwell-it-cache-
     - name: Install Scala
       run: |
         wget https://downloads.lightbend.com/scala/2.12.8/scala-2.12.8.tgz
