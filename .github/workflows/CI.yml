@@ -31,7 +31,10 @@ jobs:
       - name: Compile
         timeout-minutes: 10
         working-directory: server
-        run: sbt compile
+        run: |
+          tree -h /home/runner
+          sbt compile
+          tree -h /home/runner
       
       - name: Test
         working-directory: server
