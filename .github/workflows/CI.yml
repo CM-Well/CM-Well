@@ -7,24 +7,46 @@ on:
   pull_request:
 
 jobs:
-##################################
-##    Running all unit tests    ##
-##################################
-  unitTests:
+  cacheLoading:
     runs-on: ubuntu-18.04
-
-    steps:  
+    steps:
       - name: Checkout code
         uses: actions/checkout@v1
-      - name: Compile
-        timeout-minutes: 10
-        working-directory: server
-        run: sbt compile
       - name: Cache ivy2
         uses: actions/cache@v1
         with:
           path: ~/.ivy2
           key: cmwell-cache_${{ hashFiles('**/build.sbt') }}
+      - name: Compile
+        timeout-minutes: 10
+        working-directory: server
+        run: sbt compile
+      - name: Save cache as artifacts
+        uses: actions/upload-artifact@v1
+        if: always()
+        with:
+          name: cmwellCache_ivy2
+          path: ~/.ivy2
+        
+##################################
+##    Running all unit tests    ##
+##################################
+  unitTests:
+    runs-on: ubuntu-18.04
+    needs: cacheLoading
+
+    steps:  
+      - name: Checkout code
+        uses: actions/checkout@v1
+      - name: Retrieve cache
+        uses: actions/download-artifact@v1
+        with:
+          name: cmwellCache_ivy2
+          path: ~/.ivy2
+      - name: Compile
+        timeout-minutes: 10
+        working-directory: server
+        run: sbt compile
       
       - name: Test
         working-directory: server
@@ -75,11 +97,11 @@ jobs:
     steps:         
     - name: Checkout code
       uses: actions/checkout@v1
-    - name: Cache ivy2
-      uses: actions/cache@v1
+    - name: Retrieve cache
+      uses: actions/download-artifact@v1
       with:
+        name: cmwellCache_ivy2
         path: ~/.ivy2
-        key: cmwell-cache_${{ hashFiles('**/build.sbt') }}
     - name: Install Scala
       run: |
         wget https://downloads.lightbend.com/scala/2.12.8/scala-2.12.8.tgz
