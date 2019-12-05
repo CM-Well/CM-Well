@@ -15,25 +15,19 @@ jobs:
       - name: Cache ivy2
         uses: actions/cache@v1
         with:
-          path: ~/.ivy2
+          path: /home/runner/.ivy2
           key: cmwell-cache-${{ hashFiles('**/build.sbt') }}
           restore-keys: cmwell-cache-
       - name: Compile
         timeout-minutes: 10
-        run: |
-          sbt clean
-          ls -la /home/runner/work/CM-Well/
-          ls -la /home/runner/work/
-          ls -la /home/runner/
-          ls -la /home/
-          #cd server
-          #sbt compile
+        working-directory: server
+        run: sbt compile
       - name: Save cache as artifacts
         uses: actions/upload-artifact@v1
         if: always()
         with:
           name: cmwellCache_ivy2
-          path: ~/.ivy2
+          path: /home/runner/.ivy2
         
 ##################################
 ##    Running all unit tests    ##
