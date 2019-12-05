@@ -21,9 +21,12 @@ jobs:
       - name: Compile
         timeout-minutes: 10
         run: |
-          ls -l
-          cd server
-          sbt compile
+          ls -l /home/runner/work/CM-Well/
+          ls -l /home/runner/work/
+          ls -l /home/runner/
+          ls -l /home/
+          #cd server
+          #sbt compile
       - name: Save cache as artifacts
         uses: actions/upload-artifact@v1
         if: always()
