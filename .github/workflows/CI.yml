@@ -16,11 +16,13 @@ jobs:
         uses: actions/cache@v1
         with:
           path: ~/.ivy2
-          key: cmwell-cache_${{ hashFiles('**/build.sbt') }}
+          key: cmwell-cache-${{ hashFiles('**/build.sbt') }}
+          restore-keys: cmwell-cache-
       - name: Compile
         timeout-minutes: 10
-        working-directory: server
-        run: sbt compile
+        run: |
+          cd server
+          sbt compile
       - name: Save cache as artifacts
         uses: actions/upload-artifact@v1
         if: always()
@@ -93,6 +95,7 @@ jobs:
 ##################################### 
   integrationTests:
     runs-on: ubuntu-18.04
+    needs: cacheLoading
 
     steps:         
     - name: Checkout code
