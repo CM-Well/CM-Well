@@ -21,10 +21,11 @@ jobs:
       - name: Compile
         timeout-minutes: 10
         run: |
-          ls -l /home/runner/work/CM-Well/
-          ls -l /home/runner/work/
-          ls -l /home/runner/
-          ls -l /home/
+          sbt clean
+          ls -la /home/runner/work/CM-Well/
+          ls -la /home/runner/work/
+          ls -la /home/runner/
+          ls -la /home/
           #cd server
           #sbt compile
       - name: Save cache as artifacts
