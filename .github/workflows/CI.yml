@@ -20,8 +20,8 @@ jobs:
         uses: actions/cache@v1
         with:
           path: /home/runner/.ivy2
-          key: cmwell-unitTests-cache-${{ hashFiles('**/build.sbt') }}
-          restore-keys: cmwell-unitTests-cache-
+          key: cmwell-unitTests-ivy2-${{ hashFiles('**/build.sbt') }}
+          restore-keys: cmwell-unitTests-ivy2-
       - name: Cache .cache
         uses: actions/cache@v1
         with:
@@ -86,8 +86,8 @@ jobs:
       uses: actions/cache@v1
       with:
         path: /home/runner/.ivy2
-        key: cmwell-it-cache-${{ hashFiles('**/build.sbt') }}
-        restore-keys: cmwell-it-cache-
+        key: cmwell-it-ivy2-${{ hashFiles('**/build.sbt') }}
+        restore-keys: cmwell-it-ivy2-
     - name: Cache .cache
       uses: actions/cache@v1
       with:
