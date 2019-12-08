@@ -22,10 +22,10 @@ jobs:
           path: /home/runner/.ivy2
           key: cmwell-unitTests-ivy2-${{ hashFiles('**/build.sbt') }}
           restore-keys: cmwell-unitTests-ivy2-
-      - name: Cache .cache
+      - name: Cache coursier
         uses: actions/cache@v1
         with:
-          path: /home/runner/.cache
+          path: /home/runner/.cache/coursier
           key: cmwell-unitTests-cache-${{ hashFiles('**/build.sbt') }}
           restore-keys: cmwell-unitTests-cache-
       - name: Compile
@@ -88,10 +88,10 @@ jobs:
         path: /home/runner/.ivy2
         key: cmwell-it-ivy2-${{ hashFiles('**/build.sbt') }}
         restore-keys: cmwell-it-ivy2-
-    - name: Cache .cache
+    - name: Cache coursier
       uses: actions/cache@v1
       with:
-        path: /home/runner/.cache
+        path: /home/runner/.cache/coursier
         key: cmwell-it-cache-${{ hashFiles('**/build.sbt') }}
         restore-keys: cmwell-it-cache-
     - name: Install Scala
