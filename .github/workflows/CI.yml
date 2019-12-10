@@ -91,7 +91,7 @@ jobs:
     - name: Cache coursier
       uses: actions/cache@v1
       with:
-        path: $HOME/runner/.cache/coursier
+        path: $HOME/.cache/coursier
         key: cmwell-it-cache-${{ hashFiles('**/build.sbt') }}
         restore-keys: cmwell-it-cache-
     - name: Install Scala
