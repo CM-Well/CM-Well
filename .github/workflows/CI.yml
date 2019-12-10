@@ -16,6 +16,8 @@ jobs:
     steps:  
       - name: Checkout code
         uses: actions/checkout@v1
+      - name: check
+        run: ls $HOME 
       - name: Cache .ivy2
         uses: actions/cache@v1
         with:
