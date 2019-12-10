@@ -19,13 +19,13 @@ jobs:
       - name: Cache .ivy2
         uses: actions/cache@v1
         with:
-          path: ${{HOME}}/.ivy2
+          path: $HOME/.ivy2
           key: cmwell-unitTests-ivy2-${{ hashFiles('**/build.sbt') }}
           restore-keys: cmwell-unitTests-ivy2-
       - name: Cache coursier
         uses: actions/cache@v1
         with:
-          path: ${{HOME}}/.cache/coursier
+          path: $HOME/.cache/coursier
           key: cmwell-unitTests-cache-${{ hashFiles('**/build.sbt') }}
           restore-keys: cmwell-unitTests-cache-
       - name: Compile
@@ -85,13 +85,13 @@ jobs:
     - name: Cache ivy2
       uses: actions/cache@v1
       with:
-        path: ${{HOME}}/.ivy2
+        path: $HOME/.ivy2
         key: cmwell-it-ivy2-${{ hashFiles('**/build.sbt') }}
         restore-keys: cmwell-it-ivy2-
     - name: Cache coursier
       uses: actions/cache@v1
       with:
-        path: ${{HOME}}/runner/.cache/coursier
+        path: $HOME/runner/.cache/coursier
         key: cmwell-it-cache-${{ hashFiles('**/build.sbt') }}
         restore-keys: cmwell-it-cache-
     - name: Install Scala
