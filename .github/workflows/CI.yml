@@ -17,10 +17,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v1
       - name: check
-        run: |
-          echo $HOME 
-          echo "hi"
-          #echo ${{HOME}}
+        run: echo $HOME 
       - name: Cache .ivy2
         uses: actions/cache@v1
         with:
