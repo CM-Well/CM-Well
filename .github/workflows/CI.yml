@@ -20,7 +20,7 @@ jobs:
         run: |
           echo $HOME 
           echo "hi"
-          echo ${{HOME}}
+          #echo ${{HOME}}
       - name: Cache .ivy2
         uses: actions/cache@v1
         with:
