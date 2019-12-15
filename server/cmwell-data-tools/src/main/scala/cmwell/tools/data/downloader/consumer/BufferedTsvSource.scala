@@ -122,13 +122,11 @@ class BufferedTsvSource(initialToken: Future[String],
         case (infotons, None) => logger.error(s"Token is None for: $infotons"); ???
       }
 
-      stopStream = getAsyncCallback[Unit] ( _ =>
-        while (!buf.isEmpty) {
-          val elem = buf.dequeue()
-          emit(out, (elem.get, true, None))
-          if (buf.isEmpty)
-            complete(out)
-        }
+      stopStream = getAsyncCallback[Unit] ( _ => {
+        val iterable = buf.map(elem => (elem.get, true, None)).iterator
+        emitMultiple(out, iterable)
+        complete(out)
+      }
       )
 
       currentConsumeToken = Await.result(initialToken, 5.seconds)
