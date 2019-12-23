@@ -60,10 +60,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
   }
 
 
-  val retryLimit = config.hasPath("cmwell.downloader.consumer.http-retry-limit") match {
-    case true => Some(config.getInt("cmwell.downloader.consumer.http-retry-limit"))
-    case false => None
-  }
+  val retryLimit = Some(config.getInt("cmwell.downloader.consumer.http-retry-limit"))
 
   val delayFactor = config.hasPath("cmwell.downloader.consumer.http-retry-delay-factor") match {
     case true => config.getDouble("cmwell.downloader.consumer.http-retry-delay-factor")
@@ -380,7 +377,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
       label = label
     ).async
 
-    format match {
+    val withFormat = format match {
       case "tsv" =>
         tsvSource.map { case ((token, tsv), _, _) => token -> tsv.toByteString }
       case "text" =>
@@ -399,6 +396,12 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
         }
 
     }
+    withFormat.log(name = getClass.getSimpleName)
+      .addAttributes(
+        Attributes.logLevels(
+          onElement = Attributes.LogLevels.Off,
+          onFinish = Attributes.LogLevels.Info,
+          onFailure = Attributes.LogLevels.Error))
   }
 }
 
