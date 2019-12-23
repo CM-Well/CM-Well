@@ -123,6 +123,7 @@ class BufferedTsvSource(initialToken: Future[String],
       }
 
       stopStream = getAsyncCallback[Unit] ( _ => {
+        logger.info("Going to close source")
         val iterable = buf.map(elem => (elem.get, true, None)).iterator
         emitMultiple(out, iterable)
         complete(out)
@@ -224,6 +225,7 @@ class BufferedTsvSource(initialToken: Future[String],
                   ConsumeResponse(token=Some(pos), consumeComplete = false, infotonSource = infotonSource)
 
                 case None =>
+                  e.discardBytes()
                   ConsumeResponse(token=Some(token), consumeComplete = false, infotonSource =
                     Source.failed(new Exception(s"No position supplied")))
               }

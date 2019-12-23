@@ -167,7 +167,8 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                     Future.successful(Seq(dataElement)) -> State[T](
                       Seq(dataElement),
                       vars,
-                      context
+                      context,
+                      count = limit
                     )
                 )
                 .to[immutable.Iterable]
@@ -214,11 +215,12 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                 case None =>
 
                   logger.warn(
-                    s"$labelValue server error - received $s. host=${getHostnameValue(h)} data=${stringifyData(data)}. Will try again in ${delay}"
+                    s"$labelValue server error - received $s. host=${getHostnameValue(h)} data=${stringifyData(data)}. Will try again until success " +
+                      s"(count is not set) in ${delay}"
                   )
 
                   val future = after(delay, system.scheduler)(Future.successful(data))
-                  Some(immutable.Seq(future -> state))
+                  Some(immutable.Seq(future -> state.copy(count = limit)))
               }
             }
           }
