@@ -266,10 +266,10 @@ class TimeBasedAccumulatedNsCache private (private[this] var mainCache: Map[NsID
       }
 
     private[this] def extractMetadataFromInfoton(infoton: Infoton): Try[(NsURL, NsPrefix)] = {
-      if (!infoton.path.matches("/meta/ns/[^/]+"))
-        Failure(new IllegalStateException(s"weird looking path for /meta/ns infoton [${infoton.path}/${infoton.uuid}]"))
+      if (!infoton.systemFields.path.matches("/meta/ns/[^/]+"))
+        Failure(new IllegalStateException(s"weird looking path for /meta/ns infoton [${infoton.systemFields.path}/${infoton.uuid}]"))
       else if (infoton.fields.isEmpty)
-        Failure(new IllegalStateException(s"no fields found for /meta/ns infoton [${infoton.path}/${infoton.uuid}]"))
+        Failure(new IllegalStateException(s"no fields found for /meta/ns infoton [${infoton.systemFields.path}/${infoton.uuid}]"))
       else {
         val f = infoton.fields.get
         metaNsFieldsValidator(infoton, f, "prefix").flatMap { p =>
@@ -282,16 +282,16 @@ class TimeBasedAccumulatedNsCache private (private[this] var mainCache: Map[NsID
       fields
         .get(field)
         .fold[Try[String]](
-          Failure(new IllegalStateException(s"$field field not found for /meta/ns infoton [${i.path}/${i.uuid}]"))
+          Failure(new IllegalStateException(s"$field field not found for /meta/ns infoton [${i.systemFields.path}/${i.uuid}]"))
         ) { values =>
           if (values.isEmpty)
             Failure(
-              new IllegalStateException(s"empty value set for $field field in /meta/ns infoton [${i.path}/${i.uuid}]")
+              new IllegalStateException(s"empty value set for $field field in /meta/ns infoton [${i.systemFields.path}/${i.uuid}]")
             )
           else if (values.size > 1)
             Failure(
               new IllegalStateException(
-                s"multiple values ${values.mkString("[,", ",", "]")} for $field field in /meta/ns infoton [${i.path}/${i.uuid}]"
+                s"multiple values ${values.mkString("[,", ",", "]")} for $field field in /meta/ns infoton [${i.systemFields.path}/${i.uuid}]"
               )
             )
           else
