@@ -668,7 +668,7 @@ class ImpStream(partition: Int,
           case bgMessage@BGMessage(_, (path, commands)) =>
               bgMessage.copy(message = (path, commands.map {
                 case OverwriteCommand(infoton, trackingID) => (infoton, trackingID)
-                case x @ (DeleteAttributesCommand(_, _, _, _, _, _, _) | DeletePathCommand(_, _, _, _, _) |
+                case x @ (DeleteAttributesCommand(_, _, _, _, _, _) | DeletePathCommand(_, _, _, _, _) |
                           UpdatePathCommand(_, _, _, _, _, _, _,_) | WriteCommand(_, _, _))
                   => logger.error(s"Unexpected input. Received: $x"); ???
               }))

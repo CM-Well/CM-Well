@@ -382,18 +382,16 @@ class IRWServiceNativeImpl2(
   def writeSeqAsync(infoton: Seq[Infoton], level: ConsistencyLevel = QUORUM, skipSetPathLast: Boolean = false)(
     implicit ec: ExecutionContext
   ): Future[Seq[Infoton]] =
-    travector(infoton)(i => writeAsync(i, level, skipSetPathLast))
+      travector(infoton)(i => writeAsync(i, level, skipSetPathLast))
 
   def writeAsync(infoton: Infoton, level: ConsistencyLevel = QUORUM, skipSetPathLast: Boolean = false)(
     implicit ec: ExecutionContext
-  ): Future[Infoton] = {
-
+  ): Future[Infoton] =
     if (skipSetPathLast) writeAsyncDataOnly(infoton, level)
     else
       writeAsyncDataOnly(infoton, level).flatMap { i =>
         setPathLast(infoton, level).map(_ => i)
       }
-  }
 
   def addIndexTimeToUuid(uuid: String, indexTime: Long, level: ConsistencyLevel = QUORUM): Future[Unit] = {
     import scala.concurrent.ExecutionContext.Implicits.global

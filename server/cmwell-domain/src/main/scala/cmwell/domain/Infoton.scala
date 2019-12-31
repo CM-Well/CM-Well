@@ -224,6 +224,7 @@ case class ObjectInfoton(systemFields: SystemFields, override val fields: Option
     val originalUuid = uuid
     new ObjectInfoton(systemFields, maskedFields(fieldsMask)) {
       override val uuid = originalUuid
+      override def kind = "ObjectInfoton"
     }
   }
 }
@@ -249,6 +250,7 @@ case class CompoundInfoton(systemFields: SystemFields,
     val originalUuid = uuid
     new CompoundInfoton(systemFields, maskedFields(fieldsMask), children, offset, length, total) {
       override val uuid = originalUuid
+      override def kind = "CompoundInfoton"
     }
   }
 }
@@ -286,6 +288,7 @@ case class LinkInfoton(systemFields: SystemFields,
     val originalUuid = uuid
     new LinkInfoton(systemFields, maskedFields(fieldsMask), linkTo, linkType) {
       override val uuid = originalUuid
+      override def kind = "LinkInfoton"
     }
   }
 }
@@ -363,6 +366,7 @@ case class FileInfoton(systemFields: SystemFields,
     val originalUuid = uuid
     new FileInfoton(systemFields, maskedFields(fieldsMask), content) {
       override val uuid = originalUuid
+      override def kind = "FileInfoton"
     }
   }
 
@@ -375,6 +379,7 @@ case class FileInfoton(systemFields: SystemFields,
                     fields,
                     content.map(c => FileContent(None, c.mimeType, content.get.dataLength, hash))) {
       override val uuid = originalUuid
+      override def kind = "FileInfoton"
     }
   }
 
@@ -391,6 +396,7 @@ case class FileInfoton(systemFields: SystemFields,
                         fields,
                         content.map(c => FileContent(Some(data), c.mimeType, data.length, hashOpt))) {
           override val uuid = originalUuid
+          override def kind = "FileInfoton"
       }
     )
   }
@@ -438,18 +444,22 @@ case class VirtualInfoton(infoton: Infoton) {
   def getInfoton = infoton match {
     case ObjectInfoton(systemFields, fields) =>
       new ObjectInfoton(systemFields, fields) {
+        override def kind = "VirtualObjectInfoton"
         override def uuid = "0"
       }
     case CompoundInfoton(systemFields, fields, children, offset, length, total) =>
       new CompoundInfoton(systemFields, fields, children, offset, length, total) {
+        override def kind = "VirtualCompoundInfoton"
         override def uuid = "0"
       }
     case LinkInfoton(systemFields, fields, linkTo, linkType) =>
       new LinkInfoton(systemFields, fields, linkTo, linkType) {
+        override def kind = "VirtualLinkInfoton"
         override def uuid = "0"
       }
     case FileInfoton(systemFields, fields, content) =>
       new FileInfoton(systemFields, fields, content) {
+        override def kind = "VirtualFileInfoton"
         override def uuid = "0"
       }
     case _ => ???

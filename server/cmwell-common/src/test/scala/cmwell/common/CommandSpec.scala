@@ -54,8 +54,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
       "/command-test/deletePath",
       Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))),
       new DateTime,
-      "Baruch",
-      protocol = "http")
+      "Baruch")
 
     // TODO : need to understand way the next test are having problem when adding the line to the test.
     //val cmdMerged1 = MergedInfotonCommand( None , "/command-test/mergedPath")
@@ -105,7 +104,7 @@ class CommandSpec extends FlatSpec with Matchers with LazyLogging {
           infoton.fields.get("name").size should equal(objInfo.fields.get("name").size)
           infoton.systemFields.lastModified.isEqual(objInfo.systemFields.lastModified) should equal(true)
           infoton.systemFields.lastModifiedBy should equal(objInfo.systemFields.lastModifiedBy)
-        case DeleteAttributesCommand(path, _, _, _, _, _, _) => path should equal(cmdDeletePathAttributeValues.path)
+        case DeleteAttributesCommand(path, _, _, _, _, _) => path should equal(cmdDeletePathAttributeValues.path)
         case DeletePathCommand(path, _, _, _, _) => path should equal(cmdDeletePath.path)
         case UpdatePathCommand(path, d_f, u_f, lm, lmb, _, _, _) =>
           path should equal(cmdUpdate.path)

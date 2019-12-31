@@ -685,7 +685,7 @@ object LDFormatParser extends LazyLogging {
           val cmwMetaDataMap = MMap[String, MetaData]()
           val cmwHosts = MSet[String]()
           val deleteFieldsMap = MMap[String, Set[(String, Option[String])]]() // {infoton path -> [field1, ..., fieldN]}
-        val deleteValuesMap = MMap[String, Map[String, Set[FieldValue]]]()
+          val deleteValuesMap = MMap[String, Map[String, Set[FieldValue]]]()
           val deletePathsList = ListBuffer[String]()
           val atomicUpdatesBuilder = Map.newBuilder[String, String]
 
@@ -816,7 +816,7 @@ object LDFormatParser extends LazyLogging {
               }
               if(stmt.getSubject.isURIResource) {
                 val protocol = stmt.getSubject.getURI.takeWhile(':'.!=)
-                if(protocol != "cmwell" && protocol != CSettings.defaultProtocol && infotonsMap.keySet(subject))
+                if(protocol != "cmwell")
                   updateMetaData(cmwMetaDataMap, subject, "protocol", FString(protocol))
               }
             }

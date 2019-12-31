@@ -192,18 +192,10 @@ object JsonSerializer6 extends AbstractJsonSerializer with LazyLogging {
           s"expected value for 'lastModifiedBy' field\n${jsonParser.getCurrentLocation.toString}")
         val lastModifiedBy = jsonParser.getText()
 
-        assume(
-          jsonParser.nextToken() == JsonToken.FIELD_NAME && "protocol".equals(jsonParser.getCurrentName()),
-          s"expected 'protocol' field name\n${jsonParser.getCurrentLocation.toString}"
-        )
-        assume(jsonParser.nextToken() == JsonToken.VALUE_STRING,
-          s"expected value for 'protocol' field\n${jsonParser.getCurrentLocation.toString}")
-        val protocol = jsonParser.getText
-
         //expecting end of command object
         assume(jsonParser.nextToken() == JsonToken.END_OBJECT, s"expected end of command object\n${jsonParser.getCurrentLocation.toString}")
 
-        DeleteAttributesCommand(path, fields, lastModified, lastModifiedBy, tidOpt.flatMap(_.right.toOption), prevUUIDOpt, protocol)
+        DeleteAttributesCommand(path, fields, lastModified, lastModifiedBy, tidOpt.flatMap(_.right.toOption), prevUUIDOpt)
       case "DeletePathCommand" =>
         // expecting 'path' field
         assume(

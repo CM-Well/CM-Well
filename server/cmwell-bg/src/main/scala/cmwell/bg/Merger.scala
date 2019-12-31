@@ -126,18 +126,17 @@ class Merger(config: Config) extends LazyLogging {
 
   private def delete_merge(prev_infoton: Infoton,
                            fields: Map[String, Set[FieldValue]],
-                           lastModified: DateTime,
-                           protocol: String): Infoton = {
+                           lastModified: DateTime): Infoton = {
     prev_infoton match {
       case ObjectInfoton(systemFields, current_fields) =>
         val newFields = delete_f(current_fields, fields)
         if (newFields.nonEmpty)
-            ObjectInfoton(systemFields.copy(dc= defaultDC, indexTime = None, lastModified = lastModified, protocol = protocol), newFields)
+            ObjectInfoton(systemFields.copy(dc= defaultDC, indexTime = None, lastModified = lastModified), newFields)
           else DeletedInfoton(systemFields.copy(dc = defaultDC,indexTime = None, lastModified = lastModified))
       case f @ FileInfoton(_, current_fields, _) =>
-        f.copy(f.systemFields.copy(indexTime = None, lastModified = lastModified, protocol = protocol), fields = delete_f(current_fields, fields))
+        f.copy(f.systemFields.copy(indexTime = None, lastModified = lastModified), fields = delete_f(current_fields, fields))
       case l @ LinkInfoton(_, current_fields, _, _) =>
-        l.copy(l.systemFields.copy(indexTime = None, lastModified = lastModified, protocol = protocol), fields = delete_f(current_fields, fields))
+        l.copy(l.systemFields.copy(indexTime = None, lastModified = lastModified), fields = delete_f(current_fields, fields))
       case i: DeletedInfoton => i // if we got a delete on delete we need ignore the create of delete
       case j =>
         throw new NotImplementedError(s"kind [${j.kind}] uuid [${prev_infoton.uuid}] info [$j]")
@@ -250,10 +249,10 @@ class Merger(config: Config) extends LazyLogging {
             case Some(last_infoton) => ensurePrevUUID(last_infoton, prevUUID)(i => Some(write_merge(i, currInfoton)))
             case None               => ensurePrevNone(prevUUID)(Some(currInfoton))
           }
-        case DeleteAttributesCommand(_, fields, lastModified, _, _, prevUUID, protocol) =>
+        case DeleteAttributesCommand(_, fields, lastModified, _, _, prevUUID) =>
           base match {
             case Some(last_infoton) =>
-              ensurePrevUUID(last_infoton, prevUUID)(i => Some(delete_merge(i, fields, lastModified, protocol)))
+              ensurePrevUUID(last_infoton, prevUUID)(i => Some(delete_merge(i, fields, lastModified)))
             case None => ensurePrevNone(prevUUID)(None)
           }
         case UpdatePathCommand(path, deleteFields, updateFields, lastModified, _, _, prevUUID, protocol) =>
