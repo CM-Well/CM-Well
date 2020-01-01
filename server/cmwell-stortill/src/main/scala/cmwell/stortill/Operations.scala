@@ -201,7 +201,7 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSService)
             }
           }
           val all = usFromC.map(_._2).toSet ++ usFromES.map(_._1)
-          (onlyC, onlyES.groupBy(_._1).mapValues(_.map(_._2)), both, all)
+          (onlyC, onlyES.groupBy(_._1).view.mapValues(_.map(_._2)).toMap, both, all)
         }
 
         val foundFut: Future[Set[Either[Uuid, Infoton]]] = Future.traverse(all) { uuid =>
@@ -262,9 +262,9 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSService)
                 lazy val cur = foundAndFixed.maxBy(_.indexTime.get)
 
                 Future
-                  .traverse(foundAndFixed.groupBy(_.lastModified.getMillis)) {
-                    case (_, is) if is.size == 1 => Future.successful(is.head)
-                    case (_, is) => {
+                  .traverse(foundAndFixed.groupBy(_.lastModified.getMillis).view.values) {
+                    case is if is.size == 1 => Future.successful(is.head)
+                    case is => {
                       val maxiton = is.maxBy(_.indexTime.getOrElse(0L))
                       Future
                         .traverse(is.filterNot(_ == maxiton)) { i =>

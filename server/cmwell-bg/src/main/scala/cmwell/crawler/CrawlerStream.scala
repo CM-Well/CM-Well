@@ -188,10 +188,9 @@ object CrawlerStream extends LazyLogging {
       }
     }
 
-    lazy val fieldBreakOut = scala.collection.breakOut[Seq[(String, String, String)], SystemField, Vector[SystemField]]
     def getSystemFields(uuid: String) =
       irwService.rawReadSystemFields(uuid, ConsistencyLevel.QUORUM)
-        .map(_.collect { case (_, field, value) if field != "data" => SystemField(field, value) }(fieldBreakOut))(ec)
+        .map(_.view.collect { case (_, field, value) if field != "data" => SystemField(field, value) }.to(Vector))(ec)
 
     def enrichVersionsWithSystemFields(previousResult: DetectionResult) = {
       previousResult match {

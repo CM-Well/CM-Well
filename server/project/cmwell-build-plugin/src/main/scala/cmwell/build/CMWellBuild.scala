@@ -80,13 +80,13 @@ object CMWellBuild extends AutoPlugin {
 
 	def fetchZookeeperApacheMirror(version: String)(implicit ec: ExecutionContext): Future[File] = {
 		val ext = "tar.gz"
-		val url = s"http://www-$apacheMirror.apache.org/dist/zookeeper/zookeeper-$version/zookeeper-$version.$ext"
+		val url = s"http://www-$apacheMirror.apache.org/dist/zookeeper/zookeeper-$version/apache-zookeeper-$version-bin.$ext"
 		fetchArtifact(url)
 	}
 
 	def fetchZookeeperApacheArchive(version: String)(implicit ec: ExecutionContext): Future[File] = {
 		val ext = "tar.gz"
-		val url = s"https://archive.apache.org/dist/zookeeper/zookeeper-$version/zookeeper-$version.$ext"
+		val url = s"https://archive.apache.org/dist/zookeeper/zookeeper-$version/apache-zookeeper-$version-bin.$ext"
 		fetchArtifact(url)
 	}
 
@@ -236,7 +236,7 @@ object CMWellBuild extends AutoPlugin {
 	override def requires = PackPlugin && ScalastylePlugin /*&& ScalafmtPlugin*/ && DoctestPlugin /*&& DependencyGraphPlugin*/
 
 	override def projectSettings = Seq(
-		scalastyleFailOnError := true,
+		scalastyleFailOnError := false,
 		testScalastyle in ThisProject := (scalastyle in ThisProject).in(Test).toTask("").value,
 		(test in Test) := ((test in Test) dependsOn testScalastyle).value,
 		compileScalastyle in ThisProject := (scalastyle in ThisProject).in(Compile).toTask("").value,

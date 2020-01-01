@@ -494,22 +494,13 @@ class ActiveInfotonGenerator @Inject()(
 """
   }
 
-  private[this] val ghdfBreakout =
-    scala.collection.breakOut[Seq[
-      (String,
-       ((String, Color.Color),
-        (String, Color.Color),
-        (String, Color.Color),
-        (String, Color.Color),
-        (String, Color.Color),
-        (String, Color.Color)))
-    ], (String, Set[FieldValue]), Map[String, Set[FieldValue]]]
   private[this] def generateHealthDetailedFields: FieldsOpt = {
     //val (xs, timeStamp) = DashBoardCache.cacheAndGetDetailedHealthData
     val res = getClusterDetailedHealthNew
     Some(
       res.toSeq
         .sortBy(_._1)
+        .view
         .flatMap {
           case (host, (ws, bg, ca, es, zk, kf)) =>
             List(
@@ -520,7 +511,7 @@ class ActiveInfotonGenerator @Inject()(
               s"zk@$host" -> Set[FieldValue](FString(zk._2.toString)),
               s"kafka@$host" -> Set[FieldValue](FString(kf._2.toString))
             )
-        }(ghdfBreakout)
+        }.to(Map)
     )
   }
 

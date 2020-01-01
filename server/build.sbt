@@ -36,7 +36,7 @@ def stripTime(version: String) = version match {
 ThisBuild / version ~= stripTime
 ThisBuild / dynver ~= stripTime
 
-scalaVersion in Global := "2.12.10"
+scalaVersion in Global := "2.13.1"
 //javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint")
 initialize := {
   import nl.gn0s1s.bump.SemVer
@@ -75,7 +75,7 @@ dependenciesManager in Global := {
   case ("com.typesafe.scala-logging","scala-logging")              => "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2"
   case ("com.typesafe.akka", "akka-stream-kafka")                  => "com.typesafe.akka" %% "akka-stream-kafka" % "1.1.0"
   case ("com.typesafe.akka", "akka-stream-contrib")                => "com.typesafe.akka" %% "akka-stream-contrib" % "0.10"
-  case ("com.typesafe.akka", "akka-http")                          => "com.typesafe.akka" %% "akka-http" % "10.1.10"
+  case ("com.typesafe.akka", "akka-http")                          => "com.typesafe.akka" %% "akka-http" % "10.1.11"
   case ("com.typesafe.akka",art)                                   => "com.typesafe.akka" %% art % "2.5.26"
   case ("com.typesafe.play", "twirl-api")                          => "com.typesafe.play" %% "twirl-api" % "1.3.13"
   case ("com.typesafe.play", "play-json")                          => "com.typesafe.play" %% "play-json" % "2.7.4"
@@ -169,6 +169,7 @@ dependenciesManager in Global := {
   case ("org.scalacheck","scalacheck")                             => "org.scalacheck" %% "scalacheck" % "1.14.2"
   case ("org.scalatest","scalatest")                               => "org.scalatest" %% "scalatest" % "3.0.8"
   case ("org.scala-lang.modules", "scala-parser-combinators")      => "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4"
+  case ("org.scala-lang.modules", "scala-parallel-collections")    => "org.scala-lang.modules" %% "scala-parallel-collections" % "0.2.0"
   case ("org.scala-lang.modules", "scala-xml")                     => "org.scala-lang.modules" %% "scala-xml" % "1.2.0"
   case ("org.slf4j",art)                                           => "org.slf4j" % art % "1.7.28"
   case ("org.xerial.snappy","snappy-java")                         => "org.xerial.snappy" % "snappy-java" % "1.1.2.4"

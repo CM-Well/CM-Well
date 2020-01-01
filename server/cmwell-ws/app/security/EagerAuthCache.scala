@@ -98,7 +98,7 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
           .map(i => i.path -> extractPayload(i))
           .collect { case (p, Some(jsv)) => p -> jsv }
           .toMap
-        val (usersData, rolesData) = cmwell.util.collections.partitionWith(data) { t =>
+        val (usersData, rolesData) = cmwell.util.collections.partitionWith(data.iterator) { t =>
           val (path, payload) = t
           val isUser = path.startsWith("/meta/auth/users")
           val key = path.substring(path.lastIndexOf("/") + 1)

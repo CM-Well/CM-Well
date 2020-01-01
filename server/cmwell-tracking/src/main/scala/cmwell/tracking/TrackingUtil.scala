@@ -188,7 +188,7 @@ object TrackingUtilImpl extends TrackingUtil with LazyLogging {
     if (inProgress.isEmpty) Future.successful(data)
     else {
 
-      val inProgressPaths: Vector[String] = inProgress.map(_.path)(collection.breakOut)
+      val inProgressPaths: Vector[String] = inProgress.view.map(_.path).to(Vector)
       val infotonsFut = travector(inProgressPaths)(irw.readPathAsync(_))
       val alreadyDonePathsFut = infotonsFut.map { infotons =>
         infotons.collect {

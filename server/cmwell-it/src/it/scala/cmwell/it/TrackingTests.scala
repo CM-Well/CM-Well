@@ -201,7 +201,7 @@ class TrackingTests extends AsyncFunSpec with Matchers with Helpers with OptionV
 
   private def simulateDeadTrackingActor(actorName: String, data: Seq[PathStatus]): Future[Int] = {
     val uzid = s"ta-$actorName"
-    val payload = data.map{ case PathStatus(p,s) => s"$p\0$s" }.mkString("\n").getBytes("UTF-8")
+    val payload = data.map{ case PathStatus(p,s) => s"${p}\u0000$s" }.mkString("\n").getBytes("UTF-8")
     Http.post(cmw / "zz" / uzid, payload, headers = tokenHeader).map(_.status)
   }
 

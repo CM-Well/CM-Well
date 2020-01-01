@@ -52,12 +52,14 @@ package object files extends LazyLogging {
 
   }
 
+/*
   def resourceToStream(filename: String) = {
     if (System.getProperty("onejar.file") == null)
       Thread.currentThread.getContextClassLoader.getResourceAsStream(filename)
     else
       fileFromZipToStream(filename, os.Props.jarName)
   }
+*/
 
   def fileFromZipToStream(filename: String, zipfile: String): InputStream = {
     val zip = stringToZipFile(zipfile)
@@ -71,11 +73,13 @@ package object files extends LazyLogging {
     zip.getInputStream(ze)
   }
 
+/*
   def resourceToFile(resource: String, file: String) { resourceToFile(resource, new File(file)) }
   def resourceToFile(resource: String, file: File) {
     val resourceStream = resourceToStream(resource)
     isToFile(resourceStream, file)
   }
+*/
 
   /**
     * @author Israel (copied from clfRunner & modified by Gilad)

@@ -267,7 +267,7 @@ object SparqlProcessor extends DataToolsLogging with DataToolsConfig {
     val errors = List(validateBody(body), validateHeaders(headers, "X-CM-WELL-SG-RS")).flatten
 
     if (errors.isEmpty)
-      Success(Unit)
+      Success(())
     else
       Failure(new Exception(errors.mkString("Failures in Http Response:", " ", "")))
   }

@@ -640,7 +640,7 @@ class Downloader(
       ).addHeader(RawHeader("Accept-Encoding", "gzip"))
     }
 
-    def getMissingUuids(receivedData: ByteString, uuids: Seq[String]) = {
+    def getMissingUuids(receivedData: ByteString, uuids: Seq[String]): Seq[String] = {
       def extractUuidNtriples(data: ByteString) =
         data.utf8String
           .split("\n")
@@ -652,14 +652,14 @@ class Downloader(
           .toSeq
           .distinct
 
-      def extractMissingUuidsJson(data: ByteString) = {
+      def extractMissingUuidsJson(data: ByteString): Seq[String] = {
         val jsonValue = Json.parse(data.toArray)
 
         val missing = jsonValue \\ "irretrievablePaths"
 
         missing.head match {
           case JsArray(arr) if arr.isEmpty => Seq.empty[String]
-          case JsArray(arr)                => arr.map(_.toString)
+          case JsArray(arr)                => arr.view.map(_.toString).toSeq
           case x                           => logger.error(s"unexpected message: $x"); ???
         }
       }

@@ -88,8 +88,6 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       fetchEntireMetaNsAsPredicates
     )
 
-  private val fieldsSetBreakout = scala.collection.breakOut[Seq[Option[String]],String,Set[String]]
-
   private def fetchEntireMetaNsAsPredicates = {
     val chunkSize = 512
     def fetchFields(offset: Int = 0): Future[Seq[Infoton]] = {
@@ -117,9 +115,10 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
         val (prefix,localName) = lastTwoPathParts(0) -> lastTwoPathParts(1)
         prefixToUrl.get(prefix).map(_ + localName)
         }
+        .view
         .collect {
         case Some(x) => x
-      }(fieldsSetBreakout)
+      }.to(Set)
       fieldsSet
     }
   }
@@ -535,8 +534,6 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                          debugInfo = debugInfo)
   }
 
-  val thinSearchResultsBreakout =
-    scala.collection.breakOut[Seq[FTSThinInfoton], SearchThinResult, Vector[SearchThinResult]]
   def thinSearch(
     pathFilter: Option[PathFilter] = None,
                  fieldFilters: Option[FieldFilter] = None,
@@ -565,9 +562,9 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
         ftr.total,
         ftr.offset,
         ftr.length,
-        ftr.thinInfotons.map { ti =>
+        ftr.thinInfotons.view.map { ti =>
         SearchThinResult(ti.path, ti.uuid, ti.lastModified, ti.lastModifiedBy ,ti.indexTime, ti.score)
-        }(thinSearchResultsBreakout),
+        }.to(Vector),
         debugInfo = ftr.searchQueryStr
       )
     }
@@ -680,11 +677,8 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
         }.toVector, level) */ .map { infotonsSeq =>
           if(infotonsSeq.exists(_._1.isEmpty)) {
               val esUuidsSet: Set[String] =
-                ftsResults.infotons.map(_.uuid)(scala.collection.breakOut[Seq[Infoton], String, Set[String]])
-              val casUuidsSet: Set[String] = infotonsSeq.collect { case (FullBox(i), _) => i.uuid }(
-                scala.collection
-                  .breakOut[Vector[(Box[Infoton], Option[Map[String, Set[FieldValue]]])], String, Set[String]]
-              )
+                ftsResults.infotons.view.map(_.uuid).to(Set)
+              val casUuidsSet: Set[String] = infotonsSeq.view.collect { case (FullBox(i), _) => i.uuid }.to(Set)
               logger.error(
                 "some uuids retrieved from ES, could not be retrieved from cassandra: " + esUuidsSet
                   .diff(casUuidsSet)
@@ -915,10 +909,8 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       .map { infotonsSeq =>
         if(infotonsSeq.exists(_.isEmpty)) {
           val esUuidsSet: Set[String] =
-            infotons.map(_.uuid)(scala.collection.breakOut[Seq[Infoton], String, Set[String]])
-          val casUuidsSet: Set[String] = infotonsSeq.collect { case FullBox(i) => i.uuid }(
-            scala.collection.breakOut[Seq[Box[Infoton]], String, Set[String]]
-          )
+            infotons.view.map(_.uuid).to(Set)
+          val casUuidsSet: Set[String] = infotonsSeq.view.collect { case FullBox(i) => i.uuid }.to(Set)
           logger.error(
             "some uuids retrieved from ES, could not be retrieved from cassandra: " + esUuidsSet
               .diff(casUuidsSet)
@@ -952,7 +944,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
   // assuming not the only version of the infoton!
   def purgeUuid(infoton: Infoton): Future[Unit] = {
     irwService.purgeHistorical(infoton, isOnlyVersion = false, QUORUM).flatMap { _ =>
-        ftsService.purge(infoton.uuid).map(_ => Unit)
+        ftsService.purge(infoton.uuid).map(_ => ())
     }
   }
 

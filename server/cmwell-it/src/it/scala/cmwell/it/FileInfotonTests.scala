@@ -87,7 +87,7 @@ class FileInfotonTests extends AsyncFunSpec with Matchers with TryValues with He
           case 200 => {
             val j = Json.parse(res.payload) \ "results"
             (j \ "total": @unchecked) match {
-              case JsDefined(JsNumber(n)) => n.intValue() == 1
+              case JsDefined(JsNumber(n)) => n.intValue == 1
             }
           }
           case _ => UnRecoverable

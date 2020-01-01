@@ -228,15 +228,13 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS,
   @inline def hashIterator(url: String) =
     Iterator.iterate(cmwell.util.string.Hash.crc32base64(url))(cmwell.util.string.Hash.crc32base64)
 
-  val seqInfotonToSetString = scala.collection.breakOut[Seq[Infoton], String, Set[String]]
-
   // in case of ambiguity between meta/ns infotons with same url, this will return the one that was not auto-generated
   def getTheFirstGeneratedMetaNsInfoton(url: String,
                                         infotons: Seq[Infoton],
                                         timeContext: Option[Long]): Future[Infoton] = {
     require(infotons.nonEmpty)
 
-    val hashSet = infotons.map(_.name)(seqInfotonToSetString)
+    val hashSet = infotons.view.map(_.name).to(Set)
     val hashChain = hashIterator(url).take(infotons.length + 5).toStream
 
     // find will return the first (shortest compute chain) hash
