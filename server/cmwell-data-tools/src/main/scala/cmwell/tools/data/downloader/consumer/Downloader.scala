@@ -524,7 +524,7 @@ class Downloader(
 
       val job = Flow[(Seq[Path], State)]
         .map { case (paths, state) => paths -> Some(state) }
-        .via(Retry.retryHttp(timeout, parallelism)(createRequest)) // fetch data from paths
+        .via(Retry.retryHttp(timeout, parallelism, retryLimit)(createRequest)) // fetch data from paths
         .mapAsyncUnordered(parallelism) {
           case (Success(res @ HttpResponse(s, h, e, p)), sentPaths, Some(state)) if s.isSuccess() =>
             logger.debug(
@@ -698,13 +698,15 @@ class Downloader(
       def retryWith(
         state: State
       ): Option[immutable.Iterable[(Seq[Uuid], State)]] = state match {
+        case State(_, _, _, 0) =>
+          None
         case State(uuidsToRequest, _, _, _) =>
           Some(immutable.Seq(uuidsToRequest -> state))
       }
 
       val job = Flow[(Seq[Uuid], State)]
         .map { case (uuids, state) => uuids -> Some(state) }
-        .via(Retry.retryHttp(timeout, parallelism)(createRequest)) // fetch data from uuids
+        .via(Retry.retryHttp(timeout, parallelism, retryLimit)(createRequest)) // fetch data from uuids
         .mapAsyncUnordered(parallelism) {
           case (Success(res @ HttpResponse(s, h, e, p)), sentUuids, Some(state)) if s.isSuccess() =>
             logger.debug(
@@ -762,13 +764,13 @@ class Downloader(
               s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}"
             )
             Future.successful(
-              Failure(new Exception("cannot send request to send uuids")) -> state
+              Failure(new Exception("cannot send request to send uuids")) -> state.copy(retriesLeft=state.retriesLeft-1)
             )
 
           case (Failure(err), sentUuids, Some(state)) =>
             logger.error(s"error: token=${state.token} $err")
             Future.successful(
-              Failure(new Exception("cannot send request to send uuids")) -> state
+              Failure(new Exception("cannot send request to send uuids")) -> state.copy(retriesLeft=state.retriesLeft-1)
             )
         }
 

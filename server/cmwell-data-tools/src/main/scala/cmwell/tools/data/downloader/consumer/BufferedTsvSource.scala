@@ -289,12 +289,12 @@ class BufferedTsvSource(initialToken: Future[String],
         if(buf.size < threshold && !asyncCallInProgress && isHorizon(consumeComplete,buf)==false){
           asyncCallInProgress = true
           logger.debug(s"buffer size: ${buf.size} is less than threshold of $threshold. Requesting more tsvs")
-          invokeBufferFillerCallback(sendNextChunkRequest(currentConsumeToken))
+          invokeBufferFillerCallback(sendNextChunkRequest(currentConsumeToken), retryLimit.get)
         }
       }
     })
 
-    private def invokeBufferFillerCallback(future: Future[ConsumeResponse]): Unit = {
+    private def invokeBufferFillerCallback(future: Future[ConsumeResponse], reqRetryLimit: Int): Unit = {
 
       future.onComplete {
         case Success(consumeResponse) =>
@@ -310,7 +310,7 @@ class BufferedTsvSource(initialToken: Future[String],
                 s"in $horizonRetryTimeout")
 
               materializer.scheduleOnce(horizonRetryTimeout, () =>
-                invokeBufferFillerCallback(sendNextChunkRequest(currentConsumeToken)))
+                invokeBufferFillerCallback(sendNextChunkRequest(currentConsumeToken), retryLimit.get))
               }
               else
                 stopStream.invoke()
@@ -322,9 +322,15 @@ class BufferedTsvSource(initialToken: Future[String],
                     callback.invoke((consumedInfotons, nextToken))
                   case Failure(ex) =>
                     logger.error(s"Received error. scheduling a retry in $retryTimeout", ex)
-                    materializer.scheduleOnce(retryTimeout, () =>
-                      invokeBufferFillerCallback(sendNextChunkRequest(currentConsumeToken))
-                    )
+                    if (reqRetryLimit > 0)
+                      materializer.scheduleOnce(retryTimeout, () =>
+                        invokeBufferFillerCallback(sendNextChunkRequest(currentConsumeToken), reqRetryLimit-1)
+                      )
+                    else
+                    {
+                      logger.error("Retry limit has exceeded. Going to close stream without completing all TSVs.", ex)
+                      stopStream.invoke()
+                    }
                 }
           }
         case Failure(e) =>
