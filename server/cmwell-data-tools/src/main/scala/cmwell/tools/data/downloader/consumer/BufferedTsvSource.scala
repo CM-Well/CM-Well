@@ -193,7 +193,7 @@ class BufferedTsvSource(initialToken: Future[String],
               logger.error(s"HTTP 429: too many requests token=$token")
 
               ConsumeResponse(token = None, consumeComplete = false, infotonSource =
-                Source.failed(new Exception("too many requests")))
+                Source.failed(new Exception("HTTP 429: too many requests")))
 
             case (Success(HttpResponse(s, h, e, _)), _) if s == StatusCodes.NoContent =>
               e.discardBytes()
