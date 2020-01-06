@@ -48,10 +48,10 @@ class BGMonitorActor(zkServers: String,
   val adminClient = AdminClient.create(kafkaAdminProperties)
   val topics = Seq("persist_topic", "persist_topic.priority", "index_topic", "index_topic.priority")
   val describedTopics = adminClient.describeTopics(topics.asJava).all().get(30, TimeUnit.SECONDS)
-  val partitionsForTopics2: mutable.Map[String, Seq[Int]] = describedTopics.asScala.map {
+  val partitionsForTopics: mutable.Map[String, Seq[Int]] = describedTopics.asScala.map {
     case (topic, topicPartition) => topic -> (0 until topicPartition.partitions.size)
   }
-  val topicsPartitionsAndGroups = partitionsForTopics2.flatMap {
+  val topicsPartitionsAndGroups = partitionsForTopics.flatMap {
     case ("persist_topic", partitions) =>
       partitions.map { partition =>
         (new TopicPartition("persist_topic", partition), s"imp.$partition")

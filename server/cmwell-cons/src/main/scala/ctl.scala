@@ -1428,20 +1428,21 @@ abstract class Host(user: String,
   def start: Unit = start(ips)
 
   def start(hosts: Seq[String]) {
+    val parHosts = hosts.to(ParSeq)
     checkProduction
-    startCassandra(hosts.to(ParSeq))
+    startCassandra(parHosts)
     startElasticsearch(hosts)
 
     Try(CassandraLock().waitForModule(hosts(0), casSize))
     Try(ElasticsearchLock().waitForModule(hosts(0), esSize))
     startZookeeper
-    startKafka(hosts.to(ParSeq))
+    startKafka(parHosts)
 
-    startCtrl(hosts.to(ParSeq))
-    startBg(hosts.to(ParSeq))
-    startCW(hosts.to(ParSeq))
-    startWebservice(hosts.to(ParSeq))
-    startDc(hosts.to(ParSeq))
+    startCtrl(parHosts)
+    startBg(parHosts)
+    startCW(parHosts)
+    startWebservice(parHosts)
+    startDc(parHosts)
   }
 
   def startCtrl: Unit = startCtrl(ips.to(ParSeq))
@@ -1473,12 +1474,13 @@ abstract class Host(user: String,
   def init: Unit = init()
 
   def init(hosts: Seq[String] = ips) {
+    val parHosts = hosts.to(ParSeq)
     checkProduction
     info("starting controller")
-    startCtrl(hosts.to(ParSeq))
+    startCtrl(parHosts)
     info("initializing cm-well")
     info("  initializing cassandra")
-    initCassandra(hosts.to(ParSeq))
+    initCassandra(parHosts)
     info("  initializing elasticsearch")
     initElasticsearch(hosts)
     info("  waiting for cassandra and elasticsearch")
@@ -1489,7 +1491,7 @@ abstract class Host(user: String,
       } catch {
         case t: Throwable =>
           info("Trying to reinit Cassandra")
-          initCassandra(hosts.to(ParSeq))
+          initCassandra(parHosts)
           throw t
       }
     }
@@ -1511,19 +1513,19 @@ abstract class Host(user: String,
     startKafka
 
     info("  inserting schemas")
-    initSchemes(hosts.to(ParSeq))
+    initSchemes(parHosts)
     // wait until all the schemas are written.
     Thread.sleep(10000)
 
     info("  starting bg")
-    startBg(hosts.to(ParSeq))
+    startBg(parHosts)
     info(" starting cw")
-    startCW(hosts.to(ParSeq))
+    startCW(parHosts)
     info("  starting web service")
-    startWebservice(hosts.to(ParSeq))
+    startWebservice(parHosts)
     uploadInitialContent(hosts(0))
     info("  starting dc controller")
-    startDc(hosts.to(ParSeq))
+    startDc(parHosts)
 
     info("finished initializing cm-well")
   }
@@ -1707,11 +1709,12 @@ abstract class Host(user: String,
   def install: Unit = install(ips)
 
   def install(hosts: Seq[String]) {
+    val parHosts = hosts.to(ParSeq)
     checkProduction
-    refreshUserState(user, None, hosts.to(ParSeq))
-    purge(hosts.to(ParSeq))
+    refreshUserState(user, None, parHosts)
+    purge(parHosts)
     verifyConfigsNotChanged
-    deploy(hosts.to(ParSeq))
+    deploy(parHosts)
     init(hosts)
     //setElasticsearchUnassignedTimeout()
   }
@@ -1918,6 +1921,7 @@ abstract class Host(user: String,
     sys.exit(1)
 */
 
+    val parHosts = hosts.to(ParSeq)
     val currentVersion = if(skipVersionCheck) Future.failed(null) else extractVersionFromProcNode(ips(0))
     //If all 3 retries will fail, will wait for result. If fails, upgrade will be stopped.
     if(!skipVersionCheck) Await.result(currentVersion, 10.seconds)
@@ -1925,10 +1929,10 @@ abstract class Host(user: String,
     currentVersion.map(ver => info(s"Current version is $ver"))
 
     checkProduction
-    refreshUserState(user, None, hosts.to(ParSeq))
+    refreshUserState(user, None, parHosts)
     verifyConfigsNotChanged
     //checkPreUpgradeStatus(hosts(0))
-    val esMasterNode = findEsMasterNode(hosts.to(ParSeq)) match {
+    val esMasterNode = findEsMasterNode(parHosts) match {
       case Some(emn) =>
         info(s"found Elasticsearch master node: $emn")
         emn
@@ -1941,10 +1945,10 @@ abstract class Host(user: String,
     if (deployJava) props = props ++ List(JavaProps(this))
 
     info("deploying components and checking what should be upgraded.")
-    syncLib(hosts.to(ParSeq))
-    linkLibs(hosts.to(ParSeq))
-    rsyncPlugins(hosts.to(ParSeq))
-    BinsProps(this).deployComponent(hosts.to(ParSeq))
+    syncLib(parHosts)
+    linkLibs(parHosts)
+    rsyncPlugins(parHosts)
+    BinsProps(this).deployComponent(parHosts)
 
     // get for each component its unsynced hosts and redeploy the new version of the component.
     val updatedHosts = props
@@ -1954,7 +1958,7 @@ abstract class Host(user: String,
     if (updatedHosts.size > 0) {
       //todo: FIX THIS!!!
       doInfo = false
-      deployment.createDirs(hosts.to(ParSeq), props)
+      deployment.createDirs(parHosts, props)
       doInfo = true
       val updatedComponents = updatedHosts.map(_._1).toSet
       val preUpgradeComponents = props
@@ -1983,7 +1987,7 @@ abstract class Host(user: String,
       // stopping all the components that are not upgraded in rolling style.
       nonRollingComponents.foreach { nrc =>
         info(s"stopping ${nrc.getName} on all hosts.")
-        nrc.stop(hosts.to(ParSeq))
+        nrc.stop(parHosts)
       }
 
       hosts.foreach { h =>
@@ -2033,7 +2037,7 @@ abstract class Host(user: String,
 
       preUpgradeComponents.foreach { puc =>
         info(s"restarting ${puc.getName} on all hosts")
-        puc.stop(hosts.to(ParSeq))
+        puc.stop(parHosts)
       }
       updatedHosts
         .filter { el =>
@@ -2048,7 +2052,7 @@ abstract class Host(user: String,
         }
 
       // todo: make more generic.
-      genEsResources(hosts.to(ParSeq))
+      genEsResources(parHosts)
       preUpgradeComponents.foreach(_.start(hosts))
 
       // starting all the components that are not upgraded in rolling style.
@@ -2096,7 +2100,7 @@ abstract class Host(user: String,
     val upgradedVersion = extractVersionFromCmwellProperties
     info(s"Upgrading to version: $upgradedVersion")
 
-    val completed = Upgrade.runPostUpgradeActions(currentVersion, upgradedVersion, hosts.to(ParSeq))
+    val completed = Upgrade.runPostUpgradeActions(currentVersion, upgradedVersion, parHosts)
     completed.onComplete(_ => info(s"Upgrade completed!"))
 
   }
