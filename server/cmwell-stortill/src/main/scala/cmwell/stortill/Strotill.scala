@@ -149,6 +149,6 @@ class Strotill(irw: IRWService, ftsService: FTSService) extends LazyLogging {
           .source(JsonSerializer.encodeInfoton(modifyInfoton(i), true, true))
       )
     }
-    actions.map(ESIndexRequest(_, None))
+    actions.view.map(ESIndexRequest(_, None)).to(Seq)
   }
 }

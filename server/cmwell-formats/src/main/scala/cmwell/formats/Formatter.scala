@@ -235,28 +235,24 @@ trait TreeLikeFormatter extends Formatter {
 
   def system(i: Infoton): Inner = makeFromTuples(system(i, identity, single, single, single))
 
-  private val memoizedBreakOutIn = scala.collection.breakOut[Set[FieldValue], Inner, Seq[Inner]]
-  private val memoizedBreakOutOut =
-    scala.collection.breakOut[Map[String, Set[FieldValue]], (String, Inner), Seq[(String, Inner)]]
-
   def fields(i: Infoton): Inner = i.fields match {
     case None => empty
     case Some(xs) =>
-      makeFromTuples(xs.collect {
+      makeFromTuples(xs.view.collect {
         case (fieldName, set) if fieldName.head != '$' =>
           fieldNameModifier(fieldName) -> makeFromValues(set.toSeq.map(singleFieldValue))
-      }(memoizedBreakOutOut))
+      }.to(Seq))
   }
 
   def extra(i: Infoton): Seq[(String, Inner)] = i.fields match {
     case Some(xs) if xs.exists(_._1.head == '$') =>
-      Seq("extra" -> makeFromTuples(xs.collect {
+      Seq("extra" -> makeFromTuples(xs.view.collect {
         case (k, vs) if k.head == '$' => {
-          fieldNameModifier(k.tail) -> makeFromValues(vs.collect {
+          fieldNameModifier(k.tail) -> makeFromValues(vs.view.collect {
             case FExtra(v, _) => single(v)
-          }(memoizedBreakOutIn))
+          }.to(Seq))
         }
-      }(memoizedBreakOutOut)))
+      }.to(Seq)))
     case _ => Nil
   }
 

@@ -54,8 +54,7 @@ import org.joda.time.DateTime
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
-import scala.collection.breakOut
-import scala.collection.immutable.{Iterable => IIterable, Seq => ISeq}
+import scala.collection.immutable.{Iterable => IIterable}
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success, Try}
@@ -201,32 +200,27 @@ class ImpStream(partition: Int,
     case _: Throwable =>
     math.max(numOfCassandraNodes / 3, 2)
   }.get
-  val breakOut2 = breakOut[Map[String, Seq[(BGMessage[SingleCommand], Int)]],
-    (Int, BGMessage[(String, Seq[SingleCommand])]),
-    ISeq[(Int, BGMessage[(String, Seq[SingleCommand])])]]
   val groupCommandsByPath = Flow[BGMessage[SingleCommand]]
     .groupedWithin(groupCommandsByPathSize, groupCommandsByPathTtl.milliseconds)
     .mapConcat[BGMessage[(String, Seq[SingleCommand])]] { messages =>
-    logger.debug(s"grouping commands: ${messages.map(_.message)}")
+      logger.debug(s"grouping commands: ${messages.map(_.message)}")
 
-    val groupedByPath = messages.zipWithIndex.groupBy(_._1.message.path)
+      val groupedByPath = messages.zipWithIndex.groupBy(_._1.message.path)
 
-    groupedByPath
-      .map[(Int, BGMessage[(String, Seq[SingleCommand])]),
-      ISeq[(Int, BGMessage[(String, Seq[SingleCommand])])]] {
-      case (path, bgMessages) =>
-        val offsets = bgMessages.flatMap {
-          case (BGMessage(offsets, _), _) => offsets
+      groupedByPath.view.map {
+        case (path, bgMessages) =>
+          val offsets = bgMessages.flatMap {
+            case (BGMessage(offsets, _), _) => offsets
+          }
+          val commands = bgMessages.map {
+            case (BGMessage(_, messages), _) => messages
+          }
+          val minIndex = bgMessages.minBy { case (_, index) => index }._2
+          (minIndex, BGMessage(offsets, path -> commands))
+      }.to(Seq)
+        .sortBy { case (index, _) => index }
+        .map { case (_, bgMessage) => bgMessage }
     }
-        val commands = bgMessages.map {
-          case (BGMessage(_, messages), _) => messages
-    }
-      val minIndex = bgMessages.minBy{case (_, index) => index}._2
-      (minIndex, BGMessage(offsets, path -> commands))
-    }(breakOut2)
-      .sortBy { case (index, _) => index }
-      .map { case (_, bgMessage) => bgMessage }
-  }
   val addLatestInfotons =
     Flow[BGMessage[(String, Seq[SingleCommand])]].mapAsync(irwReadConcurrency) {
       case bgMessage@BGMessage(_, (path, commands)) =>
@@ -328,10 +322,6 @@ class ImpStream(partition: Int,
   }
   val publishVirtualParentsSink =
     Producer.plainSink[Array[Byte], Array[Byte]](kafkaProducerSettings)
-  val breakOut3 = breakOut[Seq[(Boolean, (String, DateTime))], ProducerRecord[
-    Array[Byte],
-    Array[Byte]
-    ], IIterable[ProducerRecord[Array[Byte], Array[Byte]]]]
   val createVirtualParents =
     Flow[BGMessage[Seq[(IndexCommand, Option[DateTime])]]]
       .mapAsync(1) {
@@ -348,7 +338,7 @@ class ImpStream(partition: Int,
 
           Future
             .traverse(parentsWithChildDate)(checkParent)
-            .map(_.collect {
+            .map(_.view.collect {
               case (true, (path, childLastModified)) =>
                 val infoton = ObjectInfoton(
                   path = path,
@@ -370,7 +360,7 @@ class ImpStream(partition: Int,
                           infoton.path.getBytes,
                           payload
               )
-            }(breakOut3))
+            }.to(IIterable))
       }
       .mapConcat(identity)
 
@@ -452,8 +442,6 @@ class ImpStream(partition: Int,
         }
       }
     .mapConcat(identity)
-  val breakout =
-    breakOut[Iterable[IndexCommand], Message[Array[Byte], Array[Byte], Seq[Offset]], ISeq[Message[Array[Byte], Array[Byte], Seq[Offset]]]]
   val mergedCommandToKafkaRecord =
     Flow[BGMessage[(BulkIndexResult, Seq[IndexCommand])]].mapConcat {
       case BGMessage(offsets, (bulkIndexResults, commands)) =>
@@ -472,7 +460,7 @@ class ImpStream(partition: Int,
             }
       }
 
-      failedCommands.map { failedCommand =>
+      failedCommands.view.map { failedCommand =>
           val commandToSerialize =
             (if (failedCommand.isInstanceOf[IndexNewInfotonCommand] &&
               failedCommand
@@ -509,13 +497,13 @@ class ImpStream(partition: Int,
             ),
             offsets
         )
-        }(breakout)
+        }.to(Seq)
   }
   val indexCommandsToKafkaRecords =
     Flow[BGMessage[Seq[IndexCommand]]].mapConcat {
       case BGMessage(offsets, commands) =>
         logger.debug(s"converting index commands to kafka records:\n$commands")
-      commands.map { command =>
+      commands.view.map { command =>
         val commandToSerialize =
             (if (command.isInstanceOf[IndexNewInfotonCommand] &&
               command
@@ -548,7 +536,7 @@ class ImpStream(partition: Int,
             ),
             offsets
           )
-        }(breakout)
+        }.to(Seq)
     }
   val nullCommandsToKafkaRecords: Flow[BGMessage[(Option[Infoton], MergeResponse)], Message[Array[Byte], Array[Byte], Seq[Offset]], NotUsed] =
     Flow.fromFunction {
@@ -629,8 +617,8 @@ class ImpStream(partition: Int,
                 TrackingUtilImpl.updateSeq(path, tids.map(StatusTracking(_, 1))).map {
                   case LogicalFailure(reason) =>
                       logger.warn(s"Failed to report tracking due to: $reason")
-                    Future.successful(Unit)
-                  case _ => Future.successful(Unit)
+                    Future.successful(())
+                  case _ => Future.successful(())
                 }
               else
                 Future.successful(())
@@ -640,8 +628,8 @@ class ImpStream(partition: Int,
                 case (reason, Some(tid)) => TrackingUtilImpl.updateEvicted(path, tid, reason).map {
                   case LogicalFailure(reason) =>
                       logger.warn(s"Failed to report eviction tracking due to: $reason")
-                    Future.successful(Unit)
-                  case _ => Future.successful(Unit)
+                    Future.successful(())
+                  case _ => Future.successful(())
                 }
                   case (reason, None) => Future(logger.info(s"evicted command in path:$path because of: $reason"))
                 }
@@ -940,8 +928,8 @@ class ImpStream(partition: Int,
                     val p = indexCommand.path
                     val tids = indexCommand.trackingIDs.mkString(",")
                     logger.warn(s"Failed to report tracking for path: $p with tids: $tids due to: $reason")
-                  Future.successful(Unit)
-                case _ => Future.successful(Unit)
+                  Future.successful(())
+                case _ => Future.successful(())
               }
             }.map(_ => offset)
         }
@@ -954,8 +942,8 @@ class ImpStream(partition: Int,
               case (reason, Some(tid)) => TrackingUtilImpl.updateEvicted(path, tid, reason).map {
                 case LogicalFailure(reason) =>
                     logger.warn(s"Failed to report eviction tracking due to: $reason")
-                  Future.successful(Unit)
-                case _ => Future.successful(Unit)
+                  Future.successful(())
+                case _ => Future.successful(())
               }
                 case (reason, None) => Future(logger.info(s"evicted command in path:$path because of: $reason"))
             }

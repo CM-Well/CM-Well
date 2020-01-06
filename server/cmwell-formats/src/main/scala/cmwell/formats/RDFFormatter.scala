@@ -213,8 +213,6 @@ abstract class RDFFormatter(hostForNs: String,
     }
   }
 
-  private val memoizedBreakOut =
-    scala.collection.breakOut[Map[String, Set[FieldValue]], (Property, RDFNode), Seq[(Property, RDFNode)]]
   def infoton(i: Infoton, distinctPathWithUuid: Boolean = false)(implicit ds: Dataset): Dataset = { //(implicit model: Model): Model = {
 
     val m = ds.getDefaultModel
@@ -225,7 +223,7 @@ abstract class RDFFormatter(hostForNs: String,
       else ResourceFactory.createResource(uriFromPath(s, protocol = i.protocol))
     }
     val fieldsData = fields(i.fields.map(_.filter(_._1.head != '$')))
-    val extras = i.fields.fold(Seq.empty[(Property, RDFNode)])(_.collect {
+    val extras = i.fields.fold(Seq.empty[(Property, RDFNode)])(_.view.collect {
       case (k, vs) if k.head == '$' => {
         val t = k.tail
         val prop = stringToSysProp(t)
@@ -235,7 +233,7 @@ abstract class RDFFormatter(hostForNs: String,
         }
         (prop, rdfNode)
       }
-    }(memoizedBreakOut))
+    }.to(Seq))
     val t = stringToSysProp("type") -> stringToLtrl(i.kind, None)
     val systemData: Seq[(Property, RDFNode)] = t +: extras ++: system[Property, RDFNode](i,
                                                                                          stringToSysProp,

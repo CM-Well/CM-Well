@@ -464,8 +464,6 @@ class TimeBasedAccumulatedNsCache private (private[this] var mainCache: Map[NsID
 
     private[this] val pathFilter = Some(PathFilter("/meta/ns", false))
     private[this] val fieldsForSearch = Array("system.path", "fields.nn.prefix", "fields.nn.url")
-    private[this] val bo =
-      scala.collection.breakOut[Array[SearchHit], (NsID, (NsURL, NsPrefix)), Array[(NsID, (NsURL, NsPrefix))]]
     def nsSearchBy(fieldName: String, fieldValue: String): Future[Map[NsID, (NsURL, NsPrefix)]] = {
 
       import cmwell.util.collections.TryOps
@@ -517,8 +515,6 @@ class TimeBasedAccumulatedNsCache private (private[this] var mainCache: Map[NsID
 
     private[this] val fieldsForIndexTimeSearch = fieldsForSearch ++ Array("system.indexTime")
     private[this] val paginationParamsForIndexTimeSearch = PaginationParams(0, 512)
-    private[this] val bo4err =
-      scala.collection.breakOut[Seq[(Long, Try[(NsID, Long, NsURL, NsPrefix)])], Throwable, List[Throwable]]
     def nsSearchByIndexTime(indexTime: Long): Future[(Boolean, Long, Map[NsID, (NsURL, NsPrefix)])] = {
 
       import cmwell.util.collections.TryOps
@@ -581,9 +577,9 @@ class TimeBasedAccumulatedNsCache private (private[this] var mainCache: Map[NsID
           val shouldContinue = sr.getHits.getTotalHits.value > hits.length && ko.isEmpty
           val err: Throwable = {
             if (ko.nonEmpty) {
-              val errors = ko.collect {
+              val errors = ko.view.collect {
                 case (_, Failure(e)) => e
-              }(bo4err)
+              }.to(List)
               val error = {
                 if (errors.length == 1) errors.head
                 else new MultipleFailures(errors)

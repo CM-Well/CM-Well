@@ -44,7 +44,7 @@ object Authorization extends LazyLogging {
   }
 
   implicit class JsValueExtensions(v: JsValue) {
-    def getArr(prop: String): Seq[JsValue] = (v \ prop).getOrElse(JsArray(Seq())) match {
+    def getArr(prop: String): collection.Seq[JsValue] = (v \ prop).getOrElse(JsArray(Seq())) match {
       case JsArray(seq) => seq
       case _            => Seq()
     }

@@ -63,11 +63,11 @@ class Merger(config: Config) extends LazyLogging {
       case (previous, None) => previous
       case (Some(last), Some(curr)) => {
         val keys = last.keySet ++ curr.keySet
-        val f: Map[String, Set[FieldValue]] = keys.map { k =>
+        val f: Map[String, Set[FieldValue]] = keys.view.map { k =>
           val v1 = last.getOrElse(k, Set.empty[FieldValue])
           val v2 = curr.getOrElse(k, Set.empty[FieldValue])
           k -> (v1 ++ v2)
-        }(collection.breakOut)
+        }.to(Map)
         Some(f)
       }
     }
@@ -86,7 +86,7 @@ class Merger(config: Config) extends LazyLogging {
           false
         }
     }
-    val delete_fields: Map[String, Set[FieldValue]] = deleteFields.filterKeys(_ != "*")
+    val delete_fields: Map[String, Set[FieldValue]] = deleteFields.view.filterKeys(_ != "*").toMap
 
     current_fields.map(_.map {
       case (k, vs) =>

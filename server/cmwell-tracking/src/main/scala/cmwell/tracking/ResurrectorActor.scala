@@ -93,7 +93,7 @@ class ResurrectorActor extends Actor with LazyLogging {
 
     case ActorData(actorId, data, createTime) =>
       log(s"ActorData($actorId, $data)")
-      val paths = data.map(_.path)(collection.breakOut[Seq[PathStatus], String, Set[String]])
+      val paths = data.view.map(_.path).to(Set)
       self ! Spawn(actorId, paths, data, createTime)
 
     case Resurrect(TrackingId(actorId, createTime)) =>

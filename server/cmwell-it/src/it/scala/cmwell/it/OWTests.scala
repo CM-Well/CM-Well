@@ -45,7 +45,7 @@ class OWTests extends AsyncFunSpec with Matchers with Inspectors with Helpers wi
     def recurse(): Future[SimpleResponse[Array[Byte]]] = {
       httpReq.flatMap { res =>
         Json.parse(res.payload) \ "results" \ "total" match {             //make sure parents are created as well.
-          case JsDefined(JsNumber(n)) if n.intValue() == expectedTotal => Future.successful(res)
+          case JsDefined(JsNumber(n)) if n.intValue == expectedTotal => Future.successful(res)
           case _ if System.currentTimeMillis() - startTime > 60000L => Future.failed(new IllegalStateException(s"timed out with last response: $res"))
           case _ => scheduleFuture(990.millis)(recurse())
         }

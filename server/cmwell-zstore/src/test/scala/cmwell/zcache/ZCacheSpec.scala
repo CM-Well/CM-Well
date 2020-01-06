@@ -58,7 +58,7 @@ class ZCacheSpec extends AsyncFunSpec with Matchers {
   }
 
   it("should wait and see that item was gone") {
-    delayedTask((ttl+1).seconds)(Unit).flatMap { _ =>
+    delayedTask((ttl+1).seconds)(()).flatMap { _ =>
       zCacheMem.get("foo")(btos, pollingMaxRetries, pollingInterval).map(_ should be(None))
     }
   }

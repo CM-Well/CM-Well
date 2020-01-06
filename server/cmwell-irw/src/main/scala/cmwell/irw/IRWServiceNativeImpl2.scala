@@ -269,7 +269,7 @@ class IRWServiceNativeImpl2(
                    delay: FiniteDuration = delayOnError,
                    casTimeout: SDuration = defaultCasTimeout)(implicit ec: ExecutionContext): Future[ResultSet] =
     cmwell.util.concurrent.retryWithDelays(Vector.iterate(delayOnError, retries)(_ * 2): _*) {
-      if (casTimeout.isFinite())
+      if (casTimeout.isFinite)
         cmwell.util.concurrent
           .timeoutFuture(executeAsyncInternal(statmentToExec), casTimeout.asInstanceOf[FiniteDuration])
           .andThen {
@@ -454,7 +454,7 @@ class IRWServiceNativeImpl2(
       else
         rs.all().asScala.map { row =>
           row.getString("value").toLong
-        }
+        }.toSeq
     }
   }
 
@@ -740,9 +740,7 @@ class IRWServiceNativeImpl2(
         val truncate = s"TRUNCATE TABLE data2.$table"
         executeAsync(new SimpleStatement(truncate), truncate)
       })
-      .map { _ =>
-        Unit
-      }
+      .map(_ => ())
   }
 
   def fixPath(path: String,

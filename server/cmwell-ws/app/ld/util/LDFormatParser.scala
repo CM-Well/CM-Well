@@ -414,12 +414,13 @@ object LDFormatParser extends LazyLogging {
         //          )
         //        }.toList
 
-        val fieldFiltersForQuadsSearch = quadsToDeleteImmutable.map { q =>
+        val fieldFiltersForQuadsSearch = quadsToDeleteImmutable.view.map { q =>
           FieldFilter(Should, Equals, "system.quad", q)
-        }(scala.collection.breakOut[Set[String], FieldFilter, List[FieldFilter]]) ::: fuzzyQuadsToDeleteImmutable
+        }.to(List) ::: fuzzyQuadsToDeleteImmutable
+          .view
           .flatMap { q =>
             List(FieldFilter(Should, Contains, "quad", q), FieldFilter(Should, Contains, "system.quad", q))
-          }(scala.collection.breakOut[Set[String], FieldFilter, List[FieldFilter]])
+          }.to(List)
 
         implicit val searchTimeout = Some(Settings.graphReplaceSearchTimeout.seconds)
 
@@ -1044,7 +1045,7 @@ object LDFormatParser extends LazyLogging {
       }
     }
 
-    m -> n
+    m.toMap -> n
   }
 
   def createMetaNsInfoton(cmwellRDFHelper: CMWellRDFHelper,

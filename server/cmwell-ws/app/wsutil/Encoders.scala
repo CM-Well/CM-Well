@@ -100,14 +100,14 @@ object Encoders extends LazyLogging{
         Try(num.toLongExact) match {
           case Success(long) => FLong(long)
           case Failure(_) =>
-            num.toBigIntExact() match {
+            num.toBigIntExact match {
               case Some(bigInt) => FBigInt(bigInt.underlying())
               case None =>
                 num.isDecimalFloat match {
-                  case true => FFloat(num.floatValue())
+                  case true => FFloat(num.floatValue)
                   case false =>
                     num.isDecimalDouble match {
-                      case true  => FDouble(num.doubleValue())
+                      case true  => FDouble(num.doubleValue)
                       case false => FBigDecimal(num.underlying())
                     }
                 }

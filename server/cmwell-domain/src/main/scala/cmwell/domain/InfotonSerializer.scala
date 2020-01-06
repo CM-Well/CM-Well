@@ -14,7 +14,7 @@
   */
 package cmwell.domain
 
-import collection.{breakOut, mutable}
+import collection.mutable
 import scala.Predef._
 import org.joda.time.DateTime
 import org.joda.time.format.{DateTimeFormatter, ISODateTimeFormat}
@@ -49,12 +49,6 @@ object InfotonSerializer extends LazyLogging {
   val sysQuad: CQuad = "cmwell://meta/sys"
   val default: CQuad = "default"
   val fmt: DateTimeFormatter = ISODateTimeFormat.dateTime
-
-  val fieldValuesToQuadSet = breakOut[Set[FieldValue], CQuad, Set[CQuad]]
-  val valuesToQuadSet = breakOut[Iterable[Set[FieldValue]], CQuad, Set[CQuad]]
-  val tuplesToFields =
-    breakOut[Map[CField, Iterable[(CQuad, CField, CValue)]], (CField, Vector[CValue]), Vector[(CField, Vector[CValue])]]
-  val tuplesToValues = breakOut[Iterable[(CQuad, CField, CValue)], CValue, Vector[CValue]]
 
   /**
     * not thread safe
@@ -406,9 +400,10 @@ object InfotonSerializer extends LazyLogging {
         case (quad, tuplesByQuad) => {
           vecBuilder += (quad -> tuplesByQuad
             .groupBy(_._2)
+            .view
             .map {
-              case (field, tuplesByField) => field -> tuplesByField.map(_._3)(tuplesToValues)
-            }(tuplesToFields))
+              case (field, tuplesByField) => field -> tuplesByField.view.map(_._3).to(Vector)
+            }.to(Vector))
         }
       }
       vecBuilder.result()

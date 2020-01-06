@@ -49,7 +49,7 @@ class APIFunctionalityTests extends AsyncFunSpec
   with OptionValues
   with EitherValues
   with Helpers
-  with fixture.NSHashesAndPrefixes
+  with cmwell.it.fixture.NSHashesAndPrefixes
   with LazyLogging {
 
   describe("CM-Well REST API"){
@@ -1588,7 +1588,7 @@ class APIFunctionalityTests extends AsyncFunSpec
 
     describe("purge") {
       implicit class JsValueExtensions(v: JsValue) {
-        def getArr(prop: String): Seq[JsValue] = (v \ prop).get match { case JsArray(seq) => seq case _ => Seq() }
+        def getArr(prop: String): collection.IndexedSeq[JsValue] = (v \ prop).get match { case JsArray(seq) => seq case _ => collection.IndexedSeq() }
       }
 
       it("should add some historical data") {

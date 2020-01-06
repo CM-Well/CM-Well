@@ -14,7 +14,7 @@
   */
 import cmwell.ctrl.config.Jvms
 
-import scala.collection.GenSeq
+import scala.collection.parallel.ParSeq
 
 /**
   * Created by michael on 8/27/14.

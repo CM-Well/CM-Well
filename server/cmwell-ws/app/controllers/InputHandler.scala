@@ -57,8 +57,6 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
     with TypeHelpers { self =>
 
   val typesCaches = crudService.passiveFieldTypesCache
-  val bo1 = collection.breakOut[List[Infoton], String, Set[String]]
-  val bo2 = collection.breakOut[Vector[Infoton], String, Set[String]]
   val redlog = LoggerFactory.getLogger("bad_ingests")
 
   /**
@@ -153,7 +151,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                 tmpDeleteMap.isEmpty && deleteValsMap.isEmpty && deletePaths.isEmpty && atomicUpdates.isEmpty,
                 "can't use meta operations here! this API is used internaly, and only for overwrites!"
               )
-              val (errs, _) = cmwell.util.collections.partitionWith(metaDataMap) {
+              val (errs, _) = cmwell.util.collections.partitionWith(metaDataMap.iterator) {
                 case (path, MetaData(mdType, _, data, text, mimeType, linkType, linkTo, dataCenter, indexTime, _ ,lastModifiedBy)) =>
                   var errors = List.empty[String]
                   if (indexTime.isEmpty) {
@@ -304,7 +302,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
     debugLog: Boolean = false
   )(implicit ec: ExecutionContext): Future[Vector[Infoton]] = {
 
-    def getMetaFields(fields: Map[DirectFieldKey, Set[FieldValue]]) = collector(fields) {
+    def getMetaFields(fields: Map[DirectFieldKey, Set[FieldValue]]) = collector(fields.iterator) {
       case (fk, fvs) => {
         val newTypes = fvs.map(FieldValue.prefixByType)
 
@@ -446,7 +444,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                       }
                     }
                     val t2 = deleteValsMap.map {
-                      case (path, fields) => prependSlash(path) -> fields.mapValues[Option[Set[FieldValue]]](Some.apply)
+                      case (path, fields) => prependSlash(path) -> fields.view.mapValues[Option[Set[FieldValue]]](Some.apply).toMap
                     }
                     t1 ++ t2
                   }
@@ -576,7 +574,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                     require(!infotonsToUpsert.exists(i => infotonsToPut.exists(_.path == i.path)),
                             s"write commands & upserts from same document cannot operate on the same path")
                     val secondStagePaths: Set[String] =
-                      infotonsToUpsert.map(_.path)(bo1).union(infotonsToPut.map(_.path)(bo2))
+                      infotonsToUpsert.view.map(_.path).to(Set).union(infotonsToPut.view.map(_.path).to(Set))
 
                     val (dontTrack, track) = deletePaths.partition(secondStagePaths.apply)
                     require(dontTrack.forall(!atomicUpdates.contains(_)),
@@ -774,7 +772,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                             } toMap;
                             crudService
                               .upsertInfotons(infotonsToPut.toList,
-                                              d.mapValues(_.map(_ -> None).toMap),
+                                              d.view.mapValues(_.map(_ -> None).toMap).toMap,
                                               modifier,
                                               isPriorityWrite = isPriorityWrite)
                               .map(b => Ok(Json.obj("success" -> b)))
