@@ -97,7 +97,7 @@ class SortingAndMappingStageGenerator(jenaArqExtensionsUtils: JenaArqExtensionsU
         if (needToOptimize)
           graph.dsg.logVerboseMsg("Plan", s"Optimizing ${basicPattern.getList.size} statements...")
 
-        val mappedTriplePatterns = Try(basicPattern.getList.asScala.map { trpl =>
+        val mappedTriplePatterns: collection.Seq[Triple] = Try(basicPattern.getList.asScala.map { trpl =>
           val internalReprPredicate = jenaArqExtensionsUtils.predicateToInnerRepr(trpl.getPredicate)
           new Triple(trpl.getSubject, internalReprPredicate, trpl.getObject)
         }) match {

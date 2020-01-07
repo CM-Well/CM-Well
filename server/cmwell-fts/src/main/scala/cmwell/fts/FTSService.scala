@@ -59,7 +59,7 @@ import scala.language.implicitConversions
 import scala.util._
 import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
 
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 /**
   * Created by israel on 30/06/2016.
   */
@@ -76,7 +76,7 @@ class FTSService(config: Config) extends NsSplitter{
 
   val clusterName = config.getString("ftsService.clusterName")
   val transportPort = config.getInt("ftsService.transportPort")
-  val transportAddressesStr = config.getStringList("ftsService.transportAddress").asScala
+  val transportAddressesStr = config.getStringList("ftsService.transportAddress").asScala.toSeq
   val transportAddresses = transportAddressesStr.map(add => new TransportAddress(InetAddress.getByName(add), transportPort))
 
   val scrollLength = config.getInt("ftsService.scrollLength")
@@ -169,7 +169,7 @@ class FTSService(config: Config) extends NsSplitter{
     nodesInfo.getNodes.asScala.map{ node =>
       val inetAddress = node.getHttp.getAddress.publishAddress().address()
       s"${inetAddress.getHostString}:${inetAddress.getPort}"
-    }
+    }.toList
   }
 
   def latestIndexNameAndCount(prefix: String): Option[(String, Long)] = {
@@ -1025,7 +1025,7 @@ class FTSService(config: Config) extends NsSplitter{
                     case subAggs => if (subAggs.asList().isEmpty) None else Some(esAggsToOurAggs(subAggs))
                   }
                 Bucket(FieldValue(b.getKeyAsString), b.getDocCount, subAggregations)
-              }
+              }.toSeq
             )
           case sa: InternalStats =>
             StatsAggregationResponse(
@@ -1049,7 +1049,7 @@ class FTSService(config: Config) extends NsSplitter{
                     case subAggs => Some(esAggsToOurAggs(subAggs))
                   }
                 Bucket(FieldValue(b.getKeyAsString), b.getDocCount, subAggregations)
-              }
+              }.toSeq
             )
           case sta:InternalSignificantTerms[_,_] =>
             val buckets = sta.getBuckets.asScala
@@ -1062,7 +1062,7 @@ class FTSService(config: Config) extends NsSplitter{
                   case subAggs => Some(esAggsToOurAggs(subAggs))
                 }
                 SignificantTermsBucket(FieldValue(b.getKeyAsString), b.getDocCount, b.getSignificanceScore, b.getSubsetDf, subAggregations)
-              }
+              }.toSeq
             )
           case _ => ???
 
@@ -1157,13 +1157,13 @@ class FTSService(config: Config) extends NsSplitter{
     val sHits = esResponse.getHits.getHits()
     if (sHits.isEmpty) Vector.empty
     else {
-      sHits.map{ hit =>
+      sHits.view.map{ hit =>
         val uuid = hit.field("system.uuid").getValue[String]
         val lastModified = new DateTime(hit.field("system.lastModified").getValue[String]).getMillis
         val index = hit.getIndex
         (lastModified, uuid, index)
-      }(collection.breakOut)
-    }
+      }
+    }.to(Vector)
   }
 
   def info(path: String, paginationParams: PaginationParams, withHistory: Boolean, partition: String = defaultPartition)(
@@ -1188,8 +1188,6 @@ class FTSService(config: Config) extends NsSplitter{
     }
   }
 
-  val bo = collection.breakOut[Array[SearchHit], (String, Long, String), Vector[(String, Long, String)]]
-
   def uinfo(uuid: String,
             partition: String = defaultPartition)(implicit executionContext: ExecutionContext): Future[Vector[(String, Long, String)]] = {
 
@@ -1201,9 +1199,9 @@ class FTSService(config: Config) extends NsSplitter{
 
     injectFuture[SearchResponse](request.execute).map { response =>
       val hits = response.getHits.getHits()
-      hits.map { hit =>
+      hits.view.map { hit =>
         (hit.getIndex, hit.getVersion, hit.getSourceAsString)
-      }(bo)
+      }.to(Vector)
     }
   }
 
@@ -1264,9 +1262,8 @@ class FTSService(config: Config) extends NsSplitter{
       }
     }
 
-  private val memoizedBreakoutForEsResponseToThinInfotons = scala.collection.breakOut[Array[SearchHit],FTSThinInfoton,Vector[FTSThinInfoton]]
   private def esResponseToThinInfotons(esResponse: org.elasticsearch.action.search.SearchResponse, includeScore: Boolean): Seq[FTSThinInfoton] = {
-    esResponse.getHits.getHits().map { hit =>
+    esResponse.getHits.getHits().view.map { hit =>
       val path = hit.field("system.path").getValue[String]
       val uuid = hit.field("system.uuid").getValue[String]
       val lastModified = hit.field("system.lastModified").getValue[String]
@@ -1274,7 +1271,7 @@ class FTSService(config: Config) extends NsSplitter{
       val indexTime = tryLongThenInt[Long](hit,"system.indexTime",identity,-1L,uuid,path)
       val score = if(includeScore) Some(hit.getScore()) else None
       FTSThinInfoton(path, uuid, lastModified, lastModifiedBy, indexTime, score)
-    }(memoizedBreakoutForEsResponseToThinInfotons)
+    }.to(Vector)
   }
 
   private def esGetResponseToThinInfotons(esResponse: org.elasticsearch.action.get.GetResponse): FTSThinInfoton = {
@@ -1298,7 +1295,7 @@ class FTSService(config: Config) extends NsSplitter{
         val lastModified = new DateTime(hit.field("system.lastModified").getValue[String])
         val id = hit.field("system.uuid").getValue[String]
         val dc = Try(hit.field("system.dc").getValue[String]).getOrElse(dataCenter)
-        val protocol = Try(hit.field("system.protocol").getValue[String]).toOption
+        val protocol = Try(hit.field("system.protocol").getValue[String]).getOrElse("http")
         val indexTime = tryLongThenInt[Option[Long]](hit, "system.indexTime", Some.apply[Long], None, id, path)
         val score: Option[Map[String, Set[FieldValue]]] =
           if (includeScore) Some(Map("$score" -> Set(FExtra(hit.getScore(), sysQuad)))) else None
@@ -1306,40 +1303,42 @@ class FTSService(config: Config) extends NsSplitter{
 
         hit.field("system.kind").getValue[String] match {
           case "ObjectInfoton" =>
-            new ObjectInfoton(path, dc, indexTime, lastModified, lastModifiedBy, score, protocol = protocol) {
+            new ObjectInfoton(SystemFields(path, lastModified, lastModifiedBy, dc, indexTime, "", protocol), score) {
               override def uuid = id
               override def kind = "ObjectInfoton"
             }
           case "FileInfoton" =>
             val contentLength = tryLongThenInt[Long](hit, "content.length", identity, -1L, id, path)
 
-            new FileInfoton(
-              path,
-              dc,
-              indexTime,
-              lastModified,
-              lastModifiedBy,
+            new FileInfoton(SystemFields(
+                path,
+                lastModified,
+                lastModifiedBy,
+                dc,
+                indexTime,
+                "",
+                protocol),
               score,
-              Some(FileContent(hit.field("content.mimeType").getValue[String], contentLength)),
-              protocol = protocol) {
+              Some(FileContent(hit.field("content.mimeType").getValue[String], contentLength))) {
               override def uuid = id
               override def kind = "FileInfoton"
             }
           case "LinkInfoton" =>
-            new LinkInfoton(path,
-              dc,
-              indexTime,
-              lastModified,
-              lastModifiedBy,
+            new LinkInfoton(SystemFields(path,
+                lastModified,
+                lastModifiedBy,
+                dc,
+                indexTime,
+                "",
+                protocol),
               score,
               hit.field("link.to").getValue[String],
-              hit.field("link.kind").getValue[Int],
-              protocol = protocol) {
+              hit.field("link.kind").getValue[Int]) {
               override def uuid = id
               override def kind = "LinkInfoton"
             }
           case "DeletedInfoton" =>
-            new DeletedInfoton(path, dc, indexTime, lastModified, lastModifiedBy) {
+            new DeletedInfoton(SystemFields(path, lastModified, lastModifiedBy, dc, indexTime, "", protocol)) {
               override def uuid = id
               override def kind = "DeletedInfoton"
             }
@@ -1411,7 +1410,7 @@ class FTSService(config: Config) extends NsSplitter{
     val timestamp = System.currentTimeMillis()
 
     val actionListener: ActionListener[A] = {
-      if (timeout.isFinite()) {
+      if (timeout.isFinite) {
         val task = TimeoutScheduler.tryScheduleTimeout(p, timeout)
         new ActionListener[A] {
           def onFailure(t: Exception): Unit = {
@@ -1577,12 +1576,12 @@ class FTSService(config: Config) extends NsSplitter{
     infotons.foreach { infoton =>
       val deleteRequestBuilder = client
         .prepareDelete()
-        .setIndex(infoton.indexName)
+        .setIndex(infoton.systemFields.indexName)
         .setId(infoton.uuid)
       bulkRequest.add(deleteRequestBuilder)
     }
 
-    logRequest("deleteInfotons", s"infotons path: ${infotons.map(_.path).mkString(", ")}")
+    logRequest("deleteInfotons", s"infotons path: ${infotons.map(_.systemFields.path).mkString(", ")}")
     injectFuture[BulkResponse](bulkRequest.execute).map(_ => true)
   }
 

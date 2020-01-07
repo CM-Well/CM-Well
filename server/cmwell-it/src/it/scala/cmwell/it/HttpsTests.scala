@@ -172,7 +172,7 @@ class HttpsTests extends AsyncFunSpec with Matchers with Helpers with Inspectors
             r.status == 200 && {
               val j = Json.parse(r.payload)
               (j \ "results" \ "total" : @unchecked) match {
-                case JsDefined(JsNumber(bigDec)) => bigDec.intValue() == 2
+                case JsDefined(JsNumber(bigDec)) => bigDec.intValue == 2
               }
             }
           }

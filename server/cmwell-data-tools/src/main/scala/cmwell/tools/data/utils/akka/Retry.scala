@@ -76,7 +76,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                    delayFactor : Double = 1,
                    managedConnection: Option[Flow[(HttpRequest,State[T]), (Try[HttpResponse],State[T]), Http.HostConnectionPool]] = None)(
                    createRequest: (Seq[ByteString], Map[String,String], Option[T]) => HttpRequest,
-                   responseValidator: (ByteString, Seq[HttpHeader]) => Try[Unit] = (_, _) => Success(Unit))(
+                   responseValidator: (ByteString, Seq[HttpHeader]) => Try[Unit] = (_, _) => Success(()))(
                    implicit system: ActorSystem,
                    mat: Materializer,
                    ec: ExecutionContext,
@@ -171,7 +171,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                       count = limit
                     )
                 )
-                .to[immutable.Iterable]
+                .to(immutable.Iterable)
             )
 
           }
@@ -263,7 +263,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                       context
                   )
                 )
-                .to[immutable.Iterable]
+                .to(immutable.Iterable)
             )
           } else {
             e.toStrict(toStrictTimeout)
@@ -348,7 +348,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                           context
                         )
                     )
-                    .to[immutable.Iterable]
+                    .to(immutable.Iterable)
                 )
               }
 
