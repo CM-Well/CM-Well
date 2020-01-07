@@ -214,7 +214,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
 
                 //logger.info(s"infotonsToPut: ${allInfotons.collect { case o: ObjectInfoton => o.toString }.mkString("[", ",", "]")}")
 
-                val (metaInfotons, infotonsToPut) = allInfotons.partition(_.path.startsWith("/meta/"))
+                val (metaInfotons, infotonsToPut) = allInfotons.partition(_.systemFields.path.startsWith("/meta/"))
 
                 val f = crudService.putInfotons(metaInfotons)
                 crudService
@@ -571,10 +571,10 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                     val tidHeaderOpt = tidOpt.map("X-CM-WELL-TID" -> _.token)
                     p.success(infotonsMap.keys -> tidHeaderOpt.toSeq)
 
-                    require(!infotonsToUpsert.exists(i => infotonsToPut.exists(_.path == i.path)),
+                    require(!infotonsToUpsert.exists(i => infotonsToPut.exists(_.systemFields.path == i.systemFields.path)),
                             s"write commands & upserts from same document cannot operate on the same path")
                     val secondStagePaths: Set[String] =
-                      infotonsToUpsert.view.map(_.path).to(Set).union(infotonsToPut.view.map(_.path).to(Set))
+                      infotonsToUpsert.view.map(_.systemFields.path).to(Set).union(infotonsToPut.view.map(_.systemFields.path).to(Set))
 
                     val (dontTrack, track) = deletePaths.partition(secondStagePaths.apply)
                     require(dontTrack.forall(!atomicUpdates.contains(_)),
@@ -584,24 +584,24 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                       s"Writing a DeletedInfoton does not make sense. use proper delete API instead. malformed paths: ${infotonsToUpsert
                         .union(infotonsToPut)
                         .collect {
-                          case DeletedInfoton(path, _, _, _, _, _) => path
+                          case DeletedInfoton(systemFields) => systemFields.path
                         }
                         .mkString("[", ",", "]")}"
                     )
 
                     val to = tidOpt.map(_.token)
-                    val d1 = crudService.deleteInfotons(dontTrack.map((_, None, None)), modifier, isPriorityWrite = isPriorityWrite)
+                    val d1 = crudService.deleteInfotons(dontTrack.map((_, None)), modifier, isPriorityWrite = isPriorityWrite)
                       .andThen(printFailedIngests("delete (dontTrack) infotons failed", infotonsMap.keys, dontTrack))
-                    val d2 = crudService.deleteInfotons(track.map((_, None, None)), modifier, to, atomicUpdates, isPriorityWrite)
+                    val d2 = crudService.deleteInfotons(track.map((_, None)), modifier, to, atomicUpdates, isPriorityWrite)
                       .andThen(printFailedIngests("delete (track) failed", infotonsMap.keys, track))
 
                     d1.zip(d2).flatMap {
                       case (b01, b02) =>
                         val f1 =
                           crudService.upsertInfotons(infotonsToUpsert, deleteMap, modifier, to, atomicUpdates, isPriorityWrite)
-                            .andThen(printFailedIngests("upsert infotons failed", infotonsMap.keys, infotonsToUpsert.map(_.path)))
+                            .andThen(printFailedIngests("upsert infotons failed", infotonsMap.keys, infotonsToUpsert.map(_.systemFields.path)))
                         val f2 = crudService.putInfotons(infotonsToPut, to, atomicUpdates, isPriorityWrite)
-                            .andThen(printFailedIngests("put infotons failed", infotonsMap.keys, infotonsToPut.map(_.path)))
+                            .andThen(printFailedIngests("put infotons failed", infotonsMap.keys, infotonsToPut.map(_.systemFields.path)))
                         f1.zip(f2).flatMap {
                           case (b1, b2) =>
                             if (b01 && b02 && b1 && b2) {
@@ -704,11 +704,11 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
           vec match {
             case Some(infotonVec) => {
 
-              val v = infotonVec.map(_.copyInfoton(lastModifiedBy = modifier))
+              val v = infotonVec.map(i => i.copyInfoton(i.systemFields.copy(lastModifiedBy = modifier)))
 
-              if (skipValidation || v.forall(i => InfotonValidator.isInfotonNameValid(normalizePath(i.path)))) {
+              if (skipValidation || v.forall(i => InfotonValidator.isInfotonNameValid(normalizePath(i.systemFields.path)))) {
                 val unauthorizedPaths =
-                  authUtils.filterNotAllowedPaths(v.map(_.path), PermissionLevel.Write, authUtils.extractTokenFrom(req))
+                  authUtils.filterNotAllowedPaths(v.map(_.systemFields.path), PermissionLevel.Write, authUtils.extractTokenFrom(req))
                 if (unauthorizedPaths.isEmpty) {
                   Try(v.foreach { i =>
                     if (i.fields.isDefined) InfotonValidator.validateValueSize(i.fields.get)
@@ -718,7 +718,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                       //FIXME: following code is super ugly and hacky... do something about it. please!
                       val infotonsMap = v.collect {
                         case i if i.fields.isDefined =>
-                          i.path -> i.fields.get.map {
+                          i.systemFields.path -> i.fields.get.map {
                             case (fieldName, valueSet) =>
                               (FieldKeyParser.fieldKey(fieldName) match {
                                 case Success(Right(d)) => d
@@ -751,14 +751,14 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                                                                       req.getQueryString("force").isDefined).flatMap {
                         metaFields =>
                           val infotonsToPut = (if (setZeroTime) v.map {
-                                                 case i: ObjectInfoton => i.copy(lastModified = zeroTime)
+                                                 case i: ObjectInfoton => i.copy(i.systemFields.copy(lastModified = zeroTime))
                                                  case i: FileInfoton => {
-                                                   logger.warn(s"FileInfoton ${i.path} with ZERO time inserted");
-                                                   i.copy(lastModified = zeroTime)
+                                                   logger.warn(s"FileInfoton ${i.systemFields.path} with ZERO time inserted")
+                                                   i.copy(i.systemFields.copy(lastModified = zeroTime))
                                                  }
                                                  case i: LinkInfoton => {
-                                                   logger.warn(s"LinkInfoton ${i.path} with ZERO time inserted");
-                                                   i.copy(lastModified = zeroTime)
+                                                   logger.warn(s"LinkInfoton ${i.systemFields.path} with ZERO time inserted")
+                                                   i.copy(i.systemFields.copy(lastModified = zeroTime))
                                                  }
                                                  case i: Infoton => i //to prevent compilation warnings...
                                                } else v) ++ metaFields
@@ -768,7 +768,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                               .map(b => Ok(Json.obj("success" -> b)))
                           else {
                             val d: Map[String, Set[String]] = infotonsToPut.collect {
-                              case i if i.fields.isDefined => prependSlash(i.path) -> i.fields.get.keySet
+                              case i if i.fields.isDefined => prependSlash(i.systemFields.path) -> i.fields.get.keySet
                             } toMap;
                             crudService
                               .upsertInfotons(infotonsToPut.toList,

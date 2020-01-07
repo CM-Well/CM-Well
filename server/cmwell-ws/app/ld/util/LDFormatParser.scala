@@ -685,7 +685,7 @@ object LDFormatParser extends LazyLogging {
           val cmwMetaDataMap = MMap[String, MetaData]()
           val cmwHosts = MSet[String]()
           val deleteFieldsMap = MMap[String, Set[(String, Option[String])]]() // {infoton path -> [field1, ..., fieldN]}
-        val deleteValuesMap = MMap[String, Map[String, Set[FieldValue]]]()
+          val deleteValuesMap = MMap[String, Map[String, Set[FieldValue]]]()
           val deletePathsList = ListBuffer[String]()
           val atomicUpdatesBuilder = Map.newBuilder[String, String]
 
@@ -816,7 +816,7 @@ object LDFormatParser extends LazyLogging {
               }
               if(stmt.getSubject.isURIResource) {
                 val protocol = stmt.getSubject.getURI.takeWhile(':'.!=)
-                if(protocol != "cmwell" && protocol != CSettings.defaultProtocol && infotonsMap.keySet(subject))
+                if(protocol != "cmwell")
                   updateMetaData(cmwMetaDataMap, subject, "protocol", FString(protocol))
               }
             }
@@ -835,7 +835,10 @@ object LDFormatParser extends LazyLogging {
             feedbacks += s"skipping validation for all ingested subjects"
           }
 
-          val metaData = IMap[String, MetaData]() ++ cmwMetaDataMap
+          //We keep the meta data value IFF the infoton has:
+          //1. Any fields to update (ObjectInfoton f.e)
+          //2. No fields, but system fields (FileInfoton f.e)
+          val metaData = IMap[String, MetaData]() ++ cmwMetaDataMap.filter{pair => (infotonsMap.keySet.contains(pair._1))||(!pair._2.isEmpty)}
           val knownCmwellHosts = ISet[String]() ++ cmwHosts
           val deleteMap = IMap[String, Set[(String, Option[String])]]() ++ deleteFieldsMap
           val deleteVal = IMap[String, Map[String, Set[FieldValue]]]() ++ deleteValuesMap

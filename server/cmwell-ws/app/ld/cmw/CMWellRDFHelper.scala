@@ -70,10 +70,10 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS,
     TimeBasedAccumulatedNsCache(Map.empty, 0L, 2.minutes, crudServiceFS)(injectedExecutionContext, actorSystem)
 
   private def validateInfoton(infoton: Infoton): Try[(String, String)] = {
-    if (!infoton.path.matches("/meta/ns/[^/]+"))
-      Failure(new IllegalStateException(s"weird looking path for /meta/ns infoton [${infoton.path}/${infoton.uuid}]"))
+    if (!infoton.systemFields.path.matches("/meta/ns/[^/]+"))
+      Failure(new IllegalStateException(s"weird looking path for /meta/ns infoton [${infoton.systemFields.path}/${infoton.uuid}]"))
     else if (infoton.fields.isEmpty)
-      Failure(new IllegalStateException(s"no fields found for /meta/ns infoton [${infoton.path}/${infoton.uuid}]"))
+      Failure(new IllegalStateException(s"no fields found for /meta/ns infoton [${infoton.systemFields.path}/${infoton.uuid}]"))
     else {
       val f = infoton.fields.get
       metaNsFieldsValidator(infoton, f, "prefix").flatMap { p =>
@@ -86,16 +86,16 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS,
     fields
       .get(field)
       .fold[Try[String]](
-        Failure(new IllegalStateException(s"$field field not found for /meta/ns infoton [${i.path}/${i.uuid}]"))
+        Failure(new IllegalStateException(s"$field field not found for /meta/ns infoton [${i.systemFields.path}/${i.uuid}]"))
       ) { values =>
         if (values.isEmpty)
           Failure(
-            new IllegalStateException(s"empty value set for $field field in /meta/ns infoton [${i.path}/${i.uuid}]")
+            new IllegalStateException(s"empty value set for $field field in /meta/ns infoton [${i.systemFields.path}/${i.uuid}]")
           )
         else if (values.size > 1)
           Failure(
             new IllegalStateException(
-              s"multiple values ${values.mkString("[,", ",", "]")} for $field field in /meta/ns infoton [${i.path}/${i.uuid}]"
+              s"multiple values ${values.mkString("[,", ",", "]")} for $field field in /meta/ns infoton [${i.systemFields.path}/${i.uuid}]"
             )
           )
         else
@@ -234,13 +234,13 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS,
                                         timeContext: Option[Long]): Future[Infoton] = {
     require(infotons.nonEmpty)
 
-    val hashSet = infotons.view.map(_.name).to(Set)
+    val hashSet = infotons.view.map(_.systemFields.name).to(Set)
     val hashChain = hashIterator(url).take(infotons.length + 5).toStream
 
     // find will return the first (shortest compute chain) hash
     hashChain.find(hashSet) match {
       case Some(h) =>
-        Future.successful(infotons.find(_.name == h).get) //get is safe here because `hashSet` was built from infotons names
+        Future.successful(infotons.find(_.systemFields.name == h).get) //get is safe here because `hashSet` was built from infotons names
       case None =>
         /* if we were not able to find a suitable hash
          * that back a /meta/ns infoton from the given
@@ -267,9 +267,9 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS,
               )
             )
           case Failure(err) =>
-            val first = infotons.minBy(_.name)
+            val first = infotons.minBy(_.systemFields.name)
             logger.warn(
-              s"Was unable to validate any of the given infotons [$infotons], choosing the first in lexicographic order [${first.path}]",
+              s"Was unable to validate any of the given infotons [$infotons], choosing the first in lexicographic order [${first.systemFields.path}]",
               err
             )
             Success(first)
@@ -308,7 +308,7 @@ class CMWellRDFHelper @Inject()(val crudServiceFS: CRUDServiceFS,
         hashToUrlAsync(hash, timeContext)(globalExecutionContext).transformWith {
           case Success(`url`) =>
             infotons
-              .find(_.name == hash)
+              .find(_.systemFields.name == hash)
               .fold[Future[Either[String, Infoton]]] {
                 logger.error(s"hash [$hash] returned the right url [$url], but was not found in original seq?!?!?")
                 // getting the correct infoton anyway:

@@ -213,19 +213,25 @@ excludeDependencies in ThisBuild += "org.slf4j" % "slf4j-jdk14"
 
 printDate := streams.value.log.info("date: " + org.joda.time.DateTime.now().toString())
 
+lazy val DomainUtil = config("domainUtil") extend(Compile)
+
 lazy val util          = (project in file("cmwell-util")).enablePlugins(CMWellBuild)
 lazy val kafkaAssigner = (project in file("cmwell-kafka-assigner")).enablePlugins(CMWellBuild)
 lazy val dao           = (project in file("cmwell-dao")).enablePlugins(CMWellBuild)
-lazy val domain        = (project in file("cmwell-domain")).enablePlugins(CMWellBuild)                              dependsOn(util)
+lazy val domain       = (project in file("cmwell-domain")).enablePlugins(CMWellBuild).configs(DomainUtil)
+  .settings(
+    inConfig(DomainUtil)(Defaults.configSettings),
+    (Test / managedSources) += baseDirectory.value / "src" / "domainUtil" / "scala" / "domain" /"testUtil" / "InfotonGenerator.scala",
+  ) dependsOn(util)
 lazy val zstore        = (project in file("cmwell-zstore")).enablePlugins(CMWellBuild, CassandraPlugin)             dependsOn(dao, util % "compile->compile;test->test")
-lazy val common        = (project in file("cmwell-common")).enablePlugins(CMWellBuild, BuildInfoPlugin)             dependsOn(zstore, domain % "compile->compile;test->test")
+lazy val common        = (project in file("cmwell-common")).enablePlugins(CMWellBuild, BuildInfoPlugin)             dependsOn(zstore, domain % "compile->compile;test->domainUtil")
 lazy val grid          = (project in file("cmwell-grid")).enablePlugins(CMWellBuild)                                dependsOn(util)
-lazy val rts           = (project in file("cmwell-rts")).enablePlugins(CMWellBuild)                                 dependsOn(domain, grid, formats)
-lazy val fts           = (project in file("cmwell-fts")).enablePlugins(CMWellBuild)                                 dependsOn(domain, common)
-lazy val formats       = (project in file("cmwell-formats")).enablePlugins(CMWellBuild)                             dependsOn(domain, common, fts)
-lazy val irw           = (project in file("cmwell-irw")).enablePlugins(CMWellBuild, CassandraPlugin)                dependsOn(dao, domain, common, zstore, util % "compile->compile;test->test")
+lazy val rts           = (project in file("cmwell-rts")).enablePlugins(CMWellBuild)                                 dependsOn(domain % "compile->compile;test->domainUtil", grid, formats)
+lazy val fts           = (project in file("cmwell-fts")).enablePlugins(CMWellBuild)                                 dependsOn(domain % "compile->compile;test->domainUtil", common)
+lazy val formats       = (project in file("cmwell-formats")).enablePlugins(CMWellBuild) dependsOn(domain, common, fts)
+lazy val irw           = (project in file("cmwell-irw")).enablePlugins(CMWellBuild, CassandraPlugin)                dependsOn(dao, domain % "compile->compile;test->domainUtil", common, zstore, util % "compile->compile;test->test")
 lazy val stortill      = (project in file("cmwell-stortill")).enablePlugins(CMWellBuild)                            dependsOn(domain, irw, fts, formats)
-lazy val bg            = (project in file("cmwell-bg")).enablePlugins(CMWellBuild, SbtKafkaPlugin, CassandraPlugin) dependsOn(kafkaAssigner, irw, domain, fts, grid, zstore, tracking, util % "compile->compile;test->test")
+lazy val bg            = (project in file("cmwell-bg")).enablePlugins(CMWellBuild, SbtKafkaPlugin, CassandraPlugin) dependsOn(kafkaAssigner, irw, domain % "compile->compile;test->domainUtil", fts, grid, zstore, tracking, util % "compile->compile;test->test")
 lazy val consIt        = (project in file("cmwell-it")).enablePlugins(CMWellBuild).settings(
   // scalastyle settings to enable it for integration tests:
   // this is low-level and should be updated on every version upgrade of the plugin (if needed)
@@ -238,7 +244,7 @@ lazy val consIt        = (project in file("cmwell-it")).enablePlugins(CMWellBuil
     (scalastyleFailOnError in IntegrationTest) := (scalastyleFailOnError in scalastyle).value,
     (scalastyleFailOnWarning in IntegrationTest) := (scalastyleFailOnWarning in scalastyle).value,
     (scalastyleSources in IntegrationTest) := (unmanagedSourceDirectories in IntegrationTest).value,
-  ) ++ Project.inConfig(IntegrationTest)(ScalastylePlugin.rawScalastyleSettings()))                                 dependsOn(domain, common % "compile->compile;it->test", ws) configs(IntegrationTest)
+  ) ++ Project.inConfig(IntegrationTest)(ScalastylePlugin.rawScalastyleSettings()))                                 dependsOn(domain, common % "compile->compile;it->domainUtil", ws) configs(IntegrationTest)
 lazy val ctrl          = (project in file("cmwell-controller")).enablePlugins(CMWellBuild)                          dependsOn(grid, common)
 lazy val dc            = (project in file("cmwell-dc")).enablePlugins(CMWellBuild, JavaAppPackaging)                dependsOn(tracking, ctrl, sparqlAgent)
 lazy val cons          = (project in file("cmwell-cons")).enablePlugins(CMWellBuild)                                dependsOn(common, util, ctrl) aggregate(ws, ctrl, dc)

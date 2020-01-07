@@ -27,10 +27,11 @@ import cmwell.zstore.ZStore
 import com.typesafe.config.{Config, ConfigValueFactory}
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
-import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll,Inspectors, Matchers}
+import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll, Inspectors, Matchers}
 
 import scala.concurrent.{Await, ExecutionContext, Future}
 import akka.pattern.ask
+import domain.testUtil.InfotonGenerator.genericSystemFields
 
 import scala.concurrent.duration._
 
@@ -79,13 +80,8 @@ class BGResilienceSpec extends AsyncFlatSpec with BeforeAndAfterAll with BgEsCas
     val numOfCommands = 1500
     // prepare sequence of writeCommands
     val writeCommands = Seq.tabulate(numOfCommands){ n =>
-      val infoton = ObjectInfoton(
-        path = s"/cmt/cm/bg-test/circumvented_bg/info$n",
-        dc = "dc",
-        indexTime = None,
-        fields = Some(Map("games" -> Set(FieldValue("Taki"), FieldValue("Race")))),
-        protocol = None,
-        lastModifiedBy = "Baruch")
+      val infoton = ObjectInfoton(genericSystemFields.copy(path = s"/cmt/cm/bg-test/circumvented_bg/info$n", dc = "dc", lastModifiedBy = "Baruch"),
+        fields = Some(Map("games" -> Set(FieldValue("Taki"), FieldValue("Race")))))
       WriteCommand(infoton)
     }
 
@@ -103,7 +99,7 @@ class BGResilienceSpec extends AsyncFlatSpec with BeforeAndAfterAll with BgEsCas
         irwService.readPathAsync(s"/cmt/cm/bg-test/circumvented_bg/info$i")} ( _.nonEmpty )
     }
 
-    val esCheck = cmwell.util.concurrent.spinCheck(1.second, true, 60.seconds) {
+    val esCheck = cmwell.util.concurrent.spinCheck(1.second, true, 120.seconds) {
       try{
         ftsServiceES.search(
           pathFilter = None,
@@ -120,7 +116,7 @@ class BGResilienceSpec extends AsyncFlatSpec with BeforeAndAfterAll with BgEsCas
       es <- esCheck
       cas <- casCheck
     } yield {
-      es.total should equal(1500)
+      es.total should equal(numOfCommands)
       forAll(cas) ( _ should not be empty)
     }
 

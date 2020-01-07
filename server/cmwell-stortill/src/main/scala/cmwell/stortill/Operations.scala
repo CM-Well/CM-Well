@@ -259,13 +259,13 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSService)
               val foundAndFixedFut = Future.traverse(found)(fixAndUpdateInfotonInCas)
               foundAndFixedFut.flatMap { foundAndFixed =>
                 //all infotons have valid indexTime since we already fixed it in `fixAndUpdateInfotonInCas`
-                lazy val cur = foundAndFixed.maxBy(_.indexTime.get)
+                lazy val cur = foundAndFixed.maxBy(_.systemFields.indexTime.get)
 
                 Future
-                  .traverse(foundAndFixed.groupBy(_.lastModified.getMillis).view.values) {
+                  .traverse(foundAndFixed.groupBy(_.systemFields.lastModified.getMillis).view.values) {
                     case is if is.size == 1 => Future.successful(is.head)
                     case is => {
-                      val maxiton = is.maxBy(_.indexTime.getOrElse(0L))
+                      val maxiton = is.maxBy(_.systemFields.indexTime.getOrElse(0L))
                       Future
                         .traverse(is.filterNot(_ == maxiton)) { i =>
                           log.debug(
@@ -279,13 +279,13 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSService)
                           }
                             .recover {
                               case e: Throwable =>
-                                log.info(s"purge from es failed for uuid=${i.uuid} of path=${i.path}", e); i
+                                log.info(s"purge from es failed for uuid=${i.uuid} of path=${i.systemFields.path}", e); i
                             }
                           val f2 = retry(
-                            purgeFromCas(i.path, i.uuid, onlyC.getOrElse(i.uuid, i.lastModified.getMillis))
+                            purgeFromCas(i.systemFields.path, i.uuid, onlyC.getOrElse(i.uuid, i.systemFields.lastModified.getMillis))
                           ).map(_ => i).recover {
                             case e: Throwable =>
-                              log.info(s"purge from cas failed for uuid=${i.uuid} of path=${i.path}", e); i
+                              log.info(s"purge from cas failed for uuid=${i.uuid} of path=${i.systemFields.path}", e); i
                           }
                           f1.flatMap(_ => f2)
                         }
@@ -299,7 +299,7 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSService)
                           val f = retry(irw.setPathHistory(onlyEsInfoton, cmwell.irw.QUORUM)).recover {
                             case e: Throwable =>
                               log.info(
-                                s"setPathHistory failed for uuid=${onlyEsInfoton.uuid} of path=${onlyEsInfoton.path}",
+                                s"setPathHistory failed for uuid=${onlyEsInfoton.uuid} of path=${onlyEsInfoton.systemFields.path}",
                                 e
                               )
                               onlyEsInfoton
@@ -310,7 +310,7 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSService)
                                 retry(irw.setPathLast(i, cmwell.irw.QUORUM)).recover {
                                   case e: Throwable =>
                                     log.info(
-                                      s"setPathLast failed for uuid=${onlyEsInfoton.uuid} of path=${onlyEsInfoton.path}",
+                                      s"setPathLast failed for uuid=${onlyEsInfoton.uuid} of path=${onlyEsInfoton.systemFields.path}",
                                       e
                                     )
                                     onlyEsInfoton
@@ -332,7 +332,7 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSService)
 
                       purgeFromEsFut.flatMap { _ =>
                         //lastly, write infocolones for the good infotons
-                        val actions = foundAndFixed.map(i => ESIndexRequest(createEsIndexAction(i, i.indexName, i eq cur), None))
+                        val actions = foundAndFixed.map(i => ESIndexRequest(createEsIndexAction(i, i.systemFields.indexName, i eq cur), None))
                         retry(ftsService.executeBulkIndexRequests(actions)).map(_ => (true, ""))
                       }
                     }
@@ -423,8 +423,8 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSService)
   private def createEsIndexAction(infoton: Infoton,
                                           index: String,
                                           isCurrent: Boolean): DocWriteRequest[_] = {
-    val infotonWithUpdatedIndexTime = infoton.indexTime.fold {
-      infoton.replaceIndexTime(infoton.lastModified.getMillis)
+    val infotonWithUpdatedIndexTime = infoton.systemFields.indexTime.fold {
+      infoton.replaceIndexTime(Some(infoton.systemFields.lastModified.getMillis))
     }(_ => infoton)
     val serializedInfoton = JsonSerializerForES.encodeInfoton(infotonWithUpdatedIndexTime, isCurrent)
     Requests.indexRequest(index).id(infoton.uuid).create(true).source(serializedInfoton, XContentType.JSON)
@@ -440,7 +440,7 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSService)
         j =>
           irw.writeAsyncDataOnly(j, cmwell.irw.QUORUM).recover {
             case e: Throwable =>
-              log.error(s"could not write to cassandra the infoton with uuid=[${j.uuid}}] for path=[${j.path}}]", e)
+              log.error(s"could not write to cassandra the infoton with uuid=[${j.uuid}}] for path=[${j.systemFields.path}}]", e)
               j
         }
       )
@@ -458,7 +458,7 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSService)
 
     s.extractHistoryCas(path, limit).flatMap { v =>
       val zsKeys = v.collect {
-        case (_, Some(FileInfoton(_, _, _, _, _, _, Some(FileContent(_, _, _, Some(dp))), _, _))) => dp
+        case (_, Some(FileInfoton(_, _, Some(FileContent(_, _, _, Some(dp)))))) => dp
       }.distinct
       esinfo.map((v, _, zsKeys))
     }

@@ -33,7 +33,7 @@ import filters.Attrs
 import ld.cmw.PassiveFieldTypesCache
 import ld.exceptions.{BadFieldTypeException, ConflictingNsEntriesException, ServerComponentNotAvailableException, TooManyNsRequestsException}
 import logic.CRUDServiceFS
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.ISODateTimeFormat
 import play.api.http.{HttpChunk, HttpEntity}
 import play.api.libs.json.Json
@@ -48,7 +48,7 @@ import scala.util.{Failure, Success, Try}
 package object wsutil extends LazyLogging {
 
   val Uuid = "([a-f0-9]{32})".r
-  val zeroTime = new DateTime(0L)
+  val zeroTime = new DateTime(0L, DateTimeZone.UTC)
   lazy val dtf = ISODateTimeFormat.dateTime()
 
   /**
@@ -448,7 +448,7 @@ package object wsutil extends LazyLogging {
 
   //Some convenience methods & types
   def getByPath(protocol: String, path: String, crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionContext): Future[Infoton] =
-    crudServiceFS.irwService.readPathAsync(path, crudServiceFS.level).map(_.getOrElse(GhostInfoton.ghost(protocol, path)))
+    crudServiceFS.irwService.readPathAsync(path, crudServiceFS.level).map(_.getOrElse(GhostInfoton.ghost(path, protocol)))
   type F[X] = (X, Option[List[RawFieldFilter]])
   type EFX = Either[F[Future[Infoton]], F[Infoton]]
 
@@ -671,7 +671,7 @@ package object wsutil extends LazyLogging {
     Future
       .traverse(population.grouped(chunkSize)) { infotonsChunk =>
         val pathsAndProtocols: List[(String,String)] = infotonsChunk.view.map { i =>
-          i.path -> i.protocol.getOrElse(cmwell.common.Settings.defaultProtocol)
+          i.systemFields.path -> i.systemFields.protocol
         }.to(List)
 
         val fieldFilterFut = filteredFields match {
@@ -732,14 +732,14 @@ package object wsutil extends LazyLogging {
               expandDeeper(
                 fs,
                 lInfotons ++ rInfotons,
-                infotonsRetrievedCache ++ lInfotons.view.map(i => i.path -> i).toMap
+                infotonsRetrievedCache ++ lInfotons.view.map(i => i.systemFields.path -> i).toMap
               )
           }
       }
     }
 
     val t = ExpandGraphParser.getLevelsExpansionFunctions(xgPattern).map { fs =>
-      expandDeeper(fs, infotons, infotons.map(i => i.path -> i).toMap)
+      expandDeeper(fs, infotons, infotons.map(i => i.systemFields.path -> i).toMap)
     }
 
     t match {
@@ -755,20 +755,20 @@ package object wsutil extends LazyLogging {
                 chunkSize: Int,
                 timeContext: Option[Long])(implicit ec: ExecutionContext): Future[Seq[Infoton]] = {
 
-    logger.trace(s"gqpFilter with infotons: [${infotons.map(_.path).mkString(", ")}]")
+    logger.trace(s"gqpFilter with infotons: [${infotons.map(_.systemFields.path).mkString(", ")}]")
 
     def filterByDirectedExpansion(
       dexp: DirectedExpansion
     )(iv: (Infoton, Vector[Infoton])): Future[(Infoton, Vector[Infoton])] = {
       logger.trace(
-        s"filterByDirectedExpansion($dexp): with original[${iv._1.path}] and current-pop[${iv._2.map(_.path).mkString(", ")}]"
+        s"filterByDirectedExpansion($dexp): with original[${iv._1.systemFields.path}] and current-pop[${iv._2.map(_.systemFields.path).mkString(", ")}]"
       )
       dexp match {
         case ExpandIn(filteredFields) =>
           expandIn(
             filteredFields,
             iv._2,
-            iv._2.view.map(i => i.path -> i).toMap,
+            iv._2.view.map(i => i.systemFields.path -> i).toMap,
             cmwellRDFHelper,
             typesCache,
             timeContext
@@ -777,7 +777,7 @@ package object wsutil extends LazyLogging {
               iv._1 -> {
                 val rv = l.toVector ++ r
                 logger.trace(
-                  s"filterByDirectedExpansion($dexp): after expandIn($filteredFields), finished with result[${rv.map(_.path).mkString(", ")}]"
+                  s"filterByDirectedExpansion($dexp): after expandIn($filteredFields), finished with result[${rv.map(_.systemFields.path).mkString(", ")}]"
                 )
                 rv
               }
@@ -787,7 +787,7 @@ package object wsutil extends LazyLogging {
             filteredFields,
             iv._2,
             cmwellRDFHelper,
-            iv._2.view.map(i => i.path -> i).toMap,
+            iv._2.view.map(i => i.systemFields.path -> i).toMap,
             typesCache,
             infotons.take(3),
             gqpPattern,
@@ -798,7 +798,7 @@ package object wsutil extends LazyLogging {
               iv._1 -> {
                 val rv = l.toVector ++ r
                 logger.trace(
-                  s"filterByDirectedExpansion($dexp): after expandIn($filteredFields), finished with result[${rv.map(_.path).mkString(", ")}]"
+                  s"filterByDirectedExpansion($dexp): after expandIn($filteredFields), finished with result[${rv.map(_.systemFields.path).mkString(", ")}]"
                 )
                 rv
               }
@@ -818,7 +818,7 @@ package object wsutil extends LazyLogging {
         }
         .andThen {
           case Success(is) =>
-            logger.trace(s"nextFilteringHop: finished with survivors[${is.map(_.path).mkString(", ")}]")
+            logger.trace(s"nextFilteringHop: finished with survivors[${is.map(_.systemFields.path).mkString(", ")}]")
           case Failure(ex) => logger.error(s"nextFilteringHop($dexp,$dexps,$survivors)", ex)
         }
     }
@@ -836,8 +836,8 @@ package object wsutil extends LazyLogging {
                     i -> Vector(i)
                 }.to(Vector)
                 logger.trace(s"appending: [${segments.mkString(", ")}] to vec[${vec
-                  .map(_.path)
-                  .mkString(", ")}] with candidates[${candidates.map(_._1.path).mkString(", ")}]")
+                  .map(_.systemFields.path)
+                  .mkString(", ")}] with candidates[${candidates.map(_._1.systemFields.path).mkString(", ")}]")
                 nextFilteringHop(segments.head, segments.tail, candidates).map(_ ++: vec)
               }
           }
@@ -896,7 +896,7 @@ package object wsutil extends LazyLogging {
           .flatMap { expanderRetrievedInfotonPairs =>
             val (newExpanders, retrievedInfotons) = expanderRetrievedInfotonPairs.unzip
             val newCache = retrievedInfotons.foldLeft(cache) {
-              case (accache, additions) => accache ++ additions.map(i => i.path -> i)
+              case (accache, additions) => accache ++ additions.map(i => i.systemFields.path -> i)
             }
             expandDeeper(newExpanders, newCache)
           }
@@ -910,7 +910,7 @@ package object wsutil extends LazyLogging {
               (head, segments.tail, infotons)
             }
         }
-        expandDeeper(perPathHeadTail, infotons.view.map(i => i.path -> i).toMap)
+        expandDeeper(perPathHeadTail, infotons.view.map(i => i.systemFields.path -> i).toMap)
       }
     } match {
       case Success(future) => future
@@ -1128,7 +1128,7 @@ package object wsutil extends LazyLogging {
   def pathStatusAsInfoton(ps: PathStatus): Infoton = {
     val PathStatus(path, status) = ps
     val fields: Option[Map[String, Set[FieldValue]]] = Some(Map("trackingStatus" -> Set(FString(status.toString))))
-    VirtualInfoton(ObjectInfoton(path, Settings.dataCenter, None, lastModifiedBy = "VirtualInfoton", fields = fields, protocol = None))
+    VirtualInfoton(ObjectInfoton(SystemFields(path, zeroTime, "VirtualInfoton", Settings.dataCenter, None, "", "http"), fields = fields))
   }
 
   def getFormatter(request: Request[_],

@@ -66,13 +66,13 @@ class PublishAgent extends Actor with LazyLogging {
               case NoFilter =>
                 publish_data(subscriber, i)
               case PathFilter(path) =>
-                if (path.check(i.path))
+                if (path.check(i.systemFields.path))
                   publish_data(subscriber, i)
               case MatchFilter(f) =>
                 if (i.fields.isDefined && f.check(i.fields.get))
                   publish_data(subscriber, i)
               case PMFilter(p, m) =>
-                if (p.check(i.path) && i.fields.isDefined && m.check(i.fields.get))
+                if (p.check(i.systemFields.path) && i.fields.isDefined && m.check(i.fields.get))
                   publish_data(subscriber, i)
             }
         }
