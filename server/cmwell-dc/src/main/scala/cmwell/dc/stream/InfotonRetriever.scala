@@ -26,10 +26,12 @@ import akka.stream.scaladsl.{Flow, Framing, Source}
 import akka.stream.{ActorAttributes, Materializer}
 import akka.util.{ByteString, ByteStringBuilder}
 import cmwell.dc.Settings._
+import cmwell.dc.stream.InfotonRetriever.RetrieveOutput
 import cmwell.dc.stream.MessagesTypesAndExceptions._
 import cmwell.dc.{LazyLogging, Settings}
 import cmwell.util.akka.http.HttpZipDecoder
 
+import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
@@ -84,15 +86,6 @@ object InfotonRetriever extends LazyLogging {
     unParsed: ByteStringBuilder
   )
 
-  val breakOut = scala.collection
-    .breakOut[RetrieveInput, (InfotonData, ExtraData), RetrieveOutput]
-  val breakOut2 = scala.collection
-    .breakOut[RetrieveInput, (Future[RetrieveInput], RetrieveState), List[
-      (Future[RetrieveInput], RetrieveState)
-    ]]
-  val hashMapBreakout = scala.collection
-    .breakOut[RetrieveInput, (String, (ByteStringBuilder, ExtraData)), HashMap[String, (ByteStringBuilder, ExtraData)]]
-
   //The path will be unique for each bulk infoton got into the flow
   def apply(dcKey: DcInfoKey, decider: Decider)(implicit sys: ActorSystem, mat: Materializer): Flow[Seq[
     InfotonData
@@ -120,7 +113,7 @@ object InfotonRetriever extends LazyLogging {
               .via(
                 Framing.delimiter(endln, maximumFrameLength = maxStatementLength)
               )
-              .fold(RetrieveTotals(state._1.map{im => im.base.path -> (new ByteStringBuilder, ExtraData("", None, None, None))}(hashMapBreakout),
+              .fold(RetrieveTotals(state._1.view.map{im => im.base.path -> (new ByteStringBuilder, ExtraData("", None, None, None))}.to(mutable.HashMap),
                 new ByteStringBuilder))
               { (totals, nquad) =>
                 totals.unParsed ++= nquad
@@ -139,7 +132,7 @@ object InfotonRetriever extends LazyLogging {
                 }
               }
               .map { totals =>
-                val parsedResult: Try[RetrieveOutput] = Success(state._1.map {
+                val parsedResult: Try[RetrieveOutput] = Success(state._1.view.map {
                   //todo: validity checks that the data arrived correctly. e.g. that the path could be retrieved from _out etc.
                   im => {
                     val parsed: (ByteStringBuilder, ExtraData) = totals.parsed(im.base.path)
@@ -147,7 +140,7 @@ object InfotonRetriever extends LazyLogging {
                     (InfotonData(BaseInfotonData(im.base.path, enrichResult ++ parsed._1.result), im.uuid, im.indexTime), parsed._2)
 
                   }
-                }(breakOut))
+                }.to(Seq))
                 (parsedResult, state, Option(totals.unParsed.result))
               }
               .withAttributes(ActorAttributes.supervisionStrategy(decider))
@@ -368,7 +361,7 @@ object InfotonRetriever extends LazyLogging {
             logger.trace(s"Sync $dcKey: Retrieve of bulk uuids failed. No more bulk retries left. " +
                          s"Will split to request for each uuid and try again. The exception is: ", ex.get)
             Util.tracePrintFuturedBodyException(ex.get)
-            Some(ingestSeq.map { infotonMetaAndData =>
+            Some(ingestSeq.view.map { infotonMetaAndData =>
               val ingestData = Seq(infotonMetaAndData)
               val ingestState = ingestData -> RetrieveStateStatus(
                 Settings.initialSingleRetrieveRetryCount,
@@ -380,7 +373,7 @@ object InfotonRetriever extends LazyLogging {
               akka.pattern.after(delay, sys.scheduler)(
                 Future.successful(ingestData)
               ) -> ingestState
-            }(breakOut2))
+            }.to(List))
           } else {
             logger.trace(s"Sync $dcKey: Retrieve of bulk uuids failed. Retries left $retriesLeft. Will try again. The exception is: ", ex.get)
             Util.tracePrintFuturedBodyException(ex.get)

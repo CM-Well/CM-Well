@@ -15,19 +15,21 @@
 package cmwell.ws
 
 import java.util.Properties
+import java.util.concurrent.TimeUnit
 
 import akka.actor.Actor
 import cmwell.common.ExitWithError
 import cmwell.common.OffsetsService
+import cmwell.ws.Settings.kafkaURL
 import com.typesafe.scalalogging.LazyLogging
 import k.grid.Grid
-import kafka.utils.ZkUtils
-import org.I0Itec.zkclient.ZkClient
-import org.I0Itec.zkclient.serialize.ZkSerializer
+import org.apache.kafka.clients.admin.{AdminClient, AdminClientConfig}
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.TopicPartition
 import org.joda.time.DateTime
-import scala.collection.JavaConverters._
+
+import scala.collection.mutable
+import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
@@ -41,17 +43,14 @@ class BGMonitorActor(zkServers: String,
   extends Actor
     with LazyLogging {
 
-  val zkClient = new ZkClient(zkServers, 10000, 10000, ZKLikeStringSerializer)
-  val zkUtils = ZkUtils(zkClient, false)
-  val allBrokers = zkUtils
-    .getAllBrokersInCluster()
-    .map { b =>
-      val endPoint = b.endPoints.head
-      s"${endPoint.host}:${endPoint.port}"
-    }
-    .mkString(",")
+  val kafkaAdminProperties = new Properties
+  kafkaAdminProperties.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaURL)
+  val adminClient = AdminClient.create(kafkaAdminProperties)
   val topics = Seq("persist_topic", "persist_topic.priority", "index_topic", "index_topic.priority")
-  val partitionsForTopics = zkUtils.getPartitionsForTopics(topics)
+  val describedTopics = adminClient.describeTopics(topics.asJava).all().get(30, TimeUnit.SECONDS)
+  val partitionsForTopics: mutable.Map[String, Seq[Int]] = describedTopics.asScala.map {
+    case (topic, topicPartition) => topic -> (0 until topicPartition.partitions.size)
+  }
   val topicsPartitionsAndGroups = partitionsForTopics.flatMap {
     case ("persist_topic", partitions) =>
       partitions.map { partition =>
@@ -75,7 +74,7 @@ class BGMonitorActor(zkServers: String,
   val topicsPartitionsAndConsumers = topicsPartitionsAndGroups.map {
     case (topicPartition, groupId) =>
       val kafkaConsumerProps = new Properties()
-      kafkaConsumerProps.put("bootstrap.servers", allBrokers)
+      kafkaConsumerProps.put("bootstrap.servers", kafkaURL)
       kafkaConsumerProps.put("group.id", groupId)
       kafkaConsumerProps.put("key.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer")
       kafkaConsumerProps.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
@@ -211,18 +210,6 @@ class BGMonitorActor(zkServers: String,
 
 object BGMonitorActor {
   def serviceName = classOf[BGMonitorActor].getName
-}
-
-object ZKLikeStringSerializer extends ZkSerializer {
-
-  def serialize(data: Object): Array[Byte] = data.asInstanceOf[String].getBytes("UTF-8")
-
-  def deserialize(bytes: Array[Byte]): Object = {
-    if (bytes == null)
-      null
-    else
-      new String(bytes, "UTF-8")
-  }
 }
 
 case object GetOffsetInfo

@@ -15,15 +15,15 @@
 
 import nl.gn0s1s.bump.SemVer
 
-import scala.collection.GenSeq
+import scala.collection.parallel.ParSeq
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object Upgrade {
 
-  case class UpgradeFunc (applyToVersion: String, desc: String, func: (GenSeq[String]) => Future[Boolean]){
-    def executeUpgrade(hosts: GenSeq[String]) = {
+  case class UpgradeFunc (applyToVersion: String, desc: String, func: (ParSeq[String]) => Future[Boolean]){
+    def executeUpgrade(hosts: ParSeq[String]) = {
       if (Await.result(func(hosts), 1.minutes))
         info(s"$desc succeeded")
       else
@@ -33,12 +33,12 @@ object Upgrade {
 
   val postUpgradeList : List[UpgradeFunc] = {
     //example
-    /*List(UpgradeFunc("1.6.2", "myUpgradeSomething",(hosts: GenSeq[String]) => {info(s"in func print: ${hosts(0)}"); Future.successful(true)}),
-      UpgradeFunc("1.6.7", "myUpgradeSomethingFailed",(hosts: GenSeq[String]) => {info(s"in func print failed: ${hosts(0)}"); Future.successful(false)}))*/
+    /*List(UpgradeFunc("1.6.2", "myUpgradeSomething",(hosts: ParSeq[String]) => {info(s"in func print: ${hosts(0)}"); Future.successful(true)}),
+      UpgradeFunc("1.6.7", "myUpgradeSomethingFailed",(hosts: ParSeq[String]) => {info(s"in func print failed: ${hosts(0)}"); Future.successful(false)}))*/
     Nil
   }
 
-  def runPostUpgradeActions(currentVersionF : Future[String], upgraded : String, hosts: GenSeq[String]): Future[Boolean]= {
+  def runPostUpgradeActions(currentVersionF : Future[String], upgraded : String, hosts: ParSeq[String]): Future[Boolean]= {
     /**
       *  Note! According to semantic versions rules, what will be taken into account is only <major>.<minor>.<patch>
       *    all text after + sign will not affect precedence!

@@ -384,6 +384,6 @@ v[http://example.org/Individuals2/SaraSmith]""")
   }
 
   implicit class JsValueExtensions(v: JsValue) {
-    def getArr(prop: String): Seq[JsValue] = (v \ prop).get match { case JsArray(seq) => seq case _ => Seq() }
+    def getArr(prop: String): collection.IndexedSeq[JsValue] = (v \ prop).get match { case JsArray(seq) => seq case _ => collection.IndexedSeq() }
   }
 }

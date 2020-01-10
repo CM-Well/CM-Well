@@ -48,14 +48,14 @@ class ServicesRoutesCache @Inject()(crudService: CRUDServiceFS)(implicit ec: Exe
           collect { case Success(se) => se }.
           foreach { se => services += se.infotonPath -> se.serviceDefinition }
 
-        toRemove.foreach(services -= _.path)
+        toRemove.foreach(services -= _.systemFields.path)
 
       case Failure(t) => logger.error("Could not load Services from /meta/services", t)
     }.map(_ => ())
   }
 
   private def desrialize(infoton: Infoton): Try[ServiceEntry] = Try {
-    val fields = infoton.fields.getOrElse(throw new RuntimeException(s"Infoton with no fields was not expected (path=${infoton.path})"))
+    val fields = infoton.fields.getOrElse(throw new RuntimeException(s"Infoton with no fields was not expected (path=${infoton.systemFields.path})"))
 
     def field(name: String): String = fields(name).head.value.toString
 
@@ -65,10 +65,10 @@ class ServicesRoutesCache @Inject()(crudService: CRUDServiceFS)(implicit ec: Exe
         val sourcePattern = field("sourcePattern")
         val replacement = field("replacement")
         val replceFunc = (input: String) => sourcePattern.r.replaceAllIn(input, replacement)
-        ServiceEntry(infoton.path, RedirectionService(route, sourcePattern, replceFunc))
+        ServiceEntry(infoton.systemFields.path, RedirectionService(route, sourcePattern, replceFunc))
       case "cmwell://meta/sys#Source" => ??? //TODO implement the unimplemented
       case "cmwell://meta/sys#Binary" => ??? //TODO implement the unimplemented
-      case other => throw new RuntimeException(s"Infoton with type $other was not expected (path=${infoton.path})")
+      case other => throw new RuntimeException(s"Infoton with type $other was not expected (path=${infoton.systemFields.path})")
     }
   }
 

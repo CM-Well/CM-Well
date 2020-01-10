@@ -42,10 +42,6 @@ import scala.concurrent.ExecutionContext.Implicits.global
   */
 object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
 
-  val breakOut = scala.collection
-    .breakOut[IngestInput, (Future[IngestInput], IngestState), List[
-      (Future[IngestInput], IngestState)
-    ]]
   val initialBulkStatus =
     IngestStateStatus(Settings.initialBulkIngestRetryCount, 0, None)
 
@@ -168,7 +164,7 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
             logger.trace(s"Sync $dcKey: Ingest of bulk uuids to machine $location failed. No more bulk retries left. " +
                          s"Will split to request for each uuid and try again. The exception is: ", ex.get)
             Util.tracePrintFuturedBodyException(ex.get)
-            Some(ingestSeq.map { infotonMetaAndData =>
+            Some(ingestSeq.view.map { infotonMetaAndData =>
               val ingestData = Seq(infotonMetaAndData)
               val ingestState = ingestData -> IngestStateStatus(
                 Settings.initialSingleIngestRetryCount,
@@ -178,7 +174,7 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
               akka.pattern.after(Settings.ingestRetryDelay, sys.scheduler)(
                 Future.successful(ingestData)
               ) -> ingestState
-            }(breakOut))
+            }.to(List))
           } else {
             logger.trace(
               s"Sync $dcKey: Ingest of bulk uuids to machine $location failed. Retries left $retriesLeft. Will try again. The exception is: ",

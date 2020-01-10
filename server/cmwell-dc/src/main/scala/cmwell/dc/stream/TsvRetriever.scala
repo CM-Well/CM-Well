@@ -32,7 +32,6 @@ import cmwell.dc.stream.akkautils.DebugStage
 import cmwell.util.akka.http.HttpZipDecoder
 import com.typesafe.config.ConfigFactory
 
-import scala.collection.parallel.immutable
 import scala.util.{Failure, Success, Try}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future

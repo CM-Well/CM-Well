@@ -15,10 +15,11 @@
 package security
 
 import javax.inject.Inject
-import cmwell.domain.{FieldValue, FileContent, FileInfoton, Infoton}
+import cmwell.domain.{FieldValue, FileContent, FileInfoton, Infoton, SystemFields}
 import cmwell.ws.Settings
 import com.github.t3hnar.bcrypt._
 import logic.CRUDServiceFS
+import org.joda.time.{DateTime, DateTimeZone}
 import play.api.libs.json.{JsObject, JsString}
 import play.api.mvc.Request
 import security.PermissionLevel.PermissionLevel
@@ -40,14 +41,8 @@ class AuthUtils @Inject()(authCache: EagerAuthCache, authorization: Authorizatio
             Seq("digest" -> JsString(digestValue), "digest2" -> JsString(digest2Value))
           )
           crudServiceFS.putInfoton(
-            FileInfoton(
-              s"/meta/auth/users/${token.username}",
-              Settings.dataCenter,
-              None,
-              token.username,
-              Map.empty[String, Set[FieldValue]],
-              FileContent(newUserInfoton.toString.getBytes, "application/json"),
-              protocol = None
+            FileInfoton(SystemFields(s"/meta/auth/users/${token.username}", new DateTime(DateTimeZone.UTC), token.username, Settings.dataCenter, None, "",
+              "http"), Map.empty[String, Set[FieldValue]], FileContent(newUserInfoton.toString.getBytes, "application/json")
             )
           )
         }

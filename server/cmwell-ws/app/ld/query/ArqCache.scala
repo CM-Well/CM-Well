@@ -115,14 +115,14 @@ class ArqCache(crudServiceFS: CRUDServiceFS) extends LazyLogging {
           case 1 =>
             logger.debug(s"[arq] Fetched proper namespace for $hash")
             val infoton = infotonsWithThatUrl.head
-            val path = infoton.path
+            val path = infoton.systemFields.path
             val actualHash = path.substring(path.lastIndexOf('/') + 1)
             val uri = knownUri.getOrElse(extractFieldValue(infoton, "url"))
             NsResult(uri, actualHash, extractFieldValue(infoton, "prefix"))
           case _ =>
             logger.debug(
               s"[arq] this should never happen: same URL [${knownUri.get}] cannot be more than once in meta/ns [${infotonsWithThatUrl
-                .map(i => i.path + "[" + i.uuid + "]")
+                .map(i => i.systemFields.path + "[" + i.uuid + "]")
                 .mkString(",")}]"
             )
             !!!

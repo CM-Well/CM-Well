@@ -14,6 +14,8 @@
   */
 package cmwell.bg
 
+//NOTE: ZkUtils was removed from newer versions of Kafka. Also, this class never actually worked so it's not a regression to remove it.
+/*
 import akka.actor.Actor
 import com.typesafe.scalalogging.LazyLogging
 import kafka.admin.{ReassignmentCompleted, ReassignmentFailed, ReassignmentInProgress, ReassignmentStatus}
@@ -25,6 +27,7 @@ import org.joda.time.format.ISODateTimeFormat
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.{Map => MMap}
+//Eli: should not shadow Seq (or map???)
 import scala.collection.{Map, Seq}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.ExecutionContext.global
@@ -221,7 +224,7 @@ object KafkaAssigner extends LazyLogging {
       }
     }
 
-    val partitionsBeingReassigned = zkUtils.getPartitionsBeingReassigned().mapValues(_.newReplicas)
+    val partitionsBeingReassigned = zkUtils.getPartitionsBeingReassigned().view.mapValues(_.newReplicas).toMap
     partitionsToBeReassigned.keys.map { topicAndPartition =>
       (topicAndPartition,
        checkIfPartitionReassignmentSucceeded(zkUtils,
@@ -245,3 +248,4 @@ object ZKLikeStringSerializer extends ZkSerializer {
       new String(bytes, "UTF-8")
   }
 }
+*/

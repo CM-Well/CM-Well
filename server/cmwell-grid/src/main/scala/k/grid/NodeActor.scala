@@ -25,7 +25,6 @@ import com.typesafe.scalalogging.LazyLogging
 import k.grid.monitoring._
 import k.grid.registration.LocalRegistrationManager
 
-import scala.collection.parallel.ParSet
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import akka.actor._

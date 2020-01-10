@@ -52,7 +52,7 @@ case class ClearNode(node: String) extends Task with LazyLogging {
               case ElasticsearchDown(hm, gt) => prom.success(())
               case _                         => stopElasticsearch(cmd, prom)
             }
-          case None => prom.success(Unit)
+          case None => prom.success(())
         }
       }
     }
@@ -72,11 +72,11 @@ case class ClearNode(node: String) extends Task with LazyLogging {
         ocs match {
           case Some(s) =>
             s match {
-              case co @ CassandraOk(m, rm, gt) if (co.m.isEmpty) => prom.success(Unit)
-              case CassandraDown(gt)                             => prom.success(Unit)
+              case co @ CassandraOk(m, rm, gt) if (co.m.isEmpty) => prom.success(())
+              case CassandraDown(gt)                             => prom.success(())
               case _                                             => stopCassandra(cmd, prom)
             }
-          case None => prom.success(Unit)
+          case None => prom.success(())
         }
       }
     }

@@ -12,8 +12,9 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-import scala.collection.GenSeq
+import scala.collection.parallel.ParSeq
 import scala.util.Try
+import scala.collection.parallel.CollectionConverters._
 
 case class Grid(user: String,
                 password: String,
@@ -77,7 +78,7 @@ case class Grid(user: String,
     ???
   }
 
-  override def mkScripts(hosts: GenSeq[String]): GenSeq[ComponentConf] = {
+  override def mkScripts(hosts: ParSeq[String]): ParSeq[ComponentConf] = {
     val aloc = allocationPlan.getJvmAllocations
     val casAllocations = aloc.cas //DefaultAlocations(4000,4000,1000,0)
     val esAllocations = aloc.es //DefaultAlocations(6000,6000,400,0)
@@ -273,20 +274,20 @@ case class Grid(user: String,
 
   override def getMode: String = "grid"
 
-  override def getSeedNodes: List[String] = ips.take(3).toList
+  override def getSeedNodes: List[String] = ips.take(3)
 
-  override def startElasticsearch(hosts: GenSeq[String]): Unit = {
+  override def startElasticsearch(hosts: Seq[String]): Unit = {
     command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start-master.sh")}",
-            ips.par.take(esMasters).intersect(hosts),
+            ips.take(esMasters).intersect(hosts.to(Seq)).to(ParSeq),
             false)
-    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start.sh")}", hosts, false)
+    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start.sh")}", hosts.to(ParSeq), false)
   }
 
-  override def startCassandra(hosts: GenSeq[String]): Unit = {
+  override def startCassandra(hosts: ParSeq[String]): Unit = {
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur/; ${startScript("./start.sh")}", hosts, false)
   }
 
-  override def initCassandra(hosts: GenSeq[String]): Unit = {
+  override def initCassandra(hosts: ParSeq[String]): Unit = {
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur/; ${startScript("./start.sh")}", hosts(0), false)
     Try(CassandraLock().waitForModule(ips(0), 1))
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur/; ${startScript("./start.sh")}", hosts(1), false)
@@ -294,15 +295,15 @@ case class Grid(user: String,
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur/; ${startScript("./start.sh")}", hosts.drop(2), false)
   }
 
-  override def initElasticsearch(hosts: GenSeq[String]): Unit = {
+  override def initElasticsearch(hosts: Seq[String]): Unit = {
     command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start-master.sh")}",
-            hosts.take(esMasters),
+            hosts.take(esMasters).to(ParSeq),
             false)
     Try(ElasticsearchLock().waitForModule(ips(0), esMasters))
     //    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ./start-master.sh", hosts(1), false)
     //    ElasticsearchLock().waitForModule(ips(0), 2)
     //    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ./start-master.sh", hosts.drop(2).take(esMasters - 2), false)
-    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start.sh")}", hosts, false)
+    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start.sh")}", hosts.to(ParSeq), false)
   }
 
   override def getNewHostInstance(ipms: Seq[String]): Host = {
