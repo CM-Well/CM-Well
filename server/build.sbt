@@ -26,6 +26,10 @@ def refreshVersion = Command.command("refreshVersion") { state =>
   appendWithoutSession(Seq(), state) // do something with v: inc.Analysis
 }
 
+coverageMinimum := 70
+coverageFailOnMinimum := false
+coverageHighlighting := true
+
 ThisBuild / commands += refreshVersion
 
 val dirtyEnd = """.*(\d\d\d\d\d\d\d\d)(-\d\d\d\d)$""".r
@@ -36,7 +40,7 @@ def stripTime(version: String) = version match {
 ThisBuild / version ~= stripTime
 ThisBuild / dynver ~= stripTime
 
-scalaVersion in Global := "2.12.10"
+scalaVersion in Global := "2.13.1"
 //javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint")
 initialize := {
   import nl.gn0s1s.bump.SemVer
@@ -75,7 +79,7 @@ dependenciesManager in Global := {
   case ("com.typesafe.scala-logging","scala-logging")              => "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2"
   case ("com.typesafe.akka", "akka-stream-kafka")                  => "com.typesafe.akka" %% "akka-stream-kafka" % "1.1.0"
   case ("com.typesafe.akka", "akka-stream-contrib")                => "com.typesafe.akka" %% "akka-stream-contrib" % "0.10"
-  case ("com.typesafe.akka", "akka-http")                          => "com.typesafe.akka" %% "akka-http" % "10.1.10"
+  case ("com.typesafe.akka", "akka-http")                          => "com.typesafe.akka" %% "akka-http" % "10.1.11"
   case ("com.typesafe.akka",art)                                   => "com.typesafe.akka" %% art % "2.5.26"
   case ("com.typesafe.play", "twirl-api")                          => "com.typesafe.play" %% "twirl-api" % "1.3.13"
   case ("com.typesafe.play", "play-json")                          => "com.typesafe.play" %% "play-json" % "2.7.4"
@@ -169,6 +173,7 @@ dependenciesManager in Global := {
   case ("org.scalacheck","scalacheck")                             => "org.scalacheck" %% "scalacheck" % "1.14.2"
   case ("org.scalatest","scalatest")                               => "org.scalatest" %% "scalatest" % "3.0.8"
   case ("org.scala-lang.modules", "scala-parser-combinators")      => "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4"
+  case ("org.scala-lang.modules", "scala-parallel-collections")    => "org.scala-lang.modules" %% "scala-parallel-collections" % "0.2.0"
   case ("org.scala-lang.modules", "scala-xml")                     => "org.scala-lang.modules" %% "scala-xml" % "1.2.0"
   case ("org.slf4j",art)                                           => "org.slf4j" % art % "1.7.28"
   case ("org.xerial.snappy","snappy-java")                         => "org.xerial.snappy" % "snappy-java" % "1.1.2.4"
@@ -212,19 +217,25 @@ excludeDependencies in ThisBuild += "org.slf4j" % "slf4j-jdk14"
 
 printDate := streams.value.log.info("date: " + org.joda.time.DateTime.now().toString())
 
+lazy val DomainUtil = config("domainUtil") extend(Compile)
+
 lazy val util          = (project in file("cmwell-util")).enablePlugins(CMWellBuild)
 lazy val kafkaAssigner = (project in file("cmwell-kafka-assigner")).enablePlugins(CMWellBuild)
 lazy val dao           = (project in file("cmwell-dao")).enablePlugins(CMWellBuild)
-lazy val domain        = (project in file("cmwell-domain")).enablePlugins(CMWellBuild)                              dependsOn(util)
+lazy val domain       = (project in file("cmwell-domain")).enablePlugins(CMWellBuild).configs(DomainUtil)
+  .settings(
+    inConfig(DomainUtil)(Defaults.configSettings),
+    (Test / managedSources) += baseDirectory.value / "src" / "domainUtil" / "scala" / "domain" /"testUtil" / "InfotonGenerator.scala",
+  ) dependsOn(util)
 lazy val zstore        = (project in file("cmwell-zstore")).enablePlugins(CMWellBuild, CassandraPlugin)             dependsOn(dao, util % "compile->compile;test->test")
-lazy val common        = (project in file("cmwell-common")).enablePlugins(CMWellBuild, BuildInfoPlugin)             dependsOn(zstore, domain % "compile->compile;test->test")
+lazy val common        = (project in file("cmwell-common")).enablePlugins(CMWellBuild, BuildInfoPlugin)             dependsOn(zstore, domain % "compile->compile;test->domainUtil")
 lazy val grid          = (project in file("cmwell-grid")).enablePlugins(CMWellBuild)                                dependsOn(util)
-lazy val rts           = (project in file("cmwell-rts")).enablePlugins(CMWellBuild)                                 dependsOn(domain, grid, formats)
-lazy val fts           = (project in file("cmwell-fts")).enablePlugins(CMWellBuild)                                 dependsOn(domain, common)
-lazy val formats       = (project in file("cmwell-formats")).enablePlugins(CMWellBuild)                             dependsOn(domain, common, fts)
-lazy val irw           = (project in file("cmwell-irw")).enablePlugins(CMWellBuild, CassandraPlugin)                dependsOn(dao, domain, common, zstore, util % "compile->compile;test->test")
+lazy val rts           = (project in file("cmwell-rts")).enablePlugins(CMWellBuild)                                 dependsOn(domain % "compile->compile;test->domainUtil", grid, formats)
+lazy val fts           = (project in file("cmwell-fts")).enablePlugins(CMWellBuild)                                 dependsOn(domain % "compile->compile;test->domainUtil", common)
+lazy val formats       = (project in file("cmwell-formats")).enablePlugins(CMWellBuild) dependsOn(domain, common, fts)
+lazy val irw           = (project in file("cmwell-irw")).enablePlugins(CMWellBuild, CassandraPlugin)                dependsOn(dao, domain % "compile->compile;test->domainUtil", common, zstore, util % "compile->compile;test->test")
 lazy val stortill      = (project in file("cmwell-stortill")).enablePlugins(CMWellBuild)                            dependsOn(domain, irw, fts, formats)
-lazy val bg            = (project in file("cmwell-bg")).enablePlugins(CMWellBuild, SbtKafkaPlugin, CassandraPlugin) dependsOn(kafkaAssigner, irw, domain, fts, grid, zstore, tracking, util % "compile->compile;test->test")
+lazy val bg            = (project in file("cmwell-bg")).enablePlugins(CMWellBuild, SbtKafkaPlugin, CassandraPlugin) dependsOn(kafkaAssigner, irw, domain % "compile->compile;test->domainUtil", fts, grid, zstore, tracking, util % "compile->compile;test->test")
 lazy val consIt        = (project in file("cmwell-it")).enablePlugins(CMWellBuild).settings(
   // scalastyle settings to enable it for integration tests:
   // this is low-level and should be updated on every version upgrade of the plugin (if needed)
@@ -237,7 +248,7 @@ lazy val consIt        = (project in file("cmwell-it")).enablePlugins(CMWellBuil
     (scalastyleFailOnError in IntegrationTest) := (scalastyleFailOnError in scalastyle).value,
     (scalastyleFailOnWarning in IntegrationTest) := (scalastyleFailOnWarning in scalastyle).value,
     (scalastyleSources in IntegrationTest) := (unmanagedSourceDirectories in IntegrationTest).value,
-  ) ++ Project.inConfig(IntegrationTest)(ScalastylePlugin.rawScalastyleSettings()))                                 dependsOn(domain, common % "compile->compile;it->test", ws) configs(IntegrationTest)
+  ) ++ Project.inConfig(IntegrationTest)(ScalastylePlugin.rawScalastyleSettings()))                                 dependsOn(domain, common % "compile->compile;it->domainUtil", ws) configs(IntegrationTest)
 lazy val ctrl          = (project in file("cmwell-controller")).enablePlugins(CMWellBuild)                          dependsOn(grid, common)
 lazy val dc            = (project in file("cmwell-dc")).enablePlugins(CMWellBuild, JavaAppPackaging)                dependsOn(tracking, ctrl, sparqlAgent)
 lazy val cons          = (project in file("cmwell-cons")).enablePlugins(CMWellBuild)                                dependsOn(common, util, ctrl) aggregate(ws, ctrl, dc)
