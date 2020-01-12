@@ -32,10 +32,10 @@ jobs:
           restore-keys: cmwell-unitTests-cache-
       - name: Watch ivy
         run: |
-          cd /home/runner/.ivy2
-          ls -d */*/*/*
-          cd /home/runner/.cache/coursier
-          ls -d */*/*/*
+          #cd /home/runner/.ivy2
+          #ls -d */*/*/*
+          #cd /home/runner/.cache/coursier
+          #ls -d */*/*/*
       - name: Compile
         timeout-minutes: 10
         working-directory: server
