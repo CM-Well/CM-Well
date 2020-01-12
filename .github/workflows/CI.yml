@@ -80,7 +80,21 @@ jobs:
         with:
           name: node.out
           path: server/cmwell-grid/target/node.out
-
+      ################################
+      ### TEMP!!
+      - name: Download ivy
+        uses: actions/upload-artifact@v1
+        if: always()
+        with:
+          name: ivy2
+          path: /home/runner/.ivy2
+      - name: Download coursier
+        uses: actions/upload-artifact@v1
+        if: always()
+        with:
+          name: coursier
+          path: /home/runner/.cache/coursier
+          
 #####################################
 ##  Running all integration tests  ##
 ##################################### 
