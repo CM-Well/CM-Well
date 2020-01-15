@@ -2130,7 +2130,7 @@ callback=< [URL] >
 
         val sortBy = getQueryString("sort-by").getOrElse("")
         val rawSortParamsTry = SortByParser.parseFieldSortParams(sortBy)
-        val rawSortParams = rawSortParamsTry.getOrElse(SortParam.empty)
+        val rawSortParams = rawSortParamsTry.getOrElse(RawSortParam.empty)
 
         val withDescendants = queryString.keySet("with-descendants") || queryString.keySet("recursive")
         val withDeleted = queryString.keySet("with-deleted")
