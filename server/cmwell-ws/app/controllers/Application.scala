@@ -2127,9 +2127,11 @@ callback=< [URL] >
         val offset = getQueryString("offset").flatMap(asInt).getOrElse(0)
         val withDataFormat = getQueryString("with-data")
         val withData = withDataFormat.isDefined && withDataFormat.get.toLowerCase != "false"
-        //FIXME: `getOrElse` swallows parsing errors that should come out as `BadRequest`
-        val rawSortParams =
-          getQueryString("sort-by").flatMap(SortByParser.parseFieldSortParams(_).toOption).getOrElse(RawSortParam.empty)
+
+        val sortBy = getQueryString("sort-by").getOrElse("")
+        val rawSortParamsTry = SortByParser.parseFieldSortParams(sortBy)
+        val rawSortParams = rawSortParamsTry.getOrElse(SortParam.empty)
+
         val withDescendants = queryString.keySet("with-descendants") || queryString.keySet("recursive")
         val withDeleted = queryString.keySet("with-deleted")
         val pathFilter = Some(PathFilter(normalizedPath, withDescendants))
@@ -2139,7 +2141,9 @@ callback=< [URL] >
         val xg = queryString.keySet("xg")
         val yg = queryString.keySet("yg")
 
-        if (offset > Settings.maxOffset) {
+        if (rawSortParamsTry.isFailure) {
+          Future.successful(BadRequest(s"Failed to parse sort-by params"))
+        } else  if (offset > Settings.maxOffset) {
           Future.successful(BadRequest(s"Even Google doesn't handle offsets larger than ${Settings.maxOffset}!"))
         } else if (length > Settings.maxLength) {
           Future.successful(BadRequest(s"Length is larger than ${Settings.maxLength}!"))

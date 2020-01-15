@@ -183,9 +183,11 @@ object TsvRetriever extends LazyLogging {
     val (host, port) = hostPort.head -> hostPort.tail.headOption
       .getOrElse("80")
       .toInt
+
     val tsvPoolConfig = ConfigFactory
-      .parseString("akka.http.host-connection-pool.max-connections=1")
+      .parseString("akka.http.host-connection-pool.max-connections=20")
       .withFallback(config)
+
     val tsvConnPool = Http()
       .newHostConnectionPool[TsvRetrieveState](
         host,
