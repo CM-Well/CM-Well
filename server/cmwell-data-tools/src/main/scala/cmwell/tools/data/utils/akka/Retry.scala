@@ -177,13 +177,20 @@ object Retry extends DataToolsLogging with DataToolsConfig {
           }
           else {
             // server error
-            // special case: sparql-processor //todo: remove this in future
+            // special case: sparql-processor //TODO: remove this in future
 
             e.dataBytes.runFold(ByteString.empty)(_ ++ _).map(_.utf8String).map{ entity=>
               logger.warn(s"[$errorID] server error. Body of response: $entity, headers: ${headersString(h)}")
             }
 
-            if (e.toString contains "Fetching") {
+            // special case: sparql-processor //TODO: remove this in future
+            if (e.toString contains "SpHandler Parsing error") {
+              logger.warn(
+                s"$labelValue will not schedule a retry for the SpHandler Parsing Error"
+              )
+
+              None
+            } else if (e.toString contains "Fetching") {
               logger.warn(
                 s"$labelValue will not schedule a retry on data ${concatByteStrings(data, endl).utf8String}"
               )

@@ -89,7 +89,7 @@ class SpHandlerController @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: E
     import SpHandler._
 
     Try(parse(req)) match {
-      case Failure(_) => Future.successful(wsutil.exceptionToResponse(new IllegalArgumentException("Parsing error")))
+      case Failure(_) => Future.successful(wsutil.exceptionToResponse(new IllegalArgumentException("SpHandler Parsing error")))
       case Success(fun) => {
         val formatByRestOpt = if (formatByRest.nonEmpty) Some(formatByRest) else None
         val rp = RequestParameters(req, formatByRestOpt)
