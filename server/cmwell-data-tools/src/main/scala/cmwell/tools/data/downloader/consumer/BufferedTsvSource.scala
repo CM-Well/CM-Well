@@ -319,11 +319,12 @@ class BufferedTsvSource(initialToken: Future[String],
                   case Success(consumedInfotons) =>
                     callback.invoke((consumedInfotons, nextToken))
                   case Failure(ex) =>
-                    logger.error(s"Received error. scheduling a retry in $retryTimeout", ex)
-                    if (reqRetryLimit > 0)
+                    if (reqRetryLimit > 0) {
+                      logger.error(s"Received error. scheduling a retry in $retryTimeout", ex)
                       materializer.scheduleOnce(retryTimeout, () =>
                         invokeBufferFillerCallback(sendNextChunkRequest(currentConsumeToken), reqRetryLimit-1)
                       )
+                    }
                     else
                     {
                       logger.error("Retry limit has exceeded. Going to close stream without completing all TSVs.", ex)
