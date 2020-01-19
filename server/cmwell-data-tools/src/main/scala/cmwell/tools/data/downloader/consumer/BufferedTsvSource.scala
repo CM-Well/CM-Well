@@ -251,8 +251,6 @@ class BufferedTsvSource(initialToken: Future[String],
                   )
               }
 
-              e.discardBytes()
-
               ConsumeResponse(token=Some(token), consumeComplete = false, infotonSource =
                 Source.failed(new Exception(s"Status is $s")))
 
