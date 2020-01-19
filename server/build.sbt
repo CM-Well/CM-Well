@@ -178,6 +178,7 @@ dependenciesManager in Global := {
   case ("xml-apis","xml-apis")                                     => "xml-apis" % "xml-apis" % "1.4.01"
   case ("uk.org.lidalia","sysout-over-slf4j")                      => "uk.org.lidalia" % "sysout-over-slf4j" % "1.0.2"
   case ("nl.gn0s1s", "bump")                                       => "nl.gn0s1s" %% "bump" % "0.1.3"
+  case ("org.scala-lang.modules", "scala-collection-compat")       => "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.3"
 }
 
 //dependencyOverrides in Global ++= {
@@ -250,7 +251,9 @@ lazy val dc            = (project in file("cmwell-dc")).enablePlugins(CMWellBuil
 lazy val cons          = (project in file("cmwell-cons")).enablePlugins(CMWellBuild)                                dependsOn(common, util, ctrl) aggregate(ws, ctrl, dc)
 lazy val pluginGremlin = (project in file("cmwell-plugin-gremlin")).enablePlugins(CMWellBuild)
 lazy val spa           = (project in file("cmwell-spa")) .enablePlugins(CMWellBuild)
-lazy val dataTools     = (project in file("cmwell-data-tools")).enablePlugins(CMWellBuild)
+lazy val dataTools     = (project in file("cmwell-data-tools")).settings(
+                            crossScalaVersions := List("2.12.10", "2.13.0"),
+                          ).enablePlugins(CMWellBuild)
 lazy val dataToolsApp  = (project in file("cmwell-data-tools-app")).enablePlugins(CMWellBuild)                      dependsOn(dataTools)
 lazy val sparqlAgent   = (project in file("cmwell-sparql-agent")).enablePlugins(CMWellBuild)                        dependsOn(dataTools, grid, util, ctrl)
 lazy val tracking      = (project in file("cmwell-tracking")).enablePlugins(CMWellBuild)                            dependsOn(util, zstore, grid, irw, ctrl)
