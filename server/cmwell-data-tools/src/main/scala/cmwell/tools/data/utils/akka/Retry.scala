@@ -34,6 +34,8 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 import scala.reflect.runtime.universe._
 import scala.util.{Failure, Success, Try}
+//Used for dataTools cross compilation
+import scala.collection.compat._
 
 
 object Retry extends DataToolsLogging with DataToolsConfig {
