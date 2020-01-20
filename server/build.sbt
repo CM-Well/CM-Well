@@ -252,7 +252,7 @@ lazy val cons          = (project in file("cmwell-cons")).enablePlugins(CMWellBu
 lazy val pluginGremlin = (project in file("cmwell-plugin-gremlin")).enablePlugins(CMWellBuild)
 lazy val spa           = (project in file("cmwell-spa")) .enablePlugins(CMWellBuild)
 lazy val dataTools     = (project in file("cmwell-data-tools")).settings(
-                            crossScalaVersions := List("2.12.10", "2.13.0"),
+                            crossScalaVersions := List("2.12.10", scalaVersion.value),
                           ).enablePlugins(CMWellBuild)
 lazy val dataToolsApp  = (project in file("cmwell-data-tools-app")).enablePlugins(CMWellBuild)                      dependsOn(dataTools)
 lazy val sparqlAgent   = (project in file("cmwell-sparql-agent")).enablePlugins(CMWellBuild)                        dependsOn(dataTools, grid, util, ctrl)
