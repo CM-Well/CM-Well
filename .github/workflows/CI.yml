@@ -116,6 +116,9 @@ jobs:
         path: /home/runner/.cache/coursier
         key: cmwell-it-cache-${{ hashFiles('**/build.sbt') }}
         restore-keys: cmwell-it-cache-
+    - name: Moria
+      if: -d "`pwd`/scala-2.12.8"
+      run: echo "MORIA"
     - name: Install Scala
       run: |
         wget https://downloads.lightbend.com/scala/2.12.8/scala-2.12.8.tgz
