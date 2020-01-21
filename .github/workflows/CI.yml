@@ -16,26 +16,16 @@ jobs:
     steps:  
       - name: Checkout code
         uses: actions/checkout@v1
-      - name: check
-        run: echo $HOME 
       - name: Cache .ivy2
         uses: actions/cache@v1
         with:
           path: /home/runner/.ivy2
           key: cmwell-unitTests-ivy2-${{ hashFiles('**/build.sbt') }}
-          restore-keys: cmwell-unitTests-ivy2-
       - name: Cache coursier
         uses: actions/cache@v1
         with:
           path: /home/runner/.cache/coursier
           key: cmwell-unitTests-cache-${{ hashFiles('**/build.sbt') }}
-          restore-keys: cmwell-unitTests-cache-
-      - name: Watch ivy
-        run: |
-          #cd /home/runner/.ivy2
-          #ls -d */*/*/*
-          #cd /home/runner/.cache/coursier
-          #ls -d */*/*/*
       - name: Compile
         timeout-minutes: 10
         working-directory: server
@@ -44,8 +34,7 @@ jobs:
       - name: Test
         working-directory: server
         timeout-minutes: 30
-        run: sbt version
-        #test
+        run: sbt test
 
 # Copy logs to 1 directory, since upload-artifact doesnt support multiple directories or regular expressions
       - name: Aggregate logs (to be saved in later steps)
@@ -119,7 +108,7 @@ jobs:
       uses: actions/cache@v1
       with:
         path: /home/runner/work/CM-Well/CM-Well/scala-2.13.1
-        key: scala213
+        key: scala213_222222
     - name: Install Scala
       run: |
         scalaVersion="2.13.1"
@@ -153,3 +142,10 @@ jobs:
       with:
         name: cmwellItLogs
         path: server/cmwell-it/target/cm-well/log
+
+    - name: Download scala
+      uses: actions/upload-artifact@v1
+      if: always()
+      with:
+        name: scala213_2222
+        path: /home/runner/work/CM-Well/CM-Well/scala-2.13.1
