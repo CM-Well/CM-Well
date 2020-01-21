@@ -116,9 +116,15 @@ jobs:
         path: /home/runner/.cache/coursier
         key: cmwell-it-cache-${{ hashFiles('**/build.sbt') }}
         restore-keys: cmwell-it-cache-
+    - name: Cache Scala 2.13
+      uses: actions/cache@v1
+      with:
+        path: /home/runner/scala-2.13.1
+        key: scala213
     - name: Install Scala
       run: |
         if [ ! -d "`pwd`/scala-2.12.8" ]; then
+          echo "`pwd`"
           echo "Scala does not exist! Going to download"
           wget https://downloads.lightbend.com/scala/2.13.1/scala-2.13.1.tgz
           sudo tar -xf scala-2.13.1.tgz
@@ -147,3 +153,9 @@ jobs:
       with:
         name: cmwellItLogs
         path: server/cmwell-it/target/cm-well/log
+    - name: Download scala
+      uses: actions/upload-artifact@v1
+      if: always()
+      with:
+        name: scala
+        path: /home/runner/scala-2.13.1
