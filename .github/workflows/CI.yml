@@ -44,7 +44,8 @@ jobs:
       - name: Test
         working-directory: server
         timeout-minutes: 30
-        run: sbt test
+        run: sbt version
+        #test
 
 # Copy logs to 1 directory, since upload-artifact doesnt support multiple directories or regular expressions
       - name: Aggregate logs (to be saved in later steps)
@@ -119,7 +120,7 @@ jobs:
     - name: Cache Scala 2.13
       uses: actions/cache@v1
       with:
-        path: /home/runner/scala-2.13.1
+        path: /home/runner/work/CM-Well/CM-Well/scala-2.13.1
         key: scala213
     - name: Install Scala
       run: |
@@ -135,7 +136,8 @@ jobs:
     - name: Integration Tests
       timeout-minutes: 30
       working-directory: server
-      run: sbt IntegrationTest/test
+      run: sbt version
+      #IntegrationTest/test
 
 #####################################
 ##       Save IT Artifacts         ##
@@ -158,4 +160,4 @@ jobs:
       if: always()
       with:
         name: scala
-        path: /home/runner/scala-2.13.1
+        path: /home/runner/work/CM-Well/CM-Well/scala-2.13.1
