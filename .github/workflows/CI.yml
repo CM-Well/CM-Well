@@ -21,11 +21,14 @@ jobs:
         with:
           path: /home/runner/.ivy2
           key: cmwell-unitTests-ivy2-${{ hashFiles('**/build.sbt') }}
+          restore-keys: cmwell-unitTests-ivy2
       - name: Cache coursier
         uses: actions/cache@v1
         with:
           path: /home/runner/.cache/coursier
           key: cmwell-unitTests-cache-${{ hashFiles('**/build.sbt') }}
+          restore-keys: cmwell-unitTests-cache
+
       - name: Compile
         timeout-minutes: 10
         working-directory: server
@@ -70,21 +73,7 @@ jobs:
         with:
           name: node.out
           path: server/cmwell-grid/target/node.out
-      ################################
-      ### TEMP!!
-      - name: Download ivy
-        uses: actions/upload-artifact@v1
-        if: always()
-        with:
-          name: ivy2
-          path: /home/runner/.ivy2
-      - name: Download coursier
-        uses: actions/upload-artifact@v1
-        if: always()
-        with:
-          name: coursier
-          path: /home/runner/.cache/coursier
-          
+
 #####################################
 ##  Running all integration tests  ##
 ##################################### 
@@ -99,16 +88,18 @@ jobs:
       with:
         path: /home/runner/.ivy2
         key: cmwell-it-ivy2-${{ hashFiles('**/build.sbt') }}
+        restore-keys: cmwell-it-ivy2
     - name: Cache coursier
       uses: actions/cache@v1
       with:
         path: /home/runner/.cache/coursier
         key: cmwell-it-cache-${{ hashFiles('**/build.sbt') }}
+        restore-keys: cmwell-it-cache
     - name: Cache Scala 2.13
       uses: actions/cache@v1
       with:
         path: /home/runner/work/CM-Well/CM-Well/scala-2.13.1
-        key: scala213_222222
+        key: scala2_13_1
     - name: Install Scala
       run: |
         scalaVersion="2.13.1"
@@ -142,10 +133,3 @@ jobs:
       with:
         name: cmwellItLogs
         path: server/cmwell-it/target/cm-well/log
-
-    - name: Download scala
-      uses: actions/upload-artifact@v1
-      if: always()
-      with:
-        name: scala213_2222
-        path: /home/runner/work/CM-Well/CM-Well/scala-2.13.1
