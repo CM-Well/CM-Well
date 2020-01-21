@@ -142,19 +142,19 @@ jobs:
 #####################################
 ##       Save IT Artifacts         ##
 ##################################### 
-    - name: Save Integration Tests Logs (test logs)
-      uses: actions/upload-artifact@v1
-      if: always()
-      with:
-        name: itLogs
-        path: server/cmwell-it/target/logs
+#   - name: Save Integration Tests Logs (test logs)
+#     uses: actions/upload-artifact@v1
+#     if: always()
+#     with:
+#       name: itLogs
+#       path: server/cmwell-it/target/logs
 
-    - name: Save Integration Tests Logs (server logs)
-      uses: actions/upload-artifact@v1
-      if: always()
-      with:
-        name: cmwellItLogs
-        path: server/cmwell-it/target/cm-well/log
+#   - name: Save Integration Tests Logs (server logs)
+#     uses: actions/upload-artifact@v1
+#     if: always()
+#     with:
+#       name: cmwellItLogs
+#       path: server/cmwell-it/target/cm-well/log
     - name: Download scala
       uses: actions/upload-artifact@v1
       if: always()
