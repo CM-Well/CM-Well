@@ -60,10 +60,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
   }
 
 
-  val retryLimit = config.hasPath("cmwell.downloader.consumer.http-retry-limit") match {
-    case true => Some(config.getInt("cmwell.downloader.consumer.http-retry-limit"))
-    case false => None
-  }
+  val retryLimit = Some(config.getInt("cmwell.downloader.consumer.http-retry-limit"))
 
   val delayFactor = config.hasPath("cmwell.downloader.consumer.http-retry-delay-factor") match {
     case true => config.getDouble("cmwell.downloader.consumer.http-retry-delay-factor")
@@ -380,7 +377,7 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
       label = label
     ).async
 
-    format match {
+    val withFormat = format match {
       case "tsv" =>
         tsvSource.map { case ((token, tsv), _, _) => token -> tsv.toByteString }
       case "text" =>
@@ -399,6 +396,12 @@ object Downloader extends DataToolsLogging with DataToolsConfig {
         }
 
     }
+    withFormat.log(name = getClass.getSimpleName)
+      .addAttributes(
+        Attributes.logLevels(
+          onElement = Attributes.LogLevels.Off,
+          onFinish = Attributes.LogLevels.Info,
+          onFailure = Attributes.LogLevels.Error))
   }
 }
 
@@ -521,7 +524,7 @@ class Downloader(
 
       val job = Flow[(Seq[Path], State)]
         .map { case (paths, state) => paths -> Some(state) }
-        .via(Retry.retryHttp(timeout, parallelism)(createRequest)) // fetch data from paths
+        .via(Retry.retryHttp(timeout, parallelism, retryLimit)(createRequest)) // fetch data from paths
         .mapAsyncUnordered(parallelism) {
           case (Success(res @ HttpResponse(s, h, e, p)), sentPaths, Some(state)) if s.isSuccess() =>
             logger.debug(
@@ -637,7 +640,7 @@ class Downloader(
       ).addHeader(RawHeader("Accept-Encoding", "gzip"))
     }
 
-    def getMissingUuids(receivedData: ByteString, uuids: Seq[String]) = {
+    def getMissingUuids(receivedData: ByteString, uuids: Seq[String]): Seq[String] = {
       def extractUuidNtriples(data: ByteString) =
         data.utf8String
           .split("\n")
@@ -649,14 +652,14 @@ class Downloader(
           .toSeq
           .distinct
 
-      def extractMissingUuidsJson(data: ByteString) = {
+      def extractMissingUuidsJson(data: ByteString): Seq[String] = {
         val jsonValue = Json.parse(data.toArray)
 
         val missing = jsonValue \\ "irretrievablePaths"
 
         missing.head match {
           case JsArray(arr) if arr.isEmpty => Seq.empty[String]
-          case JsArray(arr)                => arr.map(_.toString)
+          case JsArray(arr)                => arr.view.map(_.toString).toSeq
           case x                           => logger.error(s"unexpected message: $x"); ???
         }
       }
@@ -695,13 +698,15 @@ class Downloader(
       def retryWith(
         state: State
       ): Option[immutable.Iterable[(Seq[Uuid], State)]] = state match {
+        case State(_, _, _, 0) =>
+          None
         case State(uuidsToRequest, _, _, _) =>
           Some(immutable.Seq(uuidsToRequest -> state))
       }
 
       val job = Flow[(Seq[Uuid], State)]
         .map { case (uuids, state) => uuids -> Some(state) }
-        .via(Retry.retryHttp(timeout, parallelism)(createRequest)) // fetch data from uuids
+        .via(Retry.retryHttp(timeout, parallelism, retryLimit)(createRequest)) // fetch data from uuids
         .mapAsyncUnordered(parallelism) {
           case (Success(res @ HttpResponse(s, h, e, p)), sentUuids, Some(state)) if s.isSuccess() =>
             logger.debug(
@@ -759,13 +764,13 @@ class Downloader(
               s"received _out response from ${getHostnameValue(h)} with status=$s, RT=${getResponseTimeValue(h)}"
             )
             Future.successful(
-              Failure(new Exception("cannot send request to send uuids")) -> state
+              Failure(new Exception("cannot send request to send uuids")) -> state.copy(retriesLeft=state.retriesLeft-1)
             )
 
           case (Failure(err), sentUuids, Some(state)) =>
             logger.error(s"error: token=${state.token} $err")
             Future.successful(
-              Failure(new Exception("cannot send request to send uuids")) -> state
+              Failure(new Exception("cannot send request to send uuids")) -> state.copy(retriesLeft=state.retriesLeft-1)
             )
         }
 

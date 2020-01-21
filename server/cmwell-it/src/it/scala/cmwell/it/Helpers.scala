@@ -68,8 +68,8 @@ trait Helpers { self: LazyLogging =>
                               (__ \ "@id.sys").json.prune
   val jsonlInfotonArraySorterAndUuidDateIdEraser = (__ \ "infotons").json.update(
     Reads.JsArrayReads.map{
-      case JsArray(xs: Seq[JsObject @unchecked]) => JsArray(xs.map {
-        case obj => obj.transform(jsonlUuidDateIdEraser andThen jsonlSorter).get
+      case JsArray(xs: collection.IndexedSeq[JsObject @unchecked]) => JsArray(xs.map { obj: JsValue =>
+        obj.transform(jsonlUuidDateIdEraser andThen jsonlSorter).get
       }.sortWith { case (i,j) =>
         val si = ((i \ "path.sys")(0) \ "value").as[String]
         val sj = ((j \ "path.sys")(0) \ "value").as[String]
@@ -80,8 +80,8 @@ trait Helpers { self: LazyLogging =>
   )
   val bagUuidDateEraserAndSorter =  (__ \ "infotons").json.update(
     Reads.JsArrayReads.map{
-      case JsArray(xs: Seq[JsObject @unchecked]) => JsArray(xs.map {
-        case obj => obj.transform(uuidDateEraser andThen fieldsSorter).get
+      case JsArray(xs: collection.IndexedSeq[JsObject @unchecked]) => JsArray(xs.map { obj: JsValue =>
+        obj.transform(uuidDateEraser andThen fieldsSorter).get
       }.sortWith { case (i,j) =>
         val si = (i \ "system" \ "path").as[String]
         val sj = (j \ "system" \ "path").as[String]
@@ -214,9 +214,6 @@ trait Helpers { self: LazyLogging =>
       val strWriter2 = new StringWriter
       model1.write(strWriter1,format,null)
       model2.write(strWriter2,format,null)
-      // scalastyle:off
-      println(s"${strWriter1.toString}\n\ndiffers from:\n\n${strWriter2.toString}")
-      // scalastyle:on
     }
     rv
   }

@@ -235,7 +235,7 @@ class IRWServiceNativeImpl2(
               logger.warn(s"The uuid $uuid is only available in QUORUM")
               if (i.uuid != uuid)
                 logger.error(
-                  s"The infoton [${i.path}] retrieved with different uuid [${i.uuid}] from requested uuid [$uuid]"
+                  s"The infoton [${i.systemFields.path}] retrieved with different uuid [${i.uuid}] from requested uuid [$uuid]"
                 )
             }
             if (i.uuid != uuid && !isARetry) getFromCas(QUORUM, true)
@@ -269,7 +269,7 @@ class IRWServiceNativeImpl2(
                    delay: FiniteDuration = delayOnError,
                    casTimeout: SDuration = defaultCasTimeout)(implicit ec: ExecutionContext): Future[ResultSet] =
     cmwell.util.concurrent.retryWithDelays(Vector.iterate(delayOnError, retries)(_ * 2): _*) {
-      if (casTimeout.isFinite())
+      if (casTimeout.isFinite)
         cmwell.util.concurrent
           .timeoutFuture(executeAsyncInternal(statmentToExec), casTimeout.asInstanceOf[FiniteDuration])
           .andThen {
@@ -300,7 +300,7 @@ class IRWServiceNativeImpl2(
     setPathLast(infoton, level).map(_ => infoton)(scala.concurrent.ExecutionContext.Implicits.global)
 
   def setPathLast(infoton: Infoton, level: ConsistencyLevel = QUORUM): Future[Unit] =
-    setPathLast(infoton.path, infoton.lastModified.toDate, infoton.uuid, level)
+    setPathLast(infoton.systemFields.path, infoton.systemFields.lastModified.toDate, infoton.uuid, level)
 
   def setPathLast(path: String, lastModified: java.util.Date, uuid: String, level: ConsistencyLevel): Future[Unit] = {
     import scala.concurrent.ExecutionContext.Implicits.global
@@ -382,18 +382,16 @@ class IRWServiceNativeImpl2(
   def writeSeqAsync(infoton: Seq[Infoton], level: ConsistencyLevel = QUORUM, skipSetPathLast: Boolean = false)(
     implicit ec: ExecutionContext
   ): Future[Seq[Infoton]] =
-    travector(infoton)(i => writeAsync(i, level, skipSetPathLast))
+      travector(infoton)(i => writeAsync(i, level, skipSetPathLast))
 
   def writeAsync(infoton: Infoton, level: ConsistencyLevel = QUORUM, skipSetPathLast: Boolean = false)(
     implicit ec: ExecutionContext
-  ): Future[Infoton] = {
-
+  ): Future[Infoton] =
     if (skipSetPathLast) writeAsyncDataOnly(infoton, level)
     else
       writeAsyncDataOnly(infoton, level).flatMap { i =>
         setPathLast(infoton, level).map(_ => i)
       }
-  }
 
   def addIndexTimeToUuid(uuid: String, indexTime: Long, level: ConsistencyLevel = QUORUM): Future[Unit] = {
     import scala.concurrent.ExecutionContext.Implicits.global
@@ -407,11 +405,11 @@ class IRWServiceNativeImpl2(
       if (indexTimes.isEmpty) {
         val indexTimeToWrite =
           if (!disableReadCache) Option(dataCahce.getIfPresent(uuid)).flatMap { infoton =>
-            if (infoton.indexTime.fold(false)(_ != indexTime)) {
+            if (infoton.systemFields.indexTime.fold(false)(_ != indexTime)) {
               logger.warn(s"was asked to `addIndexTimeToUuid` with indexTime=$indexTime for uuid [$uuid], " +
-                s"but index time [${infoton.indexTime}] was already in cache. Writing again the indexTime that was in the cache.")
+                s"but index time [${infoton.systemFields.indexTime}] was already in cache. Writing again the indexTime that was in the cache.")
             }
-            infoton.indexTime
+            infoton.systemFields.indexTime
           }.getOrElse(indexTime)
           else indexTime
         writeIndexTimeToUuid(uuid, indexTimeToWrite, level)
@@ -454,7 +452,7 @@ class IRWServiceNativeImpl2(
       else
         rs.all().asScala.map { row =>
           row.getString("value").toLong
-        }
+        }.toSeq
     }
   }
 
@@ -657,7 +655,7 @@ class IRWServiceNativeImpl2(
   def purgeHistorical(infoton: Infoton,
                       isOnlyVersion: Boolean = false,
                       level: ConsistencyLevel = QUORUM): Future[Unit] = {
-    purgeHistorical(infoton.path, infoton.uuid, infoton.lastModified.getMillis, isOnlyVersion, level)
+    purgeHistorical(infoton.systemFields.path, infoton.uuid, infoton.systemFields.lastModified.getMillis, isOnlyVersion, level)
   }
 
   def purgeHistorical(path: String,
@@ -740,9 +738,7 @@ class IRWServiceNativeImpl2(
         val truncate = s"TRUNCATE TABLE data2.$table"
         executeAsync(new SimpleStatement(truncate), truncate)
       })
-      .map { _ =>
-        Unit
-      }
+      .map(_ => ())
   }
 
   def fixPath(path: String,

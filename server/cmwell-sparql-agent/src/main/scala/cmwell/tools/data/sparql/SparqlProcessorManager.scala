@@ -624,7 +624,6 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
     }
   }
 
-  private[this] val parsedJsonsBreakOut = scala.collection.breakOut[Iterable[Json], JobRead, Set[JobRead]]
   def parseJobsJson(configJson: String): Set[JobRead] = {
     import io.circe._
     import io.circe.parser._
@@ -638,7 +637,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
       case Right(json) => {
         try {
           val infotons = json.hcursor.downField("results").downField("infotons").values.get
-          infotons.map { infotonJson =>
+          infotons.view.map { infotonJson =>
             val name = infotonJson.hcursor
               .downField("system")
               .get[String]("path")
@@ -652,7 +651,7 @@ class SparqlProcessorManager(settings: SparqlProcessorManagerSettings) extends A
             val active =
               infotonJson.hcursor.downField("fields").downField("active").downArray.as[Boolean].toOption.getOrElse(true)
             JobRead(Job(name, configRead.copy(sensors = modifiedSensors)), active)
-          }(parsedJsonsBreakOut)
+          }.to(Set)
         } catch {
           case ex: Throwable =>
             logger.warn(

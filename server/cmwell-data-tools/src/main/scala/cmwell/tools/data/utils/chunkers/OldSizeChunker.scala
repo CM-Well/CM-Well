@@ -46,7 +46,7 @@ class OldSizeChunker(maxSize: Int, within: Duration) extends GraphStage[FlowShap
     *
     * @return single elements composed from buffered contents
     */
-  private def bufferToElement() = buffer
+  private def bufferToElement() = buffer.toSeq
 
   /**
     * Clears buffered content

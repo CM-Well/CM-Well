@@ -14,8 +14,6 @@
   */
 package cmwell.kafka
 
-import scala.collection.breakOut
-
 /**
   * KafkaAssigner code is influenced & inspired by
   * https://github.com/SiftScience/kafka-assigner
@@ -34,7 +32,7 @@ class KafkaAssigner {
       else currentAssignment.head._2.size
     }
 
-    val partitions: Set[Int] = currentAssignment.map {
+    val partitions: Set[Int] = currentAssignment.view.map {
       case entry @ (partition, replicas) => {
         if (desiredReplicationFactor < 0) {
           require(replicationFactor == replicas.size,
@@ -42,7 +40,7 @@ class KafkaAssigner {
         }
         partition
       }
-    }(breakOut)
+    }.to(Set)
 
     // Make sure that we actually managed to process something and get the replication factor
     require(replicationFactor > 0, s"Topic $topic does not have a positive replication factor!")

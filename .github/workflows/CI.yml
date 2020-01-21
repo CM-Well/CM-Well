@@ -119,11 +119,12 @@ jobs:
     - name: Install Scala
       run: |
         if [ ! -d "`pwd`/scala-2.12.8" ]; then
-          wget https://downloads.lightbend.com/scala/2.12.8/scala-2.12.8.tgz
-          sudo tar -xf scala-2.12.8.tgz
-          sudo ln -s `pwd`/scala-2.12.8/bin/scala /usr/local/bin/scala
+          echo "Scala does not exist! Going to download"
+          wget https://downloads.lightbend.com/scala/2.13.1/scala-2.13.1.tgz
+          sudo tar -xf scala-2.13.1.tgz
+          sudo ln -s `pwd`/scala-2.13.1/bin/scala /usr/local/bin/scala
         else
-          "Scala exist"
+          echo "Scala exist"
         fi
     - name: Integration Tests
       timeout-minutes: 30

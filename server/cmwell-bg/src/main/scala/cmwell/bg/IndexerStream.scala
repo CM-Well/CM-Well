@@ -238,11 +238,11 @@ class IndexerStream(partition: Int,
                                           indexName: String): Try[InfoAction] = {
               Try {
                 val indexTime =
-                  if (infoton.indexTime.isDefined) None
+                  if (infoton.systemFields.indexTime.isDefined) None
                   else Some(System.currentTimeMillis())
                 val infotonWithUpdatedIndexTime =
                   if (indexTime.isDefined)
-                    infoton.replaceIndexTime(indexTime.get)
+                    infoton.replaceIndexTime(indexTime)
                   else
                     infoton
                 val serializedInfoton =

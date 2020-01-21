@@ -23,14 +23,14 @@ package object domain extends LazyLogging {
 
   def addIndexTime(infoton: Infoton, indexTime: Option[Long], force: Boolean = false): Infoton = infoton match {
     // format: off
-    case i:ObjectInfoton  if force || i.indexTime.isEmpty => i.copy(indexTime = indexTime)
-    case i:FileInfoton    if force || i.indexTime.isEmpty => i.copy(indexTime = indexTime)
-    case i:LinkInfoton    if force || i.indexTime.isEmpty => i.copy(indexTime = indexTime)
-    case i:DeletedInfoton if force || i.indexTime.isEmpty => i.copy(indexTime = indexTime)
+    case i:ObjectInfoton  if force || i.systemFields.indexTime.isEmpty => i.copy(i.systemFields.copy(indexTime = indexTime))
+    case i:FileInfoton    if force || i.systemFields.indexTime.isEmpty => i.copy(i.systemFields.copy(indexTime = indexTime))
+    case i:LinkInfoton    if force || i.systemFields.indexTime.isEmpty => i.copy(i.systemFields.copy(indexTime = indexTime))
+    case i:DeletedInfoton if force || i.systemFields.indexTime.isEmpty => i.copy(i.systemFields.copy(indexTime = indexTime))
     // format: on
-    case i if i.indexTime.isDefined => {
+    case i if i.systemFields.indexTime.isDefined => {
       logger.warn(
-        s"was asked to add indextime, but one is already supplied! uuid=${i.uuid}, path=${i.path}, indexTime=${i.indexTime.get}"
+        s"was asked to add indextime, but one is already supplied! uuid=${i.uuid}, path=${i.systemFields.path}, indexTime=${i.systemFields.indexTime.get}"
       )
       i
     }
@@ -40,14 +40,14 @@ package object domain extends LazyLogging {
   def addIndexInfo(infoton: Infoton, indexTime: Option[Long], indexName: String, force: Boolean = false): Infoton =
     infoton match {
       // format: off
-    case i:ObjectInfoton  if force || i.indexTime.isEmpty => i.copy(indexTime = indexTime, indexName = indexName)
-    case i:FileInfoton    if force || i.indexTime.isEmpty => i.copy(indexTime = indexTime, indexName = indexName)
-    case i:LinkInfoton    if force || i.indexTime.isEmpty => i.copy(indexTime = indexTime, indexName = indexName)
-    case i:DeletedInfoton if force || i.indexTime.isEmpty => i.copy(indexTime = indexTime, indexName = indexName)
+    case i:ObjectInfoton  if force || i.systemFields.indexTime.isEmpty => i.copy(i.systemFields.copy(indexTime = indexTime, indexName = indexName))
+    case i:FileInfoton    if force || i.systemFields.indexTime.isEmpty => i.copy(i.systemFields.copy(indexTime = indexTime, indexName = indexName))
+    case i:LinkInfoton    if force || i.systemFields.indexTime.isEmpty => i.copy(i.systemFields.copy(indexTime = indexTime, indexName = indexName))
+    case i:DeletedInfoton if force || i.systemFields.indexTime.isEmpty => i.copy(i.systemFields.copy(indexTime = indexTime, indexName = indexName))
     // format: on
-      case i if i.indexTime.isDefined => {
+      case i if i.systemFields.indexTime.isDefined => {
         logger.warn(
-          s"was asked to add indextime, but one is already supplied! uuid=${i.uuid}, path=${i.path}, indexTime=${i.indexTime.get}"
+          s"was asked to add indextime, but one is already supplied! uuid=${i.uuid}, path=${i.systemFields.path}, indexTime=${i.systemFields.indexTime.get}"
         )
         i
       }
@@ -56,13 +56,13 @@ package object domain extends LazyLogging {
 
   def addDc(infoton: Infoton, dc: String, force: Boolean = false): Infoton = infoton match {
     // format: off
-    case i:ObjectInfoton  if force || i.dc=="na" => i.copy(dc = dc)
-    case i:FileInfoton    if force || i.dc=="na" => i.copy(dc = dc)
-    case i:LinkInfoton    if force || i.dc=="na" => i.copy(dc = dc)
-    case i:DeletedInfoton if force || i.dc=="na" => i.copy(dc = dc)
+    case i:ObjectInfoton  if force || i.systemFields.dc=="na" => i.copy(i.systemFields.copy(dc = dc))
+    case i:FileInfoton    if force || i.systemFields.dc=="na" => i.copy(i.systemFields.copy(dc = dc))
+    case i:LinkInfoton    if force || i.systemFields.dc=="na" => i.copy(i.systemFields.copy(dc = dc))
+    case i:DeletedInfoton if force || i.systemFields.dc=="na" => i.copy(i.systemFields.copy(dc = dc))
     // format: on
-    case i if i.dc != "na" => {
-      logger.warn(s"was asked to add dc, but one is already supplied! uuid=${i.uuid}, path=${i.path}, dc=${i.dc}")
+    case i if i.systemFields.dc != "na" => {
+      logger.warn(s"was asked to add dc, but one is already supplied! uuid=${i.uuid}, path=${i.systemFields.path}, dc=${i.systemFields.dc}")
       i
     }
     case _ => ???
@@ -70,27 +70,27 @@ package object domain extends LazyLogging {
 
   def addDcAndIndexTimeForced(infoton: Infoton, dc: String, indexTime: Long): Infoton = infoton match {
     // format: off
-    case i:ObjectInfoton  => i.copy(dc = dc, indexTime = Some(indexTime))
-    case i:FileInfoton    => i.copy(dc = dc, indexTime = Some(indexTime))
-    case i:LinkInfoton    => i.copy(dc = dc, indexTime = Some(indexTime))
-    case i:DeletedInfoton => i.copy(dc = dc, indexTime = Some(indexTime))
+    case i:ObjectInfoton  => i.copy(i.systemFields.copy(dc = dc, indexTime = Some(indexTime)))
+    case i:FileInfoton    => i.copy(i.systemFields.copy(dc = dc, indexTime = Some(indexTime)))
+    case i:LinkInfoton    => i.copy(i.systemFields.copy(dc = dc, indexTime = Some(indexTime)))
+    case i:DeletedInfoton => i.copy(i.systemFields.copy(dc = dc, indexTime = Some(indexTime)))
     // format: on
     case _ => ???
   }
 
   def autoFixDcAndIndexTime(i: Infoton, dcIfNeeded: String): Option[Infoton] = {
-    if (i.dc == "na" || i.indexTime.isEmpty) {
+    if (i.systemFields.dc == "na" || i.systemFields.indexTime.isEmpty) {
 
-      val idxT = i.indexTime.orElse(Some(i.lastModified.getMillis))
+      val idxT = i.systemFields.indexTime.orElse(Some(i.systemFields.lastModified.getMillis))
 
-      val dc = if (i.dc == "na") dcIfNeeded else i.dc
+      val dc = if (i.systemFields.dc == "na") dcIfNeeded else i.systemFields.dc
 
       i match {
         // format: off
-        case i: ObjectInfoton  => Some(i.copy(dc = dc, indexTime = idxT))
-        case i: FileInfoton    => Some(i.copy(dc = dc, indexTime = idxT))
-        case i: LinkInfoton    => Some(i.copy(dc = dc, indexTime = idxT))
-        case i: DeletedInfoton => Some(i.copy(dc = dc, indexTime = idxT))
+        case i: ObjectInfoton  => Some(i.copy(i.systemFields.copy(dc = dc, indexTime = idxT)))
+        case i: FileInfoton    => Some(i.copy(i.systemFields.copy(dc = dc, indexTime = idxT)))
+        case i: LinkInfoton    => Some(i.copy(i.systemFields.copy(dc = dc, indexTime = idxT)))
+        case i: DeletedInfoton => Some(i.copy(i.systemFields.copy(dc = dc, indexTime = idxT)))
         // format: on
         case _ => ???
       }

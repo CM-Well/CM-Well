@@ -15,17 +15,18 @@
 package actions
 
 import akka.util.Timeout
-import cmwell.domain.{FileContent, FileInfoton, VirtualInfoton}
+import cmwell.domain.{FileContent, FileInfoton, SystemFields, VirtualInfoton}
 import cmwell.ws.util.DateParser._
 import k.grid._
 import k.grid.monitoring._
-import org.joda.time.{DateTime, Period}
+import org.joda.time.{DateTime, DateTimeZone, Period}
 import org.joda.time.format.PeriodFormatterBuilder
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.Success
 import akka.pattern.ask
+
 import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
@@ -146,8 +147,8 @@ object GridMonitoring {
       }
       Some(
         VirtualInfoton(
-          FileInfoton(path, dc, None, content = Some(FileContent(contentTranformator(payload).getBytes, mimeType)),
-            lastModifiedBy = "VirtualInfoton", protocol = None)
+          FileInfoton(SystemFields(path, new DateTime(DateTimeZone.UTC), "VirtualInfoton", dc, None, "", "http"),
+            content = Some(FileContent(contentTranformator(payload).getBytes, mimeType)))
         )
       )
     }
@@ -160,8 +161,8 @@ object GridMonitoring {
     }
     val md = MarkdownTable(MarkdownTuple("Singleton", "Role", "Location"), body.toSeq).get
     Future.successful(
-      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(md.getBytes, "text/x-markdown")),
-        lastModifiedBy = "VirtualInfoton", protocol = None)))
+      Some(VirtualInfoton(FileInfoton(SystemFields(path, new DateTime(DateTimeZone.UTC), "VirtualInfoton", dc, None, "", "http"),
+        content = Some(FileContent(md.getBytes, "text/x-markdown")))))
     )
   }
 
@@ -173,8 +174,8 @@ object GridMonitoring {
       val actorsFlatten = actors.flatten
       val body = actorsFlatten.toSeq.sortBy(_._1).map(t => MarkdownTuple(t._1, t._2, t._3))
       val md = MarkdownTable(MarkdownTuple("Member", "Actor", "Latency (ms)"), body).get
-      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(md.getBytes, "text/x-markdown")),
-        lastModifiedBy = "VirtualInfoton", protocol = None)))
+      Some(VirtualInfoton(FileInfoton(SystemFields(path, new DateTime(DateTimeZone.UTC), "VirtualInfoton", dc, None, "", "http"),
+        content = Some(FileContent(md.getBytes, "text/x-markdown")))))
     }
   }
 
@@ -196,8 +197,8 @@ object GridMonitoring {
         MarkdownTuple(bodyDatum: _*)
       }
       val md = MarkdownTable(MarkdownTuple(actorsMap.keySet.toSeq.sorted: _*), body.toSeq).get
-      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(md.getBytes, "text/x-markdown")),
-        lastModifiedBy = "VirtualInfoton", protocol = None)))
+      Some(VirtualInfoton(FileInfoton(SystemFields(path, new DateTime(DateTimeZone.UTC), "VirtualInfoton", dc, None, "", "http"),
+        content = Some(FileContent(md.getBytes, "text/x-markdown")))))
     }
   }
 }

@@ -13,5 +13,5 @@ fi
 
 echo "Stopping CM-Well on node $1"
 source ./cmw.env
-scala -nc -cp 'cons-lib/*' -I cmw.conf -e "cmw.shutdown(List(\"$1\")); sys.exit(0)"
+scala -cp 'cons-lib/*' -I cmw.conf -e "cmw.shutdown(List(\"$1\")); sys.exit(0)"
 

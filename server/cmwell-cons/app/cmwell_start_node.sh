@@ -13,8 +13,8 @@ fi
 
 echo "Starting CM-Well on node $1"
 source ./cmw.env
-scala -nc -cp 'cons-lib/*' -I cmw.conf -e "cmw.start(List(\"$1\")); sys.exit(0)"
+scala -cp 'cons-lib/*' -I cmw.conf -e "cmw.start(List(\"$1\")); sys.exit(0)"
 
 echo "Enabling Elastic rebalancing."
 source ./cmw.env
-scala -nc -cp 'cons-lib/*' -I cmw.conf -e "cmw.enableElasticsearchUpdate; sys.exit(0)"
+scala -cp 'cons-lib/*' -I cmw.conf -e "cmw.enableElasticsearchUpdate; sys.exit(0)"

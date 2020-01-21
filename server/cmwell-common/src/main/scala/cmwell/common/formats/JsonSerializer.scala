@@ -196,12 +196,11 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
         jsonGenerator.writeStringField("indexName", indexName)
         jsonGenerator.writeFieldName("persistOffsets")
         encodeOffsetSeqWithGenerator(persistOffsets, jsonGenerator)
-      case DeleteAttributesCommand(path, fields, lastModified, lastModifiedBy, trackingID, prevUUID, protocol) =>
+      case DeleteAttributesCommand(path, fields, lastModified, lastModifiedBy, trackingID, prevUUID) =>
         jsonGenerator.writeStringField("path", path)
         encodeFieldsWithGenerator(fields, jsonGenerator)
         jsonGenerator.writeStringField("lastModified", dateFormatter.print(lastModified))
         jsonGenerator.writeStringField("lastModifiedBy", lastModifiedBy)
-        protocol.foreach(jsonGenerator.writeStringField("protocol", _))
       case DeletePathCommand(path, lastModified, lastModifiedBy, trackingID, prevUUID) =>
         jsonGenerator.writeStringField("path", path)
         jsonGenerator.writeStringField("lastModified", dateFormatter.print(lastModified))
@@ -211,7 +210,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
         encodeUpdateFieldsWithGenerator(deleteFields, updateFields, jsonGenerator)
         jsonGenerator.writeStringField("lastModified", dateFormatter.print(lastModified))
         jsonGenerator.writeStringField("lastModifiedBy", lastModifiedBy)
-        protocol.foreach(jsonGenerator.writeStringField("protocol", _))
+        jsonGenerator.writeStringField("protocol", protocol)
       case OverwriteCommand(infoton, trackingID) =>
         jsonGenerator.writeFieldName("infoton")
         encodeInfotonWithGenerator(infoton, jsonGenerator)
@@ -343,25 +342,25 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
     if (newBG && toEs) {
       jsonGenerator.writeStringField("kind", infoton.kind)
     }
-    jsonGenerator.writeStringField("path", infoton.path)
-    jsonGenerator.writeStringField("lastModified", dateFormatter.print(infoton.lastModified))
-    jsonGenerator.writeStringField("lastModifiedBy", infoton.lastModifiedBy)
-    jsonGenerator.writeStringField("indexName", infoton.indexName)
+    jsonGenerator.writeStringField("path", infoton.systemFields.path)
+    jsonGenerator.writeStringField("lastModified", dateFormatter.print(infoton.systemFields.lastModified))
+    jsonGenerator.writeStringField("lastModifiedBy", infoton.systemFields.lastModifiedBy)
+    jsonGenerator.writeStringField("indexName", infoton.systemFields.indexName)
     jsonGenerator.writeStringField("uuid", infoton.uuid)
     jsonGenerator.writeStringField("parent", infoton.parent)
-    jsonGenerator.writeStringField("dc", infoton.dc)
+    jsonGenerator.writeStringField("dc", infoton.systemFields.dc)
 
 
     //will add quad under system containing all the quads available in the fields
     if (toEs) {
-      if (infoton.indexTime.nonEmpty && infoton.dc == SettingsHelper.dataCenter) {
+      if (infoton.systemFields.indexTime.nonEmpty && infoton.systemFields.dc == SettingsHelper.dataCenter) {
         logger.debug(
           s"should not happen when writing a new infoton! indexTime should only be created while indexing, and not before. uuid = ${infoton.uuid}"
         )
       }
 
       val idxT = {
-        if (infoton.indexTime.isEmpty) {
+        if (infoton.systemFields.indexTime.isEmpty) {
           logger.error(
             s"indexing an infoton with no indexTime defined! setting a value of 613 as default. uuid = [${infoton.uuid}]"
           )
@@ -372,7 +371,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
           // default value MUST be set in the past,
           // though it really should'nt happen.
           613L
-        } else infoton.indexTime.get
+        } else infoton.systemFields.indexTime.get
       }
       jsonGenerator.writeNumberField("indexTime", idxT)
       val quadsOpt = infoton.fields.map(
@@ -399,16 +398,16 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
         else
           jsonGenerator.writeBooleanField("current", false)
       }
-    } else if (infoton.indexTime.isDefined) { //this means it's an overwrite command to tlog 1
-      if (infoton.dc == SettingsHelper.dataCenter) {
+    } else if (infoton.systemFields.indexTime.isDefined) { //this means it's an overwrite command to tlog 1
+      if (infoton.systemFields.dc == SettingsHelper.dataCenter) {
         logger.debug("if should not exist (I think...)")
       }
-      val idxT = infoton.indexTime.get
+      val idxT = infoton.systemFields.indexTime.get
 //      p.success(None)//(Some(idxT))
       jsonGenerator.writeNumberField("indexTime", idxT)
     }
 
-    infoton.protocol.foreach(jsonGenerator.writeStringField("protocol", _))
+    jsonGenerator.writeStringField("protocol", infoton.systemFields.protocol)
 
     jsonGenerator.writeEndObject() // end system object field
     // write field object, if not empty
@@ -416,7 +415,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
       encodeFieldsWithGenerator(fields, jsonGenerator, toEs = toEs)
     }
     infoton match {
-      case FileInfoton(_, _, _, _, _, _, Some(FileContent(dataOpt, mimeType, dl, dp)), _, _) =>
+      case FileInfoton(_, _, Some(FileContent(dataOpt, mimeType, dl, dp))) =>
         jsonGenerator.writeObjectFieldStart("content")
         jsonGenerator.writeStringField("mimeType", mimeType)
         dataOpt.foreach { data =>
@@ -435,7 +434,7 @@ object JsonSerializer extends AbstractJsonSerializer with LazyLogging {
         }
         jsonGenerator.writeNumberField("length", dataOpt.fold(dl)(_.length))
         jsonGenerator.writeEndObject()
-      case LinkInfoton(_, _, _, _, _, _, linkTo, linkType, _, _) =>
+      case LinkInfoton(_, _, linkTo, linkType) =>
         jsonGenerator.writeStringField("linkTo", linkTo)
         jsonGenerator.writeNumberField("linkType", linkType)
       case _ =>
