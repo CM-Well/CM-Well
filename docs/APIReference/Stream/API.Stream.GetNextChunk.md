@@ -50,8 +50,7 @@ Parameter | Description&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Values&nbsp;&nbsp;
 :----------|:-------------|:--------|:---------
 session-ttl | The time, in milliseconds, until the iteration session expires. The iteration token is only valid for this length of time. The default value is 15 seconds; the maximal value is 60 seconds. | A positive integer up to 60. | session-ttl=20
 format | The output format of the streamed chunks. The default value is **Atom Feed**. | See [Query Parameters](../../APIReference/UsageTopics/API.QueryParameters.md). | format=ttl
-
-Suggestion: add also length parameters - determine number of results for each chunk (defualt=10)
+length | The number of results for each chunk. The default value is 10. | See [Query Parameters](../../APIReference/UsageTopics/API.QueryParameters.md). | length=10
 
 ## Code Example
 
