@@ -26,8 +26,8 @@ jobs:
         uses: actions/cache@v1
         with:
           path: /home/runner/.cache/coursier
-          key: cmwell-unitTests-cache-${{ hashFiles('**/build.sbt') }}
-          restore-keys: cmwell-unitTests-cache
+          key: cmwell-unitTests-coursier-${{ hashFiles('**/build.sbt') }}
+          restore-keys: cmwell-unitTests-coursier
 
       - name: Compile
         timeout-minutes: 10
@@ -93,25 +93,29 @@ jobs:
       uses: actions/cache@v1
       with:
         path: /home/runner/.cache/coursier
-        key: cmwell-it-cache-${{ hashFiles('**/build.sbt') }}
-        restore-keys: cmwell-it-cache
+        key: cmwell-it-coursier-${{ hashFiles('**/build.sbt') }}
+        restore-keys: cmwell-it-coursier
     - name: Cache Scala 2.13
       uses: actions/cache@v1
       with:
         path: /home/runner/work/CM-Well/CM-Well/scala-2.13.1
-        key: scala2_13_1
+        key: scala-${{ hashFiles('**/extract-java-scala.sh') }}
     - name: Install Scala
       run: |
+        scalaLocation="/home/runner/scala"
         scalaVersion="2.13.1"
-        if [ ! -d "`pwd`/scala-$scalaVersion" ]; then
-          echo "`pwd`"
+        if [ ! -d "$scalaLocation/scala-$scalaVersion" ]; then
           echo "Scala does not exist! Going to download"
+          mkdir $scalaLocation
+          cd $scalaLocation
           wget https://downloads.lightbend.com/scala/$scalaVersion/scala-$scalaVersion.tgz
           sudo tar -xf scala-$scalaVersion.tgz
+          sudo ln -s $scalaLocation/scala-$scalaVersion/bin/scala /usr/local/bin/scala
         else
           echo "Scala exist. Will only create the sym-link"
-          sudo ln -s `pwd`/scala-$scalaVersion/bin/scala /usr/local/bin/scala
+          sudo ln -s $scalaLocation/scala-$scalaVersion/bin/scala /usr/local/bin/scala
         fi
+
     - name: Integration Tests
       timeout-minutes: 30
       working-directory: server
