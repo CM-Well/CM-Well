@@ -23,7 +23,8 @@ import scala.util.Try
   */
 object MarkdownFormatter {
   def asHtmlString(i: FileInfoton): String = {
-    val title = Try(i.path.drop(i.path.lastIndexOf('/') + 1).replace(".md", "")).toOption.getOrElse(i.path)
+    val title = Try(i.systemFields.path.drop(i.systemFields.path.lastIndexOf('/') + 1).replace(
+      ".md", "")).toOption.getOrElse(i.systemFields.path)
     val content = xml.Utility.escape(i.content.get.asString)
     asHtmlString(title, content)
   }

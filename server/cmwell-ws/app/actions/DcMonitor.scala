@@ -21,10 +21,11 @@ import cmwell.domain._
 import cmwell.fts.{DatesFilter, FieldFilter, FieldOperator, PaginationParams}
 import k.grid.{Grid, WhoAreYou, WhoIAm}
 import logic.CRUDServiceFS
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, DateTimeZone}
 
 import scala.concurrent.Future
 import akka.pattern.ask
+
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Try
@@ -68,7 +69,8 @@ object DcMonitor {
           |***Data center distribution*** <br>
           |**Current Data center host: $dcAddress** <br>
           |""".stripMargin + markdownTable.get
-      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(body.getBytes, "text/x-markdown")), protocol = None)))
+      Some(VirtualInfoton(FileInfoton(SystemFields(path, new DateTime(DateTimeZone.UTC), "VirtualInfoton", dc, None, "", "http"),
+        content = Some(FileContent(body.getBytes, "text/x-markdown")))))
     }
   }
 
@@ -120,7 +122,8 @@ object DcMonitor {
           |**Current Data center host: $dcAddress** <br>
           |""".stripMargin + table.get
 
-      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(body.getBytes, "text/x-markdown")), protocol = None)))
+      Some(VirtualInfoton(FileInfoton(SystemFields(path, new DateTime(DateTimeZone.UTC), "VirtualInfoton", dc, None, "", "http"),
+        content = Some(FileContent(body.getBytes, "text/x-markdown")))))
     }
   }
 

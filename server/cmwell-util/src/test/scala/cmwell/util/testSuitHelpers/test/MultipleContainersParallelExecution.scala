@@ -15,32 +15,35 @@
 
 package cmwell.util.testSuitHelpers.test
 
+import java.util.concurrent.Executors
+
+import com.dimafeng.testcontainers.lifecycle.TestLifecycleAware
 import com.dimafeng.testcontainers.{Container, LazyContainer}
 import org.junit.runner.Description
+import org.testcontainers.lifecycle.TestDescription
 
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
-class MultipleContainersParallelExecution private(containers: Seq[LazyContainer[_]]) extends Container {
-  import scala.concurrent.ExecutionContext.Implicits.global
+class MultipleContainersParallelExecution private(containers: Seq[LazyContainer[_]]) extends Container with TestLifecycleAware {
+  implicit val ec = ExecutionContext.fromExecutor(Executors.newWorkStealingPool(10))
   import scala.concurrent.duration._
 
-  override def finished()(implicit description: Description): Unit = {
-    val f = Future.traverse(containers)(lazyContainer => Future(lazyContainer.finished()(description)))
+
+  override def beforeTest(description: TestDescription): Unit = {
+    containers.foreach(_.beforeTest(description))
+  }
+
+  override def afterTest(description: TestDescription, throwable: Option[Throwable]): Unit = {
+    containers.foreach(_.afterTest(description, throwable))
+  }
+
+  override def start(): Unit = {
+    val f = Future.traverse(containers)(lazyContainer => Future(lazyContainer.start()))
     Await.ready(f, 5.minutes)
   }
 
-  override def succeeded()(implicit description: Description): Unit = {
-    val f = Future.traverse(containers)(lazyContainer => Future(lazyContainer.succeeded()(description)))
-    Await.ready(f, 5.minutes)
-  }
-
-  override def starting()(implicit description: Description): Unit = {
-    val f = Future.traverse(containers)(lazyContainer => Future(lazyContainer.starting()(description)))
-    Await.ready(f, 5.minutes)
-  }
-
-  override def failed(e: Throwable)(implicit description: Description): Unit = {
-    val f = Future.traverse(containers)(lazyContainer => Future(lazyContainer.failed(e)(description)))
+  override def stop(): Unit = {
+    val f = Future.traverse(containers)(lazyContainer => Future(lazyContainer.stop()))
     Await.ready(f, 5.minutes)
   }
 }

@@ -22,7 +22,7 @@ import java.util.Properties
 import org.yaml.snakeyaml.Yaml
 import sbt.Keys._
 import sbt._
-import semverfi._
+import nl.gn0s1s.bump.SemVer
 
 import scala.sys.process._
 import scala.concurrent._
@@ -99,7 +99,7 @@ object CassandraPlugin extends AutoPlugin {
 		cassandraCqlPort := {
 			val oldPort = cassandraHost.value
 			val ver = cassandraVersion.value
-				if(Version(ver) > Version("2.1.0")) "9042"
+				if(SemVer(ver) > SemVer("2.1.0")) "9042"
 				else oldPort
 		},
 		classpathTypes ~=  (_ + "tar.gz"),

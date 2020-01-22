@@ -18,14 +18,14 @@ import akka.{Done, NotUsed}
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.coding.Gzip
-import akka.http.scaladsl.model.headers.{`Accept-Encoding`, `Content-Encoding`, HttpEncodings, RawHeader}
+import akka.http.scaladsl.model.headers.{HttpEncodings, RawHeader, `Accept-Encoding`, `Content-Encoding`}
 import akka.http.scaladsl.model.{HttpEntity, _}
 import akka.stream.Supervision._
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.stream.stage.{GraphStage, GraphStageLogic, GraphStageWithMaterializedValue, InHandler}
 import akka.stream._
 import akka.util.{ByteString, ByteStringBuilder}
-import cmwell.dc.{LazyLogging, Settings}
+import cmwell.dc.{LazyLogging, Settings, stream}
 import cmwell.dc.stream.MessagesTypesAndExceptions._
 import cmwell.dc.stream.SingleMachineInfotonIngester.IngestInput
 
@@ -39,7 +39,7 @@ import scala.concurrent.duration.Duration
   */
 object SingleMachineInfotonIngester extends LazyLogging {
 
-  type IngestInput = Seq[InfotonData]
+  type IngestInput = Seq[BaseInfotonData]
   type IngestOutput = HttpResponse
 
   case class IngestStateStatus(retriesLeft: Int, singleRetryCount: Int, lastException: Option[Throwable])
@@ -59,9 +59,15 @@ object SingleMachineInfotonIngester extends LazyLogging {
         case (infotonSeq, state) => {
           val payloadBuilder = new ByteStringBuilder
           // no need for end line because each line in already suffixed with it
-          infotonSeq.foreach(payloadBuilder ++= _.data)
+          infotonSeq.foreach{i=>
+            val firstLine = i.data.takeWhile(_ != stream.newLine)
+            if(firstLine.utf8String.contains("meta/sys#uuid"))
+              payloadBuilder ++= i.data.drop(firstLine.length + 1)
+            else
+              payloadBuilder ++= i.data
+          }
           val payload = payloadBuilder.result
-          (createRequest(location, payload), state)
+          (createRequest(location, payload, dcKey.ingestOperation), state)
         }
       }
       .via(Http().superPool[IngestState]())
@@ -71,20 +77,20 @@ object SingleMachineInfotonIngester extends LazyLogging {
   private[this] val createRequest = if (Settings.gzippedIngest) createRequestWithGzip _ else createRequestNoGzip _
   private val tokenHeader: HttpHeader = RawHeader("X-CM-WELL-TOKEN", dcaToken)
 
-  private[this] def createRequestNoGzip(location: String, payload: ByteString) = {
+  private[this] def createRequestNoGzip(location: String, payload: ByteString, op:String) = {
     val entity = HttpEntity(ContentTypes.`text/plain(UTF-8)`, payload)
     HttpRequest(method = HttpMethods.POST,
-                uri = s"http://$location/_ow?format=nquads",
+                uri = s"http://$location/$op?format=nquads",
                 entity = entity,
                 headers = scala.collection.immutable.Seq(tokenHeader))
   }
 
   val gzipContentEncoding = `Content-Encoding`(HttpEncodings.gzip)
-  private[this] def createRequestWithGzip(location: String, payload: ByteString) = {
+  private[this] def createRequestWithGzip(location: String, payload: ByteString, op:String) = {
     val entity = HttpEntity(ContentTypes.`text/plain(UTF-8)`, Gzip.encode(payload))
     HttpRequest(
       method = HttpMethods.POST,
-      uri = s"http://$location/_ow?format=nquads",
+      uri = s"http://$location/$op?format=nquads",
       entity = entity,
       headers = scala.collection.immutable.Seq(tokenHeader, gzipContentEncoding)
     )
@@ -108,7 +114,7 @@ object SingleMachineInfotonIngester extends LazyLogging {
           val singleCount = status.singleRetryCount + 1 //if (state._1.size > 1) 0 else Settings.initialSingleIngestRetryCount - state._2.retriesLeft + 1
           yellowlog.info(
             s"Ingest succeeded only after $bulkCount bulk ingests and $singleCount single infoton ingests. uuids: ${input
-              .map(i => i.meta.uuid.utf8String)
+              .map(i => Util.extractUuid(i))
               .mkString(",")}."
           )
         }
@@ -124,7 +130,7 @@ object SingleMachineInfotonIngester extends LazyLogging {
           if (s == StatusCodes.ServiceUnavailable)
             IngestServiceUnavailableException(
               s"Ingest infotons failed. Sync $dcKey, using local location $location uuids: ${state._1
-                .map(i => i.meta.uuid.utf8String)
+                .map(i => Util.extractUuid(i))
                 .mkString(",")}.",
               bodyFut,
               e
@@ -132,7 +138,7 @@ object SingleMachineInfotonIngester extends LazyLogging {
           else
             IngestBadResponseException(
               s"Ingest infotons failed. Sync $dcKey, using local location $location uuids: ${state._1
-                .map(i => i.meta.uuid.utf8String)
+                .map(i => Util.extractUuid(i))
                 .mkString(",")}.",
               bodyFut,
               e
@@ -144,7 +150,7 @@ object SingleMachineInfotonIngester extends LazyLogging {
       case (Failure(e), state) => {
         val ex = IngestException(
           s"Ingest infotons failed. Sync $dcKey, using local location $location uuids: ${state._1
-            .map(i => i.meta.uuid.utf8String)
+            .map(i => Util.extractUuid(i))
             .mkString(",")}",
           e
         )
@@ -153,4 +159,6 @@ object SingleMachineInfotonIngester extends LazyLogging {
          (state._1, IngestStateStatus(state._2.retriesLeft, state._2.singleRetryCount, Some(ex))))
       }
     }
+
+
 }

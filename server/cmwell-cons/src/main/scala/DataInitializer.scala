@@ -298,7 +298,7 @@ class DataInitializer(h: Host, jwt: String, rootDigest: String, rootDigest2: Str
       case knownPostType => Seq("X-CM-Well-Type" -> knownPostType.toString)
     })
 
-    unsafeRetryUntil(isOk, 9, 250.millis)(
+    unsafeRetryUntil(isOk, 12, 250.millis)(
       Http.post(url, payload, Some(contentType.toString), queryParameters, headers)(UTF8StringHandler,
                                                                                     implicitly[ExecutionContext],
                                                                                     sys,

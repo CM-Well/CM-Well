@@ -23,7 +23,7 @@ import akka.kafka.scaladsl.Consumer
 import akka.stream.{KillSwitch, KillSwitches, SourceShape}
 import akka.stream.scaladsl.{GraphDSL, Keep, MergePreferred, Source}
 import cmwell.common.formats.{BGMessage, CompleteOffset}
-import cmwell.common.{Command, CommandSerializer}
+import cmwell.common.{Command, CommandSerializer, SingleCommand}
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.{Metric, MetricName, TopicPartition}
@@ -74,6 +74,13 @@ object CommandsSource extends LazyLogging {
             logger.error(s"deserialize command error for msg [$msg] and value: [$s]",err)
           }
           val command = commandTry.get
+
+          command match {
+            case SingleCommand(_, _, _, _, lastModifiedBy) =>
+              if (lastModifiedBy == "") logger.error("SingleCommand was written without lastModifiedBy field! command: ",command)
+            case _ =>
+          }
+
           logger.debug(s"consumed command: $command")
           BGMessage[Command](CompleteOffset(msg.topic(), msg.offset()), command)
         }.via(sharedKillSwitch.flow)

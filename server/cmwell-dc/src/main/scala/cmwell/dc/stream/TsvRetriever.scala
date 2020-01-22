@@ -24,7 +24,7 @@ import akka.stream.{ActorAttributes, KillSwitch, KillSwitches, Materializer}
 import akka.stream.Supervision.Decider
 import akka.stream.contrib.{Retry, SourceGen}
 import akka.stream.scaladsl.{Flow, Framing, Keep, Sink, Source}
-import akka.util.ByteString
+import akka.util.{ByteString, Timeout}
 import cmwell.dc.{LazyLogging, Settings}
 import cmwell.dc.Settings._
 import cmwell.dc.stream.MessagesTypesAndExceptions._
@@ -32,7 +32,6 @@ import cmwell.dc.stream.akkautils.DebugStage
 import cmwell.util.akka.http.HttpZipDecoder
 import com.typesafe.config.ConfigFactory
 
-import scala.collection.parallel.immutable
 import scala.util.{Failure, Success, Try}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -65,7 +64,7 @@ object TsvRetriever extends LazyLogging {
     logger.trace(
       s"parseTSVAndCreateInfotonDataFromIt: [path='$path',uuid='${uuid.utf8String}',idxt='$idxt']"
     )
-    InfotonData(InfotonMeta(path, uuid, idxt), empty)
+    InfotonData(BaseInfotonData(path, empty), uuid, idxt)
   }
 
   sealed trait ConsumeType
@@ -112,7 +111,7 @@ object TsvRetriever extends LazyLogging {
         logger.error(s"Sync ${dcInfo.key}: Retrieve TSVs failed. " +
                      s"Completing the stream (current got TSVs should be ok unless another exception is caught later). The exception is:", ex)
         None
-    }
+    }(Timeout(1.minute))
   }
 
   def retrieveTsvsWithRetryAndLastPositionKey(dcKey: DcInfoKey, decider: Decider)
@@ -131,6 +130,8 @@ object TsvRetriever extends LazyLogging {
     retrieveTsvsWithRetry(dcKey, decider).alsoToMat(positionKeySink)(Keep.both)
   }
 
+  val bulkConsumeIfAvailable = if (Settings.lockedOnConsume) Consume else BulkConsume
+
   def retrieveTsvsWithRetry(dcKey: DcInfoKey, decider: Decider)(
     implicit mat: Materializer,
     system: ActorSystem
@@ -144,7 +145,7 @@ object TsvRetriever extends LazyLogging {
             positionKey,
             Settings.initialTsvRetryCount,
             None,
-            ConsumeState(BulkConsume, System.currentTimeMillis)
+            ConsumeState(bulkConsumeIfAvailable, System.currentTimeMillis)
         )
       )
       .via(Retry(retrieveTsvFlow(dcKey, decider))(retryDecider(dcKey)))
@@ -168,7 +169,7 @@ object TsvRetriever extends LazyLogging {
         case state @ ConsumeState(BulkConsume, _) => state
         case state @ ConsumeState(Consume, start) =>
           if (stayInThisState(start)) state
-          else ConsumeState(BulkConsume, System.currentTimeMillis)
+          else ConsumeState(bulkConsumeIfAvailable, System.currentTimeMillis)
       }
 
   def retrieveTsvFlow(dcKey: DcInfoKey, decider: Decider)(
@@ -194,7 +195,7 @@ object TsvRetriever extends LazyLogging {
     Flow[(Future[TsvRetrieveInput], TsvRetrieveState)]
       .mapAsync(1) { case (input, state) => input.map(_ -> state) }
       .statefulMapConcat { () =>
-        var currentState = ConsumeState(BulkConsume, System.currentTimeMillis);
+        var currentState = ConsumeState(bulkConsumeIfAvailable, System.currentTimeMillis);
         {
           case (positionKey, state) =>
             currentState = getNewState(state, currentState)
@@ -227,10 +228,14 @@ object TsvRetriever extends LazyLogging {
                 .delimiter(endln, maximumFrameLength = maxTsvLineLength * 2)
             )
             .fold(List[InfotonData]())(
-              (total, bs) => parseTSVAndCreateInfotonDataFromIt(bs) :: total
+              (total, bs) => {
+                val parsed = parseTSVAndCreateInfotonDataFromIt(bs)
+                if (parsed.base.path != "/") parsed :: total
+                else total
+              }
             )
             .map { data =>
-              val sortedData = data.sortBy(_.meta.indexTime)
+              val sortedData = data.sortBy(_.indexTime)
               if (state.retriesLeft < Settings.initialTsvRetryCount) {
                 val consumeCount = Settings.initialTsvRetryCount - state.retriesLeft + 1
                 yellowlog.info(
@@ -323,9 +328,7 @@ object TsvRetriever extends LazyLogging {
               ??? // Shouldn't get here. The retry decider is called only when there is an exception and the ex should be in the state
           }
           val newConsumeOp = consumeState.op match {
-            case BulkConsume
-                if Settings.initialTsvRetryCount - retriesLeft < Settings.bulkTsvRetryCount =>
-              BulkConsume
+            case BulkConsume if Settings.initialTsvRetryCount - retriesLeft < Settings.bulkTsvRetryCount => bulkConsumeIfAvailable
             case _ => Consume
           }
           logger.warn(s"Sync $dcKey: Retrieve TSVs failed. Retries left $retriesLeft. Will try again in $waitSeconds seconds.")

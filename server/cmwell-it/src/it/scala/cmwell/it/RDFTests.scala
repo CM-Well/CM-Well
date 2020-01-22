@@ -177,6 +177,7 @@ class RDFTests extends AsyncFunSpec with Matchers with Helpers with Inspectors w
                                  |{
                                  |  "type" : "ObjectInfoton",
                                  |  "system" : {
+                                 |    "lastModifiedBy" : "pUser",
                                  |    "path" : "/clearforest.com/ce/YB",
                                  |    "parent" : "/clearforest.com/ce",
                                  |    "dataCenter" : "$dcName"

@@ -12,13 +12,13 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-import scala.collection.GenSeq
+import scala.collection.parallel.ParSeq
 import scala.util.Try
+import scala.collection.parallel.CollectionConverters._
 
 case class Grid(user: String,
                 password: String,
                 clusterIps: Seq[String],
-                inet: String,
                 clusterName: String,
                 dataCenter: String,
                 dataDirs: DataDirs,
@@ -35,10 +35,6 @@ case class Grid(user: String,
                 haProxy: Option[HaProxy] = None,
                 dcTarget: Option[String] = None,
                 minMembers: Option[Int] = None,
-                withElk: Boolean = false,
-                newBg: Boolean = true,
-                oldBg: Boolean = true,
-                nbg: Boolean = false,
                 subjectsInSpAreHttps: Boolean = false,
                 defaultRdfProtocol: String = "http",
                 diskOptimizationStrategy:String = "ssd",
@@ -51,7 +47,6 @@ case class Grid(user: String,
       clusterIps,
       clusterIps.size,
       clusterIps.size,
-      inet,
       clusterName,
       dataCenter,
       dataDirs,
@@ -65,7 +60,6 @@ case class Grid(user: String,
       ctrlService,
       minMembers,
       haProxy,
-      withElk = withElk,
       subjectsInSpAreHttps = subjectsInSpAreHttps,
       defaultRdfProtocol = defaultRdfProtocol,
       diskOptimizationStrategy = diskOptimizationStrategy,
@@ -84,17 +78,18 @@ case class Grid(user: String,
     ???
   }
 
-  override def mkScripts(hosts: GenSeq[String]): GenSeq[ComponentConf] = {
+  override def mkScripts(hosts: ParSeq[String]): ParSeq[ComponentConf] = {
     val aloc = allocationPlan.getJvmAllocations
     val casAllocations = aloc.cas //DefaultAlocations(4000,4000,1000,0)
     val esAllocations = aloc.es //DefaultAlocations(6000,6000,400,0)
 
-    val esMasterAllocations = allocationPlan.getElasticsearchMasterAllocations
+    val esMasterAllocations = JvmMemoryAllocations(2048, 2048, 0, 256)
 
     val bgAllocations = aloc.bg //DefaultAlocations(1000,1000,512,0)
     val wsAllocations = aloc.ws
     val ctrlAllocations = aloc.ctrl
     val homeDir = s"${instDirs.globalLocation}/cm-well"
+    val casDataDirs = (1 to dataDirs.casDataDirs.size).map(ResourceBuilder.getIndexedName("cas", _))
     hosts.flatMap { host =>
       val cas = CassandraConf(
         home = homeDir,
@@ -114,13 +109,12 @@ case class Grid(user: String,
         rs = IpRackSelector(),
         g1 = g1,
         hostIp = host,
-        casDataDirs = Seq("cas"),
+        casDataDirs = casDataDirs,
         casUseCommitLog = casUseCommitLog,
         numOfCores = calculateCpuAmount,
         diskOptimizationStrategy = diskOptimizationStrategy
       )
-
-        val es = ElasticsearchConf(
+      val es = ElasticsearchConf(
           clusterName = clusterName,
           nodeName = host,
           masterNode = false,
@@ -139,7 +133,7 @@ case class Grid(user: String,
           rs = IpRackSelector(),
           g1 = g1,
           hostIp = host,
-          autoCreateIndex = withElk
+          dirsPerEs = dataDirs.esDataDirs.size
         )
 
         val esMaster = ElasticsearchConf(
@@ -151,7 +145,7 @@ case class Grid(user: String,
           numberOfReplicas = 2,
           seeds = getSeedNodes.mkString(","),
           home = homeDir,
-          resourceManager = esAllocations,
+          resourceManager = esMasterAllocations,
           dir = "es-master",
           template = "elasticsearch.yml",
           listenAddress = host,
@@ -160,8 +154,7 @@ case class Grid(user: String,
           index = 2,
           rs = IpRackSelector(),
           g1 = true,
-          hostIp = host,
-          autoCreateIndex = withElk
+          hostIp = host
         )
 
       val bg = BgConf(
@@ -178,7 +171,7 @@ case class Grid(user: String,
         debug = deb,
         hostIp = host,
         minMembers = getMinMembers,
-        numOfPartitions = hosts.size,
+        numOfPartitions = ips.size,
         seeds = getSeedNodes.mkString(","),
         defaultRdfProtocol = defaultRdfProtocol,
         transportAddress = this.getThreesome(ips, host)
@@ -249,24 +242,6 @@ case class Grid(user: String,
         minMembers = getMinMembers
       )
 
-      val kibana = KibanaConf(
-        hostIp = host,
-        home = homeDir,
-        listenPort = "9090",
-        listenAddress = host,
-        elasticsearchUrl = s"$host:9201"
-      )
-
-      val logstash = LogstashConf(
-        clusterName = cn,
-        elasticsearchUrl = s"$host:9201",
-        home = homeDir,
-        dir = "logstash",
-        sName = "start.sh",
-        subdivision = 1,
-        hostIp = host
-      )
-
       val zookeeper = ZookeeperConf(
         home = homeDir,
         clusterName = cn,
@@ -293,26 +268,26 @@ case class Grid(user: String,
         zookeeper,
         kafka,
         bg
-      ) ++ (if (withElk) List(logstash, kibana) else List.empty[ComponentConf])
+      )
     }
   }
 
   override def getMode: String = "grid"
 
-  override def getSeedNodes: List[String] = ips.take(3).toList
+  override def getSeedNodes: List[String] = ips.take(3)
 
-  override def startElasticsearch(hosts: GenSeq[String]): Unit = {
+  override def startElasticsearch(hosts: Seq[String]): Unit = {
     command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start-master.sh")}",
-            ips.par.take(esMasters).intersect(hosts),
+            ips.take(esMasters).intersect(hosts.to(Seq)).to(ParSeq),
             false)
-    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start.sh")}", hosts, false)
+    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start.sh")}", hosts.to(ParSeq), false)
   }
 
-  override def startCassandra(hosts: GenSeq[String]): Unit = {
+  override def startCassandra(hosts: ParSeq[String]): Unit = {
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur/; ${startScript("./start.sh")}", hosts, false)
   }
 
-  override def initCassandra(hosts: GenSeq[String]): Unit = {
+  override def initCassandra(hosts: ParSeq[String]): Unit = {
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur/; ${startScript("./start.sh")}", hosts(0), false)
     Try(CassandraLock().waitForModule(ips(0), 1))
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur/; ${startScript("./start.sh")}", hosts(1), false)
@@ -320,15 +295,15 @@ case class Grid(user: String,
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur/; ${startScript("./start.sh")}", hosts.drop(2), false)
   }
 
-  override def initElasticsearch(hosts: GenSeq[String]): Unit = {
+  override def initElasticsearch(hosts: Seq[String]): Unit = {
     command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start-master.sh")}",
-            hosts.take(esMasters),
+            hosts.take(esMasters).to(ParSeq),
             false)
     Try(ElasticsearchLock().waitForModule(ips(0), esMasters))
     //    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ./start-master.sh", hosts(1), false)
     //    ElasticsearchLock().waitForModule(ips(0), 2)
     //    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ./start-master.sh", hosts.drop(2).take(esMasters - 2), false)
-    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start.sh")}", hosts, false)
+    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start.sh")}", hosts.to(ParSeq), false)
   }
 
   override def getNewHostInstance(ipms: Seq[String]): Host = {

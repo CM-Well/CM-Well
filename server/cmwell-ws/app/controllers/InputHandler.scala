@@ -57,8 +57,6 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
     with TypeHelpers { self =>
 
   val typesCaches = crudService.passiveFieldTypesCache
-  val bo1 = collection.breakOut[List[Infoton], String, Set[String]]
-  val bo2 = collection.breakOut[Vector[Infoton], String, Set[String]]
   val redlog = LoggerFactory.getLogger("bad_ingests")
 
   /**
@@ -73,6 +71,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
       req.rawQueryString,
       req.body.asBytes().fold("")(_.utf8String),
       req.attrs(Attrs.RequestReceivedTimestamp))
+
     // first checking "priority" query string. Only if it is present we will consult the UserInfoton which is more expensive (order of && below matters):
     if (req.getQueryString("priority").isDefined && !authUtils.isOperationAllowedForUser(security.PriorityWrite,
       authUtils
@@ -152,14 +151,17 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                 tmpDeleteMap.isEmpty && deleteValsMap.isEmpty && deletePaths.isEmpty && atomicUpdates.isEmpty,
                 "can't use meta operations here! this API is used internaly, and only for overwrites!"
               )
-              val (errs, _) = cmwell.util.collections.partitionWith(metaDataMap) {
-                case (path, MetaData(mdType, _, data, text, mimeType, linkType, linkTo, dataCenter, indexTime, _)) =>
+              val (errs, _) = cmwell.util.collections.partitionWith(metaDataMap.iterator) {
+                case (path, MetaData(mdType, _, data, text, mimeType, linkType, linkTo, dataCenter, indexTime, _ ,lastModifiedBy)) =>
                   var errors = List.empty[String]
                   if (indexTime.isEmpty) {
                     errors = "indexTime should be defined" :: errors
                   }
                   if (dataCenter.isEmpty) {
                     errors = "dataCenter should be defined" :: errors
+                  }
+                  if (lastModifiedBy.isEmpty) {
+                    errors = "lastModifiedBy should be defined" :: errors
                   }
 //                  else if (dataCenter.get == Settings.dataCenter) {
 //                    errors = "dataCenter cannot be equal to current ID" :: errors
@@ -191,10 +193,12 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
 
               val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
               val currentTime = timeContext.fold(DateTime.now(DateTimeZone.UTC))(tc => new DateTime(tc))
-              enforceForceIfNeededAndReturnMetaFieldsInfotons(infotonsMap, currentTime, true).flatMap { metaFields =>
+              val modifier = req.attrs(Attrs.UserName)
+
+              enforceForceIfNeededAndReturnMetaFieldsInfotons(infotonsMap, modifier, currentTime, forceEnabled = true).flatMap { metaFields =>
                 val infotonsWithoutFields = metaDataMap.keySet.filterNot(infotonsMap.keySet.apply) //meaning FileInfotons without extra data...
 
-                val allInfotons = (infotonsMap.toVector.map {
+                val allInfotons = infotonsMap.toVector.map {
                   case (path, fields) => {
                     require(path.nonEmpty, "path cannot be empty!")
                     val escapedPath = escapePath(path)
@@ -202,15 +206,15 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                     val fs = fields.map {
                       case (fk, vs) => fk.internalKey -> vs
                     }
-                    infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath), currentTime)
+                    infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath), currentTime, modifier)
                   }
-                }) ++ infotonsWithoutFields.map(
-                  p => infotonFromMaps(cmwHostsSet, p, None, metaDataMap.get(p), currentTime)
+                }  ++ infotonsWithoutFields.map(
+                p => infotonFromMaps(cmwHostsSet, p, None, metaDataMap.get(p), currentTime, modifier)
                 ) ++ metaFields
 
                 //logger.info(s"infotonsToPut: ${allInfotons.collect { case o: ObjectInfoton => o.toString }.mkString("[", ",", "]")}")
 
-                val (metaInfotons, infotonsToPut) = allInfotons.partition(_.path.startsWith("/meta/"))
+                val (metaInfotons, infotonsToPut) = allInfotons.partition(_.systemFields.path.startsWith("/meta/"))
 
                 val f = crudService.putInfotons(metaInfotons)
                 crudService
@@ -292,12 +296,13 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
 
   def enforceForceIfNeededAndReturnMetaFieldsInfotons(
     allInfotons: Map[String, Map[DirectFieldKey, Set[FieldValue]]],
+    modifier: String,
     currentTime: DateTime,
     forceEnabled: Boolean = false,
     debugLog: Boolean = false
   )(implicit ec: ExecutionContext): Future[Vector[Infoton]] = {
 
-    def getMetaFields(fields: Map[DirectFieldKey, Set[FieldValue]]) = collector(fields) {
+    def getMetaFields(fields: Map[DirectFieldKey, Set[FieldValue]]) = collector(fields.iterator) {
       case (fk, fvs) => {
         val newTypes = fvs.map(FieldValue.prefixByType)
 
@@ -324,7 +329,8 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                                 fk.infoPath,
                                 Some(Map("mang" -> chars.map(c => FString(c.toString, None, None): FieldValue))),
                                 None,
-                                currentTime)
+                                currentTime,
+                                modifier)
               )
             }
           }
@@ -371,6 +377,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
+    val modifier = req.attrs(Attrs.UserName)
     //(parsed infotons paths, headers)
     val p = Promise[(Iterable[String], Seq[(String, String)])]()
     lazy val id = cmwell.util.numeric.Radix64.encodeUnsigned(req.id)
@@ -415,6 +422,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
 
               if (debugLog) logger.info(s"[$id] ParsingResponse: ${pRes.toString}")
               enforceForceIfNeededAndReturnMetaFieldsInfotons(infotonsMap,
+                                                              modifier,
                                                               currentTime,
                                                               req.getQueryString("force").isDefined,
                                                               debugLog).flatMap { metaFields =>
@@ -436,7 +444,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                       }
                     }
                     val t2 = deleteValsMap.map {
-                      case (path, fields) => prependSlash(path) -> fields.mapValues[Option[Set[FieldValue]]](Some.apply)
+                      case (path, fields) => prependSlash(path) -> fields.view.mapValues[Option[Set[FieldValue]]](Some.apply).toMap
                     }
                     t1 ++ t2
                   }
@@ -500,10 +508,10 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                     val fs = fields.map {
                       case (fk, vs) => fk.internalKey -> vs
                     }
-                    infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath), currentTime)
+                    infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath), currentTime, modifier)
                   }
                 }) ++ infotonsWithoutFields.map(
-                  p => infotonFromMaps(cmwHostsSet, p, None, metaDataMap.get(p), currentTime)
+                  p => infotonFromMaps(cmwHostsSet, p, None, metaDataMap.get(p), currentTime, modifier)
                 ) ++ metaFields
 
                 val infotonsToUpsert = upserts.toList.map {
@@ -514,7 +522,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                     val fs = fields.map {
                       case (fk, vs) => fk.internalKey -> vs
                     }
-                    infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath), currentTime)
+                    infotonFromMaps(cmwHostsSet, escapedPath, Some(fs), metaDataMap.get(escapedPath), currentTime, modifier)
                   }
                 }
 
@@ -563,10 +571,10 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                     val tidHeaderOpt = tidOpt.map("X-CM-WELL-TID" -> _.token)
                     p.success(infotonsMap.keys -> tidHeaderOpt.toSeq)
 
-                    require(!infotonsToUpsert.exists(i => infotonsToPut.exists(_.path == i.path)),
+                    require(!infotonsToUpsert.exists(i => infotonsToPut.exists(_.systemFields.path == i.systemFields.path)),
                             s"write commands & upserts from same document cannot operate on the same path")
                     val secondStagePaths: Set[String] =
-                      infotonsToUpsert.map(_.path)(bo1).union(infotonsToPut.map(_.path)(bo2))
+                      infotonsToUpsert.view.map(_.systemFields.path).to(Set).union(infotonsToPut.view.map(_.systemFields.path).to(Set))
 
                     val (dontTrack, track) = deletePaths.partition(secondStagePaths.apply)
                     require(dontTrack.forall(!atomicUpdates.contains(_)),
@@ -576,24 +584,24 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                       s"Writing a DeletedInfoton does not make sense. use proper delete API instead. malformed paths: ${infotonsToUpsert
                         .union(infotonsToPut)
                         .collect {
-                          case DeletedInfoton(path, _, _, _, _) => path
+                          case DeletedInfoton(systemFields) => systemFields.path
                         }
                         .mkString("[", ",", "]")}"
                     )
 
                     val to = tidOpt.map(_.token)
-                    val d1 = crudService.deleteInfotons(dontTrack.map((_, None, None)), isPriorityWrite = isPriorityWrite)
+                    val d1 = crudService.deleteInfotons(dontTrack.map((_, None)), modifier, isPriorityWrite = isPriorityWrite)
                       .andThen(printFailedIngests("delete (dontTrack) infotons failed", infotonsMap.keys, dontTrack))
-                    val d2 = crudService.deleteInfotons(track.map((_, None, None)), to, atomicUpdates, isPriorityWrite)
+                    val d2 = crudService.deleteInfotons(track.map((_, None)), modifier, to, atomicUpdates, isPriorityWrite)
                       .andThen(printFailedIngests("delete (track) failed", infotonsMap.keys, track))
 
                     d1.zip(d2).flatMap {
                       case (b01, b02) =>
                         val f1 =
-                          crudService.upsertInfotons(infotonsToUpsert, deleteMap, to, atomicUpdates, isPriorityWrite)
-                            .andThen(printFailedIngests("upsert infotons failed", infotonsMap.keys, infotonsToUpsert.map(_.path)))
+                          crudService.upsertInfotons(infotonsToUpsert, deleteMap, modifier, to, atomicUpdates, isPriorityWrite)
+                            .andThen(printFailedIngests("upsert infotons failed", infotonsMap.keys, infotonsToUpsert.map(_.systemFields.path)))
                         val f2 = crudService.putInfotons(infotonsToPut, to, atomicUpdates, isPriorityWrite)
-                            .andThen(printFailedIngests("put infotons failed", infotonsMap.keys, infotonsToPut.map(_.path)))
+                            .andThen(printFailedIngests("put infotons failed", infotonsMap.keys, infotonsToPut.map(_.systemFields.path)))
                         f1.zip(f2).flatMap {
                           case (b1, b2) =>
                             if (b01 && b02 && b1 && b2) {
@@ -681,6 +689,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
         case _ => "utf-8"
       }
       val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
+      val modifier = req.attrs(Attrs.UserName)
 
       req.body.asBytes() match {
         case Some(bs) => {
@@ -693,10 +702,13 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
           val isPriorityWrite = req.getQueryString("priority").isDefined
 
           vec match {
-            case Some(v) => {
-              if (skipValidation || v.forall(i => InfotonValidator.isInfotonNameValid(normalizePath(i.path)))) {
+            case Some(infotonVec) => {
+
+              val v = infotonVec.map(i => i.copyInfoton(i.systemFields.copy(lastModifiedBy = modifier)))
+
+              if (skipValidation || v.forall(i => InfotonValidator.isInfotonNameValid(normalizePath(i.systemFields.path)))) {
                 val unauthorizedPaths =
-                  authUtils.filterNotAllowedPaths(v.map(_.path), PermissionLevel.Write, authUtils.extractTokenFrom(req))
+                  authUtils.filterNotAllowedPaths(v.map(_.systemFields.path), PermissionLevel.Write, authUtils.extractTokenFrom(req))
                 if (unauthorizedPaths.isEmpty) {
                   Try(v.foreach { i =>
                     if (i.fields.isDefined) InfotonValidator.validateValueSize(i.fields.get)
@@ -706,7 +718,7 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                       //FIXME: following code is super ugly and hacky... do something about it. please!
                       val infotonsMap = v.collect {
                         case i if i.fields.isDefined =>
-                          i.path -> i.fields.get.map {
+                          i.systemFields.path -> i.fields.get.map {
                             case (fieldName, valueSet) =>
                               (FieldKeyParser.fieldKey(fieldName) match {
                                 case Success(Right(d)) => d
@@ -734,18 +746,19 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
 
                       val currentTime = timeContext.fold(DateTime.now(DateTimeZone.UTC))(tc => new DateTime(tc))
                       enforceForceIfNeededAndReturnMetaFieldsInfotons(infotonsMap,
+                                                                      modifier,
                                                                       currentTime,
                                                                       req.getQueryString("force").isDefined).flatMap {
                         metaFields =>
                           val infotonsToPut = (if (setZeroTime) v.map {
-                                                 case i: ObjectInfoton => i.copy(lastModified = zeroTime)
+                                                 case i: ObjectInfoton => i.copy(i.systemFields.copy(lastModified = zeroTime))
                                                  case i: FileInfoton => {
-                                                   logger.warn(s"FileInfoton ${i.path} with ZERO time inserted");
-                                                   i.copy(lastModified = zeroTime)
+                                                   logger.warn(s"FileInfoton ${i.systemFields.path} with ZERO time inserted")
+                                                   i.copy(i.systemFields.copy(lastModified = zeroTime))
                                                  }
                                                  case i: LinkInfoton => {
-                                                   logger.warn(s"LinkInfoton ${i.path} with ZERO time inserted");
-                                                   i.copy(lastModified = zeroTime)
+                                                   logger.warn(s"LinkInfoton ${i.systemFields.path} with ZERO time inserted")
+                                                   i.copy(i.systemFields.copy(lastModified = zeroTime))
                                                  }
                                                  case i: Infoton => i //to prevent compilation warnings...
                                                } else v) ++ metaFields
@@ -755,11 +768,12 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                               .map(b => Ok(Json.obj("success" -> b)))
                           else {
                             val d: Map[String, Set[String]] = infotonsToPut.collect {
-                              case i if i.fields.isDefined => prependSlash(i.path) -> i.fields.get.keySet
+                              case i if i.fields.isDefined => prependSlash(i.systemFields.path) -> i.fields.get.keySet
                             } toMap;
                             crudService
                               .upsertInfotons(infotonsToPut.toList,
-                                              d.mapValues(_.map(_ -> None).toMap),
+                                              d.view.mapValues(_.map(_ -> None).toMap).toMap,
+                                              modifier,
                                               isPriorityWrite = isPriorityWrite)
                               .map(b => Ok(Json.obj("success" -> b)))
                           }

@@ -1,0 +1,53 @@
+// This is environment description file for starting up a multinode CM-Well cluster. 
+// Given 10 nodes with hostnames cmw1, cmw2, ... cmw10 
+// each having 24GB of RAM and 6 storage drives mounted at /mnt/d1 .. /mnt/d6
+// which all have the user "cmuser", and have SSH trust with each other. 
+// Note: a sudoer is needed for first time installation.
+// Save this file as "cluster", and once you've built CM-Well, run CM-Well Console:
+// server/cmwell-cons/app/cmwell.sh
+//
+// within CM-Well Console, type the following:
+// :load cluster
+// cluster.prepareMachines()
+// cluster.install
+
+val hostnames = (1 to 10).map("cmw" + _) // or just List("10.0.0.1","10.0.0.2","10.0.0.3" etc)
+
+val casdirs = Vector("/mnt/d1/cas","mnt/d2/cas")
+val ccldirs = Vector("/mnt/d3/ccl")
+val esdirs = Vector("/mnt/d4/es")
+
+val dataDirs = DataDirs(
+                   casDataDirs = casdirs ,
+                   casCommitLogDirs = ccldirs ,
+                   esDataDirs = esdirs,
+                   kafkaDataDirs = List("/mnt/d5/kafka"),
+                   zookeeperDataDir = "/mnt/d5/zookeeper",
+                   logsDataDir = "/mnt/d6/log"
+                )
+
+val instDirs = InstDirs("/mnt/d1/cmwell-installation", "/opt")
+
+val cas = JvmMemoryAllocations(mxmx = 2048, mxms = 2048, mxmn = 256, mxss = 256)
+val es = JvmMemoryAllocations(mxmx = 4096, mxms = 4096, mxmn = 256, mxss = 256)
+val bg = JvmMemoryAllocations(mxmx = 2048, mxms = 2048, mxmn = 256, mxss = 256)
+val ws = JvmMemoryAllocations(mxmx = 1024, mxms = 1024, mxmn = 256, mxss = 256)
+val cluster = Grid(user = "cmuser" ,
+              password = "" ,
+              clusterIps = hostnames,
+              clusterName = "my-cm-well-cluster",
+              dataCenter = "my-dc",
+              dataDirs = dataDirs,
+              instDirs = instDirs,
+              esMasters = 3,
+              allocationPlan = CustomAllocations(cas,es,bg,ws),
+              useAuthorization = false,
+              deployJava = true,
+              production = false,
+              su = true,
+              g1 = true,
+              ctrlService = true,
+              diskOptimizationStrategy = "spinning") //remove this line if using SSD
+
+// When installation completes, each node is listening on port 9000 for incoming requests,
+// use a loadbalancer between them.

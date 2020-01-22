@@ -7,5 +7,3 @@ libraryDependencies ++= {
     dm("com.lightbend.akka", "akka-stream-alpakka-cassandra")
   )
 }
-
-fullTest := (test in Test).value

@@ -18,5 +18,3 @@ libraryDependencies ++= {
 }
 
 test in Test := Def.task((test in Test).value).tag(cmwell.build.CMWellCommon.Tags.ES).value
-
-fullTest := (test in Test).value

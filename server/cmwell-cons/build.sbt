@@ -11,7 +11,9 @@ import cmwell.build.{Versions,CMWellBuild}
 libraryDependencies ++= {
   val dm = dependenciesManager.value
   Seq(
-      dm("net.leibman", "semverfi"))
+    dm(("org.scala-lang.modules", "scala-parallel-collections")),
+    dm("nl.gn0s1s", "bump")
+  )
 }
 
 name := "cmwell-cons"
@@ -317,5 +319,3 @@ test in Test := {
 fork in Test := true
 
 baseDirectory in Test := file("cmwell-cons/app")
-
-fullTest := {}
