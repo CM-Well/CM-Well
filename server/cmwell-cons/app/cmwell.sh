@@ -22,5 +22,4 @@ fi
 CONS=`echo components/cmwell-cons*`
 CTRL=`echo components/cmwell-controller-assembly*`
 
-bash -c "scala -Dscala.color -nc -cp '$CMWELL_CONS_PATH/cons-lib/*' "
-
+bash -c "scala -Dscala.color -cp '$CMWELL_CONS_PATH/cons-lib/*' "

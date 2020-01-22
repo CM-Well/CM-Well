@@ -16,6 +16,7 @@
 
 package cmwell.bg.test
 
+import domain.testUtil.InfotonGenerator.genericSystemFields
 import cmwell.bg.Merger
 import cmwell.domain.{FNull, FieldValue, ObjectInfoton}
 import cmwell.common.{DeletePathCommand, UpdatePathCommand, WriteCommand}
@@ -26,231 +27,122 @@ import org.scalatest.{DoNotDiscover, FlatSpec, Matchers, OptionValues}
   * Created by israel on 29/11/2016.
   */
 class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
+
   val merger = Merger()
 
   "Merger" should "merge WriteCommand with no previous version correctly" in {
-    val infoton = ObjectInfoton(
-      "/bg-test-merge/objinfo1",
-      "dc1",
-      None,
-      new DateTime(),
-      "Baruch",
-      Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith"))),
-      None
+    val infoton = ObjectInfoton(genericSystemFields.copy(path = "/bg-test-merge/objinfo1", dc = "dc1"),
+      Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith")))
     )
     val writeCommand = WriteCommand(infoton)
     val merged = merger.merge(None, Seq(writeCommand)).merged
-    merged.value shouldEqual infoton
+    withClue(s"infoton: $infoton\nmerged: $merged"){
+      merged.value shouldEqual infoton
+    }
   }
 
   it should "merge WriteCommand with previous version correctly when new lastModified is greater" in {
-    val now = DateTime.now()
-    val previous  = ObjectInfoton(
-      "/bg-test-merge/objinfo2",
-      "dc1",
-      None,
-      now,
-      "Baruch",
-      Map("first-name" -> Set(FieldValue("john"))),
-      None
+    val systemFields = genericSystemFields.copy(path = "/bg-test-merge/objinfo2", dc = "dc1")
+    val previous  = ObjectInfoton(systemFields, Map("first-name" -> Set(FieldValue("john"))))
+    val currentDateTime = systemFields.lastModified.plus(1L)
+    val current = ObjectInfoton(systemFields.copy(lastModified = currentDateTime, lastModifiedBy = "Baruch2"),
+      Map("last-name" -> Set(FieldValue("smith")))
     )
-    val currentDateTime = now.plus(1L)
-    val current = ObjectInfoton(
-      "/bg-test-merge/objinfo2",
-      "dc1",
-      None,
-      currentDateTime,
-      "Baruch2",
-      Map("last-name" -> Set(FieldValue("smith"))),
-      None
-    )
-    val expected = ObjectInfoton(
-      "/bg-test-merge/objinfo2",
-      merger.defaultDC,
-      None,
-      currentDateTime,
-      "Baruch2",
-      Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith"))),
-      None
+    val expected = ObjectInfoton(systemFields.copy(dc = merger.defaultDC, lastModified = currentDateTime,
+      lastModifiedBy = "Baruch2", indexTime = None), Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith")))
     )
     val merged = merger.merge(Some(previous), Seq(WriteCommand(current))).merged
-    merged.value shouldEqual expected
+    withClue(s"previous: $previous\ncurrent: $current\nexpected: $expected\nmerged: $merged") {
+      merged.value shouldEqual expected
+    }
   }
 
   it should "merge WriteCommand with previous version correctly when new lastModified is equal" in {
     val now = DateTime.now(DateTimeZone.UTC)
-    val previous  = ObjectInfoton(
-      "/bg-test-merge/objinfo2",
-      "dc1",
-      None,
-      now,
-      "Baruch",
-      Map("first-name" -> Set(FieldValue("john"))),
-      None
-    )
-    val current = ObjectInfoton(
-      "/bg-test-merge/objinfo2",
-      "dc1",
-      None,
-      now,
-      "Baruch2",
-      Map("last-name" -> Set(FieldValue("smith"))),
-      None
-    )
-    val expected = ObjectInfoton(
-      "/bg-test-merge/objinfo2",
-      merger.defaultDC,
-      None,
-      now.plus(1L),
-      "Baruch2",
-      Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith"))),
-      None
+    val systemFields = genericSystemFields.copy(path = "/bg-test-merge/objinfo2", dc = "dc1", lastModified = now)
+    val previous  = ObjectInfoton(systemFields, Map("first-name" -> Set(FieldValue("john"))))
+    val current = ObjectInfoton(systemFields.copy(lastModifiedBy = "Baruch2"), Map("last-name" -> Set(FieldValue("smith"))))
+
+    val expected = ObjectInfoton(systemFields.copy(dc = merger.defaultDC, lastModified = now.plus(1L),
+      lastModifiedBy = "Baruch2", indexTime = None),
+      Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith")))
     )
     val merged = merger.merge(Some(previous), Seq(WriteCommand(current))).merged
-    merged.value shouldEqual expected
+    withClue(s"previous: $previous\ncurrent: $current\nexpected: $expected\nmerged: $merged") {
+      merged.value shouldEqual expected
+    }
   }
 
   it should "merge WriteCommand with previous version correctly when new lastModified is less than" in {
-    val now = DateTime.now(DateTimeZone.UTC)
-    val previous  = ObjectInfoton(
-      "/bg-test-merge/objinfo2",
-      "dc1",
-      None,
-      now.plus(1L),
-      "Baruch",
-      Map("first-name" -> Set(FieldValue("john"))),
-      None
+    val systemFields = genericSystemFields.copy(path = "/bg-test-merge/objinfo2", dc = "dc1")
+    val previous  = ObjectInfoton(systemFields.copy(lastModified = systemFields.lastModified.plus(1L)),
+      Map("first-name" -> Set(FieldValue("john")))
     )
-    val current = ObjectInfoton(
-      "/bg-test-merge/objinfo2",
-      "dc1",
-      None,
-      now,
-      "Baruch2",
-      Map("last-name" -> Set(FieldValue("smith"))),
-      None
+    val current = ObjectInfoton(systemFields.copy(lastModifiedBy = "Baruch2"),
+      Map("last-name" -> Set(FieldValue("smith")))
     )
-    val expected = ObjectInfoton(
-      "/bg-test-merge/objinfo2",
-      merger.defaultDC,
-      None,
-      now.plus(2L),
-      "Baruch2",
-      Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith"))),
-      None
+    val expected = ObjectInfoton(systemFields.copy(dc = merger.defaultDC, lastModified = systemFields.lastModified.plus(2L),
+      lastModifiedBy = "Baruch2", indexTime = None), Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith")))
     )
     val merged = merger.merge(Some(previous), Seq(WriteCommand(current))).merged
-    merged.value shouldEqual expected
+    withClue(s"previous: $previous\ncurrent: $current\nexpected: $expected\nmerged: $merged") {
+      merged.value shouldEqual expected
+    }
   }
 
   it should "merge lastModifiedBy when 2 different users add fields at the same time" in {
-    val now = DateTime.now(DateTimeZone.UTC)
-    val previous  = ObjectInfoton(
-      "/bg-test-merge/objinfo2",
-      "dc1",
-      None,
-      now,
-      "Baruch",
-      Map("first-name" -> Set(FieldValue("john"))),
-      None
+    val systemFields = genericSystemFields.copy(path = "/bg-test-merge/objinfo2", dc = "dc1")
+    val previous  = ObjectInfoton(systemFields, Map("first-name" -> Set(FieldValue("john")))
     )
-    val change1 = ObjectInfoton(
-      "/bg-test-merge/objinfo2",
-      "dc1",
-      None,
-      now.plus(5L),
-      "Baruch2",
-      Map("last-name" -> Set(FieldValue("smith"))),
-      None
+    val change1 = ObjectInfoton(systemFields.copy(lastModified = systemFields.lastModified.plus(5L),
+      lastModifiedBy = "Baruch2"), Map("last-name" -> Set(FieldValue("smith")))
     )
-    val change2 = ObjectInfoton(
-      "/bg-test-merge/objinfo2",
-      "dc1",
-      None,
-      now.plus(10L),
-      "Baruch3",
-      Map("address" -> Set(FieldValue("Petach Tikva"))),
-      None
+    val change2 = ObjectInfoton(systemFields.copy(lastModified = systemFields.lastModified.plus(10L), lastModifiedBy = "Baruch3"),
+      Map("address" -> Set(FieldValue("Petach Tikva")))
     )
-    val expected = ObjectInfoton(
-      "/bg-test-merge/objinfo2",
-      merger.defaultDC,
-      None,
-      now.plus(10L),
-      "Baruch2,Baruch3",
-      Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith")),
-        "address" -> Set(FieldValue("Petach Tikva"))),
-      None
+    val expected = ObjectInfoton(systemFields.copy(dc = merger.defaultDC, lastModified = systemFields.lastModified.plus(10L),
+      lastModifiedBy = "Baruch2,Baruch3", indexTime = None), Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith")),
+      "address" -> Set(FieldValue("Petach Tikva")))
     )
     val merged = merger.merge(Some(previous), Seq(WriteCommand(change1), WriteCommand(change2))).merged
-    merged.value shouldEqual expected
+    withClue(s"previous: $previous\nchange1: $change1\nchange2: $change2\nexpected: $expected\nmerged: $merged") {
+      merged.value shouldEqual expected
+    }
   }
 
   it should "merge lastModifiedBy when same user add more than 1 field at the same time" in {
     val now = DateTime.now(DateTimeZone.UTC)
-    val previous  = ObjectInfoton(
-      "/bg-test-merge/objinfo2",
-      "dc1",
-      None,
-      now,
-      "Baruch",
-      Map("first-name" -> Set(FieldValue("john"))),
-      None
+    val systemFields = genericSystemFields.copy(path = "/bg-test-merge/objinfo2", dc = "dc1")
+    val previous  = ObjectInfoton(systemFields, Map("first-name" -> Set(FieldValue("john"))))
+    val change1 = ObjectInfoton(systemFields.copy(lastModified = now.plus(5L), lastModifiedBy = "Baruch2"),
+      Map("last-name" -> Set(FieldValue("smith")))
     )
-    val change1 = ObjectInfoton(
-      "/bg-test-merge/objinfo2",
-      "dc1",
-      None,
-      now.plus(5L),
-      "Baruch2",
-      Map("last-name" -> Set(FieldValue("smith"))),
-      None
+    val change2 = ObjectInfoton(systemFields.copy(lastModified = now.plus(10L), lastModifiedBy = "Baruch2"),
+      Map("address" -> Set(FieldValue("Petach Tikva")))
     )
-    val change2 = ObjectInfoton(
-      "/bg-test-merge/objinfo2",
-      "dc1",
-      None,
-      now.plus(10L),
-      "Baruch2",
-      Map("address" -> Set(FieldValue("Petach Tikva"))),
-      None
-    )
-    val expected = ObjectInfoton(
-      "/bg-test-merge/objinfo2",
-      merger.defaultDC,
-      None,
-      now.plus(10L),
-      "Baruch2",
-      Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith")),
-        "address" -> Set(FieldValue("Petach Tikva"))),
-      None
+    val expected = ObjectInfoton(systemFields.copy(dc = merger.defaultDC, lastModified = now.plus(10L),
+      lastModifiedBy = "Baruch2", indexTime = None), Map("first-name" -> Set(FieldValue("john")), "last-name" -> Set(FieldValue("smith")),
+        "address" -> Set(FieldValue("Petach Tikva")))
     )
     val merged = merger.merge(Some(previous), Seq(WriteCommand(change1), WriteCommand(change2))).merged
-    merged.value shouldEqual expected
+    withClue(s"previous: $previous\nchange1: $change1\nchange2:$change2\nexpected: $expected\nmerged: $merged") {
+      merged.value shouldEqual expected
+    }
   }
 
   it should "Null update case should not change the user name" in {
     val now = DateTime.now(DateTimeZone.UTC)
-    val previous  = ObjectInfoton(
-      "/bg-test-merge/objinfo2",
-      "dc1",
-      None,
-      now.plus(1L),
-      "Baruch",
-      Map("first-name" -> Set(FieldValue("john"))),
-      None
+    val systemFields = genericSystemFields.copy(path = "/bg-test-merge/objinfo2", dc = "dc1")
+    val previous  = ObjectInfoton(systemFields.copy(lastModified = now.plus(1L)),
+      Map("first-name" -> Set(FieldValue("john")))
     )
-    val change1 = ObjectInfoton(
-      "/bg-test-merge/objinfo2",
-      "dc1",
-      None,
-      now.plus(5L),
-      "Baruch2",
-      Map("first-name" -> Set(FieldValue("john"))),
-      None
+    val change1 = ObjectInfoton(systemFields.copy(lastModified = now.plus(5L), lastModifiedBy = "Baruch2"),
+      Map("first-name" -> Set(FieldValue("john")))
     )
     val merged = merger.merge(Some(previous), Seq(WriteCommand(change1))).merged
-    merged should be(None)
+    withClue(s"previous: $previous\nchange1: $change1\nmerged: $merged") {
+      merged should be(None)
+    }
   }
 
   //  it should "merge DeletePathCommand with no previous version correctly" in {
@@ -263,189 +155,97 @@ class BGMergerSpec extends FlatSpec with Matchers with OptionValues {
   }
 
   it should "merge odd number of virtual parents commands with no previous version correctly" in {
-    val infoton = ObjectInfoton(
-      "/bg-test-merge/virtualparentodd1",
-      "dc1",
-      None,
-      new DateTime(0L),
-      "Baruch",
-      None,
-      "",
-      None
-    )
+    val infoton = ObjectInfoton(genericSystemFields.copy(path = "/bg-test-merge/virtualparentodd1", dc = "dc1",
+      lastModified = new DateTime(0L), indexTime = None))
     val infotons = Seq.tabulate(7)(_ => infoton)
     val writeCommands = infotons.map(WriteCommand(_))
     val merged = merger.merge(None, writeCommands).merged
-    merged.value shouldEqual infoton.copyInfoton(lastModified = new DateTime(0L), dc = merger.defaultDC)
+    withClue(s"infoton: $infoton\nmerged: $merged") {
+      merged.value shouldEqual infoton.copyInfoton(infoton.systemFields.copy(lastModified = new DateTime(0L), dc = merger.defaultDC))
+    }
   }
 
   it should "merge even number of virtual parents commands with no previous version correctly" in {
-    val infoton = ObjectInfoton(
-      "/bg-test-merge/virtualparenteven1",
-      "dc1",
-      None,
-      new DateTime(0L),
-      "Baruch",
-      None,
-      "",
-      None
-    )
+    val infoton = ObjectInfoton(genericSystemFields.copy(path = "/bg-test-merge/virtualparenteven1", dc = "dc1", lastModified = new DateTime(0L)))
     val infotons = Seq.tabulate(10)(_ => infoton)
     val writeCommands = infotons.map(WriteCommand(_))
     val merged = merger.merge(None, writeCommands).merged
-    merged.value shouldEqual infoton.copyInfoton(lastModified = new DateTime(0L), dc = merger.defaultDC)
+    withClue(s"infoton: $infoton\nmerged: $merged") {
+      merged.value shouldEqual infoton.copyInfoton(infoton.systemFields.copy(
+        lastModified = new DateTime(0L), dc = merger.defaultDC, indexTime = None))
+    }
   }
 
   it should "merge odd number of virtual parents commands with a previous version correctly" in {
-    val infoton = ObjectInfoton(
-      s"/bg-test-merge/virtualparentodd1",
-      "dc1",
-      Some(1L),
-      new DateTime(0L),
-      "Baruch",
-      None,
-      "",
-      None
-    )
+    val infoton = ObjectInfoton(genericSystemFields.copy(path = "/bg-test-merge/virtualparenteven1", dc = "dc1", indexTime = Some(1L)))
     val infotons = Seq.tabulate(7){ _ => infoton}
     val writeCommands = infotons.map{WriteCommand(_)}
     val merged = merger.merge(Some(infoton), writeCommands).merged
-    merged shouldBe empty
+    withClue(s"infoton: $infoton\nmerged: $merged") {
+      merged shouldBe empty
+    }
   }
 
   it should "merge even number of virtual parents commands with a previous version correctly" in {
-    val infoton = ObjectInfoton(
-      s"/bg-test-merge/virtualparenteven1",
-      "dc1",
-      Some(2L),
-      new DateTime(0L),
-      "Baruch",
-      None,
-      "",
-      None
-    )
+    val infoton = ObjectInfoton(genericSystemFields.copy(path = "/bg-test-merge/virtualparenteven1", dc = "dc1", indexTime = Some(2L)))
     val infotons = Seq.tabulate(10){ _ => infoton}
     val writeCommands = infotons.map{WriteCommand(_)}
     val merged = merger.merge(Some(infoton), writeCommands).merged
-    merged shouldBe empty
+    withClue(s"infoton: $infoton\nmerged: $merged") {
+      merged shouldBe empty
+    }
   }
 
   it should "merge null update commands with no base correctly" in {
-    val now = DateTime.now
-    val infoton1 = ObjectInfoton(
-      "/bg-test-merge/infonull1",
-      "dc1",
-      None,
-      now,
-      "Baruch",
-      None,
-      "",
-      None
-    )
-    val infoton2 = ObjectInfoton(
-      "/bg-test-merge/infonull1",
-      "dc1",
-      None,
-      now.plusMillis(20),
-      "Baruch",
-      None,
-      "",
-      None
-    )
+    val systemFields = genericSystemFields.copy(path = "/bg-test-merge/infonull1", dc = "dc1")
+    val infoton1 = ObjectInfoton(systemFields)
+    val infoton2 = ObjectInfoton(systemFields.copy(lastModified = systemFields.lastModified.plusMillis(20)))
     val writeCommand1 = WriteCommand(infoton1)
     val writeCommand2 = WriteCommand(infoton2)
     val merged = merger.merge(None, Seq(writeCommand1, writeCommand2))
     //Taking care of dataCenter
-    merged.merged shouldEqual(Some(infoton2.copy(dc=merger.defaultDC)))
+    withClue(s"infoton1: $infoton1\ninfoton2: $infoton2\nmerged: $merged") {
+      merged.merged shouldEqual (Some(infoton2.copy(infoton2.systemFields.copy(dc = merger.defaultDC, indexTime = None))))
+    }
   }
 
   it should "merge not-indexed base infoton with identical command correctly" in {
-    val baseInfoton = ObjectInfoton(
-      "/bg-test-merge/infonotindexed1",
-      "dc1",
-      None,
-      DateTime.now(),
-      "Baruch",
-      None,
-      "",
-      None
-    )
-    val writeCommand = WriteCommand(baseInfoton.copyInfoton(lastModified = baseInfoton.lastModified.minus(1)))
+    val baseInfoton = ObjectInfoton(genericSystemFields.copy(path = "/bg-test-merge/infonotindexed1", dc = "dc1"))
+    val writeCommand = WriteCommand(baseInfoton.copyInfoton(baseInfoton.systemFields.copy(lastModified = baseInfoton.systemFields.lastModified.minus(1))))
     val merged = merger.merge(Some(baseInfoton), Seq(writeCommand))
-    withClue(merged){
+    withClue(s"baseInfoton: $baseInfoton merged: $merged"){
       merged.merged shouldNot be (defined)
     }
   }
 
   it should "merge correctly infoton with updatePathCommand" in {
-    val now = DateTime.now()
-    val baseInfoton = ObjectInfoton(
-      "/bg-test-merge/infonotindexed1",
-      "dc",
-      None,
-      now,
-      "Baruch",
-      Some(Map("prdct.JeRn0A" -> Set(FieldValue("v3")))),
-      "",
-      None
-    )
-    val updateCommand = UpdatePathCommand(path = baseInfoton.path, deleteFields = Map("prdct.JeRn0A" -> Set(FNull(None))),
-      updateFields = Map("prdct.JeRn0A" -> Set(FieldValue("v3"))), lastModified = now.plus(5L),
-      lastModifiedBy = "Updater", protocol = Some("https"))
+    val systemFields = genericSystemFields.copy(path = "/bg-test-merge/infonotindexed1", dc = "dc", protocol = "http")
+    val baseInfoton = ObjectInfoton(systemFields, Some(Map("prdct.JeRn0A" -> Set(FieldValue("v3")))))
+    val updateCommand = UpdatePathCommand(path = systemFields.path, deleteFields = Map("prdct.JeRn0A" -> Set(FNull(None))),
+      updateFields = Map("prdct.JeRn0A" -> Set(FieldValue("v3"))), lastModified = systemFields.lastModified.plus(5L),
+      lastModifiedBy = "Updater", protocol = "https")
 
-    val expected = ObjectInfoton(
-      "/bg-test-merge/infonotindexed1",
-      "dc",
-      None,
-      now.plus(5L),
-      "Updater",
-      Some(Map("prdct.JeRn0A" -> Set(FieldValue("v3")))),
-      "",
-      Some("https")
-    )
+    val expected = ObjectInfoton(systemFields.copy(lastModified = systemFields.lastModified.plus(5L),
+      lastModifiedBy = "Updater", protocol = "https", indexTime = None), Some(Map("prdct.JeRn0A" -> Set(FieldValue("v3")))))
 
     val merged = merger.merge(Some(baseInfoton), Seq(updateCommand))
 
-    withClue(merged){
+    withClue(s"baseInfoton: $baseInfoton\nupdateCommand: $updateCommand\nexpected: $expected\nmerged: $merged") {
       merged.merged shouldEqual(Some(expected))
     }
   }
 
   it should "merge null update commands with different base correctly" in {
     val now = DateTime.now
-    val baseInfoton = ObjectInfoton(
-      "/bg-test-merge/infonull1",
-      "dc1",
-      Some(1L),
-      now,
-      "Baruch",
-      None,
-      "",
-      None
-    )
-    val infoton1 = ObjectInfoton(
-      "/bg-test-merge/infonull1",
-      "dc1",
-      None,
-      now.minusMillis(161),
-      "Baruch",
-      None,
-      "",
-      None
-    )
-    val infoton2 = ObjectInfoton(
-      "/bg-test-merge/infonull1",
-      "dc1",
-      None,
-      now.plusMillis(53),
-      "Baruch",
-      None,
-      "",
-      None
-    )
+    val systemFields = genericSystemFields.copy(path = "/bg-test-merge/infonull1", dc = "dc1", lastModified = now)
+    val baseInfoton = ObjectInfoton(systemFields.copy(indexTime = Some(1L)))
+    val infoton1 = ObjectInfoton(systemFields.copy(lastModified = now.minusMillis(161)))
+    val infoton2 = ObjectInfoton(systemFields.copy(lastModified = now.plusMillis(53)))
     val writeCommand1 = WriteCommand(infoton1)
     val writeCommand2 = WriteCommand(infoton2)
     val merged = merger.merge(Some(baseInfoton), Seq(writeCommand2, writeCommand1))
-    merged.merged shouldBe empty
+    withClue(s"baseInfoton: $baseInfoton\ninfoton1: $infoton1\ninfoton2: $infoton2\nmerged: $merged") {
+      merged.merged shouldBe empty
+    }
   }
 }

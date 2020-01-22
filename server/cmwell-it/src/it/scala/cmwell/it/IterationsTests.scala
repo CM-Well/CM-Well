@@ -26,7 +26,7 @@ import scala.concurrent.{ExecutionContext, Future, duration}
 import duration.DurationInt
 import scala.util.Try
 
-class IterationsTests extends AsyncFunSpec with Matchers with Inspectors with Helpers with fixture.NSHashesAndPrefixes with LazyLogging {
+class IterationsTests extends AsyncFunSpec with Matchers with Inspectors with Helpers with cmwell.it.fixture.NSHashesAndPrefixes with LazyLogging {
   describe("Iterator API") {
     type ScrollResults = (Int,Option[String],Option[Long],Option[(Boolean,Int)],Option[String])
     val requestHandler: SimpleResponse[Array[Byte]] => ScrollResults = { res =>
@@ -70,7 +70,7 @@ class IterationsTests extends AsyncFunSpec with Matchers with Inspectors with He
       r.status == 200 && {
         val j = Json.parse(r.payload)
         (j \ "results" \ "total" : @unchecked) match {
-          case JsDefined(JsNumber(bigDec)) => bigDec.intValue() == 70
+          case JsDefined(JsNumber(bigDec)) => bigDec.intValue == 70
         }
       }
     }
@@ -104,7 +104,7 @@ class IterationsTests extends AsyncFunSpec with Matchers with Inspectors with He
       r.status == 200 && {
         val j = Json.parse(r.payload)
         (j \ "results" \ "total" : @unchecked) match {
-          case JsDefined(JsNumber(bigDec)) => bigDec.intValue() == 35
+          case JsDefined(JsNumber(bigDec)) => bigDec.intValue == 35
         }
       }
     })
@@ -125,7 +125,7 @@ class IterationsTests extends AsyncFunSpec with Matchers with Inspectors with He
       r.status == 200 && {
         val j = Json.parse(r.payload)
         (j \ "results" \ "total" : @unchecked) match {
-          case JsDefined(JsNumber(bigDec)) => bigDec.intValue() == 50
+          case JsDefined(JsNumber(bigDec)) => bigDec.intValue == 50
         }
       }
     }
@@ -147,7 +147,7 @@ class IterationsTests extends AsyncFunSpec with Matchers with Inspectors with He
         val j = Json.parse(r.payload)
 
         val b1 = (j \ "totalHits" : @unchecked) match {
-          case JsDefined(JsNumber(bigDec)) => bigDec.intValue() == 50
+          case JsDefined(JsNumber(bigDec)) => bigDec.intValue == 50
         }
 
         // PassiveFieldTypesCache refreshes only once in every 30 seconds.
@@ -184,7 +184,7 @@ class IterationsTests extends AsyncFunSpec with Matchers with Inspectors with He
       r.status == 200 && {
         val j = Json.parse(r.payload)
         val b1 = (j \ "totalHits" : @unchecked) match {
-          case JsDefined(JsNumber(bigDec)) => bigDec.intValue() == 49
+          case JsDefined(JsNumber(bigDec)) => bigDec.intValue == 49
         }
 
         // PassiveFieldTypesCache refreshes only once in every 30 seconds.

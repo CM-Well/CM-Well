@@ -34,6 +34,9 @@ project/plugins/project/
 .ensime
 .ensime_cache/
 
+#metals
+.metals/
+
 # Scala-IDE specific
 .scala_dependencies
 .classpath

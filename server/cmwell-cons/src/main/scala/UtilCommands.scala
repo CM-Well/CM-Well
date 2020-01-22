@@ -60,12 +60,16 @@ object UtilCommands {
       val bufferInputStream = new BufferedInputStream(Files.newInputStream(path))
       val gzipCompressor = new GzipCompressorInputStream(bufferInputStream)
       tarArchiveInputStream = new TarArchiveInputStream(gzipCompressor)
+
       var archiveEntry: ArchiveEntry = null
       archiveEntry = tarArchiveInputStream.getNextEntry
-      val extractFolder = archiveEntry.getName.split("/")(0)
+      if(archiveEntry.getName == "./")
+        archiveEntry = tarArchiveInputStream.getNextEntry
+
+      val extractFolder = archiveEntry.getName.replaceAll("^\\./","").split("/")(0)
       while (archiveEntry != null) {
         breakable {
-        if (archiveEntry.getName == s"$extractFolder/$configFilePath") {
+        if (archiveEntry.getName.replaceAll("^\\./","") == s"$extractFolder/$configFilePath") {
             confContent = IOUtils.toByteArray(tarArchiveInputStream)
             break
           }

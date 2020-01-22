@@ -21,6 +21,8 @@ import org.scalatest.Suite
 trait BgEsCasKafkaZookeeperDockerSuite extends EsCasKafkaZookeeperDockerSuite { this:Suite =>
   override def elasticsearchVersion: String = cmwell.util.build.BuildInfo.elasticsearchVersion
   override def cassandraVersion: String = cmwell.util.build.BuildInfo.cassandraVersion
-  override def kafkaVersion: String = s"${cmwell.util.build.BuildInfo.scalaVersion.take(4)}-${cmwell.util.build.BuildInfo.kafkaVersion}"
+  //the below should be restored when Kafka image of Scala 2.13 will be available
+  //override def kafkaVersion: String = s"${cmwell.util.build.BuildInfo.scalaVersion.take(4)}-${cmwell.util.build.BuildInfo.kafkaVersion}"
+  override def kafkaVersion: String = s"2.12-${cmwell.util.build.BuildInfo.kafkaVersion}"
   override def zookeeperVersion: String = cmwell.util.build.BuildInfo.zookeeperVersion
 }
