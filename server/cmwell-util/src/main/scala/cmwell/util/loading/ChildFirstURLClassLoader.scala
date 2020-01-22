@@ -84,12 +84,14 @@ class ChildFirstURLClassLoader(urls: Array[URL], parent: ClassLoader, except: Se
 }
 
 object ChildFirstURLClassLoader {
-  def loadClassFromJar[T](className: String, jarPath: String, excludes: Seq[String] = Seq()): T =
-    Loader(jarPath, excludes).load(className)
+  def loadClassFromJar[T](className: String, jarPath: String, commonPackageNames:String, excludes: Seq[String] = Seq()): T =
+    Loader(jarPath, excludes :+ commonPackageNames).load(className)
 
   case class Loader(jarPath: String, excludes: Seq[String] = Seq()) {
+    val urls = if(new java.io.File(jarPath).isFile) Array(new File(jarPath).toURI.toURL) else Array[URL](new URL(jarPath))
     private val cl =
-      new ChildFirstURLClassLoader(Array(new File(jarPath).toURI.toURL), this.getClass.getClassLoader, excludes)
+      new ChildFirstURLClassLoader(urls, this.getClass.getClassLoader, excludes)
     def load[T](className: String) = cl.loadClass(className).newInstance.asInstanceOf[T]
   }
+
 }

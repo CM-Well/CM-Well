@@ -53,10 +53,11 @@ import javax.inject._
 import k.grid.{ClientActor, Grid, GridJvm, RestartJvm}
 import ld.cmw.passiveFieldTypesCacheImpl
 import ld.exceptions.BadFieldTypeException
+import logic.services.{RedirectionService, ServicesRoutesCache}
 import logic.{CRUDServiceFS, InfotonValidator}
 import markdown.MarkdownFormatter
-import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.ISODateTimeFormat
+import org.joda.time.{DateTime, DateTimeZone}
 import play.api.http.{ContentTypes, MediaType}
 import play.api.libs.json.{JsArray, JsBoolean, JsNumber, JsObject, JsString, _}
 import play.api.mvc.request.RequestTarget
@@ -103,7 +104,7 @@ object ApplicationUtils {
     } else if (recursive) numOfChildren(path).map {
       case sr if sr.total > 500 =>
         Left("recursive DELETE is forbidden for large (>500 descendants) infotons. DELETE descendants first.")
-      case sr => Right(sr.infotons.map(_.path) :+ path)
+      case sr => Right(sr.infotons.map(_.systemFields.path) :+ path)
     } else Future.successful(Right(Seq(path)))
   }
 
@@ -123,7 +124,8 @@ class Application @Inject()(bulkScrollHandler: BulkScrollHandler,
                             cmwellRDFHelper: CMWellRDFHelper,
                             formatterManager: FormatterManager,
                             assetsMetadataProvider: AssetsMetadataProvider,
-                            assetsConfigurationProvider: AssetsConfigurationProvider)(implicit ec: ExecutionContext)
+                            assetsConfigurationProvider: AssetsConfigurationProvider,
+                            servicesRoutesCache: ServicesRoutesCache)(implicit ec: ExecutionContext)
     extends FileInfotonCaching(assetsMetadataProvider.get, assetsConfigurationProvider.get)
     with InjectedController
     with LazyLogging {
@@ -145,16 +147,24 @@ class Application @Inject()(bulkScrollHandler: BulkScrollHandler,
       val decodedPath = UriEncoding.decodePath(request.path, "UTF-8")
       val requestHeader = request.withTarget(
         RequestTarget(uriString = decodedPath + request.uri.drop(request.path.length),
-                      path = decodedPath,
-                      queryString = request.queryString)
+          path = decodedPath,
+          queryString = request.queryString)
       )
       Request(requestHeader, request.body)
     }
   }
 
+  def handleServicesRoutesCacheGet = Action.async (req => {
+    if (req.getQueryString("op").fold(false)(_ == "refresh"))
+      servicesRoutesCache.populate().map(_ => Ok("""{"success":true}"""))
+    else
+      Future.successful(Ok(servicesRoutesCache.list.mkString("\n")))
+  })
+
   def handleTypesCacheGet = Action(_ => Ok(typesCache.getState).as(ContentTypes.JSON))
 
   val nsCacheTimeout = akka.util.Timeout(1.minute)
+
   def handleNsCacheGet =
     Action.async(r => {
 
@@ -194,36 +204,35 @@ class Application @Inject()(bulkScrollHandler: BulkScrollHandler,
   def handleGET(path: String) = Action.async { implicit originalRequest =>
     val op = originalRequest.getQueryString("op").getOrElse("read")
     RequestMonitor.add(op,
-                       path,
-                       originalRequest.rawQueryString,
-                       "",
-                       originalRequest.attrs(Attrs.RequestReceivedTimestamp))
+      path,
+      originalRequest.rawQueryString,
+      "",
+      originalRequest.attrs(Attrs.RequestReceivedTimestamp))
     requestSlashValidator(originalRequest) match {
       case Failure(e) => asyncErrorHandler(e)
       case Success(request) =>
         request match {
-          case Operation.search()                           => handleSearch(request)
-          case Operation.aggregate()                        => handleAggregate(request)
-          case Operation.startScroll()                      => handleStartScroll(request)
-          case Operation.scroll()                           => handleScroll(request)
-          case Operation.createConsumer()                   => handleCreateConsumerRequest(request)
-          case Operation.consume()                          => handleConsume(request)
-          case Operation.subscribe()                        => handleSubscribe(request)
-          case Operation.unsubscribe()                      => handleUnsubscribe(request)
-          case Operation.pull()                             => handlePull(request)
-          case Operation.stream()                           => handleStream(request)
-          case Operation.multiStream()                      => handleBoostedStream(request)
-          case Operation.superStream()                      => handleSuperStream(request)
-          case Operation.queueStream()                      => handleQueueStream(request)
-          case Operation.bulkConsumer()                     => bulkScrollHandler.handle(request)
-          case Operation.fix()                              => handleFix(request)
-          case Operation.info()                             => handleInfo(request)
-          case Operation.verify()                           => handleVerify(request)
-          case Operation.fixDc()                            => handleFixDc(request)
-          case Operation.purgeAll()                         => handlePurgeAll(request)
-          case Operation.purgeHistory()                     => handlePurgeHistory(request)
+          case Operation.search() => handleSearch(request)
+          case Operation.aggregate() => handleAggregate(request)
+          case Operation.startScroll() => handleStartScroll(request)
+          case Operation.scroll() => handleScroll(request)
+          case Operation.createConsumer() => handleCreateConsumerRequest(request)
+          case Operation.consume() => handleConsume(request)
+          case Operation.subscribe() => handleSubscribe(request)
+          case Operation.unsubscribe() => handleUnsubscribe(request)
+          case Operation.pull() => handlePull(request)
+          case Operation.stream() => handleStream(request)
+          case Operation.multiStream() => handleBoostedStream(request)
+          case Operation.superStream() => handleSuperStream(request)
+          case Operation.queueStream() => handleQueueStream(request)
+          case Operation.bulkConsumer() => bulkScrollHandler.handle(request)
+          case Operation.fix() => handleFix(request)
+          case Operation.info() => handleInfo(request)
+          case Operation.verify() => handleVerify(request)
+          case Operation.purgeAll() => handlePurgeAll(request)
+          case Operation.purgeHistory() => handlePurgeHistory(request)
           case Operation.purgeLast() | Operation.rollback() => handlePurgeLast(request)
-          case Operation.read() | _                         => handleRead(request)
+          case Operation.read() | _ => handleRead(request)
         }
     }
   }
@@ -242,8 +251,8 @@ class Application @Inject()(bulkScrollHandler: BulkScrollHandler,
               .flatMap(
                 d =>
                   d.data match {
-//              //IS FIRST CASE EVEN REACHABLE?!?!?!?
-//              case _ if p.isCompleted => Future.successful(None)
+                    //              //IS FIRST CASE EVEN REACHABLE?!?!?!?
+                    //              case _ if p.isCompleted => Future.successful(None)
                     case v if v.isEmpty =>
                       cmwell.util.concurrent.SimpleScheduler.schedule[Option[(String, ByteString)]](3.seconds)(
                         Some(subscription -> cmwell.ws.Streams.endln)
@@ -276,7 +285,7 @@ class Application @Inject()(bulkScrollHandler: BulkScrollHandler,
                         }
                       }
                     }
-                }
+                  }
               )
           }
 
@@ -337,27 +346,26 @@ callback=< [URL] >
       }
     }.recover(asyncErrorHandler).get
 
-  def getHandlerFor(format: FormatType, url: String, timeContext: Option[Long]): (Seq[String]) => Unit = { uuids =>
-    {
+  def getHandlerFor(format: FormatType, url: String, timeContext: Option[Long]): (Seq[String]) => Unit = { uuids => {
 
-      uuids.foreach { uuid =>
-        logger.debug(s"Sending $uuid to $url.")
-      }
-      val infotonsFut = crudServiceFS.getInfotonsByPathOrUuid(uuids = uuids.toVector)
-      //TODO: probably not the best host to provide a formatter. is there a way to get the original host the subscription was asked from?
-      val formatter =
-        formatterManager.getFormatter(format, timeContext, s"http://${cmwell.util.os.Props.machineName}:9000")
-      val futureRes = infotonsFut.flatMap { bag =>
-        import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
-        SimpleHttpClient.post[String](url, formatter.render(bag), Some(formatter.mimetype))
-      }
-      futureRes.onComplete {
-        case Success(wsr) =>
-          if (wsr.status != 200)
-            logger.warn(s"bad response: ${wsr.status}, ${wsr.payload}")
-        case Failure(t) => logger.error(s"post to $url failed", t)
-      }
+    uuids.foreach { uuid =>
+      logger.debug(s"Sending $uuid to $url.")
     }
+    val infotonsFut = crudServiceFS.getInfotonsByPathOrUuid(uuids = uuids.toVector)
+    //TODO: probably not the best host to provide a formatter. is there a way to get the original host the subscription was asked from?
+    val formatter =
+      formatterManager.getFormatter(format, timeContext, s"http://${cmwell.util.os.Props.machineName}:9000")
+    val futureRes = infotonsFut.flatMap { bag =>
+      import cmwell.util.http.SimpleResponse.Implicits.UTF8StringHandler
+      SimpleHttpClient.post[String](url, formatter.render(bag), Some(formatter.mimetype))
+    }
+    futureRes.onComplete {
+      case Success(wsr) =>
+        if (wsr.status != 200)
+          logger.warn(s"bad response: ${wsr.status}, ${wsr.payload}")
+      case Failure(t) => logger.error(s"post to $url failed", t)
+    }
+  }
   }
 
   def handleUnsubscribe(request: Request[AnyContent]): Future[Result] = {
@@ -372,30 +380,31 @@ callback=< [URL] >
 
   def handleMetaQuad(base64OfPartition: String) = Action.async { req =>
     val underscorePartition = cmwell.util.string.Base64.decodeBase64String(base64OfPartition, "UTF-8") // e.g: "_2"
-    val partition = underscorePartition.tail.toInt
+  val partition = underscorePartition.tail.toInt
     val iOpt = Some(
       VirtualInfoton(
-        ObjectInfoton(
-          s"/meta/quad/Y213ZWxsOi8vbWV0YS9zeXMjcGFydGl0aW9u$base64OfPartition",
-          Settings.dataCenter,
-          None,
+        ObjectInfoton(SystemFields(
+            s"/meta/quad/Y213ZWxsOi8vbWV0YS9zeXMjcGFydGl0aW9u$base64OfPartition",
+            new DateTime(DateTimeZone.UTC),
+            "VirtualInfoton",
+            Settings.dataCenter,
+            None,
+            "http",
+            ""),
           Map[String, Set[FieldValue]]("alias" -> Set(FString(s"partition_$partition")),
-                                       "graph" -> Set(FReference(s"cmwell://meta/sys#partition_$partition"))),
-          protocol = None
-        )
+            "graph" -> Set(FReference(s"cmwell://meta/sys#partition_$partition"))))
       )
     )
     infotonOptionToReply(req, iOpt.map(VirtualInfoton.v2i))
   }
 
-  def handleProcGET(path: String) = Action.async { implicit req =>
-    {
-      val iPath: String = {
-        val noTrailingSlashes: String = path.dropTrailingChars('/')
-        if (noTrailingSlashes == "/proc" || noTrailingSlashes.isEmpty) "/proc" else "/proc/" + noTrailingSlashes
-      }
-      handleGetForActiveInfoton(req, iPath)
+  def handleProcGET(path: String) = Action.async { implicit req => {
+    val iPath: String = {
+      val noTrailingSlashes: String = path.dropTrailingChars('/')
+      if (noTrailingSlashes == "/proc" || noTrailingSlashes.isEmpty) "/proc" else "/proc/" + noTrailingSlashes
     }
+    handleGetForActiveInfoton(req, iPath)
+  }
   }
 
   private def handleGetForActiveInfoton(req: Request[AnyContent], path: String) =
@@ -409,7 +418,7 @@ callback=< [URL] >
           .getQueryString("length")
           .flatMap(asInt)
           .getOrElse(if (req.getQueryString("format").isEmpty) 13 else 0) // default is 0 unless 1st request for the ajax app
-        val offset = req.getQueryString("offset").flatMap(asInt).getOrElse(0)
+      val offset = req.getQueryString("offset").flatMap(asInt).getOrElse(0)
         val withHistory = req.getQueryString("with-history").flatMap(asBoolean).getOrElse(false)
         val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
         val fieldsFiltersFut = qpOpt.fold[Future[Option[FieldFilter]]](Future.successful(Option.empty[FieldFilter]))(
@@ -422,130 +431,130 @@ callback=< [URL] >
 
           activeInfotonGenerator
             .generateInfoton(req.host,
-                             path,
-                             req.attrs(Attrs.RequestReceivedTimestamp),
-                             length,
-                             offset,
-                             isRoot,
-                             isAdmin,
-                             withHistory,
-                             fieldFilters,
-                             timeContext)
+              path,
+              req.attrs(Attrs.RequestReceivedTimestamp),
+              length,
+              offset,
+              isRoot,
+              isAdmin,
+              withHistory,
+              fieldFilters,
+              timeContext)
             .flatMap(iOpt => infotonOptionToReply(req, iOpt.map(VirtualInfoton.v2i)))
         }
       }
       .recover(asyncErrorHandler)
       .get
 
-  def handleZzGET(key: String) = Action.async { implicit req =>
-    {
-      val allowed = isAdminEvenNonProd(req)
+  def handleZzGET(key: String) = Action.async { implicit req => {
+    val allowed = isAdminEvenNonProd(req)
 
-      def mapToResp(task: Future[_]): Future[Result] = {
+    def mapToResp(task: Future[_]): Future[Result] = {
+      val p = Promise[Result]
+      task.onComplete {
+        case Success(_) => p.success(Ok("""{"success":true}"""))
+        case Failure(e) =>
+          p.success(Ok(s"""{"success":false,"message":"${Option(e.getMessage).getOrElse(e.getCause.getMessage)}"}"""))
+      }
+      p.future
+    }
+
+    req.getQueryString("op") match {
+      case _ if !allowed => Future.successful(Forbidden("Not allowed to use zz"))
+      case Some("purge") =>
+        mapToResp(crudServiceFS.zStore.remove(key))
+      case Some("list") =>
+        (req.getQueryString("limit") match {
+          case Some(limit) => crudServiceFS.zStore.ls(limit.toInt)
+          case None => crudServiceFS.zStore.ls()
+        }).map(lsRes => Ok(lsRes.mkString("\n")))
+      case Some("put") =>
+        val value = req.getQueryString("payload").getOrElse("").getBytes("UTF-8")
+        mapToResp(req.getQueryString("ttl") match {
+          case Some(ttl) => crudServiceFS.zStore.put(key, value, ttl.toInt, false)
+          case None => crudServiceFS.zStore.put(key, value)
+        })
+      case None =>
         val p = Promise[Result]
-        task.onComplete {
-          case Success(_) => p.success(Ok("""{"success":true}"""))
+        crudServiceFS.zStore.get(key).onComplete {
+          case Success(payload) =>
+            p.success(
+              Ok(
+                if (req.getQueryString("format").contains("text")) new String(payload, "UTF-8")
+                else payload.mkString(",")
+              )
+            )
           case Failure(e) =>
-            p.success(Ok(s"""{"success":false,"message":"${Option(e.getMessage).getOrElse(e.getCause.getMessage)}"}"""))
+            e match {
+              case _: NoSuchElementException => p.success(NotFound("zz item not found"))
+              case _ =>
+                p.success(
+                  Ok(s"""{"success":false,"message":"${Option(e.getMessage).getOrElse(e.getCause.getMessage)}"}""")
+                )
+            }
         }
         p.future
-      }
+    }
+  }
+  }
 
-      req.getQueryString("op") match {
-        case _ if !allowed => Future.successful(Forbidden("Not allowed to use zz"))
-        case Some("purge") =>
-          mapToResp(crudServiceFS.zStore.remove(key))
-        case Some("list") =>
-          (req.getQueryString("limit") match {
-            case Some(limit) => crudServiceFS.zStore.ls(limit.toInt)
-            case None        => crudServiceFS.zStore.ls()
-          }).map(lsRes => Ok(lsRes.mkString("\n")))
-        case Some("put") =>
-          val value = req.getQueryString("payload").getOrElse("").getBytes("UTF-8")
-          mapToResp(req.getQueryString("ttl") match {
-            case Some(ttl) => crudServiceFS.zStore.put(key, value, ttl.toInt, false)
-            case None      => crudServiceFS.zStore.put(key, value)
-          })
-        case None =>
-          val p = Promise[Result]
-          crudServiceFS.zStore.get(key).onComplete {
-            case Success(payload) =>
-              p.success(
-                Ok(
-                  if (req.getQueryString("format").contains("text")) new String(payload, "UTF-8")
-                  else payload.mkString(",")
+  def handleUuidGET(uuid: String) = Action.async { implicit req => {
+    def allowed(infoton: Infoton, level: PermissionLevel = PermissionLevel.Read) =
+      authUtils.filterNotAllowedPaths(Seq(infoton.systemFields.path), level, authUtils.extractTokenFrom(req)).isEmpty
+
+    val isPurgeOp = req.getQueryString("op").contains("purge")
+
+    def fields = req.getQueryString("fields").map(FieldNameConverter.toActualFieldNames)
+
+    val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
+    if (!uuid.matches("^[a-f0-9]{32}$"))
+      Future.successful(BadRequest("not a valid uuid format"))
+    else {
+      crudServiceFS.getInfotonByUuidAsync(uuid).flatMap {
+        case FullBox(infoton) if isPurgeOp && allowed(infoton, PermissionLevel.Write) =>
+          val formatter = getFormatter(req, formatterManager, "json")
+
+          req.getQueryString("index") match {
+            case Some(index) =>
+              crudServiceFS
+                .purgeUuidFromIndex(uuid, index)
+                .map(
+                  _ =>
+                    Ok(
+                      formatter.render(
+                        SimpleResponse(success = true,
+                          Some(s"Note: $uuid was only purged from $index but not from CAS!"))
+                      )
+                    ).as(overrideMimetype(formatter.mimetype, req)._2)
                 )
-              )
-            case Failure(e) =>
-              e match {
-                case _: NoSuchElementException => p.success(NotFound("zz item not found"))
-                case _ =>
-                  p.success(
-                    Ok(s"""{"success":false,"message":"${Option(e.getMessage).getOrElse(e.getCause.getMessage)}"}""")
+            case None =>
+              crudServiceFS.getInfotons(Seq(infoton.systemFields.path)).flatMap { boi =>
+                if (infoton.uuid == boi.infotons.head.uuid)
+                  Future.successful(
+                    BadRequest(
+                      "This specific version of CM-Well does not support this operation for the last version of the Infoton."
+                    )
                   )
+                else {
+                  crudServiceFS.purgeUuid(infoton).map { _ =>
+                    Ok(formatter.render(SimpleResponse(success = true, None)))
+                      .as(overrideMimetype(formatter.mimetype, req)._2)
+                  }
+                }
               }
           }
-          p.future
+        case FullBox(infoton) if isPurgeOp => Future.successful(Forbidden("Not authorized"))
+
+        case FullBox(infoton) if allowed(infoton) =>
+          extractFieldsMask(req, typesCache, cmwellRDFHelper, timeContext)
+            .flatMap(fm => infotonOptionToReply(req, Some(infoton), fieldsMask = fm))
+        case FullBox(infoton) => Future.successful(Forbidden("Not authorized"))
+
+        case EmptyBox => infotonOptionToReply(req, None)
+        case BoxedFailure(e) => asyncErrorHandler(e)
       }
     }
   }
-
-  def handleUuidGET(uuid: String) = Action.async { implicit req =>
-    {
-      def allowed(infoton: Infoton, level: PermissionLevel = PermissionLevel.Read) =
-        authUtils.filterNotAllowedPaths(Seq(infoton.path), level, authUtils.extractTokenFrom(req)).isEmpty
-      val isPurgeOp = req.getQueryString("op").contains("purge")
-      def fields = req.getQueryString("fields").map(FieldNameConverter.toActualFieldNames)
-
-      val timeContext = req.attrs.get(Attrs.RequestReceivedTimestamp)
-      if (!uuid.matches("^[a-f0-9]{32}$"))
-        Future.successful(BadRequest("not a valid uuid format"))
-      else {
-        crudServiceFS.getInfotonByUuidAsync(uuid).flatMap {
-          case FullBox(infoton) if isPurgeOp && allowed(infoton, PermissionLevel.Write) =>
-            val formatter = getFormatter(req, formatterManager, "json")
-
-            req.getQueryString("index") match {
-              case Some(index) =>
-                crudServiceFS
-                  .purgeUuidFromIndex(uuid, index)
-                  .map(
-                    _ =>
-                      Ok(
-                        formatter.render(
-                          SimpleResponse(success = true,
-                                         Some(s"Note: $uuid was only purged from $index but not from CAS!"))
-                        )
-                      ).as(overrideMimetype(formatter.mimetype, req)._2)
-                  )
-              case None =>
-                crudServiceFS.getInfotons(Seq(infoton.path)).flatMap { boi =>
-                  if (infoton.uuid == boi.infotons.head.uuid)
-                    Future.successful(
-                      BadRequest(
-                        "This specific version of CM-Well does not support this operation for the last version of the Infoton."
-                      )
-                    )
-                  else {
-                    crudServiceFS.purgeUuid(infoton).map { _ =>
-                      Ok(formatter.render(SimpleResponse(success = true, None)))
-                        .as(overrideMimetype(formatter.mimetype, req)._2)
-                    }
-                  }
-                }
-            }
-          case FullBox(infoton) if isPurgeOp => Future.successful(Forbidden("Not authorized"))
-
-          case FullBox(infoton) if allowed(infoton) =>
-            extractFieldsMask(req, typesCache, cmwellRDFHelper, timeContext)
-              .flatMap(fm => infotonOptionToReply(req, Some(infoton), fieldsMask = fm))
-          case FullBox(infoton) => Future.successful(Forbidden("Not authorized"))
-
-          case EmptyBox        => infotonOptionToReply(req, None)
-          case BoxedFailure(e) => asyncErrorHandler(e)
-        }
-      }
-    }
   }
 
   def handleTrack(trackingId: String): Action[AnyContent] = Action.async { implicit request =>
@@ -553,11 +562,12 @@ callback=< [URL] >
 
     def getDataFromActor(trackingId: String) = trackingId match {
       case TrackingId(tid) => logger.debug(s"Tracking: Trying to get data from $tid"); TrackingUtil().readStatus(tid)
-      case _               => Future.failed(new IllegalArgumentException(s"Invalid trackingID"))
+      case _ => Future.failed(new IllegalArgumentException(s"Invalid trackingID"))
     }
 
     val resultsFut = getDataFromActor(trackingId)
     val formatter = getFormatter(request, formatterManager, defaultFormat = "ntriples", withoutMeta = true)
+
     def errMsg(msg: String) = s"""{"success":false,"error":"$msg"}"""
 
     resultsFut
@@ -576,7 +586,7 @@ callback=< [URL] >
         case _: NoSuchElementException =>
           Gone(errMsg("This tracking ID was never created or its tracked request has been already completed"))
         case _: AskTimeoutException => ServiceUnavailable(errMsg("Tracking is currently unavailable"))
-        case _                      => InternalServerError(errMsg("An unexpected error has occurred"))
+        case _ => InternalServerError(errMsg("An unexpected error has occurred"))
       }
   }
 
@@ -585,6 +595,7 @@ callback=< [URL] >
       case Failure(e) => asyncErrorHandler(e)
       case Success(request) => {
         val normalizedPath = normalizePath(request.path)
+        val modifier = request.attrs(Attrs.UserName)
         val isPriorityWrite = originalRequest.getQueryString("priority").isDefined
         if (!InfotonValidator.isInfotonNameValid(normalizedPath))
           Future.successful(
@@ -596,8 +607,8 @@ callback=< [URL] >
             )
           )
         else if (isPriorityWrite && !authUtils.isOperationAllowedForUser(security.PriorityWrite,
-                                                                         authUtils.extractTokenFrom(originalRequest),
-                                                                         evenForNonProdEnv = true))
+          authUtils.extractTokenFrom(originalRequest),
+          evenForNonProdEnv = true))
           Future.successful(
             Forbidden(Json.obj("success" -> false, "message" -> "User not authorized for priority write"))
           )
@@ -607,7 +618,7 @@ callback=< [URL] >
             case Some(jsonStr) =>
               jsonToFields(jsonStr.getBytes("UTF-8")) match {
                 case Success(fields) =>
-                  crudServiceFS.deleteInfoton(normalizedPath, None, Some(fields), isPriorityWrite).map { _ =>
+                  crudServiceFS.deleteInfoton(normalizedPath, modifier, Some(fields), isPriorityWrite).map { _ =>
                     Ok(Json.obj("success" -> true))
                   }
                 case Failure(exception) => asyncErrorHandler(exception)
@@ -617,7 +628,7 @@ callback=< [URL] >
                 case Some(field) =>
                   val value = request.getQueryString("value") match {
                     case Some(value) => FString(value)
-                    case _           => FString("*")
+                    case _ => FString("*")
                   }
                   Some(Map(field -> Set(value)))
                 case _ => None
@@ -626,13 +637,13 @@ callback=< [URL] >
               val p = Promise[Result]()
               for {
                 either <- infotonPathDeletionAllowed(normalizedPath,
-                                                     request.getQueryString("recursive").getOrElse("true").toBoolean,
-                                                     crudServiceFS)
+                  request.getQueryString("recursive").getOrElse("true").toBoolean,
+                  crudServiceFS)
               } {
                 (fields.isDefined, either) match {
                   case (true, _) =>
                     crudServiceFS
-                      .deleteInfoton(normalizedPath, None, fields, isPriorityWrite)
+                      .deleteInfoton(normalizedPath, modifier, fields, isPriorityWrite)
                       .onComplete {
                         case Success(b) => p.success(Ok(Json.obj("success" -> b)))
                         case Failure(e) =>
@@ -640,7 +651,7 @@ callback=< [URL] >
                       }
                   case (false, Right(paths)) =>
                     crudServiceFS
-                      .deleteInfotons(paths.map((_, None, None)).toList, isPriorityWrite = isPriorityWrite)
+                      .deleteInfotons(paths.map((_, None)).toList, modifier, isPriorityWrite = isPriorityWrite)
                       .onComplete {
                         case Success(b) => p.success(Ok(Json.obj("success" -> b)))
                         case Failure(e) =>
@@ -666,7 +677,7 @@ callback=< [URL] >
         val normalizedPath = normalizePath(request.path)
         val from = DateParser.parseDate(request.getQueryString("from").getOrElse(""), FromDate).toOption
         val to = DateParser.parseDate(request.getQueryString("to").getOrElse(""), ToDate).toOption
-        val length = request.getQueryString("length").flatMap(asInt).getOrElse(10)
+        val length = request.getQueryString("length").flatMap(asInt).getOrElse(500)
         val offset = request.getQueryString("offset").flatMap(asInt).getOrElse(0)
         val scrollTtl = request.getQueryString("session-ttl").flatMap(asInt).getOrElse(15).min(60)
         val withDescendants = request.queryString.keySet("with-descendants") || request.queryString.keySet("recursive")
@@ -707,25 +718,32 @@ callback=< [URL] >
               }
 
               val fmFut = extractFieldsMask(request, typesCache, cmwellRDFHelper, timeContext)
+              val debugInfoParam = request.queryString.keySet("debug-info")
               crudServiceFS
-                .startScroll(
+                .thinSearch(
                   pathFilter,
+                  fieldFilter,
+                  Some(DatesFilter(from, to)),
+                  PaginationParams(offset, 1),
+                  withHistory,
+                  debugInfo = debugInfoParam,
+                  withDeleted = withDeleted
+                ).map { ftsResults =>
+                IterationResults("", ftsResults.total, Some(Vector.empty), debugInfo = ftsResults.debugInfo)
+              }.flatMap { thinSearchResult =>
+                val withDataB = withData.fold(false)(_.toLowerCase() != "false")
+                val rv = createScrollIdDispatcherActorFromIteratorId(StartScrollInput(pathFilter,
                   fieldFilter,
                   Some(DatesFilter(from, to)),
                   PaginationParams(offset, length),
                   scrollTtl,
                   withHistory,
                   withDeleted,
-                  debugInfo = request.queryString.keySet("debug-info")
-                )
-                .flatMap { startScrollResult =>
-                  val rv = createScrollIdDispatcherActorFromIteratorId(startScrollResult.iteratorId,
-                                                                       withHistory,
-                                                                       (scrollTtl + 5).seconds)
-                  fmFut.map { fm =>
-                    Ok(formatter.render(startScrollResult.copy(iteratorId = rv).masked(fm))).as(formatter.mimetype)
-                  }
+                  withDataB), withHistory, (scrollTtl + 5).seconds)
+                fmFut.map { fm =>
+                  Ok(formatter.render(thinSearchResult.copy(iteratorId = rv).masked(fm))).as(formatter.mimetype)
                 }
+              }
             }
           }
           .recover(errorHandler)
@@ -733,10 +751,10 @@ callback=< [URL] >
       .recover(asyncErrorHandler)
       .get
 
-  private def createScrollIdDispatcherActorFromIteratorId(id: String,
+  private def createScrollIdDispatcherActorFromIteratorId(iterationStateInput: IterationStateInput,
                                                           withHistory: Boolean,
                                                           ttl: FiniteDuration): String = {
-    val ar = Grid.createAnon(classOf[IteratorIdDispatcher], id, withHistory, ttl)
+    val ar = Grid.createAnon(classOf[IteratorIdDispatcher], iterationStateInput, withHistory, ttl)
     val path = ar.path.toSerializationFormatWithAddress(Grid.me)
     putInCache(path, ar)
     val rv = Base64.encodeBase64URLSafeString(path)
@@ -752,13 +770,13 @@ callback=< [URL] >
    * }
    */
   private def addIndexTime(fromCassandra: Seq[Infoton], uuidToindexTime: Map[String, Long]): Seq[Infoton] =
-    fromCassandra.map {
-      case i: ObjectInfoton if i.indexTime.isEmpty  => i.copy(indexTime = uuidToindexTime.get(i.uuid))
-      case i: FileInfoton if i.indexTime.isEmpty    => i.copy(indexTime = uuidToindexTime.get(i.uuid))
-      case i: LinkInfoton if i.indexTime.isEmpty    => i.copy(indexTime = uuidToindexTime.get(i.uuid))
-      case i: DeletedInfoton if i.indexTime.isEmpty => i.copy(indexTime = uuidToindexTime.get(i.uuid))
-      case i                                        => i
-    }
+  fromCassandra.map {
+    case i: ObjectInfoton if i.systemFields.indexTime.isEmpty => i.copy(i.systemFields.copy(indexTime = uuidToindexTime.get(i.uuid)))
+    case i: FileInfoton if i.systemFields.indexTime.isEmpty => i.copy(i.systemFields.copy(indexTime = uuidToindexTime.get(i.uuid)))
+    case i: LinkInfoton if i.systemFields.indexTime.isEmpty => i.copy(i.systemFields.copy(indexTime = uuidToindexTime.get(i.uuid)))
+    case i: DeletedInfoton if i.systemFields.indexTime.isEmpty => i.copy(i.systemFields.copy(indexTime = uuidToindexTime.get(i.uuid)))
+    case i => i
+  }
 
   /**
     * answers with a stream, which is basically a chunked response,
@@ -777,7 +795,7 @@ callback=< [URL] >
         val from = DateParser.parseDate(request.getQueryString("from").getOrElse(""), FromDate).toOption
         val to = DateParser.parseDate(request.getQueryString("to").getOrElse(""), ToDate).toOption
         val offset = 0 //request.getQueryString("offset").flatMap(asInt).getOrElse(0)
-        val withDescendants = request.queryString.keySet("with-descendants") || request.queryString.keySet("recursive")
+      val withDescendants = request.queryString.keySet("with-descendants") || request.queryString.keySet("recursive")
         val withHistory = request.queryString.keySet("with-history")
         val withDeleted = request.queryString.keySet("with-deleted")
         val withMeta = request.queryString.keySet("with-meta")
@@ -793,8 +811,8 @@ callback=< [URL] >
               if (wd.isEmpty) "text" else "nt"
             })
           if (Set("nt", "ntriples", "nq", "nquads").exists(frmt.equalsIgnoreCase) || frmt.toLowerCase.startsWith(
-                "json"
-              )) {
+            "json"
+          )) {
             Some("text") -> frmt
           } else {
             None -> frmt
@@ -802,12 +820,12 @@ callback=< [URL] >
         }
         format match {
           case f
-              if !Set("text", "path", "tsv", "tab", "nt", "ntriples", "nq", "nquads")(f.toLowerCase) && !f.toLowerCase
-                .startsWith("json") =>
+            if !Set("text", "path", "tsv", "tab", "nt", "ntriples", "nq", "nquads")(f.toLowerCase) && !f.toLowerCase
+              .startsWith("json") =>
             Future.successful(
               BadRequest(
                 Json.obj("success" -> false,
-                         "message" -> "not a streamable type (use 'text','tsv','ntriples', 'nquads', or any json)")
+                  "message" -> "not a streamable type (use 'text','tsv','ntriples', 'nquads', or any json)")
               )
             )
           case FormatExtractor(formatType) => {
@@ -836,9 +854,9 @@ callback=< [URL] >
                        * we don't want different versions to "mix" and we enforce uniquness only in this case
                        */
                       val forceUniqueness: Boolean = withHistory && (formatType match {
-                        case RdfType(NquadsFlavor)   => true
+                        case RdfType(NquadsFlavor) => true
                         case RdfType(NTriplesFlavor) => true
-                        case _                       => false
+                        case _ => false
                       })
                       val formatter = formatterManager.getFormatter(
                         format = formatType,
@@ -855,7 +873,7 @@ callback=< [URL] >
                         filterOutBlanks = true,
                         forceUniqueness = forceUniqueness
                       ) // cleanSystemBlanks set to true, so we won't output all the meta information we usaly output.
-                        // it get's messy with streaming. we don't want each chunk to show the "document context"
+                      // it get's messy with streaming. we don't want each chunk to show the "document context"
 
                       val datesFilter = {
                         if (from.isEmpty && to.isEmpty) None
@@ -863,18 +881,18 @@ callback=< [URL] >
                       }
                       streams
                         .multiScrollSource(pathFilter = pathFilter,
-                                           fieldFilter = fieldFilter,
-                                           datesFilter = datesFilter,
-                                           withHistory = withHistory,
-                                           withDeleted = withDeleted)
+                          fieldFilter = fieldFilter,
+                          datesFilter = datesFilter,
+                          withHistory = withHistory,
+                          withDeleted = withDeleted)
                         .map {
                           case (source, hits) => {
                             val s = streams.scrollSourceToByteString(source,
-                                                                     formatter,
-                                                                     withData.isDefined,
-                                                                     withHistory,
-                                                                     length,
-                                                                     fieldsMask)
+                              formatter,
+                              withData.isDefined,
+                              withHistory,
+                              length,
+                              fieldsMask)
                             Ok.chunked(s)
                               .as(overrideMimetype(formatter.mimetype, request)._2)
                               .withHeaders("X-CM-WELL-N" -> hits.toString)
@@ -919,8 +937,8 @@ callback=< [URL] >
               if (wd.isEmpty) "text" else "nt"
             })
           if (Set("nt", "ntriples", "nq", "nquads").exists(frmt.equalsIgnoreCase) || frmt.toLowerCase.startsWith(
-                "json"
-              )) {
+            "json"
+          )) {
             Some("text") -> frmt
           } else {
             None -> frmt
@@ -928,12 +946,12 @@ callback=< [URL] >
         }
         format match {
           case f
-              if !Set("text", "path", "tsv", "tab", "nt", "ntriples", "nq", "nquads")(f.toLowerCase) && !f.toLowerCase
-                .startsWith("json") =>
+            if !Set("text", "path", "tsv", "tab", "nt", "ntriples", "nq", "nquads")(f.toLowerCase) && !f.toLowerCase
+              .startsWith("json") =>
             Future.successful(
               BadRequest(
                 Json.obj("success" -> false,
-                         "message" -> "not a streamable type (use 'text','tsv','ntriples', 'nquads', or any json)")
+                  "message" -> "not a streamable type (use 'text','tsv','ntriples', 'nquads', or any json)")
               )
             )
           case FormatExtractor(formatType) => {
@@ -960,9 +978,9 @@ callback=< [URL] >
                    * we don't want different versions to "mix" and we enforce uniquness only in this case
                    */
                   val forceUniqueness: Boolean = withHistory && (formatType match {
-                    case RdfType(NquadsFlavor)   => true
+                    case RdfType(NquadsFlavor) => true
                     case RdfType(NTriplesFlavor) => true
-                    case _                       => false
+                    case _ => false
                   })
                   val formatter = formatterManager.getFormatter(
                     format = formatType,
@@ -979,7 +997,7 @@ callback=< [URL] >
                     filterOutBlanks = true,
                     forceUniqueness = forceUniqueness
                   ) // cleanSystemBlanks set to true, so we won't output all the meta information we usaly output.
-                    // it get's messy with streaming. we don't want each chunk to show the "document context"
+                  // it get's messy with streaming. we don't want each chunk to show the "document context"
 
                   streams
                     .superScrollSource(
@@ -994,11 +1012,11 @@ callback=< [URL] >
                     .map {
                       case (src, hits) =>
                         val s = streams.scrollSourceToByteString(src,
-                                                                 formatter,
-                                                                 withData.isDefined,
-                                                                 withHistory,
-                                                                 length,
-                                                                 fieldsMask)
+                          formatter,
+                          withData.isDefined,
+                          withHistory,
+                          length,
+                          fieldsMask)
                         Ok.chunked(s)
                           .as(overrideMimetype(formatter.mimetype, request)._2)
                           .withHeaders("X-CM-WELL-N" -> hits.toString)
@@ -1026,6 +1044,7 @@ callback=< [URL] >
         val withMeta = request.queryString.keySet("with-meta")
         val debugLog = request.queryString.keySet("debug-log")
         val scrollTtl = request.getQueryString("session-ttl").flatMap(asLong).getOrElse(3600L).min(3600L)
+        val chunkSize = request.getQueryString("chunk-size").flatMap(asInt).getOrElse(500)
         val length = request.getQueryString("length").flatMap(asLong)
         val pathFilter = Some(PathFilter(normalizedPath, withDescendants))
         val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
@@ -1038,8 +1057,8 @@ callback=< [URL] >
               if (wd.isEmpty) "text" else "nt"
             })
           if (Set("nt", "ntriples", "nq", "nquads").exists(frmt.equalsIgnoreCase) || frmt.toLowerCase.startsWith(
-                "json"
-              )) {
+            "json"
+          )) {
             Some("text") -> frmt
           } else {
             None -> frmt
@@ -1047,8 +1066,8 @@ callback=< [URL] >
         }
         (format match {
           case f
-              if !Set("text", "path", "tsv", "tab", "nt", "ntriples", "nq", "nquads")(f.toLowerCase) && !f.toLowerCase
-                .startsWith("json") =>
+            if !Set("text", "path", "tsv", "tab", "nt", "ntriples", "nq", "nquads")(f.toLowerCase) && !f.toLowerCase
+              .startsWith("json") =>
             Future.successful(
               BadRequest(
                 Json.obj(
@@ -1081,9 +1100,9 @@ callback=< [URL] >
                    * we don't want different versions to "mix" and we enforce uniquness only in this case
                    */
                   val forceUniqueness: Boolean = withHistory && (formatType match {
-                    case RdfType(NquadsFlavor)   => true
+                    case RdfType(NquadsFlavor) => true
                     case RdfType(NTriplesFlavor) => true
-                    case _                       => false
+                    case _ => false
                   })
                   val formatter = formatterManager.getFormatter(
                     format = formatType,
@@ -1108,7 +1127,7 @@ callback=< [URL] >
                       pathFilter = pathFilter,
                       fieldFilters = fieldFilter,
                       datesFilter = Some(DatesFilter(from, to)),
-                      paginationParams = PaginationParams(0, 500),
+                      paginationParams = PaginationParams(0, chunkSize),
                       scrollTTL = scrollTtl,
                       withHistory = withHistory,
                       withDeleted = withDeleted,
@@ -1117,18 +1136,32 @@ callback=< [URL] >
                     .map {
                       case (src, hits) =>
                         val s: Source[ByteString, NotUsed] = {
-                          val scrollSourceToByteString = streams.scrollSourceToByteString(src,
-                                                                                          formatter,
-                                                                                          withData.isDefined,
-                                                                                          withHistory,
-                                                                                          length,
-                                                                                          fieldsMask)
+                          val srcWithDebug = if (debugLog) src.via {
+                            new StreamEventInspector(
+                              onUpstreamFinishInspection = () => logger.info(s"scrollSource<->scrollSourceToByteString [$id] onUpstreamFinish"),
+                              onUpstreamFailureInspection = error => logger.error(s"scrollSource<->scrollSourceToByteString [$id] onUpstreamFailure", error),
+                              onDownstreamFinishInspection = () => logger.info(s"scrollSource<->scrollSourceToByteString [$id] onDownstreamFinish"),
+                              onPullInspection = () => logger.info(s"scrollSource<->scrollSourceToByteString [$id] onPull"),
+                              onPushInspection = {
+                                case IterationResults(_, totalHits, iSeqOpt, _, _) =>
+                                  val infotonData = iSeqOpt.fold("infoton sequence is None")(iSeq =>
+                                    s"infoton count: ${iSeq.size}, first uuid: ${iSeq.headOption.fold("none")(_.uuid)}")
+                                  logger.info(s"scrollSource<->scrollSourceToByteString [$id] onPush(totalHits: $totalHits, $infotonData)")
+                              }
+                            )
+                          } else src
+                          val scrollSourceToByteString = streams.scrollSourceToByteString(srcWithDebug,
+                            formatter,
+                            withData.isDefined,
+                            withHistory,
+                            length,
+                            fieldsMask)
                           if (debugLog) scrollSourceToByteString.via {
                             new StreamEventInspector(
-                              onUpstreamFinishInspection = () => logger.info(s"[$id] onUpstreamFinish"),
-                              onUpstreamFailureInspection = error => logger.error(s"[$id] onUpstreamFailure", error),
-                              onDownstreamFinishInspection = () => logger.info(s"[$id] onDownstreamFinish"),
-                              onPullInspection = () => logger.info(s"[$id] onPull"),
+                              onUpstreamFinishInspection = () => logger.info(s"scrollSourceToByteString<->Play [$id] onUpstreamFinish"),
+                              onUpstreamFailureInspection = error => logger.error(s"scrollSourceToByteString<->Play [$id] onUpstreamFailure", error),
+                              onDownstreamFinishInspection = () => logger.info(s"scrollSourceToByteString<->Play [$id] onDownstreamFinish"),
+                              onPullInspection = () => logger.info(s"scrollSourceToByteString<->Play [$id] onPull"),
                               onPushInspection = bytes => {
                                 val all = bytes.utf8String
                                 val elem = {
@@ -1136,8 +1169,8 @@ callback=< [URL] >
                                   else all.lines.next()
                                 }
                                 logger.info(
-                                  s"""[$id] onPush(first line: "$elem", num of lines: ${all.lines.size}, num of chars: ${all.length})"""
-                                )
+                                  s"""scrollSourceToByteString<->Play [$id] onPush(first line: "$elem", num of lines: ${all.lines.size},"""
+                                    + s" num of chars: ${all.length})")
                               }
                             )
                           } else scrollSourceToByteString
@@ -1171,11 +1204,11 @@ callback=< [URL] >
 
     qpOpt
       .fold[Future[Option[FieldFilter]]](Future.successful(None)) { qp =>
-        FieldFilterParser.parseQueryParams(qp) match {
-          case Failure(err) => Future.failed(err)
-          case Success(rff) => RawFieldFilter.eval(rff, typesCache, cmwellRDFHelper, timeContext).map(Some.apply)
-        }
+      FieldFilterParser.parseQueryParams(qp) match {
+        case Failure(err) => Future.failed(err)
+        case Success(rff) => RawFieldFilter.eval(rff, typesCache, cmwellRDFHelper, timeContext).map(Some.apply)
       }
+    }
       .map { ffOpt =>
         SortedConsumeState(indexTime, pOpt, withHistory, withDeleted, withDescendants, ffOpt)
       }
@@ -1194,7 +1227,7 @@ callback=< [URL] >
 
     fieldFilters match {
       case None => MultiFieldFilter(Must, rangeFilters)
-      case Some(should @ SingleFieldFilter(Should, _, _, _)) =>
+      case Some(should@SingleFieldFilter(Should, _, _, _)) =>
         MultiFieldFilter(Must, should.copy(fieldOperator = Must) :: rangeFilters)
       case Some(ff) => MultiFieldFilter(Must, ff :: rangeFilters)
     }
@@ -1208,9 +1241,9 @@ callback=< [URL] >
     val lengthHint = request.getQueryString("length-hint").flatMap(asInt).getOrElse(3000)
     val normalizedPath = normalizePath(request.path)
     val qpOpt = request.getQueryString("qp")
-//deprecated!
-//    val from = request.getQueryString("from")
-//    val to = request.getQueryString("to")
+    //deprecated!
+    //    val from = request.getQueryString("from")
+    //    val to = request.getQueryString("to")
     val withDescendants = request.queryString.keySet("with-descendants") || request.queryString.keySet("recursive")
     val withHistory = request.queryString.keySet("with-history")
     val withDeleted = request.queryString.keySet("with-deleted")
@@ -1229,13 +1262,13 @@ callback=< [URL] >
 
     format match {
       case f
-          if !Set("text", "path", "tsv", "tab", "nt", "ntriples", "nq", "nquads")(f.toLowerCase) && !f.toLowerCase
-            .startsWith("json") =>
+        if !Set("text", "path", "tsv", "tab", "nt", "ntriples", "nq", "nquads")(f.toLowerCase) && !f.toLowerCase
+          .startsWith("json") =>
         Future.successful(
           BadRequest(
             Json
               .obj("success" -> false,
-                   "message" -> "not a streamable type (use any json, or one of: 'text','tsv','ntriples', or 'nquads')")
+                "message" -> "not a streamable type (use any json, or one of: 'text','tsv','ntriples', or 'nquads')")
           )
         )
       case FormatExtractor(formatType) => {
@@ -1246,9 +1279,9 @@ callback=< [URL] >
          * we don't want different versions to "mix" and we enforce uniquness only in this case
          */
         val forceUniqueness: Boolean = withHistory && (formatType match {
-          case RdfType(NquadsFlavor)   => true
+          case RdfType(NquadsFlavor) => true
           case RdfType(NTriplesFlavor) => true
-          case _                       => false
+          case _ => false
         })
 
         generateSortedConsumeFieldFilters(
@@ -1260,64 +1293,64 @@ callback=< [URL] >
           indexTime = indexTime,
           timeContext = timeContext
         ).transformWith {
-            case Failure(err) => {
-              val msg = s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"
-              logger.error(msg, err)
-              val res = FailedDependency(Json.obj("success" -> false, "message" -> msg))
-              request.attrs.get(Attrs.RequestReceivedTimestamp).fold(Future.successful(res)) { reqStartTime =>
-                val timePassedInMillis = System.currentTimeMillis() - reqStartTime
-                if (timePassedInMillis > 9000L) Future.successful(res)
-                else SimpleScheduler.schedule((9500L - timePassedInMillis).millis)(res)
-              }
-            }
-            case Success(SortedConsumeState(firstTimeStamp, path, history, deleted, descendants, fieldFilters)) => {
-
-              val formatter = formatterManager.getFormatter(
-                format = formatType,
-                timeContext = timeContext,
-                host = request.host,
-                uri = request.uri,
-                pretty = false,
-                fieldFilters = fieldFilters,
-                withData = withData,
-                withoutMeta = !withMeta,
-                filterOutBlanks = true,
-                forceUniqueness = forceUniqueness
-              )
-
-              import cmwell.ws.Streams._
-
-              val src = streams.qStream(firstTimeStamp, path, history, deleted, descendants, lengthHint, fieldFilters)
-
-              val ss: Source[ByteString, NotUsed] = length.fold {
-                if (withData.isEmpty)
-                  src.via(Flows.searchThinResultToByteString(formatter))
-                else
-                  src
-                    .via(Flows.searchThinResultToFatInfoton(crudServiceFS))
-                    .via(Flows.infotonToByteString(formatter))
-              } { l =>
-                if (withData.isEmpty)
-                  src
-                    .take(l)
-                    .via(Flows.searchThinResultToByteString(formatter))
-                else
-                  src
-                    .via(Flows.searchThinResultToFatInfoton(crudServiceFS))
-                    .take(l)
-                    .via(Flows.infotonToByteString(formatter))
-              }
-
-              val contentType = {
-                if (formatType.mimetype.startsWith("application/json"))
-                  overrideMimetype("application/json-seq;charset=UTF8", request)._2
-                else
-                  overrideMimetype(formatType.mimetype, request)._2
-              }
-
-              Future.successful(Ok.chunked(ss.batch(128, identity)(_ ++ _)).as(contentType)) //TODO: `.withHeaders("X-CM-WELL-N" -> total.toString)`
+          case Failure(err) => {
+            val msg = s"failed to evaluate given qp [${qpOpt.fold("")(_.toString)}]"
+            logger.error(msg, err)
+            val res = FailedDependency(Json.obj("success" -> false, "message" -> msg))
+            request.attrs.get(Attrs.RequestReceivedTimestamp).fold(Future.successful(res)) { reqStartTime =>
+              val timePassedInMillis = System.currentTimeMillis() - reqStartTime
+              if (timePassedInMillis > 9000L) Future.successful(res)
+              else SimpleScheduler.schedule((9500L - timePassedInMillis).millis)(res)
             }
           }
+          case Success(SortedConsumeState(firstTimeStamp, path, history, deleted, descendants, fieldFilters)) => {
+
+            val formatter = formatterManager.getFormatter(
+              format = formatType,
+              timeContext = timeContext,
+              host = request.host,
+              uri = request.uri,
+              pretty = false,
+              fieldFilters = fieldFilters,
+              withData = withData,
+              withoutMeta = !withMeta,
+              filterOutBlanks = true,
+              forceUniqueness = forceUniqueness
+            )
+
+            import cmwell.ws.Streams._
+
+            val src = streams.qStream(firstTimeStamp, path, history, deleted, descendants, lengthHint, fieldFilters)
+
+            val ss: Source[ByteString, NotUsed] = length.fold {
+              if (withData.isEmpty)
+                src.via(Flows.searchThinResultToByteString(formatter))
+              else
+                src
+                  .via(Flows.searchThinResultToFatInfoton(crudServiceFS))
+                  .via(Flows.infotonToByteString(formatter))
+            } { l =>
+              if (withData.isEmpty)
+                src
+                  .take(l)
+                  .via(Flows.searchThinResultToByteString(formatter))
+              else
+                src
+                  .via(Flows.searchThinResultToFatInfoton(crudServiceFS))
+                  .take(l)
+                  .via(Flows.infotonToByteString(formatter))
+            }
+
+            val contentType = {
+              if (formatType.mimetype.startsWith("application/json"))
+                overrideMimetype("application/json-seq;charset=UTF8", request)._2
+              else
+                overrideMimetype(formatType.mimetype, request)._2
+            }
+
+            Future.successful(Ok.chunked(ss.batch(128, identity)(_ ++ _)).as(contentType)) //TODO: `.withHeaders("X-CM-WELL-N" -> total.toString)`
+          }
+        }
           .recover(errorHandler)
       }
     }
@@ -1345,13 +1378,13 @@ callback=< [URL] >
       rh =>
         rh.mediaType match {
           case Some(MediaType("application", "x-www-form-urlencoded", _))
-              if rh.getQueryString("op").contains("create-consumer") =>
+            if rh.getQueryString("op").contains("create-consumer") =>
             parse.formUrlEncoded.map(m => Left(CreateConsumer(rh, m)))
           case Some(MediaType("application", "x-www-form-urlencoded", _))
-              if rh.getQueryString("op").contains("search") =>
+            if rh.getQueryString("op").contains("search") =>
             parse.formUrlEncoded.map(m => Left(Search(rh, m)))
           case _ => parse.raw.map(Right.apply)
-      }
+        }
     )
 
     override def executionContext: ExecutionContext = ec
@@ -1377,12 +1410,12 @@ callback=< [URL] >
       val lengthHint = createConsumerParams.get("length-hint").flatMap(_.headOption.flatMap(asLong))
       val consumeStateFut: Future[ConsumeState] = {
         val f = generateSortedConsumeFieldFilters(qpOpt,
-                                                  normalizedPath,
-                                                  withDescendants,
-                                                  withHistory,
-                                                  withDeleted,
-                                                  indexTime.getOrElse(0L),
-                                                  requestReceivedTimestamp)
+          normalizedPath,
+          withDescendants,
+          withHistory,
+          withDeleted,
+          indexTime.getOrElse(0L),
+          requestReceivedTimestamp)
         lengthHint.fold[Future[ConsumeState]](f)(lh => f.map(_.asBulk(lh)))
       }
       consumeStateFut
@@ -1410,6 +1443,7 @@ callback=< [URL] >
     if (request.queryString.isEmpty) Future.successful(Ok(views.txt._consume(request)))
     else handleConsume(request)
   }
+
   // This method is to enable to access BulkScrollHandler.handle from routes.
   def handleBulkConsumeRoute = Action.async { implicit request =>
     if (request.queryString.isEmpty) Future.successful(Ok(views.txt._bulkConsume(request)))
@@ -1470,23 +1504,23 @@ callback=< [URL] >
                 case b if b.threshold <= Settings.maxLength => b.threshold.toInt
               }
               .getOrElse(hardLimit)
-          ).min(hardLimit)  //Making sure length hint is not bigger than max
+          ).min(hardLimit) //Making sure length hint is not bigger than max
 
         val debugInfo = request.queryString.keySet("debug-info")
 
         sortedIteratorStateTry
           .map {
-            case sortedConsumeState @ SortedConsumeState(timeStamp,
-                                                         path,
-                                                         history,
-                                                         deleted,
-                                                         descendants,
-                                                         fieldFilters) => {
+            case sortedConsumeState@SortedConsumeState(timeStamp,
+            path,
+            history,
+            deleted,
+            descendants,
+            fieldFilters) => {
 
               val pf = path.map(PathFilter(_, descendants))
               val ffs = transformFieldFiltersForConsumption(fieldFilters,
-                                                            timeStamp,
-                                                            request.attrs(Attrs.RequestReceivedTimestamp))
+                timeStamp,
+                request.attrs(Attrs.RequestReceivedTimestamp))
               val pp = PaginationParams(0, lengthHint)
               val fsp = FieldSortParams(List("system.indexTime" -> Asc))
 
@@ -1526,12 +1560,13 @@ callback=< [URL] >
                 .flatMap {
                   case sr: SearchThinResults if sr.thinResults.isEmpty => {
                     if (debugInfo) {
-                      logger.info(s"""will emit 204 for search params:
-                              |pathFilter       = $pf,
-                              |fieldFilters     = $ffs,
-                              |paginationParams = $pp,
-                              |withHistory      = $history,
-                              |fieldSortParams  = $fsp""".stripMargin)
+                      logger.info(
+                        s"""will emit 204 for search params:
+                           |pathFilter       = $pf,
+                           |fieldFilters     = $ffs,
+                           |paginationParams = $pp,
+                           |withHistory      = $history,
+                           |fieldSortParams  = $fsp""".stripMargin)
                     }
                     val result = new Status(204)
                       .as(contentType)
@@ -1542,35 +1577,46 @@ callback=< [URL] >
 
                     val idxT = results.maxBy(_.indexTime).indexTime //infotons.maxBy(_.indexTime.getOrElse(0L)).indexTime.getOrElse(0L)
 
+                    val fieldsMaskFut = extractFieldsMask(request.getQueryString("fields"),
+                      typesCache,
+                      cmwellRDFHelper,
+                      request.attrs.get(Attrs.RequestReceivedTimestamp))
+
                     // last chunk
                     if (results.length >= total)
-                      expandSearchResultsForSortedIteration(results,
-                                                            sortedConsumeState.copy(from = idxT),
-                                                            total,
-                                                            formatter,
-                                                            contentType,
-                                                            xg,
-                                                            yg,
-                                                            gqp,
-                                                            ygChunkSize,
-                                                            gqpChunkSize,
-                                                            timeContext)
+                      fieldsMaskFut.flatMap { fieldsMask =>
+                        expandSearchResultsForSortedIteration(results,
+                          sortedConsumeState.copy(from = idxT),
+                          total,
+                          formatter,
+                          contentType,
+                          xg,
+                          yg,
+                          gqp,
+                          ygChunkSize,
+                          gqpChunkSize,
+                          timeContext,
+                          fieldsMask)
+                      }
                     //regular chunk with more than 1 indexTime
                     else if (results.exists(_.indexTime != idxT)) {
-                      val newResults = results.filter(_.indexTime < idxT)
-                      val id = sortedConsumeState.copy(from = idxT - 1)
-                      //expand the infotons with yg/xg, but only after filtering out the infotons with the max indexTime
-                      expandSearchResultsForSortedIteration(newResults,
-                                                            id,
-                                                            total,
-                                                            formatter,
-                                                            contentType,
-                                                            xg,
-                                                            yg,
-                                                            gqp,
-                                                            ygChunkSize,
-                                                            gqpChunkSize,
-                                                            timeContext)
+                      fieldsMaskFut.flatMap { fieldsMask =>
+                        val newResults = results.filter(_.indexTime < idxT)
+                        val id = sortedConsumeState.copy(from = idxT - 1)
+                        //expand the infotons with yg/xg, but only after filtering out the infotons with the max indexTime
+                        expandSearchResultsForSortedIteration(newResults,
+                          id,
+                          total,
+                          formatter,
+                          contentType,
+                          xg,
+                          yg,
+                          gqp,
+                          ygChunkSize,
+                          gqpChunkSize,
+                          timeContext,
+                          fieldsMask)
+                      }
                     }
                     //all the infotons in current chunk have the same indexTime
                     else {
@@ -1583,25 +1629,28 @@ callback=< [URL] >
                       }
 
                       val scrollFuture = streams.scrollSource(pathFilter = pf,
-                                                              fieldFilters = Some(ffs2),
-                                                              withHistory = history,
-                                                              withDeleted = deleted)
+                        fieldFilters = Some(ffs2),
+                        withHistory = history,
+                        withDeleted = deleted)
 
                       scrollFuture
                         .flatMap {
                           //if by pure luck, the chunk length is exactly equal to the number of infotons in cm-well containing this same indexTime
                           case (_, hits) if hits <= results.size =>
-                            expandSearchResultsForSortedIteration(results,
-                                                                  sortedConsumeState.copy(from = idxT),
-                                                                  total,
-                                                                  formatter,
-                                                                  contentType,
-                                                                  xg,
-                                                                  yg,
-                                                                  gqp,
-                                                                  ygChunkSize,
-                                                                  gqpChunkSize,
-                                                                  timeContext)
+                            fieldsMaskFut.flatMap { fieldsMask =>
+                              expandSearchResultsForSortedIteration(results,
+                                sortedConsumeState.copy(from = idxT),
+                                total,
+                                formatter,
+                                contentType,
+                                xg,
+                                yg,
+                                gqp,
+                                ygChunkSize,
+                                gqpChunkSize,
+                                timeContext,
+                                fieldsMask)
+                            }
                           // if we were asked to expand chunk, but need to respond with a chunked response
                           // (workaround: try increasing length or search directly with adding `system.indexTime::${idxT}`)
                           case _ if xg.isDefined || yg.isDefined =>
@@ -1615,19 +1664,21 @@ callback=< [URL] >
                             logger.info(s"sorted iteration encountered a large chunk [indexTime = $idxT]")
 
                             val id = ConsumeState.encode(sortedConsumeState.copy(from = idxT))
-                            val src =
-                              streams.scrollSourceToByteString(iterationResultsEnum,
-                                                               formatter,
-                                                               withData,
-                                                               history,
-                                                               None,
-                                                               Set.empty) // TODO: get fieldsMask instead of Set.empty
 
-                            val result = Ok
-                              .chunked(src)
-                              .as(contentType)
-                              .withHeaders("X-CM-WELL-POSITION" -> id, "X-CM-WELL-N-LEFT" -> (total - hits).toString)
-                            Future.successful(result)
+                            fieldsMaskFut.map { fieldsMask =>
+                              val src =
+                                streams.scrollSourceToByteString(iterationResultsEnum,
+                                  formatter,
+                                  withData,
+                                  history,
+                                  None,
+                                  fieldsMask)
+
+                              Ok
+                                .chunked(src)
+                                .as(contentType)
+                                .withHeaders("X-CM-WELL-POSITION" -> id, "X-CM-WELL-N-LEFT" -> (total - hits).toString)
+                            }
                           }
                         }
                         .recover(errorHandler)
@@ -1652,7 +1703,8 @@ callback=< [URL] >
                                             gqp: Option[String],
                                             ygChunkSize: Int,
                                             gqpChunkSize: Int,
-                                            timeContext: Option[Long]): Future[Result] = {
+                                            timeContext: Option[Long],
+                                            fieldsMask: Set[String]): Future[Result] = {
 
     val id = ConsumeState.encode(sortedIteratorState)
 
@@ -1670,10 +1722,11 @@ callback=< [URL] >
     } else if (xg.isEmpty && yg.isEmpty && gqp.isEmpty)
       Future.successful(
         Ok.chunked(
-            Source(newResults)
-              .via(Streams.Flows.searchThinResultToFatInfoton(crudServiceFS))
-              .via(Streams.Flows.infotonToByteString(formatter))
-          )
+          Source(newResults)
+            .via(Streams.Flows.searchThinResultToFatInfoton(crudServiceFS))
+            .map(_.masked(fieldsMask))
+            .via(Streams.Flows.infotonToByteString(formatter))
+        )
           .as(contentType)
           .withHeaders("X-CM-WELL-POSITION" -> id, "X-CM-WELL-N-LEFT" -> (total - newResults.length).toString)
       )
@@ -1688,8 +1741,8 @@ callback=< [URL] >
           if (newInfotons.length != newInfotonsBoxes.length) {
             val (fails, nones) = cmwell.util.collections.partitionWith(newInfotonsBoxes.filter(_._1.isEmpty)) {
               case (BoxedFailure(e), u) => Left(e -> u)
-              case (EmptyBox, u)        => Right(u)
-              case _                    => !!!
+              case (EmptyBox, u) => Right(u)
+              case _ => !!!
             }
             if (nones.nonEmpty) logger.error("some uuids could not be retrieved: " + nones.mkString("[", ",", "]"))
             fails.foreach {
@@ -1711,13 +1764,15 @@ callback=< [URL] >
               case _ => Future.successful(true -> infotonsAfterGQP)
             }
 
-            ygModified.flatMap {
+            val maskedYgModified = ygModified.map { case (ok, infotons) => ok -> infotons.map(_.masked(fieldsMask)) }
+
+            maskedYgModified.flatMap {
               case (false, infotonsAfterYg) => {
                 val body = FormatterManager.formatFormattableSeq(infotonsAfterYg, formatter)
                 val result = InsufficientStorage(body)
                   .as(contentType)
                   .withHeaders("X-CM-WELL-POSITION" -> id,
-                               "X-CM-WELL-N-LEFT" -> (total - infotonsAfterGQP.length).toString)
+                    "X-CM-WELL-N-LEFT" -> (total - infotonsAfterGQP.length).toString)
                 Future.successful(result)
               }
               case (true, infotonsAfterYg) if infotonsAfterYg.isEmpty || xg.isEmpty => {
@@ -1731,7 +1786,7 @@ callback=< [URL] >
                   result
                     .as(contentType)
                     .withHeaders("X-CM-WELL-POSITION" -> id,
-                                 "X-CM-WELL-N-LEFT" -> (total - newInfotonsBoxes.length).toString)
+                      "X-CM-WELL-N-LEFT" -> (total - newInfotonsBoxes.length).toString)
                 )
               }
               case (true, infotonsAfterYg) => {
@@ -1746,7 +1801,7 @@ callback=< [URL] >
                     result
                       .as(contentType)
                       .withHeaders("X-CM-WELL-POSITION" -> id,
-                                   "X-CM-WELL-N-LEFT" -> (total - newInfotonsBoxes.length).toString)
+                        "X-CM-WELL-N-LEFT" -> (total - newInfotonsBoxes.length).toString)
                 }
               }
             }
@@ -1765,7 +1820,7 @@ callback=< [URL] >
     val func: String => Future[Option[ActorRef]] = s => {
       Grid.getRefFromSelection(Grid.selectByPath(s), 10, 1.second).transform {
         case Failure(_: NoSuchElementException) => Success(None)
-        case otherTry                           => otherTry.map(Some.apply)
+        case otherTry => otherTry.map(Some.apply)
       }
     }
 
@@ -1818,6 +1873,8 @@ callback=< [URL] >
 
             val fieldsMaskFut = extractFieldsMask(request, typesCache, cmwellRDFHelper, timeContext)
 
+            logger.debug(s"Get chunk request received with: xg=$xg yg=$yg scrollTtl=$scrollTtl withData=$withData")
+
             if (!withData && xg.isDefined)
               Future.successful(BadRequest("you can't use `xg` without also specifying `with-data`!"))
             else {
@@ -1825,8 +1882,8 @@ callback=< [URL] >
               val deadLine = request.attrs(Attrs.RequestReceivedTimestamp) + 7000
               val itStateEitherFuture: Future[Either[String, IterationState]] = {
                 actorRefsCachedFactory(Base64.decodeBase64String(encodedActorAddress, "UTF-8")).flatMap { ar =>
-                  (ar ? GetID)(akka.util.Timeout(10.seconds)).mapTo[IterationState].map {
-                    case IterationState(id, wh, _) if wh && (yg.isDefined || xg.isDefined) => {
+                  (ar ? GetID) (akka.util.Timeout(10.seconds)).mapTo[IterationState].map {
+                    case IterationState(_, wh, _) if wh && (yg.isDefined || xg.isDefined) => {
                       Left(
                         "iterator is defined to contain history. you can't use `xg` or `yg` operations on histories."
                       )
@@ -1840,7 +1897,7 @@ callback=< [URL] >
                   itStateEitherFuture
                     .flatMap {
                       case Left(errMsg) => Future.successful(BadRequest(errMsg))
-                      case Right(IterationState(scrollId, withHistory, ar)) => {
+                      case Right(IterationState(scrollInput, withHistory, ar)) => {
                         val formatter = formatterManager.getFormatter(
                           format = formatType,
                           timeContext = timeContext,
@@ -1851,23 +1908,23 @@ callback=< [URL] >
                           withData = withDataFormat,
                           forceUniqueness = withHistory
                         )
-
+                        val debugInfo = request.queryString.keySet("debug-info")
+                        val scrollIterationResults = ftsScroll(scrollInput, scrollTtl + 5, withData, debugInfo)
                         val futureThatMayHang: Future[String] =
-                          crudServiceFS.scroll(scrollId, scrollTtl + 5, withData).flatMap { tmpIterationResults =>
+                          scrollIterationResults.flatMap { tmpIterationResults =>
                             fieldsMaskFut.flatMap { fieldsMask =>
-                              val rv = createScrollIdDispatcherActorFromIteratorId(tmpIterationResults.iteratorId,
-                                                                                   withHistory,
-                                                                                   scrollTtl.seconds)
+                              val rv = createScrollIdDispatcherActorFromIteratorId(ScrollInput(tmpIterationResults.iteratorId),
+                                withHistory,
+                                scrollTtl.seconds)
                               val iterationResults = tmpIterationResults.copy(iteratorId = rv).masked(fieldsMask)
-
                               val ygModified = yg match {
                                 case Some(ygp) if iterationResults.infotons.isDefined => {
                                   pathExpansionParser(ygp,
-                                                      iterationResults.infotons.get,
-                                                      ygChunkSize,
-                                                      cmwellRDFHelper,
-                                                      typesCache,
-                                                      timeContext).map {
+                                    iterationResults.infotons.get,
+                                    ygChunkSize,
+                                    cmwellRDFHelper,
+                                    typesCache,
+                                    timeContext).map {
                                     case (ok, infotons) => ok -> iterationResults.copy(infotons = Some(infotons))
                                   }
                                 }
@@ -1902,7 +1959,6 @@ callback=< [URL] >
                         }
                         val injectInterval = 3.seconds
                         val backOnTime: String => Result = { str =>
-                          ar ! GotIt
                           Ok(str).as(overrideMimetype(formatter.mimetype, request)._2)
                         }
                         val prependInjections: () => ByteString = formatter match {
@@ -1919,7 +1975,6 @@ callback=< [URL] >
                         }
                         val injectOriginalFutureWith: String => ByteString = ByteString(_, StandardCharsets.UTF_8)
                         val continueWithSource: Source[ByteString, NotUsed] => Result = { src =>
-                          ar ! GotIt
                           Ok.chunked(src).as(overrideMimetype(formatter.mimetype, request)._2)
                         }
 
@@ -1948,6 +2003,23 @@ callback=< [URL] >
             }
         }
     }.recover(asyncErrorHandler).get
+
+  private def ftsScroll(scrollInput: IterationStateInput, scrollTTL: Long, withData: Boolean, debugInfo:Boolean): Future[IterationResults] = {
+    scrollInput match {
+      case ScrollInput(scrollId) => crudServiceFS.scroll(scrollId, scrollTTL, withData, debugInfo)
+      case StartScrollInput(pathFilter, fieldFilters, datesFilter, paginationParams, scrollTtl, withHistory, withDeleted, withData) =>
+        crudServiceFS.startScroll(
+          pathFilter,
+          fieldFilters,
+          datesFilter,
+          paginationParams,
+          scrollTtl,
+          withHistory,
+          withDeleted,
+          debugInfo,
+          withData)
+      }
+  }
 
   private def handleAggregate(request: Request[AnyContent]): Future[Result] =
     request
@@ -2023,13 +2095,14 @@ callback=< [URL] >
   private[this] def translateAggregateException: PartialFunction[Throwable, Throwable] = {
     case e: org.elasticsearch.transport.RemoteTransportException
         if e.getCause.isInstanceOf[org.elasticsearch.action.search.SearchPhaseExecutionException]
-          && e.getCause.getMessage.contains(
-            "cannot be cast to org.elasticsearch.index.fielddata.IndexNumericFieldData"
-          ) =>
+          && e.getCause.getMessage.contains("cannot be cast to org.elasticsearch.index.fielddata.IndexNumericFieldData") =>
       new BadFieldTypeException(
-        "Cannot cast field to numeric value. Did you try to use stats or histogram aggregations on non numeric field?",
-        e
-      )
+        "Cannot cast field to numeric value. Did you try to use stats or histogram aggregations on non numeric field?", e)
+    case e:IllegalArgumentException
+      if e.getMessage.contains("aggregations failure due to text system field")
+    => new IllegalArgumentException("Stats API is not supported for text system fields.", e)
+    case e:IllegalArgumentException if e.getMessage.contains("aggregations failure due to fielddata disabled")
+      => new IllegalArgumentException("Stats API does not support non-exact value operator for text fields. Please use :: instead of :", e)
     case e => e
   }
 
@@ -2266,6 +2339,7 @@ callback=< [URL] >
       val limit =
         request.getQueryString("versions-limit").flatMap(asInt).getOrElse(Settings.defaultLimitForHistoryVersions)
       val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
+      val serviceOpt = servicesRoutesCache.find(path)
 
       if (offset > Settings.maxOffset) {
         Future.successful(BadRequest(s"Even Google doesn't handle offsets larger than ${Settings.maxOffset}!"))
@@ -2273,6 +2347,14 @@ callback=< [URL] >
         Future.successful(BadRequest(s"Length is larger than ${Settings.maxOffset}!"))
       } else if (Set("/meta/ns/sys", "/meta/ns/nn")(path)) {
         handleGetForActiveInfoton(request, path)
+      } else if (serviceOpt.isDefined) {
+        serviceOpt.get match {
+          case redirection: RedirectionService if recursiveCalls > 0 =>
+            val to = redirection.replaceFunc(path)
+            recurseRead(request, to, recursiveCalls - 1)
+          case _: RedirectionService => Future.successful(BadRequest("too deep redirection service chain detected!"))
+          case _ => ???
+        }
       } else {
         val reply = {
           if (withHistory && (xg.isDefined || yg.isDefined))
@@ -2357,7 +2439,7 @@ callback=< [URL] >
                   PartialContent(formatter.render(i)).as(overrideMimetype(formatter.mimetype, request)._2)
                 )
               case infopt => {
-                val i = infopt.fold(GhostInfoton.ghost(path)) {
+                val i = infopt.fold(GhostInfoton.ghost(path, "http")) {
                   case Everything(j)           => j
                   case _: UnknownNestedContent => !!!
                 }
@@ -2425,23 +2507,13 @@ callback=< [URL] >
       val timeContext = request.attrs.get(Attrs.RequestReceivedTimestamp)
       (if (offset.isEmpty) actions.ActiveInfotonHandler.wrapInfotonReply(infoton) else infoton) match {
         case None => Future.successful(NotFound("Infoton not found"))
-        case Some(DeletedInfoton(p, _, _, lm, _)) =>
-          Future.successful(NotFound(s"Infoton was deleted on ${fullDateFormatter.print(lm)}"))
-        case Some(LinkInfoton(_, _, _, _, _, to, lType, _, _)) =>
+        case Some(DeletedInfoton(systemFields)) =>
+          Future.successful(NotFound(s"Infoton was deleted on ${fullDateFormatter.print(systemFields.lastModified)}"))
+        case Some(LinkInfoton(_, _, to, lType)) =>
           lType match {
             case LinkType.Permanent => Future.successful(Redirect(to, request.queryString, MOVED_PERMANENTLY))
             case LinkType.Temporary => Future.successful(Redirect(to, request.queryString, TEMPORARY_REDIRECT))
-            case LinkType.Forward if recursiveCalls > 0 =>
-              handleRead(
-                request
-                  .withTarget(
-                    RequestTarget(uriString = to + request.uri.drop(request.path.length),
-                                  path = to,
-                                  queryString = request.queryString)
-                  )
-                  .withBody(request.body),
-                recursiveCalls - 1
-              )
+            case LinkType.Forward if recursiveCalls > 0 => recurseRead(request, to, recursiveCalls - 1)
             case LinkType.Forward => Future.successful(BadRequest("too deep forward link chain detected!"))
           }
         case Some(i) =>
@@ -2488,7 +2560,7 @@ callback=< [URL] >
                   ScalaJsRuntimeCompiler
                     .compile(scalaJsSource)
                     .flatMap(
-                      c => treatContentAsAsset(request, c.getBytes("UTF-8"), mime, i.path, i.uuid, i.lastModified)
+                      c => treatContentAsAsset(request, c.getBytes("UTF-8"), mime, i.systemFields.path, i.uuid, i.systemFields.lastModified)
                     )
                 case f: FileInfoton => {
                   val mt = f.content.get.mimeType
@@ -2497,10 +2569,10 @@ callback=< [URL] >
                       (MarkdownFormatter.asHtmlString(f).getBytes, "text/html")
                     } else (f.content.get.data.get, mt)
                   }
-                  treatContentAsAsset(request, content, mime, i.path, i.uuid, i.lastModified)
+                  treatContentAsAsset(request, content, mime, i.systemFields.path, i.uuid, i.systemFields.lastModified)
                 }
-                case c: CompoundInfoton if c.children.exists(_.name.equalsIgnoreCase("index.html")) =>
-                  Future.successful(Redirect(routes.Application.handleGET(s"${c.path}/index.html".substring(1))))
+                case c: CompoundInfoton if c.children.exists(_.systemFields.name.equalsIgnoreCase("index.html")) =>
+                  Future.successful(Redirect(routes.Application.handleGET(s"${c.systemFields.path}/index.html".substring(1))))
                 // ui
                 case _ => {
                   val isOldUi = request.queryString.keySet("old-ui")
@@ -2518,6 +2590,16 @@ callback=< [URL] >
       }
     }.recover(asyncErrorHandler).get
 
+
+    def recurseRead(request: Request[AnyContent], newPath: String, recursiveCalls: Int) = handleRead(
+      request.withTarget(RequestTarget(
+        uriString = newPath + request.uri.drop(request.path.length),
+        path = newPath,
+        queryString = request.queryString)
+        ).withBody(request.body),
+      recursiveCalls - 1
+    )
+
   def isMarkdown(mime: String): Boolean =
     mime.startsWith("text/x-markdown") || mime.startsWith("text/vnd.daringfireball.markdown")
 
@@ -2531,6 +2613,7 @@ callback=< [URL] >
       .map { request =>
         val normalizedPath = normalizePath(request.path)
         val isPriorityWrite = originalRequest.getQueryString("priority").isDefined
+        val modifier = request.attrs(Attrs.UserName)
 
         if (!InfotonValidator.isInfotonNameValid(normalizedPath)) {
           Future.successful(
@@ -2555,8 +2638,8 @@ callback=< [URL] >
                 case Success(fields) =>
                   InfotonValidator.validateValueSize(fields)
                   boolFutureToRespones(
-                    crudServiceFS.putInfoton(ObjectInfoton(normalizedPath, Settings.dataCenter, None, fields, protocol = None),
-                                             isPriorityWrite)
+                    crudServiceFS.putInfoton(ObjectInfoton(SystemFields(normalizedPath, new DateTime(DateTimeZone.UTC), modifier, Settings.dataCenter, None, "",
+                      "http"), fields), isPriorityWrite)
                   )
                 // TODO handle validation
                 case Failure(exception) => asyncErrorHandler(exception)
@@ -2575,11 +2658,8 @@ callback=< [URL] >
                   )
                   .getOrElse("text/plain")
                 boolFutureToRespones(
-                  crudServiceFS.putInfoton(FileInfoton(path = normalizedPath,
-                                                       dc = Settings.dataCenter,
-                                                       content = Some(FileContent(content, contentType)),
-                                                       protocol = None),
-                                           isPriorityWrite)
+                  crudServiceFS.putInfoton(FileInfoton(SystemFields(path = normalizedPath, new DateTime(DateTimeZone.UTC), lastModifiedBy = modifier,
+                      dc = Settings.dataCenter, None, "", "http"), content = Some(FileContent(content, contentType))), isPriorityWrite)
                 )
               }
             }
@@ -2590,9 +2670,9 @@ callback=< [URL] >
                   InfotonValidator.validateValueSize(fields)
                   boolFutureToRespones(
                     crudServiceFS
-                      .putInfoton(FileInfoton(path = normalizedPath, dc = Settings.dataCenter, fields = Some(fields), protocol = None),
-                                  isPriorityWrite)
-                  )
+                      .putInfoton(FileInfoton(SystemFields(normalizedPath, new DateTime(DateTimeZone.UTC), modifier, Settings.dataCenter, None, "", "http"),
+                        fields = Some(fields)), isPriorityWrite)
+                    )
                 case Failure(exception) =>
                   Future.successful(BadRequest(Json.obj("success" -> false, "cause" -> exception.getMessage)))
               }
@@ -2606,13 +2686,9 @@ callback=< [URL] >
                 case "2" => LinkType.Forward
               }
               boolFutureToRespones(
-                crudServiceFS.putInfoton(LinkInfoton(path = normalizedPath,
-                                                     dc = Settings.dataCenter,
-                                                     fields = Some(Map[String, Set[FieldValue]]()),
-                                                     linkTo = linkTo,
-                                                     linkType = linkType,
-                                                     protocol = None),
-                                         isPriorityWrite)
+                crudServiceFS.putInfoton(LinkInfoton(SystemFields(normalizedPath, new DateTime(DateTimeZone.UTC), modifier, Settings.dataCenter, None, "",
+                  "http"), fields = Some(Map[String, Set[FieldValue]]()), linkTo = linkTo, linkType = linkType),
+                  isPriorityWrite)
               )
             }
             case _ => Future.successful(BadRequest(Json.obj("success" -> false, "cause" -> "unrecognized type")))
@@ -2763,19 +2839,6 @@ callback=< [URL] >
       }
   }
 
-  def handleFixDc(req: Request[AnyContent]): Future[Result] = {
-    if (!authUtils.isOperationAllowedForUser(security.Overwrite, authUtils.extractTokenFrom(req)))
-      Future.successful(Forbidden("not authorized to overwrite"))
-    else {
-      val f = crudServiceFS.fixDc(normalizePath(req.path), Settings.dataCenter)
-      val formatter = getFormatter(req, formatterManager, "json")
-      f.map { bs =>
-          Ok(formatter.render(SimpleResponse(bs, None))).as(overrideMimetype(formatter.mimetype, req)._2)
-        }
-        .recoverWith(asyncErrorHandler)
-    }
-  }
-
   def handlePurgeAll(req: Request[AnyContent]) = handlePurge(req, includeLast = true)
 
   def handlePurgeHistory(req: Request[AnyContent]) = handlePurge(req, includeLast = false)
@@ -2849,7 +2912,7 @@ callback=< [URL] >
       .getInfotonByUuidAsync(uuid)
       .flatMap {
         case FullBox(i) => {
-          val index = i.indexName
+          val index = i.systemFields.indexName
           val a = handleRawDocWithIndex(index, uuid)
           a(req)
         }
@@ -3014,6 +3077,7 @@ callback=< [URL] >
     val flag = req.getQueryString("enabled").flatMap(asBoolean).getOrElse(true)
 
     val tokenOpt = authUtils.extractTokenFrom(req)
+    val modifier = req.attrs(Attrs.UserName)
 
     (authUtils.isOperationAllowedForUser(security.Admin, tokenOpt)) match {
       case true => {
@@ -3031,10 +3095,12 @@ callback=< [URL] >
                   case None => Map(activeFlag)
                 }
 
-                val newInfoton = infotonBox.head.copyInfoton(fields=Some(newFields), lastModified = new DateTime(System.currentTimeMillis))
+                val firstInfoton = infotonBox.head
+                val newInfoton = firstInfoton.copyInfoton(firstInfoton.systemFields.copy(lastModified = new DateTime(System.currentTimeMillis),
+                  lastModifiedBy = modifier), fields=Some(newFields))
                 val deletes = Map(infotonPath ->  Map("active" -> None))
 
-                crudServiceFS.upsertInfotons(inserts = List(newInfoton), deletes = deletes).onComplete({
+                crudServiceFS.upsertInfotons(inserts = List(newInfoton), deletes = deletes, deletesModifier = modifier).onComplete({
                   case Success(_)=> p.completeWith(Future.successful(Ok("""{"success":true}""")))
                   case Failure(ex) => {
                     logger.debug(ex.getMessage)
@@ -3155,7 +3221,6 @@ object Operation {
   val fix               = ParamExtractor("op", func("x-fix")(_))
   val info              = ParamExtractor("op", func("x-info")(_))
   val verify            = ParamExtractor("op", func("x-verify")(_))
-  val fixDc             = ParamExtractor("op", func("x-fix-dc")(_))
   val purgeAll          = ParamExtractor("op", func("purge-all")(_))
   val purgeLast         = ParamExtractor("op", func("purge-last")(_))
   val rollback          = ParamExtractor("op", func("rollback")(_)) // alias for purge-last
@@ -3187,7 +3252,7 @@ class CachedSpa @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
   private def doFetchContent(isOldUi: Boolean): Future[String] = {
     val path = if (isOldUi) contentPath else newContentPath
     crudServiceFS.getInfotonByPathAsync(path).collect {
-      case FullBox(FileInfoton(_, _, _, _, _, Some(c), _, _)) => new String(c.data.get, "UTF-8")
+      case FullBox(FileInfoton(_,_, Some(c))) => new String(c.data.get, "UTF-8")
       case somethingElse => {
         logger.error("got something else: " + somethingElse)
         throw new SpaMissingException("SPA Content is currently unreachable")

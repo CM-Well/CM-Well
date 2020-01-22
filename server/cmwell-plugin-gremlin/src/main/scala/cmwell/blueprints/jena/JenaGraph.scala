@@ -21,7 +21,7 @@ import org.apache.jena.rdf.model.{Model, ModelFactory, SimpleSelector, Statement
 import com.tinkerpop.blueprints.util.DefaultGraphQuery
 import com.tinkerpop.blueprints._
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 import Extensions._
 
@@ -55,8 +55,8 @@ class JenaGraph(model: Model = ModelFactory.createDefaultModel) extends Graph {
   }
 
   override def getVertex(id: Object) = {
-    Seq(model.listSubjects.filter(_.id == id.toString),
-        model.listObjects.filter(o => o.id == id.toString && !o.isLiteral)).flatMap(identity).headOption match {
+    Seq(model.listSubjects.asScala.filter(_.id == id.toString),
+        model.listObjects.asScala.filter(o => o.id == id.toString && !o.isLiteral)).flatMap(identity).headOption match {
       case Some(rdfNode) => new JenaVertex(model, rdfNode)
       case None          => throw new QueryException(s"Vertex [$id] not present in Graph")
     }
@@ -71,7 +71,7 @@ class JenaGraph(model: Model = ModelFactory.createDefaultModel) extends Graph {
       if (!statement.getObject.isLiteral)
         edges += new JenaEdge(model, predicate, statement.getObject, statement.getSubject)
     }
-    edges
+    edges.asJava
   }
 
   override def getVertices = {
@@ -87,7 +87,7 @@ class JenaGraph(model: Model = ModelFactory.createDefaultModel) extends Graph {
       if (!obj.isLiteral)
         vertices.add(new JenaVertex(model, obj))
     }
-    vertices
+    vertices.asJava
   }
 
   override def removeEdge(edge: Edge) =

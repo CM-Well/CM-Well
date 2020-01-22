@@ -69,7 +69,12 @@ class DataInitializer(h: Host, jwt: String, rootDigest: String, rootDigest2: Str
                                                                                   implicitly[ExecutionContext],
                                                                                   sys,
                                                                                   mat)
-      ).map(_ => ())
+      ).map { response =>
+        if (response.status != 200) {
+          print(s"Waiting for ws failed. Last response was: $response\n")
+          scala.sys.exit(1)
+        }
+      }
     )
   }
 
@@ -293,7 +298,7 @@ class DataInitializer(h: Host, jwt: String, rootDigest: String, rootDigest2: Str
       case knownPostType => Seq("X-CM-Well-Type" -> knownPostType.toString)
     })
 
-    unsafeRetryUntil(isOk, 9, 250.millis)(
+    unsafeRetryUntil(isOk, 12, 250.millis)(
       Http.post(url, payload, Some(contentType.toString), queryParameters, headers)(UTF8StringHandler,
                                                                                     implicitly[ExecutionContext],
                                                                                     sys,

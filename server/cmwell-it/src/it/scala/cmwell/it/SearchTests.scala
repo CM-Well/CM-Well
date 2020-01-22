@@ -75,7 +75,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
         path,
         List("op" -> "search", "recursive" -> "", "length" -> "14", "format" -> "json"))) { r =>
           (Json.parse(r.payload) \ "results" \ "total": @unchecked) match {
-            case JsDefined(JsNumber(n)) => n.intValue() == 14
+            case JsDefined(JsNumber(n)) => n.intValue == 14
           }
         }
     }
@@ -92,7 +92,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
       spinCheck(100.millis,true)(Http.get(path, List("op" -> "search", "qp" -> "alt.wgs84_pos:", "format" -> "json", "debug-info" -> ""))) { r =>
         val j = Json.parse(r.payload)
         (j \ "results" \ "total" : @unchecked) match {
-          case JsDefined(JsNumber(n)) => n.intValue() == 2
+          case JsDefined(JsNumber(n)) => n.intValue == 2
         }
       }
     }
@@ -105,7 +105,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
                                            headers = tokenHeader)) { r =>
         val j = Json.parse(r.payload) \ "results"
         (j \ "total" : @unchecked) match {
-          case JsDefined(JsNumber(n)) => n.intValue() == 2
+          case JsDefined(JsNumber(n)) => n.intValue == 2
         }
       }
     }
@@ -140,7 +140,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
       )){ r =>
         val j = Json.parse(r.payload) \ "results"
         (j \ "total": @unchecked) match {
-          case JsDefined(JsNumber(n)) => n.intValue() >= 7
+          case JsDefined(JsNumber(n)) => n.intValue >= 7
         }
       }.map { res =>
         withClue {
@@ -166,7 +166,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
       )){ r =>
         val j = Json.parse(r.payload) \ "results"
         (j \ "total": @unchecked) match {
-          case JsDefined(JsNumber(n)) => n.intValue() >= 2
+          case JsDefined(JsNumber(n)) => n.intValue >= 2
         }
       }.map { res =>
         withClue(res){
@@ -194,7 +194,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
       )){ r =>
         val j = Json.parse(r.payload) \ "results"
         (j \ "total": @unchecked) match {
-          case JsDefined(JsNumber(n)) => n.intValue() == 4
+          case JsDefined(JsNumber(n)) => n.intValue == 4
         }
       }.map { res =>
         withClue(res){
@@ -211,7 +211,24 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
         uri = path,
         queryParams = List("op" -> "search","format" -> "json","pretty" -> "","debug-info" -> "","recursive" -> ""))){ r =>
         (Json.parse(r.payload) \ "results" \ "total": @unchecked) match {
-          case JsDefined(JsNumber(n)) => n.intValue() == 14
+          case JsDefined(JsNumber(n)) => n.intValue == 14
+        }
+      }.map { res =>
+        withClue(res) {
+          val total = (Json.parse(res.payload) \ "results" \ "total").as[Int]
+          total should be(14)
+        }
+      }
+    }
+
+    val lastModifiedSearch = executeAfterCompletion(ingestGeonames){
+      val currentTime = System.currentTimeMillis()
+      spinCheck(100.millis,true)(Http.get(
+        uri = path,
+        queryParams = List("op" -> "search","format" -> "json","pretty" -> "","debug-info" -> "",
+          "recursive"-> "", "qp" -> ("system.lastModified<<" + currentTime)))){ r =>
+        (Json.parse(r.payload) \ "results" \ "total": @unchecked) match {
+          case JsDefined(JsNumber(n)) => n.intValue == 14
         }
       }.map { res =>
         withClue(res) {
@@ -234,7 +251,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
           "qp" -> "type.rdf::http://xmlns.com/foaf/0.1/Document",
           "gqp" -> "<isDefinedBy.rdfs[countryCode.geonames::US]"))){ r =>
         (Json.parse(r.payload) \ "results" \ "total": @unchecked) match {
-          case JsDefined(JsNumber(n)) => n.intValue() == 7
+          case JsDefined(JsNumber(n)) => n.intValue == 7
         }
       }.map { res =>
         withClue(res) {
@@ -269,7 +286,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
         List("op" -> "search", "format" -> "json", "length" -> "1")
       )) { r =>
         (Json.parse(r.payload) \ "results" \ "total": @unchecked) match {
-          case JsDefined(JsNumber(n)) => n.intValue() == 11
+          case JsDefined(JsNumber(n)) => n.intValue == 11
         }
       }.map { r =>
         withClue(r) {
@@ -396,7 +413,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
     def recSearch(path: String, queryParams: Seq[(String,String)], expectedTotal: Int) =
       executeAfterCompletion(deleteAbouts)(spinCheck(500.millis,true)(Http.get(path, queryParams)){ r =>
         (Json.parse(r.payload) \ "results" \ "total" : @unchecked) match {
-          case JsDefined(JsNumber(n)) => n.intValue() == expectedTotal
+          case JsDefined(JsNumber(n)) => n.intValue == expectedTotal
         }
       })
 
@@ -474,6 +491,7 @@ class SearchTests extends AsyncFunSpec with Matchers with Inspectors with Helper
     it("filter person results by 'homeType' indirect property")(gqpFilterByHomeType)
     it("filter person results with 'ghost skipping' an intermediate missing infoton")(gqpFilterBySkippingGhostNed)
     it("filter all person results with 'ghost skipping' an intermediate missing infoton if it also contains a filter")(gqpFilterAllAlthoughSkippingGhostNed)
+    it("search by timestamp last modified")(lastModifiedSearch)
 // TODO: uncomment when implemented:
     // scalastyle:off
 //  it("filter all person results with 'ghost skipping' an intermediate missing infoton if it also contains an empty filter")(gqpFilterAllAlthoughSkippingGhostNedWithEmptyFilter)

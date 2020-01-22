@@ -44,7 +44,7 @@ case class AddNode(node: String) extends Task with LazyLogging {
       (HealthActor.ref ? GetElasticsearchDetailedStatus).mapTo[ElasticsearchGridStatus].map { f =>
         f.getStatesMap.get(node) match {
           case Some(s) =>
-            if (s.getColor == GreenStatus || s.getColor == YellowStatus) prom.success(Unit)
+            if (s.getColor == GreenStatus || s.getColor == YellowStatus) prom.success(())
             else startElasticsearch(cmd, prom)
           case None => startElasticsearch(cmd, prom)
         }
@@ -59,7 +59,7 @@ case class AddNode(node: String) extends Task with LazyLogging {
       (HealthActor.ref ? GetCassandraDetailedStatus).mapTo[CassandraGridStatus].map { f =>
         f.getStatesMap.get(node) match {
           case Some(s) =>
-            if (s.getColor == GreenStatus) prom.success(Unit)
+            if (s.getColor == GreenStatus) prom.success(())
             else startCassandra(cmd, prom)
           case None => startCassandra(cmd, prom)
         }

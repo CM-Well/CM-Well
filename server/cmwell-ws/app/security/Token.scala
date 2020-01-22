@@ -14,39 +14,43 @@
   */
 package security
 
-import authentikat.jwt.{JsonWebToken, JwtClaimsSet, JwtClaimsSetJValue, JwtHeader}
+
 import cmwell.ws.Settings
 import com.typesafe.config.ConfigFactory
 import org.joda.time.DateTime
+import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim, JwtOptions}
+import security.Token.{secret, secret2}
 
 import scala.util.Try
 
 class Token(jwt: String, authCache: EagerAuthCache) {
   private val requiredClaims = Set("sub", "exp")
 
-  private val claimsSet = jwt match {
-    case JsonWebToken(_, cs, _) if requiredClaims.map(cs.getClaimValue).forall(_.isDefined) => cs
-    case _ =>
-      throw new IllegalArgumentException("Given string was not in JWT format, or there are mandatory claims missing")
+  private val claimsSet = {
+    val decodedJ = Jwt.decodeRaw(jwt, JwtOptions(signature = false))
+
+    if (decodedJ.isFailure)
+      throw new IllegalArgumentException("Given string was not in JWT format")
+
+    val decoded = ujson.read(decodedJ.get)
+
+    if (!(requiredClaims.map(c => Try(decoded(c))).forall(_.isSuccess)))
+      throw new IllegalArgumentException("Mandatory claims are missing from token")
+
+    decoded
   }
 
-  val username = claimsSet.getClaimValue("sub").get
-  val expiry = new DateTime(claimsSet.getClaimValue("exp").map(_.toLong).get)
+  val username = claimsSet("sub").str
+  val expiry = new DateTime(claimsSet("exp").num.toLong)
 
   def isValid = {
-    (JsonWebToken.validate(jwt, Token.secret) || JsonWebToken.validate(jwt, Token.secret2)) &&
+    (Jwt.isValid(jwt, secret, Seq(JwtAlgorithm.HS256)) || Jwt.isValid(jwt, secret2, Seq(JwtAlgorithm.HS256))) &&
     expiry.isAfterNow &&
-    (claimsSet
-      .getClaimValue("rev")
-      .map(_.toInt)
-      .getOrElse(0) >= Token.getUserRevNum(username, authCache) || username == "root") // root has immunity to revision revoking
+    (Try(claimsSet("rev").num.toInt).recover{case _ => 0}.get >=
+      Token.getUserRevNum(username, authCache) || username == "root") // root has immunity to revision revoking
   }
 
-  implicit class JwtClaimsSetJValueExtensions(cs: JwtClaimsSetJValue) {
-    def getClaimValue(key: String): Option[String] = cs.asSimpleMap.toOption.getOrElse(Map()).get(key)
-  }
-
-  override def toString = s"Token(${claimsSet.asJsonString})"
+  override def toString = s"Token(${claimsSet})"
 }
 
 object Token {
@@ -56,7 +60,7 @@ object Token {
   private lazy val secret = ConfigFactory.load().getString("play.http.secret.key")
   // not using ws.Settings, so it'd be available from `sbt ws/console`
   private lazy val secret2 = ConfigFactory.load().getString("cmwell.ws.additionalSecret.key")
-  private val jwtHeader = JwtHeader("HS256")
+  private val jwtHeader = JwtAlgorithm.HS256
 
   private def getUserRevNum(username: String, authCache: EagerAuthCache) =
     authCache.getUserInfoton(username).flatMap(u => (u \ "rev").asOpt[Int]).getOrElse(0)
@@ -73,9 +77,11 @@ object Token {
     if (!isAdmin && rev.isDefined) {
       throw new IllegalArgumentException("rev should only be supplied in Admin mode (i.e. manually via console)")
     }
-    val claims = Map("sub" -> username,
-                     "exp" -> expiry.getOrElse(DateTime.now.plusDays(1)).getMillis,
-                     "rev" -> rev.getOrElse(getUserRevNum(username, authCache)))
-    JsonWebToken(jwtHeader, JwtClaimsSet(claims), secret)
+
+    val claimsJson =
+        s"""{"sub":"$username", "exp":${expiry.getOrElse(DateTime.now.plusDays(1)).getMillis},""" +
+           s""""rev": ${rev.getOrElse(getUserRevNum(username, authCache))}}"""
+
+    Jwt.encode(JwtClaim(claimsJson), secret, jwtHeader)
   }
 }

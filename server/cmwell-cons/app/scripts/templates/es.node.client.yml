@@ -13,5 +13,5 @@ discovery.zen.ping.unicast:
 
 discovery.zen.ping.timeout: 20s
 
-transport.tcp.connect_timeout: 10s
+transport.connect_timeout: 10s
 

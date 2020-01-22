@@ -33,7 +33,7 @@ class Header extends React.Component {
                 <Link to="/"><img className="logo" src="/meta/app/main/images/logo-flat-inverted.svg"/></Link>
                 <span className="version-info">{this.state.releaseName}</span>
                 <a href={`${location.pathname}?old-ui`} className="old-ui-link" onClick={this.handleOldUiClick.bind(this)}>Use old UI</a>
-                <a target="_blank" href="/meta/docs/CM-Well.RootTOC.md" className="help-link"><img src="/meta/app/main/images/help-icon.svg"/>HELP</a>
+                <a target="_blank" href="https://cm-well.github.io/CM-Well/" className="help-link"><img src="/meta/app/main/images/help-icon.svg"/>HELP</a>
             </div>
         )
     }
@@ -97,7 +97,7 @@ class Breadcrumbs extends React.Component {
         let acc = '', breadcrumbs = []
         for(var part of parts) {
             acc = `${acc}/${part}`
-            breadcrumbs.push({ title: part.replace('%23','#'), href: acc })
+            breadcrumbs.push({ title: part.replace('%23','#').replace('%25','%'), href: acc })
         }
 
         if(this.props.lastBreadcrumbDisplayName && breadcrumbs.length)
@@ -108,7 +108,7 @@ class Breadcrumbs extends React.Component {
 
             // type.rdf deserves a special treatment:
             if(qp.indexOf('type.rdf')===0)
-                try { displayedQp = `type ${AppUtils.lastPartOfUriPath(qp.replace('%23','#').split('::')[1])}` } catch(e) { }
+                try { displayedQp = `type ${AppUtils.lastPartOfUriPath(qp.replace('%23','#').replace('%25','%').split('::')[1])}` } catch(e) { }
                 
             breadcrumbs.push({ title: `Search results for ${displayedQp}`, searchIcon: true })
         }

@@ -118,7 +118,7 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
           fieldFilters = Option(ffs),
           paginationParams = paginationParamsForSingleResultWithOffset,
           withHistory = h,
-          fieldSortParams = SortParam.indexTimeAscending,
+          fieldSortParams = SortParam("system.indexTime" -> Asc),
           withDeleted = d,
           debugInfo = debugInfo
         )
@@ -175,7 +175,7 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
           fieldFilters = ff,
           paginationParams = paginationParamsForSingleResult,
           withHistory = withHistory,
-          fieldSortParams = SortParam.indexTimeAscending,
+          fieldSortParams = SortParam("system.indexTime" -> Asc),
           withDeleted = withDeleted,
           debugInfo = debugInfo
         )
@@ -410,10 +410,10 @@ class BulkScrollHandler @Inject()(crudServiceFS: CRUDServiceFS,
 
   private def addIndexTime(fromCassandra: Seq[Infoton], uuidToindexTime: Map[String, Long]): Seq[Infoton] =
     fromCassandra.map {
-      case i: ObjectInfoton if i.indexTime.isEmpty  => i.copy(indexTime = uuidToindexTime.get(i.uuid))
-      case i: FileInfoton if i.indexTime.isEmpty    => i.copy(indexTime = uuidToindexTime.get(i.uuid))
-      case i: LinkInfoton if i.indexTime.isEmpty    => i.copy(indexTime = uuidToindexTime.get(i.uuid))
-      case i: DeletedInfoton if i.indexTime.isEmpty => i.copy(indexTime = uuidToindexTime.get(i.uuid))
+      case i: ObjectInfoton if i.systemFields.indexTime.isEmpty  => i.copy(i.systemFields.copy(indexTime = uuidToindexTime.get(i.uuid)))
+      case i: FileInfoton if i.systemFields.indexTime.isEmpty    => i.copy(i.systemFields.copy(indexTime = uuidToindexTime.get(i.uuid)))
+      case i: LinkInfoton if i.systemFields.indexTime.isEmpty    => i.copy(i.systemFields.copy(indexTime = uuidToindexTime.get(i.uuid)))
+      case i: DeletedInfoton if i.systemFields.indexTime.isEmpty => i.copy(i.systemFields.copy(indexTime = uuidToindexTime.get(i.uuid)))
       case i                                        => i
     }
 

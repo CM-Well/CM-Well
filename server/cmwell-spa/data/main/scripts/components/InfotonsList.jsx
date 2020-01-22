@@ -37,8 +37,7 @@ class InfotonsList extends React.Component {
       } else {
           this.props.updateBreadcrumbsParts(null)
       }
-      
-      qp = qp && qp!='None' ? `&recursive&qp=${qp.replace('#','%23')}` : ''
+      qp = qp && qp!='None' ? `&recursive&qp=${qp.replace('%','%25').replace('#','%23')}` : ''
       let createConsumerUrl = `${path}?op=create-consumer${qp}`
       
       if(_(this.onAirAjax).contains(createConsumerUrl))
@@ -174,7 +173,7 @@ class InfotonsList extends React.Component {
 
     // todo once we will figure out how Infoton and InfotonsLists can live in peace side by side, perhaps that ugly guard won't be neccassery
     let title = this.props.location.pathname !== '/' && this.state.total && this.props.isRoot ? <div className="infotons-list-title">
-            <img src="/meta/app/main/images/folder-box.svg"/>{AppUtils.lastPartOfUrl(this.props.location.pathname)} ({this.state.total.toLocaleString()} result{this.state.total==1?'':'s'})
+            <img src="/meta/app/main/images/folder-box.svg"/>{AppUtils.lastPartOfUrl(this.props.location.pathname.replace('%25', '%'))} ({this.state.total.toLocaleString()} result{this.state.total==1?'':'s'})
           </div> : null
     
     let emptyDiv = <div className={containerClassName + ' empty'}></div>
@@ -237,7 +236,7 @@ class InfotonListItem extends React.Component {
             <li className={classname} key={uuid||path}>
                 <img className="bullet" src={bulletSrc} />
                 <span className="names">
-                    <Link to={path.replace('#','%23')} className={linkClassName} state={stateByRoute}>{displayName}</Link>
+                    <Link to={path.replace('%','%25').replace('#','%23')} className={linkClassName} state={stateByRoute}>{displayName}</Link>
                     { displayName != name ? <span className="name">{name}</span> : null }
                 </span>
                 <span className={childrenBulletClassName} onClick={this.onChildrenBulletClick.bind(this)}><img src="/meta/app/main/images/gt-blue.svg"/></span>

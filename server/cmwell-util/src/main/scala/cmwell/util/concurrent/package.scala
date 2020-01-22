@@ -14,9 +14,6 @@
   */
 import com.typesafe.scalalogging.LazyLogging
 import scala.annotation.tailrec
-import scala.collection.{IterableLike, TraversableLike}
-import scala.collection.generic.CanBuildFrom
-import scala.language.higherKinds
 import scala.concurrent._ //,ExecutionContext.Implicits.global
 import scala.concurrent.duration.{Deadline, Duration, FiniteDuration, TimeUnit}
 import scala.util.{Failure, Success, Try}
@@ -31,6 +28,8 @@ import scala.language.implicitConversions
   * To change this template use File | Settings | File Templates.
   */
 package cmwell.util {
+
+  import scala.collection.BuildFrom
 
   package object concurrent extends LazyLogging {
     //TODO: return "Thread++" instead of thread..
@@ -77,61 +76,6 @@ package cmwell.util {
     }
 
     /**
-      * https://gist.github.com/viktorklang/4488970
-      *
-      * "Select" off the first future to be satisfied.  Return this as a
-      * result, with the remainder of the Futures as a sequence.
-      *
-      * @param fs a scala.collection.Seq
-      */
-    def selectFuture[A](fs: Seq[Future[A]])(implicit ec: ExecutionContext): Future[(Try[A], Seq[Future[A]])] = {
-      @tailrec
-      def stripe(p: Promise[(Try[A], Seq[Future[A]])],
-                 heads: Seq[Future[A]],
-                 elem: Future[A],
-                 tail: Seq[Future[A]]): Future[(Try[A], Seq[Future[A]])] = {
-        elem.onComplete { res =>
-          if (!p.isCompleted) p.trySuccess((res, heads ++ tail))
-        }
-        if (tail.isEmpty) p.future
-        else stripe(p, heads :+ elem, tail.head, tail.tail)
-      }
-
-      if (fs.isEmpty) Future.failed(new IllegalArgumentException("empty future list!"))
-      else stripe(Promise(), fs.genericBuilder[Future[A]].result, fs.head, fs.tail)
-    }
-
-    /**
-      * similar to above, but different in the return type (preserves collection's type)
-      *
-      * @see selectFuture
-      * @param fc futures collection
-      * @param ec
-      * @param ev
-      * @tparam T
-      * @tparam Coll
-      * @return a future of tuple of the first completed future's Try, and the rest of the collection
-      */
-    def select[T, Coll](fc: Coll)(implicit ec: ExecutionContext,
-                                  ev: Coll <:< TraversableLike[Future[T], Coll]): Future[(Try[T], Coll)] = {
-      if (fc.isEmpty)
-        Future.failed(new IllegalArgumentException("select from empty collection"))
-      else {
-        val p = Promise[(Try[T], Future[T])]()
-        fc.foreach { f =>
-          f.onComplete { t =>
-            if (!p.isCompleted)
-              p.trySuccess(t -> f)
-          }
-        }
-        p.future.map {
-          case (t, f) =>
-            t -> fc.filter(_ != f)
-        }
-      }
-    }
-
-    /**
       *
       * @param future
       * @param duration timeout duration
@@ -166,31 +110,6 @@ package cmwell.util {
         .map(Some.apply)
         .recover {
           case FutureTimeout(_) => None
-        }
-    }
-
-    /**
-      *
-      * @param fc
-      * @param timeout
-      * @param ec
-      * @param ev
-      * @tparam T
-      * @tparam Coll
-      * @return a Stream of the futures collection's results
-      */
-    def stream[T, Coll](
-      fc: Coll,
-      timeout: FiniteDuration
-    )(implicit ec: ExecutionContext, ev: Coll <:< TraversableLike[Future[T], Coll]): Stream[Try[T]] = {
-      if (fc.isEmpty) Stream.empty[Try[T]]
-      else
-        try {
-          Await.result(select[T, Coll](fc).map {
-            case (t, coll) => t #:: stream(coll, timeout)
-          }, timeout)
-        } catch {
-          case e: TimeoutException => Stream(Failure[T](e))
         }
     }
 
@@ -358,7 +277,7 @@ package cmwell.util {
       * @param ec Execution context.
       * @return Future of the given collection.
       */
-    def successes[A, M[X] <: Traversable[X]](in: M[Future[A]])(implicit bf: CanBuildFrom[M[Future[A]], A, M[A]],
+    def successes[A, M[X] <: Iterable[X]](in: M[Future[A]])(implicit bf: BuildFrom[M[Future[A]], A, M[A]],
                                                                ec: ExecutionContext): Future[M[A]] = {
       in.foldLeft(Future.successful(bf(in))) { (fr, fa) =>
           {
@@ -482,10 +401,10 @@ package cmwell.util {
     /**
       * similar to [[travector]] with the addition of optional accumulation
       */
-    def collector[A, B, M[X] <: TraversableOnce[X]](
+    def collector[A, B, M[X] <: IterableOnce[X]](
       in: M[A]
     )(fn: A => Future[Option[B]])(implicit executor: ExecutionContext): Future[Vector[B]] =
-      in.foldLeft(Future.successful(Vector.newBuilder[B])) { (fr, a) =>
+      in.iterator.foldLeft(Future.successful(Vector.newBuilder[B])) { (fr, a) =>
           val fb = fn(a)
           for (r <- fr; ob <- fb) yield ob.fold(r)(r.+=)
         }

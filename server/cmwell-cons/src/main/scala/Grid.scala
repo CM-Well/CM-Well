@@ -12,13 +12,13 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-import scala.collection.GenSeq
+import scala.collection.parallel.ParSeq
 import scala.util.Try
+import scala.collection.parallel.CollectionConverters._
 
 case class Grid(user: String,
                 password: String,
-                ipMappings: IpMappings,
-                inet: String,
+                clusterIps: Seq[String],
                 clusterName: String,
                 dataCenter: String,
                 dataDirs: DataDirs,
@@ -35,18 +35,18 @@ case class Grid(user: String,
                 haProxy: Option[HaProxy] = None,
                 dcTarget: Option[String] = None,
                 minMembers: Option[Int] = None,
-                withElk: Boolean = false,
-                newBg: Boolean = true,
-                oldBg: Boolean = true,
-                nbg: Boolean = false,
                 subjectsInSpAreHttps: Boolean = false,
-                defaultRdfProtocol: String = "http")
+                defaultRdfProtocol: String = "http",
+                diskOptimizationStrategy:String = "ssd",
+                // we refrain from using Cas Commitlog on cluster, to save disk space and performance,
+                // given we always write in Quorum so there will be no data loss
+                casUseCommitLog:Boolean = false)
     extends Host(
       user,
       password,
-      ipMappings,
-      ipMappings.getIps.size,
-      inet,
+      clusterIps,
+      clusterIps.size,
+      clusterIps.size,
       clusterName,
       dataCenter,
       dataDirs,
@@ -60,10 +60,13 @@ case class Grid(user: String,
       ctrlService,
       minMembers,
       haProxy,
-      withElk = withElk,
       subjectsInSpAreHttps = subjectsInSpAreHttps,
-      defaultRdfProtocol = defaultRdfProtocol
+      defaultRdfProtocol = defaultRdfProtocol,
+      diskOptimizationStrategy = diskOptimizationStrategy,
+      casUseCommitLog = casUseCommitLog
     ) {
+
+  require(clusterIps.distinct equals  clusterIps, "must be unique")
 
   //if(!validateNumberOfMasterNodes(esMasters, ips.size)) throw new Exception("Bad number of Elasticsearch master nodes")
 
@@ -75,18 +78,18 @@ case class Grid(user: String,
     ???
   }
 
-  override def mkScripts(hosts: GenSeq[String]): GenSeq[ComponentConf] = {
+  override def mkScripts(hosts: ParSeq[String]): ParSeq[ComponentConf] = {
     val aloc = allocationPlan.getJvmAllocations
     val casAllocations = aloc.cas //DefaultAlocations(4000,4000,1000,0)
     val esAllocations = aloc.es //DefaultAlocations(6000,6000,400,0)
 
-    val esMasterAllocations = allocationPlan.getElasticsearchMasterAllocations
+    val esMasterAllocations = JvmMemoryAllocations(2048, 2048, 0, 256)
 
     val bgAllocations = aloc.bg //DefaultAlocations(1000,1000,512,0)
     val wsAllocations = aloc.ws
     val ctrlAllocations = aloc.ctrl
-
     val homeDir = s"${instDirs.globalLocation}/cm-well"
+    val casDataDirs = (1 to dataDirs.casDataDirs.size).map(ResourceBuilder.getIndexedName("cas", _))
     hosts.flatMap { host =>
       val cas = CassandraConf(
         home = homeDir,
@@ -105,52 +108,54 @@ case class Grid(user: String,
         index = 1,
         rs = IpRackSelector(),
         g1 = g1,
-        hostIp = host
+        hostIp = host,
+        casDataDirs = casDataDirs,
+        casUseCommitLog = casUseCommitLog,
+        numOfCores = calculateCpuAmount,
+        diskOptimizationStrategy = diskOptimizationStrategy
       )
-
       val es = ElasticsearchConf(
-        clusterName = clusterName,
-        nodeName = host,
-        masterNode = false,
-        dataNode = true,
-        expectedNodes = ips.size,
-        numberOfReplicas = 2,
-        seeds = getSeedNodes.mkString(","),
-        home = homeDir,
-        resourceManager = esAllocations,
-        dir = "es",
-        template = "es.yml",
-        listenAddress = host,
-        masterNodes = esMasters,
-        sName = "start.sh",
-        index = 1,
-        rs = IpRackSelector(),
-        g1 = g1,
-        hostIp = host,
-        autoCreateIndex = withElk
-      )
+          clusterName = clusterName,
+          nodeName = host,
+          masterNode = false,
+          dataNode = true,
+          expectedNodes = ips.size,
+          numberOfReplicas = 2,
+          seeds = getSeedNodes.mkString(","),
+          home = homeDir,
+          resourceManager = esAllocations,
+          dir = "es",
+          template = "elasticsearch.yml",
+          listenAddress = host,
+          masterNodes = esMasters,
+          sName = "start.sh",
+          index = 1,
+          rs = IpRackSelector(),
+          g1 = g1,
+          hostIp = host,
+          dirsPerEs = dataDirs.esDataDirs.size
+        )
 
-      val esMaster = ElasticsearchConf(
-        clusterName = clusterName,
-        nodeName = s"$host-master",
-        masterNode = true,
-        dataNode = false,
-        expectedNodes = ips.size,
-        numberOfReplicas = 2,
-        seeds = getSeedNodes.mkString(","),
-        home = homeDir,
-        resourceManager = esAllocations,
-        dir = "es-master",
-        template = "es.yml",
-        listenAddress = host,
-        masterNodes = esMasters,
-        sName = "start-master.sh",
-        index = 2,
-        rs = IpRackSelector(),
-        g1 = true,
-        hostIp = host,
-        autoCreateIndex = withElk
-      )
+        val esMaster = ElasticsearchConf(
+          clusterName = clusterName,
+          nodeName = s"$host-master",
+          masterNode = true,
+          dataNode = false,
+          expectedNodes = ips.size,
+          numberOfReplicas = 2,
+          seeds = getSeedNodes.mkString(","),
+          home = homeDir,
+          resourceManager = esMasterAllocations,
+          dir = "es-master",
+          template = "elasticsearch.yml",
+          listenAddress = host,
+          masterNodes = esMasters,
+          sName = "start-master.sh",
+          index = 2,
+          rs = IpRackSelector(),
+          g1 = true,
+          hostIp = host
+        )
 
       val bg = BgConf(
         home = homeDir,
@@ -166,9 +171,10 @@ case class Grid(user: String,
         debug = deb,
         hostIp = host,
         minMembers = getMinMembers,
-        numOfPartitions = hosts.size,
+        numOfPartitions = ips.size,
         seeds = getSeedNodes.mkString(","),
-        defaultRdfProtocol = defaultRdfProtocol
+        defaultRdfProtocol = defaultRdfProtocol,
+        transportAddress = this.getThreesome(ips, host)
       )
 
       val web = WebConf(
@@ -186,8 +192,9 @@ case class Grid(user: String,
         hostIp = host,
         minMembers = getMinMembers,
         seeds = getSeedNodes.mkString(","),
-        seedPort = 9301,
-        defaultRdfProtocol = defaultRdfProtocol
+        seedPort = 9300,
+        defaultRdfProtocol = defaultRdfProtocol,
+        transportAddress = this.getThreesome(ips, host)
       )
 
       val cw = CwConf(
@@ -202,8 +209,9 @@ case class Grid(user: String,
         hostIp = host,
         minMembers = getMinMembers,
         seeds = getSeedNodes.mkString(","),
-        seedPort = 9301,
-        subjectsInSpAreHttps = subjectsInSpAreHttps
+        seedPort = 9300,
+        subjectsInSpAreHttps = subjectsInSpAreHttps,
+        transportAddress = this.getThreesome(ips, host)
       )
 
       val ctrl = CtrlConf(
@@ -234,24 +242,6 @@ case class Grid(user: String,
         minMembers = getMinMembers
       )
 
-      val kibana = KibanaConf(
-        hostIp = host,
-        home = homeDir,
-        listenPort = "9090",
-        listenAddress = host,
-        elasticsearchUrl = s"$host:9201"
-      )
-
-      val logstash = LogstashConf(
-        clusterName = cn,
-        elasticsearchUrl = s"$host:9201",
-        home = homeDir,
-        dir = "logstash",
-        sName = "start.sh",
-        subdivision = 1,
-        hostIp = host
-      )
-
       val zookeeper = ZookeeperConf(
         home = homeDir,
         clusterName = cn,
@@ -278,7 +268,7 @@ case class Grid(user: String,
         zookeeper,
         kafka,
         bg
-      ) ++ (if (withElk) List(logstash, kibana) else List.empty[ComponentConf])
+      )
     }
   }
 
@@ -286,18 +276,18 @@ case class Grid(user: String,
 
   override def getSeedNodes: List[String] = ips.take(3)
 
-  override def startElasticsearch(hosts: GenSeq[String]): Unit = {
+  override def startElasticsearch(hosts: Seq[String]): Unit = {
     command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start-master.sh")}",
-            ips.par.take(esMasters).intersect(hosts),
+            ips.take(esMasters).intersect(hosts.to(Seq)).to(ParSeq),
             false)
-    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start.sh")}", hosts, false)
+    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start.sh")}", hosts.to(ParSeq), false)
   }
 
-  override def startCassandra(hosts: GenSeq[String]): Unit = {
+  override def startCassandra(hosts: ParSeq[String]): Unit = {
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur/; ${startScript("./start.sh")}", hosts, false)
   }
 
-  override def initCassandra(hosts: GenSeq[String]): Unit = {
+  override def initCassandra(hosts: ParSeq[String]): Unit = {
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur/; ${startScript("./start.sh")}", hosts(0), false)
     Try(CassandraLock().waitForModule(ips(0), 1))
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur/; ${startScript("./start.sh")}", hosts(1), false)
@@ -305,18 +295,18 @@ case class Grid(user: String,
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur/; ${startScript("./start.sh")}", hosts.drop(2), false)
   }
 
-  override def initElasticsearch(hosts: GenSeq[String]): Unit = {
+  override def initElasticsearch(hosts: Seq[String]): Unit = {
     command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start-master.sh")}",
-            hosts.take(esMasters),
+            hosts.take(esMasters).to(ParSeq),
             false)
     Try(ElasticsearchLock().waitForModule(ips(0), esMasters))
     //    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ./start-master.sh", hosts(1), false)
     //    ElasticsearchLock().waitForModule(ips(0), 2)
     //    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ./start-master.sh", hosts.drop(2).take(esMasters - 2), false)
-    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start.sh")}", hosts, false)
+    command(s"cd ${instDirs.globalLocation}/cm-well/app/es/cur; ${startScript("./start.sh")}", hosts.to(ParSeq), false)
   }
 
-  override def getNewHostInstance(ipms: IpMappings): Host = {
-    this.copy(ipMappings = ipms)
+  override def getNewHostInstance(ipms: Seq[String]): Host = {
+    this.copy(clusterIps = ipms)
   }
 }

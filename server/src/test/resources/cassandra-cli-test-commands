@@ -1,6 +1,6 @@
 create keyspace Data with placement_strategy = 'org.apache.cassandra.locator.SimpleStrategy' and strategy_options = {replication_factor:1};
 use Data;
-create column family TLog with column_type = 'Standard' and comparator = 'UTF8Type' and compaction_strategy='LeveledCompactionStrategy' and caching='ALL' and compression_options={sstable_compression:SnappyCompressor, chunk_length_kb:64};
-create column family Infoton with column_type = 'Standard' and comparator = 'UTF8Type' and compaction_strategy='SizeTieredCompactionStrategy' and caching='ALL' and compression_options={sstable_compression:SnappyCompressor, chunk_length_kb:64};
-create column family Path with column_type = 'Standard' and comparator = 'UTF8Type' and compaction_strategy='LeveledCompactionStrategy' and caching='ALL' and compression_options={sstable_compression:SnappyCompressor, chunk_length_kb:64};
+create column family TLog with column_type = 'Standard' and comparator = 'UTF8Type' and compaction_strategy='LeveledCompactionStrategy' and caching='ALL' and compression_options={class:SnappyCompressor, chunk_length_kb:64};
+create column family Infoton with column_type = 'Standard' and comparator = 'UTF8Type' and compaction_strategy='SizeTieredCompactionStrategy' and caching='ALL' and compression_options={class:SnappyCompressor, chunk_length_kb:64};
+create column family Path with column_type = 'Standard' and comparator = 'UTF8Type' and compaction_strategy='LeveledCompactionStrategy' and caching='ALL' and compression_options={class:SnappyCompressor, chunk_length_kb:64};
 exit;

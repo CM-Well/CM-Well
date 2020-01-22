@@ -22,7 +22,8 @@ import cmwell.common.file.MimeTypeIdentifier
 import com.fasterxml.jackson.core._
 import com.typesafe.scalalogging.LazyLogging
 
-object JsonSerializerForES extends AbstractJsonSerializer with NsSplitter with LazyLogging {
+object
+JsonSerializerForES extends AbstractJsonSerializer with NsSplitter with LazyLogging {
 
   val typeChars = List(/*'s',*/ 'i', 'l', 'w', 'b', 'd', 'f')
 
@@ -46,10 +47,10 @@ object JsonSerializerForES extends AbstractJsonSerializer with NsSplitter with L
       case FExternal(value, _, _)     => jp.writeString(value)
       case FInt(int, _)               => jp.writeNumber(int)
       case FLong(long, _)             => jp.writeNumber(long)
-      case FBigInt(bigInt, _)         => jp.writeNumber(bigInt)
+      case FBigInt(bigInt, _)         => jp.writeNumber(bigInt.intValue)
       case FFloat(float, _)           => jp.writeNumber(float)
       case FDouble(double, _)         => jp.writeNumber(double)
-      case FBigDecimal(bigDecimal, _) => jp.writeNumber(bigDecimal)
+      case FBigDecimal(bigDecimal, _) => jp.writeNumber(bigDecimal.doubleValue)
       case _: FNull                   => !!! //this is just a marker for IMP, should not index it anywhere...
       case _: FExtra[_] =>
         !!! // FExtra is just a marker for outputting special properties, should not index it anywhere...
@@ -103,20 +104,24 @@ object JsonSerializerForES extends AbstractJsonSerializer with NsSplitter with L
     jsonGenerator.writeStartObject()
     jsonGenerator.writeObjectFieldStart("system") // start system object field
     jsonGenerator.writeStringField("kind", infoton.kind)
-    jsonGenerator.writeStringField("path", infoton.path)
-    jsonGenerator.writeStringField("lastModified", dateFormatter.print(infoton.lastModified))
+    jsonGenerator.writeStringField("path", infoton.systemFields.path)
+    jsonGenerator.writeStringField("lastModified", dateFormatter.print(infoton.systemFields.lastModified))
+    if (infoton.systemFields.lastModifiedBy == null)
+      jsonGenerator.writeStringField("lastModifiedBy", "anonymous")
+    else
+      jsonGenerator.writeStringField("lastModifiedBy", infoton.systemFields.lastModifiedBy)
     jsonGenerator.writeStringField("uuid", infoton.uuid)
     jsonGenerator.writeStringField("parent", infoton.parent)
-    jsonGenerator.writeStringField("dc", infoton.dc)
+    jsonGenerator.writeStringField("dc", infoton.systemFields.dc)
 
-    if (infoton.indexTime.nonEmpty && infoton.dc == SettingsHelper.dataCenter) {
+    if (infoton.systemFields.indexTime.nonEmpty && infoton.systemFields.dc == SettingsHelper.dataCenter) {
       logger.debug(
         s"should not happen when writing a new infoton! indexTime should only be created while indexing, and not before. uuid = ${infoton.uuid}"
       )
     }
 
     val idxT = {
-      if (infoton.indexTime.isEmpty) {
+      if (infoton.systemFields.indexTime.isEmpty) {
         logger.error(
           s"indexing an infoton with no indexTime defined! setting a value of 613 as default. uuid = [${infoton.uuid}]"
         )
@@ -127,7 +132,7 @@ object JsonSerializerForES extends AbstractJsonSerializer with NsSplitter with L
         // default value MUST be set in the past,
         // though it really should'nt happen.
         613L
-      } else infoton.indexTime.get
+      } else infoton.systemFields.indexTime.get
     }
 
     jsonGenerator.writeNumberField("indexTime", idxT)
@@ -155,7 +160,7 @@ object JsonSerializerForES extends AbstractJsonSerializer with NsSplitter with L
     if (current) jsonGenerator.writeBooleanField("current", true)
     else jsonGenerator.writeBooleanField("current", false)
 
-    jsonGenerator.writeStringField("protocol", infoton.protocol.getOrElse(cmwell.common.Settings.defaultProtocol))
+    jsonGenerator.writeStringField("protocol", infoton.systemFields.protocol)
 
     jsonGenerator.writeEndObject() // end system object field
     // write field object, if not empty
@@ -163,7 +168,7 @@ object JsonSerializerForES extends AbstractJsonSerializer with NsSplitter with L
       encodeFieldsWithGenerator(fields, jsonGenerator)
     }
     infoton match {
-      case FileInfoton(_, _, _, _, _, Some(FileContent(dataOpt, mimeType, dl, dp)), _, _) =>
+      case FileInfoton(_, _, Some(FileContent(dataOpt, mimeType, dl, dp))) =>
         jsonGenerator.writeObjectFieldStart("content")
         jsonGenerator.writeStringField("mimeType", mimeType)
         dataOpt.foreach { data =>
@@ -180,7 +185,7 @@ object JsonSerializerForES extends AbstractJsonSerializer with NsSplitter with L
         }
         jsonGenerator.writeNumberField("length", dataOpt.fold(dl)(_.length))
         jsonGenerator.writeEndObject()
-      case LinkInfoton(_, _, _, _, _, linkTo, linkType, _, _) =>
+      case LinkInfoton(_, _, linkTo, linkType) =>
         jsonGenerator.writeObjectFieldStart("link")
         jsonGenerator.writeStringField("to", linkTo)
         jsonGenerator.writeNumberField("kind", linkType)

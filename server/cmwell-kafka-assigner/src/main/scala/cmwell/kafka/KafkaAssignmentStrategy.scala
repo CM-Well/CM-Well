@@ -153,7 +153,7 @@ object KafkaAssignmentStrategy {
             }
           }
       }
-      .mapValues(_.reverse)
+      .view.mapValues(_.reverse).toMap
 
     val balanceLeadersTracker = new PreferenceListOrderTracker(topicName)
     unorderedPreferences.map {

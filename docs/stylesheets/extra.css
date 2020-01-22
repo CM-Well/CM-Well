@@ -1,0 +1,13 @@
+/* CSS for CM-Well documentation */
+.md-typeset h1 {
+  color: lightseagreen;
+  font-weight: 500;
+}
+
+h2 {
+  color: cornflowerblue;
+}
+
+h3 {
+  color: coral;
+}

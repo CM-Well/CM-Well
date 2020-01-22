@@ -157,7 +157,7 @@ abstract class AbstractJsonlFormatter(hashToUrlAndPrefix: String => Option[(Stri
 
   override def system(i: Infoton): JsObject =
     JsObject(
-      Seq("@id.sys" -> mkValWrappedInArray(i.path), "type.sys" -> mkValWrappedInArray(i.kind)) ++ system(
+      Seq("@id.sys" -> mkValWrappedInArray(i.systemFields.path), "type.sys" -> mkValWrappedInArray(i.kind)) ++ system(
         i,
         (s: String) => s"$s.sys",
         mkValWrappedInArray(_),
@@ -198,7 +198,7 @@ abstract class AbstractJsonlFormatter(hashToUrlAndPrefix: String => Option[(Stri
       }
       .getOrElse(empty)
     (i: @unchecked) match {
-      case CompoundInfoton(_, _, _, _, _, children, offset, length, total, _, _) =>
+      case CompoundInfoton(_, _, children, offset, length, total) =>
         iSystem ++ iFields ++
           JsObject(
             Seq(
@@ -208,13 +208,13 @@ abstract class AbstractJsonlFormatter(hashToUrlAndPrefix: String => Option[(Stri
               "total.sys" -> mkValWrappedInArray(total)
             )
           )
-      case ObjectInfoton(_, _, _, _, _, _, _) => iSystem ++ iFields
-      case FileInfoton(_, _, _, _, _, content, _, _) =>
+      case ObjectInfoton(_, _) => iSystem ++ iFields
+      case FileInfoton(_, _, content) =>
         iSystem ++ iFields ++ (content match {
           case Some(c) => fileContent(c)
           case None    => JsObject(Seq())
         })
-      case LinkInfoton(_, _, _, _, _, linkTo, linkType, _, _) =>
+      case LinkInfoton(_, _, linkTo, linkType) =>
         iSystem ++ iFields ++ JsObject(
           Seq("linkTo" -> mkValWrappedInArray(linkTo), "linkType" -> mkValWrappedInArray(linkType))
         )
