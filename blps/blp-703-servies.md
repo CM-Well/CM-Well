@@ -31,7 +31,7 @@ replacement:	/permid.org/1-$1
 ### Second example: External Service
 
 ```
-/graph.link/services/echo-service (FileInfoton)
+/meta/src/echo-service (FileInfoton)
 def main(args: Array[String]) = s"<html><u>${args.head}</u></html>"
 ```
 
@@ -39,7 +39,7 @@ def main(args: Array[String]) = s"<html><u>${args.head}</u></html>"
 /meta/services/echo
 type.rdf:		cmwell://meta/sys#Source
 route:			/echo/
-src:			/graph.link/services/echo-service
+src:			/meta/src/echo-service
 args:			/msg/$1
 returnType:		FileInfoton
 mimeType:		text/html
