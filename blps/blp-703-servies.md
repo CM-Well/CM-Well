@@ -11,7 +11,7 @@
 ## Types
 - `Redirection` would be the most trivial one
     - it will require a regex based replacement to the service endpoint
-- Down the road we will come up with more types, e.g. Source or Binary
+- Down the road we will come up with more types, e.g. `Source` or `Binary`
 - Most of types will reqire the `bin` or `src` properties with the value of the logic Infoton's path
 
 ## Examples
