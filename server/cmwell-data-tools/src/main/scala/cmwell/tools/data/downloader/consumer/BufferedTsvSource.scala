@@ -26,10 +26,9 @@ import cmwell.tools.data.downloader.consumer.BufferedTsvSource.{ConsumeResponse,
 import cmwell.tools.data.utils.ArgsManipulations
 import cmwell.tools.data.utils.ArgsManipulations.{HttpAddress, formatHost}
 import cmwell.tools.data.utils.akka.HeaderOps.{getHostnameValue, getNLeft, getPosition}
-import cmwell.tools.data.utils.akka.{DataToolsConfig, HttpConnections, lineSeparatorFrame}
+import cmwell.tools.data.utils.akka.{AkkaUtils, DataToolsConfig, HttpConnections, lineSeparatorFrame}
 import cmwell.tools.data.utils.logging.DataToolsLogging
 import cmwell.tools.data.utils.text.Tokens
-import cmwell.util.akka.http.HttpZipDecoder
 
 import scala.concurrent.duration._
 import scala.collection.mutable
@@ -97,6 +96,9 @@ class BufferedTsvSource(initialToken: Future[String],
     private val changeRemainingInfotonsState = getAsyncCallback[Option[Long]](remainingInfotons = _)
     private val addToBuffer = getAsyncCallback[Option[(Token, TsvData)]](buf += _)
     private val changeCurrConsumeState = getAsyncCallback[ConsumeState](currConsumeState = _)
+    private var stopStream: AsyncCallback[Unit] = _
+
+    val keepAlive = config.getBoolean("downloader.keepAlive")
 
     override def preStart(): Unit = {
 
@@ -119,6 +121,14 @@ class BufferedTsvSource(initialToken: Future[String],
 
         case (infotons, None) => logger.error(s"Token is None for: $infotons"); ???
       }
+
+      stopStream = getAsyncCallback[Unit] ( _ => {
+        logger.info("Going to close source")
+        val iterable = buf.map(elem => (elem.get, true, None)).iterator
+        emitMultiple(out, iterable)
+        complete(out)
+      }
+      )
 
       currentConsumeToken = Await.result(initialToken, 5.seconds)
 
@@ -174,7 +184,7 @@ class BufferedTsvSource(initialToken: Future[String],
           .via(conn)
           .map {
             case (tryResponse, state) =>
-              tryResponse.map(HttpZipDecoder.decodeResponse) -> state
+              tryResponse.map(AkkaUtils.decodeResponse) -> state
           }
           .map {
             case (Success(HttpResponse(s, h, e, _)), _) if s == StatusCodes.TooManyRequests =>
@@ -183,7 +193,7 @@ class BufferedTsvSource(initialToken: Future[String],
               logger.error(s"HTTP 429: too many requests token=$token")
 
               ConsumeResponse(token = None, consumeComplete = false, infotonSource =
-                Source.failed(new Exception("too many requests")))
+                Source.failed(new Exception("HTTP 429: too many requests")))
 
             case (Success(HttpResponse(s, h, e, _)), _) if s == StatusCodes.NoContent =>
               e.discardBytes()
@@ -215,6 +225,7 @@ class BufferedTsvSource(initialToken: Future[String],
                   ConsumeResponse(token=Some(pos), consumeComplete = false, infotonSource = infotonSource)
 
                 case None =>
+                  e.discardBytes()
                   ConsumeResponse(token=Some(token), consumeComplete = false, infotonSource =
                     Source.failed(new Exception(s"No position supplied")))
               }
@@ -239,8 +250,6 @@ class BufferedTsvSource(initialToken: Future[String],
                     err
                   )
               }
-
-              e.discardBytes()
 
               ConsumeResponse(token=Some(token), consumeComplete = false, infotonSource =
                 Source.failed(new Exception(s"Status is $s")))
@@ -278,12 +287,12 @@ class BufferedTsvSource(initialToken: Future[String],
         if(buf.size < threshold && !asyncCallInProgress && isHorizon(consumeComplete,buf)==false){
           asyncCallInProgress = true
           logger.debug(s"buffer size: ${buf.size} is less than threshold of $threshold. Requesting more tsvs")
-          invokeBufferFillerCallback(sendNextChunkRequest(currentConsumeToken))
+          invokeBufferFillerCallback(sendNextChunkRequest(currentConsumeToken), retryLimit.get)
         }
       }
     })
 
-    private def invokeBufferFillerCallback(future: Future[ConsumeResponse]): Unit = {
+    private def invokeBufferFillerCallback(future: Future[ConsumeResponse], reqRetryLimit: Int): Unit = {
 
       future.onComplete {
         case Success(consumeResponse) =>
@@ -293,11 +302,16 @@ class BufferedTsvSource(initialToken: Future[String],
           consumeResponse match {
             case ConsumeResponse(_, true, _) =>
 
-              logger.info(s"$label is at horizon. Will retry at consume position $currentConsumeToken " +
+              if (keepAlive)
+              {
+                logger.info(s"$label is at horizon. Will retry at consume position $currentConsumeToken " +
                 s"in $horizonRetryTimeout")
 
               materializer.scheduleOnce(horizonRetryTimeout, () =>
-                invokeBufferFillerCallback(sendNextChunkRequest(currentConsumeToken)))
+                invokeBufferFillerCallback(sendNextChunkRequest(currentConsumeToken), retryLimit.get))
+              }
+              else
+                stopStream.invoke()
 
             case ConsumeResponse(nextToken ,false, infotonSource) =>
               infotonSource.toMat(Sink.seq)(Keep.right).run
@@ -305,10 +319,17 @@ class BufferedTsvSource(initialToken: Future[String],
                   case Success(consumedInfotons) =>
                     callback.invoke((consumedInfotons, nextToken))
                   case Failure(ex) =>
-                    logger.error(s"Received error. scheduling a retry in $retryTimeout", ex)
-                    materializer.scheduleOnce(retryTimeout, () =>
-                      invokeBufferFillerCallback(sendNextChunkRequest(currentConsumeToken))
-                    )
+                    if (reqRetryLimit > 0) {
+                      logger.error(s"Received error. scheduling a retry in $retryTimeout", ex)
+                      materializer.scheduleOnce(retryTimeout, () =>
+                        invokeBufferFillerCallback(sendNextChunkRequest(currentConsumeToken), reqRetryLimit-1)
+                      )
+                    }
+                    else
+                    {
+                      logger.error("Retry limit has exceeded. Going to close stream without completing all TSVs.", ex)
+                      stopStream.invoke()
+                    }
                 }
           }
         case Failure(e) =>

@@ -476,7 +476,7 @@ class AuthTests extends FunSpec with Matchers with Helpers with LazyLogging {
       it("should filter not-allowed paths: /_out") {
 
         implicit class JsValueExtensions(v: JsValue) {
-          def getArr(prop: String): Seq[JsValue] = ((v \ prop).get: @unchecked) match { case JsArray(seq) => seq }
+          def getArr(prop: String): collection.IndexedSeq[JsValue] = ((v \ prop).get: @unchecked) match { case JsArray(seq) => seq }
         }
 
         val payload = Seq("/tests/infoton1", "/top-secret/secret-infoton1", "/top-secret/secret-infoton2").mkString("\n")

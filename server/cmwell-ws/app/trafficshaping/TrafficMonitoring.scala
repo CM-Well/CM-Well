@@ -17,11 +17,14 @@ package trafficshaping
 import actions.{MarkdownTable, MarkdownTuple}
 import akka.util.Timeout
 import cmwell.ctrl.config.Jvms
-import cmwell.domain.{FileContent, FileInfoton, VirtualInfoton}
+import cmwell.domain.{FileContent, FileInfoton, SystemFields, VirtualInfoton}
 import k.grid.Grid
 import java.net.InetAddress
+
 import scala.concurrent.Future
 import akka.pattern.ask
+import org.joda.time.{DateTime, DateTimeZone}
+
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Try
@@ -85,8 +88,8 @@ object TrafficMonitoring {
       val content = statusText + "\n\n\n" + table.get
 
       Some(
-        VirtualInfoton(FileInfoton(path, dc, None, lastModifiedBy = "VirtualInfoton", content = Some(FileContent(content.getBytes, "text/x-markdown")),
-          protocol = None))
+        VirtualInfoton(FileInfoton(SystemFields(path, new DateTime(DateTimeZone.UTC), "VirtualInfoton", dc, None, "", "http"),
+          content = Some(FileContent(content.getBytes, "text/x-markdown"))))
       )
     }
   }

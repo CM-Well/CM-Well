@@ -9,4 +9,4 @@ echo "########################################################################"
 echo "# PLEASE NOTICE: THIS IS cmwell-cons DEBUGGER AND NOT CM-WELL DEBUGGER #"
 echo "########################################################################"
 
-bash -c "scala -J-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005 -nc -cp 'cons-lib/*' "
+bash -c "scala -J-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005 -cp 'cons-lib/*' "

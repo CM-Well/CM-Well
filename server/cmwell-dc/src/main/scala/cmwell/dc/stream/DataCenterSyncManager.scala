@@ -391,8 +391,8 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
       (Json.parse(body.toArray) \ "fields" \ "lastIdxT": @unchecked) match {
         case JsDefined(JsArray(data)) =>
           data.headOption.flatMap {
-            case num: JsNumber if num.value.longValue() == 0 => None
-            case num: JsNumber                               => Some(num.value.longValue())
+            case num: JsNumber if num.value.longValue == 0 => None
+            case num: JsNumber                               => Some(num.value.longValue)
             case _                                           => throw new RuntimeException("must be a JsNumber!")
           }
       }
@@ -529,7 +529,7 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
             }
             val dcKey = DcInfoKey(s"$dataCenterId&type=$dcType$qpAndWhStrFinal", location, transformations, ingestOp, modifier)
             DcInfo(dcKey, dcInfoExtra, idxTime = fromIndexTime, tsvFile = tsvFile)
-          }
+          }.toSeq
         case _ => Seq.empty
       }
     } catch {

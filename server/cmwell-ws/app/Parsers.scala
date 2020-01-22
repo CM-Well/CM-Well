@@ -333,13 +333,13 @@ package util {
           if (path == "/") NoFilter else PathFilter(new Path(path, true))
       case Some("*") ~ m =>
         _ =>
-          MatchFilter(new MatchMap(m.mapValues(_.map(FieldValue.parseString).toSet)))
+          MatchFilter(new MatchMap(m.view.mapValues(_.map(FieldValue.parseString).toSet).toMap))
       case Some("-") ~ m =>
         (path: String) =>
-          PMFilter(new Path(path, false), new MatchMap(m.mapValues(_.map(FieldValue.parseString).toSet)))
+          PMFilter(new Path(path, false), new MatchMap(m.view.mapValues(_.map(FieldValue.parseString).toSet).toMap))
       case None ~ m =>
         (path: String) =>
-          PMFilter(new Path(path, true), new MatchMap(m.mapValues(_.map(FieldValue.parseString).toSet)))
+          PMFilter(new Path(path, true), new MatchMap(m.view.mapValues(_.map(FieldValue.parseString).toSet).toMap))
     }
 
     def parseRule(qpString: String, path: String): Either[String, Rule] = {

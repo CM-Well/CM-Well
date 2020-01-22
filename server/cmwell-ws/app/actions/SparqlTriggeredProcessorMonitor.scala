@@ -19,7 +19,9 @@ import k.grid.{Grid, WhoAreYou, WhoIAm}
 import akka.pattern._
 import akka.util.Timeout
 import cmwell.ctrl.checkers.StpChecker.{RequestStats, ResponseStats, Row, Table}
-import cmwell.domain.{FileContent, FileInfoton, VirtualInfoton}
+import cmwell.domain.{FileContent, FileInfoton, SystemFields, VirtualInfoton}
+import cmwell.ws.Settings
+import org.joda.time.{DateTime, DateTimeZone}
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -74,8 +76,8 @@ object SparqlTriggeredProcessorMonitor extends LazyLogging {
     future.map { content =>
       Some(
         VirtualInfoton(
-          FileInfoton(path, dc, None, content = Some(FileContent(content.getBytes("utf-8"), "text/x-markdown")),
-            lastModifiedBy = "VirtualInfoton", protocol = None)
+          FileInfoton(SystemFields(path, new DateTime(DateTimeZone.UTC), "VirtualInfoton", dc, None, "", "http"),
+            None, content = Some(FileContent(content.getBytes("utf-8"), "text/x-markdown")))
         )
       )
     }

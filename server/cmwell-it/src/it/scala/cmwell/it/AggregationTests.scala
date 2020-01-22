@@ -47,7 +47,7 @@ class AggregationTests extends AsyncFunSpec with Matchers with Inspectors with H
         queryParams = List("op" -> "stats", "format" -> "json", "ap" -> "type:term,field::$http://qa.test.rfnt.com/v1.1/testns/num$,size:3")))
       { r =>
         (Json.parse(r.payload) \ "AggregationResponse" \\ "buckets": @unchecked) match {
-          case n: Seq[JsValue] => (r.status == 200) && n.forall(jsonval=> jsonval.as[JsArray].value.size == 3)
+          case n: collection.IndexedSeq[JsValue] => (r.status == 200) && n.forall(jsonval=> jsonval.as[JsArray].value.size == 3)
         }
       }.map { res =>
         withClue(res) {
@@ -65,7 +65,7 @@ class AggregationTests extends AsyncFunSpec with Matchers with Inspectors with H
         queryParams = List("op" -> "stats", "format" -> "json", "ap" -> "type:term,field::$http://qa.test.rfnt.com/v1.1/testns/Test_Data$,size:2")))
       { r =>
         (Json.parse(r.payload) \ "AggregationResponse" \\ "buckets": @unchecked) match {
-          case n: Seq[JsValue] => (r.status == 200) && n.forall(jsonval=> jsonval.as[JsArray].value.size == 2)
+          case n: collection.IndexedSeq[JsValue] => (r.status == 200) && n.forall(jsonval=> jsonval.as[JsArray].value.size == 2)
         }
       }.map { res =>
         withClue(res) {

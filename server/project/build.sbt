@@ -3,7 +3,7 @@ import cmwell.build.PluginVersions
 libraryDependencies ++=  Seq(
   "joda-time" % "joda-time" % "2.3",
   "org.joda" % "joda-convert" % "1.6",
-  "net.leibman" %% "semverfi" % "0.2.0",
+  "nl.gn0s1s" %% "bump" % "0.1.3",
   "io.get-coursier" %% "coursier" % PluginVersions.coursier)
 
 val s = Seq(
@@ -17,11 +17,11 @@ sourceGenerators in Compile += Def.task {
      |package cmwell.build
      |
      |object Versions {
-     |  val cassandra = "3.11.4"
-     |  val elasticsearch = "7.4.0"
-     |  val kafka = "2.3.0"
+     |  val cassandra = "3.11.5"
+     |  val elasticsearch = "7.4.2"
+     |  val kafka = "2.4.0"
      |  val play = "${PluginVersions.play}"
-     |  val zookeeper = "3.4.13"
+     |  val zookeeper = "3.5.6"
      |}
      """.stripMargin)
   Seq(file

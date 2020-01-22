@@ -29,7 +29,7 @@ object ContainerHelpers {
     lazy val zookeeperContainer = {
       val scalaContainer = GenericContainer(s"zookeeper:$zookeeperVersion",
         exposedPorts = Seq(2181),
-        waitStrategy = Wait.forLogMessage(".*binding to port 0.0.0.0/0.0.0.0:2181.*\n", 1)
+        waitStrategy = Wait.forLogMessage(".*binding to port /0.0.0.0:2181.*\n", 1)
       )
       scalaContainer.configure { container =>
         container.withNetwork(internalNetwork)

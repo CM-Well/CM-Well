@@ -46,7 +46,7 @@ class MetaNsTests extends AsyncFunSpec with Matchers with Helpers with NSHashesA
           }
 
           withClue {
-            val s1 = infotons.map(_.path).toSet
+            val s1 = infotons.map(_.systemFields.path).toSet
             val s2 = metaNsPaths
             s"""
              |s1 (${s1.size}) = infotons.length (${infotons.length})

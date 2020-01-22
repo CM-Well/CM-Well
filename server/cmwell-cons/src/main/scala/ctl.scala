@@ -16,7 +16,7 @@
 
 // comment
 
-import java.io.File
+import java.io.{File, PrintWriter}
 import java.util.Date
 
 import cmwell.ctrl.client.CtrlClient
@@ -25,8 +25,7 @@ import cmwell.util.http.SimpleHttpClient
 import k.grid.{GridConnection, Grid => AkkaGrid}
 import play.api.libs.json.{JsValue, Json}
 
-import scala.collection.parallel.ParMap
-import scala.collection.{GenSeq, GenSet}
+import scala.collection.parallel.{ParMap, ParSeq, ParSet}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
@@ -35,6 +34,7 @@ import scala.language.postfixOps
 import scala.sys.process._
 import scala.util.parsing.json._
 import scala.util.{Failure, Success, Try}
+import scala.collection.parallel.CollectionConverters._
 //todo: make sure that some applications are installed.
 
 trait Info {
@@ -130,10 +130,10 @@ abstract class ModuleLock(checkCount: Int = 50) extends Info {
   }
 }
 
-case class DataDirs(casDataDirs: GenSeq[String],
-                    casCommitLogDirs: GenSeq[String],
-                    esDataDirs: GenSeq[String],
-                    kafkaDataDirs: GenSeq[String],
+case class DataDirs(casDataDirs: Seq[String],
+                    casCommitLogDirs: Seq[String],
+                    esDataDirs: Seq[String],
+                    kafkaDataDirs: Seq[String],
                     zookeeperDataDir: String,
                     logsDataDir: String)
 
@@ -290,9 +290,9 @@ abstract class Host(user: String,
   )
 
   def jconsole(component: String, dualmonitor: Boolean, host1: String, hosts: String*): Unit =
-    jconsole(component, dualmonitor, Seq(host1) ++ hosts)
+    jconsole(component, dualmonitor, ParSeq(host1) ++ hosts)
 
-  def jconsole(component: String, dualmonitor: Boolean = false, hosts: GenSeq[String] = ips): Unit = {
+  def jconsole(component: String, dualmonitor: Boolean = false, hosts: ParSeq[String] = ips.to(ParSeq)): Unit = {
 
     if (!dualmonitor) {
 
@@ -338,7 +338,7 @@ abstract class Host(user: String,
 
   def createFile(path: String,
                  content: String,
-                 hosts: GenSeq[String] = ips,
+                 hosts: ParSeq[String] = ips.to(ParSeq),
                  sudo: Boolean = false,
                  sudoer: Option[Credentials] = None) {
     hosts.foreach(host => createFile(path, content, host, sudo, sudoer))
@@ -349,8 +349,18 @@ abstract class Host(user: String,
                  host: String,
                  sudo: Boolean,
                  sudoer: Option[Credentials]) {
-    if (sudo)
-      command(s"""echo -e '$content' | sudo tee $path > /dev/null""", host, true, sudoer)
+    if (sudo) {
+      val tempFile = File.createTempFile("pre-", ".txt")
+      val fullPath = tempFile.getAbsolutePath
+      val fileName = tempFile.getName
+      val writer = new PrintWriter(tempFile)
+      writer.write(content)
+      writer.close()
+      _rsync(fullPath, "~", s"${sudoer.get.name}@$host", sudo = false)
+      command(s"""sudo mv $fileName $path""", host, true, sudoer)
+      command(s"""sudo chown root:root $path""", host, true, sudoer)
+      tempFile.delete()
+    }
     else
       command(s"""echo $$'$content' > $path""", host, false)
   }
@@ -480,7 +490,7 @@ abstract class Host(user: String,
 
   def path: String = s"$javaPath:$utilsPath:$homeBinPath:$$PATH"
 
-  private def ipsToSsh(u: String = user, ips: GenSeq[String]) =
+  private def ipsToSsh(u: String = user, ips: ParSeq[String]) =
     ips.map(ip => if (ip.indexOf("@") == -1) s"${u}@${ip}" else ip)
 
   private def timeStamp = System.currentTimeMillis / 1000
@@ -513,7 +523,7 @@ abstract class Host(user: String,
 
   def gainTrust: Unit = gainTrust()
 
-  def gainTrust(u: String = user, p: String = "", hosts: GenSeq[String] = ips) {
+  def gainTrust(u: String = user, p: String = "", hosts: ParSeq[String] = ips.to(ParSeq)) {
     val sshLocation = s"${sys.env("HOME")}/.ssh"
     val privateKey = s"$sshLocation/id_rsa"
     val publicKey = s"$privateKey.pub"
@@ -539,7 +549,7 @@ abstract class Host(user: String,
     }
   }
 
-  def refreshUserState(user: String, sudoer: Option[Credentials], hosts: GenSeq[String] = ips): Unit = {
+  def refreshUserState(user: String, sudoer: Option[Credentials], hosts: ParSeq[String] = ips.to(ParSeq)): Unit = {
     // temp disabled for OSX till new cons available...
     val pubKeyOpt = sys.env.get("SSH_DEV_KEY")
     if (!UtilCommands.isOSX && pubKeyOpt.isDefined) {
@@ -561,7 +571,7 @@ abstract class Host(user: String,
     }
   }
 
-  //def gainTrustNoPass(u : String = user , p : String = "", hosts : GenSeq[String] = ips.par)
+  //def gainTrustNoPass(u : String = user , p : String = "", hosts : ParSeq[String] = ips.par)
 
   def validateNumberOfMasterNodes(num: Int, size: Int): Boolean = (num % 2) == 1 && num <= size && num >= 3
 
@@ -660,8 +670,8 @@ abstract class Host(user: String,
     def takeRightWhile(p: (Char) => Boolean): String = s.takeRight(s.reverseIterator.takeWhile(p).length)
   }
 
-  def createCassandraRackProperties(hosts: GenSeq[String] = ips.par) {
-    hosts.zipWithIndex.foreach { ip =>
+  def createCassandraRackProperties(hosts: ParSeq[String] = ips.par) {
+    hosts.zipWithIndex.foreach { ip: (String, Int) =>
       val content = s"dc=DC1\nrack=RAC${ip._2 + 1}"
       command(s"""echo "$content" > ${instDirs.globalLocation}/cm-well/conf/cas/cassandra-rackdc.properties""",
         ip._1,
@@ -673,7 +683,7 @@ abstract class Host(user: String,
     }
   }
 
-  def createUser(user: String = "u", pass: String = "said2000", hosts: GenSeq[String] = ips.par, sudoer: Credentials) {
+  def createUser(user: String = "u", pass: String = "said2000", hosts: ParSeq[String] = ips.par, sudoer: Credentials) {
     command(s"sudo useradd $user", hosts, true, Some(sudoer))
     command(s"echo '$user:$$USERPASS' | sudo chpasswd", hosts, true, Some(sudoer), Map("USERPASS" -> pass))
   }
@@ -689,21 +699,21 @@ abstract class Host(user: String,
     }
   }
 
-  def command(com: String, hosts: GenSeq[String], sudo: Boolean): GenSeq[Try[String]] = {
+  def command(com: String, hosts: ParSeq[String], sudo: Boolean): ParSeq[Try[String]] = {
     command(com, hosts, sudo, None)
   }
 
-  def command(com: String, hosts: GenSeq[String], sudo: Boolean, sudoer: Option[Credentials]): GenSeq[Try[String]] = {
+  def command(com: String, hosts: ParSeq[String], sudo: Boolean, sudoer: Option[Credentials]): ParSeq[Try[String]] = {
     hosts.map { host =>
       command(com, host, sudo, sudoer)
     }
   }
 
   def command(com: String,
-              hosts: GenSeq[String],
+              hosts: ParSeq[String],
               sudo: Boolean,
               sudoer: Option[Credentials],
-              variables: Map[String, String]): GenSeq[Try[String]] = {
+              variables: Map[String, String]): ParSeq[Try[String]] = {
     hosts.map(host => command(com, host, sudo, sudoer, variables))
   }
 
@@ -722,7 +732,7 @@ abstract class Host(user: String,
               variables: Map[String, String]): Try[String] = {
     if (sudo && isSu && sudoer.isEmpty)
       throw new Exception(s"Sudoer credentials must be available in order to use sudo")
-    if (!ips.contains(host) && host != haProxy.map(x => x.host).getOrElse(""))
+    if (ips.indexOf(host) == -1 && host != haProxy.map(x => x.host).getOrElse(""))
       throw new Exception(s"The host $host is not part of this cluster")
     val (readVarsLine, varValues) = variables.fold(("", "")) {
       case ((readVarsStr, varValuesForEcho), (varName, value)) =>
@@ -732,7 +742,7 @@ abstract class Host(user: String,
 
       // scalastyle:off
       //old version that get stuck sometimes - val command = s"""ssh -o StrictHostKeyChecking=no ${sudoer.get.name}@$host bash -c $$'{ export PATH=$path; read PASS; ./sshpass -p $$PASS bash -c "${escapedCommand(com)}"; }'"""
-      val cmd = s"""ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR ${sudoer.get.name}@$host export PATH=$path;$readVarsLine read PASS; sshpass -p $$PASS bash -c "${escapedCommand(com)}""""
+      val cmd = s"""ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR ${sudoer.get.name}@$host export PATH=$path;$readVarsLine read PASS; sshpass -p $$PASS 'bash -c "${escapedCommand(com)}"'"""
       // scalastyle:on
       (cmd, Seq("bash", "-c", s"echo -e $varValues${sudoer.get.pass}") #| cmd)
     } else {
@@ -755,7 +765,9 @@ abstract class Host(user: String,
   }
 
   private def escapedCommand(cmd: String) =
-    cmd.replace("\"", "\\\"") // old version for $'..' bash string: cmd.replace("\"", "\\\\\"").replace("'", "\\'")
+  // old version for $'..' bash string: cmd.replace("\"", "\\\\\"").replace("'", "\\'")
+  // for scala 2.12 it was required: .replace("\"", "\\\"").replace("'", "\\\\'")
+    cmd
 
   def command(com: String, sudo: Boolean = false): Try[String] = {
     if (sudo && isSu)
@@ -769,7 +781,7 @@ abstract class Host(user: String,
     }
   }
 
-  def rsync(from: String, to: String, hosts: GenSeq[String], sudo: Boolean = false): GenSeq[Try[String]] = {
+  def rsync(from: String, to: String, hosts: ParSeq[String], sudo: Boolean = false): ParSeq[Try[String]] = {
     val h = hosts.map(host => if (host.indexOf("@") == -1) s"${user}@${host}" else host)
     h.map { host =>
       _rsync(from, to, host, sudo = sudo)
@@ -791,7 +803,7 @@ abstract class Host(user: String,
 
   def removeDataDirs: Unit = removeDataDirs()
 
-  def removeDataDirs(i: GenSeq[String] = ips.par) {
+  def removeDataDirs(i: ParSeq[String] = ips.par) {
 
     command(s"rm -rf ${instDirs.intallationDir}", i, false)
 
@@ -812,7 +824,7 @@ abstract class Host(user: String,
 
   def createDataDirs(): Unit = createDataDirs(ips.par)
 
-  def createDataDirs(hosts: GenSeq[String]) {
+  def createDataDirs(hosts: ParSeq[String]) {
     info("creating data directories")
 
     info("  creating installation directory")
@@ -827,25 +839,25 @@ abstract class Host(user: String,
     info("finished creating data directories")
   }
 
-  def deployComponents(hosts: GenSeq[String] = ips.par) {
+  def deployComponents(hosts: ParSeq[String] = ips.par) {
     deployment.componentProps.foreach(_.deployComponent(hosts = hosts))
   }
 
-  def genResources(hosts: GenSeq[String] = ips) {
+  def genResources(hosts: ParSeq[String] = ips.to(ParSeq)) {
     deployment.createResources(mkScripts(hosts))
   }
 
-  def genEsResources(hosts: GenSeq[String]) {
+  def genEsResources(hosts: ParSeq[String]) {
     deployment.createResources(mkScripts(hosts).filter(_.isInstanceOf[ElasticsearchConf]))
   }
 
-  def genCtrlResources(hosts: GenSeq[String]) {
+  def genCtrlResources(hosts: ParSeq[String]) {
     deployment.createResources(mkScripts(hosts).filter(_.isInstanceOf[CtrlConf]))
   }
 
   def deployApplication: Unit = deployApplication()
 
-  def deployApplication(hosts: GenSeq[String] = ips.par) {
+  def deployApplication(hosts: ParSeq[String] = ips.par) {
     syncLib(hosts)
     info("deploying application")
     info("  creating application directories")
@@ -888,20 +900,20 @@ abstract class Host(user: String,
 
    def verifyConfigsNotChanged = {
      info("verify that configuration files have not been changed")
-     //It is taken from cassandra version 3.11.4
-     UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "conf/cassandra.yaml", "13eda21c959fe5985a17385a64de5817")
-     UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "conf/cassandra-env.sh", "82edf660ebbdd8430538b519ca9b11c3")
+     //It is taken from cassandra version 3.11.5
+     UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "conf/cassandra.yaml", "9682ae0951f560a8480c1ebb656caae7")
+     UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "conf/cassandra-env.sh", "f0b72c8f2301d815acea81bd6633aa3a")
      UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "conf/jvm.options", "3fc118b8d5d3b24331b205e2a2d24cb0")
      UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "conf/logback.xml", "cc17f60a18c6b7b5a797d2edd2c91119")
-     UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "bin/cassandra", "c061bf15ce4b185fb8424fd1c12c1b41")
+     UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "bin/cassandra", "5d8bba323cb91c3deb8c140cdbd34d5d")
      UtilCommands.verifyComponentConfNotChanged("apache-cassandra", "bin/cassandra.in.sh", "851a2a0514826162682a25953e710493")
-     //elasticsearch checksums were taken from version 7.4.0
+     //elasticsearch checksums were taken from version 7.4.2
      UtilCommands.verifyComponentConfNotChanged("elasticsearch", "config/elasticsearch.yml", "4f96a88585ab67663ccbca1c43649ed5")
      UtilCommands.verifyComponentConfNotChanged("elasticsearch", "config/jvm.options", "a80a0a9b5e95d5cdc5f4c3088f0d801e")
      UtilCommands.verifyComponentConfNotChanged("elasticsearch", "config/log4j2.properties", "dbb23d025177409bdb734f3ad3efd147")
    }
 
-  private def createAppLinks(hosts: GenSeq[String]) = {
+  private def createAppLinks(hosts: ParSeq[String]) = {
     // scalastyle:off
     command(s"test -L ${instDirs.globalLocation}/cm-well/app/bg/logs || ln -s ${instDirs.globalLocation}/cm-well/log/bg/ ${instDirs.globalLocation}/cm-well/app/bg/logs", hosts, false)
     command(s"test -L ${instDirs.globalLocation}/cm-well/app/ws/logs || ln -s ${instDirs.globalLocation}/cm-well/log/ws/ ${instDirs.globalLocation}/cm-well/app/ws/logs", hosts, false)
@@ -920,13 +932,13 @@ abstract class Host(user: String,
     // scalastyle:on
   }
 
-  def mkScripts(ips: GenSeq[String] = ips): GenSeq[ComponentConf] = {
+  def mkScripts(ips: ParSeq[String] = ips.to(ParSeq)): ParSeq[ComponentConf] = {
     null
   }
 
   def redeploy: Unit = redeploy()
 
-  def redeploy(hosts: GenSeq[String] = ips.par) {
+  def redeploy(hosts: ParSeq[String] = ips.par) {
     checkProduction
     stop(false, hosts)
     clearApp(hosts)
@@ -935,36 +947,36 @@ abstract class Host(user: String,
 
   def updateWebService: Unit = updateWebService()
 
-  def updateWebService(hosts: GenSeq[String] = ips) {
+  def updateWebService(hosts: ParSeq[String] = ips.to(ParSeq)) {
     hosts.foreach { h =>
-      command(s"cd ${instDirs.globalLocation}/cm-well/app/ws; mkdir tmp", List(h), false)
+      command(s"cd ${instDirs.globalLocation}/cm-well/app/ws; mkdir tmp", ParSeq(h), false)
       rsync("./components/cmwell-ws_2.10-1.0.1-SNAPSHOT-dist.zip",
         s"${instDirs.globalLocation}/cm-well/app/ws/tmp/cmwell-ws_2.10-1.0.1-SNAPSHOT-dist.zip",
-        List(h))
+        ParSeq(h))
       command(s"cd ${instDirs.globalLocation}/cm-well/app/ws/tmp; unzip cmwell-ws_2.10-1.0.1-SNAPSHOT-dist.zip",
         hosts,
         false)
-      stopWebservice(List(h))
-      command(s"rm -rf ${instDirs.intallationDir}/cm-well/app/ws/cmwell-ws-1.0.1-SNAPSHOT", List(h), false)
-      command(s"rm ${instDirs.globalLocation}/cm-well/app/ws/RUNNING_PID", List(h), false)
+      stopWebservice(ParSeq(h))
+      command(s"rm -rf ${instDirs.intallationDir}/cm-well/app/ws/cmwell-ws-1.0.1-SNAPSHOT", ParSeq(h), false)
+      command(s"rm ${instDirs.globalLocation}/cm-well/app/ws/RUNNING_PID", ParSeq(h), false)
       command(
         s"mv ${instDirs.globalLocation}/cm-well/app/ws/tmp/cmwell-ws-1.0.1-SNAPSHOT ${instDirs.globalLocation}/cm-well/app/ws/cmwell-ws-1.0.1-SNAPSHOT",
-        List(h),
+        ParSeq(h),
         false
       )
-      startWebservice(List(h))
+      startWebservice(ParSeq(h))
     }
   }
 
   def removeCmwellSymLink(): Unit = removeCmwellSymLink(ips.par)
 
-  def removeCmwellSymLink(hosts: GenSeq[String]) {
+  def removeCmwellSymLink(hosts: ParSeq[String]) {
     command(s"unlink ${instDirs.globalLocation}/cm-well 2> /dev/null", hosts, false)
   }
 
   def createCmwellSymLink(sudoer: Option[Credentials]): Unit = createCmwellSymLink(ips.par, sudoer)
 
-  def createCmwellSymLink(hosts: GenSeq[String], sudoer: Option[Credentials] = None) {
+  def createCmwellSymLink(hosts: ParSeq[String], sudoer: Option[Credentials] = None) {
     removeCmwellSymLink(hosts)
     command(
       s"sudo ln -s ${instDirs.intallationDir} ${instDirs.globalLocation}/cm-well; sudo chown -h $user:$user ${instDirs.globalLocation}/cm-well",
@@ -974,7 +986,7 @@ abstract class Host(user: String,
     )
   }
 
-  def registerCtrlService(hosts: GenSeq[String], sudoer: Credentials) {
+  def registerCtrlService(hosts: ParSeq[String], sudoer: Credentials) {
     if (ctrlService) {
       //remove the old ctrl (the link one) - if exists
       command("sudo rm -f /etc/init.d/ctrl", hosts, true, Some(sudoer))
@@ -983,8 +995,7 @@ abstract class Host(user: String,
         Source.fromFile("scripts/templates/ctrl").mkString.replace("{{user}}", user),
         hosts)
       command(s"chmod +x ${instDirs.globalLocation}/cm-well/conf/ctrl/ctrl", hosts, false)
-      // it's used inside echo -e that will remove the \\ to \ and then another echo -e that will make the actual new line
-      val cmwellRunner = Source.fromFile("scripts/templates/cmwell-runner").mkString.replace("\n", "\\\\n")
+      val cmwellRunner = Source.fromFile("scripts/templates/cmwell-runner").mkString
       createFile("/etc/init.d/cmwell-runner", cmwellRunner, hosts, true, Some(sudoer))
       command("sudo chmod +x /etc/init.d/cmwell-runner", hosts, true, Some(sudoer))
       hosts.foreach { host =>
@@ -1000,7 +1011,7 @@ abstract class Host(user: String,
     }
   }
 
-  def disks: GenSet[String] = {
+  def disks: Set[String] = {
     val DataDirs(casDataDirs, casCommitLogDirs, esDataDirs, kafkaDataDirs, zookeeperDataDir, logsDataDir) = dataDirs
     val dirs = casDataDirs ++ casCommitLogDirs ++ esDataDirs ++ kafkaDataDirs ++ Seq(zookeeperDataDir,
       logsDataDir,
@@ -1008,7 +1019,7 @@ abstract class Host(user: String,
     dirs.map(dir => dir.substring(0, dir.lastIndexOf("/"))).toSet
   }
 
-  def disksWithAncestors(disks: GenSet[String]): GenSet[String] = {
+  def disksWithAncestors(disks: Set[String]): Set[String] = {
     def addSlash(p: String) = p match {
       case ""  => "";
       case "/" => "/";
@@ -1024,24 +1035,23 @@ abstract class Host(user: String,
 
   def unprepareMachines(): Unit = unprepareMachines(ips.par)
 
-  def unprepareMachines(hosts: GenSeq[String]) {
+  def unprepareMachines(hosts: ParSeq[String]) {
     purge(hosts)
     removeDataDirs(hosts)
     removeCmwellSymLink(hosts)
   }
 
-  def changeOwnerAndAddExcutePermission(hosts: GenSeq[String],
-                                        dirs: GenSeq[String],
+  def changeOwnerAndAddExcutePermission(hosts: ParSeq[String],
+                                        dirs: Seq[String],
                                         user: String,
                                         sudoer: Credentials): Unit = {
-    dirs.foreach(dir => command(s"sudo chmod +x $dir; sudo chown $user:$user $dir", hosts, true, Some(sudoer)))
+    dirs.par.foreach(dir => command(s"sudo chmod +x $dir; sudo chown $user:$user $dir", hosts, true, Some(sudoer)))
   }
 
-  def changeKernelSettings(user: String, sudoer: Credentials, hosts: GenSeq[String]): Unit = {
+  def changeKernelSettings(user: String, sudoer: Credentials, hosts: ParSeq[String]): Unit = {
     hosts.foreach { host =>
-      val cassandraKernelConf = Source.fromFile("scripts/templates/60-cassandra.conf").mkString.replace("\n", "\\\\n")
+      val cassandraKernelConf = Source.fromFile("scripts/templates/60-cassandra.conf").mkString
       createFile("/etc/security/limits.d/60-cassandra.conf", cassandraKernelConf, host, true, Some(sudoer))
-      command("sudo sysctl -p /etc/security/limits.d/60-cassandra.conf", host, true, Some(sudoer))
       val maxMapCount = command(s"sudo sysctl -n vm.max_map_count", host, true, Some(sudoer)).map(_.trim.toLong)
       maxMapCount match {
         case Success(currentMax) =>
@@ -1050,7 +1060,7 @@ abstract class Host(user: String,
           val minimumRequiredByCas = 1048575
           val minimumRequired = Math.max(minimumRequiredByCas, minimumRequiredByEs)
           if (currentMax < minimumRequired) {
-            val cmwellKernelConf = Source.fromFile("scripts/templates/60-cm-well.conf").mkString.replace("\n", "\\\\n")
+            val cmwellKernelConf = Source.fromFile("scripts/templates/60-cm-well.conf").mkString
             createFile("/etc/sysctl.d/60-cm-well.conf", cmwellKernelConf, host, true, Some(sudoer))
             command("sudo sysctl -p /etc/sysctl.d/60-cm-well.conf", host, true, Some(sudoer))
           }
@@ -1065,9 +1075,9 @@ abstract class Host(user: String,
 
   def prepareMachines(): Unit = prepareMachines(ips.par, "", "", "")
 
-  def prepareMachines(hosts: String*): Unit = prepareMachines(hosts, "", "", "")
+  def prepareMachines(hosts: String*): Unit = prepareMachines(hosts.to(ParSeq), "", "", "")
 
-  def prepareMachines(hosts: GenSeq[String], sudoerName: String, sudoerPass: String, userPass: String) {
+  def prepareMachines(hosts: ParSeq[String], sudoerName: String, sudoerPass: String, userPass: String) {
     val sudoerNameFinal: String =
       if (sudoerName != "") sudoerName else scala.io.StdIn.readLine("Please enter sudoer username\n")
     val sudoerPassword: String =
@@ -1098,15 +1108,15 @@ abstract class Host(user: String,
     finishPrepareMachines(hosts, sudoer)
   }
 
-  protected def finishPrepareMachines(hosts: GenSeq[String], sudoer: Credentials) = {
+  protected def finishPrepareMachines(hosts: ParSeq[String], sudoer: Credentials) = {
      deleteSshpass(hosts, sudoer)
     info("Machine preparation was done. Please look at the console output to see if there were any errors.")
   }
 
-  private def copySshpass(hosts: GenSeq[String], sudoer: Credentials): Unit = {
+  private def copySshpass(hosts: ParSeq[String], sudoer: Credentials): Unit = {
     //only copy sshpass if it's an internal one
     if (UtilCommands.linuxSshpass == "bin/utils/sshpass") {
-      hosts.foreach(host => s"ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR ${sudoer.name}@$host mkdir -p ~/bin".!!)
+      hosts.foreach(host => s"""ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR ${sudoer.name}@$host mkdir -p '~/bin'""".!!)
       hosts.foreach(
         host =>
           Seq("rsync",
@@ -1114,13 +1124,12 @@ abstract class Host(user: String,
             "-e",
             "ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR",
             UtilCommands.linuxSshpass,
-            s"${sudoer.name}@$host:~/bin/") !!
+            s"${sudoer.name}@$host:~/bin") !!
       )
     }
   }
 
-  private def deleteSshpass(hosts: GenSeq[String], sudoer: Credentials): Unit = {
-    info("delete ssh pass")
+  private def deleteSshpass(hosts: ParSeq[String], sudoer: Credentials): Unit = {
     command("rm ~/bin/sshpass", hosts, true, Some(sudoer))
 
   }
@@ -1130,7 +1139,7 @@ abstract class Host(user: String,
   def prepareMachinesNonInteractive(sudoerName: String = "mySudoer",
                                     sudoerPass: String = "said2000",
                                     uPass: String = "said2000",
-                                    hosts: GenSeq[String] = ips.par) {
+                                    hosts: ParSeq[String] = ips.par) {
     gainTrust(sudoerName, sudoerPass, hosts)
     val sudoer = Credentials(sudoerName, sudoerPass)
     sudoerCredentials = Some(sudoer)
@@ -1147,7 +1156,7 @@ abstract class Host(user: String,
 
   def deploy: Unit = deploy()
 
-  def deploy(hosts: GenSeq[String] = ips.par) {
+  def deploy(hosts: ParSeq[String] = ips.par) {
     checkProduction
     deployApplication(hosts)
   }
@@ -1165,7 +1174,7 @@ abstract class Host(user: String,
     connectToGrid
     if (CtrlClient.currentHost == host) CtrlClient.init((ips.toSet - host).head)
 
-    purge(Seq(host))
+    purge(ParSeq(host))
     Host.ctrl.waitForHealth
     Thread.sleep(20000)
     info("Removing node from Grid")
@@ -1191,18 +1200,18 @@ abstract class Host(user: String,
     //addedInstances.prepareMachines(addedInstances.ips.par, sudoerName = sudoerName, sudoerPass = sudoerPass, userPass = userPass)
     addedInstances.purge()
 
-    this.deploy(addedInstances.ips)
-    this.startCtrl(addedInstances.ips)
+    this.deploy(addedInstances.ips.to(ParSeq))
+    this.startCtrl(addedInstances.ips.to(ParSeq))
 
     Thread.sleep(20000)
 
     ipms.foreach(Host.ctrl.addNode)
 
-    this.startDcForced(addedInstances.ips)
+    this.startDcForced(addedInstances.ips.to(ParSeq))
 
     addedInstances  }
 
-  def killProcess(name: String, flag: String, hosts: GenSeq[String] = ips.par, tries: Int = 5) {
+  def killProcess(name: String, flag: String, hosts: ParSeq[String] = ips.par, tries: Int = 5) {
     if (tries > 0) {
       command(s"ps aux | grep -v grep | grep $name | awk '{print $$2}' | xargs -I zzz kill $flag zzz 2> /dev/null",
         hosts,
@@ -1228,7 +1237,7 @@ abstract class Host(user: String,
 
   def stop(hosts: String*): Unit = stop(false, hosts.par)
 
-  def stop(force: Boolean, hosts: GenSeq[String]) {
+  def stop(force: Boolean, hosts: ParSeq[String]) {
     checkProduction
     val tries = if (force) 0 else 5
     stopWebservice(hosts, tries)
@@ -1244,7 +1253,7 @@ abstract class Host(user: String,
 
   def clearData: Unit = clearData()
 
-  def clearData(hosts: GenSeq[String] = ips.par) {
+  def clearData(hosts: ParSeq[String] = ips.par) {
     checkProduction
     dataDirs.casDataDirs.foreach { cas =>
       command(s"rm -rf ${cas}/*", hosts, false)
@@ -1269,14 +1278,14 @@ abstract class Host(user: String,
 
   def clearApp: Unit = clearApp()
 
-  def clearApp(hosts: GenSeq[String] = ips.par) {
+  def clearApp(hosts: ParSeq[String] = ips.par) {
     checkProduction
     command(s"rm -rf ${instDirs.intallationDir}/*", hosts, false)
   }
 
   def purge: Unit = purge()
 
-  def purge(hosts: GenSeq[String] = ips) {
+  def purge(hosts: ParSeq[String] = ips.to(ParSeq)) {
     checkProduction
     info("purging cm-well")
     info("  stopping processes")
@@ -1301,7 +1310,7 @@ abstract class Host(user: String,
 
   def casHealth: Try[String] = casHealth()
 
-  def casHealth(hosts: GenSeq[String] = ips.par): Try[String] = {
+  def casHealth(hosts: ParSeq[String] = ips.par): Try[String] = {
     command(s"JAVA_HOME=${instDirs.globalLocation}/cm-well/app/java/bin" + nodeToolPath + " status", hosts(0), false)
   }
 
@@ -1313,7 +1322,7 @@ abstract class Host(user: String,
 
   def stopBg(hosts: String*): Unit = stopBg(hosts.par)
 
-  def stopBg(hosts: GenSeq[String], tries: Int = 5) {
+  def stopBg(hosts: ParSeq[String], tries: Int = 5) {
     checkProduction
     killProcess("cmwell.bg.Runner", "", hosts, tries)
   }
@@ -1322,7 +1331,7 @@ abstract class Host(user: String,
 
   def stopWebservice(hosts: String*): Unit = stopWebservice(hosts.par)
 
-  def stopWebservice(hosts: GenSeq[String], tries: Int = 5) {
+  def stopWebservice(hosts: ParSeq[String], tries: Int = 5) {
     checkProduction
     killProcess("psId=Webserver", "", hosts, tries)
   }
@@ -1331,7 +1340,7 @@ abstract class Host(user: String,
 
   def stopCW(hosts: String*): Unit = stopCW(hosts.par)
 
-  def stopCW(hosts: GenSeq[String], tries: Int = 5) {
+  def stopCW(hosts: ParSeq[String], tries: Int = 5) {
     checkProduction
     killProcess("crashableworker", "", hosts, tries)
   }
@@ -1340,7 +1349,7 @@ abstract class Host(user: String,
 
   def stopDc(hosts: String*): Unit = stopDc(hosts.par)
 
-  def stopDc(hosts: GenSeq[String], tries: Int = 5) = {
+  def stopDc(hosts: ParSeq[String], tries: Int = 5) = {
     checkProduction
     killProcess("app/dc", "", hosts, tries)
   }
@@ -1349,7 +1358,7 @@ abstract class Host(user: String,
 
   def stopCassandra(hosts: String*): Unit = stopCassandra(hosts.par)
 
-  def stopCassandra(hosts: GenSeq[String], tries: Int = 5) {
+  def stopCassandra(hosts: ParSeq[String], tries: Int = 5) {
     checkProduction
     killProcess("CassandraDaemon", "", hosts, tries)
   }
@@ -1364,7 +1373,7 @@ abstract class Host(user: String,
 
   def stopElasticsearch(hosts: String*): Unit = stopElasticsearch(hosts.par)
 
-  def stopElasticsearch(hosts: GenSeq[String], tries: Int = 5) {
+  def stopElasticsearch(hosts: ParSeq[String], tries: Int = 5) {
     checkProduction
     esSyncedFlush(hosts(0))
     killProcess("Elasticsearch", "", hosts, tries)
@@ -1374,7 +1383,7 @@ abstract class Host(user: String,
 
   def startBg(hosts: String*): Unit = startBg(hosts.par)
 
-  def startBg(hosts: GenSeq[String]) {
+  def startBg(hosts: ParSeq[String]) {
     checkProduction
     command(s"cd ${instDirs.globalLocation}/cm-well/app/bg; ${startScript("./start.sh")}", hosts, false)
   }
@@ -1383,7 +1392,7 @@ abstract class Host(user: String,
 
   def startWebservice(hosts: String*): Unit = startWebservice(hosts.par)
 
-  def startWebservice(hosts: GenSeq[String]) {
+  def startWebservice(hosts: ParSeq[String]) {
     checkProduction
     command(s"cd ${instDirs.globalLocation}/cm-well/app/ws/; ${startScript("./start.sh")}", hosts, false)
   }
@@ -1392,7 +1401,7 @@ abstract class Host(user: String,
 
   def startCW(hosts: String*): Unit = startCW(hosts.par)
 
-  def startCW(hosts: GenSeq[String]) {
+  def startCW(hosts: ParSeq[String]) {
     checkProduction
     command(s"cd ${instDirs.globalLocation}/cm-well/app/ws; ${startScript("./cw-start.sh")}", hosts, false)
   }
@@ -1401,12 +1410,12 @@ abstract class Host(user: String,
 
   def startDc(hosts: String*): Unit = startDc(hosts.par)
 
-  def startDc(hosts: GenSeq[String]): Unit = {
+  def startDc(hosts: ParSeq[String]): Unit = {
     checkProduction
     command(s"cd ${instDirs.globalLocation}/cm-well/app/dc; ${startScript("./start.sh")}", hosts, false)
   }
 
-  def startDcForced(hosts: GenSeq[String]): Unit = {
+  def startDcForced(hosts: ParSeq[String]): Unit = {
     checkProduction
     command(s"cd ${instDirs.globalLocation}/cm-well/app/dc; HAL=9000 FORCE=MAJOUR ./start.sh", hosts, false)
   }
@@ -1416,32 +1425,31 @@ abstract class Host(user: String,
   def startScript(script: String) =
     s"""HAL=9000 ${if (deb) "CMWELL_DEBUG=true" else ""} $script"""
 
-  def start: Unit = start(ips.par)
+  def start: Unit = start(ips)
 
-  def start(hosts: String*): Unit = start(hosts.par)
-
-  def start(hosts: GenSeq[String]) {
+  def start(hosts: Seq[String]) {
+    val parHosts = hosts.to(ParSeq)
     checkProduction
-    startCassandra(hosts)
+    startCassandra(parHosts)
     startElasticsearch(hosts)
 
     Try(CassandraLock().waitForModule(hosts(0), casSize))
     Try(ElasticsearchLock().waitForModule(hosts(0), esSize))
     startZookeeper
-    startKafka(hosts)
+    startKafka(parHosts)
 
-    startCtrl(hosts)
-    startBg(hosts)
-    startCW(hosts)
-    startWebservice(hosts)
-    startDc(hosts)
+    startCtrl(parHosts)
+    startBg(parHosts)
+    startCW(parHosts)
+    startWebservice(parHosts)
+    startDc(parHosts)
   }
 
-  def startCtrl: Unit = startCtrl(ips)
+  def startCtrl: Unit = startCtrl(ips.to(ParSeq))
 
   def startCtrl(hosts: String*): Unit = startCtrl(hosts.par)
 
-  def startCtrl(hosts: GenSeq[String]) = {
+  def startCtrl(hosts: ParSeq[String]) = {
     checkProduction
     command(s"cd ${instDirs.globalLocation}/cm-well/app/ctrl; ${startScript("./start.sh")}", hosts, false)
   }
@@ -1450,7 +1458,7 @@ abstract class Host(user: String,
 
   def stopCtrl(hosts: String*): Unit = stopCtrl(hosts.par)
 
-  def stopCtrl(hosts: GenSeq[String], tries: Int = 5) {
+  def stopCtrl(hosts: ParSeq[String], tries: Int = 5) {
     checkProduction
     killProcess("CtrlServer", "", hosts, tries)
   }
@@ -1458,20 +1466,21 @@ abstract class Host(user: String,
   def createManager: Unit = createManager()
 
   def createManager(machineName: String = ips(0), path: String = "~/cmwell/") {
-    rsync("./", path, List(machineName))
+    rsync("./", path, ParSeq(machineName))
   }
 
   def readTime(targ: String = "meta/ns/oa") {}
 
   def init: Unit = init()
 
-  def init(hosts: GenSeq[String] = ips.par) {
+  def init(hosts: Seq[String] = ips) {
+    val parHosts = hosts.to(ParSeq)
     checkProduction
     info("starting controller")
-    startCtrl(hosts)
+    startCtrl(parHosts)
     info("initializing cm-well")
     info("  initializing cassandra")
-    initCassandra(hosts)
+    initCassandra(parHosts)
     info("  initializing elasticsearch")
     initElasticsearch(hosts)
     info("  waiting for cassandra and elasticsearch")
@@ -1482,7 +1491,7 @@ abstract class Host(user: String,
       } catch {
         case t: Throwable =>
           info("Trying to reinit Cassandra")
-          initCassandra(hosts)
+          initCassandra(parHosts)
           throw t
       }
     }
@@ -1504,19 +1513,19 @@ abstract class Host(user: String,
     startKafka
 
     info("  inserting schemas")
-    initSchemes(hosts)
+    initSchemes(parHosts)
     // wait until all the schemas are written.
     Thread.sleep(10000)
 
     info("  starting bg")
-    startBg(hosts)
+    startBg(parHosts)
     info(" starting cw")
-    startCW(hosts)
+    startCW(parHosts)
     info("  starting web service")
-    startWebservice(hosts)
+    startWebservice(parHosts)
     uploadInitialContent(hosts(0))
     info("  starting dc controller")
-    startDc(hosts)
+    startDc(parHosts)
 
     info("finished initializing cm-well")
   }
@@ -1541,15 +1550,15 @@ abstract class Host(user: String,
 
   def initCassandra: Unit = initCassandra()
 
-  def initCassandra(hosts: GenSeq[String] = ips.par)
+  def initCassandra(hosts: ParSeq[String] = ips.par)
 
   def initElasticsearch: Unit = initElasticsearch()
 
-  def initElasticsearch(hosts: GenSeq[String] = ips.par)
+  def initElasticsearch(hosts: Seq[String] = ips)
 
   def initSchemes: Unit = initSchemes()
 
-  def initSchemes(hosts: GenSeq[String] = ips.par) {
+  def initSchemes(hosts: ParSeq[String] = ips.par) {
     // scalastyle:off
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/cassandra-cql-init-cluster-new", hosts(0), false)
     command(s"cd ${instDirs.globalLocation}/cm-well/app/cas/cur; sh bin/cqlsh ${pingAddress} -f ${instDirs.globalLocation}/cm-well/conf/cas/zstore-cql-init-cluster", hosts(0), false)
@@ -1638,7 +1647,7 @@ abstract class Host(user: String,
   def startZookeeper: Unit = {
     checkProduction
     command(s"cd ${instDirs.globalLocation}/cm-well/app/zookeeper; ${startScript("./start.sh")}",
-      avaiableHosts.take(3),
+      avaiableHosts.take(3).to(ParSeq),
       false)
   }
 
@@ -1646,16 +1655,16 @@ abstract class Host(user: String,
     command(s"cd ${instDirs.globalLocation}/cm-well/app/zookeeper; ${startScript("./start.sh")}", host, false)
   }
 
-  def startZookeeper(hosts: GenSeq[String]): Unit = {
+  def startZookeeper(hosts: ParSeq[String]): Unit = {
     checkProduction
     command(s"cd ${instDirs.globalLocation}/cm-well/app/zookeeper; ${startScript("./start.sh")}",
-      hosts.intersect(avaiableHosts),
+      hosts.intersect(avaiableHosts.to(Seq)),
       false)
   }
 
   def stopZookeeper: Unit = stopZookeeper()
 
-  def stopZookeeper(hosts: GenSeq[String] = ips.par, tries: Int = 5): Unit = {
+  def stopZookeeper(hosts: ParSeq[String] = ips.par, tries: Int = 5): Unit = {
     checkProduction
     //if(withZookeeper)
     killProcess("zookeeper", "", hosts, tries = tries)
@@ -1663,7 +1672,7 @@ abstract class Host(user: String,
 
   def startKafka: Unit = startKafka()
 
-  def startKafka(hosts: GenSeq[String] = ips.par): Unit = {
+  def startKafka(hosts: ParSeq[String] = ips.par): Unit = {
     checkProduction
     command(s"cd ${instDirs.globalLocation}/cm-well/app/kafka; ${startScript("./start.sh")}", hosts, false)
   }
@@ -1675,17 +1684,15 @@ abstract class Host(user: String,
 
   def stopKafka: Unit = stopKafka()
 
-  def stopKafka(hosts: GenSeq[String] = ips.par, tries: Int = 5): Unit = {
+  def stopKafka(hosts: ParSeq[String] = ips.par, tries: Int = 5): Unit = {
     checkProduction
     //if(withKafka)
     killProcess("kafka.Kafka", "", hosts, tries = tries)
   }
 
-  def startElasticsearch: Unit = startElasticsearch(ips.par)
+  def startElasticsearch: Unit = startElasticsearch(ips)
 
-  def startElasticsearch(hosts: String*): Unit = startElasticsearch(hosts.par)
-
-  def startElasticsearch(hosts: GenSeq[String]): Unit
+  def startElasticsearch(hosts: Seq[String]): Unit
 
   def startCassandra: Unit = {
     startCassandra(ips.par)
@@ -1693,22 +1700,21 @@ abstract class Host(user: String,
 
   def startCassandra(hosts: String*): Unit = startCassandra(hosts.par)
 
-  def startCassandra(hosts: GenSeq[String])
+  def startCassandra(hosts: ParSeq[String])
 
   def quickInstall: Unit = {
     checkProduction
   }
 
-  def install: Unit = install(ips.par)
+  def install: Unit = install(ips)
 
-  def install(hosts: String*): Unit = install(hosts.par)
-
-  def install(hosts: GenSeq[String]) {
+  def install(hosts: Seq[String]) {
+    val parHosts = hosts.to(ParSeq)
     checkProduction
-    refreshUserState(user, None, hosts)
-    purge(hosts)
+    refreshUserState(user, None, parHosts)
+    purge(parHosts)
     verifyConfigsNotChanged
-    deploy(hosts)
+    deploy(parHosts)
     init(hosts)
     //setElasticsearchUnassignedTimeout()
   }
@@ -1733,11 +1739,11 @@ abstract class Host(user: String,
     )
   }
 
-  def findEsMasterNode(hosts: GenSeq[String] = ips): Option[String] = {
+  def findEsMasterNode(hosts: ParSeq[String] = ips.to(ParSeq)): Option[String] = {
     hosts.par.find(host => command(s"curl -s $host:$esMasterPort > /dev/null 2> /dev/null").isSuccess)
   }
 
-  def findEsMasterNodes(hosts: GenSeq[String] = ips): GenSeq[String] = {
+  def findEsMasterNodes(hosts: ParSeq[String] = ips.to(ParSeq)): ParSeq[String] = {
     hosts.par.filter(host => command(s"curl -s $host:$esMasterPort > /dev/null 2> /dev/null").isSuccess)
   }
 
@@ -1763,7 +1769,7 @@ abstract class Host(user: String,
 
   def shutdown: Unit = shutdown()
 
-  def shutdown(hosts: GenSeq[String] = ips): Unit = {
+  def shutdown(hosts: ParSeq[String] = ips.to(ParSeq)): Unit = {
     disableElasticsearchUpdate
     stop(false, hosts)
   }
@@ -1846,14 +1852,14 @@ abstract class Host(user: String,
 
   def quickUpgrade: Unit = quickUpgrade()
 
-  def quickUpgrade(hosts: GenSeq[String] = ips): Unit = {
+  def quickUpgrade(hosts: ParSeq[String] = ips.to(ParSeq)): Unit = {
     refreshUserState(user, None, hosts)
     syncLib(hosts)
     linkLibs(hosts)
     hosts.par.foreach(host => restartApp(host))
   }
 
-  def noDownTimeQuickUpgrade(hosts: GenSeq[String] = ips): Unit = {
+  def noDownTimeQuickUpgrade(hosts: ParSeq[String] = ips.to(ParSeq)): Unit = {
     refreshUserState(user, None, hosts)
     info("syncing libs")
     syncLib(hosts)
@@ -1908,13 +1914,14 @@ abstract class Host(user: String,
               uploadDocs: Boolean = true,
               uploadUserInfotons: Boolean = true,
               withUpdateSchemas: Boolean = false,
-              hosts: GenSeq[String] = ips,
+              hosts: Seq[String] = ips,
               skipVersionCheck: Boolean = false) {
 /*
     info("upgrade is disable until further notice")
     sys.exit(1)
 */
 
+    val parHosts = hosts.to(ParSeq)
     val currentVersion = if(skipVersionCheck) Future.failed(null) else extractVersionFromProcNode(ips(0))
     //If all 3 retries will fail, will wait for result. If fails, upgrade will be stopped.
     if(!skipVersionCheck) Await.result(currentVersion, 10.seconds)
@@ -1922,10 +1929,10 @@ abstract class Host(user: String,
     currentVersion.map(ver => info(s"Current version is $ver"))
 
     checkProduction
-    refreshUserState(user, None, hosts)
+    refreshUserState(user, None, parHosts)
     verifyConfigsNotChanged
     //checkPreUpgradeStatus(hosts(0))
-    val esMasterNode = findEsMasterNode(hosts) match {
+    val esMasterNode = findEsMasterNode(parHosts) match {
       case Some(emn) =>
         info(s"found Elasticsearch master node: $emn")
         emn
@@ -1938,10 +1945,10 @@ abstract class Host(user: String,
     if (deployJava) props = props ++ List(JavaProps(this))
 
     info("deploying components and checking what should be upgraded.")
-    syncLib(hosts)
-    linkLibs(hosts)
-    rsyncPlugins(hosts)
-    BinsProps(this).deployComponent(hosts)
+    syncLib(parHosts)
+    linkLibs(parHosts)
+    rsyncPlugins(parHosts)
+    BinsProps(this).deployComponent(parHosts)
 
     // get for each component its unsynced hosts and redeploy the new version of the component.
     val updatedHosts = props
@@ -1951,7 +1958,7 @@ abstract class Host(user: String,
     if (updatedHosts.size > 0) {
       //todo: FIX THIS!!!
       doInfo = false
-      deployment.createDirs(hosts, props)
+      deployment.createDirs(parHosts, props)
       doInfo = true
       val updatedComponents = updatedHosts.map(_._1).toSet
       val preUpgradeComponents = props
@@ -1980,7 +1987,7 @@ abstract class Host(user: String,
       // stopping all the components that are not upgraded in rolling style.
       nonRollingComponents.foreach { nrc =>
         info(s"stopping ${nrc.getName} on all hosts.")
-        nrc.stop(hosts)
+        nrc.stop(parHosts)
       }
 
       hosts.foreach { h =>
@@ -2006,15 +2013,15 @@ abstract class Host(user: String,
         // stopping all the components that are upgraded in rolling style.
         rollingComponents.foreach { rc =>
           info(s"  restarting ${rc.getName}")
-          rc.stop(List(h))
+          rc.stop(ParSeq(h))
         }
 
         // relinking the new components.
         (updatedComponentsSet -- preUpgradeComponents -- nonRunningComponents)
-          .foreach(cp => if (cp.symLinkName.isDefined) cp.relink(updatedHostComponents.get(cp).get._2, List(h)))
+          .foreach(cp => if (cp.symLinkName.isDefined) cp.relink(updatedHostComponents.get(cp).get._2, ParSeq(h)))
 
-        createAppLinks(List(h))
-        genResources(List(h))
+        createAppLinks(ParSeq(h))
+        genResources(ParSeq(h))
 
         // starting all the components that are upgraded in rolling style.
         rollingComponents.foreach(_.start(List(h)))
@@ -2030,7 +2037,7 @@ abstract class Host(user: String,
 
       preUpgradeComponents.foreach { puc =>
         info(s"restarting ${puc.getName} on all hosts")
-        puc.stop(hosts)
+        puc.stop(parHosts)
       }
       updatedHosts
         .filter { el =>
@@ -2045,7 +2052,7 @@ abstract class Host(user: String,
         }
 
       // todo: make more generic.
-      genEsResources(hosts)
+      genEsResources(parHosts)
       preUpgradeComponents.foreach(_.start(hosts))
 
       // starting all the components that are not upgraded in rolling style.
@@ -2093,7 +2100,7 @@ abstract class Host(user: String,
     val upgradedVersion = extractVersionFromCmwellProperties
     info(s"Upgrading to version: $upgradedVersion")
 
-    val completed = Upgrade.runPostUpgradeActions(currentVersion, upgradedVersion, hosts)
+    val completed = Upgrade.runPostUpgradeActions(currentVersion, upgradedVersion, parHosts)
     completed.onComplete(_ => info(s"Upgrade completed!"))
 
   }
@@ -2273,8 +2280,8 @@ abstract class Host(user: String,
   def restartWebservice {
     ips.foreach { ip =>
       info(s"Restarting Webservice on $ip")
-      stopWebservice(Seq(ip))
-      startWebservice(Seq(ip))
+      stopWebservice(ParSeq(ip))
+      startWebservice(ParSeq(ip))
       Try(WebServiceLock().waitForModule(ip, 1))
     }
   }
@@ -2292,8 +2299,8 @@ abstract class Host(user: String,
   def restartCassandra {
     ips.foreach { ip =>
       info(s"Restarting Cassandra on $ip")
-      stopCassandra(Seq(ip))
-      startCassandra(Seq(ip))
+      stopCassandra(ParSeq(ip))
+      startCassandra(ParSeq(ip))
       Try(CassandraLock().waitForModule(ips(0), casSize))
     }
   }
@@ -2306,7 +2313,7 @@ abstract class Host(user: String,
       info(s"Restarting Elasticsearch on $host")
       disableElasticsearchUpdate(ips((ips.indexOf(host) + 1) % ips.size))
       Thread.sleep(10000)
-      stopElasticsearch(Seq(host))
+      stopElasticsearch(ParSeq(host))
       startElasticsearch(Seq(host))
       enableElasticsearchUpdate(ips((ips.indexOf(host) + 1) % ips.size))
     }
@@ -2352,7 +2359,7 @@ abstract class Host(user: String,
 
     import scala.collection.JavaConverters._
 
-    val interfaces: Seq[java.net.NetworkInterface] = util.Collections.list(NetworkInterface.getNetworkInterfaces()).asScala
+    val interfaces: Seq[java.net.NetworkInterface] = util.Collections.list(NetworkInterface.getNetworkInterfaces()).asScala.toSeq
     val validInterfaceOpt = interfaces.collectFirst {
       case i
         if (command(s"ping -c 1 -I ${i.getName} $ipToCheckAgainst ; echo $$?").get
@@ -2386,7 +2393,7 @@ abstract class Host(user: String,
           clusterName = cn,
           hostName = useIp,
           port = 0,
-          seeds = ips.take(3).map(seedIp => s"$seedIp:7777").toSet)
+          seeds = ips.take(3).map(seedIp => s"$seedIp:7777").to(Set))
       )
       AkkaGrid.joinClient
 
@@ -2399,7 +2406,7 @@ abstract class Host(user: String,
   def restartHaproxy(sudoer: Credentials) {
     haProxy match {
       case Some(HaProxy(host, sitedown)) =>
-        command("sudo service haproxy restart", Seq(host), true, Some(sudoer))
+        command("sudo service haproxy restart", ParSeq(host), true, Some(sudoer))
       case None =>
     }
   }
@@ -2407,7 +2414,7 @@ abstract class Host(user: String,
   def stopHaproxy(sudoer: Credentials) {
     haProxy match {
       case Some(HaProxy(host, sitedown)) =>
-        command("sudo service haproxy stop", Seq(host), true, Some(sudoer))
+        command("sudo service haproxy stop", ParSeq(host), true, Some(sudoer))
       case None =>
     }
   }
@@ -2432,7 +2439,7 @@ abstract class Host(user: String,
     Await.result(Host.ctrl.getClusterStatus, 30 seconds)
   }
 
-  def syncLib(hosts: GenSeq[String] = ips) = {
+  def syncLib(hosts: ParSeq[String] = ips.to(ParSeq)) = {
     def getCurrentDateStr = {
       val format = new java.text.SimpleDateFormat("yyyyMMdd_hhmmss")
       val date = new Date()
@@ -2456,12 +2463,12 @@ abstract class Host(user: String,
         host,
         false)
 
-      rsync("lib/", s"${instDirs.globalLocation}/cm-well/lib/", Seq(host))
+      rsync("lib/", s"${instDirs.globalLocation}/cm-well/lib/", ParSeq(host))
     }
 
   }
 
-  def linkLibs(hosts: GenSeq[String] = ips.par) = {
+  def linkLibs(hosts: ParSeq[String] = ips.par) = {
     val dir = new File("dependencies")
 
     command(s"mkdir -p ${instDirs.globalLocation}/cm-well/dependencies", hosts, false)
@@ -2472,7 +2479,7 @@ abstract class Host(user: String,
     }
   }
 
-  def linkLib(component: String, hosts: GenSeq[String] = ips) = {
+  def linkLib(component: String, hosts: ParSeq[String] = ips.to(ParSeq)) = {
 
     val target = component //if(component == "batch") "bg" else component
 
@@ -2492,7 +2499,7 @@ abstract class Host(user: String,
     Try(k.grid.Grid.shutdown)
   }
 
-  def rsyncPlugins(hosts: GenSeq[String] = ips) = {
+  def rsyncPlugins(hosts: ParSeq[String] = ips.to(ParSeq)) = {
     command(s"mkdir -p ${instDirs.globalLocation}/cm-well/app/ws/plugins/sg-engines/", hosts, false)
     rsync(s"plugins/", s"${instDirs.globalLocation}/cm-well/app/ws/plugins/sg-engines/", hosts)
   }

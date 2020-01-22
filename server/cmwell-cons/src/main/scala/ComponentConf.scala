@@ -14,7 +14,7 @@
   */
 import cmwell.ctrl.config.Jvms
 
-import scala.collection.GenSeq
+import scala.collection.parallel.ParSeq
 
 /**
   * Created by michael on 8/27/14.
@@ -180,9 +180,6 @@ case class CassandraConf(home: String,
 
     val casIncludeContent = ResourceBuilder.getResource(s"scripts/templates/cassandra.in.sh", Map.empty)
 
-    //until https://issues.apache.org/jira/browse/CASSANDRA-15090 will be merged
-    val casBinContent = ResourceBuilder.getResource(s"scripts/templates/cassandraBin", Map.empty)
-
     val rackConfContent =
       ResourceBuilder.getResource("scripts/templates/cassandra-rackdc.properties", Map("rack_id" -> rs.getRackId(this)))
 
@@ -196,7 +193,6 @@ case class CassandraConf(home: String,
                                                       Map("home" -> home, "host" -> hostIp))
 
     List(
-      ConfFile("cassandra", casBinContent, true, Some(s"$home/app/cas/cur/bin")),
       ConfFile("cassandra.yaml", confContent, false),
       ConfFile("logback.xml", logBackContent),
       ConfFile("cassandra-env.sh", cassandraEnvContent),
@@ -229,7 +225,7 @@ case class ElasticsearchConf(clusterName: String,
                              rs: RackSelector,
                              g1: Boolean,
                              hostIp: String,
-                             dirsPerEs: Option[Int] = None)
+                             dirsPerEs: Int = 1)
     extends ComponentConf(hostIp, s"$home/app/es/cur", sName, s"$home/conf/$dir", "elasticsearch.yml", index) {
 
   val classpath = s"""'$home/app/es/cur/lib/*:'"""
@@ -276,7 +272,9 @@ case class ElasticsearchConf(clusterName: String,
       "transport_port" -> transportPort.toString,
       "num_of_shards" -> expectedNodes.toString,
       "num_of_replicas" -> { if (expectedNodes > 2) 2 else 0 }.toString,
-      "path_data" -> dirsPerEs.fold(s"$home/data/$dir"){x => (2 to x).map(_.toString).fold(s"$home/data/es")((acc, x) => s"$home/data/es$x,$acc")}
+      "path_data" -> { if (dirsPerEs == 1) s"$home/data/$dir"
+                       else {
+                         (2 to dirsPerEs).map(_.toString).fold(s"$home/data/es")((acc, x) => s"$home/data/es$x,$acc")}}
     )
 
     val confContent = ResourceBuilder.getResource(s"scripts/templates/$template", m)

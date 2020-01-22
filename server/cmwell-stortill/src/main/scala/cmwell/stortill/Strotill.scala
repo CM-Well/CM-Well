@@ -84,7 +84,7 @@ class Strotill(irw: IRWService, ftsService: FTSService) extends LazyLogging {
               DefaultPaginationParams,
               withHistory = true)
       .map { searchResp =>
-        searchResp.infotons.map(i => i.lastModified -> i.uuid).sortBy(_._1.getMillis)
+        searchResp.infotons.map(i => i.systemFields.lastModified -> i.uuid).sortBy(_._1.getMillis)
       }
 
     historyFromEs.flatMap {
@@ -111,8 +111,8 @@ class Strotill(irw: IRWService, ftsService: FTSService) extends LazyLogging {
        * the last modified time instead.
        */
       val newIndexTime = {
-        val lm = i.lastModified.getMillis
-        i.indexTime match {
+        val lm = i.systemFields.lastModified.getMillis
+        i.systemFields.indexTime match {
           case None                                       => lm
           case Some(it) if it > lm && it - lm > 86400000L => lm
           case Some(it)                                   => it
@@ -120,7 +120,7 @@ class Strotill(irw: IRWService, ftsService: FTSService) extends LazyLogging {
       }
 
       val newDc =
-        if (i.dc != "na") i.dc
+        if (i.systemFields.dc != "na") i.systemFields.dc
         else SettingsHelper.dataCenter
 
       cmwell.domain.addDcAndIndexTimeForced(i, newDc, newIndexTime)
@@ -149,6 +149,6 @@ class Strotill(irw: IRWService, ftsService: FTSService) extends LazyLogging {
           .source(JsonSerializer.encodeInfoton(modifyInfoton(i), true, true))
       )
     }
-    actions.map(ESIndexRequest(_, None))
+    actions.view.map(ESIndexRequest(_, None)).to(Seq)
   }
 }
