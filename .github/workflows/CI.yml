@@ -97,7 +97,7 @@ jobs:
     - name: Cache Scala 2.13
       uses: actions/cache@v1
       with:
-        path: /home/runner/work/CM-Well/CM-Well/scala-2.13.1
+        path: /home/runner/scala
         key: scala-${{ hashFiles('**/extract-java-scala.sh') }}
     - name: Install Scala
       run: |
