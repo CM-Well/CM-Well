@@ -17,6 +17,7 @@
 ## Examples
 
 ### First example: Redirection
+
 ```/meta/services/company
 type.rdf:		cmwell://meta/sys#Redirection
 route:			/company/
@@ -27,10 +28,14 @@ replacement:	/permid.org/1-$1```
 - for example /company/8589934184 will redirect to /permid.org/1-8589934184
 
 ### Second example: External Service
-```/graph.link/services/echo-service (FileInfoton)
-def main(args: Array[String]) = s"<html><u>${args.head}</u></html>"```
 
-```/meta/services/echo
+```
+/graph.link/services/echo-service (FileInfoton)
+def main(args: Array[String]) = s"<html><u>${args.head}</u></html>"
+```
+
+```
+/meta/services/echo
 type.rdf:		cmwell://meta/sys#Source
 route:			/echo/
 src:			/graph.link/services/echo-service
