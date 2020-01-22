@@ -18,7 +18,7 @@ import javax.inject.{Inject, Singleton}
 import cmwell.domain.{Everything, FileContent, FileInfoton, Infoton}
 import cmwell.fts.{PaginationParams, PathFilter}
 import cmwell.util.concurrent._
-import cmwell.util.string.sanitizeLogLine
+import cmwell.util.string.Sanitize
 import com.typesafe.scalalogging.LazyLogging
 import logic.CRUDServiceFS
 import play.api.libs.json.{JsValue, Json}
@@ -49,7 +49,7 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
   def getRole(roleName: String): Option[JsValue] = {
     data.roles.get(roleName).orElse {
       Await.result(directReadFallback(s"/meta/auth/roles/$roleName"), 6.seconds).map { role =>
-        logger.debug(sanitizeLogLine(s"AuthCache role $roleName was not in memory, but added to Map"))
+        logger.debug(san"AuthCache role $roleName was not in memory, but added to Map")
         data = data.copy(roles = data.roles + (roleName -> role))
         role
       }
@@ -60,7 +60,7 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
   def getUserInfoton(userName: String): Option[JsValue] = {
     data.users.get(userName).orElse {
       Await.result(directReadFallback(s"/meta/auth/users/$userName"), 6.seconds).map { user =>
-        logger.debug(sanitizeLogLine(s"AuthCache user $userName was not in memory, but added to Map"))
+        logger.debug(san"AuthCache user $userName was not in memory, but added to Map")
         data = data.copy(users = data.users + (userName -> user))
         user
       }
@@ -107,7 +107,7 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
           if (isUser) Left(key -> payload)
           else Right(key -> payload)
         }
-        logger.debug(sanitizeLogLine(s"AuthCache Loaded with ${usersData.size} users and ${rolesData.size} roles."))
+        logger.debug(san"AuthCache Loaded with ${usersData.size} users and ${rolesData.size} roles.")
         AuthData(usersData.toMap, rolesData.toMap)
       }
       .recover {
@@ -122,7 +122,7 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
       extractPayload(i)
     case other =>
       if (!serverIsWarmingUp) {
-        logger.warn(sanitizeLogLine(s"AuthCache Trying to read $infotonPath but got from CAS $other"))
+        logger.warn(san"AuthCache Trying to read $infotonPath but got from CAS $other")
       }
       None
   }
@@ -131,10 +131,10 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
     case FileInfoton(_, _,Some(FileContent(Some(payload), _, _, _))) =>
       val jsValOpt = Try(Json.parse(payload)).toOption
       if (jsValOpt.isEmpty)
-        logger.warn(sanitizeLogLine(s"AuthCache Infoton(${infoton.path}) has invalid JSON content."))
+        logger.warn(san"AuthCache Infoton(${infoton}) has invalid JSON content.")
       jsValOpt
     case _ =>
-      logger.warn(sanitizeLogLine(s"AuthCache Infoton(${infoton.path}) does not exist, or is not a FileInfoton with valid content."))
+      logger.warn(san"AuthCache Infoton(${infoton}) does not exist, or is not a FileInfoton with valid content.")
       None
   }
 

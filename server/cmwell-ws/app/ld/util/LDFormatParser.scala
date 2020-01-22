@@ -26,7 +26,7 @@ import cmwell.web.ld.cmw._
 import cmwell.web.ld.exceptions._
 import cmwell.ws.Settings
 import cmwell.common.{Settings => CSettings}
-import cmwell.util.string.sanitizeLogLine
+import cmwell.util.string.Sanitize
 
 import com.typesafe.scalalogging.LazyLogging
 import logic.{CRUDServiceFS, InfotonValidator}
@@ -984,7 +984,7 @@ object LDFormatParser extends LazyLogging {
       case "lastModifiedBy"           => md.copy(lastModifiedBy = Some(value.toString))
       case "indexTime"                => md.copy(indexTime = Try(value.asInstanceOf[FLong].value).toOption)
       case "uuid" | "parent" | "path" => md // these have no affect. better ignore without polluting the logs
-      case _                          => logger.warn(sanitizeLogLine("attribute: " + predicate + ", is not treated in cmwell RDF imports.")); md
+      case _                          => logger.warn(san"attribute: ${predicate}, is not treated in cmwell RDF imports."); md
     }
   }
 

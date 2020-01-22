@@ -23,7 +23,7 @@ import scala.concurrent.duration._
 import cmwell.util.concurrent._
 import scala.util.Random
 import scala.concurrent.ExecutionContext.Implicits.global
-import cmwell.util.string.sanitizeLogLine
+import cmwell.util.string.Sanitize
 
 /**
   * Created by michael on 2/9/16.
@@ -56,7 +56,7 @@ class ServiceCoordinator extends Actor with LazyLogging {
       }
     case SendRegistrations => {
       val jvms = Grid.jvmsAll
-      logger.debug(sanitizeLogLine(s"[SendRegistrations] currentJvms: $jvms"))
+      logger.debug(san"[SendRegistrations] currentJvms: $jvms")
       val futures = jvms.map { jvm =>
         (Grid.selectActor(LocalServiceManager.name, jvm) ? RegisterServices(Grid.thisMember))
           .mapTo[ServiceInstantiationRequest]
@@ -72,19 +72,19 @@ class ServiceCoordinator extends Actor with LazyLogging {
           case (serviceName, ssg)
               if ssg.count(_._1.isRunning) == 0 => // No one is running the service. Will choose one candidate to run it.
             logger.warn(
-              s"[ServiceInstantiation] No one is running the service $serviceName. Will choose one candidate to run it"
+              san"[ServiceInstantiation] No one is running the service $serviceName. Will choose one candidate to run it"
             )
             val winner = ssg.find(_._1.preferredJVM.isDefined) match {
               case Some((ServiceStatus(_, _, Some(preferredJvm)), _)) if (stat.exists(_.member == preferredJvm)) =>
-                logger.info(s"[ServiceInstantiation] choosing preferred JVM as target for service")
+                logger.info("[ServiceInstantiation] choosing preferred JVM as target for service")
                 preferredJvm
               case _ =>
-                logger.info(s"[ServiceInstantiation] choosing random JVM as target for service ")
+                logger.info("[ServiceInstantiation] choosing random JVM as target for service ")
                 val vec = ssg.toVector
                 val candIndex = Random.nextInt(vec.size)
                 vec(candIndex)._2
             }
-            logger.info(sanitizeLogLine(s"[ServiceInstantiation] will run $serviceName on $winner"))
+            logger.info(san"[ServiceInstantiation] will run $serviceName on $winner")
             Grid.selectActor(LocalServiceManager.name, winner) ! RunService(serviceName)
             // We will update that currently no one is running the service, we will know if it runs only in the next sample.
             self ! UpdateServiceMapping(serviceName, None)

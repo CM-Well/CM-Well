@@ -22,6 +22,7 @@ import akka.stream.scaladsl.Source
 import cmwell.common.formats.NsSplitter
 import cmwell.domain.{logger, _}
 import cmwell.util.concurrent.SimpleScheduler
+import cmwell.util.string.Sanitize
 import com.typesafe.config.{Config, ConfigFactory}
 import com.typesafe.scalalogging.Logger
 import io.netty.util.{HashedWheelTimer, Timeout, TimerTask}
@@ -805,7 +806,7 @@ class FTSService(config: Config) extends NsSplitter{
         if (status >= 400) p.failure(new Exception(s"bad scroll response: $scrollResponse"))
         else {
           if (status != 200)
-            logger.warn(sanitizeLogLine(s"scroll($scrollId, $scrollTTL, $nodeId) resulted with status[$status] != 200: $scrollResponse"))
+            logger.warn(san"scroll($scrollId, $scrollTTL, $nodeId) resulted with status[$status] != 200: $scrollResponse")
 
           p.complete(Try(esResponseToInfotons(scrollResponse, includeScore = false)).map { infotons =>
             FTSScrollResponse(scrollResponse.getHits.getTotalHits.value, scrollResponse.getScrollId, infotons, searchQueryStr = searchQueryStr)

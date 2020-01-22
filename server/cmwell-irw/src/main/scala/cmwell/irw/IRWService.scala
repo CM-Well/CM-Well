@@ -35,7 +35,7 @@ import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success}
 import cmwell.common.metrics.WithMetrics
 import cmwell.zstore.ZStore
-import cmwell.util.string.sanitizeLogLine
+import cmwell.util.string.Sanitize
 
 import scala.concurrent._
 import duration._
@@ -409,7 +409,7 @@ class IRWServiceNativeImpl(storageDao: Dao,
         case oi => {
           if (oi.isDefined) {
             if (level == QUORUM && retry) {
-              logger.warn(sanitizeLogLine(s"The uuid $uuid is only available in QUORUM"))
+              logger.warn(sans"The uuid $uuid is only available in QUORUM"))
             }
             if (oi.get.uuid != uuid) {
               logger.error(

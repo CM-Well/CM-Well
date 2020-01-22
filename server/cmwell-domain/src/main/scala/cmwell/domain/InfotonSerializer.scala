@@ -204,7 +204,7 @@ object InfotonSerializer extends LazyLogging {
         require(lastModifiedBy ne null, s"must have lastModifiedBy initialized [$uuidHint]")
         require(dc ne null, s"must have dc initialized [$uuidHint]")
 
-        import cmwell.util.string.sanitizeLogLine
+        import cmwell.util.string.Sanitize
 
         infoton = kind match {
           case "o" => new ObjectInfoton(SystemFields(path, lastModified, lastModifiedBy, dc, indexTime, indexName, protocol), fields.map(_.toMap))
@@ -217,9 +217,9 @@ object InfotonSerializer extends LazyLogging {
                   else {
                     if (fileContentBuildPosition != fileContentLength) {
                       val l = s"$fileContentBuildPosition/${fileContentBuilder.length}"
-                      logger.warn(sanitizeLogLine(
-                        s"content has different length than expected. expected: [$fileContentLength], actual: [$l] for uuid [$uuidHint]"
-                      ))
+                      logger.warn(
+                        san"content has different length than expected. expected: [$fileContentLength], actual: [$l] for uuid [$uuidHint]"
+                      )
                     }
                     if (dataPointer ne null) {
                       val l = fileContentBuilder.length
