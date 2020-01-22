@@ -78,7 +78,10 @@ jobs:
 ##  Running all integration tests  ##
 ##################################### 
   integrationTests:
-    runs-on: [ubuntu-18.04, macos-latest]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-18.04, macos-latest]
     steps:         
     - name: Checkout code
       uses: actions/checkout@v1
