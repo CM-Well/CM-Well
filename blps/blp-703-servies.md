@@ -22,7 +22,8 @@
 type.rdf:		cmwell://meta/sys#Redirection
 route:			/company/
 regex:			/company/$1
-replacement:	/permid.org/1-$1```
+replacement:	/permid.org/1-$1
+```
 
 - This will redirect any GET request to /company/Something to /permid.org/1-Something
 - for example /company/8589934184 will redirect to /permid.org/1-8589934184
